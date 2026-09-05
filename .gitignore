@@ -1,0 +1,14 @@
+# Binaries
+/tq
+/tq-linux-*
+dist/
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+
+# Go
+*.test
+*.out
+coverage/
