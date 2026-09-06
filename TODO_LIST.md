@@ -28,6 +28,12 @@ appending `— BLOCKED: <reason>` keeps an item out of the pool.
 
 ## Lower Impact
 
+- [ ] CI reliability bundle: nix build + `nix flake check` job, TODO_LIST harvest-parse guard (`tq harvest --repos . --dry-run` must succeed), ghost-reference check that every path cited in AGENTS.md/README/FEATURES exists (plan C05)
+- [ ] Verify the CQA bridge against a live CQA API instance and fix contract drift (`internal/bridge/cqa` response shapes are httptest-informed guesses today); upgrade its FEATURES.md status after (plan C25)
+- [ ] Re-runnable PapDashboard E2E verification script (docker pap + `tq worker --alert-url`) so the bridge's FULLY_FUNCTIONAL status is provable on demand (plan D73)
+- [ ] `docs/DOMAIN_LANGUAGE.md`: glossary for task, fact, claim, lease, release, DLQ, rescue, harvest, dedup key, tick, verify gate (plan C20)
+- [ ] `doc.go` package docs for queue/worker/executor/harvest/journal + godoc examples before the module goes public (plan C22)
+- [ ] Tooling policy: golangci-lint either CI-gated with errcheck exclusions for idiomatic deferred Close or dropped from CONTRIBUTING; dprint added to the flake devShell and run over the living docs (plan C26)
 - [ ] `tq top`: live per-project view (pending/running/done/dead + last agent run duration) over the existing facts
 - [ ] Record agent transcript location (crush session id) as task result detail on completion, so `tq show` links to the agent's session
 - [ ] Docs-drift auditor: periodic task re-checking harvested repos and enqueuing a catch-up item when an item is done in code but still unchecked
