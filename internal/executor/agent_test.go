@@ -168,3 +168,63 @@ func TestAgentPayloadSafetyFieldsRoundTrip(t *testing.T) {
 		t.Fatalf("round trip lost safety fields: %+v", p)
 	}
 }
+
+// TestAgentExecutorArgvContract pins the exact command line handed to the
+// agent binary. crush (v0.92) accepts --cwd/--quiet/--model/--session after
+// the run subcommand but has NO --yolo flag there — an arg-order regression
+// here means every autonomous pool run dies with "Unknown flag" (this exact
+// bug shipped once; the stub ignores argv, so only this test catches it).
+func TestAgentExecutorArgvContract(t *testing.T) {
+	dir := t.TempDir()
+	argsLog := filepath.Join(dir, "argv.log")
+	bin := filepath.Join(dir, "argv-agent")
+	script := "#!/bin/sh\nprintf '%s\n' \"$@\" > \"" + argsLog + "\"\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	e := &AgentExecutor{Bin: bin, Yolo: true}
+	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{
+		Repo: repo, Prompt: "do it", Model: "prov/m1",
+	})); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	raw, err := os.ReadFile(argsLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, line := range strings.Split(strings.TrimRight(string(raw), "\n"), "\n") {
+		got = append(got, line)
+	}
+	want := []string{"run", "--quiet", "--cwd", repo, "--model", "prov/m1", "--", "do it"}
+	if len(got) != len(want) {
+		t.Fatalf("argv = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("argv[%d] = %q, want %q (full: %v)", i, got[i], want[i], got)
+		}
+	}
+}
+
+// TestAgentExecutorYoloWithoutRepoAutonomyFailsFast verifies the guard that
+// keeps unattended pools from burning their attempt budget on runs that can
+// never act: yolo requested, but the repo has no project-local crush config
+// to grant permissions.
+func TestAgentExecutorYoloWithoutRepoAutonomyFailsFast(t *testing.T) {
+	repo := t.TempDir() // no .crushrc, no .crush.json
+	e := &AgentExecutor{Bin: makeStubAgent(t, "echo should-not-run > ran.txt"), Yolo: true}
+	err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
+	if err == nil || !strings.Contains(err.Error(), "autonomy") || !strings.Contains(err.Error(), ".crushrc") {
+		t.Fatalf("want autonomy guidance error, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(repo, "ran.txt")); err == nil {
+		t.Fatal("agent ran despite missing autonomy config")
+	}
+}

@@ -28,6 +28,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   JSON-only, contradicting the README quickstart): non-JSON payloads are
   wrapped as JSON strings; the `sh` executor unwraps all three payload shapes
   (raw text, JSON string, `{"cmd":...}`)
+- Agent autonomy is granted per-repo, not per-flag: `crush run` has no
+  `--yolo` flag (v0.92: "Unknown flag: --yolo"), so `--yolo` now requests
+  the repo's own `.crushrc` permissions model — yolo tasks on repos without
+  a project-local crush config fail fast with remediation guidance instead
+  of stalling headless runs on permission prompts
 
 ### Deprecated
 
@@ -38,8 +43,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   at pool start: any task claimed after 30 seconds of uptime ran with an
   already-expired context, its Complete/Fail write failed with
   "context deadline exceeded", and the task was stuck `running` forever.
-  Tasks now execute under the pool context; terminal writes fall back to the
-  drain window only during shutdown
+  Tasks (execution, heartbeats, terminal writes) now run under a
+  shutdown-surviving context bounded only by `--task-timeout`; graceful stop
+  lets in-flight agents finish and record their outcome
+- `--yolo` injected a nonexistent flag into every autonomous agent run (all
+  yolo tasks failed instantly with "Unknown flag: --yolo"); the agent argv
+  is now pinned by a contract regression test so flag placement cannot
+  silently regress again
 - Test-only: removed invalid `_ = t.Cleanup(...)` / single-value Enqueue
   assignments that broke compilation of queue and worker test files
 

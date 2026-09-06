@@ -61,8 +61,17 @@ with a strict contract (read AGENTS.md, smallest correct change, tick the
 checkbox, commit, never push). The executor enforces the safety rails:
 
 - **Opt-in autonomy** — agents only run under `--agents`/`tq agent-pool`;
-  a plain `tq worker` never spawns one. `--yolo` (auto-accept permissions)
-  is an operator decision made at pool start.
+  a plain `tq worker` never spawns one. `--yolo` is the operator's autonomy
+  request — crush's headless mode has no yolo flag, so autonomy is actually
+  granted by the repo itself: a project-local `.crushrc` declaring which
+  tools its agents may use. The pool cannot over-grant what a repo never
+  offered; a `--yolo` task on a repo without such a config fails fast with
+  remediation guidance instead of burning agent attempts.
+
+  ```sh
+  # in each repo that wants agents (committed, reviewable, per-repo scope):
+  echo 'permissions allow view ls grep glob edit write bash' > .crushrc
+  ```
 - **Clean tree required** — agents refuse repos with uncommitted changes
   (the pool never tramples human WIP; `--allow-dirty` opts out).
 - **Verify enforced** — a task only completes when the repo still builds and
