@@ -364,3 +364,87 @@ func TestRunPinsRepoVerifyIntoPayload(t *testing.T) {
 		t.Fatalf("payload verify = %q, want the repo's .tq-verify command", p.Verify)
 	}
 }
+
+// TestRunDLQBackoffPausesPoisonedRepos: a repo whose recent work all went
+// dead gets a cooldown instead of fresh failures every tick; a completed
+// task anywhere in its history (or a zero backoff) lifts the guard.
+func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	// Poison repo "eps": enqueue one item, drive it to dead.
+	q := openQueue(t)
+	writeRepo(t, dir, "eps", "## Work\n\n- [ ] doomed\n")
+	h := New(q, Config{ProjectsDir: dir})
+	res, err := h.Run(ctx)
+	if err != nil || len(res.Enqueued) != 1 {
+		t.Fatalf("seed run: %+v, %v", res.Enqueued, err)
+	}
+	tk, _ := q.Get(ctx, res.Enqueued[0].TaskID)
+	if _, err := q.Store.ClaimDue(ctx, "w", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if err := q.Store.FailPermanent(ctx, tk.ID, "w", "repo is broken"); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	// New item appears; with backoff on, the repo is paused.
+	writeRepo(t, dir, "eps", "## Work\n\n- [ ] doomed\n- [ ] fresh item\n")
+	hp := New(q, Config{ProjectsDir: dir, DLQBackoff: 30 * time.Minute})
+	res, err = hp.Run(ctx)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(res.Enqueued) != 0 || !hasSkip(res, "poisoned: recent dead-letter") {
+		t.Fatalf("poisoned repo must be paused: enqueued=%+v skips=%+v", res.Enqueued, res.Skipped)
+	}
+
+	// With the guard off (default), the fresh item is enqueued as before.
+	hn := New(q, Config{ProjectsDir: dir})
+	res, err = hn.Run(ctx)
+	if err != nil || len(res.Enqueued) != 1 {
+		t.Fatalf("default must keep harvesting fresh items: %+v, %v", res.Enqueued, err)
+	}
+
+	// A completed task lifts the guard even with backoff on.
+	if _, err := q.Store.ClaimDue(ctx, "w", time.Minute); err != nil {
+		t.Fatalf("claim2: %v", err)
+	}
+	if err := q.Store.Complete(ctx, res.Enqueued[0].TaskID, "w", nil); err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+	writeRepo(t, dir, "eps", "## Work\n\n- [ ] doomed\n- [ ] third item\n")
+	res, err = hp.Run(ctx)
+	if err != nil || len(res.Enqueued) != 1 {
+		t.Fatalf("completion must lift the poisoned guard: %+v, %v", res.Enqueued, err)
+	}
+}
+
+// TestRunPerRepoInterval: Config.RepoIntervals throttles new enqueues per
+// repo independently of the tick pacing.
+func TestRunPerRepoInterval(t *testing.T) {
+	ctx := context.Background()
+	q := openQueue(t)
+	dir := t.TempDir()
+	writeRepo(t, dir, "zeta", "## Work\n\n- [ ] one\n")
+
+	h := New(q, Config{ProjectsDir: dir, RepoIntervals: map[string]time.Duration{"zeta": time.Hour}})
+	res, err := h.Run(ctx)
+	if err != nil || len(res.Enqueued) != 1 {
+		t.Fatalf("first run: %+v, %v", res.Enqueued, err)
+	}
+
+	// A brand-new item still hits the interval (last enqueue was moments ago).
+	writeRepo(t, dir, "zeta", "## Work\n\n- [ ] one\n- [ ] two\n")
+	res, err = h.Run(ctx)
+	if err != nil || len(res.Enqueued) != 0 || !hasSkip(res, "paced: per-repo interval") {
+		t.Fatalf("interval must gate new items: enqueued=%+v skips=%+v", res.Enqueued, res.Skipped)
+	}
+
+	// Other repos are unaffected by zeta's interval.
+	writeRepo(t, dir, "eta", "## Work\n\n- [ ] eta item\n")
+	res, err = h.Run(ctx)
+	if err != nil || len(res.Enqueued) != 1 {
+		t.Fatalf("interval must be per-repo: %+v, %v", res.Enqueued, err)
+	}
+}

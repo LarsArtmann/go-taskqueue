@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -71,6 +72,16 @@ type Config struct {
 	// Model overrides the crush model ("provider/model") in every harvested
 	// agent payload. Empty = the agent binary's default model.
 	Model string
+	// RepoIntervals sets a minimum gap between new enqueues per repo (by
+	// repo name): after any enqueue for a repo, further items wait until
+	// the interval has passed. Empty or zero entries = only the default
+	// one-per-tick pacing applies.
+	RepoIntervals map[string]time.Duration
+	// DLQBackoff pauses harvesting of a repo whose recent work all went to
+	// the dead-letter queue (dead tasks present, none completed, newest
+	// dead within the window): the repo is poisoned until a human fixes or
+	// rescues it. Zero disables the guard. Default 0 (set it, e.g. 30m).
+	DLQBackoff time.Duration
 	// RequireClean passes the clean-tree policy through to agent payloads:
 	// nil = executor default (require a clean git tree), false lets agents
 	// run on dirty repos (scratch/fixtures only), true forces the check.
@@ -187,9 +198,23 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 
 	busy := false
 	known := make(map[string]task.Status, len(tasks))
+	var hasDead, hasCompleted bool
+	var lastDead, lastCreated time.Time
 	for _, t := range tasks {
 		if t.Status == task.Pending || t.Status == task.Running {
 			busy = true
+		}
+		switch t.Status {
+		case task.Dead:
+			hasDead = true
+			if t.UpdatedAt.After(lastDead) {
+				lastDead = t.UpdatedAt
+			}
+		case task.Completed:
+			hasCompleted = true
+		}
+		if t.CreatedAt.After(lastCreated) {
+			lastCreated = t.CreatedAt
 		}
 		if key := payloadDedup(t); key != "" {
 			if _, dup := known[key]; !dup {
@@ -197,6 +222,11 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			}
 		}
 	}
+	// Poisoned repo: everything it touched recently is dead. New items
+	// would die the same way — give the human the backoff window to fix
+	// or rescue instead of enqueueing fresh failures every tick.
+	poisoned := hasDead && !hasCompleted && h.cfg.DLQBackoff > 0 && time.Since(lastDead) < h.cfg.DLQBackoff
+	repoInterval := h.cfg.RepoIntervals[repoName]
 
 	enqueuedThisRepo := false
 	for _, it := range items {
@@ -210,6 +240,12 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 				reason = "cancelled (edit the item text to re-arm it)"
 			}
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: reason})
+		case poisoned:
+			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: fmt.Sprintf(
+				"poisoned: recent dead-letter, DLQ backoff %s (fix the repo or rescue dead tasks)", h.cfg.DLQBackoff)})
+		case repoInterval > 0 && !lastCreated.IsZero() && time.Since(lastCreated) < repoInterval:
+			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: fmt.Sprintf(
+				"paced: per-repo interval %s (last enqueue %s ago)", repoInterval, time.Since(lastCreated).Round(time.Second))})
 		case busy:
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "repo busy: one agent per repo"})
 		case enqueuedThisRepo:

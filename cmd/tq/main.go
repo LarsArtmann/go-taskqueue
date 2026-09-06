@@ -344,6 +344,7 @@ func cmdAgentPool(args []string) error {
 	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per harvest tick (cost throttle)")
 	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
 	model := fs.String("model", "", "crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload")
+	once := fs.Bool("once", false, "run one harvest tick, drain the queue, then exit (cron/timer-friendly)")
 	exclusive := fs.Bool("project-exclusive", false, "never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)")
 	cqaURL := fs.String("cqa-url", os.Getenv("CQA_URL"), "Code-Quality-Agent API base URL: latest scans' fixable findings become fix tasks each tick")
 	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
@@ -442,6 +443,9 @@ func cmdAgentPool(args []string) error {
 	}
 	go func() {
 		runTick()
+		if *once {
+			return
+		}
 		ticker := time.NewTicker(*interval)
 		defer ticker.Stop()
 		for {
@@ -462,7 +466,40 @@ func cmdAgentPool(args []string) error {
 		TaskTimeout:  *timeout,
 		Executors:    reg,
 	}, log)
+	if *once {
+		// Timer-friendly mode: the pool stops as soon as nothing is running
+		// and nothing is claimable. Tasks gated by a future NotBefore stay
+		// pending for the next --once run (documented).
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(*poll):
+					if pool.InFlight() == 0 && !hasOpenTasks(ctx, q) {
+						pool.Stop()
+						return
+					}
+				}
+			}
+		}()
+	}
 	return pool.Start(ctx)
+}
+
+// hasOpenTasks reports whether any task is pending or running — the drain
+// condition for `tq agent-pool --once`.
+func hasOpenTasks(ctx context.Context, q *queue.Queue) bool {
+	tasks, err := q.List(ctx, queue.Filter{})
+	if err != nil {
+		return true // fail safe: keep draining rather than exit early
+	}
+	for _, t := range tasks {
+		if t.Status == task.Pending || t.Status == task.Running {
+			return true
+		}
+	}
+	return false
 }
 
 func repoRootDesc(projectsDir, repos string) string {
