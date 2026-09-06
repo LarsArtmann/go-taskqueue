@@ -475,17 +475,21 @@ func cmdAgentPool(args []string) error {
 		Executors:    reg,
 	}, log)
 	if *once {
-		// Timer-friendly mode: the pool stops as soon as nothing is running
-		// and nothing is claimable. Tasks gated by a future NotBefore stay
-		// pending for the next --once run (documented).
+		// Timer-friendly mode: as soon as this pool has nothing in flight
+		// and no claimable work left, stop the pool AND cancel the signal
+		// context — Start only returns once ctx is done, so Stop alone
+		// would leave the process hanging until the next signal. Work
+		// claimed by OTHER pools, or gated by a future NotBefore, is left
+		// for them / for the next --once run.
 		go func() {
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				case <-time.After(*poll):
-					if pool.InFlight() == 0 && !hasOpenTasks(ctx, q) {
+					if pool.InFlight() == 0 && !hasClaimableWork(ctx, q, pool.Owner(), *poll) {
 						pool.Stop()
+						stop()
 						return
 					}
 				}
@@ -495,15 +499,20 @@ func cmdAgentPool(args []string) error {
 	return pool.Start(ctx)
 }
 
-// hasOpenTasks reports whether any task is pending or running — the drain
-// condition for `tq agent-pool --once`.
-func hasOpenTasks(ctx context.Context, q *queue.Queue) bool {
+// hasClaimableWork reports whether any task is running under this owner or
+// pending and due soon — the drain condition for `tq agent-pool --once`.
+// Tasks owned by other pools or scheduled for later do not block the exit.
+func hasClaimableWork(ctx context.Context, q *queue.Queue, owner string, poll time.Duration) bool {
 	tasks, err := q.List(ctx, queue.Filter{})
 	if err != nil {
 		return true // fail safe: keep draining rather than exit early
 	}
+	dueSoon := time.Now().Add(2 * poll)
 	for _, t := range tasks {
-		if t.Status == task.Pending || t.Status == task.Running {
+		if t.Status == task.Running && t.LeaseOwner == owner {
+			return true
+		}
+		if t.Status == task.Pending && !t.NotBefore.After(dueSoon) {
 			return true
 		}
 	}

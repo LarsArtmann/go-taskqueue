@@ -125,6 +125,9 @@ func (p *Pool) InFlight() int {
 	return len(p.inFlight)
 }
 
+// Owner returns the lease owner identity in use (after defaulting).
+func (p *Pool) Owner() string { return p.cfg.Owner }
+
 func (p *Pool) loop(ctx, taskCtx context.Context) {
 	defer p.wg.Done()
 	for {
@@ -138,6 +141,9 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 
 		t, err := p.store.ClaimDue(ctx, p.cfg.Owner, p.cfg.Lease)
 		if err != nil {
+			if ctx.Err() != nil {
+				return // shutdown raced the claim; not an error
+			}
 			if !errors.Is(err, queue.ErrNoTaskDue) {
 				p.log.Error("claim failed", "err", err)
 			}
