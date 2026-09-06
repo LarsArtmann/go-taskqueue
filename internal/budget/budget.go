@@ -12,8 +12,13 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
-	"github.com/larsartmann/go-taskqueue/internal/queue"
 )
+
+// FactSource is the journal view the guard projects spend from. *queue.Queue
+// satisfies it.
+type FactSource interface {
+	Facts(ctx context.Context, after int64) ([]journal.Fact, error)
+}
 
 // Guard gates how much agent work a pool may start. Zero-value Guard
 // allows everything.
@@ -39,7 +44,7 @@ func (g Guard) now() time.Time {
 
 // Check reports whether the pool may enqueue more work, and if not, a
 // human-readable reason for the log.
-func (g Guard) Check(ctx context.Context, q *queue.Queue) (bool, string) {
+func (g Guard) Check(ctx context.Context, src FactSource) (bool, string) {
 	if g.BudgetCmd != "" {
 		cmd := exec.CommandContext(ctx, "sh", "-c", g.BudgetCmd)
 		out, err := cmd.CombinedOutput()
@@ -49,7 +54,7 @@ func (g Guard) Check(ctx context.Context, q *queue.Queue) (bool, string) {
 		return true, ""
 	}
 	if g.DailyCap > 0 {
-		if spent := g.SpentToday(ctx, q); spent >= g.DailyCap {
+		if spent := g.SpentToday(ctx, src); spent >= g.DailyCap {
 			return false, fmt.Sprintf("daily budget exhausted: %d/%d tasks enqueued today", spent, g.DailyCap)
 		}
 	}
@@ -59,12 +64,12 @@ func (g Guard) Check(ctx context.Context, q *queue.Queue) (bool, string) {
 // SpentToday counts today's enqueued tasks from the journal. Every enqueue
 // is presumed to become one agent run: on an agent-pool database this is
 // exact; manually enqueued sh/http tasks count too (conservative).
-func (g Guard) SpentToday(ctx context.Context, q *queue.Queue) int {
-	return g.spentSince(ctx, q, startOfDay(g.now()))
+func (g Guard) SpentToday(ctx context.Context, src FactSource) int {
+	return g.spentSince(ctx, src, startOfDay(g.now()))
 }
 
-func (g Guard) spentSince(ctx context.Context, q *queue.Queue, since time.Time) int {
-	facts, err := q.Store.Facts(ctx, 0)
+func (g Guard) spentSince(ctx context.Context, src FactSource, since time.Time) int {
+	facts, err := src.Facts(ctx, 0)
 	if err != nil {
 		return 0 // fail open: the queue keeps working if the journal errors
 	}

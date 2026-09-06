@@ -18,6 +18,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/bridge/cqa"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
+	"github.com/larsartmann/go-taskqueue/internal/budget"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -346,6 +347,8 @@ func cmdAgentPool(args []string) error {
 	model := fs.String("model", "", "crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload")
 	once := fs.Bool("once", false, "run one harvest tick, drain the queue, then exit (cron/timer-friendly)")
 	exclusive := fs.Bool("project-exclusive", false, "never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)")
+	dailyBudget := fs.Int("daily-budget", 0, "max agent tasks enqueued per calendar day across all repos (0 = unlimited)")
+	budgetCmd := fs.String("budget-cmd", "", "checked before each harvest tick: exit 0 = within budget, non-zero skips the tick (output is the reason)")
 	cqaURL := fs.String("cqa-url", os.Getenv("CQA_URL"), "Code-Quality-Agent API base URL: latest scans' fixable findings become fix tasks each tick")
 	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
 	cqaToken := fs.String("cqa-token", os.Getenv("CQA_TOKEN"), "CQA bearer token")
@@ -392,6 +395,7 @@ func cmdAgentPool(args []string) error {
 	defer stop()
 
 	log := slog.Default()
+	guard := budget.Guard{DailyCap: *dailyBudget, BudgetCmd: *budgetCmd}
 	h := harvest.New(q, cfg)
 	var cqaBridge *cqa.Bridge
 	if *cqaURL != "" {
@@ -404,6 +408,10 @@ func cmdAgentPool(args []string) error {
 	}
 
 	runTick := func() {
+		if ok, reason := guard.Check(ctx, s); !ok {
+			log.Warn("budget: skipping harvest tick", "reason", reason)
+			return
+		}
 		res, err := h.Run(ctx)
 		if err != nil {
 			log.Error("harvest failed", "err", err)
