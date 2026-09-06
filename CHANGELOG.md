@@ -51,5 +51,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   silently regress again
 - Test-only: removed invalid `_ = t.Cleanup(...)` / single-value Enqueue
   assignments that broke compilation of queue and worker test files
+- `nix build` failed with a vendor-hash mismatch after the go.sum bump
+  (modernc.org/libc v1.75.7); `vendorHash` re-pinned via the fakeHash dance,
+  `nix build` and `nix flake check` verified green
 
 ### Security

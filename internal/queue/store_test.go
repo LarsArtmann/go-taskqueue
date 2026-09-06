@@ -363,7 +363,7 @@ func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 	dbPath := filepath.Join(dir, "old.db")
 
 	// Simulate a pre-dedup_key database: create the table without the column.
-	old := fmt.Sprintf(`CREATE TABLE tasks (
+	old := `CREATE TABLE tasks (
 		id TEXT PRIMARY KEY,
 		project TEXT NOT NULL DEFAULT '',
 		type TEXT NOT NULL,
@@ -380,7 +380,7 @@ func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 		created_at INTEGER NOT NULL,
 		updated_at INTEGER NOT NULL,
 		completed_at INTEGER
-	);`)
+	);`
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
 	legacy, err := sql.Open("sqlite", dsn)
 	if err != nil {

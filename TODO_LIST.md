@@ -25,7 +25,6 @@ appending `— BLOCKED: <reason>` keeps an item out of the pool.
 - [ ] Verify-step auto-detection beyond Go/npm (Makefile, flake.nix, cargo) or a per-repo `.tq-verify` file; harvested tasks currently get no verify on other stacks
 - [ ] Harvested tasks should carry a `verify` command sourced from repo config instead of relying on executor auto-detection
 - [ ] Harvester: per-repo poll interval, and back off repos whose items repeatedly land in the DLQ (a poisoned repo should not refill its attempt budget forever)
-- [ ] Re-run `nix build` + `nix flake check` after the recent go.mod/go.sum changes (vendor-hash drift gate)
 
 ## Lower Impact
 
