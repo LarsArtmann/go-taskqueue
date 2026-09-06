@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS tasks (
 	last_error     TEXT NOT NULL DEFAULT '',
 	created_at     INTEGER NOT NULL,
 	updated_at     INTEGER NOT NULL,
-	completed_at   INTEGER
+	completed_at   INTEGER,
+	dedup_key      TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_status_due ON tasks(status, not_before);
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project);
@@ -90,6 +91,26 @@ func (s *SQLiteStore) migrate(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("queue: migrate: %w", err)
 	}
+	// Databases created before dedup_key existed need the column added
+	// (CREATE TABLE IF NOT EXISTS cannot evolve an existing table). The
+	// partial unique index is created here, after the column is guaranteed to
+	// exist, so fresh and legacy databases take the same path.
+	var dedupCol int
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name = 'dedup_key'`).Scan(&dedupCol); err != nil {
+		return fmt.Errorf("queue: migrate: check dedup_key: %w", err)
+	}
+	if dedupCol == 0 {
+		if _, err := s.db.ExecContext(ctx, `ALTER TABLE tasks ADD COLUMN dedup_key TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("queue: migrate: add dedup_key: %w", err)
+		}
+	}
+	// Only tasks that opt into deduplication participate, so arbitrary tasks
+	// without a key never collide.
+	if _, err := s.db.ExecContext(ctx,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_dedup ON tasks(dedup_key) WHERE dedup_key != ''`); err != nil {
+		return fmt.Errorf("queue: migrate: dedup index: %w", err)
+	}
 	return nil
 }
 
@@ -108,9 +129,21 @@ func (s *SQLiteStore) appendFact(ctx context.Context, tx *sql.Tx, f journal.Fact
 	return err
 }
 
-// Enqueue persists a new task and records task.enqueued.
+// Enqueue persists a new task and records task.enqueued. When New.DedupKey
+// is set and a task with that key already exists, the stored task is returned
+// unchanged — no duplicate row, no duplicate fact (idempotent enqueue).
 func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 	n = n.Normalize()
+	if n.Type == "" {
+		return task.Task{}, errors.New("queue: task type must not be empty")
+	}
+	if n.DedupKey != "" {
+		if existing, found, err := s.getTaskByDedupKey(ctx, n.DedupKey); err != nil {
+			return task.Task{}, fmt.Errorf("queue: enqueue dedup lookup: %w", err)
+		} else if found {
+			return existing, nil
+		}
+	}
 	now := time.Now()
 	t := task.Task{
 		ID:          task.NewID(),
@@ -125,9 +158,7 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if t.Type == "" {
-		return task.Task{}, errors.New("queue: task type must not be empty")
-	}
+	suppressed := false
 	depsJSON, err := json.Marshal(t.Deps)
 	if err != nil {
 		return task.Task{}, fmt.Errorf("queue: marshal deps: %w", err)
@@ -135,12 +166,27 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 	payload := string(t.Payload) // empty string, never NULL
 
 	err = s.withTx(ctx, func(tx *sql.Tx) error {
+		if n.DedupKey != "" {
+			// Re-check inside the transaction: a concurrent enqueuer may have
+			// inserted the same key between our lookup and this write. The
+			// unique partial index is the final arbiter.
+			var existingID string
+			err := tx.QueryRowContext(ctx, `SELECT id FROM tasks WHERE dedup_key = ?`, n.DedupKey).Scan(&existingID)
+			if err == nil {
+				t.ID = task.ID(existingID)
+				suppressed = true
+				return nil
+			}
+			if !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO tasks (id, project, type, payload, deps, priority, attempts, max_attempts,
-			                    not_before, status, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 'pending', ?, ?)`,
+			                    not_before, status, created_at, updated_at, dedup_key)
+			 VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 'pending', ?, ?, ?)`,
 			t.ID.String(), t.Project, t.Type, payload, string(depsJSON), t.Priority,
-			t.MaxAttempts, ms(t.NotBefore), now.UnixMilli(), now.UnixMilli()); err != nil {
+			t.MaxAttempts, ms(t.NotBefore), now.UnixMilli(), now.UnixMilli(), n.DedupKey); err != nil {
 			return err
 		}
 		for _, d := range t.Deps {
@@ -157,7 +203,27 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 	if err != nil {
 		return task.Task{}, fmt.Errorf("queue: enqueue: %w", err)
 	}
+	if suppressed {
+		return s.Get(ctx, t.ID)
+	}
 	return t, nil
+}
+
+// getTaskByDedupKey returns the stored task for a dedup key, if any.
+func (s *SQLiteStore) getTaskByDedupKey(ctx context.Context, key string) (task.Task, bool, error) {
+	var id string
+	err := s.db.QueryRowContext(ctx, `SELECT id FROM tasks WHERE dedup_key = ?`, key).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return task.Task{}, false, nil
+	}
+	if err != nil {
+		return task.Task{}, false, err
+	}
+	t, err := s.Get(ctx, task.ID(id))
+	if err != nil {
+		return task.Task{}, false, err
+	}
+	return t, true, nil
 }
 
 // ClaimDue atomically claims one due task for owner.

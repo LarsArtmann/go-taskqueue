@@ -2,11 +2,15 @@ package queue
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
+
+	_ "modernc.org/sqlite"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -294,3 +298,116 @@ func TestEmptyTypeRejected(t *testing.T) {
 }
 
 func wantLeaseErr() error { return task.ErrLeaseNotHeld }
+
+func TestEnqueueDedupKey(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	first, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
+	if err != nil {
+		t.Fatalf("first Enqueue: %v", err)
+	}
+	second, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
+	if err != nil {
+		t.Fatalf("second Enqueue: %v", err)
+	}
+	if first.ID != second.ID {
+		t.Fatalf("dedup enqueue returned new task: %s vs %s", first.ID, second.ID)
+	}
+
+	tasks, err := s.List(ctx, Filter{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(tasks) != 1 {
+		t.Fatalf("stored %d tasks, want 1", len(tasks))
+	}
+
+	facts, err := s.Facts(ctx, 0)
+	if err != nil {
+		t.Fatalf("Facts: %v", err)
+	}
+	enqueued := 0
+	for _, f := range facts {
+		if f.Type == journal.Enqueued {
+			enqueued++
+		}
+	}
+	if enqueued != 1 {
+		t.Fatalf("journal has %d task.enqueued facts, want 1 (no duplicate on suppressed enqueue)", enqueued)
+	}
+}
+
+func TestEnqueueWithoutDedupKeyIndependent(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	a, err := s.Enqueue(ctx, task.New{Type: "sh"})
+	if err != nil {
+		t.Fatalf("enqueue a: %v", err)
+	}
+	b, err := s.Enqueue(ctx, task.New{Type: "sh"})
+	if err != nil {
+		t.Fatalf("enqueue b: %v", err)
+	}
+	if a.ID == b.ID {
+		t.Fatal("tasks without dedup key must be independent")
+	}
+}
+
+func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "old.db")
+
+	// Simulate a pre-dedup_key database: create the table without the column.
+	old := fmt.Sprintf(`CREATE TABLE tasks (
+		id TEXT PRIMARY KEY,
+		project TEXT NOT NULL DEFAULT '',
+		type TEXT NOT NULL,
+		payload TEXT NOT NULL DEFAULT '',
+		deps TEXT NOT NULL DEFAULT '[]',
+		priority INTEGER NOT NULL DEFAULT 0,
+		attempts INTEGER NOT NULL DEFAULT 0,
+		max_attempts INTEGER NOT NULL DEFAULT 3,
+		not_before INTEGER NOT NULL DEFAULT 0,
+		status TEXT NOT NULL DEFAULT 'pending',
+		lease_owner TEXT NOT NULL DEFAULT '',
+		lease_expires INTEGER,
+		last_error TEXT NOT NULL DEFAULT '',
+		created_at INTEGER NOT NULL,
+		updated_at INTEGER NOT NULL,
+		completed_at INTEGER
+	);`)
+	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
+	legacy, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("open legacy: %v", err)
+	}
+	if _, err := legacy.Exec(old); err != nil {
+		t.Fatalf("create legacy schema: %v", err)
+	}
+	if err := legacy.Close(); err != nil {
+		t.Fatalf("close legacy: %v", err)
+	}
+
+	s, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("OpenSQLite with legacy schema: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "sh", DedupKey: "k1"}); err != nil {
+		t.Fatalf("enqueue after migration: %v", err)
+	}
+	if _, err := s.Enqueue(ctx, task.New{Type: "sh", DedupKey: "k1"}); err != nil {
+		t.Fatalf("idempotent enqueue after migration: %v", err)
+	}
+	tasks, err := s.List(ctx, Filter{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(tasks) != 1 {
+		t.Fatalf("stored %d tasks, want 1", len(tasks))
+	}
+}
