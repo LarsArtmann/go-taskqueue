@@ -93,7 +93,7 @@ fail with "no such column" before the ALTER runs.
 ## Conventions
 
 - Table-driven tests with plain `testing` (no Ginkgo here, unlike PapDashboard)
-- Sentinel errors in `task/errors.go`; check with `errors.Is`
+- Sentinel errors in `internal/task/errors.go`; check with `errors.Is`
 - Facts are the source of truth: a code change that mutates task state must
   append a fact in the same transaction
 - Pure-Go deps only; keep `CGO_ENABLED=0` valid
