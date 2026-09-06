@@ -271,6 +271,7 @@ func cmdHarvest(args []string) error {
 	priority := fs.Int("priority", 0, "priority for enqueued tasks")
 	maxAttempts := fs.Int("max-attempts", 0, "attempt budget (0 = store default)")
 	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
+	model := fs.String("model", "", "crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload")
 	dryRun := fs.Bool("dry-run", false, "report what would be enqueued, change nothing")
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -287,6 +288,7 @@ func cmdHarvest(args []string) error {
 		MaxPerTick:  *maxPerTick,
 		Priority:    *priority,
 		MaxAttempts: *maxAttempts,
+		Model:       *model,
 		DryRun:      *dryRun,
 	}
 	if *allowDirty {
@@ -341,6 +343,7 @@ func cmdAgentPool(args []string) error {
 	yolo := fs.Bool("yolo", false, "agents auto-accept all permissions — required for unattended pools whose items need writes/commits")
 	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per harvest tick (cost throttle)")
 	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
+	model := fs.String("model", "", "crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload")
 	exclusive := fs.Bool("project-exclusive", false, "never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)")
 	cqaURL := fs.String("cqa-url", os.Getenv("CQA_URL"), "Code-Quality-Agent API base URL: latest scans' fixable findings become fix tasks each tick")
 	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
@@ -353,7 +356,7 @@ func cmdAgentPool(args []string) error {
 		return fmt.Errorf("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
 	}
 
-	cfg := harvest.Config{ProjectsDir: *projectsDir, MaxPerTick: *maxPerTick}
+	cfg := harvest.Config{ProjectsDir: *projectsDir, MaxPerTick: *maxPerTick, Model: *model}
 	if *allowDirty {
 		no := false
 		cfg.RequireClean = &no

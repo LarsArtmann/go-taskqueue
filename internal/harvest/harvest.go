@@ -68,6 +68,9 @@ type Config struct {
 	Priority int
 	// PromptTemplate overrides DefaultPromptTemplate.
 	PromptTemplate string
+	// Model overrides the crush model ("provider/model") in every harvested
+	// agent payload. Empty = the agent binary's default model.
+	Model string
 	// RequireClean passes the clean-tree policy through to agent payloads:
 	// nil = executor default (require a clean git tree), false lets agents
 	// run on dirty repos (scratch/fixtures only), true forces the check.
@@ -257,6 +260,7 @@ func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
 		AgentPayload: executor.AgentPayload{
 			Repo:         repo,
 			Prompt:       prompt,
+			Model:        h.cfg.Model,
 			RequireClean: h.cfg.RequireClean,
 		},
 		Dedup: it.Key,
