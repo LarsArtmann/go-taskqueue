@@ -161,9 +161,13 @@ func TestHTTPStatusClassification(t *testing.T) {
 		code      int
 		permanent bool
 	}{
-		{http.StatusBadRequest, true}, {http.StatusUnauthorized, true}, {http.StatusNotFound, true},
-		{http.StatusInternalServerError, false}, {http.StatusServiceUnavailable, false},
-		{http.StatusTooManyRequests, false}, {http.StatusRequestTimeout, false},
+		{http.StatusBadRequest, true},
+		{http.StatusUnauthorized, true},
+		{http.StatusNotFound, true},
+		{http.StatusInternalServerError, false},
+		{http.StatusServiceUnavailable, false},
+		{http.StatusTooManyRequests, false},
+		{http.StatusRequestTimeout, false},
 	}
 	for _, tc := range cases {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
