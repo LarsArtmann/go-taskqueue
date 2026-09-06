@@ -25,7 +25,7 @@
       go-standard = {
         pname = "go-taskqueue";
         version = "0.1.0";
-        vendorHash = "sha256-bATSmqWo17NSJKxBFuYiYi3fIsZhmQetIaVfEAuo9bw=";
+        vendorHash = "sha256-H2J6GJy6BTngW7A6qaYHVEHxA6wLGoquDa+kW+EXmjs=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
 
