@@ -299,3 +299,59 @@ func TestAgentDirtyTreeAndAutonomyArePreflight(t *testing.T) {
 		t.Errorf("global crush config must satisfy the autonomy probe, got %v", err)
 	}
 }
+
+// TestVerifyStrategy pins the verify precedence: the repo's .tq-verify file
+// wins over the payload and over auto-detection; auto-detection maps stack
+// markers to real gate commands (a repo with a Makefile but no test target
+// fails the gate, by design — no vacuous passes).
+func TestVerifyStrategy(t *testing.T) {
+	cases := []struct {
+		name    string
+		files   map[string]string
+		wantCmd string
+	}{
+		{"go module", map[string]string{"go.mod": "module x\n"}, "go build ./... && go test ./... -count=1"},
+		{"package.json", map[string]string{"package.json": "{}"}, "npm test --silent"},
+		{"makefile", map[string]string{"Makefile": "all:\n\ttrue\n"}, "make test"},
+		{"flake", map[string]string{"flake.nix": "{}"}, "nix build && nix flake check"},
+		{"cargo", map[string]string{"Cargo.toml": "[package]\n"}, "cargo test --quiet"},
+		{"unknown stack detects nothing", nil, ""},
+	}
+	for _, tc := range cases {
+		dir := t.TempDir()
+		for f, c := range tc.files {
+			if err := os.WriteFile(filepath.Join(dir, f), []byte(c), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if got := autoDetectVerify(dir); got != tc.wantCmd {
+			t.Errorf("%s: autoDetectVerify = %q, want %q", tc.name, got, tc.wantCmd)
+		}
+	}
+
+	// Precedence: file wins over payload, payload wins over detection.
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".tq-verify"), []byte("  false  \n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := verifyFor(dir, &AgentPayload{Verify: "true"})
+	if got != "false" {
+		t.Fatalf("verifyFor with file = %q, want the file command (payload and detection lose)", got)
+	}
+
+	// End-to-end: the file's command actually gates the run (verify fails).
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: dir, Prompt: "hi", Verify: "true"}))
+	if err == nil || !strings.Contains(err.Error(), `verify failed ("false")`) {
+		t.Fatalf(".tq-verify file must win and gate the run, got %v", err)
+	}
+
+	// No file, no payload, no markers: verify is a no-op, not an error.
+	empty := t.TempDir()
+	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: empty, Prompt: "hi"})); err != nil {
+		t.Fatalf("verify-less repo must pass when the agent succeeds, got %v", err)
+	}
+}

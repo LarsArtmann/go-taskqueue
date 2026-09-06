@@ -330,3 +330,37 @@ func fakeRunToCompletion(ctx context.Context, q *queue.Queue, id task.ID) error 
 	}
 	return q.Complete(ctx, id, "w", nil)
 }
+
+// TestRunPinsRepoVerifyIntoPayload: a repo that declares .tq-verify gets its
+// command written into every harvested payload, so tasks record their gate.
+func TestRunPinsRepoVerifyIntoPayload(t *testing.T) {
+	q := openQueue(t)
+	dir := t.TempDir()
+	writeRepo(t, dir, "delta", "## Work\n\n- [ ] gated item\n")
+	if err := os.WriteFile(filepath.Join(dir, "delta", ".tq-verify"), []byte("go vet ./... && go test ./...\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	h := New(q, Config{ProjectsDir: dir})
+	res, err := h.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(res.Enqueued) != 1 {
+		t.Fatalf("enqueued = %+v, want 1", res.Enqueued)
+	}
+	got, err := q.Get(context.Background(), res.Enqueued[0].TaskID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	var p struct {
+		executor.AgentPayload
+		Dedup string `json:"dedup"`
+	}
+	if err := json.Unmarshal(got.Payload, &p); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if p.Verify != "go vet ./... && go test ./..." {
+		t.Fatalf("payload verify = %q, want the repo's .tq-verify command", p.Verify)
+	}
+}

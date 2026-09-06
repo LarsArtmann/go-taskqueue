@@ -226,14 +226,13 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	return nil
 }
 
-// runVerify enforces the quality gate after the agent exited cleanly.
+// runVerify enforces the quality gate after the agent exited cleanly. The
+// repo's .tq-verify file wins over everything (the repo is the source of
+// truth for how it proves itself), then the payload, then auto-detect.
 func runVerify(ctx context.Context, repoDir string, p *AgentPayload) error {
-	verify := p.Verify
+	verify := verifyFor(repoDir, p)
 	if verify == "" {
-		verify = defaultVerify(repoDir)
-	}
-	if verify == "" {
-		return nil // nothing to verify (non-Go repo, no explicit command)
+		return nil // nothing to verify (unknown stack, no explicit command)
 	}
 	cmd := exec.CommandContext(ctx, "sh", "-c", verify)
 	cmd.Dir = repoDir
@@ -289,6 +288,31 @@ func requireRepoAutonomy(repoDir string) error {
 	return &PreflightError{Cause: fmt.Errorf("agent: autonomy requested but %s has no project-local crush config and no user-global crush config exists; add a .crushrc with 'permissions allow view ls grep edit write bash' (or unset yolo)", repoDir)}
 }
 
+// verifyFor resolves the verify command: .tq-verify file in the repo, then
+// the payload's explicit verify, then auto-detection from the repo layout.
+func verifyFor(repoDir string, p *AgentPayload) string {
+	if v := readTQVerify(repoDir); v != "" {
+		return v
+	}
+	if p.Verify != "" {
+		return p.Verify
+	}
+	return autoDetectVerify(repoDir)
+}
+
+// readTQVerify returns the trimmed contents of <repoDir>/.tq-verify, or "".
+func readTQVerify(repoDir string) string {
+	b, err := os.ReadFile(filepath.Join(repoDir, ".tq-verify"))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(b))
+}
+
+// ReadTQVerify is the exported form of readTQVerify for tools that compose
+// payloads (the harvester pins the repo's verify contract into tasks).
+func ReadTQVerify(repoDir string) string { return readTQVerify(repoDir) }
+
 // defaultVerify picks a sensible verification command for a repo.
 func defaultVerify(repo string) string {
 	if _, err := os.Stat(filepath.Join(repo, "go.mod")); err == nil {
@@ -296,6 +320,25 @@ func defaultVerify(repo string) string {
 	}
 	if _, err := os.Stat(filepath.Join(repo, "package.json")); err == nil {
 		return "npm test --silent"
+	}
+	return ""
+}
+
+// autoDetectVerify maps a repo's stack markers to its verify command. A
+// failing command is a real gate failure: a repo that declares a Makefile
+// without a test target SHOULD fail verification, not pass vacuously.
+func autoDetectVerify(repo string) string {
+	if v := defaultVerify(repo); v != "" {
+		return v
+	}
+	if _, err := os.Stat(filepath.Join(repo, "Makefile")); err == nil {
+		return "make test"
+	}
+	if _, err := os.Stat(filepath.Join(repo, "flake.nix")); err == nil {
+		return "nix build && nix flake check"
+	}
+	if _, err := os.Stat(filepath.Join(repo, "Cargo.toml")); err == nil {
+		return "cargo test --quiet"
 	}
 	return ""
 }

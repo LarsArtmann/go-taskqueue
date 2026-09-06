@@ -256,11 +256,14 @@ func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
 		}
 	}
 
+	// Pin the repo's own verify command into the payload when it declares
+	// one, so the task records what it will be gated by.
 	payload, err := json.Marshal(harvestPayload{
 		AgentPayload: executor.AgentPayload{
 			Repo:         repo,
 			Prompt:       prompt,
 			Model:        h.cfg.Model,
+			Verify:       executor.ReadTQVerify(it.Repo),
 			RequireClean: h.cfg.RequireClean,
 		},
 		Dedup: it.Key,
