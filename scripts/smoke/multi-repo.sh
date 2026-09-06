@@ -20,7 +20,7 @@ echo "== building tq =="
 (cd "$REPO_ROOT" && go build -o "$TQ" ./cmd/tq) || exit 1
 
 STUB="$WORK/stub-agent"
-printf '#!/bin/sh\nsleep 0.2\nexit 0\n' > "$STUB"
+printf '#!/bin/sh\nsleep 0.2\nexit 0\n' >"$STUB"
 chmod +x "$STUB"
 export TQ_AGENT_BIN="$STUB"
 
@@ -33,7 +33,7 @@ for r in alpha beta gamma; do
 		echo
 		echo "- [ ] $r item one"
 		echo "- [ ] $r item two"
-	} > "$WORK/$r/TODO_LIST.md"
+	} >"$WORK/$r/TODO_LIST.md"
 done
 
 echo "== two pools over the same DB, two rounds (D23) =="
@@ -41,16 +41,20 @@ echo "== two pools over the same DB, two rounds (D23) =="
 # per repo need two rounds of --once.
 DB="$WORK/shared.db"
 for round in 1 2; do
-	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" 		--db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-1 		>"$WORK/pool1-$round.log" 2>&1) &
+	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" --db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-1 >"$WORK/pool1-$round.log" 2>&1) &
 	P1=$!
-	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" 		--db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-2 		>"$WORK/pool2-$round.log" 2>&1) &
+	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" --db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-2 >"$WORK/pool2-$round.log" 2>&1) &
 	P2=$!
-	wait "$P1"; R1=$?
-	wait "$P2"; R2=$?
+	wait "$P1"
+	R1=$?
+	wait "$P2"
+	R2=$?
 	if [ "$R1" != 0 ] || [ "$R2" != 0 ]; then
 		echo "FAIL: round $round exit codes: pool-1=$R1 pool-2=$R2"
-		echo "--- pool1-$round.log ---"; tail -n 8 "$WORK/pool1-$round.log"
-		echo "--- pool2-$round.log ---"; tail -n 8 "$WORK/pool2-$round.log"
+		echo "--- pool1-$round.log ---"
+		tail -n 8 "$WORK/pool1-$round.log"
+		echo "--- pool2-$round.log ---"
+		tail -n 8 "$WORK/pool2-$round.log"
 		exit 1
 	fi
 done
@@ -68,12 +72,27 @@ P2C=$("$TQ" facts --db "$DB" | grep -c "task.claimed.*pool-2" || true)
 echo "== assertions (D24) =="
 echo "enqueued=$ENQ completed=$DONE claims=$CLAIMS dead=$DEADS (pool-1 claims=$P1C pool-2 claims=$P2C)"
 
-[ "$ENQ" = 6 ] || { echo "FAIL: want 6 enqueued (one per item), got $ENQ — double-enqueue?"; fail=1; }
-[ "$DONE" = 6 ] || { echo "FAIL: want 6 completed, got $DONE"; fail=1; }
-[ "$DEADS" = 0 ] || { echo "FAIL: want 0 dead-lettered, got $DEADS"; fail=1; }
+[ "$ENQ" = 6 ] || {
+	echo "FAIL: want 6 enqueued (one per item), got $ENQ — double-enqueue?"
+	fail=1
+}
+[ "$DONE" = 6 ] || {
+	echo "FAIL: want 6 completed, got $DONE"
+	fail=1
+}
+[ "$DEADS" = 0 ] || {
+	echo "FAIL: want 0 dead-lettered, got $DEADS"
+	fail=1
+}
 # Exactly one claim per task: 6 tasks → 6 claims (no retry, no co-run).
-[ "$CLAIMS" = 6 ] || { echo "FAIL: want 6 claims (one per task), got $CLAIMS — co-run or retry?"; fail=1; }
-[ "$P1C" -ge 1 ] && [ "$P2C" -ge 1 ] || { echo "FAIL: both pools must claim (pool-1=$P1C pool-2=$P2C)"; fail=1; }
+[ "$CLAIMS" = 6 ] || {
+	echo "FAIL: want 6 claims (one per task), got $CLAIMS — co-run or retry?"
+	fail=1
+}
+[ "$P1C" -ge 1 ] && [ "$P2C" -ge 1 ] || {
+	echo "FAIL: both pools must claim (pool-1=$P1C pool-2=$P2C)"
+	fail=1
+}
 
 if [ "$fail" = 0 ]; then
 	echo "MULTI-REPO SMOKE OK"

@@ -31,7 +31,7 @@ func TestItemKeyProperty(t *testing.T) {
 	}
 	collapse := func(s string) string { return strings.Join(strings.Fields(s), " ") }
 
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		words := []string{"fix", "the", "parser", "for", "CRLF", "行", "дорога", "🚀"}
 		var raw, collapsed []string
 		for w := range words {

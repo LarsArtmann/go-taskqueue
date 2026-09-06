@@ -67,7 +67,7 @@ func OpenSQLite(path string, opts ...StoreOption) (*SQLiteStore, error) {
 	// converges — IF NOT EXISTS migrations on an already-migrated DB are a
 	// no-op — so a bounded backoff is the whole fix.
 	var merr error
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := range 5 {
 		if attempt > 0 {
 			time.Sleep(time.Duration(1<<attempt) * 100 * time.Millisecond)
 		}
