@@ -50,10 +50,13 @@ type AgentPayload struct {
 	// TimeoutMinutes caps the whole task (agent run + verify). Default 30.
 	// The worker's task timeout still applies as a hard ceiling above this.
 	TimeoutMinutes int `json:"timeout_minutes,omitempty"`
-	// Yolo runs this task's agent with auto-accepted permissions. Autonomy is
-	// primarily an operator decision (AgentExecutor.Yolo at pool start); this
-	// field exists so a harvesting pool can bake its operator choice into the
-	// tasks it creates. Effective permission = operator OR payload.
+	// Yolo marks this task's agent as autonomous. crush run has NO yolo
+	// flag (verified against crush v0.92: "Unknown flag: --yolo"); autonomy
+	// comes from the repo's own project-local crush config granting
+	// permissions (`.crushrc`: `permissions allow view ls grep edit write bash`).
+	// This field makes the executor fail fast with remediation guidance when
+	// autonomy is requested but the repo has no such config, instead of
+	// burning agent attempts on runs that stall on permission prompts.
 	Yolo bool `json:"yolo,omitempty"`
 }
 
@@ -78,10 +81,9 @@ type AgentExecutor struct {
 	// ProjectsDir resolves relative Repo names in payloads ("demo" →
 	// <ProjectsDir>/demo). Absolute Repo paths bypass it.
 	ProjectsDir string
-	// Yolo passes --yolo so the agent may act without permission prompts —
-	// the operator-level autonomy decision. Without it, headless runs that
-	// need permissions fail visibly and the task retries/dead-letters: fail
-	// closed, not silently.
+	// Yolo is the operator-level autonomy request (pool start). crush run
+	// has no yolo flag; see AgentPayload.Yolo for how autonomy is actually
+	// granted (repo-local crush config). Fail closed, never silently.
 	Yolo bool
 }
 
@@ -186,10 +188,12 @@ func assertCleanTree(ctx context.Context, repo string) error {
 
 // runAgent spawns the headless agent in the repo and waits for it.
 func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload) error {
-	args := []string{"run", "--quiet", "--cwd", repoDir}
 	if e.Yolo || p.Yolo {
-		args = append(args, "--yolo")
+		if err := requireRepoAutonomy(repoDir); err != nil {
+			return err
+		}
 	}
+	args := []string{"run", "--quiet", "--cwd", repoDir}
 	if p.Model != "" {
 		args = append(args, "--model", p.Model)
 	}
@@ -241,6 +245,19 @@ func runVerify(ctx context.Context, repoDir string, p *AgentPayload) error {
 		return fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
 	}
 	return nil
+}
+
+// requireRepoAutonomy fails fast when an autonomous run is requested but
+// the repo has no project-local crush config that could grant permissions.
+// Without this check an unattended pool burns its attempt budget on runs
+// that stall or die on permission prompts (crush run has no --yolo flag).
+func requireRepoAutonomy(repoDir string) error {
+	for _, name := range []string{".crushrc", "crushrc", ".crush.json", "crush.json"} {
+		if _, err := os.Stat(filepath.Join(repoDir, name)); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("agent: autonomy requested but %s has no project-local crush config; add a .crushrc with 'permissions allow view ls grep edit write bash' (or unset yolo)", repoDir)
 }
 
 // defaultVerify picks a sensible verification command for a repo.
