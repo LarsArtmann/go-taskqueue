@@ -470,6 +470,16 @@ func TestPreflightRequeuesWithoutAttemptBurn(t *testing.T) {
 	cancel()
 }
 
+// testStubScript writes an executable stub binary and returns its path.
+func testStubScript(t *testing.T, script string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "stub-bin")
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 // TestAgentResultDetailStored: on success the executor's structured result
 // (crush session id, verify tail) lands in the task.completed fact detail,
 // so `tq show` can answer "what did the agent do" without log-diving.
@@ -484,7 +494,12 @@ func TestAgentResultDetailStored(t *testing.T) {
 		Bin: testStubScript(t, "#!/bin/sh\necho 'session: crush-abc-123'\nexit 0\n"),
 	})
 
-	enq, _ := store.Enqueue(ctx, task.New{Project: "demo", Type: executor.TaskTypeAgent})
+	repo := t.TempDir() // non-git repo: skips the clean-tree guard
+	payload, err := executor.RenderAgentPayload(executor.AgentPayload{Repo: repo, Prompt: "do it"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	enq, _ := store.Enqueue(ctx, task.New{Project: "demo", Type: executor.TaskTypeAgent, Payload: payload})
 	pool := New(store, Config{
 		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 5 * time.Second,
 		Executors: reg,

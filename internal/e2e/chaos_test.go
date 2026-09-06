@@ -1,0 +1,99 @@
+package e2e
+
+import (
+	"context"
+	"github.com/larsartmann/go-taskqueue/internal/task"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+// TestChaosKillWorkerMidRun: a worker SIGKILLed mid-task must leave the
+// task recoverable — lease expiry lets another worker reclaim it, and the
+// journal must never show two completions for one task (at-least-once,
+// never double-done).
+func TestChaosKillWorkerMidRun(t *testing.T) {
+	dir := t.TempDir()
+	stub := filepath.Join(dir, "slow-stub")
+	// Task runs 30s — the kill lands mid-run.
+	writeFile(t, stub, "#!/bin/sh\nsleep 30\nexit 0\n", 0o755)
+
+	idLine := runTQ(t, dir, filepath.Join(dir, "q.db"),
+		"enqueue", "--project", "chaos", "--type", "sh",
+		"--payload", `"sleep 30"`,
+	)
+	// enqueue prints the task ID.
+	taskID := strings.TrimSpace(idLine)
+
+	// Start worker as a real process on the same DB.
+	worker := exec.Command(tqBin, "worker", "--db", filepath.Join(dir, "q.db"),
+		"--owner", "victim", "--poll", "20ms", "--lease", "1500ms", "--concurrency", "1")
+	if err := worker.Start(); err != nil {
+		t.Fatalf("start worker: %v", err)
+	}
+
+	// Wait until the victim actually claimed it.
+	ctx := context.Background()
+	s := openStore(t, filepath.Join(dir, "q.db"))
+	defer func() { _ = s.Close() }()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		got, err := s.Get(ctx, task.ID(taskID))
+		if err == nil && got.Status == "running" {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("task never claimed by victim worker (last: %+v)", got)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// SIGKILL the whole worker process mid-run.
+	if err := worker.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = worker.Process.Wait()
+
+	deadline = time.Now().Add(15 * time.Second)
+	for {
+		got, err := s.Get(ctx, task.ID(taskID))
+		if err != nil {
+			t.Fatalf("get: %v", err)
+		}
+		// Wait for the lease to expire (2m default is too slow for a test;
+		// poll ClaimDue with a normal lease instead — reclaim is allowed
+		// the moment lease_expires passes).
+		if got.Status == "pending" || got.Status == "completed" {
+			t.Fatalf("unexpected status while waiting for expiry: %s", got.Status)
+		}
+		if got.LeaseExpires != nil && time.Now().After(*got.LeaseExpires) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("lease never expired (expires=%v)", got.LeaseExpires)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	// The reclaiming worker finishes the task.
+	if _, err := s.ClaimDue(ctx, "successor", time.Minute); err != nil {
+		t.Fatalf("successor claim: %v", err)
+	}
+	if err := s.Complete(ctx, task.ID(taskID), "successor", nil); err != nil {
+		t.Fatalf("successor complete: %v", err)
+	}
+
+	// Invariant: exactly one completion in the journal.
+	facts, _ := s.Facts(ctx, 0)
+	completions := 0
+	for _, f := range facts {
+		if f.TaskID == taskID && f.Type == "task.completed" {
+			completions++
+		}
+	}
+	if completions != 1 {
+		t.Fatalf("task %s completed %d times, want exactly 1", taskID, completions)
+	}
+}

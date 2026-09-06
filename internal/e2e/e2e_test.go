@@ -125,7 +125,7 @@ func runWithTimeout(cmd *exec.Cmd, d time.Duration) (string, error) {
 
 func runTQ(t *testing.T, dir, db string, args ...string) string {
 	t.Helper()
-	out, err := runWithTimeout(exec.Command(tqBin, append([]string{"--db", db}, args...)...), 15*time.Second)
+	out, err := runWithTimeout(exec.Command(tqBin, append(args, "--db", db)...), 15*time.Second)
 	if err != nil {
 		t.Fatalf("tq %v: %v\n%s", args, err, out)
 	}
