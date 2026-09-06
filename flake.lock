@@ -53,16 +53,16 @@
       "locked": {
         "lastModified": 1788518894,
         "narHash": "sha256-M+mVeDQxJleffweNizSdeifkzTatxMf7t0ZYYJ3569o=",
-        "ref": "master",
+        "owner": "LarsArtmann",
+        "repo": "go-nix-helpers",
         "rev": "0f9565203b093a9cbc8441bd08f0012e70eba51b",
-        "revCount": 142,
-        "type": "git",
-        "url": "ssh://git@github.com/LarsArtmann/go-nix-helpers"
+        "type": "github"
       },
       "original": {
+        "owner": "LarsArtmann",
         "ref": "master",
-        "type": "git",
-        "url": "ssh://git@github.com/LarsArtmann/go-nix-helpers"
+        "repo": "go-nix-helpers",
+        "type": "github"
       }
     },
     "nixpkgs": {

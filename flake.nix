@@ -9,7 +9,8 @@
     };
 
     go-nix-helpers = {
-      url = "git+ssh://git@github.com/LarsArtmann/go-nix-helpers?ref=master";
+      # github: (HTTPS) not git+ssh: keyless CI runners cannot fetch SSH inputs.
+      url = "github:LarsArtmann/go-nix-helpers/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
