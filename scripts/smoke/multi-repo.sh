@@ -36,23 +36,24 @@ for r in alpha beta gamma; do
 	} > "$WORK/$r/TODO_LIST.md"
 done
 
-echo "== two pools over the same DB (D23) =="
-(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" \
-	--db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-1 \
-	>"$WORK/pool1.log" 2>&1) &
-P1=$!
-(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" \
-	--db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-2 \
-	>"$WORK/pool2.log" 2>&1) &
-P2=$!
-wait "$P1"; R1=$?
-wait "$P2"; R2=$?
-if [ "$R1" != 0 ] || [ "$R2" != 0 ]; then
-	echo "FAIL: pool exit codes: pool-1=$R1 pool-2=$R2"
-	echo "--- pool1.log ---"; tail -n 8 "$WORK/pool1.log"
-	echo "--- pool2.log ---"; tail -n 8 "$WORK/pool2.log"
-	exit 1
-fi
+echo "== two pools over the same DB, two rounds (D23) =="
+# The harvester paces itself: one NEW item per repo per tick, so two items
+# per repo need two rounds of --once.
+DB="$WORK/shared.db"
+for round in 1 2; do
+	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" 		--db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-1 		>"$WORK/pool1-$round.log" 2>&1) &
+	P1=$!
+	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" 		--db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-2 		>"$WORK/pool2-$round.log" 2>&1) &
+	P2=$!
+	wait "$P1"; R1=$?
+	wait "$P2"; R2=$?
+	if [ "$R1" != 0 ] || [ "$R2" != 0 ]; then
+		echo "FAIL: round $round exit codes: pool-1=$R1 pool-2=$R2"
+		echo "--- pool1-$round.log ---"; tail -n 8 "$WORK/pool1-$round.log"
+		echo "--- pool2-$round.log ---"; tail -n 8 "$WORK/pool2-$round.log"
+		exit 1
+	fi
+done
 
 fail=0
 count_facts() { "$TQ" facts --db "$DB" | grep -c "$1" || true; }

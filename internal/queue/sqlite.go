@@ -62,11 +62,22 @@ func OpenSQLite(path string, opts ...StoreOption) (*SQLiteStore, error) {
 	// inside a transaction atomic without relying on BEGIN IMMEDIATE tricks.
 	db.SetMaxOpenConns(1)
 	s := &SQLiteStore{db: db, projectExclusive: o.projectExclusive}
-	if err := s.migrate(context.Background()); err != nil {
-		_ = db.Close()
-		return nil, err
+	// Two processes opening a FRESH database race the schema writes: the
+	// loser gets SQLITE_BUSY even with busy_timeout. The retry always
+	// converges — IF NOT EXISTS migrations on an already-migrated DB are a
+	// no-op — so a bounded backoff is the whole fix.
+	var merr error
+	for attempt := 0; attempt < 5; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(1<<attempt) * 100 * time.Millisecond)
+		}
+		merr = s.migrate(context.Background())
+		if merr == nil {
+			return s, nil
+		}
 	}
-	return s, nil
+	_ = db.Close()
+	return nil, merr
 }
 
 const schema = `
