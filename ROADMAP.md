@@ -23,9 +23,10 @@ SUPERB plan (`docs/planning/`) and the CHANGELOG; shipped work is tagged.
 ## v0.3.0 — Ecosystem bridges
 
 - **PapDashboard bridge**: DLQ dead-letter → PapDashboard
-  `POST /api/ingest` `alert.triggered` (sourceApp=go-taskqueue), so broken
-  tasks light up the ops dashboard with correlation IDs
-- Decision requests → PapDashboard `question` aggregate (agent asks, human
+  `POST /api/ingest` `alert.triggered` (sourceApp=go-taskqueue) — DONE
+  2026-09-06, E2E-verified against a live instance (`tq worker --alert-url`);
+  rescue → completion posts `alert.resolved` and closes the alert. Remaining:
+  decision requests → PapDashboard `question` aggregate (agent asks, human
   answers in the dashboard, queue proceeds)
 - `tq tail -f` → PapDashboard SSE fan-out for a unified ops view
 

@@ -24,12 +24,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Initial project structure
 
 ### Changed
+- `tq enqueue --type sh` accepts a raw shell line as `--payload` (previously
+  JSON-only, contradicting the README quickstart): non-JSON payloads are
+  wrapped as JSON strings; the `sh` executor unwraps all three payload shapes
+  (raw text, JSON string, `{"cmd":...}`)
 
 ### Deprecated
 
 ### Removed
 
 ### Fixed
+- Worker pool executed every task under the 30-second drain context created
+  at pool start: any task claimed after 30 seconds of uptime ran with an
+  already-expired context, its Complete/Fail write failed with
+  "context deadline exceeded", and the task was stuck `running` forever.
+  Tasks now execute under the pool context; terminal writes fall back to the
+  drain window only during shutdown
+- Test-only: removed invalid `_ = t.Cleanup(...)` / single-value Enqueue
+  assignments that broke compilation of queue and worker test files
 
 ### Security
 

@@ -63,6 +63,9 @@ module is not importable externally yet.
 - **Idempotent enqueue**: `task.New.DedupKey` set → re-enqueue returns the
   stored task unchanged (no duplicate row, no duplicate fact). Backed by a
   partial unique index; `dedup_key` is added to legacy DBs by migration.
+- **PapDashboard ingest contract**: `userId` is a REQUIRED metadata property
+  (huma schema — the field has no omitempty); omit it and ingest returns 422.
+  The bridge always sends `userId: ""`.
 
 ### SQLite migrations
 
@@ -97,6 +100,13 @@ fail with "no such column" before the ALTER runs.
 ## Relation to other projects
 
 Semantics proven in go-cqrs-lite (facts/journal) and PapDashboard (worker
-pools over durable queues); composes with both, depends on neither. Planned:
-DLQ → PapDashboard `alert.triggered` ingest bridge so dead tasks raise
-alerts in the dashboard.
+pools over durable queues); composes with both, depends on neither.
+
+**PapDashboard bridge (shipped, E2E-verified 2026-09-06):** run
+`tq worker --alert-url http://<pap>:8080 --alert-api-key <PAP_API_KEY>` (env:
+`TQ_PAP_URL`/`TQ_PAP_API_KEY`). Dead-lettered tasks raise `alert.triggered`
+(sourceApp `go-taskqueue`, severity critical, task ID as correlationId, fact
+Seq as Idempotency-Key); a later completion of an alerted task posts
+`alert.resolved` with the same derived title, so rescue flows close their own
+alerts. Verified end-to-end against a live PapDashboard instance. Still open
+(ROADMAP v0.3.0): decision → question fan-out.
