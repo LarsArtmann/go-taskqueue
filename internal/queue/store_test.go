@@ -487,12 +487,13 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 	off := openTestStore(t)
 	offA, _ := off.Enqueue(ctx, task.New{Project: "x", Type: "a"})
 	offB, _ := off.Enqueue(ctx, task.New{Project: "x", Type: "b"})
-	if _, err := off.ClaimDue(ctx, "w1", time.Minute); err != nil {
-		t.Fatalf("default claim1: %v", err)
+	c1, err := off.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil || (c1.ID != offA.ID && c1.ID != offB.ID) {
+		t.Fatalf("default claim1 = %v, %v", c1.ID, err)
 	}
-	_ = offA
-	if got, err := off.ClaimDue(ctx, "w1", time.Minute); err != nil || got.ID != offB.ID {
-		t.Fatalf("default store must allow parallel same-project claims: got %v, %v", got.ID, err)
+	c2, err := off.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil || c2.ID == c1.ID {
+		t.Fatalf("default store must allow parallel same-project claims: c1=%v c2=%v, %v", c1.ID, c2.ID, err)
 	}
 
 	s := openTestStoreExclusive(t)
