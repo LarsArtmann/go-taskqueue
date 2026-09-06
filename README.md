@@ -36,9 +36,10 @@ tq stats
 tq tail -f
 ```
 
-The default `sh` executor runs the payload as a shell line (`{"cmd":...}` JSON
-is unwrapped). Register your own executor types in Go — see
-`internal/executor/executor.go`.
+The default `sh` executor runs the payload as a shell line (raw text, JSON
+string, or `{"cmd":...}` all unwrap to the command). Executors are pluggable
+in Go (`internal/executor/executor.go`) — note the packages are `internal/`
+for now, so the CLI is the public surface until the library API stabilizes.
 
 ## The Agent Pool — self-managing improvement loop
 
@@ -75,7 +76,7 @@ checkbox, commit, never push). The executor enforces the safety rails:
 - **Clean tree required** — agents refuse repos with uncommitted changes
   (the pool never tramples human WIP; `--allow-dirty` opts out).
 - **Verify enforced** — a task only completes when the repo still builds and
-  tests pass (`go build ./... && go test ./...` for Go repos, or a payload
+  tests pass (`go build ./... && go test ./... -count=1` for Go repos, or a payload
   `verify` command).
 - **Paced** — at most one in-flight backlog item per repo, `--max-per-tick`
   bounds cost per harvest run.
@@ -105,7 +106,8 @@ scanners find and the next scan proves it worked.
 - **DLQ** — a task exhausting `maxAttempts` lands in Dead status; `tq dlq --rescue`
   re-queues it with a fresh attempt budget.
 - **Executor** — pluggable execution: `sh` (command), `http` (POST to URL),
-  or your own Go func. Workers look executors up by task `type`.
+  `agent` (headless AI coding agent with an enforced verify gate), or your
+  own Go func. Workers look executors up by task `type`.
 
 ## Status codes
 
@@ -120,16 +122,24 @@ scanners find and the next scan proves it worked.
 ## Distribution
 
 v0.1 is single-node. The Store interface is the distribution seam: a Postgres
-or Redis store lets multiple `tq worker` processes on different machines share
-the same queue with the same semantics (claim exclusivity via lease, crash
-reclaim via lease expiry). v0.2 plan: Postgres store (`SELECT … FOR UPDATE
-SKIP LOCKED`), HTTP API server, PapDashboard webhook bridge.
+store (`SELECT … FOR UPDATE SKIP LOCKED`) lets multiple `tq worker` processes
+on different machines share the same queue with the same semantics (claim
+exclusivity via lease, crash reclaim via lease expiry). Outbound integrations
+ship today: a PapDashboard bridge turns dead letters into alerts
+(`tq worker --alert-url`), and a Code-Quality-Agent bridge turns scan findings
+into fix tasks (`tq agent-pool --cqa-url`). Next up (ROADMAP): the Postgres
+store and an HTTP API server.
 
 ## Development
 
 ```sh
 go test ./... -race
 ```
+
+CI gates every push on vet, build, tests with `-race`, and gofmt. Reproducible
+builds via `nix build`. Agent sessions should read AGENTS.md first; feature
+status lives in FEATURES.md, upcoming work in TODO_LIST.md, and long-term
+direction in ROADMAP.md.
 
 ## License
 

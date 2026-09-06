@@ -21,7 +21,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   per-file agent fix tasks (`--cqa-url` on `tq agent-pool`)
 - PapDashboard bridge (`internal/bridge/papdashboard`): dead-lettered tasks
   raise alerts; rescues resolve them (`--alert-url` on `tq worker`)
-- Initial project structure
 
 ### Changed
 - `tq enqueue --type sh` accepts a raw shell line as `--payload` (previously
@@ -54,8 +53,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   assignments that broke compilation of queue and worker test files
 
 ### Security
-
-## [0.1.0] - 2026-01-01
-
-### Added
-- Initial release

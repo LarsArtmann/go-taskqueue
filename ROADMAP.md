@@ -1,17 +1,17 @@
 # ROADMAP
 
-Long-term direction and raw ideas. Actionable near-term work lives in the
-SUPERB plan (`docs/planning/`) and the CHANGELOG; shipped work is tagged.
+Long-term direction and raw ideas. Actionable near-term work lives in
+TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
-## v0.1.0 — Single-node foundation (in progress)
+## v0.1.0 — Single-node foundation (current)
 
 - [x] Facts-first core: journal, SQLite store, lease claims, deps, DLQ
-- [x] `tq` CLI: enqueue / worker / stats / show / dlq / cancel / facts / tail
-- [x] Executors: `sh`, HTTP, headless agent/crush with verify contracts
+- [x] `tq` CLI: enqueue / worker / harvest / agent-pool / stats / show / dlq / cancel / facts / tail
+- [x] Executors: `sh`, HTTP, headless agent with verify contracts
 - [x] Harvest: TODO_LIST.md backlogs → agent tasks across a projects dir
 - [x] Idempotent enqueue (dedup keys) + legacy-DB migration
-- [x] flake.nix, CI, README, AGENTS.md, ADRs
-- [ ] Tag v0.1.0 + GitHub release + pkg.go.dev
+- [x] flake.nix, CI, README, AGENTS.md, FEATURES.md, ADRs
+- Release itself (tag + GitHub release + pkg.go.dev) is tracked in TODO_LIST.md
 
 ## v0.2.0 — Distribution seam
 
@@ -22,25 +22,62 @@ SUPERB plan (`docs/planning/`) and the CHANGELOG; shipped work is tagged.
 
 ## v0.3.0 — Ecosystem bridges
 
-- **PapDashboard bridge**: DLQ dead-letter → PapDashboard
-  `POST /api/ingest` `alert.triggered` (sourceApp=go-taskqueue) — DONE
-  2026-09-06, E2E-verified against a live instance (`tq worker --alert-url`);
-  rescue → completion posts `alert.resolved` and closes the alert. Remaining:
-  decision requests → PapDashboard `question` aggregate (agent asks, human
-  answers in the dashboard, queue proceeds)
-- `tq tail -f` → PapDashboard SSE fan-out for a unified ops view
+- PapDashboard integration: dead-letter alerting is shipped; the remaining
+  arc is decision → question fan-out (agent asks, human answers in the
+  dashboard, queue proceeds) and `tq tail -f` → SSE fan-out for a unified
+  ops view
 
 ## v0.4.0 — Intelligence
 
 - ai-task-prioritizer: ranking model writes the `priority` field
-- Per-project concurrency limits and cost budgets (agent tasks cost real
-  money; cap burn per repo)
 - Smart retry policies keyed on error classification (permanent vs transient)
+- Per-project concurrency limits as a first-class store concept
 
 ## Raw ideas (unrefined)
 
 - Web UI over the projections (the journal already has everything needed)
 - Cron-style recurring tasks (re-enqueue with dedup keys on completion)
-- Task result artifacts: persist executor stdout to a blob sidecar table
-- Multi-node `tq worker` over a shared NFS SQLite file (probably a bad idea;
-  Postgres first)
+- Cross-repo DAG from harvest: configurable templates like "docs item
+  depends on code item"
+- `tq agent-pool --once` (single harvest+drain pass for scripts and tests)
+- Structured per-task result payload: `{files_changed, commit_sha, verify_output_tail}`
+- PR-mode: agent commits to a branch and opens a PR instead of committing directly
+- Git worktree isolation option (agents never touch the user's checkout)
+- Session continuation chains via `AgentPayload.Session` ("follow-up on previous item")
+- Rate-limit concurrent crush sessions per machine; detect the crush version
+  at pool start to catch flag-contract drift early
+- Output sidecar: store full agent stdout to a blob file, keep only the tail in facts
+- Metrics endpoint (Prometheus) over the facts projection
+- Heartbeat cadence scaled to lease for very long tasks
+- `tq harvest --json` for dashboards; `--repo-subset` glob filter
+- Timeout defaults per repo size (small repos don't need 45m)
+- `tq dlq --rescue-all --older-than` bulk rescue
+- Guard: refuse `--projects-dir /` or `$HOME` (harvest scanning catastrophically wide)
+- `.crushrc` permissions lint: warn when a repo grants `bash` to an unsandboxed pool
+- Security.md documenting what autonomy grants mean and the blast radius of `bash`
+- Fuzz the TODO parser (malformed markdown, CRLF, BOM); Windows path handling
+  in harvest; i18n-safe item hashing
+- Queue DB rotation/backup guidance (single file = single point of failure)
+- Chaos test: SIGKILL a pool mid-agent-run; assert lease-expiry reclaim and
+  no double-complete
+- GitHub Actions job running the stub-agent e2e (no API cost)
+- Example corpus: runnable `examples/agent-pool/` demo repo with `.crushrc` + TODO_LIST.md
+- Decide and document when `internal/` packages become a public, importable
+  library API
+
+## Non-goals
+
+- Becoming a general-purpose workflow engine — task queue + pool, not orchestration
+- Replacing go-cqrs-lite or PapDashboard — compose with them, never absorb them
+- GPU scheduling / compute placement
+
+## Open questions (owner decisions)
+
+- Should the pool be allowed to work on go-taskqueue itself? This repo has a
+  TODO_LIST.md full of pool food but deliberately no `.crushrc` — 5+
+  concurrent agents already edit it.
+- What cost ceiling applies to a first production run (per day, per repo)?
+- Cancelled-task dedup semantics: today a cancelled task's dedup key
+  suppresses re-enqueue forever (escape hatch: edit the item text). Should
+  cancellation instead release the key, accepting that "cancel" no longer
+  means "stop bringing this back"? Store-schema-affecting.

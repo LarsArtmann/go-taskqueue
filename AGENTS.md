@@ -49,8 +49,20 @@ facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 | `internal/harvest`  | Scans repos' TODO_LIST.md and enqueues work items as agent tasks                          |
 | `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / stats / show / dlq / cancel / facts / tail |
 
-`internal/` layout is deliberate until the API stabilizes (ADR-0002); the
-module is not importable externally yet.
+`internal/` layout is deliberate until the API stabilizes (ADR-0001,
+`docs/planning/` holds the broader plan); the module is not importable
+externally yet.
+
+### Invariants worth knowing before you touch the store
+
+- **Single serialized writer**: `OpenSQLite` sets `MaxOpenConns(1)` + WAL +
+  `busy_timeout`. Claim atomicity and the in-tx facts guarantee depend on that
+  one connection — do not add a connection pool or drop the `RowsAffected()`
+  re-checks (they are the multi-process race guard).
+- **Task execution context survives pool shutdown** (bounded only by
+  `--task-timeout`): a Ctrl-C lets in-flight agents finish and record their
+  outcome. Never reintroduce a shared drain deadline into the task context —
+  that bug stranded tasks in `running` forever.
 
 ### Payload contracts worth memorizing
 
@@ -63,6 +75,9 @@ module is not importable externally yet.
 - **Idempotent enqueue**: `task.New.DedupKey` set → re-enqueue returns the
   stored task unchanged (no duplicate row, no duplicate fact). Backed by a
   partial unique index; `dedup_key` is added to legacy DBs by migration.
+  A cancelled/dead task's key still suppresses re-enqueue — for harvested
+  TODO items the escape hatch is editing the item text (the key is a hash of
+  repo + text), so a wording change re-arms the item.
 - **PapDashboard ingest contract**: `userId` is a REQUIRED metadata property
   (huma schema — the field has no omitempty); omit it and ingest returns 422.
   The bridge always sends `userId: ""`.
@@ -82,6 +97,11 @@ fail with "no such column" before the ALTER runs.
 - Facts are the source of truth: a code change that mutates task state must
   append a fact in the same transaction
 - Pure-Go deps only; keep `CGO_ENABLED=0` valid
+- Go 1.26 idioms are deliberate (`errors.AsType[E]`, `strings.SplitSeq`,
+  `for range n`) — do not "modernize" them back to older equivalents
+- `TODO_LIST.md` is machine-consumed by the harvester (`internal/harvest`
+  parses `- [ ]` checkboxes and the nearest heading): keep that format, one
+  item per line, never convert it to tables
 
 ## Known Issues
 
@@ -96,17 +116,25 @@ fail with "no such column" before the ALTER runs.
   `nix build` or Nix cannot see them.
 - ⚠️ **tq worker runs until signalled**: there is no one-shot mode; scripts
   must wrap it in `timeout`/supervisor.
+- ⚠️ **golangci-lint is not a CI gate**: CONTRIBUTING mentions it, but the
+  baseline carries errcheck findings on idiomatic `defer x.Close()` lines.
+  Do not mass-"fix" them; CI enforces vet + gofmt + tests only.
+- ⚠️ **Agent tasks need repo-local autonomy**: `crush run` has no yolo flag;
+  a `--yolo` task on a repo without a project-local `.crushrc` fails fast by
+  design. When touching the agent argv, update
+  `TestAgentExecutorArgvContract` — stub-based tests cannot catch flag drift.
 
 ## Relation to other projects
 
 Semantics proven in go-cqrs-lite (facts/journal) and PapDashboard (worker
 pools over durable queues); composes with both, depends on neither.
 
-**PapDashboard bridge (shipped, E2E-verified 2026-09-06):** run
+**PapDashboard bridge contract:** run
 `tq worker --alert-url http://<pap>:8080 --alert-api-key <PAP_API_KEY>` (env:
 `TQ_PAP_URL`/`TQ_PAP_API_KEY`). Dead-lettered tasks raise `alert.triggered`
 (sourceApp `go-taskqueue`, severity critical, task ID as correlationId, fact
 Seq as Idempotency-Key); a later completion of an alerted task posts
 `alert.resolved` with the same derived title, so rescue flows close their own
-alerts. Verified end-to-end against a live PapDashboard instance. Still open
-(ROADMAP v0.3.0): decision → question fan-out.
+alerts. The journal watermark starts at the head per bridge process —
+incidents fired while it was down are not replayed (review via `tq dlq`).
+Status and verification details: FEATURES.md, CHANGELOG.md.

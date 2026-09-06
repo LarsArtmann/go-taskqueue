@@ -1,24 +1,37 @@
 # TODO List
 
 Short- and mid-term actionable work. Long-term direction lives in ROADMAP.md.
-This file is the agent pool's food source: `tq harvest` turns every unchecked
-item below into an agent task (see README → The Agent Pool).
 
-## Agent pool hardening
+**This file is machine-consumed**: `tq harvest` turns every unchecked item
+below into an agent task. Keep the `- [ ]` checkbox format, one item per
+line — do not convert to tables. Mark done items `[x]` or delete them;
+appending `— BLOCKED: <reason>` keeps an item out of the pool.
 
+## High Impact
+
+- [ ] Permanent-vs-transient error classes: dirty tree, missing autonomy config, and unknown flags must dead-letter after ONE attempt instead of burning the retry budget like transient errors (executor can wrap a permanent-error type the worker honors)
 - [ ] Store-level per-project claim exclusivity (opt-in `WithProjectExclusivity` on the SQLite store): at most one running task per project across ALL worker processes, so multi-pool deployments get per-repo serialization without relying on harvester pacing alone
-- [ ] Pass a model override through `tq agent-pool --model` into agent payloads (AgentPayload.Model exists; harvest/CLI wiring does not)
-- [ ] Per-project concurrency limits and cost budgets (agent tasks cost real money; cap burn per repo per day)
-- [ ] Harvester: poll interval per repo, and back off repos whose items repeatedly land in the DLQ (a poisoned repo should not refill its attempt budget forever)
+- [ ] Long-task regression test: a task claimed after the pool has been up for minutes completes and records its outcome (guards the fixed drain-context bug; every existing worker test uses sub-100ms tasks)
+- [ ] ADR-0002: agent-pool architecture — autonomy/trust model (repo-local `.crushrc`), pacing vs exclusivity, drain-context semantics
+- [ ] Daily/rolling cost budget per repo and global: agent tasks cost real money; `--max-per-tick` bounds a single harvest tick only
+- [ ] v0.1.0 release prep: decide on squashing the auto-commit daemon's mid-edit history, then tag, GitHub release, pkg.go.dev surface
 
-## Observability
+## Medium Impact
+
+- [ ] Pass a model override through `tq agent-pool --model` into agent payloads (`AgentPayload.Model` exists; harvest/CLI wiring does not)
+- [ ] `requireRepoAutonomy` false-positive fix: probe user-global crush permissions or add an explicit escape flag, so repos relying on global config are not refused
+- [ ] Multi-repo live smoke: ≥3 repos, concurrency 2, two agent-pool processes on one DB — dedup + pacing under real contention (unit-tested only today)
+- [ ] systemd user unit (or `tq agent-pool --daemon`) so the pool runs continuously instead of in a terminal under `timeout`
+- [ ] Verify-step auto-detection beyond Go/npm (Makefile, flake.nix, cargo) or a per-repo `.tq-verify` file; harvested tasks currently get no verify on other stacks
+- [ ] Harvested tasks should carry a `verify` command sourced from repo config instead of relying on executor auto-detection
+- [ ] Harvester: per-repo poll interval, and back off repos whose items repeatedly land in the DLQ (a poisoned repo should not refill its attempt budget forever)
+- [ ] Re-run `nix build` + `nix flake check` after the recent go.mod/go.sum changes (vendor-hash drift gate)
+
+## Lower Impact
 
 - [ ] `tq top`: live per-project view (pending/running/done/dead + last agent run duration) over the existing facts
 - [ ] Record agent transcript location (crush session id) as task result detail on completion, so `tq show` links to the agent's session
-- [ ] Surfacing "completed but item still unchecked" docs-drift: a periodic audit task that re-checks harvested repos and enqueues a docs catch-up item
-
-## Quality
-
-- [ ] `TestShutdownDrains` 30 ms claim window flakes under heavy parallel-agent load (10/10 green in isolation); widen the window or await claims explicitly instead of sleeping
-- [ ] E2E CLI test: spawn `tq agent-pool` as a subprocess with a stub agent binary ($TQ_AGENT_BIN) and assert the full loop from outside the process
+- [ ] Docs-drift auditor: periodic task re-checking harvested repos and enqueuing a catch-up item when an item is done in code but still unchecked
+- [ ] `TestShutdownDrains` 30 ms claim window flakes under heavy parallel-agent load; await claims explicitly instead of sleeping
+- [ ] E2E CLI test: spawn `tq agent-pool` as a subprocess with a stub agent binary (`$TQ_AGENT_BIN`) and assert the full loop from outside the process
 - [ ] Property test: harvest dedup keys are stable under whitespace reflow and unique across repos with identical item text
