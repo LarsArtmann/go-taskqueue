@@ -18,7 +18,7 @@ func openTestStore(t *testing.T) *SQLiteStore {
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
-	_ = t.Cleanup(func() { _ = s.Close() })
+	t.Cleanup(func() { _ = s.Close() })
 	return s
 }
 
@@ -250,8 +250,8 @@ func TestCancelPendingOnly(t *testing.T) {
 func TestListFilters(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
-	_ = s.Enqueue(ctx, task.New{Project: "p1", Type: "x"})
-	_ = s.Enqueue(ctx, task.New{Project: "p2", Type: "x"})
+	_, _ = s.Enqueue(ctx, task.New{Project: "p1", Type: "x"})
+	_, _ = s.Enqueue(ctx, task.New{Project: "p2", Type: "x"})
 
 	proj := "p1"
 	got, err := s.List(ctx, Filter{Project: &proj})
