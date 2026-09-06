@@ -128,7 +128,9 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	if requireClean(p) {
 		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
 			if err := assertCleanTree(ctx, repoDir); err != nil {
-				return Permanent(err)
+				// Preflight, not permanent: the human will commit eventually;
+				// the worker requeues without burning an attempt.
+				return &PreflightError{Cause: err}
 			}
 		}
 	}
@@ -250,17 +252,41 @@ func runVerify(ctx context.Context, repoDir string, p *AgentPayload) error {
 	return nil
 }
 
-// requireRepoAutonomy fails fast when an autonomous run is requested but
-// the repo has no project-local crush config that could grant permissions.
+// userGlobalCrushConfig reports whether a user-global crush config exists:
+// permissions can be granted globally, so a repo-local config is not
+// strictly required. Overridable in tests.
+var userGlobalCrushConfig = func() bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	for _, p := range []string{
+		filepath.Join(home, ".config", "crush", "crush.json"),
+		filepath.Join(home, ".crush.json"),
+	} {
+		if _, err := os.Stat(p); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// requireRepoAutonomy refuses when an autonomous run is requested but no
+// crush config could grant permissions — neither repo-local nor user-global.
 // Without this check an unattended pool burns its attempt budget on runs
 // that stall or die on permission prompts (crush run has no --yolo flag).
+// Preflight class: the operator can add a config and the task retries
+// without an attempt burn.
 func requireRepoAutonomy(repoDir string) error {
 	for _, name := range []string{".crushrc", "crushrc", ".crush.json", "crush.json"} {
 		if _, err := os.Stat(filepath.Join(repoDir, name)); err == nil {
 			return nil
 		}
 	}
-	return Permanent(fmt.Errorf("agent: autonomy requested but %s has no project-local crush config; add a .crushrc with 'permissions allow view ls grep edit write bash' (or unset yolo)", repoDir))
+	if userGlobalCrushConfig() {
+		return nil
+	}
+	return &PreflightError{Cause: fmt.Errorf("agent: autonomy requested but %s has no project-local crush config and no user-global crush config exists; add a .crushrc with 'permissions allow view ls grep edit write bash' (or unset yolo)", repoDir)}
 }
 
 // defaultVerify picks a sensible verification command for a repo.

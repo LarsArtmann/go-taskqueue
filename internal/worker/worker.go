@@ -25,6 +25,10 @@ type Config struct {
 	TaskTimeout  time.Duration // per-task execution cap (default 10m)
 	Executors    *executor.Registry
 	Backoff      func(attempt int) time.Duration // retry backoff (default exp)
+	// PreflightBackoff delays re-claiming after a preflight refusal
+	// (dirty repo, missing autonomy config). Default 2m. No attempt is
+	// burned by preflight refusals.
+	PreflightBackoff time.Duration
 }
 
 func (c *Config) setDefaults() {
@@ -48,6 +52,9 @@ func (c *Config) setDefaults() {
 	}
 	if c.Backoff == nil {
 		c.Backoff = ExpBackoff
+	}
+	if c.PreflightBackoff <= 0 {
+		c.PreflightBackoff = 2 * time.Minute
 	}
 }
 
@@ -202,10 +209,23 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		p.log.Warn("skipping fail: lease lost", "task", t.ID)
 		return
 	}
+	if pre, ok := errors.AsType[*executor.PreflightError](execErr); ok {
+		// The executor refused to START: environment not ready (dirty repo,
+		// missing autonomy). Requeue WITHOUT burning an attempt — the task
+		// becomes claimable again once the delay passes, so the pool picks
+		// it up when the human has committed their work.
+		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, pre.Error(), p.cfg.PreflightBackoff); err != nil {
+			p.log.Error("requeue failed", "task", t.ID, "err", err)
+		} else {
+			p.log.Warn("preflight refused; requeued without attempt burn",
+				"task", t.ID, "retry after", p.cfg.PreflightBackoff, "reason", pre.Cause.Error())
+		}
+		return
+	}
 	if perm, ok := errors.AsType[*executor.PermanentError](execErr); ok {
 		// The identical retry would fail identically (bad payload, missing
-		// repo, dirty tree). Dead-letter now instead of burning the retry
-		// budget — for agent tasks every retry is real money.
+		// repo). Dead-letter now instead of burning the retry budget — for
+		// agent tasks every retry is real money.
 		if err := p.store.FailPermanent(terminalCtx, t.ID, p.cfg.Owner, perm.Error()); err != nil {
 			p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 		}

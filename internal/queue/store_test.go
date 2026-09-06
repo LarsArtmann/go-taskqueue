@@ -591,3 +591,49 @@ func TestProjectExclusivityAcrossStoreHandles(t *testing.T) {
 		t.Fatalf("sibling claim after release = %v, %v; want the repo-x sibling", got.ID, err)
 	}
 }
+
+func TestRequeueDoesNotBurnAttempts(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	tk, _ := s.Enqueue(ctx, task.New{Type: "env-not-ready", MaxAttempts: 3})
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	// Wrong owner cannot requeue.
+	if err := s.Requeue(ctx, tk.ID, "w2", "nope", time.Second); !errors.Is(err, task.ErrLeaseNotHeld) {
+		t.Fatalf("wrong-owner Requeue err = %v, want ErrLeaseNotHeld", err)
+	}
+
+	if err := s.Requeue(ctx, tk.ID, "w1", "preflight: repo dirty", 150*time.Millisecond); err != nil {
+		t.Fatalf("Requeue: %v", err)
+	}
+	got, _ := s.Get(ctx, tk.ID)
+	if got.Status != task.Pending || got.Attempts != 0 || got.LeaseOwner != "" {
+		t.Fatalf("after requeue: %+v (attempt must NOT be burned)", got)
+	}
+
+	// Delay gates the next claim (not_before semantics, like Fail backoff).
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, ErrNoTaskDue) {
+		t.Fatalf("claim during requeue delay err = %v, want ErrNoTaskDue", err)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim after delay: %v", err)
+	}
+
+	// The fact log records why the task went back, with no failure.
+	facts, _ := s.Facts(ctx, 0)
+	var rq bool
+	for _, f := range facts {
+		if f.Type == journal.Requeued {
+			rq = true
+			if f.Error == "" {
+				t.Error("requeued fact lost the reason")
+			}
+		}
+	}
+	if !rq {
+		t.Error("no task.requeued fact recorded")
+	}
+}

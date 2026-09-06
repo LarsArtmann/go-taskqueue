@@ -267,10 +267,12 @@ func TestAgentInputContractMissesArePermanent(t *testing.T) {
 	}
 }
 
-// TestAgentDirtyTreeAndAutonomyArePermanent extends the dirty-tree and
-// autonomy guards: both refusals are input-contract misses, so both must be
-// the permanent class.
-func TestAgentDirtyTreeAndAutonomyArePermanent(t *testing.T) {
+// TestAgentDirtyTreeAndAutonomyArePreflight pins the preflight classes: a
+// dirty tree and a missing autonomy config are ENVIRONMENT problems, not
+// task problems — the executor must refuse to start with a *PreflightError
+// so the worker requeues without burning an attempt (the human may commit
+// or add a config any minute). A global crush config satisfies the probe.
+func TestAgentDirtyTreeAndAutonomyArePreflight(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
 	setupGitRepo(t, repo)
@@ -278,12 +280,22 @@ func TestAgentDirtyTreeAndAutonomyArePermanent(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
-	if _, ok := errors.AsType[*PermanentError](e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))); !ok {
-		t.Error("dirty tree must be permanent")
+	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
+	if _, ok := errors.AsType[*PreflightError](err); !ok {
+		t.Errorf("dirty tree must be preflight, got %v", err)
 	}
 
 	autonomyRepo := t.TempDir()
-	if _, ok := errors.AsType[*PermanentError](e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: autonomyRepo, Prompt: "hi", Yolo: true}))); !ok {
-		t.Error("missing autonomy config must be permanent")
+	err = e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: autonomyRepo, Prompt: "hi", Yolo: true}))
+	if _, ok := errors.AsType[*PreflightError](err); !ok {
+		t.Errorf("missing autonomy config must be preflight, got %v", err)
+	}
+
+	// D32: the user-global crush config satisfies the autonomy probe.
+	restore := userGlobalCrushConfig
+	userGlobalCrushConfig = func() bool { return true }
+	t.Cleanup(func() { userGlobalCrushConfig = restore })
+	if err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: autonomyRepo, Prompt: "hi", Yolo: true})); err != nil {
+		t.Errorf("global crush config must satisfy the autonomy probe, got %v", err)
 	}
 }
