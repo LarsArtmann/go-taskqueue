@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sort"
 	"strings"
 	"syscall"
@@ -171,8 +172,10 @@ func cmdWorker(args []string) error {
 	conc := fs.Int("concurrency", 2, "parallel executions")
 	poll := fs.Duration("poll", 250*time.Millisecond, "idle poll interval")
 	lease := fs.Duration("lease", 2*time.Minute, "claim lease length")
-	timeout := fs.Duration("task-timeout", 10*time.Minute, "per-task timeout")
+	timeout := fs.Duration("task-timeout", 10*time.Minute, "per-task timeout (use e.g. 45m with --agents)")
 	owner := fs.String("owner", "", "lease owner identity")
+	agents := fs.Bool("agents", false, "enable the 'agent' executor: runs a headless AI agent (crush) per task — OPT-IN")
+	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "root dir for relative repo names in agent payloads")
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -185,6 +188,10 @@ func cmdWorker(args []string) error {
 	// trivially usable while Go users register their own executors.
 	reg := executor.NewRegistry()
 	reg.Register("sh", executor.NewCommandExecutor(""))
+	if *agents {
+		fmt.Fprintln(os.Stderr, "tq: --agents: autonomous agent execution enabled (headless crush; dirty repos are skipped; verify is enforced)")
+		reg.Register("agent", executor.NewAgentExecutor(*projectsDir))
+	}
 
 	pool := worker.New(s, worker.Config{
 		Owner:        *owner,
@@ -197,6 +204,19 @@ func cmdWorker(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	return pool.Start(ctx)
+}
+
+// defaultProjectsDir resolves the agent projects root: $TQ_PROJECTS_DIR or
+// ~/projects.
+func defaultProjectsDir() string {
+	if d := os.Getenv("TQ_PROJECTS_DIR"); d != "" {
+		return d
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, "projects")
 }
 
 func cmdStats(args []string) error {

@@ -2,10 +2,12 @@ package harvest
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -69,7 +71,7 @@ Docs contain examples that must never be harvested:
 
 	want := []struct{ heading, text string }{
 		{"Bugs", "Fix the flaky worker test"},
-		{"Bugs", "Trim and collapse whitespace"},
+		{"Bugs", "Trim   and  collapse   whitespace"}, // verbatim text; only the key collapses
 		{"Docs", "Write ADR for the pool"},
 		{"Docs", "Real item after the fence"},
 	}
@@ -137,6 +139,9 @@ func TestRunEnqueuesOneItemPerRepoPerTick(t *testing.T) {
 	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "first" || !res.Enqueued[0].Fresh {
 		t.Fatalf("first run enqueued = %+v, want exactly 'first' fresh", res.Enqueued)
 	}
+	if !hasSkip(res, "paced") {
+		t.Fatalf("first run must pace the second item, skips = %+v", res.Skipped)
+	}
 
 	// Second tick: repo busy with the pending task, nothing new.
 	res, err = h.Run(context.Background())
@@ -146,7 +151,7 @@ func TestRunEnqueuesOneItemPerRepoPerTick(t *testing.T) {
 	if len(res.Enqueued) != 0 {
 		t.Fatalf("second run enqueued %+v, want none (repo busy)", res.Enqueued)
 	}
-	if !hasSkip(res, "repo busy") || !hasSkip(res, "paced") {
+	if !hasSkip(res, "tracked: pending") || !hasSkip(res, "repo busy") {
 		t.Fatalf("second run skips = %+v", res.Skipped)
 	}
 }
@@ -239,7 +244,7 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 			t.Fatalf("list: %v %d", err, len(tasks))
 		}
 		id = tasks[0].ID
-		claimed, err := q.ClaimDue(ctx, "w", timeMinute)
+		claimed, err := q.ClaimDue(ctx, "w", time.Minute)
 		if err != nil {
 			t.Fatalf("claim: %v", err)
 		}
@@ -269,8 +274,6 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 
 func strPtr(s string) *string { return &s }
 
-const timeMinute = 60e9 // one minute in nanoseconds, avoids importing time for two call sites
-
 func hasSkip(res Result, substr string) bool {
 	for _, s := range res.Skipped {
 		if strings.Contains(s.Reason, substr) {
@@ -283,18 +286,12 @@ func hasSkip(res Result, substr string) bool {
 // fakeRunToCompletion drives a claimed task to Completed so later harvest
 // ticks observe the terminal state.
 func fakeRunToCompletion(ctx context.Context, q *queue.Queue, id task.ID) error {
-	claimed, err := q.ClaimDue(ctx, "w", timeMinute)
+	claimed, err := q.ClaimDue(ctx, "w", time.Minute)
 	if err != nil {
 		return err
 	}
 	if claimed.ID != id {
-		return errClaimedWrong(claimed.ID, id)
+		return fmt.Errorf("claimed %s, want %s", claimed.ID, id)
 	}
 	return q.Complete(ctx, id, "w", nil)
 }
-
-type claimMismatch struct{ got, want task.ID }
-
-func (e claimMismatch) Error() string { return "claimed " + e.got.String() + " want " + e.want.String() }
-
-func errClaimedWrong(got, want task.ID) error { return claimMismatch{got, want} }
