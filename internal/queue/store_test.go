@@ -463,3 +463,131 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 		t.Fatalf("dead task claimable: err = %v", err)
 	}
 }
+
+func openTestStoreExclusive(t *testing.T) *SQLiteStore {
+	t.Helper()
+	s, err := OpenSQLite(filepath.Join(t.TempDir(), "q.db"), WithProjectExclusivity())
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	return s
+}
+
+// TestProjectExclusivitySerializesPerProject pins the store-level per-repo
+// guarantee: with the option on, a project with a running task yields no
+// further claims (other projects and empty projects unaffected), and the
+// blocked sibling becomes claimable the moment the runner completes. Claim
+// order is priority/created_at/id — not FIFO — so the test never assumes
+// which same-project task goes first.
+func TestProjectExclusivitySerializesPerProject(t *testing.T) {
+	ctx := context.Background()
+
+	// Default (off): two same-project tasks can both run — opt-in only.
+	off := openTestStore(t)
+	offA, _ := off.Enqueue(ctx, task.New{Project: "x", Type: "a"})
+	offB, _ := off.Enqueue(ctx, task.New{Project: "x", Type: "b"})
+	if _, err := off.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("default claim1: %v", err)
+	}
+	_ = offA
+	if got, err := off.ClaimDue(ctx, "w1", time.Minute); err != nil || got.ID != offB.ID {
+		t.Fatalf("default store must allow parallel same-project claims: got %v, %v", got.ID, err)
+	}
+
+	s := openTestStoreExclusive(t)
+	x1, _ := s.Enqueue(ctx, task.New{Project: "repo-x", Type: "a"})
+	x2, _ := s.Enqueue(ctx, task.New{Project: "repo-x", Type: "b"})
+	other, _ := s.Enqueue(ctx, task.New{Project: "repo-y", Type: "c"})
+	empty, _ := s.Enqueue(ctx, task.New{Type: "no-project"})
+	xIDs := map[task.ID]bool{x1.ID: true, x2.ID: true}
+
+	var claimed []task.ID
+	for {
+		got, err := s.ClaimDue(ctx, "w1", time.Minute)
+		if errors.Is(err, ErrNoTaskDue) {
+			break
+		}
+		if err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+		claimed = append(claimed, got.ID)
+	}
+	if len(claimed) != 3 {
+		t.Fatalf("claimed %d tasks, want 3 (one repo-x sibling must stay blocked)", len(claimed))
+	}
+	var xClaimed, blocked task.ID
+	for _, id := range claimed {
+		if xIDs[id] {
+			if xClaimed != "" {
+				t.Fatal("both repo-x tasks claimed — exclusivity broken")
+			}
+			xClaimed = id
+			continue
+		}
+		if id != other.ID && id != empty.ID {
+			t.Fatalf("claimed unexpected task %s", id)
+		}
+	}
+	for _, id := range []task.ID{x1.ID, x2.ID} {
+		if id != xClaimed {
+			blocked = id
+		}
+	}
+	// Nothing due while the repo-x runner holds the project.
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, ErrNoTaskDue) {
+		t.Fatalf("blocked sibling claimable: err = %v", err)
+	}
+
+	// Completing the runner releases the project.
+	if err := s.Complete(ctx, xClaimed, "w1", nil); err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil || got.ID != blocked {
+		t.Fatalf("after complete claim = %v, %v; want %s", got.ID, err, blocked)
+	}
+}
+
+// TestProjectExclusivityAcrossStoreHandles proves the guard is store-level,
+// not pool-level: two independent SQLiteStore handles on the same file (the
+// multi-process shape) can never both run one project's tasks.
+func TestProjectExclusivityAcrossStoreHandles(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "shared.db")
+	s1, err := OpenSQLite(path, WithProjectExclusivity())
+	if err != nil {
+		t.Fatalf("open s1: %v", err)
+	}
+	t.Cleanup(func() { _ = s1.Close() })
+	s2, err := OpenSQLite(path, WithProjectExclusivity())
+	if err != nil {
+		t.Fatalf("open s2: %v", err)
+	}
+	t.Cleanup(func() { _ = s2.Close() })
+
+	x1, _ := s1.Enqueue(ctx, task.New{Project: "repo-x", Type: "a"})
+	x2, _ := s1.Enqueue(ctx, task.New{Project: "repo-x", Type: "b"})
+
+	first, err := s1.ClaimDue(ctx, "pool-1", time.Minute)
+	if err != nil {
+		t.Fatalf("pool-1 claim: %v", err)
+	}
+	got, err := s2.ClaimDue(ctx, "pool-2", time.Minute)
+	if err == nil && (got.ID == x1.ID || got.ID == x2.ID) {
+		t.Fatal("pool-2 claimed a repo-x task while pool-1 runs one — cross-handle exclusivity broken")
+	}
+	if err == nil {
+		if err := s2.Complete(ctx, got.ID, "pool-2", nil); err != nil {
+			t.Fatalf("pool-2 complete: %v", err)
+		}
+	}
+	// Releasing pool-1's task lets pool-2 have the sibling.
+	if err := s1.Complete(ctx, first.ID, "pool-1", nil); err != nil {
+		t.Fatalf("pool-1 complete: %v", err)
+	}
+	got, err = s2.ClaimDue(ctx, "pool-2", time.Minute)
+	if err != nil || (got.ID != x1.ID && got.ID != x2.ID) {
+		t.Fatalf("sibling claim after release = %v, %v; want the repo-x sibling", got.ID, err)
+	}
+}

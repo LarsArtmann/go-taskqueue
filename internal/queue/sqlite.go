@@ -24,10 +24,35 @@ import (
 // cross-process writers.
 type SQLiteStore struct {
 	db *sql.DB
+	// projectExclusive: ClaimDue refuses to hand out a task whose project
+	// already has another running task. See WithProjectExclusivity.
+	projectExclusive bool
+}
+
+// StoreOption configures optional SQLiteStore behavior.
+type StoreOption func(*storeOptions)
+
+type storeOptions struct {
+	projectExclusive bool
+}
+
+// WithProjectExclusivity turns on store-level per-project serialization:
+// ClaimDue will not claim a task whose project already has another running
+// task — across ALL pools and processes sharing the same database file, not
+// just within one pool. This is the per-repo guarantee for agent pools: two
+// agents never work the same repo simultaneously. Every pool sharing the DB
+// must opt in; pools that do not opt in ignore the guard. Tasks with an
+// empty project are exempt (they are not tied to a repo).
+func WithProjectExclusivity() StoreOption {
+	return func(o *storeOptions) { o.projectExclusive = true }
 }
 
 // OpenSQLite opens (creating if needed) the queue database at path.
-func OpenSQLite(path string) (*SQLiteStore, error) {
+func OpenSQLite(path string, opts ...StoreOption) (*SQLiteStore, error) {
+	var o storeOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)", path)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -36,7 +61,7 @@ func OpenSQLite(path string) (*SQLiteStore, error) {
 	// Serialize writers: one connection makes every SELECT…UPDATE sequence
 	// inside a transaction atomic without relying on BEGIN IMMEDIATE tricks.
 	db.SetMaxOpenConns(1)
-	s := &SQLiteStore{db: db}
+	s := &SQLiteStore{db: db, projectExclusive: o.projectExclusive}
 	if err := s.migrate(context.Background()); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -233,7 +258,10 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		// Candidate: pending-and-due OR running-with-expired-lease (crashed
 		// worker reclaim), priority first, oldest first — and every
-		// dependency completed (deps not met => not selectable).
+		// dependency completed (deps not met => not selectable). With
+		// project exclusivity on, a project that already has a running task
+		// yields nothing (except reclaiming that very task; empty projects
+		// are exempt).
 		row := tx.QueryRowContext(ctx, `
 			SELECT t.id, t.status, t.lease_owner FROM tasks t
 			WHERE ((t.status = 'pending' AND t.not_before <= ?)
@@ -242,8 +270,12 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 			    SELECT 1 FROM deps d JOIN tasks dt ON dt.id = d.dep_id
 			    WHERE d.task_id = t.id AND dt.status != 'completed'
 			  )
+			  AND (? = 0 OR t.project = '' OR NOT EXISTS (
+			    SELECT 1 FROM tasks r
+			    WHERE r.project = t.project AND r.status = 'running' AND r.id != t.id
+			  ))
 			ORDER BY t.priority DESC, t.created_at ASC, t.id ASC
-			LIMIT 1`, now.UnixMilli(), now.UnixMilli())
+			LIMIT 1`, now.UnixMilli(), now.UnixMilli(), boolInt(s.projectExclusive))
 		var id, st, prevOwner string
 		if err := row.Scan(&id, &st, &prevOwner); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -662,4 +694,11 @@ func maybeJSON(r json.RawMessage) json.RawMessage {
 		return nil
 	}
 	return r
+}
+
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
