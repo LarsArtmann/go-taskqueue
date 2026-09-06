@@ -65,9 +65,6 @@ type Config struct {
 	MaxAttempts int
 	// Priority for harvested tasks.
 	Priority int
-	// Model optionally overrides the crush model for harvested agent tasks
-	// ("provider/model"). Empty = the crush default.
-	Model string
 	// PromptTemplate overrides DefaultPromptTemplate.
 	PromptTemplate string
 	// RequireClean passes the clean-tree policy through to agent payloads:

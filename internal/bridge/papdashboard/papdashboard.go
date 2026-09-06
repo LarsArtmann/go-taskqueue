@@ -220,6 +220,7 @@ func (b *Bridge) post(ctx context.Context, eventType, idemKey string, taskID tas
 		"metadata": map[string]any{
 			"correlationId": taskID.String(),
 			"causationId":   fmt.Sprint(seq),
+			"userId":        "",
 			"sourceApp":     b.cfg.SourceApp,
 		},
 	}
