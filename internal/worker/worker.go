@@ -153,7 +153,7 @@ func (p *Pool) execute(ctx, drainCtx context.Context, t task.Task) {
 	}()
 
 	// Heartbeat ticker: extends the lease while execution runs.
-	hbCtx, hbCancel := context.WithCancel(ctx)
+	hbCtx, hbCancel := context.WithCancel(drainCtx)
 	defer hbCancel()
 	hbDone := make(chan struct{})
 	go func() {

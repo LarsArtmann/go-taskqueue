@@ -40,6 +40,45 @@ The default `sh` executor runs the payload as a shell line (`{"cmd":...}` JSON
 is unwrapped). Register your own executor types in Go — see
 `internal/executor/executor.go`.
 
+## The Agent Pool — self-managing improvement loop
+
+One process turns every repo's backlog into a self-burning fire:
+
+```sh
+# feed the queue from every repo's TODO_LIST.md (idempotent, dedup-keyed)
+tq harvest --projects-dir ~/projects --dry-run   # preview
+tq harvest --projects-dir ~/projects
+
+# run the whole loop: harvest every 5m + a pool of headless crush agents
+tq agent-pool --projects-dir ~/projects --yolo --concurrency 2 --interval 5m
+
+# optional: Code-Quality-Agent findings become fix tasks each tick
+tq agent-pool --projects-dir ~/projects --yolo     --cqa-url http://localhost:8080 --cqa-owner $CQA_OWNER_ID
+```
+
+Each TODO item becomes one `agent` task: a headless `crush run` in that repo
+with a strict contract (read AGENTS.md, smallest correct change, tick the
+checkbox, commit, never push). The executor enforces the safety rails:
+
+- **Opt-in autonomy** — agents only run under `--agents`/`tq agent-pool`;
+  a plain `tq worker` never spawns one. `--yolo` (auto-accept permissions)
+  is an operator decision made at pool start.
+- **Clean tree required** — agents refuse repos with uncommitted changes
+  (the pool never tramples human WIP; `--allow-dirty` opts out).
+- **Verify enforced** — a task only completes when the repo still builds and
+  tests pass (`go build ./... && go test ./...` for Go repos, or a payload
+  `verify` command).
+- **Paced** — at most one in-flight backlog item per repo, `--max-per-tick`
+  bounds cost per harvest run.
+- **Durable** — lease claims with heartbeats, exponential backoff, DLQ on
+  exhaustion (`tq dlq --rescue` to retry), and the whole lifecycle replayable
+  via `tq facts`.
+
+With `--cqa-url`, the latest Code-Quality-Agent scan's fixable findings for
+each locally-present repo are enqueued as per-file fix tasks (dedup key
+includes the scan ID, so a new scan arms new work) — the pool fixes what the
+scanners find and the next scan proves it worked.
+
 ## Concepts
 
 - **Task** — unit of work: `type` (executor key), `project`, JSON `payload`,

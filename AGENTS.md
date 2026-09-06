@@ -44,9 +44,10 @@ facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 | `internal/journal`   | Fact types, append-only Journal interface, MemoryJournal                |
 | `internal/queue`     | Store interface + SQLite store; every mutation appends facts in-tx      |
 | `internal/worker`    | Claim → heartbeat → execute loop; concurrency, panics, drain            |
+| `internal/bridge`    | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)     |
 | `internal/executor`  | Pluggable execution: `sh` command, HTTP, agent (headless AI), registry  |
 | `internal/harvest`   | Scans repos' TODO_LIST.md and enqueues work items as agent tasks        |
-| `cmd/tq`             | CLI: enqueue / worker / stats / show / dlq / cancel / facts / tail      |
+| `cmd/tq`             | CLI: enqueue / worker / harvest / agent-pool / stats / show / dlq / cancel / facts / tail |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0002); the
 module is not importable externally yet.
