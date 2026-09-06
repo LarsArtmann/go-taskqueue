@@ -95,7 +95,11 @@ func defaultDB() string {
 }
 
 func mustOpenDB(path string) *queue.SQLiteStore {
-	s, err := queue.OpenSQLite(path)
+	return mustOpenDBOpts(path)
+}
+
+func mustOpenDBOpts(path string, opts ...queue.StoreOption) *queue.SQLiteStore {
+	s, err := queue.OpenSQLite(path, opts...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tq: open db: %v\n", err)
 		os.Exit(1)
@@ -191,6 +195,7 @@ func cmdWorker(args []string) error {
 	owner := fs.String("owner", "", "lease owner identity")
 	agents := fs.Bool("agents", false, "enable the 'agent' executor: runs a headless AI agent (crush) per task — OPT-IN")
 	yolo := fs.Bool("yolo", false, "with --agents: agents auto-accept all permissions (operator decision)")
+	exclusive := fs.Bool("project-exclusive", false, "never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)")
 	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "root dir for relative repo names in agent payloads")
 	alertURL := fs.String("alert-url", os.Getenv("TQ_PAP_URL"), "PapDashboard base URL: dead-lettered tasks raise alerts there (e.g. http://localhost:8080)")
 	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
@@ -199,7 +204,11 @@ func cmdWorker(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	s := mustOpenDB(resolveDB(*db))
+	var opts []queue.StoreOption
+	if *exclusive {
+		opts = append(opts, queue.WithProjectExclusivity())
+	}
+	s := mustOpenDBOpts(resolveDB(*db), opts...)
 	defer s.Close()
 
 	// The "sh" executor with empty template runs the payload itself as the
@@ -332,6 +341,7 @@ func cmdAgentPool(args []string) error {
 	yolo := fs.Bool("yolo", false, "agents auto-accept all permissions — required for unattended pools whose items need writes/commits")
 	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per harvest tick (cost throttle)")
 	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
+	exclusive := fs.Bool("project-exclusive", false, "never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)")
 	cqaURL := fs.String("cqa-url", os.Getenv("CQA_URL"), "Code-Quality-Agent API base URL: latest scans' fixable findings become fix tasks each tick")
 	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
 	cqaToken := fs.String("cqa-token", os.Getenv("CQA_TOKEN"), "CQA bearer token")
@@ -357,15 +367,19 @@ func cmdAgentPool(args []string) error {
 		}
 	}
 
-	s := mustOpenDB(resolveDB(*db))
+	var opts []queue.StoreOption
+	if *exclusive {
+		opts = append(opts, queue.WithProjectExclusivity())
+	}
+	s := mustOpenDBOpts(resolveDB(*db), opts...)
 	defer s.Close()
 	q := queue.New(s)
 
 	reg := executor.NewRegistry()
 	reg.Register("sh", executor.NewCommandExecutor(""))
 	reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
-	fmt.Fprintf(os.Stderr, "tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, harvest every %s, verify enforced)\n",
-		*conc, repoRootDesc(*projectsDir, *repos), *yolo, *allowDirty, *interval)
+	fmt.Fprintf(os.Stderr, "tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, exclusive=%v, harvest every %s, verify enforced)\n",
+		*conc, repoRootDesc(*projectsDir, *repos), *yolo, *allowDirty, *exclusive, *interval)
 	if *cqaURL != "" {
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick\n", *cqaURL)
 	}
