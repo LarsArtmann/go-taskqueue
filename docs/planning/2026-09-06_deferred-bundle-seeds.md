@@ -7,6 +7,7 @@ problem. Implemented-in-this-round items are marked ✅ with pointers.
 ## Documented seeds
 
 ### D80 — Postgres store sketch
+
 Replace `internal/queue/sqlite.go` behind the existing `Store` interface
 (ADR-0001 seam). Claim becomes:
 
@@ -28,6 +29,7 @@ dedup_key IS NOT NULL`. Migration question to settle first: lease comparison
 in UTC everywhere.
 
 ### D82 — internal → public decision
+
 **Decision (recorded 2026-09-06):** keep everything `internal/` until the
 v0.2 Postgres store lands. Rationale: the public API would freeze the
 `Store` interface before a second implementation proves it; the CLI is the
@@ -38,6 +40,7 @@ product until multi-node exists. First packages to promote, in order:
 `internal/e2e`, `internal/bridge/*` (follow the consumers that need them).
 
 ### D83 — Cron recurring tasks
+
 Pattern: a schedule owner (systemd timer or the pool loop) enqueues with a
 **time-bucketed dedup key** — `cron:<name>:<YYYY-MM-DDTHH>` — so retries and
 re-harvests within the bucket dedup, and the next bucket is new work. No
@@ -45,6 +48,7 @@ scheduler component; the journal proves which buckets ran. PoC candidate:
 10 lines on top of `queue.Enqueue` + a table in DOMAIN_LANGUAGE.
 
 ### D90 — Per-repo-size timeout defaults
+
 Seed: `TimeoutMinutes` already exists per payload; the missing piece is a
 default ladder keyed on repo size (e.g. <10k LOC → 15m, <100k → 30m, else
 45m) resolved at harvest time into the payload so the queue records what
@@ -52,6 +56,7 @@ it promised. Measure real agent durations first (`tq top` last-dur gives
 the data); do not guess the ladder.
 
 ### D91 — Crush rate-limit + version detection at pool start
+
 Seed: at pool start run `crush --version` and record it in the startup line;
 warn when the binary is missing (agents will preflight-refuse anyway — the
 warning just saves a tick). Rate-limit detection needs a real 429 observed;
@@ -59,6 +64,7 @@ when the budget command exists, prefer surfacing THAT as the cause. Defer
 active probing.
 
 ### D94 — Session chains via `AgentPayload.Session`
+
 `AgentPayload.Session` is already plumbed into the argv (`--session`). Seed
 for follow-up tasks: harvest could emit a `followup:<key>` task whose
 payload carries the completed task's session id (from result detail), so
@@ -66,11 +72,13 @@ the next agent resumes context. Open question: context resume vs. fresh
 eyes for quality — decide with data.
 
 ### D97 — Cross-repo DAG templates
+
 Seed: extend TODO_LIST item syntax with `deps: <repo>/<item text>`; harvest
 resolves sibling items to task IDs and fills `Deps`. Keep templates in the
 todo files (human-readable, reviewable) — never in queue config.
 
 ### D98 — AI task prioritizer hook
+
 Seed: a `priority` front-matter on TODO_LIST items, set by a prioritizer
 (AI or rules), flows through `Config.Priority` → per-item override in
 `Item`. Harvest already carries Priority; the change is Item-level parsing
@@ -78,6 +86,7 @@ plus "unprioritized = 0" semantics. Guard: prioritizer may only rank, never
 add/remove items (parse-guarded like the checkbox format).
 
 ### D99 — Smart retry: error-class → policy mapping
+
 Seed: today `PermanentError` → dead-letter-now, `PreflightError` → requeue
 (no burn), everything else → ExpBackoff. The extension is a small policy
 table: `{class → maxAttempts override, backoff curve, budget burn?}`. E.g.
@@ -86,6 +95,7 @@ work rarely improves), network → standard. Implement as `Policy func(error)
 RetryPolicy` on worker.Config; the classes already exist.
 
 ### D100 — Consumer-group pool spike (fencing tokens)
+
 Design note only: multi-pool without store-level exclusivity could use
 fencing tokens (epoch numbers on claims; stale epochs rejected at
 Complete/Fail). In SQLite this buys nothing over the serialized writer +
@@ -96,6 +106,7 @@ real. Revisit with D80, not before.
 
 The queue database is one file (`$TQ_DB`, default `./tasks.db`, WAL mode).
 Guidance:
+
 - **Backup:** `sqlite3 tasks.db ".backup /backup/tasks-$(date +%F).db"` —
   safe against a running pool (WAL-aware), unlike copying the file.
 - **Rotation:** the journal grows unboundedly by design (facts-first).

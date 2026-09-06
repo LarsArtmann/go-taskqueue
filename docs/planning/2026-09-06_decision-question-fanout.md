@@ -23,7 +23,7 @@ working other items; the answer flows back and unblocks the exact task.
    payload field on `agent` tasks): `{repo, item_key, question, options[],
    asked_by_task}`. Enqueued with a dedup key `question:<asked_by_task>:<hash>`
    so re-asking after a crash cannot duplicate it.
-2. **Blocking via deps, not polling.** The asking task is *not* completed;
+2. **Blocking via deps, not polling.** The asking task is _not_ completed;
    it stays `running` (lease + heartbeats, `--task-timeout` bounds the wait)
    and the `question` task is recorded in a `task.question-asked` fact.
 3. **Dashboard surface.** The PapDashboard bridge (or a small exporter)

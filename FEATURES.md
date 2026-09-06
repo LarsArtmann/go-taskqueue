@@ -60,11 +60,15 @@
 
 ## CLI (`tq`)
 
-| Feature                                                       | Status                | Notes                                                                                                        |
-| ------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------ |
-| enqueue / worker / stats / show / dlq / cancel / facts / tail | 🟢 `FULLY_FUNCTIONAL` | `tq worker` runs until signalled (no one-shot mode); `tq facts` renders the dead-letter error class          |
-| `tq show` — task + full fact trail                            | 🟢 `FULLY_FUNCTIONAL` | Completed agent tasks record session id + verify tail in `task.completed`; `tq show` renders the whole trail |
-| harvest / agent-pool                                          | 🟢 `FULLY_FUNCTIONAL` | See Agent pool; `--dry-run` for preview; `--model`, `--once`, cost ceilings                                  |
+| Feature                                                                     | Status                | Notes                                                                                                        |
+| --------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| enqueue / worker / stats / top / audit / show / dlq / cancel / facts / tail | 🟢 `FULLY_FUNCTIONAL` | `tq worker` runs until signalled (no one-shot mode); `tq facts` renders the dead-letter error class          |
+| `tq show` — task + full fact trail                                          | 🟢 `FULLY_FUNCTIONAL` | Completed agent tasks record session id + verify tail in `task.completed`; `tq show` renders the whole trail |
+| `tq top` — live per-project view                                            | 🟢 `FULLY_FUNCTIONAL` | Counts + last-run/active durations from the journal; `--once`, `--json`, terminal repaint                    |
+| `tq audit` — docs-drift auditor                                             | 🟢 `FULLY_FUNCTIONAL` | stale-open repaired by enqueue-once catch-up tasks; stale-done reported; dry-run mode                        |
+| `tq dlq --rescue-all --older-than`                                          | 🟢 `FULLY_FUNCTIONAL` | Bulk rescue after a human decision; `--older-than` gates on dead duration                                    |
+| `tq harvest --json` / `--repo-subset`                                       | 🟢 `FULLY_FUNCTIONAL` | JSON result output; glob filter over discovered repos                                                        |
+| harvest / agent-pool                                                        | 🟢 `FULLY_FUNCTIONAL` | See Agent pool; `--dry-run` for preview; `--model`, `--once`, cost ceilings                                  |
 
 ## Tooling
 
@@ -80,9 +84,10 @@
 
 ## Planned (no code yet)
 
-| Feature                                    | Status       | Notes                                                                     |
-| ------------------------------------------ | ------------ | ------------------------------------------------------------------------- |
-| Postgres store (`SKIP LOCKED`)             | ⚪ `PLANNED` | The `Store` interface is the seam (ADR-0001)                              |
-| HTTP API server for non-Go producers       | ⚪ `PLANNED` | v0.2 direction (ROADMAP)                                                  |
-| Decision → question fan-out (PapDashboard) | ⚪ `PLANNED` | Agent asks, human answers in the dashboard, queue proceeds                |
-| Per-repo daily budgets                     | ⚪ `PLANNED` | Global daily cap + per-repo intervals ship; per-REPO daily caps don't yet |
+| Feature                                       | Status                    | Notes                                                                                                   |
+| --------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Postgres store (`SKIP LOCKED`)                | ⚪ `PLANNED`              | The `Store` interface is the seam (ADR-0001); claim SQL sketched (D80)                                  |
+| HTTP API server for non-Go producers          | 🟡 `PARTIALLY_FUNCTIONAL` | PoC exists (`examples/api`: enqueue + stats + metrics, no auth, localhost); production server not built |
+| Decision → question fan-out (PapDashboard)    | ⚪ `PLANNED`              | Design note in `docs/planning/2026-09-06_decision-question-fanout.md`                                   |
+| Per-repo daily budgets                        | ⚪ `PLANNED`              | Global daily cap + per-repo intervals ship; per-REPO daily caps don't yet                               |
+| Remaining C27 seeds (D90, D91, D94, D97-D100) | ⚪ `PLANNED`              | Sketches in `docs/planning/2026-09-06_deferred-bundle-seeds.md`                                         |
