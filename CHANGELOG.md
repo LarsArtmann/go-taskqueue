@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `tq top`: live per-project view over the journal — pending/running/done/
+  dead counts, the last run duration and the active run's elapsed time
+  (`--once`, `--json`, `--interval`; repaints on terminals)
 - Task result detail: completed agent tasks record the crush session id and
   the verify output tail in the `task.completed` fact; `tq show TASK_ID`
   renders the task together with its full fact trail, so an operator can

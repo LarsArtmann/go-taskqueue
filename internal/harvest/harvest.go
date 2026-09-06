@@ -107,13 +107,14 @@ func (c Config) withDefaults() Config {
 	return c
 }
 
-// Item is one open checkbox found in a repo's todo file.
+// Item is one checkbox found in a repo's todo file.
 type Item struct {
 	Repo     string // absolute repo path
 	RepoName string // project name (repo dir base name)
 	Heading  string // nearest markdown heading above the item
 	Text     string // the checkbox text, trimmed
 	Key      string // stable dedup key: hash of repo name + item text
+	Done     bool   // true when the checkbox is ticked ([x])
 }
 
 // Enqueued records a task created (or already present) for an item.
@@ -276,15 +277,30 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 }
 
 func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
-	prompt := h.cfg.PromptTemplate
+	payload, err := h.buildPayload(it, h.cfg.PromptTemplate)
+	if err != nil {
+		return task.Task{}, err
+	}
+	return h.q.Enqueue(ctx, task.New{
+		Project:     it.RepoName,
+		Type:        h.cfg.Type,
+		Payload:     payload,
+		Priority:    h.cfg.Priority,
+		MaxAttempts: h.cfg.MaxAttempts,
+		DedupKey:    it.Key,
+	})
+}
+
+// buildPayload renders prompt for it and encodes it as the task payload with
+// the harvester's dedup key pinned. Repos discovered under ProjectsDir are
+// named relatively so payloads stay valid when the projects root moves;
+// explicit repos outside it keep their absolute path.
+func (h *Harvester) buildPayload(it Item, prompt string) ([]byte, error) {
 	prompt = strings.ReplaceAll(prompt, "{{REPO_ABS}}", it.Repo)
 	prompt = strings.ReplaceAll(prompt, "{{REPO}}", it.RepoName)
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", it.Heading)
 	prompt = strings.ReplaceAll(prompt, "{{ITEM}}", it.Text)
 
-	// Repos discovered under ProjectsDir are named relatively so payloads
-	// stay valid when the projects root moves; explicit repos outside it keep
-	// their absolute path.
 	repo := it.Repo
 	if h.cfg.ProjectsDir != "" {
 		if abs, err := filepath.Abs(h.cfg.ProjectsDir); err == nil && strings.HasPrefix(it.Repo, abs+string(filepath.Separator)) {
@@ -305,16 +321,9 @@ func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
 		Dedup: it.Key,
 	})
 	if err != nil {
-		return task.Task{}, fmt.Errorf("harvest: encode payload: %w", err)
+		return nil, fmt.Errorf("harvest: encode payload: %w", err)
 	}
-	return h.q.Enqueue(ctx, task.New{
-		Project:     it.RepoName,
-		Type:        h.cfg.Type,
-		Payload:     payload,
-		Priority:    h.cfg.Priority,
-		MaxAttempts: h.cfg.MaxAttempts,
-		DedupKey:    it.Key,
-	})
+	return payload, nil
 }
 
 // harvestPayload is the agent payload plus the harvester's dedup key. The
@@ -348,12 +357,30 @@ func DiscoverRepos(dir, todoFile string) ([]string, error) {
 // ParseRepo extracts the open checkbox items from a repo's todo file.
 //
 // Semantics: a line matching `- [ ]`/`* [ ]` (leading whitespace allowed) is
-// an item; `- [x]`/`- [X]` are done and ignored. The nearest heading above
-// the item (any level, text without the #s) is its Heading. Lines inside
-// fenced code blocks are ignored, so TODO examples in documentation are never
-// harvested. The Key changes when the item text changes, so editing an item
-// re-arms it even if a previous task for the old wording exists.
+// an item; `- [x]`/`- [X]` are done and ignored (ParseRepoAll returns them
+// with Done set). The nearest heading above the item (any level, text without
+// the #s) is its Heading. Lines inside fenced code blocks are ignored, so
+// TODO examples in documentation are never harvested. The Key changes when
+// the item text changes, so editing an item re-arms it even if a previous
+// task for the old wording exists.
 func ParseRepo(repo, todoFile string) ([]Item, error) {
+	all, err := ParseRepoAll(repo, todoFile)
+	if err != nil {
+		return nil, err
+	}
+	open := all[:0]
+	for _, it := range all {
+		if !it.Done {
+			open = append(open, it)
+		}
+	}
+	return open, nil
+}
+
+// ParseRepoAll returns every checkbox item (open and done) from a repo's
+// todo file; Item.Done distinguishes them. It backs the drift auditor, which
+// compares BOTH checkbox states against terminal task states.
+func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 	abs, err := filepath.Abs(repo)
 	if err != nil {
 		return nil, err
@@ -380,7 +407,7 @@ func ParseRepo(repo, todoFile string) ([]Item, error) {
 			heading = h
 			continue
 		}
-		if text, ok := openCheckbox(trimmed); ok {
+		if text, done, ok := checkboxOf(trimmed); ok {
 			text = strings.TrimSpace(text)
 			if text == "" {
 				continue
@@ -391,6 +418,7 @@ func ParseRepo(repo, todoFile string) ([]Item, error) {
 				Heading:  heading,
 				Text:     text,
 				Key:      ItemKey(repoName, text),
+				Done:     done,
 			})
 		}
 	}
@@ -419,20 +447,28 @@ func headingOf(line string) (string, bool) {
 	return text, true
 }
 
-// openCheckbox returns the text of an open markdown checkbox line.
-func openCheckbox(line string) (string, bool) {
-	rest, ok := strings.CutPrefix(line, "-")
-	if !ok {
-		if rest, ok = strings.CutPrefix(line, "*"); !ok {
-			return "", false
+// checkboxOf returns the text of a markdown checkbox line and whether it is
+// ticked. Both `- [ ] text` and `- [x] text` (any case, `*` bullets too)
+// count; the boolean ok reports that the line is a checkbox at all.
+func checkboxOf(line string) (text string, done bool, ok bool) {
+	rest, isBullet := strings.CutPrefix(line, "-")
+	if !isBullet {
+		if rest, isBullet = strings.CutPrefix(line, "*"); !isBullet {
+			return "", false, false
 		}
 	}
 	rest = strings.TrimSpace(rest)
-	rest, ok = strings.CutPrefix(rest, "[ ]")
-	if !ok {
-		return "", false
+	if unticked, is := strings.CutPrefix(rest, "[ ]"); is {
+		return unticked, false, true
 	}
-	return rest, true
+	if inner, is := strings.CutPrefix(rest, "["); is {
+		if inner != "" && (inner[0] == 'x' || inner[0] == 'X') {
+			if ticked, closed := strings.CutPrefix(inner[1:], "]"); closed {
+				return ticked, true, true
+			}
+		}
+	}
+	return "", false, false
 }
 
 // payloadDedup extracts the "dedup" field from a task payload, if present.
