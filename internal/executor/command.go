@@ -74,6 +74,10 @@ func unwrapCommand(payload []byte) string {
 			return m.Cmd
 		}
 	}
+	var str string
+	if err := json.Unmarshal(payload, &str); err == nil {
+		return str
+	}
 	if s == "" {
 		return "true"
 	}

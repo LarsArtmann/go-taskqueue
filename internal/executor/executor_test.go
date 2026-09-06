@@ -28,6 +28,24 @@ func TestCommandExecutorSuccess(t *testing.T) {
 	}
 }
 
+func TestUnwrapCommandPayloadShapes(t *testing.T) {
+	cases := []struct {
+		name    string
+		payload string
+		want    string
+	}{
+		{"raw shell line", "echo hi", "echo hi"},
+		{"cmd object", `{"cmd":"go test ./..."}`, "go test ./..."},
+		{"json string (CLI wraps non-JSON sh payloads)", `"echo hi"`, "echo hi"},
+		{"empty", "", "true"},
+	}
+	for _, tc := range cases {
+		if got := unwrapCommand([]byte(tc.payload)); got != tc.want {
+			t.Errorf("%s: unwrapCommand(%q) = %q, want %q", tc.name, tc.payload, got, tc.want)
+		}
+	}
+}
+
 func TestCommandExecutorFailureCarriesOutput(t *testing.T) {
 	e := NewCommandExecutor("echo disaster >&2; exit 3")
 	err := e.Execute(context.Background(), task.Task{ID: task.ID("x"), Type: "boom"})

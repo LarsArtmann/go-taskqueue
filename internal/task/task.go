@@ -54,6 +54,11 @@ type New struct {
 	Priority    int
 	MaxAttempts int
 	NotBefore   time.Time
+	// DedupKey, when set, makes Enqueue idempotent: if a task with the same
+	// key already exists, that task is returned unchanged and no duplicate is
+	// created. Use a stable derivation (e.g. hash of project + source + title)
+	// so repeated harvest runs converge instead of re-enqueueing.
+	DedupKey string
 }
 
 // DefaultMaxAttempts is used when New.MaxAttempts is zero.
