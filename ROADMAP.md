@@ -81,3 +81,13 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   suppresses re-enqueue forever (escape hatch: edit the item text). Should
   cancellation instead release the key, accepting that "cancel" no longer
   means "stop bringing this back"? Store-schema-affecting.
+
+## Deferred-bundle seeds
+
+Raw ideas with enough shape to act on live in
+[docs/planning/2026-09-06_deferred-bundle-seeds.md](docs/planning/2026-09-06_deferred-bundle-seeds.md):
+Postgres claim SQL sketch (D80), the internal→public promotion order (D82),
+cron recurring tasks via time-bucketed dedup keys (D83), per-repo timeout
+ladders (D90), session chains (D94), cross-repo DAG templates (D97), the
+AI prioritizer hook (D98), retry-policy table (D99), fencing-token design
+note (D100), and DB rotation/backup guidance (D96).

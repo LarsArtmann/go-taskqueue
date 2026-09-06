@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Deferred-bundle seeds (plan C27): structured result self-report from
+  agents (`TQ_RESULT:` line → `files_changed`/`commit_sha` in the result
+  detail), full-output sidecar logs (`TQ_LOG_DIR`), `tq harvest --json` and
+  `--repo-subset` glob, `tq dlq --rescue-all --older-than`, a guard that
+  refuses `--projects-dir /` or the home directory with remediation, and a
+  PoC server (`examples/api`: enqueue endpoint, Prometheus `/metrics`, live
+  stats page) next to the SSE stream PoC (`examples/sse`) and the
+  PR-mode/worktree PoC scripts; sketches for the rest in
+  `docs/planning/2026-09-06_deferred-bundle-seeds.md`
 - Tooling policy decided and enforced: golangci-lint is CI-gated
   (`.golangci.yml` with errcheck exclusions for idiomatic deferred Close and
   HTTP body/rows Close), dprint joins the flake devShell and the living docs
