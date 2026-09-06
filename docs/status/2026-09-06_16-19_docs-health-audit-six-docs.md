@@ -56,7 +56,7 @@ Working tree clean (auto-commit daemon).
      `docs/planning/` pointer; writing ADR-0002 became a TODO_LIST task.
    - Fixed content-ownership violations: feature-status/marketing language
      ("shipped, E2E-verified 2026-09-06") moved to FEATURES/CHANGELOG; the
-     enduring PapDashboard *contract* (flags, env, idempotency, watermark
+     enduring PapDashboard _contract_ (flags, env, idempotency, watermark
      semantics) stayed.
    - Added missing enduring invariants: single serialized SQLite writer
      (`MaxOpenConns(1)` is why claim atomicity works — never add a pool),
@@ -248,58 +248,58 @@ TODO_LIST.md-grade (harvested into TODO_LIST.md this session — listed here
 for one-view completeness; do NOT re-add); ROADMAP-fuel items are marked ◇.
 Impact: Critical/High/Medium/Low. Effort: S <30min, M 30min–2h, L >2h.
 
-| #  | Task                                                                                              | Impact   | Effort | Category      |
-| -- | ------------------------------------------------------------------------------------------------- | -------- | ------ | ------------- |
-| 1  | Verify CQA bridge against a live CQA API; fix contract drift; upgrade FEATURES status              | High     | S      | Quality       |
-| 2  | Re-runnable PapDashboard E2E verification script (owned by the repo, not a session memory)         | Medium   | M      | Quality       |
-| 3  | CI docs-drift guard: `tq harvest --repos . --dry-run` must parse TODO_LIST.md                      | High     | S      | Quality       |
-| 4  | CI ghost-reference guard: every path cited in AGENTS.md/README/FEATURES must exist                 | Medium   | S      | Quality       |
-| 5  | Add `nix build` (+ flake check) to CI so vendorHash drift fails on PR, not on next audit            | High     | S      | Quality       |
-| 6  | Add dprint to flake devShell; run it once over all six living docs                                 | Low      | S      | Cleanup       |
-| 7  | golangci-lint: either CI-gate with errcheck exclusions for idiomatic deferred Close, or drop from CONTRIBUTING | Medium | S   | Cleanup       |
-| 8  | Write `docs/DOMAIN_LANGUAGE.md` (task, fact, claim, lease, release, DLQ, rescue, harvest, dedup key, tick, verify gate) | Medium | M | Documentation |
-| 9  | `doc.go` per package + godoc examples before the module goes public (plan F37)                      | Medium   | M      | Documentation |
-| 10 | FEATURES.md maintenance note: statuses must be re-verified after parallel sessions touch core packages | Low    | S      | Documentation |
-| 11 | ★ Permanent-vs-transient error classes (dirty tree / missing autonomy config / unknown flags dead-letter after one attempt) | High | M | Feature |
-| 12 | ★ Store-level per-project claim exclusivity (`WithProjectExclusivity`)                              | High     | L      | Feature       |
-| 13 | ★ Long-task regression test: task claimed after minutes of pool uptime completes                    | High     | S      | Quality       |
-| 14 | ★ ADR-0002: agent-pool architecture, autonomy/trust model, drain semantics                          | High     | M      | Documentation |
-| 15 | ★ Daily/rolling cost budget per repo and global                                                     | High     | M      | Feature       |
-| 16 | ★ v0.1.0 release prep: history-squash decision, tag, GitHub release, pkg.go.dev                     | High     | M      | Release       |
-| 17 | ★ `tq agent-pool --model` pass-through into AgentPayload                                            | Medium   | S      | Feature       |
-| 18 | ★ `requireRepoAutonomy` false-positive fix (user-global crush permissions)                          | Medium   | S      | Bug           |
-| 19 | ★ Multi-repo live smoke: ≥3 repos, 2 pools, one DB — dedup + pacing under contention                | Medium   | M      | Quality       |
-| 20 | ★ systemd user unit or `tq agent-pool --daemon` for always-on operation                             | Medium   | M      | Feature       |
-| 21 | ★ Verify auto-detection beyond Go/npm or per-repo `.tq-verify`                                      | Medium   | M      | Feature       |
-| 22 | ★ Harvested tasks carry a `verify` command from repo config                                         | Medium   | S      | Feature       |
-| 23 | ★ Harvester per-repo poll interval + DLQ backoff for poisoned repos                                 | Medium   | M      | Feature       |
-| 24 | ★ `tq top` live per-project view                                                                    | Medium   | M      | Feature       |
-| 25 | ★ Agent transcript (crush session id) recorded on completion, linked from `tq show`                 | Medium   | S      | Feature       |
-| 26 | ★ Docs-drift auditor task ("done in code but still unchecked")                                      | Low      | M      | Quality       |
-| 27 | ★ `TestShutdownDrains` claim-window flake fix (await claims, don't sleep)                           | Low      | S      | Quality       |
-| 28 | ★ E2E CLI-as-subprocess test with stub agent binary                                                 | Medium   | M      | Quality       |
-| 29 | ★ Property test: dedup keys stable under reflow, unique across same-text repos                      | Low      | S      | Quality       |
-| 30 | ◇ Cancelled-task dedup semantics decision (park forever vs re-open on next harvest)                 | Medium   | S      | Decision      |
-| 31 | ◇ Cross-repo DAG from harvest (configurable dependency templates)                                   | Medium   | L      | Feature       |
-| 32 | ◇ `tq agent-pool --once` single harvest+drain pass                                                  | Low      | S      | Feature       |
-| 33 | ◇ Structured task result payload {files_changed, commit_sha, verify_output_tail}                    | Medium   | M      | Feature       |
-| 34 | ◇ PR-mode: agents open PRs instead of committing to master                                          | Medium   | L      | Feature       |
-| 35 | ◇ Git worktree isolation option for agents                                                          | Medium   | L      | Feature       |
-| 36 | ◇ Session continuation chains via AgentPayload.Session                                              | Low      | M      | Feature       |
-| 37 | ◇ Rate-limit concurrent crush sessions; crush version detection at pool start                       | Low      | S      | Feature       |
-| 38 | ◇ Output sidecar: full agent stdout to blob file, tail-only in facts                                | Low      | M      | Feature       |
-| 39 | ◇ Prometheus metrics endpoint over the facts projection                                             | Low      | M      | Feature       |
-| 40 | ◇ `tq harvest --json` and `--repo-subset` glob filter                                               | Low      | S      | Feature       |
-| 41 | ◇ Per-repo-size timeout defaults                                                                    | Low      | S      | Feature       |
-| 42 | ◇ `tq dlq --rescue-all --older-than` bulk rescue                                                    | Low      | S      | Feature       |
-| 43 | ◇ Refuse catastrophic `--projects-dir /` or `$HOME` scans                                           | Medium   | S      | Bug           |
-| 44 | ◇ SECURITY.md: what autonomy grants mean, blast radius of `bash` permission                         | Medium   | S      | Documentation |
-| 45 | ◇ Fuzz the TODO parser (malformed markdown, CRLF, BOM)                                              | Low      | M      | Quality       |
-| 46 | ◇ Windows path handling in harvest; i18n-safe item hashing                                          | Low      | M      | Quality       |
-| 47 | ◇ Queue DB rotation/backup guidance (single file = single point of failure)                         | Low      | S      | Documentation |
-| 48 | ◇ Chaos test: SIGKILL pool mid-agent-run; lease-expiry reclaim, no double-complete                  | Medium   | M      | Quality       |
-| 49 | ◇ Example corpus: runnable `examples/agent-pool/` with `.crushrc` + TODO_LIST.md                    | Low      | M      | Documentation |
-| 50 | ◇ Decide when `internal/` packages become the public importable library API                         | High     | S      | Decision      |
+| #  | Task                                                                                                                        | Impact | Effort | Category      |
+| -- | --------------------------------------------------------------------------------------------------------------------------- | ------ | ------ | ------------- |
+| 1  | Verify CQA bridge against a live CQA API; fix contract drift; upgrade FEATURES status                                       | High   | S      | Quality       |
+| 2  | Re-runnable PapDashboard E2E verification script (owned by the repo, not a session memory)                                  | Medium | M      | Quality       |
+| 3  | CI docs-drift guard: `tq harvest --repos . --dry-run` must parse TODO_LIST.md                                               | High   | S      | Quality       |
+| 4  | CI ghost-reference guard: every path cited in AGENTS.md/README/FEATURES must exist                                          | Medium | S      | Quality       |
+| 5  | Add `nix build` (+ flake check) to CI so vendorHash drift fails on PR, not on next audit                                    | High   | S      | Quality       |
+| 6  | Add dprint to flake devShell; run it once over all six living docs                                                          | Low    | S      | Cleanup       |
+| 7  | golangci-lint: either CI-gate with errcheck exclusions for idiomatic deferred Close, or drop from CONTRIBUTING              | Medium | S      | Cleanup       |
+| 8  | Write `docs/DOMAIN_LANGUAGE.md` (task, fact, claim, lease, release, DLQ, rescue, harvest, dedup key, tick, verify gate)     | Medium | M      | Documentation |
+| 9  | `doc.go` per package + godoc examples before the module goes public (plan F37)                                              | Medium | M      | Documentation |
+| 10 | FEATURES.md maintenance note: statuses must be re-verified after parallel sessions touch core packages                      | Low    | S      | Documentation |
+| 11 | ★ Permanent-vs-transient error classes (dirty tree / missing autonomy config / unknown flags dead-letter after one attempt) | High   | M      | Feature       |
+| 12 | ★ Store-level per-project claim exclusivity (`WithProjectExclusivity`)                                                      | High   | L      | Feature       |
+| 13 | ★ Long-task regression test: task claimed after minutes of pool uptime completes                                            | High   | S      | Quality       |
+| 14 | ★ ADR-0002: agent-pool architecture, autonomy/trust model, drain semantics                                                  | High   | M      | Documentation |
+| 15 | ★ Daily/rolling cost budget per repo and global                                                                             | High   | M      | Feature       |
+| 16 | ★ v0.1.0 release prep: history-squash decision, tag, GitHub release, pkg.go.dev                                             | High   | M      | Release       |
+| 17 | ★ `tq agent-pool --model` pass-through into AgentPayload                                                                    | Medium | S      | Feature       |
+| 18 | ★ `requireRepoAutonomy` false-positive fix (user-global crush permissions)                                                  | Medium | S      | Bug           |
+| 19 | ★ Multi-repo live smoke: ≥3 repos, 2 pools, one DB — dedup + pacing under contention                                        | Medium | M      | Quality       |
+| 20 | ★ systemd user unit or `tq agent-pool --daemon` for always-on operation                                                     | Medium | M      | Feature       |
+| 21 | ★ Verify auto-detection beyond Go/npm or per-repo `.tq-verify`                                                              | Medium | M      | Feature       |
+| 22 | ★ Harvested tasks carry a `verify` command from repo config                                                                 | Medium | S      | Feature       |
+| 23 | ★ Harvester per-repo poll interval + DLQ backoff for poisoned repos                                                         | Medium | M      | Feature       |
+| 24 | ★ `tq top` live per-project view                                                                                            | Medium | M      | Feature       |
+| 25 | ★ Agent transcript (crush session id) recorded on completion, linked from `tq show`                                         | Medium | S      | Feature       |
+| 26 | ★ Docs-drift auditor task ("done in code but still unchecked")                                                              | Low    | M      | Quality       |
+| 27 | ★ `TestShutdownDrains` claim-window flake fix (await claims, don't sleep)                                                   | Low    | S      | Quality       |
+| 28 | ★ E2E CLI-as-subprocess test with stub agent binary                                                                         | Medium | M      | Quality       |
+| 29 | ★ Property test: dedup keys stable under reflow, unique across same-text repos                                              | Low    | S      | Quality       |
+| 30 | ◇ Cancelled-task dedup semantics decision (park forever vs re-open on next harvest)                                         | Medium | S      | Decision      |
+| 31 | ◇ Cross-repo DAG from harvest (configurable dependency templates)                                                           | Medium | L      | Feature       |
+| 32 | ◇ `tq agent-pool --once` single harvest+drain pass                                                                          | Low    | S      | Feature       |
+| 33 | ◇ Structured task result payload {files_changed, commit_sha, verify_output_tail}                                            | Medium | M      | Feature       |
+| 34 | ◇ PR-mode: agents open PRs instead of committing to master                                                                  | Medium | L      | Feature       |
+| 35 | ◇ Git worktree isolation option for agents                                                                                  | Medium | L      | Feature       |
+| 36 | ◇ Session continuation chains via AgentPayload.Session                                                                      | Low    | M      | Feature       |
+| 37 | ◇ Rate-limit concurrent crush sessions; crush version detection at pool start                                               | Low    | S      | Feature       |
+| 38 | ◇ Output sidecar: full agent stdout to blob file, tail-only in facts                                                        | Low    | M      | Feature       |
+| 39 | ◇ Prometheus metrics endpoint over the facts projection                                                                     | Low    | M      | Feature       |
+| 40 | ◇ `tq harvest --json` and `--repo-subset` glob filter                                                                       | Low    | S      | Feature       |
+| 41 | ◇ Per-repo-size timeout defaults                                                                                            | Low    | S      | Feature       |
+| 42 | ◇ `tq dlq --rescue-all --older-than` bulk rescue                                                                            | Low    | S      | Feature       |
+| 43 | ◇ Refuse catastrophic `--projects-dir /` or `$HOME` scans                                                                   | Medium | S      | Bug           |
+| 44 | ◇ SECURITY.md: what autonomy grants mean, blast radius of `bash` permission                                                 | Medium | S      | Documentation |
+| 45 | ◇ Fuzz the TODO parser (malformed markdown, CRLF, BOM)                                                                      | Low    | M      | Quality       |
+| 46 | ◇ Windows path handling in harvest; i18n-safe item hashing                                                                  | Low    | M      | Quality       |
+| 47 | ◇ Queue DB rotation/backup guidance (single file = single point of failure)                                                 | Low    | S      | Documentation |
+| 48 | ◇ Chaos test: SIGKILL pool mid-agent-run; lease-expiry reclaim, no double-complete                                          | Medium | M      | Quality       |
+| 49 | ◇ Example corpus: runnable `examples/agent-pool/` with `.crushrc` + TODO_LIST.md                                            | Low    | M      | Documentation |
+| 50 | ◇ Decide when `internal/` packages become the public importable library API                                                 | High   | S      | Decision      |
 
 **Harvest note:** this session ALREADY harvested the prior report into
 TODO_LIST.md/ROADMAP.md (that is where the ★ items live). Items 1–10 are new
