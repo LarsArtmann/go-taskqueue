@@ -413,3 +413,53 @@ func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 		t.Fatalf("stored %d tasks, want 1", len(tasks))
 	}
 }
+
+func TestFailPermanentDeadLettersImmediately(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	tk, _ := s.Enqueue(ctx, task.New{Type: "broken", MaxAttempts: 5})
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	// The lease guard holds for permanent failures too: only the owner
+	// that claimed the task may dead-letter it.
+	if err := s.FailPermanent(ctx, tk.ID, "w2", "nope"); !errors.Is(err, task.ErrLeaseNotHeld) {
+		t.Fatalf("wrong-owner FailPermanent err = %v, want ErrLeaseNotHeld", err)
+	}
+
+	if err := s.FailPermanent(ctx, tk.ID, "w1", "agent: payload needs repo"); err != nil {
+		t.Fatalf("FailPermanent: %v", err)
+	}
+	got, _ := s.Get(ctx, tk.ID)
+	if got.Status != task.Dead || got.Attempts != 1 || got.MaxAttempts != 1 {
+		t.Fatalf("after FailPermanent: %+v", got)
+	}
+
+	// The dead-letter fact carries the error text and its class, so `tq
+	// facts` can tell "the task is broken" from "the budget ran out".
+	facts, _ := s.Facts(ctx, 0)
+	var dl *journal.Fact
+	for i := range facts {
+		if facts[i].Type == journal.DeadLettered {
+			dl = &facts[i]
+		}
+	}
+	if dl == nil {
+		t.Fatal("no dead-lettered fact recorded")
+	}
+	if dl.Error == "" {
+		t.Error("dead-lettered fact lost the error text")
+	}
+	var detail struct {
+		Class string `json:"class"`
+	}
+	if err := json.Unmarshal(dl.Detail, &detail); err != nil || detail.Class != "permanent" {
+		t.Errorf("dead-letter detail = %s (%v), want class=permanent", dl.Detail, err)
+	}
+
+	// Dead means dead: nothing claimable afterwards.
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, ErrNoTaskDue) {
+		t.Fatalf("dead task claimable: err = %v", err)
+	}
+}

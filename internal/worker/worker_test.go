@@ -261,10 +261,11 @@ func TestShutdownDrains(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	reg := executor.NewRegistry()
-	var finished atomic.Int32
+	firstClaim := make(chan struct{})
+	var claimOnce sync.Once
 	reg.RegisterFunc("job", func(context.Context, task.Task) error {
+		claimOnce.Do(func() { close(firstClaim) })
 		time.Sleep(80 * time.Millisecond)
-		finished.Add(1)
 		return nil
 	})
 
@@ -280,18 +281,12 @@ func TestShutdownDrains(t *testing.T) {
 	runDone := make(chan struct{})
 	go func() { _ = pool.Start(ctx); close(runDone) }()
 
-	time.Sleep(30 * time.Millisecond) // let all three get claimed
-	cancel()                          // graceful stop
-	<-runDone                         // pool fully drained before store cleanup
-	waitFor(t, context.Background(), store, firstID(t, ctx, store), task.Completed, task.Dead)
+	<-firstClaim // a task is claimed and executing; shutdown now races the drain
+	cancel()     // graceful stop
+	<-runDone    // pool fully drained before store cleanup
+	waitFor(t, context.Background(), store, firstID(t, store), task.Completed, task.Dead)
 
 	tasks, _ := store.List(context.Background(), queue.Filter{})
-	completedOrDead := 0
-	for _, tk := range tasks {
-		if tk.Status == task.Completed || tk.Status == task.Dead {
-			completedOrDead++
-		}
-	}
 	// Shutdown mid-run burns attempts (Fail with zero backoff), so tasks may
 	// be pending-retry rather than completed. The invariant: none are stuck
 	// 'running' after the pool exits.
@@ -300,16 +295,60 @@ func TestShutdownDrains(t *testing.T) {
 			t.Fatalf("task %s stuck running after pool exit", tk.ID)
 		}
 	}
-	_ = completedOrDead
 }
 
-func firstID(t *testing.T, ctx context.Context, store queue.Store) task.ID {
+func firstID(t *testing.T, store queue.Store) task.ID {
 	t.Helper()
 	tasks, err := store.List(context.Background(), queue.Filter{})
 	if err != nil || len(tasks) == 0 {
 		t.Fatalf("list: %v (%d tasks)", err, len(tasks))
 	}
 	return tasks[0].ID
+}
+
+// TestLongTaskCompletesAcrossShutdown is the regression test for the drain
+// bug that shipped: pool shutdown used to cancel the task context, so any
+// task running longer than a few seconds was orphaned (no outcome, lease
+// left to expiry). The contract now: shutdown must NOT cancel an executing
+// task; its terminal outcome is still recorded after the pool is gone.
+func TestLongTaskCompletesAcrossShutdown(t *testing.T) {
+	store := testStore(t)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	reg := executor.NewRegistry()
+	execStarted := make(chan struct{})
+	release := make(chan struct{})
+	var sawCtxCancelled atomic.Bool
+	reg.RegisterFunc("long", func(c context.Context, _ task.Task) error {
+		close(execStarted)
+		select {
+		case <-release:
+		case <-c.Done():
+			sawCtxCancelled.Store(true)
+		}
+		return nil
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "long", MaxAttempts: 1})
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 10 * time.Second,
+		Executors: reg,
+	}, quietLog())
+	runDone := make(chan struct{})
+	go func() { _ = pool.Start(ctx); close(runDone) }()
+
+	<-execStarted // task claimed and executing
+	cancel()      // graceful shutdown
+	<-runDone     // pool fully exited while the task is still "running"
+	close(release)
+
+	got := waitFor(t, context.Background(), store, enq.ID, task.Completed)
+	if sawCtxCancelled.Load() {
+		t.Fatal("shutdown cancelled the task context; long tasks would be orphaned")
+	}
+	if got.Status != task.Completed {
+		t.Fatalf("status = %s, want completed after shutdown", got.Status)
+	}
 }
 
 // TestPermanentErrorDeadLettersAfterOneAttempt pins the money rule: a
