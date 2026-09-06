@@ -311,3 +311,60 @@ func firstID(t *testing.T, ctx context.Context, store queue.Store) task.ID {
 	}
 	return tasks[0].ID
 }
+
+// TestPermanentErrorDeadLettersAfterOneAttempt pins the money rule: a
+// permanent error must dead-letter after ONE attempt even with budget left,
+// because retrying an identical input burns identical agent money for
+// nothing.
+func TestPermanentErrorDeadLettersAfterOneAttempt(t *testing.T) {
+	store := testStore(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+	var ran atomic.Int32
+	reg.RegisterFunc("broken", func(context.Context, task.Task) error {
+		ran.Add(1)
+		return executor.Permanent(errors.New("bad payload shape"))
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "broken", MaxAttempts: 5})
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		Executors: reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	got := waitFor(t, ctx, store, enq.ID, task.Dead)
+	cancel()
+	if ran.Load() != 1 {
+		t.Fatalf("executor ran %d times, want exactly 1", ran.Load())
+	}
+	if got.Attempts != 1 {
+		t.Fatalf("attempts = %d, want 1", got.Attempts)
+	}
+	if !strings.Contains(got.LastError, "permanent: bad payload shape") {
+		t.Fatalf("lastError = %q, want permanent class prefix", got.LastError)
+	}
+}
+
+// TestUnknownTaskTypeDeadLettersImmediately: no registered executor can ever
+// appear mid-retry, so an unknown type must not exhaust the attempt budget.
+func TestUnknownTaskTypeDeadLettersImmediately(t *testing.T) {
+	store := testStore(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		Executors: executor.NewRegistry(),
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "mystery", MaxAttempts: 9})
+	got := waitFor(t, ctx, store, enq.ID, task.Dead)
+	cancel()
+	if got.Attempts != 1 {
+		t.Fatalf("attempts = %d, want 1 (unknown type is permanent)", got.Attempts)
+	}
+}

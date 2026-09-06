@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -223,5 +224,66 @@ func TestAgentExecutorYoloWithoutRepoAutonomyFailsFast(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(repo, "ran.txt")); err == nil {
 		t.Fatal("agent ran despite missing autonomy config")
+	}
+}
+
+// TestAgentInputContractMissesArePermanent pins the money-saving rule: any
+// failure that a retry would reproduce verbatim must come back as a
+// *PermanentError so the worker dead-letters after ONE attempt.
+func TestAgentInputContractMissesArePermanent(t *testing.T) {
+	ctx := context.Background()
+	e := &AgentExecutor{}
+
+	cases := []struct {
+		name string
+		tk   task.Task
+	}{
+		{"empty payload", task.Task{Type: TaskTypeAgent}},
+		{"bad json", task.Task{Type: TaskTypeAgent, Payload: []byte("{oops")}},
+		{"missing repo field", task.Task{Type: TaskTypeAgent, Payload: []byte(`{"prompt":"p"}`)}},
+	}
+	for _, tc := range cases {
+		err := e.Execute(ctx, tc.tk)
+		if _, ok := errors.AsType[*PermanentError](err); !ok {
+			t.Errorf("%s: want permanent, got %v", tc.name, err)
+		}
+	}
+
+	missingDir := filepath.Join(t.TempDir(), "missing")
+	payload, _ := RenderAgentPayload(AgentPayload{Repo: missingDir, Prompt: "hi"})
+	if _, ok := errors.AsType[*PermanentError](e.Execute(ctx, task.Task{Type: TaskTypeAgent, Payload: payload})); !ok {
+		t.Error("missing repo dir: want permanent (retrying cannot create it)")
+	}
+
+	// Agent-run and verify failures stay transient: a fresh attempt is the fix.
+	repo := t.TempDir()
+	flaky := &AgentExecutor{Bin: makeStubAgent(t, "false")}
+	if _, ok := errors.AsType[*PermanentError](flaky.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))); ok {
+		t.Error("agent run failure must stay transient")
+	}
+	verifyFail := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	if _, ok := errors.AsType[*PermanentError](verifyFail.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: "false"}))); ok {
+		t.Error("verify failure must stay transient")
+	}
+}
+
+// TestAgentDirtyTreeAndAutonomyArePermanent extends the dirty-tree and
+// autonomy guards: both refusals are input-contract misses, so both must be
+// the permanent class.
+func TestAgentDirtyTreeAndAutonomyArePermanent(t *testing.T) {
+	ctx := context.Background()
+	repo := t.TempDir()
+	setupGitRepo(t, repo)
+	if err := os.WriteFile(filepath.Join(repo, "wip.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	if _, ok := errors.AsType[*PermanentError](e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))); !ok {
+		t.Error("dirty tree must be permanent")
+	}
+
+	autonomyRepo := t.TempDir()
+	if _, ok := errors.AsType[*PermanentError](e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: autonomyRepo, Prompt: "hi", Yolo: true}))); !ok {
+		t.Error("missing autonomy config must be permanent")
 	}
 }

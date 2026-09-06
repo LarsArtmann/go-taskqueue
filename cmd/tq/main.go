@@ -20,6 +20,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/worker"
