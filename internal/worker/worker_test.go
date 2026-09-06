@@ -469,3 +469,39 @@ func TestPreflightRequeuesWithoutAttemptBurn(t *testing.T) {
 	}
 	cancel()
 }
+
+// TestAgentResultDetailStored: on success the executor's structured result
+// (crush session id, verify tail) lands in the task.completed fact detail,
+// so `tq show` can answer "what did the agent do" without log-diving.
+func TestAgentResultDetailStored(t *testing.T) {
+	store := testStore(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+	reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{
+		// The stub prints a session id the extractor must find.
+		Bin: testStubScript(t, "#!/bin/sh\necho 'session: crush-abc-123'\nexit 0\n"),
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Project: "demo", Type: executor.TaskTypeAgent})
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 5 * time.Second,
+		Executors: reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	waitFor(t, ctx, store, enq.ID, task.Completed)
+	cancel()
+
+	facts, _ := store.Facts(context.Background(), 0)
+	for _, f := range facts {
+		if f.Type == "task.completed" && len(f.Detail) > 0 {
+			if !strings.Contains(string(f.Detail), "crush-abc-123") {
+				t.Fatalf("completion detail missing session id: %s", f.Detail)
+			}
+			return
+		}
+	}
+	t.Fatal("completed fact carries no result detail")
+}

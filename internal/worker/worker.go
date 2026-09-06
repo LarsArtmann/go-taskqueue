@@ -196,7 +196,10 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		}
 	}()
 
-	execErr := p.runExecutor(hbCtx, t)
+	// Executors can attach structured outcome detail (agent session id,
+	// verify tail) to the sink; successful completions store it.
+	runCtx, sink := executor.NewSink(hbCtx)
+	execErr := p.runExecutor(runCtx, t)
 	hbCancel()
 	<-hbDone
 
@@ -204,7 +207,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	// so a draining task's outcome is never orphaned by the cancelled pool.
 	terminalCtx := ctx
 	if execErr == nil {
-		if err := p.store.Complete(terminalCtx, t.ID, p.cfg.Owner, nil); err != nil {
+		if err := p.store.Complete(terminalCtx, t.ID, p.cfg.Owner, sink.Detail()); err != nil {
 			p.log.Error("complete failed", "task", t.ID, "err", err)
 		}
 		return

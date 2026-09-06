@@ -142,10 +142,22 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	if err := e.runAgent(runCtx, repoDir, &p); err != nil {
+	output, err := e.runAgent(runCtx, repoDir, &p)
+	if err != nil {
 		return err
 	}
-	return runVerify(runCtx, repoDir, &p)
+	tail, err := runVerify(runCtx, repoDir, &p)
+	if err != nil {
+		return err
+	}
+	// Success: record structured outcome detail for `tq show` (best
+	// effort — a missing session id is not an error).
+	detail, _ := json.Marshal(AgentResult{
+		SessionID:  ExtractSessionID(output),
+		VerifyTail: tail,
+	})
+	SetResultDetail(ctx, detail)
+	return nil
 }
 
 // repoDir resolves a payload repo name: absolute paths pass through,
@@ -192,10 +204,10 @@ func assertCleanTree(ctx context.Context, repo string) error {
 }
 
 // runAgent spawns the headless agent in the repo and waits for it.
-func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload) error {
+func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload) (string, error) {
 	if e.Yolo || p.Yolo {
 		if err := requireRepoAutonomy(repoDir); err != nil {
-			return err
+			return "", err
 		}
 	}
 	args := []string{"run", "--quiet", "--cwd", repoDir}
@@ -219,20 +231,20 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	if err := cmd.Run(); err != nil {
 		tail := tailBytes(buf.Bytes(), 8192)
 		if ctx.Err() != nil {
-			return fmt.Errorf("agent run cancelled (%v): %s", ctx.Err(), tail)
+			return "", fmt.Errorf("agent run cancelled (%v): %s", ctx.Err(), tail)
 		}
-		return fmt.Errorf("agent run failed: %w: %s", err, tail)
+		return "", fmt.Errorf("agent run failed: %w: %s", err, tail)
 	}
-	return nil
+	return buf.String(), nil
 }
 
 // runVerify enforces the quality gate after the agent exited cleanly. The
 // repo's .tq-verify file wins over everything (the repo is the source of
 // truth for how it proves itself), then the payload, then auto-detect.
-func runVerify(ctx context.Context, repoDir string, p *AgentPayload) error {
+func runVerify(ctx context.Context, repoDir string, p *AgentPayload) (string, error) {
 	verify := verifyFor(repoDir, p)
 	if verify == "" {
-		return nil // nothing to verify (unknown stack, no explicit command)
+		return "", nil // nothing to verify (unknown stack, no explicit command)
 	}
 	cmd := exec.CommandContext(ctx, "sh", "-c", verify)
 	cmd.Dir = repoDir
@@ -244,11 +256,11 @@ func runVerify(ctx context.Context, repoDir string, p *AgentPayload) error {
 	if err := cmd.Run(); err != nil {
 		tail := tailBytes(buf.Bytes(), 4096)
 		if ctx.Err() != nil {
-			return fmt.Errorf("agent verify cancelled (%v): %s", ctx.Err(), tail)
+			return "", fmt.Errorf("agent verify cancelled (%v): %s", ctx.Err(), tail)
 		}
-		return fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
+		return "", fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
 	}
-	return nil
+	return tailBytes(buf.Bytes(), 2048), nil
 }
 
 // userGlobalCrushConfig reports whether a user-global crush config exists:

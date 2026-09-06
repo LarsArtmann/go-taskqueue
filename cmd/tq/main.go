@@ -638,13 +638,30 @@ func cmdShow(args []string) error {
 	}
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
-	t, err := s.Get(context.Background(), task.ID(fs.Arg(0)))
+	ctx := context.Background()
+	t, err := s.Get(ctx, task.ID(fs.Arg(0)))
 	if err != nil {
 		return err
 	}
+	// Include the task's fact trail: for completed agent tasks this is
+	// where the structured result detail lives (session id, verify tail).
+	facts, err := s.Facts(ctx, 0)
+	if err != nil {
+		return err
+	}
+	id := t.ID.String()
+	var trail []journal.Fact
+	for _, f := range facts {
+		if f.TaskID == id {
+			trail = append(trail, f)
+		}
+	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
-	return enc.Encode(t)
+	return enc.Encode(struct {
+		Task  task.Task      `json:"task"`
+		Facts []journal.Fact `json:"facts,omitempty"`
+	}{t, trail})
 }
 
 func cmdDLQ(args []string) error {
