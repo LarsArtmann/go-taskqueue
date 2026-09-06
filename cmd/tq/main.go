@@ -28,8 +28,8 @@ const usage = `tq — projects-aware task work queue
 Usage:
   tq enqueue --type TYPE [--project P] [--payload JSON] [--deps id,...] [--priority N]
             [--max-attempts N] [--delay DUR] [--db PATH]
-  tq worker [--concurrency N] [--db PATH] [--poll DUR] [--lease DUR]
-            [--alert-url URL [--alert-api-key K]] [--agents [--yolo]]
+  tq worker [--concurrency N] [--agents [--yolo]] [--db PATH] [--poll DUR] [--lease DUR]
+           [--task-timeout DUR] [--alert-url URL [--alert-api-key K]]
   tq harvest [--dir DIR] [--todo-file F] [--type T] [--max-per-tick N]
             [--dry-run] [--no-require-clean] [--db PATH]
   tq supervise [--every DUR] [--concurrency N] [--projects-dir DIR] [--yolo]
@@ -235,173 +235,6 @@ func cmdWorker(args []string) error {
 	return pool.Start(ctx)
 }
 
-// harvestSourceFlags registers the backlog-source flags shared by harvest and
-// agent-pool: where repos live and how fast the pool may feed on them.
-type harvestSource struct {
-	projectsDir *string
-	repos       *string
-	maxPerTick  *int
-	maxAttempts *int
-	allowDirty  *bool
-}
-
-func harvestSourceFlags(fs *flag.FlagSet) harvestSource {
-	return harvestSource{
-		projectsDir: fs.String("projects-dir", defaultProjectsDir(),
-			"dir containing repos with TODO_LIST.md (default $TQ_PROJECTS_DIR or ~/projects)"),
-		repos:      fs.String("repos", "", "comma-separated repo dirs (overrides --projects-dir)"),
-		maxPerTick: fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per harvest tick (cost throttle)"),
-		maxAttempts: fs.Int("max-attempts", 0, "attempt budget for harvested tasks (default 3)"),
-		allowDirty: fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)"),
-	}
-}
-
-func (src harvestSource) config() (harvest.Config, error) {
-	cfg := harvest.Config{
-		ProjectsDir:  *src.projectsDir,
-		MaxPerTick:   *src.maxPerTick,
-		MaxAttempts:  *src.maxAttempts,
-	}
-	if *src.allowDirty {
-		no := false
-		cfg.RequireClean = &no
-	}
-	if *src.repos != "" {
-		cfg.ProjectsDir = ""
-		for r := range strings.SplitSeq(*src.repos, ",") {
-			if r = strings.TrimSpace(r); r != "" {
-				cfg.Repos = append(cfg.Repos, r)
-			}
-		}
-	}
-	if cfg.ProjectsDir == "" && len(cfg.Repos) == 0 {
-		return harvest.Config{}, fmt.Errorf("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
-	}
-	return cfg, nil
-}
-
-func cmdHarvest(args []string) error {
-	fs := flag.NewFlagSet("harvest", flag.ExitOnError)
-	src := harvestSourceFlags(fs)
-	dryRun := fs.Bool("dry-run", false, "report what would be enqueued, change nothing")
-	db := dbFlag(fs)
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	cfg, err := src.config()
-	if err != nil {
-		return err
-	}
-	cfg.DryRun = *dryRun
-
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
-	res, err := harvest.New(queue.New(s), cfg).Run(context.Background())
-	if err != nil {
-		return err
-	}
-	for _, en := range res.Enqueued {
-		id := en.TaskID.String()
-		if *dryRun {
-			id = "(dry-run)"
-		}
-		fmt.Printf("ENQUEUED  %-20s %s  %s\n", en.Item.RepoName, en.Item.Text, id)
-	}
-	for _, sk := range res.Skipped {
-		fmt.Printf("SKIP      %-20s %s  — %s\n", sk.Item.RepoName, sk.Item.Text, sk.Reason)
-	}
-	fmt.Printf("\nsummary: repos=%d items=%d enqueued=%d skipped=%d\n", res.Repos, res.Items, len(res.Enqueued), len(res.Skipped))
-	return nil
-}
-
-// cmdAgentPool is the self-managing loop in one process: it repeatedly
-// harvests TODO_LIST.md backlogs into the queue (paced: one in-flight item
-// per repo) and runs a worker pool whose "agent" executor drives headless
-// crush agents that do the work, verify it, and close the loop in the todo
-// file. Ctrl-C drains gracefully, like tq worker.
-func cmdAgentPool(args []string) error {
-	fs := flag.NewFlagSet("agent-pool", flag.ExitOnError)
-	src := harvestSourceFlags(fs)
-	interval := fs.Duration("interval", 5*time.Minute, "harvest cadence")
-	conc := fs.Int("concurrency", 1, "parallel agents (repos are serialized: one in-flight item per repo)")
-	poll := fs.Duration("poll", 500*time.Millisecond, "idle poll interval")
-	lease := fs.Duration("lease", 5*time.Minute, "claim lease length (agents are slow; heartbeats keep it alive)")
-	timeout := fs.Duration("task-timeout", 45*time.Minute, "per-agent timeout (agent run + verify)")
-	owner := fs.String("owner", "", "lease owner identity")
-	yolo := fs.Bool("yolo", false, "agents auto-accept all permissions — required for unattended pools whose items need writes/commits")
-	db := dbFlag(fs)
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-	cfg, err := src.config()
-	if err != nil {
-		return err
-	}
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
-
-	reg := executor.NewRegistry()
-	reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{ProjectsDir: *src.projectsDir, Yolo: *yolo})
-	reg.Register("sh", executor.NewCommandExecutor(""))
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	log := slog.Default()
-	h := harvest.New(queue.New(s), cfg)
-	runHarvest := func() {
-		res, err := h.Run(ctx)
-		if err != nil {
-			log.Error("harvest failed", "err", err)
-			return
-		}
-		for _, en := range res.Enqueued {
-			log.Info("harvest: enqueued", "repo", en.Item.RepoName, "item", en.Item.Text, "task", en.TaskID.String())
-		}
-		for class, n := range groupedSkips(res.Skipped) {
-			log.Info("harvest: skipped", "reason", class, "count", n)
-		}
-		log.Info("harvest tick done", "repos", res.Repos, "items", res.Items,
-			"enqueued", len(res.Enqueued), "skipped", len(res.Skipped))
-	}
-	go func() {
-		runHarvest()
-		ticker := time.NewTicker(*interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				runHarvest()
-			}
-		}
-	}()
-
-	pool := worker.New(s, worker.Config{
-		Owner:        *owner,
-		Concurrency:  *conc,
-		PollInterval: *poll,
-		Lease:        *lease,
-		TaskTimeout:  *timeout,
-		Executors:    reg,
-	}, log)
-	return pool.Start(ctx)
-}
-
-// groupedSkips counts skip reasons by their stable class (text before ':').
-func groupedSkips(skips []harvest.Skipped) map[string]int {
-	groups := make(map[string]int)
-	for _, sk := range skips {
-		class := sk.Reason
-		if before, _, ok := strings.Cut(sk.Reason, ":"); ok {
-			class = before
-		}
-		groups[class]++
-	}
-	return groups
-}
-
 // defaultProjectsDir resolves the agent projects root: $TQ_PROJECTS_DIR or
 // ~/projects.
 func defaultProjectsDir() string {
@@ -417,72 +250,192 @@ func defaultProjectsDir() string {
 
 func cmdHarvest(args []string) error {
 	fs := flag.NewFlagSet("harvest", flag.ExitOnError)
-	dir := fs.String("dir", defaultProjectsDir(), "projects dir to scan (depth 1) for backlog files")
-	repos := fs.String("repos", "", "comma-separated explicit repo dirs (overrides --dir)")
+	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "dir containing repos with TODO_LIST.md (default $TQ_PROJECTS_DIR or ~/projects)")
+	repos := fs.String("repos", "", "comma-separated repo dirs (overrides --projects-dir)")
 	todoFile := fs.String("todo-file", harvest.DefaultTodoFile, "backlog file name inside each repo")
 	taskType := fs.String("type", harvest.DefaultType, "task type to enqueue")
-	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "cap on new tasks per run (cost throttle)")
+	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per run (cost throttle)")
 	priority := fs.Int("priority", 0, "priority for enqueued tasks")
 	maxAttempts := fs.Int("max-attempts", 0, "attempt budget (0 = store default)")
-	noClean := fs.Bool("no-require-clean", false, "let agents run on dirty git trees (default: refuse)")
-	dryRun := fs.Bool("dry-run", false, "report what would be enqueued without writing")
+	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
+	dryRun := fs.Bool("dry-run", false, "report what would be enqueued, change nothing")
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
+	if *projectsDir == "" && *repos == "" {
+		return fmt.Errorf("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
+	}
 
 	cfg := harvest.Config{
-		ProjectsDir:  *dir,
+		ProjectsDir:  *projectsDir,
 		TodoFile:     *todoFile,
 		Type:         *taskType,
 		MaxPerTick:   *maxPerTick,
 		Priority:     *priority,
 		MaxAttempts:  *maxAttempts,
 		DryRun:       *dryRun,
-		RequireClean: boolPtrFlag(!*noClean),
+	}
+	if *allowDirty {
+		no := false
+		cfg.RequireClean = &no
 	}
 	if *repos != "" {
-		cfg.Repos = strings.Split(*repos, ",")
+		cfg.ProjectsDir = ""
+		for r := range strings.SplitSeq(*repos, ",") {
+			if r = strings.TrimSpace(r); r != "" {
+				cfg.Repos = append(cfg.Repos, r)
+			}
+		}
 	}
-	if *dryRun {
-		fmt.Println("tq: dry run — nothing is enqueued")
-	}
+
+	s := mustOpenDB(resolveDB(*db))
+	defer s.Close()
 	res, err := harvest.New(queue.New(s), cfg).Run(context.Background())
 	if err != nil {
 		return err
 	}
 	printHarvestResult(res)
+	for _, en := range res.Enqueued {
+		id := en.TaskID.String()
+		if *dryRun {
+			id = "(dry-run)"
+		}
+		fmt.Printf("ENQUEUED  %-24s %s  %s
+", en.Item.RepoName, en.Item.Text, id)
+	}
+	for _, sk := range res.Skipped {
+		fmt.Printf("SKIP      %-24s %s  — %s
+", sk.Item.RepoName, sk.Item.Text, sk.Reason)
+	}
 	return nil
 }
 
-// cmdSupervise is the self-managing agent pool in one process: a worker pool
-// with the agent executor registered, plus a periodic harvest pass that keeps
-// feeding it every repo's open backlog items.
-func cmdSupervise(args []string) error {
-	fs := flag.NewFlagSet("supervise", flag.ExitOnError)
-	every := fs.Duration("every", 15*time.Minute, "harvest interval")
-	conc := fs.Int("concurrency", 2, "parallel agents")
-	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "projects dir: repos for agents + harvest scan root")
-	yolo := fs.Bool("yolo", false, "agents auto-accept all permissions (operator decision)")
-	timeout := fs.Duration("task-timeout", 45*time.Minute, "per-task timeout (agent-sized)")
-	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "cap on new tasks per harvest pass")
-	poll := fs.Duration("poll", 250*time.Millisecond, "idle poll interval")
-	lease := fs.Duration("lease", 2*time.Minute, "claim lease length")
+// cmdAgentPool is the self-managing loop in one process: it repeatedly
+// harvests TODO_LIST.md backlogs into the queue (paced: one in-flight item
+// per repo), optionally ingests Code-Quality-Agent scan findings as fix
+// tasks, and runs a worker pool whose "agent" executor drives headless crush
+// agents that do the work, verify it, and close the loop in the todo file.
+// Ctrl-C drains gracefully, like tq worker.
+func cmdAgentPool(args []string) error {
+	fs := flag.NewFlagSet("agent-pool", flag.ExitOnError)
+	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "dir containing repos (default $TQ_PROJECTS_DIR or ~/projects)")
+	repos := fs.String("repos", "", "comma-separated repo dirs (overrides --projects-dir)")
+	interval := fs.Duration("interval", 5*time.Minute, "harvest cadence")
+	conc := fs.Int("concurrency", 1, "parallel agents (repos are paced: one in-flight backlog item per repo)")
+	poll := fs.Duration("poll", 500*time.Millisecond, "idle poll interval")
+	lease := fs.Duration("lease", 5*time.Minute, "claim lease length (agents are slow; heartbeats keep it alive)")
+	timeout := fs.Duration("task-timeout", 45*time.Minute, "per-agent timeout (agent run + verify)")
 	owner := fs.String("owner", "", "lease owner identity")
+	yolo := fs.Bool("yolo", false, "agents auto-accept all permissions — required for unattended pools whose items need writes/commits")
+	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per harvest tick (cost throttle)")
+	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
+	cqaURL := fs.String("cqa-url", os.Getenv("CQA_URL"), "Code-Quality-Agent API base URL: latest scans' fixable findings become fix tasks each tick")
+	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
+	cqaToken := fs.String("cqa-token", os.Getenv("CQA_TOKEN"), "CQA bearer token")
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	if *projectsDir == "" && *repos == "" {
+		return fmt.Errorf("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
+	}
+
+	cfg := harvest.Config{ProjectsDir: *projectsDir, MaxPerTick: *maxPerTick}
+	if *allowDirty {
+		no := false
+		cfg.RequireClean = &no
+	}
+	if *repos != "" {
+		cfg.ProjectsDir = ""
+		for r := range strings.SplitSeq(*repos, ",") {
+			if r = strings.TrimSpace(r); r != "" {
+				cfg.Repos = append(cfg.Repos, r)
+			}
+		}
+	}
+
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+	q := queue.New(s)
 
 	reg := executor.NewRegistry()
 	reg.Register("sh", executor.NewCommandExecutor(""))
 	reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
-	fmt.Fprintf(os.Stderr, "tq: supervise: pool of %d agents over %s (autonomy: yolo=%v, harvest every %s, dirty repos skipped, verify enforced)\n",
-		*conc, *projectsDir, *yolo, *every)
+	fmt.Fprintf(os.Stderr, "tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, harvest every %s, verify enforced)
+",
+		*conc, repoRootDesc(*projectsDir, *repos), *yolo, *allowDirty, *interval)
+	if *cqaURL != "" {
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick
+", *cqaURL)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	log := slog.Default()
+	h := harvest.New(q, cfg)
+	var cqaBridge *cqa.Bridge
+	if *cqaURL != "" {
+		cqaBridge = cqa.New(cqa.Config{
+			BaseURL:     *cqaURL,
+			Token:       *cqaToken,
+			OwnerID:     *cqaOwner,
+			ProjectsDir: *projectsDir,
+		})
+	}
+
+	runTick := func() {
+		res, err := h.Run(ctx)
+		if err != nil {
+			log.Error("harvest failed", "err", err)
+		} else {
+			for _, en := range res.Enqueued {
+				log.Info("harvest: enqueued", "repo", en.Item.RepoName, "item", en.Item.Text, "task", en.TaskID.String())
+			}
+			for class, n := range groupedSkips(res.Skipped) {
+				log.Info("harvest: skipped", "reason", class, "count", n)
+			}
+			log.Info("harvest tick done", "repos", res.Repos, "items", res.Items,
+				"enqueued", len(res.Enqueued), "skipped", len(res.Skipped))
+		}
+		if cqaBridge == nil {
+			return
+		}
+		fixTasks, err := cqaBridge.Collect(ctx)
+		if err != nil {
+			log.Error("cqa ingest failed", "err", err)
+			return
+		}
+		fresh := 0
+		for _, ft := range fixTasks {
+			got, err := q.Enqueue(ctx, ft.Template)
+			if err != nil {
+				log.Error("cqa enqueue failed", "key", ft.Template.DedupKey, "err", err)
+				continue
+			}
+			if got.Attempts == 0 && got.Status == task.Pending {
+				fresh++
+				log.Info("cqa: enqueued fix task", "repo", ft.Project, "file", ft.File, "issues", len(ft.Issues), "task", got.ID.String())
+			}
+		}
+		if len(fixTasks) > 0 {
+			log.Info("cqa tick done", "files", len(fixTasks), "new", fresh)
+		}
+	}
+	go func() {
+		runTick()
+		ticker := time.NewTicker(*interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				runTick()
+			}
+		}
+	}()
 
 	pool := worker.New(s, worker.Config{
 		Owner:        *owner,
@@ -491,53 +444,34 @@ func cmdSupervise(args []string) error {
 		Lease:        *lease,
 		TaskTimeout:  *timeout,
 		Executors:    reg,
-	}, nil)
-	h := harvest.New(queue.New(s), harvest.Config{
-		ProjectsDir: *projectsDir,
-		MaxPerTick:  *maxPerTick,
-	})
+	}, log)
+	return pool.Start(ctx)
+}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	poolDone := make(chan error, 1)
-	go func() { poolDone <- pool.Start(ctx) }()
-
-	runHarvest := func() {
-		res, err := h.Run(ctx)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "tq: harvest failed:", err)
-			return
-		}
-		printHarvestResult(res)
+func repoRootDesc(projectsDir, repos string) string {
+	if repos != "" {
+		return repos
 	}
-	runHarvest() // immediate first pass, then on every tick
-	ticker := time.NewTicker(*every)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			fmt.Fprintln(os.Stderr, "tq: supervise: shutting down, draining in-flight agents...")
-			return <-poolDone
-		case <-ticker.C:
-			runHarvest()
+	return projectsDir
+}
+
+// groupedSkips counts skip reasons by their stable class (text before ':').
+func groupedSkips(skips []harvest.Skipped) map[string]int {
+	groups := make(map[string]int)
+	for _, sk := range skips {
+		class := sk.Reason
+		if before, _, ok := strings.Cut(sk.Reason, ":"); ok {
+			class = before
 		}
+		groups[class]++
 	}
+	return groups
 }
 
 func printHarvestResult(res harvest.Result) {
-	fmt.Printf("tq: harvest: %d repos, %d open items, %d newly enqueued, %d skipped (%d in DLQ)\n",
-		res.Repos, res.Items, len(res.Enqueued), len(res.Skipped), countDLQ(res))
-}
-
-func countDLQ(res harvest.Result) int {
-	n := 0
-	for _, sk := range res.Skipped {
-		if strings.Contains(sk.Reason, "DLQ") {
-			n++
-		}
-	}
-	return n
+	fmt.Printf("tq: harvest: %d repos, %d open items, %d newly enqueued, %d skipped
+",
+		res.Repos, res.Items, len(res.Enqueued), len(res.Skipped))
 }
 
 func boolPtrFlag(b bool) *bool { return &b }
