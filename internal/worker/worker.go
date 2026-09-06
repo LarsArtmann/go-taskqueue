@@ -89,15 +89,16 @@ func New(store queue.Store, cfg Config, log *slog.Logger) *Pool {
 }
 
 // Start launches the pool; it blocks the caller until ctx is cancelled, then
-// drains in-flight tasks and returns. Store writes during drain use a fresh
-// background context so a cancelled parent cannot orphan a running task's
-// terminal state.
+// drains in-flight tasks and returns. Tasks execute under a context that is
+// NOT cancelled by pool shutdown (bounded only by TaskTimeout), so a
+// graceful stop lets agents finish; terminal store writes use that same
+// uncancellable context so a cancelled parent cannot orphan a running task's
+// outcome. Stop waiting with a second Ctrl-C (SIGKILL) if truly urgent.
 func (p *Pool) Start(ctx context.Context) error {
-	drainCtx, drainCancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
-	defer drainCancel()
+	taskCtx := context.WithoutCancel(ctx)
 	for range p.cfg.Concurrency {
 		p.wg.Add(1)
-		go p.loop(ctx, drainCtx)
+		go p.loop(ctx, taskCtx)
 	}
 	<-ctx.Done()
 	p.Stop()
@@ -117,7 +118,7 @@ func (p *Pool) InFlight() int {
 	return len(p.inFlight)
 }
 
-func (p *Pool) loop(ctx, drainCtx context.Context) {
+func (p *Pool) loop(ctx, taskCtx context.Context) {
 	defer p.wg.Done()
 	for {
 		select {
@@ -138,11 +139,15 @@ func (p *Pool) loop(ctx, drainCtx context.Context) {
 			}
 			continue
 		}
-		p.execute(ctx, drainCtx, t)
+		p.execute(taskCtx, t)
 	}
 }
 
-func (p *Pool) execute(ctx, drainCtx context.Context, t task.Task) {
+// execute runs one claimed task under taskCtx. taskCtx survives pool shutdown
+// (see Start): execution, heartbeats, and the terminal Complete/Fail write all
+// use it, so a draining task keeps its lease and records its outcome. A worker
+// that dies anyway loses its lease to expiry reclaim — at-least-once.
+func (p *Pool) execute(ctx context.Context, t task.Task) {
 	p.mu.Lock()
 	p.inFlight[t.ID] = struct{}{}
 	p.mu.Unlock()
@@ -152,8 +157,9 @@ func (p *Pool) execute(ctx, drainCtx context.Context, t task.Task) {
 		p.mu.Unlock()
 	}()
 
-	// Heartbeat ticker: extends the lease while execution runs.
-	hbCtx, hbCancel := context.WithCancel(drainCtx)
+	// Heartbeat ticker: extends the lease while execution runs. Parented on the
+	// shutdown-surviving task context so draining tasks keep their lease.
+	hbCtx, hbCancel := context.WithCancel(ctx)
 	defer hbCancel()
 	hbDone := make(chan struct{})
 	go func() {
@@ -181,13 +187,9 @@ func (p *Pool) execute(ctx, drainCtx context.Context, t task.Task) {
 	hbCancel()
 	<-hbDone
 
-	// Terminal writes (Complete/Fail) use the pool context while it is
-	// alive; during shutdown they fall back to the drain window so a task's
-	// terminal state is never orphaned by the cancelled parent.
+	// Terminal writes (Complete/Fail) use the shutdown-surviving task context,
+	// so a draining task's outcome is never orphaned by the cancelled pool.
 	terminalCtx := ctx
-	if ctx.Err() != nil {
-		terminalCtx = drainCtx
-	}
 	if execErr == nil {
 		if err := p.store.Complete(terminalCtx, t.ID, p.cfg.Owner, nil); err != nil {
 			p.log.Error("complete failed", "task", t.ID, "err", err)
@@ -201,9 +203,10 @@ func (p *Pool) execute(ctx, drainCtx context.Context, t task.Task) {
 		return
 	}
 	if errors.Is(execErr, context.Canceled) && ctx.Err() != nil {
-		// Pool shutting down mid-task: release without burning an attempt is
-		// not supported by Fail's contract; burn the attempt (crash-safe
-		// equivalent) with a zero backoff so it is immediately reclaimable.
+		// Task context cancelled mid-run (defensive: the task context ignores
+	// pool shutdown; only internal cancellation lands here). Burn the
+	// attempt (crash-safe equivalent) with zero backoff so it is immediately
+		// reclaimable.
 		if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, "worker shutdown: "+execErr.Error(), 0); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)
 		}
