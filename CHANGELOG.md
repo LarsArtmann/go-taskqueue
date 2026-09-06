@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Operator documentation set: `docs/DOMAIN_LANGUAGE.md` (the ubiquitous
+  language: task, fact, claim, lease, tick, drift, catch-up, …), ADR-0002
+  (agent-pool autonomy, pacing, budgets and drain semantics), and SECURITY.md
+  (trust model, blast radius of agent `bash`, hardening checklist)
+- The pool prints an autonomy warning at start under `--yolo`: agents may
+  run shell commands unsandboxed per repo `.crushrc`, with pointers to the
+  budget caps that bound the blast radius
+- Windows/i18n hygiene: `GOOS=windows` build + vet is now a CI gate; golden
+  dedup-key vectors pin non-ASCII item hashing (CJK, emoji, Unicode
+  whitespace collapsing) and keys are proven independent of path spelling,
+  so harvesting a repo via relative or absolute paths never double-enqueues
 - Docs-drift auditor (`tq audit`): compares repos' TODO_LIST.md checkboxes
   with terminal task states and repairs the drift harvest can't see — work
   an agent completed but never ticked off gets a dedup-keyed catch-up task

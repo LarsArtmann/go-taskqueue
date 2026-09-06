@@ -413,6 +413,9 @@ func cmdAgentPool(args []string) error {
 	reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
 	fmt.Fprintf(os.Stderr, "tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, exclusive=%v, harvest every %s, verify enforced)\n",
 		*conc, repoRootDesc(*projectsDir, *repos), *yolo, *allowDirty, *exclusive, *interval)
+	if *yolo {
+		fmt.Fprintf(os.Stderr, "tq: WARNING: autonomy requested — agents may run shell commands unsandboxed in every repo whose .crushrc (or your user-global crush config) grants bash; the trust root is the filesystem. Cap the blast radius with --daily-budget / --budget-cmd and --max-per-tick (see SECURITY.md)\n")
+	}
 	if *cqaURL != "" {
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick\n", *cqaURL)
 	}

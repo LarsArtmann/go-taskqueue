@@ -191,7 +191,8 @@ ghost-reference check. The e2e suite (`internal/e2e`) drives the real `tq`
 binary as a subprocess with a stub agent, so the full agent loop is tested
 in CI at zero API cost. Reproducible builds via `nix build`. Agent sessions
 should read AGENTS.md first; feature status lives in FEATURES.md, upcoming
-work in TODO_LIST.md, and long-term direction in ROADMAP.md.
+work in TODO_LIST.md, long-term direction in ROADMAP.md, and the domain
+vocabulary in docs/DOMAIN_LANGUAGE.md.
 
 ## License
 
