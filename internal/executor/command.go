@@ -43,9 +43,9 @@ func (e *CommandExecutor) Execute(ctx context.Context, t task.Task) error {
 		if ctx.Err() != nil {
 			return fmt.Errorf("command cancelled (%v): %s", ctx.Err(), tail)
 		}
-		// Non-zero exit with no diagnostic is a permanent error — retrying
-		// "exit 2" never helps.
-		return fmt.Errorf("command failed: %v: %s", err, tail)
+		// Non-zero exit is a permanent error — retrying "exit 2" never
+		// helps; the payload decides the outcome, not the environment.
+		return Permanent(fmt.Errorf("command failed: %v: %s", err, tail))
 	}
 	return nil
 }

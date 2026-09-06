@@ -105,27 +105,30 @@ func (e *AgentExecutor) binary() string {
 	return DefaultAgentBinary
 }
 
-// Execute guards the repo, runs the agent, then runs the verify command. Any
-// miss is a failed attempt (the queue retries with backoff, then dead-letters).
+// Execute guards the repo, runs the agent, then runs the verify command.
+// Any miss is a failed attempt (the queue retries with backoff, then
+// dead-letters). Input-contract misses (payload, repo, dirty tree, autonomy)
+// are permanent: the identical retry would fail identically, and for agent
+// tasks every retry is real money.
 func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	var p AgentPayload
 	if len(t.Payload) == 0 {
-		return errors.New("agent: empty payload, want {repo, prompt}")
+		return Permanent(errors.New("agent: empty payload, want {repo, prompt}"))
 	}
 	if err := json.Unmarshal(t.Payload, &p); err != nil {
-		return fmt.Errorf("agent: decode payload: %w", err)
+		return Permanent(fmt.Errorf("agent: decode payload: %w", err))
 	}
 	if p.Repo == "" || p.Prompt == "" {
-		return fmt.Errorf("agent: payload needs non-empty repo and prompt")
+		return Permanent(errors.New("agent: payload needs non-empty repo and prompt"))
 	}
 	repoDir, err := e.repoDir(p.Repo)
 	if err != nil {
-		return err
+		return Permanent(err)
 	}
 	if requireClean(p) {
 		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
 			if err := assertCleanTree(ctx, repoDir); err != nil {
-				return err
+				return Permanent(err)
 			}
 		}
 	}
@@ -257,7 +260,7 @@ func requireRepoAutonomy(repoDir string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("agent: autonomy requested but %s has no project-local crush config; add a .crushrc with 'permissions allow view ls grep edit write bash' (or unset yolo)", repoDir)
+	return Permanent(fmt.Errorf("agent: autonomy requested but %s has no project-local crush config; add a .crushrc with 'permissions allow view ls grep edit write bash' (or unset yolo)", repoDir))
 }
 
 // defaultVerify picks a sensible verification command for a repo.

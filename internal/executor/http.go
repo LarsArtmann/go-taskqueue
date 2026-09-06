@@ -27,24 +27,39 @@ func NewHTTPExecutor(url string) *HTTPExecutor {
 	}
 }
 
-// Execute posts the task envelope.
+// Execute posts the task envelope. Classification: a malformed URL is
+// permanent; transport errors and 408/429/5xx responses are transient; any
+// other non-2xx (404 route, 401 auth, 400 body) is permanent — the same
+// request would fail the same way again.
 func (e *HTTPExecutor) Execute(ctx context.Context, t task.Task) error {
 	body := fmt.Sprintf(`{"id":%q,"project":%q,"type":%q,"payload":%s,"attempt":%d}`,
 		t.ID.String(), t.Project, t.Type, payloadOrEmpty(t.Payload), t.Attempts+1)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.URL, bytes.NewReader([]byte(body)))
 	if err != nil {
-		return fmt.Errorf("http executor: build request: %w", err)
+		return Permanent(fmt.Errorf("http executor: build request: %w", err))
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := e.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("http executor: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return fmt.Errorf("http executor: status %d", resp.StatusCode)
+		if transientStatus(resp.StatusCode) {
+			return fmt.Errorf("http executor: transient status %d", resp.StatusCode)
+		}
+		return Permanent(fmt.Errorf("http executor: status %d", resp.StatusCode))
 	}
 	return nil
+}
+
+// transientStatus reports whether retrying this status can plausibly succeed.
+func transientStatus(code int) bool {
+	switch code {
+	case http.StatusRequestTimeout, http.StatusTooManyRequests:
+		return true
+	}
+	return code >= 500
 }
 
 func payloadOrEmpty(p []byte) string {
