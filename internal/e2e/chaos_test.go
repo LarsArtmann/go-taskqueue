@@ -2,12 +2,13 @@ package e2e
 
 import (
 	"context"
-	"github.com/larsartmann/go-taskqueue/internal/task"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // TestChaosKillWorkerMidRun: a worker SIGKILLed mid-task must leave the
