@@ -60,4 +60,10 @@ vendor/
 go.work
 go.work.sum
 /go-taskqueue
+
+## Nix
+result
+result-*
+.envrc
+.direnv/
 # <<< buildflow-managed (.gitignore) <<<

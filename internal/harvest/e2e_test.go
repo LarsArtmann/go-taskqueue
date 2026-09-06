@@ -102,7 +102,7 @@ func TestSelfManagingLoop(t *testing.T) {
 	if strings.Contains(string(todo), "- [ ]") {
 		t.Fatalf("TODO_LIST.md still has open items:\n%s", todo)
 	}
-	tasks, err := q.List(ctx, queue.Filter{Project: strPtr("loop")})
+	tasks, err := q.List(ctx, queue.Filter{Project: new("loop")})
 	if err != nil || len(tasks) != 2 {
 		t.Fatalf("tasks: %v %d", err, len(tasks))
 	}

@@ -324,7 +324,7 @@ func ParseRepo(repo, todoFile string) ([]Item, error) {
 	var items []Item
 	heading := ""
 	inFence := false
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "```") {
 			inFence = !inFence

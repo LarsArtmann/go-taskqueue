@@ -56,6 +56,7 @@ Nothing is fucked up now (suite green, loop proven). But three things genuinely 
 ## f) Up to 50 things to get done next
 
 Top block (actionable now, high impact):
+
 1. Store-level `WithProjectExclusivity` claim guard (opt-in) — per-repo serialization across ALL pools/processes, not just harvest pacing
 2. Permanent-vs-transient error classes: dirty-tree/unknown-flag/missing-config dead-letter after ONE attempt, no backoff burn
 3. `--model` pass-through: `tq agent-pool --model provider/model` → `AgentPayload.Model` (field exists, wiring missing)

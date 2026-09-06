@@ -168,7 +168,7 @@ func TestRunDedupAcrossTicksAndStatuses(t *testing.T) {
 	if res, _ := h.Run(ctx); len(res.Enqueued) != 1 {
 		t.Fatalf("tick 1: %+v", res.Enqueued)
 	}
-	tasks, err := q.List(ctx, queue.Filter{Project: strPtr("beta")})
+	tasks, err := q.List(ctx, queue.Filter{Project: new("beta")})
 	if err != nil || len(tasks) != 1 {
 		t.Fatalf("list: %v %d", err, len(tasks))
 	}
@@ -239,7 +239,7 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 	// Exhaust attempts: 3 failures → dead.
 	var id task.ID
 	for range 3 {
-		tasks, err := q.List(ctx, queue.Filter{Project: strPtr("gamma")})
+		tasks, err := q.List(ctx, queue.Filter{Project: new("gamma")})
 		if err != nil || len(tasks) != 1 {
 			t.Fatalf("list: %v %d", err, len(tasks))
 		}
@@ -272,7 +272,8 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 	}
 }
 
-func strPtr(s string) *string { return &s }
+//go:fix inline
+func strPtr(s string) *string { return new(s) }
 
 func hasSkip(res Result, substr string) bool {
 	for _, s := range res.Skipped {
