@@ -67,3 +67,7 @@ result-*
 .envrc
 .direnv/
 # <<< buildflow-managed (.gitignore) <<<
+
+# nix build output symlink
+result
+result-*
