@@ -47,16 +47,16 @@ func setupGitRepo(t *testing.T, dir string) {
 	run("commit", "-qm", "init")
 }
 
-func crushTask(t *testing.T, p CrushPayload) task.Task {
+func agentTaskT(t *testing.T, p CrushPayload) task.Task {
 	t.Helper()
 	payload, err := RenderCrushPayload(p)
 	if err != nil {
 		t.Fatalf("render payload: %v", err)
 	}
-	return task.Task{Type: TaskTypeCrush, Payload: payload}
+	return task.Task{Type: TaskTypeAgent, Payload: payload}
 }
 
-func TestCrushExecutorRefusesDirtyTree(t *testing.T) {
+func TestAgentExecutorRefusesDirtyTree(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
 	setupGitRepo(t, repo)
@@ -64,8 +64,8 @@ func TestCrushExecutorRefusesDirtyTree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	e := &CrushExecutor{Binary: makeStubAgent(t, "echo should-not-run > ran.txt")}
-	err := e.Execute(ctx, crushTask(t, CrushPayload{Repo: repo, Prompt: "hi"}))
+	e := &AgentExecutor{Bin: makeStubAgent(t, "echo should-not-run > ran.txt")}
+	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
 	if err == nil || !strings.Contains(err.Error(), "uncommitted changes") {
 		t.Fatalf("want dirty-tree refusal, got %v", err)
 	}
@@ -74,7 +74,7 @@ func TestCrushExecutorRefusesDirtyTree(t *testing.T) {
 	}
 }
 
-func TestCrushExecutorDirtyTreeOverride(t *testing.T) {
+func TestAgentExecutorDirtyTreeOverride(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
 	setupGitRepo(t, repo)
@@ -83,32 +83,32 @@ func TestCrushExecutorDirtyTreeOverride(t *testing.T) {
 	}
 
 	no := false
-	e := &CrushExecutor{Binary: makeStubAgent(t, "true")}
-	if err := e.Execute(ctx, crushTask(t, CrushPayload{Repo: repo, Prompt: "hi", RequireClean: &no})); err != nil {
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	if err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &no})); err != nil {
 		t.Fatalf("Execute with require_clean=false: %v", err)
 	}
 }
 
-func TestCrushExecutorNonGitRepoSkipsCleanCheck(t *testing.T) {
+func TestAgentExecutorNonGitRepoSkipsCleanCheck(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
-	e := &CrushExecutor{Binary: makeStubAgent(t, "true")}
-	if err := e.Execute(ctx, crushTask(t, CrushPayload{Repo: repo, Prompt: "hi"})); err != nil {
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	if err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})); err != nil {
 		t.Fatalf("non-git repo must skip clean check: %v", err)
 	}
 }
 
-func TestCrushExecutorVerifyFailure(t *testing.T) {
+func TestAgentExecutorVerifyFailure(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
-	e := &CrushExecutor{Binary: makeStubAgent(t, "true")}
-	err := e.Execute(ctx, crushTask(t, CrushPayload{Repo: repo, Prompt: "hi", Verify: "false"}))
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: "false"}))
 	if err == nil || !strings.Contains(err.Error(), "verify failed") {
 		t.Fatalf("want verify failure, got %v", err)
 	}
 }
 
-func TestCrushExecutorDefaultVerifyGoRepo(t *testing.T) {
+func TestAgentExecutorDefaultVerifyGoRepo(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
 	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module demo.example.com/x\n\ngo 1.26\n"), 0o644); err != nil {
@@ -118,13 +118,13 @@ func TestCrushExecutorDefaultVerifyGoRepo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	e := &CrushExecutor{Binary: makeStubAgent(t, "true")}
-	if err := e.Execute(ctx, crushTask(t, CrushPayload{Repo: repo, Prompt: "hi"})); err != nil {
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	if err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})); err != nil {
 		t.Fatalf("default go verify should pass on clean module: %v", err)
 	}
 }
 
-func TestCrushExecutorDefaultVerifyDetectsBreakage(t *testing.T) {
+func TestAgentExecutorDefaultVerifyDetectsBreakage(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
 	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module demo.example.com/x\n\ngo 1.26\n"), 0o644); err != nil {
@@ -134,22 +134,22 @@ func TestCrushExecutorDefaultVerifyDetectsBreakage(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Stub agent "breaks" the repo: valid module gains an invalid file.
-	e := &CrushExecutor{Binary: makeStubAgent(t, "echo 'package main func broken {' > broken.go")}
+	e := &AgentExecutor{Bin: makeStubAgent(t, "echo 'package main func broken {' > broken.go")}
 
-	err := e.Execute(ctx, crushTask(t, CrushPayload{Repo: repo, Prompt: "hi"}))
+	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
 	if err == nil || !strings.Contains(err.Error(), "verify failed") {
 		t.Fatalf("want default verify to catch broken go code, got %v", err)
 	}
 }
 
-func TestCrushExecutorContextCancelKillsAgent(t *testing.T) {
+func TestAgentExecutorContextCancelKillsAgent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 	repo := t.TempDir()
 
 	start := time.Now()
-	e := &CrushExecutor{Binary: makeStubAgent(t, "sleep 30")}
-	err := e.Execute(ctx, crushTask(t, CrushPayload{Repo: repo, Prompt: "hi"}))
+	e := &AgentExecutor{Bin: makeStubAgent(t, "sleep 30")}
+	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
 	if err == nil || !strings.Contains(err.Error(), "cancelled") {
 		t.Fatalf("want cancel error, got %v", err)
 	}
@@ -158,7 +158,7 @@ func TestCrushExecutorContextCancelKillsAgent(t *testing.T) {
 	}
 }
 
-func TestCrushPayloadSafetyFieldsRoundTrip(t *testing.T) {
+func TestAgentPayloadSafetyFieldsRoundTrip(t *testing.T) {
 	raw := `{"repo":"/tmp/r","prompt":"p","verify":"go test ./...","require_clean":false,"timeout_minutes":10}`
 	var p CrushPayload
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {

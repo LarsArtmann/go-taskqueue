@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -27,6 +28,7 @@ Usage:
   tq enqueue --type TYPE [--project P] [--payload JSON] [--deps id,...] [--priority N]
             [--max-attempts N] [--delay DUR] [--db PATH]
   tq worker [--concurrency N] [--db PATH] [--poll DUR] [--lease DUR]
+            [--alert-url URL [--alert-api-key K]] [--agents]
   tq stats [--project P] [--status S] [--db PATH] [--json]
   tq show TASK_ID [--db PATH]
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]]
@@ -176,6 +178,9 @@ func cmdWorker(args []string) error {
 	owner := fs.String("owner", "", "lease owner identity")
 	agents := fs.Bool("agents", false, "enable the 'agent' executor: runs a headless AI agent (crush) per task — OPT-IN")
 	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "root dir for relative repo names in agent payloads")
+	alertURL := fs.String("alert-url", os.Getenv("TQ_PAP_URL"), "PapDashboard base URL: dead-lettered tasks raise alerts there (e.g. http://localhost:8080)")
+	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
+	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -203,6 +208,20 @@ func cmdWorker(args []string) error {
 	}, nil)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if *alertURL != "" {
+		bridge := papdashboard.New(s, papdashboard.Config{
+			Endpoint:     *alertURL,
+			APIKey:       *alertKey,
+			PollInterval: *alertPoll,
+		})
+		go func() {
+			if err := bridge.Run(ctx); err != nil {
+				fmt.Fprintln(os.Stderr, "tq: alert bridge failed:", err)
+				stop()
+			}
+		}()
+		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %s\n", *alertURL)
+	}
 	return pool.Start(ctx)
 }
 

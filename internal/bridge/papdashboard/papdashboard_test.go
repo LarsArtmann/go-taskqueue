@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -242,26 +243,21 @@ func TestRunForwardsNewFactsAndStops(t *testing.T) {
 	pap := newFakePap(t)
 	facts, tasks := deadLetterFacts()
 	src := &fakeSource{facts: facts[:1], tasks: tasks}
-	b := New(src, Config{Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 5 * time.Millisecond})
+	b := New(src, Config{Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 2 * time.Millisecond})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- b.Run(ctx) }()
 
+	time.Sleep(20 * time.Millisecond)
+	src.add(facts[1])
+
 	deadline := time.After(2 * time.Second)
 	for len(pap.calls()) == 0 {
 		select {
 		case <-deadline:
-			t.Fatal("bridge never forwarded the fact")
+			t.Fatal("bridge never forwarded the dead-letter fact")
 		case <-time.After(2 * time.Millisecond):
-		}
-		src.add(facts[1])
-		// wait for the poll loop to pick it up
-		for range 200 {
-			if len(pap.calls()) > 0 {
-				break
-			}
-			time.Sleep(2 * time.Millisecond)
 		}
 	}
 

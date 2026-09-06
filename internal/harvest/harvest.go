@@ -70,6 +70,10 @@ type Config struct {
 	Model string
 	// PromptTemplate overrides DefaultPromptTemplate.
 	PromptTemplate string
+	// RequireClean passes the clean-tree policy through to agent payloads:
+	// nil = executor default (require a clean git tree), false lets agents
+	// run on dirty repos (scratch/fixtures only), true forces the check.
+	RequireClean *bool
 	// DryRun reports what a real run would enqueue, without writing to the
 	// queue. Result.Enqueued entries then carry an empty TaskID.
 	DryRun bool
@@ -255,7 +259,6 @@ func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
 		AgentPayload: executor.AgentPayload{
 			Repo:         repo,
 			Prompt:       prompt,
-			Yolo:         h.cfg.Yolo,
 			RequireClean: h.cfg.RequireClean,
 		},
 		Dedup: it.Key,

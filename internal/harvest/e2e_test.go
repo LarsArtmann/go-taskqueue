@@ -51,7 +51,7 @@ func TestSelfManagingLoop(t *testing.T) {
 	q := queue.New(s)
 
 	reg := executor.NewRegistry()
-	reg.Register(harvest.DefaultType, &executor.AgentExecutor{Bin: fakeAgentBin(t), ProjectsDir: projects})
+	reg.Register(DefaultType, &executor.AgentExecutor{Bin: fakeAgentBin(t), ProjectsDir: projects})
 	noClean := false
 	h := New(q, Config{ProjectsDir: projects, RequireClean: &noClean})
 	pool := worker.New(s, worker.Config{
