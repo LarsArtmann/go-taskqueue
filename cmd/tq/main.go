@@ -126,7 +126,18 @@ func cmdEnqueue(args []string) error {
 			raw = b
 		}
 		if !json.Valid(raw) {
-			return fmt.Errorf("payload is not valid JSON: %s", raw)
+			// The shell path takes the payload as the command line itself
+			// (tq enqueue --type sh --payload 'echo hi'), so wrap a non-JSON
+			// payload as a JSON string instead of rejecting it. The stored
+			// payload is always valid JSON.
+			if *taskType != "sh" {
+				return fmt.Errorf("payload is not valid JSON: %s", raw)
+			}
+			wrapped, err := json.Marshal(string(raw))
+			if err != nil {
+				return fmt.Errorf("wrap payload: %w", err)
+			}
+			raw = wrapped
 		}
 		payloadJSON = raw
 	}

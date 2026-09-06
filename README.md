@@ -46,7 +46,8 @@ is unwrapped). Register your own executor types in Go — see
   `priority`, `deps` (task IDs that must complete first), `maxAttempts`,
   `notBefore` (delayed tasks).
 - **Fact** — immutable journal record of everything that happens:
-  `task.enqueued/claimed/completed/failed/dead-lettered/cancelled/rescued/lease-lost`.
+  `task.enqueued/claimed/heartbeat/completed/failed/dead-lettered/cancelled/released`
+  (DLQ rescue records `task.enqueued` again with a `rescue` detail).
   `tq facts` / `tq tail -f` replay the entire history.
 - **Claim / Lease** — a worker claims a due task exclusively; the lease has a
   TTL renewed by heartbeat. If the worker dies, the lease expires and another
