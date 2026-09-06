@@ -25,7 +25,7 @@ func testStore(t *testing.T) queue.Store {
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
-	_ = t.Cleanup(func() { _ = s.Close() })
+	t.Cleanup(func() { _ = s.Close() })
 	return s
 }
 
