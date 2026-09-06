@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/bridge/cqa"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
@@ -30,10 +32,11 @@ Usage:
             [--max-attempts N] [--delay DUR] [--db PATH]
   tq worker [--concurrency N] [--agents [--yolo]] [--db PATH] [--poll DUR] [--lease DUR]
            [--task-timeout DUR] [--alert-url URL [--alert-api-key K]]
-  tq harvest [--dir DIR] [--todo-file F] [--type T] [--max-per-tick N]
-            [--dry-run] [--no-require-clean] [--db PATH]
-  tq supervise [--every DUR] [--concurrency N] [--projects-dir DIR] [--yolo]
-               [--task-timeout DUR] [--max-per-tick N] [--db PATH]
+  tq harvest --projects-dir DIR [--repos a,b] [--max-per-tick N] [--allow-dirty]
+            [--dry-run] [--db PATH]
+  tq agent-pool --projects-dir DIR [--repos a,b] [--interval DUR] [--concurrency N]
+               [--yolo] [--max-per-tick N] [--task-timeout DUR]
+               [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH]
   tq stats [--project P] [--status S] [--db PATH] [--json]
   tq show TASK_ID [--db PATH]
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]]
@@ -57,8 +60,8 @@ func main() {
 		err = cmdWorker(os.Args[2:])
 	case "harvest":
 		err = cmdHarvest(os.Args[2:])
-	case "supervise":
-		err = cmdSupervise(os.Args[2:])
+	case "agent-pool":
+		err = cmdAgentPool(os.Args[2:])
 	case "stats":
 		err = cmdStats(os.Args[2:])
 	case "show":
@@ -268,13 +271,13 @@ func cmdHarvest(args []string) error {
 	}
 
 	cfg := harvest.Config{
-		ProjectsDir:  *projectsDir,
-		TodoFile:     *todoFile,
-		Type:         *taskType,
-		MaxPerTick:   *maxPerTick,
-		Priority:     *priority,
-		MaxAttempts:  *maxAttempts,
-		DryRun:       *dryRun,
+		ProjectsDir: *projectsDir,
+		TodoFile:    *todoFile,
+		Type:        *taskType,
+		MaxPerTick:  *maxPerTick,
+		Priority:    *priority,
+		MaxAttempts: *maxAttempts,
+		DryRun:      *dryRun,
 	}
 	if *allowDirty {
 		no := false
@@ -301,12 +304,10 @@ func cmdHarvest(args []string) error {
 		if *dryRun {
 			id = "(dry-run)"
 		}
-		fmt.Printf("ENQUEUED  %-24s %s  %s
-", en.Item.RepoName, en.Item.Text, id)
+		fmt.Printf("ENQUEUED  %-24s %s  %s\n", en.Item.RepoName, en.Item.Text, id)
 	}
 	for _, sk := range res.Skipped {
-		fmt.Printf("SKIP      %-24s %s  — %s
-", sk.Item.RepoName, sk.Item.Text, sk.Reason)
+		fmt.Printf("SKIP      %-24s %s  — %s\n", sk.Item.RepoName, sk.Item.Text, sk.Reason)
 	}
 	return nil
 }
@@ -362,12 +363,10 @@ func cmdAgentPool(args []string) error {
 	reg := executor.NewRegistry()
 	reg.Register("sh", executor.NewCommandExecutor(""))
 	reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
-	fmt.Fprintf(os.Stderr, "tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, harvest every %s, verify enforced)
-",
+	fmt.Fprintf(os.Stderr, "tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, harvest every %s, verify enforced)\n",
 		*conc, repoRootDesc(*projectsDir, *repos), *yolo, *allowDirty, *interval)
 	if *cqaURL != "" {
-		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick
-", *cqaURL)
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick\n", *cqaURL)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -469,8 +468,7 @@ func groupedSkips(skips []harvest.Skipped) map[string]int {
 }
 
 func printHarvestResult(res harvest.Result) {
-	fmt.Printf("tq: harvest: %d repos, %d open items, %d newly enqueued, %d skipped
-",
+	fmt.Printf("tq: harvest: %d repos, %d open items, %d newly enqueued, %d skipped\n",
 		res.Repos, res.Items, len(res.Enqueued), len(res.Skipped))
 }
 

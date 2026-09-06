@@ -138,11 +138,11 @@ func (p *Pool) loop(ctx, drainCtx context.Context) {
 			}
 			continue
 		}
-		p.execute(drainCtx, t)
+		p.execute(ctx, drainCtx, t)
 	}
 }
 
-func (p *Pool) execute(ctx context.Context, t task.Task) {
+func (p *Pool) execute(ctx, drainCtx context.Context, t task.Task) {
 	p.mu.Lock()
 	p.inFlight[t.ID] = struct{}{}
 	p.mu.Unlock()
@@ -181,8 +181,15 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	hbCancel()
 	<-hbDone
 
+	// Terminal writes (Complete/Fail) use the pool context while it is
+	// alive; during shutdown they fall back to the drain window so a task's
+	// terminal state is never orphaned by the cancelled parent.
+	terminalCtx := ctx
+	if ctx.Err() != nil {
+		terminalCtx = drainCtx
+	}
 	if execErr == nil {
-		if err := p.store.Complete(ctx, t.ID, p.cfg.Owner, nil); err != nil {
+		if err := p.store.Complete(terminalCtx, t.ID, p.cfg.Owner, nil); err != nil {
 			p.log.Error("complete failed", "task", t.ID, "err", err)
 		}
 		return
@@ -197,12 +204,12 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// Pool shutting down mid-task: release without burning an attempt is
 		// not supported by Fail's contract; burn the attempt (crash-safe
 		// equivalent) with a zero backoff so it is immediately reclaimable.
-		if err := p.store.Fail(ctx, t.ID, p.cfg.Owner, "worker shutdown: "+execErr.Error(), 0); err != nil {
+		if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, "worker shutdown: "+execErr.Error(), 0); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)
 		}
 		return
 	}
-	if err := p.store.Fail(ctx, t.ID, p.cfg.Owner, execErr.Error(), p.cfg.Backoff(t.Attempts+1)); err != nil {
+	if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, execErr.Error(), p.cfg.Backoff(t.Attempts+1)); err != nil {
 		p.log.Error("fail failed", "task", t.ID, "err", err)
 	}
 }
