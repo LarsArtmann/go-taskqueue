@@ -472,8 +472,6 @@ func printHarvestResult(res harvest.Result) {
 		res.Repos, res.Items, len(res.Enqueued), len(res.Skipped))
 }
 
-func boolPtrFlag(b bool) *bool { return &b }
-
 func cmdStats(args []string) error {
 	fs := flag.NewFlagSet("stats", flag.ExitOnError)
 	project := fs.String("project", "", "filter by project")

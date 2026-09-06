@@ -204,8 +204,8 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	}
 	if errors.Is(execErr, context.Canceled) && ctx.Err() != nil {
 		// Task context cancelled mid-run (defensive: the task context ignores
-	// pool shutdown; only internal cancellation lands here). Burn the
-	// attempt (crash-safe equivalent) with zero backoff so it is immediately
+		// pool shutdown; only internal cancellation lands here). Burn the
+		// attempt (crash-safe equivalent) with zero backoff so it is immediately
 		// reclaimable.
 		if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, "worker shutdown: "+execErr.Error(), 0); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)

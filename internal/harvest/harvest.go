@@ -199,11 +199,11 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 	for _, it := range items {
 		switch {
 		case it.Key != "" && known[it.Key] != "":
-			st := known[it.Key]
-			reason := "tracked: " + string(st)
-			if st == task.Dead {
+			reason := "tracked: " + string(known[it.Key])
+			switch task.Status(known[it.Key]) {
+			case task.Dead:
 				reason = "in DLQ (tq dlq --rescue to retry)"
-			} else if st == task.Cancelled {
+			case task.Cancelled:
 				reason = "cancelled (edit the item text to re-arm it)"
 			}
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: reason})

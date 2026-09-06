@@ -198,10 +198,7 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got []string
-	for _, line := range strings.Split(strings.TrimRight(string(raw), "\n"), "\n") {
-		got = append(got, line)
-	}
+	got := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
 	want := []string{"run", "--quiet", "--cwd", repo, "--model", "prov/m1", "--", "do it"}
 	if len(got) != len(want) {
 		t.Fatalf("argv = %v, want %v", got, want)
