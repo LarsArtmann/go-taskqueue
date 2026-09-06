@@ -29,14 +29,17 @@
 | Cancellation                                                              | 🟢 `FULLY_FUNCTIONAL` | Pending tasks only; running tasks must fail/complete naturally                       |
 | Append-only fact journal + replay                                         | 🟢 `FULLY_FUNCTIONAL` | `tq facts`, `tq tail -f`; facts written in the same tx as state                      |
 | Per-project stats and filters                                             | 🟢 `FULLY_FUNCTIONAL` | `tq stats [--project] [--json]`, `List` filters                                      |
+| Permanent vs transient error classes                                      | 🟢 `FULLY_FUNCTIONAL` | `executor.PermanentError` → `FailPermanent` dead-letters after ONE attempt; `tq facts` shows `[class=permanent]` |
+| Preflight requeue (no attempt burn)                                       | 🟢 `FULLY_FUNCTIONAL` | `executor.PreflightError` → `Store.Requeue`: pending again, attempts unchanged, `task.requeued` fact |
+| Per-project claim exclusivity (opt-in)                                    | 🟢 `FULLY_FUNCTIONAL` | `WithProjectExclusivity` / `--project-exclusive`; store-level, cross-pool; live-smoked with 2 pools × 3 repos |
 
 ## Executors
 
 | Feature                           | Status                | Notes                                                                                                                                                                     |
 | --------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sh` command executor             | 🟢 `FULLY_FUNCTIONAL` | Payload shapes: raw line, JSON string, `{"cmd":...}`; output tail in errors                                                                                               |
-| HTTP webhook executor             | 🟢 `FULLY_FUNCTIONAL` | POSTs the task envelope; 2xx completes, anything else fails the attempt                                                                                                   |
-| Headless agent executor (`agent`) | 🟢 `FULLY_FUNCTIONAL` | Live-proven end-to-end (2026-09-06); verify gate enforced, clean-tree guard, argv contract test. Gaps: verify auto-detects Go/npm only; Windows has no process-group kill |
+| HTTP webhook executor             | 🟢 `FULLY_FUNCTIONAL` | POSTs the task envelope; 2xx completes; 408/429/5xx retry, other failures dead-letter after one attempt                                                                    |
+| Headless agent executor (`agent`) | 🟢 `FULLY_FUNCTIONAL` | Live-proven end-to-end (2026-09-06); verify gate enforced (`.tq-verify` file wins, then payload, then auto-detect incl. Makefile/flake/cargo), clean-tree guard, argv contract test. Input mistakes dead-letter after one attempt; dirty tree / missing autonomy requeue without attempt burn. Gap: Windows has no process-group kill |
 | Custom Go executors (Registry)    | 🟢 `FULLY_FUNCTIONAL` | 1-method interface + `RegisterFunc`; module-internal until packages go public                                                                                             |
 
 ## Agent pool
@@ -44,8 +47,9 @@
 | Feature                                       | Status                    | Notes                                                                                                                                                                         |
 | --------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Harvest TODO_LIST.md → agent tasks            | 🟢 `FULLY_FUNCTIONAL`     | Checkbox parsing (code-fence aware), stable dedup keys, per-repo pacing, tick cap, dry-run. Proven live (harvest → agent → `[x]` → commit → complete)                         |
-| `tq agent-pool` self-managing loop            | 🟢 `FULLY_FUNCTIONAL`     | Periodic harvest + worker pool in one process; graceful drain lets agents finish. Per-repo serialization relies on harvester pacing only — store-level exclusivity is PLANNED |
-| Autonomy guard (`.crushrc` required for yolo) | 🟢 `FULLY_FUNCTIONAL`     | Fails fast with remediation guidance. Known false positive: repos relying on user-global crush permissions                                                                    |
+| `tq agent-pool` self-managing loop            | 🟢 `FULLY_FUNCTIONAL`     | Periodic harvest + worker pool in one process; graceful drain lets agents finish. `--once` runs one tick and exits (systemd unit in `deploy/systemd/`); store-level per-project exclusivity opt-in (`--project-exclusive`) |
+| Autonomy guard (`.crushrc` required for yolo) | 🟢 `FULLY_FUNCTIONAL`     | Fails fast with remediation guidance; user-global crush config satisfies the probe; refusals requeue without burning an attempt                                              |
+| Cost ceilings (`--daily-budget`, `--budget-cmd`, `--repo-interval`, `--dlq-backoff`) | 🟢 `FULLY_FUNCTIONAL` | Daily cap projected from journal facts; budget command is the final authority; per-repo pacing + poisoned-repo cooldown. Unit-tested + live-smoked                        |
 | CQA findings → fix tasks                      | 🟡 `PARTIALLY_FUNCTIONAL` | `internal/bridge/cqa` groups fixable issues per file, dedup keys include scan ID. httptest-tested only — never verified against a live CQA API                                |
 
 ## Bridges
@@ -58,15 +62,17 @@
 
 | Feature                                                       | Status                | Notes                                               |
 | ------------------------------------------------------------- | --------------------- | --------------------------------------------------- |
-| enqueue / worker / stats / show / dlq / cancel / facts / tail | 🟢 `FULLY_FUNCTIONAL` | `tq worker` runs until signalled (no one-shot mode) |
-| harvest / agent-pool                                          | 🟢 `FULLY_FUNCTIONAL` | See Agent pool; `--dry-run` for preview             |
+| enqueue / worker / stats / show / dlq / cancel / facts / tail | 🟢 `FULLY_FUNCTIONAL` | `tq worker` runs until signalled (no one-shot mode); `tq facts` renders the dead-letter error class |
+| harvest / agent-pool                                          | 🟢 `FULLY_FUNCTIONAL` | See Agent pool; `--dry-run` for preview; `--model`, `--once`, cost ceilings                        |
 
 ## Tooling
 
 | Feature                             | Status                | Notes                                                                                                                 |
 | ----------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Nix flake build + vendor-hash check | 🟢 `FULLY_FUNCTIONAL` | `nix build` produces the `tq` binary (`CGO_ENABLED=0`); `nix flake check` passes including the vendor-hash drift gate |
-| CI (vet, build, test -race, gofmt)  | 🟢 `FULLY_FUNCTIONAL` | `.github/workflows/ci.yml`; runs on every push                                                                        |
+| CI (vet, build, test -race, gofmt)  | 🟢 `FULLY_FUNCTIONAL` | `.github/workflows/ci.yml`; runs on every push; includes TODO_LIST harvest-parse guard + doc ghost-reference check                    |
+| CI nix build + flake check          | 🟢 `FULLY_FUNCTIONAL` | Keyless runner-safe (HTTPS flake inputs); caught the vendor-hash drift class in review, not in production                             |
+| Multi-repo two-pool live smoke      | 🟢 `FULLY_FUNCTIONAL` | `scripts/smoke/multi-repo.sh`: 3 repos, 2 pools, 1 DB — no double-enqueue, one claim per task, both pools work                        |
 
 ## Planned (no code yet)
 
@@ -74,6 +80,5 @@
 | ------------------------------------------ | ------------ | ----------------------------------------------------------------- |
 | Postgres store (`SKIP LOCKED`)             | ⚪ `PLANNED` | The `Store` interface is the seam (ADR-0001)                      |
 | HTTP API server for non-Go producers       | ⚪ `PLANNED` | v0.2 direction (ROADMAP)                                          |
-| Store-level per-project claim exclusivity  | ⚪ `PLANNED` | Multi-pool per-repo serialization; SQL sketched, unimplemented    |
 | Decision → question fan-out (PapDashboard) | ⚪ `PLANNED` | Agent asks, human answers in the dashboard, queue proceeds        |
-| Cost budgets per repo/day                  | ⚪ `PLANNED` | Agent runs cost real money; `--max-per-tick` bounds per tick only |
+| Per-repo daily budgets                     | ⚪ `PLANNED` | Global daily cap + per-repo intervals ship; per-REPO daily caps don't yet |
