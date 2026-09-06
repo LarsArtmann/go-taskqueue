@@ -3,11 +3,35 @@ package harvest
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
+func taskFilter(repoName string) queue.Filter {
+	t := DefaultType
+	return queue.Filter{Project: &repoName, Type: &t}
+}
+
+func mustWrite(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func mustJSON(t *testing.T, v any) json.RawMessage {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
 
 // completeHarvestedTask claims and completes the task a harvest run created
 // for itemText, leaving the checkbox open — the stale-open setup.
@@ -24,7 +48,7 @@ func completeHarvestedTask(t *testing.T, h *Harvester, repoName, itemText string
 			Dedup string `json:"dedup"`
 		}
 		if json.Unmarshal(task.Payload, &p) == nil && p.Dedup == key {
-			if _, err := h.q.ClaimDue(ctx, "tester", 0); err != nil {
+			if _, err := h.q.ClaimDue(ctx, "tester", time.Minute); err != nil {
 				t.Fatal(err)
 			}
 			if err := h.q.Complete(ctx, task.ID, "tester", nil); err != nil {
@@ -150,7 +174,7 @@ func TestAuditDryRunEnqueuesNothing(t *testing.T) {
 	if err != nil || len(tasks) != 1 {
 		t.Fatalf("seed failed: %v %d", err, len(tasks))
 	}
-	if _, err := q.ClaimDue(ctx, "tester", 0); err != nil {
+	if _, err := q.ClaimDue(ctx, "tester", time.Minute); err != nil {
 		t.Fatal(err)
 	}
 	if err := q.Complete(ctx, tasks[0].ID, "tester", nil); err != nil {

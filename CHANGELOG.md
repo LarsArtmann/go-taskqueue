@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Docs-drift auditor (`tq audit`): compares repos' TODO_LIST.md checkboxes
+  with terminal task states and repairs the drift harvest can't see — work
+  an agent completed but never ticked off gets a dedup-keyed catch-up task
+  (armed once, re-audits never pile up); hand-ticked items with unfinished
+  tasks are reported for the operator to cancel
 - `tq top`: live per-project view over the journal — pending/running/done/
   dead counts, the last run duration and the active run's elapsed time
   (`--once`, `--json`, `--interval`; repaints on terminals)

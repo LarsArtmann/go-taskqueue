@@ -36,7 +36,7 @@ appending `— BLOCKED: <reason>` keeps an item out of the pool.
 - [ ] Tooling policy: golangci-lint either CI-gated with errcheck exclusions for idiomatic deferred Close or dropped from CONTRIBUTING; dprint added to the flake devShell and run over the living docs (plan C26)
 - [x] `tq top`: live per-project view (pending/running/done/dead + last agent run duration) over the existing facts
 - [x] Record agent transcript location (crush session id) as task result detail on completion, so `tq show` links to the agent's session
-- [ ] Docs-drift auditor: periodic task re-checking harvested repos and enqueuing a catch-up item when an item is done in code but still unchecked
+- [x] Docs-drift auditor: periodic task re-checking harvested repos and enqueuing a catch-up item when an item is done in code but still unchecked (`tq audit`)
 - [x] `TestShutdownDrains` 30 ms claim window flakes under heavy parallel-agent load; await claims explicitly instead of sleeping
 - [x] E2E CLI test: spawn `tq agent-pool` as a subprocess with a stub agent binary (`$TQ_AGENT_BIN`) and assert the full loop from outside the process
 - [x] Property test: harvest dedup keys are stable under whitespace reflow and unique across repos with identical item text

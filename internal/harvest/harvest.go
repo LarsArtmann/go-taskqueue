@@ -277,7 +277,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 }
 
 func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
-	payload, err := h.buildPayload(it, h.cfg.PromptTemplate)
+	payload, err := h.buildPayload(it, h.cfg.PromptTemplate, it.Key)
 	if err != nil {
 		return task.Task{}, err
 	}
@@ -292,10 +292,11 @@ func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
 }
 
 // buildPayload renders prompt for it and encodes it as the task payload with
-// the harvester's dedup key pinned. Repos discovered under ProjectsDir are
-// named relatively so payloads stay valid when the projects root moves;
-// explicit repos outside it keep their absolute path.
-func (h *Harvester) buildPayload(it Item, prompt string) ([]byte, error) {
+// dedupKey pinned (the item's own key for normal tasks, catchup:<key> for
+// loop-closing tasks). Repos discovered under ProjectsDir are named
+// relatively so payloads stay valid when the projects root moves; explicit
+// repos outside it keep their absolute path.
+func (h *Harvester) buildPayload(it Item, prompt, dedupKey string) ([]byte, error) {
 	prompt = strings.ReplaceAll(prompt, "{{REPO_ABS}}", it.Repo)
 	prompt = strings.ReplaceAll(prompt, "{{REPO}}", it.RepoName)
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", it.Heading)
@@ -318,7 +319,7 @@ func (h *Harvester) buildPayload(it Item, prompt string) ([]byte, error) {
 			Verify:       executor.ReadTQVerify(it.Repo),
 			RequireClean: h.cfg.RequireClean,
 		},
-		Dedup: it.Key,
+		Dedup: dedupKey,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("harvest: encode payload: %w", err)
