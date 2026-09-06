@@ -23,6 +23,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
 // DefaultType is the task type harvest enqueues: the headless agent executor
 // (executor.AgentExecutor, registered as "agent" by the tq CLI).
 const DefaultType = "agent"

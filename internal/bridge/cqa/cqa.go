@@ -63,14 +63,14 @@ type Scan struct {
 
 // Issue is the slice of CQA's issue response the bridge needs.
 type Issue struct {
-	Analyzer    string `json:"analyzer"`
-	Severity    string `json:"severity"`
-	RuleID      string `json:"rule_id,omitempty"`
-	FilePath    string `json:"file_path,omitempty"`
-	LineStart   int32  `json:"line_start,omitempty"`
-	Message     string `json:"message,omitempty"`
-	Suggestion  string `json:"suggestion,omitempty"`
-	Fixable     bool   `json:"fixable"`
+	Analyzer      string `json:"analyzer"`
+	Severity      string `json:"severity"`
+	RuleID        string `json:"rule_id,omitempty"`
+	FilePath      string `json:"file_path,omitempty"`
+	LineStart     int32  `json:"line_start,omitempty"`
+	Message       string `json:"message,omitempty"`
+	Suggestion    string `json:"suggestion,omitempty"`
+	Fixable       bool   `json:"fixable"`
 	FixComplexity string `json:"fix_complexity,omitempty"`
 }
 

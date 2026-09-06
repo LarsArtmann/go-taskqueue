@@ -255,7 +255,8 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 		// journal shows why the task moved between owners.
 		if st == "running" {
 			if err := s.appendFact(ctx, tx, journal.Fact{
-				TaskID: id, Type: journal.Released, Owner: prevOwner}); err != nil {
+				TaskID: id, Type: journal.Released, Owner: prevOwner,
+			}); err != nil {
 				return err
 			}
 		}
@@ -339,11 +340,13 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 			}
 			if err := s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.Failed, Owner: owner,
-				Attempt: newAttempts, Error: errText}); err != nil {
+				Attempt: newAttempts, Error: errText,
+			}); err != nil {
 				return err
 			}
 			return s.appendFact(ctx, tx, journal.Fact{
-				TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: newAttempts})
+				TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: newAttempts,
+			})
 		}
 		_, err = tx.ExecContext(ctx, `
 			UPDATE tasks
@@ -356,7 +359,8 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 		}
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Failed, Owner: owner,
-			Attempt: newAttempts, Error: errText})
+			Attempt: newAttempts, Error: errText,
+		})
 	})
 }
 
@@ -517,7 +521,8 @@ func (s *SQLiteStore) withTx(ctx context.Context, fn func(tx *sql.Tx) error) err
 
 func (s *SQLiteStore) loadTaskTx(ctx context.Context, q interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
-}, id string) (task.Task, error) {
+}, id string,
+) (task.Task, error) {
 	row := q.QueryRowContext(ctx, `
 		SELECT id, project, type, payload, deps, priority, attempts, max_attempts,
 		       not_before, status, lease_owner, lease_expires, last_error,
@@ -579,7 +584,8 @@ func scanTaskRow(r scanner) (task.Task, error) {
 
 func (s *SQLiteStore) leaseErr(ctx context.Context, q interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
-}, id task.ID, owner string) error {
+}, id task.ID, owner string,
+) error {
 	var st string
 	err := q.QueryRowContext(ctx, `SELECT status FROM tasks WHERE id = ?`, id.String()).Scan(&st)
 	if err != nil {

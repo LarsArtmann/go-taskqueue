@@ -116,8 +116,10 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 
 	// Facts: enqueued, claimed, failed, claimed, failed, dead-lettered.
 	facts, _ := s.Facts(ctx, 0)
-	var wantTypes = []journal.FactType{journal.Enqueued, journal.Claimed, journal.Failed,
-		journal.Claimed, journal.Failed, journal.DeadLettered}
+	wantTypes := []journal.FactType{
+		journal.Enqueued, journal.Claimed, journal.Failed,
+		journal.Claimed, journal.Failed, journal.DeadLettered,
+	}
 	if len(facts) != len(wantTypes) {
 		t.Fatalf("got %d facts, want %d", len(facts), len(wantTypes))
 	}
