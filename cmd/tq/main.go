@@ -349,6 +349,8 @@ func cmdAgentPool(args []string) error {
 	exclusive := fs.Bool("project-exclusive", false, "never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)")
 	dailyBudget := fs.Int("daily-budget", 0, "max agent tasks enqueued per calendar day across all repos (0 = unlimited)")
 	budgetCmd := fs.String("budget-cmd", "", "checked before each harvest tick: exit 0 = within budget, non-zero skips the tick (output is the reason)")
+	repoInterval := fs.String("repo-interval", "", "per-repo minimum gap between new enqueues: name=duration,comma-separated (e.g. big-repo=1h,tiny=5m)")
+	dlqBackoff := fs.Duration("dlq-backoff", 0, "pause harvesting a repo whose recent work is all dead-lettered for this long (0 = off, e.g. 30m)")
 	cqaURL := fs.String("cqa-url", os.Getenv("CQA_URL"), "Code-Quality-Agent API base URL: latest scans' fixable findings become fix tasks each tick")
 	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
 	cqaToken := fs.String("cqa-token", os.Getenv("CQA_TOKEN"), "CQA bearer token")
@@ -360,7 +362,25 @@ func cmdAgentPool(args []string) error {
 		return fmt.Errorf("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
 	}
 
-	cfg := harvest.Config{ProjectsDir: *projectsDir, MaxPerTick: *maxPerTick, Model: *model}
+	cfg := harvest.Config{ProjectsDir: *projectsDir, MaxPerTick: *maxPerTick, Model: *model, DLQBackoff: *dlqBackoff}
+	if *repoInterval != "" {
+		cfg.RepoIntervals = make(map[string]time.Duration)
+		for spec := range strings.SplitSeq(*repoInterval, ",") {
+			spec = strings.TrimSpace(spec)
+			if spec == "" {
+				continue
+			}
+			name, dur, ok := strings.Cut(spec, "=")
+			if !ok {
+				return fmt.Errorf("--repo-interval: want name=duration, got %q", spec)
+			}
+			d, err := time.ParseDuration(strings.TrimSpace(dur))
+			if err != nil {
+				return fmt.Errorf("--repo-interval: %q: %w", spec, err)
+			}
+			cfg.RepoIntervals[strings.TrimSpace(name)] = d
+		}
+	}
 	if *allowDirty {
 		no := false
 		cfg.RequireClean = &no

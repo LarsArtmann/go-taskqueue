@@ -9,8 +9,8 @@ appending `— BLOCKED: <reason>` keeps an item out of the pool.
 
 ## High Impact
 
-- [ ] Permanent-vs-transient error classes: dirty tree, missing autonomy config, and unknown flags must dead-letter after ONE attempt instead of burning the retry budget like transient errors (executor can wrap a permanent-error type the worker honors)
-- [ ] Store-level per-project claim exclusivity (opt-in `WithProjectExclusivity` on the SQLite store): at most one running task per project across ALL worker processes, so multi-pool deployments get per-repo serialization without relying on harvester pacing alone
+- [x] Permanent-vs-transient error classes: dirty tree, missing autonomy config, and unknown flags must dead-letter after ONE attempt instead of burning the retry budget like transient errors (executor can wrap a permanent-error type the worker honors)
+- [x] Store-level per-project claim exclusivity (opt-in `WithProjectExclusivity` on the SQLite store): at most one running task per project across ALL worker processes, so multi-pool deployments get per-repo serialization without relying on harvester pacing alone
 - [ ] Long-task regression test: a task claimed after the pool has been up for minutes completes and records its outcome (guards the fixed drain-context bug; every existing worker test uses sub-100ms tasks)
 - [ ] ADR-0002: agent-pool architecture — autonomy/trust model (repo-local `.crushrc`), pacing vs exclusivity, drain-context semantics
 - [ ] Daily/rolling cost budget per repo and global: agent tasks cost real money; `--max-per-tick` bounds a single harvest tick only
@@ -18,13 +18,13 @@ appending `— BLOCKED: <reason>` keeps an item out of the pool.
 
 ## Medium Impact
 
-- [ ] Pass a model override through `tq agent-pool --model` into agent payloads (`AgentPayload.Model` exists; harvest/CLI wiring does not)
+- [x] Pass a model override through `tq agent-pool --model` into agent payloads (`AgentPayload.Model` exists; harvest/CLI wiring does not)
 - [ ] `requireRepoAutonomy` false-positive fix: probe user-global crush permissions or add an explicit escape flag, so repos relying on global config are not refused
 - [ ] Multi-repo live smoke: ≥3 repos, concurrency 2, two agent-pool processes on one DB — dedup + pacing under real contention (unit-tested only today)
 - [ ] systemd user unit (or `tq agent-pool --daemon`) so the pool runs continuously instead of in a terminal under `timeout`
-- [ ] Verify-step auto-detection beyond Go/npm (Makefile, flake.nix, cargo) or a per-repo `.tq-verify` file; harvested tasks currently get no verify on other stacks
+- [x] Verify-step auto-detection beyond Go/npm (Makefile, flake.nix, cargo) or a per-repo `.tq-verify` file; harvested tasks currently get no verify on other stacks
 - [ ] Harvested tasks should carry a `verify` command sourced from repo config instead of relying on executor auto-detection
-- [ ] Harvester: per-repo poll interval, and back off repos whose items repeatedly land in the DLQ (a poisoned repo should not refill its attempt budget forever)
+- [x] Harvester: per-repo poll interval, and back off repos whose items repeatedly land in the DLQ (a poisoned repo should not refill its attempt budget forever)
 
 ## Lower Impact
 

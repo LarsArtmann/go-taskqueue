@@ -51,11 +51,37 @@ tq harvest --projects-dir ~/projects --dry-run   # preview
 tq harvest --projects-dir ~/projects
 
 # run the whole loop: harvest every 5m + a pool of headless crush agents
-tq agent-pool --projects-dir ~/projects --yolo --concurrency 2 --interval 5m
+# (--model pins the model in every payload; --project-exclusive guarantees
+# one agent per repo across ALL pools sharing the DB)
+tq agent-pool --projects-dir ~/projects --yolo --concurrency 2 --interval 5m \
+  --model anthropic/claude-sonnet-4-5 --project-exclusive
+
+# cron/timer-friendly: one harvest tick, drain, exit
+# (pairs well with --daily-budget, the cost ceiling)
+tq agent-pool --projects-dir ~/projects --once --daily-budget 20
 
 # optional: Code-Quality-Agent findings become fix tasks each tick
 tq agent-pool --projects-dir ~/projects --yolo     --cqa-url http://localhost:8080 --cqa-owner $CQA_OWNER_ID
 ```
+
+### Running it as a daemon
+
+For unattended machines there is a systemd user unit with a wide graceful
+stop window (in-flight agents finish and record their outcome):
+
+```sh
+go install github.com/larsartmann/go-taskqueue/cmd/tq@latest
+mkdir -p ~/.config/systemd/user
+cp "$(go env GOPATH)/pkg/mod"/github.com/larsartmann/go-taskqueue*/deploy/systemd/tq-agent-pool.service \
+  ~/.config/systemd/user/ 2>/dev/null || true   # or copy from a git clone
+systemctl --user daemon-reload
+systemctl --user enable --now tq-agent-pool
+journalctl --user -u tq-agent-pool -f
+```
+
+Prefer cron or a systemd timer? `tq agent-pool --once` runs exactly one
+harvest tick, drains the queue, and exits — tasks owned by other pools or
+scheduled for later are left alone.
 
 Each TODO item becomes one `agent` task: a headless `crush run` in that repo
 with a strict contract (read AGENTS.md, smallest correct change, tick the
@@ -76,8 +102,27 @@ checkbox, commit, never push). The executor enforces the safety rails:
 - **Clean tree required** — agents refuse repos with uncommitted changes
   (the pool never tramples human WIP; `--allow-dirty` opts out).
 - **Verify enforced** — a task only completes when the repo still builds and
-  tests pass (`go build ./... && go test ./... -count=1` for Go repos, or a payload
-  `verify` command).
+  tests pass. The verify command is resolved in priority order: the repo's
+  own `.tq-verify` file wins (committed, reviewable — the repo decides how
+  it is proven), then the payload's `verify`, then auto-detection
+  (Go → `go build ./... && go test ./... -count=1`, `package.json` →
+  `npm test --silent`, `Makefile` → `make test`, `flake.nix` →
+  `nix build && nix flake check`, `Cargo.toml` → `cargo test --quiet`).
+
+  ```sh
+  # in the repo: pin exactly how agents must prove their work
+  echo 'go vet ./... && go test ./... -count=1' > .tq-verify
+  ```
+- **Fail fast, not fail often** — input mistakes (bad payload, missing repo,
+  unknown type) are dead-lettered after ONE attempt instead of burning the
+  retry budget; environment problems (dirty tree, missing autonomy config)
+  requeue the task without burning an attempt, so the pool picks it up once
+  the human commits or adds the config.
+- **Cost ceilings** — `--max-per-tick` bounds new tasks per harvest run,
+  `--daily-budget` caps enqueues per calendar day, and `--budget-cmd` lets
+  your own accounting veto every tick (exit non-zero = skip the tick).
+  Poisoned repos (recent work all dead) pause harvesting for a cooldown
+  (`--dlq-backoff`, together with `--repo-interval` for per-repo pacing).
 - **Paced** — at most one in-flight backlog item per repo, `--max-per-tick`
   bounds cost per harvest run.
 - **Durable** — lease claims with heartbeats, exponential backoff, DLQ on
