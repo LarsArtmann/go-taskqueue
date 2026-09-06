@@ -14,7 +14,7 @@ who may act (autonomy), how much at once (pacing), how much per day
 
 1. **Autonomy is granted by the repo, not the operator's flag.** `crush run`
    has no `--yolo` flag (v0.92 rejects it), so `--yolo` is only the
-   operator's *request*. The actual grant is the repo's own `.crushrc`
+   operator's _request_. The actual grant is the repo's own `.crushrc`
    permissions (or a user-global crush config) — the pool cannot over-grant
    what a repo never offered. A yolo task on a repo without any config is a
    **preflight refusal**: it requeues without burning an attempt
@@ -26,7 +26,7 @@ who may act (autonomy), how much at once (pacing), how much per day
    verify-less `sh` exit, 4xx HTTP) dead-letter after ONE attempt — retrying
    cannot fix them. Preflight refusals requeue without burning an attempt.
    Everything else retries with exponential backoff into the DLQ. A failed
-   verify gate is deliberately *transient*: the agent may have half-finished,
+   verify gate is deliberately _transient_: the agent may have half-finished,
    and a fresh attempt re-runs the whole task.
 3. **Pacing is layered, cheapest guard first.** Within one harvest pass:
    at most one in-flight item per repo (skip "repo busy"), one NEW enqueue

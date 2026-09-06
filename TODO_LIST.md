@@ -33,7 +33,7 @@ appending `— BLOCKED: <reason>` keeps an item out of the pool.
 - [ ] Re-runnable PapDashboard E2E verification script (docker pap + `tq worker --alert-url`) so the bridge's FULLY_FUNCTIONAL status is provable on demand (plan D73)
 - [x] `docs/DOMAIN_LANGUAGE.md`: glossary for task, fact, claim, lease, release, DLQ, rescue, harvest, dedup key, tick, verify gate (plan C20)
 - [x] `doc.go` package docs for queue/worker/executor/harvest/journal + godoc examples before the module goes public (plan C22) — every package carries a package doc (in its primary file, house style), `go doc` renders for all 10 packages, executor + worker godoc examples compile/run
-- [ ] Tooling policy: golangci-lint either CI-gated with errcheck exclusions for idiomatic deferred Close or dropped from CONTRIBUTING; dprint added to the flake devShell and run over the living docs (plan C26)
+- [x] Tooling policy: golangci-lint CI-gated with errcheck exclusions for idiomatic deferred Close (`.golangci.yml`); dprint added to the flake devShell and run over the living docs (plan C26)
 - [x] `tq top`: live per-project view (pending/running/done/dead + last agent run duration) over the existing facts
 - [x] Record agent transcript location (crush session id) as task result detail on completion, so `tq show` links to the agent's session
 - [x] Docs-drift auditor: periodic task re-checking harvested repos and enqueuing a catch-up item when an item is done in code but still unchecked (`tq audit`)

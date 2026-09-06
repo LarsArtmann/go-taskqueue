@@ -38,16 +38,16 @@ Facts-first: every state change is an immutable fact in an append-only
 journal; queue views, retry state, and the DLQ are projections of those
 facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 
-| Package             | Purpose                                                                                   |
-| ------------------- | ----------------------------------------------------------------------------------------- |
-| `internal/task`     | Task record, Status enum with `CanTransitionTo`, sentinel errors                          |
-| `internal/journal`  | Fact types, append-only Journal interface, MemoryJournal                                  |
-| `internal/queue`    | Store interface + SQLite store; every mutation appends facts in-tx                        |
-| `internal/worker`   | Claim → heartbeat → execute loop; concurrency, panics, drain                              |
-| `internal/bridge`   | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                       |
-| `internal/executor` | Pluggable execution: `sh` command, HTTP, agent (headless AI), registry                    |
-| `internal/harvest`  | Scans repos' TODO_LIST.md and enqueues work items as agent tasks; drift audit (`tq audit`) |
-| `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick     |
+| Package             | Purpose                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| `internal/task`     | Task record, Status enum with `CanTransitionTo`, sentinel errors                                        |
+| `internal/journal`  | Fact types, append-only Journal interface, MemoryJournal                                                |
+| `internal/queue`    | Store interface + SQLite store; every mutation appends facts in-tx                                      |
+| `internal/worker`   | Claim → heartbeat → execute loop; concurrency, panics, drain                                            |
+| `internal/bridge`   | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                     |
+| `internal/executor` | Pluggable execution: `sh` command, HTTP, agent (headless AI), registry                                  |
+| `internal/harvest`  | Scans repos' TODO_LIST.md and enqueues work items as agent tasks; drift audit (`tq audit`)              |
+| `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick                  |
 | `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / stats / audit / top / show / dlq / cancel / facts / tail |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001 core,

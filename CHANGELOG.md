@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Tooling policy decided and enforced: golangci-lint is CI-gated
+  (`.golangci.yml` with errcheck exclusions for idiomatic deferred Close and
+  HTTP body/rows Close), dprint joins the flake devShell and the living docs
+  are formatted with it; CONTRIBUTING lists all local gates
 - Operator documentation set: `docs/DOMAIN_LANGUAGE.md` (the ubiquitous
   language: task, fact, claim, lease, tick, drift, catch-up, …), ADR-0002
   (agent-pool autonomy, pacing, budgets and drain semantics), and SECURITY.md

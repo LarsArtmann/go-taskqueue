@@ -60,11 +60,11 @@
 
 ## CLI (`tq`)
 
-| Feature                                                       | Status                | Notes                                                                                               |
-| ------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
+| Feature                                                       | Status                | Notes                                                                                                        |
+| ------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------ |
 | enqueue / worker / stats / show / dlq / cancel / facts / tail | 🟢 `FULLY_FUNCTIONAL` | `tq worker` runs until signalled (no one-shot mode); `tq facts` renders the dead-letter error class          |
-| `tq show` — task + full fact trail                              | 🟢 `FULLY_FUNCTIONAL` | Completed agent tasks record session id + verify tail in `task.completed`; `tq show` renders the whole trail |
-| harvest / agent-pool                                            | 🟢 `FULLY_FUNCTIONAL` | See Agent pool; `--dry-run` for preview; `--model`, `--once`, cost ceilings                                  |
+| `tq show` — task + full fact trail                            | 🟢 `FULLY_FUNCTIONAL` | Completed agent tasks record session id + verify tail in `task.completed`; `tq show` renders the whole trail |
+| harvest / agent-pool                                          | 🟢 `FULLY_FUNCTIONAL` | See Agent pool; `--dry-run` for preview; `--model`, `--once`, cost ceilings                                  |
 
 ## Tooling
 

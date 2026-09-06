@@ -186,13 +186,14 @@ go test ./... -race          # full suite (CI also gates on go vet + gofmt)
 ```
 
 CI gates every push on vet, build, tests with `-race`, gofmt, a nix build
-+ `nix flake check`, a TODO_LIST harvest-parse guard, and a doc
-ghost-reference check. The e2e suite (`internal/e2e`) drives the real `tq`
-binary as a subprocess with a stub agent, so the full agent loop is tested
-in CI at zero API cost. Reproducible builds via `nix build`. Agent sessions
-should read AGENTS.md first; feature status lives in FEATURES.md, upcoming
-work in TODO_LIST.md, long-term direction in ROADMAP.md, and the domain
-vocabulary in docs/DOMAIN_LANGUAGE.md.
+
+- `nix flake check`, a TODO_LIST harvest-parse guard, and a doc
+  ghost-reference check. The e2e suite (`internal/e2e`) drives the real `tq`
+  binary as a subprocess with a stub agent, so the full agent loop is tested
+  in CI at zero API cost. Reproducible builds via `nix build`. Agent sessions
+  should read AGENTS.md first; feature status lives in FEATURES.md, upcoming
+  work in TODO_LIST.md, long-term direction in ROADMAP.md, and the domain
+  vocabulary in docs/DOMAIN_LANGUAGE.md.
 
 ## License
 

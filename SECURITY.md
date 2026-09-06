@@ -15,7 +15,7 @@ start processes on the host is inside the trust boundary.
    capability grant: protect it like a shell prompt (filesystem permissions,
    full-disk encryption, no shared writable mounts).
 2. **Agent autonomy's trust root is the filesystem** (ADR-0002). `--yolo`
-   only *requests* autonomy; the actual grant is per-repo — a `.crushrc` in
+   only _requests_ autonomy; the actual grant is per-repo — a `.crushrc` in
    the repo (or a user-global crush config) that lists `bash` lets an agent
    run unsandboxed shell commands **in that repo's checkout**. Every repo
    under `--projects-dir` containing a TODO_LIST.md is a candidate for
