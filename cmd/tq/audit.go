@@ -26,6 +26,9 @@ func cmdAudit(args []string) error {
 	if *projectsDir == "" && *repos == "" {
 		*projectsDir = defaultProjectsDir()
 	}
+	if err := checkProjectsDir(*projectsDir); err != nil {
+		return err
+	}
 	cfg := harvest.Config{ProjectsDir: *projectsDir, DryRun: *dryRun}
 	if *repos != "" {
 		for r := range strings.SplitSeq(*repos, ",") {

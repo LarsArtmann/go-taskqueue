@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -179,5 +180,37 @@ func TestHTTPStatusClassification(t *testing.T) {
 		if got != tc.permanent || err == nil {
 			t.Errorf("status %d: permanent=%v (err=%v), want permanent=%v", tc.code, got, err, tc.permanent)
 		}
+	}
+}
+
+func TestExtractResultPayload(t *testing.T) {
+	out := "did stuff\nTQ_RESULT: {\"files_changed\":[\"a.go\",\"b.go\"],\"commit_sha\":\"abc123\"}\ndone\n"
+	files, sha, ok := ExtractResultPayload(out)
+	if !ok || len(files) != 2 || files[0] != "a.go" || sha != "abc123" {
+		t.Fatalf("got %q %q %v, want files+sha", files, sha, ok)
+	}
+	if _, _, ok := ExtractResultPayload("no marker here"); ok {
+		t.Error("output without marker reported ok")
+	}
+	if _, _, ok := ExtractResultPayload("TQ_RESULT: {broken json}"); ok {
+		t.Error("malformed JSON reported ok")
+	}
+}
+
+func TestWriteOutputSidecar(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("TQ_LOG_DIR", dir)
+	id := task.ID("testtask0001")
+	if path := writeOutputSidecar(id, "agent out", "verify out"); path == "" {
+		t.Fatal("sidecar not written")
+	} else {
+		b, err := os.ReadFile(path)
+		if err != nil || !strings.Contains(string(b), "agent out") || !strings.Contains(string(b), "verify out") {
+			t.Fatalf("sidecar content wrong: %q %v", b, err)
+		}
+	}
+	t.Setenv("TQ_LOG_DIR", "")
+	if path := writeOutputSidecar(id, "x", "y"); path != "" {
+		t.Fatalf("sidecar written without TQ_LOG_DIR: %q", path)
 	}
 }

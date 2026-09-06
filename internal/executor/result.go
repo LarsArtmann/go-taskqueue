@@ -18,6 +18,15 @@ type AgentResult struct {
 	// VerifyTail is the last lines of the verify command's output: the
 	// proof the task completed on.
 	VerifyTail string `json:"verify_tail,omitempty"`
+	// FilesChanged and CommitSHA are the agent's own structured report,
+	// parsed from a final `TQ_RESULT: {"files_changed": [...], "commit_sha":
+	// "..."}` output line (the agent prompt convention). Absent when the
+	// agent did not emit one.
+	FilesChanged []string `json:"files_changed,omitempty"`
+	CommitSHA    string   `json:"commit_sha,omitempty"`
+	// LogPath is the sidecar file holding the FULL agent + verify output,
+	// written when TQ_LOG_DIR is set on the worker/pool. Absent otherwise.
+	LogPath string `json:"log_path,omitempty"`
 }
 
 // sink carries per-task result detail from an executor run back to the
@@ -63,4 +72,26 @@ func ExtractSessionID(output string) string {
 		return m[1]
 	}
 	return ""
+}
+
+// resultLineRe matches the agent's self-report line: a single line of JSON
+// after the TQ_RESULT: marker. Everything else in the output is free-form.
+var resultLineRe = regexp.MustCompile(`(?im)^\s*TQ_RESULT:\s*(\{.+\})\s*$`)
+
+// ExtractResultPayload parses the agent's structured self-report
+// ({files_changed, commit_sha}) from its output. Best-effort: no line, no
+// problem — the fields simply stay empty in the result detail.
+func ExtractResultPayload(output string) (files []string, sha string, ok bool) {
+	m := resultLineRe.FindStringSubmatch(output)
+	if m == nil {
+		return nil, "", false
+	}
+	var rp struct {
+		FilesChanged []string `json:"files_changed"`
+		CommitSHA    string   `json:"commit_sha"`
+	}
+	if err := json.Unmarshal([]byte(m[1]), &rp); err != nil {
+		return nil, "", false
+	}
+	return rp.FilesChanged, rp.CommitSHA, true
 }

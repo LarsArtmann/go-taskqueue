@@ -151,13 +151,40 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 	// Success: record structured outcome detail for `tq show` (best
-	// effort — a missing session id is not an error).
-	detail, _ := json.Marshal(AgentResult{
+	// effort — a missing session id or self-report is not an error).
+	result := AgentResult{
 		SessionID:  ExtractSessionID(output),
 		VerifyTail: tail,
-	})
+	}
+	if files, sha, ok := ExtractResultPayload(output); ok {
+		result.FilesChanged, result.CommitSHA = files, sha
+	}
+	result.LogPath = writeOutputSidecar(t.ID, output, tail)
+	detail, _ := json.Marshal(result)
 	SetResultDetail(ctx, detail)
 	return nil
+}
+
+// writeOutputSidecar persists the FULL agent + verify output to
+// $TQ_LOG_DIR/<task-id>.log and returns the path — "" when the directory is
+// unset or the write fails (logging must never fail a completed task).
+func writeOutputSidecar(id task.ID, agentOutput, verifyOutput string) string {
+	dir := os.Getenv("TQ_LOG_DIR")
+	if dir == "" {
+		return ""
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return ""
+	}
+	path := filepath.Join(dir, id.String()+".log")
+	body := agentOutput
+	if verifyOutput != "" {
+		body += "\n--- verify ---\n" + verifyOutput
+	}
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		return ""
+	}
+	return path
 }
 
 // repoDir resolves a payload repo name: absolute paths pass through,

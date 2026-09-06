@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -279,13 +280,18 @@ func cmdHarvest(args []string) error {
 	maxAttempts := fs.Int("max-attempts", 0, "attempt budget (0 = store default)")
 	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
 	model := fs.String("model", "", "crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload")
+	repoSubset := fs.String("repo-subset", "", "glob filter on repo names discovered under --projects-dir (e.g. 'go-*'); ignored with --repos")
 	dryRun := fs.Bool("dry-run", false, "report what would be enqueued, change nothing")
+	asJSON := fs.Bool("json", false, "JSON output of the harvest result")
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *projectsDir == "" && *repos == "" {
 		return fmt.Errorf("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
+	}
+	if err := checkProjectsDir(*projectsDir); err != nil {
+		return err
 	}
 
 	cfg := harvest.Config{
@@ -309,6 +315,19 @@ func cmdHarvest(args []string) error {
 				cfg.Repos = append(cfg.Repos, r)
 			}
 		}
+	} else if *repoSubset != "" {
+		found, err := harvest.DiscoverRepos(*projectsDir, cfg.TodoFile)
+		if err != nil {
+			return fmt.Errorf("discover repos: %w", err)
+		}
+		for _, r := range found {
+			if ok, _ := path.Match(*repoSubset, filepath.Base(r)); ok {
+				cfg.Repos = append(cfg.Repos, r)
+			}
+		}
+		if len(cfg.Repos) == 0 {
+			return fmt.Errorf("--repo-subset %q matched no repos under %s", *repoSubset, *projectsDir)
+		}
 	}
 
 	s := mustOpenDB(resolveDB(*db))
@@ -316,6 +335,11 @@ func cmdHarvest(args []string) error {
 	res, err := harvest.New(queue.New(s), cfg).Run(context.Background())
 	if err != nil {
 		return err
+	}
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(res)
 	}
 	printHarvestResult(res)
 	for _, en := range res.Enqueued {
@@ -366,6 +390,9 @@ func cmdAgentPool(args []string) error {
 	}
 	if *projectsDir == "" && *repos == "" {
 		return fmt.Errorf("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
+	}
+	if err := checkProjectsDir(*projectsDir); err != nil {
+		return err
 	}
 
 	cfg := harvest.Config{ProjectsDir: *projectsDir, MaxPerTick: *maxPerTick, Model: *model, DLQBackoff: *dlqBackoff}
@@ -676,13 +703,35 @@ func cmdShow(args []string) error {
 func cmdDLQ(args []string) error {
 	fs := flag.NewFlagSet("dlq", flag.ExitOnError)
 	rescue := fs.String("rescue", "", "re-queue this dead task ID")
-	maxAttempts := fs.Int("max-attempts", 3, "attempt budget for rescued task")
+	rescueAll := fs.Bool("rescue-all", false, "re-queue EVERY dead task (only after a human decided they can succeed)")
+	olderThan := fs.Duration("older-than", 0, "with --rescue-all: only tasks dead for at least this long (e.g. 24h)")
+	maxAttempts := fs.Int("max-attempts", 3, "attempt budget for rescued task(s)")
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+	if *rescueAll {
+		st := task.Dead
+		dead, err := s.List(context.Background(), queue.Filter{Status: &st})
+		if err != nil {
+			return err
+		}
+		rescued := 0
+		for _, t := range dead {
+			if *olderThan > 0 && time.Since(t.UpdatedAt) < *olderThan {
+				continue
+			}
+			if err := s.RescueDead(context.Background(), t.ID, *maxAttempts); err != nil {
+				return fmt.Errorf("rescue %s: %w", t.ID, err)
+			}
+			fmt.Printf("rescued %s  %s\n", t.ID, t.Project+"/"+t.Type)
+			rescued++
+		}
+		fmt.Printf("rescued %d of %d dead task(s)\n", rescued, len(dead))
+		return nil
+	}
 	if *rescue != "" {
 		if err := s.RescueDead(context.Background(), task.ID(*rescue), *maxAttempts); err != nil {
 			return err
