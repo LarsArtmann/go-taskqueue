@@ -38,7 +38,7 @@ func OpenSQLite(path string) (*SQLiteStore, error) {
 	db.SetMaxOpenConns(1)
 	s := &SQLiteStore{db: db}
 	if err := s.migrate(context.Background()); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 	return s, nil

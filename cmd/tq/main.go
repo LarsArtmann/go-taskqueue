@@ -118,8 +118,8 @@ func cmdEnqueue(args []string) error {
 	var payloadJSON json.RawMessage
 	if *payload != "" {
 		raw := []byte(*payload)
-		if strings.HasPrefix(*payload, "@") {
-			b, err := os.ReadFile(strings.TrimPrefix(*payload, "@"))
+		if after, ok := strings.CutPrefix(*payload, "@"); ok {
+			b, err := os.ReadFile(after)
 			if err != nil {
 				return fmt.Errorf("read payload file: %w", err)
 			}
@@ -139,7 +139,7 @@ func cmdEnqueue(args []string) error {
 		MaxAttempts: *maxAttempts,
 		NotBefore:   time.Now().Add(*delay),
 	}
-	for _, d := range strings.Split(*deps, ",") {
+	for d := range strings.SplitSeq(*deps, ",") {
 		if d = strings.TrimSpace(d); d != "" {
 			n.Deps = append(n.Deps, task.ID(d))
 		}

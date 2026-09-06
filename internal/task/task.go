@@ -34,7 +34,7 @@ type Task struct {
 	Priority     int             `json:"priority,omitempty"`
 	Attempts     int             `json:"attempts"`
 	MaxAttempts  int             `json:"maxAttempts"`
-	NotBefore    time.Time       `json:"notBefore,omitempty"`
+	NotBefore    time.Time       `json:"notBefore"`
 	Status       Status          `json:"status"`
 	LeaseOwner   string          `json:"leaseOwner,omitempty"`
 	LeaseExpires *time.Time      `json:"leaseExpires,omitempty"`

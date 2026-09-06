@@ -60,13 +60,13 @@ is unwrapped). Register your own executor types in Go — see
 
 ## Status codes
 
-| status | meaning |
-|--------|---------|
-| pending | waiting for claim (possibly delayed or dep-blocked) |
-| running | claimed, lease held |
-| completed | done |
-| dead | exhausted retries (DLQ) |
-| cancelled | removed by operator |
+| status    | meaning                                             |
+| --------- | --------------------------------------------------- |
+| pending   | waiting for claim (possibly delayed or dep-blocked) |
+| running   | claimed, lease held                                 |
+| completed | done                                                |
+| dead      | exhausted retries (DLQ)                             |
+| cancelled | removed by operator                                 |
 
 ## Distribution
 

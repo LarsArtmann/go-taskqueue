@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -24,7 +25,7 @@ func testStore(t *testing.T) queue.Store {
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
-	t.Cleanup(func() { s.Close() })
+	_ = t.Cleanup(func() { _ = s.Close() })
 	return s
 }
 
@@ -41,10 +42,8 @@ func waitFor(t *testing.T, ctx context.Context, store queue.Store, id task.ID, w
 		if err != nil {
 			t.Fatalf("get: %v", err)
 		}
-		for _, w := range want {
-			if got.Status == w {
-				return got
-			}
+		if slices.Contains(want, got.Status) {
+			return got
 		}
 		time.Sleep(5 * time.Millisecond)
 	}

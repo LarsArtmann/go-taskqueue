@@ -56,10 +56,7 @@ func ExpBackoff(attempt int) time.Duration {
 	if attempt < 1 {
 		attempt = 1
 	}
-	d := time.Duration(math.Pow(2, float64(attempt))) * time.Second
-	if d > 5*time.Minute {
-		d = 5 * time.Minute
-	}
+	d := min(time.Duration(math.Pow(2, float64(attempt)))*time.Second, 5*time.Minute)
 	return d
 }
 
@@ -192,8 +189,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	}
 	// Lease lost during execution: do NOT fail — the reclaiming worker owns
 	// the task now. Our attempt result is discarded (at-least-once).
-	var leaseErr *executor.LeaseLostError
-	if errors.As(execErr, &leaseErr) {
+	if _, ok := errors.AsType[*executor.LeaseLostError](execErr); ok {
 		p.log.Warn("skipping fail: lease lost", "task", t.ID)
 		return
 	}
