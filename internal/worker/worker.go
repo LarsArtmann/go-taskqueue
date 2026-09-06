@@ -202,6 +202,15 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		p.log.Warn("skipping fail: lease lost", "task", t.ID)
 		return
 	}
+	if perm, ok := errors.AsType[*executor.PermanentError](execErr); ok {
+		// The identical retry would fail identically (bad payload, missing
+		// repo, dirty tree). Dead-letter now instead of burning the retry
+		// budget — for agent tasks every retry is real money.
+		if err := p.store.FailPermanent(terminalCtx, t.ID, p.cfg.Owner, perm.Error()); err != nil {
+			p.log.Error("permanent fail failed", "task", t.ID, "err", err)
+		}
+		return
+	}
 	if errors.Is(execErr, context.Canceled) && ctx.Err() != nil {
 		// Task context cancelled mid-run (defensive: the task context ignores
 		// pool shutdown; only internal cancellation lands here). Burn the
@@ -220,9 +229,10 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 func (p *Pool) runExecutor(ctx context.Context, t task.Task) error {
 	exec, err := p.cfg.Executors.Lookup(t.Type)
 	if err != nil {
-		// Unknown type is a permanent error: dead-letter fast via huge
-		// attempts marker is not in v0.1.0; retries will exhaust quickly.
-		return fmt.Errorf("no executor for type %q: %w", t.Type, err)
+		// Unknown type is a permanent error: the payload can never match a
+		// registered executor on a retry either. Dead-letter via the
+		// permanent class instead of exhausting attempts.
+		return executor.Permanent(fmt.Errorf("no executor for type %q: %w", t.Type, err))
 	}
 	runCtx, cancel := context.WithTimeout(ctx, p.cfg.TaskTimeout)
 	defer cancel()

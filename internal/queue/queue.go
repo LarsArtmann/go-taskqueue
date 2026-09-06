@@ -35,6 +35,11 @@ type Store interface {
 	// Pending with NotBefore = now + backoff(attempt); otherwise it is
 	// Dead-lettered. Facts: task.failed (+ task.dead-lettered).
 	Fail(ctx context.Context, id task.ID, owner string, errText string, backoff time.Duration) error
+	// FailPermanent dead-letters a Running task immediately, regardless of
+	// the attempt budget: the error class makes retrying pointless. The
+	// attempt is still counted. Facts: task.failed + task.dead-lettered
+	// (class "permanent").
+	FailPermanent(ctx context.Context, id task.ID, owner string, errText string) error
 	// Heartbeat extends the lease of a Running task held by owner.
 	Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error
 	// Cancel withdraws a Pending task.

@@ -346,6 +346,7 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 			}
 			return s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: newAttempts,
+				Error: errText, Detail: json.RawMessage(`{"class":"exhausted"}`),
 			})
 		}
 		_, err = tx.ExecContext(ctx, `
@@ -362,7 +363,50 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 			Attempt: newAttempts, Error: errText,
 		})
 	})
-}
+	}
+
+	// FailPermanent dead-letters immediately: a permanent error means the
+	// identical retry would fail identically, so the remaining attempt budget is
+	// worthless (and, for agent tasks, expensive). The failing attempt is still
+	// counted. Facts: task.failed + task.dead-lettered with class "permanent".
+	func (s *SQLiteStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string) error {
+		return s.withTx(ctx, func(tx *sql.Tx) error {
+			now := time.Now()
+			var attempts int
+			err := tx.QueryRowContext(ctx,
+				`SELECT attempts FROM tasks WHERE id = ?`, id.String()).
+				Scan(&attempts)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return task.ErrNotFound
+				}
+				return err
+			}
+			newAttempts := attempts + 1
+			res, err := tx.ExecContext(ctx, `
+				UPDATE tasks
+				SET status = 'dead', attempts = ?, max_attempts = ?, last_error = ?, updated_at = ?,
+				lease_owner = '', lease_expires = NULL
+				WHERE id = ? AND status = 'running' AND lease_owner = ?`,
+				newAttempts, newAttempts, errText, now.UnixMilli(), id.String(), owner)
+			if err != nil {
+				return err
+			}
+			if n, _ := res.RowsAffected(); n == 0 {
+				return s.leaseErr(ctx, tx, id, owner)
+			}
+			if err := s.appendFact(ctx, tx, journal.Fact{
+				TaskID: id.String(), Type: journal.Failed, Owner: owner,
+				Attempt: newAttempts, Error: errText,
+			}); err != nil {
+				return err
+			}
+			return s.appendFact(ctx, tx, journal.Fact{
+				TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: newAttempts,
+				Error: errText, Detail: json.RawMessage(`{"class":"permanent"}`),
+			})
+		})
+	}
 
 // Heartbeat extends the lease of a Running task held by owner.
 func (s *SQLiteStore) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {

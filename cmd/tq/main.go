@@ -616,11 +616,25 @@ func cmdFacts(args []string) error {
 		return err
 	}
 	for _, f := range facts {
-		fmt.Printf("%5d %s %s %-20s %s %s\n",
-			f.Seq, f.Time.Format(time.RFC3339), f.TaskID, f.Type, f.Owner, f.Error)
+		fmt.Println(formatFact(f))
 	}
 	fmt.Printf("(%d facts)\n", len(facts))
 	return nil
+}
+
+// formatFact renders one journal fact for humans. Dead-letter facts carry
+// their error class ("permanent" vs "exhausted") in Detail; show it so an
+// operator can tell "the task is broken" from "the budget ran out".
+func formatFact(f journal.Fact) string {
+	line := fmt.Sprintf("%5d %s %s %-20s %s %s",
+		f.Seq, f.Time.Format(time.RFC3339), f.TaskID, f.Type, f.Owner, f.Error)
+	var d struct {
+		Class string `json:"class"`
+	}
+	if len(f.Detail) > 0 && json.Unmarshal(f.Detail, &d) == nil && d.Class != "" {
+		line += " [class=" + d.Class + "]"
+	}
+	return line
 }
 
 func cmdTail(args []string) error {
@@ -645,8 +659,7 @@ func cmdTail(args []string) error {
 			return err
 		}
 		for _, f := range facts {
-			fmt.Printf("%5d %s %s %-20s %s %s\n",
-				f.Seq, f.Time.Format(time.RFC3339), f.TaskID, f.Type, f.Owner, f.Error)
+			fmt.Println(formatFact(f))
 			*after = f.Seq
 		}
 		if !*follow {
