@@ -20,7 +20,10 @@ for f in "${docs[@]}"; do
 		[ -n "$ref" ] || continue
 		skip=0
 		for pat in "${allow[@]}"; do
-			[[ "$ref" =~ $pat ]] && { skip=1; break; }
+			[[ "$ref" =~ $pat ]] && {
+				skip=1
+				break
+			}
 		done
 		[ "$skip" = 1 ] && continue
 		if [ ! -e "$ref" ]; then
