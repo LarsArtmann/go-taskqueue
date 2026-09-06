@@ -22,6 +22,7 @@ const (
 	DeadLettered FactType = "task.dead-lettered" // attempts exhausted
 	Cancelled    FactType = "task.cancelled"
 	Released     FactType = "task.released" // lease expired, back to pending
+	Requeued     FactType = "task.requeued" // preflight refusal, no attempt burned
 )
 
 // Fact is one immutable observation about one task.

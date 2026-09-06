@@ -2,6 +2,7 @@ package harvest
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -153,6 +155,38 @@ func TestRunEnqueuesOneItemPerRepoPerTick(t *testing.T) {
 	}
 	if !hasSkip(res, "tracked: pending") || !hasSkip(res, "repo busy") {
 		t.Fatalf("second run skips = %+v", res.Skipped)
+	}
+}
+
+// TestRunModelLandsInAgentPayload pins the --model plumbing: Config.Model
+// must reach the AgentPayload inside the stored payload, so a pool operator
+// can pin a cheaper/better model without editing repos.
+func TestRunModelLandsInAgentPayload(t *testing.T) {
+	q := openQueue(t)
+	dir := t.TempDir()
+	writeRepo(t, dir, "gamma", "## Work\n\n- [ ] model me\n")
+
+	h := New(q, Config{ProjectsDir: dir, Model: "prov/cheap-1"})
+	res, err := h.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(res.Enqueued) != 1 {
+		t.Fatalf("enqueued = %+v, want 1", res.Enqueued)
+	}
+	got, err := q.Get(context.Background(), res.Enqueued[0].TaskID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	var p struct {
+		executor.AgentPayload
+		Dedup string `json:"dedup"`
+	}
+	if err := json.Unmarshal(got.Payload, &p); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if p.Model != "prov/cheap-1" {
+		t.Fatalf("payload model = %q, want prov/cheap-1", p.Model)
 	}
 }
 

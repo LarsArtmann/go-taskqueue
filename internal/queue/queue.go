@@ -40,6 +40,11 @@ type Store interface {
 	// attempt is still counted. Facts: task.failed + task.dead-lettered
 	// (class "permanent").
 	FailPermanent(ctx context.Context, id task.ID, owner string, errText string) error
+	// Requeue returns a claimed task to Pending WITHOUT counting an
+	// attempt; it becomes claimable again after delay. For preflight
+	// refusals: the environment was not ready, not the task. Facts:
+	// task.requeued.
+	Requeue(ctx context.Context, id task.ID, owner string, errText string, delay time.Duration) error
 	// Heartbeat extends the lease of a Running task held by owner.
 	Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error
 	// Cancel withdraws a Pending task.

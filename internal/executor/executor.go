@@ -47,6 +47,17 @@ func Permanent(cause error) error {
 	return &PermanentError{Cause: cause}
 }
 
+// PreflightError signals the executor refused to START a task: the
+// environment is not ready (dirty repo waiting on a human commit, autonomy
+// config missing, verify tool absent) but neither the task nor the payload
+// is wrong. Workers must requeue the task WITHOUT burning an attempt — it
+// becomes claimable again after a delay, so the pool picks it up as soon as
+// the environment is fixed.
+type PreflightError struct{ Cause error }
+
+func (e *PreflightError) Error() string { return "preflight: " + e.Cause.Error() }
+func (e *PreflightError) Unwrap() error { return e.Cause }
+
 // Executor runs one claimed task. It must be safe for concurrent use.
 // Returning nil marks the task completed; any error marks a failed attempt.
 // Return a *PermanentError (see Permanent) when retrying can never help.

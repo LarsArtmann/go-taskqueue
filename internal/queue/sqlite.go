@@ -702,3 +702,28 @@ func boolInt(b bool) int {
 	}
 	return 0
 }
+
+// Requeue returns a claimed task to Pending without counting an attempt:
+// the executor refused to start (preflight), so the task itself is fine and
+// the environment is expected to become ready later. Claimable again after
+// delay. Fact: task.requeued.
+func (s *SQLiteStore) Requeue(ctx context.Context, id task.ID, owner string, errText string, delay time.Duration) error {
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		now := time.Now()
+		res, err := tx.ExecContext(ctx, `
+			UPDATE tasks
+			SET status = 'pending', not_before = ?, last_error = ?, updated_at = ?,
+			    lease_owner = '', lease_expires = NULL
+			WHERE id = ? AND status = 'running' AND lease_owner = ?`,
+			now.Add(delay).UnixMilli(), errText, now.UnixMilli(), id.String(), owner)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return s.leaseErr(ctx, tx, id, owner)
+		}
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(), Type: journal.Requeued, Owner: owner, Error: errText,
+		})
+	})
+}
