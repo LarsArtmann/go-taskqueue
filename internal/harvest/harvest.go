@@ -23,6 +23,9 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+// DefaultType is the task type harvest enqueues: the headless agent executor
+// (executor.AgentExecutor, registered as "agent" by the tq CLI).
+const DefaultType = "agent"
 
 // DefaultTodoFile is the backlog file scanned in each repository.
 const DefaultTodoFile = "TODO_LIST.md"
@@ -62,13 +65,19 @@ type Config struct {
 	MaxAttempts int
 	// Priority for harvested tasks.
 	Priority int
+	// Model optionally overrides the crush model for harvested agent tasks
+	// ("provider/model"). Empty = the crush default.
+	Model string
 	// PromptTemplate overrides DefaultPromptTemplate.
 	PromptTemplate string
+	// DryRun reports what a real run would enqueue, without writing to the
+	// queue. Result.Enqueued entries then carry an empty TaskID.
+	DryRun bool
 }
 
 func (c Config) withDefaults() Config {
 	if c.Type == "" {
-		c.Type = executor.TaskTypeCrush
+		c.Type = DefaultType
 	}
 	if c.TodoFile == "" {
 		c.TodoFile = DefaultTodoFile
@@ -202,6 +211,10 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "paced: one new item per repo per run"})
 		case len(res.Enqueued) >= h.cfg.MaxPerTick:
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "tick cap reached (--max-per-tick)"})
+		case h.cfg.DryRun:
+			res.Enqueued = append(res.Enqueued, Enqueued{Item: it, Fresh: true})
+			known[it.Key] = task.Pending
+			enqueuedThisRepo = true
 		default:
 			t, err := h.enqueue(ctx, it)
 			if err != nil {
@@ -228,13 +241,27 @@ func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", it.Heading)
 	prompt = strings.ReplaceAll(prompt, "{{ITEM}}", it.Text)
 
-	payload, err := executor.RenderCrushPayload(executor.CrushPayload{
-		Repo:   it.Repo,
-		Prompt: prompt,
-		Dedup:  it.Key,
+	// Repos discovered under ProjectsDir are named relatively so payloads
+	// stay valid when the projects root moves; explicit repos outside it keep
+	// their absolute path.
+	repo := it.Repo
+	if h.cfg.ProjectsDir != "" {
+		if abs, err := filepath.Abs(h.cfg.ProjectsDir); err == nil && strings.HasPrefix(it.Repo, abs+string(filepath.Separator)) {
+			repo = it.RepoName
+		}
+	}
+
+	payload, err := json.Marshal(harvestPayload{
+		AgentPayload: executor.AgentPayload{
+			Repo:         repo,
+			Prompt:       prompt,
+			Yolo:         h.cfg.Yolo,
+			RequireClean: h.cfg.RequireClean,
+		},
+		Dedup: it.Key,
 	})
 	if err != nil {
-		return task.Task{}, err
+		return task.Task{}, fmt.Errorf("harvest: encode payload: %w", err)
 	}
 	return h.q.Enqueue(ctx, task.New{
 		Project:     it.RepoName,
@@ -244,6 +271,14 @@ func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
 		MaxAttempts: h.cfg.MaxAttempts,
 		DedupKey:    it.Key,
 	})
+}
+
+// harvestPayload is the agent payload plus the harvester's dedup key. The
+// agent executor ignores the extra field; the harvester reads it back to
+// recognize its own tasks.
+type harvestPayload struct {
+	executor.AgentPayload
+	Dedup string `json:"dedup,omitempty"`
 }
 
 // DiscoverRepos returns the depth-1 subdirectories of dir that contain the

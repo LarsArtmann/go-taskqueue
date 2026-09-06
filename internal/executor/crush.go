@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -30,12 +32,28 @@ type CrushPayload struct {
 	// Dedup is the harvester's item key; purely informational, used to keep
 	// TODO items and tasks 1:1 across harvest runs.
 	Dedup string `json:"dedup,omitempty"`
+	// Verify is a shell command that must exit 0 after the agent run for the
+	// task to complete — the enforced quality gate. Empty means auto-detect:
+	// Go repositories (go.mod present) run "go build ./... && go test ./...
+	// -count=1", everything else runs nothing.
+	Verify string `json:"verify,omitempty"`
+	// RequireClean refuses to start unless the repo's git tree is clean, so
+	// the pool never tramples human work-in-progress. Default true. Repos
+	// without a .git directory skip the check (nothing to protect).
+	RequireClean *bool `json:"require_clean,omitempty"`
+	// TimeoutMinutes caps the whole task (agent run + verify). Default 30.
+	// The worker's task timeout still applies as a hard ceiling above this.
+	TimeoutMinutes int `json:"timeout_minutes,omitempty"`
 }
 
 // DefaultCrushBinary is used when Binary and $TQ_CRUSH_BIN are empty.
 const DefaultCrushBinary = "crush"
 
-// CrushExecutor runs one Crush agent per task via `crush run` (non-interactive).
+// defaultCrushTaskTimeout bounds one agent task unless the payload overrides.
+const defaultCrushTaskTimeout = 30 * time.Minute
+
+// CrushExecutor runs one Crush agent per task via `crush run` (non-interactive),
+// then enforces the payload's verify contract.
 //
 // Safety model: --yolo (auto-accept all permissions) is an operator decision
 // made when the pool starts, never a payload decision — a task payload can
@@ -65,7 +83,8 @@ func (e *CrushExecutor) binary() string {
 	return DefaultCrushBinary
 }
 
-// Execute runs the agent and returns nil on exit code 0.
+// Execute guards the repo, runs the agent, then runs the verify command. Any
+// miss is a failed attempt (the queue retries with backoff, then dead-letters).
 func (e *CrushExecutor) Execute(ctx context.Context, t task.Task) error {
 	var p CrushPayload
 	if len(t.Payload) == 0 {
@@ -80,7 +99,52 @@ func (e *CrushExecutor) Execute(ctx context.Context, t task.Task) error {
 	if info, err := os.Stat(p.Repo); err != nil || !info.IsDir() {
 		return fmt.Errorf("crush: repo directory does not exist: %s", p.Repo)
 	}
+	if requireClean(p) {
+		if _, err := os.Stat(filepath.Join(p.Repo, ".git")); err == nil {
+			if err := assertCleanTree(ctx, p.Repo); err != nil {
+				return err
+			}
+		}
+	}
 
+	timeout := defaultCrushTaskTimeout
+	if p.TimeoutMinutes > 0 {
+		timeout = time.Duration(p.TimeoutMinutes) * time.Minute
+	}
+	runCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	if err := e.runAgent(runCtx, &p); err != nil {
+		return err
+	}
+	return runVerify(runCtx, &p)
+}
+
+func requireClean(p CrushPayload) bool {
+	if p.RequireClean == nil {
+		return true
+	}
+	return *p.RequireClean
+}
+
+// assertCleanTree fails unless the repo has no uncommitted changes.
+func assertCleanTree(ctx context.Context, repo string) error {
+	cmd := exec.CommandContext(ctx, "git", "-C", repo, "status", "--porcelain")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("crush: git status failed in %s: %v: %s", repo, err, tailBytes(out.Bytes(), 512))
+	}
+	if s := strings.TrimSpace(out.String()); s != "" {
+		return fmt.Errorf("crush: repo %s has uncommitted changes; refusing to run agent (commit/stash first, or set require_clean=false): %s",
+			repo, tailBytes(out.Bytes(), 512))
+	}
+	return nil
+}
+
+// runAgent spawns the headless agent in the repo and waits for it.
+func (e *CrushExecutor) runAgent(ctx context.Context, p *CrushPayload) error {
 	args := []string{"run", "--quiet", "--cwd", p.Repo}
 	if e.Yolo {
 		args = append(args, "--yolo")
@@ -94,11 +158,13 @@ func (e *CrushExecutor) Execute(ctx context.Context, t task.Task) error {
 	args = append(args, "--", p.Prompt)
 
 	cmd := exec.CommandContext(ctx, e.binary(), args...)
+	cmd.Dir = p.Repo
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
-	// If crush leaves grandchildren holding the pipes open, do not hang the
-	// worker past the kill: give up on output collection shortly after kill.
+	// Kill the whole process tree on cancel (agents spawn children) and do
+	// not hang the worker if grandchildren hold the pipes open.
+	prepareProcessGroup(cmd)
 	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Run(); err != nil {
 		tail := tailBytes(buf.Bytes(), 8192)
@@ -108,6 +174,43 @@ func (e *CrushExecutor) Execute(ctx context.Context, t task.Task) error {
 		return fmt.Errorf("crush run failed: %w: %s", err, tail)
 	}
 	return nil
+}
+
+// runVerify enforces the quality gate after the agent exited cleanly.
+func runVerify(ctx context.Context, p *CrushPayload) error {
+	verify := p.Verify
+	if verify == "" {
+		verify = defaultVerify(p.Repo)
+	}
+	if verify == "" {
+		return nil // nothing to verify (non-Go repo, no explicit command)
+	}
+	cmd := exec.CommandContext(ctx, "sh", "-c", verify)
+	cmd.Dir = p.Repo
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	prepareProcessGroup(cmd)
+	cmd.WaitDelay = 10 * time.Second
+	if err := cmd.Run(); err != nil {
+		tail := tailBytes(buf.Bytes(), 4096)
+		if ctx.Err() != nil {
+			return fmt.Errorf("crush verify cancelled (%v): %s", ctx.Err(), tail)
+		}
+		return fmt.Errorf("crush verify failed (%q): %w: %s", verify, err, tail)
+	}
+	return nil
+}
+
+// defaultVerify picks a sensible verification command for a repo.
+func defaultVerify(repo string) string {
+	if _, err := os.Stat(filepath.Join(repo, "go.mod")); err == nil {
+		return "go build ./... && go test ./... -count=1"
+	}
+	if _, err := os.Stat(filepath.Join(repo, "package.json")); err == nil {
+		return "npm test --silent"
+	}
+	return ""
 }
 
 // RenderCrushPayload marshals a payload for tasks of type crush.
