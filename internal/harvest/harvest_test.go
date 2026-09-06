@@ -307,7 +307,6 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 }
 
 //go:fix inline
-func strPtr(s string) *string { return new(s) }
 
 func hasSkip(res Result, substr string) bool {
 	for _, s := range res.Skipped {

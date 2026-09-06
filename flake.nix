@@ -47,6 +47,7 @@
           pkgs.git
           pkgs.gotools
           pkgs.gofumpt
+          pkgs.dprint
         ];
       };
 

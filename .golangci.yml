@@ -6,10 +6,14 @@ linters:
     errcheck:
       exclude-functions:
         - (*database/sql.Rows).Close
-        - (*archive/zip.ReadCloser).Close
+        - (io.ReadCloser).Close
         - (*os.File).Sync
         - (net/http.ResponseWriter).Write
-        - (net/http.Response.Body).Close
+        - (*github.com/larsartmann/go-taskqueue/internal/queue.SQLiteStore).Close
+    staticcheck:
+      checks:
+        - all
+        - -QF1008
   exclusions:
     rules:
       # Tests: best-effort cleanup and stdout writes don't need error checks.
