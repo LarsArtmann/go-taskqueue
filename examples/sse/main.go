@@ -14,7 +14,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -48,10 +47,10 @@ func main() {
 
 		after := int64(0)
 		if v := r.URL.Query().Get("after"); v != "" {
-			fmt.Sscanf(v, "%d", &after)
+			_, _ = fmt.Sscanf(v, "%d", &after)
 		}
 		if lid := r.Header.Get("Last-Event-ID"); lid != "" {
-			fmt.Sscanf(lid, "%d", &after)
+			_, _ = fmt.Sscanf(lid, "%d", &after)
 		}
 
 		ctx := r.Context()
@@ -65,7 +64,7 @@ func main() {
 				if err != nil {
 					return
 				}
-				fmt.Fprintf(w, "id: %d\nevent: fact\ndata: %s\n\n", f.Seq, body)
+				_, _ = fmt.Fprintf(w, "id: %d\nevent: fact\ndata: %s\n\n", f.Seq, body)
 				after = f.Seq
 			}
 			if len(facts) > 0 {
@@ -78,8 +77,6 @@ func main() {
 			}
 		}
 	})
-	log.Printf("sse: streaming %s on http://localhost%s/events", *db, *addr)
+	log.Printf("sse: streaming %s on http://%s/events", *db, *addr)
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
-
-var _ = context.Background
