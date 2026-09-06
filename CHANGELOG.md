@@ -8,33 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- Permanent-vs-transient error classes: `executor.PermanentError` marks
-  failures retrying can never fix (bad payload, missing repo, unknown task
-  type, non-zero `sh` exit, permanent HTTP statuses); the worker
-  dead-letters them after ONE attempt instead of burning the retry budget.
-  Dead-letter facts carry the error class, shown by `tq facts`
-- Preflight refusals: `executor.PreflightError` + `Store.Requeue` — a dirty
-  tree or missing autonomy config requeues a task WITHOUT burning an
-  attempt (claimable again after a delay); the autonomy probe also accepts
-  a user-global crush config
-- Store-level per-project claim exclusivity (`queue.WithProjectExclusivity`,
-  `--project-exclusive`): across ALL pools and processes sharing a database,
-  a project never has two running tasks at once; proven by the new
-  two-pool/three-repo live smoke (`scripts/smoke/multi-repo.sh`)
+- Task result detail: completed agent tasks record the crush session id and
+  the verify output tail in the `task.completed` fact; `tq show TASK_ID`
+  renders the task together with its full fact trail, so an operator can
+  trace exactly what an agent did and how the work was proven
+- End-to-end CLI suite (`internal/e2e`): builds the real `tq` binary and
+  drives `agent-pool --once` as a subprocess with a stub agent — the full
+  harvest → claim → work → verify → complete loop is proven from outside the
+  process, in CI, at zero API cost
+- Property test for harvest dedup keys (stable under whitespace reflow,
+  distinct across repos with identical item text) and a fuzz harness for the
+  TODO parser (CRLF, BOM, nesting — 1.8M executions, zero findings)
+- Chaos test: a worker SIGKILLed mid-task is reclaimed via lease expiry and
+  the work completes exactly once in the journal
 - Cost ceilings for unattended pools: `--daily-budget` (max enqueues per
   calendar day, projected from the journal), `--budget-cmd` (your own
   accounting vetoes each tick), `--repo-interval` (per-repo enqueue gap),
   `--dlq-backoff` (pauses poisoned repos whose recent work all died)
 - `tq agent-pool --once`: one harvest tick, drain, exit — cron/timer
   friendly, with a systemd user unit in `deploy/systemd/`
+- Preflight refusals: `executor.PreflightError` + `Store.Requeue` — a dirty
+  tree or missing autonomy config requeues a task WITHOUT burning an
+  attempt (claimable again after a delay); the autonomy probe also accepts
+  a user-global crush config
 - Verify strategy: the repo's `.tq-verify` file wins over payload and
   auto-detection; auto-detection adds Makefile, flake.nix and Cargo repos;
   the harvester pins a repo's `.tq-verify` command into every payload
 - `--model` on `tq harvest` / `tq agent-pool`: pin the crush model in every
   harvested agent payload
-- CI reliability bundle: nix build + flake check job, TODO_LIST
-  harvest-parse guard, and a ghost-reference check that fails when a living
-  doc cites a repo path that does not exist
 
 ### Changed
 

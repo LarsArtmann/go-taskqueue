@@ -62,8 +62,9 @@
 
 | Feature                                                       | Status                | Notes                                                                                               |
 | ------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------- |
-| enqueue / worker / stats / show / dlq / cancel / facts / tail | 🟢 `FULLY_FUNCTIONAL` | `tq worker` runs until signalled (no one-shot mode); `tq facts` renders the dead-letter error class |
-| harvest / agent-pool                                          | 🟢 `FULLY_FUNCTIONAL` | See Agent pool; `--dry-run` for preview; `--model`, `--once`, cost ceilings                         |
+| enqueue / worker / stats / show / dlq / cancel / facts / tail | 🟢 `FULLY_FUNCTIONAL` | `tq worker` runs until signalled (no one-shot mode); `tq facts` renders the dead-letter error class          |
+| `tq show` — task + full fact trail                              | 🟢 `FULLY_FUNCTIONAL` | Completed agent tasks record session id + verify tail in `task.completed`; `tq show` renders the whole trail |
+| harvest / agent-pool                                            | 🟢 `FULLY_FUNCTIONAL` | See Agent pool; `--dry-run` for preview; `--model`, `--once`, cost ceilings                                  |
 
 ## Tooling
 
@@ -73,6 +74,9 @@
 | CI (vet, build, test -race, gofmt)  | 🟢 `FULLY_FUNCTIONAL` | `.github/workflows/ci.yml`; runs on every push; includes TODO_LIST harvest-parse guard + doc ghost-reference check    |
 | CI nix build + flake check          | 🟢 `FULLY_FUNCTIONAL` | Keyless runner-safe (HTTPS flake inputs); caught the vendor-hash drift class in review, not in production             |
 | Multi-repo two-pool live smoke      | 🟢 `FULLY_FUNCTIONAL` | `scripts/smoke/multi-repo.sh`: 3 repos, 2 pools, 1 DB — no double-enqueue, one claim per task, both pools work        |
+| E2E subprocess suite                | 🟢 `FULLY_FUNCTIONAL` | `internal/e2e`: builds the real `tq` binary, drives `agent-pool --once` with a stub agent from outside; runs in CI    |
+| Property + fuzz tests (harvest)     | 🟢 `FULLY_FUNCTIONAL` | Dedup-key stability property; `FuzzParseRepo` (CRLF/BOM/nesting), 1.8M execs clean                                    |
+| Chaos test (kill mid-run)           | 🟢 `FULLY_FUNCTIONAL` | `internal/e2e/chaos_test.go`: SIGKILL victim, lease-expiry reclaim, exactly one completion in the journal             |
 
 ## Planned (no code yet)
 
