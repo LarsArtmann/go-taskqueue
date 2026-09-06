@@ -1,0 +1,19 @@
+[Unit]
+Description=tq agent-pool (self-managing TODO_LIST harvest + headless agents)
+Documentation=https://github.com/LarsArtmann/go-taskqueue
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=%h/go/bin/tq agent-pool
+Restart=on-failure
+RestartSec=30s
+
+# Graceful drain: agents may run for a long time; give them a wide stop
+# window. The pool survives the first SIGTERM and finishes in-flight tasks.
+TimeoutStopSec=45min
+KillSignal=SIGINT
+KillMode=process
+
+[Install]
+WantedBy=default.target
