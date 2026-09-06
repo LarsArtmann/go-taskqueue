@@ -3,7 +3,7 @@
 // It is the ingestion half of a self-managing agent pool: every repo's
 // TODO_LIST.md is the shared, human-readable work backlog; the harvester
 // repeatedly scans it and enqueues one agent task per open item, paced to at
-// most one in-flight task per repo. Agents (see executor.CrushExecutor) do
+// most one in-flight task per repo. Agents (see executor.AgentExecutor) do
 // the item and mark it done in the same file, which closes the loop: done
 // items are never re-enqueued, edited items become new work.
 package harvest

@@ -14,23 +14,17 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/worker"
 )
 
-// fakeAgentBin writes a stub "crush" that honors the agent contract: it finds
-// its repo via the --cwd flag and checks off the first open item in
-// TODO_LIST.md, then exits 0.
+// fakeAgentBin writes a stub agent that honors the agent contract: it runs
+// with its cwd set to the repo (the executor's cmd.Dir) and checks off the
+// first open item in TODO_LIST.md, then exits 0.
 func fakeAgentBin(t *testing.T) string {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "fake-agent")
 	script := `#!/bin/sh
-cwd=""
-prev=""
-for a in "$@"; do
-  if [ "$prev" = "--cwd" ]; then cwd="$a"; fi
-  prev="$a"
-done
-f="$cwd/TODO_LIST.md"
-[ -f "$f" ] || { echo "no todo file in $cwd" >&2; exit 1; }
+f="$PWD/TODO_LIST.md"
+[ -f "$f" ] || { echo "no todo file in $PWD" >&2; exit 1; }
 sed -i '0,/- \[ \]/s//- [x]/' "$f" || exit 1
-echo "agent: closed one item in $cwd"
+echo "agent: closed one item in $PWD"
 `
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
@@ -57,7 +51,9 @@ func TestSelfManagingLoop(t *testing.T) {
 	q := queue.New(s)
 
 	reg := executor.NewRegistry()
-	reg.Register(executor.TaskTypeCrush, &executor.CrushExecutor{Binary: fakeAgentBin(t)})
+	reg.Register(harvest.DefaultType, &executor.AgentExecutor{Bin: fakeAgentBin(t), ProjectsDir: projects})
+	noClean := false
+	h := New(q, Config{ProjectsDir: projects, RequireClean: &noClean})
 	pool := worker.New(s, worker.Config{
 		Owner:        "e2e-pool",
 		Concurrency:  1,
@@ -67,8 +63,6 @@ func TestSelfManagingLoop(t *testing.T) {
 	}, nil)
 	go func() { _ = pool.Start(ctx) }()
 	defer pool.Stop()
-
-	h := New(q, Config{ProjectsDir: projects})
 
 	// Tick 1: first item enqueued and worked to completion by the pool.
 	res, err := h.Run(ctx)
