@@ -9,10 +9,9 @@ import (
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite" // pure-Go SQLite driver (CGo-free)
-
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	_ "modernc.org/sqlite" // pure-Go SQLite driver (CGo-free)
 )
 
 // SQLiteStore is the embedded, durable Store. One queue per database file.
@@ -53,7 +52,9 @@ func OpenSQLite(path string, opts ...StoreOption) (*SQLiteStore, error) {
 	for _, opt := range opts {
 		opt(&o)
 	}
+
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)", path)
+
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("queue: open sqlite: %w", err)
@@ -67,16 +68,20 @@ func OpenSQLite(path string, opts ...StoreOption) (*SQLiteStore, error) {
 	// converges — IF NOT EXISTS migrations on an already-migrated DB are a
 	// no-op — so a bounded backoff is the whole fix.
 	var merr error
+
 	for attempt := range 5 {
 		if attempt > 0 {
 			time.Sleep(time.Duration(1<<attempt) * 100 * time.Millisecond)
 		}
+
 		merr = s.migrate(context.Background())
 		if merr == nil {
 			return s, nil
 		}
 	}
+
 	_ = db.Close()
+
 	return nil, merr
 }
 
@@ -136,8 +141,12 @@ func (s *SQLiteStore) migrate(ctx context.Context) error {
 		`SELECT COUNT(*) FROM pragma_table_info('tasks') WHERE name = 'dedup_key'`).Scan(&dedupCol); err != nil {
 		return fmt.Errorf("queue: migrate: check dedup_key: %w", err)
 	}
+
 	if dedupCol == 0 {
-		if _, err := s.db.ExecContext(ctx, `ALTER TABLE tasks ADD COLUMN dedup_key TEXT NOT NULL DEFAULT ''`); err != nil {
+		if _, err := s.db.ExecContext(
+			ctx,
+			`ALTER TABLE tasks ADD COLUMN dedup_key TEXT NOT NULL DEFAULT ''`,
+		); err != nil {
 			return fmt.Errorf("queue: migrate: add dedup_key: %w", err)
 		}
 	}
@@ -147,6 +156,7 @@ func (s *SQLiteStore) migrate(ctx context.Context) error {
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_dedup ON tasks(dedup_key) WHERE dedup_key != ''`); err != nil {
 		return fmt.Errorf("queue: migrate: dedup index: %w", err)
 	}
+
 	return nil
 }
 
@@ -157,11 +167,13 @@ func (s *SQLiteStore) appendFact(ctx context.Context, tx *sql.Tx, f journal.Fact
 	if f.Time.IsZero() {
 		f.Time = time.Now()
 	}
+
 	detail := string(f.Detail) // empty string, never NULL
 	_, err := tx.ExecContext(ctx,
 		`INSERT INTO facts (time, task_id, type, owner, attempt, error, detail)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		f.Time.UnixMilli(), f.TaskID, string(f.Type), f.Owner, f.Attempt, f.Error, detail)
+
 	return err
 }
 
@@ -173,6 +185,7 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 	if n.Type == "" {
 		return task.Task{}, errors.New("queue: task type must not be empty")
 	}
+
 	if n.DedupKey != "" {
 		if existing, found, err := s.getTaskByDedupKey(ctx, n.DedupKey); err != nil {
 			return task.Task{}, fmt.Errorf("queue: enqueue dedup lookup: %w", err)
@@ -180,6 +193,7 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 			return existing, nil
 		}
 	}
+
 	now := time.Now()
 	t := task.Task{
 		ID:          task.NewID(),
@@ -195,10 +209,12 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 		UpdatedAt:   now,
 	}
 	suppressed := false
+
 	depsJSON, err := json.Marshal(t.Deps)
 	if err != nil {
 		return task.Task{}, fmt.Errorf("queue: marshal deps: %w", err)
 	}
+
 	payload := string(t.Payload) // empty string, never NULL
 
 	err = s.withTx(ctx, func(tx *sql.Tx) error {
@@ -207,16 +223,20 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 			// inserted the same key between our lookup and this write. The
 			// unique partial index is the final arbiter.
 			var existingID string
+
 			err := tx.QueryRowContext(ctx, `SELECT id FROM tasks WHERE dedup_key = ?`, n.DedupKey).Scan(&existingID)
 			if err == nil {
 				t.ID = task.ID(existingID)
 				suppressed = true
+
 				return nil
 			}
+
 			if !errors.Is(err, sql.ErrNoRows) {
 				return err
 			}
 		}
+
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO tasks (id, project, type, payload, deps, priority, attempts, max_attempts,
 			                    not_before, status, created_at, updated_at, dedup_key)
@@ -225,12 +245,14 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 			t.MaxAttempts, ms(t.NotBefore), now.UnixMilli(), now.UnixMilli(), n.DedupKey); err != nil {
 			return err
 		}
+
 		for _, d := range t.Deps {
 			if _, err := tx.ExecContext(ctx, `INSERT INTO deps (task_id, dep_id) VALUES (?, ?)`,
 				t.ID.String(), d.String()); err != nil {
 				return err
 			}
 		}
+
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: t.ID.String(), Type: journal.Enqueued, Attempt: 0,
 			Detail: mustJSON(map[string]any{"project": t.Project, "type": t.Type}),
@@ -239,33 +261,41 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 	if err != nil {
 		return task.Task{}, fmt.Errorf("queue: enqueue: %w", err)
 	}
+
 	if suppressed {
 		return s.Get(ctx, t.ID)
 	}
+
 	return t, nil
 }
 
 // getTaskByDedupKey returns the stored task for a dedup key, if any.
 func (s *SQLiteStore) getTaskByDedupKey(ctx context.Context, key string) (task.Task, bool, error) {
 	var id string
+
 	err := s.db.QueryRowContext(ctx, `SELECT id FROM tasks WHERE dedup_key = ?`, key).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return task.Task{}, false, nil
 	}
+
 	if err != nil {
 		return task.Task{}, false, err
 	}
+
 	t, err := s.Get(ctx, task.ID(id))
 	if err != nil {
 		return task.Task{}, false, err
 	}
+
 	return t, true, nil
 }
 
 // ClaimDue atomically claims one due task for owner.
 func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
 	now := time.Now()
+
 	var claimed task.Task
+
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		// Candidate: pending-and-due OR running-with-expired-lease (crashed
 		// worker reclaim), priority first, oldest first — and every
@@ -287,11 +317,13 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 			  ))
 			ORDER BY t.priority DESC, t.created_at ASC, t.id ASC
 			LIMIT 1`, now.UnixMilli(), now.UnixMilli(), boolInt(s.projectExclusive))
+
 		var id, st, prevOwner string
 		if err := row.Scan(&id, &st, &prevOwner); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return ErrNoTaskDue
 			}
+
 			return err
 		}
 		// Reclaiming an expired lease first records the release, so the
@@ -303,6 +335,7 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 				return err
 			}
 		}
+
 		res, err := tx.ExecContext(ctx, `
 			UPDATE tasks
 			SET status = 'running', lease_owner = ?, lease_expires = ?, updated_at = ?
@@ -313,28 +346,35 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 		if err != nil {
 			return err
 		}
+
 		n, err := res.RowsAffected()
 		if err != nil {
 			return err
 		}
+
 		if n == 0 {
 			return ErrNoTaskDue // lost the race (multi-process); caller retries
 		}
+
 		if err := s.appendFact(ctx, tx, journal.Fact{TaskID: id, Type: journal.Claimed, Owner: owner}); err != nil {
 			return err
 		}
+
 		claimed, err = s.loadTaskTx(ctx, tx, id)
+
 		return err
 	})
 	if err != nil {
 		return task.Task{}, err
 	}
+
 	return claimed, nil
 }
 
 // Complete marks a Running task Completed.
 func (s *SQLiteStore) Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error {
 	now := time.Now()
+
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx, `
 			UPDATE tasks
@@ -345,9 +385,11 @@ func (s *SQLiteStore) Complete(ctx context.Context, id task.ID, owner string, re
 		if err != nil {
 			return err
 		}
+
 		if n, _ := res.RowsAffected(); n == 0 {
 			return s.leaseErr(ctx, tx, id, owner)
 		}
+
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Completed, Owner: owner,
 			Detail: maybeJSON(result),
@@ -359,6 +401,7 @@ func (s *SQLiteStore) Complete(ctx context.Context, id task.ID, owner string, re
 func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errText string, backoff time.Duration) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now() // captured inside the tx: backoff counts from commit, not from call
+
 		var attempts, maxAttempts int
 		// Safe without FOR UPDATE: single serialized writer connection.
 		err := tx.QueryRowContext(ctx,
@@ -368,8 +411,10 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 			if errors.Is(err, sql.ErrNoRows) {
 				return task.ErrNotFound
 			}
+
 			return err
 		}
+
 		newAttempts := attempts + 1
 		if newAttempts >= maxAttempts {
 			_, err = tx.ExecContext(ctx, `
@@ -381,17 +426,20 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 			if err != nil {
 				return err
 			}
+
 			if err := s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.Failed, Owner: owner,
 				Attempt: newAttempts, Error: errText,
 			}); err != nil {
 				return err
 			}
+
 			return s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: newAttempts,
 				Error: errText, Detail: json.RawMessage(`{"class":"exhausted"}`),
 			})
 		}
+
 		_, err = tx.ExecContext(ctx, `
 			UPDATE tasks
 			SET status = 'pending', attempts = ?, last_error = ?, not_before = ?,
@@ -401,6 +449,7 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 		if err != nil {
 			return err
 		}
+
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Failed, Owner: owner,
 			Attempt: newAttempts, Error: errText,
@@ -415,7 +464,9 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 func (s *SQLiteStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now()
+
 		var attempts int
+
 		err := tx.QueryRowContext(ctx,
 			`SELECT attempts FROM tasks WHERE id = ?`, id.String()).
 			Scan(&attempts)
@@ -423,9 +474,12 @@ func (s *SQLiteStore) FailPermanent(ctx context.Context, id task.ID, owner strin
 			if errors.Is(err, sql.ErrNoRows) {
 				return task.ErrNotFound
 			}
+
 			return err
 		}
+
 		newAttempts := attempts + 1
+
 		res, err := tx.ExecContext(ctx, `
 				UPDATE tasks
 				SET status = 'dead', attempts = ?, max_attempts = ?, last_error = ?, updated_at = ?,
@@ -435,15 +489,18 @@ func (s *SQLiteStore) FailPermanent(ctx context.Context, id task.ID, owner strin
 		if err != nil {
 			return err
 		}
+
 		if n, _ := res.RowsAffected(); n == 0 {
 			return s.leaseErr(ctx, tx, id, owner)
 		}
+
 		if err := s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Failed, Owner: owner,
 			Attempt: newAttempts, Error: errText,
 		}); err != nil {
 			return err
 		}
+
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: newAttempts,
 			Error: errText, Detail: json.RawMessage(`{"class":"permanent"}`),
@@ -454,6 +511,7 @@ func (s *SQLiteStore) FailPermanent(ctx context.Context, id task.ID, owner strin
 // Heartbeat extends the lease of a Running task held by owner.
 func (s *SQLiteStore) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {
 	now := time.Now()
+
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE tasks SET lease_expires = ?, updated_at = ?
 		WHERE id = ? AND status = 'running' AND lease_owner = ? AND lease_expires > ?`,
@@ -461,15 +519,18 @@ func (s *SQLiteStore) Heartbeat(ctx context.Context, id task.ID, owner string, e
 	if err != nil {
 		return err
 	}
+
 	if n, _ := res.RowsAffected(); n == 0 {
 		return task.ErrLeaseNotHeld
 	}
+
 	return nil
 }
 
 // Cancel withdraws a Pending task.
 func (s *SQLiteStore) Cancel(ctx context.Context, id task.ID) error {
 	now := time.Now()
+
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx, `
 			UPDATE tasks SET status = 'cancelled', updated_at = ?, lease_owner = '', lease_expires = NULL
@@ -477,16 +538,21 @@ func (s *SQLiteStore) Cancel(ctx context.Context, id task.ID) error {
 		if err != nil {
 			return err
 		}
+
 		if n, _ := res.RowsAffected(); n == 0 {
 			var st string
-			if err := tx.QueryRowContext(ctx, `SELECT status FROM tasks WHERE id = ?`, id.String()).Scan(&st); err != nil {
+			if err := tx.QueryRowContext(ctx, `SELECT status FROM tasks WHERE id = ?`, id.String()).
+				Scan(&st); err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					return task.ErrNotFound
 				}
+
 				return err
 			}
+
 			return fmt.Errorf("%w: %s -> cancelled", task.ErrInvalidTransition, st)
 		}
+
 		return s.appendFact(ctx, tx, journal.Fact{TaskID: id.String(), Type: journal.Cancelled})
 	})
 }
@@ -496,7 +562,9 @@ func (s *SQLiteStore) RescueDead(ctx context.Context, id task.ID, maxAttempts in
 	if maxAttempts <= 0 {
 		maxAttempts = task.DefaultMaxAttempts
 	}
+
 	now := time.Now()
+
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx, `
 			UPDATE tasks
@@ -506,17 +574,30 @@ func (s *SQLiteStore) RescueDead(ctx context.Context, id task.ID, maxAttempts in
 		if err != nil {
 			return err
 		}
+
 		if n, _ := res.RowsAffected(); n == 0 {
 			var st string
-			if err := tx.QueryRowContext(ctx, `SELECT status FROM tasks WHERE id = ?`, id.String()).Scan(&st); err != nil {
+			if err := tx.QueryRowContext(ctx, `SELECT status FROM tasks WHERE id = ?`, id.String()).
+				Scan(&st); err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					return task.ErrNotFound
 				}
+
 				return err
 			}
+
 			return fmt.Errorf("%w: %s -> pending", task.ErrInvalidTransition, st)
 		}
-		return s.appendFact(ctx, tx, journal.Fact{TaskID: id.String(), Type: journal.Enqueued, Detail: mustJSON(map[string]string{"rescue": "true"})})
+
+		return s.appendFact(
+			ctx,
+			tx,
+			journal.Fact{
+				TaskID: id.String(),
+				Type:   journal.Enqueued,
+				Detail: mustJSON(map[string]string{"rescue": "true"}),
+			},
+		)
 	})
 }
 
@@ -529,18 +610,22 @@ func (s *SQLiteStore) Get(ctx context.Context, id task.ID) (task.Task, error) {
 func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 	where := []string{"1=1"}
 	args := []any{}
+
 	if f.Project != nil {
 		where = append(where, "project = ?")
 		args = append(args, *f.Project)
 	}
+
 	if f.Status != nil {
 		where = append(where, "status = ?")
 		args = append(args, string(*f.Status))
 	}
+
 	if f.Type != nil {
 		where = append(where, "type = ?")
 		args = append(args, *f.Type)
 	}
+
 	q := `SELECT id, project, type, payload, deps, priority, attempts, max_attempts,
 	             not_before, status, lease_owner, lease_expires, last_error,
 	             created_at, updated_at, completed_at
@@ -548,21 +633,27 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 	      ORDER BY priority DESC, created_at ASC`
 	if f.Limit > 0 {
 		q += " LIMIT ?"
+
 		args = append(args, f.Limit)
 	}
+
 	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
 	var out []task.Task
+
 	for rows.Next() {
 		t, err := scanTask(rows)
 		if err != nil {
 			return nil, err
 		}
+
 		out = append(out, t)
 	}
+
 	return out, rows.Err()
 }
 
@@ -575,20 +666,27 @@ func (s *SQLiteStore) Facts(ctx context.Context, after int64) ([]journal.Fact, e
 		return nil, err
 	}
 	defer rows.Close()
+
 	var out []journal.Fact
+
 	for rows.Next() {
-		var f journal.Fact
-		var ms int64
-		var detail string
+		var (
+			f      journal.Fact
+			ms     int64
+			detail string
+		)
 		if err := rows.Scan(&f.Seq, &ms, &f.TaskID, &f.Type, &f.Owner, &f.Attempt, &f.Error, &detail); err != nil {
 			return nil, err
 		}
+
 		f.Time = time.UnixMilli(ms)
 		if detail != "" {
 			f.Detail = json.RawMessage(detail)
 		}
+
 		out = append(out, f)
 	}
+
 	return out, rows.Err()
 }
 
@@ -599,10 +697,13 @@ func (s *SQLiteStore) withTx(ctx context.Context, fn func(tx *sql.Tx) error) err
 	if err != nil {
 		return err
 	}
+
 	if err := fn(tx); err != nil {
 		_ = tx.Rollback()
+
 		return err
 	}
+
 	return tx.Commit()
 }
 
@@ -615,13 +716,16 @@ func (s *SQLiteStore) loadTaskTx(ctx context.Context, q interface {
 		       not_before, status, lease_owner, lease_expires, last_error,
 		       created_at, updated_at, completed_at
 		FROM tasks WHERE id = ?`, id)
+
 	t, err := scanTaskRow(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return task.Task{}, task.ErrNotFound
 		}
+
 		return task.Task{}, err
 	}
+
 	return t, nil
 }
 
@@ -647,25 +751,30 @@ func scanTaskRow(r scanner) (task.Task, error) {
 		&createdAtMS, &updatedAtMS, &completedAt); err != nil {
 		return task.Task{}, err
 	}
+
 	t.ID = task.ID(id)
 	t.Status = task.Status(status)
 	t.Payload = json.RawMessage(payload)
 	t.NotBefore = time.UnixMilli(notBeforeMS)
 	t.CreatedAt = time.UnixMilli(createdAtMS)
+
 	t.UpdatedAt = time.UnixMilli(updatedAtMS)
 	if leaseExpires.Valid {
 		le := time.UnixMilli(leaseExpires.Int64)
 		t.LeaseExpires = &le
 	}
+
 	if completedAt.Valid {
 		ca := time.UnixMilli(completedAt.Int64)
 		t.CompletedAt = &ca
 	}
+
 	if deps != "" && deps != "[]" {
 		if err := json.Unmarshal([]byte(deps), &t.Deps); err != nil {
 			return task.Task{}, fmt.Errorf("queue: unmarshal deps for %s: %w", id, err)
 		}
 	}
+
 	return t, nil
 }
 
@@ -674,14 +783,18 @@ func (s *SQLiteStore) leaseErr(ctx context.Context, q interface {
 }, id task.ID, owner string,
 ) error {
 	var st string
+
 	err := q.QueryRowContext(ctx, `SELECT status FROM tasks WHERE id = ?`, id.String()).Scan(&st)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return task.ErrNotFound
 		}
+
 		return err
 	}
+
 	_ = owner
+
 	return task.ErrLeaseNotHeld
 }
 
@@ -689,6 +802,7 @@ func ms(t time.Time) int64 {
 	if t.IsZero() {
 		return 0
 	}
+
 	return t.UnixMilli()
 }
 
@@ -697,6 +811,7 @@ func mustJSON(v any) json.RawMessage {
 	if err != nil {
 		return json.RawMessage("{}")
 	}
+
 	return b
 }
 
@@ -704,6 +819,7 @@ func maybeJSON(r json.RawMessage) json.RawMessage {
 	if len(r) == 0 {
 		return nil
 	}
+
 	return r
 }
 
@@ -711,6 +827,7 @@ func boolInt(b bool) int {
 	if b {
 		return 1
 	}
+
 	return 0
 }
 
@@ -718,9 +835,16 @@ func boolInt(b bool) int {
 // the executor refused to start (preflight), so the task itself is fine and
 // the environment is expected to become ready later. Claimable again after
 // delay. Fact: task.requeued.
-func (s *SQLiteStore) Requeue(ctx context.Context, id task.ID, owner string, errText string, delay time.Duration) error {
+func (s *SQLiteStore) Requeue(
+	ctx context.Context,
+	id task.ID,
+	owner string,
+	errText string,
+	delay time.Duration,
+) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now()
+
 		res, err := tx.ExecContext(ctx, `
 			UPDATE tasks
 			SET status = 'pending', not_before = ?, last_error = ?, updated_at = ?,
@@ -730,9 +854,11 @@ func (s *SQLiteStore) Requeue(ctx context.Context, id task.ID, owner string, err
 		if err != nil {
 			return err
 		}
+
 		if n, _ := res.RowsAffected(); n == 0 {
 			return s.leaseErr(ctx, tx, id, owner)
 		}
+
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: owner, Error: errText,
 		})

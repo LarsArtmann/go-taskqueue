@@ -41,9 +41,12 @@ func Permanent(cause error) error {
 	if cause == nil {
 		return nil
 	}
-	if _, ok := cause.(*PermanentError); ok {
+
+	permanentError := &PermanentError{}
+	if errors.As(cause, &permanentError) {
 		return cause
 	}
+
 	return &PermanentError{Cause: cause}
 }
 
@@ -84,6 +87,7 @@ func NewRegistry() *Registry { return &Registry{execs: make(map[string]Executor)
 func (r *Registry) Register(taskType string, e Executor) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
 	r.execs[taskType] = e
 }
 
@@ -94,10 +98,12 @@ func (r *Registry) RegisterFunc(taskType string, f Func) { r.Register(taskType, 
 func (r *Registry) Lookup(taskType string) (Executor, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
 	e, ok := r.execs[taskType]
 	if !ok {
 		return nil, fmt.Errorf("%w: %q", ErrUnknownType, taskType)
 	}
+
 	return e, nil
 }
 
@@ -105,9 +111,11 @@ func (r *Registry) Lookup(taskType string) (Executor, error) {
 func (r *Registry) Types() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
 	out := make([]string, 0, len(r.execs))
 	for k := range r.execs {
 		out = append(out, k)
 	}
+
 	return out
 }

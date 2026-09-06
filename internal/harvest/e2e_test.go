@@ -20,6 +20,7 @@ import (
 func fakeAgentBin(t *testing.T) string {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "fake-agent")
+
 	script := `#!/bin/sh
 f="$PWD/TODO_LIST.md"
 [ -f "$f" ] || { echo "no todo file in $PWD" >&2; exit 1; }
@@ -29,6 +30,7 @@ echo "agent: closed one item in $PWD"
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	return bin
 }
 
@@ -48,12 +50,15 @@ func TestSelfManagingLoop(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = s.Close() }()
+
 	q := queue.New(s)
 
 	reg := executor.NewRegistry()
 	reg.Register(DefaultType, &executor.AgentExecutor{Bin: fakeAgentBin(t), ProjectsDir: projects})
+
 	noClean := false
 	h := New(q, Config{ProjectsDir: projects, RequireClean: &noClean})
+
 	pool := worker.New(s, worker.Config{
 		Owner:        "e2e-pool",
 		Concurrency:  1,
@@ -62,6 +67,7 @@ func TestSelfManagingLoop(t *testing.T) {
 		Executors:    reg,
 	}, nil)
 	go func() { _ = pool.Start(ctx) }()
+
 	defer pool.Stop()
 
 	// Tick 1: first item enqueued and worked to completion by the pool.
@@ -69,9 +75,11 @@ func TestSelfManagingLoop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "first item" {
 		t.Fatalf("tick 1 enqueued = %+v", res.Enqueued)
 	}
+
 	waitFor(t, ctx, func() bool { return taskStatus(t, ctx, q, res.Enqueued[0].TaskID) == task.Completed })
 
 	// Tick 2: first item is done in the file (not re-enqueued), repo is idle,
@@ -80,9 +88,11 @@ func TestSelfManagingLoop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "second item" {
 		t.Fatalf("tick 2 enqueued = %+v, want 'second item'", res.Enqueued)
 	}
+
 	waitFor(t, ctx, func() bool { return taskStatus(t, ctx, q, res.Enqueued[0].TaskID) == task.Completed })
 
 	// Tick 3: backlog empty, loop is idle — no third task, no duplicates.
@@ -90,6 +100,7 @@ func TestSelfManagingLoop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.Enqueued) != 0 {
 		t.Fatalf("tick 3 enqueued = %+v, want none (backlog drained)", res.Enqueued)
 	}
@@ -99,13 +110,16 @@ func TestSelfManagingLoop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if strings.Contains(string(todo), "- [ ]") {
 		t.Fatalf("TODO_LIST.md still has open items:\n%s", todo)
 	}
+
 	tasks, err := q.List(ctx, queue.Filter{Project: new("loop")})
 	if err != nil || len(tasks) != 2 {
 		t.Fatalf("tasks: %v %d", err, len(tasks))
 	}
+
 	for _, tk := range tasks {
 		if tk.Status != task.Completed {
 			t.Fatalf("task %s status = %s, want completed", tk.ID, tk.Status)
@@ -115,25 +129,30 @@ func TestSelfManagingLoop(t *testing.T) {
 
 func taskStatus(t *testing.T, ctx context.Context, q *queue.Queue, id task.ID) task.Status {
 	t.Helper()
+
 	got, err := q.Get(ctx, id)
 	if err != nil {
 		t.Fatalf("get %s: %v", id, err)
 	}
+
 	return got.Status
 }
 
 func waitFor(t *testing.T, ctx context.Context, cond func() bool) {
 	t.Helper()
+
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
 		if cond() {
 			return
 		}
+
 		select {
 		case <-ctx.Done():
 			t.Fatalf("condition not met before ctx done: %v", ctx.Err())
 		case <-time.After(20 * time.Millisecond):
 		}
 	}
+
 	t.Fatal("condition not met before deadline")
 }

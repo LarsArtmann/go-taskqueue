@@ -28,6 +28,7 @@ func main() {
 	db := flag.String("db", "tasks.db", "queue database path")
 	addr := flag.String("addr", ":8090", "listen address")
 	poll := flag.Duration("poll", 500*time.Millisecond, "journal tail interval")
+
 	flag.Parse()
 
 	store, err := queue.OpenSQLite(*db)
@@ -40,8 +41,10 @@ func main() {
 		flusher, ok := w.(http.Flusher)
 		if !ok {
 			http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+
 			return
 		}
+
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 
@@ -49,6 +52,7 @@ func main() {
 		if v := r.URL.Query().Get("after"); v != "" {
 			_, _ = fmt.Sscanf(v, "%d", &after)
 		}
+
 		if lid := r.Header.Get("Last-Event-ID"); lid != "" {
 			_, _ = fmt.Sscanf(lid, "%d", &after)
 		}
@@ -59,17 +63,21 @@ func main() {
 			if err != nil {
 				return
 			}
+
 			for _, f := range facts {
 				body, err := json.Marshal(f)
 				if err != nil {
 					return
 				}
+
 				_, _ = fmt.Fprintf(w, "id: %d\nevent: fact\ndata: %s\n\n", f.Seq, body)
 				after = f.Seq
 			}
+
 			if len(facts) > 0 {
 				flusher.Flush()
 			}
+
 			select {
 			case <-ctx.Done():
 				return

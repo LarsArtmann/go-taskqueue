@@ -34,22 +34,29 @@ func NewHTTPExecutor(url string) *HTTPExecutor {
 func (e *HTTPExecutor) Execute(ctx context.Context, t task.Task) error {
 	body := fmt.Sprintf(`{"id":%q,"project":%q,"type":%q,"payload":%s,"attempt":%d}`,
 		t.ID.String(), t.Project, t.Type, payloadOrEmpty(t.Payload), t.Attempts+1)
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, e.URL, bytes.NewReader([]byte(body)))
 	if err != nil {
 		return Permanent(fmt.Errorf("http executor: build request: %w", err))
 	}
+
 	req.Header.Set("Content-Type", "application/json")
+
 	resp, err := e.Client.Do(req)
 	if err != nil {
 		return fmt.Errorf("http executor: %w", err)
 	}
+
 	defer func() { _ = resp.Body.Close() }()
+
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		if transientStatus(resp.StatusCode) {
 			return fmt.Errorf("http executor: transient status %d", resp.StatusCode)
 		}
+
 		return Permanent(fmt.Errorf("http executor: status %d", resp.StatusCode))
 	}
+
 	return nil
 }
 
@@ -59,6 +66,7 @@ func transientStatus(code int) bool {
 	case http.StatusRequestTimeout, http.StatusTooManyRequests:
 		return true
 	}
+
 	return code >= 500
 }
 
@@ -66,5 +74,6 @@ func payloadOrEmpty(p []byte) string {
 	if len(p) == 0 {
 		return "{}"
 	}
+
 	return string(p)
 }

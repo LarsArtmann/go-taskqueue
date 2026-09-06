@@ -31,19 +31,23 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 	defer os.RemoveAll(dir)
+
 	tqBin = filepath.Join(dir, "tq")
 	build := exec.Command("go", "build", "-o", tqBin, "github.com/larsartmann/go-taskqueue/cmd/tq")
 	build.Dir = repoRoot()
+
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "build tq: %v\n%s", err, out)
 		os.Exit(1)
 	}
+
 	os.Exit(m.Run())
 }
 
 func repoRoot() string {
 	wd, _ := os.Getwd()
+
 	return filepath.Dir(filepath.Dir(wd))
 }
 
@@ -63,7 +67,9 @@ func TestAgentPoolOnceSubprocess(t *testing.T) {
 		"--repos", filepath.Join(dir, "demorepo"),
 		"--db", db, "--poll", "50ms", "--once",
 	)
+
 	cmd.Env = append(os.Environ(), "TQ_AGENT_BIN="+stub)
+
 	out, err := runWithTimeout(cmd, 30*time.Second)
 	if err != nil {
 		t.Fatalf("agent-pool --once: %v\n%s", err, out)
@@ -71,6 +77,7 @@ func TestAgentPoolOnceSubprocess(t *testing.T) {
 
 	s := openStore(t, db)
 	defer func() { _ = s.Close() }()
+
 	assertFactCounts(t, ctx, s, map[string]int{
 		"task.enqueued":      1,
 		"task.claimed":       1,
@@ -86,7 +93,9 @@ func TestBudgetRefusalSubprocess(t *testing.T) {
 	writeRepo(t, dir, "demorepo", "- [ ] budgeted item\n")
 	stub := filepath.Join(dir, "stub-agent")
 	writeFile(t, stub, "#!/bin/sh\nexit 0\n", 0o755)
+
 	db := filepath.Join(dir, "q.db")
+
 	env := append(os.Environ(), "TQ_AGENT_BIN="+stub)
 
 	run := func(extra ...string) string {
@@ -95,13 +104,16 @@ func TestBudgetRefusalSubprocess(t *testing.T) {
 			"--db", db, "--poll", "50ms", "--once",
 		}, extra...)...)
 		cmd.Env = env
+
 		out, err := runWithTimeout(cmd, 30*time.Second)
 		if err != nil {
 			t.Fatalf("run %v: %v\n%s", extra, err, out)
 		}
+
 		return out
 	}
 	run("--daily-budget", "1")
+
 	second := run("--daily-budget", "1")
 	if !strings.Contains(second, "budget: skipping harvest tick") {
 		t.Fatalf("second run must refuse the tick, output:\n%s", second)
@@ -112,38 +124,48 @@ func TestBudgetRefusalSubprocess(t *testing.T) {
 
 func runWithTimeout(cmd *exec.Cmd, d time.Duration) (string, error) {
 	var buf strings.Builder
+
 	if cmd.Stdout != nil {
 		panic("stdout already set")
 	}
+
 	timer := time.AfterFunc(d, func() { _ = cmd.Process.Kill() })
 	defer timer.Stop()
+
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
 	err := cmd.Run()
+
 	return buf.String(), err
 }
 
 func runTQ(t *testing.T, dir, db string, args ...string) string {
 	t.Helper()
+
 	out, err := runWithTimeout(exec.Command(tqBin, append(args, "--db", db)...), 15*time.Second)
 	if err != nil {
 		t.Fatalf("tq %v: %v\n%s", args, err, out)
 	}
+
 	return strings.TrimSpace(out)
 }
 
 func writeRepo(t *testing.T, dir, name, items string) string {
 	t.Helper()
+
 	repo := filepath.Join(dir, name)
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	writeFile(t, filepath.Join(repo, harvest.DefaultTodoFile), "## Work\n\n"+items, 0o644)
+
 	return repo
 }
 
 func writeFile(t *testing.T, path, content string, mode os.FileMode) {
 	t.Helper()
+
 	if err := os.WriteFile(path, []byte(content), mode); err != nil {
 		t.Fatal(err)
 	}
@@ -151,23 +173,28 @@ func writeFile(t *testing.T, path, content string, mode os.FileMode) {
 
 func openStore(t *testing.T, path string) *queue.SQLiteStore {
 	t.Helper()
+
 	s, err := queue.OpenSQLite(path)
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)
 	}
+
 	return s
 }
 
 func assertFactCounts(t *testing.T, ctx context.Context, s *queue.SQLiteStore, want map[string]int) {
 	t.Helper()
+
 	facts, err := s.Facts(ctx, 0)
 	if err != nil {
 		t.Fatalf("facts: %v", err)
 	}
+
 	got := map[string]int{}
 	for _, f := range facts {
 		got[string(f.Type)]++
 	}
+
 	for typ, n := range want {
 		if got[typ] != n {
 			t.Fatalf("%s = %d, want %d (all: %v)", typ, got[typ], n, got)

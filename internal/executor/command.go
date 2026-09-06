@@ -34,19 +34,24 @@ func (e *CommandExecutor) Execute(ctx context.Context, t task.Task) error {
 	if err != nil {
 		return err
 	}
+
 	cmd := exec.CommandContext(ctx, "sh", "-c", line)
+
 	var buf bytes.Buffer
+
 	cmd.Stdout = &buf
+
 	cmd.Stderr = &buf
 	if err := cmd.Run(); err != nil {
 		tail := tailBytes(buf.Bytes(), 4096)
 		if ctx.Err() != nil {
-			return fmt.Errorf("command cancelled (%v): %s", ctx.Err(), tail)
+			return fmt.Errorf("command cancelled (%w): %s", ctx.Err(), tail)
 		}
 		// Non-zero exit is a permanent error — retrying "exit 2" never
 		// helps; the payload decides the outcome, not the environment.
-		return Permanent(fmt.Errorf("command failed: %v: %s", err, tail))
+		return Permanent(fmt.Errorf("command failed: %w: %s", err, tail))
 	}
+
 	return nil
 }
 
@@ -54,11 +59,13 @@ func (e *CommandExecutor) render(t task.Task) (string, error) {
 	if e.Template == "" {
 		return unwrapCommand(t.Payload), nil
 	}
+
 	line := e.Template
 	line = strings.ReplaceAll(line, "{{ID}}", t.ID.String())
 	line = strings.ReplaceAll(line, "{{PROJECT}}", t.Project)
 	line = strings.ReplaceAll(line, "{{TYPE}}", t.Type)
 	line = strings.ReplaceAll(line, "{{PAYLOAD}}", string(t.Payload))
+
 	return line, nil
 }
 
@@ -74,13 +81,16 @@ func unwrapCommand(payload []byte) string {
 			return m.Cmd
 		}
 	}
+
 	var str string
 	if err := json.Unmarshal(payload, &str); err == nil {
 		return str
 	}
+
 	if s == "" {
 		return "true"
 	}
+
 	return s
 }
 
@@ -89,8 +99,10 @@ func tailBytes(b []byte, n int) string {
 	if len(b) > n {
 		b = b[len(b)-n:]
 	}
+
 	if len(b) == 0 {
 		return "(no output)"
 	}
+
 	return string(b)
 }

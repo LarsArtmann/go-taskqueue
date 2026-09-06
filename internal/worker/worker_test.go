@@ -21,11 +21,14 @@ import (
 
 func testStore(t *testing.T) queue.Store {
 	t.Helper()
+
 	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "q.db"))
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
+
 	t.Cleanup(func() { _ = s.Close() })
+
 	return s
 }
 
@@ -36,31 +39,40 @@ func quietLog() *slog.Logger {
 // waitFor polls until the task reaches a terminal status or the deadline hits.
 func waitFor(t *testing.T, ctx context.Context, store queue.Store, id task.ID, want ...task.Status) task.Task {
 	t.Helper()
+
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		got, err := store.Get(ctx, id)
 		if err != nil {
 			t.Fatalf("get: %v", err)
 		}
+
 		if slices.Contains(want, got.Status) {
 			return got
 		}
+
 		time.Sleep(5 * time.Millisecond)
 	}
+
 	got, _ := store.Get(ctx, id)
 	t.Fatalf("task %s never reached %v (status=%s)", id, want, got.Status)
+
 	return got
 }
 
 func TestEndToEnd(t *testing.T) {
 	store := testStore(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	reg := executor.NewRegistry()
+
 	var ran atomic.Int32
+
 	reg.RegisterFunc("greet", func(context.Context, task.Task) error {
 		ran.Add(1)
+
 		return nil
 	})
 
@@ -76,6 +88,7 @@ func TestEndToEnd(t *testing.T) {
 
 	waitFor(t, ctx, store, enq.ID, task.Completed)
 	cancel()
+
 	if ran.Load() != 1 {
 		t.Fatalf("executor ran %d times, want 1", ran.Load())
 	}
@@ -83,19 +96,24 @@ func TestEndToEnd(t *testing.T) {
 
 func TestRetryThenComplete(t *testing.T) {
 	store := testStore(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	reg := executor.NewRegistry()
+
 	var attempts atomic.Int32
+
 	reg.RegisterFunc("flaky", func(context.Context, task.Task) error {
 		if attempts.Add(1) < 3 {
 			return errors.New("transient")
 		}
+
 		return nil
 	})
 
 	enq, _ := store.Enqueue(ctx, task.New{Type: "flaky", MaxAttempts: 5})
+
 	pool := New(store, Config{
 		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
 		Executors: reg,
@@ -105,10 +123,12 @@ func TestRetryThenComplete(t *testing.T) {
 
 	waitFor(t, ctx, store, enq.ID, task.Completed, task.Dead)
 	cancel()
+
 	got, _ := store.Get(context.Background(), enq.ID)
 	if got.Status != task.Completed {
 		t.Fatalf("status = %s (attempts %d), want completed", got.Status, got.Attempts)
 	}
+
 	if attempts.Load() != 3 {
 		t.Fatalf("attempts = %d, want 3", attempts.Load())
 	}
@@ -116,6 +136,7 @@ func TestRetryThenComplete(t *testing.T) {
 
 func TestPanicRecovery(t *testing.T) {
 	store := testStore(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -125,6 +146,7 @@ func TestPanicRecovery(t *testing.T) {
 	})
 
 	enq, _ := store.Enqueue(ctx, task.New{Type: "panic", MaxAttempts: 1})
+
 	pool := New(store, Config{
 		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
 		Executors: reg, Backoff: func(int) time.Duration { return 0 },
@@ -133,6 +155,7 @@ func TestPanicRecovery(t *testing.T) {
 
 	waitFor(t, ctx, store, enq.ID, task.Dead)
 	cancel()
+
 	got, _ := store.Get(context.Background(), enq.ID)
 	if !strings.Contains(got.LastError, "panicked") {
 		t.Fatalf("lastError = %q, want panic marker", got.LastError)
@@ -141,18 +164,24 @@ func TestPanicRecovery(t *testing.T) {
 
 func TestExactlyOnceUnderConcurrency(t *testing.T) {
 	store := testStore(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	const n = 20
+
 	reg := executor.NewRegistry()
+
 	var mu sync.Mutex
+
 	runs := make(map[string]int)
+
 	reg.RegisterFunc("work", func(_ context.Context, tk task.Task) error {
 		mu.Lock()
 		runs[tk.ID.String()]++
 		mu.Unlock()
 		time.Sleep(2 * time.Millisecond)
+
 		return nil
 	})
 
@@ -172,31 +201,39 @@ func TestExactlyOnceUnderConcurrency(t *testing.T) {
 	for time.Now().Before(deadline) {
 		tasks, _ := store.List(context.Background(), queue.Filter{})
 		done := 0
+
 		for _, tk := range tasks {
 			if tk.Status == task.Completed {
 				done++
 			}
 		}
+
 		if done == n {
 			break
 		}
+
 		time.Sleep(10 * time.Millisecond)
 	}
+
 	cancel()
 
 	got, _ := store.List(context.Background(), queue.Filter{})
 	done := 0
+
 	for _, tk := range got {
 		if tk.Status == task.Completed {
 			done++
 		}
 	}
+
 	if done != n {
 		t.Fatalf("%d/%d completed", done, n)
 	}
+
 	if len(runs) != n {
 		t.Fatalf("%d distinct tasks ran, want %d", len(runs), n)
 	}
+
 	for id, c := range runs {
 		if c != 1 {
 			t.Fatalf("task %s ran %d times, want 1", id, c)
@@ -206,14 +243,17 @@ func TestExactlyOnceUnderConcurrency(t *testing.T) {
 
 func TestLeaseLostMidExecution(t *testing.T) {
 	store := testStore(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	reg := executor.NewRegistry()
 	started := make(chan struct{})
+
 	reg.RegisterFunc("slow", func(c context.Context, _ task.Task) error {
 		close(started)
 		<-c.Done() // run until our context dies
+
 		return c.Err()
 	})
 
@@ -226,16 +266,20 @@ func TestLeaseLostMidExecution(t *testing.T) {
 	}, quietLog())
 
 	go func() { _ = pool.Start(ctx) }()
+
 	<-started
 
 	time.Sleep(150 * time.Millisecond) // lease now expired
+
 	stolen, err := store.ClaimDue(ctx, "thief", time.Minute)
 	if err != nil {
 		t.Fatalf("steal claim: %v", err)
 	}
+
 	if stolen.ID != enq.ID {
 		t.Fatalf("stole wrong task %s, want %s", stolen.ID, enq.ID)
 	}
+
 	if err := store.Complete(ctx, stolen.ID, "thief", nil); err != nil {
 		t.Fatalf("thief complete: %v", err)
 	}
@@ -244,12 +288,14 @@ func TestLeaseLostMidExecution(t *testing.T) {
 	if got.Status != task.Completed {
 		t.Fatalf("status = %s, want completed", got.Status)
 	}
+
 	cancel()
 
 	// The pool must not have recorded a spurious failure for the stolen task.
 	// (The worker detects the dead heartbeat context on next tick; give it a
 	// moment, then assert attempts stayed at the thief's view.)
 	time.Sleep(50 * time.Millisecond)
+
 	got, _ = store.Get(context.Background(), enq.ID)
 	if got.Status != task.Completed {
 		t.Fatalf("status after settle = %s, want completed", got.Status)
@@ -261,17 +307,24 @@ func TestShutdownDrains(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	reg := executor.NewRegistry()
-	var mu sync.Mutex
-	var claimedIDs []task.ID
+
+	var (
+		mu         sync.Mutex
+		claimedIDs []task.ID
+	)
+
 	firstClaim := make(chan struct{})
+
 	reg.RegisterFunc("job", func(_ context.Context, tk task.Task) error {
 		mu.Lock()
 		if len(claimedIDs) == 0 {
 			close(firstClaim)
 		}
+
 		claimedIDs = append(claimedIDs, tk.ID)
 		mu.Unlock()
 		time.Sleep(80 * time.Millisecond)
+
 		return nil
 	})
 
@@ -285,6 +338,7 @@ func TestShutdownDrains(t *testing.T) {
 		Concurrency: 3, PollInterval: 5 * time.Millisecond, TaskTimeout: 5 * time.Second, Executors: reg,
 	}, quietLog())
 	runDone := make(chan struct{})
+
 	go func() { _ = pool.Start(ctx); close(runDone) }()
 
 	<-firstClaim // a task is claimed and executing; shutdown now races the drain
@@ -296,9 +350,11 @@ func TestShutdownDrains(t *testing.T) {
 	mu.Lock()
 	claimed := slices.Clone(claimedIDs)
 	mu.Unlock()
+
 	if len(claimed) == 0 {
 		t.Fatal("no task was ever claimed")
 	}
+
 	for _, id := range claimed {
 		waitFor(t, context.Background(), store, id, task.Completed, task.Dead)
 	}
@@ -324,14 +380,18 @@ func TestLongTaskCompletesAcrossShutdown(t *testing.T) {
 	reg := executor.NewRegistry()
 	execStarted := make(chan struct{})
 	release := make(chan struct{})
+
 	var sawCtxCancelled atomic.Bool
+
 	reg.RegisterFunc("long", func(c context.Context, _ task.Task) error {
 		close(execStarted)
+
 		select {
 		case <-release:
 		case <-c.Done():
 			sawCtxCancelled.Store(true)
 		}
+
 		return nil
 	})
 
@@ -341,6 +401,7 @@ func TestLongTaskCompletesAcrossShutdown(t *testing.T) {
 		Executors: reg,
 	}, quietLog())
 	runDone := make(chan struct{})
+
 	go func() { _ = pool.Start(ctx); close(runDone) }()
 
 	<-execStarted // task claimed and executing
@@ -351,6 +412,7 @@ func TestLongTaskCompletesAcrossShutdown(t *testing.T) {
 	if sawCtxCancelled.Load() {
 		t.Fatal("shutdown cancelled the task context; long tasks would be orphaned")
 	}
+
 	got := waitFor(t, context.Background(), store, enq.ID, task.Completed)
 	if got.Status != task.Completed {
 		t.Fatalf("status = %s, want completed after shutdown", got.Status)
@@ -363,17 +425,22 @@ func TestLongTaskCompletesAcrossShutdown(t *testing.T) {
 // nothing.
 func TestPermanentErrorDeadLettersAfterOneAttempt(t *testing.T) {
 	store := testStore(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	reg := executor.NewRegistry()
+
 	var ran atomic.Int32
+
 	reg.RegisterFunc("broken", func(context.Context, task.Task) error {
 		ran.Add(1)
+
 		return executor.Permanent(errors.New("bad payload shape"))
 	})
 
 	enq, _ := store.Enqueue(ctx, task.New{Type: "broken", MaxAttempts: 5})
+
 	pool := New(store, Config{
 		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
 		Executors: reg,
@@ -381,13 +448,17 @@ func TestPermanentErrorDeadLettersAfterOneAttempt(t *testing.T) {
 	go func() { _ = pool.Start(ctx) }()
 
 	got := waitFor(t, ctx, store, enq.ID, task.Dead)
+
 	cancel()
+
 	if ran.Load() != 1 {
 		t.Fatalf("executor ran %d times, want exactly 1", ran.Load())
 	}
+
 	if got.Attempts != 1 {
 		t.Fatalf("attempts = %d, want 1", got.Attempts)
 	}
+
 	if !strings.Contains(got.LastError, "permanent: bad payload shape") {
 		t.Fatalf("lastError = %q, want permanent class prefix", got.LastError)
 	}
@@ -397,6 +468,7 @@ func TestPermanentErrorDeadLettersAfterOneAttempt(t *testing.T) {
 // appear mid-retry, so an unknown type must not exhaust the attempt budget.
 func TestUnknownTaskTypeDeadLettersImmediately(t *testing.T) {
 	store := testStore(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -408,7 +480,9 @@ func TestUnknownTaskTypeDeadLettersImmediately(t *testing.T) {
 
 	enq, _ := store.Enqueue(ctx, task.New{Type: "mystery", MaxAttempts: 9})
 	got := waitFor(t, ctx, store, enq.ID, task.Dead)
+
 	cancel()
+
 	if got.Attempts != 1 {
 		t.Fatalf("attempts = %d, want 1 (unknown type is permanent)", got.Attempts)
 	}
@@ -421,21 +495,29 @@ func TestUnknownTaskTypeDeadLettersImmediately(t *testing.T) {
 // commits or adds the missing config.
 func TestPreflightRequeuesWithoutAttemptBurn(t *testing.T) {
 	store := testStore(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	reg := executor.NewRegistry()
-	var ready atomic.Bool
-	var ran atomic.Int32
+
+	var (
+		ready atomic.Bool
+		ran   atomic.Int32
+	)
+
 	reg.RegisterFunc("env", func(context.Context, task.Task) error {
 		if !ready.Load() {
 			return &executor.PreflightError{Cause: errors.New("repo dirty; human still working")}
 		}
+
 		ran.Add(1)
+
 		return nil
 	})
 
 	enq, _ := store.Enqueue(ctx, task.New{Type: "env", MaxAttempts: 1})
+
 	pool := New(store, Config{
 		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
 		PreflightBackoff: 120 * time.Millisecond,
@@ -451,8 +533,10 @@ func TestPreflightRequeuesWithoutAttemptBurn(t *testing.T) {
 		if got.LastError != "" && got.Status == task.Pending && got.Attempts == 0 {
 			break
 		}
+
 		time.Sleep(5 * time.Millisecond)
 	}
+
 	first, _ := store.Get(context.Background(), enq.ID)
 	if first.Status != task.Pending || first.Attempts != 0 {
 		t.Fatalf("after preflight refusal: status=%s attempts=%d, want pending/0", first.Status, first.Attempts)
@@ -460,23 +544,28 @@ func TestPreflightRequeuesWithoutAttemptBurn(t *testing.T) {
 
 	// Environment fixed: the very same task completes without any rescue.
 	ready.Store(true)
+
 	got := waitFor(t, ctx, store, enq.ID, task.Completed)
 	if ran.Load() != 1 {
 		t.Fatalf("executor ran %d times after fix, want 1", ran.Load())
 	}
+
 	if got.Status != task.Completed {
 		t.Fatalf("status = %s, want completed", got.Status)
 	}
+
 	cancel()
 }
 
 // testStubScript writes an executable stub binary and returns its path.
 func testStubScript(t *testing.T, script string) string {
 	t.Helper()
+
 	path := filepath.Join(t.TempDir(), "stub-bin")
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	return path
 }
 
@@ -485,6 +574,7 @@ func testStubScript(t *testing.T, script string) string {
 // so `tq show` can answer "what did the agent do" without log-diving.
 func TestAgentResultDetailStored(t *testing.T) {
 	store := testStore(t)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -495,11 +585,14 @@ func TestAgentResultDetailStored(t *testing.T) {
 	})
 
 	repo := t.TempDir() // non-git repo: skips the clean-tree guard
+
 	payload, err := executor.RenderAgentPayload(executor.AgentPayload{Repo: repo, Prompt: "do it"})
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	enq, _ := store.Enqueue(ctx, task.New{Project: "demo", Type: executor.TaskTypeAgent, Payload: payload})
+
 	pool := New(store, Config{
 		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 5 * time.Second,
 		Executors: reg,
@@ -515,8 +608,10 @@ func TestAgentResultDetailStored(t *testing.T) {
 			if !strings.Contains(string(f.Detail), "crush-abc-123") {
 				t.Fatalf("completion detail missing session id: %s", f.Detail)
 			}
+
 			return
 		}
 	}
+
 	t.Fatal("completed fact carries no result detail")
 }

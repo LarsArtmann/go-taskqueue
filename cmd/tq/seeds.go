@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 )
@@ -11,14 +12,23 @@ import (
 // repo with a TODO_LIST.md becomes billable work).
 func checkProjectsDir(dir string) error {
 	if dir == "/" {
-		return fmt.Errorf("--projects-dir / would harvest the whole filesystem; name a directory that contains only repos you want agents to touch")
+		return errors.New(
+			"--projects-dir / would harvest the whole filesystem; name a directory that contains only repos you want agents to touch",
+		)
 	}
+
 	if dir == "" {
 		return nil
 	}
+
 	home, err := os.UserHomeDir()
 	if err == nil && home != "" && dir == home {
-		return fmt.Errorf("--projects-dir %s is your home directory; point at the subdirectory holding the projects (e.g. %s/projects)", home, home)
+		return fmt.Errorf(
+			"--projects-dir %s is your home directory; point at the subdirectory holding the projects (e.g. %s/projects)",
+			home,
+			home,
+		)
 	}
+
 	return nil
 }

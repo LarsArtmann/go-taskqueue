@@ -19,7 +19,9 @@ func ExampleRegistry() {
 		if err := json.Unmarshal(t.Payload, &name); err != nil {
 			name = "stranger"
 		}
+
 		fmt.Printf("hello %s\n", name)
+
 		return nil
 	})
 
@@ -27,6 +29,7 @@ func ExampleRegistry() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	err = ex.Execute(context.Background(), task.Task{
 		ID:      task.ID("t1"),
 		Type:    "greet",

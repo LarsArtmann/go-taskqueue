@@ -14,11 +14,13 @@ import (
 
 func taskFilter(repoName string) queue.Filter {
 	t := DefaultType
+
 	return queue.Filter{Project: &repoName, Type: &t}
 }
 
 func mustWrite(t *testing.T, path, content string) {
 	t.Helper()
+
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -26,10 +28,12 @@ func mustWrite(t *testing.T, path, content string) {
 
 func mustJSON(t *testing.T, v any) json.RawMessage {
 	t.Helper()
+
 	b, err := json.Marshal(v)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	return b
 }
 
@@ -37,12 +41,16 @@ func mustJSON(t *testing.T, v any) json.RawMessage {
 // for itemText, leaving the checkbox open — the stale-open setup.
 func completeHarvestedTask(t *testing.T, h *Harvester, repoName, itemText string) task.Task {
 	t.Helper()
+
 	ctx := context.Background()
+
 	tasks, err := h.q.List(ctx, taskFilter(repoName))
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	key := ItemKey(repoName, itemText)
+
 	for _, task := range tasks {
 		var p struct {
 			Dedup string `json:"dedup"`
@@ -51,13 +59,17 @@ func completeHarvestedTask(t *testing.T, h *Harvester, repoName, itemText string
 			if _, err := h.q.ClaimDue(ctx, "tester", time.Minute); err != nil {
 				t.Fatal(err)
 			}
+
 			if err := h.q.Complete(ctx, task.ID, "tester", nil); err != nil {
 				t.Fatal(err)
 			}
+
 			return task
 		}
 	}
+
 	t.Fatalf("no task harvested for item %q", itemText)
+
 	return task.Task{}
 }
 
@@ -78,16 +90,24 @@ func TestAuditDetectsDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.StaleOpen) != 1 {
 		t.Fatalf("StaleOpen = %d entries, want 1: %+v", len(res.StaleOpen), res.StaleOpen)
 	}
+
 	d := res.StaleOpen[0]
 	if d.TaskID != done.ID || d.Item.Text != "finished but unticked" || d.Kind != DriftStaleOpen {
 		t.Errorf("wrong drift: %+v", d)
 	}
+
 	if len(res.StaleDone) != 0 {
-		t.Errorf("StaleDone = %d, want 0 (ticked item has no task at all — not drift): %+v", len(res.StaleDone), res.StaleDone)
+		t.Errorf(
+			"StaleDone = %d, want 0 (ticked item has no task at all — not drift): %+v",
+			len(res.StaleDone),
+			res.StaleDone,
+		)
 	}
+
 	if len(res.Enqueued) != 1 {
 		t.Fatalf("catch-ups enqueued = %d, want 1", len(res.Enqueued))
 	}
@@ -111,9 +131,11 @@ func TestAuditStaleDoneReportedNotRepaired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.StaleDone) != 1 || res.StaleDone[0].TaskStatus != task.Pending {
 		t.Fatalf("StaleDone = %+v, want one pending drift", res.StaleDone)
 	}
+
 	if len(res.Enqueued) != 0 {
 		t.Errorf("auditor enqueued %d tasks for stale-done, want 0 (report-only)", len(res.Enqueued))
 	}
@@ -129,12 +151,14 @@ func TestAuditEnqueuesCatchupOnce(t *testing.T) {
 	if _, err := h.Run(ctx); err != nil {
 		t.Fatal(err)
 	}
+
 	completeHarvestedTask(t, h, "loop", "done but unticked forever")
 
 	first, err := h.Audit(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(first.Enqueued) != 1 {
 		t.Fatalf("first audit enqueued %d catch-ups, want 1", len(first.Enqueued))
 	}
@@ -145,6 +169,7 @@ func TestAuditEnqueuesCatchupOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(second.Enqueued) != 0 {
 		t.Fatalf("second audit enqueued %d catch-ups, want 0 (enqueue-once)", len(second.Enqueued))
 	}
@@ -163,20 +188,26 @@ func TestAuditDryRunEnqueuesNothing(t *testing.T) {
 
 	// Seed the queue manually: dry-run harvest creates nothing.
 	if _, err := q.Enqueue(ctx, task.New{
-		Project:  "dryr",
-		Type:     DefaultType,
-		Payload:  mustJSON(t, map[string]string{"repo": "dryr", "prompt": "x", "dedup": ItemKey("dryr", "finished, dry run")}),
+		Project: "dryr",
+		Type:    DefaultType,
+		Payload: mustJSON(
+			t,
+			map[string]string{"repo": "dryr", "prompt": "x", "dedup": ItemKey("dryr", "finished, dry run")},
+		),
 		DedupKey: ItemKey("dryr", "finished, dry run"),
 	}); err != nil {
 		t.Fatal(err)
 	}
+
 	tasks, err := q.List(ctx, taskFilter("dryr"))
 	if err != nil || len(tasks) != 1 {
 		t.Fatalf("seed failed: %v %d", err, len(tasks))
 	}
+
 	if _, err := q.ClaimDue(ctx, "tester", time.Minute); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := q.Complete(ctx, tasks[0].ID, "tester", nil); err != nil {
 		t.Fatal(err)
 	}
@@ -185,9 +216,11 @@ func TestAuditDryRunEnqueuesNothing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.StaleOpen) != 1 {
 		t.Fatalf("dry-run audit missed the drift: %+v", res.StaleOpen)
 	}
+
 	if len(res.Enqueued) != 0 {
 		t.Errorf("dry-run enqueued %d catch-ups, want 0", len(res.Enqueued))
 	}
@@ -196,13 +229,16 @@ func TestAuditDryRunEnqueuesNothing(t *testing.T) {
 func TestParseRepoAllReturnsDoneItems(t *testing.T) {
 	dir := t.TempDir()
 	repo := writeRepo(t, dir, "mixed", "# H\n- [ ] open one\n- [x] done one\n- [X] DONE upper\n")
+
 	all, err := ParseRepoAll(repo, DefaultTodoFile)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(all) != 3 {
 		t.Fatalf("got %d items, want 3: %+v", len(all), all)
 	}
+
 	if all[0].Done || !all[1].Done || !all[2].Done {
 		t.Errorf("Done flags wrong: %+v", all)
 	}
@@ -211,6 +247,7 @@ func TestParseRepoAllReturnsDoneItems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(open) != 1 || open[0].Text != "open one" {
 		t.Errorf("ParseRepo open items = %+v, want just 'open one'", open)
 	}

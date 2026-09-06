@@ -39,13 +39,17 @@ func TestItemKeyPathSpellingIndependent(t *testing.T) {
 	repo := writeRepo(t, dir, "portable", "# H\n- [ ] same item everywhere\n")
 
 	t.Chdir(dir) // relative spellings below resolve against the temp dir
+
 	spellings := []string{repo, filepath.Join(".", "portable"), "portable"}
+
 	var keys []string
+
 	for _, s := range spellings {
 		items, err := ParseRepoAll(s, DefaultTodoFile)
 		if err != nil {
 			t.Fatalf("ParseRepoAll(%q): %v", s, err)
 		}
+
 		if len(items) != 1 {
 			t.Fatalf("ParseRepoAll(%q) = %d items, want 1", s, len(items))
 		}
@@ -54,8 +58,10 @@ func TestItemKeyPathSpellingIndependent(t *testing.T) {
 		if items[0].Repo != repo {
 			t.Errorf("ParseRepoAll(%q).Repo = %q, want native %q", s, items[0].Repo, repo)
 		}
+
 		keys = append(keys, items[0].Key)
 	}
+
 	for i := 1; i < len(keys); i++ {
 		if keys[i] != keys[0] {
 			t.Errorf("key changed with path spelling: %q vs %q", keys[0], keys[i])

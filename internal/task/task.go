@@ -18,6 +18,7 @@ func NewID() ID {
 	if _, err := rand.Read(b[:]); err != nil {
 		panic(fmt.Sprintf("task: crypto/rand failed: %v", err))
 	}
+
 	return ID(fmt.Sprintf("%016x", time.Now().UnixMilli()) + hex.EncodeToString(b[:]))
 }
 
@@ -69,5 +70,6 @@ func (n New) Normalize() New {
 	if n.MaxAttempts <= 0 {
 		n.MaxAttempts = DefaultMaxAttempts
 	}
+
 	return n
 }

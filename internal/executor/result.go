@@ -43,6 +43,7 @@ type Sink struct {
 // NewSink returns a context carrying the sink and the sink itself.
 func NewSink(ctx context.Context) (context.Context, *Sink) {
 	s := &Sink{}
+
 	return context.WithValue(ctx, sinkKey{}, s), s
 }
 
@@ -60,6 +61,7 @@ func SetResultDetail(ctx context.Context, detail json.RawMessage) {
 func (s *Sink) Detail() json.RawMessage {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	return s.detail
 }
 
@@ -71,6 +73,7 @@ func ExtractSessionID(output string) string {
 	if m := sessionRe.FindStringSubmatch(output); m != nil {
 		return m[1]
 	}
+
 	return ""
 }
 
@@ -86,6 +89,7 @@ func ExtractResultPayload(output string) (files []string, sha string, ok bool) {
 	if m == nil {
 		return nil, "", false
 	}
+
 	var rp struct {
 		FilesChanged []string `json:"files_changed"`
 		CommitSHA    string   `json:"commit_sha"`
@@ -93,5 +97,6 @@ func ExtractResultPayload(output string) (files []string, sha string, ok bool) {
 	if err := json.Unmarshal([]byte(m[1]), &rp); err != nil {
 		return nil, "", false
 	}
+
 	return rp.FilesChanged, rp.CommitSHA, true
 }

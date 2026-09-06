@@ -22,6 +22,7 @@ func TestAggregateTopCountsMatchTasks(t *testing.T) {
 		topTask("t6", "beta", task.Pending),
 	}
 	now := time.Now()
+
 	got := aggregateTop(tasks, nil, now)
 	if len(got) != 2 {
 		t.Fatalf("got %d projects, want 2: %+v", len(got), got)
@@ -30,10 +31,12 @@ func TestAggregateTopCountsMatchTasks(t *testing.T) {
 	if got[0].Project != "alpha" || got[1].Project != "beta" {
 		t.Fatalf("projects not sorted: %q, %q", got[0].Project, got[1].Project)
 	}
+
 	a, b := got[0], got[1]
 	if a.Pending != 1 || a.Running != 1 || a.Completed != 1 || a.Dead != 0 || a.Cancelled != 0 {
 		t.Errorf("alpha counts wrong: %+v", a)
 	}
+
 	if b.Pending != 1 || b.Running != 0 || b.Completed != 0 || b.Dead != 1 || b.Cancelled != 1 {
 		t.Errorf("beta counts wrong: %+v", b)
 	}
@@ -54,10 +57,12 @@ func TestAggregateTopLastDurFromFacts(t *testing.T) {
 		topTask("t2", "alpha", task.Completed),
 		topTask("t3", "beta", task.Pending),
 	}
+
 	got := aggregateTop(tasks, facts, base.Add(time.Minute))
 	if len(got) != 2 {
 		t.Fatalf("got %d projects, want 2", len(got))
 	}
+
 	a := got[0]
 	if !a.HasLast {
 		t.Fatalf("alpha HasLast = false, want true")
@@ -66,6 +71,7 @@ func TestAggregateTopLastDurFromFacts(t *testing.T) {
 	if a.LastDur != 5*time.Second {
 		t.Errorf("alpha LastDur = %s, want 5s (winning attempt, not first claim)", a.LastDur)
 	}
+
 	if b := got[1]; b.HasLast || b.HasActive {
 		t.Errorf("beta has no runs, got last=%v active=%v", b.LastDur, b.ActiveDur)
 	}
@@ -79,13 +85,16 @@ func TestAggregateTopActiveDurOfRunningTask(t *testing.T) {
 	tasks := []task.Task{topTask("t1", "alpha", task.Running)}
 	now := base.Add(90 * time.Second)
 	got := aggregateTop(tasks, facts, now)
+
 	v := got[0]
 	if !v.HasActive {
 		t.Fatal("HasActive = false, want true")
 	}
+
 	if v.ActiveDur != 90*time.Second {
 		t.Errorf("ActiveDur = %s, want 1m30s", v.ActiveDur)
 	}
+
 	if v.Running != 1 {
 		t.Errorf("Running = %d, want 1", v.Running)
 	}

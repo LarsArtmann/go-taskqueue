@@ -17,8 +17,8 @@ go build -o "$TMP/tq" ./cmd/tq
 
 INGEST_LOG="$TMP/ingest.log"
 if [ -z "$PAP_URL" ]; then
-  echo "== start stub dashboard (records ingest POSTs)"
-  cat > "$TMP/stub.py" <<'PYEOF'
+	echo "== start stub dashboard (records ingest POSTs)"
+	cat >"$TMP/stub.py" <<'PYEOF'
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 LOG, PORT = sys.argv[1], int(sys.argv[2])
@@ -32,10 +32,10 @@ class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
 HTTPServer(("127.0.0.1", PORT), H).serve_forever()
 PYEOF
-  python3 "$TMP/stub.py" "$INGEST_LOG" 18099 &
-  STUB_PID=$!
-  PAP_URL="http://127.0.0.1:18099"
-  sleep 0.5
+	python3 "$TMP/stub.py" "$INGEST_LOG" 18099 &
+	STUB_PID=$!
+	PAP_URL="http://127.0.0.1:18099"
+	sleep 0.5
 fi
 
 export TQ_DB="$TMP/tasks.db"
@@ -47,15 +47,18 @@ WORKER_PID=$!
 
 echo "== enqueue a task that fails once, succeeds after rescue"
 TASK_ID="$("$TMP/tq" enqueue --type sh --project pap-e2e \
-  --payload "test -f '$FLAG' || { touch '$FLAG'; exit 1; }")"
+	--payload "test -f '$FLAG' || { touch '$FLAG'; exit 1; }")"
 echo "   task $TASK_ID"
 
 echo "== wait for alert.triggered (worker dead-letters the first attempt)"
 for _ in $(seq 1 15); do
-  [ -f "$INGEST_LOG" ] && grep -q '"type":"alert.triggered"' "$INGEST_LOG" && break
-  sleep 1
+	[ -f "$INGEST_LOG" ] && grep -q '"type":"alert.triggered"' "$INGEST_LOG" && break
+	sleep 1
 done
-grep -q '"type":"alert.triggered"' "$INGEST_LOG" || { echo "FAIL: no alert.triggered"; exit 1; }
+grep -q '"type":"alert.triggered"' "$INGEST_LOG" || {
+	echo "FAIL: no alert.triggered"
+	exit 1
+}
 echo "   triggered OK"
 
 echo "== rescue the dead task; the second run succeeds"
@@ -63,10 +66,14 @@ echo "== rescue the dead task; the second run succeeds"
 
 echo "== wait for alert.resolved"
 for _ in $(seq 1 15); do
-  [ -f "$INGEST_LOG" ] && grep -q '"type":"alert.resolved"' "$INGEST_LOG" && break
-  sleep 1
+	[ -f "$INGEST_LOG" ] && grep -q '"type":"alert.resolved"' "$INGEST_LOG" && break
+	sleep 1
 done
-grep -q '"type":"alert.resolved"' "$INGEST_LOG" || { echo "FAIL: no alert.resolved"; cat "$INGEST_LOG"; exit 1; }
+grep -q '"type":"alert.resolved"' "$INGEST_LOG" || {
+	echo "FAIL: no alert.resolved"
+	cat "$INGEST_LOG"
+	exit 1
+}
 echo "   resolved OK"
 
 echo "== task state"

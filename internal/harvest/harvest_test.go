@@ -17,28 +17,35 @@ import (
 
 func openQueue(t *testing.T) *queue.Queue {
 	t.Helper()
+
 	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "q.db"))
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
+
 	t.Cleanup(func() { _ = s.Close() })
+
 	return queue.New(s)
 }
 
 func writeRepo(t *testing.T, projectsDir, name, todo string) string {
 	t.Helper()
+
 	repo := filepath.Join(projectsDir, name)
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(repo, DefaultTodoFile), []byte(todo), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	return repo
 }
 
 func TestParseRepo(t *testing.T) {
 	repo := t.TempDir()
+
 	todo := `# Project X
 
 ## Bugs
@@ -67,6 +74,7 @@ Docs contain examples that must never be harvested:
 	if err != nil {
 		t.Fatalf("ParseRepo: %v", err)
 	}
+
 	if len(items) != 4 {
 		t.Fatalf("got %d items, want 4: %+v", len(items), items)
 	}
@@ -81,13 +89,16 @@ Docs contain examples that must never be harvested:
 		if items[i].Heading != w.heading || items[i].Text != w.text {
 			t.Fatalf("item[%d] = (%q, %q), want (%q, %q)", i, items[i].Heading, items[i].Text, w.heading, w.text)
 		}
+
 		if items[i].RepoName == "" || items[i].Key == "" {
 			t.Fatalf("item[%d] missing RepoName/Key: %+v", i, items[i])
 		}
 	}
+
 	if items[0].Key == items[1].Key {
 		t.Fatal("distinct items must have distinct keys")
 	}
+
 	if items[1].Key != ItemKey(items[1].RepoName, "Trim   and\tcollapse   whitespace") {
 		t.Fatal("key must collapse whitespace")
 	}
@@ -95,13 +106,16 @@ Docs contain examples that must never be harvested:
 
 func TestItemKeyStableAcrossRepoMoves(t *testing.T) {
 	a := ItemKey("myrepo", "Do the thing")
+
 	b := ItemKey("myrepo", "Do the thing")
 	if a != b {
 		t.Fatal("same repo+text must give same key")
 	}
+
 	if a == ItemKey("otherrepo", "Do the thing") {
 		t.Fatal("different repos must give different keys")
 	}
+
 	if a == ItemKey("myrepo", "Do the thing, edited") {
 		t.Fatal("edited text must change the key")
 	}
@@ -109,10 +123,12 @@ func TestItemKeyStableAcrossRepoMoves(t *testing.T) {
 
 func TestDiscoverRepos(t *testing.T) {
 	dir := t.TempDir()
+
 	withTodo := writeRepo(t, dir, "has-todo", "- [ ] x\n")
 	if err := os.MkdirAll(filepath.Join(dir, "no-todo"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(dir, plainFileName), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -121,6 +137,7 @@ func TestDiscoverRepos(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DiscoverRepos: %v", err)
 	}
+
 	if len(repos) != 1 || repos[0] != withTodo {
 		t.Fatalf("repos = %v, want [%s]", repos, withTodo)
 	}
@@ -134,13 +151,16 @@ func TestRunEnqueuesOneItemPerRepoPerTick(t *testing.T) {
 	writeRepo(t, dir, "alpha", "## Work\n\n- [ ] first\n- [ ] second\n")
 
 	h := New(q, Config{ProjectsDir: dir})
+
 	res, err := h.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
+
 	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "first" || !res.Enqueued[0].Fresh {
 		t.Fatalf("first run enqueued = %+v, want exactly 'first' fresh", res.Enqueued)
 	}
+
 	if !hasSkip(res, "paced") {
 		t.Fatalf("first run must pace the second item, skips = %+v", res.Skipped)
 	}
@@ -150,9 +170,11 @@ func TestRunEnqueuesOneItemPerRepoPerTick(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run 2: %v", err)
 	}
+
 	if len(res.Enqueued) != 0 {
 		t.Fatalf("second run enqueued %+v, want none (repo busy)", res.Enqueued)
 	}
+
 	if !hasSkip(res, "tracked: pending") || !hasSkip(res, "repo busy") {
 		t.Fatalf("second run skips = %+v", res.Skipped)
 	}
@@ -167,24 +189,30 @@ func TestRunModelLandsInAgentPayload(t *testing.T) {
 	writeRepo(t, dir, "gamma", "## Work\n\n- [ ] model me\n")
 
 	h := New(q, Config{ProjectsDir: dir, Model: "prov/cheap-1"})
+
 	res, err := h.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
+
 	if len(res.Enqueued) != 1 {
 		t.Fatalf("enqueued = %+v, want 1", res.Enqueued)
 	}
+
 	got, err := q.Get(context.Background(), res.Enqueued[0].TaskID)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	var p struct {
 		executor.AgentPayload
+
 		Dedup string `json:"dedup"`
 	}
 	if err := json.Unmarshal(got.Payload, &p); err != nil {
 		t.Fatalf("unmarshal payload: %v", err)
 	}
+
 	if p.Model != "prov/cheap-1" {
 		t.Fatalf("payload model = %q, want prov/cheap-1", p.Model)
 	}
@@ -202,10 +230,12 @@ func TestRunDedupAcrossTicksAndStatuses(t *testing.T) {
 	if res, _ := h.Run(ctx); len(res.Enqueued) != 1 {
 		t.Fatalf("tick 1: %+v", res.Enqueued)
 	}
+
 	tasks, err := q.List(ctx, queue.Filter{Project: new("beta")})
 	if err != nil || len(tasks) != 1 {
 		t.Fatalf("list: %v %d", err, len(tasks))
 	}
+
 	id := tasks[0].ID
 	if err := fakeRunToCompletion(ctx, q, id); err != nil {
 		t.Fatal(err)
@@ -218,9 +248,11 @@ func TestRunDedupAcrossTicksAndStatuses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.Enqueued) != 0 {
 		t.Fatalf("completed item re-enqueued: %+v", res.Enqueued)
 	}
+
 	if !hasSkip(res, "tracked: completed") {
 		t.Fatalf("want 'tracked: completed' skip, got %+v", res.Skipped)
 	}
@@ -230,10 +262,12 @@ func TestRunDedupAcrossTicksAndStatuses(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, DefaultTodoFile), []byte(newTodo), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	res, err = h.Run(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "only item, now with more detail" {
 		t.Fatalf("edited item not re-armed: %+v", res.Enqueued)
 	}
@@ -247,13 +281,16 @@ func TestRunRespectsTickCap(t *testing.T) {
 	writeRepo(t, dir, "r3", "- [ ] c\n")
 
 	h := New(q, Config{ProjectsDir: dir, MaxPerTick: 2})
+
 	res, err := h.Run(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.Enqueued) != 2 {
 		t.Fatalf("enqueued %d, want cap 2", len(res.Enqueued))
 	}
+
 	if !hasSkip(res, "tick cap") {
 		t.Fatalf("want 'tick cap' skip, got %+v", res.Skipped)
 	}
@@ -272,23 +309,29 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 
 	// Exhaust attempts: 3 failures → dead.
 	var id task.ID
+
 	for range 3 {
 		tasks, err := q.List(ctx, queue.Filter{Project: new("gamma")})
 		if err != nil || len(tasks) != 1 {
 			t.Fatalf("list: %v %d", err, len(tasks))
 		}
+
 		id = tasks[0].ID
+
 		claimed, err := q.ClaimDue(ctx, "w", time.Minute)
 		if err != nil {
 			t.Fatalf("claim: %v", err)
 		}
+
 		if claimed.ID != id {
 			t.Fatalf("claimed %s want %s", claimed.ID, id)
 		}
+
 		if err := q.Fail(ctx, id, "w", "boom", 0); err != nil {
 			t.Fatalf("fail: %v", err)
 		}
 	}
+
 	got, err := q.Get(ctx, id)
 	if err != nil || got.Status != task.Dead {
 		t.Fatalf("task should be dead: %v %s", err, got.Status)
@@ -298,9 +341,11 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(res.Enqueued) != 0 {
 		t.Fatalf("dead task's item re-enqueued: %+v", res.Enqueued)
 	}
+
 	if !hasSkip(res, "in DLQ") {
 		t.Fatalf("want DLQ skip reason, got %+v", res.Skipped)
 	}
@@ -314,6 +359,7 @@ func hasSkip(res Result, substr string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -324,9 +370,11 @@ func fakeRunToCompletion(ctx context.Context, q *queue.Queue, id task.ID) error 
 	if err != nil {
 		return err
 	}
+
 	if claimed.ID != id {
 		return fmt.Errorf("claimed %s, want %s", claimed.ID, id)
 	}
+
 	return q.Complete(ctx, id, "w", nil)
 }
 
@@ -336,29 +384,40 @@ func TestRunPinsRepoVerifyIntoPayload(t *testing.T) {
 	q := openQueue(t)
 	dir := t.TempDir()
 	writeRepo(t, dir, "delta", "## Work\n\n- [ ] gated item\n")
-	if err := os.WriteFile(filepath.Join(dir, "delta", ".tq-verify"), []byte("go vet ./... && go test ./...\n"), 0o644); err != nil {
+
+	if err := os.WriteFile(
+		filepath.Join(dir, "delta", ".tq-verify"),
+		[]byte("go vet ./... && go test ./...\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 
 	h := New(q, Config{ProjectsDir: dir})
+
 	res, err := h.Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
+
 	if len(res.Enqueued) != 1 {
 		t.Fatalf("enqueued = %+v, want 1", res.Enqueued)
 	}
+
 	got, err := q.Get(context.Background(), res.Enqueued[0].TaskID)
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+
 	var p struct {
 		executor.AgentPayload
+
 		Dedup string `json:"dedup"`
 	}
 	if err := json.Unmarshal(got.Payload, &p); err != nil {
 		t.Fatalf("unmarshal payload: %v", err)
 	}
+
 	if p.Verify != "go vet ./... && go test ./..." {
 		t.Fatalf("payload verify = %q, want the repo's .tq-verify command", p.Verify)
 	}
@@ -375,14 +434,17 @@ func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
 	q := openQueue(t)
 	writeRepo(t, dir, "eps", "## Work\n\n- [ ] doomed\n")
 	h := New(q, Config{ProjectsDir: dir})
+
 	res, err := h.Run(ctx)
 	if err != nil || len(res.Enqueued) != 1 {
 		t.Fatalf("seed run: %+v, %v", res.Enqueued, err)
 	}
+
 	tk, _ := q.Get(ctx, res.Enqueued[0].TaskID)
 	if _, err := q.Store.ClaimDue(ctx, "w", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
+
 	if err := q.Store.FailPermanent(ctx, tk.ID, "w", "repo is broken"); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
@@ -390,16 +452,19 @@ func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
 	// New item appears; with backoff on, the repo is paused.
 	writeRepo(t, dir, "eps", "## Work\n\n- [ ] doomed\n- [ ] fresh item\n")
 	hp := New(q, Config{ProjectsDir: dir, DLQBackoff: 30 * time.Minute})
+
 	res, err = hp.Run(ctx)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
+
 	if len(res.Enqueued) != 0 || !hasSkip(res, "poisoned: recent dead-letter") {
 		t.Fatalf("poisoned repo must be paused: enqueued=%+v skips=%+v", res.Enqueued, res.Skipped)
 	}
 
 	// With the guard off (default), the fresh item is enqueued as before.
 	hn := New(q, Config{ProjectsDir: dir})
+
 	res, err = hn.Run(ctx)
 	if err != nil || len(res.Enqueued) != 1 {
 		t.Fatalf("default must keep harvesting fresh items: %+v, %v", res.Enqueued, err)
@@ -409,10 +474,13 @@ func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
 	if _, err := q.Store.ClaimDue(ctx, "w", time.Minute); err != nil {
 		t.Fatalf("claim2: %v", err)
 	}
+
 	if err := q.Store.Complete(ctx, res.Enqueued[0].TaskID, "w", nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
+
 	writeRepo(t, dir, "eps", "## Work\n\n- [ ] doomed\n- [ ] third item\n")
+
 	res, err = hp.Run(ctx)
 	if err != nil || len(res.Enqueued) != 1 {
 		t.Fatalf("completion must lift the poisoned guard: %+v, %v", res.Enqueued, err)
@@ -428,6 +496,7 @@ func TestRunPerRepoInterval(t *testing.T) {
 	writeRepo(t, dir, "zeta", "## Work\n\n- [ ] one\n")
 
 	h := New(q, Config{ProjectsDir: dir, RepoIntervals: map[string]time.Duration{"zeta": time.Hour}})
+
 	res, err := h.Run(ctx)
 	if err != nil || len(res.Enqueued) != 1 {
 		t.Fatalf("first run: %+v, %v", res.Enqueued, err)
@@ -435,6 +504,7 @@ func TestRunPerRepoInterval(t *testing.T) {
 
 	// A brand-new item still hits the interval (last enqueue was moments ago).
 	writeRepo(t, dir, "zeta", "## Work\n\n- [ ] one\n- [ ] two\n")
+
 	res, err = h.Run(ctx)
 	if err != nil || len(res.Enqueued) != 0 || !hasSkip(res, "paced: per-repo interval") {
 		t.Fatalf("interval must gate new items: enqueued=%+v skips=%+v", res.Enqueued, res.Skipped)
@@ -442,6 +512,7 @@ func TestRunPerRepoInterval(t *testing.T) {
 
 	// Other repos are unaffected by zeta's interval.
 	writeRepo(t, dir, "eta", "## Work\n\n- [ ] eta item\n")
+
 	res, err = h.Run(ctx)
 	if err != nil || len(res.Enqueued) != 1 {
 		t.Fatalf("interval must be per-repo: %+v, %v", res.Enqueued, err)

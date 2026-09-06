@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -83,19 +84,24 @@ func New(store FactSource, cfg Config) *Bridge {
 	if cfg.SourceApp == "" {
 		cfg.SourceApp = SourceApp
 	}
+
 	if cfg.Severity == "" {
 		cfg.Severity = "critical"
 	}
+
 	if cfg.PollInterval <= 0 {
 		cfg.PollInterval = DefaultPollInterval
 	}
+
 	if cfg.Client == nil {
 		cfg.Client = &http.Client{Timeout: 15 * time.Second}
 	}
+
 	log := cfg.Logger
 	if log == nil {
 		log = slog.Default()
 	}
+
 	return &Bridge{store: store, cfg: cfg, log: log, client: cfg.Client, alerted: map[string]alertedTask{}}
 }
 
@@ -107,11 +113,13 @@ func (b *Bridge) Run(ctx context.Context) error {
 	if watermark < 0 {
 		return errors.New("papdashboard: cannot read journal head")
 	}
+
 	b.log.Info("papdashboard bridge watching for dead letters",
 		"endpoint", b.cfg.Endpoint, "fromSeq", watermark)
 
 	ticker := time.NewTicker(b.cfg.PollInterval)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -122,18 +130,24 @@ func (b *Bridge) Run(ctx context.Context) error {
 				if ctx.Err() != nil {
 					return nil
 				}
+
 				b.log.Error("papdashboard bridge read journal failed", "err", err)
+
 				continue
 			}
+
 			for _, f := range facts {
 				if err := b.forward(ctx, f); err != nil {
 					if ctx.Err() != nil {
 						return nil
 					}
+
 					b.log.Error("papdashboard bridge forward failed; will retry",
 						"seq", f.Seq, "type", f.Type, "err", err)
+
 					break
 				}
+
 				watermark = f.Seq
 			}
 		}
@@ -146,17 +160,21 @@ func (b *Bridge) startWatermark() int64 {
 	if b.cfg.FromSeq != nil {
 		return *b.cfg.FromSeq
 	}
+
 	facts, err := b.store.Facts(context.Background(), 0)
 	if err != nil {
 		b.log.Error("papdashboard bridge cannot read journal", "err", err)
+
 		return -1
 	}
+
 	var max int64
 	for _, f := range facts {
 		if f.Seq > max {
 			max = f.Seq
 		}
 	}
+
 	return max
 }
 
@@ -169,7 +187,9 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 		if err != nil {
 			return fmt.Errorf("load dead task %s: %w", f.TaskID, err)
 		}
+
 		title := alertTitle(t)
+
 		payload := map[string]any{
 			"severity": b.cfg.Severity,
 			"title":    title,
@@ -178,12 +198,13 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 			"sourceApp": b.cfg.SourceApp,
 			"metadata": map[string]string{
 				"taskType": t.Type,
-				"attempts": fmt.Sprint(t.Attempts),
+				"attempts": strconv.Itoa(t.Attempts),
 			},
 		}
 		if err := b.post(ctx, "alert.triggered", idempotencyKey("dlq", f.Seq), t.ID, f.Seq, payload); err != nil {
 			return err
 		}
+
 		b.alerted[f.TaskID] = alertedTask{title: title}
 
 	case journal.Completed:
@@ -191,10 +212,12 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 		if !ok {
 			return nil
 		}
+
 		t, err := b.store.Get(ctx, task.ID(f.TaskID))
 		if err != nil {
 			return fmt.Errorf("load completed task %s: %w", f.TaskID, err)
 		}
+
 		payload := map[string]any{
 			"title":      raised.title,
 			"body":       fmt.Sprintf("Task %s completed after dead-letter (rescued).", t.ID),
@@ -204,35 +227,46 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 		if err := b.post(ctx, "alert.resolved", idempotencyKey("resolve", f.Seq), t.ID, f.Seq, payload); err != nil {
 			return err
 		}
+
 		delete(b.alerted, f.TaskID)
 	}
+
 	return nil
 }
 
 // post sends one ingest event. 2xx is success; 4xx is permanent (PapDashboard
 // will never accept this payload) and is logged then accepted; 5xx and
 // transport errors return an error so the fact retries.
-func (b *Bridge) post(ctx context.Context, eventType, idemKey string, taskID task.ID, seq int64, payload map[string]any) error {
+func (b *Bridge) post(
+	ctx context.Context,
+	eventType, idemKey string,
+	taskID task.ID,
+	seq int64,
+	payload map[string]any,
+) error {
 	doc := map[string]any{
 		"type":        eventType,
 		"aggregateId": taskID.String(),
 		"payload":     payload,
 		"metadata": map[string]any{
 			"correlationId": taskID.String(),
-			"causationId":   fmt.Sprint(seq),
+			"causationId":   strconv.FormatInt(seq, 10),
 			"userId":        "",
 			"sourceApp":     b.cfg.SourceApp,
 		},
 	}
+
 	body, err := json.Marshal(doc)
 	if err != nil {
 		return fmt.Errorf("marshal ingest: %w", err)
 	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		b.cfg.Endpoint+"/api/ingest", bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("build ingest request: %w", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+b.cfg.APIKey)
 	req.Header.Set("Idempotency-Key", idemKey)
@@ -242,13 +276,16 @@ func (b *Bridge) post(ctx context.Context, eventType, idemKey string, taskID tas
 		return fmt.Errorf("ingest %s: %w", eventType, err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode >= 500 {
 		return fmt.Errorf("ingest %s: PapDashboard returned %d", eventType, resp.StatusCode)
 	}
+
 	if resp.StatusCode >= 400 {
 		b.log.Error("papdashboard ingest permanently rejected",
 			"event", eventType, "status", resp.StatusCode, "idempotencyKey", idemKey)
 	}
+
 	return nil
 }
 
@@ -262,6 +299,7 @@ func firstLine(s string) string {
 			return s[:i]
 		}
 	}
+
 	return s
 }
 

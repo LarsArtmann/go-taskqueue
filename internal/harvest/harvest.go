@@ -13,6 +13,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -95,15 +96,19 @@ func (c Config) withDefaults() Config {
 	if c.Type == "" {
 		c.Type = DefaultType
 	}
+
 	if c.TodoFile == "" {
 		c.TodoFile = DefaultTodoFile
 	}
+
 	if c.MaxPerTick <= 0 {
 		c.MaxPerTick = DefaultMaxPerTick
 	}
+
 	if c.PromptTemplate == "" {
 		c.PromptTemplate = DefaultPromptTemplate
 	}
+
 	return c
 }
 
@@ -158,26 +163,33 @@ func (h *Harvester) Run(ctx context.Context) (Result, error) {
 	repos := h.cfg.Repos
 	if len(repos) == 0 {
 		if h.cfg.ProjectsDir == "" {
-			return res, fmt.Errorf("harvest: no repos and no projects dir configured")
+			return res, errors.New("harvest: no repos and no projects dir configured")
 		}
+
 		var err error
+
 		repos, err = DiscoverRepos(h.cfg.ProjectsDir, h.cfg.TodoFile)
 		if err != nil {
 			return res, fmt.Errorf("harvest: discover repos: %w", err)
 		}
 	}
+
 	sort.Strings(repos)
 
 	for _, repo := range repos {
 		res.Repos++
+
 		items, err := ParseRepo(repo, h.cfg.TodoFile)
 		if err != nil {
 			res.Skipped = append(res.Skipped, Skipped{Reason: "scan failed: " + err.Error()})
+
 			continue
 		}
+
 		res.Items += len(items)
 		h.runRepo(ctx, repo, items, &res)
 	}
+
 	return res, nil
 }
 
@@ -194,29 +206,38 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 		for _, it := range items {
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "list failed: " + err.Error()})
 		}
+
 		return
 	}
 
 	busy := false
 	known := make(map[string]task.Status, len(tasks))
-	var hasDead, hasCompleted bool
-	var lastDead, lastCreated time.Time
+
+	var (
+		hasDead, hasCompleted bool
+		lastDead, lastCreated time.Time
+	)
+
 	for _, t := range tasks {
 		if t.Status == task.Pending || t.Status == task.Running {
 			busy = true
 		}
+
 		switch t.Status {
 		case task.Dead:
 			hasDead = true
+
 			if t.UpdatedAt.After(lastDead) {
 				lastDead = t.UpdatedAt
 			}
 		case task.Completed:
 			hasCompleted = true
 		}
+
 		if t.CreatedAt.After(lastCreated) {
 			lastCreated = t.CreatedAt
 		}
+
 		if key := payloadDedup(t); key != "" {
 			if _, dup := known[key]; !dup {
 				known[key] = t.Status
@@ -230,6 +251,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 	repoInterval := h.cfg.RepoIntervals[repoName]
 
 	enqueuedThisRepo := false
+
 	for _, it := range items {
 		switch {
 		case it.Key != "" && known[it.Key] != "":
@@ -240,13 +262,17 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			case task.Cancelled:
 				reason = "cancelled (edit the item text to re-arm it)"
 			}
+
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: reason})
 		case poisoned:
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: fmt.Sprintf(
 				"poisoned: recent dead-letter, DLQ backoff %s (fix the repo or rescue dead tasks)", h.cfg.DLQBackoff)})
 		case repoInterval > 0 && !lastCreated.IsZero() && time.Since(lastCreated) < repoInterval:
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: fmt.Sprintf(
-				"paced: per-repo interval %s (last enqueue %s ago)", repoInterval, time.Since(lastCreated).Round(time.Second))})
+				"paced: per-repo interval %s (last enqueue %s ago)",
+				repoInterval,
+				time.Since(lastCreated).Round(time.Second),
+			)})
 		case busy:
 			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "repo busy: one agent per repo"})
 		case enqueuedThisRepo:
@@ -261,16 +287,22 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			t, err := h.enqueue(ctx, it)
 			if err != nil {
 				res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "enqueue failed: " + err.Error()})
+
 				continue
 			}
+
 			known[it.Key] = task.Pending
 			enqueuedThisRepo = true
+
 			if t.Status == task.Pending && t.Attempts == 0 {
 				res.Enqueued = append(res.Enqueued, Enqueued{Item: it, TaskID: t.ID, Fresh: true})
 			} else {
 				// Store dedup returned a pre-existing row (another pool won
 				// the race). Count it as known, not fresh.
-				res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"})
+				res.Skipped = append(
+					res.Skipped,
+					Skipped{Item: it, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"},
+				)
 			}
 		}
 	}
@@ -281,6 +313,7 @@ func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
 	if err != nil {
 		return task.Task{}, err
 	}
+
 	return h.q.Enqueue(ctx, task.New{
 		Project:     it.RepoName,
 		Type:        h.cfg.Type,
@@ -304,7 +337,10 @@ func (h *Harvester) buildPayload(it Item, prompt, dedupKey string) ([]byte, erro
 
 	repo := it.Repo
 	if h.cfg.ProjectsDir != "" {
-		if abs, err := filepath.Abs(h.cfg.ProjectsDir); err == nil && strings.HasPrefix(it.Repo, abs+string(filepath.Separator)) {
+		if abs, err := filepath.Abs(
+			h.cfg.ProjectsDir,
+		); err == nil &&
+			strings.HasPrefix(it.Repo, abs+string(filepath.Separator)) {
 			repo = it.RepoName
 		}
 	}
@@ -324,6 +360,7 @@ func (h *Harvester) buildPayload(it Item, prompt, dedupKey string) ([]byte, erro
 	if err != nil {
 		return nil, fmt.Errorf("harvest: encode payload: %w", err)
 	}
+
 	return payload, nil
 }
 
@@ -332,6 +369,7 @@ func (h *Harvester) buildPayload(it Item, prompt, dedupKey string) ([]byte, erro
 // recognize its own tasks.
 type harvestPayload struct {
 	executor.AgentPayload
+
 	Dedup string `json:"dedup,omitempty"`
 }
 
@@ -342,16 +380,20 @@ func DiscoverRepos(dir, todoFile string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var repos []string
+
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
 		}
+
 		repo := filepath.Join(dir, e.Name())
 		if info, err := os.Stat(filepath.Join(repo, todoFile)); err == nil && !info.IsDir() {
 			repos = append(repos, repo)
 		}
 	}
+
 	return repos, nil
 }
 
@@ -369,12 +411,14 @@ func ParseRepo(repo, todoFile string) ([]Item, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	open := all[:0]
 	for _, it := range all {
 		if !it.Done {
 			open = append(open, it)
 		}
 	}
+
 	return open, nil
 }
 
@@ -386,33 +430,43 @@ func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	data, err := os.ReadFile(filepath.Join(abs, todoFile))
 	if err != nil {
 		return nil, err
 	}
+
 	repoName := filepath.Base(abs)
 
 	var items []Item
+
 	heading := ""
 	inFence := false
+
 	for line := range strings.SplitSeq(string(data), "\n") {
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "```") {
 			inFence = !inFence
+
 			continue
 		}
+
 		if inFence {
 			continue
 		}
+
 		if h, ok := headingOf(trimmed); ok {
 			heading = h
+
 			continue
 		}
+
 		if text, done, ok := checkboxOf(trimmed); ok {
 			text = strings.TrimSpace(text)
 			if text == "" {
 				continue
 			}
+
 			items = append(items, Item{
 				Repo:     abs,
 				RepoName: repoName,
@@ -423,6 +477,7 @@ func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 			})
 		}
 	}
+
 	return items, nil
 }
 
@@ -432,6 +487,7 @@ func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 func ItemKey(repoName, text string) string {
 	collapsed := strings.Join(strings.Fields(text), " ")
 	sum := sha256.Sum256([]byte(repoName + "\x00" + collapsed))
+
 	return "todo:" + hex.EncodeToString(sum[:])[:16]
 }
 
@@ -440,11 +496,14 @@ func headingOf(line string) (string, bool) {
 	if !strings.HasPrefix(line, "#") {
 		return "", false
 	}
+
 	text := strings.TrimLeft(line, "#")
+
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return "", false
 	}
+
 	return text, true
 }
 
@@ -458,10 +517,12 @@ func checkboxOf(line string) (text string, done bool, ok bool) {
 			return "", false, false
 		}
 	}
+
 	rest = strings.TrimSpace(rest)
 	if unticked, is := strings.CutPrefix(rest, "[ ]"); is {
 		return unticked, false, true
 	}
+
 	if inner, is := strings.CutPrefix(rest, "["); is {
 		if inner != "" && (inner[0] == 'x' || inner[0] == 'X') {
 			if ticked, closed := strings.CutPrefix(inner[1:], "]"); closed {
@@ -469,6 +530,7 @@ func checkboxOf(line string) (text string, done bool, ok bool) {
 			}
 		}
 	}
+
 	return "", false, false
 }
 
@@ -477,11 +539,13 @@ func payloadDedup(t task.Task) string {
 	if len(t.Payload) == 0 {
 		return ""
 	}
+
 	var p struct {
 		Dedup string `json:"dedup"`
 	}
 	if err := json.Unmarshal(t.Payload, &p); err != nil {
 		return ""
 	}
+
 	return p.Dedup
 }

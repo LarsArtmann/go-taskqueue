@@ -96,12 +96,15 @@ func (e *AgentExecutor) binary() string {
 	if e.Bin != "" {
 		return e.Bin
 	}
+
 	if b := os.Getenv("TQ_AGENT_BIN"); b != "" {
 		return b
 	}
+
 	if b := os.Getenv("TQ_CRUSH_BIN"); b != "" {
 		return b
 	}
+
 	return DefaultAgentBinary
 }
 
@@ -112,19 +115,24 @@ func (e *AgentExecutor) binary() string {
 // tasks every retry is real money.
 func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	var p AgentPayload
+
 	if len(t.Payload) == 0 {
 		return Permanent(errors.New("agent: empty payload, want {repo, prompt}"))
 	}
+
 	if err := json.Unmarshal(t.Payload, &p); err != nil {
 		return Permanent(fmt.Errorf("agent: decode payload: %w", err))
 	}
+
 	if p.Repo == "" || p.Prompt == "" {
 		return Permanent(errors.New("agent: payload needs non-empty repo and prompt"))
 	}
+
 	repoDir, err := e.repoDir(p.Repo)
 	if err != nil {
 		return Permanent(err)
 	}
+
 	if requireClean(p) {
 		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
 			if err := assertCleanTree(ctx, repoDir); err != nil {
@@ -139,6 +147,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	if p.TimeoutMinutes > 0 {
 		timeout = time.Duration(p.TimeoutMinutes) * time.Minute
 	}
+
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -146,6 +155,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	if err != nil {
 		return err
 	}
+
 	tail, err := runVerify(runCtx, repoDir, &p)
 	if err != nil {
 		return err
@@ -159,9 +169,11 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	if files, sha, ok := ExtractResultPayload(output); ok {
 		result.FilesChanged, result.CommitSHA = files, sha
 	}
+
 	result.LogPath = writeOutputSidecar(t.ID, output, tail)
 	detail, _ := json.Marshal(result)
 	SetResultDetail(ctx, detail)
+
 	return nil
 }
 
@@ -173,17 +185,22 @@ func writeOutputSidecar(id task.ID, agentOutput, verifyOutput string) string {
 	if dir == "" {
 		return ""
 	}
+
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return ""
 	}
+
 	path := filepath.Join(dir, id.String()+".log")
+
 	body := agentOutput
 	if verifyOutput != "" {
 		body += "\n--- verify ---\n" + verifyOutput
 	}
+
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
 		return ""
 	}
+
 	return path
 }
 
@@ -194,16 +211,21 @@ func (e *AgentExecutor) repoDir(repo string) (string, error) {
 		if info, err := os.Stat(repo); err != nil || !info.IsDir() {
 			return "", fmt.Errorf("agent: repo directory does not exist: %s", repo)
 		}
+
 		return repo, nil
 	}
+
 	if e.ProjectsDir == "" {
 		return "", fmt.Errorf("agent: relative repo %q needs a projects dir on the executor", repo)
 	}
+
 	dir := filepath.Join(e.ProjectsDir, repo)
+
 	info, err := os.Stat(dir)
 	if err != nil || !info.IsDir() {
 		return "", fmt.Errorf("agent: repo %q does not exist under the projects dir", repo)
 	}
+
 	return dir, nil
 }
 
@@ -211,22 +233,31 @@ func requireClean(p AgentPayload) bool {
 	if p.RequireClean == nil {
 		return true
 	}
+
 	return *p.RequireClean
 }
 
 // assertCleanTree fails unless the repo has no uncommitted changes.
 func assertCleanTree(ctx context.Context, repo string) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", repo, "status", "--porcelain")
+
 	var out bytes.Buffer
+
 	cmd.Stdout = &out
+
 	cmd.Stderr = &out
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("agent: git status failed in %s: %v: %s", repo, err, tailBytes(out.Bytes(), 512))
+		return fmt.Errorf("agent: git status failed in %s: %w: %s", repo, err, tailBytes(out.Bytes(), 512))
 	}
+
 	if s := strings.TrimSpace(out.String()); s != "" {
-		return fmt.Errorf("agent: repo %s has uncommitted changes; refusing to run agent (commit/stash first, or set require_clean=false): %s",
-			repo, tailBytes(out.Bytes(), 512))
+		return fmt.Errorf(
+			"agent: repo %s has uncommitted changes; refusing to run agent (commit/stash first, or set require_clean=false): %s",
+			repo,
+			tailBytes(out.Bytes(), 512),
+		)
 	}
+
 	return nil
 }
 
@@ -237,31 +268,39 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 			return "", err
 		}
 	}
+
 	args := []string{"run", "--quiet", "--cwd", repoDir}
 	if p.Model != "" {
 		args = append(args, "--model", p.Model)
 	}
+
 	if p.Session != "" {
 		args = append(args, "--session", p.Session)
 	}
+
 	args = append(args, "--", p.Prompt)
 
 	cmd := exec.CommandContext(ctx, e.binary(), args...)
 	cmd.Dir = repoDir
+
 	var buf bytes.Buffer
+
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
 	// Kill the whole process tree on cancel (agents spawn children) and do
 	// not hang the worker if grandchildren hold the pipes open.
 	prepareProcessGroup(cmd)
+
 	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Run(); err != nil {
 		tail := tailBytes(buf.Bytes(), 8192)
 		if ctx.Err() != nil {
-			return "", fmt.Errorf("agent run cancelled (%v): %s", ctx.Err(), tail)
+			return "", fmt.Errorf("agent run cancelled (%w): %s", ctx.Err(), tail)
 		}
+
 		return "", fmt.Errorf("agent run failed: %w: %s", err, tail)
 	}
+
 	return buf.String(), nil
 }
 
@@ -273,20 +312,26 @@ func runVerify(ctx context.Context, repoDir string, p *AgentPayload) (string, er
 	if verify == "" {
 		return "", nil // nothing to verify (unknown stack, no explicit command)
 	}
+
 	cmd := exec.CommandContext(ctx, "sh", "-c", verify)
 	cmd.Dir = repoDir
+
 	var buf bytes.Buffer
+
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
 	prepareProcessGroup(cmd)
+
 	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Run(); err != nil {
 		tail := tailBytes(buf.Bytes(), 4096)
 		if ctx.Err() != nil {
-			return "", fmt.Errorf("agent verify cancelled (%v): %s", ctx.Err(), tail)
+			return "", fmt.Errorf("agent verify cancelled (%w): %s", ctx.Err(), tail)
 		}
+
 		return "", fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
 	}
+
 	return tailBytes(buf.Bytes(), 2048), nil
 }
 
@@ -298,6 +343,7 @@ var userGlobalCrushConfig = func() bool {
 	if err != nil {
 		return false
 	}
+
 	for _, p := range []string{
 		filepath.Join(home, ".config", "crush", "crush.json"),
 		filepath.Join(home, ".crush.json"),
@@ -306,6 +352,7 @@ var userGlobalCrushConfig = func() bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -321,10 +368,17 @@ func requireRepoAutonomy(repoDir string) error {
 			return nil
 		}
 	}
+
 	if userGlobalCrushConfig() {
 		return nil
 	}
-	return &PreflightError{Cause: fmt.Errorf("agent: autonomy requested but %s has no project-local crush config and no user-global crush config exists; add a .crushrc with 'permissions allow view ls grep edit write bash' (or unset yolo)", repoDir)}
+
+	return &PreflightError{
+		Cause: fmt.Errorf(
+			"agent: autonomy requested but %s has no project-local crush config and no user-global crush config exists; add a .crushrc with 'permissions allow view ls grep edit write bash' (or unset yolo)",
+			repoDir,
+		),
+	}
 }
 
 // verifyFor resolves the verify command: .tq-verify file in the repo, then
@@ -333,9 +387,11 @@ func verifyFor(repoDir string, p *AgentPayload) string {
 	if v := readTQVerify(repoDir); v != "" {
 		return v
 	}
+
 	if p.Verify != "" {
 		return p.Verify
 	}
+
 	return autoDetectVerify(repoDir)
 }
 
@@ -345,6 +401,7 @@ func readTQVerify(repoDir string) string {
 	if err != nil {
 		return ""
 	}
+
 	return strings.TrimSpace(string(b))
 }
 
@@ -357,9 +414,11 @@ func defaultVerify(repo string) string {
 	if _, err := os.Stat(filepath.Join(repo, "go.mod")); err == nil {
 		return "go build ./... && go test ./... -count=1"
 	}
+
 	if _, err := os.Stat(filepath.Join(repo, "package.json")); err == nil {
 		return "npm test --silent"
 	}
+
 	return ""
 }
 
@@ -370,15 +429,19 @@ func autoDetectVerify(repo string) string {
 	if v := defaultVerify(repo); v != "" {
 		return v
 	}
+
 	if _, err := os.Stat(filepath.Join(repo, "Makefile")); err == nil {
 		return "make test"
 	}
+
 	if _, err := os.Stat(filepath.Join(repo, "flake.nix")); err == nil {
 		return "nix build && nix flake check"
 	}
+
 	if _, err := os.Stat(filepath.Join(repo, "Cargo.toml")); err == nil {
 		return "cargo test --quiet"
 	}
+
 	return ""
 }
 
@@ -388,6 +451,7 @@ func RenderAgentPayload(p AgentPayload) (json.RawMessage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("agent: encode payload: %w", err)
 	}
+
 	return b, nil
 }
 

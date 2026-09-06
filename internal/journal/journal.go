@@ -60,13 +60,17 @@ func NewMemoryJournal() *MemoryJournal { return &MemoryJournal{} }
 func (m *MemoryJournal) Append(_ context.Context, f Fact) (Fact, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	if f.Seq == 0 {
 		f.Seq = int64(len(m.facts) + 1)
 	}
+
 	if f.Time.IsZero() {
 		f.Time = time.Now()
 	}
+
 	m.facts = append(m.facts, f)
+
 	return f, nil
 }
 
@@ -74,8 +78,10 @@ func (m *MemoryJournal) Append(_ context.Context, f Fact) (Fact, error) {
 func (m *MemoryJournal) All(_ context.Context) ([]Fact, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	out := make([]Fact, len(m.facts))
 	copy(out, m.facts)
+
 	return out, nil
 }
 
@@ -83,11 +89,14 @@ func (m *MemoryJournal) All(_ context.Context) ([]Fact, error) {
 func (m *MemoryJournal) Since(_ context.Context, after int64) ([]Fact, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	var out []Fact
+
 	for _, f := range m.facts {
 		if f.Seq > after {
 			out = append(out, f)
 		}
 	}
+
 	return out, nil
 }

@@ -36,6 +36,7 @@ func Terminal(s Status) bool {
 	case Completed, Dead, Cancelled:
 		return true
 	}
+
 	return false
 }
 
@@ -45,5 +46,6 @@ func (s Status) Valid() bool {
 	case Pending, Running, Completed, Dead, Cancelled:
 		return true
 	}
+
 	return false
 }

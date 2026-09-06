@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -57,7 +58,9 @@ func main() {
 		fmt.Fprint(os.Stderr, usage)
 		os.Exit(2)
 	}
+
 	var err error
+
 	switch os.Args[1] {
 	case "enqueue":
 		err = cmdEnqueue(os.Args[2:])
@@ -89,6 +92,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "tq: unknown command %q\n\n%s", os.Args[1], usage)
 		os.Exit(2)
 	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tq: %v\n", err)
 		os.Exit(1)
@@ -99,6 +103,7 @@ func defaultDB() string {
 	if p := os.Getenv("TQ_DB"); p != "" {
 		return p
 	}
+
 	return "tasks.db"
 }
 
@@ -112,6 +117,7 @@ func mustOpenDBOpts(path string, opts ...queue.StoreOption) *queue.SQLiteStore {
 		fmt.Fprintf(os.Stderr, "tq: open db: %v\n", err)
 		os.Exit(1)
 	}
+
 	return s
 }
 
@@ -123,6 +129,7 @@ func resolveDB(v string) string {
 	if v != "" {
 		return v
 	}
+
 	return defaultDB()
 }
 
@@ -135,15 +142,18 @@ func cmdEnqueue(args []string) error {
 	priority := fs.Int("priority", 0, "higher claims first")
 	maxAttempts := fs.Int("max-attempts", 0, "default 3")
 	delay := fs.Duration("delay", 0, "delay before claimable (e.g. 30s, 5m)")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	if *taskType == "" {
-		return fmt.Errorf("--type is required")
+		return errors.New("--type is required")
 	}
 
 	var payloadJSON json.RawMessage
+
 	if *payload != "" {
 		raw := []byte(*payload)
 		if after, ok := strings.CutPrefix(*payload, "@"); ok {
@@ -151,8 +161,10 @@ func cmdEnqueue(args []string) error {
 			if err != nil {
 				return fmt.Errorf("read payload file: %w", err)
 			}
+
 			raw = b
 		}
+
 		if !json.Valid(raw) {
 			// The shell path takes the payload as the command line itself
 			// (tq enqueue --type sh --payload 'echo hi'), so wrap a non-JSON
@@ -161,12 +173,15 @@ func cmdEnqueue(args []string) error {
 			if *taskType != "sh" {
 				return fmt.Errorf("payload is not valid JSON: %s", raw)
 			}
+
 			wrapped, err := json.Marshal(string(raw))
 			if err != nil {
 				return fmt.Errorf("wrap payload: %w", err)
 			}
+
 			raw = wrapped
 		}
+
 		payloadJSON = raw
 	}
 
@@ -178,6 +193,7 @@ func cmdEnqueue(args []string) error {
 		MaxAttempts: *maxAttempts,
 		NotBefore:   time.Now().Add(*delay),
 	}
+
 	for d := range strings.SplitSeq(*deps, ",") {
 		if d = strings.TrimSpace(d); d != "" {
 			n.Deps = append(n.Deps, task.ID(d))
@@ -186,11 +202,14 @@ func cmdEnqueue(args []string) error {
 
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
 	t, err := queue.New(s).Enqueue(context.Background(), n)
 	if err != nil {
 		return err
 	}
+
 	fmt.Println(t.ID)
+
 	return nil
 }
 
@@ -201,21 +220,36 @@ func cmdWorker(args []string) error {
 	lease := fs.Duration("lease", 2*time.Minute, "claim lease length")
 	timeout := fs.Duration("task-timeout", 10*time.Minute, "per-task timeout (use e.g. 45m with --agents)")
 	owner := fs.String("owner", "", "lease owner identity")
-	agents := fs.Bool("agents", false, "enable the 'agent' executor: runs a headless AI agent (crush) per task — OPT-IN")
+	agents := fs.Bool(
+		"agents",
+		false,
+		"enable the 'agent' executor: runs a headless AI agent (crush) per task — OPT-IN",
+	)
 	yolo := fs.Bool("yolo", false, "with --agents: agents auto-accept all permissions (operator decision)")
-	exclusive := fs.Bool("project-exclusive", false, "never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)")
+	exclusive := fs.Bool(
+		"project-exclusive",
+		false,
+		"never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)",
+	)
 	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "root dir for relative repo names in agent payloads")
-	alertURL := fs.String("alert-url", os.Getenv("TQ_PAP_URL"), "PapDashboard base URL: dead-lettered tasks raise alerts there (e.g. http://localhost:8080)")
+	alertURL := fs.String(
+		"alert-url",
+		os.Getenv("TQ_PAP_URL"),
+		"PapDashboard base URL: dead-lettered tasks raise alerts there (e.g. http://localhost:8080)",
+	)
 	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
 	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	var opts []queue.StoreOption
 	if *exclusive {
 		opts = append(opts, queue.WithProjectExclusivity())
 	}
+
 	s := mustOpenDBOpts(resolveDB(*db), opts...)
 	defer s.Close()
 
@@ -224,8 +258,12 @@ func cmdWorker(args []string) error {
 	// trivially usable while Go users register their own executors.
 	reg := executor.NewRegistry()
 	reg.Register("sh", executor.NewCommandExecutor(""))
+
 	if *agents {
-		fmt.Fprintln(os.Stderr, "tq: --agents: autonomous agent execution enabled (headless crush; dirty repos are skipped; verify is enforced)")
+		fmt.Fprintln(
+			os.Stderr,
+			"tq: --agents: autonomous agent execution enabled (headless crush; dirty repos are skipped; verify is enforced)",
+		)
 		reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
 	}
 
@@ -237,8 +275,10 @@ func cmdWorker(args []string) error {
 		TaskTimeout:  *timeout,
 		Executors:    reg,
 	}, nil)
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
 	if *alertURL != "" {
 		bridge := papdashboard.New(s, papdashboard.Config{
 			Endpoint:     *alertURL,
@@ -251,8 +291,10 @@ func cmdWorker(args []string) error {
 				stop()
 			}
 		}()
+
 		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %s\n", *alertURL)
 	}
+
 	return pool.Start(ctx)
 }
 
@@ -262,16 +304,22 @@ func defaultProjectsDir() string {
 	if d := os.Getenv("TQ_PROJECTS_DIR"); d != "" {
 		return d
 	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
+
 	return filepath.Join(home, "projects")
 }
 
 func cmdHarvest(args []string) error {
 	fs := flag.NewFlagSet("harvest", flag.ExitOnError)
-	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "dir containing repos with TODO_LIST.md (default $TQ_PROJECTS_DIR or ~/projects)")
+	projectsDir := fs.String(
+		"projects-dir",
+		defaultProjectsDir(),
+		"dir containing repos with TODO_LIST.md (default $TQ_PROJECTS_DIR or ~/projects)",
+	)
 	repos := fs.String("repos", "", "comma-separated repo dirs (overrides --projects-dir)")
 	todoFile := fs.String("todo-file", harvest.DefaultTodoFile, "backlog file name inside each repo")
 	taskType := fs.String("type", harvest.DefaultType, "task type to enqueue")
@@ -279,17 +327,28 @@ func cmdHarvest(args []string) error {
 	priority := fs.Int("priority", 0, "priority for enqueued tasks")
 	maxAttempts := fs.Int("max-attempts", 0, "attempt budget (0 = store default)")
 	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
-	model := fs.String("model", "", "crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload")
-	repoSubset := fs.String("repo-subset", "", "glob filter on repo names discovered under --projects-dir (e.g. 'go-*'); ignored with --repos")
+	model := fs.String(
+		"model",
+		"",
+		"crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload",
+	)
+	repoSubset := fs.String(
+		"repo-subset",
+		"",
+		"glob filter on repo names discovered under --projects-dir (e.g. 'go-*'); ignored with --repos",
+	)
 	dryRun := fs.Bool("dry-run", false, "report what would be enqueued, change nothing")
 	asJSON := fs.Bool("json", false, "JSON output of the harvest result")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	if *projectsDir == "" && *repos == "" {
-		return fmt.Errorf("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
+		return errors.New("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
 	}
+
 	if err := checkProjectsDir(*projectsDir); err != nil {
 		return err
 	}
@@ -304,12 +363,15 @@ func cmdHarvest(args []string) error {
 		Model:       *model,
 		DryRun:      *dryRun,
 	}
+
 	if *allowDirty {
 		no := false
 		cfg.RequireClean = &no
 	}
+
 	if *repos != "" {
 		cfg.ProjectsDir = ""
+
 		for r := range strings.SplitSeq(*repos, ",") {
 			if r = strings.TrimSpace(r); r != "" {
 				cfg.Repos = append(cfg.Repos, r)
@@ -320,11 +382,13 @@ func cmdHarvest(args []string) error {
 		if err != nil {
 			return fmt.Errorf("discover repos: %w", err)
 		}
+
 		for _, r := range found {
 			if ok, _ := path.Match(*repoSubset, filepath.Base(r)); ok {
 				cfg.Repos = append(cfg.Repos, r)
 			}
 		}
+
 		if len(cfg.Repos) == 0 {
 			return fmt.Errorf("--repo-subset %q matched no repos under %s", *repoSubset, *projectsDir)
 		}
@@ -332,26 +396,34 @@ func cmdHarvest(args []string) error {
 
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
 	res, err := harvest.New(queue.New(s), cfg).Run(context.Background())
 	if err != nil {
 		return err
 	}
+
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(res)
 	}
+
 	printHarvestResult(res)
+
 	for _, en := range res.Enqueued {
 		id := en.TaskID.String()
 		if *dryRun {
 			id = "(dry-run)"
 		}
+
 		fmt.Printf("ENQUEUED  %-24s %s  %s\n", en.Item.RepoName, en.Item.Text, id)
 	}
+
 	for _, sk := range res.Skipped {
 		fmt.Printf("SKIP      %-24s %s  — %s\n", sk.Item.RepoName, sk.Item.Text, sk.Reason)
 	}
+
 	return nil
 }
 
@@ -363,7 +435,11 @@ func cmdHarvest(args []string) error {
 // Ctrl-C drains gracefully, like tq worker.
 func cmdAgentPool(args []string) error {
 	fs := flag.NewFlagSet("agent-pool", flag.ExitOnError)
-	projectsDir := fs.String("projects-dir", defaultProjectsDir(), "dir containing repos (default $TQ_PROJECTS_DIR or ~/projects)")
+	projectsDir := fs.String(
+		"projects-dir",
+		defaultProjectsDir(),
+		"dir containing repos (default $TQ_PROJECTS_DIR or ~/projects)",
+	)
 	repos := fs.String("repos", "", "comma-separated repo dirs (overrides --projects-dir)")
 	interval := fs.Duration("interval", 5*time.Minute, "harvest cadence")
 	conc := fs.Int("concurrency", 1, "parallel agents (repos are paced: one in-flight backlog item per repo)")
@@ -371,26 +447,65 @@ func cmdAgentPool(args []string) error {
 	lease := fs.Duration("lease", 5*time.Minute, "claim lease length (agents are slow; heartbeats keep it alive)")
 	timeout := fs.Duration("task-timeout", 45*time.Minute, "per-agent timeout (agent run + verify)")
 	owner := fs.String("owner", "", "lease owner identity")
-	yolo := fs.Bool("yolo", false, "agents auto-accept all permissions — required for unattended pools whose items need writes/commits")
-	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per harvest tick (cost throttle)")
+	yolo := fs.Bool(
+		"yolo",
+		false,
+		"agents auto-accept all permissions — required for unattended pools whose items need writes/commits",
+	)
+	maxPerTick := fs.Int(
+		"max-per-tick",
+		harvest.DefaultMaxPerTick,
+		"max new agent tasks per harvest tick (cost throttle)",
+	)
 	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
-	model := fs.String("model", "", "crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload")
+	model := fs.String(
+		"model",
+		"",
+		"crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload",
+	)
 	once := fs.Bool("once", false, "run one harvest tick, drain the queue, then exit (cron/timer-friendly)")
-	exclusive := fs.Bool("project-exclusive", false, "never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)")
-	dailyBudget := fs.Int("daily-budget", 0, "max agent tasks enqueued per calendar day across all repos (0 = unlimited)")
-	budgetCmd := fs.String("budget-cmd", "", "checked before each harvest tick: exit 0 = within budget, non-zero skips the tick (output is the reason)")
-	repoInterval := fs.String("repo-interval", "", "per-repo minimum gap between new enqueues: name=duration,comma-separated (e.g. big-repo=1h,tiny=5m)")
-	dlqBackoff := fs.Duration("dlq-backoff", 0, "pause harvesting a repo whose recent work is all dead-lettered for this long (0 = off, e.g. 30m)")
-	cqaURL := fs.String("cqa-url", os.Getenv("CQA_URL"), "Code-Quality-Agent API base URL: latest scans' fixable findings become fix tasks each tick")
+	exclusive := fs.Bool(
+		"project-exclusive",
+		false,
+		"never run two tasks of the same project at once across ALL pools sharing this DB (enable it on every pool)",
+	)
+	dailyBudget := fs.Int(
+		"daily-budget",
+		0,
+		"max agent tasks enqueued per calendar day across all repos (0 = unlimited)",
+	)
+	budgetCmd := fs.String(
+		"budget-cmd",
+		"",
+		"checked before each harvest tick: exit 0 = within budget, non-zero skips the tick (output is the reason)",
+	)
+	repoInterval := fs.String(
+		"repo-interval",
+		"",
+		"per-repo minimum gap between new enqueues: name=duration,comma-separated (e.g. big-repo=1h,tiny=5m)",
+	)
+	dlqBackoff := fs.Duration(
+		"dlq-backoff",
+		0,
+		"pause harvesting a repo whose recent work is all dead-lettered for this long (0 = off, e.g. 30m)",
+	)
+	cqaURL := fs.String(
+		"cqa-url",
+		os.Getenv("CQA_URL"),
+		"Code-Quality-Agent API base URL: latest scans' fixable findings become fix tasks each tick",
+	)
 	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
 	cqaToken := fs.String("cqa-token", os.Getenv("CQA_TOKEN"), "CQA bearer token")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	if *projectsDir == "" && *repos == "" {
-		return fmt.Errorf("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
+		return errors.New("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
 	}
+
 	if err := checkProjectsDir(*projectsDir); err != nil {
 		return err
 	}
@@ -398,28 +513,35 @@ func cmdAgentPool(args []string) error {
 	cfg := harvest.Config{ProjectsDir: *projectsDir, MaxPerTick: *maxPerTick, Model: *model, DLQBackoff: *dlqBackoff}
 	if *repoInterval != "" {
 		cfg.RepoIntervals = make(map[string]time.Duration)
+
 		for spec := range strings.SplitSeq(*repoInterval, ",") {
 			spec = strings.TrimSpace(spec)
 			if spec == "" {
 				continue
 			}
+
 			name, dur, ok := strings.Cut(spec, "=")
 			if !ok {
 				return fmt.Errorf("--repo-interval: want name=duration, got %q", spec)
 			}
+
 			d, err := time.ParseDuration(strings.TrimSpace(dur))
 			if err != nil {
 				return fmt.Errorf("--repo-interval: %q: %w", spec, err)
 			}
+
 			cfg.RepoIntervals[strings.TrimSpace(name)] = d
 		}
 	}
+
 	if *allowDirty {
 		no := false
 		cfg.RequireClean = &no
 	}
+
 	if *repos != "" {
 		cfg.ProjectsDir = ""
+
 		for r := range strings.SplitSeq(*repos, ",") {
 			if r = strings.TrimSpace(r); r != "" {
 				cfg.Repos = append(cfg.Repos, r)
@@ -431,18 +553,33 @@ func cmdAgentPool(args []string) error {
 	if *exclusive {
 		opts = append(opts, queue.WithProjectExclusivity())
 	}
+
 	s := mustOpenDBOpts(resolveDB(*db), opts...)
 	defer s.Close()
+
 	q := queue.New(s)
 
 	reg := executor.NewRegistry()
 	reg.Register("sh", executor.NewCommandExecutor(""))
 	reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
-	fmt.Fprintf(os.Stderr, "tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, exclusive=%v, harvest every %s, verify enforced)\n",
-		*conc, repoRootDesc(*projectsDir, *repos), *yolo, *allowDirty, *exclusive, *interval)
+	fmt.Fprintf(
+		os.Stderr,
+		"tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, exclusive=%v, harvest every %s, verify enforced)\n",
+		*conc,
+		repoRootDesc(*projectsDir, *repos),
+		*yolo,
+		*allowDirty,
+		*exclusive,
+		*interval,
+	)
+
 	if *yolo {
-		fmt.Fprintf(os.Stderr, "tq: WARNING: autonomy requested — agents may run shell commands unsandboxed in every repo whose .crushrc (or your user-global crush config) grants bash; the trust root is the filesystem. Cap the blast radius with --daily-budget / --budget-cmd and --max-per-tick (see SECURITY.md)\n")
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: WARNING: autonomy requested — agents may run shell commands unsandboxed in every repo whose .crushrc (or your user-global crush config) grants bash; the trust root is the filesystem. Cap the blast radius with --daily-budget / --budget-cmd and --max-per-tick (see SECURITY.md)\n",
+		)
 	}
+
 	if *cqaURL != "" {
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick\n", *cqaURL)
 	}
@@ -453,6 +590,7 @@ func cmdAgentPool(args []string) error {
 	log := slog.Default()
 	guard := budget.Guard{DailyCap: *dailyBudget, BudgetCmd: *budgetCmd}
 	h := harvest.New(q, cfg)
+
 	var cqaBridge *cqa.Bridge
 	if *cqaURL != "" {
 		cqaBridge = cqa.New(cqa.Config{
@@ -466,52 +604,86 @@ func cmdAgentPool(args []string) error {
 	runTick := func() {
 		if ok, reason := guard.Check(ctx, s); !ok {
 			log.Warn("budget: skipping harvest tick", "reason", reason)
+
 			return
 		}
+
 		res, err := h.Run(ctx)
 		if err != nil {
 			log.Error("harvest failed", "err", err)
 		} else {
 			for _, en := range res.Enqueued {
-				log.Info("harvest: enqueued", "repo", en.Item.RepoName, "item", en.Item.Text, "task", en.TaskID.String())
+				log.Info(
+					"harvest: enqueued",
+					"repo",
+					en.Item.RepoName,
+					"item",
+					en.Item.Text,
+					"task",
+					en.TaskID.String(),
+				)
 			}
+
 			for class, n := range groupedSkips(res.Skipped) {
 				log.Info("harvest: skipped", "reason", class, "count", n)
 			}
+
 			log.Info("harvest tick done", "repos", res.Repos, "items", res.Items,
 				"enqueued", len(res.Enqueued), "skipped", len(res.Skipped))
 		}
+
 		if cqaBridge == nil {
 			return
 		}
+
 		fixTasks, err := cqaBridge.Collect(ctx)
 		if err != nil {
 			log.Error("cqa ingest failed", "err", err)
+
 			return
 		}
+
 		fresh := 0
+
 		for _, ft := range fixTasks {
 			got, err := q.Enqueue(ctx, ft.Template)
 			if err != nil {
 				log.Error("cqa enqueue failed", "key", ft.Template.DedupKey, "err", err)
+
 				continue
 			}
+
 			if got.Attempts == 0 && got.Status == task.Pending {
 				fresh++
-				log.Info("cqa: enqueued fix task", "repo", ft.Project, "file", ft.File, "issues", len(ft.Issues), "task", got.ID.String())
+
+				log.Info(
+					"cqa: enqueued fix task",
+					"repo",
+					ft.Project,
+					"file",
+					ft.File,
+					"issues",
+					len(ft.Issues),
+					"task",
+					got.ID.String(),
+				)
 			}
 		}
+
 		if len(fixTasks) > 0 {
 			log.Info("cqa tick done", "files", len(fixTasks), "new", fresh)
 		}
 	}
 	go func() {
 		runTick()
+
 		if *once {
 			return
 		}
+
 		ticker := time.NewTicker(*interval)
 		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -530,6 +702,7 @@ func cmdAgentPool(args []string) error {
 		TaskTimeout:  *timeout,
 		Executors:    reg,
 	}, log)
+
 	if *once {
 		// Timer-friendly mode: as soon as this pool has nothing in flight
 		// and no claimable work left, stop the pool AND cancel the signal
@@ -546,12 +719,14 @@ func cmdAgentPool(args []string) error {
 					if pool.InFlight() == 0 && !hasClaimableWork(ctx, q, pool.Owner(), *poll) {
 						pool.Stop()
 						stop()
+
 						return
 					}
 				}
 			}
 		}()
 	}
+
 	return pool.Start(ctx)
 }
 
@@ -563,15 +738,19 @@ func hasClaimableWork(ctx context.Context, q *queue.Queue, owner string, poll ti
 	if err != nil {
 		return true // fail safe: keep draining rather than exit early
 	}
+
 	dueSoon := time.Now().Add(2 * poll)
+
 	for _, t := range tasks {
 		if t.Status == task.Running && t.LeaseOwner == owner {
 			return true
 		}
+
 		if t.Status == task.Pending && !t.NotBefore.After(dueSoon) {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -579,19 +758,23 @@ func repoRootDesc(projectsDir, repos string) string {
 	if repos != "" {
 		return repos
 	}
+
 	return projectsDir
 }
 
 // groupedSkips counts skip reasons by their stable class (text before ':').
 func groupedSkips(skips []harvest.Skipped) map[string]int {
 	groups := make(map[string]int)
+
 	for _, sk := range skips {
 		class := sk.Reason
 		if before, _, ok := strings.Cut(sk.Reason, ":"); ok {
 			class = before
 		}
+
 		groups[class]++
 	}
+
 	return groups
 }
 
@@ -605,10 +788,12 @@ func cmdStats(args []string) error {
 	project := fs.String("project", "", "filter by project")
 	status := fs.String("status", "", "filter by status")
 	asJSON := fs.Bool("json", false, "JSON output")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
 
@@ -616,65 +801,82 @@ func cmdStats(args []string) error {
 	if *project != "" {
 		f.Project = project
 	}
+
 	if *status != "" {
 		st := task.Status(*status)
 		f.Status = &st
 	}
+
 	tasks, err := s.List(context.Background(), f)
 	if err != nil {
 		return err
 	}
+
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(tasks)
 	}
 
 	byStatus := map[string]int{}
 	byProject := map[string]map[string]int{}
+
 	for _, t := range tasks {
 		byStatus[string(t.Status)]++
 		if byProject[t.Project] == nil {
 			byProject[t.Project] = map[string]int{}
 		}
+
 		byProject[t.Project][string(t.Status)]++
 	}
 
 	fmt.Printf("%-12s %6s\n", "STATUS", "COUNT")
+
 	for _, st := range []string{"pending", "running", "completed", "dead", "cancelled"} {
 		if c, ok := byStatus[st]; ok {
 			fmt.Printf("%-12s %6d\n", st, c)
 		}
 	}
+
 	if *project == "" && len(byProject) > 0 {
 		fmt.Println()
 		fmt.Printf("%-28s %8s %8s %8s %8s %8s\n", "PROJECT", "pending", "running", "done", "dead", "cancld")
+
 		projects := make([]string, 0, len(byProject))
 		for p := range byProject {
 			projects = append(projects, p)
 		}
+
 		sort.Strings(projects)
+
 		for _, p := range projects {
 			m := byProject[p]
 			fmt.Printf("%-28s %8d %8d %8d %8d %8d\n", p,
 				m["pending"], m["running"], m["completed"], m["dead"], m["cancelled"])
 		}
 	}
+
 	return nil
 }
 
 func cmdShow(args []string) error {
 	fs := flag.NewFlagSet("show", flag.ExitOnError)
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: tq show TASK_ID")
+		return errors.New("usage: tq show TASK_ID")
 	}
+
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
 	ctx := context.Background()
+
 	t, err := s.Get(ctx, task.ID(fs.Arg(0)))
 	if err != nil {
 		return err
@@ -685,15 +887,20 @@ func cmdShow(args []string) error {
 	if err != nil {
 		return err
 	}
+
 	id := t.ID.String()
+
 	var trail []journal.Fact
+
 	for _, f := range facts {
 		if f.TaskID == id {
 			trail = append(trail, f)
 		}
 	}
+
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
+
 	return enc.Encode(struct {
 		Task  task.Task      `json:"task"`
 		Facts []journal.Fact `json:"facts,omitempty"`
@@ -706,86 +913,116 @@ func cmdDLQ(args []string) error {
 	rescueAll := fs.Bool("rescue-all", false, "re-queue EVERY dead task (only after a human decided they can succeed)")
 	olderThan := fs.Duration("older-than", 0, "with --rescue-all: only tasks dead for at least this long (e.g. 24h)")
 	maxAttempts := fs.Int("max-attempts", 3, "attempt budget for rescued task(s)")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
 	if *rescueAll {
 		st := task.Dead
+
 		dead, err := s.List(context.Background(), queue.Filter{Status: &st})
 		if err != nil {
 			return err
 		}
+
 		rescued := 0
+
 		for _, t := range dead {
 			if *olderThan > 0 && time.Since(t.UpdatedAt) < *olderThan {
 				continue
 			}
+
 			if err := s.RescueDead(context.Background(), t.ID, *maxAttempts); err != nil {
 				return fmt.Errorf("rescue %s: %w", t.ID, err)
 			}
+
 			fmt.Printf("rescued %s  %s\n", t.ID, t.Project+"/"+t.Type)
+
 			rescued++
 		}
+
 		fmt.Printf("rescued %d of %d dead task(s)\n", rescued, len(dead))
+
 		return nil
 	}
+
 	if *rescue != "" {
 		if err := s.RescueDead(context.Background(), task.ID(*rescue), *maxAttempts); err != nil {
 			return err
 		}
+
 		fmt.Printf("rescued %s\n", *rescue)
+
 		return nil
 	}
+
 	st := task.Dead
+
 	tasks, err := s.List(context.Background(), queue.Filter{Status: &st})
 	if err != nil {
 		return err
 	}
+
 	if len(tasks) == 0 {
 		fmt.Println("(empty)")
+
 		return nil
 	}
+
 	for _, t := range tasks {
 		fmt.Printf("%s  %-24s attempts=%d/%d  %s\n",
 			t.ID, t.Project+"/"+t.Type, t.Attempts, t.MaxAttempts, truncate(t.LastError, 80))
 	}
+
 	return nil
 }
 
 func cmdCancel(args []string) error {
 	fs := flag.NewFlagSet("cancel", flag.ExitOnError)
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: tq cancel TASK_ID")
+		return errors.New("usage: tq cancel TASK_ID")
 	}
+
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
 	return s.Cancel(context.Background(), task.ID(fs.Arg(0)))
 }
 
 func cmdFacts(args []string) error {
 	fs := flag.NewFlagSet("facts", flag.ExitOnError)
 	after := fs.Int64("after", 0, "only facts with seq > this")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
 	facts, err := s.Facts(context.Background(), *after)
 	if err != nil {
 		return err
 	}
+
 	for _, f := range facts {
 		fmt.Println(formatFact(f))
 	}
+
 	fmt.Printf("(%d facts)\n", len(facts))
+
 	return nil
 }
 
@@ -795,12 +1032,14 @@ func cmdFacts(args []string) error {
 func formatFact(f journal.Fact) string {
 	line := fmt.Sprintf("%5d %s %s %-20s %s %s",
 		f.Seq, f.Time.Format(time.RFC3339), f.TaskID, f.Type, f.Owner, f.Error)
+
 	var d struct {
 		Class string `json:"class"`
 	}
 	if len(f.Detail) > 0 && json.Unmarshal(f.Detail, &d) == nil && d.Class != "" {
 		line += " [class=" + d.Class + "]"
 	}
+
 	return line
 }
 
@@ -808,30 +1047,37 @@ func cmdTail(args []string) error {
 	fs := flag.NewFlagSet("tail", flag.ExitOnError)
 	after := fs.Int64("after", 0, "only facts with seq > this")
 	follow := fs.Bool("f", false, "follow (live)")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
 	for {
 		facts, err := s.Facts(ctx, *after)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
 			}
+
 			return err
 		}
+
 		for _, f := range facts {
 			fmt.Println(formatFact(f))
 			*after = f.Seq
 		}
+
 		if !*follow {
 			return nil
 		}
+
 		select {
 		case <-ctx.Done():
 			return nil
@@ -844,5 +1090,6 @@ func truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
 	}
+
 	return s[:n] + "…"
 }

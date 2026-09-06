@@ -85,12 +85,15 @@ func New(cfg Config) *Bridge {
 	if cfg.Type == "" {
 		cfg.Type = executor.TaskTypeAgent
 	}
+
 	if cfg.MinSeverity == "" {
 		cfg.MinSeverity = "error"
 	}
+
 	if cfg.TimeoutMinutes <= 0 {
 		cfg.TimeoutMinutes = 45
 	}
+
 	return &Bridge{cfg: cfg, http: &http.Client{Timeout: 30 * time.Second}}
 }
 
@@ -111,36 +114,47 @@ func (b *Bridge) Collect(ctx context.Context) ([]FixTask, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	var out []FixTask
+
 	for _, p := range projects {
 		repoDir := filepath.Join(b.cfg.ProjectsDir, p.RepoName)
 		if info, err := os.Stat(repoDir); err != nil || !info.IsDir() {
 			continue // CQA tracks repos this machine does not have
 		}
+
 		scan, err := b.latestScan(ctx, p.ID)
 		if err != nil || scan.ID == "" {
 			continue
 		}
+
 		issues, err := b.issues(ctx, scan.ID)
 		if err != nil {
 			continue
 		}
+
 		byFile := map[string][]Issue{}
+
 		for _, iss := range issues {
 			if !iss.Fixable || iss.FilePath == "" || !severityAtLeast(iss.Severity, b.cfg.MinSeverity) {
 				continue
 			}
+
 			byFile[iss.FilePath] = append(byFile[iss.FilePath], iss)
 		}
+
 		files := make([]string, 0, len(byFile))
 		for f := range byFile {
 			files = append(files, f)
 		}
+
 		sort.Strings(files)
+
 		for _, f := range files {
 			if b.cfg.MaxFiles > 0 && len(out) >= b.cfg.MaxFiles {
 				return out, nil
 			}
+
 			ft := FixTask{
 				Project: p.RepoName,
 				RepoDir: repoDir,
@@ -151,21 +165,28 @@ func (b *Bridge) Collect(ctx context.Context) ([]FixTask, error) {
 			out = append(out, ft)
 		}
 	}
+
 	return out, nil
 }
 
 func (b *Bridge) renderTask(p Project, scan Scan, ft FixTask) task.New {
 	var lines []string
+
 	for _, iss := range ft.Issues {
 		loc := ""
 		if iss.LineStart > 0 {
 			loc = fmt.Sprintf(":%d", iss.LineStart)
 		}
-		lines = append(lines, fmt.Sprintf("- [%s%s] %s: %s (%s)", ft.File, loc, iss.Severity, iss.Message, iss.Analyzer))
+
+		lines = append(
+			lines,
+			fmt.Sprintf("- [%s%s] %s: %s (%s)", ft.File, loc, iss.Severity, iss.Message, iss.Analyzer),
+		)
 		if iss.Suggestion != "" {
-			lines = append(lines, fmt.Sprintf("  suggestion: %s", iss.Suggestion))
+			lines = append(lines, "  suggestion: "+iss.Suggestion)
 		}
 	}
+
 	prompt := fmt.Sprintf(`Fix the code-quality issues the scanner found in this file.
 
 Project: %s, latest scan %s.
@@ -187,6 +208,7 @@ Rules:
 		TimeoutMinutes: b.cfg.TimeoutMinutes,
 		Dedup:          DedupKey(p.RepoName, scan.ID, ft.File),
 	})
+
 	return task.New{
 		Project:  p.RepoName,
 		Type:     b.cfg.Type,
@@ -203,15 +225,18 @@ func DedupKey(repo, scanID, file string) string {
 
 func severityAtLeast(sev, min string) bool {
 	rank := map[string]int{"critical": 4, "error": 3, "warning": 2, "info": 1}
+
 	return rank[strings.ToLower(sev)] >= rank[strings.ToLower(min)]
 }
 
 func (b *Bridge) projects(ctx context.Context) ([]Project, error) {
 	q := url.Values{"owner_id": {b.cfg.OwnerID}, "limit": {"100"}}
+
 	var out []Project
 	if err := b.getJSON(ctx, "/api/v1/projects?"+q.Encode(), &out); err != nil {
 		return nil, err
 	}
+
 	return out, nil
 }
 
@@ -220,17 +245,24 @@ func (b *Bridge) latestScan(ctx context.Context, projectID string) (Scan, error)
 	if err := b.getJSON(ctx, "/api/v1/projects/"+url.PathEscape(projectID)+"/scans?limit=1", &scans); err != nil {
 		return Scan{}, err
 	}
+
 	if len(scans) == 0 {
 		return Scan{}, nil
 	}
+
 	return scans[0], nil
 }
 
 func (b *Bridge) issues(ctx context.Context, scanID string) ([]Issue, error) {
 	var out []Issue
-	if err := b.getJSON(ctx, "/api/v1/scans/"+url.PathEscape(scanID)+"/issues?fixable_only=true&limit=500", &out); err != nil {
+	if err := b.getJSON(
+		ctx,
+		"/api/v1/scans/"+url.PathEscape(scanID)+"/issues?fixable_only=true&limit=500",
+		&out,
+	); err != nil {
 		return nil, err
 	}
+
 	return out, nil
 }
 
@@ -239,24 +271,30 @@ func (b *Bridge) getJSON(ctx context.Context, path string, out any) error {
 	if err != nil {
 		return fmt.Errorf("cqa: build request: %w", err)
 	}
+
 	if b.cfg.Token != "" {
 		req.Header.Set("Authorization", "Bearer "+b.cfg.Token)
 	}
+
 	resp, err := b.http.Do(req)
 	if err != nil {
 		return fmt.Errorf("cqa: request %s: %w", path, err)
 	}
 	defer resp.Body.Close()
+
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if err != nil {
 		return fmt.Errorf("cqa: read %s: %w", path, err)
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("cqa: %s: status %d: %s", path, resp.StatusCode, truncate(string(body), 256))
 	}
+
 	if err := json.Unmarshal(body, out); err != nil {
 		return fmt.Errorf("cqa: decode %s: %w", path, err)
 	}
+
 	return nil
 }
 
@@ -264,5 +302,6 @@ func truncate(s string, n int) string {
 	if len(s) > n {
 		return s[:n]
 	}
+
 	return s
 }

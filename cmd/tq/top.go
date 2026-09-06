@@ -24,7 +24,9 @@ func isTerminal(w io.Writer) bool {
 	if !ok {
 		return false
 	}
+
 	info, err := f.Stat()
+
 	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
 
@@ -53,12 +55,15 @@ func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []proj
 		if byProject[name] == nil {
 			byProject[name] = &projectView{Project: name}
 		}
+
 		return byProject[name]
 	}
+
 	taskProject := make(map[string]string, len(tasks))
 	for i := range tasks {
 		t := tasks[i]
 		taskProject[t.ID.String()] = t.Project
+
 		v := view(t.Project)
 		switch t.Status {
 		case task.Pending:
@@ -79,6 +84,7 @@ func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []proj
 	// overwritten). Facts arrive in seq order, so the last Completed fact per
 	// project is the most recent completion.
 	claimedAt := map[string]time.Time{}
+
 	for _, f := range facts {
 		switch f.Type {
 		case journal.Claimed:
@@ -90,11 +96,13 @@ func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []proj
 			}
 		}
 	}
+
 	for i := range tasks {
 		t := tasks[i]
 		if t.Status != task.Running {
 			continue
 		}
+
 		if start, ok := claimedAt[t.ID.String()]; ok {
 			v := view(t.Project)
 			v.ActiveDur, v.HasActive = now.Sub(start), true
@@ -105,7 +113,9 @@ func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []proj
 	for _, v := range byProject {
 		out = append(out, *v)
 	}
+
 	sort.Slice(out, func(i, j int) bool { return out[i].Project < out[j].Project })
+
 	return out
 }
 
@@ -114,12 +124,15 @@ func cmdTop(args []string) error {
 	interval := fs.Duration("interval", 2*time.Second, "refresh interval")
 	once := fs.Bool("once", false, "render one frame and exit")
 	asJSON := fs.Bool("json", false, "JSON output (one frame, then exit)")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -128,26 +141,35 @@ func cmdTop(args []string) error {
 		if err != nil {
 			return err
 		}
+
 		facts, err := s.Facts(ctx, 0)
 		if err != nil {
 			return err
 		}
+
 		views := aggregateTop(tasks, facts, time.Now())
+
 		if *asJSON {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
+
 			return enc.Encode(views)
 		}
+
 		if !*once && isTerminal(os.Stdout) {
 			fmt.Print("\x1b[2J\x1b[H")
 		}
+
 		renderTop(views, time.Now())
+
 		if *once {
 			return nil
 		}
+
 		select {
 		case <-ctx.Done():
 			fmt.Println()
+
 			return nil
 		case <-time.After(*interval):
 		}
@@ -157,15 +179,19 @@ func cmdTop(args []string) error {
 func renderTop(views []projectView, now time.Time) {
 	fmt.Printf("tq top — %s\n", now.Format("15:04:05"))
 	fmt.Printf("%-28s %6s %6s %6s %6s %8s %9s\n", "PROJECT", "pend", "run", "done", "dead", "last", "active")
+
 	var tp, tr, tc, td int
+
 	for _, v := range views {
 		last, active := "-", "-"
 		if v.HasLast {
 			last = shortDur(v.LastDur)
 		}
+
 		if v.HasActive {
 			active = shortDur(v.ActiveDur)
 		}
+
 		fmt.Printf("%-28s %6d %6d %6d %6d %8s %9s\n",
 			truncate(v.Project, 28), v.Pending, v.Running, v.Completed, v.Dead, last, active)
 		tp += v.Pending
@@ -173,6 +199,7 @@ func renderTop(views []projectView, now time.Time) {
 		tc += v.Completed
 		td += v.Dead
 	}
+
 	fmt.Printf("%-28s %6d %6d %6d %6d %8s %9s\n", "TOTAL", tp, tr, tc, td, "", "")
 }
 
@@ -180,5 +207,6 @@ func shortDur(d time.Duration) string {
 	if d < 0 {
 		d = 0
 	}
+
 	return d.Truncate(100 * time.Millisecond).String()
 }

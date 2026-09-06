@@ -16,6 +16,7 @@ func TestCanTransitionTo(t *testing.T) {
 			t.Errorf("CanTransitionTo(%s, %s) = false, want true", tr.from, tr.to)
 		}
 	}
+
 	illegal := []struct{ from, to Status }{
 		{Pending, Completed},       // never ran
 		{Pending, Dead},            // never ran
@@ -41,6 +42,7 @@ func TestTerminal(t *testing.T) {
 			t.Errorf("Terminal(%s) = false, want true", s)
 		}
 	}
+
 	for _, s := range []Status{Pending, Running} {
 		if Terminal(s) {
 			t.Errorf("Terminal(%s) = true, want false", s)
@@ -50,14 +52,17 @@ func TestTerminal(t *testing.T) {
 
 func TestNewID(t *testing.T) {
 	seen := make(map[ID]struct{})
+
 	for range 1000 {
 		id := NewID()
 		if len(id) != 16+20 {
 			t.Fatalf("NewID length = %d, want 36", len(id))
 		}
+
 		if _, dup := seen[id]; dup {
 			t.Fatalf("NewID duplicated: %s", id)
 		}
+
 		seen[id] = struct{}{}
 	}
 }

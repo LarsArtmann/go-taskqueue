@@ -33,6 +33,7 @@ func TestItemKeyProperty(t *testing.T) {
 
 	for range 200 {
 		words := []string{"fix", "the", "parser", "for", "CRLF", "行", "дорога", "🚀"}
+
 		var raw, collapsed []string
 		for w := range words {
 			raw = append(raw, words[w])
@@ -42,11 +43,14 @@ func TestItemKeyProperty(t *testing.T) {
 			raw = append(raw, space()+" ")
 			collapsed = append(collapsed, " ")
 		}
+
 		text := strings.Join(raw, "")
+
 		want := ItemKey("repo", strings.Join(collapsed, ""))
 		if got := ItemKey("repo", text); got != want {
 			t.Fatalf("whitespace reflow changed the key: %q vs %q", got, want)
 		}
+
 		if ItemKey("other-repo", strings.Join(collapsed, "")) == want {
 			t.Fatal("repo name must participate in the key")
 		}
@@ -77,25 +81,32 @@ func FuzzParseRepo(f *testing.F) {
 		if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 			t.Skip()
 		}
+
 		items1, err1 := ParseRepo(repo, DefaultTodoFile)
+
 		items2, err2 := ParseRepo(repo, DefaultTodoFile)
 		if (err1 == nil) != (err2 == nil) {
 			t.Fatalf("non-deterministic error: %v vs %v", err1, err2)
 		}
+
 		if err1 != nil {
 			t.Skip() // write errors (tmpdir) are fine; parser has no error path on content
 		}
+
 		if len(items1) != len(items2) {
 			t.Fatalf("non-deterministic item count: %d vs %d", len(items1), len(items2))
 		}
+
 		for i := range items1 {
 			a, b := items1[i], items2[i]
 			if a.Key != b.Key || a.Text != b.Text || a.Heading != b.Heading {
 				t.Fatalf("non-deterministic parse: %+v vs %+v", a, b)
 			}
+
 			if strings.TrimSpace(a.Text) == "" {
 				t.Fatalf("empty item text parsed: %+v", a)
 			}
+
 			if a.Key == "" || !strings.HasPrefix(a.Key, "todo:") {
 				t.Fatalf("item %q has unusable dedup key %q", a.Text, a.Key)
 			}

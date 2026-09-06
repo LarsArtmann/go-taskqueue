@@ -35,24 +35,31 @@ func (c *Config) setDefaults() {
 	if c.Owner == "" {
 		c.Owner = fmt.Sprintf("worker-%d", time.Now().UnixMilli()%100000)
 	}
+
 	if c.Concurrency <= 0 {
 		c.Concurrency = 2
 	}
+
 	if c.PollInterval <= 0 {
 		c.PollInterval = 250 * time.Millisecond
 	}
+
 	if c.Lease <= 0 {
 		c.Lease = 2 * time.Minute
 	}
+
 	if c.Heartbeat <= 0 {
 		c.Heartbeat = c.Lease / 4
 	}
+
 	if c.TaskTimeout <= 0 {
 		c.TaskTimeout = 10 * time.Minute
 	}
+
 	if c.Backoff == nil {
 		c.Backoff = ExpBackoff
 	}
+
 	if c.PreflightBackoff <= 0 {
 		c.PreflightBackoff = 2 * time.Minute
 	}
@@ -63,7 +70,9 @@ func ExpBackoff(attempt int) time.Duration {
 	if attempt < 1 {
 		attempt = 1
 	}
+
 	d := min(time.Duration(math.Pow(2, float64(attempt)))*time.Second, 5*time.Minute)
+
 	return d
 }
 
@@ -85,7 +94,9 @@ func New(store queue.Store, cfg Config, log *slog.Logger) *Pool {
 	if log == nil {
 		log = slog.Default()
 	}
+
 	cfg.setDefaults()
+
 	return &Pool{
 		cfg:      cfg,
 		store:    store,
@@ -103,13 +114,16 @@ func New(store queue.Store, cfg Config, log *slog.Logger) *Pool {
 // outcome. Stop waiting with a second Ctrl-C (SIGKILL) if truly urgent.
 func (p *Pool) Start(ctx context.Context) error {
 	taskCtx := context.WithoutCancel(ctx)
+
 	for range p.cfg.Concurrency {
 		p.wg.Add(1)
 		go p.loop(ctx, taskCtx)
 	}
+
 	<-ctx.Done()
 	p.Stop()
 	p.wg.Wait()
+
 	return nil
 }
 
@@ -122,6 +136,7 @@ func (p *Pool) Stop() {
 func (p *Pool) InFlight() int {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	return len(p.inFlight)
 }
 
@@ -130,6 +145,7 @@ func (p *Pool) Owner() string { return p.cfg.Owner }
 
 func (p *Pool) loop(ctx, taskCtx context.Context) {
 	defer p.wg.Done()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -144,14 +160,18 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 			if ctx.Err() != nil {
 				return // shutdown raced the claim; not an error
 			}
+
 			if !errors.Is(err, queue.ErrNoTaskDue) {
 				p.log.Error("claim failed", "err", err)
 			}
+
 			if !sleepCtx(ctx, p.cfg.PollInterval) {
 				return
 			}
+
 			continue
 		}
+
 		p.execute(taskCtx, t)
 	}
 }
@@ -163,6 +183,7 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 func (p *Pool) execute(ctx context.Context, t task.Task) {
 	p.mu.Lock()
 	p.inFlight[t.ID] = struct{}{}
+
 	p.mu.Unlock()
 	defer func() {
 		p.mu.Lock()
@@ -174,11 +195,14 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	// shutdown-surviving task context so draining tasks keep their lease.
 	hbCtx, hbCancel := context.WithCancel(ctx)
 	defer hbCancel()
+
 	hbDone := make(chan struct{})
 	go func() {
 		defer close(hbDone)
+
 		ticker := time.NewTicker(p.cfg.Heartbeat)
 		defer ticker.Stop()
+
 		for {
 			select {
 			case <-hbCtx.Done():
@@ -190,6 +214,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 					// complete a task we no longer own.
 					p.log.Warn("heartbeat failed; lease lost", "task", t.ID, "err", err)
 					hbCancel()
+
 					return
 				}
 			}
@@ -200,6 +225,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	// verify tail) to the sink; successful completions store it.
 	runCtx, sink := executor.NewSink(hbCtx)
 	execErr := p.runExecutor(runCtx, t)
+
 	hbCancel()
 	<-hbDone
 
@@ -210,14 +236,17 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		if err := p.store.Complete(terminalCtx, t.ID, p.cfg.Owner, sink.Detail()); err != nil {
 			p.log.Error("complete failed", "task", t.ID, "err", err)
 		}
+
 		return
 	}
 	// Lease lost during execution: do NOT fail — the reclaiming worker owns
 	// the task now. Our attempt result is discarded (at-least-once).
 	if _, ok := errors.AsType[*executor.LeaseLostError](execErr); ok {
 		p.log.Warn("skipping fail: lease lost", "task", t.ID)
+
 		return
 	}
+
 	if pre, ok := errors.AsType[*executor.PreflightError](execErr); ok {
 		// The executor refused to START: environment not ready (dirty repo,
 		// missing autonomy). Requeue WITHOUT burning an attempt — the task
@@ -229,8 +258,10 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 			p.log.Warn("preflight refused; requeued without attempt burn",
 				"task", t.ID, "retry after", p.cfg.PreflightBackoff, "reason", pre.Cause.Error())
 		}
+
 		return
 	}
+
 	if perm, ok := errors.AsType[*executor.PermanentError](execErr); ok {
 		// The identical retry would fail identically (bad payload, missing
 		// repo). Dead-letter now instead of burning the retry budget — for
@@ -238,8 +269,10 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		if err := p.store.FailPermanent(terminalCtx, t.ID, p.cfg.Owner, perm.Error()); err != nil {
 			p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 		}
+
 		return
 	}
+
 	if errors.Is(execErr, context.Canceled) && ctx.Err() != nil {
 		// Task context cancelled mid-run (defensive: the task context ignores
 		// pool shutdown; only internal cancellation lands here). Burn the
@@ -248,8 +281,10 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, "worker shutdown: "+execErr.Error(), 0); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)
 		}
+
 		return
 	}
+
 	if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, execErr.Error(), p.cfg.Backoff(t.Attempts+1)); err != nil {
 		p.log.Error("fail failed", "task", t.ID, "err", err)
 	}
@@ -263,17 +298,22 @@ func (p *Pool) runExecutor(ctx context.Context, t task.Task) error {
 		// permanent class instead of exhausting attempts.
 		return executor.Permanent(fmt.Errorf("no executor for type %q: %w", t.Type, err))
 	}
+
 	runCtx, cancel := context.WithTimeout(ctx, p.cfg.TaskTimeout)
 	defer cancel()
+
 	done := make(chan error, 1)
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
 				done <- fmt.Errorf("executor panicked: %v", r)
 			}
 		}()
+
 		done <- exec.Execute(runCtx, t)
 	}()
+
 	select {
 	case err := <-done:
 		return err
@@ -283,6 +323,7 @@ func (p *Pool) runExecutor(ctx context.Context, t task.Task) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+
 		return fmt.Errorf("task timeout after %s", p.cfg.TaskTimeout)
 	}
 }

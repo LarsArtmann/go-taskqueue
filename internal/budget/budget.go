@@ -39,6 +39,7 @@ func (g Guard) now() time.Time {
 	if g.Now != nil {
 		return g.Now()
 	}
+
 	return time.Now()
 }
 
@@ -47,17 +48,21 @@ func (g Guard) now() time.Time {
 func (g Guard) Check(ctx context.Context, src FactSource) (bool, string) {
 	if g.BudgetCmd != "" {
 		cmd := exec.CommandContext(ctx, "sh", "-c", g.BudgetCmd)
+
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return false, "budget command refused: " + firstLine(string(out))
 		}
+
 		return true, ""
 	}
+
 	if g.DailyCap > 0 {
 		if spent := g.SpentToday(ctx, src); spent >= g.DailyCap {
 			return false, fmt.Sprintf("daily budget exhausted: %d/%d tasks enqueued today", spent, g.DailyCap)
 		}
 	}
+
 	return true, ""
 }
 
@@ -73,17 +78,21 @@ func (g Guard) spentSince(ctx context.Context, src FactSource, since time.Time) 
 	if err != nil {
 		return 0 // fail open: the queue keeps working if the journal errors
 	}
+
 	n := 0
+
 	for _, f := range facts {
 		if f.Type == journal.Enqueued && !f.Time.Before(since) {
 			n++
 		}
 	}
+
 	return n
 }
 
 func startOfDay(t time.Time) time.Time {
 	y, m, d := t.Date()
+
 	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 }
 
@@ -92,8 +101,10 @@ func firstLine(s string) string {
 	if i := strings.IndexByte(s, '\n'); i >= 0 {
 		s = s[:i]
 	}
+
 	if s == "" {
 		return "exit status non-zero"
 	}
+
 	return s
 }

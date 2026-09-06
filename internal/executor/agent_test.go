@@ -19,10 +19,12 @@ import (
 func makeStubAgent(t *testing.T, body string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "stub-agent")
+
 	script := "#!/bin/sh\n" + body + "\n"
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub agent: %v", err)
 	}
+
 	return path
 }
 
@@ -30,9 +32,11 @@ func makeStubAgent(t *testing.T, body string) string {
 // has something real to inspect.
 func setupGitRepo(t *testing.T, dir string) {
 	t.Helper()
+
 	run := func(args ...string) {
 		cmd := exec.Command("git", args...)
 		cmd.Dir = dir
+
 		cmd.Env = append(os.Environ(),
 			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
 			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
@@ -41,19 +45,23 @@ func setupGitRepo(t *testing.T, dir string) {
 		}
 	}
 	run("init", "-q")
+
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# demo\n"), 0o644); err != nil {
 		t.Fatalf("write readme: %v", err)
 	}
+
 	run("add", "-A")
 	run("commit", "-qm", "init")
 }
 
 func agentTaskT(t *testing.T, p CrushPayload) task.Task {
 	t.Helper()
+
 	payload, err := RenderCrushPayload(p)
 	if err != nil {
 		t.Fatalf("render payload: %v", err)
 	}
+
 	return task.Task{Type: TaskTypeAgent, Payload: payload}
 }
 
@@ -61,15 +69,18 @@ func TestAgentExecutorRefusesDirtyTree(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
 	setupGitRepo(t, repo)
+
 	if err := os.WriteFile(filepath.Join(repo, "wip.txt"), []byte("human work"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	e := &AgentExecutor{Bin: makeStubAgent(t, "echo should-not-run > ran.txt")}
+
 	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
 	if err == nil || !strings.Contains(err.Error(), "uncommitted changes") {
 		t.Fatalf("want dirty-tree refusal, got %v", err)
 	}
+
 	if _, err := os.Stat(filepath.Join(repo, "ran.txt")); err == nil {
 		t.Fatal("agent ran despite dirty tree")
 	}
@@ -79,11 +90,13 @@ func TestAgentExecutorDirtyTreeOverride(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
 	setupGitRepo(t, repo)
+
 	if err := os.WriteFile(filepath.Join(repo, "wip.txt"), []byte("human work"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	no := false
+
 	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
 	if err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &no})); err != nil {
 		t.Fatalf("Execute with require_clean=false: %v", err)
@@ -93,6 +106,7 @@ func TestAgentExecutorDirtyTreeOverride(t *testing.T) {
 func TestAgentExecutorNonGitRepoSkipsCleanCheck(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
+
 	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
 	if err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})); err != nil {
 		t.Fatalf("non-git repo must skip clean check: %v", err)
@@ -103,6 +117,7 @@ func TestAgentExecutorVerifyFailure(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
 	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+
 	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: "false"}))
 	if err == nil || !strings.Contains(err.Error(), "verify failed") {
 		t.Fatalf("want verify failure, got %v", err)
@@ -111,11 +126,21 @@ func TestAgentExecutorVerifyFailure(t *testing.T) {
 
 func TestAgentExecutorDefaultVerifyGoRepo(t *testing.T) {
 	ctx := context.Background()
+
 	repo := t.TempDir()
-	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module demo.example.com/x\n\ngo 1.26\n"), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repo, "go.mod"),
+		[]byte("module demo.example.com/x\n\ngo 1.26\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(repo, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
+
+	if err := os.WriteFile(
+		filepath.Join(repo, "main.go"),
+		[]byte("package main\n\nfunc main() {}\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -127,11 +152,21 @@ func TestAgentExecutorDefaultVerifyGoRepo(t *testing.T) {
 
 func TestAgentExecutorDefaultVerifyDetectsBreakage(t *testing.T) {
 	ctx := context.Background()
+
 	repo := t.TempDir()
-	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module demo.example.com/x\n\ngo 1.26\n"), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repo, "go.mod"),
+		[]byte("module demo.example.com/x\n\ngo 1.26\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(repo, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
+
+	if err := os.WriteFile(
+		filepath.Join(repo, "main.go"),
+		[]byte("package main\n\nfunc main() {}\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 	// Stub agent "breaks" the repo: valid module gains an invalid file.
@@ -146,14 +181,17 @@ func TestAgentExecutorDefaultVerifyDetectsBreakage(t *testing.T) {
 func TestAgentExecutorContextCancelKillsAgent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
+
 	repo := t.TempDir()
 
 	start := time.Now()
 	e := &AgentExecutor{Bin: makeStubAgent(t, "sleep 30")}
+
 	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
 	if err == nil || !strings.Contains(err.Error(), "cancelled") {
 		t.Fatalf("want cancel error, got %v", err)
 	}
+
 	if elapsed := time.Since(start); elapsed > 10*time.Second {
 		t.Fatalf("cancellation took %s; agent not killed promptly", elapsed)
 	}
@@ -161,10 +199,12 @@ func TestAgentExecutorContextCancelKillsAgent(t *testing.T) {
 
 func TestAgentPayloadSafetyFieldsRoundTrip(t *testing.T) {
 	raw := `{"repo":"/tmp/r","prompt":"p","verify":"go test ./...","require_clean":false,"timeout_minutes":10}`
+
 	var p CrushPayload
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
+
 	if p.Verify != "go test ./..." || p.RequireClean == nil || *p.RequireClean || p.TimeoutMinutes != 10 {
 		t.Fatalf("round trip lost safety fields: %+v", p)
 	}
@@ -179,10 +219,12 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 	dir := t.TempDir()
 	argsLog := filepath.Join(dir, "argv.log")
 	bin := filepath.Join(dir, "argv-agent")
+
 	script := "#!/bin/sh\nprintf '%s\n' \"$@\" > \"" + argsLog + "\"\n"
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub: %v", err)
 	}
+
 	repo := t.TempDir()
 	if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -199,11 +241,14 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	got := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+
 	want := []string{"run", "--quiet", "--cwd", repo, "--model", "prov/m1", "--", "do it"}
 	if len(got) != len(want) {
 		t.Fatalf("argv = %v, want %v", got, want)
 	}
+
 	for i := range want {
 		if got[i] != want[i] {
 			t.Fatalf("argv[%d] = %q, want %q (full: %v)", i, got[i], want[i], got)
@@ -218,10 +263,12 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 func TestAgentExecutorYoloWithoutRepoAutonomyFailsFast(t *testing.T) {
 	repo := t.TempDir() // no .crushrc, no .crush.json
 	e := &AgentExecutor{Bin: makeStubAgent(t, "echo should-not-run > ran.txt"), Yolo: true}
+
 	err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
 	if err == nil || !strings.Contains(err.Error(), "autonomy") || !strings.Contains(err.Error(), ".crushrc") {
 		t.Fatalf("want autonomy guidance error, got %v", err)
 	}
+
 	if _, err := os.Stat(filepath.Join(repo, "ran.txt")); err == nil {
 		t.Fatal("agent ran despite missing autonomy config")
 	}
@@ -250,6 +297,7 @@ func TestAgentInputContractMissesArePermanent(t *testing.T) {
 	}
 
 	missingDir := filepath.Join(t.TempDir(), "missing")
+
 	payload, _ := RenderAgentPayload(AgentPayload{Repo: missingDir, Prompt: "hi"})
 	if _, ok := errors.AsType[*PermanentError](e.Execute(ctx, task.Task{Type: TaskTypeAgent, Payload: payload})); !ok {
 		t.Error("missing repo dir: want permanent (retrying cannot create it)")
@@ -257,12 +305,18 @@ func TestAgentInputContractMissesArePermanent(t *testing.T) {
 
 	// Agent-run and verify failures stay transient: a fresh attempt is the fix.
 	repo := t.TempDir()
+
 	flaky := &AgentExecutor{Bin: makeStubAgent(t, "false")}
-	if _, ok := errors.AsType[*PermanentError](flaky.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))); ok {
+	if _, ok := errors.AsType[*PermanentError](
+		flaky.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})),
+	); ok {
 		t.Error("agent run failure must stay transient")
 	}
+
 	verifyFail := &AgentExecutor{Bin: makeStubAgent(t, "true")}
-	if _, ok := errors.AsType[*PermanentError](verifyFail.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: "false"}))); ok {
+	if _, ok := errors.AsType[*PermanentError](
+		verifyFail.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: "false"})),
+	); ok {
 		t.Error("verify failure must stay transient")
 	}
 }
@@ -276,16 +330,20 @@ func TestAgentDirtyTreeAndAutonomyArePreflight(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
 	setupGitRepo(t, repo)
+
 	if err := os.WriteFile(filepath.Join(repo, "wip.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+
 	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
 	if _, ok := errors.AsType[*PreflightError](err); !ok {
 		t.Errorf("dirty tree must be preflight, got %v", err)
 	}
 
 	autonomyRepo := t.TempDir()
+
 	err = e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: autonomyRepo, Prompt: "hi", Yolo: true}))
 	if _, ok := errors.AsType[*PreflightError](err); !ok {
 		t.Errorf("missing autonomy config must be preflight, got %v", err)
@@ -294,7 +352,9 @@ func TestAgentDirtyTreeAndAutonomyArePreflight(t *testing.T) {
 	// D32: the user-global crush config satisfies the autonomy probe.
 	restore := userGlobalCrushConfig
 	userGlobalCrushConfig = func() bool { return true }
+
 	t.Cleanup(func() { userGlobalCrushConfig = restore })
+
 	if err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: autonomyRepo, Prompt: "hi", Yolo: true})); err != nil {
 		t.Errorf("global crush config must satisfy the autonomy probe, got %v", err)
 	}
@@ -324,6 +384,7 @@ func TestVerifyStrategy(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+
 		if got := autoDetectVerify(dir); got != tc.wantCmd {
 			t.Errorf("%s: autoDetectVerify = %q, want %q", tc.name, got, tc.wantCmd)
 		}
@@ -334,9 +395,11 @@ func TestVerifyStrategy(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".tq-verify"), []byte("  false  \n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	got := verifyFor(dir, &AgentPayload{Verify: "true"})
 	if got != "false" {
 		t.Fatalf("verifyFor with file = %q, want the file command (payload and detection lose)", got)
@@ -344,6 +407,7 @@ func TestVerifyStrategy(t *testing.T) {
 
 	// End-to-end: the file's command actually gates the run (verify fails).
 	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+
 	err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: dir, Prompt: "hi", Verify: "true"}))
 	if err == nil || !strings.Contains(err.Error(), `verify failed ("false")`) {
 		t.Fatalf(".tq-verify file must win and gate the run, got %v", err)

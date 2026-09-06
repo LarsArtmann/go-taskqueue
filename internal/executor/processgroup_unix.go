@@ -16,10 +16,12 @@ func prepareProcessGroup(cmd *exec.Cmd) {
 		if cmd.Process == nil {
 			return nil
 		}
+
 		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		if err != nil && !errors.Is(err, syscall.ESRCH) {
 			return err
 		}
+
 		return nil
 	}
 }

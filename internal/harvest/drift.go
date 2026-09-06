@@ -2,6 +2,7 @@ package harvest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -81,14 +82,17 @@ func (h *Harvester) Audit(ctx context.Context) (DriftResult, error) {
 	repos := h.cfg.Repos
 	if len(repos) == 0 {
 		if h.cfg.ProjectsDir == "" {
-			return res, fmt.Errorf("harvest: no repos and no projects dir configured")
+			return res, errors.New("harvest: no repos and no projects dir configured")
 		}
+
 		var err error
+
 		repos, err = DiscoverRepos(h.cfg.ProjectsDir, h.cfg.TodoFile)
 		if err != nil {
 			return res, fmt.Errorf("harvest: discover repos: %w", err)
 		}
 	}
+
 	sort.Strings(repos)
 
 	for _, repo := range repos {
@@ -99,6 +103,7 @@ func (h *Harvester) Audit(ctx context.Context) (DriftResult, error) {
 			continue
 		}
 	}
+
 	return res, nil
 }
 
@@ -107,11 +112,14 @@ func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult
 	if err != nil {
 		return err
 	}
+
 	repoName := filepath.Base(repo)
+
 	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
 	if err != nil {
 		return err
 	}
+
 	byDedup := make(map[string]task.Task, len(tasks))
 	for _, t := range tasks {
 		if key := payloadDedup(t); key != "" {
@@ -128,21 +136,29 @@ func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult
 			d := Drift{Kind: DriftStaleOpen, Item: it, TaskID: t.ID, TaskStatus: t.Status}
 			res.StaleOpen = append(res.StaleOpen, d)
 			catchupKey := CatchupKeyPrefix + it.Key
+
 			if h.cfg.DryRun {
 				continue
 			}
+
 			if _, armed := byDedup[catchupKey]; armed {
 				continue // a previous audit already armed this repair
 			}
+
 			id, err := h.enqueueCatchup(ctx, it, catchupKey)
 			if err != nil {
 				continue
 			}
+
 			res.Enqueued = append(res.Enqueued, Enqueued{Item: it, TaskID: id, Fresh: true})
 		case it.Done && tracked && t.Status != task.Completed:
-			res.StaleDone = append(res.StaleDone, Drift{Kind: DriftStaleDone, Item: it, TaskID: t.ID, TaskStatus: t.Status})
+			res.StaleDone = append(
+				res.StaleDone,
+				Drift{Kind: DriftStaleDone, Item: it, TaskID: t.ID, TaskStatus: t.Status},
+			)
 		}
 	}
+
 	return nil
 }
 
@@ -152,10 +168,12 @@ func (h *Harvester) enqueueCatchup(ctx context.Context, it Item, catchupKey stri
 	if err != nil {
 		return "", err
 	}
+
 	maxAttempts := h.cfg.MaxAttempts
 	if maxAttempts <= 0 {
 		maxAttempts = 2
 	}
+
 	t, err := h.q.Enqueue(ctx, task.New{
 		Project:     it.RepoName,
 		Type:        h.cfg.Type,
@@ -167,5 +185,6 @@ func (h *Harvester) enqueueCatchup(ctx context.Context, it Item, catchupKey stri
 	if err != nil {
 		return "", err
 	}
+
 	return t.ID, nil
 }

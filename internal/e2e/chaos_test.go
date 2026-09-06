@@ -37,17 +37,22 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 
 	// Wait until the victim actually claimed it.
 	ctx := context.Background()
+
 	s := openStore(t, filepath.Join(dir, "q.db"))
 	defer func() { _ = s.Close() }()
+
 	deadline := time.Now().Add(10 * time.Second)
+
 	for {
 		got, err := s.Get(ctx, task.ID(taskID))
 		if err == nil && got.Status == "running" {
 			break
 		}
+
 		if time.Now().After(deadline) {
 			t.Fatalf("task never claimed by victim worker (last: %+v)", got)
 		}
+
 		time.Sleep(10 * time.Millisecond)
 	}
 
@@ -55,9 +60,11 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 	if err := worker.Process.Kill(); err != nil {
 		t.Fatal(err)
 	}
+
 	_, _ = worker.Process.Wait()
 
 	deadline = time.Now().Add(15 * time.Second)
+
 	for {
 		got, err := s.Get(ctx, task.ID(taskID))
 		if err != nil {
@@ -69,12 +76,15 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 		if got.Status == "pending" || got.Status == "completed" {
 			t.Fatalf("unexpected status while waiting for expiry: %s", got.Status)
 		}
+
 		if got.LeaseExpires != nil && time.Now().After(*got.LeaseExpires) {
 			break
 		}
+
 		if time.Now().After(deadline) {
 			t.Fatalf("lease never expired (expires=%v)", got.LeaseExpires)
 		}
+
 		time.Sleep(50 * time.Millisecond)
 	}
 
@@ -82,6 +92,7 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 	if _, err := s.ClaimDue(ctx, "successor", time.Minute); err != nil {
 		t.Fatalf("successor claim: %v", err)
 	}
+
 	if err := s.Complete(ctx, task.ID(taskID), "successor", nil); err != nil {
 		t.Fatalf("successor complete: %v", err)
 	}
@@ -89,11 +100,13 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 	// Invariant: exactly one completion in the journal.
 	facts, _ := s.Facts(ctx, 0)
 	completions := 0
+
 	for _, f := range facts {
 		if f.TaskID == taskID && f.Type == "task.completed" {
 			completions++
 		}
 	}
+
 	if completions != 1 {
 		t.Fatalf("task %s completed %d times, want exactly 1", taskID, completions)
 	}
