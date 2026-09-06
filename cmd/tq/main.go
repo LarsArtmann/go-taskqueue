@@ -40,6 +40,7 @@ Usage:
                [--yolo] [--max-per-tick N] [--task-timeout DUR]
                [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH]
   tq stats [--project P] [--status S] [--db PATH] [--json]
+  tq top [--interval DUR] [--once] [--json] [--db PATH]
   tq show TASK_ID [--db PATH]
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]]
   tq cancel TASK_ID [--db PATH]
@@ -66,6 +67,8 @@ func main() {
 		err = cmdAgentPool(os.Args[2:])
 	case "stats":
 		err = cmdStats(os.Args[2:])
+	case "top":
+		err = cmdTop(os.Args[2:])
 	case "show":
 		err = cmdShow(os.Args[2:])
 	case "dlq":

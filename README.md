@@ -142,7 +142,9 @@ scanners find and the next scan proves it worked.
 - **Fact** — immutable journal record of everything that happens:
   `task.enqueued/claimed/heartbeat/completed/failed/dead-lettered/cancelled/released`
   (DLQ rescue records `task.enqueued` again with a `rescue` detail).
-  `tq facts` / `tq tail -f` replay the entire history.
+  `tq facts` / `tq tail -f` replay the entire history; `tq show TASK_ID`
+  renders one task with its complete fact trail — for agent tasks that
+  includes the crush session id and the verify output tail.
 - **Claim / Lease** — a worker claims a due task exclusively; the lease has a
   TTL renewed by heartbeat. If the worker dies, the lease expires and another
   worker reclaims the task. At-least-once execution, no stuck tasks.
@@ -178,13 +180,18 @@ store and an HTTP API server.
 ## Development
 
 ```sh
-go test ./... -race
+go test ./... -race          # full suite (CI also gates on go vet + gofmt)
+./scripts/smoke/multi-repo.sh  # live smoke: 3 repos, 2 pools, 1 shared DB —
+                              # proves dedup, pacing and per-project exclusivity
 ```
 
-CI gates every push on vet, build, tests with `-race`, and gofmt. Reproducible
-builds via `nix build`. Agent sessions should read AGENTS.md first; feature
-status lives in FEATURES.md, upcoming work in TODO_LIST.md, and long-term
-direction in ROADMAP.md.
+CI gates every push on vet, build, tests with `-race`, gofmt, a nix build
++ `nix flake check`, a TODO_LIST harvest-parse guard, and a doc
+ghost-reference check. The e2e suite (`internal/e2e`) drives the real `tq`
+binary as a subprocess with a stub agent, so the full agent loop is tested
+in CI at zero API cost. Reproducible builds via `nix build`. Agent sessions
+should read AGENTS.md first; feature status lives in FEATURES.md, upcoming
+work in TODO_LIST.md, and long-term direction in ROADMAP.md.
 
 ## License
 
