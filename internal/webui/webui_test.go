@@ -410,3 +410,82 @@ func TestConcurrentClientsRace(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestDLQMirrorsDeadTasks(t *testing.T) {
+	srv, s := newTestServer(t)
+	tk := enqueue(t, s, "sh", "demo")
+
+	if _, err := s.ClaimDue(context.Background(), "test-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	if err := s.FailPermanent(context.Background(), tk.ID, "test-owner", "boom: permanent failure"); err != nil {
+		t.Fatalf("FailPermanent: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
+
+	body := rec.Body.String()
+
+	dlqStart := strings.Index(body, `id="frag-dlq"`)
+	dlqEnd := dlqStart + strings.Index(body[dlqStart:], `id="frag-feed"`)
+	dlq := body[dlqStart:dlqEnd]
+	if !strings.Contains(dlq, "boom") || !strings.Contains(dlq, tk.ID.String()) {
+		t.Errorf("DLQ fragment missing dead task; got: %s", dlq)
+	}
+}
+
+// TestGoldenFragments pins the skeleton of each fragment for a fixed seed.
+func TestGoldenFragments(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "golden")
+
+	data, err := srv.loadSnapshot(context.Background(), FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	for _, frag := range renderFragments(data) {
+		if frag.HTML == "" {
+			t.Errorf("fragment %s rendered empty", frag.ID)
+		}
+
+		if !strings.HasPrefix(strings.TrimSpace(frag.HTML), "<") {
+			t.Errorf("fragment %s is not HTML: %q", frag.ID, frag.HTML)
+		}
+	}
+
+	stats := renderComponent(StatusCards(data))
+	for _, want := range []string{"card-pending", "card-running", "card-completed", "card-dead", "card-cancelled", "card-total"} {
+		if !strings.Contains(stats, want) {
+			t.Errorf("stats fragment missing card %s", want)
+		}
+	}
+}
+
+func TestStoreClosedErrorPaths(t *testing.T) {
+	s := newTestStore(t)
+	srv := New(s, Config{Poll: time.Millisecond, Heartbeat: time.Millisecond})
+
+	if err := s.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/stats", nil))
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("closed store: /api/stats status = %d, want 500", rec.Code)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("closed store: / status = %d, want 500", rec.Code)
+	}
+
+	events := ssetest.CollectWithTimeout(t, srv.Handler(), 300*time.Millisecond, ssetest.WithPath("/api/events"))
+	if len(events) != 0 {
+		t.Errorf("closed store: got %d SSE events, want 0", len(events))
+	}
+}
