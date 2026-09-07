@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- All three agent prompts (harvest work item, drift catch-up, cqa fix task)
+  now teach the `TQ_RESULT:` self-report line, so pool agents fill in
+  `files_changed`/`commit_sha` in `tq show` instead of leaving the structured
+  result empty; every prompt also forbids editing `.crushrc`/`.tq-verify`
+  (self-modifying autonomy was an accepted risk in the dogfood plan), grants
+  explicit commit permission, and the cqa prompt forbids scanner-gaming
+  (weakened tests, blanket suppressions). Contract-pinning tests parse the
+  taught `TQ_RESULT:` example with the executor's real parser, so prompt and
+  parser cannot drift silently.
 - The CI lint step (golangci-lint) is advisory (`continue-on-error`): the
   enabled linter set carries a ~400-finding repo-wide baseline that kept
   master permanently red and buried real signal. Findings stay visible as

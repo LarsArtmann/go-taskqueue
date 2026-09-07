@@ -547,3 +547,87 @@ func TestRunPerRepoInterval(t *testing.T) {
 		t.Fatalf("interval must be per-repo: %+v, %v", res.Enqueued, err)
 	}
 }
+
+// taughtResultLine extracts the TQ_RESULT example a prompt teaches agents to
+// emit, so the contract tests can parse it with the executor's real parser.
+func taughtResultLine(t *testing.T, prompt string) string {
+	t.Helper()
+
+	for line := range strings.SplitSeq(prompt, "\n") {
+		if strings.HasPrefix(line, "TQ_RESULT: ") {
+			return line
+		}
+	}
+
+	t.Fatal("prompt does not teach the TQ_RESULT self-report line")
+
+	return ""
+}
+
+// TestAgentPromptsTeachParsableResult pins the TQ_RESULT contract end to end:
+// the prompts are the only place pool agents learn the queue's conventions,
+// so the taught example must parse with the executor's real parser. If prompt
+// and parser drift, agents finish fine but `tq show` silently loses
+// files_changed/commit_sha for every pool task.
+func TestAgentPromptsTeachParsableResult(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name   string
+		prompt string
+	}{
+		{"work item", DefaultPromptTemplate},
+		{"catch-up", DefaultCatchupPrompt},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			line := taughtResultLine(t, tc.prompt)
+
+			files, sha, ok := executor.ExtractResultPayload(line)
+			if !ok {
+				t.Fatalf("taught line %q does not parse", line)
+			}
+
+			if len(files) == 0 || sha == "" {
+				t.Fatalf("taught line %q parses to empty files/sha", line)
+			}
+		})
+	}
+}
+
+// TestAgentPromptsGuardrails pins the self-modifying-autonomy guardrail from
+// the dogfood plan's accepted-risk list: prompts must forbid touching
+// .crushrc/.tq-verify (they define the agent's own autonomy and verify gate),
+// must restate the BLOCKED marker the harvester itself skips on, and must
+// keep the commit-never-push rule.
+func TestAgentPromptsGuardrails(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name       string
+		prompt     string
+		wantSubstr []string
+	}{
+		{
+			name:       "work item",
+			prompt:     DefaultPromptTemplate,
+			wantSubstr: []string{".crushrc", ".tq-verify", "Never push", "— BLOCKED: <one-line reason>"},
+		},
+		{
+			name:       "catch-up",
+			prompt:     DefaultCatchupPrompt,
+			wantSubstr: []string{".crushrc", ".tq-verify", "Never push"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			for _, want := range tc.wantSubstr {
+				if !strings.Contains(tc.prompt, want) {
+					t.Fatalf("prompt lost %q:\n%s", want, tc.prompt)
+				}
+			}
+		})
+	}
+}
