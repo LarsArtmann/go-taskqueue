@@ -28,6 +28,9 @@ trap 'rm -f "$ENTRY"' EXIT
   echo "@source \"$REPO/internal/webui/*.go\";"
   echo "@source \"$TC_DIR\";"
   echo "@import \"$REPO/internal/webui/theme.css\";"
+  # The library's tc-* utility classes (terminal log lines, dialog
+  # animations, …) live outside Tailwind and must be imported explicitly.
+  echo "@import \"$TC_DIR/templates/custom.css\";"
 } > "$ENTRY"
 
 : "${TAILWINDCSS:=tailwindcss}"

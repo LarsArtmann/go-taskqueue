@@ -5,6 +5,7 @@ import (
 	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/templ-components/feedback"
 	"github.com/larsartmann/templ-components/icons"
+	"github.com/larsartmann/templ-components/utils"
 )
 
 // The fragments are the SSE-swapped projections (ADR-0003): each is the
@@ -19,47 +20,47 @@ import (
 templ StatusCards(data DashboardData) {
 	@display.Grid(display.GridProps{Cols: display.GridCols6}) {
 		@display.StatCard(display.StatCardProps{
-			Class: "card-pending",
-			Label: "pending",
-			Value: formatInt(data.Counts[task.Pending]),
-			Icon:  icons.Clock,
-			Tone:  display.StatToneYellow,
-			Href:  statusHref(task.Pending),
+			BaseProps: utils.BaseProps{Class: "card-pending"},
+			Label:     "pending",
+			Value:     formatInt(data.Counts[task.Pending]),
+			Icon:      icons.Clock,
+			Tone:      display.StatToneYellow,
+			Href:      statusHref(task.Pending),
 		})
 		@display.StatCard(display.StatCardProps{
-			Class: "card-running",
-			Label: "running",
-			Value: formatInt(data.Counts[task.Running]),
-			Icon:  icons.Bolt,
-			Tone:  display.StatToneBlue,
-			Href:  statusHref(task.Running),
+			BaseProps: utils.BaseProps{Class: "card-running"},
+			Label:     "running",
+			Value:     formatInt(data.Counts[task.Running]),
+			Icon:      icons.Bolt,
+			Tone:      display.StatToneBlue,
+			Href:      statusHref(task.Running),
 		})
 		@display.StatCard(display.StatCardProps{
-			Class: "card-completed",
-			Label: "completed",
-			Value: formatInt(data.Counts[task.Completed]),
-			Icon:  icons.CheckCircle,
-			Tone:  display.StatToneGreen,
-			Href:  statusHref(task.Completed),
+			BaseProps: utils.BaseProps{Class: "card-completed"},
+			Label:     "completed",
+			Value:     formatInt(data.Counts[task.Completed]),
+			Icon:      icons.CheckCircle,
+			Tone:      display.StatToneGreen,
+			Href:      statusHref(task.Completed),
 		})
 		@display.StatCard(display.StatCardProps{
-			Class: "card-dead",
-			Label: "dead",
-			Value: formatInt(data.Counts[task.Dead]),
-			Icon:  icons.Fire,
-			Tone:  display.StatToneRed,
-			Href:  statusHref(task.Dead),
+			BaseProps: utils.BaseProps{Class: "card-dead"},
+			Label:     "dead",
+			Value:     formatInt(data.Counts[task.Dead]),
+			Icon:      icons.Fire,
+			Tone:      display.StatToneRed,
+			Href:      statusHref(task.Dead),
 		})
 		@display.StatCard(display.StatCardProps{
-			Class: "card-cancelled",
-			Label: "cancelled",
-			Value: formatInt(data.Counts[task.Cancelled]),
-			Href:  statusHref(task.Cancelled),
+			BaseProps: utils.BaseProps{Class: "card-cancelled"},
+			Label:     "cancelled",
+			Value:     formatInt(data.Counts[task.Cancelled]),
+			Href:      statusHref(task.Cancelled),
 		})
 		@display.StatCard(display.StatCardProps{
-			Class: "card-total",
-			Label: "total",
-			Value: formatInt(data.Total),
+			BaseProps: utils.BaseProps{Class: "card-total"},
+			Label:     "total",
+			Value:     formatInt(data.Total),
 		})
 	}
 	<div class="mt-4 flex flex-wrap items-center gap-2">
@@ -192,9 +193,9 @@ templ FactFeed(data DashboardData) {
 	} else {
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 			@display.Scrollback(display.ScrollbackProps{
-				Stagger: false,
-				Lines:   factLines(data),
-				Class:   "border-y-0",
+				Stagger:   false,
+				Lines:     factLines(data),
+				BaseProps: utils.BaseProps{Class: "border-y-0"},
 			})
 		</div>
 	}
@@ -273,9 +274,9 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
 		</div>
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 			@display.Scrollback(display.ScrollbackProps{
-				Stagger: false,
-				Lines:   detailFacts(data.Now, facts),
-				Class:   "border-y-0",
+				Stagger:   false,
+				Lines:     detailFacts(data.Now, facts),
+				BaseProps: utils.BaseProps{Class: "border-y-0"},
 			})
 		</div>
 	</div>

@@ -1,3 +1,5 @@
+github.com/Oudwins/tailwind-merge-go v0.2.3 h1:RCiZ/DlLpoJnE5QSs1sRPDtIs3We0RQpsLH7bBWfbUI=
+github.com/Oudwins/tailwind-merge-go v0.2.3/go.mod h1:kkZodgOPvZQ8f7SIrlWkG/w1g9JTbtnptnePIh3V72U=
 github.com/a-h/parse v0.0.0-20250122154542-74294addb73e h1:HjVbSQHy+dnlS6C3XajZ69NYAb5jbGNfHanvm1+iYlo=
 github.com/a-h/parse v0.0.0-20250122154542-74294addb73e/go.mod h1:3mnrkvGpurZ4ZrTDbYU84xhwXW2TjTKShSwjRi2ihfQ=
 github.com/a-h/templ v0.3.1020 h1:ypAT/L5ySWEnZ6Zft/5yfoWXYYkhFNvEFOeeqecg4tw=
@@ -32,6 +34,14 @@ github.com/larsartmann/go-sse v0.6.0 h1:ITsMQi4Cfg+cXE5YYChk3p6wYsn33AxKJPVwd5hs
 github.com/larsartmann/go-sse v0.6.0/go.mod h1:ndYQ/lEnJVzTWqvF/h4+XMG/hJK/bEn6zSkfpkBAuUg=
 github.com/larsartmann/go-sse/ssetest v0.3.0 h1:HEP3nFUsaWAz6fz8WmbeR2nUj6jv/cAHf+7HVeMeRRY=
 github.com/larsartmann/go-sse/ssetest v0.3.0/go.mod h1:VNpjSMfzdCeIT5YKAmJPB6jGN4PBjJF0/aXc/YM/OVQ=
+github.com/larsartmann/templ-components v1.14.0 h1:eeqQPf/AncjUn3VFLtMYGjnt9JsV325eokgLbh/OsBI=
+github.com/larsartmann/templ-components v1.14.0/go.mod h1:f/TP8+/rSi7IJQ4FdkKmtxU9F+1vkKII+F5KpeYSFQI=
+github.com/larsartmann/templ-components/htmx v1.14.0 h1:SUMFJhtMNPBdfXKp7rTwlTvj5jZ3jl3KoNMHyCKkaV0=
+github.com/larsartmann/templ-components/htmx v1.14.0/go.mod h1:2CHBSuZVyDtIrmOx55kl3Jys98noD4bCnoNku/p2wVg=
+github.com/larsartmann/templ-components/icons v1.14.0 h1:pTxWzXsJa0ETZH2yTrZlDJQ5pKUZqQPc2m+DtlZ1jcM=
+github.com/larsartmann/templ-components/icons v1.14.0/go.mod h1:G2AaAn0Hqr/2MWJRqmH+RkdwJ60Ds+C/7LR5STSnOuE=
+github.com/larsartmann/templ-components/utils v1.14.0 h1:ichggwZo0ZKi8MTFdsjGcjOWN2F/BzGmpBbVMTxugbw=
+github.com/larsartmann/templ-components/utils v1.14.0/go.mod h1:LAAnuKcKtPSEgeI9AeGG/j+IEgYAzp8CMVNGqTsqD8M=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
 github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=

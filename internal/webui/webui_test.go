@@ -385,7 +385,7 @@ func TestResumeAfterFactsBacklog(t *testing.T) {
 func TestStaticAssetsServed(t *testing.T) {
 	srv, _ := newTestServer(t)
 
-	for _, path := range []string{"/static/dashboard.css", "/static/app.js"} {
+	for _, path := range []string{"/static/app.css", "/static/app.js", "/static/favicon.svg"} {
 		rec := httptest.NewRecorder()
 		srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 
