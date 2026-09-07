@@ -5,11 +5,10 @@ package webui
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import (
-	"github.com/a-h/templ"
-	templruntime "github.com/a-h/templ/runtime"
-	"github.com/larsartmann/go-taskqueue/internal/task"
-)
+import "github.com/a-h/templ"
+import templruntime "github.com/a-h/templ/runtime"
+
+import "github.com/larsartmann/go-taskqueue/internal/task"
 
 // statusCards renders the status summary cards (inner content of
 // #frag-stats).
@@ -248,7 +247,7 @@ func TaskTable(data DashboardData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, t := range data.Tasks {
-				templ_7745c5c3_Var15 := []any{"row-" + string(t.Status)}
+				var templ_7745c5c3_Var15 = []any{"row-" + string(t.Status)}
 				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var15...)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -322,7 +321,7 @@ func TaskTable(data DashboardData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Var21 := []any{"badge badge-" + string(t.Status)}
+				var templ_7745c5c3_Var21 = []any{"badge badge-" + string(t.Status)}
 				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var21...)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -662,7 +661,7 @@ func FactFeed(data DashboardData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Var41 := []any{"badge badge-" + factBadgeClass(f.Type)}
+				var templ_7745c5c3_Var41 = []any{"badge badge-" + factBadgeClass(f.Type)}
 				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var41...)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -1056,7 +1055,7 @@ func TaskDetail(data DashboardData, t task.Task, facts []journalFactView) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Var63 := []any{"badge badge-" + string(t.Status)}
+		var templ_7745c5c3_Var63 = []any{"badge badge-" + string(t.Status)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var63...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -1330,7 +1329,7 @@ func TaskDetail(data DashboardData, t task.Task, facts []journalFactView) templ.
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Var82 := []any{"badge badge-" + factBadgeClass(fv.Type)}
+			var templ_7745c5c3_Var82 = []any{"badge badge-" + factBadgeClass(fv.Type)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var82...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

@@ -119,6 +119,11 @@ fail with "no such column" before the ALTER runs.
 - ⚠️ **vendorHash drift**: after go.mod/go.sum changes run the fakeHash dance
   (`vendorHash = lib.fakeHash` → `nix build` → copy `got:`). The
   `checks.vendor-hash` gate fails fast on drift.
+- ⚠️ **GOEXPERIMENT=jsonv2 in flake.nix**: go-sse imports `encoding/json/v2`
+  (a Go 1.26 default experiment); the nixpkgs toolchain builds without it
+  enabled, so the flake sets `GOEXPERIMENT = "jsonv2"` in build + shell env.
+  The symptom if removed: "build constraints exclude all Go files in
+  encoding/json/v2" — and an EMPTY output path (build failure swallowed).
 - ⚠️ **Flakes only see git-tracked files**: `git add` new files before
   `nix build` or Nix cannot see them.
 - ⚠️ **tq worker runs until signalled**: there is no one-shot mode; scripts
