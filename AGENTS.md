@@ -158,8 +158,10 @@ fail with "no such column" before the ALTER runs.
   encoding/json/v2" — and an EMPTY output path (build failure swallowed).
 - ⚠️ **Flakes only see git-tracked files**: `git add` new files before
   `nix build` or Nix cannot see them.
-- ⚠️ **tq worker runs until signalled**: there is no one-shot mode; scripts
-  must wrap it in `timeout`/supervisor. Same for `tq serve` — it blocks
+- ⚠️ **tq worker runs until signalled** unless `--once` is passed (drain the
+  claimable queue, then exit — same semantics as `tq agent-pool --once`);
+  without it scripts must wrap the worker in `timeout`/supervisor. Same for
+  `tq serve` — it blocks
   until signalled; smoke/tests wrap it in `timeout` (see
   `scripts/smoke/webui.sh`).
 - ⚠️ **templ LSP diagnostics are false positives**: the templ/gopls LSP
