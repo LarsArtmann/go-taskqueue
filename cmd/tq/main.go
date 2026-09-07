@@ -376,24 +376,9 @@ func cmdHarvest(args []string) error {
 		cfg.RequireClean = &no
 	}
 
-	if *repos != "" {
-		cfg.ProjectsDir = ""
-		cfg.Repos = splitRepos(*repos)
-	} else if *repoSubset != "" {
-		found, err := harvest.DiscoverRepos(*projectsDir, cfg.TodoFile)
-		if err != nil {
-			return fmt.Errorf("discover repos: %w", err)
-		}
-
-		for _, r := range found {
-			if ok, _ := path.Match(*repoSubset, filepath.Base(r)); ok {
-				cfg.Repos = append(cfg.Repos, r)
-			}
-		}
-
-		if len(cfg.Repos) == 0 {
-			return fmt.Errorf("--repo-subset %q matched no repos under %s", *repoSubset, *projectsDir)
-		}
+	// --repos overrides --projects-dir; --repo-subset filters the discovered set.
+	if err := resolveHarvestRepos(&cfg, *projectsDir, *repos, *repoSubset); err != nil {
+		return err
 	}
 
 	s := mustOpenDB(resolveDB(*db))
@@ -412,10 +397,49 @@ func cmdHarvest(args []string) error {
 	}
 
 	printHarvestResult(res)
+	printHarvestLines(res, *dryRun)
 
+	return nil
+}
+
+// resolveHarvestRepos applies the --repos / --repo-subset flag pair to the
+// harvest config. Both empty leaves ProjectsDir as-is (discover every repo);
+// --repos wins over --projects-dir, --repo-subset filters discovered repos.
+func resolveHarvestRepos(cfg *harvest.Config, projectsDir, repos, subset string) error {
+	if repos != "" {
+		cfg.ProjectsDir = ""
+		cfg.Repos = splitRepos(repos)
+
+		return nil
+	}
+
+	if subset == "" {
+		return nil
+	}
+
+	found, err := harvest.DiscoverRepos(projectsDir, cfg.TodoFile)
+	if err != nil {
+		return fmt.Errorf("discover repos: %w", err)
+	}
+
+	for _, r := range found {
+		if ok, _ := path.Match(subset, filepath.Base(r)); ok {
+			cfg.Repos = append(cfg.Repos, r)
+		}
+	}
+
+	if len(cfg.Repos) == 0 {
+		return fmt.Errorf("--repo-subset %q matched no repos under %s", subset, projectsDir)
+	}
+
+	return nil
+}
+
+// printHarvestLines prints one line per enqueued and skipped backlog item.
+func printHarvestLines(res harvest.Result, dryRun bool) {
 	for _, en := range res.Enqueued {
 		id := en.TaskID.String()
-		if *dryRun {
+		if dryRun {
 			id = "(dry-run)"
 		}
 
@@ -425,8 +449,6 @@ func cmdHarvest(args []string) error {
 	for _, sk := range res.Skipped {
 		fmt.Printf("SKIP      %-24s %s  — %s\n", sk.Item.RepoName, sk.Item.Text, sk.Reason)
 	}
-
-	return nil
 }
 
 // cmdAgentPool is the self-managing loop in one process: it repeatedly
@@ -809,6 +831,8 @@ func cmdStats(args []string) error {
 		return err
 	}
 
+	byStatus, byProject := tallyStats(tasks)
+
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
@@ -816,6 +840,14 @@ func cmdStats(args []string) error {
 		return enc.Encode(tasks)
 	}
 
+	printStats(byStatus, byProject, *project == "")
+
+	return nil
+}
+
+// tallyStats aggregates the task list into status counts and
+// per-project-per-status counts.
+func tallyStats(tasks []task.Task) (map[string]int, map[string]map[string]int) {
 	byStatus := map[string]int{}
 	byProject := map[string]map[string]int{}
 
@@ -828,6 +860,12 @@ func cmdStats(args []string) error {
 		byProject[t.Project][string(t.Status)]++
 	}
 
+	return byStatus, byProject
+}
+
+// printStats renders the status table and, when scoped (project filter
+// empty), the per-project breakdown.
+func printStats(byStatus map[string]int, byProject map[string]map[string]int, scoped bool) {
 	fmt.Printf("%-12s %6s\n", "STATUS", "COUNT")
 
 	for _, st := range []string{"pending", "running", "completed", "dead", "cancelled"} {
@@ -836,25 +874,25 @@ func cmdStats(args []string) error {
 		}
 	}
 
-	if *project == "" && len(byProject) > 0 {
-		fmt.Println()
-		fmt.Printf("%-28s %8s %8s %8s %8s %8s\n", "PROJECT", "pending", "running", "done", "dead", "cancld")
-
-		projects := make([]string, 0, len(byProject))
-		for p := range byProject {
-			projects = append(projects, p)
-		}
-
-		sort.Strings(projects)
-
-		for _, p := range projects {
-			m := byProject[p]
-			fmt.Printf("%-28s %8d %8d %8d %8d %8d\n", p,
-				m["pending"], m["running"], m["completed"], m["dead"], m["cancelled"])
-		}
+	if !scoped || len(byProject) == 0 {
+		return
 	}
 
-	return nil
+	fmt.Println()
+	fmt.Printf("%-28s %8s %8s %8s %8s %8s\n", "PROJECT", "pending", "running", "done", "dead", "cancld")
+
+	projects := make([]string, 0, len(byProject))
+	for p := range byProject {
+		projects = append(projects, p)
+	}
+
+	sort.Strings(projects)
+
+	for _, p := range projects {
+		m := byProject[p]
+		fmt.Printf("%-28s %8d %8d %8d %8d %8d\n", p,
+			m["pending"], m["running"], m["completed"], m["dead"], m["cancelled"])
+	}
 }
 
 func cmdShow(args []string) error {
@@ -920,32 +958,9 @@ func cmdDLQ(args []string) error {
 	defer s.Close()
 
 	if *rescueAll {
-		st := task.Dead
+		_, err := rescueAllDead(context.Background(), s, *olderThan, *maxAttempts)
 
-		dead, err := s.List(context.Background(), queue.Filter{Status: &st})
-		if err != nil {
-			return err
-		}
-
-		rescued := 0
-
-		for _, t := range dead {
-			if *olderThan > 0 && time.Since(t.UpdatedAt) < *olderThan {
-				continue
-			}
-
-			if err := s.RescueDead(context.Background(), t.ID, *maxAttempts); err != nil {
-				return fmt.Errorf("rescue %s: %w", t.ID, err)
-			}
-
-			fmt.Printf("rescued %s  %s\n", t.ID, t.Project+"/"+t.Type)
-
-			rescued++
-		}
-
-		fmt.Printf("rescued %d of %d dead task(s)\n", rescued, len(dead))
-
-		return nil
+		return err
 	}
 
 	if *rescue != "" {
@@ -958,25 +973,61 @@ func cmdDLQ(args []string) error {
 		return nil
 	}
 
-	st := task.Dead
-
-	tasks, err := s.List(context.Background(), queue.Filter{Status: &st})
+	tasks, err := listDead(context.Background(), s)
 	if err != nil {
 		return err
 	}
 
+	printDLQ(tasks)
+
+	return nil
+}
+
+// rescueAllDead re-queues every dead task older than olderThan (all if 0).
+func rescueAllDead(ctx context.Context, s *queue.SQLiteStore, olderThan time.Duration, maxAttempts int) (int, error) {
+	dead, err := listDead(ctx, s)
+	if err != nil {
+		return 0, err
+	}
+
+	rescued := 0
+
+	for _, t := range dead {
+		if olderThan > 0 && time.Since(t.UpdatedAt) < olderThan {
+			continue
+		}
+
+		if err := s.RescueDead(ctx, t.ID, maxAttempts); err != nil {
+			return rescued, fmt.Errorf("rescue %s: %w", t.ID, err)
+		}
+
+		fmt.Printf("rescued %s  %s\n", t.ID, t.Project+"/"+t.Type)
+
+		rescued++
+	}
+
+	fmt.Printf("rescued %d of %d dead task(s)\n", rescued, len(dead))
+
+	return rescued, nil
+}
+
+func listDead(ctx context.Context, s *queue.SQLiteStore) ([]task.Task, error) {
+	st := task.Dead
+
+	return s.List(ctx, queue.Filter{Status: &st})
+}
+
+func printDLQ(tasks []task.Task) {
 	if len(tasks) == 0 {
 		fmt.Println("(empty)")
 
-		return nil
+		return
 	}
 
 	for _, t := range tasks {
 		fmt.Printf("%s  %-24s attempts=%d/%d  %s\n",
 			t.ID, t.Project+"/"+t.Type, t.Attempts, t.MaxAttempts, truncate(t.LastError, 80))
 	}
-
-	return nil
 }
 
 func cmdCancel(args []string) error {

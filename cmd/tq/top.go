@@ -46,43 +46,41 @@ type projectView struct {
 	HasActive bool          `json:"has_active"`
 }
 
-// aggregateTop builds the per-project view from the task table (counts,
-// project names) and the journal (run durations). now stamps the active
-// duration.
-func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []projectView {
-	byProject := map[string]*projectView{}
-	view := func(name string) *projectView {
-		if byProject[name] == nil {
-			byProject[name] = &projectView{Project: name}
-		}
-
-		return byProject[name]
+// bumpProjectCount adds one task status occurrence to the view.
+func bumpProjectCount(v *projectView, st task.Status) {
+	switch st {
+	case task.Pending:
+		v.Pending++
+	case task.Running:
+		v.Running++
+	case task.Completed:
+		v.Completed++
+	case task.Dead:
+		v.Dead++
+	case task.Cancelled:
+		v.Cancelled++
 	}
+}
 
+// indexTaskProjects counts per-status totals and returns the task-id →
+// project mapping the fact pass needs to attribute durations to projects.
+func indexTaskProjects(tasks []task.Task, view func(string) *projectView) map[string]string {
 	taskProject := make(map[string]string, len(tasks))
 	for i := range tasks {
 		t := tasks[i]
 		taskProject[t.ID.String()] = t.Project
-
-		v := view(t.Project)
-		switch t.Status {
-		case task.Pending:
-			v.Pending++
-		case task.Running:
-			v.Running++
-		case task.Completed:
-			v.Completed++
-		case task.Dead:
-			v.Dead++
-		case task.Cancelled:
-			v.Cancelled++
-		}
+		bumpProjectCount(view(t.Project), t.Status)
 	}
 
-	// Latest claim per task: run duration = completion time minus the claim
-	// time of the winning attempt (a reclaimed task's earlier claims are
-	// overwritten). Facts arrive in seq order, so the last Completed fact per
-	// project is the most recent completion.
+	return taskProject
+}
+
+// applyRunDurations walks the journal and records, per project, the duration
+// of the most recent completion: run duration = completion time minus the
+// claim time of the winning attempt (a reclaimed task's earlier claims are
+// overwritten). It returns the claim timestamps needed by
+// applyActiveDurations.
+func applyRunDurations(facts []journal.Fact, taskProject map[string]string, view func(string) *projectView) map[string]time.Time {
 	claimedAt := map[string]time.Time{}
 
 	for _, f := range facts {
@@ -97,6 +95,11 @@ func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []proj
 		}
 	}
 
+	return claimedAt
+}
+
+// applyActiveDurations stamps elapsed time onto every currently running task.
+func applyActiveDurations(tasks []task.Task, claimedAt map[string]time.Time, now time.Time, view func(string) *projectView) {
 	for i := range tasks {
 		t := tasks[i]
 		if t.Status != task.Running {
@@ -108,7 +111,9 @@ func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []proj
 			v.ActiveDur, v.HasActive = now.Sub(start), true
 		}
 	}
+}
 
+func sortedProjectViews(byProject map[string]*projectView) []projectView {
 	out := make([]projectView, 0, len(byProject))
 	for _, v := range byProject {
 		out = append(out, *v)
@@ -117,6 +122,29 @@ func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []proj
 	sort.Slice(out, func(i, j int) bool { return out[i].Project < out[j].Project })
 
 	return out
+}
+
+// aggregateTop builds the per-project view from the task table (counts,
+// project names) and the journal (run durations). now stamps the active
+// duration.
+func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []projectView {
+	byProject := map[string]*projectView{}
+	view := func(name string) *projectView {
+		if byProject[name] == nil {
+			byProject[name] = &projectView{Project: name}
+		}
+
+		return byProject[name]
+	}
+
+	taskProject := indexTaskProjects(tasks, view)
+
+	// Facts arrive in seq order, so the last Completed fact per project is
+	// the most recent completion.
+	claimedAt := applyRunDurations(facts, taskProject, view)
+	applyActiveDurations(tasks, claimedAt, now, view)
+
+	return sortedProjectViews(byProject)
 }
 
 func cmdTop(args []string) error {

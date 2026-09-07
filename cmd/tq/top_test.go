@@ -33,12 +33,12 @@ func TestAggregateTopCountsMatchTasks(t *testing.T) {
 	}
 
 	a, b := got[0], got[1]
-	if a.Pending != 1 || a.Running != 1 || a.Completed != 1 || a.Dead != 0 || a.Cancelled != 0 {
-		t.Errorf("alpha counts wrong: %+v", a)
+	if want := (projectView{Project: "alpha", Pending: 1, Running: 1, Completed: 1}); a != want {
+		t.Errorf("alpha counts wrong: got %+v, want %+v", a, want)
 	}
 
-	if b.Pending != 1 || b.Running != 0 || b.Completed != 0 || b.Dead != 1 || b.Cancelled != 1 {
-		t.Errorf("beta counts wrong: %+v", b)
+	if want := (projectView{Project: "beta", Pending: 1, Dead: 1, Cancelled: 1}); b != want {
+		t.Errorf("beta counts wrong: got %+v, want %+v", b, want)
 	}
 }
 
