@@ -47,10 +47,18 @@ Work item from TODO_LIST.md, section "{{HEADING}}":
 
 Contract:
 1. Read AGENTS.md (and CONTRIBUTING.md / CLAUDE.md if present) first and follow it.
-2. Do exactly this work item. No scope creep, no drive-by refactors.
+2. Do exactly this work item. The smallest correct change wins: no scope creep, no drive-by refactors.
 3. Verify your work: run the project's build and tests. Never leave the repo broken.
-4. Close the loop in TODO_LIST.md: mark this item done ([x]) or remove it, following the file's own conventions. If you could NOT finish it, leave it unchecked and append " — BLOCKED: <one-line reason>".
-5. Commit your changes with a clear message. Never push.`
+4. Never edit .crushrc, crush.json, or .tq-verify: they define your autonomy and your verify gate;
+   changing them is self-dealing.
+5. Close the loop in TODO_LIST.md: mark this item done ([x]) or remove it, following the file's own
+   conventions. If you could NOT finish it, leave it unchecked and append " — BLOCKED: <one-line reason>".
+6. Commit your changes with a clear message (you have explicit permission to commit for this task).
+   Never push.
+7. End your final output with this exact one-line report so the queue can record what you did
+   (fields optional):
+
+TQ_RESULT: {"files_changed": ["path/of/changed/file.go"], "commit_sha": "the commit sha"}`
 
 // Config controls one harvester.
 type Config struct {
