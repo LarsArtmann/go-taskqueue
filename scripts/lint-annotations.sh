@@ -4,10 +4,13 @@
 #
 # Why this exists: golangci-lint v2 has no github-actions output format
 # (v2.13.2 rejects --output.github-actions.path as an unknown flag) and its
-# default text output never emits ::warning/::error commands — the advisory
-# CI lint step produces log text only, so nothing ever becomes an annotation.
-# GitHub also caps annotations at 10 warnings per step / 50 per job, so the
-# ~400-finding baseline could never surface as-is. Scoping to --new-from-rev
+# default text output never emits ::warning/::error commands. Its raw
+# `file.go:line:col: msg` text lines WOULD still become [failure] annotations
+# via the "go" problem matcher that actions/setup-go registers (verified on
+# the 2026-09-07 green run: 10 stale baseline findings leaked that way), so
+# ci.yml removes that matcher in the advisory step. GitHub also caps
+# annotations at 10 warnings per step / 50 per job, so the ~400-finding
+# baseline could never surface usefully anyway. Scoping to --new-from-rev
 # keeps the count near zero, which is exactly the policy that matters: new
 # findings on changed lines surface on green runs, the accepted baseline
 # stays log-only.

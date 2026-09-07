@@ -150,10 +150,14 @@ fail with "no such column" before the ALTER runs.
 - ⚠️ **golangci-lint runs in CI but is advisory** (`continue-on-error`): the
   config enables ~100 linters against a ~400-finding repo-wide baseline
   (wrapcheck/varnamelen/paralleltest lead). The hard gates are vet + gofmt +
-  tests. golangci-lint v2 emits no GitHub annotation commands itself (the
-  full run is log-only); `scripts/lint-annotations.sh` re-runs it scoped to
-  `--new-from-rev` and turns findings on changed lines into `::warning`
-  annotations (10-per-step cap → overflow stays log-only). Policy: never
+  tests. golangci-lint v2 emits no GitHub annotation commands itself, but
+  actions/setup-go registers a `go` problem matcher that would scrape the
+  advisory step's `file.go:line:col:` text lines into 10 capped [failure]
+  annotations on every green run (ci.yml removes it with
+  `::remove-matcher owner=go::`); `scripts/lint-annotations.sh` re-runs it
+  scoped to `--new-from-rev` and turns findings on changed lines into
+  `::warning` annotations (10-per-step cap → overflow stays log-only).
+  Policy: never
   mass-"fix" the baseline (it would rewrite the whole codebase); when you
   touch a function, don't add new findings, and fixing that function's
   findings in passing is welcome. Generated `*_templ.go` files are excluded
