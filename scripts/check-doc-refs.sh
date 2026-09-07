@@ -11,6 +11,7 @@ docs=(README.md AGENTS.md CONTRIBUTING.md CHANGELOG.md FEATURES.md ROADMAP.md)
 # verified false positives, with the doc that produced them as a comment.
 allow=(
 	'^go-taskqueue/internal/' # module import path in code samples (README)
+	'^encoding/json/'         # stdlib json/v2 import path (AGENTS.md GOEXPERIMENT bullet)
 )
 
 fail=0
