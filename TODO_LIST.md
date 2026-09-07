@@ -22,7 +22,7 @@ them (`docs/status/<date>_<slug>.md`, cited as `(19:33 report …)` etc.).
 ## Medium Impact
 
 - [x] Fix `scripts/smoke/papdashboard-e2e.sh` real-dashboard mode: the assertion loops grep `INGEST_LOG`, which only the stub writes, so `PAP_URL=…` mode always times out and fails — make the real mode verify against the dashboard (or split the script per mode) (19:49 report d1/f5)
-- [ ] Make `harvest.Audit` report per-repo scan failures instead of a silent `continue` (`internal/harvest/drift.go:100`), and fix the comment above it that claims parity with `Harvester.Run` which does not exist (19:49 report d2/f6)
+- [x] Make `harvest.Audit` report per-repo scan failures instead of a silent `continue` (`internal/harvest/drift.go:100`), and fix the comment above it that claims parity with `Harvester.Run` which does not exist (19:49 report d2/f6)
 - [ ] Extract the remaining cmd/tq complexity hotspots the same way `main`/`cmdAudit` were fixed: `cmdHarvest` (17), `aggregateTop` (16), `cmdStats` (14), `cmdDLQ` (13) (19:33 report b/f9; advisory cyclop baseline)
 - [ ] Add CLI-level tests: golden-output test for the `tq audit` drift report, dispatch test for unknown-command/help exit codes, table tests for `splitRepos` (empty, spaces, trailing comma) (19:33 report d4/f10 — the CLI refactor shipped with zero CLI-level tests)
 - [ ] `tq worker --once`: run until the claimable queue is drained, then exit — parity with `tq agent-pool --once` for scripts and tests (18:34 report f22; the worker still has no one-shot mode)

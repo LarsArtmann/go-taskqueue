@@ -252,3 +252,33 @@ func TestParseRepoAllReturnsDoneItems(t *testing.T) {
 		t.Errorf("ParseRepo open items = %+v, want just 'open one'", open)
 	}
 }
+
+func TestAuditReportsUnscannableRepo(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "good", "# H\n- [ ] open work\n")
+	// A repo whose TODO file is a directory: ParseRepoAll fails on it.
+	badRepo := filepath.Join(dir, "badrepo")
+
+	if err := os.MkdirAll(filepath.Join(badRepo, DefaultTodoFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	h := New(openQueue(t), Config{Repos: []string{filepath.Join(dir, "good"), badRepo}})
+	res, err := h.Audit(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(res.ScanFailures) != 1 {
+		t.Fatalf("ScanFailures = %d entries, want 1: %+v", len(res.ScanFailures), res.ScanFailures)
+	}
+
+	f := res.ScanFailures[0]
+	if f.Repo != badRepo || f.Reason == "" {
+		t.Errorf("wrong scan failure: %+v", f)
+	}
+
+	if res.Repos != 2 {
+		t.Errorf("Repos = %d, want 2 (bad repo still counted)", res.Repos)
+	}
+}

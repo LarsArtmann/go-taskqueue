@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"path/filepath"
 
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -68,15 +69,19 @@ func printDriftReport(res harvest.DriftResult, dryRun bool) {
 		fmt.Println(line)
 	}
 
+	for _, f := range res.ScanFailures {
+		fmt.Printf("ERROR  %-24s scan failed: %s\n", filepath.Base(f.Repo), f.Reason)
+	}
+
 	for _, d := range res.StaleDone {
 		fmt.Printf("DRIFT  %-24s stale-done  task %s is %s, checkbox ticked: %s\n",
 			d.Item.RepoName, d.TaskID, d.TaskStatus, truncate(d.Item.Text, 80))
 	}
 
-	if len(res.StaleOpen) == 0 && len(res.StaleDone) == 0 {
+	if len(res.StaleOpen) == 0 && len(res.StaleDone) == 0 && len(res.ScanFailures) == 0 {
 		fmt.Println("(no drift)")
 	}
 
-	fmt.Printf("audit: %d repos, %d stale-open (%d catch-ups enqueued), %d stale-done\n",
-		res.Repos, len(res.StaleOpen), len(res.Enqueued), len(res.StaleDone))
+	fmt.Printf("audit: %d repos, %d stale-open (%d catch-ups enqueued), %d stale-done, %d scan failures\n",
+		res.Repos, len(res.StaleOpen), len(res.Enqueued), len(res.StaleDone), len(res.ScanFailures))
 }

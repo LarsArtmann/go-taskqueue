@@ -63,6 +63,12 @@ type Drift struct {
 	TaskStatus task.Status
 }
 
+// ScanFailure records one repo the audit could not scan.
+type ScanFailure struct {
+	Repo   string
+	Reason string
+}
+
 // DriftResult summarizes one audit pass over all repos.
 type DriftResult struct {
 	Repos int
@@ -73,6 +79,9 @@ type DriftResult struct {
 	StaleDone []Drift
 	// Enqueued lists the catch-up tasks actually created this pass.
 	Enqueued []Enqueued
+	// ScanFailures lists repos that could not be read during the audit;
+	// the audit keeps going past them.
+	ScanFailures []ScanFailure
 }
 
 // Audit compares every repo's checkbox states against the queue's terminal
@@ -106,7 +115,10 @@ func (h *Harvester) Audit(ctx context.Context) (DriftResult, error) {
 		res.Repos++
 		if err := h.auditRepo(ctx, repo, &res); err != nil {
 			// A repo that cannot be read is a harvest-scan problem; the
-			// audit keeps going and Run reports it the same way.
+			// audit keeps going and reports the failure, the way Run
+			// reports skipped repos.
+			res.ScanFailures = append(res.ScanFailures, ScanFailure{Repo: repo, Reason: err.Error()})
+
 			continue
 		}
 	}
