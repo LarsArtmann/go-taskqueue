@@ -5,6 +5,7 @@ go 1.26.7
 require (
 	github.com/a-h/templ v0.3.1020
 	github.com/larsartmann/go-sse v0.6.0
+	github.com/larsartmann/go-sse/ssetest v0.3.0
 	modernc.org/sqlite v1.58.0
 )
 

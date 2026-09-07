@@ -141,7 +141,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 			}
 
 			seq := int64(watermarkUnknown)
-			if n, err := strconv.ParseInt(evt.ID.String(), 10, 64); err == nil {
+			if n, err := strconv.ParseInt(evt.ID.Get(), 10, 64); err == nil {
 				seq = n
 			}
 

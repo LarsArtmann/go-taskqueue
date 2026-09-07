@@ -26,6 +26,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	"github.com/larsartmann/go-taskqueue/internal/webui"
 	"github.com/larsartmann/go-taskqueue/internal/worker"
 )
 
@@ -1095,4 +1096,27 @@ func truncate(s string, n int) string {
 	}
 
 	return s[:n] + "…"
+}
+
+func cmdServe(args []string) error {
+	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+	addr := fs.String("addr", webui.DefaultAddr, "listen address (default: localhost only)")
+	poll := fs.Duration("poll", webui.DefaultPoll, "journal tail interval")
+
+	db := dbFlag(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	s := mustOpenDB(resolveDB(*db))
+	defer s.Close()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	server := webui.New(s, webui.Config{Addr: *addr, Poll: *poll})
+
+	fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (read-only)\n", *addr)
+
+	return server.Run(ctx)
 }
