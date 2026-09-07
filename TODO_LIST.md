@@ -40,3 +40,4 @@ them (`docs/status/<date>_<slug>.md`, cited as `(19:33 report …)` etc.).
 - [ ] `tq audit --json` plus `--todo-file`/`--type`/`--max-attempts` flags for parity with `tq harvest` (19:49 report f17)
 - [ ] Free-port selection in `scripts/smoke/webui.sh` (fixed port 8095 collides on busy machines) (18:41 report f11)
 - [ ] Request-logging option for `tq serve` (`--verbose` or an slog handler) — the serve process currently logs only tailer/hub/shutdown failures (18:41 report f12)
+- [ ] `tq serve` auth for non-localhost binds: token auth (or basic) + docs, per plan W16 — the dashboard is now bound to the LAN (read-only by construction, ADR-0003) with zero auth, so anyone on the LAN sees all task payloads and error tails
