@@ -61,9 +61,9 @@ func TestPrintDriftReportGolden(t *testing.T) {
 		{
 			name: "stale open enqueued",
 			res: harvest.DriftResult{
-				Repos:    2,
+				Repos:     2,
 				StaleOpen: []harvest.Drift{{Kind: harvest.DriftStaleOpen, Item: item1, TaskID: "t1", TaskStatus: task.Completed}},
-				Enqueued: []harvest.Enqueued{{Item: item1, TaskID: "t9", Fresh: true}},
+				Enqueued:  []harvest.Enqueued{{Item: item1, TaskID: "t9", Fresh: true}},
 			},
 			want: "DRIFT  alpha                    stale-open  task t1 completed, checkbox open: fix the flaky worker test that races on drain  [catch-up armed]\n" +
 				"audit: 2 repos, 1 stale-open (1 catch-ups enqueued), 0 stale-done, 0 scan failures\n",
@@ -130,7 +130,7 @@ func TestDispatchExitCodes(t *testing.T) {
 		return
 	}
 
-	args := strings.Split(os.Getenv("TQ_DISPATCH_SUBTEST"), "\x00")
+	args := strings.Split(os.Getenv("TQ_DISPATCH_SUBTEST"), "\x1f")[1:]
 	os.Args = append([]string{"tq"}, args...)
 	main()
 }
@@ -139,7 +139,7 @@ func runDispatch(t *testing.T, args []string) (exitCode int, stdout, stderr stri
 	t.Helper()
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestDispatchExitCodes")
-	cmd.Env = append(os.Environ(), "TQ_DISPATCH_SUBTEST="+strings.Join(args, "\x00"))
+	cmd.Env = append(os.Environ(), "TQ_DISPATCH_SUBTEST=sub\x1f"+strings.Join(args, "\x1f"))
 
 	var out, errBuf bytes.Buffer
 	cmd.Stdout = &out
