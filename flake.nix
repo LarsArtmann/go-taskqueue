@@ -48,6 +48,7 @@
           pkgs.gotools
           pkgs.gofumpt
           pkgs.dprint
+          pkgs.templ
         ];
       };
 
