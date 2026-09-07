@@ -158,6 +158,13 @@ fail with "no such column" before the ALTER runs.
   a `--yolo` task on a repo without a project-local `.crushrc` fails fast by
   design. When touching the agent argv, update
   `TestAgentExecutorArgvContract` — stub-based tests cannot catch flag drift.
+- ⚠️ **This repo is dogfooded (since 2026-09-07)**: an `agent-pool` may run
+  against THIS repo — `.crushrc` (minimum autonomy) + `.tq-verify` (build,
+  vet, race tests, gofmt) are the rails, and unchecked TODO_LIST items are
+  live pool food. Expect autonomous commits on master (never pushes) and
+  extra working-tree churn alongside the daemon. Launch command and
+  budget flags: `docs/planning/2026-09-07_20-47_SUPERB-PLAN-ROUND4-DOGFOOD-POOL-EATS-THIS-REPO.md`.
+  If the pool misbehaves: stop it, review `tq dlq`, rescue or cancel.
 
 ## Relation to other projects
 
