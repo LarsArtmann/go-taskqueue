@@ -26,7 +26,7 @@
       go-standard = {
         pname = "go-taskqueue";
         version = "0.1.0";
-        vendorHash = "sha256-XMUaBdPSXWBJNni3HcMau+IWcgQKTkXntCLvRXtQmkg=";
+        vendorHash = "sha256-xbSEDxrY54nC+QIzsgnB77XEs1q9+FLw79H5x9PZ/eY=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
         # templ fmt gates the .templ sources in the treefmt check (the
