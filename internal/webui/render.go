@@ -77,13 +77,13 @@ func (f FilterState) QueryString() string {
 
 // DashboardData is the full projection snapshot one burst renders from.
 type DashboardData struct {
-	Counts  map[task.Status]int
-	Total   int
-	Tasks   []task.Task
-	Dead    []task.Task
-	Facts   []journal.Fact
-	Filter  FilterState
-	Now     time.Time
+	Counts   map[task.Status]int
+	Total    int
+	Tasks    []task.Task
+	Dead     []task.Task
+	Facts    []journal.Fact
+	Filter   FilterState
+	Now      time.Time
 	Projects []ProjectSummary
 }
 
@@ -225,6 +225,7 @@ func matchesQuery(t task.Task, q string) bool {
 
 	return false
 }
+
 // sortTasks orders by status severity (dead, running, pending, cancelled,
 // completed), then age descending (newest first within a status).
 func sortTasks(tasks []task.Task) []task.Task {

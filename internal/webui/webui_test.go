@@ -128,7 +128,7 @@ func TestHubFanOut(t *testing.T) {
 			defer hub.Unsubscribe(ch)
 
 			evt := <-ch
-			got[i] = append(got[i], sseEvent{typ: evt.Event, id: evt.ID.String()})
+			got[i] = append(got[i], sseEvent{typ: evt.Event, id: evt.ID.Get()})
 		}(i)
 	}
 
@@ -275,17 +275,33 @@ func TestFiltersNarrowTable(t *testing.T) {
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/?project=alpha", nil))
 
-	body := rec.Body.String()
-	if !strings.Contains(body, "alpha") || strings.Contains(body, "beta") {
+	table := tableFragment(rec.Body.String())
+	if !strings.Contains(table, "alpha") || strings.Contains(table, "beta") {
 		t.Error("project filter did not narrow the table")
 	}
 
 	rec = httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/?status=completed", nil))
 
-	if strings.Contains(rec.Body.String(), ">pending<") {
+	table = tableFragment(rec.Body.String())
+	if strings.Contains(table, ">pending<") || strings.Contains(table, "sh") {
 		t.Error("status filter did not narrow the table")
 	}
+}
+
+// tableFragment extracts the rendered #frag-table content from a full page.
+func tableFragment(body string) string {
+	start := strings.Index(body, `id="frag-table"`)
+	if start < 0 {
+		return ""
+	}
+
+	end := strings.Index(body[start:], `id="frag-dlq"`)
+	if end < 0 {
+		return body[start:]
+	}
+
+	return body[start : start+end]
 }
 
 func TestTaskDetailAnd404(t *testing.T) {
