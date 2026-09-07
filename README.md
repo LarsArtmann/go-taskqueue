@@ -36,6 +36,19 @@ tq stats
 tq tail -f
 ```
 
+### Watch it live in the browser
+
+```sh
+tq serve          # http://127.0.0.1:8090 (read-only)
+```
+
+One tab shows the whole system updating live: status cards, the task table,
+the dead-letter queue, per-project progress and the fact feed — pushed by
+SSE as server-rendered fragments, reconnect-safe, filterable and searchable
+(`?project=demo&status=running&q=flake`), with a detail page per task at
+`/task/{id}`. The dashboard is a pure projection of the journal: it cannot
+mutate the queue, and the worst failure is a stale page.
+
 The default `sh` executor runs the payload as a shell line (raw text, JSON
 string, or `{"cmd":...}` all unwrap to the command). Executors are pluggable
 in Go (`internal/executor/executor.go`) — note the packages are `internal/`

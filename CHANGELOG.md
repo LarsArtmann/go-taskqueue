@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Live web dashboard: `tq serve` (default `127.0.0.1:8090`, read-only)
+  renders status cards, a live task table, the DLQ, per-project chips and
+  the fact feed as server-rendered fragments pushed over SSE. A single
+  journal tailer coalesces change bursts; every client gets a full
+  snapshot on connect and after each burst (reconnect-safe), with URL
+  filters/search (`?project=&status=&q=`) and per-task detail pages at
+  `/task/{id}`. `internal/webui`, ADR-0003, `scripts/smoke/webui.sh`.
 - Deferred-bundle seeds (plan C27): structured result self-report from
   agents (`TQ_RESULT:` line → `files_changed`/`commit_sha` in the result
   detail), full-output sidecar logs (`TQ_LOG_DIR`), `tq harvest --json` and

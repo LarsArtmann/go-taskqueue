@@ -24,8 +24,13 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 - PapDashboard integration: dead-letter alerting is shipped; the remaining
   arc is decision → question fan-out (agent asks, human answers in the
-  dashboard, queue proceeds) and `tq tail -f` → SSE fan-out for a unified
-  ops view
+  dashboard, queue proceeds) and surfacing PapDashboard questions inside
+  `tq serve` (the `tq tail -f` → SSE fan-out shipped with the web UI —
+  see ADR-0003 and
+  `docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md`;
+  remaining Phase D ideas: write actions behind `--allow-writes`, auth for
+  non-localhost binds, `/metrics` merge, pagination, budget panel,
+  Datastar upgrade)
 
 ## v0.4.0 — Intelligence
 
@@ -35,7 +40,6 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ## Raw ideas (unrefined)
 
-- Web UI over the projections (the journal already has everything needed)
 - Cron-style recurring tasks (re-enqueue with dedup keys on completion)
 - Cross-repo DAG from harvest: configurable templates like "docs item
   depends on code item"
