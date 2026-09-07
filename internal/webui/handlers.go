@@ -167,7 +167,7 @@ func (s *Server) sendSnapshot(ctx context.Context, stream *sse.Stream, r *http.R
 		return err
 	}
 
-	for _, frag := range renderFragments(data) {
+	for _, frag := range renderFragments(ctx, data) {
 		if err := stream.SendJSON("frag", frag); err != nil {
 			return err
 		}

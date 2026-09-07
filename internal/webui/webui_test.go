@@ -119,17 +119,13 @@ func TestHubFanOut(t *testing.T) {
 
 	got := make([][]sseEvent, 3)
 	for i := range got {
-		wg.Add(1)
-
-		go func(i int) {
-			defer wg.Done()
-
+		wg.Go(func() {
 			ch := hub.Subscribe()
 			defer hub.Unsubscribe(ch)
 
 			evt := <-ch
-			got[i] = append(got[i], sseEvent{typ: evt.Event, id: evt.ID.Get()})
-		}(i)
+			got[i] = []sseEvent{{typ: evt.Event, id: evt.ID.Get()}}
+		})
 	}
 
 	time.Sleep(20 * time.Millisecond) // let all subscribers register
@@ -137,7 +133,7 @@ func TestHubFanOut(t *testing.T) {
 	wg.Wait()
 
 	for i, events := range got {
-		if len(events) != 1 || events[0].typ != "tick" || events[0].id != "42" {
+		if len(events) != 1 || events[0].typ != testTickEvent || events[0].id != "42" {
 			t.Errorf("subscriber %d = %v, want one tick with id 42", i, events)
 		}
 	}
@@ -146,6 +142,8 @@ func TestHubFanOut(t *testing.T) {
 type sseEvent struct {
 	typ, id string
 }
+
+const testTickEvent = "tick"
 
 func TestTailNotifiesOnNewFacts(t *testing.T) {
 	srv, s := newTestServer(t)
@@ -167,7 +165,7 @@ func TestTailNotifiesOnNewFacts(t *testing.T) {
 
 	select {
 	case evt := <-ch:
-		if evt.Event != "tick" {
+		if evt.Event != testTickEvent {
 			t.Fatalf("event = %q, want tick", evt.Event)
 		}
 
@@ -333,8 +331,8 @@ func TestTaskDetailAnd404(t *testing.T) {
 func TestResumeAfterFactsBacklog(t *testing.T) {
 	srv, s := newTestServer(t)
 
-	for range 100 {
-		enqueue(t, s, "sh", "bulk")
+	for i := range 100 {
+		enqueue(t, s, fmt.Sprintf("bulk-%d", i%3), "bulk")
 	}
 
 	for _, lastID := range []string{"", "1", "999999"} {
@@ -446,7 +444,7 @@ func TestGoldenFragments(t *testing.T) {
 		t.Fatalf("loadSnapshot: %v", err)
 	}
 
-	for _, frag := range renderFragments(data) {
+	for _, frag := range renderFragments(context.Background(), data) {
 		if frag.HTML == "" {
 			t.Errorf("fragment %s rendered empty", frag.ID)
 		}
@@ -456,7 +454,7 @@ func TestGoldenFragments(t *testing.T) {
 		}
 	}
 
-	stats := renderComponent(StatusCards(data))
+	stats := renderComponent(context.Background(), StatusCards(data))
 	for _, want := range []string{"card-pending", "card-running", "card-completed", "card-dead", "card-cancelled", "card-total"} {
 		if !strings.Contains(stats, want) {
 			t.Errorf("stats fragment missing card %s", want)
@@ -484,7 +482,8 @@ func TestStoreClosedErrorPaths(t *testing.T) {
 		t.Errorf("closed store: / status = %d, want 500", rec.Code)
 	}
 
-	events := ssetest.CollectWithTimeout(t, srv.Handler(), 300*time.Millisecond, ssetest.WithPath("/api/events"))
+	events := ssetest.CollectWithTimeout(
+		t, srv.Handler(), 300*time.Millisecond, ssetest.WithPath("/api/events"))
 	if len(events) != 0 {
 		t.Errorf("closed store: got %d SSE events, want 0", len(events))
 	}

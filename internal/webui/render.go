@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -106,8 +107,8 @@ func clearQuery(f FilterState) string {
 	return filterHref(f)
 }
 
-func filterURL(f FilterState, clear func(FilterState) string) string {
-	return clear(f)
+func filterURL(f FilterState, reset func(FilterState) string) string {
+	return reset(f)
 }
 
 func filterHref(f FilterState) string {
@@ -301,24 +302,21 @@ func pageTitle(data DashboardData) string {
 }
 
 func formatInt(n int) string {
-	return fmt.Sprintf("%d", n)
+	return strconv.Itoa(n)
 }
 
-func truncate(s string, max int) string {
+func truncate(s string, limit int) string {
 	s = strings.Join(strings.Fields(s), " ")
-	if len(s) <= max {
+	if len(s) <= limit {
 		return s
 	}
 
-	return s[:max-1] + "…"
+	return s[:limit-1] + "…"
 }
 
 // timeAgo renders a coarse humanized duration between now and t.
 func timeAgo(now, t time.Time) string {
-	d := now.Sub(t)
-	if d < 0 {
-		d = 0
-	}
+	d := max(now.Sub(t), 0)
 
 	switch {
 	case d < time.Minute:
@@ -335,26 +333,28 @@ func timeAgo(now, t time.Time) string {
 // factBadgeClass maps a fact type to a status-like CSS badge class.
 func factBadgeClass(t journal.FactType) string {
 	switch t {
-	case "task.completed":
+	case journal.Completed:
 		return "completed"
-	case "task.dead-lettered":
+	case journal.DeadLettered:
 		return "dead"
-	case "task.failed":
+	case journal.Failed:
 		return "failed"
-	case "task.cancelled":
+	case journal.Cancelled:
 		return "cancelled"
-	case "task.claimed":
+	case journal.Claimed:
 		return "running"
-	default:
+	case journal.Enqueued, journal.Heartbeat, journal.Released, journal.Requeued:
 		return "pending"
 	}
+
+	return "pending"
 }
 
 // renderComponent renders a templ component to an HTML string.
-func renderComponent(c templ.Component) string {
+func renderComponent(ctx context.Context, c templ.Component) string {
 	var buf bytes.Buffer
 
-	if err := c.Render(context.Background(), &buf); err != nil {
+	if err := c.Render(ctx, &buf); err != nil {
 		return "<p class=\"err\">render error: " + truncate(err.Error(), 120) + "</p>"
 	}
 
@@ -378,12 +378,12 @@ const (
 )
 
 // renderFragments renders every dashboard fragment from the snapshot.
-func renderFragments(data DashboardData) []fragment {
+func renderFragments(ctx context.Context, data DashboardData) []fragment {
 	return []fragment{
-		{ID: fragStats, HTML: renderComponent(StatusCards(data))},
-		{ID: fragFilters, HTML: renderComponent(FilterBar(data))},
-		{ID: fragTable, HTML: renderComponent(TaskTable(data))},
-		{ID: fragDLQ, HTML: renderComponent(DeadLetterTable(data))},
-		{ID: fragFeed, HTML: renderComponent(FactFeed(data))},
+		{ID: fragStats, HTML: renderComponent(ctx, StatusCards(data))},
+		{ID: fragFilters, HTML: renderComponent(ctx, FilterBar(data))},
+		{ID: fragTable, HTML: renderComponent(ctx, TaskTable(data))},
+		{ID: fragDLQ, HTML: renderComponent(ctx, DeadLetterTable(data))},
+		{ID: fragFeed, HTML: renderComponent(ctx, FactFeed(data))},
 	}
 }
