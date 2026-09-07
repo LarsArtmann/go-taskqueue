@@ -312,3 +312,30 @@ func TestRunForwardsNewFactsAndStops(t *testing.T) {
 func quietLogger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
 }
+
+// ctxAwareSource behaves like the real store: Facts fails once ctx is done.
+type ctxAwareSource struct {
+	fakeSource
+}
+
+func (s *ctxAwareSource) Facts(ctx context.Context, after int64) ([]journal.Fact, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return s.fakeSource.Facts(ctx, after)
+}
+
+func TestRunWithCancelledContextReturnsNil(t *testing.T) {
+	pap := newFakePap(t)
+	facts, tasks := deadLetterFacts()
+	src := &ctxAwareSource{fakeSource{facts: facts, tasks: tasks}}
+	b := New(src, Config{Endpoint: pap.server.URL, APIKey: "secret", Logger: quietLogger()})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if err := b.Run(ctx); err != nil {
+		t.Fatalf("Run with cancelled ctx = %v, want nil", err)
+	}
+}

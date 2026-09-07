@@ -111,6 +111,10 @@ func New(store FactSource, cfg Config) *Bridge {
 func (b *Bridge) Run(ctx context.Context) error {
 	watermark := b.startWatermark(ctx)
 	if watermark < 0 {
+		if ctx.Err() != nil {
+			return nil
+		}
+
 		return errors.New("papdashboard: cannot read journal head")
 	}
 
