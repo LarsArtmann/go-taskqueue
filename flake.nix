@@ -21,6 +21,15 @@
       ...
     }:
     flake-parts.lib.mkFlake { inherit inputs; } {
+      # nixpkgs 26.11 dropped x86_64-darwin; the flake-parts default system
+      # list still carries it and fails `nix flake check --all-systems` at
+      # eval time. Pin the supported systems explicitly.
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+      ];
+
       imports = [ inputs.go-nix-helpers.flakeModules.go-standard ];
 
       go-standard = {
