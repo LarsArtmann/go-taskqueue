@@ -111,6 +111,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the harvester pins a repo's `.tq-verify` command into every payload
 - `--model` on `tq harvest` / `tq agent-pool`: pin the crush model in every
   harvested agent payload
+- The web dashboard (`tq serve`) got a full visual redesign on
+  `github.com/larsartmann/templ-components` v1.14: steel-navy/cyan
+  "ledger & lamp" theme (`internal/webui/theme.css`), JetBrains Mono
+  identity face (embedded OFL woff2 subsets), tone-iconed stat cards that
+  link into filtered views, library tables/badges/empty states, a restyled
+  DLQ and fact feed, and a task detail page with definition list + error
+  alert. Dark/light mode with a header toggle. New dev command
+  `nix run .#webui-css` recompiles the Tailwind v4 stylesheet into the
+  committed, embedded `internal/webui/static/app.css`. The SSE fragment
+  architecture (ADR-0003) and all container/element id contracts are
+  unchanged.
 
 ### Fixed
 

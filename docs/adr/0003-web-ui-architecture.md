@@ -66,3 +66,13 @@ concerns); the UI is a stale-page-worst-case consumer by design.
 need; SSE has `Last-Event-ID` built in); client-side framework (server
 fragments + swap is the projection model, zero build step); polling-only
 page (examples/api already proves it and it lags).
+
+**Amendment (2026-09-07, visual redesign):** the page is now themed with
+`github.com/larsartmann/templ-components` (v1.14.x) on Tailwind v4. The
+"zero build step" claim is amended: the Tailwind stylesheet IS compiled at
+dev time (`nix run .#webui-css`, scanning the library's Go/templ sources in
+the module cache), but the minified `internal/webui/static/app.css` is
+committed and go:embed'ed, so builds and Nix stay build-step-free — the
+same policy as the generated `*_templ.go` files. HTMX remains unused (the
+client is vanilla EventSource); `layout.Base` ships it suppressed. The
+fragment/SSE architecture and all container ids are unchanged.

@@ -19,6 +19,7 @@ go vet ./...
 go test ./... -race       # the standard verify gate
 nix build                 # reproducible build (flake, go-standard module)
 nix run .#test            # tests via flake app
+nix run .#webui-css       # recompile the web UI stylesheet (output is committed)
 ```
 
 No Makefile, no justfile — flake.nix owns automation. Pure Go
@@ -112,6 +113,27 @@ fail with "no such column" before the ALTER runs.
 - Generated `*_templ.go` files are COMMITTED, never gitignored (the
   samber-do-auditlog v0.9.0 retract lesson: Nix builds vendor source
   without running `templ generate`)
+- The web UI is themed with `github.com/larsartmann/templ-components`
+  (v1.14.x). Design tokens live in `internal/webui/theme.css` (@theme
+  remap: steel-navy neutrals, cyan accent, JetBrains Mono); Tailwind
+  classes come from the library's Go/templ source, so CSS MUST be
+  recompiled after template changes: `nix run .#webui-css` — the minified
+  `internal/webui/static/app.css` is COMMITTED and go:embed'ed (same
+  policy as `*_templ.go`). The build script scans the module-cache copy
+  of templ-components, so a version bump must rerun it. JetBrains Mono
+  woff2 subsets under `internal/webui/static/fonts/` are SIL OFL 1.1
+  (© JetBrains)
+
+### templ-components adoption
+
+| Library component                                   | Status  | Where          |
+| --------------------------------------------------- | ------- | -------------- |
+| `layout.Base`, `ThemeToggle`, `ThemeScript`         | adopted | `layout.templ` |
+| `display.Grid/StatCard/Card/Table/EmptyState`       | adopted | `fragments.templ` |
+| `display.Badge/Eyebrow/DefinitionList/Scrollback`   | adopted | `fragments.templ` |
+| `display.Button`                                    | adopted | filter bar (apply) |
+| `feedback.Alert`                                    | adopted | task detail (last error) |
+| filter inputs, page header/lamp, section hairlines  | custom  | `layout.templ`/`fragments.templ` (thin, SSE-fragment-specific) |
 - Go 1.26 idioms are deliberate (`errors.AsType[E]`, `strings.SplitSeq`,
   `for range n`) — do not "modernize" them back to older equivalents
 - `TODO_LIST.md` is machine-consumed by the harvester (`internal/harvest`
