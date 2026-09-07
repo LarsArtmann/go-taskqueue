@@ -26,13 +26,16 @@
       go-standard = {
         pname = "go-taskqueue";
         version = "0.1.0";
-        vendorHash = "sha256-H2J6GJy6BTngW7A6qaYHVEHxA6wLGoquDa+kW+EXmjs=";
+        vendorHash = "sha256-aeybRM0eN5dsMuqXnx/i1lkDIxfbQ7ooz7Ys/Amwi3E=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
 
         extraBuildAttrs = {
           env = {
             CGO_ENABLED = "0";
+            # go-sse uses encoding/json/v2 (Go 1.26 default experiment; nixpkgs
+            # builds the toolchain without it enabled).
+            GOEXPERIMENT = "jsonv2";
           };
           preBuild = ''
             export HOME=$TMPDIR
@@ -41,6 +44,7 @@
 
         shellExtraEnv = {
           CGO_ENABLED = "0";
+          GOEXPERIMENT = "jsonv2";
         };
 
         devShellExtraPackages = pkgs: [
