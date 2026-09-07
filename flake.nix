@@ -21,15 +21,6 @@
       ...
     }:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      # nixpkgs 26.11 dropped x86_64-darwin; the flake-parts default system
-      # list still carries it and fails `nix flake check --all-systems` at
-      # eval time. Pin the supported systems explicitly.
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "aarch64-darwin"
-      ];
-
       imports = [ inputs.go-nix-helpers.flakeModules.go-standard ];
 
       go-standard = {
@@ -38,6 +29,14 @@
         vendorHash = "sha256-xbSEDxrY54nC+QIzsgnB77XEs1q9+FLw79H5x9PZ/eY=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
+        # nixpkgs 26.11 dropped x86_64-darwin; the go-standard default system
+        # list still carries it and fails `nix flake check --all-systems` at
+        # eval time. Pin the supported systems explicitly.
+        systems = [
+          "x86_64-linux"
+          "aarch64-linux"
+          "aarch64-darwin"
+        ];
         # templ fmt gates the .templ sources in the treefmt check (the
         # generated *_templ.go output is excluded below — it is not
         # gofumpt/goimports-clean and regenerating would undo any rewrite).
