@@ -29,6 +29,10 @@
         vendorHash = "sha256-aeybRM0eN5dsMuqXnx/i1lkDIxfbQ7ooz7Ys/Amwi3E=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
+        # templ fmt gates the .templ sources in the treefmt check (the
+        # generated *_templ.go output is excluded below — it is not
+        # gofumpt/goimports-clean and regenerating would undo any rewrite).
+        enableTempl = true;
 
         extraBuildAttrs = {
           env = {
@@ -52,13 +56,16 @@
           pkgs.gotools
           pkgs.gofumpt
           pkgs.dprint
-          pkgs.templ
         ];
       };
 
       perSystem =
         { config, pkgs, ... }:
         {
+          # Generated templ output never satisfies gofumpt/goimports; the
+          # .templ sources carry the formatting contract via templ fmt.
+          treefmt.settings.excludes = [ "*_templ.go" ];
+
           # Fast vendorHash drift gate: realizes ONLY the go-modules FOD so a
           # go.mod/go.sum change fails in seconds with the hash mismatch.
           checks.vendor-hash = pkgs.runCommand "vendor-hash" { } ''

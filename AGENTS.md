@@ -133,9 +133,14 @@ fail with "no such column" before the ALTER runs.
 - ⚠️ **`tq serve` binds 127.0.0.1 by default and is read-only**: never add
   write endpoints without an explicit `--allow-writes`-style flag + CSRF
   story (ADR-0003 guardrail).
-- ⚠️ **golangci-lint is not a CI gate**: CONTRIBUTING mentions it, but the
-  baseline carries errcheck findings on idiomatic `defer x.Close()` lines.
-  Do not mass-"fix" them; CI enforces vet + gofmt + tests only.
+- ⚠️ **golangci-lint runs in CI but is advisory** (`continue-on-error`): the
+  config enables ~100 linters against a ~400-finding repo-wide baseline
+  (wrapcheck/varnamelen/paralleltest lead). The hard gates are vet + gofmt +
+  tests; lint findings stay visible as CI annotations. Policy: never
+  mass-"fix" the baseline (it would rewrite the whole codebase); when you
+  touch a function, don't add new findings, and fixing that function's
+  findings in passing is welcome. Generated `*_templ.go` files are excluded
+  from lint and from the treefmt/gofumpt gate (`templ fmt` owns `.templ`).
 - ⚠️ **Agent tasks need repo-local autonomy**: `crush run` has no yolo flag;
   a `--yolo` task on a repo without a project-local `.crushrc` fails fast by
   design. When touching the agent argv, update
