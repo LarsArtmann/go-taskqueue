@@ -246,6 +246,7 @@ func cmdWorker(args []string) error {
 	)
 	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
 	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
+	once := fs.Bool("once", false, "run until the claimable queue is drained, then exit (scripts/tests; parity with agent-pool --once)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -300,6 +301,31 @@ func cmdWorker(args []string) error {
 		}()
 
 		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %s\n", *alertURL)
+	}
+
+	if *once {
+		// Timer-friendly mode (parity with agent-pool --once): as soon as
+		// this pool has nothing in flight and no claimable work left, stop
+		// the pool AND cancel the signal context — Start only returns once
+		// ctx is done, so Stop alone would leave the process hanging until
+		// the next signal. Work claimed by OTHER pools, or gated by a future
+		// NotBefore, is left for them / for the next --once run.
+		go func() {
+			q := queue.New(s)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(*poll):
+					if pool.InFlight() == 0 && !hasClaimableWork(ctx, q, pool.Owner(), *poll) {
+						pool.Stop()
+						stop()
+
+						return
+					}
+				}
+			}
+		}()
 	}
 
 	return pool.Start(ctx)
