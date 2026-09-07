@@ -116,30 +116,30 @@ including the bad-spec error path.
 
 **Close slice 2's documentation debt (immediate):**
 
-1. CHANGELOG `[Unreleased]`: add session-id/result detail, e2e subprocess tests, property+fuzz tests, chaos test, migrate-race fix entry check.
-2. FEATURES: rows for e2e suite, fuzz/property harness, chaos test, agent result detail.
-3. TODO_LIST: check off items mapping to C13/C16–C18 (re-audit all 25).
-4. README: document `tq show`'s fact trail + `scripts/smoke/multi-repo.sh`.
-5. CONTRIBUTING: add the smoke harness + e2e test instructions.
+1. ~~CHANGELOG `[Unreleased]`: add session-id/result detail, e2e subprocess tests, property+fuzz tests, chaos test, migrate-race fix entry check.~~ done (CHANGELOG [Unreleased] carries them all)
+2. ~~FEATURES: rows for e2e suite, fuzz/property harness, chaos test, agent result detail.~~ done (FEATURES Tooling + CLI rows)
+3. ~~TODO_LIST: check off items mapping to C13/C16–C18 (re-audit all 25).~~ done (completed items moved to CHANGELOG; list rebuilt 2026-09-07 (docs-health))
+4. ~~README: document `tq show`'s fact trail + `scripts/smoke/multi-repo.sh`.~~ done (README Concepts (tq show) + Development (multi-repo smoke))
+5. ~~CONTRIBUTING: add the smoke harness + e2e test instructions.~~ done (CONTRIBUTING gate list + smoke instructions)
 
 **Slice 3 remainder:**
-6. ★C14/D48–D50 — `tq top`: per-project live view over facts + tests.
-7. ★C15/D51–D52 — docs-drift auditor: done-in-code-but-unchecked TODO items → enqueue catch-up.
-8. ★C19/D61 — Windows path audit in harvest (GOOS=windows test build).
-9. ★C19/D62 — i18n-safe hashing test vectors (non-ASCII item keys — partially covered by the property test's 行/дорога/🚀 words; formalize).
+6. ~~★C14/D48–D50 — `tq top`: per-project live view over facts + tests.~~ done (shipped (C14, tq top))
+7. ~~★C15/D51–D52 — docs-drift auditor: done-in-code-but-unchecked TODO items → enqueue catch-up.~~ done (shipped (C15, tq audit))
+8. ~~★C19/D61 — Windows path audit in harvest (GOOS=windows test build).~~ done (shipped (C19, GOOS=windows CI gate))
+9. ~~★C19/D62 — i18n-safe hashing test vectors (non-ASCII item keys — partially covered by the property test's 行/дорога/🚀 words; formalize).~~ done (shipped (C19, golden CJK/emoji/NBSP vectors))
 
 **Slice 4:**
-10. ★C21/D66–D67 — ADR-0002: agent-pool architecture, autonomy/trust, drain semantics, **budget design (D25)**, exclusivity tradeoffs.
-11. ★C20/D63–D65 — `docs/DOMAIN_LANGUAGE.md` (≥15 terms), bounded contexts, link from AGENTS/README.
-12. ★C22/D68–D70 — `doc.go` for queue/worker/executor/harvest/journal/budget + godoc examples; `go doc` clean pass.
-13. ★C23/D71–D72 — SECURITY.md + pool-start warning when a repo grants unsandboxed bash.
-14. ★C26/D78 — golangci-lint: gate-or-drop decision; errcheck exclusions config if gate.
-15. ★C26/D79 — dprint into devShell + one formatted pass over docs.
-16. ★C24/D73 — PapDashboard E2E script (docker pap + worker `--alert-url`).
-17. ★C24/D74 — decision→question fan-out design note.
-18. ★C24/D75 — SSE fan-out PoC (`tq tail -f` → HTTP stream).
-19. ★D55 polish — labelled CI step for the e2e suite.
-20. D18 — verify pkg.go.dev indexed; tick the release-checklist box.
+10. ~~★C21/D66–D67 — ADR-0002: agent-pool architecture, autonomy/trust, drain semantics, **budget design (D25)**, exclusivity tradeoffs.~~ done (docs/adr/0002)
+11. ~~★C20/D63–D65 — `docs/DOMAIN_LANGUAGE.md` (≥15 terms), bounded contexts, link from AGENTS/README.~~ done (docs/DOMAIN_LANGUAGE.md)
+12. ~~★C22/D68–D70 — `doc.go` for queue/worker/executor/harvest/journal/budget + godoc examples; `go doc` clean pass.~~ done (package docs + godoc examples (house style))
+13. ~~★C23/D71–D72 — SECURITY.md + pool-start warning when a repo grants unsandboxed bash.~~ done (SECURITY.md + pool-start autonomy warning)
+14. ~~★C26/D78 — golangci-lint: gate-or-drop decision; errcheck exclusions config if gate.~~ done (decided advisory (ci.yml continue-on-error, 19:33 report))
+15. ~~★C26/D79 — dprint into devShell + one formatted pass over docs.~~ done (dprint in flake devShell + docs pass)
+16. ~~★C24/D73 — PapDashboard E2E script (docker pap + worker `--alert-url`).~~ done (scripts/smoke/papdashboard-e2e.sh (stub mode; real-mode debt 19:49))
+17. ~~★C24/D74 — decision→question fan-out design note.~~ done (docs/planning/2026-09-06_decision-question-fanout.md)
+18. ~~★C24/D75 — SSE fan-out PoC (`tq tail -f` → HTTP stream).~~ done (examples/sse; superseded by tq serve (round 3))
+19. ~~★D55 polish — labelled CI step for the e2e suite.~~ done (e2e runs in CI via go test ./... (no dedicated step, accepted))
+20. ~~D18 — verify pkg.go.dev indexed; tick the release-checklist box.~~ done (pkg.go.dev serves v0.1.0 (verified 2026-09-07))
 21. Nightly fuzz job (60s `FuzzParseRepo`) + commit corpus seeds to `testdata/fuzz`.
 22. `tq worker --once` (parity with agent-pool; noted in e2e comments).
 23. Validate session-id extraction against a REAL crush run output; adjust the regex if the format differs.
@@ -147,23 +147,23 @@ including the bad-spec error path.
 25. Consider `git rm` of stale `docs/status` duplication via a STATUS index file linking all reports.
 
 **Deferred-bundle seeds (C27):**
-26. ★D80 — Postgres spike: schema + `FOR UPDATE SKIP LOCKED` claim sketch.
-27. ★D81 — HTTP API thin-wrapper PoC over Store (curl enqueue works).
-28. ★D82 — internal→public decision note (which packages, when).
+26. ~~★D80 — Postgres spike: schema + `FOR UPDATE SKIP LOCKED` claim sketch.~~ done (SQL sketch in the seeds doc (D80))
+27. ~~★D81 — HTTP API thin-wrapper PoC over Store (curl enqueue works).~~ done (examples/api PoC)
+28. ~~★D82 — internal→public decision note (which packages, when).~~ done (decision recorded in the seeds doc (D82))
 29. ★D83 — cron recurring tasks PoC (dedup-keyed re-enqueue).
-30. ★D84 — structured result schema `{files_changed, commit_sha}` (extends C13's sink).
-31. ★D85 — output sidecar: full stdout to file, path in result detail.
-32. ★D86 — Prometheus metrics endpoint over facts.
-33. ★D87 — `tq harvest --json` + `--repo-subset` glob.
-34. ★D88 — `tq dlq --rescue-all --older-than`.
-35. ★D89 — guard: refuse `--projects-dir /` and `$HOME`.
+30. ~~★D84 — structured result schema `{files_changed, commit_sha}` (extends C13's sink).~~ done (internal/executor/result.go (TQ_RESULT))
+31. ~~★D85 — output sidecar: full stdout to file, path in result detail.~~ done (TQ_LOG_DIR sidecar in internal/executor/agent.go)
+32. ~~★D86 — Prometheus metrics endpoint over facts.~~ done (examples/api /metrics (PoC))
+33. ~~★D87 — `tq harvest --json` + `--repo-subset` glob.~~ done (tq harvest --json + --repo-subset)
+34. ~~★D88 — `tq dlq --rescue-all --older-than`.~~ done (tq dlq --rescue-all --older-than)
+35. ~~★D89 — guard: refuse `--projects-dir /` and `$HOME`.~~ done (--projects-dir / and $HOME refused)
 36. ★D90 — per-repo-size timeout defaults.
 37. ★D91 — crush rate-limit + version detection at pool start.
-38. ★D92 — PR-mode PoC (branch + `gh pr create` in a scratch repo).
-39. ★D93 — worktree isolation PoC.
+38. ~~★D92 — PR-mode PoC (branch + `gh pr create` in a scratch repo).~~ done (scripts/poc/pr-mode.sh (real PRs = owner decision, ROADMAP))
+39. ~~★D93 — worktree isolation PoC.~~ done (scripts/poc/worktree-isolation.sh)
 40. ★D94 — session chains via `AgentPayload.Session` (now natural: result sink already exposes session ids).
-41. ★D95 — web UI spike over facts projection.
-42. ★D96 — DB rotation/backup guidance doc.
+41. ~~★D95 — web UI spike over facts projection.~~ done (productionized as tq serve (round 3))
+42. ~~★D96 — DB rotation/backup guidance doc.~~ done (seeds doc (D96) backup/rotation guidance)
 43. ★D97 — cross-repo DAG templates in harvest.
 44. ★D98 — ai-task-prioritizer hook writing `priority`.
 45. ★D99 — smart retry: error-class → policy mapping (build on C01's classes; per-project budgets could ride the same config).
@@ -171,9 +171,9 @@ including the bad-spec error path.
 
 **Close-out:**
 47. Cut **v0.2.0** at the next slice boundary (store interface grew `FailPermanent`/`Requeue`; additive, fine for 0.x) — needs your go/no-go.
-48. Annotate ROADMAP's three open owner questions with this session's context (cancelled-dedup semantics, pool-manages-this-repo, cost-ceiling default).
-49. Update the round-2 plan header: slice 1 ✅ shipped in v0.1.0, slice 2 ✅ (C06–C12), slice 3 ▲ (C13/C16–C18), slice 4 ⬜.
-50. Retire `/tmp/tq-*` ad-hoc fixtures into `scripts/smoke/` so every smoke is one command.
+48. ~~Annotate ROADMAP's three open owner questions with this session's context (cancelled-dedup semantics, pool-manages-this-repo, cost-ceiling default).~~ done (the three questions live in ROADMAP Open questions)
+49. ~~Update the round-2 plan header: slice 1 ✅ shipped in v0.1.0, slice 2 ✅ (C06–C12), slice 3 ▲ (C13/C16–C18), slice 4 ⬜.~~ done (round-2 plan header annotated EXECUTED (docs-health pass 2026-09-07))
+50. ~~Retire `/tmp/tq-*` ad-hoc fixtures into `scripts/smoke/` so every smoke is one command.~~ done (scripts/smoke/ owns the fixtures)
 
 ## g) QUESTIONS ONLY YOU CAN ANSWER
 

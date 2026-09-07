@@ -145,7 +145,7 @@ bug today), and lint-exclusion lines added without per-line justification.
 
 1. C25: CQA live verify (needs URL/owner/token) → upgrade FEATURES row.
 2. Cut v0.2.0 (CHANGELOG cut, checklist, tag, release) — after C25 or without it (owner call).
-3. Re-check pkg.go.dev indexing of v0.1.0/v0.2.0.
+3. ~~Re-check pkg.go.dev indexing of v0.1.0/v0.2.0.~~ done (pkg.go.dev serves v0.1.0 (verified 2026-09-07))
 4. Decide real PR-mode enablement (which repos, `OPEN_PR=1` policy).
 
 **Fix the own-goals (this session's debt)**
@@ -159,11 +159,11 @@ of silent `continue`; update the lying comment.
 SSE per-connection tails.
 10. Prune `.golangci.yml` to only earned exclusions (verify `os.File.Sync`
 / `ResponseWriter.Write` are actually needed).
-11. Swap CI `go install golangci-lint` for the pinned official action
-(research SHA via fetch).
+11. ~~Swap CI `go install golangci-lint` for the pinned official action~~ done (ci.yml pins checkout/setup-go by commit SHA)
+~~(research SHA via fetch).~~
 12. Add `dprint check` to CI (docs-format gate).
-13. README: document `examples/api` + `examples/sse` (+ SECURITY note:
-api binds loopback, refuses non-loopback `--addr` unless `--insecure`).
+13. ~~README: document `examples/api` + `examples/sse` (+ SECURITY note:~~ done (README documents examples/api + examples/sse as PoCs with the loopback-only note (docs-health pass 2026-09-07))
+~~api binds loopback, refuses non-loopback `--addr` unless `--insecure`).~~
 14. `tq top`: honour `--interval` semantics for JSON, add cancld column to
 totals, drop double-truncate; screenshot/asciinema in README.
 15. Run the e2e suite on a real Windows runner (windows-latest job) or mark

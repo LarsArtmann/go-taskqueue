@@ -112,12 +112,12 @@ Nothing in the shipped webui code is fucked up: no revert happened, no parallel-
 *Brainstorm list — most items below the top ~15 are ROADMAP fuel, not commitments; route through docs-health HARVEST with rigor.*
 
 **CI/truth (highest leverage)**
-1. Fix master CI: resolve pre-existing `cyclop` findings in `cmd/tq` (extract subcommand helpers) — refactor, not suppress.
-2. Fix pre-existing `contextcheck` in `internal/bridge/papdashboard.startWatermark`.
-3. Decide lint policy in one place (blocking vs non-blocking + exclusions) and align AGENTS.md with `ci.yml` reality.
+1. ~~Fix master CI: resolve pre-existing `cyclop` findings in `cmd/tq` (extract subcommand helpers) — refactor, not suppress.~~ done at `132554e`
+2. ~~Fix pre-existing `contextcheck` in `internal/bridge/papdashboard.startWatermark`.~~ done at `61d2044`
+3. ~~Decide lint policy in one place (blocking vs non-blocking + exclusions) and align AGENTS.md with `ci.yml` reality.~~ done at `94bff0f`, `16ce98c`
 4. Add `checks.nix-binary-runs` (flake check that executes `result/bin/tq --help`) so empty-output builds can never pass again.
 5. Add `GOEXPERIMENT`/jsonv2 probe check for future deps (fail fast with remediation message).
-6. Push this round and watch the CI run including the new webui smoke step.
+6. ~~Push this round and watch the CI run including the new webui smoke step.~~ done (pushed (0c3bf86 and later); master CI green after the 19:33 fixes (runs 34147286516, 34147397689))
 
 **Web UI hardening (Phase D seeds, cheap now)**
 7. W17 `/metrics` (Prometheus text) merged into `tq serve` — ROADMAP raw idea, ~30 min.
@@ -147,12 +147,12 @@ Nothing in the shipped webui code is fucked up: no revert happened, no parallel-
 
 **Docs/process**
 29. Screenshot/GIF of the dashboard for README (the plan's W13.1 named one).
-30. HARVEST this list: move items 1–2 (CI) and any accepted web-UI items into TODO_LIST.md per repo policy — with the `.crushrc`/agent-pool caveat (guardrail #4: this repo's TODO_LIST is pool food).
-31. Annotate round-3 plan doc: mark Status EXECUTED with commit hashes (docs-health ANNOTATE mode).
-32. AGENTS.md: document `scripts/smoke/webui.sh` usage next to the existing CLI smoke snippet.
-33. CHANGELOG link the ADR + plan doc from the Added entry (currently only file references).
-34. CONTRIBUTING: add "run `go tool templ generate` after editing `.templ`" (only implied today).
-35. `docs/DOMAIN_LANGUAGE.md`: mark the new Observation terms with cross-links to ADR-0003.
+30. ~~HARVEST this list: move items 1–2 (CI) and any accepted web-UI items into TODO_LIST.md per repo policy — with the `.crushrc`/agent-pool caveat (guardrail #4: this repo's TODO_LIST is pool food).~~ done (executed 2026-09-07 (owner-directed docs-health AUDIT: verified items routed into TODO_LIST.md/ROADMAP.md))
+31. ~~Annotate round-3 plan doc: mark Status EXECUTED with commit hashes (docs-health ANNOTATE mode).~~ done at `94bff0f`
+32. ~~AGENTS.md: document `scripts/smoke/webui.sh` usage next to the existing CLI smoke snippet.~~ done (AGENTS.md now shows the webui smoke next to the CLI smoke (docs-health pass 2026-09-07))
+33. ~~CHANGELOG link the ADR + plan doc from the Added entry (currently only file references).~~ done (CHANGELOG web-UI entry links ADR-0003 + the round-3 plan (docs-health pass 2026-09-07))
+34. ~~CONTRIBUTING: add "run `go tool templ generate` after editing `.templ`" (only implied today).~~ done (CONTRIBUTING documents go tool templ generate (docs-health pass 2026-09-07))
+35. ~~`docs/DOMAIN_LANGUAGE.md`: mark the new Observation terms with cross-links to ADR-0003.~~ done (DOMAIN_LANGUAGE cross-links ADR-0003 (docs-health pass 2026-09-07))
 
 **Pre-existing project debt noticed in passing (report-only)**
 36. `wrapcheck` findings on idiomatic `fmt.Fprintf(os.Stderr, ...)` in `cmdServe` — same class AGENTS already declares out-of-scope; confirm policy covers it.
@@ -175,9 +175,9 @@ Nothing in the shipped webui code is fucked up: no revert happened, no parallel-
 
 ## g) Questions I cannot figure out myself
 
-1. **Lint policy is contradictory at the authority level: which wins — AGENTS.md ("golangci-lint is NOT a gate; CI enforces vet+gofmt+tests only") or `.github/workflows/ci.yml` (which runs golangci-lint and fails the build on it)?** Master has been red for two pushes because of this. I can fix the findings or fix the config, but I can't know which one you *want* — that decision shapes every future session's definition of "done".
-2. **Should any of section (f) be harvested into `TODO_LIST.md`?** Guardrail #4 of the round-3 plan says this repo's TODO_LIST is deliberately agent-pool food in a repo with no `.crushrc`, so enqueueing items costs real money and collides with concurrent agents — but the skill contract says a status report's next-steps list belongs in TODO_LIST, not entombed here. Policy call: harvest for humans only, harvest for the pool, or keep the plan-doc-only convention one more round?
-3. **Push now?** The planning commit was pushed under your explicit instruction; this execution round ends in commits on local `master` (`c367bff` head). I did not push without a fresh instruction — confirm and I'll push (and then watch the CI run, which is also the first real exercise of the new CI smoke step).
+1. ~~**Lint policy is contradictory at the authority level: which wins — AGENTS.md ("golangci-lint is NOT a gate; CI enforces vet+gofmt+tests only") or `.github/workflows/ci.yml` (which runs golangci-lint and fails the build on it)?** Master has been red for two pushes because of this. I can fix the findings or fix the config, but I can't know which one you *want* — that decision shapes every future session's definition of "done".~~ ANSWERED 2026-09-07: lint is advisory (`continue-on-error`), AGENTS.md documents the policy — see the 19:33 report.
+2. ~~**Should any of section (f) be harvested into `TODO_LIST.md`?** Guardrail #4 of the round-3 plan says this repo's TODO_LIST is deliberately agent-pool food in a repo with no `.crushrc`, so enqueueing items costs real money and collides with concurrent agents — but the skill contract says a status report's next-steps list belongs in TODO_LIST, not entombed here. Policy call: harvest for humans only, harvest for the pool, or keep the plan-doc-only convention one more round?~~ ANSWERED 2026-09-07: the owner directed a docs-health AUDIT/HARVEST run; verified open items are routed into TODO_LIST.md (owner-gated ones carry the `— BLOCKED:` marker, which the harvester now honors) and the rest into ROADMAP.md.
+3. ~~**Push now?** The planning commit was pushed under your explicit instruction; this execution round ends in commits on local `master` (`c367bff` head). I did not push without a fresh instruction — confirm and I'll push (and then watch the CI run, which is also the first real exercise of the new CI smoke step).~~ MOOT 2026-09-07: the auto-commit daemon pushed `0c3bf86` the same hour; master went red, then green again after the follow-up session (19:33 report).
 
 ---
 

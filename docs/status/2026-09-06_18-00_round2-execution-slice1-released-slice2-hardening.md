@@ -71,51 +71,51 @@ D01–D100) end to end: READ → execute → verify per task, one step at a time
 
 **Finish slice 2 (immediate):**
 
-1. C06/D22–D24 — multi-repo live smoke: 3 scratch repos, 2 `--project-exclusive` pools, stub agents; assert no double-run per repo + captured log.
-2. D38 — README `.tq-verify` snippet (verify strategy table).
-3. D44 — daemon docs: README + AGENTS (`--once`, systemd unit, cron example).
-4. D25 — budget design note → goes into ADR-0002 when written (next slice).
-5. Docs sync pass 1: TODO_LIST checkboxes for D01–D44, FEATURES rows (error classes, exclusivity, preflight requeue, `.tq-verify`, budgets, `--once`), CHANGELOG `[Unreleased]`.
+1. ~~C06/D22–D24 — multi-repo live smoke: 3 scratch repos, 2 `--project-exclusive` pools, stub agents; assert no double-run per repo + captured log.~~ done (scripts/smoke/multi-repo.sh (18:34 report))
+2. ~~D38 — README `.tq-verify` snippet (verify strategy table).~~ done (README verify-strategy ladder)
+3. ~~D44 — daemon docs: README + AGENTS (`--once`, systemd unit, cron example).~~ done (README daemon section + deploy/systemd unit)
+4. ~~D25 — budget design note → goes into ADR-0002 when written (next slice).~~ done (absorbed into docs/adr/0002)
+5. ~~Docs sync pass 1: TODO_LIST checkboxes for D01–D44, FEATURES rows (error classes, exclusivity, preflight requeue, `.tq-verify`, budgets, `--once`), CHANGELOG `[Unreleased]`.~~ done (superseded by the 18:34/19:49 docs passes)
 
 **Slice 3 (proof + observability):**
-6. D45–D47 / C13 — crush session id into result detail, rendered by `tq show`.
-7. D48–D50 / C14 — `tq top` live per-project view over facts.
-8. D51–D52 / C15 — docs-drift auditor: done-in-code but unchecked TODO items → enqueue catch-up.
-9. D53–D55 / C16 — E2E subprocess test: build tq, spawn agent-pool with `$TQ_AGENT_BIN` stub, full loop in-test; wire into CI (no API cost).
-10. D56–D58 / C17 — property test (dedup keys stable/collision-free) + fuzz `ParseRepo` (CRLF/BOM/nesting), fix findings, document parser contract.
-11. D59–D60 / C18 — chaos: SIGKILL pool mid-run → lease reclaim observable in facts; no-double-complete invariant test.
-12. D61–D62 / C19 — Windows path audit in harvest (GOOS=windows test build) + i18n hash vectors.
-13. Re-verify D18 — pkg.go.dev indexed; tick the checklist box.
-14. Push this session's commits (currently only local? — verify `git status` vs origin before continuing).
+6. ~~D45–D47 / C13 — crush session id into result detail, rendered by `tq show`.~~ done (shipped (C13, session id in result detail))
+7. ~~D48–D50 / C14 — `tq top` live per-project view over facts.~~ done (shipped (C14, tq top))
+8. ~~D51–D52 / C15 — docs-drift auditor: done-in-code but unchecked TODO items → enqueue catch-up.~~ done (shipped (C15, tq audit))
+9. ~~D53–D55 / C16 — E2E subprocess test: build tq, spawn agent-pool with `$TQ_AGENT_BIN` stub, full loop in-test; wire into CI (no API cost).~~ done (shipped (C16, internal/e2e))
+10. ~~D56–D58 / C17 — property test (dedup keys stable/collision-free) + fuzz `ParseRepo` (CRLF/BOM/nesting), fix findings, document parser contract.~~ done (shipped (C17, property + fuzz))
+11. ~~D59–D60 / C18 — chaos: SIGKILL pool mid-run → lease reclaim observable in facts; no-double-complete invariant test.~~ done (shipped (C18, chaos test))
+12. ~~D61–D62 / C19 — Windows path audit in harvest (GOOS=windows test build) + i18n hash vectors.~~ done (shipped (C19, windows gate + golden i18n vectors))
+13. ~~Re-verify D18 — pkg.go.dev indexed; tick the checklist box.~~ done (pkg.go.dev serves v0.1.0 (verified 2026-09-07))
+14. ~~Push this session's commits (currently only local? — verify `git status` vs origin before continuing).~~ done (pushed; master CI green (19:33 report))
 
 **Slice 4 (docs, bridges, seeds):**
-15. D63–D65 / C20 — `docs/DOMAIN_LANGUAGE.md` (≥15 terms: task, fact, claim, lease, harvest, dedup key, preflight, poisoned repo, budget guard…), bounded contexts, links from AGENTS/README.
-16. D66–D67 / C21 — ADR-0002: agent-pool architecture, autonomy/trust model, drain semantics, **budget design** (D25), exclusivity tradeoffs; cross-check vs code.
-17. D68–D70 / C22 — `doc.go` for queue/worker/executor/harvest/journal/budget + godoc examples; `go doc` clean pass (also unblocks pkg.go.dev quality).
-18. D71–D72 / C23 — SECURITY.md (autonomy grants, blast radius of `bash`, budget ceilings) + pool-start warning when a repo grants unsandboxed bash.
-19. D78 / C26 — golangci-lint: decide gate-or-drop; if gate: config with errcheck exclusions for idiomatic `defer Close` and make CI honest.
-20. D79 / C26 — dprint in devShell + one formatted pass over docs.
+15. ~~D63–D65 / C20 — `docs/DOMAIN_LANGUAGE.md` (≥15 terms: task, fact, claim, lease, harvest, dedup key, preflight, poisoned repo, budget guard…), bounded contexts, links from AGENTS/README.~~ done (docs/DOMAIN_LANGUAGE.md)
+16. ~~D66–D67 / C21 — ADR-0002: agent-pool architecture, autonomy/trust model, drain semantics, **budget design** (D25), exclusivity tradeoffs; cross-check vs code.~~ done (docs/adr/0002)
+17. ~~D68–D70 / C22 — `doc.go` for queue/worker/executor/harvest/journal/budget + godoc examples; `go doc` clean pass (also unblocks pkg.go.dev quality).~~ done (package docs + godoc examples (house style))
+18. ~~D71–D72 / C23 — SECURITY.md (autonomy grants, blast radius of `bash`, budget ceilings) + pool-start warning when a repo grants unsandboxed bash.~~ done (SECURITY.md)
+19. ~~D78 / C26 — golangci-lint: decide gate-or-drop; if gate: config with errcheck exclusions for idiomatic `defer Close` and make CI honest.~~ done (decided advisory (ci.yml continue-on-error, 19:33 report))
+20. ~~D79 / C26 — dprint in devShell + one formatted pass over docs.~~ done (dprint in flake devShell + docs pass)
 21. D76–D77 / C25 — CQA live verification (BLOCKED on owner: instance URL + owner id + token); upgrade FEATURES row after.
-22. D73 / C24 — PapDashboard E2E script (docker pap + tq worker `--alert-url`), run once green.
-23. D74 / C24 — decision→question fan-out design note (docs/planning).
-24. D75 / C24 — SSE fan-out PoC (`tq tail -f` → HTTP stream, `curl` shows live facts).
-25. D82 — internal→public decision note (which packages, when, what breaks).
-26. D80 — Postgres spike: schema + `FOR UPDATE SKIP LOCKED` claim sketch (docs/planning).
-27. D81 — HTTP API thin-wrapper PoC over Store (curl enqueue works).
+22. ~~D73 / C24 — PapDashboard E2E script (docker pap + tq worker `--alert-url`), run once green.~~ done (scripts/smoke/papdashboard-e2e.sh (stub mode; real-mode debt 19:49))
+23. ~~D74 / C24 — decision→question fan-out design note (docs/planning).~~ done (docs/planning/2026-09-06_decision-question-fanout.md)
+24. ~~D75 / C24 — SSE fan-out PoC (`tq tail -f` → HTTP stream, `curl` shows live facts).~~ done (examples/sse; superseded by tq serve (round 3))
+25. ~~D82 — internal→public decision note (which packages, when, what breaks).~~ done (decision recorded in the seeds doc (D82))
+26. ~~D80 — Postgres spike: schema + `FOR UPDATE SKIP LOCKED` claim sketch (docs/planning).~~ done (SQL sketch in the seeds doc (D80))
+27. ~~D81 — HTTP API thin-wrapper PoC over Store (curl enqueue works).~~ done (examples/api PoC)
 28. D83 — cron recurring tasks PoC (dedup-keyed re-enqueue).
-29. D84 — structured result payload `{files_changed, commit_sha}`: schema + writer + reader.
-30. D85 — output sidecar: full stdout to file, path in result detail.
-31. D86 — Prometheus metrics endpoint over facts.
-32. D87 — `tq harvest --json` + `--repo-subset` glob.
-33. D88 — `tq dlq --rescue-all --older-than`.
-34. D89 — guard: refuse `--projects-dir /` and `$HOME` with a clear error.
+29. ~~D84 — structured result payload `{files_changed, commit_sha}`: schema + writer + reader.~~ done (internal/executor/result.go (TQ_RESULT))
+30. ~~D85 — output sidecar: full stdout to file, path in result detail.~~ done (TQ_LOG_DIR sidecar in internal/executor/agent.go)
+31. ~~D86 — Prometheus metrics endpoint over facts.~~ done (examples/api /metrics (PoC))
+32. ~~D87 — `tq harvest --json` + `--repo-subset` glob.~~ done (tq harvest --json + --repo-subset)
+33. ~~D88 — `tq dlq --rescue-all --older-than`.~~ done (tq dlq --rescue-all --older-than)
+34. ~~D89 — guard: refuse `--projects-dir /` and `$HOME` with a clear error.~~ done (--projects-dir / and $HOME refused)
 35. D90 — per-repo-size timeout defaults.
 36. D91 — crush rate-limit + version detection at pool start.
-37. D92 — PR-mode PoC (branch + `gh pr create` in a scratch repo).
-38. D93 — worktree isolation PoC (agent touches worktree only).
+37. ~~D92 — PR-mode PoC (branch + `gh pr create` in a scratch repo).~~ done (scripts/poc/pr-mode.sh (real PRs = owner decision, ROADMAP))
+38. ~~D93 — worktree isolation PoC (agent touches worktree only).~~ done (scripts/poc/worktree-isolation.sh)
 39. D94 — session chains via `AgentPayload.Session`.
-40. D95 — web UI spike over facts projection.
-41. D96 — DB rotation/backup guidance doc.
+40. ~~D95 — web UI spike over facts projection.~~ done (productionized as tq serve (round 3))
+41. ~~D96 — DB rotation/backup guidance doc.~~ done (seeds doc (D96) backup/rotation guidance)
 42. D97 — cross-repo DAG templates in harvest.
 43. D98 — ai-task-prioritizer hook writing `priority`.
 44. D99 — smart retry: error-class → policy mapping (build on C01 classes).
@@ -123,10 +123,10 @@ D01–D100) end to end: READ → execute → verify per task, one step at a time
 
 **Close-out:**
 46. C04 follow-up — decide and cut **v0.2.0** (slices 2–4 are additive but the store interface grew `FailPermanent`/`Requeue`).
-47. Annotate the three open owner questions still in ROADMAP (cancelled-dedup semantics, pool-manages-this-repo, cost ceiling default) with the session's new context.
-48. Update the round-2 plan status header: PLANNED → EXECUTING (slice 1 ✅, slice 2 ✅-ish, …).
+47. ~~Annotate the three open owner questions still in ROADMAP (cancelled-dedup semantics, pool-manages-this-repo, cost ceiling default) with the session's new context.~~ done (the three questions live in ROADMAP Open questions)
+48. ~~Update the round-2 plan status header: PLANNED → EXECUTING (slice 1 ✅, slice 2 ✅-ish, …).~~ done (round-2 plan header annotated EXECUTED (docs-health pass 2026-09-07))
 49. Consider `--all-systems` nix flake check on CI (currently warns aarch64/darwin are unchecked).
-50. Retire/rotate the `/tmp/tq-*` smoke fixtures into `scripts/smoke/` fixtures (they live in /tmp today).
+50. ~~Retire/rotate the `/tmp/tq-*` smoke fixtures into `scripts/smoke/` fixtures (they live in /tmp today).~~ done (scripts/smoke/ owns the fixtures)
 
 ## g) QUESTIONS ONLY YOU CAN ANSWER
 
