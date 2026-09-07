@@ -39,9 +39,12 @@ nix build && nix flake check   # reproducible build + vendor-hash gate
 
 golangci-lint (`golangci-lint run ./...`, config `.golangci.yml`) runs
 advisory in CI (non-blocking): the repo carries a ~400-finding baseline
-(documented in AGENTS.md). Don't add new findings in code you touch, and
-fixing the findings of a function you are already editing is welcome —
-never mass-"fix" the baseline.
+(documented in AGENTS.md). The full run is log-only — golangci-lint v2
+emits no GitHub annotation commands — but `scripts/lint-annotations.sh`
+re-runs it scoped to `--new-from-rev`, so findings on lines you changed
+surface as `::warning` CI annotations on green runs. Don't add new
+findings in code you touch, and fixing the findings of a function you are
+already editing is welcome — never mass-"fix" the baseline.
 
 After editing any `.templ` source, regenerate the committed output:
 `go tool templ generate` (generated `*_templ.go` files are committed, and

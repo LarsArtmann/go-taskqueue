@@ -19,15 +19,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   parser cannot drift silently.
 - The CI lint step (golangci-lint) is advisory (`continue-on-error`): the
   enabled linter set carries a ~400-finding repo-wide baseline that kept
-  master permanently red and buried real signal. Findings stay visible as
-  CI annotations; the hard gates are vet, gofmt, tests, the web UI smoke
-  and the doc-reference check. Generated `*_templ.go` output is excluded
+  master permanently red and buried real signal. The full run is log-only;
+  the hard gates are vet, gofmt, tests, the web UI smoke and the
+  doc-reference check. Generated `*_templ.go` output is excluded
   from lint and from the treefmt/gofumpt gate (`templ fmt` owns the
   `.templ` sources); CLI dispatch (`main`), `cmdAudit` and the papdashboard
   watermark startup were cleaned up where the baseline pointed at real
   complexity/context bugs.
 
 ### Added
+
+- Lint annotations for new findings: golangci-lint v2 emits no GitHub
+  annotation commands (the v1 `github-actions` output format is gone), so
+  the advisory lint run never actually surfaced findings as annotations —
+  and the ~400-finding baseline would exceed GitHub's 10-warnings-per-step
+  cap anyway. A new CI step (`scripts/lint-annotations.sh`, mirrored in
+  `ci-local.sh`) re-runs the same binary and config scoped to
+  `--new-from-rev` and emits findings on changed lines as `::warning`
+  annotations, so regressions a commit introduces show up on green runs
+  (verified empirically on v2.13.2: default output produces zero annotation
+  commands even with `GITHUB_ACTIONS=true`).
 
 - Live web dashboard: `tq serve` (default `127.0.0.1:8090`, read-only)
   renders status cards, a live task table, the DLQ, per-project chips and
