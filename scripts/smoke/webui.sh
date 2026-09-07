@@ -9,8 +9,16 @@ TMP="$(mktemp -d)"
 PORT="${WEBUI_SMOKE_PORT:-8095}"
 trap 'kill "${WORKER_PID:-0}" "${SERVE_PID:-0}" 2>/dev/null || true; rm -rf "$TMP"' EXIT
 
-echo "== build tq"
-go build -o "$TMP/tq" ./cmd/tq
+# TQ_BIN points at a prebuilt binary (e.g. the nix-built result/bin/tq);
+# unset, the script builds from source with `go build`.
+if [ -n "${TQ_BIN:-}" ]; then
+	echo "== using prebuilt tq: $TQ_BIN"
+	cp "$TQ_BIN" "$TMP/tq"
+	chmod +x "$TMP/tq"
+else
+	echo "== build tq"
+	go build -o "$TMP/tq" ./cmd/tq
+fi
 
 echo "== seed tasks"
 export TQ_DB="$TMP/tasks.db"
