@@ -65,7 +65,7 @@
 | enqueue / worker / stats / top / audit / show / dlq / cancel / facts / tail | 🟢 `FULLY_FUNCTIONAL` | `tq worker` runs until signalled (no one-shot mode); `tq facts` renders the dead-letter error class          |
 | `tq show` — task + full fact trail                                          | 🟢 `FULLY_FUNCTIONAL` | Completed agent tasks record session id + verify tail in `task.completed`; `tq show` renders the whole trail |
 | `tq top` — live per-project view                                            | 🟢 `FULLY_FUNCTIONAL` | Counts + last-run/active durations from the journal; `--once`, `--json`, terminal repaint                    |
-| `tq audit` — docs-drift auditor                                             | 🟢 `FULLY_FUNCTIONAL` | stale-open repaired by enqueue-once catch-up tasks; stale-done reported; dry-run mode                        |
+| `tq audit` — docs-drift auditor                                             | 🟢 `FULLY_FUNCTIONAL` | stale-open repaired by enqueue-once catch-up tasks; stale-done reported; `--dry-run`, `--json`, harvest-parity `--todo-file`/`--type`/`--max-attempts` |
 | `tq dlq --rescue-all --older-than`                                          | 🟢 `FULLY_FUNCTIONAL` | Bulk rescue after a human decision; `--older-than` gates on dead duration                                    |
 | `tq harvest --json` / `--repo-subset`                                       | 🟢 `FULLY_FUNCTIONAL` | JSON result output; glob filter over discovered repos                                                        |
 | harvest / agent-pool                                                        | 🟢 `FULLY_FUNCTIONAL` | See Agent pool; `--dry-run` for preview; `--model`, `--once`, cost ceilings                                  |
