@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 
 	"github.com/a-h/templ"
@@ -106,7 +107,7 @@ func clearQuery(f FilterState) string {
 }
 
 func filterURL(f FilterState, clear func(FilterState) string) string {
-	return templ.URL(clear(f)).String()
+	return clear(f)
 }
 
 func filterHref(f FilterState) string {
@@ -148,7 +149,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 		Now:    now,
 	}
 
-	all, err := s.store.List(ctx, queueFilterAll())
+	all, err := s.store.List(ctx, queue.Filter{})
 	if err != nil {
 		return data, err
 	}
@@ -188,12 +189,6 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	return data, nil
 }
 
-// queueFilterAll lists everything; filtering happens in-memory so search
-// (payload substring) can reuse one query.
-func queueFilterAll() interface{} {
-	return nil // placeholder, replaced below
-}
-
 func matchesFilter(t task.Task, f FilterState) bool {
 	if f.Project != "" && t.Project != f.Project {
 		return false
@@ -217,7 +212,7 @@ func matchesQuery(t task.Task, q string) bool {
 		t.ID.String(),
 		t.Type,
 		t.Project,
-		t.Payload,
+		string(t.Payload),
 		t.LeaseOwner,
 		t.LastError,
 	}
@@ -230,7 +225,6 @@ func matchesQuery(t task.Task, q string) bool {
 
 	return false
 }
-
 // sortTasks orders by status severity (dead, running, pending, cancelled,
 // completed), then age descending (newest first within a status).
 func sortTasks(tasks []task.Task) []task.Task {

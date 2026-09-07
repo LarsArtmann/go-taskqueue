@@ -49,6 +49,7 @@ Usage:
   tq cancel TASK_ID [--db PATH]
   tq facts [--db PATH] [--after SEQ]
   tq tail [-f] [--db PATH] [--after SEQ]
+  tq serve [--addr ADDR] [--db PATH] [--poll DUR]
 
 Default database: $TQ_DB or ./tasks.db
 `
@@ -86,6 +87,8 @@ func main() {
 		err = cmdFacts(os.Args[2:])
 	case "tail":
 		err = cmdTail(os.Args[2:])
+	case "serve":
+		err = cmdServe(os.Args[2:])
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 	default:
