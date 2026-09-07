@@ -344,10 +344,10 @@ func factBadgeClass(t journal.FactType) string {
 	case journal.Claimed:
 		return "running"
 	case journal.Enqueued, journal.Heartbeat, journal.Released, journal.Requeued:
-		return "pending"
+		return badgePending
 	}
 
-	return "pending"
+	return badgePending
 }
 
 // renderComponent renders a templ component to an HTML string.
@@ -366,6 +366,9 @@ type fragment struct {
 	ID   string `json:"id"`
 	HTML string `json:"html"`
 }
+
+// Badge class shared with the status CSS classes.
+const badgePending = "pending"
 
 // Fragment container ids shared by the page layout, the SSE payloads and
 // the client JS.

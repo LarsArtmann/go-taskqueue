@@ -116,6 +116,7 @@ func TestHubFanOut(t *testing.T) {
 	hub := NewHub()
 
 	var wg sync.WaitGroup
+	var gotMu sync.Mutex
 
 	got := make([][]sseEvent, 3)
 	for i := range got {
@@ -124,6 +125,8 @@ func TestHubFanOut(t *testing.T) {
 			defer hub.Unsubscribe(ch)
 
 			evt := <-ch
+			gotMu.Lock()
+			defer gotMu.Unlock()
 			got[i] = []sseEvent{{typ: evt.Event, id: evt.ID.Get()}}
 		})
 	}
@@ -143,12 +146,15 @@ type sseEvent struct {
 	typ, id string
 }
 
-const testTickEvent = "tick"
+const (
+	testTickEvent = "tick"
+	testFragEvent = "frag"
+)
 
 func TestTailNotifiesOnNewFacts(t *testing.T) {
 	srv, s := newTestServer(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	tailDone := make(chan struct{})
@@ -193,7 +199,7 @@ func TestSSEFullSnapshotOnConnect(t *testing.T) {
 
 	for _, evt := range events {
 		switch evt.Type {
-		case "frag":
+		case testFragEvent:
 			var frag fragment
 			if err := json.Unmarshal([]byte(evt.Data()), &frag); err != nil {
 				t.Fatalf("decode frag: %v", err)
@@ -221,7 +227,7 @@ func TestSSEFullSnapshotOnConnect(t *testing.T) {
 	}
 
 	for _, evt := range events {
-		if evt.Type == "frag" && strings.Contains(evt.Data(), tk.ID.String()) {
+		if evt.Type == testFragEvent && strings.Contains(evt.Data(), tk.ID.String()) {
 			return // table fragment carries the enqueued task
 		}
 	}
@@ -255,7 +261,7 @@ func TestSSELiveUpdateAfterEnqueue(t *testing.T) {
 
 	sawProject := false
 	for _, evt := range events {
-		if evt.Type == "frag" && strings.Contains(evt.Data(), "live-project") {
+		if evt.Type == testFragEvent && strings.Contains(evt.Data(), "live-project") {
 			sawProject = true
 		}
 	}
@@ -346,7 +352,7 @@ func TestResumeAfterFactsBacklog(t *testing.T) {
 		var tableFrag string
 
 		for _, evt := range events {
-			if evt.Type == "frag" {
+			if evt.Type == testFragEvent {
 				var frag fragment
 				if err := json.Unmarshal([]byte(evt.Data()), &frag); err != nil {
 					t.Fatalf("decode: %v", err)
@@ -386,25 +392,17 @@ func TestConcurrentClientsRace(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := range 3 {
-		wg.Add(1)
-
-		go func(i int) {
-			defer wg.Done()
-
+	for range 3 {
+		wg.Go(func() {
 			_ = ssetest.CollectWithTimeout(t, handler, 100*time.Millisecond, ssetest.WithPath("/api/events"))
-		}(i)
+		})
 	}
 
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-
+	wg.Go(func() {
 		for j := range 10 {
 			enqueue(t, s, "sh", fmt.Sprintf("race-%d", j))
 		}
-	}()
+	})
 
 	wg.Wait()
 }

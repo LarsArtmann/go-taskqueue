@@ -6,6 +6,8 @@
 //
 // The package cannot mutate the queue: the worst failure is a stale
 // dashboard, never journal corruption.
+//
+//nolint:godoclint // templ-generated _templ.go files also carry package-adjacent comments; counted at package scope
 package webui
 
 import (
