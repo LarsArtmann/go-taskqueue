@@ -39,6 +39,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   script runs under a private `GOCACHE` because on shared-cache mounts the
   fuzz corpus never lands; a crasher found by a campaign stays a red job
   (content dumped to the log) and is never committed.
+- `FuzzExtractResultPayload` (`internal/executor/result_fuzz_test.go`): the
+  `TQ_RESULT:` regex + JSON decode parse fully untrusted agent output, so they
+  now have a fuzz target (never panics, deterministic, `ok` implies a marker
+  line) with a committed 183-input seed corpus under
+  `internal/executor/testdata/fuzz/FuzzExtractResultPayload` — initial 60s
+  campaign: ~6.3M execs, zero findings; every seed also runs as a test case
+  on each `go test`.
 - Lint annotations for new findings: golangci-lint v2 emits no GitHub
   annotation commands (the v1 `github-actions` output format is gone), so
   the advisory lint run never actually surfaced findings as annotations —

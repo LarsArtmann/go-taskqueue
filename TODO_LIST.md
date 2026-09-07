@@ -36,7 +36,7 @@ them (`docs/status/<date>_<slug>.md`, cited as `(19:33 report …)` etc.).
 - [ ] D91-lite: capture `crush --version` in the pool startup line and warn when the binary is missing, so flag-contract drift surfaces early (19:49 report f19, seeds D91)
 - [ ] Wire dprint into the treefmt gate (markdown/json) or formally decide that docs formatting stays manual — today dprint is in the devShell but un-gated, so docs drift freely (19:33 report b/f12)
 - [ ] Sidecar retention: `--log-dir-max-age` / size cap for `TQ_LOG_DIR` output logs, and document that sidecars are plaintext and may contain repo paths (19:49 report f20)
-- [ ] Fuzz `ExtractResultPayload` (regex over untrusted agent output) with a seed corpus (19:49 report f18)
+- [x] Fuzz `ExtractResultPayload` (regex over untrusted agent output) with a seed corpus (19:49 report f18) — DONE 2026-09-08: `FuzzExtractResultPayload` (`internal/executor/result_fuzz_test.go`; never-panic, deterministic, ok⇒marker-line properties) plus a 183-input committed corpus under `internal/executor/testdata/fuzz/FuzzExtractResultPayload`; 60s campaign clean (~6.3M execs, zero findings), every seed runs as a test case on each `go test`
 - [ ] `tq audit --json` plus `--todo-file`/`--type`/`--max-attempts` flags for parity with `tq harvest` (19:49 report f17)
 - [ ] Free-port selection in `scripts/smoke/webui.sh` (fixed port 8095 collides on busy machines) (18:41 report f11)
 - [ ] Request-logging option for `tq serve` (`--verbose` or an slog handler) — the serve process currently logs only tailer/hub/shutdown failures (18:41 report f12)
