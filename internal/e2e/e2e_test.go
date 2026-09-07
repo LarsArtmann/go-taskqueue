@@ -1,3 +1,8 @@
+//go:build unix
+
+// The e2e suite drives stub executables with #!/bin/sh shebangs — POSIX
+// only. The unix build tag keeps the GOOS=windows compile gate from
+// implying runtime coverage these tests do not have.
 package e2e
 
 import (

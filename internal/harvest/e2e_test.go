@@ -1,3 +1,8 @@
+//go:build unix
+
+// This e2e test writes a #!/bin/sh stub agent binary — POSIX only. The unix
+// build tag keeps the GOOS=windows compile gate from implying runtime
+// coverage this test does not have.
 package harvest
 
 import (

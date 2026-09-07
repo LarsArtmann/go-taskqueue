@@ -1,3 +1,8 @@
+//go:build unix
+
+// Chaos tests SIGKILL worker processes and run #!/bin/sh stub executables —
+// POSIX only. The unix build tag keeps the GOOS=windows compile gate from
+// implying runtime coverage these tests do not have.
 package e2e
 
 import (
