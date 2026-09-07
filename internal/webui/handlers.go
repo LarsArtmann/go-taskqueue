@@ -49,12 +49,12 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(map[string]any{
-		badgePending: data.Counts[task.Pending],
-		"running":    data.Counts[task.Running],
-		"completed":  data.Counts[task.Completed],
-		"dead":       data.Counts[task.Dead],
-		"cancelled":  data.Counts[task.Cancelled],
-		"total":      data.Total,
+		badgePending:   data.Counts[task.Pending],
+		labelRunning:   data.Counts[task.Running],
+		labelCompleted: data.Counts[task.Completed],
+		labelDead:      data.Counts[task.Dead],
+		labelCancelled: data.Counts[task.Cancelled],
+		labelTotal:     data.Total,
 	}); err != nil {
 		slog.Error("webui: encode stats", "err", err)
 	}

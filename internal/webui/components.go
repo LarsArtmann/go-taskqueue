@@ -57,17 +57,17 @@ func factTone(t journal.FactType) display.ScrollbackTone {
 func factLines(data DashboardData) []display.ScrollbackLine {
 	lines := make([]display.ScrollbackLine, 0, len(data.Facts))
 
-	for _, f := range data.Facts {
-		text := "#" + formatInt(int(f.Seq)) + " " + shortIDTail(f.TaskID)
-		if f.Error != "" {
-			text += " " + truncate(f.Error, errorPreviewLen)
+	for _, fact := range data.Facts {
+		text := "#" + formatInt(int(fact.Seq)) + " " + shortIDTail(fact.TaskID)
+		if fact.Error != "" {
+			text += " " + truncate(fact.Error, errorPreviewLen)
 		}
 
 		lines = append(lines, display.ScrollbackLine{
-			Timestamp: factTimestamp(data.Now, f.Time),
-			Tag:       string(f.Type),
+			Timestamp: factTimestamp(data.Now, fact.Time),
+			Tag:       string(fact.Type),
 			Text:      text,
-			Tone:      factTone(f.Type),
+			Tone:      factTone(fact.Type),
 		})
 	}
 
@@ -86,19 +86,20 @@ func factTimestamp(now, t time.Time) string {
 
 // Shared column/label vocabulary (table headers, stat labels, detail terms).
 const (
-	labelProject  = "project"
-	labelType     = "type"
-	labelStatus   = "status"
-	labelAttempts = "attempts"
-	labelAge      = "age"
-	labelError    = "last error"
-	labelID       = "id"
-	labelPending  = "pending"
-	labelRunning  = "running"
-	labelTotal    = "total"
+	labelProject   = "project"
+	labelType      = "type"
+	labelStatus    = "status"
+	labelAttempts  = "attempts"
+	labelAge       = "age"
+	labelError     = "last error"
+	labelID        = "id"
+	labelPending   = "pending"
+	labelRunning   = "running"
+	labelCompleted = "completed"
+	labelTotal     = "total"
+	labelDead      = "dead"
+	labelCancelled = "cancelled"
 )
-
-const labelCompleted = "completed"
 
 // detailItems builds the task detail page's definition list.
 func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
@@ -117,7 +118,10 @@ func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
 	}
 
 	if t.CompletedAt != nil {
-		items = append(items, display.DefinitionItem{Term: labelCompleted, Detail: timeAgo(now, *t.CompletedAt) + " ago"})
+		items = append(items, display.DefinitionItem{
+			Term:   labelCompleted,
+			Detail: timeAgo(now, *t.CompletedAt) + " ago",
+		})
 	}
 
 	items = append(items, display.DefinitionItem{Term: "payload", DetailComponent: payloadCode(string(t.Payload))})
@@ -129,21 +133,21 @@ func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
 func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLine {
 	lines := make([]display.ScrollbackLine, 0, len(facts))
 
-	for _, fv := range facts {
-		text := "#" + formatInt(int(fv.Seq))
-		if fv.Owner != "" {
-			text += " " + fv.Owner
+	for _, fact := range facts {
+		text := "#" + formatInt(int(fact.Seq))
+		if fact.Owner != "" {
+			text += " " + fact.Owner
 		}
 
-		if fv.Error != "" {
-			text += " " + truncate(fv.Error, errorPreviewLen)
+		if fact.Error != "" {
+			text += " " + truncate(fact.Error, errorPreviewLen)
 		}
 
 		lines = append(lines, display.ScrollbackLine{
-			Timestamp: factTimestamp(now, fv.Time),
-			Tag:       string(fv.Type),
+			Timestamp: factTimestamp(now, fact.Time),
+			Tag:       string(fact.Type),
 			Text:      text,
-			Tone:      factTone(fv.Type),
+			Tone:      factTone(fact.Type),
 		})
 	}
 
