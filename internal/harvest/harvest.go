@@ -210,14 +210,6 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 		return
 	}
 
-	for _, it := range items {
-		if reason, blocked := blockedReason(it.Text); blocked {
-			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "blocked: " + reason})
-
-			continue
-		}
-	}
-
 	busy := false
 	known := make(map[string]task.Status, len(tasks))
 
@@ -261,6 +253,12 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 	enqueuedThisRepo := false
 
 	for _, it := range items {
+		if reason, blocked := blockedReason(it.Text); blocked {
+			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "blocked: " + reason})
+
+			continue
+		}
+
 		switch {
 		case it.Key != "" && known[it.Key] != "":
 			reason := "tracked: " + string(known[it.Key])
@@ -314,6 +312,23 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			}
 		}
 	}
+}
+
+// blockedReason reports the "BLOCKED: <reason>" suffix that the agent
+// contract (DefaultPromptTemplate) and the TODO_LIST header define for items
+// a human must unblock; ok is true when the item must not be harvested.
+func blockedReason(text string) (reason string, ok bool) {
+	i := strings.Index(text, "BLOCKED:")
+	if i < 0 {
+		return "", false
+	}
+
+	reason = strings.TrimSpace(text[i+len("BLOCKED:"):])
+	if reason == "" {
+		reason = "no reason given"
+	}
+
+	return reason, true
 }
 
 func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {

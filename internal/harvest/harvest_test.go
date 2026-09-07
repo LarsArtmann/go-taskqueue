@@ -145,6 +145,30 @@ func TestDiscoverRepos(t *testing.T) {
 
 const plainFileName = "plain-file-ignored"
 
+// TestRunSkipsBlockedItems pins the TODO_LIST "BLOCKED: <reason>" convention
+// from the agent contract: when an agent cannot finish an item it appends the
+// marker, and the next harvest tick must not spend another agent run on it.
+func TestRunSkipsBlockedItems(t *testing.T) {
+	q := openQueue(t)
+	dir := t.TempDir()
+	writeRepo(t, dir, "alpha", "## Work\n\n- [ ] do the thing\n- [ ] waiting on credentials — BLOCKED: needs owner API token\n")
+
+	h := New(q, Config{ProjectsDir: dir})
+
+	res, err := h.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "do the thing" {
+		t.Fatalf("enqueued = %+v, want only 'do the thing'", res.Enqueued)
+	}
+
+	if !hasSkip(res, "blocked: needs owner API token") {
+		t.Fatalf("skips = %+v, want the blocked item skipped with its reason", res.Skipped)
+	}
+}
+
 func TestRunEnqueuesOneItemPerRepoPerTick(t *testing.T) {
 	q := openQueue(t)
 	dir := t.TempDir()
