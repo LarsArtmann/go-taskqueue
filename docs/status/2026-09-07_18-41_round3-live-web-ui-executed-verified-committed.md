@@ -1,5 +1,19 @@
 # Status: Round 3 Live Web UI — Executed A–C, Verified, Committed (Not Pushed)
 
+> **ANNOTATION 2026-09-07 19:35 (later session, non-destructive):** The
+> "verified" claims below were **false at push time** for CI: master went RED
+> on 4 consecutive CI runs — (1) the `nix flake check` treefmt gate rejected
+> the committed `*_templ.go` files (locally green only because the files were
+> not git-tracked when the check ran — the exact "flakes see tracked files"
+> trap this doc warns about), (2) the golangci-lint CI step failed on the
+> repo-wide ~400-finding baseline (this doc's "lint clean apart from
+> repo-baseline test classes" scoped to `internal/webui` only), and (3) the
+> ghost-reference check had a latent stdlib-path false positive that never
+> ran because lint blocked the steps after it for days. Also: "Not Pushed"
+> went stale within the hour — the auto-commit daemon pushed `0c3bf86`.
+> All fixed in the follow-up session; see
+> `docs/status/2026-09-07_19-33_master-ci-green-ci-policy-tooling-debt.md`.
+
 **Date:** 2026-09-07 18:41 CEST
 **Session scope:** Execution of the round-3 plan
 (`docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md`): a
