@@ -84,13 +84,29 @@ func factTimestamp(now, t time.Time) string {
 	return t.Format("15:04:05")
 }
 
+// Shared column/label vocabulary (table headers, stat labels, detail terms).
+const (
+	labelProject  = "project"
+	labelType     = "type"
+	labelStatus   = "status"
+	labelAttempts = "attempts"
+	labelAge      = "age"
+	labelError    = "last error"
+	labelID       = "id"
+	labelPending  = "pending"
+	labelRunning  = "running"
+	labelTotal    = "total"
+)
+
+const labelCompleted = "completed"
+
 // detailItems builds the task detail page's definition list.
 func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
 	items := []display.DefinitionItem{
-		{Term: "project", Detail: t.Project},
-		{Term: "type", Detail: t.Type},
-		{Term: "status", DetailComponent: statusBadge(string(t.Status), statusBadgeType(t.Status))},
-		{Term: "attempts", Detail: formatInt(t.Attempts) + "/" + formatInt(t.MaxAttempts)},
+		{Term: labelProject, Detail: t.Project},
+		{Term: labelType, Detail: t.Type},
+		{Term: labelStatus, DetailComponent: statusBadge(string(t.Status), statusBadgeType(t.Status))},
+		{Term: labelAttempts, Detail: formatInt(t.Attempts) + "/" + formatInt(t.MaxAttempts)},
 		{Term: "priority", Detail: formatInt(t.Priority)},
 		{Term: "created", Detail: timeAgo(now, t.CreatedAt) + " ago"},
 		{Term: "updated", Detail: timeAgo(now, t.UpdatedAt) + " ago"},
@@ -101,7 +117,7 @@ func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
 	}
 
 	if t.CompletedAt != nil {
-		items = append(items, display.DefinitionItem{Term: "completed", Detail: timeAgo(now, *t.CompletedAt) + " ago"})
+		items = append(items, display.DefinitionItem{Term: labelCompleted, Detail: timeAgo(now, *t.CompletedAt) + " ago"})
 	}
 
 	items = append(items, display.DefinitionItem{Term: "payload", DetailComponent: payloadCode(string(t.Payload))})

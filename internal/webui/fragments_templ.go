@@ -231,7 +231,7 @@ func TaskTable(data DashboardData) templ.Component {
 				ctx = templ.InitializeContext(ctx)
 				templ_7745c5c3_Err = display.Table(display.TableProps{
 					Caption:     "Live task queue",
-					Headers:     []string{"id", "project", "type", "status", "attempts", "age", "last error"},
+					Headers:     []string{labelID, labelProject, labelType, labelStatus, labelAttempts, labelAge, labelError},
 					Flush:       true,
 					Hover:       true,
 					CellPadding: display.TableCellPaddingCompact,
@@ -683,7 +683,7 @@ func DeadLetterTable(data DashboardData) templ.Component {
 				ctx = templ.InitializeContext(ctx)
 				templ_7745c5c3_Err = display.Table(display.TableProps{
 					Caption:     "Dead-letter queue",
-					Headers:     []string{"id", "project", "type", "attempts", "last error"},
+					Headers:     []string{labelID, labelProject, labelType, labelAttempts, labelError},
 					Flush:       true,
 					Hover:       true,
 					CellPadding: display.TableCellPaddingCompact,
