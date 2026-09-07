@@ -19,20 +19,32 @@ go vet ./...
 go build ./...
 go test ./... -count=1 -race -timeout 120s
 test -z "$(gofmt -l .)"
-golangci-lint run ./...        # config: .golangci.yml
 GOOS=windows go build ./...    # cross-compile gate
+./scripts/smoke/webui.sh       # live web UI smoke (no browser needed)
 ./scripts/check-doc-refs.sh    # doc-cited paths must exist
 nix build && nix flake check   # reproducible build + vendor-hash gate
 ```
+
+golangci-lint (`golangci-lint run ./...`, config `.golangci.yml`) runs
+advisory in CI (non-blocking): the repo carries a ~400-finding baseline
+(documented in AGENTS.md). Don't add new findings in code you touch, and
+fixing the findings of a function you are already editing is welcome —
+never mass-"fix" the baseline.
+
+After editing any `.templ` source, regenerate the committed output:
+`go tool templ generate` (generated `*_templ.go` files are committed, and
+`templ fmt` owns `.templ` formatting in the treefmt gate).
 
 Markdown, JSON and YAML are formatted with dprint (config: `dprint.json`,
 available in the flake devShell): `dprint fmt` before you commit docs.
 
 For changes to the agent-pool loop, also run the live multi-repo smoke
-(stub agents, no API cost):
+(stub agents, no API cost), and keep `TODO_LIST.md` harvester-parseable
+(CI runs the parse guard):
 
 ```sh
 ./scripts/smoke/multi-repo.sh
+go test ./internal/harvest/ -run TestRepoTodoListParses
 ```
 
 ## Reporting Issues

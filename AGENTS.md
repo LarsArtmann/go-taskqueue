@@ -32,6 +32,13 @@ timeout 5 /tmp/tq worker --poll 100ms
 TQ_DB=/tmp/tq-smoke.db /tmp/tq stats
 ```
 
+Browser-free web UI smoke (worker + `tq serve` + HTTP/SSE assertions,
+CI-safe; wraps `serve` in `timeout` itself):
+
+```bash
+./scripts/smoke/webui.sh
+```
+
 ## Architecture
 
 Facts-first: every state change is an immutable fact in an append-only
@@ -108,7 +115,9 @@ fail with "no such column" before the ALTER runs.
   `for range n`) — do not "modernize" them back to older equivalents
 - `TODO_LIST.md` is machine-consumed by the harvester (`internal/harvest`
   parses `- [ ]` checkboxes and the nearest heading): keep that format, one
-  item per line, never convert it to tables
+  item per line, never convert it to tables. An item with `— BLOCKED:
+  <reason>` appended is skipped by the harvester (the marker the agent
+  contract tells agents to append when they cannot finish an item)
 
 ## Known Issues
 
@@ -130,6 +139,10 @@ fail with "no such column" before the ALTER runs.
   must wrap it in `timeout`/supervisor. Same for `tq serve` — it blocks
   until signalled; smoke/tests wrap it in `timeout` (see
   `scripts/smoke/webui.sh`).
+- ⚠️ **templ LSP diagnostics are false positives**: the templ/gopls LSP
+  layer reports dozens of errors/warnings against `internal/webui` while
+  `go build ./...` is green. Never trust LSP webui diagnostics — verify
+  with the CLI (build/vet/test) before acting on them.
 - ⚠️ **`tq serve` binds 127.0.0.1 by default and is read-only**: never add
   write endpoints without an explicit `--allow-writes`-style flag + CSRF
   story (ADR-0003 guardrail).
