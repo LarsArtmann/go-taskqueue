@@ -26,7 +26,7 @@
       go-standard = {
         pname = "go-taskqueue";
         version = "0.1.0";
-        vendorHash = "sha256-aeybRM0eN5dsMuqXnx/i1lkDIxfbQ7ooz7Ys/Amwi3E=";
+        vendorHash = "sha256-XMUaBdPSXWBJNni3HcMau+IWcgQKTkXntCLvRXtQmkg=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
         # templ fmt gates the .templ sources in the treefmt check (the
@@ -56,6 +56,7 @@
           pkgs.gotools
           pkgs.gofumpt
           pkgs.dprint
+          pkgs.tailwindcss_4
         ];
       };
 
@@ -86,6 +87,23 @@
             fi
             cp help.txt $out
           '';
+
+          # Recompile the web UI stylesheet into the committed, embedded
+          # static asset (dev step — the nix build just embeds the output).
+          apps.webui-css = {
+            type = "app";
+            meta.description = "Recompile internal/webui/static/app.css via tailwindcss --minify";
+            program = pkgs.writeShellApplication {
+              name = "webui-css";
+              runtimeInputs = [
+                pkgs.tailwindcss_4
+                pkgs.go
+              ];
+              text = ''
+                exec bash scripts/build-webui-css.sh
+              '';
+            };
+          };
         };
     };
 }
