@@ -6,8 +6,18 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 TMP="$(mktemp -d)"
-PORT="${WEBUI_SMOKE_PORT:-8095}"
 trap 'kill "${WORKER_PID:-0}" "${SERVE_PID:-0}" 2>/dev/null || true; rm -rf "$TMP"' EXIT
+
+# Ask the kernel for a free ephemeral port. WEBUI_SMOKE_PORT still pins an
+# explicit port; without it a fixed port collides on busy machines.
+free_port() {
+	python3 - <<'PY'
+import socket
+with socket.socket() as s:
+    s.bind(("127.0.0.1", 0))
+    print(s.getsockname()[1])
+PY
+}
 
 # TQ_BIN points at a prebuilt binary (e.g. the nix-built result/bin/tq);
 # unset, the script builds from source with `go build`.
@@ -27,6 +37,10 @@ export TQ_DB="$TMP/tasks.db"
 "$TMP/tq" enqueue --type sh --project smoke --payload 'exit 3' --max-attempts 1
 
 echo "== start worker + serve"
+# Pick the port here, not at the top: the closer to the bind, the smaller the
+# chance another process grabs the ephemeral port in between.
+PORT="${WEBUI_SMOKE_PORT:-$(free_port)}"
+echo "== serve on 127.0.0.1:$PORT"
 "$TMP/tq" worker --poll 100ms >"$TMP/worker.log" 2>&1 &
 WORKER_PID=$!
 "$TMP/tq" serve --addr "127.0.0.1:$PORT" --poll 100ms >"$TMP/serve.log" 2>&1 &
