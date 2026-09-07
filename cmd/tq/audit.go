@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"strings"
 
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -36,11 +35,7 @@ func cmdAudit(args []string) error {
 	cfg := harvest.Config{ProjectsDir: *projectsDir, DryRun: *dryRun}
 
 	if *repos != "" {
-		for r := range strings.SplitSeq(*repos, ",") {
-			if r = strings.TrimSpace(r); r != "" {
-				cfg.Repos = append(cfg.Repos, r)
-			}
-		}
+		cfg.Repos = splitRepos(*repos)
 	}
 
 	s := mustOpenDB(resolveDB(*db))
@@ -51,17 +46,20 @@ func cmdAudit(args []string) error {
 		return err
 	}
 
-	catchups := map[string]string{} // item key -> catch-up task id
-	for _, e := range res.Enqueued {
-		catchups[e.Item.Key] = e.TaskID.String()
-	}
+	printDriftReport(res, *dryRun)
 
+	return nil
+}
+
+// printDriftReport writes the drift report produced by harvest.Audit: stale
+// open checkboxes (with catch-up state), stale done ones, and the summary line.
+func printDriftReport(res harvest.DriftResult, dryRun bool) {
 	for _, d := range res.StaleOpen {
 		line := fmt.Sprintf("DRIFT  %-24s stale-open  task %s completed, checkbox open: %s",
 			d.Item.RepoName, d.TaskID, truncate(d.Item.Text, 80))
 
 		switch {
-		case *dryRun:
+		case dryRun:
 			line += "  [catch-up: dry-run, not enqueued]"
 		default:
 			line += "  [catch-up armed]"
@@ -81,6 +79,4 @@ func cmdAudit(args []string) error {
 
 	fmt.Printf("audit: %d repos, %d stale-open (%d catch-ups enqueued), %d stale-done\n",
 		res.Repos, len(res.StaleOpen), len(res.Enqueued), len(res.StaleDone))
-
-	return nil
 }

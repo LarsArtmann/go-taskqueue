@@ -61,45 +61,36 @@ func main() {
 		os.Exit(2)
 	}
 
-	var err error
+	commands := map[string]func([]string) error{
+		"enqueue":    cmdEnqueue,
+		"worker":     cmdWorker,
+		"harvest":    cmdHarvest,
+		"agent-pool": cmdAgentPool,
+		"stats":      cmdStats,
+		"audit":      cmdAudit,
+		"top":        cmdTop,
+		"show":       cmdShow,
+		"dlq":        cmdDLQ,
+		"cancel":     cmdCancel,
+		"facts":      cmdFacts,
+		"tail":       cmdTail,
+		"serve":      cmdServe,
+	}
 
-	switch os.Args[1] {
-	case "enqueue":
-		err = cmdEnqueue(os.Args[2:])
-	case "worker":
-		err = cmdWorker(os.Args[2:])
-	case "harvest":
-		err = cmdHarvest(os.Args[2:])
-	case "agent-pool":
-		err = cmdAgentPool(os.Args[2:])
-	case "stats":
-		err = cmdStats(os.Args[2:])
-	case "audit":
-		err = cmdAudit(os.Args[2:])
-	case "top":
-		err = cmdTop(os.Args[2:])
-	case "show":
-		err = cmdShow(os.Args[2:])
-	case "dlq":
-		err = cmdDLQ(os.Args[2:])
-	case "cancel":
-		err = cmdCancel(os.Args[2:])
-	case "facts":
-		err = cmdFacts(os.Args[2:])
-	case "tail":
-		err = cmdTail(os.Args[2:])
-	case "serve":
-		err = cmdServe(os.Args[2:])
+	switch name := os.Args[1]; name {
 	case "-h", "--help", "help":
 		fmt.Print(usage)
 	default:
-		fmt.Fprintf(os.Stderr, "tq: unknown command %q\n\n%s", os.Args[1], usage)
-		os.Exit(2)
-	}
+		cmd, ok := commands[name]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "tq: unknown command %q\n\n%s", name, usage)
+			os.Exit(2)
+		}
 
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "tq: %v\n", err)
-		os.Exit(1)
+		if err := cmd(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "tq: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -135,6 +126,18 @@ func resolveDB(v string) string {
 	}
 
 	return defaultDB()
+}
+
+func splitRepos(spec string) []string {
+	var repos []string
+
+	for r := range strings.SplitSeq(spec, ",") {
+		if r = strings.TrimSpace(r); r != "" {
+			repos = append(repos, r)
+		}
+	}
+
+	return repos
 }
 
 func cmdEnqueue(args []string) error {
@@ -375,12 +378,7 @@ func cmdHarvest(args []string) error {
 
 	if *repos != "" {
 		cfg.ProjectsDir = ""
-
-		for r := range strings.SplitSeq(*repos, ",") {
-			if r = strings.TrimSpace(r); r != "" {
-				cfg.Repos = append(cfg.Repos, r)
-			}
-		}
+		cfg.Repos = splitRepos(*repos)
 	} else if *repoSubset != "" {
 		found, err := harvest.DiscoverRepos(*projectsDir, cfg.TodoFile)
 		if err != nil {
@@ -545,12 +543,7 @@ func cmdAgentPool(args []string) error {
 
 	if *repos != "" {
 		cfg.ProjectsDir = ""
-
-		for r := range strings.SplitSeq(*repos, ",") {
-			if r = strings.TrimSpace(r); r != "" {
-				cfg.Repos = append(cfg.Repos, r)
-			}
-		}
+		cfg.Repos = splitRepos(*repos)
 	}
 
 	var opts []queue.StoreOption
