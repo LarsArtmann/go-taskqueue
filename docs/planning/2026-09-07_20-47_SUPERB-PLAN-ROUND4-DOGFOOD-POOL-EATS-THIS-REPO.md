@@ -108,35 +108,35 @@ now); C-rows are the pool campaign (executed serially by agents under
 exclusivity; IDs map to TODO_LIST items). Owner-gated items are NOT enqueued
 (BLOCKED) and listed for completeness.
 
-| ID  | Task                                                                                                                    | Who       | Impact | Effort | Depends | Exit criteria |
-| --- | ----------------------------------------------------------------------------------------------------------------------- | --------- | ------ | ------ | ------- | ------------- |
-| S01 | Dogfood rails: `.crushrc` (min permissions), `.tq-verify` (CI hard gates), ROADMAP OQ#1 answered inline, AGENTS.md dogfood facts | session   | 10     | 30m    | —       | files committed; docs carry no "no .crushrc" lie |
-| S02 | Plan doc (this file) + commit + push (incl. the 7 unpushed daemon commits — owner authorized push)                       | session   | 9      | 30m    | S01     | origin/master = HEAD; push watched |
-| S03 | Build `./tq`, `tq harvest --dry-run --repos ~/projects/go-taskqueue` parses 22 items (2 BLOCKED excluded)                | session   | 9      | 30m    | S02     | dry-run lists 20 enqueuable items |
-| S04 | Launch `tq agent-pool --repos ~/projects/go-taskqueue --yolo --project-exclusive --concurrency 2 --max-per-tick 3 --daily-budget 15 --repo-interval go-taskqueue=10m --dlq-backoff 30m` in background | session   | 10     | 30m    | S03     | pool process up; first tasks enqueued + claimed |
-| S05 | First autonomous completion proven live (harvest → claim → crush works → `.tq-verify` green → `[x]` → commit → completed fact) | pool      | 10     | 45m    | S04     | `tq facts` shows the full lifecycle; TODO_LIST box ticked by agent |
-| C01 | Fix papdashboard watermark ctx regression + pre-cancelled-ctx test (TODO #2)                                             | pool      | 10     | 60m    | S05     | `.tq-verify` green; regression test pinned |
-| C02 | `scripts/ci-local.sh` replicating the CI sequence + AGENTS/CONTRIBUTING wiring (TODO #1)                                 | pool      | 10     | 100m   | S05     | script runs the exact ci.yml gates; docs reference it |
-| C03 | `checks.nix-binary-runs` in flake.nix (TODO #3)                                                                          | pool      | 9      | 30m    | S05     | `nix flake check` executes the built binary |
-| C04 | Fix `papdashboard-e2e.sh` real-dashboard mode (TODO #6)                                                                  | pool      | 8      | 60m    | S05     | PAP_URL mode no longer greps the stub log |
-| C05 | `harvest.Audit` per-repo failure reporting + lying comment fix (TODO #7)                                                 | pool      | 8      | 45m    | S05     | scan failures surface as Skipped entries; tests |
-| C06 | cmd/tq cyclop: extract `cmdHarvest` (TODO #8a)                                                                           | pool      | 7      | 60m    | S05     | cyclop ≤ threshold; behavior unchanged |
-| C07 | cmd/tq cyclop: `aggregateTop`, `cmdStats`, `cmdDLQ` (TODO #8b)                                                           | pool      | 7      | 100m   | C06     | same pattern; `-race` green |
-| C08 | CLI-level tests: audit golden output, dispatch exit codes, `splitRepos` tables (TODO #9)                                 | pool      | 8      | 100m   | S05     | new tests in `cmd/tq`; `-race` green |
-| C09 | `tq worker --once` (TODO #10)                                                                                            | pool      | 8      | 60m    | S05     | one-shot drain mode; smoke + e2e updated |
-| C10 | Nightly fuzz job + `testdata/fuzz` corpus seeds (TODO #11)                                                               | pool      | 6      | 60m    | S05     | scheduled job config committed; seeds present |
-| C11 | `nix flake check --all-systems` + smoke the nix binary through webui.sh (TODO #12)                                       | pool      | 7      | 60m    | C03     | recorded result; smoke runs the nix binary |
-| C12 | Windows honesty: `//go:build unix` markers on POSIX-only tests (TODO #13)                                                | pool      | 6      | 60m    | S05     | compile gate no longer overclaims |
-| C13 | `TestCheckProjectsDir` unit tests (TODO #14)                                                                             | pool      | 5      | 30m    | S05     | refusal guard CI-tested |
-| C14 | D91-lite: `crush --version` in pool startup line (TODO #15)                                                              | pool      | 5      | 30m    | S05     | version logged; warn on missing binary |
-| C15 | dprint into treefmt OR a formal manual-formatting decision note (TODO #16)                                               | pool      | 4      | 30m    | S05     | one of the two outcomes committed |
-| C16 | Sidecar retention: `--log-dir-max-age`/size cap + plaintext warning (TODO #17)                                           | pool      | 5      | 60m    | S05     | flags + tests + docs |
-| C17 | Fuzz `ExtractResultPayload` + corpus (TODO #18)                                                                          | pool      | 6      | 60m    | S05     | fuzz target committed; 30s campaign clean |
-| C18 | `tq audit --json` + `--todo-file/--type/--max-attempts` (TODO #19)                                                       | pool      | 5      | 60m    | S05     | flags smoke-verified |
-| C19 | Free-port selection in `webui.sh` (TODO #20)                                                                             | pool      | 4      | 30m    | S05     | no fixed 8095; smoke green |
-| C20 | Request-logging option for `tq serve` (TODO #21)                                                                         | pool      | 4      | 45m    | S05     | `--verbose`/slog handler; smoke green |
-| C21 | Re-verify the 5 hearsay-routed TODO items against code (TODO #22)                                                        | pool      | 5      | 30m    | S05     | each item confirmed or corrected in TODO_LIST |
-| C22 | Post-run review: DLQ sweep, agent-quality vs AGENTS.md contract, `.crushrc` self-modification check, budget telemetry notes | session   | 8      | 60m    | C01+    | review notes in a status report; rescues if needed |
+| ID  | Task                                                                                                                                                                                                  | Who     | Impact | Effort | Depends | Exit criteria                                                      |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------ | ------ | ------- | ------------------------------------------------------------------ |
+| S01 | Dogfood rails: `.crushrc` (min permissions), `.tq-verify` (CI hard gates), ROADMAP OQ#1 answered inline, AGENTS.md dogfood facts                                                                      | session | 10     | 30m    | —       | files committed; docs carry no "no .crushrc" lie                   |
+| S02 | Plan doc (this file) + commit + push (incl. the 7 unpushed daemon commits — owner authorized push)                                                                                                    | session | 9      | 30m    | S01     | origin/master = HEAD; push watched                                 |
+| S03 | Build `./tq`, `tq harvest --dry-run --repos ~/projects/go-taskqueue` parses 22 items (2 BLOCKED excluded)                                                                                             | session | 9      | 30m    | S02     | dry-run lists 20 enqueuable items                                  |
+| S04 | Launch `tq agent-pool --repos ~/projects/go-taskqueue --yolo --project-exclusive --concurrency 2 --max-per-tick 3 --daily-budget 15 --repo-interval go-taskqueue=10m --dlq-backoff 30m` in background | session | 10     | 30m    | S03     | pool process up; first tasks enqueued + claimed                    |
+| S05 | First autonomous completion proven live (harvest → claim → crush works → `.tq-verify` green → `[x]` → commit → completed fact)                                                                        | pool    | 10     | 45m    | S04     | `tq facts` shows the full lifecycle; TODO_LIST box ticked by agent |
+| C01 | Fix papdashboard watermark ctx regression + pre-cancelled-ctx test (TODO #2)                                                                                                                          | pool    | 10     | 60m    | S05     | `.tq-verify` green; regression test pinned                         |
+| C02 | `scripts/ci-local.sh` replicating the CI sequence + AGENTS/CONTRIBUTING wiring (TODO #1)                                                                                                              | pool    | 10     | 100m   | S05     | script runs the exact ci.yml gates; docs reference it              |
+| C03 | `checks.nix-binary-runs` in flake.nix (TODO #3)                                                                                                                                                       | pool    | 9      | 30m    | S05     | `nix flake check` executes the built binary                        |
+| C04 | Fix `papdashboard-e2e.sh` real-dashboard mode (TODO #6)                                                                                                                                               | pool    | 8      | 60m    | S05     | PAP_URL mode no longer greps the stub log                          |
+| C05 | `harvest.Audit` per-repo failure reporting + lying comment fix (TODO #7)                                                                                                                              | pool    | 8      | 45m    | S05     | scan failures surface as Skipped entries; tests                    |
+| C06 | cmd/tq cyclop: extract `cmdHarvest` (TODO #8a)                                                                                                                                                        | pool    | 7      | 60m    | S05     | cyclop ≤ threshold; behavior unchanged                             |
+| C07 | cmd/tq cyclop: `aggregateTop`, `cmdStats`, `cmdDLQ` (TODO #8b)                                                                                                                                        | pool    | 7      | 100m   | C06     | same pattern; `-race` green                                        |
+| C08 | CLI-level tests: audit golden output, dispatch exit codes, `splitRepos` tables (TODO #9)                                                                                                              | pool    | 8      | 100m   | S05     | new tests in `cmd/tq`; `-race` green                               |
+| C09 | `tq worker --once` (TODO #10)                                                                                                                                                                         | pool    | 8      | 60m    | S05     | one-shot drain mode; smoke + e2e updated                           |
+| C10 | Nightly fuzz job + `testdata/fuzz` corpus seeds (TODO #11)                                                                                                                                            | pool    | 6      | 60m    | S05     | scheduled job config committed; seeds present                      |
+| C11 | `nix flake check --all-systems` + smoke the nix binary through webui.sh (TODO #12)                                                                                                                    | pool    | 7      | 60m    | C03     | recorded result; smoke runs the nix binary                         |
+| C12 | Windows honesty: `//go:build unix` markers on POSIX-only tests (TODO #13)                                                                                                                             | pool    | 6      | 60m    | S05     | compile gate no longer overclaims                                  |
+| C13 | `TestCheckProjectsDir` unit tests (TODO #14)                                                                                                                                                          | pool    | 5      | 30m    | S05     | refusal guard CI-tested                                            |
+| C14 | D91-lite: `crush --version` in pool startup line (TODO #15)                                                                                                                                           | pool    | 5      | 30m    | S05     | version logged; warn on missing binary                             |
+| C15 | dprint into treefmt OR a formal manual-formatting decision note (TODO #16)                                                                                                                            | pool    | 4      | 30m    | S05     | one of the two outcomes committed                                  |
+| C16 | Sidecar retention: `--log-dir-max-age`/size cap + plaintext warning (TODO #17)                                                                                                                        | pool    | 5      | 60m    | S05     | flags + tests + docs                                               |
+| C17 | Fuzz `ExtractResultPayload` + corpus (TODO #18)                                                                                                                                                       | pool    | 6      | 60m    | S05     | fuzz target committed; 30s campaign clean                          |
+| C18 | `tq audit --json` + `--todo-file/--type/--max-attempts` (TODO #19)                                                                                                                                    | pool    | 5      | 60m    | S05     | flags smoke-verified                                               |
+| C19 | Free-port selection in `webui.sh` (TODO #20)                                                                                                                                                          | pool    | 4      | 30m    | S05     | no fixed 8095; smoke green                                         |
+| C20 | Request-logging option for `tq serve` (TODO #21)                                                                                                                                                      | pool    | 4      | 45m    | S05     | `--verbose`/slog handler; smoke green                              |
+| C21 | Re-verify the 5 hearsay-routed TODO items against code (TODO #22)                                                                                                                                     | pool    | 5      | 30m    | S05     | each item confirmed or corrected in TODO_LIST                      |
+| C22 | Post-run review: DLQ sweep, agent-quality vs AGENTS.md contract, `.crushrc` self-modification check, budget telemetry notes                                                                           | session | 8      | 60m    | C01+    | review notes in a status report; rescues if needed                 |
 
 **Owner-gated (NOT enqueued — `— BLOCKED:` in TODO_LIST):** v0.2.0 cut · CQA
 live verification. **Not in any queue:** the other ~295 repos in
@@ -153,63 +153,63 @@ Setup fine-steps (S-rows, this session) + per-campaign fine-steps (the agent
 executes these under its TODO-item prompt; the table documents expected steps
 and exit criteria).
 
-| ID    | Task (each ≤12m)                                                                                                | Up to | Est |
-| ----- | ---------------------------------------------------------------------------------------------------------------- | ----- | --- |
-| S01.1 | Write `.crushrc`: `permissions allow view ls grep glob edit write bash`                                           | S01   | 2   |
-| S01.2 | Write `.tq-verify`: build + vet + race tests + gofmt clean                                                        | S01   | 3   |
-| S01.3 | ROADMAP OQ#1: inline-annotate ANSWERED (pool on this repo, rails, flags)                                          | S01   | 4   |
-| S01.4 | AGENTS.md: add dogfood known-issue (rails, launch command, how to stop, TODO_LIST is live pool food)              | S01   | 6   |
-| S01.5 | Confirm `.gitignore` covers `*.db/*.db-wal/*.db-shm` (verified) and `.crushrc`/`.tq-verify` are tracked            | S01   | 2   |
-| S02.1 | Write this plan doc with mermaid graph                                                                            | S02   | 12  |
-| S02.2 | `git status` → stage rails + plan → detailed commit                                                               | S02   | 4   |
-| S02.3 | `git push` (incl. unpushed daemon commits) → `git ls-remote` verify                                               | S02   | 3   |
-| S03.1 | `go build -o ./tq ./cmd/tq`                                                                                       | S03   | 1   |
-| S03.2 | `./tq harvest --dry-run --repos ~/projects/go-taskqueue` → expect 20 enqueuable / 2 blocked                        | S03   | 3   |
-| S03.3 | Confirm working tree clean (agents refuse dirty repos)                                                            | S03   | 2   |
-| S04.1 | Launch the pool in background with the S04 flags (TQ_DB default `./tasks.db`)                                     | S04   | 3   |
-| S04.2 | Watch `./tq stats` + `./tq facts` until first `task.enqueued` + `task.claimed` for project go-taskqueue            | S04   | 8   |
-| S05.1 | Observe the first agent run (heartbeat facts, `tq top` last-dur)                                                  | S05   | 12  |
-| S05.2 | Confirm `.tq-verify` ran (verify tail in `task.completed` detail) and the checkbox got ticked by the agent          | S05   | 6   |
-| S05.3 | Confirm the agent's commit landed on master (never pushed) and the TODO_LIST diff is ONLY the ticked box           | S05   | 6   |
-| S05.4 | `tq serve` spot-check: the run visible in the dashboard (optional, read-only)                                      | S05   | 6   |
-| C01.1 | Reproduce: cancel ctx before `Bridge.Run`, observe the misleading "cannot read journal head"                       | C01   | 12  |
-| C01.2 | Guard `ctx.Err()` after `startWatermark`; return clean nil                                                          | C01   | 6   |
-| C01.3 | Test: cancelled-before-Run returns nil; bridge tests `-count=1`                                                     | C01   | 12  |
-| C02.1 | Script skeleton: exact ci.yml test-job steps in order, raw exit codes, no pipes without pipefail                    | C02   | 12  |
-| C02.2 | Tracked-tree assertion (`git status --porcelain` empty) before nix build + flake check                              | C02   | 8   |
-| C02.3 | Run it green locally; wire into AGENTS.md + CONTRIBUTING as the pre-push gate                                       | C02   | 12  |
-| C03.1 | Flake check `nix-binary-runs`: build → `test -x result/bin/tq` → run `--help`                                        | C03   | 10  |
-| C03.2 | `nix flake check` green with the new check; vendorHash untouched                                                    | C03   | 8   |
-| C04.1 | Real-mode assertions: read alerts from the live dashboard (or split scripts per mode)                               | C04   | 12  |
-| C04.2 | Stub mode still green; document both modes in the header                                                            | C04   | 8   |
-| C05.1 | `auditRepo` failures → Skipped entries (Run-parity); fix the comment                                                 | C05   | 10  |
-| C05.2 | Drift tests: unreadable repo reported, audit continues                                                              | C05   | 12  |
-| C06.1 | Extract harvest flag parsing/report into helpers; `cmdHarvest` complexity down                                       | C06   | 12  |
-| C06.2 | Behavior-parity smoke (JSON output shape unchanged)                                                                 | C06   | 8   |
-| C07.1 | Extract `aggregateTop` helpers; C07.2 `cmdStats`; C07.3 `cmdDLQ` (same pattern, one commit each)                     | C07   | 36  |
-| C08.1 | Golden-output test for `tq audit` drift report                                                                       | C08   | 12  |
-| C08.2 | Dispatch test: unknown command / help exit codes                                                                     | C08   | 8   |
-| C08.3 | Table tests for `splitRepos` (empty, spaces, trailing comma)                                                         | C08   | 8   |
-| C09.1 | `--once` flag on worker: claimable-drain then exit                                                                   | C09   | 12  |
-| C09.2 | e2e: `worker --once` completes a stub task and exits 0                                                               | C09   | 12  |
-| C10.1 | Scheduled CI job: `go test -fuzz FuzzParseRepo -fuzztime 60s`                                                        | C10   | 12  |
-| C10.2 | Commit corpus seeds; document the cadence                                                                            | C10   | 8   |
-| C11.1 | `nix flake check --all-systems` result recorded                                                                      | C11   | 12  |
-| C11.2 | webui.sh gains an optional `TQ_BIN` override; smoke the nix binary                                                   | C11   | 12  |
-| C12.1 | Identify POSIX-only tests (SIGKILL, subprocess signals)                                                              | C12   | 6   |
-| C12.2 | `//go:build unix` markers + GOOS=windows build still green                                                           | C12   | 10  |
-| C13.1 | Unit tests: `--projects-dir /` and `$HOME` refused with remediation                                                  | C13   | 12  |
-| C14.1 | Pool startup: run `crush --version`, log it, warn if missing                                                         | C14   | 10  |
-| C14.2 | Test: stub bin prints version → startup line carries it                                                             | C14   | 8   |
-| C15.1 | Either wire dprint into treefmt (md/json) or commit the decision note                                                | C15   | 12  |
-| C16.1 | `--log-dir-max-age` / size-cap flags on the sidecar writer                                                           | C16   | 12  |
-| C16.2 | Docs: sidecars are plaintext, may contain repo paths                                                                 | C16   | 6   |
-| C17.1 | `FuzzExtractResultPayload` + seeds (hostile regex input)                                                             | C17   | 12  |
-| C18.1 | `tq audit --json` + `--todo-file/--type/--max-attempts` parity flags                                                 | C18   | 12  |
-| C19.1 | webui.sh: derive a free port instead of fixed 8095                                                                   | C19   | 10  |
-| C20.1 | `tq serve --verbose` request logging via slog handler                                                                | C20   | 12  |
-| C21.1 | For each hearsay item: grep the code, confirm or correct TODO_LIST                                                   | C21   | 12  |
-| C22.1 | Post-run review notes: DLQ sweep, agent quality, `.crushrc` untouched, spend vs budget                               | C22   | 12  |
+| ID    | Task (each ≤12m)                                                                                           | Up to | Est |
+| ----- | ---------------------------------------------------------------------------------------------------------- | ----- | --- |
+| S01.1 | Write `.crushrc`: `permissions allow view ls grep glob edit write bash`                                    | S01   | 2   |
+| S01.2 | Write `.tq-verify`: build + vet + race tests + gofmt clean                                                 | S01   | 3   |
+| S01.3 | ROADMAP OQ#1: inline-annotate ANSWERED (pool on this repo, rails, flags)                                   | S01   | 4   |
+| S01.4 | AGENTS.md: add dogfood known-issue (rails, launch command, how to stop, TODO_LIST is live pool food)       | S01   | 6   |
+| S01.5 | Confirm `.gitignore` covers `*.db/*.db-wal/*.db-shm` (verified) and `.crushrc`/`.tq-verify` are tracked    | S01   | 2   |
+| S02.1 | Write this plan doc with mermaid graph                                                                     | S02   | 12  |
+| S02.2 | `git status` → stage rails + plan → detailed commit                                                        | S02   | 4   |
+| S02.3 | `git push` (incl. unpushed daemon commits) → `git ls-remote` verify                                        | S02   | 3   |
+| S03.1 | `go build -o ./tq ./cmd/tq`                                                                                | S03   | 1   |
+| S03.2 | `./tq harvest --dry-run --repos ~/projects/go-taskqueue` → expect 20 enqueuable / 2 blocked                | S03   | 3   |
+| S03.3 | Confirm working tree clean (agents refuse dirty repos)                                                     | S03   | 2   |
+| S04.1 | Launch the pool in background with the S04 flags (TQ_DB default `./tasks.db`)                              | S04   | 3   |
+| S04.2 | Watch `./tq stats` + `./tq facts` until first `task.enqueued` + `task.claimed` for project go-taskqueue    | S04   | 8   |
+| S05.1 | Observe the first agent run (heartbeat facts, `tq top` last-dur)                                           | S05   | 12  |
+| S05.2 | Confirm `.tq-verify` ran (verify tail in `task.completed` detail) and the checkbox got ticked by the agent | S05   | 6   |
+| S05.3 | Confirm the agent's commit landed on master (never pushed) and the TODO_LIST diff is ONLY the ticked box   | S05   | 6   |
+| S05.4 | `tq serve` spot-check: the run visible in the dashboard (optional, read-only)                              | S05   | 6   |
+| C01.1 | Reproduce: cancel ctx before `Bridge.Run`, observe the misleading "cannot read journal head"               | C01   | 12  |
+| C01.2 | Guard `ctx.Err()` after `startWatermark`; return clean nil                                                 | C01   | 6   |
+| C01.3 | Test: cancelled-before-Run returns nil; bridge tests `-count=1`                                            | C01   | 12  |
+| C02.1 | Script skeleton: exact ci.yml test-job steps in order, raw exit codes, no pipes without pipefail           | C02   | 12  |
+| C02.2 | Tracked-tree assertion (`git status --porcelain` empty) before nix build + flake check                     | C02   | 8   |
+| C02.3 | Run it green locally; wire into AGENTS.md + CONTRIBUTING as the pre-push gate                              | C02   | 12  |
+| C03.1 | Flake check `nix-binary-runs`: build → `test -x result/bin/tq` → run `--help`                              | C03   | 10  |
+| C03.2 | `nix flake check` green with the new check; vendorHash untouched                                           | C03   | 8   |
+| C04.1 | Real-mode assertions: read alerts from the live dashboard (or split scripts per mode)                      | C04   | 12  |
+| C04.2 | Stub mode still green; document both modes in the header                                                   | C04   | 8   |
+| C05.1 | `auditRepo` failures → Skipped entries (Run-parity); fix the comment                                       | C05   | 10  |
+| C05.2 | Drift tests: unreadable repo reported, audit continues                                                     | C05   | 12  |
+| C06.1 | Extract harvest flag parsing/report into helpers; `cmdHarvest` complexity down                             | C06   | 12  |
+| C06.2 | Behavior-parity smoke (JSON output shape unchanged)                                                        | C06   | 8   |
+| C07.1 | Extract `aggregateTop` helpers; C07.2 `cmdStats`; C07.3 `cmdDLQ` (same pattern, one commit each)           | C07   | 36  |
+| C08.1 | Golden-output test for `tq audit` drift report                                                             | C08   | 12  |
+| C08.2 | Dispatch test: unknown command / help exit codes                                                           | C08   | 8   |
+| C08.3 | Table tests for `splitRepos` (empty, spaces, trailing comma)                                               | C08   | 8   |
+| C09.1 | `--once` flag on worker: claimable-drain then exit                                                         | C09   | 12  |
+| C09.2 | e2e: `worker --once` completes a stub task and exits 0                                                     | C09   | 12  |
+| C10.1 | Scheduled CI job: `go test -fuzz FuzzParseRepo -fuzztime 60s`                                              | C10   | 12  |
+| C10.2 | Commit corpus seeds; document the cadence                                                                  | C10   | 8   |
+| C11.1 | `nix flake check --all-systems` result recorded                                                            | C11   | 12  |
+| C11.2 | webui.sh gains an optional `TQ_BIN` override; smoke the nix binary                                         | C11   | 12  |
+| C12.1 | Identify POSIX-only tests (SIGKILL, subprocess signals)                                                    | C12   | 6   |
+| C12.2 | `//go:build unix` markers + GOOS=windows build still green                                                 | C12   | 10  |
+| C13.1 | Unit tests: `--projects-dir /` and `$HOME` refused with remediation                                        | C13   | 12  |
+| C14.1 | Pool startup: run `crush --version`, log it, warn if missing                                               | C14   | 10  |
+| C14.2 | Test: stub bin prints version → startup line carries it                                                    | C14   | 8   |
+| C15.1 | Either wire dprint into treefmt (md/json) or commit the decision note                                      | C15   | 12  |
+| C16.1 | `--log-dir-max-age` / size-cap flags on the sidecar writer                                                 | C16   | 12  |
+| C16.2 | Docs: sidecars are plaintext, may contain repo paths                                                       | C16   | 6   |
+| C17.1 | `FuzzExtractResultPayload` + seeds (hostile regex input)                                                   | C17   | 12  |
+| C18.1 | `tq audit --json` + `--todo-file/--type/--max-attempts` parity flags                                       | C18   | 12  |
+| C19.1 | webui.sh: derive a free port instead of fixed 8095                                                         | C19   | 10  |
+| C20.1 | `tq serve --verbose` request logging via slog handler                                                      | C20   | 12  |
+| C21.1 | For each hearsay item: grep the code, confirm or correct TODO_LIST                                         | C21   | 12  |
+| C22.1 | Post-run review notes: DLQ sweep, agent quality, `.crushrc` untouched, spend vs budget                     | C22   | 12  |
 
 **Sums:** setup ≈ 80m · campaign ≈ 26h serial agent work (budget-paced across
 days) · review ≈ 1h.
