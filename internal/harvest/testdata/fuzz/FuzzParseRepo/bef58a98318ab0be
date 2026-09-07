@@ -1,0 +1,2 @@
+go test fuzz v1
+string("*[X]Ȭ٭ܨʭ\n\x9d\n\xfc\n\xf4\n\xb2\n\xa2")

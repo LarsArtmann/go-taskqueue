@@ -1,0 +1,2 @@
+go test fuzz v1
+string("#0000\xcc\n#0\xcc\n#\xe2\x9d\xcc\n0\xcc\n#0\xcc\n#\xe2\x9d\xcc\n0\xcc\n#0\xcc\n#00\xa8")

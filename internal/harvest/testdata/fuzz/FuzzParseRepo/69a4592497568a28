@@ -1,0 +1,2 @@
+go test fuzz v1
+string("*[X]0000000000\xe50000000000\xd4000000000000\x9b0000\x8700\xaf000\xa1\xd6\xe4\xc20\xd5000\xf7\xf30\x9d0\xb7\x83\xa200")

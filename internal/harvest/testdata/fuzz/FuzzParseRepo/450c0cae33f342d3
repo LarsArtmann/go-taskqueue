@@ -1,0 +1,2 @@
+go test fuzz v1
+string("\xf7\n\xc9\n\xfb\n\xd5")

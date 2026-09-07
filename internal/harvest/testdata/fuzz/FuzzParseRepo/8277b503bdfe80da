@@ -1,0 +1,2 @@
+go test fuzz v1
+string("*[X]\xc1\x88\xbd\n#0\x91")

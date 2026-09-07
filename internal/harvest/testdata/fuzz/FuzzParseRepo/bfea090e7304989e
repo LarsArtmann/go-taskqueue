@@ -1,0 +1,2 @@
+go test fuzz v1
+string("\xef\n\xbf0\n\xbb0\n")

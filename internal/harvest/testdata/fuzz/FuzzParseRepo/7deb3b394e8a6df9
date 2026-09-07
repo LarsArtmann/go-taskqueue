@@ -1,0 +1,2 @@
+go test fuzz v1
+string("*[X]Ȗ 0 0 0 0 0 0 ڛȺ \xf7\xfe\n\xad0")

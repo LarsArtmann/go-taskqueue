@@ -20,6 +20,7 @@ go test ./... -race       # the standard verify gate
 nix build                 # reproducible build (flake, go-standard module)
 nix run .#test            # tests via flake app
 nix run .#webui-css       # recompile the web UI stylesheet (output is committed)
+./scripts/fuzz/nightly.sh # 60s FuzzParseRepo campaign; syncs new seeds into internal/harvest/testdata/fuzz (nightly .github/workflows/fuzz.yml commits them)
 ```
 
 No Makefile, no justfile — flake.nix owns automation. Pure Go
@@ -136,6 +137,13 @@ fail with "no such column" before the ALTER runs.
 | filter inputs, page header/lamp, section hairlines  | custom  | `layout.templ`/`fragments.templ` (thin, SSE-fragment-specific) |
 - Go 1.26 idioms are deliberate (`errors.AsType[E]`, `strings.SplitSeq`,
   `for range n`) — do not "modernize" them back to older equivalents
+- The `FuzzParseRepo` seed corpus under `internal/harvest/testdata/fuzz` is
+  COMMITTED (every seed also runs as a test case on each `go test`) and grows
+  via `scripts/fuzz/nightly.sh` (60s campaign, nightly
+  `.github/workflows/fuzz.yml` commits new seeds; the script uses a private
+  GOCACHE because the corpus never lands on shared-cache mounts). A fuzz
+  crasher written into testdata by a failing campaign must be fixed, never
+  committed (it would redden `go test` forever).
 - `TODO_LIST.md` is machine-consumed by the harvester (`internal/harvest`
   parses `- [ ]` checkboxes and the nearest heading): keep that format, one
   item per line, never convert it to tables. An item with `— BLOCKED:

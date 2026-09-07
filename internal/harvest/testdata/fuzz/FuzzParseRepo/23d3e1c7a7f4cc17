@@ -1,0 +1,2 @@
+go test fuzz v1
+string("*[X]00000\xab\u05ce0\x93͚00 0000")
