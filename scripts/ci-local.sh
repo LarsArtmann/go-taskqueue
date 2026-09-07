@@ -54,6 +54,19 @@ else
 	echo "lint: findings or lint failure — advisory only, continuing"
 fi
 
+# CI turns findings on lines changed since the base revision into real
+# annotations (scripts/lint-annotations.sh) because golangci-lint v2 emits
+# no annotation commands itself. Run the same scoping here so the pre-push
+# gate sees what CI would annotate.
+step "lint annotations (new findings only, advisory)"
+if command -v jq >/dev/null 2>&1; then
+	if ! LINT_BASE="HEAD~1" ./scripts/lint-annotations.sh; then
+		echo "lint-annotations failed — advisory only, continuing"
+	fi
+else
+	echo "jq not on PATH — skipped locally (CI runners ship jq)"
+fi
+
 step "harvest-parse guard"
 go test ./internal/harvest/ -run TestRepoTodoListParses -count=1
 

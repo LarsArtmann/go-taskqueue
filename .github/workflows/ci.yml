@@ -12,6 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Full history for the scoped lint-annotations step (--new-from-rev
+          # needs the base revision); the repo is under 1 MiB.
+          fetch-depth: 0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: stable
@@ -28,10 +32,24 @@ jobs:
       - name: Lint (golangci-lint, config in .golangci.yml)
         # Advisory, not a gate: the ~400-finding repo baseline (wrapcheck,
         # varnamelen, paralleltest, ...) is documented in AGENTS.md; a red
-        # master from it would bury real signal. Findings stay visible as
-        # annotations; the hard gates are vet, gofmt, tests.
+        # master from it would bury real signal. This step is log text only —
+        # golangci-lint v2 emits no GitHub annotation commands — the next step
+        # turns new findings into real annotations; the hard gates are vet,
+        # gofmt, tests.
         continue-on-error: true
         run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2 && "$(go env GOPATH)/bin/golangci-lint" run ./...
+      - name: Lint annotations (new findings on changed lines)
+        # golangci-lint v2 has no github-actions output format and its text
+        # output emits no ::warning commands, so nothing from the advisory run
+        # above ever becomes an annotation — and the ~400-finding baseline
+        # would blow GitHub's 10-warnings-per-step cap anyway. This re-runs
+        # the same binary and config scoped to --new-from-rev so each new
+        # finding becomes a real annotation that fits under the cap and
+        # surfaces on green runs.
+        continue-on-error: true
+        env:
+          LINT_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: ./scripts/lint-annotations.sh
       - name: TODO_LIST harvest-parse guard
         run: go test ./internal/harvest/ -run TestRepoTodoListParses -count=1
       - name: Web UI live smoke (no browser)
