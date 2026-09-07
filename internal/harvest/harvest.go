@@ -210,6 +210,14 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 		return
 	}
 
+	for _, it := range items {
+		if reason, blocked := blockedReason(it.Text); blocked {
+			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "blocked: " + reason})
+
+			continue
+		}
+	}
+
 	busy := false
 	known := make(map[string]task.Status, len(tasks))
 
