@@ -109,7 +109,7 @@ func New(store FactSource, cfg Config) *Bridge {
 // order; the watermark advances past a fact only when it is accepted (2xx)
 // or permanently rejected (4xx) — transient failures retry on the next poll.
 func (b *Bridge) Run(ctx context.Context) error {
-	watermark := b.startWatermark()
+	watermark := b.startWatermark(ctx)
 	if watermark < 0 {
 		return errors.New("papdashboard: cannot read journal head")
 	}
@@ -155,13 +155,14 @@ func (b *Bridge) Run(ctx context.Context) error {
 }
 
 // startWatermark resolves the initial sequence: explicit FromSeq, else the
-// journal head (forward-only from now).
-func (b *Bridge) startWatermark() int64 {
+// journal head (forward-only from now), read under ctx so a cancelled startup
+// aborts cleanly.
+func (b *Bridge) startWatermark(ctx context.Context) int64 {
 	if b.cfg.FromSeq != nil {
 		return *b.cfg.FromSeq
 	}
 
-	facts, err := b.store.Facts(context.Background(), 0)
+	facts, err := b.store.Facts(ctx, 0)
 	if err != nil {
 		b.log.Error("papdashboard bridge cannot read journal", "err", err)
 
