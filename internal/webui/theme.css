@@ -1,0 +1,219 @@
+/* tq dashboard theme — "the ledger & the lamp"
+ *
+ * Design source of truth for the web UI. Compiled into the committed,
+ * minified static/app.css by scripts/build-webui-css.sh (a dev step; the
+ * compiled output is git-tracked and go:embed'ed, like the generated
+ * *_templ.go files).
+ *
+ * Design language:
+ *   - Steel-navy neutrals (cool, control-room) — not GitHub gray.
+ *   - Signal cyan remapped onto the library's blue-* ramp, so every
+ *     templ-components "blue" (links, focus rings, running, live) reads as
+ *     the queue's active-signal color.
+ *   - Status hues carry the domain: amber=pending, cyan=running,
+ *     green=completed, red=dead, gray=cancelled.
+ *   - JetBrains Mono is the identity face: wordmark, headings, stat
+ *     values, tags, timestamps, ids. Body text stays system sans.
+ *   - The one ambient element is the header lamp (#conn): cyan pulsing
+ *     when live, amber while reconnecting, red when stale.
+ */
+
+/* Class-based dark mode so ThemeScript/ThemeToggle can override the OS. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Steel neutrals — cool navy cast, no slate/zinc classes. */
+  --color-gray-50: #f6f8fb;
+  --color-gray-100: #eef2f8;
+  --color-gray-200: #dde5f0;
+  --color-gray-300: #bfcbdf;
+  --color-gray-400: #8fa0ba;
+  --color-gray-500: #64748d;
+  --color-gray-600: #4b5a72;
+  --color-gray-700: #38465e;
+  --color-gray-800: #222c40;
+  --color-gray-900: #151d2d;
+  --color-gray-950: #0a0f1a;
+
+  /* Signal cyan (library "primary blue" → conduit cyan). */
+  --color-blue-50: #ecfeff;
+  --color-blue-100: #cffafe;
+  --color-blue-200: #a5f3fc;
+  --color-blue-300: #67e8f9;
+  --color-blue-400: #22d3ee;
+  --color-blue-500: #06b6d4;
+  --color-blue-600: #0891b2;
+  --color-blue-700: #0e7490;
+  --color-blue-800: #155e75;
+  --color-blue-900: #164e63;
+  --color-blue-950: #083344;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+}
+
+/* ---------------------------------------------------------------------------
+ * Identity face (fonts are served from /static/fonts, OFL-1.1, © JetBrains)
+ * ------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/static/fonts/jetbrains-mono-latin-600-normal.woff2") format("woff2");
+}
+
+body {
+  font-feature-settings: "zero", "ss02";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Mono headings carry the CLI identity; tight tracking keeps them crisp. */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-mono);
+  letter-spacing: -0.01em;
+}
+
+/* Ledger-style section overline: small caps, wide tracking, hairline rule. */
+.tq-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tq-heading::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--color-gray-200);
+}
+
+.dark .tq-heading::after {
+  background: var(--color-gray-800);
+}
+
+/* ---------------------------------------------------------------------------
+ * The lamp — connection state, driven by app.js (class conn-<state>).
+ * ------------------------------------------------------------------------- */
+
+.conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.conn::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.conn-live {
+  color: var(--color-blue-600);
+}
+
+.dark .conn-live {
+  color: var(--color-blue-400);
+}
+
+.conn-reconnecting {
+  color: var(--color-amber-600);
+}
+
+.dark .conn-reconnecting {
+  color: var(--color-amber-400);
+}
+
+.conn-stale {
+  color: var(--color-red-600);
+}
+
+.dark .conn-stale {
+  color: var(--color-red-400);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .conn-live::before {
+    animation: tq-pulse 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes tq-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Journal rail — the live fact stream scrolls inside a fixed-height pane so
+ * the page never jumps when a burst lands.
+ * ------------------------------------------------------------------------- */
+
+.journal-scroll {
+  max-height: 26rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+}
+
+.dark .journal-scroll {
+  scrollbar-color: var(--color-gray-700) transparent;
+}
+
+/* ---------------------------------------------------------------------------
+ * Keyboard hints.
+ * ------------------------------------------------------------------------- */
+
+kbd {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border: 1px solid var(--color-gray-200);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  background: var(--color-gray-50);
+  color: var(--color-gray-500);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.dark kbd {
+  border-color: var(--color-gray-700);
+  background: var(--color-gray-800);
+  color: var(--color-gray-400);
+}
