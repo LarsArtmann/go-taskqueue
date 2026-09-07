@@ -98,6 +98,85 @@ func TestPrintDriftReportGolden(t *testing.T) {
 	}
 }
 
+// TestPrintDriftJSONGolden pins the tq audit --json output shape: field
+// names, string-encoded task IDs and statuses, and slice ordering.
+func TestPrintDriftJSONGolden(t *testing.T) {
+	item1 := harvest.Item{Repo: "/repos/alpha", RepoName: "alpha", Text: "fix the flaky worker test", Key: "k1"}
+
+	res := harvest.DriftResult{
+		Repos:        2,
+		StaleOpen:    []harvest.Drift{{Kind: harvest.DriftStaleOpen, Item: item1, TaskID: "t1", TaskStatus: task.Completed}},
+		StaleDone:    []harvest.Drift{{Kind: harvest.DriftStaleDone, Item: item1, TaskID: "t2", TaskStatus: task.Pending}},
+		Enqueued:     []harvest.Enqueued{{Item: item1, TaskID: "t9", Fresh: true}},
+		ScanFailures: []harvest.ScanFailure{{Repo: "/repos/beta", Reason: "no such file"}},
+	}
+
+	want := `{
+  "Repos": 2,
+  "StaleOpen": [
+    {
+      "Kind": "stale-open",
+      "Item": {
+        "Repo": "/repos/alpha",
+        "RepoName": "alpha",
+        "Heading": "",
+        "Text": "fix the flaky worker test",
+        "Key": "k1",
+        "Done": false
+      },
+      "TaskID": "t1",
+      "TaskStatus": "completed"
+    }
+  ],
+  "StaleDone": [
+    {
+      "Kind": "stale-done",
+      "Item": {
+        "Repo": "/repos/alpha",
+        "RepoName": "alpha",
+        "Heading": "",
+        "Text": "fix the flaky worker test",
+        "Key": "k1",
+        "Done": false
+      },
+      "TaskID": "t2",
+      "TaskStatus": "pending"
+    }
+  ],
+  "Enqueued": [
+    {
+      "Item": {
+        "Repo": "/repos/alpha",
+        "RepoName": "alpha",
+        "Heading": "",
+        "Text": "fix the flaky worker test",
+        "Key": "k1",
+        "Done": false
+      },
+      "TaskID": "t9",
+      "Fresh": true
+    }
+  ],
+  "ScanFailures": [
+    {
+      "Repo": "/repos/beta",
+      "Reason": "no such file"
+    }
+  ]
+}
+`
+
+	got := captureStdout(t, func() {
+		if err := printDriftJSON(res); err != nil {
+			t.Errorf("printDriftJSON: %v", err)
+		}
+	})
+
+	if got != want {
+		t.Errorf("output mismatch\n--- got ---\n%s--- want ---\n%s", got, want)
+	}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 

@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
@@ -18,7 +20,11 @@ func cmdAudit(args []string) error {
 	fs := flag.NewFlagSet("audit", flag.ExitOnError)
 	projectsDir := fs.String("projects-dir", "", "directory of repos to audit (each with a TODO_LIST.md)")
 	repos := fs.String("repos", "", "comma-separated explicit repo paths (overrides --projects-dir)")
+	todoFile := fs.String("todo-file", harvest.DefaultTodoFile, "backlog file name inside each repo")
+	taskType := fs.String("type", harvest.DefaultType, "task type whose tasks are audited (catch-ups are enqueued as it)")
+	maxAttempts := fs.Int("max-attempts", 0, "attempt budget for catch-up tasks (0 = audit default 2)")
 	dryRun := fs.Bool("dry-run", false, "report drift without enqueueing catch-ups")
+	asJSON := fs.Bool("json", false, "JSON output of the audit result")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -33,7 +39,13 @@ func cmdAudit(args []string) error {
 		return err
 	}
 
-	cfg := harvest.Config{ProjectsDir: *projectsDir, DryRun: *dryRun}
+	cfg := harvest.Config{
+		ProjectsDir: *projectsDir,
+		TodoFile:    *todoFile,
+		Type:        *taskType,
+		MaxAttempts: *maxAttempts,
+		DryRun:      *dryRun,
+	}
 
 	if *repos != "" {
 		cfg.Repos = splitRepos(*repos)
@@ -47,9 +59,26 @@ func cmdAudit(args []string) error {
 		return err
 	}
 
+	if *asJSON {
+		if err := printDriftJSON(res); err != nil {
+			return fmt.Errorf("encode audit result: %w", err)
+		}
+
+		return nil
+	}
+
 	printDriftReport(res, *dryRun)
 
 	return nil
+}
+
+// printDriftJSON writes the audit result as indented JSON, mirroring the
+// tq harvest --json output shape.
+func printDriftJSON(res harvest.DriftResult) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+
+	return enc.Encode(res)
 }
 
 // printDriftReport writes the drift report produced by harvest.Audit: stale
