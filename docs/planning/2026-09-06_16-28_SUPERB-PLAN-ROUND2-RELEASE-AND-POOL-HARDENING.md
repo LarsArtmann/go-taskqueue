@@ -1,7 +1,13 @@
 # SUPERB: Round 2 — Release Gate + Agent-Pool Hardening
 
 **Date:** 2026-09-06 16:28 CEST
-**Status:** PLANNED (awaiting approval → EXECUTING)
+**Status:** ~~PLANNED (awaiting approval → EXECUTING)~~ EXECUTED — all 26
+coarse rows shipped or explicitly seeded (see
+`docs/planning/2026-09-06_deferred-bundle-seeds.md`); v0.1.0 released at
+C04 (2026-09-06). Completion report:
+`docs/status/2026-09-06_19-49_round2-complete-c14-c15-c19-c27-status-and-debt.md`;
+surviving open items live in TODO_LIST.md / ROADMAP.md (docs-health pass
+2026-09-07).
 **Scope:** Everything currently known-open: 19 TODO_LIST items, the 10 audit
 findings from the 16:19 status report, and the ROADMAP backlog — deduplicated,
 Pareto-ranked, and split into 26 coarse (30–100 min) + 100 fine (≤12 min) tasks.

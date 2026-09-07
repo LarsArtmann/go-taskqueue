@@ -117,7 +117,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   audit` repairs; keep the agent only if measurably needed
 - ADR-0004: lint policy decision record (advisory rationale, endgame
   options, what would re-gate it)
-- `docs/status/README.md` index: reports newest-first, superseded ones
+- Status-report index for docs/status: reports newest-first, superseded ones
   marked
 - e2e coverage for `tq audit` and `tq top --json` on a seeded DB (both are
   unit + manual smoke only)

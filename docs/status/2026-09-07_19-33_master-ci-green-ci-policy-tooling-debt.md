@@ -110,8 +110,8 @@ fix. Each is a filed decision, not an omission.
 | Advisory lint visibility | Step goes ✓, findings computed | Unverified that annotations actually surface on green runs (`continue-on-error` + annotation caps); if not, need reviewdog or scoped lint | S to verify |
 | Formatter story for docs | dprint in devShell; treefmt gates Go+templ+nixfmt | dprint NOT wired into treefmt check — markdown formatting is un-gated; intent unclear (round-2 report said "treefmt owns Go, dprint owns docs") | S |
 | nix gate coverage | `nix flake check` green on x86_64-linux (eval covers darwin/aarch64) | `--all-systems` builds never exercised; nix-built binary not smoke-tested post-`enableTempl` (checks.build compiles+tests it, but nothing runs `result/bin/tq`) | S |
-| Doc consistency for lint policy | AGENTS.md, CHANGELOG, ci.yml aligned | `CONTRIBUTING.md` gate list not re-read against advisory reality (only line 22 grep'd) | S |
-| Next-steps backlog | Previous report's ~50 items + this report's (f) list written | HARVEST into TODO_LIST.md/ROADMAP.md blocked on owner decision (TODO_LIST is agent-pool food → real compute cost) | M |
+| ~~Doc consistency for lint policy~~ | ~~AGENTS.md, CHANGELOG, ci.yml aligned~~ | ~~`CONTRIBUTING.md` gate list not re-read against advisory reality~~ done 2026-09-07 (gate list updated: web UI smoke, advisory lint note, templ generate) | ~~S~~ |
+| ~~Next-steps backlog~~ | ~~Previous report's ~50 items + this report's (f) list written~~ | ~~HARVEST into TODO_LIST.md/ROADMAP.md blocked on owner decision~~ done 2026-09-07 (owner-directed docs-health run; open items routed, owner-gated ones BLOCKED) | ~~M~~ |
 | CHANGELOG | Honest Changed entry for lint policy | `[Unreleased]` keeps growing; no version cut anywhere in sight (repo is pre-v0.1.0) | M |
 
 ## c) NOT STARTED
@@ -218,10 +218,10 @@ Effort: S <30min, M 30min–2h, L >2h.
 | 2 | Fix `startWatermark` regression: guard `ctx.Err()` after init so a pre-cancelled ctx returns nil, with a test cancelling ctx before `Run` | High | S | Bug |
 | 3 | Decide lint endgame (g2), then execute: trim config + re-gate OR baseline-file burn-down OR keep advisory | Critical | M | Quality |
 | 4 | Add `checks.nix-binary-runs` flake check executing `result/bin/tq --help` (kills the empty-output footgun the old report nearly shipped) | High | S | Quality |
-| 5 | Decide TODO_LIST harvest policy (g1), then HARVEST this report's (f) + the 18-41 report's 50 items into TODO_LIST/ROADMAP with routing rigor | High | M | Documentation |
+| ~~5~~ | ~~Decide TODO_LIST harvest policy (g1), then HARVEST this report's (f) + the 18-41 report's 50 items into TODO_LIST/ROADMAP with routing rigor~~ done — executed 2026-09-07 (owner-directed docs-health AUDIT: TODO_LIST rebuilt with verified open items, ROADMAP synced) | ~~High~~ | ~~M~~ | ~~Documentation~~ |
 | 6 | Verify advisory-lint annotations actually surface on green CI runs; if not, adopt reviewdog or a scoped-lint step | Medium | S | Quality |
 | 7 | Decide master push workflow (g3): branch protection + PR, or documented direct-push acceptance | High | S | Process |
-| 8 | Cut v0.1.0: finalize CHANGELOG Unreleased, tag, verify `nix build` artifact runs (go-release lifecycle) | High | M | Release |
+| ~~8~~ | ~~Cut v0.1.0: finalize CHANGELOG Unreleased, tag, verify `nix build` artifact runs (go-release lifecycle)~~ done — v0.1.0 already shipped 2026-09-06 — the real next cut is v0.2.0 (TODO_LIST, owner-gated) | ~~High~~ | ~~M~~ | ~~Release~~ |
 | 9 | Fix remaining cmd/tq cyclop: `cmdHarvest` 17, `aggregateTop` 16, `cmdStats` 14, `cmdDLQ` 13 (same extraction pattern as this session) | Medium | M | Quality |
 | 10 | Add CLI-level tests: golden-output test for `tq audit` drift report, dispatch test for unknown-command/help exit codes, table tests for `splitRepos` (empty, spaces, trailing comma) | Medium | M | Quality |
 | 11 | Investigate and fix the templ LSP false diagnostics (57 errors/145 warnings); document the resolution or the "ignore LSP, trust CLI" rule in AGENTS.md | Medium | M | Quality |
@@ -245,24 +245,24 @@ Effort: S <30min, M 30min–2h, L >2h.
 | 29 | Fuzz `unwrapCommand` payload shapes (raw/JSON string/`{"cmd":...}`/hostile input) | Medium | M | Quality |
 | 30 | Windows smoke variant of webui.sh or a CI skip-with-reason (currently POSIX-only) | Low | M | Quality |
 | 31 | ADR-0004: lint policy decision record (advisory rationale, endgame options, what would re-gate it) | Low | S | Documentation |
-| 32 | docs-health VERIFY sweep: FEATURES.md claims vs. post-round-3 reality (serve row, smoke row) | Medium | M | Documentation |
-| 33 | ROADMAP sync: web UI raw idea → shipped (point at FEATURES/webui), promote Phase D items to raw-idea status | Low | S | Documentation |
+| ~~32~~ | ~~docs-health VERIFY sweep: FEATURES.md claims vs. post-round-3 reality (serve row, smoke row)~~ done — docs-health AUDIT executed 2026-09-07 (all six living docs re-verified against code) | ~~Medium~~ | ~~M~~ | ~~Documentation~~ |
+| ~~33~~ | ~~ROADMAP sync: web UI raw idea → shipped (point at FEATURES/webui), promote Phase D items to raw-idea status~~ done — ROADMAP synced 2026-09-07 (shipped raw ideas pruned, new ideas + open questions routed) | ~~Low~~ | ~~S~~ | ~~Documentation~~ |
 | 34 | Nightly `-race -count=3` full-suite job (flake-catching for the race gate) | Low | S | Quality |
 | 35 | `tq top --json` stability contract test (agents consume it; pin the shape) | Low | S | Quality |
 | 36 | dlq rescue output UX: confirm `--rescue-all --older-than` prints a plan before enqueueing | Low | S | Feature |
 | 37 | Agent-pool budget telemetry → papdashboard alert (pool spending visible in the ops dashboard) | Low | M | Feature |
 | 38 | docs/status/README.md index: list reports newest-first, mark superseded ones | Low | S | Documentation |
 | 39 | Quiet the `golangci_lint_ls` channel in Crush config (it duplicates the CLI's baseline noise into every tool response) | Low | S | Process |
-| 40 | CONTRIBUTING.md gate-list review against advisory-lint reality (b) + explicit "run ci-local.sh before push" instruction | Medium | S | Documentation |
+| ~~40~~ | ~~CONTRIBUTING.md gate-list review against advisory-lint reality (b) + explicit "run ci-local.sh before push" instruction~~ done — CONTRIBUTING gate list reviewed and updated 2026-09-07 (web UI smoke, advisory lint, templ generate) | ~~Medium~~ | ~~S~~ | ~~Documentation~~ |
 
 ## g) Questions I cannot figure out myself
 
-1. **Harvest policy:** May I route this report's (f) list (and the 18-41
-   report's 50 items) into `TODO_LIST.md` / `ROADMAP.md`, and which of them
-   may the agent pool pick up autonomously? TODO_LIST is machine-consumed
-   pool food — every routed item is real compute spend, and I can't decide
-   your budget. (Tried: re-reading the guardrails; the guardrails say *how*
-   to route, not *what's funded*.)
+1. ~~**Harvest policy:** May I route this report's (f) list (and the 18-41~~ done (answered 2026-09-07 — owner directed the docs-health AUDIT/HARVEST run; verified items routed into TODO_LIST.md/ROADMAP.md, owner-gated ones carry the BLOCKED marker (now enforced in code))
+   ~~report's 50 items) into `TODO_LIST.md` / `ROADMAP.md`, and which of them~~
+   ~~may the agent pool pick up autonomously? TODO_LIST is machine-consumed~~
+   ~~pool food — every routed item is real compute spend, and I can't decide~~
+   ~~your budget. (Tried: re-reading the guardrails; the guardrails say *how*~~
+   ~~to route, not *what's funded*.)~~
 2. **Lint endgame:** The `.golangci.yml` enables ~100 linters with ~400 open
    findings — currently an advisory annotation stream. Which endgame do you
    want: (a) trim the config to an enforceable set and make it a hard gate
