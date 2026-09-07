@@ -62,10 +62,23 @@ go.work.sum
 /go-taskqueue
 
 ## Nix
-result
-result-*
 .envrc
 .direnv/
+
+## Javascript and typescript
+node_modules/
+build/
+*.tsbuildinfo
+.next/
+.nuxt/
+.docusaurus/
+.eslintcache
+.cache/
+.parcel-cache/
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 # <<< buildflow-managed (.gitignore) <<<
 
 # nix build output symlink

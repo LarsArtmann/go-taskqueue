@@ -72,14 +72,14 @@
 
 ## Web UI (`tq serve`)
 
-| Feature                                   | Status                | Notes                                                                                                                              |
-| ----------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Feature                                   | Status                | Notes                                                                                                                               |
+| ----------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `tq serve` — live dashboard (read-only)   | 🟢 `FULLY_FUNCTIONAL` | Status cards, live task table, DLQ, per-project chips, fact feed; SSE-pushed server-rendered fragments (`internal/webui`, ADR-0003) |
-| SSE stream with snapshot-on-(re)connect   | 🟢 `FULLY_FUNCTIONAL` | Every event is a full projection re-render under the client's URL filter — reconnects never lose state; `Last-Event-ID` honored    |
-| Filters & search (`?project=&status=&q=`) | 🟢 `FULLY_FUNCTIONAL` | URL is the source of truth; search covers type/payload/id/project/owner/errors; shareable links                                    |
-| Task detail pages (`/task/{id}`)          | 🟢 `FULLY_FUNCTIONAL` | Full record + per-task fact timeline; plain links, works without JS                                                                |
-| Live smoke (no browser)                   | 🟢 `FULLY_FUNCTIONAL` | `scripts/smoke/webui.sh`: worker + serve + HTTP/SSE assertions, CI-safe                                                            |
-| UI write actions (cancel/rescue/enqueue)  | ⚪ `PLANNED`          | Behind a future `--allow-writes` flag; tracked in plan round 3 Phase D (W15)                                                       |
+| SSE stream with snapshot-on-(re)connect   | 🟢 `FULLY_FUNCTIONAL` | Every event is a full projection re-render under the client's URL filter — reconnects never lose state; `Last-Event-ID` honored     |
+| Filters & search (`?project=&status=&q=`) | 🟢 `FULLY_FUNCTIONAL` | URL is the source of truth; search covers type/payload/id/project/owner/errors; shareable links                                     |
+| Task detail pages (`/task/{id}`)          | 🟢 `FULLY_FUNCTIONAL` | Full record + per-task fact timeline; plain links, works without JS                                                                 |
+| Live smoke (no browser)                   | 🟢 `FULLY_FUNCTIONAL` | `scripts/smoke/webui.sh`: worker + serve + HTTP/SSE assertions, CI-safe                                                             |
+| UI write actions (cancel/rescue/enqueue)  | ⚪ `PLANNED`          | Behind a future `--allow-writes` flag; tracked in plan round 3 Phase D (W15)                                                        |
 
 ## Tooling
 

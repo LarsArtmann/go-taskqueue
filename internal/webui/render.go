@@ -364,7 +364,7 @@ func renderComponent(ctx context.Context, c templ.Component) string {
 	var buf bytes.Buffer
 
 	if err := c.Render(ctx, &buf); err != nil {
-		return "<p class=\"err\">render error: " + truncate(err.Error(), 120) + "</p>"
+		return "<p class=\"err\">render error: " + truncate(err.Error(), renderErrPreviewLen) + "</p>"
 	}
 
 	return buf.String()

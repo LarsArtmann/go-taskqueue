@@ -5,8 +5,10 @@ package webui
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import "github.com/a-h/templ"
-import templruntime "github.com/a-h/templ/runtime"
+import (
+	"github.com/a-h/templ"
+	templruntime "github.com/a-h/templ/runtime"
+)
 
 // Page is the full dashboard page. Fragments are server-rendered into the
 // containers so the page works without JS; SSE then replaces innerHTML.

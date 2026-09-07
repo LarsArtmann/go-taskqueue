@@ -37,12 +37,12 @@ and `Store.List` and needs zero store, schema, worker, or executor changes.
 
 3. **Tech defaults** (each with an abort path that leaves this plan intact):
 
-   | Decision    | Default                              | Why                                            | Abort path                                        |
-   | ----------- | ------------------------------------ | ---------------------------------------------- | ------------------------------------------------- |
-   | Rendering   | `templ` (generated `*_templ.go` committed) | House style (samber-do-auditlog, templ-components); typed fragments | `html/template` — plain string fragments, same container ids |
-   | Fan-out     | `github.com/larsartmann/go-sse` `Broadcaster` | Own lib, pure Go, proven in auditlog; ring replay | Hand-rolled ~80-line hub (channels + mutex)       |
-   | Client JS   | Vanilla (~30 lines: EventSource + patch + badge) | No 56 KB vendored runtime for one-way flow | Datastar upgrade when interactivity outgrows it   |
-   | HTTP server | stdlib `http.ServeMux` + `http.Server` WITH Read/Header/Write/Idle timeouts | No framework needed; kills the G114 no-timeout class the PoCs carry | — |
+   | Decision    | Default                                                                     | Why                                                                 | Abort path                                                   |
+   | ----------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------ |
+   | Rendering   | `templ` (generated `*_templ.go` committed)                                  | House style (samber-do-auditlog, templ-components); typed fragments | `html/template` — plain string fragments, same container ids |
+   | Fan-out     | `github.com/larsartmann/go-sse` `Broadcaster`                               | Own lib, pure Go, proven in auditlog; ring replay                   | Hand-rolled ~80-line hub (channels + mutex)                  |
+   | Client JS   | Vanilla (~30 lines: EventSource + patch + badge)                            | No 56 KB vendored runtime for one-way flow                          | Datastar upgrade when interactivity outgrows it              |
+   | HTTP server | stdlib `http.ServeMux` + `http.Server` WITH Read/Header/Write/Idle timeouts | No framework needed; kills the G114 no-timeout class the PoCs carry | —                                                            |
 
    **Abort checkpoints:** if templ codegen fights CI/Nix (the auditlog v0.9.0
    retract class: generated `*_templ.go` MUST be committed or Nix vendor

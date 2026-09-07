@@ -52,14 +52,14 @@ Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 
 ## Observation
 
-| Term              | Meaning                                                                                                                                             |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Replay**        | Reading the journal (`tq facts`, `tq tail -f`) to reconstruct anything that happened. The answer to "what exactly happened" is always in the facts. |
-| **Result detail** | Structured data recorded in the `task.completed` fact (agent session id, verify output tail) — rendered by `tq show`.                               |
-| **Serve**         | `tq serve`: the read-only live dashboard. Binds localhost by default and can only render projections, never mutate the queue.                       |
+| Term              | Meaning                                                                                                                                              |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Replay**        | Reading the journal (`tq facts`, `tq tail -f`) to reconstruct anything that happened. The answer to "what exactly happened" is always in the facts.  |
+| **Result detail** | Structured data recorded in the `task.completed` fact (agent session id, verify output tail) — rendered by `tq show`.                                |
+| **Serve**         | `tq serve`: the read-only live dashboard. Binds localhost by default and can only render projections, never mutate the queue.                        |
 | **Tailer**        | The single goroutine polling `Facts(after)` behind `tq serve`; it advances a **watermark** and notifies once per burst of new facts.                 |
-| **Hub**           | The fan-out point every dashboard browser subscribes to; one notification re-renders one full snapshot per client.                                  |
-| **Fragment**      | One named server-rendered HTML region (stats cards, task table, DLQ, fact feed) the browser swaps by container id — the client keeps no state.      |
+| **Hub**           | The fan-out point every dashboard browser subscribes to; one notification re-renders one full snapshot per client.                                   |
+| **Fragment**      | One named server-rendered HTML region (stats cards, task table, DLQ, fact feed) the browser swaps by container id — the client keeps no state.       |
 | **Projection**    | Any view derived from facts (CLI tables, stats, and every dashboard fragment). Staleness is the worst failure; facts are never corrupted by reading. |
 
 ## Bounded contexts
