@@ -72,6 +72,20 @@
             echo "vendor hash verified: ${config.packages.default.goModules}"
             touch $out
           '';
+
+          # Swallowed-build guard (18:41/19:33 reports f4): a green build can
+          # still produce an empty store path (the GOEXPERIMENT=jsonv2 failure
+          # mode), so execute the nix-built binary and require non-empty
+          # --help output. References the package directly — not the `result`
+          # symlink — so `nix flake check` covers it in CI and sandboxes.
+          checks.binary-runs = pkgs.runCommand "binary-runs" { } ''
+            ${config.packages.default}/bin/tq --help > help.txt
+            if [ ! -s help.txt ]; then
+              echo "error: nix-built tq binary produced empty --help output" >&2
+              exit 1
+            fi
+            cp help.txt $out
+          '';
         };
     };
 }
