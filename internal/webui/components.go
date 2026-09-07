@@ -58,7 +58,7 @@ func factLines(data DashboardData) []display.ScrollbackLine {
 	lines := make([]display.ScrollbackLine, 0, len(data.Facts))
 
 	for _, f := range data.Facts {
-		text := "#" + formatInt(int(f.Seq)) + " " + f.TaskID
+		text := "#" + formatInt(int(f.Seq)) + " " + shortIDTail(f.TaskID)
 		if f.Error != "" {
 			text += " " + truncate(f.Error, errorPreviewLen)
 		}
@@ -153,14 +153,19 @@ func dashboardProps(title string) layout.PageProps {
 	return props
 }
 
-// shortID renders the 8-char prefix of a task id for table rows.
+// shortID renders a display form of a task id: the random tail (ids are
+// time-prefixed, so the leading chars are shared by same-session tasks).
+// Full id stays on the title tooltip and the detail page.
 func shortID(id task.ID) string {
-	s := id.String()
+	return shortIDTail(id.String())
+}
+
+func shortIDTail(s string) string {
 	if len(s) <= shortIDLen {
 		return s
 	}
 
-	return s[:shortIDLen]
+	return "…" + s[len(s)-shortIDLen:]
 }
 
 const shortIDLen = 8

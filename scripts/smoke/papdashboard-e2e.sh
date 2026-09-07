@@ -4,13 +4,16 @@
 # alert.resolved after `tq dlq --rescue` lets the task complete.
 #
 # Against a REAL dashboard: PAP_URL=https://pap.example ./scripts/smoke/papdashboard-e2e.sh
-# (then check its UI for the raised + resolved alert instead of the stub log).
+# (real mode verifies against the bridge worker log, which records every
+# accepted ingest POST; then optionally check the dashboard UI too).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 PAP_URL="${PAP_URL:-}"
+REAL_MODE=""
+[ -n "$PAP_URL" ] && REAL_MODE=1
 TMP="$(mktemp -d)"
-trap 'kill "${WORKER_PID:-0}" "${STUB_PID:-0}" 2>/dev/null || true; rm -rf "$TMP"' EXIT
+trap 'for pid in "${WORKER_PID:-}" "${STUB_PID:-}"; do [ -n "$pid" ] && kill "$pid" 2>/dev/null; done; rm -rf "$TMP"' EXIT
 
 echo "== build tq"
 go build -o "$TMP/tq" ./cmd/tq
@@ -42,7 +45,8 @@ export TQ_DB="$TMP/tasks.db"
 FLAG="$TMP/flaky.flag"
 
 echo "== start worker with alert bridge -> $PAP_URL"
-"$TMP/tq" worker --alert-url "$PAP_URL" --alert-api-key smoke-key --alert-poll 1s &
+"$TMP/tq" worker --alert-url "$PAP_URL" --alert-api-key smoke-key --alert-poll 1s \
+	>"$TMP/worker.log" 2>&1 &
 WORKER_PID=$!
 
 echo "== enqueue a task that fails once, succeeds after rescue"
@@ -50,30 +54,54 @@ TASK_ID="$("$TMP/tq" enqueue --type sh --project pap-e2e \
 	--payload "test -f '$FLAG' || { touch '$FLAG'; exit 1; }")"
 echo "   task $TASK_ID"
 
-echo "== wait for alert.triggered (worker dead-letters the first attempt)"
-for _ in $(seq 1 15); do
-	[ -f "$INGEST_LOG" ] && grep -q '"type":"alert.triggered"' "$INGEST_LOG" && break
-	sleep 1
-done
-grep -q '"type":"alert.triggered"' "$INGEST_LOG" || {
-	echo "FAIL: no alert.triggered"
-	exit 1
+# Real mode has no stub log; the bridge logs each accepted ingest POST
+# ("papdashboard ingest accepted"), so assert on the worker log there.
+if [ -n "$REAL_MODE" ]; then
+	ALERT_LOG="$TMP/worker.log"
+else
+	ALERT_LOG="$INGEST_LOG"
+fi
+
+wait_for() { # wait_for <grep-pattern>
+	for _ in $(seq 1 15); do
+		[ -f "$ALERT_LOG" ] && grep -q "$1" "$ALERT_LOG" && return 0
+		sleep 1
+	done
+	return 1
 }
+
+echo "== wait for alert.triggered (worker dead-letters the first attempt)"
+if [ -n "$REAL_MODE" ]; then
+	wait_for 'ingest accepted.*alert\.triggered' || {
+		echo "FAIL: no alert.triggered accepted by dashboard"
+		cat "$ALERT_LOG"
+		exit 1
+	}
+else
+	wait_for '"type":"alert.triggered"' || {
+		echo "FAIL: no alert.triggered"
+		exit 1
+	}
+fi
 echo "   triggered OK"
 
 echo "== rescue the dead task; the second run succeeds"
 "$TMP/tq" dlq --rescue "$TASK_ID" >/dev/null
 
 echo "== wait for alert.resolved"
-for _ in $(seq 1 15); do
-	[ -f "$INGEST_LOG" ] && grep -q '"type":"alert.resolved"' "$INGEST_LOG" && break
-	sleep 1
-done
-grep -q '"type":"alert.resolved"' "$INGEST_LOG" || {
-	echo "FAIL: no alert.resolved"
-	cat "$INGEST_LOG"
-	exit 1
-}
+if [ -n "$REAL_MODE" ]; then
+	wait_for 'ingest accepted.*alert\.resolved' || {
+		echo "FAIL: no alert.resolved accepted by dashboard"
+		cat "$ALERT_LOG"
+		exit 1
+	}
+else
+	wait_for '"type":"alert.resolved"' || {
+		echo "FAIL: no alert.resolved"
+		cat "$INGEST_LOG"
+		exit 1
+	}
+fi
 echo "   resolved OK"
 
 echo "== task state"

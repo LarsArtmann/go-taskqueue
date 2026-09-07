@@ -289,7 +289,12 @@ func (b *Bridge) post(
 	if resp.StatusCode >= 400 {
 		b.log.Error("papdashboard ingest permanently rejected",
 			"event", eventType, "status", resp.StatusCode, "idempotencyKey", idemKey)
+
+		return nil
 	}
+
+	b.log.Info("papdashboard ingest accepted",
+		"event", eventType, "status", resp.StatusCode, "idempotencyKey", idemKey)
 
 	return nil
 }
