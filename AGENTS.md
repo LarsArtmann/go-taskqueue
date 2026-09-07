@@ -13,6 +13,7 @@ build on them, never revert them.
 ## Commands
 
 ```bash
+./scripts/ci-local.sh     # the pre-push gate: full CI replicant, run before every push
 go build ./...            # compile everything
 go vet ./...
 go test ./... -race       # the standard verify gate

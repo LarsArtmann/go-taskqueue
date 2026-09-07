@@ -11,15 +11,27 @@ Thanks for your interest in contributing!
 
 ## Development Setup
 
-Every push is gated on CI (`.github/workflows/ci.yml`). Run the same gates
-locally before pushing:
+Every push is gated on CI (`.github/workflows/ci.yml`). The pre-push gate is
+one command:
+
+```sh
+./scripts/ci-local.sh
+```
+
+It replicates the full CI sequence — vet → build → `GOOS=windows` → race
+tests → gofmt → advisory lint → harvest-parse guard → web UI smoke →
+doc-reference check, then `git add -A` + `nix build` + `nix flake check` on
+a fully tracked tree — and must be green before every push (a stale-tree nix
+check plus an unverified push once produced a red master, 2026-09-07). Run
+it right before `git push`; it stages untracked files so nix measures the
+same tree CI will see. The individual gates, when you need one in isolation:
 
 ```sh
 go vet ./...
 go build ./...
+GOOS=windows go build ./...    # cross-compile gate
 go test ./... -count=1 -race -timeout 120s
 test -z "$(gofmt -l .)"
-GOOS=windows go build ./...    # cross-compile gate
 ./scripts/smoke/webui.sh       # live web UI smoke (no browser needed)
 ./scripts/check-doc-refs.sh    # doc-cited paths must exist
 nix build && nix flake check   # reproducible build + vendor-hash gate
