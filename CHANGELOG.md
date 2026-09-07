@@ -29,6 +29,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Nightly fuzz job (`.github/workflows/fuzz.yml`): a 60s `FuzzParseRepo`
+  campaign (`scripts/fuzz/nightly.sh`, runnable locally with a custom
+  fuzztime) whose coverage-interesting inputs are synced into the committed
+  seed corpus under `internal/harvest/testdata/fuzz` and pushed back to
+  master by the workflow — corpus growth no longer depends on session
+  memory (every committed seed also runs as a test case on each
+  `go test`). The initial batch: 165 seeds from ~2.2M executions. The
+  script runs under a private `GOCACHE` because on shared-cache mounts the
+  fuzz corpus never lands; a crasher found by a campaign stays a red job
+  (content dumped to the log) and is never committed.
 - Lint annotations for new findings: golangci-lint v2 emits no GitHub
   annotation commands (the v1 `github-actions` output format is gone), so
   the advisory lint run never actually surfaced findings as annotations —
