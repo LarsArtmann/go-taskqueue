@@ -100,6 +100,9 @@ fail with "no such column" before the ALTER runs.
 - Facts are the source of truth: a code change that mutates task state must
   append a fact in the same transaction
 - Pure-Go deps only; keep `CGO_ENABLED=0` valid
+- Generated `*_templ.go` files are COMMITTED, never gitignored (the
+  samber-do-auditlog v0.9.0 retract lesson: Nix builds vendor source
+  without running `templ generate`)
 - Go 1.26 idioms are deliberate (`errors.AsType[E]`, `strings.SplitSeq`,
   `for range n`) — do not "modernize" them back to older equivalents
 - `TODO_LIST.md` is machine-consumed by the harvester (`internal/harvest`
