@@ -25,6 +25,11 @@ const (
 	DefaultAddr      = "127.0.0.1:8090"
 	DefaultPoll      = 500 * time.Millisecond
 	DefaultHeartbeat = 15 * time.Second
+
+	readHeaderTimeout = 5 * time.Second
+	readTimeout       = 10 * time.Second
+	idleTimeout       = 60 * time.Second
+	shutdownTimeout   = 5 * time.Second
 )
 
 // Config controls the dashboard server.
@@ -108,10 +113,10 @@ func (s *Server) Run(ctx context.Context) error {
 	s.httpServer = &http.Server{
 		Addr:              s.cfg.Addr,
 		Handler:           s.Handler(),
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
 		WriteTimeout:      0, // SSE streams write indefinitely by design
-		IdleTimeout:       60 * time.Second,
+		IdleTimeout:       idleTimeout,
 	}
 
 	serveErr := make(chan error, 1)
@@ -134,7 +139,7 @@ func (s *Server) Run(ctx context.Context) error {
 	case <-ctx.Done():
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
 	defer cancel()
 
 	if err := s.httpServer.Shutdown(shutdownCtx); err != nil {

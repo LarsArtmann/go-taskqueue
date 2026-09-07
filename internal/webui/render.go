@@ -9,19 +9,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/a-h/templ"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
-
-	"github.com/a-h/templ"
 )
 
 const (
-	timeFormat       = "2006-01-02 15:04:05 MST"
-	errorPreviewLen  = 60
-	factFeedLen      = 50
-	taskTableLimit   = 200
-	detailFactsLimit = 500
+	timeFormat          = "2006-01-02 15:04:05 MST"
+	errorPreviewLen     = 60
+	factFeedLen         = 50
+	taskTableLimit      = 200
+	detailFactsLimit    = 500
+	hoursPerDay         = 24 * time.Hour
+	renderErrPreviewLen = 120
 )
 
 // journalFactView aliases the fact type so templ templates can reference it
@@ -230,12 +231,20 @@ func matchesQuery(t task.Task, q string) bool {
 // sortTasks orders by status severity (dead, running, pending, cancelled,
 // completed), then age descending (newest first within a status).
 func sortTasks(tasks []task.Task) []task.Task {
+	const (
+		rankDead = iota
+		rankRunning
+		rankPending
+		rankCancelled
+		rankCompleted
+	)
+
 	rank := map[task.Status]int{
-		task.Dead:      0,
-		task.Running:   1,
-		task.Pending:   2,
-		task.Cancelled: 3,
-		task.Completed: 4,
+		task.Dead:      rankDead,
+		task.Running:   rankRunning,
+		task.Pending:   rankPending,
+		task.Cancelled: rankCancelled,
+		task.Completed: rankCompleted,
 	}
 
 	sorted := append([]task.Task(nil), tasks...)
@@ -323,10 +332,10 @@ func timeAgo(now, t time.Time) string {
 		return fmt.Sprintf("%ds", int(d.Seconds()))
 	case d < time.Hour:
 		return fmt.Sprintf("%dm", int(d.Minutes()))
-	case d < 24*time.Hour:
+	case d < hoursPerDay:
 		return fmt.Sprintf("%dh", int(d.Hours()))
 	default:
-		return fmt.Sprintf("%dd", int(d.Hours()/24))
+		return fmt.Sprintf("%dd", int(d.Hours()/hoursPerDay.Hours()))
 	}
 }
 

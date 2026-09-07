@@ -8,9 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/larsartmann/go-taskqueue/internal/task"
-
 	"github.com/larsartmann/go-sse"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // parseFilter reads the view filter from the request URL query.

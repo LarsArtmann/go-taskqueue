@@ -43,7 +43,10 @@ func newTestServer(t *testing.T) (*Server, *queue.SQLiteStore) {
 func enqueue(t *testing.T, s *queue.SQLiteStore, typ, project string) task.Task {
 	t.Helper()
 
-	tk, err := s.Enqueue(context.Background(), task.New{Type: typ, Project: project, Payload: json.RawMessage(`"echo hi"`)})
+	tk, err := s.Enqueue(
+		context.Background(),
+		task.New{Type: typ, Project: project, Payload: json.RawMessage(`"echo hi"`)},
+	)
 	if err != nil {
 		t.Fatalf("Enqueue: %v", err)
 	}
@@ -118,7 +121,7 @@ func TestHubFanOut(t *testing.T) {
 	var wg sync.WaitGroup
 	var gotMu sync.Mutex
 
-	got := make([][]sseEvent, 3)
+	got := [][]sseEvent{nil, nil, nil}
 	for i := range got {
 		wg.Go(func() {
 			ch := hub.Subscribe()
@@ -243,7 +246,7 @@ func TestSSELiveUpdateAfterEnqueue(t *testing.T) {
 
 	handler := srv.Handler()
 
-	tailCtx, stopTail := context.WithCancel(context.Background())
+	tailCtx, stopTail := context.WithCancel(t.Context())
 	defer stopTail()
 
 	go func() { _ = srv.tail(tailCtx) }()
@@ -453,7 +456,9 @@ func TestGoldenFragments(t *testing.T) {
 	}
 
 	stats := renderComponent(context.Background(), StatusCards(data))
-	for _, want := range []string{"card-pending", "card-running", "card-completed", "card-dead", "card-cancelled", "card-total"} {
+	for _, want := range []string{
+		"card-pending", "card-running", "card-completed", "card-dead", "card-cancelled", "card-total",
+	} {
 		if !strings.Contains(stats, want) {
 			t.Errorf("stats fragment missing card %s", want)
 		}
