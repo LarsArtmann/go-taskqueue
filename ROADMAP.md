@@ -134,9 +134,12 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ## Open questions (owner decisions)
 
-- Should the pool be allowed to work on go-taskqueue itself? This repo has a
+- ~~Should the pool be allowed to work on go-taskqueue itself? This repo has a
   TODO_LIST.md full of pool food but deliberately no `.crushrc` — 5+
-  concurrent agents already edit it.
+  concurrent agents already edit it.~~ ANSWERED 2026-09-07 (owner): the pool
+  now runs on this repo — `.crushrc` (minimum autonomy) + `.tq-verify` (CI
+  hard gates) are the rails; see
+  `docs/planning/2026-09-07_20-47_SUPERB-PLAN-ROUND4-DOGFOOD-POOL-EATS-THIS-REPO.md`.
 - What cost ceiling applies to a first production run (per day, per repo)?
 - Cancelled-task dedup semantics: today a cancelled task's dedup key
   suppresses re-enqueue forever (escape hatch: edit the item text). Should
