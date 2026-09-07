@@ -1,0 +1,80 @@
+package webui
+
+// Page is the full dashboard page. Fragments are server-rendered into the
+// containers so the page works without JS; SSE then replaces innerHTML.
+templ Page(data DashboardData) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta http-equiv="refresh" content="3600"/>
+			<title id="page-title">{ pageTitle(data) }</title>
+			<link rel="stylesheet" href="/static/dashboard.css"/>
+			<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📋</text></svg>"/>
+		</head>
+		<body>
+			<header>
+				<h1>tq · taskqueue</h1>
+				<span id="conn" class="conn conn-live" data-live="live" data-reconnecting="reconnecting" data-stale="stale">live</span>
+			</header>
+			<nav id="sections">
+				<a href="#sec-overview">overview</a>
+				<a href="#sec-tasks">tasks</a>
+				<a href="#sec-dlq">dlq</a>
+				<a href="#sec-feed">facts</a>
+			</nav>
+			<main>
+				<section id="sec-overview">
+					<div id="frag-stats">
+						@StatusCards(data)
+					</div>
+				</section>
+				<section id="sec-tasks">
+					<h2>tasks</h2>
+					<div id="frag-filters">
+						@FilterBar(data)
+					</div>
+					<div id="frag-table">
+						@TaskTable(data)
+					</div>
+				</section>
+				<section id="sec-dlq">
+					<h2>dead-letter queue</h2>
+					<div id="frag-dlq">
+						@DeadLetterTable(data)
+					</div>
+				</section>
+				<section id="sec-feed">
+					<h2>fact feed</h2>
+					<div id="frag-feed">
+						@FactFeed(data)
+					</div>
+				</section>
+			</main>
+			<footer>
+				<span class="muted">read-only projection of the journal · press <kbd>/</kbd> to search, <kbd>1</kbd>–<kbd>4</kbd> to jump</span>
+			</footer>
+			<script src="/static/app.js" defer></script>
+		</body>
+	</html>
+}
+
+// TaskDetailPage is the per-task detail page.
+templ TaskDetailPage(data DashboardData, detail taskDetailData) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ detail.ID + " · tq" }</title>
+			<link rel="stylesheet" href="/static/dashboard.css"/>
+			<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📋</text></svg>"/>
+		</head>
+		<body>
+			<main>
+				@TaskDetail(data, detail.Task, detail.Facts)
+			</main>
+		</body>
+	</html>
+}

@@ -1,0 +1,205 @@
+package webui
+
+import "github.com/larsartmann/go-taskqueue/internal/task"
+
+// statusCards renders the status summary cards (inner content of
+// #frag-stats).
+templ StatusCards(data DashboardData) {
+	<div class="cards">
+		<div class="card card-pending">
+			<div class="card-num">{ formatInt(data.Counts[task.Pending]) }</div>
+			<div class="card-label">pending</div>
+		</div>
+		<div class="card card-running">
+			<div class="card-num">{ formatInt(data.Counts[task.Running]) }</div>
+			<div class="card-label">running</div>
+		</div>
+		<div class="card card-completed">
+			<div class="card-num">{ formatInt(data.Counts[task.Completed]) }</div>
+			<div class="card-label">completed</div>
+		</div>
+		<div class="card card-dead">
+			<div class="card-num">{ formatInt(data.Counts[task.Dead]) }</div>
+			<div class="card-label">dead</div>
+		</div>
+		<div class="card card-cancelled">
+			<div class="card-num">{ formatInt(data.Counts[task.Cancelled]) }</div>
+			<div class="card-label">cancelled</div>
+		</div>
+		<div class="card card-total">
+			<div class="card-num">{ formatInt(data.Total) }</div>
+			<div class="card-label">total</div>
+		</div>
+	</div>
+	<div class="projects">
+		if len(data.Projects) == 0 {
+			<span class="muted">no projects</span>
+		} else {
+			for _, p := range data.Projects {
+				<a class="chip" href={ templ.URL("?project=" + p.Name) }>{ p.Name }&nbsp;·&nbsp;{ formatInt(p.Running) }R/{ formatInt(p.Pending) }P/{ formatInt(p.Dead) }D</a>
+			}
+		}
+	</div>
+}
+
+// TaskTable renders the live task table (inner content of #frag-table).
+templ TaskTable(data DashboardData) {
+	if len(data.Tasks) == 0 {
+		<p class="muted empty">No tasks{ filterSuffix(data.Filter) }. New tasks appear here live.</p>
+	} else {
+		<table>
+			<thead>
+				<tr>
+					<th>id</th>
+					<th>project</th>
+					<th>type</th>
+					<th>status</th>
+					<th>attempts</th>
+					<th>age</th>
+					<th>last error</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, t := range data.Tasks {
+					<tr class={ "row-" + string(t.Status) }>
+						<td><a href={ templ.URL("/task/" + t.ID.String()) }><code>{ t.ID.String() }</code></a></td>
+						<td>{ t.Project }</td>
+						<td>{ t.Type }</td>
+						<td><span class={ "badge badge-" + string(t.Status) }>{ string(t.Status) }</span></td>
+						<td>{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</td>
+						<td title={ t.CreatedAt.Format(timeFormat) }>{ timeAgo(data.Now, t.CreatedAt) }</td>
+						if t.LastError != "" {
+							<td class="err" title={ t.LastError }>{ truncate(t.LastError, errorPreviewLen) }</td>
+						} else {
+							<td></td>
+						}
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+
+// DeadLetterTable renders the dead-letter queue (inner content of
+// #frag-dlq).
+templ DeadLetterTable(data DashboardData) {
+	if len(data.Dead) == 0 {
+		<p class="muted empty">Dead-letter queue is empty.</p>
+	} else {
+		<table>
+			<thead>
+				<tr>
+					<th>id</th>
+					<th>project</th>
+					<th>type</th>
+					<th>attempts</th>
+					<th>last error</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, t := range data.Dead {
+					<tr>
+						<td><a href={ templ.URL("/task/" + t.ID.String()) }><code>{ t.ID.String() }</code></a></td>
+						<td>{ t.Project }</td>
+						<td>{ t.Type }</td>
+						<td>{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</td>
+						<td class="err" title={ t.LastError }>{ truncate(t.LastError, errorPreviewLen) }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+
+// FactFeed renders the recent fact ring (inner content of #frag-feed).
+templ FactFeed(data DashboardData) {
+	if len(data.Facts) == 0 {
+		<p class="muted empty">No facts yet.</p>
+	} else {
+		<ul class="feed">
+			for _, f := range data.Facts {
+				<li>
+					<span class="feed-seq">#{ formatInt(int(f.Seq)) }</span>
+					<span class={ "badge badge-" + factBadgeClass(f.Type) }>{ string(f.Type) }</span>
+					<code class="feed-task"><a href={ templ.URL("/task/" + f.TaskID) }>{ f.TaskID }</a></code>
+					if f.Error != "" {
+						<span class="err" title={ f.Error }>{ truncate(f.Error, errorPreviewLen) }</span>
+					}
+					<span class="feed-time muted" title={ f.Time.Format(timeFormat) }>{ timeAgo(data.Now, f.Time) }</span>
+				</li>
+			}
+		</ul>
+	}
+}
+
+// FilterBar renders the search/filter form (inner content of #frag-filters).
+templ FilterBar(data DashboardData) {
+	<form class="filters" method="get" action="/">
+		if data.Filter.Project != "" {
+			<span class="chip">project: { data.Filter.Project } <a class="chip-x" href={ filterURL(data.Filter, clearProject) }>×</a></span>
+		}
+		if data.Filter.Status != "" {
+			<span class="chip">status: { string(data.Filter.Status) } <a class="chip-x" href={ filterURL(data.Filter, clearStatus) }>×</a></span>
+		}
+		if data.Filter.Query != "" {
+			<span class="chip">search: { data.Filter.Query } <a class="chip-x" href={ filterURL(data.Filter, clearQuery) }>×</a></span>
+		}
+		<input type="search" id="search-box" name="q" placeholder="search type, payload, id, project…" value={ data.Filter.Query }/>
+		<select name="status">
+			<option value="">status: all</option>
+			for _, st := range allStatuses {
+				<option value={ string(st) } selected?={ data.Filter.Status == st }>{ string(st) }</option>
+			}
+		</select>
+		if data.Filter.Project != "" {
+			<input type="hidden" name="project" value={ data.Filter.Project }/>
+		}
+		<button type="submit">apply</button>
+		if data.Filter.Project != "" || data.Filter.Status != "" || data.Filter.Query != "" {
+			<a class="chip chip-clear" href="/">clear all</a>
+		}
+	</form>
+}
+
+// TaskDetail renders the per-task detail page body.
+templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
+	<p><a href="/">← back to dashboard</a></p>
+	<h2><code>{ t.ID.String() }</code> <span class={ "badge badge-" + string(t.Status) }>{ string(t.Status) }</span></h2>
+	<table class="detail">
+		<tbody>
+			<tr><th>project</th><td>{ t.Project }</td></tr>
+			<tr><th>type</th><td>{ t.Type }</td></tr>
+			<tr><th>status</th><td>{ string(t.Status) }</td></tr>
+			<tr><th>attempts</th><td>{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</td></tr>
+			<tr><th>priority</th><td>{ formatInt(t.Priority) }</td></tr>
+			<tr><th>payload</th><td><code class="payload">{ string(t.Payload) }</code></td></tr>
+			if t.LeaseOwner != "" {
+				<tr><th>lease owner</th><td>{ t.LeaseOwner }</td></tr>
+			}
+			<tr><th>created</th><td title={ t.CreatedAt.Format(timeFormat) }>{ timeAgo(data.Now, t.CreatedAt) } ago</td></tr>
+			<tr><th>updated</th><td title={ t.UpdatedAt.Format(timeFormat) }>{ timeAgo(data.Now, t.UpdatedAt) } ago</td></tr>
+			if t.CompletedAt != nil {
+				<tr><th>completed</th><td title={ t.CompletedAt.Format(timeFormat) }>{ timeAgo(data.Now, *t.CompletedAt) } ago</td></tr>
+			}
+			if t.LastError != "" {
+				<tr><th>last error</th><td class="err">{ t.LastError }</td></tr>
+			}
+		</tbody>
+	</table>
+	<h3>fact timeline</h3>
+	<ul class="feed">
+		for _, fv := range facts {
+			<li>
+				<span class="feed-seq">#{ formatInt(int(fv.Seq)) }</span>
+				<span class={ "badge badge-" + factBadgeClass(fv.Type) }>{ string(fv.Type) }</span>
+				if fv.Owner != "" {
+					<span class="muted">{ fv.Owner }</span>
+				}
+				if fv.Error != "" {
+					<span class="err">{ fv.Error }</span>
+				}
+				<span class="feed-time muted" title={ fv.Time.Format(timeFormat) }>{ fv.Time.Format(timeFormat) }</span>
+			</li>
+		}
+	</ul>
+}
