@@ -74,7 +74,7 @@ tq agent-pool --projects-dir ~/projects --yolo --concurrency 2 --interval 5m \
 tq agent-pool --projects-dir ~/projects --once --daily-budget 20
 
 # optional: Code-Quality-Agent findings become fix tasks each tick
-tq agent-pool --projects-dir ~/projects --yolo     --cqa-url http://localhost:8080 --cqa-owner $CQA_OWNER_ID
+tq agent-pool --projects-dir ~/projects --yolo --cqa-url http://localhost:8080 --cqa-owner $CQA_OWNER_ID
 ```
 
 ### Running it as a daemon
@@ -193,20 +193,31 @@ store and an HTTP API server.
 ## Development
 
 ```sh
-go test ./... -race          # full suite (CI also gates on go vet + gofmt)
-./scripts/smoke/multi-repo.sh  # live smoke: 3 repos, 2 pools, 1 shared DB —
-                              # proves dedup, pacing and per-project exclusivity
+go test ./... -race             # full suite (CI also gates on go vet + gofmt)
+./scripts/smoke/multi-repo.sh   # live smoke: 3 repos, 2 pools, 1 shared DB —
+                                # proves dedup, pacing and per-project exclusivity
+./scripts/smoke/webui.sh        # live smoke: worker + tq serve + HTTP/SSE assertions
 ```
 
 CI gates every push on vet, build, tests with `-race`, gofmt, a nix build
++ `nix flake check`, the two live smokes above, a TODO_LIST
+harvest-parse guard, and a doc ghost-reference check. golangci-lint runs
+advisory (non-blocking): its ~400-finding repo baseline is documented in
+AGENTS.md, findings stay visible as CI annotations, and the hard gates are
+vet, gofmt and tests. The e2e suite (`internal/e2e`) drives the real `tq`
+binary as a subprocess with a stub agent, so the full agent loop is tested
+in CI at zero API cost. Reproducible builds via `nix build`. Agent sessions
+should read AGENTS.md first; feature status lives in FEATURES.md, upcoming
+work in TODO_LIST.md, long-term direction in ROADMAP.md, and the domain
+vocabulary in docs/DOMAIN_LANGUAGE.md.
 
-- `nix flake check`, a TODO_LIST harvest-parse guard, and a doc
-  ghost-reference check. The e2e suite (`internal/e2e`) drives the real `tq`
-  binary as a subprocess with a stub agent, so the full agent loop is tested
-  in CI at zero API cost. Reproducible builds via `nix build`. Agent sessions
-  should read AGENTS.md first; feature status lives in FEATURES.md, upcoming
-  work in TODO_LIST.md, long-term direction in ROADMAP.md, and the domain
-  vocabulary in docs/DOMAIN_LANGUAGE.md.
+### Proof-of-concept examples
+
+`examples/api` (enqueue endpoint, Prometheus `/metrics`, live stats page)
+and `examples/sse` (fact stream with `Last-Event-ID` resume) are PoCs —
+`examples/` stays experimental by design and `tq serve` is the production
+dashboard path. The PoC HTTP server binds loopback only and has no
+authentication; do not expose it.
 
 ## License
 

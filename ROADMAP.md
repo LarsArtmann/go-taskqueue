@@ -6,12 +6,14 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 ## v0.1.0 — Single-node foundation (current)
 
 - [x] Facts-first core: journal, SQLite store, lease claims, deps, DLQ
-- [x] `tq` CLI: enqueue / worker / harvest / agent-pool / stats / show / dlq / cancel / facts / tail
+- [x] `tq` CLI: enqueue / worker / harvest / agent-pool / stats / audit / top / show / dlq / cancel / facts / tail / serve
 - [x] Executors: `sh`, HTTP, headless agent with verify contracts
 - [x] Harvest: TODO_LIST.md backlogs → agent tasks across a projects dir
 - [x] Idempotent enqueue (dedup keys) + legacy-DB migration
 - [x] flake.nix, CI, README, AGENTS.md, FEATURES.md, ADRs
-- Release itself (tag + GitHub release + pkg.go.dev) is tracked in TODO_LIST.md
+- [x] Shipped 2026-09-06 as a GitHub pre-release (annotated tag, proxy +
+  pkg.go.dev verified); checklist archived at
+  `docs/release/archived/2026-09-06_v0.1.0_CHECKLIST.md`
 
 ## v0.2.0 — Distribution seam
 
@@ -35,39 +37,94 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 ## v0.4.0 — Intelligence
 
 - ai-task-prioritizer: ranking model writes the `priority` field
-- Smart retry policies keyed on error classification (permanent vs transient)
+- Retry-policy table keyed on error class (D99 sketch: per-class attempt
+  overrides and backoff curves on top of the shipped permanent/transient
+  classes)
 - Per-project concurrency limits as a first-class store concept
 
 ## Raw ideas (unrefined)
 
-- Cron-style recurring tasks (re-enqueue with dedup keys on completion)
+### Queue core / scale
+
+- Journal compaction design note (facts-first ADR-0001 flagged it; the web
+  UI's full-journal scans raise its priority), then `tq journal compact
+  --before SEQ`
+- `tq journal verify`: checksum chain over facts for tamper-evidence
+- Store hot-cold split: archive facts older than N days to a cold table
+- `Store.List` filter pushdown (`q` at the SQL layer) so web UI/top search
+  stops being an in-memory full scan
+- SSE `Replay` + ring buffer to replace snapshot-per-tick for
+  high-frequency queues
+- Cron-style recurring tasks (time-bucketed dedup keys, D83 seed)
 - Cross-repo DAG from harvest: configurable templates like "docs item
-  depends on code item"
-- `tq agent-pool --once` (single harvest+drain pass for scripts and tests)
-- Structured per-task result payload: `{files_changed, commit_sha, verify_output_tail}`
-- PR-mode: agent commits to a branch and opens a PR instead of committing directly
-- Git worktree isolation option (agents never touch the user's checkout)
-- Session continuation chains via `AgentPayload.Session` ("follow-up on previous item")
-- Rate-limit concurrent crush sessions per machine; detect the crush version
-  at pool start to catch flag-contract drift early
-- Output sidecar: store full agent stdout to a blob file, keep only the tail in facts
-- Metrics endpoint (Prometheus) over the facts projection
+  depends on code item" (D97 seed)
+- Session continuation chains via `AgentPayload.Session` (D94 seed)
+- Rate-limit concurrent crush sessions per machine; detect the crush
+  version at pool start to catch flag-contract drift early (D91)
 - Heartbeat cadence scaled to lease for very long tasks
-- `tq harvest --json` for dashboards; `--repo-subset` glob filter
-- Timeout defaults per repo size (small repos don't need 45m)
-- `tq dlq --rescue-all --older-than` bulk rescue
-- Guard: refuse `--projects-dir /` or `$HOME` (harvest scanning catastrophically wide)
-- `.crushrc` permissions lint: warn when a repo grants `bash` to an unsandboxed pool
-- Security.md documenting what autonomy grants mean and the blast radius of `bash`
-- Fuzz the TODO parser (malformed markdown, CRLF, BOM); Windows path handling
-  in harvest; i18n-safe item hashing
-- Queue DB rotation/backup guidance (single file = single point of failure)
-- Chaos test: SIGKILL a pool mid-agent-run; assert lease-expiry reclaim and
-  no double-complete
-- GitHub Actions job running the stub-agent e2e (no API cost)
-- Example corpus: runnable `examples/agent-pool/` demo repo with `.crushrc` + TODO_LIST.md
-- Decide and document when `internal/` packages become a public, importable
-  library API
+- Timeout defaults per repo size (small repos don't need 45m, D90 seed)
+- Example corpus: runnable `examples/agent-pool/` demo repo with `.crushrc`
+  + TODO_LIST.md
+
+### Web UI polish (Phase D seeds beyond the v0.3 arc)
+
+- Live-updating task detail page (`/task/{id}` is static HTML today)
+- Table column sorting toggles (client-side, no server cost)
+- `aria-live` regions on fragments for screen-reader announcements
+- Journal viewer mode (`/facts?after=` with infinite scroll) as the human
+  replacement for `tq tail -f`
+- Per-project dashboard pages (`/project/{name}`) reusing the filter
+  pipeline
+- `tq serve --open` (browser auto-open); dark/light theme toggle (CSS
+  variables already isolate colors); SSE `retry:` hint; humanized payload
+  preview in table rows; inline-SVG favicon; journal-size + watermark stat
+  card
+
+### CI / tooling
+
+- `concurrency:` group in ci.yml to cancel superseded runs (the
+  auto-commit daemon pushes in bursts)
+- Advisory lint cost: scope to changed packages (diff-based) or move to a
+  scheduled job instead of recomputing a known ~400-finding result per push
+- `govulncheck` step (binary already in the flake devShell); dependabot for
+  actions + modules; upgrade pinned actions past the Node 20 deprecation
+- Nightly `-race -count=3` full-suite job (flake-catching for the race
+  gate)
+- Fuzz `unwrapCommand` payload shapes (raw/JSON string/`{"cmd":...}`/
+  hostile input)
+- Sentinel errors per package (`errors.go` convention) to burn down the
+  err113 findings — post lint-endgame decision
+- Triage the 32 gosec findings: real issues vs false positives
+- templ LSP false diagnostics (57 errors / 145 warnings against a green
+  `go build`): investigate gopls/templ-lsp coexistence; until fixed, the
+  rule is "LSP webui diagnostics are false positives, trust the CLI"
+- Windows smoke variant of `webui.sh` (currently POSIX-only)
+
+### Observability / ops
+
+- `tq version` subcommand printing the ldflags-injected version (verify
+  `main.version` is actually wired)
+- `tq top --json` shape contract test (agents consume it; pin the output)
+- dlq rescue UX: print the rescue plan before enqueueing on
+  `--rescue-all --older-than`
+- Web UI scale test: snapshot + SSE burst at 100k tasks (fragment size,
+  render latency, memory) to put a number on the W18 pagination trigger
+- Load test: 10k tasks / 100 projects claim-throughput baseline, recorded
+  in FEATURES as a regression guard for SQL changes
+- Budget telemetry → papdashboard alert (pool spend visible in the ops
+  dashboard)
+- Catch-up tasks with a cheaper executor: try `sh`+python vs agent for `tq
+  audit` repairs; keep the agent only if measurably needed
+- ADR-0004: lint policy decision record (advisory rationale, endgame
+  options, what would re-gate it)
+- `docs/status/README.md` index: reports newest-first, superseded ones
+  marked
+- e2e coverage for `tq audit` and `tq top --json` on a seeded DB (both are
+  unit + manual smoke only)
+- Chaos variant: SIGKILL the pool (not just a worker) mid-drain under
+  `--once`; assert systemd-restart safety
+- Promote remaining shell smokes to Go e2e tests (multi-repo smoke →
+  `internal/e2e`)
 
 ## Non-goals
 
@@ -85,6 +142,16 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   suppresses re-enqueue forever (escape hatch: edit the item text). Should
   cancellation instead release the key, accepting that "cancel" no longer
   means "stop bringing this back"? Store-schema-affecting.
+- Lint endgame (19:33 report g2): (a) trim `.golangci.yml` to an
+  enforceable set and re-gate, (b) keep advisory + a checked-in baseline
+  file that can only shrink, or (c) permanent advisory? The current config
+  documents a bar the codebase doesn't meet and enforces nothing.
+- Master push workflow (19:33 report g3): accept direct-push +
+  push-then-verify from agents and the auto-commit daemon, or add branch
+  protection / a PR flow?
+- PR-mode enablement: the PoC (`scripts/poc/pr-mode.sh`) proves branch +
+  push mechanics; which repos may agents deliver to via real PRs
+  (`OPEN_PR=1` policy)?
 
 ## Deferred-bundle seeds
 

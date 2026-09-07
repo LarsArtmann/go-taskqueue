@@ -26,7 +26,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   journal tailer coalesces change bursts; every client gets a full
   snapshot on connect and after each burst (reconnect-safe), with URL
   filters/search (`?project=&status=&q=`) and per-task detail pages at
-  `/task/{id}`. `internal/webui`, ADR-0003, `scripts/smoke/webui.sh`.
+  `/task/{id}` (`internal/webui`; decision record:
+  [docs/adr/0003-web-ui-architecture.md](docs/adr/0003-web-ui-architecture.md),
+  execution plan:
+  [docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md](docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md);
+  smoke: `scripts/smoke/webui.sh`).
 - Deferred-bundle seeds (plan C27): structured result self-report from
   agents (`TQ_RESULT:` line → `files_changed`/`commit_sha` in the result
   detail), full-output sidecar logs (`TQ_LOG_DIR`), `tq harvest --json` and
@@ -88,12 +92,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `--model` on `tq harvest` / `tq agent-pool`: pin the crush model in every
   harvested agent payload
 
-### Changed
-
-- Nothing yet.
-
 ### Fixed
 
+- Items marked `— BLOCKED: <reason>` in a TODO_LIST.md are now skipped by
+  the harvester instead of being enqueued as fresh agent tasks. The marker
+  was part of the documented agent contract (the prompt tells agents to
+  append it when they cannot finish an item) and of the backlog file's own
+  header, but no code honored it — and because the marker changes the item
+  text, it even re-armed a fresh dedup key on every blocked attempt
 - `tq agent-pool --once` hung after draining: the pool stopped but the
   process waited for a signal, because `Start` only returns when the
   caller's context is done — the drain watcher now cancels it too
