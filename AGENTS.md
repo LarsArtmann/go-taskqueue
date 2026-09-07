@@ -48,7 +48,8 @@ facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 | `internal/executor` | Pluggable execution: `sh` command, HTTP, agent (headless AI), registry                                  |
 | `internal/harvest`  | Scans repos' TODO_LIST.md and enqueues work items as agent tasks; drift audit (`tq audit`)              |
 | `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick                  |
-| `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / stats / audit / top / show / dlq / cancel / facts / tail |
+| `internal/webui`    | Read-only live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)  |
+| `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / stats / audit / top / show / dlq / cancel / facts / tail / serve |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001 core,
 ADR-0002 agent-pool policies: `docs/adr/0002-agent-pool-autonomy-pacing-drain.md`;
@@ -121,7 +122,12 @@ fail with "no such column" before the ALTER runs.
 - ⚠️ **Flakes only see git-tracked files**: `git add` new files before
   `nix build` or Nix cannot see them.
 - ⚠️ **tq worker runs until signalled**: there is no one-shot mode; scripts
-  must wrap it in `timeout`/supervisor.
+  must wrap it in `timeout`/supervisor. Same for `tq serve` — it blocks
+  until signalled; smoke/tests wrap it in `timeout` (see
+  `scripts/smoke/webui.sh`).
+- ⚠️ **`tq serve` binds 127.0.0.1 by default and is read-only**: never add
+  write endpoints without an explicit `--allow-writes`-style flag + CSRF
+  story (ADR-0003 guardrail).
 - ⚠️ **golangci-lint is not a CI gate**: CONTRIBUTING mentions it, but the
   baseline carries errcheck findings on idiomatic `defer x.Close()` lines.
   Do not mass-"fix" them; CI enforces vet + gofmt + tests only.
