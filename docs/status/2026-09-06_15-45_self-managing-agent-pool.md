@@ -57,25 +57,25 @@ Nothing is fucked up now (suite green, loop proven). But three things genuinely 
 
 Top block (actionable now, high impact):
 
-1. Store-level `WithProjectExclusivity` claim guard (opt-in) — per-repo serialization across ALL pools/processes, not just harvest pacing
-2. Permanent-vs-transient error classes: dirty-tree/unknown-flag/missing-config dead-letter after ONE attempt, no backoff burn
-3. `--model` pass-through: `tq agent-pool --model provider/model` → `AgentPayload.Model` (field exists, wiring missing)
-4. ADR-0002: agent-pool architecture + autonomy/trust model + drain semantics
-5. Long-task regression test: task claimed after pool uptime >30 s completes (would have caught the drain bug)
-6. Multi-repo live smoke: ≥3 repos, concurrency 2, two agent-pool processes on one DB (dedup + pacing under real contention)
-7. systemd user unit (or `tq agent-pool --daemon`) for the "at all times" requirement; Restart=on-failure
-8. Daily/rolling cost budget per repo and global (agent runs cost real money; `--max-per-tick` is per-tick only)
-9. `requireRepoAutonomy` false-positive fix: probe global permissions config or add `--assume-global-autonomy` escape
-10. Harvest: per-repo poll interval + DLQ backoff (a poisoned repo must not refill attempts forever)
-11. Link completed agent tasks to crush session IDs (payload result detail) so `tq show` points at the transcript
-12. Docs-drift auditor: periodic task re-checking harvested repos for "completed but still unchecked" items
-13. `tq top`: live per-project view (pending/running/dead + last agent duration)
-14. `TestShutdownDrains` claim-window flake fix (30 ms sleep → explicit claim await)
-15. E2E CLI-as-subprocess test: spawn `tq agent-pool` with `$TQ_AGENT_BIN` stub from outside the process
-16. Verify-step auto-detection beyond Go/npm (Makefile, flake.nix `nix build`, cargo, pip) or per-repo `.tq-verify` file
-17. Harvested tasks should carry a `verify` command sourced from repo config
-18. `nix build` + `nix flake check` in this session's follow-up (vendorHash dance if needed)
-19. Pre-v0.1.0: history squash decision for the daemon's mid-edit commits, then tag + release + pkg.go.dev
+1. ~~Store-level `WithProjectExclusivity` claim guard (opt-in) — per-repo serialization across ALL pools/processes, not just harvest pacing~~ done (shipped in v0.1.0 (WithProjectExclusivity, FEATURES queue-core row))
+2. ~~Permanent-vs-transient error classes: dirty-tree/unknown-flag/missing-config dead-letter after ONE attempt, no backoff burn~~ done (shipped in v0.1.0 (executor.PermanentError, dead-letter after one attempt))
+3. ~~`--model` pass-through: `tq agent-pool --model provider/model` → `AgentPayload.Model` (field exists, wiring missing)~~ done (shipped in v0.1.0 (--model on harvest + agent-pool))
+4. ~~ADR-0002: agent-pool architecture + autonomy/trust model + drain semantics~~ done (docs/adr/0002-agent-pool-autonomy-pacing-drain.md)
+5. ~~Long-task regression test: task claimed after pool uptime >30 s completes (would have caught the drain bug)~~ done (shipped in v0.1.0 (long-task regression test pins the drain fix))
+6. ~~Multi-repo live smoke: ≥3 repos, concurrency 2, two agent-pool processes on one DB (dedup + pacing under real contention)~~ done (scripts/smoke/multi-repo.sh (3 repos, 2 pools, 1 DB))
+7. ~~systemd user unit (or `tq agent-pool --daemon`) for the "at all times" requirement; Restart=on-failure~~ done (deploy/systemd/tq-agent-pool.service + tq agent-pool --once)
+8. ~~Daily/rolling cost budget per repo and global (agent runs cost real money; `--max-per-tick` is per-tick only)~~ done (shipped in v0.1.0 (--daily-budget/--budget-cmd, internal/budget))
+9. ~~`requireRepoAutonomy` false-positive fix: probe global permissions config or add `--assume-global-autonomy` escape~~ done (autonomy probe accepts the user-global crush config)
+10. ~~Harvest: per-repo poll interval + DLQ backoff (a poisoned repo must not refill attempts forever)~~ done (shipped in v0.1.0 (--repo-interval + --dlq-backoff))
+11. ~~Link completed agent tasks to crush session IDs (payload result detail) so `tq show` points at the transcript~~ done (session id recorded in task.completed, rendered by tq show)
+12. ~~Docs-drift auditor: periodic task re-checking harvested repos for "completed but still unchecked" items~~ done (tq audit (internal/harvest/drift.go))
+13. ~~`tq top`: live per-project view (pending/running/dead + last agent duration)~~ done (tq top)
+14. ~~`TestShutdownDrains` claim-window flake fix (30 ms sleep → explicit claim await)~~ done (TestShutdownDrains awaits claims explicitly)
+15. ~~E2E CLI-as-subprocess test: spawn `tq agent-pool` with `$TQ_AGENT_BIN` stub from outside the process~~ done (internal/e2e subprocess suite, runs in CI)
+16. ~~Verify-step auto-detection beyond Go/npm (Makefile, flake.nix `nix build`, cargo, pip) or per-repo `.tq-verify` file~~ done (.tq-verify wins; Makefile/flake.nix/cargo auto-detect)
+17. ~~Harvested tasks should carry a `verify` command sourced from repo config~~ done (harvest pins the repo .tq-verify into every payload)
+18. ~~`nix build` + `nix flake check` in this session's follow-up (vendorHash dance if needed)~~ done (vendorHash re-pinned; nix build + nix flake check green (16:19 report))
+19. ~~Pre-v0.1.0: history squash decision for the daemon's mid-edit commits, then tag + release + pkg.go.dev~~ done (tag v0.1.0 + GitHub pre-release, proxy + pkg.go.dev verified (2026-09-06/07))
 20. Cancelled-task dedup semantics: decide whether `dedup_key` should ignore cancelled rows (re-open support) — schema-affecting
 
 Second block (hardening/polish):

@@ -7,7 +7,8 @@ a bug.
 
 Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 (facts-first core), [ADR-0002](../docs/adr/0002-agent-pool-autonomy-pacing-drain.md)
-(agent-pool policies).
+(agent-pool policies), [ADR-0003](../docs/adr/0003-web-ui-architecture.md)
+(live web UI: serve, tailer, hub, fragment, projection).
 
 ## Queue core
 

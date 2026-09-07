@@ -251,15 +251,15 @@ Impact: Critical/High/Medium/Low. Effort: S <30min, M 30min–2h, L >2h.
 | #  | Task                                                                                                                        | Impact | Effort | Category      |
 | -- | --------------------------------------------------------------------------------------------------------------------------- | ------ | ------ | ------------- |
 | 1  | Verify CQA bridge against a live CQA API; fix contract drift; upgrade FEATURES status                                       | High   | S      | Quality       |
-| 2  | Re-runnable PapDashboard E2E verification script (owned by the repo, not a session memory)                                  | Medium | M      | Quality       |
-| 3  | CI docs-drift guard: `tq harvest --repos . --dry-run` must parse TODO_LIST.md                                               | High   | S      | Quality       |
-| 4  | CI ghost-reference guard: every path cited in AGENTS.md/README/FEATURES must exist                                          | Medium | S      | Quality       |
-| 5  | Add `nix build` (+ flake check) to CI so vendorHash drift fails on PR, not on next audit                                    | High   | S      | Quality       |
-| 6  | Add dprint to flake devShell; run it once over all six living docs                                                          | Low    | S      | Cleanup       |
-| 7  | golangci-lint: either CI-gate with errcheck exclusions for idiomatic deferred Close, or drop from CONTRIBUTING              | Medium | S      | Cleanup       |
-| 8  | Write `docs/DOMAIN_LANGUAGE.md` (task, fact, claim, lease, release, DLQ, rescue, harvest, dedup key, tick, verify gate)     | Medium | M      | Documentation |
-| 9  | `doc.go` per package + godoc examples before the module goes public (plan F37)                                              | Medium | M      | Documentation |
-| 10 | FEATURES.md maintenance note: statuses must be re-verified after parallel sessions touch core packages                      | Low    | S      | Documentation |
+| ~~2~~  | ~~Re-runnable PapDashboard E2E verification script (owned by the repo, not a session memory)~~ done — scripts/smoke/papdashboard-e2e.sh (stub mode green; real-mode debt filed in the 19:49 report) | ~~Medium~~ | ~~M~~ | ~~Quality~~ |
+| ~~3~~  | ~~CI docs-drift guard: `tq harvest --repos . --dry-run` must parse TODO_LIST.md~~ done — ci.yml TODO_LIST harvest-parse guard (TestRepoTodoListParses) | ~~High~~ | ~~S~~ | ~~Quality~~ |
+| ~~4~~  | ~~CI ghost-reference guard: every path cited in AGENTS.md/README/FEATURES must exist~~ done — scripts/check-doc-refs.sh in CI | ~~Medium~~ | ~~S~~ | ~~Quality~~ |
+| ~~5~~  | ~~Add `nix build` (+ flake check) to CI so vendorHash drift fails on PR, not on next audit~~ done — ci.yml nix job (build + flake check) | ~~High~~ | ~~S~~ | ~~Quality~~ |
+| ~~6~~  | ~~Add dprint to flake devShell; run it once over all six living docs~~ done — dprint in flake devShell; docs formatted | ~~Low~~ | ~~S~~ | ~~Cleanup~~ |
+| ~~7~~  | ~~golangci-lint: either CI-gate with errcheck exclusions for idiomatic deferred Close, or drop from CONTRIBUTING~~ done — decided advisory 2026-09-07 (ci.yml continue-on-error; AGENTS.md policy) | ~~Medium~~ | ~~S~~ | ~~Cleanup~~ |
+| ~~8~~  | ~~Write `docs/DOMAIN_LANGUAGE.md` (task, fact, claim, lease, release, DLQ, rescue, harvest, dedup key, tick, verify gate)~~ done — docs/DOMAIN_LANGUAGE.md | ~~Medium~~ | ~~M~~ | ~~Documentation~~ |
+| ~~9~~  | ~~`doc.go` per package + godoc examples before the module goes public (plan F37)~~ done — package docs in primary files (house style); go doc renders for all packages | ~~Medium~~ | ~~M~~ | ~~Documentation~~ |
+| ~~10~~ | ~~FEATURES.md maintenance note: statuses must be re-verified after parallel sessions touch core packages~~ done — covered by the AGENTS.md concurrent-agents known issue | ~~Low~~ | ~~S~~ | ~~Documentation~~ |
 | 11 | ★ Permanent-vs-transient error classes (dirty tree / missing autonomy config / unknown flags dead-letter after one attempt) | High   | M      | Feature       |
 | 12 | ★ Store-level per-project claim exclusivity (`WithProjectExclusivity`)                                                      | High   | L      | Feature       |
 | 13 | ★ Long-task regression test: task claimed after minutes of pool uptime completes                                            | High   | S      | Quality       |
