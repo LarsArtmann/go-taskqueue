@@ -318,12 +318,12 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 // contract (DefaultPromptTemplate) and the TODO_LIST header define for items
 // a human must unblock; ok is true when the item must not be harvested.
 func blockedReason(text string) (reason string, ok bool) {
-	i := strings.Index(text, "BLOCKED:")
-	if i < 0 {
+	_, after, ok0 := strings.Cut(text, "BLOCKED:")
+	if !ok0 {
 		return "", false
 	}
 
-	reason = strings.TrimSpace(text[i+len("BLOCKED:"):])
+	reason = strings.TrimSpace(after)
 	if reason == "" {
 		reason = "no reason given"
 	}

@@ -88,31 +88,31 @@ fix. Each is a filed decision, not an omission.
 
 ## a) FULLY DONE
 
-| Work | Evidence |
-| ---- | -------- |
-| Diagnosed why master CI was red ×4 (three independent root causes: lint baseline, treefmt vs `*_templ.go`, latent doc-refs false positive) | `gh run view 34145174624`, local `golangci-lint` (v2.13.2 = CI version), CI nix job log |
-| CLI complexity refactor: 14-case switch → command map (`main` 18→6), `cmdAudit` 16→8 via `printDriftReport` extraction, dead `catchups` map removed, `splitRepos()` dedupes 3 copies of repo-list parsing | `132554e`; `golangci-lint run ./cmd/...` no longer flags `main`/`cmdAudit` |
-| Real context bug fixed: papdashboard watermark init now inherits `Run`'s cancellation instead of `context.Background()` | `61d2044`; contextcheck finding gone on fresh targeted lint; bridge tests `-count=1` pass |
-| Lint policy resolved: CI lint step advisory (`continue-on-error`), aligned with AGENTS.md's documented policy; contradiction removed from AGENTS.md, CHANGELOG made honest | `94bff0f`, `16ce98c`; CI green with lint step ✓ |
-| treefmt gate fixed for templ: `*_templ.go` excluded, `enableTempl = true` adds `templ fmt` gate for `.templ` sources (verified both files templ-fmt-clean), manual `pkgs.templ` devShell entry deduped | `94bff0f` flake.nix; local `nix flake check` → "all checks passed"; CI nix job green |
-| Doc-refs false positive allowlisted (`encoding/json/v2` stdlib path) with provenance comment | `af848cd`; `./scripts/check-doc-refs.sh` → "doc refs ok" |
-| Full local gate battery green BEFORE push: build, vet, `GOOS=windows` build+vet, gofmt, `go test ./... -race -count=1` (12 pkgs ok, raw exit code 0 — re-run after catching my own `| tail` pipeline masking), webui smoke (stats/fragments/SSE ok), doc-refs, `nix flake check` | session transcript; CI then confirmed independently |
-| Pushed and watched CI to green: two consecutive successful runs (test job 9/9 steps, nix job 6/6) | `gh run list` → `34147286516` success, `34147397689` success |
-| Round-3 plan annotated **EXECUTED** with status-report cross-link | `94bff0f` (plan doc diff) |
-| Previous report's false-green claims annotated non-destructively (per docs-health ANNOTATE) | this session, uncommitted at report time — committed together with this file |
-| Todo list synced to reality (W01–W14 completed; session tasks tracked to completion) | todos tool |
+| Work                                                                                                                                                                                                      | Evidence                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Diagnosed why master CI was red ×4 (three independent root causes: lint baseline, treefmt vs `*_templ.go`, latent doc-refs false positive)                                                                | `gh run view 34145174624`, local `golangci-lint` (v2.13.2 = CI version), CI nix job log   |
+| CLI complexity refactor: 14-case switch → command map (`main` 18→6), `cmdAudit` 16→8 via `printDriftReport` extraction, dead `catchups` map removed, `splitRepos()` dedupes 3 copies of repo-list parsing | `132554e`; `golangci-lint run ./cmd/...` no longer flags `main`/`cmdAudit`                |
+| Real context bug fixed: papdashboard watermark init now inherits `Run`'s cancellation instead of `context.Background()`                                                                                   | `61d2044`; contextcheck finding gone on fresh targeted lint; bridge tests `-count=1` pass |
+| Lint policy resolved: CI lint step advisory (`continue-on-error`), aligned with AGENTS.md's documented policy; contradiction removed from AGENTS.md, CHANGELOG made honest                                | `94bff0f`, `16ce98c`; CI green with lint step ✓                                           |
+| treefmt gate fixed for templ: `*_templ.go` excluded, `enableTempl = true` adds `templ fmt` gate for `.templ` sources (verified both files templ-fmt-clean), manual `pkgs.templ` devShell entry deduped    | `94bff0f` flake.nix; local `nix flake check` → "all checks passed"; CI nix job green      |
+| Doc-refs false positive allowlisted (`encoding/json/v2` stdlib path) with provenance comment                                                                                                              | `af848cd`; `./scripts/check-doc-refs.sh` → "doc refs ok"                                  |
+| Full local gate battery green BEFORE push: build, vet, `GOOS=windows` build+vet, gofmt, `go test ./... -race -count=1` (12 pkgs ok, raw exit code 0 — re-run after catching my own `                      | tail`pipeline masking), webui smoke (stats/fragments/SSE ok), doc-refs,`nix flake check`  |
+| Pushed and watched CI to green: two consecutive successful runs (test job 9/9 steps, nix job 6/6)                                                                                                         | `gh run list` → `34147286516` success, `34147397689` success                              |
+| Round-3 plan annotated **EXECUTED** with status-report cross-link                                                                                                                                         | `94bff0f` (plan doc diff)                                                                 |
+| Previous report's false-green claims annotated non-destructively (per docs-health ANNOTATE)                                                                                                               | this session, uncommitted at report time — committed together with this file              |
+| Todo list synced to reality (W01–W14 completed; session tasks tracked to completion)                                                                                                                      | todos tool                                                                                |
 
 ## b) PARTIALLY DONE
 
-| Work | What works | What remains | Effort |
-| ---- | ---------- | ------------ | ------ |
-| Lint remediation | `main`, `cmdAudit` fixed; papdashboard contextcheck fixed | 4 more cmd/tq cyclop (`cmdHarvest` 17, `cmdStats` 14, `cmdDLQ` 13, `aggregateTop` 16) + ~21 repo-wide cyclop + ~370 other baseline findings; advisory so nothing forces it | L (baseline) / M per function |
-| Advisory lint visibility | Step goes ✓, findings computed | Unverified that annotations actually surface on green runs (`continue-on-error` + annotation caps); if not, need reviewdog or scoped lint | S to verify |
-| Formatter story for docs | dprint in devShell; treefmt gates Go+templ+nixfmt | dprint NOT wired into treefmt check — markdown formatting is un-gated; intent unclear (round-2 report said "treefmt owns Go, dprint owns docs") | S |
-| nix gate coverage | `nix flake check` green on x86_64-linux (eval covers darwin/aarch64) | `--all-systems` builds never exercised; nix-built binary not smoke-tested post-`enableTempl` (checks.build compiles+tests it, but nothing runs `result/bin/tq`) | S |
-| ~~Doc consistency for lint policy~~ | ~~AGENTS.md, CHANGELOG, ci.yml aligned~~ | ~~`CONTRIBUTING.md` gate list not re-read against advisory reality~~ done 2026-09-07 (gate list updated: web UI smoke, advisory lint note, templ generate) | ~~S~~ |
-| ~~Next-steps backlog~~ | ~~Previous report's ~50 items + this report's (f) list written~~ | ~~HARVEST into TODO_LIST.md/ROADMAP.md blocked on owner decision~~ done 2026-09-07 (owner-directed docs-health run; open items routed, owner-gated ones BLOCKED) | ~~M~~ |
-| CHANGELOG | Honest Changed entry for lint policy | `[Unreleased]` keeps growing; no version cut anywhere in sight (repo is pre-v0.1.0) | M |
+| Work                                | What works                                                           | What remains                                                                                                                                                               | Effort                        |
+| ----------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| Lint remediation                    | `main`, `cmdAudit` fixed; papdashboard contextcheck fixed            | 4 more cmd/tq cyclop (`cmdHarvest` 17, `cmdStats` 14, `cmdDLQ` 13, `aggregateTop` 16) + ~21 repo-wide cyclop + ~370 other baseline findings; advisory so nothing forces it | L (baseline) / M per function |
+| Advisory lint visibility            | Step goes ✓, findings computed                                       | Unverified that annotations actually surface on green runs (`continue-on-error` + annotation caps); if not, need reviewdog or scoped lint                                  | S to verify                   |
+| Formatter story for docs            | dprint in devShell; treefmt gates Go+templ+nixfmt                    | dprint NOT wired into treefmt check — markdown formatting is un-gated; intent unclear (round-2 report said "treefmt owns Go, dprint owns docs")                            | S                             |
+| nix gate coverage                   | `nix flake check` green on x86_64-linux (eval covers darwin/aarch64) | `--all-systems` builds never exercised; nix-built binary not smoke-tested post-`enableTempl` (checks.build compiles+tests it, but nothing runs `result/bin/tq`)            | S                             |
+| ~~Doc consistency for lint policy~~ | ~~AGENTS.md, CHANGELOG, ci.yml aligned~~                             | ~~`CONTRIBUTING.md` gate list not re-read against advisory reality~~ done 2026-09-07 (gate list updated: web UI smoke, advisory lint note, templ generate)                 | ~~S~~                         |
+| ~~Next-steps backlog~~              | ~~Previous report's ~50 items + this report's (f) list written~~     | ~~HARVEST into TODO_LIST.md/ROADMAP.md blocked on owner decision~~ done 2026-09-07 (owner-directed docs-health run; open items routed, owner-gated ones BLOCKED)           | ~~M~~                         |
+| CHANGELOG                           | Honest Changed entry for lint policy                                 | `[Unreleased]` keeps growing; no version cut anywhere in sight (repo is pre-v0.1.0)                                                                                        | M                             |
 
 ## c) NOT STARTED
 
@@ -212,48 +212,48 @@ Ranked by impact. HARVEST note: TODO_LIST.md is agent-pool food — routing
 needs owner sign-off (question g1). Impact: Critical/High/Medium/Low.
 Effort: S <30min, M 30min–2h, L >2h.
 
-| # | Task | Impact | Effort | Category |
-| - | ---- | ------ | ------ | -------- |
-| 1 | Write `scripts/ci-local.sh` replicating the full CI sequence (incl. tracked-tree nix check) and wire it into AGENTS.md as the pre-push gate | Critical | M | Quality |
-| 2 | Fix `startWatermark` regression: guard `ctx.Err()` after init so a pre-cancelled ctx returns nil, with a test cancelling ctx before `Run` | High | S | Bug |
-| 3 | Decide lint endgame (g2), then execute: trim config + re-gate OR baseline-file burn-down OR keep advisory | Critical | M | Quality |
-| 4 | Add `checks.nix-binary-runs` flake check executing `result/bin/tq --help` (kills the empty-output footgun the old report nearly shipped) | High | S | Quality |
-| ~~5~~ | ~~Decide TODO_LIST harvest policy (g1), then HARVEST this report's (f) + the 18-41 report's 50 items into TODO_LIST/ROADMAP with routing rigor~~ done — executed 2026-09-07 (owner-directed docs-health AUDIT: TODO_LIST rebuilt with verified open items, ROADMAP synced) | ~~High~~ | ~~M~~ | ~~Documentation~~ |
-| 6 | Verify advisory-lint annotations actually surface on green CI runs; if not, adopt reviewdog or a scoped-lint step | Medium | S | Quality |
-| 7 | Decide master push workflow (g3): branch protection + PR, or documented direct-push acceptance | High | S | Process |
-| ~~8~~ | ~~Cut v0.1.0: finalize CHANGELOG Unreleased, tag, verify `nix build` artifact runs (go-release lifecycle)~~ done — v0.1.0 already shipped 2026-09-06 — the real next cut is v0.2.0 (TODO_LIST, owner-gated) | ~~High~~ | ~~M~~ | ~~Release~~ |
-| 9 | Fix remaining cmd/tq cyclop: `cmdHarvest` 17, `aggregateTop` 16, `cmdStats` 14, `cmdDLQ` 13 (same extraction pattern as this session) | Medium | M | Quality |
-| 10 | Add CLI-level tests: golden-output test for `tq audit` drift report, dispatch test for unknown-command/help exit codes, table tests for `splitRepos` (empty, spaces, trailing comma) | Medium | M | Quality |
-| 11 | Investigate and fix the templ LSP false diagnostics (57 errors/145 warnings); document the resolution or the "ignore LSP, trust CLI" rule in AGENTS.md | Medium | M | Quality |
-| 12 | Wire dprint into treefmt (markdown/json gate) or formally decide docs formatting stays manual | Low | S | Quality |
-| 13 | Add `concurrency:` group to ci.yml to cancel superseded runs (daemon pushes bursts of commits) | Medium | S | Process |
-| 14 | Scope advisory lint to changed packages in CI (diff-based) or move it to a scheduled weekly job to stop paying ~2 min per push | Medium | M | Process |
-| 15 | Run `nix flake check --all-systems` (eval + darwin/aarch64 build coverage) and record result | Medium | M | Quality |
-| 16 | E2E-run the nix-built binary through `scripts/smoke/webui.sh` (smoke currently only exercises the `go build` binary) | Medium | S | Quality |
-| 17 | Triage 32 gosec findings: real issues vs. false positives; fix reals, document exclusions with provenance | Medium | M | Quality |
-| 18 | Introduce sentinel errors per package (`errors.go` convention, `errors.Is`-compatible) to burn down the 32 err113 dynamic-error findings | Medium | L | Quality |
-| 19 | Extract magic numbers in cmd/tq (mnd: 36 findings; poll intervals, HTTP codes, truncation lengths) into named constants | Low | S | Quality |
-| 20 | httpserve security pass per ADR-0003: CSP/X-Content-Type-Options headers, `/api/events` backpressure limit, document read-only guarantee test | Medium | M | Security |
-| 21 | Web UI scale test: dashboard snapshot + SSE burst with a 100k-task DB (fragment size, render latency, memory) | Medium | M | Feature |
-| 22 | Extend webui smoke: task detail page (`/task/{id}`) and URL filter round-trip assertions | Medium | S | Feature |
-| 23 | SSE reconnect-storm test: N clients, reconnect with same Last-Event-ID during burst (hub fan-out correctness) | Medium | M | Quality |
-| 24 | Worker graceful-shutdown E2E under SIGTERM in CI (in-flight task completes + records outcome — the invariant AGENTS.md calls out) | Medium | M | Quality |
-| 25 | Add govulncheck to CI (binary already in the flake devShell) | Medium | S | Security |
-| 26 | Enable dependabot for GitHub Actions versions + go module updates | Medium | S | Process |
-| 27 | Upgrade pinned actions past Node 20 deprecation (checkout, setup-go) | Low | S | Cleanup |
-| 28 | `tq version` subcommand printing the ldflags-injected version (verify `main.version` is actually wired) | Low | S | Feature |
-| 29 | Fuzz `unwrapCommand` payload shapes (raw/JSON string/`{"cmd":...}`/hostile input) | Medium | M | Quality |
-| 30 | Windows smoke variant of webui.sh or a CI skip-with-reason (currently POSIX-only) | Low | M | Quality |
-| 31 | ADR-0004: lint policy decision record (advisory rationale, endgame options, what would re-gate it) | Low | S | Documentation |
-| ~~32~~ | ~~docs-health VERIFY sweep: FEATURES.md claims vs. post-round-3 reality (serve row, smoke row)~~ done — docs-health AUDIT executed 2026-09-07 (all six living docs re-verified against code) | ~~Medium~~ | ~~M~~ | ~~Documentation~~ |
-| ~~33~~ | ~~ROADMAP sync: web UI raw idea → shipped (point at FEATURES/webui), promote Phase D items to raw-idea status~~ done — ROADMAP synced 2026-09-07 (shipped raw ideas pruned, new ideas + open questions routed) | ~~Low~~ | ~~S~~ | ~~Documentation~~ |
-| 34 | Nightly `-race -count=3` full-suite job (flake-catching for the race gate) | Low | S | Quality |
-| 35 | `tq top --json` stability contract test (agents consume it; pin the shape) | Low | S | Quality |
-| 36 | dlq rescue output UX: confirm `--rescue-all --older-than` prints a plan before enqueueing | Low | S | Feature |
-| 37 | Agent-pool budget telemetry → papdashboard alert (pool spending visible in the ops dashboard) | Low | M | Feature |
-| 38 | docs/status/README.md index: list reports newest-first, mark superseded ones | Low | S | Documentation |
-| 39 | Quiet the `golangci_lint_ls` channel in Crush config (it duplicates the CLI's baseline noise into every tool response) | Low | S | Process |
-| ~~40~~ | ~~CONTRIBUTING.md gate-list review against advisory-lint reality (b) + explicit "run ci-local.sh before push" instruction~~ done — CONTRIBUTING gate list reviewed and updated 2026-09-07 (web UI smoke, advisory lint, templ generate) | ~~Medium~~ | ~~S~~ | ~~Documentation~~ |
+| #      | Task                                                                                                                                                                                                                                                                       | Impact     | Effort | Category          |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------ | ----------------- |
+| 1      | Write `scripts/ci-local.sh` replicating the full CI sequence (incl. tracked-tree nix check) and wire it into AGENTS.md as the pre-push gate                                                                                                                                | Critical   | M      | Quality           |
+| 2      | Fix `startWatermark` regression: guard `ctx.Err()` after init so a pre-cancelled ctx returns nil, with a test cancelling ctx before `Run`                                                                                                                                  | High       | S      | Bug               |
+| 3      | Decide lint endgame (g2), then execute: trim config + re-gate OR baseline-file burn-down OR keep advisory                                                                                                                                                                  | Critical   | M      | Quality           |
+| 4      | Add `checks.nix-binary-runs` flake check executing `result/bin/tq --help` (kills the empty-output footgun the old report nearly shipped)                                                                                                                                   | High       | S      | Quality           |
+| ~~5~~  | ~~Decide TODO_LIST harvest policy (g1), then HARVEST this report's (f) + the 18-41 report's 50 items into TODO_LIST/ROADMAP with routing rigor~~ done — executed 2026-09-07 (owner-directed docs-health AUDIT: TODO_LIST rebuilt with verified open items, ROADMAP synced) | ~~High~~   | ~~M~~  | ~~Documentation~~ |
+| 6      | Verify advisory-lint annotations actually surface on green CI runs; if not, adopt reviewdog or a scoped-lint step                                                                                                                                                          | Medium     | S      | Quality           |
+| 7      | Decide master push workflow (g3): branch protection + PR, or documented direct-push acceptance                                                                                                                                                                             | High       | S      | Process           |
+| ~~8~~  | ~~Cut v0.1.0: finalize CHANGELOG Unreleased, tag, verify `nix build` artifact runs (go-release lifecycle)~~ done — v0.1.0 already shipped 2026-09-06 — the real next cut is v0.2.0 (TODO_LIST, owner-gated)                                                                | ~~High~~   | ~~M~~  | ~~Release~~       |
+| 9      | Fix remaining cmd/tq cyclop: `cmdHarvest` 17, `aggregateTop` 16, `cmdStats` 14, `cmdDLQ` 13 (same extraction pattern as this session)                                                                                                                                      | Medium     | M      | Quality           |
+| 10     | Add CLI-level tests: golden-output test for `tq audit` drift report, dispatch test for unknown-command/help exit codes, table tests for `splitRepos` (empty, spaces, trailing comma)                                                                                       | Medium     | M      | Quality           |
+| 11     | Investigate and fix the templ LSP false diagnostics (57 errors/145 warnings); document the resolution or the "ignore LSP, trust CLI" rule in AGENTS.md                                                                                                                     | Medium     | M      | Quality           |
+| 12     | Wire dprint into treefmt (markdown/json gate) or formally decide docs formatting stays manual                                                                                                                                                                              | Low        | S      | Quality           |
+| 13     | Add `concurrency:` group to ci.yml to cancel superseded runs (daemon pushes bursts of commits)                                                                                                                                                                             | Medium     | S      | Process           |
+| 14     | Scope advisory lint to changed packages in CI (diff-based) or move it to a scheduled weekly job to stop paying ~2 min per push                                                                                                                                             | Medium     | M      | Process           |
+| 15     | Run `nix flake check --all-systems` (eval + darwin/aarch64 build coverage) and record result                                                                                                                                                                               | Medium     | M      | Quality           |
+| 16     | E2E-run the nix-built binary through `scripts/smoke/webui.sh` (smoke currently only exercises the `go build` binary)                                                                                                                                                       | Medium     | S      | Quality           |
+| 17     | Triage 32 gosec findings: real issues vs. false positives; fix reals, document exclusions with provenance                                                                                                                                                                  | Medium     | M      | Quality           |
+| 18     | Introduce sentinel errors per package (`errors.go` convention, `errors.Is`-compatible) to burn down the 32 err113 dynamic-error findings                                                                                                                                   | Medium     | L      | Quality           |
+| 19     | Extract magic numbers in cmd/tq (mnd: 36 findings; poll intervals, HTTP codes, truncation lengths) into named constants                                                                                                                                                    | Low        | S      | Quality           |
+| 20     | httpserve security pass per ADR-0003: CSP/X-Content-Type-Options headers, `/api/events` backpressure limit, document read-only guarantee test                                                                                                                              | Medium     | M      | Security          |
+| 21     | Web UI scale test: dashboard snapshot + SSE burst with a 100k-task DB (fragment size, render latency, memory)                                                                                                                                                              | Medium     | M      | Feature           |
+| 22     | Extend webui smoke: task detail page (`/task/{id}`) and URL filter round-trip assertions                                                                                                                                                                                   | Medium     | S      | Feature           |
+| 23     | SSE reconnect-storm test: N clients, reconnect with same Last-Event-ID during burst (hub fan-out correctness)                                                                                                                                                              | Medium     | M      | Quality           |
+| 24     | Worker graceful-shutdown E2E under SIGTERM in CI (in-flight task completes + records outcome — the invariant AGENTS.md calls out)                                                                                                                                          | Medium     | M      | Quality           |
+| 25     | Add govulncheck to CI (binary already in the flake devShell)                                                                                                                                                                                                               | Medium     | S      | Security          |
+| 26     | Enable dependabot for GitHub Actions versions + go module updates                                                                                                                                                                                                          | Medium     | S      | Process           |
+| 27     | Upgrade pinned actions past Node 20 deprecation (checkout, setup-go)                                                                                                                                                                                                       | Low        | S      | Cleanup           |
+| 28     | `tq version` subcommand printing the ldflags-injected version (verify `main.version` is actually wired)                                                                                                                                                                    | Low        | S      | Feature           |
+| 29     | Fuzz `unwrapCommand` payload shapes (raw/JSON string/`{"cmd":...}`/hostile input)                                                                                                                                                                                          | Medium     | M      | Quality           |
+| 30     | Windows smoke variant of webui.sh or a CI skip-with-reason (currently POSIX-only)                                                                                                                                                                                          | Low        | M      | Quality           |
+| 31     | ADR-0004: lint policy decision record (advisory rationale, endgame options, what would re-gate it)                                                                                                                                                                         | Low        | S      | Documentation     |
+| ~~32~~ | ~~docs-health VERIFY sweep: FEATURES.md claims vs. post-round-3 reality (serve row, smoke row)~~ done — docs-health AUDIT executed 2026-09-07 (all six living docs re-verified against code)                                                                               | ~~Medium~~ | ~~M~~  | ~~Documentation~~ |
+| ~~33~~ | ~~ROADMAP sync: web UI raw idea → shipped (point at FEATURES/webui), promote Phase D items to raw-idea status~~ done — ROADMAP synced 2026-09-07 (shipped raw ideas pruned, new ideas + open questions routed)                                                             | ~~Low~~    | ~~S~~  | ~~Documentation~~ |
+| 34     | Nightly `-race -count=3` full-suite job (flake-catching for the race gate)                                                                                                                                                                                                 | Low        | S      | Quality           |
+| 35     | `tq top --json` stability contract test (agents consume it; pin the shape)                                                                                                                                                                                                 | Low        | S      | Quality           |
+| 36     | dlq rescue output UX: confirm `--rescue-all --older-than` prints a plan before enqueueing                                                                                                                                                                                  | Low        | S      | Feature           |
+| 37     | Agent-pool budget telemetry → papdashboard alert (pool spending visible in the ops dashboard)                                                                                                                                                                              | Low        | M      | Feature           |
+| 38     | docs/status/README.md index: list reports newest-first, mark superseded ones                                                                                                                                                                                               | Low        | S      | Documentation     |
+| 39     | Quiet the `golangci_lint_ls` channel in Crush config (it duplicates the CLI's baseline noise into every tool response)                                                                                                                                                     | Low        | S      | Process           |
+| ~~40~~ | ~~CONTRIBUTING.md gate-list review against advisory-lint reality (b) + explicit "run ci-local.sh before push" instruction~~ done — CONTRIBUTING gate list reviewed and updated 2026-09-07 (web UI smoke, advisory lint, templ generate)                                    | ~~Medium~~ | ~~S~~  | ~~Documentation~~ |
 
 ## g) Questions I cannot figure out myself
 
@@ -261,8 +261,8 @@ Effort: S <30min, M 30min–2h, L >2h.
    ~~report's 50 items) into `TODO_LIST.md` / `ROADMAP.md`, and which of them~~
    ~~may the agent pool pick up autonomously? TODO_LIST is machine-consumed~~
    ~~pool food — every routed item is real compute spend, and I can't decide~~
-   ~~your budget. (Tried: re-reading the guardrails; the guardrails say *how*~~
-   ~~to route, not *what's funded*.)~~
+   ~~your budget. (Tried: re-reading the guardrails; the guardrails say _how_~~
+   ~~to route, not _what's funded_.)~~
 2. **Lint endgame:** The `.golangci.yml` enables ~100 linters with ~400 open
    findings — currently an advisory annotation stream. Which endgame do you
    want: (a) trim the config to an enforceable set and make it a hard gate
@@ -279,5 +279,5 @@ Effort: S <30min, M 30min–2h, L >2h.
 
 ---
 
-*Point-in-time snapshot. When later work makes this stale, ANNOTATE it —
-don't rewrite. Section (f) is HARVEST fodder, not a commitment list.*
+_Point-in-time snapshot. When later work makes this stale, ANNOTATE it —
+don't rewrite. Section (f) is HARVEST fodder, not a commitment list._

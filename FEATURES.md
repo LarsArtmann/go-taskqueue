@@ -54,8 +54,8 @@
 
 ## Bridges
 
-| Feature                         | Status                | Notes                                                                                                                                                                                                               |
-| ------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Feature                         | Status                | Notes                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | PapDashboard dead-letter alerts | 🟢 `FULLY_FUNCTIONAL` | `alert.triggered` on dead-letter, `alert.resolved` on later completion. Verified by the httptest suite + the stub-mode E2E (`scripts/smoke/papdashboard-e2e.sh`); the script's real-dashboard (`PAP_URL=…`) mode is broken-by-construction (19:49 report) — live-instance verification still owed. Journal starts at head per process: incidents while the bridge was down are not replayed |
 
 ## CLI (`tq`)
@@ -83,15 +83,15 @@
 
 ## Tooling
 
-| Feature                             | Status                | Notes                                                                                                                 |
-| ----------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Nix flake build + vendor-hash check | 🟢 `FULLY_FUNCTIONAL` | `nix build` produces the `tq` binary (`CGO_ENABLED=0`); `nix flake check` passes including the vendor-hash drift gate |
-| CI (vet, build, test -race, gofmt) | 🟢 `FULLY_FUNCTIONAL` | `.github/workflows/ci.yml`; runs on every push; includes the TODO_LIST harvest-parse guard, the live web-UI smoke, the doc ghost-reference check, and an advisory (non-blocking) golangci-lint step whose findings stay visible as annotations |
-| CI nix build + flake check          | 🟢 `FULLY_FUNCTIONAL` | Keyless runner-safe (HTTPS flake inputs); caught the vendor-hash drift class in review, not in production             |
-| Multi-repo two-pool live smoke      | 🟢 `FULLY_FUNCTIONAL` | `scripts/smoke/multi-repo.sh`: 3 repos, 2 pools, 1 DB — no double-enqueue, one claim per task, both pools work        |
-| E2E subprocess suite                | 🟢 `FULLY_FUNCTIONAL` | `internal/e2e`: builds the real `tq` binary, drives `agent-pool --once` with a stub agent from outside; runs in CI    |
-| Property + fuzz tests (harvest)     | 🟢 `FULLY_FUNCTIONAL` | Dedup-key stability property; `FuzzParseRepo` (CRLF/BOM/nesting), 1.8M execs clean                                    |
-| Chaos test (kill mid-run)           | 🟢 `FULLY_FUNCTIONAL` | `internal/e2e/chaos_test.go`: SIGKILL victim, lease-expiry reclaim, exactly one completion in the journal             |
+| Feature                             | Status                | Notes                                                                                                                                                                                                                                          |
+| ----------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nix flake build + vendor-hash check | 🟢 `FULLY_FUNCTIONAL` | `nix build` produces the `tq` binary (`CGO_ENABLED=0`); `nix flake check` passes including the vendor-hash drift gate                                                                                                                          |
+| CI (vet, build, test -race, gofmt)  | 🟢 `FULLY_FUNCTIONAL` | `.github/workflows/ci.yml`; runs on every push; includes the TODO_LIST harvest-parse guard, the live web-UI smoke, the doc ghost-reference check, and an advisory (non-blocking) golangci-lint step whose findings stay visible as annotations |
+| CI nix build + flake check          | 🟢 `FULLY_FUNCTIONAL` | Keyless runner-safe (HTTPS flake inputs); caught the vendor-hash drift class in review, not in production                                                                                                                                      |
+| Multi-repo two-pool live smoke      | 🟢 `FULLY_FUNCTIONAL` | `scripts/smoke/multi-repo.sh`: 3 repos, 2 pools, 1 DB — no double-enqueue, one claim per task, both pools work                                                                                                                                 |
+| E2E subprocess suite                | 🟢 `FULLY_FUNCTIONAL` | `internal/e2e`: builds the real `tq` binary, drives `agent-pool --once` with a stub agent from outside; runs in CI                                                                                                                             |
+| Property + fuzz tests (harvest)     | 🟢 `FULLY_FUNCTIONAL` | Dedup-key stability property; `FuzzParseRepo` (CRLF/BOM/nesting), 1.8M execs clean                                                                                                                                                             |
+| Chaos test (kill mid-run)           | 🟢 `FULLY_FUNCTIONAL` | `internal/e2e/chaos_test.go`: SIGKILL victim, lease-expiry reclaim, exactly one completion in the journal                                                                                                                                      |
 
 ## Planned (no code yet)
 

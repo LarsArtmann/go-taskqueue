@@ -12,8 +12,8 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - [x] Idempotent enqueue (dedup keys) + legacy-DB migration
 - [x] flake.nix, CI, README, AGENTS.md, FEATURES.md, ADRs
 - [x] Shipped 2026-09-06 as a GitHub pre-release (annotated tag, proxy +
-  pkg.go.dev verified); checklist archived at
-  `docs/release/archived/2026-09-06_v0.1.0_CHECKLIST.md`
+      pkg.go.dev verified); checklist archived at
+      `docs/release/archived/2026-09-06_v0.1.0_CHECKLIST.md`
 
 ## v0.2.0 — Distribution seam
 
@@ -64,7 +64,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - Heartbeat cadence scaled to lease for very long tasks
 - Timeout defaults per repo size (small repos don't need 45m, D90 seed)
 - Example corpus: runnable `examples/agent-pool/` demo repo with `.crushrc`
-  + TODO_LIST.md
+  - TODO_LIST.md
 
 ### Web UI polish (Phase D seeds beyond the v0.3 arc)
 

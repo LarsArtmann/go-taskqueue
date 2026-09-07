@@ -75,7 +75,7 @@ func TestIndexRendersFragments(t *testing.T) {
 	tk := enqueue(t, s, "sh", "demo")
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body: %s", rec.Code, rec.Body)
@@ -99,7 +99,7 @@ func TestStatsJSONShape(t *testing.T) {
 	enqueue(t, s, "sh", "demo")
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/stats", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/stats", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
@@ -118,8 +118,10 @@ func TestStatsJSONShape(t *testing.T) {
 func TestHubFanOut(t *testing.T) {
 	hub := NewHub()
 
-	var wg sync.WaitGroup
-	var gotMu sync.Mutex
+	var (
+		wg    sync.WaitGroup
+		gotMu sync.Mutex
+	)
 
 	got := [][]sseEvent{nil, nil, nil}
 	for i := range got {
@@ -128,8 +130,10 @@ func TestHubFanOut(t *testing.T) {
 			defer hub.Unsubscribe(ch)
 
 			evt := <-ch
+
 			gotMu.Lock()
 			defer gotMu.Unlock()
+
 			got[i] = []sseEvent{{typ: evt.Event, id: evt.ID.Get()}}
 		})
 	}
@@ -161,8 +165,10 @@ func TestTailNotifiesOnNewFacts(t *testing.T) {
 	defer cancel()
 
 	tailDone := make(chan struct{})
+
 	go func() {
 		_ = srv.tail(ctx)
+
 		close(tailDone)
 	}()
 
@@ -197,8 +203,10 @@ func TestSSEFullSnapshotOnConnect(t *testing.T) {
 
 	events := ssetest.CollectN(t, srv.Handler(), 6, ssetest.WithPath("/api/events"))
 
-	var fragIDs []string
-	var sawTitle bool
+	var (
+		fragIDs  []string
+		sawTitle bool
+	)
 
 	for _, evt := range events {
 		switch evt.Type {
@@ -263,6 +271,7 @@ func TestSSELiveUpdateAfterEnqueue(t *testing.T) {
 	events := <-done
 
 	sawProject := false
+
 	for _, evt := range events {
 		if evt.Type == testFragEvent && strings.Contains(evt.Data(), "live-project") {
 			sawProject = true
@@ -280,7 +289,7 @@ func TestFiltersNarrowTable(t *testing.T) {
 	enqueue(t, s, "sh", "beta")
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/?project=alpha", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?project=alpha", nil))
 
 	table := tableFragment(rec.Body.String())
 	if !strings.Contains(table, "alpha") || strings.Contains(table, "beta") {
@@ -288,7 +297,7 @@ func TestFiltersNarrowTable(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/?status=completed", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?status=completed", nil))
 
 	table = tableFragment(rec.Body.String())
 	if strings.Contains(table, ">pending<") || strings.Contains(table, "sh") {
@@ -316,7 +325,7 @@ func TestTaskDetailAnd404(t *testing.T) {
 	tk := enqueue(t, s, "sh", "demo")
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/task/"+tk.ID.String(), nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+tk.ID.String(), nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
@@ -327,7 +336,7 @@ func TestTaskDetailAnd404(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/task/nonexistent", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/nonexistent", nil))
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("status = %d, want 404", rec.Code)
@@ -378,7 +387,7 @@ func TestStaticAssetsServed(t *testing.T) {
 
 	for _, path := range []string{"/static/dashboard.css", "/static/app.js"} {
 		rec := httptest.NewRecorder()
-		srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
+		srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 
 		if rec.Code != http.StatusOK {
 			t.Errorf("%s: status = %d", path, rec.Code)
@@ -423,12 +432,13 @@ func TestDLQMirrorsDeadTasks(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	body := rec.Body.String()
 
 	dlqStart := strings.Index(body, `id="frag-dlq"`)
 	dlqEnd := dlqStart + strings.Index(body[dlqStart:], `id="frag-feed"`)
+
 	dlq := body[dlqStart:dlqEnd]
 	if !strings.Contains(dlq, "boom") || !strings.Contains(dlq, tk.ID.String()) {
 		t.Errorf("DLQ fragment missing dead task; got: %s", dlq)
@@ -474,13 +484,15 @@ func TestStoreClosedErrorPaths(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/stats", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/stats", nil))
+
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("closed store: /api/stats status = %d, want 500", rec.Code)
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
 	if rec.Code != http.StatusInternalServerError {
 		t.Errorf("closed store: / status = %d, want 500", rec.Code)
 	}

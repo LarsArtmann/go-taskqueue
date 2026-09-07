@@ -151,7 +151,12 @@ const plainFileName = "plain-file-ignored"
 func TestRunSkipsBlockedItems(t *testing.T) {
 	q := openQueue(t)
 	dir := t.TempDir()
-	writeRepo(t, dir, "alpha", "## Work\n\n- [ ] do the thing\n- [ ] waiting on credentials — BLOCKED: needs owner API token\n")
+	writeRepo(
+		t,
+		dir,
+		"alpha",
+		"## Work\n\n- [ ] do the thing\n- [ ] waiting on credentials — BLOCKED: needs owner API token\n",
+	)
 
 	h := New(q, Config{ProjectsDir: dir})
 

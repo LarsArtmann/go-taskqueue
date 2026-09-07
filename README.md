@@ -200,16 +200,17 @@ go test ./... -race             # full suite (CI also gates on go vet + gofmt)
 ```
 
 CI gates every push on vet, build, tests with `-race`, gofmt, a nix build
-+ `nix flake check`, the two live smokes above, a TODO_LIST
-harvest-parse guard, and a doc ghost-reference check. golangci-lint runs
-advisory (non-blocking): its ~400-finding repo baseline is documented in
-AGENTS.md, findings stay visible as CI annotations, and the hard gates are
-vet, gofmt and tests. The e2e suite (`internal/e2e`) drives the real `tq`
-binary as a subprocess with a stub agent, so the full agent loop is tested
-in CI at zero API cost. Reproducible builds via `nix build`. Agent sessions
-should read AGENTS.md first; feature status lives in FEATURES.md, upcoming
-work in TODO_LIST.md, long-term direction in ROADMAP.md, and the domain
-vocabulary in docs/DOMAIN_LANGUAGE.md.
+
+- `nix flake check`, the two live smokes above, a TODO_LIST
+  harvest-parse guard, and a doc ghost-reference check. golangci-lint runs
+  advisory (non-blocking): its ~400-finding repo baseline is documented in
+  AGENTS.md, findings stay visible as CI annotations, and the hard gates are
+  vet, gofmt and tests. The e2e suite (`internal/e2e`) drives the real `tq`
+  binary as a subprocess with a stub agent, so the full agent loop is tested
+  in CI at zero API cost. Reproducible builds via `nix build`. Agent sessions
+  should read AGENTS.md first; feature status lives in FEATURES.md, upcoming
+  work in TODO_LIST.md, long-term direction in ROADMAP.md, and the domain
+  vocabulary in docs/DOMAIN_LANGUAGE.md.
 
 ### Proof-of-concept examples
 
