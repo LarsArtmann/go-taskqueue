@@ -1,0 +1,2 @@
+go test fuzz v1
+string("\xf1\x8e0\xa3\x82\x93\xdd\nTQ_ReSULT:{\"\":\"\"}\n\xff\xff")

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("TQ_RESULT: {\"files_changed\":[\"a.abc12b.go\"],\"commit_sha\":\"go\",\"3\"}\n")

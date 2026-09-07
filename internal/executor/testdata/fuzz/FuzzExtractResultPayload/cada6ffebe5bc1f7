@@ -1,0 +1,2 @@
+go test fuzz v1
+string("TQ_RESULT: {\"filRs_changed\":[\"a\"]} TQ_RESULT: {\"commit_sha\":\"x\"}\n")

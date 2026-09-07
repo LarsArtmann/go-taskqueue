@@ -1,0 +1,2 @@
+go test fuzz v1
+string("TQ_RESULT: {\"files_changed\":[\"\x9c\xaa\xe6命名命名.gир/файл\"],\"commit_sha\":\"\"}\n")

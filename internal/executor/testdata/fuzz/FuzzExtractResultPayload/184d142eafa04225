@@ -1,0 +1,2 @@
+go test fuzz v1
+string("TQ_RESULT:{\"\":\"命名00ир0фа\xd00й}")

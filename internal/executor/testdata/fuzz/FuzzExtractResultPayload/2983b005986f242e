@@ -1,0 +1,2 @@
+go test fuzz v1
+string("00\x93\x98\x86\xf40000000")

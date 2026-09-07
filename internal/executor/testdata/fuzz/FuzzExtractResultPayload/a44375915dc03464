@@ -1,0 +1,2 @@
+go test fuzz v1
+string("TQ_RESULT:{\"0000\xf3\x9b0\x1a\xe70}")
