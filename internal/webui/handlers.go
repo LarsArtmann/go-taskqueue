@@ -12,14 +12,23 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// parseFilter reads the view filter from the request URL query.
+// parseFilter reads the view filter from the request URL query, including
+// the 1-based ?page= (values < 1 clamp to page 1).
 func parseFilter(r *http.Request) FilterState {
 	q := r.URL.Query()
+
+	page := 1
+	if v := q.Get("page"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			page = n
+		}
+	}
 
 	return FilterState{
 		Project: q.Get("project"),
 		Status:  task.Status(q.Get("status")),
 		Query:   q.Get("q"),
+		Page:    page,
 	}
 }
 

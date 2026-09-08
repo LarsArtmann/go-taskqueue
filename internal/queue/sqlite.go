@@ -630,9 +630,9 @@ func listWhere(f Filter) (string, []any) {
 
 	if f.Query != "" {
 		like := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
-		where = append(where, "(id LIKE ? ESCAPE '\' OR type LIKE ? ESCAPE '\' OR
+		where = append(where, `(id LIKE ? ESCAPE '\' OR type LIKE ? ESCAPE '\' OR
 			project LIKE ? ESCAPE '\' OR payload LIKE ? ESCAPE '\' OR
-			lease_owner LIKE ? ESCAPE '\' OR last_error LIKE ? ESCAPE '\')")
+			lease_owner LIKE ? ESCAPE '\' OR last_error LIKE ? ESCAPE '\')`)
 		args = append(args, like, like, like, like, like, like)
 	}
 
@@ -658,7 +658,8 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 	             not_before, status, lease_owner, lease_expires, last_error,
 	             created_at, updated_at, completed_at
 	      FROM tasks WHERE ` + where + `
-	      ` + order + `
+	      ` + order
+
 	if f.Limit > 0 || f.Offset > 0 {
 		if f.Limit > 0 {
 			q += " LIMIT ?"

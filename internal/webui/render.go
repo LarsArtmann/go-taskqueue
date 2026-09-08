@@ -46,10 +46,13 @@ type ProjectSummary struct {
 }
 
 // FilterState is the URL-carried view filter (?project=&status=&q=).
+// Page rides in the URL (?page=N) but is deliberately not part of
+// QueryString: filter chips always reset to page 1.
 type FilterState struct {
 	Project string
 	Status  task.Status
 	Query   string
+	Page    int
 }
 
 // Empty reports whether no filter is active.
@@ -80,14 +83,17 @@ func (f FilterState) QueryString() string {
 
 // DashboardData is the full projection snapshot one burst renders from.
 type DashboardData struct {
-	Counts   map[task.Status]int
-	Total    int
-	Tasks    []task.Task
-	Dead     []task.Task
-	Facts    []journal.Fact
-	Filter   FilterState
-	Now      time.Time
-	Projects []ProjectSummary
+	Counts     map[task.Status]int
+	Total      int
+	Tasks      []task.Task
+	Dead       []task.Task
+	Facts      []journal.Fact
+	Filter     FilterState
+	Now        time.Time
+	Projects   []ProjectSummary
+	Page       int
+	TotalPages int
+	MatchTotal int
 }
 
 // clearProject / clearStatus / clearQuery are used by the filter chips.
@@ -169,12 +175,32 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 
 	data.Projects = projectSummaries(projectCounts)
 
-	tasks, err := s.store.List(ctx, filter.toQueueFilter(taskTableLimit))
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
+
+	data.Page = page
+
+	qf := filter.toQueueFilter(0)
+	qf.SeverityOrder = true
+	qf.Limit = taskTableLimit
+	qf.Offset = (page - 1) * taskTableLimit
+
+	tasks, err := s.store.List(ctx, qf)
 	if err != nil {
 		return data, err
 	}
 
-	data.Tasks = sortTasks(tasks)
+	data.Tasks = tasks
+
+	matches, err := s.store.CountTasks(ctx, filter.toQueueFilter(0))
+	if err != nil {
+		return data, err
+	}
+
+	data.MatchTotal = matches
+	data.TotalPages = max(1, (matches+taskTableLimit-1)/taskTableLimit)
 
 	dead := task.Dead
 	deadTasks, err := s.store.List(ctx, queue.Filter{Status: &dead})
@@ -208,39 +234,6 @@ func (f FilterState) toQueueFilter(limit int) queue.Filter {
 	}
 
 	return qf
-}
-
-// sortTasks orders by status severity (dead, running, pending, cancelled,
-// completed), then age descending (newest first within a status).
-func sortTasks(tasks []task.Task) []task.Task {
-	const (
-		rankDead = iota
-		rankRunning
-		rankPending
-		rankCancelled
-		rankCompleted
-	)
-
-	rank := map[task.Status]int{
-		task.Dead:      rankDead,
-		task.Running:   rankRunning,
-		task.Pending:   rankPending,
-		task.Cancelled: rankCancelled,
-		task.Completed: rankCompleted,
-	}
-
-	sorted := append([]task.Task(nil), tasks...)
-
-	sort.SliceStable(sorted, func(i, j int) bool {
-		ri, rj := rank[sorted[i].Status], rank[sorted[j].Status]
-		if ri != rj {
-			return ri < rj
-		}
-
-		return sorted[i].CreatedAt.After(sorted[j].CreatedAt)
-	})
-
-	return sorted
 }
 
 func projectSummaries(counts map[string]map[task.Status]int) []ProjectSummary {
