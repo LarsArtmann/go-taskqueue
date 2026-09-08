@@ -158,6 +158,14 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// The status loop's outcome, when this task is a finished report: the
+	// badge + report card render from the completion-fact detail.
+	if t.Type == executor.TaskTypeStatus && t.Status == task.Completed {
+		if res, ok := statusResultFor(r.Context(), s.store, id); ok {
+			data.Statuses = map[string]executor.StatusResult{t.ID.String(): res}
+		}
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	if err := TaskDetailPage(data, taskDetailData{Task: t, Facts: facts, ID: id}).Render(r.Context(), w); err != nil {

@@ -186,6 +186,9 @@ templ taskRows(data DashboardData) {
 				if verdict, ok := data.Reviews[t.ID.String()]; ok {
 					@display.Badge(display.BadgeProps{Text: verdictLabel(verdict.Verdict), Type: verdictBadgeType(verdict.Verdict), Dot: true, Size: display.BadgeSizeSM})
 				}
+				if st, ok := data.Statuses[t.ID.String()]; ok {
+					@display.Badge(display.BadgeProps{Text: statusBadgeText(st), Type: display.BadgeInfo, Dot: true, Size: display.BadgeSizeSM})
+				}
 			</td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span></td>
 			if r := readiness(data.Now, t); r != "" {
@@ -366,6 +369,9 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 		if verdict, ok := data.Reviews[t.ID.String()]; ok {
 			@display.Badge(display.BadgeProps{Text: verdictLabel(verdict.Verdict), Type: verdictBadgeType(verdict.Verdict), Dot: true})
 		}
+		if st, ok := data.Statuses[t.ID.String()]; ok {
+			@display.Badge(display.BadgeProps{Text: statusBadgeText(st), Type: display.BadgeInfo, Dot: true})
+		}
 	</div>
 	if t.LastError != "" {
 		@feedback.Alert(feedback.AlertProps{
@@ -376,6 +382,9 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 	}
 	if verdict, ok := data.Reviews[t.ID.String()]; ok {
 		@reviewFindings(verdict)
+	}
+	if st, ok := data.Statuses[t.ID.String()]; ok {
+		@statusReportCard(st)
 	}
 	@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
 		@display.DefinitionList(display.DefinitionListProps{Items: detailItems(t, data.Now)})
@@ -406,6 +415,22 @@ templ reviewFindings(res executor.ReviewResult) {
 					</li>
 				}
 			</ul>
+		}
+	}
+}
+
+// statusReportCard renders the status loop's outcome: where the report
+// landed and how much fresh work it minted. The path is copyable code, not a
+// link — `tq serve` is a read-only queue projection and never serves repo
+// files (ADR-0003).
+templ statusReportCard(res executor.StatusResult) {
+	@display.Card(display.CardProps{Title: "status report", Padding: display.CardPaddingMD}) {
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+			@display.Badge(display.BadgeProps{Text: fmt.Sprintf("%d next items", res.NextItems), Type: display.BadgeInfo, Size: display.BadgeSizeSM})
+			<code class="break-all font-mono text-xs text-gray-700 dark:text-gray-300">{ res.Report }</code>
+		</div>
+		if res.LogPath != "" {
+			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
 		}
 	}
 }

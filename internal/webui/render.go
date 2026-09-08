@@ -143,6 +143,38 @@ type DashboardData struct {
 	// visible: an approve/request-changes badge in the table and findings
 	// on the detail page. Absent when the page shows no finished reviews.
 	Reviews map[string]executor.ReviewResult
+	// Statuses holds the parsed outcome of every COMPLETED status task on
+	// the visible page (keyed by task id) — the done-prompt loop made
+	// visible: a report badge in the table and the report path + next-item
+	// count on the detail page. Absent when the page shows no finished
+	// status reports.
+	Statuses map[string]executor.StatusResult
+}
+
+// statusResultFor reads a completed status task's outcome from its own
+// completion-fact detail (executor.StatusResult JSON). ok=false when the
+// task never completed or its detail is absent or foreign — never an error:
+// a foreign shape renders as “no report”, not a broken page.
+func statusResultFor(ctx context.Context, src queue.Store, id string) (executor.StatusResult, bool) {
+	facts, err := src.FactsForTask(ctx, id, 0)
+	if err != nil {
+		return executor.StatusResult{}, false
+	}
+
+	for i := len(facts) - 1; i >= 0; i-- {
+		if facts[i].Type != journal.Completed {
+			continue
+		}
+
+		var res executor.StatusResult
+		if json.Unmarshal(facts[i].Detail, &res) != nil || res.Report == "" {
+			return executor.StatusResult{}, false
+		}
+
+		return res, true
+	}
+
+	return executor.StatusResult{}, false
 }
 
 // reviewResultFor reads a completed review task's verdict from its own
@@ -301,6 +333,22 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 			}
 
 			data.Reviews[t.ID.String()] = res
+		}
+	}
+
+	// Outcomes for the page's finished status tasks — same best-effort
+	// contract as the review verdicts above.
+	for _, t := range tasks {
+		if t.Type != executor.TaskTypeStatus || t.Status != task.Completed {
+			continue
+		}
+
+		if res, ok := statusResultFor(ctx, s.store, t.ID.String()); ok {
+			if data.Statuses == nil {
+				data.Statuses = map[string]executor.StatusResult{}
+			}
+
+			data.Statuses[t.ID.String()] = res
 		}
 	}
 

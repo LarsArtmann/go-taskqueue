@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -51,6 +52,16 @@ func verdictLabel(v executor.ReviewVerdict) string {
 	}
 
 	return "review: request changes"
+}
+
+// statusBadgeText is the human text of a status-report badge; the next-item
+// count is the loop's heartbeat (the fresh work the report minted).
+func statusBadgeText(res executor.StatusResult) string {
+	if res.NextItems > 0 {
+		return fmt.Sprintf("status: report +%d next", res.NextItems)
+	}
+
+	return "status: report"
 }
 
 // findingSeverityType maps a review finding's severity hint onto the badge

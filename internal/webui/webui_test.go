@@ -574,6 +574,57 @@ func TestReviewVerdictAbsentWithoutCompletion(t *testing.T) {
 	}
 }
 
+// TestStatusResultBadgeAndCard pins the done-prompt loop's visibility: a
+// completed status task renders its report badge in the table row and the
+// report path + next-item count on its detail page — and a pending one
+// renders neither.
+func TestStatusResultBadgeAndCard(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	st := enqueue(t, s, "status", "demo")
+	if _, err := s.ClaimDue(context.Background(), "status-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	detail, err := json.Marshal(executor.StatusResult{
+		Report:    "docs/status/2026-09-08_21-30_demo.md",
+		NextItems: 7,
+	})
+	if err != nil {
+		t.Fatalf("marshal status result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), st.ID, "status-owner", detail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if body := rec.Body.String(); !strings.Contains(body, "status: report +7 next") {
+		t.Errorf("dashboard table missing the status badge")
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+st.ID.String(), nil))
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		"status: report +7 next", "status report", "7 next items",
+		"docs/status/2026-09-08_21-30_demo.md",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("detail page missing %q", want)
+		}
+	}
+
+	pending := enqueue(t, s, "status", "demo")
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+pending.ID.String(), nil))
+	if body := rec.Body.String(); strings.Contains(body, "status report") {
+		t.Errorf("pending status task rendered the report card")
+	}
+}
+
 func TestDLQMirrorsDeadTasks(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")
