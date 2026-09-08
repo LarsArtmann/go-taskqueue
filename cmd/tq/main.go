@@ -1557,14 +1557,18 @@ func cmdServe(args []string) error {
 	}
 
 	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	// One signal story (runactor): the interrupt actor cancels the http
+	// actor, teardown closes the store after the server has fully stopped.
+	g := runactor.New(context.Background())
+	g.InterruptOn(os.Interrupt, syscall.SIGTERM)
+	g.OnShutdown(func() error { return s.Close() })
 
 	server := webui.New(s, cfg)
 
+	g.Go("http", func(ctx context.Context) error { return server.Run(ctx) })
+
 	fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (read-only)\n", *addr)
 
-	return server.Run(ctx)
+	return g.Run()
 }
