@@ -202,8 +202,12 @@ fail with "no such column" before the ALTER runs.
   `scripts/smoke/webui.sh`).
 - ⚠️ **templ LSP diagnostics are false positives**: the templ/gopls LSP
   layer reports dozens of errors/warnings against `internal/webui` while
-  `go build ./...` is green. Never trust LSP webui diagnostics — verify
-  with the CLI (build/vet/test) before acting on them.
+  `go build ./...` is green (typical phantoms: "missing ',' before
+  newline", "undefined: X" on code that compiles — including non-templ
+  files like `cmd/tq/doctor.go` after a nearby `templ generate` rewrite;
+  the LSP cache goes stale, the sources do not). Never trust LSP
+  webui/templ diagnostics — verify with the CLI (build/vet/test) before
+  acting on them; a client restart clears the cache but is optional.
 - ⚠️ **`tq serve` binds 127.0.0.1 by default and is read-only**: never add
   write endpoints without an explicit `--allow-writes`-style flag + CSRF
   story (ADR-0003 guardrail). Non-loopback binds (incl. `:port` and
