@@ -32,7 +32,12 @@
   }
 
   function connect() {
-    var es = new EventSource("/api/events");
+    /* Token-authenticated serves accept the token as a query param
+       (EventSource cannot set headers); forward it when present. */
+    var url = "/api/events";
+    var token = new URLSearchParams(window.location.search).get("token");
+    if (token) url += "?token=" + encodeURIComponent(token);
+    var es = new EventSource(url);
 
     es.addEventListener("frag", function (e) {
       applyFragment(e.data);

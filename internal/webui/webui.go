@@ -43,6 +43,10 @@ type Config struct {
 	// RequestLog enables per-request access logging (method, path, status,
 	// duration) via slog at Info level. Off by default.
 	RequestLog bool
+	// AuthToken, when set, requires every request (pages, API, SSE, static)
+	// to present the token via an Authorization: Bearer header or a `token`
+	// query parameter. Validate refuses non-loopback binds without it.
+	AuthToken string
 }
 
 func (c Config) withDefaults() Config {
@@ -97,16 +101,28 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/stats", s.handleStats)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", staticHandler()))
 
-	if s.cfg.RequestLog {
-		return withRequestLog(mux)
+	var handler http.Handler = mux
+
+	if s.cfg.AuthToken != "" {
+		handler = withTokenAuth(s.cfg.AuthToken, handler)
 	}
 
-	return mux
+	// Request logging wraps auth so rejected requests are logged too.
+	if s.cfg.RequestLog {
+		return withRequestLog(handler)
+	}
+
+	return handler
 }
 
 // Run starts the journal tailer and serves until ctx is cancelled or the
-// listener fails. It always shuts the HTTP server down gracefully.
+// listener fails. It always shuts the HTTP server down gracefully. It
+// refuses to start on a non-loopback bind without a token (Validate).
 func (s *Server) Run(ctx context.Context) error {
+	if err := s.cfg.Validate(); err != nil {
+		return err
+	}
+
 	tailerDone := make(chan struct{})
 
 	go func() {

@@ -51,7 +51,7 @@ Usage:
   tq cancel TASK_ID [--db PATH]
   tq facts [--db PATH] [--after SEQ]
   tq tail [-f] [--db PATH] [--after SEQ]
-  tq serve [--addr ADDR] [--db PATH] [--poll DUR]
+  tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose]
 
 Default database: $TQ_DB or ./tasks.db
 `
@@ -1174,9 +1174,16 @@ func cmdServe(args []string) error {
 	addr := fs.String("addr", webui.DefaultAddr, "listen address (default: localhost only)")
 	poll := fs.Duration("poll", webui.DefaultPoll, "journal tail interval")
 	verbose := fs.Bool("verbose", false, "log every HTTP request (method, path, status, duration) to stderr")
+	authToken := fs.String("auth-token", os.Getenv("TQ_SERVE_TOKEN"),
+		"require this token on every request (Authorization: Bearer or ?token=); required for non-loopback --addr (env $TQ_SERVE_TOKEN)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	cfg := webui.Config{Addr: *addr, Poll: *poll, RequestLog: *verbose, AuthToken: *authToken}
+	if err := cfg.Validate(); err != nil {
 		return err
 	}
 
@@ -1186,7 +1193,7 @@ func cmdServe(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	server := webui.New(s, webui.Config{Addr: *addr, Poll: *poll, RequestLog: *verbose})
+	server := webui.New(s, cfg)
 
 	fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (read-only)\n", *addr)
 

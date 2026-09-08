@@ -29,6 +29,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- `tq serve --auth-token` / `$TQ_SERVE_TOKEN`: token auth for the
+  dashboard, plan W16. Non-loopback binds are now default-deny —
+  `webui.Config.Validate` (enforced by `Server.Run` and the CLI) refuses to
+  start on addresses that bind beyond loopback (including the empty host
+  `:port` and non-`localhost` hostnames) without a token, because the
+  read-only dashboard still renders every task payload and error tail.
+  With a token set, a constant-time middleware guards every route (pages,
+  `/api/*`, `/static/`, SSE): requests present it as `Authorization:
+  Bearer <token>` or `?token=<token>` (EventSource cannot set headers, so
+  the client JS forwards the page's `token` param to `/api/events`), and
+  failures get a 401 with a `WWW-Authenticate: Bearer` challenge.
+  `--verbose` access logs redact the `token` query parameter so the
+  credential never lands in logs. Loopback serves without a token are
+  unchanged (ADR-0003 amendment; smoke-asserted in
+  `scripts/smoke/webui.sh`).
 - Nightly fuzz job (`.github/workflows/fuzz.yml`): a 60s `FuzzParseRepo`
   campaign (`scripts/fuzz/nightly.sh`, runnable locally with a custom
   fuzztime) whose coverage-interesting inputs are synced into the committed

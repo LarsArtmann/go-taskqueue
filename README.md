@@ -40,6 +40,7 @@ tq tail -f
 
 ```sh
 tq serve          # http://127.0.0.1:8090 (read-only)
+tq serve --addr 0.0.0.0:8090 --auth-token "$(openssl rand -hex 16)"   # LAN
 ```
 
 One tab shows the whole system updating live: status cards, the task table,
@@ -48,6 +49,15 @@ SSE as server-rendered fragments, reconnect-safe, filterable and searchable
 (`?project=demo&status=running&q=flake`), with a detail page per task at
 `/task/{id}`. The dashboard is a pure projection of the journal: it cannot
 mutate the queue, and the worst failure is a stale page.
+
+**Serving beyond localhost:** the dashboard renders every task payload and
+error tail, so `tq serve` refuses to bind a non-loopback address (including
+`:port` / `0.0.0.0`) without `--auth-token` / `$TQ_SERVE_TOKEN`. With a
+token set, every route — pages, API, SSE, static — answers 401 unless the
+request carries it as `Authorization: Bearer <token>` or `?token=<token>`
+(the browser EventSource client cannot set headers, so it forwards the
+query param; `--verbose` access logs redact the token). Plain HTTP: use a
+token only on a trusted LAN, or front it with TLS.
 
 The default `sh` executor runs the payload as a shell line (raw text, JSON
 string, or `{"cmd":...}` all unwrap to the command). Executors are pluggable

@@ -181,7 +181,13 @@ fail with "no such column" before the ALTER runs.
   with the CLI (build/vet/test) before acting on them.
 - ⚠️ **`tq serve` binds 127.0.0.1 by default and is read-only**: never add
   write endpoints without an explicit `--allow-writes`-style flag + CSRF
-  story (ADR-0003 guardrail).
+  story (ADR-0003 guardrail). Non-loopback binds (incl. `:port` and
+  hostnames) are default-deny: `webui.Config.Validate` refuses to start
+  without `--auth-token`/`TQ_SERVE_TOKEN`; with a token, a constant-time
+  middleware guards all routes (`Authorization: Bearer` or `?token=`,
+  needed because EventSource cannot set headers; the `--verbose` access
+  log redacts the token). Keep the refusal: it is the payload
+  confidentiality guardrail for LAN serves.
 - ⚠️ **golangci-lint runs in CI but is advisory** (`continue-on-error`): the
   config enables ~100 linters against a ~400-finding repo-wide baseline
   (wrapcheck/varnamelen/paralleltest lead). The hard gates are vet + gofmt +

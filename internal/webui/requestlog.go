@@ -3,6 +3,7 @@ package webui
 import (
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -17,7 +18,7 @@ func withRequestLog(next http.Handler) http.Handler {
 		defer func() {
 			slog.Info("webui: request",
 				"method", r.Method,
-				"path", r.URL.RequestURI(),
+				"path", redactedRequestURI(r.URL),
 				"status", rec.status,
 				"duration", time.Since(start),
 			)
@@ -25,6 +26,24 @@ func withRequestLog(next http.Handler) http.Handler {
 
 		next.ServeHTTP(rec, r)
 	})
+}
+
+// redactedRequestURI returns the request URI for logging with any `token`
+// query parameter stripped: the auth token reaches browsers as ?token=…
+// (EventSource cannot set headers) and must not land in access logs.
+func redactedRequestURI(u *url.URL) string {
+	clone := *u
+
+	if clone.RawQuery != "" {
+		q := clone.Query()
+
+		if q.Has("token") {
+			q.Del("token")
+			clone.RawQuery = q.Encode()
+		}
+	}
+
+	return clone.RequestURI()
 }
 
 // statusRecorder captures the status code a handler wrote so the

@@ -80,6 +80,7 @@
 | Task detail pages (`/task/{id}`)          | 🟢 `FULLY_FUNCTIONAL` | Full record + per-task fact timeline; plain links, works without JS                                                                 |
 | Live smoke (no browser)                   | 🟢 `FULLY_FUNCTIONAL` | `scripts/smoke/webui.sh`: worker + serve + HTTP/SSE assertions, CI-safe                                                             |
 | Request logging (`tq serve --verbose`)    | 🟢 `FULLY_FUNCTIONAL` | Per-request slog lines (method, path, status, duration) on stderr; SSE-safe wrapper; off by default                                |
+| Token auth (`tq serve --auth-token`)      | 🟢 `FULLY_FUNCTIONAL` | Non-loopback binds are default-deny (refuse without a token); constant-time check on every route; `Authorization: Bearer` or `?token=` (EventSource cannot set headers); `--verbose` logs redact the token (ADR-0003 amendment) |
 | UI write actions (cancel/rescue/enqueue)  | ⚪ `PLANNED`          | Behind a future `--allow-writes` flag; tracked in plan round 3 Phase D (W15)                                                        |
 
 ## Tooling

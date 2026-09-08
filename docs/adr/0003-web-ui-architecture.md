@@ -76,3 +76,19 @@ committed and go:embed'ed, so builds and Nix stay build-step-free — the
 same policy as the generated `*_templ.go` files. HTMX remains unused (the
 client is vanilla EventSource); `layout.Base` ships it suppressed. The
 fragment/SSE architecture and all container ids are unchanged.
+
+**Amendment (2026-09-08, W16 auth):** decision 4's "localhost only until an
+explicit auth story" is resolved: non-loopback binds are **default-deny**.
+`Config.Validate` (also enforced by `Server.Run` and `tq serve`) refuses to
+start when `--addr` binds beyond the loopback interface — including the
+empty host (`:8090`, all interfaces) and non-`localhost` hostnames — unless
+`--auth-token` / `$TQ_SERVE_TOKEN` is set. With a token, a constant-time
+middleware guards every route (pages, `/api/*`, `/static/`): it accepts
+`Authorization: Bearer <token>` or `?token=<token>` (EventSource cannot set
+headers; the client JS forwards the page's `token` param to `/api/events`),
+answers 401 with a `WWW-Authenticate: Bearer` challenge otherwise, and the
+`--verbose` access log redacts the `token` param. Read-only-by-construction
+is unchanged: auth protects confidentiality of payloads/error tails, not
+integrity of the journal. Loopback binds without a token keep today's
+no-auth behavior. TLS and CSRF remain out of scope until `--allow-writes`
+lands (W15).
