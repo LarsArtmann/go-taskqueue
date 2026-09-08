@@ -93,6 +93,27 @@ tq agent-pool --projects-dir ~/projects --yolo --review --review-autofix \
   --daily-budget 40
 ```
 
+### One command from zero: `tq bootstrap`
+
+Everything above, wired in one idempotent command — per repo it validates the
+checkout, pins the verify contract into `.tq-verify` (auto-detected, or forced
+via `--verify name=cmd`), grants agent autonomy in a managed `.crushrc` block
+(plus the model + reasoning effort when `--model` is set), commits exactly
+those files (never pushes), previews the harvest, then starts the pool:
+
+```sh
+tq bootstrap CV,SystemNix --agents 2                        # named repos under --projects-dir
+tq bootstrap CV SystemNix --model zai/glm-5.3-flash --once  # explicit model, one supervised tick
+tq bootstrap CV --verify 'CV=templ generate && bash scripts/go-change-gate.sh' --dry-run
+tq bootstrap --install                                      # systemd user unit + pool.conf, then exit
+```
+
+`--agents N` sets pool concurrency and the machine-wide agent cap;
+`--reasoning` defaults to `xhigh` (max possible; applied when `--model` is
+set — note the pinned model+reasoning lives in each repo's `.crushrc`, so it
+also applies to interactive crush sessions in that repo). Re-running is safe:
+the managed block is replaced in place, existing user config untouched.
+
 ### Running it as a daemon
 
 For unattended machines there is a systemd user unit with a wide graceful

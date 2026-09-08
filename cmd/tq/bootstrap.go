@@ -440,6 +440,16 @@ func stripManagedBlock(lines []string) []string {
 
 	// Unterminated block from a corrupted earlier run: keep the content
 	// outside markers and drop the stray opener.
+	// Trim edge blank lines so re-runs stay byte-identical (they carry no
+	// meaning at file boundaries and would otherwise accumulate).
+	for len(out) > 0 && strings.TrimSpace(out[0]) == "" {
+		out = out[1:]
+	}
+
+	for len(out) > 0 && strings.TrimSpace(out[len(out)-1]) == "" {
+		out = out[:len(out)-1]
+	}
+
 	return out
 }
 

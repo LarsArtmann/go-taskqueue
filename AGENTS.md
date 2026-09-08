@@ -21,6 +21,7 @@ nix build                 # reproducible build (flake, go-standard module)
 nix run .#test            # tests via flake app
 nix run .#webui-css       # recompile the web UI stylesheet (output is committed)
 ./scripts/fuzz/nightly.sh # 60s FuzzParseRepo campaign; syncs new seeds into internal/harvest/testdata/fuzz (nightly .github/workflows/fuzz.yml commits them)
+go build -o /tmp/tq ./cmd/tq && /tmp/tq bootstrap CV,SystemNix --dry-run   # one-command pool bootstrap (ensures .crushrc/.tq-verify, commits them, delegates to agent-pool; --install renders the systemd unit + pool.conf)
 ```
 
 No Makefile, no justfile — flake.nix owns automation. Pure Go
