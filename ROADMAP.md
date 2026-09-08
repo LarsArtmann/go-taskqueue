@@ -70,6 +70,10 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - Timeout defaults per repo size (small repos don't need 45m, D90 seed)
 - Example corpus: runnable `examples/agent-pool/` demo repo with `.crushrc`
   - TODO_LIST.md
+- `tq daemon`: serve + agent-pool + bridges + harvest scheduler in one
+  long-lived process — owner-gated ADR first (05:24 report g1, ROUND6 plan
+  R1); the actor-pattern rollout (ROUND6 P13–P15) is its structural
+  prerequisite
 
 ### Web UI polish (Phase D seeds beyond the v0.3 arc)
 
