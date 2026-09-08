@@ -364,7 +364,9 @@ func TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem(t *testing.T) {
 
 	unit := readRepo(t, filepath.Join(fakeHome, ".config", "systemd", "user"), "tq-agent-pool.service")
 	for _, want := range []string{
-		"ExecStart=/nix/store/xxx-go-taskqueue-0.1.0/bin/tq agent-pool --config " + fakeHome + "/.config/tq/pool.conf",
+		// The template keeps systemd's %h home specifier (not the absolute
+		// path) so the unit survives home-dir moves.
+		"ExecStart=/nix/store/xxx-go-taskqueue-0.1.0/bin/tq agent-pool --config %h/.config/tq/pool.conf",
 		"KillSignal=SIGINT",
 		"TimeoutStopSec=45min",
 		"KillMode=process",

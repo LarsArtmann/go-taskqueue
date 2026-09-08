@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **NixOS module — `flake.nixosModules.default` / `deploy/nixos/tq-agent-pool.nix`**
+  (2026-09-08, ROUND8 A1-A6): declares `services.tq-agent-pool` (enable,
+  package, user, dbPath, `poolSettings` → flat `key = value` pool.conf with
+  flag > env > file precedence, `extraArgs`, and a `serve` sub-module for
+  the read-only dashboard) with the drain invariants baked in
+  (`KillSignal=SIGINT`, `KillMode=process`, `TimeoutStopSec=45min`,
+  `ProtectSystem=full`, no ProtectHome restriction — agents write/commit
+  inside `$HOME`). Pool dbPaths outside `/var/lib` get a
+  `RequiresMountsFor` mount gate (bank-sync pattern). A
+  `checks.module-eval` flake check instantiates the module on both the
+  default and the deployment shape so option typos fail `nix flake check`.
+  Deployed on evo-x2 via SystemNix (see that repo's `docs/services/tq.md`).
 - **Daemon-backed repo discovery — `tq harvest` / `tq agent-pool --discovery-addr`**
   (2026-09-08): point the harvester's repo enumeration at a
   project-discovery-daemon (`POST /v1/discover` over a unix socket, `unix://`
