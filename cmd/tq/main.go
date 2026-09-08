@@ -1210,7 +1210,12 @@ func cmdStats(args []string) error {
 	fs := flag.NewFlagSet("stats", flag.ExitOnError)
 	project := fs.String("project", "", "filter by project")
 	status := fs.String("status", "", "filter by status")
-	asJSON := fs.Bool("json", false, "JSON output")
+	dailyBudget := fs.Int(
+		"daily-budget",
+		0,
+		"agent pool daily enqueue cap to compare today's spend against (0 = spend shown without a cap)",
+	)
+	asJSON := fs.Bool("json", false, "JSON output of the stats aggregate (counts, budget, consumer lag)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -1219,6 +1224,8 @@ func cmdStats(args []string) error {
 
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
+	ctx := context.Background()
 
 	f := queue.Filter{}
 	if *project != "" {
@@ -1230,24 +1237,85 @@ func cmdStats(args []string) error {
 		f.Status = &st
 	}
 
-	tasks, err := s.List(context.Background(), f)
+	tasks, err := s.List(ctx, f)
 	if err != nil {
 		return err
 	}
 
 	byStatus, byProject := tallyStats(tasks)
+	spent := budget.Guard{DailyCap: *dailyBudget}.SpentToday(ctx, s)
 
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 
-		return enc.Encode(tasks)
+		return enc.Encode(statsPayload{
+			ByStatus:  byStatus,
+			ByProject: byProject,
+			Budget:    budgetView{SpentToday: spent, Cap: *dailyBudget},
+			Lag:       consumerLag(ctx, s),
+		})
 	}
 
 	printStats(byStatus, byProject, *project == "")
+	printBudgetSpend(spent, *dailyBudget)
 	printConsumerLag(s)
 
 	return nil
+}
+
+// statsPayload is the --json shape of `tq stats`: the aggregates a script or
+// dashboard consumes, never the raw task list (that is `tq tasks --json`).
+type statsPayload struct {
+	ByStatus  map[string]int            `json:"by_status"`
+	ByProject map[string]map[string]int `json:"by_project,omitempty"`
+	Budget    budgetView                `json:"budget"`
+	Lag       []consumerLagEntry        `json:"consumer_lag,omitempty"`
+}
+
+type budgetView struct {
+	SpentToday int `json:"spent_today"`
+	Cap        int `json:"cap,omitempty"`
+}
+
+type consumerLagEntry struct {
+	Consumer string `json:"consumer"`
+	Seq      int64  `json:"seq"`
+	Lag      int64  `json:"lag"`
+}
+
+// consumerLag collects the persisted journal-consumer cursors with their lag
+// behind the head (ADR-0009's observability surface) for the JSON payload.
+func consumerLag(ctx context.Context, s *queue.SQLiteStore) []consumerLagEntry {
+	entries, err := s.ListWatermarks(ctx)
+	if err != nil || len(entries) == 0 {
+		return nil
+	}
+
+	head, err := s.HeadSeq(ctx)
+	if err != nil {
+		return nil
+	}
+
+	out := make([]consumerLagEntry, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, consumerLagEntry{Consumer: e.Consumer, Seq: e.Seq, Lag: max(head-e.Seq, 0)})
+	}
+
+	return out
+}
+
+// printBudgetSpend surfaces the daily-budget projection in the CLI (the web
+// UI has a budget card; the text output had nothing). Spent counts today's
+// task.enqueued facts — the same projection the pool's budget guard uses.
+func printBudgetSpend(spent, cap int) {
+	if cap > 0 {
+		fmt.Printf("\nbudget today  %d/%d enqueued\n", spent, cap)
+
+		return
+	}
+
+	fmt.Printf("\nbudget today  %d enqueued (pass --daily-budget N to compare against a cap)\n", spent)
 }
 
 // printConsumerLag renders the persisted journal-consumer cursors with
@@ -1850,7 +1918,13 @@ func cmdServe(args []string) error {
 
 	g.Go("http", func(ctx context.Context) error { return server.Run(ctx) })
 
-	fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (read-only)\n", *addr)
+	if *allowWrites {
+		fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (writes ENABLED: cancel/rescue from the UI)
+", *addr)
+	} else {
+		fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (read-only)
+", *addr)
+	}
 
 	return g.Run()
 }
