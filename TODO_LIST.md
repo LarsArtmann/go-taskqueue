@@ -64,3 +64,31 @@ them (`docs/status/<date>_<slug>.md`, cited as `(19:33 report …)` etc.).
 - [x] Free-port selection in `scripts/smoke/webui.sh` (fixed port 8095 collides on busy machines) (18:41 report f11) — DONE 2026-09-08: default mode derives a kernel-chosen ephemeral port (`free_port()` python3 helper) just before `serve` binds (small pick-to-bind race window); `WEBUI_SMOKE_PORT` still pins an explicit port and the smoke fails loudly when a pinned port is taken; verified with 8095 held busy (smoke passed on a derived port) and with a pinned free port
 - [x] Request-logging option for `tq serve` (`--verbose` or an slog handler) — the serve process currently logs only tailer/hub/shutdown failures (18:41 report f12) — DONE 2026-09-08: `tq serve --verbose` wires `webui.Config.RequestLog`; a middleware logs method/path/status/duration per request via slog (Info, stderr) and forwards `Flush` so SSE streaming is unchanged (SSE connections log once, on stream close); off by default; covered by `TestRequestLoggingEnabled`/`OffByDefault`/`KeepsSSEStreaming` and CLI-smoke-verified
 - [x] `tq serve` auth for non-localhost binds: token auth (or basic) + docs, per plan W16 — the dashboard is now bound to the LAN (read-only by construction, ADR-0003) with zero auth, so anyone on the LAN sees all task payloads and error tails — DONE 2026-09-08: `--auth-token`/`TQ_SERVE_TOKEN` with constant-time middleware on every route (`Authorization: Bearer` or `?token=`, needed for EventSource; `--verbose` logs redact the token); non-loopback binds (incl. `:port`, non-`localhost` hostnames) are default-deny (`webui.Config.Validate`, enforced by `Server.Run` + CLI); ADR-0003 amended, README/FEATURES/CHANGELOG/AGENTS updated, matrix tests in `internal/webui/auth_test.go`, smoke-asserted in `scripts/smoke/webui.sh` (plan F11–F16; owner action: restart any LAN serve with a token)
+
+## From the first full dogfood window (22 agent tasks, 21:40 report)
+
+- [ ] Add `tq cancel <task-id> --reason "<why>"` storing the reason in the task.cancelled fact detail (the six stale-task cancellations on 2026-09-08 21:31 carry empty detail — forensics-blind) (21:40 report §d1)
+- [ ] Add `tq harvest --prune-stale`: cancel pending queue tasks whose TODO_LIST item is now `[x]` (dedup-key match) so a pool relaunch never inherits zombies — six stale tasks sat 5–24 h before tonight's manual cancellation, and `[x]`-ing an item never cancels its enqueued task (21:40 report §d1/§e1)
+- [ ] Remove the accidentally committed `taskid.txt` (a bare queue task ID from a test session, auto-committed at `aa1e6ed`) and add it to `.gitignore` (21:40 report §d2)
+- [ ] Audit the papdashboard bridge's watermark persistence on a live run: `tq watermarks show` lists only `status-sweeper` although a bridge has run since 18:31 — if the eager head-insert (watermark design §7) does not fire, fix it and pin with a test (21:40 report §d5)
+- [ ] Record failure evidence in `task.failed` facts (exit code + verify-tail excerpt) — both retry-path failures in the 21:40 window (fuzz job, ExtractResultPayload fuzz) left empty `{}` detail (21:40 report §d4)
+- [ ] Add a `tq tasks --project P --status S --since D` list view (reconstructing a completion window today requires reading tasks.db with sqlite) (21:40 report §e7)
+- [ ] Let `tq show` accept a task-ID prefix instead of demanding the full 34-char ID
+- [ ] Append the queue task ID as a footer in agent commit messages (prompt-contract line) so `git log` ↔ `tq facts` cross-reference (21:40 report §e3)
+- [ ] Add `tq stats --json` for scripting and dashboard consumption
+- [ ] Surface daily-budget spend in `tq stats` output (the web UI has a budget card; the CLI shows nothing)
+- [ ] Add `FuzzExtractResultPayload` to `scripts/fuzz/nightly.sh` campaign rotation (tonight only `FuzzParseRepo` runs nightly)
+- [ ] Run the full queue-conformance battery against the Postgres store in CI (service container); today only watermark conformance exercises it
+- [ ] Add a sidecar log size/count cap (`--log-dir-max-bytes` or max-files sweep) — the open half of the round-6 retention item
+- [ ] Web UI: render the cancellation reason in the task trail once task.cancelled facts carry one (pairs with the `tq cancel --reason` item)
+- [ ] Add a ci-local doc-check that every `docs/status/*.md` is indexed in `docs/status/README.md` (5 of today's 8 reports went unindexed within one day) (21:40 report §d6)
+- [ ] Sync `docs/status/README.md` with the five unindexed 2026-09-08 reports (19:59 bootstrap, 20:56 round7, 20:58 round6, 21:19 dothings, 21:22 round6-closing) plus the 21:40 window report
+- [ ] AGENTS.md Known Issues: document that queue tasks outlive their TODO items (harvesting while the pool is down creates stale pending tasks; `[x]` never cancels them) (21:40 report §d1)
+- [ ] Adopt `--once` for manual verification workers and add a runbook line so verification processes never outlive their session (a `/tmp/papdbg` worker has been running since 18:31) (21:40 report §d3)
+- [ ] Dogfood one live review window: run the pool with `--review` and verify a review task lands on a real agent completion of this repo (reviews are smoke-tested; never yet observed on live completions)
+- [ ] Add an integration test that `--daily-budget` caps status-minted enqueues end-to-end (the loop's documented cap should be pinned beyond unit level)
+- [ ] Add a smoke asserting `tq bootstrap --install` renders the systemd unit + pool.conf without touching the running system
+- [ ] Write ADR-0010: journal retention/compaction stance (append-only facts grow unbounded; head is 158 today — cheap to decide early)
+- [ ] Push master to origin (~30+ commits ahead of origin incl. this window's work; both tonight's interactive reports asked the same) — BLOCKED: owner push go/no-go
+- [ ] Decide the fate of the stray `/tmp/papdbg/tq worker --alert-url http://127.0.0.1:18100` (PID 1039418, running since 18:31, forwarding dead letters to a local dashboard) — BLOCKED: is this an intentional live demo to keep, or a killable test leftover?
+- [ ] Decide whether `tq cancel` should release a task's dedup key so an un-checked TODO item re-arms (today a cancelled task's key suppresses re-enqueue forever unless the item text changes; AGENTS.md documents text-editing as the escape hatch) — BLOCKED: owner policy decision on cancel semantics
