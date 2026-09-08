@@ -156,7 +156,7 @@ in
       serviceConfig =
         {
           Type = "simple";
-          ExecStart = "${lib.getExe cfg.package} agent-pool --config ${poolConf} ${
+          ExecStart = "${lib.getExe' cfg.package "tq"} agent-pool --config ${poolConf} ${
             lib.escapeShellArgs cfg.extraArgs
           }";
           Environment = [ "TQ_DB=${toString cfg.dbPath}" ];
@@ -208,7 +208,7 @@ in
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${lib.getExe cfg.package} serve --addr ${cfg.serve.addr}";
+        ExecStart = "${lib.getExe' cfg.package "tq"} serve --addr ${cfg.serve.addr}";
         Environment = [ "TQ_DB=${toString cfg.dbPath}" ];
         EnvironmentFile = lib.optional (cfg.serve.authTokenFile != null) cfg.serve.authTokenFile;
         User = cfg.user;

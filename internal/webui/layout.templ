@@ -10,7 +10,7 @@ import (
 // the journal. Fragments are server-rendered into the #frag-* containers so
 // the page works without JS; SSE then replaces innerHTML.
 templ Page(data DashboardData) {
-	@layout.Base(dashboardProps(pageTitle(data))) {
+	@layout.Base(dashboardProps(pageTitle(data), ctxNonce(ctx))) {
 		@pageHeader()
 		<div class="mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8">
 			<section id="sec-overview" class="pt-6">
@@ -48,12 +48,16 @@ templ Page(data DashboardData) {
 				</aside>
 			</div>
 		</div>
+		<!-- The SSE client: the page renders fully without it, then app.js
+		     swaps fragments in live (ADR-0003). Last in body so it never
+		     blocks first paint; defer keeps execution after parsing. -->
+		<script src="/static/app.js" defer></script>
 	}
 }
 
 // TaskDetailPage is the per-task detail page.
 templ TaskDetailPage(data DashboardData, detail taskDetailData) {
-	@layout.Base(dashboardProps(detailPageTitle(detail.ID))) {
+	@layout.Base(dashboardProps(detailPageTitle(detail.ID), ctxNonce(ctx))) {
 		@pageHeader()
 		@TaskDetail(data, detail.Task, detail.Facts)
 	}
@@ -71,7 +75,7 @@ templ pageHeader() {
 				<span class="hidden font-sans text-xs font-normal uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500 sm:inline">taskqueue</span>
 			</a>
 			<span id="conn" class="conn conn-live ms-auto" role="status" aria-live="polite">live</span>
-			@layout.ThemeToggle("Toggle color theme", "")
+			@layout.ThemeToggle("Toggle color theme", ctxNonce(ctx))
 		</div>
 	</header>
 }

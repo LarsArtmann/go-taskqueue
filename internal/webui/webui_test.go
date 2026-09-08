@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -1160,5 +1161,30 @@ func TestA11yChrome(t *testing.T) {
 
 	if !strings.Contains(string(css), "prefers-reduced-motion:reduce") {
 		t.Error("committed CSS lacks prefers-reduced-motion handling")
+	}
+}
+
+// TestPageLoadsAppJS pins the ghost-script fix: the a9768c2 templ-components
+// upgrade sweep dropped the <script src="/static/app.js"> tag from the page,
+// so the SSE client never loaded — the dashboard rendered once and never
+// updated, while every gate fetched app.js directly and stayed green.
+func TestPageLoadsAppJS(t *testing.T) {
+	s := New(newTestStore(t), Config{})
+	server := httptest.NewServer(s.Handler())
+	t.Cleanup(server.Close)
+
+	resp, err := http.Get(server.URL + "/")
+	if err != nil {
+		t.Fatalf("GET /: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+
+	if !strings.Contains(string(body), `<script src="/static/app.js" defer></script>`) {
+		t.Error("page does not load /static/app.js — live SSE updates are dead")
 	}
 }

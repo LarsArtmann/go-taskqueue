@@ -23,18 +23,19 @@ func watchFrame(eventType, path string) string {
 }
 
 // watchStubServer serves GET /v1/watch over TCP (httptest). Every connection
-// runs script(connIndex, emit) — emit writes and flushes a raw frame — and the
-// stub records each request's search_path query values.
+// runs script(connIndex, emit, ctx) — emit writes and flushes a raw frame —
+// and the stub records each request's search_path query values. When script
+// returns, the connection closes (the reconnect-test drop mechanism).
 func watchStubServer(
 	t *testing.T,
-	script func(conn int32, emit func(frame string)),
+	script func(conn int32, emit func(frame string), ctx context.Context),
 ) (*httptest.Server, func() []string) {
 	t.Helper()
 
 	var (
-		conns     atomic.Int32
-		mu        sync.Mutex
-		searches  []string
+		conns    atomic.Int32
+		mu       sync.Mutex
+		searches []string
 	)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -64,9 +65,7 @@ func watchStubServer(
 
 		emit(watchFrame("StreamConnected", ""))
 
-		script(conns.Add(1), emit)
-
-		<-r.Context().Done()
+		script(conns.Add(1), emit, r.Context())
 	})
 
 	srv := httptest.NewServer(handler)
@@ -103,8 +102,8 @@ func assertNoTrigger(t *testing.T, triggers <-chan struct{}) {
 	}
 }
 
-// startWatcher runs the watcher on the stub addr with a tiny reconnect
-// backoff and fails the test if Run returns anything but nil on shutdown.
+// startWatcher runs the watcher with a tiny reconnect backoff until the test
+// ends, and fails the test if Run returns anything but nil on shutdown.
 func startWatcher(t *testing.T, cfg WatchConfig) (*Watcher, <-chan struct{}) {
 	t.Helper()
 
@@ -133,18 +132,27 @@ func startWatcher(t *testing.T, cfg WatchConfig) (*Watcher, <-chan struct{}) {
 	return watcher, triggers
 }
 
-// TestWatcherTriggersOnProjectEvents pins the core contract: WatchProjectAdded
-// and WatchProjectChanged events for repos inside the projects dir fire a
-// harvest trigger within seconds; StreamConnected never does.
+// holdStream blocks until the connection ends (the stay-open tail for stub
+// scripts that should NOT drop the stream).
+func holdStream(ctx context.Context) {
+	<-ctx.Done()
+}
+
+// TestWatcherTriggersOnProjectEvents pins the core contract: a
+// WatchProjectChanged event for a repo inside the projects dir fires a
+// harvest trigger within seconds, and the watch request asks the daemon to
+// scope events to that dir (search_path prefilter).
 func TestWatcherTriggersOnProjectEvents(t *testing.T) {
 	t.Parallel()
 
 	fx := newDaemonFixture(t)
 
-	srv, searches := watchStubServer(t, func(conn int32, emit func(string)) {
+	srv, searches := watchStubServer(t, func(conn int32, emit func(string), ctx context.Context) {
 		if conn == 1 {
 			emit(watchFrame("WatchProjectChanged", fx.withTodoA))
 		}
+
+		holdStream(ctx)
 	})
 
 	_, triggers := startWatcher(t, WatchConfig{
@@ -156,38 +164,29 @@ func TestWatcherTriggersOnProjectEvents(t *testing.T) {
 		t.Fatal("no trigger for in-scope WatchProjectChanged")
 	}
 
-	// The connected frame must not have fired the earlier await spuriously:
-	// prove coalescing stays at one pending signal by draining nothing here —
-	// the next in-scope event must still arrive.
-	srv.Config.Handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
-
-	if got := len(searches()); got < 1 {
-		t.Fatalf("watch request saw no search_path recording (requests=%d)", got)
-	}
-
-	want := fx.dir
-	if got := searches()[0]; got != want {
-		t.Fatalf("search_path = %q, want %q", got, want)
+	if got := searches(); len(got) != 1 || got[0] != fx.dir {
+		t.Fatalf("search_path records = %v, want exactly [%s]", got, fx.dir)
 	}
 }
 
 // TestWatcherDebouncePerRepoInterval pins the per-repo debounce: a repo with a
-// --repo-interval gap triggers at most once per gap; a repo without an entry
-// is never gated by another repo's gap.
+// --repo-interval gap triggers at most once per gap.
 func TestWatcherDebouncePerRepoInterval(t *testing.T) {
 	t.Parallel()
 
 	fx := newDaemonFixture(t)
 
-	watchStubServer(t, func(conn int32, emit func(string)) {
+	srv, _ := watchStubServer(t, func(conn int32, emit func(string), ctx context.Context) {
 		if conn == 1 {
 			emit(watchFrame("WatchProjectChanged", fx.withTodoA))
 			emit(watchFrame("WatchProjectChanged", fx.withTodoA))
 		}
+
+		holdStream(ctx)
 	})
 
 	_, triggers := startWatcher(t, WatchConfig{
-		Addr:          fx.addr(),
+		Addr:          srv.Listener.Addr().String(),
 		ProjectsDir:   fx.dir,
 		RepoIntervals: map[string]time.Duration{"alpha": time.Hour},
 	})
@@ -201,24 +200,25 @@ func TestWatcherDebouncePerRepoInterval(t *testing.T) {
 
 // TestWatcherIgnoresIrrelevantAndOutOfScopeEvents pins the filter rules:
 // event types other than project add/change never trigger, and projects
-// outside the configured scope (other roots, or not in --repos) never do.
+// outside the configured root never do.
 func TestWatcherIgnoresIrrelevantAndOutOfScopeEvents(t *testing.T) {
 	t.Parallel()
 
 	fx := newDaemonFixture(t)
 
-	watchStubServer(t, func(conn int32, emit func(string)) {
+	srv, _ := watchStubServer(t, func(conn int32, emit func(string), ctx context.Context) {
 		if conn == 1 {
 			emit(": heartbeat\n\n")
-			emit(watchFrame("StreamConnected", ""))
 			emit(watchFrame("DiscoveryStarted", fx.dir))
 			emit(watchFrame("WatchProjectRemoved", fx.withTodoA))
 			emit(watchFrame("WatchProjectChanged", "/elsewhere/other"))
 		}
+
+		holdStream(ctx)
 	})
 
 	_, triggers := startWatcher(t, WatchConfig{
-		Addr:        fx.addr(),
+		Addr:        srv.Listener.Addr().String(),
 		ProjectsDir: fx.dir,
 	})
 
@@ -226,51 +226,59 @@ func TestWatcherIgnoresIrrelevantAndOutOfScopeEvents(t *testing.T) {
 }
 
 // TestWatcherReposScope pins the --repos mode: only the exact configured
-// repos trigger, regardless of the projects dir.
+// repos trigger; a sibling inside the projects dir does not.
 func TestWatcherReposScope(t *testing.T) {
 	t.Parallel()
 
 	fx := newDaemonFixture(t)
 
-	watchStubServer(t, func(conn int32, emit func(string)) {
+	srv, searches := watchStubServer(t, func(conn int32, emit func(string), ctx context.Context) {
 		if conn == 1 {
 			emit(watchFrame("WatchProjectChanged", fx.withTodoA))
 		}
+
+		holdStream(ctx)
 	})
 
 	_, triggers := startWatcher(t, WatchConfig{
-		Addr:  fx.addr(),
+		Addr:  srv.Listener.Addr().String(),
 		Repos: []string{fx.withTodoB},
 	})
 
 	assertNoTrigger(t, triggers)
+
+	// --repos mode must not send a search_path prefilter (repos may live
+	// anywhere; scoping is client-side).
+	if got := searches(); len(got) != 1 || got[0] != "" {
+		t.Fatalf("search_path records = %v, want exactly [\"\"]", got)
+	}
 }
 
-// TestWatcherReconnectsAfterDrop pins the degradation contract's other half:
-// a dropped stream reconnects (with backoff) and keeps triggering; the
-// interval tick is never the only path forward again.
+// TestWatcherReconnectsAfterDrop pins the other half of the degradation
+// contract: a dropped stream reconnects (with backoff) and keeps triggering,
+// so the interval tick never becomes the only path again.
 func TestWatcherReconnectsAfterDrop(t *testing.T) {
 	t.Parallel()
 
 	fx := newDaemonFixture(t)
 
-	var (
-		mu   sync.Mutex
-		conn atomic.Int32
-	)
-
-	watchStubServer(t, func(_ int32, emit func(string)) {
-		switch conn.Add(1) {
+	srv, _ := watchStubServer(t, func(conn int32, emit func(string), ctx context.Context) {
+		switch conn {
 		case 1:
 			emit(watchFrame("WatchProjectChanged", fx.withTodoA))
+			// Script returns: the stub closes this connection (the drop).
 		case 2:
 			emit(watchFrame("WatchProjectChanged", fx.withTodoB))
+			holdStream(ctx)
+		default:
+			holdStream(ctx)
 		}
 	})
 
-	// Close conn 1 from the server side by hijacking is overkill; instead
-	// let its script return so the handler exits and the stream drops.
-	_, triggers := startWatcher(t, WatchConfig{Addr: fx.addr(), ProjectsDir: fx.dir})
+	_, triggers := startWatcher(t, WatchConfig{
+		Addr:        srv.Listener.Addr().String(),
+		ProjectsDir: fx.dir,
+	})
 
 	if !awaitTrigger(t, triggers) {
 		t.Fatal("no trigger before the drop")
@@ -279,8 +287,6 @@ func TestWatcherReconnectsAfterDrop(t *testing.T) {
 	if !awaitTrigger(t, triggers) {
 		t.Fatal("no trigger after reconnect")
 	}
-
-	mu.Unlock()
 }
 
 // TestWatcherUnixSocket covers the primary deployment form: the daemon's
@@ -306,10 +312,12 @@ func TestWatcherUnixSocket(t *testing.T) {
 		_, _ = fmt.Fprint(w, watchFrame("StreamConnected", ""))
 		flusher.Flush()
 
-		if conns.Add(1) == 1 {
-			_, _ = fmt.Fprint(w, watchFrame("WatchProjectAdded", fx.withTodoA))
-			flusher.Flush()
-		}
+		// Each addr form gets its own watcher (its own debounce state),
+		// so every connection must carry the event.
+		_, _ = fmt.Fprint(w, watchFrame("WatchProjectAdded", fx.withTodoA))
+		flusher.Flush()
+
+		conns.Add(1)
 
 		<-r.Context().Done()
 	})}
@@ -319,10 +327,12 @@ func TestWatcherUnixSocket(t *testing.T) {
 
 	t.Cleanup(func() { _ = httpSrv.Close() })
 
-	_, triggers := startWatcher(t, WatchConfig{Addr: socket, ProjectsDir: fx.dir})
+	for _, addr := range []string{socket, "unix://" + socket} {
+		_, triggers := startWatcher(t, WatchConfig{Addr: addr, ProjectsDir: fx.dir})
 
-	if !awaitTrigger(t, triggers) {
-		t.Fatal("no trigger over unix socket")
+		if !awaitTrigger(t, triggers) {
+			t.Fatalf("addr %s: no trigger over unix socket", addr)
+		}
 	}
 
 	select {
@@ -335,8 +345,8 @@ func TestWatcherUnixSocket(t *testing.T) {
 }
 
 // TestWatcherRunNeverFailsOnDeadDaemon pins that an unreachable daemon only
-// logs and retries: Run keeps going (the interval tick remains the only
-// path), and cancelling stops it cleanly.
+// logs and retries (the interval tick remains the only trigger), and that
+// cancelling stops Run cleanly.
 func TestWatcherRunNeverFailsOnDeadDaemon(t *testing.T) {
 	t.Parallel()
 
@@ -373,10 +383,11 @@ func TestScanWatchStream(t *testing.T) {
 		": heartbeat",
 		"",
 		"event: connected",
-		"data: " + `{"type":"StreamConnected"}`,
+		`data: {"type":"StreamConnected"}`,
 		"",
 		"event: WatchProjectChanged",
-		`data: {"type":"WatchProjectChanged",` + "\n" + `data: "path":"/tmp/repo"}`,
+		`data: {"type":"WatchProjectChanged",`,
+		`data: "path":"/tmp/repo"}`,
 		"",
 		"data: not-json",
 		"",
@@ -406,7 +417,3 @@ func TestScanWatchStream(t *testing.T) {
 		}
 	}
 }
-
-// addr is a tiny helper so tests can share one stub address between watcher
-// restarts without spelling the httptest URL twice.
-func (f daemonFixture) addr() string { return f.hostPort }

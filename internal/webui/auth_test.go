@@ -183,3 +183,84 @@ func TestRequestLogRedactsToken(t *testing.T) {
 		t.Errorf("other query params dropped from log:\n%s", out)
 	}
 }
+
+// TestTokenAuthCookieSession pins the LAN fix: a browser authenticates the
+// HTML document via ?token=, but subresource requests (CSS, JS, favicon,
+// SSE) never carry the query — they 401'd before the session cookie existed.
+func TestTokenAuthCookieSession(t *testing.T) {
+	const token = "sekrit"
+
+	srv := New(newTestStore(t), Config{
+		Poll: time.Millisecond, Heartbeat: time.Millisecond, AuthToken: token,
+	})
+	handler := srv.Handler()
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?token="+token, nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("page with query token: status = %d, want 200", rec.Code)
+	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("Set-Cookie count = %d, want exactly the session cookie", len(cookies))
+	}
+
+	c := cookies[0]
+	if c.Name != tqTokenCookie || c.Value != token {
+		t.Fatalf("cookie = %s=%q, want %s=%q", c.Name, c.Value, tqTokenCookie, token)
+	}
+
+	if !c.HttpOnly {
+		t.Error("session cookie must be HttpOnly")
+	}
+
+	if c.SameSite != http.SameSiteLaxMode {
+		t.Errorf("SameSite = %v, want Lax", c.SameSite)
+	}
+
+	if c.Path != "/" {
+		t.Errorf("cookie Path = %q, want /", c.Path)
+	}
+
+	// Subresource with ONLY the cookie must pass — the pre-cookie failure.
+	cssReq := httptest.NewRequest(http.MethodGet, "/static/app.css", nil)
+	cssReq.AddCookie(c)
+
+	cssRec := httptest.NewRecorder()
+	handler.ServeHTTP(cssRec, cssReq)
+
+	if cssRec.Code != http.StatusOK {
+		t.Fatalf("static with session cookie: status = %d, want 200", cssRec.Code)
+	}
+
+	if ct := cssRec.Header().Get("Content-Type"); !strings.Contains(ct, "text/css") {
+		t.Errorf("static Content-Type = %q, want text/css (a 401 body here is what broke stylesheets)", ct)
+	}
+
+	// Wrong cookie value must still be rejected.
+	badReq := httptest.NewRequest(http.MethodGet, "/static/app.css", nil)
+	badReq.AddCookie(&http.Cookie{Name: tqTokenCookie, Value: "nope"})
+
+	badRec := httptest.NewRecorder()
+	handler.ServeHTTP(badRec, badReq)
+
+	if badRec.Code != http.StatusUnauthorized {
+		t.Errorf("static with wrong cookie: status = %d, want 401", badRec.Code)
+	}
+
+	// A cookie-authenticated request must not re-issue the cookie.
+	quietRec := httptest.NewRecorder()
+	pageReq := httptest.NewRequest(http.MethodGet, "/", nil)
+	pageReq.AddCookie(c)
+	handler.ServeHTTP(quietRec, pageReq)
+
+	if quietRec.Code != http.StatusOK {
+		t.Fatalf("page with cookie: status = %d, want 200", quietRec.Code)
+	}
+
+	if got := len(quietRec.Result().Cookies()); got != 0 {
+		t.Errorf("cookie-authed request re-issued %d cookies, want 0", got)
+	}
+}

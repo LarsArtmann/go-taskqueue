@@ -12,7 +12,10 @@ package webui
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -160,24 +163,63 @@ func (s *Server) Handler() http.Handler {
 }
 
 // securityHeaders is the strict default for a dashboard that renders
-// untrusted task payloads: nothing inline, nothing remote, nothing framed.
-// All assets are same-origin files under /static; SSE is same-origin.
-func securityHeaders(w http.ResponseWriter) {
+// untrusted task payloads: nothing remote, nothing framed, scripts only
+// same-origin files plus the per-request nonce (templ-components' theme
+// bootstrap and toggle ship small inline <script>s that a bare
+// script-src 'self' would otherwise block). All assets are same-origin
+// files under /static; SSE is same-origin.
+func securityHeaders(w http.ResponseWriter, nonce string) {
 	h := w.Header()
 	h.Set("Content-Security-Policy",
-		"default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; "+
+		"default-src 'none'; style-src 'self'; script-src 'self' 'nonce-"+nonce+"'; img-src 'self' data:; "+
 			"font-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'")
 	h.Set("Referrer-Policy", "no-referrer")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("X-Frame-Options", "DENY")
 }
 
-// withSecurityHeaders applies securityHeaders to every response, including
-// errors produced by inner handlers.
+// nonceCtxKey is the context key under which withSecurityHeaders publishes
+// the per-request nonce for the templ components (layout.Base's theme
+// bootstrap script, ThemeToggle's inline script).
+type nonceCtxKey struct{}
+
+// newNonce generates a fresh 128-bit hex nonce for one request's CSP.
+func newNonce() (string, error) {
+	var buf [16]byte
+
+	if _, err := rand.Read(buf[:]); err != nil {
+		return "", fmt.Errorf("read random nonce: %w", err)
+	}
+
+	return hex.EncodeToString(buf[:]), nil
+}
+
+// ctxNonce returns the per-request CSP nonce the security-headers middleware
+// generated, or "" outside that chain (tests, direct renders). With an empty
+// nonce the components render without a nonce attribute — and a page served
+// without the middleware's CSP would not need one.
+func ctxNonce(ctx context.Context) string {
+	nonce, _ := ctx.Value(nonceCtxKey{}).(string)
+
+	return nonce
+}
+
+// withSecurityHeaders generates a fresh nonce per request, applies
+// securityHeaders to every response (including errors produced by inner
+// handlers), and publishes the nonce to the render chain via the request
+// context.
 func withSecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		securityHeaders(w)
-		next.ServeHTTP(w, r)
+		nonce, err := newNonce()
+		if err != nil {
+			slog.Error("webui: nonce generation failed", "err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+
+			return
+		}
+
+		securityHeaders(w, nonce)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), nonceCtxKey{}, nonce)))
 	})
 }
 

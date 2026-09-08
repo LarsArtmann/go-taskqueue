@@ -205,7 +205,10 @@ func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLin
 
 // dashboardProps builds the shared page shell for both pages. HTMX is
 // suppressed entirely: the dashboard streams over vanilla EventSource.
-func dashboardProps(title string) layout.PageProps {
+// The nonce comes from the security-headers middleware (ctxNonce) and is
+// stamped onto the theme bootstrap + toggle inline scripts so the strict
+// script-src CSP admits them.
+func dashboardProps(title, nonce string) layout.PageProps {
 	props := layout.DefaultPageProps()
 	props.Title = title
 	props.Description = "Live, read-only projection of the tq task-queue journal."
@@ -218,6 +221,7 @@ func dashboardProps(title string) layout.PageProps {
 	props.DarkThemeColor = "#0a0f1a"
 	props.HeadContent = refreshMeta()
 	props.Footer = pageFooter()
+	props.Nonce = nonce
 
 	return props
 }

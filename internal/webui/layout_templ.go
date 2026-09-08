@@ -134,13 +134,13 @@ func Page(data DashboardData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</section></aside></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</section></aside></div></div><!-- The SSE client: the page renders fully without it, then app.js\n\t\t     swaps fragments in live (ADR-0003). Last in body so it never\n\t\t     blocks first paint; defer keeps execution after parsing. --> <script src=\"/static/app.js\" defer></script>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.Base(dashboardProps(pageTitle(data))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.Base(dashboardProps(pageTitle(data), ctxNonce(ctx))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -196,7 +196,7 @@ func TaskDetailPage(data DashboardData, detail taskDetailData) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = layout.Base(dashboardProps(detailPageTitle(detail.ID))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.Base(dashboardProps(detailPageTitle(detail.ID), ctxNonce(ctx))).Render(templ.WithChildren(ctx, templ_7745c5c3_Var4), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -232,7 +232,7 @@ func pageHeader() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = layout.ThemeToggle("Toggle color theme", "").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layout.ThemeToggle("Toggle color theme", ctxNonce(ctx)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

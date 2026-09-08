@@ -301,6 +301,105 @@ func TestRenderUnitMatchesDeployFile(t *testing.T) {
 	}
 }
 
+func TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem(t *testing.T) {
+	// The 21:40 window flagged that `tq bootstrap --install` had no test
+	// pinning WHAT it renders nor THAT it stops at the user-session boundary.
+	// Stubbed systemctl/loginctl record every call so the test proves the
+	// unit + pool.conf land in $HOME and nothing else runs.
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+
+	stubBin := t.TempDir()
+	callLog := filepath.Join(stubBin, "calls.log")
+	for _, name := range []string{"systemctl", "loginctl"} {
+		script := "#!/bin/sh\necho \"$0 $@\" >> " + callLog + "\nexit 0\n"
+		path := filepath.Join(stubBin, name)
+		if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", stubBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	o := bootstrapOptions{
+		repos:       []string{"CV", "SystemNix"},
+		projectsDir: fakeHome + "/projects",
+		agents:      2,
+		interval:    5 * time.Minute,
+		dailyBudget: 40,
+		maxPerTick:  6,
+		yolo:        true,
+		review:      true,
+		exclusive:   true,
+		allowDirty:  true,
+		logDir:      fakeHome + "/.local/state/tq/logs",
+		binPath:     "/nix/store/xxx-go-taskqueue-0.1.0/bin/tq",
+	}
+
+	if err := o.installService(); err != nil {
+		t.Fatalf("installService: %v", err)
+	}
+
+	conf := readRepo(t, filepath.Join(fakeHome, ".config", "tq"), "pool.conf")
+	for _, want := range []string{
+		"repos = CV,SystemNix",
+		"concurrency = 2",
+		"max-concurrent-agents = 2",
+		"interval = 5m0s",
+		"daily-budget = 40",
+		"max-per-tick = 6",
+		"yolo = true",
+		"review = true",
+		"project-exclusive = true",
+		"allow-dirty = true",
+		"log-dir = " + fakeHome + "/.local/state/tq/logs",
+	} {
+		if !strings.Contains(conf, want) {
+			t.Errorf("pool.conf missing %q in:\n%s", want, conf)
+		}
+	}
+	// The deliberate no-model rule: repo .crushrc owns model + reasoning.
+	if strings.Contains(conf, "model") {
+		t.Errorf("pool.conf must not pin a model (repo .crushrc owns it):\n%s", conf)
+	}
+
+	unit := readRepo(t, filepath.Join(fakeHome, ".config", "systemd", "user"), "tq-agent-pool.service")
+	for _, want := range []string{
+		"ExecStart=/nix/store/xxx-go-taskqueue-0.1.0/bin/tq agent-pool --config " + fakeHome + "/.config/tq/pool.conf",
+		"KillSignal=SIGINT",
+		"TimeoutStopSec=45min",
+		"KillMode=process",
+		"ProtectSystem=full",
+		"Restart=on-failure",
+	} {
+		if !strings.Contains(unit, want) {
+			t.Errorf("unit missing %q in:\n%s", want, unit)
+		}
+	}
+
+	calls, err := os.ReadFile(callLog)
+	if err != nil {
+		t.Fatalf("stubbed commands never ran: %v", err)
+	}
+	got := string(calls)
+	for _, want := range []string{
+		"systemctl --user daemon-reload",
+		"systemctl --user enable --now tq-agent-pool.service",
+		"loginctl enable-linger",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("expected call %q, got:\n%s", want, got)
+		}
+	}
+
+	info, err := os.Stat(filepath.Join(fakeHome, ".config", "tq", "pool.conf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode := info.Mode().Perm(); mode != 0o600 {
+		t.Errorf("pool.conf mode = %o, want 600 (contains repo layout)", mode)
+	}
+}
+
 func TestParseBootstrapArgsValidation(t *testing.T) {
 	tests := []struct {
 		name    string

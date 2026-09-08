@@ -3,6 +3,7 @@ package webui
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -163,5 +164,65 @@ func TestPaginationEdges(t *testing.T) {
 
 	if overflow.TotalPages != 1 {
 		t.Fatalf("overflow pages = %d, want 1", overflow.TotalPages)
+	}
+}
+
+// TestCSPNonceCoversInlineScripts pins the LAN-console fix: templ-components'
+// theme bootstrap and ThemeToggle render small inline <script>s, so the CSP
+// must carry the per-request nonce AND the page must stamp that same nonce
+// onto those scripts — otherwise browsers block them (script-src 'self').
+func TestCSPNonceCoversInlineScripts(t *testing.T) {
+	s := New(newTestStore(t), Config{})
+	server := httptest.NewServer(s.Handler())
+	t.Cleanup(server.Close)
+
+	resp, err := http.Get(server.URL + "/")
+	if err != nil {
+		t.Fatalf("GET /: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var body strings.Builder
+	if _, err := io.Copy(&body, resp.Body); err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+
+	csp := resp.Header.Get("Content-Security-Policy")
+	if !strings.Contains(csp, "script-src 'self' 'nonce-") {
+		t.Fatalf("CSP missing per-request nonce in script-src, got %q", csp)
+	}
+
+	if strings.Contains(csp, "unsafe-inline") {
+		t.Errorf("CSP must never fall back to unsafe-inline, got %q", csp)
+	}
+
+	start := strings.Index(csp, "'nonce-\"")
+	if start == -1 {
+		if start = strings.Index(csp, "'nonce-"); start == -1 {
+			t.Fatal("unreachable: nonce checked above")
+		}
+	}
+
+	rest := csp[start+len("'nonce-"):]
+	nonce, _, _ := strings.Cut(rest, "'")
+	if nonce == "" {
+		t.Fatal("empty CSP nonce")
+	}
+
+	// The nonce must appear as an attribute on the rendered inline scripts
+	// (theme bootstrap + theme toggle at minimum).
+	if got := strings.Count(body.String(), `nonce="`+nonce+`"`); got < 2 {
+		t.Errorf("nonce %q stamped on %d script tags, want >= 2; CSP-allowed scripts would still be blocked", nonce, got)
+	}
+
+	// Nonces must be per-request, never a static string.
+	second, err := http.Get(server.URL + "/")
+	if err != nil {
+		t.Fatalf("second GET /: %v", err)
+	}
+	defer second.Body.Close()
+
+	if secondCSP := second.Header.Get("Content-Security-Policy"); secondCSP == csp {
+		t.Error("CSP nonce identical across requests — nonce must be per-request")
 	}
 }
