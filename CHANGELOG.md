@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Cancel reasons — `tq cancel <task-id> --reason "<why>"`**
+  (2026-09-08): a non-empty reason is stored as `{"reason": ...}` in the
+  `task.cancelled` fact's detail, so cancellations are no longer
+  forensics-blind. The pending path records it directly; the cooperative
+  `--force` path rides it on the `task.cancel-requested` fact and both
+  finalizers (worker `CancelOwned`, lease-expiry reclaim) carry it onto the
+  final `task.cancelled` fact next to `cooperative: true`. An empty reason
+  keeps the detail empty. The documented `cancel <id> --reason why` order
+  parses too (flags are hoisted ahead of positionals; `Store.Cancel` /
+  `CancelRunning` take the reason, SQLite + Postgres).
 - **Automated done-prompt loop — `tq agent-pool --status-every N`**
   (2026-09-08): every N completed agent tasks per project mint ONE `status`
   task (watermarked `status-sweeper`, same cursor semantics as the review
