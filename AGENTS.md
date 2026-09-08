@@ -156,11 +156,12 @@ fail with "no such column" before the ALTER runs.
 
 | Library component                                   | Status  | Where          |
 | --------------------------------------------------- | ------- | -------------- |
-| `layout.Base`, `ThemeToggle`, `ThemeScript`         | adopted | `layout.templ` |
+| `layout.Base`, `ThemeToggle`                        | adopted | `layout.templ` |
 | `display.Grid/StatCard/Card/Table/EmptyState`       | adopted | `fragments.templ` |
 | `display.Badge/Eyebrow/DefinitionList/Scrollback`   | adopted | `fragments.templ` |
 | `display.Button`                                    | adopted | filter bar (apply) |
 | `feedback.Alert`                                    | adopted | task detail (last error) |
+| `icons.ArchiveBox/Bolt/Calculator/CheckCircle/CircleStack/Clock/Filter/Fire/Inbox` | adopted | stat-card + filter icons (`fragments.templ`) |
 | filter inputs, page header/lamp, section hairlines  | custom  | `layout.templ`/`fragments.templ` (thin, SSE-fragment-specific) |
 - Go 1.26 idioms are deliberate (`errors.AsType[E]`, `strings.SplitSeq`,
   `for range n`) — do not "modernize" them back to older equivalents

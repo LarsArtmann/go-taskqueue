@@ -183,7 +183,7 @@ func (s *SQLiteStore) appendFact(ctx context.Context, tx *sql.Tx, f journal.Fact
 func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 	n = n.Normalize()
 	if n.Type == "" {
-		return task.Task{}, errors.New("queue: task type must not be empty")
+		return task.Task{}, ErrEmptyType
 	}
 
 	if n.DedupKey != "" {
