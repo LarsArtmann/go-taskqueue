@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Web UI a11y + QA pack**: a skip-to-content link (screen-reader first
+  tab stop), the connection lamp is now a polite live region
+  (role=status) so connection loss is announced, and a test pins the
+  a11y chrome plus the committed CSS's prefers-reduced-motion handling.
+  scripts/webui-screenshots.sh renders light + dark + detail pages via
+  headless chromium (fails clearly where no browser exists - this host
+  class has none), and scripts/check-webui-css.sh guards the committed
+  stylesheet against tailwind-rebuild drift.
 - **Dashboard metrics + journal browser**: the overview gains a journal
   watermark stat card (the seq every SSE/bridge consumer resumes from)
   and two pure-SVG charts - a fact-rate sparkline (facts per 5-minute
