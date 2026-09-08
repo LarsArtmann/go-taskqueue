@@ -72,6 +72,12 @@ type Store interface {
 	// CountFacts counts facts of one type recorded at or after since —
 	// the SQL pushdown behind spend projections and stats.
 	CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error)
+	// StatusCounts counts tasks per status — the GROUP BY behind dashboard
+	// counters: O(statuses) work instead of a full task scan.
+	StatusCounts(ctx context.Context) (map[task.Status]int, error)
+	// ProjectCounts counts tasks per project per status — the GROUP BY
+	// behind the overview chips and per-project views.
+	ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error)
 	// Close releases resources.
 	Close() error
 }
@@ -81,7 +87,14 @@ type Filter struct {
 	Project *string
 	Status  *task.Status
 	Type    *string
-	Limit   int
+	// Query is a case-insensitive substring search over id, type, project,
+	// payload, lease owner and last error — pushed into SQL LIKE, not a
+	// post-filter.
+	Query string
+	Limit int
+	// Offset skips the first Offset matches (pagination); applied after
+	// ordering. Meaningful together with Limit.
+	Offset int
 }
 
 // Queue is the facade most consumers use: a Store plus convenience methods.

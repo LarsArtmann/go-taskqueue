@@ -152,31 +152,37 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 		Now:    now,
 	}
 
-	all, err := s.store.List(ctx, queue.Filter{})
+	counts, err := s.store.StatusCounts(ctx)
 	if err != nil {
 		return data, err
 	}
 
-	data.Total = len(all)
-
-	for _, t := range all {
-		data.Counts[t.Status]++
-
-		if matchesFilter(t, filter) {
-			data.Tasks = append(data.Tasks, t)
-		}
-
-		if t.Status == task.Dead {
-			data.Dead = append(data.Dead, t)
-		}
+	for st, n := range counts {
+		data.Counts[st] += n
+		data.Total += n
 	}
 
-	data.Projects = projectSummaries(all)
-	data.Tasks = sortTasks(data.Tasks)
-
-	if len(data.Tasks) > taskTableLimit {
-		data.Tasks = data.Tasks[:taskTableLimit]
+	projectCounts, err := s.store.ProjectCounts(ctx)
+	if err != nil {
+		return data, err
 	}
+
+	data.Projects = projectSummaries(projectCounts)
+
+	tasks, err := s.store.List(ctx, filter.toQueueFilter(taskTableLimit))
+	if err != nil {
+		return data, err
+	}
+
+	data.Tasks = sortTasks(tasks)
+
+	dead := task.Dead
+	deadTasks, err := s.store.List(ctx, queue.Filter{Status: &dead})
+	if err != nil {
+		return data, err
+	}
+
+	data.Dead = deadTasks
 
 	facts, err := s.store.LastFacts(ctx, factFeedLen)
 	if err != nil {
@@ -188,41 +194,20 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	return data, nil
 }
 
-func matchesFilter(t task.Task, f FilterState) bool {
-	if f.Project != "" && t.Project != f.Project {
-		return false
+// toQueueFilter maps the URL-carried filter onto the store's SQL filter,
+// bounded to limit rows (0 = unbounded).
+func (f FilterState) toQueueFilter(limit int) queue.Filter {
+	qf := queue.Filter{Query: f.Query, Limit: limit}
+
+	if f.Project != "" {
+		qf.Project = &f.Project
 	}
 
-	if f.Status != "" && t.Status != f.Status {
-		return false
+	if f.Status != "" {
+		qf.Status = &f.Status
 	}
 
-	if f.Query != "" && !matchesQuery(t, f.Query) {
-		return false
-	}
-
-	return true
-}
-
-func matchesQuery(t task.Task, q string) bool {
-	q = strings.ToLower(q)
-
-	hay := []string{
-		t.ID.String(),
-		t.Type,
-		t.Project,
-		string(t.Payload),
-		t.LeaseOwner,
-		t.LastError,
-	}
-
-	for _, h := range hay {
-		if strings.Contains(strings.ToLower(h), q) {
-			return true
-		}
-	}
-
-	return false
+	return qf
 }
 
 // sortTasks orders by status severity (dead, running, pending, cancelled,

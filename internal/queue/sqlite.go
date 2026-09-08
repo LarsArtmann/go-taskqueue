@@ -626,15 +626,31 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 		args = append(args, *f.Type)
 	}
 
+	if f.Query != "" {
+		like := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
+		where = append(where, `(id LIKE ? ESCAPE '\' OR type LIKE ? ESCAPE '\' OR
+			project LIKE ? ESCAPE '\' OR payload LIKE ? ESCAPE '\' OR
+			lease_owner LIKE ? ESCAPE '\' OR last_error LIKE ? ESCAPE '\')`)
+		args = append(args, like, like, like, like, like, like)
+	}
+
 	q := `SELECT id, project, type, payload, deps, priority, attempts, max_attempts,
 	             not_before, status, lease_owner, lease_expires, last_error,
 	             created_at, updated_at, completed_at
 	      FROM tasks WHERE ` + strings.Join(where, " AND ") + `
 	      ORDER BY priority DESC, created_at ASC`
-	if f.Limit > 0 {
-		q += " LIMIT ?"
+	if f.Limit > 0 || f.Offset > 0 {
+		if f.Limit > 0 {
+			q += " LIMIT ?"
+			args = append(args, f.Limit)
+		} else {
+			q += " LIMIT -1"
+		}
 
-		args = append(args, f.Limit)
+		if f.Offset > 0 {
+			q += " OFFSET ?"
+			args = append(args, f.Offset)
+		}
 	}
 
 	rows, err := s.db.QueryContext(ctx, q, args...)
@@ -744,6 +760,72 @@ func (s *SQLiteStore) CountFacts(ctx context.Context, ftype journal.FactType, si
 		ftype, since.UnixMilli()).Scan(&n)
 
 	return n, err
+}
+
+// escapeLike escapes LIKE wildcards so a user query containing %, _ or \
+// matches literally. Pair with ESCAPE '\' in the SQL.
+func escapeLike(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, "%", `\%`)
+	s = strings.ReplaceAll(s, "_", `\_`)
+
+	return s
+}
+
+// StatusCounts counts tasks per status in one GROUP BY.
+func (s *SQLiteStore) StatusCounts(ctx context.Context) (map[task.Status]int, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT status, COUNT(*) FROM tasks GROUP BY status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make(map[task.Status]int)
+
+	for rows.Next() {
+		var (
+			st task.Status
+			n  int
+		)
+		if err := rows.Scan(&st, &n); err != nil {
+			return nil, err
+		}
+
+		out[st] = n
+	}
+
+	return out, rows.Err()
+}
+
+// ProjectCounts counts tasks per project per status in one GROUP BY.
+func (s *SQLiteStore) ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT project, status, COUNT(*) FROM tasks GROUP BY project, status`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make(map[string]map[task.Status]int)
+
+	for rows.Next() {
+		var (
+			project string
+			st      task.Status
+			n       int
+		)
+		if err := rows.Scan(&project, &st, &n); err != nil {
+			return nil, err
+		}
+
+		if out[project] == nil {
+			out[project] = make(map[task.Status]int)
+		}
+
+		out[project][st] = n
+	}
+
+	return out, rows.Err()
 }
 
 func scanFacts(rows *sql.Rows) ([]journal.Fact, error) {
