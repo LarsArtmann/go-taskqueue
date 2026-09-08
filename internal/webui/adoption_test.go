@@ -16,8 +16,10 @@ import (
 
 const adoptionHeading = "### templ-components adoption"
 
-var componentCallRe = regexp.MustCompile(`(display|layout|feedback)\.([A-Z][A-Za-z0-9]*)\s*\(`)
-var iconRefRe = regexp.MustCompile(`icons\.([A-Z][A-Za-z0-9]*)`)
+var (
+	componentCallRe = regexp.MustCompile(`(display|layout|feedback)\.([A-Z][A-Za-z0-9]*)\s*\(`)
+	iconRefRe       = regexp.MustCompile(`icons\.([A-Z][A-Za-z0-9]*)`)
+)
 
 func templSources(t *testing.T) string {
 	t.Helper()

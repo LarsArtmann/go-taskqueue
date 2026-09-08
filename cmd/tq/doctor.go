@@ -107,8 +107,10 @@ func doctorSQLiteChecks(ctx context.Context, path string) []checkResult {
 	if err := db.QueryRowContext(ctx, `PRAGMA journal_mode`).Scan(&mode); err != nil {
 		results = append(results, checkResult{Name: "wal", Status: checkWarn, Detail: "journal_mode: " + err.Error()})
 	} else if !strings.EqualFold(mode, "wal") {
-		results = append(results, checkResult{Name: "wal", Status: checkWarn,
-			Detail: "journal_mode is " + mode + " (expected wal; open the db with tq once to set it)"})
+		results = append(results, checkResult{
+			Name: "wal", Status: checkWarn,
+			Detail: "journal_mode is " + mode + " (expected wal; open the db with tq once to set it)",
+		})
 	} else {
 		results = append(results, checkResult{Name: "wal", Status: checkOK, Detail: "wal enabled"})
 	}
@@ -137,8 +139,10 @@ func doctorQueueMix(ctx context.Context, store queue.Store) []checkResult {
 
 	return []checkResult{
 		{Name: "queue", Status: status, Detail: detail},
-		{Name: "dlq", Status: doctorCountStatus(counts[task.Dead]),
-			Detail: fmt.Sprintf("%d dead-lettered task(s)", counts[task.Dead])},
+		{
+			Name: "dlq", Status: doctorCountStatus(counts[task.Dead]),
+			Detail: fmt.Sprintf("%d dead-lettered task(s)", counts[task.Dead]),
+		},
 	}
 }
 
@@ -205,18 +209,24 @@ func doctorWorkerLiveness(ctx context.Context, store queue.Store) []checkResult 
 
 	idle := counts[task.Pending] == 0 && counts[task.Running] == 0
 	if beats > 0 {
-		return []checkResult{{Name: "worker", Status: checkOK,
-			Detail: fmt.Sprintf("%d heartbeat fact(s) in the last %s", beats, doctorHeartbeatWindow)}}
+		return []checkResult{{
+			Name: "worker", Status: checkOK,
+			Detail: fmt.Sprintf("%d heartbeat fact(s) in the last %s", beats, doctorHeartbeatWindow),
+		}}
 	}
 
 	if idle {
-		return []checkResult{{Name: "worker", Status: checkOK,
-			Detail: "no recent heartbeats, but the queue is empty (idle, not stuck)"}}
+		return []checkResult{{
+			Name: "worker", Status: checkOK,
+			Detail: "no recent heartbeats, but the queue is empty (idle, not stuck)",
+		}}
 	}
 
-	return []checkResult{{Name: "worker", Status: checkFail,
+	return []checkResult{{
+		Name: "worker", Status: checkFail,
 		Detail: fmt.Sprintf("no heartbeats in the last %s while %d pending / %d running tasks wait — is a worker running?",
-			doctorHeartbeatWindow, counts[task.Pending], counts[task.Running])}}
+			doctorHeartbeatWindow, counts[task.Pending], counts[task.Running]),
+	}}
 }
 
 // doctorBudget compares today's enqueues against the operator's cap.
@@ -241,8 +251,10 @@ func doctorBudget(ctx context.Context, store queue.Store, dailyBudget int) []che
 		status = checkWarn
 	}
 
-	return []checkResult{{Name: "budget", Status: status,
-		Detail: fmt.Sprintf("%d/%d enqueued today (cap %d)", spent, dailyBudget, dailyBudget)}}
+	return []checkResult{{
+		Name: "budget", Status: status,
+		Detail: fmt.Sprintf("%d/%d enqueued today (cap %d)", spent, dailyBudget, dailyBudget),
+	}}
 }
 
 // doctorEnvironment checks the pool's dependencies: the agent binary and,
@@ -256,8 +268,10 @@ func doctorEnvironment(opts doctorOptions) []checkResult {
 	}
 
 	if _, err := exec.LookPath(bin); err != nil {
-		results = append(results, checkResult{Name: "agent-binary", Status: checkWarn,
-			Detail: fmt.Sprintf("%q not found on PATH (agent tasks cannot run; TQ_AGENT_BIN overrides)", bin)})
+		results = append(results, checkResult{
+			Name: "agent-binary", Status: checkWarn,
+			Detail: fmt.Sprintf("%q not found on PATH (agent tasks cannot run; TQ_AGENT_BIN overrides)", bin),
+		})
 	} else {
 		results = append(results, checkResult{Name: "agent-binary", Status: checkOK, Detail: bin + " found"})
 	}
@@ -282,16 +296,22 @@ func doctorRepoAutonomy(repo string) []checkResult {
 
 	todo := filepath.Join(repo, harvest.DefaultTodoFile)
 	if _, err := os.Stat(todo); err != nil {
-		results = append(results, checkResult{Name: "repo:" + name, Status: checkWarn,
-			Detail: "no " + harvest.DefaultTodoFile + " (nothing to harvest)"})
+		results = append(results, checkResult{
+			Name: "repo:" + name, Status: checkWarn,
+			Detail: "no " + harvest.DefaultTodoFile + " (nothing to harvest)",
+		})
 	} else {
-		results = append(results, checkResult{Name: "repo:" + name, Status: checkOK,
-			Detail: harvest.DefaultTodoFile + " present"})
+		results = append(results, checkResult{
+			Name: "repo:" + name, Status: checkOK,
+			Detail: harvest.DefaultTodoFile + " present",
+		})
 	}
 
 	if _, err := os.Stat(filepath.Join(repo, ".crushrc")); err != nil {
-		results = append(results, checkResult{Name: "autonomy:" + name, Status: checkWarn,
-			Detail: "no .crushrc (--yolo agent tasks will fail fast in this repo)"})
+		results = append(results, checkResult{
+			Name: "autonomy:" + name, Status: checkWarn,
+			Detail: "no .crushrc (--yolo agent tasks will fail fast in this repo)",
+		})
 	} else {
 		results = append(results, checkResult{Name: "autonomy:" + name, Status: checkOK, Detail: ".crushrc present"})
 	}
