@@ -128,6 +128,25 @@ func filterHref(f FilterState) string {
 	return "/?" + q
 }
 
+// pageHref renders the current filter pinned to a specific page; filter
+// chips keep using filterHref, which resets to page 1.
+func pageHref(f FilterState, page int) string {
+	q := f.QueryString()
+	if page > 1 {
+		if q != "" {
+			q += "&"
+		}
+
+		q += "page=" + strconv.Itoa(page)
+	}
+
+	if q == "" {
+		return "/"
+	}
+
+	return "/?" + q
+}
+
 func filterSuffix(f FilterState) string {
 	if f.Empty() {
 		return ""
