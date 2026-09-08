@@ -38,6 +38,15 @@
 
   function streamURL() {
     var pageQuery = new URLSearchParams(window.location.search);
+
+    /* Task detail pages stream their own two fragments from a task-scoped
+       endpoint; the token still rides the query for EventSource. */
+    var task = window.location.pathname.match(/^\/task\/([^/]+)\/?$/);
+    if (task) {
+      var tok = pageQuery.get("token");
+      return "/task/" + task[1] + "/events" + (tok ? "?token=" + encodeURIComponent(tok) : "");
+    }
+
     var params = new URLSearchParams();
     STREAM_PARAMS.forEach(function (key) {
       var value = pageQuery.get(key);

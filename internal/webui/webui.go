@@ -107,6 +107,7 @@ func (s *Server) routeBindings() []struct {
 	}{
 		{"GET", "/{$}", s.handleIndex},
 		{"GET", "/task/{id}", s.handleTaskDetail},
+		{"GET", "/task/{id}/events", s.handleTaskEvents},
 		{"GET", "/api/events", s.handleEvents},
 		{"GET", "/api/stats", s.handleStats},
 		{"GET", "/static/", nil}, // staticHandler, wired in Handler
@@ -115,10 +116,11 @@ func (s *Server) routeBindings() []struct {
 
 // Handler returns the dashboard's HTTP routes:
 //
-//	GET /             dashboard page
-//	GET /task/{id}    per-task detail page
-//	GET /api/events   SSE stream (fragments + resume)
-//	GET /api/stats    JSON status counts
+//	GET /                  dashboard page
+//	GET /task/{id}         per-task detail page
+//	GET /task/{id}/events  per-task SSE stream (detail fragments + resume)
+//	GET /api/events        SSE stream (dashboard fragments + resume)
+//	GET /api/stats         JSON status counts
 //
 // Every response carries strict security headers (securityHeaders); the
 // dashboard is read-only by construction.

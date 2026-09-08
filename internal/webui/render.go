@@ -322,6 +322,11 @@ func pageTitle(data DashboardData) string {
 	return base
 }
 
+// detailPageTitle is the detail page's static document title.
+func detailPageTitle(id string) string {
+	return id + " · tq"
+}
+
 func formatInt(n int) string {
 	return strconv.Itoa(n)
 }
@@ -424,6 +429,9 @@ const (
 	fragTable   = "frag-table"
 	fragDLQ     = "frag-dlq"
 	fragFeed    = "frag-feed"
+
+	fragDetail   = "frag-detail"
+	fragTimeline = "frag-timeline"
 )
 
 // renderFragments renders every dashboard fragment from the snapshot.
@@ -434,5 +442,14 @@ func renderFragments(ctx context.Context, data DashboardData) []fragment {
 		{ID: fragTable, HTML: renderComponent(ctx, TaskTable(data))},
 		{ID: fragDLQ, HTML: renderComponent(ctx, DeadLetterTable(data))},
 		{ID: fragFeed, HTML: renderComponent(ctx, FactFeed(data))},
+	}
+}
+
+// renderTaskFragments renders the task detail page's live fragments: the
+// record card and the fact timeline.
+func renderTaskFragments(ctx context.Context, data DashboardData, t task.Task, facts []journal.Fact) []fragment {
+	return []fragment{
+		{ID: fragDetail, HTML: renderComponent(ctx, taskDetailCard(data, t))},
+		{ID: fragTimeline, HTML: renderComponent(ctx, taskDetailTimeline(data, facts))},
 	}
 }

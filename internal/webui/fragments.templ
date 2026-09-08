@@ -294,30 +294,56 @@ templ filterChip(kind, value, clearHref string) {
 	</span>
 }
 
-// TaskDetail renders the per-task detail page body.
+// TaskDetail renders the per-task detail page body. The two live regions sit
+// in #frag-detail / #frag-timeline containers so the /task/{id}/events
+// stream can swap them over SSE exactly like the dashboard fragments.
 templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
 	<div class="mx-auto w-full max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
 		<a
 			class="font-mono text-xs uppercase tracking-[0.18em] text-gray-500 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400"
 			href="/"
 		>← back to dashboard</a>
-		<div class="flex flex-wrap items-baseline gap-x-4 gap-y-2">
-			<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">{ t.ID.String() }</h2>
-			@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true})
+		<div id="frag-detail">
+			@taskDetailCard(data, t)
 		</div>
-		if t.LastError != "" {
-			@feedback.Alert(feedback.AlertProps{
-				Type:    feedback.FeedbackError,
-				Title:   "last error",
-				Message: t.LastError,
-			})
-		}
-		@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
-			@display.DefinitionList(display.DefinitionListProps{Items: detailItems(t, data.Now)})
-		}
 		<div class="tq-heading">
 			@display.Eyebrow(display.EyebrowProps{Text: "fact timeline"})
 		</div>
+		<div id="frag-timeline">
+			@taskDetailTimeline(data, facts)
+		</div>
+	</div>
+}
+
+// taskDetailCard is the task's live summary: id, status, last error, and
+// the full record definition list (inner content of #frag-detail).
+templ taskDetailCard(data DashboardData, t task.Task) {
+	<div class="flex flex-wrap items-baseline gap-x-4 gap-y-2">
+		<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">{ t.ID.String() }</h2>
+		@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true})
+	</div>
+	if t.LastError != "" {
+		@feedback.Alert(feedback.AlertProps{
+			Type:    feedback.FeedbackError,
+			Title:   "last error",
+			Message: t.LastError,
+		})
+	}
+	@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
+		@display.DefinitionList(display.DefinitionListProps{Items: detailItems(t, data.Now)})
+	}
+}
+
+// taskDetailTimeline is the task's live fact trail, newest last (inner
+// content of #frag-timeline).
+templ taskDetailTimeline(data DashboardData, facts []journalFactView) {
+	if len(facts) == 0 {
+		@display.EmptyState(display.EmptyStateProps{
+			Title:       "no facts yet",
+			Description: "This task has not moved; facts land here live.",
+			Icon:        icons.CircleStack,
+		})
+	} else {
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 			@display.Scrollback(display.ScrollbackProps{
 				Stagger:   false,
@@ -325,7 +351,7 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
 				BaseProps: utils.BaseProps{Class: "border-y-0"},
 			})
 		</div>
-	</div>
+	}
 }
 
 // statusBadge is a shared dot badge for a status string.

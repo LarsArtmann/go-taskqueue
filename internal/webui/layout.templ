@@ -51,7 +51,7 @@ templ Page(data DashboardData) {
 
 // TaskDetailPage is the per-task detail page.
 templ TaskDetailPage(data DashboardData, detail taskDetailData) {
-	@layout.Base(dashboardProps(detail.ID+" · tq")) {
+	@layout.Base(dashboardProps(detailPageTitle(detail.ID))) {
 		@pageHeader()
 		@TaskDetail(data, detail.Task, detail.Facts)
 	}

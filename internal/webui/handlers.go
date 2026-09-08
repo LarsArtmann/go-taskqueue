@@ -192,3 +192,108 @@ func (s *Server) sendSnapshot(ctx context.Context, stream *sse.Stream, r *http.R
 
 	return ctx.Err()
 }
+
+// handleTaskEvents streams the per-task detail page's live fragments: the
+// same subscribe → snapshot → tick protocol as /api/events, scoped to one
+// task's record card and fact timeline. Every event is a full re-render of
+// both fragments, so any Last-Event-ID is satisfied by a fresh snapshot.
+func (s *Server) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	if _, err := s.store.Get(r.Context(), task.ID(id)); err != nil {
+		http.Error(w, "task not found: "+id, http.StatusNotFound)
+
+		return
+	}
+
+	if _, ok := w.(http.Flusher); !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	stream := sse.NewStream(w, r)
+	defer func() { _ = stream.Close() }()
+
+	ctx := r.Context()
+
+	eventCh := s.hub.Subscribe()
+	defer s.hub.Unsubscribe(eventCh)
+
+	if err := s.sendTaskSnapshot(ctx, stream, id, watermarkUnknown); err != nil {
+		return
+	}
+
+	go stream.Heartbeat(ctx, s.cfg.Heartbeat)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case evt, ok := <-eventCh:
+			if !ok {
+				return
+			}
+
+			if evt.Event != "tick" {
+				continue
+			}
+
+			seq := int64(watermarkUnknown)
+			if n, err := strconv.ParseInt(evt.ID.Get(), 10, 64); err == nil {
+				seq = n
+			}
+
+			if err := s.sendTaskSnapshot(ctx, stream, id, seq); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (s *Server) sendTaskSnapshot(ctx context.Context, stream *sse.Stream, id string, seq int64) error {
+	t, err := s.store.Get(ctx, task.ID(id))
+	if err != nil {
+		if ctx.Err() != nil {
+			return err
+		}
+
+		slog.Error("webui: task snapshot query", "task", id, "err", err)
+
+		return err
+	}
+
+	facts, err := s.factsForTask(ctx, id)
+	if err != nil {
+		if ctx.Err() != nil {
+			return err
+		}
+
+		slog.Error("webui: task facts query", "task", id, "err", err)
+
+		return err
+	}
+
+	data := DashboardData{Now: time.Now()}
+
+	for _, frag := range renderTaskFragments(ctx, data, t, facts) {
+		if err := stream.SendJSON("frag", frag); err != nil {
+			return err
+		}
+	}
+
+	// The trailing title event carries the journal watermark id, keeping
+	// the detail stream's resume semantics identical to /api/events.
+	evt := sse.Event{Event: "title", Data: detailPageTitle(id)}
+	if seq >= 0 {
+		evt.ID = sse.NewEventID(formatSeq(seq))
+	}
+
+	if err := stream.Send(evt); err != nil {
+		return err
+	}
+
+	return ctx.Err()
+}
