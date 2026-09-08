@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Budget + retry visibility in the dashboard** (`tq serve`): a budget
+  stat card ("spent/cap" for today, green/amber/red by 75%/100% of the
+  daily cap) appears whenever the pool runs with `--daily-budget`, and
+  the task table gains a "ready" column showing when a pending task
+  becomes claimable ("in 12m", "ready", empty when immediately
+  claimable; exact `notBefore` on the tooltip).
 - **Agent reviews**: `tq agent-pool --review` gives every completed agent
   task one review by a second headless agent (`internal/review` sweeper +
   a `review` executor in `internal/executor`). The reviewer reads the
