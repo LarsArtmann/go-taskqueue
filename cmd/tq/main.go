@@ -46,6 +46,7 @@ Usage:
   tq stats [--project P] [--status S] [--db PATH] [--json]
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
           [--max-attempts N] [--dry-run] [--json] [--db PATH]
+  tq doctor [--json] [--daily-budget N] [--repos a,b] [--db PATH]
   tq top [--interval DUR] [--once] [--json] [--db PATH]
   tq show TASK_ID [--db PATH]
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]]
@@ -70,6 +71,7 @@ func main() {
 		"agent-pool": cmdAgentPool,
 		"stats":      cmdStats,
 		"audit":      cmdAudit,
+		"doctor":     cmdDoctor,
 		"top":        cmdTop,
 		"show":       cmdShow,
 		"dlq":        cmdDLQ,

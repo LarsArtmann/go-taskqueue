@@ -1,0 +1,215 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/task"
+)
+
+func doctorTestStore(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "q.db")
+	s, err := queue.OpenSQLite(path)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	return path
+}
+
+func resultByName(results []checkResult, name string) checkResult {
+	for _, r := range results {
+		if r.Name == name {
+			return r
+		}
+	}
+
+	return checkResult{Name: name, Status: "missing", Detail: "not found"}
+}
+
+func TestDoctorHealthyEmptyDB(t *testing.T) {
+	path := doctorTestStore(t)
+
+	results, err := runDoctor(context.Background(), doctorOptions{DBPath: path})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	if worst := doctorWorst(results); worst != checkOK {
+		t.Fatalf("worst = %s, want ok; results: %+v", worst, results)
+	}
+
+	for _, name := range []string{"db", "wal", "queue", "worker"} {
+		if r := resultByName(results, name); r.Status != checkOK {
+			t.Errorf("%s = %s (%s), want ok", name, r.Status, r.Detail)
+		}
+	}
+}
+
+func TestDoctorFlagsDeadWorker(t *testing.T) {
+	path := doctorTestStore(t)
+
+	s, err := queue.OpenSQLite(path)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	// A pending task nobody claims, plus a running task whose lease died
+	// with its worker: the classic "pool is down" signature.
+	if _, err := s.Enqueue(ctx, task.New{Type: "sh"}); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	claimed, err := s.ClaimDue(ctx, "dead-worker", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	_ = s.Close()
+	// Age the lease out without a heartbeat by claiming with a tiny lease
+	// through a fresh handle: sleep past expiry instead.
+	s2, err := queue.OpenSQLite(path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer func() { _ = s2.Close() }()
+
+	_ = claimed
+
+	// Force the expired-lease state: claim with 1ms lease, then wait.
+	if _, err := s2.ClaimDue(ctx, "dead-worker", time.Millisecond); err != nil {
+		t.Fatalf("reclaim: %v", err)
+	}
+
+	time.Sleep(20 * time.Millisecond)
+
+	results, err := runDoctor(ctx, doctorOptions{DBPath: path})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	if r := resultByName(results, "worker"); r.Status != checkFail {
+		t.Errorf("worker = %s (%s), want fail (pending work, no heartbeats)", r.Status, r.Detail)
+	}
+
+	if r := resultByName(results, "queue"); r.Status != checkWarn {
+		t.Errorf("queue = %s (%s), want warn (expired lease unreclaimed)", r.Status, r.Detail)
+	}
+
+	if worst := doctorWorst(results); worst != checkFail {
+		t.Errorf("worst = %s, want fail", worst)
+	}
+}
+
+func TestDoctorBudgetAtCap(t *testing.T) {
+	path := doctorTestStore(t)
+
+	s, err := queue.OpenSQLite(path)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+	for range 2 {
+		if _, err := s.Enqueue(ctx, task.New{Type: "sh"}); err != nil {
+			t.Fatalf("enqueue: %v", err)
+		}
+	}
+
+	results, err := runDoctor(ctx, doctorOptions{DBPath: path, DailyBudget: 2})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	if r := resultByName(results, "budget"); r.Status != checkWarn {
+		t.Errorf("budget = %s (%s), want warn at cap", r.Status, r.Detail)
+	}
+}
+
+func TestDoctorCorruptDB(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "broken.db")
+
+	if err := os.WriteFile(path, []byte("this is definitely not a sqlite database"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := runDoctor(context.Background(), doctorOptions{DBPath: path})
+	if err == nil {
+		t.Fatal("runDoctor on a corrupt file must fail")
+	}
+}
+
+func TestDoctorRepoAutonomy(t *testing.T) {
+	dir := t.TempDir()
+
+	healthy := filepath.Join(dir, "healthy")
+	if err := os.MkdirAll(filepath.Join(healthy, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(healthy, "TODO_LIST.md"), []byte("## Work\n\n- [ ] item\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(healthy, ".crushrc"), []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	bare := filepath.Join(dir, "bare")
+	if err := os.MkdirAll(bare, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	path := doctorTestStore(t)
+
+	results, err := runDoctor(context.Background(), doctorOptions{DBPath: path, Repos: healthy + "," + bare})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	if r := resultByName(results, "repo:healthy"); r.Status != checkOK {
+		t.Errorf("repo:healthy = %s (%s), want ok", r.Status, r.Detail)
+	}
+
+	if r := resultByName(results, "autonomy:healthy"); r.Status != checkOK {
+		t.Errorf("autonomy:healthy = %s (%s), want ok", r.Status, r.Detail)
+	}
+
+	if r := resultByName(results, "repo:bare"); r.Status != checkWarn {
+		t.Errorf("repo:bare = %s (%s), want warn", r.Status, r.Detail)
+	}
+
+	if r := resultByName(results, "autonomy:bare"); r.Status != checkWarn {
+		t.Errorf("autonomy:bare = %s (%s), want warn", r.Status, r.Detail)
+	}
+}
+
+func TestDoctorJSONShape(t *testing.T) {
+	path := doctorTestStore(t)
+
+	results, err := runDoctor(context.Background(), doctorOptions{DBPath: path})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	payload, err := json.Marshal(map[string]any{"status": doctorWorst(results), "checks": results})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	if !strings.Contains(string(payload), `"name":"db"`) {
+		t.Errorf("json payload missing db check: %s", payload)
+	}
+}
