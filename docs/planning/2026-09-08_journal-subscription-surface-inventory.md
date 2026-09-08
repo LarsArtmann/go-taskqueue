@@ -62,14 +62,14 @@ All persistent fact I/O flows through `queue.Store`
 - **Reads** (all shaped by `2d5e729`):
   - `Facts(ctx, after, limit)` — `WHERE seq > ? ORDER BY seq ASC [LIMIT ?]`;
     `limit=0` = unbounded. Cursor pagination, O(limit) per page via the seq
-    primary key (`sqlite.go:679`).
+    primary key (`sqlite.go:711`).
   - `LastFacts(ctx, limit)` — most recent N ascending (DESC + reverse);
-    `limit<=0` = whole journal (`sqlite.go:699`).
+    `limit<=0` = whole journal (`sqlite.go:731`).
   - `HeadSeq(ctx)` — `COALESCE(MAX(seq),0)`, the O(1) watermark
-    (`sqlite.go:725`).
+    (`sqlite.go:757`).
   - `FactsForTask(ctx, id, limit)` — per-task trail via `idx_facts_task`
-    (`sqlite.go:735`).
-  - `CountFacts(ctx, type, since)` — count pushdown (`sqlite.go:755`).
+    (`sqlite.go:767`).
+  - `CountFacts(ctx, type, since)` — count pushdown (`sqlite.go:787`).
 - **Seq assignment**: `facts.seq INTEGER PRIMARY KEY AUTOINCREMENT`
   (`sqlite.go:119`) — monotonic, never reused.
 - **Retention**: append-only in practice. There is no `DELETE FROM facts` or
@@ -95,7 +95,7 @@ limit/pagination vocabulary the dispatcher needs. See §4 gap 4.
 | 7 | `tq tail [-f] --after` (`cmd/tq/main.go:1124`) | 500ms poll | `--after` (replay OK) | `Facts(after, 0)` unbounded, cursor advances per fact | exact |
 | 8 | `tq top` (`cmd/tq/top.go:178`) | per frame | none (window) | `LastFacts(5000)` | recent-window projection, no replay |
 | 9 | `tq show <id>` (`cmd/tq/main.go` cmdShow) | one-shot | n/a | `FactsForTask(id, 0)` unbounded trail | exact |
-| 10 | webui feed / detail (`internal/webui/render.go:187`, `tailer.go:59`) | on demand | n/a | `LastFacts(50)` / `FactsForTask(id, 500)` | window/trail render |
+| 10 | webui feed / detail (`internal/webui/render.go:264`, `tailer.go:59`) | on demand | n/a | `LastFacts(50)` / `FactsForTask(id, 500)` | window/trail render |
 | 11 | `examples/api`, `examples/sse` | HTTP poll | 0 / request cursor | `Facts(after, 0)` unbounded | exact |
 
 Reading of the table: **four independent pollers** (tailer, bridge,
@@ -109,7 +109,7 @@ design.
 
 `Facts(after, limit)` replay correctness requires all of:
 
-- **(a) strictly-greater cursor** — holds: `seq > ?` (`sqlite.go:682`). Seq
+- **(a) strictly-greater cursor** — holds: `seq > ?` (`sqlite.go:714`). Seq
   gaps (AUTOINCREMENT skips values after rolled-back transactions) are
   harmless; no consumer assumes contiguity (the bridge ends its drain on
   `len(facts) < limit`, the tailer/tail take the last returned seq — none do
@@ -215,6 +215,8 @@ persistence gap (TODO_LIST H2), which `HeadSeq` actually made O(1).
 
 - All paths/line numbers above were read from HEAD this session
   (working tree at session start: `78522cc`).
-- Gates after this doc landed: `go build ./...`, `go vet ./...`,
-  `go test ./... -race` (doc-only change; expected green, run recorded in
-  the session that closes the TODO item).
+- Re-verified 2026-09-08 against HEAD `e221e30` (after `f67942f`
+  shifted `sqlite.go` +32 and the webui feed render): every claim re-checked
+  against the code, drifted line references corrected, no substance change.
+- Gates: `go build ./...`, `go vet ./...`, `go test ./... -race` green
+  (doc-only change).
