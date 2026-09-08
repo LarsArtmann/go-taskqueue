@@ -56,6 +56,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   annotations, so regressions a commit introduces show up on green runs
   (verified empirically on v2.13.2: default output produces zero annotation
   commands even with `GITHUB_ACTIONS=true`).
+- `tq serve --verbose`: per-request access logging (method, path, status,
+  duration) via slog at Info level on the default logger (stderr). The
+  wrapper forwards `Flush`, so SSE streaming through it is unchanged; SSE
+  connections log once, when the stream closes. Off by default.
 
 - Live web dashboard: `tq serve` (default `127.0.0.1:8090`, read-only)
   renders status cards, a live task table, the DLQ, per-project chips and

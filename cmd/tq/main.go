@@ -1173,6 +1173,7 @@ func cmdServe(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	addr := fs.String("addr", webui.DefaultAddr, "listen address (default: localhost only)")
 	poll := fs.Duration("poll", webui.DefaultPoll, "journal tail interval")
+	verbose := fs.Bool("verbose", false, "log every HTTP request (method, path, status, duration) to stderr")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -1185,7 +1186,7 @@ func cmdServe(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	server := webui.New(s, webui.Config{Addr: *addr, Poll: *poll})
+	server := webui.New(s, webui.Config{Addr: *addr, Poll: *poll, RequestLog: *verbose})
 
 	fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (read-only)\n", *addr)
 

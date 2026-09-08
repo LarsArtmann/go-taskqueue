@@ -1,9 +1,11 @@
 package webui
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -501,5 +503,77 @@ func TestStoreClosedErrorPaths(t *testing.T) {
 		t, srv.Handler(), 300*time.Millisecond, ssetest.WithPath("/api/events"))
 	if len(events) != 0 {
 		t.Errorf("closed store: got %d SSE events, want 0", len(events))
+	}
+}
+
+// captureDefaultLogger swaps the default slog logger for a text handler
+// writing to the returned buffer, restored on cleanup.
+func captureDefaultLogger(t *testing.T) *bytes.Buffer {
+	t.Helper()
+
+	var buf bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	return &buf
+}
+
+func TestRequestLoggingEnabled(t *testing.T) {
+	logs := captureDefaultLogger(t)
+
+	srv := New(newTestStore(t), Config{
+		Poll: time.Millisecond, Heartbeat: time.Millisecond, RequestLog: true,
+	})
+	handler := srv.Handler()
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/stats", nil))
+
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/does-not-exist", nil))
+
+	out := logs.String()
+	for _, want := range []string{
+		`msg="webui: request"`, `method=GET`, `path=/api/stats`, `status=200`,
+		`path=/task/does-not-exist`, `status=404`, `duration=`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("request log missing %q; log:\n%s", want, out)
+		}
+	}
+}
+
+func TestRequestLoggingOffByDefault(t *testing.T) {
+	logs := captureDefaultLogger(t)
+
+	srv, _ := newTestServer(t)
+	srv.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/stats", nil))
+
+	if out := logs.String(); out != "" {
+		t.Errorf("requests logged with RequestLog disabled:\n%s", out)
+	}
+}
+
+// TestRequestLoggingKeepsSSEStreaming proves the logging wrapper forwards
+// Flush: an SSE client through the wrapped handler still receives the full
+// connect snapshot (handleEvents rejects writers without Flush).
+func TestRequestLoggingKeepsSSEStreaming(t *testing.T) {
+	s := newTestStore(t)
+	srv := New(s, Config{Poll: time.Millisecond, Heartbeat: time.Millisecond, RequestLog: true})
+	tk := enqueue(t, s, "sh", "demo")
+
+	events := ssetest.CollectN(t, srv.Handler(), 6, ssetest.WithPath("/api/events"))
+
+	sawTask := false
+
+	for _, evt := range events {
+		if evt.Type == testFragEvent && strings.Contains(evt.Data(), tk.ID.String()) {
+			sawTask = true
+		}
+	}
+
+	if !sawTask {
+		t.Fatalf("SSE snapshot through the request-logging wrapper is missing task %s", tk.ID)
 	}
 }

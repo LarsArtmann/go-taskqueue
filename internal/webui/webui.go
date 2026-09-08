@@ -40,6 +40,9 @@ type Config struct {
 	Poll time.Duration
 	// Heartbeat is the SSE keepalive interval. Default 15s.
 	Heartbeat time.Duration
+	// RequestLog enables per-request access logging (method, path, status,
+	// duration) via slog at Info level. Off by default.
+	RequestLog bool
 }
 
 func (c Config) withDefaults() Config {
@@ -93,6 +96,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/events", s.handleEvents)
 	mux.HandleFunc("GET /api/stats", s.handleStats)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", staticHandler()))
+
+	if s.cfg.RequestLog {
+		return withRequestLog(mux)
+	}
 
 	return mux
 }
