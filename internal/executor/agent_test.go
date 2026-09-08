@@ -291,10 +291,11 @@ func TestAgentPromptTaskIDSubstitution(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
-	prompt := got[len(got)-1]
-	if prompt != "Task-Queue-ID: "+tk.ID.String() || !strings.HasPrefix(string(raw), "work item\n") {
-		t.Fatalf("prompt = %q, want {{TASK_ID}} resolved to %q", string(raw), tk.ID.String())
+	// The stub logs one line per argv element; the substituted prompt is the
+	// final argument, so its full text must appear verbatim at the tail.
+	want := "work item\n\nTask-Queue-ID: " + tk.ID.String()
+	if !strings.HasSuffix(strings.TrimRight(string(raw), "\n"), want) {
+		t.Fatalf("argv log = %q, want prompt tail %q ({{TASK_ID}} resolved)", string(raw), want)
 	}
 }
 
