@@ -274,6 +274,7 @@ func cmdWorker(args []string) error {
 			os.Stderr,
 			"tq: --agents: autonomous agent execution enabled (headless crush; dirty repos are skipped; verify is enforced)",
 		)
+
 		agentExec := &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo}
 		reg.Register(executor.TaskTypeAgent, agentExec)
 		// Carry review tasks minted by a --review agent-pool sharing this DB.
@@ -554,7 +555,7 @@ func cmdAgentPool(args []string) error {
 	doReview := fs.Bool(
 		"review",
 		false,
-		"agent reviews: every completed agent task gets ONE review by a second agent (verdict lands in the task's facts; reviews are never reviewed)",
+		"agent reviews: each completed agent task gets ONE review by a second agent (reviews are never reviewed)",
 	)
 	reviewAutofix := fs.Bool(
 		"review-autofix",
