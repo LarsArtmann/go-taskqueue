@@ -67,26 +67,26 @@ WantedBy=default.target
 
 // bootstrapOptions is the resolved state of one `tq bootstrap` invocation.
 type bootstrapOptions struct {
-	repos          []string // repo specs: bare names (against projectsDir) or paths
-	projectsDir    string
-	agents         int    // pool concurrency AND machine-wide agent cap
-	model          string // "" = inherit each repo's crush config default
-	reasoning      string // low|medium|high|xhigh; applied when model is set
-	verify         map[string]string
-	interval       time.Duration
-	dailyBudget    int
-	maxPerTick     int
-	once           bool
-	dryRun         bool
-	install        bool
-	yolo           bool
-	review         bool
-	reviewAutofix  bool
-	exclusive      bool
-	allowDirty     bool
-	repoTimeout    string
-	db             string
-	binPath        string // resolved executable, for the systemd unit
+	repos         []string // repo specs: bare names (against projectsDir) or paths
+	projectsDir   string
+	agents        int    // pool concurrency AND machine-wide agent cap
+	model         string // "" = inherit each repo's crush config default
+	reasoning     string // low|medium|high|xhigh; applied when model is set
+	verify        map[string]string
+	interval      time.Duration
+	dailyBudget   int
+	maxPerTick    int
+	once          bool
+	dryRun        bool
+	install       bool
+	yolo          bool
+	review        bool
+	reviewAutofix bool
+	exclusive     bool
+	allowDirty    bool
+	repoTimeout   string
+	db            string
+	binPath       string // resolved executable, for the systemd unit
 }
 
 // reorderBootstrapArgs lets repos and flags appear in any order
@@ -329,15 +329,17 @@ func (o bootstrapOptions) ensureRepos(paths []string) (string, error) {
 			fmt.Fprintf(&b, "  todo  %d open item(s) → tasks after harvest\n", open)
 		}
 
-		wroteVerify, cmd, err := o.ensureTQVerify(repo)
+		action, cmd, err := o.ensureTQVerify(repo)
 		if err != nil {
 			return "", fmt.Errorf("bootstrap %s: %w", name, err)
 		}
 
-		switch {
-		case wroteVerify:
+		switch action {
+		case verifyWrote:
 			fmt.Fprintf(&b, "  verify wrote .tq-verify: %s\n", cmd)
-		case cmd != "":
+		case verifyOverride:
+			fmt.Fprintf(&b, "  verify would pin (--verify override): %s\n", cmd)
+		case verifyKept:
 			fmt.Fprintf(&b, "  verify kept existing .tq-verify: %s\n", cmd)
 		default:
 			fmt.Fprintf(&b, "  WARN  no verify command (tasks complete without proof) — pass --verify %s=<cmd>\n", name)
@@ -385,39 +387,47 @@ func openTodoItems(repo string) (int, error) {
 	return len(items), nil
 }
 
+// Verify actions reported by ensureTQVerify.
+const (
+	verifyWrote    = "wrote"    // pinned (detected or overridden) and written
+	verifyOverride = "override" // --verify override intent (dry-run: not yet written)
+	verifyKept     = "kept"     // existing .tq-verify left untouched
+	verifyNone     = "none"     // nothing to enforce
+)
+
 // ensureTQVerify makes sure the repo declares its verify contract: an
 // explicit --verify entry for this repo is always (re)written; an existing
 // .tq-verify is kept; otherwise the detected command is pinned. Returns
-// (wrote, effectiveCommand).
-func (o bootstrapOptions) ensureTQVerify(repo string) (bool, string, error) {
+// (action, effectiveCommand).
+func (o bootstrapOptions) ensureTQVerify(repo string) (string, string, error) {
 	name := filepath.Base(repo)
 
-	if cmd, ok := o.verify[name]; ok {
+	if cmd, ok := o.verify[name]; ok && cmd != "" {
 		if o.dryRun {
-			return false, cmd, nil
+			return verifyOverride, cmd, nil
 		}
 
 		if err := os.WriteFile(filepath.Join(repo, ".tq-verify"), []byte(cmd+"\n"), 0o644); err != nil {
-			return false, "", err
+			return verifyNone, "", err
 		}
 
-		return true, cmd, nil
+		return verifyWrote, cmd, nil
 	}
 
 	if existing := executor.ReadTQVerify(repo); existing != "" {
-		return false, existing, nil
+		return verifyKept, existing, nil
 	}
 
 	detected := executor.DetectVerify(repo)
 	if detected == "" || o.dryRun {
-		return false, detected, nil
+		return verifyNone, detected, nil
 	}
 
 	if err := os.WriteFile(filepath.Join(repo, ".tq-verify"), []byte(detected+"\n"), 0o644); err != nil {
-		return false, "", err
+		return verifyNone, "", err
 	}
 
-	return true, detected, nil
+	return verifyWrote, detected, nil
 }
 
 // ensureCrushConfig writes the managed autonomy (+model) block into the

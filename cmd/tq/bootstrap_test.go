@@ -96,13 +96,28 @@ func TestEnsureTQVerifyOverrideAlwaysRewrites(t *testing.T) {
 
 	o := bootstrapOptions{verify: map[string]string{filepath.Base(repo): "bash scripts/gate.sh"}}
 
-	wrote, cmd, err := o.ensureTQVerify(repo)
-	if err != nil || !wrote || cmd != "bash scripts/gate.sh" {
-		t.Fatalf("override: wrote=%v cmd=%q err=%v", wrote, cmd, err)
+	action, cmd, err := o.ensureTQVerify(repo)
+	if err != nil || action != verifyWrote || cmd != "bash scripts/gate.sh" {
+		t.Fatalf("override: action=%q cmd=%q err=%v", action, cmd, err)
 	}
 
 	if got := readRepo(t, repo, ".tq-verify"); got != "bash scripts/gate.sh\n" {
 		t.Fatalf("override not written: %q", got)
+	}
+
+	// Dry-run reports the override intent without writing.
+	o.dryRun = true
+	if err := os.WriteFile(filepath.Join(repo, ".tq-verify"), []byte("go test ./...\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	action, cmd, err = o.ensureTQVerify(repo)
+	if err != nil || action != verifyOverride || cmd != "bash scripts/gate.sh" {
+		t.Fatalf("dry-run override: action=%q cmd=%q err=%v", action, cmd, err)
+	}
+
+	if got := readRepo(t, repo, ".tq-verify"); got != "go test ./...\n" {
+		t.Fatalf("dry-run wrote anyway: %q", got)
 	}
 }
 
@@ -111,9 +126,9 @@ func TestEnsureTQVerifyKeepsExistingDetectsMissing(t *testing.T) {
 
 	o := bootstrapOptions{}
 
-	wrote, cmd, err := o.ensureTQVerify(repo)
-	if err != nil || !wrote || cmd == "" {
-		t.Fatalf("detect+write: wrote=%v cmd=%q err=%v", wrote, cmd, err)
+	action, cmd, err := o.ensureTQVerify(repo)
+	if err != nil || action != verifyWrote || cmd == "" {
+		t.Fatalf("detect+write: action=%q cmd=%q err=%v", action, cmd, err)
 	}
 
 	if got := readRepo(t, repo, ".tq-verify"); got != cmd+"\n" {
@@ -121,8 +136,16 @@ func TestEnsureTQVerifyKeepsExistingDetectsMissing(t *testing.T) {
 	}
 
 	// Existing file (no override) is kept untouched.
-	if wrote, cmd, err = o.ensureTQVerify(repo); wrote || cmd == "" || err != nil {
-		t.Fatalf("existing kept: wrote=%v cmd=%q err=%v", wrote, cmd, err)
+	if action, cmd, err = o.ensureTQVerify(repo); action != verifyKept || cmd == "" || err != nil {
+		t.Fatalf("existing kept: action=%q cmd=%q err=%v", action, cmd, err)
+	}
+
+	// No markers at all: honest "none".
+	empty := writeRepo(t, map[string]string{"TODO_LIST.md": "# TODO\n"})
+
+	action, cmd, err = o.ensureTQVerify(empty)
+	if err != nil || action != verifyNone || cmd != "" {
+		t.Fatalf("no verify: action=%q cmd=%q err=%v", action, cmd, err)
 	}
 }
 
