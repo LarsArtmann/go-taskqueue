@@ -549,7 +549,7 @@ func cmdAgentPool(args []string) error {
 	discoveryAddr := fs.String(
 		"discovery-addr",
 		os.Getenv("TQ_DISCOVERY_ADDR"),
-		"project-discovery-daemon endpoint for repo discovery INSTEAD of the local scan each tick: unix socket (/run/project-discovery/daemon.sock, unix:// ok) or host:port; unreachable daemon = warning + local scan fallback ($TQ_DISCOVERY_ADDR)",
+		"project-discovery-daemon endpoint for repo discovery INSTEAD of the local scan each tick: unix socket (/run/project-discovery/daemon.sock, unix:// ok) or host:port; unreachable daemon = warning + local scan fallback; also subscribes the daemon's /v1/watch SSE stream so repo changes harvest within seconds instead of waiting --interval ($TQ_DISCOVERY_ADDR)",
 	)
 	conc := fs.Int("concurrency", 1, "parallel agents (repos are paced: one in-flight backlog item per repo)")
 	poll := fs.Duration("poll", 500*time.Millisecond, "idle poll interval")
@@ -997,6 +997,34 @@ func cmdAgentPool(args []string) error {
 		}
 	}
 
+	var watchTriggers <-chan struct{}
+
+	// Watch-driven harvest trigger: with a daemon addr, subscribe its
+	// GET /v1/watch SSE stream so a repo change (an agent commit carrying
+	// its TODO_LIST edit) harvests within seconds instead of waiting for
+	// --interval. Additive by contract: the ticker below stays the fallback
+	// heartbeat and a nil trigger channel blocks its select case forever,
+	// so a dead watch stream degrades to interval-only harvesting.
+	if *discoveryAddr != "" && !*once {
+		watcher := harvest.NewWatcher(harvest.WatchConfig{
+			Addr:          *discoveryAddr,
+			ProjectsDir:   cfg.ProjectsDir,
+			Repos:         cfg.Repos,
+			RepoIntervals: cfg.RepoIntervals,
+			Log:           log,
+		})
+		watchTriggers = watcher.Triggers()
+
+		g.Go("discovery-watch", func(ctx context.Context) error { return watcher.Run(ctx) })
+
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: agent-pool: watch-driven harvest triggers from %s (interval %s stays the fallback)\n",
+			*discoveryAddr,
+			*interval,
+		)
+	}
+
 	g.Go("tick", func(ctx context.Context) error {
 		runTick()
 
@@ -1016,6 +1044,8 @@ func cmdAgentPool(args []string) error {
 			case <-ctx.Done():
 				return nil
 			case <-ticker.C:
+				runTick()
+			case <-watchTriggers:
 				runTick()
 			}
 		}
