@@ -101,6 +101,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   watermark startup were cleaned up where the baseline pointed at real
   complexity/context bugs.
 
+- ADR-0004's cordis adoption trigger T3 ("maturity verified locally") is
+  now evidence-backed instead of vendor-claimed: the cordis Go port's test
+  suite ran locally in the fork at the exact commit the ADR assessed
+  (`61ec9f9`) — 5/5 packages race-clean under `-race`, 86.2% total
+  statement coverage, 176 PASS / 0 FAIL / 0 SKIP (`loader` weakest at
+  74.6%). The framework-free verdict is unchanged: gates T1/T2/T4/T5
+  remain open. Record and reproducibility commands:
+  `docs/planning/2026-09-08_cordis-test-suite-verification.md`.
+
 ### Added
 
 - `tq serve --auth-token` / `$TQ_SERVE_TOKEN`: token auth for the
