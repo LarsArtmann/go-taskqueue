@@ -15,6 +15,20 @@ REAL_MODE=""
 TMP="$(mktemp -d)"
 trap 'for pid in "${WORKER_PID:-}" "${STUB_PID:-}"; do [ -n "$pid" ] && kill "$pid" 2>/dev/null; done; rm -rf "$TMP"' EXIT
 
+# A kernel-chosen ephemeral port: the historical fixed port collided with a
+# real PapDashboard instance running on this machine (the stub silently
+# failed to bind and the smoke asserted against nothing).
+free_port() {
+	python3 - <<'PY'
+import socket
+with socket.socket() as s:
+    s.bind(("127.0.0.1", 0))
+    print(s.getsockname()[1])
+PY
+}
+
+STUB_PORT="${PAP_SMOKE_PORT:-$(free_port)}"
+
 echo "== build tq"
 go build -o "$TMP/tq" ./cmd/tq
 
@@ -35,10 +49,17 @@ class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
 HTTPServer(("127.0.0.1", PORT), H).serve_forever()
 PYEOF
-	python3 "$TMP/stub.py" "$INGEST_LOG" 18099 &
+	python3 "$TMP/stub.py" "$INGEST_LOG" "$STUB_PORT" &
 	STUB_PID=$!
-	PAP_URL="http://127.0.0.1:18099"
-	sleep 0.5
+	for _ in $(seq 1 20); do
+		kill -0 "$STUB_PID" 2>/dev/null || {
+			echo "FAIL: stub dashboard exited (port $STUB_PORT taken? override with PAP_SMOKE_PORT)"
+			exit 1
+		}
+		python3 -c "import socket; socket.create_connection((\"127.0.0.1\", $STUB_PORT), 0.2)" 2>/dev/null && break
+		sleep 0.25
+	done
+	PAP_URL="http://127.0.0.1:$STUB_PORT"
 fi
 
 export TQ_DB="$TMP/tasks.db"
