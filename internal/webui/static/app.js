@@ -163,6 +163,57 @@
     };
   }
 
+  /* Full-journal browser: pages forward through history via the
+     /api/facts cursor (the SSE feed above only carries the tail). Opens
+     lazily on first toggle; "load older" advances the cursor. */
+  var browserCursor = 0;
+
+  function factRow(f) {
+    var div = document.createElement("div");
+    div.className = "flex gap-2 py-0.5";
+    var ts = document.createElement("span");
+    ts.className = "text-gray-400 dark:text-gray-500";
+    ts.textContent = (f.time || "").replace("T", " ").slice(0, 19);
+    var tag = document.createElement("span");
+    tag.className = "text-gray-600 dark:text-gray-300";
+    tag.textContent = f.type;
+    var id = document.createElement("a");
+    id.className = "text-blue-600 hover:underline dark:text-blue-400";
+    id.href = "/task/" + f.taskId;
+    id.textContent = (f.taskId || "").slice(-8);
+    div.appendChild(ts);
+    div.appendChild(tag);
+    div.appendChild(id);
+    return div;
+  }
+
+  function loadJournalFacts() {
+    var rows = document.getElementById("journal-browser-rows");
+    var more = document.getElementById("journal-browser-more");
+    if (!rows) return;
+    fetch("/api/facts?after=" + browserCursor + "&limit=100")
+      .then(function (r) { return r.json(); })
+      .then(function (page) {
+        (page.facts || []).forEach(function (f) {
+          rows.appendChild(factRow(f));
+        });
+        browserCursor = page.next || browserCursor;
+        if (more) more.hidden = (page.facts || []).length === 0;
+      });
+  }
+
+  document.addEventListener("toggle", function (e) {
+    var det = e.target;
+    if (det && det.id === "journal-browser" && det.open && !det.getAttribute("data-loaded")) {
+      det.setAttribute("data-loaded", "1");
+      loadJournalFacts();
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (e.target && e.target.id === "journal-browser-more") loadJournalFacts();
+  });
+
   connect();
 
   /* keyboard navigation: 1-4 jump between sections, / focuses search. */

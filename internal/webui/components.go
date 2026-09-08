@@ -295,3 +295,34 @@ func tdCellClass(wrap bool) string {
 
 	return base + " whitespace-nowrap"
 }
+
+// completeHistogram buckets recent time-to-complete values (minutes) into
+// power-of-two-ish buckets: 0-1m, 1-5m, 5-15m, 15-60m, 60m+. The counts
+// form the completion histogram's series.
+func completeHistogram(data DashboardData) []float64 {
+	buckets := make([]float64, 5)
+	for _, m := range data.CompleteMinutes {
+		switch {
+		case m < 1:
+			buckets[0]++
+		case m < 5:
+			buckets[1]++
+		case m < 15:
+			buckets[2]++
+		case m < 60:
+			buckets[3]++
+		default:
+			buckets[4]++
+		}
+	}
+
+	return buckets
+}
+
+func completeHistogramLabels(data DashboardData) []string {
+	if len(data.CompleteMinutes) == 0 {
+		return nil
+	}
+
+	return []string{"<1m", "1-5m", "5-15m", "15-60m", "60m+"}
+}

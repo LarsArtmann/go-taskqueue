@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strconv"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 )
@@ -890,5 +892,60 @@ func TestSortableHeadersRender(t *testing.T) {
 	f.Sort = "age-desc"
 	if got := sortHeaderHref(f, "attempts"); got != "/?sort=attempts-desc" {
 		t.Errorf("other column independent = %q, want /?sort=attempts-desc", got)
+	}
+}
+
+// TestFactsCursorEndpoint (M19/F100): /api/facts pages forward through the
+// journal in seq order and reports the next cursor.
+func TestFactsCursorEndpoint(t *testing.T) {
+	srv, s := newTestServer(t)
+	first := enqueue(t, s, "sh", "demo")
+	second := enqueue(t, s, "sh", "demo")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after=0&limit=1", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+
+	var page struct {
+		Facts []journal.Fact `json:"facts"`
+		Next  int64          `json:"next"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if len(page.Facts) != 1 || page.Facts[0].TaskID != first.ID.String() {
+		t.Fatalf("first page = %+v, want the oldest fact", page.Facts)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after="+strconv.FormatInt(page.Next, 10)+"&limit=10", nil))
+
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(page.Facts) != 1 || page.Facts[0].TaskID != second.ID.String() {
+		t.Fatalf("second page = %+v, want the newer fact", page.Facts)
+	}
+}
+
+// TestMetricsRowRenders (M19/F98/F99): the overview carries the journal
+// watermark card and both SVG charts.
+func TestMetricsRowRenders(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "demo")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	body := rec.Body.String()
+	for _, want := range []string{"card-journal", "frag-metrics", "<svg", "fact rate (last hour", "time to complete"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("overview missing %q", want)
+		}
 	}
 }

@@ -53,6 +53,13 @@ templ StatusCards(data DashboardData) {
 			Href:      statusHref(task.Dead),
 		})
 		@display.StatCard(display.StatCardProps{
+			BaseProps: utils.BaseProps{Class: "card-journal"},
+			Label:     "journal seq",
+			Value:     formatInt(int(data.JournalSeq)),
+			Icon:      icons.CircleStack,
+			Tone:      display.StatToneBlue,
+		})
+		@display.StatCard(display.StatCardProps{
 			BaseProps: utils.BaseProps{Class: "card-cancelled"},
 			Label:     "cancelled",
 			Value:     formatInt(data.Counts[task.Cancelled]),
@@ -393,4 +400,51 @@ templ statusBadge(s string, typ display.BadgeType) {
 // payloadCode renders a task payload as a breakable code block.
 templ payloadCode(p string) {
 	<code class="block break-all font-mono text-xs text-gray-700 dark:text-gray-300">{ p }</code>
+}
+
+// MetricsRow renders the overview's two pure-SVG charts (M19): the fact
+// rate sparkline (facts per 5-minute slice of the last hour) and the
+// completion histogram (time-to-complete: queue wait + run, honestly
+// labeled). Both are server-rendered SVG — no JavaScript, CSP-safe.
+templ MetricsRow(data DashboardData) {
+	<div class="grid gap-4 pb-2 pt-4 md:grid-cols-2" id="frag-metrics">
+		@display.Card(display.CardProps{Title: "fact rate (last hour, per 5m)"}) {
+			<div class="px-2 pb-2">
+				@display.AreaChart(display.AreaChartProps{
+					Series:      []display.LineChartSeries{{Name: "facts", Values: data.FactBuckets, Color: "text-cyan-600 dark:text-cyan-400"}},
+					Height:      120,
+					ShowGrid:    false,
+					FillOpacity: 0.25,
+					Width:       560,
+				})
+			</div>
+		}
+		@display.Card(display.CardProps{Title: "time to complete (queue + run)"}) {
+			<div class="px-2 pb-2">
+				if len(data.CompleteMinutes) == 0 {
+					<p class="px-2 py-6 text-sm text-gray-500 dark:text-gray-400">no completed tasks yet</p>
+				} else {
+					@display.AreaChart(display.AreaChartProps{
+						Series:      []display.LineChartSeries{{Name: "tasks", Values: completeHistogram(data), Color: "text-emerald-600 dark:text-emerald-400"}},
+						XAxisLabels: completeHistogramLabels(data),
+						Height:      120,
+						ShowGrid:    false,
+						FillOpacity: 0.25,
+						Width:       560,
+					})
+				}
+			</div>
+		}
+	</div>
+}
+
+// journalBrowser is the no-JS entry to the full-journal viewer: the feed
+// above shows the tail, this collapsible pages forward through history via
+// GET /api/facts?after= (app.js powers the infinite scroll).
+templ journalBrowser() {
+	<details id="journal-browser" class="pt-2">
+		<summary class="cursor-pointer select-none text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">browse the full journal (oldest first)</summary>
+		<div id="journal-browser-rows" class="mt-2 font-mono text-xs"></div>
+		<button id="journal-browser-more" type="button" class="mt-2 rounded-lg border border-gray-300 px-3 py-1 text-xs dark:border-gray-700" hidden>load older</button>
+	</details>
 }

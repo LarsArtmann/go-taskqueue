@@ -126,6 +126,16 @@ type DashboardData struct {
 	TotalPages int
 	MatchTotal int
 	Budget     *BudgetView
+	// JournalSeq is the journal watermark (highest fact seq) — the resume
+	// point every SSE/bridge consumer carries.
+	JournalSeq int64
+	// FactBuckets counts facts per equal slice of the last hour (the
+	// activity sparkline's series).
+	FactBuckets []float64
+	// CompleteMinutes is the time-to-complete (queue wait + run) of recent
+	// completed tasks in minutes, newest first (the completion histogram's
+	// raw data).
+	CompleteMinutes []float64
 }
 
 // clearProject / clearStatus / clearQuery are used by the filter chips.
@@ -277,7 +287,75 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 
 	data.Facts = facts
 
+	// Journal watermark (best effort: a failed read renders 0, the page
+	// still works).
+	if seq, err := s.store.HeadSeq(ctx); err == nil {
+		data.JournalSeq = seq
+	}
+
+	data.FactBuckets = factBuckets(data.Now, facts, 12, time.Hour)
+
+	if completed := recentCompletedDurations(ctx, s.store, 200); len(completed) > 0 {
+		data.CompleteMinutes = completed
+	}
+
 	return data, nil
+}
+
+// factBuckets counts facts per equal slice of window ending at now (the
+// activity sparkline). Facts older than the window are ignored.
+func factBuckets(now time.Time, facts []journal.Fact, n int, window time.Duration) []float64 {
+	buckets := make([]float64, n)
+	if n <= 0 {
+		return buckets
+	}
+
+	start := now.Add(-window)
+	slice := window / time.Duration(n)
+
+	for _, f := range facts {
+		if f.Time.Before(start) {
+			continue
+		}
+
+		idx := int(now.Sub(f.Time) / slice)
+		if idx >= n {
+			idx = n - 1
+		}
+
+		buckets[n-1-idx]++ // oldest bucket first, like the chart's X axis
+	}
+
+	return buckets
+}
+
+// recentCompletedDurations returns time-to-complete (CompletedAt minus
+// CreatedAt: queue wait + execution, honestly labeled) in minutes for the
+// newest n completed tasks.
+func recentCompletedDurations(ctx context.Context, store queue.Store, n int) []float64 {
+	completed := task.Completed
+
+	tasks, err := store.List(ctx, queue.Filter{Status: &completed, Limit: n, Sort: "age-desc"})
+	if err != nil {
+		return nil
+	}
+
+	var out []float64
+
+	for _, t := range tasks {
+		if t.CompletedAt == nil {
+			continue
+		}
+
+		mins := t.CompletedAt.Sub(t.CreatedAt).Minutes()
+		if mins < 0 {
+			continue
+		}
+
+		out = append(out, mins)
+	}
+
+	return out
 }
 
 // toQueueFilter maps the URL-carried filter onto the store's SQL filter,

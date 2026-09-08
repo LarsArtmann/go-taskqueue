@@ -18,6 +18,7 @@ templ Page(data DashboardData) {
 					@StatusCards(data)
 				</div>
 			</section>
+			@MetricsRow(data)
 			<div class="grid gap-8 pb-10 pt-8 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
 				<div class="min-w-0 space-y-8">
 					<section id="sec-tasks" class="space-y-3">
@@ -42,6 +43,7 @@ templ Page(data DashboardData) {
 						<div id="frag-feed">
 							@FactFeed(data)
 						</div>
+						@journalBrowser()
 					</section>
 				</aside>
 			</div>
