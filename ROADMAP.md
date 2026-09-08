@@ -41,6 +41,11 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   overrides and backoff curves on top of the shipped permanent/transient
   classes)
 - Per-project concurrency limits as a first-class store concept
+- Deeper agent reviews: feed the reviewer the worker's full crush session
+  transcript (via go-crush-data's typed session/message reads, keyed by the
+  `AgentResult.SessionID` already stored in completion facts) instead of
+  only the diff + item; also rubric-style scored criteria (mindwalk judge
+  pattern) on top of the binary verdict
 
 ## Raw ideas (unrefined)
 

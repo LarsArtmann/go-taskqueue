@@ -347,13 +347,13 @@ func TestSweepWatermarkResumesAcrossSweeps(t *testing.T) {
 	// The review of `first` is now pending; run it to completion (what the
 	// pool would do) so it cannot shadow the next agent task in ClaimDue
 	// ordering.
-	for _, r := range listByType(t, s, executor.TaskTypeReview) {
+	for _, rev := range listByType(t, s, executor.TaskTypeReview) {
 		approve, err := json.Marshal(executor.ReviewResult{Verdict: executor.VerdictApprove})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		finishTask(t, s, r.ID, approve)
+		finishTask(t, s, rev.ID, approve)
 	}
 
 	second := runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "second"}, executor.AgentResult{})
@@ -369,14 +369,14 @@ func TestSweepWatermarkResumesAcrossSweeps(t *testing.T) {
 
 	var firstReviewed, secondReviewed bool
 
-	for _, r := range listByType(t, s, executor.TaskTypeReview) {
-		var p executor.ReviewPayload
+	for _, rev := range listByType(t, s, executor.TaskTypeReview) {
+		var payload executor.ReviewPayload
 
-		if err := json.Unmarshal(r.Payload, &p); err != nil {
+		if err := json.Unmarshal(rev.Payload, &payload); err != nil {
 			t.Fatalf("review payload: %v", err)
 		}
 
-		switch p.ReviewedTask {
+		switch payload.ReviewedTask {
 		case first.ID.String():
 			firstReviewed = true
 		case second.ID.String():

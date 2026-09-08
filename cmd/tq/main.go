@@ -689,6 +689,7 @@ func cmdAgentPool(args []string) error {
 	}
 
 	var sweeper *review.Sweeper
+
 	if *doReview {
 		var err error
 
