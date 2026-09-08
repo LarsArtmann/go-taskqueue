@@ -79,6 +79,7 @@ type bootstrapOptions struct {
 	once          bool
 	dryRun        bool
 	install       bool
+	noRun         bool // ensure + report, then exit (pool runs later via systemd/cron)
 	yolo          bool
 	review        bool
 	reviewAutofix bool
@@ -155,6 +156,11 @@ func cmdBootstrap(args []string) error {
 		return o.installService()
 	}
 
+	if o.noRun {
+		fmt.Fprintf(os.Stderr, "tq: bootstrap: repo state ensured — start the pool later with:\n  tq %s\n", strings.Join(composePoolArgs(o), " "))
+		return nil
+	}
+
 	if o.dryRun {
 		fmt.Fprintf(os.Stderr, "tq: bootstrap: dry-run — nothing written, pool not started\nwould run: tq %s\n", strings.Join(composePoolArgs(o), " "))
 		return nil
@@ -179,6 +185,7 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 	fs.BoolVar(&o.once, "once", false, "one harvest tick, drain, exit (cron/timer-friendly)")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "show the plan without writing anything or starting the pool")
 	fs.BoolVar(&o.install, "install", false, "install the systemd user unit + pool config, then exit (daemon mode)")
+	fs.BoolVar(&o.noRun, "no-run", false, "ensure repo state, print the pool command, and exit without starting the pool")
 	fs.BoolVar(&o.allowDirty, "allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
 	fs.StringVar(&o.repoTimeout, "repo-timeout", "", "per-repo agent-task timeout ladder: name=duration,...")
 	fs.StringVar(&o.db, "db", "", "task DB (default $TQ_DB or ./tasks.db)")
@@ -264,6 +271,10 @@ func (o bootstrapOptions) validate() error {
 
 	if o.install && o.dryRun {
 		return errors.New("bootstrap: --install and --dry-run are contradictory")
+	}
+
+	if o.noRun && (o.once || o.install) {
+		return errors.New("bootstrap: --no-run already exits after ensuring; drop --once/--install")
 	}
 
 	return nil
@@ -372,9 +383,23 @@ func (o bootstrapOptions) ensureRepos(paths []string) (string, error) {
 		} else {
 			fmt.Fprintf(&b, "  git   nothing to commit\n")
 		}
+
+		if dirty, err := repoDirty(repo); err == nil && dirty {
+			fmt.Fprintf(&b, "  WARN  tree has uncommitted changes — the pool refuses agent tasks here until committed (agents require a clean tree)\n")
+		}
 	}
 
 	return b.String(), nil
+}
+
+// repoDirty reports uncommitted (staged, unstaged, or untracked) changes.
+func repoDirty(repo string) (bool, error) {
+	out, err := exec.Command("git", "-C", repo, "status", "--porcelain").Output()
+	if err != nil {
+		return false, err
+	}
+
+	return len(strings.TrimSpace(string(out))) > 0, nil
 }
 
 // openTodoItems counts the harvestable (open, unblocked) checkbox items.
