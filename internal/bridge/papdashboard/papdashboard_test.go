@@ -105,10 +105,11 @@ type recordedIngest struct {
 
 // fakePap captures ingest calls; failNext makes the next call return 500.
 type fakePap struct {
-	mu        sync.Mutex
-	server    *httptest.Server
-	got       []recordedIngest
-	failNext5 int
+	mu               sync.Mutex
+	server           *httptest.Server
+	got              []recordedIngest
+	failNext5        int
+	failAfterAccepted int // once >= n accepts, every later call 502s (0 = off)
 }
 
 func newFakePap(t *testing.T) *fakePap {
@@ -117,6 +118,12 @@ func newFakePap(t *testing.T) *fakePap {
 	mux.HandleFunc("POST /api/ingest", func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
+
+		if f.failAfterAccepted > 0 && len(f.got) >= f.failAfterAccepted {
+			w.WriteHeader(http.StatusBadGateway)
+
+			return
+		}
 
 		if f.failNext5 > 0 {
 			f.failNext5--
@@ -158,6 +165,15 @@ func (f *fakePap) fail(times int) {
 	defer f.mu.Unlock()
 
 	f.failNext5 = times
+}
+
+// failAfter makes the dashboard reject every ingest once n calls have been
+// accepted (0 = never) — the "dashboard breaks mid-stream" lever.
+func (f *fakePap) failAfter(n int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.failAfterAccepted = n
 }
 
 func deadLetterFacts() ([]journal.Fact, map[string]task.Task) {
