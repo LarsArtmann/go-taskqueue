@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -462,6 +463,68 @@ func TestPermanentErrorDeadLettersAfterOneAttempt(t *testing.T) {
 
 	if !strings.Contains(got.LastError, "permanent: bad payload shape") {
 		t.Fatalf("lastError = %q, want permanent class prefix", got.LastError)
+	}
+}
+
+// TestFailureEvidenceRidesFailedFact pins the 21:40 §d4 contract end-to-end:
+// a failing execution's forensics (stage, exit code, output tail) must land
+// on the task.failed fact's detail — not an empty {} — so a failed attempt
+// is debuggable from the journal alone.
+func TestFailureEvidenceRidesFailedFact(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+	reg.Register("sh", executor.NewCommandExecutor(""))
+
+	enq, _ := store.Enqueue(ctx, task.New{
+		Type:    "sh",
+		Payload: []byte(`echo "boom evidence" >&2; exit 7`),
+	})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		Executors: reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	waitFor(t, ctx, store, enq.ID, task.Dead) // exit 7 is a permanent failure
+	cancel()
+
+	trail, err := store.FactsForTask(context.Background(), enq.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	var failed *journal.Fact
+
+	for i := range trail {
+		if trail[i].Type == journal.Failed {
+			failed = &trail[i]
+		}
+	}
+
+	if failed == nil {
+		t.Fatalf("no task.failed fact in trail of %d facts", len(trail))
+	}
+
+	var evidence executor.FailureEvidence
+	if err := json.Unmarshal(failed.Detail, &evidence); err != nil {
+		t.Fatalf("failed-fact detail is not FailureEvidence JSON: %v (detail=%s)", err, failed.Detail)
+	}
+
+	if evidence.Stage != "command" {
+		t.Errorf("stage = %q, want command", evidence.Stage)
+	}
+
+	if evidence.ExitCode != 7 {
+		t.Errorf("exit_code = %d, want 7", evidence.ExitCode)
+	}
+
+	if !strings.Contains(evidence.Tail, "boom evidence") {
+		t.Errorf("tail = %q, want the failing output excerpt", evidence.Tail)
 	}
 }
 

@@ -2,6 +2,7 @@ package webui
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -399,7 +400,19 @@ func TestWriteFlowCancelAndRescue(t *testing.T) {
 
 	// --- rescue a DEAD task ---
 	dead := enqueue(t, s, "sh", "demo3")
-	if err := s.FailPermanent(context.Background(), dead.ID, owner, "boom: rescue test"); err != nil {
+
+	// Dead-lettering requires a RUNNING task: claim it with the same
+	// lease owner the failure reports.
+	claimed, err := s.ClaimDue(context.Background(), owner, time.Minute)
+	if err != nil {
+		t.Fatalf("claim for dead-lettering: %v", err)
+	}
+
+	if claimed.ID != dead.ID {
+		t.Fatalf("claimed %s, want the freshly enqueued %s", claimed.ID, dead.ID)
+	}
+
+	if err := s.FailPermanent(context.Background(), dead.ID, owner, "boom: rescue test", json.RawMessage(`{}`)); err != nil {
 		t.Fatalf("fail permanent: %v", err)
 	}
 

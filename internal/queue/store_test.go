@@ -97,7 +97,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 		t.Fatalf("claim1: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID, "w1", "boom-1", 250*time.Millisecond); err != nil {
+	if err := s.Fail(ctx, tk.ID, "w1", "boom-1", 250*time.Millisecond, nil); err != nil {
 		t.Fatalf("fail1: %v", err)
 	}
 
@@ -119,7 +119,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 		t.Fatalf("claim2: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID, "w1", "boom-2", 0); err != nil {
+	if err := s.Fail(ctx, tk.ID, "w1", "boom-2", 0, nil); err != nil {
 		t.Fatalf("fail2: %v", err)
 	}
 
@@ -627,11 +627,11 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 
 	// The lease guard holds for permanent failures too: only the owner
 	// that claimed the task may dead-letter it.
-	if err := s.FailPermanent(ctx, tk.ID, "w2", "nope"); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.FailPermanent(ctx, tk.ID, "w2", "nope", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("wrong-owner FailPermanent err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.FailPermanent(ctx, tk.ID, "w1", "agent: payload needs repo"); err != nil {
+	if err := s.FailPermanent(ctx, tk.ID, "w1", "agent: payload needs repo", nil); err != nil {
 		t.Fatalf("FailPermanent: %v", err)
 	}
 
@@ -1290,7 +1290,7 @@ func TestListSeverityOrder(t *testing.T) {
 		t.Fatalf("want 2 running, got %d", len(running))
 	}
 
-	if err := s.FailPermanent(ctx, running[0].ID, running[0].LeaseOwner, "boom"); err != nil {
+	if err := s.FailPermanent(ctx, running[0].ID, running[0].LeaseOwner, "boom", nil); err != nil {
 		t.Fatalf("fail permanent: %v", err)
 	}
 

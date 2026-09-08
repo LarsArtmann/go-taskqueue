@@ -129,7 +129,7 @@ func TestPostgresLifecycle(t *testing.T) {
 
 	claimUntil(t, s, ctx, retry.ID, "w1", time.Minute)
 
-	if err := s.Fail(ctx, retry.ID, "w1", "boom", time.Millisecond); err != nil {
+	if err := s.Fail(ctx, retry.ID, "w1", "boom", time.Millisecond, nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 

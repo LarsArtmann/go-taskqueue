@@ -92,6 +92,13 @@ assert page_headers.get("X-Content-Type-Options") == "nosniff", "missing nosniff
 assert page_headers.get("Referrer-Policy") == "no-referrer", "missing referrer policy"
 print("page fragments + security headers OK")
 
+with urllib.request.urlopen(f"{base}/?view=board", timeout=2) as r:
+    board = r.read().decode()
+for col in ("pending", "running", "completed", "dead", "cancelled"):
+    assert f'data-status="{col}"' in board, f"board missing {col} column"
+assert 'aria-current="true"' in board, "board page does not mark the board toggle active"
+print("board view OK")
+
 req = urllib.request.Request(f"{base}/api/events", headers={"Accept": "text/event-stream"})
 with urllib.request.urlopen(req, timeout=3) as r:
     stream = r.read(2048).decode(errors="replace")

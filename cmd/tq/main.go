@@ -423,6 +423,11 @@ func cmdHarvest(args []string) error {
 	)
 	dryRun := fs.Bool("dry-run", false, "report what would be enqueued, change nothing")
 	asJSON := fs.Bool("json", false, "JSON output of the harvest result")
+	pruneStale := fs.Bool(
+		"prune-stale",
+		false,
+		"cancel PENDING queue tasks whose TODO_LIST item is now [x] (dedup-key match) instead of harvesting, so a pool relaunch never inherits zombies; running tasks are only reported (use tq cancel for a cooperative stop)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -462,6 +467,24 @@ func cmdHarvest(args []string) error {
 
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
+	if *pruneStale {
+		pruned, err := harvest.New(queue.New(s), cfg).PruneStale(context.Background())
+		if err != nil {
+			return err
+		}
+
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+
+			return enc.Encode(pruned)
+		}
+
+		printPruneResult(pruned, *dryRun)
+
+		return nil
+	}
 
 	res, err := harvest.New(queue.New(s), cfg).Run(context.Background())
 	if err != nil {
@@ -529,6 +552,34 @@ func printHarvestLines(res harvest.Result, dryRun bool) {
 	for _, sk := range res.Skipped {
 		fmt.Printf("SKIP      %-24s %s  — %s\n", sk.Item.RepoName, sk.Item.Text, sk.Reason)
 	}
+}
+
+// printPruneResult renders a --prune-stale pass: cancelled zombies first,
+// then running/dead ticked-item tasks the sweep deliberately does not touch.
+func printPruneResult(res harvest.PruneResult, dryRun bool) {
+	verb := "CANCELLED "
+	if dryRun {
+		verb = "WOULD-CANCEL"
+	}
+
+	for _, c := range res.Cancelled {
+		fmt.Printf("%s  %-24s %s  %s\n", verb, c.Item.RepoName, c.Item.Text, c.TaskID)
+	}
+
+	for _, r := range res.Running {
+		fmt.Printf("RUNNING   %-24s %s  %s  — cooperative stop is an operator decision (tq cancel)\n", r.Item.RepoName, r.Item.Text, r.TaskID)
+	}
+
+	for _, d := range res.Dead {
+		fmt.Printf("DEAD      %-24s %s  %s  — already terminal (tq dlq --rescue to retry)\n", d.Item.RepoName, d.Item.Text, d.TaskID)
+	}
+
+	for _, f := range res.ScanFailures {
+		fmt.Printf("SKIP      %s  — %s\n", f.Repo, f.Reason)
+	}
+
+	fmt.Printf("%d repo(s): %d cancelled, %d running, %d dead\n",
+		res.Repos, len(res.Cancelled), len(res.Running), len(res.Dead))
 }
 
 // cmdAgentPool is the self-managing loop in one process: it repeatedly

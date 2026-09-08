@@ -356,7 +356,7 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 			t.Fatalf("claimed %s want %s", claimed.ID, id)
 		}
 
-		if err := q.Fail(ctx, id, "w", "boom", 0); err != nil {
+		if err := q.Fail(ctx, id, "w", "boom", 0, nil); err != nil {
 			t.Fatalf("fail: %v", err)
 		}
 	}
@@ -474,7 +474,7 @@ func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := q.Store.FailPermanent(ctx, tk.ID, "w", "repo is broken"); err != nil {
+	if err := q.Store.FailPermanent(ctx, tk.ID, "w", "repo is broken", nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 

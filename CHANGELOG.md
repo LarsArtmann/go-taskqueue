@@ -8,6 +8,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Board view — `tq serve` kanban projection** (2026-09-09): `/?view=board`
+  swaps the task table for a read-only kanban board — one column per
+  lifecycle status (pending → running → completed, with dead/cancelled
+  exits), status-colored column rules matching the badge hue language,
+  newest 25 cards per column (live ages, readiness countdowns, lease
+  owners, dead-card attempt/error tails), true per-status counts, and a
+  "+N older" link into the status-filtered table when a column truncates.
+  The view rides the URL like every other filter (project/query apply; a
+  status filter is dropped on the board — columns ARE the statuses), the
+  table/board toggle sits in the tasks heading, `app.js` forwards `view`
+  to `/api/events` so SSE snapshots render the on-screen projection, and
+  the board reuses the `#frag-table` container so the swap protocol is
+  unchanged. Zero new routes (read-only guardrail untouched); drag-and-
+  drop card movement is queue mutation and stays behind the future
+  `--allow-writes` gate (ADR-0003 Phase D). Covered by `board_test.go`
+  and the webui smoke script.
 - **NixOS module — `flake.nixosModules.default` / `deploy/nixos/tq-agent-pool.nix`**
   (2026-09-08, ROUND8 A1-A6): declares `services.tq-agent-pool` (enable,
   package, user, dbPath, `poolSettings` → flat `key = value` pool.conf with

@@ -300,7 +300,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// The identical retry would fail identically (bad payload, missing
 		// repo). Dead-letter now instead of burning the retry budget — for
 		// agent tasks every retry is real money.
-		if err := p.store.FailPermanent(terminalCtx, t.ID, p.cfg.Owner, perm.Error()); err != nil {
+		if err := p.store.FailPermanent(terminalCtx, t.ID, p.cfg.Owner, perm.Error(), sink.Failure()); err != nil {
 			p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 		}
 
@@ -312,14 +312,18 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// pool shutdown; only internal cancellation lands here). Burn the
 		// attempt (crash-safe equivalent) with zero backoff so it is immediately
 		// reclaimable.
-		if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, "worker shutdown: "+execErr.Error(), 0); err != nil {
+		if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, "worker shutdown: "+execErr.Error(), 0, sink.Failure()); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)
 		}
 
 		return
 	}
 
-	if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, execErr.Error(), p.cfg.Backoff(t.Attempts+1)); err != nil {
+	// Failure evidence (exit code, output tail — executor.FailureEvidence)
+	// rides the task.failed fact's detail so a failed attempt is debuggable
+	// from the journal alone (21:40 report §d4: both retry-path failures
+	// left empty {} detail).
+	if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, execErr.Error(), p.cfg.Backoff(t.Attempts+1), sink.Failure()); err != nil {
 		p.log.Error("fail failed", "task", t.ID, "err", err)
 	}
 }
