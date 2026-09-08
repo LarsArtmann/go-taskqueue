@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -306,6 +307,12 @@ func TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem(t *testing.T) {
 	// pinning WHAT it renders nor THAT it stops at the user-session boundary.
 	// Stubbed systemctl/loginctl record every call so the test proves the
 	// unit + pool.conf land in $HOME and nothing else runs.
+	// The stubs are #!/bin/sh scripts and the installed unit is a systemd
+	// user unit — POSIX-only, so skip under the windows CI job.
+	if runtime.GOOS == "windows" {
+		t.Skip("installs a systemd user unit via #!/bin/sh stubs (POSIX-only)")
+	}
+
 	fakeHome := t.TempDir()
 	t.Setenv("HOME", fakeHome)
 
