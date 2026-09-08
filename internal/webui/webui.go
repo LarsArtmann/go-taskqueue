@@ -43,6 +43,10 @@ type Config struct {
 	// RequestLog enables per-request access logging (method, path, status,
 	// duration) via slog at Info level. Off by default.
 	RequestLog bool
+	// DailyBudget mirrors the agent pool's --daily-budget so the dashboard
+	// can show the spend card (tasks enqueued today vs cap). 0 hides the
+	// card — the cap is an operator decision, not queue state.
+	DailyBudget int
 	// AuthToken, when set, requires every request (pages, API, SSE, static)
 	// to present the token via an Authorization: Bearer header or a `token`
 	// query parameter. Validate refuses non-loopback binds without it.

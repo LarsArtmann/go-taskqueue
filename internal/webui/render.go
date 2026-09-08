@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -81,6 +82,27 @@ func (f FilterState) QueryString() string {
 	return strings.TrimSuffix(s, "&")
 }
 
+// BudgetView is the daily agent-spend projection: enqueued today vs the
+// operator-set cap. Nil in the snapshot when no cap is configured.
+type BudgetView struct {
+	Cap   int
+	Spent int
+}
+
+// Tone picks the card's semantic color: green under 75%, amber under the
+// cap, red at/over it.
+func (b BudgetView) Tone() display.StatTone {
+	switch {
+	case b.Spent >= b.Cap:
+		return display.StatToneRed
+	case b.Spent*4 >= b.Cap*3:
+		return display.StatToneYellow
+
+	default:
+		return display.StatToneGreen
+	}
+}
+
 // DashboardData is the full projection snapshot one burst renders from.
 type DashboardData struct {
 	Counts     map[task.Status]int
@@ -94,6 +116,7 @@ type DashboardData struct {
 	Page       int
 	TotalPages int
 	MatchTotal int
+	Budget     *BudgetView
 }
 
 // clearProject / clearStatus / clearQuery are used by the filter chips.
@@ -221,6 +244,15 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	data.MatchTotal = matches
 	data.TotalPages = max(1, (matches+taskTableLimit-1)/taskTableLimit)
 
+	if s.cfg.DailyBudget > 0 {
+		spent, err := s.store.CountFacts(ctx, journal.Enqueued, startOfDay(now))
+		if err != nil {
+			return data, err
+		}
+
+		data.Budget = &BudgetView{Cap: s.cfg.DailyBudget, Spent: int(spent)}
+	}
+
 	dead := task.Dead
 	deadTasks, err := s.store.List(ctx, queue.Filter{Status: &dead})
 	if err != nil {
@@ -317,6 +349,28 @@ func timeAgo(now, t time.Time) string {
 	default:
 		return fmt.Sprintf("%dd", int(d.Hours()/hoursPerDay.Hours()))
 	}
+}
+
+// startOfDay truncates to local midnight (same semantics as the budget
+// guard's calendar day).
+func startOfDay(t time.Time) time.Time {
+	y, m, d := t.Date()
+
+	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
+}
+
+// readiness describes when a pending task becomes claimable.
+func readiness(now time.Time, t task.Task) string {
+	if t.Status != task.Pending || t.NotBefore.IsZero() {
+		return ""
+	}
+
+	d := t.NotBefore.Sub(now)
+	if d <= 0 {
+		return "ready"
+	}
+
+	return "in " + timeAgo(now, t.NotBefore)
 }
 
 // factBadgeClass maps a fact type to a status-like CSS badge class.
