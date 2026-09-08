@@ -1,6 +1,8 @@
 # ADR-0004: Lifecycle and streaming library stance — patterns now, cordis only at the plugin horizon
 
-**Status:** Accepted (2026-09-08)
+**Status:** Accepted (2026-09-08; same-day amendment: trigger T3's
+vendor claim replaced by the locally verified suite results —
+`docs/planning/2026-09-08_cordis-test-suite-verification.md`)
 **Context:** An advisory session (05:24 report, `docs/status/2026-09-08_05-24_cordis-samber-evaluation-journal-bus-recommendation.md`)
 compared three libraries against this repo — **cordis** (the local
 `/home/lars/forks/cordis` fiber/lifecycle framework), **samber/do** (DI
@@ -52,7 +54,7 @@ constraints are fixed: zero external services, pure-Go deps
    | - | ------- | ------------------- |
    | T1 | The plugin era is real: a third-party executor/bridge API is an approved, started milestone (owner go/no-go answered yes) | Not started |
    | T2 | The cordis Go port ships a stable v1-class release | Pre-stability: tag `v4.0.0-rc.9` + 48 commits, CHANGELOG latest `0.1.0` |
-   | T3 | Maturity verified locally: its test suite run in the fork, coverage/race recorded | NOT done — "race-tested, ~85% coverage" is a vendor README claim (README:37); the TODO item stands |
+   | T3 | Maturity verified locally: its test suite run in the fork, coverage/race recorded | DONE 2026-09-08: at `61ec9f9`, race-clean (0 warnings), 86.2% statements (atomic), 176 PASS / 0 FAIL / 0 SKIP — the README claim confirms; caveat: `loader` at 74.6% (watch/resolver edges) — `docs/planning/2026-09-08_cordis-test-suite-verification.md` |
    | T4 | An integration-cost prototype behind a build tag proves the drain-deadline invariant (task context survives pool shutdown, bounded only by `--task-timeout`, ADR-0002 decision 6) maps onto fiber semantics structurally | Known to map BADLY onto `fiber.StdContext()` cancellation today |
    | T5 | Exit plan: the plugin API itself stays framework-independent (typed config, verify command, lifecycle hooks); cordis may power OUR composition root, never the third-party contract | No plugin API yet |
 
@@ -68,11 +70,13 @@ constraints are fixed: zero external services, pure-Go deps
 (no framework needed); the cordis criteria/prototype/track items are
 planning inputs for the plugin era, not waste. The comparison matrix's
 three unlabeled claims (ro "~200 operators" was an estimate; cordis
-coverage is a vendor claim; the ro GitHub fetch was degraded) do not
+coverage was a vendor claim, since verified — see T3; the ro GitHub
+fetch was degraded) do not
 change the verdict — the ranking was structural (ordered at-least-once
 cursor streams fit channels, not operator algebra), not
-maturity-score-driven — but T2/T3 exist precisely because those claims
-were never verified. The papdashboard missed-incident gap is
+maturity-score-driven — but T2 stays open precisely because cordis
+stability is unproven, and T3 existed as an open gate until the
+2026-09-08 local run (race-clean, 86.2%) closed it. The papdashboard missed-incident gap is
 cross-process and framework-independent: no library fixes it; only
 persisted watermarks do (separate design doc, TODO-listed).
 
@@ -96,3 +100,8 @@ block. The Subscribe seam correction comes from
 `docs/planning/2026-09-08_journal-subscription-surface-inventory.md`
 (verified against code); the watermark gap analysis from
 `docs/planning/2026-09-08_persisted-bridge-watermark-design.md`.
+Amendment 2026-09-08: the cordis suite was run in the fork that day
+(`GOCACHE=/tmp/gocache`, `go1.27.1`, `-race -count=1 -coverprofile`) —
+race-clean, 86.2% total statements at the same `61ec9f9` recorded
+above; full per-package table and reproducibility commands in
+`docs/planning/2026-09-08_cordis-test-suite-verification.md`.
