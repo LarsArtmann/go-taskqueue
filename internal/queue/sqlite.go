@@ -1170,6 +1170,54 @@ func (s *SQLiteStore) SaveWatermark(ctx context.Context, consumer string, seq in
 	return err
 }
 
+// WatermarkEntry is one consumer cursor row (tq watermarks show).
+type WatermarkEntry struct {
+	Consumer  string
+	Seq       int64
+	UpdatedAt int64 // unix millis
+}
+
+// ListWatermarks returns every consumer cursor, by consumer name — the
+// admin read behind `tq watermarks show`.
+func (s *SQLiteStore) ListWatermarks(ctx context.Context) ([]WatermarkEntry, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []WatermarkEntry
+
+	for rows.Next() {
+		var e WatermarkEntry
+
+		if err := rows.Scan(&e.Consumer, &e.Seq, &e.UpdatedAt); err != nil {
+			return nil, err
+		}
+
+		out = append(out, e)
+	}
+
+	return out, rows.Err()
+}
+
+// SetWatermark overwrites a consumer cursor unconditionally — the ops
+// rescue hatch behind `tq watermarks set`. Unlike SaveWatermark it MAY
+// move the cursor backwards: a rewind forces replay, and downstream
+// idempotency keys (seq-derived) make replay safe. It deliberately
+// bypasses the monotonic runtime guard; use it knowing that.
+func (s *SQLiteStore) SetWatermark(ctx context.Context, consumer string, seq int64) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO watermarks (consumer, seq, updated_at) VALUES (?, ?, ?)
+		ON CONFLICT(consumer) DO UPDATE SET
+			seq = excluded.seq,
+			updated_at = excluded.updated_at`,
+		consumer, seq, time.Now().UnixMilli())
+
+	return err
+}
+
 // escapeLike escapes LIKE wildcards so a user query containing %, _ or \
 // matches literally. Pair with ESCAPE '\' in the SQL.
 func escapeLike(s string) string {

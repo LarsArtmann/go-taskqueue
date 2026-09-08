@@ -1116,6 +1116,46 @@ func (s *PostgresStore) SaveWatermark(ctx context.Context, consumer string, seq 
 	return err
 }
 
+// ListWatermarks returns every consumer cursor, by consumer name — the
+// admin read behind `tq watermarks show`.
+func (s *PostgresStore) ListWatermarks(ctx context.Context) ([]WatermarkEntry, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var out []WatermarkEntry
+
+	for rows.Next() {
+		var e WatermarkEntry
+
+		if err := rows.Scan(&e.Consumer, &e.Seq, &e.UpdatedAt); err != nil {
+			return nil, err
+		}
+
+		out = append(out, e)
+	}
+
+	return out, rows.Err()
+}
+
+// SetWatermark overwrites a consumer cursor unconditionally — the ops
+// rewind hatch (`tq watermarks set`); deliberately bypasses the monotonic
+// guard because a rewind is an intentional force-replay.
+func (s *PostgresStore) SetWatermark(ctx context.Context, consumer string, seq int64) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO watermarks (consumer, seq, updated_at) VALUES ($1, $2, $3)
+		ON CONFLICT(consumer) DO UPDATE SET
+			seq = excluded.seq,
+			updated_at = excluded.updated_at`,
+		consumer, seq, time.Now().UnixMilli())
+
+	return err
+}
+
 // StatusCounts counts tasks per status.
 func (s *PostgresStore) StatusCounts(ctx context.Context) (map[task.Status]int, error) {
 	rows, err := s.pool.Query(ctx, `SELECT status, COUNT(*) FROM tasks GROUP BY status`)

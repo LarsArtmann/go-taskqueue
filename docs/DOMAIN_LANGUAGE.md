@@ -56,6 +56,10 @@ Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 | Term              | Meaning                                                                                                                                              |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Replay**        | Reading the journal (`tq facts`, `tq tail -f`) to reconstruct anything that happened. The answer to "what exactly happened" is always in the facts.  |
+| **Watermark**     | A journal consumer's persisted read cursor: the last fact seq it accepts as delivered (`watermarks` table, `queue.Store.Watermark/SaveWatermark`). Monotonic at runtime — never regresses except by an explicit ops `set`. |
+| **Consumer key**  | The watermark-table identity of one resumable reader, namespaced per source (e.g. `papdashboard:<endpoint>`). Distinct endpoints hold distinct cursors. |
+| **Checkpoint**    | The write that persists a watermark — always AFTER the last accepted fact of a batch, never before (a pre-acceptance checkpoint would silently convert at-least-once delivery to at-most-once). |
+| **Lag**           | `HeadSeq − watermark`: how far behind the journal head a consumer's cursor sits (`tq watermarks show`). |
 | **Result detail** | Structured data recorded in the `task.completed` fact (agent session id, verify output tail) — rendered by `tq show`.                                |
 | **Serve**         | `tq serve`: the read-only live dashboard. Binds localhost by default and can only render projections, never mutate the queue.                        |
 | **Tailer**        | The single goroutine polling `Facts(after)` behind `tq serve`; it advances a **watermark** and notifies once per burst of new facts.                 |

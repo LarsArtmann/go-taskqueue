@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -55,6 +56,8 @@ Usage:
   tq cancel TASK_ID [--force] [--db PATH]   (--force: cooperative cancel of a running task)
   tq facts [--db PATH] [--after SEQ]
   tq tail [-f] [--db PATH] [--after SEQ]
+  tq watermarks show [--db PATH]   (journal consumer cursors)
+  tq watermarks set CONSUMER SEQ [--db PATH]   (rewind = safe replay)
   tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose]
   tq api [--addr ADDR] --auth-token TOKEN [--db PATH]   (write API: POST /api/v1/tasks)
   tq version
@@ -82,6 +85,7 @@ func main() {
 		"cancel":     cmdCancel,
 		"facts":      cmdFacts,
 		"tail":       cmdTail,
+		"watermarks": cmdWatermarks,
 		"serve":      cmdServe,
 		"version":    cmdVersion,
 		"api":        cmdAPI,
@@ -1289,6 +1293,83 @@ func formatFact(f journal.Fact) string {
 	}
 
 	return line
+}
+
+// cmdWatermarks administers persisted journal-consumer cursors. `show`
+// lists every consumer's checkpoint with its lag behind the journal head;
+// `set` rewrites one cursor — a rewind forces replay, and the seq-derived
+// idempotency keys downstream make replay safe (the bridge re-sends
+// bit-identical requests).
+func cmdWatermarks(args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: tq watermarks show | set CONSUMER SEQ")
+	}
+
+	switch args[0] {
+	case "show":
+		fs := flag.NewFlagSet("watermarks show", flag.ExitOnError)
+		db := dbFlag(fs)
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+
+		s := mustOpenDB(resolveDB(*db))
+		defer s.Close()
+
+		entries, err := s.ListWatermarks(context.Background())
+		if err != nil {
+			return err
+		}
+
+		if len(entries) == 0 {
+			fmt.Println("(no watermarks)")
+
+			return nil
+		}
+
+		head, err := s.HeadSeq(context.Background())
+		if err != nil {
+			return err
+		}
+
+		for _, e := range entries {
+			fmt.Printf("%-52s %8d  lag %-6d  updated %s\n",
+				e.Consumer, e.Seq, max(head-e.Seq, 0), time.UnixMilli(e.UpdatedAt).Format(time.RFC3339))
+		}
+
+		return nil
+
+	case "set":
+		fs := flag.NewFlagSet("watermarks set", flag.ExitOnError)
+		db := dbFlag(fs)
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+
+		rest := fs.Args()
+		if len(rest) != 2 {
+			return errors.New("usage: tq watermarks set CONSUMER SEQ [--db PATH]")
+		}
+
+		seq, err := strconv.ParseInt(rest[1], 10, 64)
+		if err != nil || seq < 0 {
+			return fmt.Errorf("invalid seq %q: must be a non-negative integer", rest[1])
+		}
+
+		s := mustOpenDB(resolveDB(*db))
+		defer s.Close()
+
+		if err := s.SetWatermark(context.Background(), rest[0], seq); err != nil {
+			return err
+		}
+
+		fmt.Printf("watermark %s -> %d (replays facts after this seq on the next consumer start; re-sends are idempotent)\n", rest[0], seq)
+
+		return nil
+
+	default:
+		return fmt.Errorf("unknown watermarks subcommand %q (show | set)", args[0])
+	}
 }
 
 func cmdTail(args []string) error {
