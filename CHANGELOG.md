@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Daemon-backed repo discovery — `tq harvest` / `tq agent-pool --discovery-addr`**
+  (2026-09-08): point the harvester's repo enumeration at a
+  project-discovery-daemon (`POST /v1/discover` over a unix socket, `unix://`
+  prefix, or host:port; env `TQ_DISCOVERY_ADDR`) instead of the depth-1
+  TODO_LIST scan, so discovery cost is amortized daemon-side and
+  activity/exclusion/language filters apply. The response mapping is
+  contract-identical to the scan: project paths become harvestable repos
+  (absolute, deduplicated, gated on the todo file, sorted). Additive by
+  contract — the scan stays the default (zero external services), and an
+  unreachable or erroring daemon costs ONE warning per tick plus the local
+  scan fallback; a tick never fails because of discovery. `--repo-subset`
+  filters the daemon result too.
 - **Cancel reasons — `tq cancel <task-id> --reason "<why>"`**
   (2026-09-08): a non-empty reason is stored as `{"reason": ...}` in the
   `task.cancelled` fact's detail, so cancellations are no longer
