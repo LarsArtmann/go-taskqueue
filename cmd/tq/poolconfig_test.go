@@ -113,6 +113,42 @@ func TestApplyPoolConfigFileEnvBeatsFile(t *testing.T) {
 	}
 }
 
+func TestApplyPoolConfigFileLogDirAppliesAndEnvBeatsFile(t *testing.T) {
+	t.Setenv("TQ_LOG_DIR", "")
+
+	path := writeConfig(t, "log-dir = /state/logs-from-file\n")
+	fs := flag.NewFlagSet("agent-pool", flag.ContinueOnError)
+	logDir := fs.String("log-dir", "", "sidecar dir")
+
+	if err := fs.Parse(nil); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	if err := applyPoolConfigFile(fs, path); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if got := *logDir; got != "/state/logs-from-file" {
+		t.Fatalf("config-file log-dir must apply, got %q", got)
+	}
+
+	t.Setenv("TQ_LOG_DIR", "/state/logs-from-env")
+	fs2 := flag.NewFlagSet("agent-pool", flag.ContinueOnError)
+	fs2.String("log-dir", "", "sidecar dir")
+
+	if err := fs2.Parse(nil); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	if err := applyPoolConfigFile(fs2, path); err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if got := fs2.Lookup("log-dir").Value.String(); got != "" {
+		t.Fatalf("env must beat file for log-dir, got %q", got)
+	}
+}
+
 func TestApplyPoolConfigFileUnknownKeyErrors(t *testing.T) {
 	t.Parallel()
 
