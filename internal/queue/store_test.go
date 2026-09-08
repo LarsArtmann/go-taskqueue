@@ -494,9 +494,9 @@ func TestWatermarkSaveAndReadRoundtrip(t *testing.T) {
 		t.Fatalf("SaveWatermark: %v", err)
 	}
 
-	seq, err := s.Watermark(ctx, "consumer-a")
-	if err != nil {
-		t.Fatalf("Watermark: %v", err)
+	seq, exists, err := s.Watermark(ctx, "consumer-a")
+	if err != nil || !exists {
+		t.Fatalf("Watermark: seq=%d exists=%v err=%v", seq, exists, err)
 	}
 
 	if seq != 42 {
@@ -519,11 +519,11 @@ func TestWatermarkSaveAndReadRoundtrip(t *testing.T) {
 		t.Fatalf("SaveWatermark consumer-b: %v", err)
 	}
 
-	if seq, _ := s.Watermark(ctx, "consumer-b"); seq != 7 {
+	if seq, _, _ := s.Watermark(ctx, "consumer-b"); seq != 7 {
 		t.Fatalf("consumer-b seq = %d, want 7", seq)
 	}
 
-	if seq, _ := s.Watermark(ctx, "consumer-a"); seq != 42 {
+	if seq, _, _ := s.Watermark(ctx, "consumer-a"); seq != 42 {
 		t.Fatalf("consumer-a seq after consumer-b write = %d, want 42", seq)
 	}
 }
@@ -541,9 +541,9 @@ func TestWatermarkMonotonicGuard(t *testing.T) {
 		t.Fatalf("SaveWatermark regression: %v", err)
 	}
 
-	seq, err := s.Watermark(ctx, "consumer-a")
-	if err != nil {
-		t.Fatalf("Watermark: %v", err)
+	seq, exists, err := s.Watermark(ctx, "consumer-a")
+	if err != nil || !exists {
+		t.Fatalf("Watermark: seq=%d exists=%v err=%v", seq, exists, err)
 	}
 
 	if seq != 100 {
@@ -555,7 +555,7 @@ func TestWatermarkMonotonicGuard(t *testing.T) {
 		t.Fatalf("SaveWatermark equal seq: %v", err)
 	}
 
-	if seq, _ := s.Watermark(ctx, "consumer-a"); seq != 100 {
+	if seq, _, _ := s.Watermark(ctx, "consumer-a"); seq != 100 {
 		t.Fatalf("seq after equal write = %d, want 100", seq)
 	}
 }
@@ -611,7 +611,7 @@ func TestMigrateAddsWatermarksTable(t *testing.T) {
 		t.Fatalf("SaveWatermark after migration: %v", err)
 	}
 
-	if seq, _ := s.Watermark(ctx, "consumer-a"); seq != 5 {
+	if seq, _, _ := s.Watermark(ctx, "consumer-a"); seq != 5 {
 		t.Fatalf("Watermark after migration = %d, want 5", seq)
 	}
 }

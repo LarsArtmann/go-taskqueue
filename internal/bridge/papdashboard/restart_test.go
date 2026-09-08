@@ -135,11 +135,12 @@ func TestRestartMidStreamLosesZeroFacts(t *testing.T) {
 
 	// Bridge A boots at head 100, then the burst arrives. The dashboard
 	// accepts the first dead letter but rejects the second (502), so A's
-	// drain stops mid-batch with nothing checkpointed past 100.
+	// drain stops mid-batch. A's long poll interval guarantees the crash
+	// lands BETWEEN acceptance and the next checkpoint — the worst case.
 	pap.failAfter(1)
 
 	ba := New(src, wm, Config{
-		Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 2 * time.Millisecond,
+		Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 200 * time.Millisecond,
 	})
 
 	ctxA, cancelA := context.WithCancel(context.Background())
@@ -163,12 +164,12 @@ func TestRestartMidStreamLosesZeroFacts(t *testing.T) {
 		t.Fatal("bridge A never delivered the first dead letter")
 	}
 
-	// A "crashes": cancel without waiting for a retry tick.
+	// A "crashes" before its next tick can checkpoint the accepted prefix.
 	cancelA()
 	<-doneA
 
 	if got := wm.current("papdashboard:" + pap.server.URL); got != 100 {
-		t.Fatalf("bridge A checkpoint = %d before crash, want 100 (mid-batch, unpersisted)", got)
+		t.Fatalf("bridge A checkpoint = %d after crash, want 100 (crash predates the retry tick)", got)
 	}
 
 	// The dashboard heals; bridge B resumes from the checkpoint at 100.
@@ -278,14 +279,19 @@ func TestCheckpointFailureGatesForwarding(t *testing.T) {
 		t.Fatal("batch 2 never forwarded after healing")
 	}
 
+	// Batch 2's checkpoint follows its drain in the same pass; wait for it
+	// instead of racing the cancel.
+	if !waitFor(func() bool { return wm.current("papdashboard:"+pap.server.URL) == 700 }) {
+		cancelA()
+		<-doneA
+
+		t.Fatalf("final watermark = %d, want 700", wm.current("papdashboard:"+pap.server.URL))
+	}
+
 	cancelA()
 
 	if err := <-doneA; err != nil {
 		t.Fatalf("bridge A returned %v", err)
-	}
-
-	if got := wm.current("papdashboard:"+pap.server.URL); got != 700 {
-		t.Errorf("final watermark = %d, want 700", got)
 	}
 }
 

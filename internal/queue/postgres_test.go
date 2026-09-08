@@ -198,8 +198,8 @@ func TestPostgresWatermark(t *testing.T) {
 		t.Fatalf("SaveWatermark regression: %v", err)
 	}
 
-	if seq, err := s.Watermark(ctx, "consumer-a"); err != nil || seq != 9 {
-		t.Fatalf("watermark after regression = %d (%v), want 9", seq, err)
+	if seq, exists, err := s.Watermark(ctx, "consumer-a"); err != nil || seq != 9 || !exists {
+		t.Fatalf("watermark after regression = %d/%v (%v), want 9/true", seq, exists, err)
 	}
 }
 
