@@ -307,6 +307,38 @@ func TestFiltersNarrowTable(t *testing.T) {
 	}
 }
 
+// TestStreamSnapshotHonorsFilter pins the /api/events contract app.js relies
+// on when it forwards the page's filter query to the EventSource URL: every
+// snapshot (initial, live tick, reconnect) renders under the request's
+// filter, so a filtered view is never clobbered by the unfiltered table.
+func TestStreamSnapshotHonorsFilter(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "alpha")
+	enqueue(t, s, "sh", "beta")
+
+	events := ssetest.CollectN(t, srv.Handler(), 6, ssetest.WithPath("/api/events?project=alpha"))
+
+	var tableFrag string
+	for _, evt := range events {
+		if evt.Type != testFragEvent {
+			continue
+		}
+
+		var frag fragment
+		if err := json.Unmarshal([]byte(evt.Data()), &frag); err != nil {
+			t.Fatalf("decode frag: %v", err)
+		}
+
+		if frag.ID == fragTable {
+			tableFrag = frag.HTML
+		}
+	}
+
+	if !strings.Contains(tableFrag, "alpha") || strings.Contains(tableFrag, "beta") {
+		t.Error("stream snapshot ignored the project filter")
+	}
+}
+
 // tableFragment extracts the rendered #frag-table content from a full page.
 func tableFragment(body string) string {
 	start := strings.Index(body, `id="frag-table"`)

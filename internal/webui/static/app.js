@@ -31,13 +31,28 @@
     if (el) el.innerHTML = frag.html;
   }
 
+  /* The only page params /api/events understands: the view filter the
+     server re-applies to every snapshot plus the token, which EventSource
+     cannot send as a header. */
+  var STREAM_PARAMS = ["project", "status", "q", "page", "token"];
+
+  function streamURL() {
+    var pageQuery = new URLSearchParams(window.location.search);
+    var params = new URLSearchParams();
+    STREAM_PARAMS.forEach(function (key) {
+      var value = pageQuery.get(key);
+      if (value !== null) params.set(key, value);
+    });
+    var query = params.toString();
+    return "/api/events" + (query ? "?" + query : "");
+  }
+
   function connect() {
-    /* Token-authenticated serves accept the token as a query param
-       (EventSource cannot set headers); forward it when present. */
-    var url = "/api/events";
-    var token = new URLSearchParams(window.location.search).get("token");
-    if (token) url += "?token=" + encodeURIComponent(token);
-    var es = new EventSource(url);
+    /* Forwarding the page's filter params keeps live ticks and reconnects
+       scoped to the view on screen: the browser reuses this exact URL when
+       reconnecting, so resume restores the same filtered projection
+       instead of clobbering it with the unfiltered table. */
+    var es = new EventSource(streamURL());
 
     es.addEventListener("frag", function (e) {
       applyFragment(e.data);
