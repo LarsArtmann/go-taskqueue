@@ -35,6 +35,27 @@ func statusBadgeType(st task.Status) display.BadgeType {
 	return display.BadgeNeutral
 }
 
+// statusAccentClass is the board column's status-colored top rule — the
+// same hue vocabulary as the badges and the stat cards (amber=pending,
+// cyan=running, green=completed, red=dead, gray=cancelled; theme.css
+// remaps the blue ramp onto signal cyan).
+func statusAccentClass(st task.Status) string {
+	switch st {
+	case task.Pending:
+		return "border-amber-400 dark:border-amber-500"
+	case task.Running:
+		return "border-blue-400 dark:border-blue-500"
+	case task.Completed:
+		return "border-green-500 dark:border-green-400"
+	case task.Dead:
+		return "border-red-500 dark:border-red-400"
+	case task.Cancelled:
+		return "border-gray-300 dark:border-gray-700"
+	}
+
+	return "border-gray-300 dark:border-gray-700"
+}
+
 // verdictBadgeType maps an agent-review verdict onto the badge language:
 // approve is green, request_changes is red — the review loop's pass/fail.
 func verdictBadgeType(v executor.ReviewVerdict) display.BadgeType {

@@ -115,8 +115,9 @@
 
   /* The only page params /api/events understands: the view filter the
      server re-applies to every snapshot plus the token, which EventSource
-     cannot send as a header. */
-  var STREAM_PARAMS = ["project", "status", "q", "page", "sort", "token"];
+     cannot send as a header. "view" keeps live ticks rendering whichever
+     task projection (table or board) is on screen. */
+  var STREAM_PARAMS = ["project", "status", "q", "page", "sort", "view", "token"];
 
   function streamURL() {
     var pageQuery = new URLSearchParams(window.location.search);

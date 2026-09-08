@@ -22,12 +22,19 @@ templ Page(data DashboardData) {
 			<div class="grid gap-8 pb-10 pt-8 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
 				<div class="min-w-0 space-y-8">
 					<section id="sec-tasks" class="space-y-3">
-						@pageHeading("tasks", "")
+						<div class="flex items-center justify-between gap-4">
+							@pageHeading("tasks", "")
+							@viewToggle(data.Filter)
+						</div>
 						<div id="frag-filters">
 							@FilterBar(data)
 						</div>
 						<div id="frag-table">
-							@TaskTable(data)
+							if data.Filter.View == viewBoard {
+								@Board(data)
+							} else {
+								@TaskTable(data)
+							}
 						</div>
 					</section>
 					<section id="sec-dlq" class="space-y-3">
@@ -85,6 +92,34 @@ templ pageHeading(text, accent string) {
 	<div class="tq-heading">
 		@display.Eyebrow(display.EyebrowProps{BaseProps: utils.BaseProps{Class: accent}, Text: text})
 	</div>
+}
+
+// viewToggle switches the task projection: ledger table <-> board. Pure
+// links — the view rides the URL like every other piece of view state, so
+// it survives reloads, sharing, and SSE reconnects.
+templ viewToggle(f FilterState) {
+	<nav class="flex shrink-0 items-center gap-3 font-mono text-xs uppercase tracking-[0.14em]" aria-label="task view">
+		<a
+			class={ viewToggleClass(f.View == viewTable) }
+			href={ templ.URL(viewToggleHref(f, viewTable)) }
+			aria-current={ templ.KV("true", f.View == viewTable) }
+		>table</a>
+		<a
+			class={ viewToggleClass(f.View == viewBoard) }
+			href={ templ.URL(viewToggleHref(f, viewBoard)) }
+			aria-current={ templ.KV("true", f.View == viewBoard) }
+		>board</a>
+	</nav>
+}
+
+// viewToggleClass styles one toggle link: the active projection is
+// underlined ink, the other quiet gray that darkens on hover.
+func viewToggleClass(active bool) string {
+	if active {
+		return "text-gray-900 underline underline-offset-4 dark:text-white"
+	}
+
+	return "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
 }
 
 // pageFooter carries the keyboard hints (wired via props.Footer so it sits

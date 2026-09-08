@@ -1,8 +1,9 @@
 name: Fuzz
 
-# Nightly FuzzParseRepo campaign: corpus growth must not depend on session
-# memory (2026-09-06 18:34 report f21). The script syncs coverage-interesting
-# inputs into internal/harvest/testdata/fuzz; this job commits them back so
+# Nightly fuzz campaign rotation: corpus growth must not depend on session
+# memory (2026-09-06 18:34 report f21). The script fuzzes every committed
+# target (FuzzParseRepo, FuzzExtractResultPayload) and syncs coverage-interesting
+# inputs into each package's testdata/fuzz; this job commits them back so
 # every future campaign — and every `go test` run — starts from the richest
 # corpus. A push from here triggers the CI workflow, which validates the new
 # seeds (each is executed as a regular test case).
@@ -27,18 +28,18 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: stable
-      - name: Fuzz FuzzParseRepo
+      - name: Fuzz campaign rotation
         run: ./scripts/fuzz/nightly.sh "${{ github.event.inputs.fuzztime || '60s' }}"
-      - name: Commit new seed corpus
+      - name: Commit new seed corpora
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add internal/harvest/testdata/fuzz
+          git add internal/harvest/testdata/fuzz internal/executor/testdata/fuzz
           if git diff --cached --quiet; then
             echo "no new seeds; nothing to commit"
             exit 0
           fi
-          git commit -m "test(harvest): grow FuzzParseRepo seed corpus (nightly fuzz)"
+          git commit -m "test(fuzz): grow nightly seed corpora (campaign rotation)"
           git push
       - name: Dump crash input (on failure)
         # go test writes failing inputs to the package testdata dir; keep
@@ -47,7 +48,7 @@ jobs:
         if: failure()
         run: |
           shopt -s nullglob
-          for f in internal/harvest/testdata/fuzz/FuzzParseRepo/*; do
+          for f in internal/harvest/testdata/fuzz/FuzzParseRepo/* internal/executor/testdata/fuzz/FuzzExtractResultPayload/*; do
             echo "=== $f ==="
             cat "$f"
           done

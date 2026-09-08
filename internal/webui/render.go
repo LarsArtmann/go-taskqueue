@@ -323,12 +323,13 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	now := time.Now()
 
 	data := DashboardData{
-		Counts: make(map[task.Status]int),
-		Tasks:  []task.Task{},
-		Dead:   []task.Task{},
-		Facts:  []journal.Fact{},
-		Filter: filter,
-		Now:    now,
+		Counts:      make(map[task.Status]int),
+		Tasks:       []task.Task{},
+		Dead:        []task.Task{},
+		Facts:       []journal.Fact{},
+		Filter:      filter,
+		Now:         now,
+		AllowWrites: s.cfg.AllowWrites,
 	}
 
 	counts, err := s.store.StatusCounts(ctx)

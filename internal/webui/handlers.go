@@ -34,13 +34,29 @@ func parseFilter(r *http.Request) FilterState {
 		sort = ""
 	}
 
-	return FilterState{
+	// Allowlist: only the two known projections; anything else is the table.
+	view := q.Get("view")
+	if view != viewBoard {
+		view = viewTable
+	}
+
+	f := FilterState{
 		Project: q.Get("project"),
 		Status:  task.Status(q.Get("status")),
 		Query:   q.Get("q"),
 		Page:    page,
 		Sort:    sort,
+		View:    view,
 	}
+
+	// The board's columns ARE the statuses: a status filter would empty four
+	// of five columns, so it is dropped at the boundary (chips and toggles
+	// never render it back).
+	if f.View == viewBoard {
+		f.Status = ""
+	}
+
+	return f
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +155,7 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 
 	t, err := s.store.Get(r.Context(), task.ID(id))
 	if err != nil {
-		http.Error(w, "task not found: "+id, http.StatusNotFound)
+		s.renderTaskNotFound(w, r, id)
 
 		return
 	}
@@ -288,7 +304,7 @@ func (s *Server) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if _, err := s.store.Get(r.Context(), task.ID(id)); err != nil {
-		http.Error(w, "task not found: "+id, http.StatusNotFound)
+		s.renderTaskNotFound(w, r, id)
 
 		return
 	}
@@ -383,4 +399,81 @@ func (s *Server) sendTaskSnapshot(ctx context.Context, stream *sse.Stream, id st
 	}
 
 	return ctx.Err()
+}
+
+// handleTaskCancelPOST withdraws a pending task or requests a cooperative
+// stop for a running one (the agent honors the request between steps; an
+// expired lease finalizes it). The reason lands in the task.cancelled fact
+// detail — forensics over silence. Registered only with AllowWrites.
+func (s *Server) handleTaskCancelPOST(w http.ResponseWriter, r *http.Request) {
+	id := task.ID(r.PathValue("id"))
+	reason := strings.TrimSpace(r.PostFormValue("reason"))
+
+	t, err := s.store.Get(r.Context(), id)
+	if err != nil {
+		s.renderTaskNotFound(w, r, id.String())
+
+		return
+	}
+
+	switch t.Status {
+	case task.Pending:
+		err = s.store.Cancel(r.Context(), id, reason)
+	case task.Running:
+		err = s.store.CancelRunning(r.Context(), id, reason)
+	default:
+		http.Error(w, "task is "+string(t.Status)+"; only pending or running tasks can be cancelled", http.StatusConflict)
+
+		return
+	}
+
+	if err != nil {
+		http.Error(w, "cancel failed: "+err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	http.Redirect(w, r, "/task/"+id.String(), http.StatusSeeOther)
+}
+
+// handleTaskRescuePOST re-queues a dead-lettered task with a fresh attempt
+// budget (RescueDead). Registered only with AllowWrites.
+func (s *Server) handleTaskRescuePOST(w http.ResponseWriter, r *http.Request) {
+	id := task.ID(r.PathValue("id"))
+
+	t, err := s.store.Get(r.Context(), id)
+	if err != nil {
+		s.renderTaskNotFound(w, r, id.String())
+
+		return
+	}
+
+	if t.Status != task.Dead {
+		http.Error(w, "task is "+string(t.Status)+"; only dead-lettered tasks can be rescued", http.StatusConflict)
+
+		return
+	}
+
+	attempts := 3
+	if v, err := strconv.Atoi(r.PostFormValue("attempts")); err == nil {
+		attempts = min(max(v, 1), 10)
+	}
+
+	if err := s.store.RescueDead(r.Context(), id, attempts); err != nil {
+		http.Error(w, "rescue failed: "+err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	http.Redirect(w, r, "/task/"+id.String(), http.StatusSeeOther)
+}
+
+// renderTaskNotFound serves the styled 404 through the dashboard layout —
+// a bare http.Error left the operator on a white void with no way back.
+func (s *Server) renderTaskNotFound(w http.ResponseWriter, r *http.Request, id string) {
+	w.WriteHeader(http.StatusNotFound)
+
+	if err := TaskNotFoundPage(id).Render(r.Context(), w); err != nil {
+		slog.Error("webui: render 404", "err", err)
+	}
 }

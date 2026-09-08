@@ -1,0 +1,2 @@
+go test fuzz v1
+string("TQ_RESULT: {\"files_chAnged\":[\"\xe6\xaa.go\",\"/\xd1\"],\"00000&0000\":\"\"} ")

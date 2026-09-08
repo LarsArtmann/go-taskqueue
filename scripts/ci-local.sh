@@ -79,6 +79,9 @@ step "status-loop live smoke"
 step "doc-reference check"
 ./scripts/check-doc-refs.sh
 
+step "status-index check"
+./scripts/check-status-index.sh
+
 # --- CI nix job, on a fully tracked tree ------------------------------------
 # Flakes only see git-tracked files, so stage everything first and then prove
 # no untracked stragglers remain BEFORE nix sees the tree. Measuring nix on a

@@ -3,6 +3,9 @@
 /tq-linux-*
 dist/
 
+# Stray session artifacts (bare task IDs piped to a file by test sessions)
+taskid.txt
+
 # Databases
 *.db
 *.db-shm
