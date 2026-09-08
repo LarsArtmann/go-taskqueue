@@ -294,7 +294,13 @@ state — its only write is its own cursor.
 - ⚠️ **This repo is dogfooded (since 2026-09-07)**: an `agent-pool` may run
   against THIS repo — `.crushrc` (minimum autonomy) + `.tq-verify` (build,
   vet, race tests, gofmt) are the rails, and unchecked TODO_LIST items are
-  live pool food. Expect autonomous commits on master (never pushes) and
+  live pool food. Sibling repos onboarded to the same rails (2026-09-08):
+  `project-discovery-sdk` (its machine-consumed items live in a queue-facing
+  "Open Work" checkbox section at the top of its TODO_LIST — the status
+  tables below it are NOT parsed), `overview` (checkbox backlog; [USER]/sudo/
+  awaiting-decision items carry ` — BLOCKED:` markers),
+  `project-discovery-daemon` (rails only — its table-style backlog has no
+  open work yet). Expect autonomous commits on master (never pushes) and
   extra working-tree churn alongside the daemon. Launch command and
   budget flags: `docs/planning/2026-09-07_20-47_SUPERB-PLAN-ROUND4-DOGFOOD-POOL-EATS-THIS-REPO.md`.
   If the pool misbehaves: stop it, review `tq dlq`, rescue or cancel.

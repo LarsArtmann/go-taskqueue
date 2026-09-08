@@ -52,6 +52,11 @@ them (`docs/status/<date>_<slug>.md`, cited as `(19:33 report …)` etc.).
 - [ ] Hard mechanical cap on status-agent TODO_LIST.md appends (parse the diff, refuse runaway item counts) vs prompt-level caps + budget guard (20:56 report g3) — BLOCKED: owner blast-radius preference
 - [ ] Enable `--status-every N` in the ROUND4 dogfood launch command and `deploy/systemd` sample once the live smoke passes (20:56 report g1/f17) — BLOCKED: owner picks N (cost/verbosity tradeoff) and go/no-go after the live smoke
 
+## Fleet integration (project-discovery + overview)
+
+- [ ] Opt-in daemon-backed repo discovery for the harvester: a `--discovery-addr` flag (unix socket, e.g. `/run/project-discovery/daemon.sock`) makes `tq harvest`/`agent-pool` enumerate candidate repos via `POST /v1/discover` on the project-discovery-daemon instead of the naive depth-1 TODO_LIST scan (`internal/harvest.DiscoverRepos`, harvest.go:422) — the daemon amortizes discovery cost and offers activity/exclusion/language filters the naive scan lacks; the file scan stays the default (zero-external-services invariant, ADR-0002), daemon mode is additive: socket unreachable at tick time = log one warning + fall back to the scan (never fail the tick); contract-test the response mapping (project path → harvestable repo) with an httptest server (2026-09-08 fleet onboarding: project-discovery-sdk, overview, project-discovery-daemon now carry `.crushrc` + `.tq-verify` rails)
+- [ ] Watch-driven harvest trigger: when `--discovery-addr` is set, also subscribe the daemon's `GET /v1/watch` SSE stream so a TODO_LIST edit triggers a harvest tick within seconds instead of waiting the `--interval` (default 5m); debounce per repo (a repo harvests at most once per its `--repo-interval` gap) and keep the interval tick as the fallback heartbeat so a dead watch stream degrades to today's behavior, never stalls it (same fleet-onboarding evidence as the discovery-source item)
+
 ## Lower Impact
 
 - [x] Add `TestCheckProjectsDir` unit tests (the `--projects-dir /` and `$HOME` refusal guard has manual smokes but no test in CI) (19:49 report f7) — DONE 2026-09-08 (verified pre-existing at ROUND6 close): `TestCheckProjectsDir` in `cmd/tq/seeds_test.go` covers the `/` and `$HOME` refusals in CI (ROUND6 plan P17)
