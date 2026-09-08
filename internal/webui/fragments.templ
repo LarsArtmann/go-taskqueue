@@ -64,6 +64,15 @@ templ StatusCards(data DashboardData) {
 		})
 	}
 	<div class="mt-4 flex flex-wrap items-center gap-2">
+		if data.Budget != nil {
+			@display.StatCard(display.StatCardProps{
+				BaseProps: utils.BaseProps{Class: "card-budget"},
+				Label:     labelBudget,
+				Value:     formatInt(data.Budget.Spent) + "/" + formatInt(data.Budget.Cap),
+				Icon:      icons.Calculator,
+				Tone:      data.Budget.Tone(),
+			})
+		}
 		if len(data.Projects) == 0 {
 			<span class="font-mono text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">no projects</span>
 		} else {
@@ -98,7 +107,7 @@ templ TaskTable(data DashboardData) {
 		@display.Card(display.CardProps{Padding: display.CardPaddingNone}) {
 			@display.Table(display.TableProps{
 				Caption:     "Live task queue",
-				Headers:     []string{labelID, labelProject, labelType, labelStatus, labelAttempts, labelAge, labelError},
+				Headers:     []string{labelID, labelProject, labelType, labelStatus, labelAttempts, labelReady, labelAge, labelError},
 				Flush:       true,
 				Hover:       true,
 				CellPadding: display.TableCellPaddingCompact,
@@ -156,6 +165,13 @@ templ taskRows(data DashboardData) {
 				@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: display.BadgeSizeSM})
 			</td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span></td>
+			if r := readiness(data.Now, t); r != "" {
+				<td class={ tdCellClass(false) } title={ t.NotBefore.Format(timeFormat) }>
+					<span class="font-mono text-xs text-gray-500 dark:text-gray-400">{ r }</span>
+				</td>
+			} else {
+				<td class={ tdCellClass(false) }></td>
+			}
 			<td class={ tdCellClass(true) } title={ t.CreatedAt.Format(timeFormat) }>{ timeAgo(data.Now, t.CreatedAt) }</td>
 			if t.LastError != "" {
 				<td class={ tdCellClass(false) }>
