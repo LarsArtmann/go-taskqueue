@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Release runner**: `scripts/release.sh vX.Y.Z [--tag|--push]`
+  codifies the v0.1.0 release checklist into one command - the full
+  ci-local gate suite, go.mod hygiene (no replace/pseudo-versions),
+  CHANGELOG-section checks, an annotated tag cut from the CHANGELOG,
+  module-proxy + clean-room `go get` verification, and a pre-release
+  GitHub Release. The safe default runs the gates only; pushing and
+  publishing stay behind explicit flags. The docs also got a truth pass:
+  FEATURES gained design-system, Windows-CI, and pool `--config` rows,
+  and CONTRIBUTING documents the committed-web-CSS build step.
 - **Platform honesty for Windows + the nix sandbox**: POSIX-only test
   suites now carry `//go:build unix` (agent/review shell-stub suites, the
   worker stub-agent test split into its own file) and `internal/e2e` grew

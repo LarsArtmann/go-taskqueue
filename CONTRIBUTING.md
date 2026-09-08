@@ -50,6 +50,12 @@ After editing any `.templ` source, regenerate the committed output:
 `go tool templ generate` (generated `*_templ.go` files are committed, and
 `templ fmt` owns `.templ` formatting in the treefmt gate).
 
+Tailwind classes come from the templ-components Go source, so changing
+templates or bumping the library version also requires recompiling the
+committed stylesheet: `nix run .#webui-css` (minified output lands in
+`internal/webui/static/app.css`, which is go:embed'ed — the build never
+runs tailwind for you).
+
 Markdown, JSON and YAML are formatted with dprint (config: `dprint.json`,
 available in the flake devShell): `dprint fmt` before you commit docs.
 

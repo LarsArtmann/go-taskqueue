@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# Release runner — codifies the v0.1.0 release checklist
+# (docs/release/archived/2026-09-06_v0.1.0_CHECKLIST.md) so v0.2.0+ is a
+# command, not a memory exercise. Owner decisions baked in: no squash, v0.x
+# GitHub Releases are pre-releases, tags are annotated and immutable.
+#
+# Usage:
+#   scripts/release.sh v0.2.0            # pre-tag gates only (safe default)
+#   scripts/release.sh v0.2.0 --tag      # gates, then cut the annotated tag
+#   scripts/release.sh v0.2.0 --push     # tag + push + verify + GitHub Release
+#
+# The gates delegate to scripts/ci-local.sh (the CI replicant) so this
+# script and CI can never drift apart. --push performs owner-gated actions
+# (pushing, publishing); everything before it is read-only.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+step() { printf '\n== %s\n' "$*"; }
+die() { echo "FAIL: $*" >&2; exit 1; }
+
+VERSION="${1:-}"
+MODE="${2:-}"
+[ -n "$VERSION" ] || die "usage: scripts/release.sh vX.Y.Z [--tag|--push]"
+[[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version '$VERSION' is not vX.Y.Z"
+case "$MODE" in
+	"") ;;
+	--tag | --push) ;;
+	*) die "unknown mode '$MODE' (use --tag or --push)" ;;
+esac
+
+MODULE="$(head -1 go.mod | cut -d' ' -f2)"
+
+step "preconditions"
+[ -d .git ] || die "not a git repo"
+command -v git >/dev/null || die "git missing"
+LAST_TAG="$(git tag --sort=-v:refname | grep -E '^v[0-9]' | head -1 || true)"
+echo "module: $MODULE  last tag: ${LAST_TAG:-none}  target: $VERSION"
+if [ -n "$LAST_TAG" ] && [ "$(printf '%s\n%s\n' "$LAST_TAG" "$VERSION" | sort -V | head -1)" = "$VERSION" ]; then
+	die "$VERSION does not sort after $LAST_TAG — a release must move forward (tags are immutable; fixes ship as a NEW version)"
+fi
+if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+	die "tag $VERSION already exists — tags are immutable once the proxy indexes them"
+fi
+if [ -n "$(git status --porcelain)" ]; then
+	git status --short
+	die "working tree not clean — commit (or let the auto-daemon commit) before releasing; the tag must point at the exact verified tree"
+fi
+
+step "CHANGELOG section for $VERSION"
+grep -q "^## \[$VERSION\] - [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$" CHANGELOG.md \
+	|| die "CHANGELOG.md has no '## [$VERSION] - YYYY-MM-DD' section — cut [Unreleased] into it first"
+awk -v v="## [$VERSION]" '
+	$0 == v {in_section=1; next}
+	in_section && /^## \[/ {exit}
+	in_section {print}
+' CHANGELOG.md > /tmp/tq-release-notes.md
+[ -s /tmp/tq-release-notes.md ] || die "CHANGELOG section for $VERSION is empty"
+
+step "go.mod hygiene"
+	! grep '^replace' go.mod || die "go.mod has replace directives — poison in published tags"
+	! grep '00010101' go.mod || die "go.mod has a pseudo-version (replace-directive leak)"
+
+step "full CI gate (scripts/ci-local.sh — test + nix jobs on this exact tree)"
+./scripts/ci-local.sh
+
+step "smoke the nix-built binary through the web UI"
+TQ_BIN="$(nix build --print-out-paths)/bin/tq" ./scripts/smoke/webui.sh
+
+if [ -z "$MODE" ]; then
+	echo
+	echo "GATES GREEN for $VERSION — re-run with --tag to cut the annotated tag,"
+	echo "then with --push to publish (owner-gated)."
+	exit 0
+fi
+
+step "cut annotated tag $VERSION on HEAD $(git rev-parse --short HEAD)"
+# Tag immediately after the gates: the auto-commit daemon may commit at any
+# moment; a tag on a later daemon commit is fine (it only adds bookkeeping),
+# but a tag BEFORE the release commits land is the classic mistake.
+git tag -a "$VERSION" -m "Release $VERSION
+
+$(cat /tmp/tq-release-notes.md)"
+git tag --points-at HEAD | grep -qx "$VERSION" || die "tag does not point at HEAD"
+git show "$VERSION:go.mod" | head -1 | grep -q "$MODULE" || die "tagged tree has the wrong module path"
+
+if [ "$MODE" = "--tag" ]; then
+	echo
+	echo "TAG $VERSION CUT (not pushed) — re-run with --push to publish."
+	exit 0
+fi
+
+step "push master + tag (owner-gated)"
+git push origin master
+git push origin "$VERSION"
+
+step "module proxy verification"
+sleep 10
+for attempt in 1 2 3 4 5; do
+	if GOFLAGS= go list -m -versions "$MODULE" 2>/dev/null | tr ' ' '\n' | grep -qx "$VERSION"; then
+		echo "proxy serves $VERSION"
+		break
+	fi
+	echo "proxy does not list $VERSION yet (attempt $attempt/5) — propagation takes minutes"
+	[ "$attempt" = 5 ] && die "proxy never listed $VERSION; verify https://proxy.golang.org/$MODULE/@v/$VERSION.info before retrying anything (never re-tag)"
+	sleep 30
+done
+
+step "clean-room go get"
+verify_dir="$(mktemp -d)"
+trap 'rm -rf "$verify_dir"' EXIT
+(
+	cd "$verify_dir"
+	go mod init release-verify
+	go get "$MODULE@$VERSION" >/dev/null
+	go mod verify
+)
+
+step "GitHub Release (pre-release: v0.x policy)"
+command -v gh >/dev/null || die "gh CLI missing — create the release manually from /tmp/tq-release-notes.md"
+gh release create "$VERSION" --title "$VERSION" --notes-file /tmp/tq-release-notes.md --prerelease
+
+echo
+echo "RELEASE $VERSION PUBLISHED — remaining manual step: verify the CI run on"
+echo "refs/tags/$VERSION is green (gh run list --limit 3)."
