@@ -1052,8 +1052,32 @@ func cmdStats(args []string) error {
 	}
 
 	printStats(byStatus, byProject, *project == "")
+	printConsumerLag(s)
 
 	return nil
+}
+
+// printConsumerLag renders the persisted journal-consumer cursors with
+// their lag behind the head (ADR-0009's observability surface) — the first
+// place to look when a bridge or sweeper looks quiet.
+func printConsumerLag(s *queue.SQLiteStore) {
+	ctx := context.Background()
+
+	entries, err := s.ListWatermarks(ctx)
+	if err != nil || len(entries) == 0 {
+		return
+	}
+
+	head, err := s.HeadSeq(ctx)
+	if err != nil {
+		return
+	}
+
+	fmt.Println("\nconsumer lag (journal head:", head, ")")
+
+	for _, e := range entries {
+		fmt.Printf("  %-52s seq %-8d lag %d\n", e.Consumer, e.Seq, max(head-e.Seq, 0))
+	}
 }
 
 // tallyStats aggregates the task list into status counts and

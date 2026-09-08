@@ -193,10 +193,16 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 
 	// Last-Event-ID is accepted for protocol compatibility; because every
 	// event is a full re-render of the projection, the snapshot below is
-	// always the correct resume regardless of the ID's freshness.
+	// always the correct resume regardless of the ID's freshness. A stale
+	// id still carries reconnect-lag signal: head − id is how far the
+	// browser's last view trailed the journal when it dropped.
 	lastID := stream.LastEventID()
 	if !lastID.IsZero() {
-		slog.Debug("webui: client resume", "last-event-id", lastID.String())
+		if n, err := strconv.ParseInt(lastID.String(), 10, 64); err == nil && n >= 0 {
+			if head, err := s.store.HeadSeq(r.Context()); err == nil && head > n {
+				slog.Info("webui: client reconnect", "last-event-id", n, "head", head, "reconnect lag", head-n)
+			}
+		}
 	}
 
 	if err := s.sendSnapshot(ctx, stream, r, watermarkUnknown); err != nil {

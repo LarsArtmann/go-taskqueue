@@ -111,8 +111,10 @@ tq bootstrap --install                                      # systemd user unit 
 `--agents N` sets pool concurrency and the machine-wide agent cap;
 `--reasoning` defaults to `xhigh` (max possible; applied when `--model` is
 set — note the pinned model+reasoning lives in each repo's `.crushrc`, so it
-also applies to interactive crush sessions in that repo). Re-running is safe:
-the managed block is replaced in place, existing user config untouched.
+also applies to interactive crush sessions in that repo). Full agent output
+sidecars default ON (`~/.local/state/tq/logs/<task-id>.log`; `--log-dir ""`
+turns them off) — a daemon you cannot watch needs its logs. Re-running is
+safe: the managed block is replaced in place, existing user config untouched.
 
 ### Running it as a daemon
 
@@ -175,6 +177,11 @@ checkbox, commit, never push). The executor enforces the safety rails:
   (`--dlq-backoff`, together with `--repo-interval` for per-repo pacing).
 - **Paced** — at most one in-flight backlog item per repo, `--max-per-tick`
   bounds cost per harvest run.
+- **Full output sidecars** — `--log-dir DIR` (or `$TQ_LOG_DIR`, or a
+  `log-dir =` line in the pool config) writes each task's complete agent +
+  verify output to `DIR/<task-id>.log` (0600). Without it, only a tail lands
+  in the result detail — turn this on for daemon pools where you cannot
+  watch the terminal.
 - **Durable** — lease claims with heartbeats, exponential backoff, DLQ on
   exhaustion (`tq dlq --rescue` to retry), and the whole lifecycle replayable
   via `tq facts`.

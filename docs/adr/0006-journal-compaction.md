@@ -75,6 +75,12 @@ bridge watermark still points below its facts.
 - The archive table needs the same `(task_id, seq)` index; compaction is
   one transaction (INSERT…SELECT + DELETE) under the single serialized
   writer, so it cannot race a claim.
+- **Subscriber resync is loud, never silent (ADR-0009 D5):** any journal
+  consumer — dispatcher subscriber, bridge, sweeper — whose persisted
+  cursor falls below the retention floor must be handed a resync condition
+  keyed on the floor, not a silently narrowed `Facts` prefix. Seq-gap
+  detection (`first-seq > cursor+1`) is explicitly NOT a signal:
+  AUTOINCREMENT gaps from rolled-back transactions are normal.
 - `tq show <id>` for an archived task becomes a two-table read; the
   prototype keeps `Facts` hot-only and leaves the union view to the
   command's implementation.

@@ -149,12 +149,11 @@ O(1).
 
 If journal compaction ever lands (ROADMAP item), `Facts(after, …)` with an
 `after` older than the retention floor would silently start at the oldest
-retained fact. The `Subscribe` contract should define that case explicitly
-(error vs silent-resync) BEFORE any compaction exists; today it is
-unreachable. The one behavioral replay gap that exists today is unchanged by
-`2d5e729` and out of its scope: the bridge restarts at the journal head, so
-incidents fired while it was down are never replayed — a watermark
-persistence gap (TODO_LIST H2), which `HeadSeq` actually made O(1).
+retained fact. **Resolved 2026-09-08 by ADR-0009 D5:** the contract is a
+LOUD resync keyed on the retention floor — never a silent skip, and never
+seq-gap detection (AUTOINCREMENT gaps from rolled-back transactions are
+normal). The watermark-persistence gap named below has since SHIPPED
+(watermarks table + resume-from-checkpoint + restart battery).
 
 ## 4. Gaps vs the proposed `Subscribe(ctx, since Seq)`
 
