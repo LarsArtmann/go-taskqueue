@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-sse/ssetest"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 func TestConfigValidateLoopbackMatrix(t *testing.T) {
@@ -203,13 +204,29 @@ func TestTokenAuthCookieSession(t *testing.T) {
 	}
 
 	cookies := rec.Result().Cookies()
-	if len(cookies) != 1 {
-		t.Fatalf("Set-Cookie count = %d, want exactly the session cookie", len(cookies))
+	if len(cookies) != 2 {
+		t.Fatalf("Set-Cookie count = %d, want exactly the session + CSRF cookies", len(cookies))
 	}
 
-	c := cookies[0]
-	if c.Name != tqTokenCookie || c.Value != token {
-		t.Fatalf("cookie = %s=%q, want %s=%q", c.Name, c.Value, tqTokenCookie, token)
+	var c *http.Cookie
+
+	for _, cookie := range cookies {
+		switch cookie.Name {
+		case tqTokenCookie:
+			c = cookie
+		case tqCSRFCookie:
+			// The CSRF cookie rides along; its flow has its own test.
+		default:
+			t.Errorf("unexpected cookie %q", cookie.Name)
+		}
+	}
+
+	if c == nil {
+		t.Fatalf("no %s cookie among the %d issued", tqTokenCookie, len(cookies))
+	}
+
+	if c.Value != token {
+		t.Fatalf("cookie value = %q, want the presented token", c.Value)
 	}
 
 	if !c.HttpOnly {
@@ -260,7 +277,153 @@ func TestTokenAuthCookieSession(t *testing.T) {
 		t.Fatalf("page with cookie: status = %d, want 200", quietRec.Code)
 	}
 
-	if got := len(quietRec.Result().Cookies()); got != 0 {
-		t.Errorf("cookie-authed request re-issued %d cookies, want 0", got)
+	// The tq_token session cookie must NOT be re-issued on cookie auth
+	// (the CSRF issuer may still hand out its own cookie to a fresh
+	// browser — that one is page hygiene, not session state).
+	for _, cookie := range quietRec.Result().Cookies() {
+		if cookie.Name == tqTokenCookie {
+			t.Error("cookie-authed request re-issued the session cookie")
+		}
+	}
+}
+
+// csrfFrom extracts the issued CSRF cookie value from a recorder.
+func csrfFrom(rec *httptest.ResponseRecorder) string {
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == tqCSRFCookie {
+			return c.Value
+		}
+	}
+
+	return ""
+}
+
+// TestWriteRoutesNeedAllowWrites pins the ADR-0003 default: without
+// Config.AllowWrites the admin routes are not registered at all.
+func TestWriteRoutesNeedAllowWrites(t *testing.T) {
+	srv := New(newTestStore(t), Config{Poll: time.Millisecond, Heartbeat: time.Millisecond})
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/task/task_x/cancel", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("POST cancel without AllowWrites: status = %d, want 404 (route not registered)", rec.Code)
+	}
+}
+
+// TestWriteFlowCancelAndRescue exercises both admin endpoints end to end:
+// CSRF challenge, cooperative stop for running, withdrawal for pending,
+// rescue for dead — each landing as a fact in the journal.
+func TestWriteFlowCancelAndRescue(t *testing.T) {
+	s := newTestStore(t)
+	srv := New(s, Config{
+		Poll: time.Millisecond, Heartbeat: time.Millisecond,
+		AuthToken: "sekrit", AllowWrites: true,
+	})
+	handler := srv.Handler()
+
+	// Authenticate once: tokens + cookies issued together.
+	first := httptest.NewRecorder()
+	handler.ServeHTTP(first, httptest.NewRequest(http.MethodGet, "/?token=sekrit", nil))
+
+	csrf := csrfFrom(first)
+	if csrf == "" {
+		t.Fatal("no CSRF cookie issued on page GET")
+	}
+
+	post := func(path, csrfValue string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path,
+			strings.NewReader("csrf="+csrfValue+"&reason=operator+was+here&attempts=5"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Authorization", "Bearer sekrit")
+
+		for _, c := range first.Result().Cookies() {
+			req.AddCookie(c)
+		}
+
+		handler.ServeHTTP(rec, req)
+
+		return rec
+	}
+
+	// --- cancel a PENDING task ---
+	tk := enqueue(t, s, "sh", "demo")
+
+	rec := post("/task/"+tk.ID.String()+"/cancel", csrf)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("cancel pending: status = %d, want 303", rec.Code)
+	}
+
+	got, err := s.Get(context.Background(), tk.ID)
+	if err != nil {
+		t.Fatalf("get after cancel: %v", err)
+	}
+
+	if got.Status != task.Cancelled {
+		t.Fatalf("status after cancel = %s, want cancelled", got.Status)
+	}
+
+	// --- CSRF rejection: right cookie, wrong field ---
+	tk2 := enqueue(t, s, "sh", "demo2")
+
+	rec = post("/task/"+tk2.ID.String()+"/cancel", "forged")
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("cancel with forged CSRF: status = %d, want 403", rec.Code)
+	}
+
+	// --- cooperative stop for RUNNING ---
+	owner := "worker-test"
+	if _, err := s.ClaimDue(context.Background(), owner, time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	running, err := s.Get(context.Background(), tk2.ID)
+	if err != nil || running.Status != task.Running {
+		t.Fatalf("task should be running, got %s (%v)", running.Status, err)
+	}
+
+	rec = post("/task/"+tk2.ID.String()+"/cancel", csrf)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("stop running: status = %d, want 303", rec.Code)
+	}
+
+	after, err := s.Get(context.Background(), tk2.ID)
+	if err != nil {
+		t.Fatalf("get after stop: %v", err)
+	}
+
+	if after.Status != task.Running && after.Status != task.Cancelled {
+		t.Errorf("status after stop request = %s, want running (cancel requested) or cancelled", after.Status)
+	}
+
+	// --- rescue a DEAD task ---
+	dead := enqueue(t, s, "sh", "demo3")
+	if err := s.FailPermanent(context.Background(), dead.ID, owner, "boom: rescue test"); err != nil {
+		t.Fatalf("fail permanent: %v", err)
+	}
+
+	rec = post("/task/"+dead.ID.String()+"/rescue", csrf)
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("rescue dead: status = %d, want 303", rec.Code)
+	}
+
+	rescued, err := s.Get(context.Background(), dead.ID)
+	if err != nil {
+		t.Fatalf("get after rescue: %v", err)
+	}
+
+	if rescued.Status != task.Pending {
+		t.Fatalf("status after rescue = %s, want pending", rescued.Status)
+	}
+
+	if rescued.Attempts != 0 {
+		t.Errorf("attempts after rescue = %d, want a fresh budget (0 used)", rescued.Attempts)
+	}
+
+	// --- conflict: rescue a task that is not dead ---
+	rec = post("/task/"+tk.ID.String()+"/rescue", csrf)
+	if rec.Code != http.StatusConflict {
+		t.Errorf("rescue non-dead: status = %d, want 409", rec.Code)
 	}
 }

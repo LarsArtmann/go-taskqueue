@@ -120,17 +120,20 @@ templ pageHeading(text, accent string) {
 // it survives reloads, sharing, and SSE reconnects.
 templ viewToggle(f FilterState) {
 	<nav class="flex shrink-0 items-center gap-3 font-mono text-xs uppercase tracking-[0.14em]" aria-label="task view">
-		<a
-			class={ viewToggleClass(f.View == viewTable) }
-			href={ templ.URL(viewToggleHref(f, viewTable)) }
-			aria-current={ templ.KV("true", f.View == viewTable) }
-		>table</a>
-		<a
-			class={ viewToggleClass(f.View == viewBoard) }
-			href={ templ.URL(viewToggleHref(f, viewBoard)) }
-			aria-current={ templ.KV("true", f.View == viewBoard) }
-		>board</a>
+		@viewToggleLink(f, viewTable, "table", f.View == viewTable)
+		@viewToggleLink(f, viewBoard, "board", f.View == viewBoard)
 	</nav>
+}
+
+// viewToggleLink is one projection link; the active one carries
+// aria-current="true" (templ can express a conditional attribute's
+// PRESENCE, not its value — hence the branch).
+templ viewToggleLink(f FilterState, view, label string, active bool) {
+	if active {
+		<a class={ viewToggleClass(true) } href={ templ.URL(viewToggleHref(f, view)) } aria-current="true">{ label }</a>
+	} else {
+		<a class={ viewToggleClass(false) } href={ templ.URL(viewToggleHref(f, view)) }>{ label }</a>
+	}
 }
 
 // viewToggleClass styles one toggle link: the active projection is

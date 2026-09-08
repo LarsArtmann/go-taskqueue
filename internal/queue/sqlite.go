@@ -470,7 +470,7 @@ func (s *SQLiteStore) Complete(ctx context.Context, id task.ID, owner string, re
 }
 
 // Fail records a failed attempt: retry with backoff or dead-letter.
-func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errText string, backoff time.Duration) error {
+func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errText string, backoff time.Duration, evidence json.RawMessage) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now() // captured inside the tx: backoff counts from commit, not from call
 
@@ -501,7 +501,7 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 
 			if err := s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.Failed, Owner: owner,
-				Attempt: newAttempts, Error: errText,
+				Attempt: newAttempts, Error: errText, Detail: evidence,
 			}); err != nil {
 				return err
 			}
@@ -524,7 +524,7 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Failed, Owner: owner,
-			Attempt: newAttempts, Error: errText,
+			Attempt: newAttempts, Error: errText, Detail: evidence,
 		})
 	})
 }
@@ -533,7 +533,7 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 // identical retry would fail identically, so the remaining attempt budget is
 // worthless (and, for agent tasks, expensive). The failing attempt is still
 // counted. Facts: task.failed + task.dead-lettered with class "permanent".
-func (s *SQLiteStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string) error {
+func (s *SQLiteStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now()
 
@@ -568,7 +568,7 @@ func (s *SQLiteStore) FailPermanent(ctx context.Context, id task.ID, owner strin
 
 		if err := s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Failed, Owner: owner,
-			Attempt: newAttempts, Error: errText,
+			Attempt: newAttempts, Error: errText, Detail: evidence,
 		}); err != nil {
 			return err
 		}
@@ -1522,6 +1522,16 @@ func maybeJSON(r json.RawMessage) json.RawMessage {
 	}
 
 	return r
+}
+
+// failureDetail picks a task.failed fact's detail: the executor's failure
+// evidence when present, else the store's classification fallback.
+func failureDetail(evidence json.RawMessage, class string) json.RawMessage {
+	if len(evidence) > 0 {
+		return evidence
+	}
+
+	return mustJSON(map[string]string{"class": class})
 }
 
 func boolInt(b bool) int {

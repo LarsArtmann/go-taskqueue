@@ -200,11 +200,16 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	output, err := e.runAgent(runCtx, repoDir, &p)
 	if err != nil {
+		// Forensics for the task.failed fact: exit code + output tail. The
+		// full output survives in the sidecar only when TQ_LOG_DIR is set,
+		// so the fact carries its own excerpt.
+		SetFailureEvidence(ctx, "agent", err, tailBytes([]byte(output), 4096))
 		return err
 	}
 
 	tail, err := runVerify(runCtx, repoDir, &p)
 	if err != nil {
+		SetFailureEvidence(ctx, "verify", err, tail)
 		return err
 	}
 	// Success: record structured outcome detail for `tq show` (best
@@ -340,12 +345,15 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 
 	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Run(); err != nil {
-		tail := tailBytes(buf.Bytes(), 8192)
+		// The captured output survives the error so the caller can pin the
+		// failure evidence's tail excerpt. The cancelled branch must keep
+		// wrapping ctx.Err(): the worker finalizes cooperative cancels by
+		// matching context.Canceled.
 		if ctx.Err() != nil {
-			return "", fmt.Errorf("agent run cancelled (%w): %s", ctx.Err(), tail)
+			return buf.String(), fmt.Errorf("agent run cancelled (%w): %s", ctx.Err(), tailBytes(buf.Bytes(), 8192))
 		}
 
-		return "", fmt.Errorf("agent run failed: %w: %s", err, tail)
+		return buf.String(), fmt.Errorf("agent run failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))
 	}
 
 	return buf.String(), nil
@@ -371,12 +379,14 @@ func runVerify(ctx context.Context, repoDir string, p *AgentPayload) (string, er
 
 	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Run(); err != nil {
+		// The tail rides along even on error: it IS the failure evidence
+		// (what the gate printed before dying).
 		tail := tailBytes(buf.Bytes(), 4096)
 		if ctx.Err() != nil {
-			return "", fmt.Errorf("agent verify cancelled (%w): %s", ctx.Err(), tail)
+			return tail, fmt.Errorf("agent verify cancelled (%w): %s", ctx.Err(), tail)
 		}
 
-		return "", fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
+		return tail, fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
 	}
 
 	return tailBytes(buf.Bytes(), 2048), nil

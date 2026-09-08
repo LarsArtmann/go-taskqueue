@@ -207,16 +207,16 @@ state — its only write is its own cursor.
 
 ### templ-components adoption
 
-| Library component                                                                  | Status  | Where                                                                       |
-| ---------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------- |
-| `layout.Base`, `ThemeToggle`                                                       | adopted | `layout.templ`                                                              |
-| `display.Grid/StatCard/Card/Table/EmptyState`                                      | adopted | `fragments.templ`                                                           |
-| `display.Badge/Eyebrow/DefinitionList/Scrollback`                                  | adopted | `fragments.templ`                                                           |
-| `display.AreaChart`                                                                | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`) |
-| `display.Button`                                                                   | adopted | filter bar (apply)                                                          |
-| `feedback.Alert`                                                                   | adopted | task detail (last error)                                                    |
-| `icons.ArchiveBox/Bolt/Calculator/CheckCircle/CircleStack/Clock/Filter/Fire/Inbox` | adopted | stat-card + filter icons (`fragments.templ`)                                |
-| filter inputs, page header/lamp, section hairlines                                 | custom  | `layout.templ`/`fragments.templ` (thin, SSE-fragment-specific)              |
+| Library component                                                       | Status  | Where                                                                        |
+| ----------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `layout.Base`, `ThemeToggle`                                            | adopted | `layout.templ`                                                               |
+| `display.Card/Table/EmptyState`                                         | adopted | `fragments.templ`                                                            |
+| `display.Badge/Eyebrow/DefinitionList/Scrollback`                       | adopted | `fragments.templ`                                                            |
+| `display.AreaChart`                                                     | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`)  |
+| `display.Button`                                                        | adopted | filter bar (apply)                                                           |
+| `feedback.Alert`                                                        | adopted | task detail (last error)                                                     |
+| `icons.ArchiveBox/CircleStack/Filter/Inbox`                             | adopted | empty-state + filter icons (`fragments.templ`)                               |
+| status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband) |
 
 - Go 1.26 idioms are deliberate (`errors.AsType[E]`, `strings.SplitSeq`,
   `for range n`) — do not "modernize" them back to older equivalents

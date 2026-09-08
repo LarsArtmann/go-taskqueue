@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os/exec"
 	"regexp"
 	"sync"
 )
@@ -30,6 +31,16 @@ type AgentResult struct {
 	LogPath string `json:"log_path,omitempty"`
 }
 
+// FailureEvidence is the structured forensics attached to a task.failed
+// fact: WHAT failed (which stage), the process exit code, and the tail of
+// the output that proves it. The 21:40 window's two retry-path failures
+// left empty {} detail — the why lived only in the error text.
+type FailureEvidence struct {
+	Stage    string `json:"stage"`              // "agent", "verify" or "command"
+	ExitCode int    `json:"exit_code,omitempty"` // process exit code (0 when the error was not an exit)
+	Tail     string `json:"tail,omitempty"`      // last lines of the failing output
+}
+
 // sink carries per-task result detail from an executor run back to the
 // worker. Executors share one instance, so the sink travels in the task's
 // context instead of on the executor.
@@ -37,8 +48,9 @@ type sinkKey struct{}
 
 // Sink collects structured outcome detail for ONE task execution.
 type Sink struct {
-	mu     sync.Mutex
-	detail json.RawMessage
+	mu      sync.Mutex
+	detail  json.RawMessage
+	failure json.RawMessage
 }
 
 // NewSink returns a context carrying the sink and the sink itself.
@@ -64,6 +76,39 @@ func (s *Sink) Detail() json.RawMessage {
 	defer s.mu.Unlock()
 
 	return s.detail
+}
+
+// SetFailureEvidence attaches forensics for a FAILING execution; a no-op
+// when the context carries no sink. Mirrors SetResultDetail: executors call
+// it on their failure paths, the worker hands it to Store.Fail so the
+// task.failed fact carries the evidence.
+func SetFailureEvidence(ctx context.Context, stage string, err error, tail string) {
+	if s, ok := ctx.Value(sinkKey{}).(*Sink); ok {
+		evidence := FailureEvidence{Stage: stage, ExitCode: exitCode(err), Tail: tail}
+		if raw, merr := json.Marshal(evidence); merr == nil {
+			s.mu.Lock()
+			s.failure = raw
+			s.mu.Unlock()
+		}
+	}
+}
+
+// Failure returns the recorded failure evidence, or nil.
+func (s *Sink) Failure() json.RawMessage {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.failure
+}
+
+// exitCode extracts a process exit code from a wrapped exec error; 0 when
+// the error never was an exit (spawn failure, timeout, cancellation).
+func exitCode(err error) int {
+	if ee, ok := errors.AsType[*exec.ExitError](err); ok {
+		return ee.ExitCode()
+	}
+
+	return 0
 }
 
 var sessionRe = regexp.MustCompile(`(?im)^\s*session(?:[ _-]?id)?\s*[:=]\s*([A-Za-z0-9][A-Za-z0-9_-]*)`)

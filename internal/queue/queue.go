@@ -37,13 +37,16 @@ type Store interface {
 	Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error
 	// Fail records a failed attempt. When attempts remain the task returns to
 	// Pending with NotBefore = now + backoff(attempt); otherwise it is
-	// Dead-lettered. Facts: task.failed (+ task.dead-lettered).
-	Fail(ctx context.Context, id task.ID, owner string, errText string, backoff time.Duration) error
+	// Dead-lettered. Facts: task.failed (+ task.dead-lettered). evidence,
+	// when non-empty (executor.FailureEvidence JSON), lands on the
+	// task.failed fact's detail — the forensics (exit code, output tail)
+	// that make a failed attempt debuggable from the journal alone.
+	Fail(ctx context.Context, id task.ID, owner string, errText string, backoff time.Duration, evidence json.RawMessage) error
 	// FailPermanent dead-letters a Running task immediately, regardless of
 	// the attempt budget: the error class makes retrying pointless. The
-	// attempt is still counted. Facts: task.failed + task.dead-lettered
-	// (class "permanent").
-	FailPermanent(ctx context.Context, id task.ID, owner string, errText string) error
+	// attempt is still counted. Facts: task.failed (carrying evidence)
+	// + task.dead-lettered (class "permanent").
+	FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error
 	// Requeue returns a claimed task to Pending WITHOUT counting an
 	// attempt; it becomes claimable again after delay. For preflight
 	// refusals: the environment was not ready, not the task. Facts:

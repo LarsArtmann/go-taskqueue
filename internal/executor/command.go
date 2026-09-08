@@ -53,6 +53,7 @@ func (e *CommandExecutor) Execute(ctx context.Context, t task.Task) error {
 	cmd.Stderr = &buf
 	if err := cmd.Run(); err != nil {
 		tail := tailBytes(buf.Bytes(), 4096)
+		SetFailureEvidence(ctx, "command", err, tail)
 		if ctx.Err() != nil {
 			return fmt.Errorf("command cancelled (%w): %s", ctx.Err(), tail)
 		}

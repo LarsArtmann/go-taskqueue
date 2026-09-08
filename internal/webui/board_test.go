@@ -89,7 +89,7 @@ func moveNextTask(t *testing.T, s store, dest task.Status) task.Task {
 			t.Fatalf("Complete: %v", err)
 		}
 	case task.Dead:
-		if err := s.FailPermanent(ctx, tk.ID, "board-test", "boom: board test"); err != nil {
+		if err := s.FailPermanent(ctx, tk.ID, "board-test", "boom: board test", nil); err != nil {
 			t.Fatalf("FailPermanent: %v", err)
 		}
 	case task.Running:
@@ -106,7 +106,7 @@ type store interface {
 	Enqueue(ctx context.Context, n task.New) (task.Task, error)
 	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error)
 	Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error
-	FailPermanent(ctx context.Context, id task.ID, owner string, errText string) error
+	FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error
 }
 
 func TestBoardViewRendersColumns(t *testing.T) {

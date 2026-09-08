@@ -497,6 +497,7 @@ func (s *PostgresStore) Fail(
 	owner string,
 	errText string,
 	backoff time.Duration,
+	evidence json.RawMessage,
 ) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
@@ -532,7 +533,7 @@ func (s *PostgresStore) Fail(
 
 			if err := s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.Failed, Owner: owner, Attempt: attempts, Error: errText,
-				Detail: mustJSON(map[string]string{"class": "transient"}),
+				Detail: failureDetail(evidence, "transient"),
 			}); err != nil {
 				return err
 			}
@@ -557,12 +558,13 @@ func (s *PostgresStore) Fail(
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Failed, Owner: owner, Attempt: attempts, Error: errText,
+			Detail: evidence,
 		})
-	})
-}
+		})
+	}
 
-// FailPermanent dead-letters regardless of the attempt budget.
-func (s *PostgresStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string) error {
+	// FailPermanent dead-letters regardless of the attempt budget.
+	func (s *PostgresStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
 
@@ -595,7 +597,7 @@ func (s *PostgresStore) FailPermanent(ctx context.Context, id task.ID, owner str
 
 		if err := s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Failed, Owner: owner, Attempt: attempts, Error: errText,
-			Detail: mustJSON(map[string]string{"class": "permanent"}),
+			Detail: failureDetail(evidence, "permanent"),
 		}); err != nil {
 			return err
 		}
