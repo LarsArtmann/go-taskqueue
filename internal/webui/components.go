@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -200,6 +201,8 @@ func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
 }
 
 // detailFacts renders the detail page's fact timeline as journal lines.
+// Cancel facts carry their reason in the detail JSON — surfaced inline so a
+// withdrawn task's trail answers "why" without reading the raw journal.
 func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLine {
 	lines := make([]display.ScrollbackLine, 0, len(facts))
 
@@ -213,6 +216,10 @@ func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLin
 			text += " " + truncate(fact.Error, errorPreviewLen)
 		}
 
+		if reason := factReason(fact); reason != "" {
+			text += " — " + truncate(reason, errorPreviewLen)
+		}
+
 		lines = append(lines, display.ScrollbackLine{
 			Timestamp: factTimestamp(now, fact.Time),
 			Tag:       string(fact.Type),
@@ -222,6 +229,24 @@ func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLin
 	}
 
 	return lines
+}
+
+// factReason extracts the human cancellation reason from a fact's detail
+// JSON (the "reason" key tq cancel --reason and the reclaim finalize write).
+// Empty when the fact carries none.
+func factReason(fact journalFactView) string {
+	if len(fact.Detail) == 0 {
+		return ""
+	}
+
+	var detail struct {
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal(fact.Detail, &detail); err != nil {
+		return ""
+	}
+
+	return detail.Reason
 }
 
 // dashboardProps builds the shared page shell for both pages. HTMX is

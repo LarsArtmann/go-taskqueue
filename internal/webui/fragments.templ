@@ -184,7 +184,6 @@ templ taskRows(data DashboardData, rows []task.Task) {
 				<a class="whitespace-nowrap hover:underline" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
 			</td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
-			</td>
 			<td class={ tdCellClass(true) }>
 				@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: display.BadgeSizeSM})
 				if verdict, ok := data.Reviews[t.ID.String()]; ok {

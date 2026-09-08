@@ -194,3 +194,22 @@ func TestDetailItems(t *testing.T) {
 		}
 	})
 }
+
+// TestDetailFactsSurfacesCancelReason pins the 21:40 §e item: a
+// task.cancelled fact carrying {"reason": ...} must render the reason in the
+// trail line, so a withdrawn task answers "why" without reading the journal.
+func TestDetailFactsSurfacesCancelReason(t *testing.T) {
+	now := time.Now()
+	lines := detailFacts(now, []journalFactView{
+		{Seq: 2, Type: journal.Cancelled, Owner: "op", Detail: json.RawMessage(`{"reason":"item done by hand"}`)},
+		{Seq: 1, Type: journal.Cancelled, Owner: "op", Detail: json.RawMessage(`{}`)},
+	})
+
+	if !strings.Contains(lines[0].Text, "— item done by hand") {
+		t.Fatalf("cancel line = %q, want the reason surfaced", lines[0].Text)
+	}
+
+	if strings.Contains(lines[1].Text, "—") {
+		t.Fatalf("reasonless cancel line = %q, want no reason marker", lines[1].Text)
+	}
+}
