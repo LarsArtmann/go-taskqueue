@@ -560,11 +560,11 @@ func (s *PostgresStore) Fail(
 			TaskID: id.String(), Type: journal.Failed, Owner: owner, Attempt: attempts, Error: errText,
 			Detail: evidence,
 		})
-		})
-	}
+	})
+}
 
-	// FailPermanent dead-letters regardless of the attempt budget.
-	func (s *PostgresStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error {
+// FailPermanent dead-letters regardless of the attempt budget.
+func (s *PostgresStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
 

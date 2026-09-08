@@ -571,7 +571,7 @@ func pageFooter() templ.Component {
 			templ_7745c5c3_Var20 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<footer class=\"border-t border-gray-200 py-6 dark:border-gray-800\"><div class=\"mx-auto w-full max-w-7xl px-4 font-mono text-xs text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8\">read-only projection of the journal · press <kbd>/</kbd> to search, <kbd>1</kbd>–<kbd>4</kbd> to jump</div></footer>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<footer class=\"border-t border-gray-200 py-6 dark:border-gray-800\"><div class=\"mx-auto w-full max-w-7xl px-4 font-mono text-xs text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8\">live projection of the journal · press <kbd>/</kbd> to search, <kbd>1</kbd>–<kbd>4</kbd> to jump</div></footer>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

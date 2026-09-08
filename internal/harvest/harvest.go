@@ -38,7 +38,11 @@ const DefaultTodoFile = "TODO_LIST.md"
 const DefaultMaxPerTick = 10
 
 // DefaultPromptTemplate is the agent contract handed to Crush for each item.
-// Placeholders: {{REPO_ABS}}, {{REPO}}, {{HEADING}}, {{ITEM}}.
+// Placeholders: {{REPO_ABS}}, {{REPO}}, {{HEADING}}, {{ITEM}}, and
+// {{TASK_ID}} (substituted at EXECUTION time by the agent executor — the
+// queue task ID does not exist when the harvester renders this template;
+// it exists so commits can carry a Task-Queue-ID footer for git log ↔
+// tq facts cross-reference).
 const DefaultPromptTemplate = `You are an autonomous agent working from a shared task queue, unsupervised.
 
 Repository: {{REPO_ABS}}
@@ -53,8 +57,12 @@ Contract:
    changing them is self-dealing.
 5. Close the loop in TODO_LIST.md: mark this item done ([x]) or remove it, following the file's own
    conventions. If you could NOT finish it, leave it unchecked and append " — BLOCKED: <one-line reason>".
-6. Commit your changes with a clear message (you have explicit permission to commit for this task).
-   Never push.
+6. Commit your changes with a clear message ending in this exact footer line (you have explicit
+   permission to commit for this task):
+
+   Task-Queue-ID: {{TASK_ID}}
+
+   (so git log and the queue cross-reference). Never push.
 7. End your final output with this exact one-line report so the queue can record what you did
    (fields optional):
 

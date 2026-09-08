@@ -184,6 +184,7 @@ templ taskRows(data DashboardData, rows []task.Task) {
 				<a class="whitespace-nowrap hover:underline" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
 			</td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
+			</td>
 			<td class={ tdCellClass(true) }>
 				@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: display.BadgeSizeSM})
 				if verdict, ok := data.Reviews[t.ID.String()]; ok {
@@ -193,6 +194,17 @@ templ taskRows(data DashboardData, rows []task.Task) {
 					@display.Badge(display.BadgeProps{Text: statusBadgeText(st), Type: display.BadgeInfo, Dot: true, Size: display.BadgeSizeSM})
 				}
 			</td>
+			if data.AllowWrites {
+				<td class={ tdCellClass(false) }>
+					if t.Status == task.Pending {
+						@cancelAction(t.ID, false)
+					} else if t.Status == task.Running {
+						@cancelAction(t.ID, true)
+					} else if t.Status == task.Dead {
+						@rescueAction(t.ID)
+					}
+				</td>
+			}
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span></td>
 			if r := readiness(data.Now, t); r != "" {
 				<td class={ tdCellClass(false) } title={ t.NotBefore.Format(timeFormat) }>
@@ -213,17 +225,6 @@ templ taskRows(data DashboardData, rows []task.Task) {
 				</td>
 			} else {
 				<td class={ tdCellClass(false) }></td>
-			}
-			if data.AllowWrites {
-				<td class={ tdCellClass(false) }>
-					if t.Status == task.Pending {
-						@cancelAction(t.ID, false)
-					} else if t.Status == task.Running {
-						@cancelAction(t.ID, true)
-					} else if t.Status == task.Dead {
-						@rescueAction(t.ID)
-					}
-				</td>
 			}
 		</tr>
 	}

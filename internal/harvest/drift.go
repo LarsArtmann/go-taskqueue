@@ -33,7 +33,9 @@ Contract:
    file's conventions prefer that). Change nothing else — in particular never
    touch .crushrc, crush.json, or .tq-verify (they define your autonomy and
    your verify gate).
-4. Commit with a clear message (you have explicit permission to commit for
+4. Commit with a clear message ending in the exact footer line
+   Task-Queue-ID: {{TASK_ID}}
+   (you have explicit permission to commit for
    this task). Never push.
 5. End your final output with this exact one-line report so the queue can
    record the tick:

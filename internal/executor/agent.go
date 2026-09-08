@@ -198,7 +198,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	output, err := e.runAgent(runCtx, repoDir, &p)
+	output, err := e.runAgent(runCtx, repoDir, &p, t.ID)
 	if err != nil {
 		// Forensics for the task.failed fact: exit code + output tail. The
 		// full output survives in the sidecar only when TQ_LOG_DIR is set,
@@ -314,7 +314,14 @@ func assertCleanTree(ctx context.Context, repo string) error {
 }
 
 // runAgent spawns the headless agent in the repo and waits for it.
-func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload) (string, error) {
+func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload, id task.ID) (string, error) {
+	// The queue task ID is only known at execution time (the harvester
+	// renders prompts before enqueue), so the {{TASK_ID}} placeholder in
+	// prompt contracts resolves HERE — it lets agents put `Task-Queue-ID:
+	// <id>` footers in their commits so git log ↔ tq facts cross-reference
+	// (21:40 report §e3).
+	p.Prompt = strings.ReplaceAll(p.Prompt, "{{TASK_ID}}", id.String())
+
 	if e.Yolo || p.Yolo {
 		if err := requireRepoAutonomy(repoDir); err != nil {
 			return "", err

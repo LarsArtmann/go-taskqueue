@@ -259,6 +259,45 @@ func TestAgentExecutorArgvContract(t *testing.T) {
 	}
 }
 
+// TestAgentPromptTaskIDSubstitution pins the {{TASK_ID}} placeholder: the
+// queue task ID only exists at execution time, so prompt contracts carry the
+// placeholder and the executor must resolve it to the task's real ID before
+// the agent runs (agents then put Task-Queue-ID footers in their commits,
+// making git log ↔ tq facts cross-reference; 21:40 report §e3).
+func TestAgentPromptTaskIDSubstitution(t *testing.T) {
+	dir := t.TempDir()
+	argsLog := filepath.Join(dir, "argv.log")
+	bin := filepath.Join(dir, "argv-agent")
+
+	script := "#!/bin/sh\nprintf '%s\n' \"$@\" > \"" + argsLog + "\"\n"
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	e := &AgentExecutor{Bin: bin}
+	tk := agentTaskT(t, AgentPayload{Repo: repo, Prompt: "work item\n\nTask-Queue-ID: {{TASK_ID}}"})
+	tk.ID = task.ID("000001a0fixedidforthesubstitutiontest")
+	if err := e.Execute(context.Background(), tk); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	raw, err := os.ReadFile(argsLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	prompt := got[len(got)-1]
+	if prompt != "Task-Queue-ID: "+tk.ID.String() || !strings.HasPrefix(string(raw), "work item\n") {
+		t.Fatalf("prompt = %q, want {{TASK_ID}} resolved to %q", string(raw), tk.ID.String())
+	}
+}
+
 // TestAgentExecutorYoloWithoutRepoAutonomyFailsFast verifies the guard that
 // keeps unattended pools from burning their attempt budget on runs that can
 // never act: yolo requested, but the repo has no project-local crush config

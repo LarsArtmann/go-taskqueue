@@ -144,7 +144,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 		Prompt: statusPrompt(payload),
 		Model:  payload.Model,
 		Yolo:   payload.Yolo,
-	})
+	}, t.ID)
 	if err != nil {
 		return err
 	}
@@ -282,7 +282,9 @@ Do not modify code, configuration, docs, or any other tracked file. If you notic
 
 ## Finish
 
-1. Commit your changes with a clear message (you have explicit permission to commit for this task). Never push.
+1. Commit your changes with a clear message ending in the exact footer line
+   Task-Queue-ID: {{TASK_ID}}
+   (you have explicit permission to commit for this task). Never push.
 2. End your final output with EXACTLY ONE line of this shape and nothing after it:
 
 TQ_RESULT: {"report": "docs/status/<the-file-you-wrote>.md", "next_items": <number of items appended>}

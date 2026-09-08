@@ -36,7 +36,7 @@ type AgentResult struct {
 // the output that proves it. The 21:40 window's two retry-path failures
 // left empty {} detail — the why lived only in the error text.
 type FailureEvidence struct {
-	Stage    string `json:"stage"`              // "agent", "verify" or "command"
+	Stage    string `json:"stage"`               // "agent", "verify" or "command"
 	ExitCode int    `json:"exit_code,omitempty"` // process exit code (0 when the error was not an exit)
 	Tail     string `json:"tail,omitempty"`      // last lines of the failing output
 }

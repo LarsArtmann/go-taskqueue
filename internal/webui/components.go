@@ -454,15 +454,18 @@ func taskHeaders(data DashboardData) []display.TableHeader {
 		{Label: labelProject},
 		{Label: labelType},
 		{Label: labelStatus},
-		{Label: labelAttempts, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "attempts"), Href: sortHeaderHref(data.Filter, "attempts")},
-		{Label: labelReady},
-		{Label: labelAge, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "age"), Href: sortHeaderHref(data.Filter, "age")},
-		{Label: labelError},
 	}
-
 	if data.AllowWrites {
+		// Actions sit right after status so they stay inside the visible
+		// card width; the table tail (age, error) is the clip-prone end.
 		headers = append(headers, display.TableHeader{Label: "actions"})
 	}
+	headers = append(headers,
+		display.TableHeader{Label: labelAttempts, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "attempts"), Href: sortHeaderHref(data.Filter, "attempts")},
+		display.TableHeader{Label: labelReady},
+		display.TableHeader{Label: labelAge, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "age"), Href: sortHeaderHref(data.Filter, "age")},
+		display.TableHeader{Label: labelError},
+	)
 
 	return headers
 }
