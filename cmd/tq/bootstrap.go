@@ -86,6 +86,7 @@ type bootstrapOptions struct {
 	exclusive     bool
 	allowDirty    bool
 	repoTimeout   string
+	logDir        string // "" = no sidecar logs; otherwise $TQ_LOG_DIR for the pool (default ~/.local/state/tq/logs)
 	db            string
 	binPath       string // resolved executable, for the systemd unit
 }
@@ -188,6 +189,7 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 	fs.BoolVar(&o.noRun, "no-run", false, "ensure repo state, print the pool command, and exit without starting the pool")
 	fs.BoolVar(&o.allowDirty, "allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
 	fs.StringVar(&o.repoTimeout, "repo-timeout", "", "per-repo agent-task timeout ladder: name=duration,...")
+	fs.StringVar(&o.logDir, "log-dir", defaultLogDir(), "write full agent+verify output sidecars to DIR/<task-id>.log (empty = off)")
 	fs.StringVar(&o.db, "db", "", "task DB (default $TQ_DB or ./tasks.db)")
 	noYolo := fs.Bool("no-yolo", false, "disable autonomy (agents will stall on permission prompts)")
 	noReview := fs.Bool("no-review", false, "disable the second-agent review pass")
@@ -595,6 +597,10 @@ func composePoolArgs(o bootstrapOptions) []string {
 		args = append(args, "--repo-timeout", o.repoTimeout)
 	}
 
+	if o.logDir != "" {
+		args = append(args, "--log-dir", o.logDir)
+	}
+
 	if o.db != "" {
 		args = append(args, "--db", o.db)
 	}
@@ -680,6 +686,10 @@ func renderPoolConfig(o bootstrapOptions) string {
 
 	if o.repoTimeout != "" {
 		fmt.Fprintf(&b, "repo-timeout = %s\n", o.repoTimeout)
+	}
+
+	if o.logDir != "" {
+		fmt.Fprintf(&b, "log-dir = %s\n", o.logDir)
 	}
 
 	return b.String()

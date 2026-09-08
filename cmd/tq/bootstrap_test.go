@@ -196,7 +196,8 @@ func TestComposePoolArgs(t *testing.T) {
 		dailyBudget: 20,
 		maxPerTick:  3,
 		yolo:        true, review: true, reviewAutofix: true, exclusive: true,
-		db: "/tmp/tq.db",
+		logDir: "/state/tq/logs",
+		db:     "/tmp/tq.db",
 	}
 
 	got := strings.Join(composePoolArgs(o), " ")
@@ -208,6 +209,7 @@ func TestComposePoolArgs(t *testing.T) {
 		"--yolo=true", "--review=true", "--review-autofix=true",
 		"--project-exclusive=true", "--allow-dirty=false",
 		"--model zai/glm-5.3-flash", "--db /tmp/tq.db",
+		"--log-dir /state/tq/logs",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in: %s", want, got)
@@ -226,7 +228,7 @@ func TestRenderPoolConfig(t *testing.T) {
 		repos: []string{"/p/CV"}, projectsDir: "/p", agents: 2,
 		interval: 5 * time.Minute, dailyBudget: 20, maxPerTick: 3,
 		yolo: true, review: true, reviewAutofix: true, exclusive: true,
-		model: "zai/glm-5.3-flash",
+		model: "zai/glm-5.3-flash", logDir: "/state/tq/logs",
 	}
 
 	got := renderPoolConfig(o)
@@ -234,10 +236,17 @@ func TestRenderPoolConfig(t *testing.T) {
 	for _, want := range []string{
 		"projects-dir = /p", "repos = /p/CV", "concurrency = 2",
 		"daily-budget = 20", "yolo = true", "model = zai/glm-5.3-flash",
+		"log-dir = /state/tq/logs",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in:\n%s", want, got)
 		}
+	}
+
+	o.logDir = ""
+
+	if strings.Contains(renderPoolConfig(o), "log-dir") {
+		t.Fatal("log-dir rendered while empty (sidecars must stay off)")
 	}
 }
 
