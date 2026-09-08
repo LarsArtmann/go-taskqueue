@@ -7,6 +7,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -202,5 +203,102 @@ func TestChaosKillAgentPoolOnceMidDrain(t *testing.T) {
 
 	if completions != 1 {
 		t.Fatalf("task %s completed %d times, want exactly 1", taskID, completions)
+	}
+}
+
+// TestMultiProcessContention: two worker PROCESSES (each --concurrency 2)
+// draining the same DB while a reader process polls facts must finish every
+// task exactly once with zero errors — the MaxOpenConns(1)+WAL single-writer
+// contract under real multi-process load (round-5 M16/F86).
+func TestMultiProcessContention(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "q.db")
+
+	const total = 24
+
+	ids := make(map[string]bool, total)
+	for i := range total {
+		idLine := runTQ(t, dir, dbPath, "enqueue", "--project", "load", "--type", "sh",
+			"--payload", `"true"`)
+		ids[idLine] = true
+	}
+
+	if len(ids) != total {
+		t.Fatalf("enqueued %d unique ids, want %d", len(ids), total)
+	}
+
+	// Reader: a facts poller hammering the DB while writers work.
+	readerDone := make(chan struct{})
+	go func() {
+		defer close(readerDone)
+		for range 40 {
+			c := exec.Command(tqBin, "facts", "--db", dbPath)
+			_, _ = c.Output()
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+
+	workers := make([]*exec.Cmd, 0, 2)
+	for i := range 2 {
+		w := exec.Command(tqBin, "worker", "--db", dbPath,
+			"--owner", fmt.Sprintf("w%d", i), "--poll", "10ms",
+			"--concurrency", "2", "--lease", "5s", "--task-timeout", "30s")
+		if err := w.Start(); err != nil {
+			t.Fatalf("start worker %d: %v", i, err)
+		}
+
+		workers = append(workers, w)
+	}
+
+	// Wait for full drain (bounded).
+	ctx := context.Background()
+	s := openStore(t, dbPath)
+	defer func() { _ = s.Close() }()
+
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		counts, err := s.StatusCounts(ctx)
+		if err != nil {
+			t.Fatalf("counts: %v", err)
+		}
+
+		if counts[task.Completed] >= total {
+			break
+		}
+
+		if time.Now().After(deadline) {
+			t.Fatalf("drain stalled: %+v", counts)
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	for _, w := range workers {
+		_ = w.Process.Kill()
+		_, _ = w.Process.Wait()
+	}
+	<-readerDone
+
+	// Exactly-once across processes.
+	facts, err := s.Facts(ctx, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	completions := map[string]int{}
+	for _, f := range facts {
+		if f.Type == "task.completed" {
+			completions[f.TaskID]++
+		}
+	}
+
+	if len(completions) != total {
+		t.Fatalf("%d tasks completed, want %d", len(completions), total)
+	}
+
+	for id, n := range completions {
+		if n != 1 {
+			t.Fatalf("task %s completed %d times (double execution)", id, n)
+		}
 	}
 }

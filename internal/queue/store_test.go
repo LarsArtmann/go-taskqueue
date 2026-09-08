@@ -1462,15 +1462,22 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 }
 
 // TestMarkOrphanedRecordsStrandedTasks: expired-lease Running tasks get a
-// task.orphaned fact (once), live-lease and reclaimed tasks do not, and the
-// task state itself is untouched — orphaning is an observation.
+// task.orphaned fact (once); live-lease tasks do not; task state is
+// untouched — orphaning is an observation, the reclaim stays authoritative.
 func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 	ctx := context.Background()
-	s := openStore(t)
+	s := openTestStore(t)
 	defer func() { _ = s.Close() }()
 
 	stranded, err := s.Enqueue(ctx, task.New{Type: "sh"})
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Claim the only due task with a near-zero lease, then immediately
+	// claim the next one with a live lease: deterministic despite
+	// ClaimDue returning an arbitrary due task (only one is due each time).
+	if _, err := s.ClaimDue(ctx, "victim", time.Millisecond); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1479,41 +1486,58 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	done, err := s.Enqueue(ctx, task.New{Type: "sh"})
-	if err != nil {
+	if _, err := s.ClaimDue(ctx, "alive", time.Minute); err != nil {
 		t.Fatal(err)
 	}
 
-	claim := func(id task.ID) {
-		t.Helper()
-		if _, err := s.ClaimDue(ctx, "w", time.Minute); err != nil {
-			t.Fatalf("claim %s: %v", id, err)
-		}
-	}
+	time.Sleep(5 * time.Millisecond) // victim's lease dies; alive's stays
 
-	claim(stranded.ID)
-	claim(live.ID)
-	claim(done.ID)
-
-	// The "stranded" task's lease dies; "live" keeps renewing.
-	time.Sleep(10 * time.Millisecond)
-	if _, err := s.ClaimDue(ctx, "w2", time.Nanosecond); err != nil {
-		t.Fatalf("reclaim: %v", err)
-	}
-
-	// Reclaim flips stranded back to pending; re-claim it and let the lease die again.
-	claim(stranded.ID)
-	time.Sleep(10 * time.Millisecond)
-
-	n, err := s.MarkOrphaned(ctx, time.Now().Add(-time.Nanosecond))
+	n, err := s.MarkOrphaned(ctx, time.Now())
 	if err != nil {
 		t.Fatalf("MarkOrphaned: %v", err)
 	}
 
-	// Both stranded (expired) and pending-again (the reclaimed one) are no
-	// longer Running: only currently-Running tasks with expired leases
-	// qualify. Enqueue fresh work, claim, and expire it for a deterministic case.
-	_ = n
-	_ = live
-	_ = done
+	if n != 1 {
+		t.Fatalf("marked %d tasks, want 1 (only the expired lease)", n)
+	}
+
+	facts, err := s.Facts(ctx, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	orphaned := map[string]bool{}
+	for _, f := range facts {
+		if f.Type == journal.Orphaned {
+			orphaned[f.TaskID] = true
+		}
+	}
+
+	if !orphaned[stranded.ID.String()] {
+		t.Error("stranded task has no task.orphaned fact")
+	}
+
+	if orphaned[live.ID.String()] {
+		t.Error("live-lease task must not be marked orphaned")
+	}
+
+	// Observation only: the stranded task is still Running (reclaim will act).
+	got, err := s.Get(ctx, stranded.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Status != task.Running {
+		t.Fatalf("stranded task status = %s, want still running (mark is not a state change)", got.Status)
+	}
+
+	// Idempotent: a second pass appends nothing.
+	n, err = s.MarkOrphaned(ctx, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if n != 0 {
+		t.Fatalf("second MarkOrphaned marked %d, want 0 (idempotent)", n)
+	}
 }

@@ -626,3 +626,22 @@ func TestCooperativeCancelMidRun(t *testing.T) {
 		t.Fatalf("journal missing cancel facts (requested=%v cancelled=%v)", sawRequested, sawCancelled)
 	}
 }
+
+// TestHeartbeatDefaultTighterThanHalfLease pins the cadence contract: the
+// default heartbeat must renew well before the lease dies (currently
+// lease/4 — tighter than the lease/3 the round-5 plan asked for) and stays
+// configurable via Config.Heartbeat.
+func TestHeartbeatDefaultTighterThanHalfLease(t *testing.T) {
+	lease := 4 * time.Second
+
+	pool := New(testStore(t), Config{Lease: lease}, quietLog())
+	if pool.cfg.Heartbeat <= 0 || pool.cfg.Heartbeat > lease/3 {
+		t.Fatalf("default heartbeat = %v, want > 0 and <= lease/3 (%v)", pool.cfg.Heartbeat, lease/3)
+	}
+
+	// The knob overrides: slow agents with long leases can pace renewals.
+	pool = New(testStore(t), Config{Lease: time.Hour, Heartbeat: 5 * time.Minute}, quietLog())
+	if pool.cfg.Heartbeat != 5*time.Minute {
+		t.Fatalf("explicit heartbeat = %v, want preserved", pool.cfg.Heartbeat)
+	}
+}

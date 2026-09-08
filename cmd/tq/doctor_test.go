@@ -209,3 +209,52 @@ func TestDoctorJSONShape(t *testing.T) {
 		t.Errorf("json payload missing db check: %s", payload)
 	}
 }
+
+func TestDoctorMarkOrphans(t *testing.T) {
+	path := doctorTestStore(t)
+
+	s, err := queue.OpenSQLite(path)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+	enq, err := s.Enqueue(ctx, task.New{Type: "sh"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "victim", time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(5 * time.Millisecond) // lease dies
+
+	results, err := runDoctor(ctx, doctorOptions{DBPath: path, MarkOrphans: true})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	r := resultByName(results, "mark-orphans")
+	if r.Status != checkOK || !strings.Contains(r.Detail, "1 stranded") {
+		t.Errorf("mark-orphans = %s (%s), want ok with 1 stranded", r.Status, r.Detail)
+	}
+
+	// The fact is in the journal, exactly once.
+	facts, err := s.Facts(ctx, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	count := 0
+	for _, f := range facts {
+		if f.TaskID == enq.ID.String() && f.Type == "task.orphaned" {
+			count++
+		}
+	}
+
+	if count != 1 {
+		t.Fatalf("task.orphaned facts = %d, want 1", count)
+	}
+}
