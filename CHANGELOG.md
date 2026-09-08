@@ -26,6 +26,59 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`agent-pool`, `tq worker --agents`), so pools without the flag still
   carry status tasks minted elsewhere. Ops: `tq watermarks show/set
   status-sweeper`.
+- **Journal-consumer watermarks** (2026-09-08): a `watermarks` side table
+  gives every journal consumer a durable cursor — `Store.Watermark` /
+  `SaveWatermark` with a monotonic upsert (a save can never lower the
+  stored seq; SQLite and Postgres), admin `ListWatermarks`/`SetWatermark`
+  (forced rewind) kept off the interface. The papdashboard bridge
+  checkpoints after each accepted batch (a pending checkpoint gates
+  forwarding; a checkpoint failure is a forward failure and heals on
+  restart), `startWatermark` resolves FromSeq > persisted > head so first
+  runs bootstrap at head instead of replaying history, and the volatile
+  `alerted` map is gone — `alert.resolved` correlation derives from the
+  task's fact trail via `FactsForTask`, so resolve-after-restart works.
+  The review and status sweepers checkpoint the same way
+  (`review-sweeper`/`status-sweeper`), so pool-downtime gaps are caught
+  up instead of skipped. Pinned by a restart battery: zero-loss
+  mid-stream restart with identical idempotency keys,
+  checkpoint-failure gating, FromSeq precedence, resolve-after-restart
+  (`internal/bridge/papdashboard/restart_test.go`). Ops: `tq watermarks
+  show/set` (`show` prints lag vs head; `set CONSUMER SEQ` is the
+  deliberate re-delivery escape hatch after a fix).
+- **Journal subscription policy (ADR-0009) + `internal/consumer`
+  dispatcher** (2026-09-08): consumer classes now have decided contracts
+  — exact consumers (bridges, workers) require in-order at-least-once
+  delivery with block-not-drop slow-consumer semantics; signal consumers
+  (dashboards) may skip. The dispatcher polls `Store` bounded reads with
+  a per-subscriber cursor (deliberately OFF the `Store` interface;
+  notify-after-commit is the v2 upgrade path), and `journal.Journal` is
+  demoted to a test double. Compaction readiness is codified: a consumer
+  resyncs loudly from the retention floor — never from a seq-gap guess.
+  Observability: `tq stats` gained a consumer-lag table (watermark vs
+  `HeadSeq`) and `tq serve` logs reconnect lag (`head − Last-Event-ID`).
+- **Actor rollout (`internal/runactor`)** (2026-09-08): `serve`,
+  `worker` and `agent-pool` are composed from a run.Group (errgroup +
+  CancelCause): named actors with first-exit cancel, LIFO `OnShutdown`
+  teardown (the store is registered first so it closes last), and
+  `InterruptOn` (second signal exits 130). Task execution contexts are
+  detached via `ExecutionScope` (`WithTimeout(WithoutCancel(parent))`)
+  and stay bounded only by `--task-timeout` — a Ctrl-C still lets
+  in-flight agents finish and record their outcome. One deliberate
+  behavior change: a bridge startup failure now fails the command
+  (exit 1) instead of running bridge-less. Pinned by a real-binary
+  SIGTERM e2e (`internal/e2e/shutdown_test.go`): the in-flight claimed
+  task completes, the bridge watermark is ≥ the dead-letter fact seq,
+  and SSE closes before exit 0.
+- **Review verdicts in the web UI** (2026-09-08): completed review tasks
+  surface their outcome — an approve/request_changes badge in the task
+  table's status cell and a findings card (title + severity) on the task
+  detail page, read best-effort from the completion fact; pages without
+  finished reviews render exactly as before
+  (`TestReviewVerdictBadgeAndFindings`).
+- **Sidecar retention** (2026-09-08): `tq agent-pool --log-dir-max-age`
+  (env `TQ_LOG_DIR_MAX_AGE`, default off) sweeps `TQ_LOG_DIR` of `*.log`
+  output logs older than the age once per tick — live tasks' logs are
+  kept and non-`.log` files are never touched (`executor.SweepSidecars`).
 - **`tq bootstrap` — one command from zero to a running agent pool** (2026-09-08):
   per repo it validates the checkout, pins the verify contract into
   `.tq-verify` (auto-detected or `--verify name=cmd`), writes a managed
@@ -317,6 +370,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   74.6%). The framework-free verdict is unchanged: gates T1/T2/T4/T5
   remain open. Record and reproducibility commands:
   `docs/planning/2026-09-08_cordis-test-suite-verification.md`.
+
+### Fixed
+
+- `scripts/smoke/papdashboard-e2e.sh` real-dashboard mode no longer
+collides with a locally running pap-raw-server on the fixed port 18099:
+the mode now derives an ephemeral port and liveness-checks the dashboard
+before driving it.
 
 ### Added
 

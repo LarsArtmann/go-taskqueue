@@ -64,8 +64,10 @@ facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 | `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick                          |
 | `internal/review`   | Fact-stream sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks from findings |
 | `internal/status`   | Fact-stream sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)   |
+| `internal/consumer` | Journal dispatcher: per-subscriber cursor over `Store` bounded reads, at-least-once in-order delivery, lag observability (policy: ADR-0009) |
+| `internal/runactor` | Process composition root: run.Group actors, LIFO `OnShutdown` teardown, `InterruptOn` (second signal = exit 130), detached `ExecutionScope` for task contexts |
 | `internal/webui`    | Read-only live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)          |
-| `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / stats / audit / top / show / dlq / cancel / facts / tail / serve |
+| `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / audit / top / show / dlq / cancel / facts / tail / watermarks / serve / api / doctor / version |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001 core,
 ADR-0002 agent-pool policies: `docs/adr/0002-agent-pool-autonomy-pacing-drain.md`;

@@ -60,6 +60,9 @@ Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 | **Consumer key**  | The watermark-table identity of one resumable reader, namespaced per source (e.g. `papdashboard:<endpoint>`). Distinct endpoints hold distinct cursors. |
 | **Checkpoint**    | The write that persists a watermark — always AFTER the last accepted fact of a batch, never before (a pre-acceptance checkpoint would silently convert at-least-once delivery to at-most-once). |
 | **Lag**           | `HeadSeq − watermark`: how far behind the journal head a consumer's cursor sits (`tq watermarks show`). |
+| **Dispatcher**    | The `internal/consumer` fan-out over `Store` bounded reads: per-subscriber cursor, at-least-once in-order delivery, lag observability (ADR-0009). Deliberately OFF the `Store` interface. |
+| **Exact consumer**   | A consumer class that requires EVERY fact, in seq order, at-least-once (bridges, sweepers, workers). Slow exact consumers apply backpressure — the dispatcher blocks, never skips. Persisted via a **watermark**. |
+| **Signal consumer**  | A consumer class that only needs a wake-up when facts changed (dashboard hub/tailer); payloads stay off the wire (ADR-0003). Overflow drops + coalesces — the next snapshot re-renders truth, so nothing is lost. |
 | **Result detail** | Structured data recorded in the `task.completed` fact (agent session id, verify output tail) — rendered by `tq show`.                                |
 | **Serve**         | `tq serve`: the read-only live dashboard. Binds localhost by default and can only render projections, never mutate the queue.                        |
 | **Tailer**        | The single goroutine polling `Facts(after)` behind `tq serve`; it advances a **watermark** and notifies once per burst of new facts.                 |
