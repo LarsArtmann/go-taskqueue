@@ -161,8 +161,9 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	// The reporter had write access and committed — prove the tree it left
 	// behind still builds/tests before the completion counts. Same gate and
 	// resolution order as the agent executor (.tq-verify file, payload,
-	// auto-detect; empty resolves to nothing to run).
-	if _, err := runVerify(ctx, repoDir, &AgentPayload{Verify: payload.Verify}); err != nil {
+	// auto-detect; empty resolves to nothing to run). Runs under runCtx:
+	// the payload timeout bounds the whole task (agent + verify).
+	if _, err := runVerify(runCtx, repoDir, &AgentPayload{Verify: payload.Verify}); err != nil {
 		return err
 	}
 
