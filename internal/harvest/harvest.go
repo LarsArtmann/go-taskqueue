@@ -386,6 +386,7 @@ func (h *Harvester) buildPayload(it Item, prompt, dedupKey string) ([]byte, erro
 		AgentPayload: executor.AgentPayload{
 			Repo:         repo,
 			Prompt:       prompt,
+			Item:         it.Text,
 			Model:        h.cfg.Model,
 			Verify:       executor.ReadTQVerify(it.Repo),
 			RequireClean: h.cfg.RequireClean,

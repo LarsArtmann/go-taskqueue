@@ -38,6 +38,11 @@ type AgentPayload struct {
 	// Dedup is the harvester's item key; purely informational, used to keep
 	// TODO items and tasks 1:1 across harvest runs.
 	Dedup string `json:"dedup,omitempty"`
+	// Item is the raw TODO_LIST work item the prompt was rendered from;
+	// purely informational. Status windows pin it so report excerpts show
+	// the real work instead of the prompt template's first line. Empty for
+	// tasks minted outside the harvester.
+	Item string `json:"item,omitempty"`
 	// Verify is a shell command that must exit 0 after the agent run for the
 	// task to complete — the enforced quality gate. Empty means auto-detect:
 	// Go repositories (go.mod present) run "go build ./... && go test ./...

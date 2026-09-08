@@ -64,6 +64,7 @@ func runAgentTask(t *testing.T, s *queue.SQLiteStore, n int, result executor.Age
 	payload, err := json.Marshal(executor.AgentPayload{
 		Repo:   "demo",
 		Prompt: "do thing " + strconv.Itoa(n),
+		Item:   "todo item " + strconv.Itoa(n),
 	})
 	if err != nil {
 		t.Fatalf("marshal agent payload: %v", err)
@@ -153,7 +154,7 @@ func TestSweepNthCompletionMintsOneReport(t *testing.T) {
 	s := newTestStore(t)
 	sw := newSweeperOrDie(t, s, 2)
 
-	first := runAgentTask(t, s, 0, executor.AgentResult{})
+	first := runAgentTask(t, s, 0, executor.AgentResult{CommitSHA: "aaaa"})
 
 	// Pool-realistic cadence: sweep between completions, so the window
 	// fills gradually and the SECOND completion is the minting trigger.
@@ -192,12 +193,16 @@ func TestSweepNthCompletionMintsOneReport(t *testing.T) {
 		t.Fatalf("window order = [%s, %s], want oldest first", payload.Completed[0].TaskID, payload.Completed[1].TaskID)
 	}
 
-	if payload.Completed[1].Commit != "bbbb" || len(payload.Completed[1].Files) != 1 {
-		t.Fatalf("trigger detail missing: %+v", payload.Completed[1])
+	if payload.Completed[0].Commit != "aaaa" {
+		t.Fatalf("per-completion detail missing for first entry: %+v", payload.Completed[0])
 	}
 
-	if payload.Completed[0].Item == "" || payload.Completed[1].Item == "" {
-		t.Fatalf("item excerpts missing: %+v", payload.Completed)
+	if payload.Completed[1].Commit != "bbbb" || len(payload.Completed[1].Files) != 1 {
+		t.Fatalf("per-completion detail missing for second entry: %+v", payload.Completed[1])
+	}
+
+	if payload.Completed[0].Item != "todo item 0" || payload.Completed[1].Item != "todo item 1" {
+		t.Fatalf("window labels must be the pinned work items, not prompt boilerplate: %+v", payload.Completed)
 	}
 }
 

@@ -194,13 +194,13 @@ func (s *Sweeper) handleFact(ctx context.Context, f journal.Fact, stats *SweepSt
 		return
 	}
 
-	s.maybeMint(ctx, t, f, stats)
+	s.maybeMint(ctx, t, stats)
 }
 
 // maybeMint mints the status task when this completion fills the project's
 // window: >= Every completed agent tasks since the last status task (or
 // ever), and no status task pending/running for the project.
-func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, f journal.Fact, stats *SweepStats) {
+func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats) {
 	var agentPayload executor.AgentPayload
 
 	if err := json.Unmarshal(t.Payload, &agentPayload); err != nil || agentPayload.Repo == "" || agentPayload.Prompt == "" {
@@ -259,16 +259,13 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, f journal.Fact, st
 
 		var ap executor.AgentPayload
 		if json.Unmarshal(at.Payload, &ap) == nil {
-			completion.Item = itemExcerpt(ap.Prompt)
+			completion.Item = workItemLabel(ap)
 		}
 
-		if at.ID == t.ID {
-			var result executor.AgentResult
-			if json.Unmarshal(f.Detail, &result) == nil {
-				completion.Commit = result.CommitSHA
-				completion.Files = result.FilesChanged
-			}
-		}
+		// Every entry carries its own mechanical outcome (commit + files),
+		// pulled from the task's completion fact — richer reports without
+		// git-log guesswork.
+		completion.Commit, completion.Files, _ = s.completionDetail(ctx, at.ID)
 
 		window = append(window, completion)
 	}
@@ -331,6 +328,32 @@ func (s *Sweeper) log(msg string, args ...any) {
 	}
 }
 
+// completionDetail reads one task's completion-fact detail as AgentResult.
+// Best-effort by design: a vanished fact, an empty detail (plain agent runs
+// without a TQ_RESULT self-report) or a foreign shape returns ok=false and
+// the window entry simply carries no commit info.
+func (s *Sweeper) completionDetail(ctx context.Context, id task.ID) (commit string, files []string, ok bool) {
+	facts, err := s.store.FactsForTask(ctx, id.String(), maxWindowItems)
+	if err != nil {
+		return "", nil, false
+	}
+
+	for i := len(facts) - 1; i >= 0; i-- {
+		if facts[i].Type != journal.Completed {
+			continue
+		}
+
+		var result executor.AgentResult
+		if json.Unmarshal(facts[i].Detail, &result) != nil {
+			return "", nil, false
+		}
+
+		return result.CommitSHA, result.FilesChanged, true
+	}
+
+	return "", nil, false
+}
+
 // StatusDedupKey is the dedup identity of the report for one window: the
 // project plus the completion that filled the window. Two windows never
 // share a trigger completion; the same window replayed never mints twice.
@@ -352,6 +375,17 @@ func itemExcerpt(prompt string) string {
 	}
 
 	return line
+}
+
+// workItemLabel is the human-readable line for a window entry: the raw
+// TODO_LIST item when the harvester pinned one, else the prompt's first line
+// (payloads minted before Item existed).
+func workItemLabel(ap executor.AgentPayload) string {
+	if ap.Item != "" {
+		return itemExcerpt(ap.Item)
+	}
+
+	return itemExcerpt(ap.Prompt)
 }
 
 func ptr[v any](val v) *v {
