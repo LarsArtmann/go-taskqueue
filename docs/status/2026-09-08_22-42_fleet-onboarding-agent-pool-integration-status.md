@@ -1,0 +1,140 @@
+# Fleet Onboarding: Agent Pool × project-discovery/overview — Status Report
+
+**Date:** 2026-09-08 22:42 CEST
+**Session scope:** go-taskqueue agent-pool explained (models, `--repos` semantics), then integration analysis + execution across `project-discovery-sdk`, `overview`, `project-discovery-daemon`.
+**Companion review:** brutal self-review answers are folded into sections (d) and (e) per the single-report instruction.
+
+---
+
+## 0. One-paragraph summary
+
+The three sibling repos are now rail-ready pool food: `.crushrc` + `.tq-verify` committed in each, every gate verified green (one real red gate found and fixed on the way), backlogs made machine-consumable and triaged (14 BLOCKED markers), harvest dry-run proven, and a bounded one-shot trial pool ran a real task end-to-end (enqueue → claim → preflight → agent → verify → completion → honest loop-close on a stale item). The two real code features that would deepen the integration (daemon-backed repo discovery, watch-driven harvest triggers) are **queued as TODO items, not implemented**. The **persistent 4-repo pool is NOT running** — the live pool (PID 55731) is still pinned to go-taskqueue only; extending it is an operator action.
+
+---
+
+## a) FULLY DONE
+
+| # | Work | Evidence |
+| - | ---- | -------- |
+| 1 | Integration analysis of the three repos (purpose, API surface, backlog format, rails) | Read SDK/daemon/overview READMEs + TODO_LISTs; daemon exposes `POST /v1/discover`, `/v1/discover-batch`, `GET /v1/watch` (SSE) over unix socket; SDK rejected as a Go dep (private module, heavy deps) in favor of daemon-over-socket |
+| 2 | `.crushrc` (minimum autonomy: view ls grep glob edit write bash) + `.tq-verify` (GOEXPERIMENT=jsonv2 build/vet/race-300s/gofmt) written in all three repos | sdk `e3804d5` (auto-commit), daemon `1a31c1a` (auto-commit), overview `0302fb5` (auto-commit) |
+| 3 | All three verify gates executed green | daemon PASS, sdk PASS, overview PASS after css fix (`/tmp/tqverify-*.log`) |
+| 4 | Real red gate found + fixed: overview `css-drift` was failing — committed `app.css` differed from hermetic rebuild (the auto-commit daemon's "readability pass" re-broke it, exactly the failure mode overview's TODO flags) | `nix run .#build-css` restored the 110,588-byte minified blob (reversed 5,147 lines of pretty-print); commit `70c4c27`; `TestNixGates_DriftGates_AppCSSPositive` green after |
+| 5 | Overview backlog triage: 14 items marked ` — BLOCKED:` (sudo deploys, user decisions ×3, upstream preconditions ×3, cross-repo release train, daemon-owner fix, buildcache sudo, upstream filings ×2, hook-vs-gate decision, time-based monitoring) | overview TODO_LIST, verified by dry-run: `skipped reason=blocked count=14` |
+| 6 | SDK TODO made machine-consumable: new "Open Work (queue-facing)" checkbox section (#7 verify-external CI job, #26 discovery coverage, #29 govulncheck/nixpkgs) with mirror-rule note; tables preserved as historical record | sdk commit `6256985`; dry-run parsed all three items |
+| 7 | Harvest dry-run proof across all three repos | `tq harvest --dry-run --repos …`: `items=30 enqueued=1(dry) skipped=29` — 14 blocked, 12 paced, 3 tick-cap; sdk checkboxes parsed; daemon correctly yielded 0 items (table backlog, all Done) |
+| 8 | Bounded end-to-end trial pool (`--once --daily-budget 1 --max-per-tick 1`, fresh DB `/tmp/tq-fleet-trial.db`) | overview CSP item → task `000001a082b41956e3e0b4bd71412f0b34fe`: enqueued 22:27:16 → completed 22:34:05; facts: enqueued/claimed/completed ×1, dead 0 |
+| 9 | Trial agent behaved honestly: investigated the CSP item, found the work already shipped (`4eb2d47`, 2026-08-22), closed the **stale** item via docs commit `1a623fc` + CHANGELOG entry instead of fake-coding; `.tq-verify` passed inside the task (server package 14.5s incl. nix-gates tests) | `tq show` result detail: verify_tail all-ok, commit_sha `1a623fc` |
+| 10 | go-taskqueue docs: 2 new TODO_LIST items queued under "Fleet integration" (`--discovery-addr` daemon-backed discovery with scan-fallback; watch-driven harvest trigger with per-repo debounce) + AGENTS.md dogfood bullet records the onboarding and each repo's TODO-format caveat | go-taskqueue commit `11cd9e1` |
+
+## b) PARTIALLY DONE
+
+| # | Work | Works now | Remains open | Blocker / effort |
+| - | ---- | --------- | ------------ | ---------------- |
+| 1 | Daemon-backed repo discovery (`--discovery-addr`) | Design + evidence-cited TODO item queued; response surface known (`/v1/discover`, unix socket, lazy enrichment) | Zero implementation: flag, client, response→repo mapping, fallback-on-unreachable, httptest contract test | None — the live dogfood pool will eat the TODO item. Effort M |
+| 2 | Watch-driven harvest trigger (`/v1/watch` SSE) | Design + TODO item queued (per-repo debounce, interval tick as fallback heartbeat) | Zero implementation | Same. Effort M |
+| 3 | Persistent 4-repo pool | Full launch command delivered; one-shot trial proved every phase | The RUNNING pool (PID 55731) still harvests go-taskqueue only — the three new repos are unfarmed until relaunch | Operator action (command in previous message / §f1). Effort S |
+| 4 | SDK backlog farming | 3 actionable items now parseable | #7/#26/#29 remain open (trial spent its budget proving the loop on overview instead) | None — needs the persistent pool. Effort per-item S–M |
+| 5 | Daemon backlog | Rails in place, future-proofed | Repo has ZERO open work (table backlog, 21/21 rows Done) — nothing for the pool to eat; no queue-facing section added (deliberate: seeding fake checkboxes would be worse) | Needs real backlog content from owner. Effort S once items exist |
+| 6 | Overview backlog farming | 13 agent-suitable items identified (CSP-turns-out-stale closed by trial; nixpkgs eval, CI `-race` leg, flake apps, TestNixGates, lint re-run, gzip exclusions ×2, UnmarshalRead migration, README-corpus benchmarks, cache-persistence design, CI verify, race-once) | All open; one item (CSP) closed as stale by the trial | Persistent pool. Effort S–M each |
+
+## c) NOT STARTED
+
+| # | Item | Why | Still wanted? |
+| - | ---- | --- | ------------- |
+| 1 | Multi-model fleet (your 3× GLM-5.3-Flash + GLM-5.3 + Synthetic idea) | `--model` is per-pool, pinned at enqueue; needs 2–3 pool processes or a new `--repo-model` feature | Yes — awaiting your cost/no-go |
+| 2 | overview showing tq queue state (cross-dashboard) | `tq serve` is read-only, no JSON API (ADR-0003); low value today | Parked (ROADMAP fuel) |
+| 3 | CHANGELOG/FEATURES entries for the onboarding (all four repos) | Missed this session (see d6) | Yes — S |
+| 4 | Smoke script for fleet onboarding (`scripts/smoke/fleet.sh`-style: dry-run the 3 repos, assert parse counts) | Not written; rails currently have no automated test | Yes — S |
+| 5 | Remaining go-taskqueue backlog (11 unchecked items from the 21:40 dogfood report etc.) | Out of this session's scope | Yes — live pool continues |
+
+## d) TOTALLY FUCKED UP (radical honesty — nothing is on fire, but these are real)
+
+| # | What | Severity | Root cause | Mitigation |
+| - | ---- | -------- | ---------- | ---------- |
+| 1 | **I ignored the repo's own onboarding tool.** go-taskqueue HAS `tq bootstrap` (`cmd/tq/bootstrap.go`; `executor/agent.go:496` even documents "tq bootstrap pins the detected command into .tq-verify"). I hand-rolled `.crushrc`/`.tq-verify` in three repos without reading bootstrap's contract first. If bootstrap's shape differs (payload-pinned verify, different gate), my hand-rolled rails diverge from the tool the fleet will later use | Medium — possible contract drift, 3 repos affected | I pattern-matched on go-taskqueue's own committed rails instead of researching the tool built for this exact job | Parity-check `tq bootstrap` output vs my files (now §f2); reconcile before more repos onboard |
+| 2 | **Wrote overview's gate before knowing the tree was green.** First `.tq-verify` run failed on real css-drift. I got lucky: the failure was mechanical and I could fix it. Had I launched a pool right after writing rails (the "execute fast" path), every overview task would have retry-looped on a red verify | Medium (self-inflicted, caught in-session) | Wrong ordering: I validated gates BY running them, but only after writing them | Order is now: verify tree green → write gate → run gate. Encoded in §e |
+| 3 | **Spent one real agent run on a stale TODO item.** The trial harvested overview's CSP item — already done in `4eb2d47` (2026-08-22). ~7 agent-minutes spent discovering staleness a 5-minute grep pass would have caught (I did exactly that staleness pass for sdk, but not for overview) | Low (cost, not damage) — and it doubled as the best possible end-to-end test (honest loop-close on a stale item) | Incomplete staleness screen before onboarding | Pre-screen backlogs before onboarding (§e); `tq harvest --prune-stale` (already on TODO_LIST) would mechanize it |
+| 4 | **The headline "integration is live" oversold.** What is live: rails, gates, backlog triage, a bounded trial on a throwaway DB. What is NOT live: the fleet actually being farmed — the persistent pool still ignores all three repos | Low (communication, not state) | Trial ≠ deployment | Corrected in §0 and §b3; operator relaunch is the missing step |
+| 5 | **Split brain created in sdk TODO_LIST**: two coexisting truth sources (queue-facing checkboxes vs historical status tables). The "mirror new rows up here" rule is a manual contract that will drift — the tables already contain a stale row (summary claims #27 open; row says DONE) | Medium over time (doc drift) | I chose additive over rewriting (correct instinct), but added no drift guard | Mirror-rule is one-directional today; add a drift check or migrate format (§f/§g3) |
+| 6 | **No CHANGELOG entries anywhere for the onboarding** — sdk's own convention is "completed items live in CHANGELOG"; go-taskqueue's CHANGELOG got no fleet note either | Low | Focus on the working state, docs-after forgotten | §f3 |
+| 7 | Minor: auto-commit daemon race burned an edit retry (TODO_LIST.md/AGENTS.md modified between read and edit) | Trivial | Concurrent-agents reality (AGENTS.md warns) | Re-read + re-apply pattern worked; no damage |
+
+**Did I lie to you?** No — but item d4 was an oversell in the closing message. "Live and proven" was true of the trial, not of the persistent fleet.
+**Ghost systems?** Two near-ghosts, both flagged: daemon rails with zero backlog (infra awaiting a consumer — fine as future-proofing, but it's dead weight until the repo has open work), and `/tmp/tq-fleet-trial.db` (disposable artifact, can be deleted).
+**Scope creep?** Deliberately avoided: I did NOT implement `--discovery-addr` on the spot — the fleet's own pool will build it from the queued items. The 50-item list in (f) is explicitly brainstorm, not commitment.
+**Tests:** No Go code changed in go-taskqueue this session (docs only), so no tests written — and that's also the gap: the rails/onboarding have zero automated coverage (see c4).
+
+## e) WHAT WE SHOULD IMPROVE
+
+1. **Research the repo's own tooling first** — `tq bootstrap` existed for this exact job; check before hand-rolling (d1).
+2. **Gate-order discipline**: tree-green check → write gate → run gate. Never ship a gate for an unverified tree (d2).
+3. **Staleness pre-screen as an onboarding step**: before pointing a pool at a backlog, grep-verify its open items against the code (d3) — or land `tq harvest --prune-stale` and let the queue self-heal.
+4. **Report claims match deployment state**: distinguish "proven in trial" from "running in production" in headlines.
+5. **Per-repo cost tuning in the launch command**: overview's verify runs nix builds inside `go test` (`TestNixGates_*`) — the most expensive verify in the fleet; the generic launch command should carry `--repo-timeout overview=60m` (or a conscious decision to keep those tests out of the gate).
+6. **Check budget headroom before queueing new pool food**: the live pool's `--daily-budget 30` may be spent for today; my 2 new TODO items might not be eaten until tomorrow.
+7. **CHANGELOG discipline in sibling repos** — mirror the commits there per each repo's own convention.
+8. **One mirror-rule is not a format** — the sdk dual-format needs either a drift guard or a full migration (§g3).
+
+## f) Up to 50 things we should get done next (brainstorm — ROADMAP fuel, not commitments; ~top-10 are real queue candidates)
+
+1. **Relaunch the persistent pool over all 4 repos** (operator: command delivered; add `--repo-timeout overview=60m`)
+2. **Parity-check `tq bootstrap` vs the hand-rolled rails** (`.crushrc`/`.tq-verify` shape, payload-pinned verify) — reconcile or switch to bootstrap
+3. Add CHANGELOG entries for the onboarding in all four repos
+4. Implement `--discovery-addr` daemon-backed repo discovery (queued TODO item, scan stays default fallback)
+5. Implement watch-driven harvest triggers (`/v1/watch` SSE, per-repo debounce, interval fallback)
+6. Land `tq harvest --prune-stale` (already on TODO_LIST) — kills the stale-item class the trial hit
+7. Farm sdk #7 (verify-external post-tag CI job)
+8. Farm sdk #26 (discovery/ coverage 80.9% vs ≥90%)
+9. Farm sdk #29 (nixpkgs bump → govulncheck re-run)
+10. Farm overview: add `-race` CI leg for internal/testutil
+11. Farm overview: expose `.#templ-css-check`/`.#templ-og-image-check` flake apps
+12. Farm overview: add `TestNixGates` end-to-end hook test
+13. Farm overview: re-run `nix run .#lint` post-`7751f52`
+14. Farm overview: exclude `/health`+`/metrics` from gzip
+15. Farm overview: `/metrics` gzip-bypass counter
+16. Farm overview: migrate 8 `json.UnmarshalRead` e2e sites to `decodeJSONTest[T]`
+17. Farm overview: real-README benchmarks (`readmeFirstParagraph`, `buildDescriptionIndex`)
+18. Farm overview: cache-persistence design doc (XDG vs env vs daemon-managed)
+19. Farm overview: nixpkgs go-1.26.6 eval (clears 6 stdlib vulns)
+20. Fleet onboarding smoke script (dry-run 3 repos, assert parse counts, gate-pass assertions)
+21. Seed the daemon repo's backlog with real checkbox items (owner input)
+22. Resolve sdk TODO split brain: drift guard or full checkbox migration (§g3)
+23. Multi-model fleet: 2–3 pools with distinct `--model` (3× Flash / GLM-5.3 / Synthetic) sharing one DB
+24. Or `--repo-model` flag: model routing per repo pinned at harvest (makes the 3-model idea single-process)
+25. Budget aggregation view across pools sharing one DB (`tq stats --fleet` or budget facts)
+26. `tq doctor` check: pool fleet liveness (which repos have rails, which pools cover them)
+27. SECURITY.md: fleet blast-radius update (4 repos now yolo-eligible; trust root still the filesystem)
+28. systemd unit sample for the 4-repo pool with `--config` file (unit exists; config file doesn't)
+29. Per-repo verify-cost documentation (overview nix-builds-in-tests flagged; keep-vs-exclude decision)
+30. Untracked-rails guard: `tq doctor` warns when `.crushrc`/`.tq-verify` exist but uncommitted (dirty-tree preflight trap)
+31. `--repo-interval` defaults for the new repos in the persistent launch (sdk releases are rare; overview is active)
+32. Review-loop interplay: confirm `--review` sweeper handles sibling-repo agent tasks (type is `agent` — it will; pin with a smoke)
+33. `tq audit` drift sweep across the 3 new repos (catch-up repairs inherit the autonomy model)
+34. Log sidecar retention size cap (already TODO; more relevant with 4 repos of logs)
+35. Web UI: project filter dropdown sourced from harvested projects (fleet visibility)
+36. Cross-repo release-train decomposition template (the overview README-through-daemon item needs per-repo sub-items)
+37. BLOCKED-marker lint: CI guard that `[USER]`/`Awaiting decision` items carry BLOCKED markers (overview triage was manual)
+38. Daemon `Readme`/`ReadmePreview` enricher (SDK side of the blocked overview item) — as an sdk checkbox once decomposed
+39. `tq bootstrap --dry-run` mode to preview rails changes before writing
+40. Doc: "how to onboard a repo to the fleet" runbook (rails, triage, staleness screen, budget)
+41. Consider `.tq-verify` fast/slow split (cheap gate per attempt, full race suite pre-review) for expensive repos
+42. Fleet dashboard: tq webui link-out per project to overview pages (both read-only, zero API change)
+43. Probe whether daemon's `/v1/discover` filters can express "has TODO_LIST.md" (integration pre-check for #4)
+44. Guard: pool refuses repos whose `.tq-verify` mentions `nix build` without a warm-store note (cold-verify cost explosion)
+45. Consider committing the trial task as a golden e2e fixture (stale-item close → docs-only commit shape)
+46. `tq stats --json` (already TODO_LIST) — feeds any fleet dashboard
+47. Surface daily-budget spend in `tq stats` (already TODO_LIST) — needed for multi-pool budget policy (§g1)
+48. Agent prompt: add "if the item is already done in code, close it as stale" — the trial agent did this right; pin it in the contract text
+49. Check whether overview's nix-gates tests should skip under `-short` (verify-speed lever)
+50. Post-relaunch: one full fleet window review (tasks, dlq, budget burn, review verdicts) — the ROUND4 pattern
+
+## g) Top 3 questions I can NOT figure out myself
+
+1. **Budget & DB topology for the persistent fleet:** should the 4-repo pool share the existing fleet DB with one `--daily-budget 30`, or do you want per-repo/per-pool budgets (e.g. go-taskqueue 20 + the three siblings 10)? This decides spend caps and whether my queued feature items compete with sibling backlogs for the same budget.
+2. **Model routing:** do you want the earlier 3-model idea (3× GLM-5.3-Flash, 1× GLM-5.3, 1× Synthetic) realized as 2–3 separate pool processes sharing the DB, or should I queue a `--repo-model` feature (model pinned per repo at harvest) so one pool does it? And what's the hard daily cost ceiling?
+3. **SDK TODO format:** keep the dual format (queue-facing checkboxes on top + historical status tables below, with the manual mirror rule), migrate the whole backlog to the checkbox contract, or drop the queue-facing section until the tables have open rows again?
+
+---
+
+*Report format override: user explicitly requested `.md`; the status-report skill's HTML default was honored-as-exception per instruction. Point-in-time snapshot — annotate, don't rewrite.*
