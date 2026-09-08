@@ -158,23 +158,3 @@ templ refreshMeta() {
 	<meta http-equiv="refresh" content="3600"/>
 }
 
-// TaskNotFoundPage is the styled 404: the bare http.Error left the operator
-// on a white void with no way back into the dashboard.
-templ TaskNotFoundPage(id string) {
-	@layout.Base(dashboardProps("task not found", ctxNonce(ctx))) {
-		@pageHeader()
-		<div class="mx-auto w-full max-w-2xl px-4 py-20">
-			@display.EmptyState(display.EmptyStateProps{
-				Title:       "task not found",
-				Description: "No task with id " + id + " lives in this queue — ids are exact, not prefixes.",
-				Icon:        icons.Inbox,
-			})
-			<p class="mt-8 text-center">
-				<a
-					class="font-mono text-sm text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
-					href="/"
-				>← back to the queue</a>
-			</p>
-		</div>
-	}
-}

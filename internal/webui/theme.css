@@ -220,3 +220,310 @@ kbd {
   background: var(--color-gray-800);
   color: var(--color-gray-400);
 }
+
+/* ---------------------------------------------------------------------------
+ * The now band — the page's signature: one always-dark instrument strip
+ * (the bezel) carrying the counts that answer "what is happening right
+ * now?". Identical in both themes: an instrument reads the same day and
+ * night; the content below it changes, the chrome does not.
+ * ------------------------------------------------------------------------- */
+
+.tq-nowband {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-gray-800);
+  border-top: 2px solid var(--color-blue-500);
+  background: linear-gradient(180deg, var(--color-gray-900), var(--color-gray-950));
+  color: var(--color-gray-100);
+  padding: 0.9rem 1.25rem;
+}
+
+.tq-nowband-inner {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.tq-seg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.1rem 1.25rem;
+  border-inline-start: 1px solid var(--color-gray-800);
+  text-decoration: none;
+}
+
+.tq-seg:first-child {
+  border-inline-start: none;
+  padding-inline-start: 0;
+}
+
+.tq-seg-num {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--color-gray-100);
+  font-feature-settings: "zero";
+}
+
+.tq-seg-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-gray-400);
+}
+
+/* Running: the signal color, alive when something is actually working. */
+.tq-seg.card-running .tq-seg-num {
+  color: var(--color-blue-400);
+}
+
+.tq-seg.card-running.tq-seg-hot .tq-seg-label {
+  color: var(--color-blue-400);
+}
+
+.tq-seg.card-running.tq-seg-hot .tq-seg-num {
+  text-shadow: 0 0 14px color-mix(in srgb, var(--color-blue-400) 45%, transparent);
+}
+
+/* Dead: quiet at zero, an alarm at any other number. */
+.tq-seg.card-dead .tq-seg-num {
+  color: var(--color-gray-500);
+}
+
+.tq-seg.card-dead.tq-seg-alarm .tq-seg-num {
+  color: var(--color-red-400);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--color-red-400) 40%, transparent);
+}
+
+.tq-seg.card-dead.tq-seg-alarm .tq-seg-label {
+  color: var(--color-red-400);
+}
+
+/* Meta tail: total / journal / budget as quiet readouts, not cards. */
+.tq-nowband-meta {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-inline-start: auto;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-gray-400);
+}
+
+.tq-nowband-meta .card-budget {
+  color: var(--color-blue-300);
+}
+
+@media (max-width: 640px) {
+  .tq-nowband-inner {
+    gap: 0.5rem 0;
+  }
+
+  .tq-seg {
+    padding-inline: 0.75rem;
+  }
+
+  .tq-nowband-meta {
+    width: 100%;
+    margin-inline-start: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Two-tier task table: active rows always visible, settled rows folded.
+ * ------------------------------------------------------------------------- */
+
+.tq-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-gray-400);
+  margin-bottom: 0.4rem;
+}
+
+.tq-settled {
+  margin-top: 1rem;
+}
+
+.tq-settled > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.45rem 0.25rem;
+  border-radius: 0.5rem;
+  user-select: none;
+}
+
+.tq-settled > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tq-settled > summary::before {
+  content: "▸";
+  font-family: var(--font-mono);
+  color: var(--color-gray-400);
+  transition: transform 0.15s ease;
+}
+
+.tq-settled[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.tq-settled > summary:hover {
+  background: var(--color-gray-100);
+}
+
+.dark .tq-settled > summary:hover {
+  background: var(--color-gray-800);
+}
+
+.tq-settled-title {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-gray-400);
+}
+
+.tq-settled-counts {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-gray-500);
+}
+
+/* Cancelled rows settle into the background; the eye keeps them but does
+ * not read them twice. */
+.tq-settled tr.row-cancelled {
+  opacity: 0.55;
+}
+
+/* ---------------------------------------------------------------------------
+ * Admin actions (AllowWrites): quiet verbs that open reason forms.
+ * ------------------------------------------------------------------------- */
+
+.tq-action > summary {
+  cursor: pointer;
+  list-style: none;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.tq-action > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tq-action-cancel,
+.tq-action-stop,
+.tq-action-rescue {
+  color: var(--color-gray-500);
+  border-bottom: 1px dashed var(--color-gray-300);
+}
+
+.tq-action > summary:hover .tq-action-cancel {
+  color: var(--color-red-600);
+  border-bottom-color: var(--color-red-600);
+}
+
+.tq-action > summary:hover .tq-action-stop {
+  color: var(--color-amber-600);
+  border-bottom-color: var(--color-amber-600);
+}
+
+.tq-action > summary:hover .tq-action-rescue {
+  color: var(--color-green-600);
+  border-bottom-color: var(--color-green-600);
+}
+
+.dark .tq-action-cancel,
+.dark .tq-action-stop,
+.dark .tq-action-rescue {
+  color: var(--color-gray-400);
+  border-bottom-color: var(--color-gray-600);
+}
+
+.tq-action-form {
+  display: flex;
+  gap: 0.4rem;
+  padding-top: 0.4rem;
+  min-width: 15rem;
+}
+
+.tq-action-form input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--color-gray-300);
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: var(--color-gray-50);
+  color: var(--color-gray-900);
+}
+
+.dark .tq-action-form input[type="text"] {
+  border-color: var(--color-gray-700);
+  background: var(--color-gray-900);
+  color: var(--color-gray-100);
+}
+
+.tq-action-form button {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--color-red-600);
+  color: var(--color-red-600);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tq-action-form button:hover {
+  background: var(--color-red-600);
+  color: white;
+}
+
+/* Rescue is a GOOD action: green vocabulary. */
+.tq-action-form select {
+  border: 1px solid var(--color-gray-300);
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: var(--color-gray-50);
+  color: var(--color-gray-900);
+}
+
+.dark .tq-action-form select {
+  border-color: var(--color-gray-700);
+  background: var(--color-gray-900);
+  color: var(--color-gray-100);
+}
+
+.tq-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+/* Cancelled facts settle; the burst of a stale-task cleanup reads once. */
+.tq-fact-cancelled {
+  opacity: 0.5;
+}

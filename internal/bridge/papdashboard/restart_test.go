@@ -81,9 +81,11 @@ func runBridgeUntil(t *testing.T, b *Bridge, cond func() bool) error {
 	return <-done
 }
 
-// waitFor polls cond every 2ms until it holds (2s deadline).
+// waitFor polls cond every 2ms until it holds (5s deadline — generous on
+// purpose: this suite runs under -race on loaded machines, and a tight
+// deadline flakes exactly when the pool's verify gate is busiest).
 func waitFor(cond func() bool) bool {
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(5 * time.Second)
 
 	for time.Now().Before(deadline) {
 		if cond() {
@@ -135,12 +137,16 @@ func TestRestartMidStreamLosesZeroFacts(t *testing.T) {
 
 	// Bridge A boots at head 100, then the burst arrives. The dashboard
 	// accepts the first dead letter but rejects the second (502), so A's
-	// drain stops mid-batch. A's long poll interval guarantees the crash
-	// lands BETWEEN acceptance and the next checkpoint — the worst case.
+	// drain stops mid-batch. A's poll interval is deliberately long: the
+	// crash must land BETWEEN acceptance and A's next tick — and that tick's
+	// pre-drain checkpoint would legitimately persist seq 549 (the failed
+	// fact's predecessor), breaking the "checkpoint still at bootstrap"
+	// assertion. The 600ms interval leaves a ~150x margin over the ~2-4ms
+	// the polling cancel needs once the call lands (the 22:54 flake class).
 	pap.failAfter(1)
 
 	ba := New(src, wm, Config{
-		Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 200 * time.Millisecond,
+		Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 600 * time.Millisecond,
 	})
 
 	ctxA, cancelA := context.WithCancel(context.Background())

@@ -1771,13 +1771,18 @@ func cmdServe(args []string) error {
 		os.Getenv("TQ_SERVE_TOKEN"),
 		"require this token on every request (Authorization: Bearer or ?token=); required for non-loopback --addr (env $TQ_SERVE_TOKEN)",
 	)
+	allowWrites := fs.Bool(
+		"allow-writes",
+		os.Getenv("TQ_SERVE_WRITES") == "1",
+		"enable admin actions in the dashboard (cancel pending/running, rescue dead; env $TQ_SERVE_WRITES=1); CSRF-guarded, and non-loopback binds still require --auth-token",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	cfg := webui.Config{Addr: *addr, Poll: *poll, RequestLog: *verbose, AuthToken: *authToken}
+	cfg := webui.Config{Addr: *addr, Poll: *poll, RequestLog: *verbose, AuthToken: *authToken, AllowWrites: *allowWrites}
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
