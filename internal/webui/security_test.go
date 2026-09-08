@@ -30,7 +30,7 @@ func TestRoutesAreReadOnly(t *testing.T) {
 func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 	t.Parallel()
 
-	s := New(nil, Config{}) // handlers under test never touch the store
+	s := New(newTestStore(t), Config{})
 	server := httptest.NewServer(s.Handler())
 	t.Cleanup(server.Close)
 
@@ -73,7 +73,7 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 func TestSecurityHeadersBeforeAuth(t *testing.T) {
 	t.Parallel()
 
-	s := New(nil, Config{AuthToken: "secret"})
+	s := New(newTestStore(t), Config{AuthToken: "secret"})
 	server := httptest.NewServer(s.Handler())
 	t.Cleanup(server.Close)
 

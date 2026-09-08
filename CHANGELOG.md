@@ -8,6 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- The dashboard now sends strict security headers on every response,
+  including auth rejections: `Content-Security-Policy` (default-src 'none',
+  self-only styles/scripts, no inline, no framing, no form action),
+  `Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff` and
+  `X-Frame-Options: DENY`. The HTTP route table became data
+  (`routeBindings`) so a new read-only guardrail test fails the build the
+  moment anyone registers a mutating handler — the dashboard's "stale
+  dashboard, never journal corruption" guarantee is now enforced, not
+  aspirational. ADR-0003 records the headers and the Phase D
+  `--allow-writes` pre-design (capability flag + token-on-loopback +
+  per-route CSRF) for whenever writes are seriously proposed. The webui
+  smoke script asserts the headers.
+
 - The agent pool is now a first-class service: `tq agent-pool --config
   <file>` (or `$TQ_POOL_CONFIG`) loads flat `key=value` settings with
   flag-name keys applied to every flag not given explicitly — precedence

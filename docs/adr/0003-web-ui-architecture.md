@@ -92,3 +92,26 @@ is unchanged: auth protects confidentiality of payloads/error tails, not
 integrity of the journal. Loopback binds without a token keep today's
 no-auth behavior. TLS and CSRF remain out of scope until `--allow-writes`
 lands (W15).
+
+**Amendment (2026-09-08, M5 security pack):** every response — pages, API,
+static, and auth rejections alike — now carries strict security headers
+(`withSecurityHeaders` wraps the whole chain outside the token guard):
+`Content-Security-Policy: default-src 'none'; style-src 'self'; script-src
+'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri
+'none'; frame-ancestors 'none'; form-action 'none'`, plus
+`Referrer-Policy: no-referrer`, `X-Content-Type-Options: nosniff` and
+`X-Frame-Options: DENY`. This is only possible because the redesign made
+every asset same-origin (external CSS/JS, no inline styles or scripts); the
+guardrail test `TestRoutesAreReadOnly` turns the route table into data and
+fails the build if a mutating route is ever registered.
+
+**Phase D design note (`--allow-writes`, pre-decision):** if the dashboard
+ever gains write endpoints, they must (a) sit behind an explicit
+`--allow-writes` capability flag that `Validate` refuses to combine with a
+loopback-only unauthenticated bind, (b) require a token even on loopback
+(writes are the integrity boundary auth was never protecting), and (c) use
+a per-request CSRF token minted into the page fragment and checked against
+the session, because `form-action 'none'` in the CSP above would block
+legitimate same-origin form posts too and must then be narrowed per-route.
+Until all three exist, the dashboard stays read-only by construction — the
+route-table test is the enforcement mechanism, not documentation.

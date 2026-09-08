@@ -81,9 +81,16 @@ print(f"stats OK: {stats}")
 
 with urllib.request.urlopen(f"{base}/", timeout=2) as r:
     page = r.read().decode()
+    page_headers = dict(r.headers)
+csp = page_headers.get("Content-Security-Policy", "")
 for frag in ("frag-stats", "frag-table", "frag-dlq", "frag-feed"):
     assert frag in page, f"page missing {frag}"
-print("page fragments OK")
+assert "default-src 'none'" in csp and "script-src 'self'" in csp and "unsafe-inline" not in csp, (
+    f"page CSP wrong: {csp}"
+)
+assert page_headers.get("X-Content-Type-Options") == "nosniff", "missing nosniff"
+assert page_headers.get("Referrer-Policy") == "no-referrer", "missing referrer policy"
+print("page fragments + security headers OK")
 
 req = urllib.request.Request(f"{base}/api/events", headers={"Accept": "text/event-stream"})
 with urllib.request.urlopen(req, timeout=3) as r:

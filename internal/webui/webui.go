@@ -131,11 +131,15 @@ func (s *Server) Handler() http.Handler {
 		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
 	}
 
-	var handler http.Handler = withSecurityHeaders(mux)
+	var handler http.Handler = http.Handler(mux)
 
 	if s.cfg.AuthToken != "" {
 		handler = withTokenAuth(s.cfg.AuthToken, handler)
 	}
+
+	// Security headers wrap everything — including auth rejections — so
+	// even the 401 page is CSP-covered.
+	handler = withSecurityHeaders(handler)
 
 	// Request logging wraps auth so rejected requests are logged too.
 	if s.cfg.RequestLog {
