@@ -152,6 +152,37 @@ checkbox, commit, never push). The executor enforces the safety rails:
   exhaustion (`tq dlq --rescue` to retry), and the whole lifecycle replayable
   via `tq facts`.
 
+### Running the pool as a service
+
+The pool is meant to outlive your terminal. A hardened user-level systemd
+unit ships in `deploy/systemd/tq-agent-pool.service` (graceful 45-minute
+drain on stop, `NoNewPrivileges` + read-only system paths, restart on
+failure):
+
+```sh
+mkdir -p ~/.config/systemd/user ~/.config/tq
+cp deploy/systemd/tq-agent-pool.service ~/.config/systemd/user/
+cat > ~/.config/tq/pool.conf <<'CONF'
+# key=value, same names as the flags; flag > env > file precedence
+projects-dir = /home/you/projects
+yolo = true
+project-exclusive = true
+concurrency = 2
+interval = 5m
+daily-budget = 40
+CONF
+systemctl --user daemon-reload
+systemctl --user enable --now tq-agent-pool.service
+loginctl enable-linger $USER   # start at boot without a login session
+journalctl --user -u tq-agent-pool -f
+```
+
+`tq agent-pool --config <file>` (or `$TQ_POOL_CONFIG`) reads flat
+`key=value` settings — same names as the flags — applied to every flag you
+did not pass explicitly. Precedence: **flag > environment > config file >
+built-in default**. Unknown keys are an error, so a typo in the file fails
+the pool loudly instead of silently running with defaults.
+
 With `--cqa-url`, the latest Code-Quality-Agent scan's fixable findings for
 each locally-present repo are enqueued as per-file fix tasks (dedup key
 includes the scan ID, so a new scan arms new work) — the pool fixes what the

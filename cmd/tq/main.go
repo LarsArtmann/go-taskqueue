@@ -547,10 +547,21 @@ func cmdAgentPool(args []string) error {
 	)
 	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
 	cqaToken := fs.String("cqa-token", os.Getenv("CQA_TOKEN"), "CQA bearer token")
+	configPath := fs.String(
+		"config",
+		os.Getenv("TQ_POOL_CONFIG"),
+		"key=value settings file applied to flags not given on the command line (precedence: flag > env > file; $TQ_POOL_CONFIG)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	if *configPath != "" {
+		if err := applyPoolConfigFile(fs, *configPath); err != nil {
+			return err
+		}
 	}
 
 	if *projectsDir == "" && *repos == "" {

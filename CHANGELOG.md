@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- The agent pool is now a first-class service: `tq agent-pool --config
+  <file>` (or `$TQ_POOL_CONFIG`) loads flat `key=value` settings with
+  flag-name keys applied to every flag not given explicitly — precedence
+  flag > environment > file > default, unknown keys fail loudly. The
+  shipped `deploy/systemd/tq-agent-pool.service` unit gained a
+  conservative hardening profile (NoNewPrivileges, ProtectSystem=full,
+  kernel/cgroup namespace isolation, RestrictSUIDSGID, LockPersonality)
+  that still lets agents write repos and reach the network, plus
+  install/linger instructions so the pool survives reboots instead of
+  dying with the terminal session.
+
 - Task search is a SQL filter, not a scan: `queue.Filter` gained `Query`
   (case-insensitive substring over id, type, project, payload, lease
   owner, last error — pushed into escaped SQL LIKE) and `Offset`

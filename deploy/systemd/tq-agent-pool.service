@@ -5,6 +5,9 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
+# Replace with the deployed binary path; keep flags out of the unit and
+# pin them in a config file instead (see --config):
+#   ExecStart=%h/go/bin/tq agent-pool --config %h/.config/tq/pool.conf
 ExecStart=%h/go/bin/tq agent-pool
 Restart=on-failure
 RestartSec=30s
@@ -15,5 +18,27 @@ TimeoutStopSec=45min
 KillSignal=SIGINT
 KillMode=process
 
+# Hardening. Deliberately conservative: the pool execs headless agents that
+# write/commit inside ~/projects and talk to the network, so no sandboxing
+# below may break either. NoNewPrivileges and the kernel/cgroup namespaces
+# cost nothing; ProtectSystem=full keeps /usr,/boot,/etc read-only while
+# leaving $HOME writable for the repos and the binary.
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
 [Install]
 WantedBy=default.target
+
+# Install (user session, no root):
+#   mkdir -p ~/.config/systemd/user && cp deploy/systemd/tq-agent-pool.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now tq-agent-pool.service
+#   journalctl --user -u tq-agent-pool -f
+# Reboot survival: run `loginctl enable-linger $USER` once so the unit
+# starts at boot without an active login session.
