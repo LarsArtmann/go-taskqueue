@@ -116,6 +116,14 @@ sidecars default ON (`~/.local/state/tq/logs/<task-id>.log`; `--log-dir ""`
 turns them off) — a daemon you cannot watch needs its logs. Re-running is
 safe: the managed block is replaced in place, existing user config untouched.
 
+**Model selection rides the repo `.crushrc`, not the pool**: bootstrap never
+composes `--model` into the pool args, because a payload model makes the
+executor pass `crush run -m`, which empirically RESETS the reasoning effort
+to the provider default (crush debug telemetry, 2026-09-08). The `.crushrc`
+`model large <provider/model> --reasoning-effort <effort>` slot is the only
+mechanism that carries effort — it is written by the managed block above and
+applies to both agent runs and interactive crush in that repo.
+
 ### Running it as a daemon
 
 For unattended machines there is a systemd user unit with a wide graceful
