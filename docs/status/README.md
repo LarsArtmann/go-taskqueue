@@ -6,6 +6,7 @@ living documents (re-verify before treating any claim as current).
 
 | Date       | Report                                                                         | Scope                                                          |
 | ---------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| 2026-09-08 | `2026-09-08_23-10_round9-dogfood-pool-relaunch-first-live-review-window.md`     | Round-9 dogfood relaunch: full loop + first live review approve |
 | 2026-09-08 | `2026-09-08_17-21_round5-brutal-self-review-and-full-status.md`                | Brutal self-review + full status (defect list, 50 next items)  |
 | 2026-09-08 | `2026-09-08_17-20_round5-complete-m11-m27.md`                                  | Round-5 execution complete (M11–M27)                           |
 | 2026-09-08 | `2026-09-08_16-20_round5-m14-dogfood-ops.md`                                   | M14: agent-commit review, session-status script, budget alerts |
