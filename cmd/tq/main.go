@@ -672,7 +672,7 @@ func cmdAgentPool(args []string) error {
 
 	q := queue.New(s)
 
-	agentExec := &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo}
+	agentExec := &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo, MaxConcurrent: *maxAgents}
 
 	reg := executor.NewRegistry()
 	reg.Register("sh", executor.NewCommandExecutor(""))
@@ -681,6 +681,7 @@ func cmdAgentPool(args []string) error {
 	// carries review tasks another pool minted (failing them at executor
 	// lookup would burn attempts for nothing).
 	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: agentExec})
+
 	fmt.Fprintf(
 		os.Stderr,
 		"tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, exclusive=%v, harvest every %s, verify enforced)\n",

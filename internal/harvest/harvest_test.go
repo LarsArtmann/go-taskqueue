@@ -631,3 +631,48 @@ func TestAgentPromptsGuardrails(t *testing.T) {
 		})
 	}
 }
+
+// TestRunRepoTimeoutLadder: Config.RepoTimeouts pins the ladder value into
+// each harvested payload's TimeoutMinutes; repos without an entry keep the
+// executor default (field omitted).
+func TestRunRepoTimeoutLadder(t *testing.T) {
+	ctx := context.Background()
+	q := openQueue(t)
+	dir := t.TempDir()
+	writeRepo(t, dir, "big", "## Work\n\n- [ ] heavy item\n")
+	writeRepo(t, dir, "small", "## Work\n\n- [ ] tiny item\n")
+
+	h := New(q, Config{ProjectsDir: dir, RepoTimeouts: map[string]time.Duration{"big": 45 * time.Minute}})
+
+	res, err := h.Run(ctx)
+	if err != nil || len(res.Enqueued) != 2 {
+		t.Fatalf("run: %+v, %v", res.Enqueued, err)
+	}
+
+	store := q.Store
+	for _, enq := range res.Enqueued {
+		tk, err := store.Get(ctx, enq.TaskID)
+		if err != nil {
+			t.Fatalf("get %s: %v", enq.TaskID, err)
+		}
+
+		var p struct {
+			Repo           string `json:"repo"`
+			TimeoutMinutes int    `json:"timeout_minutes"`
+		}
+		if err := json.Unmarshal(tk.Payload, &p); err != nil {
+			t.Fatalf("payload %s: %v", tk.ID, err)
+		}
+
+		switch p.Repo {
+		case "big":
+			if p.TimeoutMinutes != 45 {
+				t.Errorf("big repo timeout_minutes = %d, want 45", p.TimeoutMinutes)
+			}
+		case "small":
+			if p.TimeoutMinutes != 0 {
+				t.Errorf("small repo timeout_minutes = %d, want 0 (default, omitted)", p.TimeoutMinutes)
+			}
+		}
+	}
+}

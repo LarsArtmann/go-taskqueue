@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -419,5 +420,90 @@ func TestVerifyStrategy(t *testing.T) {
 	empty := t.TempDir()
 	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: empty, Prompt: "hi"})); err != nil {
 		t.Fatalf("verify-less repo must pass when the agent succeeds, got %v", err)
+	}
+}
+
+func TestAgentVersion(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	stub := filepath.Join(dir, "versioned-agent")
+	if err := os.WriteFile(stub, []byte("#!/bin/sh\necho 'crush v0.92.1'\necho 'extra line'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	version, err := AgentVersion(context.Background(), stub)
+	if err != nil {
+		t.Fatalf("AgentVersion: %v", err)
+	}
+
+	if version != "crush v0.92.1" {
+		t.Errorf("version = %q, want first stdout line only", version)
+	}
+
+	if _, err := AgentVersion(context.Background(), filepath.Join(dir, "missing")); err == nil {
+		t.Error("missing binary must error, not return empty success")
+	}
+}
+
+// TestMachineWideAgentCapSerializes: with MaxConcurrent=1 two concurrent
+// agent executions must not overlap (flock slots), and both still succeed.
+func TestMachineWideAgentCapSerializes(t *testing.T) {
+	// Not parallel: t.Setenv pins TQ_AGENT_SLOT_DIR.
+	t.Setenv("TQ_AGENT_SLOT_DIR", t.TempDir())
+
+	dir := t.TempDir()
+	log := filepath.Join(dir, "run.log")
+
+	// Each run logs start, waits, logs end: overlapping runs interleave
+	// start/start before end/end.
+	stub := filepath.Join(dir, "slow-agent")
+	script := "#!/bin/sh\necho start >> " + log + "\nsleep 0.4\necho end >> " + log + "\n"
+	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	exec := &AgentExecutor{Bin: stub, MaxConcurrent: 1}
+
+	run := func() error {
+		payload, err := RenderAgentPayload(AgentPayload{Repo: dir, Prompt: "go"})
+		if err != nil {
+			return err
+		}
+
+		return exec.Execute(context.Background(), task.Task{ID: "t-cap", Type: TaskTypeAgent, Payload: payload})
+	}
+
+	var wg sync.WaitGroup
+
+	errs := make(chan error, 2)
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- run()
+		}()
+	}
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("execute under cap: %v", err)
+		}
+	}
+
+	body, err := os.ReadFile(log)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(body)), "\n")
+
+	// Serialized: strictly start,end,start,end. Overlap would show two
+	// adjacent "start" lines.
+	want := []string{"start", "end", "start", "end"}
+	if strings.Join(lines, ",") != strings.Join(want, ",") {
+		t.Fatalf("run log = %v, want %v (cap must serialize runs)", lines, want)
 	}
 }

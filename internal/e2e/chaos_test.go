@@ -116,3 +116,87 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 		t.Fatalf("task %s completed %d times, want exactly 1", taskID, completions)
 	}
 }
+
+// TestChaosKillAgentPoolOnceMidDrain: SIGKILL an `agent-pool --once` while
+// it is mid-task; a restarted pool must reclaim the expired lease, finish
+// the work, and still exit cleanly — and the journal must show exactly one
+// completion (round-5 M15/F77).
+func TestChaosKillAgentPoolOnceMidDrain(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "q.db")
+
+	idLine := runTQ(t, dir, dbPath, "enqueue", "--project", "chaos", "--type", "sh",
+		"--payload", `"sleep 15"`)
+	taskID := strings.TrimSpace(idLine)
+
+	// An empty repos dir: the harvest tick finds nothing, the drain runs the
+	// queued sh task.
+	repos := filepath.Join(dir, "repos")
+	if err := os.MkdirAll(repos, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	pool := exec.Command(tqBin, "agent-pool", "--db", dbPath,
+		"--repos", repos, "--once",
+		"--poll", "20ms", "--lease", "1s", "--concurrency", "1",
+		"--task-timeout", "2m")
+	if err := pool.Start(); err != nil {
+		t.Fatalf("start pool: %v", err)
+	}
+
+	ctx := context.Background()
+	s := openStore(t, dbPath)
+	defer func() { _ = s.Close() }()
+
+	deadline := time.Now().Add(10 * time.Second)
+
+	for {
+		got, err := s.Get(ctx, task.ID(taskID))
+		if err == nil && got.Status == "running" {
+			break
+		}
+
+		if time.Now().After(deadline) {
+			t.Fatalf("task never claimed by pool (last: %+v)", got)
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	if err := pool.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _ = pool.Process.Wait()
+
+	// Restart: the lease (1s) expires and the successor pool reclaims.
+	out, err := runTQErr(t, dir, dbPath, "agent-pool", "--db", dbPath,
+		"--repos", repos, "--once",
+		"--poll", "20ms", "--lease", "1s", "--concurrency", "1",
+		"--task-timeout", "2m")
+	if err != nil {
+		t.Fatalf("restart pool --once: %v\n%s", err, out)
+	}
+
+	got, err := s.Get(ctx, task.ID(taskID))
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	if got.Status != task.Completed {
+		t.Fatalf("status after restart = %s, want completed", got.Status)
+	}
+
+	facts, _ := s.Facts(ctx, 0, 0)
+	completions := 0
+
+	for _, f := range facts {
+		if f.TaskID == taskID && f.Type == "task.completed" {
+			completions++
+		}
+	}
+
+	if completions != 1 {
+		t.Fatalf("task %s completed %d times, want exactly 1", taskID, completions)
+	}
+}
