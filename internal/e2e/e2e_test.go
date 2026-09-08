@@ -270,3 +270,33 @@ func TestForceCancelSubprocess(t *testing.T) {
 		t.Fatalf("cancelled task attempts = %d, want 0", got.Attempts)
 	}
 }
+
+// TestAuditAndTopJSONSubprocess (round-5 M26/F138): the two reporting
+// commands answer machine-readable on a seeded database.
+func TestAuditAndTopJSONSubprocess(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "q.db")
+
+	for range 3 {
+		runTQ(t, dir, dbPath, "enqueue", "--project", "demo", "--type", "sh",
+			"--payload", `"true"`)
+	}
+
+	// agent-pool --once drains them with the stub agent? No worker here:
+	// top --json on pending work is the contract being pinned.
+	out := runTQ(t, dir, dbPath, "top", "--once", "--json")
+	if !strings.Contains(out, `"go-taskqueue"`) && !strings.Contains(out, "demo") {
+		t.Fatalf("top --json missing project rows: %s", out)
+	}
+
+	if !strings.HasPrefix(strings.TrimSpace(out), "{") && !strings.HasPrefix(strings.TrimSpace(out), "[") {
+		t.Fatalf("top --json must be JSON, got: %s", out[:min(40, len(out))])
+	}
+
+	auditOut := runTQ(t, dir, dbPath, "audit", "--projects-dir", dir, "--json")
+	trimmed := strings.TrimSpace(auditOut)
+
+	if !strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[") {
+		t.Fatalf("audit --json must be JSON, got: %s", trimmed[:min(40, len(trimmed))])
+	}
+}

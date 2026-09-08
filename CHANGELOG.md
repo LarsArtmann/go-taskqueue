@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Wave-4 slices**: `tq version` reports the build (ldflags-injected
+  release version in nix builds, VCS revision from build info in
+  go-builds); the `sh` executor gained resource guards
+  (`CommandExecutor.MemoryLimitMB` via ulimit, `Nice` for scheduling
+  priority - POSIX-wrapped before exec so limits bind the payload's
+  whole tree); an e2e pins `tq audit --json` and `tq top --json` against
+  a seeded database; and docs/planning/2026-09-08_round5-m23-feature-designs.md
+  records the v0.3 design sketches (cron via time-bucketed dedup keys,
+  per-repo budgets as a grouped fact projection, retry-policy payloads,
+  DAG templates as enqueue sugar, session chains as a payload convention,
+  generalized project concurrency, webhooks and /metrics as bridges).
 - **Production write API (ADR-0008)**: `tq api` serves non-Go producers
   with POST /api/v1/tasks, GET /api/v1/stats, and GET /api/v1/healthz
   behind a MANDATORY bearer token (no loopback exemption - this surface

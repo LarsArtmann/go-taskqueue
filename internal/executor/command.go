@@ -98,7 +98,10 @@ func (e *CommandExecutor) limited(line string) string {
 	if e.MemoryLimitMB > 0 {
 		b.WriteString(" sh -c 'ulimit -v ")
 		b.WriteString(strconv.Itoa(e.MemoryLimitMB * 1024))
-		b.WriteString("; exec " + quoteSh(line) + "'")
+		// No exec before the user line: ulimit is a shell builtin, and the
+		// user's line may use builtins too. The inner shell just runs it
+		// with the limit already applied (children inherit it).
+		b.WriteString("; " + line + "'")
 
 		return b.String()
 	}
