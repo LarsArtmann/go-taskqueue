@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Postgres store, first slice (ADR-0007)**: `queue.OpenPostgres` is a
+  semantic twin of the SQLite store over jackc/pgx (pure Go, CGO stays
+  off) - same tables, same facts-in-transaction invariant, same dedup and
+  cancel semantics, with claims via SELECT ... FOR UPDATE SKIP LOCKED so
+  workers across machines lock disjoint rows instead of queueing behind
+  one writer. Verified against a real cluster: a lifecycle conformance
+  test (enqueue/dedup/claim/lease/cancel/retry/dead-letter/rescue/orphan/
+  facts), a parallel-claim exclusivity hammer (no task claimed twice),
+  and an env-gated baseline: claim+complete ~838/s at 1k depth vs
+  SQLite's ~234/s at 10k depth (re-measure at equal depth before quoting
+  ratios). CI grows a postgres:16 service job; the SQLite suite stays
+  the default gate.
 - **Web UI a11y + QA pack**: a skip-to-content link (screen-reader first
   tab stop), the connection lamp is now a polite live region
   (role=status) so connection loss is announced, and a test pins the

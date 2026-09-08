@@ -26,7 +26,7 @@
       go-standard = {
         pname = "go-taskqueue";
         version = "0.1.0";
-        vendorHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        vendorHash = "sha256-iofA9U48LWcMVfgVC2RCy1srV+Qdb9W6kS2huc6rEJo=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
         # nixpkgs 26.11 dropped x86_64-darwin; the go-standard default system
