@@ -30,6 +30,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/review"
 	"github.com/larsartmann/go-taskqueue/internal/runactor"
+	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/webui"
 	"github.com/larsartmann/go-taskqueue/internal/worker"
@@ -280,7 +281,6 @@ func cmdWorker(args []string) error {
 	}
 
 	s := mustOpenDBOpts(resolveDB(*db), opts...)
-	defer s.Close()
 
 	// The "sh" executor with empty template runs the payload itself as the
 	// shell line ({"cmd":...} JSON is unwrapped). This keeps the CLI path
@@ -296,8 +296,9 @@ func cmdWorker(args []string) error {
 
 		agentExec := &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo}
 		reg.Register(executor.TaskTypeAgent, agentExec)
-		// Carry review tasks minted by a --review agent-pool sharing this DB.
+		// Carry review and status tasks minted by agent pools sharing this DB.
 		reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: agentExec})
+		reg.Register(executor.TaskTypeStatus, &executor.StatusExecutor{Agent: agentExec})
 	}
 
 	pool := worker.New(s, worker.Config{
@@ -309,8 +310,13 @@ func cmdWorker(args []string) error {
 		Executors:    reg,
 	}, nil)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	// One signal story (runactor): interrupt cancels the pool loop and the
+	// bridge; in-flight tasks finish under their own execution scope
+	// (bounded only by --task-timeout); teardown closes the store AFTER
+	// everything has stopped, so bridge checkpoints always land.
+	g := runactor.New(context.Background())
+	g.InterruptOn(os.Interrupt, syscall.SIGTERM)
+	g.OnShutdown(func() error { return s.Close() })
 
 	if *alertURL != "" {
 		bridge := papdashboard.New(s, s, papdashboard.Config{
@@ -318,42 +324,38 @@ func cmdWorker(args []string) error {
 			APIKey:       *alertKey,
 			PollInterval: *alertPoll,
 		})
-		go func() {
-			if err := bridge.Run(ctx); err != nil {
-				fmt.Fprintln(os.Stderr, "tq: alert bridge failed:", err)
-				stop()
-			}
-		}()
+		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
 
 		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %s\n", *alertURL)
 	}
 
 	if *once {
 		// Timer-friendly mode (parity with agent-pool --once): as soon as
-		// this pool has nothing in flight and no claimable work left, stop
-		// the pool AND cancel the signal context — Start only returns once
-		// ctx is done, so Stop alone would leave the process hanging until
-		// the next signal. Work claimed by OTHER pools, or gated by a future
-		// NotBefore, is left for them / for the next --once run.
-		go func() {
+		// this pool has nothing in flight and no claimable work left, end
+		// the group — Start returns once ctx is done, so Stop alone would
+		// leave the process hanging until the next signal. Work claimed by
+		// OTHER pools, or gated by a future NotBefore, is left for them /
+		// for the next --once run.
+		g.Go("once-drain", func(ctx context.Context) error {
 			q := queue.New(s)
 			for {
 				select {
 				case <-ctx.Done():
-					return
+					return nil
 				case <-time.After(*poll):
 					if pool.InFlight() == 0 && !hasClaimableWork(ctx, q, pool.Owner(), *poll) {
 						pool.Stop()
-						stop()
 
-						return
+						return nil
 					}
 				}
 			}
-		}()
+		})
 	}
 
-	return pool.Start(ctx)
+	g.Go("pool", func(ctx context.Context) error { return pool.Start(ctx) })
+
+	return g.Run()
 }
 
 // defaultProjectsDir resolves the agent projects root: $TQ_PROJECTS_DIR or
@@ -610,6 +612,11 @@ func cmdAgentPool(args []string) error {
 		false,
 		"with --review: a request_changes verdict mints an agent fix task per finding (loop bounded by the budget guard)",
 	)
+	statusEvery := fs.Int(
+		"status-every",
+		0,
+		"automated done-prompt: every N completed agent tasks per project mint one status task that writes a docs/status report and appends next items to TODO_LIST.md (0 = off)",
+	)
 	logDir := fs.String(
 		"log-dir",
 		os.Getenv("TQ_LOG_DIR"),
@@ -721,6 +728,8 @@ func cmdAgentPool(args []string) error {
 	// carries review tasks another pool minted (failing them at executor
 	// lookup would burn attempts for nothing).
 	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: agentExec})
+	// Same carry-parity for status reports minted by a --status-every pool.
+	reg.Register(executor.TaskTypeStatus, &executor.StatusExecutor{Agent: agentExec})
 
 	fmt.Fprintf(
 		os.Stderr,
@@ -761,8 +770,19 @@ func cmdAgentPool(args []string) error {
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: agent reviews enabled (%s)\n", desc)
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	if *statusEvery > 0 {
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: automated status reports every %d agent completion(s) per project\n", *statusEvery)
+	}
+
+	// One signal story (runactor): interrupt cancels the pool loop, the
+	// tick actor and the bridge; in-flight agent tasks finish under their
+	// own execution scope (bounded only by --task-timeout); teardown closes
+	// the store AFTER everything stopped, so bridge checkpoints always land.
+	g := runactor.New(context.Background())
+	g.InterruptOn(os.Interrupt, syscall.SIGTERM)
+	g.OnShutdown(func() error { return s.Close() })
+
+	ctx := g.Ctx()
 
 	if *alertURL != "" {
 		bridge := papdashboard.New(s, s, papdashboard.Config{
@@ -773,12 +793,7 @@ func cmdAgentPool(args []string) error {
 			// resolves itself when the window rolls over).
 			DailyBudget: *dailyBudget,
 		})
-		go func() {
-			if err := bridge.Run(ctx); err != nil {
-				fmt.Fprintln(os.Stderr, "tq: alert bridge failed:", err)
-				stop()
-			}
-		}()
+		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
 
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: forwarding dead letters + budget exhaustion to %s\n", *alertURL)
 	}
@@ -809,6 +824,21 @@ func cmdAgentPool(args []string) error {
 		})
 		if err != nil {
 			return fmt.Errorf("review sweeper: %w", err)
+		}
+	}
+
+	var statusSweeper *status.Sweeper
+
+	if *statusEvery > 0 {
+		var err error
+
+		statusSweeper, err = status.NewSweeper(ctx, s, status.SweeperConfig{
+			Every: *statusEvery,
+			Model: *model,
+			Log:   log,
+		})
+		if err != nil {
+			return fmt.Errorf("status sweeper: %w", err)
 		}
 	}
 
@@ -854,6 +884,16 @@ func cmdAgentPool(args []string) error {
 			}
 		}
 
+		if statusSweeper != nil {
+			stats, err := statusSweeper.Sweep(ctx)
+			if err != nil {
+				log.Error("status sweep failed", "err", err)
+			} else if stats.ReportsEnqueued > 0 || stats.Skipped > 0 {
+				log.Info("status sweep done", "facts", stats.Facts,
+					"reports", stats.ReportsEnqueued, "known", stats.ReportsKnown, "skipped", stats.Skipped)
+			}
+		}
+
 		if cqaBridge == nil {
 			return
 		}
@@ -896,11 +936,15 @@ func cmdAgentPool(args []string) error {
 			log.Info("cqa tick done", "files", len(fixTasks), "new", fresh)
 		}
 	}
-	go func() {
+	g.Go("tick", func(ctx context.Context) error {
 		runTick()
 
 		if *once {
-			return
+			// The once-drain actor decides when the group ends; this actor
+			// must not return before that (a clean return would end it).
+			<-ctx.Done()
+
+			return nil
 		}
 
 		ticker := time.NewTicker(*interval)
@@ -909,12 +953,12 @@ func cmdAgentPool(args []string) error {
 		for {
 			select {
 			case <-ctx.Done():
-				return
+				return nil
 			case <-ticker.C:
 				runTick()
 			}
 		}
-	}()
+	})
 
 	pool := worker.New(s, worker.Config{
 		Owner:        *owner,
@@ -927,38 +971,44 @@ func cmdAgentPool(args []string) error {
 
 	if *once {
 		// Timer-friendly mode: as soon as this pool has nothing in flight
-		// and no claimable work left, stop the pool AND cancel the signal
-		// context — Start only returns once ctx is done, so Stop alone
-		// would leave the process hanging until the next signal. Work
-		// claimed by OTHER pools, or gated by a future NotBefore, is left
-		// for them / for the next --once run.
-		go func() {
+		// and no claimable work left, end the group — Start only returns
+		// once ctx is done, so Stop alone would leave the process hanging
+		// until the next signal. Work claimed by OTHER pools, or gated by a
+		// future NotBefore, is left for them / for the next --once run.
+		g.Go("once-drain", func(ctx context.Context) error {
 			for {
 				select {
 				case <-ctx.Done():
-					return
+					return nil
 				case <-time.After(*poll):
-					// Sweep before the drain check so reviews of work this
-					// drain just completed run in the SAME --once process
-					// (idempotent; dedup keeps repeat sweeps free).
+					// Sweep before the drain check so reviews and status reports
+					// of work this drain just completed run in the SAME --once
+					// process (idempotent; dedup keeps repeat sweeps free).
 					if sweeper != nil {
 						if _, err := sweeper.Sweep(ctx); err != nil {
 							log.Error("review sweep failed", "err", err)
 						}
 					}
 
+					if statusSweeper != nil {
+						if _, err := statusSweeper.Sweep(ctx); err != nil {
+							log.Error("status sweep failed", "err", err)
+						}
+					}
+
 					if pool.InFlight() == 0 && !hasClaimableWork(ctx, q, pool.Owner(), *poll) {
 						pool.Stop()
-						stop()
 
-						return
+						return nil
 					}
 				}
 			}
-		}()
+		})
 	}
 
-	return pool.Start(ctx)
+	g.Go("pool", func(ctx context.Context) error { return pool.Start(ctx) })
+
+	return g.Run()
 }
 
 // hasClaimableWork reports whether any task is running under this owner or

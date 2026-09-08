@@ -278,7 +278,11 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, f journal.Fact, st
 	}
 
 	sort.Slice(window, func(i, j int) bool {
-		return window[i].CompletedAt < window[j].CompletedAt
+		if window[i].CompletedAt != window[j].CompletedAt {
+			return window[i].CompletedAt < window[j].CompletedAt
+		}
+
+		return window[i].TaskID < window[j].TaskID
 	})
 
 	if len(window) > maxWindowItems {

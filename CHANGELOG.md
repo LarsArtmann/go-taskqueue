@@ -8,6 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Automated done-prompt loop — `tq agent-pool --status-every N`**
+  (2026-09-08): every N completed agent tasks per project mint ONE `status`
+  task (watermarked `status-sweeper`, same cursor semantics as the review
+  sweeper; the window is derived from queue state, so restarts never
+  desynchronize it). The status agent runs the done prompt: a full status
+  report at `docs/status/<YYYY-MM-DD_HH-MM>_<name>.md` (done / partial /
+  not started / broken / improvements / up to 50 next items / up to 3
+  questions) AND appends the next items to the repo's TODO_LIST.md —
+  questions as `— BLOCKED:` items the harvester skips until a human answers
+  — closing the loop back into harvest. Mechanical contract:
+  `TQ_RESULT: {"report":"...","next_items":N}` naming an existing,
+  repo-relative report file (path escapes refused; misses are retryable).
+  Loop safety: only `agent` completions count (status tasks never report on
+  themselves), one report in flight per project, every enqueue
+  budget-gated. The executor is registered in every agent-capable pool
+  (`agent-pool`, `tq worker --agents`), so pools without the flag still
+  carry status tasks minted elsewhere. Ops: `tq watermarks show/set
+  status-sweeper`.
 - **`tq bootstrap` — one command from zero to a running agent pool** (2026-09-08):
   per repo it validates the checkout, pins the verify contract into
   `.tq-verify` (auto-detected or `--verify name=cmd`), writes a managed

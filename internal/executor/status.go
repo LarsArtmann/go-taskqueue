@@ -24,11 +24,11 @@ const TaskTypeStatus = "status"
 // covers. The item is an excerpt of the agent's instruction (first line,
 // bounded) — the full prompt stays in `tq show`.
 type StatusCompletion struct {
-	TaskID  string   `json:"task_id"`
-	Item    string   `json:"item"`
-	Commit  string   `json:"commit,omitempty"`
-	Files   []string `json:"files,omitempty"`
-	Attempt string   `json:"completed_at,omitempty"`
+	TaskID      string   `json:"task_id"`
+	Item        string   `json:"item"`
+	Commit      string   `json:"commit,omitempty"`
+	Files       []string `json:"files,omitempty"`
+	CompletedAt string   `json:"completed_at,omitempty"`
 }
 
 // StatusPayload is the payload contract for "status" tasks. Self-contained,
