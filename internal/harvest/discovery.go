@@ -51,10 +51,7 @@ type daemonDiscoverResponse struct {
 // socket, anything else is treated as a host:port TCP address (what httptest
 // servers and networked daemons use).
 func DiscoverReposDaemon(ctx context.Context, addr, projectsDir, todoFile string) ([]string, error) {
-	client, requestURL, err := daemonHTTPClient(addr)
-	if err != nil {
-		return nil, err
-	}
+	client, requestURL := daemonHTTPClient(addr)
 
 	body, err := json.Marshal(daemonDiscoverRequest{SearchPaths: []string{projectsDir}})
 	if err != nil {
@@ -161,26 +158,35 @@ func DiscoverReposFor(ctx context.Context, addr, projectsDir, todoFile string, l
 }
 
 // daemonHTTPClient builds the HTTP client for one daemon address: unix
-// sockets dial through a custom DialContext, TCP addresses use the default
-// transport. The request base URL is always http://localhost because the
-// daemon's routes carry no host semantics.
-func daemonHTTPClient(addr string) (*http.Client, string, error) {
-	socket, ok := strings.CutPrefix(addr, "unix://")
-	if !ok && strings.ContainsRune(addr, filepath.Separator) {
-		socket = addr
-	}
+// sockets dial through a custom DialContext, anything else uses the default
+// transport. The request base URL is http://localhost for sockets because
+// the daemon's routes carry no host semantics; explicit http(s):// and bare
+// host:port addresses are used (or prefixed) as-is, which is what httptest
+// servers and networked daemons need.
+func daemonHTTPClient(addr string) (*http.Client, string) {
+	socket, isUnix := strings.CutPrefix(addr, "unix://")
 
-	if socket == "" {
-		return http.DefaultClient, "http://" + addr, nil
+	switch {
+	case isUnix:
+		return unixSocketClient(socket), "http://localhost"
+	case strings.HasPrefix(addr, "http://"), strings.HasPrefix(addr, "https://"):
+		return http.DefaultClient, strings.TrimSuffix(addr, "/")
+	case strings.ContainsRune(addr, filepath.Separator):
+		return unixSocketClient(addr), "http://localhost"
+	default:
+		return http.DefaultClient, "http://" + addr
 	}
+}
 
+// unixSocketClient dials every request over the unix socket at path.
+func unixSocketClient(path string) *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 				var dialer net.Dialer
 
-				return dialer.DialContext(ctx, "unix", socket)
+				return dialer.DialContext(ctx, "unix", path)
 			},
 		},
-	}, "http://localhost", nil
+	}
 }

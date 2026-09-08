@@ -3,11 +3,14 @@ package harvest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -77,19 +80,11 @@ func newDaemonFixture(t *testing.T) daemonFixture {
 	}
 }
 
-// newDaemonStub starts an httptest server speaking the POST /v1/discover
-// contract: it asserts method + path on every request, decodes the
-// searchPaths request body, and replies with the given projects. It reports
-// the requests it saw.
-func newDaemonStub(t *testing.T, projects []daemonProject) (*httptest.Server, func() []daemonDiscoverRequest) {
-	t.Helper()
-
-	var (
-		mu       sync.Mutex
-		requests []daemonDiscoverRequest
-	)
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// daemonStubHandler is the POST /v1/discover stub: it asserts method + path
+// on every request, decodes the searchPaths request body, and replies with
+// the given projects. Seen requests append to *requests.
+func daemonStubHandler(projects []daemonProject, requests *[]daemonDiscoverRequest, mu *sync.Mutex) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/v1/discover" {
 			http.NotFound(w, r)
 
@@ -104,13 +99,26 @@ func newDaemonStub(t *testing.T, projects []daemonProject) (*httptest.Server, fu
 		}
 
 		mu.Lock()
-		requests = append(requests, req)
+		*requests = append(*requests, req)
 		mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
 
 		_ = json.NewEncoder(w).Encode(daemonDiscoverResponse{Projects: projects})
-	}))
+	})
+}
+
+// newDaemonStub starts an httptest server speaking the POST /v1/discover
+// contract. It reports the requests it saw.
+func newDaemonStub(t *testing.T, projects []daemonProject) (*httptest.Server, func() []daemonDiscoverRequest) {
+	t.Helper()
+
+	var (
+		mu       sync.Mutex
+		requests []daemonDiscoverRequest
+	)
+
+	srv := httptest.NewServer(daemonStubHandler(projects, &requests, &mu))
 	t.Cleanup(srv.Close)
 
 	return srv, func() []daemonDiscoverRequest {
@@ -118,6 +126,65 @@ func newDaemonStub(t *testing.T, projects []daemonProject) (*httptest.Server, fu
 		defer mu.Unlock()
 
 		return requests
+	}
+}
+
+// TestDiscoverReposDaemonUnixSocket covers the primary deployment form: the
+// daemon listening on a unix socket (bare path and unix:// prefixed), which
+// httptest cannot serve.
+func TestDiscoverReposDaemonUnixSocket(t *testing.T) {
+	t.Parallel()
+
+	fx := newDaemonFixture(t)
+
+	var (
+		mu       sync.Mutex
+		requests []daemonDiscoverRequest
+	)
+
+	socket := filepath.Join(t.TempDir(), "daemon.sock")
+
+	ln, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatalf("listen unix: %v", err)
+	}
+
+	httpSrv := &http.Server{Handler: daemonStubHandler([]daemonProject{{Path: fx.withTodoA}}, &requests, &mu)}
+
+	serveErr := make(chan error, 1)
+
+	go func() { serveErr <- httpSrv.Serve(ln) }()
+
+	t.Cleanup(func() {
+		_ = httpSrv.Close()
+	})
+
+	for _, addr := range []string{socket, "unix://" + socket} {
+		repos, err := DiscoverReposDaemon(context.Background(), addr, fx.dir, DefaultTodoFile)
+		if err != nil {
+			t.Fatalf("DiscoverReposDaemon(%s): %v", addr, err)
+		}
+
+		want := []string{fx.withTodoA}
+		if !slices.Equal(repos, want) {
+			t.Fatalf("addr %s: repos = %v, want %v", addr, repos, want)
+		}
+	}
+
+	mu.Lock()
+	saw := len(requests)
+	mu.Unlock()
+
+	if saw != 2 {
+		t.Fatalf("daemon saw %d requests, want 2", saw)
+	}
+
+	select {
+	case err := <-serveErr:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			t.Fatalf("stub server: %v", err)
+		}
+	default:
 	}
 }
 
@@ -239,8 +306,8 @@ func TestDiscoverReposForFallsBackToScan(t *testing.T) {
 		t.Fatalf("DiscoverReposFor: %v", err)
 	}
 
-	want := []string{fx.withTodoA}
-	if len(repos) != len(want) || repos[0] != want[0] {
+	want := []string{fx.withTodoA, fx.withTodoB}
+	if !slices.Equal(repos, want) {
 		t.Fatalf("repos = %v, want %v", repos, want)
 	}
 
@@ -282,8 +349,9 @@ func TestDiscoverReposForScanDefault(t *testing.T) {
 		t.Fatalf("DiscoverReposFor: %v", err)
 	}
 
-	if len(repos) != 1 || repos[0] != fx.withTodoA {
-		t.Fatalf("repos = %v, want [%s]", repos, fx.withTodoA)
+	want := []string{fx.withTodoA, fx.withTodoB}
+	if !slices.Equal(repos, want) {
+		t.Fatalf("repos = %v, want %v", repos, want)
 	}
 }
 
