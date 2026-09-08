@@ -132,11 +132,13 @@ func TestSweepEnqueuesOneReviewPerCompletedAgentTask(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
 
+	// The sweeper is created FIRST (it rides alongside the pool): its
+	// watermark starts at the journal head at first Sweep, then follows.
+	sw, err := NewSweeper(ctx, s, SweeperConfig{})
+
 	done := runAgentTask(t, s, executor.AgentPayload{
 		Repo: "demo", Prompt: "add the frobnicator", Yolo: true,
 	}, executor.AgentResult{CommitSHA: "abc1234", FilesChanged: []string{"frob.go"}})
-
-	sw := NewSweeper(s, SweeperConfig{})
 
 	stats, err := sw.Sweep(ctx)
 	if err != nil {
@@ -190,7 +192,7 @@ func TestSweepSkipsNonAgentCompletions(t *testing.T) {
 
 	finishTask(t, s, enq.ID, nil)
 
-	sw := NewSweeper(s, SweeperConfig{})
+	sw, err := NewSweeper(ctx, s, SweeperConfig{})
 
 	stats, err := sw.Sweep(ctx)
 	if err != nil {
@@ -208,6 +210,8 @@ func TestSweepAutofixMintsFixTasksPerFinding(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
 
+	sw, err := NewSweeper(ctx, s, SweeperConfig{Autofix: true})
+
 	runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "original item"}, executor.AgentResult{CommitSHA: "def5678"})
 
 	runReviewTask(t, s, executor.ReviewPayload{
@@ -223,8 +227,6 @@ func TestSweepAutofixMintsFixTasksPerFinding(t *testing.T) {
 		},
 	})
 
-	sw := NewSweeper(s, SweeperConfig{Autofix: true})
-
 	stats, err := sw.Sweep(ctx)
 	if err != nil {
 		t.Fatalf("sweep: %v", err)
@@ -235,13 +237,23 @@ func TestSweepAutofixMintsFixTasksPerFinding(t *testing.T) {
 	}
 
 	fixes := listByType(t, s, executor.TaskTypeAgent)
-	if len(fixes) != 2 {
-		t.Fatalf("agent fix tasks in store = %d, want 2", len(fixes))
+	// The seeded, completed agent task is also type "agent" — count only
+	// the pending fix tasks the sweep minted.
+	var pendingFixes []task.Task
+
+	for _, fix := range fixes {
+		if fix.Status == task.Pending {
+			pendingFixes = append(pendingFixes, fix)
+		}
+	}
+
+	if len(pendingFixes) != 2 {
+		t.Fatalf("pending fix tasks in store = %d, want 2", len(pendingFixes))
 	}
 
 	var nilMapFix task.Task
 
-	for _, fix := range fixes {
+	for _, fix := range pendingFixes {
 		var p executor.AgentPayload
 
 		if err := json.Unmarshal(fix.Payload, &p); err != nil {
@@ -284,7 +296,11 @@ func TestSweepAutofixIgnoresApproveAndOffSwitch(t *testing.T) {
 		Repo: "demo", ReviewedTask: reviewed.ID.String(), Item: "item",
 	}, executor.ReviewResult{Verdict: executor.VerdictApprove})
 
-	swOff := NewSweeper(s, SweeperConfig{})
+	swOff, err := NewSweeper(ctx, s, SweeperConfig{})
+	if err != nil {
+		t.Fatalf("new sweeper off: %v", err)
+	}
+
 	statsOff, err := swOff.Sweep(ctx)
 	if err != nil {
 		t.Fatalf("sweep off: %v", err)
@@ -294,7 +310,10 @@ func TestSweepAutofixIgnoresApproveAndOffSwitch(t *testing.T) {
 		t.Fatalf("autofix off must not mint fixes, got %+v", statsOff)
 	}
 
-	swOn := NewSweeper(s, SweeperConfig{Autofix: true})
+	swOn, err := NewSweeper(ctx, s, SweeperConfig{Autofix: true})
+	if err != nil {
+		t.Fatalf("new sweeper on: %v", err)
+	}
 
 	statsOn, err := swOn.Sweep(ctx)
 	if err != nil {
@@ -314,9 +333,10 @@ func TestSweepWatermarkResumesAcrossSweeps(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
 
+	sw, err := NewSweeper(ctx, s, SweeperConfig{})
+
 	runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "first"}, executor.AgentResult{})
 
-	sw := NewSweeper(s, SweeperConfig{})
 	if _, err := sw.Sweep(ctx); err != nil {
 		t.Fatalf("first sweep: %v", err)
 	}
@@ -344,7 +364,7 @@ func TestSweepWatermarkStartsAtHead(t *testing.T) {
 	// A sweeper created AFTER the completion starts at the journal head:
 	// historical completions are not replayed (documented gap semantics,
 	// same as the papdashboard bridge watermark).
-	sw := NewSweeper(s, SweeperConfig{})
+	sw, err := NewSweeper(ctx, s, SweeperConfig{})
 
 	stats, err := sw.Sweep(ctx)
 	if err != nil {

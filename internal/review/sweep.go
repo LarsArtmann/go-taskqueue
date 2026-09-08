@@ -70,19 +70,23 @@ type Sweeper struct {
 
 	mu        sync.Mutex
 	watermark int64
-	started   bool
 }
 
 // NewSweeper returns a sweeper over store. The watermark starts at the
-// journal head: completions recorded before this process started are not
-// reviewed (same watermark philosophy as the papdashboard bridge — review
-// the gap via `tq show`, not by replay).
-func NewSweeper(store queue.Store, cfg SweeperConfig) *Sweeper {
+// journal head AT CONSTRUCTION: completions recorded before the sweeper was
+// created are not reviewed (same watermark philosophy as the papdashboard
+// bridge — review the gap via `tq show`, not by replay).
+func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Sweeper, error) {
 	if cfg.PageSize <= 0 {
 		cfg.PageSize = defaultPageSize
 	}
 
-	return &Sweeper{store: store, cfg: cfg}
+	head, err := store.HeadSeq(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("review sweep: read journal head: %w", err)
+	}
+
+	return &Sweeper{store: store, cfg: cfg, watermark: head}, nil
 }
 
 // Sweep consumes new facts since the last pass and enqueues review (and,
@@ -93,16 +97,6 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	defer s.mu.Unlock()
 
 	var stats SweepStats
-
-	if !s.started {
-		head, err := s.store.HeadSeq(ctx)
-		if err != nil {
-			return stats, fmt.Errorf("review sweep: read journal head: %w", err)
-		}
-
-		s.watermark = head
-		s.started = true
-	}
 
 	for {
 		facts, err := s.store.Facts(ctx, s.watermark, s.cfg.PageSize)
