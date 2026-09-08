@@ -3,8 +3,6 @@ package runactor
 import (
 	"context"
 	"errors"
-	"os"
-	"syscall"
 	"testing"
 	"time"
 )
@@ -89,33 +87,8 @@ func TestTeardownErrorsSurface(t *testing.T) {
 	}
 }
 
-func TestInterruptCancelsGracefully(t *testing.T) {
-	g := New(context.Background())
-	g.InterruptOn(os.Interrupt, syscall.SIGTERM)
-
-	cancelled := make(chan struct{})
-
-	g.Go("server", func(ctx context.Context) error {
-		<-ctx.Done()
-		close(cancelled)
-
-		return nil
-	})
-
-	if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
-		t.Fatalf("send SIGTERM: %v", err)
-	}
-
-	select {
-	case <-cancelled:
-	case <-time.After(2 * time.Second):
-		t.Fatal("SIGTERM did not cancel the actor context")
-	}
-
-	if err := g.Run(); err != nil {
-		t.Fatalf("interrupted Run = %v, want nil (graceful)", err)
-	}
-}
+// TestInterruptCancelsGracefully lives in runactor_unix_test.go (it sends a
+// real SIGTERM via syscall.Kill — POSIX only).
 
 // TestExecutionScopeSurvivesShutdown pins THE invariant: the pool's
 // shutdown context must never cancel an in-flight task's execution scope.

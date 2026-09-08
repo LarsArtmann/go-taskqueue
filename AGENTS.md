@@ -63,6 +63,7 @@ facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 | `internal/harvest`  | Scans repos' TODO_LIST.md and enqueues work items as agent tasks; drift audit (`tq audit`)                      |
 | `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick                          |
 | `internal/review`   | Fact-stream sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks from findings |
+| `internal/status`   | Fact-stream sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)   |
 | `internal/webui`    | Read-only live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)          |
 | `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / stats / audit / top / show / dlq / cancel / facts / tail / serve |
 
@@ -107,6 +108,20 @@ is defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   enqueue counts against `--daily-budget`). Every agent-pool and
   `tq worker --agents` registers the review executor, so pools without
   `--review` can still CARRY review tasks another pool minted.
+- **`status` executor** (`internal/executor/status.go` + `internal/status`):
+  payload is `StatusPayload` JSON (repo, project, completed window, model,
+  yolo). The done-prompt agent writes `docs/status/<ts>_<name>.md` and
+  appends next items (questions as `— BLOCKED:` items) to the repo's
+  TODO_LIST.md — that append IS the loop back into harvest. Only the
+  mechanical contract gates completion: output must end with `TQ_RESULT:
+  {"report":"...","next_items":N}` naming an existing REPO-RELATIVE file
+  (absolute/`..` paths refused; missing file is a retryable attempt). The
+  sweeper (`status-sweeper` watermark, head-bootstrap like review) counts
+  only `agent`-type completions since the last status task per project
+  (queue-derived window — restart-safe; status tasks never self-report),
+  one report in flight per project, mints deduped by
+  `status:<project>:<trigger-task-id>`. Every agent-pool and
+  `tq worker --agents` registers the executor (carry parity with reviews).
 - **Idempotent enqueue**: `task.New.DedupKey` set → re-enqueue returns the
   stored task unchanged (no duplicate row, no duplicate fact). Backed by a
   partial unique index; `dedup_key` is added to legacy DBs by migration.
