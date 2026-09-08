@@ -217,7 +217,7 @@ func TestMultiProcessContention(t *testing.T) {
 	const total = 24
 
 	ids := make(map[string]bool, total)
-	for i := range total {
+	for range total {
 		idLine := runTQ(t, dir, dbPath, "enqueue", "--project", "load", "--type", "sh",
 			"--payload", `"true"`)
 		ids[idLine] = true

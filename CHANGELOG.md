@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Queue health pack**: stranded Running tasks (expired lease, nobody
+  reclaimed) can now be recorded in the journal - `tq doctor
+  --mark-orphans` appends an idempotent `task.orphaned` fact per task
+  (owner + lease-expiry detail) without touching task state, and the
+  stuck-queue check points at the flag. The heartbeat cadence contract is
+  pinned by a test (default lease/4, tighter than the planned lease/3,
+  configurable via Config.Heartbeat). A multi-process contention e2e
+  drives two worker processes plus a facts reader against one DB and
+  proves exactly-once completion. A 10k-op baseline test measures SQLite
+  throughput for the record: enqueue ~28.5k tasks/s, claim+complete
+  ~234/s at 10k pending depth (claim cost grows with queue depth - the
+  number to beat in the Postgres slice).
 - **Pool ops pack**: `--max-concurrent-agents N` caps agent processes
   MACHINE-WIDE across every tq pool on the host (flock'd slot files in
   $TMPDIR/tq-agent-slots; a SIGKILLed pool releases its slots via the

@@ -1541,3 +1541,56 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 		t.Fatalf("second MarkOrphaned marked %d, want 0 (idempotent)", n)
 	}
 }
+
+// TestEnqueueClaimBaseline10k measures queue-op throughput at the round-5
+// baseline scale (10k tasks): enqueue rate, claim+complete rate, and a
+// page-query. It asserts only CORRECTNESS (counts) — timings are printed
+// for the FEATURES baseline and re-measured by hand. Skipped under -short.
+func TestEnqueueClaimBaseline10k(t *testing.T) {
+	if testing.Short() {
+		t.Skip("baseline measurement, skipped under -short")
+	}
+
+	ctx := context.Background()
+	s := openTestStore(t)
+	defer func() { _ = s.Close() }()
+
+	const n = 10_000
+
+	start := time.Now()
+	for i := range n {
+		if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "baseline"}); err != nil {
+			t.Fatalf("enqueue %d: %v", i, err)
+		}
+	}
+
+	enqueueDur := time.Since(start)
+
+	start = time.Now()
+	const work = 1_000
+	for range work {
+		got, err := s.ClaimDue(ctx, "bench", time.Minute)
+		if err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := s.Complete(ctx, got.ID, "bench", nil); err != nil {
+			t.Fatalf("complete: %v", err)
+		}
+	}
+
+	claimDur := time.Since(start)
+
+	counts, err := s.StatusCounts(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if counts[task.Pending] != n-work || counts[task.Completed] != work {
+		t.Fatalf("counts = %+v, want pending=%d completed=%d", counts, n-work, work)
+	}
+
+	t.Logf("baseline 10k: enqueue %d tasks in %v (%.0f/s), claim+complete %d in %v (%.0f/s)",
+		n, enqueueDur, float64(n)/enqueueDur.Seconds(),
+		work, claimDur, float64(work)/claimDur.Seconds())
+}
