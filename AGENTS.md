@@ -43,6 +43,13 @@ CI-safe; wraps `serve` in `timeout` itself):
 ./scripts/smoke/webui.sh
 ```
 
+Status-loop smoke (stub agent; sweeper mint → status run → report →
+TODO_LIST append → harvest re-arm → dedup holds, CI-safe):
+
+```bash
+./scripts/smoke/status-loop.sh
+```
+
 Set `TQ_BIN=result/bin/tq` to smoke the nix-built binary instead of a
 fresh `go build`.
 

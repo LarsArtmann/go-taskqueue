@@ -75,6 +75,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   detail page, read best-effort from the completion fact; pages without
   finished reviews render exactly as before
   (`TestReviewVerdictBadgeAndFindings`).
+- **Status-loop hardening** (2026-09-08): the `status` executor now runs
+  the repo verify gate after the report contract (`StatusPayload.Verify`,
+  resolved `.tq-verify` file → payload → auto-detect like agent tasks —
+  the reporter commits, so a broken tree fails the attempt), and the done
+  prompt states a hard scope rule (report + append-only TODO_LIST.md +
+  own commit; report-don't-fix). Minted payloads are richer and more
+  robust: every window entry carries its own commit + files (read from
+  the task's completion fact) and the raw TODO_LIST item
+  (`AgentPayload.Item`, pinned by the harvester) instead of the prompt
+  template's first line; the sweeper propagates the pool's
+  `--allow-dirty` stance and `--task-timeout` budget into the payload
+  (`RequireClean`/`TimeoutMinutes`), so real repos — effectively always
+  dirty under concurrent agents — are not deadlocked by the preflight or
+  starved by the 15m executor default. End-to-end coverage:
+  `scripts/smoke/status-loop.sh` (stub-agent: mint → status run → report
+  → TODO_LIST append → harvest re-arm → dedup holds), wired into
+  `ci-local.sh`.
+- **Status results on every ops surface** (2026-09-08): completed status
+  tasks render a "status: report +N next" badge in the web UI table and
+  a report card (next-items badge, repo-relative report path, log path)
+  on the detail page (`TestStatusResultBadgeAndCard`); `tq show` decodes
+  the completion detail into a typed `result` (AgentResult /
+  ReviewResult / StatusResult by task type); `tq doctor` checks
+  `review-sweeper`/`status-sweeper` watermark liveness — a cursor behind
+  the journal head warns that the sweeper is not running
+  (`doctorWatermarkLiveness`).
 - **Sidecar retention** (2026-09-08): `tq agent-pool --log-dir-max-age`
   (env `TQ_LOG_DIR_MAX_AGE`, default off) sweeps `TQ_LOG_DIR` of `*.log`
   output logs older than the age once per tick — live tasks' logs are
