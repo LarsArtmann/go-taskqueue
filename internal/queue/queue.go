@@ -78,6 +78,9 @@ type Store interface {
 	// ProjectCounts counts tasks per project per status — the GROUP BY
 	// behind the overview chips and per-project views.
 	ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error)
+	// CountTasks counts the tasks matching the filter — the COUNT(*)
+	// pushdown behind pagination ("page 2 of 14").
+	CountTasks(ctx context.Context, f Filter) (int, error)
 	// Close releases resources.
 	Close() error
 }
@@ -95,6 +98,11 @@ type Filter struct {
 	// Offset skips the first Offset matches (pagination); applied after
 	// ordering. Meaningful together with Limit.
 	Offset int
+	// SeverityOrder orders by display severity (dead, running, pending,
+	// cancelled, completed), newest first within a status — the dashboard
+	// table order, stable across pages. Default order stays priority then
+	// age (the queue's fairness order).
+	SeverityOrder bool
 }
 
 // Queue is the facade most consumers use: a Store plus convenience methods.

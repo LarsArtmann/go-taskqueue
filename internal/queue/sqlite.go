@@ -607,7 +607,9 @@ func (s *SQLiteStore) Get(ctx context.Context, id task.ID) (task.Task, error) {
 }
 
 // List returns tasks matching the filter.
-func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
+// listWhere builds the shared WHERE clause for List and CountTasks so the
+// two can never disagree about what a filter matches.
+func listWhere(f Filter) (string, []any) {
 	where := []string{"1=1"}
 	args := []any{}
 
@@ -628,17 +630,35 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 
 	if f.Query != "" {
 		like := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
-		where = append(where, `(id LIKE ? ESCAPE '\' OR type LIKE ? ESCAPE '\' OR
+		where = append(where, "(id LIKE ? ESCAPE '\' OR type LIKE ? ESCAPE '\' OR
 			project LIKE ? ESCAPE '\' OR payload LIKE ? ESCAPE '\' OR
-			lease_owner LIKE ? ESCAPE '\' OR last_error LIKE ? ESCAPE '\')`)
+			lease_owner LIKE ? ESCAPE '\' OR last_error LIKE ? ESCAPE '\')")
 		args = append(args, like, like, like, like, like, like)
+	}
+
+	return strings.Join(where, " AND "), args
+}
+
+func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
+	where, args := listWhere(f)
+
+	order := `ORDER BY priority DESC, created_at ASC`
+	if f.SeverityOrder {
+		// Display severity: dead, running, pending, cancelled, completed;
+		// newest first within a status (the task table's rank order).
+		order = `ORDER BY CASE status
+			WHEN 'dead' THEN 0
+			WHEN 'running' THEN 1
+			WHEN 'pending' THEN 2
+			WHEN 'cancelled' THEN 3
+			ELSE 4 END, created_at DESC`
 	}
 
 	q := `SELECT id, project, type, payload, deps, priority, attempts, max_attempts,
 	             not_before, status, lease_owner, lease_expires, last_error,
 	             created_at, updated_at, completed_at
-	      FROM tasks WHERE ` + strings.Join(where, " AND ") + `
-	      ORDER BY priority DESC, created_at ASC`
+	      FROM tasks WHERE ` + where + `
+	      ` + order + `
 	if f.Limit > 0 || f.Offset > 0 {
 		if f.Limit > 0 {
 			q += " LIMIT ?"
@@ -671,6 +691,17 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 	}
 
 	return out, rows.Err()
+}
+
+// CountTasks counts the tasks matching the filter (COUNT(*) pushdown).
+func (s *SQLiteStore) CountTasks(ctx context.Context, f Filter) (int, error) {
+	where, args := listWhere(f)
+
+	var n int
+
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tasks WHERE `+where, args...).Scan(&n)
+
+	return n, err
 }
 
 // Facts returns journal facts with Seq > after, ascending, bounded to the
