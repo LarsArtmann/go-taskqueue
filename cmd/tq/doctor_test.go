@@ -39,7 +39,15 @@ func resultByName(results []checkResult, name string) checkResult {
 func TestDoctorHealthyEmptyDB(t *testing.T) {
 	path := doctorTestStore(t)
 
-	results, err := runDoctor(context.Background(), doctorOptions{DBPath: path})
+	// Point the agent-binary check at the test binary itself: worst==ok
+	// must not depend on `crush` being installed on the host (the nix
+	// sandbox has no crush — its checkPhase caught this assumption).
+	self, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		t.Fatalf("abs test binary: %v", err)
+	}
+
+	results, err := runDoctor(context.Background(), doctorOptions{DBPath: path, AgentBin: self})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}

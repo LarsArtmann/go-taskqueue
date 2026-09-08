@@ -63,6 +63,21 @@ jobs:
       - name: Ghost-reference check (doc-cited paths exist)
         run: ./scripts/check-doc-refs.sh
 
+  test-windows:
+    # Platform honesty (round-5 M11/F56): POSIX-only suites (e2e, chaos,
+    # agent/review shell stubs) carry //go:build unix and drop out of this
+    # run; everything that remains must actually pass on Windows. No -race
+    # here: the race detector needs cgo + mingw on Windows, and race
+    # coverage stays on the Linux job.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: stable
+      - name: Test
+        run: go test ./... -count=1 -timeout 300s
+
   nix:
     runs-on: ubuntu-latest
     steps:
@@ -70,5 +85,10 @@ jobs:
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
       - name: Nix build
         run: nix build
+      # Default (single-system) check: CI has no aarch64/darwin builders, so
+      # `--all-systems` would fail on missing builders, not on real defects.
+      # Cross-system evaluation is verified locally via
+      # `nix flake check --all-systems --no-build` (round-5 M11/F57); the
+      # supported-systems pin lives in flake.nix.
       - name: Nix flake check
         run: nix flake check

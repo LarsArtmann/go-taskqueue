@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Platform honesty for Windows + the nix sandbox**: POSIX-only test
+  suites now carry `//go:build unix` (agent/review shell-stub suites, the
+  worker stub-agent test split into its own file) and `internal/e2e` grew
+  a `!unix` placeholder so `go test ./...` stays green on Windows. CI
+  gained a `test-windows` job that runs the remaining suites on
+  `windows-latest` (POSIX suites drop out via the tags; no `-race` there,
+  race coverage stays on Linux). `nix flake check --all-systems` passes
+  at eval time for all pinned systems, and the release smoke now runs the
+  nix-built binary through `scripts/smoke/webui.sh`. The nix sandbox also
+  caught a hermeticity bug: `tq doctor`'s healthy-DB test implicitly
+  required `crush` on PATH and now points the agent-binary check at the
+  test binary itself.
 - **`tq doctor`** answers "why is nothing happening?" in one command:
   SQLite integrity + WAL mode, queue mix with expired-lease detection,
   worker liveness (no heartbeats while work waits = FAIL), budget spend
