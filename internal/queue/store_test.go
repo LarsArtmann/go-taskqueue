@@ -276,7 +276,7 @@ func TestCancelPendingOnly(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	if err := s.Cancel(ctx, tk.ID); err != nil {
+	if err := s.Cancel(ctx, tk.ID, ""); err != nil {
 		t.Fatalf("cancel pending: %v", err)
 	}
 
@@ -285,7 +285,7 @@ func TestCancelPendingOnly(t *testing.T) {
 		t.Fatalf("after cancel: %+v", got)
 	}
 
-	if err := s.Cancel(ctx, tk.ID); !errors.Is(err, task.ErrInvalidTransition) {
+	if err := s.Cancel(ctx, tk.ID, ""); !errors.Is(err, task.ErrInvalidTransition) {
 		t.Fatalf("double cancel err = %v, want ErrInvalidTransition", err)
 	}
 }
@@ -1530,11 +1530,11 @@ func TestCancelRunningRequestAndHonour(t *testing.T) {
 	}
 
 	// Pending-only Cancel refuses running tasks (that is --force territory).
-	if err := s.Cancel(ctx, tk.ID); !errors.Is(err, task.ErrInvalidTransition) {
+	if err := s.Cancel(ctx, tk.ID, ""); !errors.Is(err, task.ErrInvalidTransition) {
 		t.Fatalf("Cancel on running err = %v, want ErrInvalidTransition", err)
 	}
 
-	if err := s.CancelRunning(ctx, tk.ID); err != nil {
+	if err := s.CancelRunning(ctx, tk.ID, ""); err != nil {
 		t.Fatalf("CancelRunning: %v", err)
 	}
 
@@ -1543,7 +1543,7 @@ func TestCancelRunningRequestAndHonour(t *testing.T) {
 	}
 
 	// Idempotent: a second request appends nothing.
-	if err := s.CancelRunning(ctx, tk.ID); err != nil {
+	if err := s.CancelRunning(ctx, tk.ID, ""); err != nil {
 		t.Fatalf("second CancelRunning: %v", err)
 	}
 
@@ -1587,7 +1587,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.CancelRunning(ctx, tk.ID); err != nil {
+	if err := s.CancelRunning(ctx, tk.ID, ""); err != nil {
 		t.Fatalf("CancelRunning: %v", err)
 	}
 
@@ -1615,6 +1615,123 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 
 	if !sawReleased || !sawCancelled {
 		t.Fatalf("finalize facts missing (released=%v cancelled=%v): %+v", sawReleased, sawCancelled, facts)
+	}
+}
+
+// TestCancelReasonStoredInFactDetail pins the forensics contract: a
+// --reason-style Cancel lands in the task.cancelled fact's detail ("reason"
+// key), an empty reason stores none, and a cooperative cancel carries the
+// operator's reason from the request fact onto the final cancelled fact.
+func TestCancelReasonStoredInFactDetail(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	reasonFor := func(t *testing.T, id task.ID, ftype journal.FactType) string {
+		t.Helper()
+
+		facts, err := s.FactsForTask(ctx, id.String(), 0)
+		if err != nil {
+			t.Fatalf("FactsForTask: %v", err)
+		}
+
+		for _, f := range facts {
+			if f.Type != ftype {
+				continue
+			}
+
+			var d struct {
+				Reason string `json:"reason"`
+			}
+
+			_ = json.Unmarshal(f.Detail, &d)
+
+			return d.Reason
+		}
+
+		return ""
+	}
+
+	// Pending cancel with a reason (the tq cancel --reason path).
+	withReason, err := s.Enqueue(ctx, task.New{Type: "a"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if err := s.Cancel(ctx, withReason.ID, "stale: superseded by task-42"); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	if got := reasonFor(t, withReason.ID, journal.Cancelled); got != "stale: superseded by task-42" {
+		t.Fatalf("task.cancelled reason = %q, want the stored reason", got)
+	}
+
+	// Pending cancel WITHOUT a reason keeps the fact detail empty.
+	noReason, err := s.Enqueue(ctx, task.New{Type: "a"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if err := s.Cancel(ctx, noReason.ID, ""); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	facts, err := s.FactsForTask(ctx, noReason.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("FactsForTask: %v", err)
+	}
+
+	for _, f := range facts {
+		if f.Type == journal.Cancelled && len(f.Detail) != 0 {
+			t.Fatalf("cancel without reason stored detail %q, want empty", f.Detail)
+		}
+	}
+
+	// Cooperative cancel: the reason rides the request fact and is carried
+	// onto the final task.cancelled fact by the owner-side finalize.
+	coop, err := s.Enqueue(ctx, task.New{Type: "a"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.CancelRunning(ctx, coop.ID, "duplicate of task-7"); err != nil {
+		t.Fatalf("CancelRunning: %v", err)
+	}
+
+	if got := reasonFor(t, coop.ID, journal.CancelRequested); got != "duplicate of task-7" {
+		t.Fatalf("task.cancel-requested reason = %q, want the stored reason", got)
+	}
+
+	if err := s.CancelOwned(ctx, coop.ID, "w1"); err != nil {
+		t.Fatalf("CancelOwned: %v", err)
+	}
+
+	facts, err = s.FactsForTask(ctx, coop.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("FactsForTask: %v", err)
+	}
+
+	var cancelled journal.Fact
+
+	for _, f := range facts {
+		if f.Type == journal.Cancelled {
+			cancelled = f
+		}
+	}
+
+	var d struct {
+		Cooperative string `json:"cooperative"`
+		Reason      string `json:"reason"`
+	}
+	if err := json.Unmarshal(cancelled.Detail, &d); err != nil {
+		t.Fatalf("cancelled detail %q: %v", cancelled.Detail, err)
+	}
+
+	if d.Cooperative != "true" || d.Reason != "duplicate of task-7" {
+		t.Fatalf("cooperative cancelled detail = %+v, want cooperative + carried reason", d)
 	}
 }
 

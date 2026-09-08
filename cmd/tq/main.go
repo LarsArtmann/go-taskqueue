@@ -61,7 +61,7 @@ Usage:
   tq top [--interval DUR] [--once] [--json] [--db PATH]
   tq show TASK_ID [--db PATH]
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]]
-  tq cancel TASK_ID [--force] [--db PATH]   (--force: cooperative cancel of a running task)
+tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative cancel of a running task)
   tq facts [--db PATH] [--after SEQ]
   tq tail [-f] [--db PATH] [--after SEQ]
   tq watermarks show [--db PATH]   (journal consumer cursors)
@@ -1393,13 +1393,19 @@ func cmdCancel(args []string) error {
 		"running tasks: request a cooperative cancel (observed at the worker's next heartbeat)",
 	)
 
+	reason := fs.String(
+		"reason",
+		"",
+		"why the task is cancelled; stored in the cancel fact detail for forensics",
+	)
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
 	if fs.NArg() != 1 {
-		return errors.New("usage: tq cancel TASK_ID [--force]")
+		return errors.New("usage: tq cancel TASK_ID [--force] [--reason WHY]")
 	}
 
 	s := mustOpenDB(resolveDB(*db))
@@ -1415,7 +1421,7 @@ func cmdCancel(args []string) error {
 
 	switch t.Status {
 	case task.Pending:
-		return s.Cancel(ctx, id)
+		return s.Cancel(ctx, id, *reason)
 	case task.Running:
 		if !*force {
 			return fmt.Errorf(
@@ -1424,7 +1430,7 @@ func cmdCancel(args []string) error {
 			)
 		}
 
-		if err := s.CancelRunning(ctx, id); err != nil {
+		if err := s.CancelRunning(ctx, id, *reason); err != nil {
 			return err
 		}
 

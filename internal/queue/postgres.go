@@ -366,6 +366,11 @@ func (s *PostgresStore) ClaimDue(ctx context.Context, owner string, lease time.D
 			}
 
 			if requested {
+				reason, err := cancelRequestedReasonPgTx(ctx, tx, id)
+				if err != nil {
+					return err
+				}
+
 				if err := s.appendFact(ctx, tx, journal.Fact{
 					TaskID: id, Type: journal.Released, Owner: prevOwner,
 				}); err != nil {
@@ -385,7 +390,7 @@ func (s *PostgresStore) ClaimDue(ctx context.Context, owner string, lease time.D
 
 				if err := s.appendFact(ctx, tx, journal.Fact{
 					TaskID: id, Type: journal.Cancelled, Owner: owner,
-					Detail: mustJSON(map[string]string{"cooperative": "true", "after": "lease-expiry"}),
+					Detail: cooperativeCancelDetail(reason, "lease-expiry"),
 				}); err != nil {
 					return err
 				}
@@ -650,8 +655,9 @@ func (s *PostgresStore) Heartbeat(ctx context.Context, id task.ID, owner string,
 	return nil
 }
 
-// Cancel withdraws a Pending task.
-func (s *PostgresStore) Cancel(ctx context.Context, id task.ID) error {
+// Cancel withdraws a Pending task. A non-empty reason is stored in the
+// task.cancelled fact detail ("reason" key).
+func (s *PostgresStore) Cancel(ctx context.Context, id task.ID, reason string) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		var st string
 
@@ -679,12 +685,16 @@ func (s *PostgresStore) Cancel(ctx context.Context, id task.ID) error {
 			return task.ErrInvalidTransition
 		}
 
-		return s.appendFact(ctx, tx, journal.Fact{TaskID: id.String(), Type: journal.Cancelled})
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(), Type: journal.Cancelled, Detail: cancelReasonDetail(reason),
+		})
 	})
 }
 
 // CancelRunning records the cooperative cancel request (idempotent fact).
-func (s *PostgresStore) CancelRunning(ctx context.Context, id task.ID) error {
+// A non-empty reason rides the request fact's detail and is carried onto
+// the final task.cancelled fact by CancelOwned / the reclaim finalize.
+func (s *PostgresStore) CancelRunning(ctx context.Context, id task.ID, reason string) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		var st string
 
@@ -713,7 +723,9 @@ func (s *PostgresStore) CancelRunning(ctx context.Context, id task.ID) error {
 			return nil
 		}
 
-		return s.appendFact(ctx, tx, journal.Fact{TaskID: id.String(), Type: journal.CancelRequested})
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(), Type: journal.CancelRequested, Detail: cancelReasonDetail(reason),
+		})
 	})
 }
 
@@ -728,7 +740,9 @@ func (s *PostgresStore) CancelRequested(ctx context.Context, id task.ID) (bool, 
 	return requested, err
 }
 
-// CancelOwned finalizes a cooperative cancel (lease holder).
+// CancelOwned finalizes a cooperative cancel (lease holder). The
+// operator's reason (from the cancel-requested fact) is carried onto the
+// cancelled fact.
 func (s *PostgresStore) CancelOwned(ctx context.Context, id task.ID, owner string) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `
@@ -743,11 +757,44 @@ func (s *PostgresStore) CancelOwned(ctx context.Context, id task.ID, owner strin
 			return task.ErrLeaseNotHeld
 		}
 
+		reason, err := cancelRequestedReasonPgTx(ctx, tx, id.String())
+		if err != nil {
+			return err
+		}
+
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Cancelled, Owner: owner,
-			Detail: mustJSON(map[string]string{"cooperative": "true"}),
+			Detail: cooperativeCancelDetail(reason, ""),
 		})
 	})
+}
+
+// cancelRequestedReasonTx reads the reason a task's latest cancel request
+// carried ("" when none): the forensics trail the cooperative-cancel
+// finalizers copy onto the task.cancelled fact. Best-effort: an unparsable
+// detail yields "", never an error — the finalize must not fail on cosmetics.
+func cancelRequestedReasonPgTx(ctx context.Context, tx pgx.Tx, id string) (string, error) {
+	var detail string
+	err := tx.QueryRow(ctx, `
+		SELECT detail FROM facts
+		WHERE task_id = $1 AND type = 'task.cancel-requested'
+		ORDER BY seq DESC LIMIT 1`, id).Scan(&detail)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	var d struct {
+		Reason string `json:"reason"`
+	}
+	if json.Unmarshal([]byte(detail), &d) != nil {
+		return "", nil
+	}
+
+	return d.Reason, nil
 }
 
 // MarkOrphaned records stranded expired-lease Running tasks (idempotent).

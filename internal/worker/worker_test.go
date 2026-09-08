@@ -596,7 +596,7 @@ func TestCooperativeCancelMidRun(t *testing.T) {
 	<-started
 	waitFor(t, ctx, store, enq.ID, task.Running)
 
-	if err := store.CancelRunning(ctx, enq.ID); err != nil {
+	if err := store.CancelRunning(ctx, enq.ID, ""); err != nil {
 		t.Fatalf("CancelRunning: %v", err)
 	}
 

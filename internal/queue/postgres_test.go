@@ -103,7 +103,7 @@ func TestPostgresLifecycle(t *testing.T) {
 	}
 
 	// Cooperative cancel mid-run: request observed, owner finalizes.
-	if err := s.CancelRunning(ctx, enq.ID); err != nil {
+	if err := s.CancelRunning(ctx, enq.ID, ""); err != nil {
 		t.Fatalf("cancel-running: %v", err)
 	}
 
