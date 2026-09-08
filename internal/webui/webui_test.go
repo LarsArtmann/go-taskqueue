@@ -17,6 +17,7 @@ import (
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	"github.com/larsartmann/templ-components/display"
 )
 
 // newTestStore opens a throwaway SQLite store.
@@ -505,6 +506,109 @@ func TestGoldenFragments(t *testing.T) {
 	} {
 		if !strings.Contains(stats, want) {
 			t.Errorf("stats fragment missing card %s", want)
+		}
+	}
+}
+
+// TestBudgetCardRendersFromSnapshot proves the wiring end to end: a server
+// with DailyBudget set projects today's enqueues into the stats fragment.
+func TestBudgetCardRendersFromSnapshot(t *testing.T) {
+	s := newTestStore(t)
+	srv := New(s, Config{Addr: "127.0.0.1:0", Poll: 20 * time.Millisecond, Heartbeat: 100 * time.Millisecond, DailyBudget: 5})
+	enqueue(t, s, "sh", "demo")
+	enqueue(t, s, "sh", "demo")
+
+	data, err := srv.loadSnapshot(context.Background(), FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if data.Budget == nil || data.Budget.Cap != 5 || data.Budget.Spent != 2 {
+		t.Fatalf("budget = %+v, want cap=5 spent=2", data.Budget)
+	}
+
+	stats := renderComponent(context.Background(), StatusCards(data))
+	for _, want := range []string{"card-budget", "budget today", "2/5"} {
+		if !strings.Contains(stats, want) {
+			t.Errorf("stats fragment missing %q", want)
+		}
+	}
+}
+
+// TestBudgetCardAbsentWithoutCap pins the default: no DailyBudget, no card.
+func TestBudgetCardAbsentWithoutCap(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "demo")
+
+	data, err := srv.loadSnapshot(context.Background(), FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if data.Budget != nil {
+		t.Fatalf("budget = %+v, want nil without a configured cap", data.Budget)
+	}
+
+	if stats := renderComponent(context.Background(), StatusCards(data)); strings.Contains(stats, "card-budget") {
+		t.Error("stats fragment shows budget card without a configured cap")
+	}
+}
+
+func TestBudgetViewTone(t *testing.T) {
+	cases := []struct {
+		cap, spent int
+		want       display.StatTone
+	}{
+		{cap: 15, spent: 2, want: display.StatToneGreen},
+		{cap: 15, spent: 10, want: display.StatToneGreen},
+		{cap: 15, spent: 12, want: display.StatToneYellow},
+		{cap: 15, spent: 15, want: display.StatToneRed},
+		{cap: 15, spent: 20, want: display.StatToneRed},
+	}
+	for _, tc := range cases {
+		if got := (BudgetView{Cap: tc.cap, Spent: tc.spent}).Tone(); got != tc.want {
+			t.Errorf("Tone(cap=%d, spent=%d) = %s, want %s", tc.cap, tc.spent, got, tc.want)
+		}
+	}
+}
+
+func TestReadiness(t *testing.T) {
+	now := time.Now()
+	cases := []struct {
+		name string
+		task task.Task
+		want string
+	}{
+		{"no notBefore", task.Task{ID: task.NewID(), Status: task.Pending}, ""},
+		{"not pending", task.Task{ID: task.NewID(), Status: task.Running, NotBefore: now.Add(time.Hour)}, ""},
+		{"future wait", task.Task{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(12 * time.Minute)}, "in 12m"},
+		{"claimable", task.Task{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(-time.Minute)}, "ready"},
+	}
+	for _, tc := range cases {
+		if got := readiness(now, tc.task); got != tc.want {
+			t.Errorf("%s: readiness = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestReadinessColumnRenders pins the ready column: header present, waiting
+// tasks show "in …", claimable ones show "ready", others stay empty.
+func TestReadinessColumnRenders(t *testing.T) {
+	now := time.Now()
+	data := DashboardData{
+		Counts: map[task.Status]int{task.Pending: 3},
+		Now:    now,
+		Tasks: []task.Task{
+			{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(2 * time.Hour), CreatedAt: now, UpdatedAt: now},
+			{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(-time.Minute), CreatedAt: now, UpdatedAt: now},
+			{ID: task.NewID(), Status: task.Pending, CreatedAt: now, UpdatedAt: now},
+		},
+	}
+
+	table := renderComponent(context.Background(), TaskTable(data))
+	for _, want := range []string{"ready", "in 2h"} {
+		if !strings.Contains(table, want) {
+			t.Errorf("task table missing %q", want)
 		}
 	}
 }

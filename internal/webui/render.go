@@ -335,10 +335,8 @@ func truncate(s string, limit int) string {
 	return s[:limit-1] + "…"
 }
 
-// timeAgo renders a coarse humanized duration between now and t.
-func timeAgo(now, t time.Time) string {
-	d := max(now.Sub(t), 0)
-
+// durationUntil renders a coarse humanized forward duration (waits).
+func durationUntil(d time.Duration) string {
 	switch {
 	case d < time.Minute:
 		return fmt.Sprintf("%ds", int(d.Seconds()))
@@ -349,6 +347,11 @@ func timeAgo(now, t time.Time) string {
 	default:
 		return fmt.Sprintf("%dd", int(d.Hours()/hoursPerDay.Hours()))
 	}
+}
+
+// timeAgo renders a coarse humanized duration between now and t.
+func timeAgo(now, t time.Time) string {
+	return durationUntil(max(now.Sub(t), 0))
 }
 
 // startOfDay truncates to local midnight (same semantics as the budget
@@ -370,7 +373,7 @@ func readiness(now time.Time, t task.Task) string {
 		return "ready"
 	}
 
-	return "in " + timeAgo(now, t.NotBefore)
+	return "in " + durationUntil(d)
 }
 
 // factBadgeClass maps a fact type to a status-like CSS badge class.
