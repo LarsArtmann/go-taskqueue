@@ -68,6 +68,25 @@ func (f *fakeSource) Get(_ context.Context, id task.ID) (task.Task, error) {
 	return t, nil
 }
 
+func (f *fakeSource) FactsForTask(_ context.Context, id string, limit int) ([]journal.Fact, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	var out []journal.Fact
+
+	for _, x := range f.facts {
+		if x.TaskID == id {
+			out = append(out, x)
+		}
+	}
+
+	if limit > 0 && len(out) > limit {
+		out = out[len(out)-limit:]
+	}
+
+	return out, nil
+}
+
 func (f *fakeSource) add(fcts ...journal.Fact) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -12,8 +12,11 @@
 // from its persisted checkpoint instead of the journal head: incidents
 // that fired while the bridge was down are replayed with identical
 // idempotency keys, and Config.FromSeq overrides the checkpoint for an
-// ops-initiated replay. With no WatermarkStore configured the bridge keeps
-// the legacy volatile behavior (head start, nothing persisted).
+// ops-initiated replay. A completion resolves the alert of any task that
+// ever dead-lettered — the correlation is derived from the task's own
+// fact trail, not process memory, so it survives restarts too. With no
+// WatermarkStore configured the bridge keeps the legacy volatile behavior
+// (head start, nothing persisted).
 package papdashboard
 
 import (
@@ -36,6 +39,10 @@ type FactSource interface {
 	Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error)
 	HeadSeq(ctx context.Context) (int64, error)
 	Get(ctx context.Context, id task.ID) (task.Task, error)
+	// FactsForTask reads one task's own fact trail — the durable answer to
+	// "did this task ever dead-letter?" (a read, so the no-mutation
+	// contract holds).
+	FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error)
 }
 
 // WatermarkStore persists the bridge's journal cursor across restarts.
@@ -96,19 +103,12 @@ type Bridge struct {
 	cfg         Config
 	log         *slog.Logger
 	client      *http.Client
-	alerted     map[string]alertedTask
 
 	// Daily-budget telemetry (Config.DailyBudget): the same projection the
 	// pool's budget.Guard uses, maintained incrementally from Enqueued facts.
 	budgetDay     string // YYYY-MM-DD the counters below belong to
 	budgetSpent   int
 	budgetAlerted bool // alert fired for budgetDay (fires at most once/day)
-}
-
-// alertedTask remembers the alert raised for a task so a later completion
-// resolves exactly that alert.
-type alertedTask struct {
-	title string
 }
 
 // New builds a Bridge. checkpoints persists the journal cursor across
@@ -146,7 +146,6 @@ func New(store FactSource, checkpoints WatermarkStore, cfg Config) *Bridge {
 		cfg:         cfg,
 		log:         log,
 		client:      cfg.Client,
-		alerted:     map[string]alertedTask{},
 	}
 }
 
@@ -349,8 +348,10 @@ func (b *Bridge) startWatermark(ctx context.Context) (startDecision, error) {
 	}, nil
 }
 
-// forward mirrors one fact. Completed tasks only resolve alerts this bridge
-// raised (process lifetime), so resolve noise stays at zero.
+// forward mirrors one fact. A Completed task resolves the alert of any
+// task that ever dead-lettered — derived from the task's own fact trail,
+// not process memory, so a restart cannot lose the correlation (a resolve
+// for an alert PapDashboard never held lands as a logged 4xx).
 func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 	if err := b.trackBudget(ctx, f); err != nil {
 		return err
@@ -380,11 +381,13 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 			return err
 		}
 
-		b.alerted[f.TaskID] = alertedTask{title: title}
-
 	case journal.Completed:
-		raised, ok := b.alerted[f.TaskID]
-		if !ok {
+		deadLettered, err := b.everDeadLettered(ctx, f.TaskID)
+		if err != nil {
+			return err
+		}
+
+		if !deadLettered {
 			return nil
 		}
 
@@ -394,7 +397,7 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 		}
 
 		payload := map[string]any{
-			"title":      raised.title,
+			"title":      alertTitle(t),
 			"body":       fmt.Sprintf("Task %s completed after dead-letter (rescued).", t.ID),
 			"sourceApp":  b.cfg.SourceApp,
 			"resolvedBy": b.cfg.SourceApp + "-bridge",
@@ -402,11 +405,27 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 		if err := b.post(ctx, "alert.resolved", idempotencyKey("resolve", f.Seq), t.ID.String(), f.Seq, payload); err != nil {
 			return err
 		}
-
-		delete(b.alerted, f.TaskID)
 	}
 
 	return nil
+}
+
+// everDeadLettered answers from the task's own fact trail — the journal is
+// the source of truth for "this task once exhausted its attempts", so the
+// bridge holds no correlation state of its own.
+func (b *Bridge) everDeadLettered(ctx context.Context, taskID string) (bool, error) {
+	trail, err := b.store.FactsForTask(ctx, taskID, 0)
+	if err != nil {
+		return false, fmt.Errorf("load fact trail for %s: %w", taskID, err)
+	}
+
+	for _, tf := range trail {
+		if tf.Type == journal.DeadLettered {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // post sends one ingest event. 2xx is success; 4xx is permanent (PapDashboard
