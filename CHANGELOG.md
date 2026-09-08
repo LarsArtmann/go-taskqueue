@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- The dashboard task table paginates in SQL: `?page=` (clamped, 200 rows
+  per page) with a prev/next pager and a "page N of M — K matching tasks"
+  line driven by a new `Store.CountTasks` pushdown that shares the exact
+  WHERE builder with List. Table order moved into SQL as
+  `Filter.SeverityOrder` (dead, running, pending, cancelled, completed;
+  newest first within a status), so page boundaries are deterministic and
+  the in-memory re-sort is gone. Measured at 100k tasks + 100k facts:
+  page query 18ms, count 1.5ms, LIKE search count 36ms, fact feed 0.2ms,
+  per-task trail 0.05ms — pinned by `TestLoadSnapshotScaleAt100k`
+  (skipped under -short and -race) with ceilings that fail on any O(N)
+  regression.
+
 - The dashboard now sends strict security headers on every response,
   including auth rejections: `Content-Security-Policy` (default-src 'none',
   self-only styles/scripts, no inline, no framing, no form action),

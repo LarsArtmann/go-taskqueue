@@ -1109,3 +1109,250 @@ func TestStatusCountsAndProjectCounts(t *testing.T) {
 		t.Fatalf("project a claimed 1 of its 2, want 1 pending left, got %v", projects["a"])
 	}
 }
+
+func TestListSeverityOrder(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	for range 4 {
+		if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim1: %v", err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w2", time.Minute); err != nil {
+		t.Fatalf("claim2: %v", err)
+	}
+
+	running, err := s.List(ctx, Filter{Status: ptrStatus(task.Running)})
+	if err != nil {
+		t.Fatalf("list running: %v", err)
+	}
+
+	if len(running) != 2 {
+		t.Fatalf("want 2 running, got %d", len(running))
+	}
+
+	if err := s.FailPermanent(ctx, running[0].ID, running[0].LeaseOwner, "boom"); err != nil {
+		t.Fatalf("fail permanent: %v", err)
+	}
+
+	all, err := s.List(ctx, Filter{SeverityOrder: true})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+
+	sawDead, sawRunning, sawPending := 0, 0, 0
+
+	lastRank := -1
+
+	rank := map[task.Status]int{
+		task.Dead:      0,
+		task.Running:   1,
+		task.Pending:   2,
+		task.Cancelled: 3,
+		task.Completed: 4,
+	}
+
+	for _, got := range all {
+		if rank[got.Status] < lastRank {
+			t.Fatalf("severity order violated at %s: %v", got.ID, got.Status)
+		}
+
+		lastRank = rank[got.Status]
+
+		switch got.Status {
+		case task.Dead:
+			sawDead++
+		case task.Running:
+			sawRunning++
+		case task.Pending:
+			sawPending++
+		}
+	}
+
+	if sawDead != 1 || sawRunning != 1 || sawPending != 2 {
+		t.Fatalf("expected 1 dead + 1 running + 2 pending, got dead=%d running=%d pending=%d", sawDead, sawRunning, sawPending)
+	}
+}
+
+func ptrStatus(st task.Status) *task.Status { return &st }
+
+func TestCountTasksMatchesList(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+	seedFacts(ctx, t, s, 5)
+
+	full, err := s.CountTasks(ctx, Filter{})
+	if err != nil {
+		t.Fatalf("CountTasks: %v", err)
+	}
+
+	if full != 5 {
+		t.Fatalf("count = %d, want 5", full)
+	}
+
+	listed, err := s.List(ctx, Filter{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	if len(listed) != full {
+		t.Fatalf("List(%d) and CountTasks(%d) disagree", len(listed), full)
+	}
+
+	qcount, err := s.CountTasks(ctx, Filter{Query: "true"})
+	if err != nil {
+		t.Fatalf("CountTasks(query): %v", err)
+	}
+
+	if qcount != 5 {
+		t.Fatalf("query count = %d, want 5 (all payloads contain true)", qcount)
+	}
+
+	zero, err := s.CountTasks(ctx, Filter{Query: "nope"})
+	if err != nil {
+		t.Fatalf("CountTasks(no match): %v", err)
+	}
+
+	if zero != 0 {
+		t.Fatalf("no-match count = %d, want 0", zero)
+	}
+}
+
+// TestLoadSnapshotScaleAt100k pins the bounded-read architecture against
+// the scale that motivated it: 100k tasks and 100k+ facts must render a
+// dashboard snapshot in bounded time and memory — no full-journal or
+// full-table scans. Skipped under -short; run explicitly with
+// `go test ./internal/queue/ -run TestLoadSnapshotScaleAt100k`.
+func TestLoadSnapshotScaleAt100k(t *testing.T) {
+	if testing.Short() {
+		t.Skip("scale test; run explicitly or without -short")
+	}
+
+	if raceDetector {
+		t.Skip("latency ceilings are meaningless under the race detector's ~10x overhead; run without -race")
+	}
+
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	const (
+		tasks    = 100_000
+		pageSize = 200
+	)
+
+	// Bulk-seed through a single transaction: direct inserts of the same
+	// rows Enqueue would write (one task + one enqueued fact each).
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+
+	now := time.Now().UnixMilli()
+
+	taskStmt, err := tx.PrepareContext(ctx, `INSERT INTO tasks
+		(id, project, type, payload, deps, priority, attempts, max_attempts, not_before, status,
+		 lease_owner, lease_expires, last_error, created_at, updated_at, completed_at)
+		VALUES (?, 'scale', 'sh', '"true"', '[]', 0, 0, 3, 0, 'pending', '', NULL, '', ?, ?, NULL)`)
+	if err != nil {
+		t.Fatalf("prepare task: %v", err)
+	}
+
+	factStmt, err := tx.PrepareContext(ctx,
+		`INSERT INTO facts (time, task_id, type, owner, attempt, error, detail)
+		 VALUES (?, ?, 'task.enqueued', '', 0, '', '')`)
+	if err != nil {
+		t.Fatalf("prepare fact: %v", err)
+	}
+
+	for i := range tasks {
+		id := fmt.Sprintf("scale-%06d", i)
+
+		if _, err := taskStmt.ExecContext(ctx, id, now, now); err != nil {
+			t.Fatalf("insert task %d: %v", i, err)
+		}
+
+		if _, err := factStmt.ExecContext(ctx, now, id); err != nil {
+			t.Fatalf("insert fact %d: %v", i, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	// The dashboard's exact query path, page 1 plus a filtered page.
+	start := time.Now()
+
+	snap, err := s.List(ctx, Filter{SeverityOrder: true, Limit: pageSize})
+	if err != nil {
+		t.Fatalf("page1: %v", err)
+	}
+
+	page1 := time.Since(start)
+
+	start = time.Now()
+
+	matches, err := s.CountTasks(ctx, Filter{})
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+
+	count := time.Since(start)
+
+	start = time.Now()
+
+	if _, err := s.CountTasks(ctx, Filter{Query: "scale-09999"}); err != nil {
+		t.Fatalf("count query: %v", err)
+	}
+
+	queryCount := time.Since(start)
+
+	start = time.Now()
+
+	if _, err := s.LastFacts(ctx, 50); err != nil {
+		t.Fatalf("last facts: %v", err)
+	}
+
+	facts := time.Since(start)
+
+	start = time.Now()
+
+	if _, err := s.FactsForTask(ctx, "scale-099999", 0); err != nil {
+		t.Fatalf("facts for task: %v", err)
+	}
+
+	taskFacts := time.Since(start)
+
+	if len(snap) != pageSize {
+		t.Fatalf("page1 = %d rows, want %d", len(snap), pageSize)
+	}
+
+	if matches != tasks {
+		t.Fatalf("count = %d, want %d", matches, tasks)
+	}
+
+	t.Logf("SCALE 100k: page1=%v count=%v query-count=%v last-50-facts=%v task-trail=%v",
+		page1, count, queryCount, facts, taskFacts)
+
+	// Bounded reads: every path is O(page) or O(log N + page). Generous
+	// ceilings catch O(N) regressions (a full 100k scan costs >100ms on
+	// this machine, usually far more) without being flaky on busy CI.
+	for name, d := range map[string]time.Duration{
+		"page1": page1, "count": count, "queryCount": queryCount,
+		"facts": facts, "taskFacts": taskFacts,
+	} {
+		if d > 250*time.Millisecond {
+			t.Errorf("%s took %v; bounded reads must stay far below the O(N) wall", name, d)
+		}
+	}
+}

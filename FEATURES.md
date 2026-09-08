@@ -82,6 +82,9 @@
 | Request logging (`tq serve --verbose`)    | 🟢 `FULLY_FUNCTIONAL` | Per-request slog lines (method, path, status, duration) on stderr; SSE-safe wrapper; off by default                                |
 | Token auth (`tq serve --auth-token`)      | 🟢 `FULLY_FUNCTIONAL` | Non-loopback binds are default-deny (refuse without a token); constant-time check on every route; `Authorization: Bearer` or `?token=` (EventSource cannot set headers); `--verbose` logs redact the token (ADR-0003 amendment) |
 | UI write actions (cancel/rescue/enqueue)  | ⚪ `PLANNED`          | Behind a future `--allow-writes` flag; tracked in plan round 3 Phase D (W15)                                                        |
+| Pagination (`?page=`) + severity ordering | 🟢 `FULLY_FUNCTIONAL` | Task table paginates in SQL (200/page, dead→running→pending→cancelled→completed order stable across pages) with prev/next pager; `CountTasks` pushdown drives "page N of M" |
+| Bounded reads at scale                    | 🟢 `FULLY_FUNCTIONAL` | Measured at 100k tasks + 100k facts: page query 18ms, count 1.5ms, LIKE-search count 36ms, last-50-facts 0.2ms, per-task trail 0.05ms (`TestLoadSnapshotScaleAt100k`); no dashboard path scans the whole journal or table |
+| Security headers (CSP et al.)             | 🟢 `FULLY_FUNCTIONAL` | Strict CSP (`default-src 'none'`, self-only scripts/styles, no inline, no framing) + nosniff/no-referrer/DENY on every response incl. 401s; route table + guardrail test enforce read-only |
 
 ## Tooling
 

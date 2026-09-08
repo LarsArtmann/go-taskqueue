@@ -1,10 +1,14 @@
 package webui
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // TestRoutesAreReadOnly is the ADR-0003 guardrail: the dashboard registers
@@ -90,5 +94,71 @@ func TestSecurityHeadersBeforeAuth(t *testing.T) {
 
 	if csp := resp.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "default-src 'none'") {
 		t.Fatalf("401 response missing CSP, got %q", csp)
+	}
+}
+
+func TestParseFilterPageClamping(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		raw  string
+		want int
+	}{
+		{"", 1},
+		{"?page=0", 1},
+		{"?page=-3", 1},
+		{"?page=abc", 1},
+		{"?page=2", 2},
+		{"?page=999", 999},
+	}
+
+	for _, tc := range cases {
+		got := parseFilter(httptest.NewRequest(http.MethodGet, "/"+tc.raw, nil))
+		if got.Page != tc.want {
+			t.Errorf("page for %q = %d, want %d", tc.raw, got.Page, tc.want)
+		}
+	}
+}
+
+// TestPaginationEdges drives loadSnapshot past both page boundaries:
+// page 0 clamps to 1, a page past the last one renders an empty table
+// with a pager that still says where the end is.
+func TestPaginationEdges(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+
+	for range 5 {
+		if _, err := store.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	s := New(store, Config{})
+
+	snap := func(page int) DashboardData {
+		t.Helper()
+
+		data, err := s.loadSnapshot(ctx, FilterState{Page: page})
+		if err != nil {
+			t.Fatalf("loadSnapshot(page=%d): %v", page, err)
+		}
+
+		return data
+	}
+
+	first := snap(0)
+	if first.Page != 1 || len(first.Tasks) != 5 || first.TotalPages != 1 {
+		t.Fatalf("page 0: page=%d rows=%d pages=%d, want 1/5/1", first.Page, len(first.Tasks), first.TotalPages)
+	}
+
+	overflow := snap(9)
+	if overflow.Page != 9 || len(overflow.Tasks) != 0 {
+		t.Fatalf("overflow: page=%d rows=%d, want page 9 with 0 rows", overflow.Page, len(overflow.Tasks))
+	}
+
+	if overflow.TotalPages != 1 {
+		t.Fatalf("overflow pages = %d, want 1", overflow.TotalPages)
 	}
 }
