@@ -110,7 +110,7 @@
 
 | Feature                                       | Status                    | Notes                                                                                                   |
 | --------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Postgres store (`SKIP LOCKED`)                | ⚪ `PLANNED`              | The `Store` interface is the seam (ADR-0001); claim SQL sketched (D80)                                  |
+| Postgres store (`SKIP LOCKED`)                | 🟡 `PARTIALLY_FUNCTIONAL` | First slice shipped (ADR-0007): full Store semantics over pgx, conformance + concurrency tests against a real cluster, CI postgres service. CLI `--store` wiring + compaction design pending |
 | HTTP API server for non-Go producers          | 🟡 `PARTIALLY_FUNCTIONAL` | PoC exists (`examples/api`: enqueue + stats + metrics, no auth, localhost); production server not built |
 | Decision → question fan-out (PapDashboard)    | ⚪ `PLANNED`              | Design note in `docs/planning/2026-09-06_decision-question-fanout.md`                                   |
 | Per-repo daily budgets                        | ⚪ `PLANNED`              | Global daily cap + per-repo intervals ship; per-REPO daily caps don't yet                               |
