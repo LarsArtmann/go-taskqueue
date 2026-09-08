@@ -72,7 +72,7 @@ func TestBudgetCapsStatusMintedEnqueues(t *testing.T) {
 		t.Fatalf("capped run minted %d status tasks, want 0 (budget refusal must gate the sweeper)\noutput:\n%s", n, out)
 	}
 
-	if !strings.Contains(out, "budget: skipping harvest tick") {
-		t.Fatalf("capped run must log the budget refusal, output:\n%s", out)
+	if !strings.Contains(out, "daily budget exhausted") {
+		t.Fatalf("capped run must log a budget refusal, output:\n%s", out)
 	}
 }

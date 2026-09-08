@@ -987,27 +987,45 @@ func cmdAgentPool(args []string) error {
 		}
 
 		if sweeper != nil {
-			stats, err := sweeper.Sweep(ctx)
-			if err != nil {
-				log.Error("review sweep failed", "err", err)
-			} else if stats.ReviewsEnqueued > 0 || stats.FixesEnqueued > 0 || stats.Skipped > 0 {
-				log.Info("review sweep done", "facts", stats.Facts,
-					"reviews", stats.ReviewsEnqueued, "known", stats.ReviewsKnown,
-					"fixes", stats.FixesEnqueued, "skipped", stats.Skipped)
+			// The guard re-checks before EVERY minting pass: a completion
+			// inside this same tick can spend the last budget slot after the
+			// harvest-time check already passed, and the documented cap is
+			// "EVERY enqueue incl. status-minted" (SECURITY.md).
+			if ok, reason := guard.Check(ctx, s); !ok {
+				log.Warn("budget: skipping review sweep", "reason", reason)
+			} else {
+				stats, err := sweeper.Sweep(ctx)
+				if err != nil {
+					log.Error("review sweep failed", "err", err)
+				} else if stats.ReviewsEnqueued > 0 || stats.FixesEnqueued > 0 || stats.Skipped > 0 {
+					log.Info("review sweep done", "facts", stats.Facts,
+						"reviews", stats.ReviewsEnqueued, "known", stats.ReviewsKnown,
+						"fixes", stats.FixesEnqueued, "skipped", stats.Skipped)
+				}
 			}
 		}
 
 		if statusSweeper != nil {
-			stats, err := statusSweeper.Sweep(ctx)
-			if err != nil {
-				log.Error("status sweep failed", "err", err)
-			} else if stats.ReportsEnqueued > 0 || stats.Skipped > 0 {
-				log.Info("status sweep done", "facts", stats.Facts,
-					"reports", stats.ReportsEnqueued, "known", stats.ReportsKnown, "skipped", stats.Skipped)
+			if ok, reason := guard.Check(ctx, s); !ok {
+				log.Warn("budget: skipping status sweep", "reason", reason)
+			} else {
+				stats, err := statusSweeper.Sweep(ctx)
+				if err != nil {
+					log.Error("status sweep failed", "err", err)
+				} else if stats.ReportsEnqueued > 0 || stats.Skipped > 0 {
+					log.Info("status sweep done", "facts", stats.Facts,
+						"reports", stats.ReportsEnqueued, "known", stats.ReportsKnown, "skipped", stats.Skipped)
+				}
 			}
 		}
 
 		if cqaBridge == nil {
+			return
+		}
+
+		if ok, reason := guard.Check(ctx, s); !ok {
+			log.Warn("budget: skipping cqa ingest", "reason", reason)
+
 			return
 		}
 
@@ -1127,16 +1145,23 @@ func cmdAgentPool(args []string) error {
 				case <-time.After(*poll):
 					// Sweep before the drain check so reviews and status reports
 					// of work this drain just completed run in the SAME --once
-					// process (idempotent; dedup keeps repeat sweeps free).
-					if sweeper != nil {
-						if _, err := sweeper.Sweep(ctx); err != nil {
-							log.Error("review sweep failed", "err", err)
+					// process (idempotent; dedup keeps repeat sweeps free). The
+					// budget guard applies here too: the drain's own completions
+					// can spend the last slot, and the cap is EVERY enqueue
+					// (SECURITY.md).
+					if ok, reason := guard.Check(ctx, s); !ok {
+						log.Warn("budget: skipping drain sweep", "reason", reason)
+					} else {
+						if sweeper != nil {
+							if _, err := sweeper.Sweep(ctx); err != nil {
+								log.Error("review sweep failed", "err", err)
+							}
 						}
-					}
 
-					if statusSweeper != nil {
-						if _, err := statusSweeper.Sweep(ctx); err != nil {
-							log.Error("status sweep failed", "err", err)
+						if statusSweeper != nil {
+							if _, err := statusSweeper.Sweep(ctx); err != nil {
+								log.Error("status sweep failed", "err", err)
+							}
 						}
 					}
 
