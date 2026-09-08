@@ -124,6 +124,20 @@ for legacy DBs, then create dependent indexes AFTER the column is guaranteed.
 Indexes on new columns must NOT go into the schema const — legacy DBs would
 fail with "no such column" before the ALTER runs.
 
+### Journal-consumer watermarks
+
+Resumable-reader cursors (papdashboard bridge, review sweeper) live in the
+`watermarks` table via `queue.Store.Watermark/SaveWatermark` — a monotonic
+upsert; consumer progress, NOT task state, so checkpoints append no fact.
+Runtime rule: checkpoint AFTER the batch's last accepted fact, never before
+(a pre-acceptance checkpoint converts at-least-once into at-most-once), and a
+failed checkpoint gates further forwarding. The bridge resolves
+`FromSeq > persisted > head` and eagerly inserts head on first run (no
+history replay). Ops hatch: `tq watermarks show/set` — `set` may rewind
+(deliberately bypasses the monotonic guard; replay is idempotent via
+seq-derived Idempotency-Keys). The bridge still never mutates task or fact
+state — its only write is its own cursor.
+
 ## Conventions
 
 - Table-driven tests with plain `testing` (no Ginkgo here, unlike PapDashboard)
