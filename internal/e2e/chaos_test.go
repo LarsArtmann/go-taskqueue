@@ -7,6 +7,7 @@ package e2e
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -126,7 +127,7 @@ func TestChaosKillAgentPoolOnceMidDrain(t *testing.T) {
 	dbPath := filepath.Join(dir, "q.db")
 
 	idLine := runTQ(t, dir, dbPath, "enqueue", "--project", "chaos", "--type", "sh",
-		"--payload", `"sleep 15"`)
+		"--payload", `"sleep 3"`)
 	taskID := strings.TrimSpace(idLine)
 
 	// An empty repos dir: the harvest tick finds nothing, the drain runs the
@@ -169,14 +170,17 @@ func TestChaosKillAgentPoolOnceMidDrain(t *testing.T) {
 
 	_, _ = pool.Process.Wait()
 
-	// Restart: the lease (1s) expires and the successor pool reclaims.
-	out, err := runTQErr(t, dir, dbPath, "agent-pool", "--db", dbPath,
+	// Wait out the lease before restarting: --once drains CLAIMABLE work,
+	// and a Running task with a still-live lease is not claimable yet (the
+	// pool would exit immediately and leave the reclaim to the next run).
+	time.Sleep(1200 * time.Millisecond)
+
+	// Restart: the successor pool reclaims the expired lease, drains the
+	// task to completion, then --once exits 0.
+	runTQ(t, dir, dbPath, "agent-pool",
 		"--repos", repos, "--once",
 		"--poll", "20ms", "--lease", "1s", "--concurrency", "1",
 		"--task-timeout", "2m")
-	if err != nil {
-		t.Fatalf("restart pool --once: %v\n%s", err, out)
-	}
 
 	got, err := s.Get(ctx, task.ID(taskID))
 	if err != nil {

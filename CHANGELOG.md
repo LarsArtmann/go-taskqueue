@@ -8,6 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Pool ops pack**: `--max-concurrent-agents N` caps agent processes
+  MACHINE-WIDE across every tq pool on the host (flock'd slot files in
+  $TMPDIR/tq-agent-slots; a SIGKILLed pool releases its slots via the
+  kernel - verified by a serialization test); `--repo-timeout
+  name=duration` pins per-repo agent-task ceilings into harvested
+  payloads (big repos get long ladders, quick ones stay tight); and the
+  pool probes the agent binary's `--version` at startup so a missing
+  crush is a warning before the first task, not a dead-letter after it.
+  A new chaos test SIGKILLs an `agent-pool --once` mid-drain and proves
+  the restarted pool reclaims the expired lease, finishes the work, and
+  leaves exactly one completion in the journal. (Model pin and daily
+  budget VALUE choices stay owner-gated; the propagation mechanisms are
+  covered by flag and payload tests.)
 - **Dogfood ops pack**: `tq agent-pool` can now forward alerts
   (`--alert-url`/`--alert-api-key`, env `TQ_PAP_URL`/`TQ_PAP_API_KEY`) -
   previously only `tq worker` could. The PapDashboard bridge additionally
