@@ -78,7 +78,7 @@
 | `tq serve` — live dashboard (read-only)   | 🟢 `FULLY_FUNCTIONAL` | Status cards, live task table, DLQ, per-project chips, fact feed; SSE-pushed server-rendered fragments (`internal/webui`, ADR-0003) |
 | SSE stream with snapshot-on-(re)connect   | 🟢 `FULLY_FUNCTIONAL` | Every event is a full projection re-render under the client's URL filter — reconnects never lose state; `Last-Event-ID` honored     |
 | Filters & search (`?project=&status=&q=`) | 🟢 `FULLY_FUNCTIONAL` | URL is the source of truth; search covers type/payload/id/project/owner/errors; shareable links                                     |
-| Task detail pages (`/task/{id}`)          | 🟢 `FULLY_FUNCTIONAL` | Full record + per-task fact timeline; plain links, works without JS                                                                 |
+| Task detail pages (`/task/{id}`)          | 🟢 `FULLY_FUNCTIONAL` | Full record + per-task fact timeline, live over a task-scoped SSE stream (`/task/{id}/events`); plain links, works without JS        |
 | Live smoke (no browser)                   | 🟢 `FULLY_FUNCTIONAL` | `scripts/smoke/webui.sh`: worker + serve + HTTP/SSE assertions, CI-safe                                                             |
 | Request logging (`tq serve --verbose`)    | 🟢 `FULLY_FUNCTIONAL` | Per-request slog lines (method, path, status, duration) on stderr; SSE-safe wrapper; off by default                                |
 | Token auth (`tq serve --auth-token`)      | 🟢 `FULLY_FUNCTIONAL` | Non-loopback binds are default-deny (refuse without a token); constant-time check on every route; `Authorization: Bearer` or `?token=` (EventSource cannot set headers); `--verbose` logs redact the token (ADR-0003 amendment) |

@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Live task detail pages**: `/task/{id}` now updates in place over a
+  task-scoped SSE stream (`GET /task/{id}/events`). The record card
+  (`#frag-detail`) and fact timeline (`#frag-timeline`) re-render on every
+  journal burst using the same subscribe → snapshot → tick protocol and
+  watermark-id resume semantics as the dashboard stream; the connection
+  lamp and no-JS fallback carry over unchanged. Unknown task ids get a
+  404 before the stream opens. `app.js` routes detail pages to the
+  task-scoped endpoint (token still rides the query for EventSource).
 - **Budget + retry visibility in the dashboard** (`tq serve`): a budget
   stat card ("spent/cap" for today, green/amber/red by 75%/100% of the
   daily cap) appears whenever the pool runs with `--daily-budget`, and

@@ -97,6 +97,31 @@ with urllib.request.urlopen(req, timeout=3) as r:
     stream = r.read(2048).decode(errors="replace")
 assert "event: frag" in stream, "SSE stream missing frag events"
 print("SSE stream OK")
+
+import re
+task_id = re.search(r'href="/task/([^"]+)"', page).group(1)
+
+with urllib.request.urlopen(f"{base}/task/{task_id}", timeout=2) as r:
+    detail = r.read().decode()
+for frag in ("frag-detail", "frag-timeline"):
+    assert frag in detail, f"detail page missing {frag}"
+
+req = urllib.request.Request(f"{base}/task/{task_id}/events", headers={"Accept": "text/event-stream"})
+buf = ""
+with urllib.request.urlopen(req, timeout=3) as r:
+    deadline = time.time() + 5
+    while time.time() < deadline and ("frag-detail" not in buf or "frag-timeline" not in buf):
+        try:
+            line = r.readline()
+        except TimeoutError:
+            break
+        if not line:
+            break
+        buf += line.decode(errors="replace")
+assert "frag-detail" in buf and "frag-timeline" in buf, (
+    f"task SSE stream missing detail fragments; got: {buf[:200]}"
+)
+print("task detail page + SSE stream OK")
 PYEOF
 
 echo "== auth smoke: non-loopback bind refuses without a token"

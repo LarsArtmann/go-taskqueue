@@ -613,6 +613,113 @@ func TestReadinessColumnRenders(t *testing.T) {
 	}
 }
 
+// TestTaskDetailSSESnapshot pins the per-task stream's connect snapshot:
+// the detail card and fact timeline fragments plus the title watermark
+// event, mirroring the /api/events protocol.
+func TestTaskDetailSSESnapshot(t *testing.T) {
+	srv, s := newTestServer(t)
+	tk := enqueue(t, s, "sh", "demo")
+
+	claimed, err := s.ClaimDue(context.Background(), "detail-owner", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), claimed.ID, claimed.LeaseOwner, json.RawMessage(`"done"`)); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	events := ssetest.CollectN(t, srv.Handler(), 3, ssetest.WithPath("/task/"+tk.ID.String()+"/events"))
+
+	var fragIDs []string
+	sawCompleted := false
+
+	for _, evt := range events {
+		if evt.Type != testFragEvent {
+			continue
+		}
+
+		var frag fragment
+		if err := json.Unmarshal([]byte(evt.Data()), &frag); err != nil {
+			t.Fatalf("decode frag: %v", err)
+		}
+
+		fragIDs = append(fragIDs, frag.ID)
+
+		if strings.Contains(frag.HTML, "completed") {
+			sawCompleted = true
+		}
+	}
+
+	want := []string{fragDetail, fragTimeline}
+	if len(fragIDs) != len(want) {
+		t.Fatalf("frag ids = %v, want %v", fragIDs, want)
+	}
+
+	for i, id := range want {
+		if fragIDs[i] != id {
+			t.Errorf("frag[%d] = %q, want %q", i, fragIDs[i], id)
+		}
+	}
+
+	if !sawCompleted {
+		t.Error("no detail fragment reflects the completed status")
+	}
+}
+
+// TestTaskDetailSSELiveUpdate drives the task-scoped loop: a connected
+// client sees the card flip to completed without reloading.
+func TestTaskDetailSSELiveUpdate(t *testing.T) {
+	srv, s := newTestServer(t)
+	tk := enqueue(t, s, "sh", "demo")
+
+	claimed, err := s.ClaimDue(context.Background(), "detail-owner", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	tailCtx, stopTail := context.WithCancel(t.Context())
+	defer stopTail()
+
+	go func() { _ = srv.tail(tailCtx) }()
+
+	handler := srv.Handler()
+
+	done := make(chan []ssetest.Event, 1)
+	go func() {
+		done <- ssetest.CollectWithTimeout(t, handler, 3*time.Second, ssetest.WithPath("/task/"+tk.ID.String()+"/events"))
+	}()
+
+	time.Sleep(100 * time.Millisecond) // let the SSE connect
+
+	if err := s.Complete(context.Background(), claimed.ID, claimed.LeaseOwner, json.RawMessage(`"done"`)); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	sawCompleted := false
+
+	for _, evt := range <-done {
+		if evt.Type == testFragEvent && strings.Contains(evt.Data(), "completed") {
+			sawCompleted = true
+		}
+	}
+
+	if !sawCompleted {
+		t.Fatal("task detail stream never reported the completed transition")
+	}
+}
+
+func TestTaskDetailSSE404(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/does-not-exist/events", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("unknown task stream status = %d, want 404", rec.Code)
+	}
+}
+
 func TestStoreClosedErrorPaths(t *testing.T) {
 	s := newTestStore(t)
 	srv := New(s, Config{Poll: time.Millisecond, Heartbeat: time.Millisecond})
