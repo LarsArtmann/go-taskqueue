@@ -79,6 +79,7 @@
 | Filters & search (`?project=&status=&q=`) | 🟢 `FULLY_FUNCTIONAL` | URL is the source of truth; search covers type/payload/id/project/owner/errors; shareable links                                     |
 | Task detail pages (`/task/{id}`)          | 🟢 `FULLY_FUNCTIONAL` | Full record + per-task fact timeline; plain links, works without JS                                                                 |
 | Live smoke (no browser)                   | 🟢 `FULLY_FUNCTIONAL` | `scripts/smoke/webui.sh`: worker + serve + HTTP/SSE assertions, CI-safe                                                             |
+| Request logging (`tq serve --verbose`)    | 🟢 `FULLY_FUNCTIONAL` | Per-request slog lines (method, path, status, duration) on stderr; SSE-safe wrapper; off by default                                |
 | UI write actions (cancel/rescue/enqueue)  | ⚪ `PLANNED`          | Behind a future `--allow-writes` flag; tracked in plan round 3 Phase D (W15)                                                        |
 
 ## Tooling
