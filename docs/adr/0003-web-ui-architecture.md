@@ -128,3 +128,28 @@ near-identical projections once per fact for no fidelity gain. The
 observability (`head − N`) and a stable seam to a future per-fact stream, not
 a replay cursor. Full contract:
 `docs/planning/2026-09-08_sse-last-event-id-resume-mapping.md`.
+
+## Amendment (2026-09-08): opt-in admin writes — `--allow-writes`
+
+The read-only guardrail stands as the default. What changed: the guardrail's
+own escape hatch, sketched here as "never add write endpoints without an
+explicit `--allow-writes`-style flag + CSRF story", shipped.
+
+- `webui.Config.AllowWrites` (CLI `tq serve --allow-writes`, env
+  `$TQ_SERVE_WRITES=1`) registers exactly two mutating routes:
+  `POST /task/{id}/cancel` (pending → Cancel with reason; running →
+  cooperative CancelRunning) and `POST /task/{id}/rescue` (dead →
+  RescueDead with a fresh attempt budget). Nothing else gained a write
+  path; the guardrail test still pins the default route table to GET-only.
+- CSRF: `withCSRFIssue` hands every browser a `tq_csrf` cookie on page GET
+  and publishes the value to the render chain; every write form embeds it
+  as a hidden field and `withCSRF` verifies field against cookie
+  (constant-time) before the handler runs. A cross-site attacker can send
+  the cookie but cannot read it, so the field is unforgeable without
+  same-site script execution — which the CSP nonce regime denies.
+- Writes over a non-loopback bind still require `--auth-token` (existing
+  `Validate` refusal applies unchanged); CSRF is additive to that gate,
+  not a replacement.
+- Every mutation lands as a fact (`task.cancelled` / requeue) in the same
+  transaction as the state change — the facts-first invariant is untouched;
+  the dashboard gained hands but the journal remains the only truth.

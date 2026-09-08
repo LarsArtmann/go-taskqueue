@@ -45,7 +45,7 @@ Usage:
   tq worker [--concurrency N] [--agents [--yolo]] [--db PATH] [--poll DUR] [--lease DUR]
            [--task-timeout DUR] [--alert-url URL [--alert-api-key K]]
   tq harvest --projects-dir DIR [--repos a,b] [--max-per-tick N] [--allow-dirty]
-            [--dry-run] [--db PATH]
+            [--prune-stale] [--dry-run] [--db PATH]
   tq bootstrap [repos...] [--agents N] [--model M] [--reasoning R] [--verify n=cmd]
               [--install | --once | --dry-run] [--daily-budget N] [--db PATH]
              (one command from zero to a running agent pool: ensures .crushrc
@@ -54,12 +54,13 @@ Usage:
   tq agent-pool --projects-dir DIR [--repos a,b] [--interval DUR] [--concurrency N]
                [--yolo] [--max-per-tick N] [--task-timeout DUR]
                [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH]
-  tq stats [--project P] [--status S] [--db PATH] [--json]
+  tq stats [--project P] [--status S] [--daily-budget N] [--db PATH] [--json]
+  tq tasks [--project P] [--status S] [--type T] [--since DUR] [--limit N] [--json] [--db PATH]
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
           [--max-attempts N] [--dry-run] [--json] [--db PATH]
   tq doctor [--json] [--daily-budget N] [--repos a,b] [--db PATH]
   tq top [--interval DUR] [--once] [--json] [--db PATH]
-  tq show TASK_ID [--db PATH]
+  tq show TASK_ID [--db PATH]   (a unique ID prefix works)
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]]
 tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative cancel of a running task)
   tq facts [--db PATH] [--after SEQ]
@@ -86,6 +87,7 @@ func main() {
 		"harvest":    cmdHarvest,
 		"agent-pool": cmdAgentPool,
 		"stats":      cmdStats,
+		"tasks":      cmdTasks,
 		"audit":      cmdAudit,
 		"doctor":     cmdDoctor,
 		"top":        cmdTop,
@@ -1400,7 +1402,7 @@ func cmdShow(args []string) error {
 	}
 
 	if fs.NArg() != 1 {
-		return errors.New("usage: tq show TASK_ID")
+		return errors.New("usage: tq show TASK_ID (a unique prefix works)")
 	}
 
 	s := mustOpenDB(resolveDB(*db))
@@ -1408,7 +1410,7 @@ func cmdShow(args []string) error {
 
 	ctx := context.Background()
 
-	t, err := s.Get(ctx, task.ID(fs.Arg(0)))
+	t, err := resolveTask(ctx, s, fs.Arg(0))
 	if err != nil {
 		return err
 	}
@@ -1429,6 +1431,49 @@ func cmdShow(args []string) error {
 		Facts  []journal.Fact `json:"facts,omitempty"`
 		Result any            `json:"result,omitempty"`
 	}{t, trail, resultDetail(t, trail)})
+}
+
+// resolveTask looks a task up by its full ID, falling back to a UNIQUE
+// prefix: 34-char IDs are hostile to hand-typing, and every tq ID is a
+// ULID (time-ordered, so prefixes stay unambiguous in practice). An
+// ambiguous prefix names its candidates instead of guessing.
+func resolveTask(ctx context.Context, s *queue.SQLiteStore, arg string) (task.Task, error) {
+	t, err := s.Get(ctx, task.ID(arg))
+	if err == nil {
+		return t, nil
+	}
+
+	if !errors.Is(err, task.ErrNotFound) {
+		return task.Task{}, err
+	}
+
+	tasks, err := s.List(ctx, queue.Filter{})
+	if err != nil {
+		return task.Task{}, err
+	}
+
+	var candidates []task.Task
+
+	for _, cand := range tasks {
+		if strings.HasPrefix(cand.ID.String(), arg) {
+			candidates = append(candidates, cand)
+		}
+	}
+
+	switch len(candidates) {
+	case 1:
+		return candidates[0], nil
+	case 0:
+		return task.Task{}, fmt.Errorf("no task with id or prefix %q", arg)
+	default:
+		ids := make([]string, 0, len(candidates))
+		for _, cand := range candidates {
+			ids = append(ids, cand.ID.String())
+		}
+
+		return task.Task{}, fmt.Errorf("prefix %q matches %d tasks — be more specific: %s",
+			arg, len(candidates), strings.Join(ids, ", "))
+	}
 }
 
 // resultDetail decodes a task's completion-fact detail into its typed result
@@ -1609,12 +1654,13 @@ func cmdCancel(args []string) error {
 	defer s.Close()
 
 	ctx := context.Background()
-	id := task.ID(fs.Arg(0))
 
-	t, err := s.Get(ctx, id)
+	t, err := resolveTask(ctx, s, fs.Arg(0))
 	if err != nil {
 		return err
 	}
+
+	id := t.ID
 
 	switch t.Status {
 	case task.Pending:
@@ -1919,11 +1965,9 @@ func cmdServe(args []string) error {
 	g.Go("http", func(ctx context.Context) error { return server.Run(ctx) })
 
 	if *allowWrites {
-		fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (writes ENABLED: cancel/rescue from the UI)
-", *addr)
+		fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (writes ENABLED: cancel/rescue from the UI)\n", *addr)
 	} else {
-		fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (read-only)
-", *addr)
+		fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (read-only)\n", *addr)
 	}
 
 	return g.Run()

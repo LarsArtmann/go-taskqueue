@@ -275,9 +275,12 @@ state — its only write is its own cursor.
   the LSP cache goes stale, the sources do not). Never trust LSP
   webui/templ diagnostics — verify with the CLI (build/vet/test) before
   acting on them; a client restart clears the cache but is optional.
-- ⚠️ **`tq serve` binds 127.0.0.1 by default and is read-only**: never add
-  write endpoints without an explicit `--allow-writes`-style flag + CSRF
-  story (ADR-0003 guardrail). Non-loopback binds (incl. `:port` and
+- ⚠️ **`tq serve` binds 127.0.0.1 by default and is read-only unless
+  `--allow-writes`**: the flag (env `$TQ_SERVE_WRITES=1`) enables exactly
+  two CSRF-guarded admin routes (cancel pending/running, rescue dead);
+  non-loopback binds additionally require `--auth-token` (ADR-0003
+  guardrail + 2026-09-08 amendment). Don't add further write endpoints
+  without the same flag + CSRF treatment. Non-loopback binds (incl. `:port` and
   hostnames) are default-deny: `webui.Config.Validate` refuses to start
   without `--auth-token`/`TQ_SERVE_TOKEN`; with a token, a constant-time
   middleware guards all routes (`Authorization: Bearer` or `?token=`,
