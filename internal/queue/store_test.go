@@ -1356,3 +1356,107 @@ func TestLoadSnapshotScaleAt100k(t *testing.T) {
 		}
 	}
 }
+
+// TestCancelRunningRequestAndHonour pins the cooperative-cancel store
+// contract: request (idempotent fact), observation, owner-guarded finalize.
+func TestCancelRunningRequestAndHonour(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk, err := s.Enqueue(ctx, task.New{Type: "a"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	// Pending-only Cancel refuses running tasks (that is --force territory).
+	if err := s.Cancel(ctx, tk.ID); !errors.Is(err, task.ErrInvalidTransition) {
+		t.Fatalf("Cancel on running err = %v, want ErrInvalidTransition", err)
+	}
+
+	if err := s.CancelRunning(ctx, tk.ID); err != nil {
+		t.Fatalf("CancelRunning: %v", err)
+	}
+
+	if requested, err := s.CancelRequested(ctx, tk.ID); err != nil || !requested {
+		t.Fatalf("CancelRequested = (%v, %v), want (true, nil)", requested, err)
+	}
+
+	// Idempotent: a second request appends nothing.
+	if err := s.CancelRunning(ctx, tk.ID); err != nil {
+		t.Fatalf("second CancelRunning: %v", err)
+	}
+
+	requestedFacts, err := s.CountFacts(ctx, journal.CancelRequested, time.Time{})
+	if err != nil {
+		t.Fatalf("CountFacts: %v", err)
+	}
+
+	if requestedFacts != 1 {
+		t.Fatalf("cancel-requested facts = %d, want 1", requestedFacts)
+	}
+
+	// Only the lease holder finalizes.
+	if err := s.CancelOwned(ctx, tk.ID, "not-the-owner"); !errors.Is(err, task.ErrLeaseNotHeld) {
+		t.Fatalf("CancelOwned by wrong owner err = %v, want ErrLeaseNotHeld", err)
+	}
+
+	if err := s.CancelOwned(ctx, tk.ID, "w1"); err != nil {
+		t.Fatalf("CancelOwned: %v", err)
+	}
+
+	got, err := s.Get(ctx, tk.ID)
+	if err != nil || got.Status != task.Cancelled {
+		t.Fatalf("after CancelOwned: (%v, %v), want status cancelled", got.Status, err)
+	}
+}
+
+// TestReclaimFinalizesCancelRequest proves the crashed-worker path: an
+// expired lease on a cancel-requested task finalizes the cancel instead of
+// re-executing the task.
+func TestReclaimFinalizesCancelRequest(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk, err := s.Enqueue(ctx, task.New{Type: "a"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "crashed-worker", 30*time.Millisecond); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.CancelRunning(ctx, tk.ID); err != nil {
+		t.Fatalf("CancelRunning: %v", err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, ErrNoTaskDue) {
+		t.Fatalf("ClaimDue after cancel-requested reclaim err = %v, want ErrNoTaskDue", err)
+	}
+
+	got, err := s.Get(ctx, tk.ID)
+	if err != nil || got.Status != task.Cancelled {
+		t.Fatalf("reclaimed task status = %s (err %v), want cancelled", got.Status, err)
+	}
+
+	facts, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("FactsForTask: %v", err)
+	}
+
+	sawReleased, sawCancelled := false, false
+	for _, f := range facts {
+		sawReleased = sawReleased || f.Type == journal.Released
+		sawCancelled = sawCancelled || f.Type == journal.Cancelled
+	}
+
+	if !sawReleased || !sawCancelled {
+		t.Fatalf("finalize facts missing (released=%v cancelled=%v): %+v", sawReleased, sawCancelled, facts)
+	}
+}

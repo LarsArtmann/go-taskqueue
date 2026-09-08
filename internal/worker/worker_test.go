@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -614,4 +615,73 @@ func TestAgentResultDetailStored(t *testing.T) {
 	}
 
 	t.Fatal("completed fact carries no result detail")
+}
+
+// TestCooperativeCancelMidRun drives the full cooperative-cancel loop: an
+// operator requests the cancel while the executor is mid-run, the heartbeat
+// observes the fact, the execution context is cancelled, and the task
+// finalizes as Cancelled (no attempt burned, no retry).
+func TestCooperativeCancelMidRun(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	started := make(chan struct{})
+
+	var ran atomic.Int32
+
+	reg.RegisterFunc("loop", func(c context.Context, _ task.Task) error {
+		ran.Add(1)
+		close(started)
+		<-c.Done() // a long-running task that stops when cancelled
+
+		return c.Err()
+	})
+
+	enq, err := store.Enqueue(ctx, task.New{Project: "p", Type: "loop"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, Heartbeat: 10 * time.Millisecond,
+		Lease: 2 * time.Second, TaskTimeout: 30 * time.Second, Executors: reg,
+	}, quietLog())
+
+	go func() { _ = pool.Start(ctx) }()
+
+	<-started
+	waitFor(t, ctx, store, enq.ID, task.Running)
+
+	if err := store.CancelRunning(ctx, enq.ID); err != nil {
+		t.Fatalf("CancelRunning: %v", err)
+	}
+
+	got := waitFor(t, ctx, store, enq.ID, task.Cancelled)
+
+	if ran.Load() != 1 {
+		t.Fatalf("executor ran %d times, want exactly 1 (cancel must not retry)", ran.Load())
+	}
+
+	if got.Attempts != 0 {
+		t.Fatalf("attempts = %d, want 0 (a cancelled task burns nothing)", got.Attempts)
+	}
+
+	facts, err := store.FactsForTask(ctx, enq.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("FactsForTask: %v", err)
+	}
+
+	sawRequested, sawCancelled := false, false
+	for _, f := range facts {
+		sawRequested = sawRequested || f.Type == journal.CancelRequested
+		sawCancelled = sawCancelled || f.Type == journal.Cancelled
+	}
+
+	if !sawRequested || !sawCancelled {
+		t.Fatalf("journal missing cancel facts (requested=%v cancelled=%v)", sawRequested, sawCancelled)
+	}
 }

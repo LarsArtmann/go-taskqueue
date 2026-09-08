@@ -17,6 +17,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // The E2E suite drives the REAL CLI as a subprocess — the same binary an
@@ -204,5 +205,68 @@ func assertFactCounts(t *testing.T, ctx context.Context, s *queue.SQLiteStore, w
 		if got[typ] != n {
 			t.Fatalf("%s = %d, want %d (all: %v)", typ, got[typ], n, got)
 		}
+	}
+}
+
+// TestForceCancelSubprocess: `tq cancel --force` mid-run stops the sleep
+// process tree at the worker's next heartbeat and finalizes the task as
+// cancelled — far below the 30s the payload would otherwise run.
+func TestForceCancelSubprocess(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	db := filepath.Join(dir, "q.db")
+
+	id := runTQ(t, dir, db, "enqueue", "--type", "sh", "--project", "e2e", "--payload", "sleep 30")
+
+	worker := exec.Command(tqBin, "worker", "--db", db, "--poll", "50ms", "--lease", "400ms")
+	var workerLog strings.Builder
+	worker.Stdout = &workerLog
+	worker.Stderr = &workerLog
+	if err := worker.Start(); err != nil {
+		t.Fatalf("start worker: %v", err)
+	}
+	defer func() { _ = worker.Process.Kill(); _ = worker.Wait() }()
+
+	s := openStore(t, db)
+	defer func() { _ = s.Close() }()
+
+	waitStatus := func(want task.Status) task.Task {
+		t.Helper()
+
+		deadline := time.Now().Add(10 * time.Second)
+		for time.Now().Before(deadline) {
+			tk, err := s.Get(ctx, task.ID(id))
+			if err != nil {
+				t.Fatalf("get: %v", err)
+			}
+
+			if tk.Status == want {
+				return tk
+			}
+
+			time.Sleep(20 * time.Millisecond)
+		}
+
+		t.Fatalf("task never reached %s; worker log:\n%s", want, workerLog.String())
+		return task.Task{}
+	}
+
+	waitStatus(task.Running)
+
+	// Without --force the CLI refuses a running task and says why.
+	refuse := exec.Command(tqBin, "cancel", "--db", db, id)
+	refuseOut, err := refuse.CombinedOutput()
+	if err == nil || !strings.Contains(string(refuseOut), "--force") {
+		t.Fatalf("cancel without --force must refuse with guidance, err=%v out=%s", err, refuseOut)
+	}
+
+	forced := exec.Command(tqBin, "cancel", "--db", db, "--force", id)
+	if out, err := forced.CombinedOutput(); err != nil {
+		t.Fatalf("cancel --force: %v\n%s", err, out)
+	}
+
+	got := waitStatus(task.Cancelled)
+	if got.Attempts != 0 {
+		t.Fatalf("cancelled task attempts = %d, want 0", got.Attempts)
 	}
 }

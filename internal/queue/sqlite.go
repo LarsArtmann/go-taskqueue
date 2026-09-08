@@ -352,7 +352,7 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 					return err
 				}
 
-			if n, _ := res.RowsAffected(); n == 0 {
+				if n, _ := res.RowsAffected(); n == 0 {
 					return ErrNoTaskDue // lost the race; another path finalized it
 				}
 

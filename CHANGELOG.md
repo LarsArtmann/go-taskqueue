@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Cooperative cancel of running tasks** (`tq cancel --force`,
+  ADR-0005): the request is a `task.cancel-requested` fact — the journal
+  is the flag, no schema change. The executing worker observes it at its
+  next heartbeat, kills the whole process tree (the `sh` executor now
+  sets a process group like the agent one), and finalizes Running ->
+  Cancelled without burning the attempt. A crashed worker's expired
+  lease finalizes the cancel at reclaim instead of re-executing the
+  task. Plain `tq cancel` on a running task refuses with the --force
+  remedy. Verified mid-run by an e2e subprocess test (30s sleep stopped
+  within a heartbeat) plus store and worker race tests.
 - **Live task detail pages**: `/task/{id}` now updates in place over a
   task-scoped SSE stream (`GET /task/{id}/events`). The record card
   (`#frag-detail`) and fact timeline (`#frag-timeline`) re-render on every
