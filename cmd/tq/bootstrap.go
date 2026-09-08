@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -94,14 +95,15 @@ func cmdBootstrap(args []string) error {
 		return err
 	}
 
-	if err := o.validate(); err != nil {
-		return err
-	}
-
 	paths, err := o.resolveRepos()
 	if err != nil {
 		return err
 	}
+
+	// The delegated pool gets absolute paths: with --repos set, harvest
+	// treats repo specs as directories relative to its CWD, so bare names
+	// would silently harvest nothing.
+	o.repos = paths
 
 	report, err := o.ensureRepos(paths)
 	if err != nil {
@@ -139,7 +141,7 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 	fs.BoolVar(&o.dryRun, "dry-run", false, "show the plan without writing anything or starting the pool")
 	fs.BoolVar(&o.install, "install", false, "install the systemd user unit + pool config, then exit (daemon mode)")
 	fs.BoolVar(&o.allowDirty, "allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
-	fs.BoolVar(&o.repoTimeout, "repo-timeout", "", "per-repo agent-task timeout ladder: name=duration,...")
+	fs.StringVar(&o.repoTimeout, "repo-timeout", "", "per-repo agent-task timeout ladder: name=duration,...")
 	fs.StringVar(&o.db, "db", "", "task DB (default $TQ_DB or ./tasks.db)")
 	noYolo := fs.Bool("no-yolo", false, "disable autonomy (agents will stall on permission prompts)")
 	noReview := fs.Bool("no-review", false, "disable the second-agent review pass")
@@ -165,6 +167,10 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 
 	if o.model != "" {
 		o.reasoning = strings.ToLower(strings.TrimSpace(o.reasoning))
+	}
+
+	if err := o.validate(); err != nil {
+		return o, err
 	}
 
 	return o, nil
@@ -200,7 +206,7 @@ Examples:
 
 func (o bootstrapOptions) validate() error {
 	if len(o.repos) == 0 {
-		return errorsNew("bootstrap: no repos: pass repo names, paths, or --repos a,b")
+		return errors.New("bootstrap: no repos: pass repo names, paths, or --repos a,b")
 	}
 
 	if o.model != "" && !strings.Contains(o.model, "/") {
@@ -214,11 +220,11 @@ func (o bootstrapOptions) validate() error {
 	}
 
 	if o.install && o.once {
-		return errorsNew("bootstrap: --install is daemon mode; --once is cron mode — pick one")
+		return errors.New("bootstrap: --install is daemon mode; --once is cron mode — pick one")
 	}
 
 	if o.install && o.dryRun {
-		return errorsNew("bootstrap: --install and --dry-run are contradictory")
+		return errors.New("bootstrap: --install and --dry-run are contradictory")
 	}
 
 	return nil
@@ -283,8 +289,6 @@ func (o bootstrapOptions) ensureRepos(paths []string) (string, error) {
 		} else {
 			fmt.Fprintf(&b, "  todo  %d open item(s) → tasks after harvest\n", open)
 		}
-
-		verifyCmd := o.verify[name]
 
 		wroteVerify, cmd, err := o.ensureTQVerify(repo)
 		if err != nil {

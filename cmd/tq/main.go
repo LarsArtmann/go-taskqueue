@@ -43,6 +43,11 @@ Usage:
            [--task-timeout DUR] [--alert-url URL [--alert-api-key K]]
   tq harvest --projects-dir DIR [--repos a,b] [--max-per-tick N] [--allow-dirty]
             [--dry-run] [--db PATH]
+  tq bootstrap [repos...] [--agents N] [--model M] [--reasoning R] [--verify n=cmd]
+              [--install | --once | --dry-run] [--daily-budget N] [--db PATH]
+             (one command from zero to a running agent pool: ensures .crushrc
+              autonomy + .tq-verify, commits them, previews the harvest,
+              then runs agent-pool — or installs the systemd unit)
   tq agent-pool --projects-dir DIR [--repos a,b] [--interval DUR] [--concurrency N]
                [--yolo] [--max-per-tick N] [--task-timeout DUR]
                [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH]
@@ -72,6 +77,7 @@ func main() {
 	}
 
 	commands := map[string]func([]string) error{
+		"bootstrap":  cmdBootstrap,
 		"enqueue":    cmdEnqueue,
 		"worker":     cmdWorker,
 		"harvest":    cmdHarvest,
