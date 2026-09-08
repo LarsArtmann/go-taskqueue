@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Dashboard metrics + journal browser**: the overview gains a journal
+  watermark stat card (the seq every SSE/bridge consumer resumes from)
+  and two pure-SVG charts - a fact-rate sparkline (facts per 5-minute
+  slice of the last hour) and a time-to-complete histogram (queue wait +
+  run, honestly labeled, bucketed 1m/5m/15m/60m). GET /api/facts?after=
+  pages forward through the whole journal in seq order, and a collapsible
+  browser under the live feed uses it to scroll through history (lazy,
+  no-JS safe). The M13 adoption guard caught AreaChart being undocumented
+  within one test run - the table is updated.
 - **Dashboard interactions pack**: the task table's age and attempts
   columns are server-side sortable (allowlisted ORDER BY pushdown; header
   links cycle none -> desc -> asc -> none, aria-sort announced); project

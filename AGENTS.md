@@ -159,6 +159,7 @@ fail with "no such column" before the ALTER runs.
 | `layout.Base`, `ThemeToggle`                        | adopted | `layout.templ` |
 | `display.Grid/StatCard/Card/Table/EmptyState`       | adopted | `fragments.templ` |
 | `display.Badge/Eyebrow/DefinitionList/Scrollback`   | adopted | `fragments.templ` |
+| `display.AreaChart`                                 | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`) |
 | `display.Button`                                    | adopted | filter bar (apply) |
 | `feedback.Alert`                                    | adopted | task detail (last error) |
 | `icons.ArchiveBox/Bolt/Calculator/CheckCircle/CircleStack/Clock/Filter/Fire/Inbox` | adopted | stat-card + filter icons (`fragments.templ`) |
