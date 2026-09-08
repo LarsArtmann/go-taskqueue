@@ -153,46 +153,43 @@ in
         RequiresMountsFor = [ (dirOf (toString cfg.dbPath)) ];
       };
 
-      serviceConfig =
-        {
-          Type = "simple";
-          ExecStart = "${lib.getExe' cfg.package "tq"} agent-pool --config ${poolConf} ${
-            lib.escapeShellArgs cfg.extraArgs
-          }";
-          Environment = [ "TQ_DB=${toString cfg.dbPath}" ];
-          User = cfg.user;
-          Group = cfg.group;
-          WorkingDirectory = dirOf (toString cfg.dbPath);
-          Restart = "on-failure";
-          RestartSec = "30s";
-          startLimitBurst = 5;
-          startLimitIntervalSec = 300;
+      serviceConfig = {
+        Type = "simple";
+        ExecStart = "${lib.getExe' cfg.package "tq"} agent-pool --config ${poolConf} ${lib.escapeShellArgs cfg.extraArgs}";
+        Environment = [ "TQ_DB=${toString cfg.dbPath}" ];
+        User = cfg.user;
+        Group = cfg.group;
+        WorkingDirectory = dirOf (toString cfg.dbPath);
+        Restart = "on-failure";
+        RestartSec = "30s";
+        startLimitBurst = 5;
+        startLimitIntervalSec = 300;
 
-          # Graceful drain: agents may run for a long time; give them a
-          # wide stop window. The pool survives the first SIGINT and
-          # finishes in-flight tasks (see the header invariants).
-          TimeoutStopSec = "45min";
-          KillSignal = "SIGINT";
-          KillMode = "process";
+        # Graceful drain: agents may run for a long time; give them a
+        # wide stop window. The pool survives the first SIGINT and
+        # finishes in-flight tasks (see the header invariants).
+        TimeoutStopSec = "45min";
+        KillSignal = "SIGINT";
+        KillMode = "process";
 
-          # Deliberately conservative: the pool execs headless agents that
-          # write/commit inside $HOME and talk to the network, so no
-          # sandboxing below may break either. NoNewPrivileges and the
-          # kernel/cgroup namespaces cost nothing; ProtectSystem=full keeps
-          # /usr,/boot,/etc read-only while leaving $HOME writable for the
-          # repos and the binary.
-          NoNewPrivileges = true;
-          ProtectSystem = "full";
-          ProtectControlGroups = true;
-          ProtectKernelModules = true;
-          ProtectKernelTunables = true;
-          ProtectKernelLogs = true;
-          RestrictSUIDSGID = true;
-          LockPersonality = true;
-        }
-        // lib.optionalAttrs (lib.hasPrefix "/var/lib/" (toString cfg.dbPath)) {
-          StateDirectory = "tq";
-        };
+        # Deliberately conservative: the pool execs headless agents that
+        # write/commit inside $HOME and talk to the network, so no
+        # sandboxing below may break either. NoNewPrivileges and the
+        # kernel/cgroup namespaces cost nothing; ProtectSystem=full keeps
+        # /usr,/boot,/etc read-only while leaving $HOME writable for the
+        # repos and the binary.
+        NoNewPrivileges = true;
+        ProtectSystem = "full";
+        ProtectControlGroups = true;
+        ProtectKernelModules = true;
+        ProtectKernelTunables = true;
+        ProtectKernelLogs = true;
+        RestrictSUIDSGID = true;
+        LockPersonality = true;
+      }
+      // lib.optionalAttrs (lib.hasPrefix "/var/lib/" (toString cfg.dbPath)) {
+        StateDirectory = "tq";
+      };
     };
 
     systemd.services.tq-serve = lib.mkIf cfg.serve.enable {

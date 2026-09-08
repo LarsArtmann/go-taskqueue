@@ -1,5 +1,28 @@
 # SUPERB PLAN ROUND8 — SystemNix/Evo-x2 Integration
 
+> **EXECUTION STATUS (annotated 2026-09-08 23:30, point-in-time snapshot —
+> re-verify claims against the tree before treating as current):** executed
+> 2026-09-08 by a multi-agent fleet in BOTH repos, mostly within the hour.
+> Done & verified: all of A (upstream module `deploy/nixos/tq-agent-pool.nix`
+> + `nixosModules.default` + `checks.module-eval` two-branch eval + install
+> smoke `TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem` + docs
+> header/FEATURES/CHANGELOG), all of B (SystemNix input — `git+file` interim
+> per B0, ports.tq 8100, evo-x2 wiring, house module with primary-user +
+> pool-path journal + calibrated knobs + tq-storage-dir + tq-bootstrap
+> oneshot + dedicated sops template + Caddy protectedVHost + btrbk subvolume
+> + system-health monitoring), E1 (watch-driven harvest, 8 tests). Verified
+> live: full evo-x2 host eval renders both units with the drain invariants
+> (SIGINT/45min/process on the pool), `go test ./... -race` green after
+> fixing a pre-existing race-window flake in the bridge restart battery
+> (`runBridgeUntil` now waits for the batch-end checkpoint), harvest-parse
+> guard green. Owner-side (needs root/activation): C4 `nixos-rebuild test`,
+> C2/C5 seeding + first live tick, C6 dashboard check — one-command runbook
+> in SystemNix `docs/services/tq.md` + AGENTS.md §"tq Agent Pool". E2 stays
+> owner-gated (pick N). E3 (VM test) consciously skipped: module-eval +
+> host-config eval cover the wiring; a boot test duplicates SystemNix's
+> existing VM-test cost for no additional coverage of tq logic. Rollback
+> (C8) documented in `docs/services/tq.md`.
+
 **Date:** 2026-09-08 22:55 · **Goal:** go-taskqueue runs as a declarative NixOS
 service on Evo-x2 (primary workstation, 128 GB RAM) via SystemNix, dogfooding
 the agent-pool against CV + SystemNix + fleet repos.
