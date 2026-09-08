@@ -178,7 +178,8 @@
                   # deployment path: pool user, mount gate, config file wired
                   && deployedPool.serviceConfig.User == "alice"
                   && deployedPool.unitConfig.RequiresMountsFor == [ "/mnt/pool/services/tq" ]
-                  && builtins.match ".*--config .*/tq-pool\\.conf.*" deployedPool.serviceConfig.ExecStart != null
+                  # store paths render as <hash>-tq-pool.conf (dash, not slash)
+                  && builtins.match ".*--config .*tq-pool\\.conf.*" deployedPool.serviceConfig.ExecStart != null
                   && builtins.elem "TQ_DB=/mnt/pool/services/tq/tq.db" deployedPool.serviceConfig.Environment
                   # serve unit exists with the addr + no StateDirectory branch
                   && deployedServe.serviceConfig != { }
