@@ -820,3 +820,75 @@ func TestRequestLoggingKeepsSSEStreaming(t *testing.T) {
 		t.Fatalf("SSE snapshot through the request-logging wrapper is missing task %s", tk.ID)
 	}
 }
+
+// TestProjectPage (M18/F93): /project/{name} renders the dashboard pinned
+// to one project — shareable URL, same pipeline as ?project=.
+func TestProjectPage(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "alpha")
+	enqueue(t, s, "sh", "beta")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/project/alpha", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+
+	table := tableFragment(rec.Body.String())
+	if !strings.Contains(table, "alpha") || strings.Contains(table, "beta") {
+		t.Error("project page did not narrow the table to its project")
+	}
+}
+
+// TestFactFeedLinksToTasks (M18/F92): every feed line's task id is a link
+// to the detail page.
+func TestFactFeedLinksToTasks(t *testing.T) {
+	srv, s := newTestServer(t)
+	enq := enqueue(t, s, "sh", "demo")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	feed := rec.Body.String()
+	if !strings.Contains(feed, `href="/task/`+enq.ID.String()+`"`) {
+		t.Errorf("fact feed does not link the task id %s", enq.ID)
+	}
+}
+
+// TestSortableHeadersRender (M18/F94): the age/attempts headers carry sort
+// links, and ?sort= cycles via sortHeaderHref (none -> desc -> asc -> none).
+func TestSortableHeadersRender(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "demo")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	body := rec.Body.String()
+	for _, want := range []string{"sort=age-desc", "sort=attempts-desc", "aria-sort"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("table missing %q (sortable headers not wired)", want)
+		}
+	}
+
+	f := FilterState{}
+	if got := sortHeaderHref(f, "age"); got != "/?sort=age-desc" {
+		t.Errorf("first click = %q, want /?sort=age-desc", got)
+	}
+
+	f.Sort = "age-desc"
+	if got := sortHeaderHref(f, "age"); got != "/?sort=age-asc" {
+		t.Errorf("second click = %q, want /?sort=age-asc", got)
+	}
+
+	f.Sort = "age-asc"
+	if got := sortHeaderHref(f, "age"); got != "/" {
+		t.Errorf("third click = %q, want / (cycle back to severity order)", got)
+	}
+
+	f.Sort = "age-desc"
+	if got := sortHeaderHref(f, "attempts"); got != "/?sort=attempts-desc" {
+		t.Errorf("other column independent = %q, want /?sort=attempts-desc", got)
+	}
+}

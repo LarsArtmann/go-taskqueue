@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"strings"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -241,14 +242,23 @@ func sortHeaderDirection(f FilterState, column string) display.SortDirection {
 }
 
 // sortHeaderHref cycles a column's sort: none -> descending -> ascending ->
-// none (back to the severity order). The href keeps the current filter.
+// none (back to the severity order). Clicking a column while ANOTHER
+// column's sort is active starts this column's own cycle (descending
+// first). The href keeps the current filter.
 func sortHeaderHref(f FilterState, column string) string {
 	cycle := sortableColumns[column]
 
-	next := cycle[0]
+	// Default: activate the column's first meaningful sort (descending).
+	next := cycle[1]
+
 	for i, v := range cycle {
-		if v == f.Sort && i+1 < len(cycle) {
-			next = cycle[i+1]
+		if v == f.Sort {
+			if i+1 < len(cycle) {
+				next = cycle[i+1]
+			} else {
+				next = cycle[0]
+			}
+
 			break
 		}
 	}

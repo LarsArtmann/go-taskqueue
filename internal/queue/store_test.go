@@ -1698,3 +1698,47 @@ func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
 		t.Fatalf("second pass moved %d, want 0", moved)
 	}
 }
+
+// TestListSortAllowlist (M18/F94): the allowlisted column sorts order the
+// rows as named, and unknown values fall back to the default order instead
+// of reaching SQL.
+func TestListSortAllowlist(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	defer func() { _ = s.Close() }()
+
+	for _, prio := range []int{1, 5, 3} {
+		if _, err := s.Enqueue(ctx, task.New{Type: "sh", Priority: prio}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tasks, err := s.List(ctx, Filter{Sort: "priority-desc", Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tasks) != 3 || tasks[0].Priority < tasks[1].Priority || tasks[1].Priority < tasks[2].Priority {
+		t.Fatalf("priority-desc order = %d,%d,%d", tasks[0].Priority, tasks[1].Priority, tasks[2].Priority)
+	}
+
+	tasks, err = s.List(ctx, Filter{Sort: "priority-asc", Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if tasks[0].Priority > tasks[1].Priority || tasks[1].Priority > tasks[2].Priority {
+		t.Fatalf("priority-asc order = %d,%d,%d", tasks[0].Priority, tasks[1].Priority, tasks[2].Priority)
+	}
+
+	// Unknown sort: falls back to the default order (priority DESC) — never
+	// an error, never interpolated into SQL.
+	tasks, err = s.List(ctx, Filter{Sort: "created_at; DROP TABLE tasks", Limit: 10})
+	if err != nil {
+		t.Fatalf("hostile sort value: %v", err)
+	}
+
+	if tasks[0].Priority != 5 {
+		t.Fatalf("unknown sort fell through to non-default order: %d first", tasks[0].Priority)
+	}
+}
