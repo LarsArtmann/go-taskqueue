@@ -589,13 +589,18 @@ func composePoolArgs(o bootstrapOptions) []string {
 		"--allow-dirty=" + fmt.Sprint(o.allowDirty),
 	}
 
-	if o.model != "" {
-		args = append(args, "--model", o.model)
-	}
-
 	if o.repoTimeout != "" {
 		args = append(args, "--repo-timeout", o.repoTimeout)
 	}
+
+	// Deliberately NO "--model" here even when o.model is set: the managed
+	// .crushrc block already pins model + reasoning effort in every enrolled
+	// repo, and a payload model makes the executor pass `crush run -m`,
+	// which empirically RESETS the reasoning effort to the provider default
+	// (crush debug telemetry 2026-09-08: with -m "reasoning effort:" is
+	// empty; without it the slot's "reasoning effort:xhigh" applies). The
+	// repo slot is the only mechanism that carries effort, so it must be
+	// the single source.
 
 	if o.logDir != "" {
 		args = append(args, "--log-dir", o.logDir)

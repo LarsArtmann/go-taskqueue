@@ -620,7 +620,12 @@ func cmdAgentPool(args []string) error {
 	logDir := fs.String(
 		"log-dir",
 		os.Getenv("TQ_LOG_DIR"),
-		"write full agent + verify output sidecars to DIR/<task-id>.log ($TQ_LOG_DIR; empty = off — result detail keeps only a tail)",
+		"write full agent + verify output sidecars to DIR/<task-id>.log ($TQ_LOG_DIR; empty = off — result detail keeps only a tail). WARNING: sidecars are PLAINTEXT and may contain repo paths and prompt content",
+	)
+	logDirMaxAge := fs.Duration(
+		"log-dir-max-age",
+		0,
+		"sweep sidecar logs older than this age from --log-dir each tick (e.g. 168h = 7d; 0 = keep forever; $TQ_LOG_DIR_MAX_AGE)",
 	)
 	configPath := fs.String(
 		"config",
@@ -643,6 +648,12 @@ func cmdAgentPool(args []string) error {
 	// config-file log-dir) must reach it regardless of how it was set.
 	if *logDir != "" {
 		os.Setenv("TQ_LOG_DIR", *logDir)
+	}
+
+	if envAge := os.Getenv("TQ_LOG_DIR_MAX_AGE"); envAge != "" && *logDirMaxAge == 0 {
+		if parsed, err := time.ParseDuration(envAge); err == nil {
+			*logDirMaxAge = parsed
+		}
 	}
 
 	if *projectsDir == "" && *repos == "" {
@@ -843,6 +854,16 @@ func cmdAgentPool(args []string) error {
 	}
 
 	runTick := func() {
+		// Sidecar retention: sweep aged logs before new work so a
+		// long-running pool's output directory cannot grow forever.
+		if *logDir != "" && *logDirMaxAge > 0 {
+			if removed, err := executor.SweepSidecars(*logDir, *logDirMaxAge); err != nil {
+				log.Warn("sidecar sweep failed", "err", err)
+			} else if removed > 0 {
+				log.Info("sidecar sweep", "removed", removed, "dir", *logDir)
+			}
+		}
+
 		if ok, reason := guard.Check(ctx, s); !ok {
 			log.Warn("budget: skipping harvest tick", "reason", reason)
 

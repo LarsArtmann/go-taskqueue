@@ -171,6 +171,15 @@ state — its only write is its own cursor.
 - Generated `*_templ.go` files are COMMITTED, never gitignored (the
   samber-do-auditlog v0.9.0 retract lesson: Nix builds vendor source
   without running `templ generate`)
+- **Docs formatting stays MANUAL by decision (2026-09-08), not by
+  neglect**: dprint stays in the devShell as an on-demand tool
+  (`dprint fmt docs/planning/x.md`), but is NOT gated. Wiring it into
+  treefmt was evaluated and rejected: go-standard's treefmt module has no
+  dprint program, dprint.json's wasm plugins are remote URLs (the
+  `nix flake check` sandbox cannot fetch them), and a hard docs-format
+  gate would red-master constantly while multiple concurrent agents write
+  `docs/status/` reports in one pass. Don't re-litigate without solving
+  plugin pinning AND the multi-writer problem.
 - The web UI is themed with `github.com/larsartmann/templ-components`
   (v1.14.x). Design tokens live in `internal/webui/theme.css` (@theme
   remap: steel-navy neutrals, cyan accent, JetBrains Mono); Tailwind
