@@ -370,6 +370,18 @@ func defaultProjectsDir() string {
 	return filepath.Join(home, "projects")
 }
 
+// defaultLogDir is where agent output sidecars land unless overridden:
+// full stdout + verify output per task, in the XDG state dir (logs are
+// state, not config — they may be deleted without breaking anything).
+func defaultLogDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	return filepath.Join(home, ".local", "state", "tq", "logs")
+}
+
 func cmdHarvest(args []string) error {
 	fs := flag.NewFlagSet("harvest", flag.ExitOnError)
 	projectsDir := fs.String(
@@ -597,6 +609,11 @@ func cmdAgentPool(args []string) error {
 		false,
 		"with --review: a request_changes verdict mints an agent fix task per finding (loop bounded by the budget guard)",
 	)
+	logDir := fs.String(
+		"log-dir",
+		os.Getenv("TQ_LOG_DIR"),
+		"write full agent + verify output sidecars to DIR/<task-id>.log ($TQ_LOG_DIR; empty = off — result detail keeps only a tail)",
+	)
 	configPath := fs.String(
 		"config",
 		os.Getenv("TQ_POOL_CONFIG"),
@@ -612,6 +629,12 @@ func cmdAgentPool(args []string) error {
 		if err := applyPoolConfigFile(fs, *configPath); err != nil {
 			return err
 		}
+	}
+
+	// The sidecar writer reads the env at execution time; a --log-dir (or
+	// config-file log-dir) must reach it regardless of how it was set.
+	if *logDir != "" {
+		os.Setenv("TQ_LOG_DIR", *logDir)
 	}
 
 	if *projectsDir == "" && *repos == "" {
