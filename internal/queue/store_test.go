@@ -1599,3 +1599,102 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 		n, enqueueDur, float64(n)/enqueueDur.Seconds(),
 		work, claimDur, float64(work)/claimDur.Seconds())
 }
+
+// TestArchiveFactsBeforeKeepsProjections (ADR-0006 prototype): terminal
+// tasks' facts move to facts_archive; active tasks' facts stay hot; the
+// tasks projection and Facts() keep working; the watermark is recorded.
+func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	defer func() { _ = s.Close() }()
+
+	var done [2]task.Task
+
+	for i := range done {
+		enq, err := s.Enqueue(ctx, task.New{Type: "sh"})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		got, err := s.ClaimDue(ctx, "w", time.Minute)
+		if err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := s.Complete(ctx, got.ID, "w", nil); err != nil {
+			t.Fatal(err)
+		}
+
+		done[i] = enq
+	}
+
+	active, err := s.Enqueue(ctx, task.New{Type: "sh"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	head, err := s.HeadSeq(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	moved, err := s.ArchiveFactsBefore(ctx, head+1)
+	if err != nil {
+		t.Fatalf("ArchiveFactsBefore: %v", err)
+	}
+
+	if moved != 6 { // 2 terminal tasks x (enqueued, claimed, completed)
+		t.Fatalf("moved %d facts, want 6", moved)
+	}
+
+	// Projections survive: all three tasks still resolvable with state.
+	for i, want := range []task.Task{done[0], done[1], active} {
+		got, err := s.Get(ctx, want.ID)
+		if err != nil {
+			t.Fatalf("get %d: %v", i, err)
+		}
+
+		wantStatus := task.Completed
+		if i == 2 {
+			wantStatus = task.Pending
+		}
+
+		if got.Status != wantStatus {
+			t.Fatalf("task %d status = %s, want %s", i, got.Status, wantStatus)
+		}
+	}
+
+	// Hot facts now contain ONLY the active task's enqueued fact.
+	facts, err := s.Facts(ctx, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(facts) != 1 || facts[0].TaskID != active.ID.String() {
+		t.Fatalf("hot facts = %+v, want only the active task's", facts)
+	}
+
+	stats, err := s.ArchiveSummary(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if stats.Archived != 6 || stats.Hot != 1 {
+		t.Fatalf("summary = %+v, want archived=6 hot=1", stats)
+	}
+
+	if stats.Watermark < 0 {
+		t.Fatalf("watermark = %d, want >= 0 after archiving", stats.Watermark)
+	}
+
+	// Re-run is a no-op (facts already moved; terminal tasks have no hot
+	// facts left below any cutoff).
+	moved, err = s.ArchiveFactsBefore(ctx, head+100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if moved != 0 {
+		t.Fatalf("second pass moved %d, want 0", moved)
+	}
+}

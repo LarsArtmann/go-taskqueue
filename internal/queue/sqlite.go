@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -126,6 +127,21 @@ CREATE TABLE IF NOT EXISTS facts (
 	detail   TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_facts_task ON facts(task_id, seq);
+CREATE TABLE IF NOT EXISTS facts_archive (
+	seq      INTEGER PRIMARY KEY,
+	time     INTEGER NOT NULL, -- unix millis
+	task_id  TEXT NOT NULL,
+	type     TEXT NOT NULL,
+	owner    TEXT NOT NULL DEFAULT '',
+	attempt  INTEGER NOT NULL DEFAULT 0,
+	error    TEXT NOT NULL DEFAULT '',
+	detail   TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_facts_archive_task ON facts_archive(task_id, seq);
+CREATE TABLE IF NOT EXISTS journal_meta (
+	key   TEXT PRIMARY KEY,
+	value TEXT NOT NULL
+);
 `
 
 func (s *SQLiteStore) migrate(ctx context.Context) error {
@@ -641,6 +657,120 @@ func (s *SQLiteStore) CancelRequested(ctx context.Context, id task.ID) (bool, er
 	err := s.db.QueryRowContext(ctx, cancelRequestedSQL, id.String()).Scan(&requested)
 
 	return requested, err
+}
+
+// ArchiveStats reports hot vs archived fact counts and the compaction
+// watermark (highest archived seq; -1 when nothing was archived yet).
+type ArchiveStats struct {
+	Hot       int64 // facts in the hot table
+	Archived  int64 // facts in facts_archive
+	Watermark int64 // highest seq ever archived (-1 = never)
+}
+
+// ArchiveFactsBefore moves the facts of TERMINAL tasks (completed, dead,
+// cancelled) whose highest fact seq is below cutoff into facts_archive —
+// the hot-cold compaction prototype (ADR-0006). One transaction, one
+// statement pair per task set; projections (tasks table) are untouched.
+// Returns how many facts moved. NOT on the Store interface: an admin
+// operation, not a queue operation.
+func (s *SQLiteStore) ArchiveFactsBefore(ctx context.Context, cutoff int64) (int64, error) {
+	var moved int64
+
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		// Terminal tasks whose ENTIRE fact trail is below the cutoff.
+		rows, err := tx.QueryContext(ctx, `
+			SELECT f.task_id, MAX(f.seq)
+			FROM facts f
+			JOIN tasks t ON t.id = f.task_id
+			WHERE t.status IN ('completed', 'dead', 'cancelled')
+			GROUP BY f.task_id
+			HAVING MAX(f.seq) < ?`, cutoff)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = rows.Close() }()
+
+		type candidate struct {
+			id  string
+			max int64
+		}
+
+		var batch []candidate
+
+		for rows.Next() {
+			var c candidate
+			if err := rows.Scan(&c.id, &c.max); err != nil {
+				return err
+			}
+
+			batch = append(batch, c)
+		}
+
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		var watermark int64 = -1
+
+		for _, c := range batch {
+			res, err := tx.ExecContext(ctx, `
+				INSERT INTO facts_archive (seq, time, task_id, type, owner, attempt, error, detail)
+				SELECT seq, time, task_id, type, owner, attempt, error, detail
+				FROM facts WHERE task_id = ?`, c.id)
+			if err != nil {
+				return err
+			}
+
+			n, _ := res.RowsAffected()
+			moved += n
+
+			if _, err := tx.ExecContext(ctx, `DELETE FROM facts WHERE task_id = ?`, c.id); err != nil {
+				return err
+			}
+
+			if c.max > watermark {
+				watermark = c.max
+			}
+		}
+
+		if watermark >= 0 {
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO journal_meta (key, value) VALUES ('archive_watermark', ?)
+				ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+				strconv.FormatInt(watermark, 10)); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return moved, nil
+}
+
+// ArchiveSummary reports hot/archived fact counts and the compaction
+// watermark (highest archived seq; -1 when nothing was archived yet).
+func (s *SQLiteStore) ArchiveSummary(ctx context.Context) (ArchiveStats, error) {
+	var stats ArchiveStats
+
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM facts`).Scan(&stats.Hot); err != nil {
+		return stats, err
+	}
+
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM facts_archive`).Scan(&stats.Archived); err != nil {
+		return stats, err
+	}
+
+	stats.Watermark = -1
+
+	_ = s.db.QueryRowContext(ctx,
+		`SELECT value FROM journal_meta WHERE key = 'archive_watermark'`).
+		Scan(&stats.Watermark) // no row stays -1
+
+	return stats, nil
 }
 
 const cancelRequestedSQL = `SELECT EXISTS(
