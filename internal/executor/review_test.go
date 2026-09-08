@@ -144,9 +144,9 @@ func TestReviewExecutorVerdictContract(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
+		name     string
 		agentOut string
-		want    ReviewVerdict
+		want     ReviewVerdict
 	}{
 		{
 			name:     "approve completes",
@@ -155,7 +155,7 @@ func TestReviewExecutorVerdictContract(t *testing.T) {
 		},
 		{
 			name:     "request_changes also completes",
-			agentOut: "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"add test\",\"severity\":\"medium\"}]}\n",
+			agentOut: `TQ_RESULT: {"verdict":"request_changes","findings":[{"title":"add test","severity":"medium"}]}` + "\n",
 			want:     VerdictRequestChanges,
 		},
 	}
@@ -199,13 +199,15 @@ func TestReviewExecutorPromptCarriesReviewContext(t *testing.T) {
 	promptLog := filepath.Join(dir, "prompt.log")
 	bin := filepath.Join(dir, "prompt-agent")
 
-	script := "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \"" + promptLog + "\"\nprintf '%s\\n' 'TQ_RESULT: {\"verdict\":\"approve\"}'\n"
+	script := "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \"" + promptLog + "\"\n"
+	script += "printf '%s\\n' 'TQ_RESULT: {\"verdict\":\"approve\"}'\n"
+
 	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
 		t.Fatalf("write stub: %v", err)
 	}
 
 	repo := filepath.Join(dir, "repo")
-	if err := os.MkdirAll(repo, 0o755); err != nil {
+	if err := os.MkdirAll(repo, 0o750); err != nil {
 		t.Fatal(err)
 	}
 
