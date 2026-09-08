@@ -73,6 +73,9 @@ go test ./internal/harvest/ -run TestRepoTodoListParses -count=1
 step "web UI live smoke"
 ./scripts/smoke/webui.sh
 
+step "status-loop live smoke"
+./scripts/smoke/status-loop.sh
+
 step "doc-reference check"
 ./scripts/check-doc-refs.sh
 
