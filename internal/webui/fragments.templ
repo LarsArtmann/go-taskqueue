@@ -20,68 +20,38 @@ import (
 // cancelled and total stay quiet (no icon). Marker classes (card-pending, …)
 // are kept as stable hooks for tests and CSS.
 templ StatusCards(data DashboardData) {
-	@display.Grid(display.GridProps{Cols: display.GridCols6}) {
-		@display.StatCard(display.StatCardProps{
-			BaseProps: utils.BaseProps{Class: "card-pending"},
-			Label:     "pending",
-			Value:     formatInt(data.Counts[task.Pending]),
-			Icon:      icons.Clock,
-			Tone:      display.StatToneYellow,
-			Href:      statusHref(task.Pending),
-		})
-		@display.StatCard(display.StatCardProps{
-			BaseProps: utils.BaseProps{Class: "card-running"},
-			Label:     "running",
-			Value:     formatInt(data.Counts[task.Running]),
-			Icon:      icons.Bolt,
-			Tone:      display.StatToneBlue,
-			Href:      statusHref(task.Running),
-		})
-		@display.StatCard(display.StatCardProps{
-			BaseProps: utils.BaseProps{Class: "card-completed"},
-			Label:     "completed",
-			Value:     formatInt(data.Counts[task.Completed]),
-			Icon:      icons.CheckCircle,
-			Tone:      display.StatToneGreen,
-			Href:      statusHref(task.Completed),
-		})
-		@display.StatCard(display.StatCardProps{
-			BaseProps: utils.BaseProps{Class: "card-dead"},
-			Label:     "dead",
-			Value:     formatInt(data.Counts[task.Dead]),
-			Icon:      icons.Fire,
-			Tone:      display.StatToneRed,
-			Href:      statusHref(task.Dead),
-		})
-		@display.StatCard(display.StatCardProps{
-			BaseProps: utils.BaseProps{Class: "card-journal"},
-			Label:     "journal seq",
-			Value:     formatInt(int(data.JournalSeq)),
-			Icon:      icons.CircleStack,
-			Tone:      display.StatToneBlue,
-		})
-		@display.StatCard(display.StatCardProps{
-			BaseProps: utils.BaseProps{Class: "card-cancelled"},
-			Label:     "cancelled",
-			Value:     formatInt(data.Counts[task.Cancelled]),
-			Href:      statusHref(task.Cancelled),
-		})
-		@display.StatCard(display.StatCardProps{
-			BaseProps: utils.BaseProps{Class: "card-total"},
-			Label:     "total",
-			Value:     formatInt(data.Total),
-		})
-	}
-	<div class="mt-4 flex flex-wrap items-center gap-2">
-		if data.Budget != nil {
-			@display.StatCard(display.StatCardProps{
-				BaseProps: utils.BaseProps{Class: "card-budget"},
-				Label:     labelBudget,
-				Value:     formatInt(data.Budget.Spent) + "/" + formatInt(data.Budget.Cap),
-				Icon:      icons.Calculator,
-				Tone:      data.Budget.Tone(),
-			})
-		}
+	<div class="tq-nowband">
+		<div class="tq-nowband-inner">
+			<a class={ templ.Classes("tq-seg card-running", templ.KV("tq-seg-hot", data.Counts[task.Running] > 0)) } href={ templ.URL(statusHref(task.Running)) }>
+				<span class="tq-seg-num">{ formatInt(data.Counts[task.Running]) }</span>
+				<span class="tq-seg-label">running</span>
+			</a>
+			<a class="tq-seg card-pending" href={ templ.URL(statusHref(task.Pending)) }>
+				<span class="tq-seg-num">{ formatInt(data.Counts[task.Pending]) }</span>
+				<span class="tq-seg-label">pending</span>
+			</a>
+			<a class={ templ.Classes("tq-seg card-dead", templ.KV("tq-seg-alarm", data.Counts[task.Dead] > 0)) } href={ templ.URL(statusHref(task.Dead)) }>
+				<span class="tq-seg-num">{ formatInt(data.Counts[task.Dead]) }</span>
+				<span class="tq-seg-label">dead</span>
+			</a>
+			<a class="tq-seg card-completed" href={ templ.URL(statusHref(task.Completed)) }>
+				<span class="tq-seg-num">{ formatInt(data.Counts[task.Completed]) }</span>
+				<span class="tq-seg-label">completed</span>
+			</a>
+			<a class="tq-seg card-cancelled" href={ templ.URL(statusHref(task.Cancelled)) }>
+				<span class="tq-seg-num">{ formatInt(data.Counts[task.Cancelled]) }</span>
+				<span class="tq-seg-label">cancelled</span>
+			</a>
+		</div>
+		<div class="tq-nowband-meta">
+			<span class="card-total" title="all tasks ever">total { formatInt(data.Total) }</span>
+			<span class="card-journal" title="journal watermark — highest fact seq">journal { formatInt(int(data.JournalSeq)) }</span>
+			if data.Budget != nil {
+				<span class="card-budget">budget today { formatInt(data.Budget.Spent) }/{ formatInt(data.Budget.Cap) }</span>
+			}
+		</div>
+	</div>
+	<div class="mt-3 flex flex-wrap items-center gap-1.5">
 		if len(data.Projects) == 0 {
 			<span class="font-mono text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">no projects</span>
 		} else {
@@ -113,26 +83,58 @@ templ TaskTable(data DashboardData) {
 			})
 		}
 	} else {
+		@taskActiveCard(data)
+		@taskSettledDetails(data)
+		@taskPager(data)
+	}
+}
+
+// taskActiveCard is the top half of the two-tier table: everything queued or
+// running, always visible — the operator's answer to "what is happening
+// right now?" never sits behind a collapse.
+templ taskActiveCard(data DashboardData) {
+	if len(activeTasks(data.Tasks)) > 0 {
+		<div class="tq-kicker">active now</div>
 		@display.Card(display.CardProps{Padding: display.CardPaddingNone}) {
 			@display.Table(display.TableProps{
-				Caption: "Live task queue",
-				TypedHeaders: []display.TableHeader{
-					{Label: labelID},
-					{Label: labelProject},
-					{Label: labelType},
-					{Label: labelStatus},
-					{Label: labelAttempts, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "attempts"), Href: sortHeaderHref(data.Filter, "attempts")},
-					{Label: labelReady},
-					{Label: labelAge, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "age"), Href: sortHeaderHref(data.Filter, "age")},
-					{Label: labelError},
-				},
-				Flush:       true,
-				Hover:       true,
-				CellPadding: display.TableCellPaddingCompact,
-				Body:        taskRows(data),
+				Caption:      "Active tasks",
+				TypedHeaders: taskHeaders(data),
+				Flush:        true,
+				Hover:        true,
+				CellPadding:  display.TableCellPaddingCompact,
+				Body:         taskRows(data, activeTasks(data.Tasks)),
 			})
 		}
-		@taskPager(data)
+	}
+}
+
+// taskSettledDetails folds completed/cancelled/dead rows behind a native
+// <details> — no JS under CSP — so thirty identical completed rows stop
+// drowning the live ones.
+templ taskSettledDetails(data DashboardData) {
+	if len(settledTasks(data.Tasks)) > 0 {
+		<details class="tq-settled">
+			<summary>
+				<span class="tq-settled-title">settled</span>
+				<span class="tq-settled-counts">
+					{ formatInt(countStatus(data.Tasks, task.Completed)) } completed
+					· { formatInt(countStatus(data.Tasks, task.Cancelled)) } cancelled
+					{ settledDeadSuffix(data.Tasks) }
+				</span>
+			</summary>
+			<div class="mt-2">
+				@display.Card(display.CardProps{Padding: display.CardPaddingNone}) {
+					@display.Table(display.TableProps{
+						Caption:      "Settled tasks",
+						TypedHeaders: taskHeaders(data),
+						Flush:        true,
+						Hover:        true,
+						CellPadding:  display.TableCellPaddingCompact,
+						Body:         taskRows(data, settledTasks(data.Tasks)),
+					})
+				}
+			</div>
+		</details>
 	}
 }
 
@@ -167,8 +169,8 @@ templ taskPager(data DashboardData) {
 
 // taskRows renders the task table body. Hover styling is applied here
 // because the library only adds it to Rows-driven tables, not Body slots.
-templ taskRows(data DashboardData) {
-	for _, t := range data.Tasks {
+templ taskRows(data DashboardData, rows []task.Task) {
+	for _, t := range rows {
 		<tr class={ taskRowClass(t) }>
 			<td class={ tdCellClass(false) }>
 				<a
@@ -178,7 +180,7 @@ templ taskRows(data DashboardData) {
 				>{ shortID(t.ID) }</a>
 			</td>
 			<td class={ tdCellClass(true) }>
-				<a class="hover:underline" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
+				<a class="whitespace-nowrap hover:underline" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
 			</td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
 			<td class={ tdCellClass(true) }>
@@ -211,8 +213,60 @@ templ taskRows(data DashboardData) {
 			} else {
 				<td class={ tdCellClass(false) }></td>
 			}
+			if data.AllowWrites {
+				<td class={ tdCellClass(false) }>
+					if t.Status == task.Pending {
+						@cancelAction(t.ID, false)
+					} else if t.Status == task.Running {
+						@cancelAction(t.ID, true)
+					} else if t.Status == task.Dead {
+						@rescueAction(t.ID)
+					}
+				</td>
+			}
 		</tr>
 	}
+}
+
+// cancelAction opens a reason form (native <details>, no JS under CSP).
+// Pending tasks are withdrawn outright; running tasks get a cooperative
+// stop REQUEST the agent honors between steps.
+templ cancelAction(id task.ID, running bool) {
+	<details class="tq-action">
+		<summary>
+			if running {
+				<span class="tq-action-stop">stop</span>
+			} else {
+				<span class="tq-action-cancel">cancel</span>
+			}
+		</summary>
+		<form class="tq-action-form" method="post" action={ templ.URL("/task/" + id.String() + "/cancel") }>
+			<input type="hidden" name="csrf" value={ ctxCSRF(ctx) }/>
+			<input type="text" name="reason" placeholder={ reasonPlaceholder(running) } maxlength="200"/>
+			if running {
+				<button type="submit">request stop</button>
+			} else {
+				<button type="submit">cancel task</button>
+			}
+		</form>
+	</details>
+}
+
+// rescueAction re-queues a dead-lettered task with a fresh attempt budget.
+templ rescueAction(id task.ID) {
+	<details class="tq-action">
+		<summary><span class="tq-action-rescue">rescue</span></summary>
+		<form class="tq-action-form" method="post" action={ templ.URL("/task/" + id.String() + "/rescue") }>
+			<input type="hidden" name="csrf" value={ ctxCSRF(ctx) }/>
+			<select name="attempts">
+				<option value="3" selected>3 attempts</option>
+				<option value="1">1 attempt</option>
+				<option value="5">5 attempts</option>
+				<option value="10">10 attempts</option>
+			</select>
+			<button type="submit">re-queue</button>
+		</form>
+	</details>
 }
 
 // DeadLetterTable renders the dead-letter queue (inner content of
@@ -274,7 +328,7 @@ templ FactFeed(data DashboardData) {
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 			<div class="tc-log text-start border-y-0 py-3 font-mono text-[0.8125rem] leading-relaxed text-gray-600 dark:text-gray-400" aria-label="journal fact tail">
 				for _, fact := range data.Facts {
-					<div class="tc-log-line tc-log-line-still">
+					<div class={ templ.Classes("tc-log-line tc-log-line-still", templ.KV("tq-fact-cancelled", fact.Type == journal.Cancelled)) }>
 						<span class="me-3 text-gray-400 dark:text-gray-500">{ factTimestamp(data.Now, fact.Time) }</span>
 						<span class={ "me-2 inline-block min-w-12 font-medium " + factToneClass(factTone(fact.Type)) }>{ string(fact.Type) }</span>
 						<a

@@ -175,6 +175,10 @@ type DashboardData struct {
 	// visible: an approve/request-changes badge in the table and findings
 	// on the detail page. Absent when the page shows no finished reviews.
 	Reviews map[string]executor.ReviewResult
+	// AllowWrites mirrors Config.AllowWrites: the templates render the
+	// admin affordances (cancel/stop/rescue forms) only when writes are
+	// enabled server-side.
+	AllowWrites bool
 	// Statuses holds the parsed outcome of every COMPLETED status task on
 	// the visible page (keyed by task id) — the done-prompt loop made
 	// visible: a report badge in the table and the report path + next-item

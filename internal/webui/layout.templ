@@ -70,6 +70,27 @@ templ TaskDetailPage(data DashboardData, detail taskDetailData) {
 	}
 }
 
+// TaskNotFoundPage is the styled 404 for /task/{id}: an unknown id keeps
+// the dashboard chrome and a way back instead of a bare error page.
+templ TaskNotFoundPage(id string) {
+	@layout.Base(dashboardProps(detailPageTitle(id)+" — not found", ctxNonce(ctx))) {
+		@pageHeader()
+		<div class="mx-auto w-full max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
+			<div class="tq-heading">
+				@display.Eyebrow(display.EyebrowProps{Text: "task not found"})
+			</div>
+			<p class="mt-4 break-all font-mono text-sm text-gray-600 dark:text-gray-300">{ id }</p>
+			<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+				No task with this id exists in this journal — it was never enqueued here, or the dashboard is pointed at a different database.
+			</p>
+			<a
+				class="mt-6 inline-block font-mono text-xs uppercase tracking-[0.18em] text-gray-500 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400"
+				href="/"
+			>← back to dashboard</a>
+		</div>
+	}
+}
+
 // pageHeader is the instrument chrome: wordmark, connection lamp, theme
 // toggle. The lamp's class (conn-live/conn-reconnecting/conn-stale) is
 // driven by app.js over SSE heartbeats.

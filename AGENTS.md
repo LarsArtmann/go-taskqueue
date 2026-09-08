@@ -239,6 +239,14 @@ state — its only write is its own cursor.
   changes mid-task (e.g. a new executor, a migration). Re-run `go test ./...
   -race` right before declaring success; treat unexpected diffs as someone
   else's forward progress.
+- ⚠️ **Queue tasks outlive their TODO items**: harvesting while no pool runs
+  enqueues tasks that sit pending indefinitely; later `[x]`-ing the item in
+  TODO_LIST.md never cancels the enqueued task (dedup keys suppress
+  re-enqueue, they do not withdraw). Stale pending tasks for already-done
+  items are zombies a pool relaunch would execute — cancel them
+  (`tq cancel <id> --reason "item done"`) or sweep with
+  `tq harvest --prune-stale`, and eyeball `tq stats` for surprise pending
+  counts before relaunching a pool (21:40 report §d1/§e1: six sat 5–24 h).
 - ⚠️ **vendorHash drift**: after go.mod/go.sum changes run the fakeHash dance
   (`vendorHash = lib.fakeHash` → `nix build` → copy `got:`). The
   `checks.vendor-hash` gate fails fast on drift.
@@ -251,7 +259,11 @@ state — its only write is its own cursor.
   `nix build` or Nix cannot see them.
 - ⚠️ **tq worker runs until signalled** unless `--once` is passed (drain the
   claimable queue, then exit — same semantics as `tq agent-pool --once`);
-  without it scripts must wrap the worker in `timeout`/supervisor. Same for
+  without it scripts must wrap the worker in `timeout`/supervisor. Runbook
+  rule for every session: manual/verification workers ALWAYS get `--once`
+  (or a `timeout` wrapper) so no process outlives its session — a stray
+  `/tmp/papdbg` worker kept forwarding dead letters to a dashboard for hours
+  after its session ended (21:40 report §d3). Same for
   `tq serve` — it blocks
   until signalled; smoke/tests wrap it in `timeout` (see
   `scripts/smoke/webui.sh`).
