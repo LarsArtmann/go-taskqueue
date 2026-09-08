@@ -23,6 +23,13 @@
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ inputs.go-nix-helpers.flakeModules.go-standard ];
 
+      # NixOS module for running the agent pool + read-only dashboard as
+      # system services. Import into a NixOS system with:
+      #   imports = [ inputs.go-taskqueue.nixosModules.default ];
+      #   services.tq-agent-pool = { enable = true; user = "lars"; … };
+      # (bank-sync deploy/nixos pattern; usage header in the module file)
+      flake.nixosModules.default = import ./deploy/nixos/tq-agent-pool.nix;
+
       go-standard = {
         pname = "go-taskqueue";
         version = "0.1.0";
@@ -76,7 +83,7 @@
       };
 
       perSystem =
-        { config, pkgs, ... }:
+        { config, pkgs, lib, ... }:
         {
           # Generated templ output never satisfies gofumpt/goimports; the
           # .templ sources carry the formatting contract via templ fmt.
@@ -102,6 +109,86 @@
             fi
             cp help.txt $out
           '';
+
+          # Module eval check (ROUND8 A6, bank-sync nixos-module-eval
+          # pattern): instantiates the NixOS module so option typos /
+          # rendering regressions fail `nix flake check`. Evals BOTH the
+          # default /var/lib path AND the deployment shape (login user +
+          # pool dbPath + poolSettings + serve) — an option branch that is
+          # never evaluated is untested code. Linux only (needs nixpkgs
+          # nixosSystem).
+          checks.module-eval = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (pkgs.runCommand "nixos-module-eval" { } (
+            let
+              inherit (inputs) nixpkgs;
+              nixosModule = import ./deploy/nixos/tq-agent-pool.nix;
+              eval =
+                extra:
+                (nixpkgs.lib.nixosSystem {
+                  system = pkgs.stdenv.hostPlatform.system;
+                  modules = [
+                    {
+                      nixpkgs.overlays = [
+                        (_final: _prev: {
+                          tq = config.packages.default;
+                        })
+                      ];
+                    }
+                    nixosModule
+                    { services.tq-agent-pool.enable = true; }
+                    extra
+                  ];
+                }).config.systemd.services;
+              defaultUnits = eval { };
+              deployedUnits = eval {
+                services.tq-agent-pool = {
+                  user = "alice";
+                  group = "users";
+                  dbPath = "/mnt/pool/services/tq/tq.db";
+                  poolSettings = {
+                    projects-dir = "/home/alice/projects";
+                    yolo = "true";
+                  };
+                  extraArgs = [ "--max-per-tick 3" ];
+                  serve = {
+                    enable = true;
+                    addr = "127.0.0.1:8100";
+                  };
+                };
+              };
+              defaultPool = defaultUnits.tq-agent-pool;
+              deployedPool = deployedUnits.tq-agent-pool;
+              deployedServe = deployedUnits.tq-serve;
+              drainInvariants = unit: builtins.all (kv: kv != null) [
+                unit.serviceConfig.KillSignal or null
+                unit.serviceConfig.KillMode or null
+                unit.serviceConfig.TimeoutStopSec or null
+              ];
+              allOk =
+                # default path: synthetic user + StateDirectory, no mount gate
+                defaultPool.serviceConfig.StateDirectory or "" == "tq"
+                && !(defaultPool.unitConfig ? RequiresMountsFor)
+                # deployment path: pool user, mount gate, config file wired
+                && deployedPool.serviceConfig.User == "alice"
+                && deployedPool.unitConfig.RequiresMountsFor == [ "/mnt/pool/services/tq" ]
+                && builtins.match ".*--config .*/tq-pool\\.conf.*" deployedPool.serviceConfig.ExecStart != null
+                && builtins.elem "TQ_DB=/mnt/pool/services/tq/tq.db" deployedPool.serviceConfig.Environment
+                # serve unit exists with the addr + no StateDirectory branch
+                && deployedServe.serviceConfig != { }
+                && builtins.match ".*serve --addr 127\\.0\\.0\\.1:8100.*" deployedServe.serviceConfig.ExecStart != null
+                && !(deployedServe.serviceConfig ? StateDirectory)
+                # drain invariants survive on both units
+                && drainInvariants deployedPool
+                && (deployedPool.serviceConfig.KillSignal or "" == "SIGINT")
+                && (deployedPool.serviceConfig.KillMode or "" == "process")
+                && (deployedPool.serviceConfig.TimeoutStopSec or "" == "45min");
+            in
+            ''
+              echo "pool ExecStart: ${deployedPool.serviceConfig.ExecStart}"
+              echo "serve ExecStart: ${deployedServe.serviceConfig.ExecStart}"
+              ${lib.optionalString allOk "touch $out"}
+              ${lib.optionalString (!allOk) "echo 'nixos-module-eval FAILED'; exit 1"}
+            ''
+          ));
 
           # Recompile the web UI stylesheet into the committed, embedded
           # static asset (dev step — the nix build just embeds the output).
