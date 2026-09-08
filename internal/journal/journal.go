@@ -21,8 +21,14 @@ const (
 	Failed       FactType = "task.failed"        // attempt failed, will retry
 	DeadLettered FactType = "task.dead-lettered" // attempts exhausted
 	Cancelled    FactType = "task.cancelled"
-	Released     FactType = "task.released" // lease expired, back to pending
-	Requeued     FactType = "task.requeued" // preflight refusal, no attempt burned
+	// CancelRequested records an operator's request to stop a Running
+	// task. The fact IS the flag: the executing worker observes it at its
+	// next heartbeat, cancels the execution context, and records
+	// task.cancelled; a crashed worker's expired lease finalizes the same
+	// cancel at reclaim. No task-row column mirrors it.
+	CancelRequested FactType = "task.cancel-requested"
+	Released        FactType = "task.released" // lease expired, back to pending
+	Requeued        FactType = "task.requeued" // preflight refusal, no attempt burned
 )
 
 // Fact is one immutable observation about one task.

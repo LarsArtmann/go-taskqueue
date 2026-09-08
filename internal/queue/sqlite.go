@@ -327,8 +327,43 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 			return err
 		}
 		// Reclaiming an expired lease first records the release, so the
-		// journal shows why the task moved between owners.
+		// journal shows why the task moved between owners. A pending
+		// cooperative cancel is finalized here instead: the task is never
+		// re-executed after its cancel was requested.
 		if st == "running" {
+			requested, err := cancelRequestedTx(ctx, tx, id)
+			if err != nil {
+				return err
+			}
+
+			if requested {
+				if err := s.appendFact(ctx, tx, journal.Fact{
+					TaskID: id, Type: journal.Released, Owner: prevOwner,
+				}); err != nil {
+					return err
+				}
+
+				res, err := tx.ExecContext(ctx, `
+					UPDATE tasks SET status = 'cancelled', updated_at = ?, lease_owner = '', lease_expires = NULL
+					WHERE id = ? AND status = 'running'`, now.UnixMilli(), id)
+				if err != nil {
+					return err
+				}
+
+				if n, _ := res.RowsAffected(); n == 0 {
+					return ErrNoTaskDue // lost the race; another path finalized it
+				}
+
+				if err := s.appendFact(ctx, tx, journal.Fact{
+					TaskID: id, Type: journal.Cancelled, Owner: owner,
+					Detail: mustJSON(map[string]string{"cooperative": "true", "after": "lease-expiry"}),
+				}); err != nil {
+					return err
+				}
+
+				return ErrNoTaskDue // finalized; caller retries for another task
+			}
+
 			if err := s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id, Type: journal.Released, Owner: prevOwner,
 			}); err != nil {

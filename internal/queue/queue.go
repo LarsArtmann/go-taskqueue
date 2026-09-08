@@ -49,6 +49,18 @@ type Store interface {
 	Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error
 	// Cancel withdraws a Pending task.
 	Cancel(ctx context.Context, id task.ID) error
+	// CancelRunning records a cooperative cancel request for a Running
+	// task: the task.cancel-requested fact is the flag. The executing
+	// worker observes it at its next heartbeat, stops the execution, and
+	// finalizes with CancelOwned; an expired lease finalizes it at
+	// reclaim. Idempotent — a second request appends nothing.
+	CancelRunning(ctx context.Context, id task.ID) error
+	// CancelRequested reports whether a cooperative cancel request is
+	// pending for the task — the worker's heartbeat observation query.
+	CancelRequested(ctx context.Context, id task.ID) (bool, error)
+	// CancelOwned finalizes a cooperative cancel: Running -> Cancelled,
+	// recorded by the lease-holding worker after it stopped the execution.
+	CancelOwned(ctx context.Context, id task.ID, owner string) error
 	// RescueDead re-queues a Dead task with a fresh attempt budget.
 	RescueDead(ctx context.Context, id task.ID, maxAttempts int) error
 	// Get returns the current task record.
