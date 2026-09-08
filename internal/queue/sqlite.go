@@ -657,16 +657,96 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 	return out, rows.Err()
 }
 
-// Facts returns journal facts with Seq > after.
-func (s *SQLiteStore) Facts(ctx context.Context, after int64) ([]journal.Fact, error) {
-	rows, err := s.db.QueryContext(ctx, `
+// Facts returns journal facts with Seq > after, ascending, bounded to the
+// most recent limit when > 0. The seq primary key makes the cursor scan
+// O(limit) regardless of journal size.
+func (s *SQLiteStore) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
+	query := `
 		SELECT seq, time, task_id, type, owner, attempt, error, detail
-		FROM facts WHERE seq > ? ORDER BY seq ASC`, after)
+		FROM facts WHERE seq > ? ORDER BY seq ASC`
+	args := []any{after}
+	if limit > 0 {
+		query += ` LIMIT ?`
+		args = append(args, limit)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	return scanFacts(rows)
+}
+
+// LastFacts returns the most recent limit facts in ascending Seq order.
+func (s *SQLiteStore) LastFacts(ctx context.Context, limit int) ([]journal.Fact, error) {
+	if limit <= 0 {
+		return s.Facts(ctx, 0, 0)
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT seq, time, task_id, type, owner, attempt, error, detail
+		FROM facts ORDER BY seq DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	facts, err := scanFacts(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, j := 0, len(facts)-1; i < j; i, j = i+1, j-1 {
+		facts[i], facts[j] = facts[j], facts[i]
+	}
+
+	return facts, nil
+}
+
+// HeadSeq returns the current highest fact Seq (0 when empty).
+func (s *SQLiteStore) HeadSeq(ctx context.Context) (int64, error) {
+	var seq int64
+
+	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(seq), 0) FROM facts`).Scan(&seq)
+
+	return seq, err
+}
+
+// FactsForTask returns one task's facts in Seq order, bounded to the most
+// recent limit when > 0. Served by idx_facts_task (task_id, seq).
+func (s *SQLiteStore) FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error) {
+	query := `
+		SELECT seq, time, task_id, type, owner, attempt, error, detail
+		FROM facts WHERE task_id = ? ORDER BY seq ASC`
+	args := []any{id}
+	if limit > 0 {
+		query += ` LIMIT ?`
+		args = append(args, limit)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanFacts(rows)
+}
+
+// CountFacts counts facts of one type recorded at or after since.
+func (s *SQLiteStore) CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error) {
+	var n int64
+
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM facts WHERE type = ? AND time >= ?`,
+		ftype, since.UnixMilli()).Scan(&n)
+
+	return n, err
+}
+
+func scanFacts(rows *sql.Rows) ([]journal.Fact, error) {
 	var out []journal.Fact
 
 	for rows.Next() {

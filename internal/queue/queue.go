@@ -55,8 +55,23 @@ type Store interface {
 	Get(ctx context.Context, id task.ID) (task.Task, error)
 	// List returns tasks matching the filter.
 	List(ctx context.Context, f Filter) ([]task.Task, error)
-	// Facts exposes the journal (same store, same transaction domain).
-	Facts(ctx context.Context, after int64) ([]journal.Fact, error)
+	// Facts exposes the journal (same store, same transaction domain):
+	// facts with Seq strictly greater than after, in Seq order. limit
+	// bounds the result when > 0; 0 means unbounded (bulk exports).
+	Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error)
+	// LastFacts returns the most recent limit facts in ascending Seq
+	// order — the bounded read behind feed-style renders. limit <= 0
+	// returns the whole journal.
+	LastFacts(ctx context.Context, limit int) ([]journal.Fact, error)
+	// HeadSeq returns the current highest fact Seq (0 when the journal is
+	// empty): the O(1) watermark for tailers, bridges and resume points.
+	HeadSeq(ctx context.Context) (int64, error)
+	// FactsForTask returns one task's facts in Seq order, bounded to the
+	// most recent limit when > 0 (0 = unbounded).
+	FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error)
+	// CountFacts counts facts of one type recorded at or after since —
+	// the SQL pushdown behind spend projections and stats.
+	CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error)
 	// Close releases resources.
 	Close() error
 }

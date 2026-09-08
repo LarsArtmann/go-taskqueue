@@ -21,6 +21,7 @@ const (
 	factFeedLen         = 50
 	taskTableLimit      = 200
 	detailFactsLimit    = 500
+	tailBatchLimit      = 1000
 	hoursPerDay         = 24 * time.Hour
 	renderErrPreviewLen = 120
 )
@@ -177,13 +178,9 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 		data.Tasks = data.Tasks[:taskTableLimit]
 	}
 
-	facts, err := s.store.Facts(ctx, 0)
+	facts, err := s.store.LastFacts(ctx, factFeedLen)
 	if err != nil {
 		return data, err
-	}
-
-	if len(facts) > factFeedLen {
-		facts = facts[len(facts)-factFeedLen:]
 	}
 
 	data.Facts = facts

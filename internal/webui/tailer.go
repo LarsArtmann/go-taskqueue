@@ -12,7 +12,9 @@ import (
 // and notifies the hub once per batch of new facts (burst coalescing).
 // The watermark starts at the journal head so a freshly started server
 // does not replay history — new clients get a full snapshot on connect
-// anyway.
+// anyway. Each poll reads at most tailBatchLimit facts: the tailer only
+// signals that something changed, so a burst longer than the cap skips
+// middle facts without losing the notification.
 func (s *Server) tail(ctx context.Context) error {
 	watermark, err := s.journalHead(ctx)
 	if err != nil {
@@ -29,7 +31,7 @@ func (s *Server) tail(ctx context.Context) error {
 		case <-ticker.C:
 		}
 
-		facts, err := s.store.Facts(ctx, watermark)
+		facts, err := s.store.Facts(ctx, watermark, tailBatchLimit)
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -49,34 +51,13 @@ func (s *Server) tail(ctx context.Context) error {
 
 // journalHead returns the current highest fact sequence (0 when empty).
 func (s *Server) journalHead(ctx context.Context) (int64, error) {
-	facts, err := s.store.Facts(ctx, 0)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(facts) == 0 {
-		return 0, nil
-	}
-
-	return facts[len(facts)-1].Seq, nil
+	return s.store.HeadSeq(ctx)
 }
 
-// factsForTask returns all facts belonging to one task, in Seq order.
+// factsForTask returns one task's facts, most recent last, bounded to the
+// detail-page render budget.
 func (s *Server) factsForTask(ctx context.Context, id string) ([]journal.Fact, error) {
-	facts, err := s.store.Facts(ctx, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	var matched []journal.Fact
-
-	for _, f := range facts {
-		if f.TaskID == id {
-			matched = append(matched, f)
-		}
-	}
-
-	return matched, nil
+	return s.store.FactsForTask(ctx, id, detailFactsLimit)
 }
 
 func formatSeq(seq int64) string {
