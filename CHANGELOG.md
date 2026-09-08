@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Journal compaction design + prototype (ADR-0006)**: the facts log
+  gains a hot-cold split - `SQLiteStore.ArchiveFactsBefore` moves the
+  fact trails of TERMINAL tasks (whole trail or nothing, never splitting
+  a task) into `facts_archive` in one transaction, records the high-water
+  mark in `journal_meta`, and `ArchiveSummary` reports hot/archived
+  counts. Projections are untouched: a test proves tasks, `Facts()`, and
+  the watermark all survive archiving, and that a second pass moves
+  nothing. Deletion and seq-granular splits were rejected in the ADR;
+  the `tq journal compact --before` command sketch rides with it.
 - **Queue health pack**: stranded Running tasks (expired lease, nobody
   reclaimed) can now be recorded in the journal - `tq doctor
   --mark-orphans` appends an idempotent `task.orphaned` fact per task
