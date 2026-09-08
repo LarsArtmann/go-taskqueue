@@ -2,11 +2,11 @@ package queue
 
 import (
 	"context"
-	"os"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"

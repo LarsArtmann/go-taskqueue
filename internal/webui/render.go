@@ -54,6 +54,10 @@ type FilterState struct {
 	Status  task.Status
 	Query   string
 	Page    int
+	// Sort selects the task-table ordering: "", "age-asc", "age-desc",
+	// "priority-asc", "priority-desc", "attempts-asc", "attempts-desc".
+	// Empty keeps the severity order (dead, running, pending, ...).
+	Sort string
 }
 
 // Empty reports whether no filter is active.
@@ -75,6 +79,10 @@ func (f FilterState) QueryString() string {
 
 	if f.Query != "" {
 		fmt.Fprintf(&b, "q=%s&", f.Query)
+	}
+
+	if f.Sort != "" {
+		fmt.Fprintf(&b, "sort=%s&", f.Sort)
 	}
 
 	s := b.String()

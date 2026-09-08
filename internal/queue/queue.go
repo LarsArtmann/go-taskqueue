@@ -125,6 +125,12 @@ type Filter struct {
 	// table order, stable across pages. Default order stays priority then
 	// age (the queue's fairness order).
 	SeverityOrder bool
+	// Sort overrides the ordering with an allowlisted column sort for the
+	// dashboard's sortable headers: "age-asc", "age-desc",
+	// "priority-asc", "priority-desc", "attempts-asc", "attempts-desc".
+	// Unknown values fall back to the default order (never interpolated
+	// into SQL).
+	Sort string
 }
 
 // Queue is the facade most consumers use: a Store plus convenience methods.
