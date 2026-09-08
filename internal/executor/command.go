@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -108,7 +109,7 @@ func (e *CommandExecutor) limited(line string) string {
 	return b.String()
 }
 
-// quoteSh single-quotes a string for sh (POSIX escape: ' → '\'').
+// quoteSh single-quotes a string for sh (POSIX escape: ' → '\”).
 func quoteSh(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'+"'"+'`) + "'"
 }
