@@ -63,6 +63,7 @@
 
 | Feature                                                                     | Status                | Notes                                                                                                        |
 | --------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `tq doctor` (health checks)                   | 🟢 `FULLY_FUNCTIONAL` | DB integrity/WAL, queue mix + expired leases, worker liveness via heartbeats, budget vs `--daily-budget`, agent binary, per-repo autonomy files; `--json`, exit 1 on failures |
 | enqueue / worker / stats / top / audit / show / dlq / cancel / facts / tail | 🟢 `FULLY_FUNCTIONAL` | `tq worker` runs until signalled (no one-shot mode); `tq facts` renders the dead-letter error class          |
 | `tq show` — task + full fact trail                                          | 🟢 `FULLY_FUNCTIONAL` | Completed agent tasks record session id + verify tail in `task.completed`; `tq show` renders the whole trail |
 | `tq top` — live per-project view                                            | 🟢 `FULLY_FUNCTIONAL` | Counts + last-run/active durations from the journal; `--once`, `--json`, terminal repaint                    |

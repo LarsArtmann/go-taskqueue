@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **`tq doctor`** answers "why is nothing happening?" in one command:
+  SQLite integrity + WAL mode, queue mix with expired-lease detection,
+  worker liveness (no heartbeats while work waits = FAIL), budget spend
+  against `--daily-budget`, the agent binary on PATH, and per-repo
+  autonomy files via `--repos`. Human table by default, `--json` for
+  scripts; exit 1 on failing checks so cron/systemd can alert on it.
 - **Cooperative cancel of running tasks** (`tq cancel --force`,
   ADR-0005): the request is a `task.cancel-requested` fact — the journal
   is the flag, no schema change. The executing worker observes it at its

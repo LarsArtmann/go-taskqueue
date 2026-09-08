@@ -72,28 +72,16 @@ func TestDoctorFlagsDeadWorker(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	claimed, err := s.ClaimDue(ctx, "dead-worker", time.Minute)
-	if err != nil {
+	if _, err := s.ClaimDue(ctx, "dead-worker", time.Millisecond); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	_ = s.Close()
-	// Age the lease out without a heartbeat by claiming with a tiny lease
-	// through a fresh handle: sleep past expiry instead.
-	s2, err := queue.OpenSQLite(path)
-	if err != nil {
-		t.Fatalf("reopen: %v", err)
-	}
-	defer func() { _ = s2.Close() }()
-
-	_ = claimed
-
-	// Force the expired-lease state: claim with 1ms lease, then wait.
-	if _, err := s2.ClaimDue(ctx, "dead-worker", time.Millisecond); err != nil {
-		t.Fatalf("reclaim: %v", err)
-	}
-
+	// The lease dies here; no heartbeat ever extends it.
 	time.Sleep(20 * time.Millisecond)
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "sh"}); err != nil {
+		t.Fatalf("enqueue second: %v", err)
+	}
 
 	results, err := runDoctor(ctx, doctorOptions{DBPath: path})
 	if err != nil {
