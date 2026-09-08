@@ -76,6 +76,9 @@ step "web UI live smoke"
 step "status-loop live smoke"
 ./scripts/smoke/status-loop.sh
 
+step "bootstrap --install smoke"
+./scripts/smoke/bootstrap-install.sh
+
 step "doc-reference check"
 ./scripts/check-doc-refs.sh
 

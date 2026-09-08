@@ -42,16 +42,23 @@ export PATH="$WORK/stubbin:$PATH"
 REPO="$WORK/demo"
 mkdir -p "$REPO"
 printf '# Work\n\n- [ ] someday item\n' >"$REPO/TODO_LIST.md"
+
+# Minimal git identity + no signing: the fake HOME hides the real global
+# gitconfig (and its SSH signing key), which would break every commit.
+export GIT_CONFIG_GLOBAL="$WORK/gitconfig"
+printf '[user]\n\tname = smoke\n\temail = smoke@test\n[commit]\n\tgpgsign = false\n' >"$GIT_CONFIG_GLOBAL"
+
 git -C "$REPO" init -q
-git -C "$REPO" -c user.email=smoke@test -c user.name=smoke add -A
-git -C "$REPO" -c user.email=smoke@test -c user.name=smoke commit -qm init
+git -C "$REPO" add -A
+git -C "$REPO" commit -qm init
 
 echo "== tq bootstrap --install (fake \$HOME, stubbed systemctl) =="
 DB="$WORK/q.db"
 if ! "$TQ" bootstrap "$REPO" --install \
+	--projects-dir "$WORK" \
 	--db "$DB" \
 	--agents 2 --daily-budget 7 \
-	--verify "$REPO=go build ./... && go test ./... -count=1" \
+	--verify "demo=go build ./... && go test ./... -count=1" \
 	--reasoning medium; then
 	echo "FAIL: bootstrap --install exited non-zero"
 	exit 1
