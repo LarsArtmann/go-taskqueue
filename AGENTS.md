@@ -131,6 +131,13 @@ fail with "no such column" before the ALTER runs.
 - Facts are the source of truth: a code change that mutates task state must
   append a fact in the same transaction
 - Pure-Go deps only; keep `CGO_ENABLED=0` valid
+- Platform honesty: POSIX-only test suites (shell stubs, process groups)
+  carry `//go:build unix`, and the CI `test-windows` job runs everything
+  else on windows-latest. `internal/e2e` keeps a `!unix` doc.go
+  placeholder so `go test ./...` does not fail there. Tests must be
+  hermetic: `nix build`'s checkPhase runs `go test` in a sandbox with no
+  host tools (a test once assumed `crush` on PATH and broke the nix
+  build)
 - Generated `*_templ.go` files are COMMITTED, never gitignored (the
   samber-do-auditlog v0.9.0 retract lesson: Nix builds vendor source
   without running `templ generate`)
