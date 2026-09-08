@@ -86,22 +86,52 @@ func New(store queue.Store, cfg Config) *Server {
 	}
 }
 
+// routeBindings is the complete route table as data, so the read-only
+// guardrail test can prove the dashboard registers no mutating handler
+// (ADR-0003: the worst failure is a stale dashboard, never journal
+// corruption). Adding a POST route fails TestRoutesAreReadOnly. The nil
+// handler is the static file tree, wired in Handler.
+func (s *Server) routeBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"GET", "/{$}", s.handleIndex},
+		{"GET", "/task/{id}", s.handleTaskDetail},
+		{"GET", "/api/events", s.handleEvents},
+		{"GET", "/api/stats", s.handleStats},
+		{"GET", "/static/", nil}, // staticHandler, wired in Handler
+	}
+}
+
 // Handler returns the dashboard's HTTP routes:
 //
 //	GET /             dashboard page
 //	GET /task/{id}    per-task detail page
 //	GET /api/events   SSE stream (fragments + resume)
 //	GET /api/stats    JSON status counts
+//
+// Every response carries strict security headers (securityHeaders); the
+// dashboard is read-only by construction.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /{$}", s.handleIndex)
-	mux.HandleFunc("GET /task/{id}", s.handleTaskDetail)
-	mux.HandleFunc("GET /api/events", s.handleEvents)
-	mux.HandleFunc("GET /api/stats", s.handleStats)
-	mux.Handle("GET /static/", http.StripPrefix("/static/", staticHandler()))
+	for _, route := range s.routeBindings() {
+		if route.handler == nil {
+			mux.Handle(route.method+" "+route.pattern, http.StripPrefix("/static/", staticHandler()))
 
-	var handler http.Handler = mux
+			continue
+		}
+
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	var handler http.Handler = withSecurityHeaders(mux)
 
 	if s.cfg.AuthToken != "" {
 		handler = withTokenAuth(s.cfg.AuthToken, handler)
@@ -113,6 +143,28 @@ func (s *Server) Handler() http.Handler {
 	}
 
 	return handler
+}
+
+// securityHeaders is the strict default for a dashboard that renders
+// untrusted task payloads: nothing inline, nothing remote, nothing framed.
+// All assets are same-origin files under /static; SSE is same-origin.
+func securityHeaders(w http.ResponseWriter) {
+	h := w.Header()
+	h.Set("Content-Security-Policy",
+		"default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; "+
+			"font-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'")
+	h.Set("Referrer-Policy", "no-referrer")
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("X-Frame-Options", "DENY")
+}
+
+// withSecurityHeaders applies securityHeaders to every response, including
+// errors produced by inner handlers.
+func withSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		securityHeaders(w)
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Run starts the journal tailer and serves until ctx is cancelled or the
