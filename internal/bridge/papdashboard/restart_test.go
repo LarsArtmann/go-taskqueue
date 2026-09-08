@@ -179,7 +179,13 @@ func TestRestartMidStreamLosesZeroFacts(t *testing.T) {
 		Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 2 * time.Millisecond,
 	})
 
-	if err := runBridgeUntil(t, bb, func() bool { return len(pap.calls()) >= 3 }); err != nil {
+	// Stop bridge B only after it has CHECKPOINTED seq 600 (batch-end
+	// checkpoint lands after the last accepted fact). Cancelling on the
+	// third call alone raced the checkpoint under -race scheduling — the
+	// drain could be stopped between acceptance and SaveWatermark.
+	if err := runBridgeUntil(t, bb, func() bool {
+		return len(pap.calls()) >= 3 && wm.current("papdashboard:"+pap.server.URL) == 600
+	}); err != nil {
 		t.Fatalf("bridge B: %v", err)
 	}
 
