@@ -31,6 +31,18 @@ start processes on the host is inside the trust boundary.
    network calls. Verify commands (`.tq-verify`) also run with full user
    privileges — a malicious repo can lie about its verify command. Do not
    point `--projects-dir` at repositories you do not trust.
+5. **Status agents mint future autonomous work.** The status executor's
+   done-prompt agent appends `- [ ]` items to the repo's TODO_LIST.md, and
+   the next harvest tick turns those into real agent tasks — a status run
+   can legally enqueue up to ~50 new billable tasks per report (its prompt
+   hard-caps the count and confines writes to the report, TODO_LIST.md, and
+   its own commit; the repo verify gate must still pass). The loop's growth
+   is bounded by the same damage caps as everything else
+   (`--daily-budget` / `--max-per-tick`), which apply to EVERY enqueue —
+   harvested and status-minted alike. If the loop misbehaves: stop the
+   pool, review `tq dlq` and the latest `docs/status/*` report, cancel or
+   rescue. Whether status reports themselves should be reviewed is a
+   deliberate open trust-policy question, not an oversight.
 
 ## Data handling
 
@@ -46,7 +58,10 @@ start processes on the host is inside the trust boundary.
 
 ## Hardening checklist for unattended pools
 
-- [ ] `--daily-budget` (or `--budget-cmd`) and `--max-per-tick` set
+- [ ] `--daily-budget` (or `--budget-cmd`) and `--max-per-tick` set (this is
+      ALSO the cap on the status loop's self-minted work)
+- [ ] `--status-every` consciously chosen (0 = loop off) — each report can
+      enqueue up to ~50 follow-up tasks
 - [ ] `--project-exclusive` on every pool sharing a database
 - [ ] `--repos` used instead of a broad `--projects-dir` where possible
 - [ ] `.crushrc` files audited: only repos that need `bash` have it

@@ -66,6 +66,10 @@
           pkgs.git
           pkgs.gotools
           pkgs.gofumpt
+          # dprint is available but deliberately NOT gated in treefmt: docs
+          # formatting stays manual. Autoformatting *.md would rewrap the
+          # machine-consumed TODO_LIST.md (one checkbox item per line — the
+          # harvester's contract) and mass-rewrite the docs baseline.
           pkgs.dprint
           pkgs.tailwindcss_4
         ];
