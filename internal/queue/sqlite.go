@@ -361,6 +361,11 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 			}
 
 			if requested {
+				reason, err := cancelRequestedReasonTx(ctx, tx, id)
+				if err != nil {
+					return err
+				}
+
 				if err := s.appendFact(ctx, tx, journal.Fact{
 					TaskID: id, Type: journal.Released, Owner: prevOwner,
 				}); err != nil {
@@ -380,7 +385,7 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 
 				if err := s.appendFact(ctx, tx, journal.Fact{
 					TaskID: id, Type: journal.Cancelled, Owner: owner,
-					Detail: mustJSON(map[string]string{"cooperative": "true", "after": "lease-expiry"}),
+					Detail: cooperativeCancelDetail(reason, "lease-expiry"),
 				}); err != nil {
 					return err
 				}
@@ -594,8 +599,9 @@ func (s *SQLiteStore) Heartbeat(ctx context.Context, id task.ID, owner string, e
 	return nil
 }
 
-// Cancel withdraws a Pending task.
-func (s *SQLiteStore) Cancel(ctx context.Context, id task.ID) error {
+// Cancel withdraws a Pending task. A non-empty reason is stored in the
+// task.cancelled fact detail ("reason" key).
+func (s *SQLiteStore) Cancel(ctx context.Context, id task.ID, reason string) error {
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx *sql.Tx) error {
@@ -620,14 +626,18 @@ func (s *SQLiteStore) Cancel(ctx context.Context, id task.ID) error {
 			return fmt.Errorf("%w: %s -> cancelled", task.ErrInvalidTransition, st)
 		}
 
-		return s.appendFact(ctx, tx, journal.Fact{TaskID: id.String(), Type: journal.Cancelled})
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(), Type: journal.Cancelled, Detail: cancelReasonDetail(reason),
+		})
 	})
 }
 
 // CancelRunning records a cooperative cancel request for a Running task.
 // The task.cancel-requested fact IS the flag — no task-row column mirrors
-// it (facts-first). Idempotent: a second request appends nothing.
-func (s *SQLiteStore) CancelRunning(ctx context.Context, id task.ID) error {
+// it (facts-first). A non-empty reason rides the request fact's detail and
+// is carried onto the final task.cancelled fact by CancelOwned / the
+// reclaim finalize. Idempotent: a second request appends nothing.
+func (s *SQLiteStore) CancelRunning(ctx context.Context, id task.ID, reason string) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		var st string
 		if err := tx.QueryRowContext(ctx,
@@ -652,7 +662,9 @@ func (s *SQLiteStore) CancelRunning(ctx context.Context, id task.ID) error {
 			return nil // already requested; the flag is the fact
 		}
 
-		return s.appendFact(ctx, tx, journal.Fact{TaskID: id.String(), Type: journal.CancelRequested})
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(), Type: journal.CancelRequested, Detail: cancelReasonDetail(reason),
+		})
 	})
 }
 
@@ -782,6 +794,60 @@ func (s *SQLiteStore) ArchiveSummary(ctx context.Context) (ArchiveStats, error) 
 const cancelRequestedSQL = `SELECT EXISTS(
 	SELECT 1 FROM facts WHERE task_id = ? AND type = 'task.cancel-requested')`
 
+// cancelRequestedReasonTx reads the reason a task's latest cancel request
+// carried ("" when none): the forensics trail the cooperative-cancel
+// finalizers copy onto the task.cancelled fact. Best-effort: an unparsable
+// detail yields "", never an error — the finalize must not fail on cosmetics.
+func cancelRequestedReasonTx(ctx context.Context, tx *sql.Tx, id string) (string, error) {
+	var detail string
+	err := tx.QueryRowContext(ctx, `
+		SELECT detail FROM facts
+		WHERE task_id = ? AND type = 'task.cancel-requested'
+		ORDER BY seq DESC LIMIT 1`, id).Scan(&detail)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	var d struct {
+		Reason string `json:"reason"`
+	}
+	if json.Unmarshal([]byte(detail), &d) != nil {
+		return "", nil
+	}
+
+	return d.Reason, nil
+}
+
+// cancelReasonDetail builds the detail for a Cancel/CancelRunning fact:
+// nil without a reason (no detail noise), {"reason": ...} with one.
+func cancelReasonDetail(reason string) json.RawMessage {
+	if reason == "" {
+		return nil
+	}
+
+	return mustJSON(map[string]string{"reason": reason})
+}
+
+// cooperativeCancelDetail builds the task.cancelled detail for a
+// cooperative finalize: the cooperative marker, the finalize context
+// ("after" key, when set) and the operator's reason, when one was given.
+func cooperativeCancelDetail(reason, after string) json.RawMessage {
+	detail := map[string]string{"cooperative": "true"}
+	if after != "" {
+		detail["after"] = after
+	}
+
+	if reason != "" {
+		detail["reason"] = reason
+	}
+
+	return mustJSON(detail)
+}
+
 // MarkOrphaned appends one task.orphaned fact per stranded Running task
 // (lease expired before the cutoff, no orphaned fact yet). Observation
 // only: the task stays Running until a reclaim; the fact explains why it
@@ -861,7 +927,8 @@ func cancelRequestedTx(ctx context.Context, tx *sql.Tx, id string) (bool, error)
 }
 
 // CancelOwned finalizes a cooperative cancel: Running -> Cancelled, written
-// by the lease-holding worker after it stopped the execution.
+// by the lease-holding worker after it stopped the execution. The operator's
+// reason (from the cancel-requested fact) is carried onto the cancelled fact.
 func (s *SQLiteStore) CancelOwned(ctx context.Context, id task.ID, owner string) error {
 	now := time.Now()
 
@@ -878,9 +945,14 @@ func (s *SQLiteStore) CancelOwned(ctx context.Context, id task.ID, owner string)
 			return task.ErrLeaseNotHeld
 		}
 
+		reason, err := cancelRequestedReasonTx(ctx, tx, id.String())
+		if err != nil {
+			return err
+		}
+
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Cancelled, Owner: owner,
-			Detail: mustJSON(map[string]string{"cooperative": "true"}),
+			Detail: cooperativeCancelDetail(reason, ""),
 		})
 	})
 }

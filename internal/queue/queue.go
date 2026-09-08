@@ -51,14 +51,18 @@ type Store interface {
 	Requeue(ctx context.Context, id task.ID, owner string, errText string, delay time.Duration) error
 	// Heartbeat extends the lease of a Running task held by owner.
 	Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error
-	// Cancel withdraws a Pending task.
-	Cancel(ctx context.Context, id task.ID) error
+	// Cancel withdraws a Pending task. A non-empty reason is stored in the
+	// task.cancelled fact's detail ("reason" key) so the journal records WHY
+	// the task was withdrawn.
+	Cancel(ctx context.Context, id task.ID, reason string) error
 	// CancelRunning records a cooperative cancel request for a Running
 	// task: the task.cancel-requested fact is the flag. The executing
 	// worker observes it at its next heartbeat, stops the execution, and
 	// finalizes with CancelOwned; an expired lease finalizes it at
-	// reclaim. Idempotent — a second request appends nothing.
-	CancelRunning(ctx context.Context, id task.ID) error
+	// reclaim. A non-empty reason is stored on the request fact's detail
+	// and carried onto the final task.cancelled fact. Idempotent — a
+	// second request appends nothing.
+	CancelRunning(ctx context.Context, id task.ID, reason string) error
 	// CancelRequested reports whether a cooperative cancel request is
 	// pending for the task — the worker's heartbeat observation query.
 	CancelRequested(ctx context.Context, id task.ID) (bool, error)
