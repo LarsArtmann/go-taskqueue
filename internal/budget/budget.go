@@ -15,9 +15,10 @@ import (
 )
 
 // FactSource is the journal view the guard projects spend from. *queue.Queue
-// satisfies it.
+// satisfies it: the count is a SQL pushdown, not a journal scan.
 type FactSource interface {
-	Facts(ctx context.Context, after int64) ([]journal.Fact, error)
+	Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error)
+	CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error)
 }
 
 // Guard gates how much agent work a pool may start. Zero-value Guard
@@ -74,20 +75,12 @@ func (g Guard) SpentToday(ctx context.Context, src FactSource) int {
 }
 
 func (g Guard) spentSince(ctx context.Context, src FactSource, since time.Time) int {
-	facts, err := src.Facts(ctx, 0)
+	n, err := src.CountFacts(ctx, journal.Enqueued, since)
 	if err != nil {
 		return 0 // fail open: the queue keeps working if the journal errors
 	}
 
-	n := 0
-
-	for _, f := range facts {
-		if f.Type == journal.Enqueued && !f.Time.Before(since) {
-			n++
-		}
-	}
-
-	return n
+	return int(n)
 }
 
 func startOfDay(t time.Time) time.Time {
