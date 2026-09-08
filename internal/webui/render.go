@@ -381,26 +381,6 @@ func readiness(now time.Time, t task.Task) string {
 	return "in " + durationUntil(d)
 }
 
-// factBadgeClass maps a fact type to a status-like CSS badge class.
-func factBadgeClass(t journal.FactType) string {
-	switch t {
-	case journal.Completed:
-		return "completed"
-	case journal.DeadLettered:
-		return "dead"
-	case journal.Failed:
-		return "failed"
-	case journal.Cancelled:
-		return "cancelled"
-	case journal.Claimed:
-		return "running"
-	case journal.Enqueued, journal.Heartbeat, journal.Released, journal.Requeued:
-		return badgePending
-	}
-
-	return badgePending
-}
-
 // renderComponent renders a templ component to an HTML string.
 func renderComponent(ctx context.Context, c templ.Component) string {
 	var buf bytes.Buffer

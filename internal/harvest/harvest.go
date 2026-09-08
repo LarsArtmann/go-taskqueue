@@ -13,7 +13,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -171,7 +170,7 @@ func (h *Harvester) Run(ctx context.Context) (Result, error) {
 	repos := h.cfg.Repos
 	if len(repos) == 0 {
 		if h.cfg.ProjectsDir == "" {
-			return res, errors.New("harvest: no repos and no projects dir configured")
+			return res, ErrNoRepos
 		}
 
 		var err error

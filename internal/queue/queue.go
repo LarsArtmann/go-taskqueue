@@ -19,6 +19,10 @@ import (
 // ErrNoTaskDue is returned by ClaimDue when nothing is claimable right now.
 var ErrNoTaskDue = errors.New("queue: no due task")
 
+// ErrEmptyType is returned by Enqueue when New.Type is empty (Normalize
+// cannot invent a type; callers must choose an executor).
+var ErrEmptyType = errors.New("queue: task type must not be empty")
+
 // Store is the persistence boundary for tasks and facts.
 type Store interface {
 	// Enqueue persists a new task (ID and defaults assigned here) and records

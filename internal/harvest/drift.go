@@ -2,7 +2,6 @@ package harvest
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -98,7 +97,7 @@ func (h *Harvester) Audit(ctx context.Context) (DriftResult, error) {
 	repos := h.cfg.Repos
 	if len(repos) == 0 {
 		if h.cfg.ProjectsDir == "" {
-			return res, errors.New("harvest: no repos and no projects dir configured")
+			return res, ErrNoRepos
 		}
 
 		var err error
