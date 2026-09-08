@@ -189,7 +189,10 @@ checkbox, commit, never push). The executor enforces the safety rails:
   `log-dir =` line in the pool config) writes each task's complete agent +
   verify output to `DIR/<task-id>.log` (0600). Without it, only a tail lands
   in the result detail — turn this on for daemon pools where you cannot
-  watch the terminal.
+  watch the terminal. Retention: `--log-dir-max-age 168h` sweeps logs older
+  than the age, `--log-dir-max-bytes 5368709120` caps the directory's total
+  size (oldest deleted first) — combine both so a long-running pool's
+  output directory is bounded by time AND bytes.
 - **Durable** — lease claims with heartbeats, exponential backoff, DLQ on
   exhaustion (`tq dlq --rescue` to retry), and the whole lifecycle replayable
   via `tq facts`.

@@ -171,6 +171,13 @@
                     unit.serviceConfig.KillMode or null
                     unit.serviceConfig.TimeoutStopSec or null
                   ];
+                # Pin the exact binary token (2026-09-08): a lib.getExe pname
+                # fallback (e.g. .../bin/go-taskqueue) silently renders
+                # ExecStarts that fragment regexes still matched — the pool's
+                # first token must be the package's own /bin/tq, and the serve
+                # line must equal its full expected string exactly.
+                expectedBin = "${config.packages.default}/bin/tq";
+                poolFirstToken = builtins.head (lib.splitString " " deployedPool.serviceConfig.ExecStart);
                 allOk =
                   # default path: synthetic user + StateDirectory, no mount gate
                   defaultPool.serviceConfig.StateDirectory or "" == "tq"
@@ -178,13 +185,14 @@
                   # deployment path: pool user, mount gate, config file wired
                   && deployedPool.serviceConfig.User == "alice"
                   && deployedPool.unitConfig.RequiresMountsFor == [ "/mnt/pool/services/tq" ]
-                  # store paths render as <hash>-tq-pool.conf (dash, not slash)
+                  # exact binary + config file wired (store paths render as
+                  # <hash>-tq-pool.conf — dash, not slash)
+                  && poolFirstToken == expectedBin
                   && builtins.match ".*--config .*tq-pool\\.conf.*" deployedPool.serviceConfig.ExecStart != null
                   && builtins.elem "TQ_DB=/mnt/pool/services/tq/tq.db" deployedPool.serviceConfig.Environment
                   # serve unit exists with the addr + no StateDirectory branch
                   && deployedServe.serviceConfig != { }
-                  &&
-                    builtins.match ".*serve --addr 127\\.0\\.0\\.1:8100.*" deployedServe.serviceConfig.ExecStart != null
+                  && deployedServe.serviceConfig.ExecStart == "${expectedBin} serve --addr 127.0.0.1:8100"
                   && !(deployedServe.serviceConfig ? StateDirectory)
                   # drain invariants survive on both units
                   && drainInvariants deployedPool
@@ -202,6 +210,9 @@
                     deployedUser = deployedPool.serviceConfig.User or null;
                     deployedRequiresMountsFor = deployedPool.unitConfig.RequiresMountsFor or null;
                     deployedEnvironment = deployedPool.serviceConfig.Environment or null;
+                    expectedBin = expectedBin;
+                    poolFirstToken = poolFirstToken;
+                    serveExecStart = deployedServe.serviceConfig.ExecStart or null;
                     serveStateDirectoryPresent = deployedServe.serviceConfig ? StateDirectory;
                     killSignal = deployedPool.serviceConfig.KillSignal or null;
                     killMode = deployedPool.serviceConfig.KillMode or null;

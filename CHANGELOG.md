@@ -8,6 +8,81 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **`tq tasks` list view** (2026-09-09): one row per task with
+  `--project/--status/--type/--since DUR/--limit/--json` — reconstructing a
+  completion window stops requiring raw sqlite reads (21:40 §e7). Full IDs
+  (they are the `tq show`/`tq cancel` handle), newest first, attempts and a
+  last-error excerpt per row.
+- **`tq harvest --prune-stale`** (2026-09-09): cancels PENDING queue tasks
+  whose TODO_LIST item is now `[x]` (dedup-key match) so a pool relaunch
+  never inherits zombies; the reason lands on the `task.cancelled` fact.
+  Running tasks are reported only (a cooperative stop stays an operator
+  `tq cancel --force` decision); dead ones are listed for the DLQ flow.
+  `--dry-run` and `--json` honored.
+- **Failure evidence on `task.failed` facts** (2026-09-09): executors
+  publish `FailureEvidence{stage, exit_code, tail}` (agent run, agent
+  verify — whose output tail was previously discarded on error — and sh
+  command) and both stores append it to the failed-attempt fact — a failed
+  task is debuggable from the journal alone instead of an empty `{}`.
+- **`Task-Queue-ID` commit footer contract** (2026-09-09): the agent,
+  catch-up and status prompt contracts tell agents to end commit messages
+  with `Task-Queue-ID: {{TASK_ID}}`; the executor resolves the placeholder
+  at run time (the queue ID does not exist when the harvester renders the
+  prompt), so `git log` and `tq facts` cross-reference.
+- **`tq show`/`tq cancel` accept task-ID prefixes** (2026-09-09): a unique
+  ULID prefix resolves; an ambiguous one names its candidates instead of
+  guessing.
+- **`tq stats --json` aggregate + budget spend** (2026-09-09): `--json`
+  emits `{by_status, by_project, budget{spent_today,cap}, consumer_lag}`
+  for scripts and dashboards (the raw task list is `tq tasks --json` now),
+  and the text output always shows `budget today N/M enqueued` (compare
+  against a cap with `--daily-budget N`).
+- **Sidecar byte budget — `agent-pool --log-dir-max-bytes`** (2026-09-09):
+  caps the total size of the `--log-dir` sidecar directory (oldest `*.log`
+  deleted first each tick; `$TQ_LOG_DIR_MAX_BYTES`). Closes the round-6
+  retention item's open half — age sweeps cannot bound a high-traffic dir.
+- **Postgres conformance battery** (2026-09-09): `TestPostgresConformance`
+  runs the full queue semantics (DAG gating, delay/priority order, retry
+  ladder with evidence, permanent dead-letter, requeue, cancel reasons,
+  heartbeat, filter/list/count, bounded fact reads) against the Postgres
+  store in CI's `-run TestPostgres` job. Also fixed a divergence it
+  caught: `FactsForTask(limit>0)` returned the FIRST n facts on both
+  stores while the interface documents the MOST RECENT n — both now read
+  the tail and return it ascending.
+- **`scripts/smoke/bootstrap-install.sh`** (2026-09-09): asserts
+  `tq bootstrap --install` renders the unit + pool.conf into a fake
+  `$HOME` with stubbed systemctl/loginctl and never touches the host;
+  wired into ci-local.sh.
+- **`scripts/check-status-index.sh`** (2026-09-09): ci-local fails when a
+  `docs/status/*.md` report is missing from the index; every report is now
+  indexed exactly (10 more stragglers beyond the five known were found).
+- **Nightly fuzz campaign rotation** (2026-09-09): `scripts/fuzz/nightly.sh`
+  rotates over every fuzz target (`FuzzParseRepo` +
+  `FuzzExtractResultPayload`) and the nightly workflow commits both seed
+  corpora.
+- **ADR-0010: journal retention stance** (2026-09-09): compaction stays
+  operator-owned and manual, the CLI surface waits for real demand, the
+  retention floor becomes first-class observability when it lands.
+
+### Fixed
+
+- **Budget guard now gates EVERY minting pass** (2026-09-09): the agent
+  pool's review/status sweepers, cqa ingest, and the `--once` drain sweeps
+  never checked the daily budget — a completion inside the same tick could
+  spend the last slot and still mint status/review tasks past the cap,
+  contradicting SECURITY.md's "caps EVERY enqueue incl. status-minted".
+  Each pass now re-checks `guard.Check` and skips with a logged reason
+  (pinned end-to-end by `TestBudgetCapsStatusMintedEnqueues`).
+- **Deflaked `TestRestartMidStreamLosesZeroFacts`** (2026-09-09): bridge
+  A's crash window widened (200ms poll could pre-checkpoint seq 549 before
+  the cancel) and the wait deadline raised for loaded `-race` machines.
+
+### Changed
+
+- **Web UI task trail surfaces cancellation reasons** (2026-09-09): a
+  `task.cancelled` fact carrying `{"reason": ...}` renders `— <reason>` in
+  the detail timeline, so a withdrawn task answers "why" inline.
+
 - **Board view — `tq serve` kanban projection** (2026-09-09): `/?view=board`
   swaps the task table for a read-only kanban board — one column per
   lifecycle status (pending → running → completed, with dead/cancelled
