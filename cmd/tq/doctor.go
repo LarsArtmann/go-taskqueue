@@ -46,6 +46,10 @@ type doctorOptions struct {
 	DailyBudget int    // 0: skip the budget check
 	Repos       string // comma-separated repo paths: enables autonomy checks
 	AgentBin    string // agent binary override (defaults to crush)
+	// MarkOrphans, when set, appends task.orphaned facts for stranded
+	// Running tasks (expired lease, no reclaim) — the only write `tq
+	// doctor` can perform, and only on explicit request.
+	MarkOrphans bool
 }
 
 // doctorHeartbeatWindow is how long ago a task.heartbeat fact still counts
@@ -69,6 +73,10 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
 	results = append(results, doctorEnvironment(opts)...)
+
+	if opts.MarkOrphans {
+		results = append(results, doctorMarkOrphans(ctx, store)...)
+	}
 
 	return results, nil
 }
@@ -124,7 +132,7 @@ func doctorQueueMix(ctx context.Context, store queue.Store) []checkResult {
 	status := checkOK
 	if stuck > 0 {
 		status = checkWarn
-		detail += fmt.Sprintf("; %d running task(s) have an EXPIRED lease and no worker reclaimed them", stuck)
+		detail += fmt.Sprintf("; %d running task(s) have an EXPIRED lease and no worker reclaimed them (tq doctor --mark-orphans records them)", stuck)
 	}
 
 	return []checkResult{
@@ -152,6 +160,23 @@ func doctorStuckRunning(ctx context.Context, store queue.Store, now time.Time) i
 	}
 
 	return stuck
+}
+
+// doctorMarkOrphans records stranded Running tasks in the journal
+// (--mark-orphans): one task.orphaned fact each, idempotently. The check
+// result reports how many were newly marked.
+func doctorMarkOrphans(ctx context.Context, store queue.Store) []checkResult {
+	marked, err := store.MarkOrphaned(ctx, time.Now())
+	if err != nil {
+		return []checkResult{{Name: "mark-orphans", Status: checkFail, Detail: err.Error()}}
+	}
+
+	detail := "no stranded tasks marked"
+	if marked > 0 {
+		detail = fmt.Sprintf("marked %d stranded task(s) as task.orphaned (still Running; the next reclaiming worker picks them up)", marked)
+	}
+
+	return []checkResult{{Name: "mark-orphans", Status: checkOK, Detail: detail}}
 }
 
 // doctorCountStatus maps DLQ size to severity: 0-2 is normal operation,
@@ -297,6 +322,7 @@ func cmdDoctor(args []string) error {
 	dailyBudget := fs.Int("daily-budget", 0, "report spend against this daily enqueue cap (0 = skip)")
 	repos := fs.String("repos", "", "comma-separated repo paths: check TODO_LIST.md and .crushrc autonomy files")
 	agentBin := fs.String("agent-bin", "", "agent binary to look for (default crush)")
+	markOrphans := fs.Bool("mark-orphans", false, "record stranded Running tasks (expired lease, no reclaim) as task.orphaned facts — doctor's only write")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -307,6 +333,7 @@ func cmdDoctor(args []string) error {
 		DailyBudget: *dailyBudget,
 		Repos:       *repos,
 		AgentBin:    *agentBin,
+		MarkOrphans: *markOrphans,
 	}
 
 	results, err := runDoctor(context.Background(), opts)

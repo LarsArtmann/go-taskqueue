@@ -65,6 +65,12 @@ type Store interface {
 	// CancelOwned finalizes a cooperative cancel: Running -> Cancelled,
 	// recorded by the lease-holding worker after it stopped the execution.
 	CancelOwned(ctx context.Context, id task.ID, owner string) error
+	// MarkOrphaned appends a task.orphaned fact for every Running task
+	// whose lease expired before the cutoff and that has no orphaned fact
+	// yet (idempotent). It changes no state — orphans stay Running until a
+	// reclaim — it records WHY the task is stranded so the journal can
+	// explain it. Returns how many facts were appended.
+	MarkOrphaned(ctx context.Context, cutoff time.Time) (int, error)
 	// RescueDead re-queues a Dead task with a fresh attempt budget.
 	RescueDead(ctx context.Context, id task.ID, maxAttempts int) error
 	// Get returns the current task record.

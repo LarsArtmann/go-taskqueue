@@ -29,6 +29,12 @@ const (
 	CancelRequested FactType = "task.cancel-requested"
 	Released        FactType = "task.released" // lease expired, back to pending
 	Requeued        FactType = "task.requeued" // preflight refusal, no attempt burned
+	// Orphaned records that a Running task's lease expired and NO worker
+	// reclaimed it (the worker died with the pool down). It is an
+	// observation, not a state change: the task stays Running until a
+	// ClaimDue reclaim (or a human) picks it up. Appended idempotently by
+	// Store.MarkOrphaned, so `tq show` can explain a stranded task.
+	Orphaned FactType = "task.orphaned"
 )
 
 // Fact is one immutable observation about one task.

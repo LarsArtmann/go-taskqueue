@@ -646,6 +646,75 @@ func (s *SQLiteStore) CancelRequested(ctx context.Context, id task.ID) (bool, er
 const cancelRequestedSQL = `SELECT EXISTS(
 	SELECT 1 FROM facts WHERE task_id = ? AND type = 'task.cancel-requested')`
 
+// MarkOrphaned appends one task.orphaned fact per stranded Running task
+// (lease expired before the cutoff, no orphaned fact yet). Observation
+// only: the task stays Running until a reclaim; the fact explains why it
+// is stranded (worker died, pool down). Idempotent per task.
+func (s *SQLiteStore) MarkOrphaned(ctx context.Context, cutoff time.Time) (int, error) {
+	marked := 0
+
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		rows, err := tx.QueryContext(ctx, `
+			SELECT t.id, COALESCE(t.lease_owner, ''), t.lease_expires
+			FROM tasks t
+			WHERE t.status = 'running'
+			  AND t.lease_expires IS NOT NULL
+			  AND t.lease_expires < ?
+			  AND NOT EXISTS (
+			    SELECT 1 FROM facts f
+			    WHERE f.task_id = t.id AND f.type = 'task.orphaned')`,
+			cutoff.UnixMilli())
+		if err != nil {
+			return err
+		}
+		defer func() { _ = rows.Close() }()
+
+		type orphan struct {
+			id      string
+			owner   string
+			expires int64
+		}
+
+		var found []orphan
+
+		for rows.Next() {
+			var o orphan
+
+			if err := rows.Scan(&o.id, &o.owner, &o.expires); err != nil {
+				return err
+			}
+
+			found = append(found, o)
+		}
+
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		for _, o := range found {
+			detail := mustJSON(map[string]any{
+				"owner":          o.owner,
+				"leaseExpiredAt": time.UnixMilli(o.expires).UTC().Format(time.RFC3339),
+			})
+
+			if err := s.appendFact(ctx, tx, journal.Fact{
+				TaskID: o.id, Type: journal.Orphaned, Owner: o.owner, Detail: detail,
+			}); err != nil {
+				return err
+			}
+
+			marked++
+		}
+
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return marked, nil
+}
+
 // cancelRequestedTx is the in-transaction variant of CancelRequested.
 func cancelRequestedTx(ctx context.Context, tx *sql.Tx, id string) (bool, error) {
 	var requested bool
