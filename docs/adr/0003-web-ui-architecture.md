@@ -115,3 +115,16 @@ the session, because `form-action 'none'` in the CSP above would block
 legitimate same-origin form posts too and must then be narrowed per-route.
 Until all three exist, the dashboard stays read-only by construction — the
 route-table test is the enforcement mechanism, not documentation.
+
+**Amendment (2026-09-08, f40 resume-mapping spike):** decision 2's original
+"SSE `Last-Event-ID` maps back to the journal watermark for resume (proven in
+`examples/sse`)" conflated two shapes. The wire mapping is real — every
+snapshot's closing event carries `id: <journal Seq>` — but resume is
+**snapshot-based, not replay**: the dashboard is a projection consumer, so a
+fresh full snapshot at head is the exact resume for any `Last-Event-ID`, and
+per-fact replay (`examples/sse`'s shape, the bridge's shape) would re-render
+near-identical projections once per fact for no fidelity gain. The
+`Last-Event-ID` value is a freshness token: its uses are reconnect-lag
+observability (`head − N`) and a stable seam to a future per-fact stream, not
+a replay cursor. Full contract:
+`docs/planning/2026-09-08_sse-last-event-id-resume-mapping.md`.
