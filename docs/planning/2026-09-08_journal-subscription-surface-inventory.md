@@ -218,5 +218,11 @@ persistence gap (TODO_LIST H2), which `HeadSeq` actually made O(1).
 - Re-verified 2026-09-08 against HEAD `e221e30` (after `f67942f`
   shifted `sqlite.go` +32 and the webui feed render): every claim re-checked
   against the code, drifted line references corrected, no substance change.
+- Independently re-verified 2026-09-08 (queue-dispatched session, HEAD
+  `473becf`): every line citation re-pinned exactly (journal.go:41, queue.go
+  read surface, sqlite.go 711/714/731/757/767/787, tailer.go:11-18, papdashboard
+  Run loop at :116), the no-delete-path grep re-run clean, all 11 consumer
+  call sites re-matched, and the three verdicts re-checked against the code —
+  no substance change. Gates: build, vet, `go test ./... -race` green.
 - Gates: `go build ./...`, `go vet ./...`, `go test ./... -race` green
   (doc-only change).
