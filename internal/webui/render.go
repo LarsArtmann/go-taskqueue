@@ -243,35 +243,21 @@ func sortTasks(tasks []task.Task) []task.Task {
 	return sorted
 }
 
-func projectSummaries(all []task.Task) []ProjectSummary {
-	byName := map[string]*ProjectSummary{}
+func projectSummaries(counts map[string]map[task.Status]int) []ProjectSummary {
+	out := make([]ProjectSummary, 0, len(counts))
 
-	for _, t := range all {
-		name := t.Project
-		if name == "" {
-			name = "(default)"
+	for name, byStatus := range counts {
+		display := name
+		if display == "" {
+			display = "(default)"
 		}
 
-		p, ok := byName[name]
-		if !ok {
-			p = &ProjectSummary{Name: name}
-			byName[name] = p
-		}
-
-		switch t.Status {
-		case task.Pending:
-			p.Pending++
-		case task.Running:
-			p.Running++
-		case task.Dead:
-			p.Dead++
-		case task.Completed, task.Cancelled:
-		}
-	}
-
-	out := make([]ProjectSummary, 0, len(byName))
-	for _, p := range byName {
-		out = append(out, *p)
+		out = append(out, ProjectSummary{
+			Name:    display,
+			Pending: byStatus[task.Pending],
+			Running: byStatus[task.Running],
+			Dead:    byStatus[task.Dead],
+		})
 	}
 
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })

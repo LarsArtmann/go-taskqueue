@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Task search is a SQL filter, not a scan: `queue.Filter` gained `Query`
+  (case-insensitive substring over id, type, project, payload, lease
+  owner, last error — pushed into escaped SQL LIKE) and `Offset`
+  (pagination), and the dashboard's status counters and per-project
+  overview chips now come from two GROUP BY projections
+  (`Store.StatusCounts` / `Store.ProjectCounts`) instead of walking
+  every task in memory per burst. `%`, `_` and `\` in search boxes now
+  match literally.
+
 - Every journal read is now bounded or cursor-based, so the dashboard,
   `tq top`, the papdashboard bridge and the daily-budget guard stay O(1)
   per tick as the journal grows past 100k facts. `queue.Store.Facts` takes

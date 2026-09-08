@@ -923,3 +923,189 @@ func TestCountFactsByTypeSince(t *testing.T) {
 		t.Fatalf("completed = %d, want 0", n)
 	}
 }
+
+func TestListQueryPushdown(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	seed := []task.New{
+		{Project: "alpha", Type: "sh", Payload: json.RawMessage(`"echo hello"`)},
+		{Project: "beta", Type: "agent", Payload: json.RawMessage(`{"repo":"go-taskqueue","prompt":"fix the bug"}`)},
+		{Project: "gamma", Type: "http", Payload: json.RawMessage(`{"url":"https://example.com/ping"}`)},
+	}
+
+	for i := range seed {
+		if _, err := s.Enqueue(ctx, seed[i]); err != nil {
+			t.Fatalf("seed %d: %v", i, err)
+		}
+	}
+
+	cases := []struct {
+		name  string
+		query string
+		want  int
+	}{
+		{"payload substring", "hello", 1},
+		{"payload json field", "go-taskqueue", 1},
+		{"type match", "agent", 1},
+		{"project match", "gamma", 1},
+		{"case-insensitive", "ECHO HELLO", 1},
+		{"no match", "zebra", 0},
+		{"matches several", "e", 3},
+	}
+
+	for _, tc := range cases {
+		got, err := s.List(ctx, Filter{Query: tc.query})
+		if err != nil {
+			t.Fatalf("List(q=%q): %v", tc.query, err)
+		}
+
+		if len(got) != tc.want {
+			t.Fatalf("query %q matched %d tasks, want %d", tc.query, len(got), tc.want)
+		}
+	}
+}
+
+func TestListQueryLikeEscaping(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	seed := []task.New{
+		{Project: "pct", Type: "sh", Payload: json.RawMessage(`"progress 100% done"`)},
+		{Project: "under", Type: "sh", Payload: json.RawMessage(`"snake_case_name"`)},
+		{Project: "plain", Type: "sh", Payload: json.RawMessage(`"nothing special"`)},
+	}
+
+	for i := range seed {
+		if _, err := s.Enqueue(ctx, seed[i]); err != nil {
+			t.Fatalf("seed %d: %v", i, err)
+		}
+	}
+
+	cases := []struct {
+		name  string
+		query string
+		want  int
+	}{
+		{"literal percent", "100%", 1},
+		{"literal underscore", "snake_case", 1},
+		{"percent is not a wildcard", "1% done", 0},
+		{"underscore is not a wildcard", "snakeXcase", 0},
+		{"backslash literal", "100%\\", 0},
+	}
+
+	for _, tc := range cases {
+		got, err := s.List(ctx, Filter{Query: tc.query})
+		if err != nil {
+			t.Fatalf("List(q=%q): %v", tc.query, err)
+		}
+
+		if len(got) != tc.want {
+			t.Fatalf("query %q matched %d tasks, want %d", tc.query, len(got), tc.want)
+		}
+	}
+}
+
+func TestListOffsetPagination(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+	seedFacts(ctx, t, s, 5)
+
+	page1, err := s.List(ctx, Filter{Limit: 2})
+	if err != nil {
+		t.Fatalf("page1: %v", err)
+	}
+
+	if len(page1) != 2 {
+		t.Fatalf("page1 = %d rows, want 2", len(page1))
+	}
+
+	page2, err := s.List(ctx, Filter{Limit: 2, Offset: 2})
+	if err != nil {
+		t.Fatalf("page2: %v", err)
+	}
+
+	if len(page2) != 2 || page2[0].ID == page1[0].ID {
+		t.Fatalf("page2 must not overlap page1, got %d rows", len(page2))
+	}
+
+	page3, err := s.List(ctx, Filter{Limit: 2, Offset: 4})
+	if err != nil {
+		t.Fatalf("page3: %v", err)
+	}
+
+	if len(page3) != 1 {
+		t.Fatalf("page3 = %d rows, want the 1 remaining", len(page3))
+	}
+}
+
+func TestStatusCountsAndProjectCounts(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+		t.Fatalf("seed a: %v", err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+		t.Fatalf("seed a2: %v", err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Project: "b", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+		t.Fatalf("seed b: %v", err)
+	}
+
+	// ClaimDue may pick either task; derive expectations from the winner.
+	claimed, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	counts, err := s.StatusCounts(ctx)
+	if err != nil {
+		t.Fatalf("StatusCounts: %v", err)
+	}
+
+	total := 0
+
+	for _, n := range counts {
+		total += n
+	}
+
+	if total != 3 || counts[task.Pending] != 2 || counts[task.Running] != 1 {
+		t.Fatalf("counts = %v, want 2 pending + 1 running", counts)
+	}
+
+	projects, err := s.ProjectCounts(ctx)
+	if err != nil {
+		t.Fatalf("ProjectCounts: %v", err)
+	}
+
+	if len(projects) != 2 {
+		t.Fatalf("projects = %d, want 2", len(projects))
+	}
+
+	// Seeds: project a holds 2 tasks, project b holds 1. Whichever task
+	// ClaimDue won defines each project's expected split.
+	if projects["b"][task.Pending]+projects["a"][task.Pending] != 2 {
+		t.Fatalf("two pendings expected across projects, got %v", projects)
+	}
+
+	claimedProject := claimed.Project
+
+	if projects[claimedProject][task.Running] != 1 {
+		t.Fatalf("claimed project %s must hold the run, got %v", claimedProject, projects[claimedProject])
+	}
+
+	if claimedProject == "a" && projects["a"][task.Pending] != 1 {
+		t.Fatalf("project a claimed 1 of its 2, want 1 pending left, got %v", projects["a"])
+	}
+}
