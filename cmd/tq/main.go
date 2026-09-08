@@ -559,6 +559,13 @@ func cmdAgentPool(args []string) error {
 		false,
 		"agent reviews: each completed agent task gets ONE review by a second agent (reviews are never reviewed)",
 	)
+	alertURL := fs.String(
+		"alert-url",
+		os.Getenv("TQ_PAP_URL"),
+		"PapDashboard base URL: dead-lettered tasks and budget exhaustion raise alerts there (e.g. http://localhost:8080)",
+	)
+	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
+	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
 	reviewAutofix := fs.Bool(
 		"review-autofix",
 		false,
@@ -675,6 +682,25 @@ func cmdAgentPool(args []string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	if *alertURL != "" {
+		bridge := papdashboard.New(s, papdashboard.Config{
+			Endpoint:     *alertURL,
+			APIKey:       *alertKey,
+			PollInterval: *alertPoll,
+			// Mirror the pool's cap so the day it bites, an alert fires (and
+			// resolves itself when the window rolls over).
+			DailyBudget: *dailyBudget,
+		})
+		go func() {
+			if err := bridge.Run(ctx); err != nil {
+				fmt.Fprintln(os.Stderr, "tq: alert bridge failed:", err)
+				stop()
+			}
+		}()
+
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: forwarding dead letters + budget exhaustion to %s\n", *alertURL)
+	}
 
 	log := slog.Default()
 	guard := budget.Guard{DailyCap: *dailyBudget, BudgetCmd: *budgetCmd}

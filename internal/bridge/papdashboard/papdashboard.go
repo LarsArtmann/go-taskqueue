@@ -57,6 +57,14 @@ type Config struct {
 	// Severity is the alert severity for dead-lettered tasks.
 	// Default "critical".
 	Severity string
+	// BudgetSeverity is the alert severity for budget exhaustion.
+	// Default "warning".
+	BudgetSeverity string
+	// DailyBudget, when > 0, mirrors the agent pool's --daily-budget: the
+	// day the pool enqueues its Nth task, a "daily budget exhausted" alert
+	// fires once (resolved automatically when the next day's first task is
+	// enqueued). 0 disables budget telemetry.
+	DailyBudget int
 	// PollInterval tails the journal this often. Default 5s.
 	PollInterval time.Duration
 	// FromSeq, when set, starts forwarding AFTER this fact sequence instead
@@ -76,6 +84,12 @@ type Bridge struct {
 	log     *slog.Logger
 	client  *http.Client
 	alerted map[string]alertedTask
+
+	// Daily-budget telemetry (Config.DailyBudget): the same projection the
+	// pool's budget.Guard uses, maintained incrementally from Enqueued facts.
+	budgetDay     string // YYYY-MM-DD the counters below belong to
+	budgetSpent   int
+	budgetAlerted bool // alert fired for budgetDay (fires at most once/day)
 }
 
 // alertedTask remembers the alert raised for a task so a later completion
@@ -92,6 +106,10 @@ func New(store FactSource, cfg Config) *Bridge {
 
 	if cfg.Severity == "" {
 		cfg.Severity = "critical"
+	}
+
+	if cfg.BudgetSeverity == "" {
+		cfg.BudgetSeverity = "warning"
 	}
 
 	if cfg.PollInterval <= 0 {
@@ -196,6 +214,10 @@ func (b *Bridge) startWatermark(ctx context.Context) int64 {
 // forward mirrors one fact. Completed tasks only resolve alerts this bridge
 // raised (process lifetime), so resolve noise stays at zero.
 func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
+	if err := b.trackBudget(ctx, f); err != nil {
+		return err
+	}
+
 	switch f.Type {
 	case journal.DeadLettered:
 		t, err := b.store.Get(ctx, task.ID(f.TaskID))
@@ -216,7 +238,7 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 				"attempts": strconv.Itoa(t.Attempts),
 			},
 		}
-		if err := b.post(ctx, "alert.triggered", idempotencyKey("dlq", f.Seq), t.ID, f.Seq, payload); err != nil {
+		if err := b.post(ctx, "alert.triggered", idempotencyKey("dlq", f.Seq), t.ID.String(), f.Seq, payload); err != nil {
 			return err
 		}
 
@@ -239,7 +261,7 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 			"sourceApp":  b.cfg.SourceApp,
 			"resolvedBy": b.cfg.SourceApp + "-bridge",
 		}
-		if err := b.post(ctx, "alert.resolved", idempotencyKey("resolve", f.Seq), t.ID, f.Seq, payload); err != nil {
+		if err := b.post(ctx, "alert.resolved", idempotencyKey("resolve", f.Seq), t.ID.String(), f.Seq, payload); err != nil {
 			return err
 		}
 
@@ -255,16 +277,16 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 func (b *Bridge) post(
 	ctx context.Context,
 	eventType, idemKey string,
-	taskID task.ID,
+	aggregateID string,
 	seq int64,
 	payload map[string]any,
 ) error {
 	doc := map[string]any{
 		"type":        eventType,
-		"aggregateId": taskID.String(),
+		"aggregateId": aggregateID,
 		"payload":     payload,
 		"metadata": map[string]any{
-			"correlationId": taskID.String(),
+			"correlationId": aggregateID,
 			"causationId":   strconv.FormatInt(seq, 10),
 			"userId":        "",
 			"sourceApp":     b.cfg.SourceApp,
@@ -311,6 +333,68 @@ func (b *Bridge) post(
 
 func alertTitle(t task.Task) string {
 	return fmt.Sprintf("%s/%s task %s dead-lettered", t.Project, t.Type, t.ID)
+}
+
+// budgetAggregate is the alert identity for one day's budget window: a
+// synthetic, stable aggregate id (budget alerts are not task-scoped).
+func budgetAggregate(day string) string { return "agent-pool-budget-" + day }
+
+// trackBudget maintains the daily spend projection and fires the at-cap
+// alert exactly once per day (and resolves yesterday's on rollover).
+func (b *Bridge) trackBudget(ctx context.Context, f journal.Fact) error {
+	if b.cfg.DailyBudget <= 0 {
+		return nil
+	}
+
+	day := f.Time.Format("2006-01-02")
+	if day != b.budgetDay {
+		if b.budgetAlerted {
+			// The window rolled over: yesterday's cap no longer applies, so
+			// the exhaustion alert closes itself.
+			payload := map[string]any{
+				"title":      "agent-pool daily budget exhausted",
+				"body":       fmt.Sprintf("Budget window %s rolled over; the daily cap reset.", b.budgetDay),
+				"sourceApp":  b.cfg.SourceApp,
+				"resolvedBy": b.cfg.SourceApp + "-bridge",
+			}
+			if err := b.post(ctx, "alert.resolved", idempotencyKey("budget-resolve", f.Seq),
+				budgetAggregate(b.budgetDay), f.Seq, payload); err != nil {
+				return err
+			}
+		}
+
+		b.budgetDay, b.budgetSpent, b.budgetAlerted = day, 0, false
+	}
+
+	if f.Type != journal.Enqueued {
+		return nil
+	}
+
+	b.budgetSpent++
+
+	if b.budgetSpent == b.cfg.DailyBudget && !b.budgetAlerted {
+		payload := map[string]any{
+			"severity": b.cfg.BudgetSeverity,
+			"title":    "agent-pool daily budget exhausted",
+			"body": fmt.Sprintf(
+				"%d/%d agent tasks enqueued today: the pool skips harvest ticks until the window rolls over. Raise --daily-budget or wait for the reset.",
+				b.budgetSpent, b.cfg.DailyBudget),
+			"sourceApp": b.cfg.SourceApp,
+			"metadata": map[string]string{
+				"spent": strconv.Itoa(b.budgetSpent),
+				"cap":   strconv.Itoa(b.cfg.DailyBudget),
+				"day":   b.budgetDay,
+			},
+		}
+		if err := b.post(ctx, "alert.triggered", idempotencyKey("budget", f.Seq),
+			budgetAggregate(b.budgetDay), f.Seq, payload); err != nil {
+			return err
+		}
+
+		b.budgetAlerted = true
+	}
+
+	return nil
 }
 
 func firstLine(s string) string {

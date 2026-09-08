@@ -358,3 +358,86 @@ func TestRunWithCancelledContextReturnsNil(t *testing.T) {
 		t.Fatalf("Run with cancelled ctx = %v, want nil", err)
 	}
 }
+
+// budgetFacts builds n Enqueued facts on the given day (plus one heartbeat
+// to prove non-Enqueued facts do not count toward the cap).
+func budgetFacts(day time.Time, n int, startSeq int64) []journal.Fact {
+	var facts []journal.Fact
+
+	for i := range n {
+		facts = append(facts, journal.Fact{
+			Seq: startSeq + int64(i), TaskID: "t-budget", Type: journal.Enqueued,
+			Time: day.Add(time.Duration(i) * time.Minute),
+		})
+	}
+
+	return append(facts, journal.Fact{
+		Seq: startSeq + int64(n), TaskID: "t-budget", Type: journal.Heartbeat,
+		Time: day.Add(time.Duration(n) * time.Minute),
+	})
+}
+
+func TestBudgetExhaustionAlertsOncePerDay(t *testing.T) {
+	pap := newFakePap(t)
+	day := time.Date(2026, 9, 8, 9, 0, 0, 0, time.UTC)
+	src := &fakeSource{facts: budgetFacts(day, 3, 1)} // cap fires at 2, third is over-cap
+	b := New(src, Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()})
+
+	forwardAll(t, b, src)
+
+	var triggered int
+
+	for _, rec := range pap.calls() {
+		if rec.Event != "alert.triggered" {
+			t.Errorf("unexpected event %s (aggregate %s)", rec.Event, rec.AggregateID)
+		}
+
+		triggered++
+	}
+
+	if triggered != 1 {
+		t.Fatalf("got %d alert.triggered events, want exactly 1 (fires at cap, not per over-cap enqueue)", triggered)
+	}
+
+	call := pap.calls()[0]
+	if call.AggregateID != "agent-pool-budget-2026-09-08" {
+		t.Errorf("aggregateId = %s, want agent-pool-budget-2026-09-08", call.AggregateID)
+	}
+}
+
+func TestBudgetAlertResolvesOnDayRollover(t *testing.T) {
+	pap := newFakePap(t)
+	day1 := time.Date(2026, 9, 8, 9, 0, 0, 0, time.UTC)
+	day2 := time.Date(2026, 9, 9, 8, 0, 0, 0, time.UTC)
+
+	src := &fakeSource{}
+	src.add(budgetFacts(day1, 2, 1)...)  // cap 2 reached on day 1
+	src.add(budgetFacts(day2, 1, 10)...) // one enqueue on day 2: rollover, no new alert
+
+	b := New(src, Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()})
+
+	forwardAll(t, b, src)
+
+	calls := pap.calls()
+
+	if len(calls) != 2 {
+		t.Fatalf("got %d events, want 2 (trigger + resolve): %+v", len(calls), calls)
+	}
+
+	if calls[0].Event != "alert.triggered" || calls[1].Event != "alert.resolved" {
+		t.Fatalf("want triggered then resolved, got %s then %s", calls[0].Event, calls[1].Event)
+	}
+}
+
+func TestBudgetTelemetryOffByDefault(t *testing.T) {
+	pap := newFakePap(t)
+	day := time.Date(2026, 9, 8, 9, 0, 0, 0, time.UTC)
+	src := &fakeSource{facts: budgetFacts(day, 5, 1)} // DailyBudget unset (0)
+	b := New(src, Config{Endpoint: pap.server.URL, APIKey: "k", Logger: quietLogger()})
+
+	forwardAll(t, b, src)
+
+	if got := len(pap.calls()); got != 0 {
+		t.Fatalf("got %d events with budget telemetry off, want 0", got)
+	}
+}

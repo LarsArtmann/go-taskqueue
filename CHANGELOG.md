@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Dogfood ops pack**: `tq agent-pool` can now forward alerts
+  (`--alert-url`/`--alert-api-key`, env `TQ_PAP_URL`/`TQ_PAP_API_KEY`) -
+  previously only `tq worker` could. The PapDashboard bridge additionally
+  mirrors `--daily-budget`: the day the cap is reached exactly one
+  warning alert fires (synthetic aggregate `agent-pool-budget-<date>`,
+  idempotent by fact seq) and the first enqueue of the next day resolves
+  it. `scripts/tq-session-status.sh` prints every live pool/worker/serve
+  process with uptime, DB path, serve addr, and journal freshness. An
+  audit of the dogfooding agent commits found no self-modification
+  violations and green verify tails on all recent completions
+  (docs/status/2026-09-08_16-20_round5-m14-dogfood-ops.md).
 - **Hygiene pack**: the JetBrains Mono font subsets now ship with their
   SIL OFL 1.1 license (`internal/webui/static/fonts/OFL.txt`); a guard
   test cross-checks the AGENTS.md templ-components adoption table against
