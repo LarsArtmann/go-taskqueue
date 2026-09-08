@@ -33,7 +33,7 @@
       go-standard = {
         pname = "go-taskqueue";
         version = "0.1.0";
-        vendorHash = "sha256-iofA9U48LWcMVfgVC2RCy1srV+Qdb9W6kS2huc6rEJo=";
+        vendorHash = "sha256-DCc5Liv61GG1fhcBKCMwWgxhVXN67wNIPhX4CZhbp64=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
         # nixpkgs 26.11 dropped x86_64-darwin; the go-standard default system
@@ -185,6 +185,17 @@
             ''
               echo "pool ExecStart: ${deployedPool.serviceConfig.ExecStart}"
               echo "serve ExecStart: ${deployedServe.serviceConfig.ExecStart}"
+              echo "assertions: ${builtins.toJSON {
+                defaultStateDirectory = defaultPool.serviceConfig.StateDirectory or null;
+                defaultRequiresMountsFor = defaultPool.unitConfig ? RequiresMountsFor;
+                deployedUser = deployedPool.serviceConfig.User or null;
+                deployedRequiresMountsFor = deployedPool.unitConfig.RequiresMountsFor or null;
+                deployedEnvironment = deployedPool.serviceConfig.Environment or null;
+                serveStateDirectoryPresent = deployedServe.serviceConfig ? StateDirectory;
+                killSignal = deployedPool.serviceConfig.KillSignal or null;
+                killMode = deployedPool.serviceConfig.KillMode or null;
+                timeoutStopSec = deployedPool.serviceConfig.TimeoutStopSec or null;
+              }}"
               ${lib.optionalString allOk "touch $out"}
               ${lib.optionalString (!allOk) "echo 'nixos-module-eval FAILED'; exit 1"}
             ''

@@ -141,7 +141,7 @@ in
 
     systemd.services.tq-agent-pool = {
       description = "tq agent-pool (self-managing TODO_LIST harvest + headless agents)";
-      documentation = "https://github.com/larsartmann/go-taskqueue";
+      documentation = [ "https://github.com/larsartmann/go-taskqueue" ];
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
@@ -197,7 +197,7 @@ in
 
     systemd.services.tq-serve = lib.mkIf cfg.serve.enable {
       description = "tq serve (read-only task-queue dashboard)";
-      documentation = "https://github.com/larsartmann/go-taskqueue";
+      documentation = [ "https://github.com/larsartmann/go-taskqueue" ];
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
