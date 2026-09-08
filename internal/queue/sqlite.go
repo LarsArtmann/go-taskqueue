@@ -976,6 +976,23 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 			ELSE 4 END, created_at DESC`
 	}
 
+	// Allowlisted column sorts for the dashboard's sortable headers. The
+	// switch IS the allowlist — f.Sort is never interpolated into SQL.
+	switch f.Sort {
+	case "age-asc":
+		order = `ORDER BY created_at ASC, id ASC`
+	case "age-desc":
+		order = `ORDER BY created_at DESC, id DESC`
+	case "priority-asc":
+		order = `ORDER BY priority ASC, created_at ASC, id ASC`
+	case "priority-desc":
+		order = `ORDER BY priority DESC, created_at ASC, id ASC`
+	case "attempts-asc":
+		order = `ORDER BY attempts ASC, created_at ASC, id ASC`
+	case "attempts-desc":
+		order = `ORDER BY attempts DESC, created_at DESC, id DESC`
+	}
+
 	q := `SELECT id, project, type, payload, deps, priority, attempts, max_attempts,
 	             not_before, status, lease_owner, lease_expires, last_error,
 	             created_at, updated_at, completed_at

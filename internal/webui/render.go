@@ -282,7 +282,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 // toQueueFilter maps the URL-carried filter onto the store's SQL filter,
 // bounded to limit rows (0 = unbounded).
 func (f FilterState) toQueueFilter(limit int) queue.Filter {
-	qf := queue.Filter{Query: f.Query, Limit: limit}
+	qf := queue.Filter{Query: f.Query, Limit: limit, Sort: f.Sort}
 
 	if f.Project != "" {
 		qf.Project = &f.Project

@@ -24,16 +24,44 @@ func parseFilter(r *http.Request) FilterState {
 		}
 	}
 
+	// Allowlist: unknown sort values fall back to the default order.
+	sort := q.Get("sort")
+	switch sort {
+	case "", "age-asc", "age-desc", "priority-asc", "priority-desc", "attempts-asc", "attempts-desc":
+	default:
+		sort = ""
+	}
+
 	return FilterState{
 		Project: q.Get("project"),
 		Status:  task.Status(q.Get("status")),
 		Query:   q.Get("q"),
 		Page:    page,
+		Sort:    sort,
 	}
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	data, err := s.loadSnapshot(r.Context(), parseFilter(r))
+	s.renderIndex(w, r, parseFilter(r))
+}
+
+// handleProject serves /project/{name}: the full dashboard with the filter
+// pinned to one project — a shareable, bookmarkable project page that
+// reuses the whole filter/sort/pagination pipeline.
+func (s *Server) handleProject(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	f := parseFilter(r)
+	f.Project = name
+	s.renderIndex(w, r, f)
+}
+
+func (s *Server) renderIndex(w http.ResponseWriter, r *http.Request, f FilterState) {
+	data, err := s.loadSnapshot(r.Context(), f)
 	if err != nil {
 		http.Error(w, "load projection: "+err.Error(), http.StatusInternalServerError)
 

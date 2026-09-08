@@ -106,8 +106,17 @@ templ TaskTable(data DashboardData) {
 	} else {
 		@display.Card(display.CardProps{Padding: display.CardPaddingNone}) {
 			@display.Table(display.TableProps{
-				Caption:     "Live task queue",
-				Headers:     []string{labelID, labelProject, labelType, labelStatus, labelAttempts, labelReady, labelAge, labelError},
+				Caption: "Live task queue",
+				TypedHeaders: []display.TableHeader{
+					{Label: labelID},
+					{Label: labelProject},
+					{Label: labelType},
+					{Label: labelStatus},
+					{Label: labelAttempts, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "attempts"), Href: sortHeaderHref(data.Filter, "attempts")},
+					{Label: labelReady},
+					{Label: labelAge, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "age"), Href: sortHeaderHref(data.Filter, "age")},
+					{Label: labelError},
+				},
 				Flush:       true,
 				Hover:       true,
 				CellPadding: display.TableCellPaddingCompact,
@@ -159,7 +168,9 @@ templ taskRows(data DashboardData) {
 					title={ t.ID.String() }
 				>{ shortID(t.ID) }</a>
 			</td>
-			<td class={ tdCellClass(true) }>{ t.Project }</td>
+			<td class={ tdCellClass(true) }>
+				<a class="hover:underline" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
+			</td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
 			<td class={ tdCellClass(true) }>
 				@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: display.BadgeSizeSM})
@@ -172,10 +183,15 @@ templ taskRows(data DashboardData) {
 			} else {
 				<td class={ tdCellClass(false) }></td>
 			}
-			<td class={ tdCellClass(true) } title={ t.CreatedAt.Format(timeFormat) }>{ timeAgo(data.Now, t.CreatedAt) }</td>
+			<td class={ tdCellClass(true) } title={ t.CreatedAt.Format(timeFormat) } data-age={ templ.KV("data-age", fmt.Sprintf("%d", t.CreatedAt.UnixMilli())) }>{ timeAgo(data.Now, t.CreatedAt) }</td>
 			if t.LastError != "" {
 				<td class={ tdCellClass(false) }>
-					<span class="text-red-600 dark:text-red-400" title={ t.LastError }>{ truncate(t.LastError, errorPreviewLen) }</span>
+					<span
+						class="cursor-pointer text-red-600 dark:text-red-400"
+						title={ t.LastError }
+						data-error={ t.LastError }
+						data-short={ truncate(t.LastError, errorPreviewLen) }
+					>{ truncate(t.LastError, errorPreviewLen) }</span>
 				</td>
 			} else {
 				<td class={ tdCellClass(false) }></td>
@@ -228,7 +244,10 @@ templ deadRows(data DashboardData) {
 }
 
 // FactFeed renders the live fact tail (inner content of #frag-feed): the
-// journal itself, terminal-style. Newest facts land at the bottom.
+// journal itself, terminal-style. Newest facts land at the bottom. Each
+// line's task id links to the detail page — a thin custom variant of the
+// library Scrollback (which renders plain text lines only); the classes
+// mirror its markup so the visual language stays one.
 templ FactFeed(data DashboardData) {
 	if len(data.Facts) == 0 {
 		@display.EmptyState(display.EmptyStateProps{
@@ -238,11 +257,22 @@ templ FactFeed(data DashboardData) {
 		})
 	} else {
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-			@display.Scrollback(display.ScrollbackProps{
-				Stagger:   false,
-				Lines:     factLines(data),
-				BaseProps: utils.BaseProps{Class: "border-y-0"},
-			})
+			<div class="tc-log text-start border-y-0 py-3 font-mono text-[0.8125rem] leading-relaxed text-gray-600 dark:text-gray-400" aria-label="journal fact tail">
+				for _, fact := range data.Facts {
+					<div class="tc-log-line tc-log-line-still">
+						<span class="me-3 text-gray-400 dark:text-gray-500">{ factTimestamp(data.Now, fact.Time) }</span>
+						<span class={ "me-2 inline-block min-w-12 font-medium " + factToneClass(factTone(fact.Type)) }>{ string(fact.Type) }</span>
+						<a
+							class="text-blue-600 hover:underline dark:text-blue-400"
+							href={ templ.URL("/task/" + fact.TaskID) }
+							title={ fact.TaskID }
+						>{ shortIDTail(fact.TaskID) }</a>
+						if fact.Error != "" {
+							<span class="text-red-600 dark:text-red-400"> { truncate(fact.Error, errorPreviewLen) }</span>
+						}
+					</div>
+				}
+			</div>
 		</div>
 	}
 }

@@ -31,10 +31,92 @@
     if (el) el.innerHTML = frag.html;
   }
 
+  /* Live relative ages between SSE bursts: cells carry their wall time in
+     data-age (ms epoch); a 30s ticker re-renders "3m" -> "4m" without a
+     server round-trip. Reduced-motion users still get correct text. */
+  function fmtAge(ms) {
+    var s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+    if (s < 60) return s + "s";
+    if (s < 3600) return Math.floor(s / 60) + "m";
+    if (s < 86400) return Math.floor(s / 3600) + "h";
+    return Math.floor(s / 86400) + "d";
+  }
+
+  function tickAges() {
+    var cells = document.querySelectorAll("[data-age]");
+    for (var i = 0; i < cells.length; i++) {
+      var ms = parseInt(cells[i].getAttribute("data-age"), 10);
+      if (!isNaN(ms)) cells[i].textContent = fmtAge(ms);
+    }
+  }
+
+  setInterval(tickAges, 30000);
+
+  /* Error cells expand on click: the full message lives in title=, the
+     click toggles it into view (keyboard: Enter on the focused cell). */
+  document.addEventListener("click", function (e) {
+    var cell = e.target.closest ? e.target.closest("[data-error]") : null;
+    if (!cell) return;
+    var full = cell.getAttribute("data-error") || "";
+    var short = cell.getAttribute("data-short") || cell.textContent;
+    if (cell.getAttribute("data-expanded") === "1") {
+      cell.textContent = short;
+      cell.setAttribute("data-expanded", "0");
+    } else {
+      cell.textContent = full;
+      cell.setAttribute("data-expanded", "1");
+    }
+  });
+
+  /* "?" toggles the keyboard-shortcut overlay. */
+  var overlay = null;
+
+  function shortcutOverlay() {
+    if (overlay) return overlay;
+    overlay = document.createElement("div");
+    overlay.id = "shortcut-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "keyboard shortcuts");
+    overlay.style.cssText =
+      "position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.4)";
+    overlay.addEventListener("click", function () {
+      overlay.style.display = "none";
+    });
+
+    /* Built via the CSSOM, not innerHTML: the strict CSP blocks inline
+       style attributes, but el.style assignments are always allowed. */
+    var box = document.createElement("div");
+    box.style.cssText =
+      "max-width:22rem;padding:1.25rem;border-radius:0.5rem;background:#fff;color:#111;font-size:0.875rem";
+    var list = document.createElement("table");
+    var tbody = document.createElement("tbody");
+    [
+      ["1-4", "jump to section"],
+      ["/", "focus search"],
+      ["?", "this overlay"],
+      ["Esc", "close"],
+    ].forEach(function (row) {
+      var tr = document.createElement("tr");
+      var kbd = document.createElement("td");
+      kbd.textContent = row[0];
+      kbd.style.cssText = "font-family:monospace;padding-right:1rem";
+      var desc = document.createElement("td");
+      desc.textContent = row[1];
+      tr.appendChild(kbd);
+      tr.appendChild(desc);
+      tbody.appendChild(tr);
+    });
+    list.appendChild(tbody);
+    box.appendChild(list);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
   /* The only page params /api/events understands: the view filter the
      server re-applies to every snapshot plus the token, which EventSource
      cannot send as a header. */
-  var STREAM_PARAMS = ["project", "status", "q", "page", "token"];
+  var STREAM_PARAMS = ["project", "status", "q", "page", "sort", "token"];
 
   function streamURL() {
     var pageQuery = new URLSearchParams(window.location.search);
@@ -102,6 +184,15 @@
       e.preventDefault();
       var box = document.getElementById("search-box");
       if (box) box.focus();
+    }
+
+    if (e.key === "?") {
+      var ov = shortcutOverlay();
+      ov.style.display = ov.style.display === "flex" ? "none" : "flex";
+    }
+
+    if (e.key === "Escape" && overlay) {
+      overlay.style.display = "none";
     }
   });
 })();

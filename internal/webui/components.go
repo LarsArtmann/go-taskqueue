@@ -194,9 +194,70 @@ func shortIDTail(s string) string {
 
 const shortIDLen = 8
 
+// factToneClass mirrors the library Scrollback's tag colors (its
+// scrollbackToneClass is unexported) for the linked fact feed variant.
+func factToneClass(tone display.ScrollbackTone) string {
+	switch tone {
+	case display.ScrollbackToneInfo:
+		return "text-blue-600 dark:text-blue-400"
+	case display.ScrollbackToneSuccess:
+		return "text-green-600 dark:text-green-400"
+	case display.ScrollbackToneWarning:
+		return "text-amber-600 dark:text-amber-400"
+	case display.ScrollbackToneDanger:
+		return "text-red-600 dark:text-red-400"
+	default:
+		return "text-gray-500 dark:text-gray-400"
+	}
+}
+
 // statusHref links a stat card to its filtered view.
 func statusHref(st task.Status) string {
 	return filterHref(FilterState{Status: st})
+}
+
+// sortableColumns is the task-table's sort vocabulary: column key -> the
+// URL sort values it cycles through.
+var sortableColumns = map[string][]string{
+	"age":      {"", "age-desc", "age-asc"},
+	"priority": {"", "priority-desc", "priority-asc"},
+	"attempts": {"", "attempts-desc", "attempts-asc"},
+}
+
+// sortHeaderDirection reports the current SortDirection shown on a column
+// (asc/desc when the active sort belongs to it, none otherwise).
+func sortHeaderDirection(f FilterState, column string) display.SortDirection {
+	for _, v := range sortableColumns[column] {
+		if v == f.Sort {
+			if strings.HasSuffix(v, "-asc") {
+				return display.SortAsc
+			}
+
+			return display.SortDesc
+		}
+	}
+
+	return display.SortNone
+}
+
+// sortHeaderHref cycles a column's sort: none -> descending -> ascending ->
+// none (back to the severity order). The href keeps the current filter.
+func sortHeaderHref(f FilterState, column string) string {
+	cycle := sortableColumns[column]
+
+	next := cycle[0]
+	for i, v := range cycle {
+		if v == f.Sort && i+1 < len(cycle) {
+			next = cycle[i+1]
+			break
+		}
+	}
+
+	toggled := f
+	toggled.Sort = next
+	toggled.Page = 1
+
+	return filterHref(toggled)
 }
 
 // taskRowClass carries the row's status marker plus hover affordance; dead

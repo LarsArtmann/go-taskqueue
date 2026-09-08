@@ -106,6 +106,7 @@ func (s *Server) routeBindings() []struct {
 		handler func(http.ResponseWriter, *http.Request)
 	}{
 		{"GET", "/{$}", s.handleIndex},
+		{"GET", "/project/{name}", s.handleProject},
 		{"GET", "/task/{id}", s.handleTaskDetail},
 		{"GET", "/task/{id}/events", s.handleTaskEvents},
 		{"GET", "/api/events", s.handleEvents},
@@ -117,6 +118,7 @@ func (s *Server) routeBindings() []struct {
 // Handler returns the dashboard's HTTP routes:
 //
 //	GET /                  dashboard page
+//	GET /project/{name}    dashboard pinned to one project
 //	GET /task/{id}         per-task detail page
 //	GET /task/{id}/events  per-task SSE stream (detail fragments + resume)
 //	GET /api/events        SSE stream (dashboard fragments + resume)
