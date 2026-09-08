@@ -6,6 +6,7 @@ living documents (re-verify before treating any claim as current).
 
 | Date | Report | Scope |
 | --- | --- | --- |
+| 2026-09-08 | `2026-09-08_17-21_round5-brutal-self-review-and-full-status.md` | Brutal self-review + full status (defect list, 50 next items) |
 | 2026-09-08 | `2026-09-08_17-20_round5-complete-m11-m27.md` | Round-5 execution complete (M11–M27) |
 | 2026-09-08 | `2026-09-08_16-20_round5-m14-dogfood-ops.md` | M14: agent-commit review, session-status script, budget alerts |
 | 2026-09-08 | `2026-09-08_15-30_round5-wave2-m7-m10-shipped-m11-started.md` | Wave 2 M7–M10 shipped, M11 audit |
