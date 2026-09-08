@@ -36,6 +36,7 @@ func (e *CommandExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", line)
+	prepareProcessGroup(cmd) // cooperative cancel must kill the whole tree
 
 	var buf bytes.Buffer
 

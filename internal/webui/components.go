@@ -45,6 +45,8 @@ func factTone(t journal.FactType) display.ScrollbackTone {
 		return display.ScrollbackToneDanger
 	case journal.Released, journal.Requeued:
 		return display.ScrollbackToneWarning
+	case journal.CancelRequested:
+		return display.ScrollbackToneWarning
 	case journal.Enqueued, journal.Heartbeat, journal.Cancelled:
 		return display.ScrollbackToneNeutral
 	}

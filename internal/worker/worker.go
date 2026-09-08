@@ -217,6 +217,25 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 
 					return
 				}
+
+				// Cooperative cancel: the operator's task.cancel-requested
+				// fact is observed here, at most one heartbeat late.
+				// Cancelling hbCtx stops the execution (executors kill
+				// their process tree); the outcome is finalized as
+				// Cancelled in execute.
+				requested, err := p.store.CancelRequested(hbCtx, t.ID)
+				if err != nil {
+					p.log.Warn("cancel check failed", "task", t.ID, "err", err)
+
+					continue
+				}
+
+				if requested {
+					p.log.Info("cancel requested; stopping execution", "task", t.ID)
+					hbCancel()
+
+					return
+				}
 			}
 		}
 	}()
@@ -245,6 +264,21 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		p.log.Warn("skipping fail: lease lost", "task", t.ID)
 
 		return
+	}
+
+	// Cooperative cancel: the execution was stopped because the operator
+	// requested it (observed at the heartbeat). Finalize as Cancelled — the
+	// attempt does not burn, the task is withdrawn, not failed.
+	if errors.Is(execErr, context.Canceled) {
+		if requested, err := p.store.CancelRequested(ctx, t.ID); err == nil && requested {
+			if cerr := p.store.CancelOwned(ctx, t.ID, p.cfg.Owner); cerr != nil {
+				p.log.Warn("cancel-owned failed; lease lost mid-cancel", "task", t.ID, "err", cerr)
+			} else {
+				p.log.Info("task cancelled by operator request", "task", t.ID)
+			}
+
+			return
+		}
 	}
 
 	if pre, ok := errors.AsType[*executor.PreflightError](execErr); ok {
@@ -322,6 +356,13 @@ func (p *Pool) runExecutor(ctx context.Context, t task.Task) error {
 		// lease is being abandoned anyway.
 		if ctx.Err() != nil {
 			return ctx.Err()
+		}
+
+		// Parent (heartbeat) context cancelled us without a pool shutdown:
+		// cooperative cancel or lease loss — report the cancellation itself,
+		// not a misleading timeout.
+		if errors.Is(runCtx.Err(), context.Canceled) {
+			return runCtx.Err()
 		}
 
 		return fmt.Errorf("task timeout after %s", p.cfg.TaskTimeout)

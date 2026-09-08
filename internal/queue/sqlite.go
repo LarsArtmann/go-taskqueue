@@ -296,6 +296,8 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 
 	var claimed task.Task
 
+	finalizedCancel := false
+
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		// Candidate: pending-and-due OR running-with-expired-lease (crashed
 		// worker reclaim), priority first, oldest first — and every
@@ -350,7 +352,7 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 					return err
 				}
 
-				if n, _ := res.RowsAffected(); n == 0 {
+			if n, _ := res.RowsAffected(); n == 0 {
 					return ErrNoTaskDue // lost the race; another path finalized it
 				}
 
@@ -361,7 +363,11 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 					return err
 				}
 
-				return ErrNoTaskDue // finalized; caller retries for another task
+				// Commit the finalize (returning ErrNoTaskDue here would roll
+				// it back); the caller learns via finalizedCancel below.
+				finalizedCancel = true
+
+				return nil
 			}
 
 			if err := s.appendFact(ctx, tx, journal.Fact{
@@ -401,6 +407,10 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 	})
 	if err != nil {
 		return task.Task{}, err
+	}
+
+	if finalizedCancel {
+		return task.Task{}, ErrNoTaskDue
 	}
 
 	return claimed, nil
@@ -589,6 +599,84 @@ func (s *SQLiteStore) Cancel(ctx context.Context, id task.ID) error {
 		}
 
 		return s.appendFact(ctx, tx, journal.Fact{TaskID: id.String(), Type: journal.Cancelled})
+	})
+}
+
+// CancelRunning records a cooperative cancel request for a Running task.
+// The task.cancel-requested fact IS the flag — no task-row column mirrors
+// it (facts-first). Idempotent: a second request appends nothing.
+func (s *SQLiteStore) CancelRunning(ctx context.Context, id task.ID) error {
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		var st string
+		if err := tx.QueryRowContext(ctx,
+			`SELECT status FROM tasks WHERE id = ?`, id.String()).Scan(&st); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return task.ErrNotFound
+			}
+
+			return err
+		}
+
+		if st != "running" {
+			return fmt.Errorf("%w: %s -> cancel-requested (only running tasks)", task.ErrInvalidTransition, st)
+		}
+
+		requested, err := cancelRequestedTx(ctx, tx, id.String())
+		if err != nil {
+			return err
+		}
+
+		if requested {
+			return nil // already requested; the flag is the fact
+		}
+
+		return s.appendFact(ctx, tx, journal.Fact{TaskID: id.String(), Type: journal.CancelRequested})
+	})
+}
+
+// CancelRequested reports whether a cooperative cancel request is pending.
+func (s *SQLiteStore) CancelRequested(ctx context.Context, id task.ID) (bool, error) {
+	var requested bool
+
+	err := s.db.QueryRowContext(ctx, cancelRequestedSQL, id.String()).Scan(&requested)
+
+	return requested, err
+}
+
+const cancelRequestedSQL = `SELECT EXISTS(
+	SELECT 1 FROM facts WHERE task_id = ? AND type = 'task.cancel-requested')`
+
+// cancelRequestedTx is the in-transaction variant of CancelRequested.
+func cancelRequestedTx(ctx context.Context, tx *sql.Tx, id string) (bool, error) {
+	var requested bool
+
+	err := tx.QueryRowContext(ctx, cancelRequestedSQL, id).Scan(&requested)
+
+	return requested, err
+}
+
+// CancelOwned finalizes a cooperative cancel: Running -> Cancelled, written
+// by the lease-holding worker after it stopped the execution.
+func (s *SQLiteStore) CancelOwned(ctx context.Context, id task.ID, owner string) error {
+	now := time.Now()
+
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `
+			UPDATE tasks SET status = 'cancelled', updated_at = ?, lease_owner = '', lease_expires = NULL
+			WHERE id = ? AND status = 'running' AND lease_owner = ?`,
+			now.UnixMilli(), id.String(), owner)
+		if err != nil {
+			return err
+		}
+
+		if n, _ := res.RowsAffected(); n == 0 {
+			return task.ErrLeaseNotHeld
+		}
+
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(), Type: journal.Cancelled, Owner: owner,
+			Detail: mustJSON(map[string]string{"cooperative": "true"}),
+		})
 	})
 }
 

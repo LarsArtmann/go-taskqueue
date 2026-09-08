@@ -49,7 +49,7 @@ Usage:
   tq top [--interval DUR] [--once] [--json] [--db PATH]
   tq show TASK_ID [--db PATH]
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]]
-  tq cancel TASK_ID [--db PATH]
+  tq cancel TASK_ID [--force] [--db PATH]   (--force: cooperative cancel of a running task)
   tq facts [--db PATH] [--after SEQ]
   tq tail [-f] [--db PATH] [--after SEQ]
   tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose]
@@ -1128,19 +1128,49 @@ func printDLQ(tasks []task.Task) {
 func cmdCancel(args []string) error {
 	fs := flag.NewFlagSet("cancel", flag.ExitOnError)
 
+	force := fs.Bool("force", false, "running tasks: request a cooperative cancel (observed at the worker's next heartbeat)")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
 	if fs.NArg() != 1 {
-		return errors.New("usage: tq cancel TASK_ID")
+		return errors.New("usage: tq cancel TASK_ID [--force]")
 	}
 
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
 
-	return s.Cancel(context.Background(), task.ID(fs.Arg(0)))
+	ctx := context.Background()
+	id := task.ID(fs.Arg(0))
+
+	t, err := s.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	switch t.Status {
+	case task.Pending:
+		return s.Cancel(ctx, id)
+	case task.Running:
+		if !*force {
+			return fmt.Errorf(
+				"task %s is running; pass --force to request a cooperative cancel (the worker stops it at its next heartbeat)",
+				id,
+			)
+		}
+
+		if err := s.CancelRunning(ctx, id); err != nil {
+			return err
+		}
+
+		fmt.Println("cancel requested; the executing worker will stop the task at its next heartbeat")
+
+		return nil
+	default:
+		return fmt.Errorf("task %s is %s (terminal); nothing to cancel", id, t.Status)
+	}
 }
 
 func cmdFacts(args []string) error {
