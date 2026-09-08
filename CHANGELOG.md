@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Dashboard interactions pack**: the task table's age and attempts
+  columns are server-side sortable (allowlisted ORDER BY pushdown; header
+  links cycle none -> desc -> asc -> none, aria-sort announced); project
+  names link to /project/{name}, a shareable dashboard pinned to one
+  project through the same filter/sort/pagination pipeline; every fact
+  line in the journal feed links to its task's detail page (a thin
+  linked variant of the library Scrollback, which renders plain text
+  only); truncated error cells expand on click; relative ages keep
+  ticking between SSE bursts via data-age attributes; and "?" opens a
+  keyboard-shortcut overlay (built via the CSSOM to stay inside the
+  strict CSP).
 - **Journal compaction design + prototype (ADR-0006)**: the facts log
   gains a hot-cold split - `SQLiteStore.ArchiveFactsBefore` moves the
   fact trails of TERMINAL tasks (whole trail or nothing, never splitting
