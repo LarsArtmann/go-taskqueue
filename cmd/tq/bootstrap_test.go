@@ -208,12 +208,19 @@ func TestComposePoolArgs(t *testing.T) {
 		"--daily-budget 20", "--max-per-tick 3",
 		"--yolo=true", "--review=true", "--review-autofix=true",
 		"--project-exclusive=true", "--allow-dirty=false",
-		"--model zai/glm-5.3-flash", "--db /tmp/tq.db",
+		"--db /tmp/tq.db",
 		"--log-dir /state/tq/logs",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in: %s", want, got)
 		}
+	}
+
+	// The pool must NOT carry --model: the repo .crushrc slot (model +
+	// reasoning effort) is the only effort-carrying mechanism, and a payload
+	// model makes the executor pass `crush run -m`, which resets effort.
+	if strings.Contains(got, "--model") {
+		t.Fatalf("--model must not be composed into pool args (drops reasoning effort): %s", got)
 	}
 
 	o.once = true
@@ -235,12 +242,18 @@ func TestRenderPoolConfig(t *testing.T) {
 
 	for _, want := range []string{
 		"projects-dir = /p", "repos = /p/CV", "concurrency = 2",
-		"daily-budget = 20", "yolo = true", "model = zai/glm-5.3-flash",
+		"daily-budget = 20", "yolo = true",
 		"log-dir = /state/tq/logs",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in:\n%s", want, got)
 		}
+	}
+
+	// No model key: the .crushrc managed block carries model + reasoning
+	// effort; a pool-config model would drop the effort (crush run -m).
+	if strings.Contains(got, "model") {
+		t.Fatalf("model must not render into pool.conf (drops reasoning effort):\n%s", got)
 	}
 
 	o.logDir = ""

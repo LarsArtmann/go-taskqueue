@@ -685,9 +685,11 @@ func renderPoolConfig(o bootstrapOptions) string {
 	fmt.Fprintf(&b, "project-exclusive = %v\n", o.exclusive)
 	fmt.Fprintf(&b, "allow-dirty = %v\n", o.allowDirty)
 
-	if o.model != "" {
-		fmt.Fprintf(&b, "model = %s\n", o.model)
-	}
+	// Deliberately NO "model =" key: the repo .crushrc managed block pins
+	// model + reasoning effort (the only effort-carrying mechanism); a
+	// payload/pool model would make the executor pass `crush run -m`, which
+	// resets reasoning effort to the provider default (verified via crush
+	// debug telemetry 2026-09-08).
 
 	if o.repoTimeout != "" {
 		fmt.Fprintf(&b, "repo-timeout = %s\n", o.repoTimeout)
