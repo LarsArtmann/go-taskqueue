@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-sse"
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -148,6 +149,14 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := DashboardData{Now: time.Now()}
+
+	// The review loop's verdict, when this task is a finished review: the
+	// badge + findings card render from the completion-fact detail.
+	if t.Type == executor.TaskTypeReview && t.Status == task.Completed {
+		if res, ok := reviewResultFor(r.Context(), s.store, id); ok {
+			data.Reviews = map[string]executor.ReviewResult{t.ID.String(): res}
+		}
+	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 

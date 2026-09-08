@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
@@ -31,6 +32,38 @@ func statusBadgeType(st task.Status) display.BadgeType {
 	}
 
 	return display.BadgeNeutral
+}
+
+// verdictBadgeType maps an agent-review verdict onto the badge language:
+// approve is green, request_changes is red — the review loop's pass/fail.
+func verdictBadgeType(v executor.ReviewVerdict) display.BadgeType {
+	if v == executor.VerdictApprove {
+		return display.BadgeSuccess
+	}
+
+	return display.BadgeError
+}
+
+// verdictLabel is the human text of a verdict badge.
+func verdictLabel(v executor.ReviewVerdict) string {
+	if v == executor.VerdictApprove {
+		return "review: approve"
+	}
+
+	return "review: request changes"
+}
+
+// findingSeverityType maps a review finding's severity hint onto the badge
+// language (normalized to low/medium/high by the executor's parser).
+func findingSeverityType(severity string) display.BadgeType {
+	switch severity {
+	case "high":
+		return display.BadgeError
+	case "low":
+		return display.BadgeNeutral
+	default:
+		return display.BadgeWarning
+	}
 }
 
 // factTone maps a fact type onto the journal pane's tone colors.

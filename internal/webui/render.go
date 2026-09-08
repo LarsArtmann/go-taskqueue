@@ -3,6 +3,7 @@ package webui
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -136,6 +138,37 @@ type DashboardData struct {
 	// completed tasks in minutes, newest first (the completion histogram's
 	// raw data).
 	CompleteMinutes []float64
+	// Reviews holds the parsed verdict of every COMPLETED review task on
+	// the visible page (keyed by task id) — the agent-review loop made
+	// visible: an approve/request-changes badge in the table and findings
+	// on the detail page. Absent when the page shows no finished reviews.
+	Reviews map[string]executor.ReviewResult
+}
+
+// reviewResultFor reads a completed review task's verdict from its own
+// completion-fact detail (executor.ReviewResult JSON). ok=false when the
+// task never completed or its detail is absent or foreign — never an
+// error: a foreign shape renders as “no verdict”, not a broken page.
+func reviewResultFor(ctx context.Context, src queue.Store, id string) (executor.ReviewResult, bool) {
+	facts, err := src.FactsForTask(ctx, id, 0)
+	if err != nil {
+		return executor.ReviewResult{}, false
+	}
+
+	for i := len(facts) - 1; i >= 0; i-- {
+		if facts[i].Type != journal.Completed {
+			continue
+		}
+
+		var res executor.ReviewResult
+		if json.Unmarshal(facts[i].Detail, &res) != nil || res.Verdict == "" {
+			return executor.ReviewResult{}, false
+		}
+
+		return res, true
+	}
+
+	return executor.ReviewResult{}, false
 }
 
 // clearProject / clearStatus / clearQuery are used by the filter chips.
@@ -254,6 +287,22 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	data.Tasks = tasks
+
+	// Verdicts for the page's finished review tasks (best effort: a failed
+	// read renders no badge, never a broken snapshot).
+	for _, t := range tasks {
+		if t.Type != executor.TaskTypeReview || t.Status != task.Completed {
+			continue
+		}
+
+		if res, ok := reviewResultFor(ctx, s.store, t.ID.String()); ok {
+			if data.Reviews == nil {
+				data.Reviews = map[string]executor.ReviewResult{}
+			}
+
+			data.Reviews[t.ID.String()] = res
+		}
+	}
 
 	matches, err := s.store.CountTasks(ctx, filter.toQueueFilter(0))
 	if err != nil {

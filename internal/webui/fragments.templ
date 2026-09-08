@@ -2,6 +2,7 @@ package webui
 
 import (
 	"fmt"
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/templ-components/feedback"
@@ -182,6 +183,9 @@ templ taskRows(data DashboardData) {
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
 			<td class={ tdCellClass(true) }>
 				@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: display.BadgeSizeSM})
+				if verdict, ok := data.Reviews[t.ID.String()]; ok {
+					@display.Badge(display.BadgeProps{Text: verdictLabel(verdict.Verdict), Type: verdictBadgeType(verdict.Verdict), Dot: true, Size: display.BadgeSizeSM})
+				}
 			</td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span></td>
 			if r := readiness(data.Now, t); r != "" {
@@ -359,6 +363,9 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 	<div class="flex flex-wrap items-baseline gap-x-4 gap-y-2">
 		<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">{ t.ID.String() }</h2>
 		@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true})
+		if verdict, ok := data.Reviews[t.ID.String()]; ok {
+			@display.Badge(display.BadgeProps{Text: verdictLabel(verdict.Verdict), Type: verdictBadgeType(verdict.Verdict), Dot: true})
+		}
 	</div>
 	if t.LastError != "" {
 		@feedback.Alert(feedback.AlertProps{
@@ -367,8 +374,39 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 			Message: t.LastError,
 		})
 	}
+	if verdict, ok := data.Reviews[t.ID.String()]; ok {
+		@reviewFindings(verdict)
+	}
 	@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
 		@display.DefinitionList(display.DefinitionListProps{Items: detailItems(t, data.Now)})
+	}
+}
+
+// reviewFindings renders the review loop's verdict: the reviewer's summary
+// plus each finding with its severity — the operator's answer to "what did
+// the reviewer think of this change?".
+templ reviewFindings(res executor.ReviewResult) {
+	@display.Card(display.CardProps{Title: "agent review", Padding: display.CardPaddingMD}) {
+		if res.Summary != "" {
+			<p class="text-sm text-gray-600 dark:text-gray-300">{ res.Summary }</p>
+		}
+		if len(res.Findings) == 0 {
+			<p class="text-sm text-gray-500 dark:text-gray-400">no findings recorded</p>
+		} else {
+			<ul class="space-y-2">
+				for _, finding := range res.Findings {
+					<li class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+						if finding.Severity != "" {
+							@display.Badge(display.BadgeProps{Text: finding.Severity, Type: findingSeverityType(finding.Severity), Size: display.BadgeSizeSM})
+						}
+						<span class="text-sm font-medium text-gray-900 dark:text-white">{ finding.Title }</span>
+						if finding.Detail != "" {
+							<span class="text-xs text-gray-500 dark:text-gray-400">{ finding.Detail }</span>
+						}
+					</li>
+				}
+			</ul>
+		}
 	}
 }
 
