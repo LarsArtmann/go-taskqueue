@@ -25,6 +25,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/review"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/webui"
 	"github.com/larsartmann/go-taskqueue/internal/worker"
@@ -273,7 +274,10 @@ func cmdWorker(args []string) error {
 			os.Stderr,
 			"tq: --agents: autonomous agent execution enabled (headless crush; dirty repos are skipped; verify is enforced)",
 		)
-		reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
+		agentExec := &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo}
+		reg.Register(executor.TaskTypeAgent, agentExec)
+		// Carry review tasks minted by a --review agent-pool sharing this DB.
+		reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: agentExec})
 	}
 
 	pool := worker.New(s, worker.Config{
@@ -547,6 +551,16 @@ func cmdAgentPool(args []string) error {
 	)
 	cqaOwner := fs.String("cqa-owner", os.Getenv("CQA_OWNER_ID"), "CQA owner ID for the projects listing")
 	cqaToken := fs.String("cqa-token", os.Getenv("CQA_TOKEN"), "CQA bearer token")
+	doReview := fs.Bool(
+		"review",
+		false,
+		"agent reviews: every completed agent task gets ONE review by a second agent (verdict lands in the task's facts; reviews are never reviewed)",
+	)
+	reviewAutofix := fs.Bool(
+		"review-autofix",
+		false,
+		"with --review: a request_changes verdict mints an agent fix task per finding (loop bounded by the budget guard)",
+	)
 	configPath := fs.String(
 		"config",
 		os.Getenv("TQ_POOL_CONFIG"),
@@ -616,9 +630,15 @@ func cmdAgentPool(args []string) error {
 
 	q := queue.New(s)
 
+	agentExec := &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo}
+
 	reg := executor.NewRegistry()
 	reg.Register("sh", executor.NewCommandExecutor(""))
-	reg.Register(executor.TaskTypeAgent, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
+	reg.Register(executor.TaskTypeAgent, agentExec)
+	// Reviews execute wherever agent tasks do: even a pool without --review
+	// carries review tasks another pool minted (failing them at executor
+	// lookup would burn attempts for nothing).
+	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: agentExec})
 	fmt.Fprintf(
 		os.Stderr,
 		"tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, exclusive=%v, harvest every %s, verify enforced)\n",
@@ -641,6 +661,15 @@ func cmdAgentPool(args []string) error {
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick\n", *cqaURL)
 	}
 
+	if *doReview {
+		desc := "verdicts recorded"
+		if *reviewAutofix {
+			desc = "request_changes mints fix tasks"
+		}
+
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: agent reviews enabled (%s)\n", desc)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -656,6 +685,20 @@ func cmdAgentPool(args []string) error {
 			OwnerID:     *cqaOwner,
 			ProjectsDir: *projectsDir,
 		})
+	}
+
+	var sweeper *review.Sweeper
+	if *doReview {
+		var err error
+
+		sweeper, err = review.NewSweeper(ctx, s, review.SweeperConfig{
+			Model:   *model,
+			Autofix: *reviewAutofix,
+			Log:     log,
+		})
+		if err != nil {
+			return fmt.Errorf("review sweeper: %w", err)
+		}
 	}
 
 	runTick := func() {
@@ -687,6 +730,17 @@ func cmdAgentPool(args []string) error {
 
 			log.Info("harvest tick done", "repos", res.Repos, "items", res.Items,
 				"enqueued", len(res.Enqueued), "skipped", len(res.Skipped))
+		}
+
+		if sweeper != nil {
+			stats, err := sweeper.Sweep(ctx)
+			if err != nil {
+				log.Error("review sweep failed", "err", err)
+			} else if stats.ReviewsEnqueued > 0 || stats.FixesEnqueued > 0 || stats.Skipped > 0 {
+				log.Info("review sweep done", "facts", stats.Facts,
+					"reviews", stats.ReviewsEnqueued, "known", stats.ReviewsKnown,
+					"fixes", stats.FixesEnqueued, "skipped", stats.Skipped)
+			}
 		}
 
 		if cqaBridge == nil {
@@ -773,6 +827,15 @@ func cmdAgentPool(args []string) error {
 				case <-ctx.Done():
 					return
 				case <-time.After(*poll):
+					// Sweep before the drain check so reviews of work this
+					// drain just completed run in the SAME --once process
+					// (idempotent; dedup keeps repeat sweeps free).
+					if sweeper != nil {
+						if _, err := sweeper.Sweep(ctx); err != nil {
+							log.Error("review sweep failed", "err", err)
+						}
+					}
+
 					if pool.InFlight() == 0 && !hasClaimableWork(ctx, q, pool.Owner(), *poll) {
 						pool.Stop()
 						stop()

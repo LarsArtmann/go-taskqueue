@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	"github.com/larsartmann/templ-components/display"
 )
 
 const (

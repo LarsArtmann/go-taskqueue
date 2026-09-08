@@ -334,14 +334,29 @@ func TestSweepWatermarkResumesAcrossSweeps(t *testing.T) {
 	ctx := context.Background()
 
 	sw, err := NewSweeper(ctx, s, SweeperConfig{})
+	if err != nil {
+		t.Fatalf("new sweeper: %v", err)
+	}
 
-	runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "first"}, executor.AgentResult{})
+	first := runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "first"}, executor.AgentResult{})
 
 	if _, err := sw.Sweep(ctx); err != nil {
 		t.Fatalf("first sweep: %v", err)
 	}
 
-	runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "second"}, executor.AgentResult{})
+	// The review of `first` is now pending; run it to completion (what the
+	// pool would do) so it cannot shadow the next agent task in ClaimDue
+	// ordering.
+	for _, r := range listByType(t, s, executor.TaskTypeReview) {
+		approve, err := json.Marshal(executor.ReviewResult{Verdict: executor.VerdictApprove})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		finishTask(t, s, r.ID, approve)
+	}
+
+	second := runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "second"}, executor.AgentResult{})
 
 	stats, err := sw.Sweep(ctx)
 	if err != nil {
@@ -350,6 +365,27 @@ func TestSweepWatermarkResumesAcrossSweeps(t *testing.T) {
 
 	if stats.ReviewsEnqueued != 1 {
 		t.Fatalf("only the new completion gets a review, got %+v", stats)
+	}
+
+	var firstReviewed, secondReviewed bool
+
+	for _, r := range listByType(t, s, executor.TaskTypeReview) {
+		var p executor.ReviewPayload
+
+		if err := json.Unmarshal(r.Payload, &p); err != nil {
+			t.Fatalf("review payload: %v", err)
+		}
+
+		switch p.ReviewedTask {
+		case first.ID.String():
+			firstReviewed = true
+		case second.ID.String():
+			secondReviewed = true
+		}
+	}
+
+	if !firstReviewed || !secondReviewed {
+		t.Fatalf("reviewed coverage wrong: first=%v second=%v", firstReviewed, secondReviewed)
 	}
 }
 
