@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -282,6 +283,27 @@ func TestParseBootstrapArgsValidation(t *testing.T) {
 
 	if o.agents != 3 || o.reasoning != "xhigh" || !o.yolo || o.review || !o.reviewAutofix || !o.exclusive {
 		t.Fatalf("unexpected defaults: %+v", o)
+	}
+}
+
+func TestReorderBootstrapArgsMixedOrder(t *testing.T) {
+	fs := flag.NewFlagSet("bootstrap", flag.ContinueOnError)
+	agents := fs.Int("agents", 1, "")
+	model := fs.String("model", "", "")
+	once := fs.Bool("once", false, "")
+
+	args := reorderBootstrapArgs(fs, []string{"CV", "--agents", "2", "SystemNix", "--model", "zai/glm", "--once", "go-taskqueue"})
+
+	if err := fs.Parse(args); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := fs.Args(); strings.Join(got, ",") != "CV,SystemNix,go-taskqueue" {
+		t.Fatalf("positionals wrong: %v", got)
+	}
+
+	if *agents != 2 || *model != "zai/glm" || !*once {
+		t.Fatalf("flags not parsed: agents=%d model=%q once=%v", *agents, *model, *once)
 	}
 }
 

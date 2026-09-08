@@ -89,6 +89,45 @@ type bootstrapOptions struct {
 	binPath        string // resolved executable, for the systemd unit
 }
 
+// reorderBootstrapArgs lets repos and flags appear in any order
+// (`tq bootstrap CV --agents 2` reads naturally). Go's flag package stops at
+// the first positional, so flags after a repo name would be swallowed.
+// The walk tracks value-taking flags (bool flags consume nothing) so a
+// flag's VALUE is never mistaken for a positional; `--` ends flag parsing.
+func reorderBootstrapArgs(fs *flag.FlagSet, args []string) []string {
+	consumes := func(name string) bool {
+		f := fs.Lookup(strings.TrimLeft(name, "-"))
+		if f == nil {
+			return true // unknown: assume it takes a value (parse will error)
+		}
+
+		bv, isBool := f.Value.(interface{ IsBoolFlag() bool })
+
+		return !isBool || !bv.IsBoolFlag()
+	}
+
+	var flags, positionals []string
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--":
+			positionals = append(positionals, args[i+1:]...)
+			i = len(args)
+		case strings.HasPrefix(a, "-"):
+			flags = append(flags, a)
+			if !strings.Contains(a, "=") && consumes(a) && i+1 < len(args) {
+				i++
+				flags = append(flags, args[i])
+			}
+		default:
+			positionals = append(positionals, a)
+		}
+	}
+
+	return append(flags, positionals...)
+}
+
 func cmdBootstrap(args []string) error {
 	o, err := parseBootstrapArgs(args)
 	if err != nil {
@@ -153,7 +192,7 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 		fs.PrintDefaults()
 	}
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderBootstrapArgs(fs, args)); err != nil {
 		return o, err
 	}
 
