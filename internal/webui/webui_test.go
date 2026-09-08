@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-sse/ssetest"
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -455,6 +456,68 @@ func TestConcurrentClientsRace(t *testing.T) {
 	})
 
 	wg.Wait()
+}
+
+// TestReviewVerdictBadgeAndFindings pins the agent-review loop's
+// visibility: a completed review task renders its verdict badge in the
+// table row and the verdict + findings card on its detail page.
+func TestReviewVerdictBadgeAndFindings(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	review := enqueue(t, s, "review", "demo")
+	if _, err := s.ClaimDue(context.Background(), "review-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	detail, err := json.Marshal(executor.ReviewResult{
+		Verdict: executor.VerdictRequestChanges,
+		Summary: "two findings need fixing",
+		Findings: []executor.ReviewFinding{
+			{Title: "nil map write on retry", Severity: "high"},
+			{Title: "missing error wrap", Severity: "low"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal review result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), review.ID, "review-owner", detail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if body := rec.Body.String(); !strings.Contains(body, "review: request changes") {
+		t.Errorf("dashboard table missing the verdict badge")
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+review.ID.String(), nil))
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		"review: request changes", "agent review", "two findings need fixing",
+		"nil map write on retry", "high", "missing error wrap",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("detail page missing %q", want)
+		}
+	}
+}
+
+// TestReviewVerdictAbsentWithoutCompletion pins the quiet path: a pending
+// review task (or a completed task with a foreign result shape) renders no
+// verdict badge.
+func TestReviewVerdictAbsentWithoutCompletion(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	enqueue(t, s, "review", "demo") // pending, never completed
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if body := rec.Body.String(); strings.Contains(body, "review: ") {
+		t.Errorf("pending review task rendered a verdict badge")
+	}
 }
 
 func TestDLQMirrorsDeadTasks(t *testing.T) {

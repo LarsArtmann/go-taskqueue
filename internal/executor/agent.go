@@ -487,6 +487,10 @@ func autoDetectVerify(repo string) string {
 	return ""
 }
 
+// DetectVerify is the exported form of autoDetectVerify for tools that
+// prepare repos (tq bootstrap pins the detected command into .tq-verify).
+func DetectVerify(repo string) string { return autoDetectVerify(repo) }
+
 // RenderAgentPayload marshals a payload for tasks of type agent.
 func RenderAgentPayload(p AgentPayload) (json.RawMessage, error) {
 	b, err := json.Marshal(p)
