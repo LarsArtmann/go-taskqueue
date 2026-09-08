@@ -105,10 +105,10 @@ type recordedIngest struct {
 
 // fakePap captures ingest calls; failNext makes the next call return 500.
 type fakePap struct {
-	mu               sync.Mutex
-	server           *httptest.Server
-	got              []recordedIngest
-	failNext5        int
+	mu                sync.Mutex
+	server            *httptest.Server
+	got               []recordedIngest
+	failNext5         int
 	failAfterAccepted int // once >= n accepts, every later call 502s (0 = off)
 }
 

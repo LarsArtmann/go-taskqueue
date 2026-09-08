@@ -199,7 +199,7 @@ func TestRestartMidStreamLosesZeroFacts(t *testing.T) {
 		t.Errorf("dlq-550 key seen %d times, want 1 (never lost)", keys[SourceApp+"-dlq-550"])
 	}
 
-	if got := wm.current("papdashboard:"+pap.server.URL); got != 600 {
+	if got := wm.current("papdashboard:" + pap.server.URL); got != 600 {
 		t.Errorf("final watermark = %d, want 600", got)
 	}
 }
@@ -261,7 +261,7 @@ func TestCheckpointFailureGatesForwarding(t *testing.T) {
 		t.Fatalf("got %d ingests while checkpoint store down, want 1 (gate must block batch 2)", got)
 	}
 
-	if got := wm.current("papdashboard:"+pap.server.URL); got != 100 {
+	if got := wm.current("papdashboard:" + pap.server.URL); got != 100 {
 		t.Fatalf("persisted watermark = %d while store down, want 100", got)
 	}
 
