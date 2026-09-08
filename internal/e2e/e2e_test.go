@@ -219,8 +219,11 @@ func TestForceCancelSubprocess(t *testing.T) {
 	id := runTQ(t, dir, db, "enqueue", "--type", "sh", "--project", "e2e", "--payload", "sleep 30")
 
 	worker := exec.Command(tqBin, "worker", "--db", db, "--poll", "50ms", "--lease", "400ms")
+
 	var workerLog strings.Builder
+
 	worker.Stdout = &workerLog
+
 	worker.Stderr = &workerLog
 	if err := worker.Start(); err != nil {
 		t.Fatalf("start worker: %v", err)
@@ -248,6 +251,7 @@ func TestForceCancelSubprocess(t *testing.T) {
 		}
 
 		t.Fatalf("task never reached %s; worker log:\n%s", want, workerLog.String())
+
 		return task.Task{}
 	}
 
@@ -255,6 +259,7 @@ func TestForceCancelSubprocess(t *testing.T) {
 
 	// Without --force the CLI refuses a running task and says why.
 	refuse := exec.Command(tqBin, "cancel", "--db", db, id)
+
 	refuseOut, err := refuse.CombinedOutput()
 	if err == nil || !strings.Contains(string(refuseOut), "--force") {
 		t.Fatalf("cancel without --force must refuse with guidance, err=%v out=%s", err, refuseOut)

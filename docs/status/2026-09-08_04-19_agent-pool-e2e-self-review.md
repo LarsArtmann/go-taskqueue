@@ -65,6 +65,7 @@
 ## f) Next things (impact-sorted)
 
 **P0 — apply the proven work**
+
 1. Apply BerryBig patch upstream (test → commit → push)
 2. `--payload-file` flag for `tq enqueue`
 3. Verify buffer.go/json.go/agent_test.go orphans removed post-skip
@@ -114,4 +115,4 @@
 
 ---
 
-*Report written 2026-09-08 04:19 CEST from session evidence: journal facts, git history, CI runs. Waiting for instructions.*
+_Report written 2026-09-08 04:19 CEST from session evidence: journal facts, git history, CI runs. Waiting for instructions._

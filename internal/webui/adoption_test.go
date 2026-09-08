@@ -64,6 +64,7 @@ func adoptedIdentifiers(t *testing.T) map[string]bool {
 	for _, line := range lines {
 		if strings.HasPrefix(line, "### ") {
 			inSection = strings.TrimSpace(line) == adoptionHeading
+
 			continue
 		}
 
@@ -76,7 +77,7 @@ func adoptedIdentifiers(t *testing.T) map[string]bool {
 			continue
 		}
 
-		for _, raw := range strings.Split(cells[0], ",") {
+		for raw := range strings.SplitSeq(cells[0], ",") {
 			token := strings.Trim(strings.TrimSpace(raw), "` ")
 			if token == "" {
 				continue
@@ -130,7 +131,10 @@ func TestAdoptionTableCoversTemplates(t *testing.T) {
 
 	for name, site := range invoked {
 		if !adopted[name] {
-			t.Errorf("template invokes %s but the AGENTS.md adoption table does not list it — add it or drop the usage", site)
+			t.Errorf(
+				"template invokes %s but the AGENTS.md adoption table does not list it — add it or drop the usage",
+				site,
+			)
 		}
 	}
 

@@ -48,7 +48,12 @@ func finishTask(t *testing.T, s *queue.SQLiteStore, id task.ID, detail json.RawM
 
 // runAgentTask enqueues and completes one agent task so the journal holds a
 // real task.completed fact with result detail.
-func runAgentTask(t *testing.T, s *queue.SQLiteStore, payload executor.AgentPayload, result executor.AgentResult) task.Task {
+func runAgentTask(
+	t *testing.T,
+	s *queue.SQLiteStore,
+	payload executor.AgentPayload,
+	result executor.AgentResult,
+) task.Task {
 	t.Helper()
 
 	raw, err := json.Marshal(payload)
@@ -77,7 +82,12 @@ func runAgentTask(t *testing.T, s *queue.SQLiteStore, payload executor.AgentPayl
 }
 
 // runReviewTask enqueues and completes one review task.
-func runReviewTask(t *testing.T, s *queue.SQLiteStore, payload executor.ReviewPayload, result executor.ReviewResult) task.Task {
+func runReviewTask(
+	t *testing.T,
+	s *queue.SQLiteStore,
+	payload executor.ReviewPayload,
+	result executor.ReviewResult,
+) task.Task {
 	t.Helper()
 
 	raw, err := json.Marshal(payload)
@@ -212,7 +222,12 @@ func TestSweepAutofixMintsFixTasksPerFinding(t *testing.T) {
 
 	sw, err := NewSweeper(ctx, s, SweeperConfig{Autofix: true})
 
-	runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "original item"}, executor.AgentResult{CommitSHA: "def5678"})
+	runAgentTask(
+		t,
+		s,
+		executor.AgentPayload{Repo: "demo", Prompt: "original item"},
+		executor.AgentResult{CommitSHA: "def5678"},
+	)
 
 	runReviewTask(t, s, executor.ReviewPayload{
 		Repo:         "demo",
@@ -429,7 +444,12 @@ func TestSweepCatchesUpAcrossRestarts(t *testing.T) {
 	}
 
 	// While no sweeper was running, an agent task completed.
-	done := runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "completed-while-down"}, executor.AgentResult{})
+	done := runAgentTask(
+		t,
+		s,
+		executor.AgentPayload{Repo: "demo", Prompt: "completed-while-down"},
+		executor.AgentResult{},
+	)
 
 	// Pool B starts: the persisted cursor resumes BEFORE that completion,
 	// so it is reviewed despite the sweeper having been down.

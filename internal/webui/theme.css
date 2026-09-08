@@ -49,8 +49,8 @@
   --color-blue-950: #083344;
 
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
-    monospace;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* ---------------------------------------------------------------------------
@@ -62,7 +62,8 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("/static/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+  src: url("/static/fonts/jetbrains-mono-latin-400-normal.woff2")
+    format("woff2");
 }
 
 @font-face {
@@ -70,7 +71,8 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url("/static/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+  src: url("/static/fonts/jetbrains-mono-latin-500-normal.woff2")
+    format("woff2");
 }
 
 @font-face {
@@ -78,7 +80,8 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url("/static/fonts/jetbrains-mono-latin-600-normal.woff2") format("woff2");
+  src: url("/static/fonts/jetbrains-mono-latin-600-normal.woff2")
+    format("woff2");
 }
 
 body {

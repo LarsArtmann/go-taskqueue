@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"slices"
 	"sync"
 	"time"
 
@@ -36,7 +37,7 @@ type ExitCause struct {
 
 func (e ExitCause) Error() string {
 	if e.Err == nil {
-		return fmt.Sprintf("%s exited", e.Actor)
+		return e.Actor + " exited"
 	}
 
 	return fmt.Sprintf("%s: %v", e.Actor, e.Err)
@@ -151,8 +152,8 @@ func (g *Group) Run() error {
 
 	var teardownErr error
 
-	for i := len(teardown) - 1; i >= 0; i-- {
-		if err := teardown[i](); err != nil {
+	for _, t := range slices.Backward(teardown) {
+		if err := t(); err != nil {
 			teardownErr = errors.Join(teardownErr, err)
 		}
 	}

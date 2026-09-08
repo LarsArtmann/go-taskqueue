@@ -315,6 +315,7 @@ func TestFromSeqOverridesPersistedCheckpoint(t *testing.T) {
 	// A cursor persisted at 500 would skip seq 150; FromSeq=100 wins and
 	// the dead letter is replayed.
 	wm.saved["papdashboard:"+pap.server.URL] = 500
+
 	var logMu sync.Mutex
 
 	logLines := &syncBuffer{mu: &logMu}
@@ -442,7 +443,11 @@ func TestResolveAfterRestartClosesPreRestartAlert(t *testing.T) {
 	}
 
 	if calls[1].Event != "alert.resolved" || calls[1].IdempotencyKey != SourceApp+"-resolve-52" {
-		t.Fatalf("second ingest = %s/%s, want alert.resolved/resolve-52 (derived, not remembered)", calls[1].Event, calls[1].IdempotencyKey)
+		t.Fatalf(
+			"second ingest = %s/%s, want alert.resolved/resolve-52 (derived, not remembered)",
+			calls[1].Event,
+			calls[1].IdempotencyKey,
+		)
 	}
 }
 

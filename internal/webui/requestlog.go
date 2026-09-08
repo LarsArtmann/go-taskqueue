@@ -52,6 +52,7 @@ func redactedRequestURI(u *url.URL) string {
 // Write (never WriteHeader) is recorded as http.StatusOK.
 type statusRecorder struct {
 	http.ResponseWriter
+
 	status int
 }
 

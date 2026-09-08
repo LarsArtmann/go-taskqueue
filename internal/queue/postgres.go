@@ -11,7 +11,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -126,6 +125,7 @@ func (s *PostgresStore) withTx(ctx context.Context, fn func(pgx.Tx) error) error
 
 	if err := fn(tx); err != nil {
 		_ = tx.Rollback(ctx)
+
 		return err
 	}
 
@@ -486,7 +486,13 @@ func (s *PostgresStore) Complete(ctx context.Context, id task.ID, owner string, 
 }
 
 // Fail records a failed attempt: retry with backoff or dead-letter.
-func (s *PostgresStore) Fail(ctx context.Context, id task.ID, owner string, errText string, backoff time.Duration) error {
+func (s *PostgresStore) Fail(
+	ctx context.Context,
+	id task.ID,
+	owner string,
+	errText string,
+	backoff time.Duration,
+) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
 
@@ -596,7 +602,13 @@ func (s *PostgresStore) FailPermanent(ctx context.Context, id task.ID, owner str
 }
 
 // Requeue returns a claimed task to Pending without counting an attempt.
-func (s *PostgresStore) Requeue(ctx context.Context, id task.ID, owner string, errText string, delay time.Duration) error {
+func (s *PostgresStore) Requeue(
+	ctx context.Context,
+	id task.ID,
+	owner string,
+	errText string,
+	delay time.Duration,
+) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
 
@@ -769,6 +781,7 @@ func (s *PostgresStore) MarkOrphaned(ctx context.Context, cutoff time.Time) (int
 
 			if err := rows.Scan(&o.id, &o.owner, &o.expires); err != nil {
 				rows.Close()
+
 				return err
 			}
 
@@ -777,6 +790,7 @@ func (s *PostgresStore) MarkOrphaned(ctx context.Context, cutoff time.Time) (int
 
 		if err := rows.Err(); err != nil {
 			rows.Close()
+
 			return err
 		}
 
@@ -885,7 +899,13 @@ func (s *PostgresStore) List(ctx context.Context, f Filter) ([]task.Task, error)
 		idx := len(args)
 		where = append(where, fmt.Sprintf(
 			`(id ILIKE $%d OR type ILIKE $%d OR project ILIKE $%d OR payload ILIKE $%d OR lease_owner ILIKE $%d OR last_error ILIKE $%d)`,
-			idx, idx, idx, idx, idx, idx))
+			idx,
+			idx,
+			idx,
+			idx,
+			idx,
+			idx,
+		))
 	}
 
 	q := `SELECT ` + taskColumns + ` FROM tasks WHERE ` + strings.Join(where, " AND ") + `
@@ -976,6 +996,7 @@ func (s *PostgresStore) Facts(ctx context.Context, after int64, limit int) ([]jo
 
 	if limit > 0 {
 		q += ` LIMIT $2`
+
 		args = append(args, limit)
 	}
 
@@ -1050,6 +1071,7 @@ func (s *PostgresStore) FactsForTask(ctx context.Context, id string, limit int) 
 
 	if limit > 0 {
 		q += ` LIMIT $2`
+
 		args = append(args, limit)
 	}
 
@@ -1242,7 +1264,13 @@ func (s *PostgresStore) CountTasks(ctx context.Context, f Filter) (int, error) {
 		idx := len(args)
 		where = append(where, fmt.Sprintf(
 			`(id ILIKE $%d OR type ILIKE $%d OR project ILIKE $%d OR payload ILIKE $%d OR lease_owner ILIKE $%d OR last_error ILIKE $%d)`,
-			idx, idx, idx, idx, idx, idx))
+			idx,
+			idx,
+			idx,
+			idx,
+			idx,
+			idx,
+		))
 	}
 
 	var n int

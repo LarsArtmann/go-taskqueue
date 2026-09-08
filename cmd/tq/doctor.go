@@ -137,7 +137,10 @@ func doctorQueueMix(ctx context.Context, store queue.Store) []checkResult {
 	status := checkOK
 	if stuck > 0 {
 		status = checkWarn
-		detail += fmt.Sprintf("; %d running task(s) have an EXPIRED lease and no worker reclaimed them (tq doctor --mark-orphans records them)", stuck)
+		detail += fmt.Sprintf(
+			"; %d running task(s) have an EXPIRED lease and no worker reclaimed them (tq doctor --mark-orphans records them)",
+			stuck,
+		)
 	}
 
 	return []checkResult{
@@ -160,6 +163,7 @@ func doctorStuckRunning(ctx context.Context, store queue.Store, now time.Time) i
 	}
 
 	stuck := 0
+
 	for _, t := range tasks {
 		if t.LeaseExpires != nil && t.LeaseExpires.Before(now) {
 			stuck++
@@ -180,7 +184,10 @@ func doctorMarkOrphans(ctx context.Context, store queue.Store) []checkResult {
 
 	detail := "no stranded tasks marked"
 	if marked > 0 {
-		detail = fmt.Sprintf("marked %d stranded task(s) as task.orphaned (still Running; the next reclaiming worker picks them up)", marked)
+		detail = fmt.Sprintf(
+			"marked %d stranded task(s) as task.orphaned (still Running; the next reclaiming worker picks them up)",
+			marked,
+		)
 	}
 
 	return []checkResult{{Name: "mark-orphans", Status: checkOK, Detail: detail}}
@@ -223,18 +230,28 @@ func doctorWatermarkLiveness(ctx context.Context, store queue.Store) []checkResu
 		}
 
 		if !exists {
-			results = append(results, checkResult{Name: c.name, Status: checkOK, Detail: "no cursor (sweeper never ran here)"})
+			results = append(
+				results,
+				checkResult{Name: c.name, Status: checkOK, Detail: "no cursor (sweeper never ran here)"},
+			)
 
 			continue
 		}
 
 		if lag := head - seq; lag > 0 {
 			results = append(results, checkResult{
-				Name: c.name, Status: checkWarn,
-				Detail: fmt.Sprintf("%d fact(s) behind the journal head — the sweeper is not running (inspect/rewind: tq watermarks show)", lag),
+				Name:   c.name,
+				Status: checkWarn,
+				Detail: fmt.Sprintf(
+					"%d fact(s) behind the journal head — the sweeper is not running (inspect/rewind: tq watermarks show)",
+					lag,
+				),
 			})
 		} else {
-			results = append(results, checkResult{Name: c.name, Status: checkOK, Detail: fmt.Sprintf("at head (#%d)", seq)})
+			results = append(
+				results,
+				checkResult{Name: c.name, Status: checkOK, Detail: fmt.Sprintf("at head (#%d)", seq)},
+			)
 		}
 	}
 
@@ -256,6 +273,7 @@ func doctorWorkerLiveness(ctx context.Context, store queue.Store) []checkResult 
 	}
 
 	idle := counts[task.Pending] == 0 && counts[task.Running] == 0
+
 	if beats > 0 {
 		return []checkResult{{
 			Name: "worker", Status: checkOK,
@@ -270,11 +288,18 @@ func doctorWorkerLiveness(ctx context.Context, store queue.Store) []checkResult 
 		}}
 	}
 
-	return []checkResult{{
-		Name: "worker", Status: checkFail,
-		Detail: fmt.Sprintf("no heartbeats in the last %s while %d pending / %d running tasks wait — is a worker running?",
-			doctorHeartbeatWindow, counts[task.Pending], counts[task.Running]),
-	}}
+	return []checkResult{
+		{
+			Name:   "worker",
+			Status: checkFail,
+			Detail: fmt.Sprintf(
+				"no heartbeats in the last %s while %d pending / %d running tasks wait — is a worker running?",
+				doctorHeartbeatWindow,
+				counts[task.Pending],
+				counts[task.Running],
+			),
+		},
+	}
 }
 
 // doctorBudget compares today's enqueues against the operator's cap.
@@ -292,6 +317,7 @@ func doctorBudget(ctx context.Context, store queue.Store, dailyBudget int) []che
 	}
 
 	status := checkOK
+
 	switch {
 	case int(spent) >= dailyBudget:
 		status = checkWarn
@@ -370,11 +396,12 @@ func doctorRepoAutonomy(repo string) []checkResult {
 // doctorWorst summarizes a result set.
 func doctorWorst(results []checkResult) string {
 	worst := checkOK
+
 	for _, r := range results {
-		switch {
-		case r.Status == checkFail:
+		switch r.Status {
+		case checkFail:
 			return checkFail
-		case r.Status == checkWarn:
+		case checkWarn:
 			worst = checkWarn
 		}
 	}
@@ -390,7 +417,11 @@ func cmdDoctor(args []string) error {
 	dailyBudget := fs.Int("daily-budget", 0, "report spend against this daily enqueue cap (0 = skip)")
 	repos := fs.String("repos", "", "comma-separated repo paths: check TODO_LIST.md and .crushrc autonomy files")
 	agentBin := fs.String("agent-bin", "", "agent binary to look for (default crush)")
-	markOrphans := fs.Bool("mark-orphans", false, "record stranded Running tasks (expired lease, no reclaim) as task.orphaned facts — doctor's only write")
+	markOrphans := fs.Bool(
+		"mark-orphans",
+		false,
+		"record stranded Running tasks (expired lease, no reclaim) as task.orphaned facts — doctor's only write",
+	)
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -408,7 +439,12 @@ func cmdDoctor(args []string) error {
 	if err != nil {
 		if *asJSON {
 			enc := json.NewEncoder(os.Stdout)
-			_ = enc.Encode(map[string]any{"status": checkFail, "checks": []checkResult{{Name: "doctor", Status: checkFail, Detail: err.Error()}}})
+			_ = enc.Encode(
+				map[string]any{
+					"status": checkFail,
+					"checks": []checkResult{{Name: "doctor", Status: checkFail, Detail: err.Error()}},
+				},
+			)
 		} else {
 			fmt.Fprintf(os.Stderr, "tq doctor: %v\n", err)
 		}
@@ -418,6 +454,7 @@ func cmdDoctor(args []string) error {
 
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
+
 		return enc.Encode(map[string]any{"status": doctorWorst(results), "checks": results})
 	}
 

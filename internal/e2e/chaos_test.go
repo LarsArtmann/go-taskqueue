@@ -147,6 +147,7 @@ func TestChaosKillAgentPoolOnceMidDrain(t *testing.T) {
 	}
 
 	ctx := context.Background()
+
 	s := openStore(t, dbPath)
 	defer func() { _ = s.Close() }()
 
@@ -231,14 +232,17 @@ func TestMultiProcessContention(t *testing.T) {
 	readerDone := make(chan struct{})
 	go func() {
 		defer close(readerDone)
+
 		for range 40 {
 			c := exec.Command(tqBin, "facts", "--db", dbPath)
 			_, _ = c.Output()
+
 			time.Sleep(10 * time.Millisecond)
 		}
 	}()
 
 	workers := make([]*exec.Cmd, 0, 2)
+
 	for i := range 2 {
 		w := exec.Command(tqBin, "worker", "--db", dbPath,
 			"--owner", fmt.Sprintf("w%d", i), "--poll", "10ms",
@@ -252,10 +256,12 @@ func TestMultiProcessContention(t *testing.T) {
 
 	// Wait for full drain (bounded).
 	ctx := context.Background()
+
 	s := openStore(t, dbPath)
 	defer func() { _ = s.Close() }()
 
 	deadline := time.Now().Add(60 * time.Second)
+
 	for {
 		counts, err := s.StatusCounts(ctx)
 		if err != nil {
@@ -277,6 +283,7 @@ func TestMultiProcessContention(t *testing.T) {
 		_ = w.Process.Kill()
 		_, _ = w.Process.Wait()
 	}
+
 	<-readerDone
 
 	// Exactly-once across processes.
@@ -286,6 +293,7 @@ func TestMultiProcessContention(t *testing.T) {
 	}
 
 	completions := map[string]int{}
+
 	for _, f := range facts {
 		if f.Type == "task.completed" {
 			completions[f.TaskID]++

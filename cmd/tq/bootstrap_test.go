@@ -107,6 +107,7 @@ func TestEnsureTQVerifyOverrideAlwaysRewrites(t *testing.T) {
 
 	// Dry-run reports the override intent without writing.
 	o.dryRun = true
+
 	if err := os.WriteFile(filepath.Join(repo, ".tq-verify"), []byte("go test ./...\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +273,7 @@ func TestRenderUnitMatchesDeployFile(t *testing.T) {
 	normalize := func(s string) string {
 		var keep []string
 
-		for _, line := range strings.Split(s, "\n") {
+		for line := range strings.SplitSeq(s, "\n") {
 			trimmed := strings.TrimSpace(line)
 			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 				continue
@@ -289,9 +290,14 @@ func TestRenderUnitMatchesDeployFile(t *testing.T) {
 	}
 
 	rendered := normalize(renderUnit("<BIN>"))
+
 	tracked := normalize(string(deploy))
 	if rendered != tracked {
-		t.Fatalf("embedded unit drifted from deploy/systemd file\n--- rendered ---\n%s\n--- tracked ---\n%s", rendered, tracked)
+		t.Fatalf(
+			"embedded unit drifted from deploy/systemd file\n--- rendered ---\n%s\n--- tracked ---\n%s",
+			rendered,
+			tracked,
+		)
 	}
 }
 
@@ -337,7 +343,10 @@ func TestReorderBootstrapArgsMixedOrder(t *testing.T) {
 	model := fs.String("model", "", "")
 	once := fs.Bool("once", false, "")
 
-	args := reorderBootstrapArgs(fs, []string{"CV", "--agents", "2", "SystemNix", "--model", "zai/glm", "--once", "go-taskqueue"})
+	args := reorderBootstrapArgs(
+		fs,
+		[]string{"CV", "--agents", "2", "SystemNix", "--model", "zai/glm", "--once", "go-taskqueue"},
+	)
 
 	if err := fs.Parse(args); err != nil {
 		t.Fatal(err)

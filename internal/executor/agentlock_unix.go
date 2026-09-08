@@ -49,6 +49,7 @@ func acquireAgentSlot(ctx context.Context, max int) (func(), error) {
 			// LOCK_EX|LOCK_NB: take the slot or move to the next one.
 			if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 				_ = f.Close()
+
 				continue
 			}
 

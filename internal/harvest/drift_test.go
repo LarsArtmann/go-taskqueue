@@ -264,6 +264,7 @@ func TestAuditReportsUnscannableRepo(t *testing.T) {
 	}
 
 	h := New(openQueue(t), Config{Repos: []string{filepath.Join(dir, "good"), badRepo}})
+
 	res, err := h.Audit(context.Background())
 	if err != nil {
 		t.Fatal(err)

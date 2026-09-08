@@ -7,24 +7,26 @@ Pareto plan (`docs/planning/2026-09-07_23-51_SUPERB-PLAN-ROUND5-PARETO-100-IMPRO
 
 ## Context snapshot (right now)
 
-| Fact | Value |
-| --- | --- |
-| HEAD | `473becf` (master, **25 commits ahead of origin — unpushed**) |
-| Working tree | clean except `internal/executor/review.go` (**parallel agent's untracked file, not mine**) |
-| My session commits | `2d5e729` (M1), `0892081` (M2), `82a5840` (M4), `fb0ff0f` (M5), `f67942f` (M6) |
+| Fact                                  | Value                                                                                                                                                                     |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HEAD                                  | `473becf` (master, **25 commits ahead of origin — unpushed**)                                                                                                             |
+| Working tree                          | clean except `internal/executor/review.go` (**parallel agent's untracked file, not mine**)                                                                                |
+| My session commits                    | `2d5e729` (M1), `0892081` (M2), `82a5840` (M4), `fb0ff0f` (M5), `f67942f` (M6)                                                                                            |
 | Agent-pool commits landed mid-session | `4cb32f6` (M3 auth — they shipped it while I planned), `20edcb4` (audit --json), `afbf953` (fuzz), `473becf` (journal inventory), status/planning docs, plus daemon blobs |
-| Agent pool | PID 3117483, up 8h57m, still dogfooding this repo (`--daily-budget 15`) |
-| LAN serve | PID 3654482, up 8h41m, `0.0.0.0:8090`, **still the OLD binary — unauthenticated, pre-redesign UI** |
-| Gates at last full run | build + vet + full `-race` suite + webui smoke (incl. auth + CSP assertions) + doc-refs: **ALL GREEN** (as of M6 commit) |
+| Agent pool                            | PID 3117483, up 8h57m, still dogfooding this repo (`--daily-budget 15`)                                                                                                   |
+| LAN serve                             | PID 3654482, up 8h41m, `0.0.0.0:8090`, **still the OLD binary — unauthenticated, pre-redesign UI**                                                                        |
+| Gates at last full run                | build + vet + full `-race` suite + webui smoke (incl. auth + CSP assertions) + doc-refs: **ALL GREEN** (as of M6 commit)                                                  |
 
 ---
 
 ## a) FULLY DONE (verified: build/vet/race-suite/smoke, committed)
 
 ### M1 — Bounded journal reads (`2d5e729` + daemon blobs `3d87f02`/`db6ba26`)
+
 The #1 Pareto item. The webui re-read the ENTIRE journal every 500ms burst;
 `tq top` scanned it per refresh; the budget guard scanned it per pool tick;
 the papdashboard bridge scanned it per poll.
+
 - `Store.Facts(ctx, after, limit)` cursor; `LastFacts(limit)` (feed tails);
   `HeadSeq()` (O(1) watermarks); `FactsForTask(id, limit)` (indexed via
   `idx_facts_task`); `CountFacts(type, since)` (SQL pushdown).
@@ -37,6 +39,7 @@ the papdashboard bridge scanned it per poll.
   count-by-type/since).
 
 ### M2 — SQL search pushdown (`0892081`)
+
 - `Filter.Query` → escaped SQL LIKE over id/type/project/payload/owner/error
   (`%`, `_`, `\` match literally); `Filter.Offset` for pagination.
 - `Store.StatusCounts` + `Store.ProjectCounts` GROUP BY projections replaced
@@ -45,10 +48,12 @@ the papdashboard bridge scanned it per poll.
 - 4 new test groups incl. LIKE-escape seeds.
 
 ### M3 — W16 serve auth (**shipped by the agent pool**, `4cb32f6`; verified by me)
+
 Non-loopback default-deny, constant-time token middleware, Bearer + `?token=`,
 redacted logs, auth matrix tests, smoke assertions. I ran the smoke: green.
 
-### M4 — Pool durability (`82a5840`) — *host install deliberately owner-gated*
+### M4 — Pool durability (`82a5840`) — _host install deliberately owner-gated_
+
 - `tq agent-pool --config <file>` / `$TQ_POOL_CONFIG`: flat `key=value`,
   flag-name keys, precedence **flag > env > file > default**, unknown keys
   and bad values fail loudly, `config`-in-file rejected, env-backed CQA
@@ -59,15 +64,17 @@ redacted logs, auth matrix tests, smoke assertions. I ran the smoke: green.
   new README "Running the pool as a service" section.
 
 ### M5 — Security pack (`fb0ff0f`)
+
 - Strict CSP (`default-src 'none'`, self-only scripts/styles, no inline, no
   framing, no form-action) + nosniff/no-referrer/DENY on **every** response
   including 401s (middleware order pinned by a test).
 - Route table became data (`routeBindings`) → `TestRoutesAreReadOnly`
   guardrail fails the build on any mutating route.
 - ADR-0003 amendment + Phase D `--allow-writes` pre-design (capability flag
-  + token-on-loopback + per-route CSRF). Smoke asserts the headers.
+  - token-on-loopback + per-route CSRF). Smoke asserts the headers.
 
 ### M6 — Scale test + pagination (`f67942f`)
+
 - `Filter.SeverityOrder` (SQL CASE: dead→running→pending→cancelled→
   completed, newest first), `Store.CountTasks` sharing the exact WHERE
   builder with List; webui `?page=` (clamped, 200/page) + pager fragment;
@@ -83,6 +90,7 @@ redacted logs, auth matrix tests, smoke assertions. I ran the smoke: green.
 ## b) PARTIALLY DONE
 
 ### M7 — Budget card + notBefore visibility (~50%, uncommitted-in-daemon-blobs)
+
 - ✅ `webui.Config.DailyBudget`; `BudgetView{Cap,Spent}` + `Tone()`
   (green <75%, amber <100%, red ≥ cap); `DashboardData.Budget`; snapshot
   fills it via `CountFacts(Enqueued, startOfDay)`; `readiness()` helper
@@ -96,11 +104,13 @@ redacted logs, auth matrix tests, smoke assertions. I ran the smoke: green.
   component in templ-components v1.14.0).
 
 ### M11 — Platform honesty (~60%, agents did the earlier parts)
+
 Done earlier by agents (`25c2055` unix test tags, `8d6ef88` nix all-systems
 check + nix-binary smoke). Remaining from the plan: F56 (CI Windows job runs
 only honestly-tagged tests) — unverified whether CI workflow covers it.
 
 ### M25/M26 slivers done by agents out of order
+
 `tq audit --json` + flags (`20edcb4`), `FuzzExtractResultPayload` with
 183-seed corpus (`afbf953`). The remaining M25/M26 items are still open.
 
@@ -199,6 +209,7 @@ only honestly-tagged tests) — unverified whether CI workflow covers it.
 ## f) NEXT — up to 50 things, in execution order
 
 **Finish the current wave (Wave 2):**
+
 1. M7: budget StatCard fragment + "ready"/"in 12m" notBefore column in
    `fragments.templ`, `templ generate`, golden tests, smoke, detailed commit
 2. M8: per-task SSE filter on `/task/{id}` + live fact-timeline append +
@@ -268,7 +279,8 @@ docs pack (F145–F150).
 
 **Owner-gated (cannot proceed without you):** LAN serve restart under
 token auth · systemd install on the host · v0.2.0 go/no-go · `--model` pin
-+ budget value · CQA live credentials · website launch · **git push**.
+
+- budget value · CQA live credentials · website launch · **git push**.
 
 ---
 
@@ -291,6 +303,6 @@ token auth · systemd install on the host · v0.2.0 go/no-go · `--model` pin
 
 ---
 
-*Next session pickup: finish M7 fragments (templ card + column), then M8 → M27
+_Next session pickup: finish M7 fragments (templ card + column), then M8 → M27
 per section f. Re-run `git log` before each commit; python-only CHANGELOG
-edits; no rebases.*
+edits; no rebases._

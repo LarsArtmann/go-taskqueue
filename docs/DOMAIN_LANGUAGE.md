@@ -53,22 +53,22 @@ Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 
 ## Observation
 
-| Term              | Meaning                                                                                                                                              |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Replay**        | Reading the journal (`tq facts`, `tq tail -f`) to reconstruct anything that happened. The answer to "what exactly happened" is always in the facts.  |
-| **Watermark**     | A journal consumer's persisted read cursor: the last fact seq it accepts as delivered (`watermarks` table, `queue.Store.Watermark/SaveWatermark`). Monotonic at runtime — never regresses except by an explicit ops `set`. |
-| **Consumer key**  | The watermark-table identity of one resumable reader, namespaced per source (e.g. `papdashboard:<endpoint>`). Distinct endpoints hold distinct cursors. |
-| **Checkpoint**    | The write that persists a watermark — always AFTER the last accepted fact of a batch, never before (a pre-acceptance checkpoint would silently convert at-least-once delivery to at-most-once). |
-| **Lag**           | `HeadSeq − watermark`: how far behind the journal head a consumer's cursor sits (`tq watermarks show`). |
-| **Dispatcher**    | The `internal/consumer` fan-out over `Store` bounded reads: per-subscriber cursor, at-least-once in-order delivery, lag observability (ADR-0009). Deliberately OFF the `Store` interface. |
-| **Exact consumer**   | A consumer class that requires EVERY fact, in seq order, at-least-once (bridges, sweepers, workers). Slow exact consumers apply backpressure — the dispatcher blocks, never skips. Persisted via a **watermark**. |
-| **Signal consumer**  | A consumer class that only needs a wake-up when facts changed (dashboard hub/tailer); payloads stay off the wire (ADR-0003). Overflow drops + coalesces — the next snapshot re-renders truth, so nothing is lost. |
-| **Result detail** | Structured data recorded in the `task.completed` fact (agent session id, verify output tail) — rendered by `tq show`.                                |
-| **Serve**         | `tq serve`: the read-only live dashboard. Binds localhost by default and can only render projections, never mutate the queue.                        |
-| **Tailer**        | The single goroutine polling `Facts(after)` behind `tq serve`; it advances a **watermark** and notifies once per burst of new facts.                 |
-| **Hub**           | The fan-out point every dashboard browser subscribes to; one notification re-renders one full snapshot per client.                                   |
-| **Fragment**      | One named server-rendered HTML region (stats cards, task table, DLQ, fact feed) the browser swaps by container id — the client keeps no state.       |
-| **Projection**    | Any view derived from facts (CLI tables, stats, and every dashboard fragment). Staleness is the worst failure; facts are never corrupted by reading. |
+| Term                | Meaning                                                                                                                                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Replay**          | Reading the journal (`tq facts`, `tq tail -f`) to reconstruct anything that happened. The answer to "what exactly happened" is always in the facts.                                                                        |
+| **Watermark**       | A journal consumer's persisted read cursor: the last fact seq it accepts as delivered (`watermarks` table, `queue.Store.Watermark/SaveWatermark`). Monotonic at runtime — never regresses except by an explicit ops `set`. |
+| **Consumer key**    | The watermark-table identity of one resumable reader, namespaced per source (e.g. `papdashboard:<endpoint>`). Distinct endpoints hold distinct cursors.                                                                    |
+| **Checkpoint**      | The write that persists a watermark — always AFTER the last accepted fact of a batch, never before (a pre-acceptance checkpoint would silently convert at-least-once delivery to at-most-once).                            |
+| **Lag**             | `HeadSeq − watermark`: how far behind the journal head a consumer's cursor sits (`tq watermarks show`).                                                                                                                    |
+| **Dispatcher**      | The `internal/consumer` fan-out over `Store` bounded reads: per-subscriber cursor, at-least-once in-order delivery, lag observability (ADR-0009). Deliberately OFF the `Store` interface.                                  |
+| **Exact consumer**  | A consumer class that requires EVERY fact, in seq order, at-least-once (bridges, sweepers, workers). Slow exact consumers apply backpressure — the dispatcher blocks, never skips. Persisted via a **watermark**.          |
+| **Signal consumer** | A consumer class that only needs a wake-up when facts changed (dashboard hub/tailer); payloads stay off the wire (ADR-0003). Overflow drops + coalesces — the next snapshot re-renders truth, so nothing is lost.          |
+| **Result detail**   | Structured data recorded in the `task.completed` fact (agent session id, verify output tail) — rendered by `tq show`.                                                                                                      |
+| **Serve**           | `tq serve`: the read-only live dashboard. Binds localhost by default and can only render projections, never mutate the queue.                                                                                              |
+| **Tailer**          | The single goroutine polling `Facts(after)` behind `tq serve`; it advances a **watermark** and notifies once per burst of new facts.                                                                                       |
+| **Hub**             | The fan-out point every dashboard browser subscribes to; one notification re-renders one full snapshot per client.                                                                                                         |
+| **Fragment**        | One named server-rendered HTML region (stats cards, task table, DLQ, fact feed) the browser swaps by container id — the client keeps no state.                                                                             |
+| **Projection**      | Any view derived from facts (CLI tables, stats, and every dashboard fragment). Staleness is the worst failure; facts are never corrupted by reading.                                                                       |
 
 ## Bounded contexts
 

@@ -154,8 +154,7 @@ func TestStatusExecutorMissingReportFileFailsRetryable(t *testing.T) {
 		t.Fatal("Execute with missing report file must fail")
 	}
 
-	var perm *PermanentError
-	if errors.As(err, &perm) {
+	if _, ok := errors.AsType[*PermanentError](err); ok {
 		t.Fatalf("missing report file must be retryable, got permanent: %v", err)
 	}
 }
@@ -166,6 +165,7 @@ func TestStatusExecutorPathConfinement(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
+
 	repo := filepath.Join(dir, "repo")
 	if err := os.MkdirAll(repo, 0o750); err != nil {
 		t.Fatal(err)
@@ -211,8 +211,7 @@ func TestStatusExecutorInvalidOutputFailsAttemptRetryable(t *testing.T) {
 		t.Fatal("Execute with no TQ_RESULT line must fail")
 	}
 
-	var perm *PermanentError
-	if errors.As(err, &perm) {
+	if _, ok := errors.AsType[*PermanentError](err); ok {
 		t.Fatalf("invalid output must be retryable, got permanent: %v", err)
 	}
 }
@@ -359,8 +358,7 @@ func TestStatusExecutorVerifyGateGatesCompletion(t *testing.T) {
 				t.Fatalf("want verify-gate error, got: %v", err)
 			}
 
-			var perm *PermanentError
-			if errors.As(err, &perm) {
+			if _, ok := errors.AsType[*PermanentError](err); ok {
 				t.Fatalf("verify failure must be retryable, got permanent: %v", err)
 			}
 		})

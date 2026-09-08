@@ -52,6 +52,7 @@ func isLoopbackAddr(addr string) bool {
 		return true
 	default:
 		ip := net.ParseIP(host)
+
 		return ip != nil && ip.IsLoopback()
 	}
 }

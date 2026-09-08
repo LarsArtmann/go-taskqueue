@@ -194,7 +194,11 @@ func (s *Sweeper) handleFact(ctx context.Context, f journal.Fact, stats *SweepSt
 func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, f journal.Fact, stats *SweepStats) {
 	var agentPayload executor.AgentPayload
 
-	if err := json.Unmarshal(t.Payload, &agentPayload); err != nil || agentPayload.Repo == "" || agentPayload.Prompt == "" {
+	if err := json.Unmarshal(
+		t.Payload,
+		&agentPayload,
+	); err != nil || agentPayload.Repo == "" ||
+		agentPayload.Prompt == "" {
 		stats.Skipped++
 
 		return
@@ -317,7 +321,9 @@ func FixDedupKey(review task.ID, findingTitle string) string {
 func fixPrompt(p executor.ReviewPayload, finding executor.ReviewFinding) string {
 	var b strings.Builder
 
-	b.WriteString("A code reviewer rejected your earlier work on this task and filed one finding. Fix EXACTLY this finding — no unrelated changes.\n\n")
+	b.WriteString(
+		"A code reviewer rejected your earlier work on this task and filed one finding. Fix EXACTLY this finding — no unrelated changes.\n\n",
+	)
 	b.WriteString("## Original task\n\n" + strings.TrimSpace(p.Item) + "\n\n")
 	b.WriteString("## Reviewer finding (" + finding.Severity + ")\n\n" + strings.TrimSpace(finding.Title) + "\n\n")
 
@@ -329,7 +335,9 @@ func fixPrompt(p executor.ReviewPayload, finding executor.ReviewFinding) string 
 		b.WriteString("The rejected change is commit " + p.CommitSHA + ".\n\n")
 	}
 
-	b.WriteString("Address the finding minimally, keep the repository's contracts (AGENTS.md / docs), and make the repo's own gates (build, vet, tests, format) pass before finishing.")
+	b.WriteString(
+		"Address the finding minimally, keep the repository's contracts (AGENTS.md / docs), and make the repo's own gates (build, vet, tests, format) pass before finishing.",
+	)
 
 	return b.String()
 }

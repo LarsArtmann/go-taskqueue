@@ -205,7 +205,14 @@ func TestFixTaskPromptContract(t *testing.T) {
 		RepoDir: "/tmp/repo-a",
 		File:    "pkg/a.go",
 		Issues: []Issue{
-			{Analyzer: "gocritic", Severity: "error", FilePath: "pkg/a.go", LineStart: 3, Message: "flagged thing", Fixable: true},
+			{
+				Analyzer:  "gocritic",
+				Severity:  "error",
+				FilePath:  "pkg/a.go",
+				LineStart: 3,
+				Message:   "flagged thing",
+				Fixable:   true,
+			},
 		},
 	}
 

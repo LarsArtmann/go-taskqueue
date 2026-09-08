@@ -7,10 +7,10 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/larsartmann/go-sse v0.6.0
 	github.com/larsartmann/go-sse/ssetest v0.3.0
-	github.com/larsartmann/templ-components v1.14.0
-	github.com/larsartmann/templ-components/icons v1.14.0
-	github.com/larsartmann/templ-components/utils v1.14.0
-	golang.org/x/sync v0.22.0
+	github.com/larsartmann/templ-components v1.15.0
+	github.com/larsartmann/templ-components/icons v1.15.0
+	github.com/larsartmann/templ-components/utils v1.15.0
+	golang.org/x/sync v0.23.0
 	modernc.org/sqlite v1.58.0
 )
 
@@ -29,17 +29,17 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/larsartmann/go-branded-id v0.5.1 // indirect
 	github.com/larsartmann/go-error-family v0.10.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.14.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.15.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	golang.org/x/mod v0.38.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
-	golang.org/x/tools v0.48.0 // indirect
+	golang.org/x/mod v0.41.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/tools v0.49.0 // indirect
 	modernc.org/libc v1.75.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect

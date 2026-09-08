@@ -427,6 +427,7 @@ func TestAgentVersion(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
+
 	stub := filepath.Join(dir, "versioned-agent")
 	if err := os.WriteFile(stub, []byte("#!/bin/sh\necho 'crush v0.92.1'\necho 'extra line'\n"), 0o755); err != nil {
 		t.Fatal(err)
@@ -458,6 +459,7 @@ func TestMachineWideAgentCapSerializes(t *testing.T) {
 	// Each run logs start, waits, logs end: overlapping runs interleave
 	// start/start before end/end.
 	stub := filepath.Join(dir, "slow-agent")
+
 	script := "#!/bin/sh\necho start >> " + log + "\nsleep 0.4\necho end >> " + log + "\n"
 	if err := os.WriteFile(stub, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
@@ -477,13 +479,13 @@ func TestMachineWideAgentCapSerializes(t *testing.T) {
 	var wg sync.WaitGroup
 
 	errs := make(chan error, 2)
+
 	for range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			errs <- run()
-		}()
+		})
 	}
+
 	wg.Wait()
 	close(errs)
 

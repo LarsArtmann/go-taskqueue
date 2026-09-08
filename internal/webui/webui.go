@@ -141,7 +141,7 @@ func (s *Server) Handler() http.Handler {
 		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
 	}
 
-	var handler http.Handler = http.Handler(mux)
+	handler := http.Handler(mux)
 
 	if s.cfg.AuthToken != "" {
 		handler = withTokenAuth(s.cfg.AuthToken, handler)

@@ -152,7 +152,11 @@ func TestShutdownOrderingUnderSIGTERM(t *testing.T) {
 	}
 
 	if wm < dlSeq {
-		t.Fatalf("bridge watermark = %d, below the dead-letter fact %d — checkpoint lost to shutdown ordering", wm, dlSeq)
+		t.Fatalf(
+			"bridge watermark = %d, below the dead-letter fact %d — checkpoint lost to shutdown ordering",
+			wm,
+			dlSeq,
+		)
 	}
 
 	mu.Lock()
@@ -198,7 +202,7 @@ func TestServeSSEClosesBeforeExit(t *testing.T) {
 		for sc.Scan() {
 			line := sc.Text()
 
-			if at := strings.TrimPrefix(line, "tq: dashboard on http://"); at != line {
+			if at, ok := strings.CutPrefix(line, "tq: dashboard on http://"); ok {
 				addrCh <- strings.TrimSpace(strings.TrimSuffix(at, " (read-only)"))
 
 				return

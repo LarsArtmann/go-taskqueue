@@ -345,6 +345,7 @@ func tdCellClass(wrap bool) string {
 // form the completion histogram's series.
 func completeHistogram(data DashboardData) []float64 {
 	buckets := make([]float64, 5)
+
 	for _, m := range data.CompleteMinutes {
 		switch {
 		case m < 1:

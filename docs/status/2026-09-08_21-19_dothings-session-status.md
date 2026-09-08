@@ -138,58 +138,58 @@ status-report skill's HTML canon is overridden for this report (one-off, not pro
 Sorted by impact. Owner-gated items are marked — they are harvest-blocked in
 TODO_LIST already where applicable.
 
-| #  | Thing | Who/Note |
-|----|-------|----------|
-| 1  | Supervised first tick: `tq bootstrap go-taskqueue --once` (zai is live NOW) | machine, highest value |
-| 2  | Review first agent outputs (`tq show` + sidecar logs), calibrate prompt template | depends on 1 |
-| 3  | freelancermap re-login (~09-09 expiry) → unlocks Amoria/FERCHAU submissions | OWNER |
-| 4  | Executor-level `-m` guard or crush `run --reasoning-effort` feature request | machine |
-| 5  | Triage `TestRestartMidStreamLosesZeroFacts` race failure (watermark 549≠600) | machine |
-| 6  | Transient-error (DNS/429) retry classification for agent runs — requeue, don't dead-letter | machine |
-| 7  | Sidecar retention: `--log-dir-max-age` / size cap | machine |
-| 8  | Integration smoke: `--log-dir` flag → env → sidecar file written end-to-end | machine |
-| 9  | Test: payload model empty ⇒ executor argv has no `-m` | machine |
-| 10 | Add the `-m`-resets-effort gotcha to go-taskqueue AGENTS.md | machine, 2 lines |
-| 11 | Create go-taskqueue FLAKE-LEDGER.md; file the watermark race failure | machine |
-| 12 | Verify-failure diagnostics: include failing step + head-of-output in verify errors | machine |
-| 13 | GitHub Actions billing fix (carried P0) | OWNER |
-| 14 | Overnight provider decision: zai (5h window) vs gemini/kimi/synthetic keys + spend ceiling | OWNER |
-| 15 | Enroll-set decision: CV (PII) / SystemNix (blast radius) / go-taskqueue only | OWNER |
-| 16 | `--install` go/no-go on this machine (persistent daemon + linger) | OWNER |
-| 17 | Audit remaining 79 harvestable CV rows for single-session sizing | machine |
-| 18 | Per-repo timeout ladder for CV (`--repo-timeout CV=60m` — full gate may exceed 30m) | machine |
-| 19 | SOMI attachment verification (flagship app went out `attachState: []`) | OWNER |
-| 20 | SOMI (Daryl) reply — staged positioning text | OWNER |
-| 21 | app-938 ADL/A.Team capacity decision | OWNER |
-| 22 | CV print-contract ratification (books→web-only lever) | OWNER |
-| 23 | Firecrawl production enablement (sops key, tier, spend cap) | OWNER |
-| 24 | Firecrawl JD-enrichment live pass (needs key) | OWNER-gated |
-| 25 | SystemNix portfolio-v2 push + deploy | OWNER |
-| 26 | go-cqrs-lite flake-input pin policy | OWNER |
-| 27 | Rate-facts consolidation in `data/apply-identity.json` | OWNER + machine |
-| 28 | Executive CV primeXchange mirror decision | OWNER |
-| 29 | Root-gated proofs (state-dir listing, cv-backup first run) | needs root |
-| 30 | CI first-runs: `nix-vm-test` + `flake-lock-drift` (billing-gated) | blocked by 13 |
-| 31 | Pre-push gate ritual while CI is down (`local-ci-gate.sh --core`) | process |
-| 32 | Q3 portal-expansion decision | OWNER |
-| 33 | SystemNix `cv-agent.timer` deploy | OWNER |
-| 34 | XFF/forwarded-header trust hardening (bind 127.0.0.1 or trusted-proxy CIDR) | machine |
-| 35 | Dev-store cleanup: purge 24 junk apps (app-756..779) + 4 stale approvals | machine |
-| 36 | NovaSearch app-780 skip-or-apply decision (double-broker trap) | OWNER-ish |
-| 37 | Cover-letter artifact for app-939 + tailored-PDF retention habit | machine |
-| 38 | Day-rate value-correctness audit (~86 non-pinned detections) | machine |
-| 39 | German-JD scoring repair investigation (BCVMatch vs engine) | machine |
-| 40 | `EvaluateVerdict` struct refactor + identical-verdict append suppression | machine |
-| 41 | `cv_health_*` gauges + health-systems ADR + sqlite-prod config-validation guard | machine |
-| 42 | GLM structured-output drift investigation (~2/5 smoke passes) | machine |
-| 43 | Alert-router tail: real-inbox integration test, LLM classification layer | machine |
-| 44 | Merge-tool promotion decision (logic lost with its scratch file) | OWNER-ish |
-| 45 | Track the SOMI application in the funnel (applied 02.09, invisible to tracker) | machine |
-| 46 | Contributions-data refresh cadence + last-refreshed stamp | machine |
-| 47 | freelancermap profile CV refresh (platform shows 2024/2025-03 CVs) + playbook doc | needs 3 |
-| 48 | dprint into treefmt gate or formal docs-formatting decision (TODO row 48) | machine |
-| 49 | docs-health HARVEST: pull this report's (f) into TODO_LIST/ROADMAP per routing rigor | machine |
-| 50 | Calibrate `--status-every` + review sweepers against first real agent outputs | depends on 1 |
+| #  | Thing                                                                                      | Who/Note               |
+| -- | ------------------------------------------------------------------------------------------ | ---------------------- |
+| 1  | Supervised first tick: `tq bootstrap go-taskqueue --once` (zai is live NOW)                | machine, highest value |
+| 2  | Review first agent outputs (`tq show` + sidecar logs), calibrate prompt template           | depends on 1           |
+| 3  | freelancermap re-login (~09-09 expiry) → unlocks Amoria/FERCHAU submissions                | OWNER                  |
+| 4  | Executor-level `-m` guard or crush `run --reasoning-effort` feature request                | machine                |
+| 5  | Triage `TestRestartMidStreamLosesZeroFacts` race failure (watermark 549≠600)               | machine                |
+| 6  | Transient-error (DNS/429) retry classification for agent runs — requeue, don't dead-letter | machine                |
+| 7  | Sidecar retention: `--log-dir-max-age` / size cap                                          | machine                |
+| 8  | Integration smoke: `--log-dir` flag → env → sidecar file written end-to-end                | machine                |
+| 9  | Test: payload model empty ⇒ executor argv has no `-m`                                      | machine                |
+| 10 | Add the `-m`-resets-effort gotcha to go-taskqueue AGENTS.md                                | machine, 2 lines       |
+| 11 | Create go-taskqueue FLAKE-LEDGER.md; file the watermark race failure                       | machine                |
+| 12 | Verify-failure diagnostics: include failing step + head-of-output in verify errors         | machine                |
+| 13 | GitHub Actions billing fix (carried P0)                                                    | OWNER                  |
+| 14 | Overnight provider decision: zai (5h window) vs gemini/kimi/synthetic keys + spend ceiling | OWNER                  |
+| 15 | Enroll-set decision: CV (PII) / SystemNix (blast radius) / go-taskqueue only               | OWNER                  |
+| 16 | `--install` go/no-go on this machine (persistent daemon + linger)                          | OWNER                  |
+| 17 | Audit remaining 79 harvestable CV rows for single-session sizing                           | machine                |
+| 18 | Per-repo timeout ladder for CV (`--repo-timeout CV=60m` — full gate may exceed 30m)        | machine                |
+| 19 | SOMI attachment verification (flagship app went out `attachState: []`)                     | OWNER                  |
+| 20 | SOMI (Daryl) reply — staged positioning text                                               | OWNER                  |
+| 21 | app-938 ADL/A.Team capacity decision                                                       | OWNER                  |
+| 22 | CV print-contract ratification (books→web-only lever)                                      | OWNER                  |
+| 23 | Firecrawl production enablement (sops key, tier, spend cap)                                | OWNER                  |
+| 24 | Firecrawl JD-enrichment live pass (needs key)                                              | OWNER-gated            |
+| 25 | SystemNix portfolio-v2 push + deploy                                                       | OWNER                  |
+| 26 | go-cqrs-lite flake-input pin policy                                                        | OWNER                  |
+| 27 | Rate-facts consolidation in `data/apply-identity.json`                                     | OWNER + machine        |
+| 28 | Executive CV primeXchange mirror decision                                                  | OWNER                  |
+| 29 | Root-gated proofs (state-dir listing, cv-backup first run)                                 | needs root             |
+| 30 | CI first-runs: `nix-vm-test` + `flake-lock-drift` (billing-gated)                          | blocked by 13          |
+| 31 | Pre-push gate ritual while CI is down (`local-ci-gate.sh --core`)                          | process                |
+| 32 | Q3 portal-expansion decision                                                               | OWNER                  |
+| 33 | SystemNix `cv-agent.timer` deploy                                                          | OWNER                  |
+| 34 | XFF/forwarded-header trust hardening (bind 127.0.0.1 or trusted-proxy CIDR)                | machine                |
+| 35 | Dev-store cleanup: purge 24 junk apps (app-756..779) + 4 stale approvals                   | machine                |
+| 36 | NovaSearch app-780 skip-or-apply decision (double-broker trap)                             | OWNER-ish              |
+| 37 | Cover-letter artifact for app-939 + tailored-PDF retention habit                           | machine                |
+| 38 | Day-rate value-correctness audit (~86 non-pinned detections)                               | machine                |
+| 39 | German-JD scoring repair investigation (BCVMatch vs engine)                                | machine                |
+| 40 | `EvaluateVerdict` struct refactor + identical-verdict append suppression                   | machine                |
+| 41 | `cv_health_*` gauges + health-systems ADR + sqlite-prod config-validation guard            | machine                |
+| 42 | GLM structured-output drift investigation (~2/5 smoke passes)                              | machine                |
+| 43 | Alert-router tail: real-inbox integration test, LLM classification layer                   | machine                |
+| 44 | Merge-tool promotion decision (logic lost with its scratch file)                           | OWNER-ish              |
+| 45 | Track the SOMI application in the funnel (applied 02.09, invisible to tracker)             | machine                |
+| 46 | Contributions-data refresh cadence + last-refreshed stamp                                  | machine                |
+| 47 | freelancermap profile CV refresh (platform shows 2024/2025-03 CVs) + playbook doc          | needs 3                |
+| 48 | dprint into treefmt gate or formal docs-formatting decision (TODO row 48)                  | machine                |
+| 49 | docs-health HARVEST: pull this report's (f) into TODO_LIST/ROADMAP per routing rigor       | machine                |
+| 50 | Calibrate `--status-every` + review sweepers against first real agent outputs              | depends on 1           |
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
@@ -207,8 +207,8 @@ TODO_LIST already where applicable.
 
 ---
 
-*Snapshot only — point-in-time. Owner-gated rows above already carry `— BLOCKED:` markers
+_Snapshot only — point-in-time. Owner-gated rows above already carry `— BLOCKED:` markers
 in CV's TODO_LIST; harvesting this repo will skip them until answered. The (f) list is
 brainstorm, not commitment: docs-health HARVEST must route items into TODO_LIST/ROADMAP
 with rigor, not bulk-import them. Report not committed by hand — the auto-git daemon
-sweeps it (same convention as the 19:59 report).*
+sweeps it (same convention as the 19:59 report)._

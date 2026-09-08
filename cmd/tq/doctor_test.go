@@ -18,10 +18,12 @@ func doctorTestStore(t *testing.T) string {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "q.db")
+
 	s, err := queue.OpenSQLite(path)
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
+
 	defer func() { _ = s.Close() }()
 
 	return path
@@ -157,9 +159,15 @@ func TestDoctorRepoAutonomy(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(healthy, ".git"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(healthy, "TODO_LIST.md"), []byte("## Work\n\n- [ ] item\n"), 0o644); err != nil {
+
+	if err := os.WriteFile(
+		filepath.Join(healthy, "TODO_LIST.md"),
+		[]byte("## Work\n\n- [ ] item\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(filepath.Join(healthy, ".crushrc"), []byte("{}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -221,6 +229,7 @@ func TestDoctorMarkOrphans(t *testing.T) {
 	defer func() { _ = s.Close() }()
 
 	ctx := context.Background()
+
 	enq, err := s.Enqueue(ctx, task.New{Type: "sh"})
 	if err != nil {
 		t.Fatal(err)
@@ -249,6 +258,7 @@ func TestDoctorMarkOrphans(t *testing.T) {
 	}
 
 	count := 0
+
 	for _, f := range facts {
 		if f.TaskID == enq.ID.String() && f.Type == "task.orphaned" {
 			count++

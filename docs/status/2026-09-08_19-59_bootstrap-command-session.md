@@ -1,12 +1,12 @@
 # Session Status Report — `tq bootstrap`: The One-Command Meta Harness Bootstrap
 
-| Field | Value |
-| --- | --- |
-| Date | 2026-09-08 19:59 CEST |
-| Repo | `go-taskqueue` (work happened here; started as a CV conversation) |
-| HEAD at report time | `440bf04 feat(taskqueue): add --no-run flag and improve repo state reporting` (daemon-committed) |
-| Session type | **Implementation** — new feature shipped, tested, gated, E2E-verified |
-| Scope | This session's run only: research → probes → `tq bootstrap` implementation → tests → gates → E2E. No unrelated research. |
+| Field               | Value                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Date                | 2026-09-08 19:59 CEST                                                                                                    |
+| Repo                | `go-taskqueue` (work happened here; started as a CV conversation)                                                        |
+| HEAD at report time | `440bf04 feat(taskqueue): add --no-run flag and improve repo state reporting` (daemon-committed)                         |
+| Session type        | **Implementation** — new feature shipped, tested, gated, E2E-verified                                                    |
+| Scope               | This session's run only: research → probes → `tq bootstrap` implementation → tests → gates → E2E. No unrelated research. |
 
 ## What This Session Did
 
@@ -88,36 +88,36 @@ Brutal, session-scoped:
 
 Legend: **[O]** owner-gated · **[M]** machine-executable · **[P]** process/decision
 
-| # | Thing | Source |
-| --- | --- | --- |
-| 1 | Investigate the 6 dead tasks (`tq dlq`, root-cause each) before trusting overnight runs | Session observation (stats: 21 done/6 dead) |
-| 2 | First supervised tick after quota reset: `tq bootstrap CV,go-taskqueue --once` | Session deliverable, never run |
-| 3 | Execute `tq bootstrap --install` on this machine (systemd + linger) | b2 — owner call |
-| 4 | Audit CV's 96 checkbox rows: single-session size, owner-gated rows get `— BLOCKED:` | b3 — dry-run only counted |
-| 5 | Fix GitHub Actions billing (CV) | Carried P0 |
-| 6 | Verify `-m` inherits reasoning effort (one cheap probe post-reset) or document the residual | b1 |
-| 7 | Update go-taskqueue FEATURES.md + CHANGELOG for `bootstrap` | b4 — conventions gap |
-| 8 | Decide the overnight provider: zai (5h window) vs gemini/kimi/synthetic (keys exist) | Probe finding |
-| 9 | Wire `TQ_LOG_DIR` into pool.conf rendering (sidecar logs off by default today) | Code read: writeOutputSidecar |
-| 10 | Review first agent task outputs (`tq show`, sidecar logs) to calibrate the prompt template | Depends on #2 |
-| 11 | Per-repo timeout ladder for CV (`--repo-timeout CV=60m`?) — CV's gate (`go-change-gate` full) may exceed the 30m default | Config knowledge + CV AGENTS |
-| 12 | Enroll-set decision: CV (contains gitignored PII) vs code-only repos first | Session risk note |
-| 13 | SystemNix enrollment decision — autonomous NixOS-config edits are a bigger blast radius | Owner call |
-| 14 | `tq serve` + auth token as the morning-oversight surface (one tab, DLQ visible) | README capability |
-| 15 | PapDashboard alert wiring (`--alert-url`) so DLQ/budget exhaustion pages the owner | Pool flag exists, unwired |
-| 16 | Budget sizing: calibrate `--daily-budget` against real per-task cost after #2 | Depends on #2 |
-| 17 | Review-pass cost check: confirm `--review` + `--review-autofix` economics on real tasks | Depends on #2 |
-| 18 | CQA bridge verification (still httptest-informed guesses; blocked on live CQA instance) | Harness TODO (BLOCKED row) |
-| 19 | Cut v0.2.0 (CHANGELOG finalize + tag + nix-binary smoke) — blocked on owner go/no-go | Harness TODO (BLOCKED row) |
-| 20 | Harvest the 18-23 CV advisory report's section (f) into TODO_LIST | Carried from previous report |
-| 21 | Push CV `master` (was ahead 1 with the x/sys bump; re-check) | Carried |
-| 22 | Decide daemon-vs-agent commit race policy (pause auto-git daemon during pool runs, or accept noisy history) | Session observation d2 |
-| 23 | Add a bootstrap README caveat for the `-m` reasoning residual (if #6 stays unproven) | b1 |
-| 24 | Consider a bootstrap first-run verification step (grep verbose output for reasoning_effort) | e4 |
-| 25 | `--verify` for SystemNix would default to `nix build && nix flake check` (heavy) — scope or override consciously | autoDetectVerify behavior |
-| 26 | Agent commit identity: decide attribution policy for agent-made commits (crushrc attribution options) | Noticed in crush-config skill |
-| 27 | docs-health audit to reconcile the TODO_LIST checkbox conversion done by parallel sessions | Mid-session discovery |
-| 28 | Log rotation/retention for `TQ_LOG_DIR` sidecars once enabled (#9) | Follow-on to #9 |
+| #  | Thing                                                                                                                    | Source                                      |
+| -- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| 1  | Investigate the 6 dead tasks (`tq dlq`, root-cause each) before trusting overnight runs                                  | Session observation (stats: 21 done/6 dead) |
+| 2  | First supervised tick after quota reset: `tq bootstrap CV,go-taskqueue --once`                                           | Session deliverable, never run              |
+| 3  | Execute `tq bootstrap --install` on this machine (systemd + linger)                                                      | b2 — owner call                             |
+| 4  | Audit CV's 96 checkbox rows: single-session size, owner-gated rows get `— BLOCKED:`                                      | b3 — dry-run only counted                   |
+| 5  | Fix GitHub Actions billing (CV)                                                                                          | Carried P0                                  |
+| 6  | Verify `-m` inherits reasoning effort (one cheap probe post-reset) or document the residual                              | b1                                          |
+| 7  | Update go-taskqueue FEATURES.md + CHANGELOG for `bootstrap`                                                              | b4 — conventions gap                        |
+| 8  | Decide the overnight provider: zai (5h window) vs gemini/kimi/synthetic (keys exist)                                     | Probe finding                               |
+| 9  | Wire `TQ_LOG_DIR` into pool.conf rendering (sidecar logs off by default today)                                           | Code read: writeOutputSidecar               |
+| 10 | Review first agent task outputs (`tq show`, sidecar logs) to calibrate the prompt template                               | Depends on #2                               |
+| 11 | Per-repo timeout ladder for CV (`--repo-timeout CV=60m`?) — CV's gate (`go-change-gate` full) may exceed the 30m default | Config knowledge + CV AGENTS                |
+| 12 | Enroll-set decision: CV (contains gitignored PII) vs code-only repos first                                               | Session risk note                           |
+| 13 | SystemNix enrollment decision — autonomous NixOS-config edits are a bigger blast radius                                  | Owner call                                  |
+| 14 | `tq serve` + auth token as the morning-oversight surface (one tab, DLQ visible)                                          | README capability                           |
+| 15 | PapDashboard alert wiring (`--alert-url`) so DLQ/budget exhaustion pages the owner                                       | Pool flag exists, unwired                   |
+| 16 | Budget sizing: calibrate `--daily-budget` against real per-task cost after #2                                            | Depends on #2                               |
+| 17 | Review-pass cost check: confirm `--review` + `--review-autofix` economics on real tasks                                  | Depends on #2                               |
+| 18 | CQA bridge verification (still httptest-informed guesses; blocked on live CQA instance)                                  | Harness TODO (BLOCKED row)                  |
+| 19 | Cut v0.2.0 (CHANGELOG finalize + tag + nix-binary smoke) — blocked on owner go/no-go                                     | Harness TODO (BLOCKED row)                  |
+| 20 | Harvest the 18-23 CV advisory report's section (f) into TODO_LIST                                                        | Carried from previous report                |
+| 21 | Push CV `master` (was ahead 1 with the x/sys bump; re-check)                                                             | Carried                                     |
+| 22 | Decide daemon-vs-agent commit race policy (pause auto-git daemon during pool runs, or accept noisy history)              | Session observation d2                      |
+| 23 | Add a bootstrap README caveat for the `-m` reasoning residual (if #6 stays unproven)                                     | b1                                          |
+| 24 | Consider a bootstrap first-run verification step (grep verbose output for reasoning_effort)                              | e4                                          |
+| 25 | `--verify` for SystemNix would default to `nix build && nix flake check` (heavy) — scope or override consciously         | autoDetectVerify behavior                   |
+| 26 | Agent commit identity: decide attribution policy for agent-made commits (crushrc attribution options)                    | Noticed in crush-config skill               |
+| 27 | docs-health audit to reconcile the TODO_LIST checkbox conversion done by parallel sessions                               | Mid-session discovery                       |
+| 28 | Log rotation/retention for `TQ_LOG_DIR` sidecars once enabled (#9)                                                       | Follow-on to #9                             |
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF (3)
 

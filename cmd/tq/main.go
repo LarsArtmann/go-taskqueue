@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -268,7 +269,11 @@ func cmdWorker(args []string) error {
 	)
 	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
 	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
-	once := fs.Bool("once", false, "run until the claimable queue is drained, then exit (scripts/tests; parity with agent-pool --once)")
+	once := fs.Bool(
+		"once",
+		false,
+		"run until the claimable queue is drained, then exit (scripts/tests; parity with agent-pool --once)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -324,6 +329,7 @@ func cmdWorker(args []string) error {
 			APIKey:       *alertKey,
 			PollInterval: *alertPoll,
 		})
+
 		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
 
 		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %s\n", *alertURL)
@@ -338,6 +344,7 @@ func cmdWorker(args []string) error {
 		// for the next --once run.
 		g.Go("once-drain", func(ctx context.Context) error {
 			q := queue.New(s)
+
 			for {
 				select {
 				case <-ctx.Done():
@@ -687,6 +694,7 @@ func cmdAgentPool(args []string) error {
 			cfg.RepoTimeouts[strings.TrimSpace(name)] = d
 		}
 	}
+
 	if *repoInterval != "" {
 		cfg.RepoIntervals = make(map[string]time.Duration)
 
@@ -767,7 +775,11 @@ func cmdAgentPool(args []string) error {
 	// Version probe: a missing or broken agent binary should be a startup
 	// warning, not a mid-task surprise (the first harvested item would fail).
 	if version, err := executor.AgentVersion(context.Background(), ""); err != nil {
-		fmt.Fprintf(os.Stderr, "tq: WARNING: agent binary probe failed: %v (agent tasks cannot run; TQ_AGENT_BIN overrides)\n", err)
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: WARNING: agent binary probe failed: %v (agent tasks cannot run; TQ_AGENT_BIN overrides)\n",
+			err,
+		)
 	} else {
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: agent binary: %s\n", version)
 	}
@@ -782,7 +794,11 @@ func cmdAgentPool(args []string) error {
 	}
 
 	if *statusEvery > 0 {
-		fmt.Fprintf(os.Stderr, "tq: agent-pool: automated status reports every %d agent completion(s) per project\n", *statusEvery)
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: agent-pool: automated status reports every %d agent completion(s) per project\n",
+			*statusEvery,
+		)
 	}
 
 	// One signal story (runactor): interrupt cancels the pool loop, the
@@ -804,6 +820,7 @@ func cmdAgentPool(args []string) error {
 			// resolves itself when the window rolls over).
 			DailyBudget: *dailyBudget,
 		})
+
 		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
 
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: forwarding dead letters + budget exhaustion to %s\n", *alertURL)
@@ -959,6 +976,7 @@ func cmdAgentPool(args []string) error {
 			log.Info("cqa tick done", "files", len(fixTasks), "new", fresh)
 		}
 	}
+
 	g.Go("tick", func(ctx context.Context) error {
 		runTick()
 
@@ -1249,25 +1267,25 @@ func cmdShow(args []string) error {
 // "what did the agent actually do" without eyeballing raw JSON. nil for task
 // types without a structured result — the raw facts stay in the output.
 func resultDetail(t task.Task, trail []journal.Fact) any {
-	for i := len(trail) - 1; i >= 0; i-- {
-		if trail[i].Type != journal.Completed || len(trail[i].Detail) == 0 {
+	for _, t0 := range slices.Backward(trail) {
+		if t0.Type != journal.Completed || len(t0.Detail) == 0 {
 			continue
 		}
 
 		switch t.Type {
 		case executor.TaskTypeAgent:
 			var res executor.AgentResult
-			if json.Unmarshal(trail[i].Detail, &res) == nil {
+			if json.Unmarshal(t0.Detail, &res) == nil {
 				return res
 			}
 		case executor.TaskTypeReview:
 			var res executor.ReviewResult
-			if json.Unmarshal(trail[i].Detail, &res) == nil {
+			if json.Unmarshal(t0.Detail, &res) == nil {
 				return res
 			}
 		case executor.TaskTypeStatus:
 			var res executor.StatusResult
-			if json.Unmarshal(trail[i].Detail, &res) == nil {
+			if json.Unmarshal(t0.Detail, &res) == nil {
 				return res
 			}
 		}
@@ -1369,7 +1387,11 @@ func printDLQ(tasks []task.Task) {
 func cmdCancel(args []string) error {
 	fs := flag.NewFlagSet("cancel", flag.ExitOnError)
 
-	force := fs.Bool("force", false, "running tasks: request a cooperative cancel (observed at the worker's next heartbeat)")
+	force := fs.Bool(
+		"force",
+		false,
+		"running tasks: request a cooperative cancel (observed at the worker's next heartbeat)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -1470,6 +1492,7 @@ func cmdWatermarks(args []string) error {
 	switch args[0] {
 	case "show":
 		fs := flag.NewFlagSet("watermarks show", flag.ExitOnError)
+
 		db := dbFlag(fs)
 		if err := fs.Parse(args[1:]); err != nil {
 			return err
@@ -1503,6 +1526,7 @@ func cmdWatermarks(args []string) error {
 
 	case "set":
 		fs := flag.NewFlagSet("watermarks set", flag.ExitOnError)
+
 		db := dbFlag(fs)
 		if err := fs.Parse(args[1:]); err != nil {
 			return err
@@ -1525,7 +1549,11 @@ func cmdWatermarks(args []string) error {
 			return err
 		}
 
-		fmt.Printf("watermark %s -> %d (replays facts after this seq on the next consumer start; re-sends are idempotent)\n", rest[0], seq)
+		fmt.Printf(
+			"watermark %s -> %d (replays facts after this seq on the next consumer start; re-sends are idempotent)\n",
+			rest[0],
+			seq,
+		)
 
 		return nil
 
@@ -1624,10 +1652,12 @@ func cmdVersion(args []string) error {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		fmt.Printf("tq %s (no build info)\n", version)
+
 		return nil
 	}
 
 	rev := "(unknown)"
+
 	for _, s := range info.Settings {
 		if s.Key == "vcs.revision" && s.Value != "" {
 			rev = s.Value
@@ -1652,8 +1682,11 @@ func cmdServe(args []string) error {
 	addr := fs.String("addr", webui.DefaultAddr, "listen address (default: localhost only)")
 	poll := fs.Duration("poll", webui.DefaultPoll, "journal tail interval")
 	verbose := fs.Bool("verbose", false, "log every HTTP request (method, path, status, duration) to stderr")
-	authToken := fs.String("auth-token", os.Getenv("TQ_SERVE_TOKEN"),
-		"require this token on every request (Authorization: Bearer or ?token=); required for non-loopback --addr (env $TQ_SERVE_TOKEN)")
+	authToken := fs.String(
+		"auth-token",
+		os.Getenv("TQ_SERVE_TOKEN"),
+		"require this token on every request (Authorization: Bearer or ?token=); required for non-loopback --addr (env $TQ_SERVE_TOKEN)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {

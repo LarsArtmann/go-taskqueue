@@ -10,8 +10,10 @@ TQ="${TQ_BIN:-tq}"
 fmt_duration() {
 	# seconds -> "1d2h3m" style
 	local s=$1 out=""
-	local d=$((s / 86400)); s=$((s % 86400))
-	local h=$((s / 3600)); s=$((s % 3600))
+	local d=$((s / 86400))
+	s=$((s % 86400))
+	local h=$((s / 3600))
+	s=$((s % 3600))
 	local m=$((s / 60))
 	[ "$d" -gt 0 ] && out="${d}d"
 	[ "$h" -gt 0 ] && out="${out}${h}h"
@@ -23,10 +25,10 @@ found=0
 
 for proc in /proc/[0-9]*; do
 	pid="${proc#/proc/}"
-	cmdline="$(tr '\0' ' ' 2>/dev/null < "$proc/cmdline" || true)"
+	cmdline="$(tr '\0' ' ' 2>/dev/null <"$proc/cmdline" || true)"
 	case "$cmdline" in
-		*tq\ agent-pool* | *tq\ worker* | *tq\ serve* | *"./tq agent-pool"* | *"./tq worker"* | *"./tq serve"*) ;;
-		*) continue ;;
+	*tq\ agent-pool* | *tq\ worker* | *tq\ serve* | *"./tq agent-pool"* | *"./tq worker"* | *"./tq serve"*) ;;
+	*) continue ;;
 	esac
 
 	found=1
@@ -38,7 +40,7 @@ for proc in /proc/[0-9]*; do
 	# db: --db flag wins, then $TQ_DB from the process env, then cwd/tasks.db
 	db="$(echo "$cmdline" | tr ' ' '\n' | grep -A1 -- '--db' | grep -v -- '--db' | head -1 || true)"
 	if [ -z "$db" ]; then
-		db="$(tr '\0' '\n' < "$proc/environ" 2>/dev/null | grep '^TQ_DB=' | head -1 | cut -d= -f2- || true)"
+		db="$(tr '\0' '\n' <"$proc/environ" 2>/dev/null | grep '^TQ_DB=' | head -1 | cut -d= -f2- || true)"
 	fi
 	cwd="$(readlink "$proc/cwd" 2>/dev/null || echo "?")"
 	[ -z "$db" ] && db="$cwd/tasks.db"

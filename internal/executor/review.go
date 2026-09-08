@@ -191,13 +191,19 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 func reviewPrompt(p ReviewPayload) string {
 	var b strings.Builder
 
-	b.WriteString("You are a strict senior code reviewer. Review a change another agent made in this repository. READ-ONLY: do not create, modify, or delete any file; run only read-only commands.\n\n")
+	b.WriteString(
+		"You are a strict senior code reviewer. Review a change another agent made in this repository. READ-ONLY: do not create, modify, or delete any file; run only read-only commands.\n\n",
+	)
 	b.WriteString("## The task the agent was given\n\n" + strings.TrimSpace(p.Item) + "\n\n")
 
 	if p.CommitSHA != "" {
-		b.WriteString("## The change\n\nThe agent reported commit " + p.CommitSHA + ". Inspect it with `git show " + p.CommitSHA + "` (plus surrounding context as needed).\n\n")
+		b.WriteString(
+			"## The change\n\nThe agent reported commit " + p.CommitSHA + ". Inspect it with `git show " + p.CommitSHA + "` (plus surrounding context as needed).\n\n",
+		)
 	} else {
-		b.WriteString("## The change\n\nThe agent reported no commit; inspect the repository's current state and recent history.\n\n")
+		b.WriteString(
+			"## The change\n\nThe agent reported no commit; inspect the repository's current state and recent history.\n\n",
+		)
 	}
 
 	if len(p.FilesChanged) > 0 {
@@ -272,7 +278,9 @@ func ParseResult(output string) (ReviewResult, error) {
 		}
 
 		if v == VerdictRequestChanges && len(result.Findings) == 0 {
-			return ReviewResult{}, errors.New("verdict request_changes without findings (verdict rules require actionable findings)")
+			return ReviewResult{}, errors.New(
+				"verdict request_changes without findings (verdict rules require actionable findings)",
+			)
 		}
 
 		return result, nil

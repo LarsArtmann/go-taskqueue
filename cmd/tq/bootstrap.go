@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -158,12 +159,22 @@ func cmdBootstrap(args []string) error {
 	}
 
 	if o.noRun {
-		fmt.Fprintf(os.Stderr, "tq: bootstrap: repo state ensured — start the pool later with:\n  tq %s\n", strings.Join(composePoolArgs(o), " "))
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: bootstrap: repo state ensured — start the pool later with:\n  tq %s\n",
+			strings.Join(composePoolArgs(o), " "),
+		)
+
 		return nil
 	}
 
 	if o.dryRun {
-		fmt.Fprintf(os.Stderr, "tq: bootstrap: dry-run — nothing written, pool not started\nwould run: tq %s\n", strings.Join(composePoolArgs(o), " "))
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: bootstrap: dry-run — nothing written, pool not started\nwould run: tq %s\n",
+			strings.Join(composePoolArgs(o), " "),
+		)
+
 		return nil
 	}
 
@@ -175,25 +186,64 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 
 	o := bootstrapOptions{}
 	reposFlag := fs.String("repos", "", "comma-separated additional repos (positional args also work)")
-	fs.StringVar(&o.projectsDir, "projects-dir", defaultProjectsDir(), "dir containing repos (default $TQ_PROJECTS_DIR or ~/projects)")
+	fs.StringVar(
+		&o.projectsDir,
+		"projects-dir",
+		defaultProjectsDir(),
+		"dir containing repos (default $TQ_PROJECTS_DIR or ~/projects)",
+	)
 	fs.IntVar(&o.agents, "agents", 1, "parallel agents (also the machine-wide agent cap)")
-	fs.StringVar(&o.model, "model", "", "crush model override pinned into payloads and repo configs, 'provider/model' (empty = each repo's crush config default)")
-	fs.StringVar(&o.reasoning, "reasoning", "xhigh", "reasoning effort for the pinned model: low|medium|high|xhigh (xhigh = max possible)")
+	fs.StringVar(
+		&o.model,
+		"model",
+		"",
+		"crush model override pinned into payloads and repo configs, 'provider/model' (empty = each repo's crush config default)",
+	)
+	fs.StringVar(
+		&o.reasoning,
+		"reasoning",
+		"xhigh",
+		"reasoning effort for the pinned model: low|medium|high|xhigh (xhigh = max possible)",
+	)
 	verifyFlag := fs.String("verify", "", "per-repo verify override written into .tq-verify: name=cmd,name=cmd")
 	fs.DurationVar(&o.interval, "interval", 5*time.Minute, "harvest cadence")
-	fs.IntVar(&o.dailyBudget, "daily-budget", 20, "max agent tasks enqueued per calendar day (cost ceiling; 0 = unlimited)")
+	fs.IntVar(
+		&o.dailyBudget,
+		"daily-budget",
+		20,
+		"max agent tasks enqueued per calendar day (cost ceiling; 0 = unlimited)",
+	)
 	fs.IntVar(&o.maxPerTick, "max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per harvest tick")
 	fs.BoolVar(&o.once, "once", false, "one harvest tick, drain, exit (cron/timer-friendly)")
 	fs.BoolVar(&o.dryRun, "dry-run", false, "show the plan without writing anything or starting the pool")
 	fs.BoolVar(&o.install, "install", false, "install the systemd user unit + pool config, then exit (daemon mode)")
-	fs.BoolVar(&o.noRun, "no-run", false, "ensure repo state, print the pool command, and exit without starting the pool")
-	fs.BoolVar(&o.allowDirty, "allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
+	fs.BoolVar(
+		&o.noRun,
+		"no-run",
+		false,
+		"ensure repo state, print the pool command, and exit without starting the pool",
+	)
+	fs.BoolVar(
+		&o.allowDirty,
+		"allow-dirty",
+		false,
+		"let agents run in repos with uncommitted changes (default: refuse)",
+	)
 	fs.StringVar(&o.repoTimeout, "repo-timeout", "", "per-repo agent-task timeout ladder: name=duration,...")
-	fs.StringVar(&o.logDir, "log-dir", defaultLogDir(), "write full agent+verify output sidecars to DIR/<task-id>.log (empty = off)")
+	fs.StringVar(
+		&o.logDir,
+		"log-dir",
+		defaultLogDir(),
+		"write full agent+verify output sidecars to DIR/<task-id>.log (empty = off)",
+	)
 	fs.StringVar(&o.db, "db", "", "task DB (default $TQ_DB or ./tasks.db)")
 	noYolo := fs.Bool("no-yolo", false, "disable autonomy (agents will stall on permission prompts)")
 	noReview := fs.Bool("no-review", false, "disable the second-agent review pass")
-	noReviewAutofix := fs.Bool("no-review-autofix", false, "with reviews: do not mint fix tasks from request_changes verdicts")
+	noReviewAutofix := fs.Bool(
+		"no-review-autofix",
+		false,
+		"with reviews: do not mint fix tasks from request_changes verdicts",
+	)
 	noExclusive := fs.Bool("no-exclusive", false, "allow two tasks of one project in flight across pools")
 
 	fs.Usage = func() {
@@ -258,7 +308,10 @@ func (o bootstrapOptions) validate() error {
 	}
 
 	if o.model != "" && !strings.Contains(o.model, "/") {
-		return fmt.Errorf("bootstrap: --model %q: want provider/model (run `crush models`; the provider must be declared with credentials in your crush config)", o.model)
+		return fmt.Errorf(
+			"bootstrap: --model %q: want provider/model (run `crush models`; the provider must be declared with credentials in your crush config)",
+			o.model,
+		)
 	}
 
 	switch o.reasoning {
@@ -364,7 +417,13 @@ func (o bootstrapOptions) ensureRepos(paths []string) (string, error) {
 		}
 
 		if o.model != "" {
-			fmt.Fprintf(&b, "  crush pinned model %s (reasoning %s) + autonomy in .crushrc (changed: %v)\n", o.model, o.reasoning, changedCrushrc)
+			fmt.Fprintf(
+				&b,
+				"  crush pinned model %s (reasoning %s) + autonomy in .crushrc (changed: %v)\n",
+				o.model,
+				o.reasoning,
+				changedCrushrc,
+			)
 		} else if changedCrushrc {
 			fmt.Fprintf(&b, "  crush autonomy granted in .crushrc (changed: true)\n")
 		} else {
@@ -374,6 +433,7 @@ func (o bootstrapOptions) ensureRepos(paths []string) (string, error) {
 		files := []string{".tq-verify", ".crushrc"}
 		if o.dryRun {
 			fmt.Fprintf(&b, "  git   dry-run — would commit %s if changed\n", strings.Join(files, ", "))
+
 			continue
 		}
 
@@ -387,7 +447,10 @@ func (o bootstrapOptions) ensureRepos(paths []string) (string, error) {
 		}
 
 		if dirty, err := repoDirty(repo); err == nil && dirty {
-			fmt.Fprintf(&b, "  WARN  tree has uncommitted changes — the pool refuses agent tasks here until committed (agents require a clean tree)\n")
+			fmt.Fprintf(
+				&b,
+				"  WARN  tree has uncommitted changes — the pool refuses agent tasks here until committed (agents require a clean tree)\n",
+			)
 		}
 	}
 
@@ -481,6 +544,7 @@ func (o bootstrapOptions) ensureCrushConfig(repo string) (bool, error) {
 	if o.model != "" {
 		block = append(block, "model large "+o.model+" --reasoning-effort "+o.reasoning)
 	}
+
 	block = append(block, tqManagedEnd)
 
 	out := strings.Join(append(lines, block...), "\n")
@@ -503,6 +567,7 @@ func stripManagedBlock(lines []string) []string {
 	var out []string
 
 	inBlock := false
+
 	for _, l := range lines {
 		switch {
 		case strings.TrimSpace(l) == tqManagedStart:
@@ -539,6 +604,7 @@ func ensureCommitted(repo string, files []string) (bool, error) {
 	}
 
 	add := exec.Command("git", "-C", repo, "add", "--")
+
 	add.Args = append(add.Args, abs...)
 	if out, err := add.CombinedOutput(); err != nil {
 		return false, fmt.Errorf("git add: %w: %s", err, tailStr(string(out), 512))
@@ -577,16 +643,16 @@ func composePoolArgs(o bootstrapOptions) []string {
 		"agent-pool",
 		"--projects-dir", o.projectsDir,
 		"--repos", strings.Join(o.repos, ","),
-		"--concurrency", fmt.Sprint(o.agents),
-		"--max-concurrent-agents", fmt.Sprint(o.agents),
+		"--concurrency", strconv.Itoa(o.agents),
+		"--max-concurrent-agents", strconv.Itoa(o.agents),
 		"--interval", o.interval.String(),
-		"--daily-budget", fmt.Sprint(o.dailyBudget),
-		"--max-per-tick", fmt.Sprint(o.maxPerTick),
-		"--yolo=" + fmt.Sprint(o.yolo),
-		"--review=" + fmt.Sprint(o.review),
-		"--review-autofix=" + fmt.Sprint(o.reviewAutofix),
-		"--project-exclusive=" + fmt.Sprint(o.exclusive),
-		"--allow-dirty=" + fmt.Sprint(o.allowDirty),
+		"--daily-budget", strconv.Itoa(o.dailyBudget),
+		"--max-per-tick", strconv.Itoa(o.maxPerTick),
+		"--yolo=" + strconv.FormatBool(o.yolo),
+		"--review=" + strconv.FormatBool(o.review),
+		"--review-autofix=" + strconv.FormatBool(o.reviewAutofix),
+		"--project-exclusive=" + strconv.FormatBool(o.exclusive),
+		"--allow-dirty=" + strconv.FormatBool(o.allowDirty),
 	}
 
 	if o.repoTimeout != "" {
@@ -671,7 +737,11 @@ func (o bootstrapOptions) installService() error {
 func renderPoolConfig(o bootstrapOptions) string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "# generated by `tq bootstrap --install` %s — edit freely, flags on the CLI win\n", time.Now().Format(time.RFC3339))
+	fmt.Fprintf(
+		&b,
+		"# generated by `tq bootstrap --install` %s — edit freely, flags on the CLI win\n",
+		time.Now().Format(time.RFC3339),
+	)
 	fmt.Fprintf(&b, "projects-dir = %s\n", o.projectsDir)
 	fmt.Fprintf(&b, "repos = %s\n", strings.Join(o.repos, ","))
 	fmt.Fprintf(&b, "concurrency = %d\n", o.agents)
@@ -709,6 +779,7 @@ func renderUnit(binPath string) string {
 
 func parseVerifySpec(spec string) map[string]string {
 	out := map[string]string{}
+
 	for pair := range strings.SplitSeq(spec, ",") {
 		pair = strings.TrimSpace(pair)
 		if pair == "" {

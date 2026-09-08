@@ -260,8 +260,7 @@ func TestReviewExecutorInvalidOutputFailsAttemptRetryable(t *testing.T) {
 		t.Fatal("Execute with no verdict line must fail")
 	}
 
-	var perm *PermanentError
-	if errors.As(err, &perm) {
+	if _, ok := errors.AsType[*PermanentError](err); ok {
 		t.Fatalf("invalid output must be retryable, got permanent: %v", err)
 	}
 }
@@ -293,8 +292,8 @@ func TestReviewExecutorPayloadContractMissesArePermanent(t *testing.T) {
 				t.Fatal("want error")
 			}
 
-			var perm *PermanentError
-			if !errors.As(err, &perm) {
+			_, ok := errors.AsType[*PermanentError](err)
+			if !ok {
 				t.Fatalf("input-contract miss must be permanent, got: %v", err)
 			}
 		})
@@ -305,6 +304,7 @@ func TestReviewExecutorRefusesDirtyTreeAsPreflight(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
+
 	repo := filepath.Join(dir, "repo")
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatal(err)
@@ -323,8 +323,8 @@ func TestReviewExecutorRefusesDirtyTreeAsPreflight(t *testing.T) {
 		Repo: repo, ReviewedTask: "t-1", Item: "item",
 	}))
 
-	var pre *PreflightError
-	if !errors.As(err, &pre) {
+	_, ok := errors.AsType[*PreflightError](err)
+	if !ok {
 		t.Fatalf("dirty tree must be preflight, got: %v", err)
 	}
 }

@@ -8,13 +8,13 @@ name: Fuzz
 # seeds (each is executed as a regular test case).
 on:
   schedule:
-    - cron: '17 3 * * *' # nightly, 03:17 UTC (off the top of the hour)
+    - cron: "17 3 * * *" # nightly, 03:17 UTC (off the top of the hour)
   workflow_dispatch:
     inputs:
       fuzztime:
-        description: 'fuzztime (e.g. 60s, 5m)'
+        description: "fuzztime (e.g. 60s, 5m)"
         required: false
-        default: '60s'
+        default: "60s"
 
 permissions:
   contents: write # commit new seed corpus back to master

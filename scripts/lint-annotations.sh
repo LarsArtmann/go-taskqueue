@@ -19,16 +19,16 @@ cd "$(dirname "$0")/.."
 
 base="${LINT_BASE:-${1:-}}"
 if [ -z "$base" ] || ! git rev-parse -q --verify "$base^{commit}" >/dev/null 2>&1; then
-    base="HEAD~1"
+	base="HEAD~1"
 fi
 if ! git rev-parse -q --verify "$base^{commit}" >/dev/null 2>&1; then
-    echo "lint-annotations: no base revision available, skipping"
-    exit 0
+	echo "lint-annotations: no base revision available, skipping"
+	exit 0
 fi
 
 lintbin="$(command -v golangci-lint || true)"
 if [ -z "$lintbin" ]; then
-    lintbin="$(go env GOPATH)/bin/golangci-lint"
+	lintbin="$(go env GOPATH)/bin/golangci-lint"
 fi
 
 tmp="$(mktemp /tmp/lint-annotations.XXXXXX.json)"
@@ -39,18 +39,18 @@ rc=0
 # Exit 1 means findings were found (issues-exit-code: 1) — expected and fine.
 # Any other nonzero code is a lint execution failure, not a finding.
 if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then
-    echo "lint-annotations: golangci-lint execution failed (exit $rc)" >&2
-    exit "$rc"
+	echo "lint-annotations: golangci-lint execution failed (exit $rc)" >&2
+	exit "$rc"
 fi
 if [ ! -s "$tmp" ]; then
-    echo "lint-annotations: golangci-lint produced no JSON (exit $rc), skipping"
-    exit 0
+	echo "lint-annotations: golangci-lint produced no JSON (exit $rc), skipping"
+	exit 0
 fi
 
 count="$(jq '.Issues // [] | length' "$tmp")"
 if [ "$count" -eq 0 ]; then
-    echo "lint-annotations: 0 new findings on lines changed since $base"
-    exit 0
+	echo "lint-annotations: 0 new findings on lines changed since $base"
+	exit 0
 fi
 
 echo "lint-annotations: $count new finding(s) on lines changed since $base"

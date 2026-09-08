@@ -565,8 +565,7 @@ func TestPreflightRequeuesWithoutAttemptBurn(t *testing.T) {
 func TestCooperativeCancelMidRun(t *testing.T) {
 	store := testStore(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	reg := executor.NewRegistry()
 

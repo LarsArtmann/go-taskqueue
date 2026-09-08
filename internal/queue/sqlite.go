@@ -958,6 +958,7 @@ func listWhere(f Filter) (string, []any) {
 
 	if f.Query != "" {
 		like := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
+
 		where = append(where, `(id LIKE ? ESCAPE '\' OR type LIKE ? ESCAPE '\' OR
 			project LIKE ? ESCAPE '\' OR payload LIKE ? ESCAPE '\' OR
 			lease_owner LIKE ? ESCAPE '\' OR last_error LIKE ? ESCAPE '\')`)
@@ -1008,6 +1009,7 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 	if f.Limit > 0 || f.Offset > 0 {
 		if f.Limit > 0 {
 			q += " LIMIT ?"
+
 			args = append(args, f.Limit)
 		} else {
 			q += " LIMIT -1"
@@ -1015,6 +1017,7 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 
 		if f.Offset > 0 {
 			q += " OFFSET ?"
+
 			args = append(args, f.Offset)
 		}
 	}
@@ -1058,8 +1061,10 @@ func (s *SQLiteStore) Facts(ctx context.Context, after int64, limit int) ([]jour
 		SELECT seq, time, task_id, type, owner, attempt, error, detail
 		FROM facts WHERE seq > ? ORDER BY seq ASC`
 	args := []any{after}
+
 	if limit > 0 {
 		query += ` LIMIT ?`
+
 		args = append(args, limit)
 	}
 
@@ -1114,8 +1119,10 @@ func (s *SQLiteStore) FactsForTask(ctx context.Context, id string, limit int) ([
 		SELECT seq, time, task_id, type, owner, attempt, error, detail
 		FROM facts WHERE task_id = ? ORDER BY seq ASC`
 	args := []any{id}
+
 	if limit > 0 {
 		query += ` LIMIT ?`
+
 		args = append(args, limit)
 	}
 

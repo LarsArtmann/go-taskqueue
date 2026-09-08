@@ -6,15 +6,15 @@ Continuation of the round-5 Pareto execution
 27 medium tasks M1–M27 / 150 micro-tasks F1–F150). Prior wave-1 report:
 `docs/status/2026-09-08_05-54_round5-execution-wave1-bounded-reads-pagination-security.md`.
 
-| Fact | Value |
-| --- | --- |
-| HEAD | `99e1d34` (master) |
-| Unpushed | **10 commits** (my four detailed M7–M10 commits + the daemon blobs carrying their code). ~34 older commits were pushed mid-session by someone else (not me — likely the pool/daemon). |
-| Working tree | clean at report time |
-| Gates at each commit | build + vet + gofmt + `go test ./... -race -count=1` green; webui smoke green when webui touched; doc-refs check green when docs touched |
-| Agent pool | PID 3117483 still alive (18.5h) |
-| **LAN serve** | **PID 3654482 STILL the old binary on `0.0.0.0:8090`, unauthenticated — unchanged top risk** |
-| Session commits | `a836cd4` (M7), `960de3e` (M8), `a505e54` (M9), `99e1d34` (M10) |
+| Fact                 | Value                                                                                                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HEAD                 | `99e1d34` (master)                                                                                                                                                                    |
+| Unpushed             | **10 commits** (my four detailed M7–M10 commits + the daemon blobs carrying their code). ~34 older commits were pushed mid-session by someone else (not me — likely the pool/daemon). |
+| Working tree         | clean at report time                                                                                                                                                                  |
+| Gates at each commit | build + vet + gofmt + `go test ./... -race -count=1` green; webui smoke green when webui touched; doc-refs check green when docs touched                                              |
+| Agent pool           | PID 3117483 still alive (18.5h)                                                                                                                                                       |
+| **LAN serve**        | **PID 3654482 STILL the old binary on `0.0.0.0:8090`, unauthenticated — unchanged top risk**                                                                                          |
+| Session commits      | `a836cd4` (M7), `960de3e` (M8), `a505e54` (M9), `99e1d34` (M10)                                                                                                                       |
 
 Parallel agents shipped meanwhile (not mine): agent-review feature
 (`--review`/`--review-autofix`), SSE filter forwarding fix, ADR-0004,
@@ -160,6 +160,7 @@ persisted-bridge-watermark designs, ROUND6 plan draft, cordis verification.
 ## f) NEXT — up to 50 things, in execution order
 
 **Finish Wave 2 (immediate):**
+
 1. M11/F55: decide `agent_test.go` build tag (shell-stub POSIX usage)
 2. M11/F56: CI Windows job running honestly-tagged tests only
 3. M11/F57: `nix flake check --all-systems` locally + CI matrix note
@@ -216,6 +217,7 @@ persisted-bridge-watermark designs, ROUND6 plan draft, cordis verification.
 50. M27/F145: secrets-in-logs test + `--redact` payload redaction
 
 **Session hygiene (do before stopping):**
+
 - Update TODO_LIST.md/AGENTS.md with ADR-0005 + doctor facts (daemon may
   have done parts — check first)
 

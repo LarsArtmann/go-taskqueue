@@ -115,7 +115,12 @@ func writeError(w http.ResponseWriter, status int, what, fix string) {
 func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 	var req enqueueRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "body is not valid JSON: "+err.Error(), "send an enqueueRequest JSON document")
+		writeError(
+			w,
+			http.StatusBadRequest,
+			"body is not valid JSON: "+err.Error(),
+			"send an enqueueRequest JSON document",
+		)
 
 		return
 	}
@@ -162,7 +167,12 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 
 	t, err := queue.New(s.store).Enqueue(r.Context(), n)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "enqueue failed: "+err.Error(), "retry; if it persists check the store")
+		writeError(
+			w,
+			http.StatusInternalServerError,
+			"enqueue failed: "+err.Error(),
+			"retry; if it persists check the store",
+		)
 
 		return
 	}

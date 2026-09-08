@@ -6,10 +6,10 @@
 
 ## What this session did (chronology)
 
-1. **Q: How could go-taskqueue benefit from cordis?** — Explored `/home/lars/forks/cordis` (README, AGENTS.md, `go/README.md`), grounded the mapping in repo facts (`cmd/tq/main.go` = 1,192 lines, 5× `signal.NotifyContext`, ~15× `defer s.Close()` via grep; `internal/webui/hub.go` = 57 lines via `wc -l`). Verdict: steal the patterns now (fiber-style per-component contexts, LIFO disposal), adopt the dependency only at the daemon/plugin-API horizon; flagged that the drain-deadline invariant (`task ctx survives pool shutdown`) maps *badly* onto fiber `StdContext` cancellation.
+1. **Q: How could go-taskqueue benefit from cordis?** — Explored `/home/lars/forks/cordis` (README, AGENTS.md, `go/README.md`), grounded the mapping in repo facts (`cmd/tq/main.go` = 1,192 lines, 5× `signal.NotifyContext`, ~15× `defer s.Close()` via grep; `internal/webui/hub.go` = 57 lines via `wc -l`). Verdict: steal the patterns now (fiber-style per-component contexts, LIFO disposal), adopt the dependency only at the daemon/plugin-API horizon; flagged that the drain-deadline invariant (`task ctx survives pool shutdown`) maps _badly_ onto fiber `StdContext` cancellation.
 2. **Q: samber/ro vs samber/do?** — Loaded `samber-do-best-practices` skill (its verification block: do v2 API confirmed via pkg.go.dev). Fetched pkg.go.dev for `samber/ro` (verified: module `github.com/samber/ro`, v0.4.1 published 2026-08-23, Apache-2.0, 47 importers, ReactiveX-style Observable/Subject/operator surface). Delivered the complementary-layers comparison (do builds the machine, ro is the conveyor belts).
 3. **Q: Matrix for all 3** — Delivered the 13-dimension matrix (paradigm, reactivity, lifecycle, events, time, cancellation, partial-failure safety, typing, isolation, maturity, adoption risk, taskqueue fit). Verdict: do+ro ≈ 80% of cordis's value as two small libraries; cordis's unique 20% is lifecycle reactivity.
-4. **Q: What is the BEST we could do?** — First-principles answer: (1) **journal as the bus** — one typed `Subscribe(ctx, since Seq)` fact stream + persisted per-bridge watermarks (kills the bridge missed-incident gap; no framework fixes a *cross-process* gap); (2) **run.Group-style actor composition root** for `cmd/tq` (one interrupt story, deterministic teardown, `executionScope` makes the drain invariant structural); (3) defer the framework decision to the plugin era.
+4. **Q: What is the BEST we could do?** — First-principles answer: (1) **journal as the bus** — one typed `Subscribe(ctx, since Seq)` fact stream + persisted per-bridge watermarks (kills the bridge missed-incident gap; no framework fixes a _cross-process_ gap); (2) **run.Group-style actor composition root** for `cmd/tq` (one interrupt story, deterministic teardown, `executionScope` makes the drain invariant structural); (3) defer the framework decision to the plugin era.
 5. **Q: This report.**
 
 ---
@@ -27,14 +27,14 @@ Caveat that belongs here honestly: until this report, all of the above existed *
 ## b) PARTIALLY DONE
 
 - **The "BEST" architecture recommendation** — delivered as design prose + signature sketches (`journal.Subscribe`, `run.Group` actor list, `executionScope`). Gap: not compiled, not spiked, **and designed without reading `internal/journal`** (see d1). Effort to make real: M per component (see f).
-- **cordis maturity assessment** — "~85% coverage, race-tested" is *cordis's own README claim*; I never ran `cd go && go test ./...` (one command, the fork is local). Effort to finish: S.
+- **cordis maturity assessment** — "~85% coverage, race-tested" is _cordis's own README claim_; I never ran `cd go && go test ./...` (one command, the fork is local). Effort to finish: S.
 - **samber/ro evaluation** — stopped at API-index level; no runnable spike of an `Observable[T]` over a fact stream, no backpressure ergonomics check against Go channels. Effort: M (spike).
 - **Comparison matrix** — delivered, but contains three unverified/unlabeled claims (see d2) and was written against a repo snapshot that has since moved (see d3).
 
 ## c) NOT STARTED (all implementation work; nothing was requested this session)
 
 - `journal.Subscribe(ctx, since Seq)` typed fact-stream API — not designed against the real Journal interface, not implemented. Still wanted: yes, it is the spine of the recommendation.
-- Persisted per-bridge watermarks (the actual fix for the known papdashboard missed-incident gap). TODO_LIST history shows the bridge already has a *volatile head-watermark* (`startWatermark`, fixed once on 2026-09-07) — persistence is the missing half.
+- Persisted per-bridge watermarks (the actual fix for the known papdashboard missed-incident gap). TODO_LIST history shows the bridge already has a _volatile head-watermark_ (`startWatermark`, fixed once on 2026-09-07) — persistence is the missing half.
 - run.Group actor composition root for `cmd/tq`; `executionScope` actor; single interrupt story.
 - `tq daemon` mode (serve + agent-pool + bridges + harvest in one process) — horizon item, needs an owner go/no-go (g1).
 - Plugin API for executors/bridges; any cordis adoption — horizon, gated on g2.
@@ -43,7 +43,7 @@ Caveat that belongs here honestly: until this report, all of the above existed *
 ## d) TOTALLY FUCKED UP
 
 - **d1 — Designed an API for a package I never opened.** The centerpiece recommendation (`journal.Subscribe(ctx, since Seq)`) was written without reading `internal/journal`'s Journal interface, the webui `tailer.go`, or `internal/bridge/papdashboard/papdashboard.go`. Everything I "knew" about the subscription landscape was secondhand from AGENTS.md. The existing subscription/tailer mechanism may already cover half the proposal; the single-serialized-writer invariant makes dispatcher design subtler than my sketch implied. Severity: medium (a blind recommendation could misdirect a week of work). Mitigation: harvest item H1 below.
-- **d2 — `verify-external-claims` chat-gate violation: loaded ≠ applied.** Three claims crossed the matrix without labels: (1) "~200 operators" for ro — an *estimate from the example-index length* presented as a count; (2) cordis "race-tested ~85% cov" — vendor self-claim, never run; (3) the ro GitHub fetch returned page chrome only and I proceeded on pkg.go.dev alone without noting the degraded source until now. Severity: low (advisory context, all three plausibly correct) — but this is the skill's *documented* failure mode, executed while the skill sat loaded.
+- **d2 — `verify-external-claims` chat-gate violation: loaded ≠ applied.** Three claims crossed the matrix without labels: (1) "~200 operators" for ro — an _estimate from the example-index length_ presented as a count; (2) cordis "race-tested ~85% cov" — vendor self-claim, never run; (3) the ro GitHub fetch returned page chrome only and I proceeded on pkg.go.dev alone without noting the degraded source until now. Severity: low (advisory context, all three plausibly correct) — but this is the skill's _documented_ failure mode, executed while the skill sat loaded.
 - **d3 — Answered against a stale repo.** AGENTS.md says "git pull your assumptions." The session opened at `b1fd2c0`; master is now `e19767d`. Of direct relevance: `2d5e729` "perf(queue): bound every journal read so tick cost stops growing with history" **touches the exact code the fact-stream proposal lives in** (does read-bounding interact with replay-from-seq?), and `4cb32f6` added token auth to `tq serve` (my ADR-0003 framing was written as if serve were still auth-less). No harm materialized because I wrote no code — but the matrix and BEST answer were not re-verified against HEAD. Severity: low here, high as a habit.
 - **d4 — Secondhand characterizations.** `hub.go` ("bespoke pub/sub"), the tailer, and the bridges were never opened; sizes came from `wc -l`. Acceptable for advisory triage, dishonest if read as code review.
 
@@ -53,11 +53,12 @@ Caveat that belongs here honestly: until this report, all of the above existed *
 2. **Run the target's tests when maturity is load-bearing** — cordis lives locally; `go test ./...` was one command away and would have upgraded a vendor claim to a verified one.
 3. **Label estimates in-line** ("~200 operators (estimated from example index)") — specificity is not evidence, and unlabeled estimates read as counts.
 4. **Re-verify freshness when a session spans git activity** — `git log --oneline -3` at answer time, not at session start, whenever the answer makes claims about current code.
-5. **Persist load-bearing analysis immediately** — a 4-turn architecture comparison lived only in chat; had the session died, the verdict would have evaporated. This report is the fix, but the pattern (write the ADR note *at decision time*) is better.
+5. **Persist load-bearing analysis immediately** — a 4-turn architecture comparison lived only in chat; had the session died, the verdict would have evaporated. This report is the fix, but the pattern (write the ADR note _at decision time_) is better.
 
 ## f) Next tasks (brainstorm, 50 — curated five harvested to TODO_LIST, rest is ROADMAP fuel; do NOT mass-harvest: TODO_LIST.md is live dogfood-pool food)
 
 **Verify & ground (from this session's own gaps)**
+
 1. Inventory `internal/journal` + webui `tailer.go` subscription surface; document gaps vs proposed `Subscribe(ctx, since Seq)` — Impact High / S / Quality
 2. Read `internal/bridge/papdashboard` watermark code; enumerate exactly what a persisted cursor needs — High / S / Feature
 3. Check `2d5e729` (bounded journal reads) for interaction with replay-from-seq — High / S / Quality
@@ -99,7 +100,7 @@ Caveat that belongs here honestly: until this report, all of the above existed *
 **Plugin era (needs g2 first)**
 32. Executor plugin API surface: typed config, verify command, lifecycle hooks — framework-independent — High / L / Feature
 33. Bridge plugin API likewise — Medium / M / Feature
-34. ADR: framework-free registry vs cordis adoption *criteria* (trigger conditions, exit plan) — Medium / S / Documentation
+34. ADR: framework-free registry vs cordis adoption _criteria_ (trigger conditions, exit plan) — Medium / S / Documentation
 35. Cordis integration-cost prototype behind a build tag — Low / L / Spike
 36. Track cordis v1 as the adoption gate — Low / S / Process
 37. samber/ro spike: `Observable[T]` over the fact stream vs plain channels (backpressure, ops ergonomics) — Medium / M / Spike

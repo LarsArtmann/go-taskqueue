@@ -157,8 +157,8 @@ so they don't repeat):
 
 ## f) NEXT TASKS (up to 50 — brainstorm for HARVEST, ranked by impact)
 
-| #  | Task                                                                                     | Impact | Effort | Category      |
-|----|------------------------------------------------------------------------------------------|--------|--------|---------------|
+| #  | Task                                                                                      | Impact | Effort | Category      |
+| -- | ----------------------------------------------------------------------------------------- | ------ | ------ | ------------- |
 | 1  | Restart `tq serve --addr 0.0.0.0:8090` with the new binary so LAN shows the redesign      | High   | S      | Ops           |
 | 2  | Bound the fact query: `loadSnapshot` should fetch only the last N facts, not the journal  | High   | S      | Bug           |
 | 3  | Add unit tests for `statusBadgeType`, `factTone`, `shortIDTail`, `factTimestamp`          | High   | S      | Quality       |
@@ -228,5 +228,5 @@ HARVEST note: items 1–10 are TODO_LIST-grade; most of 11–50 are ROADMAP fuel
 
 ---
 
-*Prepared by Crush. Point-in-time snapshot — running processes verified live
-at generation time (pool PID 3117483, serve PID 3654482).*
+_Prepared by Crush. Point-in-time snapshot — running processes verified live
+at generation time (pool PID 3117483, serve PID 3654482)._

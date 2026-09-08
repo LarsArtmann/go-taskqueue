@@ -86,6 +86,7 @@ func applyPoolConfigFile(fs *flag.FlagSet, path string) error {
 	}
 
 	explicit := map[string]bool{}
+
 	fs.Visit(func(f *flag.Flag) { explicit[f.Name] = true })
 
 	for key, value := range file {
@@ -95,7 +96,11 @@ func applyPoolConfigFile(fs *flag.FlagSet, path string) error {
 
 		fl := fs.Lookup(key)
 		if fl == nil {
-			return fmt.Errorf("pool config %s: unknown key %q (use flag names like projects-dir, interval, concurrency; see tq agent-pool --help)", path, key)
+			return fmt.Errorf(
+				"pool config %s: unknown key %q (use flag names like projects-dir, interval, concurrency; see tq agent-pool --help)",
+				path,
+				key,
+			)
 		}
 
 		if explicit[key] {

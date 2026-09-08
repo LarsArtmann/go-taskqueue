@@ -23,7 +23,7 @@ answers with the client-side twist).
 1. **The mapping already exists on the wire and is correct.** Every snapshot's
    closing event carries `id: <journal seq>` (`hub.go:30-37` → `handlers.go:184-191`),
    so a reconnecting browser returns exactly a journal Seq in `Last-Event-ID`.
-   What does not exist is any server-side *use* of that returned Seq beyond a
+   What does not exist is any server-side _use_ of that returned Seq beyond a
    Debug log (`handlers.go:124-130`) — and for this dashboard that is mostly
    right (verdict 2). The missing uses are small: reconnect-lag observability
    and an id on the initial snapshot (§3).
@@ -36,13 +36,13 @@ answers with the client-side twist).
    (§2, §4).
 3. **The real f40 gap is not freshness, it is scope.** `app.js` opens
    `/api/events` without the page's filter parameters (`app.js:37-39`), so
-   live ticks *and* reconnects push the **unfiltered** projection — a filtered
+   live ticks _and_ reconnects push the **unfiltered** projection — a filtered
    page's table is clobbered on the first tick. Scratch-test-verified (§4).
    `Last-Event-ID` restores freshness; only the URL-carried query restores the
    view. Resume = (scope, freshness).
 4. **No server-side persistence — that is the point of the twin.** A bridge
    watermark dies with its process and needs the `watermarks` side table; the
-   SSE client's cursor lives in the browser and survives *server* restarts by
+   SSE client's cursor lives in the browser and survives _server_ restarts by
    SSE design. Never write a browser cursor into the side table. The client
    twin's hard requirements are instead: garbage-tolerance (any unparseable or
    beyond-head id maps to fresh-connect, never an error) and a defined lag
@@ -63,21 +63,21 @@ answers with the client-side twist).
 
 The full path of one Seq, with every hop read at HEAD:
 
-| Hop | Code | Fact |
-|-----|------|------|
-| journal → tailer watermark | `tailer.go:34,43-48` | poll `Facts(watermark, 1000)`; watermark jumps to batch's last seq (change-signal semantics; middle facts of a >1000 burst are skipped — harmless here, see §2) |
-| watermark → hub tick | `hub.go:30-37` | `Notify(seq)` broadcasts a payload-less `tick` event with `ID = formatSeq(seq)` (`tailer.go:63-65`) |
-| hub → all clients | `hub.go:40-47`, `handlers.go:121-122` | per-client buffer 128, drop on overflow (`hub.go:9-12`) — an in-connection drop is invisible to the client and healed by the next snapshot; `Last-Event-ID` says nothing about it, by design |
-| client render | `handlers.go:151-158` → `sendSnapshot` | the tick's seq is parsed back out of the event id and re-attached to the closing event of the snapshot |
-| snapshot → browser cursor | `handlers.go:184-191` | only the `title` event carries `id:`; browsers advance `lastEventId` on any event with an id field, so after a burst the cursor = the seq that caused it |
-| reconnect → server | browser → `handlers.go:127` | `Last-Event-ID: <seq>` (go-sse `stream.LastEventID()`, header-only, wire-unsafe values zeroed by `ParseEventID`; `go-sse@v0.6.0/stream.go:207,276`) |
-| server → action | `handlers.go:124-130` | Debug log only; snapshot follows regardless (`TestResumeAfterFactsBacklog`, `webui_test.go:348-385`, already covers `""`, `"1"`, `"999999"`) |
+| Hop                        | Code                                   | Fact                                                                                                                                                                                         |
+| -------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| journal → tailer watermark | `tailer.go:34,43-48`                   | poll `Facts(watermark, 1000)`; watermark jumps to batch's last seq (change-signal semantics; middle facts of a >1000 burst are skipped — harmless here, see §2)                              |
+| watermark → hub tick       | `hub.go:30-37`                         | `Notify(seq)` broadcasts a payload-less `tick` event with `ID = formatSeq(seq)` (`tailer.go:63-65`)                                                                                          |
+| hub → all clients          | `hub.go:40-47`, `handlers.go:121-122`  | per-client buffer 128, drop on overflow (`hub.go:9-12`) — an in-connection drop is invisible to the client and healed by the next snapshot; `Last-Event-ID` says nothing about it, by design |
+| client render              | `handlers.go:151-158` → `sendSnapshot` | the tick's seq is parsed back out of the event id and re-attached to the closing event of the snapshot                                                                                       |
+| snapshot → browser cursor  | `handlers.go:184-191`                  | only the `title` event carries `id:`; browsers advance `lastEventId` on any event with an id field, so after a burst the cursor = the seq that caused it                                     |
+| reconnect → server         | browser → `handlers.go:127`            | `Last-Event-ID: <seq>` (go-sse `stream.LastEventID()`, header-only, wire-unsafe values zeroed by `ParseEventID`; `go-sse@v0.6.0/stream.go:207,276`)                                          |
+| server → action            | `handlers.go:124-130`                  | Debug log only; snapshot follows regardless (`TestResumeAfterFactsBacklog`, `webui_test.go:348-385`, already covers `""`, `"1"`, `"999999"`)                                                 |
 
 Two load-bearing details:
 
 - **The id rides the LAST event of each burst** (title, sent after the five
   fragments, `render.go:426-435` + `handlers.go:178-191`). A connection that
-  dies mid-burst reconnects with the *previous* snapshot's id — which the
+  dies mid-burst reconnects with the _previous_ snapshot's id — which the
   snapshot resume answers exactly. Keep the id on the burst's last event; do
   not add per-fragment ids (the client never renders fragments partially).
 - **The initial snapshot carries no id** (`watermarkUnknown = -1`,
@@ -87,18 +87,18 @@ Two load-bearing details:
 
 ## 2. Why the bridge-twin semantics are rejected for the dashboard
 
-| Question | papdashboard bridge | webui SSE client |
-|----------|--------------------|------------------|
-| Consumer class | fact deliverer (inventory §2 row 4) | projection consumer (ADR-0003) |
-| Event payload | one fact per event | five fragments + title, full re-render |
-| Missed events mean | missed incidents (the f9/f10 gap) | nothing — next snapshot subsumes them |
-| Cursor advance | per fact, after acceptance | per snapshot burst (id = causing seq) |
-| Resume after gap | replay `(N, head]` with idempotency keys | one snapshot at head |
-| Cursor store | server process → dies → side table (companion doc) | browser → survives server restart |
+| Question           | papdashboard bridge                                | webui SSE client                       |
+| ------------------ | -------------------------------------------------- | -------------------------------------- |
+| Consumer class     | fact deliverer (inventory §2 row 4)                | projection consumer (ADR-0003)         |
+| Event payload      | one fact per event                                 | five fragments + title, full re-render |
+| Missed events mean | missed incidents (the f9/f10 gap)                  | nothing — next snapshot subsumes them  |
+| Cursor advance     | per fact, after acceptance                         | per snapshot burst (id = causing seq)  |
+| Resume after gap   | replay `(N, head]` with idempotency keys           | one snapshot at head                   |
+| Cursor store       | server process → dies → side table (companion doc) | browser → survives server restart      |
 
 Replaying `(N, head]` on the dashboard would re-render the same projection
 once per fact: k× the SQLite reads and templ renders, zero client-visible
-difference. The projection model is what makes the snapshot resume *exact*,
+difference. The projection model is what makes the snapshot resume _exact_,
 not a compromise — the client holds no state that could drift (the only
 client state is the DOM, fully replaced per burst; `app.js:23-32`).
 
@@ -115,17 +115,17 @@ with the dashboard's snapshot resume. See the amendment at the end of
 
 ## 3. The resume contract (what to implement)
 
-The client cursor is a *freshness token*. State machine, exhaustively:
+The client cursor is a _freshness token_. State machine, exhaustively:
 
 1. **Connect, no `Last-Event-ID`** → snapshot at head (unchanged today).
-   *Change:* attach `id = HeadSeq()` (O(1), `sqlite.go:757`) to the initial
+   _Change:_ attach `id = HeadSeq()` (O(1), `sqlite.go:757`) to the initial
    snapshot's closing event instead of `watermarkUnknown`, so a client that
    drops during a quiet period still reports a cursor. Caveat: the render
    happens after the `HeadSeq` read, so the id can lag the rendered content
    by at most one burst — harmless for a freshness token, corrected by the
    next tick.
 2. **Reconnect, `Last-Event-ID = N`, numeric, N ≤ head** → snapshot
-   (unchanged). *Change:* replace the Debug log with an observability line —
+   (unchanged). _Change:_ replace the Debug log with an observability line —
    `slog.Info("webui: sse resume", "last_seq", N, "head", head, "behind", head-N)`
    when `behind > 0`, Debug otherwise. This is the twin of the bridge's
    "resumed from checkpoint N" startup line (companion doc §6): the operator
@@ -144,7 +144,7 @@ with it, not overwrite it.
 
 ## 4. The real gap: resume ignores view scope (verified bug)
 
-`handleEvents` renders every snapshot under the *request's* filter
+`handleEvents` renders every snapshot under the _request's_ filter
 (`parseFilter(r)`, `handlers.go:17-33,132,167`). The browser's stream request
 is built by `app.js:37-39` — `/api/events` plus only the `token` param — so
 the filter the user applied (a full-page GET navigation:
@@ -169,11 +169,11 @@ cursors for a server-side consumer. The client twin answers the same three
 with opposite mechanics — which is why it must NOT reuse the `watermarks`
 side table:
 
-| Question | Bridge (companion doc) | SSE client (here) |
-|----------|------------------------|-------------------|
-| Bootstrap (no cursor) | start at head, checkpoint forward | snapshot; cursor = HeadSeq on the closing event |
-| Persistence | side table (process dies) | the browser (connection dies, cursor survives; server restart loses nothing) |
-| Garbage/stale cursor | monotonic upsert guards regression | map to fresh-connect; lag = max(0, head − N) |
+| Question              | Bridge (companion doc)             | SSE client (here)                                                            |
+| --------------------- | ---------------------------------- | ---------------------------------------------------------------------------- |
+| Bootstrap (no cursor) | start at head, checkpoint forward  | snapshot; cursor = HeadSeq on the closing event                              |
+| Persistence           | side table (process dies)          | the browser (connection dies, cursor survives; server restart loses nothing) |
+| Garbage/stale cursor  | monotonic upsert guards regression | map to fresh-connect; lag = max(0, head − N)                                 |
 
 Writing browser cursors server-side would add a row per tab, a retention
 question, and a write path into a read-only package (ADR-0003 guardrail,
@@ -185,7 +185,7 @@ keeps.
 The inventory said: "SSE client resume is snapshot-based … Subscribe's
 per-connection `since` is what would make the f40 spike implementable."
 Half right, now testable against this spike: f40 is implementable — and
-implemented — at snapshot fidelity *without* Subscribe, because snapshot
+implemented — at snapshot fidelity _without_ Subscribe, because snapshot
 resume is not a degraded form of replay for a projection consumer; it is the
 exact form (§2). Per-connection `since` replay becomes valuable only if the
 wire ever carries events that are NOT full projections (per-fact feed,

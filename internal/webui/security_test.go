@@ -130,7 +130,10 @@ func TestPaginationEdges(t *testing.T) {
 	store := newTestStore(t)
 
 	for range 5 {
-		if _, err := store.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+		if _, err := store.Enqueue(
+			ctx,
+			task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`)},
+		); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
 	}

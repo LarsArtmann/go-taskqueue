@@ -19,6 +19,7 @@ func parseFilter(r *http.Request) FilterState {
 	q := r.URL.Query()
 
 	page := 1
+
 	if v := q.Get("page"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			page = n
@@ -53,6 +54,7 @@ func (s *Server) handleProject(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
 		http.NotFound(w, r)
+
 		return
 	}
 
@@ -90,6 +92,7 @@ func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
 	facts, err := s.store.Facts(r.Context(), after, limit)
 	if err != nil {
 		http.Error(w, "facts: "+err.Error(), http.StatusInternalServerError)
+
 		return
 	}
 

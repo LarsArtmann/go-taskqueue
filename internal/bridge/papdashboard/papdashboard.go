@@ -380,7 +380,14 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 				"attempts": strconv.Itoa(t.Attempts),
 			},
 		}
-		if err := b.post(ctx, "alert.triggered", idempotencyKey("dlq", f.Seq), t.ID.String(), f.Seq, payload); err != nil {
+		if err := b.post(
+			ctx,
+			"alert.triggered",
+			idempotencyKey("dlq", f.Seq),
+			t.ID.String(),
+			f.Seq,
+			payload,
+		); err != nil {
 			return err
 		}
 
@@ -405,7 +412,14 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 			"sourceApp":  b.cfg.SourceApp,
 			"resolvedBy": b.cfg.SourceApp + "-bridge",
 		}
-		if err := b.post(ctx, "alert.resolved", idempotencyKey("resolve", f.Seq), t.ID.String(), f.Seq, payload); err != nil {
+		if err := b.post(
+			ctx,
+			"alert.resolved",
+			idempotencyKey("resolve", f.Seq),
+			t.ID.String(),
+			f.Seq,
+			payload,
+		); err != nil {
 			return err
 		}
 	}
@@ -538,7 +552,9 @@ func (b *Bridge) trackBudget(ctx context.Context, f journal.Fact) error {
 			"title":    "agent-pool daily budget exhausted",
 			"body": fmt.Sprintf(
 				"%d/%d agent tasks enqueued today: the pool skips harvest ticks until the window rolls over. Raise --daily-budget or wait for the reset.",
-				b.budgetSpent, b.cfg.DailyBudget),
+				b.budgetSpent,
+				b.cfg.DailyBudget,
+			),
 			"sourceApp": b.cfg.SourceApp,
 			"metadata": map[string]string{
 				"spent": strconv.Itoa(b.budgetSpent),

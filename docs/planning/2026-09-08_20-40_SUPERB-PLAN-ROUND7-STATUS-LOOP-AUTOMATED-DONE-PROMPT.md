@@ -56,6 +56,7 @@ last report's creation), so restarts cannot desynchronize the counter.
 ### The 20% that delivers 80%
 
 **Wiring + tests + contracts.**
+
 - `--status-every N` flag on `tq agent-pool` (0 = off, default off — opt-in like `--review`).
 - Status executor registered in EVERY agent-capable pool (`agent-pool` and `tq worker
   --agents`), so pools without the flag still CARRY status tasks another pool minted
@@ -103,49 +104,49 @@ flowchart TD
 
 ## Medium-granularity plan (30–100 min units, sorted by impact/effort)
 
-| #   | Task                                                                | Impact | Effort | Value | Tier |
-| --- | ------------------------------------------------------------------- | ------ | ------ | ----- | ---- |
-| M1  | Extract shared `ResultLine` helper (executor/result.go, review.go)  | enabler| 20m    | ★★★   | 1%   |
-| M2  | `StatusExecutor`: payload, prompt, contract, report-file gate        | 51%    | 60m    | ★★★★★ | 1%   |
-| M3  | `internal/status` sweeper: cursor, N-window, mint, dedup             | 64%    | 60m    | ★★★★★ | 4%   |
-| M4  | Pool wiring: `--status-every`, registration ×2, tick + drain sweep   | 80%    | 40m    | ★★★★  | 20%  |
-| M5  | Executor tests: contract, path confinement, happy path (stub bin)    | safety | 45m    | ★★★★  | 20%  |
-| M6  | Sweeper tests: window, dedup, loop safety, in-flight, resume         | safety | 45m    | ★★★★  | 20%  |
-| M7  | Docs: AGENTS.md contract + package row, CHANGELOG, FEATURES          | maintain | 25m  | ★★★   | 20%  |
-| M8  | Full gates (`ci-local.sh`), commit, push                             | ship   | 20m    | ★★★   | 100% |
+| #  | Task                                                               | Impact   | Effort | Value | Tier |
+| -- | ------------------------------------------------------------------ | -------- | ------ | ----- | ---- |
+| M1 | Extract shared `ResultLine` helper (executor/result.go, review.go) | enabler  | 20m    | ★★★   | 1%   |
+| M2 | `StatusExecutor`: payload, prompt, contract, report-file gate      | 51%      | 60m    | ★★★★★ | 1%   |
+| M3 | `internal/status` sweeper: cursor, N-window, mint, dedup           | 64%      | 60m    | ★★★★★ | 4%   |
+| M4 | Pool wiring: `--status-every`, registration ×2, tick + drain sweep | 80%      | 40m    | ★★★★  | 20%  |
+| M5 | Executor tests: contract, path confinement, happy path (stub bin)  | safety   | 45m    | ★★★★  | 20%  |
+| M6 | Sweeper tests: window, dedup, loop safety, in-flight, resume       | safety   | 45m    | ★★★★  | 20%  |
+| M7 | Docs: AGENTS.md contract + package row, CHANGELOG, FEATURES        | maintain | 25m    | ★★★   | 20%  |
+| M8 | Full gates (`ci-local.sh`), commit, push                           | ship     | 20m    | ★★★   | 100% |
 
 ## Fine-granularity plan (≤ 12 min units)
 
-| #    | Unit                                                                  | Parent |
-| ---- | --------------------------------------------------------------------- | ------ |
-| F1   | Add `ResultLine(output) (json.RawMessage, error)` to result.go        | M1     |
-| F2   | review.ParseResult delegates to ResultLine; run executor tests        | M1     |
-| F3   | status.go: `TaskTypeStatus`, `StatusPayload`, `StatusCompletion` types| M2     |
-| F4   | status.go: `StatusResult` + `statusPrompt` (the DONE PROMPT)          | M2     |
-| F5   | status.go: `StatusExecutor.Execute` decode + preflight + timeout      | M2     |
-| F6   | status.go: run agent, parse TQ_RESULT, path-confine, file gate        | M2     |
-| F7   | status.go: SetResultDetail with StatusResult; build + vet             | M2     |
-| F8   | sweep.go: package doc, ConsumerKey, SweeperConfig, SweepStats         | M3     |
-| F9   | sweep.go: NewSweeper watermark bootstrap (clone review mechanics)     | M3     |
-| F10  | sweep.go: Sweep paging + checkpoint loop                              | M3     |
-| F11  | sweep.go: handleFact agent-only filter + window query + in-flight     | M3     |
-| F12  | sweep.go: mintStatus payload + StatusDedupKey + window cap            | M3     |
-| F13  | main.go: `--status-every` flag + sweeper construction                 | M4     |
-| F14  | main.go: register status executor at both registration sites          | M4     |
-| F15  | main.go: sweep calls in runTick + --once drain watcher + banner       | M4     |
-| F16  | status_test.go: payload contract permanence cases                     | M5     |
-| F17  | status_test.go: TQ_RESULT parse + missing-file failure                | M5     |
-| F18  | status_test.go: happy path with stub binary + path escape rejection  | M5     |
-| F19  | sweep_test.go: harness (clone review's) + below-N no-mint             | M6     |
-| F20  | sweep_test.go: N-th completion mints exactly one, re-sweep dedups     | M6     |
-| F21  | sweep_test.go: status completions never trigger (loop safety)         | M6     |
-| F22  | sweep_test.go: in-flight report suppresses; next window re-arms       | M6     |
-| F23  | sweep_test.go: bootstrap-at-head (no history replay)                  | M6     |
-| F24  | AGENTS.md: package table row + payload-contract bullet                | M7     |
-| F25  | CHANGELOG.md + FEATURES.md entries                                    | M7     |
-| F26  | `go build`, `go vet`, `go test ./... -race`                            | M8     |
-| F27  | `./scripts/ci-local.sh`                                               | M8     |
-| F28  | Detailed commit + push                                               | M8     |
+| #   | Unit                                                                   | Parent |
+| --- | ---------------------------------------------------------------------- | ------ |
+| F1  | Add `ResultLine(output) (json.RawMessage, error)` to result.go         | M1     |
+| F2  | review.ParseResult delegates to ResultLine; run executor tests         | M1     |
+| F3  | status.go: `TaskTypeStatus`, `StatusPayload`, `StatusCompletion` types | M2     |
+| F4  | status.go: `StatusResult` + `statusPrompt` (the DONE PROMPT)           | M2     |
+| F5  | status.go: `StatusExecutor.Execute` decode + preflight + timeout       | M2     |
+| F6  | status.go: run agent, parse TQ_RESULT, path-confine, file gate         | M2     |
+| F7  | status.go: SetResultDetail with StatusResult; build + vet              | M2     |
+| F8  | sweep.go: package doc, ConsumerKey, SweeperConfig, SweepStats          | M3     |
+| F9  | sweep.go: NewSweeper watermark bootstrap (clone review mechanics)      | M3     |
+| F10 | sweep.go: Sweep paging + checkpoint loop                               | M3     |
+| F11 | sweep.go: handleFact agent-only filter + window query + in-flight      | M3     |
+| F12 | sweep.go: mintStatus payload + StatusDedupKey + window cap             | M3     |
+| F13 | main.go: `--status-every` flag + sweeper construction                  | M4     |
+| F14 | main.go: register status executor at both registration sites           | M4     |
+| F15 | main.go: sweep calls in runTick + --once drain watcher + banner        | M4     |
+| F16 | status_test.go: payload contract permanence cases                      | M5     |
+| F17 | status_test.go: TQ_RESULT parse + missing-file failure                 | M5     |
+| F18 | status_test.go: happy path with stub binary + path escape rejection    | M5     |
+| F19 | sweep_test.go: harness (clone review's) + below-N no-mint              | M6     |
+| F20 | sweep_test.go: N-th completion mints exactly one, re-sweep dedups      | M6     |
+| F21 | sweep_test.go: status completions never trigger (loop safety)          | M6     |
+| F22 | sweep_test.go: in-flight report suppresses; next window re-arms        | M6     |
+| F23 | sweep_test.go: bootstrap-at-head (no history replay)                   | M6     |
+| F24 | AGENTS.md: package table row + payload-contract bullet                 | M7     |
+| F25 | CHANGELOG.md + FEATURES.md entries                                     | M7     |
+| F26 | `go build`, `go vet`, `go test ./... -race`                            | M8     |
+| F27 | `./scripts/ci-local.sh`                                                | M8     |
+| F28 | Detailed commit + push                                                 | M8     |
 
 ## Invariants this design preserves
 

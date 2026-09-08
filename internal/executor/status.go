@@ -194,7 +194,9 @@ func parseStatusResult(output string) (StatusResult, error) {
 	}
 
 	if strings.TrimSpace(parsed.Report) == "" {
-		return StatusResult{}, errors.New(`report JSON has no report path (want {"report":"docs/status/...","next_items":N})`)
+		return StatusResult{}, errors.New(
+			`report JSON has no report path (want {"report":"docs/status/...","next_items":N})`,
+		)
 	}
 
 	return StatusResult{Report: strings.TrimSpace(parsed.Report), NextItems: parsed.NextItems}, nil
@@ -225,11 +227,13 @@ func requireReportFile(repoDir, report string) error {
 func statusPrompt(p StatusPayload) string {
 	var b strings.Builder
 
-	b.WriteString(`You are an autonomous status reporter for a shared task queue. A window of agent tasks just completed in this repository; your job is the "done prompt": reflect on what was done, write a full status report, and feed the next round of work back into the backlog.
+	b.WriteString(
+		`You are an autonomous status reporter for a shared task queue. A window of agent tasks just completed in this repository; your job is the "done prompt": reflect on what was done, write a full status report, and feed the next round of work back into the backlog.
 
 ## The completed window
 
-`)
+`,
+	)
 
 	for _, c := range p.Completed {
 		b.WriteString("- task " + c.TaskID + ": " + firstLine(c.Item))
@@ -263,7 +267,7 @@ DO NOT RESEARCH UNRELATED STUFF. Report on this window and what you noticed in p
 
 ## Close the loop in TODO_LIST.md
 
-TODO_LIST.md is machine-consumed: one checkbox item per line, "- [ ] text", never tables. Append:
+is machine-consumed: one checkbox item per line, "- [ ] text", never tables. Append:
 - the next things from (f) as new "- [ ]" items (max ~50, each a self-contained task);
 - each question from (g) as an item ending with " — BLOCKED: <the question>" (a human answers by editing the item; blocked items are never harvested until then).
 Never delete or reword existing items; only append.

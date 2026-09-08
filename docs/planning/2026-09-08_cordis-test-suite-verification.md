@@ -69,14 +69,14 @@ atomic profile, per-package lines as printed by `go test` plus the
 
 ## Results
 
-| Package                              | Coverage | Result                              |
-| ------------------------------------ | -------- | ----------------------------------- |
-| `github.com/LarsArtmann/cordis/go` (root) | 91.7%    | ok (1.117s), race-clean             |
-| `…/go/group`                         | 90.6%    | ok (1.011s), race-clean             |
-| `…/go/hmr`                           | 90.0%    | ok (1.012s), race-clean             |
-| `…/go/loader`                        | 74.6%    | ok (1.089s), race-clean             |
-| `…/go/timer`                         | 88.9%    | ok (1.011s), race-clean             |
-| **Total (statements)**               | **86.2%**| 176 PASS / 0 FAIL / 0 SKIP, 0 races |
+| Package                                   | Coverage  | Result                              |
+| ----------------------------------------- | --------- | ----------------------------------- |
+| `github.com/LarsArtmann/cordis/go` (root) | 91.7%     | ok (1.117s), race-clean             |
+| `…/go/group`                              | 90.6%     | ok (1.011s), race-clean             |
+| `…/go/hmr`                                | 90.0%     | ok (1.012s), race-clean             |
+| `…/go/loader`                             | 74.6%     | ok (1.089s), race-clean             |
+| `…/go/timer`                              | 88.9%     | ok (1.011s), race-clean             |
+| **Total (statements)**                    | **86.2%** | 176 PASS / 0 FAIL / 0 SKIP, 0 races |
 
 ## What this changes and does not
 

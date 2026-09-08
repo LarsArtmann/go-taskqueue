@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -213,7 +214,11 @@ func (s *Sweeper) handleFact(ctx context.Context, f journal.Fact, stats *SweepSt
 func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats) {
 	var agentPayload executor.AgentPayload
 
-	if err := json.Unmarshal(t.Payload, &agentPayload); err != nil || agentPayload.Repo == "" || agentPayload.Prompt == "" {
+	if err := json.Unmarshal(
+		t.Payload,
+		&agentPayload,
+	); err != nil || agentPayload.Repo == "" ||
+		agentPayload.Prompt == "" {
 		stats.Skipped++
 
 		return
@@ -304,7 +309,7 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		Yolo:      agentPayload.Yolo,
 		// Mirror the operator's dirty-tree stance: an --allow-dirty pool
 		// must not have its status runs deadlocked by other agents' WIP.
-		RequireClean: ptr(!s.cfg.AllowDirty),
+		RequireClean: new(!s.cfg.AllowDirty),
 	}
 	if s.cfg.TaskTimeout > 0 {
 		sp.TimeoutMinutes = int(s.cfg.TaskTimeout / time.Minute)
@@ -356,13 +361,13 @@ func (s *Sweeper) completionDetail(ctx context.Context, id task.ID) (commit stri
 		return "", nil, false
 	}
 
-	for i := len(facts) - 1; i >= 0; i-- {
-		if facts[i].Type != journal.Completed {
+	for _, fact := range slices.Backward(facts) {
+		if fact.Type != journal.Completed {
 			continue
 		}
 
 		var result executor.AgentResult
-		if json.Unmarshal(facts[i].Detail, &result) != nil {
+		if json.Unmarshal(fact.Detail, &result) != nil {
 			return "", nil, false
 		}
 
@@ -406,6 +411,7 @@ func workItemLabel(ap executor.AgentPayload) string {
 	return itemExcerpt(ap.Prompt)
 }
 
+//go:fix inline
 func ptr[v any](val v) *v {
-	return &val
+	return new(val)
 }

@@ -133,6 +133,7 @@ func TestApplyPoolConfigFileLogDirAppliesAndEnvBeatsFile(t *testing.T) {
 	}
 
 	t.Setenv("TQ_LOG_DIR", "/state/logs-from-env")
+
 	fs2 := flag.NewFlagSet("agent-pool", flag.ContinueOnError)
 	fs2.String("log-dir", "", "sidecar dir")
 

@@ -67,12 +67,22 @@ echo "== enqueue two agent tasks (the window)"
 
 echo "== run the pool --once with --status-every 2"
 timeout 120 "$TMP/tq" agent-pool --repos "$REPO" --status-every 2 --once --poll 50ms --task-timeout 30s >"$TMP/pool1.log" 2>&1 ||
-	{ cat "$TMP/pool1.log"; exit 1; }
-grep -q "status: enqueued report" "$TMP/pool1.log" || { cat "$TMP/pool1.log"; echo "FAIL: sweeper never minted a report"; exit 1; }
+	{
+		cat "$TMP/pool1.log"
+		exit 1
+	}
+grep -q "status: enqueued report" "$TMP/pool1.log" || {
+	cat "$TMP/pool1.log"
+	echo "FAIL: sweeper never minted a report"
+	exit 1
+}
 
 echo "== run the pool again (no-op if the status task already drained)"
 timeout 120 "$TMP/tq" agent-pool --repos "$REPO" --status-every 2 --once --poll 50ms --task-timeout 30s >"$TMP/pool2.log" 2>&1 ||
-	{ cat "$TMP/pool2.log"; exit 1; }
+	{
+		cat "$TMP/pool2.log"
+		exit 1
+	}
 
 echo "== assert the report landed and TODO_LIST.md grew"
 test -f "$REPO/docs/status/2026-09-08_00-00_smoke.md"
@@ -82,18 +92,34 @@ echo "== assert counts: 2 agent + 1 status completed, plus the pool harvest's"
 echo "== own re-arm run of the appended item (agent-pool harvests every tick)"
 STATS="$("$TMP/tq" stats)"
 echo "$STATS"
-echo "$STATS" | grep -Eq '^completed\s+4$' || { echo "FAIL: want 4 completed"; exit 1; }
+echo "$STATS" | grep -Eq '^completed\s+4$' || {
+	echo "FAIL: want 4 completed"
+	exit 1
+}
 
 echo "== assert the sweeper checkpoint is at head (doctor liveness)"
 "$TMP/tq" doctor | tee "$TMP/doctor.out"
-grep -Eq '^ok +status-sweeper' "$TMP/doctor.out" || { echo "FAIL: status-sweeper watermark not at head"; exit 1; }
+grep -Eq '^ok +status-sweeper' "$TMP/doctor.out" || {
+	echo "FAIL: status-sweeper watermark not at head"
+	exit 1
+}
 
 echo "== assert a batch harvest re-arm is deduped (never double-enqueued)"
 "$TMP/tq" harvest --repos "$REPO" --json >"$TMP/harvest.json"
-grep -q 'freshly minted status-loop item' "$TMP/harvest.json" || { cat "$TMP/harvest.json"; echo "FAIL: harvest did not account for the appended item"; exit 1; }
+grep -q 'freshly minted status-loop item' "$TMP/harvest.json" || {
+	cat "$TMP/harvest.json"
+	echo "FAIL: harvest did not account for the appended item"
+	exit 1
+}
 STATS="$("$TMP/tq" stats)"
 echo "$STATS"
-echo "$STATS" | grep -Eq '^completed\s+4$' || { echo "FAIL: completed count changed"; exit 1; }
-if echo "$STATS" | grep -Eq '^pending\s+[1-9]'; then echo "FAIL: dedup failed - item enqueued twice"; exit 1; fi
+echo "$STATS" | grep -Eq '^completed\s+4$' || {
+	echo "FAIL: completed count changed"
+	exit 1
+}
+if echo "$STATS" | grep -Eq '^pending\s+[1-9]'; then
+	echo "FAIL: dedup failed - item enqueued twice"
+	exit 1
+fi
 
 echo "== status-loop smoke passed"

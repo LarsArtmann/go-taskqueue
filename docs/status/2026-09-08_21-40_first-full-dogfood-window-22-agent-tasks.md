@@ -134,7 +134,7 @@ status-sweeper lag 0. Build + vet green; full `go test ./... -race -count=1`
    the size/count cap from the same TODO item remains open.
 4. **Retry-path evidence** — two window tasks succeeded only after failed
    attempts (fuzz job: 1 retry; ExtractResultPayload fuzz: 2 retries). The
-   queue's retry machinery worked; the *observability* of those failures did
+   queue's retry machinery worked; the _observability_ of those failures did
    not (§d4).
 
 ## c) NOT STARTED (backlog the window skipped)
@@ -167,7 +167,7 @@ damage the window left or exposed:
    done ([x] in TODO_LIST), so nothing was lost, but the pattern is
    structural: harvesting while no pool runs creates zombies, and `[x]`-ing
    an item never cancels its already-enqueued task (dedup key only suppresses
-   *re*-enqueue).
+   _re_-enqueue).
 2. **`taskid.txt` — test garbage committed to the repo root** by the
    auto-commit daemon (`aa1e6ed`, 18:31): a bare task ID
    `000001a081dc3646…` from a session that never cleaned up its scratch file.
@@ -193,12 +193,12 @@ damage the window left or exposed:
    on a fuller disk.
 8. **Dogfood inversion (process)**: the pool idled 07:00 → 21:25 (~14 h)
    while interactive sessions did the day's real engineering (rounds 5/6/7)
-   *outside* the queue. The queue carried 21 items in two night bursts and
+   _outside_ the queue. The queue carried 21 items in two night bursts and
    none of the day's work — the dogfood story "the pool eats this repo" is
    still mostly aspiration.
 9. **Minor agent-plot smell**: the window contains design tasks (17–19) whose
    findings were executed by later interactive sessions within hours — good —
-   but the *queue items* for that execution never existed; the loop from
+   but the _queue items_ for that execution never existed; the loop from
    report back to queue ran through TODO_LIST ticks by humans/other agents,
    not through harvesting. Fine for now; worth watching as the pool takes on
    more scope.

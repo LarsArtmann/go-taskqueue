@@ -324,6 +324,7 @@ func TestStreamSnapshotHonorsFilter(t *testing.T) {
 	events := ssetest.CollectN(t, srv.Handler(), 6, ssetest.WithPath("/api/events?project=alpha"))
 
 	var tableFrag string
+
 	for _, evt := range events {
 		if evt.Type != testFragEvent {
 			continue
@@ -371,6 +372,7 @@ func TestReconnectLagLogged(t *testing.T) {
 	var buf syncBuffer
 
 	old := slog.Default()
+
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	t.Cleanup(func() { slog.SetDefault(old) })
 
@@ -541,6 +543,7 @@ func TestReviewVerdictBadgeAndFindings(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
 	if body := rec.Body.String(); !strings.Contains(body, "review: request changes") {
 		t.Errorf("dashboard table missing the verdict badge")
 	}
@@ -569,6 +572,7 @@ func TestReviewVerdictAbsentWithoutCompletion(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
 	if body := rec.Body.String(); strings.Contains(body, "review: ") {
 		t.Errorf("pending review task rendered a verdict badge")
 	}
@@ -600,6 +604,7 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
 	if body := rec.Body.String(); !strings.Contains(body, "status: report +7 next") {
 		t.Errorf("dashboard table missing the status badge")
 	}
@@ -620,6 +625,7 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 	pending := enqueue(t, s, "status", "demo")
 	rec = httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+pending.ID.String(), nil))
+
 	if body := rec.Body.String(); strings.Contains(body, "status report") {
 		t.Errorf("pending status task rendered the report card")
 	}
@@ -685,7 +691,10 @@ func TestGoldenFragments(t *testing.T) {
 // with DailyBudget set projects today's enqueues into the stats fragment.
 func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 	s := newTestStore(t)
-	srv := New(s, Config{Addr: "127.0.0.1:0", Poll: 20 * time.Millisecond, Heartbeat: 100 * time.Millisecond, DailyBudget: 5})
+	srv := New(
+		s,
+		Config{Addr: "127.0.0.1:0", Poll: 20 * time.Millisecond, Heartbeat: 100 * time.Millisecond, DailyBudget: 5},
+	)
 	enqueue(t, s, "sh", "demo")
 	enqueue(t, s, "sh", "demo")
 
@@ -745,6 +754,7 @@ func TestBudgetViewTone(t *testing.T) {
 
 func TestReadiness(t *testing.T) {
 	now := time.Now()
+
 	cases := []struct {
 		name string
 		task task.Task
@@ -752,7 +762,11 @@ func TestReadiness(t *testing.T) {
 	}{
 		{"no notBefore", task.Task{ID: task.NewID(), Status: task.Pending}, ""},
 		{"not pending", task.Task{ID: task.NewID(), Status: task.Running, NotBefore: now.Add(time.Hour)}, ""},
-		{"future wait", task.Task{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(12 * time.Minute)}, "in 12m"},
+		{
+			"future wait",
+			task.Task{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(12 * time.Minute)},
+			"in 12m",
+		},
 		{"claimable", task.Task{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(-time.Minute)}, "ready"},
 	}
 	for _, tc := range cases {
@@ -803,6 +817,7 @@ func TestTaskDetailSSESnapshot(t *testing.T) {
 	events := ssetest.CollectN(t, srv.Handler(), 3, ssetest.WithPath("/task/"+tk.ID.String()+"/events"))
 
 	var fragIDs []string
+
 	sawCompleted := false
 
 	for _, evt := range events {
@@ -926,7 +941,9 @@ func captureDefaultLogger(t *testing.T) *bytes.Buffer {
 	t.Helper()
 
 	var buf bytes.Buffer
+
 	previous := slog.Default()
+
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 
@@ -1091,7 +1108,8 @@ func TestFactsCursorEndpoint(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after="+strconv.FormatInt(page.Next, 10)+"&limit=10", nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after="+strconv.FormatInt(page.Next, 10)+"&limit=10", nil))
 
 	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
 		t.Fatal(err)

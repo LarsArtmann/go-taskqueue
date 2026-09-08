@@ -59,21 +59,21 @@ Facts-first: every state change is an immutable fact in an append-only
 journal; queue views, retry state, and the DLQ are projections of those
 facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 
-| Package             | Purpose                                                                                                         |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `internal/task`     | Task record, Status enum with `CanTransitionTo`, sentinel errors                                                |
-| `internal/journal`  | Fact types, append-only Journal interface, MemoryJournal                                                        |
-| `internal/queue`    | Store interface + SQLite store; every mutation appends facts in-tx                                              |
-| `internal/worker`   | Claim → heartbeat → execute loop; concurrency, panics, drain                                                    |
-| `internal/bridge`   | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                             |
-| `internal/executor` | Pluggable execution: `sh` command, HTTP, agent (headless AI), registry                                          |
-| `internal/harvest`  | Scans repos' TODO_LIST.md and enqueues work items as agent tasks; drift audit (`tq audit`)                      |
-| `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick                          |
-| `internal/review`   | Fact-stream sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks from findings |
-| `internal/status`   | Fact-stream sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)   |
-| `internal/consumer` | Journal dispatcher: per-subscriber cursor over `Store` bounded reads, at-least-once in-order delivery, lag observability (policy: ADR-0009) |
-| `internal/runactor` | Process composition root: run.Group actors, LIFO `OnShutdown` teardown, `InterruptOn` (second signal = exit 130), detached `ExecutionScope` for task contexts |
-| `internal/webui`    | Read-only live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)          |
+| Package             | Purpose                                                                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `internal/task`     | Task record, Status enum with `CanTransitionTo`, sentinel errors                                                                                                  |
+| `internal/journal`  | Fact types, append-only Journal interface, MemoryJournal                                                                                                          |
+| `internal/queue`    | Store interface + SQLite store; every mutation appends facts in-tx                                                                                                |
+| `internal/worker`   | Claim → heartbeat → execute loop; concurrency, panics, drain                                                                                                      |
+| `internal/bridge`   | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                                                                               |
+| `internal/executor` | Pluggable execution: `sh` command, HTTP, agent (headless AI), registry                                                                                            |
+| `internal/harvest`  | Scans repos' TODO_LIST.md and enqueues work items as agent tasks; drift audit (`tq audit`)                                                                        |
+| `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick                                                                            |
+| `internal/review`   | Fact-stream sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks from findings                                                 |
+| `internal/status`   | Fact-stream sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)                                                    |
+| `internal/consumer` | Journal dispatcher: per-subscriber cursor over `Store` bounded reads, at-least-once in-order delivery, lag observability (policy: ADR-0009)                       |
+| `internal/runactor` | Process composition root: run.Group actors, LIFO `OnShutdown` teardown, `InterruptOn` (second signal = exit 130), detached `ExecutionScope` for task contexts     |
+| `internal/webui`    | Read-only live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                            |
 | `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / audit / top / show / dlq / cancel / facts / tail / watermarks / serve / api / doctor / version |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001 core,
@@ -207,16 +207,17 @@ state — its only write is its own cursor.
 
 ### templ-components adoption
 
-| Library component                                   | Status  | Where          |
-| --------------------------------------------------- | ------- | -------------- |
-| `layout.Base`, `ThemeToggle`                        | adopted | `layout.templ` |
-| `display.Grid/StatCard/Card/Table/EmptyState`       | adopted | `fragments.templ` |
-| `display.Badge/Eyebrow/DefinitionList/Scrollback`   | adopted | `fragments.templ` |
-| `display.AreaChart`                                 | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`) |
-| `display.Button`                                    | adopted | filter bar (apply) |
-| `feedback.Alert`                                    | adopted | task detail (last error) |
-| `icons.ArchiveBox/Bolt/Calculator/CheckCircle/CircleStack/Clock/Filter/Fire/Inbox` | adopted | stat-card + filter icons (`fragments.templ`) |
-| filter inputs, page header/lamp, section hairlines  | custom  | `layout.templ`/`fragments.templ` (thin, SSE-fragment-specific) |
+| Library component                                                                  | Status  | Where                                                                       |
+| ---------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------- |
+| `layout.Base`, `ThemeToggle`                                                       | adopted | `layout.templ`                                                              |
+| `display.Grid/StatCard/Card/Table/EmptyState`                                      | adopted | `fragments.templ`                                                           |
+| `display.Badge/Eyebrow/DefinitionList/Scrollback`                                  | adopted | `fragments.templ`                                                           |
+| `display.AreaChart`                                                                | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`) |
+| `display.Button`                                                                   | adopted | filter bar (apply)                                                          |
+| `feedback.Alert`                                                                   | adopted | task detail (last error)                                                    |
+| `icons.ArchiveBox/Bolt/Calculator/CheckCircle/CircleStack/Clock/Filter/Fire/Inbox` | adopted | stat-card + filter icons (`fragments.templ`)                                |
+| filter inputs, page header/lamp, section hairlines                                 | custom  | `layout.templ`/`fragments.templ` (thin, SSE-fragment-specific)              |
+
 - Go 1.26 idioms are deliberate (`errors.AsType[E]`, `strings.SplitSeq`,
   `for range n`) — do not "modernize" them back to older equivalents
 - The `FuzzParseRepo` seed corpus under `internal/harvest/testdata/fuzz` is

@@ -57,13 +57,14 @@ func TestCommandNiceOnly(t *testing.T) {
 
 	found := false
 
-	for _, field := range strings.Fields(msg) {
+	for field := range strings.FieldsSeq(msg) {
 		if n := len(field); n > 0 && field[0] >= '0' && field[0] <= '9' {
 			v := 0
 
 			for _, c := range field {
 				if c < '0' || c > '9' {
 					v = -1
+
 					break
 				}
 

@@ -17,16 +17,16 @@ carried forward instead of re-running.
 
 ## Stat cards
 
-| Metric | Value |
-| --- | --- |
-| ROUND6 plan slices (P1–P21) | 21/21 complete (prior session, committed; re-verified at HEAD this session) |
-| Closing chores this session | 6/6 done (TODO ticks, FEATURES, CHANGELOG, AGENTS map, DOMAIN_LANGUAGE, ci-local gate) |
-| Race suite | 17/17 packages ok (`-race -count=1`), incl. a concurrent agent's in-flight diff |
-| ci-local | ALL GATES GREEN (vet, build, windows cross-compile, race, gofmt, advisory lint, harvest guard, webui smoke, doc refs, nix build, flake check) |
-| TODO_LIST unchecked | 10 (5 of them owner-BLOCKED) |
-| Unpushed commits | 14 ahead of `origin/master` (push is owner-gated) |
-| Advisory lint baseline | 753 findings, 0 new on changed lines |
-| Things I fucked up or dodged | 4 (section d) |
+| Metric                       | Value                                                                                                                                         |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| ROUND6 plan slices (P1–P21)  | 21/21 complete (prior session, committed; re-verified at HEAD this session)                                                                   |
+| Closing chores this session  | 6/6 done (TODO ticks, FEATURES, CHANGELOG, AGENTS map, DOMAIN_LANGUAGE, ci-local gate)                                                        |
+| Race suite                   | 17/17 packages ok (`-race -count=1`), incl. a concurrent agent's in-flight diff                                                               |
+| ci-local                     | ALL GATES GREEN (vet, build, windows cross-compile, race, gofmt, advisory lint, harvest guard, webui smoke, doc refs, nix build, flake check) |
+| TODO_LIST unchecked          | 10 (5 of them owner-BLOCKED)                                                                                                                  |
+| Unpushed commits             | 14 ahead of `origin/master` (push is owner-gated)                                                                                             |
+| Advisory lint baseline       | 753 findings, 0 new on changed lines                                                                                                          |
+| Things I fucked up or dodged | 4 (section d)                                                                                                                                 |
 
 ---
 
@@ -356,8 +356,8 @@ TODO_LIST.md, 31–50 into ROADMAP.md unless owner promotes them.
 
 ---
 
-*Honesty notes: every "done" item cites a commit, a passing gate, or a
+_Honesty notes: every "done" item cites a commit, a passing gate, or a
 container/docker check performed this session; the one carried-forward claim
 is labeled in (b)5/(d)4. The `.md` format is an explicit user override of the
 status-report skill's HTML default. Section (f) is the HARVEST input — it
-should not die in this file.*
+should not die in this file._

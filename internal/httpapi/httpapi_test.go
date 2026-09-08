@@ -166,6 +166,7 @@ func TestDedupKeyIdempotency(t *testing.T) {
 		h.ServeHTTP(rec, req)
 
 		var resp enqueueResponse
+
 		_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 
 		return resp.ID
@@ -178,10 +179,12 @@ func TestDedupKeyIdempotency(t *testing.T) {
 
 	// Exactly one task row exists.
 	pending := task.Pending
-	tasks, err := store.List(context.Background(), queue.Filter{Project: ptr("p"), Status: &pending})
+
+	tasks, err := store.List(context.Background(), queue.Filter{Project: new("p"), Status: &pending})
 	if err != nil || len(tasks) != 1 {
 		t.Fatalf("tasks = %d (%v), want 1", len(tasks), err)
 	}
 }
 
-func ptr(s string) *string { return &s }
+//go:fix inline
+func ptr(s string) *string { return new(s) }

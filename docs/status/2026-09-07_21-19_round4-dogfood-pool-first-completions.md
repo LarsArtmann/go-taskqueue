@@ -18,30 +18,30 @@ working tree clean; both agent commits inspected at source level.
 
 ## a) FULLY DONE
 
-| Work | Evidence |
-| ---- | -------- |
-| Round-4 plan written: Pareto tiers, 24 coarse tasks (ALL 22 TODO items mapped to an owner), ~100 fine tasks, mermaid execution graph, launch command, guardrails | `docs/planning/2026-09-07_20-47_SUPERB-PLAN-ROUND4-DOGFOOD-POOL-EATS-THIS-REPO.md` |
-| Dogfood rails: `.crushrc` = `permissions allow view ls grep glob edit write bash` (README minimum); `.tq-verify` = build + vet + race tests + gofmt (the CI hard gates) | both files committed, tracked |
-| ROADMAP Open question #1 ANSWERED inline (pool on this repo — the owner's call), AGENTS.md dogfood known-issue added (rails, launch pointer, stop/rescue) | ROADMAP.md:137-142, AGENTS.md known issues |
-| Pushed with authorization: 9 accumulated daemon commits + rails + plan + AGENTS note → origin/master `99f8031` | `git ls-remote` = HEAD at push time |
-| Pool launched with the full rail set: `--yolo --project-exclusive --concurrency 2 --interval 5m --task-timeout 45m --max-per-tick 3 --daily-budget 15 --repo-interval go-taskqueue=10m --dlq-backoff 30m` | startup line: "2 agent(s) … (yolo=true, dirty=false, exclusive=true, harvest every 5m0s, verify enforced)" + autonomy WARNING |
-| Harvest semantics proven on the real backlog: first tick = 22 items → 1 enqueued (per-repo pacing), 19 paced, **2 blocked** (v0.2.0, CQA — the BLOCKED marker enforced by the code shipped this morning) | pool log + `harvest --dry-run` (22 open, 1 would enqueue) |
-| **Autonomous completion #1** (TODO #1, the Critical item): `ci-local.sh` — a real crush agent worked 9 min (20:56:59 → 21:05:58), `.tq-verify` (race suite) passed, checkbox ticked, commit `115854a` "Add ci-local.sh as the one-command pre-push gate replicating CI" — agents never pushed | journal facts 1-3; `git show 115854a` |
-| **Autonomous completion #2** (TODO #2, this morning's filed regression): papdashboard `startWatermark` ctx guard + a 27-line pre-cancelled-ctx test + TODO tick — commit `aaabe1c`, ~4 min agent work (21:08:59 → 21:12:41) | journal facts 4-8; `git show aaabe1c` (guard verified in source: `ctx.Err() != nil → return nil`) |
-| **Preflight dirty-tree guard proven live**: task 2 claimed at 21:06:59 hit MY uncommitted plan doc → `task.requeued` WITHOUT attempt burn → reclaimed at 21:08:59 after the daemon committed → completed. The at-least-once/no-burn contract worked on its first real trigger | journal fact 6 (reason names the exact file) |
-| Agent-work review (both commits inspected): ci-local.sh faithfully replicates ci.yml order incl. advisory lint + staged-tree nix check; ctx fix is exactly the filed guard + test | `git show` both |
-| **LAN dashboard live**: `tq serve --addr 0.0.0.0:8090` (replacing the loopback instance), verified via `http://192.168.1.150:8090/api/stats` returning live JSON | fetch + serve startup line |
-| TODO_LIST routing kept honest: new W16 item added (serve auth for non-localhost binds — now actually needed) | TODO_LIST.md (21 open / 2 done) |
+| Work                                                                                                                                                                                                                                                                                          | Evidence                                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Round-4 plan written: Pareto tiers, 24 coarse tasks (ALL 22 TODO items mapped to an owner), ~100 fine tasks, mermaid execution graph, launch command, guardrails                                                                                                                              | `docs/planning/2026-09-07_20-47_SUPERB-PLAN-ROUND4-DOGFOOD-POOL-EATS-THIS-REPO.md`                                            |
+| Dogfood rails: `.crushrc` = `permissions allow view ls grep glob edit write bash` (README minimum); `.tq-verify` = build + vet + race tests + gofmt (the CI hard gates)                                                                                                                       | both files committed, tracked                                                                                                 |
+| ROADMAP Open question #1 ANSWERED inline (pool on this repo — the owner's call), AGENTS.md dogfood known-issue added (rails, launch pointer, stop/rescue)                                                                                                                                     | ROADMAP.md:137-142, AGENTS.md known issues                                                                                    |
+| Pushed with authorization: 9 accumulated daemon commits + rails + plan + AGENTS note → origin/master `99f8031`                                                                                                                                                                                | `git ls-remote` = HEAD at push time                                                                                           |
+| Pool launched with the full rail set: `--yolo --project-exclusive --concurrency 2 --interval 5m --task-timeout 45m --max-per-tick 3 --daily-budget 15 --repo-interval go-taskqueue=10m --dlq-backoff 30m`                                                                                     | startup line: "2 agent(s) … (yolo=true, dirty=false, exclusive=true, harvest every 5m0s, verify enforced)" + autonomy WARNING |
+| Harvest semantics proven on the real backlog: first tick = 22 items → 1 enqueued (per-repo pacing), 19 paced, **2 blocked** (v0.2.0, CQA — the BLOCKED marker enforced by the code shipped this morning)                                                                                      | pool log + `harvest --dry-run` (22 open, 1 would enqueue)                                                                     |
+| **Autonomous completion #1** (TODO #1, the Critical item): `ci-local.sh` — a real crush agent worked 9 min (20:56:59 → 21:05:58), `.tq-verify` (race suite) passed, checkbox ticked, commit `115854a` "Add ci-local.sh as the one-command pre-push gate replicating CI" — agents never pushed | journal facts 1-3; `git show 115854a`                                                                                         |
+| **Autonomous completion #2** (TODO #2, this morning's filed regression): papdashboard `startWatermark` ctx guard + a 27-line pre-cancelled-ctx test + TODO tick — commit `aaabe1c`, ~4 min agent work (21:08:59 → 21:12:41)                                                                   | journal facts 4-8; `git show aaabe1c` (guard verified in source: `ctx.Err() != nil → return nil`)                             |
+| **Preflight dirty-tree guard proven live**: task 2 claimed at 21:06:59 hit MY uncommitted plan doc → `task.requeued` WITHOUT attempt burn → reclaimed at 21:08:59 after the daemon committed → completed. The at-least-once/no-burn contract worked on its first real trigger                 | journal fact 6 (reason names the exact file)                                                                                  |
+| Agent-work review (both commits inspected): ci-local.sh faithfully replicates ci.yml order incl. advisory lint + staged-tree nix check; ctx fix is exactly the filed guard + test                                                                                                             | `git show` both                                                                                                               |
+| **LAN dashboard live**: `tq serve --addr 0.0.0.0:8090` (replacing the loopback instance), verified via `http://192.168.1.150:8090/api/stats` returning live JSON                                                                                                                              | fetch + serve startup line                                                                                                    |
+| TODO_LIST routing kept honest: new W16 item added (serve auth for non-localhost binds — now actually needed)                                                                                                                                                                                  | TODO_LIST.md (21 open / 2 done)                                                                                               |
 
 ## b) PARTIALLY DONE
 
-| Work | What works | What remains |
-| ---- | ---------- | ------------ |
-| The campaign | 2 of 20 unblocked items done, 1 running (claimed 21:16:58), budget spent 2/15 | 17 items left; ~2 days at the current budget pacing |
+| Work                           | What works                                                                                             | What remains                                                                                                                                                                                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The campaign                   | 2 of 20 unblocked items done, 1 running (claimed 21:16:58), budget spent 2/15                          | 17 items left; ~2 days at the current budget pacing                                                                                                                                                                                                                 |
 | `ci-local.sh` (agent-authored) | Written, reviewed, faithful to ci.yml; `git add -A` + stray-check before nix matches the item's intent | **Never executed end-to-end by me** (deliberate: it races the pool's own verify runs and takes minutes); its `git add -A` leaves changes STAGED → the tree reads "dirty" to agent preflight until the daemon commits — could cause requeue cycles right after a run |
-| LAN exposure | Serving on `0.0.0.0:8090`, live stats verified | Reachability from a SECOND device unproven (host-local fetch may bypass NixOS firewall rules); zero auth — anyone on the LAN sees all payloads/error tails; W16 routed but unbuilt |
-| Post-run review (plan C22) | Started: both agent diffs inspected, scope clean so far | `.crushrc` self-modification monitoring, agent-quality pass over future diffs, budget telemetry — not institutionalized |
-| Push state | origin = `99f8031` (my push) | The 2 agent commits + daemon blobs since are UNPUSHED (this message did not authorize push; push-then-verify repo) |
+| LAN exposure                   | Serving on `0.0.0.0:8090`, live stats verified                                                         | Reachability from a SECOND device unproven (host-local fetch may bypass NixOS firewall rules); zero auth — anyone on the LAN sees all payloads/error tails; W16 routed but unbuilt                                                                                  |
+| Post-run review (plan C22)     | Started: both agent diffs inspected, scope clean so far                                                | `.crushrc` self-modification monitoring, agent-quality pass over future diffs, budget telemetry — not institutionalized                                                                                                                                             |
+| Push state                     | origin = `99f8031` (my push)                                                                           | The 2 agent commits + daemon blobs since are UNPUSHED (this message did not authorize push; push-then-verify repo)                                                                                                                                                  |
 
 ## c) NOT STARTED
 
@@ -108,9 +108,9 @@ All deliberate:
 
 ## f) Up to 50 things we should get done next
 
-*Ranked view. TODO_LIST.md owns the routing (21 open items, evidence-cited);
+_Ranked view. TODO_LIST.md owns the routing (21 open items, evidence-cited);
 the pool is eating them. Items marked [POOL] are already TODO_LIST pool food;
-[NEW] surfaced this session and should be routed at the next HARVEST.*
+[NEW] surfaced this session and should be routed at the next HARVEST._
 
 1. [POOL] Let the pool finish the campaign — 17 items left, next up already claimed
 2. [NEW] Run `scripts/ci-local.sh` once end-to-end (when the pool is idle) and fix whatever it catches
@@ -181,8 +181,8 @@ the pool is eating them. Items marked [POOL] are already TODO_LIST pool food;
 
 ---
 
-*Point-in-time snapshot — everything above reflects this session's run
+_Point-in-time snapshot — everything above reflects this session's run
 (2026-09-07, ~20:45–21:19 CEST). The pool and serve are STILL RUNNING in
 background shells (047 pool, 051 serve): kill them before assuming quiescence.
 When later work makes this stale, ANNOTATE it — don't rewrite. Section (f) is
-a ranked view; TODO_LIST.md/ROADMAP.md own the routing.*
+a ranked view; TODO_LIST.md/ROADMAP.md own the routing._

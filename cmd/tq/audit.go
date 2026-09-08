@@ -21,7 +21,11 @@ func cmdAudit(args []string) error {
 	projectsDir := fs.String("projects-dir", "", "directory of repos to audit (each with a TODO_LIST.md)")
 	repos := fs.String("repos", "", "comma-separated explicit repo paths (overrides --projects-dir)")
 	todoFile := fs.String("todo-file", harvest.DefaultTodoFile, "backlog file name inside each repo")
-	taskType := fs.String("type", harvest.DefaultType, "task type whose tasks are audited (catch-ups are enqueued as it)")
+	taskType := fs.String(
+		"type",
+		harvest.DefaultType,
+		"task type whose tasks are audited (catch-ups are enqueued as it)",
+	)
 	maxAttempts := fs.Int("max-attempts", 0, "attempt budget for catch-up tasks (0 = audit default 2)")
 	dryRun := fs.Bool("dry-run", false, "report drift without enqueueing catch-ups")
 	asJSON := fs.Bool("json", false, "JSON output of the audit result")

@@ -11,19 +11,19 @@ parallel sessions that were committing alongside it (a836cd4 webui budget card,
 
 ## a) FULLY DONE
 
-| # | Item | Evidence |
-|---|------|----------|
-| 1 | **Research verdict** — reviews in the three reference projects mapped onto go-taskqueue: mindwalk `internal/judge` (reviewer contributes findings, verdicts mechanical, invalid output retried), crush-daily `internal/app/review_service.go` (fact-stored reviews), go-crush-data (future session-transcript source) | this session's exploration; conclusion: can AND should — every primitive (facts, dedup keys, cqa findings→fix-tasks pattern, budget caps) already existed |
-| 2 | **`review` executor** — `ReviewPayload`/`ReviewVerdict`/`ReviewFinding`/`ReviewResult` types, read-only reviewer prompt (item + commit SHA + files + repo contracts + exact `TQ_RESULT` output contract), `ParseResult` (strict verdict, lenient findings, severity normalization, `request_changes` without findings = invalid) | `internal/executor/review.go` |
-| 3 | **Executor test suite** — 11-case parse table, verdict contract (approve AND request_changes both complete; invalid output retryable, NOT permanent), prompt contract (item/SHA/files/read-only rule reach the agent argv), payload-contract-misses permanent, dirty tree = preflight requeue | `internal/executor/review_test.go` |
-| 4 | **`internal/review` sweeper** — journal-watermark sweep (starts at head at construction), agent completions → one review task (dedup `review:<task-id>`), review completions with `request_changes` + `--review-autofix` → fix tasks (dedup `reviewfix:<review-id>:<sha8(title)>`), fix prompt carries item + finding + severity + SHA | `internal/review/sweep.go` |
-| 5 | **Sweeper test suite** — one-review-per-task, non-agent completions skipped, autofix minting + idempotent re-sweep, approve/off-switch no-mint, watermark resume across sweeps, head-start (no replay of pre-start completions), dedup-key stability | `internal/review/sweep_test.go` |
-| 6 | **CLI wiring** — `tq agent-pool --review [--review-autofix]`; review executor registered in agent-pool (always) and `tq worker --agents` (so pools without `--review` carry review tasks minted elsewhere); sweep runs in the budget-gated tick AND in the `--once` drain watcher; startup log line | `cmd/tq/main.go` |
-| 7 | **End-to-end smoke (stub agent)** — full cycle verified against a real pool process: agent task → review(request_changes + finding) → autofix minted fix task → fix ran → review of fix (approve) → queue drained, `--once` exited 0; verdict + findings stored in completion-fact detail, visible via `tq show` | `/tmp/tq-review-smoke` run, facts 1–12 |
-| 8 | **Full CI gate green** — `scripts/ci-local.sh`: vet, build, GOOS=windows, **all packages green under `-race`** (incl. new `internal/review`), gofmt, web UI smoke, doc-reference check, `nix build`, `nix flake check` all checks passed after the treefmt fix below | session run 051 + re-run of `nix flake check` |
-| 9 | **Zero new lint findings** — `golangci-lint run ./... --new-from-rev` = 0 issues after fixing the 5 findings the annotation step caught on my lines (wsl ×2, lll, varnamelen ×2) | final lint run |
-| 10 | **Docs updated** — AGENTS.md (package table row + full `review` payload contract incl. loop-safety and watermark semantics), FEATURES.md (🟢 FULLY_FUNCTIONAL row with honest caveats), CHANGELOG Added section, README example with budget pairing, TODO_LIST 2 actionable seeds, ROADMAP idea | respective files |
-| 11 | **On-sight fixes (not mine, fixed under the 5-minute rule)** — `internal/webui/fragments.templ` treefmt drift (parallel agent's pagination work broke `nix flake check`; `templ fmt` fixed it, re-check green), `internal/webui/render.go` import order | git |
+| #  | Item                                                                                                                                                                                                                                                                                                                                   | Evidence                                                                                                                                                  |
+| -- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1  | **Research verdict** — reviews in the three reference projects mapped onto go-taskqueue: mindwalk `internal/judge` (reviewer contributes findings, verdicts mechanical, invalid output retried), crush-daily `internal/app/review_service.go` (fact-stored reviews), go-crush-data (future session-transcript source)                  | this session's exploration; conclusion: can AND should — every primitive (facts, dedup keys, cqa findings→fix-tasks pattern, budget caps) already existed |
+| 2  | **`review` executor** — `ReviewPayload`/`ReviewVerdict`/`ReviewFinding`/`ReviewResult` types, read-only reviewer prompt (item + commit SHA + files + repo contracts + exact `TQ_RESULT` output contract), `ParseResult` (strict verdict, lenient findings, severity normalization, `request_changes` without findings = invalid)       | `internal/executor/review.go`                                                                                                                             |
+| 3  | **Executor test suite** — 11-case parse table, verdict contract (approve AND request_changes both complete; invalid output retryable, NOT permanent), prompt contract (item/SHA/files/read-only rule reach the agent argv), payload-contract-misses permanent, dirty tree = preflight requeue                                          | `internal/executor/review_test.go`                                                                                                                        |
+| 4  | **`internal/review` sweeper** — journal-watermark sweep (starts at head at construction), agent completions → one review task (dedup `review:<task-id>`), review completions with `request_changes` + `--review-autofix` → fix tasks (dedup `reviewfix:<review-id>:<sha8(title)>`), fix prompt carries item + finding + severity + SHA | `internal/review/sweep.go`                                                                                                                                |
+| 5  | **Sweeper test suite** — one-review-per-task, non-agent completions skipped, autofix minting + idempotent re-sweep, approve/off-switch no-mint, watermark resume across sweeps, head-start (no replay of pre-start completions), dedup-key stability                                                                                   | `internal/review/sweep_test.go`                                                                                                                           |
+| 6  | **CLI wiring** — `tq agent-pool --review [--review-autofix]`; review executor registered in agent-pool (always) and `tq worker --agents` (so pools without `--review` carry review tasks minted elsewhere); sweep runs in the budget-gated tick AND in the `--once` drain watcher; startup log line                                    | `cmd/tq/main.go`                                                                                                                                          |
+| 7  | **End-to-end smoke (stub agent)** — full cycle verified against a real pool process: agent task → review(request_changes + finding) → autofix minted fix task → fix ran → review of fix (approve) → queue drained, `--once` exited 0; verdict + findings stored in completion-fact detail, visible via `tq show`                       | `/tmp/tq-review-smoke` run, facts 1–12                                                                                                                    |
+| 8  | **Full CI gate green** — `scripts/ci-local.sh`: vet, build, GOOS=windows, **all packages green under `-race`** (incl. new `internal/review`), gofmt, web UI smoke, doc-reference check, `nix build`, `nix flake check` all checks passed after the treefmt fix below                                                                   | session run 051 + re-run of `nix flake check`                                                                                                             |
+| 9  | **Zero new lint findings** — `golangci-lint run ./... --new-from-rev` = 0 issues after fixing the 5 findings the annotation step caught on my lines (wsl ×2, lll, varnamelen ×2)                                                                                                                                                       | final lint run                                                                                                                                            |
+| 10 | **Docs updated** — AGENTS.md (package table row + full `review` payload contract incl. loop-safety and watermark semantics), FEATURES.md (🟢 FULLY_FUNCTIONAL row with honest caveats), CHANGELOG Added section, README example with budget pairing, TODO_LIST 2 actionable seeds, ROADMAP idea                                        | respective files                                                                                                                                          |
+| 11 | **On-sight fixes (not mine, fixed under the 5-minute rule)** — `internal/webui/fragments.templ` treefmt drift (parallel agent's pagination work broke `nix flake check`; `templ fmt` fixed it, re-check green), `internal/webui/render.go` import order                                                                                | git                                                                                                                                                       |
 
 ## b) PARTIALLY DONE
 
@@ -75,7 +75,7 @@ Nothing shipped broken — but full honesty on process failures this session:
    not-due-soon requeues) — every "failure" was my stub, not the product. Still
    → that's exactly the kind of churn a committed smoke script would compress.
 2. **First `NewSweeper` design was wrong against its own doc** — watermark was
-   captured at first *Sweep*, not construction, so the doc comment lied and the
+   captured at first _Sweep_, not construction, so the doc comment lied and the
    first tests failed. Caught by tests within minutes, fixed by moving the head
    read into the constructor. Minor, but it shipped-wrong-then-fixed instead of
    right-first-time.
@@ -112,10 +112,11 @@ Nothing shipped broken — but full honesty on process failures this session:
 
 ## f) UP TO 50 THINGS TO GET DONE NEXT
 
-*(brainstorm sorted by impact, not commitment — most items beyond the first
-~10 are TODO_LIST/ROADMAP fuel for docs-health HARVEST)*
+_(brainstorm sorted by impact, not commitment — most items beyond the first
+~10 are TODO_LIST/ROADMAP fuel for docs-health HARVEST)_
 
 **Review feature maturation**
+
 1. `internal/e2e` review-loop scenario (stub agent, `--once --review --review-autofix`)
 2. Committed `scripts/smoke/reviews.sh` + wire into ci-local + CI
 3. Web UI: review verdict badge + findings in task table/trail (from `ReviewResult` fact detail)
@@ -189,6 +190,6 @@ Nothing shipped broken — but full honesty on process failures this session:
 
 ---
 
-*Format note: user explicitly requested `.md`; the status-report skill's HTML
+_Format note: user explicitly requested `.md`; the status-report skill's HTML
 default is overridden this once (per skill instructions, user instruction
-wins). Point-in-time snapshot — stale the moment the pool restarts.*
+wins). Point-in-time snapshot — stale the moment the pool restarts._

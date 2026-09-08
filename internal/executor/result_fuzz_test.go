@@ -32,7 +32,15 @@ func FuzzExtractResultPayload(f *testing.F) {
 	f.Add("\xEF\xBB\xBFTQ_RESULT: {\"files_changed\":[\"bom\"]}\n")
 	f.Add(strings.Repeat("TQ_RESULT: {\"files_changed\":[\"f\"],\"commit_sha\":\"s\"}\n", 100))
 	f.Add("TQ_RESULT: " + strings.Repeat("{\"a\":", 100) + "1" + strings.Repeat("}", 100) + "\n")
-	f.Add("TQ_RESULT: {\"files_changed\":[\"" + strings.Repeat("x", 10000) + "\"],\"commit_sha\":\"" + strings.Repeat("y", 40) + "\"}\n")
+	f.Add(
+		"TQ_RESULT: {\"files_changed\":[\"" + strings.Repeat(
+			"x",
+			10000,
+		) + "\"],\"commit_sha\":\"" + strings.Repeat(
+			"y",
+			40,
+		) + "\"}\n",
+	)
 
 	f.Fuzz(func(t *testing.T, output string) {
 		files1, sha1, ok1 := ExtractResultPayload(output)

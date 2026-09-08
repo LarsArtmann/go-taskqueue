@@ -307,6 +307,7 @@ func TestPostgresBaseline1k(t *testing.T) {
 	const n = 1_000
 
 	start := time.Now()
+
 	for i := range n {
 		if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "bench"}); err != nil {
 			t.Fatalf("enqueue %d: %v", i, err)
@@ -316,6 +317,7 @@ func TestPostgresBaseline1k(t *testing.T) {
 	enqueueDur := time.Since(start)
 
 	start = time.Now()
+
 	const work = 1_000
 	for range work {
 		got, err := s.ClaimDue(ctx, "bench", time.Minute)

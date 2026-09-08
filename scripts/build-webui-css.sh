@@ -23,15 +23,15 @@ ENTRY="$(mktemp /tmp/tq-webui-app-XXXXXX.css)"
 trap 'rm -f "$ENTRY"' EXIT
 
 {
-  echo '@import "tailwindcss" source(none);'
-  echo "@source \"$REPO/internal/webui/*.templ\";"
-  echo "@source \"$REPO/internal/webui/*.go\";"
-  echo "@source \"$TC_DIR\";"
-  echo "@import \"$REPO/internal/webui/theme.css\";"
-  # The library's tc-* utility classes (terminal log lines, dialog
-  # animations, …) live outside Tailwind and must be imported explicitly.
-  echo "@import \"$TC_DIR/templates/custom.css\";"
-} > "$ENTRY"
+	echo '@import "tailwindcss" source(none);'
+	echo "@source \"$REPO/internal/webui/*.templ\";"
+	echo "@source \"$REPO/internal/webui/*.go\";"
+	echo "@source \"$TC_DIR\";"
+	echo "@import \"$REPO/internal/webui/theme.css\";"
+	# The library's tc-* utility classes (terminal log lines, dialog
+	# animations, …) live outside Tailwind and must be imported explicitly.
+	echo "@import \"$TC_DIR/templates/custom.css\";"
+} >"$ENTRY"
 
 : "${TAILWINDCSS:=tailwindcss}"
 "$TAILWINDCSS" --input "$ENTRY" --output "$OUT" --minify

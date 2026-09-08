@@ -16,16 +16,19 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 step() { printf '\n== %s\n' "$*"; }
-die() { echo "FAIL: $*" >&2; exit 1; }
+die() {
+	echo "FAIL: $*" >&2
+	exit 1
+}
 
 VERSION="${1:-}"
 MODE="${2:-}"
 [ -n "$VERSION" ] || die "usage: scripts/release.sh vX.Y.Z [--tag|--push]"
 [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version '$VERSION' is not vX.Y.Z"
 case "$MODE" in
-	"") ;;
-	--tag | --push) ;;
-	*) die "unknown mode '$MODE' (use --tag or --push)" ;;
+"") ;;
+--tag | --push) ;;
+*) die "unknown mode '$MODE' (use --tag or --push)" ;;
 esac
 
 MODULE="$(head -1 go.mod | cut -d' ' -f2)"
@@ -47,18 +50,18 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 step "CHANGELOG section for $VERSION"
-grep -q "^## \[$VERSION\] - [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$" CHANGELOG.md \
-	|| die "CHANGELOG.md has no '## [$VERSION] - YYYY-MM-DD' section — cut [Unreleased] into it first"
+grep -q "^## \[$VERSION\] - [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$" CHANGELOG.md ||
+	die "CHANGELOG.md has no '## [$VERSION] - YYYY-MM-DD' section — cut [Unreleased] into it first"
 awk -v v="## [$VERSION]" '
 	$0 == v {in_section=1; next}
 	in_section && /^## \[/ {exit}
 	in_section {print}
-' CHANGELOG.md > /tmp/tq-release-notes.md
+' CHANGELOG.md >/tmp/tq-release-notes.md
 [ -s /tmp/tq-release-notes.md ] || die "CHANGELOG section for $VERSION is empty"
 
 step "go.mod hygiene"
-	! grep '^replace' go.mod || die "go.mod has replace directives — poison in published tags"
-	! grep '00010101' go.mod || die "go.mod has a pseudo-version (replace-directive leak)"
+! grep '^replace' go.mod || die "go.mod has replace directives — poison in published tags"
+! grep '00010101' go.mod || die "go.mod has a pseudo-version (replace-directive leak)"
 
 step "full CI gate (scripts/ci-local.sh — test + nix jobs on this exact tree)"
 ./scripts/ci-local.sh

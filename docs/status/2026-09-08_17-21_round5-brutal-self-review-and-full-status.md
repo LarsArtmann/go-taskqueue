@@ -152,6 +152,7 @@ design; `tq journal compact` CLI command.
 ## f) NEXT — up to 50, in priority order
 
 **Fix the §d defects (1–9):**
+
 1. Fix or delete the screenshots script's detail-page line; add a
    smoke-mode assertion it at least runs (or mark requires-browser).
 2. Create the `webui-css-drift-check` flake app (or fix the script's
@@ -177,7 +178,7 @@ design; `tq journal compact` CLI command.
 14. F144: gosec triage note + lint-endgame ADR.
 15. F139: promote `scripts/smoke/multi-repo.sh` into `internal/e2e`.
 16. F134–F136: `audit --json` parity flags; DLQ rescue preview before
-   `--rescue-all`; shell completions (`tq completion bash|zsh|fish`).
+`--rescue-all`; shell completions (`tq completion bash|zsh|fish`).
 17. F137: `tq top --json` golden contract test (schema-pinned).
 18. F145: secrets-in-logs test + `--redact` payload redaction.
 19. F146: govulncheck CI + dependabot; sidecar `--log-dir-max-age`.
@@ -189,7 +190,7 @@ design; `tq journal compact` CLI command.
 25. F131: HTTP executor auth + external executor SDK contract doc.
 26. F132: Windows process-group kill (`taskkill /T` path) + tests.
 27. F119: upgrade `examples/api` to `internal/httpapi` (delete the PoC's
-    duplicate handlers).
+duplicate handlers).
 
 **v0.2 arc:**
 28. `--store postgres` DSN flag across CLI commands (store is ready).
@@ -210,20 +211,20 @@ design; `tq journal compact` CLI command.
 
 **Housekeeping:**
 41. AGENTS.md: add `internal/httpapi` package row + Postgres gotchas
-    (int8→time.Time scanning, TRUNCATE-isolated tests, TQ_TEST_POSTGRES).
+(int8→time.Time scanning, TRUNCATE-isolated tests, TQ_TEST_POSTGRES).
 42. Seed TODO_LIST.md with §d/§f items (harvester-visible).
 43. Read back `tq facts` summary line handling in session-status (the
-    `(141 facts)` line shape drifted once).
+`(141 facts)` line shape drifted once).
 44. SQLite-vs-Postgres claim benchmark at EQUAL depth (1k and 10k both).
 45. Doc pass: FEATURES rows for M18–M22 items shipped this session
-    (sort/project pages/metrics/api) — several lack rows.
+(sort/project pages/metrics/api) — several lack rows.
 46. CHANGELOG: split the mega "Unreleased" section before v0.2 cutting.
 47. `tq doctor`: consider an expiry-age threshold for orphan marking
-    (avoid marking tasks 1ms from natural reclaim).
+(avoid marking tasks 1ms from natural reclaim).
 48. Worker `--alert-url` budget parity (worker has no `--daily-budget`
-    today — decide whether it should).
+today — decide whether it should).
 49. Test the FilterBar × sort × pagination triple-composition once #3
-    lands.
+lands.
 50. Owner-gated: LAN serve restart, push, v0.2.0 — see §g.
 
 ## g) QUESTIONS ONLY YOU CAN ANSWER

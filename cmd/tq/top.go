@@ -85,7 +85,11 @@ func indexTaskProjects(tasks []task.Task, view func(string) *projectView) map[st
 // claim time of the winning attempt (a reclaimed task's earlier claims are
 // overwritten). It returns the claim timestamps needed by
 // applyActiveDurations.
-func applyRunDurations(facts []journal.Fact, taskProject map[string]string, view func(string) *projectView) map[string]time.Time {
+func applyRunDurations(
+	facts []journal.Fact,
+	taskProject map[string]string,
+	view func(string) *projectView,
+) map[string]time.Time {
 	claimedAt := map[string]time.Time{}
 
 	for _, f := range facts {
@@ -104,7 +108,12 @@ func applyRunDurations(facts []journal.Fact, taskProject map[string]string, view
 }
 
 // applyActiveDurations stamps elapsed time onto every currently running task.
-func applyActiveDurations(tasks []task.Task, claimedAt map[string]time.Time, now time.Time, view func(string) *projectView) {
+func applyActiveDurations(
+	tasks []task.Task,
+	claimedAt map[string]time.Time,
+	now time.Time,
+	view func(string) *projectView,
+) {
 	for i := range tasks {
 		t := tasks[i]
 		if t.Status != task.Running {

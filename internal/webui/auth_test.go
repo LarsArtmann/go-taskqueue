@@ -164,7 +164,10 @@ func TestRequestLogRedactsToken(t *testing.T) {
 
 	handler := srv.Handler()
 	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/stats?token=sekrit", nil))
-	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/?project=demo&status=running&q=flake&token=sekrit", nil))
+	handler.ServeHTTP(
+		httptest.NewRecorder(),
+		httptest.NewRequest(http.MethodGet, "/?project=demo&status=running&q=flake&token=sekrit", nil),
+	)
 
 	out := logs.String()
 

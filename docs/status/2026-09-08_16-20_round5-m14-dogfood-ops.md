@@ -11,13 +11,13 @@ M14/F72–F76 (ideas I23, I24, I25). Wave 2 (M11–M13) closed earlier today.
 Reviewed the pool-era commits not authored by this session's plan work,
 focused on the five most substantial:
 
-| Commit | Verdict |
-| --- | --- |
+| Commit                                                    | Verdict                                                                                                     |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `b420aa8` feat(webui): filter query params in EventSource | Good: feat + tests + changelog. Nit: commit body carries a leftover "Closes #<issue_number>" template line. |
-| `19bdf70` feat(webui): SQL pagination @100k scale | Good: measured evidence, race-tagged test files (`race_on.go`/`race_off.go`), store tests. |
-| `3721eb0` feat(webui): strict CSP + headers | Good: ADR-0003 amendment, guardrail test, smoke assertions added. |
-| `0dd4409` docs: ROUND6 plan | Fine: plan artifact; touches ROADMAP/TODO_LIST only. |
-| `50711df` / `c5336e1` docs commits | Fine: each marks TODO items done + changelog entries — the designed loop. |
+| `19bdf70` feat(webui): SQL pagination @100k scale         | Good: measured evidence, race-tagged test files (`race_on.go`/`race_off.go`), store tests.                  |
+| `3721eb0` feat(webui): strict CSP + headers               | Good: ADR-0003 amendment, guardrail test, smoke assertions added.                                           |
+| `0dd4409` docs: ROUND6 plan                               | Fine: plan artifact; touches ROADMAP/TODO_LIST only.                                                        |
+| `50711df` / `c5336e1` docs commits                        | Fine: each marks TODO items done + changelog entries — the designed loop.                                   |
 
 **Self-modification safety: PASS.** No agent commit touched pool config,
 `deploy/`, budget values, CI gates, or AGENTS contracts. The only

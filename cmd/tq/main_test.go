@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -47,8 +48,18 @@ func TestSplitRepos(t *testing.T) {
 }
 
 func TestPrintDriftReportGolden(t *testing.T) {
-	item1 := harvest.Item{Repo: "/repos/alpha", RepoName: "alpha", Text: "fix the flaky worker test that races on drain", Key: "k1"}
-	item2 := harvest.Item{Repo: "/repos/beta", RepoName: "beta", Text: "add a --json flag for parity with harvest", Key: "k2"}
+	item1 := harvest.Item{
+		Repo:     "/repos/alpha",
+		RepoName: "alpha",
+		Text:     "fix the flaky worker test that races on drain",
+		Key:      "k1",
+	}
+	item2 := harvest.Item{
+		Repo:     "/repos/beta",
+		RepoName: "beta",
+		Text:     "add a --json flag for parity with harvest",
+		Key:      "k2",
+	}
 
 	tests := []struct {
 		name   string
@@ -64,16 +75,21 @@ func TestPrintDriftReportGolden(t *testing.T) {
 		{
 			name: "stale open enqueued",
 			res: harvest.DriftResult{
-				Repos:     2,
-				StaleOpen: []harvest.Drift{{Kind: harvest.DriftStaleOpen, Item: item1, TaskID: "t1", TaskStatus: task.Completed}},
-				Enqueued:  []harvest.Enqueued{{Item: item1, TaskID: "t9", Fresh: true}},
+				Repos: 2,
+				StaleOpen: []harvest.Drift{
+					{Kind: harvest.DriftStaleOpen, Item: item1, TaskID: "t1", TaskStatus: task.Completed},
+				},
+				Enqueued: []harvest.Enqueued{{Item: item1, TaskID: "t9", Fresh: true}},
 			},
 			want: "DRIFT  alpha                    stale-open  task t1 completed, checkbox open: fix the flaky worker test that races on drain  [catch-up armed]\n" +
 				"audit: 2 repos, 1 stale-open (1 catch-ups enqueued), 0 stale-done, 0 scan failures\n",
 		},
 		{
-			name:   "stale open dry run",
-			res:    harvest.DriftResult{Repos: 1, StaleOpen: []harvest.Drift{{Item: item1, TaskID: "t1", TaskStatus: task.Completed}}},
+			name: "stale open dry run",
+			res: harvest.DriftResult{
+				Repos:     1,
+				StaleOpen: []harvest.Drift{{Item: item1, TaskID: "t1", TaskStatus: task.Completed}},
+			},
 			dryRun: true,
 			want: "DRIFT  alpha                    stale-open  task t1 completed, checkbox open: fix the flaky worker test that races on drain  [catch-up: dry-run, not enqueued]\n" +
 				"audit: 1 repos, 1 stale-open (0 catch-ups enqueued), 0 stale-done, 0 scan failures\n",
@@ -107,9 +123,13 @@ func TestPrintDriftJSONGolden(t *testing.T) {
 	item1 := harvest.Item{Repo: "/repos/alpha", RepoName: "alpha", Text: "fix the flaky worker test", Key: "k1"}
 
 	res := harvest.DriftResult{
-		Repos:        2,
-		StaleOpen:    []harvest.Drift{{Kind: harvest.DriftStaleOpen, Item: item1, TaskID: "t1", TaskStatus: task.Completed}},
-		StaleDone:    []harvest.Drift{{Kind: harvest.DriftStaleDone, Item: item1, TaskID: "t2", TaskStatus: task.Pending}},
+		Repos: 2,
+		StaleOpen: []harvest.Drift{
+			{Kind: harvest.DriftStaleOpen, Item: item1, TaskID: "t1", TaskStatus: task.Completed},
+		},
+		StaleDone: []harvest.Drift{
+			{Kind: harvest.DriftStaleDone, Item: item1, TaskID: "t2", TaskStatus: task.Pending},
+		},
 		Enqueued:     []harvest.Enqueued{{Item: item1, TaskID: "t9", Fresh: true}},
 		ScanFailures: []harvest.ScanFailure{{Repo: "/repos/beta", Reason: "no such file"}},
 	}
@@ -184,6 +204,7 @@ func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
 	old := os.Stdout
+
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("pipe: %v", err)
@@ -194,6 +215,7 @@ func captureStdout(t *testing.T, fn func()) string {
 	fn()
 
 	os.Stdout = old
+
 	if err := w.Close(); err != nil {
 		t.Fatalf("close: %v", err)
 	}
@@ -214,6 +236,7 @@ func TestDispatchExitCodes(t *testing.T) {
 
 	args := strings.Split(os.Getenv("TQ_DISPATCH_SUBTEST"), "\x1f")[1:]
 	os.Args = append([]string{"tq"}, args...)
+
 	main()
 }
 
@@ -221,9 +244,11 @@ func runDispatch(t *testing.T, args []string) (exitCode int, stdout, stderr stri
 	t.Helper()
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestDispatchExitCodes")
+
 	cmd.Env = append(os.Environ(), "TQ_DISPATCH_SUBTEST=sub\x1f"+strings.Join(args, "\x1f"))
 
 	var out, errBuf bytes.Buffer
+
 	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 
@@ -232,7 +257,8 @@ func runDispatch(t *testing.T, args []string) (exitCode int, stdout, stderr stri
 		return 0, out.String(), errBuf.String()
 	}
 
-	exitErr, ok := err.(*exec.ExitError)
+	exitErr := &exec.ExitError{}
+	ok := errors.As(err, &exitErr)
 	if !ok {
 		t.Fatalf("expected exit error, got %v (stdout: %q)", err, out.String())
 	}
@@ -287,7 +313,11 @@ func TestResultDetailDecodesTypedResults(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	got := resultDetail(task.Task{Type: executor.TaskTypeStatus}, []journal.Fact{{Type: journal.Completed, Detail: statusDetail}})
+	got := resultDetail(
+		task.Task{Type: executor.TaskTypeStatus},
+		[]journal.Fact{{Type: journal.Completed, Detail: statusDetail}},
+	)
+
 	res, ok := got.(executor.StatusResult)
 	if !ok || res.Report != "docs/status/r.md" || res.NextItems != 3 {
 		t.Fatalf("status result = %+v, want decoded StatusResult", got)
@@ -298,12 +328,18 @@ func TestResultDetailDecodesTypedResults(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	got = resultDetail(task.Task{Type: executor.TaskTypeAgent}, []journal.Fact{{Type: journal.Completed, Detail: agentDetail}})
+	got = resultDetail(
+		task.Task{Type: executor.TaskTypeAgent},
+		[]journal.Fact{{Type: journal.Completed, Detail: agentDetail}},
+	)
 	if agent, ok := got.(executor.AgentResult); !ok || agent.CommitSHA != "abcd" {
 		t.Fatalf("agent result = %+v, want decoded AgentResult", got)
 	}
 
-	if got := resultDetail(task.Task{Type: "sh"}, []journal.Fact{{Type: journal.Completed, Detail: statusDetail}}); got != nil {
+	if got := resultDetail(
+		task.Task{Type: "sh"},
+		[]journal.Fact{{Type: journal.Completed, Detail: statusDetail}},
+	); got != nil {
 		t.Fatalf("sh task result = %+v, want nil", got)
 	}
 

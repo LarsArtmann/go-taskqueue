@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -161,13 +162,13 @@ func statusResultFor(ctx context.Context, src queue.Store, id string) (executor.
 		return executor.StatusResult{}, false
 	}
 
-	for i := len(facts) - 1; i >= 0; i-- {
-		if facts[i].Type != journal.Completed {
+	for _, fact := range slices.Backward(facts) {
+		if fact.Type != journal.Completed {
 			continue
 		}
 
 		var res executor.StatusResult
-		if json.Unmarshal(facts[i].Detail, &res) != nil || res.Report == "" {
+		if json.Unmarshal(fact.Detail, &res) != nil || res.Report == "" {
 			return executor.StatusResult{}, false
 		}
 
@@ -187,13 +188,13 @@ func reviewResultFor(ctx context.Context, src queue.Store, id string) (executor.
 		return executor.ReviewResult{}, false
 	}
 
-	for i := len(facts) - 1; i >= 0; i-- {
-		if facts[i].Type != journal.Completed {
+	for _, fact := range slices.Backward(facts) {
+		if fact.Type != journal.Completed {
 			continue
 		}
 
 		var res executor.ReviewResult
-		if json.Unmarshal(facts[i].Detail, &res) != nil || res.Verdict == "" {
+		if json.Unmarshal(fact.Detail, &res) != nil || res.Verdict == "" {
 			return executor.ReviewResult{}, false
 		}
 
@@ -301,10 +302,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 
 	data.Projects = projectSummaries(projectCounts)
 
-	page := filter.Page
-	if page < 1 {
-		page = 1
-	}
+	page := max(filter.Page, 1)
 
 	data.Page = page
 
@@ -370,6 +368,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	dead := task.Dead
+
 	deadTasks, err := s.store.List(ctx, queue.Filter{Status: &dead})
 	if err != nil {
 		return data, err

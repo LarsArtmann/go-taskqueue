@@ -62,8 +62,14 @@ func TestTeardownRunsLIFO(t *testing.T) {
 
 	var order []string
 
-	g.OnShutdown(func() error { order = append(order, "store"); return nil })
-	g.OnShutdown(func() error { order = append(order, "http"); return nil })
+	g.OnShutdown(func() error {
+		order = append(order, "store")
+		return nil
+	})
+	g.OnShutdown(func() error {
+		order = append(order, "http")
+		return nil
+	})
 
 	g.Go("act", func(ctx context.Context) error { return nil })
 

@@ -884,7 +884,10 @@ func seedFacts(ctx context.Context, t *testing.T, s *SQLiteStore, n int) {
 	t.Helper()
 
 	for i := range n {
-		if _, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+		if _, err := s.Enqueue(
+			ctx,
+			task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`)},
+		); err != nil {
 			t.Fatalf("seed enqueue %d: %v", i, err)
 		}
 	}
@@ -1262,7 +1265,10 @@ func TestListSeverityOrder(t *testing.T) {
 	s := openTestStore(t)
 
 	for range 4 {
-		if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+		if _, err := s.Enqueue(
+			ctx,
+			task.New{Project: "a", Type: "sh", Payload: json.RawMessage(`"true"`)},
+		); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
 	}
@@ -1275,7 +1281,7 @@ func TestListSeverityOrder(t *testing.T) {
 		t.Fatalf("claim2: %v", err)
 	}
 
-	running, err := s.List(ctx, Filter{Status: ptrStatus(task.Running)})
+	running, err := s.List(ctx, Filter{Status: new(task.Running)})
 	if err != nil {
 		t.Fatalf("list running: %v", err)
 	}
@@ -1323,11 +1329,17 @@ func TestListSeverityOrder(t *testing.T) {
 	}
 
 	if sawDead != 1 || sawRunning != 1 || sawPending != 2 {
-		t.Fatalf("expected 1 dead + 1 running + 2 pending, got dead=%d running=%d pending=%d", sawDead, sawRunning, sawPending)
+		t.Fatalf(
+			"expected 1 dead + 1 running + 2 pending, got dead=%d running=%d pending=%d",
+			sawDead,
+			sawRunning,
+			sawPending,
+		)
 	}
 }
 
-func ptrStatus(st task.Status) *task.Status { return &st }
+//go:fix inline
+func ptrStatus(st task.Status) *task.Status { return new(st) }
 
 func TestCountTasksMatchesList(t *testing.T) {
 	t.Parallel()
@@ -1611,6 +1623,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 // untouched — orphaning is an observation, the reclaim stays authoritative.
 func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 	ctx := context.Background()
+
 	s := openTestStore(t)
 	defer func() { _ = s.Close() }()
 
@@ -1652,6 +1665,7 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 	}
 
 	orphaned := map[string]bool{}
+
 	for _, f := range facts {
 		if f.Type == journal.Orphaned {
 			orphaned[f.TaskID] = true
@@ -1697,16 +1711,20 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 	}
 
 	if os.Getenv("TQ_BASELINE") == "" {
-		t.Skip("on-demand baseline: run with TQ_BASELINE=1 (10k writes are too slow for the default suite, especially under -race)")
+		t.Skip(
+			"on-demand baseline: run with TQ_BASELINE=1 (10k writes are too slow for the default suite, especially under -race)",
+		)
 	}
 
 	ctx := context.Background()
+
 	s := openTestStore(t)
 	defer func() { _ = s.Close() }()
 
 	const n = 10_000
 
 	start := time.Now()
+
 	for i := range n {
 		if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "baseline"}); err != nil {
 			t.Fatalf("enqueue %d: %v", i, err)
@@ -1716,6 +1734,7 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 	enqueueDur := time.Since(start)
 
 	start = time.Now()
+
 	const work = 1_000
 	for range work {
 		got, err := s.ClaimDue(ctx, "bench", time.Minute)
@@ -1749,6 +1768,7 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 // tasks projection and Facts() keep working; the watermark is recorded.
 func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
 	ctx := context.Background()
+
 	s := openTestStore(t)
 	defer func() { _ = s.Close() }()
 
@@ -1848,6 +1868,7 @@ func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
 // of reaching SQL.
 func TestListSortAllowlist(t *testing.T) {
 	ctx := context.Background()
+
 	s := openTestStore(t)
 	defer func() { _ = s.Close() }()
 

@@ -29,10 +29,10 @@ for its class, but undefined as a contract).
 
 ### D1. Two subscriber classes, two delivery contracts
 
-| Class | Members today | Contract | Slow-consumer policy | Cursor |
-| --- | --- | --- | --- | --- |
-| **Exact** | papdashboard bridge, review sweeper, future outbound bridges | every fact, in Seq order, **at-least-once** | **block** (backpressure): the dispatcher never skips or drops for an exact consumer; the consumer persists/checkpoints at its own pace | per-fact, persisted via the `watermarks` table, monotonic |
-| **Signal** | webui hub/tailer (projection notifiers) | a wake-up when facts changed; payloads stay out (ADR-0003 wire format) | **drop + coalesce**: overflow drops the notification, never blocks the dispatcher; the next snapshot re-renders truth | none (snapshot-at-head IS the resume) |
+| Class      | Members today                                                | Contract                                                               | Slow-consumer policy                                                                                                                   | Cursor                                                    |
+| ---------- | ------------------------------------------------------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Exact**  | papdashboard bridge, review sweeper, future outbound bridges | every fact, in Seq order, **at-least-once**                            | **block** (backpressure): the dispatcher never skips or drops for an exact consumer; the consumer persists/checkpoints at its own pace | per-fact, persisted via the `watermarks` table, monotonic |
+| **Signal** | webui hub/tailer (projection notifiers)                      | a wake-up when facts changed; payloads stay out (ADR-0003 wire format) | **drop + coalesce**: overflow drops the notification, never blocks the dispatcher; the next snapshot re-renders truth                  | none (snapshot-at-head IS the resume)                     |
 
 A consumer declares its class by which API it uses. Exact consumers use
 `Subscribe` (per-fact delivery); signal consumers keep the hub. The

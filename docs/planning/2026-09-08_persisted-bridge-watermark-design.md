@@ -21,7 +21,7 @@ volatile watermarks as a Subscribe-adjacent but independent need).
 
 1. **Storage shape: side table wins; metadata fact is rejected.** A bridge
    watermark is consumer progress, not domain truth — persisting it as a fact
-   would put a synthetic non-task row into an append-only *task* journal whose
+   would put a synthetic non-task row into an append-only _task_ journal whose
    schema (`task_id TEXT NOT NULL`, `sqlite.go:122`), FactType vocabulary, and
    consumer switches all assume task lifecycle. Detail in §2.
 2. **Ack semantics: checkpoint per drained batch, after the last fact is
@@ -38,7 +38,7 @@ volatile watermarks as a Subscribe-adjacent but independent need).
 4. **The watermark is only half the volatility.** `Bridge.alerted`
    (`papdashboard.go:78`) — the map that correlates a completion to the alert
    it should resolve — dies with the process too, and a persisted watermark
-   makes its loss *more* likely to matter (the DeadLettered fact is never
+   makes its loss _more_ likely to matter (the DeadLettered fact is never
    re-delivered after restart, so the map cannot be rebuilt by replay alone).
    The fix belongs in the same change: derive the correlation from the task's
    own fact trail (`FactsForTask`) instead of memory. Detail in §5.
@@ -134,7 +134,7 @@ SaveWatermark(ctx context.Context, consumer string, seq int64) error      // mon
   already satisfies and tests fake in-process (the existing `fakeSource`
   pattern in `papdashboard_test.go:17` extends naturally). The package
   comment's "never mutates queue state" needs one honest line: the bridge
-  now persists *its own* cursor, still never task/fact state.
+  now persists _its own_ cursor, still never task/fact state.
 
 ### 2.2 Option B — metadata fact (rejected)
 
@@ -151,7 +151,7 @@ checkpoint.
   `papdashboard.go:199`, plus webui renders) and DOMAIN_LANGUAGE's
   "task.*" fact taxonomy.
 - **Write-path invariant damage:** there is no public append today by
-  design; adding one *only* for checkpoints punches a hole in "facts appear
+  design; adding one _only_ for checkpoints punches a hole in "facts appear
   only via queue mutations in-tx" (ADR-0001's seam) for a non-domain fact.
 - **Worse reads:** finding the current checkpoint means `MAX(seq) WHERE
   type = ?` (needs a new index on the write-amplified column) instead of a
@@ -200,7 +200,7 @@ persistence adds one rule on top:
   cannot drag the cursor backwards. Multi-process stance: two bridge
   processes sharing one DB and endpoint is tolerated exactly as today
   (duplicate sends, identical idempotency keys, PapDashboard dedupes);
-  sharing one *consumer key* means they interleave checkpoints — the
+  sharing one _consumer key_ means they interleave checkpoints — the
   monotonic guard keeps that safe-loss-free, and distinct endpoints should
   use distinct consumer keys (`papdashboard:<endpoint>`).
 
@@ -238,7 +238,7 @@ bridge restarts (checkpoint past the DL fact, so replay never re-delivers it
 → `alerted` map empty) → task rescued and completes → `Completed` fact hits
 the `alerted` miss (`papdashboard.go:226-229`) → the alert stays open
 forever. Today's head-start restart has the same hole; persistence makes it
-the *only* hole.
+the _only_ hole.
 
 Options enumerated:
 

@@ -192,7 +192,9 @@
     var more = document.getElementById("journal-browser-more");
     if (!rows) return;
     fetch("/api/facts?after=" + browserCursor + "&limit=100")
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        return r.json();
+      })
       .then(function (page) {
         (page.facts || []).forEach(function (f) {
           rows.appendChild(factRow(f));
