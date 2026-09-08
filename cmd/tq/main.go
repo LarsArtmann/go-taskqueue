@@ -1384,6 +1384,34 @@ func printDLQ(tasks []task.Task) {
 	}
 }
 
+// partitionFlags moves flag tokens ahead of positional arguments:
+// flag.Parse stops at the first positional, so the documented
+// `tq cancel <task-id> --reason why` order needs its flags hoisted to
+// parse. valued names the flags that consume the following token;
+// `--flag=value` forms need no lookahead.
+func partitionFlags(args []string, valued map[string]bool) []string {
+	var flags, positional []string
+
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if len(a) > 1 && a[0] == '-' {
+			flags = append(flags, a)
+
+			name := strings.TrimLeft(a, "-")
+			if !strings.Contains(name, "=") && valued[name] && i+1 < len(args) {
+				i++
+				flags = append(flags, args[i])
+			}
+
+			continue
+		}
+
+		positional = append(positional, a)
+	}
+
+	return append(flags, positional...)
+}
+
 func cmdCancel(args []string) error {
 	fs := flag.NewFlagSet("cancel", flag.ExitOnError)
 
@@ -1400,7 +1428,7 @@ func cmdCancel(args []string) error {
 	)
 
 	db := dbFlag(fs)
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(partitionFlags(args, map[string]bool{"reason": true, "db": true})); err != nil {
 		return err
 	}
 

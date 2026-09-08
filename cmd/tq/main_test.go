@@ -16,6 +16,38 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
+func TestPartitionFlags(t *testing.T) {
+	valued := map[string]bool{"reason": true, "db": true}
+
+	tests := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{"flags first stays put", []string{"--reason", "why", "id1"}, []string{"--reason", "why", "id1"}},
+		{"documented order is hoisted", []string{"id1", "--reason", "why"}, []string{"--reason", "why", "id1"}},
+		{"mixed flags and positionals", []string{"id1", "--db", "x.db", "--force", "id2"}, []string{"--db", "x.db", "--force", "id1", "id2"}},
+		{"equals form needs no lookahead", []string{"id1", "--reason=why"}, []string{"--reason=why", "id1"}},
+		{"positionals only", []string{"id1"}, []string{"id1"}},
+		{"empty", nil, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := partitionFlags(tt.args, valued)
+			if len(got) != len(tt.want) {
+				t.Fatalf("partitionFlags(%q) = %q, want %q", tt.args, got, tt.want)
+			}
+
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("partitionFlags(%q)[%d] = %q, want %q", tt.args, i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}
+
 func TestSplitRepos(t *testing.T) {
 	tests := []struct {
 		name string
