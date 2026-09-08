@@ -9,6 +9,9 @@ Every `docs/status/*.md` file must have a row here — `scripts/check-status-ind
 
 | Date       | Report                                                                         | Scope                                                          |
 | ---------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| 2026-09-09 | `2026-09-09_01-43_21-40-backlog-sweep-20-items-two-real-bugs.md`               | 21:40 backlog sweep: 20 items done, budget-bypass + FactsForTask bugs fixed |
+| 2026-09-09 | `2026-09-09_01-35_lan-dashboard-redesign-and-admin-writes-status.md`           | LAN dashboard redesign + admin writes (concurrent session)     |
+| 2026-09-09 | `2026-09-09_00-21_board-view-shipped-concurrent-session-report.md`             | Board view shipped (concurrent session)                        |
 | 2026-09-08 | `2026-09-08_23-48_round8-systemnix-evo-x2-integration-execution.md`             | SystemNix/Evo-x2 integration (NixOS module, flake wiring)      |
 | 2026-09-08 | `2026-09-08_23-10_round9-dogfood-pool-relaunch-first-live-review-window.md`     | Round-9 dogfood relaunch: full loop + first live review approve |
 | 2026-09-08 | `2026-09-08_22-42_fleet-onboarding-agent-pool-integration-status.md`            | Fleet onboarding (discovery daemon, watch SSE)                 |

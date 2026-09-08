@@ -12,6 +12,8 @@ docs=(README.md AGENTS.md CONTRIBUTING.md CHANGELOG.md FEATURES.md ROADMAP.md)
 allow=(
 	'^go-taskqueue/internal/' # module import path in code samples (README)
 	'^encoding/json/'         # stdlib json/v2 import path (AGENTS.md GOEXPERIMENT bullet)
+	'^docs/services/'         # SystemNix repo paths cited as deploy targets (CHANGELOG round-8)
+	'^modules/nixos/'         # SystemNix house module cited as the deployed shape (FEATURES round-8)
 )
 
 fail=0
