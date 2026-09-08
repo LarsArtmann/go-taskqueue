@@ -33,7 +33,7 @@ func testPostgresStore(t *testing.T) *PostgresStore {
 
 	// Deterministic isolation: the database persists between runs, so each
 	// test starts from an empty queue and journal.
-	if _, err := s.pool.Exec(ctx, `TRUNCATE tasks, deps, facts RESTART IDENTITY`); err != nil {
+	if _, err := s.pool.Exec(ctx, `TRUNCATE tasks, deps, facts, watermarks RESTART IDENTITY`); err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 
@@ -178,6 +178,28 @@ func TestPostgresLifecycle(t *testing.T) {
 	tail, err := s.LastFacts(ctx, 3)
 	if err != nil || len(tail) != 3 {
 		t.Fatalf("last facts = %d (%v)", len(tail), err)
+	}
+}
+
+func TestPostgresWatermark(t *testing.T) {
+	s := testPostgresStore(t)
+	ctx := context.Background()
+
+	if seq, err := s.Watermark(ctx, "consumer-a"); err != nil || seq != 0 {
+		t.Fatalf("absent watermark = %d (%v), want 0", seq, err)
+	}
+
+	if err := s.SaveWatermark(ctx, "consumer-a", 9); err != nil {
+		t.Fatalf("SaveWatermark: %v", err)
+	}
+
+	// The monotonic guard holds under the GREATEST upsert.
+	if err := s.SaveWatermark(ctx, "consumer-a", 4); err != nil {
+		t.Fatalf("SaveWatermark regression: %v", err)
+	}
+
+	if seq, err := s.Watermark(ctx, "consumer-a"); err != nil || seq != 9 {
+		t.Fatalf("watermark after regression = %d (%v), want 9", seq, err)
 	}
 }
 
