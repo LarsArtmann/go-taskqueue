@@ -31,7 +31,36 @@ func testPostgresStore(t *testing.T) *PostgresStore {
 
 	t.Cleanup(func() { _ = s.Close() })
 
+	// Deterministic isolation: the database persists between runs, so each
+	// test starts from an empty queue and journal.
+	if _, err := s.pool.Exec(ctx, `TRUNCATE tasks, deps, facts RESTART IDENTITY`); err != nil {
+		t.Fatalf("truncate: %v", err)
+	}
+
 	return s
+}
+
+// claimUntil claims tasks until the wanted one is held; anything claimed
+// on the way is completed (ClaimDue returns an arbitrary due task).
+func claimUntil(t *testing.T, s *PostgresStore, ctx context.Context, want task.ID, owner string, lease time.Duration) {
+	t.Helper()
+
+	for range 50 {
+		got, err := s.ClaimDue(ctx, owner, lease)
+		if err != nil {
+			t.Fatalf("claim-until %s: %v", want, err)
+		}
+
+		if got.ID == want {
+			return
+		}
+
+		if err := s.Complete(ctx, got.ID, owner, nil); err != nil {
+			t.Fatalf("complete bystander %s: %v", got.ID, err)
+		}
+	}
+
+	t.Fatalf("never claimed %s", want)
 }
 
 // TestPostgresLifecycle pins the core semantics against the Postgres
@@ -52,17 +81,6 @@ func TestPostgresLifecycle(t *testing.T) {
 
 	if enq.Status != task.Pending {
 		t.Fatalf("fresh task status = %s", enq.Status)
-	}
-
-	// Dedup: same key returns the stored task unchanged.
-	again, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, DedupKey: "conf-dedup"})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	stored, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, DedupKey: "conf-dedup"})
-	if err != nil || again.ID != stored.ID {
-		t.Fatalf("dedup key not idempotent: %v vs %v (%v)", again.ID, stored.ID, err)
 	}
 
 	// Exclusive claim.
@@ -109,9 +127,7 @@ func TestPostgresLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
-		t.Fatal(err)
-	}
+	claimUntil(t, s, ctx, retry.ID, "w1", time.Minute)
 
 	if err := s.Fail(ctx, retry.ID, "w1", "boom", time.Millisecond); err != nil {
 		t.Fatalf("fail: %v", err)
@@ -127,27 +143,16 @@ func TestPostgresLifecycle(t *testing.T) {
 		t.Fatalf("rescue: %v", err)
 	}
 
-	// Orphan marking on an expired lease.
-	orphan, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project})
+	// Dedup: same key returns the stored task unchanged.
+	again, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, DedupKey: "conf-dedup"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "victim", time.Nanosecond); err != nil {
-		t.Fatal(err)
+	stored, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, DedupKey: "conf-dedup"})
+	if err != nil || again.ID != stored.ID {
+		t.Fatalf("dedup key not idempotent: %v vs %v (%v)", again.ID, stored.ID, err)
 	}
-
-	time.Sleep(5 * time.Millisecond)
-
-	if n, err := s.MarkOrphaned(ctx, time.Now()); err != nil || n < 1 {
-		t.Fatalf("mark-orphaned = %d (%v), want >= 1", n, err)
-	}
-
-	if n, err := s.MarkOrphaned(ctx, time.Now()); err != nil || n != 0 {
-		t.Fatalf("second mark-orphaned = %d (%v), want 0", n, err)
-	}
-
-	_ = orphan
 
 	// Read surface: counts, watermark, facts cursor, per-task trail.
 	counts, err := s.StatusCounts(ctx)
@@ -232,4 +237,78 @@ func TestPostgresClaimExclusivityUnderConcurrency(t *testing.T) {
 			t.Fatalf("claim stall: %d/%d claimed", len(seen), n)
 		}
 	}
+}
+
+// TestPostgresOrphanMarking: an expired-lease Running task is recorded as
+// orphaned exactly once (fresh database, so the short lease never races
+// bystander claims).
+func TestPostgresOrphanMarking(t *testing.T) {
+	s := testPostgresStore(t)
+	ctx := context.Background()
+
+	orphan, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "conf-orphan"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "victim", time.Nanosecond); err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(5 * time.Millisecond)
+
+	if n, err := s.MarkOrphaned(ctx, time.Now()); err != nil || n != 1 {
+		t.Fatalf("mark-orphaned = %d (%v), want 1", n, err)
+	}
+
+	if n, err := s.MarkOrphaned(ctx, time.Now()); err != nil || n != 0 {
+		t.Fatalf("second mark-orphaned = %d (%v), want 0", n, err)
+	}
+
+	got, err := s.Get(ctx, orphan.ID)
+	if err != nil || got.Status != task.Running {
+		t.Fatalf("orphan status = %s (%v), want still running (observation only)", got.Status, err)
+	}
+}
+
+// TestPostgresBaseline1k measures Postgres throughput for the ADR-0007
+// record (env-gated like the SQLite baseline). Skipped unless both
+// TQ_TEST_POSTGRES and TQ_BASELINE are set.
+func TestPostgresBaseline1k(t *testing.T) {
+	if os.Getenv("TQ_BASELINE") == "" {
+		t.Skip("on-demand baseline: run with TQ_BASELINE=1")
+	}
+
+	s := testPostgresStore(t)
+	ctx := context.Background()
+
+	const n = 1_000
+
+	start := time.Now()
+	for i := range n {
+		if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "bench"}); err != nil {
+			t.Fatalf("enqueue %d: %v", i, err)
+		}
+	}
+
+	enqueueDur := time.Since(start)
+
+	start = time.Now()
+	const work = 1_000
+	for range work {
+		got, err := s.ClaimDue(ctx, "bench", time.Minute)
+		if err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := s.Complete(ctx, got.ID, "bench", nil); err != nil {
+			t.Fatalf("complete: %v", err)
+		}
+	}
+
+	claimDur := time.Since(start)
+
+	t.Logf("postgres baseline 1k: enqueue %d in %v (%.0f/s), claim+complete %d in %v (%.0f/s)",
+		n, enqueueDur, float64(n)/enqueueDur.Seconds(),
+		work, claimDur, float64(work)/claimDur.Seconds())
 }

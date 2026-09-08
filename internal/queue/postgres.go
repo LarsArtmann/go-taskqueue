@@ -151,16 +151,20 @@ func scanPGTask(row pgx.Row) (task.Task, error) {
 		completedAt  *int64
 	)
 
+	var notBefore, createdAt, updatedAt int64
+
 	err := row.Scan(&id, &t.Project, &t.Type, &payload, &depsJSON, &t.Priority,
-		&t.Attempts, &t.MaxAttempts, &t.NotBefore, &t.Status, &t.LeaseOwner,
-		&leaseExpires, &t.LastError, &t.CreatedAt, &t.UpdatedAt, &completedAt)
+		&t.Attempts, &t.MaxAttempts, &notBefore, &t.Status, &t.LeaseOwner,
+		&leaseExpires, &t.LastError, &createdAt, &updatedAt, &completedAt)
 	if err != nil {
 		return task.Task{}, err
 	}
 
 	t.ID = task.ID(id)
 	t.Payload = json.RawMessage(payload)
-	t.NotBefore = time.UnixMilli(time.Time(t.NotBefore).UnixMilli())
+	t.NotBefore = time.UnixMilli(notBefore)
+	t.CreatedAt = time.UnixMilli(createdAt)
+	t.UpdatedAt = time.UnixMilli(updatedAt)
 
 	if err := json.Unmarshal([]byte(depsJSON), &t.Deps); err != nil && depsJSON != "" && depsJSON != "[]" {
 		return task.Task{}, fmt.Errorf("queue: decode deps: %w", err)
@@ -522,9 +526,9 @@ func (s *PostgresStore) Fail(ctx context.Context, id task.ID, owner string, errT
 		}
 
 		tag, err := tx.Exec(ctx, `
-			UPDATE tasks SET status = 'pending', attempts = ?, updated_at = ?,
-			                 not_before = ?, lease_owner = '', lease_expires = NULL, last_error = ?
-			WHERE id = ? AND status = 'running' AND lease_owner = ?`,
+			UPDATE tasks SET status = 'pending', attempts = $1, updated_at = $2,
+			                 not_before = $3, lease_owner = '', lease_expires = NULL, last_error = $4
+			WHERE id = $5 AND status = 'running' AND lease_owner = $6`,
 			attempts, now.UnixMilli(), now.Add(backoff).UnixMilli(), errText, id.String(), owner)
 		if err != nil {
 			return err
@@ -591,9 +595,9 @@ func (s *PostgresStore) Requeue(ctx context.Context, id task.ID, owner string, e
 		now := time.Now()
 
 		tag, err := tx.Exec(ctx, `
-			UPDATE tasks SET status = 'pending', updated_at = ?, not_before = ?,
-			                 lease_owner = '', lease_expires = NULL, last_error = ?
-			WHERE id = ? AND status = 'running' AND lease_owner = ?`,
+			UPDATE tasks SET status = 'pending', updated_at = $1, not_before = $2,
+			                 lease_owner = '', lease_expires = NULL, last_error = $3
+			WHERE id = $4 AND status = 'running' AND lease_owner = $5`,
 			now.UnixMilli(), now.Add(delay).UnixMilli(), errText, id.String(), owner)
 		if err != nil {
 			return err
@@ -614,8 +618,8 @@ func (s *PostgresStore) Heartbeat(ctx context.Context, id task.ID, owner string,
 	now := time.Now()
 
 	tag, err := s.pool.Exec(ctx, `
-		UPDATE tasks SET lease_expires = ?, updated_at = ?
-		WHERE id = ? AND status = 'running' AND lease_owner = ?`,
+		UPDATE tasks SET lease_expires = $1, updated_at = $2
+		WHERE id = $3 AND status = 'running' AND lease_owner = $4`,
 		now.Add(extend).UnixMilli(), now.UnixMilli(), id.String(), owner)
 	if err != nil {
 		return err
@@ -647,8 +651,8 @@ func (s *PostgresStore) Cancel(ctx context.Context, id task.ID) error {
 		}
 
 		tag, err := tx.Exec(ctx, `
-			UPDATE tasks SET status = 'cancelled', updated_at = ?, lease_owner = '', lease_expires = NULL
-			WHERE id = ? AND status = 'pending'`, time.Now().UnixMilli(), id.String())
+			UPDATE tasks SET status = 'cancelled', updated_at = $1, lease_owner = '', lease_expires = NULL
+			WHERE id = $2 AND status = 'pending'`, time.Now().UnixMilli(), id.String())
 		if err != nil {
 			return err
 		}
@@ -710,8 +714,8 @@ func (s *PostgresStore) CancelRequested(ctx context.Context, id task.ID) (bool, 
 func (s *PostgresStore) CancelOwned(ctx context.Context, id task.ID, owner string) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `
-			UPDATE tasks SET status = 'cancelled', updated_at = ?, lease_owner = '', lease_expires = NULL
-			WHERE id = ? AND status = 'running' AND lease_owner = ?`,
+			UPDATE tasks SET status = 'cancelled', updated_at = $1, lease_owner = '', lease_expires = NULL
+			WHERE id = $2 AND status = 'running' AND lease_owner = $3`,
 			time.Now().UnixMilli(), id.String(), owner)
 		if err != nil {
 			return err
@@ -911,15 +915,20 @@ func (s *PostgresStore) List(ctx context.Context, f Filter) ([]task.Task, error)
 			completedAt  *int64
 		)
 
+		var notBefore, createdAt, updatedAt int64
+
 		err := rows.Scan(&id, &t.Project, &t.Type, &payload, &depsJSON, &t.Priority,
-			&t.Attempts, &t.MaxAttempts, &t.NotBefore, &t.Status, &t.LeaseOwner,
-			&leaseExpires, &t.LastError, &t.CreatedAt, &t.UpdatedAt, &completedAt)
+			&t.Attempts, &t.MaxAttempts, &notBefore, &t.Status, &t.LeaseOwner,
+			&leaseExpires, &t.LastError, &createdAt, &updatedAt, &completedAt)
 		if err != nil {
 			return nil, err
 		}
 
 		t.ID = task.ID(id)
 		t.Payload = json.RawMessage(payload)
+		t.NotBefore = time.UnixMilli(notBefore)
+		t.CreatedAt = time.UnixMilli(createdAt)
+		t.UpdatedAt = time.UnixMilli(updatedAt)
 		_ = json.Unmarshal([]byte(depsJSON), &t.Deps)
 
 		if leaseExpires != nil {
@@ -939,14 +948,15 @@ func (s *PostgresStore) List(ctx context.Context, f Filter) ([]task.Task, error)
 }
 
 func scanFactRow(scanner interface{ Scan(...any) error }) (journal.Fact, error) {
-	var f journal.Fact
-
 	var (
+		f             journal.Fact
 		taskID, ftype string
 		detail        string
+		millis        int64
 	)
 
-	err := scanner.Scan(&f.Seq, &f.Time, &taskID, &ftype, &f.Owner, &f.Attempt, &f.Error, &detail)
+	err := scanner.Scan(&f.Seq, &millis, &taskID, &ftype, &f.Owner, &f.Attempt, &f.Error, &detail)
+	f.Time = time.UnixMilli(millis)
 	f.TaskID, f.Type, f.Detail = taskID, journal.FactType(ftype), json.RawMessage(detail)
 
 	return f, err

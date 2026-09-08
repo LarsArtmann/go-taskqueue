@@ -78,6 +78,34 @@ jobs:
       - name: Test
         run: go test ./... -count=1 -timeout 300s
 
+  test-postgres:
+    # Postgres store conformance (round-5 M21/ADR-0007): the same semantics
+    # as the SQLite gate, against a real database via TQ_TEST_POSTGRES.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tq
+          POSTGRES_PASSWORD: tq
+          POSTGRES_DB: tqtest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tq"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TQ_TEST_POSTGRES: postgres://tq:tq@localhost:5432/tqtest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: stable
+      - name: Postgres store conformance
+        run: go test ./internal/queue/ -run TestPostgres -count=1 -v
+
   nix:
     runs-on: ubuntu-latest
     steps:
