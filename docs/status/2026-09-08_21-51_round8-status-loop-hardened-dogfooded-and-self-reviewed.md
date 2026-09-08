@@ -16,16 +16,16 @@ the whole point by minting the next 25 work items itself.
 
 ## Stat cards
 
-| Metric | Value |
-| --- | --- |
-| TODO_LIST items closed this session | 10 authored + 9 verified (concurrent agents' work) |
-| Owner-BLOCKED items left | 5 (all genuinely need the owner) |
-| New tests | 6 (verify gate, require-clean/allow-dirty, task-timeout, status badges, resultDetail, watermark liveness) |
-| Live dogfood window | 22 completions → 1 report (14KB), 25 next items, `StatusResult{report, next_items:25}` in the fact |
-| Race suite | 17/17 packages ok (`-race -count=1`) |
-| ci-local | ALL GATES GREEN incl. the new status-loop smoke + nix flake checks |
-| Queue state at close | 23 completed, 6 cancelled (stale), 0 dead, sweeper lag 0 |
-| Things I fucked up or dodged | 4 (section d) |
+| Metric                              | Value                                                                                                     |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| TODO_LIST items closed this session | 10 authored + 9 verified (concurrent agents' work)                                                        |
+| Owner-BLOCKED items left            | 5 (all genuinely need the owner)                                                                          |
+| New tests                           | 6 (verify gate, require-clean/allow-dirty, task-timeout, status badges, resultDetail, watermark liveness) |
+| Live dogfood window                 | 22 completions → 1 report (14KB), 25 next items, `StatusResult{report, next_items:25}` in the fact        |
+| Race suite                          | 17/17 packages ok (`-race -count=1`)                                                                      |
+| ci-local                            | ALL GATES GREEN incl. the new status-loop smoke + nix flake checks                                        |
+| Queue state at close                | 23 completed, 6 cancelled (stale), 0 dead, sweeper lag 0                                                  |
+| Things I fucked up or dodged        | 4 (section d)                                                                                             |
 
 ---
 
@@ -185,12 +185,12 @@ the whole point by minting the next 25 work items itself.
    ptys/log handles.
 7. **Session discipline**: no plan file was written this round (previous rounds
    produced pareto plan docs). "GET SHIT DONE" justified it, but the plan docs
-   have repeatedly proven their worth for the *next* session's resume.
+   have repeatedly proven their worth for the _next_ session's resume.
 
 ## f) UP TO 50 NEXT THINGS
 
-*Items 1–25 are the live status agent's own mints (TODO_LIST.md, eat via the
-pool); 26–50 are mine, smaller and more surgical.*
+_Items 1–25 are the live status agent's own mints (TODO_LIST.md, eat via the
+pool); 26–50 are mine, smaller and more surgical._
 
 1–25. See TODO_LIST.md's unchecked, non-BLOCKED lines (minted 21:40, commit
 `b0c5899`) — the pool eats these directly; I deliberately did not duplicate

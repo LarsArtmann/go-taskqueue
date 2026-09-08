@@ -258,7 +258,8 @@ func runDispatch(t *testing.T, args []string) (exitCode int, stdout, stderr stri
 	}
 
 	exitErr := &exec.ExitError{}
-	ok := errors.As(err, &exitErr)
+
+	exitErr, ok := errors.AsType[*exec.ExitError](err)
 	if !ok {
 		t.Fatalf("expected exit error, got %v (stdout: %q)", err, out.String())
 	}
