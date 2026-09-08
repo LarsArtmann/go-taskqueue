@@ -566,6 +566,16 @@ func cmdAgentPool(args []string) error {
 	)
 	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
 	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
+	repoTimeout := fs.String(
+		"repo-timeout",
+		"",
+		"per-repo agent-task timeout ladder: name=duration,comma-separated (e.g. big-repo=60m,tiny=10m; pinned into harvested payloads, repos without an entry keep the 30m default)",
+	)
+	maxAgents := fs.Int(
+		"max-concurrent-agents",
+		0,
+		"cap agent processes MACHINE-WIDE across every tq pool on this host via slot files (0 = uncapped)",
+	)
 	reviewAutofix := fs.Bool(
 		"review-autofix",
 		false,
@@ -597,6 +607,28 @@ func cmdAgentPool(args []string) error {
 	}
 
 	cfg := harvest.Config{ProjectsDir: *projectsDir, MaxPerTick: *maxPerTick, Model: *model, DLQBackoff: *dlqBackoff}
+	if *repoTimeout != "" {
+		cfg.RepoTimeouts = make(map[string]time.Duration)
+
+		for spec := range strings.SplitSeq(*repoTimeout, ",") {
+			spec = strings.TrimSpace(spec)
+			if spec == "" {
+				continue
+			}
+
+			name, dur, ok := strings.Cut(spec, "=")
+			if !ok {
+				return fmt.Errorf("--repo-timeout: want name=duration, got %q", spec)
+			}
+
+			d, err := time.ParseDuration(strings.TrimSpace(dur))
+			if err != nil {
+				return fmt.Errorf("--repo-timeout: %q: %w", spec, err)
+			}
+
+			cfg.RepoTimeouts[strings.TrimSpace(name)] = d
+		}
+	}
 	if *repoInterval != "" {
 		cfg.RepoIntervals = make(map[string]time.Duration)
 
@@ -669,6 +701,14 @@ func cmdAgentPool(args []string) error {
 
 	if *cqaURL != "" {
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick\n", *cqaURL)
+	}
+
+	// Version probe: a missing or broken agent binary should be a startup
+	// warning, not a mid-task surprise (the first harvested item would fail).
+	if version, err := executor.AgentVersion(context.Background(), ""); err != nil {
+		fmt.Fprintf(os.Stderr, "tq: WARNING: agent binary probe failed: %v (agent tasks cannot run; TQ_AGENT_BIN overrides)\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: agent binary: %s\n", version)
 	}
 
 	if *doReview {

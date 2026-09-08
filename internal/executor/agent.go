@@ -85,6 +85,10 @@ type AgentExecutor struct {
 	// has no yolo flag; see AgentPayload.Yolo for how autonomy is actually
 	// granted (repo-local crush config). Fail closed, never silently.
 	Yolo bool
+	// MaxConcurrent caps how many agent processes run at once MACHINE-WIDE
+	// (flock'd slot files shared across every tq process on the host; 0 =
+	// uncapped). Caps cost when several pools share a machine.
+	MaxConcurrent int
 }
 
 // NewAgentExecutor builds an AgentExecutor for a projects directory.
@@ -106,6 +110,34 @@ func (e *AgentExecutor) binary() string {
 	}
 
 	return DefaultAgentBinary
+}
+
+// AgentVersion probes the agent binary's --version line (first stdout
+// line, trimmed). Pools call it at startup so a missing/stale binary is a
+// warning, not a surprise mid-task.
+func AgentVersion(ctx context.Context, bin string) (string, error) {
+	if bin == "" {
+		bin = DefaultAgentBinary
+	}
+
+	if _, err := exec.LookPath(bin); err != nil {
+		return "", fmt.Errorf("%q not found on PATH: %w", bin, err)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	out, err := exec.CommandContext(ctx, bin, "--version").Output()
+	if err != nil {
+		return "", fmt.Errorf("%s --version: %w", bin, err)
+	}
+
+	version := strings.TrimSpace(string(out))
+	if i := strings.IndexByte(version, '\n'); i >= 0 {
+		version = version[:i]
+	}
+
+	return version, nil
 }
 
 // Execute guards the repo, runs the agent, then runs the verify command.
@@ -132,6 +164,16 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	if err != nil {
 		return Permanent(err)
 	}
+
+	// Machine-wide agent cap: block until a slot frees up. Acquired before
+	// the dirty-tree preflight so a waiting task does not hold a slot (and
+	// a crashed process releases its flock via the kernel).
+	releaseSlot, err := acquireAgentSlot(ctx, e.MaxConcurrent)
+	if err != nil {
+		return fmt.Errorf("agent: slot: %w", err)
+	}
+
+	defer releaseSlot()
 
 	if requireClean(p) {
 		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {

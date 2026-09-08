@@ -85,6 +85,11 @@ type Config struct {
 	// the interval has passed. Empty or zero entries = only the default
 	// one-per-tick pacing applies.
 	RepoIntervals map[string]time.Duration
+	// RepoTimeouts sets a per-repo agent-task timeout ladder (by repo
+	// name), pinned into each harvested payload's TimeoutMinutes: big
+	// repos get long ceilings, quick ones stay tight. Repos without an
+	// entry keep the executor's 30-minute default.
+	RepoTimeouts map[string]time.Duration
 	// DLQBackoff pauses harvesting of a repo whose recent work all went to
 	// the dead-letter queue (dead tasks present, none completed, newest
 	// dead within the window): the repo is poisoned until a human fixes or
@@ -377,7 +382,7 @@ func (h *Harvester) buildPayload(it Item, prompt, dedupKey string) ([]byte, erro
 
 	// Pin the repo's own verify command into the payload when it declares
 	// one, so the task records what it will be gated by.
-	payload, err := json.Marshal(harvestPayload{
+	payload := harvestPayload{
 		AgentPayload: executor.AgentPayload{
 			Repo:         repo,
 			Prompt:       prompt,
@@ -386,12 +391,20 @@ func (h *Harvester) buildPayload(it Item, prompt, dedupKey string) ([]byte, erro
 			RequireClean: h.cfg.RequireClean,
 		},
 		Dedup: dedupKey,
-	})
+	}
+
+	// Per-repo timeout ladder: pin the ceiling into the payload so the
+	// executor honors it without knowing the harvester.
+	if d, ok := h.cfg.RepoTimeouts[it.RepoName]; ok && d > 0 {
+		payload.TimeoutMinutes = int(d / time.Minute)
+	}
+
+	encoded, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("harvest: encode payload: %w", err)
 	}
 
-	return payload, nil
+	return encoded, nil
 }
 
 // harvestPayload is the agent payload plus the harvester's dedup key. The
