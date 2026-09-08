@@ -14,6 +14,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -63,6 +64,14 @@ TQ_RESULT: {"files_changed": ["path/of/changed/file.go"], "commit_sha": "the com
 type Config struct {
 	// ProjectsDir is scanned (depth 1) for repos containing TodoFile.
 	ProjectsDir string
+	// DiscoveryAddr points at a project-discovery-daemon endpoint (unix
+	// socket path, unix:// prefixed, or host:port) used INSTEAD of the
+	// depth-1 ProjectsDir scan to enumerate candidate repos. Additive by
+	// contract: an unreachable daemon logs one warning per tick and the
+	// scan takes over. Empty keeps the zero-external-services default.
+	DiscoveryAddr string
+	// Log receives the daemon-discovery degradation warning; nil discards.
+	Log *slog.Logger
 	// Repos lists explicit repo directories; when set, ProjectsDir is ignored.
 	Repos []string
 	// Type is the task type enqueued (must match a registered executor).
@@ -180,7 +189,7 @@ func (h *Harvester) Run(ctx context.Context) (Result, error) {
 
 		var err error
 
-		repos, err = DiscoverRepos(h.cfg.ProjectsDir, h.cfg.TodoFile)
+		repos, err = DiscoverReposFor(ctx, h.cfg.DiscoveryAddr, h.cfg.ProjectsDir, h.cfg.TodoFile, h.cfg.Log)
 		if err != nil {
 			return res, fmt.Errorf("harvest: discover repos: %w", err)
 		}

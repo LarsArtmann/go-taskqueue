@@ -416,6 +416,11 @@ func cmdHarvest(args []string) error {
 		"",
 		"glob filter on repo names discovered under --projects-dir (e.g. 'go-*'); ignored with --repos",
 	)
+	discoveryAddr := fs.String(
+		"discovery-addr",
+		os.Getenv("TQ_DISCOVERY_ADDR"),
+		"project-discovery-daemon endpoint for repo discovery INSTEAD of the local scan: unix socket (/run/project-discovery/daemon.sock, unix:// ok) or host:port; unreachable daemon = warning + local scan fallback ($TQ_DISCOVERY_ADDR)",
+	)
 	dryRun := fs.Bool("dry-run", false, "report what would be enqueued, change nothing")
 	asJSON := fs.Bool("json", false, "JSON output of the harvest result")
 
@@ -433,14 +438,16 @@ func cmdHarvest(args []string) error {
 	}
 
 	cfg := harvest.Config{
-		ProjectsDir: *projectsDir,
-		TodoFile:    *todoFile,
-		Type:        *taskType,
-		MaxPerTick:  *maxPerTick,
-		Priority:    *priority,
-		MaxAttempts: *maxAttempts,
-		Model:       *model,
-		DryRun:      *dryRun,
+		ProjectsDir:   *projectsDir,
+		DiscoveryAddr: *discoveryAddr,
+		Log:           slog.Default(),
+		TodoFile:      *todoFile,
+		Type:          *taskType,
+		MaxPerTick:    *maxPerTick,
+		Priority:      *priority,
+		MaxAttempts:   *maxAttempts,
+		Model:         *model,
+		DryRun:        *dryRun,
 	}
 
 	if *allowDirty {
@@ -476,7 +483,8 @@ func cmdHarvest(args []string) error {
 
 // resolveHarvestRepos applies the --repos / --repo-subset flag pair to the
 // harvest config. Both empty leaves ProjectsDir as-is (discover every repo);
-// --repos wins over --projects-dir, --repo-subset filters discovered repos.
+// --repos wins over --projects-dir, --repo-subset filters discovered repos
+// (daemon-backed when --discovery-addr is set, same fallback as the ticks).
 func resolveHarvestRepos(cfg *harvest.Config, projectsDir, repos, subset string) error {
 	if repos != "" {
 		cfg.ProjectsDir = ""
@@ -489,7 +497,7 @@ func resolveHarvestRepos(cfg *harvest.Config, projectsDir, repos, subset string)
 		return nil
 	}
 
-	found, err := harvest.DiscoverRepos(projectsDir, cfg.TodoFile)
+	found, err := harvest.DiscoverReposFor(context.Background(), cfg.DiscoveryAddr, projectsDir, cfg.TodoFile, cfg.Log)
 	if err != nil {
 		return fmt.Errorf("discover repos: %w", err)
 	}
@@ -538,6 +546,11 @@ func cmdAgentPool(args []string) error {
 	)
 	repos := fs.String("repos", "", "comma-separated repo dirs (overrides --projects-dir)")
 	interval := fs.Duration("interval", 5*time.Minute, "harvest cadence")
+	discoveryAddr := fs.String(
+		"discovery-addr",
+		os.Getenv("TQ_DISCOVERY_ADDR"),
+		"project-discovery-daemon endpoint for repo discovery INSTEAD of the local scan each tick: unix socket (/run/project-discovery/daemon.sock, unix:// ok) or host:port; unreachable daemon = warning + local scan fallback ($TQ_DISCOVERY_ADDR)",
+	)
 	conc := fs.Int("concurrency", 1, "parallel agents (repos are paced: one in-flight backlog item per repo)")
 	poll := fs.Duration("poll", 500*time.Millisecond, "idle poll interval")
 	lease := fs.Duration("lease", 5*time.Minute, "claim lease length (agents are slow; heartbeats keep it alive)")
@@ -671,7 +684,13 @@ func cmdAgentPool(args []string) error {
 		return err
 	}
 
-	cfg := harvest.Config{ProjectsDir: *projectsDir, MaxPerTick: *maxPerTick, Model: *model, DLQBackoff: *dlqBackoff}
+	cfg := harvest.Config{
+		ProjectsDir:   *projectsDir,
+		DiscoveryAddr: *discoveryAddr,
+		MaxPerTick:    *maxPerTick,
+		Model:         *model,
+		DLQBackoff:    *dlqBackoff,
+	}
 	if *repoTimeout != "" {
 		cfg.RepoTimeouts = make(map[string]time.Duration)
 
@@ -827,6 +846,7 @@ func cmdAgentPool(args []string) error {
 	}
 
 	log := slog.Default()
+	cfg.Log = log
 	guard := budget.Guard{DailyCap: *dailyBudget, BudgetCmd: *budgetCmd}
 	h := harvest.New(q, cfg)
 
