@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"os"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -1474,10 +1475,10 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Claim the only due task with a near-zero lease, then immediately
-	// claim the next one with a live lease: deterministic despite
-	// ClaimDue returning an arbitrary due task (only one is due each time).
-	if _, err := s.ClaimDue(ctx, "victim", time.Millisecond); err != nil {
+	// Deterministic despite ClaimDue returning an ARBITRARY due task:
+	// claim A as the only task (short-but-not-tiny lease), then claim B
+	// immediately — A is not reclaimable yet, so B is the only due task.
+	if _, err := s.ClaimDue(ctx, "victim", 100*time.Millisecond); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1490,7 +1491,7 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Millisecond) // victim's lease dies; alive's stays
+	time.Sleep(150 * time.Millisecond) // victim's lease dies; alive's stays
 
 	n, err := s.MarkOrphaned(ctx, time.Now())
 	if err != nil {
@@ -1549,6 +1550,10 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 func TestEnqueueClaimBaseline10k(t *testing.T) {
 	if testing.Short() {
 		t.Skip("baseline measurement, skipped under -short")
+	}
+
+	if os.Getenv("TQ_BASELINE") == "" {
+		t.Skip("on-demand baseline: run with TQ_BASELINE=1 (10k writes are too slow for the default suite, especially under -race)")
 	}
 
 	ctx := context.Background()
