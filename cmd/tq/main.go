@@ -700,6 +700,11 @@ func cmdAgentPool(args []string) error {
 		0,
 		"sweep sidecar logs older than this age from --log-dir each tick (e.g. 168h = 7d; 0 = keep forever; $TQ_LOG_DIR_MAX_AGE)",
 	)
+	logDirMaxBytes := fs.Int64(
+		"log-dir-max-bytes",
+		0,
+		"cap the total size of sidecar logs in --log-dir: oldest *.log files are deleted each tick until the total fits (e.g. 5368709120 = 5GiB; 0 = uncapped; $TQ_LOG_DIR_MAX_BYTES)",
+	)
 	configPath := fs.String(
 		"config",
 		os.Getenv("TQ_POOL_CONFIG"),
@@ -726,6 +731,12 @@ func cmdAgentPool(args []string) error {
 	if envAge := os.Getenv("TQ_LOG_DIR_MAX_AGE"); envAge != "" && *logDirMaxAge == 0 {
 		if parsed, err := time.ParseDuration(envAge); err == nil {
 			*logDirMaxAge = parsed
+		}
+	}
+
+	if envBytes := os.Getenv("TQ_LOG_DIR_MAX_BYTES"); envBytes != "" && *logDirMaxBytes == 0 {
+		if parsed, err := strconv.ParseInt(envBytes, 10, 64); err == nil {
+			*logDirMaxBytes = parsed
 		}
 	}
 
@@ -953,6 +964,15 @@ func cmdAgentPool(args []string) error {
 				log.Warn("sidecar sweep failed", "err", err)
 			} else if removed > 0 {
 				log.Info("sidecar sweep", "removed", removed, "dir", *logDir)
+			}
+		}
+
+		// Byte-budget retention: age alone cannot bound a high-traffic dir.
+		if *logDir != "" && *logDirMaxBytes > 0 {
+			if removed, err := executor.SweepSidecarsByBytes(*logDir, *logDirMaxBytes); err != nil {
+				log.Warn("sidecar byte sweep failed", "err", err)
+			} else if removed > 0 {
+				log.Info("sidecar byte sweep", "removed", removed, "dir", *logDir)
 			}
 		}
 

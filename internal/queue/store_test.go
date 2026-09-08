@@ -1032,8 +1032,10 @@ func TestFactsForTaskFiltersAndBounds(t *testing.T) {
 		t.Fatalf("FactsForTask(other): %v", err)
 	}
 
-	if len(otherFacts) != 1 || otherFacts[0].Type != journal.Enqueued {
-		t.Fatalf("bounded trail = %+v, want only the latest (enqueued)", otherFacts)
+	// other is the FIRST-claimed task ([enqueued, claimed]); the bound
+	// returns the MOST RECENT fact, still in ascending order.
+	if len(otherFacts) != 1 || otherFacts[0].Type != journal.Claimed {
+		t.Fatalf("bounded trail = %+v, want exactly the most recent fact (claimed)", otherFacts)
 	}
 }
 

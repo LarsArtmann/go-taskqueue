@@ -1112,16 +1112,19 @@ func (s *PostgresStore) HeadSeq(ctx context.Context) (int64, error) {
 	return head, err
 }
 
-// FactsForTask returns one task's facts in Seq order.
+// FactsForTask returns one task's facts in Seq order; limit > 0 bounds to
+// the MOST RECENT n facts (same contract as the SQLite store).
 func (s *PostgresStore) FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error) {
 	q := `SELECT seq, time, task_id, type, owner, attempt, error, detail
-	      FROM facts WHERE task_id = $1 ORDER BY seq ASC`
+	      FROM facts WHERE task_id = $1`
 	args := []any{id}
 
 	if limit > 0 {
-		q += ` LIMIT $2`
+		q += ` ORDER BY seq DESC LIMIT $2`
 
 		args = append(args, limit)
+	} else {
+		q += ` ORDER BY seq ASC`
 	}
 
 	rows, err := s.pool.Query(ctx, q, args...)
@@ -1142,7 +1145,17 @@ func (s *PostgresStore) FactsForTask(ctx context.Context, id string, limit int) 
 		out = append(out, f)
 	}
 
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if limit > 0 {
+		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+			out[i], out[j] = out[j], out[i]
+		}
+	}
+
+	return out, nil
 }
 
 // CountFacts counts facts of one type since a time.
