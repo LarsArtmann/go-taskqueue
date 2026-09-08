@@ -844,9 +844,11 @@ func cmdAgentPool(args []string) error {
 		var err error
 
 		statusSweeper, err = status.NewSweeper(ctx, s, status.SweeperConfig{
-			Every: *statusEvery,
-			Model: *model,
-			Log:   log,
+			Every:       *statusEvery,
+			Model:       *model,
+			Log:         log,
+			AllowDirty:  *allowDirty,
+			TaskTimeout: *timeout,
 		})
 		if err != nil {
 			return fmt.Errorf("status sweeper: %w", err)

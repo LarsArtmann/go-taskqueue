@@ -380,3 +380,72 @@ func TestForeignAgentPayloadsAreSkipped(t *testing.T) {
 		t.Fatalf("stats = %+v, want skipped=1 enqueued=0", stats)
 	}
 }
+
+func TestSweeperRequireCleanMirrorsAllowDirty(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		allowDirty   bool
+		wantReqClean bool
+	}{
+		{name: "default pool requires clean", allowDirty: false, wantReqClean: true},
+		{name: "allow-dirty pool mints dirty-tolerant reports", allowDirty: true, wantReqClean: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			s := newTestStore(t)
+
+			sw, err := NewSweeper(context.Background(), s, SweeperConfig{Every: 1, AllowDirty: tt.allowDirty})
+			if err != nil {
+				t.Fatalf("NewSweeper: %v", err)
+			}
+
+			runAgentTask(t, s, 7, executor.AgentResult{})
+
+			if _, err := sw.Sweep(context.Background()); err != nil {
+				t.Fatalf("Sweep: %v", err)
+			}
+
+			reports := listByType(t, s, executor.TaskTypeStatus)
+			if len(reports) != 1 {
+				t.Fatalf("status tasks = %d, want 1", len(reports))
+			}
+
+			payload := payloadPayload(t, reports[0])
+			if payload.RequireClean == nil || *payload.RequireClean != tt.wantReqClean {
+				t.Fatalf("require_clean = %+v, want %v", payload.RequireClean, tt.wantReqClean)
+			}
+		})
+	}
+}
+
+func TestSweeperPinsTaskTimeoutIntoPayload(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+
+	sw, err := NewSweeper(context.Background(), s, SweeperConfig{Every: 1, TaskTimeout: 90 * time.Minute})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	runAgentTask(t, s, 9, executor.AgentResult{})
+
+	if _, err := sw.Sweep(context.Background()); err != nil {
+		t.Fatalf("Sweep: %v", err)
+	}
+
+	reports := listByType(t, s, executor.TaskTypeStatus)
+	if len(reports) != 1 {
+		t.Fatalf("status tasks = %d, want 1", len(reports))
+	}
+
+	payload := payloadPayload(t, reports[0])
+	if payload.TimeoutMinutes != 90 {
+		t.Fatalf("timeout_minutes = %d, want 90", payload.TimeoutMinutes)
+	}
+}

@@ -55,6 +55,16 @@ type SweeperConfig struct {
 	Log *slog.Logger
 	// PageSize bounds one fact-stream page; 0 selects the default.
 	PageSize int
+	// AllowDirty mirrors the pool's --allow-dirty: minted status payloads
+	// then tolerate an uncommitted tree (RequireClean=false). A
+	// multi-agent repo is effectively always dirty; without this the
+	// status preflight would requeue forever on an --allow-dirty pool.
+	AllowDirty bool
+	// TaskTimeout is pinned into minted payloads as TimeoutMinutes (0
+	// keeps the executor's default). The executor default (15m) is tuned
+	// for stub-y repos; a real done-prompt run PLUS the repo verify gate
+	// needs the pool's own task budget.
+	TaskTimeout time.Duration
 }
 
 // SweepStats summarizes one sweep pass.
@@ -286,13 +296,21 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		window = window[len(window)-maxWindowItems:]
 	}
 
-	payload, err := json.Marshal(executor.StatusPayload{
+	sp := executor.StatusPayload{
 		Repo:      agentPayload.Repo,
 		Project:   t.Project,
 		Completed: window,
 		Model:     s.cfg.Model,
 		Yolo:      agentPayload.Yolo,
-	})
+		// Mirror the operator's dirty-tree stance: an --allow-dirty pool
+		// must not have its status runs deadlocked by other agents' WIP.
+		RequireClean: ptr(!s.cfg.AllowDirty),
+	}
+	if s.cfg.TaskTimeout > 0 {
+		sp.TimeoutMinutes = int(s.cfg.TaskTimeout / time.Minute)
+	}
+
+	payload, err := json.Marshal(sp)
 	if err != nil {
 		stats.Skipped++
 
