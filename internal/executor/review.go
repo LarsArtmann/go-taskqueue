@@ -243,9 +243,9 @@ TQ_RESULT: {"verdict":"request_changes","summary":"...","findings":[{"title":"..
 // JSON must parse; findings with empty titles are dropped and severity
 // ratings are normalized to low/medium/high.
 func ParseResult(output string) (ReviewResult, error) {
-	m := resultLineRe.FindStringSubmatch(output)
-	if m == nil {
-		return ReviewResult{}, errors.New("output has no TQ_RESULT verdict line")
+	raw, err := ResultLine(output)
+	if err != nil {
+		return ReviewResult{}, err
 	}
 
 	var parsed struct {
@@ -254,7 +254,7 @@ func ParseResult(output string) (ReviewResult, error) {
 		Findings []ReviewFinding `json:"findings"`
 	}
 
-	if err := json.Unmarshal([]byte(m[1]), &parsed); err != nil {
+	if err := json.Unmarshal(raw, &parsed); err != nil {
 		return ReviewResult{}, fmt.Errorf("verdict JSON does not parse: %w", err)
 	}
 

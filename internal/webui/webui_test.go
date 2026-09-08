@@ -359,6 +359,60 @@ func tableFragment(body string) string {
 	return body[start : start+end]
 }
 
+// TestReconnectLagLogged pins the reconnect observability: a stream request
+// carrying a stale Last-Event-ID logs how far the browser's last view
+// trailed the journal head (head − id), while still serving a full
+// snapshot (the projection resume, ADR-0003).
+func TestReconnectLagLogged(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "lag-1")
+	enqueue(t, s, "sh", "lag-2") // head = 2
+
+	var buf syncBuffer
+
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	t.Cleanup(func() { slog.SetDefault(old) })
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/events", nil).WithContext(ctx)
+	req.Header.Set("Last-Event-ID", "1")
+	req.Header.Set("Accept", "text/event-stream")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+
+	if !strings.Contains(rec.Body.String(), "frag-table") {
+		t.Error("reconnect did not receive a full snapshot")
+	}
+
+	if log := buf.String(); !strings.Contains(log, "reconnect lag") || !strings.Contains(log, "head=2") {
+		t.Errorf("reconnect log missing lag signal: %q", log)
+	}
+}
+
+// syncBuffer is a mutex-guarded buffer for slog capture in tests.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	return b.buf.String()
+}
+
 func TestTaskDetailAnd404(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")

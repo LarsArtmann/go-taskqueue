@@ -198,7 +198,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	// browser's last view trailed the journal when it dropped.
 	lastID := stream.LastEventID()
 	if !lastID.IsZero() {
-		if n, err := strconv.ParseInt(lastID.String(), 10, 64); err == nil && n >= 0 {
+		if n, err := strconv.ParseInt(lastID.Get(), 10, 64); err == nil && n >= 0 {
 			if head, err := s.store.HeadSeq(r.Context()); err == nil && head > n {
 				slog.Info("webui: client reconnect", "last-event-id", n, "head", head, "reconnect lag", head-n)
 			}

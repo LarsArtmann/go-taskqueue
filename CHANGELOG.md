@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **`tq bootstrap` — one command from zero to a running agent pool** (2026-09-08):
+  per repo it validates the checkout, pins the verify contract into
+  `.tq-verify` (auto-detected or `--verify name=cmd`), writes a managed
+  autonomy+model block into the repo's `.crushrc` (markers bracket the block;
+  user content outside is never touched; `--model` + `--reasoning xhigh`
+  default pins the provider/model for unattended runs), commits exactly those
+  files (never pushes), previews the harvest, then delegates to
+  `tq agent-pool` — or `--install` renders the systemd user unit +
+  `~/.config/tq/pool.conf` and enables linger, or `--no-run`/`--dry-run`
+  exit after ensuring. Idempotent by design.
+- **Full output sidecars**: `tq agent-pool --log-dir DIR` (or a
+  `log-dir =` config key, or `$TQ_LOG_DIR`; flag > env > file) writes each
+  task's complete agent + verify output to `DIR/<task-id>.log` (0600) and
+  records the path in the result detail. `tq bootstrap` enables it by
+  default at `~/.local/state/tq/logs` — daemon pools need their logs.
 - **Wave-4 slices**: `tq version` reports the build (ldflags-injected
   release version in nix builds, VCS revision from build info in
   go-builds); the `sh` executor gained resource guards

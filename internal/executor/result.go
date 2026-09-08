@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"regexp"
 	"sync"
 )
@@ -80,6 +81,19 @@ func ExtractSessionID(output string) string {
 // resultLineRe matches the agent's self-report line: a single line of JSON
 // after the TQ_RESULT: marker. Everything else in the output is free-form.
 var resultLineRe = regexp.MustCompile(`(?im)^\s*TQ_RESULT:\s*(\{.+\})\s*$`)
+
+// ResultLine extracts the raw JSON of the LAST TQ_RESULT line from agent
+// output. Executors with a mechanical output contract (review, status) build
+// their strict parsing on top of it; ExtractResultPayload is the lenient
+// consumer for plain agent runs.
+func ResultLine(output string) (json.RawMessage, error) {
+	m := resultLineRe.FindStringSubmatch(output)
+	if m == nil {
+		return nil, errors.New("output has no TQ_RESULT line")
+	}
+
+	return json.RawMessage(m[1]), nil
+}
 
 // ExtractResultPayload parses the agent's structured self-report
 // ({files_changed, commit_sha}) from its output. Best-effort: no line, no
