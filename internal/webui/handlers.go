@@ -75,6 +75,39 @@ func (s *Server) renderIndex(w http.ResponseWriter, r *http.Request, f FilterSta
 	}
 }
 
+// handleFacts serves GET /api/facts?after=SEQ&limit=N: a forward cursor
+// over the journal in ascending seq order (the infinite-scroll viewer's
+// data source; the dashboard feed stays the SSE tail). limit is capped.
+func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
+	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
+
+	limit := factViewerPageSize
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= factViewerPageSize {
+		limit = v
+	}
+
+	facts, err := s.store.Facts(r.Context(), after, limit)
+	if err != nil {
+		http.Error(w, "facts: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	var next int64
+
+	if len(facts) > 0 {
+		next = facts[len(facts)-1].Seq
+	}
+
+	if err := json.NewEncoder(w).Encode(map[string]any{
+		"facts": facts,
+		"next":  next,
+	}); err != nil {
+		slog.Error("webui: encode facts", "err", err)
+	}
+}
+
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	data, err := s.loadSnapshot(r.Context(), FilterState{})
 	if err != nil {

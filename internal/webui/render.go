@@ -20,6 +20,7 @@ const (
 	timeFormat          = "2006-01-02 15:04:05 MST"
 	errorPreviewLen     = 60
 	factFeedLen         = 50
+	factViewerPageSize  = 100 // /api/facts page cap for the journal browser
 	taskTableLimit      = 200
 	detailFactsLimit    = 500
 	tailBatchLimit      = 1000

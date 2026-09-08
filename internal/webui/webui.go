@@ -111,6 +111,7 @@ func (s *Server) routeBindings() []struct {
 		{"GET", "/task/{id}/events", s.handleTaskEvents},
 		{"GET", "/api/events", s.handleEvents},
 		{"GET", "/api/stats", s.handleStats},
+		{"GET", "/api/facts", s.handleFacts},
 		{"GET", "/static/", nil}, // staticHandler, wired in Handler
 	}
 }
@@ -123,6 +124,7 @@ func (s *Server) routeBindings() []struct {
 //	GET /task/{id}/events  per-task SSE stream (detail fragments + resume)
 //	GET /api/events        SSE stream (dashboard fragments + resume)
 //	GET /api/stats         JSON status counts
+//	GET /api/facts         JSON journal cursor (?after=SEQ&limit=N)
 //
 // Every response carries strict security headers (securityHeaders); the
 // dashboard is read-only by construction.
