@@ -70,8 +70,8 @@ func TestShortIDTail(t *testing.T) {
 	cases := []struct {
 		in, want string
 	}{
-		{"short", "short"},                       // under the cut: unchanged
-		{"12345678", "12345678"},                   // exactly the cut: unchanged
+		{"short", "short"},                          // under the cut: unchanged
+		{"12345678", "12345678"},                    // exactly the cut: unchanged
 		{"0001020304050607aabbccddee", "…bbccddee"}, // over the cut: ellipsis + last 8
 	}
 

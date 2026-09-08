@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Hygiene pack**: the JetBrains Mono font subsets now ship with their
+  SIL OFL 1.1 license (`internal/webui/static/fonts/OFL.txt`); a guard
+  test cross-checks the AGENTS.md templ-components adoption table against
+  the actual template sources in both directions (its first run caught
+  `ThemeScript` listed but unused, and nine icons in use but unlisted);
+  table tests pin every webui mapping helper (status badges, fact tones,
+  id tails, timestamps, detail items, status hrefs, row classes); the
+  duplicated harvest no-repos error became the `harvest.ErrNoRepos`
+  sentinel, empty-type enqueue failures became `queue.ErrEmptyType`, and
+  the dead `factBadgeClass` helper was removed.
 - **Release runner**: `scripts/release.sh vX.Y.Z [--tag|--push]`
   codifies the v0.1.0 release checklist into one command - the full
   ci-local gate suite, go.mod hygiene (no replace/pseudo-versions),
