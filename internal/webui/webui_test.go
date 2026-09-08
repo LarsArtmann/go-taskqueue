@@ -4,20 +4,21 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"strconv"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/larsartmann/go-sse/ssetest"
-	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 )
@@ -947,5 +948,31 @@ func TestMetricsRowRenders(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("overview missing %q", want)
 		}
+	}
+}
+
+// TestA11yChrome (M20/F103/F104): skip link + live-region lamp are present
+// on every page; reduced-motion is handled by the committed CSS.
+func TestA11yChrome(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "demo")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	body := rec.Body.String()
+	for _, want := range []string{"skip to content", `aria-live="polite"`, `role="status"`, "#sec-overview"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page missing a11y affordance %q", want)
+		}
+	}
+
+	css, err := os.ReadFile("static/app.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(css), "prefers-reduced-motion:reduce") {
+		t.Error("committed CSS lacks prefers-reduced-motion handling")
 	}
 }
