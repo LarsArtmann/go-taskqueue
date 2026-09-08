@@ -52,6 +52,9 @@
           preBuild = ''
             export HOME=$TMPDIR
           '';
+          # `tq version` reports the release, not "dev" (round-5 M25/F133).
+          # Keep in sync with go-standard.version above.
+          buildFlagsArray = [ "-ldflags=-X main.version=0.1.0" ];
         };
 
         shellExtraEnv = {

@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"syscall"
@@ -56,6 +57,7 @@ Usage:
   tq tail [-f] [--db PATH] [--after SEQ]
   tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose]
   tq api [--addr ADDR] --auth-token TOKEN [--db PATH]   (write API: POST /api/v1/tasks)
+  tq version
 
 Default database: $TQ_DB or ./tasks.db
 `
@@ -81,6 +83,7 @@ func main() {
 		"facts":      cmdFacts,
 		"tail":       cmdTail,
 		"serve":      cmdServe,
+		"version":    cmdVersion,
 		"api":        cmdAPI,
 	}
 
@@ -1367,6 +1370,38 @@ func cmdAPI(args []string) error {
 	fmt.Fprintf(os.Stderr, "tq: write API on http://%s (token required)\n", *addr)
 
 	return server.ListenAndServe(ctx, *addr)
+}
+
+// version is overridden at build time (-ldflags "-X main.version=...");
+// "dev" marks an untagged go-build checkout, where debug.ReadBuildInfo
+// still reports the VCS revision.
+var version = "dev"
+
+func cmdVersion(args []string) error {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		fmt.Printf("tq %s (no build info)\n", version)
+		return nil
+	}
+
+	rev := "(unknown)"
+	for _, s := range info.Settings {
+		if s.Key == "vcs.revision" && s.Value != "" {
+			rev = s.Value
+			if len(rev) > 12 {
+				rev = rev[:12]
+			}
+		}
+	}
+
+	vcs := ""
+	if rev != "(unknown)" {
+		vcs = " (" + rev + ")"
+	}
+
+	fmt.Printf("tq %s%s, %s\n", version, vcs, info.GoVersion)
+
+	return nil
 }
 
 func cmdServe(args []string) error {

@@ -21,6 +21,13 @@ import (
 // placeholders substituted per task.
 type CommandExecutor struct {
 	Template string
+	// MemoryLimitMB caps the shell process's virtual memory via
+	// `ulimit -v` (POSIX sh; 0 = uncapped). Bounds runaway payloads on
+	// shared machines — the queue keeps serving while the task dies fast.
+	MemoryLimitMB int
+	// Nice lowers scheduling priority via `nice -n` (0 = unchanged).
+	// Interactive work wins CPU; queue work yields.
+	Nice int
 }
 
 // NewCommandExecutor builds a CommandExecutor from an optional template.
@@ -35,7 +42,7 @@ func (e *CommandExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	cmd := exec.CommandContext(ctx, "sh", "-c", line)
+	cmd := exec.CommandContext(ctx, "sh", "-c", e.limited(line))
 	prepareProcessGroup(cmd) // cooperative cancel must kill the whole tree
 
 	var buf bytes.Buffer
@@ -68,6 +75,42 @@ func (e *CommandExecutor) render(t task.Task) (string, error) {
 	line = strings.ReplaceAll(line, "{{PAYLOAD}}", string(t.Payload))
 
 	return line, nil
+}
+
+// limited wraps the command with resource guards when configured. The
+// wrapper is plain POSIX sh applied BEFORE exec, so limits bind the
+// payload process itself (and its whole tree, which inherits them).
+func (e *CommandExecutor) limited(line string) string {
+	if e.MemoryLimitMB <= 0 && e.Nice == 0 {
+		return line
+	}
+
+	var b strings.Builder
+
+	b.WriteString("exec")
+
+	if e.Nice != 0 {
+		b.WriteString(" nice -n ")
+		b.WriteString(strconv.Itoa(e.Nice))
+	}
+
+	if e.MemoryLimitMB > 0 {
+		b.WriteString(" sh -c 'ulimit -v ")
+		b.WriteString(strconv.Itoa(e.MemoryLimitMB * 1024))
+		b.WriteString("; exec " + quoteSh(line) + "'")
+
+		return b.String()
+	}
+
+	b.WriteString(" sh -c ")
+	b.WriteString(quoteSh(line))
+
+	return b.String()
+}
+
+// quoteSh single-quotes a string for sh (POSIX escape: ' → '\'').
+func quoteSh(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'+"'"+'`) + "'"
 }
 
 // unwrapCommand accepts either a raw shell line or {"cmd": "..."} JSON and
