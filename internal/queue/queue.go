@@ -89,9 +89,10 @@ type Store interface {
 	// empty): the O(1) watermark for tailers, bridges and resume points.
 	HeadSeq(ctx context.Context) (int64, error)
 	// Watermark returns the persisted read cursor for a journal consumer
-	// (0 when the consumer never checkpointed): the resume point for
-	// bridges and sweepers after a restart.
-	Watermark(ctx context.Context, consumer string) (int64, error)
+	// and whether the consumer ever checkpointed (seq 0 is a valid cursor:
+	// "consumed nothing yet"): the resume point for bridges and sweepers
+	// after a restart.
+	Watermark(ctx context.Context, consumer string) (seq int64, exists bool, err error)
 	// SaveWatermark checkpoints a consumer cursor as a monotonic upsert
 	// (never regresses). It records consumer progress, not task state, so
 	// no fact is appended.

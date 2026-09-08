@@ -476,13 +476,13 @@ func TestWatermarkAbsentReturnsZero(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	seq, err := s.Watermark(ctx, "papdashboard:http://stub:1")
+	seq, exists, err := s.Watermark(ctx, "papdashboard:http://stub:1")
 	if err != nil {
 		t.Fatalf("Watermark absent: %v", err)
 	}
 
-	if seq != 0 {
-		t.Fatalf("absent consumer seq = %d, want 0", seq)
+	if seq != 0 || exists {
+		t.Fatalf("absent consumer = %d/%v, want 0/false", seq, exists)
 	}
 }
 
@@ -501,6 +501,17 @@ func TestWatermarkSaveAndReadRoundtrip(t *testing.T) {
 
 	if seq != 42 {
 		t.Fatalf("roundtrip seq = %d, want 42", seq)
+	}
+
+	// A checkpointed 0 is a real cursor, distinct from "no row": saving 0
+	// marks the consumer as existing.
+	if err := s.SaveWatermark(ctx, "consumer-zero", 0); err != nil {
+		t.Fatalf("SaveWatermark zero: %v", err)
+	}
+
+	zeroSeq, zeroExists, err := s.Watermark(ctx, "consumer-zero")
+	if err != nil || zeroSeq != 0 || !zeroExists {
+		t.Fatalf("zero cursor = %d/%v (%v), want 0/true", zeroSeq, zeroExists, err)
 	}
 
 	// Distinct consumers hold independent cursors.

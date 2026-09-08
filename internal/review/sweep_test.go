@@ -412,6 +412,56 @@ func TestSweepWatermarkStartsAtHead(t *testing.T) {
 	}
 }
 
+func TestSweepCatchesUpAcrossRestarts(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	// Pool A ran once and checkpointed; its sweeper then died with it.
+	first, err := NewSweeper(ctx, s, SweeperConfig{})
+	if err != nil {
+		t.Fatalf("new sweeper A: %v", err)
+	}
+
+	if _, err := first.Sweep(ctx); err != nil {
+		t.Fatalf("sweep A: %v", err)
+	}
+
+	// While no sweeper was running, an agent task completed.
+	done := runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "completed-while-down"}, executor.AgentResult{})
+
+	// Pool B starts: the persisted cursor resumes BEFORE that completion,
+	// so it is reviewed despite the sweeper having been down.
+	second, err := NewSweeper(ctx, s, SweeperConfig{})
+	if err != nil {
+		t.Fatalf("new sweeper B: %v", err)
+	}
+
+	stats, err := second.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("sweep B: %v", err)
+	}
+
+	if stats.ReviewsEnqueued != 1 {
+		t.Fatalf("completion while sweeper was down was not reviewed, got %+v", stats)
+	}
+
+	reviews := listByType(t, s, executor.TaskTypeReview)
+	if len(reviews) != 1 {
+		t.Fatalf("got %d review tasks, want 1", len(reviews))
+	}
+
+	var payload executor.ReviewPayload
+	if err := json.Unmarshal(reviews[0].Payload, &payload); err != nil {
+		t.Fatalf("review payload: %v", err)
+	}
+
+	if payload.ReviewedTask != done.ID.String() {
+		t.Fatalf("reviewed task = %s, want %s", payload.ReviewedTask, done.ID)
+	}
+}
+
 func TestFixDedupKeyIsStableAndDistinct(t *testing.T) {
 	t.Parallel()
 

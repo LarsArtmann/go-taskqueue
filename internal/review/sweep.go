@@ -29,6 +29,12 @@ import (
 const (
 	// defaultPageSize bounds one Facts page per sweep iteration.
 	defaultPageSize = 500
+
+	// ConsumerKey is the sweeper's identity in the watermarks table: the
+	// persisted cursor shared by every sweeper over the same database, so
+	// agent tasks completed while no sweeper was running still get their
+	// review when the next pool starts.
+	ConsumerKey = "review-sweeper"
 )
 
 // SweeperConfig controls one Sweeper.
@@ -70,15 +76,29 @@ type Sweeper struct {
 
 	mu        sync.Mutex
 	watermark int64
+	persisted int64 // last checkpoint written to the watermarks table
 }
 
-// NewSweeper returns a sweeper over store. The watermark starts at the
-// journal head AT CONSTRUCTION: completions recorded before the sweeper was
-// created are not reviewed (same watermark philosophy as the papdashboard
-// bridge — review the gap via `tq show`, not by replay).
+// NewSweeper returns a sweeper over store. The cursor resumes from the
+// persisted checkpoint — completions recorded while no sweeper was running
+// are reviewed on the next start. A first run bootstraps at the journal
+// head: completions that predate the sweeper are not replayed (same
+// semantics as the papdashboard bridge; review the gap via `tq show`, or
+// rewind with `tq watermarks set review-sweeper SEQ`).
 func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Sweeper, error) {
 	if cfg.PageSize <= 0 {
 		cfg.PageSize = defaultPageSize
+	}
+
+	persisted, exists, err := store.Watermark(ctx, ConsumerKey)
+	if err != nil {
+		return nil, fmt.Errorf("review sweep: read watermark: %w", err)
+	}
+
+	// seq 0 with a row is a real cursor ("bootstrapped on an empty journal,
+	// consumed nothing yet"): resume from it, do not jump to head.
+	if exists {
+		return &Sweeper{store: store, cfg: cfg, watermark: persisted, persisted: persisted}, nil
 	}
 
 	head, err := store.HeadSeq(ctx)
@@ -86,17 +106,36 @@ func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Swe
 		return nil, fmt.Errorf("review sweep: read journal head: %w", err)
 	}
 
-	return &Sweeper{store: store, cfg: cfg, watermark: head}, nil
+	// First run: eagerly persist the head (even 0) so a crash before the
+	// first sweep still resumes exactly here (and never replays history).
+	if err := store.SaveWatermark(ctx, ConsumerKey, head); err != nil {
+		return nil, fmt.Errorf("review sweep: persist bootstrap watermark: %w", err)
+	}
+
+	return &Sweeper{store: store, cfg: cfg, watermark: head, persisted: head}, nil
 }
 
 // Sweep consumes new facts since the last pass and enqueues review (and,
 // with Autofix, fix) tasks. Idempotent by dedup: calling it twice never
-// duplicates work.
+// duplicates work, so a replayed page (crash between consumption and
+// checkpoint) re-hits dedup keys instead of minting duplicates. The cursor
+// checkpoints after each page; a failed checkpoint stops the sweep — facts
+// are never consumed past an unpersisted cursor.
 func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	var stats SweepStats
+
+	// A pending checkpoint gates sweeping (same rule as the bridge's
+	// drain): retry it before consuming anything new.
+	if s.watermark > s.persisted {
+		if err := s.store.SaveWatermark(ctx, ConsumerKey, s.watermark); err != nil {
+			return stats, fmt.Errorf("review sweep: checkpoint %d: %w", s.watermark, err)
+		}
+
+		s.persisted = s.watermark
+	}
 
 	for {
 		facts, err := s.store.Facts(ctx, s.watermark, s.cfg.PageSize)
@@ -109,6 +148,16 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 			stats.Facts++
 
 			s.handleFact(ctx, f, &stats)
+		}
+
+		// Page end: checkpoint AFTER the last consumed fact — never before,
+		// or a crash would silently skip the page's completions.
+		if len(facts) > 0 {
+			if err := s.store.SaveWatermark(ctx, ConsumerKey, s.watermark); err != nil {
+				return stats, fmt.Errorf("review sweep: checkpoint %d: %w", s.watermark, err)
+			}
+
+			s.persisted = s.watermark
 		}
 
 		if len(facts) < s.cfg.PageSize {

@@ -1139,19 +1139,23 @@ func (s *SQLiteStore) CountFacts(ctx context.Context, ftype journal.FactType, si
 	return n, err
 }
 
-// Watermark returns the persisted read cursor for a journal consumer
-// (0 when the consumer never checkpointed) — the resume point for bridges
-// and sweepers.
-func (s *SQLiteStore) Watermark(ctx context.Context, consumer string) (int64, error) {
+// Watermark returns the persisted read cursor for a journal consumer and
+// whether it ever checkpointed — the resume point for bridges and sweepers.
+// seq 0 with exists=true is a valid cursor ("consumed nothing yet").
+func (s *SQLiteStore) Watermark(ctx context.Context, consumer string) (int64, bool, error) {
 	var seq int64
 
 	err := s.db.QueryRowContext(ctx,
 		`SELECT seq FROM watermarks WHERE consumer = ?`, consumer).Scan(&seq)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, nil
+		return 0, false, nil
 	}
 
-	return seq, err
+	if err != nil {
+		return 0, false, err
+	}
+
+	return seq, true, nil
 }
 
 // SaveWatermark checkpoints a consumer cursor as a monotonic upsert: the

@@ -1085,18 +1085,22 @@ func (s *PostgresStore) CountFacts(ctx context.Context, ftype journal.FactType, 
 	return n, err
 }
 
-// Watermark returns the persisted read cursor for a journal consumer
-// (0 when the consumer never checkpointed).
-func (s *PostgresStore) Watermark(ctx context.Context, consumer string) (int64, error) {
+// Watermark returns the persisted read cursor for a journal consumer and
+// whether it ever checkpointed. seq 0 with exists=true is a valid cursor.
+func (s *PostgresStore) Watermark(ctx context.Context, consumer string) (int64, bool, error) {
 	var seq int64
 
 	err := s.pool.QueryRow(ctx,
 		`SELECT seq FROM watermarks WHERE consumer = $1`, consumer).Scan(&seq)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, nil
+		return 0, false, nil
 	}
 
-	return seq, err
+	if err != nil {
+		return 0, false, err
+	}
+
+	return seq, true, nil
 }
 
 // SaveWatermark checkpoints a consumer cursor as a monotonic upsert: the

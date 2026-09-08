@@ -185,8 +185,8 @@ func TestPostgresWatermark(t *testing.T) {
 	s := testPostgresStore(t)
 	ctx := context.Background()
 
-	if seq, err := s.Watermark(ctx, "consumer-a"); err != nil || seq != 0 {
-		t.Fatalf("absent watermark = %d (%v), want 0", seq, err)
+	if seq, exists, err := s.Watermark(ctx, "consumer-a"); err != nil || seq != 0 || exists {
+		t.Fatalf("absent watermark = %d/%v (%v), want 0/false", seq, exists, err)
 	}
 
 	if err := s.SaveWatermark(ctx, "consumer-a", 9); err != nil {

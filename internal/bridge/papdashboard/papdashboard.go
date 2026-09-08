@@ -50,7 +50,7 @@ type FactSource interface {
 // separate from FactSource so the read contract stays read-only: the
 // bridge writes only its own consumer progress, never task or fact state.
 type WatermarkStore interface {
-	Watermark(ctx context.Context, consumer string) (int64, error)
+	Watermark(ctx context.Context, consumer string) (seq int64, exists bool, err error)
 	SaveWatermark(ctx context.Context, consumer string, seq int64) error
 }
 
@@ -178,22 +178,23 @@ func (b *Bridge) Run(ctx context.Context) error {
 
 	watermark, persisted := start.start, start.persisted
 
-	// First run with no row: eagerly insert the head so a crash before the
-	// first batch checkpoint still resumes exactly here. Persistence must
-	// not replay history into existing deployments — bootstrap is
-	// forward-only, exactly like the volatile behavior.
-	if start.bootstrap != 0 && b.checkpoints != nil {
-		if err := b.checkpoints.SaveWatermark(ctx, b.consumerKey(), start.bootstrap); err != nil {
+	// First run with no row: eagerly insert the head (even 0 — a seq-0
+	// row is a real cursor) so a crash before the first batch checkpoint
+	// still resumes exactly here. Persistence must not replay history into
+	// existing deployments — bootstrap is forward-only, exactly like the
+	// volatile behavior.
+	if start.bootstrap && b.checkpoints != nil {
+		if err := b.checkpoints.SaveWatermark(ctx, b.consumerKey(), start.start); err != nil {
 			if ctx.Err() != nil {
 				return nil
 			}
 
-			b.log.Error("papdashboard bridge cannot persist bootstrap watermark", "seq", start.bootstrap, "err", err)
+			b.log.Error("papdashboard bridge cannot persist bootstrap watermark", "seq", start.start, "err", err)
 
 			return errors.New("papdashboard: cannot persist bootstrap watermark")
 		}
 
-		persisted = start.bootstrap
+		persisted = start.start
 	}
 
 	b.log.Info("papdashboard bridge watching for dead letters",
@@ -298,23 +299,25 @@ func (b *Bridge) drain(ctx context.Context, watermark, persisted *int64) {
 // startDecision is startWatermark's outcome: the cursor to read from, the
 // last persisted checkpoint, which branch decided (for the startup log —
 // the operator's first diagnostic when alerts look wrong), and the eager
-// bootstrap seq to insert on a first run (0 = nothing to bootstrap).
+// bootstrap seq to insert on a first run (0-with-bootstrap=true when the
+// journal was empty; 0-and-no-bootstrap only when there is nothing to do).
 type startDecision struct {
 	start     int64
 	persisted int64
 	branch    string
-	bootstrap int64
+	bootstrap bool // insert start eagerly: the store had no row
 }
 
 // startWatermark resolves the initial cursor: explicit FromSeq (ops replay
-// override) beats a persisted checkpoint (restart resume), which beats the
-// journal head (first run). Read under ctx so a cancelled startup aborts
-// cleanly.
+// override) beats a persisted checkpoint (restart resume — seq 0 is a real
+// cursor: "bootstrapped on an empty journal, consumed nothing yet"), which
+// beats the journal head (first run). Read under ctx so a cancelled startup
+// aborts cleanly.
 func (b *Bridge) startWatermark(ctx context.Context) (startDecision, error) {
 	if b.cfg.FromSeq != nil {
 		d := startDecision{start: *b.cfg.FromSeq, branch: "--from-seq override"}
 		if b.checkpoints != nil {
-			p, err := b.checkpoints.Watermark(ctx, b.consumerKey())
+			p, _, err := b.checkpoints.Watermark(ctx, b.consumerKey())
 			if err != nil {
 				return startDecision{}, fmt.Errorf("read persisted watermark: %w", err)
 			}
@@ -326,12 +329,12 @@ func (b *Bridge) startWatermark(ctx context.Context) (startDecision, error) {
 	}
 
 	if b.checkpoints != nil {
-		p, err := b.checkpoints.Watermark(ctx, b.consumerKey())
+		p, exists, err := b.checkpoints.Watermark(ctx, b.consumerKey())
 		if err != nil {
 			return startDecision{}, fmt.Errorf("read persisted watermark: %w", err)
 		}
 
-		if p > 0 {
+		if exists {
 			return startDecision{start: p, persisted: p, branch: "resumed from checkpoint"}, nil
 		}
 	}
@@ -344,7 +347,7 @@ func (b *Bridge) startWatermark(ctx context.Context) (startDecision, error) {
 	return startDecision{
 		start:     head,
 		branch:    "no checkpoint, starting at head",
-		bootstrap: head,
+		bootstrap: true,
 	}, nil
 }
 

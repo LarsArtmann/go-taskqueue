@@ -25,11 +25,13 @@ func newFakeWatermarks() *fakeWatermarks {
 	return &fakeWatermarks{saved: map[string]int64{}}
 }
 
-func (f *fakeWatermarks) Watermark(_ context.Context, consumer string) (int64, error) {
+func (f *fakeWatermarks) Watermark(_ context.Context, consumer string) (int64, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	return f.saved[consumer], nil
+	seq, ok := f.saved[consumer]
+
+	return seq, ok, nil
 }
 
 func (f *fakeWatermarks) SaveWatermark(_ context.Context, consumer string, seq int64) error {
@@ -42,7 +44,8 @@ func (f *fakeWatermarks) SaveWatermark(_ context.Context, consumer string, seq i
 		return fmt.Errorf("watermark store down (save %d)", f.saves)
 	}
 
-	if seq > f.saved[consumer] {
+	old, ok := f.saved[consumer]
+	if !ok || seq > old {
 		f.saved[consumer] = seq
 	}
 
@@ -306,7 +309,6 @@ func TestFromSeqOverridesPersistedCheckpoint(t *testing.T) {
 	// A cursor persisted at 500 would skip seq 150; FromSeq=100 wins and
 	// the dead letter is replayed.
 	wm.saved["papdashboard:"+pap.server.URL] = 500
-
 	var logMu sync.Mutex
 
 	logLines := &syncBuffer{mu: &logMu}
