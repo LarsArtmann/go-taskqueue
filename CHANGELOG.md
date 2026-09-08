@@ -235,6 +235,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- A filtered dashboard view was clobbered by the next live tick: the client
+  opened `/api/events` bare, so every SSE snapshot rendered the unfiltered
+  page-1 table. The page's filter query (`project`, `status`, `q`, `page`)
+  now rides the EventSource URL (merged with the auth `token` param), so
+  live updates and reconnects restore the same filtered projection; the
+  server already honored the params (`parseFilter`), pinned by
+  `TestStreamSnapshotHonorsFilter`
 - Items marked `— BLOCKED: <reason>` in a TODO_LIST.md are now skipped by
   the harvester instead of being enqueued as fresh agent tasks. The marker
   was part of the documented agent contract (the prompt tells agents to
