@@ -136,3 +136,30 @@ Legend: **[O]** owner-gated · **[M]** machine-executable · **[P]** process/dec
 - Daemon swept the work into `d742ade`, `d5b0a66`, `440bf04` (+`84763e2`, `1d95e3f`, `4f8010b` earlier); tree clean at report time.
 
 _Point-in-time snapshot — goes stale. Later sessions: docs-health ANNOTATE mode, never rewrite._
+
+## Completion notes (2026-09-08 ~21:15 session)
+
+- **#6 CLOSED — the answer is NO, and it changed the design**: `crush run -m` does NOT
+  inherit the slot's reasoning effort. Discriminator (zai quota was back): same repo,
+  same `.crushrc` (`--reasoning-effort xhigh`), crush debug telemetry — WITHOUT `-m`
+  the run logs `reasoning effort:xhigh`; WITH `-m` it logs `reasoning effort:` (empty).
+  Consequence: bootstrap no longer composes `--model` into pool args OR pool.conf
+  (`composePoolArgs` + `renderPoolConfig`; tests pin the absence) — the repo `.crushrc`
+  managed block is the single model+effort carrier, honored by both agent runs and
+  interactive crush. Documented in README + CHANGELOG.
+- **#9 CLOSED — `--log-dir` shipped**: `tq agent-pool --log-dir DIR` (env `TQ_LOG_DIR`
+  default, config-file `log-dir =` key, env-backed precedence like cqa-*) sets the
+  env the sidecar writer reads; bootstrap defaults it ON at
+  `~/.local/state/tq/logs` (rendered into pool.conf + composed argv; `--log-dir ""`
+  disables). Retention/size cap still open (item #28).
+- **DLQ emptied**: all 6 dead tasks root-caused (4× transient DNS i/o timeout to
+  api.z.ai, 1× missing templ-components go.mod entry since fixed by the webui work,
+  1× gofmt drift since fixed) and rescued via `tq dlq --rescue-all` — tree verified
+  healthy first (build + gofmt clean).
+- **CV TODO_LIST audit**: 16 owner/billing/manual-gated rows now carry
+  `— BLOCKED: <reason>` markers (re-login, OWNER decisions, billing-gated CI, root
+  shells, Firecrawl key) — verified live: `tq harvest --dry-run` skips them. 79 rows
+  remain harvestable (some multi-item; sizing uneven).
+- Full gate re-run after the changes: build + vet + `go test ./... -race -count=1`
+  green (one transient vet failure in `internal/status` was a parallel session's
+  mid-edit snapshot — resolved by them within minutes, not touched by this session).

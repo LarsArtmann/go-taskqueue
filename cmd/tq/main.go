@@ -1236,9 +1236,44 @@ func cmdShow(args []string) error {
 	enc.SetIndent("", "  ")
 
 	return enc.Encode(struct {
-		Task  task.Task      `json:"task"`
-		Facts []journal.Fact `json:"facts,omitempty"`
-	}{t, trail})
+		Task   task.Task      `json:"task"`
+		Facts  []journal.Fact `json:"facts,omitempty"`
+		Result any            `json:"result,omitempty"`
+	}{t, trail, resultDetail(t, trail)})
+}
+
+// resultDetail decodes a task's completion-fact detail into its typed result
+// (agent self-report, review verdict, or status outcome) so `tq show` answers
+// "what did the agent actually do" without eyeballing raw JSON. nil for task
+// types without a structured result — the raw facts stay in the output.
+func resultDetail(t task.Task, trail []journal.Fact) any {
+	for i := len(trail) - 1; i >= 0; i-- {
+		if trail[i].Type != journal.Completed || len(trail[i].Detail) == 0 {
+			continue
+		}
+
+		switch t.Type {
+		case executor.TaskTypeAgent:
+			var res executor.AgentResult
+			if json.Unmarshal(trail[i].Detail, &res) == nil {
+				return res
+			}
+		case executor.TaskTypeReview:
+			var res executor.ReviewResult
+			if json.Unmarshal(trail[i].Detail, &res) == nil {
+				return res
+			}
+		case executor.TaskTypeStatus:
+			var res executor.StatusResult
+			if json.Unmarshal(trail[i].Detail, &res) == nil {
+				return res
+			}
+		}
+
+		return nil
+	}
+
+	return nil
 }
 
 func cmdDLQ(args []string) error {

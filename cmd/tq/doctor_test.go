@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -256,5 +257,51 @@ func TestDoctorMarkOrphans(t *testing.T) {
 
 	if count != 1 {
 		t.Fatalf("task.orphaned facts = %d, want 1", count)
+	}
+}
+
+func TestDoctorWatermarkLiveness(t *testing.T) {
+	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "q.db"))
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	// No cursors: the sweepers never ran here — idle, not sick.
+	results := doctorWatermarkLiveness(ctx, s)
+	for _, name := range []string{"review-sweeper", "status-sweeper"} {
+		if r := resultByName(results, name); r.Status != checkOK {
+			t.Errorf("%s = %s (%s), want ok", name, r.Status, r.Detail)
+		}
+	}
+
+	// A cursor below the head is the "sweeper not running" signature.
+	payload, err := json.Marshal(map[string]string{"cmd": "true"})
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "demo", Payload: payload}); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if err := s.SaveWatermark(ctx, status.ConsumerKey, 1); err != nil {
+		t.Fatalf("save watermark: %v", err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "demo", Payload: payload}); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	results = doctorWatermarkLiveness(ctx, s)
+
+	if r := resultByName(results, "status-sweeper"); r.Status != checkWarn {
+		t.Errorf("status-sweeper = %s (%s), want warn (cursor lags the head)", r.Status, r.Detail)
+	}
+
+	if r := resultByName(results, "review-sweeper"); r.Status != checkOK {
+		t.Errorf("review-sweeper = %s (%s), want ok (never ran)", r.Status, r.Detail)
 	}
 }

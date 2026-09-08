@@ -16,6 +16,8 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/review"
+	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	_ "modernc.org/sqlite"
 )
@@ -71,6 +73,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorSQLiteChecks(ctx, opts.DBPath)...)
 	results = append(results, doctorQueueMix(ctx, store)...)
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
+	results = append(results, doctorWatermarkLiveness(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
 	results = append(results, doctorEnvironment(opts)...)
 
@@ -191,6 +194,51 @@ func doctorCountStatus(dead int) string {
 	}
 
 	return checkOK
+}
+
+// doctorWatermarkLiveness checks the journal-consumer cursors (the review
+// and status sweepers): a cursor lagging the journal head means its sweeper
+// is not running — agent completions pile up unreviewed / unreported. A
+// missing cursor just means that sweeper never ran here (idle, not sick).
+func doctorWatermarkLiveness(ctx context.Context, store queue.Store) []checkResult {
+	head, err := store.HeadSeq(ctx)
+	if err != nil {
+		return []checkResult{{Name: "watermarks", Status: checkFail, Detail: "read journal head: " + err.Error()}}
+	}
+
+	var results []checkResult
+
+	for _, c := range []struct {
+		name     string
+		consumer string
+	}{
+		{"review-sweeper", review.ConsumerKey},
+		{"status-sweeper", status.ConsumerKey},
+	} {
+		seq, exists, err := store.Watermark(ctx, c.consumer)
+		if err != nil {
+			results = append(results, checkResult{Name: c.name, Status: checkFail, Detail: err.Error()})
+
+			continue
+		}
+
+		if !exists {
+			results = append(results, checkResult{Name: c.name, Status: checkOK, Detail: "no cursor (sweeper never ran here)"})
+
+			continue
+		}
+
+		if lag := head - seq; lag > 0 {
+			results = append(results, checkResult{
+				Name: c.name, Status: checkWarn,
+				Detail: fmt.Sprintf("%d fact(s) behind the journal head — the sweeper is not running (inspect/rewind: tq watermarks show)", lag),
+			})
+		} else {
+			results = append(results, checkResult{Name: c.name, Status: checkOK, Detail: fmt.Sprintf("at head (#%d)", seq)})
+		}
+	}
+
+	return results
 }
 
 // doctorWorkerLiveness looks for recent heartbeats as worker-alive

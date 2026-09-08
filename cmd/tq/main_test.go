@@ -277,3 +277,34 @@ func TestDispatchNoArgsExits2(t *testing.T) {
 		t.Errorf("stderr missing usage: %q", stderr)
 	}
 }
+
+func TestResultDetailDecodesTypedResults(t *testing.T) {
+	statusDetail, err := json.Marshal(executor.StatusResult{Report: "docs/status/r.md", NextItems: 3})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	got := resultDetail(task.Task{Type: executor.TaskTypeStatus}, []journal.Fact{{Type: journal.Completed, Detail: statusDetail}})
+	res, ok := got.(executor.StatusResult)
+	if !ok || res.Report != "docs/status/r.md" || res.NextItems != 3 {
+		t.Fatalf("status result = %+v, want decoded StatusResult", got)
+	}
+
+	agentDetail, err := json.Marshal(executor.AgentResult{CommitSHA: "abcd"})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	got = resultDetail(task.Task{Type: executor.TaskTypeAgent}, []journal.Fact{{Type: journal.Completed, Detail: agentDetail}})
+	if agent, ok := got.(executor.AgentResult); !ok || agent.CommitSHA != "abcd" {
+		t.Fatalf("agent result = %+v, want decoded AgentResult", got)
+	}
+
+	if got := resultDetail(task.Task{Type: "sh"}, []journal.Fact{{Type: journal.Completed, Detail: statusDetail}}); got != nil {
+		t.Fatalf("sh task result = %+v, want nil", got)
+	}
+
+	if got := resultDetail(task.Task{Type: executor.TaskTypeStatus}, nil); got != nil {
+		t.Fatalf("trail-less result = %+v, want nil", got)
+	}
+}
