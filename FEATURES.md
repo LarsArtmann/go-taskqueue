@@ -111,7 +111,7 @@
 | Feature                                       | Status                    | Notes                                                                                                   |
 | --------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Postgres store (`SKIP LOCKED`)                | 🟡 `PARTIALLY_FUNCTIONAL` | First slice shipped (ADR-0007): full Store semantics over pgx, conformance + concurrency tests against a real cluster, CI postgres service. CLI `--store` wiring + compaction design pending |
-| HTTP API server for non-Go producers          | 🟡 `PARTIALLY_FUNCTIONAL` | PoC exists (`examples/api`: enqueue + stats + metrics, no auth, localhost); production server not built |
+| HTTP API server for non-Go producers          | 🟡 `PARTIALLY_FUNCTIONAL` | Production slice shipped (ADR-0008): `tq api` with mandatory token auth, enqueue contract with actionable validation, stats + healthz, dedup passthrough; PoC remains in `examples/api`. Cancel/claim-over-HTTP and fencing tokens designed but not built |
 | Decision → question fan-out (PapDashboard)    | ⚪ `PLANNED`              | Design note in `docs/planning/2026-09-06_decision-question-fanout.md`                                   |
 | Per-repo daily budgets                        | ⚪ `PLANNED`              | Global daily cap + per-repo intervals ship; per-REPO daily caps don't yet                               |
 | Remaining C27 seeds (D90, D91, D94, D97-D100) | ⚪ `PLANNED`              | Sketches in `docs/planning/2026-09-06_deferred-bundle-seeds.md`                                         |

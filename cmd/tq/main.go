@@ -23,6 +23,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/budget"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
+	"github.com/larsartmann/go-taskqueue/internal/httpapi"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/review"
@@ -54,6 +55,7 @@ Usage:
   tq facts [--db PATH] [--after SEQ]
   tq tail [-f] [--db PATH] [--after SEQ]
   tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose]
+  tq api [--addr ADDR] --auth-token TOKEN [--db PATH]   (write API: POST /api/v1/tasks)
 
 Default database: $TQ_DB or ./tasks.db
 `
@@ -79,6 +81,7 @@ func main() {
 		"facts":      cmdFacts,
 		"tail":       cmdTail,
 		"serve":      cmdServe,
+		"api":        cmdAPI,
 	}
 
 	switch name := os.Args[1]; name {
@@ -1334,6 +1337,36 @@ func truncate(s string, n int) string {
 	}
 
 	return s[:n] + "…"
+}
+
+// cmdAPI runs the production write API (ADR-0008): POST /api/v1/tasks,
+// GET /api/v1/stats, token-gated. Unlike `serve` the token is REQUIRED
+// (this surface exists to be exposed to other machines).
+func cmdAPI(args []string) error {
+	fs := flag.NewFlagSet("api", flag.ExitOnError)
+	addr := fs.String("addr", "127.0.0.1:8091", "listen address")
+	authToken := fs.String("auth-token", os.Getenv("TQ_API_TOKEN"),
+		"REQUIRED bearer token for every request (env $TQ_API_TOKEN)")
+
+	db := dbFlag(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	s := mustOpenDB(resolveDB(*db))
+	defer s.Close()
+
+	server, err := httpapi.New(s, *authToken, nil)
+	if err != nil {
+		return err
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	fmt.Fprintf(os.Stderr, "tq: write API on http://%s (token required)\n", *addr)
+
+	return server.ListenAndServe(ctx, *addr)
 }
 
 func cmdServe(args []string) error {

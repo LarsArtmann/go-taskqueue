@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Production write API (ADR-0008)**: `tq api` serves non-Go producers
+  with POST /api/v1/tasks, GET /api/v1/stats, and GET /api/v1/healthz
+  behind a MANDATORY bearer token (no loopback exemption - this surface
+  exists to be exposed). Validation errors are actionable JSON
+  {error, fix} documents, request bodies are capped at 1 MiB, dedup keys
+  ride through for webhook-style at-least-once producers, and the
+  payload passes verbatim to the executor contract. The ADR also records
+  the fencing-token design (lease generations; deferred until a real
+  double-write makes the observability worth the schema change) and the
+  consumer-group claim-path sketch (a WHERE clause, not a router).
 - **Postgres store, first slice (ADR-0007)**: `queue.OpenPostgres` is a
   semantic twin of the SQLite store over jackc/pgx (pure Go, CGO stays
   off) - same tables, same facts-in-transaction invariant, same dedup and
