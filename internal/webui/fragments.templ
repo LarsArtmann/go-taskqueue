@@ -3,6 +3,7 @@ package webui
 import (
 	"fmt"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/templ-components/feedback"
@@ -526,6 +527,17 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 			@display.Badge(display.BadgeProps{Text: statusBadgeText(st), Type: display.BadgeInfo, Dot: true})
 		}
 	</div>
+	if data.AllowWrites {
+		<div class="tq-actions">
+			if t.Status == task.Pending {
+				@cancelAction(t.ID, false)
+			} else if t.Status == task.Running {
+				@cancelAction(t.ID, true)
+			} else if t.Status == task.Dead {
+				@rescueAction(t.ID)
+			}
+		</div>
+	}
 	if t.LastError != "" {
 		@feedback.Alert(feedback.AlertProps{
 			Type:    feedback.FeedbackError,

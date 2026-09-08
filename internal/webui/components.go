@@ -396,3 +396,83 @@ func completeHistogramLabels(data DashboardData) []string {
 
 	return []string{"<1m", "1-5m", "5-15m", "15-60m", "60m+"}
 }
+
+// splitTasks partitions the visible page into active (queued or running)
+// and settled (terminal) rows for the two-tier table. The page's own sort
+// order is preserved inside each tier.
+func splitTasks(rows []task.Task) (active, settled []task.Task) {
+	for _, t := range rows {
+		if t.Status == task.Completed || t.Status == task.Cancelled || t.Status == task.Dead {
+			settled = append(settled, t)
+		} else {
+			active = append(active, t)
+		}
+	}
+
+	return active, settled
+}
+
+func activeTasks(rows []task.Task) []task.Task {
+	active, _ := splitTasks(rows)
+
+	return active
+}
+
+func settledTasks(rows []task.Task) []task.Task {
+	_, settled := splitTasks(rows)
+
+	return settled
+}
+
+func countStatus(rows []task.Task, st task.Status) int {
+	n := 0
+
+	for _, t := range rows {
+		if t.Status == st {
+			n++
+		}
+	}
+
+	return n
+}
+
+// settledDeadSuffix renders the summary's dead clause only when dead tasks
+// are on the page (" · 2 dead") — the DLQ section stays the dead hub.
+func settledDeadSuffix(rows []task.Task) string {
+	if n := countStatus(rows, task.Dead); n > 0 {
+		return fmt.Sprintf(" · %d dead", n)
+	}
+
+	return ""
+}
+
+// taskHeaders builds the task table's header row; the actions column exists
+// only when writes are enabled, so header and body cells always agree.
+func taskHeaders(data DashboardData) []display.TableHeader {
+	headers := []display.TableHeader{
+		{Label: labelID},
+		{Label: labelProject},
+		{Label: labelType},
+		{Label: labelStatus},
+		{Label: labelAttempts, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "attempts"), Href: sortHeaderHref(data.Filter, "attempts")},
+		{Label: labelReady},
+		{Label: labelAge, Sortable: true, SortDirection: sortHeaderDirection(data.Filter, "age"), Href: sortHeaderHref(data.Filter, "age")},
+		{Label: labelError},
+	}
+
+	if data.AllowWrites {
+		headers = append(headers, display.TableHeader{Label: "actions"})
+	}
+
+	return headers
+}
+
+// reasonPlaceholder keeps the cancel form honest: a running agent deserves
+// a stop request, a queued one a withdrawal — both want a why.
+func reasonPlaceholder(running bool) string {
+	if running {
+		return "why stop it? (stored in the fact)"
+	}
+
+	return "why cancel it? (stored in the fact)"
+}
