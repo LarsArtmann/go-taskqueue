@@ -945,19 +945,11 @@ func cmdShow(args []string) error {
 	}
 	// Include the task's fact trail: for completed agent tasks this is
 	// where the structured result detail lives (session id, verify tail).
-	facts, err := s.Facts(ctx, 0)
-	if err != nil {
-		return err
-	}
-
 	id := t.ID.String()
 
-	var trail []journal.Fact
-
-	for _, f := range facts {
-		if f.TaskID == id {
-			trail = append(trail, f)
-		}
+	trail, err := s.FactsForTask(ctx, id, 0)
+	if err != nil {
+		return err
 	}
 
 	enc := json.NewEncoder(os.Stdout)
@@ -1087,7 +1079,7 @@ func cmdFacts(args []string) error {
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
 
-	facts, err := s.Facts(context.Background(), *after)
+	facts, err := s.Facts(context.Background(), *after, 0)
 	if err != nil {
 		return err
 	}
@@ -1135,7 +1127,7 @@ func cmdTail(args []string) error {
 	defer stop()
 
 	for {
-		facts, err := s.Facts(ctx, *after)
+		facts, err := s.Facts(ctx, *after, 0)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil

@@ -602,7 +602,7 @@ func TestAgentResultDetailStored(t *testing.T) {
 	waitFor(t, ctx, store, enq.ID, task.Completed)
 	cancel()
 
-	facts, _ := store.Facts(context.Background(), 0)
+	facts, _ := store.Facts(context.Background(), 0, 0)
 	for _, f := range facts {
 		if f.Type == "task.completed" && len(f.Detail) > 0 {
 			if !strings.Contains(string(f.Detail), "crush-abc-123") {

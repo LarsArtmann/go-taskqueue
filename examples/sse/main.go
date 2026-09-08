@@ -59,7 +59,7 @@ func main() {
 
 		ctx := r.Context()
 		for {
-			facts, err := store.Facts(ctx, after)
+			facts, err := store.Facts(ctx, after, 0)
 			if err != nil {
 				return
 			}

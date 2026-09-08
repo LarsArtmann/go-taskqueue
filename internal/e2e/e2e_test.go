@@ -190,7 +190,7 @@ func openStore(t *testing.T, path string) *queue.SQLiteStore {
 func assertFactCounts(t *testing.T, ctx context.Context, s *queue.SQLiteStore, want map[string]int) {
 	t.Helper()
 
-	facts, err := s.Facts(ctx, 0)
+	facts, err := s.Facts(ctx, 0, 0)
 	if err != nil {
 		t.Fatalf("facts: %v", err)
 	}

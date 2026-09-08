@@ -128,7 +128,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 	}
 
 	// Facts: enqueued, claimed, failed, claimed, failed, dead-lettered.
-	facts, _ := s.Facts(ctx, 0)
+	facts, _ := s.Facts(ctx, 0, 0)
 
 	wantTypes := []journal.FactType{
 		journal.Enqueued, journal.Claimed, journal.Failed,
@@ -370,7 +370,7 @@ func TestEnqueueDedupKey(t *testing.T) {
 		t.Fatalf("stored %d tasks, want 1", len(tasks))
 	}
 
-	facts, err := s.Facts(ctx, 0)
+	facts, err := s.Facts(ctx, 0, 0)
 	if err != nil {
 		t.Fatalf("Facts: %v", err)
 	}
@@ -497,7 +497,7 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 
 	// The dead-letter fact carries the error text and its class, so `tq
 	// facts` can tell "the task is broken" from "the budget ran out".
-	facts, _ := s.Facts(ctx, 0)
+	facts, _ := s.Facts(ctx, 0, 0)
 
 	var dl *journal.Fact
 
@@ -715,7 +715,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 
 	// The fact log records why the task went back, with no failure.
-	facts, _ := s.Facts(ctx, 0)
+	facts, _ := s.Facts(ctx, 0, 0)
 
 	var rq bool
 
@@ -731,5 +731,195 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 
 	if !rq {
 		t.Error("no task.requeued fact recorded")
+	}
+}
+
+// seedFacts appends n enqueued facts (unique task ids) to the journal.
+func seedFacts(ctx context.Context, t *testing.T, s *SQLiteStore, n int) {
+	t.Helper()
+
+	for i := range n {
+		if _, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+			t.Fatalf("seed enqueue %d: %v", i, err)
+		}
+	}
+}
+
+func TestFactsCursorBounded(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+	seedFacts(ctx, t, s, 7)
+
+	first, err := s.Facts(ctx, 0, 3)
+	if err != nil {
+		t.Fatalf("Facts: %v", err)
+	}
+
+	if len(first) != 3 || first[0].Seq != 1 || first[2].Seq != 3 {
+		t.Fatalf("limit 3 from 0 = %d facts, seqs %d..%d, want 1..3", len(first), first[0].Seq, first[len(first)-1].Seq)
+	}
+
+	second, err := s.Facts(ctx, first[len(first)-1].Seq, 3)
+	if err != nil {
+		t.Fatalf("Facts(cursor): %v", err)
+	}
+
+	if len(second) != 3 || second[0].Seq != 4 {
+		t.Fatalf("page 2 = %d facts from seq %d, want seqs 4..6", len(second), second[0].Seq)
+	}
+
+	all, err := s.Facts(ctx, 0, 0)
+	if err != nil {
+		t.Fatalf("Facts(unbounded): %v", err)
+	}
+
+	if len(all) != 7 {
+		t.Fatalf("unbounded = %d facts, want 7", len(all))
+	}
+}
+
+func TestLastFactsReturnsTailInAscendingOrder(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+	seedFacts(ctx, t, s, 10)
+
+	tail, err := s.LastFacts(ctx, 3)
+	if err != nil {
+		t.Fatalf("LastFacts: %v", err)
+	}
+
+	if len(tail) != 3 || tail[0].Seq != 8 || tail[2].Seq != 10 {
+		t.Fatalf("LastFacts(3) = %d facts seqs %d..%d, want 8..10 ascending", len(tail), tail[0].Seq, tail[2].Seq)
+	}
+
+	whole, err := s.LastFacts(ctx, 0)
+	if err != nil {
+		t.Fatalf("LastFacts(unbounded): %v", err)
+	}
+
+	if len(whole) != 10 || whole[0].Seq != 1 {
+		t.Fatalf("LastFacts(0) = %d facts from seq %d, want all 10 from 1", len(whole), whole[0].Seq)
+	}
+}
+
+func TestHeadSeq(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	head, err := s.HeadSeq(ctx)
+	if err != nil {
+		t.Fatalf("HeadSeq(empty): %v", err)
+	}
+
+	if head != 0 {
+		t.Fatalf("empty journal head = %d, want 0", head)
+	}
+
+	seedFacts(ctx, t, s, 4)
+
+	head, err = s.HeadSeq(ctx)
+	if err != nil {
+		t.Fatalf("HeadSeq: %v", err)
+	}
+
+	if head != 4 {
+		t.Fatalf("head = %d, want 4", head)
+	}
+}
+
+func TestFactsForTaskFiltersAndBounds(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	a, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`), DedupKey: "a"})
+	if err != nil {
+		t.Fatalf("enqueue a: %v", err)
+	}
+
+	b, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`), DedupKey: "b"})
+	if err != nil {
+		t.Fatalf("enqueue b: %v", err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	// ClaimDue may pick either task; follow whichever one was claimed.
+	claimed, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	claimedFacts, err := s.FactsForTask(ctx, claimed.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("FactsForTask(claimed): %v", err)
+	}
+
+	if len(claimedFacts) != 2 { // enqueued + claimed
+		t.Fatalf("claimed task has %d facts, want 2 (enqueued+claimed)", len(claimedFacts))
+	}
+
+	for _, f := range claimedFacts {
+		if f.TaskID != claimed.ID.String() {
+			t.Fatalf("fact for wrong task %s in claimed trail", f.TaskID)
+		}
+	}
+
+	other := b.ID
+	if claimed.ID == b.ID {
+		other = a.ID
+	}
+
+	otherFacts, err := s.FactsForTask(ctx, other.String(), 1)
+	if err != nil {
+		t.Fatalf("FactsForTask(other): %v", err)
+	}
+
+	if len(otherFacts) != 1 || otherFacts[0].Type != journal.Enqueued {
+		t.Fatalf("bounded trail = %+v, want only the latest (enqueued)", otherFacts)
+	}
+}
+
+func TestCountFactsByTypeSince(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+	seedFacts(ctx, t, s, 3)
+
+	n, err := s.CountFacts(ctx, journal.Enqueued, time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatalf("CountFacts: %v", err)
+	}
+
+	if n != 3 {
+		t.Fatalf("enqueued since -1h = %d, want 3", n)
+	}
+
+	n, err = s.CountFacts(ctx, journal.Enqueued, time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatalf("CountFacts(future): %v", err)
+	}
+
+	if n != 0 {
+		t.Fatalf("enqueued since +1h = %d, want 0", n)
+	}
+
+	n, err = s.CountFacts(ctx, journal.Completed, time.Time{})
+	if err != nil {
+		t.Fatalf("CountFacts(completed): %v", err)
+	}
+
+	if n != 0 {
+		t.Fatalf("completed = %d, want 0", n)
 	}
 }

@@ -30,7 +30,8 @@ import (
 
 // FactSource is the slice of queue.Store the bridge needs.
 type FactSource interface {
-	Facts(ctx context.Context, after int64) ([]journal.Fact, error)
+	Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error)
+	HeadSeq(ctx context.Context) (int64, error)
 	Get(ctx context.Context, id task.ID) (task.Task, error)
 }
 
@@ -39,6 +40,10 @@ const SourceApp = "go-taskqueue"
 
 // DefaultPollInterval is how often the journal is tailed.
 const DefaultPollInterval = 5 * time.Second
+
+// forwardBatchLimit bounds each journal read during a poll's backlog drain:
+// memory stays flat no matter how large the burst since the last poll.
+const forwardBatchLimit = 500
 
 // Config controls a Bridge. Endpoint and APIKey come from the PapDashboard
 // deployment (its public /api/ingest route and the PAP_API_KEY value).
@@ -129,30 +134,42 @@ func (b *Bridge) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			facts, err := b.store.Facts(ctx, watermark)
-			if err != nil {
-				if ctx.Err() != nil {
-					return nil
-				}
+			// Drain the backlog in bounded batches; a failed forward stops the
+			// drain and retries on the next poll from the last forwarded seq.
+			drained := false
 
-				b.log.Error("papdashboard bridge read journal failed", "err", err)
-
-				continue
-			}
-
-			for _, f := range facts {
-				if err := b.forward(ctx, f); err != nil {
+			for !drained {
+				facts, err := b.store.Facts(ctx, watermark, forwardBatchLimit)
+				if err != nil {
 					if ctx.Err() != nil {
 						return nil
 					}
 
-					b.log.Error("papdashboard bridge forward failed; will retry",
-						"seq", f.Seq, "type", f.Type, "err", err)
+					b.log.Error("papdashboard bridge read journal failed", "err", err)
 
 					break
 				}
 
-				watermark = f.Seq
+				for _, f := range facts {
+					if err := b.forward(ctx, f); err != nil {
+						if ctx.Err() != nil {
+							return nil
+						}
+
+						b.log.Error("papdashboard bridge forward failed; will retry",
+							"seq", f.Seq, "type", f.Type, "err", err)
+
+						drained = true
+
+						break
+					}
+
+					watermark = f.Seq
+				}
+
+				if len(facts) < forwardBatchLimit {
+					drained = true
+				}
 			}
 		}
 	}
@@ -166,21 +183,14 @@ func (b *Bridge) startWatermark(ctx context.Context) int64 {
 		return *b.cfg.FromSeq
 	}
 
-	facts, err := b.store.Facts(ctx, 0)
+	head, err := b.store.HeadSeq(ctx)
 	if err != nil {
-		b.log.Error("papdashboard bridge cannot read journal", "err", err)
+		b.log.Error("papdashboard bridge cannot read journal head", "err", err)
 
 		return -1
 	}
 
-	var max int64
-	for _, f := range facts {
-		if f.Seq > max {
-			max = f.Seq
-		}
-	}
-
-	return max
+	return head
 }
 
 // forward mirrors one fact. Completed tasks only resolve alerts this bridge

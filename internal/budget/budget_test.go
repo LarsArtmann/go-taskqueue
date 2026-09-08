@@ -25,12 +25,38 @@ func seeded(nToday, nYesterday int) factSource {
 	return factSource{j}
 }
 
-// factSource adapts MemoryJournal (Since) to the guard's Facts view, the
-// same mapping queue.Store.Facts uses.
+// factSource adapts MemoryJournal (Since/All) to the guard's FactSource
+// view, mirroring the queue.Store cursor/pushdown mapping.
 type factSource struct{ j *journal.MemoryJournal }
 
-func (m factSource) Facts(ctx context.Context, after int64) ([]journal.Fact, error) {
-	return m.j.Since(ctx, after)
+func (m factSource) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
+	facts, err := m.j.Since(ctx, after)
+	if err != nil {
+		return nil, err
+	}
+
+	if limit > 0 && len(facts) > limit {
+		facts = facts[:limit]
+	}
+
+	return facts, err
+}
+
+func (m factSource) CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error) {
+	facts, err := m.j.All(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	var n int64
+
+	for _, f := range facts {
+		if f.Type == ftype && !f.Time.Before(since) {
+			n++
+		}
+	}
+
+	return n, nil
 }
 
 // TestSpentTodayMatchesFacts pins the spend projection: one enqueued task

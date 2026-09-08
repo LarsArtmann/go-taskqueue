@@ -87,7 +87,7 @@ func main() {
 			return
 		}
 
-		facts, err := store.Facts(r.Context(), 0)
+		facts, err := store.Facts(r.Context(), 0, 0)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 

@@ -17,6 +17,11 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
+// topFactLimit bounds the journal read per `tq top` frame to the most
+// recent facts: durations come from recent claim/complete pairs, and a
+// bounded tail keeps the refresh O(1) as the journal grows.
+const topFactLimit = 5000
+
 // isTerminal reports whether w is an interactive terminal, so the live view
 // may repaint with ANSI cursor control; pipes and files get plain frames.
 func isTerminal(w io.Writer) bool {
@@ -170,7 +175,7 @@ func cmdTop(args []string) error {
 			return err
 		}
 
-		facts, err := s.Facts(ctx, 0)
+		facts, err := s.LastFacts(ctx, topFactLimit)
 		if err != nil {
 			return err
 		}

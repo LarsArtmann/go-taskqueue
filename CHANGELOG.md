@@ -8,6 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Every journal read is now bounded or cursor-based, so the dashboard,
+  `tq top`, the papdashboard bridge and the daily-budget guard stay O(1)
+  per tick as the journal grows past 100k facts. `queue.Store.Facts` takes
+  a limit, `LastFacts` feeds the webui fact feed (last 50, not the whole
+  journal per 500ms burst), `HeadSeq` resolves tailer/bridge watermarks
+  without loading history, `FactsForTask` serves task detail trails via
+  the (task_id, seq) index, and `CountFacts` pushes the budget
+  spent-today count into SQL. `tq show <id>` uses the indexed trail read;
+  `tq top` frames read the most recent 5,000 facts. The papdashboard
+  bridge drains backlogs in batches of 500 while keeping its
+  retry-unsafe-forward guarantee (a failed forward still stops the drain
+  and retries from the last forwarded seq).
+
 - All three agent prompts (harvest work item, drift catch-up, cqa fix task)
   now teach the `TQ_RESULT:` self-report line, so pool agents fill in
   `files_changed`/`commit_sha` in `tq show` instead of leaving the structured

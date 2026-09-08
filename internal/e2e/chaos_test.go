@@ -103,7 +103,7 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 	}
 
 	// Invariant: exactly one completion in the journal.
-	facts, _ := s.Facts(ctx, 0)
+	facts, _ := s.Facts(ctx, 0, 0)
 	completions := 0
 
 	for _, f := range facts {

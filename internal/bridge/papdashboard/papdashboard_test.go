@@ -22,7 +22,7 @@ type fakeSource struct {
 	tasks map[string]task.Task
 }
 
-func (f *fakeSource) Facts(_ context.Context, after int64) ([]journal.Fact, error) {
+func (f *fakeSource) Facts(_ context.Context, after int64, limit int) ([]journal.Fact, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -34,7 +34,26 @@ func (f *fakeSource) Facts(_ context.Context, after int64) ([]journal.Fact, erro
 		}
 	}
 
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+
 	return out, nil
+}
+
+func (f *fakeSource) HeadSeq(_ context.Context) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	var max int64
+
+	for _, x := range f.facts {
+		if x.Seq > max {
+			max = x.Seq
+		}
+	}
+
+	return max, nil
 }
 
 func (f *fakeSource) Get(_ context.Context, id task.ID) (task.Task, error) {
@@ -136,7 +155,7 @@ func deadLetterFacts() ([]journal.Fact, map[string]task.Task) {
 func forwardAll(t *testing.T, b *Bridge, src *fakeSource) {
 	t.Helper()
 
-	facts, err := src.Facts(context.Background(), 0)
+	facts, err := src.Facts(context.Background(), 0, 0)
 	if err != nil {
 		t.Fatalf("Facts: %v", err)
 	}
@@ -318,12 +337,12 @@ type ctxAwareSource struct {
 	fakeSource
 }
 
-func (s *ctxAwareSource) Facts(ctx context.Context, after int64) ([]journal.Fact, error) {
+func (s *ctxAwareSource) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	return s.fakeSource.Facts(ctx, after)
+	return s.fakeSource.Facts(ctx, after, limit)
 }
 
 func TestRunWithCancelledContextReturnsNil(t *testing.T) {
