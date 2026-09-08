@@ -1,3 +1,5 @@
+//go:build unix
+
 package e2e
 
 import (
@@ -10,7 +12,6 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
-	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // TestBudgetCapsStatusMintedEnqueues pins the loop's documented blast-radius
@@ -49,9 +50,6 @@ func TestBudgetCapsStatusMintedEnqueues(t *testing.T) {
 
 		s := openStore(t, db)
 		defer s.Close() //nolint:errcheck
-
-		statusType := task.Status("")
-		_ = statusType
 
 		tq := "status"
 		tasks, err := s.List(context.Background(), queue.Filter{Type: &tq})
