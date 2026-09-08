@@ -54,6 +54,12 @@ type Config struct {
 	// to present the token via an Authorization: Bearer header or a `token`
 	// query parameter. Validate refuses non-loopback binds without it.
 	AuthToken string
+	// AllowWrites opts in to admin actions from the dashboard (cancel
+	// pending/running tasks, rescue dead-lettered ones). ADR-0003's default
+	// is a read-only projection; writes are a conscious operator decision
+	// guarded by per-form CSRF tokens (withCSRF) and, on non-loopback
+	// binds, by the auth token. Off by default.
+	AllowWrites bool
 }
 
 func (c Config) withDefaults() Config {
@@ -119,6 +125,24 @@ func (s *Server) routeBindings() []struct {
 	}
 }
 
+// writeBindings is the opt-in admin route table (Config.AllowWrites). It
+// lives OUTSIDE routeBindings so the ADR-0003 read-only guardrail test
+// keeps proving that the DEFAULT dashboard registers no mutating handler.
+func (s *Server) writeBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"POST", "/task/{id}/cancel", s.handleTaskCancelPOST},
+		{"POST", "/task/{id}/rescue", s.handleTaskRescuePOST},
+	}
+}
+
 // Handler returns the dashboard's HTTP routes:
 //
 //	GET /                  dashboard page
@@ -129,8 +153,14 @@ func (s *Server) routeBindings() []struct {
 //	GET /api/stats         JSON status counts
 //	GET /api/facts         JSON journal cursor (?after=SEQ&limit=N)
 //
+// With Config.AllowWrites the admin routes are added on top:
+//
+//	POST /task/{id}/cancel  withdraw a pending task / request a running stop
+//	POST /task/{id}/rescue  re-queue a dead-lettered task (fresh attempts)
+//
 // Every response carries strict security headers (securityHeaders); the
-// dashboard is read-only by construction.
+// default dashboard is read-only by construction, writes are opt-in and
+// CSRF-guarded (withCSRF).
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
@@ -144,7 +174,15 @@ func (s *Server) Handler() http.Handler {
 		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
 	}
 
-	handler := http.Handler(mux)
+	// The CSRF wrapper is innermost: page GETs issue/refresh the token
+	// cookie and publish it to the render chain; write POSTs verify it.
+	handler := withCSRFIssue(http.Handler(mux))
+
+	if s.cfg.AllowWrites {
+		for _, route := range s.writeBindings() {
+			mux.Handle(route.method+" "+route.pattern, withCSRF(http.HandlerFunc(route.handler)))
+		}
+	}
 
 	if s.cfg.AuthToken != "" {
 		handler = withTokenAuth(s.cfg.AuthToken, handler)

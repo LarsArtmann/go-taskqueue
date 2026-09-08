@@ -1,10 +1,12 @@
 package webui
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
@@ -125,4 +127,85 @@ func tokenMatches(expected [sha256.Size]byte, presented string) bool {
 	got := sha256.Sum256([]byte(presented))
 
 	return subtle.ConstantTimeCompare(expected[:], got[:]) == 1
+}
+
+// tqCSRFCookie carries the per-browser write token. It is NOT a secret from
+// the user — it is a secret from OTHER SITES: a cross-site form post cannot
+// read this cookie, so it cannot forge the matching form field. Issued by
+// withCSRFIssue on page GETs, verified by withCSRF on every write POST.
+const tqCSRFCookie = "tq_csrf"
+
+type csrfCtxKey struct{}
+
+// ctxCSRF returns the browser's CSRF token for this request, published by
+// withCSRFIssue; write forms embed it as a hidden field.
+func ctxCSRF(ctx context.Context) string {
+	v, _ := ctx.Value(csrfCtxKey{}).(string)
+
+	return v
+}
+
+// withCSRFIssue ensures every GET response carries (or already has) the CSRF
+// cookie and publishes its value to the render chain, so server-rendered
+// forms can embed it. POSTs only read the context — issuance is a GET-side
+// concern.
+func withCSRFIssue(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		value := ""
+
+		if c, err := r.Cookie(tqCSRFCookie); err == nil {
+			value = c.Value
+		}
+
+		if value == "" && r.Method == http.MethodGet {
+			var err error
+			if value, err = newNonce(); err != nil {
+				slog.Error("webui: csrf token generation failed", "err", err)
+				http.Error(w, "internal error", http.StatusInternalServerError)
+
+				return
+			}
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     tqCSRFCookie,
+				Value:    value,
+				Path:     "/",
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+				Secure:   r.TLS != nil,
+			})
+		}
+
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), csrfCtxKey{}, value)))
+	})
+}
+
+// withCSRF verifies the write form's csrf field against the browser's
+// tq_csrf cookie (constant-time). A cross-site attacker can make the
+// browser SEND the cookie but cannot read it, so the required form field is
+// unforgeable without same-site JS — and CSP keeps same-site injection to
+// server-rendered forms only.
+func withCSRF(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := r.Cookie(tqCSRFCookie)
+		if err != nil || c.Value == "" {
+			http.Error(w, "forbidden: missing CSRF cookie — load the page first", http.StatusForbidden)
+
+			return
+		}
+
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "bad form: "+err.Error(), http.StatusBadRequest)
+
+			return
+		}
+
+		if !tokenMatches(sha256.Sum256([]byte(c.Value)), r.PostFormValue("csrf")) {
+			http.Error(w, "forbidden: CSRF token mismatch — reload and retry", http.StatusForbidden)
+
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

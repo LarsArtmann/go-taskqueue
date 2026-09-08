@@ -29,6 +29,7 @@ const (
 	tailBatchLimit      = 1000
 	hoursPerDay         = 24 * time.Hour
 	renderErrPreviewLen = 120
+	boardColumnLimit    = 25 // board view: newest tasks shown per status column
 )
 
 // journalFactView aliases the fact type so templ templates can reference it
@@ -50,6 +51,15 @@ type ProjectSummary struct {
 	Dead    int
 }
 
+// View names for the task projection region (#frag-table): the default
+// ledger table, or the board — a Kanban-style column per lifecycle status.
+// Read-only by construction either way (ADR-0003); moving cards between
+// columns is queue mutation and stays behind the future --allow-writes gate.
+const (
+	viewTable = ""
+	viewBoard = "board"
+)
+
 // FilterState is the URL-carried view filter (?project=&status=&q=).
 // Page rides in the URL (?page=N) but is deliberately not part of
 // QueryString: filter chips always reset to page 1.
@@ -62,6 +72,9 @@ type FilterState struct {
 	// "priority-asc", "priority-desc", "attempts-asc", "attempts-desc".
 	// Empty keeps the severity order (dead, running, pending, ...).
 	Sort string
+	// View picks the task projection: viewTable (default) or viewBoard.
+	// Board drops Status (columns ARE the statuses) and ignores Sort/Page.
+	View string
 }
 
 // Empty reports whether no filter is active.
@@ -87,6 +100,10 @@ func (f FilterState) QueryString() string {
 
 	if f.Sort != "" {
 		fmt.Fprintf(&b, "sort=%s&", f.Sort)
+	}
+
+	if f.View != "" && f.View != viewTable {
+		fmt.Fprintf(&b, "view=%s&", f.View)
 	}
 
 	s := b.String()
@@ -115,6 +132,17 @@ func (b BudgetView) Tone() display.StatTone {
 	}
 }
 
+// BoardColumn is one lifecycle column of the board view: the true count
+// of tasks in this status (under the filter's project/query scope) plus
+// the newest boardColumnLimit cards. Truncated is how many older tasks
+// the column omits (the "+N older" link opens them in the table view).
+type BoardColumn struct {
+	Status    task.Status
+	Count     int
+	Tasks     []task.Task
+	Truncated int
+}
+
 // DashboardData is the full projection snapshot one burst renders from.
 type DashboardData struct {
 	Counts     map[task.Status]int
@@ -129,6 +157,9 @@ type DashboardData struct {
 	TotalPages int
 	MatchTotal int
 	Budget     *BudgetView
+	// Board holds the per-status columns when the filter selects the board
+	// view; nil on the table view (which uses Tasks/Page/TotalPages).
+	Board []BoardColumn
 	// JournalSeq is the journal watermark (highest fact seq) — the resume
 	// point every SSE/bridge consumer carries.
 	JournalSeq int64
@@ -236,6 +267,21 @@ func filterHref(f FilterState) string {
 	return "/?" + q
 }
 
+// viewToggleHref switches the task projection (table <-> board) keeping the
+// project/query scope. Switching resets page and sort; the board also drops
+// the status filter — columns ARE the statuses.
+func viewToggleHref(f FilterState, view string) string {
+	f.View = view
+	f.Page = 1
+	f.Sort = ""
+
+	if view == viewBoard {
+		f.Status = ""
+	}
+
+	return filterHref(f)
+}
+
 // pageHref renders the current filter pinned to a specific page; filter
 // chips keep using filterHref, which resets to page 1.
 func pageHref(f FilterState, page int) string {
@@ -304,59 +350,75 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 
 	page := max(filter.Page, 1)
 
-	data.Page = page
-
-	qf := filter.toQueueFilter(0)
-	qf.SeverityOrder = true
-	qf.Limit = taskTableLimit
-	qf.Offset = (page - 1) * taskTableLimit
-
-	tasks, err := s.store.List(ctx, qf)
-	if err != nil {
-		return data, err
-	}
-
-	data.Tasks = tasks
-
-	// Verdicts for the page's finished review tasks (best effort: a failed
-	// read renders no badge, never a broken snapshot).
-	for _, t := range tasks {
-		if t.Type != executor.TaskTypeReview || t.Status != task.Completed {
-			continue
+	if filter.View == viewBoard {
+		// The board replaces the table page: columns carry their own
+		// bounded newest-first lists, so the paginated Tasks load (and its
+		// verdict lookups) would be wasted work.
+		board, err := s.loadBoard(ctx, filter)
+		if err != nil {
+			return data, err
 		}
 
-		if res, ok := reviewResultFor(ctx, s.store, t.ID.String()); ok {
-			if data.Reviews == nil {
-				data.Reviews = map[string]executor.ReviewResult{}
+		data.Board = board
+
+		for _, col := range board {
+			data.MatchTotal += col.Count
+		}
+	} else {
+		data.Page = page
+
+		qf := filter.toQueueFilter(0)
+		qf.SeverityOrder = true
+		qf.Limit = taskTableLimit
+		qf.Offset = (page - 1) * taskTableLimit
+
+		tasks, err := s.store.List(ctx, qf)
+		if err != nil {
+			return data, err
+		}
+
+		data.Tasks = tasks
+
+		// Verdicts for the page's finished review tasks (best effort: a failed
+		// read renders no badge, never a broken snapshot).
+		for _, t := range tasks {
+			if t.Type != executor.TaskTypeReview || t.Status != task.Completed {
+				continue
 			}
 
-			data.Reviews[t.ID.String()] = res
-		}
-	}
+			if res, ok := reviewResultFor(ctx, s.store, t.ID.String()); ok {
+				if data.Reviews == nil {
+					data.Reviews = map[string]executor.ReviewResult{}
+				}
 
-	// Outcomes for the page's finished status tasks — same best-effort
-	// contract as the review verdicts above.
-	for _, t := range tasks {
-		if t.Type != executor.TaskTypeStatus || t.Status != task.Completed {
-			continue
+				data.Reviews[t.ID.String()] = res
+			}
 		}
 
-		if res, ok := statusResultFor(ctx, s.store, t.ID.String()); ok {
-			if data.Statuses == nil {
-				data.Statuses = map[string]executor.StatusResult{}
+		// Outcomes for the page's finished status tasks — same best-effort
+		// contract as the review verdicts above.
+		for _, t := range tasks {
+			if t.Type != executor.TaskTypeStatus || t.Status != task.Completed {
+				continue
 			}
 
-			data.Statuses[t.ID.String()] = res
+			if res, ok := statusResultFor(ctx, s.store, t.ID.String()); ok {
+				if data.Statuses == nil {
+					data.Statuses = map[string]executor.StatusResult{}
+				}
+
+				data.Statuses[t.ID.String()] = res
+			}
 		}
-	}
 
-	matches, err := s.store.CountTasks(ctx, filter.toQueueFilter(0))
-	if err != nil {
-		return data, err
-	}
+		matches, err := s.store.CountTasks(ctx, filter.toQueueFilter(0))
+		if err != nil {
+			return data, err
+		}
 
-	data.MatchTotal = matches
-	data.TotalPages = max(1, (matches+taskTableLimit-1)/taskTableLimit)
+		data.MatchTotal = matches
+		data.TotalPages = max(1, (matches+taskTableLimit-1)/taskTableLimit)
+	}
 
 	if s.cfg.DailyBudget > 0 {
 		spent, err := s.store.CountFacts(ctx, journal.Enqueued, startOfDay(now))
@@ -396,6 +458,42 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	return data, nil
+}
+
+// loadBoard builds the board view's lifecycle columns under the filter's
+// project/query scope (a status filter is meaningless when columns ARE the
+// statuses — parseFilter drops it): the true count per status plus the
+// newest boardColumnLimit cards, oldest truncated with an escape hatch
+// into the status-filtered table view.
+func (s *Server) loadBoard(ctx context.Context, filter FilterState) ([]BoardColumn, error) {
+	columns := make([]BoardColumn, 0, len(allStatuses))
+
+	for _, st := range allStatuses {
+		qf := filter.toQueueFilter(0)
+		qf.Status = &st
+
+		count, err := s.store.CountTasks(ctx, qf)
+		if err != nil {
+			return nil, err
+		}
+
+		qf.Limit = boardColumnLimit
+		qf.Sort = "age-desc" // newest first, like a kanban column
+
+		tasks, err := s.store.List(ctx, qf)
+		if err != nil {
+			return nil, err
+		}
+
+		columns = append(columns, BoardColumn{
+			Status:    st,
+			Count:     count,
+			Tasks:     tasks,
+			Truncated: max(count-len(tasks), 0),
+		})
+	}
+
+	return columns, nil
 }
 
 // factBuckets counts facts per equal slice of window ending at now (the
@@ -598,11 +696,18 @@ const (
 )
 
 // renderFragments renders every dashboard fragment from the snapshot.
+// The #frag-table container carries whichever task projection the filter
+// selects: the ledger table or the board — the SSE swap is view-blind.
 func renderFragments(ctx context.Context, data DashboardData) []fragment {
+	tasks := TaskTable(data)
+	if data.Filter.View == viewBoard {
+		tasks = Board(data)
+	}
+
 	return []fragment{
 		{ID: fragStats, HTML: renderComponent(ctx, StatusCards(data))},
 		{ID: fragFilters, HTML: renderComponent(ctx, FilterBar(data))},
-		{ID: fragTable, HTML: renderComponent(ctx, TaskTable(data))},
+		{ID: fragTable, HTML: renderComponent(ctx, tasks)},
 		{ID: fragDLQ, HTML: renderComponent(ctx, DeadLetterTable(data))},
 		{ID: fragFeed, HTML: renderComponent(ctx, FactFeed(data))},
 	}
