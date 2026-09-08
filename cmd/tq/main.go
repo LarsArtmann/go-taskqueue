@@ -302,7 +302,7 @@ func cmdWorker(args []string) error {
 	defer stop()
 
 	if *alertURL != "" {
-		bridge := papdashboard.New(s, papdashboard.Config{
+		bridge := papdashboard.New(s, s, papdashboard.Config{
 			Endpoint:     *alertURL,
 			APIKey:       *alertKey,
 			PollInterval: *alertPoll,
@@ -731,7 +731,7 @@ func cmdAgentPool(args []string) error {
 	defer stop()
 
 	if *alertURL != "" {
-		bridge := papdashboard.New(s, papdashboard.Config{
+		bridge := papdashboard.New(s, s, papdashboard.Config{
 			Endpoint:     *alertURL,
 			APIKey:       *alertKey,
 			PollInterval: *alertPoll,

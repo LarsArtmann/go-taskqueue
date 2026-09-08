@@ -171,7 +171,7 @@ func TestDeadLetterBecomesAlert(t *testing.T) {
 	pap := newFakePap(t)
 	facts, tasks := deadLetterFacts()
 	src := &fakeSource{facts: facts, tasks: tasks}
-	b := New(src, Config{Endpoint: pap.server.URL, APIKey: "secret", Logger: quietLogger()})
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "secret", Logger: quietLogger()})
 
 	forwardAll(t, b, src)
 
@@ -226,7 +226,7 @@ func TestCompletionAfterAlertResolves(t *testing.T) {
 	facts, tasks := deadLetterFacts()
 	facts = append(facts, journal.Fact{Seq: 3, TaskID: "t-dead", Type: journal.Completed})
 	src := &fakeSource{facts: facts, tasks: tasks}
-	b := New(src, Config{Endpoint: pap.server.URL, Logger: quietLogger()})
+	b := New(src, nil, Config{Endpoint: pap.server.URL, Logger: quietLogger()})
 
 	forwardAll(t, b, src)
 
@@ -257,7 +257,7 @@ func TestCompletionWithoutAlertIsSilent(t *testing.T) {
 	pap := newFakePap(t)
 	facts, tasks := deadLetterFacts()
 	src := &fakeSource{facts: facts, tasks: tasks}
-	b := New(src, Config{Endpoint: pap.server.URL, Logger: quietLogger()})
+	b := New(src, nil, Config{Endpoint: pap.server.URL, Logger: quietLogger()})
 
 	forwardAll(t, b, src)
 
@@ -272,7 +272,7 @@ func TestServerErrorRetriesWithSameIdempotencyKey(t *testing.T) {
 
 	facts, tasks := deadLetterFacts()
 	src := &fakeSource{facts: facts, tasks: tasks}
-	b := New(src, Config{Endpoint: pap.server.URL, Logger: quietLogger()})
+	b := New(src, nil, Config{Endpoint: pap.server.URL, Logger: quietLogger()})
 
 	if err := b.forward(context.Background(), facts[1]); err == nil {
 		t.Fatal("expected 502 to surface as retryable error")
@@ -296,7 +296,7 @@ func TestRunForwardsNewFactsAndStops(t *testing.T) {
 	pap := newFakePap(t)
 	facts, tasks := deadLetterFacts()
 	src := &fakeSource{facts: facts[:1], tasks: tasks}
-	b := New(src, Config{Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 2 * time.Millisecond})
+	b := New(src, nil, Config{Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 2 * time.Millisecond})
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -349,7 +349,7 @@ func TestRunWithCancelledContextReturnsNil(t *testing.T) {
 	pap := newFakePap(t)
 	facts, tasks := deadLetterFacts()
 	src := &ctxAwareSource{fakeSource{facts: facts, tasks: tasks}}
-	b := New(src, Config{Endpoint: pap.server.URL, APIKey: "secret", Logger: quietLogger()})
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "secret", Logger: quietLogger()})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -381,7 +381,7 @@ func TestBudgetExhaustionAlertsOncePerDay(t *testing.T) {
 	pap := newFakePap(t)
 	day := time.Date(2026, 9, 8, 9, 0, 0, 0, time.UTC)
 	src := &fakeSource{facts: budgetFacts(day, 3, 1)} // cap fires at 2, third is over-cap
-	b := New(src, Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()})
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()})
 
 	forwardAll(t, b, src)
 
@@ -414,7 +414,7 @@ func TestBudgetAlertResolvesOnDayRollover(t *testing.T) {
 	src.add(budgetFacts(day1, 2, 1)...)  // cap 2 reached on day 1
 	src.add(budgetFacts(day2, 1, 10)...) // one enqueue on day 2: rollover, no new alert
 
-	b := New(src, Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()})
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()})
 
 	forwardAll(t, b, src)
 
@@ -433,7 +433,7 @@ func TestBudgetTelemetryOffByDefault(t *testing.T) {
 	pap := newFakePap(t)
 	day := time.Date(2026, 9, 8, 9, 0, 0, 0, time.UTC)
 	src := &fakeSource{facts: budgetFacts(day, 5, 1)} // DailyBudget unset (0)
-	b := New(src, Config{Endpoint: pap.server.URL, APIKey: "k", Logger: quietLogger()})
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "k", Logger: quietLogger()})
 
 	forwardAll(t, b, src)
 

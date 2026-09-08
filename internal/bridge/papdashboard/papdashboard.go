@@ -2,15 +2,18 @@
 // a dead-lettered task becomes an alert (alert.triggered), and if the task
 // later completes (e.g. after tq dlq --rescue), that alert is resolved
 // (alert.resolved). The bridge consumes the same journal seam as tq tail,
-// so it works against any Store and never mutates queue state.
+// so it works against any Store and never mutates queue state — its one
+// write is its own read cursor in the watermarks table.
 //
-// Delivery semantics: at-least-once within a bridge process lifetime — the
-// journal watermark only advances after PapDashboard accepts a fact, and the
-// Idempotency-Key header (derived from the fact sequence) makes retries
-// safe. Across restarts the bridge starts at the journal head: incidents
-// that fired while the bridge was down are not replayed (review them with
-// tq dlq); a completion that would resolve a pre-restart alert is not seen,
-// so those alerts stay open for a human.
+// Delivery semantics: at-least-once. The journal watermark only advances
+// after PapDashboard accepts a fact (2xx, or a permanent 4xx which is
+// logged then accepted), and the Idempotency-Key header (derived from the
+// fact sequence) makes retries safe. Across restarts the bridge resumes
+// from its persisted checkpoint instead of the journal head: incidents
+// that fired while the bridge was down are replayed with identical
+// idempotency keys, and Config.FromSeq overrides the checkpoint for an
+// ops-initiated replay. With no WatermarkStore configured the bridge keeps
+// the legacy volatile behavior (head start, nothing persisted).
 package papdashboard
 
 import (
@@ -28,11 +31,20 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// FactSource is the slice of queue.Store the bridge needs.
+// FactSource is the read-only slice of queue.Store the bridge needs.
 type FactSource interface {
 	Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error)
 	HeadSeq(ctx context.Context) (int64, error)
 	Get(ctx context.Context, id task.ID) (task.Task, error)
+}
+
+// WatermarkStore persists the bridge's journal cursor across restarts.
+// queue.Store satisfies it; tests fake it in-process. It is deliberately
+// separate from FactSource so the read contract stays read-only: the
+// bridge writes only its own consumer progress, never task or fact state.
+type WatermarkStore interface {
+	Watermark(ctx context.Context, consumer string) (int64, error)
+	SaveWatermark(ctx context.Context, consumer string, seq int64) error
 }
 
 // SourceApp is the default sourceApp stamped on ingested alerts.
@@ -79,11 +91,12 @@ type Config struct {
 // Bridge tails the taskqueue journal and mirrors dead-letter incidents into
 // PapDashboard alerts.
 type Bridge struct {
-	store   FactSource
-	cfg     Config
-	log     *slog.Logger
-	client  *http.Client
-	alerted map[string]alertedTask
+	store       FactSource
+	checkpoints WatermarkStore // nil = volatile legacy behavior
+	cfg         Config
+	log         *slog.Logger
+	client      *http.Client
+	alerted     map[string]alertedTask
 
 	// Daily-budget telemetry (Config.DailyBudget): the same projection the
 	// pool's budget.Guard uses, maintained incrementally from Enqueued facts.
@@ -98,8 +111,10 @@ type alertedTask struct {
 	title string
 }
 
-// New builds a Bridge. Call Run to start tailing.
-func New(store FactSource, cfg Config) *Bridge {
+// New builds a Bridge. checkpoints persists the journal cursor across
+// restarts (queue.Store satisfies WatermarkStore); nil keeps the legacy
+// volatile behavior. Call Run to start tailing.
+func New(store FactSource, checkpoints WatermarkStore, cfg Config) *Bridge {
 	if cfg.SourceApp == "" {
 		cfg.SourceApp = SourceApp
 	}
@@ -125,24 +140,65 @@ func New(store FactSource, cfg Config) *Bridge {
 		log = slog.Default()
 	}
 
-	return &Bridge{store: store, cfg: cfg, log: log, client: cfg.Client, alerted: map[string]alertedTask{}}
+	return &Bridge{
+		store:       store,
+		checkpoints: checkpoints,
+		cfg:         cfg,
+		log:         log,
+		client:      cfg.Client,
+		alerted:     map[string]alertedTask{},
+	}
+}
+
+// consumerKey namespaces the bridge's checkpoints in the watermarks table.
+// Distinct endpoints get distinct cursors; one endpoint shared by two
+// bridge processes interleaves checkpoints, which the store's monotonic
+// upsert keeps safe.
+func (b *Bridge) consumerKey() string {
+	return "papdashboard:" + b.cfg.Endpoint
 }
 
 // Run tails the journal until ctx is cancelled. Facts are forwarded in Seq
 // order; the watermark advances past a fact only when it is accepted (2xx)
-// or permanently rejected (4xx) — transient failures retry on the next poll.
+// or permanently rejected (4xx) — transient failures retry on the next
+// poll. Each drained batch checkpoints the cursor AFTER the last accepted
+// fact, and a failed checkpoint stops the drain exactly like a failed
+// forward: the next poll retries from the last persisted seq, so delivery
+// stays at-least-once and never degrades to at-most-once.
 func (b *Bridge) Run(ctx context.Context) error {
-	watermark := b.startWatermark(ctx)
-	if watermark < 0 {
+	start, err := b.startWatermark(ctx)
+	if err != nil {
 		if ctx.Err() != nil {
 			return nil
 		}
 
-		return errors.New("papdashboard: cannot read journal head")
+		b.log.Error("papdashboard bridge cannot resolve journal position", "err", err)
+
+		return errors.New("papdashboard: cannot resolve journal position")
+	}
+
+	watermark, persisted := start.start, start.persisted
+
+	// First run with no row: eagerly insert the head so a crash before the
+	// first batch checkpoint still resumes exactly here. Persistence must
+	// not replay history into existing deployments — bootstrap is
+	// forward-only, exactly like the volatile behavior.
+	if start.bootstrap != 0 && b.checkpoints != nil {
+		if err := b.checkpoints.SaveWatermark(ctx, b.consumerKey(), start.bootstrap); err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
+
+			b.log.Error("papdashboard bridge cannot persist bootstrap watermark", "seq", start.bootstrap, "err", err)
+
+			return errors.New("papdashboard: cannot persist bootstrap watermark")
+		}
+
+		persisted = start.bootstrap
 	}
 
 	b.log.Info("papdashboard bridge watching for dead letters",
-		"endpoint", b.cfg.Endpoint, "fromSeq", watermark)
+		"endpoint", b.cfg.Endpoint, "fromSeq", watermark, "start", start.branch)
 
 	ticker := time.NewTicker(b.cfg.PollInterval)
 	defer ticker.Stop()
@@ -152,63 +208,145 @@ func (b *Bridge) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			// Drain the backlog in bounded batches; a failed forward stops the
-			// drain and retries on the next poll from the last forwarded seq.
-			drained := false
-
-			for !drained {
-				facts, err := b.store.Facts(ctx, watermark, forwardBatchLimit)
-				if err != nil {
-					if ctx.Err() != nil {
-						return nil
-					}
-
-					b.log.Error("papdashboard bridge read journal failed", "err", err)
-
-					break
+			// A pending checkpoint gates forwarding: a new batch is never
+			// read while accepted facts are unpersisted (a crash there
+			// would skip them).
+			if err := b.checkpoint(ctx, watermark, &persisted); err != nil {
+				if ctx.Err() != nil {
+					return nil
 				}
 
-				for _, f := range facts {
-					if err := b.forward(ctx, f); err != nil {
-						if ctx.Err() != nil {
-							return nil
-						}
+				b.log.Error("papdashboard bridge checkpoint failed; will retry",
+					"seq", watermark, "err", err)
 
-						b.log.Error("papdashboard bridge forward failed; will retry",
-							"seq", f.Seq, "type", f.Type, "err", err)
-
-						drained = true
-
-						break
-					}
-
-					watermark = f.Seq
-				}
-
-				if len(facts) < forwardBatchLimit {
-					drained = true
-				}
+				break
 			}
+
+			b.drain(ctx, &watermark, &persisted)
 		}
 	}
 }
 
-// startWatermark resolves the initial sequence: explicit FromSeq, else the
-// journal head (forward-only from now), read under ctx so a cancelled startup
-// aborts cleanly.
-func (b *Bridge) startWatermark(ctx context.Context) int64 {
+// checkpoint persists the cursor when it has advanced past the last
+// persisted seq. Its failure is a delivery failure: the caller stops the
+// drain and retries on the next poll, never skipping past the unpersisted
+// seq.
+func (b *Bridge) checkpoint(ctx context.Context, watermark int64, persisted *int64) error {
+	if b.checkpoints == nil || watermark <= *persisted {
+		return nil
+	}
+
+	if err := b.checkpoints.SaveWatermark(ctx, b.consumerKey(), watermark); err != nil {
+		return fmt.Errorf("save watermark %d: %w", watermark, err)
+	}
+
+	*persisted = watermark
+
+	return nil
+}
+
+// drain forwards every currently available fact in bounded batches,
+// checkpointing after each batch. Forward, read and checkpoint failures
+// are logged here and stop the drain; the next poll retries from the last
+// persisted seq.
+func (b *Bridge) drain(ctx context.Context, watermark, persisted *int64) {
+	for {
+		facts, err := b.store.Facts(ctx, *watermark, forwardBatchLimit)
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+
+			b.log.Error("papdashboard bridge read journal failed", "err", err)
+
+			return
+		}
+
+		for _, f := range facts {
+			if err := b.forward(ctx, f); err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+
+				b.log.Error("papdashboard bridge forward failed; will retry",
+					"seq", f.Seq, "type", f.Type, "err", err)
+
+				return
+			}
+
+			*watermark = f.Seq
+		}
+
+		// Batch end: checkpoint AFTER the last accepted fact — never before,
+		// or a crash would silently skip facts (at-most-once by accident).
+		if err := b.checkpoint(ctx, *watermark, persisted); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+
+			b.log.Error("papdashboard bridge checkpoint failed; will retry",
+				"seq", *watermark, "err", err)
+
+			return
+		}
+
+		if len(facts) < forwardBatchLimit {
+			return
+		}
+	}
+}
+
+// startDecision is startWatermark's outcome: the cursor to read from, the
+// last persisted checkpoint, which branch decided (for the startup log —
+// the operator's first diagnostic when alerts look wrong), and the eager
+// bootstrap seq to insert on a first run (0 = nothing to bootstrap).
+type startDecision struct {
+	start     int64
+	persisted int64
+	branch    string
+	bootstrap int64
+}
+
+// startWatermark resolves the initial cursor: explicit FromSeq (ops replay
+// override) beats a persisted checkpoint (restart resume), which beats the
+// journal head (first run). Read under ctx so a cancelled startup aborts
+// cleanly.
+func (b *Bridge) startWatermark(ctx context.Context) (startDecision, error) {
 	if b.cfg.FromSeq != nil {
-		return *b.cfg.FromSeq
+		d := startDecision{start: *b.cfg.FromSeq, branch: "--from-seq override"}
+		if b.checkpoints != nil {
+			p, err := b.checkpoints.Watermark(ctx, b.consumerKey())
+			if err != nil {
+				return startDecision{}, fmt.Errorf("read persisted watermark: %w", err)
+			}
+
+			d.persisted = p
+		}
+
+		return d, nil
+	}
+
+	if b.checkpoints != nil {
+		p, err := b.checkpoints.Watermark(ctx, b.consumerKey())
+		if err != nil {
+			return startDecision{}, fmt.Errorf("read persisted watermark: %w", err)
+		}
+
+		if p > 0 {
+			return startDecision{start: p, persisted: p, branch: "resumed from checkpoint"}, nil
+		}
 	}
 
 	head, err := b.store.HeadSeq(ctx)
 	if err != nil {
-		b.log.Error("papdashboard bridge cannot read journal head", "err", err)
-
-		return -1
+		return startDecision{}, err
 	}
 
-	return head
+	return startDecision{
+		start:     head,
+		branch:    "no checkpoint, starting at head",
+		bootstrap: head,
+	}, nil
 }
 
 // forward mirrors one fact. Completed tasks only resolve alerts this bridge
