@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Agent reviews**: `tq agent-pool --review` gives every completed agent
+  task one review by a second headless agent (`internal/review` sweeper +
+  a `review` executor in `internal/executor`). The reviewer reads the
+  original item, the reported commit and changed files, and must end its
+  output with a parseable `TQ_RESULT` verdict (`approve` or
+  `request_changes` with actionable findings) — the verdict lands in the
+  completion fact detail, visible via `tq show`. `--review-autofix` mints
+  a deduped agent fix task per finding, closing the loop. Loop safety is
+  structural (reviews are never reviewed; one review per task via dedup)
+  plus budgetary (review enqueues count against `--daily-budget`).
+  Reviewed end-to-end by a stub-agent smoke: agent → review
+  (request_changes) → fix task → re-review (approve) → clean `--once`
+  drain.
+
 ### Changed
 
 - The dashboard task table paginates in SQL: `?page=` (clamped, 200 rows

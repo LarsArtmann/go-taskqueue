@@ -61,6 +61,7 @@ facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 | `internal/executor` | Pluggable execution: `sh` command, HTTP, agent (headless AI), registry                                          |
 | `internal/harvest`  | Scans repos' TODO_LIST.md and enqueues work items as agent tasks; drift audit (`tq audit`)                      |
 | `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick                          |
+| `internal/review`   | Fact-stream sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks from findings |
 | `internal/webui`    | Read-only live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)          |
 | `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / stats / audit / top / show / dlq / cancel / facts / tail / serve |
 
@@ -89,6 +90,22 @@ is defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   Other task types require valid JSON payloads — the CLI errors otherwise.
 - **`agent`/`crush` executors**: payload is `AgentPayload`/`CrushPayload`
   JSON (repo, prompt, verify command, timeout). Verification must exit 0.
+- **`review` executor** (`internal/executor/review.go` + `internal/review`):
+  payload is `ReviewPayload` JSON (repo, reviewed_task, item, commit SHA,
+  files changed, model, yolo). Both verdicts COMPLETE the task — only the
+  mechanical contract gates it: output must end with a parseable
+  `TQ_RESULT: {"verdict":"approve"|"request_changes",...}` line (invalid
+  JSON is a retryable failed attempt; `request_changes` without findings is
+  invalid too). Verdict + findings land in the completion fact detail; the
+  sweeper (watermark starts at journal head — completions before pool start
+  are never replayed, same as the papdashboard bridge) turns agent
+  completions into `review:<task-id>`-deduped review tasks and, with
+  `--review-autofix`, request_changes findings into
+  `reviewfix:<review-id>:<hash>`-deduped agent fix tasks. Loop safety is
+  structural (sweeper only reviews the `agent` type) plus budgetary (every
+  enqueue counts against `--daily-budget`). Every agent-pool and
+  `tq worker --agents` registers the review executor, so pools without
+  `--review` can still CARRY review tasks another pool minted.
 - **Idempotent enqueue**: `task.New.DedupKey` set → re-enqueue returns the
   stored task unchanged (no duplicate row, no duplicate fact). Backed by a
   partial unique index; `dedup_key` is added to legacy DBs by migration.

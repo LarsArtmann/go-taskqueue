@@ -85,6 +85,12 @@ tq agent-pool --projects-dir ~/projects --once --daily-budget 20
 
 # optional: Code-Quality-Agent findings become fix tasks each tick
 tq agent-pool --projects-dir ~/projects --yolo --cqa-url http://localhost:8080 --cqa-owner $CQA_OWNER_ID
+
+# optional: every completed agent task gets ONE review by a second agent;
+# --review-autofix turns request_changes findings into deduped fix tasks
+# (verdicts land in the task's facts — inspect with `tq show`)
+tq agent-pool --projects-dir ~/projects --yolo --review --review-autofix \
+  --daily-budget 40
 ```
 
 ### Running it as a daemon
