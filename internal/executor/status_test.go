@@ -301,9 +301,68 @@ func TestStatusExecutorPromptCarriesWindowContext(t *testing.T) {
 		"Never push",
 		"TQ_RESULT:",
 		"status reporter",
+		"Hard scope rule",
+		"append-only",
+		"do not fix it yourself",
 	} {
 		if !strings.Contains(prompt, want) {
 			t.Errorf("prompt missing %q", want)
 		}
+	}
+}
+
+// TestStatusExecutorVerifyGateGatesCompletion pins the repo quality gate: the
+// reporter commits, so it can break the tree it just reported on — a failing
+// verify command must fail the attempt (retryable), a passing or absent one
+// must complete.
+func TestStatusExecutorVerifyGateGatesCompletion(t *testing.T) {
+	t.Parallel()
+
+	report := "mkdir -p docs/status\n"
+	report += "echo '# report' > docs/status/r.md\n"
+	report += `printf '%s\n' 'TQ_RESULT: {"report":"docs/status/r.md","next_items":0}'`
+
+	tests := []struct {
+		name    string
+		verify  string
+		wantErr bool
+	}{
+		{name: "passing verify completes", verify: "test -f docs/status/r.md"},
+		{name: "empty verify resolves to nothing", verify: ""},
+		{name: "failing verify fails the attempt", verify: "exit 7", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			e := &StatusExecutor{Agent: &AgentExecutor{Bin: makeStubAgent(t, report)}}
+
+			err := e.Execute(context.Background(), statusTaskT(t, StatusPayload{
+				Repo: t.TempDir(), Project: "demo",
+				Completed: []StatusCompletion{{TaskID: "t-1", Item: "item"}},
+				Verify:    tt.verify,
+			}))
+			if !tt.wantErr {
+				if err != nil {
+					t.Fatalf("Execute: %v", err)
+				}
+
+				return
+			}
+
+			if err == nil {
+				t.Fatal("failing verify must fail the attempt")
+			}
+
+			if !strings.Contains(err.Error(), "verify failed") {
+				t.Fatalf("want verify-gate error, got: %v", err)
+			}
+
+			var perm *PermanentError
+			if errors.As(err, &perm) {
+				t.Fatalf("verify failure must be retryable, got permanent: %v", err)
+			}
+		})
 	}
 }

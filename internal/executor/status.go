@@ -55,6 +55,11 @@ type StatusPayload struct {
 	RequireClean *bool `json:"require_clean,omitempty"`
 	// TimeoutMinutes caps the report run. Default 15.
 	TimeoutMinutes int `json:"timeout_minutes,omitempty"`
+	// Verify is the repo quality gate that must exit 0 after the report
+	// run (the reporter commits, so a broken tree is a real possibility).
+	// Empty means the usual resolution: the repo's .tq-verify file, then
+	// auto-detection — identical to AgentPayload.Verify.
+	Verify string `json:"verify,omitempty"`
 }
 
 // StatusResult is the structured outcome of one status run, stored in the
@@ -90,11 +95,12 @@ func (e *StatusExecutor) base() *AgentExecutor {
 	return e.Agent
 }
 
-// Execute runs the reporting agent and enforces the report contract: the
-// output must end with TQ_RESULT: {"report":"docs/status/...","next_items":N}
-// and the named file must exist inside the repository. Malformed output or a
-// missing file is a retryable failure; payload misses are permanent; dirty
-// trees are preflight requeues.
+// Execute runs the reporting agent and enforces two gates: the output must
+// end with TQ_RESULT: {"report":"docs/status/...","next_items":N} naming an
+// existing, repo-relative file, and the repo verify command must exit 0 (the
+// reporter commits, so it can break the tree it reports on). Malformed
+// output, a missing file or a failed verify is a retryable failure; payload
+// misses are permanent; dirty trees are preflight requeues.
 func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	var payload StatusPayload
 
@@ -150,6 +156,14 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	if err := requireReportFile(repoDir, result.Report); err != nil {
 		return fmt.Errorf("status: %w", err)
+	}
+
+	// The reporter had write access and committed — prove the tree it left
+	// behind still builds/tests before the completion counts. Same gate and
+	// resolution order as the agent executor (.tq-verify file, payload,
+	// auto-detect; empty resolves to nothing to run).
+	if _, err := runVerify(ctx, repoDir, &AgentPayload{Verify: payload.Verify}); err != nil {
+		return err
 	}
 
 	result.SessionID = ExtractSessionID(output)
@@ -252,6 +266,14 @@ TODO_LIST.md is machine-consumed: one checkbox item per line, "- [ ] text", neve
 - the next things from (f) as new "- [ ]" items (max ~50, each a self-contained task);
 - each question from (g) as an item ending with " — BLOCKED: <the question>" (a human answers by editing the item; blocked items are never harvested until then).
 Never delete or reword existing items; only append.
+
+## Hard scope rule
+
+Touch ONLY these files, nothing else:
+- your new report under docs/status/,
+- TODO_LIST.md (append-only),
+- the git commit containing exactly those changes.
+Do not modify code, configuration, docs, or any other tracked file. If you notice a bug or want a fix, REPORT it (as a TODO_LIST item) — do not fix it yourself.
 
 ## Finish
 

@@ -41,6 +41,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   task's complete agent + verify output to `DIR/<task-id>.log` (0600) and
   records the path in the result detail. `tq bootstrap` enables it by
   default at `~/.local/state/tq/logs` — daemon pools need their logs.
+- **Reasoning-effort fix (bootstrap)**: bootstrap no longer composes
+  `--model` into the pool args or pool.conf — a payload model makes the
+  executor pass `crush run -m`, which resets reasoning effort to the
+  provider default (verified via crush debug telemetry: with `-m` the
+  effort telemetry is empty, without it the `.crushrc` slot's effort
+  applies). The repo `.crushrc` managed block (model +
+  `--reasoning-effort xhigh` by default) is the single carrier; agent runs
+  and interactive crush both honor it.
 - **Wave-4 slices**: `tq version` reports the build (ldflags-injected
   release version in nix builds, VCS revision from build info in
   go-builds); the `sh` executor gained resource guards
