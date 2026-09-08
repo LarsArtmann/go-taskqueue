@@ -142,6 +142,12 @@ CREATE TABLE IF NOT EXISTS journal_meta (
 	key   TEXT PRIMARY KEY,
 	value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS watermarks (
+	consumer   TEXT PRIMARY KEY, -- journal consumer identity, e.g. "papdashboard:<endpoint>"
+	seq        INTEGER NOT NULL, -- last checkpointed fact seq
+	updated_at INTEGER NOT NULL  -- unix millis
+);
 `
 
 func (s *SQLiteStore) migrate(ctx context.Context) error {
@@ -1131,6 +1137,37 @@ func (s *SQLiteStore) CountFacts(ctx context.Context, ftype journal.FactType, si
 		ftype, since.UnixMilli()).Scan(&n)
 
 	return n, err
+}
+
+// Watermark returns the persisted read cursor for a journal consumer
+// (0 when the consumer never checkpointed) — the resume point for bridges
+// and sweepers.
+func (s *SQLiteStore) Watermark(ctx context.Context, consumer string) (int64, error) {
+	var seq int64
+
+	err := s.db.QueryRowContext(ctx,
+		`SELECT seq FROM watermarks WHERE consumer = ?`, consumer).Scan(&seq)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+
+	return seq, err
+}
+
+// SaveWatermark checkpoints a consumer cursor as a monotonic upsert: the
+// stored seq never regresses, so a lagging or misconfigured second process
+// cannot drag a consumer backwards. Checkpointing is consumer progress, not
+// task state, so no fact is appended.
+func (s *SQLiteStore) SaveWatermark(ctx context.Context, consumer string, seq int64) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO watermarks (consumer, seq, updated_at) VALUES (?, ?, ?)
+		ON CONFLICT(consumer) DO UPDATE SET
+			seq = excluded.seq,
+			updated_at = excluded.updated_at
+		WHERE watermarks.seq < excluded.seq`,
+		consumer, seq, time.Now().UnixMilli())
+
+	return err
 }
 
 // escapeLike escapes LIKE wildcards so a user query containing %, _ or \

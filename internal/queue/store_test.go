@@ -472,6 +472,139 @@ func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 	}
 }
 
+func TestWatermarkAbsentReturnsZero(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	seq, err := s.Watermark(ctx, "papdashboard:http://stub:1")
+	if err != nil {
+		t.Fatalf("Watermark absent: %v", err)
+	}
+
+	if seq != 0 {
+		t.Fatalf("absent consumer seq = %d, want 0", seq)
+	}
+}
+
+func TestWatermarkSaveAndReadRoundtrip(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if err := s.SaveWatermark(ctx, "consumer-a", 42); err != nil {
+		t.Fatalf("SaveWatermark: %v", err)
+	}
+
+	seq, err := s.Watermark(ctx, "consumer-a")
+	if err != nil {
+		t.Fatalf("Watermark: %v", err)
+	}
+
+	if seq != 42 {
+		t.Fatalf("roundtrip seq = %d, want 42", seq)
+	}
+
+	// Distinct consumers hold independent cursors.
+	if err := s.SaveWatermark(ctx, "consumer-b", 7); err != nil {
+		t.Fatalf("SaveWatermark consumer-b: %v", err)
+	}
+
+	if seq, _ := s.Watermark(ctx, "consumer-b"); seq != 7 {
+		t.Fatalf("consumer-b seq = %d, want 7", seq)
+	}
+
+	if seq, _ := s.Watermark(ctx, "consumer-a"); seq != 42 {
+		t.Fatalf("consumer-a seq after consumer-b write = %d, want 42", seq)
+	}
+}
+
+func TestWatermarkMonotonicGuard(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if err := s.SaveWatermark(ctx, "consumer-a", 100); err != nil {
+		t.Fatalf("SaveWatermark 100: %v", err)
+	}
+
+	// A lagging or rewound writer must not drag the cursor backwards.
+	if err := s.SaveWatermark(ctx, "consumer-a", 30); err != nil {
+		t.Fatalf("SaveWatermark regression: %v", err)
+	}
+
+	seq, err := s.Watermark(ctx, "consumer-a")
+	if err != nil {
+		t.Fatalf("Watermark: %v", err)
+	}
+
+	if seq != 100 {
+		t.Fatalf("seq after regression attempt = %d, want 100", seq)
+	}
+
+	// An equal seq is a no-op, not an error.
+	if err := s.SaveWatermark(ctx, "consumer-a", 100); err != nil {
+		t.Fatalf("SaveWatermark equal seq: %v", err)
+	}
+
+	if seq, _ := s.Watermark(ctx, "consumer-a"); seq != 100 {
+		t.Fatalf("seq after equal write = %d, want 100", seq)
+	}
+}
+
+func TestMigrateAddsWatermarksTable(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "old.db")
+
+	// A pre-watermarks database: full legacy tasks table, nothing else.
+	old := `CREATE TABLE tasks (
+		id TEXT PRIMARY KEY,
+		project TEXT NOT NULL DEFAULT '',
+		type TEXT NOT NULL,
+		payload TEXT NOT NULL DEFAULT '',
+		deps TEXT NOT NULL DEFAULT '[]',
+		priority INTEGER NOT NULL DEFAULT 0,
+		attempts INTEGER NOT NULL DEFAULT 0,
+		max_attempts INTEGER NOT NULL DEFAULT 3,
+		not_before INTEGER NOT NULL DEFAULT 0,
+		status TEXT NOT NULL DEFAULT 'pending',
+		lease_owner TEXT NOT NULL DEFAULT '',
+		lease_expires INTEGER,
+		last_error TEXT NOT NULL DEFAULT '',
+		created_at INTEGER NOT NULL,
+		updated_at INTEGER NOT NULL,
+		completed_at INTEGER,
+		dedup_key TEXT NOT NULL DEFAULT ''
+	);`
+	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
+
+	legacy, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("open legacy: %v", err)
+	}
+
+	if _, err := legacy.Exec(old); err != nil {
+		t.Fatalf("create legacy schema: %v", err)
+	}
+
+	if err := legacy.Close(); err != nil {
+		t.Fatalf("close legacy: %v", err)
+	}
+
+	s, err := OpenSQLite(dbPath)
+	if err != nil {
+		t.Fatalf("OpenSQLite with legacy schema: %v", err)
+	}
+
+	t.Cleanup(func() { _ = s.Close() })
+
+	if err := s.SaveWatermark(ctx, "consumer-a", 5); err != nil {
+		t.Fatalf("SaveWatermark after migration: %v", err)
+	}
+
+	if seq, _ := s.Watermark(ctx, "consumer-a"); seq != 5 {
+		t.Fatalf("Watermark after migration = %d, want 5", seq)
+	}
+}
+
 func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

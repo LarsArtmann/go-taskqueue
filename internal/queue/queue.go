@@ -88,6 +88,14 @@ type Store interface {
 	// HeadSeq returns the current highest fact Seq (0 when the journal is
 	// empty): the O(1) watermark for tailers, bridges and resume points.
 	HeadSeq(ctx context.Context) (int64, error)
+	// Watermark returns the persisted read cursor for a journal consumer
+	// (0 when the consumer never checkpointed): the resume point for
+	// bridges and sweepers after a restart.
+	Watermark(ctx context.Context, consumer string) (int64, error)
+	// SaveWatermark checkpoints a consumer cursor as a monotonic upsert
+	// (never regresses). It records consumer progress, not task state, so
+	// no fact is appended.
+	SaveWatermark(ctx context.Context, consumer string, seq int64) error
 	// FactsForTask returns one task's facts in Seq order, bounded to the
 	// most recent limit when > 0 (0 = unbounded).
 	FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error)

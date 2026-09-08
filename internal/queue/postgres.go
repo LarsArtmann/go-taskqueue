@@ -74,6 +74,12 @@ CREATE TABLE IF NOT EXISTS facts (
 	detail   TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_facts_task ON facts(task_id, seq);
+
+CREATE TABLE IF NOT EXISTS watermarks (
+	consumer   TEXT PRIMARY KEY,
+	seq        BIGINT NOT NULL,
+	updated_at BIGINT NOT NULL
+);
 `
 
 // OpenPostgres connects to dsn (e.g. "postgres://user:pass@host:5432/db"),
@@ -1077,6 +1083,37 @@ func (s *PostgresStore) CountFacts(ctx context.Context, ftype journal.FactType, 
 		string(ftype), since.UnixMilli()).Scan(&n)
 
 	return n, err
+}
+
+// Watermark returns the persisted read cursor for a journal consumer
+// (0 when the consumer never checkpointed).
+func (s *PostgresStore) Watermark(ctx context.Context, consumer string) (int64, error) {
+	var seq int64
+
+	err := s.pool.QueryRow(ctx,
+		`SELECT seq FROM watermarks WHERE consumer = $1`, consumer).Scan(&seq)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+
+	return seq, err
+}
+
+// SaveWatermark checkpoints a consumer cursor as a monotonic upsert: the
+// stored seq never regresses. Consumer progress, not task state, so no
+// fact is appended.
+func (s *PostgresStore) SaveWatermark(ctx context.Context, consumer string, seq int64) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO watermarks (consumer, seq, updated_at) VALUES ($1, $2, $3)
+		ON CONFLICT(consumer) DO UPDATE SET
+			seq = GREATEST(watermarks.seq, excluded.seq),
+			updated_at = CASE
+				WHEN excluded.seq > watermarks.seq THEN excluded.updated_at
+				ELSE watermarks.updated_at
+			END`,
+		consumer, seq, time.Now().UnixMilli())
+
+	return err
 }
 
 // StatusCounts counts tasks per status.
