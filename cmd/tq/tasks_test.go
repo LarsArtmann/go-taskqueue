@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -67,5 +68,35 @@ func TestResolveTaskPrefix(t *testing.T) {
 
 	if _, err = resolveTask(ctx, s, "deadbeef"); err == nil || !strings.Contains(err.Error(), "no task") {
 		t.Fatalf("unknown prefix err = %v, want no-task error", err)
+	}
+}
+
+// TestCmdTasksSincePushdown: --since selects the creation window through
+// the store (age-desc order, limit applied in SQL), not a CLI-side filter.
+func TestCmdTasksSincePushdown(t *testing.T) {
+	s := tasksTestStore(t)
+	ctx := context.Background()
+
+	old, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "p"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(2 * time.Millisecond) // created_at is unix-milli; separate the two
+
+	fresh, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "p"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	since := old.CreatedAt.Add(time.Millisecond)
+
+	got, err := s.List(ctx, queue.Filter{Since: &since, Sort: "age-desc", Limit: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(got) != 1 || got[0].ID != fresh.ID {
+		t.Fatalf("pushdown window = %+v, want only the fresh task", got)
 	}
 }

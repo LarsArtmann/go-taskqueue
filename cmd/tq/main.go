@@ -1329,6 +1329,11 @@ func cmdStats(args []string) error {
 		return err
 	}
 
+	head, err := s.HeadSeq(ctx)
+	if err != nil {
+		return err
+	}
+
 	byStatus, byProject := tallyStats(tasks)
 	spent := budget.Guard{DailyCap: *dailyBudget}.SpentToday(ctx, s)
 
@@ -1337,15 +1342,16 @@ func cmdStats(args []string) error {
 		enc.SetIndent("", "  ")
 
 		return enc.Encode(statsPayload{
-			ByStatus:  byStatus,
-			ByProject: byProject,
-			Budget:    budgetView{SpentToday: spent, Cap: *dailyBudget},
-			Lag:       consumerLag(ctx, s),
+			ByStatus:     byStatus,
+			ByProject:    byProject,
+			Budget:       budgetView{SpentToday: spent, Cap: *dailyBudget},
+			Lag:          consumerLag(ctx, s),
+			JournalHead:  head,
 		})
 	}
 
 	printStats(byStatus, byProject, *project == "")
-	printBudgetSpend(spent, *dailyBudget)
+	printBudgetSpend(spent, *dailyBudget, *project != "")
 	printConsumerLag(s)
 
 	return nil
@@ -1354,10 +1360,11 @@ func cmdStats(args []string) error {
 // statsPayload is the --json shape of `tq stats`: the aggregates a script or
 // dashboard consumes, never the raw task list (that is `tq tasks --json`).
 type statsPayload struct {
-	ByStatus  map[string]int            `json:"by_status"`
-	ByProject map[string]map[string]int `json:"by_project,omitempty"`
-	Budget    budgetView                `json:"budget"`
-	Lag       []consumerLagEntry        `json:"consumer_lag,omitempty"`
+	ByStatus     map[string]int            `json:"by_status"`
+	ByProject    map[string]map[string]int `json:"by_project,omitempty"`
+	Budget       budgetView                `json:"budget"`
+	Lag          []consumerLagEntry        `json:"consumer_lag,omitempty"`
+	JournalHead  int64                     `json:"journal_head"`
 }
 
 type budgetView struct {
@@ -1395,9 +1402,16 @@ func consumerLag(ctx context.Context, s *queue.SQLiteStore) []consumerLagEntry {
 // printBudgetSpend surfaces the daily-budget projection in the CLI (the web
 // UI has a budget card; the text output had nothing). Spent counts today's
 // task.enqueued facts — the same projection the pool's budget guard uses.
-func printBudgetSpend(spent, cap int) {
+// The count is always journal-wide, so a scoped table labels the line to
+// keep the numbers honest.
+func printBudgetSpend(spent, cap int, scoped bool) {
+	label := "budget today"
+	if scoped {
+		label = "budget today (all projects)"
+	}
+
 	if cap > 0 {
-		fmt.Printf("\nbudget today  %d/%d enqueued\n", spent, cap)
+		fmt.Printf("\n%s  %d/%d enqueued\n", label, spent, cap)
 
 		return
 	}

@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -51,31 +50,19 @@ func cmdTasks(args []string) error {
 		f.Type = taskType
 	}
 
+	// Creation window rides in the store (SQL pushdown, inclusive bound).
+	if *since > 0 {
+		cutoff := time.Now().Add(-*since)
+		f.Since = &cutoff
+	}
+
+	if *limit > 0 {
+		f.Limit = *limit
+	}
+
 	tasks, err := s.List(ctx, f)
 	if err != nil {
 		return err
-	}
-
-	// Creation-window and limit are CLI-side: the store filters what SQL can,
-	// the window rides on top (queue sizes make the full list cheap).
-	if *since > 0 {
-		cutoff := time.Now().Add(-*since)
-		windowed := tasks[:0]
-		for _, t := range tasks {
-			if !t.CreatedAt.Before(cutoff) {
-				windowed = append(windowed, t)
-			}
-		}
-
-		tasks = windowed
-	}
-
-	sort.Slice(tasks, func(i, j int) bool { // newest first regardless of store order
-		return tasks[i].CreatedAt.After(tasks[j].CreatedAt)
-	})
-
-	if *limit > 0 && len(tasks) > *limit {
-		tasks = tasks[:*limit]
 	}
 
 	if *asJSON {

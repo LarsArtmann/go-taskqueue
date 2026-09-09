@@ -1315,43 +1315,12 @@ func (s *PostgresStore) ProjectCounts(ctx context.Context) (map[string]map[task.
 
 // CountTasks counts tasks matching the filter.
 func (s *PostgresStore) CountTasks(ctx context.Context, f Filter) (int, error) {
-	where := []string{"TRUE"}
-
-	args := []any{}
-
-	if f.Project != nil {
-		args = append(args, *f.Project)
-		where = append(where, fmt.Sprintf("project = $%d", len(args)))
-	}
-
-	if f.Status != nil {
-		args = append(args, string(*f.Status))
-		where = append(where, fmt.Sprintf("status = $%d", len(args)))
-	}
-
-	if f.Type != nil {
-		args = append(args, *f.Type)
-		where = append(where, fmt.Sprintf("type = $%d", len(args)))
-	}
-
-	if f.Query != "" {
-		args = append(args, "%"+escapeLike(f.Query)+"%")
-		idx := len(args)
-		where = append(where, fmt.Sprintf(
-			`(id ILIKE $%d OR type ILIKE $%d OR project ILIKE $%d OR payload ILIKE $%d OR lease_owner ILIKE $%d OR last_error ILIKE $%d)`,
-			idx,
-			idx,
-			idx,
-			idx,
-			idx,
-			idx,
-		))
-	}
+	where, args := pgWhere(f)
 
 	var n int
 
 	err := s.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM tasks WHERE `+strings.Join(where, " AND "), args...).Scan(&n)
+		`SELECT COUNT(*) FROM tasks WHERE `+where, args...).Scan(&n)
 
 	return n, err
 }

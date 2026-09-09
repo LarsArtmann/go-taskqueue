@@ -2030,3 +2030,53 @@ func TestListSortAllowlist(t *testing.T) {
 		t.Fatalf("unknown sort fell through to non-default order: %d first", tasks[0].Priority)
 	}
 }
+
+// TestListSinceFilter pins the Filter.Since SQL pushdown: inclusive lower
+// bound on created_at (the exact boundary task is INCLUDED), and the
+// boundary + 1ms excludes it. Both stores share the contract; the Postgres
+// twin runs via the conformance battery.
+func TestListSinceFilter(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	first, _ := s.Enqueue(ctx, task.New{Type: "a"})
+
+	// Two rapid enqueues can land in the same millisecond (created_at is
+	// unix-milli) — separate them so the boundary assertions are exact.
+	time.Sleep(2 * time.Millisecond)
+
+	second, _ := s.Enqueue(ctx, task.New{Type: "b"})
+	if !second.CreatedAt.After(first.CreatedAt) {
+		t.Fatalf("test premise broken: second not newer than first")
+	}
+
+	since := first.CreatedAt
+	got, err := s.List(ctx, Filter{Since: &since})
+	if err != nil {
+		t.Fatalf("List inclusive: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("inclusive boundary: %d tasks, want 2 (boundary task included)", len(got))
+	}
+
+	after := first.CreatedAt.Add(time.Millisecond)
+	got, err = s.List(ctx, Filter{Since: &after})
+	if err != nil {
+		t.Fatalf("List exclusive: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != second.ID {
+		t.Fatalf("boundary+1ms: %+v, want only the newer task", got)
+	}
+
+	// CountTasks shares the WHERE builder — same window, same count.
+	n, err := s.CountTasks(ctx, Filter{Since: &after})
+	if err != nil {
+		t.Fatalf("CountTasks: %v", err)
+	}
+
+	if n != 1 {
+		t.Fatalf("CountTasks window = %d, want 1", n)
+	}
+}
