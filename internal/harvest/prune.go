@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -102,25 +101,9 @@ func (h *Harvester) PruneStale(ctx context.Context) (PruneResult, error) {
 }
 
 func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult) error {
-	items, err := ParseRepoAll(repo, h.cfg.TodoFile)
+	items, byDedup, err := h.projectTaskIndex(ctx, repo)
 	if err != nil {
 		return err
-	}
-
-	repoName := filepath.Base(repo)
-
-	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
-	if err != nil {
-		return err
-	}
-
-	byDedup := make(map[string]task.Task, len(tasks))
-	for _, t := range tasks {
-		if key := payloadDedup(t); key != "" {
-			if _, seen := byDedup[key]; !seen {
-				byDedup[key] = t
-			}
-		}
 	}
 
 	// Present keys: every item still in the file, open or done. A task
@@ -166,6 +149,8 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 			res.Dead = append(res.Dead, PrunedTask{Item: it, TaskID: t.ID, Why: PruneTicked})
 		}
 	}
+
+	repoName := filepath.Base(repo)
 
 	// Absent-item pass, sorted for deterministic output.
 	keys := make([]string, 0, len(byDedup))

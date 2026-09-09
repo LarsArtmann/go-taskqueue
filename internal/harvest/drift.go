@@ -127,17 +127,19 @@ func (h *Harvester) Audit(ctx context.Context) (DriftResult, error) {
 	return res, nil
 }
 
-func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult) error {
+// projectTaskIndex loads a repo's TODO items and indexes the harvester's
+// in-queue tasks for that project by payload dedup key (first task wins).
+// Shared preamble of the audit (drift) and prune sweeps.
+func (h *Harvester) projectTaskIndex(ctx context.Context, repo string) ([]Item, map[string]task.Task, error) {
 	items, err := ParseRepoAll(repo, h.cfg.TodoFile)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	repoName := filepath.Base(repo)
-
 	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	byDedup := make(map[string]task.Task, len(tasks))
@@ -147,6 +149,15 @@ func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult
 				byDedup[key] = t
 			}
 		}
+	}
+
+	return items, byDedup, nil
+}
+
+func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult) error {
+	items, byDedup, err := h.projectTaskIndex(ctx, repo)
+	if err != nil {
+		return err
 	}
 
 	for _, it := range items {
