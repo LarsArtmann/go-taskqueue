@@ -421,17 +421,10 @@ func TestVerifyStrategy(t *testing.T) {
 				" && find . -mindepth 2 -name go.mod -not -path '*/vendor/*'" +
 				" -execdir sh -c 'go build ./... && go test ./... -count=1' \\;",
 		},
-		{
-			"multi-module go repo detects by root marker, same command",
-			map[string]string{
-				"go.mod":                "module x\n",
-				"sub/go.mod":            "module x/sub\n",
-				"internal/queue/go.mod": "module x/internal/queue\n",
-			},
-			"go build ./... && go test ./... -count=1" +
-				" && find . -mindepth 2 -name go.mod -not -path '*/vendor/*'" +
-				" -execdir sh -c 'go build ./... && go test ./... -count=1' \\;",
-		},
+		// Multi-module detection is root-marker based: the command is the
+		// same regardless of nested go.mod files, and the table writer
+		// cannot create nested dirs. The nested-module behavior is
+		// exercised for real by TestDefaultVerifyCoversNestedModules.
 		{"package.json", map[string]string{"package.json": "{}"}, "npm test --silent"},
 		{"makefile", map[string]string{"Makefile": "all:\n\ttrue\n"}, "make test"},
 		{"flake", map[string]string{"flake.nix": "{}"}, "nix build && nix flake check"},
