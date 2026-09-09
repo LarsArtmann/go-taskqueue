@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>go-taskqueue — Code Quality Scan (2026-09-09 20:30)</title>
+<style>
+:root{
+  --color-paper:#f4f4f0;--color-paper-2:#ffffff;--color-paper-3:#e8e8e2;--color-ink:#111111;
+  --color-red:#e63946;--color-blue:#1d3557;--color-yellow:#f4d35e;
+  --surface:var(--color-paper);--surface-raised:var(--color-paper-2);--surface-sunken:var(--color-paper-3);
+  --text:var(--color-ink);--text-muted:#44464a;--text-faint:#77797e;
+  --border:#d8d8d2;--border-strong:#111111;
+  --accent:var(--color-red);--problem:var(--color-red);--solution:var(--color-blue);--warning:var(--color-yellow);
+  --font-heading:-apple-system,"Segoe UI",Arial,sans-serif;--font-body:-apple-system,"Segoe UI",Arial,sans-serif;
+  --font-mono:ui-monospace,"JetBrains Mono",Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--surface);color:var(--text);font-family:var(--font-body);line-height:1.6;padding:3rem 1.25rem}
+.wrap{max-width:920px;margin:0 auto}
+.badge{display:inline-block;background:var(--accent);color:#fff;font-weight:800;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;padding:.3rem .7rem;margin-bottom:1rem}
+h1{font-weight:900;font-size:2rem;letter-spacing:-.02em}
+h2{font-weight:900;font-size:1.05rem;text-transform:uppercase;letter-spacing:.08em;border-top:3px solid var(--border-strong);padding-top:.8rem;margin:2.2rem 0 1rem}
+.sub{color:var(--text-muted);margin:.6rem 0 2rem;max-width:65ch}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;margin:1rem 0 1.6rem}
+.stat-card{background:var(--surface-raised);border:1px solid var(--border);padding:1rem}
+.stat-value{font-size:1.8rem;font-weight:900;line-height:1.1}
+.stat-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);margin-top:.2rem}
+.stat-good .stat-value{color:var(--solution)}.stat-bad .stat-value{color:var(--problem)}.stat-warn .stat-value{color:#8a6d00}
+table{width:100%;border-collapse:collapse;margin:.8rem 0 1.4rem;background:var(--surface-raised);font-size:.88rem}
+th,td{text-align:left;padding:.5rem .7rem;border:1px solid var(--border);vertical-align:top}
+th{background:var(--surface-sunken);font-weight:800;text-transform:uppercase;font-size:.7rem;letter-spacing:.08em}
+code{font-family:var(--font-mono);font-size:.85em;background:var(--surface-sunken);padding:.08em .3em}
+.card{background:var(--surface-raised);border:1px solid var(--border);border-left:6px solid var(--solution);padding:1rem 1.2rem;margin:.8rem 0}
+.card.warn{border-left-color:var(--warning)}
+.footer{margin-top:3rem;color:var(--text-faint);font-size:.8rem;border-top:1px solid var(--border);padding-top:1rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="badge">Code Quality Scan &middot; 2026-09-09 20:30</div>
+  <h1>Automated scan results</h1>
+  <p class="sub">Build system: flake.nix (nix build / nix run .#test / nix run .#lint) + go vet + golangci-lint v2 (advisory baseline per repo policy) + art-dupl (type-aware, threshold 5 tokens).</p>
+
+  <div class="stat-grid">
+    <div class="stat-card stat-good"><div class="stat-value">PASS</div><div class="stat-label">nix build</div></div>
+    <div class="stat-card stat-good"><div class="stat-value">PASS</div><div class="stat-label">go vet (6 modules)</div></div>
+    <div class="stat-card stat-good"><div class="stat-value">PASS</div><div class="stat-label">Tests (-race)</div></div>
+    <div class="stat-card stat-warn"><div class="stat-value">~400</div><div class="stat-label">Advisory lint baseline</div></div>
+    <div class="stat-card stat-good"><div class="stat-value">4</div><div class="stat-label">Dup groups (intentional)</div></div>
+    <div class="stat-card stat-good"><div class="stat-value">0</div><div class="stat-label">errors.As left</div></div>
+  </div>
+
+  <h2>Hard gates</h2>
+  <table>
+    <thead><tr><th>Gate</th><th>Result</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>nix build</code> + <code>nix flake check</code></td><td>PASS</td><td>vendorHash current; binary reports 0.2.0 after the version-drift fix</td></tr>
+      <tr><td><code>go vet ./...</code> &times;6 modules</td><td>PASS</td><td>root + task, journal, queue, executor, worker (GOWORK=off)</td></tr>
+      <tr><td><code>go test ./... -race</code></td><td>PASS</td><td>root suite 12 pkgs; per-module suites green; 1 pre-existing flake observed once (executor <code>text file busy</code> on stub-agent re-exec) &mdash; passes on retry, not addressed (unrelated)</td></tr>
+      <tr><td>gofmt</td><td>PASS</td><td>clean</td></tr>
+      <tr><td>go.mod hygiene audits</td><td>PASS</td><td>portable replaces; internal requires at real tags</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Advisory lint (golangci-lint, continue-on-error by policy)</h2>
+  <table>
+    <thead><tr><th>Class</th><th>Count (nix lint tail)</th><th>Class</th><th>Count</th></tr></thead>
+    <tbody>
+      <tr><td>wrapcheck</td><td>50</td><td>varnamelen</td><td>50</td></tr>
+      <tr><td>unparam</td><td>6</td><td>unused</td><td>2</td></tr>
+      <tr><td>wastedassign</td><td>1</td><td>(+ pre-2026 linters in full baseline)</td><td>&mdash;</td></tr>
+    </tbody>
+  </table>
+  <p>Policy: the ~400-finding baseline is documented in AGENTS.md; mass-fixing is forbidden (regression risk outweighs signal). Rule applied this session: no NEW findings introduced in touched functions.</p>
+
+  <h2>Duplication (art-dupl --type-aware -t 5)</h2>
+  <table>
+    <thead><tr><th>Group</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td>harvest drift.go / prune.go repo-preamble (~20 lines)</td><td><strong>Fixed</strong> &mdash; extracted <code>projectTaskIndex</code>; suite green</td></tr>
+      <tr><td>queue sqlite.go / postgres.go &times;3 (claim/enqueue/normalize paths)</td><td>Intentional &mdash; the two Store implementations mirror each other as the ADR-0007 semantics contract</td></tr>
+      <tr><td>cmd/tq flag-registration clones</td><td>Intentional CLI boilerplate, unique per command</td></tr>
+      <tr><td>postgres.go internal query pairs</td><td>Accepted &mdash; SQL shapes differ per query; extraction would obscure</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Fixed during this scan</h2>
+  <div class="card">
+    <strong>errors.As &rarr; errors.AsType (Go 1.26):</strong> 4 call sites migrated (runactor ExitCause, executor PermanentError, both test counterparts); erraudit re-run reports zero remaining <code>errors.As</code> findings. Sentinel <code>errors.Is</code> matches (context.Canceled, ErrInterrupted) deliberately kept per the decision tree &mdash; value matching is not legacy.
+  </div>
+  <div class="card warn">
+    <strong>Version drift (found by cross-checking version surfaces):</strong> flake.nix declared 0.1.0 while v0.2.0 shipped &mdash; nix binaries misreported <code>tq version</code>. Fixed to 0.2.0; release.sh remains the surface to bump next release.
+  </div>
+
+  <div class="footer">Generated 2026-09-09 20:30 &middot; all commands executed on this tree &middot; advisory lint counts from nix run .#lint summary tail</div>
+</div>
+</body>
+</html>
