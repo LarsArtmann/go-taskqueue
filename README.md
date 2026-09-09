@@ -289,14 +289,54 @@ work (CLI store wiring, consumer-group fencing tokens).
 
 ```sh
 go test ./... -race             # root-module suite (CI also gates on go vet + gofmt)
-for m in task journal queue executor worker; do
-  ( cd internal/$m && GOWORK=off go test ./... -count=1 ) || exit 1
-done                            # the five sub-modules (ADR-0011) — ./... never
+for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+  ( cd "$m" && GOWORK=off go test ./... -count=1 ) || exit 1
+done                            # every sub-module (ADR-0011/0012) — ./... never
                                 # crosses module boundaries, so test them in place
+nix run .#test                  # the same loop as one command
 ./scripts/smoke/multi-repo.sh   # live smoke: 3 repos, 2 pools, 1 shared DB —
                                 # proves dedup, pacing and per-project exclusivity
 ./scripts/smoke/webui.sh        # live smoke: worker + tq serve + HTTP/SSE assertions
 ```
+
+### Module map
+
+The repo is a multi-module tree (ADR-0011, ADR-0012): the root module builds
+the `tq` CLI, and each library core is an independently tagged module under
+`internal/` so embedders can depend on exactly the piece they need.
+
+| Module                    | Purpose                                                                  |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `internal/task`           | Task record, status state machine, sentinel errors                       |
+| `internal/journal`        | Fact types, append-only Journal interface, in-memory Journal             |
+| `internal/queue`          | The store CONTRACT: `Store` interface, `Filter`, `Queue` facade          |
+| `internal/queue/sqlite`   | Embedded SQLite driver (`sqlite.Store`) — the default backend            |
+| `internal/queue/postgres` | Networked PostgreSQL driver (`postgres.Store`) for shared-machine pools  |
+| `internal/executor`       | Pluggable execution: `sh`, HTTP, headless agent, review, status, registry |
+| `internal/worker`         | Claim → heartbeat → execute loop over any `queue.Store`                  |
+
+The root module keeps the CLI and the integration packages (harvest, bridges,
+sweepers, web UI, e2e) until the API stabilizes.
+
+### Picking a store backend
+
+Both drivers implement the same `queue.Store` contract with byte-compatible
+facts (ADR-0007), so the choice is one import line:
+
+```go
+import "github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+
+store, err := sqlite.Open("tq.db", sqlite.WithProjectExclusivity())
+// or
+import "github.com/larsartmann/go-taskqueue/internal/queue/postgres"
+
+store, err := postgres.Open(ctx, "postgres://…", 4)
+```
+
+SQLite serializes writers through one connection (WAL + busy_timeout);
+Postgres uses `SELECT … FOR UPDATE SKIP LOCKED` so competing workers lock
+disjoint rows. The CLI itself wires the SQLite driver today; Postgres CLI
+wiring (`--store postgres://…`) is on the ROADMAP.
 
 CI gates every push on vet, build, tests with `-race`, gofmt, a nix build
 

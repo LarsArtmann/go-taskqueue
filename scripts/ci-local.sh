@@ -104,6 +104,9 @@ step "status-loop live smoke"
 step "bootstrap --install smoke"
 ./scripts/smoke/bootstrap-install.sh
 
+step "release-gates smoke (fixture go.mods, positive + negative)"
+./scripts/smoke/release-gates.sh
+
 step "doc-reference check"
 ./scripts/check-doc-refs.sh
 

@@ -12,6 +12,12 @@
 # The gates delegate to scripts/ci-local.sh (the CI replicant) so this
 # script and CI can never drift apart. --push performs owner-gated actions
 # (pushing, publishing); everything before it is read-only.
+#
+# Sub-module versions: internal/*/go.mod require REAL tagged versions
+# (scripts/check-go-mods.sh enforces the pin shape). When a sub-module
+# changes semantically between releases, bump BOTH its require line in the
+# root go.mod AND cut the matching internal/<mod>/vX.Y.Z subdirectory tag
+# before this script's tag gate runs.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -74,22 +80,10 @@ step "go.mod hygiene"
 # Sibling-relative replaces for the internal sub-modules are the multi-module
 # pattern (ADR-0011): consumers ignore them and resolve via the require
 # versions, which the subdirectory tags below make real. Anything else is
-# proxy poison.
-bad_replaces="$(grep '^replace' go.mod | grep -vE '^replace github\.com/larsartmann/go-taskqueue/internal/[a-z0-9-]+ => \./internal/[a-z0-9-]+$' || true)"
-if [ -n "$bad_replaces" ]; then
-	echo "$bad_replaces"
-	die "go.mod has non-sibling replace directives — poison in published tags"
-fi
-! grep '00010101' go.mod || die "go.mod has a pseudo-version (replace-directive leak)"
-# go install of the published module resolves the internal sub-modules
-# through the module proxy: every internal require must be a real version
-# whose subdirectory tag exists BEFORE the release tag is cut.
-while read -r mod ver; do
-	sub_tag="${mod#github.com/larsartmann/go-taskqueue/}/$ver"
-	git rev-parse -q --verify "refs/tags/$sub_tag" >/dev/null || {
-		die "$mod requires $ver but tag $sub_tag does not exist — cut it (git tag -a $sub_tag) before releasing"
-	}
-done < <(grep -E '^[[:space:]]*github\.com/larsartmann/go-taskqueue/internal/[a-z0-9-]+ v[0-9]' go.mod | awk '{print $1, $2}')
+# proxy poison. The rules live in scripts/lib/release-gates.sh so the
+# release-gates smoke tests the exact same code path.
+source "$(dirname "$0")/lib/release-gates.sh"
+gate_gomod go.mod
 
 step "full CI gate (scripts/ci-local.sh — test + nix jobs on this exact tree)"
 ./scripts/ci-local.sh
@@ -150,7 +144,7 @@ done
 step "module proxy verification"
 sleep 10
 for attempt in 1 2 3 4 5; do
-	if GOFLAGS= go list -m -versions "$MODULE" 2>/dev/null | tr ' ' '\n' | grep -qx "$VERSION"; then
+	if GOFLAGS='' go list -m -versions "$MODULE" 2>/dev/null | tr ' ' '\n' | grep -qx "$VERSION"; then
 		echo "proxy serves $VERSION"
 		break
 	fi

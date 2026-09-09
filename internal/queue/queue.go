@@ -1,9 +1,13 @@
-// Package queue provides the durable task store and the Queue facade.
+// Package queue is the store CONTRACT module: the Store interface, Filter,
+// and the Queue facade that embedders program against (ADR-0012).
 //
-// The Store interface is the persistence boundary; the sqlite Store is the
-// embedded default. Every mutating operation also appends a fact to the
-// journal in the same transaction, so the journal is always a complete,
-// consistent history of the queue.
+// Drivers live in separate modules and implement this contract:
+// internal/queue/sqlite (embedded, one file, single serialized writer) and
+// internal/queue/postgres (shared across machines, SKIP LOCKED claims);
+// both are held to identical semantics by mirrored test suites (ADR-0007).
+// Every mutating operation also appends a fact to the journal in the same
+// transaction, so the journal is always a complete, consistent history of
+// the queue.
 package queue
 
 import (

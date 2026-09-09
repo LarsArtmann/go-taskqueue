@@ -80,6 +80,8 @@ jobs:
         run: go test ./internal/harvest/ -run TestRepoTodoListParses -count=1
       - name: Web UI live smoke (no browser)
         run: ./scripts/smoke/webui.sh
+      - name: Release-gates smoke (fixture go.mods, positive + negative)
+        run: ./scripts/smoke/release-gates.sh
       - name: Ghost-reference check (doc-cited paths exist)
         run: ./scripts/check-doc-refs.sh
 
@@ -110,6 +112,10 @@ jobs:
   test-postgres:
     # Postgres store conformance (round-5 M21/ADR-0007): the same semantics
     # as the SQLite gate, against a real database via TQ_TEST_POSTGRES.
+    # Local equivalent of this job's database:
+    #   docker run --rm -d -p 5432:5432 -e POSTGRES_USER=tq -e POSTGRES_PASSWORD=tq -e POSTGRES_DB=tqtest postgres:16
+    #   TQ_TEST_POSTGRES=postgres://tq:tq@localhost:5432/tqtest go test . -run TestPostgres -v
+    # (from internal/queue/postgres; tests skip cleanly when the env is unset)
     runs-on: ubuntu-latest
     services:
       postgres:
