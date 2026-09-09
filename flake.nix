@@ -141,7 +141,12 @@
           # pool dbPath + poolSettings + serve) — an option branch that is
           # never evaluated is untested code. Linux only (needs nixpkgs
           # nixosSystem).
-          checks.module-eval = lib.mkIf pkgs.stdenv.hostPlatform.isLinux (
+          # lib.optionalAttrs, NOT mkIf: a mkIf-false option inside perSystem
+          # leaves checks.module-eval dangling on non-Linux systems and fails
+          # `nix flake check --all-systems` at eval time ("accessed but has
+          # no value"). optionalAttrs simply omits the attribute.
+          checks = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+            module-eval = (
             pkgs.runCommand "nixos-module-eval" { } (
               let
                 inherit (inputs) nixpkgs;
@@ -290,7 +295,8 @@
                 ${lib.optionalString (!allOk) "echo 'nixos-module-eval FAILED'; exit 1"}
               ''
             )
-          );
+            )
+          };
 
           # `nix run .#test` must cover EVERY module: the go-standard default
           # runs `go test ./...` at the root, which stops at nested go.mods.
