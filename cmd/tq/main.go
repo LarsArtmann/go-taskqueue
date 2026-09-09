@@ -2104,9 +2104,9 @@ func cmdServe(args []string) error {
 	g.Go("http", func(ctx context.Context) error { return server.Run(ctx) })
 
 	if *allowWrites {
-		fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (writes ENABLED: cancel/rescue from the UI)\n", *addr)
+		fmt.Fprintf(os.Stderr, "%s%s%s\n", webui.BannerPrefix, *addr, webui.BannerWritesSuffix)
 	} else {
-		fmt.Fprintf(os.Stderr, "tq: dashboard on http://%s (read-only)\n", *addr)
+		fmt.Fprintf(os.Stderr, "%s%s%s\n", webui.BannerPrefix, *addr, webui.BannerReadOnlySuffix)
 	}
 
 	return g.Run()

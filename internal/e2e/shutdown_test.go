@@ -20,6 +20,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	"github.com/larsartmann/go-taskqueue/internal/webui"
 )
 
 // TestShutdownOrderingUnderSIGTERM pins the actor composition's teardown
@@ -202,8 +203,8 @@ func TestServeSSEClosesBeforeExit(t *testing.T) {
 		for sc.Scan() {
 			line := sc.Text()
 
-			if at, ok := strings.CutPrefix(line, "tq: dashboard on http://"); ok {
-				addrCh <- strings.TrimSpace(strings.TrimSuffix(at, " (read-only)"))
+			if at, ok := strings.CutPrefix(line, webui.BannerPrefix); ok {
+				addrCh <- strings.TrimSpace(strings.TrimSuffix(at, webui.BannerReadOnlySuffix))
 
 				return
 			}

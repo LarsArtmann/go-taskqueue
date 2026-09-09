@@ -29,6 +29,13 @@ const (
 	DefaultPoll      = 500 * time.Millisecond
 	DefaultHeartbeat = 15 * time.Second
 
+	// BannerPrefix and BannerReadOnlySuffix define the serve startup
+	// banner's exact shape — shared by the CLI print and the e2e/smoke
+	// parsers, which nearly broke twice over string drift (00:21 e3).
+	BannerPrefix         = "tq: dashboard on http://"
+	BannerReadOnlySuffix = " (read-only)"
+	BannerWritesSuffix   = " (writes ENABLED: cancel/rescue from the UI)"
+
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 10 * time.Second
 	idleTimeout       = 60 * time.Second

@@ -145,6 +145,37 @@
                     ];
                   }).config.systemd.services;
                 defaultUnits = eval { };
+                # Third branch: an unknown poolSettings key must flow into the
+                # rendered pool.conf (NixOS cannot know tq's flag set — the
+                # LOUD rejection is tq's applyPoolConfigFile at unit start,
+                # which this check's runtime smoke exercises via the binary's
+                # own config parsing). If the key silently VANISHED instead,
+                # typos would run with defaults — the exact failure this
+                # branch guards against.
+                unknownKeyUnits = eval {
+                  services.tq-agent-pool = {
+                    poolSettings = {
+                      projects-dir = "/home/alice/projects";
+                      typo-key-that-tq-rejects = "true";
+                    };
+                  };
+                };
+                # The rendered config is a store file — pure eval cannot
+                # read it; the check script greps it at build time.
+                unknownKeyConfPath =
+                  builtins.head (
+                    builtins.match ".*--config ([^ ]+).*"
+                      unknownKeyUnits.tq-agent-pool.serviceConfig.ExecStart
+                  );
+                tokenUnits = eval {
+                  services.tq-agent-pool = {
+                    serve = {
+                      enable = true;
+                      addr = "127.0.0.1:8100";
+                      authTokenFile = "/run/tq-token";
+                    };
+                  };
+                };
                 deployedUnits = eval {
                   services.tq-agent-pool = {
                     user = "alice";
@@ -154,7 +185,10 @@
                       projects-dir = "/home/alice/projects";
                       yolo = "true";
                     };
-                    extraArgs = [ "--max-per-tick 3" ];
+                    # systemd argv: flag and value are SEPARATE elements —
+                    # one glued "--max-per-tick 3" string would quote into a
+                    # single argument and fail flag parsing at start.
+                    extraArgs = [ "--max-per-tick" "3" ];
                     serve = {
                       enable = true;
                       addr = "127.0.0.1:8100";
@@ -164,6 +198,7 @@
                 defaultPool = defaultUnits.tq-agent-pool;
                 deployedPool = deployedUnits.tq-agent-pool;
                 deployedServe = deployedUnits.tq-serve;
+                tokenServe = tokenUnits.tq-serve;
                 drainInvariants =
                   unit:
                   builtins.all (kv: kv != null) [
@@ -194,6 +229,13 @@
                   && deployedServe.serviceConfig != { }
                   && deployedServe.serviceConfig.ExecStart == "${expectedBin} serve --addr 127.0.0.1:8100"
                   && !(deployedServe.serviceConfig ? StateDirectory)
+                  # unknown poolSettings keys must SURVIVE rendering (tq
+                  # rejects them loudly at unit start; vanishing = silent
+                  # defaults) — checked by the grep below — and the
+                  # extraArgs example renders as two argv tokens
+                  && builtins.match ".*--config .*tq-pool\.conf.* --max-per-tick 3.*" deployedPool.serviceConfig.ExecStart != null
+                  # authTokenFile wires EnvironmentFile on the serve unit
+                  && tokenServe.serviceConfig.EnvironmentFile == [ "/run/tq-token" ]
                   # drain invariants survive on both units
                   && drainInvariants deployedPool
                   && (deployedPool.serviceConfig.KillSignal or "" == "SIGINT")
@@ -203,6 +245,10 @@
               ''
                 echo "pool ExecStart: ${deployedPool.serviceConfig.ExecStart}"
                 echo "serve ExecStart: ${deployedServe.serviceConfig.ExecStart}"
+                if ! grep -q 'typo-key-that-tq-rejects' '${unknownKeyConfPath}'; then
+                  echo 'nixos-module-eval FAILED: unknown poolSettings key vanished from the rendered pool.conf (typos would run with silent defaults)'
+                  exit 1
+                fi
                 echo "assertions: ${
                   builtins.toJSON {
                     defaultStateDirectory = defaultPool.serviceConfig.StateDirectory or null;
