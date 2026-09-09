@@ -107,6 +107,19 @@
             touch $out
           '';
 
+          # `tq version` must report the flake's own version attr (round-2
+          # caught a 0.1.0 binary shipping from a 0.2.0 flake — by hand).
+          checks.version-sync = pkgs.runCommand "version-sync" { } ''
+            want="$(sed -n 's/^[[:space:]]*version = "\(.*\)";$/\1/p' ${./flake.nix} | head -1)"
+            got="$(${config.packages.default}/bin/tq version | awk '{print $2}' | tr -d ',')"
+            if [ "$got" != "$want" ]; then
+              echo "error: tq version reports '$got' but flake.nix says '$want' — the ldflags line is out of sync" >&2
+              exit 1
+            fi
+            echo "tq version = $got (matches flake.nix)"
+            touch $out
+          '';
+
           # Swallowed-build guard (18:41/19:33 reports f4): a green build can
           # still produce an empty store path (the GOEXPERIMENT=jsonv2 failure
           # mode), so execute the nix-built binary and require non-empty

@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -397,6 +399,194 @@ func TestPostgresConformance(t *testing.T) {
 				trail[0].Type,
 				trail[1].Type,
 			)
+		}
+	})
+
+	// The subtests below close the suite-parity gaps found in the 2026-09-10
+	// name-level diff against the sqlite white-box suite: dedup, watermarks,
+	// head seq, lease-expiry reclaim, exactly-once concurrent claims (the
+	// SKIP LOCKED differentiator), and LIKE-metacharacter escaping.
+
+	t.Run("dedup key enqueues once", func(t *testing.T) {
+		dedup := project + "-dedup"
+
+		first, err := s.Enqueue(ctx, task.New{Project: dedup, Type: "sh", DedupKey: "conformance:dedup"})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		second, err := s.Enqueue(ctx, task.New{Project: dedup, Type: "sh", DedupKey: "conformance:dedup"})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if first.ID != second.ID {
+			t.Fatalf("dedup enqueue returned a new task: %s vs %s", first.ID, second.ID)
+		}
+
+		p := dedup
+		tasks, err := s.List(ctx, queue.Filter{Project: &p})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(tasks) != 1 {
+			t.Fatalf("project holds %d tasks, want 1 (dedup suppressed the twin)", len(tasks))
+		}
+	})
+
+	t.Run("watermark roundtrip is monotonic", func(t *testing.T) {
+		consumer := "conformance-wm-" + project
+
+		if seq, exists, err := s.Watermark(ctx, consumer); err != nil || exists || seq != 0 {
+			t.Fatalf("absent watermark = %d/%v (%v), want 0/false", seq, exists, err)
+		}
+
+		if err := s.SaveWatermark(ctx, consumer, 100); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := s.SaveWatermark(ctx, consumer, 30); err != nil {
+			t.Fatalf("rewind write must not error: %v", err)
+		}
+
+		seq, exists, err := s.Watermark(ctx, consumer)
+		if err != nil || !exists || seq != 100 {
+			t.Fatalf("watermark after rewind = %d/%v (%v), want 100/true", seq, exists, err)
+		}
+	})
+
+	t.Run("head seq advances with facts", func(t *testing.T) {
+		before, err := s.HeadSeq(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Priority: 250}); err != nil {
+			t.Fatal(err)
+		}
+
+		after, err := s.HeadSeq(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if after <= before {
+			t.Fatalf("head seq %d did not advance past %d after an enqueue fact", after, before)
+		}
+	})
+
+	t.Run("lease expiry allows reclaim", func(t *testing.T) {
+		tk, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Priority: 260})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		got, err := s.ClaimDue(ctx, "crashed-worker", 30*time.Millisecond)
+		if err != nil || got.ID != tk.ID {
+			t.Fatalf("claim: %v (%v)", got.ID, err)
+		}
+
+		time.Sleep(60 * time.Millisecond)
+
+		got, err = s.ClaimDue(ctx, "reclaimer", time.Minute)
+		if err != nil {
+			t.Fatalf("reclaim: %v", err)
+		}
+
+		if got.ID != tk.ID || got.LeaseOwner != "reclaimer" {
+			t.Fatalf("reclaimed by wrong task/owner: %s/%s", got.ID, got.LeaseOwner)
+		}
+
+		if err := s.Complete(ctx, tk.ID, "crashed-worker", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+			t.Fatalf("stale owner complete err = %v, want ErrLeaseNotHeld", err)
+		}
+	})
+
+	t.Run("concurrent claims are exactly-once", func(t *testing.T) {
+		// THE Postgres differentiator: SKIP LOCKED must hand each pending
+		// task to exactly one of the racing workers.
+		const workers = 6
+
+		for range workers {
+			if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Priority: 230}); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		var wg sync.WaitGroup
+
+		claimed := make(chan task.ID, workers)
+
+		prefix := "race-" + project + "-"
+
+		for i := range workers {
+			owner := fmt.Sprintf("%sw%d", prefix, i)
+
+			wg.Add(1)
+
+			go func() {
+				defer wg.Done()
+
+				tk, err := s.ClaimDue(ctx, owner, time.Minute)
+				if err == nil {
+					claimed <- tk.ID
+				}
+			}()
+		}
+
+		wg.Wait()
+		close(claimed)
+
+		seen := make(map[task.ID]bool)
+
+		for id := range claimed {
+			if seen[id] {
+				t.Fatalf("task %s claimed by more than one worker — SKIP LOCKED broken", id)
+			}
+
+			seen[id] = true
+		}
+
+		if len(seen) != workers {
+			t.Fatalf("distinct tasks claimed = %d, want %d (one per worker)", len(seen), workers)
+		}
+	})
+
+	t.Run("LIKE metacharacters stay literal", func(t *testing.T) {
+		esc := "esc-" + project
+
+		seed := []task.New{
+			{Project: esc, Type: "sh", Payload: json.RawMessage(`"progress 100% done"`)},
+			{Project: esc, Type: "sh", Payload: json.RawMessage(`"snake_case_name"`)},
+		}
+
+		for i := range seed {
+			if _, err := s.Enqueue(ctx, seed[i]); err != nil {
+				t.Fatalf("seed %d: %v", i, err)
+			}
+		}
+
+		p := esc
+		cases := []struct {
+			query string
+			want  int
+		}{
+			{"100%", 1},
+			{"snake_case", 1},
+			{"1% done", 0},
+			{"snakeXcase", 0},
+		}
+
+		for _, tt := range cases {
+			tasks, err := s.List(ctx, queue.Filter{Project: &p, Query: tt.query})
+			if err != nil {
+				t.Fatalf("query %q: %v", tt.query, err)
+			}
+
+			if len(tasks) != tt.want {
+				t.Fatalf("query %q matched %d tasks, want %d (LIKE metacharacters must stay literal)", tt.query, len(tasks), tt.want)
+			}
 		}
 	})
 }
