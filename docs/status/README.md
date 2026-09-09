@@ -14,6 +14,7 @@ Archive counter (update when moving files): 1 report in `archived/`,
 
 | Date       | Report                                                                              | Scope                                                                                             |
 | ---------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 2026-09-10 | `2026-09-10_01-55_pool-deployment-fix-and-flash-dogfood-proof.md`                   | Dead systemd pool root-caused (cwd-resolved repo names, missing service PATH, silent skip log); fixed + Flash dogfood loop proven live |
 | 2026-09-10 | `2026-09-10_00-41_backlog-execution-and-gate-hardening.md`                          | 23:47 backlog executed: ETXTBSY root-caused, release-allowlist + darwin-eval bugs fixed, conformance gaps closed vs live PG, docs harvested |
 | 2026-09-09 | `2026-09-09_23-47_round2-queue-backend-split.md`                                    | Round-2 modularization: queue split into contract + sqlite/postgres driver modules (ADR-0012)     |
 | 2026-09-09 | `2026-09-09_23-21_module-split-and-review-sweep.md`                                 | Module split (ADR-0011) + review sweep: go-install fix, release-path repairs, next 50             |
