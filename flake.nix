@@ -186,7 +186,10 @@
                     # systemd argv: flag and value are SEPARATE elements —
                     # one glued "--max-per-tick 3" string would quote into a
                     # single argument and fail flag parsing at start.
-                    extraArgs = [ "--max-per-tick" "3" ];
+                    extraArgs = [
+                      "--max-per-tick"
+                      "3"
+                    ];
                     serve = {
                       enable = true;
                       addr = "127.0.0.1:8100";
@@ -231,7 +234,9 @@
                   # rejects them loudly at unit start; vanishing = silent
                   # defaults) — checked by the grep below — and the
                   # extraArgs example renders as two argv tokens
-                  && builtins.match ".*--config .*tq-pool\.conf.* --max-per-tick 3.*" deployedPool.serviceConfig.ExecStart != null
+                  &&
+                    builtins.match ".*--config .*tq-pool\.conf.* --max-per-tick 3.*" deployedPool.serviceConfig.ExecStart
+                    != null
                   # authTokenFile wires EnvironmentFile on the serve unit
                   && tokenServe.serviceConfig.EnvironmentFile == [ "/run/tq-token" ]
                   # drain invariants survive on both units
