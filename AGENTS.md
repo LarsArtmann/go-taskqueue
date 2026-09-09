@@ -157,6 +157,13 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - Pure-Go deps only (`CGO_ENABLED=0` valid); Go 1.26 idioms are deliberate
   (`errors.AsType[E]`, `strings.SplitSeq`, `for range n`) — do not
   "modernize" them back
+- **Generic retry loops use `github.com/larsartmann/go-retry`** (v0.5.0,
+  executor module): exponential backoff + jitter, pluggable retryable
+  predicate. Do NOT hand-roll new retry/sleep loops. Exceptions (verified
+  2026-09-10): reconnect *supervisors* whose success case is "operation
+  ended" (`harvest/watch.go` Run — retry.Do's nil-stops semantics don't
+  map) keep their own loop; domain backoff (queue NotBefore ladder,
+  worker.Backoff) stays — it's persisted journal-fact state, not a loop.
 - Platform honesty: POSIX-only suites carry `//go:build unix`; CI runs the
   rest on windows-latest. Tests must be hermetic (nix checkPhase has no
   host tools — a test once assumed `crush` on PATH and broke the nix build)
