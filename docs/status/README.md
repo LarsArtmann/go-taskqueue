@@ -14,6 +14,7 @@ Archive counter (update when moving files): 1 report in `archived/`,
 
 | Date       | Report                                                                              | Scope                                                                                             |
 | ---------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 2026-09-09 | `2026-09-09_23-47_round2-queue-backend-split.md`                                    | Round-2 modularization: queue split into contract + sqlite/postgres driver modules (ADR-0012)     |
 | 2026-09-09 | `2026-09-09_23-21_module-split-and-review-sweep.md`                                 | Module split (ADR-0011) + review sweep: go-install fix, release-path repairs, next 50             |
 | 2026-09-09 | `2026-09-09_06-01_round10-self-review-and-full-status.md`                           | Round-10 self-review: v0.2.0-ships-crash finding, misses, next 50                                 |
 | 2026-09-09 | `2026-09-09_05-20_round10-whole-todo-list-executed.md`                              | Round-10: the whole TODO list executed, v0.2.0 released                                           |
