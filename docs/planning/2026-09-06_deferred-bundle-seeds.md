@@ -6,7 +6,10 @@ problem. Implemented-in-this-round items are marked ✅ with pointers.
 
 ## Documented seeds
 
-### D80 — Postgres store sketch
+### D80 — Postgres store sketch ✅ SHIPPED
+
+*(Shipped 2026-09-08: `internal/queue/postgres.go` — conformance-tested,
+`--store postgres` wired; the sketch below is the historical seed.)*
 
 Replace `internal/queue/sqlite.go` behind the existing `Store` interface
 (ADR-0001 seam). Claim becomes:
@@ -47,7 +50,11 @@ re-harvests within the bucket dedup, and the next bucket is new work. No
 scheduler component; the journal proves which buckets ran. PoC candidate:
 10 lines on top of `queue.Enqueue` + a table in DOMAIN_LANGUAGE.
 
-### D90 — Per-repo-size timeout defaults
+### D90 — Per-repo-size timeout defaults ✅ SHIPPED (as `--repo-timeout`)
+
+*(Shipped 2026-09-08 as the operator-specified ladder `--repo-timeout
+name=duration` pinned into harvested payloads — `Config.RepoTimeouts` in
+`internal/harvest`; the size-derived default ladder below remains a seed.)*
 
 Seed: `TimeoutMinutes` already exists per payload; the missing piece is a
 default ladder keyed on repo size (e.g. <10k LOC → 15m, <100k → 30m, else
@@ -55,7 +62,11 @@ default ladder keyed on repo size (e.g. <10k LOC → 15m, <100k → 30m, else
 it promised. Measure real agent durations first (`tq top` last-dur gives
 the data); do not guess the ladder.
 
-### D91 — Crush rate-limit + version detection at pool start
+### D91 — Crush rate-limit + version detection at pool start ✅ SHIPPED
+
+*(Shipped 2026-09-08: the startup version probe + missing-binary warning —
+`cmd/tq` "agent binary" line; rate-limit detection stays deferred exactly
+as the seed says.)*
 
 Seed: at pool start run `crush --version` and record it in the startup line;
 warn when the binary is missing (agents will preflight-refuse anyway — the
@@ -95,6 +106,9 @@ work rarely improves), network → standard. Implement as `Policy func(error)
 RetryPolicy` on worker.Config; the classes already exist.
 
 ### D100 — Consumer-group pool spike (fencing tokens)
+
+*(D80 has shipped, so this is now live backlog — routed to ROADMAP v0.2
+"consumer-group pool / fencing tokens".)*
 
 Design note only: multi-pool without store-level exclusivity could use
 fencing tokens (epoch numbers on claims; stale epochs rejected at

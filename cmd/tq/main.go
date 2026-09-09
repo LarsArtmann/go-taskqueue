@@ -1210,13 +1210,8 @@ func cmdAgentPool(args []string) error {
 				case <-time.After(*poll):
 					// Sweep before the drain check so reviews and status reports
 					// of work this drain just completed run in the SAME --once
-					// process (idempotent; dedup keeps repeat sweeps free). The
-					// budget guard applies here too: the drain's own completions
-					// can spend the last slot, and the cap is EVERY enqueue
-					// (SECURITY.md).
-					if ok, reason := guard.Check(ctx, s); !ok {
-						log.Warn("budget: skipping drain sweep", "reason", reason)
-					} else {
+					// process (idempotent; dedup keeps repeat sweeps free).
+					mintPass("drain sweep", func() {
 						if sweeper != nil {
 							if _, err := sweeper.Sweep(ctx); err != nil {
 								log.Error("review sweep failed", "err", err)
@@ -1228,7 +1223,7 @@ func cmdAgentPool(args []string) error {
 								log.Error("status sweep failed", "err", err)
 							}
 						}
-					}
+					})
 
 					if pool.InFlight() == 0 && !hasClaimableWork(ctx, q, pool.Owner(), *poll) {
 						pool.Stop()

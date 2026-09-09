@@ -130,6 +130,8 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - `tq serve --open` (browser auto-open); SSE `retry:` hint; humanized
   payload preview in rows; inline-SVG favicon
 - Consolidate the status-color maps and shared empty-state copy (TODO_LIST)
+- `?since=` URL param on the dashboard table (the `tq tasks --since` twin —
+  the filter exists CLI-side only today)
 - Define the stats payload once — text, `--json`, and webui budget card are
   three renderers of the same projection drifting independently
 
@@ -174,6 +176,11 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   `TQ_CI_POSTGRES=1`
 - Status-index check as a git pre-commit hook (catch unindexed reports at
   write time, not gate time)
+- CLI polish pack: `printTaskList` error-width flag (60-char truncation is
+  hardcoded), `tq tasks --json` pagination hint field, `--prune-stale --json`
+  naming parity with `tq audit --json`
+- Consolidate the excerpt helpers (`truncate`, `firstLine`, `oneLine`,
+  `truncateItem`, `tailBytes` families) into one tested util per package
 
 ### Observability / ops
 

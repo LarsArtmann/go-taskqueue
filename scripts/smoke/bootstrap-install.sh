@@ -84,6 +84,18 @@ grep -q "^daily-budget = 7$" "$CONF" || {
 	fail=1
 }
 
+# The pinned verify command must land in the repo EXACTLY as the flag
+# spelled it — the payload gate is only as good as the rail it reads.
+VERIFY_FILE="$REPO/.tq-verify"
+if [ ! -f "$VERIFY_FILE" ]; then
+	echo "FAIL: $VERIFY_FILE missing"
+	fail=1
+elif ! grep -qxF 'go build ./... && go test ./... -count=1' "$VERIFY_FILE"; then
+	echo "FAIL: .tq-verify does not match the --verify flag exactly:"
+	cat "$VERIFY_FILE"
+	fail=1
+fi
+
 for invariant in "KillSignal=SIGINT" "KillMode=process" "TimeoutStopSec=" "ProtectSystem=full" "ExecStart="; do
 	grep -q "$invariant" "$UNIT" || {
 		echo "FAIL: unit missing drain invariant $invariant"
