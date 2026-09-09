@@ -4,7 +4,7 @@ go 1.26.7
 
 require (
 	github.com/a-h/templ v0.3.1020
-	github.com/jackc/pgx/v5 v5.11.0
+	github.com/jackc/pgx/v5 v5.11.0 // indirect
 	github.com/larsartmann/go-sse v0.6.0
 	github.com/larsartmann/go-sse/ssetest v0.3.0
 	github.com/larsartmann/templ-components v1.16.0
@@ -48,6 +48,7 @@ require (
 require (
 	github.com/larsartmann/go-taskqueue/internal/executor v0.0.0
 	github.com/larsartmann/go-taskqueue/internal/journal v0.0.0
+	github.com/larsartmann/go-taskqueue/internal/queue v0.0.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.0.0
 )
 
@@ -56,5 +57,7 @@ replace github.com/larsartmann/go-taskqueue/internal/task => ./internal/task
 replace github.com/larsartmann/go-taskqueue/internal/journal => ./internal/journal
 
 replace github.com/larsartmann/go-taskqueue/internal/executor => ./internal/executor
+
+replace github.com/larsartmann/go-taskqueue/internal/queue => ./internal/queue
 
 tool github.com/a-h/templ/cmd/templ

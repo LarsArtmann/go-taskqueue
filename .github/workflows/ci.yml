@@ -104,7 +104,7 @@ jobs:
         with:
           go-version: stable
       - name: Postgres store conformance
-        run: go test ./internal/queue/ -run TestPostgres -count=1 -v
+        run: cd internal/queue && GOWORK=off go test . -run TestPostgres -count=1 -v
 
   nix:
     runs-on: ubuntu-latest
