@@ -198,3 +198,161 @@ func TestPruneStaleDryRunChangesNothing(t *testing.T) {
 		t.Fatalf("dry-run task status = %s, want pending", still.Status)
 	}
 }
+
+// TestPruneStaleCancelsAbsentItems pins the absent-item policy: the docs
+// convention DELETES completed items, so a pending harvested task whose item
+// text is gone from the file entirely is a zombie (found by the 2026-09-09
+// docs-health audit; policy decision: absent = withdrawn — the item was
+// done-and-deleted or reworded, and a reword arms a new key and a new task).
+// External work (no harvest dedup key in the payload) is never touched.
+func TestPruneStaleCancelsAbsentItems(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "gone", "# H\n- [ ] done and deleted\n")
+	writeRepo(t, dir, "kept", "# H\n- [ ] still real work\n")
+	q := openQueue(t)
+	h := New(q, Config{ProjectsDir: dir})
+	ctx := context.Background()
+
+	for range 2 {
+		if _, err := h.Run(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// External work in the same repo: an agent task with NO harvest dedup
+	// key in its payload must be invisible to the absent rule.
+	external, err := q.Enqueue(ctx, task.New{
+		Project: "gone", Type: DefaultType,
+		Payload: []byte(`{"prompt":"hand-enqueued, not harvested"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The item completes out-of-band and the docs convention deletes it.
+	mustWrite(t, dir+"/gone/"+DefaultTodoFile, "# H\n")
+
+	res, err := h.PruneStale(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(res.Cancelled) != 1 || res.Cancelled[0].Why != PruneAbsent {
+		t.Fatalf("Cancelled = %+v, want exactly the absent item's task", res.Cancelled)
+	}
+
+	cancelled, err := q.Get(ctx, res.Cancelled[0].TaskID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if cancelled.Status != task.Cancelled {
+		t.Fatalf("absent-item task status = %s, want cancelled", cancelled.Status)
+	}
+
+	if !strings.Contains(cancelled.LastError, "no longer present") {
+		t.Errorf("cancel reason = %q, want the absent prefix", cancelled.LastError)
+	}
+
+	// The open item's task and the external task survive untouched.
+	if still, err := q.Get(ctx, external.ID); err != nil || still.Status != task.Pending {
+		t.Fatalf("external task = %+v err=%v, want pending (no dedup key, not sweepable)", still, err)
+	}
+
+	pending, err := q.List(ctx, pendingFilter("kept"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(pending) != 1 {
+		t.Fatalf("kept repo pending tasks = %d, want 1", len(pending))
+	}
+}
+
+// TestPruneStaleAbsentCatchupKey: status-sweeper catchup tasks carry
+// "catchup:"-prefixed dedup keys over the same item key; the absent rule
+// strips the prefix before matching, so a catchup task for a live item is
+// untouched and one for a deleted item is withdrawn.
+func TestPruneStaleAbsentCatchupKey(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "mixed", "# H\n- [ ] stays\n")
+	q := openQueue(t)
+	ctx := context.Background()
+
+	live := "catchup:" + ItemKey("mixed", "stays")
+	gone := "catchup:" + ItemKey("mixed", "deleted meanwhile")
+
+	for _, key := range []string{live, gone} {
+		payload, err := json.Marshal(map[string]string{"dedup": key})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := q.Enqueue(ctx, task.New{
+			Project: "mixed", Type: DefaultType, Payload: payload, DedupKey: key,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The item the "gone" key was minted from never existed in this file —
+	// same as having been deleted.
+	res, err := New(q, Config{ProjectsDir: dir}).PruneStale(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(res.Cancelled) != 1 || res.Cancelled[0].Why != PruneAbsent {
+		t.Fatalf("Cancelled = %+v, want only the gone catchup task", res.Cancelled)
+	}
+
+	if got, err := q.Get(ctx, res.Cancelled[0].TaskID); err != nil || got.Status != task.Cancelled {
+		t.Fatalf("gone catchup task = %+v err=%v, want cancelled", got, err)
+	}
+
+	pending, err := q.List(ctx, pendingFilter("mixed"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(pending) != 1 {
+		t.Fatalf("pending catchup tasks = %d, want 1 (the live item's)", len(pending))
+	}
+}
+
+// TestPruneStaleRewordedToBlockedIsWithdrawn pins the blocked-edit
+// interaction: appending "— BLOCKED:" changes the item text (new key, skipped
+// by the harvester), so the task minted from the OLD text is absent and gets
+// withdrawn — the pool never executes work the owner deliberately blocked.
+func TestPruneStaleRewordedToBlockedIsWithdrawn(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "blocked", "# H\n- [ ] fix the flaky test\n")
+	q := openQueue(t)
+	h := New(q, Config{ProjectsDir: dir})
+	ctx := context.Background()
+
+	if _, err := h.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	mustWrite(t, dir+"/blocked/"+DefaultTodoFile, "# H\n- [ ] fix the flaky test — BLOCKED: upstream flake, waiting on v1.2\n")
+
+	res, err := h.PruneStale(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(res.Cancelled) != 1 || res.Cancelled[0].Why != PruneAbsent {
+		t.Fatalf("Cancelled = %+v, want the stale-text task withdrawn", res.Cancelled)
+	}
+
+	// The blocked item itself arms nothing: a subsequent harvest skips it.
+	run, err := h.Run(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(run.Enqueued) != 0 {
+		t.Fatalf("blocked item enqueued %+v, want none", run.Enqueued)
+	}
+}

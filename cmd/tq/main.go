@@ -556,8 +556,9 @@ func printHarvestLines(res harvest.Result, dryRun bool) {
 	}
 }
 
-// printPruneResult renders a --prune-stale pass: cancelled zombies first,
-// then running/dead ticked-item tasks the sweep deliberately does not touch.
+// printPruneResult renders a --prune-stale pass: cancelled zombies first
+// (ticked item, or item text gone from the file), then running/dead
+// stale-item tasks the sweep deliberately does not touch.
 func printPruneResult(res harvest.PruneResult, dryRun bool) {
 	verb := "CANCELLED "
 	if dryRun {
@@ -565,15 +566,15 @@ func printPruneResult(res harvest.PruneResult, dryRun bool) {
 	}
 
 	for _, c := range res.Cancelled {
-		fmt.Printf("%s  %-24s %s  %s\n", verb, c.Item.RepoName, c.Item.Text, c.TaskID)
+		fmt.Printf("%s  %-24s %s  %s\n", verb, c.Item.RepoName, pruneItemText(c.Item, c.Why), c.TaskID)
 	}
 
 	for _, r := range res.Running {
-		fmt.Printf("RUNNING   %-24s %s  %s  — cooperative stop is an operator decision (tq cancel)\n", r.Item.RepoName, r.Item.Text, r.TaskID)
+		fmt.Printf("RUNNING   %-24s %s  %s  — cooperative stop is an operator decision (tq cancel)\n", r.Item.RepoName, pruneItemText(r.Item, r.Why), r.TaskID)
 	}
 
 	for _, d := range res.Dead {
-		fmt.Printf("DEAD      %-24s %s  %s  — already terminal (tq dlq --rescue to retry)\n", d.Item.RepoName, d.Item.Text, d.TaskID)
+		fmt.Printf("DEAD      %-24s %s  %s  — already terminal (tq dlq --rescue to retry)\n", d.Item.RepoName, pruneItemText(d.Item, d.Why), d.TaskID)
 	}
 
 	for _, f := range res.ScanFailures {
@@ -582,6 +583,16 @@ func printPruneResult(res harvest.PruneResult, dryRun bool) {
 
 	fmt.Printf("%d repo(s): %d cancelled, %d running, %d dead\n",
 		res.Repos, len(res.Cancelled), len(res.Running), len(res.Dead))
+}
+
+// pruneItemText renders a pruned task's item for the report lines: the text
+// when it still exists, the dedup key when the item is gone from the file.
+func pruneItemText(it harvest.Item, why harvest.PruneWhy) string {
+	if why == harvest.PruneAbsent {
+		return "(" + it.Key + " — item text no longer in file)"
+	}
+
+	return it.Text
 }
 
 // cmdAgentPool is the self-managing loop in one process: it repeatedly
