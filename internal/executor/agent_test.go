@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -315,6 +316,67 @@ func TestAgentExecutorYoloWithoutRepoAutonomyFailsFast(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(repo, "ran.txt")); err == nil {
 		t.Fatal("agent ran despite missing autonomy config")
+	}
+}
+
+// TestExecWithTransientRetry pins the ETXTBSY absorption: transient
+// "text file busy" exec failures retry (kernel 7.2 reproduced them with no
+// writer holding the file), everything else passes through on attempt one.
+func TestExecWithTransientRetry(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		errs       []error
+		wantCalls  int
+		wantErr    bool
+		wantOutput string
+	}{
+		{name: "success first try", errs: nil, wantCalls: 1, wantOutput: "ok"},
+		{
+			name:       "etxtbsy then success",
+			errs:       []error{syscall.ETXTBSY},
+			wantCalls:  2,
+			wantOutput: "ok",
+		},
+		{
+			name:       "three etxtbsy give up",
+			errs:       []error{syscall.ETXTBSY, syscall.ETXTBSY, syscall.ETXTBSY},
+			wantCalls:  3,
+			wantErr:    true,
+			wantOutput: "partial",
+		},
+		{
+			name:      "other errno passes through",
+			errs:      []error{syscall.ENOENT},
+			wantCalls: 1,
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			calls := 0
+			out, err := execWithTransientRetry(func() (string, error) {
+				calls++
+				if calls-1 < len(tt.errs) {
+					return "partial", tt.errs[calls-1]
+				}
+				return tt.wantOutput, nil
+			})
+
+			if calls != tt.wantCalls {
+				t.Errorf("calls = %d, want %d", calls, tt.wantCalls)
+			}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err == nil && out != tt.wantOutput {
+				t.Errorf("out = %q, want %q", out, tt.wantOutput)
+			}
+		})
 	}
 }
 

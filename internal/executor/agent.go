@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -132,7 +133,9 @@ func AgentVersion(ctx context.Context, bin string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx, bin, "--version").Output()
+	out, err := execWithTransientRetry(func() ([]byte, error) {
+		return exec.CommandContext(ctx, bin, "--version").Output()
+	})
 	if err != nil {
 		return "", fmt.Errorf("%s --version: %w", bin, err)
 	}
@@ -341,19 +344,25 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 
 	args = append(args, "--", p.Prompt)
 
-	cmd := exec.CommandContext(ctx, e.binary(), args...)
-	cmd.Dir = repoDir
+	runOnce := func() (*bytes.Buffer, error) {
+		cmd := exec.CommandContext(ctx, e.binary(), args...)
+		cmd.Dir = repoDir
 
-	var buf bytes.Buffer
+		var buf bytes.Buffer
 
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	// Kill the whole process tree on cancel (agents spawn children) and do
-	// not hang the worker if grandchildren hold the pipes open.
-	prepareProcessGroup(cmd)
+		cmd.Stdout = &buf
+		cmd.Stderr = &buf
+		// Kill the whole process tree on cancel (agents spawn children) and do
+		// not hang the worker if grandchildren hold the pipes open.
+		prepareProcessGroup(cmd)
 
-	cmd.WaitDelay = 10 * time.Second
-	if err := cmd.Run(); err != nil {
+		cmd.WaitDelay = 10 * time.Second
+		err := cmd.Run()
+		return &buf, err
+	}
+
+	buf, err := execWithTransientRetry(runOnce)
+	if err != nil {
 		// The captured output survives the error so the caller can pin the
 		// failure evidence's tail excerpt. The cancelled branch must keep
 		// wrapping ctx.Err(): the worker finalizes cooperative cancels by
@@ -366,6 +375,23 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	}
 
 	return buf.String(), nil
+}
+
+// execWithTransientRetry retries exec attempts that failed with ETXTBSY
+// ("text file busy"). Kernel 7.2 was observed returning it for freshly
+// written stub executables under concurrent process churn with no writer
+// holding the file — an executor-level retry (50ms, then 100ms) absorbs
+// the whole failure class instead of failing a task attempt. Every other
+// error passes through untouched.
+func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
+	for attempt := 1; ; attempt++ {
+		out, err := run()
+		if err == nil || attempt >= 3 || !errors.Is(err, syscall.ETXTBSY) {
+			return out, err
+		}
+
+		time.Sleep(time.Duration(attempt) * 50 * time.Millisecond)
+	}
 }
 
 // runVerify enforces the quality gate after the agent exited cleanly. The
