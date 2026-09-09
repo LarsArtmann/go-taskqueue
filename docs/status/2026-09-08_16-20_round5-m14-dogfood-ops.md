@@ -60,6 +60,11 @@ cap (not per over-cap enqueue), resolves on rollover, silent when off.
 
 ## e) Follow-ups
 
+_**(2026-09-09): all three owner gates resolved-or-staged — restart DONE
+(token-authed instance on :8090), push DONE, v0.2.0 staged in TODO_LIST;
+the dogfood pool relaunched WITH `--review --review-autofix` by the
+round-4 plan (2026-09-07).**_
+
 - Owner-gated: LAN serve restart (PID 3654482 still old binary), push
   authorization (now 15+ unpushed), v0.2.0 timing.
 - The dogfood pool (started before `--review` existed) runs without agent
