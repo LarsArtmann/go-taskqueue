@@ -18,17 +18,17 @@ budget accounting for reviews and daemon-commit attribution mush.
 
 ## Stat cards
 
-| Metric                              | Value                                                                                        |
-| ----------------------------------- | -------------------------------------------------------------------------------------------- |
-| Pool uptime this window             | launched 22:13, still running at report time (PID 55731)                                      |
-| Agent completions this window       | 2 (cancel-reason item; discovery item)                                                        |
-| Live review tasks minted            | 2 (first: **approved**; second: pending at report time)                                       |
-| Pre-existing suite break repaired   | 1 (expanded `app.css` from dea43c4 broke `TestA11yChrome`)                                    |
-| Flaky test found + filed            | 1 (`TestRestartMidStreamLosesZeroFacts`, papdashboard)                                        |
-| Budget                              | 26/30 enqueues today (cap raised 15 → 30 this session, ratification pending)                  |
-| DLQ                                 | 0 entries all window                                                                          |
-| Pushes                              | 0 (agents never push; master 13+ ahead of origin, owner-gated)                                |
-| TODO_LIST net change by this window | #88 closed (live review); +1 item filed (deflake); rest untouched                             |
+| Metric                              | Value                                                                        |
+| ----------------------------------- | ---------------------------------------------------------------------------- |
+| Pool uptime this window             | launched 22:13, still running at report time (PID 55731)                     |
+| Agent completions this window       | 2 (cancel-reason item; discovery item)                                       |
+| Live review tasks minted            | 2 (first: **approved**; second: pending at report time)                      |
+| Pre-existing suite break repaired   | 1 (expanded `app.css` from dea43c4 broke `TestA11yChrome`)                   |
+| Flaky test found + filed            | 1 (`TestRestartMidStreamLosesZeroFacts`, papdashboard)                       |
+| Budget                              | 26/30 enqueues today (cap raised 15 → 30 this session, ratification pending) |
+| DLQ                                 | 0 entries all window                                                         |
+| Pushes                              | 0 (agents never push; master 13+ ahead of origin, owner-gated)               |
+| TODO_LIST net change by this window | #88 closed (live review); +1 item filed (deflake); rest untouched            |
 
 ---
 
@@ -68,9 +68,9 @@ budget accounting for reviews and daemon-commit attribution mush.
    review sweeper minted `review:<task-id>` for the real completion, the
    reviewer ran the repo verify gate, and returned `TQ_RESULT verdict=approve`
    (fact 170) with a summary that correctly attributed the feature to f68761a
-   + daemon auto-commits and the CSS regen to 9372e44. Project-exclusive
-   serialization held: the review waited for the agent slot. TODO #88 ticked
-   with full evidence trail.
+   - daemon auto-commits and the CSS regen to 9372e44. Project-exclusive
+     serialization held: the review waited for the agent slot. TODO #88 ticked
+     with full evidence trail.
 7. **Flaky test found, root-caused as flake (passed 22:34, failed 22:54), and
    FILED as a TODO_LIST item** so the pool itself deflakes it next window
    (`TestRestartMidStreamLosesZeroFacts`, watermark 549 ≠ 600 under load).
@@ -295,6 +295,6 @@ window (not yet in TODO_LIST); unmarked = existing TODO_LIST items.
 
 ---
 
-*Point-in-time snapshot, 2026-09-08 23:10 CEST. Pool still running (PID
+_Point-in-time snapshot, 2026-09-08 23:10 CEST. Pool still running (PID
 55731); second review pending; queue: 1 pending / 1 running / 26 completed /
-0 dead. Report file will be auto-committed by the daemon (never pushed).*
+0 dead. Report file will be auto-committed by the daemon (never pushed)._

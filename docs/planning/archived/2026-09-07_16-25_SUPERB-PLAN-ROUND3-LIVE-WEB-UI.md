@@ -5,18 +5,19 @@
 verified (`go test ./... -race`, smoke script, `nix build`), committed; see
 `docs/status/2026-09-07_18-41_round3-live-web-ui-executed-verified-committed.md`.
 Phase D (W15–W22 polish/hardening) largely shipped since (auth, pagination, board, admin writes); remainder on ROADMAP.
+
 > **Archived 2026-09-09 (docs-health):** fully executed — moved from docs/planning/.
-**Scope:** Productionize the "Web UI over the projections" raw idea from
-ROADMAP.md into a live-updating, read-only ops dashboard served by
-`tq serve` — the go-taskqueue equivalent of samber-do-auditlog's `live/`
-package. 22 coarse (30–100 min) + 76 fine (≤12 min) tasks, Pareto-ranked.
-**Inputs:** ROADMAP.md raw ideas, FEATURES.md:90 (HTTP API 🟡),
-examples/sse (D75, SSE + `Last-Event-ID` resume PoC), examples/api (stats +
-metrics + polling page PoC), round-2 plan D95 ("Web UI spike over facts
-projection", deferred), samber-do-auditlog `live/` reference implementation.
-**Repo strategy:** same repo, one new internal package (`internal/webui`) +
-one new CLI subcommand (`tq serve`). Zero changes to store schema, worker,
-executor, or journal semantics.
+> **Scope:** Productionize the "Web UI over the projections" raw idea from
+> ROADMAP.md into a live-updating, read-only ops dashboard served by
+> `tq serve` — the go-taskqueue equivalent of samber-do-auditlog's `live/`
+> package. 22 coarse (30–100 min) + 76 fine (≤12 min) tasks, Pareto-ranked.
+> **Inputs:** ROADMAP.md raw ideas, FEATURES.md:90 (HTTP API 🟡),
+> examples/sse (D75, SSE + `Last-Event-ID` resume PoC), examples/api (stats +
+> metrics + polling page PoC), round-2 plan D95 ("Web UI spike over facts
+> projection", deferred), samber-do-auditlog `live/` reference implementation.
+> **Repo strategy:** same repo, one new internal package (`internal/webui`) +
+> one new CLI subcommand (`tq serve`). Zero changes to store schema, worker,
+> executor, or journal semantics.
 
 ---
 

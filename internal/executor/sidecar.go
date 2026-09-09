@@ -103,6 +103,7 @@ func SweepSidecarsByBytes(dir string, maxBytes int64) (int, error) {
 	sort.Slice(logged, func(i, j int) bool { return logged[i].mod.Before(logged[j].mod) })
 
 	removed := 0
+
 	for _, sc := range logged {
 		if total <= maxBytes {
 			break

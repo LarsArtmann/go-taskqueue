@@ -80,7 +80,12 @@ func DiscoverReposDaemon(ctx context.Context, addr, projectsDir, todoFile string
 	if resp.StatusCode != http.StatusOK {
 		reply, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
 
-		return nil, fmt.Errorf("harvest: daemon discovery at %s: status %d: %s", addr, resp.StatusCode, strings.TrimSpace(string(reply)))
+		return nil, fmt.Errorf(
+			"harvest: daemon discovery at %s: status %d: %s",
+			addr,
+			resp.StatusCode,
+			strings.TrimSpace(string(reply)),
+		)
 	}
 
 	var decoded daemonDiscoverResponse

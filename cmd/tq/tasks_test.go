@@ -51,6 +51,7 @@ func TestResolveTaskPrefix(t *testing.T) {
 	for i := range unique {
 		if a.ID.String()[i] != b.ID.String()[i] {
 			unique = a.ID.String()[:i+1]
+
 			break
 		}
 	}

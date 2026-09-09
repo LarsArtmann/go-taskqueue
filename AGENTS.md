@@ -38,21 +38,21 @@ Facts-first: every state change is an immutable fact in an append-only
 journal; queue views, retry state, and the DLQ are projections of those
 facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 
-| Package             | Purpose                                                                                                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `internal/task`     | Task record, Status enum with `CanTransitionTo`, sentinel errors                                            |
-| `internal/journal`  | Fact types, append-only Journal interface, MemoryJournal                                                    |
-| `internal/queue`    | Store interface + SQLite + Postgres stores; every mutation appends facts in-tx                              |
-| `internal/worker`   | Claim → heartbeat → execute loop; concurrency, panics, drain, preflight requeue ladder                      |
-| `internal/bridge`   | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                         |
-| `internal/executor` | Pluggable execution: `sh`, HTTP, agent (headless AI), review, status, registry                              |
-| `internal/harvest`  | Scans repos' TODO_LIST.md into agent tasks; drift audit (`tq audit`); prune-stale sweeps                    |
-| `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick                      |
-| `internal/review`   | Sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks                     |
-| `internal/status`   | Sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)          |
-| `internal/consumer` | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)             |
-| `internal/runactor` | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts          |
-| `internal/webui`    | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                |
+| Package             | Purpose                                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `internal/task`     | Task record, Status enum with `CanTransitionTo`, sentinel errors                                                                                                          |
+| `internal/journal`  | Fact types, append-only Journal interface, MemoryJournal                                                                                                                  |
+| `internal/queue`    | Store interface + SQLite + Postgres stores; every mutation appends facts in-tx                                                                                            |
+| `internal/worker`   | Claim → heartbeat → execute loop; concurrency, panics, drain, preflight requeue ladder                                                                                    |
+| `internal/bridge`   | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                                                                                       |
+| `internal/executor` | Pluggable execution: `sh`, HTTP, agent (headless AI), review, status, registry                                                                                            |
+| `internal/harvest`  | Scans repos' TODO_LIST.md into agent tasks; drift audit (`tq audit`); prune-stale sweeps                                                                                  |
+| `internal/budget`   | Daily-cap + budget-command projections over the journal, checked before each pool tick                                                                                    |
+| `internal/review`   | Sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks                                                                                   |
+| `internal/status`   | Sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)                                                                        |
+| `internal/consumer` | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                           |
+| `internal/runactor` | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                        |
+| `internal/webui`    | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                              |
 | `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / facts / tail / watermarks / serve / api / doctor / version |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001,
@@ -158,15 +158,15 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 
 ### templ-components adoption
 
-| Library component                                                       | Status  | Where                                                                        |
-| ----------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------- |
-| `layout.Base`, `ThemeToggle`                                            | adopted | `layout.templ`                                                               |
-| `display.Card/Table/EmptyState`                                         | adopted | `fragments.templ`                                                            |
-| `display.Badge/Eyebrow/DefinitionList/Scrollback`                       | adopted | `fragments.templ`                                                            |
-| `display.AreaChart`                                                     | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`)  |
-| `display.Button`                                                        | adopted | filter bar (apply)                                                           |
-| `feedback.Alert`                                                        | adopted | task detail (last error)                                                     |
-| `icons.ArchiveBox/CircleStack/Filter/Inbox`                             | adopted | empty-state + filter icons (`fragments.templ`)                               |
+| Library component                                                                                | Status  | Where                                                                           |
+| ------------------------------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------- |
+| `layout.Base`, `ThemeToggle`                                                                     | adopted | `layout.templ`                                                                  |
+| `display.Card/Table/EmptyState`                                                                  | adopted | `fragments.templ`                                                               |
+| `display.Badge/Eyebrow/DefinitionList/Scrollback`                                                | adopted | `fragments.templ`                                                               |
+| `display.AreaChart`                                                                              | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`)     |
+| `display.Button`                                                                                 | adopted | filter bar (apply)                                                              |
+| `feedback.Alert`                                                                                 | adopted | task detail (last error)                                                        |
+| `icons.ArchiveBox/CircleStack/Filter/Inbox`                                                      | adopted | empty-state + filter icons (`fragments.templ`)                                  |
 | status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband) |
 
 Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows`

@@ -173,7 +173,11 @@ func (w *Watcher) streamOnce(ctx context.Context) error {
 	}
 
 	if contentType := resp.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/event-stream") {
-		return fmt.Errorf("harvest: daemon watch at %s: content type %q, want text/event-stream", w.cfg.Addr, contentType)
+		return fmt.Errorf(
+			"harvest: daemon watch at %s: content type %q, want text/event-stream",
+			w.cfg.Addr,
+			contentType,
+		)
 	}
 
 	return scanWatchStream(resp.Body, w.dispatchEvent)

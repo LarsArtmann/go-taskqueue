@@ -26,7 +26,11 @@ func TestPartitionFlags(t *testing.T) {
 	}{
 		{"flags first stays put", []string{"--reason", "why", "id1"}, []string{"--reason", "why", "id1"}},
 		{"documented order is hoisted", []string{"id1", "--reason", "why"}, []string{"--reason", "why", "id1"}},
-		{"mixed flags and positionals", []string{"id1", "--db", "x.db", "--force", "id2"}, []string{"--db", "x.db", "--force", "id1", "id2"}},
+		{
+			"mixed flags and positionals",
+			[]string{"id1", "--db", "x.db", "--force", "id2"},
+			[]string{"--db", "x.db", "--force", "id1", "id2"},
+		},
 		{"equals form needs no lookahead", []string{"id1", "--reason=why"}, []string{"--reason=why", "id1"}},
 		{"positionals only", []string{"id1"}, []string{"id1"}},
 		{"empty", nil, nil},

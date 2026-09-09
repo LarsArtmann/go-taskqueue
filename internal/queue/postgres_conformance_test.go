@@ -68,6 +68,7 @@ func TestPostgresConformance(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+
 		_ = future // stays pending-and-gated; per-task subtests below claim by ID
 
 		low, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Priority: -5})
@@ -327,6 +328,7 @@ func TestPostgresConformance(t *testing.T) {
 		}
 
 		proj := project
+
 		filtered, err := s.List(ctx, Filter{Project: &proj, Type: &typ, Status: &st})
 		if err != nil {
 			t.Fatal(err)
@@ -389,7 +391,11 @@ func TestPostgresConformance(t *testing.T) {
 		}
 
 		if trail[0].Type != journal.Claimed || trail[1].Type != journal.Completed {
-			t.Fatalf("bounded trail = [%s %s], want [claimed completed] (most recent two)", trail[0].Type, trail[1].Type)
+			t.Fatalf(
+				"bounded trail = [%s %s], want [claimed completed] (most recent two)",
+				trail[0].Type,
+				trail[1].Type,
+			)
 		}
 	})
 }

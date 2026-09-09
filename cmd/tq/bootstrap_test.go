@@ -329,14 +329,17 @@ func TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem(t *testing.T) {
 	t.Setenv("HOME", fakeHome)
 
 	stubBin := t.TempDir()
+
 	callLog := filepath.Join(stubBin, "calls.log")
 	for _, name := range []string{"systemctl", "loginctl"} {
 		script := "#!/bin/sh\necho \"$0 $@\" >> " + callLog + "\nexit 0\n"
+
 		path := filepath.Join(stubBin, name)
 		if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
+
 	t.Setenv("PATH", stubBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	o := bootstrapOptions{
@@ -401,6 +404,7 @@ func TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stubbed commands never ran: %v", err)
 	}
+
 	got := string(calls)
 	for _, want := range []string{
 		"systemctl --user daemon-reload",
@@ -416,6 +420,7 @@ func TestInstallServiceRendersUnitAndConfigWithoutTouchingSystem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if mode := info.Mode().Perm(); mode != 0o600 {
 		t.Errorf("pool.conf mode = %o, want 600 (contains repo layout)", mode)
 	}

@@ -3,8 +3,9 @@
 **Date:** 2026-09-08 07:36
 **Status:** ~~PLAN — ready for execution~~ EXECUTED 2026-09-08 — P1–P20 shipped (watermarks, review catch-up, dispatcher, actors, P17–P20 ops rows); completion report:
 `docs/status/2026-09-08_20-58_round6-execution-watermarks-bus-actors.md`.
+
 > **Archived 2026-09-09 (docs-health):** fully executed — moved from docs/planning/.
-**Author session:** library-evaluation session (05:24 report) + pareto-planning pass
+> **Author session:** library-evaluation session (05:24 report) + pareto-planning pass
 
 ## 0. Inputs (all re-verified at HEAD `b82d6b6`, tree clean)
 

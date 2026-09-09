@@ -2070,6 +2070,7 @@ func TestListSinceFilter(t *testing.T) {
 	}
 
 	since := first.CreatedAt
+
 	got, err := s.List(ctx, Filter{Since: &since})
 	if err != nil {
 		t.Fatalf("List inclusive: %v", err)
@@ -2080,6 +2081,7 @@ func TestListSinceFilter(t *testing.T) {
 	}
 
 	after := first.CreatedAt.Add(time.Millisecond)
+
 	got, err = s.List(ctx, Filter{Since: &after})
 	if err != nil {
 		t.Fatalf("List exclusive: %v", err)

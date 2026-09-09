@@ -260,7 +260,11 @@ func (l *writeRateLimiter) wrap(next http.Handler) http.Handler {
 
 			l.mu.Unlock()
 			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(st.lockedUntil)/time.Second)+1))
-			http.Error(w, "too many failed attempts — write routes locked for "+retry.String(), http.StatusTooManyRequests)
+			http.Error(
+				w,
+				"too many failed attempts — write routes locked for "+retry.String(),
+				http.StatusTooManyRequests,
+			)
 
 			return
 		}
@@ -292,7 +296,14 @@ func (l *writeRateLimiter) wrap(next http.Handler) http.Handler {
 			if st.count >= l.maxHits {
 				st.lockedUntil = st.last.Add(l.lockout)
 				st.count = 0
-				slog.Warn("webui: write routes locked after repeated CSRF failures", "client", key, "lockout", l.lockout.String())
+
+				slog.Warn(
+					"webui: write routes locked after repeated CSRF failures",
+					"client",
+					key,
+					"lockout",
+					l.lockout.String(),
+				)
 			}
 		case sw.status < http.StatusBadRequest:
 			st.count = 0

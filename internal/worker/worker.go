@@ -129,7 +129,7 @@ func (p *Pool) preflightDelay(id task.ID) time.Duration {
 
 	st.count++
 
-	d := p.cfg.PreflightBackoff << min(st.count-1, 8) //nolint:gosec // shift bounded by min
+	d := p.cfg.PreflightBackoff << min(st.count-1, 8)
 	if d <= 0 || d > preflightMaxBackoff {
 		d = preflightMaxBackoff
 	}
@@ -422,7 +422,14 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// pool shutdown; only internal cancellation lands here). Burn the
 		// attempt (crash-safe equivalent) with zero backoff so it is immediately
 		// reclaimable.
-		if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, "worker shutdown: "+execErr.Error(), 0, sink.Failure()); err != nil {
+		if err := p.store.Fail(
+			terminalCtx,
+			t.ID,
+			p.cfg.Owner,
+			"worker shutdown: "+execErr.Error(),
+			0,
+			sink.Failure(),
+		); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)
 		}
 
@@ -433,7 +440,14 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	// rides the task.failed fact's detail so a failed attempt is debuggable
 	// from the journal alone (21:40 report §d4: both retry-path failures
 	// left empty {} detail).
-	if err := p.store.Fail(terminalCtx, t.ID, p.cfg.Owner, execErr.Error(), p.cfg.Backoff(t.Attempts+1), sink.Failure()); err != nil {
+	if err := p.store.Fail(
+		terminalCtx,
+		t.ID,
+		p.cfg.Owner,
+		execErr.Error(),
+		p.cfg.Backoff(t.Attempts+1),
+		sink.Failure(),
+	); err != nil {
 		p.log.Error("fail failed", "task", t.ID, "err", err)
 	}
 }

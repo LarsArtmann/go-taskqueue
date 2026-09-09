@@ -749,6 +749,7 @@ func TestCooperativeCancelWrappedErrorFinalizesAsCancelled(t *testing.T) {
 	}
 
 	sawRequested, sawCancelled, sawFailed := false, false, false
+
 	for _, f := range facts {
 		switch f.Type {
 		case journal.CancelRequested:

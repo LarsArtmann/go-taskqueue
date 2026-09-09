@@ -161,7 +161,6 @@
                     };
                   };
                 };
-                unknownKeyUnits = unknownKeyConfig.systemd.services;
                 # The rendered config is a store file — pure eval cannot
                 # read it; the check script greps it at build time.
                 unknownKeyConfPath = unknownKeyConfig.services.tq-agent-pool.renderedConfigFile;
@@ -259,8 +258,8 @@
                     deployedUser = deployedPool.serviceConfig.User or null;
                     deployedRequiresMountsFor = deployedPool.unitConfig.RequiresMountsFor or null;
                     deployedEnvironment = deployedPool.serviceConfig.Environment or null;
-                    expectedBin = expectedBin;
-                    poolFirstToken = poolFirstToken;
+                    inherit expectedBin;
+                    inherit poolFirstToken;
                     serveExecStart = deployedServe.serviceConfig.ExecStart or null;
                     serveStateDirectoryPresent = deployedServe.serviceConfig ? StateDirectory;
                     killSignal = deployedPool.serviceConfig.KillSignal or null;

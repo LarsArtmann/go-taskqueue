@@ -564,7 +564,13 @@ func (s *PostgresStore) Fail(
 }
 
 // FailPermanent dead-letters regardless of the attempt budget.
-func (s *PostgresStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error {
+func (s *PostgresStore) FailPermanent(
+	ctx context.Context,
+	id task.ID,
+	owner string,
+	errText string,
+	evidence json.RawMessage,
+) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
 
@@ -778,6 +784,7 @@ func (s *PostgresStore) CancelOwned(ctx context.Context, id task.ID, owner strin
 // detail yields "", never an error — the finalize must not fail on cosmetics.
 func cancelRequestedReasonPgTx(ctx context.Context, tx pgx.Tx, id string) (string, error) {
 	var detail string
+
 	err := tx.QueryRow(ctx, `
 		SELECT detail FROM facts
 		WHERE task_id = $1 AND type = 'task.cancel-requested'

@@ -281,6 +281,7 @@ func TestAgentPromptTaskIDSubstitution(t *testing.T) {
 
 	e := &AgentExecutor{Bin: bin}
 	tk := agentTaskT(t, AgentPayload{Repo: repo, Prompt: "work item\n\nTask-Queue-ID: {{TASK_ID}}"})
+
 	tk.ID = task.ID("000001a0fixedidforthesubstitutiontest")
 	if err := e.Execute(context.Background(), tk); err != nil {
 		t.Fatalf("Execute: %v", err)

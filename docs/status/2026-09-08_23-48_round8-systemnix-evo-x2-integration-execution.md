@@ -87,8 +87,8 @@ via edit collisions and pivoted from "write everything" to
 ## c) NOT STARTED
 
 1. **E3 VM test** (`tests/test-tq.nix`) — consciously skipped: module-eval
-   + host-config eval cover wiring; a boot test was judged duplicate cost.
-   The judgment is reversible if the pool misbehaves at activation.
+   - host-config eval cover wiring; a boot test was judged duplicate cost.
+     The judgment is reversible if the pool misbehaves at activation.
 2. **Live PapDashboard alert e2e** from the deployed pool (dead letter →
    alert on the real dashboard).
 3. **Backup/restore drill** for the journal snapshot path (btrbk stanza

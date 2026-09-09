@@ -8,15 +8,16 @@ C04 (2026-09-06). Completion report:
 `docs/status/2026-09-06_19-49_round2-complete-c14-c15-c19-c27-status-and-debt.md`;
 surviving open items live in TODO_LIST.md / ROADMAP.md (docs-health pass
 2026-09-07).
+
 > **Archived 2026-09-09 (docs-health):** fully executed — moved from docs/planning/.
-**Scope:** Everything currently known-open: 19 TODO_LIST items, the 10 audit
-findings from the 16:19 status report, and the ROADMAP backlog — deduplicated,
-Pareto-ranked, and split into 26 coarse (30–100 min) + 100 fine (≤12 min) tasks.
-**Inputs:** docs/status/2026-09-06_16-19 report §f, TODO_LIST.md (19 items),
-ROADMAP.md raw ideas, FEATURES.md PLANNED rows, round-1 plan (docs/planning/).
-**Repo strategy:** same repo, no scope change. v0.1.0 single-node foundation is
-BUILT — this round makes it correct, observable, proven under contention, and
-RELEASED.
+> **Scope:** Everything currently known-open: 19 TODO_LIST items, the 10 audit
+> findings from the 16:19 status report, and the ROADMAP backlog — deduplicated,
+> Pareto-ranked, and split into 26 coarse (30–100 min) + 100 fine (≤12 min) tasks.
+> **Inputs:** docs/status/2026-09-06_16-19 report §f, TODO_LIST.md (19 items),
+> ROADMAP.md raw ideas, FEATURES.md PLANNED rows, round-1 plan (docs/planning/).
+> **Repo strategy:** same repo, no scope change. v0.1.0 single-node foundation is
+> BUILT — this round makes it correct, observable, proven under contention, and
+> RELEASED.
 
 ## The Problem
 

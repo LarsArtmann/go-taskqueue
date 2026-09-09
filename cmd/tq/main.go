@@ -570,11 +570,21 @@ func printPruneResult(res harvest.PruneResult, dryRun bool) {
 	}
 
 	for _, r := range res.Running {
-		fmt.Printf("RUNNING   %-24s %s  %s  — cooperative stop is an operator decision (tq cancel)\n", r.Item.RepoName, pruneItemText(r.Item, r.Why), r.TaskID)
+		fmt.Printf(
+			"RUNNING   %-24s %s  %s  — cooperative stop is an operator decision (tq cancel)\n",
+			r.Item.RepoName,
+			pruneItemText(r.Item, r.Why),
+			r.TaskID,
+		)
 	}
 
 	for _, d := range res.Dead {
-		fmt.Printf("DEAD      %-24s %s  %s  — already terminal (tq dlq --rescue to retry)\n", d.Item.RepoName, pruneItemText(d.Item, d.Why), d.TaskID)
+		fmt.Printf(
+			"DEAD      %-24s %s  %s  — already terminal (tq dlq --rescue to retry)\n",
+			d.Item.RepoName,
+			pruneItemText(d.Item, d.Why),
+			d.TaskID,
+		)
 	}
 
 	for _, f := range res.ScanFailures {
@@ -947,8 +957,17 @@ func cmdAgentPool(args []string) error {
 			log.Warn("startup prune-stale failed", "err", err)
 		} else {
 			for _, c := range res.Cancelled {
-				log.Warn("startup prune: cancelled stale task",
-					"repo", c.Item.RepoName, "why", c.Why, "item", pruneItemText(c.Item, c.Why), "task", c.TaskID.String())
+				log.Warn(
+					"startup prune: cancelled stale task",
+					"repo",
+					c.Item.RepoName,
+					"why",
+					c.Why,
+					"item",
+					pruneItemText(c.Item, c.Why),
+					"task",
+					c.TaskID.String(),
+				)
 			}
 
 			for _, r := range res.Running {
@@ -1794,7 +1813,11 @@ func cmdFacts(args []string) error {
 	fs := flag.NewFlagSet("facts", flag.ExitOnError)
 	after := fs.Int64("after", 0, "only facts with seq > this")
 	asJSON := fs.Bool("json", false, "JSON output of the fact list (full detail, non-truncating)")
-	withDetail := fs.Bool("detail", false, "print each fact's full detail JSON verbatim below its line (multi-line tails stay intact)")
+	withDetail := fs.Bool(
+		"detail",
+		false,
+		"print each fact's full detail JSON verbatim below its line (multi-line tails stay intact)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -1896,6 +1919,7 @@ func cmdWatermarks(args []string) error {
 
 		for _, e := range entries {
 			lag := max(head-e.Seq, 0)
+
 			state := fmt.Sprintf("lag %-6d", lag)
 			if lag == 0 {
 				state = "current "
@@ -2086,7 +2110,13 @@ func cmdServe(args []string) error {
 		return err
 	}
 
-	cfg := webui.Config{Addr: *addr, Poll: *poll, RequestLog: *verbose, AuthToken: *authToken, AllowWrites: *allowWrites}
+	cfg := webui.Config{
+		Addr:        *addr,
+		Poll:        *poll,
+		RequestLog:  *verbose,
+		AuthToken:   *authToken,
+		AllowWrites: *allowWrites,
+	}
 	if err := cfg.Validate(); err != nil {
 		return err
 	}

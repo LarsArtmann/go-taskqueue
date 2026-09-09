@@ -50,10 +50,10 @@ The dashboard is read-only by construction (ADR-0003) EXCEPT for exactly
 two admin routes, which exist only when `--allow-writes` / `$TQ_SERVE_WRITES=1`
 is passed:
 
-| Route                       | Effect                                                                                       | Blast radius                                          |
-| --------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `POST /task/{id}/cancel`    | withdraw a pending task, or request a cooperative stop of a running one                       | one task withdrawn / stopped                          |
-| `POST /task/{id}/rescue`    | re-queue a dead-lettered task with fresh attempts (the agent may spend money running it again) | one task re-run → its model spend + a commit in its repo |
+| Route                    | Effect                                                                                         | Blast radius                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `POST /task/{id}/cancel` | withdraw a pending task, or request a cooperative stop of a running one                        | one task withdrawn / stopped                             |
+| `POST /task/{id}/rescue` | re-queue a dead-lettered task with fresh attempts (the agent may spend money running it again) | one task re-run → its model spend + a commit in its repo |
 
 No other write exists: adding one requires the same flag + CSRF treatment
 (repo guardrail, ADR-0003 amendment 2026-09-08). The routes never edit
@@ -66,10 +66,10 @@ methods as `tq cancel` / `tq dlq --rescue`.
    (404, not 403).
 2. **Loopback vs token matrix:**
 
-   | Bind                | Token      | Writes | Result                          |
-   | ------------------- | ---------- | ------ | ------------------------------- |
-   | `127.0.0.1:port`    | —          | off    | read-only dashboard             |
-   | `127.0.0.1:port`    | —          | on     | writes, CSRF-guarded            |
+   | Bind                              | Token                                     | Writes | Result                                                 |
+   | --------------------------------- | ----------------------------------------- | ------ | ------------------------------------------------------ |
+   | `127.0.0.1:port`                  | —                                         | off    | read-only dashboard                                    |
+   | `127.0.0.1:port`                  | —                                         | on     | writes, CSRF-guarded                                   |
    | non-loopback / `:port` / hostname | **required** (refuses to start otherwise) | either | every route behind constant-time bearer/`?token=` auth |
 
 3. **CSRF** — every write POST must carry the form field matching the

@@ -1262,6 +1262,7 @@ func TestFmtAgeParityWithServer(t *testing.T) {
 
 	// Seconds branch: `if (s < 60) return s + "s";`
 	secTh := regexp.MustCompile(`s < (\d+)\) return s \+ "s"`)
+
 	m := secTh.FindStringSubmatch(text)
 	if m == nil {
 		t.Fatal("app.js fmtAge: seconds branch not found — did the JS change shape?")
@@ -1294,6 +1295,7 @@ func TestFmtAgeParityWithServer(t *testing.T) {
 	// Value guard: the JS ladder rendered in Go must equal durationUntil.
 	// Buckets: <60s→s, <3600→m, <86400→h, else d (exactly the JS thresholds).
 	now := time.Now()
+
 	for _, age := range []time.Duration{
 		0, 500 * time.Millisecond, 59 * time.Second, time.Minute,
 		90 * time.Second, 59 * time.Minute, time.Hour, 90 * time.Minute,

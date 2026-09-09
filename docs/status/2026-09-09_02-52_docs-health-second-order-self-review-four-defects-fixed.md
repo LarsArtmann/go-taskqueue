@@ -145,7 +145,7 @@ owns commits.
 
 ---
 
-*Point-in-time snapshot; re-verify before treating any claim as current.
+_Point-in-time snapshot; re-verify before treating any claim as current.
 Counts in this report were computed via grep at 02:52 (29 unchecked / 10
 BLOCKED / 19 pool food). Skill format override: `.md` per explicit
-instruction. Not committed — the auto-commit daemon owns commits.*
+instruction. Not committed — the auto-commit daemon owns commits._

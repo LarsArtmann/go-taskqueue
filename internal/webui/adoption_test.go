@@ -162,7 +162,7 @@ func TestAdoptionTablePinsCustomRows(t *testing.T) {
 
 	customRows := 0
 
-	for _, line := range strings.Split(string(agents), "\n") {
+	for line := range strings.SplitSeq(string(agents), "\n") {
 		if strings.HasPrefix(line, "### ") {
 			inSection = strings.TrimSpace(line) == adoptionHeading
 

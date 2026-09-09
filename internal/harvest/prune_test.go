@@ -335,7 +335,11 @@ func TestPruneStaleRewordedToBlockedIsWithdrawn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mustWrite(t, dir+"/blocked/"+DefaultTodoFile, "# H\n- [ ] fix the flaky test — BLOCKED: upstream flake, waiting on v1.2\n")
+	mustWrite(
+		t,
+		dir+"/blocked/"+DefaultTodoFile,
+		"# H\n- [ ] fix the flaky test — BLOCKED: upstream flake, waiting on v1.2\n",
+	)
 
 	res, err := h.PruneStale(ctx)
 	if err != nil {
@@ -374,10 +378,12 @@ func cancelReason(t *testing.T, q *queue.Queue, id task.ID) string {
 			if err := json.Unmarshal(facts[i].Detail, &detail); err != nil {
 				t.Fatalf("cancel fact detail not JSON with a reason: %v (%s)", err, facts[i].Detail)
 			}
+
 			return detail.Reason
 		}
 	}
 
 	t.Fatal("no task.cancelled fact on " + id.String())
+
 	return ""
 }

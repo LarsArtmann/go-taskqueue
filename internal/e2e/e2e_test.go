@@ -320,6 +320,7 @@ func TestAgentPoolStartupPruneSweep(t *testing.T) {
 	writeFile(t, stub, "#!/bin/sh\nexit 0\n", 0o755)
 
 	db := filepath.Join(dir, "q.db")
+
 	env := append(os.Environ(), "TQ_AGENT_BIN="+stub)
 
 	// Harvest with no pool running: one pending task, nothing executes.

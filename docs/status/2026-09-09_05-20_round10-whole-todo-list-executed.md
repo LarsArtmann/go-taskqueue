@@ -16,6 +16,7 @@ deadlined during dial under `-race`). Both deflaked (500ms margins); both
 stable ×5 under race locally.
 
 **Tier R — safety rails (T5–T11):**
+
 - Cooperative-cancel wrapped-error contract pinned
   (`TestCooperativeCancelWrappedErrorFinalizesAsCancelled`: wrapped
   `context.Canceled` ⇒ Cancelled, never Failed, no `task.failed` fact).

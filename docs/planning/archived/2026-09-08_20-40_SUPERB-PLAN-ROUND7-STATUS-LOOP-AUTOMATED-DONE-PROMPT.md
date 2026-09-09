@@ -4,10 +4,11 @@
 **Status:** ~~EXECUTING~~ EXECUTED 2026-09-08 — shipped, hardened and dogfooded; reports:
 `docs/status/2026-09-08_20-56_round7-status-loop-shipped.md`,
 `docs/status/2026-09-08_21-51_round8-status-loop-hardened-dogfooded-and-self-reviewed.md`.
+
 > **Archived 2026-09-09 (docs-health):** fully executed — moved from docs/planning/.
-**Author:** Crush (planning session)
-**Scope:** Automate the full loop: real tasks → agent execution → completion → DONE PROMPT
-(status report + next items) → back to real tasks. No human step inside the loop.
+> **Author:** Crush (planning session)
+> **Scope:** Automate the full loop: real tasks → agent execution → completion → DONE PROMPT
+> (status report + next items) → back to real tasks. No human step inside the loop.
 
 ## The goal
 

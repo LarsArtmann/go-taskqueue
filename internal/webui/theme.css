@@ -237,7 +237,11 @@ kbd {
   border-radius: 0.75rem;
   border: 1px solid var(--color-gray-800);
   border-top: 2px solid var(--color-blue-500);
-  background: linear-gradient(180deg, var(--color-gray-900), var(--color-gray-950));
+  background: linear-gradient(
+    180deg,
+    var(--color-gray-900),
+    var(--color-gray-950)
+  );
   color: var(--color-gray-100);
   padding: 0.9rem 1.25rem;
 }
@@ -290,7 +294,8 @@ kbd {
 }
 
 .tq-seg.card-running.tq-seg-hot .tq-seg-num {
-  text-shadow: 0 0 14px color-mix(in srgb, var(--color-blue-400) 45%, transparent);
+  text-shadow: 0 0 14px
+    color-mix(in srgb, var(--color-blue-400) 45%, transparent);
 }
 
 /* Dead: quiet at zero, an alarm at any other number. */
@@ -300,7 +305,8 @@ kbd {
 
 .tq-seg.card-dead.tq-seg-alarm .tq-seg-num {
   color: var(--color-red-400);
-  text-shadow: 0 0 14px color-mix(in srgb, var(--color-red-400) 40%, transparent);
+  text-shadow: 0 0 14px
+    color-mix(in srgb, var(--color-red-400) 40%, transparent);
 }
 
 .tq-seg.card-dead.tq-seg-alarm .tq-seg-label {

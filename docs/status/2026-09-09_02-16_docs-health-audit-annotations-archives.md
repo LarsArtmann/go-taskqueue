@@ -24,17 +24,17 @@ report covers only what this session did and noticed. No commit was made
    retained/routed (16 harvested + 9 owner-BLOCKED + 1 fleet cutover), then
    27 after the regression fix (§d1). Machine-consumed `- [ ]` format
    preserved; harvest-parse covered by the green suite.
-   *(Correction, 02:52 second-order review: the true counts at rebuild time
+   _(Correction, 02:52 second-order review: the true counts at rebuild time
    were 20 harvested-unblocked incl. the fleet item, 8 blocked, 28 total —
-   the "16/9/27" above was recalled, not counted.)*
+   the "16/9/27" above was recalled, not counted.)_
 4. **ROADMAP.md rewritten**: ~20 shipped ideas removed (each verified
    against CHANGELOG/code first: filter pushdown, live detail pages,
    sorting, journal viewer, per-project pages, compaction design + hot-cold
    split, `tq version`, `top --json` contract, budget telemetry, D91, scale
-   + load tests, status index, pool-chaos variant, aria-live, dark toggle,
-   watermark card); v0.2 arcs corrected (Postgres slice + `tq api` SHIPPED,
-   remainder stated); ~50 new routed ideas; +7 owner questions;
-   the mis-numbered "ADR-0004 lint policy" item fixed.
+   - load tests, status index, pool-chaos variant, aria-live, dark toggle,
+     watermark card); v0.2 arcs corrected (Postgres slice + `tq api` SHIPPED,
+     remainder stated); ~50 new routed ideas; +7 owner questions;
+     the mis-numbered "ADR-0004 lint policy" item fixed.
 5. **FEATURES.md repaired**: broken Release-runner row (truncated
    mid-value); **UI write actions ⚪ PLANNED → Admin writes 🟢
    FULLY_FUNCTIONAL** — `--allow-writes` cancel/rescue routes verified in
@@ -229,7 +229,7 @@ Curated from this session's observations; highest-leverage first.
    work, e.g. moved to another repo)? This decides a store-adjacent
    behavior change.
 2. **Ratify the minted pool food**: I harvested a curated ~~16~~ 20 items into
-   TODO_LIST (b2) *(count corrected by the 02:52 review)* — the decision the 01:48 session explicitly deferred to
+   TODO_LIST (b2) _(count corrected by the 02:52 review)_ — the decision the 01:48 session explicitly deferred to
    you. Keep all, trim to a smaller set, or strike them back to ROADMAP
    until you say go?
 3. **Annotation pace**: ~20 older reports still need item-by-item inline
@@ -239,6 +239,6 @@ Curated from this session's observations; highest-leverage first.
 
 ---
 
-*Point-in-time snapshot; re-verify before treating any claim as current.
+_Point-in-time snapshot; re-verify before treating any claim as current.
 Skill format override: `.md` per explicit instruction (status-report default
-is HTML). Not committed — the auto-commit daemon owns commits.*
+is HTML). Not committed — the auto-commit daemon owns commits._

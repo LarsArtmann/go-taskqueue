@@ -12,6 +12,7 @@ without an explicit ask.
 ## a) FULLY DONE (all verified, full `./scripts/ci-local.sh` green)
 
 **Features (13):**
+
 1. `tq harvest --prune-stale` — cancels pending tasks whose TODO item is
    `[x]`; reason on the cancel fact; running/dead reported-only;
    `--dry-run`/`--json`; 3 tests + CLI smoke.
@@ -47,30 +48,30 @@ without an explicit ask.
 
 **Real bugs found by the new tests and fixed (2):**
 14. **Budget bypass**: the tick's mint passes (review/status sweepers, cqa
-    ingest) and the `--once` drain sweeps never checked the daily budget —
-    a same-tick completion minted past the cap. Every minting pass now
-    re-checks `guard.Check` with its own skip warning;
-    `TestBudgetCapsStatusMintedEnqueues` (positive control + capped twin).
+ingest) and the `--once` drain sweeps never checked the daily budget —
+a same-tick completion minted past the cap. Every minting pass now
+re-checks `guard.Check` with its own skip warning;
+`TestBudgetCapsStatusMintedEnqueues` (positive control + capped twin).
 15. **`FactsForTask(limit>0)` first-n vs most-recent-n**: both stores
-    returned the FIRST n facts while the interface documents the MOST
-    RECENT n (webui detail budget + status windows are the bounded
-    callers). Both stores now read the tail and flip to ascending; the old
-    SQLite test that pinned the wrong behavior was re-pinned.
+returned the FIRST n facts while the interface documents the MOST
+RECENT n (webui detail budget + status windows are the bounded
+callers). Both stores now read the tail and flip to ascending; the old
+SQLite test that pinned the wrong behavior was re-pinned.
 
 **Audits/hygiene (6):**
 16. Papdashboard watermark audit — NO defect: the 18:31 bridge reads/writes
-    its OWN `/tmp/papdbg/tasks.db` (CWD-relative default), which carries
-    the eager head-insert row; the repo DB was never its store. Evidence
-    appended to the blocked TODO item (safe to kill; forwards nothing —
-    head still seq 4, :18100 is a local stub).
+its OWN `/tmp/papdbg/tasks.db` (CWD-relative default), which carries
+the eager head-insert row; the repo DB was never its store. Evidence
+appended to the blocked TODO item (safe to kill; forwards nothing —
+head still seq 4, :18100 is a local stub).
 17. `TestRestartMidStreamLosesZeroFacts` deflake — bridge A's crash window
-    200ms→600ms, `waitFor` 2s→5s; 8× green under -race.
+200ms→600ms, `waitFor` 2s→5s; 8× green under -race.
 18. `taskid.txt` removed + `.gitignore`d.
 19. AGENTS.md: queue-tasks-outlive-TODO-items bullet + manual-worker
-    `--once` runbook rule.
+`--once` runbook rule.
 20. docs/status/README.md: every report indexed exactly (globs removed).
 21. TODO_LIST: 20 items marked `[x]` with inline evidence; CHANGELOG +
-    FEATURES updated; session report written and indexed.
+FEATURES updated; session report written and indexed.
 
 Verification: full ci-local gate GREEN twice (the first run failed only on
 the sibling session's cross-repo doc paths — fixed via the checker's
@@ -198,6 +199,7 @@ Brainstorm from this session's observations — NOT yet harvested into
 TODO_LIST (see g.3). Roughly impact-ordered within groups.
 
 **Follow-ups to this session's work:**
+
 1. Pin the cooperative-cancel finalize contract (agent run cancelled ⇒
    task Cancelled, never Failed) — the d.7 near-miss as a test.
 2. Add evidence to `task.requeued` facts (preflight reason is already an
@@ -236,44 +238,44 @@ TODO_LIST (see g.3). Roughly impact-ordered within groups.
 19. AGENTS.md process rule: no shell-heredoc source edits (lesson e.1).
 20. AGENTS.md: mid-session build/test checkpoints in multi-agent mode.
 21. The `webui` write-actions session (AllowWrites/CSRF, board view, LAN
-    redesign) landed concurrently — its own report exists; a cross-session
-    integration review (my prune/cancel-reason work × their admin write
-    paths) has never run end-to-end together until ci-local did.
+redesign) landed concurrently — its own report exists; a cross-session
+integration review (my prune/cancel-reason work × their admin write
+paths) has never run end-to-end together until ci-local did.
 22. `tq tasks` gained no webui twin (the dashboard table exists; a
-    `--since` URL param would mirror it).
+`--since` URL param would mirror it).
 23. `FailureEvidence.Tail` has no size guarantee across executors (agent
-    4096, verify 4096, command 4096 — pin one constant).
+4096, verify 4096, command 4096 — pin one constant).
 24. The failure-evidence JSON should be documented in AGENTS.md's payload
-    contracts section (it lists sh/agent/review/status but not
-    task.failed detail).
+contracts section (it lists sh/agent/review/status but not
+task.failed detail).
 25. `check-doc-refs.sh` allowlist grew two entries — annotate in
-    AGENTS.md that SystemNix paths are intentional cross-repo citations.
+AGENTS.md that SystemNix paths are intentional cross-repo citations.
 26. Nightly fuzz workflow could rotate targets per-day-of-week (full time
-    budget each) instead of running both every night (cost parity choice).
+budget each) instead of running both every night (cost parity choice).
 27. Postgres `Fail` still labels its class `transient` in the exhausted
-    path while SQLite says `exhausted` — pre-existing divergence my
-    battery documented but did not fix (scope cut).
+path while SQLite says `exhausted` — pre-existing divergence my
+battery documented but did not fix (scope cut).
 28. `printTaskList` truncates errors at 60 chars with no width flag.
 29. `tq tasks --json` lacks a total-count field (scripts paginate blind).
 30. e2e budget test could assert the review-mint path too (it currently
-    pins status only; review sweeper got the same guard).
+pins status only; review sweeper got the same guard).
 31. Bootstrap smoke: assert the .tq-verify content matches the flag
-    exactly (currently only presence).
+exactly (currently only presence).
 32. status-index check could also verify the DATE column matches the
-    filename (two rows today have wrong dates? none — but the check
-    doesn't look).
+filename (two rows today have wrong dates? none — but the check
+doesn't look).
 33. CHANGELOG "Changed" section is underused (the webui trail change
-    landed there alone; consider moving behavior-visible entries
-    consistently).
+landed there alone; consider moving behavior-visible entries
+consistently).
 34. Consider `--prune-stale --json` field parity with `tq audit --json`
-    (DriftResult vs PruneResult naming drifted: StaleDone vs Running/Dead).
+(DriftResult vs PruneResult naming drifted: StaleDone vs Running/Dead).
 35. The three `--once` drain-sweep guard checks could share one helper
-    (mintPass(ctx, name, fn)) — cmdAgentPool grew four near-identical
-    guard blocks this session.
+(mintPass(ctx, name, fn)) — cmdAgentPool grew four near-identical
+guard blocks this session.
 
 **Bigger, pre-existing (from TODO_LIST context, not re-audited):**
 36. SystemNix host-side deploy + round-9 cutover (TODO line 65, sudo-gated
-    user-run).
+user-run).
 37. Cut v0.2.0 (blocked on owner go/no-go).
 38. CQA bridge live verification (blocked on owner credentials).
 39. Status-report review policy (owner trust decision, TODO line 51).
@@ -282,18 +284,18 @@ TODO_LIST (see g.3). Roughly impact-ordered within groups.
 42. Journal compaction CLI per ADR-0010's demand triggers (≥50k facts).
 43. Dispatcher phase 2 (notify-after-commit) per ADR-0009.
 44. `journal.Journal` test-double demotion completion (ADR-0009 D-series
-    leftovers).
+leftovers).
 45. Web UI `--allow-writes` hardening review (CSRF + auth matrix against
-    the LAN threat model) once the sibling session's work settles.
+the LAN threat model) once the sibling session's work settles.
 46. Windows runtime coverage honesty (compile-only gate remains).
 47. vendorHash/GOEXPERIMENT guardrails already documented — periodic
-    re-verification cadence.
+re-verification cadence.
 48. Per-repo budget accounting (global spend today; fleets may want
-    per-project caps).
+per-project caps).
 49. `tq doctor`: add a prune-stale dry-run hint when stale pending tasks
-    exist (ties d1 detection to the new sweep).
+exist (ties d1 detection to the new sweep).
 50. Fleet: other sibling repos' TODO backlogs still lack prune-stale
-    awareness in their runbooks (same zombie class exists there).
+awareness in their runbooks (same zombie class exists there).
 
 ---
 
@@ -314,5 +316,5 @@ TODO_LIST (see g.3). Roughly impact-ordered within groups.
 
 ---
 
-*Point-in-time snapshot; re-verify before treating any claim as current
-(the repo moves under concurrent sessions).*
+_Point-in-time snapshot; re-verify before treating any claim as current
+(the repo moves under concurrent sessions)._

@@ -142,7 +142,7 @@ in
 
     users.users.tq = lib.mkIf (cfg.user == "tq") {
       isSystemUser = true;
-      group = cfg.group;
+      inherit (cfg) group;
       home = dirOf (toString cfg.dbPath);
       createHome = false;
     };

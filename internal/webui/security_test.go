@@ -204,6 +204,7 @@ func TestCSPNonceCoversInlineScripts(t *testing.T) {
 	}
 
 	rest := csp[start+len("'nonce-"):]
+
 	nonce, _, _ := strings.Cut(rest, "'")
 	if nonce == "" {
 		t.Fatal("empty CSP nonce")
@@ -212,7 +213,11 @@ func TestCSPNonceCoversInlineScripts(t *testing.T) {
 	// The nonce must appear as an attribute on the rendered inline scripts
 	// (theme bootstrap + theme toggle at minimum).
 	if got := strings.Count(body.String(), `nonce="`+nonce+`"`); got < 2 {
-		t.Errorf("nonce %q stamped on %d script tags, want >= 2; CSP-allowed scripts would still be blocked", nonce, got)
+		t.Errorf(
+			"nonce %q stamped on %d script tags, want >= 2; CSP-allowed scripts would still be blocked",
+			nonce,
+			got,
+		)
 	}
 
 	// Nonces must be per-request, never a static string.

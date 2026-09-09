@@ -7,10 +7,11 @@ archived at `docs/release/archived/2026-09-06_v0.1.0_CHECKLIST.md`).
 Deferred rows (P17 Redis store, P18 consumer groups, P19 benchmarks,
 P21 prioritizer) live in ROADMAP.md (v0.2 / v0.4); the execution trail is
 docs/status/ + CHANGELOG.md.
+
 > **Archived 2026-09-09 (docs-health):** fully executed — moved from docs/planning/.
-**Scope:** Single Go repo, zero-dep MVP → embeddable library → distributed backend
-**Inputs:** Lars request (Discord, 2026-09-05) + prior repo-grounded analysis (go-cqrs-lite, PapDashboard, ai-task-prioritizer, kanban ops experience)
-**Repo strategy:** NEW public repo `LarsArtmann/go-taskqueue` (GH Actions billing broken for private repos since Sep 4, public still CI; portfolio value; plugin ecosystem wants importable modules). Composes with — never modifies — go-cqrs-lite (projects/ mount read-only this session; v5 modules unreleased).
+> **Scope:** Single Go repo, zero-dep MVP → embeddable library → distributed backend
+> **Inputs:** Lars request (Discord, 2026-09-05) + prior repo-grounded analysis (go-cqrs-lite, PapDashboard, ai-task-prioritizer, kanban ops experience)
+> **Repo strategy:** NEW public repo `LarsArtmann/go-taskqueue` (GH Actions billing broken for private repos since Sep 4, public still CI; portfolio value; plugin ecosystem wants importable modules). Composes with — never modifies — go-cqrs-lite (projects/ mount read-only this session; v5 modules unreleased).
 
 ## The Problem
 

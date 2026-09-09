@@ -35,6 +35,7 @@ func TestBudgetCapsStatusMintedEnqueues(t *testing.T) {
 			"agent-pool", "--repos", filepath.Join(dir, "demorepo"),
 			"--db", db, "--poll", "50ms", "--once",
 			"--status-every", "1", "--daily-budget", budget)
+
 		cmd.Env = append(os.Environ(), "TQ_AGENT_BIN="+stub)
 
 		out, err := runWithTimeout(cmd, 60*time.Second)
@@ -49,9 +50,10 @@ func TestBudgetCapsStatusMintedEnqueues(t *testing.T) {
 		t.Helper()
 
 		s := openStore(t, db)
-		defer s.Close() //nolint:errcheck
+		defer s.Close()
 
 		tq := "status"
+
 		tasks, err := s.List(context.Background(), queue.Filter{Type: &tq})
 		if err != nil {
 			t.Fatalf("list status tasks: %v", err)
@@ -69,7 +71,11 @@ func TestBudgetCapsStatusMintedEnqueues(t *testing.T) {
 	// The cap: budget covers only the item's own enqueue.
 	db, out = run(t, "1")
 	if n := countStatus(t, db); n != 0 {
-		t.Fatalf("capped run minted %d status tasks, want 0 (budget refusal must gate the sweeper)\noutput:\n%s", n, out)
+		t.Fatalf(
+			"capped run minted %d status tasks, want 0 (budget refusal must gate the sweeper)\noutput:\n%s",
+			n,
+			out,
+		)
 	}
 
 	if !strings.Contains(out, "daily budget exhausted") {

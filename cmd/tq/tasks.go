@@ -100,8 +100,8 @@ func printTaskList(tasks []task.Task) {
 
 // oneLine flattens a multi-line error to its first line.
 func oneLine(s string) string {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
+	if before, _, ok := strings.Cut(s, "\n"); ok {
+		return before
 	}
 
 	return s

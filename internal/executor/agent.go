@@ -204,12 +204,14 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		// full output survives in the sidecar only when TQ_LOG_DIR is set,
 		// so the fact carries its own excerpt.
 		SetFailureEvidence(ctx, "agent", err, tailBytes([]byte(output), EvidenceTailBytes))
+
 		return err
 	}
 
 	tail, err := runVerify(runCtx, repoDir, &p)
 	if err != nil {
 		SetFailureEvidence(ctx, "verify", err, tail)
+
 		return err
 	}
 	// Success: record structured outcome detail for `tq show` (best

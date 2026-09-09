@@ -412,7 +412,13 @@ func TestWriteFlowCancelAndRescue(t *testing.T) {
 		t.Fatalf("claimed %s, want the freshly enqueued %s", claimed.ID, dead.ID)
 	}
 
-	if err := s.FailPermanent(context.Background(), dead.ID, owner, "boom: rescue test", json.RawMessage(`{}`)); err != nil {
+	if err := s.FailPermanent(
+		context.Background(),
+		dead.ID,
+		owner,
+		"boom: rescue test",
+		json.RawMessage(`{}`),
+	); err != nil {
 		t.Fatalf("fail permanent: %v", err)
 	}
 

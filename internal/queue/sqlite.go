@@ -470,7 +470,14 @@ func (s *SQLiteStore) Complete(ctx context.Context, id task.ID, owner string, re
 }
 
 // Fail records a failed attempt: retry with backoff or dead-letter.
-func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errText string, backoff time.Duration, evidence json.RawMessage) error {
+func (s *SQLiteStore) Fail(
+	ctx context.Context,
+	id task.ID,
+	owner string,
+	errText string,
+	backoff time.Duration,
+	evidence json.RawMessage,
+) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now() // captured inside the tx: backoff counts from commit, not from call
 
@@ -533,7 +540,13 @@ func (s *SQLiteStore) Fail(ctx context.Context, id task.ID, owner string, errTex
 // identical retry would fail identically, so the remaining attempt budget is
 // worthless (and, for agent tasks, expensive). The failing attempt is still
 // counted. Facts: task.failed + task.dead-lettered with class "permanent".
-func (s *SQLiteStore) FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error {
+func (s *SQLiteStore) FailPermanent(
+	ctx context.Context,
+	id task.ID,
+	owner string,
+	errText string,
+	evidence json.RawMessage,
+) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now()
 
@@ -800,6 +813,7 @@ const cancelRequestedSQL = `SELECT EXISTS(
 // detail yields "", never an error — the finalize must not fail on cosmetics.
 func cancelRequestedReasonTx(ctx context.Context, tx *sql.Tx, id string) (string, error) {
 	var detail string
+
 	err := tx.QueryRowContext(ctx, `
 		SELECT detail FROM facts
 		WHERE task_id = ? AND type = 'task.cancel-requested'

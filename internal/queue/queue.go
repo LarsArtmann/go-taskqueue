@@ -41,7 +41,14 @@ type Store interface {
 	// when non-empty (executor.FailureEvidence JSON), lands on the
 	// task.failed fact's detail — the forensics (exit code, output tail)
 	// that make a failed attempt debuggable from the journal alone.
-	Fail(ctx context.Context, id task.ID, owner string, errText string, backoff time.Duration, evidence json.RawMessage) error
+	Fail(
+		ctx context.Context,
+		id task.ID,
+		owner string,
+		errText string,
+		backoff time.Duration,
+		evidence json.RawMessage,
+	) error
 	// FailPermanent dead-letters a Running task immediately, regardless of
 	// the attempt budget: the error class makes retrying pointless. The
 	// attempt is still counted. Facts: task.failed (carrying evidence)

@@ -193,12 +193,12 @@ only; every claim below was grep-verified against the tree at report time.
    batch it with the next feature slice?
 2. **Ratify the mandate interpretations.** I read "GET THE WHOLE TODO
    LIST DONE" as: D2 ratification of the 19 minted items (all now done)
-   + authority to DECIDE the four parked policy questions (absent-item
-   semantics, review ceiling, append caps, cancel-key semantics) with
-   documented defaults, and to run the full release chain including
-   pushes. Each decision is documented in the 05-20 report §b and TODO
-   rows. Confirm all, or override any — every one is small, code-level
-   reversible.
+   - authority to DECIDE the four parked policy questions (absent-item
+     semantics, review ceiling, append caps, cancel-key semantics) with
+     documented defaults, and to run the full release chain including
+     pushes. Each decision is documented in the 05-20 report §b and TODO
+     rows. Confirm all, or override any — every one is small, code-level
+     reversible.
 3. **Dogfood pool relaunch + fresh harvest?** The TODO list is now
    deliberately near-empty of machine food (everything shipped). Want me
    to curate the next pool batch (e.g. from f) items 7-12 + ROADMAP's

@@ -2,6 +2,7 @@ package harvest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -46,6 +47,7 @@ func watchStubServer(
 		}
 
 		mu.Lock()
+
 		searches = append(searches, strings.Join(r.URL.Query()["search_path"], ","))
 		mu.Unlock()
 
@@ -60,6 +62,7 @@ func watchStubServer(
 
 		emit := func(frame string) {
 			_, _ = fmt.Fprint(w, frame)
+
 			flusher.Flush()
 		}
 
@@ -310,11 +313,13 @@ func TestWatcherUnixSocket(t *testing.T) {
 
 		flusher := w.(http.Flusher)
 		_, _ = fmt.Fprint(w, watchFrame("StreamConnected", ""))
+
 		flusher.Flush()
 
 		// Each addr form gets its own watcher (its own debounce state),
 		// so every connection must carry the event.
 		_, _ = fmt.Fprint(w, watchFrame("WatchProjectAdded", fx.withTodoA))
+
 		flusher.Flush()
 
 		conns.Add(1)
@@ -337,7 +342,7 @@ func TestWatcherUnixSocket(t *testing.T) {
 
 	select {
 	case err := <-serveErr:
-		if err != nil && err != http.ErrServerClosed {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			t.Fatalf("stub server: %v", err)
 		}
 	default:
@@ -398,7 +403,10 @@ func TestScanWatchStream(t *testing.T) {
 
 	var got []daemonWatchEvent
 
-	if err := scanWatchStream(strings.NewReader(stream), func(ev daemonWatchEvent) { got = append(got, ev) }); err != nil {
+	if err := scanWatchStream(
+		strings.NewReader(stream),
+		func(ev daemonWatchEvent) { got = append(got, ev) },
+	); err != nil {
 		t.Fatalf("scanWatchStream: %v", err)
 	}
 

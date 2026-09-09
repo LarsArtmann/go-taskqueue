@@ -99,6 +99,7 @@ func daemonStubHandler(projects []daemonProject, requests *[]daemonDiscoverReque
 		}
 
 		mu.Lock()
+
 		*requests = append(*requests, req)
 		mu.Unlock()
 
@@ -367,7 +368,10 @@ func TestRunUsesDaemonDiscovery(t *testing.T) {
 
 	q := openQueue(t)
 
-	res, err := New(q, Config{ProjectsDir: fx.dir, DiscoveryAddr: srv.URL, Log: slog.New(&captureHandler{})}).Run(context.Background())
+	res, err := New(
+		q,
+		Config{ProjectsDir: fx.dir, DiscoveryAddr: srv.URL, Log: slog.New(&captureHandler{})},
+	).Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -396,7 +400,10 @@ func TestRunDaemonDownStillHarvests(t *testing.T) {
 
 	q := openQueue(t)
 
-	res, err := New(q, Config{ProjectsDir: fx.dir, DiscoveryAddr: socket, Log: slog.New(&captureHandler{})}).Run(context.Background())
+	res, err := New(
+		q,
+		Config{ProjectsDir: fx.dir, DiscoveryAddr: socket, Log: slog.New(&captureHandler{})},
+	).Run(context.Background())
 	if err != nil {
 		t.Fatalf("Run must not fail when the daemon is down: %v", err)
 	}

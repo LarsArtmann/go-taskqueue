@@ -87,7 +87,7 @@ packages)**, `scripts/smoke/webui.sh` green including new board assertions.
 ## c) NOT STARTED (session-derived ideas, deliberately deferred)
 
 1. Write actions from the board (per-card cancel/rescue once `--allow-writes`
-   + CSRF is stable) — deliberately out of scope (ADR-0003 Phase D).
+   - CSRF is stable) — deliberately out of scope (ADR-0003 Phase D).
 2. Drag-and-drop card semantics (would be queue mutation; gated).
 3. Per-project swimlanes; WIP highlighting on the running column.
 4. Keyboard shortcut to toggle table/board (footer hint says 1–4; board
@@ -164,6 +164,7 @@ packages)**, `scripts/smoke/webui.sh` green including new board assertions.
 ## f) Up to 50 things to get done next
 
 **Board/UI follow-ups (mine):**
+
 1. ~~Run `./scripts/ci-local.sh` full gate (incl. nix) before any push.~~ done (ci-local green twice in the 2026-09-09 sweep session)
 2. Golden-fragment snapshot test for `Board` (mirror `TestGoldenFragments`).
 3. Browser/screenshot QA of the board: narrow-viewport scroll, dark-mode
@@ -186,50 +187,50 @@ packages)**, `scripts/smoke/webui.sh` green including new board assertions.
 
 **Sibling-feature integration & verification owed (observed, not claimed):**
 17. Review Phase D admin writes end-to-end (cancel/rescue handlers, CSRF
-    cookie session, `--allow-writes`) — add smoke coverage in webui.sh.
+cookie session, `--allow-writes`) — add smoke coverage in webui.sh.
 18. Verify `TestRoutesAreReadOnly`'s story now that POST routes exist behind
-    the opt-in table (route-table test must cover `writeBindings` too).
+the opt-in table (route-table test must cover `writeBindings` too).
 19. `tq prune` command: semantics review + FEATURES/CHANGELOG/DOMAIN_LANGUAGE
-    rows when it lands.
+rows when it lands.
 20. Agent-prompt/argv refactor: confirm `TestAgentExecutorArgvContract` and
-    the AGENTS "agent tasks need repo-local autonomy" note still match.
+the AGENTS "agent tasks need repo-local autonomy" note still match.
 21. Serve banner text → shared const used by `cmd/tq` and the e2e test.
 22. `/healthz` endpoint appeared — confirm it is documented (ADR-0003 route
-    table, FEATURES) and covered by the read-only guard test.
+table, FEATURES) and covered by the read-only guard test.
 23. Nowband/two-tier-table redesign: README/screenshots are likely stale.
 24. `FailPermanent` `evidence` param: check DOMAIN_LANGUAGE "Permanent error"
-    wording + `tq show` rendering of evidence detail.
+wording + `tq show` rendering of evidence detail.
 25. Postgres store (`internal/queue/postgres.go`, ADR-0007): the board's
-    5-queries-per-tick pattern + `Sort: "age-desc"` allowlist parity on PG.
+5-queries-per-tick pattern + `Sort: "age-desc"` allowlist parity on PG.
 26. `executor/status.go` prompt changes: AGENTS status-executor contract
-    section may have drifted.
+section may have drifted.
 
 **Process/infra (from this session's pain):**
 27. Auto-commit daemon: build-gate (or red-tag) before committing.
 28. Concurrent-agent file-ownership/lock convention.
 29. ~~Add this report to `docs/status/README.md` index~~ done (indexed; scripts/check-status-index.sh guards it)
-    ~~(`scripts/check-status-index.sh` guards it — sibling added that).~~
+~~(`scripts/check-status-index.sh` guards it — sibling added that).~~
 30. ~~HARVEST this report's (f) list into `TODO_LIST.md` (docs-health).~~ done (docs-health pass curated slice harvested to TODO_LIST, rest to ROADMAP)
 31. templ LSP phantom diagnostics: ignore config or restart habit.
 32. Scoped lint pass over `internal/webui` (advisory findings grew; hard
-   gates are fine).
+gates are fine).
 33. CI split: full `-race` suite now takes >7 min; consider per-package jobs
-   or a fast-path label.
+or a fast-path label.
 34. `tq top --board`: terminal kanban projection (parity with the web board).
 35. README web-UI section: add board mention (+ screenshot when one exists).
 36. Board on 100k-task corpus: repeat the bounded-reads scale measurement
-    with the board's per-status queries (`TestLoadSnapshotScaleAt100k`
-    sibling).
+with the board's per-status queries (`TestLoadSnapshotScaleAt100k`
+sibling).
 37. SSE payload size on board view: 5 columns × cards re-rendered per tick —
-    measure bytes/tick vs table at high churn; consider column-granular
-    fragments if it matters.
+measure bytes/tick vs table at high churn; consider column-granular
+fragments if it matters.
 38. `view=board` + `page=`/`sort=` params are silently ignored — decide
-    whether to 301-normalize or document.
+whether to 301-normalize or document.
 39. Add board assertions to the auth-token smoke path (board behind token).
 40. Consider a `/api/board` JSON projection for external dashboards.
 
-*(40 items — the remainder of "up to 50" would be padding; stopping at
-honest.)*
+_(40 items — the remainder of "up to 50" would be padding; stopping at
+honest.)_
 
 ## g) Questions I cannot answer myself
 
@@ -251,4 +252,4 @@ status-report skill's HTML default was overridden; flagged here per skill).
 **Commit note:** not committed manually (never commit without explicit
 request); the repo's auto-commit daemon will pick this file up.
 
-*Point-in-time snapshot. Re-verify before acting on it.*
+_Point-in-time snapshot. Re-verify before acting on it._

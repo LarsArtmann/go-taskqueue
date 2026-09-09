@@ -466,7 +466,11 @@ func (s *Server) handleTaskCancelPOST(w http.ResponseWriter, r *http.Request) {
 	case task.Running:
 		err = s.store.CancelRunning(r.Context(), id, reason)
 	default:
-		http.Error(w, "task is "+string(t.Status)+"; only pending or running tasks can be cancelled", http.StatusConflict)
+		http.Error(
+			w,
+			"task is "+string(t.Status)+"; only pending or running tasks can be cancelled",
+			http.StatusConflict,
+		)
 
 		return
 	}
