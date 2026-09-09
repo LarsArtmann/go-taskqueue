@@ -33,7 +33,7 @@
       go-standard = {
         pname = "go-taskqueue";
         version = "0.1.0";
-        vendorHash = "sha256-DCc5Liv61GG1fhcBKCMwWgxhVXN67wNIPhX4CZhbp64=";
+        vendorHash = "sha256-2zQ9uUd1W19hVj1Fw3yzak+6DEYIVglN1Rdddo0VIlk=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
         # nixpkgs 26.11 dropped x86_64-darwin; the go-standard default system
@@ -55,6 +55,10 @@
             # go-sse uses encoding/json/v2 (Go 1.26 default experiment; nixpkgs
             # builds the toolchain without it enabled).
             GOEXPERIMENT = "jsonv2";
+            # The repo is multi-module (internal/{task,journal,queue,executor,
+            # worker} each carry a go.mod resolved via replace directives).
+            # Workspace mode must never leak into the hermetic build.
+            GOWORK = "off";
           };
           preBuild = ''
             export HOME=$TMPDIR

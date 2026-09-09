@@ -480,9 +480,14 @@ func defaultVerify(repo string) string {
 	if _, err := os.Stat(filepath.Join(repo, "go.mod")); err == nil {
 		// Root ./... never descends into nested modules, so a multi-module
 		// repo would verify vacuously; walk every go.mod below the root.
+		// A plain find -execdir would swallow the inner exit status (find
+		// reports only its own errors), so the loop propagates failure with
+		// an explicit exit. Word-split find output: module paths containing
+		// spaces are rare enough for a heuristic default; a repo can pin its
+		// own .tq-verify when it needs more.
 		return "go build ./... && go test ./... -count=1" +
-			" && find . -mindepth 2 -name go.mod -not -path '*/vendor/*'" +
-			" -execdir sh -c 'go build ./... && go test ./... -count=1' \\;"
+			" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*');" +
+			" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done"
 	}
 
 	if _, err := os.Stat(filepath.Join(repo, "package.json")); err == nil {

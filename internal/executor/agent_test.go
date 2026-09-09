@@ -418,8 +418,8 @@ func TestVerifyStrategy(t *testing.T) {
 			"go module",
 			map[string]string{"go.mod": "module x\n"},
 			"go build ./... && go test ./... -count=1" +
-				" && find . -mindepth 2 -name go.mod -not -path '*/vendor/*'" +
-				" -execdir sh -c 'go build ./... && go test ./... -count=1' \\;",
+				" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*');" +
+				" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done",
 		},
 		// Multi-module detection is root-marker based: the command is the
 		// same regardless of nested go.mod files, and the table writer
@@ -587,16 +587,32 @@ func TestDefaultVerifyCoversNestedModules(t *testing.T) {
 	// The default command must reject a failing nested module test: the
 	// root ./... gate cannot even see it.
 	write("sub/sub_fail_test.go", "package sub\n\nimport \"testing\"\n\nfunc TestBroken(t *testing.T) { t.Fatal(\"broken\") }\n")
-	if err := exec.Command("sh", "-c", cmdStr).Run(); err == nil {
+	if err := runIn(dir, cmdStr); err == nil {
 		t.Fatal("verify passed despite a failing nested-module test")
 	}
 
 	write("sub/sub_fail_test.go", "package sub\n\nimport \"testing\"\n\nfunc TestOK(t *testing.T) {}\n")
-	out, err := exec.Command("sh", "-c", cmdStr).CombinedOutput()
+	out, err := runInOutput(dir, cmdStr)
 	if err != nil {
 		t.Fatalf("verify failed on a healthy multi-module tree: %v\n%s", err, out)
 	}
-	if !strings.Contains(string(out), "x/sub") {
+	if !strings.Contains(out, "x/sub") {
 		t.Fatalf("verify output lacks evidence the nested module was tested:\n%s", out)
 	}
+}
+
+// runIn runs a shell line inside dir. The caller's cwd must never leak in:
+// from this package's dir the verify line would re-run this very suite,
+// recursing until the test timeout.
+func runIn(dir, cmdLine string) error {
+	cmd := exec.Command("sh", "-c", cmdLine)
+	cmd.Dir = dir
+	return cmd.Run()
+}
+
+func runInOutput(dir, cmdLine string) (string, error) {
+	cmd := exec.Command("sh", "-c", cmdLine)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }
