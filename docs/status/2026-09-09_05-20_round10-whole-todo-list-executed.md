@@ -104,3 +104,24 @@ go-built AND nix-built binary; bootstrap-install smoke green; module-eval,
 treefmt, binary-runs, vendor-hash flake checks green; doc gates (refs,
 status-index, TODO honesty, FEATURES↔ROADMAP) green; AGENTS.md 14,904 B ≤
 15 KB budget.
+
+## e) Late finds while watching the release CI (all fixed same session)
+
+1. **`TestMarkOrphanedRecordsStrandedTasks` windows flake**: the fixed
+   150ms sleep started after the SECOND claim while the victim's 100ms
+   lease started at the first — and a >100ms claim gap let the second
+   ClaimDue RECLAIM the victim. Rewritten to an absolute deadline from the
+   first claim with a 1s lease; neither hazard is reachable.
+2. **SSE disconnect crash (real bug, not a flake)**: the heartbeat goroutine
+   outlived `handleEvents`; a client disconnecting near handler exit made
+   the heartbeat Flush a response net/http had torn down — nil-pointer
+   SIGSEGV in a goroutine net/http cannot recover, killing the whole serve
+   process. Both SSE endpoints now stop-and-wait the heartbeat before
+   teardown; regression test hammers disconnects at 5ms heartbeat under
+   `-race`.
+3. **Nightly fuzz workflow dead since pinning**: a one-character typo in
+   the checkout SHA (`…677268` vs ci.yml's `…677262`) — "unable to find
+   version" in Set up job. Fixed.
+
+**Final CI state: master green (4m17s, all jobs) and the v0.2.0 tag run
+green (3m31s).**

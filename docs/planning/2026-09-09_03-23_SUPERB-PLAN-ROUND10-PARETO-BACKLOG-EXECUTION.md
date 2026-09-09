@@ -1,7 +1,7 @@
 # SUPERB PLAN — ROUND 10: Pareto Execution of the Post-Audit Backlog
 
 **Date:** 2026-09-09 03:23 CEST
-**Status:** PLAN — ready for owner go/no-go on the Tier-D decision gates; Tiers R/V are pool-executable immediately after.
+**Status:** EXECUTED 2026-09-09 (same day, round-10 session): T5–T26 all done, D6 papdbg killed, T2 v0.2.0 published (tag pushed, proxy verified, GitHub Release). Remaining: T1 residue = the two owner-BLOCKED rows (SystemNix cutover T3, CQA creds); T27 stays parked by design. T4/M2 closed — master CI green on the release tag and HEAD. Execution report: `docs/status/2026-09-09_05-20_round10-whole-todo-list-executed.md`.
 **Author session:** docs-health audit session (02:16 + 02:52 reports) + pareto-planning skill pass.
 **Inputs (all re-read at plan time):** `TODO_LIST.md` (29 items: 19 machine-executable + 10 owner-BLOCKED), `ROADMAP.md` (raw ideas + open questions), the 02:16/02:52 reports' carryovers, `CHANGELOG.md [Unreleased]`, `FEATURES.md`, `AGENTS.md`.
 **Method:** pareto-planning — 1%→51%, 4%→64%, 20%→80%; the remaining 20% of effort completes to 100%. Medium tasks 30–100 min; micro tasks ≤12 min. This plan is a snapshot: the living source of work is `TODO_LIST.md` (new tasks surfaced here route there via docs-health HARVEST).
