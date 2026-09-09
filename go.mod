@@ -45,8 +45,13 @@ require (
 	modernc.org/memory v1.12.1 // indirect
 )
 
-require github.com/larsartmann/go-taskqueue/internal/task v0.0.0
+require (
+	github.com/larsartmann/go-taskqueue/internal/journal v0.0.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.0.0
+)
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ./internal/task
+
+replace github.com/larsartmann/go-taskqueue/internal/journal => ./internal/journal
 
 tool github.com/a-h/templ/cmd/templ
