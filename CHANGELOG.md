@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Fixed
+- **Executor absorbs the kernel-7.2 `ETXTBSY` flake**: `execve` of a freshly
+  written binary intermittently returned "text file busy" with no writer
+  holding the file (reproduced standalone on kernel 7.2.3 under process
+  churn, tmpfs and btrfs alike — temp+rename did NOT fix it). `runAgent` and
+  `AgentVersion` now retry ETXTBSY twice (50ms, 100ms); the previously flaky
+  stub-agent test set is 40x green.
+- **release.sh allowlist could not match nested modules**: after the
+  `internal/queue/sqlite` split, the sibling-replace allowlist read the
+  legit replace as poison and the require-tag check silently skipped the
+  nested module. The gates moved to `scripts/lib/release-gates.sh` with
+  fixture-tested positive AND negative paths
+  (`scripts/smoke/release-gates.sh`, wired into CI + ci-local).
+- `nix flake check --all-systems` failed at eval time on aarch64-darwin
+  (`checks.module-eval` used `mkIf`, leaving a dangling option); the check
+  now uses `optionalAttrs`.
+### Added
+- `cmdAgentPool` decomposed (652 lines → orchestrator + `cmd/tq/agentpool.go`:
+  flag/config parsing, harvest-config assembly, startup banner); the
+  agent-family executor registration is one shared helper used by
+  `tq worker --agents` too. Live-smoked via `agent-pool --once`.
+- Postgres conformance battery extended with the six gaps found in the
+  suite-parity diff: dedup keys, watermark monotonic roundtrip, head seq,
+  lease-expiry reclaim, exactly-once concurrent claims (the SKIP LOCKED
+  proof), and LIKE-metacharacter escaping — all verified against a live
+  Postgres 16, not just name-diffed.
+- `checks.version-sync` flake check: the nix-built `tq version` output must
+  equal the flake's own version attr (kills the 0.1.0-binary-from-0.2.0-flake
+  drift class at gate level).
+- `scripts/check-go-mods.sh`: go.mod hygiene (portable replaces, pinned
+  internal requires), toolchain alignment across all 8 modules, and
+  `go mod verify` — one script, wired into both ci.yml and ci-local.sh.
+- `nix run .#test` now runs the FULL multi-module suite (root + every
+  internal/* module); flake apps carry meta descriptions.
+- `HTTPExecutor` gained a test suite (status classification, wire envelope,
+  empty-payload validity, malformed-URL permanence) — it was documented
+  FULLY_FUNCTIONAL with zero tests.
+- Compile-time contract assertions in both store drivers
+  (`var _ queue.Store = (*Store)(nil)`).
+- README: module map + store-backend picker section; package docs on the
+  queue contract module; FEATURES row for the backend split; local-database
+  one-liner next to the CI Postgres conformance job.
 ### Changed
 - **Store backends become driver modules (ADR-0012)**: `internal/queue`
   keeps only the Store contract (deps: task + journal); the SQLite and
@@ -40,6 +82,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   both now run from inside their module directory.
 - `internal/harvest`: the audit and prune sweeps shared an identical
   20-line repo/task-index preamble; extracted into `projectTaskIndex`.
+
+### Removed
+- Deprecated pre-convergence aliases `executor.CrushPayload`,
+  `executor.RenderCrushPayload`, `executor.TaskTypeCrush` (zero in-repo
+  users; the unpushed executor module tag is re-cut at the new tree).
 
 ## [v0.2.0] - 2026-09-09
 ### Added

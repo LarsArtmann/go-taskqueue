@@ -43,6 +43,9 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/webui.sh        # worker + tq serve + HTTP/SSE + write-route lockout assertions
 ./scripts/smoke/status-loop.sh  # stub agent; sweeper mint → report → TODO append → re-arm
 ./scripts/smoke/bootstrap-install.sh  # --install renders unit + pool.conf against a fake $HOME
+./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
+./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)
+nix run .#test                  # full multi-module suite (root + every internal/* module)
 go build -o /tmp/tq ./cmd/tq    # CLI scratch: enqueue/worker/stats (--once drains then exits)
 ```
 
@@ -221,6 +224,16 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   baseline): never mass-"fix" the baseline; don't add new findings in
   functions you touch. Hard gates: vet + gofmt + tests. `*_templ.go` is
   lint-excluded (`templ fmt` owns `.templ`).
+- ⚠️ **Kernel 7.2 ETXTBSY anomaly**: `execve` of freshly written binaries
+  intermittently fails with "text file busy" on this host (kernel 7.2.3,
+  reproduced standalone with NO writer holding the file; tmpfs + btrfs;
+  temp+rename does NOT help). `runAgent`/`AgentVersion` retry it
+  (`execWithTransientRetry`) — if another exec site starts flaking the same
+  way, route it through that helper instead of chasing a writer.
+- ⚠️ **Dead-export audits must use SUBSTRING matching**: `rg -w Symbol`
+  misses suffixed references (`NewSink`, `NewCommandExecutor` use `Sink`,
+  `CommandExecutor`) and undercounts — the 2026-09-10 re-derivation found
+  most "dead" exports alive once matching corrected.
 - ⚠️ **This repo is dogfooded (since 2026-09-07)**: an `agent-pool` may run
   against THIS repo — `.crushrc` (minimum autonomy) + `.tq-verify` are the
   rails; unchecked TODO_LIST items are live pool food. Sibling repos on the
