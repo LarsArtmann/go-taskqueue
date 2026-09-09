@@ -1,0 +1,1289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report Title</title>
+    <style>
+      /* =========================================================================
+         BAUHAUS DARK — Dashboard template
+         Design language: form follows function. Primary colors on graphite.
+         Zero external dependencies: system fonts, no CDN, no build step.
+         Token architecture: see references/bauhaus-tokens.md
+         ========================================================================= */
+
+      :root {
+        /* --- Primitive palette (Bauhaus Dark) --- */
+        --color-graphite: #0e0e10;
+        --color-graphite-2: #18181d;
+        --color-graphite-3: #16161a;
+        --color-bone: #f4f4f0;
+        --color-red: #ff6b6b;
+        --color-blue: #6eb5ff;
+        --color-yellow: #f4d35e;
+        --color-amber: #ffb347;
+        --color-hairline: rgba(244, 244, 240, 0.12);
+        --color-hairline-strong: rgba(244, 244, 240, 0.25);
+
+        /* --- Semantic layer (shared vocabulary with editorial template) --- */
+        --surface: var(--color-graphite);
+        --surface-raised: var(--color-graphite-2);
+        --surface-sunken: var(--color-graphite-3);
+        --text: var(--color-bone);
+        --text-muted: rgba(244, 244, 240, 0.72);
+        --text-faint: rgba(244, 244, 240, 0.45);
+        --border: var(--color-hairline);
+        --border-strong: var(--color-hairline-strong);
+        --accent: var(--color-amber);
+        --problem: var(--color-red);
+        --solution: var(--color-blue);
+        --warning: var(--color-yellow);
+
+        /* --- Backward-compatible aliases (do not break consumer skills) --- */
+        --bg: var(--surface);
+        --bg-elevated: var(--surface-raised);
+        --bg-sunken: var(--surface-sunken);
+        --bg-card: var(--surface-raised);
+        --bg-code: var(--surface-sunken);
+        --ink: var(--text);
+        --ink-secondary: var(--text-muted);
+        --ink-muted: var(--text-faint);
+        --rose: var(--problem);
+        --rose-glow: color-mix(in srgb, var(--problem) 15%, transparent);
+        --emerald: var(--solution);
+        --emerald-glow: color-mix(in srgb, var(--solution) 15%, transparent);
+        --amber-glow: color-mix(in srgb, var(--warning) 15%, transparent);
+        --coral: var(--problem);
+        --coral-light: color-mix(in srgb, var(--problem) 15%, transparent);
+        --teal: var(--solution);
+        --teal-light: color-mix(in srgb, var(--solution) 15%, transparent);
+        --amber-light: color-mix(in srgb, var(--warning) 20%, transparent);
+
+        /* --- Shape --- */
+        --radius: 0px; /* Bauhaus default: sharp corners */
+        --radius-sm: 0px;
+
+        /* --- Type stacks (system only — zero external fonts) --- */
+        --font-heading:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-body:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "Cascadia Code", "Source Code Pro", "JetBrains Mono",
+          Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      /* Sticky-header offset for anchor jumps */
+      section[id],
+      [id] {
+        scroll-margin-top: 60px;
+      }
+
+      body {
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--font-body);
+        font-size: 15px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* --- Accessibility: keyboard focus --- */
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      a:focus-visible {
+        outline-offset: -1px;
+      }
+
+      /* --- Full-bleed top bar --- */
+      .top-bar {
+        background: var(--text);
+        color: var(--surface);
+        padding: 0.6rem 2rem;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* --- Layout: optional sticky sidebar TOC --- */
+      .layout {
+        display: flex;
+        gap: 2.5rem;
+        padding: 2rem;
+      }
+      .sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 1rem;
+        align-self: flex-start;
+        height: calc(100vh - 2rem);
+        overflow-y: auto;
+        display: none;
+      }
+      .sidebar nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+      .sidebar .label {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--accent);
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid var(--border-strong);
+      }
+      .sidebar a {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        padding: 0.45rem 0.75rem;
+        border-left: 2px solid transparent;
+        transition: all 0.15s ease;
+        line-height: 1.4;
+        font-weight: 500;
+      }
+      .sidebar a:hover,
+      .sidebar a.active {
+        color: var(--accent);
+        border-left-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+      }
+      .main {
+        flex: 1;
+        min-width: 0;
+      }
+
+      /* --- Headings --- */
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-family: var(--font-heading);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      h1 {
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        line-height: 1.1;
+        margin: 0 0 0.6rem;
+      }
+      h2 {
+        font-size: 1.4rem;
+        margin: 2.5rem 0 1rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid var(--border-strong);
+        display: flex;
+        align-items: baseline;
+        gap: 0.6rem;
+      }
+      h2 .num {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--accent);
+        font-weight: 700;
+        letter-spacing: 0.06em;
+      }
+      h3 {
+        font-size: 1.1rem;
+        margin: 0 0 0.4rem;
+        font-weight: 700;
+      }
+      h4 {
+        font-size: 0.98rem;
+        margin: 0 0 0.3rem;
+        font-weight: 700;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+
+      /* --- Hero --- */
+      .hero {
+        padding: 1.5rem 0 1.5rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid var(--border-strong);
+      }
+      .hero-badge {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--surface);
+        background: var(--accent);
+        padding: 0.3rem 0.7rem;
+        margin-bottom: 0.9rem;
+      }
+      .hero-subtitle {
+        font-size: 1.05rem;
+        color: var(--text-muted);
+        max-width: 70ch;
+        margin: 0;
+      }
+
+      /* Bauhaus signature: geometric shape cluster (optional) */
+      .hero-shapes {
+        position: relative;
+        height: 80px;
+        margin-bottom: 1rem;
+      }
+      .hero-shapes .circle {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 56px;
+        height: 56px;
+        background: var(--problem);
+        border-radius: 50%;
+      }
+      .hero-shapes .square {
+        position: absolute;
+        top: 24px;
+        left: 72px;
+        width: 48px;
+        height: 48px;
+        background: var(--solution);
+      }
+      .hero-shapes .tri {
+        position: absolute;
+        top: 8px;
+        left: 140px;
+        width: 0;
+        height: 0;
+        border-left: 28px solid transparent;
+        border-right: 28px solid transparent;
+        border-bottom: 48px solid var(--warning);
+      }
+
+      /* --- General cards --- */
+      .card {
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        padding: 1.1rem 1.3rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid var(--border-strong);
+      }
+      .card-problem {
+        border-left-color: var(--problem);
+        background: color-mix(
+          in srgb,
+          var(--problem) 8%,
+          var(--surface-raised)
+        );
+      }
+      .card-solution {
+        border-left-color: var(--solution);
+        background: color-mix(
+          in srgb,
+          var(--solution) 8%,
+          var(--surface-raised)
+        );
+      }
+      .card-warning {
+        border-left-color: var(--warning);
+        background: color-mix(
+          in srgb,
+          var(--warning) 8%,
+          var(--surface-raised)
+        );
+      }
+
+      /* --- Issue cards --- */
+      .issue {
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        padding: 1.1rem 1.3rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid var(--border-strong);
+      }
+      .issue-critical {
+        border-left-color: var(--problem);
+        background: color-mix(
+          in srgb,
+          var(--problem) 8%,
+          var(--surface-raised)
+        );
+      }
+      .issue-important {
+        border-left-color: var(--warning);
+        background: color-mix(
+          in srgb,
+          var(--warning) 8%,
+          var(--surface-raised)
+        );
+      }
+      .issue-nice {
+        border-left-color: var(--solution);
+        background: color-mix(
+          in srgb,
+          var(--solution) 8%,
+          var(--surface-raised)
+        );
+      }
+      .issue h3 {
+        margin-bottom: 0.3rem;
+      }
+      .issue .where {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--text-faint);
+        margin: 0.2rem 0 0.6rem;
+      }
+      .issue p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* --- Severity badges (used inside issue cards) --- */
+      .severity {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.2rem 0.55rem;
+        margin-bottom: 0.6rem;
+        color: var(--surface);
+      }
+      .severity-critical {
+        background: var(--problem);
+      }
+      .severity-important {
+        background: var(--warning);
+      }
+      .severity-nice {
+        background: var(--solution);
+      }
+
+      /* --- Inline badges (used in tables) --- */
+      .badge {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 0.18rem 0.5rem;
+        border: 1px solid var(--border-strong);
+        color: var(--text-muted);
+      }
+      .badge-critical {
+        color: var(--problem);
+        border-color: var(--problem);
+      }
+      .badge-high {
+        color: var(--warning);
+        border-color: var(--warning);
+      }
+      .badge-medium {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      .badge-low {
+        color: var(--text-muted);
+      }
+      .badge-fixed {
+        color: var(--solution);
+        border-color: var(--solution);
+      }
+
+      /* --- Callouts (used inside issues or standalone) --- */
+      .callout {
+        margin: 0.8rem 0 0;
+        padding: 0.7rem 0.9rem;
+        border-left: 3px solid var(--border-strong);
+        background: color-mix(in srgb, var(--text) 5%, transparent);
+        font-size: 0.9rem;
+      }
+      .callout strong {
+        display: inline-block;
+        margin-right: 0.4rem;
+      }
+      .callout-solution {
+        border-left-color: var(--solution);
+        background: color-mix(in srgb, var(--solution) 10%, transparent);
+      }
+      .callout-warning {
+        border-left-color: var(--warning);
+        background: color-mix(in srgb, var(--warning) 10%, transparent);
+      }
+
+      /* --- Stat cards / scorecards (aliased vocabulary) --- */
+      .stat-grid,
+      .scorecard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.75rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .stat-card,
+      .score-card {
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        padding: 1.1rem 1rem;
+        position: relative;
+      }
+      .stat-card::before,
+      .score-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--border-strong);
+      }
+      .stat-bad,
+      .score-bad {
+        /* default top bar already set */
+      }
+      .stat-bad::before,
+      .score-bad::before {
+        background: var(--problem);
+      }
+      .stat-good::before,
+      .score-good::before {
+        background: var(--solution);
+      }
+      .stat-warn::before,
+      .score-warn::before {
+        background: var(--warning);
+      }
+      .stat-value,
+      .score {
+        font-family: var(--font-heading);
+        font-size: 2rem;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -0.03em;
+        color: var(--text);
+      }
+      .stat-bad .stat-value,
+      .score-bad .score {
+        color: var(--problem);
+      }
+      .stat-good .stat-value,
+      .score-good .score {
+        color: var(--solution);
+      }
+      .stat-warn .stat-value,
+      .score-warn .score {
+        color: var(--warning);
+      }
+      .stat-label,
+      .score-card .label {
+        font-family: var(--font-mono);
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-faint);
+        margin-top: 0.5rem;
+      }
+
+      /* --- Strengths list --- */
+      .strengths {
+        display: grid;
+        gap: 0.5rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .strength {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.8rem;
+        padding: 0.7rem 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .strength .check {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        color: var(--solution);
+        font-size: 1.1rem;
+        line-height: 1.4;
+      }
+      .strength .text strong {
+        display: block;
+        margin-bottom: 0.15rem;
+      }
+      .strength .text span {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+
+      /* --- Tables --- */
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0 1.5rem;
+        font-size: 0.9rem;
+      }
+      th {
+        text-align: left;
+        padding: 0.6rem 0.9rem;
+        background: var(--surface-raised);
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--border-strong);
+      }
+      td {
+        padding: 0.6rem 0.9rem;
+        border-bottom: 1px solid var(--border);
+      }
+      tr:hover td {
+        background: var(--surface-raised);
+      }
+
+      /* --- Before/After comparison --- */
+      .compare-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin: 1rem 0 0.5rem;
+      }
+      .compare-before,
+      .compare-after {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 0.4rem 0.7rem;
+        color: var(--surface);
+      }
+      .compare-before {
+        background: var(--problem);
+      }
+      .compare-after {
+        background: var(--solution);
+      }
+      .compare-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .compare-row pre {
+        margin: 0;
+      }
+
+      /* --- Code blocks + syntax highlighting --- */
+      pre {
+        background: var(--surface-sunken);
+        border: 1px solid var(--border);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.65;
+        overflow-x: auto;
+      }
+      code {
+        font-family: var(--font-mono);
+      }
+      p code,
+      li code,
+      td code {
+        font-size: 0.88em;
+        background: var(--surface-sunken);
+        padding: 0.1rem 0.35rem;
+      }
+      .tok-keyword {
+        color: var(--accent);
+      } /* func, type, struct, if, return */
+      .tok-type {
+        color: var(--warning);
+      } /* int, string, bool, error */
+      .tok-string {
+        color: var(--solution);
+      } /* "quoted strings" */
+      .tok-comment {
+        color: var(--text-faint);
+        font-style: italic;
+      }
+      .tok-func {
+        color: #74a9ff;
+      } /* function names */
+      .tok-number {
+        color: var(--accent);
+      } /* 42, 3.14 */
+      .tok-generic {
+        color: var(--problem);
+      } /* T, ID in generics */
+      .tok-builtin {
+        color: #4dd9ff;
+      } /* make, len, append */
+      .tok-punct {
+        color: var(--text-muted);
+      } /* { } ( ) ; = : */
+      .tok-attr {
+        color: var(--accent);
+      } /* Nix attribute names */
+
+      /* --- Dependency tree / ASCII diagrams --- */
+      .dep-tree {
+        background: var(--surface-sunken);
+        border: 1px solid var(--border);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.7;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .dep-tree .root {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .dep-tree .ok {
+        color: var(--solution);
+      }
+      .dep-tree .unwanted {
+        color: var(--problem);
+      }
+
+      /* --- Inline node-and-arrow diagrams --- */
+      .diagram {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+      }
+      .node {
+        display: inline-block;
+        padding: 0.35rem 0.7rem;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: var(--surface-sunken);
+        border: 1px solid var(--border-strong);
+      }
+      .node-core {
+        background: var(--accent);
+        color: var(--surface);
+        border-color: var(--accent);
+      }
+      .node-problem {
+        background: var(--problem);
+        color: var(--surface);
+        border-color: var(--problem);
+      }
+      .node-good {
+        background: var(--solution);
+        color: var(--surface);
+        border-color: var(--solution);
+      }
+      .arrow {
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Grids (responsive) --- */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+
+      /* --- Inline TOC (alternative to sidebar) --- */
+      .toc {
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+        padding: 1rem 1.3rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .toc h3 {
+        margin-bottom: 0.5rem;
+      }
+      .toc ul {
+        list-style: none;
+        padding: 0;
+      }
+      .toc li {
+        margin: 0.25rem 0;
+      }
+      .toc a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.9rem;
+      }
+      .toc a:hover {
+        color: var(--accent);
+      }
+
+      /* --- Migration / numbered steps --- */
+      .migration-step {
+        display: grid;
+        grid-template-columns: 48px 1fr;
+        gap: 1rem;
+        margin: 1rem 0;
+        padding: 1rem;
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+      }
+      .migration-num {
+        font-family: var(--font-mono);
+        font-weight: 800;
+        font-size: 1.5rem;
+        color: var(--accent);
+        line-height: 1;
+      }
+      .migration-content h4 {
+        margin-bottom: 0.2rem;
+      }
+      .migration-content p {
+        margin-bottom: 0;
+        color: var(--text-muted);
+        font-size: 0.92rem;
+      }
+
+      /* --- Footer --- */
+      .footer {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.8rem;
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Responsive --- */
+      @media (min-width: 1024px) {
+        .sidebar {
+          display: block;
+        }
+      }
+      @media (max-width: 768px) {
+        .layout {
+          flex-direction: column;
+          padding: 1rem;
+        }
+        .top-bar {
+          padding: 0.6rem 1rem;
+          flex-wrap: wrap;
+          gap: 0.3rem;
+        }
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+        .compare-header,
+        .compare-row {
+          grid-template-columns: 1fr;
+        }
+        .stat-grid,
+        .scorecard {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .migration-step {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-bar">
+      <span>MODULARIZATION PROPOSAL</span>
+      <span>2026-09-09</span>
+      <span>go-taskqueue &middot; Unix philosophy (#unix)</span>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar" data-nav>
+        <nav>
+          <div class="label">Contents</div>
+          <a href="#summary">Summary</a>
+          <a href="#current">Current State</a>
+          <a href="#gate">Should We Modularize?</a>
+          <a href="#modules">Proposed Modules</a>
+          <a href="#dag">DAG Verification</a>
+          <a href="#strategy">Replace Strategy</a>
+          <a href="#tests">Test Deps &amp; Errors</a>
+          <a href="#versioning">Versioning &amp; Breaking Changes</a>
+          <a href="#risks">Risks</a>
+          <a href="#build">Build System Impact</a>
+          <a href="#plan">Migration Plan</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <div class="hero">
+          <div class="hero-shapes">
+            <div class="circle"></div>
+            <div class="square"></div>
+            <div class="tri"></div>
+          </div>
+          <div class="hero-badge">Proposal &middot; Phase 3</div>
+          <h1>go-taskqueue Modularization</h1>
+          <p class="hero-subtitle">
+            Split one go.mod into five Unix-pipe modules along the existing
+            package seams &mdash; zero import rewrites, zero cycles, zero
+            public-API change.
+          </p>
+        </div>
+
+        <nav class="toc">
+          <h3>Contents</h3>
+          <ul>
+            <li><a href="#summary">Summary</a></li>
+            <li><a href="#current">Current State</a></li>
+            <li><a href="#gate">Should We Modularize?</a></li>
+            <li><a href="#modules">Proposed Modules</a></li>
+            <li><a href="#dag">DAG Verification</a></li>
+            <li><a href="#strategy">Replace Strategy</a></li>
+            <li><a href="#tests">Test Deps &amp; Errors</a></li>
+            <li><a href="#versioning">Versioning &amp; Breaking Changes</a></li>
+            <li><a href="#risks">Risks</a></li>
+            <li><a href="#build">Build System Impact</a></li>
+            <li><a href="#plan">Migration Plan</a></li>
+          </ul>
+        </nav>
+
+        <h2 id="summary"><span class="num">00</span>Executive Summary</h2>
+        <div class="stat-grid">
+          <div class="stat-card stat-good">
+            <div class="stat-value">6</div>
+            <div class="stat-label">Modules (root + 5)</div>
+          </div>
+          <div class="stat-card stat-good">
+            <div class="stat-value">4</div>
+            <div class="stat-label">Stdlib-only modules</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">0</div>
+            <div class="stat-label">Import rewrites</div>
+          </div>
+          <div class="stat-card stat-good">
+            <div class="stat-value">0</div>
+            <div class="stat-label">Cycles</div>
+          </div>
+        </div>
+        <p>
+          go-taskqueue is a single-module repo with 19 packages and a clean
+          package-level DAG. The five packages that constitute the embeddable
+          library core &mdash; <code>task</code>, <code>journal</code>,
+          <code>queue</code>, <code>executor</code>, <code>worker</code>
+          &mdash; each pass the Unix one-sentence test and compose like pipes;
+          they become sub-modules with hard go.mod boundaries. The application
+          layer (CLI, web UI, harvest, sweepers, bridges, budget, consumer,
+          runactor, e2e) stays in the root module: it co-changes constantly and
+          has no independent consumer. Because every import path is unchanged
+          (module paths stay
+          <code>github.com/larsartmann/go-taskqueue/internal/&hellip;</code>),
+          the entire migration is go.mod plumbing plus CI/build wiring
+          &mdash; no source file moves, no API change, and the
+          &ldquo;internal/ until the API stabilizes&rdquo; stance (ADR-0001/0002)
+          is preserved exactly.
+        </p>
+        <div class="card card-solution">
+          <h4>What this buys</h4>
+          <p>
+            Compile-time enforcement of the layer DAG (a worker&rarr;webui or
+            queue&rarr;harvest edge can never be added again), per-module
+            <code>GOWORK=off</code> build/test isolation in CI, stdlib-only
+            domain modules that future external consumers can import if/when
+            paths are promoted, and faster focused iteration for the
+            multi-agent workflow this repo runs.
+          </p>
+        </div>
+
+        <h2 id="current"><span class="num">01</span>Current State Analysis</h2>
+        <p>
+          Phase 1 findings: exactly one <code>go.mod</code>
+          (<code>github.com/larsartmann/go-taskqueue</code>, go 1.26.7), no
+          <code>go.work</code>, no prior split &rarr; <strong>monolith,
+          greenfield classification</strong>. Internal import graph (production
+          <em>and</em> test imports verified via <code>go list</code>):
+        </p>
+        <table>
+          <thead>
+            <tr><th>Package</th><th>Prod imports</th><th>Test imports</th><th>Direct external deps</th><th>LOC (prod)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>internal/task</code></td><td>&mdash;</td><td>&mdash;</td><td>none</td><td>~240</td></tr>
+            <tr><td><code>internal/journal</code></td><td>&mdash;</td><td>&mdash;</td><td>none</td><td>~230</td></tr>
+            <tr><td><code>internal/runactor</code></td><td>&mdash;</td><td>&mdash;</td><td>golang.org/x/sync</td><td>~200</td></tr>
+            <tr><td><code>internal/queue</code></td><td>task, journal</td><td>task, journal</td><td>modernc.org/sqlite, pgx/v5</td><td>~2100</td></tr>
+            <tr><td><code>internal/executor</code></td><td>task</td><td>task</td><td>none</td><td>~4260</td></tr>
+            <tr><td><code>internal/worker</code></td><td>task, queue, executor</td><td>task, queue, executor, journal</td><td>none</td><td>~700</td></tr>
+            <tr><td><code>internal/consumer</code></td><td>journal</td><td>journal, queue, task</td><td>none</td><td>small</td></tr>
+            <tr><td><code>internal/budget</code></td><td>journal</td><td>journal</td><td>none</td><td>small</td></tr>
+            <tr><td><code>bridge/papdashboard</code></td><td>journal, task</td><td>&mdash;</td><td>&mdash;</td><td>small</td></tr>
+            <tr><td><code>bridge/cqa</code></td><td>executor, task</td><td>&mdash;</td><td>&mdash;</td><td>small</td></tr>
+            <tr><td><code>harvest, review, status, httpapi, webui, e2e, examples/*, cmd/tq</code></td><td colspan="3">upper layers; depend on the modules above; nothing depends on them</td><td>rest</td></tr>
+          </tbody>
+        </table>
+        <p>
+          Co-change analysis (git, since 2026-09-01): the hottest pairs are all
+          app-layer (<code>queue|webui</code> 19, <code>queue|worker</code> 16,
+          <code>executor|harvest</code> 15); the core leaves
+          (<code>task</code>, <code>journal</code>) co-change rarely. Coupling
+          hotspots are the upper layers, which is normal for an application
+          &mdash; and the strongest argument for keeping them in one root
+          module. No god-packages: <code>executor</code> is the largest (12
+          files) but is a single concern (execution adapters + registry).
+        </p>
+
+        <h2 id="gate"><span class="num">02</span>Should We Modularize?</h2>
+        <table>
+          <thead>
+            <tr><th>Signal (weight)</th><th>Verdict</th><th>Evidence</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Small project (High)</td>
+              <td><span class="badge badge-low">Not fired</span></td>
+              <td>19 packages, ~17k LOC &mdash; well past the 10-package threshold</td>
+            </tr>
+            <tr>
+              <td>No external consumers (Medium)</td>
+              <td><span class="badge badge-high">Partially fired</span></td>
+              <td>All code is <code>internal/</code>, so no external imports
+                  exist today &mdash; but the repo is public, ADR-0001 promises
+                  &ldquo;Go users register executor funcs directly&rdquo;, and
+                  examples/ demonstrate embedding. Sub-module boundaries are
+                  the groundwork for that API; they cost nothing while it is
+                  internal.</td>
+            </tr>
+            <tr>
+              <td>Prototype / spike (High)</td>
+              <td><span class="badge badge-low">Not fired</span></td>
+              <td>v0.1.0 shipped, dogfooded since 2026-09-07</td>
+            </tr>
+            <tr>
+              <td>All packages change together (High)</td>
+              <td><span class="badge badge-low">Not fired</span></td>
+              <td>Core leaves are stable; only the app layer churns &mdash;
+                  and the app layer deliberately stays in one module</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          Score: &le;1 High signal &rarr; <strong>proceed with modularization</strong>.
+          Direction-neutrality check: nothing here argues for merging (there
+          is nothing to merge) or for 19 micro-modules (single-consumer
+          packages like <code>runactor</code>, <code>budget</code>,
+          <code>consumer</code>, <code>bridge/*</code> have no composability
+          payoff as modules &mdash; they stay in root).
+        </p>
+
+        <h2 id="modules"><span class="num">03</span>Proposed Module Structure</h2>
+        <table>
+          <thead>
+            <tr><th>Module path</th><th>Purpose (one sentence)</th><th>Internal deps</th><th>External deps</th><th>Public API (to other modules)</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>&hellip;/internal/task</code></td>
+              <td>The Task record and its lifecycle.</td>
+              <td>&mdash;</td>
+              <td><strong>none</strong></td>
+              <td>Task, Status + <code>CanTransitionTo</code>, sentinel errors (<code>errors.go</code>)</td>
+            </tr>
+            <tr>
+              <td><code>&hellip;/internal/journal</code></td>
+              <td>Immutable facts and the append-only log that records them.</td>
+              <td>&mdash;</td>
+              <td><strong>none</strong></td>
+              <td>Fact types, Journal interface, MemoryJournal</td>
+            </tr>
+            <tr>
+              <td><code>&hellip;/internal/queue</code></td>
+              <td>Durable, lease-based task storage with in-tx facts.</td>
+              <td>task, journal</td>
+              <td>modernc.org/sqlite, pgx/v5</td>
+              <td>Store interface, OpenSQLite, Postgres store, watermarks</td>
+            </tr>
+            <tr>
+              <td><code>&hellip;/internal/executor</code></td>
+              <td>Pluggable execution: resolve a task type to code that runs it.</td>
+              <td>task</td>
+              <td><strong>none</strong></td>
+              <td>Executor interface, sh/http/agent/review/status adapters, registry</td>
+            </tr>
+            <tr>
+              <td><code>&hellip;/internal/worker</code></td>
+              <td>Claim &rarr; heartbeat &rarr; execute loop over a Store.</td>
+              <td>task, queue, executor (+ journal in tests)</td>
+              <td><strong>none</strong></td>
+              <td>Worker pool, concurrency, drain, preflight ladder</td>
+            </tr>
+            <tr>
+              <td><code>github.com/larsartmann/go-taskqueue</code> (root)</td>
+              <td>The application: CLI, web UI, harvest, sweepers, bridges, e2e.</td>
+              <td>all five sub-modules</td>
+              <td>templ, templ-components, go-sse, x/sync, sqlite, pgx (via queue)</td>
+              <td>cmd/tq, examples, everything app-layer</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>Unix-pipe composition test</h3>
+        <div class="strengths">
+          <div class="strength"><div class="check">+</div><div class="text">
+            <strong>task + journal compose alone</strong>
+            <span>Two stdlib-only leaves; a future projection or audit tool needs nothing else.</span>
+          </div></div>
+          <div class="strength"><div class="check">+</div><div class="text">
+            <strong>task + journal + queue = embeddable storage</strong>
+            <span>Exactly what examples/api imports today &mdash; proof by existing consumer.</span>
+          </div></div>
+          <div class="strength"><div class="check">+</div><div class="text">
+            <strong>+ executor + worker = the full library promise</strong>
+            <span>ADR-0001's &ldquo;Go users register executor funcs&rdquo; story in four imports, zero app baggage.</span>
+          </div></div>
+          <div class="strength"><div class="check">+</div><div class="text">
+            <strong>Mechanism vs policy separated</strong>
+            <span>Core modules define what (Store, Journal, Executor interfaces); the root app defines policy (sweepers, bridges, UI).</span>
+          </div></div>
+        </div>
+        <h3>Deliberately NOT modules</h3>
+        <p>
+          <code>runactor</code>, <code>budget</code>, <code>consumer</code>,
+          <code>bridge/*</code>: each has exactly one production consumer
+          (<code>cmd/tq</code>) or is a thin app integration. A module
+          boundary with no composability payoff is ceremony (FM#8 by
+          anticipation). <code>consumer</code> currently has <em>zero</em>
+          production importers &mdash; promoting it would enshrine dead code.
+        </p>
+
+        <h2 id="dag"><span class="num">04</span>DAG Verification</h2>
+        <p>
+          Verified mechanically: for each candidate module, production and
+          test imports were enumerated with <code>go list -f</code>
+          (Imports, TestImports, XTestImports). Every edge points strictly
+          downward; no candidate imports any root-module package, so the
+          root&rarr;module direction cannot form a cycle:
+        </p>
+        <div class="dep-tree"><span class="root">root (app)</span> &rarr; worker &rarr; {queue, executor} &rarr; {task, journal}<br>
+queue &rarr; journal, task &nbsp;&middot;&nbsp; executor &rarr; task &nbsp;&middot;&nbsp; task, journal &rarr; (leaves)</div>
+        <div class="card card-solution">
+          <h4>Cycle-proofing going forward</h4>
+          <p>
+            After the split, the <em>compiler</em> owns this property: a
+            <code>queue</code> import of <code>internal/worker</code> becomes
+            an unresolved module dependency (missing require/replace), not a
+            silent new edge. The per-module <code>GOWORK=off</code> CI gate
+            enforces that each module&rsquo;s go.mod lists exactly what it uses.
+          </p>
+        </div>
+
+        <h2 id="strategy"><span class="num">05</span>Replace / Workspace Strategy</h2>
+        <div class="card card-warning">
+          <h4>Deviation from the skill default: replace-only, no go.work</h4>
+          <p>
+            The skill recommends the dual go.work + replace strategy. This repo
+            deviates deliberately: the buildflow-managed <code>.gitignore</code>
+            explicitly excludes <code>go.work</code> / <code>go.work.sum</code>,
+            and replace directives alone fully determine resolution for root
+            and every sub-module. With replace-only there is no go.work/replace
+            drift to police (skill FM#4 eliminated by construction), no
+            <code>go work sync</code> idempotency gate, and nix/CI builds are
+            identical to developer builds. Local developers may still create a
+            private go.work if they want; it changes nothing because replace
+            wins resolution.
+          </p>
+        </div>
+        <p>
+          Rules applied to every go.mod:
+        </p>
+        <table>
+          <thead><tr><th>Rule</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Internal requires</td><td>pinned <code>v0.0.0</code> (no pseudo-version churn)</td></tr>
+            <tr><td>Internal replaces</td><td>relative paths (<code>=&gt; ../task</code>), never absolute &mdash; portability audit in CI</td></tr>
+            <tr><td>Transitive siblings</td><td>each module requires every sibling it imports directly or transitively (worker also requires journal for its tests)</td></tr>
+            <tr><td>go directive</td><td><code>go 1.26.7</code> in every module (matches toolchain; jsonv2 experiment only affects root via go-sse)</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="tests"><span class="num">06</span>Test Dependency Isolation &amp; Error Types</h2>
+        <h3>Test imports across the new boundaries (audited, all downward)</h3>
+        <table>
+          <thead><tr><th>Module</th><th>Test-only internal imports</th><th>Assessment</th></tr></thead>
+          <tbody>
+            <tr><td>worker</td><td>journal</td><td>Documented test-dep leak (Go has no test-only require block). Harmless by construction: journal is stdlib-only, zero transitive bloat. No merge is performed to &ldquo;hide&rdquo; it (FM#3 anti-cure).</td></tr>
+            <tr><td>queue</td><td>&mdash;</td><td>task+journal are already production deps</td></tr>
+            <tr><td>executor</td><td>&mdash;</td><td>task only</td></tr>
+            <tr><td>task, journal</td><td>&mdash;</td><td>fully clean leaves</td></tr>
+          </tbody>
+        </table>
+        <p>
+          Mock/double placement: no production-package mocks were found in the
+          five core packages; doubles live in <code>_test.go</code>. White-box
+          tests stay in their packages, stdlib <code>testing</code> only
+          (repo convention: table-driven, plain testing) &mdash; no test
+          framework dep enters any go.mod.
+        </p>
+        <h3>Error type placement</h3>
+        <p>
+          Sentinel errors live in <code>internal/task/errors.go</code> &mdash;
+          the module that defines the <code>Task</code>/<code>Status</code>
+          contract. Every producer and consumer already imports
+          <code>task</code>, so <code>errors.Is</code> works across every
+          boundary with no new placement. <code>journal</code> defines its own
+          fact types and has none. Implementation-specific errors (sqlite/pgx)
+          stay inside <code>queue</code>. No Option-B errors module needed
+          &mdash; Option A (errors with their interface) falls out of the
+          existing layout.
+        </p>
+
+        <h2 id="versioning"><span class="num">07</span>Versioning &amp; Breaking Change Analysis</h2>
+        <table>
+          <thead><tr><th>Decision</th><th>Choice</th><th>Rationale</th></tr></thead>
+          <tbody>
+            <tr><td>Versioning strategy</td><td><strong>Shared version</strong> (single <code>vX.Y.Z</code> tag bumps all modules)</td><td>Modules are internal-only, tightly coupled, single team; independent semver would be pure ceremony. Root-only + replace covers resolution.</td></tr>
+            <tr><td>Import paths</td><td><strong>Unchanged</strong></td><td>Sub-modules are named <code>&hellip;/internal/&lt;pkg&gt;</code> where the packages already live &mdash; zero rewrites, no <code>// Deprecated</code> redirects needed.</td></tr>
+            <tr><td>External consumers</td><td><strong>None possible today</strong></td><td>Everything is under <code>internal/</code>; the internal-access rule keeps blocking any importer outside the <code>github.com/larsartmann/go-taskqueue/</code> tree. The v0.1.0 tag contract is untouched.</td></tr>
+            <tr><td>In-repo consumers</td><td><strong>examples/, cmd/tq, e2e</strong></td><td>They keep importing the same paths; resolution now flows through root go.mod requires + replaces.</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="risks"><span class="num">08</span>Risk Assessment</h2>
+        <table>
+          <thead><tr><th>#</th><th>Risk (skill FM#)</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>vendorHash drift breaks nix (repo-known)</td><td>After go.mod changes: fakeHash dance, then real <code>nix build</code> before declaring done. Also pin <code>GOWORK = "off"</code> in the nix build env so a stray go.work can never perturb the hermetic build.</td></tr>
+            <tr><td>2</td><td>Per-module regressions invisible at root (FM#12)</td><td>ci-local.sh + ci.yml gain a per-module loop: <code>GOWORK=off go build/vet/test ./...</code> in each of the five module dirs.</td></tr>
+            <tr><td>3</td><td>Import cycle appears later (FM#1)</td><td>Impossible to add silently: missing require/replace fails the build; the DAG is now compiler-enforced.</td></tr>
+            <tr><td>4</td><td>Test-dep leak grows (FM#3)</td><td>Documented; worker&rarr;journal is the only leak and is stdlib-only. CI replace-audit + per-module tidy keeps it honest.</td></tr>
+            <tr><td>5</td><td>Concurrent agents + auto-commit daemon</td><td>Stay on master (branch would fragment parallel work); one commit per step = per-step <code>git revert</code> checkpoints; re-run tests immediately before declaring success (repo rule).</td></tr>
+            <tr><td>6</td><td>Fuzz/smoke scripts assume root module</td><td>Audit scripts/fuzz/nightly.sh + smokes; they resolve packages via the root module, whose replace directives keep working unchanged.</td></tr>
+            <tr><td>7</td><td>golangci-lint multi-module</td><td>Advisory (continue-on-error) by repo policy; per-module runs can be added later without gating.</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="build"><span class="num">09</span>Build System Impact</h2>
+        <table>
+          <thead><tr><th>Surface</th><th>Change</th></tr></thead>
+          <tbody>
+            <tr><td><code>flake.nix</code></td><td>vendorHash update (fakeHash dance); add <code>GOWORK = "off"</code> to the go-modules/build env as belt-and-braces; <code>subPackages = [ "cmd/tq" ]</code> unchanged.</td></tr>
+            <tr><td><code>scripts/ci-local.sh</code></td><td>New step: for m in task journal queue executor worker &rarr; <code>(cd internal/$m &amp;&amp; GOWORK=off go build/vet/test ./...)</code>, plus replace-portability audit (no absolute paths) and internal-requires-pinned-to-v0.0.0 audit.</td></tr>
+            <tr><td><code>.github/workflows/ci.yml</code></td><td>Mirror the same per-module gate in the test job.</td></tr>
+            <tr><td><code>docs/</code></td><td>ADR-0011 documenting the module split; AGENTS.md commands + architecture table updated.</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="plan"><span class="num">10</span>Migration Plan (Pareto tiers)</h2>
+        <p>
+          Each step is one commit, leaves the tree green
+          (build + vet + <code>-race</code> tests), and is independently
+          revertable. Order = dependency order (leaves first), which is also
+          Pareto order: the leaves unlock the most boundary value.
+        </p>
+        <div class="migration-step"><div class="migration-num">1</div><div class="migration-content">
+          <h4>Tier 1 &mdash; extract <code>internal/task</code> (leaf, stdlib-only)</h4>
+          <p>go.mod + root require/replace; full gate; commit.</p>
+        </div></div>
+        <div class="migration-step"><div class="migration-num">2</div><div class="migration-content">
+          <h4>Tier 1 &mdash; extract <code>internal/journal</code> (leaf, stdlib-only)</h4>
+          <p>Same shape as step 1.</p>
+        </div></div>
+        <div class="migration-step"><div class="migration-num">3</div><div class="migration-content">
+          <h4>Tier 2 &mdash; extract <code>internal/executor</code> (requires task)</h4>
+          <p>First non-leaf: validates the require/replace pattern for dependents.</p>
+        </div></div>
+        <div class="migration-step"><div class="migration-num">4</div><div class="migration-content">
+          <h4>Tier 2 &mdash; extract <code>internal/queue</code> (requires task, journal; carries sqlite+pgx)</h4>
+          <p>The heavyweight boundary; go.sum handling verified here.</p>
+        </div></div>
+        <div class="migration-step"><div class="migration-num">5</div><div class="migration-content">
+          <h4>Tier 3 &mdash; extract <code>internal/worker</code> (requires task, queue, executor, journal)</h4>
+          <p>Completes the module graph; root becomes app-only.</p>
+        </div></div>
+        <div class="migration-step"><div class="migration-num">6</div><div class="migration-content">
+          <h4>Tier 3 &mdash; CI + build wiring</h4>
+          <p>ci-local.sh + ci.yml per-module <code>GOWORK=off</code> gates, replace audits; flake.nix vendorHash + GOWORK=off; real <code>nix build</code>.</p>
+        </div></div>
+        <div class="migration-step"><div class="migration-num">7</div><div class="migration-content">
+          <h4>Tier 4 &mdash; docs &amp; reflection</h4>
+          <p>ADR-0011, AGENTS.md, full verification (workspace build, per-module GOWORK=off, tidy/verify clean), final reflection.</p>
+        </div></div>
+
+        <footer class="footer">
+          Generated 2026-09-09 &middot; All import/dependency claims verified via
+          <code>go list</code> against the working tree on this date
+        </footer>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        if (!("IntersectionObserver" in window)) return;
+        var nav = document.querySelector("[data-nav]");
+        if (!nav) return;
+        var links = nav.querySelectorAll('a[href^="#"]');
+        var ids = Array.from(links).map(function (l) {
+          return l.getAttribute("href").slice(1);
+        });
+        var sections = ids
+          .map(function (id) {
+            return document.getElementById(id);
+          })
+          .filter(Boolean);
+        if (!sections.length) return;
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                links.forEach(function (link) {
+                  link.classList.toggle(
+                    "active",
+                    link.getAttribute("href") === "#" + entry.target.id,
+                  );
+                });
+              }
+            });
+          },
+          { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
+        );
+        sections.forEach(function (s) {
+          observer.observe(s);
+        });
+      })();
+    </script>
+  </body>
+</html>
