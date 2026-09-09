@@ -156,7 +156,7 @@ for attempt in 1 2 3 4 5; do
 	sleep 30
 done
 
-step "clean-room go get"
+step "clean-room go get + go install (build the real consumer path)"
 verify_dir="$(mktemp -d)"
 trap 'rm -rf "$verify_dir"' EXIT
 (
@@ -164,6 +164,11 @@ trap 'rm -rf "$verify_dir"' EXIT
 	go mod init release-verify
 	go get "$MODULE@$VERSION" >/dev/null
 	go mod verify
+	# go get alone only resolves metadata; it cannot catch a broken
+	# sub-module require (v0.0.0-style pins resolve nothing on the proxy).
+	# Building the binary is the proof the published tree is installable.
+	GOBIN="$verify_dir/bin" go install "$MODULE/cmd/tq@$VERSION"
+	"$verify_dir/bin/tq" version >/dev/null
 )
 
 step "GitHub Release (pre-release: v0.x policy)"

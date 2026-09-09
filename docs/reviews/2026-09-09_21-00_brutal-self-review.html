@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>go-taskqueue — Brutal Self-Review (2026-09-09 21:00)</title>
+<style>
+:root{
+  --color-paper:#f4f4f0;--color-paper-2:#ffffff;--color-paper-3:#e8e8e2;--color-ink:#111111;
+  --color-red:#e63946;--color-blue:#1d3557;--color-yellow:#f4d35e;
+  --surface:var(--color-paper);--surface-raised:var(--color-paper-2);--surface-sunken:var(--color-paper-3);
+  --text:var(--color-ink);--text-muted:#44464a;--text-faint:#77797e;
+  --border:#d8d8d2;--border-strong:#111111;
+  --problem:var(--color-red);--solution:var(--color-blue);--warning:var(--color-yellow);
+  --font-body:-apple-system,"Segoe UI",Arial,sans-serif;
+  --font-mono:ui-monospace,"JetBrains Mono",Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--surface);color:var(--text);font-family:var(--font-body);line-height:1.6;padding:3rem 1.25rem}
+.wrap{max-width:920px;margin:0 auto}
+.badge{display:inline-block;background:var(--problem);color:#fff;font-weight:800;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;padding:.3rem .7rem;margin-bottom:1rem}
+h1{font-weight:900;font-size:2rem;letter-spacing:-.02em}
+h2{font-weight:900;font-size:1.05rem;text-transform:uppercase;letter-spacing:.08em;border-top:3px solid var(--border-strong);padding-top:.8rem;margin:2.2rem 0 1rem}
+.sub{color:var(--text-muted);margin:.6rem 0 2rem;max-width:65ch}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem;margin:1rem 0 1.6rem}
+.stat-card{background:var(--surface-raised);border:1px solid var(--border);padding:1rem}
+.stat-value{font-size:1.8rem;font-weight:900;line-height:1.1}
+.stat-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);margin-top:.2rem}
+.stat-bad .stat-value{color:var(--problem)}.stat-good .stat-value{color:var(--solution)}.stat-warn .stat-value{color:#8a6d00}
+.card{background:var(--surface-raised);border:1px solid var(--border);padding:1rem 1.2rem;margin:.8rem 0}
+.card h4{font-size:.95rem;margin-bottom:.3rem}
+.card-problem{border-left:6px solid var(--problem)}
+.card-warning{border-left:6px solid var(--warning)}
+.card-solution{border-left:6px solid var(--solution)}
+code{font-family:var(--font-mono);font-size:.85em;background:var(--surface-sunken);padding:.08em .3em}
+.migration{display:flex;gap:.9rem;background:var(--surface-raised);border:1px solid var(--border);padding:.9rem 1rem;margin:.6rem 0}
+.migration .num{flex:0 0 2rem;height:2rem;display:flex;align-items:center;justify-content:center;background:var(--solution);color:#fff;font-weight:900}
+.footer{margin-top:3rem;color:var(--text-faint);font-size:.8rem;border-top:1px solid var(--border);padding-top:1rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="badge">Brutal Self-Review &middot; 2026-09-09 21:00</div>
+  <h1>What got fucked up, what got fixed, what is still open</h1>
+  <p class="sub">Honest pass over this session's work: the five-module split (ADR-0011), the release-path repairs, and the review-skill sweep. Every claim below was verified against the tree, not memory.</p>
+
+  <div class="stat-grid">
+    <div class="stat-card stat-bad"><div class="stat-value">1</div><div class="stat-label">Shipped-broken bug (fixed)</div></div>
+    <div class="stat-card stat-bad"><div class="stat-value">2</div><div class="stat-label">Vacuous gates found</div></div>
+    <div class="stat-card stat-warn"><div class="stat-value">1</div><div class="stat-label">Ghost system</div></div>
+    <div class="stat-card stat-good"><div class="stat-value">0</div><div class="stat-label">Lies detected</div></div>
+    <div class="stat-card stat-warn"><div class="stat-value">4</div><div class="stat-label">Open P1&ndash;P3 actions</div></div>
+  </div>
+
+  <h2>What did I forget? (the honest list)</h2>
+  <div class="card card-problem">
+    <h4>The modularization shipped with <code>go install</code> broken &mdash; for one whole review cycle</h4>
+    <p>I tested build/vet/race per module, hygiene audits, nix, smokes &mdash; everything except the ACTUAL consumer story. Internal requires at <code>v0.0.0</code> can never resolve on the module proxy, so the next release would have failed the README's own <code>go install &hellip;/cmd/tq@latest</code> promise. The clean-room check couldn't have caught it: it only runs <code>go get</code> (metadata), never builds. Both are fixed now (requires at real <code>internal/*/v0.2.0</code> tags + tags cut; clean-room step does <code>go install</code> + runs the binary) &mdash; but the correct sequence was: design the consumer story BEFORE the split, not two reviews later.</p>
+  </div>
+  <div class="card card-warning">
+    <h4>I ran into my own predicted trap anyway</h4>
+    <p>I executed <code>go test ./internal/task</code> from root after the split and it failed &mdash; the exact directory-pattern rule the adversarial review had just flagged in ci.yml. Knowing a rule and wiring it into your own commands are different things.</p>
+  </div>
+  <div class="card card-warning">
+    <h4>The proposal's first draft contained a false mitigation</h4>
+    <p>Risk #6 originally claimed fuzz/smoke scripts keep working "via the root module &mdash; unchanged". Factually wrong (directory patterns stop matching across module boundaries). The adversarial self-review caught it the same day and the proposal was corrected &mdash; but it shipped wrong first, and that is on the drafting, not the reviewer.</p>
+  </div>
+
+  <h2>Stupid things we do anyway (repo-level, verified)</h2>
+  <div class="card card-problem">
+    <h4>Vacuous gates: <code>grep '\t'</code> in POSIX ERE is not a tab</h4>
+    <p>Two gates matched NOTHING while reporting vigilance: the old release.sh replace gate (would have been quietly bypassed) and the old ci-local v0.0.0-pin audit. Both rewritten with <code>[[:space:]]</code> and unit-tested by extracting real matches. Lesson: every new gate gets its positive AND negative path demonstrated once.</p>
+  </div>
+  <div class="card card-warning">
+    <h4>~400-finding advisory lint baseline + a 658-line <code>cmdAgentPool</code> + a zero-importer <code>consumer</code> package</h4>
+    <p>The lint baseline buries real signal (repo decision, documented &mdash; still stupid). <code>cmdAgentPool</code> is the highest-churn file in the repo and unreviewable in one sitting. <code>internal/consumer</code> is a polished, documented, dead subsystem: the definition of a ghost system. All three are roadmap items now, not secrets.</p>
+  </div>
+
+  <h2>Did I lie?</h2>
+  <div class="card card-solution">
+    <h4>No &mdash; with one imprecision disclosed</h4>
+    <p>Claims verified: the split is in neither v0.2.0 (tagged 05:15) nor pushed; gates ran on the exact committed trees; the "ALL CI GATES GREEN" line was the script's own output after it actually ran. Imprecision: the same-day proposal HTML still shows the superseded v0.0.0 versioning stance &mdash; it is a dated snapshot and ADR-0011 (the living decision) says real tags; a fresh reader should start at the ADR. Same for the proposal's own self-review section, which documents the corrections inline.</p>
+  </div>
+
+  <h2>Split brains?</h2>
+  <div class="card card-solution">
+    <h4>Docs aligned; one parity gap accepted</h4>
+    <p>AGENTS.md, ADR-0011, CHANGELOG, README all now say: real subdirectory tags + relative replaces + per-module gates. Remaining asymmetry: the go.mod hygiene audits run in ci-local.sh but not as a ci.yml step &mdash; the pre-push gate covers it, so CI parity is a P3 nicety, not a hole.</p>
+  </div>
+
+  <h2>Tests</h2>
+  <div class="card card-warning">
+    <h4>Good: behavior tests over string asserts. Gaps: release.sh has no test harness; one pre-existing flake</h4>
+    <p>The new verify command got a real behavioral test (breaks a nested module on purpose, asserts failure, then asserts the healthy path runs the sub-module). Gap: release.sh's gates are regex+git logic with no harness &mdash; today they were verified by manual extraction tests only. Gap: executor's <code>text file busy</code> flake (stub-agent re-exec race) predates this session and was left alone deliberately.</p>
+  </div>
+
+  <h2>Prioritized improvement plan</h2>
+  <div class="migration"><div class="num">1</div><div><strong>P1 &mdash; consumer decision.</strong> Wire internal/consumer into tq serve's journal tailing or delete it. Zero-importer subsystems either earn their place or leave.</div></div>
+  <div class="migration"><div class="num">2</div><div><strong>P1 &mdash; dead-export prune.</strong> 15 exported symbols in the core modules have zero non-test references. Prune before any public-API promotion, not after.</div></div>
+  <div class="migration"><div class="num">3</div><div><strong>P2 &mdash; decompose cmdAgentPool</strong> (658 lines, main.go:614&ndash;1271) into flag-block + actor-wiring helpers; target &lt;200 lines each, table-testable.</div></div>
+  <div class="migration"><div class="num">4</div><div><strong>P2 &mdash; release.sh gate smoke.</strong> A tiny script that exercises the replace-allowlist and require-tag gates against fixture go.mods (positive + negative), so gate regressions are caught by CI, not by releases.</div></div>
+  <div class="migration"><div class="num">5</div><div><strong>P3 &mdash; CI parity for hygiene audits; apps meta.description in flake.nix</strong> (kills the four nix flake check warnings).</div></div>
+
+  <div class="footer">Generated 2026-09-09 21:00 &middot; every finding re-verified against the tree &middot; the fixes themselves shipped in ac4baba and the release-path commits</div>
+</div>
+</body>
+</html>
