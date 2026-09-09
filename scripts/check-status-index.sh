@@ -18,6 +18,18 @@ while IFS= read -r report; do
 	if ! grep -qF "$name" "$index"; then
 		echo "UNINDEXED: $report (add a row to $index)"
 		fail=1
+		continue
+	fi
+
+	# DATE-column honesty (round-10 T25): the index row carrying the report
+	# must repeat the filename's own date — a wrong DATE column silently
+	# mis-sorts the report history.
+	date_part="${name%%_*}"
+	row="$(grep -F "$name" "$index" | head -1)"
+	if ! grep -qF "$date_part" <<<"$row"; then
+		echo "DATE MISMATCH: $report indexed with a row that lacks its date $date_part:"
+		echo "  $row"
+		fail=1
 	fi
 done < <(find docs/status -maxdepth 1 -name '*.md' ! -name 'README.md' | sort)
 
