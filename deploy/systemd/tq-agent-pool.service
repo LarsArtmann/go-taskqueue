@@ -8,6 +8,13 @@ Wants=network-online.target
 # Replace with the deployed binary path; keep flags out of the unit and
 # pin them in a config file instead (see --config):
 #   ExecStart=%h/go/bin/tq agent-pool --config %h/.config/tq/pool.conf
+# Recommended config keys for unattended operation (pool.conf):
+#   status-every = 20        # one status report per 20 agent completions
+#                            # per project (0 = off; each report can append
+#                            # follow-up TODO items — budget caps it)
+#   daily-budget = 15        # hard enqueue cap per calendar day
+#   review = true
+#   review-autofix = true
 ExecStart=%h/go/bin/tq agent-pool
 Restart=on-failure
 RestartSec=30s

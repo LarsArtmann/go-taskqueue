@@ -4,8 +4,77 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [v0.2.0] - 2026-09-09
 ### Added
+- **Self-cleaning pool relaunches + absent-item prune policy** (2026-09-09):
+  `--prune-stale` now also cancels pending harvested tasks whose item text
+  is gone from TODO_LIST.md entirely (done-and-deleted per the docs
+  convention, or reworded — which arms a new key and a new task), guarded
+  by harvest provenance (payload dedup key; `catchup:` prefixes stripped)
+  so external work is never touched. `tq agent-pool` runs one prune sweep
+  synchronously before any actor starts (`--prune-stale=false` opts out) —
+  synchronous because the worker's first claim would race an in-actor
+  sweep and promote cancellable zombies to running. E2e pins the
+  zero-zombie relaunch.
+- **Write-route rate limiting** (2026-09-09): three failed CSRF tokens lock
+  the offending client IP out of both admin write POSTs for 60s (429 before
+  CSRF runs; reads unlimited; success resets the strikes), smoke-asserted
+  in `scripts/smoke/webui.sh`.
+- **`tq facts --json` / `--detail`** (2026-09-09): machine-readable fact
+  list and per-fact full non-truncating detail rendering below each line —
+  multi-line verify tails stay intact and greppable.
+- **`tq stats --json` `journal_head`** + honest budget labeling (2026-09-09):
+  JSON parity with the text output's journal watermark; the budget line is
+  labeled `(all projects)` whenever `--project` scopes the table.
+- **`Filter.Since` SQL pushdown** (2026-09-09): inclusive `created_at`
+  window in both stores (`pgWhere` extracted; CountTasks shares it),
+  `tq tasks --since` rides the pushdown instead of a CLI-side filter.
+- **`RequeueEvidence` on `task.requeued` facts** (2026-09-09): structured
+  `{reason, retry_in_ms}` detail in both stores (was a plain error string).
+- **Docs-honesty guards** (2026-09-09): `scripts/check-todo-list.sh`
+  (unblocked owner-gated items fail), `scripts/check-features-roadmap.sh`
+  (seed shipped-vs-planned contradictions; caught D80/D90 still listed as
+  raw ideas in ROADMAP on its first run), a DATE-column check in
+  `check-status-index.sh`, and `scripts/install-pre-commit.sh` wiring both
+  into a local pre-commit hook; all run in `ci-local.sh`.
+- **Bootstrap parity + passthrough** (2026-09-09): `--repo-interval`,
+  `--dlq-backoff`, `--log-dir-max-age`, `--log-dir-max-bytes` flow through
+  `tq bootstrap` into pool args and the generated `pool.conf`; the dry-run
+  now reports truthful crushrc change state (it always claimed "changed").
+
+### Changed
+- **Dirty-tree preflight requeues escalate** (2026-09-09): consecutive
+  refusals double the base backoff (capped at 15m) with ±20% jitter so a
+  sustained-dirty repo stops bouncing at the base delay, and the per-task
+  refusal log is rate-limited to once per minute. `agent-pool` also
+  `MkdirAll`s its `--log-dir` at startup instead of warning on the first
+  sweep.
+- **One status-color table + shared empty states + shared banner consts**
+  (2026-09-09): badge and board-accent colors come from the same
+  `statusColorTable`; the task table and board share one empty-state
+  helper; the serve banner text is a `webui` const shared by the CLI print
+  and the e2e parser (twice nearly broken by string drift).
+- **Journal browser opens at the live tail** (2026-09-09): `/api/facts`
+  gains a `after=-N` tail window and the browser's "load older" now pages
+  backward from the newest facts (prepending), instead of forward from
+  seq 0 while labeled "older".
+- **Postgres exhausted-path fact detail fixed** (2026-09-09): the final
+  `task.failed` fact classified as `transient` (SQLite says `exhausted`)
+  and the dead-letter fact carried no class detail — both now match the
+  SQLite store.
+
+### Fixed
+- **CI flakes deflaked** (2026-09-09): `TestHeartbeatExtendsLease` (40ms
+  lease expired before the first heartbeat on slow runners; now 500ms) and
+  `TestConcurrentClientsRace` (100ms SSE collect window deadlined during
+  dial under `-race`; now 500ms) — the two recurring red-master causes.
+- **Filter form no longer drops an active sort** (hidden `sort` input),
+  the screenshots script's detail URL uses a real task id (was a JSON
+  fragment), the fmtAge client/server parity is pinned by test, the ghost
+  `webui-css-drift-check` reference is gone, and the dead
+  `PostgresStore.migrateOnOpenFail` field is deleted (round-5 defect
+  batch, 2026-09-09).
+
 - **Admin writes in the dashboard — `tq serve --allow-writes`** (2026-09-09):
   an opt-in control layer (`$TQ_SERVE_WRITES=1`) registering exactly two
   CSRF-guarded routes — `POST /task/{id}/cancel` (pending → direct cancel
