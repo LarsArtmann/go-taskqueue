@@ -998,6 +998,23 @@ func cmdAgentPool(args []string) error {
 		}
 	}
 
+	// mintPass gates one budget-consuming pass: EVERY enqueue (harvested,
+	// review, status, CQA) must clear the guard immediately before it — a
+	// completion inside the same tick can spend the last slot after an
+	// earlier check passed, and the documented cap is "EVERY enqueue"
+	// (SECURITY.md). Returns false when the guard refused.
+	mintPass := func(name string, mint func()) bool {
+		if ok, reason := guard.Check(ctx, s); !ok {
+			log.Warn("budget: skipping "+name, "reason", reason)
+
+			return false
+		}
+
+		mint()
+
+		return true
+	}
+
 	runTick := func() {
 		// Sidecar retention: sweep aged logs before new work so a
 		// long-running pool's output directory cannot grow forever.
@@ -1018,44 +1035,36 @@ func cmdAgentPool(args []string) error {
 			}
 		}
 
-		if ok, reason := guard.Check(ctx, s); !ok {
-			log.Warn("budget: skipping harvest tick", "reason", reason)
+		if !mintPass("harvest tick", func() {
+			res, err := h.Run(ctx)
+			if err != nil {
+				log.Error("harvest failed", "err", err)
+			} else {
+				for _, en := range res.Enqueued {
+					log.Info(
+						"harvest: enqueued",
+						"repo",
+						en.Item.RepoName,
+						"item",
+						en.Item.Text,
+						"task",
+						en.TaskID.String(),
+					)
+				}
 
+				for class, n := range groupedSkips(res.Skipped) {
+					log.Info("harvest: skipped", "reason", class, "count", n)
+				}
+
+				log.Info("harvest tick done", "repos", res.Repos, "items", res.Items,
+					"enqueued", len(res.Enqueued), "skipped", len(res.Skipped))
+			}
+		}) {
 			return
 		}
 
-		res, err := h.Run(ctx)
-		if err != nil {
-			log.Error("harvest failed", "err", err)
-		} else {
-			for _, en := range res.Enqueued {
-				log.Info(
-					"harvest: enqueued",
-					"repo",
-					en.Item.RepoName,
-					"item",
-					en.Item.Text,
-					"task",
-					en.TaskID.String(),
-				)
-			}
-
-			for class, n := range groupedSkips(res.Skipped) {
-				log.Info("harvest: skipped", "reason", class, "count", n)
-			}
-
-			log.Info("harvest tick done", "repos", res.Repos, "items", res.Items,
-				"enqueued", len(res.Enqueued), "skipped", len(res.Skipped))
-		}
-
 		if sweeper != nil {
-			// The guard re-checks before EVERY minting pass: a completion
-			// inside this same tick can spend the last budget slot after the
-			// harvest-time check already passed, and the documented cap is
-			// "EVERY enqueue incl. status-minted" (SECURITY.md).
-			if ok, reason := guard.Check(ctx, s); !ok {
-				log.Warn("budget: skipping review sweep", "reason", reason)
-			} else {
+			mintPass("review sweep", func() {
 				stats, err := sweeper.Sweep(ctx)
 				if err != nil {
 					log.Error("review sweep failed", "err", err)
@@ -1064,13 +1073,11 @@ func cmdAgentPool(args []string) error {
 						"reviews", stats.ReviewsEnqueued, "known", stats.ReviewsKnown,
 						"fixes", stats.FixesEnqueued, "skipped", stats.Skipped)
 				}
-			}
+			})
 		}
 
 		if statusSweeper != nil {
-			if ok, reason := guard.Check(ctx, s); !ok {
-				log.Warn("budget: skipping status sweep", "reason", reason)
-			} else {
+			mintPass("status sweep", func() {
 				stats, err := statusSweeper.Sweep(ctx)
 				if err != nil {
 					log.Error("status sweep failed", "err", err)
@@ -1078,56 +1085,52 @@ func cmdAgentPool(args []string) error {
 					log.Info("status sweep done", "facts", stats.Facts,
 						"reports", stats.ReportsEnqueued, "known", stats.ReportsKnown, "skipped", stats.Skipped)
 				}
-			}
+			})
 		}
 
 		if cqaBridge == nil {
 			return
 		}
 
-		if ok, reason := guard.Check(ctx, s); !ok {
-			log.Warn("budget: skipping cqa ingest", "reason", reason)
-
-			return
-		}
-
-		fixTasks, err := cqaBridge.Collect(ctx)
-		if err != nil {
-			log.Error("cqa ingest failed", "err", err)
-
-			return
-		}
-
-		fresh := 0
-
-		for _, ft := range fixTasks {
-			got, err := q.Enqueue(ctx, ft.Template)
+		mintPass("cqa ingest", func() {
+			fixTasks, err := cqaBridge.Collect(ctx)
 			if err != nil {
-				log.Error("cqa enqueue failed", "key", ft.Template.DedupKey, "err", err)
+				log.Error("cqa ingest failed", "err", err)
 
-				continue
+				return
 			}
 
-			if got.Attempts == 0 && got.Status == task.Pending {
-				fresh++
+			fresh := 0
 
-				log.Info(
-					"cqa: enqueued fix task",
-					"repo",
-					ft.Project,
-					"file",
-					ft.File,
-					"issues",
-					len(ft.Issues),
-					"task",
-					got.ID.String(),
-				)
+			for _, ft := range fixTasks {
+				got, err := q.Enqueue(ctx, ft.Template)
+				if err != nil {
+					log.Error("cqa enqueue failed", "key", ft.Template.DedupKey, "err", err)
+
+					continue
+				}
+
+				if got.Attempts == 0 && got.Status == task.Pending {
+					fresh++
+
+					log.Info(
+						"cqa: enqueued fix task",
+						"repo",
+						ft.Project,
+						"file",
+						ft.File,
+						"issues",
+						len(ft.Issues),
+						"task",
+						got.ID.String(),
+					)
+				}
 			}
-		}
 
-		if len(fixTasks) > 0 {
-			log.Info("cqa tick done", "files", len(fixTasks), "new", fresh)
-		}
+			if len(fixTasks) > 0 {
+				log.Info("cqa tick done", "files", len(fixTasks), "new", fresh)
+			}
+		})
 	}
 
 	var watchTriggers <-chan struct{}

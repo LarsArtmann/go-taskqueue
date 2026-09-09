@@ -532,13 +532,14 @@ func (s *PostgresStore) Fail(
 
 			if err := s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.Failed, Owner: owner, Attempt: attempts, Error: errText,
-				Detail: failureDetail(evidence, "transient"),
+				Detail: failureDetail(evidence, "exhausted"),
 			}); err != nil {
 				return err
 			}
 
 			return s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: attempts, Error: errText,
+				Detail: json.RawMessage(`{"class":"exhausted"}`),
 			})
 		}
 
