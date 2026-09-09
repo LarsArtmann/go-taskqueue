@@ -31,6 +31,10 @@ type Store struct {
 	projectExclusive bool
 }
 
+// Store implements the queue contract at compile time; the conformance
+// suite pins the semantics.
+var _ queue.Store = (*Store)(nil)
+
 const postgresSchema = `
 CREATE TABLE IF NOT EXISTS tasks (
 	id            TEXT PRIMARY KEY,

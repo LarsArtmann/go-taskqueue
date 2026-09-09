@@ -30,6 +30,10 @@ type Store struct {
 	projectExclusive bool
 }
 
+// Store implements the queue contract at compile time; the white-box suite
+// below pins the semantics.
+var _ queue.Store = (*Store)(nil)
+
 // StoreOption configures optional Store behavior.
 type StoreOption func(*storeOptions)
 
