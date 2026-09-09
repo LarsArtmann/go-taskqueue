@@ -1,1 +1,5 @@
 permissions allow view ls grep glob edit write bash
+# >>> tq bootstrap (managed) >>>
+permissions allow view ls grep glob edit write bash
+model large zai/glm-5.3-flash --reasoning-effort xhigh
+# <<< tq bootstrap (managed) <<<
