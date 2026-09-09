@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -87,6 +88,98 @@ type Pool struct {
 	stopOnce sync.Once
 	mu       sync.Mutex
 	inFlight map[task.ID]struct{}
+
+	// preflight tracks consecutive requeues per task so a sustained-dirty
+	// repo escalates instead of bouncing at the base backoff, and the
+	// refusal log stays quiet once the situation is known.
+	preflightMu   sync.Mutex
+	preflightSeen map[task.ID]*preflightState
+}
+
+// preflightState is one task's consecutive-refusal tracker.
+type preflightState struct {
+	count   int
+	lastLog time.Time
+}
+
+// preflightMaxBackoff caps the dirty-tree requeue ladder.
+const preflightMaxBackoff = 15 * time.Minute
+
+// preflightLogInterval rate-limits the per-task refusal log: the first
+// refusal logs immediately, repeats stay quiet for this long.
+const preflightLogInterval = time.Minute
+
+// preflightDelay advances the task's refusal ladder and returns the next
+// requeue delay: base * 2^(n-1), capped, with ±20% jitter so many refused
+// tasks do not reclaim in lockstep.
+func (p *Pool) preflightDelay(id task.ID) time.Duration {
+	p.preflightMu.Lock()
+	defer p.preflightMu.Unlock()
+
+	st := p.preflightSeen[id]
+	if st == nil {
+		st = &preflightState{}
+
+		if p.preflightSeen == nil {
+			p.preflightSeen = make(map[task.ID]*preflightState)
+		}
+
+		p.preflightSeen[id] = st
+	}
+
+	st.count++
+
+	d := p.cfg.PreflightBackoff << min(st.count-1, 8) //nolint:gosec // shift bounded by min
+	if d <= 0 || d > preflightMaxBackoff {
+		d = preflightMaxBackoff
+	}
+
+	jitter := 0.8 + 0.4*rand.Float64()
+
+	return time.Duration(float64(d) * jitter)
+}
+
+// preflightShouldLog reports whether the refusal for this task should hit
+// the log now (first refusal, or the interval elapsed since the last one).
+// Assumes preflightDelay already ran for this refusal.
+func (p *Pool) preflightShouldLog(id task.ID) bool {
+	p.preflightMu.Lock()
+	defer p.preflightMu.Unlock()
+
+	st := p.preflightSeen[id]
+	if st == nil {
+		return true
+	}
+
+	if time.Since(st.lastLog) >= preflightLogInterval {
+		st.lastLog = time.Now()
+
+		return true
+	}
+
+	return false
+}
+
+// preflightCount reports the task's consecutive-refusal count (0 when
+// untracked) — used for the log line after preflightShouldLog.
+func (p *Pool) preflightCount(id task.ID) int {
+	p.preflightMu.Lock()
+	defer p.preflightMu.Unlock()
+
+	if st := p.preflightSeen[id]; st != nil {
+		return st.count
+	}
+
+	return 0
+}
+
+// preflightReset forgets the task's ladder after any non-preflight
+// outcome (it left the refusal loop: completed, failed, was cancelled).
+func (p *Pool) preflightReset(id task.ID) {
+	p.preflightMu.Lock()
+	defer p.preflightMu.Unlock()
+
+	delete(p.preflightSeen, id)
 }
 
 // New creates a worker pool. Call Start to run it.
@@ -248,6 +341,12 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	hbCancel()
 	<-hbDone
 
+	// Any non-preflight outcome leaves the refusal loop: forget the
+	// task's dirty-tree ladder so a later refusal starts fresh.
+	if _, isPreflight := errors.AsType[*executor.PreflightError](execErr); !isPreflight {
+		p.preflightReset(t.ID)
+	}
+
 	// Terminal writes (Complete/Fail) use the shutdown-surviving task context,
 	// so a draining task's outcome is never orphaned by the cancelled pool.
 	terminalCtx := ctx
@@ -285,12 +384,15 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// The executor refused to START: environment not ready (dirty repo,
 		// missing autonomy). Requeue WITHOUT burning an attempt — the task
 		// becomes claimable again once the delay passes, so the pool picks
-		// it up when the human has committed their work.
-		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, pre.Error(), p.cfg.PreflightBackoff); err != nil {
+		// it up when the human has committed their work. Consecutive
+		// refusals escalate (base * 2^n capped, ±20% jitter) so a
+		// sustained-dirty repo does not bounce at the base backoff.
+		delay := p.preflightDelay(t.ID)
+		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, pre.Error(), delay); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
-		} else {
+		} else if p.preflightShouldLog(t.ID) {
 			p.log.Warn("preflight refused; requeued without attempt burn",
-				"task", t.ID, "retry after", p.cfg.PreflightBackoff, "reason", pre.Cause.Error())
+				"task", t.ID, "retry after", delay, "consecutive", p.preflightCount(t.ID), "reason", pre.Cause.Error())
 		}
 
 		return

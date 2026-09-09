@@ -741,6 +741,12 @@ func cmdAgentPool(args []string) error {
 	// The sidecar writer reads the env at execution time; a --log-dir (or
 	// config-file log-dir) must reach it regardless of how it was set.
 	if *logDir != "" {
+		// Create it up front: the first sidecar sweep would otherwise
+		// warn (and a sidecar write could fail) when the dir is new.
+		if err := os.MkdirAll(*logDir, 0o755); err != nil {
+			return fmt.Errorf("log dir: %w", err)
+		}
+
 		os.Setenv("TQ_LOG_DIR", *logDir)
 	}
 
@@ -1342,11 +1348,11 @@ func cmdStats(args []string) error {
 		enc.SetIndent("", "  ")
 
 		return enc.Encode(statsPayload{
-			ByStatus:     byStatus,
-			ByProject:    byProject,
-			Budget:       budgetView{SpentToday: spent, Cap: *dailyBudget},
-			Lag:          consumerLag(ctx, s),
-			JournalHead:  head,
+			ByStatus:    byStatus,
+			ByProject:   byProject,
+			Budget:      budgetView{SpentToday: spent, Cap: *dailyBudget},
+			Lag:         consumerLag(ctx, s),
+			JournalHead: head,
 		})
 	}
 
@@ -1360,11 +1366,11 @@ func cmdStats(args []string) error {
 // statsPayload is the --json shape of `tq stats`: the aggregates a script or
 // dashboard consumes, never the raw task list (that is `tq tasks --json`).
 type statsPayload struct {
-	ByStatus     map[string]int            `json:"by_status"`
-	ByProject    map[string]map[string]int `json:"by_project,omitempty"`
-	Budget       budgetView                `json:"budget"`
-	Lag          []consumerLagEntry        `json:"consumer_lag,omitempty"`
-	JournalHead  int64                     `json:"journal_head"`
+	ByStatus    map[string]int            `json:"by_status"`
+	ByProject   map[string]map[string]int `json:"by_project,omitempty"`
+	Budget      budgetView                `json:"budget"`
+	Lag         []consumerLagEntry        `json:"consumer_lag,omitempty"`
+	JournalHead int64                     `json:"journal_head"`
 }
 
 type budgetView struct {
@@ -1416,7 +1422,7 @@ func printBudgetSpend(spent, cap int, scoped bool) {
 		return
 	}
 
-	fmt.Printf("\nbudget today  %d enqueued (pass --daily-budget N to compare against a cap)\n", spent)
+	fmt.Printf("\n%s  %d enqueued (pass --daily-budget N to compare against a cap)\n", label, spent)
 }
 
 // printConsumerLag renders the persisted journal-consumer cursors with
@@ -1787,6 +1793,8 @@ func cmdCancel(args []string) error {
 func cmdFacts(args []string) error {
 	fs := flag.NewFlagSet("facts", flag.ExitOnError)
 	after := fs.Int64("after", 0, "only facts with seq > this")
+	asJSON := fs.Bool("json", false, "JSON output of the fact list (full detail, non-truncating)")
+	withDetail := fs.Bool("detail", false, "print each fact's full detail JSON verbatim below its line (multi-line tails stay intact)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -1801,13 +1809,34 @@ func cmdFacts(args []string) error {
 		return err
 	}
 
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+
+		return enc.Encode(facts)
+	}
+
 	for _, f := range facts {
 		fmt.Println(formatFact(f))
+
+		if *withDetail {
+			fmt.Println(formatFactDetail(f))
+		}
 	}
 
 	fmt.Printf("(%d facts)\n", len(facts))
 
 	return nil
+}
+
+// formatFactDetail renders a fact's detail JSON verbatim and non-truncated
+// (multi-line verify tails stay intact), aligned under its fact line.
+func formatFactDetail(f journal.Fact) string {
+	if len(f.Detail) == 0 {
+		return "       detail: (none)"
+	}
+
+	return "       detail: " + string(f.Detail)
 }
 
 // formatFact renders one journal fact for humans. Dead-letter facts carry
