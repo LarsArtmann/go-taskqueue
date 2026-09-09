@@ -9,6 +9,9 @@ Every `docs/status/*.md` file must have a row here — `scripts/check-status-ind
 every forward-looking item is resolved (inline strikethroughs) move to
 `archived/` — the row above points at the archived path.
 
+Archive counter (update when moving files): 1 report in `archived/`,
+6 plans in `docs/planning/archived/` (2026-09-09).
+
 | Date       | Report                                                                         | Scope                                                          |
 | ---------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
 | 2026-09-09 | `2026-09-09_02-52_docs-health-second-order-self-review-four-defects-fixed.md`  | Second-order self-review: four defects in the audit itself found + fixed |

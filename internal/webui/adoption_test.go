@@ -145,3 +145,46 @@ func TestAdoptionTableCoversTemplates(t *testing.T) {
 		}
 	}
 }
+
+// TestAdoptionTablePinsCustomRows: the custom (non-library) row is part of
+// the same contract — the nowband, board columns/cards, and the other
+// hand-rolled surfaces are documented so nobody "migrates" them to library
+// components without touching the table (round-10 T26/M118).
+func TestAdoptionTablePinsCustomRows(t *testing.T) {
+	t.Parallel()
+
+	agents, err := os.ReadFile(filepath.Join("..", "..", "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read AGENTS.md: %v", err)
+	}
+
+	inSection := false
+
+	customRows := 0
+
+	for _, line := range strings.Split(string(agents), "\n") {
+		if strings.HasPrefix(line, "### ") {
+			inSection = strings.TrimSpace(line) == adoptionHeading
+
+			continue
+		}
+
+		if !inSection || !strings.HasPrefix(line, "|") {
+			continue
+		}
+
+		if strings.Contains(line, "| custom") {
+			customRows++
+
+			for _, pin := range []string{"nowband", "board"} {
+				if !strings.Contains(line, pin) {
+					t.Errorf("custom row lost its %q pin: %s", pin, line)
+				}
+			}
+		}
+	}
+
+	if customRows == 0 {
+		t.Fatal("adoption table lost its custom row entirely — hand-rolled surfaces are undocumented")
+	}
+}

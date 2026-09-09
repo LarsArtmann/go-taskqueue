@@ -11,14 +11,19 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// pruneReasonPrefix heads every cancellation reason a prune pass writes, so
-// a task trail always says where its withdrawal came from.
-const pruneReasonPrefix = "harvest --prune-stale: TODO_LIST item is now [x]: "
+// pruneReasonHead heads every prune-stale cancellation reason so the
+// journal has ONE voice for stale-item withdrawals — greppable across the
+// ticked and absent rules (01:43 report f2).
+const pruneReasonHead = "harvest --prune-stale: TODO_LIST item "
+
+// pruneReasonPrefix heads ticked-item cancellations: the item is still in
+// the file and now `[x]`.
+const pruneReasonPrefix = pruneReasonHead + "is now [x]: "
 
 // pruneAbsentReasonPrefix heads cancellations of tasks whose item text is
 // gone from the file entirely (completed-and-deleted per the docs
 // convention, or reworded — which armed a new key and a new task).
-const pruneAbsentReasonPrefix = "harvest --prune-stale: TODO_LIST item no longer present (key %s): item withdrawn or reworded"
+const pruneAbsentReasonPrefix = pruneReasonHead + "no longer present (key %s): item withdrawn or reworded"
 
 // PruneWhy records which stale rule withdrew (or reported) a task.
 type PruneWhy string

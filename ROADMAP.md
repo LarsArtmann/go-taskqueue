@@ -264,9 +264,11 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 Raw ideas with enough shape to act on live in
 [docs/planning/2026-09-06_deferred-bundle-seeds.md](docs/planning/2026-09-06_deferred-bundle-seeds.md):
-Postgres claim SQL sketch (D80), the internal→public promotion order (D82),
-cron recurring tasks via time-bucketed dedup keys (D83), per-repo timeout
-ladders (D90), session chains (D94), cross-repo DAG templates (D97), the
-AI prioritizer hook (D98), retry-policy table (D99), fencing-token design
-note (D100), and DB rotation/backup guidance (D96). The v0.3 design pack
-lives in `docs/planning/2026-09-08_round5-m23-feature-designs.md`.
+the internal→public promotion order (D82), cron recurring tasks via
+time-bucketed dedup keys (D83), session chains (D94), cross-repo DAG
+templates (D97), the AI prioritizer hook (D98), retry-policy table (D99),
+fencing-token design note (D100), and DB rotation/backup guidance (D96).
+D80 (Postgres store), D90 (per-repo timeouts, shipped as `--repo-timeout`)
+and D91 (agent-binary version probe) shipped 2026-09-08 — the seeds file
+carries their ✅ stamps. The v0.3 design pack lives in
+`docs/planning/2026-09-08_round5-m23-feature-designs.md`.
