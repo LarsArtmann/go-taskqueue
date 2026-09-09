@@ -82,11 +82,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   both now run from inside their module directory.
 - `internal/harvest`: the audit and prune sweeps shared an identical
   20-line repo/task-index preamble; extracted into `projectTaskIndex`.
+- Sub-module tags `internal/{executor,queue}/v0.2.0` had been re-cut
+  locally at the new tree on the false premise they were unpushed; both
+  were already published, so the published signed tags were restored
+  (tags are immutable once on the remote/proxy — the post-split content
+  ships with the next release's module tags, cut automatically by
+  `scripts/release.sh`).
 
 ### Removed
 - Deprecated pre-convergence aliases `executor.CrushPayload`,
   `executor.RenderCrushPayload`, `executor.TaskTypeCrush` (zero in-repo
-  users; the unpushed executor module tag is re-cut at the new tree).
+  users; ships with the next `internal/executor` version tag — the
+  published v0.2.0 tag is immutable and stays at its release tree).
 
 ## [v0.2.0] - 2026-09-09
 ### Added

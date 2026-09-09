@@ -130,6 +130,16 @@ FULLY_FUNCTIONAL, had zero tests — now tested).
    `./scripts/smoke/release-gates.sh` (its require-tag check validates the
    real go.mod against exactly these tags).
 
+   > **CORRECTION (2026-09-10, next session):** the re-cut WAS executed at
+   > 0637d63, but the "unpushed" premise was half false — the v0.2.0 release
+   > push had already published `internal/{executor,queue}/v0.2.0` (signed,
+   > at 888cb77), which made the re-cut an illegal rewrite of published
+   > tags (immutable once on the remote/proxy). Both were restored to the
+   > published objects; `internal/queue/{sqlite,postgres}/v0.2.0` stay
+   > re-cut (genuinely new, never pushed). The post-split executor/queue
+   > content ships with the next release's module tags (`release.sh` cuts
+   > them). Symptom that surfaced this: `git sync` rejecting the tag fetch.
+
 ## c) NOT STARTED (deliberate — routed, not abandoned)
 
 - The 15 TODO_LIST items filed by the harvest (govulncheck, gosec, dead-export
@@ -197,6 +207,12 @@ and the two ROADMAP ideas — not duplicated here per docs-health routing
 1. **Push authorization** (carried, now larger): ~40 commits + 8 local tags,
    all gates green on the exact tree. Push now, or hold for a release moment?
    (If held: the 4 stale sub-module tags get re-cut locally either way.)
+
+   > **UPDATE (2026-09-10):** resolved in part — master (through 0637d63),
+   > root v0.1.0/v0.2.0 and the five round-1 module tags are now on the
+   > remote; still latent: `internal/queue/{sqlite,postgres}/v0.2.0`. The
+   > "re-cut either way" clause was wrong for the published tags — see the
+   > correction under §b.1 (published tags must never move).
 2. **`internal/consumer` — wire or delete?** (carried, unchanged: zero
    production importers; ADR-0009 dispatcher; the ADR outcome should be
    written either way.)

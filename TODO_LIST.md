@@ -46,7 +46,7 @@ not here.
 
 ## Owner-blocked decisions (BLOCKED items are skipped by the pool)
 
-- [ ] Push authorization: ~30 commits + 8 local tags (root go-install fix, five round-1 module tags, two backend tags) are latent until pushed; after push run the per-module proxy check (`go list -m -versions`) + the real clean-room `go install` (docs/status/2026-09-09_23-47_round2-queue-backend-split.md f1/f13) — BLOCKED: owner push authorization (never push without it)
+- [ ] Push authorization (updated 2026-09-10): master + root v0.1.0/v0.2.0 + the five round-1 module tags are now on the remote (owner pushed); still latent: the two backend tags `internal/queue/{sqlite,postgres}/v0.2.0` — after their push run the per-module proxy check (`go list -m -versions`) + the real clean-room `go install` (docs/status/2026-09-09_23-47_round2-queue-backend-split.md f1/f13); post-split executor/queue content waits for the next release's module tags (published v0.2.0 tags are immutable; restored after a mistaken local re-cut) — BLOCKED: owner push authorization (never push without it)
 - [ ] `internal/consumer`: wire into `tq serve` journal tailing or delete the ghost package (ADR-0009 dispatcher, zero production importers; write the ADR outcome either way) (23:47 f2/g1) — BLOCKED: owner intent call
 - [ ] Decide the three near-identical interfaces (`consumer.Source`, `budget.FactSource`, `papdashboard.FactSource`) — one interface or documented duplication (23:47 f4) — BLOCKED: owner architecture decision
 - [ ] Postgres CLI store wiring (`--store postgres://…` on worker/serve/agent-pool): gives queue/postgres its consumer; root re-adds pgx; sequence BEFORE any public-API promotion (23:47 f5/g3) — BLOCKED: owner release-timing call (v0.3?)
