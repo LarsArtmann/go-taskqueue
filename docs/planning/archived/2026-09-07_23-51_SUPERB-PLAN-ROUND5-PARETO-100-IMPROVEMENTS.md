@@ -8,6 +8,11 @@
 > that delivers 64%, the 20% that delivers 80%, and keep the other 80% of
 > items for the last 20% of value. Commit **and push** explicitly authorized
 > by the owner for this plan artifact.
+>
+> **Status:** EXECUTED 2026-09-08 — M1–M27 shipped; completion reports:
+> `docs/status/2026-09-08_17-20_round5-complete-m11-m27.md` (and the wave
+> reports it links). Surviving open items live in TODO_LIST.md / ROADMAP.md.
+> **Archived 2026-09-09 (docs-health):** fully executed — moved from docs/planning/.
 
 ---
 

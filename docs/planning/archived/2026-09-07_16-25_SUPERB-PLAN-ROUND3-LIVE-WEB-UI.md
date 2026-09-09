@@ -4,7 +4,8 @@
 **Status:** EXECUTED 2026-09-07 — W01–W14 (all Phase A–C fine steps) shipped,
 verified (`go test ./... -race`, smoke script, `nix build`), committed; see
 `docs/status/2026-09-07_18-41_round3-live-web-ui-executed-verified-committed.md`.
-Phase D (W15–W22 polish/hardening) tracked but not scheduled.
+Phase D (W15–W22 polish/hardening) largely shipped since (auth, pagination, board, admin writes); remainder on ROADMAP.
+> **Archived 2026-09-09 (docs-health):** fully executed — moved from docs/planning/.
 **Scope:** Productionize the "Web UI over the projections" raw idea from
 ROADMAP.md into a live-updating, read-only ops dashboard served by
 `tq serve` — the go-taskqueue equivalent of samber-do-auditlog's `live/`

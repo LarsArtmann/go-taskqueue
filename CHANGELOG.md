@@ -139,7 +139,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `/task/{id}` (`internal/webui`; decision record:
   [docs/adr/0003-web-ui-architecture.md](docs/adr/0003-web-ui-architecture.md),
   execution plan:
-  [docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md](docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md);
+  [docs/planning/archived/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md](docs/planning/archived/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md);
   smoke: `scripts/smoke/webui.sh`).
 - Deferred-bundle seeds (plan C27): structured result self-report from
   agents (`TQ_RESULT:` line → `files_changed`/`commit_sha` in the result

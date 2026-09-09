@@ -279,26 +279,26 @@ FromSeq (explicit) > persisted watermark > HeadSeq (first run)
   / `resumed from checkpoint N` / `no checkpoint, starting at head N`) —
   that line is the operator's first diagnostic when alerts look wrong.
 
-## 7. Implementation checklist (for the f10 migration task; nothing done here)
+## 7. Implementation checklist (~~for the f10 migration task; nothing done here~~ all eight rows shipped 2026-09-08, ROUND6 P1–P5; see `docs/status/2026-09-08_20-58_round6-execution-watermarks-bus-actors.md` and the CHANGELOG `[Unreleased]` watermarks entry)
 
-- [ ] `watermarks` table in the schema const + `Watermark`/`SaveWatermark`
+- [x] `watermarks` table in the schema const + `Watermark`/`SaveWatermark`
       on `queue.Store` (monotonic upsert) + store tests (absent→0, save,
       monotonic guard, legacy DB migrated).
-- [ ] `WatermarkStore` port injected into `papdashboard.New`; `FactSource`
+- [x] `WatermarkStore` port injected into `papdashboard.New`; `FactSource`
       gains read-only `FactsForTask` (§5.1).
-- [ ] `startWatermark` three-branch resolution + startup log (§6).
-- [ ] Batch-end checkpoint in `Run`'s drain loop; checkpoint failure treated
+- [x] `startWatermark` three-branch resolution + startup log (§6).
+- [x] Batch-end checkpoint in `Run`'s drain loop; checkpoint failure treated
       as a forward failure (§3).
-- [ ] Replace `alerted` map with `FactsForTask` derivation (§5.1); delete
+- [x] Replace `alerted` map with `FactsForTask` derivation (§5.1); delete
       the map.
-- [ ] Tests (05:24 f15): restart-mid-stream loses zero facts; re-forwarded
+- [x] Tests (05:24 f15): restart-mid-stream loses zero facts; re-forwarded
       facts keep identical idempotency keys; checkpoint write failure does
       not advance the cursor; FromSeq precedence; first-run bootstrap = head;
       resolve-after-restart closes the alert that predated the restart.
-- [ ] `tq watermarks show/set` (05:24 f41) + AGENTS.md line: bridge
+- [x] `tq watermarks show/set` (05:24 f41) + AGENTS.md line: bridge
       checkpoints live in `watermarks`, bridge still never mutates task or
       fact state.
-- [ ] Package doc comment (`papdashboard.go:7-13`) rewritten: the
+- [x] Package doc comment (`papdashboard.go:7-13`) rewritten: the
       across-restart story changes from "incidents while down are not
       replayed" to "resumed from checkpoint; re-sends are idempotent".
 

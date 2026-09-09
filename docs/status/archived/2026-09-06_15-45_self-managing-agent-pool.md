@@ -1,5 +1,9 @@
 # Status Report — Self-Managing Agent Pool (go-taskqueue)
 
+> **Archived 2026-09-09 (docs-health):** every forward-looking item is
+> resolved inline (shipped, routed to TODO_LIST/ROADMAP, or closed with a
+> recorded verdict) — moved from docs/status/.
+
 **Date:** 2026-09-06 15:45 CEST
 **Session scope:** Build the "self-managing pool of Crush agents that eats all TODOs/backlogs and manages cross-repo work" on top of go-taskqueue. Report covers THIS session only.
 **Co-development context:** A parallel agent session worked the same repo simultaneously the entire time (dedup keys, agent executor, CQA/PapDashboard bridges, CLI renames). Several features below are joint work — I note which parts were mine.
@@ -76,39 +80,39 @@ Top block (actionable now, high impact):
 17. ~~Harvested tasks should carry a `verify` command sourced from repo config~~ done (harvest pins the repo .tq-verify into every payload)
 18. ~~`nix build` + `nix flake check` in this session's follow-up (vendorHash dance if needed)~~ done (vendorHash re-pinned; nix build + nix flake check green (16:19 report))
 19. ~~Pre-v0.1.0: history squash decision for the daemon's mid-edit commits, then tag + release + pkg.go.dev~~ done (tag v0.1.0 + GitHub pre-release, proxy + pkg.go.dev verified (2026-09-06/07))
-20. Cancelled-task dedup semantics: decide whether `dedup_key` should ignore cancelled rows (re-open support) — schema-affecting
+20. ~~Cancelled-task dedup semantics: decide whether `dedup_key` should ignore cancelled rows (re-open support) — schema-affecting~~ **Won't implement — owner decision, live as a BLOCKED row in TODO_LIST.md + ROADMAP Open questions.**
 
 Second block (hardening/polish):
-21. Cross-repo DAG from harvest (configurable: "docs item depends on code item" templates)
-22. `tq agent-pool --once` (single harvest+drain pass; scripts/tests/schedulers)
-23. Structured per-task result payload: {files_changed, commit_sha, verify_output_tail}
-24. Heartbeat cadence scaled to lease for very long tasks (alert if lease renewal approaches RTT)
-25. Output tail truncation is 4–8 KB; store full agent stdout to a sidecar file, reference by path
-26. `tq harvest --json` for dashboards
-27. Rate-limit concurrent crush sessions per machine (crush itself may not like N parallel instances)
-28. `.crushrc` permissions lint: warn when a repo grants `bash` but pool runs without sandboxing
-29. Git worktree isolation option for agents (never touch the user's checkout)
-30. PR-mode: agent commits to a branch + opens PR instead of committing to master
-31. Session continuation: `AgentPayload.Session` exists — wire "follow-up on previous item" chains
-32. Timeout defaults per repo size (small repos don't need 45 m)
-33. `tq dlq --rescue-all --older-than` bulk rescue
-34. Metrics endpoint (Prometheus) over the facts projection
-35. `tq tail -f` → SSE/PapDashboard fan-out (already on ROADMAP v0.3)
-36. Property test: dedup keys stable under whitespace reflow, unique across same-text repos
-37. Fuzz the TODO parser (malformed markdown, CRLF, BOM)
-38. Windows path handling in harvest (repo-name keys, separators) — untested platform
-39. i18n-safe item extraction (non-ASCII TODO text hashing)
-40. `internal/` → public packages decision (ADR-0002 follow-up: importable library API before external users)
-41. Example corpus: `examples/agent-pool/` runnable demo repo with `.crushrc` + TODO_LIST.md
-42. Docs: SECURITY.md (what autonomy grants mean, blast radius of `bash` permission)
-43. Guard: refuse `--projects-dir /` or `$HOME` (harvest scanning catastrophically wide)
-44. `tq harvest --repo-subset` glob filter (296 mirrors → curated subset)
-45. Queue DB rotation/backup guidance (single file = single point of failure)
-46. Chaos test: SIGKILL a pool mid-agent-run; assert lease-expiry reclaim + no double-complete
-47. GitHub Actions job running the stub-agent e2e (no API cost, catches CLI regressions)
-48. `crush` version detection at pool start (flag contract drift early-warning, fail with guidance)
-49. Teardown: clean `/tmp/tq-smoke`, `/tmp/tq`, `/tmp/tq-crush-test` artifacts from this session
-50. Decide: should the pool manage go-taskqueue itself (needs `.crushrc` here — see questions)
+21. ~~Cross-repo DAG from harvest (configurable: "docs item depends on code item" templates)~~ done (routed: ROADMAP raw ideas (D97 seed))
+22. ~~`tq agent-pool --once` (single harvest+drain pass; scripts/tests/schedulers)~~ done (tq agent-pool --once shipped)
+23. ~~Structured per-task result payload: {files_changed, commit_sha, verify_output_tail}~~ done (TQ_RESULT structured result (files_changed, commit_sha) shipped)
+24. ~~Heartbeat cadence scaled to lease for very long tasks (alert if lease renewal approaches RTT)~~ done (heartbeat lease/4 cadence, pinned by test)
+25. ~~Output tail truncation is 4–8 KB; store full agent stdout to a sidecar file, reference by path~~ done (--log-dir full-output sidecars shipped)
+26. ~~`tq harvest --json` for dashboards~~ done (tq harvest --json shipped)
+27. ~~Rate-limit concurrent crush sessions per machine (crush itself may not like N parallel instances)~~ done (--max-concurrent-agents machine-wide cap shipped)
+28. ~~`.crushrc` permissions lint: warn when a repo grants `bash` but pool runs without sandboxing~~ **Won't implement — subsumed by SECURITY.md hardening checklist + per-repo .crushrc review.**
+29. ~~Git worktree isolation option for agents (never touch the user's checkout)~~ done (PR-mode/worktree PoC scripts (scripts/poc/); PR enablement is a ROADMAP open question)
+30. ~~PR-mode: agent commits to a branch + opens PR instead of committing to master~~ done (PoC shipped; OPEN_PR policy is a ROADMAP open question)
+31. ~~Session continuation: `AgentPayload.Session` exists — wire "follow-up on previous item" chains~~ done (routed: ROADMAP session chains (D94 seed))
+32. ~~Timeout defaults per repo size (small repos don't need 45 m)~~ done (--repo-timeout name=duration shipped)
+33. ~~`tq dlq --rescue-all --older-than` bulk rescue~~ done (tq dlq --rescue-all --older-than shipped)
+34. ~~Metrics endpoint (Prometheus) over the facts projection~~ done (examples/api PoC; /metrics merge routed to ROADMAP)
+35. ~~`tq tail -f` → SSE/PapDashboard fan-out (already on ROADMAP v0.3)~~ done (tq serve SSE fan-out shipped)
+36. ~~Property test: dedup keys stable under whitespace reflow, unique across same-text repos~~ done (dedup-key property test shipped)
+37. ~~Fuzz the TODO parser (malformed markdown, CRLF, BOM)~~ done (FuzzParseRepo + nightly campaign shipped)
+38. ~~Windows path handling in harvest (repo-name keys, separators) — untested platform~~ done (routed: GOOS=windows gate + golden i18n vectors shipped; runtime honesty stays on ROADMAP)
+39. ~~i18n-safe item extraction (non-ASCII TODO text hashing)~~ done (golden non-ASCII dedup-key vectors shipped)
+40. ~~`internal/` → public packages decision (ADR-0002 follow-up: importable library API before external users)~~ done (routed: deferred-bundle seeds D82)
+41. ~~Example corpus: `examples/agent-pool/` runnable demo repo with `.crushrc` + TODO_LIST.md~~ done (routed: ROADMAP example corpus)
+42. ~~Docs: SECURITY.md (what autonomy grants mean, blast radius of `bash` permission)~~ done (SECURITY.md shipped (trust model, blast radius, hardening checklist))
+43. ~~Guard: refuse `--projects-dir /` or `$HOME` (harvest scanning catastrophically wide)~~ done (--projects-dir guard + TestCheckProjectsDir shipped)
+44. ~~`tq harvest --repo-subset` glob filter (296 mirrors → curated subset)~~ done (tq harvest --repo-subset shipped)
+45. ~~Queue DB rotation/backup guidance (single file = single point of failure)~~ done (routed: deferred-bundle seeds D96)
+46. ~~Chaos test: SIGKILL a pool mid-agent-run; assert lease-expiry reclaim + no double-complete~~ done (internal/e2e chaos test shipped)
+47. ~~GitHub Actions job running the stub-agent e2e (no API cost, catches CLI regressions)~~ done (CI runs the stub-agent e2e)
+48. ~~`crush` version detection at pool start (flag contract drift early-warning, fail with guidance)~~ done (AgentVersion probe + startup log shipped)
+49. ~~Teardown: clean `/tmp/tq-smoke`, `/tmp/tq`, `/tmp/tq-crush-test` artifacts from this session~~ **Won't implement — session artifacts, moot.**
+50. ~~Decide: should the pool manage go-taskqueue itself (needs `.crushrc` here — see questions)~~ done (ANSWERED 2026-09-07: the pool runs on this repo (ROADMAP records it))
 
 (Items 1–20 are TODO_LIST.md-grade; 21–50 are ROADMAP fuel — TODO_LIST.md already carries the actionable subset.)
 

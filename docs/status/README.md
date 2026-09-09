@@ -5,7 +5,9 @@ session did, verified, and left open; they are historical records, not
 living documents (re-verify before treating any claim as current).
 
 Every `docs/status/*.md` file must have a row here — `scripts/check-status-index.sh`
-(wired into `scripts/ci-local.sh`) fails on unindexed reports.
+(wired into `scripts/ci-local.sh`) fails on unindexed reports. Reports whose
+every forward-looking item is resolved (inline strikethroughs) move to
+`archived/` — the row above points at the archived path.
 
 | Date       | Report                                                                         | Scope                                                          |
 | ---------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
@@ -41,7 +43,7 @@ Every `docs/status/*.md` file must have a row here — `scripts/check-status-ind
 | 2026-09-06 | `2026-09-06_18-34_round2-session-status-c06-c13-c16-c18-done-ci-incident.md`   | Round-2 slices 1–2 + CI incident                               |
 | 2026-09-06 | `2026-09-06_18-00_round2-execution-slice1-released-slice2-hardening.md`        | Round-2 slice 1 shipped, slice 2 hardening                     |
 | 2026-09-06 | `2026-09-06_16-19_docs-health-audit-six-docs.md`                               | Docs-health audit of the six living documents                  |
-| 2026-09-06 | `2026-09-06_15-45_self-managing-agent-pool.md`                                 | Self-managing agent pool: first session report                 |
+| 2026-09-06 | `archived/2026-09-06_15-45_self-managing-agent-pool.md`                        | Self-managing agent pool: first session report (fully resolved, archived 2026-09-09) |
 
 Earlier round-1 sessions (2026-09-05/06) live in `docs/planning/` alongside
 their plans; the round-2 report series above is where the report convention

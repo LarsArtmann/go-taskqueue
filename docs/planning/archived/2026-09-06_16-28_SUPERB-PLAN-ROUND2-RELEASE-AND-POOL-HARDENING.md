@@ -8,6 +8,7 @@ C04 (2026-09-06). Completion report:
 `docs/status/2026-09-06_19-49_round2-complete-c14-c15-c19-c27-status-and-debt.md`;
 surviving open items live in TODO_LIST.md / ROADMAP.md (docs-health pass
 2026-09-07).
+> **Archived 2026-09-09 (docs-health):** fully executed — moved from docs/planning/.
 **Scope:** Everything currently known-open: 19 TODO_LIST items, the 10 audit
 findings from the 16:19 status report, and the ROADMAP backlog — deduplicated,
 Pareto-ranked, and split into 26 coarse (30–100 min) + 100 fine (≤12 min) tasks.
