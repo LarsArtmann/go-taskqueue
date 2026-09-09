@@ -49,10 +49,13 @@ if [ -n "$bad" ]; then
 	echo "FAIL: absolute replace paths are not portable"
 	exit 1
 fi
-bad="$( { grep -hE '^\tgithub.com/larsartmann/go-taskqueue/internal/' go.mod internal/*/go.mod; } | grep -v ' v0.0.0$' || true)"
+bad="$( { grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' go.mod internal/*/go.mod; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
 if [ -n "$bad" ]; then
 	echo "$bad"
-	echo "FAIL: internal requires must be pinned to v0.0.0 (replace decides resolution)"
+	echo "FAIL: internal requires must be real tagged versions (vX.Y.Z) —"
+	echo "go install of the published module resolves sub-modules through the"
+	echo "proxy, where v0.0.0 never exists (ADR-0011; local replaces make the"
+	echo "version cosmetic in-repo, which is why a wrong pin stays invisible)"
 	exit 1
 fi
 

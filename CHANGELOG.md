@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+### Changed
+- **Multi-module split (ADR-0011)**: the library core — `internal/task`,
+  `internal/journal`, `internal/queue`, `internal/executor`,
+  `internal/worker` — is now five sub-modules (import paths unchanged;
+  app layer stays in the root module). The layer DAG is compiler-enforced;
+  every CI gate gained a per-module `GOWORK=off` counterpart. Requires point
+  at real subdirectory tags (`internal/*/v0.2.0`, cut with the split) so
+  `go install` keeps working; relative `replace` directives serve local dev.
+- All `errors.As` call sites migrated to the Go 1.26 generic
+  `errors.AsType[E]`; sentinel `errors.Is` matches deliberately kept.
+- `scripts/release.sh` now allows exactly the sibling-relative sub-module
+  replaces, verifies every internal require has its subdirectory tag before
+  a release, and cuts/pushes the internal tags with the release.
+- The agent pool's default verify command for Go repos walks nested
+  `go.mod` files, so multi-module repos verify for real (a `find -execdir`
+  variant was rejected: it swallows inner exit codes).
+### Fixed
+- Version-surface drift: flake.nix still declared 0.1.0 after the v0.2.0
+  release, so nix-built binaries reported the wrong version (now 0.2.0).
+- Nightly fuzz campaigns and the Postgres conformance CI job used directory
+  package patterns that silently stop matching across module boundaries;
+  both now run from inside their module directory.
+- `internal/harvest`: the audit and prune sweeps shared an identical
+  20-line repo/task-index preamble; extracted into `projectTaskIndex`.
+
 ## [v0.2.0] - 2026-09-09
 ### Added
 - **Self-cleaning pool relaunches + absent-item prune policy** (2026-09-09):

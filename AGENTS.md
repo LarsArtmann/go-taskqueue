@@ -29,7 +29,9 @@ for m in task journal queue executor worker; do
 done
 ```
 
-Internal requires are pinned at `v0.0.0` + relative `replace` (NO go.work —
+Internal requires point at real tagged versions (never `v0.0.0` —
+`go install` resolves them via the proxy; `internal/*/vX.Y.Z` subdirectory
+tags ride every release) + relative `replace` for local dev (NO go.work —
 replace-only by decision); `go test ./internal/foo` from root FAILS by design
 (cd into the module instead).
 

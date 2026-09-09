@@ -32,7 +32,9 @@
 
       go-standard = {
         pname = "go-taskqueue";
-        version = "0.1.0";
+        # Keep in sync with the latest release tag (and the ldflags line
+        # below) — release.sh does not bump this; `tq version` reports it.
+        version = "0.2.0";
         vendorHash = "sha256-2zQ9uUd1W19hVj1Fw3yzak+6DEYIVglN1Rdddo0VIlk=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
@@ -65,7 +67,7 @@
           '';
           # `tq version` reports the release, not "dev" (round-5 M25/F133).
           # Keep in sync with go-standard.version above.
-          buildFlagsArray = [ "-ldflags=-X main.version=0.1.0" ];
+          buildFlagsArray = [ "-ldflags=-X main.version=0.2.0" ];
         };
 
         shellExtraEnv = {

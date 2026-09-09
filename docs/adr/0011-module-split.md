@@ -31,11 +31,14 @@ layer.
    go.work+replace default: the buildflow-managed .gitignore excludes
    go.work, and eliminating the second source of truth removes the drift
    failure mode entirely.
-4. **Versioning: shared version, replace-gated.** A release bumps the root
-   and every `internal/<pkg>/vX.Y.Z` subdirectory tag together (a lone root
-   tag cannot satisfy a sub-module on the proxy). Until any module is
-   promoted out of internal/, nothing is ever fetched — replace decides.
-   `scripts/release.sh` must grow the subdirectory tags before any promotion.
+4. **Versioning: shared version, proxy-resolvable.** Root and sub-modules
+   are released together: release.sh cuts `internal/<pkg>/vX.Y.Z`
+   subdirectory tags alongside the root tag (local dev keeps relative
+   `replace` directives, which consumers ignore). Requires point at real
+   tagged versions — never `v0.0.0` — because `go install` of the published
+   module resolves the sub-modules through the proxy, where `v0.0.0` does
+   not exist. The five `internal/*/v0.2.0` tags were cut with the split
+   itself.
 5. **Every gate gets a per-module counterpart.** `./...` never descends into
    nested modules, so root gates keep passing while silently skipping the
    five modules. ci-local.sh and ci.yml (both Linux and Windows jobs) run
