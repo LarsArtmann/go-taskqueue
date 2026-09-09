@@ -414,7 +414,24 @@ func TestVerifyStrategy(t *testing.T) {
 		files   map[string]string
 		wantCmd string
 	}{
-		{"go module", map[string]string{"go.mod": "module x\n"}, "go build ./... && go test ./... -count=1"},
+		{
+			"go module",
+			map[string]string{"go.mod": "module x\n"},
+			"go build ./... && go test ./... -count=1" +
+				" && find . -mindepth 2 -name go.mod -not -path '*/vendor/*'" +
+				" -execdir sh -c 'go build ./... && go test ./... -count=1' \\;",
+		},
+		{
+			"multi-module go repo detects by root marker, same command",
+			map[string]string{
+				"go.mod":                "module x\n",
+				"sub/go.mod":            "module x/sub\n",
+				"internal/queue/go.mod": "module x/internal/queue\n",
+			},
+			"go build ./... && go test ./... -count=1" +
+				" && find . -mindepth 2 -name go.mod -not -path '*/vendor/*'" +
+				" -execdir sh -c 'go build ./... && go test ./... -count=1' \\;",
+		},
 		{"package.json", map[string]string{"package.json": "{}"}, "npm test --silent"},
 		{"makefile", map[string]string{"Makefile": "all:\n\ttrue\n"}, "make test"},
 		{"flake", map[string]string{"flake.nix": "{}"}, "nix build && nix flake check"},

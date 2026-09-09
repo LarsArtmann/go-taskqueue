@@ -24,9 +24,25 @@ jobs:
       - name: Build
         run: go build ./...
       - name: Windows build (cross-compile gate)
-        run: GOOS=windows go build ./... && GOOS=windows go vet ./...
+        run: |
+          GOOS=windows go build ./... && GOOS=windows go vet ./...
+          for m in task journal queue executor worker; do
+            ( cd "internal/$m" && GOWORK=off GOOS=windows go build ./... && GOWORK=off GOOS=windows go vet ./... ) || exit 1
+          done
       - name: Test
         run: go test ./... -count=1 -race -timeout 120s
+      - name: Module isolation gates (GOWORK=off per sub-module)
+        # ./... from the root never descends into nested modules, so without
+        # this loop the five sub-modules (internal/{task,journal,queue,
+        # executor,worker}) would silently drop out of every root gate.
+        run: |
+          for m in task journal queue executor worker; do
+            echo "== internal/$m"
+            ( cd "internal/$m" \
+              && GOWORK=off go build ./... \
+              && GOWORK=off go vet ./... \
+              && GOWORK=off go test ./... -count=1 -timeout 120s ) || exit 1
+          done
       - name: Gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - name: Lint (golangci-lint, config in .golangci.yml)
@@ -77,6 +93,15 @@ jobs:
           go-version: stable
       - name: Test
         run: go test ./... -count=1 -timeout 300s
+      - name: Module isolation gates (per sub-module)
+        shell: bash
+        run: |
+          for m in task journal queue executor worker; do
+            echo "== internal/$m"
+            ( cd "internal/$m" \
+              && GOWORK=off go build ./... \
+              && GOWORK=off go test ./... -count=1 -timeout 300s ) || exit 1
+          done
 
   test-postgres:
     # Postgres store conformance (round-5 M21/ADR-0007): the same semantics

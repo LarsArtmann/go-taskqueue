@@ -478,7 +478,11 @@ func ReadTQVerify(repoDir string) string { return readTQVerify(repoDir) }
 // defaultVerify picks a sensible verification command for a repo.
 func defaultVerify(repo string) string {
 	if _, err := os.Stat(filepath.Join(repo, "go.mod")); err == nil {
-		return "go build ./... && go test ./... -count=1"
+		// Root ./... never descends into nested modules, so a multi-module
+		// repo would verify vacuously; walk every go.mod below the root.
+		return "go build ./... && go test ./... -count=1" +
+			" && find . -mindepth 2 -name go.mod -not -path '*/vendor/*'" +
+			" -execdir sh -c 'go build ./... && go test ./... -count=1' \\;"
 	}
 
 	if _, err := os.Stat(filepath.Join(repo, "package.json")); err == nil {

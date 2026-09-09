@@ -43,15 +43,18 @@ for campaign in "${campaigns[@]}"; do
 	# Hermetic GOCACHE: the ambient cache can be a shared mount where the fuzz
 	# corpus never lands, and a private cache keeps the campaign independent of
 	# whatever else is building concurrently (agent pools run go test here).
+	# Run from inside the package dir: pkg_dir may be its own Go module
+	# (internal/executor is), and directory patterns from the repo root never
+	# cross module boundaries.
 	echo "fuzzing $target in $pkg_dir for $fuzztime (private GOCACHE=$cache)"
-	if ! GOCACHE="$cache" go test "./$pkg_dir" -run '^$' -fuzz "^$target\$" -fuzztime "$fuzztime"; then
+	if ! (cd "$pkg_dir" && GOCACHE="$cache" go test . -run '^$' -fuzz "^$target\$" -fuzztime "$fuzztime"); then
 		echo "FUZZ FAILURE: go test wrote the crash input to $seed_dir" >&2
-		echo "Reproduce with: go test ./$pkg_dir -run '^$target\$'" >&2
+		echo "Reproduce with: (cd $pkg_dir && go test . -run '^$target\$')" >&2
 		exit 1
 	fi
 
 	# Interesting inputs land in the cache only when the campaign finishes.
-	corpus_dir="$cache/fuzz/$(go list -f '{{.ImportPath}}' "./$pkg_dir")/$target"
+	corpus_dir="$cache/fuzz/$(cd "$pkg_dir" && go list .)/$target"
 	mkdir -p "$seed_dir"
 
 	seeds=$(find "$seed_dir" -type f | wc -l)

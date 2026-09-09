@@ -21,9 +21,40 @@ go build ./...
 step "windows cross-compile (build + vet)"
 GOOS=windows go build ./...
 GOOS=windows go vet ./...
+# Root ./... never descends into nested modules — the five sub-modules need
+# their own cross-compile gate or Windows-only code (executor processgroup,
+# agentlock stub) could rot invisibly.
+for m in task journal queue executor worker; do
+	( cd "internal/$m" \
+		&& GOWORK=off GOOS=windows go build ./... \
+		&& GOWORK=off GOOS=windows go vet ./... ) || exit 1
+done
 
 step "tests (-race)"
 go test ./... -count=1 -race -timeout 120s
+
+step "module isolation gates (GOWORK=off per sub-module)"
+for m in task journal queue executor worker; do
+	echo "== internal/$m"
+	( cd "internal/$m" \
+		&& GOWORK=off go build ./... \
+		&& GOWORK=off go vet ./... \
+		&& GOWORK=off go test ./... -count=1 -timeout 120s ) || exit 1
+done
+
+step "go.mod hygiene (portable replaces, pinned internal requires)"
+bad="$(grep -hE '^replace ' internal/*/go.mod | grep -E '=> */' || true)"
+if [ -n "$bad" ]; then
+	echo "$bad"
+	echo "FAIL: absolute replace paths are not portable"
+	exit 1
+fi
+bad="$( { grep -hE '^\tgithub.com/larsartmann/go-taskqueue/internal/' go.mod internal/*/go.mod; } | grep -v ' v0.0.0$' || true)"
+if [ -n "$bad" ]; then
+	echo "$bad"
+	echo "FAIL: internal requires must be pinned to v0.0.0 (replace decides resolution)"
+	exit 1
+fi
 
 step "gofmt"
 unformatted="$(gofmt -l .)"
@@ -41,6 +72,9 @@ step "lint (advisory — CI runs continue-on-error)"
 lint() {
 	if command -v golangci-lint >/dev/null 2>&1; then
 		golangci-lint run ./...
+		for m in task journal queue executor worker; do
+			( cd "internal/$m" && golangci-lint run ./... )
+		done
 	else
 		echo "golangci-lint not on PATH — installing the CI-pinned version (v2.13.2)"
 		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
