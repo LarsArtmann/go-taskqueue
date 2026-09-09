@@ -102,14 +102,15 @@
 
           # Fast vendorHash drift gate: realizes ONLY the go-modules FOD so a
           # go.mod/go.sum change fails in seconds with the hash mismatch.
-          checks.vendor-hash = pkgs.runCommand "vendor-hash" { } ''
+          checks = {
+          vendor-hash = pkgs.runCommand "vendor-hash" { } ''
             echo "vendor hash verified: ${config.packages.default.goModules}"
             touch $out
           '';
 
           # `tq version` must report the flake's own version attr (round-2
           # caught a 0.1.0 binary shipping from a 0.2.0 flake — by hand).
-          checks.version-sync = pkgs.runCommand "version-sync" { } ''
+          version-sync = pkgs.runCommand "version-sync" { } ''
             want="$(sed -n 's/^[[:space:]]*version = "\(.*\)";$/\1/p' ${./flake.nix} | head -1)"
             got="$(${config.packages.default}/bin/tq version | awk '{print $2}' | tr -d ',')"
             if [ "$got" != "$want" ]; then
@@ -125,7 +126,7 @@
           # mode), so execute the nix-built binary and require non-empty
           # --help output. References the package directly — not the `result`
           # symlink — so `nix flake check` covers it in CI and sandboxes.
-          checks.binary-runs = pkgs.runCommand "binary-runs" { } ''
+          binary-runs = pkgs.runCommand "binary-runs" { } ''
             ${config.packages.default}/bin/tq --help > help.txt
             if [ ! -s help.txt ]; then
               echo "error: nix-built tq binary produced empty --help output" >&2
@@ -133,7 +134,8 @@
             fi
             cp help.txt $out
           '';
-
+          }
+          // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           # Module eval check (ROUND8 A6, bank-sync nixos-module-eval
           # pattern): instantiates the NixOS module so option typos /
           # rendering regressions fail `nix flake check`. Evals BOTH the
@@ -145,7 +147,6 @@
           # leaves checks.module-eval dangling on non-Linux systems and fails
           # `nix flake check --all-systems` at eval time ("accessed but has
           # no value"). optionalAttrs simply omits the attribute.
-          checks = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
             module-eval = (
             pkgs.runCommand "nixos-module-eval" { } (
               let
@@ -295,7 +296,7 @@
                 ${lib.optionalString (!allOk) "echo 'nixos-module-eval FAILED'; exit 1"}
               ''
             )
-            )
+          );
           };
 
           # `nix run .#test` must cover EVERY module: the go-standard default
