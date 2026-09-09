@@ -11,6 +11,7 @@ every forward-looking item is resolved (inline strikethroughs) move to
 
 | Date       | Report                                                                         | Scope                                                          |
 | ---------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| 2026-09-09 | `2026-09-09_02-16_docs-health-audit-annotations-archives.md`                   | Docs-health audit: six docs rebuilt, 12 reports annotated, 7 archived, prune-gap regression found |
 | 2026-09-09 | `2026-09-09_01-48_brutal-self-review-and-full-status-after-backlog-sweep.md`     | Brutal self-review + full status after the backlog sweep       |
 | 2026-09-09 | `2026-09-09_01-43_21-40-backlog-sweep-20-items-two-real-bugs.md`               | 21:40 backlog sweep: 20 items done, budget-bypass + FactsForTask bugs fixed |
 | 2026-09-09 | `2026-09-09_01-35_lan-dashboard-redesign-and-admin-writes-status.md`           | LAN dashboard redesign + admin writes (concurrent session)     |

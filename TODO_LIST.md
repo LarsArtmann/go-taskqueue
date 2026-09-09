@@ -13,6 +13,7 @@ not here.
 
 ## High Impact
 
+- [ ] `--prune-stale` zombie-matching gap: `pruneRepo` matches pending tasks only against `[x]` items PRESENT in TODO_LIST.md (`internal/harvest/prune.go` iterates `it.Done`) — but the docs convention now DELETES completed items, so a pending task whose item text was deleted (not ticked) is invisible to the sweep forever. Consider treating "item text absent from the file" as stale too (needs a deliberate unreachable-item policy: absent = cancelled vs absent = external work). Found by the 2026-09-09 docs-health TODO rebuild (no live victims: the only pending task at rebuild time was a review task)
 - [ ] Pin the cooperative-cancel finalize contract in a test: an agent run cancelled mid-flight (`context.Canceled` through `runAgent`) must finalize the task as Cancelled, never Failed — the `errors.Is` matching is a load-bearing wrapping contract that a 2026-09-09 session nearly broke silently with zero test coverage (01:48 report d7/e5, `internal/worker`)
 - [ ] `tq bootstrap` parity check against the hand-rolled sibling-repo rails (`.crushrc`/`.tq-verify` shape, payload-pinned verify) — reconcile or switch the fleet to bootstrap; carried over THREE reports now (22:42 §d1/f2, 01:35 §c1/f1) and still first-ranked
 - [ ] SECURITY.md: document the `--allow-writes` blast radius (UI-originated cancels/rescues, CSRF cookie model, token-vs-loopback matrix) — the admin write layer shipped without its security-doc update (01:35 report §c5/f6)

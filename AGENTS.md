@@ -259,6 +259,10 @@ state — its only write is its own cursor.
   (`tq cancel <id> --reason "item done"`) or sweep with
   `tq harvest --prune-stale`, and eyeball `tq stats` for surprise pending
   counts before relaunching a pool (21:40 report §d1/§e1: six sat 5–24 h).
+  CAVEAT: `--prune-stale` matches only `[x]` items still PRESENT in the
+  file — completed items are normally DELETED from TODO_LIST (CHANGELOG
+  owns them), and a pending task whose item text was deleted is invisible
+  to the sweep. Prefer `tq cancel --reason` for zombies of deleted items.
 - ⚠️ **vendorHash drift**: after go.mod/go.sum changes run the fakeHash dance
   (`vendorHash = lib.fakeHash` → `nix build` → copy `got:`). The
   `checks.vendor-hash` gate fails fast on drift.
