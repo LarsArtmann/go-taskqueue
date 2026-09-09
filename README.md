@@ -288,7 +288,11 @@ work (CLI store wiring, consumer-group fencing tokens).
 ## Development
 
 ```sh
-go test ./... -race             # full suite (CI also gates on go vet + gofmt)
+go test ./... -race             # root-module suite (CI also gates on go vet + gofmt)
+for m in task journal queue executor worker; do
+  ( cd internal/$m && GOWORK=off go test ./... -count=1 ) || exit 1
+done                            # the five sub-modules (ADR-0011) — ./... never
+                                # crosses module boundaries, so test them in place
 ./scripts/smoke/multi-repo.sh   # live smoke: 3 repos, 2 pools, 1 shared DB —
                                 # proves dedup, pacing and per-project exclusivity
 ./scripts/smoke/webui.sh        # live smoke: worker + tq serve + HTTP/SSE assertions
