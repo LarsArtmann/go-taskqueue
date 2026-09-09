@@ -567,3 +567,43 @@ func TestMachineWideAgentCapSerializes(t *testing.T) {
 		t.Fatalf("run log = %v, want %v (cap must serialize runs)", lines, want)
 	}
 }
+
+func TestDefaultVerifyCoversNestedModules(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, content string) {
+		t.Helper()
+		path := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("go.mod", "module x\n\ngo 1.26\n")
+	write("x.go", "package main\n\nfunc main() {}\n")
+	write("sub/go.mod", "module x/sub\n\ngo 1.26\n")
+	write("sub/sub.go", "package sub\n\nconst OK = true\n")
+	write("vendor/keep.txt", "")
+
+	cmdStr := defaultVerify(dir)
+	if cmdStr == "" {
+		t.Fatal("defaultVerify returned empty for a Go repo")
+	}
+
+	// The default command must reject a failing nested module test: the
+	// root ./... gate cannot even see it.
+	write("sub/sub_fail_test.go", "package sub\n\nimport \"testing\"\n\nfunc TestBroken(t *testing.T) { t.Fatal(\"broken\") }\n")
+	if err := exec.Command("sh", "-c", cmdStr).Run(); err == nil {
+		t.Fatal("verify passed despite a failing nested-module test")
+	}
+
+	write("sub/sub_fail_test.go", "package sub\n\nimport \"testing\"\n\nfunc TestOK(t *testing.T) {}\n")
+	out, err := exec.Command("sh", "-c", cmdStr).CombinedOutput()
+	if err != nil {
+		t.Fatalf("verify failed on a healthy multi-module tree: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "x/sub") {
+		t.Fatalf("verify output lacks evidence the nested module was tested:\n%s", out)
+	}
+}
