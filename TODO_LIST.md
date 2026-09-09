@@ -46,6 +46,31 @@ not here.
 
 ## Owner-blocked decisions (BLOCKED items are skipped by the pool)
 
+- [ ] Push authorization: ~30 commits + 8 local tags (root go-install fix, five round-1 module tags, two backend tags) are latent until pushed; after push run the per-module proxy check (`go list -m -versions`) + the real clean-room `go install` (docs/status/2026-09-09_23-47_round2-queue-backend-split.md f1/f13) — BLOCKED: owner push authorization (never push without it)
+- [ ] `internal/consumer`: wire into `tq serve` journal tailing or delete the ghost package (ADR-0009 dispatcher, zero production importers; write the ADR outcome either way) (23:47 f2/g1) — BLOCKED: owner intent call
+- [ ] Decide the three near-identical interfaces (`consumer.Source`, `budget.FactSource`, `papdashboard.FactSource`) — one interface or documented duplication (23:47 f4) — BLOCKED: owner architecture decision
+- [ ] Postgres CLI store wiring (`--store postgres://…` on worker/serve/agent-pool): gives queue/postgres its consumer; root re-adds pgx; sequence BEFORE any public-API promotion (23:47 f5/g3) — BLOCKED: owner release-timing call (v0.3?)
+- [ ] Dependabot/renovate policy for the 8-module tree (23:47 f33) — BLOCKED: owner policy decision
+- [ ] After the next real release: write the "first multi-module release" retrospective into docs/release/ (23:47 f50) — BLOCKED: needs the release to happen first
+
+## Post-split follow-ups (harvested from docs/status/2026-09-09_23-47, verified 2026-09-10)
+
+- [ ] Dead-export audit script as a periodic check: exported-with-zero-importers detector (substring matching, NOT `rg -w` — it misses suffixed references like NewSink/NewCommandExecutor and undercounts); park it next to scripts/check-go-mods.sh (23:47 f19; manual re-derivation lives in the 2026-09-10 session)
+- [ ] govulncheck step in CI (non-blocking job first; needs network on the runner) (23:47 f20)
+- [ ] gosec advisory scan pass over the modules (23:47 f21)
+- [ ] templ-components deep-dive audit: adoption table says v1.16 — verify we use the current component APIs and none of the retired ones (23:47 f22; internal/webui/fragments.templ)
+- [ ] webui dedup deep pass: render path 728 + handlers 527 LOC have grown similar branches (23:47 f23; internal/webui/render.go, handlers.go)
+- [ ] httpapi/webui API-surface split-brain check: overlapping handler + route definitions between `tq api` and `tq serve` (23:47 f24)
+- [ ] Full-core example: worker + executor + queue proving the embed story, including the sqlite-vs-postgres backend-choice import (23:47 f25; examples/)
+- [ ] Document the round-2 multi-module release flow as docs/release/RELEASE.md (sub-tag cutting, sibling-replace allowlist, two-phase --tag/--push; scripts/release.sh owns the code) (23:47 f26)
+- [ ] Version-surface inventory doc: flake.nix version attr + ldflags + root tag + per-module tags + CHANGELOG — who must move when (23:47 f27; the flake checks.version-sync check covers attr↔binary, not the rest)
+- [ ] Lint-baseline slice-triage: wrapcheck findings (~50) first, then varnamelen (~50) — shrink the ~400 advisory baseline, never mass-fix (23:47 f28/f29; .golangci.yml)
+- [ ] `ExitCause` → `ExitError` rename consideration (errname finding; exported rename needs a v0.3 window) (23:47 f30; internal/executor/agent.go)
+- [ ] Per-module golangci runs in .github/workflows/ci.yml (ci-local.sh already loops modules; ci.yml runs root only) (23:47 f32)
+- [ ] Multi-repo smoke against the nix-built 0.2.0 binary (`TQ_BIN=result/bin/tq ./scripts/smoke/multi-repo.sh`) (23:47 f35)
+- [ ] Measure CI time impact of the disk-derived `-count=1` module loops; tune if it dominates the job (23:47 f49; .github/workflows/ci.yml)
+- [ ] Dogfood hygiene: stale queued tasks in the live pool DB may verify with the OLD single-module default command — drain or cancel them (`tq tasks`, `tq cancel`) (23:47 f46)
+
 - [x] Cut v0.2.0: full ci-local gate + nix-binary smoke green, annotated tag v0.2.0 pushed, module proxy verified, clean-room go get verified, GitHub Release published (also fixed a release.sh bug: the awk section cut matched the bare heading, not the dated one) — 2026-09-09 `v0.2.0`, module proxy + GitHub release + smokes (19:49 f2; v0.1.0 shipped 2026-09-06)
 - [x] Kill the stray `/tmp/papdbg` worker (PID 1039418) — killed 2026-09-09 (second-signal force-exit; audit had verified it self-contained and inert)
 - [x] `--status-every` enablement: N=20 chosen + documented in the `deploy/systemd` sample's recommended pool.conf keys (cost/verbosity balance; the live smoke shipped 2026-09-08) (20:56 g1/f17)

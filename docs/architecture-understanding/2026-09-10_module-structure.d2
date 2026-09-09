@@ -1,0 +1,68 @@
+# Module structure after round-2 (ADR-0012): the queue contract module plus
+# two driver modules. Supersedes 2026-09-09_20-14-module-structure.d2 (which
+# pre-dates the backend split).
+direction: right
+
+root: {
+  shape: rectangle
+  label: "go-taskqueue (root module)\ncmd/tq CLI + harvest, bridges,\nsweepers, webui, e2e, budget,\nreview, status, consumer, runactor"
+}
+
+task: {
+  shape: rectangle
+  label: "internal/task\nTask record, status machine,\nsentinel errors"
+}
+
+journal: {
+  shape: rectangle
+  label: "internal/journal\nFact types, append-only\nJournal, MemoryJournal"
+}
+
+queue: {
+  shape: hexagon
+  label: "internal/queue\nTHE CONTRACT: Store interface,\nFilter, Queue facade,\nwatermarks"
+}
+
+sqlite: {
+  shape: cylinder
+  label: "internal/queue/sqlite\nsqlite.Store — embedded,\none serialized writer\n(modernc, pure Go)"
+}
+
+postgres: {
+  shape: cylinder
+  label: "internal/queue/postgres\npostgres.Store — networked,\nSKIP LOCKED claims (pgx/v5)"
+}
+
+executor: {
+  shape: rectangle
+  label: "internal/executor\nsh, HTTP, agent, review,\nstatus executors + Registry"
+}
+
+worker: {
+  shape: rectangle
+  label: "internal/worker\nclaim → heartbeat → execute,\nconcurrency, drain"
+}
+
+root -> task: "imports"
+root -> journal: "imports"
+root -> queue: "imports"
+root -> sqlite: "wires the default driver"
+root -> executor: "imports"
+root -> worker: "imports"
+queue -> task: "imports"
+queue -> journal: "imports"
+sqlite -> queue: "implements (var _ queue.Store)"
+sqlite -> task: "imports"
+sqlite -> journal: "imports"
+postgres -> queue: "implements (var _ queue.Store)"
+postgres -> task: "imports"
+postgres -> journal: "imports"
+worker -> queue: "claims via"
+worker -> executor: "runs"
+executor -> task: "imports"
+
+cli_note: {
+  label: "queue/postgres has zero production importers today — CLI wiring (--store postgres://…) is ROADMAP; the module stays gated + tagged regardless"
+  shape: text
+  style.font-size: 11
+}

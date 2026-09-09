@@ -58,6 +58,12 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ### Queue core / scale
 
+- Data-model review of `task.Task`/`Status` (branded IDs? split lifecycle
+  stages into distinct types?) — data-model territory, revisit before any
+  public API promotion (2026-09-09 23:47 f18)
+- `queue.Store` interface segregation: 25+ methods, candidate read-side vs
+  write-side split — only if an embedder actually chafes (2026-09-09 23:47
+  f41; ADR-0012 left the contract whole)
 - SSE `Replay` + ring buffer to replace snapshot-per-tick for
   high-frequency queues
 - Cron-style recurring tasks (time-bucketed dedup keys, D83 seed)
