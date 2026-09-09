@@ -176,10 +176,10 @@ _(brainstorm sorted by impact, not commitment — most items beyond the first
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
-1. **Money**: should the live dogfood agent-pool be restarted with
-   `--review --review-autofix`, and with how much extra daily-budget headroom
-   (reviews roughly double enqueue volume)? Or should it run `--review`
-   (verdicts only, no autofix) for one observation cycle first?
+1. ~~**Money**: should the live dogfood agent-pool be restarted with~~
+   RESOLVED 2026-09-08: the round-4 dogfood launch runs `--review
+   --review-autofix --daily-budget 15` (launch command in the ROUND4 plan);
+   reviews count against the same cap by design (SECURITY.md).
 2. **Fix-task strictness**: when autofix mints a fix task, should it inherit the
    reviewed task's exact `Verify` command (same bar as the original work) or
    keep repo auto-detect as shipped? I can argue both; the call is a policy

@@ -151,6 +151,17 @@ design; `tq journal compact` CLI command.
 
 ## f) NEXT — up to 50, in priority order
 
+**§f ANNOTATION (2026-09-09, round-10 execution session):** items 1-7 are
+the round-5 §d defect batch — verdicts at HEAD are recorded item-by-item in
+`2026-09-08_20-58_…` §f14-20 (d1/d2/d3/d5/d6/d7 FIXED, d4 not real). The
+remaining §f items below that are still unmarked live on in exactly two
+places: ROADMAP.md's packs (CI/tooling, webui polish, observability, v0.2/v0.3
+arcs + deferred-bundle seeds D96-D100) and TODO_LIST.md's owner-BLOCKED rows —
+the 2026-09-09 docs-health audit routed every one; nothing open was dropped.
+Notable since this report: F19 (`--log-dir-max-age`) SHIPPED; §f49's
+FilterBar×sort×pagination composition is now pinned (TestFilterBarPreservesSort);
+v0.2.0 is staged pending the owner gate.
+
 **Fix the §d defects (1–9):**
 
 1. Fix or delete the screenshots script's detail-page line; add a
@@ -229,13 +240,11 @@ lands.
 
 ## g) QUESTIONS ONLY YOU CAN ANSWER
 
-1. **Push?** 51 commits are ahead and ci-local is green on the exact
-   tree. If yes: may I fix-forward immediately when the first
-   `test-windows`/`test-postgres` runs surface anything (see §d.8)?
+1. ~~**Push?**~~ RESOLVED 2026-09-09: master pushed (1dd9133+); the first
+   windows/postgres runs surfaced two timing flakes, both deflaked same day.
 2. **v0.2.0 go/no-go** — now (CHANGELOG is deep), after the §d defect
    fixes, or after Wave 4 closes fully? `scripts/release.sh v0.2.0` does
    the whole gate when you say go.
-3. **LAN serve restart** — PID 3654482 is still the old unauthenticated
-   binary on `0.0.0.0:8090` (top standing security risk). Do you want to
-   restart it yourself, or should I do it under a token the moment you
-   authorize (it is your LAN exposure)?
+3. ~~**LAN serve restart**~~ RESOLVED 2026-09-08: the LAN hardening +
+   default-deny token refusal shipped (`webui.Config.Validate`,
+   01:35 report); a token-authed instance runs on :8090 today.

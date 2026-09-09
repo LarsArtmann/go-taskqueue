@@ -108,6 +108,19 @@ All deliberate:
 
 ## f) Up to 50 things we should get done next
 
+_**§f ANNOTATION (2026-09-09, verified against HEAD):** shipped since this
+report — #18 `tq worker --once`, #21 windows honesty (`//go:build unix` +
+windows CI job), #19 nightly fuzz workflow + committed corpus, #20 flake
+checks (nix-binary-runs, module-eval, vendor-hash), #23 D91-lite version
+probe, #24 dprint manual-decision recorded, #25 sidecar retention flags,
+#28 webui.sh free-port, #29 `tq serve --verbose`, #45 `tq version`, #43's
+Phase-D admin writes (cancel/rescue behind `--allow-writes` + CSRF +
+lockout), #4/#35 LAN default-deny token refusal. Still open and routed:
+the [ROADMAP] tail lives in ROADMAP.md's packs; the owner gates (v0.2.0,
+CQA, SystemNix cutover) are TODO_LIST BLOCKED rows. #6 systemd handover
+SHIPPED as `tq bootstrap --install` + the NixOS module; the evo-x2 cutover
+remains owner-run._
+
 _Ranked view. TODO_LIST.md owns the routing (21 open items, evidence-cited);
 the pool is eating them. Items marked [POOL] are already TODO_LIST pool food;
 [NEW] surfaced this session and should be routed at the next HARVEST._
@@ -165,15 +178,13 @@ the pool is eating them. Items marked [POOL] are already TODO_LIST pool food;
 
 ## g) QUESTIONS ONLY YOU CAN ANSWER
 
-1. **Pool persistence:** after I stop, should the pool keep running unattended
-   (systemd user-unit handover, surviving logouts/reboots) or stay
-   session-supervised? And is `--daily-budget 15` the right daily spend for
+1. **Pool persistence:** systemd user-unit + NixOS module SHIPPED
+   (`tq bootstrap --install`, `deploy/nixos/tq-agent-pool.nix`); the
+   evo-x2 production cutover is the remaining owner step (TODO_LIST). And is `--daily-budget 15` the right daily spend for
    this repo (2 tasks done ≈ 13 min agent time so far)?
-2. **LAN posture:** accept zero-auth read-only exposure for now (I bind
-   `0.0.0.0:8090` today), or should W16 auth land BEFORE you actually rely
-   on it from other devices — and do you want the bind narrowed to
-   `192.168.1.150` instead of all interfaces? (I cannot verify from here
-   whether the NixOS firewall lets other devices reach 8090.)
+2. ~~**LAN posture:**~~ RESOLVED 2026-09-08: non-loopback binds are
+   default-deny (refuse to start without `--auth-token`); a token-authed
+   instance serves :8090 today; full matrix in SECURITY.md.
 3. **Model/cost control:** the pool uses crush's default model. Want
    `--model provider/model` pinned (cheaper model for small items, or a
    per-pool choice), or leave the default? I have no visibility into your

@@ -223,12 +223,10 @@ persisted-bridge-watermark designs, ROUND6 plan draft, cordis verification.
 
 ## g) QUESTIONS FOR THE OWNER (cannot figure these out myself)
 
-1. **LAN dashboard restart (critical, 4+ days old risk)**: PID 3654482
-   still serves the OLD unauthenticated binary on `0.0.0.0:8090`. May I
-   kill it and restart under the current binary with a token (either give
-   me a token value or approve me generating one)? This needs your OK
-   since others may be watching that dashboard.
-2. **Push authorization**: 10 commits sit unpushed (my M7–M10 work).
+1. ~~**LAN dashboard restart (critical, 4+ days old risk)**~~ RESOLVED
+   2026-09-08: LAN hardening + default-deny shipped; a token-authed
+   `--allow-writes` instance serves :8090 today (01:35 report).
+2. ~~**Push authorization**~~ RESOLVED 2026-09-09: master pushed (1dd9133+); CI watched, two flakes deflaked same day.
    Someone pushed ~34 commits mid-session — was that you/the daemon, and
    should I run `scripts/ci-local.sh` + push the rest now?
 3. **v0.2.0 go/no-go (M12 gate)**: M12 prepares release automation; the

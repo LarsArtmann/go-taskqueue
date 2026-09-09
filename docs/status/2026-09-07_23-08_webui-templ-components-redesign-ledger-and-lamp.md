@@ -210,6 +210,19 @@ so they don't repeat):
 | 49 | Consider `RelativeTime` component for human timestamps in the table                       | Low    | S      | Feature       |
 | 50 | Clean `/tmp/tq-visual.db` artifacts + remove visual-demo DB from `tq stats` noise         | Low    | S      | Cleanup       |
 
+_**§f ANNOTATION (2026-09-09, verified against HEAD):** SHIPPED since this
+report — #1 (token-authed serve on :8090 runs the redesign), #2 bounded fact
+queries, #7 LAN default-deny auth posture (SECURITY.md matrix), #9 FEATURES
+web-UI rows, #12 CSP headers (smoke-asserted), #13 fact-feed → task links,
+#14 budget card, #15 live age ticker (data-age + fmtAge, parity-tested),
+#16 sortable table headers, #20 per-project page, #21 admin writes behind
+--allow-writes + CSRF + lockout, #23 screenshot script (detail-URL fixed
+2026-09-09), #27 OFL.txt ships with the subsets, #28 adoption guard test,
+#31 metrics row, #47 CSS drift guard (check-webui-css.sh). The 11-50 tail
+lives in ROADMAP.md's web-UI polish pack (nothing dropped — the docs-health
+audit verified routing). #8 v0.2.0 remains the staged owner gate; #32/#33
+resolved by the .crushrc managed-block decision (AGENTS)._
+
 HARVEST note: items 1–10 are TODO_LIST-grade; most of 11–50 are ROADMAP fuel
 (brainstorm, not commitment). Owner-gated decisions: 4, 6, 7, 8, 32, 33.
 

@@ -191,6 +191,12 @@ TODO_LIST already where applicable.
 | 49 | docs-health HARVEST: pull this report's (f) into TODO_LIST/ROADMAP per routing rigor       | machine                |
 | 50 | Calibrate `--status-every` + review sweepers against first real agent outputs              | depends on 1           |
 
+_**ANNOTATION (2026-09-09):** the enroll-set question resolved by events —
+go-taskqueue + the three sibling repos onboarded to the rails (AGENTS);
+daemon mode shipped as `tq bootstrap --install` + the NixOS module, with the
+evo-x2 cutover the remaining owner step; provider/spend remains a live owner
+per-launch choice (budget flags documented in the ROUND4 plan)._
+
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
 1. **Enroll set + mode for the overnight pool:** go-taskqueue only, or also CV (contains

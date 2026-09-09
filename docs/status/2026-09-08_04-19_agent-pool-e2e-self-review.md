@@ -64,6 +64,23 @@
 
 ## f) Next things (impact-sorted)
 
+_**§f ANNOTATION (2026-09-09, verified against HEAD):** P0 — #7
+PapDashboard bridge SHIPPED (alert + resolve, watermark-cursor); #8
+SystemNix module SHIPPED (`deploy/nixos/tq-agent-pool.nix` + bootstrap
+--install; evo-x2 cutover is the owner-blocked TODO row); #4 became
+v0.1.0+unreleased work (v0.1.0 shipped 2026-09-06; v0.2.0 staged); #5
+SHIPPED (agent-pool pacing + budget + systemd). #6 CQA still needs live
+creds (BLOCKED). P1 — #10 Postgres store SHIPPED (conformance-tested;
+`--store postgres` CLI wiring remains ROADMAP v0.2 remainder); #11 `tq api`
+SHIPPED (production slice, bearer token, ADR-0008); #13 result artifacts
+SHIPPED (TQ_RESULT + FailureEvidence + sidecars). #14 PR-mode PoC exists
+(`scripts/poc/pr-mode.sh`); automation remains ROADMAP. P2 fleet sweep —
+routed to ROADMAP (Fleet pack). P3 — #25 `--rescue-all` SHIPPED (+
+--older-than); #26 `tq harvest --json` SHIPPED; #27 SHIPPED as
+`scripts/check-todo-list.sh` + harvest-parse guard. P4 — #29 cross-repo
+deps live in the D97 seed; #32 is the review/autofix + CQA loop (review
+half SHIPPED, CQA half creds-blocked)._
+
 **P0 — apply the proven work**
 
 1. Apply BerryBig patch upstream (test → commit → push)
@@ -109,7 +126,9 @@
 
 ## g) Questions I cannot figure out myself
 
-1. **Where should the pool run as a service?** My sandbox is ephemeral. A systemd unit / SystemNix module for `tq agent-pool` — which box, which user, which DB path? (If "not yet", the pool stays a CLI you invoke when wanted.)
+1. ~~**Where should the pool run as a service?**~~ RESOLVED: systemd user
+   unit (`tq bootstrap --install`) + house NixOS module; production target
+   is evo-x2 via SystemNix (owner cutover pending).
 2. **Spend ceiling for autonomous agents?** At 10 tasks/tick every 5m, worst case ~120 agent-runs/hour on the zai coding plan. What is your monthly ceiling? ($0 = pool stays manual.)
 3. **BerryBig patch: how does it land upstream?** (a) you `git apply` from ~/shared/, (b) a PR from my clone, or (c) ignore — let the pool re-harvest the TODO and have an agent commit it properly?
 

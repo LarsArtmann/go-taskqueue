@@ -128,4 +128,11 @@ Caveat that belongs here honestly: until this report, all of the above existed *
 
 ---
 
+_**ANNOTATION (2026-09-09):** the journal bus recommendation LANDED as
+`internal/consumer` + `internal/runactor` (ADR-0009; papdashboard bridge and
+both sweepers ride the watermark-cursor pattern — the "persisted watermarks"
+this report flagged as future work SHIPPED). g3 is therefore resolved; g1
+(daemon mode) and g2 (framework stance) remain owner decisions, routed as
+ROADMAP open questions R1/R2._
+
 **Harvest note:** only H1/H2-class verification items and the ADR task were pulled into TODO_LIST.md (5 items, citing this report). The remaining ~45 are ROADMAP fuel by design — `docs-health` HARVEST should route them with rigor, not mass-dump them into live pool food.
