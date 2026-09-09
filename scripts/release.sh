@@ -78,7 +78,7 @@ while read -r mod ver; do
 	git rev-parse -q --verify "refs/tags/$sub_tag" >/dev/null || {
 		die "$mod requires $ver but tag $sub_tag does not exist — cut it (git tag -a $sub_tag) before releasing"
 	}
-done < <(grep -E '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/ v[0-9]' go.mod | awk '{print $1, $2}')
+done < <(grep -E '^[[:space:]]*github\.com/larsartmann/go-taskqueue/internal/[a-z]+ v[0-9]' go.mod | awk '{print $1, $2}')
 
 step "full CI gate (scripts/ci-local.sh — test + nix jobs on this exact tree)"
 ./scripts/ci-local.sh
@@ -104,7 +104,7 @@ git tag --points-at HEAD | grep -qx "$VERSION" || die "tag does not point at HEA
 git show "$VERSION:go.mod" | head -1 | grep -q "$MODULE" || die "tagged tree has the wrong module path"
 
 step "cut internal sub-module tags (go install resolution for the split)"
-internal_tags="$(grep -E '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/ v[0-9]' go.mod | awk '{print substr($1, length("github.com/larsartmann/go-taskqueue/") + 1) "/" $2}')"
+internal_tags="$(grep -E '^[[:space:]]*github\.com/larsartmann/go-taskqueue/internal/[a-z]+ v[0-9]' go.mod | awk '{print substr($1, length("github.com/larsartmann/go-taskqueue/") + 1) "/" $2}')"
 for sub_tag in $internal_tags; do
 	if git rev-parse -q --verify "refs/tags/$sub_tag" >/dev/null; then
 		echo "$sub_tag already exists"
