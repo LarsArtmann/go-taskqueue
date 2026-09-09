@@ -14,10 +14,24 @@ them, never revert them.
 
 ```bash
 ./scripts/ci-local.sh     # the pre-push gate: full CI replicant (vet/build/race/smokes/nix)
-go build ./... && go vet ./... && go test ./... -race   # standard verify gate
+go build ./... && go vet ./... && go test ./... -race   # standard verify gate (ROOT MODULE ONLY — see below)
 nix build                 # reproducible build; nix run .#test = tests; nix run .#webui-css = stylesheet
 ./scripts/fuzz/nightly.sh # 60s FuzzParseRepo campaign; nightly workflow commits new seeds
 ```
+
+**Multi-module repo (ADR-0011):** `internal/{task,journal,queue,executor,worker}`
+are sub-modules (go.mod each, import paths unchanged); the root module is the
+app layer. `./...` never descends into nested modules — per-module gates:
+
+```bash
+for m in task journal queue executor worker; do
+  ( cd internal/$m && GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 ) || exit 1
+done
+```
+
+Internal requires are pinned at `v0.0.0` + relative `replace` (NO go.work —
+replace-only by decision); `go test ./internal/foo` from root FAILS by design
+(cd into the module instead).
 
 Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 
@@ -36,7 +50,9 @@ ALWAYS get `--once` or a `timeout` wrapper — no process outlives its session.
 
 Facts-first: every state change is an immutable fact in an append-only
 journal; queue views, retry state, and the DLQ are projections of those
-facts. Claim exclusivity comes from lease TTL + expiry reclaim.
+facts. Claim exclusivity comes from lease TTL + expiry reclaim. The library
+core (task, journal, queue, executor, worker) is split into sub-modules
+whose DAG the compiler enforces; everything above them is the root module.
 
 | Package             | Purpose                                                                                                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
