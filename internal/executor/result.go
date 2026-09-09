@@ -41,6 +41,12 @@ type FailureEvidence struct {
 	Tail     string `json:"tail,omitempty"`      // last lines of the failing output
 }
 
+// EvidenceTailBytes is the ONE output-tail size every executor pins into
+// FailureEvidence.Tail — agent, verify and command tails stay the same
+// length so facts are comparable across executors (01:48 report f23: three
+// independent 4096s, one drift waiting to happen).
+const EvidenceTailBytes = 4096
+
 // sink carries per-task result detail from an executor run back to the
 // worker. Executors share one instance, so the sink travels in the task's
 // context instead of on the executor.

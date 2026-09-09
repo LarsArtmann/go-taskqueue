@@ -158,6 +158,14 @@ type Queue struct {
 	Store
 }
 
+// RequeueEvidence is the structured detail on task.requeued facts: why the
+// executor refused to start and how long the task waits before it becomes
+// claimable again (01:48 report f2: the reason was a plain error string).
+type RequeueEvidence struct {
+	Reason  string `json:"reason"`
+	RetryIn int64  `json:"retry_in_ms"`
+}
+
 // New wraps a Store.
 func New(s Store) *Queue { return &Queue{Store: s} }
 

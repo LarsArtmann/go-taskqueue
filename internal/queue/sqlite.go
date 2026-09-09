@@ -1594,6 +1594,7 @@ func (s *SQLiteStore) Requeue(
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: owner, Error: errText,
+			Detail: mustJSON(RequeueEvidence{Reason: errText, RetryIn: delay.Milliseconds()}),
 		})
 	})
 }

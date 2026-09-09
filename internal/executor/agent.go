@@ -203,7 +203,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		// Forensics for the task.failed fact: exit code + output tail. The
 		// full output survives in the sidecar only when TQ_LOG_DIR is set,
 		// so the fact carries its own excerpt.
-		SetFailureEvidence(ctx, "agent", err, tailBytes([]byte(output), 4096))
+		SetFailureEvidence(ctx, "agent", err, tailBytes([]byte(output), EvidenceTailBytes))
 		return err
 	}
 
@@ -388,7 +388,7 @@ func runVerify(ctx context.Context, repoDir string, p *AgentPayload) (string, er
 	if err := cmd.Run(); err != nil {
 		// The tail rides along even on error: it IS the failure evidence
 		// (what the gate printed before dying).
-		tail := tailBytes(buf.Bytes(), 4096)
+		tail := tailBytes(buf.Bytes(), EvidenceTailBytes)
 		if ctx.Err() != nil {
 			return tail, fmt.Errorf("agent verify cancelled (%w): %s", ctx.Err(), tail)
 		}
