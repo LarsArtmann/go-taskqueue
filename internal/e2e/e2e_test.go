@@ -305,3 +305,60 @@ func TestAuditAndTopJSONSubprocess(t *testing.T) {
 		t.Fatalf("audit --json must be JSON, got: %s", trimmed[:min(40, len(trimmed))])
 	}
 }
+
+// TestAgentPoolStartupPruneSweep pins the self-cleaning relaunch contract:
+// a pending task left behind by a harvest-while-no-pool-runs window whose
+// item was later deleted from TODO_LIST.md must be cancelled by the pool's
+// startup zombie sweep — BEFORE the first harvest tick — so the relaunch
+// executes nothing stale.
+func TestAgentPoolStartupPruneSweep(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	writeRepo(t, dir, "demorepo", "- [ ] stale item done elsewhere\n")
+
+	stub := filepath.Join(dir, "stub-agent")
+	writeFile(t, stub, "#!/bin/sh\nexit 0\n", 0o755)
+
+	db := filepath.Join(dir, "q.db")
+	env := append(os.Environ(), "TQ_AGENT_BIN="+stub)
+
+	// Harvest with no pool running: one pending task, nothing executes.
+	seed := exec.Command(tqBin, "harvest",
+		"--repos", filepath.Join(dir, "demorepo"), "--db", db)
+	seed.Env = env
+
+	if out, err := runWithTimeout(seed, 30*time.Second); err != nil {
+		t.Fatalf("seed harvest: %v\n%s", err, out)
+	}
+
+	// The item completes out-of-band and the docs convention deletes it.
+	writeRepo(t, dir, "demorepo", "- [ ] a fresh item for the next round\n")
+
+	pool := exec.Command(tqBin, "agent-pool",
+		"--repos", filepath.Join(dir, "demorepo"),
+		"--db", db, "--poll", "50ms", "--once",
+	)
+	pool.Env = env
+
+	out, err := runWithTimeout(pool, 30*time.Second)
+	if err != nil {
+		t.Fatalf("agent-pool --once: %v\n%s", err, out)
+	}
+
+	s := openStore(t, db)
+	defer func() { _ = s.Close() }()
+
+	// The stale task was cancelled by the startup sweep (never claimed);
+	// the fresh item was harvested and completed by the stub.
+	assertFactCounts(t, ctx, s, map[string]int{
+		"task.enqueued":      2,
+		"task.cancelled":     1,
+		"task.claimed":       1,
+		"task.completed":     1,
+		"task.dead-lettered": 0,
+	})
+
+	if !strings.Contains(out, "startup prune: cancelled stale task") {
+		t.Errorf("pool output missing the startup-prune log line:\n%s", out)
+	}
+}

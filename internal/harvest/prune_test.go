@@ -250,8 +250,8 @@ func TestPruneStaleCancelsAbsentItems(t *testing.T) {
 		t.Fatalf("absent-item task status = %s, want cancelled", cancelled.Status)
 	}
 
-	if !strings.Contains(cancelled.LastError, "no longer present") {
-		t.Errorf("cancel reason = %q, want the absent prefix", cancelled.LastError)
+	if reason := cancelReason(t, q, cancelled.ID); !strings.Contains(reason, "no longer present") {
+		t.Errorf("cancel reason = %q, want the absent prefix", reason)
 	}
 
 	// The open item's task and the external task survive untouched.
@@ -355,4 +355,29 @@ func TestPruneStaleRewordedToBlockedIsWithdrawn(t *testing.T) {
 	if len(run.Enqueued) != 0 {
 		t.Fatalf("blocked item enqueued %+v, want none", run.Enqueued)
 	}
+}
+
+// cancelReason reads the last task.cancelled fact's reason from the journal.
+func cancelReason(t *testing.T, q *queue.Queue, id task.ID) string {
+	t.Helper()
+
+	facts, err := q.FactsForTask(context.Background(), id.String(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := range facts {
+		if facts[i].Type == journal.Cancelled {
+			var detail struct {
+				Reason string `json:"reason"`
+			}
+			if err := json.Unmarshal(facts[i].Detail, &detail); err != nil {
+				t.Fatalf("cancel fact detail not JSON with a reason: %v (%s)", err, facts[i].Detail)
+			}
+			return detail.Reason
+		}
+	}
+
+	t.Fatal("no task.cancelled fact on " + id.String())
+	return ""
 }

@@ -637,6 +637,11 @@ func cmdAgentPool(args []string) error {
 		"crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload",
 	)
 	once := fs.Bool("once", false, "run one harvest tick, drain the queue, then exit (cron/timer-friendly)")
+	pruneStale := fs.Bool(
+		"prune-stale",
+		true,
+		"one zombie sweep before the first harvest tick: cancel PENDING tasks whose TODO_LIST item is now [x] or gone from the file, so a relaunch never inherits stale work (--prune-stale=false to skip)",
+	)
 	exclusive := fs.Bool(
 		"project-exclusive",
 		false,
@@ -1128,6 +1133,26 @@ func cmdAgentPool(args []string) error {
 	}
 
 	g.Go("tick", func(ctx context.Context) error {
+		// Startup zombie sweep (before the first harvest tick): harvesting
+		// while no pool ran leaves pending tasks behind, and ticking or
+		// deleting the item later never withdraws them — cancel them here
+		// so a relaunch is self-cleaning instead of inheriting zombies.
+		if *pruneStale {
+			res, err := h.PruneStale(ctx)
+			if err != nil {
+				log.Warn("startup prune-stale failed", "err", err)
+			} else {
+				for _, c := range res.Cancelled {
+					log.Warn("startup prune: cancelled stale task",
+						"repo", c.Item.RepoName, "why", c.Why, "item", pruneItemText(c.Item, c.Why), "task", c.TaskID.String())
+				}
+
+				for _, f := range res.ScanFailures {
+					log.Warn("startup prune: repo skipped", "repo", f.Repo, "reason", f.Reason)
+				}
+			}
+		}
+
 		runTick()
 
 		if *once {
