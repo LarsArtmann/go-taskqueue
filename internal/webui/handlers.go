@@ -111,7 +111,7 @@ func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if after = head + after + 1; after < 0 {
+		if after = head + after; after < 0 {
 			after = 0
 		}
 	}

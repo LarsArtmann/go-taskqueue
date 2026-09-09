@@ -231,16 +231,16 @@ yet (see b/partial).
     mutation tx.
 12. Webui lag card (persisted consumer lag on the dashboard).
 13. ~~`tq stats --json` parity incl. consumer lag.~~ done (tq stats --json aggregate incl. consumer_lag)
-14. Round5 defect d1: webui-screenshots.sh detail-page URL builds from a
-    JSON object (garbage URL) — never executed.
-15. Round5 d2: check-webui-css.sh references a ghost nix app
-    (`webui-css-drift-check`).
-16. Round5 d3: FilterBar form GET drops an active `?sort=` (hidden input).
-17. Round5 d4: budget telemetry undercounts after bridge restart (seed
-    from CountFacts).
-18. Round5 d5: journal-browser "load older" actually pages newer.
-19. Round5 d6: data-age client/server fmtAge parity test.
-20. Round5 d7: delete PostgresStore.migrateOnOpenFail dead field.
+14. ~~Round5 defect d1: webui-screenshots.sh detail-page URL builds from a
+    JSON object (garbage URL) — never executed.~~ VERIFIED REAL → FIXED 2026-09-09: URL now built from a real task id (`tq tasks --json | jq -r '.[0].id'`) with explicit missing-jq/task errors.
+15. ~~Round5 d2: check-webui-css.sh references a ghost nix app
+    (`webui-css-drift-check`).~~ VERIFIED REAL → FIXED 2026-09-09: hint now points at `nix run .#webui-css` / devShell.
+16. ~~Round5 d3: FilterBar form GET drops an active `?sort=` (hidden input).~~ VERIFIED REAL → FIXED 2026-09-09: hidden `sort` input (TestFilterBarPreservesSort).
+17. ~~Round5 d4: budget telemetry undercounts after bridge restart (seed
+    from CountFacts).~~ NOT REAL at HEAD 2026-09-09: `budget.Guard.SpentToday` is a stateless journal projection (`CountFacts(task.enqueued, since midnight)`, budget.go:78) — restart-proof by design; nothing to seed.
+18. ~~Round5 d5: journal-browser "load older" actually pages newer.~~ VERIFIED REAL → FIXED 2026-09-09: `/api/facts?after=-N` tail window + JS opens at the live end and PREPENDS older pages (TestFactsTailWindow).
+19. ~~Round5 d6: data-age client/server fmtAge parity test.~~ DONE 2026-09-09: TestFmtAgeParityWithServer regex-extracts the app.js ladder and sweeps sample ages against durationUntil/timeAgo.
+20. ~~Round5 d7: delete PostgresStore.migrateOnOpenFail dead field.~~ DONE 2026-09-09: field removed (never read anywhere).
 21. Round5 d8: first-push verification of test-windows/test-postgres jobs.
 22. Round5 d9: cmdAPI CLI wiring tests.
 23. Link reviewed-agent task ↔ its review task in webui detail pages.

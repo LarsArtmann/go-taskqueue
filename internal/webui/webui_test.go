@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -1189,5 +1190,136 @@ func TestPageLoadsAppJS(t *testing.T) {
 
 	if !strings.Contains(string(body), `<script src="/static/app.js" defer></script>`) {
 		t.Error("page does not load /static/app.js — live SSE updates are dead")
+	}
+}
+
+// TestFactsTailWindow (round5 d5): after=-N selects the newest N facts so
+// the journal browser opens at the live end — the "load older" button pages
+// backward from there, never forward from seq 0 again.
+func TestFactsTailWindow(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "demo")
+	newer := enqueue(t, s, "sh", "demo")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after=-1&limit=1", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+
+	var page struct {
+		Facts []journal.Fact `json:"facts"`
+		Next  int64          `json:"next"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if len(page.Facts) != 1 || page.Facts[0].TaskID != newer.ID.String() {
+		t.Fatalf("tail window = %+v, want only the newest fact (%s)", page.Facts, newer.ID)
+	}
+
+	// A tail window wider than the journal returns everything from seq 0.
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after=-50&limit=50", nil))
+
+	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(page.Facts) < 2 {
+		t.Fatalf("wide tail window = %d facts, want the whole journal", len(page.Facts))
+	}
+}
+
+// TestFilterBarPreservesSort (round5 d3): an active sort survives the
+// filter form's GET submit as a hidden input.
+func TestFilterBarPreservesSort(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?sort=age-asc", nil))
+
+	body := rec.Body.String()
+	if !strings.Contains(body, `name="sort"`) || !strings.Contains(body, `value="age-asc"`) {
+		t.Error("filter form drops the active sort (no hidden sort input)")
+	}
+}
+
+// TestFmtAgeParityWithServer (round5 d6): the client-side fmtAge in app.js
+// and the server's durationUntil must bucket ages identically — a drifted
+// threshold would flip the label 30s after every SSE burst re-rendered it.
+// The JS ladder is regex-extracted (shape guard) and then compared against
+// durationUntil on sample ages (value guard).
+func TestFmtAgeParityWithServer(t *testing.T) {
+	js, err := os.ReadFile("static/app.js")
+	if err != nil {
+		t.Fatalf("read app.js: %v", err)
+	}
+
+	text := string(js)
+
+	// Seconds branch: `if (s < 60) return s + "s";`
+	secTh := regexp.MustCompile(`s < (\d+)\) return s \+ "s"`)
+	m := secTh.FindStringSubmatch(text)
+	if m == nil {
+		t.Fatal("app.js fmtAge: seconds branch not found — did the JS change shape?")
+	}
+
+	secondsThreshold, _ := strconv.Atoi(m[1])
+	if secondsThreshold != 60 {
+		t.Errorf("app.js seconds bucket threshold = %d, want 60 (server: <1m)", secondsThreshold)
+	}
+
+	// Higher branches: `Math.floor(s / N) + "x"` — (divisor, suffix) pairs.
+	wantPairs := []struct {
+		divisor int
+		suffix  string
+	}{{60, "m"}, {3600, "h"}, {86400, "d"}}
+
+	got := regexp.MustCompile(`Math\.floor\(s / (\d+)\) \+ "([smhd])"`).
+		FindAllStringSubmatch(text, -1)
+	if len(got) != len(wantPairs) {
+		t.Fatalf("app.js fmtAge branches = %d, want %d (shape drift)", len(got), len(wantPairs))
+	}
+
+	for i, w := range wantPairs {
+		div, _ := strconv.Atoi(got[i][1])
+		if div != w.divisor || got[i][2] != w.suffix {
+			t.Errorf("app.js fmtAge branch %d = (/%d %q), want (/%d %q)", i, div, got[i][2], w.divisor, w.suffix)
+		}
+	}
+
+	// Value guard: the JS ladder rendered in Go must equal durationUntil.
+	// Buckets: <60s→s, <3600→m, <86400→h, else d (exactly the JS thresholds).
+	now := time.Now()
+	for _, age := range []time.Duration{
+		0, 500 * time.Millisecond, 59 * time.Second, time.Minute,
+		90 * time.Second, 59 * time.Minute, time.Hour, 90 * time.Minute,
+		23 * time.Hour, 24 * time.Hour, 36 * time.Hour, 72 * time.Hour,
+	} {
+		secs := int(age.Seconds())
+
+		var js string
+
+		switch {
+		case secs < 60:
+			js = strconv.Itoa(secs) + "s"
+		case secs < 3600:
+			js = strconv.Itoa(secs/60) + "m"
+		case secs < 86400:
+			js = strconv.Itoa(secs/3600) + "h"
+		default:
+			js = strconv.Itoa(secs/86400) + "d"
+		}
+
+		if server := durationUntil(age); js != server {
+			t.Errorf("age %v: app.js ladder = %q, server durationUntil = %q", age, js, server)
+		}
+
+		if rendered := timeAgo(now, now.Add(-age)); rendered != js {
+			t.Errorf("age %v: timeAgo = %q, want %q", age, rendered, js)
+		}
 	}
 }
