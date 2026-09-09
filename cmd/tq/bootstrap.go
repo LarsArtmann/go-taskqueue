@@ -87,9 +87,11 @@ type bootstrapOptions struct {
 	exclusive     bool
 	allowDirty    bool
 	repoTimeout   string
-	logDir        string // "" = no sidecar logs; otherwise $TQ_LOG_DIR for the pool (default ~/.local/state/tq/logs)
+	logDir        string        // "" = no sidecar logs; otherwise $TQ_LOG_DIR for the pool (default ~/.local/state/tq/logs)
+	logDirMaxAge  time.Duration // retention: sweep sidecars older than this (0 = keep forever)
+	logDirMaxByts int64         // retention: cap total sidecar bytes, oldest first (0 = uncapped)
 	db            string
-	binPath       string // resolved executable, for the systemd unit
+	binPath       string        // resolved executable, for the systemd unit
 }
 
 // reorderBootstrapArgs lets repos and flags appear in any order
@@ -235,6 +237,18 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 		"log-dir",
 		defaultLogDir(),
 		"write full agent+verify output sidecars to DIR/<task-id>.log (empty = off)",
+	)
+	fs.DurationVar(
+		&o.logDirMaxAge,
+		"log-dir-max-age",
+		0,
+		"sweep sidecar logs older than this age from --log-dir each tick (e.g. 168h = 7d; 0 = keep forever)",
+	)
+	fs.Int64Var(
+		&o.logDirMaxByts,
+		"log-dir-max-bytes",
+		0,
+		"cap the total size of sidecar logs in --log-dir, oldest deleted first (e.g. 5368709120 = 5GiB; 0 = uncapped)",
 	)
 	fs.StringVar(&o.db, "db", "", "task DB (default $TQ_DB or ./tasks.db)")
 	noYolo := fs.Bool("no-yolo", false, "disable autonomy (agents will stall on permission prompts)")
@@ -672,6 +686,14 @@ func composePoolArgs(o bootstrapOptions) []string {
 		args = append(args, "--log-dir", o.logDir)
 	}
 
+	if o.logDirMaxAge > 0 {
+		args = append(args, "--log-dir-max-age", o.logDirMaxAge.String())
+	}
+
+	if o.logDirMaxByts > 0 {
+		args = append(args, "--log-dir-max-bytes", strconv.FormatInt(o.logDirMaxByts, 10))
+	}
+
 	if o.db != "" {
 		args = append(args, "--db", o.db)
 	}
@@ -767,6 +789,14 @@ func renderPoolConfig(o bootstrapOptions) string {
 
 	if o.logDir != "" {
 		fmt.Fprintf(&b, "log-dir = %s\n", o.logDir)
+	}
+
+	if o.logDirMaxAge > 0 {
+		fmt.Fprintf(&b, "log-dir-max-age = %s\n", o.logDirMaxAge)
+	}
+
+	if o.logDirMaxByts > 0 {
+		fmt.Fprintf(&b, "log-dir-max-bytes = %d\n", o.logDirMaxByts)
 	}
 
 	return b.String()

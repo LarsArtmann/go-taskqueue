@@ -148,6 +148,14 @@ func (p *Pool) preflightShouldLog(id task.ID) bool {
 
 	st := p.preflightSeen[id]
 	if st == nil {
+		st = &preflightState{lastLog: time.Now()}
+
+		if p.preflightSeen == nil {
+			p.preflightSeen = make(map[task.ID]*preflightState)
+		}
+
+		p.preflightSeen[id] = st
+
 		return true
 	}
 

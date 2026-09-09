@@ -787,3 +787,74 @@ func TestHeartbeatDefaultTighterThanHalfLease(t *testing.T) {
 		t.Fatalf("explicit heartbeat = %v, want preserved", pool.cfg.Heartbeat)
 	}
 }
+
+// TestPreflightBackoffLadder pins the dirty-tree escalation: consecutive
+// refusals double the base backoff (capped at 15m), every delay stays
+// within the ±20% jitter band, and any non-preflight outcome resets the
+// ladder. A sustained-dirty repo must not bounce at the base backoff
+// forever (23:10 report e7/f7).
+func TestPreflightBackoffLadder(t *testing.T) {
+	base := 30 * time.Second
+	p := New(nil, Config{PreflightBackoff: base}, nil)
+
+	prev := time.Duration(0)
+
+	for want := 1; want <= 5; want++ {
+		got := p.preflightDelay("t1")
+		target := base
+
+		for range want - 1 {
+			target *= 2
+		}
+
+		if got < time.Duration(float64(target)*0.79) || got > time.Duration(float64(target)*1.21) {
+			t.Fatalf("refusal %d: delay %v outside jitter band of %v", want, got, target)
+		}
+
+		if got <= prev && want > 1 {
+			t.Fatalf("refusal %d: delay %v not escalating past %v", want, got, prev)
+		}
+
+		prev = got
+	}
+
+	// The ladder caps: 30 consecutive refusals never exceed the cap+jitter.
+	for range 30 {
+		if got := p.preflightDelay("t1"); got > time.Duration(float64(15*time.Minute)*1.21) {
+			t.Fatalf("delay %v exceeds the cap band", got)
+		}
+	}
+
+	// A completed outcome resets: the next refusal is back at the base.
+	p.preflightReset("t1")
+
+	if got := p.preflightDelay("t1"); got > time.Duration(float64(base)*1.21) {
+		t.Fatalf("post-reset delay %v, want base band %v", got, base)
+	}
+}
+
+// TestPreflightLogRateLimit: the first refusal logs, immediate repeats
+// stay quiet, and after the interval the log speaks again.
+func TestPreflightLogRateLimit(t *testing.T) {
+	p := New(nil, Config{PreflightBackoff: time.Second}, nil)
+	id := task.ID("logtest")
+
+	if !p.preflightShouldLog(id) {
+		t.Fatal("first refusal must log")
+	}
+
+	for range 5 {
+		if p.preflightShouldLog(id) {
+			t.Fatal("immediate repeat refusal must stay quiet")
+		}
+	}
+
+	// Simulate the interval elapsing.
+	p.preflightMu.Lock()
+	p.preflightSeen[id].lastLog = time.Now().Add(-2 * preflightLogInterval)
+	p.preflightMu.Unlock()
+
+	if !p.preflightShouldLog(id) {
+		t.Fatal("refusal after the interval must log again")
+	}
+}

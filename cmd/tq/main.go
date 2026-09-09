@@ -1895,9 +1895,20 @@ func cmdWatermarks(args []string) error {
 		}
 
 		for _, e := range entries {
-			fmt.Printf("%-52s %8d  lag %-6d  updated %s\n",
-				e.Consumer, e.Seq, max(head-e.Seq, 0), time.UnixMilli(e.UpdatedAt).Format(time.RFC3339))
+			lag := max(head-e.Seq, 0)
+			state := fmt.Sprintf("lag %-6d", lag)
+			if lag == 0 {
+				state = "current "
+			}
+
+			fmt.Printf("%-52s %8d  %s  updated %s\n",
+				e.Consumer, e.Seq, state, time.UnixMilli(e.UpdatedAt).Format(time.RFC3339))
 		}
+
+		// A lagging cursor is ambiguous by design: cursors only advance
+		// while their consumer's process runs, so "lagging" may just mean
+		// "off" (e.g. a status loop disabled via --status-every 0).
+		fmt.Println("(a lagging consumer may simply be off — cursors only advance while their process runs)")
 
 		return nil
 
