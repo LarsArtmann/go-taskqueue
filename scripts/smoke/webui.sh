@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 TMP="$(mktemp -d)"
-trap 'kill "${WORKER_PID:-0}" "${SERVE_PID:-0}" "${AUTH_SERVE_PID:-0}" 2>/dev/null || true; rm -rf "$TMP"' EXIT
+trap 'kill "${WORKER_PID:-0}" "${SERVE_PID:-0}" "${AUTH_SERVE_PID:-0}" "${WRITES_SERVE_PID:-0}" 2>/dev/null || true; rm -rf "$TMP"' EXIT
 
 # Ask the kernel for a free ephemeral port. WEBUI_SMOKE_PORT still pins an
 # explicit port; without it a fixed port collides on busy machines.
@@ -188,6 +188,72 @@ code, _, _ = status(f"{base}/static/app.js")
 assert code == 401, f"no-token static: {code}, want 401"
 
 print("auth assertions OK (401 challenge, Bearer + ?token= accepted, static guarded)")
+PYEOF
+
+echo "== writes smoke: CSRF brute force locks the write routes"
+# On the read-only serve above, the write routes must not exist at all.
+python3 - "$PORT" <<'PYEOF'
+import sys, urllib.error, urllib.request
+import urllib.parse
+
+base = f"http://127.0.0.1:{sys.argv[1]}"
+
+req = urllib.request.Request(
+    f"{base}/task/0000/cancel",
+    data=urllib.parse.urlencode({"csrf": "x", "reason": "smoke"}).encode(),
+    method="POST",
+)
+try:
+    urllib.request.urlopen(req, timeout=2)
+    raise AssertionError("read-only serve accepted a write POST")
+except urllib.error.HTTPError as e:
+    assert e.code == 404, f"write POST on read-only serve: {e.code}, want 404"
+print("read-only serve: write route 404 OK")
+PYEOF
+
+WRITES_PORT="$(free_port)"
+"$TMP/tq" serve --addr "127.0.0.1:$WRITES_PORT" --allow-writes --poll 100ms >"$TMP/writes-serve.log" 2>&1 &
+WRITES_SERVE_PID=$!
+
+for _ in $(seq 1 50); do
+	if grep -q "dashboard on" "$TMP/writes-serve.log" 2>/dev/null; then
+		break
+	fi
+
+	sleep 0.1
+done
+
+python3 - "$WRITES_PORT" <<'PYEOF'
+import sys, urllib.error, urllib.request
+import urllib.parse
+
+base = f"http://127.0.0.1:{sys.argv[1]}"
+
+def post(url, data, headers=None):
+    req = urllib.request.Request(url, data=urllib.parse.urlencode(data).encode(), method="POST", headers=headers or {})
+    try:
+        with urllib.request.urlopen(req, timeout=2) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        return e.code
+
+# The page sets the tq_csrf cookie; keep it via a jar-less manual header is
+# unnecessary — withCSRF only needs cookie+field to MATCH, and we send both
+# wrong on purpose.
+for i in range(3):
+    code = post(f"{base}/task/00000000dead/cancel", {"csrf": f"wrong-{i}", "reason": "smoke"},
+                {"Cookie": "tq_csrf=real-token"})
+    assert code == 403, f"failed-CSRF POST {i}: {code}, want 403"
+
+# Fourth attempt — even with the now-CORRECT field — hits the lockout first.
+code = post(f"{base}/task/00000000dead/cancel", {"csrf": "real-token", "reason": "smoke"},
+            {"Cookie": "tq_csrf=real-token"})
+assert code == 429, f"post-lockout POST: {code}, want 429"
+
+# Reads are unaffected by the write lockout.
+with urllib.request.urlopen(f"{base}/api/stats", timeout=2) as r:
+    assert r.status == 200
+print("writes serve: 3x403 then 429 lockout, reads untouched OK")
 PYEOF
 
 echo "== smoke passed"
