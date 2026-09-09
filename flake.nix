@@ -279,6 +279,40 @@
             )
           );
 
+          # `nix run .#test` must cover EVERY module: the go-standard default
+          # runs `go test ./...` at the root, which stops at nested go.mods.
+          # Loop the disk-derived module list exactly like ci-local.sh. The
+          # hermetic checks.test stays root-scope on purpose: the sandbox
+          # vendors only the root module's dependency graph (queue/postgres
+          # needs pgx, which root no longer carries).
+          apps.test = lib.mkForce {
+            type = "app";
+            meta.description = "Run the full multi-module test suite (root + every internal/* module)";
+            program = lib.getExe (
+              pkgs.writeShellApplication {
+                name = "run-test";
+                runtimeInputs = [
+                  pkgs.go
+                  pkgs.findutils
+                  pkgs.gnused
+                ];
+                text = ''
+                  set -euo pipefail
+                  export GOWORK=off GOEXPERIMENT=jsonv2
+                  go test -race -v -coverprofile=coverage.out ./...
+                  for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+                    echo "== module $m =="
+                    ( cd "$m" && go test -race ./... )
+                  done
+                '';
+              }
+            );
+          };
+
+          apps.default.meta.description = "tq — projects-aware task queue CLI";
+          apps.lint.meta.description = "Run golangci-lint over the root module";
+          apps.fmt.meta.description = "Run the treefmt formatters (gofumpt, goimports, nixfmt, templ fmt)";
+
           # Recompile the web UI stylesheet into the committed, embedded
           # static asset (dev step — the nix build just embeds the output).
           apps.webui-css = {

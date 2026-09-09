@@ -44,22 +44,8 @@ for m in $mods; do
 		&& GOWORK=off go test ./... -count=1 -timeout 120s ) || exit 1
 done
 
-step "go.mod hygiene (portable replaces, pinned internal requires)"
-bad="$(grep -hE '^replace ' $(find internal -name go.mod | sort) | grep -E '=> */' || true)"
-if [ -n "$bad" ]; then
-	echo "$bad"
-	echo "FAIL: absolute replace paths are not portable"
-	exit 1
-fi
-bad="$( { grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' $(find internal -name go.mod | sort) go.mod; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
-if [ -n "$bad" ]; then
-	echo "$bad"
-	echo "FAIL: internal requires must be real tagged versions (vX.Y.Z) —"
-	echo "go install of the published module resolves sub-modules through the"
-	echo "proxy, where v0.0.0 never exists (ADR-0011; local replaces make the"
-	echo "version cosmetic in-repo, which is why a wrong pin stays invisible)"
-	exit 1
-fi
+step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
+./scripts/check-go-mods.sh
 
 step "gofmt"
 unformatted="$(gofmt -l .)"

@@ -44,6 +44,9 @@ jobs:
               && GOWORK=off go vet ./... \
               && GOWORK=off go test ./... -count=1 -timeout 120s ) || exit 1
           done
+      - name: go.mod health (replaces, pins, toolchain alignment, mod verify)
+        # Parity with scripts/ci-local.sh — the shared script owns the rules.
+        run: ./scripts/check-go-mods.sh
       - name: Gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - name: Lint (golangci-lint, config in .golangci.yml)
