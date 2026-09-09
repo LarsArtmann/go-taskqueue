@@ -68,30 +68,32 @@ WantedBy=default.target
 
 // bootstrapOptions is the resolved state of one `tq bootstrap` invocation.
 type bootstrapOptions struct {
-	repos         []string // repo specs: bare names (against projectsDir) or paths
-	projectsDir   string
-	agents        int    // pool concurrency AND machine-wide agent cap
-	model         string // "" = inherit each repo's crush config default
-	reasoning     string // low|medium|high|xhigh; applied when model is set
-	verify        map[string]string
-	interval      time.Duration
-	dailyBudget   int
-	maxPerTick    int
-	once          bool
-	dryRun        bool
-	install       bool
-	noRun         bool // ensure + report, then exit (pool runs later via systemd/cron)
-	yolo          bool
-	review        bool
-	reviewAutofix bool
-	exclusive     bool
-	allowDirty    bool
-	repoTimeout   string
-	logDir        string        // "" = no sidecar logs; otherwise $TQ_LOG_DIR for the pool (default ~/.local/state/tq/logs)
-	logDirMaxAge  time.Duration // retention: sweep sidecars older than this (0 = keep forever)
-	logDirMaxByts int64         // retention: cap total sidecar bytes, oldest first (0 = uncapped)
-	db            string
-	binPath       string        // resolved executable, for the systemd unit
+	repos          []string // repo specs: bare names (against projectsDir) or paths
+	projectsDir    string
+	agents         int    // pool concurrency AND machine-wide agent cap
+	model          string // "" = inherit each repo's crush config default
+	reasoning      string // low|medium|high|xhigh; applied when model is set
+	verify         map[string]string
+	interval       time.Duration
+	dailyBudget    int
+	maxPerTick     int
+	once           bool
+	dryRun         bool
+	install        bool
+	noRun          bool // ensure + report, then exit (pool runs later via systemd/cron)
+	yolo           bool
+	review         bool
+	reviewAutofix  bool
+	exclusive      bool
+	allowDirty     bool
+	repoTimeout    string
+	repoInterval   string        // per-repo enqueue pacing ladder: name=duration,...
+	dlqBackoff     time.Duration // pause harvesting a poisoned repo for this long
+	logDir         string        // "" = no sidecar logs; otherwise $TQ_LOG_DIR for the pool (default ~/.local/state/tq/logs)
+	logDirMaxAge   time.Duration // retention: sweep sidecars older than this (0 = keep forever)
+	logDirMaxBytes int64         // retention: cap total sidecar bytes, oldest first (0 = uncapped)
+	db             string
+	binPath        string // resolved executable, for the systemd unit
 }
 
 // reorderBootstrapArgs lets repos and flags appear in any order
@@ -233,6 +235,18 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 	)
 	fs.StringVar(&o.repoTimeout, "repo-timeout", "", "per-repo agent-task timeout ladder: name=duration,...")
 	fs.StringVar(
+		&o.repoInterval,
+		"repo-interval",
+		"",
+		"per-repo minimum gap between new enqueues: name=duration,comma-separated (e.g. big-repo=1h,tiny=5m)",
+	)
+	fs.DurationVar(
+		&o.dlqBackoff,
+		"dlq-backoff",
+		0,
+		"pause harvesting a repo whose recent work is all dead-lettered for this long (0 = off, e.g. 30m)",
+	)
+	fs.StringVar(
 		&o.logDir,
 		"log-dir",
 		defaultLogDir(),
@@ -245,7 +259,7 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 		"sweep sidecar logs older than this age from --log-dir each tick (e.g. 168h = 7d; 0 = keep forever)",
 	)
 	fs.Int64Var(
-		&o.logDirMaxByts,
+		&o.logDirMaxBytes,
 		"log-dir-max-bytes",
 		0,
 		"cap the total size of sidecar logs in --log-dir, oldest deleted first (e.g. 5368709120 = 5GiB; 0 = uncapped)",
@@ -673,6 +687,14 @@ func composePoolArgs(o bootstrapOptions) []string {
 		args = append(args, "--repo-timeout", o.repoTimeout)
 	}
 
+	if o.repoInterval != "" {
+		args = append(args, "--repo-interval", o.repoInterval)
+	}
+
+	if o.dlqBackoff > 0 {
+		args = append(args, "--dlq-backoff", o.dlqBackoff.String())
+	}
+
 	// Deliberately NO "--model" here even when o.model is set: the managed
 	// .crushrc block already pins model + reasoning effort in every enrolled
 	// repo, and a payload model makes the executor pass `crush run -m`,
@@ -690,8 +712,8 @@ func composePoolArgs(o bootstrapOptions) []string {
 		args = append(args, "--log-dir-max-age", o.logDirMaxAge.String())
 	}
 
-	if o.logDirMaxByts > 0 {
-		args = append(args, "--log-dir-max-bytes", strconv.FormatInt(o.logDirMaxByts, 10))
+	if o.logDirMaxBytes > 0 {
+		args = append(args, "--log-dir-max-bytes", strconv.FormatInt(o.logDirMaxBytes, 10))
 	}
 
 	if o.db != "" {
@@ -787,6 +809,14 @@ func renderPoolConfig(o bootstrapOptions) string {
 		fmt.Fprintf(&b, "repo-timeout = %s\n", o.repoTimeout)
 	}
 
+	if o.repoInterval != "" {
+		fmt.Fprintf(&b, "repo-interval = %s\n", o.repoInterval)
+	}
+
+	if o.dlqBackoff > 0 {
+		fmt.Fprintf(&b, "dlq-backoff = %s\n", o.dlqBackoff)
+	}
+
 	if o.logDir != "" {
 		fmt.Fprintf(&b, "log-dir = %s\n", o.logDir)
 	}
@@ -795,8 +825,8 @@ func renderPoolConfig(o bootstrapOptions) string {
 		fmt.Fprintf(&b, "log-dir-max-age = %s\n", o.logDirMaxAge)
 	}
 
-	if o.logDirMaxByts > 0 {
-		fmt.Fprintf(&b, "log-dir-max-bytes = %d\n", o.logDirMaxByts)
+	if o.logDirMaxBytes > 0 {
+		fmt.Fprintf(&b, "log-dir-max-bytes = %d\n", o.logDirMaxBytes)
 	}
 
 	return b.String()

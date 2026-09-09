@@ -89,7 +89,8 @@ in
         Settings for the generated pool.conf (flat key = value, flag
         spellings: projects-dir, repos, interval, concurrency, yolo,
         project-exclusive, daily-budget, max-per-tick, task-timeout,
-        repo-interval, dlq-backoff, review, alert-url, log-dir, …).
+        repo-interval, dlq-backoff, review, alert-url, log-dir,
+        log-dir-max-age, log-dir-max-bytes, …).
         Precedence: extraArgs flags > environment > this file.
       '';
       example = {

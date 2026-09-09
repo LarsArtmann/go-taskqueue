@@ -198,8 +198,9 @@ func TestComposePoolArgs(t *testing.T) {
 		dailyBudget: 20,
 		maxPerTick:  3,
 		yolo:        true, review: true, reviewAutofix: true, exclusive: true,
-		logDir: "/state/tq/logs",
-		db:     "/tmp/tq.db",
+		logDir:       "/state/tq/logs",
+		db:           "/tmp/tq.db",
+		repoInterval: "big-repo=1h,tiny=5m", dlqBackoff: 30 * time.Minute,
 	}
 
 	got := strings.Join(composePoolArgs(o), " ")
@@ -212,6 +213,7 @@ func TestComposePoolArgs(t *testing.T) {
 		"--project-exclusive=true", "--allow-dirty=false",
 		"--db /tmp/tq.db",
 		"--log-dir /state/tq/logs",
+		"--repo-interval big-repo=1h,tiny=5m", "--dlq-backoff 30m0s",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in: %s", want, got)
@@ -238,6 +240,7 @@ func TestRenderPoolConfig(t *testing.T) {
 		interval: 5 * time.Minute, dailyBudget: 20, maxPerTick: 3,
 		yolo: true, review: true, reviewAutofix: true, exclusive: true,
 		model: "zai/glm-5.3-flash", logDir: "/state/tq/logs",
+		logDirMaxAge: 168 * time.Hour, logDirMaxBytes: 5 << 30,
 	}
 
 	got := renderPoolConfig(o)
@@ -246,10 +249,19 @@ func TestRenderPoolConfig(t *testing.T) {
 		"projects-dir = /p", "repos = /p/CV", "concurrency = 2",
 		"daily-budget = 20", "yolo = true",
 		"log-dir = /state/tq/logs",
+		"log-dir-max-age = 168h0m0s", "log-dir-max-bytes = 5368709120",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing %q in:\n%s", want, got)
 		}
+	}
+
+	// Retention keys stay OUT when unset (0 = off; the generated file
+	// must not grow dead keys).
+	o.logDirMaxAge, o.logDirMaxBytes = 0, 0
+
+	if bare := renderPoolConfig(o); strings.Contains(bare, "log-dir-max") {
+		t.Fatalf("unset retention leaked into config:\n%s", bare)
 	}
 
 	// No model key: the .crushrc managed block carries model + reasoning
