@@ -50,6 +50,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/journal v0.0.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.0.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.0.0
+	github.com/larsartmann/go-taskqueue/internal/worker v0.0.0
 )
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ./internal/task
@@ -59,5 +60,7 @@ replace github.com/larsartmann/go-taskqueue/internal/journal => ./internal/journ
 replace github.com/larsartmann/go-taskqueue/internal/executor => ./internal/executor
 
 replace github.com/larsartmann/go-taskqueue/internal/queue => ./internal/queue
+
+replace github.com/larsartmann/go-taskqueue/internal/worker => ./internal/worker
 
 tool github.com/a-h/templ/cmd/templ
