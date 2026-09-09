@@ -51,8 +51,8 @@ func TestActorErrorIsTheCause(t *testing.T) {
 		t.Fatalf("Run = %v, want the http actor's error", err)
 	}
 
-	var cause ExitCause
-	if !errors.As(err, &cause) || cause.Actor != "http" {
+	cause, ok := errors.AsType[ExitCause](err)
+	if !ok || cause.Actor != "http" {
 		t.Fatalf("cause = %+v, want ExitCause{http}", cause)
 	}
 }

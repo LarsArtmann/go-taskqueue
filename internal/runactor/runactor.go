@@ -159,11 +159,11 @@ func (g *Group) Run() error {
 	}
 
 	if cause := context.Cause(g.ctx); cause != nil {
-		var exitCause ExitCause
+		if exitCause, ok := errors.AsType[ExitCause](cause); ok {
+			return errors.Join(exitCause, teardownErr)
+		}
 
 		switch {
-		case errors.As(cause, &exitCause):
-			return errors.Join(exitCause, teardownErr)
 		case errors.Is(cause, context.Canceled), errors.Is(cause, ErrInterrupted):
 			return teardownErr
 		default:

@@ -239,8 +239,8 @@ func TestStatusExecutorPayloadContractMissesArePermanent(t *testing.T) {
 
 			err := e.Execute(context.Background(), task.Task{Type: TaskTypeStatus, Payload: []byte(tt.raw)})
 
-			var perm *PermanentError
-			if err == nil || !errors.As(err, &perm) {
+			_, ok := errors.AsType[*PermanentError](err)
+			if err == nil || !ok {
 				t.Fatalf("payload miss %q must be permanent, got: %v", tt.name, err)
 			}
 		})

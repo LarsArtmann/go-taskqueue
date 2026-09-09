@@ -42,8 +42,7 @@ func Permanent(cause error) error {
 		return nil
 	}
 
-	permanentError := &PermanentError{}
-	if errors.As(cause, &permanentError) {
+	if _, ok := errors.AsType[*PermanentError](cause); ok {
 		return cause
 	}
 
