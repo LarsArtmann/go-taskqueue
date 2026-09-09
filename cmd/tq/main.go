@@ -930,6 +930,32 @@ func cmdAgentPool(args []string) error {
 	guard := budget.Guard{DailyCap: *dailyBudget, BudgetCmd: *budgetCmd}
 	h := harvest.New(q, cfg)
 
+	// Startup zombie sweep, SYNCHRONOUSLY before any actor starts: the
+	// worker's first claim would otherwise race the sweep and turn
+	// cancellable zombies into running tasks (observed in the e2e). One
+	// pass, then never again; --prune-stale=false disables it for operators
+	// who want relaunches to inherit everything.
+	if *pruneStale {
+		res, err := h.PruneStale(ctx)
+		if err != nil {
+			log.Warn("startup prune-stale failed", "err", err)
+		} else {
+			for _, c := range res.Cancelled {
+				log.Warn("startup prune: cancelled stale task",
+					"repo", c.Item.RepoName, "why", c.Why, "item", pruneItemText(c.Item, c.Why), "task", c.TaskID.String())
+			}
+
+			for _, r := range res.Running {
+				log.Warn("startup prune: stale item task already running (left alone)",
+					"repo", r.Item.RepoName, "why", r.Why, "task", r.TaskID.String())
+			}
+
+			for _, f := range res.ScanFailures {
+				log.Warn("startup prune: repo skipped", "repo", f.Repo, "reason", f.Reason)
+			}
+		}
+	}
+
 	var cqaBridge *cqa.Bridge
 	if *cqaURL != "" {
 		cqaBridge = cqa.New(cqa.Config{
@@ -1133,26 +1159,6 @@ func cmdAgentPool(args []string) error {
 	}
 
 	g.Go("tick", func(ctx context.Context) error {
-		// Startup zombie sweep (before the first harvest tick): harvesting
-		// while no pool ran leaves pending tasks behind, and ticking or
-		// deleting the item later never withdraws them — cancel them here
-		// so a relaunch is self-cleaning instead of inheriting zombies.
-		if *pruneStale {
-			res, err := h.PruneStale(ctx)
-			if err != nil {
-				log.Warn("startup prune-stale failed", "err", err)
-			} else {
-				for _, c := range res.Cancelled {
-					log.Warn("startup prune: cancelled stale task",
-						"repo", c.Item.RepoName, "why", c.Why, "item", pruneItemText(c.Item, c.Why), "task", c.TaskID.String())
-				}
-
-				for _, f := range res.ScanFailures {
-					log.Warn("startup prune: repo skipped", "repo", f.Repo, "reason", f.Reason)
-				}
-			}
-		}
-
 		runTick()
 
 		if *once {
