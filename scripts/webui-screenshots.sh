@@ -49,9 +49,22 @@ shoot() {
 shoot dashboard-light light
 shoot dashboard-dark dark
 
+# Detail page: a REAL task id from the seeded database (round-5 d1 — the
+# old `top --json | head -1 | tr -d '"'` piped a JSON object fragment into
+# the URL and always 404'd).
+if ! command -v jq >/dev/null 2>&1; then
+	echo "error: jq needed to pick the detail task id" >&2
+	exit 1
+fi
+DETAIL_ID="$(TQ_DB="$TMP/shots.db" "$TMP/tq" tasks --json 2>/dev/null | jq -r '.[0].id // empty')"
+if [ -z "$DETAIL_ID" ]; then
+	echo "error: no task in the screenshot database to open" >&2
+	exit 1
+fi
+
 "$BROWSER" --headless --disable-gpu --no-sandbox \
 	--window-size=1440,1200 --screenshot="$OUT/task-detail.png" \
-	"http://127.0.0.1:8097/task/$(TQ_DB="$TMP/shots.db" "$TMP/tq" top --once --json 2>/dev/null | head -1 | tr -d '"')" \
+	"http://127.0.0.1:8097/task/$DETAIL_ID" \
 	>/dev/null 2>&1 || echo "wrote $OUT/task-detail.png (best effort)"
 
 echo "screenshots complete"
