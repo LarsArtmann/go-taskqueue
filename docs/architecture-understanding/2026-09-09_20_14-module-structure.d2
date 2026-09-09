@@ -1,0 +1,61 @@
+direction: down
+
+"Library core (5 sub-modules — go.mod each, ADR-0011)": {
+  style: {stroke: "#1d3557"; stroke-width: 4}
+
+  task: {
+    shape: cylinder
+    label: "task\nTask record, Status lifecycle,\nsentinel errors"
+  }
+  journal: {
+    shape: cylinder
+    label: "journal\nImmutable facts,\nappend-only Journal"
+  }
+  queue: {
+    shape: cylinder
+    label: "queue\nStore: SQLite + Postgres,\nlease claims, watermarks"
+  }
+  executor: {
+    label: "executor\nsh / http / agent / review /\nstatus adapters + registry"
+  }
+  worker: {
+    label: "worker\nclaim -> heartbeat ->\nexecute loop, drain"
+  }
+
+  queue -> task: "imports"
+  queue -> journal: "imports"
+  executor -> task: "imports"
+  worker -> queue: "claims via"
+  worker -> executor: "runs with"
+  worker -> task: "imports"
+}
+
+"Root module — application layer": {
+  style: {stroke: "#e63946"; stroke-width: 4}
+
+  cmd: {
+    label: "cmd/tq\nCLI: 19 subcommands"
+  }
+  webui: {
+    label: "webui\ntq serve dashboard\n(SSE fragments)"
+  }
+  httpapi: {label: "httpapi\nHTTP API"}
+  harvest: {label: "harvest\nTODO_LIST.md -> tasks"}
+  sweepers: {
+    label: "review + status\nsweepers"
+  }
+  bridges: {label: "bridges\npapdashboard, cqa"}
+  projections: {label: "budget, consumer"}
+  runactor: {label: "runactor\nprocess supervision"}
+  examples: {label: "examples/\napi, sse"}
+}
+
+cmd -> worker: "wires the pool"
+cmd -> webui: "serves"
+cmd -> harvest: "harvests"
+cmd -> sweepers: "arms"
+cmd -> bridges: "exports"
+cmd -> projections: "projects"
+cmd -> runactor: "supervises shutdown"
+cmd -> httpapi: "serves"
+examples -> queue: "embeds (task + journal + queue only)"

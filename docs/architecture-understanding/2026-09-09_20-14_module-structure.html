@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>go-taskqueue — Architecture Review (2026-09-09 20:14)</title>
+<style>
+:root{
+  --color-paper:#f4f4f0;--color-paper-2:#ffffff;--color-paper-3:#e8e8e2;--color-ink:#111111;
+  --color-red:#e63946;--color-blue:#1d3557;--color-yellow:#f4d35e;
+  --surface:var(--color-paper);--surface-raised:var(--color-paper-2);--surface-sunken:var(--color-paper-3);
+  --text:var(--color-ink);--text-muted:#44464a;--text-faint:#77797e;
+  --border:#d8d8d2;--border-strong:#111111;
+  --accent:var(--color-red);--problem:var(--color-red);--solution:var(--color-blue);--warning:var(--color-yellow);
+  --radius:0px;
+  --font-heading:-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --font-body:-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--surface);color:var(--text);font-family:var(--font-body);line-height:1.6;padding:3rem 1.25rem}
+.wrap{max-width:960px;margin:0 auto}
+.badge{display:inline-block;background:var(--accent);color:#fff;font-weight:800;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;padding:.3rem .7rem;margin-bottom:1rem}
+h1{font-weight:900;font-size:2rem;letter-spacing:-.02em;line-height:1.15}
+h2{font-weight:900;font-size:1.05rem;text-transform:uppercase;letter-spacing:.08em;border-top:3px solid var(--border-strong);padding-top:.8rem;margin:2.2rem 0 1rem}
+h3{font-size:.95rem;font-weight:800;margin:1.2rem 0 .4rem}
+.sub{color:var(--text-muted);margin:.6rem 0 2rem;max-width:65ch}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;margin:1rem 0 1.6rem}
+.stat-card{background:var(--surface-raised);border:1px solid var(--border);padding:1rem}
+.stat-value{font-size:1.9rem;font-weight:900;line-height:1.1}
+.stat-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);margin-top:.2rem}
+.stat-good .stat-value{color:var(--solution)}.stat-bad .stat-value{color:var(--problem)}.stat-warn .stat-value{color:#8a6d00}
+.card{background:var(--surface-raised);border:1px solid var(--border);padding:1rem 1.2rem;margin:.8rem 0}
+.card h4{font-size:.95rem;margin-bottom:.3rem}
+.card-problem{border-left:6px solid var(--problem)}
+.card-solution{border-left:6px solid var(--solution)}
+.card-warning{border-left:6px solid var(--warning)}
+table{width:100%;border-collapse:collapse;margin:.8rem 0 1.4rem;background:var(--surface-raised);font-size:.88rem}
+th,td{text-align:left;padding:.5rem .7rem;border:1px solid var(--border);vertical-align:top}
+th{background:var(--surface-sunken);font-weight:800;text-transform:uppercase;font-size:.7rem;letter-spacing:.08em}
+code{font-family:var(--font-mono);font-size:.85em;background:var(--surface-sunken);padding:.08em .3em}
+.svgbox{background:var(--surface-raised);border:1px solid var(--border);padding:.6rem;margin:.8rem 0;overflow-x:auto}
+.svgbox img{width:100%;height:auto;display:block}
+.migration{display:flex;gap:.9rem;background:var(--surface-raised);border:1px solid var(--border);padding:.9rem 1rem;margin:.6rem 0}
+.migration .num{flex:0 0 2rem;height:2rem;display:flex;align-items:center;justify-content:center;background:var(--solution);color:#fff;font-weight:900}
+.footer{margin-top:3rem;color:var(--text-faint);font-size:.8rem;border-top:1px solid var(--border);padding-top:1rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="badge">Architecture Review &middot; Post-ADR-0011</div>
+  <h1>go-taskqueue structural assessment</h1>
+  <p class="sub">Point-in-time snapshot after the five-module split (ADR-0011, 2026-09-09).
+  Metrics measured from the working tree via go list / exhaustive import greps; all 16 internal packages, 16,930 LOC (non-test, non-generated).</p>
+
+  <h2>Scores (1&ndash;5)</h2>
+  <div class="stat-grid">
+    <div class="stat-card stat-good"><div class="stat-value">5</div><div class="stat-label">Dependency direction</div></div>
+    <div class="stat-card stat-good"><div class="stat-value">5</div><div class="stat-label">Modularity</div></div>
+    <div class="stat-card stat-good"><div class="stat-value">4</div><div class="stat-label">Coupling</div></div>
+    <div class="stat-card stat-good"><div class="stat-value">4</div><div class="stat-label">Cohesion</div></div>
+    <div class="stat-card stat-good"><div class="stat-value">4</div><div class="stat-label">Composability</div></div>
+    <div class="stat-card stat-warn"><div class="stat-value">3</div><div class="stat-label">Service orientation</div></div>
+  </div>
+  <p><strong>Dependency direction 5/5:</strong> acyclic, verified edge-by-edge; the library core (task, journal, queue, executor, worker) imports nothing upward and the compiler now enforces it (missing require/replace = build failure).
+  <strong>Modularity 5/5:</strong> the five sub-modules have 0, 0, 2, 1, and 3 efferent internal deps respectively &mdash; a textbook funnel.
+  <strong>Service orientation 3/3+3=6&hellip; honestly 3/5:</strong> this is a deliberate single-binary embed-first system (ADR-0001 rejected service-oriented options); the Store interface is the distribution seam (Postgres = the v0.2+ multi-machine path). Not a defect &mdash; a documented stance.</p>
+
+  <h2>Coupling (production imports)</h2>
+  <table>
+    <thead><tr><th>Package</th><th>Afferent (who imports it)</th><th>Efferent</th><th>Assessment</th></tr></thead>
+    <tbody>
+      <tr><td><code>task</code></td><td>12 (highest &mdash; the contract)</td><td>0</td><td>Ideal leaf: highest reuse, zero deps</td></tr>
+      <tr><td><code>journal</code></td><td>9</td><td>0</td><td>Ideal leaf</td></tr>
+      <tr><td><code>queue</code></td><td>9</td><td>2</td><td>Healthy hub; 3,149 LOC is the repo's biggest package &mdash; two Store implementations mirror each other by conformance contract (intentional)</td></tr>
+      <tr><td><code>executor</code></td><td>7</td><td>1</td><td>Healthy; 12 files but one concern (execution adapters)</td></tr>
+      <tr><td><code>worker</code></td><td>1 (cmd/tq)</td><td>3</td><td>The composition point &mdash; afferent growth expected when the API promotes</td></tr>
+      <tr><td><code>consumer</code></td><td><strong>0</strong></td><td>1</td><td><strong>Dead production code</strong> &mdash; see finding 1</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Findings</h2>
+  <div class="card card-problem">
+    <h4>1. internal/consumer has zero production importers</h4>
+    <p>The ADR-0009 journal dispatcher (per-subscriber cursor, at-least-once in-order, lag observability) is not wired anywhere: no production package imports it; only tests do. It is polished, documented, dead. Decision needed: wire it into <code>tq serve</code>'s journal tailing (replacing the webui's ad-hoc tailer) or delete it at the next major tidy-up.</p>
+  </div>
+  <div class="card card-warning">
+    <h4>2. cmdAgentPool is a 658-line function (cmd/tq/main.go:614&ndash;1271)</h4>
+    <p>The pool CLI composes every subsystem with inline flag parsing, actor wiring, and lifecycle. It works and is covered by e2e suites, but it is the single largest review blind spot in the repo. Extract actor-wiring and flag-block helpers before the next feature lands there.</p>
+  </div>
+  <div class="card card-warning">
+    <h4>3. Dead exported API in the core modules</h4>
+    <p>15+ exported symbols have no non-test references (e.g. <code>task.CanTransitionTo</code> is used only in task's own tests; <code>queue.ErrEmptyType</code>, <code>worker.ExpBackoff</code>, <code>executor.ResultLine</code>&hellip;). For internal/ modules this is API-surface debt with zero consumers: prune or wire before promotion out of internal/, not after.</p>
+  </div>
+  <div class="card card-solution">
+    <h4>Composability win already banked</h4>
+    <p>examples/api imports exactly task + journal + queue &mdash; the embeddable-library promise (ADR-0001) now has a module boundary to match, and future consumers get it without the app layer.</p>
+  </div>
+
+  <h2>Current structure</h2>
+  <div class="svgbox"><img src="2026-09-09_20_14-module-structure.svg" alt="Current module structure diagram"/></div>
+
+  <h2>Target structure (deltas only)</h2>
+  <div class="svgbox"><img src="2026-09-09_20_14-module-structure-improved.svg" alt="Target module structure diagram"/></div>
+
+  <h2>Action roadmap</h2>
+  <div class="migration"><div class="num">1</div><div><strong>P1 &mdash; consumer decision.</strong> Wire internal/consumer into tq serve's journal tailing or delete the package. Impact: removes the only dead subsystem / doubles down on ADR-0009. Effort: S. No ordering constraints.</div></div>
+  <div class="migration"><div class="num">2</div><div><strong>P1 &mdash; dead-export prune.</strong> Sweep the 15 zero-reference exported symbols in the core modules before any public-API promotion. Impact: honest API surface. Effort: S.</div></div>
+  <div class="migration"><div class="num">3</div><div><strong>P2 &mdash; decompose cmdAgentPool.</strong> Extract flag blocks + actor wiring into testable helpers (target &lt;200 lines). Impact: reviewability of the highest-churn file (75 commits in 3 weeks). Effort: M.</div></div>
+  <div class="migration"><div class="num">4</div><div><strong>P3 &mdash; public-API promotion.</strong> When the API stabilizes: move the five core modules out of internal/ (subdirectory tags already exist per ADR-0011), keep internal/ for the app layer. Owner-gated; not before the dead-export prune.</div></div>
+
+  <div class="footer">Generated 2026-09-09 20:14 &middot; metrics from go list + exhaustive import greps on this tree &middot; D2 sources committed alongside (rendered with d2 v0.8.1)</div>
+</div>
+</body>
+</html>

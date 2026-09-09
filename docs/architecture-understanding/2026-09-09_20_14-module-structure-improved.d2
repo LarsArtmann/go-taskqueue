@@ -1,0 +1,44 @@
+direction: down
+
+target: "Target state — after consumer wiring decision (only deltas from today)"
+
+"Library core (unchanged — 5 sub-modules)": {
+  style: {stroke: "#1d3557"; stroke-width: 4}
+  task: {shape: cylinder; label: "task"}
+  journal: {shape: cylinder; label: "journal"}
+  queue: {shape: cylinder; label: "queue"}
+  executor: {label: "executor"}
+  worker: {label: "worker"}
+  queue -> task: ""
+  queue -> journal: ""
+  executor -> task: ""
+  worker -> queue: ""
+  worker -> executor: ""
+  worker -> task: ""
+}
+
+"Root module — application layer": {
+  style: {stroke: "#e63946"; stroke-width: 4}
+  cmd: {label: "cmd/tq"}
+  webui: {label: "webui (tq serve)"}
+  consumer: {
+    style: {stroke: "#f4d35e"; stroke-width: 3}
+    label: "consumer\njournal dispatcher —\nZERO importers today:\nwire into serve/SSE or delete"
+  }
+  app: {label: "harvest, sweepers,\nbridges, budget,\nhttpapi, runactor"}
+}
+
+"Future (owner-gated): public API promotion": {
+  style: {stroke: "#5a7d2a"; stroke-dash: 4}
+  promoted: {
+    label: "task/, journal/, queue/,\nexecutor/, worker/ outside internal/\nonly when the API stabilizes\n(tags already exist per ADR-0011)"
+    style: {stroke-dash: 4}
+  }
+}
+
+cmd -> worker: ""
+cmd -> webui: ""
+cmd -> app: ""
+webui -> consumer: "DECISION: consume for\njournal tailing (replaces ad-hoc tailer)"
+consumer -> journal: "imports"
+target -> "Library core (unchanged — 5 sub-modules)": "" {style: {opacity: 0}}
