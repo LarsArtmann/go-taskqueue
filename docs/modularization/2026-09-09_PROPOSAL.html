@@ -1175,7 +1175,7 @@ queue &rarr; journal, task &nbsp;&middot;&nbsp; executor &rarr; task &nbsp;&midd
         <table>
           <thead><tr><th>Decision</th><th>Choice</th><th>Rationale</th></tr></thead>
           <tbody>
-            <tr><td>Versioning strategy</td><td><strong>Shared version</strong> (single <code>vX.Y.Z</code> tag bumps all modules)</td><td>Modules are internal-only, tightly coupled, single team; independent semver would be pure ceremony. Root-only + replace covers resolution.</td></tr>
+            <tr><td>Versioning strategy</td><td><strong>Shared version, replace-gated</strong> (single <code>vX.Y.Z</code> root tag + matching <code>internal/&lt;pkg&gt;/vX.Y.Z</code> subdirectory tags, bumped together)</td><td>Modules are internal-only and tightly coupled; independent cadences would be ceremony. Self-review correction: a lone root tag is <em>not</em> proxy-resolvable for sub-modules &mdash; subdirectory tags are required the day anything resolves without <code>replace</code> (promotion out of <code>internal/</code>, ADR-0001's promised external consumers). Today nothing is fetched (replace wins); <code>scripts/release.sh</code> must learn the subdirectory tags before any such promotion.</td></tr>
             <tr><td>Import paths</td><td><strong>Unchanged</strong></td><td>Sub-modules are named <code>&hellip;/internal/&lt;pkg&gt;</code> where the packages already live &mdash; zero rewrites, no <code>// Deprecated</code> redirects needed.</td></tr>
             <tr><td>External consumers</td><td><strong>None possible today</strong></td><td>Everything is under <code>internal/</code>; the internal-access rule keeps blocking any importer outside the <code>github.com/larsartmann/go-taskqueue/</code> tree. The v0.1.0 tag contract is untouched.</td></tr>
             <tr><td>In-repo consumers</td><td><strong>examples/, cmd/tq, e2e</strong></td><td>They keep importing the same paths; resolution now flows through root go.mod requires + replaces.</td></tr>
@@ -1191,23 +1191,56 @@ queue &rarr; journal, task &nbsp;&middot;&nbsp; executor &rarr; task &nbsp;&midd
             <tr><td>3</td><td>Import cycle appears later (FM#1)</td><td>Impossible to add silently: missing require/replace fails the build; the DAG is now compiler-enforced.</td></tr>
             <tr><td>4</td><td>Test-dep leak grows (FM#3)</td><td>Documented; worker&rarr;journal is the only leak and is stdlib-only. CI replace-audit + per-module tidy keeps it honest.</td></tr>
             <tr><td>5</td><td>Concurrent agents + auto-commit daemon</td><td>Stay on master (branch would fragment parallel work); one commit per step = per-step <code>git revert</code> checkpoints; re-run tests immediately before declaring success (repo rule).</td></tr>
-            <tr><td>6</td><td>Fuzz/smoke scripts assume root module</td><td>Audit scripts/fuzz/nightly.sh + smokes; they resolve packages via the root module, whose replace directives keep working unchanged.</td></tr>
+            <tr><td>6</td><td>Directory-package patterns stop crossing module lines (FM#12 variant, found in self-review)</td><td>Three concrete breakages fixed in the plan: (a) ci.yml Postgres job becomes <code>cd internal/queue &amp;&amp; go test . -run TestPostgres</code>; (b) <code>scripts/fuzz/nightly.sh</code> campaigns <code>cd</code> into each package dir (executor is a module; harvest stays root); (c) every root <code>./...</code> gate (vet/build/test, <code>GOOS=windows</code>, test-windows job, advisory lint) gains the per-module loop &mdash; <code>./...</code> keeps passing green while silently skipping the five modules otherwise. Bootstrap-rendered <code>.tq-verify</code> made module-aware for dogfooding.</td></tr>
             <tr><td>7</td><td>golangci-lint multi-module</td><td>Advisory (continue-on-error) by repo policy; per-module runs can be added later without gating.</td></tr>
           </tbody>
         </table>
 
-        <h2 id="build"><span class="num">09</span>Build System Impact</h2>
+        <h2 id="review"><span class="num">09</span>Brutal Self-Review Outcome (Phase 4)</h2>
+        <div class="card card-solution">
+          <h4>Verified clean by adversarial re-inspection</h4>
+          <p>
+            Zero test-file imports of root-module packages from the five core
+            packages (no cycle possible); zero <code>go:embed</code>/
+            <code>go:generate</code> in the modules (only webui embeds, and it
+            stays root); <code>internal/e2e</code> imports only harvest/queue/
+            task/journal/webui (safe in root); <code>gomoddirectives</code>
+            pre-approves local replaces; golangci config discovery works
+            per-module via upward search; the templ <code>tool</code> directive
+            stays root-only.
+          </p>
+        </div>
+        <div class="card card-problem">
+          <h4>Defects found and folded back into this proposal</h4>
+          <p>
+            (1) BLOCKER: the Postgres conformance CI job and the nightly fuzz
+            campaign use directory patterns (<code>./internal/queue/</code>,
+            <code>go test ./internal/executor</code>) that stop matching once
+            those dirs are separate modules &mdash; replaced with
+            <code>cd &lt;mod&gt; &amp;&amp; go test .</code> invocations.
+            (2) RISK: every root <code>./...</code> gate silently stops
+            covering the five modules, including <code>GOOS=windows</code> and
+            the test-windows job &mdash; per-module loops added to both jobs.
+            (3) RISK: the versioning section claimed a lone root tag serves
+            sub-modules; corrected to root tag + subdirectory tags (relevant
+            only at promotion time). (4) NIT: the v0.0.0-pin audit must be
+            test-aware (worker&rarr;journal is test-reachable only).
+          </p>
+        </div>
+
+        <h2 id="build"><span class="num">10</span>Build System Impact</h2>
         <table>
           <thead><tr><th>Surface</th><th>Change</th></tr></thead>
           <tbody>
             <tr><td><code>flake.nix</code></td><td>vendorHash update (fakeHash dance); add <code>GOWORK = "off"</code> to the go-modules/build env as belt-and-braces; <code>subPackages = [ "cmd/tq" ]</code> unchanged.</td></tr>
-            <tr><td><code>scripts/ci-local.sh</code></td><td>New step: for m in task journal queue executor worker &rarr; <code>(cd internal/$m &amp;&amp; GOWORK=off go build/vet/test ./...)</code>, plus replace-portability audit (no absolute paths) and internal-requires-pinned-to-v0.0.0 audit.</td></tr>
-            <tr><td><code>.github/workflows/ci.yml</code></td><td>Mirror the same per-module gate in the test job.</td></tr>
+            <tr><td><code>scripts/ci-local.sh</code></td><td>New step: for m in task journal queue executor worker &rarr; <code>(cd internal/$m &amp;&amp; GOWORK=off go build/vet/test ./...)</code>, plus <code>GOOS=windows</code> cross build/vet per module, replace-portability audit (no absolute paths) and internal-requires-pinned-to-v0.0.0 audit (test-aware: worker&rarr;journal is reachable only via <code>go test</code>); advisory golangci loop extended to the five module dirs.</td></tr>
+            <tr><td><code>.github/workflows/ci.yml</code></td><td>Mirror the per-module gate in the Linux <em>and</em> <code>test-windows</code> jobs and the <code>GOOS=windows</code> cross-compile step; Postgres conformance job becomes <code>cd internal/queue &amp;&amp; go test . -run TestPostgres</code> (directory patterns never cross module boundaries &mdash; <code>./internal/queue/</code> from root would go red or match nothing).</td></tr>
+            <tr><td><code>scripts/fuzz/nightly.sh</code></td><td>Campaigns run from inside each package dir (<code>cd $pkg_dir &amp;&amp; go test . -fuzz</code>) so the executor campaign keeps working once it is its own module; seed-corpus git paths in fuzz.yml are pure filesystem paths and survive unchanged.</td></tr>
             <tr><td><code>docs/</code></td><td>ADR-0011 documenting the module split; AGENTS.md commands + architecture table updated.</td></tr>
           </tbody>
         </table>
 
-        <h2 id="plan"><span class="num">10</span>Migration Plan (Pareto tiers)</h2>
+        <h2 id="plan"><span class="num">11</span>Migration Plan (Pareto tiers)</h2>
         <p>
           Each step is one commit, leaves the tree green
           (build + vet + <code>-race</code> tests), and is independently
