@@ -26,9 +26,8 @@ import (
 // deps table, partial unique dedup index) so the projections and the
 // journal remain byte-compatible across backends.
 type PostgresStore struct {
-	pool              *pgxpool.Pool
-	projectExclusive  bool
-	migrateOnOpenFail bool
+	pool             *pgxpool.Pool
+	projectExclusive bool
 }
 
 const postgresSchema = `

@@ -166,8 +166,10 @@
 
   /* Full-journal browser: pages forward through history via the
      /api/facts cursor (the SSE feed above only carries the tail). Opens
-     lazily on first toggle; "load older" advances the cursor. */
-  var browserCursor = 0;
+     lazily on first toggle; "load older" pages BACKWARD from the live
+     end (after=-N is the tail window; older pages are prepended). */
+  var oldestLoaded = 0;
+  var browserBusy = false;
 
   function factRow(f) {
     var div = document.createElement("div");
@@ -191,17 +193,26 @@
   function loadJournalFacts() {
     var rows = document.getElementById("journal-browser-rows");
     var more = document.getElementById("journal-browser-more");
-    if (!rows) return;
-    fetch("/api/facts?after=" + browserCursor + "&limit=100")
+    if (!rows || browserBusy) return;
+    browserBusy = true;
+    var prepend = oldestLoaded > 0;
+    var cursor = prepend ? Math.max(0, oldestLoaded - 100) : -100;
+    fetch("/api/facts?after=" + cursor + "&limit=100")
       .then(function (r) {
         return r.json();
       })
       .then(function (page) {
-        (page.facts || []).forEach(function (f) {
-          rows.appendChild(factRow(f));
+        var facts = page.facts || [];
+        facts.forEach(function (f) {
+          if (prepend) rows.insertBefore(factRow(f), rows.firstChild);
+          else rows.appendChild(factRow(f));
         });
-        browserCursor = page.next || browserCursor;
-        if (more) more.hidden = (page.facts || []).length === 0;
+        if (facts.length > 0) oldestLoaded = facts[0].seq;
+        if (more) more.hidden = facts.length === 0 || oldestLoaded <= 1;
+        browserBusy = false;
+      })
+      .catch(function () {
+        browserBusy = false;
       });
   }
 

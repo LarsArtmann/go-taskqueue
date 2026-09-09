@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if ! command -v tailwindcss >/dev/null 2>&1 && [ -z "${IN_NIX_SHELL:-}" ]; then
-	echo "tailwindcss not on PATH — run via: nix run .#webui-css-drift-check or in the devShell" >&2
+	echo "tailwindcss not on PATH — enter the devShell (nix develop) or run: nix run .#webui-css" >&2
 	exit 1
 fi
 

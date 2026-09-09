@@ -447,6 +447,9 @@ templ FilterBar(data DashboardData) {
 		if data.Filter.View == viewBoard {
 			<input type="hidden" name="view" value={ viewBoard }/>
 		}
+		if data.Filter.Sort != "" {
+			<input type="hidden" name="sort" value={ data.Filter.Sort }/>
+		}
 		if data.Filter.Project != "" {
 			@filterChip("project", data.Filter.Project, filterURL(data.Filter, clearProject))
 		}
