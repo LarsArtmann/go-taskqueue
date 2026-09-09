@@ -798,8 +798,15 @@ func cmdAgentPool(args []string) error {
 					)
 				}
 
-				for class, n := range groupedSkips(res.Skipped) {
-					log.Info("harvest: skipped", "reason", class, "count", n)
+				for class, g := range groupedSkips(res.Skipped) {
+					if class == harvest.ReasonScanFailed {
+						// A scan failure means the pool cannot see a repo at
+						// all — surface the full reason, not just the class,
+						// or a dead deployment reads as a quiet one.
+						log.Warn("harvest: skipped", "reason", class, "count", g.count, "example", g.example)
+						continue
+					}
+					log.Info("harvest: skipped", "reason", class, "count", g.count, "example", g.example)
 				}
 
 				log.Info("harvest tick done", "repos", res.Repos, "items", res.Items,
@@ -1019,8 +1026,13 @@ func repoRootDesc(projectsDir, repos string) string {
 }
 
 // groupedSkips counts skip reasons by their stable class (text before ':').
-func groupedSkips(skips []harvest.Skipped) map[string]int {
-	groups := make(map[string]int)
+type skipClass struct {
+	count   int
+	example string
+}
+
+func groupedSkips(skips []harvest.Skipped) map[string]skipClass {
+	groups := make(map[string]skipClass)
 
 	for _, sk := range skips {
 		class := sk.Reason
@@ -1028,10 +1040,23 @@ func groupedSkips(skips []harvest.Skipped) map[string]int {
 			class = before
 		}
 
-		groups[class]++
+		g := groups[class]
+		g.count++
+		if g.example == "" {
+			g.example = truncateSkipReason(sk.Reason)
+		}
+		groups[class] = g
 	}
 
 	return groups
+}
+
+func truncateSkipReason(reason string) string {
+	const maxLen = 200
+	if len(reason) <= maxLen {
+		return reason
+	}
+	return reason[:maxLen] + "…"
 }
 
 func printHarvestResult(res harvest.Result) {

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -328,8 +329,17 @@ func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
 	}
 
 	if o.repos != "" {
-		cfg.ProjectsDir = ""
+		// Bare repo names resolve against the projects dir, never the
+		// working directory: harvest Abs()es each entry, so un-expanded
+		// names made every scan cwd-dependent (the systemd pool scans
+		// from dirOf(dbPath) and skipped all repos as "scan failed").
 		cfg.Repos = splitRepos(o.repos)
+		for i, repo := range cfg.Repos {
+			if !filepath.IsAbs(repo) {
+				cfg.Repos[i] = filepath.Join(o.projectsDir, repo)
+			}
+		}
+		cfg.ProjectsDir = ""
 	}
 
 	return cfg, nil

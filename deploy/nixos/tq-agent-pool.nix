@@ -22,6 +22,9 @@
 #   - ProtectSystem=full (NOT strict) and NO ProtectHome restriction: the
 #     pool execs headless agents that write and commit inside $HOME repos
 #     and talk to the network. Sandbox harder and the pool is dead.
+#   - The pool unit carries an explicit agent-toolchain PATH (agentPath):
+#     systemd's default service PATH has no git/go/crush, so every scan,
+#     preflight, agent exec and verify gate would fail without it.
 #   - Restart=on-failure + RestartSec=30s, never Restart=always: a
 #     config error (unknown pool.conf key) must rate-limit, not loop.
 #
@@ -46,6 +49,20 @@ let
       lib.naturalSort (lib.attrNames cfg.poolSettings)
     )
   );
+
+  agentHome = config.users.users.${cfg.user}.home or "/home/${cfg.user}";
+
+  # Agents exec git (dirty preflight + commits), go (.tq-verify gates)
+  # and crush — none of which are on systemd's default service PATH.
+  defaultAgentPath = lib.concatStringsSep ":" [
+    (lib.makeBinPath [
+      pkgs.git
+      pkgs.go
+    ])
+    "/run/current-system/sw/bin"
+    "/etc/profiles/per-user/${cfg.user}/bin"
+    "${agentHome}/go/bin"
+  ];
 in
 {
   options.services.tq-agent-pool = {
@@ -69,6 +86,18 @@ in
       type = lib.types.str;
       default = "tq";
       description = "Group for the pool and dashboard units.";
+    };
+
+    agentPath = lib.mkOption {
+      type = lib.types.str;
+      default = defaultAgentPath;
+      description = ''
+        PATH for the pool unit. Agents exec git (dirty preflight,
+        commits), go (.tq-verify gates), crush (the agents themselves)
+        and repo tooling (templ, nix) — none of which are on systemd's
+        default service PATH. Default: hermetic git+go, then the system
+        profile, the per-user profile and the user's GOBIN.
+      '';
     };
 
     dbPath = lib.mkOption {
@@ -165,7 +194,10 @@ in
       serviceConfig = {
         Type = "simple";
         ExecStart = "${lib.getExe' cfg.package "tq"} agent-pool --config ${poolConf} ${lib.escapeShellArgs cfg.extraArgs}";
-        Environment = [ "TQ_DB=${toString cfg.dbPath}" ];
+        Environment = [
+          "TQ_DB=${toString cfg.dbPath}"
+          "PATH=${cfg.agentPath}"
+        ];
         User = cfg.user;
         Group = cfg.group;
         WorkingDirectory = dirOf (toString cfg.dbPath);

@@ -165,6 +165,10 @@ type Skipped struct {
 	Reason string
 }
 
+// ReasonScanFailed prefixes every repo-level scan error in Skipped.Reason
+// (the detail after the colon is the underlying error).
+const ReasonScanFailed = "scan failed"
+
 // Result summarizes one harvest run.
 type Result struct {
 	Repos    int
@@ -210,7 +214,7 @@ func (h *Harvester) Run(ctx context.Context) (Result, error) {
 
 		items, err := ParseRepo(repo, h.cfg.TodoFile)
 		if err != nil {
-			res.Skipped = append(res.Skipped, Skipped{Reason: "scan failed: " + err.Error()})
+			res.Skipped = append(res.Skipped, Skipped{Reason: ReasonScanFailed + ": " + err.Error()})
 
 			continue
 		}

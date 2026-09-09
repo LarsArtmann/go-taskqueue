@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/larsartmann/go-retry"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -376,14 +377,15 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 // the whole failure class instead of failing a task attempt. Every other
 // error passes through untouched.
 func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
-	for attempt := 1; ; attempt++ {
-		out, err := run()
-		if err == nil || attempt >= 3 || !errors.Is(err, syscall.ETXTBSY) {
-			return out, err
-		}
-
-		time.Sleep(time.Duration(attempt) * 50 * time.Millisecond)
-	}
+	return retry.DoWithValue(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+		MaxAttempts:  3,
+		InitialDelay: 50 * time.Millisecond,
+		MaxDelay:     100 * time.Millisecond,
+		Multiplier:   2.0,
+		IsRetryable:  func(err error) bool { return errors.Is(err, syscall.ETXTBSY) },
+	}, func(_ context.Context, _ int) (T, error) {
+		return run()
+	})
 }
 
 // runVerify enforces the quality gate after the agent exited cleanly. The
