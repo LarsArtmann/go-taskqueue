@@ -20,10 +20,6 @@ import (
 // Register it under this type to make the queue agent-capable.
 const TaskTypeAgent = "agent"
 
-// TaskTypeCrush is the pre-convergence name of TaskTypeAgent. Deprecated: use
-// TaskTypeAgent.
-const TaskTypeCrush = TaskTypeAgent
-
 // AgentPayload is the payload contract for "agent" tasks: run a headless AI
 // coding agent in a repository, then prove the result.
 type AgentPayload struct {
@@ -65,10 +61,6 @@ type AgentPayload struct {
 	// burning agent attempts on runs that stall on permission prompts.
 	Yolo bool `json:"yolo,omitempty"`
 }
-
-// CrushPayload is the pre-convergence name of AgentPayload. Deprecated: use
-// AgentPayload.
-type CrushPayload = AgentPayload
 
 // DefaultAgentBinary is used when Bin, $TQ_AGENT_BIN and $TQ_CRUSH_BIN are
 // all empty.
@@ -558,10 +550,4 @@ func RenderAgentPayload(p AgentPayload) (json.RawMessage, error) {
 	}
 
 	return b, nil
-}
-
-// RenderCrushPayload is the pre-convergence name of RenderAgentPayload.
-// Deprecated: use RenderAgentPayload.
-func RenderCrushPayload(p AgentPayload) (json.RawMessage, error) {
-	return RenderAgentPayload(p)
 }

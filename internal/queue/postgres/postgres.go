@@ -16,7 +16,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// Store is the networked Store twin of SQLiteStore (ADR-0007): the
+// Store is the networked Store twin of sqlite.Store (ADR-0007): the
 // same facts-first semantics over PostgreSQL, for deployments where many
 // producers/workers share a queue across machines. Claims use
 // SELECT ... FOR UPDATE SKIP LOCKED instead of SQLite's single serialized
@@ -120,7 +120,7 @@ func (s *Store) Close() error {
 }
 
 // withTx runs fn in one transaction; ANY error rolls back (same contract
-// as SQLiteStore.withTx).
+// as sqlite.Store.withTx).
 func (s *Store) withTx(ctx context.Context, fn func(pgx.Tx) error) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -319,7 +319,7 @@ func (s *Store) getTaskByDedupKey(ctx context.Context, key string) (task.Task, b
 // ClaimDue atomically claims one due task for owner: FOR UPDATE SKIP
 // LOCKED keeps competing workers on disjoint rows (the multi-machine
 // replacement for SQLite's single serialized writer). Semantics otherwise
-// match SQLiteStore: deps gate, expired-lease reclaim with task.released,
+// match sqlite.Store: deps gate, expired-lease reclaim with task.released,
 // pending cooperative cancels finalized at reclaim.
 func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
 	now := time.Now()

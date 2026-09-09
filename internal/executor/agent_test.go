@@ -58,10 +58,10 @@ func setupGitRepo(t *testing.T, dir string) {
 	run("commit", "-qm", "init")
 }
 
-func agentTaskT(t *testing.T, p CrushPayload) task.Task {
+func agentTaskT(t *testing.T, p AgentPayload) task.Task {
 	t.Helper()
 
-	payload, err := RenderCrushPayload(p)
+	payload, err := RenderAgentPayload(p)
 	if err != nil {
 		t.Fatalf("render payload: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestAgentExecutorContextCancelKillsAgent(t *testing.T) {
 func TestAgentPayloadSafetyFieldsRoundTrip(t *testing.T) {
 	raw := `{"repo":"/tmp/r","prompt":"p","verify":"go test ./...","require_clean":false,"timeout_minutes":10}`
 
-	var p CrushPayload
+	var p AgentPayload
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
