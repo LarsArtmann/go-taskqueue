@@ -875,6 +875,15 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 			if f.Error == "" {
 				t.Error("requeued fact lost the reason")
 			}
+
+			var ev RequeueEvidence
+			if err := json.Unmarshal(f.Detail, &ev); err != nil {
+				t.Fatalf("requeued fact detail not RequeueEvidence: %v (%s)", err, f.Detail)
+			}
+
+			if ev.Reason == "" || ev.RetryIn <= 0 {
+				t.Errorf("RequeueEvidence = %+v, want reason + retry_in_ms", ev)
+			}
 		}
 	}
 

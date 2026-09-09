@@ -67,22 +67,29 @@ templ StatusCards(data DashboardData) {
 	</div>
 }
 
+// taskEmptyState is the ONE empty-state copy for the table and the board:
+// "queue is empty" with no filter, "no tasks match" with one (00:21 e4 —
+// the copy existed twice and nearly drifted).
+templ taskEmptyState(filtered bool) {
+	if filtered {
+		@display.EmptyState(display.EmptyStateProps{
+			Title:       "no tasks match the filter",
+			Description: "Adjust or clear the filters above.",
+			Icon:        icons.Filter,
+		})
+	} else {
+		@display.EmptyState(display.EmptyStateProps{
+			Title:       "queue is empty",
+			Description: "New tasks appear here live.",
+			Icon:        icons.Inbox,
+		})
+	}
+}
+
 // TaskTable renders the live task table (inner content of #frag-table).
 templ TaskTable(data DashboardData) {
 	if len(data.Tasks) == 0 {
-		if data.Filter.Empty() {
-			@display.EmptyState(display.EmptyStateProps{
-				Title:       "queue is empty",
-				Description: "New tasks appear here live.",
-				Icon:        icons.Inbox,
-			})
-		} else {
-			@display.EmptyState(display.EmptyStateProps{
-				Title:       "no tasks match the filter",
-				Description: "Adjust or clear the filters above.",
-				Icon:        icons.Filter,
-			})
-		}
+		@taskEmptyState(!data.Filter.Empty())
 	} else {
 		@taskActiveCard(data)
 		@taskSettledDetails(data)
@@ -354,19 +361,7 @@ templ FactFeed(data DashboardData) {
 // mutation and waits for the --allow-writes gate (ADR-0003 Phase D).
 templ Board(data DashboardData) {
 	if data.MatchTotal == 0 {
-		if data.Filter.Empty() {
-			@display.EmptyState(display.EmptyStateProps{
-				Title:       "queue is empty",
-				Description: "New tasks appear here live.",
-				Icon:        icons.Inbox,
-			})
-		} else {
-			@display.EmptyState(display.EmptyStateProps{
-				Title:       "no tasks match the filter",
-				Description: "Adjust or clear the filters above.",
-				Icon:        icons.Filter,
-			})
-		}
+		@taskEmptyState(!data.Filter.Empty())
 	} else {
 		<div class="board overflow-x-auto pb-2">
 			<ol class="flex min-w-max items-start gap-4" aria-label="tasks by lifecycle status">

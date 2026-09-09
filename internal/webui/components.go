@@ -18,43 +18,50 @@ import (
 // status colors are decided — badges, stat cards, and the journal pane all
 // read from these maps so the color language stays coherent.
 
-// statusBadgeType maps a task status onto the library badge language.
-func statusBadgeType(st task.Status) display.BadgeType {
-	switch st {
-	case task.Pending:
-		return display.BadgeWarning
-	case task.Running:
-		return display.BadgeInfo
-	case task.Completed:
-		return display.BadgeSuccess
-	case task.Dead:
-		return display.BadgeError
-	case task.Cancelled:
-		return display.BadgeNeutral
+// statusStyle is ONE status's visual vocabulary: the badge language AND
+// the board accent read from this single table, so the two renderers can
+// never drift apart (00:21 report e5: two hand-synced maps).
+type statusStyle struct {
+	badge  display.BadgeType
+	accent string
+}
+
+// statusColorTable is the single source of truth for status colors.
+// Hue vocabulary: amber=pending, cyan-family blue=running, green=completed,
+// red=dead, gray=cancelled (theme.css remaps the blue ramp onto signal
+// cyan).
+var statusColorTable = map[task.Status]statusStyle{
+	task.Pending:   {badge: display.BadgeWarning, accent: "border-amber-400 dark:border-amber-500"},
+	task.Running:   {badge: display.BadgeInfo, accent: "border-blue-400 dark:border-blue-500"},
+	task.Completed: {badge: display.BadgeSuccess, accent: "border-green-500 dark:border-green-400"},
+	task.Dead:      {badge: display.BadgeError, accent: "border-red-500 dark:border-red-400"},
+	task.Cancelled: {badge: display.BadgeNeutral, accent: "border-gray-300 dark:border-gray-700"},
+}
+
+// statusStyleFallback is the look for unknown statuses (defensive: the
+// enum is closed, but a zero value must still render sanely).
+var statusStyleFallback = statusStyle{
+	badge:  display.BadgeNeutral,
+	accent: "border-gray-300 dark:border-gray-700",
+}
+
+func statusStyleFor(st task.Status) statusStyle {
+	if s, ok := statusColorTable[st]; ok {
+		return s
 	}
 
-	return display.BadgeNeutral
+	return statusStyleFallback
+}
+
+// statusBadgeType maps a task status onto the library badge language.
+func statusBadgeType(st task.Status) display.BadgeType {
+	return statusStyleFor(st).badge
 }
 
 // statusAccentClass is the board column's status-colored top rule — the
-// same hue vocabulary as the badges and the stat cards (amber=pending,
-// cyan=running, green=completed, red=dead, gray=cancelled; theme.css
-// remaps the blue ramp onto signal cyan).
+// same hue vocabulary as the badges and the stat cards.
 func statusAccentClass(st task.Status) string {
-	switch st {
-	case task.Pending:
-		return "border-amber-400 dark:border-amber-500"
-	case task.Running:
-		return "border-blue-400 dark:border-blue-500"
-	case task.Completed:
-		return "border-green-500 dark:border-green-400"
-	case task.Dead:
-		return "border-red-500 dark:border-red-400"
-	case task.Cancelled:
-		return "border-gray-300 dark:border-gray-700"
-	}
-
-	return "border-gray-300 dark:border-gray-700"
+	return statusStyleFor(st).accent
 }
 
 // verdictBadgeType maps an agent-review verdict onto the badge language:
