@@ -16,7 +16,7 @@ harvester, webui, or bridges.
 
 ## Decision
 
-`PostgresStore` (`internal/queue/postgres.go`, jackc/pgx v5 — pure Go,
+`PostgresStore` (`internal/queue/postgres/postgres.go` since ADR-0012; originally `internal/queue/postgres.go`, jackc/pgx v5 — pure Go,
 CGO stays off) is a SEMANTIC TWIN of SQLiteStore, not a redesign:
 
 1. **Identical storage mapping**: unix-milli BIGINT timestamps, TEXT ids,
