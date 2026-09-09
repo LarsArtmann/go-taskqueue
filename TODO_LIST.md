@@ -4,7 +4,9 @@ Short- and mid-term actionable work. Long-term direction lives in ROADMAP.md.
 
 **This file is machine-consumed**: `tq harvest` turns every unchecked item
 below into an agent task. Keep the `- [ ]` checkbox format, one item per
-line — do not convert to tables. Mark done items `[x]` or delete them;
+line — do not convert to tables. Mark done items `[x]` or delete them
+(the safer default is `[x]`: deletion removes the item from
+`tq harvest --prune-stale`'s match surface — see the caveat in AGENTS.md);
 appending `— BLOCKED: <reason>` keeps an item out of the pool.
 
 Items carry their evidence: a code path and/or the status report that filed
@@ -13,7 +15,7 @@ not here.
 
 ## High Impact
 
-- [ ] `--prune-stale` zombie-matching gap: `pruneRepo` matches pending tasks only against `[x]` items PRESENT in TODO_LIST.md (`internal/harvest/prune.go` iterates `it.Done`) — but the docs convention now DELETES completed items, so a pending task whose item text was deleted (not ticked) is invisible to the sweep forever. Consider treating "item text absent from the file" as stale too (needs a deliberate unreachable-item policy: absent = cancelled vs absent = external work). Found by the 2026-09-09 docs-health TODO rebuild (no live victims: the only pending task at rebuild time was a review task)
+- [ ] `--prune-stale` zombie-matching gap: `pruneRepo` matches pending tasks only against `[x]` items PRESENT in TODO_LIST.md (`internal/harvest/prune.go` iterates `it.Done`) — but the docs convention now DELETES completed items, so a pending task whose item text was deleted (not ticked) is invisible to the sweep forever. Consider treating "item text absent from the file" as stale too (needs a deliberate unreachable-item policy: absent = cancelled vs absent = external work). Found by the 2026-09-09 docs-health TODO rebuild (no live victims: the only pending task at rebuild time was a review task) — BLOCKED: owner policy decision first (02:52 report g1: absent-item semantics)
 - [ ] Pin the cooperative-cancel finalize contract in a test: an agent run cancelled mid-flight (`context.Canceled` through `runAgent`) must finalize the task as Cancelled, never Failed — the `errors.Is` matching is a load-bearing wrapping contract that a 2026-09-09 session nearly broke silently with zero test coverage (01:48 report d7/e5, `internal/worker`)
 - [ ] `tq bootstrap` parity check against the hand-rolled sibling-repo rails (`.crushrc`/`.tq-verify` shape, payload-pinned verify) — reconcile or switch the fleet to bootstrap; carried over THREE reports now (22:42 §d1/f2, 01:35 §c1/f1) and still first-ranked
 - [ ] SECURITY.md: document the `--allow-writes` blast radius (UI-originated cancels/rescues, CSRF cookie model, token-vs-loopback matrix) — the admin write layer shipped without its security-doc update (01:35 report §c5/f6)
@@ -42,7 +44,7 @@ not here.
 
 ## Fleet / deploy
 
-- [ ] SystemNix host-side deploy + round-9 cutover (sudo-gated, user-run): `nix run .#deploy` on evo-x2 starts tq-agent-pool/tq-serve/tq-storage-dir/tq-bootstrap (all wiring shipped 2026-09-08: rev-pinned git+file input 7890cc9, house module `modules/nixos/services/tq-agent-pool.nix`, ports.tq 8100, tq.home.lan vHost + DNS, Gatus checks, btrbk-pool subvolume, dedicated sops bridge template, post-deploy smoke); then the one-time manual-pool cutover in SystemNix `docs/services/tq.md` (stop the `/tmp/tq` processes, optionally copy the dogfood tasks.db onto the pool journal). After the origin push: flip the SystemNix input to `github:LarsArtmann/go-taskqueue?ref=master`
+- [ ] SystemNix host-side deploy + round-9 cutover (sudo-gated, user-run): `nix run .#deploy` on evo-x2 starts tq-agent-pool/tq-serve/tq-storage-dir/tq-bootstrap (all wiring shipped 2026-09-08: rev-pinned git+file input 7890cc9, house module `modules/nixos/services/tq-agent-pool.nix`, ports.tq 8100, tq.home.lan vHost + DNS, Gatus checks, btrbk-pool subvolume, dedicated sops bridge template, post-deploy smoke); then the one-time manual-pool cutover in SystemNix `docs/services/tq.md` (stop the `/tmp/tq` processes, optionally copy the dogfood tasks.db onto the pool journal). After the origin push: flip the SystemNix input to `github:LarsArtmann/go-taskqueue?ref=master` — BLOCKED: owner-run (sudo on evo-x2 — an agent cannot execute this; pool must not pick it up)
 
 ## Owner-blocked decisions (BLOCKED items are skipped by the pool)
 
