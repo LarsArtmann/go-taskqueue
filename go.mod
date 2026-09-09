@@ -46,6 +46,7 @@ require (
 )
 
 require (
+	github.com/larsartmann/go-taskqueue/internal/executor v0.0.0
 	github.com/larsartmann/go-taskqueue/internal/journal v0.0.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.0.0
 )
@@ -53,5 +54,7 @@ require (
 replace github.com/larsartmann/go-taskqueue/internal/task => ./internal/task
 
 replace github.com/larsartmann/go-taskqueue/internal/journal => ./internal/journal
+
+replace github.com/larsartmann/go-taskqueue/internal/executor => ./internal/executor
 
 tool github.com/a-h/templ/cmd/templ
