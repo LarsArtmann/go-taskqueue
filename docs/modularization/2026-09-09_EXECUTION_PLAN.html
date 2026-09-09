@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>go-taskqueue Modularization — Execution Plan (2026-09-09)</title>
+    <style>
+      :root {
+        --color-paper: #f4f4f0;
+        --color-paper-2: #ffffff;
+        --color-paper-3: #e8e8e2;
+        --color-ink: #111111;
+        --color-red: #e63946;
+        --color-blue: #1d3557;
+        --color-yellow: #f4d35e;
+        --surface: var(--color-paper);
+        --surface-raised: var(--color-paper-2);
+        --surface-sunken: var(--color-paper-3);
+        --text: var(--color-ink);
+        --text-muted: #44464a;
+        --text-faint: #77797e;
+        --border: #d8d8d2;
+        --border-strong: #111111;
+        --accent: var(--color-red);
+        --problem: var(--color-red);
+        --solution: var(--color-blue);
+        --warning: var(--color-yellow);
+        --radius: 0px;
+        --font-heading: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        --font-body: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        --font-mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--font-body);
+        line-height: 1.6;
+        padding: 3rem 1.25rem;
+      }
+      .wrap { max-width: 880px; margin: 0 auto; }
+      .badge {
+        display: inline-block; background: var(--accent); color: #fff;
+        font-weight: 800; font-size: 0.75rem; letter-spacing: 0.12em;
+        text-transform: uppercase; padding: 0.3rem 0.7rem; margin-bottom: 1rem;
+      }
+      h1 { font-family: var(--font-heading); font-weight: 900; font-size: 2.2rem; letter-spacing: -0.02em; line-height: 1.1; }
+      .sub { color: var(--text-muted); margin: 0.6rem 0 2rem; max-width: 60ch; }
+      h2 {
+        font-weight: 900; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.08em;
+        border-top: 3px solid var(--border-strong); padding-top: 0.8rem; margin: 2.2rem 0 1rem;
+      }
+      table { width: 100%; border-collapse: collapse; margin: 0.8rem 0 1.4rem; background: var(--surface-raised); }
+      th, td { text-align: left; padding: 0.55rem 0.7rem; border: 1px solid var(--border); vertical-align: top; font-size: 0.92rem; }
+      th { background: var(--surface-sunken); font-weight: 800; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.08em; }
+      code { font-family: var(--font-mono); font-size: 0.86em; background: var(--surface-sunken); padding: 0.1em 0.35em; }
+      pre { background: var(--surface-sunken); border: 1px solid var(--border); padding: 0.9rem 1rem; overflow-x: auto; margin: 0.6rem 0 1.2rem; }
+      pre code { background: none; padding: 0; font-size: 0.84rem; line-height: 1.5; }
+      .step { background: var(--surface-raised); border: 1px solid var(--border); border-left: 6px solid var(--solution); padding: 1rem 1.2rem; margin: 0 0 1rem; }
+      .step h3 { font-size: 1rem; font-weight: 800; margin-bottom: 0.3rem; }
+      .tier { float: right; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #fff; background: var(--solution); padding: 0.15rem 0.5rem; }
+      .t1 { background: var(--accent); } .t2 { background: var(--color-blue); } .t3 { background: #5a7d2a; } .t4 { background: #77797e; }
+      .verify { margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted); }
+      .verify strong { color: var(--text); }
+      .rollback { margin-top: 0.25rem; font-size: 0.85rem; color: var(--text-muted); }
+      .note { background: var(--surface-sunken); border: 1px solid var(--border); padding: 0.9rem 1.1rem; margin: 1rem 0; font-size: 0.92rem; }
+      .footer { margin-top: 3rem; color: var(--text-faint); font-size: 0.8rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="badge">Execution Plan &middot; Phase 5</div>
+      <h1>go-taskqueue Modularization — Execution Plan</h1>
+      <p class="sub">
+        Seven steps, one commit each, leaves the tree green after every step.
+        Strategy per <code>2026-09-09_PROPOSAL.html</code>: replace-directives
+        only, paths unchanged, shared tags (root + subdirectory) at release
+        time. Working branch: master (repo convention under concurrent agents);
+        every step is a revertable checkpoint.
+      </p>
+
+      <h2>Standard gate (every step)</h2>
+<pre><code>go build ./... && go vet ./... && go test ./... -count=1 -race -timeout 120s
+# plus, for the module created in this step:
+cd internal/&lt;mod&gt; &amp;&amp; GOWORK=off go build ./... &amp;&amp; go vet ./... &amp;&amp; go test ./... -count=1 &amp;&amp; go mod tidy &amp;&amp; git diff --exit-code go.mod go.sum</code></pre>
+
+      <div class="step">
+        <span class="tier t1">Tier 1</span>
+        <h3>Step 1 — extract <code>internal/task</code></h3>
+        <p>Create <code>internal/task/go.mod</code> (no requires); root go.mod gains
+        <code>require &hellip;internal/task v0.0.0</code> + <code>replace =&gt; ./internal/task</code>.</p>
+        <div class="verify"><strong>Verify:</strong> standard gate + examples compile (<code>go build ./...</code> covers them).</div>
+        <div class="rollback"><strong>Rollback:</strong> <code>git revert</code> the single commit.</div>
+      </div>
+
+      <div class="step">
+        <span class="tier t1">Tier 1</span>
+        <h3>Step 2 — extract <code>internal/journal</code></h3>
+        <p>Same shape; second stdlib-only leaf.</p>
+        <div class="verify"><strong>Verify:</strong> standard gate.</div>
+        <div class="rollback"><strong>Rollback:</strong> revert commit.</div>
+      </div>
+
+      <div class="step">
+        <span class="tier t2">Tier 2</span>
+        <h3>Step 3 — extract <code>internal/executor</code></h3>
+        <p>First dependent module: requires task (v0.0.0) + replace <code>=&gt; ../task</code>.
+        Validate go.sum generation in a sub-module.</p>
+        <div class="verify"><strong>Verify:</strong> standard gate + <code>GOWORK=off</code> gate in internal/executor (tests include the fuzz seed corpus run).</div>
+        <div class="rollback"><strong>Rollback:</strong> revert commit.</div>
+      </div>
+
+      <div class="step">
+        <span class="tier t2">Tier 2</span>
+        <h3>Step 4 — extract <code>internal/queue</code></h3>
+        <p>Requires task + journal + modernc.org/sqlite + pgx/v5; replaces for both siblings.
+        Heaviest go.sum work; from here the Postgres CI invocation fix is <em>required</em> for green CI
+        (applied together in this step: ci.yml Postgres job becomes <code>cd internal/queue &amp;&amp; go test .</code>).</p>
+        <div class="verify"><strong>Verify:</strong> standard gate + module gate in internal/queue + <code>go test . -run TestPostgres</code> skipped gracefully without a DB (same as today).</div>
+        <div class="rollback"><strong>Rollback:</strong> revert commit (reverts the ci.yml fix with it).</div>
+      </div>
+
+      <div class="step">
+        <span class="tier t3">Tier 3</span>
+        <h3>Step 5 — extract <code>internal/worker</code></h3>
+        <p>Requires task, queue, executor (+ journal, test-only) with four replaces. Completes the graph; root becomes app-only.</p>
+        <div class="verify"><strong>Verify:</strong> standard gate + module gate in internal/worker (its suite is the -race-sensitive one; keep <code>-race</code> in the module gate too).</div>
+        <div class="rollback"><strong>Rollback:</strong> revert commit.</div>
+      </div>
+
+      <div class="step">
+        <span class="tier t3">Tier 3</span>
+        <h3>Step 6 — CI, nix, fuzz, bootstrap wiring</h3>
+        <p>
+          (a) <code>scripts/ci-local.sh</code>: per-module <code>GOWORK=off</code> build/vet/test loop,
+          <code>GOOS=windows</code> cross build/vet per module, replace-portability audit (no absolute paths),
+          v0.0.0-pin audit (test-aware), advisory golangci loop extended to the five dirs.
+          (b) <code>.github/workflows/ci.yml</code>: same loop in Linux + test-windows jobs and the
+          GOOS=windows cross step; Postgres job <code>cd internal/queue</code> (if not already in step 4).
+          (c) <code>scripts/fuzz/nightly.sh</code>: campaigns <code>cd</code> into the package dir.
+          (d) <code>flake.nix</code>: vendorHash fakeHash dance, <code>GOWORK = "off"</code> in build env; real <code>nix build</code>.
+          (e) bootstrap <code>.tq-verify</code> template made module-aware for dogfooding.
+        </p>
+        <div class="verify"><strong>Verify:</strong> <code>./scripts/ci-local.sh</code> end-to-end (includes nix); short fuzz smoke (<code>scripts/fuzz/nightly.sh 5s</code>).</div>
+        <div class="rollback"><strong>Rollback:</strong> revert commit; modules stay functional via steps 1&ndash;5 alone.</div>
+      </div>
+
+      <div class="step">
+        <span class="tier t4">Tier 4</span>
+        <h3>Step 7 — docs &amp; final reflection</h3>
+        <p>ADR-0011 (module split decision), AGENTS.md (commands, architecture table, store invariants note),
+        proposal cross-check. Final verification: workspace-mode root gate, per-module <code>GOWORK=off</code>
+        build+test, <code>go mod tidy</code>/<code>go mod verify</code> clean everywhere, replace audit,
+        re-run full gate right before declaring done (concurrent-agents rule).</p>
+        <div class="verify"><strong>Verify:</strong> everything above + docs consistency.</div>
+        <div class="rollback"><strong>Rollback:</strong> revert docs commit only.</div>
+      </div>
+
+      <h2>Standalone verification battery (after step 7)</h2>
+<pre><code># 1. workspace-less root build
+go build ./... &amp;&amp; go vet ./... &amp;&amp; go test ./... -count=1 -race
+# 2. per-module isolation (the FM#12 gate)
+for m in task journal queue executor worker; do
+  ( cd internal/$m &amp;&amp; GOWORK=off go build ./... &amp;&amp; GOWORK=off go vet ./... &amp;&amp; GOWORK=off go test ./... -count=1 ) || exit 1
+done
+# 3. hygiene
+grep -rnE 'replace .*=.*=&gt; */' --include=go.mod . &amp;&amp; exit 1   # no absolute replaces
+go mod verify
+# 4. reproducible build
+nix build</code></pre>
+
+      <div class="note">
+        <strong>Mini-reflection rule (skill &sect;6.3):</strong> if any step surfaces an
+        unexpected coupling (e.g. a hidden test import upward), stop the tier order and
+        redraw before proceeding &mdash; the plan yields to reality, never the reverse.
+      </div>
+
+      <div class="footer">
+        Execution plan for docs/modularization/2026-09-09_PROPOSAL.html &middot; 2026-09-09 &middot;
+        each step = one commit on master &middot; never push without the full ci-local gate
+      </div>
+    </div>
+  </body>
+</html>
