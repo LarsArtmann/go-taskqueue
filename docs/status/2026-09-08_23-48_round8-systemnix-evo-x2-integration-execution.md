@@ -176,7 +176,7 @@ via edit collisions and pivoted from "write everything" to
 27. Document the NixOS module in go-taskqueue AGENTS.md (Commands/Architecture)
 28. README deployment section (one-command NixOS consumption story)
 29. ADR: Evo-x2 deployment topology (pool/dashboard/bridge, secrets, recovery)
-30. `tq harvest --prune-stale` (backlog; urgent NOW — pool cutover creates zombies)
+30. ~~`tq harvest --prune-stale` (backlog; urgent NOW — pool cutover creates zombies)~~ done at `bed4342`
 31. Zombie audit: pending tasks in the old `./tasks.db` vs new pool DB dedup keys
 32. DLQ drill on the live pool: poison task → dlq → rescue with `--reason`
 33. btrbk restore drill: snapshot → restore `tq.db` (prove the backup works)
@@ -184,11 +184,11 @@ via edit collisions and pivoted from "write everything" to
 35. Wire `--discovery-addr /run/project-discovery/daemon.sock` when daemon lands
 36. Dogfood one live `--review` window on the new pool (backlog item)
 37. PapDashboard live e2e: dead letter → alert → resolve-after-rescue
-38. `docs/status/README.md` index sync (backlog; this report adds one more)
-39. Remove `taskid.txt` (backlog, one-liner)
-40. `tq tasks --project P --status S --since D` list view (backlog, ops-relevant now)
-41. `tq stats --json` for the dashboard/monitoring consumption (backlog)
-42. Surface daily-budget spend in `tq stats` CLI (backlog)
+38. ~~`docs/status/README.md` index sync (backlog; this report adds one more)~~ done (scripts/check-status-index.sh, every report indexed exactly)
+39. ~~Remove `taskid.txt` (backlog, one-liner)~~ done (git rm + .gitignore, 2026-09-09)
+40. ~~`tq tasks --project P --status S --since D` list view (backlog, ops-relevant now)~~ done at `8d02352`
+41. ~~`tq stats --json` for the dashboard/monitoring consumption (backlog)~~ done (tq stats --json aggregate)
+42. ~~Surface daily-budget spend in `tq stats` CLI (backlog)~~ done (budget today N/M line)
 43. Cancel-semantics decision: release dedup key on cancel (owner gate, blocks cutover hygiene)
 44. VM test revival if activation misbehaves (E3 reversal criterion)
 45. Darwin/multi-host: document module is linux-only; guard against rpi3 enable

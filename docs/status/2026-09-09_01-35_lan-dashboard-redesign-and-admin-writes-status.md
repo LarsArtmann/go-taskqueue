@@ -35,7 +35,7 @@ The dashboard went from a read-only generic admin template to a working operatio
 | 2 | My table changes × concurrent agent's table refactor | Final render shows their header set + my actions column working together; suite race-green at commit time | After my commit, other agents' in-flight edits (`executor/status.go` syntax error, harvest drift.go) left the tree transiently unbuildable — **not my packages**, unverified whether settled | Their WIP — S once they land |
 | 3 | Writes UX | Cancel/stop/rescue from table rows + detail page | No bulk actions, no rescue-all, no enqueue-from-UI (deliberate — scope) | Awaiting owner priority (§g2) |
 | 4 | Session hardening | Cookie issued per browser, HttpOnly, Lax | No `Max-Age` (session-scoped by design?), no rotation, no revocation story | Owner policy question (§g1) |
-| 5 | Two TODO items queued at 22:42 (daemon-backed discovery, watch trigger) | Discovery implementation was observed mid-flight (`internal/harvest/discovery.go` + tests, pool agent) | Not verified complete; watch trigger not started | Pool's own backlog — ongoing |
+| ~~5~~ | ~~Two TODO items queued at 22:42 (daemon-backed discovery, watch trigger)~~ done — discovery (8734bd8) + watch (113957a) shipped and tested 2026-09-08 | ~~Discovery implementation was observed mid-flight (`internal/harvest/discovery.go` + tests, pool agent)~~ | ~~Not verified complete; watch trigger not started~~ | ~~Pool's own backlog — ongoing~~ |
 
 ## c) NOT STARTED
 
@@ -43,7 +43,7 @@ The dashboard went from a read-only generic admin template to a working operatio
 | - | ---- | --- | ------------- |
 | 1 | **`tq bootstrap` parity check** — carried over from the 22:42 report §f2; the sibling-repo rails are still hand-rolled, never compared against the repo's own onboarding tool | Forgotten again under redesign pressure | Yes — S, should be first |
 | 2 | Mobile/narrow-viewport pass (the band wraps, the table will need the overflow scroll everywhere) | Desktop screenshot only | Yes — S–M |
-| 3 | CHANGELOG entry for the webui/redesign/writes work | Daemon churn ate the tree; docs beyond ADR/AGENTS untouched | Yes — S |
+| ~~3~~ | ~~CHANGELOG entry for the webui/redesign/writes work~~ done (docs-health pass admin-writes + LAN hardening CHANGELOG entry added) | ~~Daemon churn ate the tree; docs beyond ADR/AGENTS untouched~~ | ~~Yes — S~~ |
 | 4 | Browser-driven e2e for the write flow (real form fill → submit → assertion) | Verified via python HTTP, not a real browser form | Nice-to-have — the `playwright-chromium-headless-shell.drv` already sits in the nix store |
 | 5 | SECURITY.md update for the writes surface (blast radius now includes UI-originated cancels) | Missed | Yes — S |
 

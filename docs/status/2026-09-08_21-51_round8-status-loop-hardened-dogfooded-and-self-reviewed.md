@@ -133,8 +133,8 @@ the whole point by minting the next 25 work items itself.
 2. The 5 owner-BLOCKED items (v0.2.0 go/no-go, live CQA verify, review-status
    trust policy, mechanical append cap, `--status-every` default N).
 3. Cross-repo status aggregation — deliberately out of scope since ROUND7.
-4. Size-based sidecar cap (age-based retention shipped; the size cap remains a
-   recorded future option).
+4. ~~Size-based sidecar cap (age-based retention shipped; the size cap remains a~~ done (SweepSidecarsByBytes + --log-dir-max-bytes, TestSweepSidecarsByBytes)
+   ~~recorded future option).~~
 
 ## d) TOTALLY FUCKED UP (honest section)
 

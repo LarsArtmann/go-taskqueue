@@ -215,13 +215,13 @@ yet (see b/partial).
 
 ## f) NEXT — up to 50 (ordered by leverage; ⭐ = ready now)
 
-1. ⭐ Run `./scripts/ci-local.sh` on the final tree (the session gate).
-2. ⭐ Tick TODO_LIST rows (P6, P7, P10–P15, P17, P18, P19, P20) with
-   evidence pointers.
-3. ⭐ FEATURES.md + CHANGELOG.md rows for watermarks/verdicts/bus/actors.
-4. ⭐ AGENTS.md package map: `internal/consumer`, `internal/runactor`.
-5. ⭐ DOMAIN_LANGUAGE: dispatcher / exact consumer / signal consumer.
-6. Verify + integrate the concurrent agent's `status` executor ship.
+1. ~~⭐ Run `./scripts/ci-local.sh` on the final tree (the session gate).~~ done (ci-local green twice, 2026-09-09 sweep session)
+2. ~~⭐ Tick TODO_LIST rows (P6, P7, P10–P15, P17, P18, P19, P20) with~~ done (TODO_LIST rows ticked with evidence 2026-09-08; harvested rows now live in CHANGELOG)
+   ~~evidence pointers.~~
+3. ~~⭐ FEATURES.md + CHANGELOG.md rows for watermarks/verdicts/bus/actors.~~ done (watermarks/verdicts/bus/actor rows shipped)
+4. ~~⭐ AGENTS.md package map: `internal/consumer`, `internal/runactor`.~~ done (internal/consumer + internal/runactor rows in the package map)
+5. ~~⭐ DOMAIN_LANGUAGE: dispatcher / exact consumer / signal consumer.~~ done (dispatcher terms present in docs/DOMAIN_LANGUAGE.md)
+6. ~~Verify + integrate the concurrent agent's `status` executor ship.~~ done (status executor verified + hardened (verify gate, scope rule, smoke))
 7. P8: cut v0.2.0 (owner gate) — `scripts/release.sh v0.2.0`.
 8. Push authorization: master is ~30 commits ahead of origin.
 9. P9: CQA live dry-run (owner creds).
@@ -230,7 +230,7 @@ yet (see b/partial).
 11. Notify-after-commit hook (v2 wake) for the dispatcher — outside the
     mutation tx.
 12. Webui lag card (persisted consumer lag on the dashboard).
-13. `tq stats --json` parity incl. consumer lag.
+13. ~~`tq stats --json` parity incl. consumer lag.~~ done (tq stats --json aggregate incl. consumer_lag)
 14. Round5 defect d1: webui-screenshots.sh detail-page URL builds from a
     JSON object (garbage URL) — never executed.
 15. Round5 d2: check-webui-css.sh references a ghost nix app

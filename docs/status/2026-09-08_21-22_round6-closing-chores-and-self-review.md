@@ -244,19 +244,19 @@ TODO_LIST.md, 31–50 into ROADMAP.md unless owner promotes them.
 
 **In-flight / verify-and-close (this week):**
 
-9. Finish `scripts/smoke/status-loop.sh` + wire into ci-local (ROUND7 agent's
-   open TODO item; currently mid-flight) — High / M / Feature.
-10. Deliberately verify + tick "live dogfood the status loop" (item 3 in (b)):
-    one full window, confirm report + TODO append + `StatusResult` fact
-    — High / S / Verification.
+9. ~~Finish `scripts/smoke/status-loop.sh` + wire into ci-local (ROUND7 agent's~~ done (scripts/smoke/status-loop.sh wired into ci-local)
+   ~~open TODO item; currently mid-flight) — High / M / Feature.~~
+10. ~~Deliberately verify + tick "live dogfood the status loop" (item 3 in (b)):~~ done (live window-22 dogfood 2026-09-08, StatusResult on the fact)
+    ~~one full window, confirm report + TODO append + `StatusResult` fact~~
+    ~~— High / S / Verification.~~
 11. Verify round-5 §f defects at HEAD before re-filing any of them
     (sort-lost-on-filter, budget undercount, "load older" label, data-age
     parity, dead `migrateOnOpenFail`, ghost `webui-css-drift-check`, screens
     URL) — High / M / Bug.
-12. `tq show`: render `StatusResult` detail — Medium / S / Feature.
-13. `tq doctor`: watermark liveness checks for `review-sweeper` +
-    `status-sweeper` — Medium / S / Feature.
-14. Fix the truncated FEATURES "Release runner" table cell — Low / S / Docs.
+12. ~~`tq show`: render `StatusResult` detail — Medium / S / Feature.~~ done (tq show resultDetail decodes StatusResult)
+13. ~~`tq doctor`: watermark liveness checks for `review-sweeper` +~~ done (doctorWatermarkLiveness, TestDoctorWatermarkLiveness)
+    ~~`status-sweeper` — Medium / S / Feature.~~
+14. ~~Fix the truncated FEATURES "Release runner" table cell — Low / S / Docs.~~ done (docs-health pass broken Release-runner row repaired)
 15. Check `internal/executor/status.go:243` dupword finding ("TODO_LIST.md
     TODO_LIST.md"?) — real typo or intentional doc text — Low / S / Bug.
 
@@ -312,8 +312,8 @@ TODO_LIST.md, 31–50 into ROADMAP.md unless owner promotes them.
     Medium / L / Feature.
 39. Consumer-group claim path (WHERE-clause sharing) for multi-machine
     workers — Medium / M / Feature.
-40. Sidecar size cap (du-based) if the age cap proves insufficient in
-    dogfood — Low / S / Feature.
+40. ~~Sidecar size cap (du-based) if the age cap proves insufficient in~~ done (SweepSidecarsByBytes + --log-dir-max-bytes)
+    ~~dogfood — Low / S / Feature.~~
 41. README: public story for watermarks + dispatcher (the release sales page
     still doesn't mention the journal-consumer model) — Medium / S / Docs.
 

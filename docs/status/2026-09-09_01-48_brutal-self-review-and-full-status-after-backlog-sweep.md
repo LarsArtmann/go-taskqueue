@@ -94,8 +94,8 @@ allowlist mechanism); Postgres battery verified 2× against a real
 3. **Failure evidence coverage**: only `task.failed` facts carry evidence;
    `task.requeued` (preflight refusals — dirty tree etc.) carries none.
    Deliberate scope cut, never written down anywhere until now.
-4. **(f) of this report is NOT harvested into TODO_LIST/ROADMAP** — see
-   section g, question 3.
+4. ~~**(f) of this report is NOT harvested into TODO_LIST/ROADMAP** — see~~ done (docs-health pass section (f) harvested in the docs-health pass: curated slice to TODO_LIST, rest to ROADMAP)
+   ~~section g, question 3.~~
 
 ---
 

@@ -204,8 +204,8 @@ window (not yet in TODO_LIST); unmarked = existing TODO_LIST items.
 
 **Tier 1 — do next (direct cost/correctness payoff):**
 
-1. ★ Deflake `TestRestartMidStreamLosesZeroFacts` (papdashboard restart race,
-   watermark 549 ≠ 600) — filed in TODO_LIST this window
+1. ~~★ Deflake `TestRestartMidStreamLosesZeroFacts` (papdashboard restart race,~~ done at `90f67ae`
+   ~~watermark 549 ≠ 600) — filed in TODO_LIST this window~~
 2. ★ Decide review budget semantics: exempt reviews from the daily cap,
    separate review cap, or keep double-count (g1)
 3. ★ Ratify or revert the 30/day budget level; consider `--budget-cmd` with
@@ -216,28 +216,28 @@ window (not yet in TODO_LIST); unmarked = existing TODO_LIST items.
 6. ★ `tq facts --json` + non-truncating detail rendering
 7. ★ Dirty-tree requeue backoff/jitter + log rate-limit
 8. ★ Agent prompt rule: code+tests before changelog/TODO closure
-9. Task-ID footer in agent commit messages (TODO #77-region) — attribution
+9. ~~Task-ID footer in agent commit messages (TODO #77-region) — attribution~~ done at `118f80f`
 10. ★ Auto-daemon: skip files an agent just committed (stop stealing
     `commit_sha` attribution)
 11. ★ Land + read live review #2's verdict (in flight at report time)
 12. ★ bootstrap: `--repo-interval` / `--dlq-backoff` passthrough (parity)
-13. `tq harvest --prune-stale` (TODO #71) — zombie tasks after relaunches
-14. `tq cancel --reason` already shipped this window — next: exercise it on a
-    real cancellation and render the reason in the web UI trail (TODO #83)
-15. Record failure evidence (exit code + verify tail) in `task.failed` facts
-    (TODO #74) — this window's failures carried truncated tails only
+13. ~~`tq harvest --prune-stale` (TODO #71) — zombie tasks after relaunches~~ done at `bed4342`
+14. ~~`tq cancel --reason` already shipped this window — next: exercise it on a~~ done (cancel-reason web UI trail, TestDetailFactsSurfacesCancelReason)
+    ~~real cancellation and render the reason in the web UI trail (TODO #83)~~
+15. ~~Record failure evidence (exit code + verify tail) in `task.failed` facts~~ done at `6b91506`
+    ~~(TODO #74) — this window's failures carried truncated tails only~~
 
 **Tier 2 — this week (visibility + loop hardening):**
 
-16. `tq tasks --project --status --since` list view (TODO #75)
-17. `tq show` task-ID prefix (TODO #76)
-18. `tq stats --json` (TODO #78)
-19. Surface daily-budget spend in `tq stats` (TODO #79)
-20. Integration test: `--daily-budget` caps status-minted enqueues (TODO #89)
-21. AGENTS.md known-issue: queue tasks outlive TODO items (TODO #86)
-22. `--once` runbook for verification workers (TODO #87)
-23. ci-local doc-check: every `docs/status/*.md` indexed (TODO #84)
-24. Sync `docs/status/README.md` with the 5 unindexed reports (TODO #85)
+16. ~~`tq tasks --project --status --since` list view (TODO #75)~~ done at `8d02352`
+17. ~~`tq show` task-ID prefix (TODO #76)~~ done (resolveTask, TestResolveTaskPrefix)
+18. ~~`tq stats --json` (TODO #78)~~ done (tq stats --json aggregate)
+19. ~~Surface daily-budget spend in `tq stats` (TODO #79)~~ done (budget today N/M line)
+20. ~~Integration test: `--daily-budget` caps status-minted enqueues (TODO #89)~~ done (TestBudgetCapsStatusMintedEnqueues (caught + fixed a real bypass))
+21. ~~AGENTS.md known-issue: queue tasks outlive TODO items (TODO #86)~~ done (AGENTS.md Known Issues bullet)
+22. ~~`--once` runbook for verification workers (TODO #87)~~ done (runbook rule in AGENTS.md)
+23. ~~ci-local doc-check: every `docs/status/*.md` indexed (TODO #84)~~ done (scripts/check-status-index.sh in ci-local)
+24. ~~Sync `docs/status/README.md` with the 5 unindexed reports (TODO #85)~~ done (every report indexed exactly)
 25. ★ Pool runbook line in AGENTS.md: the round-9 launch command (budget 30,
     review on) so the next window doesn't reconstruct flags
 26. ★ `.crushrc` managed-block migration for this repo (deliberate bootstrap
@@ -245,17 +245,17 @@ window (not yet in TODO_LIST); unmarked = existing TODO_LIST items.
 27. ★ Suppress status-sweeper startup when `--status-every 0` (lag 12 grows
     forever, cosmetic but confusing in `tq watermarks show`)
 28. ★ `tq top`: show budget spend + in-flight review tasks
-29. Sidecar size/count cap `--log-dir-max-bytes` (TODO #82; `--max-age` now
-    used live for the first time this window)
+29. ~~Sidecar size/count cap `--log-dir-max-bytes` (TODO #82; `--max-age` now~~ done (SweepSidecarsByBytes, TestSweepSidecarsByBytes)
+    ~~used live for the first time this window)~~
 30. ★ Dry-run output: distinguish `paced` vs `max-per-tick` skip reasons
 31. ★ Exercise the budget-exhaustion path live once (hit 30/30, observe the
     refusal + harvest skip log) — currently unobserved on this DB
 32. ★ Dogfood a deliberate poisoned task in a sandbox repo to observe the full
     DLQ → backoff → rescue flow (all DLQ observations so far are secondhand)
 33. `--review-autofix` live window (TODO-adjacent; one new variable)
-34. FuzzExtractResultPayload into nightly rotation (TODO #80)
-35. Postgres store conformance battery in CI (TODO #81)
-36. `tq bootstrap --install` smoke (TODO #90)
+34. ~~FuzzExtractResultPayload into nightly rotation (TODO #80)~~ done (nightly.sh campaign rotation)
+35. ~~Postgres store conformance battery in CI (TODO #81)~~ done at `0d9cd2b`
+36. ~~`tq bootstrap --install` smoke (TODO #90)~~ done at `0a6ce53`
 
 **Tier 3 — owner-gated / later (listed, not scheduled):**
 
@@ -267,9 +267,9 @@ window (not yet in TODO_LIST); unmarked = existing TODO_LIST items.
 42. Cancel dedup-key release policy (TODO #94/105, BLOCKED)
 43. Status-report review ceiling trust policy (TODO #51, BLOCKED)
 44. Status TODO-append mechanical cap (TODO #52, BLOCKED)
-45. ADR-0010 journal retention/compaction stance (TODO #102)
-46. ★ Annotate round-4 plan S04: budget 15 was practice-superseded (docs
-    truth-sync so the plan stops lying)
+45. ~~ADR-0010 journal retention/compaction stance (TODO #102)~~ done (docs/adr/0010-journal-retention-stance.md)
+46. ~~★ Annotate round-4 plan S04: budget 15 was practice-superseded (docs~~ done (docs-health pass round-4 plan S04 annotated in the same pass)
+    ~~truth-sync so the plan stops lying)~~
 47. ★ Multi-repo dogfood: enroll a second repo via bootstrap to exercise
     cross-repo exclusivity for real
 48. ★ Review-cost saver: mechanically pass zero-finding approvals without a

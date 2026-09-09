@@ -164,7 +164,7 @@ packages)**, `scripts/smoke/webui.sh` green including new board assertions.
 ## f) Up to 50 things to get done next
 
 **Board/UI follow-ups (mine):**
-1. Run `./scripts/ci-local.sh` full gate (incl. nix) before any push.
+1. ~~Run `./scripts/ci-local.sh` full gate (incl. nix) before any push.~~ done (ci-local green twice in the 2026-09-09 sweep session)
 2. Golden-fragment snapshot test for `Board` (mirror `TestGoldenFragments`).
 3. Browser/screenshot QA of the board: narrow-viewport scroll, dark-mode
    accents, card density (needs a browser-capable env or chromedp module).
@@ -207,9 +207,9 @@ packages)**, `scripts/smoke/webui.sh` green including new board assertions.
 **Process/infra (from this session's pain):**
 27. Auto-commit daemon: build-gate (or red-tag) before committing.
 28. Concurrent-agent file-ownership/lock convention.
-29. Add this report to `docs/status/README.md` index
-    (`scripts/check-status-index.sh` guards it — sibling added that).
-30. HARVEST this report's (f) list into `TODO_LIST.md` (docs-health).
+29. ~~Add this report to `docs/status/README.md` index~~ done (indexed; scripts/check-status-index.sh guards it)
+    ~~(`scripts/check-status-index.sh` guards it — sibling added that).~~
+30. ~~HARVEST this report's (f) list into `TODO_LIST.md` (docs-health).~~ done (docs-health pass curated slice harvested to TODO_LIST, rest to ROADMAP)
 31. templ LSP phantom diagnostics: ignore config or restart habit.
 32. Scoped lint pass over `internal/webui` (advisory findings grew; hard
    gates are fine).

@@ -131,26 +131,26 @@ Nothing shipped broken (all gates green before push). Honest near-misses:
 
 | #  | Task                                                                                                                        | Impact             |
 | -- | --------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| 1  | Run repo verify after status-agent run in `StatusExecutor` (same gate as agent executor)                                    | HIGH — correctness |
-| 2  | Live dogfood: enable `--status-every` on this repo's pool, watch one full window                                            | HIGH — proof       |
-| 3  | `scripts/smoke/status-loop.sh`: stub-agent end-to-end (mint → run → report → TODO_LIST append → harvest re-arm) in ci-local | HIGH               |
-| 4  | Web UI: status badge + report-path link from `StatusResult` detail                                                          | MED                |
+| ~~1~~  | ~~Run repo verify after status-agent run in `StatusExecutor` (same gate as agent executor)~~ done — StatusPayload.Verify gate, TestStatusExecutorVerifyGateGatesCompletion | ~~HIGH — correctness~~ |
+| ~~2~~  | ~~Live dogfood: enable `--status-every` on this repo's pool, watch one full window~~ done — live 2026-09-08 window-22 dogfood, StatusResult on the completion fact | ~~HIGH — proof~~ |
+| ~~3~~  | ~~`scripts/smoke/status-loop.sh`: stub-agent end-to-end (mint → run → report → TODO_LIST append → harvest re-arm) in ci-local~~ done — scripts/smoke/status-loop.sh wired into ci-local | ~~HIGH~~ |
+| ~~4~~  | ~~Web UI: status badge + report-path link from `StatusResult` detail~~ done — TestStatusResultBadgeAndCard | ~~MED~~ |
 | 5  | `internal/e2e` status-loop test (unix build tag)                                                                            | MED                |
-| 6  | Full window detail: attach commit/files to every entry (lookup per completion fact)                                         | MED                |
-| 7  | Pin real item text into `AgentPayload` (harvester change) → excerpts stop being boilerplate                                 | MED                |
-| 8  | `tq show`: render `StatusResult`; `tq doctor`: `status-sweeper` watermark liveness                                          | MED                |
+| ~~6~~  | ~~Full window detail: attach commit/files to every entry (lookup per completion fact)~~ done — Sweeper.completionDetail via FactsForTask | ~~MED~~ |
+| ~~7~~  | ~~Pin real item text into `AgentPayload` (harvester change) → excerpts stop being boilerplate~~ done — AgentPayload.Item pinned by the harvester | ~~MED~~ |
+| ~~8~~  | ~~`tq show`: render `StatusResult`; `tq doctor`: `status-sweeper` watermark liveness~~ done — resultDetail decode + doctorWatermarkLiveness | ~~MED~~ |
 | 9  | DOMAIN_LANGUAGE.md: status window / done prompt / status report                                                             | LOW                |
 | 10 | Fuzz `parseStatusResult` (mirror `result_fuzz_test.go`)                                                                     | LOW                |
 | 11 | Batch sweeper List calls per sweep (perf hygiene)                                                                           | LOW                |
-| 12 | SECURITY.md: status agents mint future work by appending TODO_LIST.md — blast radius + budget guard note                    | MED                |
+| ~~12~~ | ~~SECURITY.md: status agents mint future work by appending TODO_LIST.md — blast radius + budget guard note~~ done — SECURITY.md What-is-dangerous #5 + hardening checklist | ~~MED~~ |
 | 13 | Document dead-status-task semantics (window re-arms at next completion; DLQ rescue)                                         | LOW                |
 | 14 | Metrics: status mints/runs/deads in `tq stats` / webui metrics row                                                          | LOW                |
 | 15 | Verify dead status tasks raise PapDashboard alerts like every dead letter (probably free; confirm)                          | LOW                |
-| 16 | Prompt scope guard: status agent touches only `docs/status/*` + `TODO_LIST.md` + its commit                                 | MED                |
+| ~~16~~ | ~~Prompt scope guard: status agent touches only `docs/status/*` + `TODO_LIST.md` + its commit~~ done — hard scope rule in the done prompt, prompt-context test | ~~MED~~ |
 | 17 | `--status-every` in the ROUND4 dogfood launch command + `deploy/systemd` sample                                             | MED                |
 | 18 | Config-file test coverage for `status-every` key (poolconfig tests)                                                         | LOW                |
 | 19 | Consider `--status-model` (separate cheaper model for reports)                                                              | LOW                |
-| 20 | Close/recheck the stale "surface agent-review verdicts" TODO checkbox (commit 48a9854 looks done)                           | LOW                |
+| ~~20~~ | ~~Close/recheck the stale "surface agent-review verdicts" TODO checkbox (commit 48a9854 looks done)~~ done — 48a9854, TestReviewVerdictBadgeAndFindings | ~~LOW~~ |
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 

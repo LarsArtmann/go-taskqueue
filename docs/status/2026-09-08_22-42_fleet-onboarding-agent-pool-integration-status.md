@@ -31,8 +31,8 @@ The three sibling repos are now rail-ready pool food: `.crushrc` + `.tq-verify` 
 
 | # | Work | Works now | Remains open | Blocker / effort |
 | - | ---- | --------- | ------------ | ---------------- |
-| 1 | Daemon-backed repo discovery (`--discovery-addr`) | Design + evidence-cited TODO item queued; response surface known (`/v1/discover`, unix socket, lazy enrichment) | Zero implementation: flag, client, response→repo mapping, fallback-on-unreachable, httptest contract test | None — the live dogfood pool will eat the TODO item. Effort M |
-| 2 | Watch-driven harvest trigger (`/v1/watch` SSE) | Design + TODO item queued (per-repo debounce, interval tick as fallback heartbeat) | Zero implementation | Same. Effort M |
+| ~~1~~ | ~~Daemon-backed repo discovery (`--discovery-addr`)~~ done at `8734bd8` | ~~Design + evidence-cited TODO item queued; response surface known (`/v1/discover`, unix socket, lazy enrichment)~~ | ~~Zero implementation: flag, client, response→repo mapping, fallback-on-unreachable, httptest contract test~~ | ~~None — the live dogfood pool will eat the TODO item. Effort M~~ |
+| ~~2~~ | ~~Watch-driven harvest trigger (`/v1/watch` SSE)~~ done at `113957a` | ~~Design + TODO item queued (per-repo debounce, interval tick as fallback heartbeat)~~ | ~~Zero implementation~~ | ~~Same. Effort M~~ |
 | 3 | Persistent 4-repo pool | Full launch command delivered; one-shot trial proved every phase | The RUNNING pool (PID 55731) still harvests go-taskqueue only — the three new repos are unfarmed until relaunch | Operator action (command in previous message / §f1). Effort S |
 | 4 | SDK backlog farming | 3 actionable items now parseable | #7/#26/#29 remain open (trial spent its budget proving the loop on overview instead) | None — needs the persistent pool. Effort per-item S–M |
 | 5 | Daemon backlog | Rails in place, future-proofed | Repo has ZERO open work (table backlog, 21/21 rows Done) — nothing for the pool to eat; no queue-facing section added (deliberate: seeding fake checkboxes would be worse) | Needs real backlog content from owner. Effort S once items exist |
@@ -81,9 +81,9 @@ The three sibling repos are now rail-ready pool food: `.crushrc` + `.tq-verify` 
 1. **Relaunch the persistent pool over all 4 repos** (operator: command delivered; add `--repo-timeout overview=60m`)
 2. **Parity-check `tq bootstrap` vs the hand-rolled rails** (`.crushrc`/`.tq-verify` shape, payload-pinned verify) — reconcile or switch to bootstrap
 3. Add CHANGELOG entries for the onboarding in all four repos
-4. Implement `--discovery-addr` daemon-backed repo discovery (queued TODO item, scan stays default fallback)
-5. Implement watch-driven harvest triggers (`/v1/watch` SSE, per-repo debounce, interval fallback)
-6. Land `tq harvest --prune-stale` (already on TODO_LIST) — kills the stale-item class the trial hit
+4. ~~Implement `--discovery-addr` daemon-backed repo discovery (queued TODO item, scan stays default fallback)~~ done at `8734bd8`
+5. ~~Implement watch-driven harvest triggers (`/v1/watch` SSE, per-repo debounce, interval fallback)~~ done at `113957a`
+6. ~~Land `tq harvest --prune-stale` (already on TODO_LIST) — kills the stale-item class the trial hit~~ done at `bed4342`
 7. Farm sdk #7 (verify-external post-tag CI job)
 8. Farm sdk #26 (discovery/ coverage 80.9% vs ≥90%)
 9. Farm sdk #29 (nixpkgs bump → govulncheck re-run)
@@ -111,7 +111,7 @@ The three sibling repos are now rail-ready pool food: `.crushrc` + `.tq-verify` 
 31. `--repo-interval` defaults for the new repos in the persistent launch (sdk releases are rare; overview is active)
 32. Review-loop interplay: confirm `--review` sweeper handles sibling-repo agent tasks (type is `agent` — it will; pin with a smoke)
 33. `tq audit` drift sweep across the 3 new repos (catch-up repairs inherit the autonomy model)
-34. Log sidecar retention size cap (already TODO; more relevant with 4 repos of logs)
+34. ~~Log sidecar retention size cap (already TODO; more relevant with 4 repos of logs)~~ done (SweepSidecarsByBytes, TestSweepSidecarsByBytes)
 35. Web UI: project filter dropdown sourced from harvested projects (fleet visibility)
 36. Cross-repo release-train decomposition template (the overview README-through-daemon item needs per-repo sub-items)
 37. BLOCKED-marker lint: CI guard that `[USER]`/`Awaiting decision` items carry BLOCKED markers (overview triage was manual)
@@ -123,8 +123,8 @@ The three sibling repos are now rail-ready pool food: `.crushrc` + `.tq-verify` 
 43. Probe whether daemon's `/v1/discover` filters can express "has TODO_LIST.md" (integration pre-check for #4)
 44. Guard: pool refuses repos whose `.tq-verify` mentions `nix build` without a warm-store note (cold-verify cost explosion)
 45. Consider committing the trial task as a golden e2e fixture (stale-item close → docs-only commit shape)
-46. `tq stats --json` (already TODO_LIST) — feeds any fleet dashboard
-47. Surface daily-budget spend in `tq stats` (already TODO_LIST) — needed for multi-pool budget policy (§g1)
+46. ~~`tq stats --json` (already TODO_LIST) — feeds any fleet dashboard~~ done (tq stats --json aggregate)
+47. ~~Surface daily-budget spend in `tq stats` (already TODO_LIST) — needed for multi-pool budget policy (§g1)~~ done (budget today N/M line)
 48. Agent prompt: add "if the item is already done in code, close it as stale" — the trial agent did this right; pin it in the contract text
 49. Check whether overview's nix-gates tests should skip under `-short` (verify-speed lever)
 50. Post-relaunch: one full fleet window review (tasks, dlq, budget burn, review verdicts) — the ROUND4 pattern

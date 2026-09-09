@@ -96,15 +96,15 @@ Legend: **[O]** owner-gated · **[M]** machine-executable · **[P]** process/dec
 | 4  | Audit CV's 96 checkbox rows: single-session size, owner-gated rows get `— BLOCKED:`                                      | b3 — dry-run only counted                   |
 | 5  | Fix GitHub Actions billing (CV)                                                                                          | Carried P0                                  |
 | 6  | Verify `-m` inherits reasoning effort (one cheap probe post-reset) or document the residual                              | b1                                          |
-| 7  | Update go-taskqueue FEATURES.md + CHANGELOG for `bootstrap`                                                              | b4 — conventions gap                        |
+| ~~7~~  | ~~Update go-taskqueue FEATURES.md + CHANGELOG for `bootstrap`~~ done — FEATURES.md + CHANGELOG.md bootstrap entries shipped | ~~b4 — conventions gap~~ |
 | 8  | Decide the overnight provider: zai (5h window) vs gemini/kimi/synthetic (keys exist)                                     | Probe finding                               |
-| 9  | Wire `TQ_LOG_DIR` into pool.conf rendering (sidecar logs off by default today)                                           | Code read: writeOutputSidecar               |
+| ~~9~~  | ~~Wire `TQ_LOG_DIR` into pool.conf rendering (sidecar logs off by default today)~~ done — bootstrap enables sidecars by default at ~/.local/state/tq/logs | ~~Code read: writeOutputSidecar~~ |
 | 10 | Review first agent task outputs (`tq show`, sidecar logs) to calibrate the prompt template                               | Depends on #2                               |
 | 11 | Per-repo timeout ladder for CV (`--repo-timeout CV=60m`?) — CV's gate (`go-change-gate` full) may exceed the 30m default | Config knowledge + CV AGENTS                |
 | 12 | Enroll-set decision: CV (contains gitignored PII) vs code-only repos first                                               | Session risk note                           |
 | 13 | SystemNix enrollment decision — autonomous NixOS-config edits are a bigger blast radius                                  | Owner call                                  |
-| 14 | `tq serve` + auth token as the morning-oversight surface (one tab, DLQ visible)                                          | README capability                           |
-| 15 | PapDashboard alert wiring (`--alert-url`) so DLQ/budget exhaustion pages the owner                                       | Pool flag exists, unwired                   |
+| ~~14~~ | ~~`tq serve` + auth token as the morning-oversight surface (one tab, DLQ visible)~~ done — --auth-token + default-deny non-loopback shipped | ~~README capability~~ |
+| ~~15~~ | ~~PapDashboard alert wiring (`--alert-url`) so DLQ/budget exhaustion pages the owner~~ done — agent-pool --alert-url + budget mirror alerts shipped | ~~Pool flag exists, unwired~~ |
 | 16 | Budget sizing: calibrate `--daily-budget` against real per-task cost after #2                                            | Depends on #2                               |
 | 17 | Review-pass cost check: confirm `--review` + `--review-autofix` economics on real tasks                                  | Depends on #2                               |
 | 18 | CQA bridge verification (still httptest-informed guesses; blocked on live CQA instance)                                  | Harness TODO (BLOCKED row)                  |
@@ -116,8 +116,8 @@ Legend: **[O]** owner-gated · **[M]** machine-executable · **[P]** process/dec
 | 24 | Consider a bootstrap first-run verification step (grep verbose output for reasoning_effort)                              | e4                                          |
 | 25 | `--verify` for SystemNix would default to `nix build && nix flake check` (heavy) — scope or override consciously         | autoDetectVerify behavior                   |
 | 26 | Agent commit identity: decide attribution policy for agent-made commits (crushrc attribution options)                    | Noticed in crush-config skill               |
-| 27 | docs-health audit to reconcile the TODO_LIST checkbox conversion done by parallel sessions                               | Mid-session discovery                       |
-| 28 | Log rotation/retention for `TQ_LOG_DIR` sidecars once enabled (#9)                                                       | Follow-on to #9                             |
+| ~~27~~ | ~~docs-health audit to reconcile the TODO_LIST checkbox conversion done by parallel sessions~~ done (docs-health pass living docs rebuilt (sixth docs-health pass)) | ~~Mid-session discovery~~ |
+| ~~28~~ | ~~Log rotation/retention for `TQ_LOG_DIR` sidecars once enabled (#9)~~ done — --log-dir-max-age + --log-dir-max-bytes retention shipped | ~~Follow-on to #9~~ |
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF (3)
 

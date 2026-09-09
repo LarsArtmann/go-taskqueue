@@ -235,10 +235,13 @@ damage the window left or exposed:
 
 ## f) NEXT THINGS (appended to TODO_LIST.md)
 
-See the freshly appended `- [ ]` items at the bottom of TODO_LIST.md —
+~~See the freshly appended `- [ ]` items at the bottom of TODO_LIST.md —
 queue-hygiene automation, failure-evidence facts, watermark audit,
 observability gaps, release-adjacent chores, and one live-review dogfood
-window. Owner-decisions are filed as `— BLOCKED:` items, not work items.
+window.~~ done (docs-health pass 2026-09-09): every appended work item was
+executed by the backlog sweep
+(`docs/status/2026-09-09_01-43_21-40-backlog-sweep-20-items-two-real-bugs.md`);
+the owner-decision items remain open as BLOCKED rows in TODO_LIST.md.
 
 ## g) QUESTIONS ONLY THE OWNER CAN ANSWER
 
