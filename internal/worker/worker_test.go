@@ -689,6 +689,86 @@ func TestCooperativeCancelMidRun(t *testing.T) {
 	}
 }
 
+// TestCooperativeCancelWrappedErrorFinalizesAsCancelled pins the wrapping
+// contract of the finalize path: real executors return the cancellation
+// WRAPPED (e.g. `fmt.Errorf("crush run: %w", ctx.Err())` after killing their
+// process tree), and the `errors.Is(execErr, context.Canceled)` match in
+// execute must unwrap it. A 2026-09-09 session nearly replaced that with a
+// sentinel comparison, which would have silently routed cooperative cancels
+// into Fail (attempt burned, task dead, retried) — this test is the tripwire.
+func TestCooperativeCancelWrappedErrorFinalizesAsCancelled(t *testing.T) {
+	store := testStore(t)
+
+	ctx := t.Context()
+
+	reg := executor.NewRegistry()
+
+	started := make(chan struct{})
+
+	reg.RegisterFunc("agent", func(c context.Context, _ task.Task) error {
+		close(started)
+		<-c.Done() // mid-run when the operator cancels
+
+		// Exactly how the agent executor reports a killed run: the
+		// cancellation nested inside executor noise.
+		return fmt.Errorf("crush run: %w", c.Err())
+	})
+
+	enq, err := store.Enqueue(ctx, task.New{Project: "p", Type: "agent"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, Heartbeat: 10 * time.Millisecond,
+		Lease: 2 * time.Second, TaskTimeout: 30 * time.Second, Executors: reg,
+	}, quietLog())
+
+	go func() { _ = pool.Start(ctx) }()
+
+	<-started
+	waitFor(t, ctx, store, enq.ID, task.Running)
+
+	if err := store.CancelRunning(ctx, enq.ID, ""); err != nil {
+		t.Fatalf("CancelRunning: %v", err)
+	}
+
+	got := waitFor(t, ctx, store, enq.ID, task.Cancelled)
+
+	if got.Attempts != 0 {
+		t.Fatalf("attempts = %d, want 0 (cooperative cancel burns nothing)", got.Attempts)
+	}
+
+	if got.LastError != "" {
+		t.Errorf("last error = %q, want empty (cancelled, not failed)", got.LastError)
+	}
+
+	facts, err := store.FactsForTask(ctx, enq.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("FactsForTask: %v", err)
+	}
+
+	sawRequested, sawCancelled, sawFailed := false, false, false
+	for _, f := range facts {
+		switch f.Type {
+		case journal.CancelRequested:
+			sawRequested = true
+		case journal.Cancelled:
+			sawCancelled = true
+		case journal.Failed:
+			sawFailed = true
+		}
+	}
+
+	if !sawRequested || !sawCancelled {
+		t.Fatalf("journal missing cancel facts (requested=%v cancelled=%v)", sawRequested, sawCancelled)
+	}
+
+	if sawFailed {
+		t.Fatalf("journal contains task.failed: a wrapped cooperative cancel must finalize as Cancelled, never Failed")
+	}
+}
+
 // TestHeartbeatDefaultTighterThanHalfLease pins the cadence contract: the
 // default heartbeat must renew well before the lease dies (currently
 // lease/4 — tighter than the lease/3 the round-5 plan asked for) and stays
