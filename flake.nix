@@ -127,7 +127,7 @@
               let
                 inherit (inputs) nixpkgs;
                 nixosModule = import ./deploy/nixos/tq-agent-pool.nix;
-                eval =
+                evalFull =
                   extra:
                   (nixpkgs.lib.nixosSystem {
                     system = pkgs.stdenv.hostPlatform.system;
@@ -143,7 +143,8 @@
                       { services.tq-agent-pool.enable = true; }
                       extra
                     ];
-                  }).config.systemd.services;
+                  }).config;
+                eval = extra: (evalFull extra).systemd.services;
                 defaultUnits = eval { };
                 # Third branch: an unknown poolSettings key must flow into the
                 # rendered pool.conf (NixOS cannot know tq's flag set — the
@@ -152,7 +153,7 @@
                 # own config parsing). If the key silently VANISHED instead,
                 # typos would run with defaults — the exact failure this
                 # branch guards against.
-                unknownKeyUnits = eval {
+                unknownKeyConfig = evalFull {
                   services.tq-agent-pool = {
                     poolSettings = {
                       projects-dir = "/home/alice/projects";
@@ -160,13 +161,10 @@
                     };
                   };
                 };
+                unknownKeyUnits = unknownKeyConfig.systemd.services;
                 # The rendered config is a store file — pure eval cannot
                 # read it; the check script greps it at build time.
-                unknownKeyConfPath =
-                  builtins.head (
-                    builtins.match ".*--config ([^ ]+).*"
-                      unknownKeyUnits.tq-agent-pool.serviceConfig.ExecStart
-                  );
+                unknownKeyConfPath = unknownKeyConfig.services.tq-agent-pool.renderedConfigFile;
                 tokenUnits = eval {
                   services.tq-agent-pool = {
                     serve = {

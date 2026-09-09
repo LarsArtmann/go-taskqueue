@@ -107,6 +107,12 @@ in
       example = [ "--once" ];
     };
 
+    renderedConfigFile = lib.mkOption {
+      type = lib.types.path;
+      readOnly = true;
+      description = "The rendered pool.conf store path (for custom units or checks).";
+    };
+
     serve = {
       enable = lib.mkEnableOption "the tq serve read-only dashboard";
 
@@ -132,6 +138,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    services.tq-agent-pool.renderedConfigFile = poolConf;
+
     users.users.tq = lib.mkIf (cfg.user == "tq") {
       isSystemUser = true;
       group = cfg.group;
