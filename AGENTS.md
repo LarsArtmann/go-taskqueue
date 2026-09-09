@@ -162,7 +162,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   executor module): exponential backoff + jitter, pluggable retryable
   predicate. Do NOT hand-roll new retry/sleep loops. Exceptions (verified
   2026-09-10): reconnect *supervisors* whose success case is "operation
-  ended" (`harvest/watch.go` Run — retry.Do's nil-stops semantics don't
+  ended" (`internal/harvest/watch.go` Run — retry.Do's nil-stops semantics don't
   map) keep their own loop; domain backoff (queue NotBefore ladder,
   worker.Backoff) stays — it's persisted journal-fact state, not a loop.
 - Platform honesty: POSIX-only suites carry `//go:build unix`; CI runs the
