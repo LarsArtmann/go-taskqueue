@@ -46,7 +46,7 @@ not here.
 
 ## Owner-blocked decisions (BLOCKED items are skipped by the pool)
 
-- [ ] Cut v0.2.0: gate + annotated tag `v0.2.0`, module proxy + GitHub release + smokes (19:49 f2; v0.1.0 shipped 2026-09-06)
+- [x] Cut v0.2.0: full ci-local gate + nix-binary smoke green, annotated tag v0.2.0 pushed, module proxy verified, clean-room go get verified, GitHub Release published (also fixed a release.sh bug: the awk section cut matched the bare heading, not the dated one) — 2026-09-09 `v0.2.0`, module proxy + GitHub release + smokes (19:49 f2; v0.1.0 shipped 2026-09-06)
 - [x] Kill the stray `/tmp/papdbg` worker (PID 1039418) — killed 2026-09-09 (second-signal force-exit; audit had verified it self-contained and inert)
 - [x] `--status-every` enablement: N=20 chosen + documented in the `deploy/systemd` sample's recommended pool.conf keys (cost/verbosity balance; the live smoke shipped 2026-09-08) (20:56 g1/f17)
 - [x] Status-report review ceiling: DECIDED (default policy 2026-09-09): the mechanical file-exists + verify contract stays the ceiling — reports are exempt from review minting like reviews themselves; loop safety stays structural (sweeper exempts the type) + budgetary (every enqueue caps) (20:56 g2)
