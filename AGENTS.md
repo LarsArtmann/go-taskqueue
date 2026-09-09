@@ -20,12 +20,14 @@ nix build                 # reproducible build; nix run .#test = tests; nix run 
 ```
 
 **Multi-module repo (ADR-0011):** `internal/{task,journal,queue,executor,worker}`
-are sub-modules (go.mod each, import paths unchanged); the root module is the
-app layer. `./...` never descends into nested modules — per-module gates:
+are sub-modules plus `internal/queue/{sqlite,postgres}` backend modules
+(ADR-0011 + ADR-0012; import paths unchanged); the root module is the app
+layer. `./...` never descends into nested modules — per-module gates
+(disk-derived, same as CI):
 
 ```bash
-for m in task journal queue executor worker; do
-  ( cd internal/$m && GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 ) || exit 1
+for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+  ( cd "$m" && GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 ) || exit 1
 done
 ```
 
@@ -60,7 +62,8 @@ whose DAG the compiler enforces; everything above them is the root module.
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `internal/task`     | Task record, Status enum with `CanTransitionTo`, sentinel errors                                                                                                          |
 | `internal/journal`  | Fact types, append-only Journal interface, MemoryJournal                                                                                                                  |
-| `internal/queue`    | Store interface + SQLite + Postgres stores; every mutation appends facts in-tx                                                                                            |
+| `internal/queue`    | Store contract: interface, Filter, Queue facade, watermarks entry (deps: task+journal only)                                                                              |
+| `internal/queue/sqlite`, `internal/queue/postgres` | Driver-style backend modules (`sqlite.Store`/`Open`, `postgres.Store`/`Open`); mirrored helpers + conformance suites (ADR-0007/0012) |
 | `internal/worker`   | Claim → heartbeat → execute loop; concurrency, panics, drain, preflight requeue ladder                                                                                    |
 | `internal/bridge`   | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                                                                                       |
 | `internal/executor` | Pluggable execution: `sh`, HTTP, agent (headless AI), review, status, registry                                                                                            |
@@ -79,7 +82,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 
 ### Store invariants (do not break)
 
-- **Single serialized writer**: `OpenSQLite` sets `MaxOpenConns(1)` + WAL +
+- **Single serialized writer**: `sqlite.Open` sets `MaxOpenConns(1)` + WAL +
   `busy_timeout`. Claim atomicity and the in-tx facts guarantee depend on
   it — no connection pool, never drop the `RowsAffected()` re-checks.
 - **Task execution context survives pool shutdown** (bounded only by

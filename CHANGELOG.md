@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Changed
+- **Store backends become driver modules (ADR-0012)**: `internal/queue`
+  keeps only the Store contract (deps: task + journal); the SQLite and
+  Postgres implementations move to `internal/queue/sqlite` and
+  `internal/queue/postgres` in the database/sql driver style
+  (`sqlite.Store`/`sqlite.Open`, `postgres.Store`/`postgres.Open` — the
+  stuttering old `SQLiteStore`/`OpenSQLite` names are retired). The two
+  backends share seven micro-helpers, mirrored one-for-one per the
+  ADR-0007 conformance philosophy. CI gates, hygiene audits and release
+  tag-cutting are now disk-derived over all internal modules, so the
+  Postgres backend stays gated and tagged even though its CLI wiring is
+  still on the ROADMAP; the root module drops pgx entirely.
 - **Multi-module split (ADR-0011)**: the library core — `internal/task`,
   `internal/journal`, `internal/queue`, `internal/executor`,
   `internal/worker` — is now five sub-modules (import paths unchanged;

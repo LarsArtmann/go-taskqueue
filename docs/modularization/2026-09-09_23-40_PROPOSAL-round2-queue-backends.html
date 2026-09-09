@@ -967,8 +967,23 @@ queue/sqlite &rarr; queue &rarr; {task, journal} &nbsp;&middot;&nbsp; queue/post
         <div class="migration-step"><div class="migration-num">4</div><div class="migration-content"><h4>nix + tags + full gate</h4><p>vendorHash dance, cut internal/queue/{sqlite,postgres}/v0.2.0 tags, full ci-local.</p></div></div>
         <div class="migration-step"><div class="migration-num">5</div><div class="migration-content"><h4>Docs</h4><p>ADR-0012, AGENTS.md table, CHANGELOG [Unreleased].</p></div></div>
 
+        <div class="card card-problem">
+          <h4>Self-review correction (found by the compiler during execution)</h4>
+          <p>
+            The proposal's original evidence claimed "zero shared unexported
+            helpers" between the backends. False: postgres.go used seven
+            micro-helpers defined in sqlite.go (ms, mustJSON, maybeJSON,
+            failureDetail, cancelReasonDetail, cooperativeCancelDetail,
+            escapeLike) &mdash; the symbol-intersection check that produced the
+            claim used a too-narrow regex. Resolution: the helpers are mirrored
+            one-for-one into the postgres module (ADR-0007 conformance-mirroring
+            philosophy; each backend stays a self-contained twin). The split
+            stands; the evidence was corrected.
+          </p>
+        </div>
+
         <footer class="footer">
-          Round 2 &middot; 2026-09-09 &middot; all counts measured on this tree (wc -l, symbol intersection, rg counts)
+          Round 2 &middot; 2026-09-09 &middot; all counts measured on this tree (wc -l, symbol intersection, rg counts) &middot; helper-entanglement correction added during execution
         </footer>
       </main>
     </div>
