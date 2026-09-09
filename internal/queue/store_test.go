@@ -1765,9 +1765,16 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 	}
 
 	// Deterministic despite ClaimDue returning an ARBITRARY due task:
-	// claim A as the only task (short-but-not-tiny lease), then claim B
-	// immediately — A is not reclaimable yet, so B is the only due task.
-	if _, err := s.ClaimDue(ctx, "victim", 100*time.Millisecond); err != nil {
+	// claim A as the only task, then claim B immediately — A must not be
+	// reclaimable yet (B is the only due task), and A's lease must be dead
+	// by the MarkOrphaned call. The wait uses an ABSOLUTE deadline from the
+	// victim's claim; the 1s lease makes the two hazards (B reclaiming A in
+	// the claim gap; A still alive at the mark) impossible on any runner
+	// (a fixed 150ms sleep after the second claim lost both on Windows CI
+	// once: marked 0).
+	claimAt := time.Now()
+
+	if _, err := s.ClaimDue(ctx, "victim", time.Second); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1780,7 +1787,10 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(150 * time.Millisecond) // victim's lease dies; alive's stays
+	// Victim's lease (1s) dies, alive's stays — deadline = claim + 1.3s.
+	if wait := time.Until(claimAt.Add(1300 * time.Millisecond)); wait > 0 {
+		time.Sleep(wait)
+	}
 
 	n, err := s.MarkOrphaned(ctx, time.Now())
 	if err != nil {
