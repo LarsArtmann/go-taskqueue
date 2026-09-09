@@ -1028,6 +1028,11 @@ func listWhere(f Filter) (string, []any) {
 		args = append(args, *f.Type)
 	}
 
+	if f.Since != nil {
+		where = append(where, "created_at >= ?")
+		args = append(args, f.Since.UnixMilli())
+	}
+
 	if f.Query != "" {
 		like := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
 

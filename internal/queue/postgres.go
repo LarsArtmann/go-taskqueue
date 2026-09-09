@@ -922,8 +922,9 @@ func pgOrderClause(f Filter) string {
 	return order
 }
 
-// List returns tasks matching the filter.
-func (s *PostgresStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
+// pgWhere builds the shared WHERE clause + args for List/CountTasks
+// (mirrors the sqlite store's listWhere, with numbered placeholders).
+func pgWhere(f Filter) (string, []any) {
 	where := []string{"TRUE"}
 
 	args := []any{}
@@ -943,6 +944,11 @@ func (s *PostgresStore) List(ctx context.Context, f Filter) ([]task.Task, error)
 		where = append(where, fmt.Sprintf("type = $%d", len(args)))
 	}
 
+	if f.Since != nil {
+		args = append(args, f.Since.UnixMilli())
+		where = append(where, fmt.Sprintf("created_at >= $%d", len(args)))
+	}
+
 	if f.Query != "" {
 		args = append(args, "%"+escapeLike(f.Query)+"%")
 		idx := len(args)
@@ -957,7 +963,14 @@ func (s *PostgresStore) List(ctx context.Context, f Filter) ([]task.Task, error)
 		))
 	}
 
-	q := `SELECT ` + taskColumns + ` FROM tasks WHERE ` + strings.Join(where, " AND ") + `
+	return strings.Join(where, " AND "), args
+}
+
+// List returns tasks matching the filter.
+func (s *PostgresStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
+	where, args := pgWhere(f)
+
+	q := `SELECT ` + taskColumns + ` FROM tasks WHERE ` + where + `
 		` + pgOrderClause(f)
 
 	if f.Limit > 0 || f.Offset > 0 {

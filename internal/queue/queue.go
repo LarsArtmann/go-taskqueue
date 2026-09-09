@@ -147,6 +147,10 @@ type Filter struct {
 	// Unknown values fall back to the default order (never interpolated
 	// into SQL).
 	Sort string
+	// Since restricts the listing to tasks created at or after this time
+	// (inclusive) — pushed into SQL as a created_at comparison, not a
+	// post-filter.
+	Since *time.Time
 }
 
 // Queue is the facade most consumers use: a Store plus convenience methods.
