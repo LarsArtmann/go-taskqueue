@@ -252,7 +252,11 @@ func TestHeartbeatExtendsLease(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	if _, err := s.ClaimDue(ctx, "w1", 40*time.Millisecond); err != nil {
+	// The original lease must survive the claim→heartbeat gap on slow
+	// CI runners (Windows once took >40ms and the lease expired before
+	// the first heartbeat), so keep it generous; only the sleep after the
+	// heartbeat has to outlast it.
+	if _, err := s.ClaimDue(ctx, "w1", 500*time.Millisecond); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -260,7 +264,7 @@ func TestHeartbeatExtendsLease(t *testing.T) {
 		t.Fatalf("heartbeat: %v", err)
 	}
 
-	time.Sleep(60 * time.Millisecond) // original lease would be gone
+	time.Sleep(600 * time.Millisecond) // original lease would be gone
 
 	if err := s.Heartbeat(ctx, tk.ID, "w1", time.Minute); err != nil {
 		t.Fatalf("heartbeat after original expiry (should be extended): %v", err)

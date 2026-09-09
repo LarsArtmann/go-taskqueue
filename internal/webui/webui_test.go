@@ -502,7 +502,10 @@ func TestConcurrentClientsRace(t *testing.T) {
 
 	for range 3 {
 		wg.Go(func() {
-			_ = ssetest.CollectWithTimeout(t, handler, 100*time.Millisecond, ssetest.WithPath("/api/events"))
+			// 500ms, not 100ms: the window also covers the dial, and
+			// under -race on loaded CI runners 100ms deadlined out
+			// repeatedly (the test's point is the race, not the speed).
+			_ = ssetest.CollectWithTimeout(t, handler, 500*time.Millisecond, ssetest.WithPath("/api/events"))
 		})
 	}
 
