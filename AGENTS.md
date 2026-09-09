@@ -74,7 +74,7 @@ facts. Claim exclusivity comes from lease TTL + expiry reclaim.
 | `internal/consumer` | Journal dispatcher: per-subscriber cursor over `Store` bounded reads, at-least-once in-order delivery, lag observability (policy: ADR-0009)                       |
 | `internal/runactor` | Process composition root: run.Group actors, LIFO `OnShutdown` teardown, `InterruptOn` (second signal = exit 130), detached `ExecutionScope` for task contexts     |
 | `internal/webui`    | Read-only live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                            |
-| `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / audit / top / show / dlq / cancel / facts / tail / watermarks / serve / api / doctor / version |
+| `cmd/tq`            | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / facts / tail / watermarks / serve / api / doctor / version |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001 core,
 ADR-0002 agent-pool policies: `docs/adr/0002-agent-pool-autonomy-pacing-drain.md`;
@@ -142,6 +142,18 @@ is defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   A cancelled/dead task's key still suppresses re-enqueue — for harvested
   TODO items the escape hatch is editing the item text (the key is a hash of
   repo + text), so a wording change re-arms the item.
+- **`Task-Queue-ID` commit footer**: every prompt contract (harvest,
+  catch-up, status) tells agents to end commit messages with
+  `Task-Queue-ID: {{TASK_ID}}`; the executor resolves the placeholder at
+  RUN time (the queue ID does not exist at harvest render time) — so
+  `git log` and `tq facts` cross-reference. Never hardcode the placeholder
+  inside Go raw strings with backticks around it (a backtick terminates
+  the literal — broken twice in one session).
+- **Failure evidence**: `task.failed` facts carry
+  `FailureEvidence{stage, exit_code, tail}` (agent run, agent verify, sh
+  command) published via `Sink.SetFailureEvidence`; `Store.Fail`/
+  `FailPermanent` take the evidence `json.RawMessage`. `task.requeued`
+  (preflight refusals) still carries a plain error string.
 - **PapDashboard ingest contract**: `userId` is a REQUIRED metadata property
   (huma schema — the field has no omitempty); omit it and ingest returns 422.
   The bridge always sends `userId: ""`.

@@ -43,12 +43,15 @@ tq serve          # http://127.0.0.1:8090 (read-only)
 tq serve --addr 0.0.0.0:8090 --auth-token "$(openssl rand -hex 16)"   # LAN
 ```
 
-One tab shows the whole system updating live: status cards, the task table,
-the dead-letter queue, per-project progress and the fact feed — pushed by
-SSE as server-rendered fragments, reconnect-safe, filterable and searchable
-(`?project=demo&status=running&q=flake`), with a detail page per task at
-`/task/{id}`. The dashboard is a pure projection of the journal: it cannot
-mutate the queue, and the worst failure is a stale page.
+One tab shows the whole system updating live: status cards, the task table
+(or a kanban **board view** at `/?view=board` — one column per lifecycle
+status), the dead-letter queue, per-project progress and the fact feed —
+pushed by SSE as server-rendered fragments, reconnect-safe, filterable and
+searchable (`?project=demo&status=running&q=flake`), with a detail page per
+task at `/task/{id}`. The dashboard is a pure projection of the journal:
+it cannot mutate the queue, and the worst failure is a stale page. Opt into
+operator actions (cancel / stop / rescue, CSRF-guarded forms) with
+`tq serve --allow-writes` — off by default.
 
 **Serving beyond localhost:** the dashboard renders every task payload and
 error tail, so `tq serve` refuses to bind a non-loopback address (including
@@ -142,6 +145,10 @@ journalctl --user -u tq-agent-pool -f
 Prefer cron or a systemd timer? `tq agent-pool --once` runs exactly one
 harvest tick, drains the queue, and exits — tasks owned by other pools or
 scheduled for later are left alone.
+
+On NixOS, a module ships with the flake (`nixosModules.default`, declaring
+`services.tq-agent-pool` with the drain invariants baked in) — see
+`deploy/nixos/tq-agent-pool.nix`.
 
 Each TODO item becomes one `agent` task: a headless `crush run` in that repo
 with a strict contract (read AGENTS.md, smallest correct change, tick the
@@ -267,14 +274,16 @@ scanners find and the next scan proves it worked.
 
 ## Distribution
 
-v0.1 is single-node. The Store interface is the distribution seam: a Postgres
-store (`SELECT … FOR UPDATE SKIP LOCKED`) lets multiple `tq worker` processes
-on different machines share the same queue with the same semantics (claim
-exclusivity via lease, crash reclaim via lease expiry). Outbound integrations
-ship today: a PapDashboard bridge turns dead letters into alerts
-(`tq worker --alert-url`), and a Code-Quality-Agent bridge turns scan findings
-into fix tasks (`tq agent-pool --cqa-url`). Next up (ROADMAP): the Postgres
-store and an HTTP API server.
+v0.1 is single-node SQLite. The Store interface is the distribution seam —
+and the first two slices of it already ship: a Postgres store
+(`SELECT … FOR UPDATE SKIP LOCKED`, ADR-0007) lets multiple `tq worker`
+processes on different machines share the same queue with the same
+semantics, and `tq api` (ADR-0008) serves non-Go producers over HTTP with
+token auth. Outbound integrations ship today: a PapDashboard bridge turns
+dead letters into alerts (`tq worker --alert-url`), and a
+Code-Quality-Agent bridge turns scan findings into fix tasks
+(`tq agent-pool --cqa-url`). See ROADMAP for the remaining distribution
+work (CLI store wiring, consumer-group fencing tokens).
 
 ## Development
 

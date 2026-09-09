@@ -5,8 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
-
 ### Added
+- **Admin writes in the dashboard — `tq serve --allow-writes`** (2026-09-09):
+  an opt-in control layer (`$TQ_SERVE_WRITES=1`) registering exactly two
+  CSRF-guarded routes — `POST /task/{id}/cancel` (pending → direct cancel
+  with reason; running → cooperative `CancelRunning`) and
+  `POST /task/{id}/rescue` (`RescueDead`, fresh budget). Forms embed a
+  `tq_csrf` cookie-backed token verified constant-time (forged → 403), open
+  as native `<details>` reason forms (zero JS under the CSP), and appear as
+  row/detail affordances (stop/cancel/rescue); a banner states
+  writes-enabled. Live-verified over real HTTP (a scratch task cancelled
+  end-to-end, reason on the `task.cancelled` fact). Read-only remains the
+  default; enqueue-from-UI and bulk actions stay out of scope.
+- **LAN dashboard hardening + redesign** (2026-09-09): `?token=` now issues
+  an `HttpOnly SameSite=Lax` session cookie (`tq_token`) so subresources
+  (CSS/JS/favicon/SSE) authenticate; the CSP moved to a per-request 128-bit
+  nonce regime (`script-src 'self' 'nonce-…'`, never `unsafe-inline`); the
+  ghosted `app.js` SSE client (silently dropped by the templ-components
+  sweep) is restored and pinned by test; the overview gained an always-dark
+  instrument band (RUNNING/PENDING/DEAD/COMPLETED/CANCELLED ledger
+  segments) and a two-tier ACTIVE NOW/settled task table; unknown task ids
+  get a styled 404 through the layout.
 
 - **`tq tasks` list view** (2026-09-09): one row per task with
   `--project/--status/--type/--since DUR/--limit/--json` — reconstructing a
@@ -64,21 +83,136 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   operator-owned and manual, the CLI surface waits for real demand, the
   retention floor becomes first-class observability when it lands.
 
-### Fixed
+- `tq serve --auth-token` / `$TQ_SERVE_TOKEN`: token auth for the
+  dashboard, plan W16. Non-loopback binds are now default-deny —
+  `webui.Config.Validate` (enforced by `Server.Run` and the CLI) refuses to
+  start on addresses that bind beyond loopback (including the empty host
+  `:port` and non-`localhost` hostnames) without a token, because the
+  read-only dashboard still renders every task payload and error tail.
+  With a token set, a constant-time middleware guards every route (pages,
+  `/api/*`, `/static/`, SSE): requests present it as `Authorization:
+  Bearer <token>` or `?token=<token>` (EventSource cannot set headers, so
+  the client JS forwards the page's `token` param to `/api/events`), and
+  failures get a 401 with a `WWW-Authenticate: Bearer` challenge.
+  `--verbose` access logs redact the `token` query parameter so the
+  credential never lands in logs. Loopback serves without a token are
+  unchanged (ADR-0003 amendment; smoke-asserted in
+  `scripts/smoke/webui.sh`).
+- Nightly fuzz job (`.github/workflows/fuzz.yml`): a 60s `FuzzParseRepo`
+  campaign (`scripts/fuzz/nightly.sh`, runnable locally with a custom
+  fuzztime) whose coverage-interesting inputs are synced into the committed
+  seed corpus under `internal/harvest/testdata/fuzz` and pushed back to
+  master by the workflow — corpus growth no longer depends on session
+  memory (every committed seed also runs as a test case on each
+  `go test`). The initial batch: 165 seeds from ~2.2M executions. The
+  script runs under a private `GOCACHE` because on shared-cache mounts the
+  fuzz corpus never lands; a crasher found by a campaign stays a red job
+  (content dumped to the log) and is never committed.
+- `FuzzExtractResultPayload` (`internal/executor/result_fuzz_test.go`): the
+  `TQ_RESULT:` regex + JSON decode parse fully untrusted agent output, so they
+  now have a fuzz target (never panics, deterministic, `ok` implies a marker
+  line) with a committed 183-input seed corpus under
+  `internal/executor/testdata/fuzz/FuzzExtractResultPayload` — initial 60s
+  campaign: ~6.3M execs, zero findings; every seed also runs as a test case
+  on each `go test`.
+- Lint annotations for new findings: golangci-lint v2 emits no GitHub
+  annotation commands (the v1 `github-actions` output format is gone), so
+  the advisory lint run never actually surfaced findings as annotations —
+  and the ~400-finding baseline would exceed GitHub's 10-warnings-per-step
+  cap anyway. A new CI step (`scripts/lint-annotations.sh`, mirrored in
+  `ci-local.sh`) re-runs the same binary and config scoped to
+  `--new-from-rev` and emits findings on changed lines as `::warning`
+  annotations, so regressions a commit introduces show up on green runs
+  (verified empirically on v2.13.2: default output produces zero annotation
+  commands even with `GITHUB_ACTIONS=true`).
+- `tq serve --verbose`: per-request access logging (method, path, status,
+  duration) via slog at Info level on the default logger (stderr). The
+  wrapper forwards `Flush`, so SSE streaming through it is unchanged; SSE
+  connections log once, when the stream closes. Off by default.
 
-- **Budget guard now gates EVERY minting pass** (2026-09-09): the agent
-  pool's review/status sweepers, cqa ingest, and the `--once` drain sweeps
-  never checked the daily budget — a completion inside the same tick could
-  spend the last slot and still mint status/review tasks past the cap,
-  contradicting SECURITY.md's "caps EVERY enqueue incl. status-minted".
-  Each pass now re-checks `guard.Check` and skips with a logged reason
-  (pinned end-to-end by `TestBudgetCapsStatusMintedEnqueues`).
-- **Deflaked `TestRestartMidStreamLosesZeroFacts`** (2026-09-09): bridge
-  A's crash window widened (200ms poll could pre-checkpoint seq 549 before
-  the cancel) and the wait deadline raised for loaded `-race` machines.
-
+- Live web dashboard: `tq serve` (default `127.0.0.1:8090`, read-only)
+  renders status cards, a live task table, the DLQ, per-project chips and
+  the fact feed as server-rendered fragments pushed over SSE. A single
+  journal tailer coalesces change bursts; every client gets a full
+  snapshot on connect and after each burst (reconnect-safe), with URL
+  filters/search (`?project=&status=&q=`) and per-task detail pages at
+  `/task/{id}` (`internal/webui`; decision record:
+  [docs/adr/0003-web-ui-architecture.md](docs/adr/0003-web-ui-architecture.md),
+  execution plan:
+  [docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md](docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md);
+  smoke: `scripts/smoke/webui.sh`).
+- Deferred-bundle seeds (plan C27): structured result self-report from
+  agents (`TQ_RESULT:` line → `files_changed`/`commit_sha` in the result
+  detail), full-output sidecar logs (`TQ_LOG_DIR`), `tq harvest --json` and
+  `--repo-subset` glob, `tq dlq --rescue-all --older-than`, a guard that
+  refuses `--projects-dir /` or the home directory with remediation, and a
+  PoC server (`examples/api`: enqueue endpoint, Prometheus `/metrics`, live
+  stats page) next to the SSE stream PoC (`examples/sse`) and the
+  PR-mode/worktree PoC scripts; sketches for the rest in
+  `docs/planning/2026-09-06_deferred-bundle-seeds.md`
+- Tooling policy decided and enforced: golangci-lint wired into CI
+  (`.golangci.yml` with errcheck exclusions for idiomatic deferred Close and
+  HTTP body/rows Close), dprint joins the flake devShell and the living docs
+  are formatted with it; CONTRIBUTING lists all local gates
+- Operator documentation set: `docs/DOMAIN_LANGUAGE.md` (the ubiquitous
+  language: task, fact, claim, lease, tick, drift, catch-up, …), ADR-0002
+  (agent-pool autonomy, pacing, budgets and drain semantics), and SECURITY.md
+  (trust model, blast radius of agent `bash`, hardening checklist)
+- The pool prints an autonomy warning at start under `--yolo`: agents may
+  run shell commands unsandboxed per repo `.crushrc`, with pointers to the
+  budget caps that bound the blast radius
+- Windows/i18n hygiene: `GOOS=windows` build + vet is now a CI gate; golden
+  dedup-key vectors pin non-ASCII item hashing (CJK, emoji, Unicode
+  whitespace collapsing) and keys are proven independent of path spelling,
+  so harvesting a repo via relative or absolute paths never double-enqueues
+- Docs-drift auditor (`tq audit`): compares repos' TODO_LIST.md checkboxes
+  with terminal task states and repairs the drift harvest can't see — work
+  an agent completed but never ticked off gets a dedup-keyed catch-up task
+  (armed once, re-audits never pile up); hand-ticked items with unfinished
+  tasks are reported for the operator to cancel
+- `tq top`: live per-project view over the journal — pending/running/done/
+  dead counts, the last run duration and the active run's elapsed time
+  (`--once`, `--json`, `--interval`; repaints on terminals)
+- Task result detail: completed agent tasks record the crush session id and
+  the verify output tail in the `task.completed` fact; `tq show TASK_ID`
+  renders the task together with its full fact trail, so an operator can
+  trace exactly what an agent did and how the work was proven
+- End-to-end CLI suite (`internal/e2e`): builds the real `tq` binary and
+  drives `agent-pool --once` as a subprocess with a stub agent — the full
+  harvest → claim → work → verify → complete loop is proven from outside the
+  process, in CI, at zero API cost
+- Property test for harvest dedup keys (stable under whitespace reflow,
+  distinct across repos with identical item text) and a fuzz harness for the
+  TODO parser (CRLF, BOM, nesting — 1.8M executions, zero findings)
+- Chaos test: a worker SIGKILLed mid-task is reclaimed via lease expiry and
+  the work completes exactly once in the journal
+- Cost ceilings for unattended pools: `--daily-budget` (max enqueues per
+  calendar day, projected from the journal), `--budget-cmd` (your own
+  accounting vetoes each tick), `--repo-interval` (per-repo enqueue gap),
+  `--dlq-backoff` (pauses poisoned repos whose recent work all died)
+- `tq agent-pool --once`: one harvest tick, drain, exit — cron/timer
+  friendly, with a systemd user unit in `deploy/systemd/`
+- Preflight refusals: `executor.PreflightError` + `Store.Requeue` — a dirty
+  tree or missing autonomy config requeues a task WITHOUT burning an
+  attempt (claimable again after a delay); the autonomy probe also accepts
+  a user-global crush config
+- Verify strategy: the repo's `.tq-verify` file wins over payload and
+  auto-detection; auto-detection adds Makefile, flake.nix and Cargo repos;
+  the harvester pins a repo's `.tq-verify` command into every payload
+- `--model` on `tq harvest` / `tq agent-pool`: pin the crush model in every
+  harvested agent payload
+- The web dashboard (`tq serve`) got a full visual redesign on
+  `github.com/larsartmann/templ-components` v1.14: steel-navy/cyan
+  "ledger & lamp" theme (`internal/webui/theme.css`), JetBrains Mono
+  identity face (embedded OFL woff2 subsets), tone-iconed stat cards that
+  link into filtered views, library tables/badges/empty states, a restyled
+  DLQ and fact feed, and a task detail page with definition list + error
+  alert. Dark/light mode with a header toggle. New dev command
+  `nix run .#webui-css` recompiles the Tailwind v4 stylesheet into the
+  committed, embedded `internal/webui/static/app.css`. The SSE fragment
+  architecture (ADR-0003) and all container/element id contracts are
+  unchanged.
 ### Changed
-
 - **Web UI task trail surfaces cancellation reasons** (2026-09-09): a
   `task.cancelled` fact carrying `{"reason": ...}` renders `— <reason>` in
   the detail timeline, so a withdrawn task answers "why" inline.
@@ -434,8 +568,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (request_changes) → fix task → re-review (approve) → clean `--once`
   drain.
 
-### Changed
-
 - The dashboard task table paginates in SQL: `?page=` (clamped, 200 rows
   per page) with a prev/next pager and a "page N of M — K matching tasks"
   line driven by a new `Store.CountTasks` pushdown that shares the exact
@@ -521,147 +653,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   74.6%). The framework-free verdict is unchanged: gates T1/T2/T4/T5
   remain open. Record and reproducibility commands:
   `docs/planning/2026-09-08_cordis-test-suite-verification.md`.
-
 ### Fixed
+- **Budget guard now gates EVERY minting pass** (2026-09-09): the agent
+  pool's review/status sweepers, cqa ingest, and the `--once` drain sweeps
+  never checked the daily budget — a completion inside the same tick could
+  spend the last slot and still mint status/review tasks past the cap,
+  contradicting SECURITY.md's "caps EVERY enqueue incl. status-minted".
+  Each pass now re-checks `guard.Check` and skips with a logged reason
+  (pinned end-to-end by `TestBudgetCapsStatusMintedEnqueues`).
+- **Deflaked `TestRestartMidStreamLosesZeroFacts`** (2026-09-09): bridge
+  A's crash window widened (200ms poll could pre-checkpoint seq 549 before
+  the cancel) and the wait deadline raised for loaded `-race` machines.
 
 - `scripts/smoke/papdashboard-e2e.sh` real-dashboard mode no longer
 collides with a locally running pap-raw-server on the fixed port 18099:
 the mode now derives an ephemeral port and liveness-checks the dashboard
 before driving it.
-
-### Added
-
-- `tq serve --auth-token` / `$TQ_SERVE_TOKEN`: token auth for the
-  dashboard, plan W16. Non-loopback binds are now default-deny —
-  `webui.Config.Validate` (enforced by `Server.Run` and the CLI) refuses to
-  start on addresses that bind beyond loopback (including the empty host
-  `:port` and non-`localhost` hostnames) without a token, because the
-  read-only dashboard still renders every task payload and error tail.
-  With a token set, a constant-time middleware guards every route (pages,
-  `/api/*`, `/static/`, SSE): requests present it as `Authorization:
-  Bearer <token>` or `?token=<token>` (EventSource cannot set headers, so
-  the client JS forwards the page's `token` param to `/api/events`), and
-  failures get a 401 with a `WWW-Authenticate: Bearer` challenge.
-  `--verbose` access logs redact the `token` query parameter so the
-  credential never lands in logs. Loopback serves without a token are
-  unchanged (ADR-0003 amendment; smoke-asserted in
-  `scripts/smoke/webui.sh`).
-- Nightly fuzz job (`.github/workflows/fuzz.yml`): a 60s `FuzzParseRepo`
-  campaign (`scripts/fuzz/nightly.sh`, runnable locally with a custom
-  fuzztime) whose coverage-interesting inputs are synced into the committed
-  seed corpus under `internal/harvest/testdata/fuzz` and pushed back to
-  master by the workflow — corpus growth no longer depends on session
-  memory (every committed seed also runs as a test case on each
-  `go test`). The initial batch: 165 seeds from ~2.2M executions. The
-  script runs under a private `GOCACHE` because on shared-cache mounts the
-  fuzz corpus never lands; a crasher found by a campaign stays a red job
-  (content dumped to the log) and is never committed.
-- `FuzzExtractResultPayload` (`internal/executor/result_fuzz_test.go`): the
-  `TQ_RESULT:` regex + JSON decode parse fully untrusted agent output, so they
-  now have a fuzz target (never panics, deterministic, `ok` implies a marker
-  line) with a committed 183-input seed corpus under
-  `internal/executor/testdata/fuzz/FuzzExtractResultPayload` — initial 60s
-  campaign: ~6.3M execs, zero findings; every seed also runs as a test case
-  on each `go test`.
-- Lint annotations for new findings: golangci-lint v2 emits no GitHub
-  annotation commands (the v1 `github-actions` output format is gone), so
-  the advisory lint run never actually surfaced findings as annotations —
-  and the ~400-finding baseline would exceed GitHub's 10-warnings-per-step
-  cap anyway. A new CI step (`scripts/lint-annotations.sh`, mirrored in
-  `ci-local.sh`) re-runs the same binary and config scoped to
-  `--new-from-rev` and emits findings on changed lines as `::warning`
-  annotations, so regressions a commit introduces show up on green runs
-  (verified empirically on v2.13.2: default output produces zero annotation
-  commands even with `GITHUB_ACTIONS=true`).
-- `tq serve --verbose`: per-request access logging (method, path, status,
-  duration) via slog at Info level on the default logger (stderr). The
-  wrapper forwards `Flush`, so SSE streaming through it is unchanged; SSE
-  connections log once, when the stream closes. Off by default.
-
-- Live web dashboard: `tq serve` (default `127.0.0.1:8090`, read-only)
-  renders status cards, a live task table, the DLQ, per-project chips and
-  the fact feed as server-rendered fragments pushed over SSE. A single
-  journal tailer coalesces change bursts; every client gets a full
-  snapshot on connect and after each burst (reconnect-safe), with URL
-  filters/search (`?project=&status=&q=`) and per-task detail pages at
-  `/task/{id}` (`internal/webui`; decision record:
-  [docs/adr/0003-web-ui-architecture.md](docs/adr/0003-web-ui-architecture.md),
-  execution plan:
-  [docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md](docs/planning/2026-09-07_16-25_SUPERB-PLAN-ROUND3-LIVE-WEB-UI.md);
-  smoke: `scripts/smoke/webui.sh`).
-- Deferred-bundle seeds (plan C27): structured result self-report from
-  agents (`TQ_RESULT:` line → `files_changed`/`commit_sha` in the result
-  detail), full-output sidecar logs (`TQ_LOG_DIR`), `tq harvest --json` and
-  `--repo-subset` glob, `tq dlq --rescue-all --older-than`, a guard that
-  refuses `--projects-dir /` or the home directory with remediation, and a
-  PoC server (`examples/api`: enqueue endpoint, Prometheus `/metrics`, live
-  stats page) next to the SSE stream PoC (`examples/sse`) and the
-  PR-mode/worktree PoC scripts; sketches for the rest in
-  `docs/planning/2026-09-06_deferred-bundle-seeds.md`
-- Tooling policy decided and enforced: golangci-lint wired into CI
-  (`.golangci.yml` with errcheck exclusions for idiomatic deferred Close and
-  HTTP body/rows Close), dprint joins the flake devShell and the living docs
-  are formatted with it; CONTRIBUTING lists all local gates
-- Operator documentation set: `docs/DOMAIN_LANGUAGE.md` (the ubiquitous
-  language: task, fact, claim, lease, tick, drift, catch-up, …), ADR-0002
-  (agent-pool autonomy, pacing, budgets and drain semantics), and SECURITY.md
-  (trust model, blast radius of agent `bash`, hardening checklist)
-- The pool prints an autonomy warning at start under `--yolo`: agents may
-  run shell commands unsandboxed per repo `.crushrc`, with pointers to the
-  budget caps that bound the blast radius
-- Windows/i18n hygiene: `GOOS=windows` build + vet is now a CI gate; golden
-  dedup-key vectors pin non-ASCII item hashing (CJK, emoji, Unicode
-  whitespace collapsing) and keys are proven independent of path spelling,
-  so harvesting a repo via relative or absolute paths never double-enqueues
-- Docs-drift auditor (`tq audit`): compares repos' TODO_LIST.md checkboxes
-  with terminal task states and repairs the drift harvest can't see — work
-  an agent completed but never ticked off gets a dedup-keyed catch-up task
-  (armed once, re-audits never pile up); hand-ticked items with unfinished
-  tasks are reported for the operator to cancel
-- `tq top`: live per-project view over the journal — pending/running/done/
-  dead counts, the last run duration and the active run's elapsed time
-  (`--once`, `--json`, `--interval`; repaints on terminals)
-- Task result detail: completed agent tasks record the crush session id and
-  the verify output tail in the `task.completed` fact; `tq show TASK_ID`
-  renders the task together with its full fact trail, so an operator can
-  trace exactly what an agent did and how the work was proven
-- End-to-end CLI suite (`internal/e2e`): builds the real `tq` binary and
-  drives `agent-pool --once` as a subprocess with a stub agent — the full
-  harvest → claim → work → verify → complete loop is proven from outside the
-  process, in CI, at zero API cost
-- Property test for harvest dedup keys (stable under whitespace reflow,
-  distinct across repos with identical item text) and a fuzz harness for the
-  TODO parser (CRLF, BOM, nesting — 1.8M executions, zero findings)
-- Chaos test: a worker SIGKILLed mid-task is reclaimed via lease expiry and
-  the work completes exactly once in the journal
-- Cost ceilings for unattended pools: `--daily-budget` (max enqueues per
-  calendar day, projected from the journal), `--budget-cmd` (your own
-  accounting vetoes each tick), `--repo-interval` (per-repo enqueue gap),
-  `--dlq-backoff` (pauses poisoned repos whose recent work all died)
-- `tq agent-pool --once`: one harvest tick, drain, exit — cron/timer
-  friendly, with a systemd user unit in `deploy/systemd/`
-- Preflight refusals: `executor.PreflightError` + `Store.Requeue` — a dirty
-  tree or missing autonomy config requeues a task WITHOUT burning an
-  attempt (claimable again after a delay); the autonomy probe also accepts
-  a user-global crush config
-- Verify strategy: the repo's `.tq-verify` file wins over payload and
-  auto-detection; auto-detection adds Makefile, flake.nix and Cargo repos;
-  the harvester pins a repo's `.tq-verify` command into every payload
-- `--model` on `tq harvest` / `tq agent-pool`: pin the crush model in every
-  harvested agent payload
-- The web dashboard (`tq serve`) got a full visual redesign on
-  `github.com/larsartmann/templ-components` v1.14: steel-navy/cyan
-  "ledger & lamp" theme (`internal/webui/theme.css`), JetBrains Mono
-  identity face (embedded OFL woff2 subsets), tone-iconed stat cards that
-  link into filtered views, library tables/badges/empty states, a restyled
-  DLQ and fact feed, and a task detail page with definition list + error
-  alert. Dark/light mode with a header toggle. New dev command
-  `nix run .#webui-css` recompiles the Tailwind v4 stylesheet into the
-  committed, embedded `internal/webui/static/app.css`. The SSE fragment
-  architecture (ADR-0003) and all container/element id contracts are
-  unchanged.
-
-### Fixed
 
 - A filtered dashboard view was clobbered by the next live tick: the client
   opened `/api/events` bare, so every SSE snapshot rendered the unfiltered
