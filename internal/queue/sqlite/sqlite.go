@@ -1289,13 +1289,6 @@ func (s *SQLiteStore) SaveWatermark(ctx context.Context, consumer string, seq in
 	return err
 }
 
-// WatermarkEntry is one consumer cursor row (tq watermarks show).
-type WatermarkEntry struct {
-	Consumer  string
-	Seq       int64
-	UpdatedAt int64 // unix millis
-}
-
 // ListWatermarks returns every consumer cursor, by consumer name — the
 // admin read behind `tq watermarks show`.
 func (s *SQLiteStore) ListWatermarks(ctx context.Context) ([]WatermarkEntry, error) {

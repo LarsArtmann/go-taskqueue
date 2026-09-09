@@ -173,6 +173,14 @@ type RequeueEvidence struct {
 	RetryIn int64  `json:"retry_in_ms"`
 }
 
+// WatermarkEntry is one consumer cursor row (tq watermarks show). Shared by
+// every Store backend's ListWatermarks read.
+type WatermarkEntry struct {
+	Consumer  string
+	Seq       int64
+	UpdatedAt int64 // unix millis
+}
+
 // New wraps a Store.
 func New(s Store) *Queue { return &Queue{Store: s} }
 
