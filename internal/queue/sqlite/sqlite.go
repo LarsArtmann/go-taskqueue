@@ -1,4 +1,4 @@
-package queue
+package sqlite
 
 import (
 	"context"
@@ -11,25 +11,26 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	_ "modernc.org/sqlite" // pure-Go SQLite driver (CGo-free)
 )
 
-// SQLiteStore is the embedded, durable Store. One queue per database file.
+// Store is the embedded, durable Store. One queue per database file.
 //
 // Concurrency model: a single serialized write connection (MaxOpenConns(1))
 // plus WAL journal mode. All task mutations and their journal facts happen in
 // one transaction, so the journal can never disagree with the task table.
 // Multiple processes may open the same file; busy_timeout + WAL serialize
 // cross-process writers.
-type SQLiteStore struct {
+type Store struct {
 	db *sql.DB
 	// projectExclusive: ClaimDue refuses to hand out a task whose project
 	// already has another running task. See WithProjectExclusivity.
 	projectExclusive bool
 }
 
-// StoreOption configures optional SQLiteStore behavior.
+// StoreOption configures optional Store behavior.
 type StoreOption func(*storeOptions)
 
 type storeOptions struct {
@@ -47,8 +48,8 @@ func WithProjectExclusivity() StoreOption {
 	return func(o *storeOptions) { o.projectExclusive = true }
 }
 
-// OpenSQLite opens (creating if needed) the queue database at path.
-func OpenSQLite(path string, opts ...StoreOption) (*SQLiteStore, error) {
+// Open opens (creating if needed) the queue database at path.
+func Open(path string, opts ...StoreOption) (*Store, error) {
 	var o storeOptions
 	for _, opt := range opts {
 		opt(&o)
@@ -63,7 +64,7 @@ func OpenSQLite(path string, opts ...StoreOption) (*SQLiteStore, error) {
 	// Serialize writers: one connection makes every SELECT…UPDATE sequence
 	// inside a transaction atomic without relying on BEGIN IMMEDIATE tricks.
 	db.SetMaxOpenConns(1)
-	s := &SQLiteStore{db: db, projectExclusive: o.projectExclusive}
+	s := &Store{db: db, projectExclusive: o.projectExclusive}
 	// Two processes opening a FRESH database race the schema writes: the
 	// loser gets SQLITE_BUSY even with busy_timeout. The retry always
 	// converges — IF NOT EXISTS migrations on an already-migrated DB are a
@@ -150,7 +151,7 @@ CREATE TABLE IF NOT EXISTS watermarks (
 );
 `
 
-func (s *SQLiteStore) migrate(ctx context.Context) error {
+func (s *Store) migrate(ctx context.Context) error {
 	if _, err := s.db.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("queue: migrate: %w", err)
 	}
@@ -183,9 +184,9 @@ func (s *SQLiteStore) migrate(ctx context.Context) error {
 }
 
 // Close releases the database connection.
-func (s *SQLiteStore) Close() error { return s.db.Close() }
+func (s *Store) Close() error { return s.db.Close() }
 
-func (s *SQLiteStore) appendFact(ctx context.Context, tx *sql.Tx, f journal.Fact) error {
+func (s *Store) appendFact(ctx context.Context, tx *sql.Tx, f journal.Fact) error {
 	if f.Time.IsZero() {
 		f.Time = time.Now()
 	}
@@ -202,10 +203,10 @@ func (s *SQLiteStore) appendFact(ctx context.Context, tx *sql.Tx, f journal.Fact
 // Enqueue persists a new task and records task.enqueued. When New.DedupKey
 // is set and a task with that key already exists, the stored task is returned
 // unchanged — no duplicate row, no duplicate fact (idempotent enqueue).
-func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
+func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 	n = n.Normalize()
 	if n.Type == "" {
-		return task.Task{}, ErrEmptyType
+		return task.Task{}, queue.ErrEmptyType
 	}
 
 	if n.DedupKey != "" {
@@ -292,7 +293,7 @@ func (s *SQLiteStore) Enqueue(ctx context.Context, n task.New) (task.Task, error
 }
 
 // getTaskByDedupKey returns the stored task for a dedup key, if any.
-func (s *SQLiteStore) getTaskByDedupKey(ctx context.Context, key string) (task.Task, bool, error) {
+func (s *Store) getTaskByDedupKey(ctx context.Context, key string) (task.Task, bool, error) {
 	var id string
 
 	err := s.db.QueryRowContext(ctx, `SELECT id FROM tasks WHERE dedup_key = ?`, key).Scan(&id)
@@ -313,7 +314,7 @@ func (s *SQLiteStore) getTaskByDedupKey(ctx context.Context, key string) (task.T
 }
 
 // ClaimDue atomically claims one due task for owner.
-func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
+func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
 	now := time.Now()
 
 	var claimed task.Task
@@ -345,7 +346,7 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 		var id, st, prevOwner string
 		if err := row.Scan(&id, &st, &prevOwner); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return ErrNoTaskDue
+				return queue.ErrNoTaskDue
 			}
 
 			return err
@@ -380,7 +381,7 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 				}
 
 				if n, _ := res.RowsAffected(); n == 0 {
-					return ErrNoTaskDue // lost the race; another path finalized it
+					return queue.ErrNoTaskDue // lost the race; another path finalized it
 				}
 
 				if err := s.appendFact(ctx, tx, journal.Fact{
@@ -390,7 +391,7 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 					return err
 				}
 
-				// Commit the finalize (returning ErrNoTaskDue here would roll
+				// Commit the finalize (returning queue.ErrNoTaskDue here would roll
 				// it back); the caller learns via finalizedCancel below.
 				finalizedCancel = true
 
@@ -421,7 +422,7 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 		}
 
 		if n == 0 {
-			return ErrNoTaskDue // lost the race (multi-process); caller retries
+			return queue.ErrNoTaskDue // lost the race (multi-process); caller retries
 		}
 
 		if err := s.appendFact(ctx, tx, journal.Fact{TaskID: id, Type: journal.Claimed, Owner: owner}); err != nil {
@@ -437,14 +438,14 @@ func (s *SQLiteStore) ClaimDue(ctx context.Context, owner string, lease time.Dur
 	}
 
 	if finalizedCancel {
-		return task.Task{}, ErrNoTaskDue
+		return task.Task{}, queue.ErrNoTaskDue
 	}
 
 	return claimed, nil
 }
 
 // Complete marks a Running task Completed.
-func (s *SQLiteStore) Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error {
+func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error {
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx *sql.Tx) error {
@@ -470,7 +471,7 @@ func (s *SQLiteStore) Complete(ctx context.Context, id task.ID, owner string, re
 }
 
 // Fail records a failed attempt: retry with backoff or dead-letter.
-func (s *SQLiteStore) Fail(
+func (s *Store) Fail(
 	ctx context.Context,
 	id task.ID,
 	owner string,
@@ -540,7 +541,7 @@ func (s *SQLiteStore) Fail(
 // identical retry would fail identically, so the remaining attempt budget is
 // worthless (and, for agent tasks, expensive). The failing attempt is still
 // counted. Facts: task.failed + task.dead-lettered with class "permanent".
-func (s *SQLiteStore) FailPermanent(
+func (s *Store) FailPermanent(
 	ctx context.Context,
 	id task.ID,
 	owner string,
@@ -594,7 +595,7 @@ func (s *SQLiteStore) FailPermanent(
 }
 
 // Heartbeat extends the lease of a Running task held by owner.
-func (s *SQLiteStore) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {
+func (s *Store) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {
 	now := time.Now()
 
 	res, err := s.db.ExecContext(ctx, `
@@ -614,7 +615,7 @@ func (s *SQLiteStore) Heartbeat(ctx context.Context, id task.ID, owner string, e
 
 // Cancel withdraws a Pending task. A non-empty reason is stored in the
 // task.cancelled fact detail ("reason" key).
-func (s *SQLiteStore) Cancel(ctx context.Context, id task.ID, reason string) error {
+func (s *Store) Cancel(ctx context.Context, id task.ID, reason string) error {
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx *sql.Tx) error {
@@ -650,7 +651,7 @@ func (s *SQLiteStore) Cancel(ctx context.Context, id task.ID, reason string) err
 // it (facts-first). A non-empty reason rides the request fact's detail and
 // is carried onto the final task.cancelled fact by CancelOwned / the
 // reclaim finalize. Idempotent: a second request appends nothing.
-func (s *SQLiteStore) CancelRunning(ctx context.Context, id task.ID, reason string) error {
+func (s *Store) CancelRunning(ctx context.Context, id task.ID, reason string) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		var st string
 		if err := tx.QueryRowContext(ctx,
@@ -682,7 +683,7 @@ func (s *SQLiteStore) CancelRunning(ctx context.Context, id task.ID, reason stri
 }
 
 // CancelRequested reports whether a cooperative cancel request is pending.
-func (s *SQLiteStore) CancelRequested(ctx context.Context, id task.ID) (bool, error) {
+func (s *Store) CancelRequested(ctx context.Context, id task.ID) (bool, error) {
 	var requested bool
 
 	err := s.db.QueryRowContext(ctx, cancelRequestedSQL, id.String()).Scan(&requested)
@@ -704,7 +705,7 @@ type ArchiveStats struct {
 // statement pair per task set; projections (tasks table) are untouched.
 // Returns how many facts moved. NOT on the Store interface: an admin
 // operation, not a queue operation.
-func (s *SQLiteStore) ArchiveFactsBefore(ctx context.Context, cutoff int64) (int64, error) {
+func (s *Store) ArchiveFactsBefore(ctx context.Context, cutoff int64) (int64, error) {
 	var moved int64
 
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
@@ -784,7 +785,7 @@ func (s *SQLiteStore) ArchiveFactsBefore(ctx context.Context, cutoff int64) (int
 
 // ArchiveSummary reports hot/archived fact counts and the compaction
 // watermark (highest archived seq; -1 when nothing was archived yet).
-func (s *SQLiteStore) ArchiveSummary(ctx context.Context) (ArchiveStats, error) {
+func (s *Store) ArchiveSummary(ctx context.Context) (ArchiveStats, error) {
 	var stats ArchiveStats
 
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM facts`).Scan(&stats.Hot); err != nil {
@@ -866,7 +867,7 @@ func cooperativeCancelDetail(reason, after string) json.RawMessage {
 // (lease expired before the cutoff, no orphaned fact yet). Observation
 // only: the task stays Running until a reclaim; the fact explains why it
 // is stranded (worker died, pool down). Idempotent per task.
-func (s *SQLiteStore) MarkOrphaned(ctx context.Context, cutoff time.Time) (int, error) {
+func (s *Store) MarkOrphaned(ctx context.Context, cutoff time.Time) (int, error) {
 	marked := 0
 
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
@@ -943,7 +944,7 @@ func cancelRequestedTx(ctx context.Context, tx *sql.Tx, id string) (bool, error)
 // CancelOwned finalizes a cooperative cancel: Running -> Cancelled, written
 // by the lease-holding worker after it stopped the execution. The operator's
 // reason (from the cancel-requested fact) is carried onto the cancelled fact.
-func (s *SQLiteStore) CancelOwned(ctx context.Context, id task.ID, owner string) error {
+func (s *Store) CancelOwned(ctx context.Context, id task.ID, owner string) error {
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx *sql.Tx) error {
@@ -972,7 +973,7 @@ func (s *SQLiteStore) CancelOwned(ctx context.Context, id task.ID, owner string)
 }
 
 // RescueDead re-queues a Dead task with a fresh attempt budget (DLQ rescue).
-func (s *SQLiteStore) RescueDead(ctx context.Context, id task.ID, maxAttempts int) error {
+func (s *Store) RescueDead(ctx context.Context, id task.ID, maxAttempts int) error {
 	if maxAttempts <= 0 {
 		maxAttempts = task.DefaultMaxAttempts
 	}
@@ -1016,14 +1017,14 @@ func (s *SQLiteStore) RescueDead(ctx context.Context, id task.ID, maxAttempts in
 }
 
 // Get returns the current task record.
-func (s *SQLiteStore) Get(ctx context.Context, id task.ID) (task.Task, error) {
+func (s *Store) Get(ctx context.Context, id task.ID) (task.Task, error) {
 	return s.loadTaskTx(ctx, s.db, id.String())
 }
 
 // List returns tasks matching the filter.
 // listWhere builds the shared WHERE clause for List and CountTasks so the
 // two can never disagree about what a filter matches.
-func listWhere(f Filter) (string, []any) {
+func listWhere(f queue.Filter) (string, []any) {
 	where := []string{"1=1"}
 	args := []any{}
 
@@ -1059,7 +1060,7 @@ func listWhere(f Filter) (string, []any) {
 	return strings.Join(where, " AND "), args
 }
 
-func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
+func (s *Store) List(ctx context.Context, f queue.Filter) ([]task.Task, error) {
 	where, args := listWhere(f)
 
 	order := `ORDER BY priority DESC, created_at ASC`
@@ -1134,7 +1135,7 @@ func (s *SQLiteStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
 }
 
 // CountTasks counts the tasks matching the filter (COUNT(*) pushdown).
-func (s *SQLiteStore) CountTasks(ctx context.Context, f Filter) (int, error) {
+func (s *Store) CountTasks(ctx context.Context, f queue.Filter) (int, error) {
 	where, args := listWhere(f)
 
 	var n int
@@ -1147,7 +1148,7 @@ func (s *SQLiteStore) CountTasks(ctx context.Context, f Filter) (int, error) {
 // Facts returns journal facts with Seq > after, ascending, bounded to the
 // most recent limit when > 0. The seq primary key makes the cursor scan
 // O(limit) regardless of journal size.
-func (s *SQLiteStore) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
+func (s *Store) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
 	query := `
 		SELECT seq, time, task_id, type, owner, attempt, error, detail
 		FROM facts WHERE seq > ? ORDER BY seq ASC`
@@ -1169,7 +1170,7 @@ func (s *SQLiteStore) Facts(ctx context.Context, after int64, limit int) ([]jour
 }
 
 // LastFacts returns the most recent limit facts in ascending Seq order.
-func (s *SQLiteStore) LastFacts(ctx context.Context, limit int) ([]journal.Fact, error) {
+func (s *Store) LastFacts(ctx context.Context, limit int) ([]journal.Fact, error) {
 	if limit <= 0 {
 		return s.Facts(ctx, 0, 0)
 	}
@@ -1195,7 +1196,7 @@ func (s *SQLiteStore) LastFacts(ctx context.Context, limit int) ([]journal.Fact,
 }
 
 // HeadSeq returns the current highest fact Seq (0 when empty).
-func (s *SQLiteStore) HeadSeq(ctx context.Context) (int64, error) {
+func (s *Store) HeadSeq(ctx context.Context) (int64, error) {
 	var seq int64
 
 	err := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(seq), 0) FROM facts`).Scan(&seq)
@@ -1205,7 +1206,7 @@ func (s *SQLiteStore) HeadSeq(ctx context.Context) (int64, error) {
 
 // FactsForTask returns one task's facts in Seq order, bounded to the most
 // recent limit when > 0. Served by idx_facts_task (task_id, seq).
-func (s *SQLiteStore) FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error) {
+func (s *Store) FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error) {
 	// Interface contract: limit > 0 bounds to the MOST RECENT n facts, still
 	// ascending. Read the tail (DESC LIMIT), then flip — the plain
 	// ASC+LIMIT shape silently returned the FIRST n (cross-store
@@ -1244,7 +1245,7 @@ func (s *SQLiteStore) FactsForTask(ctx context.Context, id string, limit int) ([
 }
 
 // CountFacts counts facts of one type recorded at or after since.
-func (s *SQLiteStore) CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error) {
+func (s *Store) CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error) {
 	var n int64
 
 	err := s.db.QueryRowContext(ctx,
@@ -1257,7 +1258,7 @@ func (s *SQLiteStore) CountFacts(ctx context.Context, ftype journal.FactType, si
 // Watermark returns the persisted read cursor for a journal consumer and
 // whether it ever checkpointed — the resume point for bridges and sweepers.
 // seq 0 with exists=true is a valid cursor ("consumed nothing yet").
-func (s *SQLiteStore) Watermark(ctx context.Context, consumer string) (int64, bool, error) {
+func (s *Store) Watermark(ctx context.Context, consumer string) (int64, bool, error) {
 	var seq int64
 
 	err := s.db.QueryRowContext(ctx,
@@ -1277,7 +1278,7 @@ func (s *SQLiteStore) Watermark(ctx context.Context, consumer string) (int64, bo
 // stored seq never regresses, so a lagging or misconfigured second process
 // cannot drag a consumer backwards. Checkpointing is consumer progress, not
 // task state, so no fact is appended.
-func (s *SQLiteStore) SaveWatermark(ctx context.Context, consumer string, seq int64) error {
+func (s *Store) SaveWatermark(ctx context.Context, consumer string, seq int64) error {
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO watermarks (consumer, seq, updated_at) VALUES (?, ?, ?)
 		ON CONFLICT(consumer) DO UPDATE SET
@@ -1291,7 +1292,7 @@ func (s *SQLiteStore) SaveWatermark(ctx context.Context, consumer string, seq in
 
 // ListWatermarks returns every consumer cursor, by consumer name — the
 // admin read behind `tq watermarks show`.
-func (s *SQLiteStore) ListWatermarks(ctx context.Context) ([]WatermarkEntry, error) {
+func (s *Store) ListWatermarks(ctx context.Context) ([]queue.WatermarkEntry, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`)
 	if err != nil {
@@ -1299,10 +1300,10 @@ func (s *SQLiteStore) ListWatermarks(ctx context.Context) ([]WatermarkEntry, err
 	}
 	defer rows.Close()
 
-	var out []WatermarkEntry
+	var out []queue.WatermarkEntry
 
 	for rows.Next() {
-		var e WatermarkEntry
+		var e queue.WatermarkEntry
 
 		if err := rows.Scan(&e.Consumer, &e.Seq, &e.UpdatedAt); err != nil {
 			return nil, err
@@ -1319,7 +1320,7 @@ func (s *SQLiteStore) ListWatermarks(ctx context.Context) ([]WatermarkEntry, err
 // move the cursor backwards: a rewind forces replay, and downstream
 // idempotency keys (seq-derived) make replay safe. It deliberately
 // bypasses the monotonic runtime guard; use it knowing that.
-func (s *SQLiteStore) SetWatermark(ctx context.Context, consumer string, seq int64) error {
+func (s *Store) SetWatermark(ctx context.Context, consumer string, seq int64) error {
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO watermarks (consumer, seq, updated_at) VALUES (?, ?, ?)
 		ON CONFLICT(consumer) DO UPDATE SET
@@ -1341,7 +1342,7 @@ func escapeLike(s string) string {
 }
 
 // StatusCounts counts tasks per status in one GROUP BY.
-func (s *SQLiteStore) StatusCounts(ctx context.Context) (map[task.Status]int, error) {
+func (s *Store) StatusCounts(ctx context.Context) (map[task.Status]int, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT status, COUNT(*) FROM tasks GROUP BY status`)
 	if err != nil {
 		return nil, err
@@ -1366,7 +1367,7 @@ func (s *SQLiteStore) StatusCounts(ctx context.Context) (map[task.Status]int, er
 }
 
 // ProjectCounts counts tasks per project per status in one GROUP BY.
-func (s *SQLiteStore) ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error) {
+func (s *Store) ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT project, status, COUNT(*) FROM tasks GROUP BY project, status`)
 	if err != nil {
@@ -1422,7 +1423,7 @@ func scanFacts(rows *sql.Rows) ([]journal.Fact, error) {
 
 // --- internals ---
 
-func (s *SQLiteStore) withTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
+func (s *Store) withTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -1437,7 +1438,7 @@ func (s *SQLiteStore) withTx(ctx context.Context, fn func(tx *sql.Tx) error) err
 	return tx.Commit()
 }
 
-func (s *SQLiteStore) loadTaskTx(ctx context.Context, q interface {
+func (s *Store) loadTaskTx(ctx context.Context, q interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }, id string,
 ) (task.Task, error) {
@@ -1508,7 +1509,7 @@ func scanTaskRow(r scanner) (task.Task, error) {
 	return t, nil
 }
 
-func (s *SQLiteStore) leaseErr(ctx context.Context, q interface {
+func (s *Store) leaseErr(ctx context.Context, q interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }, id task.ID, owner string,
 ) error {
@@ -1575,7 +1576,7 @@ func boolInt(b bool) int {
 // the executor refused to start (preflight), so the task itself is fine and
 // the environment is expected to become ready later. Claimable again after
 // delay. Fact: task.requeued.
-func (s *SQLiteStore) Requeue(
+func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
 	owner string,
@@ -1601,7 +1602,7 @@ func (s *SQLiteStore) Requeue(
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: owner, Error: errText,
-			Detail: mustJSON(RequeueEvidence{Reason: errText, RetryIn: delay.Milliseconds()}),
+			Detail: mustJSON(queue.RequeueEvidence{Reason: errText, RetryIn: delay.Milliseconds()}),
 		})
 	})
 }

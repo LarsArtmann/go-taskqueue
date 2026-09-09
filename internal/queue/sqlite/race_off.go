@@ -1,6 +1,6 @@
 //go:build !race
 
-package queue
+package sqlite
 
 // raceDetector reports whether the current binary was built with -race.
 // The race detector's ~10x slowdown makes latency assertions meaningless,

@@ -1,4 +1,4 @@
-package queue
+package postgres
 
 import (
 	"context"
@@ -12,10 +12,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// PostgresStore is the networked Store twin of SQLiteStore (ADR-0007): the
+// Store is the networked Store twin of SQLiteStore (ADR-0007): the
 // same facts-first semantics over PostgreSQL, for deployments where many
 // producers/workers share a queue across machines. Claims use
 // SELECT ... FOR UPDATE SKIP LOCKED instead of SQLite's single serialized
@@ -25,7 +26,7 @@ import (
 // Storage mapping mirrors SQLite exactly (unix-milli BIGINT timestamps,
 // deps table, partial unique dedup index) so the projections and the
 // journal remain byte-compatible across backends.
-type PostgresStore struct {
+type Store struct {
 	pool             *pgxpool.Pool
 	projectExclusive bool
 }
@@ -80,10 +81,10 @@ CREATE TABLE IF NOT EXISTS watermarks (
 );
 `
 
-// OpenPostgres connects to dsn (e.g. "postgres://user:pass@host:5432/db"),
+// Open connects to dsn (e.g. "postgres://user:pass@host:5432/db"),
 // applies the schema, and returns a ready store. maxConns bounds the pool
 // (0 = pgx default).
-func OpenPostgres(ctx context.Context, dsn string, maxConns int32) (*PostgresStore, error) {
+func Open(ctx context.Context, dsn string, maxConns int32) (*Store, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("queue: parse dsn: %w", err)
@@ -104,11 +105,11 @@ func OpenPostgres(ctx context.Context, dsn string, maxConns int32) (*PostgresSto
 		return nil, fmt.Errorf("queue: postgres migrate: %w", err)
 	}
 
-	return &PostgresStore{pool: pool}, nil
+	return &Store{pool: pool}, nil
 }
 
 // Close releases the pool.
-func (s *PostgresStore) Close() error {
+func (s *Store) Close() error {
 	s.pool.Close()
 
 	return nil
@@ -116,7 +117,7 @@ func (s *PostgresStore) Close() error {
 
 // withTx runs fn in one transaction; ANY error rolls back (same contract
 // as SQLiteStore.withTx).
-func (s *PostgresStore) withTx(ctx context.Context, fn func(pgx.Tx) error) error {
+func (s *Store) withTx(ctx context.Context, fn func(pgx.Tx) error) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -131,7 +132,7 @@ func (s *PostgresStore) withTx(ctx context.Context, fn func(pgx.Tx) error) error
 	return tx.Commit(ctx)
 }
 
-func (s *PostgresStore) appendFact(ctx context.Context, tx pgx.Tx, f journal.Fact) error {
+func (s *Store) appendFact(ctx context.Context, tx pgx.Tx, f journal.Fact) error {
 	if f.Time.IsZero() {
 		f.Time = time.Now()
 	}
@@ -192,12 +193,12 @@ const taskColumns = `id, project, type, payload, deps, priority, attempts, max_a
                      not_before, status, lease_owner, lease_expires, last_error,
                      created_at, updated_at, completed_at`
 
-func (s *PostgresStore) loadTaskTx(ctx context.Context, tx pgx.Tx, id string) (task.Task, error) {
+func (s *Store) loadTaskTx(ctx context.Context, tx pgx.Tx, id string) (task.Task, error) {
 	return scanPGTask(tx.QueryRow(ctx, `SELECT `+taskColumns+` FROM tasks WHERE id = $1`, id))
 }
 
 // Get returns the current task record.
-func (s *PostgresStore) Get(ctx context.Context, id task.ID) (task.Task, error) {
+func (s *Store) Get(ctx context.Context, id task.ID) (task.Task, error) {
 	t, err := scanPGTask(s.pool.QueryRow(ctx, `SELECT `+taskColumns+` FROM tasks WHERE id = $1`, id.String()))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return task.Task{}, task.ErrNotFound
@@ -208,10 +209,10 @@ func (s *PostgresStore) Get(ctx context.Context, id task.ID) (task.Task, error) 
 
 // Enqueue persists a new task and records task.enqueued; dedup keys make
 // it idempotent (the partial unique index is the arbiter).
-func (s *PostgresStore) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
+func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 	n = n.Normalize()
 	if n.Type == "" {
-		return task.Task{}, ErrEmptyType
+		return task.Task{}, queue.ErrEmptyType
 	}
 
 	if n.DedupKey != "" {
@@ -294,7 +295,7 @@ func (s *PostgresStore) Enqueue(ctx context.Context, n task.New) (task.Task, err
 	return t, nil
 }
 
-func (s *PostgresStore) getTaskByDedupKey(ctx context.Context, key string) (task.Task, bool, error) {
+func (s *Store) getTaskByDedupKey(ctx context.Context, key string) (task.Task, bool, error) {
 	var id string
 
 	err := s.pool.QueryRow(ctx, `SELECT id FROM tasks WHERE dedup_key = $1`, key).Scan(&id)
@@ -316,7 +317,7 @@ func (s *PostgresStore) getTaskByDedupKey(ctx context.Context, key string) (task
 // replacement for SQLite's single serialized writer). Semantics otherwise
 // match SQLiteStore: deps gate, expired-lease reclaim with task.released,
 // pending cooperative cancels finalized at reclaim.
-func (s *PostgresStore) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
+func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
 	now := time.Now()
 
 	var claimed task.Task
@@ -349,7 +350,7 @@ func (s *PostgresStore) ClaimDue(ctx context.Context, owner string, lease time.D
 		var id, st, prevOwner string
 		if err := row.Scan(&id, &st, &prevOwner); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return ErrNoTaskDue
+				return queue.ErrNoTaskDue
 			}
 
 			return err
@@ -384,7 +385,7 @@ func (s *PostgresStore) ClaimDue(ctx context.Context, owner string, lease time.D
 				}
 
 				if tag.RowsAffected() == 0 {
-					return ErrNoTaskDue
+					return queue.ErrNoTaskDue
 				}
 
 				if err := s.appendFact(ctx, tx, journal.Fact{
@@ -418,7 +419,7 @@ func (s *PostgresStore) ClaimDue(ctx context.Context, owner string, lease time.D
 		}
 
 		if tag.RowsAffected() == 0 {
-			return ErrNoTaskDue
+			return queue.ErrNoTaskDue
 		}
 
 		if err := s.appendFact(ctx, tx, journal.Fact{TaskID: id, Type: journal.Claimed, Owner: owner}); err != nil {
@@ -434,7 +435,7 @@ func (s *PostgresStore) ClaimDue(ctx context.Context, owner string, lease time.D
 	}
 
 	if finalizedCancel {
-		return task.Task{}, ErrNoTaskDue
+		return task.Task{}, queue.ErrNoTaskDue
 	}
 
 	return claimed, nil
@@ -442,7 +443,7 @@ func (s *PostgresStore) ClaimDue(ctx context.Context, owner string, lease time.D
 
 // leaseErr distinguishes not-found from lease-not-held after a guarded
 // UPDATE matched zero rows.
-func (s *PostgresStore) leaseErr(ctx context.Context, q queryer, id task.ID, owner string) error {
+func (s *Store) leaseErr(ctx context.Context, q queryer, id task.ID, owner string) error {
 	var status, leaseOwner string
 
 	err := q.QueryRow(ctx, `SELECT status, lease_owner FROM tasks WHERE id = $1`, id.String()).
@@ -464,7 +465,7 @@ type queryer interface {
 }
 
 // Complete marks a Running task Completed.
-func (s *PostgresStore) Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error {
+func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error {
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx pgx.Tx) error {
@@ -490,7 +491,7 @@ func (s *PostgresStore) Complete(ctx context.Context, id task.ID, owner string, 
 }
 
 // Fail records a failed attempt: retry with backoff or dead-letter.
-func (s *PostgresStore) Fail(
+func (s *Store) Fail(
 	ctx context.Context,
 	id task.ID,
 	owner string,
@@ -564,7 +565,7 @@ func (s *PostgresStore) Fail(
 }
 
 // FailPermanent dead-letters regardless of the attempt budget.
-func (s *PostgresStore) FailPermanent(
+func (s *Store) FailPermanent(
 	ctx context.Context,
 	id task.ID,
 	owner string,
@@ -615,7 +616,7 @@ func (s *PostgresStore) FailPermanent(
 }
 
 // Requeue returns a claimed task to Pending without counting an attempt.
-func (s *PostgresStore) Requeue(
+func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
 	owner string,
@@ -640,13 +641,13 @@ func (s *PostgresStore) Requeue(
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: owner, Error: errText,
-			Detail: mustJSON(RequeueEvidence{Reason: errText, RetryIn: delay.Milliseconds()}),
+			Detail: mustJSON(queue.RequeueEvidence{Reason: errText, RetryIn: delay.Milliseconds()}),
 		})
 	})
 }
 
 // Heartbeat extends the lease of a Running task held by owner.
-func (s *PostgresStore) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {
+func (s *Store) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {
 	now := time.Now()
 
 	tag, err := s.pool.Exec(ctx, `
@@ -666,7 +667,7 @@ func (s *PostgresStore) Heartbeat(ctx context.Context, id task.ID, owner string,
 
 // Cancel withdraws a Pending task. A non-empty reason is stored in the
 // task.cancelled fact detail ("reason" key).
-func (s *PostgresStore) Cancel(ctx context.Context, id task.ID, reason string) error {
+func (s *Store) Cancel(ctx context.Context, id task.ID, reason string) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		var st string
 
@@ -703,7 +704,7 @@ func (s *PostgresStore) Cancel(ctx context.Context, id task.ID, reason string) e
 // CancelRunning records the cooperative cancel request (idempotent fact).
 // A non-empty reason rides the request fact's detail and is carried onto
 // the final task.cancelled fact by CancelOwned / the reclaim finalize.
-func (s *PostgresStore) CancelRunning(ctx context.Context, id task.ID, reason string) error {
+func (s *Store) CancelRunning(ctx context.Context, id task.ID, reason string) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		var st string
 
@@ -739,7 +740,7 @@ func (s *PostgresStore) CancelRunning(ctx context.Context, id task.ID, reason st
 }
 
 // CancelRequested reports a pending cooperative cancel request.
-func (s *PostgresStore) CancelRequested(ctx context.Context, id task.ID) (bool, error) {
+func (s *Store) CancelRequested(ctx context.Context, id task.ID) (bool, error) {
 	var requested bool
 
 	err := s.pool.QueryRow(ctx,
@@ -752,7 +753,7 @@ func (s *PostgresStore) CancelRequested(ctx context.Context, id task.ID) (bool, 
 // CancelOwned finalizes a cooperative cancel (lease holder). The
 // operator's reason (from the cancel-requested fact) is carried onto the
 // cancelled fact.
-func (s *PostgresStore) CancelOwned(ctx context.Context, id task.ID, owner string) error {
+func (s *Store) CancelOwned(ctx context.Context, id task.ID, owner string) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `
 			UPDATE tasks SET status = 'cancelled', updated_at = $1, lease_owner = '', lease_expires = NULL
@@ -808,7 +809,7 @@ func cancelRequestedReasonPgTx(ctx context.Context, tx pgx.Tx, id string) (strin
 }
 
 // MarkOrphaned records stranded expired-lease Running tasks (idempotent).
-func (s *PostgresStore) MarkOrphaned(ctx context.Context, cutoff time.Time) (int, error) {
+func (s *Store) MarkOrphaned(ctx context.Context, cutoff time.Time) (int, error) {
 	marked := 0
 
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
@@ -878,7 +879,7 @@ func (s *PostgresStore) MarkOrphaned(ctx context.Context, cutoff time.Time) (int
 }
 
 // RescueDead re-queues a Dead task with a fresh attempt budget.
-func (s *PostgresStore) RescueDead(ctx context.Context, id task.ID, maxAttempts int) error {
+func (s *Store) RescueDead(ctx context.Context, id task.ID, maxAttempts int) error {
 	if maxAttempts <= 0 {
 		maxAttempts = task.DefaultMaxAttempts
 	}
@@ -901,7 +902,7 @@ func (s *PostgresStore) RescueDead(ctx context.Context, id task.ID, maxAttempts 
 	})
 }
 
-func pgOrderClause(f Filter) string {
+func pgOrderClause(f queue.Filter) string {
 	order := `ORDER BY priority DESC, created_at ASC`
 	if f.SeverityOrder {
 		order = `ORDER BY CASE status
@@ -932,7 +933,7 @@ func pgOrderClause(f Filter) string {
 
 // pgWhere builds the shared WHERE clause + args for List/CountTasks
 // (mirrors the sqlite store's listWhere, with numbered placeholders).
-func pgWhere(f Filter) (string, []any) {
+func pgWhere(f queue.Filter) (string, []any) {
 	where := []string{"TRUE"}
 
 	args := []any{}
@@ -975,7 +976,7 @@ func pgWhere(f Filter) (string, []any) {
 }
 
 // List returns tasks matching the filter.
-func (s *PostgresStore) List(ctx context.Context, f Filter) ([]task.Task, error) {
+func (s *Store) List(ctx context.Context, f queue.Filter) ([]task.Task, error) {
 	where, args := pgWhere(f)
 
 	q := `SELECT ` + taskColumns + ` FROM tasks WHERE ` + where + `
@@ -1059,7 +1060,7 @@ func scanFactRow(scanner interface{ Scan(...any) error }) (journal.Fact, error) 
 }
 
 // Facts exposes the journal in Seq order after the cursor.
-func (s *PostgresStore) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
+func (s *Store) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
 	q := `SELECT seq, time, task_id, type, owner, attempt, error, detail
 	      FROM facts WHERE seq > $1 ORDER BY seq ASC`
 	args := []any{after}
@@ -1092,7 +1093,7 @@ func (s *PostgresStore) Facts(ctx context.Context, after int64, limit int) ([]jo
 }
 
 // LastFacts returns the most recent facts in ascending order.
-func (s *PostgresStore) LastFacts(ctx context.Context, limit int) ([]journal.Fact, error) {
+func (s *Store) LastFacts(ctx context.Context, limit int) ([]journal.Fact, error) {
 	if limit <= 0 {
 		return s.Facts(ctx, 0, 0)
 	}
@@ -1125,7 +1126,7 @@ func (s *PostgresStore) LastFacts(ctx context.Context, limit int) ([]journal.Fac
 }
 
 // HeadSeq returns the highest fact seq (0 when empty).
-func (s *PostgresStore) HeadSeq(ctx context.Context) (int64, error) {
+func (s *Store) HeadSeq(ctx context.Context) (int64, error) {
 	var head int64
 
 	err := s.pool.QueryRow(ctx, `SELECT COALESCE(MAX(seq), 0) FROM facts`).Scan(&head)
@@ -1135,7 +1136,7 @@ func (s *PostgresStore) HeadSeq(ctx context.Context) (int64, error) {
 
 // FactsForTask returns one task's facts in Seq order; limit > 0 bounds to
 // the MOST RECENT n facts (same contract as the SQLite store).
-func (s *PostgresStore) FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error) {
+func (s *Store) FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error) {
 	q := `SELECT seq, time, task_id, type, owner, attempt, error, detail
 	      FROM facts WHERE task_id = $1`
 	args := []any{id}
@@ -1180,7 +1181,7 @@ func (s *PostgresStore) FactsForTask(ctx context.Context, id string, limit int) 
 }
 
 // CountFacts counts facts of one type since a time.
-func (s *PostgresStore) CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error) {
+func (s *Store) CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error) {
 	var n int64
 
 	err := s.pool.QueryRow(ctx,
@@ -1192,7 +1193,7 @@ func (s *PostgresStore) CountFacts(ctx context.Context, ftype journal.FactType, 
 
 // Watermark returns the persisted read cursor for a journal consumer and
 // whether it ever checkpointed. seq 0 with exists=true is a valid cursor.
-func (s *PostgresStore) Watermark(ctx context.Context, consumer string) (int64, bool, error) {
+func (s *Store) Watermark(ctx context.Context, consumer string) (int64, bool, error) {
 	var seq int64
 
 	err := s.pool.QueryRow(ctx,
@@ -1211,7 +1212,7 @@ func (s *PostgresStore) Watermark(ctx context.Context, consumer string) (int64, 
 // SaveWatermark checkpoints a consumer cursor as a monotonic upsert: the
 // stored seq never regresses. Consumer progress, not task state, so no
 // fact is appended.
-func (s *PostgresStore) SaveWatermark(ctx context.Context, consumer string, seq int64) error {
+func (s *Store) SaveWatermark(ctx context.Context, consumer string, seq int64) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO watermarks (consumer, seq, updated_at) VALUES ($1, $2, $3)
 		ON CONFLICT(consumer) DO UPDATE SET
@@ -1227,7 +1228,7 @@ func (s *PostgresStore) SaveWatermark(ctx context.Context, consumer string, seq 
 
 // ListWatermarks returns every consumer cursor, by consumer name — the
 // admin read behind `tq watermarks show`.
-func (s *PostgresStore) ListWatermarks(ctx context.Context) ([]WatermarkEntry, error) {
+func (s *Store) ListWatermarks(ctx context.Context) ([]queue.WatermarkEntry, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`)
 	if err != nil {
@@ -1236,10 +1237,10 @@ func (s *PostgresStore) ListWatermarks(ctx context.Context) ([]WatermarkEntry, e
 
 	defer rows.Close()
 
-	var out []WatermarkEntry
+	var out []queue.WatermarkEntry
 
 	for rows.Next() {
-		var e WatermarkEntry
+		var e queue.WatermarkEntry
 
 		if err := rows.Scan(&e.Consumer, &e.Seq, &e.UpdatedAt); err != nil {
 			return nil, err
@@ -1254,7 +1255,7 @@ func (s *PostgresStore) ListWatermarks(ctx context.Context) ([]WatermarkEntry, e
 // SetWatermark overwrites a consumer cursor unconditionally — the ops
 // rewind hatch (`tq watermarks set`); deliberately bypasses the monotonic
 // guard because a rewind is an intentional force-replay.
-func (s *PostgresStore) SetWatermark(ctx context.Context, consumer string, seq int64) error {
+func (s *Store) SetWatermark(ctx context.Context, consumer string, seq int64) error {
 	_, err := s.pool.Exec(ctx, `
 		INSERT INTO watermarks (consumer, seq, updated_at) VALUES ($1, $2, $3)
 		ON CONFLICT(consumer) DO UPDATE SET
@@ -1266,7 +1267,7 @@ func (s *PostgresStore) SetWatermark(ctx context.Context, consumer string, seq i
 }
 
 // StatusCounts counts tasks per status.
-func (s *PostgresStore) StatusCounts(ctx context.Context) (map[task.Status]int, error) {
+func (s *Store) StatusCounts(ctx context.Context) (map[task.Status]int, error) {
 	rows, err := s.pool.Query(ctx, `SELECT status, COUNT(*) FROM tasks GROUP BY status`)
 	if err != nil {
 		return nil, err
@@ -1292,7 +1293,7 @@ func (s *PostgresStore) StatusCounts(ctx context.Context) (map[task.Status]int, 
 }
 
 // ProjectCounts counts tasks per project per status.
-func (s *PostgresStore) ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error) {
+func (s *Store) ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error) {
 	rows, err := s.pool.Query(ctx, `SELECT project, status, COUNT(*) FROM tasks GROUP BY project, status`)
 	if err != nil {
 		return nil, err
@@ -1322,7 +1323,7 @@ func (s *PostgresStore) ProjectCounts(ctx context.Context) (map[string]map[task.
 }
 
 // CountTasks counts tasks matching the filter.
-func (s *PostgresStore) CountTasks(ctx context.Context, f Filter) (int, error) {
+func (s *Store) CountTasks(ctx context.Context, f queue.Filter) (int, error) {
 	where, args := pgWhere(f)
 
 	var n int

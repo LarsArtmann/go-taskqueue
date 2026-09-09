@@ -1,4 +1,4 @@
-package queue
+package sqlite
 
 import (
 	"context"
@@ -12,16 +12,17 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	_ "modernc.org/sqlite"
 )
 
-func openTestStore(t *testing.T) *SQLiteStore {
+func openTestStore(t *testing.T) *Store {
 	t.Helper()
 
-	s, err := OpenSQLite(filepath.Join(t.TempDir(), "q.db"))
+	s, err := Open(filepath.Join(t.TempDir(), "q.db"))
 	if err != nil {
-		t.Fatalf("OpenSQLite: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 
 	t.Cleanup(func() { _ = s.Close() })
@@ -55,8 +56,8 @@ func TestEnqueueAndClaim(t *testing.T) {
 		t.Fatalf("claim state wrong: %+v", claimed)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, ErrNoTaskDue) {
-		t.Fatalf("second claim err = %v, want ErrNoTaskDue", err)
+	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("second claim err = %v, want queue.ErrNoTaskDue", err)
 	}
 }
 
@@ -108,8 +109,8 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 
 	// Backoff gates the retry until not_before passes. 250ms comfortably
 	// exceeds claim-check latency on a loaded machine (1ms did not).
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, ErrNoTaskDue) {
-		t.Fatalf("claim during backoff err = %v, want ErrNoTaskDue", err)
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("claim during backoff err = %v, want queue.ErrNoTaskDue", err)
 	}
 
 	time.Sleep(300 * time.Millisecond)
@@ -198,7 +199,7 @@ func TestDepsBlockUntilCompleted(t *testing.T) {
 		t.Fatalf("first claim %s, want parent %s", got.ID, parent.ID)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, ErrNoTaskDue) {
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("child claimable while parent running: err = %v", err)
 	}
 
@@ -242,7 +243,7 @@ func TestNotBeforeDelays(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, ErrNoTaskDue) {
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("future task claimable: err = %v", err)
 	}
 }
@@ -302,7 +303,7 @@ func TestListFilters(t *testing.T) {
 
 	proj := "p1"
 
-	got, err := s.List(ctx, Filter{Project: &proj})
+	got, err := s.List(ctx, queue.Filter{Project: &proj})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -313,7 +314,7 @@ func TestListFilters(t *testing.T) {
 
 	st := task.Pending
 
-	got, err = s.List(ctx, Filter{Status: &st})
+	got, err = s.List(ctx, queue.Filter{Status: &st})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -322,7 +323,7 @@ func TestListFilters(t *testing.T) {
 		t.Fatalf("status filter len = %d, want 2", len(got))
 	}
 
-	all, _ := s.List(ctx, Filter{})
+	all, _ := s.List(ctx, queue.Filter{})
 	if len(all) != 2 {
 		t.Fatalf("no filter len = %d, want 2", len(all))
 	}
@@ -366,7 +367,7 @@ func TestEnqueueDedupKey(t *testing.T) {
 		t.Fatalf("dedup enqueue returned new task: %s vs %s", first.ID, second.ID)
 	}
 
-	tasks, err := s.List(ctx, Filter{})
+	tasks, err := s.List(ctx, queue.Filter{})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -451,9 +452,9 @@ func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 		t.Fatalf("close legacy: %v", err)
 	}
 
-	s, err := OpenSQLite(dbPath)
+	s, err := Open(dbPath)
 	if err != nil {
-		t.Fatalf("OpenSQLite with legacy schema: %v", err)
+		t.Fatalf("Open with legacy schema: %v", err)
 	}
 
 	t.Cleanup(func() { _ = s.Close() })
@@ -466,7 +467,7 @@ func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 		t.Fatalf("idempotent enqueue after migration: %v", err)
 	}
 
-	tasks, err := s.List(ctx, Filter{})
+	tasks, err := s.List(ctx, queue.Filter{})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -604,9 +605,9 @@ func TestMigrateAddsWatermarksTable(t *testing.T) {
 		t.Fatalf("close legacy: %v", err)
 	}
 
-	s, err := OpenSQLite(dbPath)
+	s, err := Open(dbPath)
 	if err != nil {
-		t.Fatalf("OpenSQLite with legacy schema: %v", err)
+		t.Fatalf("Open with legacy schema: %v", err)
 	}
 
 	t.Cleanup(func() { _ = s.Close() })
@@ -672,17 +673,17 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 	}
 
 	// Dead means dead: nothing claimable afterwards.
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, ErrNoTaskDue) {
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("dead task claimable: err = %v", err)
 	}
 }
 
-func openTestStoreExclusive(t *testing.T) *SQLiteStore {
+func openTestStoreExclusive(t *testing.T) *Store {
 	t.Helper()
 
-	s, err := OpenSQLite(filepath.Join(t.TempDir(), "q.db"), WithProjectExclusivity())
+	s, err := Open(filepath.Join(t.TempDir(), "q.db"), WithProjectExclusivity())
 	if err != nil {
-		t.Fatalf("OpenSQLite: %v", err)
+		t.Fatalf("Open: %v", err)
 	}
 
 	t.Cleanup(func() { _ = s.Close() })
@@ -725,7 +726,7 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 
 	for {
 		got, err := s.ClaimDue(ctx, "w1", time.Minute)
-		if errors.Is(err, ErrNoTaskDue) {
+		if errors.Is(err, queue.ErrNoTaskDue) {
 			break
 		}
 
@@ -764,7 +765,7 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 		}
 	}
 	// Nothing due while the repo-x runner holds the project.
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, ErrNoTaskDue) {
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("blocked sibling claimable: err = %v", err)
 	}
 
@@ -780,20 +781,20 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 }
 
 // TestProjectExclusivityAcrossStoreHandles proves the guard is store-level,
-// not pool-level: two independent SQLiteStore handles on the same file (the
+// not pool-level: two independent Store handles on the same file (the
 // multi-process shape) can never both run one project's tasks.
 func TestProjectExclusivityAcrossStoreHandles(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "shared.db")
 
-	s1, err := OpenSQLite(path, WithProjectExclusivity())
+	s1, err := Open(path, WithProjectExclusivity())
 	if err != nil {
 		t.Fatalf("open s1: %v", err)
 	}
 
 	t.Cleanup(func() { _ = s1.Close() })
 
-	s2, err := OpenSQLite(path, WithProjectExclusivity())
+	s2, err := Open(path, WithProjectExclusivity())
 	if err != nil {
 		t.Fatalf("open s2: %v", err)
 	}
@@ -853,8 +854,8 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 
 	// Delay gates the next claim (not_before semantics, like Fail backoff).
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, ErrNoTaskDue) {
-		t.Fatalf("claim during requeue delay err = %v, want ErrNoTaskDue", err)
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("claim during requeue delay err = %v, want queue.ErrNoTaskDue", err)
 	}
 
 	time.Sleep(200 * time.Millisecond)
@@ -876,13 +877,13 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 				t.Error("requeued fact lost the reason")
 			}
 
-			var ev RequeueEvidence
+			var ev queue.RequeueEvidence
 			if err := json.Unmarshal(f.Detail, &ev); err != nil {
-				t.Fatalf("requeued fact detail not RequeueEvidence: %v (%s)", err, f.Detail)
+				t.Fatalf("requeued fact detail not queue.RequeueEvidence: %v (%s)", err, f.Detail)
 			}
 
 			if ev.Reason == "" || ev.RetryIn <= 0 {
-				t.Errorf("RequeueEvidence = %+v, want reason + retry_in_ms", ev)
+				t.Errorf("queue.RequeueEvidence = %+v, want reason + retry_in_ms", ev)
 			}
 		}
 	}
@@ -893,7 +894,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 }
 
 // seedFacts appends n enqueued facts (unique task ids) to the journal.
-func seedFacts(ctx context.Context, t *testing.T, s *SQLiteStore, n int) {
+func seedFacts(ctx context.Context, t *testing.T, s *Store, n int) {
 	t.Helper()
 
 	for i := range n {
@@ -1120,7 +1121,7 @@ func TestListQueryPushdown(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		got, err := s.List(ctx, Filter{Query: tc.query})
+		got, err := s.List(ctx, queue.Filter{Query: tc.query})
 		if err != nil {
 			t.Fatalf("List(q=%q): %v", tc.query, err)
 		}
@@ -1162,7 +1163,7 @@ func TestListQueryLikeEscaping(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		got, err := s.List(ctx, Filter{Query: tc.query})
+		got, err := s.List(ctx, queue.Filter{Query: tc.query})
 		if err != nil {
 			t.Fatalf("List(q=%q): %v", tc.query, err)
 		}
@@ -1180,7 +1181,7 @@ func TestListOffsetPagination(t *testing.T) {
 	s := openTestStore(t)
 	seedFacts(ctx, t, s, 5)
 
-	page1, err := s.List(ctx, Filter{Limit: 2})
+	page1, err := s.List(ctx, queue.Filter{Limit: 2})
 	if err != nil {
 		t.Fatalf("page1: %v", err)
 	}
@@ -1189,7 +1190,7 @@ func TestListOffsetPagination(t *testing.T) {
 		t.Fatalf("page1 = %d rows, want 2", len(page1))
 	}
 
-	page2, err := s.List(ctx, Filter{Limit: 2, Offset: 2})
+	page2, err := s.List(ctx, queue.Filter{Limit: 2, Offset: 2})
 	if err != nil {
 		t.Fatalf("page2: %v", err)
 	}
@@ -1198,7 +1199,7 @@ func TestListOffsetPagination(t *testing.T) {
 		t.Fatalf("page2 must not overlap page1, got %d rows", len(page2))
 	}
 
-	page3, err := s.List(ctx, Filter{Limit: 2, Offset: 4})
+	page3, err := s.List(ctx, queue.Filter{Limit: 2, Offset: 4})
 	if err != nil {
 		t.Fatalf("page3: %v", err)
 	}
@@ -1296,7 +1297,7 @@ func TestListSeverityOrder(t *testing.T) {
 		t.Fatalf("claim2: %v", err)
 	}
 
-	running, err := s.List(ctx, Filter{Status: new(task.Running)})
+	running, err := s.List(ctx, queue.Filter{Status: new(task.Running)})
 	if err != nil {
 		t.Fatalf("list running: %v", err)
 	}
@@ -1309,7 +1310,7 @@ func TestListSeverityOrder(t *testing.T) {
 		t.Fatalf("fail permanent: %v", err)
 	}
 
-	all, err := s.List(ctx, Filter{SeverityOrder: true})
+	all, err := s.List(ctx, queue.Filter{SeverityOrder: true})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -1363,7 +1364,7 @@ func TestCountTasksMatchesList(t *testing.T) {
 	s := openTestStore(t)
 	seedFacts(ctx, t, s, 5)
 
-	full, err := s.CountTasks(ctx, Filter{})
+	full, err := s.CountTasks(ctx, queue.Filter{})
 	if err != nil {
 		t.Fatalf("CountTasks: %v", err)
 	}
@@ -1372,7 +1373,7 @@ func TestCountTasksMatchesList(t *testing.T) {
 		t.Fatalf("count = %d, want 5", full)
 	}
 
-	listed, err := s.List(ctx, Filter{})
+	listed, err := s.List(ctx, queue.Filter{})
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -1381,7 +1382,7 @@ func TestCountTasksMatchesList(t *testing.T) {
 		t.Fatalf("List(%d) and CountTasks(%d) disagree", len(listed), full)
 	}
 
-	qcount, err := s.CountTasks(ctx, Filter{Query: "true"})
+	qcount, err := s.CountTasks(ctx, queue.Filter{Query: "true"})
 	if err != nil {
 		t.Fatalf("CountTasks(query): %v", err)
 	}
@@ -1390,7 +1391,7 @@ func TestCountTasksMatchesList(t *testing.T) {
 		t.Fatalf("query count = %d, want 5 (all payloads contain true)", qcount)
 	}
 
-	zero, err := s.CountTasks(ctx, Filter{Query: "nope"})
+	zero, err := s.CountTasks(ctx, queue.Filter{Query: "nope"})
 	if err != nil {
 		t.Fatalf("CountTasks(no match): %v", err)
 	}
@@ -1465,7 +1466,7 @@ func TestLoadSnapshotScaleAt100k(t *testing.T) {
 	// The dashboard's exact query path, page 1 plus a filtered page.
 	start := time.Now()
 
-	snap, err := s.List(ctx, Filter{SeverityOrder: true, Limit: pageSize})
+	snap, err := s.List(ctx, queue.Filter{SeverityOrder: true, Limit: pageSize})
 	if err != nil {
 		t.Fatalf("page1: %v", err)
 	}
@@ -1474,7 +1475,7 @@ func TestLoadSnapshotScaleAt100k(t *testing.T) {
 
 	start = time.Now()
 
-	matches, err := s.CountTasks(ctx, Filter{})
+	matches, err := s.CountTasks(ctx, queue.Filter{})
 	if err != nil {
 		t.Fatalf("count: %v", err)
 	}
@@ -1483,7 +1484,7 @@ func TestLoadSnapshotScaleAt100k(t *testing.T) {
 
 	start = time.Now()
 
-	if _, err := s.CountTasks(ctx, Filter{Query: "scale-09999"}); err != nil {
+	if _, err := s.CountTasks(ctx, queue.Filter{Query: "scale-09999"}); err != nil {
 		t.Fatalf("count query: %v", err)
 	}
 
@@ -1608,8 +1609,8 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, ErrNoTaskDue) {
-		t.Fatalf("ClaimDue after cancel-requested reclaim err = %v, want ErrNoTaskDue", err)
+	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("ClaimDue after cancel-requested reclaim err = %v, want queue.ErrNoTaskDue", err)
 	}
 
 	got, err := s.Get(ctx, tk.ID)
@@ -2020,7 +2021,7 @@ func TestListSortAllowlist(t *testing.T) {
 		}
 	}
 
-	tasks, err := s.List(ctx, Filter{Sort: "priority-desc", Limit: 10})
+	tasks, err := s.List(ctx, queue.Filter{Sort: "priority-desc", Limit: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2029,7 +2030,7 @@ func TestListSortAllowlist(t *testing.T) {
 		t.Fatalf("priority-desc order = %d,%d,%d", tasks[0].Priority, tasks[1].Priority, tasks[2].Priority)
 	}
 
-	tasks, err = s.List(ctx, Filter{Sort: "priority-asc", Limit: 10})
+	tasks, err = s.List(ctx, queue.Filter{Sort: "priority-asc", Limit: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2040,7 +2041,7 @@ func TestListSortAllowlist(t *testing.T) {
 
 	// Unknown sort: falls back to the default order (priority DESC) — never
 	// an error, never interpolated into SQL.
-	tasks, err = s.List(ctx, Filter{Sort: "created_at; DROP TABLE tasks", Limit: 10})
+	tasks, err = s.List(ctx, queue.Filter{Sort: "created_at; DROP TABLE tasks", Limit: 10})
 	if err != nil {
 		t.Fatalf("hostile sort value: %v", err)
 	}
@@ -2050,7 +2051,7 @@ func TestListSortAllowlist(t *testing.T) {
 	}
 }
 
-// TestListSinceFilter pins the Filter.Since SQL pushdown: inclusive lower
+// TestListSinceFilter pins the queue.Filter.Since SQL pushdown: inclusive lower
 // bound on created_at (the exact boundary task is INCLUDED), and the
 // boundary + 1ms excludes it. Both stores share the contract; the Postgres
 // twin runs via the conformance battery.
@@ -2071,7 +2072,7 @@ func TestListSinceFilter(t *testing.T) {
 
 	since := first.CreatedAt
 
-	got, err := s.List(ctx, Filter{Since: &since})
+	got, err := s.List(ctx, queue.Filter{Since: &since})
 	if err != nil {
 		t.Fatalf("List inclusive: %v", err)
 	}
@@ -2082,7 +2083,7 @@ func TestListSinceFilter(t *testing.T) {
 
 	after := first.CreatedAt.Add(time.Millisecond)
 
-	got, err = s.List(ctx, Filter{Since: &after})
+	got, err = s.List(ctx, queue.Filter{Since: &after})
 	if err != nil {
 		t.Fatalf("List exclusive: %v", err)
 	}
@@ -2092,7 +2093,7 @@ func TestListSinceFilter(t *testing.T) {
 	}
 
 	// CountTasks shares the WHERE builder — same window, same count.
-	n, err := s.CountTasks(ctx, Filter{Since: &after})
+	n, err := s.CountTasks(ctx, queue.Filter{Since: &after})
 	if err != nil {
 		t.Fatalf("CountTasks: %v", err)
 	}

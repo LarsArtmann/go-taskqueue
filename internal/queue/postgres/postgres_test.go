@@ -1,4 +1,4 @@
-package queue
+package postgres
 
 import (
 	"context"
@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// testPostgresStore opens a PostgresStore against $TQ_TEST_POSTGRES and
+// testPostgresStore opens a Store against $TQ_TEST_POSTGRES and
 // registers cleanup; tests skip when the variable is unset (CI provides a
 // service container; local runs provide a cluster — see ADR-0007).
-func testPostgresStore(t *testing.T) *PostgresStore {
+func testPostgresStore(t *testing.T) *Store {
 	t.Helper()
 
 	dsn := os.Getenv("TQ_TEST_POSTGRES")
@@ -24,7 +25,7 @@ func testPostgresStore(t *testing.T) *PostgresStore {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	s, err := OpenPostgres(ctx, dsn, 0)
+	s, err := Open(ctx, dsn, 0)
 	if err != nil {
 		t.Fatalf("open postgres: %v", err)
 	}
@@ -42,7 +43,7 @@ func testPostgresStore(t *testing.T) *PostgresStore {
 
 // claimUntil claims tasks until the wanted one is held; anything claimed
 // on the way is completed (ClaimDue returns an arbitrary due task).
-func claimUntil(t *testing.T, s *PostgresStore, ctx context.Context, want task.ID, owner string, lease time.Duration) {
+func claimUntil(t *testing.T, s *Store, ctx context.Context, want task.ID, owner string, lease time.Duration) {
 	t.Helper()
 
 	for range 50 {
@@ -93,8 +94,8 @@ func TestPostgresLifecycle(t *testing.T) {
 		t.Fatalf("claimed %s, want %s", got.ID, enq.ID)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, ErrNoTaskDue) {
-		t.Fatalf("second claim of one task: err = %v, want ErrNoTaskDue", err)
+	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("second claim of one task: err = %v, want queue.ErrNoTaskDue", err)
 	}
 
 	// Lease guard: a foreign owner cannot complete.
@@ -230,7 +231,7 @@ func TestPostgresClaimExclusivityUnderConcurrency(t *testing.T) {
 		go func() {
 			for range n {
 				got, err := s.ClaimDue(ctx, "race-w"+string(rune('0'+w)), time.Minute)
-				if errors.Is(err, ErrNoTaskDue) {
+				if errors.Is(err, queue.ErrNoTaskDue) {
 					return
 				}
 

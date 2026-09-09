@@ -1,4 +1,4 @@
-package queue
+package postgres
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -137,7 +138,7 @@ func TestPostgresConformance(t *testing.T) {
 		// NotBefore backoff: nothing claimable for this task until it passes.
 		if got, err := s.ClaimDue(ctx, "fail-w", time.Minute); err == nil && got.ID == retry.ID {
 			t.Fatal("claimed a task inside its backoff window")
-		} else if err != nil && !errors.Is(err, ErrNoTaskDue) && got.ID == retry.ID {
+		} else if err != nil && !errors.Is(err, queue.ErrNoTaskDue) && got.ID == retry.ID {
 			t.Fatalf("claim inside backoff: %v", err)
 		}
 
@@ -329,7 +330,7 @@ func TestPostgresConformance(t *testing.T) {
 
 		proj := project
 
-		filtered, err := s.List(ctx, Filter{Project: &proj, Type: &typ, Status: &st})
+		filtered, err := s.List(ctx, queue.Filter{Project: &proj, Type: &typ, Status: &st})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -344,7 +345,7 @@ func TestPostgresConformance(t *testing.T) {
 			}
 		}
 
-		page, err := s.List(ctx, Filter{Project: &proj, Type: &typ, Limit: 2})
+		page, err := s.List(ctx, queue.Filter{Project: &proj, Type: &typ, Limit: 2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -353,12 +354,12 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("page size = %d, want 2 (limit)", len(page))
 		}
 
-		count, err := s.CountTasks(ctx, Filter{Project: &proj, Type: &typ})
+		count, err := s.CountTasks(ctx, queue.Filter{Project: &proj, Type: &typ})
 		if err != nil || count < 3 {
 			t.Fatalf("count = %d (%v), want >= 3", count, err)
 		}
 
-		byQuery, err := s.List(ctx, Filter{Query: strings.ToLower(typ)})
+		byQuery, err := s.List(ctx, queue.Filter{Query: strings.ToLower(typ)})
 		if err != nil || len(byQuery) < 3 {
 			t.Fatalf("query list = %d (%v), want >= 3 (type substring match)", len(byQuery), err)
 		}
