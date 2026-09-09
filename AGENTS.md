@@ -241,15 +241,28 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   misses suffixed references (`NewSink`, `NewCommandExecutor` use `Sink`,
   `CommandExecutor`) and undercounts — the 2026-09-10 re-derivation found
   most "dead" exports alive once matching corrected.
-- ⚠️ **This repo is dogfooded (since 2026-09-07)**: an `agent-pool` may run
-  against THIS repo — `.crushrc` (minimum autonomy) + `.tq-verify` are the
-  rails; unchecked TODO_LIST items are live pool food. Sibling repos on the
-  same (now bootstrap-managed) rails: `project-discovery-sdk` (queue-facing
-  "Open Work" checkbox section only — the status tables below are NOT
-  parsed), `overview` (checkbox backlog; owner-gated items carry
-  `— BLOCKED:`), `project-discovery-daemon` (rails only). Expect autonomous
-  commits on master (never pushes). If the pool misbehaves: stop it, review
-  `tq dlq`, rescue or cancel.
+- ⚠️ **This repo is dogfooded (since 2026-09-07)**: the production pool is
+  the SystemNix systemd deployment (`tq-agent-pool` + `tq-serve` on
+  127.0.0.1:8100, journal `/mnt/pool/services/tq/tq.db`, binary pinned by
+  the SystemNix input — input flip + `nix run .#deploy` are owner-run)
+  working CV, SystemNix and THIS repo; agents are GLM-5.3-Flash via each
+  repo's bootstrap-managed `.crushrc` (model+effort live ONLY there — a
+  pool `--model` would reset reasoning effort). `.tq-verify` is the gate;
+  unchecked TODO_LIST items are live pool food; expect autonomous commits
+  on master (never pushes). Sibling repos on the same rails:
+  `project-discovery-sdk` (queue-facing "Open Work" checkbox section only —
+  the status tables below are NOT parsed), `overview` (checkbox backlog;
+  owner-gated items carry `— BLOCKED:`), `project-discovery-daemon` (rails
+  only). If the pool misbehaves: stop it, review `tq dlq`, rescue or
+  cancel. The repo-root `tasks.db` is the retired 2026-09-07 dogfood
+  journal (its orphan serve was stopped 2026-09-10).
+- ⚠️ **Pool-deploy failure mode** (2026-09-10): `harvest: skipped
+  reason="scan failed"` for EVERY repo means environment, not data — bare
+  `--repos` names once resolved via the service cwd (now expanded against
+  `--projects-dir`), and systemd's default service PATH has no git/go/crush
+  (the NixOS module now sets `services.tq-agent-pool.agentPath`). The
+  aggregate skip log carries one full example reason; scan failures log at
+  WARN.
 
 ## Relation to other projects
 

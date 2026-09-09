@@ -88,6 +88,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (tags are immutable once on the remote/proxy — the post-split content
   ships with the next release's module tags, cut automatically by
   `scripts/release.sh`).
+- agent-pool harvested nothing under systemd: bare `--repos` names
+  resolved against the process working directory (the unit's is the DB
+  dir), so every tick skipped every repo as `scan failed`; names now
+  expand against `--projects-dir`. The NixOS module's pool unit
+  additionally sets an explicit agent-toolchain PATH (new
+  `services.tq-agent-pool.agentPath`: hermetic git+go, system and
+  per-user profiles, GOBIN) — systemd's default service PATH has no
+  git/go/crush, which would have failed every preflight, agent exec and
+  verify gate even with the scan fixed.
+- The aggregate `harvest: skipped` log cut every reason at the first
+  colon, hiding the underlying error (a dead deployment read as a quiet
+  one for 20h); groups now carry one full example reason, and scan
+  failures log at WARN.
 
 ### Removed
 - Deprecated pre-convergence aliases `executor.CrushPayload`,
