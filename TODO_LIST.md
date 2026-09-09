@@ -55,7 +55,7 @@ not here.
 
 ## Post-split follow-ups (harvested from docs/status/2026-09-09_23-47, verified 2026-09-10)
 
-- [ ] Dead-export audit script as a periodic check: exported-with-zero-importers detector (substring matching, NOT `rg -w` — it misses suffixed references like NewSink/NewCommandExecutor and undercounts); park it next to scripts/check-go-mods.sh (23:47 f19; manual re-derivation lives in the 2026-09-10 session)
+- [x] Dead-export audit script as a periodic check: exported-with-zero-importers detector (substring matching, NOT `rg -w` — it misses suffixed references like NewSink/NewCommandExecutor and undercounts); park it next to scripts/check-go-mods.sh (23:47 f19; manual re-derivation lives in the 2026-09-10 session) — DONE 2026-09-10: scripts/check-dead-exports.sh (advisory report, `--strict` to gate), wired into ci-local.sh
 - [ ] govulncheck step in CI (non-blocking job first; needs network on the runner) (23:47 f20)
 - [ ] gosec advisory scan pass over the modules (23:47 f21)
 - [ ] templ-components deep-dive audit: adoption table says v1.16 — verify we use the current component APIs and none of the retired ones (23:47 f22; internal/webui/fragments.templ)

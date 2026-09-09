@@ -47,6 +47,9 @@ done
 step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
 ./scripts/check-go-mods.sh
 
+step "dead-export audit (advisory report)"
+./scripts/check-dead-exports.sh
+
 step "gofmt"
 unformatted="$(gofmt -l .)"
 if [ -n "$unformatted" ]; then

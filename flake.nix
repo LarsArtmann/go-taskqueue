@@ -35,7 +35,7 @@
         # Keep in sync with the latest release tag (and the ldflags line
         # below) — release.sh does not bump this; `tq version` reports it.
         version = "0.2.0";
-        vendorHash = "sha256-JxcbUb4GkKmqGRjzTvyZ8z+aLEGLfLkWWT4l9dNDljo=";
+        vendorHash = "sha256-AYpYbD1DLfwvRAwvZuPb1q7MK2dqC7z7o+UNTuBY3aM=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
         # nixpkgs 26.11 dropped x86_64-darwin; the go-standard default system

@@ -10,6 +10,7 @@
 # exports" were alive once matching was corrected. Substring matching can
 # only overcount liveness (false survivors), never flag live symbols as
 # dead, so the report is a conservative floor for the true dead set.
+# shellcheck disable=SC2016
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
