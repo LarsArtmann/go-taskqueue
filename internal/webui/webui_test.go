@@ -1323,3 +1323,96 @@ func TestFmtAgeParityWithServer(t *testing.T) {
 		}
 	}
 }
+
+// TestWriteRateLimitLockout (round10 T10): three failed CSRF tokens lock
+// the client out of the write routes (429, even for a VALID token) while
+// read routes stay untouched; the lockout expires and a good write clears
+// the strike count.
+func TestWriteRateLimitLockout(t *testing.T) {
+	l := newWriteRateLimiter()
+	l.lockout = 40 * time.Millisecond
+
+	clock := time.Now()
+	l.nowFunc = func() time.Time { return clock }
+
+	post := func(csrf string) int {
+		inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/task/x/cancel", strings.NewReader("csrf="+csrf))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: tqCSRFCookie, Value: "real-token"})
+		req.RemoteAddr = "127.0.0.1:55555"
+
+		l.wrap(withCSRF(inner)).ServeHTTP(rec, req)
+
+		return rec.Code
+	}
+
+	for range 3 {
+		if code := post("wrong"); code != http.StatusForbidden {
+			t.Fatalf("bad CSRF = %d, want 403", code)
+		}
+	}
+
+	// Locked: even the valid token is refused before CSRF runs.
+	if code := post("real-token"); code != http.StatusTooManyRequests {
+		t.Fatalf("post-lockout valid CSRF = %d, want 429", code)
+	}
+
+	// Reads are not wrapped by the limiter at all (route wiring), so this
+	// is asserted structurally: the limiter only ever sees the write wrap.
+
+	// Lockout expires; strikes reset, valid write succeeds.
+	clock = clock.Add(50 * time.Millisecond)
+
+	if code := post("real-token"); code != http.StatusOK {
+		t.Fatalf("after lockout, valid CSRF = %d, want 200", code)
+	}
+
+	// Fresh slate: two more failures do not lock.
+	for range 2 {
+		if code := post("wrong"); code != http.StatusForbidden {
+			t.Fatalf("post-reset bad CSRF = %d, want 403", code)
+		}
+	}
+
+	if code := post("real-token"); code != http.StatusOK {
+		t.Fatalf("two strikes then valid = %d, want 200 (lock needs 3)", code)
+	}
+}
+
+// TestWriteRateLimitPerClient: one client's lockout does not muzzle another.
+func TestWriteRateLimitPerClient(t *testing.T) {
+	l := newWriteRateLimiter()
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	hit := func(remote string) int {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/task/x/cancel", strings.NewReader("csrf=bad"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: tqCSRFCookie, Value: "real"})
+		req.RemoteAddr = remote
+
+		l.wrap(withCSRF(inner)).ServeHTTP(rec, req)
+
+		return rec.Code
+	}
+
+	for range 3 {
+		hit("10.0.0.1:1000")
+	}
+
+	if code := hit("10.0.0.1:1000"); code != http.StatusTooManyRequests {
+		t.Fatalf("locked client = %d, want 429", code)
+	}
+
+	if code := hit("10.0.0.2:2000"); code != http.StatusForbidden {
+		t.Fatalf("other client = %d, want 403 (CSRF verdict, not the lockout)", code)
+	}
+}

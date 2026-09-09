@@ -44,6 +44,50 @@ start processes on the host is inside the trust boundary.
    rescue. Whether status reports themselves should be reviewed is a
    deliberate open trust-policy question, not an oversight.
 
+## UI-originated writes (`tq serve --allow-writes`)
+
+The dashboard is read-only by construction (ADR-0003) EXCEPT for exactly
+two admin routes, which exist only when `--allow-writes` / `$TQ_SERVE_WRITES=1`
+is passed:
+
+| Route                       | Effect                                                                                       | Blast radius                                          |
+| --------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `POST /task/{id}/cancel`    | withdraw a pending task, or request a cooperative stop of a running one                       | one task withdrawn / stopped                          |
+| `POST /task/{id}/rescue`    | re-queue a dead-lettered task with fresh attempts (the agent may spend money running it again) | one task re-run → its model spend + a commit in its repo |
+
+No other write exists: adding one requires the same flag + CSRF treatment
+(repo guardrail, ADR-0003 amendment 2026-09-08). The routes never edit
+payloads, facts, or the journal directly — they call the same store
+methods as `tq cancel` / `tq dlq --rescue`.
+
+**Defense layers, in order:**
+
+1. **Off by default** — without the flag the routes are not registered
+   (404, not 403).
+2. **Loopback vs token matrix:**
+
+   | Bind                | Token      | Writes | Result                          |
+   | ------------------- | ---------- | ------ | ------------------------------- |
+   | `127.0.0.1:port`    | —          | off    | read-only dashboard             |
+   | `127.0.0.1:port`    | —          | on     | writes, CSRF-guarded            |
+   | non-loopback / `:port` / hostname | **required** (refuses to start otherwise) | either | every route behind constant-time bearer/`?token=` auth |
+
+3. **CSRF** — every write POST must carry the form field matching the
+   browser's `tq_csrf` cookie (double-submit, constant-time compare,
+   `HttpOnly`+`SameSite=Lax`, `Secure` on TLS). A cross-site form can make
+   the browser SEND the cookie but cannot read it, so the field is
+   unforgeable; CSP restricts same-site injection to server-rendered forms.
+4. **Rate limit** — three failed CSRF tokens from one client IP lock that
+   client out of BOTH write routes for 60 s (429, checked before CSRF);
+   a successful write resets the strikes. Reads are never limited.
+
+**Residual risks, honestly:** a compromised loopback process can CSRF-fetch
+a page and then post valid writes (it is inside the trust boundary anyway);
+the lockout is per-IP, so a distributed attacker is only slowed by the
+128-bit CSRF token itself (which is the real barrier — the lockout is
+hygiene, not the wall); writes can rescue a dead task whose re-run costs
+one agent's spend.
+
 ## Data handling
 
 - The journal (`tasks.db`) stores task payloads and prompts verbatim —
@@ -64,6 +108,8 @@ start processes on the host is inside the trust boundary.
       enqueue up to ~50 follow-up tasks
 - [ ] `--project-exclusive` on every pool sharing a database
 - [ ] `--repos` used instead of a broad `--projects-dir` where possible
+- [ ] `tq serve`: `--allow-writes` only where an operator actually uses the
+      admin buttons; non-loopback binds always carry `--auth-token`
 - [ ] `.crushrc` files audited: only repos that need `bash` have it
 - [ ] database file owned by the pool user, 0600, not on a shared mount
 - [ ] bridges behind TLS when not on localhost

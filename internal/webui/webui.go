@@ -84,6 +84,9 @@ type Server struct {
 	hub   *Hub
 	cfg   Config
 
+	// writes throttles CSRF brute force on the two write routes.
+	writes *writeRateLimiter
+
 	httpServer *http.Server
 }
 
@@ -93,9 +96,10 @@ func New(store queue.Store, cfg Config) *Server {
 	cfg = cfg.withDefaults()
 
 	return &Server{
-		store: store,
-		hub:   NewHub(),
-		cfg:   cfg,
+		store:  store,
+		hub:    NewHub(),
+		cfg:    cfg,
+		writes: newWriteRateLimiter(),
 	}
 }
 
@@ -180,7 +184,11 @@ func (s *Server) Handler() http.Handler {
 
 	if s.cfg.AllowWrites {
 		for _, route := range s.writeBindings() {
-			mux.Handle(route.method+" "+route.pattern, withCSRF(http.HandlerFunc(route.handler)))
+			// Rate limit OUTSIDE CSRF: three failed tokens lock the client
+			// out of the write routes entirely for a minute, so the token
+			// cannot be brute-forced request-by-request.
+			mux.Handle(route.method+" "+route.pattern,
+				s.writes.wrap(withCSRF(http.HandlerFunc(route.handler))))
 		}
 	}
 

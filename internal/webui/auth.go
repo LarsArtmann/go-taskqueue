@@ -9,7 +9,10 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 // ErrTokenRequiredOnLAN is returned by Config.Validate and Server.Run when
@@ -208,4 +211,122 @@ func withCSRF(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// writeRateLimiter throttles CSRF brute force on the write routes: a client
+// that fails CSRF three times is locked out of ALL write POSTs for a short,
+// fixed window (reads are untouched — the limiter only wraps the two write
+// routes). Strikes reset on any successful write. Bounded memory: entries
+// idle for long are pruned on contact.
+type writeRateLimiter struct {
+	mu       sync.Mutex
+	strikes  map[string]*writeStrikes
+	maxHits  int
+	lockout  time.Duration
+	nowFunc  func() time.Time
+	idleKeep time.Duration
+}
+
+type writeStrikes struct {
+	count       int
+	lockedUntil time.Time
+	last        time.Time
+}
+
+func newWriteRateLimiter() *writeRateLimiter {
+	return &writeRateLimiter{
+		strikes:  make(map[string]*writeStrikes),
+		maxHits:  3,
+		lockout:  time.Minute,
+		nowFunc:  time.Now,
+		idleKeep: 10 * time.Minute,
+	}
+}
+
+// wrap guards one write route: locked-out clients get 429 before any form
+// parsing; a 403 (the only failure withCSRF emits) is a strike; success
+// (2xx/3xx) clears the slate. Other statuses (4xx/5xx from the handler
+// itself) neither strike nor clear.
+func (l *writeRateLimiter) wrap(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := remoteHost(r)
+
+		l.mu.Lock()
+		st := l.pruneLocked(key)
+		now := l.nowFunc()
+
+		if st != nil && now.Before(st.lockedUntil) {
+			retry := time.Until(st.lockedUntil).Round(time.Second)
+
+			l.mu.Unlock()
+			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(st.lockedUntil)/time.Second)+1))
+			http.Error(w, "too many failed attempts — write routes locked for "+retry.String(), http.StatusTooManyRequests)
+
+			return
+		}
+
+		l.mu.Unlock()
+
+		sw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(sw, r)
+
+		l.mu.Lock()
+		defer l.mu.Unlock()
+
+		st = l.pruneLocked(key)
+		if st == nil {
+			if sw.status != http.StatusForbidden {
+				return // nothing to track until a first strike
+			}
+
+			st = &writeStrikes{}
+			l.strikes[key] = st
+		}
+
+		st.last = l.nowFunc()
+
+		switch {
+		case sw.status == http.StatusForbidden:
+			st.count++
+
+			if st.count >= l.maxHits {
+				st.lockedUntil = st.last.Add(l.lockout)
+				st.count = 0
+				slog.Warn("webui: write routes locked after repeated CSRF failures", "client", key, "lockout", l.lockout.String())
+			}
+		case sw.status < http.StatusBadRequest:
+			st.count = 0
+			st.lockedUntil = time.Time{}
+		}
+	})
+}
+
+// pruneLocked drops the entry for key when it has been idle past idleKeep
+// and is not locked; returns the live entry (or nil) without removing it.
+// Caller holds mu.
+func (l *writeRateLimiter) pruneLocked(key string) *writeStrikes {
+	st, ok := l.strikes[key]
+	if !ok {
+		return nil
+	}
+
+	now := l.nowFunc()
+	if now.Before(st.lockedUntil) || now.Sub(st.last) < l.idleKeep {
+		return st
+	}
+
+	delete(l.strikes, key)
+
+	return nil
+}
+
+// remoteHost is the rate-limit key: the client IP without port. Behind a
+// reverse proxy all browsers share one key — acceptable for a dashboard
+// whose write surface is two routes.
+func remoteHost(r *http.Request) string {
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+
+	return r.RemoteAddr
 }
