@@ -318,6 +318,16 @@ state — its only write is its own cursor.
   a `--yolo` task on a repo without a project-local `.crushrc` fails fast by
   design. When touching the agent argv, update
   `TestAgentExecutorArgvContract` — stub-based tests cannot catch flag drift.
+- ⚠️ **A payload model resets reasoning effort**: when a task payload carries
+  a model, the executor passes `crush run -m` — which empirically resets the
+  reasoning effort to the provider default. The repo `.crushrc` managed block
+  (`tq bootstrap`) is the single carrier of model + `--reasoning-effort`.
+- ⚠️ **Edit-tool discipline in hot files**: never generate/patch Go source
+  via shell heredocs or python string surgery — read → grep symbols → edit
+  tool. Heredoc escaping broke compilation repeatedly across sessions; in
+  files concurrent agents edit (cmd/tq/main.go, webui templates), re-read
+  immediately before every write and prefer mid-session
+  `go build ./...` checkpoints over one end-of-session gate run.
 - ⚠️ **This repo is dogfooded (since 2026-09-07)**: an `agent-pool` may run
   against THIS repo — `.crushrc` (minimum autonomy) + `.tq-verify` (build,
   vet, race tests, gofmt) are the rails, and unchecked TODO_LIST items are
