@@ -15,6 +15,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/worker"
 )
@@ -50,7 +51,7 @@ func TestSelfManagingLoop(t *testing.T) {
 	projects := t.TempDir()
 	writeRepo(t, projects, "loop", "## Backlog\n\n- [ ] first item\n- [ ] second item\n")
 
-	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "e2e.db"))
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "e2e.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

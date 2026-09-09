@@ -13,13 +13,15 @@ import (
 	"strings"
 	"time"
 
+	_ "modernc.org/sqlite"
+
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/review"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
-	_ "modernc.org/sqlite"
 )
 
 // tq doctor answers "why is nothing happening?" in one command: database
@@ -64,7 +66,7 @@ const doctorHeartbeatWindow = 10 * time.Minute
 func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	var results []checkResult
 
-	store, err := queue.OpenSQLite(opts.DBPath)
+	store, err := sqlite.Open(opts.DBPath)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}

@@ -21,11 +21,13 @@ go build ./...
 step "windows cross-compile (build + vet)"
 GOOS=windows go build ./...
 GOOS=windows go vet ./...
-# Root ./... never descends into nested modules — the five sub-modules need
-# their own cross-compile gate or Windows-only code (executor processgroup,
-# agentlock stub) could rot invisibly.
-for m in task journal queue executor worker; do
-	( cd "internal/$m" \
+# Root ./... never descends into nested modules — every sub-module needs its
+# own cross-compile gate or Windows-only code could rot invisibly. The list
+# is disk-derived so newly added modules are gated without editing this
+# script.
+mods="$(find internal -name go.mod | sed 's|/go.mod$||' | sort)"
+for m in $mods; do
+	( cd "$m" \
 		&& GOWORK=off GOOS=windows go build ./... \
 		&& GOWORK=off GOOS=windows go vet ./... ) || exit 1
 done
@@ -34,22 +36,22 @@ step "tests (-race)"
 go test ./... -count=1 -race -timeout 120s
 
 step "module isolation gates (GOWORK=off per sub-module)"
-for m in task journal queue executor worker; do
-	echo "== internal/$m"
-	( cd "internal/$m" \
+for m in $mods; do
+	echo "== $m"
+	( cd "$m" \
 		&& GOWORK=off go build ./... \
 		&& GOWORK=off go vet ./... \
 		&& GOWORK=off go test ./... -count=1 -timeout 120s ) || exit 1
 done
 
 step "go.mod hygiene (portable replaces, pinned internal requires)"
-bad="$(grep -hE '^replace ' internal/*/go.mod | grep -E '=> */' || true)"
+bad="$(grep -hE '^replace ' $(find internal -name go.mod | sort) | grep -E '=> */' || true)"
 if [ -n "$bad" ]; then
 	echo "$bad"
 	echo "FAIL: absolute replace paths are not portable"
 	exit 1
 fi
-bad="$( { grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' go.mod internal/*/go.mod; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+bad="$( { grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' $(find internal -name go.mod | sort) go.mod; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
 if [ -n "$bad" ]; then
 	echo "$bad"
 	echo "FAIL: internal requires must be real tagged versions (vX.Y.Z) —"
@@ -75,8 +77,8 @@ step "lint (advisory — CI runs continue-on-error)"
 lint() {
 	if command -v golangci-lint >/dev/null 2>&1; then
 		golangci-lint run ./...
-		for m in task journal queue executor worker; do
-			( cd "internal/$m" && golangci-lint run ./... )
+		for m in $mods; do
+			( cd "$m" && golangci-lint run ./... )
 		done
 	else
 		echo "golangci-lint not on PATH — installing the CI-pinned version (v2.13.2)"

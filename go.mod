@@ -4,7 +4,6 @@ go 1.26.7
 
 require (
 	github.com/a-h/templ v0.3.1020
-	github.com/jackc/pgx/v5 v5.11.0 // indirect
 	github.com/larsartmann/go-sse v0.6.0
 	github.com/larsartmann/go-sse/ssetest v0.3.0
 	github.com/larsartmann/templ-components v1.16.0
@@ -24,9 +23,6 @@ require (
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/larsartmann/go-branded-id v0.5.1 // indirect
 	github.com/larsartmann/go-error-family v0.10.0 // indirect
 	github.com/larsartmann/templ-components/htmx v1.16.0 // indirect
@@ -38,7 +34,6 @@ require (
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
 	modernc.org/libc v1.75.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
@@ -49,6 +44,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/executor v0.2.0
 	github.com/larsartmann/go-taskqueue/internal/journal v0.2.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.2.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.2.0
 	github.com/larsartmann/go-taskqueue/internal/worker v0.2.0
 )
@@ -64,3 +60,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue => ./internal/queue
 replace github.com/larsartmann/go-taskqueue/internal/worker => ./internal/worker
 
 tool github.com/a-h/templ/cmd/templ
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ./internal/queue/sqlite

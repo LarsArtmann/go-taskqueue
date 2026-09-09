@@ -10,13 +10,14 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-func newTestStore(t *testing.T) *queue.SQLiteStore {
+func newTestStore(t *testing.T) *sqlite.Store {
 	t.Helper()
 
-	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "q.db"))
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
@@ -35,7 +36,7 @@ const (
 // claim loop skips past other pending tasks (the sweeper's minted reports can
 // outrank the target in claim order); a task already Running under this
 // owner's lease is completed directly.
-func finishTask(t *testing.T, s *queue.SQLiteStore, id task.ID, detail json.RawMessage) {
+func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessage) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -58,7 +59,7 @@ func finishTask(t *testing.T, s *queue.SQLiteStore, id task.ID, detail json.RawM
 
 // runAgentTask enqueues and completes one agent task so the journal holds a
 // real task.completed fact with result detail.
-func runAgentTask(t *testing.T, s *queue.SQLiteStore, n int, result executor.AgentResult) task.Task {
+func runAgentTask(t *testing.T, s *sqlite.Store, n int, result executor.AgentResult) task.Task {
 	t.Helper()
 
 	payload, err := json.Marshal(executor.AgentPayload{
@@ -101,7 +102,7 @@ func payloadPayload(t *testing.T, tk task.Task) executor.StatusPayload {
 	return p
 }
 
-func listByType(t *testing.T, s *queue.SQLiteStore, taskType string) []task.Task {
+func listByType(t *testing.T, s *sqlite.Store, taskType string) []task.Task {
 	t.Helper()
 
 	tasks, err := s.List(context.Background(), queue.Filter{Type: &taskType})

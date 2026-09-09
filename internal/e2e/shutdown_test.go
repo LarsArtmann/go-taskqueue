@@ -19,6 +19,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/webui"
 )
@@ -109,7 +110,7 @@ func TestShutdownOrderingUnderSIGTERM(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	s, err := queue.OpenSQLite(db)
+	s, err := sqlite.Open(db)
 	if err != nil {
 		t.Fatalf("open store after shutdown: %v", err)
 	}
@@ -310,7 +311,7 @@ func waitForCond(t *testing.T, timeout time.Duration, what string, cond func() b
 func storeHasRunningPayload(t *testing.T, db, payload string) bool {
 	t.Helper()
 
-	s, err := queue.OpenSQLite(db)
+	s, err := sqlite.Open(db)
 	if err != nil {
 		return false
 	}

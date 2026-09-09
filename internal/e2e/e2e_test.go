@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
-	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -177,10 +177,10 @@ func writeFile(t *testing.T, path, content string, mode os.FileMode) {
 	}
 }
 
-func openStore(t *testing.T, path string) *queue.SQLiteStore {
+func openStore(t *testing.T, path string) *sqlite.Store {
 	t.Helper()
 
-	s, err := queue.OpenSQLite(path)
+	s, err := sqlite.Open(path)
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)
 	}
@@ -188,7 +188,7 @@ func openStore(t *testing.T, path string) *queue.SQLiteStore {
 	return s
 }
 
-func assertFactCounts(t *testing.T, ctx context.Context, s *queue.SQLiteStore, want map[string]int) {
+func assertFactCounts(t *testing.T, ctx context.Context, s *sqlite.Store, want map[string]int) {
 	t.Helper()
 
 	facts, err := s.Facts(ctx, 0, 0)

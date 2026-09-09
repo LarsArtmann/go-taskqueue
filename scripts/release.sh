@@ -121,7 +121,10 @@ $(cat /tmp/tq-release-notes.md)"
 fi
 
 step "cut internal sub-module tags (go install resolution for the split)"
-internal_tags="$(grep -E '^[[:space:]]*github\.com/larsartmann/go-taskqueue/internal/[a-z0-9-]+ v[0-9]' go.mod | awk '{print substr($1, length("github.com/larsartmann/go-taskqueue/") + 1) "/" $2}')"
+# Every internal module ships with the release (shared versioning, ADR-0011):
+# disk-derived so modules nothing requires (queue/postgres until the CLI
+# store wiring lands) are still tagged and proxy-resolvable.
+internal_tags="$(find internal -name go.mod | sed "s|/go.mod\$|/$VERSION|" | sort)"
 for sub_tag in $internal_tags; do
 	if git rev-parse -q --verify "refs/tags/$sub_tag" >/dev/null; then
 		echo "$sub_tag already exists"

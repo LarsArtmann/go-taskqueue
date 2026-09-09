@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 )
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 
 	flag.Parse()
 
-	store, err := queue.OpenSQLite(*db)
+	store, err := sqlite.Open(*db)
 	if err != nil {
 		log.Fatal(err)
 	}

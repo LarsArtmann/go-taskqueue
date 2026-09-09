@@ -9,6 +9,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/worker"
 )
@@ -16,7 +17,7 @@ import (
 // Embedding go-taskqueue in a Go binary: open a store, register executors,
 // run a worker pool, enqueue work. Ctrl-C drains gracefully.
 func Example() {
-	store, err := queue.OpenSQLite("tasks.db")
+	store, err := sqlite.Open("tasks.db")
 	if err != nil {
 		log.Fatal(err)
 	}

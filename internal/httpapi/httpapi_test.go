@@ -11,13 +11,14 @@ import (
 	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-func newTestAPI(t *testing.T) (*Server, *queue.SQLiteStore) {
+func newTestAPI(t *testing.T) (*Server, *sqlite.Store) {
 	t.Helper()
 
-	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "api.db"))
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "api.db"))
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}

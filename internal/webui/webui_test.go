@@ -19,18 +19,19 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-sse/ssetest"
+	"github.com/larsartmann/templ-components/display"
+
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
-	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
-	"github.com/larsartmann/templ-components/display"
 )
 
 // newTestStore opens a throwaway SQLite store.
-func newTestStore(t *testing.T) *queue.SQLiteStore {
+func newTestStore(t *testing.T) *sqlite.Store {
 	t.Helper()
 
-	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "q.db"))
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
@@ -40,7 +41,7 @@ func newTestStore(t *testing.T) *queue.SQLiteStore {
 	return s
 }
 
-func newTestServer(t *testing.T) (*Server, *queue.SQLiteStore) {
+func newTestServer(t *testing.T) (*Server, *sqlite.Store) {
 	t.Helper()
 
 	s := newTestStore(t)
@@ -49,7 +50,7 @@ func newTestServer(t *testing.T) (*Server, *queue.SQLiteStore) {
 	return srv, s
 }
 
-func enqueue(t *testing.T, s *queue.SQLiteStore, typ, project string) task.Task {
+func enqueue(t *testing.T, s *sqlite.Store, typ, project string) task.Task {
 	t.Helper()
 
 	tk, err := s.Enqueue(

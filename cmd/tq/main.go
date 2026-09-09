@@ -29,6 +29,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/review"
 	"github.com/larsartmann/go-taskqueue/internal/runactor"
 	"github.com/larsartmann/go-taskqueue/internal/status"
@@ -127,12 +128,12 @@ func defaultDB() string {
 	return "tasks.db"
 }
 
-func mustOpenDB(path string) *queue.SQLiteStore {
+func mustOpenDB(path string) *sqlite.Store {
 	return mustOpenDBOpts(path)
 }
 
-func mustOpenDBOpts(path string, opts ...queue.StoreOption) *queue.SQLiteStore {
-	s, err := queue.OpenSQLite(path, opts...)
+func mustOpenDBOpts(path string, opts ...sqlite.StoreOption) *sqlite.Store {
+	s, err := sqlite.Open(path, opts...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tq: open db: %v\n", err)
 		os.Exit(1)
@@ -282,9 +283,9 @@ func cmdWorker(args []string) error {
 		return err
 	}
 
-	var opts []queue.StoreOption
+	var opts []sqlite.StoreOption
 	if *exclusive {
-		opts = append(opts, queue.WithProjectExclusivity())
+		opts = append(opts, sqlite.WithProjectExclusivity())
 	}
 
 	s := mustOpenDBOpts(resolveDB(*db), opts...)
@@ -843,9 +844,9 @@ func cmdAgentPool(args []string) error {
 		cfg.Repos = splitRepos(*repos)
 	}
 
-	var opts []queue.StoreOption
+	var opts []sqlite.StoreOption
 	if *exclusive {
-		opts = append(opts, queue.WithProjectExclusivity())
+		opts = append(opts, sqlite.WithProjectExclusivity())
 	}
 
 	s := mustOpenDBOpts(resolveDB(*db), opts...)
@@ -1405,7 +1406,7 @@ type consumerLagEntry struct {
 
 // consumerLag collects the persisted journal-consumer cursors with their lag
 // behind the head (ADR-0009's observability surface) for the JSON payload.
-func consumerLag(ctx context.Context, s *queue.SQLiteStore) []consumerLagEntry {
+func consumerLag(ctx context.Context, s *sqlite.Store) []consumerLagEntry {
 	entries, err := s.ListWatermarks(ctx)
 	if err != nil || len(entries) == 0 {
 		return nil
@@ -1447,7 +1448,7 @@ func printBudgetSpend(spent, cap int, scoped bool) {
 // printConsumerLag renders the persisted journal-consumer cursors with
 // their lag behind the head (ADR-0009's observability surface) — the first
 // place to look when a bridge or sweeper looks quiet.
-func printConsumerLag(s *queue.SQLiteStore) {
+func printConsumerLag(s *sqlite.Store) {
 	ctx := context.Background()
 
 	entries, err := s.ListWatermarks(ctx)
@@ -1561,7 +1562,7 @@ func cmdShow(args []string) error {
 // prefix: 34-char IDs are hostile to hand-typing, and every tq ID is a
 // ULID (time-ordered, so prefixes stay unambiguous in practice). An
 // ambiguous prefix names its candidates instead of guessing.
-func resolveTask(ctx context.Context, s *queue.SQLiteStore, arg string) (task.Task, error) {
+func resolveTask(ctx context.Context, s *sqlite.Store, arg string) (task.Task, error) {
 	t, err := s.Get(ctx, task.ID(arg))
 	if err == nil {
 		return t, nil
@@ -1676,7 +1677,7 @@ func cmdDLQ(args []string) error {
 }
 
 // rescueAllDead re-queues every dead task older than olderThan (all if 0).
-func rescueAllDead(ctx context.Context, s *queue.SQLiteStore, olderThan time.Duration, maxAttempts int) (int, error) {
+func rescueAllDead(ctx context.Context, s *sqlite.Store, olderThan time.Duration, maxAttempts int) (int, error) {
 	dead, err := listDead(ctx, s)
 	if err != nil {
 		return 0, err
@@ -1703,7 +1704,7 @@ func rescueAllDead(ctx context.Context, s *queue.SQLiteStore, olderThan time.Dur
 	return rescued, nil
 }
 
-func listDead(ctx context.Context, s *queue.SQLiteStore) ([]task.Task, error) {
+func listDead(ctx context.Context, s *sqlite.Store) ([]task.Task, error) {
 	st := task.Dead
 
 	return s.List(ctx, queue.Filter{Status: &st})

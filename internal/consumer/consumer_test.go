@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
-	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-func newTestStore(t *testing.T) *queue.SQLiteStore {
+func newTestStore(t *testing.T) *sqlite.Store {
 	t.Helper()
 
-	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "q.db"))
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}

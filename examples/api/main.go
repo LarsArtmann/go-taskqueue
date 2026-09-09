@@ -26,6 +26,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -35,7 +36,7 @@ func main() {
 
 	flag.Parse()
 
-	store, err := queue.OpenSQLite(*db)
+	store, err := sqlite.Open(*db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,7 +126,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
-func statusCounts(s *queue.SQLiteStore, ctx context.Context) (map[string]int, error) {
+func statusCounts(s *sqlite.Store, ctx context.Context) (map[string]int, error) {
 	tasks, err := s.List(ctx, queue.Filter{})
 	if err != nil {
 		return nil, err

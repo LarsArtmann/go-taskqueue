@@ -10,13 +10,14 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-func newTestStore(t *testing.T) *queue.SQLiteStore {
+func newTestStore(t *testing.T) *sqlite.Store {
 	t.Helper()
 
-	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "q.db"))
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
@@ -32,7 +33,7 @@ const (
 )
 
 // finishTask claims and completes one pending task with result detail.
-func finishTask(t *testing.T, s *queue.SQLiteStore, id task.ID, detail json.RawMessage) {
+func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessage) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -50,7 +51,7 @@ func finishTask(t *testing.T, s *queue.SQLiteStore, id task.ID, detail json.RawM
 // real task.completed fact with result detail.
 func runAgentTask(
 	t *testing.T,
-	s *queue.SQLiteStore,
+	s *sqlite.Store,
 	payload executor.AgentPayload,
 	result executor.AgentResult,
 ) task.Task {
@@ -84,7 +85,7 @@ func runAgentTask(
 // runReviewTask enqueues and completes one review task.
 func runReviewTask(
 	t *testing.T,
-	s *queue.SQLiteStore,
+	s *sqlite.Store,
 	payload executor.ReviewPayload,
 	result executor.ReviewResult,
 ) task.Task {
@@ -117,7 +118,7 @@ func runReviewTask(
 
 // listByType returns every task of one type (the store does not expose
 // dedup-key lookups; type filtering is enough to find what a sweep minted).
-func listByType(t *testing.T, s *queue.SQLiteStore, taskType string) []task.Task {
+func listByType(t *testing.T, s *sqlite.Store, taskType string) []task.Task {
 	t.Helper()
 
 	tasks, err := s.List(context.Background(), queue.Filter{})

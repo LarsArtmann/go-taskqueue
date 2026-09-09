@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -19,7 +19,7 @@ func doctorTestStore(t *testing.T) string {
 
 	path := filepath.Join(t.TempDir(), "q.db")
 
-	s, err := queue.OpenSQLite(path)
+	s, err := sqlite.Open(path)
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestDoctorHealthyEmptyDB(t *testing.T) {
 func TestDoctorFlagsDeadWorker(t *testing.T) {
 	path := doctorTestStore(t)
 
-	s, err := queue.OpenSQLite(path)
+	s, err := sqlite.Open(path)
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestDoctorFlagsDeadWorker(t *testing.T) {
 func TestDoctorBudgetAtCap(t *testing.T) {
 	path := doctorTestStore(t)
 
-	s, err := queue.OpenSQLite(path)
+	s, err := sqlite.Open(path)
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestDoctorJSONShape(t *testing.T) {
 func TestDoctorMarkOrphans(t *testing.T) {
 	path := doctorTestStore(t)
 
-	s, err := queue.OpenSQLite(path)
+	s, err := sqlite.Open(path)
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
@@ -271,7 +271,7 @@ func TestDoctorMarkOrphans(t *testing.T) {
 }
 
 func TestDoctorWatermarkLiveness(t *testing.T) {
-	s, err := queue.OpenSQLite(filepath.Join(t.TempDir(), "q.db"))
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
