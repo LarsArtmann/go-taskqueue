@@ -525,10 +525,6 @@ func (o bootstrapOptions) ensureTQVerify(repo string) (string, string, error) {
 // other content untouched. Idempotent: unchanged content reports changed
 // only when the file actually differs.
 func (o bootstrapOptions) ensureCrushConfig(repo string) (bool, error) {
-	if o.dryRun {
-		return true, nil
-	}
-
 	path := filepath.Join(repo, ".crushrc")
 
 	var lines []string
@@ -552,6 +548,10 @@ func (o bootstrapOptions) ensureCrushConfig(repo string) (bool, error) {
 
 	if b, err := os.ReadFile(path); err == nil && string(b) == out {
 		return false, nil // byte-identical: nothing to do
+	}
+
+	if o.dryRun {
+		return true, nil // would change; nothing written
 	}
 
 	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
