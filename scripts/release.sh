@@ -53,7 +53,7 @@ step "CHANGELOG section for $VERSION"
 grep -q "^## \[$VERSION\] - [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$" CHANGELOG.md ||
 	die "CHANGELOG.md has no '## [$VERSION] - YYYY-MM-DD' section — cut [Unreleased] into it first"
 awk -v v="## [$VERSION]" '
-	$0 == v {in_section=1; next}
+	index($0, v) == 1 {in_section=1; next}
 	in_section && /^## \[/ {exit}
 	in_section {print}
 ' CHANGELOG.md >/tmp/tq-release-notes.md
