@@ -252,7 +252,14 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go stream.Heartbeat(ctx, s.cfg.Heartbeat)
+	// The heartbeat goroutine must be STOPPED before this handler returns:
+	// net/http tears down the response (and its bufio writer) at handler
+	// exit, and an in-flight Heartbeat Flush after that is a nil-pointer
+	// SIGSEGV — in a goroutine net/http cannot recover, killing the whole
+	// serve process. stopHeartbeat is deferred LAST so it runs FIRST,
+	// before stream.Close and hub.Unsubscribe.
+	stopHeartbeat := s.startHeartbeat(ctx, stream)
+	defer stopHeartbeat()
 
 	for {
 		select {
@@ -345,7 +352,8 @@ func (s *Server) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go stream.Heartbeat(ctx, s.cfg.Heartbeat)
+	stopHeartbeat := s.startHeartbeat(ctx, stream)
+	defer stopHeartbeat()
 
 	for {
 		select {
@@ -369,6 +377,26 @@ func (s *Server) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+	}
+}
+
+// startHeartbeat launches the SSE keepalive and returns a stop function
+// that cancels it AND waits for the goroutine to exit — the wait is the
+// point: an unwaited heartbeat can Flush a response that net/http has
+// already torn down (SIGSEGV in an unrecoverable goroutine).
+func (s *Server) startHeartbeat(ctx context.Context, stream *sse.Stream) func() {
+	hbCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		stream.Heartbeat(hbCtx, s.cfg.Heartbeat)
+	}()
+
+	return func() {
+		cancel()
+		<-done
 	}
 }
 

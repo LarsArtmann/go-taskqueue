@@ -1416,3 +1416,28 @@ func TestWriteRateLimitPerClient(t *testing.T) {
 		t.Fatalf("other client = %d, want 403 (CSRF verdict, not the lockout)", code)
 	}
 }
+
+// TestSSEHeartbeatStopsBeforeHandlerExit pins the crash fix: an SSE client
+// disconnecting while heartbeats are in flight must never panic the test
+// process. Before the fix, the heartbeat goroutine outlived the handler
+// and Flushed a response net/http had already torn down — a nil-pointer
+// SIGSEGV in a goroutine net/http cannot recover (kills a real serve
+// process; caught by CI on 2026-09-09).
+func TestSSEHeartbeatStopsBeforeHandlerExit(t *testing.T) {
+	srv, s := newTestServer(t)
+	// Fast heartbeat: maximize the chance a tick lands inside the
+	// handler-exit window the old code left open.
+	srv.cfg.Heartbeat = 5 * time.Millisecond
+
+	handler := srv.Handler()
+
+	for range 30 {
+		ssetest.CollectWithTimeout(t, handler, 30*time.Millisecond, ssetest.WithPath("/api/events"))
+	}
+
+	// Disconnected mid-heartbeat repeatedly; the process surviving to this
+	// line (no SIGSEGV) IS the assertion. Keep one enqueue so snapshots
+	// render real state.
+	enqueue(t, s, "sh", "hb")
+	ssetest.CollectWithTimeout(t, handler, 30*time.Millisecond, ssetest.WithPath("/api/events"))
+}
