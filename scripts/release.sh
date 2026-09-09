@@ -60,8 +60,25 @@ awk -v v="## [$VERSION]" '
 [ -s /tmp/tq-release-notes.md ] || die "CHANGELOG section for $VERSION is empty"
 
 step "go.mod hygiene"
-! grep '^replace' go.mod || die "go.mod has replace directives — poison in published tags"
+# Sibling-relative replaces for the internal sub-modules are the multi-module
+# pattern (ADR-0011): consumers ignore them and resolve via the require
+# versions, which the subdirectory tags below make real. Anything else is
+# proxy poison.
+bad_replaces="$(grep '^replace' go.mod | grep -vE '^replace github\.com/larsartmann/go-taskqueue/internal/[a-z]+ => \./internal/[a-z]+$' || true)"
+if [ -n "$bad_replaces" ]; then
+	echo "$bad_replaces"
+	die "go.mod has non-sibling replace directives — poison in published tags"
+fi
 ! grep '00010101' go.mod || die "go.mod has a pseudo-version (replace-directive leak)"
+# go install of the published module resolves the internal sub-modules
+# through the module proxy: every internal require must be a real version
+# whose subdirectory tag exists BEFORE the release tag is cut.
+while read -r mod ver; do
+	sub_tag="${mod#github.com/larsartmann/go-taskqueue/}/$ver"
+	git rev-parse -q --verify "refs/tags/$sub_tag" >/dev/null || {
+		die "$mod requires $ver but tag $sub_tag does not exist — cut it (git tag -a $sub_tag) before releasing"
+	}
+done < <(grep -E '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/ v[0-9]' go.mod | awk '{print $1, $2}')
 
 step "full CI gate (scripts/ci-local.sh — test + nix jobs on this exact tree)"
 ./scripts/ci-local.sh
@@ -86,6 +103,17 @@ $(cat /tmp/tq-release-notes.md)"
 git tag --points-at HEAD | grep -qx "$VERSION" || die "tag does not point at HEAD"
 git show "$VERSION:go.mod" | head -1 | grep -q "$MODULE" || die "tagged tree has the wrong module path"
 
+step "cut internal sub-module tags (go install resolution for the split)"
+internal_tags="$(grep -E '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/ v[0-9]' go.mod | awk '{print substr($1, length("github.com/larsartmann/go-taskqueue/") + 1) "/" $2}')"
+for sub_tag in $internal_tags; do
+	if git rev-parse -q --verify "refs/tags/$sub_tag" >/dev/null; then
+		echo "$sub_tag already exists"
+	else
+		git tag -a "$sub_tag" -m "$sub_tag (released with $VERSION)"
+		echo "cut $sub_tag"
+	fi
+done
+
 if [ "$MODE" = "--tag" ]; then
 	echo
 	echo "TAG $VERSION CUT (not pushed) — re-run with --push to publish."
@@ -95,6 +123,9 @@ fi
 step "push master + tag (owner-gated)"
 git push origin master
 git push origin "$VERSION"
+for sub_tag in $internal_tags; do
+	git rev-parse -q --verify "refs/tags/$sub_tag" >/dev/null && git push origin "$sub_tag"
+done
 
 step "module proxy verification"
 sleep 10

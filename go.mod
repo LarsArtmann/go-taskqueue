@@ -46,11 +46,11 @@ require (
 )
 
 require (
-	github.com/larsartmann/go-taskqueue/internal/executor v0.0.0
-	github.com/larsartmann/go-taskqueue/internal/journal v0.0.0
-	github.com/larsartmann/go-taskqueue/internal/queue v0.0.0
-	github.com/larsartmann/go-taskqueue/internal/task v0.0.0
-	github.com/larsartmann/go-taskqueue/internal/worker v0.0.0
+	github.com/larsartmann/go-taskqueue/internal/executor v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/journal v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/queue v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/worker v0.2.0
 )
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ./internal/task
