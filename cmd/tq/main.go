@@ -1388,7 +1388,7 @@ func cmdDLQ(args []string) error {
 	rescue := fs.String("rescue", "", "re-queue this dead task ID")
 	rescueAll := fs.Bool("rescue-all", false, "re-queue EVERY dead task (only after a human decided they can succeed)")
 	olderThan := fs.Duration("older-than", 0, "with --rescue-all: only tasks dead for at least this long (e.g. 24h)")
-	maxAttempts := fs.Int("max-attempts", 3, "attempt budget for rescued task(store)")
+	maxAttempts := fs.Int("max-attempts", 3, "attempt budget for rescued task(s)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
