@@ -83,6 +83,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - The agent pool's default verify command for Go repos walks nested
   `go.mod` files, so multi-module repos verify for real (a `find -execdir`
   variant was rejected: it swallows inner exit codes).
+- **`--task-closeout`** (2026-09-10): every agent task gets a SECOND
+  conversation turn — the owner's brutal self-review + status-report
+  prompt (`executor.DefaultCloseoutPrompt`), answered by the same agent
+  session before verify runs. The work turn switches to `--verbose` so the
+  session id can be extracted (`ExtractSessionID` also matches the crush
+  verbose marker now); the closeout resumes that exact session (`--continue`
+  would race across concurrent pool agents) and must end by re-emitting the
+  work turn's `TQ_RESULT` line (the gate reads the last one). Per-task
+  reports land at `docs/status/<ts>_task-<id>.md`.
+- **Status sweeper = docs-health pass** (2026-09-10): the `--status-every`
+  done-prompt now mandates the docs-health skill: read every 2026-* status
+  report, reconcile TODO_LIST/CHANGELOG/AGENTS/README/ROADMAP/FEATURES with
+  what the window actually shipped, archive fully-done reports into
+  `docs/status/archived/`, and verify claims against code; the scope rule
+  still forbids touching code/config.
 ### Fixed
 - Version-surface drift: flake.nix still declared 0.1.0 after the v0.2.0
   release, so nix-built binaries reported the wrong version (now 0.2.0).
