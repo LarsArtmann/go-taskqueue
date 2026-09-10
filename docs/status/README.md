@@ -14,6 +14,7 @@ Archive counter (update when moving files): 1 report in `archived/`,
 
 | Date       | Report                                                                              | Scope                                                                                             |
 | ---------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 2026-09-10 | `2026-09-10_02-04_go-retry-adoption-and-dependency-review.md`                       | go-retry adopted for generic retry loops (ADR-0013), 8-module dep inventory, reuse-first verdicts, 50-item plan |
 | 2026-09-10 | `2026-09-10_02-00_self-review-dead-pool-fix-flash-dogfood-session.md`               | Self-review: tag restore + dead-pool fix + Flash dogfood proof; handoff push-prerequisite gap owned |
 | 2026-09-10 | `2026-09-10_01-55_pool-deployment-fix-and-flash-dogfood-proof.md`                   | Dead systemd pool root-caused (cwd-resolved repo names, missing service PATH, silent skip log); fixed + Flash dogfood loop proven live |
 | 2026-09-10 | `2026-09-10_00-41_backlog-execution-and-gate-hardening.md`                          | 23:47 backlog executed: ETXTBSY root-caused, release-allowlist + darwin-eval bugs fixed, conformance gaps closed vs live PG, docs harvested |
