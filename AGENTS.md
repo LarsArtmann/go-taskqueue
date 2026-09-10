@@ -176,7 +176,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   on-demand devShell tool, NOT gated — don't re-litigate without solving
   plugin pinning AND the multi-writer problem
 - The web UI is themed with `github.com/larsartmann/templ-components`
-  (v1.14.x); tokens in `internal/webui/theme.css`; JetBrains Mono woff2
+  (v1.16.x); tokens in `internal/webui/theme.css`; JetBrains Mono woff2
   subsets are SIL OFL 1.1 (© JetBrains)
 - The `FuzzParseRepo` seed corpus is COMMITTED and grows via nightly
   campaigns; a fuzz crasher must be fixed, never committed
