@@ -144,24 +144,37 @@ func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleStats emits the per-status counts + total. The wire keys are the
+// task.Status values themselves, not the HTML badge labels: this endpoint
+// and the write API's GET /api/v1/stats (internal/httpapi) share one
+// stats contract, pinned equal by TestStatsSurfacesAgree. It reads the
+// counts directly — a full snapshot projection would be wasted work for a
+// stats poll — and always reports every known status, zeros included.
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
-	data, err := s.loadSnapshot(r.Context(), FilterState{})
+	counts, err := s.store.StatusCounts(r.Context())
 	if err != nil {
-		http.Error(w, "load projection: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "load stats: "+err.Error(), http.StatusInternalServerError)
 
 		return
 	}
 
+	total := 0
+
+	for _, n := range counts {
+		total += n
+	}
+
+	out := make(map[string]int, len(allStatuses)+1)
+
+	for _, st := range allStatuses {
+		out[string(st)] = counts[st]
+	}
+
+	out[labelTotal] = total
+
 	w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(map[string]any{
-		badgePending:   data.Counts[task.Pending],
-		labelRunning:   data.Counts[task.Running],
-		labelCompleted: data.Counts[task.Completed],
-		labelDead:      data.Counts[task.Dead],
-		labelCancelled: data.Counts[task.Cancelled],
-		labelTotal:     data.Total,
-	}); err != nil {
+	if err := json.NewEncoder(w).Encode(out); err != nil {
 		slog.Error("webui: encode stats", "err", err)
 	}
 }
