@@ -71,6 +71,19 @@ not here.
 - [ ] Measure CI time impact of the disk-derived `-count=1` module loops; tune if it dominates the job (23:47 f49; .github/workflows/ci.yml)
 - [ ] Dogfood hygiene: stale queued tasks in the live pool DB may verify with the OLD single-module default command — drain or cancel them (`tq tasks`, `tq cancel`) (23:47 f46)
 
+## Dogfood round (harvested from docs/status/2026-09-10_02-00 self-review §f)
+
+- [ ] cwd-dependence sweep: audit every repo-name consuming command (`tq audit`, prune, harvest) for bare-name resolution against the projects dir, add tests, fix any cwd-dependent path found (02:00 f8)
+- [ ] module-eval hardening: extend the flake module-eval check to assert the tq-agent-pool unit's Environment carries a non-empty PATH (02:00 f11; flake.nix, deploy/nixos/tq-agent-pool.nix)
+- [ ] `checkProjectsDir` should not require the projects dir when every `--repos` entry is absolute (02:00 f16; cmd/tq/agentpool.go + test)
+- [ ] harvest skip-log change detection: log a skip class only when its example changes (or on first tick) instead of every 5m tick flooding journald (02:00 f17; cmd/tq/main.go)
+- [ ] `tq doctor`: warn when crush/git/go are missing from PATH — pool-context visibility of the exact failure class that killed the deployed pool for 20h (02:00 f18; cmd/tq/doctor.go)
+- [ ] dead-pool detection: alert via the PapDashboard bridge when a pool's scan-failed skip count covers every repo for N consecutive ticks (02:00 f6; cmd/tq agent-pool tick loop + internal/bridge)
+- [ ] dogfood smoke: scripts/smoke/dogfood-once.sh replicating the 2026-09-10 --once proof (env-gated TQ_DOGFOOD=1 because it spends API money; stub-agent variant runs ungated) (02:00 f10)
+- [ ] archive dogfood evidence durably: copy the 2026-09-10 proof journal (/tmp/tq-dogfood.db) + review log into docs/status/ assets or ~/.local/state/tq/ before /tmp reboots (02:00 f9)
+- [ ] `tq pool-health`: one-shot summarizing per-repo skip streaks + last harvest activity from the journal (liveness ≠ process up) (02:00 f27)
+- [ ] worktree-per-agent design doc: claim → dedicated git worktree → verify → merge; the intra-repo parallelism path — write to docs/planning/ with tradeoffs and open questions listed for a later go/no-go (02:00 f15)
+
 - [x] Cut v0.2.0: full ci-local gate + nix-binary smoke green, annotated tag v0.2.0 pushed, module proxy verified, clean-room go get verified, GitHub Release published (also fixed a release.sh bug: the awk section cut matched the bare heading, not the dated one) — 2026-09-09 `v0.2.0`, module proxy + GitHub release + smokes (19:49 f2; v0.1.0 shipped 2026-09-06)
 - [x] Kill the stray `/tmp/papdbg` worker (PID 1039418) — killed 2026-09-09 (second-signal force-exit; audit had verified it self-contained and inert)
 - [x] `--status-every` enablement: N=20 chosen + documented in the `deploy/systemd` sample's recommended pool.conf keys (cost/verbosity balance; the live smoke shipped 2026-09-08) (20:56 g1/f17)

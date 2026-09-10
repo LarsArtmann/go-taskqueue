@@ -104,6 +104,11 @@ After redeploy: `journalctl -u tq-agent-pool -f` should show real
 (`internal/queue/{sqlite,postgres}/v0.2.0`) remain unpushed (separate
 BLOCKED item).
 
+> **CORRECTION (02:00 self-review):** the working chain is push (owner) →
+> flip input → `nix run .#deploy` — as written above, "flip to
+> `ref=master`" silently assumes master was pushed; at report time the
+> fixes were local-only (origin/master = 0637d63).
+
 ## f) Gates
 
 - `go build/vet` + full root race suite: green (including the parallel
@@ -117,6 +122,12 @@ BLOCKED item).
 - Full `./scripts/ci-local.sh` on the final tree: run at session close
   (result recorded in the commit that carries this report if anything
   regressed).
+
+> **UPDATE (02:00):** ci-local on the final tree: **ALL GATES GREEN**
+> (race suite, smokes incl. the agent's new dead-exports check, all five
+> flake checks). Post-report gap also closed: an `env -i` dry-run under a
+> service-like restricted PATH from a foreign cwd probes crush v0.92.0
+> and scans cleanly — the agentPath composition works.
 
 ## g) Parallel-session notes
 
