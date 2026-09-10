@@ -409,6 +409,8 @@ func (s *Server) handleTaskCancelPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var err error
+
 	switch t.Status {
 	case task.Pending:
 		err = s.store.Cancel(r.Context(), id, reason)
