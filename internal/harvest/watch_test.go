@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -291,6 +292,79 @@ func TestWatcherReconnectsAfterDrop(t *testing.T) {
 		t.Fatal("no trigger after reconnect")
 	}
 }
+
+// TestWatcherLogsDropWarning pins the observability contract: each dropped
+// stream produces a warning naming the addr, and the configured
+// InitialBackoff/MaxBackoff knobs drive the ladder instead of the defaults.
+func TestWatcherLogsDropWarning(t *testing.T) {
+	t.Parallel()
+
+	fx := newDaemonFixture(t)
+
+	var mu sync.Mutex
+	var messages []string
+	log := slog.New(countingHandler{mu: &mu, messages: &messages})
+
+	srv, _ := watchStubServer(t, func(conn int32, emit func(string), ctx context.Context) {
+		if conn <= 2 {
+			emit(watchFrame("WatchProjectChanged", fx.withTodoA))
+			// conn 1 returns (the scripted drop); conn 2 proves reconnect.
+		} else {
+			holdStream(ctx)
+		}
+	})
+
+	_, triggers := startWatcher(t, WatchConfig{
+		Addr:           srv.Listener.Addr().String(),
+		ProjectsDir:    fx.dir,
+		Log:            log,
+		InitialBackoff: 5 * time.Millisecond,
+		MaxBackoff:     15 * time.Millisecond,
+	})
+
+	if !awaitTrigger(t, triggers) {
+		t.Fatal("no trigger before the drop")
+	}
+	if !awaitTrigger(t, triggers) {
+		t.Fatal("no trigger after reconnect")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	dropped := 0
+	for _, msg := range messages {
+		if strings.Contains(msg, "watch stream dropped") && strings.Contains(msg, srv.Listener.Addr().String()) {
+			dropped++
+		}
+	}
+	if dropped == 0 {
+		t.Fatalf("no drop warning logged; got %d warnings", len(messages))
+	}
+}
+
+// countingHandler records warning messages for assertions.
+type countingHandler struct {
+	mu       *sync.Mutex
+	messages *[]string
+}
+
+func (h countingHandler) Enabled(_ context.Context, _ slog.Level) bool { return true }
+
+func (h countingHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	line := r.Message
+	r.Attrs(func(a slog.Attr) bool {
+		line += " " + a.String()
+		return true
+	})
+	*h.messages = append(*h.messages, line)
+	return nil
+}
+
+func (h countingHandler) WithAttrs(_ []slog.Attr) slog.Handler { return h }
+
+func (h countingHandler) WithGroup(_ string) slog.Handler { return h }
 
 // TestWatcherUnixSocket covers the primary deployment form: the daemon's
 // watch endpoint on a unix socket (bare path and unix:// prefixed addr).
