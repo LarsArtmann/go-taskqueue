@@ -258,7 +258,13 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   triaged to zero (2026-09-10, task 000001a089c3): wrapcheck ignores
   internal-package globs + stdlib idioms + tests; varnamelen ignores tests
   + `w`/`r`/`fs`/`db`/`id` idioms; remaining sites were renamed, not
-  suppressed.
+  suppressed. That sweep's renames leaked into string literals twice
+  (`q.Get("query")` deadened the webui filter, `task(store)` mangled
+  `tq dlq --max-attempts` help; fixed da8f331/9b7c46b): a variable rename
+  must never change a string literal — before calling a rename done, grep
+  the diff's quoted lines when the variable name equals a nearby param
+  name, JSON tag or flag text. The advisory lint step loops every
+  `internal/*` sub-module in ci.yml too (f32, parity with ci-local.sh).
 - ⚠️ **gosec advisory baseline is all FP/by-design** (triaged 2026-09-10,
   v2.29.0, 48 findings over root + all sub-modules; advisory CI job, f21):
   G204/G702 (exec with variable) — executors and bootstrap RUN commands

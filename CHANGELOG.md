@@ -53,6 +53,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   deadline — Go's random pick let the example exit 0 with no report about
   half the time. The redundant done case is gone; a timeout always produces
   the intended fatal.
+- **Two mechanical-rename leaks corrupted user-facing string literals** (both
+  fixed within the same morning, before any release): the wrapcheck/varnamelen
+  rename sweep changed the webui filter to read `query.Get("query")` while
+  every emitter still sends `?q=`, silently deadening the dashboard text
+  filter and view-toggle scope with all tests green — restored plus a
+  `filterHref`↔`parseFilter` round-trip regression test; the same sweep's
+  regex turned `tq dlq --max-attempts` help into "rescued task(store)" —
+  restored, and the parent diff swept for further corrupted literals
+  (none found).
 ### Added
 - `examples/fullcore`: the full library embed demo in one file — enqueue, custom + shell
   executors (including a retry proof), a worker pool draining the queue, and the
@@ -152,6 +161,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   internal-package seams, test files, idiomatic short names) and the
   genuinely vague call-site variables renamed — the baseline shrank via
   policy plus renames, not suppressions.
+- The CI advisory lint step now runs golangci-lint over the root module AND
+  every `internal/*` sub-module (disk-derived loop), mirroring ci-local.sh —
+  module-local findings stopped being invisible to CI when the split landed.
 ### Fixed
 - Version-surface drift: flake.nix still declared 0.1.0 after the v0.2.0
   release, so nix-built binaries reported the wrong version (now 0.2.0).

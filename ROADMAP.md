@@ -168,6 +168,9 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   actions + modules; upgrade pinned actions past the Node 20 deprecation
 - Nightly `-race -count=3` full-suite job (flake-catching for the race
   gate); CI split (full `-race` suite takes >7 min)
+- User-facing string corpus snapshot test: extract all flag help + error
+  strings and freeze them against mechanical edits (the `task(store)`
+  help-corruption class; 08:42 report f25)
 - Fuzz `unwrapCommand` payload shapes (raw/JSON string/`{"cmd":...}`/
   hostile input); rotate nightly fuzz targets per-day-of-week
 - Sentinel errors per package (`errors.go` convention) to burn down the
