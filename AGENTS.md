@@ -104,7 +104,12 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   -m`, which RESETS reasoning effort — the repo `.crushrc` managed block
   (`tq bootstrap`) is the only model+effort carrier. `--yolo` without a
   repo-local `.crushrc` fails fast by design (argv pinned by
-  `TestAgentExecutorArgvContract`).
+  `TestAgentExecutorArgvContract`). With `--task-closeout` the work turn is
+  followed by a close-out turn that resumes the EXACT session (`--session`,
+  never `--continue` — concurrent agents) to run the brutal a)-g) self-review
+  and re-emit the work turn's `TQ_RESULT` (the gate reads the last line);
+  the report lands at `docs/status/<ts>_task-<id>.md`. Reviews and status
+  tasks run a close-out-free clone (they ARE the second opinion).
 - **`review`**: `ReviewPayload` JSON. Both verdicts COMPLETE the task; the
   mechanical gate is a parseable final `TQ_RESULT: {"verdict":...}` line.
   The sweeper (watermark head-bootstrapped — never replays pre-start
@@ -213,7 +218,14 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   mid-session. Never generate/patch Go source via shell heredocs or python
   string surgery — heredoc escaping broke compilation repeatedly.
 - ⚠️ **vendorHash drift**: after go.mod/go.sum changes run the fakeHash
-  dance (`vendorHash = lib.fakeHash` → `nix build` → copy `got:`).
+  dance (`vendorHash = lib.fakeHash` → `nix build` → copy `got:`). NOTE
+  (2026-09-10): a runner-ONLY variant exists — CI's nix job failed with a
+  FOD hash mismatch while the committed hash verified green locally (even
+  rebuilding the exact failed drv from the failed commit), same got-hash
+  across two trees, first failing run = the push carrying the fullcore
+  postgres require + go.mod replace. A local fakeHash re-run does NOT
+  diagnose this class; differential-dump the runner's module fetch first
+  (docs/status/2026-09-10_06-25 report d1).
 - ⚠️ **GOEXPERIMENT=jsonv2 in flake.nix** (go-sse imports
   `encoding/json/v2`): removing it yields "build constraints exclude all
   Go files" AND an empty output path — the build failure is swallowed.

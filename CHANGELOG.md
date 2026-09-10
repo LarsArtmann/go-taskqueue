@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Fixed
+- **Dashboard and write-API stats surfaces pinned to one wire contract**: `tq serve`'s
+  `/api/stats` and `tq api`'s `/api/v1/stats` computed the same payload through two
+  independent paths (dashboard keyed by HTML badge labels; API emitted raw GROUP BY rows
+  that dropped zero-count statuses), so the shape could drift silently. Both now derive
+  keys from the task status list and always emit all five statuses plus total;
+  `TestStatsSurfacesAgree` pins the payloads equal over one seeded store and locks the
+  disjoint route namespaces (`/api/v1/*` vs `/api/*`).
+- **Root module now builds against the local postgres backend**: the
+  `internal/queue/postgres` require had no relative `replace`, so root builds compiled the
+  proxy's tagged copy and local edits to the backend never applied. The replace matches the
+  other internal modules' local-dev layout.
 - **Executor absorbs the kernel-7.2 `ETXTBSY` flake**: `execve` of a freshly
   written binary intermittently returned "text file busy" with no writer
   holding the file (reproduced standalone on kernel 7.2.3 under process
@@ -22,6 +33,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`checks.module-eval` used `mkIf`, leaving a dangling option); the check
   now uses `optionalAttrs`.
 ### Added
+- `examples/fullcore`: the full library embed demo in one file — enqueue, custom + shell
+  executors (including a retry proof), a worker pool draining the queue, and the
+  sqlite-vs-postgres backend picked at run time from two store imports that both satisfy
+  `queue.Store`. Run with `go run ./examples/fullcore` (sqlite) or `--backend postgres`
+  against a local test database.
+- `gosec` CI job (advisory, mirrors the govulncheck job): gosec v2.29.0 over the root
+  module plus every sub-module; the 48 findings it surfaced are triaged FP/by-design with
+  per-rule rationale in AGENTS.md, and the two real findings (G114 timeout-less HTTP
+  servers in `examples/api` and `examples/sse`) are fixed with `ReadHeaderTimeout`.
 - Dashboard responses now carry `Permissions-Policy: camera=(), microphone=(),
   geolocation=()` alongside the strict CSP — device capabilities a task-queue
   dashboard never needs are denied outright, closing the last header gap the

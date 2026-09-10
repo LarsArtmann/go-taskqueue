@@ -103,7 +103,7 @@ not here.
 - [ ] ci-local.sh: run the release-gates smoke under `GIT_CONFIG_GLOBAL=/dev/null` (or sanitized HOME) so identity-dependent git ops fail locally the way they do on runners
 - [ ] Add a master-CI state gate: `scripts/check-ci.sh` failing when the latest master run is a failure (via `gh run list`), wired into ci-local.sh — five DONE verdicts landed on a 3h-red master without anyone looking
 - [ ] Add a changed-lines line-length gate (lll/golines, 120 cols) to ci-local.sh so signature-wrap regressions (the c5c654c class) are caught before commit
-- [ ] Backfill CHANGELOG: the gosec advisory job + the two examples G114 ReadHeaderTimeout fixes (17a5940) never got an entry (govulncheck's did)
+- [x] Backfill CHANGELOG: the gosec advisory job + the two examples G114 ReadHeaderTimeout fixes (17a5940) never got an entry (govulncheck's did) — DONE 2026-09-10 06:25 docs-health pass: gosec job + G114 fixes backfilled under Added; the fullcore example, stats wire-contract fix, and the root go.mod postgres replace got their entries in the same pass
 - [ ] Export the status enum list from `internal/task` (`task.AllStatuses`) and retire the twin lists (webui `allStatuses`, httpapi `apiStatuses`) — rides the next sub-module re-tag
 - [ ] Publish gosec/govulncheck findings as CI job-summary artifacts so advisory-red runs are readable without log-diving
 - [ ] Write the required-checks proposal (test-windows + release-gates smoke first, then the scan jobs) into docs/planning/ for the next release window

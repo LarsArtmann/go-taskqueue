@@ -391,10 +391,10 @@ ROADMAP.md, design decisions in `docs/adr/`, and the domain vocabulary in
 `examples/api` (enqueue endpoint, Prometheus `/metrics`, live stats page) and
 `examples/sse` (fact stream with `Last-Event-ID` resume) are
 proofs-of-concept — `examples/` stays experimental by design and `tq serve`
-is the production dashboard path. The PoC HTTP server binds loopback only
-and has no authentication; do not expose it. `examples/fullcore` is the full
-library embed demo in one file: queue + executors + worker pool, with the
-sqlite/postgres backend picked at run time.
+is the production dashboard path. Those two PoC HTTP servers bind loopback
+only and have no authentication; do not expose them. `examples/fullcore` is
+the full library embed demo in one file: queue + executors + worker pool,
+with the sqlite/postgres backend picked at run time.
 
 ## License
 
