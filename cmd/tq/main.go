@@ -630,6 +630,9 @@ func cmdAgentPool(args []string) error {
 	q := queue.New(s)
 
 	agentExec := &executor.AgentExecutor{ProjectsDir: o.projectsDir, Yolo: o.yolo, MaxConcurrent: o.maxAgents}
+	if o.closeout {
+		agentExec.CloseoutPrompt = executor.DefaultCloseoutPrompt
+	}
 
 	reg := executor.NewRegistry()
 	reg.Register("sh", executor.NewCommandExecutor(""))

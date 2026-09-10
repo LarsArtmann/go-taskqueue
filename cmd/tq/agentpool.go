@@ -50,6 +50,7 @@ type agentPoolOptions struct {
 	maxAgents      int
 	reviewAutofix  bool
 	statusEvery    int
+	closeout       bool
 	logDir         string
 	logDirMaxAge   time.Duration
 	logDirMaxBytes int64
@@ -163,6 +164,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		0,
 		"automated done-prompt: every N completed agent tasks per project mint one status task that writes a docs/status report and appends next items to TODO_LIST.md (0 = off)",
 	)
+	closeout := fs.Bool(
+		"task-closeout",
+		false,
+		"every agent task gets a second conversation turn: the brutal self-review + status report prompt (executor.DefaultCloseoutPrompt), answered by the same agent session before verify runs",
+	)
 	logDir := fs.String(
 		"log-dir",
 		os.Getenv("TQ_LOG_DIR"),
@@ -260,6 +266,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		maxAgents:      *maxAgents,
 		reviewAutofix:  *reviewAutofix,
 		statusEvery:    *statusEvery,
+		closeout:       *closeout,
 		logDir:         *logDir,
 		logDirMaxAge:   *logDirMaxAge,
 		logDirMaxBytes: *logDirMaxBytes,
