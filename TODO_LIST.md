@@ -67,7 +67,7 @@ not here.
 - [x] Lint-baseline slice-triage: wrapcheck findings (~50) first, then varnamelen (~50) — shrink the ~400 advisory baseline, never mass-fix (23:47 f28/f29; .golangci.yml) — DONE 2026-09-10: both classes triaged to zero (config policy + renames)
 - [x] `ExitCause` → `ExitError` rename consideration (errname finding; exported rename needs a v0.3 window) (23:47 f30; internal/executor/agent.go) — DONE 2026-09-10: renamed (actually internal/runactor, not executor); no v0.3 window needed — `internal/` import path means zero external importers, so the rename is binary-internal
 - [x] Per-module golangci runs in .github/workflows/ci.yml (ci-local.sh already loops modules; ci.yml runs root only) (23:47 f32) — DONE 2026-09-10: advisory lint step now loops every internal/* sub-module after the root run, mirroring ci-local.sh
-- [ ] Multi-repo smoke against the nix-built 0.2.0 binary (`TQ_BIN=result/bin/tq ./scripts/smoke/multi-repo.sh`) (23:47 f35)
+- [x] Multi-repo smoke against the nix-built 0.2.0 binary (`TQ_BIN=result/bin/tq ./scripts/smoke/multi-repo.sh`) (23:47 f35) — DONE 2026-09-10: multi-repo.sh now honors TQ_BIN (same pattern as webui.sh/status-loop.sh — it was the only smoke that always rebuilt from source); green against result/bin/tq 0.2.0 (6 enqueued / 6 completed / 6 claims / 0 dead, both pools claimed) and on the default build path
 - [ ] Measure CI time impact of the disk-derived `-count=1` module loops; tune if it dominates the job (23:47 f49; .github/workflows/ci.yml)
 - [ ] Dogfood hygiene: stale queued tasks in the live pool DB may verify with the OLD single-module default command — drain or cancel them (`tq tasks`, `tq cancel`) (23:47 f46)
 

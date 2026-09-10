@@ -16,8 +16,16 @@ KEEP="${SMOKE_KEEP:-0}"
 cleanup() { [ "$KEEP" = 1 ] && echo "workdir kept: $WORK" || rm -rf "$WORK"; }
 trap cleanup EXIT
 
-echo "== building tq =="
-(cd "$REPO_ROOT" && go build -o "$TQ" ./cmd/tq) || exit 1
+# TQ_BIN points at a prebuilt binary (e.g. the nix-built result/bin/tq);
+# unset, the script builds from source with `go build`.
+if [ -n "${TQ_BIN:-}" ]; then
+	echo "== using prebuilt tq: $TQ_BIN"
+	cp "$TQ_BIN" "$TQ"
+	chmod +x "$TQ"
+else
+	echo "== building tq =="
+	(cd "$REPO_ROOT" && go build -o "$TQ" ./cmd/tq) || exit 1
+fi
 
 STUB="$WORK/stub-agent"
 printf '#!/bin/sh\nsleep 0.2\nexit 0\n' >"$STUB"
