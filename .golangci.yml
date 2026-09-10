@@ -172,7 +172,6 @@ linters:
         - go-require
       enable-all: true
     varnamelen:
-      ignore-tests: true
       ignore-map-index-ok: true
       ignore-names:
         - w
@@ -211,17 +210,18 @@ linters:
         - func (net/http.ResponseWriter).Write(
         - func (context.Context).Err(
         - func (*net/http.Server).ListenAndServe(
-      ignore-package-regexps:
-        - queue
+      ignore-package-globs:
+        - github.com/larsartmann/go-taskqueue/internal/*
       ignore-interface-regexps:
         - queue\.Store
-      ignore-tests: true
   exclusions:
     generated: lax
     rules:
       - path: _test\.go
         linters:
           - errcheck
+          - wrapcheck
+          - varnamelen
       - path: _test\.go
         text: unused
         linters:

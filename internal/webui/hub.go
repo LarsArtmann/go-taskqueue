@@ -2,6 +2,7 @@ package webui
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/larsartmann/go-sse"
 )
@@ -53,5 +54,8 @@ func (h *Hub) ClientCount() int {
 
 // Shutdown drains the broadcaster.
 func (h *Hub) Shutdown(ctx context.Context) error {
-	return h.bc.Shutdown(ctx)
+	if err := h.bc.Shutdown(ctx); err != nil {
+		return fmt.Errorf("shutdown broadcaster: %w", err)
+	}
+	return nil
 }

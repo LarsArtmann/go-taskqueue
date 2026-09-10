@@ -3,6 +3,7 @@ package webui
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -368,7 +369,7 @@ func queryErr(ctx context.Context, msg string, err error, attrs ...any) error {
 func sendSnapshotPayload(ctx context.Context, stream *sse.Stream, frags []fragment, title string, seq int64) error {
 	for _, frag := range frags {
 		if err := stream.SendJSON("frag", frag); err != nil {
-			return err
+			return fmt.Errorf("send snapshot fragment: %w", err)
 		}
 	}
 
@@ -378,7 +379,7 @@ func sendSnapshotPayload(ctx context.Context, stream *sse.Stream, frags []fragme
 	}
 
 	if err := stream.Send(evt); err != nil {
-		return err
+		return fmt.Errorf("send snapshot title: %w", err)
 	}
 
 	return ctx.Err()

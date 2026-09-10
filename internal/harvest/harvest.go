@@ -443,7 +443,7 @@ type harvestPayload struct {
 func DiscoverRepos(dir, todoFile string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("discover repos under %s: %w", dir, err)
 	}
 
 	var repos []string
@@ -493,12 +493,12 @@ func ParseRepo(repo, todoFile string) ([]Item, error) {
 func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 	abs, err := filepath.Abs(repo)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolve repo path %s: %w", repo, err)
 	}
 
 	data, err := os.ReadFile(filepath.Join(abs, todoFile))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read todo file %s: %w", todoFile, err)
 	}
 
 	repoName := filepath.Base(abs)
