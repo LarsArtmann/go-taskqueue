@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -12,7 +13,17 @@ import (
 func TestHarvestConfigFromOptionsExpandsBareRepoNames(t *testing.T) {
 	t.Parallel()
 
-	const projectsDir = "/home/lars/projects"
+	// Inputs and expectations follow the running OS's path rules: POSIX
+	// string literals failed windows-latest (filepath.Join emits
+	// backslashes and IsAbs wants a volume there), and the expansion's
+	// cross-platform honesty is part of what this test pins.
+	volume := ""
+	if runtime.GOOS == "windows" {
+		volume = `C:`
+	}
+	root := volume + string(filepath.Separator)
+	projectsDir := filepath.Join(root, "home", "lars", "projects")
+	srv := func(name string) string { return filepath.Join(root, "srv", name) }
 
 	tests := []struct {
 		name  string
@@ -22,17 +33,17 @@ func TestHarvestConfigFromOptionsExpandsBareRepoNames(t *testing.T) {
 		{
 			name:  "bare names join the projects dir",
 			repos: "CV,go-taskqueue",
-			want:  []string{projectsDir + "/CV", projectsDir + "/go-taskqueue"},
+			want:  []string{filepath.Join(projectsDir, "CV"), filepath.Join(projectsDir, "go-taskqueue")},
 		},
 		{
 			name:  "absolute repos stay untouched",
-			repos: "/srv/cv," + projectsDir + "/go-taskqueue",
-			want:  []string{"/srv/cv", projectsDir + "/go-taskqueue"},
+			repos: srv("cv") + "," + filepath.Join(projectsDir, "go-taskqueue"),
+			want:  []string{srv("cv"), filepath.Join(projectsDir, "go-taskqueue")},
 		},
 		{
 			name:  "mixed entries with spacing",
-			repos: " overview , /srv/overview",
-			want:  []string{projectsDir + "/overview", "/srv/overview"},
+			repos: " overview , " + srv("overview"),
+			want:  []string{filepath.Join(projectsDir, "overview"), srv("overview")},
 		},
 	}
 

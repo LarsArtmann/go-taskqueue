@@ -39,7 +39,9 @@ trap 'rm -rf "$fixture"' EXIT
 git -C "$fixture" init -q
 git -C "$fixture" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
 for tag in internal/task/v0.2.0 internal/queue/sqlite/v0.2.0; do
-	git -C "$fixture" tag -a "$tag" -m fixture
+	# Annotated tags need a committer identity, and CI runners have none —
+	# the commit above carries -c flags for the same reason.
+	git -C "$fixture" -c user.email=t@t -c user.name=t tag -a "$tag" -m fixture
 done
 
 cat >"$fixture/go.mod" <<'EOF'
