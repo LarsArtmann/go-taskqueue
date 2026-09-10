@@ -169,10 +169,8 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	t, err := s.store.Get(r.Context(), task.ID(id))
-	if err != nil {
-		s.renderTaskNotFound(w, r, id)
-
+	t, ok := s.taskFromPath(w, r, id)
+	if !ok {
 		return
 	}
 
@@ -185,21 +183,11 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 
 	data := DashboardData{Now: time.Now()}
 
-	// The review loop's verdict, when this task is a finished review: the
-	// badge + findings card render from the completion-fact detail.
-	if t.Type == executor.TaskTypeReview && t.Status == task.Completed {
-		if res, ok := reviewResultFor(r.Context(), s.store, id); ok {
-			data.Reviews = map[string]executor.ReviewResult{t.ID.String(): res}
-		}
-	}
-
-	// The status loop's outcome, when this task is a finished report: the
-	// badge + report card render from the completion-fact detail.
-	if t.Type == executor.TaskTypeStatus && t.Status == task.Completed {
-		if res, ok := statusResultFor(r.Context(), s.store, id); ok {
-			data.Statuses = map[string]executor.StatusResult{t.ID.String(): res}
-		}
-	}
+	// The review loop's verdict and the status loop's outcome, when this
+	// task is one of those finished kinds: the badge + result card render
+	// from the completion-fact detail.
+	data.Reviews = pageResults(r.Context(), []task.Task{t}, executor.TaskTypeReview, s.reviewResultFor)
+	data.Statuses = pageResults(r.Context(), []task.Task{t}, executor.TaskTypeStatus, s.statusResultFor)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -208,16 +196,42 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleEvents is the SSE endpoint. Protocol per client connection:
+// handleEvents is the SSE endpoint: the shared subscribe → snapshot →
+// tick-pump protocol (runEventStream) over the dashboard fragments,
+// rendered under this request's filter.
+func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+	// Last-Event-ID is accepted for protocol compatibility; because every
+	// event is a full re-render of the projection, the snapshot below is
+	// always the correct resume regardless of the ID's freshness. A stale
+	// id still carries reconnect-lag signal: head − id is how far the
+	// browser's last view trailed the journal when it dropped.
+	if lastID := sse.LastEventIDFromRequest(r); !lastID.IsZero() {
+		if n, err := strconv.ParseInt(lastID.Get(), 10, 64); err == nil && n >= 0 {
+			if head, err := s.store.HeadSeq(r.Context()); err == nil && head > n {
+				slog.Info("webui: client reconnect", "last-event-id", n, "head", head, "reconnect lag", head-n)
+			}
+		}
+	}
+
+	s.runEventStream(w, r, func(ctx context.Context, stream *sse.Stream, seq int64) error {
+		return s.sendSnapshot(ctx, stream, r, seq)
+	})
+}
+
+// watermarkUnknown marks snapshot events not tied to a specific tick.
+const watermarkUnknown = -1
+
+// runEventStream is the shared SSE session behind /api/events and the
+// per-task detail stream. Protocol per client connection:
 //
 //  1. Subscribe to the hub FIRST (no gap between snapshot and live events).
-//  2. Send a full snapshot (all fragments, rendered under this request's
-//     filter). On reconnect this IS the resume: state is a projection, so
-//     any Last-Event-ID is satisfied by a fresh snapshot — unknown or stale
-//     IDs fall back to the same full snapshot, never a partial patch.
+//  2. Send a full snapshot via snapshot(ctx, stream, watermarkUnknown). On
+//     reconnect this IS the resume: state is a projection, so any
+//     Last-Event-ID is satisfied by a fresh snapshot — unknown or stale IDs
+//     fall back to the same full snapshot, never a partial patch.
 //  3. On every hub tick, coalesce the burst, re-render, and send a fresh
 //     snapshot. Event ids carry the tick's journal watermark.
-func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+func (s *Server) runEventStream(w http.ResponseWriter, r *http.Request, snapshot func(ctx context.Context, stream *sse.Stream, seq int64) error) {
 	if _, ok := w.(http.Flusher); !ok {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
 
@@ -234,21 +248,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	eventCh := s.hub.Subscribe()
 	defer s.hub.Unsubscribe(eventCh)
 
-	// Last-Event-ID is accepted for protocol compatibility; because every
-	// event is a full re-render of the projection, the snapshot below is
-	// always the correct resume regardless of the ID's freshness. A stale
-	// id still carries reconnect-lag signal: head − id is how far the
-	// browser's last view trailed the journal when it dropped.
-	lastID := stream.LastEventID()
-	if !lastID.IsZero() {
-		if n, err := strconv.ParseInt(lastID.Get(), 10, 64); err == nil && n >= 0 {
-			if head, err := s.store.HeadSeq(r.Context()); err == nil && head > n {
-				slog.Info("webui: client reconnect", "last-event-id", n, "head", head, "reconnect lag", head-n)
-			}
-		}
-	}
-
-	if err := s.sendSnapshot(ctx, stream, r, watermarkUnknown); err != nil {
+	if err := snapshot(ctx, stream, watermarkUnknown); err != nil {
 		return
 	}
 
@@ -279,105 +279,38 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 				seq = n
 			}
 
-			if err := s.sendSnapshot(ctx, stream, r, seq); err != nil {
+			if err := snapshot(ctx, stream, seq); err != nil {
 				return
 			}
 		}
 	}
 }
 
-// watermarkUnknown marks snapshot events not tied to a specific tick.
-const watermarkUnknown = -1
-
+// sendSnapshot renders and streams one full dashboard snapshot burst.
 func (s *Server) sendSnapshot(ctx context.Context, stream *sse.Stream, r *http.Request, seq int64) error {
 	data, err := s.loadSnapshot(ctx, parseFilter(r))
 	if err != nil {
-		if ctx.Err() != nil {
-			return err
-		}
-
-		slog.Error("webui: snapshot query", "err", err)
-
-		return err
+		return queryErr(ctx, "webui: snapshot query", err)
 	}
 
-	for _, frag := range renderFragments(ctx, data) {
-		if err := stream.SendJSON("frag", frag); err != nil {
-			return err
-		}
-	}
-
-	evt := sse.Event{Event: "title", Data: pageTitle(data)}
-	if seq >= 0 {
-		evt.ID = sse.NewEventID(formatSeq(seq))
-	}
-
-	if err := stream.Send(evt); err != nil {
-		return err
-	}
-
-	return ctx.Err()
+	return sendSnapshotPayload(ctx, stream, renderFragments(ctx, data), pageTitle(data), seq)
 }
 
 // handleTaskEvents streams the per-task detail page's live fragments: the
-// same subscribe → snapshot → tick protocol as /api/events, scoped to one
-// task's record card and fact timeline. Every event is a full re-render of
-// both fragments, so any Last-Event-ID is satisfied by a fresh snapshot.
+// same subscribe → snapshot → tick protocol as /api/events (runEventStream),
+// scoped to one task's record card and fact timeline. Every event is a full
+// re-render of both fragments, so any Last-Event-ID is satisfied by a fresh
+// snapshot.
 func (s *Server) handleTaskEvents(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	if _, err := s.store.Get(r.Context(), task.ID(id)); err != nil {
-		s.renderTaskNotFound(w, r, id)
-
+	if _, ok := s.taskFromPath(w, r, id); !ok {
 		return
 	}
 
-	if _, ok := w.(http.Flusher); !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
-
-		return
-	}
-
-	w.Header().Set("X-Accel-Buffering", "no")
-
-	stream := sse.NewStream(w, r)
-	defer func() { _ = stream.Close() }()
-
-	ctx := r.Context()
-
-	eventCh := s.hub.Subscribe()
-	defer s.hub.Unsubscribe(eventCh)
-
-	if err := s.sendTaskSnapshot(ctx, stream, id, watermarkUnknown); err != nil {
-		return
-	}
-
-	stopHeartbeat := s.startHeartbeat(ctx, stream)
-	defer stopHeartbeat()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case evt, ok := <-eventCh:
-			if !ok {
-				return
-			}
-
-			if evt.Event != "tick" {
-				continue
-			}
-
-			seq := int64(watermarkUnknown)
-			if n, err := strconv.ParseInt(evt.ID.Get(), 10, 64); err == nil {
-				seq = n
-			}
-
-			if err := s.sendTaskSnapshot(ctx, stream, id, seq); err != nil {
-				return
-			}
-		}
-	}
+	s.runEventStream(w, r, func(ctx context.Context, stream *sse.Stream, seq int64) error {
+		return s.sendTaskSnapshot(ctx, stream, id, seq)
+	})
 }
 
 // startHeartbeat launches the SSE keepalive and returns a stop function
@@ -400,40 +333,29 @@ func (s *Server) startHeartbeat(ctx context.Context, stream *sse.Stream) func() 
 	}
 }
 
-func (s *Server) sendTaskSnapshot(ctx context.Context, stream *sse.Stream, id string, seq int64) error {
-	t, err := s.store.Get(ctx, task.ID(id))
-	if err != nil {
-		if ctx.Err() != nil {
-			return err
-		}
-
-		slog.Error("webui: task snapshot query", "task", id, "err", err)
-
-		return err
+// queryErr converts a snapshot query failure into the returned error,
+// logging it unless the request context is already done — a client
+// disconnect abandons the query; that is abandonment, not a failure worth
+// a log line.
+func queryErr(ctx context.Context, msg string, err error, attrs ...any) error {
+	if ctx.Err() == nil {
+		slog.Error(msg, append(attrs, "err", err)...)
 	}
 
-	facts, err := s.factsForTask(ctx, id)
-	if err != nil {
-		if ctx.Err() != nil {
-			return err
-		}
+	return err
+}
 
-		slog.Error("webui: task facts query", "task", id, "err", err)
-
-		return err
-	}
-
-	data := DashboardData{Now: time.Now()}
-
-	for _, frag := range renderTaskFragments(ctx, data, t, facts) {
+// sendSnapshotPayload streams one full snapshot burst: the fragments
+// followed by the trailing title event carrying the journal watermark id,
+// keeping every stream's resume semantics identical.
+func sendSnapshotPayload(ctx context.Context, stream *sse.Stream, frags []fragment, title string, seq int64) error {
+	for _, frag := range frags {
 		if err := stream.SendJSON("frag", frag); err != nil {
 			return err
 		}
 	}
 
-	// The trailing title event carries the journal watermark id, keeping
-	// the detail stream's resume semantics identical to /api/events.
-	evt := sse.Event{Event: "title", Data: detailPageTitle(id)}
+	evt := sse.Event{Event: "title", Data: title}
 	if seq >= 0 {
 		evt.ID = sse.NewEventID(formatSeq(seq))
 	}
@@ -445,6 +367,35 @@ func (s *Server) sendTaskSnapshot(ctx context.Context, stream *sse.Stream, id st
 	return ctx.Err()
 }
 
+func (s *Server) sendTaskSnapshot(ctx context.Context, stream *sse.Stream, id string, seq int64) error {
+	t, err := s.store.Get(ctx, task.ID(id))
+	if err != nil {
+		return queryErr(ctx, "webui: task snapshot query", err, "task", id)
+	}
+
+	facts, err := s.factsForTask(ctx, id)
+	if err != nil {
+		return queryErr(ctx, "webui: task facts query", err, "task", id)
+	}
+
+	data := DashboardData{Now: time.Now()}
+
+	return sendSnapshotPayload(ctx, stream, renderTaskFragments(ctx, data, t, facts), detailPageTitle(id), seq)
+}
+
+// taskFromPath fetches the {id} path task, rendering the styled 404 when
+// it doesn't resolve. ok=false means the response is already written.
+func (s *Server) taskFromPath(w http.ResponseWriter, r *http.Request, id string) (task.Task, bool) {
+	t, err := s.store.Get(r.Context(), task.ID(id))
+	if err != nil {
+		s.renderTaskNotFound(w, r, id)
+
+		return task.Task{}, false
+	}
+
+	return t, true
+}
+
 // handleTaskCancelPOST withdraws a pending task or requests a cooperative
 // stop for a running one (the agent honors the request between steps; an
 // expired lease finalizes it). The reason lands in the task.cancelled fact
@@ -453,10 +404,8 @@ func (s *Server) handleTaskCancelPOST(w http.ResponseWriter, r *http.Request) {
 	id := task.ID(r.PathValue("id"))
 	reason := strings.TrimSpace(r.PostFormValue("reason"))
 
-	t, err := s.store.Get(r.Context(), id)
-	if err != nil {
-		s.renderTaskNotFound(w, r, id.String())
-
+	t, ok := s.taskFromPath(w, r, id.String())
+	if !ok {
 		return
 	}
 
@@ -489,10 +438,8 @@ func (s *Server) handleTaskCancelPOST(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleTaskRescuePOST(w http.ResponseWriter, r *http.Request) {
 	id := task.ID(r.PathValue("id"))
 
-	t, err := s.store.Get(r.Context(), id)
-	if err != nil {
-		s.renderTaskNotFound(w, r, id.String())
-
+	t, ok := s.taskFromPath(w, r, id.String())
+	if !ok {
 		return
 	}
 

@@ -187,14 +187,16 @@ type DashboardData struct {
 	Statuses map[string]executor.StatusResult
 }
 
-// statusResultFor reads a completed status task's outcome from its own
-// completion-fact detail (executor.StatusResult JSON). ok=false when the
-// task never completed or its detail is absent or foreign — never an error:
-// a foreign shape renders as “no report”, not a broken page.
-func statusResultFor(ctx context.Context, src queue.Store, id string) (executor.StatusResult, bool) {
+// completionDetail reads a task's outcome from its own completion-fact
+// detail (T's JSON shape). ok=false when the task never completed or its
+// detail is absent or foreign — never an error: a foreign shape renders as
+// "no result", not a broken page. valid is the type's required-field gate.
+func completionDetail[T any](ctx context.Context, src queue.Store, id string, valid func(T) bool) (T, bool) {
 	facts, err := src.FactsForTask(ctx, id, 0)
 	if err != nil {
-		return executor.StatusResult{}, false
+		var zero T
+
+		return zero, false
 	}
 
 	for _, fact := range slices.Backward(facts) {
@@ -202,41 +204,59 @@ func statusResultFor(ctx context.Context, src queue.Store, id string) (executor.
 			continue
 		}
 
-		var res executor.StatusResult
-		if json.Unmarshal(fact.Detail, &res) != nil || res.Report == "" {
-			return executor.StatusResult{}, false
+		var res T
+		if json.Unmarshal(fact.Detail, &res) != nil || !valid(res) {
+			var zero T
+
+			return zero, false
 		}
 
 		return res, true
 	}
 
-	return executor.StatusResult{}, false
+	var zero T
+
+	return zero, false
+}
+
+// statusResultFor reads a completed status task's outcome from its own
+// completion-fact detail (executor.StatusResult JSON).
+func (s *Server) statusResultFor(ctx context.Context, id string) (executor.StatusResult, bool) {
+	return completionDetail(ctx, s.store, id, func(res executor.StatusResult) bool {
+		return res.Report != ""
+	})
 }
 
 // reviewResultFor reads a completed review task's verdict from its own
-// completion-fact detail (executor.ReviewResult JSON). ok=false when the
-// task never completed or its detail is absent or foreign — never an
-// error: a foreign shape renders as “no verdict”, not a broken page.
-func reviewResultFor(ctx context.Context, src queue.Store, id string) (executor.ReviewResult, bool) {
-	facts, err := src.FactsForTask(ctx, id, 0)
-	if err != nil {
-		return executor.ReviewResult{}, false
-	}
+// completion-fact detail (executor.ReviewResult JSON).
+func (s *Server) reviewResultFor(ctx context.Context, id string) (executor.ReviewResult, bool) {
+	return completionDetail(ctx, s.store, id, func(res executor.ReviewResult) bool {
+		return res.Verdict != ""
+	})
+}
 
-	for _, fact := range slices.Backward(facts) {
-		if fact.Type != journal.Completed {
+// pageResults parses the outcome of every COMPLETED task of the given type
+// on a visible page, keyed by task id (best effort: a failed read renders
+// no badge, never a broken snapshot). Nil when none — templates render no
+// badge rather than an empty card.
+func pageResults[T any](ctx context.Context, tasks []task.Task, taskType string, lookup func(ctx context.Context, id string) (T, bool)) map[string]T {
+	out := map[string]T{}
+
+	for _, t := range tasks {
+		if t.Type != taskType || t.Status != task.Completed {
 			continue
 		}
 
-		var res executor.ReviewResult
-		if json.Unmarshal(fact.Detail, &res) != nil || res.Verdict == "" {
-			return executor.ReviewResult{}, false
+		if res, ok := lookup(ctx, t.ID.String()); ok {
+			out[t.ID.String()] = res
 		}
-
-		return res, true
 	}
 
-	return executor.ReviewResult{}, false
+	if len(out) == 0 {
+		return nil
+	}
+
+	return out
 }
 
 // clearProject / clearStatus / clearQuery are used by the filter chips.
@@ -303,14 +323,6 @@ func pageHref(f FilterState, page int) string {
 	}
 
 	return "/?" + q
-}
-
-func filterSuffix(f FilterState) string {
-	if f.Empty() {
-		return ""
-	}
-
-	return " (filtered)"
 }
 
 var allStatuses = []task.Status{
@@ -384,37 +396,11 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 
 		data.Tasks = tasks
 
-		// Verdicts for the page's finished review tasks (best effort: a failed
-		// read renders no badge, never a broken snapshot).
-		for _, t := range tasks {
-			if t.Type != executor.TaskTypeReview || t.Status != task.Completed {
-				continue
-			}
-
-			if res, ok := reviewResultFor(ctx, s.store, t.ID.String()); ok {
-				if data.Reviews == nil {
-					data.Reviews = map[string]executor.ReviewResult{}
-				}
-
-				data.Reviews[t.ID.String()] = res
-			}
-		}
-
-		// Outcomes for the page's finished status tasks — same best-effort
-		// contract as the review verdicts above.
-		for _, t := range tasks {
-			if t.Type != executor.TaskTypeStatus || t.Status != task.Completed {
-				continue
-			}
-
-			if res, ok := statusResultFor(ctx, s.store, t.ID.String()); ok {
-				if data.Statuses == nil {
-					data.Statuses = map[string]executor.StatusResult{}
-				}
-
-				data.Statuses[t.ID.String()] = res
-			}
-		}
+		// Verdicts/outcomes for the page's finished review and status tasks
+		// (best effort: a failed read renders no badge, never a broken
+		// snapshot).
+		data.Reviews = pageResults(ctx, tasks, executor.TaskTypeReview, s.reviewResultFor)
+		data.Statuses = pageResults(ctx, tasks, executor.TaskTypeStatus, s.statusResultFor)
 
 		matches, err := s.store.CountTasks(ctx, filter.toQueueFilter(0))
 		if err != nil {
