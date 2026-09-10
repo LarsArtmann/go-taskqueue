@@ -140,7 +140,7 @@ func (w *Watcher) Run(ctx context.Context) error {
 			return nil
 		}
 
-		backoff = min(backoff*2, defaultWatchMaxBackoff)
+		backoff = min(backoff*2, maxBackoff)
 	}
 }
 
