@@ -239,7 +239,12 @@ func (s *Server) reviewResultFor(ctx context.Context, id string) (executor.Revie
 // on a visible page, keyed by task id (best effort: a failed read renders
 // no badge, never a broken snapshot). Nil when none — templates render no
 // badge rather than an empty card.
-func pageResults[T any](ctx context.Context, tasks []task.Task, taskType string, lookup func(ctx context.Context, id string) (T, bool)) map[string]T {
+func pageResults[T any](
+	ctx context.Context,
+	tasks []task.Task,
+	taskType string,
+	lookup func(ctx context.Context, id string) (T, bool),
+) map[string]T {
 	out := map[string]T{}
 
 	for _, t := range tasks {

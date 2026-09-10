@@ -244,7 +244,11 @@ const watermarkUnknown = -1
 //     fall back to the same full snapshot, never a partial patch.
 //  3. On every hub tick, coalesce the burst, re-render, and send a fresh
 //     snapshot. Event ids carry the tick's journal watermark.
-func (s *Server) runEventStream(w http.ResponseWriter, r *http.Request, snapshot func(ctx context.Context, stream *sse.Stream, seq int64) error) {
+func (s *Server) runEventStream(
+	w http.ResponseWriter,
+	r *http.Request,
+	snapshot func(ctx context.Context, stream *sse.Stream, seq int64) error,
+) {
 	if _, ok := w.(http.Flusher); !ok {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
 
