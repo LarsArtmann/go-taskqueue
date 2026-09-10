@@ -28,14 +28,14 @@ import (
 // context.Cause.
 var ErrInterrupted = errors.New("interrupted")
 
-// ExitCause explains why a group ended; it names the actor whose exit
+// ExitError explains why a group ended; it names the actor whose exit
 // decided it.
-type ExitCause struct {
+type ExitError struct {
 	Actor string
 	Err   error
 }
 
-func (e ExitCause) Error() string {
+func (e ExitError) Error() string {
 	if e.Err == nil {
 		return e.Actor + " exited"
 	}
@@ -43,7 +43,7 @@ func (e ExitCause) Error() string {
 	return fmt.Sprintf("%s: %v", e.Actor, e.Err)
 }
 
-func (e ExitCause) Unwrap() error { return e.Err }
+func (e ExitError) Unwrap() error { return e.Err }
 
 // Group runs named actors until one of them returns, then cancels the
 // rest and tears down in reverse registration order.
@@ -94,7 +94,7 @@ func (g *Group) Go(name string, fn func(ctx context.Context) error) {
 		}
 
 		wrapped := fmt.Errorf("%s: %w", name, err)
-		g.cancel(ExitCause{Actor: name, Err: err})
+		g.cancel(ExitError{Actor: name, Err: err})
 
 		return wrapped
 	})
@@ -159,7 +159,7 @@ func (g *Group) Run() error {
 	}
 
 	if cause := context.Cause(g.ctx); cause != nil {
-		if exitCause, ok := errors.AsType[ExitCause](cause); ok {
+		if exitCause, ok := errors.AsType[ExitError](cause); ok {
 			return errors.Join(exitCause, teardownErr)
 		}
 
