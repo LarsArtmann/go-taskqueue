@@ -116,7 +116,7 @@ _Brainstorm list — most items below the top ~15 are ROADMAP fuel, not commitme
 1. ~~Fix master CI: resolve pre-existing `cyclop` findings in `cmd/tq` (extract subcommand helpers) — refactor, not suppress.~~ done at `132554e`
 2. ~~Fix pre-existing `contextcheck` in `internal/bridge/papdashboard.startWatermark`.~~ done at `61d2044`
 3. ~~Decide lint policy in one place (blocking vs non-blocking + exclusions) and align AGENTS.md with `ci.yml` reality.~~ done at `94bff0f`, `16ce98c`
-4. Add `checks.nix-binary-runs` (flake check that executes `result/bin/tq --help`) so empty-output builds can never pass again.
+4. ~~Add `checks.nix-binary-runs` (flake check that executes `result/bin/tq --help`) so empty-output builds can never pass again.~~ done (flake.nix `checks.binary-runs`, verified 2026-09-10 docs-health pass)
 5. Add `GOEXPERIMENT`/jsonv2 probe check for future deps (fail fast with remediation message).
 6. ~~Push this round and watch the CI run including the new webui smoke step.~~ done (pushed (0c3bf86 and later); master CI green after the 19:33 fixes (runs 34147286516, 34147397689))
 
@@ -125,10 +125,10 @@ _Brainstorm list — most items below the top ~15 are ROADMAP fuel, not commitme
 8. W15 design note (not code): write-actions ADR (`--allow-writes`, CSRF, confirm) — unblocks W15–W16/W21 later.
 9. W18 pagination/windowing design: server-side `LIMIT/OFFSET` + `Filter` extension, trigger at >2k tasks.
 10. W19 budget panel sketch over `internal/budget` projections.
-11. Free-port selection in `scripts/smoke/webui.sh` (no fixed 8095).
+11. ~~Free-port selection in `scripts/smoke/webui.sh` (no fixed 8095).~~ done (`free_port()` in scripts/smoke/webui.sh, verified 2026-09-10 docs-health pass)
 12. Request logging option for `tq serve` (`--verbose` or slog handler).
 13. `tq serve --open` (browser auto-open) using the `cli/browser` module already in the dependency tree.
-14. Dark/light theme toggle (CSS variables already isolate colors).
+14. ~~Dark/light theme toggle (CSS variables already isolate colors).~~ done (`layout.ThemeToggle` in internal/webui/layout.templ via templ-components, verified 2026-09-10 docs-health pass)
 15. SSE `retry:` field hint to the client for faster reconnects.
 16. Live-updating task detail page (detail is currently static HTML; a tick-driven refresh would make `/task/{id}` live too).
 17. Humanize payload preview in table rows (currently only error truncates).

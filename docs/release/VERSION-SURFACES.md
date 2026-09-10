@@ -2,7 +2,8 @@
 
 All the places a release version lives, and who must move when. The flake's
 `checks.version-sync` covers only attr ↔ binary; everything else is verified
-by `scripts/release.sh` gates or by hand. Status report 23:47 f27 asked for
+by `scripts/release.sh` gates or by hand (the flow itself is documented in
+`RELEASE.md`). Status report 23:47 f27 asked for
 this inventory (2026-09-10).
 
 ## The surfaces

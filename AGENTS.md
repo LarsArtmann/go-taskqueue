@@ -35,7 +35,10 @@ Internal requires point at real tagged versions (never `v0.0.0` —
 `go install` resolves them via the proxy; `internal/*/vX.Y.Z` subdirectory
 tags ride every release) + relative `replace` for local dev (NO go.work —
 replace-only by decision); `go test ./internal/foo` from root FAILS by design
-(cd into the module instead).
+(cd into the module instead). Release flow and version surfaces are
+documented in `docs/release/RELEASE.md` (two-phase --tag/--push, sub-tag
+cutting, allowlist gates) and `docs/release/VERSION-SURFACES.md` (the seven
+surfaces and their bump order).
 
 Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 
@@ -133,7 +136,11 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **`Task-Queue-ID` commit footer**: every prompt contract tells agents to
   end commits with it; the executor resolves the placeholder at RUN time.
   Never hardcode the placeholder inside backtick raw strings (a backtick
-  terminates the literal).
+  terminates the literal). The footer must carry the queue-assigned ID from
+  the task prompt VERBATIM — if a reviewer or a second artifact supplies a
+  different ID, use that one and report the discrepancy; never merge or
+  silently pick between IDs (the f26 three-ID cluster is the cautionary
+  tale).
 - **Fact forensics**: `task.failed` carries `FailureEvidence{stage,
   exit_code, tail}` (tail size: one `EvidenceTailBytes` constant);
   `task.requeued` carries `RequeueEvidence{reason, retry_in_ms}`.
@@ -279,10 +286,21 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   (cost one stray `demo` enqueue + a live-pool claim, 2026-09-10). Any
   scratch-DB smoke MUST export `TQ_DB=<scratch path>` (or pass `--db`)
   explicitly; assume every bare `tq …` in a session shell touches production.
-- ⚠️ **Session-start ritual**: run `git log --oneline -5 -- internal` before
-  editing — concurrent agents land real changes mid-flight (worker's
-  go-retry require, flake vendorHash fixes, AGENTS.md corrections have all
-  arrived mid-session). Build on them; never revert.
+- ⚠️ **Session-start ritual**: run `git log --oneline -5` over the WHOLE
+  repo (not just `-- internal` — concurrent work lands in cmd/, scripts/,
+  and docs/ too) plus `git status` and `git stash list` before editing —
+  concurrent agents land real changes mid-flight (worker's go-retry
+  require, flake vendorHash fixes, AGENTS.md corrections have all arrived
+  mid-session). Build on them; never revert.
+- ⚠️ **Scripted history edits under the auto-commit daemon** (2026-09-10
+  reword incident): inline-quoted `GIT_EDITOR`/`GIT_SEQUENCE_EDITOR` values
+  get mangled through the mvdan/sh → git handoff and can SILENTLY no-op —
+  use script files, and dry-run the edit against `git log -1 --format=%B`
+  first; the daemon may commit mid-rebase (re-count the `Rebasing (N/N)`
+  replay); a reword forks the lineage from any pushed twin and from release
+  tags — tags are immutable, so the fork persists; verify by path
+  (`git log -1 -- <path>`), not by `--grep` phrase. Full playbook:
+  docs/status/2026-09-10_07-49 report §e.
 - ⚠️ **Dead-export audits must use SUBSTRING matching**: `rg -w Symbol`
   misses suffixed references (`NewSink`, `NewCommandExecutor` use `Sink`,
   `CommandExecutor`) and undercounts — the 2026-09-10 re-derivation found

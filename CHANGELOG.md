@@ -47,6 +47,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   follow the running OS's path rules (separator- and volume-aware
   absolutes); (3) the flake `vendorHash` resynced after the root go.mod
   postgres replace moved the module graph.
+- **`examples/fullcore` drain deadline reported deterministically**: the
+  drain loop selected on both `ctx.Done()` and the deadline tick, and since
+  `Pool.Start` returns only after cancellation both were ready at the
+  deadline — Go's random pick let the example exit 0 with no report about
+  half the time. The redundant done case is gone; a timeout always produces
+  the intended fatal.
 ### Added
 - `examples/fullcore`: the full library embed demo in one file — enqueue, custom + shell
   executors (including a retry proof), a worker pool draining the queue, and the
@@ -91,6 +97,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - README: module map + store-backend picker section; package docs on the
   queue contract module; FEATURES row for the backend split; local-database
   one-liner next to the CI Postgres conformance job.
+- `docs/release/RELEASE.md`: the round-2 multi-module release flow as
+  `scripts/release.sh` implements it — three-step gate sequence, two-phase
+  `--tag`/`--push` with resume, disk-derived `internal/<mod>/vX.Y.Z`
+  sub-tag cutting, sibling-replace allowlist with the nested-module lesson.
+- `docs/release/VERSION-SURFACES.md`: all seven release-version surfaces
+  (flake attr, ldflags, root tag, per-module tags, internal requires,
+  CHANGELOG, toolchain) with the gate or manual step that verifies each,
+  the manual bump order, and the deliberate coverage gaps.
 ### Changed
 - **Store backends become driver modules (ADR-0012)**: `internal/queue`
   keeps only the Store contract (deps: task + journal); the SQLite and
@@ -133,6 +147,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   what the window actually shipped, archive fully-done reports into
   `docs/status/archived/`, and verify claims against code; the scope rule
   still forbids touching code/config.
+- **Advisory lint baseline shrunk: wrapcheck and varnamelen triaged to
+  zero.** House policy encoded in `.golangci.yml` (stdlib idioms,
+  internal-package seams, test files, idiomatic short names) and the
+  genuinely vague call-site variables renamed — the baseline shrank via
+  policy plus renames, not suppressions.
 ### Fixed
 - Version-surface drift: flake.nix still declared 0.1.0 after the v0.2.0
   release, so nix-built binaries reported the wrong version (now 0.2.0).

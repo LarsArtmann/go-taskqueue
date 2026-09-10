@@ -5,7 +5,8 @@ owns the code, this document explains the flow and the rules behind it. The
 single-module v0.1.0 procedure is preserved as
 `docs/release/archived/2026-09-06_v0.1.0_CHECKLIST.md`; everything below is
 the round-2 multi-module flow (ADR-0011 module split + ADR-0012 store
-backend modules), proven live by the v0.2.0 release.
+backend modules), proven live by the v0.2.0 release. The version surfaces
+these gates keep in sync are inventoried in `VERSION-SURFACES.md`.
 
 ```bash
 scripts/release.sh vX.Y.Z            # pre-tag gates only (safe default, read-only)
