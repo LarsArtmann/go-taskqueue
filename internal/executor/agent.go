@@ -31,6 +31,10 @@ type AgentPayload struct {
 	Prompt string `json:"prompt"`
 	// Model optionally overrides the crush model ("provider/model").
 	Model string `json:"model,omitempty"`
+	// V is the payload contract version. Zero decodes
+	// as v1; a version above what this binary understands fails fast as a
+	// permanent error instead of misparsing newer fields.
+	V int `json:"v,omitempty"`
 	// Session optionally continues a previous crush session by ID.
 	Session string `json:"session,omitempty"`
 	// Dedup is the harvester's item key; purely informational, used to keep
@@ -155,6 +159,14 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	if err := json.Unmarshal(t.Payload, &p); err != nil {
 		return Permanent(fmt.Errorf("agent: decode payload: %w", err))
+	}
+
+	if p.V == 0 {
+		p.V = 1 // payloads minted before versioning are contract v1
+	}
+
+	if p.V > 1 {
+		return Permanent(fmt.Errorf("agent: payload version %d unknown (this binary understands v1)", p.V))
 	}
 
 	if p.Repo == "" || p.Prompt == "" {

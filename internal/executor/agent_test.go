@@ -220,6 +220,31 @@ func TestAgentPayloadSafetyFieldsRoundTrip(t *testing.T) {
 	}
 }
 
+// TestAgentPayloadVersionGate pins the forward-compatibility rule: a
+// versioned payload above what this binary understands fails as a
+// PERMANENT error (dead-letter, no retry burn), while unversioned payloads
+// keep decoding as v1.
+func TestAgentPayloadVersionGate(t *testing.T) {
+	t.Parallel()
+
+	e := &AgentExecutor{}
+
+	future := task.Task{Type: TaskTypeAgent, Payload: []byte(`{"v":2,"repo":"/tmp/r","prompt":"p"}`)}
+	err := e.Execute(context.Background(), future)
+	if err == nil || !strings.Contains(err.Error(), "payload version 2") {
+		t.Fatalf("want unknown-version permanent error, got %v", err)
+	}
+	if _, ok := errors.AsType[*PermanentError](err); !ok {
+		t.Fatalf("unknown payload version must be permanent, got %v", err)
+	}
+
+	v1 := task.Task{Type: TaskTypeAgent, Payload: []byte(`{"repo":"/tmp/nonexistent-v1","prompt":"p"}`)}
+	err = e.Execute(context.Background(), v1)
+	if err != nil && strings.Contains(err.Error(), "payload version") {
+		t.Fatalf("unversioned payload must decode as v1, got %v", err)
+	}
+}
+
 // TestAgentExecutorArgvContract pins the exact command line handed to the
 // agent binary. crush (v0.92) accepts --cwd/--quiet/--model/--session after
 // the run subcommand but has NO --yolo flag there — an arg-order regression
