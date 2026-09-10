@@ -36,6 +36,24 @@ func TestCanTransitionTo(t *testing.T) {
 	}
 }
 
+// TestStatusTableExhaustive pins that every declared Status has a row in
+// the transitions table and agrees with Valid. A new Status added without
+// wiring fails here instead of silently accepting/rejecting at runtime.
+func TestStatusTableExhaustive(t *testing.T) {
+	declared := []Status{Pending, Running, Completed, Dead, Cancelled}
+	if len(transitions) != len(declared) {
+		t.Fatalf("transitions table has %d source states, want %d (new Status without a transitions row?)", len(transitions), len(declared))
+	}
+	for _, s := range declared {
+		if _, ok := transitions[s]; !ok {
+			t.Errorf("status %q missing from transitions table", s)
+		}
+		if !s.Valid() {
+			t.Errorf("declared status %q reports Valid() = false", s)
+		}
+	}
+}
+
 func TestTerminal(t *testing.T) {
 	for _, s := range []Status{Completed, Dead, Cancelled} {
 		if !Terminal(s) {
