@@ -168,12 +168,12 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 
 // handleFact reacts to one completion fact: agent completions gain a review
 // task, review completions may gain fix tasks (Autofix).
-func (s *Sweeper) handleFact(ctx context.Context, f journal.Fact, stats *SweepStats) {
-	if f.Type != journal.Completed {
+func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+	if fact.Type != journal.Completed {
 		return
 	}
 
-	t, err := s.store.Get(ctx, task.ID(f.TaskID))
+	t, err := s.store.Get(ctx, task.ID(fact.TaskID))
 	if err != nil {
 		stats.Skipped++
 
@@ -182,16 +182,16 @@ func (s *Sweeper) handleFact(ctx context.Context, f journal.Fact, stats *SweepSt
 
 	switch t.Type {
 	case executor.TaskTypeAgent:
-		s.enqueueReview(ctx, t, f, stats)
+		s.enqueueReview(ctx, t, fact, stats)
 	case executor.TaskTypeReview:
 		if s.cfg.Autofix {
-			s.mintFixes(ctx, t, f, stats)
+			s.mintFixes(ctx, t, fact, stats)
 		}
 	}
 }
 
 // enqueueReview mints the one review task for a completed agent task.
-func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, f journal.Fact, stats *SweepStats) {
+func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.Fact, stats *SweepStats) {
 	var agentPayload executor.AgentPayload
 
 	if err := json.Unmarshal(
@@ -206,7 +206,7 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, f journal.Fact
 
 	var agentResult executor.AgentResult
 
-	_ = json.Unmarshal(f.Detail, &agentResult) // absent/legacy detail is fine
+	_ = json.Unmarshal(fact.Detail, &agentResult) // absent/legacy detail is fine
 
 	payload, err := json.Marshal(executor.ReviewPayload{
 		Repo:         agentPayload.Repo,
@@ -246,7 +246,7 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, f journal.Fact
 }
 
 // mintFixes turns a request_changes review's findings into agent fix tasks.
-func (s *Sweeper) mintFixes(ctx context.Context, t task.Task, f journal.Fact, stats *SweepStats) {
+func (s *Sweeper) mintFixes(ctx context.Context, t task.Task, fact journal.Fact, stats *SweepStats) {
 	var reviewPayload executor.ReviewPayload
 
 	if err := json.Unmarshal(t.Payload, &reviewPayload); err != nil || reviewPayload.Repo == "" {
@@ -257,7 +257,7 @@ func (s *Sweeper) mintFixes(ctx context.Context, t task.Task, f journal.Fact, st
 
 	var result executor.ReviewResult
 
-	if err := json.Unmarshal(f.Detail, &result); err != nil || result.Verdict != executor.VerdictRequestChanges {
+	if err := json.Unmarshal(fact.Detail, &result); err != nil || result.Verdict != executor.VerdictRequestChanges {
 		return // approve, or detail lost — nothing to fix
 	}
 
@@ -318,21 +318,21 @@ func FixDedupKey(review task.ID, findingTitle string) string {
 }
 
 // fixPrompt builds the instruction for a fix task minted from one finding.
-func fixPrompt(p executor.ReviewPayload, finding executor.ReviewFinding) string {
+func fixPrompt(payload executor.ReviewPayload, finding executor.ReviewFinding) string {
 	var b strings.Builder
 
 	b.WriteString(
 		"A code reviewer rejected your earlier work on this task and filed one finding. Fix EXACTLY this finding — no unrelated changes.\n\n",
 	)
-	b.WriteString("## Original task\n\n" + strings.TrimSpace(p.Item) + "\n\n")
+	b.WriteString("## Original task\n\n" + strings.TrimSpace(payload.Item) + "\n\n")
 	b.WriteString("## Reviewer finding (" + finding.Severity + ")\n\n" + strings.TrimSpace(finding.Title) + "\n\n")
 
 	if detail := strings.TrimSpace(finding.Detail); detail != "" {
 		b.WriteString(detail + "\n\n")
 	}
 
-	if p.CommitSHA != "" {
-		b.WriteString("The rejected change is commit " + p.CommitSHA + ".\n\n")
+	if payload.CommitSHA != "" {
+		b.WriteString("The rejected change is commit " + payload.CommitSHA + ".\n\n")
 	}
 
 	b.WriteString(

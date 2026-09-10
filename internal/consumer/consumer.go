@@ -181,19 +181,19 @@ func (d *Dispatcher) drain(ctx context.Context, sub *subscriber) {
 			return
 		}
 
-		for _, f := range facts {
-			if err := sub.handler(ctx, f); err != nil {
+		for _, fact := range facts {
+			if err := sub.handler(ctx, fact); err != nil {
 				if ctx.Err() != nil {
 					return
 				}
 
 				d.log.Error("consumer dispatcher handler failed; will retry",
-					"subscriber", sub.name, "seq", f.Seq, "type", f.Type, "err", err)
+					"subscriber", sub.name, "seq", fact.Seq, "type", fact.Type, "err", err)
 
 				return
 			}
 
-			sub.advance(f.Seq)
+			sub.advance(fact.Seq)
 		}
 
 		if len(facts) < d.pageSize {

@@ -111,16 +111,16 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 	// that no longer exists — completed-and-deleted per the docs
 	// convention, or reworded (which armed a new key and a new task).
 	presentKeys := make(map[string]struct{}, len(items))
-	for _, it := range items {
-		presentKeys[it.Key] = struct{}{}
+	for _, item := range items {
+		presentKeys[item.Key] = struct{}{}
 	}
 
-	for _, it := range items {
-		if !it.Done {
+	for _, item := range items {
+		if !item.Done {
 			continue
 		}
 
-		t, tracked := byDedup[it.Key]
+		t, tracked := byDedup[item.Key]
 		if !tracked {
 			continue
 		}
@@ -128,12 +128,12 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 		switch t.Status {
 		case task.Pending:
 			if h.cfg.DryRun {
-				res.Cancelled = append(res.Cancelled, PrunedTask{Item: it, TaskID: t.ID, Why: PruneTicked})
+				res.Cancelled = append(res.Cancelled, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
 
 				continue
 			}
 
-			reason := pruneReasonPrefix + truncateItem(it.Text)
+			reason := pruneReasonPrefix + truncateItem(item.Text)
 			if err := h.q.Cancel(ctx, t.ID, reason); err != nil {
 				res.ScanFailures = append(res.ScanFailures, ScanFailure{
 					Repo: repo, Reason: fmt.Sprintf("cancel %s failed: %s", t.ID, err),
@@ -142,11 +142,11 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 				continue
 			}
 
-			res.Cancelled = append(res.Cancelled, PrunedTask{Item: it, TaskID: t.ID, Why: PruneTicked})
+			res.Cancelled = append(res.Cancelled, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
 		case task.Running:
-			res.Running = append(res.Running, PrunedTask{Item: it, TaskID: t.ID, Why: PruneTicked})
+			res.Running = append(res.Running, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
 		case task.Dead:
-			res.Dead = append(res.Dead, PrunedTask{Item: it, TaskID: t.ID, Why: PruneTicked})
+			res.Dead = append(res.Dead, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
 		}
 	}
 
@@ -169,7 +169,7 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 
 // pruneAbsentTask applies the absent rule to one harvested task: when its
 // (catchup-stripped) item key no longer matches ANY present item, the text
-// it was minted from is gone — completed-and-deleted per the docs
+// item was minted from is gone — completed-and-deleted per the docs
 // convention, or reworded (which armed a new key and a new task) — so the
 // pending task is a zombie and is withdrawn. The Item synthesized for
 // reporting carries the key (the text is gone by definition); only
@@ -184,12 +184,12 @@ func (h *Harvester) pruneAbsentTask(
 		return
 	}
 
-	it := Item{Repo: repo, RepoName: repoName, Key: itemKey}
+	item := Item{Repo: repo, RepoName: repoName, Key: itemKey}
 
 	switch t.Status {
 	case task.Pending:
 		if h.cfg.DryRun {
-			res.Cancelled = append(res.Cancelled, PrunedTask{Item: it, TaskID: t.ID, Why: PruneAbsent})
+			res.Cancelled = append(res.Cancelled, PrunedTask{Item: item, TaskID: t.ID, Why: PruneAbsent})
 
 			return
 		}
@@ -203,11 +203,11 @@ func (h *Harvester) pruneAbsentTask(
 			return
 		}
 
-		res.Cancelled = append(res.Cancelled, PrunedTask{Item: it, TaskID: t.ID, Why: PruneAbsent})
+		res.Cancelled = append(res.Cancelled, PrunedTask{Item: item, TaskID: t.ID, Why: PruneAbsent})
 	case task.Running:
-		res.Running = append(res.Running, PrunedTask{Item: it, TaskID: t.ID, Why: PruneAbsent})
+		res.Running = append(res.Running, PrunedTask{Item: item, TaskID: t.ID, Why: PruneAbsent})
 	case task.Dead:
-		res.Dead = append(res.Dead, PrunedTask{Item: it, TaskID: t.ID, Why: PruneAbsent})
+		res.Dead = append(res.Dead, PrunedTask{Item: item, TaskID: t.ID, Why: PruneAbsent})
 	}
 }
 

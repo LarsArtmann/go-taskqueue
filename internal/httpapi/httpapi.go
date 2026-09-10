@@ -125,7 +125,7 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	n := task.New{
+	newTask := task.New{
 		Project:     req.Project,
 		Type:        req.Type,
 		Payload:     req.Payload,
@@ -154,7 +154,7 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		n.NotBefore = when
+		newTask.NotBefore = when
 	}
 
 	for _, d := range req.Deps {
@@ -162,10 +162,10 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		n.Deps = append(n.Deps, task.ID(d))
+		newTask.Deps = append(newTask.Deps, task.ID(d))
 	}
 
-	t, err := queue.New(s.store).Enqueue(r.Context(), n)
+	t, err := queue.New(s.store).Enqueue(r.Context(), newTask)
 	if err != nil {
 		writeError(
 			w,

@@ -31,8 +31,8 @@ func cmdTasks(args []string) error {
 		return err
 	}
 
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
 
 	ctx := context.Background()
 
@@ -60,7 +60,7 @@ func cmdTasks(args []string) error {
 		f.Limit = *limit
 	}
 
-	tasks, err := s.List(ctx, f)
+	tasks, err := store.List(ctx, f)
 	if err != nil {
 		return err
 	}

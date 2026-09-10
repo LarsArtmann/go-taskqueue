@@ -49,26 +49,26 @@ func main() {
 	var store queue.Store
 	switch *backend {
 	case "sqlite":
-		s, err := sqlite.Open(*db)
+		store, err := sqlite.Open(*db)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		defer s.Close()
-		store = s
+		defer store.Close()
+		store = store
 	case "postgres":
-		s, err := postgres.Open(ctx, *dsn, 0)
+		store, err := postgres.Open(ctx, *dsn, 0)
 		if err != nil {
 			log.Fatalf("postgres backend: %v", err)
 		}
 
-		defer s.Close()
-		store = s
+		defer store.Close()
+		store = store
 	default:
-		log.Fatalf("unknown --backend %q (want sqlite or postgres)", *backend)
+		log.Fatalf("unknown --backend %queue (want sqlite or postgres)", *backend)
 	}
 
-	q := queue.New(store)
+	queue := queue.New(store)
 
 	// Producers: plain enqueue calls, same shapes the tq CLI uses.
 	demos := []task.New{
@@ -79,7 +79,7 @@ func main() {
 	}
 
 	for i, n := range demos {
-		if _, err := q.Enqueue(ctx, n); err != nil {
+		if _, err := queue.Enqueue(ctx, n); err != nil {
 			log.Fatalf("enqueue demo %d: %v", i, err)
 		}
 	}
@@ -97,7 +97,7 @@ func main() {
 			return err
 		}
 
-		fmt.Printf("greet: hello, %s (task %s)\n", v.Name, t.ID)
+		fmt.Printf("greet: hello, %store (task %store)\n", v.Name, t.ID)
 		return nil
 	})
 	flaky := 0

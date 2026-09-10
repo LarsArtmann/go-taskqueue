@@ -217,16 +217,16 @@ func doctorWatermarkLiveness(ctx context.Context, store queue.Store) []checkResu
 
 	var results []checkResult
 
-	for _, c := range []struct {
+	for _, chk := range []struct {
 		name     string
 		consumer string
 	}{
 		{"review-sweeper", review.ConsumerKey},
 		{"status-sweeper", status.ConsumerKey},
 	} {
-		seq, exists, err := store.Watermark(ctx, c.consumer)
+		seq, exists, err := store.Watermark(ctx, chk.consumer)
 		if err != nil {
-			results = append(results, checkResult{Name: c.name, Status: checkFail, Detail: err.Error()})
+			results = append(results, checkResult{Name: chk.name, Status: checkFail, Detail: err.Error()})
 
 			continue
 		}
@@ -234,7 +234,7 @@ func doctorWatermarkLiveness(ctx context.Context, store queue.Store) []checkResu
 		if !exists {
 			results = append(
 				results,
-				checkResult{Name: c.name, Status: checkOK, Detail: "no cursor (sweeper never ran here)"},
+				checkResult{Name: chk.name, Status: checkOK, Detail: "no cursor (sweeper never ran here)"},
 			)
 
 			continue
@@ -242,7 +242,7 @@ func doctorWatermarkLiveness(ctx context.Context, store queue.Store) []checkResu
 
 		if lag := head - seq; lag > 0 {
 			results = append(results, checkResult{
-				Name:   c.name,
+				Name:   chk.name,
 				Status: checkWarn,
 				Detail: fmt.Sprintf(
 					"%d fact(s) behind the journal head — the sweeper is not running (inspect/rewind: tq watermarks show)",
@@ -252,7 +252,7 @@ func doctorWatermarkLiveness(ctx context.Context, store queue.Store) []checkResu
 		} else {
 			results = append(
 				results,
-				checkResult{Name: c.name, Status: checkOK, Detail: fmt.Sprintf("at head (#%d)", seq)},
+				checkResult{Name: chk.name, Status: checkOK, Detail: fmt.Sprintf("at head (#%d)", seq)},
 			)
 		}
 	}

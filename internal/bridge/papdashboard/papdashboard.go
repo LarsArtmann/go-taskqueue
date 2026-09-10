@@ -262,19 +262,19 @@ func (b *Bridge) drain(ctx context.Context, watermark, persisted *int64) {
 			return
 		}
 
-		for _, f := range facts {
-			if err := b.forward(ctx, f); err != nil {
+		for _, fact := range facts {
+			if err := b.forward(ctx, fact); err != nil {
 				if ctx.Err() != nil {
 					return
 				}
 
 				b.log.Error("papdashboard bridge forward failed; will retry",
-					"seq", f.Seq, "type", f.Type, "err", err)
+					"seq", fact.Seq, "type", fact.Type, "err", err)
 
 				return
 			}
 
-			*watermark = f.Seq
+			*watermark = fact.Seq
 		}
 
 		// Batch end: checkpoint AFTER the last accepted fact — never before,
@@ -315,27 +315,27 @@ type startDecision struct {
 // aborts cleanly.
 func (b *Bridge) startWatermark(ctx context.Context) (startDecision, error) {
 	if b.cfg.FromSeq != nil {
-		d := startDecision{start: *b.cfg.FromSeq, branch: "--from-seq override"}
+		decision := startDecision{start: *b.cfg.FromSeq, branch: "--from-seq override"}
 		if b.checkpoints != nil {
-			p, _, err := b.checkpoints.Watermark(ctx, b.consumerKey())
+			seq, _, err := b.checkpoints.Watermark(ctx, b.consumerKey())
 			if err != nil {
 				return startDecision{}, fmt.Errorf("read persisted watermark: %w", err)
 			}
 
-			d.persisted = p
+			decision.persisted = seq
 		}
 
-		return d, nil
+		return decision, nil
 	}
 
 	if b.checkpoints != nil {
-		p, exists, err := b.checkpoints.Watermark(ctx, b.consumerKey())
+		seq, exists, err := b.checkpoints.Watermark(ctx, b.consumerKey())
 		if err != nil {
 			return startDecision{}, fmt.Errorf("read persisted watermark: %w", err)
 		}
 
 		if exists {
-			return startDecision{start: p, persisted: p, branch: "resumed from checkpoint"}, nil
+			return startDecision{start: seq, persisted: seq, branch: "resumed from checkpoint"}, nil
 		}
 	}
 
@@ -355,16 +355,16 @@ func (b *Bridge) startWatermark(ctx context.Context) (startDecision, error) {
 // task that ever dead-lettered — derived from the task's own fact trail,
 // not process memory, so a restart cannot lose the correlation (a resolve
 // for an alert PapDashboard never held lands as a logged 4xx).
-func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
-	if err := b.trackBudget(ctx, f); err != nil {
+func (b *Bridge) forward(ctx context.Context, fact journal.Fact) error {
+	if err := b.trackBudget(ctx, fact); err != nil {
 		return err
 	}
 
-	switch f.Type {
+	switch fact.Type {
 	case journal.DeadLettered:
-		t, err := b.store.Get(ctx, task.ID(f.TaskID))
+		t, err := b.store.Get(ctx, task.ID(fact.TaskID))
 		if err != nil {
-			return fmt.Errorf("load dead task %s: %w", f.TaskID, err)
+			return fmt.Errorf("load dead task %s: %w", fact.TaskID, err)
 		}
 
 		title := alertTitle(t)
@@ -373,7 +373,7 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 			"severity": b.cfg.Severity,
 			"title":    title,
 			"body": fmt.Sprintf("Task %s (%s/%s) exhausted %d attempts. Last error: %s",
-				t.ID, t.Project, t.Type, t.Attempts, firstLine(f.Error)),
+				t.ID, t.Project, t.Type, t.Attempts, firstLine(fact.Error)),
 			"sourceApp": b.cfg.SourceApp,
 			"metadata": map[string]string{
 				"taskType": t.Type,
@@ -383,16 +383,16 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 		if err := b.post(
 			ctx,
 			"alert.triggered",
-			idempotencyKey("dlq", f.Seq),
+			idempotencyKey("dlq", fact.Seq),
 			t.ID.String(),
-			f.Seq,
+			fact.Seq,
 			payload,
 		); err != nil {
 			return err
 		}
 
 	case journal.Completed:
-		deadLettered, err := b.everDeadLettered(ctx, f.TaskID)
+		deadLettered, err := b.everDeadLettered(ctx, fact.TaskID)
 		if err != nil {
 			return err
 		}
@@ -401,9 +401,9 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 			return nil
 		}
 
-		t, err := b.store.Get(ctx, task.ID(f.TaskID))
+		t, err := b.store.Get(ctx, task.ID(fact.TaskID))
 		if err != nil {
-			return fmt.Errorf("load completed task %s: %w", f.TaskID, err)
+			return fmt.Errorf("load completed task %s: %w", fact.TaskID, err)
 		}
 
 		payload := map[string]any{
@@ -415,9 +415,9 @@ func (b *Bridge) forward(ctx context.Context, f journal.Fact) error {
 		if err := b.post(
 			ctx,
 			"alert.resolved",
-			idempotencyKey("resolve", f.Seq),
+			idempotencyKey("resolve", fact.Seq),
 			t.ID.String(),
-			f.Seq,
+			fact.Seq,
 			payload,
 		); err != nil {
 			return err
@@ -515,12 +515,12 @@ func budgetAggregate(day string) string { return "agent-pool-budget-" + day }
 
 // trackBudget maintains the daily spend projection and fires the at-cap
 // alert exactly once per day (and resolves yesterday's on rollover).
-func (b *Bridge) trackBudget(ctx context.Context, f journal.Fact) error {
+func (b *Bridge) trackBudget(ctx context.Context, fact journal.Fact) error {
 	if b.cfg.DailyBudget <= 0 {
 		return nil
 	}
 
-	day := f.Time.Format("2006-01-02")
+	day := fact.Time.Format("2006-01-02")
 	if day != b.budgetDay {
 		if b.budgetAlerted {
 			// The window rolled over: yesterday's cap no longer applies, so
@@ -531,8 +531,8 @@ func (b *Bridge) trackBudget(ctx context.Context, f journal.Fact) error {
 				"sourceApp":  b.cfg.SourceApp,
 				"resolvedBy": b.cfg.SourceApp + "-bridge",
 			}
-			if err := b.post(ctx, "alert.resolved", idempotencyKey("budget-resolve", f.Seq),
-				budgetAggregate(b.budgetDay), f.Seq, payload); err != nil {
+			if err := b.post(ctx, "alert.resolved", idempotencyKey("budget-resolve", fact.Seq),
+				budgetAggregate(b.budgetDay), fact.Seq, payload); err != nil {
 				return err
 			}
 		}
@@ -540,7 +540,7 @@ func (b *Bridge) trackBudget(ctx context.Context, f journal.Fact) error {
 		b.budgetDay, b.budgetSpent, b.budgetAlerted = day, 0, false
 	}
 
-	if f.Type != journal.Enqueued {
+	if fact.Type != journal.Enqueued {
 		return nil
 	}
 
@@ -562,8 +562,8 @@ func (b *Bridge) trackBudget(ctx context.Context, f journal.Fact) error {
 				"day":   b.budgetDay,
 			},
 		}
-		if err := b.post(ctx, "alert.triggered", idempotencyKey("budget", f.Seq),
-			budgetAggregate(b.budgetDay), f.Seq, payload); err != nil {
+		if err := b.post(ctx, "alert.triggered", idempotencyKey("budget", fact.Seq),
+			budgetAggregate(b.budgetDay), fact.Seq, payload); err != nil {
 			return err
 		}
 
@@ -573,14 +573,14 @@ func (b *Bridge) trackBudget(ctx context.Context, f journal.Fact) error {
 	return nil
 }
 
-func firstLine(s string) string {
-	for i, r := range s {
+func firstLine(line string) string {
+	for i, r := range line {
 		if r == '\n' {
-			return s[:i]
+			return line[:i]
 		}
 	}
 
-	return s
+	return line
 }
 
 func idempotencyKey(kind string, seq int64) string {

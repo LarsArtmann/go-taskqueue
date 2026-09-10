@@ -160,13 +160,13 @@ func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult
 		return err
 	}
 
-	for _, it := range items {
-		t, tracked := byDedup[it.Key]
+	for _, item := range items {
+		t, tracked := byDedup[item.Key]
 		switch {
-		case !it.Done && tracked && t.Status == task.Completed:
-			d := Drift{Kind: DriftStaleOpen, Item: it, TaskID: t.ID, TaskStatus: t.Status}
+		case !item.Done && tracked && t.Status == task.Completed:
+			d := Drift{Kind: DriftStaleOpen, Item: item, TaskID: t.ID, TaskStatus: t.Status}
 			res.StaleOpen = append(res.StaleOpen, d)
-			catchupKey := CatchupKeyPrefix + it.Key
+			catchupKey := CatchupKeyPrefix + item.Key
 
 			if h.cfg.DryRun {
 				continue
@@ -176,16 +176,16 @@ func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult
 				continue // a previous audit already armed this repair
 			}
 
-			id, err := h.enqueueCatchup(ctx, it, catchupKey)
+			id, err := h.enqueueCatchup(ctx, item, catchupKey)
 			if err != nil {
 				continue
 			}
 
-			res.Enqueued = append(res.Enqueued, Enqueued{Item: it, TaskID: id, Fresh: true})
-		case it.Done && tracked && t.Status != task.Completed:
+			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, TaskID: id, Fresh: true})
+		case item.Done && tracked && t.Status != task.Completed:
 			res.StaleDone = append(
 				res.StaleDone,
-				Drift{Kind: DriftStaleDone, Item: it, TaskID: t.ID, TaskStatus: t.Status},
+				Drift{Kind: DriftStaleDone, Item: item, TaskID: t.ID, TaskStatus: t.Status},
 			)
 		}
 	}
@@ -194,8 +194,8 @@ func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult
 }
 
 // enqueueCatchup arms the loop-closing agent task for one drifted item.
-func (h *Harvester) enqueueCatchup(ctx context.Context, it Item, catchupKey string) (task.ID, error) {
-	payload, err := h.buildPayload(it, DefaultCatchupPrompt, catchupKey)
+func (h *Harvester) enqueueCatchup(ctx context.Context, item Item, catchupKey string) (task.ID, error) {
+	payload, err := h.buildPayload(item, DefaultCatchupPrompt, catchupKey)
 	if err != nil {
 		return "", err
 	}
@@ -206,7 +206,7 @@ func (h *Harvester) enqueueCatchup(ctx context.Context, it Item, catchupKey stri
 	}
 
 	t, err := h.q.Enqueue(ctx, task.New{
-		Project:     it.RepoName,
+		Project:     item.RepoName,
 		Type:        h.cfg.Type,
 		Payload:     payload,
 		Priority:    h.cfg.Priority,

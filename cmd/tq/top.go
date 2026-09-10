@@ -92,14 +92,14 @@ func applyRunDurations(
 ) map[string]time.Time {
 	claimedAt := map[string]time.Time{}
 
-	for _, f := range facts {
-		switch f.Type {
+	for _, fact := range facts {
+		switch fact.Type {
 		case journal.Claimed:
-			claimedAt[f.TaskID] = f.Time
+			claimedAt[fact.TaskID] = fact.Time
 		case journal.Completed:
-			if start, ok := claimedAt[f.TaskID]; ok {
-				v := view(taskProject[f.TaskID])
-				v.LastDur, v.HasLast = f.Time.Sub(start), true
+			if start, ok := claimedAt[fact.TaskID]; ok {
+				v := view(taskProject[fact.TaskID])
+				v.LastDur, v.HasLast = fact.Time.Sub(start), true
 			}
 		}
 	}
@@ -172,19 +172,19 @@ func cmdTop(args []string) error {
 		return err
 	}
 
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	for {
-		tasks, err := s.List(ctx, queue.Filter{})
+		tasks, err := store.List(ctx, queue.Filter{})
 		if err != nil {
 			return err
 		}
 
-		facts, err := s.LastFacts(ctx, topFactLimit)
+		facts, err := store.LastFacts(ctx, topFactLimit)
 		if err != nil {
 			return err
 		}

@@ -136,12 +136,12 @@ func reorderBootstrapArgs(fs *flag.FlagSet, args []string) []string {
 }
 
 func cmdBootstrap(args []string) error {
-	o, err := parseBootstrapArgs(args)
+	opts, err := parseBootstrapArgs(args)
 	if err != nil {
 		return err
 	}
 
-	paths, err := o.resolveRepos()
+	paths, err := opts.resolveRepos()
 	if err != nil {
 		return err
 	}
@@ -149,122 +149,122 @@ func cmdBootstrap(args []string) error {
 	// The delegated pool gets absolute paths: with --repos set, harvest
 	// treats repo specs as directories relative to its CWD, so bare names
 	// would silently harvest nothing.
-	o.repos = paths
+	opts.repos = paths
 
-	report, err := o.ensureRepos(paths)
+	report, err := opts.ensureRepos(paths)
 	if err != nil {
 		return err
 	}
 
 	fmt.Print(report)
 
-	if o.install {
-		return o.installService()
+	if opts.install {
+		return opts.installService()
 	}
 
-	if o.noRun {
+	if opts.noRun {
 		fmt.Fprintf(
 			os.Stderr,
 			"tq: bootstrap: repo state ensured — start the pool later with:\n  tq %s\n",
-			strings.Join(composePoolArgs(o), " "),
+			strings.Join(composePoolArgs(opts), " "),
 		)
 
 		return nil
 	}
 
-	if o.dryRun {
+	if opts.dryRun {
 		fmt.Fprintf(
 			os.Stderr,
 			"tq: bootstrap: dry-run — nothing written, pool not started\nwould run: tq %s\n",
-			strings.Join(composePoolArgs(o), " "),
+			strings.Join(composePoolArgs(opts), " "),
 		)
 
 		return nil
 	}
 
-	return cmdAgentPool(composePoolArgs(o))
+	return cmdAgentPool(composePoolArgs(opts))
 }
 
 func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 	fs := flag.NewFlagSet("bootstrap", flag.ExitOnError)
 
-	o := bootstrapOptions{}
+	opts := bootstrapOptions{}
 	reposFlag := fs.String("repos", "", "comma-separated additional repos (positional args also work)")
 	fs.StringVar(
-		&o.projectsDir,
+		&opts.projectsDir,
 		"projects-dir",
 		defaultProjectsDir(),
 		"dir containing repos (default $TQ_PROJECTS_DIR or ~/projects)",
 	)
-	fs.IntVar(&o.agents, "agents", 1, "parallel agents (also the machine-wide agent cap)")
+	fs.IntVar(&opts.agents, "agents", 1, "parallel agents (also the machine-wide agent cap)")
 	fs.StringVar(
-		&o.model,
+		&opts.model,
 		"model",
 		"",
 		"crush model override pinned into payloads and repo configs, 'provider/model' (empty = each repo's crush config default)",
 	)
 	fs.StringVar(
-		&o.reasoning,
+		&opts.reasoning,
 		"reasoning",
 		"xhigh",
 		"reasoning effort for the pinned model: low|medium|high|xhigh (xhigh = max possible)",
 	)
 	verifyFlag := fs.String("verify", "", "per-repo verify override written into .tq-verify: name=cmd,name=cmd")
-	fs.DurationVar(&o.interval, "interval", 5*time.Minute, "harvest cadence")
+	fs.DurationVar(&opts.interval, "interval", 5*time.Minute, "harvest cadence")
 	fs.IntVar(
-		&o.dailyBudget,
+		&opts.dailyBudget,
 		"daily-budget",
 		20,
 		"max agent tasks enqueued per calendar day (cost ceiling; 0 = unlimited)",
 	)
-	fs.IntVar(&o.maxPerTick, "max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per harvest tick")
-	fs.BoolVar(&o.once, "once", false, "one harvest tick, drain, exit (cron/timer-friendly)")
-	fs.BoolVar(&o.dryRun, "dry-run", false, "show the plan without writing anything or starting the pool")
-	fs.BoolVar(&o.install, "install", false, "install the systemd user unit + pool config, then exit (daemon mode)")
+	fs.IntVar(&opts.maxPerTick, "max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per harvest tick")
+	fs.BoolVar(&opts.once, "once", false, "one harvest tick, drain, exit (cron/timer-friendly)")
+	fs.BoolVar(&opts.dryRun, "dry-run", false, "show the plan without writing anything or starting the pool")
+	fs.BoolVar(&opts.install, "install", false, "install the systemd user unit + pool config, then exit (daemon mode)")
 	fs.BoolVar(
-		&o.noRun,
+		&opts.noRun,
 		"no-run",
 		false,
 		"ensure repo state, print the pool command, and exit without starting the pool",
 	)
 	fs.BoolVar(
-		&o.allowDirty,
+		&opts.allowDirty,
 		"allow-dirty",
 		false,
 		"let agents run in repos with uncommitted changes (default: refuse)",
 	)
-	fs.StringVar(&o.repoTimeout, "repo-timeout", "", "per-repo agent-task timeout ladder: name=duration,...")
+	fs.StringVar(&opts.repoTimeout, "repo-timeout", "", "per-repo agent-task timeout ladder: name=duration,...")
 	fs.StringVar(
-		&o.repoInterval,
+		&opts.repoInterval,
 		"repo-interval",
 		"",
 		"per-repo minimum gap between new enqueues: name=duration,comma-separated (e.g. big-repo=1h,tiny=5m)",
 	)
 	fs.DurationVar(
-		&o.dlqBackoff,
+		&opts.dlqBackoff,
 		"dlq-backoff",
 		0,
 		"pause harvesting a repo whose recent work is all dead-lettered for this long (0 = off, e.g. 30m)",
 	)
 	fs.StringVar(
-		&o.logDir,
+		&opts.logDir,
 		"log-dir",
 		defaultLogDir(),
 		"write full agent+verify output sidecars to DIR/<task-id>.log (empty = off)",
 	)
 	fs.DurationVar(
-		&o.logDirMaxAge,
+		&opts.logDirMaxAge,
 		"log-dir-max-age",
 		0,
 		"sweep sidecar logs older than this age from --log-dir each tick (e.g. 168h = 7d; 0 = keep forever)",
 	)
 	fs.Int64Var(
-		&o.logDirMaxBytes,
+		&opts.logDirMaxBytes,
 		"log-dir-max-bytes",
 		0,
 		"cap the total size of sidecar logs in --log-dir, oldest deleted first (e.g. 5368709120 = 5GiB; 0 = uncapped)",
 	)
-	fs.StringVar(&o.db, "db", "", "task DB (default $TQ_DB or ./tasks.db)")
+	fs.StringVar(&opts.db, "db", "", "task DB (default $TQ_DB or ./tasks.db)")
 	noYolo := fs.Bool("no-yolo", false, "disable autonomy (agents will stall on permission prompts)")
 	noReview := fs.Bool("no-review", false, "disable the second-agent review pass")
 	noReviewAutofix := fs.Bool(
@@ -280,26 +280,26 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 	}
 
 	if err := fs.Parse(reorderBootstrapArgs(fs, args)); err != nil {
-		return o, err
+		return opts, err
 	}
 
-	o.repos = append(splitRepos(*reposFlag), fs.Args()...)
-	o.verify = parseVerifySpec(*verifyFlag)
-	o.yolo, o.review, o.reviewAutofix, o.exclusive = !*noYolo, !*noReview, !*noReviewAutofix, !*noExclusive
+	opts.repos = append(splitRepos(*reposFlag), fs.Args()...)
+	opts.verify = parseVerifySpec(*verifyFlag)
+	opts.yolo, opts.review, opts.reviewAutofix, opts.exclusive = !*noYolo, !*noReview, !*noReviewAutofix, !*noExclusive
 
-	if o.agents < 1 {
-		o.agents = 1
+	if opts.agents < 1 {
+		opts.agents = 1
 	}
 
-	if o.model != "" {
-		o.reasoning = strings.ToLower(strings.TrimSpace(o.reasoning))
+	if opts.model != "" {
+		opts.reasoning = strings.ToLower(strings.TrimSpace(opts.reasoning))
 	}
 
-	if err := o.validate(); err != nil {
-		return o, err
+	if err := opts.validate(); err != nil {
+		return opts, err
 	}
 
-	return o, nil
+	return opts, nil
 }
 
 const usageBootstrap = `tq bootstrap: one command from zero to a running agent pool.
@@ -596,14 +596,14 @@ func stripManagedBlock(lines []string) []string {
 
 	inBlock := false
 
-	for _, l := range lines {
+	for _, line := range lines {
 		switch {
-		case strings.TrimSpace(l) == tqManagedStart:
+		case strings.TrimSpace(line) == tqManagedStart:
 			inBlock = true
-		case strings.TrimSpace(l) == tqManagedEnd:
+		case strings.TrimSpace(line) == tqManagedEnd:
 			inBlock = false
 		case !inBlock:
-			out = append(out, l)
+			out = append(out, line)
 		}
 	}
 

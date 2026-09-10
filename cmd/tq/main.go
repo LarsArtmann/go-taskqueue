@@ -218,7 +218,7 @@ func cmdEnqueue(args []string) error {
 		payloadJSON = raw
 	}
 
-	n := task.New{
+	newTask := task.New{
 		Project:     *project,
 		Type:        *taskType,
 		Payload:     payloadJSON,
@@ -229,14 +229,14 @@ func cmdEnqueue(args []string) error {
 
 	for d := range strings.SplitSeq(*deps, ",") {
 		if d = strings.TrimSpace(d); d != "" {
-			n.Deps = append(n.Deps, task.ID(d))
+			newTask.Deps = append(newTask.Deps, task.ID(d))
 		}
 	}
 
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
 
-	t, err := queue.New(s).Enqueue(context.Background(), n)
+	t, err := queue.New(s).Enqueue(context.Background(), newTask)
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,7 @@ func cmdWorker(args []string) error {
 		opts = append(opts, sqlite.WithProjectExclusivity())
 	}
 
-	s := mustOpenDBOpts(resolveDB(*db), opts...)
+	store := mustOpenDBOpts(resolveDB(*db), opts...)
 
 	// The "sh" executor with empty template runs the payload itself as the
 	// shell line ({"cmd":...} JSON is unwrapped). This keeps the CLI path
@@ -305,7 +305,7 @@ func cmdWorker(args []string) error {
 		registerAgentExecutors(reg, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
 	}
 
-	pool := worker.New(s, worker.Config{
+	pool := worker.New(store, worker.Config{
 		Owner:        *owner,
 		Concurrency:  *conc,
 		PollInterval: *poll,
@@ -320,10 +320,10 @@ func cmdWorker(args []string) error {
 	// everything has stopped, so bridge checkpoints always land.
 	g := runactor.New(context.Background())
 	g.InterruptOn(os.Interrupt, syscall.SIGTERM)
-	g.OnShutdown(func() error { return s.Close() })
+	g.OnShutdown(func() error { return store.Close() })
 
 	if *alertURL != "" {
-		bridge := papdashboard.New(s, s, papdashboard.Config{
+		bridge := papdashboard.New(store, store, papdashboard.Config{
 			Endpoint:     *alertURL,
 			APIKey:       *alertKey,
 			PollInterval: *alertPoll,
@@ -331,7 +331,7 @@ func cmdWorker(args []string) error {
 
 		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
 
-		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %s\n", *alertURL)
+		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %store\n", *alertURL)
 	}
 
 	if *once {
@@ -342,14 +342,14 @@ func cmdWorker(args []string) error {
 		// OTHER pools, or gated by a future NotBefore, is left for them /
 		// for the next --once run.
 		g.Go("once-drain", func(ctx context.Context) error {
-			q := queue.New(s)
+			queue := queue.New(store)
 
 			for {
 				select {
 				case <-ctx.Done():
 					return nil
 				case <-time.After(*poll):
-					if pool.InFlight() == 0 && !hasClaimableWork(ctx, q, pool.Owner(), *poll) {
+					if pool.InFlight() == 0 && !hasClaimableWork(ctx, queue, pool.Owner(), *poll) {
 						pool.Stop()
 
 						return nil
@@ -539,13 +539,13 @@ func resolveHarvestRepos(cfg *harvest.Config, projectsDir, repos, subset string)
 
 // printHarvestLines prints one line per enqueued and skipped backlog item.
 func printHarvestLines(res harvest.Result, dryRun bool) {
-	for _, en := range res.Enqueued {
-		id := en.TaskID.String()
+	for _, enqueued := range res.Enqueued {
+		id := enqueued.TaskID.String()
 		if dryRun {
 			id = "(dry-run)"
 		}
 
-		fmt.Printf("ENQUEUED  %-24s %s  %s\n", en.Item.RepoName, en.Item.Text, id)
+		fmt.Printf("ENQUEUED  %-24s %s  %s\n", enqueued.Item.RepoName, enqueued.Item.Text, id)
 	}
 
 	for _, sk := range res.Skipped {
@@ -609,28 +609,28 @@ func pruneItemText(it harvest.Item, why harvest.PruneWhy) string {
 // agents that do the work, verify it, and close the loop in the todo file.
 // Ctrl-C drains gracefully, like tq worker.
 func cmdAgentPool(args []string) error {
-	o, err := parseAgentPoolOptions(args)
+	poolOpts, err := parseAgentPoolOptions(args)
 	if err != nil {
 		return err
 	}
 
-	cfg, err := harvestConfigFromOptions(o)
+	cfg, err := harvestConfigFromOptions(poolOpts)
 	if err != nil {
 		return err
 	}
 
-	var opts []sqlite.StoreOption
-	if o.exclusive {
-		opts = append(opts, sqlite.WithProjectExclusivity())
+	var storeOpts []sqlite.StoreOption
+	if poolOpts.exclusive {
+		storeOpts = append(storeOpts, sqlite.WithProjectExclusivity())
 	}
 
-	s := mustOpenDBOpts(resolveDB(o.db), opts...)
-	defer s.Close()
+	store := mustOpenDBOpts(resolveDB(poolOpts.db), storeOpts...)
+	defer store.Close()
 
-	q := queue.New(s)
+	taskQueue := queue.New(store)
 
-	agentExec := &executor.AgentExecutor{ProjectsDir: o.projectsDir, Yolo: o.yolo, MaxConcurrent: o.maxAgents}
-	if o.closeout {
+	agentExec := &executor.AgentExecutor{ProjectsDir: poolOpts.projectsDir, Yolo: poolOpts.yolo, MaxConcurrent: poolOpts.maxAgents}
+	if poolOpts.closeout {
 		agentExec.CloseoutPrompt = executor.DefaultCloseoutPrompt
 	}
 
@@ -638,7 +638,7 @@ func cmdAgentPool(args []string) error {
 	reg.Register("sh", executor.NewCommandExecutor(""))
 	registerAgentExecutors(reg, agentExec)
 
-	printAgentPoolBanner(o)
+	printAgentPoolBanner(poolOpts)
 
 	// One signal story (runactor): interrupt cancels the pool loop, the
 	// tick actor and the bridge; in-flight agent tasks finish under their
@@ -646,51 +646,51 @@ func cmdAgentPool(args []string) error {
 	// the store AFTER everything stopped, so bridge checkpoints always land.
 	g := runactor.New(context.Background())
 	g.InterruptOn(os.Interrupt, syscall.SIGTERM)
-	g.OnShutdown(func() error { return s.Close() })
+	g.OnShutdown(func() error { return store.Close() })
 
 	ctx := g.Ctx()
 
-	if o.alertURL != "" {
-		bridge := papdashboard.New(s, s, papdashboard.Config{
-			Endpoint:     o.alertURL,
-			APIKey:       o.alertKey,
-			PollInterval: o.alertPoll,
-			// Mirror the pool's cap so the day it bites, an alert fires (and
+	if poolOpts.alertURL != "" {
+		bridge := papdashboard.New(store, store, papdashboard.Config{
+			Endpoint:     poolOpts.alertURL,
+			APIKey:       poolOpts.alertKey,
+			PollInterval: poolOpts.alertPoll,
+			// Mirror the pool'store cap so the day it bites, an alert fires (and
 			// resolves itself when the window rolls over).
-			DailyBudget: o.dailyBudget,
+			DailyBudget: poolOpts.dailyBudget,
 		})
 
 		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
 
-		fmt.Fprintf(os.Stderr, "tq: agent-pool: forwarding dead letters + budget exhaustion to %s\n", o.alertURL)
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: forwarding dead letters + budget exhaustion to %store\n", poolOpts.alertURL)
 	}
 
 	log := slog.Default()
 	cfg.Log = log
-	guard := budget.Guard{DailyCap: o.dailyBudget, BudgetCmd: o.budgetCmd}
-	h := harvest.New(q, cfg)
+	guard := budget.Guard{DailyCap: poolOpts.dailyBudget, BudgetCmd: poolOpts.budgetCmd}
+	harvester := harvest.New(taskQueue, cfg)
 
 	// Startup zombie sweep, SYNCHRONOUSLY before any actor starts: the
-	// worker's first claim would otherwise race the sweep and turn
+	// worker'store first claim would otherwise race the sweep and turn
 	// cancellable zombies into running tasks (observed in the e2e). One
 	// pass, then never again; --prune-stale=false disables it for operators
 	// who want relaunches to inherit everything.
-	if o.pruneStale {
-		res, err := h.PruneStale(ctx)
+	if poolOpts.pruneStale {
+		res, err := harvester.PruneStale(ctx)
 		if err != nil {
 			log.Warn("startup prune-stale failed", "err", err)
 		} else {
-			for _, c := range res.Cancelled {
+			for _, cancelled := range res.Cancelled {
 				log.Warn(
 					"startup prune: cancelled stale task",
 					"repo",
-					c.Item.RepoName,
+					cancelled.Item.RepoName,
 					"why",
-					c.Why,
+					cancelled.Why,
 					"item",
-					pruneItemText(c.Item, c.Why),
+					pruneItemText(cancelled.Item, cancelled.Why),
 					"task",
-					c.TaskID.String(),
+					cancelled.TaskID.String(),
 				)
 			}
 
@@ -706,23 +706,23 @@ func cmdAgentPool(args []string) error {
 	}
 
 	var cqaBridge *cqa.Bridge
-	if o.cqaURL != "" {
+	if poolOpts.cqaURL != "" {
 		cqaBridge = cqa.New(cqa.Config{
-			BaseURL:     o.cqaURL,
-			Token:       o.cqaToken,
-			OwnerID:     o.cqaOwner,
-			ProjectsDir: o.projectsDir,
+			BaseURL:     poolOpts.cqaURL,
+			Token:       poolOpts.cqaToken,
+			OwnerID:     poolOpts.cqaOwner,
+			ProjectsDir: poolOpts.projectsDir,
 		})
 	}
 
 	var sweeper *review.Sweeper
 
-	if o.doReview {
+	if poolOpts.doReview {
 		var err error
 
-		sweeper, err = review.NewSweeper(ctx, s, review.SweeperConfig{
-			Model:   o.model,
-			Autofix: o.reviewAutofix,
+		sweeper, err = review.NewSweeper(ctx, store, review.SweeperConfig{
+			Model:   poolOpts.model,
+			Autofix: poolOpts.reviewAutofix,
 			Log:     log,
 		})
 		if err != nil {
@@ -732,15 +732,15 @@ func cmdAgentPool(args []string) error {
 
 	var statusSweeper *status.Sweeper
 
-	if o.statusEvery > 0 {
+	if poolOpts.statusEvery > 0 {
 		var err error
 
-		statusSweeper, err = status.NewSweeper(ctx, s, status.SweeperConfig{
-			Every:       o.statusEvery,
-			Model:       o.model,
+		statusSweeper, err = status.NewSweeper(ctx, store, status.SweeperConfig{
+			Every:       poolOpts.statusEvery,
+			Model:       poolOpts.model,
 			Log:         log,
-			AllowDirty:  o.allowDirty,
-			TaskTimeout: o.timeout,
+			AllowDirty:  poolOpts.allowDirty,
+			TaskTimeout: poolOpts.timeout,
 		})
 		if err != nil {
 			return fmt.Errorf("status sweeper: %w", err)
@@ -753,7 +753,7 @@ func cmdAgentPool(args []string) error {
 	// earlier check passed, and the documented cap is "EVERY enqueue"
 	// (SECURITY.md). Returns false when the guard refused.
 	mintPass := func(name string, mint func()) bool {
-		if ok, reason := guard.Check(ctx, s); !ok {
+		if ok, reason := guard.Check(ctx, store); !ok {
 			log.Warn("budget: skipping "+name, "reason", reason)
 
 			return false
@@ -766,26 +766,26 @@ func cmdAgentPool(args []string) error {
 
 	runTick := func() {
 		// Sidecar retention: sweep aged logs before new work so a
-		// long-running pool's output directory cannot grow forever.
-		if o.logDir != "" && o.logDirMaxAge > 0 {
-			if removed, err := executor.SweepSidecars(o.logDir, o.logDirMaxAge); err != nil {
+		// long-running pool'store output directory cannot grow forever.
+		if poolOpts.logDir != "" && poolOpts.logDirMaxAge > 0 {
+			if removed, err := executor.SweepSidecars(poolOpts.logDir, poolOpts.logDirMaxAge); err != nil {
 				log.Warn("sidecar sweep failed", "err", err)
 			} else if removed > 0 {
-				log.Info("sidecar sweep", "removed", removed, "dir", o.logDir)
+				log.Info("sidecar sweep", "removed", removed, "dir", poolOpts.logDir)
 			}
 		}
 
 		// Byte-budget retention: age alone cannot bound a high-traffic dir.
-		if o.logDir != "" && o.logDirMaxBytes > 0 {
-			if removed, err := executor.SweepSidecarsByBytes(o.logDir, o.logDirMaxBytes); err != nil {
+		if poolOpts.logDir != "" && poolOpts.logDirMaxBytes > 0 {
+			if removed, err := executor.SweepSidecarsByBytes(poolOpts.logDir, poolOpts.logDirMaxBytes); err != nil {
 				log.Warn("sidecar byte sweep failed", "err", err)
 			} else if removed > 0 {
-				log.Info("sidecar byte sweep", "removed", removed, "dir", o.logDir)
+				log.Info("sidecar byte sweep", "removed", removed, "dir", poolOpts.logDir)
 			}
 		}
 
 		if !mintPass("harvest tick", func() {
-			res, err := h.Run(ctx)
+			res, err := harvester.Run(ctx)
 			if err != nil {
 				log.Error("harvest failed", "err", err)
 			} else {
@@ -859,7 +859,7 @@ func cmdAgentPool(args []string) error {
 			fresh := 0
 
 			for _, ft := range fixTasks {
-				got, err := q.Enqueue(ctx, ft.Template)
+				got, err := taskQueue.Enqueue(ctx, ft.Template)
 				if err != nil {
 					log.Error("cqa enqueue failed", "key", ft.Template.DedupKey, "err", err)
 
@@ -897,9 +897,9 @@ func cmdAgentPool(args []string) error {
 	// --interval. Additive by contract: the ticker below stays the fallback
 	// heartbeat and a nil trigger channel blocks its select case forever,
 	// so a dead watch stream degrades to interval-only harvesting.
-	if o.discoveryAddr != "" && !o.once {
+	if poolOpts.discoveryAddr != "" && !poolOpts.once {
 		watcher := harvest.NewWatcher(harvest.WatchConfig{
-			Addr:          o.discoveryAddr,
+			Addr:          poolOpts.discoveryAddr,
 			ProjectsDir:   cfg.ProjectsDir,
 			Repos:         cfg.Repos,
 			RepoIntervals: cfg.RepoIntervals,
@@ -911,16 +911,16 @@ func cmdAgentPool(args []string) error {
 
 		fmt.Fprintf(
 			os.Stderr,
-			"tq: agent-pool: watch-driven harvest triggers from %s (interval %s stays the fallback)\n",
-			o.discoveryAddr,
-			o.interval,
+			"tq: agent-pool: watch-driven harvest triggers from %store (interval %store stays the fallback)\n",
+			poolOpts.discoveryAddr,
+			poolOpts.interval,
 		)
 	}
 
 	g.Go("tick", func(ctx context.Context) error {
 		runTick()
 
-		if o.once {
+		if poolOpts.once {
 			// The once-drain actor decides when the group ends; this actor
 			// must not return before that (a clean return would end it).
 			<-ctx.Done()
@@ -928,7 +928,7 @@ func cmdAgentPool(args []string) error {
 			return nil
 		}
 
-		ticker := time.NewTicker(o.interval)
+		ticker := time.NewTicker(poolOpts.interval)
 		defer ticker.Stop()
 
 		for {
@@ -943,16 +943,16 @@ func cmdAgentPool(args []string) error {
 		}
 	})
 
-	pool := worker.New(s, worker.Config{
-		Owner:        o.owner,
-		Concurrency:  o.conc,
-		PollInterval: o.poll,
-		Lease:        o.lease,
-		TaskTimeout:  o.timeout,
+	pool := worker.New(store, worker.Config{
+		Owner:        poolOpts.owner,
+		Concurrency:  poolOpts.conc,
+		PollInterval: poolOpts.poll,
+		Lease:        poolOpts.lease,
+		TaskTimeout:  poolOpts.timeout,
 		Executors:    reg,
 	}, log)
 
-	if o.once {
+	if poolOpts.once {
 		// Timer-friendly mode: as soon as this pool has nothing in flight
 		// and no claimable work left, end the group — Start only returns
 		// once ctx is done, so Stop alone would leave the process hanging
@@ -963,7 +963,7 @@ func cmdAgentPool(args []string) error {
 				select {
 				case <-ctx.Done():
 					return nil
-				case <-time.After(o.poll):
+				case <-time.After(poolOpts.poll):
 					// Sweep before the drain check so reviews and status reports
 					// of work this drain just completed run in the SAME --once
 					// process (idempotent; dedup keeps repeat sweeps free).
@@ -981,7 +981,7 @@ func cmdAgentPool(args []string) error {
 						}
 					})
 
-					if pool.InFlight() == 0 && !hasClaimableWork(ctx, q, pool.Owner(), o.poll) {
+					if pool.InFlight() == 0 && !hasClaimableWork(ctx, taskQueue, pool.Owner(), poolOpts.poll) {
 						pool.Stop()
 
 						return nil
@@ -1037,16 +1037,16 @@ type skipClass struct {
 func groupedSkips(skips []harvest.Skipped) map[string]skipClass {
 	groups := make(map[string]skipClass)
 
-	for _, sk := range skips {
-		class := sk.Reason
-		if before, _, ok := strings.Cut(sk.Reason, ":"); ok {
+	for _, skip := range skips {
+		class := skip.Reason
+		if before, _, ok := strings.Cut(skip.Reason, ":"); ok {
 			class = before
 		}
 
 		g := groups[class]
 		g.count++
 		if g.example == "" {
-			g.example = truncateSkipReason(sk.Reason)
+			g.example = truncateSkipReason(skip.Reason)
 		}
 		groups[class] = g
 	}
@@ -1074,7 +1074,7 @@ func cmdStats(args []string) error {
 	dailyBudget := fs.Int(
 		"daily-budget",
 		0,
-		"agent pool daily enqueue cap to compare today's spend against (0 = spend shown without a cap)",
+		"agent pool daily enqueue cap to compare today'store spend against (0 = spend shown without a cap)",
 	)
 	asJSON := fs.Bool("json", false, "JSON output of the stats aggregate (counts, budget, consumer lag)")
 
@@ -1083,33 +1083,33 @@ func cmdStats(args []string) error {
 		return err
 	}
 
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
 
 	ctx := context.Background()
 
-	f := queue.Filter{}
+	filter := queue.Filter{}
 	if *project != "" {
-		f.Project = project
+		filter.Project = project
 	}
 
 	if *status != "" {
 		st := task.Status(*status)
-		f.Status = &st
+		filter.Status = &st
 	}
 
-	tasks, err := s.List(ctx, f)
+	tasks, err := store.List(ctx, filter)
 	if err != nil {
 		return err
 	}
 
-	head, err := s.HeadSeq(ctx)
+	head, err := store.HeadSeq(ctx)
 	if err != nil {
 		return err
 	}
 
 	byStatus, byProject := tallyStats(tasks)
-	spent := budget.Guard{DailyCap: *dailyBudget}.SpentToday(ctx, s)
+	spent := budget.Guard{DailyCap: *dailyBudget}.SpentToday(ctx, store)
 
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
@@ -1119,14 +1119,14 @@ func cmdStats(args []string) error {
 			ByStatus:    byStatus,
 			ByProject:   byProject,
 			Budget:      budgetView{SpentToday: spent, Cap: *dailyBudget},
-			Lag:         consumerLag(ctx, s),
+			Lag:         consumerLag(ctx, store),
 			JournalHead: head,
 		})
 	}
 
 	printStats(byStatus, byProject, *project == "")
 	printBudgetSpend(spent, *dailyBudget, *project != "")
-	printConsumerLag(s)
+	printConsumerLag(store)
 
 	return nil
 }
@@ -1153,7 +1153,7 @@ type consumerLagEntry struct {
 }
 
 // consumerLag collects the persisted journal-consumer cursors with their lag
-// behind the head (ADR-0009's observability surface) for the JSON payload.
+// behind the head (ADR-0009'store observability surface) for the JSON payload.
 func consumerLag(ctx context.Context, s *sqlite.Store) []consumerLagEntry {
 	entries, err := s.ListWatermarks(ctx)
 	if err != nil || len(entries) == 0 {
@@ -1354,25 +1354,25 @@ func resolveTask(ctx context.Context, s *sqlite.Store, arg string) (task.Task, e
 // "what did the agent actually do" without eyeballing raw JSON. nil for task
 // types without a structured result — the raw facts stay in the output.
 func resultDetail(t task.Task, trail []journal.Fact) any {
-	for _, t0 := range slices.Backward(trail) {
-		if t0.Type != journal.Completed || len(t0.Detail) == 0 {
+	for _, first := range slices.Backward(trail) {
+		if first.Type != journal.Completed || len(first.Detail) == 0 {
 			continue
 		}
 
 		switch t.Type {
 		case executor.TaskTypeAgent:
 			var res executor.AgentResult
-			if json.Unmarshal(t0.Detail, &res) == nil {
+			if json.Unmarshal(first.Detail, &res) == nil {
 				return res
 			}
 		case executor.TaskTypeReview:
 			var res executor.ReviewResult
-			if json.Unmarshal(t0.Detail, &res) == nil {
+			if json.Unmarshal(first.Detail, &res) == nil {
 				return res
 			}
 		case executor.TaskTypeStatus:
 			var res executor.StatusResult
-			if json.Unmarshal(t0.Detail, &res) == nil {
+			if json.Unmarshal(first.Detail, &res) == nil {
 				return res
 			}
 		}
@@ -1388,33 +1388,33 @@ func cmdDLQ(args []string) error {
 	rescue := fs.String("rescue", "", "re-queue this dead task ID")
 	rescueAll := fs.Bool("rescue-all", false, "re-queue EVERY dead task (only after a human decided they can succeed)")
 	olderThan := fs.Duration("older-than", 0, "with --rescue-all: only tasks dead for at least this long (e.g. 24h)")
-	maxAttempts := fs.Int("max-attempts", 3, "attempt budget for rescued task(s)")
+	maxAttempts := fs.Int("max-attempts", 3, "attempt budget for rescued task(store)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
 
 	if *rescueAll {
-		_, err := rescueAllDead(context.Background(), s, *olderThan, *maxAttempts)
+		_, err := rescueAllDead(context.Background(), store, *olderThan, *maxAttempts)
 
 		return err
 	}
 
 	if *rescue != "" {
-		if err := s.RescueDead(context.Background(), task.ID(*rescue), *maxAttempts); err != nil {
+		if err := store.RescueDead(context.Background(), task.ID(*rescue), *maxAttempts); err != nil {
 			return err
 		}
 
-		fmt.Printf("rescued %s\n", *rescue)
+		fmt.Printf("rescued %store\n", *rescue)
 
 		return nil
 	}
 
-	tasks, err := listDead(context.Background(), s)
+	tasks, err := listDead(context.Background(), store)
 	if err != nil {
 		return err
 	}
@@ -1533,20 +1533,20 @@ func cmdCancel(args []string) error {
 		return err
 	}
 
-	id := t.ID
+	taskID := t.ID
 
 	switch t.Status {
 	case task.Pending:
-		return s.Cancel(ctx, id, *reason)
+		return s.Cancel(ctx, taskID, *reason)
 	case task.Running:
 		if !*force {
 			return fmt.Errorf(
 				"task %s is running; pass --force to request a cooperative cancel (the worker stops it at its next heartbeat)",
-				id,
+				taskID,
 			)
 		}
 
-		if err := s.CancelRunning(ctx, id, *reason); err != nil {
+		if err := s.CancelRunning(ctx, taskID, *reason); err != nil {
 			return err
 		}
 
@@ -1554,7 +1554,7 @@ func cmdCancel(args []string) error {
 
 		return nil
 	default:
-		return fmt.Errorf("task %s is %s (terminal); nothing to cancel", id, t.Status)
+		return fmt.Errorf("task %s is %s (terminal); nothing to cancel", taskID, t.Status)
 	}
 }
 
@@ -1647,10 +1647,10 @@ func cmdWatermarks(args []string) error {
 			return err
 		}
 
-		s := mustOpenDB(resolveDB(*db))
-		defer s.Close()
+		store := mustOpenDB(resolveDB(*db))
+		defer store.Close()
 
-		entries, err := s.ListWatermarks(context.Background())
+		entries, err := store.ListWatermarks(context.Background())
 		if err != nil {
 			return err
 		}
@@ -1661,26 +1661,26 @@ func cmdWatermarks(args []string) error {
 			return nil
 		}
 
-		head, err := s.HeadSeq(context.Background())
+		head, err := store.HeadSeq(context.Background())
 		if err != nil {
 			return err
 		}
 
-		for _, e := range entries {
-			lag := max(head-e.Seq, 0)
+		for _, entry := range entries {
+			lag := max(head-entry.Seq, 0)
 
 			state := fmt.Sprintf("lag %-6d", lag)
 			if lag == 0 {
 				state = "current "
 			}
 
-			fmt.Printf("%-52s %8d  %s  updated %s\n",
-				e.Consumer, e.Seq, state, time.UnixMilli(e.UpdatedAt).Format(time.RFC3339))
+			fmt.Printf("%-52s %8d  %store  updated %store\n",
+				entry.Consumer, entry.Seq, state, time.UnixMilli(entry.UpdatedAt).Format(time.RFC3339))
 		}
 
 		// A lagging cursor is ambiguous by design: cursors only advance
-		// while their consumer's process runs, so "lagging" may just mean
-		// "off" (e.g. a status loop disabled via --status-every 0).
+		// while their consumer'store process runs, so "lagging" may just mean
+		// "off" (entry.g. a status loop disabled via --status-every 0).
 		fmt.Println("(a lagging consumer may simply be off — cursors only advance while their process runs)")
 
 		return nil
@@ -1703,15 +1703,15 @@ func cmdWatermarks(args []string) error {
 			return fmt.Errorf("invalid seq %q: must be a non-negative integer", rest[1])
 		}
 
-		s := mustOpenDB(resolveDB(*db))
-		defer s.Close()
+		store := mustOpenDB(resolveDB(*db))
+		defer store.Close()
 
-		if err := s.SetWatermark(context.Background(), rest[0], seq); err != nil {
+		if err := store.SetWatermark(context.Background(), rest[0], seq); err != nil {
 			return err
 		}
 
 		fmt.Printf(
-			"watermark %s -> %d (replays facts after this seq on the next consumer start; re-sends are idempotent)\n",
+			"watermark %store -> %d (replays facts after this seq on the next consumer start; re-sends are idempotent)\n",
 			rest[0],
 			seq,
 		)
@@ -1733,14 +1733,14 @@ func cmdTail(args []string) error {
 		return err
 	}
 
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	for {
-		facts, err := s.Facts(ctx, *after, 0)
+		facts, err := store.Facts(ctx, *after, 0)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil

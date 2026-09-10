@@ -236,8 +236,8 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 
 	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
 	if err != nil {
-		for _, it := range items {
-			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "list failed: " + err.Error()})
+		for _, item := range items {
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "list failed: " + err.Error()})
 		}
 
 		return
@@ -277,7 +277,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			}
 		}
 	}
-	// Poisoned repo: everything it touched recently is dead. New items
+	// Poisoned repo: everything item touched recently is dead. New items
 	// would die the same way — give the human the backoff window to fix
 	// or rescue instead of enqueueing fresh failures every tick.
 	poisoned := hasDead && !hasCompleted && h.cfg.DLQBackoff > 0 && time.Since(lastDead) < h.cfg.DLQBackoff
@@ -285,62 +285,62 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 
 	enqueuedThisRepo := false
 
-	for _, it := range items {
-		if reason, blocked := blockedReason(it.Text); blocked {
-			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "blocked: " + reason})
+	for _, item := range items {
+		if reason, blocked := blockedReason(item.Text); blocked {
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "blocked: " + reason})
 
 			continue
 		}
 
 		switch {
-		case it.Key != "" && known[it.Key] != "":
-			reason := "tracked: " + string(known[it.Key])
-			switch task.Status(known[it.Key]) {
+		case item.Key != "" && known[item.Key] != "":
+			reason := "tracked: " + string(known[item.Key])
+			switch task.Status(known[item.Key]) {
 			case task.Dead:
 				reason = "in DLQ (tq dlq --rescue to retry)"
 			case task.Cancelled:
-				reason = "cancelled (edit the item text to re-arm it)"
+				reason = "cancelled (edit the item text to re-arm item)"
 			}
 
-			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: reason})
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: reason})
 		case poisoned:
-			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: fmt.Sprintf(
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: fmt.Sprintf(
 				"poisoned: recent dead-letter, DLQ backoff %s (fix the repo or rescue dead tasks)", h.cfg.DLQBackoff)})
 		case repoInterval > 0 && !lastCreated.IsZero() && time.Since(lastCreated) < repoInterval:
-			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: fmt.Sprintf(
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: fmt.Sprintf(
 				"paced: per-repo interval %s (last enqueue %s ago)",
 				repoInterval,
 				time.Since(lastCreated).Round(time.Second),
 			)})
 		case busy:
-			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "repo busy: one agent per repo"})
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "repo busy: one agent per repo"})
 		case enqueuedThisRepo:
-			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "paced: one new item per repo per run"})
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "paced: one new item per repo per run"})
 		case len(res.Enqueued) >= h.cfg.MaxPerTick:
-			res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "tick cap reached (--max-per-tick)"})
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "tick cap reached (--max-per-tick)"})
 		case h.cfg.DryRun:
-			res.Enqueued = append(res.Enqueued, Enqueued{Item: it, Fresh: true})
-			known[it.Key] = task.Pending
+			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true})
+			known[item.Key] = task.Pending
 			enqueuedThisRepo = true
 		default:
-			t, err := h.enqueue(ctx, it)
+			t, err := h.enqueue(ctx, item)
 			if err != nil {
-				res.Skipped = append(res.Skipped, Skipped{Item: it, Reason: "enqueue failed: " + err.Error()})
+				res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "enqueue failed: " + err.Error()})
 
 				continue
 			}
 
-			known[it.Key] = task.Pending
+			known[item.Key] = task.Pending
 			enqueuedThisRepo = true
 
 			if t.Status == task.Pending && t.Attempts == 0 {
-				res.Enqueued = append(res.Enqueued, Enqueued{Item: it, TaskID: t.ID, Fresh: true})
+				res.Enqueued = append(res.Enqueued, Enqueued{Item: item, TaskID: t.ID, Fresh: true})
 			} else {
 				// Store dedup returned a pre-existing row (another pool won
-				// the race). Count it as known, not fresh.
+				// the race). Count item as known, not fresh.
 				res.Skipped = append(
 					res.Skipped,
-					Skipped{Item: it, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"},
+					Skipped{Item: item, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"},
 				)
 			}
 		}
@@ -364,60 +364,60 @@ func blockedReason(text string) (reason string, ok bool) {
 	return reason, true
 }
 
-func (h *Harvester) enqueue(ctx context.Context, it Item) (task.Task, error) {
-	payload, err := h.buildPayload(it, h.cfg.PromptTemplate, it.Key)
+func (h *Harvester) enqueue(ctx context.Context, item Item) (task.Task, error) {
+	payload, err := h.buildPayload(item, h.cfg.PromptTemplate, item.Key)
 	if err != nil {
 		return task.Task{}, err
 	}
 
 	return h.q.Enqueue(ctx, task.New{
-		Project:     it.RepoName,
+		Project:     item.RepoName,
 		Type:        h.cfg.Type,
 		Payload:     payload,
 		Priority:    h.cfg.Priority,
 		MaxAttempts: h.cfg.MaxAttempts,
-		DedupKey:    it.Key,
+		DedupKey:    item.Key,
 	})
 }
 
-// buildPayload renders prompt for it and encodes it as the task payload with
+// buildPayload renders prompt for item and encodes item as the task payload with
 // dedupKey pinned (the item's own key for normal tasks, catchup:<key> for
 // loop-closing tasks). Repos discovered under ProjectsDir are named
 // relatively so payloads stay valid when the projects root moves; explicit
-// repos outside it keep their absolute path.
-func (h *Harvester) buildPayload(it Item, prompt, dedupKey string) ([]byte, error) {
-	prompt = strings.ReplaceAll(prompt, "{{REPO_ABS}}", it.Repo)
-	prompt = strings.ReplaceAll(prompt, "{{REPO}}", it.RepoName)
-	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", it.Heading)
-	prompt = strings.ReplaceAll(prompt, "{{ITEM}}", it.Text)
+// repos outside item keep their absolute path.
+func (h *Harvester) buildPayload(item Item, prompt, dedupKey string) ([]byte, error) {
+	prompt = strings.ReplaceAll(prompt, "{{REPO_ABS}}", item.Repo)
+	prompt = strings.ReplaceAll(prompt, "{{REPO}}", item.RepoName)
+	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", item.Heading)
+	prompt = strings.ReplaceAll(prompt, "{{ITEM}}", item.Text)
 
-	repo := it.Repo
+	repo := item.Repo
 	if h.cfg.ProjectsDir != "" {
 		if abs, err := filepath.Abs(
 			h.cfg.ProjectsDir,
 		); err == nil &&
-			strings.HasPrefix(it.Repo, abs+string(filepath.Separator)) {
-			repo = it.RepoName
+			strings.HasPrefix(item.Repo, abs+string(filepath.Separator)) {
+			repo = item.RepoName
 		}
 	}
 
-	// Pin the repo's own verify command into the payload when it declares
-	// one, so the task records what it will be gated by.
+	// Pin the repo's own verify command into the payload when item declares
+	// one, so the task records what item will be gated by.
 	payload := harvestPayload{
 		AgentPayload: executor.AgentPayload{
 			Repo:         repo,
 			Prompt:       prompt,
-			Item:         it.Text,
+			Item:         item.Text,
 			Model:        h.cfg.Model,
-			Verify:       executor.ReadTQVerify(it.Repo),
+			Verify:       executor.ReadTQVerify(item.Repo),
 			RequireClean: h.cfg.RequireClean,
 		},
 		Dedup: dedupKey,
 	}
 
 	// Per-repo timeout ladder: pin the ceiling into the payload so the
-	// executor honors it without knowing the harvester.
-	if d, ok := h.cfg.RepoTimeouts[it.RepoName]; ok && d > 0 {
+	// executor honors item without knowing the harvester.
+	if d, ok := h.cfg.RepoTimeouts[item.RepoName]; ok && d > 0 {
 		payload.TimeoutMinutes = int(d / time.Minute)
 	}
 
@@ -430,7 +430,7 @@ func (h *Harvester) buildPayload(it Item, prompt, dedupKey string) ([]byte, erro
 }
 
 // harvestPayload is the agent payload plus the harvester's dedup key. The
-// agent executor ignores the extra field; the harvester reads it back to
+// agent executor ignores the extra field; the harvester reads item back to
 // recognize its own tasks.
 type harvestPayload struct {
 	executor.AgentPayload
@@ -605,12 +605,12 @@ func payloadDedup(t task.Task) string {
 		return ""
 	}
 
-	var p struct {
+	var payload struct {
 		Dedup string `json:"dedup"`
 	}
-	if err := json.Unmarshal(t.Payload, &p); err != nil {
+	if err := json.Unmarshal(t.Payload, &payload); err != nil {
 		return ""
 	}
 
-	return p.Dedup
+	return payload.Dedup
 }
