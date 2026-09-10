@@ -172,8 +172,13 @@ linters:
         - go-require
       enable-all: true
     varnamelen:
+      ignore-tests: true
       ignore-map-index-ok: true
       ignore-names:
+        - w
+        - r
+        - fs
+        - db
         - err
         - ok
         - tt
@@ -197,6 +202,20 @@ linters:
         - .WithMessage(
         - .WithMessagef(
         - .WithStack(
+        - func (*flag.FlagSet).Parse(
+        - func (*encoding/json.Encoder).Encode(
+        - func encoding/json.Unmarshal(
+        - func os.WriteFile(
+        - func (*os/exec.Cmd).Output(
+        - func (*strings.Builder).Write(
+        - func (net/http.ResponseWriter).Write(
+        - func (context.Context).Err(
+        - func (*net/http.Server).ListenAndServe(
+      ignore-package-regexps:
+        - queue
+      ignore-interface-regexps:
+        - queue\.Store
+      ignore-tests: true
   exclusions:
     generated: lax
     rules:
