@@ -131,8 +131,6 @@ func main() {
 		select {
 		case <-ctx.Done():
 			log.Fatal("deadline exceeded before the queue drained")
-		case <-done:
-			return
 		case <-ticker.C:
 			tasks, err := store.List(ctx, queue.Filter{})
 			if err != nil {
