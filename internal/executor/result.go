@@ -126,8 +126,19 @@ func ExtractSessionID(output string) string {
 		return m[1]
 	}
 
+	// crush run --verbose logs "INFO Created session for non-interactive
+	// run session_id=<id>" — the line-anchored sessionRe cannot see it.
+	if m := verboseSessionRe.FindStringSubmatch(output); m != nil {
+		return m[1]
+	}
+
 	return ""
 }
+
+// verboseSessionRe matches the crush verbose session marker (see
+// ExtractSessionID); not line-anchored because the marker rides an INFO
+// log line.
+var verboseSessionRe = regexp.MustCompile(`(?i)Created session for non-interactive run session_id=([A-Za-z0-9][A-Za-z0-9_-]+)`)
 
 // resultLineRe matches the agent's self-report line: a single line of JSON
 // after the TQ_RESULT: marker. Everything else in the output is free-form.

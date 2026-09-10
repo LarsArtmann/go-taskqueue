@@ -272,13 +272,23 @@ is machine-consumed: one checkbox item per line, "- [ ] text", never tables. App
 - each question from (g) as an item ending with " — BLOCKED: <the question>" (a human answers by editing the item; blocked items are never harvested until then).
 Never delete or reword existing items; only append.
 
+## Docs-health pass
+
+Load and follow the docs-health skill (view its SKILL.md first; it defines the conventions below). Then:
+
+- Read every report under docs/status/ dated 2026-*. They are point-in-time: never rewrite history, only annotate (inline correction or end-of-file appendix).
+- TODO_LIST.md, CHANGELOG.md, AGENTS.md, README.md, ROADMAP.md and FEATURES.md must be superb and current after this pass: reconcile them with what the window's tasks actually changed (CHANGELOG entries for user-visible changes; FEATURES status only for what is verifiably shipped; ROADMAP for routed ideas; stale claims get corrected, not just reported).
+- Archive reports whose items are fully done and no longer referenced: move the file into docs/status/archived/ following the existing convention in docs/status/README.md.
+- Verify every claim against the code before writing it. Never mark planned work as shipped.
+
 ## Hard scope rule
 
-Touch ONLY these files, nothing else:
-- your new report under docs/status/,
+Touch ONLY documentation, nothing else:
+- your new report under docs/status/ and docs/status/archived/ moves,
 - TODO_LIST.md (append-only),
+- CHANGELOG.md, AGENTS.md, README.md, ROADMAP.md, FEATURES.md (documentation maintenance only),
 - the git commit containing exactly those changes.
-Do not modify code, configuration, docs, or any other tracked file. If you notice a bug or want a fix, REPORT it (as a TODO_LIST item) — do not fix it yourself.
+Do not modify code, configuration, tests, or any other tracked file. If you notice a bug or want a fix, REPORT it (as a TODO_LIST item) — do not fix it yourself.
 
 ## Finish
 

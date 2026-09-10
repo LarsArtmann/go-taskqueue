@@ -699,6 +699,57 @@ func TestDefaultVerifyCoversNestedModules(t *testing.T) {
 	}
 }
 
+// TestAgentExecutorCloseoutTurn pins the two-turn contract: with
+// CloseoutPrompt set, the work turn runs verbose (for the session id) and a
+// second run resumes the exact session with the resolved close-out prompt;
+// without it, exactly one quiet run happens (the argv contract above).
+func TestAgentExecutorCloseoutTurn(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	argsLog := filepath.Join(dir, "argv.log")
+	bin := filepath.Join(dir, "closeout-agent")
+
+	script := `#!/bin/sh
+printf '%s\n' "$*" >> "` + argsLog + `"
+if [ "$(wc -l < "` + argsLog + `")" = "1" ]; then
+	printf 'INFO Created session for non-interactive run session_id=sess-1234\n'
+fi
+printf 'TQ_RESULT: {"files_changed":["x.go"]}\n'
+`
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("permissions allow view\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	e := &AgentExecutor{Bin: bin, Yolo: true, CloseoutPrompt: "closeout review {{TASK_ID}}"}
+	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "do it"})); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	raw, err := os.ReadFile(argsLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lines := strings.Split(strings.TrimRight(string(raw), "\n"), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("want 2 agent invocations (work + closeout), got %d: %q", len(lines), lines)
+	}
+
+	if !strings.Contains(lines[0], "--verbose") || strings.Contains(lines[0], "--session") {
+		t.Fatalf("work turn must run verbose without --session: %q", lines[0])
+	}
+
+	if !strings.Contains(lines[1], "--session sess-1234") || !strings.Contains(lines[1], "closeout review ") {
+		t.Fatalf("closeout turn must resume the extracted session with the resolved prompt: %q", lines[1])
+	}
+}
+
 // runIn runs a shell line inside dir. The caller's cwd must never leak in:
 // from this package's dir the verify line would re-run this very suite,
 // recursing until the test timeout.

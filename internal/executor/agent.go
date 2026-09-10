@@ -92,6 +92,11 @@ type AgentExecutor struct {
 	// (flock'd slot files shared across every tq process on the host; 0 =
 	// uncapped). Caps cost when several pools share a machine.
 	MaxConcurrent int
+	// CloseoutPrompt, when set, gives every agent task a SECOND conversation
+	// turn: after the work turn ends, the same session receives this prompt
+	// (the owner's brutal self-review + status report) before verify runs.
+	// Empty = off (single turn, pinned argv contract unchanged).
+	CloseoutPrompt string
 }
 
 // NewAgentExecutor builds an AgentExecutor for a projects directory.
@@ -338,7 +343,17 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		}
 	}
 
-	args := []string{"run", "--quiet", "--cwd", repoDir}
+	// The close-out turn resumes the exact session by id, so the work turn
+	// runs verbose when enabled: quiet mode suppresses the "Created session
+	// … session_id=" line ExtractSessionID needs, and --continue would race
+	// for the most recent session when another pool agent finishes at the
+	// same moment.
+	runVerb := "--quiet"
+	if e.CloseoutPrompt != "" {
+		runVerb = "--verbose"
+	}
+
+	args := []string{"run", runVerb, "--cwd", repoDir}
 	if p.Model != "" {
 		args = append(args, "--model", p.Model)
 	}
@@ -379,8 +394,62 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		return buf.String(), fmt.Errorf("agent run failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))
 	}
 
+	// Second turn, same conversation: the agent that did the work answers
+	// the close-out self-review before the task completes. A failed closeout
+	// fails the attempt like any other contract breach; a missing session id
+	// degrades to a logged skip (the work itself already succeeded).
+	if e.CloseoutPrompt != "" {
+		if session := ExtractSessionID(buf.String()); session != "" {
+			closeout := strings.ReplaceAll(e.CloseoutPrompt, "{{TASK_ID}}", id.String())
+			closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir, "--session", session, "--", closeout}
+
+			closeoutOnce := func() (*bytes.Buffer, error) {
+				cmd := exec.CommandContext(ctx, e.binary(), closeoutArgs...)
+				cmd.Dir = repoDir
+
+				var closeoutBuf bytes.Buffer
+
+				cmd.Stdout = &closeoutBuf
+				cmd.Stderr = &closeoutBuf
+				prepareProcessGroup(cmd)
+				cmd.WaitDelay = 10 * time.Second
+				err := cmd.Run()
+				return &closeoutBuf, err
+			}
+
+			closeoutBuf, err := execWithTransientRetry(closeoutOnce)
+			buf.WriteString(closeoutBuf.String())
+			if err != nil {
+				if ctx.Err() != nil {
+					return buf.String(), fmt.Errorf("agent closeout cancelled (%w): %s", ctx.Err(), tailBytes(buf.Bytes(), 8192))
+				}
+
+				return buf.String(), fmt.Errorf("agent closeout failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))
+			}
+		} else {
+			buf.WriteString("\n[tq] closeout skipped: no session id in agent output\n")
+		}
+	}
+
 	return buf.String(), nil
 }
+
+// DefaultCloseoutPrompt is the second conversation turn every agent task
+// runs when the pool enables --task-closeout: the same brutal self-review
+// the owner uses interactively, answered by the agent that did the work,
+// in the same session. {{TASK_ID}} resolves at execution time (report path
+// + commit footer); the TQ_RESULT re-emit keeps the queue's mechanical
+// gate green, since parsing reads the LAST TQ_RESULT line in the output.
+const DefaultCloseoutPrompt = `What did you forget? What could you have done better? What could you still improve?
+
+FULL COMPREHENSIVE & DETAILED STATUS UPDATE!
+INCLUDE WORK: a) FULLY DONE; b) PARTIALLY DONE; c) NOT STARTED; d) TOTALLY FUCKED UP! e) WHAT WE SHOULD IMPROVE! f) Up to 50 things we should get done next! g) Ask up to 3 questions that you can NOT figure out yourself!
+
+Run "date" (CLI) to get the current date-time, then write the full report at docs/status/<YYYY-MM-DD_HH-MM>_task-{{TASK_ID}}.md. Commit it with the same Task-Queue-ID footer as your work commit. Never push.
+
+DO NOT RESEARCH UNRELATED STUFF. Report based on THIS task's work and what you noticed in passing.
+
+End your final output with EXACTLY ONE line and nothing after it: the same TQ_RESULT line you reported for the work above (the queue's mechanical gate reads the last one).`
 
 // execWithTransientRetry retries exec attempts that failed with ETXTBSY
 // ("text file busy"). Kernel 7.2 was observed returning it for freshly

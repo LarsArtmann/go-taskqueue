@@ -253,6 +253,12 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   temp+rename does NOT help). `runAgent`/`AgentVersion` retry it
   (`execWithTransientRetry`) — if another exec site starts flaking the same
   way, route it through that helper instead of chasing a writer.
+- ⚠️ **Agent shells inherit `TQ_DB=/mnt/pool/services/tq/tq.db`**: `tq`
+  commands (enqueue included) hit the PRODUCTION dogfood journal even when
+  `cd`'d into a scratch dir — `defaultDB()` prefers the env over `./tasks.db`
+  (cost one stray `demo` enqueue + a live-pool claim, 2026-09-10). Any
+  scratch-DB smoke MUST export `TQ_DB=<scratch path>` (or pass `--db`)
+  explicitly; assume every bare `tq …` in a session shell touches production.
 - ⚠️ **Session-start ritual**: run `git log --oneline -5 -- internal` before
   editing — concurrent agents land real changes mid-flight (worker's
   go-retry require, flake vendorHash fixes, AGENTS.md corrections have all
