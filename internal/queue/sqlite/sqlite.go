@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/larsartmann/go-retry"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -73,22 +74,21 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 	// loser gets SQLITE_BUSY even with busy_timeout. The retry always
 	// converges — IF NOT EXISTS migrations on an already-migrated DB are a
 	// no-op — so a bounded backoff is the whole fix.
-	var merr error
-
-	for attempt := range 5 {
-		if attempt > 0 {
-			time.Sleep(time.Duration(1<<attempt) * 100 * time.Millisecond)
-		}
-
-		merr = s.migrate(context.Background())
-		if merr == nil {
-			return s, nil
-		}
+	merr := retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+		MaxAttempts:  5,
+		InitialDelay: 200 * time.Millisecond,
+		MaxDelay:     1600 * time.Millisecond,
+		Multiplier:   2.0,
+		IsRetryable:  func(error) bool { return true },
+	}, func(_ context.Context, _ int) error {
+		return s.migrate(context.Background())
+	})
+	if merr != nil {
+		_ = db.Close()
+		return nil, merr
 	}
 
-	_ = db.Close()
-
-	return nil, merr
+	return s, nil
 }
 
 const schema = `
