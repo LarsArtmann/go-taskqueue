@@ -95,9 +95,9 @@ not here.
 
 ## Window f20–f24 follow-ups (harvested from docs/status/2026-09-10_04-09, verified 2026-09-10)
 
-- [ ] Fix test-windows red: `TestHarvestConfigFromOptionsExpandsBareRepoNames` (subtests mixed_entries_with_spacing, absolute_repos_stay_untouched) fails on windows-latest — audit bare-repo-name expansion for `filepath.Separator`/abs-path assumptions (landed a0b720e 01:38; red on master since)
-- [ ] Fix release-gates smoke on runners: `scripts/smoke/release-gates.sh:42` `git tag -a` lacks the `-c user.email/-c user.name` the init commit (line 40) carries — annotated tags need committer identity, runners have none (exit 128 since 00:22)
-- [ ] Bump `golang.org/x/text` to ≥v0.39.0 in `internal/queue/postgres` (GO-2026-5970 infinite loop, reachable via `postgres.Open` → pgxpool per the first govulncheck CI run) and sweep every module for the same x/text floor
+- [x] Fix test-windows red: `TestHarvestConfigFromOptionsExpandsBareRepoNames` (subtests mixed_entries_with_spacing, absolute_repos_stay_untouched) fails on windows-latest — audit bare-repo-name expansion for `filepath.Separator`/abs-path assumptions (landed a0b720e 01:38; red on master since) — DONE 2026-09-10 (08:25 docs-health pass, re-verified 09:13 pass): inputs/expectations follow the running OS's path rules per the red-master-trio CHANGELOG entry; separator-aware logic confirmed in internal/harvest
+- [x] Fix release-gates smoke on runners: `scripts/smoke/release-gates.sh:42` `git tag -a` lacks the `-c user.email/-c user.name` the init commit (line 40) carries — annotated tags need committer identity, runners have none (exit 128 since 00:22) — DONE 2026-09-10 (re-verified 09:13 pass at HEAD): fixture commit (line 40) and tag (line 44) both carry `-c user.email=t@t -c user.name=t`
+- [x] Bump `golang.org/x/text` to ≥v0.39.0 in `internal/queue/postgres` (GO-2026-5970 infinite loop, reachable via `postgres.Open` → pgxpool per the first govulncheck CI run) and sweep every module for the same x/text floor — DONE 2026-09-10 (re-verified 09:13 pass): `internal/queue/postgres/go.mod` at v0.41.0; per-module gate loop green over all 7 sub-modules
 - [ ] Add a gosec config encoding the 2026-09-10 FP triage (exclude-rule list for G204/G702/G703/G304/G306/G301/G302/G124/G710/G118/G104/G404/G202) so the advisory job goes green and future new classes stand out
 - [ ] Flip govulncheck's `continue-on-error` to a hard gate once the x/text bump makes the job green on the runner
 - [ ] ci-local.sh: run the release-gates smoke under `GIT_CONFIG_GLOBAL=/dev/null` (or sanitized HOME) so identity-dependent git ops fail locally the way they do on runners
@@ -159,3 +159,29 @@ not here.
 - [ ] Origin reconciliation: origin/master tips at bad-footer `41b817b` while local master holds the corrected 14-commit lineage — one-time `--force-with-lease` push to replace it (making the queue cross-reference resolve remotely), or is origin append-only and permanent divergence accepted? — BLOCKED: owner-run either way, agents never push (08:25 report g1)
 - [ ] Tag-lineage fork acceptance: v0.2.0 + all seven `internal/*/v0.2.0` tags descend from the remote pre-reword side and are no longer ancestors of master — acceptable for release tooling and the module proxy (tag→commit only), or harden release.sh/release-gates/doctor against forked lineages before the next release? — BLOCKED: owner release-tooling call (08:25 report g2)
 - [ ] Canonical ID for the f26 cluster: the release-doc work exists under three IDs (`a3864d95` original commit + 06-55 report, `b141f022` reviewer-assigned on cd09c1c + 07-49 footer, `c3919ce4` 07-49 report filename) — which is the queue's canonical entry, and should the others be merged or marked duplicates queue-side? — BLOCKED: owner queue-convention call (08:25 report g3)
+
+## Review-window follow-ups (harvested from the 07:49/08:32/08:39/08:42/08:47 close-outs, verified 2026-09-10 09:13)
+
+- [ ] Rename the `exitCause` local in `internal/runactor` `Run()` (runactor.go:162) to the `exitErr`/`exitError` vocabulary — the ExitError rename commit left the old identifier behind (08:32 report b3)
+- [ ] Run golangci-lint scoped to `internal/runactor` to confirm errname is quiet after the ExitError rename — the close-out verified via compiler + `rg`, not the linter that filed the original finding (08:32 report b2)
+- [ ] Extend `TestParseFilterQuery`-style round-trip pins to the other FilterState fields (Project/Status/Sort/View) so emitter↔parse drift fails the suite in either direction (08:39 report c1/f1)
+- [ ] Handler-level end-to-end webui test: GET `/?q=sh` renders filtered rows and the search chip carries the query (08:39 report f6/f31)
+- [ ] Verify `filterHref` URL-encodes Query values (spaces/`&` in search text); pin with a test if gaps found (08:39 report f8/f23)
+- [ ] Single source of truth for webui query param names (q/project/status/sort/view/page): one table-driven test enumerating them, or constants shared wherever templ allows (08:39 report f4/f5)
+- [ ] Check unbounded `?q=` search against SQLite LIKE payload scans — cap length or escape metacharacters if a huge query can degrade the dashboard (08:39 report g2/f43)
+- [ ] Sweep the eaf73a9 rename diff repo-wide for further literal leaks (`git log -S` probes for receiver-equals-key `Get("query")` patterns and parenthesized-identifier corruptions like `task(store)`) (08:39 f3/f22; 08:42 f4)
+- [ ] Help-text smoke: run `tq` subcommand help (minimum `tq dlq -h`) asserting no parenthesized-identifier artifacts in flag strings — help text is exercised by no test and the class has bitten once (08:42 report e3/f2)
+- [ ] Verify the gopls "unused func waitFor" hint in internal/webui tests is genuine and delete it on next touch of that file (08:39 report f48)
+- [ ] Extend `scripts/lint-annotations.sh` to the sub-module loop, or decide root-only annotations deliberately (needs a per-module `--new-from-rev` baseline strategy) (08:47 report c1/f1/g2)
+- [ ] Verify the root `.golangci.yml` actually applies when golangci-lint runs inside a sub-module directory; document the config-resolution rule (or per-module config policy) in AGENTS.md (08:47 report e4/f2)
+- [ ] Extract the disk-derived module loop into `scripts/for-each-module.sh` and consume it from ci.yml (4+ copies) and ci-local.sh (08:47 report e1/f4)
+- [ ] Add `actionlint` to the devShell and ci-local.sh so workflow edits validate locally instead of costing a CI round trip per fix (08:47 report e2/f5)
+- [ ] End-of-step summary line in the advisory lint job ("modules linted: N, failing: [...]") so green runs stay scannable (08:47 report e3/f6)
+- [ ] Unify the golangci-lint version pin (duplicated in ci.yml and ci-local.sh) into one source so the two can never drift (08:47 report f22/f23)
+- [ ] Quantify the advisory-lint baseline per sub-module — the ~400 number is root-only; sub-module counts are unknown — before deciding whether per-module runs need triage slices (08:47 report f25/f26)
+- [ ] Verify `find internal -name go.mod` deliberately excludes fixture/testdata go.mods — the CI loops assume production modules only (08:47 report f39)
+- [ ] CI topology one-pager (docs/planning/): every job and step, which ones loop modules and why — prevents the next agent re-deriving it (08:47 report f20)
+- [ ] Report the session-snapshot ghost upstream: work-commit hashes pre-appearing in the session-start git snapshot (bafc720 incident, 08:32 report d2/g2) — harness state-capture artifact or concurrent-agent duplicate?
+- [ ] CHANGELOG policy for non-released-boundary changes: do `internal/`-only renames and same-day introduce+fix regressions (never crossing a release; the pool deploys master as a rolling release) get entries, or is [Unreleased] net-since-last-release only? This pass added one combined entry for the two rename-leak fixes and none for the ExitError rename — confirm or overrule — BLOCKED: owner changelog-policy call (08:32 g1; 08:42 g1)
+- [ ] CI-time budget for the disk-derived module loops: what threshold should the f49 "tune if it dominates" item optimize against (e.g. lint step ≤ N minutes)? — BLOCKED: owner budget number (08:47 g3)
+- [ ] TODO-item accuracy bar: should the harvester verify each item against code at harvest time (f30's wrong package + wrong version-window claim cost a day of deferral across seven reports), or is pickup-time verification by the executing agent the accepted contract? — BLOCKED: owner process call (08:32 g3)

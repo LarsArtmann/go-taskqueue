@@ -199,12 +199,12 @@ most extra items are ROADMAP fuel; — BLOCKED marks owner-gated).
 27. **P3**: version-surface inventory doc (flake ×2, tag, CHANGELOG).
 28. **P3**: lint-baseline slice-triage: wrapcheck (50) first.
 29. **P3**: varnamelen slice-triage (50).
-30. **P3**: `ExitCause` → `ExitError` rename consideration (errname).
-31. **P3**: `go mod verify` per module in CI.
-32. **P3**: golangci per-module runs in ci.yml.
+30. ~~**P3**: `ExitCause` → `ExitError` rename consideration (errname).~~ done at `bafc720`
+31. ~~**P3**: `go mod verify` per module in CI.~~ done at `533f5bc`
+32. ~~**P3**: golangci per-module runs in ci.yml.~~ done at `7f5d699`
 33. **P3**: Dependabot/renovate policy decision.
 34. **P3**: `tq doctor` multi-module awareness check.
-35. **P3**: multi-repo smoke against nix-built 0.2.0 binary.
+35. ~~**P3**: multi-repo smoke against nix-built 0.2.0 binary.~~ done at `7e32b40`
 36. **P3**: README architecture blurb (module map + gate commands — now 8
      modules).
 37. **P3 — NEW**: README store-backend section: two driver modules, how an
