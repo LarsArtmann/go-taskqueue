@@ -103,6 +103,7 @@ comprehensive execution plan doc, full CI gate, push.
 ## f) UP TO 50 THINGS TO GET DONE NEXT (prioritized, small)
 
 **Immediate (from this session's open threads)**
+
 1. Audit worker's go-retry usage landed by the parallel agent (direct? correct predicate?)
 2. A3a: grep `errgroup`/`singleflight` opportunities in pool/consumer fan-out
 3. A3b: replace hand-written byte/duration humanizing in `tq top`/`stats` with `dustin/go-humanize` (already in tree)
@@ -183,6 +184,6 @@ comprehensive execution plan doc, full CI gate, push.
 
 ---
 
-*Session footprint: 9 commits pushed (0637d63..0fb652e), all gates green
+_Session footprint: 9 commits pushed (0637d63..0fb652e), all gates green
 at HEAD (ci-local, nix build, check-go-mods, per-module tests for the
-touched module).*
+touched module)._

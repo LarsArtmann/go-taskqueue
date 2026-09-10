@@ -16,7 +16,7 @@ Nothing pushed. `tq version` → 0.2.0.
 
 1. **The consumer story, until it was almost too late.** I designed, executed,
    and verified the five-module split testing everything — build, vet, race,
-   nix, smokes — *except the one thing the split changes for outsiders*:
+   nix, smokes — _except the one thing the split changes for outsiders_:
    `go install github.com/larsartmann/go-taskqueue/cmd/tq@latest`. With
    internal requires pinned at `v0.0.0` (unresolvable on the proxy), the next
    release would have broken the README's documented install path. Caught in
@@ -75,21 +75,21 @@ Nothing pushed. `tq version` → 0.2.0.
 
 ## a) FULLY DONE
 
-| Work | Evidence |
-| --- | --- |
-| **Five-module split (ADR-0011)** — `internal/{task,journal,queue,executor,worker}` are sub-modules; app layer stays in root; import paths unchanged; DAG compiler-enforced | `go list` verified acyclic; per-module builds green |
-| **Replace-only strategy** — requires at real tags (`internal/*/v0.2.0`) + relative replaces; no go.work (FM#4 eliminated by construction) | hygiene audits green |
-| **Per-module CI gates** — `GOWORK=off` build/vet/test loops in ci-local.sh AND ci.yml (Linux + test-windows jobs), per-module `GOOS=windows` cross-compiles | ci-local green run |
+| Work                                                                                                                                                                                                                                            | Evidence                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| **Five-module split (ADR-0011)** — `internal/{task,journal,queue,executor,worker}` are sub-modules; app layer stays in root; import paths unchanged; DAG compiler-enforced                                                                      | `go list` verified acyclic; per-module builds green                       |
+| **Replace-only strategy** — requires at real tags (`internal/*/v0.2.0`) + relative replaces; no go.work (FM#4 eliminated by construction)                                                                                                       | hygiene audits green                                                      |
+| **Per-module CI gates** — `GOWORK=off` build/vet/test loops in ci-local.sh AND ci.yml (Linux + test-windows jobs), per-module `GOOS=windows` cross-compiles                                                                                     | ci-local green run                                                        |
 | **Release path repaired** — sibling-replace allowlist, sub-tag existence gate, tag cutting + push for internal tags, two-phase `--tag`/`--push` resume, flake version-sync gate, clean-room `go install` + binary run, SIGPIPE-proof tag checks | `bash -n` + manual gate extraction tests + review agent verdict folded in |
-| **Subdirectory tags cut** — `internal/{task,journal,queue,executor,worker}/v0.2.0` (annotated, LOCAL ONLY — push owner-gated) | `git tag` listing |
-| **Version drift fixed** — flake.nix 0.1.0 → 0.2.0 (both version attr + ldflags); `tq version` reports 0.2.0 | nix rebuild + binary run |
-| **errors.As → errors.AsType** — all 4 sites (runactor ExitCause, executor PermanentError, 2 test counterparts); sentinels kept; erraudit re-run: 0 As findings | commit c370ea9 |
-| **Duplication reduced** — harvest audit/prune 20-line preamble extracted to `projectTaskIndex`; 4 remaining clone groups judged intentional (sqlite/postgres conformance mirrors) | art-dupl re-run; harvest suite green |
-| **CI/fuzz/agent-verify multi-module wiring** — fuzz campaigns cd into package dirs; Postgres job `cd internal/queue`; agent default verify walks nested go.mod (with behavioral test proving a broken nested module fails) | fuzz smoke 5s green; executor tests green |
-| **flake.nix** — vendorHash refreshed (fakeHash dance), `GOWORK = "off"` pinned, version 0.2.0 | `nix build` + `nix flake check` green |
-| **Docs** — ADR-0011; AGENTS.md (multi-module ground rules); README dev section; CHANGELOG `[Unreleased]`; proposal + execution plan HTMLs; architecture review + D2 diagrams; code-quality scan report; brutal self-review report | committed |
-| **Verification battery** — root race suite green (12 pkgs), per-module GOWORK=off build/vet/test/`go mod verify` green ×5, hygiene audits green, full ci-local green twice | output captured |
-| **Dependency sweep** — verified no-op: all direct deps at latest; only transitive test-dep updates available (correctly not churned) | `go list -m -u` across 6 modules |
+| **Subdirectory tags cut** — `internal/{task,journal,queue,executor,worker}/v0.2.0` (annotated, LOCAL ONLY — push owner-gated)                                                                                                                   | `git tag` listing                                                         |
+| **Version drift fixed** — flake.nix 0.1.0 → 0.2.0 (both version attr + ldflags); `tq version` reports 0.2.0                                                                                                                                     | nix rebuild + binary run                                                  |
+| **errors.As → errors.AsType** — all 4 sites (runactor ExitCause, executor PermanentError, 2 test counterparts); sentinels kept; erraudit re-run: 0 As findings                                                                                  | commit c370ea9                                                            |
+| **Duplication reduced** — harvest audit/prune 20-line preamble extracted to `projectTaskIndex`; 4 remaining clone groups judged intentional (sqlite/postgres conformance mirrors)                                                               | art-dupl re-run; harvest suite green                                      |
+| **CI/fuzz/agent-verify multi-module wiring** — fuzz campaigns cd into package dirs; Postgres job `cd internal/queue`; agent default verify walks nested go.mod (with behavioral test proving a broken nested module fails)                      | fuzz smoke 5s green; executor tests green                                 |
+| **flake.nix** — vendorHash refreshed (fakeHash dance), `GOWORK = "off"` pinned, version 0.2.0                                                                                                                                                   | `nix build` + `nix flake check` green                                     |
+| **Docs** — ADR-0011; AGENTS.md (multi-module ground rules); README dev section; CHANGELOG `[Unreleased]`; proposal + execution plan HTMLs; architecture review + D2 diagrams; code-quality scan report; brutal self-review report               | committed                                                                 |
+| **Verification battery** — root race suite green (12 pkgs), per-module GOWORK=off build/vet/test/`go mod verify` green ×5, hygiene audits green, full ci-local green twice                                                                      | output captured                                                           |
+| **Dependency sweep** — verified no-op: all direct deps at latest; only transitive test-dep updates available (correctly not churned)                                                                                                            | `go list -m -u` across 6 modules                                          |
 
 ## b) PARTIALLY DONE
 
@@ -161,8 +161,8 @@ Nothing pushed. `tq version` → 0.2.0.
 - **Every new gate must demonstrate its negative path once** (the `\t` class
   survives on gates that never fired).
 - **Version surfaces need one owner**: flake.nix version + ldflags + git tag
-  + CHANGELOG — release.sh now gates the first three; keep it that way and
-  never hand-bump.
+  - CHANGELOG — release.sh now gates the first three; keep it that way and
+    never hand-bump.
 - **Kill dead subsystems early**: consumer sat unnoticed because nothing
   fails when a package has zero importers — an "unimported packages" audit
   belongs in the periodic review set.
@@ -288,6 +288,6 @@ TODO_LIST/ROADMAP with routing rigor; many are roadmap fuel, not commitments.)
 
 ---
 
-*Report by Crush (glm-5.3-flash), 2026-09-09 23:21 CEST · every claim
+_Report by Crush (glm-5.3-flash), 2026-09-09 23:21 CEST · every claim
 verified against this session's runs and commits (043a89e…5496663) ·
-final ci-local run: ALL CI GATES GREEN on 5496663.*
+final ci-local run: ALL CI GATES GREEN on 5496663._

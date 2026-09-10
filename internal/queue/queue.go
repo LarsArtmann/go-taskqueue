@@ -12,9 +12,10 @@ package queue
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -38,7 +39,7 @@ type Store interface {
 	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error)
 	// Complete marks a Running task Completed (lease must be held) and records
 	// the task.completed fact.
-	Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error
+	Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error
 	// Fail records a failed attempt. When attempts remain the task returns to
 	// Pending with NotBefore = now + backoff(attempt); otherwise it is
 	// Dead-lettered. Facts: task.failed (+ task.dead-lettered). evidence,
@@ -51,13 +52,13 @@ type Store interface {
 		owner string,
 		errText string,
 		backoff time.Duration,
-		evidence json.RawMessage,
+		evidence jsontext.Value,
 	) error
 	// FailPermanent dead-letters a Running task immediately, regardless of
 	// the attempt budget: the error class makes retrying pointless. The
 	// attempt is still counted. Facts: task.failed (carrying evidence)
 	// + task.dead-lettered (class "permanent").
-	FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error
+	FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence jsontext.Value) error
 	// Requeue returns a claimed task to Pending WITHOUT counting an
 	// attempt; it becomes claimable again after delay. For preflight
 	// refusals: the environment was not ready, not the task. Facts:

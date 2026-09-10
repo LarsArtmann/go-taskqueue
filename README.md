@@ -257,27 +257,27 @@ toolchain PATH baked in) — see `deploy/nixos/tq-agent-pool.nix`.
 
 ## Every command at a glance
 
-| Command          | What it does                                                                            |
-| ---------------- | --------------------------------------------------------------------------------------- |
-| `tq enqueue`     | Add a task: `--type`, `--project`, `--payload`, `--priority`, `--deps`, `--delay`, `--max-attempts` |
-| `tq worker`      | Claim → heartbeat → execute loop; `--once` drains and exits; `--agents` for AI tasks; `--alert-url` for PapDashboard alerts |
-| `tq harvest`     | Scan repos' TODO_LIST.md into dedup-keyed agent tasks; `--dry-run`, `--prune-stale`     |
-| `tq agent-pool`  | The whole loop in one process: periodic harvest + worker pool + bridges + sweepers      |
-| `tq bootstrap`   | One command from zero to a running pool (see above)                                     |
-| `tq serve`       | Read-only live dashboard over SSE; `--allow-writes` adds guarded cancel/rescue          |
-| `tq api`         | Token-authenticated HTTP API for non-Go producers (`POST /api/v1/tasks`)                |
-| `tq stats`       | Counts, per-project table, budget spend, consumer lag (`--json`)                        |
-| `tq tasks`       | Filtered task list: `--project/--status/--type/--since/--limit`, newest first (`--json`)|
-| `tq top`         | Live per-project view with durations (`--once`, `--json`)                               |
-| `tq show`        | One task + its complete fact trail (a unique ID prefix works)                           |
-| `tq facts`       | Replay the journal: `--after SEQ`, `--json`, `--detail` for full fact payloads          |
-| `tq tail`        | Follow the journal live (`-f`)                                                          |
-| `tq dlq`         | Inspect dead letters; rescue one (`--rescue ID`) or in bulk (`--rescue-all --older-than 24h`) |
-| `tq cancel`      | Cancel a pending task; `--force` cooperatively stops a running one                      |
-| `tq doctor`      | Health checks: DB integrity, expired leases, worker heartbeats, budget, agent binary, per-repo autonomy files |
-| `tq audit`       | TODO-vs-queue drift: stale-open items repaired by catch-up tasks, stale-done reported   |
-| `tq watermarks`  | Journal consumer cursors + lag (`show`); `set CONSUMER SEQ` rewinds for safe replay     |
-| `tq version`     | Build identity (version, VCS revision)                                                  |
+| Command         | What it does                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `tq enqueue`    | Add a task: `--type`, `--project`, `--payload`, `--priority`, `--deps`, `--delay`, `--max-attempts`                         |
+| `tq worker`     | Claim → heartbeat → execute loop; `--once` drains and exits; `--agents` for AI tasks; `--alert-url` for PapDashboard alerts |
+| `tq harvest`    | Scan repos' TODO_LIST.md into dedup-keyed agent tasks; `--dry-run`, `--prune-stale`                                         |
+| `tq agent-pool` | The whole loop in one process: periodic harvest + worker pool + bridges + sweepers                                          |
+| `tq bootstrap`  | One command from zero to a running pool (see above)                                                                         |
+| `tq serve`      | Read-only live dashboard over SSE; `--allow-writes` adds guarded cancel/rescue                                              |
+| `tq api`        | Token-authenticated HTTP API for non-Go producers (`POST /api/v1/tasks`)                                                    |
+| `tq stats`      | Counts, per-project table, budget spend, consumer lag (`--json`)                                                            |
+| `tq tasks`      | Filtered task list: `--project/--status/--type/--since/--limit`, newest first (`--json`)                                    |
+| `tq top`        | Live per-project view with durations (`--once`, `--json`)                                                                   |
+| `tq show`       | One task + its complete fact trail (a unique ID prefix works)                                                               |
+| `tq facts`      | Replay the journal: `--after SEQ`, `--json`, `--detail` for full fact payloads                                              |
+| `tq tail`       | Follow the journal live (`-f`)                                                                                              |
+| `tq dlq`        | Inspect dead letters; rescue one (`--rescue ID`) or in bulk (`--rescue-all --older-than 24h`)                               |
+| `tq cancel`     | Cancel a pending task; `--force` cooperatively stops a running one                                                          |
+| `tq doctor`     | Health checks: DB integrity, expired leases, worker heartbeats, budget, agent binary, per-repo autonomy files               |
+| `tq audit`      | TODO-vs-queue drift: stale-open items repaired by catch-up tasks, stale-done reported                                       |
+| `tq watermarks` | Journal consumer cursors + lag (`show`); `set CONSUMER SEQ` rewinds for safe replay                                         |
+| `tq version`    | Build identity (version, VCS revision)                                                                                      |
 
 ## Concepts
 
@@ -309,13 +309,13 @@ toolchain PATH baked in) — see `deploy/nixos/tq-agent-pool.nix`.
 
 ## Status codes
 
-| status    | meaning                                              |
-| --------- | ---------------------------------------------------- |
-| pending   | waiting for claim (possibly delayed or dep-blocked)  |
-| running   | claimed, lease held                                  |
-| completed | done                                                 |
-| dead      | exhausted retries (DLQ)                              |
-| cancelled | withdrawn by operator (or pruned as stale)           |
+| status    | meaning                                             |
+| --------- | --------------------------------------------------- |
+| pending   | waiting for claim (possibly delayed or dep-blocked) |
+| running   | claimed, lease held                                 |
+| completed | done                                                |
+| dead      | exhausted retries (DLQ)                             |
+| cancelled | withdrawn by operator (or pruned as stale)          |
 
 ## Embedding it in Go
 

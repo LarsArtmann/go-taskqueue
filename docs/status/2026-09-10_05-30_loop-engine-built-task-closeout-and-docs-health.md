@@ -19,12 +19,12 @@ accident.
 
 1. **Workforce live on the shared pool journal** (`/mnt/pool/services/tq/
    tq.db`, dashboard :8100 sees it): GLM-5.3-Flash agents, review + autofix
-   + status-every 5, project-exclusive, budget 60/day. Since launch: **18
-   tasks completed, 0 dead-lettered** — govulncheck CI job, gosec triage,
-   templ-components audit, webui dedup (−67 LOC), httpapi/webui stats
-   split-brain fix, plus reviews, one autofix (`c5c654c`, minted by a
-   `request_changes` verdict that caught a real lint-baseline violation
-   hidden across a daemon auto-commit) and one status report.
+   - status-every 5, project-exclusive, budget 60/day. Since launch: **18
+     tasks completed, 0 dead-lettered** — govulncheck CI job, gosec triage,
+     templ-components audit, webui dedup (−67 LOC), httpapi/webui stats
+     split-brain fix, plus reviews, one autofix (`c5c654c`, minted by a
+     `request_changes` verdict that caught a real lint-baseline violation
+     hidden across a daemon auto-commit) and one status report.
 2. **Loop 1 — `--task-closeout`** (`internal/executor/agent.go`): work turn
    runs `--verbose` (conditional — the pinned argv contract for default
    pools is untouched), `ExtractSessionID` gained the crush verbose-marker
@@ -199,6 +199,6 @@ accident.
 
 ---
 
-*Format: Markdown per explicit instruction (skill default HTML, override
+_Format: Markdown per explicit instruction (skill default HTML, override
 flagged). Workforce note: the pool kept working while this report was
-written — counts are as of 05:30.*
+written — counts are as of 05:30._

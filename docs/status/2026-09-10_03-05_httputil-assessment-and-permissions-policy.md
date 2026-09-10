@@ -97,32 +97,32 @@ gate re-run green (12/12 packages, `-race`, exit 0).
 
 ## f) Top things to get done next (ranked; HARVEST input — route to TODO_LIST/ROADMAP)
 
-| #  | Task                                                                                                                                  | Impact | Effort | Category      |
-| -- | -------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ | ------------- |
-| 1  | HARVEST this report's (f) into TODO_LIST.md/ROADMAP.md so items don't die here                                                          | High   | S      | Documentation |
-| 2  | Add `X-Content-Type-Options: nosniff` (+ keep `Cache-Control: no-store`) to all `internal/httpapi` responses                            | High   | S      | Security      |
-| 3  | Decide + implement (or document-out) failed-auth lockout for `tq api` bearer guard, mirroring webui's 3-strikes CSRF lockout            | High   | M      | Security      |
-| 4  | Add per-surface response-header matrix (serve vs api) to SECURITY.md                                                                    | Medium | S      | Documentation |
-| 5  | Pin `redactedRequestURI` with a dedicated table test (token never lands in logs)                                                        | Medium | S      | Quality       |
-| 6  | Refactor `TestSecurityHeadersOnEveryResponse` to a header→want table for one-line future additions                                     | Low    | S      | Quality       |
-| 7  | Extract shared bearer-token extraction/compare into `internal/httpauth` (webui + httpapi convergence)                                   | Medium | M      | Cleanup       |
-| 8  | Document (or change) the webui session-cookie decision: cookie stores the raw token value, not a hash                                   | Medium | S      | Security      |
-| 9  | Route-table `GET` string → named constant (goconst advisory in webui.go route tables)                                                   | Low    | S      | Cleanup       |
-| 10 | Remove/inline dead helpers flagged by gopls this session: `factLines`, `filterSuffix` (webui), `waitFor` (webui_test), `ptr` (httpapi_test) | Low    | S      | Cleanup       |
-| 11 | Fix `hub.go:26` unnecessary type argument + `QF1003` tagged-switch suggestions in fragments_templ.go source                             | Low    | S      | Cleanup       |
-| 12 | Elevate the "no generic HTTP middleware dependency" AGENTS.md note into a short ADR if/when a second HTTP surface lands                  | Low    | S      | Documentation |
-| 13 | Ask owner to relicense httputil (see g/Q1); if yes → re-run the full comparison; if no → close the topic permanently                     | Medium | S      | Decision      |
-| 14 | Add `Permissions-Policy` (and future headers) to the webui smoke assertions (`scripts/smoke/webui.sh`) so smoke ≠ unit-divergent         | Low    | S      | Quality       |
-| 15 | Re-run `scripts/check-dead-exports.sh` after the dead-helper cleanup (#10) to confirm zero new orphans (substring matching, not `-w`)    | Low    | S      | Quality       |
-| 16 | Consider a board/fragment-level header e2e: assert SSE stream responses carry CSP + Permissions-Policy over real HTTP                    | Low    | S      | Quality       |
-| 17 | Document writeRateLimiter's per-remoteHost keying assumption (all clients behind one LAN proxy share a bucket) in SECURITY.md            | Low    | S      | Documentation |
-| 18 | Triage the two gosec advisory findings visible in httpapi.go (G118, contextcheck) next time that file is touched                        | Low    | S      | Security      |
-| 19 | Give `writeRateLimiter` a `Retry-After` rounding test (off-by-one boundary at lockout expiry)                                           | Low    | S      | Quality       |
-| 20 | Add `tq serve` response-header assertions to the SSE reconnect path in webui_test (resume + headers together)                            | Low    | S      | Quality       |
-| 21 | If httpapi grows CORS needs (browser producers), adopt per-origin allowlist ONLY — never `AllowAllOrigins` + credentials                 | Low    | M      | Feature       |
-| 22 | CHANGELOG: when v0.2.0 cuts, fold the `[Unreleased]` Added block (incl. Permissions-Policy) into the release section                     | Medium | S      | Documentation |
-| 23 | AGENTS.md: add one line to the templ-components adoption table only if a new library component lands (not yet — guard tests own it)      | Low    | S      | Documentation |
-| 24 | Keep `docs/status/README.md` archive counter honest when this report's items resolve → move to `archived/` per docs-health ANNOTATE      | Low    | S      | Documentation |
+| #  | Task                                                                                                                                                    | Impact | Effort | Category      |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ | ------------- |
+| 1  | HARVEST this report's (f) into TODO_LIST.md/ROADMAP.md so items don't die here                                                                          | High   | S      | Documentation |
+| 2  | Add `X-Content-Type-Options: nosniff` (+ keep `Cache-Control: no-store`) to all `internal/httpapi` responses                                            | High   | S      | Security      |
+| 3  | Decide + implement (or document-out) failed-auth lockout for `tq api` bearer guard, mirroring webui's 3-strikes CSRF lockout                            | High   | M      | Security      |
+| 4  | Add per-surface response-header matrix (serve vs api) to SECURITY.md                                                                                    | Medium | S      | Documentation |
+| 5  | Pin `redactedRequestURI` with a dedicated table test (token never lands in logs)                                                                        | Medium | S      | Quality       |
+| 6  | Refactor `TestSecurityHeadersOnEveryResponse` to a header→want table for one-line future additions                                                      | Low    | S      | Quality       |
+| 7  | Extract shared bearer-token extraction/compare into `internal/httpauth` (webui + httpapi convergence)                                                   | Medium | M      | Cleanup       |
+| 8  | Document (or change) the webui session-cookie decision: cookie stores the raw token value, not a hash                                                   | Medium | S      | Security      |
+| 9  | Route-table `GET` string → named constant (goconst advisory in webui.go route tables)                                                                   | Low    | S      | Cleanup       |
+| 10 | Remove/inline dead helpers flagged by gopls this session: `factLines`, `filterSuffix` (webui), `waitFor` (webui_test), `ptr` (httpapi_test)             | Low    | S      | Cleanup       |
+| 11 | Fix `hub.go:26` unnecessary type argument + `QF1003` tagged-switch suggestions in fragments_templ.go source                                             | Low    | S      | Cleanup       |
+| 12 | Elevate the "no generic HTTP middleware dependency" AGENTS.md note into a short ADR if/when a second HTTP surface lands                                 | Low    | S      | Documentation |
+| 13 | Ask owner to relicense httputil (see g/Q1); if yes → re-run the full comparison; if no → close the topic permanently                                    | Medium | S      | Decision      |
+| 14 | Add `Permissions-Policy` (and future headers) to the webui smoke assertions (`scripts/smoke/webui.sh`) so smoke ≠ unit-divergent                        | Low    | S      | Quality       |
+| 15 | Re-run `scripts/check-dead-exports.sh` after the dead-helper cleanup (#10) to confirm zero new orphans (substring matching, not `-w`)                   | Low    | S      | Quality       |
+| 16 | Consider a board/fragment-level header e2e: assert SSE stream responses carry CSP + Permissions-Policy over real HTTP                                   | Low    | S      | Quality       |
+| 17 | Document writeRateLimiter's per-remoteHost keying assumption (all clients behind one LAN proxy share a bucket) in SECURITY.md                           | Low    | S      | Documentation |
+| 18 | Triage the two gosec advisory findings visible in httpapi.go (G118, contextcheck) next time that file is touched                                        | Low    | S      | Security      |
+| 19 | Give `writeRateLimiter` a `Retry-After` rounding test (off-by-one boundary at lockout expiry)                                                           | Low    | S      | Quality       |
+| 20 | Add `tq serve` response-header assertions to the SSE reconnect path in webui_test (resume + headers together)                                           | Low    | S      | Quality       |
+| 21 | If httpapi grows CORS needs (browser producers), adopt per-origin allowlist ONLY — never `AllowAllOrigins` + credentials                                | Low    | M      | Feature       |
+| 22 | CHANGELOG: when v0.2.0 cuts, fold the `[Unreleased]` Added block (incl. Permissions-Policy) into the release section                                    | Medium | S      | Documentation |
+| 23 | AGENTS.md: add one line to the templ-components adoption table only if a new library component lands (not yet — guard tests own it)                     | Low    | S      | Documentation |
+| 24 | Keep `docs/status/README.md` archive counter honest when this report's items resolve → move to `archived/` per docs-health ANNOTATE                     | Low    | S      | Documentation |
 | 25 | Re-verify the "concurrent agents" ritual held: `git log --oneline -5 -- internal` at next session start (this session landed on top of 4ce666e cleanly) | Low    | S      | Process       |
 
 _(25 substantive items; the ask was "up to 50" — the honest count from this session's observations is 25, and padding the rest with filler would poison HARVEST routing. Items 2–8 are the actionable core.)_

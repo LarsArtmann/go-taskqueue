@@ -6,38 +6,43 @@
 
 ## TL;DR
 
-| Area | Verdict |
-| --- | --- |
-| The five window tasks | All five delivered what they claimed, verified in code/diffs |
-| Local gates at report time | Green (build, vet, full race suite, gofmt) |
-| **Master CI** | **RED since ~01:15 CEST — before the window started; still red at HEAD** |
-| Advisory scan jobs | Both red on their first runner run: gosec by design (FP triage), govulncheck with a REAL reachable vuln in `internal/queue/postgres` |
-| Verification honesty | One false gate claim in the window (dedup "lint clean"), self-corrected by `c5c654c` 44 min later |
+| Area                       | Verdict                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| The five window tasks      | All five delivered what they claimed, verified in code/diffs                                                                         |
+| Local gates at report time | Green (build, vet, full race suite, gofmt)                                                                                           |
+| **Master CI**              | **RED since ~01:15 CEST — before the window started; still red at HEAD**                                                             |
+| Advisory scan jobs         | Both red on their first runner run: gosec by design (FP triage), govulncheck with a REAL reachable vuln in `internal/queue/postgres` |
+| Verification honesty       | One false gate claim in the window (dedup "lint clean"), self-corrected by `c5c654c` 44 min later                                    |
 
 ---
 
 ## a) FULLY DONE (verified)
 
 ### f20 — govulncheck CI job (`1a11960`, 02:29)
+
 - New `govulncheck` job in `.github/workflows/ci.yml`: pinned `govulncheck@v1.8.0`, root module plus the disk-derived sub-module loop, job-level `continue-on-error: true`. Correctly documented as runner-only (live vuln DB fetch can never join the hermetic nix gates or ci-local.sh).
 - CHANGELOG entry added; TODO_LIST flipped with a DONE note. Confirmed present in both files.
 
 ### f21 — gosec pass over all modules (`17a5940`, 02:41)
+
 - gosec v2.29.0 over root + every sub-module: 48 findings triaged per rule class; the rationale is durably recorded in the AGENTS.md "gosec advisory baseline" note (verified present).
 - The two REAL findings are genuinely fixed: `examples/api/main.go` and `examples/sse/main.go` now use `http.Server` with `ReadHeaderTimeout: 5s` instead of bare `http.ListenAndServe` (G114).
 - Advisory `gosec` CI job added, mirroring govulncheck (verified in ci.yml).
 
 ### f22 — templ-components deep-dive audit (`4ce666e`, 02:56)
+
 - Verified audit result: `go.mod` pins v1.16.0; the library's only `Deprecated` marker (forms.Form layout field) is in a package this repo never imports; v1.14→v1.16 was purely additive (KanbanBoard, icons.Render, PageProps.SEO), no Removed/Deprecated; the adoption table is pinned bidirectionally by the guard tests.
 - The only drift found was documentation and it was fixed: stale "v1.14.x" → "v1.16.x" in AGENTS.md and FEATURES.md (verified in the diff and in the live files).
 - Audit-only outcome with zero code churn is the correct shape for this task.
 
 ### f23 — webui dedup deep pass (`4d2fd68` auto-commit 03:15 + `6bcfd1c` 03:18)
+
 - The five claimed helper consolidations all exist in the live tree (verified by symbol search): `completionDetail[T]` (render.go:194), `pageResults[T]` (render.go:242), `runEventStream` (handlers.go:247), `sendSnapshotPayload`+`queryErr` (handlers.go:357/368), `taskFromPath` (handlers.go:405). Dead `filterSuffix` is gone.
 - Net −67 LOC in `internal/webui` (150 insertions / 217 deletions across handlers.go + render.go), matching the claim.
 - Local full race suite green at report time, including `internal/webui` (10.4s) and `internal/httpapi`.
 
 ### f24 — stats split-brain fix (`716eaca` auto-commit 03:56 + `20dafb9` 03:58)
+
 - The diagnosed split-brain was real and is closed: `tq serve` `/api/stats` and `tq api` `/api/v1/stats` previously computed the payload via two independent paths (dashboard: full snapshot projection keyed by HTML badge labels; API: raw GROUP BY rows dropping zero-count statuses). Both handlers now key from the status enum list and always emit all five statuses + total (verified webui handlers.go:147–180, httpapi.go `apiStatuses`).
 - `TestStatsSurfacesAgree` (internal/webui/stats_contract_test.go) pins the two payloads equal over one seeded store and asserts the write API 404s on unversioned `/api/stats` — disjoint route namespaces locked in.
 - Performance claim verified: webui `/api/stats` reads `StatusCounts` directly; the full-snapshot poll cost is gone.
@@ -47,8 +52,8 @@
 
 ## b) PARTIALLY DONE
 
-1. **Dedup's verification claim was false at commit time.** The f23 DONE note says "`--new-from-rev` lint clean", but `runEventStream` and `pageResults` were left over the 120-column golines limit; `c5c654c` (04:02, a *different* task) had to wrap both signatures. The claim is true only *after* the repair. Self-corrected within the hour — but the window's own gate claim did not hold when written.
-2. **gosec pass is triage-complete but structurally unfinished**: the advisory job exits 1 on the 48 triaged-as-FP findings (no suppression config exists), so it is red *by construction* on every run (see d3). Triage recorded, enforcement story missing.
+1. **Dedup's verification claim was false at commit time.** The f23 DONE note says "`--new-from-rev` lint clean", but `runEventStream` and `pageResults` were left over the 120-column golines limit; `c5c654c` (04:02, a _different_ task) had to wrap both signatures. The claim is true only _after_ the repair. Self-corrected within the hour — but the window's own gate claim did not hold when written.
+2. **gosec pass is triage-complete but structurally unfinished**: the advisory job exits 1 on the 48 triaged-as-FP findings (no suppression config exists), so it is red _by construction_ on every run (see d3). Triage recorded, enforcement story missing.
 3. **govulncheck job is live but its "clean" premise died on first contact with the runner**: local scans covered root + sqlite only; the first CI run found a real reachable vulnerability in `internal/queue/postgres` (see d2). Advisory framing contained the damage exactly as designed — but the baseline is not clean.
 4. **c5c654c (HEAD) has no CI run at report time** (04:09): the newest completed run is for `20dafb9`. HEAD is locally green (build/vet/race/gofmt re-run for this report) but CI-unverified.
 
@@ -69,12 +74,12 @@ The window spent itself entirely on its own five items; nothing from the surroun
 ## d) TOTALLY FUCKED UP
 
 1. **Master CI has been red for ~3 hours and the whole window landed on it without noticing.** Verified timeline (gh): last green master run 23:23 CEST (Sep 9); first red run 01:15 CEST; every push since is red, including both window pushes (`6bcfd1c` 03:21 run, `20dafb9` 04:00 run). All five tasks reported local gates green — which was true — but none looked at master CI state, so five "DONE" verdicts were stamped onto a red tree. The red predates the window; it is not the window's regression, but the window's completion claims are blind to it.
-2. **Hard-gate break #1 — release-gates smoke, exit 128, self-inflicted at 00:22 CEST.** `scripts/smoke/release-gates.sh:42` runs `git -C "$fixture" tag -a` *without* the `-c user.email/-c user.name` that line 40 gives the fixture commit. Annotated tags need committer identity; GitHub runners have none → "Committer identity unknown" → the step fails on every CI run. Local runs pass because the host has a global git identity — the script was born un-hermetic. (Landed in auto-commit `adabaef` with the release-gates feature.)
-3. **Hard-gate break #2 — test-windows, red since 01:38 CEST.** `TestHarvestConfigFromOptionsExpandsBareRepoNames` fails on windows-latest (subtests `mixed_entries_with_spacing`, `absolute_repos_stay_untouched`) — landed by the *pre-window* dead-pool-fix session (`a0b720e`), almost certainly a path-separator/expansion assumption. Not this window's code, but this window's master.
+2. **Hard-gate break #1 — release-gates smoke, exit 128, self-inflicted at 00:22 CEST.** `scripts/smoke/release-gates.sh:42` runs `git -C "$fixture" tag -a` _without_ the `-c user.email/-c user.name` that line 40 gives the fixture commit. Annotated tags need committer identity; GitHub runners have none → "Committer identity unknown" → the step fails on every CI run. Local runs pass because the host has a global git identity — the script was born un-hermetic. (Landed in auto-commit `adabaef` with the release-gates feature.)
+3. **Hard-gate break #2 — test-windows, red since 01:38 CEST.** `TestHarvestConfigFromOptionsExpandsBareRepoNames` fails on windows-latest (subtests `mixed_entries_with_spacing`, `absolute_repos_stay_untouched`) — landed by the _pre-window_ dead-pool-fix session (`a0b720e`), almost certainly a path-separator/expansion assumption. Not this window's code, but this window's master.
 4. **govulncheck: a real, reachable vulnerability on its first runner run.** `internal/queue/postgres` — GO-2026-5970, `golang.org/x/text@v0.29.0` infinite loop, fixed in v0.39.0, reached via `postgres.Open` → `pgxpool.NewWithConfig` → `norm.Form.*` (verified in the failed-run log). The task's commit message says "Local root + sqlite scans clean" — accurate but scope-narrow; the affected module was simply not part of the local spot-check. Needs an x/text bump across modules.
 5. **gosec advisory job is permanently red by construction.** gosec exits 1 whenever it finds anything; the 48 FP findings have no in-repo suppression config (the triage lives as AGENTS.md prose). Result: an advisory job that is red on every run, training everyone to ignore it — the exact alert-fatigue pattern that will hide the first real gosec finding.
 6. **CHANGELOG omission in f21.** The govulncheck job got a CHANGELOG entry; the gosec job and the two examples G114 fixes did not (verified: `17a5940` touches no CHANGELOG; no later commit added one). CHANGELOG is append-only and this is a permanent gap until backfilled.
-7. **Commit archaeology noise around the window.** The dedup's actual code diff lives in an auto-commit (`4d2fd68` "chore: auto-commit 2 changed file(s)") that *precedes* the task's own commit (`6bcfd1c`), whose diff is a TODO flip; same pattern for f24 (`716eaca` carries the code, `20dafb9` the cleanup). Anyone auditing "what did task X change" from commit messages alone gets the wrong answer.
+7. **Commit archaeology noise around the window.** The dedup's actual code diff lives in an auto-commit (`4d2fd68` "chore: auto-commit 2 changed file(s)") that _precedes_ the task's own commit (`6bcfd1c`), whose diff is a TODO flip; same pattern for f24 (`716eaca` carries the code, `20dafb9` the cleanup). Anyone auditing "what did task X change" from commit messages alone gets the wrong answer.
 8. **In passing (pre-existing, advisory)**: `check-dead-exports.sh` currently reports 48 zero-importer exports, including webui's `BudgetView`, `BoardColumn`, `DashboardData` — the dedup pass didn't look at export-level dead weight. And the err113 finding (`cmd/tq/doctor.go:472`, dynamic `errors.New`) hard-failed the lint-annotations step once at 01:15 CEST, then silently aged into the `--new-from-rev` baseline without ever being fixed — a live demonstration of how new findings get swallowed by baseline drift.
 
 ---
@@ -82,8 +87,8 @@ The window spent itself entirely on its own five items; nothing from the surroun
 ## e) WHAT WE SHOULD IMPROVE
 
 1. **Master-CI awareness as a completion precondition.** Every tool needed exists (`gh run list`). One script + one ci-local step turns "landed on red master" from invisible to blocked. Cheapest possible fix for the d1 process hole.
-2. **Hermetic git in smoke fixtures.** Any fixture `git` mutation (commit *and* annotated tag) must carry identity explicitly (`-c user.*` or `GIT_AUTHOR_*`/`GIT_COMMITTER_*`), and ci-local should prove it by running the smoke under a sanitized `GIT_CONFIG_GLOBAL`/HOME. Runner ≠ laptop.
-3. **Encode triage in config, not prose.** The gosec triage is excellent work stranded in AGENTS.md; a gosec config with the exclude-rule list converts it into an enforceable, green-by-default baseline where only *new* classes make noise.
+2. **Hermetic git in smoke fixtures.** Any fixture `git` mutation (commit _and_ annotated tag) must carry identity explicitly (`-c user.*` or `GIT_AUTHOR_*`/`GIT_COMMITTER_*`), and ci-local should prove it by running the smoke under a sanitized `GIT_CONFIG_GLOBAL`/HOME. Runner ≠ laptop.
+3. **Encode triage in config, not prose.** The gosec triage is excellent work stranded in AGENTS.md; a gosec config with the exclude-rule list converts it into an enforceable, green-by-default baseline where only _new_ classes make noise.
 4. **Scope-qualify gate claims.** "Local scans clean" (root+sqlite) read as "clean". DONE notes should name the exact scope — the postgres finding would have been a 30-second catch instead of a CI surprise.
 5. **Advisory red must be actionable red.** Job summaries/artifacts for gosec+govulncheck findings, and a policy to flip `continue-on-error` off once green. An advisory job that never goes green is a broken sensor.
 6. **Line-length gate on changed lines.** The golines wrap regression (c5c654c class) is mechanically checkable in ci-local (lll/golines `--new-from-rev`-style); it should never depend on a second task noticing.
@@ -123,4 +128,4 @@ The window spent itself entirely on its own five items; nothing from the surroun
 
 ---
 
-*Point-in-time snapshot 2026-09-10 04:09 CEST. Re-verify before treating any claim as current — five concurrent-agent sessions are active on this repo.*
+_Point-in-time snapshot 2026-09-10 04:09 CEST. Re-verify before treating any claim as current — five concurrent-agent sessions are active on this repo._

@@ -2,13 +2,13 @@
 
 - **Written**: 2026-09-10 09:27 CEST
 - **Window**: five tasks completed 2026-09-10 ~07:15–08:47 CEST:
-  | task | work commit | what |
-  | --- | --- | --- |
-  | `…c3919ce4` | `cd09c1c` | review fix: Task-Queue-ID footer on the release-docs commit (history reword) |
-  | `…e39c8dbf` | `bafc720` | TODO f30: `runactor.ExitCause` → `ExitError` (errname) |
-  | `…f1582f2c` | `da8f331` | review fix: webui `?q=` parse regression (`query.Get("query")`) |
-  | `…f15854a1` | `9b7c46b` | review fix: `tq dlq --max-attempts` help literal (`task(store)`) |
-  | `…a11634e8` | `7f5d699` | TODO f32: per-module golangci runs in ci.yml (3e0cb85 = its close-out report commit) |
+  | task        | work commit | what                                                                                 |
+  | ----------- | ----------- | ------------------------------------------------------------------------------------ |
+  | `…c3919ce4` | `cd09c1c`   | review fix: Task-Queue-ID footer on the release-docs commit (history reword)         |
+  | `…e39c8dbf` | `bafc720`   | TODO f30: `runactor.ExitCause` → `ExitError` (errname)                               |
+  | `…f1582f2c` | `da8f331`   | review fix: webui `?q=` parse regression (`query.Get("query")`)                      |
+  | `…f15854a1` | `9b7c46b`   | review fix: `tq dlq --max-attempts` help literal (`task(store)`)                     |
+  | `…a11634e8` | `7f5d699`   | TODO f32: per-module golangci runs in ci.yml (3e0cb85 = its close-out report commit) |
 - **Method**: every claim re-verified in this pass — `git show` of all five
   commits; the fixed code read at HEAD (handlers.go:48, main.go:1391,
   runactor.go, ci.yml lint step); `rg` for `ExitCause` remnants (zero);
@@ -89,9 +89,9 @@ idea. No archives (no report qualified).
    never re-run scoped to the package. Filed as TODO.
 3. **Per-module CI lint is runner-verified only in theory**: the edited
    step can fully prove itself only on a GitHub runner; locally only YAML
-   + pattern-parity were checkable. Its runtime cost folds into the still-
-   open "measure CI time impact" item (f49), which now lacks a budget
-   number (owner question below).
+   - pattern-parity were checkable. Its runtime cost folds into the still-
+     open "measure CI time impact" item (f49), which now lacks a budget
+     number (owner question below).
 4. **Round-trip coverage is one field deep**: `TestParseFilterQuery` pins
    `q` only; Project/Status/Sort/View have no emitter↔parse pins. The
    reviewer's "ideally" is half-honored by design (the other fields were
@@ -190,6 +190,7 @@ idea. No archives (no report qualified).
 ## f) UP TO 50 NEXT THINGS (22 appended to TODO_LIST this pass, deduped against the existing list; the highlights by theme)
 
 **Finish the rename window's blast radius**
+
 1. Rename the `exitCause` local (runactor.go:162); re-run errname scoped
    to `internal/runactor`; sweep the `eaf73a9` diff repo-wide for further
    literal leaks (`git log -S` probes).
@@ -200,19 +201,19 @@ idea. No archives (no report qualified).
 
 **Harden the string-literal class mechanically**
 3. Help-text smoke asserting no parenthesized-identifier artifacts in
-   `tq` flag strings; ROADMAP idea filed: user-facing string corpus
-   snapshot test.
+`tq` flag strings; ROADMAP idea filed: user-facing string corpus
+snapshot test.
 
 **CI lint loop follow-through**
 4. Extend or deliberately exclude `scripts/lint-annotations.sh` from
-   sub-modules; verify root `.golangci.yml` applies inside sub-module dirs;
-   `scripts/for-each-module.sh`; `actionlint` locally; per-module baseline
-   quantification; fixture-go.mod pickup check; unify the golangci pin.
+sub-modules; verify root `.golangci.yml` applies inside sub-module dirs;
+`scripts/for-each-module.sh`; `actionlint` locally; per-module baseline
+quantification; fixture-go.mod pickup check; unify the golangci pin.
 
 **Small honest cleanups**
 5. Delete the (probably) unused `waitFor` webui test helper; CI topology
-   one-pager; report the session-snapshot ghost (work-commit hashes
-   pre-appearing in session-start snapshots) upstream.
+one-pager; report the session-snapshot ghost (work-commit hashes
+pre-appearing in session-start snapshots) upstream.
 
 **Plus the standing, higher-leverage backlog the window skipped** (already
 in TODO_LIST, not duplicated): release.sh fixture rehearsal under the
@@ -240,6 +241,6 @@ smoke, CI-state gate.
 
 ---
 
-*Point-in-time snapshot 2026-09-10 09:27 CEST. Re-verify before treating
+_Point-in-time snapshot 2026-09-10 09:27 CEST. Re-verify before treating
 any claim as current — multiple concurrent-agent sessions are active on
-this repo.*
+this repo._

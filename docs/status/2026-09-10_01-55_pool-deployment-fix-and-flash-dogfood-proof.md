@@ -39,11 +39,11 @@ Symptom chain (evidence: `journalctl -u tq-agent-pool`, `tq top` on
 
 ## b) Fixes (all on master this session)
 
-| Fix | Where | Test |
-| --- | --- | --- |
-| Bare `--repos` names expand against `--projects-dir`, never cwd | `cmd/tq/agentpool.go` (`harvestConfigFromOptions`) | `TestHarvestConfigFromOptionsExpandsBareRepoNames` |
-| Skip groups carry one full example reason; scan failures log at WARN; `harvest.ReasonScanFailed` const | `cmd/tq/main.go`, `internal/harvest/harvest.go` | `TestGroupedSkipsKeepsFullExample`, `TestGroupedSkipsTruncatesLongExamples` |
-| Pool unit sets an agent-toolchain PATH (new `services.tq-agent-pool.agentPath` option: hermetic git+go + system profile + per-user profile + GOBIN) | `deploy/nixos/tq-agent-pool.nix` | `nix flake check --all-systems --no-build` (module-eval) |
+| Fix                                                                                                                                                 | Where                                              | Test                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------- |
+| Bare `--repos` names expand against `--projects-dir`, never cwd                                                                                     | `cmd/tq/agentpool.go` (`harvestConfigFromOptions`) | `TestHarvestConfigFromOptionsExpandsBareRepoNames`                          |
+| Skip groups carry one full example reason; scan failures log at WARN; `harvest.ReasonScanFailed` const                                              | `cmd/tq/main.go`, `internal/harvest/harvest.go`    | `TestGroupedSkipsKeepsFullExample`, `TestGroupedSkipsTruncatesLongExamples` |
+| Pool unit sets an agent-toolchain PATH (new `services.tq-agent-pool.agentPath` option: hermetic git+go + system profile + per-user profile + GOBIN) | `deploy/nixos/tq-agent-pool.nix`                   | `nix flake check --all-systems --no-build` (module-eval)                    |
 
 Also this session (unrelated carry-over): the orphan `/tmp/tq serve :8090`
 (2026-09-07 dogfood leftover, `--allow-writes`) was stopped per the

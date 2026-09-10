@@ -27,9 +27,9 @@ GOOS=windows go vet ./...
 # script.
 mods="$(find internal -name go.mod | sed 's|/go.mod$||' | sort)"
 for m in $mods; do
-	( cd "$m" \
-		&& GOWORK=off GOOS=windows go build ./... \
-		&& GOWORK=off GOOS=windows go vet ./... ) || exit 1
+	(cd "$m" &&
+		GOWORK=off GOOS=windows go build ./... &&
+		GOWORK=off GOOS=windows go vet ./...) || exit 1
 done
 
 step "tests (-race)"
@@ -38,10 +38,10 @@ go test ./... -count=1 -race -timeout 120s
 step "module isolation gates (GOWORK=off per sub-module)"
 for m in $mods; do
 	echo "== $m"
-	( cd "$m" \
-		&& GOWORK=off go build ./... \
-		&& GOWORK=off go vet ./... \
-		&& GOWORK=off go test ./... -count=1 -timeout 120s ) || exit 1
+	(cd "$m" &&
+		GOWORK=off go build ./... &&
+		GOWORK=off go vet ./... &&
+		GOWORK=off go test ./... -count=1 -timeout 120s) || exit 1
 done
 
 step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
@@ -67,7 +67,7 @@ lint() {
 	if command -v golangci-lint >/dev/null 2>&1; then
 		golangci-lint run ./...
 		for m in $mods; do
-			( cd "$m" && golangci-lint run ./... )
+			(cd "$m" && golangci-lint run ./...)
 		done
 	else
 		echo "golangci-lint not on PATH — installing the CI-pinned version (v2.13.2)"

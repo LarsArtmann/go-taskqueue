@@ -66,6 +66,7 @@ func TestExecWithTransientRetryRealETXTBSY(t *testing.T) {
 
 	go func() {
 		time.Sleep(80 * time.Millisecond)
+
 		_ = f.Close()
 	}()
 

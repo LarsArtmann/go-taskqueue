@@ -31,7 +31,7 @@ each with its own bugs" failure mode.
    `retry.ErrExhausted` but `errors.Is(err, originalErrno)` stays true.
    `TestExecWithTransientRetry` fails if that regresses.
 4. **Documented exceptions — do NOT migrate these to go-retry:**
-   - `internal/harvest/watch.go` `Run`: a reconnect *supervisor* whose
+   - `internal/harvest/watch.go` `Run`: a reconnect _supervisor_ whose
      success case is "the stream ended" — `retry.Do`'s nil-stops-retrying
      semantics are the wrong shape.
    - The queue's NotBefore backoff ladder (`worker.Backoff`,

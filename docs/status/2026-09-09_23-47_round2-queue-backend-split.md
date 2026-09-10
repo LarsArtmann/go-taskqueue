@@ -81,20 +81,20 @@ suite 12/12, vendorHash refreshed, `nix build` + `nix flake check` green,
 
 ## a) FULLY DONE
 
-| Work | Evidence |
-| --- | --- |
-| **Re-modularization assessment (Phase 1.5)** — scored all 6 modules; every one Keep except queue (cohesion 3, depth too coarse) | scoring table in round-2 proposal |
-| **Queue split executed (ADR-0012)** — contract (`internal/queue`, deps: task+journal ONLY) + `queue/sqlite` + `queue/postgres` driver-style modules; import paths per database/sql convention; 17 consumer files / ~57 sites renamed | all module gates green |
-| **Helper mirroring** — 7 micro-helpers mirrored one-for-one into `postgres/mirror.go` with the mirroring rationale documented | compiler-clean; ADR-0012 §2 |
-| **`WatermarkEntry` promoted to the contract** (returned by both backends) | queue.go |
-| **Root drops pgx entirely**; contract-only importers stop compiling sqlite+pgx; queue's go.sum carries zero external deps | root go.mod after tidy |
-| **worker gains queue/sqlite as second documented test-only dep** (real-store suite) | worker go.mod + ADR-0012 §5 |
-| **Disk-derived tooling** — ci-local.sh (windows cross, module gates, lint loop, both hygiene audits), ci.yml (Linux + windows jobs), release.sh (tag cutting) all enumerate `find internal -name go.mod` | verified live: 7 modules gated, audits clean |
-| **Postgres conformance CI job repointed** to `internal/queue/postgres` | ci.yml |
-| **Tags cut locally** — `internal/queue/{sqlite,postgres}/v0.2.0`; release.sh now cuts all internal-module tags at every release | git tag listing; derivation tested for v0.3.0 + resume case |
-| **vendorHash dance ×1 this round** + `nix build` + binary check (`tq version` 0.2.0) | green |
-| **Docs** — ADR-0012; AGENTS.md (7-module map, new table rows, `sqlite.Open` names); FEATURES.md (names + repointed paths); CHANGELOG `[Unreleased]`; ADR-0007 path annotation; round-2 proposal + in-execution correction card | committed c714847, 1320cf4 |
-| **Full final gate** — `ALL CI GATES GREEN` (module isolation ×7, windows cross ×7, race suite, smokes, doc checks, nix) | ci-local output on 1320cf4 |
+| Work                                                                                                                                                                                                                                 | Evidence                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| **Re-modularization assessment (Phase 1.5)** — scored all 6 modules; every one Keep except queue (cohesion 3, depth too coarse)                                                                                                      | scoring table in round-2 proposal                           |
+| **Queue split executed (ADR-0012)** — contract (`internal/queue`, deps: task+journal ONLY) + `queue/sqlite` + `queue/postgres` driver-style modules; import paths per database/sql convention; 17 consumer files / ~57 sites renamed | all module gates green                                      |
+| **Helper mirroring** — 7 micro-helpers mirrored one-for-one into `postgres/mirror.go` with the mirroring rationale documented                                                                                                        | compiler-clean; ADR-0012 §2                                 |
+| **`WatermarkEntry` promoted to the contract** (returned by both backends)                                                                                                                                                            | queue.go                                                    |
+| **Root drops pgx entirely**; contract-only importers stop compiling sqlite+pgx; queue's go.sum carries zero external deps                                                                                                            | root go.mod after tidy                                      |
+| **worker gains queue/sqlite as second documented test-only dep** (real-store suite)                                                                                                                                                  | worker go.mod + ADR-0012 §5                                 |
+| **Disk-derived tooling** — ci-local.sh (windows cross, module gates, lint loop, both hygiene audits), ci.yml (Linux + windows jobs), release.sh (tag cutting) all enumerate `find internal -name go.mod`                             | verified live: 7 modules gated, audits clean                |
+| **Postgres conformance CI job repointed** to `internal/queue/postgres`                                                                                                                                                               | ci.yml                                                      |
+| **Tags cut locally** — `internal/queue/{sqlite,postgres}/v0.2.0`; release.sh now cuts all internal-module tags at every release                                                                                                      | git tag listing; derivation tested for v0.3.0 + resume case |
+| **vendorHash dance ×1 this round** + `nix build` + binary check (`tq version` 0.2.0)                                                                                                                                                 | green                                                       |
+| **Docs** — ADR-0012; AGENTS.md (7-module map, new table rows, `sqlite.Open` names); FEATURES.md (names + repointed paths); CHANGELOG `[Unreleased]`; ADR-0007 path annotation; round-2 proposal + in-execution correction card       | committed c714847, 1320cf4                                  |
+| **Full final gate** — `ALL CI GATES GREEN` (module isolation ×7, windows cross ×7, race suite, smokes, doc checks, nix)                                                                                                              | ci-local output on 1320cf4                                  |
 
 ## b) PARTIALLY DONE
 
@@ -172,29 +172,29 @@ most extra items are ROADMAP fuel; — BLOCKED marks owner-gated).
    or temp+rename).
 10. **P2**: docs-health HARVEST both status reports into TODO_LIST/ROADMAP.
 11. **P2**: annotate or regenerate the round-1 architecture D2 diagrams
-     (queue box is pre-split).
+    (queue box is pre-split).
 12. **P2**: verify `nix run .#test` covers the sub-modules; extend if
-     root-only.
+    root-only.
 13. **P2**: after push: verify proxy serves each internal tag
-     (`go list -m -versions` per module), then run the clean-room
-     `go install` once for real.
+    (`go list -m -versions` per module), then run the clean-room
+    `go install` once for real.
 14. **P2 — NEW**: compile-time interface assertions in both backends
-     (`var _ queue.Store = (*Store)(nil)`) — proposed in round-2 docs, not
-     yet added.
+    (`var _ queue.Store = (*Store)(nil)`) — proposed in round-2 docs, not
+    yet added.
 15. **P2 — NEW**: naming sweep of round-2 identifiers (`mirror.go` file
-     name, `postgres.Open` call-site readability).
+    name, `postgres.Open` call-site readability).
 16. **P3**: `meta.description` on the four flake apps.
 17. **P3**: `nix flake check --all-systems --no-build` once post-split.
 18. **P3**: data-model review of `task.Task`/`Status` (branded IDs?).
 19. **P3**: dead-code audit script (exported-with-zero-importers) as a
-     periodic check.
+    periodic check.
 20. **P3**: govulncheck step in CI.
 21. **P3**: gosec advisory scan.
 22. **P3**: templ-components deep-dive audit.
 23. **P3**: webui dedup deep pass (render 728 + handlers 527 LOC).
 24. **P3**: httpapi/webui API-surface split-brain check.
 25. **P3**: full-core example (worker + executor + queue) proving the embed
-     story; now also a backend-choice example (sqlite vs postgres import).
+    story; now also a backend-choice example (sqlite vs postgres import).
 26. **P3**: document the round-2 release flow in the release checklist doc.
 27. **P3**: version-surface inventory doc (flake ×2, tag, CHANGELOG).
 28. **P3**: lint-baseline slice-triage: wrapcheck (50) first.
@@ -206,36 +206,36 @@ most extra items are ROADMAP fuel; — BLOCKED marks owner-gated).
 34. **P3**: `tq doctor` multi-module awareness check.
 35. ~~**P3**: multi-repo smoke against nix-built 0.2.0 binary.~~ done at `7e32b40`
 36. **P3**: README architecture blurb (module map + gate commands — now 8
-     modules).
+    modules).
 37. **P3 — NEW**: README store-backend section: two driver modules, how an
-     embedder picks one (import-line choice).
+    embedder picks one (import-line choice).
 38. **P3**: `tq version` vs flake version golden test (kills the drift class
-     at test level).
+    at test level).
 39. **P3**: docs-health VERIFY pass over TODO_LIST for split-invalidated
-     items.
+    items.
 40. **P3 — NEW**: FEATURES.md row for the backend split (structural feature
-     note; check-features-roadmap honesty).
+    note; check-features-roadmap honesty).
 41. **P3 — NEW**: evaluate `queue.Store` interface segregation (25+ methods;
-     read-side vs write-side split) — data-model territory, next natural
-     refinement IF ever.
+    read-side vs write-side split) — data-model territory, next natural
+    refinement IF ever.
 42. **P3**: `internal/*/vX.Y.Z` version-bump reminder in the release
-     checklist (requires bump when sub-modules change semantically).
+    checklist (requires bump when sub-modules change semantically).
 43. **P3**: toolchain alignment gate across all 8 go.mod `go` directives.
 44. **P3 — NEW**: conformance-suite gap check: sqlite's white-box suite vs
-     postgres conformance — confirm the mirrored suites still cover the same
-     behaviors post-move (name-level diff review).
+    postgres conformance — confirm the mirrored suites still cover the same
+    behaviors post-move (name-level diff review).
 45. **P3 — NEW**: `queue/queue.go` contract doc pass: the Store interface
-     deserves package-level docs now that it stands alone as a module.
+    deserves package-level docs now that it stands alone as a module.
 46. **P3**: agent-pool dogfood: stale queued tasks may verify with the OLD
-     single-module default command — drain or cancel.
+    single-module default command — drain or cancel.
 47. **P3**: confirm `scripts/smoke/multi-repo.sh` passes (not in ci-local's
-     smoke list; README claims it).
+    smoke list; README claims it).
 48. **P3**: document the TQ_TEST_POSTGRES docker one-liner next to the
-     conformance job.
+    conformance job.
 49. **P3 — NEW**: measure CI time impact of the disk-derived module loops
-     (`-count=1` forces rerun; tune if it dominates).
+    (`-count=1` forces rerun; tune if it dominates).
 50. **P3**: after next real release, write the "first multi-module release"
-     retrospective into docs/release.
+    retrospective into docs/release.
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
@@ -253,7 +253,7 @@ most extra items are ROADMAP fuel; — BLOCKED marks owner-gated).
 
 ---
 
-*Report by Crush (glm-5.3-flash), 2026-09-09 23:47 CEST · round-2 commits
+_Report by Crush (glm-5.3-flash), 2026-09-09 23:47 CEST · round-2 commits
 ede6def (proposal) → 1320cf4 (path fixes) · final ci-local run: ALL CI GATES
 GREEN on 1320cf4. Markdown per explicit user instruction (skill default is
-HTML — override flagged, consistent with the 23:21 report).*
+HTML — override flagged, consistent with the 23:21 report)._

@@ -8,15 +8,15 @@ this inventory (2026-09-10).
 
 ## The surfaces
 
-| # | Surface | Where | Current value at v0.2.0 | Verified by |
-| - | ------- | ----- | ----------------------- | ----------- |
-| 1 | Flake version attr | `flake.nix` `go-standard.version` | `"0.2.0"` | `nix flake check` `checks.version-sync` (attr ↔ binary) |
-| 2 | ldflags version | `flake.nix` `buildFlagsArray` (`-X main.version=...`) | `0.2.0` | same check: binary `tq version` must equal attr |
-| 3 | Root tag | git `vX.Y.Z`, annotated, on HEAD | `v0.2.0` | `scripts/release.sh` preconditions (forward-only, not pre-existing, clean tree, points at HEAD) |
-| 4 | Per-module tags | `internal/<mod>/vX.Y.Z` (+ one nesting level, e.g. `internal/queue/sqlite/v0.2.0`), derived from disk | 7 sub-tags at v0.2.0 | release gate `gate_gomod`: every internal `require` version must have its subdirectory tag BEFORE the root tag is cut |
-| 5 | Internal requires | each module's `go.mod` requires sibling modules at real tagged versions + relative `replace` | `v0.2.0` | `scripts/check-go-mods.sh` (real versions, never `v0.0.0`, no pseudo-version `00010101`, aligned `go` directives, `go mod verify`) |
-| 6 | CHANGELOG | `CHANGELOG.md` `[Unreleased]` → `## [vX.Y.Z]` section | append-only | manual; `--tag` derives release notes from it (reused as tag message + GitHub notes) |
-| 7 | Toolchain | `go` directive in root + every module `go.mod` | aligned across all modules | `check-go-mods.sh` (per-module `go` must match root) |
+| # | Surface            | Where                                                                                                 | Current value at v0.2.0    | Verified by                                                                                                                        |
+| - | ------------------ | ----------------------------------------------------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | Flake version attr | `flake.nix` `go-standard.version`                                                                     | `"0.2.0"`                  | `nix flake check` `checks.version-sync` (attr ↔ binary)                                                                            |
+| 2 | ldflags version    | `flake.nix` `buildFlagsArray` (`-X main.version=...`)                                                 | `0.2.0`                    | same check: binary `tq version` must equal attr                                                                                    |
+| 3 | Root tag           | git `vX.Y.Z`, annotated, on HEAD                                                                      | `v0.2.0`                   | `scripts/release.sh` preconditions (forward-only, not pre-existing, clean tree, points at HEAD)                                    |
+| 4 | Per-module tags    | `internal/<mod>/vX.Y.Z` (+ one nesting level, e.g. `internal/queue/sqlite/v0.2.0`), derived from disk | 7 sub-tags at v0.2.0       | release gate `gate_gomod`: every internal `require` version must have its subdirectory tag BEFORE the root tag is cut              |
+| 5 | Internal requires  | each module's `go.mod` requires sibling modules at real tagged versions + relative `replace`          | `v0.2.0`                   | `scripts/check-go-mods.sh` (real versions, never `v0.0.0`, no pseudo-version `00010101`, aligned `go` directives, `go mod verify`) |
+| 6 | CHANGELOG          | `CHANGELOG.md` `[Unreleased]` → `## [vX.Y.Z]` section                                                 | append-only                | manual; `--tag` derives release notes from it (reused as tag message + GitHub notes)                                               |
+| 7 | Toolchain          | `go` directive in root + every module `go.mod`                                                        | aligned across all modules | `check-go-mods.sh` (per-module `go` must match root)                                                                               |
 
 ## Who must move when (bump order)
 

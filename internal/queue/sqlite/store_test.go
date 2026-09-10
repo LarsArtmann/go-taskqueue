@@ -3,7 +3,8 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -34,7 +35,7 @@ func TestEnqueueAndClaim(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	got, err := s.Enqueue(ctx, task.New{Project: "go-cqrs-lite", Type: "lint", Payload: json.RawMessage(`{"x":1}`)})
+	got, err := s.Enqueue(ctx, task.New{Project: "go-cqrs-lite", Type: "lint", Payload: jsontext.Value(`{"x":1}`)})
 	if err != nil {
 		t.Fatalf("Enqueue: %v", err)
 	}
@@ -74,7 +75,7 @@ func TestCompleteVerifiesLease(t *testing.T) {
 		t.Fatalf("Complete by wrong owner err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Complete(ctx, tk.ID, "w1", json.RawMessage(`{"ok":true}`)); err != nil {
+	if err := s.Complete(ctx, tk.ID, "w1", jsontext.Value(`{"ok":true}`)); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -900,7 +901,7 @@ func seedFacts(ctx context.Context, t *testing.T, s *Store, n int) {
 	for i := range n {
 		if _, err := s.Enqueue(
 			ctx,
-			task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`)},
+			task.New{Project: "p", Type: "sh", Payload: jsontext.Value(`"true"`)},
 		); err != nil {
 			t.Fatalf("seed enqueue %d: %v", i, err)
 		}
@@ -1001,12 +1002,12 @@ func TestFactsForTaskFiltersAndBounds(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	a, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`), DedupKey: "a"})
+	a, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: jsontext.Value(`"true"`), DedupKey: "a"})
 	if err != nil {
 		t.Fatalf("enqueue a: %v", err)
 	}
 
-	b, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`), DedupKey: "b"})
+	b, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: jsontext.Value(`"true"`), DedupKey: "b"})
 	if err != nil {
 		t.Fatalf("enqueue b: %v", err)
 	}
@@ -1095,9 +1096,9 @@ func TestListQueryPushdown(t *testing.T) {
 	s := openTestStore(t)
 
 	seed := []task.New{
-		{Project: "alpha", Type: "sh", Payload: json.RawMessage(`"echo hello"`)},
-		{Project: "beta", Type: "agent", Payload: json.RawMessage(`{"repo":"go-taskqueue","prompt":"fix the bug"}`)},
-		{Project: "gamma", Type: "http", Payload: json.RawMessage(`{"url":"https://example.com/ping"}`)},
+		{Project: "alpha", Type: "sh", Payload: jsontext.Value(`"echo hello"`)},
+		{Project: "beta", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","prompt":"fix the bug"}`)},
+		{Project: "gamma", Type: "http", Payload: jsontext.Value(`{"url":"https://example.com/ping"}`)},
 	}
 
 	for i := range seed {
@@ -1139,9 +1140,9 @@ func TestListQueryLikeEscaping(t *testing.T) {
 	s := openTestStore(t)
 
 	seed := []task.New{
-		{Project: "pct", Type: "sh", Payload: json.RawMessage(`"progress 100% done"`)},
-		{Project: "under", Type: "sh", Payload: json.RawMessage(`"snake_case_name"`)},
-		{Project: "plain", Type: "sh", Payload: json.RawMessage(`"nothing special"`)},
+		{Project: "pct", Type: "sh", Payload: jsontext.Value(`"progress 100% done"`)},
+		{Project: "under", Type: "sh", Payload: jsontext.Value(`"snake_case_name"`)},
+		{Project: "plain", Type: "sh", Payload: jsontext.Value(`"nothing special"`)},
 	}
 
 	for i := range seed {
@@ -1215,15 +1216,15 @@ func TestStatusCountsAndProjectCounts(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+	if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: jsontext.Value(`"true"`)}); err != nil {
 		t.Fatalf("seed a: %v", err)
 	}
 
-	if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+	if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: jsontext.Value(`"true"`)}); err != nil {
 		t.Fatalf("seed a2: %v", err)
 	}
 
-	if _, err := s.Enqueue(ctx, task.New{Project: "b", Type: "sh", Payload: json.RawMessage(`"true"`)}); err != nil {
+	if _, err := s.Enqueue(ctx, task.New{Project: "b", Type: "sh", Payload: jsontext.Value(`"true"`)}); err != nil {
 		t.Fatalf("seed b: %v", err)
 	}
 
@@ -1283,7 +1284,7 @@ func TestListSeverityOrder(t *testing.T) {
 	for range 4 {
 		if _, err := s.Enqueue(
 			ctx,
-			task.New{Project: "a", Type: "sh", Payload: json.RawMessage(`"true"`)},
+			task.New{Project: "a", Type: "sh", Payload: jsontext.Value(`"true"`)},
 		); err != nil {
 			t.Fatalf("seed: %v", err)
 		}

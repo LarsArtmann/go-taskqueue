@@ -5,7 +5,7 @@ package journal
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"sync"
 	"time"
 )
@@ -39,14 +39,14 @@ const (
 
 // Fact is one immutable observation about one task.
 type Fact struct {
-	Seq     int64           `json:"seq"`
-	Time    time.Time       `json:"time"`
-	TaskID  string          `json:"taskId"`
-	Type    FactType        `json:"type"`
-	Owner   string          `json:"owner,omitempty"`
-	Attempt int             `json:"attempt,omitempty"`
-	Error   string          `json:"error,omitempty"`
-	Detail  json.RawMessage `json:"detail,omitempty"`
+	Seq     int64          `json:"seq"`
+	Time    time.Time      `json:"time"`
+	TaskID  string         `json:"taskId"`
+	Type    FactType       `json:"type"`
+	Owner   string         `json:"owner,omitempty"`
+	Attempt int            `json:"attempt,omitempty"`
+	Error   string         `json:"error,omitempty"`
+	Detail  jsontext.Value `json:"detail,omitempty"`
 }
 
 // Journal is the persistence boundary for facts.

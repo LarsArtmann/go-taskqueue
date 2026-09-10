@@ -96,6 +96,7 @@ All gates green at HEAD; `master == origin/master`.
 ## f) UP TO 50 THINGS TO GET DONE NEXT (prioritized)
 
 **Verify-and-harden (cheap, high trust)**
+
 1. Extend the payload-version gate: render `v:1` explicitly in
    `RenderAgentPayload` so producers opt in deliberately.
 2. Pin `EvidenceTailBytes` (4096) with a test that all three executors'
@@ -118,23 +119,23 @@ All gates green at HEAD; `master == origin/master`.
 12. `Priority` → typed enum with ordering guarantees.
 13. `DedupKey` branded string; kill bare-string hashing at call sites.
 14. Extract a shared `BackoffLadder` value type used by worker + both stores
-    (compute-only; ADR-0013 exception stays for the loop shape).
+(compute-only; ADR-0013 exception stays for the loop shape).
 15. `WatermarkEntry` JSON tags + round-trip test.
 
 **Dependency hygiene**
 16. Schedule the templ/pgx/x-* indirect refresh for a quiet window (one
-    vendorHash dance, one commit).
+vendorHash dance, one commit).
 17. Watch modernc.org/sqlite releases for a v2 announcement.
 18. go-sse: check whether the GOEXPERIMENT=jsonv2 requirement can retire.
 19. Audit `go.mod` toolchain lines across modules for drift (script exists —
-    run it in ci-local explicitly if not already).
+run it in ci-local explicitly if not already).
 
 **Observability**
 20. Structured warning when a watcher's backoff hits MaxBackoff (saturated
-    reconnection is a state operators should see).
+reconnection is a state operators should see).
 21. `tq top`: expose retry-attempt histogram from journal facts.
 22. WebUI task detail: render `FailureEvidence` structurally (currently
-    only `tq facts` shows it — the audit found zero structured readers).
+only `tq facts` shows it — the audit found zero structured readers).
 23. Log line when payload-version gate trips (with the version seen).
 
 **Docs**
@@ -143,7 +144,7 @@ All gates green at HEAD; `master == origin/master`.
 26. Annotate the 2026-09-09 reports whose forward items this session closed.
 27. AGENTS.md payload-contract section: add the `v` field line.
 28. Domain language: define "evidence", "ladder", "supervisor" in
-    docs/DOMAIN_LANGUAGE.md.
+docs/DOMAIN_LANGUAGE.md.
 
 **Ops**
 29. Owner: flip govulncheck from advisory to gate once baseline is triaged.
@@ -151,7 +152,7 @@ All gates green at HEAD; `master == origin/master`.
 31. Nightly fuzz campaign seed-commit verification (cron claim).
 32. `tq doctor` in the systemd services' ExecStartPre (catch rails drift).
 33. Capture a fresh demo of `tq top` now that backoff saturation is
-    observable.
+observable.
 34. Archive fully-resolved status reports per the docs-health convention.
 35. Add the session-start ritual to the global AGENTS.md template too.
 36. Bench: add worker pool throughput baseline before/after any store change.
@@ -163,7 +164,7 @@ All gates green at HEAD; `master == origin/master`.
 42. Review `MaxConcurrent` interplay with pool concurrency in agentpool.
 43. Add timeout to the real-ETXTBSY helper's fd-release goroutine.
 44. Move retry Configs to named constructors (`etxtbsyRetryConfig()`) so
-    magic numbers get one home.
+magic numbers get one home.
 45. Verify smoke scripts fail loudly when `TQ_BIN` points at a stale binary.
 46. docs/planning: mark executed items in the 02-02 plan doc tables.
 47. Cross-check FEATURES.md `PARTIALLY_FUNCTIONAL` rows against current code.
@@ -185,6 +186,6 @@ All gates green at HEAD; `master == origin/master`.
 
 ---
 
-*Session footprint: 12 commits pushed (last: `f3afce4..2f5b342` plus
+_Session footprint: 12 commits pushed (last: `f3afce4..2f5b342` plus
 formatter fix), all gates green at HEAD (ci-local, nix build, smokes vs
-nix binary, all-module tests, status-index).*
+nix binary, all-module tests, status-index)._

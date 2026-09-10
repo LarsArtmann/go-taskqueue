@@ -51,6 +51,7 @@ func TestHTTPExecutorStatusClassification(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Execute = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			if _, ok := errors.AsType[*PermanentError](err); ok != tt.wantPermanent {
 				t.Fatalf("permanent = %v, want %v (err: %v)", ok, tt.wantPermanent, err)
 			}
@@ -69,6 +70,7 @@ func TestHTTPExecutorPostsTaskEnvelope(t *testing.T) {
 		gotType = r.Header.Get("Content-Type")
 		body, _ := io.ReadAll(r.Body)
 		gotBody = string(body)
+
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -95,6 +97,7 @@ func TestHTTPExecutorPostsTaskEnvelope(t *testing.T) {
 	if env.ID != "t-http-1" || env.Project != "demo" || env.Type != "webhook" || env.Attempt != 1 {
 		t.Errorf("envelope = %+v, want id/project/type/attempt", env)
 	}
+
 	if string(env.Payload) != `{"cmd":"ping"}` {
 		t.Errorf("payload = %s, want passthrough", env.Payload)
 	}
@@ -130,6 +133,7 @@ func TestHTTPExecutorMalformedURLIsPermanent(t *testing.T) {
 	if err == nil {
 		t.Fatal("malformed URL must fail")
 	}
+
 	if _, ok := errors.AsType[*PermanentError](err); !ok {
 		t.Fatalf("malformed URL must be permanent, got %v", err)
 	}

@@ -2,7 +2,8 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"strconv"
@@ -171,7 +172,7 @@ func scanPGTask(row pgx.Row) (task.Task, error) {
 	}
 
 	t.ID = task.ID(id)
-	t.Payload = json.RawMessage(payload)
+	t.Payload = jsontext.Value(payload)
 	t.NotBefore = time.UnixMilli(notBefore)
 	t.CreatedAt = time.UnixMilli(createdAt)
 	t.UpdatedAt = time.UnixMilli(updatedAt)
@@ -469,7 +470,7 @@ type queryer interface {
 }
 
 // Complete marks a Running task Completed.
-func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error {
+func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error {
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx pgx.Tx) error {
@@ -501,7 +502,7 @@ func (s *Store) Fail(
 	owner string,
 	errText string,
 	backoff time.Duration,
-	evidence json.RawMessage,
+	evidence jsontext.Value,
 ) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
@@ -544,7 +545,7 @@ func (s *Store) Fail(
 
 			return s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: attempts, Error: errText,
-				Detail: json.RawMessage(`{"class":"exhausted"}`),
+				Detail: jsontext.Value(`{"class":"exhausted"}`),
 			})
 		}
 
@@ -574,7 +575,7 @@ func (s *Store) FailPermanent(
 	id task.ID,
 	owner string,
 	errText string,
-	evidence json.RawMessage,
+	evidence jsontext.Value,
 ) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
@@ -1026,7 +1027,7 @@ func (s *Store) List(ctx context.Context, f queue.Filter) ([]task.Task, error) {
 		}
 
 		t.ID = task.ID(id)
-		t.Payload = json.RawMessage(payload)
+		t.Payload = jsontext.Value(payload)
 		t.NotBefore = time.UnixMilli(notBefore)
 		t.CreatedAt = time.UnixMilli(createdAt)
 		t.UpdatedAt = time.UnixMilli(updatedAt)
@@ -1058,7 +1059,7 @@ func scanFactRow(scanner interface{ Scan(...any) error }) (journal.Fact, error) 
 
 	err := scanner.Scan(&f.Seq, &millis, &taskID, &ftype, &f.Owner, &f.Attempt, &f.Error, &detail)
 	f.Time = time.UnixMilli(millis)
-	f.TaskID, f.Type, f.Detail = taskID, journal.FactType(ftype), json.RawMessage(detail)
+	f.TaskID, f.Type, f.Detail = taskID, journal.FactType(ftype), jsontext.Value(detail)
 
 	return f, err
 }

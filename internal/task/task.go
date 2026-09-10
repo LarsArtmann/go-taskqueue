@@ -4,7 +4,7 @@ package task
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"time"
 )
@@ -27,22 +27,22 @@ func (id ID) String() string { return string(id) }
 
 // Task is the unit of work: what to run, for which project, under which constraints.
 type Task struct {
-	ID           ID              `json:"id"`
-	Project      string          `json:"project,omitempty"`
-	Type         string          `json:"type"`
-	Payload      json.RawMessage `json:"payload,omitempty"`
-	Deps         []ID            `json:"deps,omitempty"`
-	Priority     int             `json:"priority,omitempty"`
-	Attempts     int             `json:"attempts"`
-	MaxAttempts  int             `json:"maxAttempts"`
-	NotBefore    time.Time       `json:"notBefore"`
-	Status       Status          `json:"status"`
-	LeaseOwner   string          `json:"leaseOwner,omitempty"`
-	LeaseExpires *time.Time      `json:"leaseExpires,omitempty"`
-	LastError    string          `json:"lastError,omitempty"`
-	CreatedAt    time.Time       `json:"createdAt"`
-	UpdatedAt    time.Time       `json:"updatedAt"`
-	CompletedAt  *time.Time      `json:"completedAt,omitempty"`
+	ID           ID             `json:"id"`
+	Project      string         `json:"project,omitempty"`
+	Type         string         `json:"type"`
+	Payload      jsontext.Value `json:"payload,omitempty"`
+	Deps         []ID           `json:"deps,omitempty"`
+	Priority     int            `json:"priority,omitempty"`
+	Attempts     int            `json:"attempts"`
+	MaxAttempts  int            `json:"maxAttempts"`
+	NotBefore    time.Time      `json:"notBefore"`
+	Status       Status         `json:"status"`
+	LeaseOwner   string         `json:"leaseOwner,omitempty"`
+	LeaseExpires *time.Time     `json:"leaseExpires,omitempty"`
+	LastError    string         `json:"lastError,omitempty"`
+	CreatedAt    time.Time      `json:"createdAt"`
+	UpdatedAt    time.Time      `json:"updatedAt"`
+	CompletedAt  *time.Time     `json:"completedAt,omitempty"`
 }
 
 // New is a task template for enqueueing. ID, Attempts, Status and timestamps
@@ -50,7 +50,7 @@ type Task struct {
 type New struct {
 	Project     string
 	Type        string
-	Payload     json.RawMessage
+	Payload     jsontext.Value
 	Deps        []ID
 	Priority    int
 	MaxAttempts int

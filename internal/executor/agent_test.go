@@ -230,15 +230,18 @@ func TestAgentPayloadVersionGate(t *testing.T) {
 	e := &AgentExecutor{}
 
 	future := task.Task{Type: TaskTypeAgent, Payload: []byte(`{"v":2,"repo":"/tmp/r","prompt":"p"}`)}
+
 	err := e.Execute(context.Background(), future)
 	if err == nil || !strings.Contains(err.Error(), "payload version 2") {
 		t.Fatalf("want unknown-version permanent error, got %v", err)
 	}
+
 	if _, ok := errors.AsType[*PermanentError](err); !ok {
 		t.Fatalf("unknown payload version must be permanent, got %v", err)
 	}
 
 	v1 := task.Task{Type: TaskTypeAgent, Payload: []byte(`{"repo":"/tmp/nonexistent-v1","prompt":"p"}`)}
+
 	err = e.Execute(context.Background(), v1)
 	if err != nil && strings.Contains(err.Error(), "payload version") {
 		t.Fatalf("unversioned payload must decode as v1, got %v", err)
@@ -395,20 +398,24 @@ func TestExecWithTransientRetry(t *testing.T) {
 				if calls-1 < len(tt.errs) {
 					return "partial", tt.errs[calls-1]
 				}
+
 				return tt.wantOutput, nil
 			})
 
 			if calls != tt.wantCalls {
 				t.Errorf("calls = %d, want %d", calls, tt.wantCalls)
 			}
+
 			if tt.wantErr && tt.name == "three etxtbsy give up" && !errors.Is(err, syscall.ETXTBSY) {
 				// Wrap-chain guard: retry exhaustion must keep the original
 				// errno reachable via errors.Is so callers can classify it.
 				t.Errorf("err = %v: ETXTBSY no longer reachable through the wrap chain", err)
 			}
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("err = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			if err == nil && out != tt.wantOutput {
 				t.Errorf("out = %q, want %q", out, tt.wantOutput)
 			}
@@ -663,10 +670,12 @@ func TestDefaultVerifyCoversNestedModules(t *testing.T) {
 	dir := t.TempDir()
 	write := func(rel, content string) {
 		t.Helper()
+
 		path := filepath.Join(dir, rel)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
 		}
+
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -684,16 +693,22 @@ func TestDefaultVerifyCoversNestedModules(t *testing.T) {
 
 	// The default command must reject a failing nested module test: the
 	// root ./... gate cannot even see it.
-	write("sub/sub_fail_test.go", "package sub\n\nimport \"testing\"\n\nfunc TestBroken(t *testing.T) { t.Fatal(\"broken\") }\n")
+	write(
+		"sub/sub_fail_test.go",
+		"package sub\n\nimport \"testing\"\n\nfunc TestBroken(t *testing.T) { t.Fatal(\"broken\") }\n",
+	)
+
 	if err := runIn(dir, cmdStr); err == nil {
 		t.Fatal("verify passed despite a failing nested-module test")
 	}
 
 	write("sub/sub_fail_test.go", "package sub\n\nimport \"testing\"\n\nfunc TestOK(t *testing.T) {}\n")
+
 	out, err := runInOutput(dir, cmdStr)
 	if err != nil {
 		t.Fatalf("verify failed on a healthy multi-module tree: %v\n%s", err, out)
 	}
+
 	if !strings.Contains(out, "x/sub") {
 		t.Fatalf("verify output lacks evidence the nested module was tested:\n%s", out)
 	}
@@ -756,6 +771,7 @@ printf 'TQ_RESULT: {"files_changed":["x.go"]}\n'
 func runIn(dir, cmdLine string) error {
 	cmd := exec.Command("sh", "-c", cmdLine)
 	cmd.Dir = dir
+
 	return cmd.Run()
 }
 
@@ -763,5 +779,6 @@ func runInOutput(dir, cmdLine string) (string, error) {
 	cmd := exec.Command("sh", "-c", cmdLine)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
+
 	return string(out), err
 }

@@ -17,7 +17,7 @@ if [ -n "$bad" ]; then
 	fail=1
 fi
 
-bad="$( { grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' "${modfiles[@]}" go.mod; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+bad="$({ grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' "${modfiles[@]}" go.mod; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
 if [ -n "$bad" ]; then
 	echo "$bad"
 	echo "FAIL: internal requires must be real tagged versions (vX.Y.Z) —"
@@ -37,7 +37,7 @@ for m in $mods; do
 done
 
 for m in . $mods; do
-	if ! ( cd "$m" && GOWORK=off go mod verify >/dev/null ); then
+	if ! (cd "$m" && GOWORK=off go mod verify >/dev/null); then
 		echo "FAIL: go mod verify in $m"
 		fail=1
 	fi

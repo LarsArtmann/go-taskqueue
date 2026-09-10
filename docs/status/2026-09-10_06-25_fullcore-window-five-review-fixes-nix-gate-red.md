@@ -15,13 +15,13 @@
 
 ## TL;DR
 
-| Area | Verdict |
-| --- | --- |
-| The five window tasks | All five delivered their fix/work; verified in HEAD |
-| fullcore example | Runs end-to-end on sqlite (12 completed, retry proof exercised live this session) |
-| **Nix CI gate** | **RED on the remote since the window's push (05:45 CEST) — runner-only, locally green with the exact failed derivation** |
-| Master CI overall | Red: nix (new), test (release-gates smoke), test-windows, govulncheck, gosec — only nix is new |
-| Review loop | Worked as designed: four findings, four exact-scope fixes, one self-caught test blind spot |
+| Area                  | Verdict                                                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| The five window tasks | All five delivered their fix/work; verified in HEAD                                                                      |
+| fullcore example      | Runs end-to-end on sqlite (12 completed, retry proof exercised live this session)                                        |
+| **Nix CI gate**       | **RED on the remote since the window's push (05:45 CEST) — runner-only, locally green with the exact failed derivation** |
+| Master CI overall     | Red: nix (new), test (release-gates smoke), test-windows, govulncheck, gosec — only nix is new                           |
+| Review loop           | Worked as designed: four findings, four exact-scope fixes, one self-caught test blind spot                               |
 
 ---
 
@@ -54,7 +54,7 @@
 
 1. **The nix gate is green locally and red on the remote — the window shipped it in that
    state.** The first nix-failing run coincides EXACTLY with the first push carrying the
-   fullcore require + replace (see d1). The committed vendorHash is *locally* correct; the
+   fullcore require + replace (see d1). The committed vendorHash is _locally_ correct; the
    failure exists only in the runner's module fetch. Untested: the postgres backend-choice
    path of the example (see c2).
 2. **Stats contract: structural fix parked by design.** The two hand-mirrored status lists
@@ -147,6 +147,7 @@ Consistent with the done-prompt contract, noted for completeness.
 ## f) NEXT THINGS (new items appended to TODO_LIST; existing backlog not duplicated)
 
 **From this window's evidence (all appended):**
+
 1. Restore the nix CI gate: diagnose the runner-only go-modules FOD hash mismatch (full
    evidence package in this report, d1).
 2. Run the now-unblocked backend-tag verification: per-module `go list -m -versions` proxy
@@ -186,5 +187,5 @@ docs-only fixes (left in the 05-58 report's list), review-finding content-anchor
 
 ---
 
-*Point-in-time snapshot 2026-09-10 06:25 CEST. Re-verify before treating any claim as
-current — multiple concurrent-agent sessions are active on this repo.*
+_Point-in-time snapshot 2026-09-10 06:25 CEST. Re-verify before treating any claim as
+current — multiple concurrent-agent sessions are active on this repo._

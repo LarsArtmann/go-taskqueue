@@ -13,15 +13,15 @@
 
 ## TL;DR
 
-| Area | Verdict |
-| --- | --- |
-| Closeout live-proof | DONE — 5 reports at session start, 13 by end; one read in full: genuine a)-g) brutality, claims traced |
-| 04:09 red-master claim | TRUE (5 failing jobs at the 04:54 run) — all four hard breaks fixed and tool-verified locally |
-| Full gate | `ci-local.sh` ALL GATES GREEN + final root build/vet/race green after the lint agent's renames |
-| AGENTS.md contracts | closeout turn already documented (parallel session); docs-health half added by this session |
-| Workforce 1C5 | healthy: 50 done / 0 pending / 0 running / 0 dead at 09:44, pool alive 4h18m — it OUTLIVED its session, contradicting the handoff |
-| Owner-gated | push (now non-FF: origin tip 41b817b was rewritten out of local master), SystemNix redeploy, report placement, caps, tags |
-| Self-verdict | the work held; I shipped a broken flake to master for ~10 minutes and hung a shell on a live pipe for 2 hours — both were documented traps I walked into anyway |
+| Area                   | Verdict                                                                                                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Closeout live-proof    | DONE — 5 reports at session start, 13 by end; one read in full: genuine a)-g) brutality, claims traced                                                          |
+| 04:09 red-master claim | TRUE (5 failing jobs at the 04:54 run) — all four hard breaks fixed and tool-verified locally                                                                   |
+| Full gate              | `ci-local.sh` ALL GATES GREEN + final root build/vet/race green after the lint agent's renames                                                                  |
+| AGENTS.md contracts    | closeout turn already documented (parallel session); docs-health half added by this session                                                                     |
+| Workforce 1C5          | healthy: 50 done / 0 pending / 0 running / 0 dead at 09:44, pool alive 4h18m — it OUTLIVED its session, contradicting the handoff                               |
+| Owner-gated            | push (now non-FF: origin tip 41b817b was rewritten out of local master), SystemNix redeploy, report placement, caps, tags                                       |
+| Self-verdict           | the work held; I shipped a broken flake to master for ~10 minutes and hung a shell on a live pipe for 2 hours — both were documented traps I walked into anyway |
 
 ---
 

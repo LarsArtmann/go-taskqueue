@@ -7,15 +7,15 @@
 
 ## TL;DR
 
-| Area | Verdict |
-| --- | --- |
-| README rewrite | Done: +215/−180, every claim source- or runtime-verified, all doc gates green |
-| `--model` contradiction | Fixed: pool-level model demoted to documented escape hatch, bootstrap `.crushrc` presented as the only effort-carrying mechanism |
-| Duplicate systemd sections | Merged into one "Running unattended" section |
-| Documentation coverage gap | Closed: 19-command map added; `--status-every`, `--prune-stale`, `--max-concurrent-agents`, journal browser, watermarks, `doctor`/`audit`/`top`/`tasks`/`tq api`/`facts --json` now documented |
-| Self-inflicted incident | One smoke enqueue reached the PRODUCTION journal via inherited `$TQ_DB`; task completed harmlessly; trap recorded in AGENTS.md |
-| **Live pool finding** | **The deployed production pool is requeue-looping EVERY agent task on `git` missing from PATH — live facts at 05:28 CEST. The fix has been on master since ~01:55; the SystemNix flip is still owner-blocked** |
-| Master CI | Still red as of the latest run (02:00Z push, f24 stats commit) — pre-existing failures (test-windows, release-gates smoke), not from this session |
+| Area                       | Verdict                                                                                                                                                                                                        |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| README rewrite             | Done: +215/−180, every claim source- or runtime-verified, all doc gates green                                                                                                                                  |
+| `--model` contradiction    | Fixed: pool-level model demoted to documented escape hatch, bootstrap `.crushrc` presented as the only effort-carrying mechanism                                                                               |
+| Duplicate systemd sections | Merged into one "Running unattended" section                                                                                                                                                                   |
+| Documentation coverage gap | Closed: 19-command map added; `--status-every`, `--prune-stale`, `--max-concurrent-agents`, journal browser, watermarks, `doctor`/`audit`/`top`/`tasks`/`tq api`/`facts --json` now documented                 |
+| Self-inflicted incident    | One smoke enqueue reached the PRODUCTION journal via inherited `$TQ_DB`; task completed harmlessly; trap recorded in AGENTS.md                                                                                 |
+| **Live pool finding**      | **The deployed production pool is requeue-looping EVERY agent task on `git` missing from PATH — live facts at 05:28 CEST. The fix has been on master since ~01:55; the SystemNix flip is still owner-blocked** |
+| Master CI                  | Still red as of the latest run (02:00Z push, f24 stats commit) — pre-existing failures (test-windows, release-gates smoke), not from this session                                                              |
 
 ---
 
@@ -38,7 +38,7 @@
 ## b) PARTIALLY DONE
 
 1. **"Task → run → wait for the agent to be done" (the stated goal)**: the run side ships and is live-proven (enqueue → agent task → verify gate → completion fact → done-prompt report → TODO_LIST append). The **wait** side does not exist as a UX: there is no blocking `tq enqueue --wait` / `tq run` (verified against the full CLI usage surface). The dashboard and `tq tail -f` are the only observation surfaces today.
-2. **The docs-health second loop ("every X tasks per project")**: `--status-every` mints the report task and the contract (`TQ_RESULT` + existing repo-relative report file + verify gate) is enforced mechanically — but the *quality* of the report (the docs-health skill execution) is prompt-contract only, unenforceable by tq by decided policy (TODO_LIST 20:56 g2/g3 decisions). Documented this session; not re-exercised live this session.
+2. **The docs-health second loop ("every X tasks per project")**: `--status-every` mints the report task and the contract (`TQ_RESULT` + existing repo-relative report file + verify gate) is enforced mechanically — but the _quality_ of the report (the docs-health skill execution) is prompt-contract only, unenforceable by tq by decided policy (TODO_LIST 20:56 g2/g3 decisions). Documented this session; not re-exercised live this session.
 3. **Production pool health**: sh tasks complete (my accidental `demo` task ran to completion through the live pool), but agent tasks are 100% preflight-blocked right now (d1) — the loop is half-alive in production.
 4. **Master CI verdict for this session's docs**: local gates are green, but the latest master run (02:00Z, pre-dating this session) is a failure from the two known non-docs breaks (test-windows, release-gates smoke). No CI run exists for the README HEAD yet.
 
@@ -137,6 +137,6 @@
 
 ---
 
-*Prepared per the done-prompt contract: report file exists at `docs/status/2026-09-10_05-29_readme-overhaul-tqdb-incident.md`; next items above are harvestable (unblocked ones carry no `— BLOCKED:` marker only where they are genuinely agent-executable). Waiting for instructions.*
+_Prepared per the done-prompt contract: report file exists at `docs/status/2026-09-10_05-29_readme-overhaul-tqdb-incident.md`; next items above are harvestable (unblocked ones carry no `— BLOCKED:` marker only where they are genuinely agent-executable). Waiting for instructions._
 
-**Post-script (05:32, collision noted)**: a concurrent session's report landed at 05:30 (`2026-09-10_05-30_loop-engine-built-task-closeout-and-docs-health.md`) implementing `--task-closeout` (the a)-g) close-out prompt) and a docs-health status task every N completions — that session's work supersedes the *implementation-status* framing of this report's b2/c3 (the close-out and docs-health loops now exist, unit-proven, not yet live-proven per its own TL;DR). This report's session-scoped claims (README overhaul, TQ_DB incident, d1 live pool evidence) are unaffected. Its items overlap this report's f-list: f34 (archive automation) and f5 (blocking wait) should be reconciled against that session's build before picking them up.
+**Post-script (05:32, collision noted)**: a concurrent session's report landed at 05:30 (`2026-09-10_05-30_loop-engine-built-task-closeout-and-docs-health.md`) implementing `--task-closeout` (the a)-g) close-out prompt) and a docs-health status task every N completions — that session's work supersedes the _implementation-status_ framing of this report's b2/c3 (the close-out and docs-health loops now exist, unit-proven, not yet live-proven per its own TL;DR). This report's session-scoped claims (README overhaul, TQ_DB incident, d1 live pool evidence) are unaffected. Its items overlap this report's f-list: f34 (archive automation) and f5 (blocking wait) should be reconciled against that session's build before picking them up.

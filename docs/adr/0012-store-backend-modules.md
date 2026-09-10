@@ -6,10 +6,11 @@ assessment scored every module Keep except `internal/queue` (cohesion 3,
 too coarse): a 182-LOC contract (`Store`, `Filter`, the `Queue` facade,
 sentinel errors) sharing one package — and one go.mod — with two full store
 implementations (SQLite 1,614 LOC + modernc.org/sqlite; Postgres 1,334 LOC
-+ pgx/v5). Every contract-only importer (webui, httpapi, harvest, review,
-status, worker) compiled both dependency trees; and the Postgres store had
-zero production importers (CLI store wiring is a ROADMAP item), so its pgx
-tree was pure dead weight in every build.
+
+- pgx/v5). Every contract-only importer (webui, httpapi, harvest, review,
+  status, worker) compiled both dependency trees; and the Postgres store had
+  zero production importers (CLI store wiring is a ROADMAP item), so its pgx
+  tree was pure dead weight in every build.
 
 **Decision:**
 

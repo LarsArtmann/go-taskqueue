@@ -2,7 +2,8 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -123,7 +124,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("claim: %v (%v)", got.ID, err)
 		}
 
-		evidence := json.RawMessage(`{"stage":"verify","exit_code":2,"tail":"boom"}`)
+		evidence := jsontext.Value(`{"stage":"verify","exit_code":2,"tail":"boom"}`)
 		if err := s.Fail(ctx, retry.ID, "fail-w", "attempt failed", 90*time.Second, evidence); err != nil {
 			t.Fatal(err)
 		}
@@ -425,6 +426,7 @@ func TestPostgresConformance(t *testing.T) {
 		}
 
 		p := dedup
+
 		tasks, err := s.List(ctx, queue.Filter{Project: &p})
 		if err != nil {
 			t.Fatal(err)
@@ -523,16 +525,12 @@ func TestPostgresConformance(t *testing.T) {
 		for i := range workers {
 			owner := fmt.Sprintf("%sw%d", prefix, i)
 
-			wg.Add(1)
-
-			go func() {
-				defer wg.Done()
-
+			wg.Go(func() {
 				tk, err := s.ClaimDue(ctx, owner, time.Minute)
 				if err == nil {
 					claimed <- tk.ID
 				}
-			}()
+			})
 		}
 
 		wg.Wait()
@@ -557,8 +555,8 @@ func TestPostgresConformance(t *testing.T) {
 		esc := "esc-" + project
 
 		seed := []task.New{
-			{Project: esc, Type: "sh", Payload: json.RawMessage(`"progress 100% done"`)},
-			{Project: esc, Type: "sh", Payload: json.RawMessage(`"snake_case_name"`)},
+			{Project: esc, Type: "sh", Payload: jsontext.Value(`"progress 100% done"`)},
+			{Project: esc, Type: "sh", Payload: jsontext.Value(`"snake_case_name"`)},
 		}
 
 		for i := range seed {
@@ -585,7 +583,12 @@ func TestPostgresConformance(t *testing.T) {
 			}
 
 			if len(tasks) != tt.want {
-				t.Fatalf("query %q matched %d tasks, want %d (LIKE metacharacters must stay literal)", tt.query, len(tasks), tt.want)
+				t.Fatalf(
+					"query %q matched %d tasks, want %d (LIKE metacharacters must stay literal)",
+					tt.query,
+					len(tasks),
+					tt.want,
+				)
 			}
 		}
 	})

@@ -222,8 +222,8 @@ and the two ROADMAP ideas — not duplicated here per docs-health routing
 
 ---
 
-*Report by Crush (glm-5.3-flash), 2026-09-10 00:41 CEST · session commits
+_Report by Crush (glm-5.3-flash), 2026-09-10 00:41 CEST · session commits
 under the auto-daemon's heuristic batch commits from `533f5bc` through
 `587602a` · final full gate: `ALL CI GATES GREEN` on `587602a` + this report.
 Markdown per the established user instruction (status-report skill default is
-HTML — override flagged, consistent with the 23:21/23:47 reports).*
+HTML — override flagged, consistent with the 23:21/23:47 reports)._

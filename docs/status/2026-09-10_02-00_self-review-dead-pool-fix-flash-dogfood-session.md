@@ -232,5 +232,5 @@ _Session 2026-09-10 00:15–02:00 (two turns: the `git sync` tag clobber, then
 
 ---
 
-*Format note: Markdown per the user's explicit instruction (skill default
-is a styled HTML dashboard — override flagged, not propagated).*
+_Format note: Markdown per the user's explicit instruction (skill default
+is a styled HTML dashboard — override flagged, not propagated)._

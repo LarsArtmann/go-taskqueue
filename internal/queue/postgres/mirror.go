@@ -1,7 +1,8 @@
 package postgres
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"strings"
 	"time"
 )
@@ -19,16 +20,16 @@ func ms(t time.Time) int64 {
 	return t.UnixMilli()
 }
 
-func mustJSON(v any) json.RawMessage {
+func mustJSON(v any) jsontext.Value {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return json.RawMessage("{}")
+		return jsontext.Value("{}")
 	}
 
 	return b
 }
 
-func maybeJSON(r json.RawMessage) json.RawMessage {
+func maybeJSON(r jsontext.Value) jsontext.Value {
 	if len(r) == 0 {
 		return nil
 	}
@@ -48,7 +49,7 @@ func escapeLike(s string) string {
 
 // failureDetail picks a task.failed fact's detail: the executor's failure
 // evidence when present, else the store's classification fallback.
-func failureDetail(evidence json.RawMessage, class string) json.RawMessage {
+func failureDetail(evidence jsontext.Value, class string) jsontext.Value {
 	if len(evidence) > 0 {
 		return evidence
 	}
@@ -58,7 +59,7 @@ func failureDetail(evidence json.RawMessage, class string) json.RawMessage {
 
 // cancelReasonDetail builds the task.cancelled detail: nil without a
 // reason (no detail noise), {"reason": ...} with one.
-func cancelReasonDetail(reason string) json.RawMessage {
+func cancelReasonDetail(reason string) jsontext.Value {
 	if reason == "" {
 		return nil
 	}
@@ -69,7 +70,7 @@ func cancelReasonDetail(reason string) json.RawMessage {
 // cooperativeCancelDetail builds the task.cancelled detail for a
 // cooperative finalize: the cooperative marker, the finalize context
 // ("after" key, when set) and the operator's reason, when one was given.
-func cooperativeCancelDetail(reason, after string) json.RawMessage {
+func cooperativeCancelDetail(reason, after string) jsontext.Value {
 	detail := map[string]string{"cooperative": "true"}
 	if after != "" {
 		detail["after"] = after

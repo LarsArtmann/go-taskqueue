@@ -15,14 +15,14 @@
 
 ## TL;DR
 
-| Area | Verdict |
-| --- | --- |
-| The five window tasks | All five delivered; verified in HEAD |
-| Release docs | RELEASE.md + VERSION-SURFACES.md claims spot-verified against the scripts they describe; both now cross-linked (this pass) |
-| Lint triage | wrapcheck 0 + varnamelen 0 reproduce under the project config; two raw sites surface under bare `--enable-only` diagnostics |
-| Gates | Root build/vet green; all 7 sub-module gates green (re-run this pass) |
-| Lineage | Local master and origin/master DIVERGED (14/1): the footer-fix reword forked the line; v0.2.0 tags descend from the remote side |
-| TODO_LIST hygiene | Three stale-done items found (98/99/100 — fixed per CHANGELOG, still unchecked) |
+| Area                  | Verdict                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| The five window tasks | All five delivered; verified in HEAD                                                                                            |
+| Release docs          | RELEASE.md + VERSION-SURFACES.md claims spot-verified against the scripts they describe; both now cross-linked (this pass)      |
+| Lint triage           | wrapcheck 0 + varnamelen 0 reproduce under the project config; two raw sites surface under bare `--enable-only` diagnostics     |
+| Gates                 | Root build/vet green; all 7 sub-module gates green (re-run this pass)                                                           |
+| Lineage               | Local master and origin/master DIVERGED (14/1): the footer-fix reword forked the line; v0.2.0 tags descend from the remote side |
+| TODO_LIST hygiene     | Three stale-done items found (98/99/100 — fixed per CHANGELOG, still unchecked)                                                 |
 
 ---
 
@@ -263,6 +263,6 @@
 
 ---
 
-*Point-in-time snapshot 2026-09-10 08:25 CEST. Re-verify before treating any
+_Point-in-time snapshot 2026-09-10 08:25 CEST. Re-verify before treating any
 claim as current — multiple concurrent-agent sessions are active on this
-repo.*
+repo._

@@ -3,7 +3,8 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"strconv"
@@ -85,6 +86,7 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 	})
 	if merr != nil {
 		_ = db.Close()
+
 		return nil, merr
 	}
 
@@ -449,7 +451,7 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 }
 
 // Complete marks a Running task Completed.
-func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error {
+func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error {
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx *sql.Tx) error {
@@ -481,7 +483,7 @@ func (s *Store) Fail(
 	owner string,
 	errText string,
 	backoff time.Duration,
-	evidence json.RawMessage,
+	evidence jsontext.Value,
 ) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now() // captured inside the tx: backoff counts from commit, not from call
@@ -520,7 +522,7 @@ func (s *Store) Fail(
 
 			return s.appendFact(ctx, tx, journal.Fact{
 				TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: newAttempts,
-				Error: errText, Detail: json.RawMessage(`{"class":"exhausted"}`),
+				Error: errText, Detail: jsontext.Value(`{"class":"exhausted"}`),
 			})
 		}
 
@@ -550,7 +552,7 @@ func (s *Store) FailPermanent(
 	id task.ID,
 	owner string,
 	errText string,
-	evidence json.RawMessage,
+	evidence jsontext.Value,
 ) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now()
@@ -593,7 +595,7 @@ func (s *Store) FailPermanent(
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.DeadLettered, Owner: owner, Attempt: newAttempts,
-			Error: errText, Detail: json.RawMessage(`{"class":"permanent"}`),
+			Error: errText, Detail: jsontext.Value(`{"class":"permanent"}`),
 		})
 	})
 }
@@ -843,7 +845,7 @@ func cancelRequestedReasonTx(ctx context.Context, tx *sql.Tx, id string) (string
 
 // cancelReasonDetail builds the detail for a Cancel/CancelRunning fact:
 // nil without a reason (no detail noise), {"reason": ...} with one.
-func cancelReasonDetail(reason string) json.RawMessage {
+func cancelReasonDetail(reason string) jsontext.Value {
 	if reason == "" {
 		return nil
 	}
@@ -854,7 +856,7 @@ func cancelReasonDetail(reason string) json.RawMessage {
 // cooperativeCancelDetail builds the task.cancelled detail for a
 // cooperative finalize: the cooperative marker, the finalize context
 // ("after" key, when set) and the operator's reason, when one was given.
-func cooperativeCancelDetail(reason, after string) json.RawMessage {
+func cooperativeCancelDetail(reason, after string) jsontext.Value {
 	detail := map[string]string{"cooperative": "true"}
 	if after != "" {
 		detail["after"] = after
@@ -1416,7 +1418,7 @@ func scanFacts(rows *sql.Rows) ([]journal.Fact, error) {
 
 		f.Time = time.UnixMilli(ms)
 		if detail != "" {
-			f.Detail = json.RawMessage(detail)
+			f.Detail = jsontext.Value(detail)
 		}
 
 		out = append(out, f)
@@ -1489,7 +1491,7 @@ func scanTaskRow(r scanner) (task.Task, error) {
 
 	t.ID = task.ID(id)
 	t.Status = task.Status(status)
-	t.Payload = json.RawMessage(payload)
+	t.Payload = jsontext.Value(payload)
 	t.NotBefore = time.UnixMilli(notBeforeMS)
 	t.CreatedAt = time.UnixMilli(createdAtMS)
 
@@ -1541,16 +1543,16 @@ func ms(t time.Time) int64 {
 	return t.UnixMilli()
 }
 
-func mustJSON(v any) json.RawMessage {
+func mustJSON(v any) jsontext.Value {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return json.RawMessage("{}")
+		return jsontext.Value("{}")
 	}
 
 	return b
 }
 
-func maybeJSON(r json.RawMessage) json.RawMessage {
+func maybeJSON(r jsontext.Value) jsontext.Value {
 	if len(r) == 0 {
 		return nil
 	}
@@ -1560,7 +1562,7 @@ func maybeJSON(r json.RawMessage) json.RawMessage {
 
 // failureDetail picks a task.failed fact's detail: the executor's failure
 // evidence when present, else the store's classification fallback.
-func failureDetail(evidence json.RawMessage, class string) json.RawMessage {
+func failureDetail(evidence jsontext.Value, class string) jsontext.Value {
 	if len(evidence) > 0 {
 		return evidence
 	}

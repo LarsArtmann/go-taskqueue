@@ -147,8 +147,7 @@
             # leaves checks.module-eval dangling on non-Linux systems and fails
             # `nix flake check --all-systems` at eval time ("accessed but has
             # no value"). optionalAttrs simply omits the attribute.
-            module-eval = (
-              pkgs.runCommand "nixos-module-eval" { } (
+            module-eval = pkgs.runCommand "nixos-module-eval" { } (
                 let
                   inherit (inputs) nixpkgs;
                   nixosModule = import ./deploy/nixos/tq-agent-pool.nix;
@@ -295,8 +294,7 @@
                   ${lib.optionalString allOk "touch $out"}
                   ${lib.optionalString (!allOk) "echo 'nixos-module-eval FAILED'; exit 1"}
                 ''
-              )
-            );
+              );
           };
 
           # `nix run .#test` must cover EVERY module: the go-standard default
