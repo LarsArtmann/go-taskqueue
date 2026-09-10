@@ -222,7 +222,7 @@ func renderTop(views []projectView, now time.Time) {
 	fmt.Printf("tq top — %s\n", now.Format("15:04:05"))
 	fmt.Printf("%-28s %6s %6s %6s %6s %8s %9s\n", "PROJECT", "pend", "run", "done", "dead", "last", "active")
 
-	var tp, tr, tc, td int
+	var pending, running, completed, dead int
 
 	for _, v := range views {
 		last, active := "-", "-"
@@ -236,13 +236,13 @@ func renderTop(views []projectView, now time.Time) {
 
 		fmt.Printf("%-28s %6d %6d %6d %6d %8s %9s\n",
 			truncate(v.Project, 28), v.Pending, v.Running, v.Completed, v.Dead, last, active)
-		tp += v.Pending
-		tr += v.Running
-		tc += v.Completed
-		td += v.Dead
+		pending += v.Pending
+		running += v.Running
+		completed += v.Completed
+		dead += v.Dead
 	}
 
-	fmt.Printf("%-28s %6d %6d %6d %6d %8s %9s\n", "TOTAL", tp, tr, tc, td, "", "")
+	fmt.Printf("%-28s %6d %6d %6d %6d %8s %9s\n", "TOTAL", pending, running, completed, dead, "", "")
 }
 
 func shortDur(d time.Duration) string {

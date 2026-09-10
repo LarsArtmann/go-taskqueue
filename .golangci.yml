@@ -178,6 +178,7 @@ linters:
         - r
         - fs
         - db
+        - id
         - err
         - ok
         - tt

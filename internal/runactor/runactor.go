@@ -113,22 +113,22 @@ func (g *Group) OnShutdown(fn func() error) {
 // exits the process hard (exit code 130) — the operator's escape hatch
 // when graceful drain hangs.
 func (g *Group) InterruptOn(sig ...os.Signal) {
-	ch := make(chan os.Signal, 2)
-	signal.Notify(ch, sig...)
+	sigCh := make(chan os.Signal, 2)
+	signal.Notify(sigCh, sig...)
 
 	go func() {
-		defer signal.Stop(ch)
+		defer signal.Stop(sigCh)
 
 		select {
 		case <-g.ctx.Done():
 			return
-		case <-ch:
+		case <-sigCh:
 		}
 
 		g.cancel(ErrInterrupted)
 
 		select {
-		case <-ch:
+		case <-sigCh:
 			os.Exit(130)
 		case <-g.done:
 		}

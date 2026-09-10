@@ -190,8 +190,8 @@ func withCSRFIssue(next http.Handler) http.Handler {
 // server-rendered forms only.
 func withCSRF(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := r.Cookie(tqCSRFCookie)
-		if err != nil || c.Value == "" {
+		cookie, err := r.Cookie(tqCSRFCookie)
+		if err != nil || cookie.Value == "" {
 			http.Error(w, "forbidden: missing CSRF cookie — load the page first", http.StatusForbidden)
 
 			return
@@ -203,7 +203,7 @@ func withCSRF(next http.Handler) http.Handler {
 			return
 		}
 
-		if !tokenMatches(sha256.Sum256([]byte(c.Value)), r.PostFormValue("csrf")) {
+		if !tokenMatches(sha256.Sum256([]byte(cookie.Value)), r.PostFormValue("csrf")) {
 			http.Error(w, "forbidden: CSRF token mismatch — reload and retry", http.StatusForbidden)
 
 			return
@@ -252,14 +252,14 @@ func (l *writeRateLimiter) wrap(next http.Handler) http.Handler {
 		key := remoteHost(r)
 
 		l.mu.Lock()
-		st := l.pruneLocked(key)
+		strikes := l.pruneLocked(key)
 		now := l.nowFunc()
 
-		if st != nil && now.Before(st.lockedUntil) {
-			retry := time.Until(st.lockedUntil).Round(time.Second)
+		if strikes != nil && now.Before(strikes.lockedUntil) {
+			retry := time.Until(strikes.lockedUntil).Round(time.Second)
 
 			l.mu.Unlock()
-			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(st.lockedUntil)/time.Second)+1))
+			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(strikes.lockedUntil)/time.Second)+1))
 			http.Error(
 				w,
 				"too many failed attempts — write routes locked for "+retry.String(),
@@ -271,31 +271,31 @@ func (l *writeRateLimiter) wrap(next http.Handler) http.Handler {
 
 		l.mu.Unlock()
 
-		sw := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
-		next.ServeHTTP(sw, r)
+		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(recorder, r)
 
 		l.mu.Lock()
 		defer l.mu.Unlock()
 
-		st = l.pruneLocked(key)
-		if st == nil {
-			if sw.status != http.StatusForbidden {
+		strikes = l.pruneLocked(key)
+		if strikes == nil {
+			if recorder.status != http.StatusForbidden {
 				return // nothing to track until a first strike
 			}
 
-			st = &writeStrikes{}
-			l.strikes[key] = st
+			strikes = &writeStrikes{}
+			l.strikes[key] = strikes
 		}
 
-		st.last = l.nowFunc()
+		strikes.last = l.nowFunc()
 
 		switch {
-		case sw.status == http.StatusForbidden:
-			st.count++
+		case recorder.status == http.StatusForbidden:
+			strikes.count++
 
-			if st.count >= l.maxHits {
-				st.lockedUntil = st.last.Add(l.lockout)
-				st.count = 0
+			if strikes.count >= l.maxHits {
+				strikes.lockedUntil = strikes.last.Add(l.lockout)
+				strikes.count = 0
 
 				slog.Warn(
 					"webui: write routes locked after repeated CSRF failures",
@@ -305,9 +305,9 @@ func (l *writeRateLimiter) wrap(next http.Handler) http.Handler {
 					l.lockout.String(),
 				)
 			}
-		case sw.status < http.StatusBadRequest:
-			st.count = 0
-			st.lockedUntil = time.Time{}
+		case recorder.status < http.StatusBadRequest:
+			strikes.count = 0
+			strikes.lockedUntil = time.Time{}
 		}
 	})
 }
@@ -316,14 +316,14 @@ func (l *writeRateLimiter) wrap(next http.Handler) http.Handler {
 // and is not locked; returns the live entry (or nil) without removing it.
 // Caller holds mu.
 func (l *writeRateLimiter) pruneLocked(key string) *writeStrikes {
-	st, ok := l.strikes[key]
+	strikes, ok := l.strikes[key]
 	if !ok {
 		return nil
 	}
 
 	now := l.nowFunc()
-	if now.Before(st.lockedUntil) || now.Sub(st.last) < l.idleKeep {
-		return st
+	if now.Before(strikes.lockedUntil) || now.Sub(strikes.last) < l.idleKeep {
+		return strikes
 	}
 
 	delete(l.strikes, key)

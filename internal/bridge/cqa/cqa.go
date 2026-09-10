@@ -117,13 +117,13 @@ func (b *Bridge) Collect(ctx context.Context) ([]FixTask, error) {
 
 	var out []FixTask
 
-	for _, p := range projects {
-		repoDir := filepath.Join(b.cfg.ProjectsDir, p.RepoName)
+	for _, project := range projects {
+		repoDir := filepath.Join(b.cfg.ProjectsDir, project.RepoName)
 		if info, err := os.Stat(repoDir); err != nil || !info.IsDir() {
 			continue // CQA tracks repos this machine does not have
 		}
 
-		scan, err := b.latestScan(ctx, p.ID)
+		scan, err := b.latestScan(ctx, project.ID)
 		if err != nil || scan.ID == "" {
 			continue
 		}
@@ -144,35 +144,35 @@ func (b *Bridge) Collect(ctx context.Context) ([]FixTask, error) {
 		}
 
 		files := make([]string, 0, len(byFile))
-		for f := range byFile {
-			files = append(files, f)
+		for file := range byFile {
+			files = append(files, file)
 		}
 
 		sort.Strings(files)
 
-		for _, f := range files {
+		for _, file := range files {
 			if b.cfg.MaxFiles > 0 && len(out) >= b.cfg.MaxFiles {
 				return out, nil
 			}
 
-			ft := FixTask{
-				Project: p.RepoName,
+			fixTask := FixTask{
+				Project: project.RepoName,
 				RepoDir: repoDir,
-				File:    f,
-				Issues:  byFile[f],
+				File:    file,
+				Issues:  byFile[file],
 			}
-			ft.Template = b.renderTask(p, scan, ft)
-			out = append(out, ft)
+			fixTask.Template = b.renderTask(project, scan, fixTask)
+			out = append(out, fixTask)
 		}
 	}
 
 	return out, nil
 }
 
-func (b *Bridge) renderTask(p Project, scan Scan, ft FixTask) task.New {
+func (b *Bridge) renderTask(project Project, scan Scan, fixTask FixTask) task.New {
 	var lines []string
 
-	for _, iss := range ft.Issues {
+	for _, iss := range fixTask.Issues {
 		loc := ""
 		if iss.LineStart > 0 {
 			loc = fmt.Sprintf(":%d", iss.LineStart)
@@ -180,7 +180,7 @@ func (b *Bridge) renderTask(p Project, scan Scan, ft FixTask) task.New {
 
 		lines = append(
 			lines,
-			fmt.Sprintf("- [%s%s] %s: %s (%s)", ft.File, loc, iss.Severity, iss.Message, iss.Analyzer),
+			fmt.Sprintf("- [%s%s] %s: %s (%s)", fixTask.File, loc, iss.Severity, iss.Message, iss.Analyzer),
 		)
 		if iss.Suggestion != "" {
 			lines = append(lines, "  suggestion: "+iss.Suggestion)
@@ -209,21 +209,21 @@ Rules:
    (fields optional):
 
 TQ_RESULT: {"files_changed": [%q], "commit_sha": "the commit sha"}
-`, p.RepoName, scan.ID, ft.File, strings.Join(lines, "\n"), ft.File, ft.File)
+`, project.RepoName, scan.ID, fixTask.File, strings.Join(lines, "\n"), fixTask.File, fixTask.File)
 
 	payload, _ := executor.RenderAgentPayload(executor.AgentPayload{
-		Repo:           p.RepoName,
+		Repo:           project.RepoName,
 		Prompt:         prompt,
 		TimeoutMinutes: b.cfg.TimeoutMinutes,
-		Dedup:          DedupKey(p.RepoName, scan.ID, ft.File),
+		Dedup:          DedupKey(project.RepoName, scan.ID, fixTask.File),
 	})
 
 	return task.New{
-		Project:  p.RepoName,
+		Project:  project.RepoName,
 		Type:     b.cfg.Type,
 		Payload:  payload,
 		Priority: 80, // concrete scanner findings outrank generic backlog items
-		DedupKey: DedupKey(p.RepoName, scan.ID, ft.File),
+		DedupKey: DedupKey(project.RepoName, scan.ID, fixTask.File),
 	}
 }
 

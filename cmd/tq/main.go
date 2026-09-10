@@ -133,13 +133,13 @@ func mustOpenDB(path string) *sqlite.Store {
 }
 
 func mustOpenDBOpts(path string, opts ...sqlite.StoreOption) *sqlite.Store {
-	s, err := sqlite.Open(path, opts...)
+	store, err := sqlite.Open(path, opts...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "tq: open db: %v\n", err)
 		os.Exit(1)
 	}
 
-	return s
+	return store
 }
 
 func dbFlag(fs *flag.FlagSet) *string {
@@ -331,7 +331,7 @@ func cmdWorker(args []string) error {
 
 		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
 
-		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %store\n", *alertURL)
+		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %s\n", *alertURL)
 	}
 
 	if *once {
@@ -464,11 +464,11 @@ func cmdHarvest(args []string) error {
 		return err
 	}
 
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
 
 	if *pruneStale {
-		pruned, err := harvest.New(queue.New(s), cfg).PruneStale(context.Background())
+		pruned, err := harvest.New(queue.New(store), cfg).PruneStale(context.Background())
 		if err != nil {
 			return err
 		}
@@ -485,7 +485,7 @@ func cmdHarvest(args []string) error {
 		return nil
 	}
 
-	res, err := harvest.New(queue.New(s), cfg).Run(context.Background())
+	res, err := harvest.New(queue.New(store), cfg).Run(context.Background())
 	if err != nil {
 		return err
 	}
@@ -662,7 +662,7 @@ func cmdAgentPool(args []string) error {
 
 		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
 
-		fmt.Fprintf(os.Stderr, "tq: agent-pool: forwarding dead letters + budget exhaustion to %store\n", poolOpts.alertURL)
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: forwarding dead letters + budget exhaustion to %s\n", poolOpts.alertURL)
 	}
 
 	log := slog.Default()
@@ -789,15 +789,15 @@ func cmdAgentPool(args []string) error {
 			if err != nil {
 				log.Error("harvest failed", "err", err)
 			} else {
-				for _, en := range res.Enqueued {
+				for _, enqueued := range res.Enqueued {
 					log.Info(
 						"harvest: enqueued",
 						"repo",
-						en.Item.RepoName,
+						enqueued.Item.RepoName,
 						"item",
-						en.Item.Text,
+						enqueued.Item.Text,
 						"task",
-						en.TaskID.String(),
+						enqueued.TaskID.String(),
 					)
 				}
 
@@ -858,10 +858,10 @@ func cmdAgentPool(args []string) error {
 
 			fresh := 0
 
-			for _, ft := range fixTasks {
-				got, err := taskQueue.Enqueue(ctx, ft.Template)
+			for _, fixTask := range fixTasks {
+				got, err := taskQueue.Enqueue(ctx, fixTask.Template)
 				if err != nil {
-					log.Error("cqa enqueue failed", "key", ft.Template.DedupKey, "err", err)
+					log.Error("cqa enqueue failed", "key", fixTask.Template.DedupKey, "err", err)
 
 					continue
 				}
@@ -872,11 +872,11 @@ func cmdAgentPool(args []string) error {
 					log.Info(
 						"cqa: enqueued fix task",
 						"repo",
-						ft.Project,
+						fixTask.Project,
 						"file",
-						ft.File,
+						fixTask.File,
 						"issues",
-						len(ft.Issues),
+						len(fixTask.Issues),
 						"task",
 						got.ID.String(),
 					)
@@ -911,7 +911,7 @@ func cmdAgentPool(args []string) error {
 
 		fmt.Fprintf(
 			os.Stderr,
-			"tq: agent-pool: watch-driven harvest triggers from %store (interval %store stays the fallback)\n",
+			"tq: agent-pool: watch-driven harvest triggers from %s (interval %s stays the fallback)\n",
 			poolOpts.discoveryAddr,
 			poolOpts.interval,
 		)
@@ -1154,13 +1154,13 @@ type consumerLagEntry struct {
 
 // consumerLag collects the persisted journal-consumer cursors with their lag
 // behind the head (ADR-0009'store observability surface) for the JSON payload.
-func consumerLag(ctx context.Context, s *sqlite.Store) []consumerLagEntry {
-	entries, err := s.ListWatermarks(ctx)
+func consumerLag(ctx context.Context, store *sqlite.Store) []consumerLagEntry {
+	entries, err := store.ListWatermarks(ctx)
 	if err != nil || len(entries) == 0 {
 		return nil
 	}
 
-	head, err := s.HeadSeq(ctx)
+	head, err := store.HeadSeq(ctx)
 	if err != nil {
 		return nil
 	}
@@ -1174,8 +1174,8 @@ func consumerLag(ctx context.Context, s *sqlite.Store) []consumerLagEntry {
 }
 
 // printBudgetSpend surfaces the daily-budget projection in the CLI (the web
-// UI has a budget card; the text output had nothing). Spent counts today's
-// task.enqueued facts — the same projection the pool's budget guard uses.
+// UI has a budget card; the text output had nothing). Spent counts today'store
+// task.enqueued facts — the same projection the pool'store budget guard uses.
 // The count is always journal-wide, so a scoped table labels the line to
 // keep the numbers honest.
 func printBudgetSpend(spent, cap int, scoped bool) {
@@ -1196,15 +1196,15 @@ func printBudgetSpend(spent, cap int, scoped bool) {
 // printConsumerLag renders the persisted journal-consumer cursors with
 // their lag behind the head (ADR-0009's observability surface) — the first
 // place to look when a bridge or sweeper looks quiet.
-func printConsumerLag(s *sqlite.Store) {
+func printConsumerLag(store *sqlite.Store) {
 	ctx := context.Background()
 
-	entries, err := s.ListWatermarks(ctx)
+	entries, err := store.ListWatermarks(ctx)
 	if err != nil || len(entries) == 0 {
 		return
 	}
 
-	head, err := s.HeadSeq(ctx)
+	head, err := store.HeadSeq(ctx)
 	if err != nil {
 		return
 	}
@@ -1278,20 +1278,20 @@ func cmdShow(args []string) error {
 		return errors.New("usage: tq show TASK_ID (a unique prefix works)")
 	}
 
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
 
 	ctx := context.Background()
 
-	t, err := resolveTask(ctx, s, fs.Arg(0))
+	t, err := resolveTask(ctx, store, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	// Include the task's fact trail: for completed agent tasks this is
+	// Include the task'store fact trail: for completed agent tasks this is
 	// where the structured result detail lives (session id, verify tail).
 	id := t.ID.String()
 
-	trail, err := s.FactsForTask(ctx, id, 0)
+	trail, err := store.FactsForTask(ctx, id, 0)
 	if err != nil {
 		return err
 	}
@@ -1310,8 +1310,8 @@ func cmdShow(args []string) error {
 // prefix: 34-char IDs are hostile to hand-typing, and every tq ID is a
 // ULID (time-ordered, so prefixes stay unambiguous in practice). An
 // ambiguous prefix names its candidates instead of guessing.
-func resolveTask(ctx context.Context, s *sqlite.Store, arg string) (task.Task, error) {
-	t, err := s.Get(ctx, task.ID(arg))
+func resolveTask(ctx context.Context, store *sqlite.Store, arg string) (task.Task, error) {
+	t, err := store.Get(ctx, task.ID(arg))
 	if err == nil {
 		return t, nil
 	}
@@ -1320,7 +1320,7 @@ func resolveTask(ctx context.Context, s *sqlite.Store, arg string) (task.Task, e
 		return task.Task{}, err
 	}
 
-	tasks, err := s.List(ctx, queue.Filter{})
+	tasks, err := store.List(ctx, queue.Filter{})
 	if err != nil {
 		return task.Task{}, err
 	}
@@ -1349,7 +1349,7 @@ func resolveTask(ctx context.Context, s *sqlite.Store, arg string) (task.Task, e
 	}
 }
 
-// resultDetail decodes a task's completion-fact detail into its typed result
+// resultDetail decodes a task'store completion-fact detail into its typed result
 // (agent self-report, review verdict, or status outcome) so `tq show` answers
 // "what did the agent actually do" without eyeballing raw JSON. nil for task
 // types without a structured result — the raw facts stay in the output.
@@ -1409,7 +1409,7 @@ func cmdDLQ(args []string) error {
 			return err
 		}
 
-		fmt.Printf("rescued %store\n", *rescue)
+		fmt.Printf("rescued %s\n", *rescue)
 
 		return nil
 	}
@@ -1425,8 +1425,8 @@ func cmdDLQ(args []string) error {
 }
 
 // rescueAllDead re-queues every dead task older than olderThan (all if 0).
-func rescueAllDead(ctx context.Context, s *sqlite.Store, olderThan time.Duration, maxAttempts int) (int, error) {
-	dead, err := listDead(ctx, s)
+func rescueAllDead(ctx context.Context, store *sqlite.Store, olderThan time.Duration, maxAttempts int) (int, error) {
+	dead, err := listDead(ctx, store)
 	if err != nil {
 		return 0, err
 	}
@@ -1438,7 +1438,7 @@ func rescueAllDead(ctx context.Context, s *sqlite.Store, olderThan time.Duration
 			continue
 		}
 
-		if err := s.RescueDead(ctx, t.ID, maxAttempts); err != nil {
+		if err := store.RescueDead(ctx, t.ID, maxAttempts); err != nil {
 			return rescued, fmt.Errorf("rescue %s: %w", t.ID, err)
 		}
 
@@ -1523,12 +1523,12 @@ func cmdCancel(args []string) error {
 		return errors.New("usage: tq cancel TASK_ID [--force] [--reason WHY]")
 	}
 
-	s := mustOpenDB(resolveDB(*db))
-	defer s.Close()
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
 
 	ctx := context.Background()
 
-	t, err := resolveTask(ctx, s, fs.Arg(0))
+	t, err := resolveTask(ctx, store, fs.Arg(0))
 	if err != nil {
 		return err
 	}
@@ -1537,7 +1537,7 @@ func cmdCancel(args []string) error {
 
 	switch t.Status {
 	case task.Pending:
-		return s.Cancel(ctx, taskID, *reason)
+		return store.Cancel(ctx, taskID, *reason)
 	case task.Running:
 		if !*force {
 			return fmt.Errorf(
@@ -1546,7 +1546,7 @@ func cmdCancel(args []string) error {
 			)
 		}
 
-		if err := s.CancelRunning(ctx, taskID, *reason); err != nil {
+		if err := store.CancelRunning(ctx, taskID, *reason); err != nil {
 			return err
 		}
 
@@ -1614,14 +1614,14 @@ func formatFactDetail(f journal.Fact) string {
 // formatFact renders one journal fact for humans. Dead-letter facts carry
 // their error class ("permanent" vs "exhausted") in Detail; show it so an
 // operator can tell "the task is broken" from "the budget ran out".
-func formatFact(f journal.Fact) string {
+func formatFact(fact journal.Fact) string {
 	line := fmt.Sprintf("%5d %s %s %-20s %s %s",
-		f.Seq, f.Time.Format(time.RFC3339), f.TaskID, f.Type, f.Owner, f.Error)
+		fact.Seq, fact.Time.Format(time.RFC3339), fact.TaskID, fact.Type, fact.Owner, fact.Error)
 
 	var d struct {
 		Class string `json:"class"`
 	}
-	if len(f.Detail) > 0 && json.Unmarshal(f.Detail, &d) == nil && d.Class != "" {
+	if len(fact.Detail) > 0 && json.Unmarshal(fact.Detail, &d) == nil && d.Class != "" {
 		line += " [class=" + d.Class + "]"
 	}
 
@@ -1674,7 +1674,7 @@ func cmdWatermarks(args []string) error {
 				state = "current "
 			}
 
-			fmt.Printf("%-52s %8d  %store  updated %store\n",
+			fmt.Printf("%-52s %8d  %s  updated %s\n",
 				entry.Consumer, entry.Seq, state, time.UnixMilli(entry.UpdatedAt).Format(time.RFC3339))
 		}
 
@@ -1711,7 +1711,7 @@ func cmdWatermarks(args []string) error {
 		}
 
 		fmt.Printf(
-			"watermark %store -> %d (replays facts after this seq on the next consumer start; re-sends are idempotent)\n",
+			"watermark %s -> %d (replays facts after this seq on the next consumer start; re-sends are idempotent)\n",
 			rest[0],
 			seq,
 		)
@@ -1870,15 +1870,15 @@ func cmdServe(args []string) error {
 		return err
 	}
 
-	s := mustOpenDB(resolveDB(*db))
+	store := mustOpenDB(resolveDB(*db))
 
 	// One signal story (runactor): the interrupt actor cancels the http
 	// actor, teardown closes the store after the server has fully stopped.
 	g := runactor.New(context.Background())
 	g.InterruptOn(os.Interrupt, syscall.SIGTERM)
-	g.OnShutdown(func() error { return s.Close() })
+	g.OnShutdown(func() error { return store.Close() })
 
-	server := webui.New(s, cfg)
+	server := webui.New(store, cfg)
 
 	g.Go("http", func(ctx context.Context) error { return server.Run(ctx) })
 

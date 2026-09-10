@@ -18,18 +18,18 @@ import (
 // parseFilter reads the view filter from the request URL query, including
 // the 1-based ?page= (values < 1 clamp to page 1).
 func parseFilter(r *http.Request) FilterState {
-	q := r.URL.Query()
+	query := r.URL.Query()
 
 	page := 1
 
-	if v := q.Get("page"); v != "" {
+	if v := query.Get("page"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			page = n
 		}
 	}
 
 	// Allowlist: unknown sort values fall back to the default order.
-	sort := q.Get("sort")
+	sort := query.Get("sort")
 	switch sort {
 	case "", "age-asc", "age-desc", "priority-asc", "priority-desc", "attempts-asc", "attempts-desc":
 	default:
@@ -37,15 +37,15 @@ func parseFilter(r *http.Request) FilterState {
 	}
 
 	// Allowlist: only the two known projections; anything else is the table.
-	view := q.Get("view")
+	view := query.Get("view")
 	if view != viewBoard {
 		view = viewTable
 	}
 
-	f := FilterState{
-		Project: q.Get("project"),
-		Status:  task.Status(q.Get("status")),
-		Query:   q.Get("q"),
+	filter := FilterState{
+		Project: query.Get("project"),
+		Status:  task.Status(query.Get("status")),
+		Query:   query.Get("query"),
 		Page:    page,
 		Sort:    sort,
 		View:    view,
@@ -54,11 +54,11 @@ func parseFilter(r *http.Request) FilterState {
 	// The board's columns ARE the statuses: a status filter would empty four
 	// of five columns, so it is dropped at the boundary (chips and toggles
 	// never render it back).
-	if f.View == viewBoard {
-		f.Status = ""
+	if filter.View == viewBoard {
+		filter.Status = ""
 	}
 
-	return f
+	return filter
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {

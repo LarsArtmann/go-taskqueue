@@ -299,35 +299,35 @@ func filterHref(f FilterState) string {
 // viewToggleHref switches the task projection (table <-> board) keeping the
 // project/query scope. Switching resets page and sort; the board also drops
 // the status filter — columns ARE the statuses.
-func viewToggleHref(f FilterState, view string) string {
-	f.View = view
-	f.Page = 1
-	f.Sort = ""
+func viewToggleHref(filter FilterState, view string) string {
+	filter.View = view
+	filter.Page = 1
+	filter.Sort = ""
 
 	if view == viewBoard {
-		f.Status = ""
+		filter.Status = ""
 	}
 
-	return filterHref(f)
+	return filterHref(filter)
 }
 
 // pageHref renders the current filter pinned to a specific page; filter
 // chips keep using filterHref, which resets to page 1.
 func pageHref(f FilterState, page int) string {
-	q := f.QueryString()
+	queryString := f.QueryString()
 	if page > 1 {
-		if q != "" {
-			q += "&"
+		if queryString != "" {
+			queryString += "&"
 		}
 
-		q += "page=" + strconv.Itoa(page)
+		queryString += "page=" + strconv.Itoa(page)
 	}
 
-	if q == "" {
+	if queryString == "" {
 		return "/"
 	}
 
-	return "/?" + q
+	return "/?" + queryString
 }
 
 var allStatuses = []task.Status{
@@ -464,25 +464,25 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 func (s *Server) loadBoard(ctx context.Context, filter FilterState) ([]BoardColumn, error) {
 	columns := make([]BoardColumn, 0, len(allStatuses))
 
-	for _, st := range allStatuses {
-		qf := filter.toQueueFilter(0)
-		qf.Status = &st
+	for _, status := range allStatuses {
+		queueFilter := filter.toQueueFilter(0)
+		queueFilter.Status = &status
 
-		count, err := s.store.CountTasks(ctx, qf)
+		count, err := s.store.CountTasks(ctx, queueFilter)
 		if err != nil {
 			return nil, err
 		}
 
-		qf.Limit = boardColumnLimit
-		qf.Sort = "age-desc" // newest first, like a kanban column
+		queueFilter.Limit = boardColumnLimit
+		queueFilter.Sort = "age-desc" // newest first, like a kanban column
 
-		tasks, err := s.store.List(ctx, qf)
+		tasks, err := s.store.List(ctx, queueFilter)
 		if err != nil {
 			return nil, err
 		}
 
 		columns = append(columns, BoardColumn{
-			Status:    st,
+			Status:    status,
 			Count:     count,
 			Tasks:     tasks,
 			Truncated: max(count-len(tasks), 0),
@@ -494,14 +494,14 @@ func (s *Server) loadBoard(ctx context.Context, filter FilterState) ([]BoardColu
 
 // factBuckets counts facts per equal slice of window ending at now (the
 // activity sparkline). Facts older than the window are ignored.
-func factBuckets(now time.Time, facts []journal.Fact, n int, window time.Duration) []float64 {
-	buckets := make([]float64, n)
-	if n <= 0 {
-		return buckets
+func factBuckets(now time.Time, facts []journal.Fact, buckets int, window time.Duration) []float64 {
+	out := make([]float64, buckets)
+	if buckets <= 0 {
+		return out
 	}
 
 	start := now.Add(-window)
-	slice := window / time.Duration(n)
+	slice := window / time.Duration(buckets)
 
 	for _, f := range facts {
 		if f.Time.Before(start) {
@@ -509,19 +509,19 @@ func factBuckets(now time.Time, facts []journal.Fact, n int, window time.Duratio
 		}
 
 		idx := int(now.Sub(f.Time) / slice)
-		if idx >= n {
-			idx = n - 1
+		if idx >= buckets {
+			idx = buckets - 1
 		}
 
-		buckets[n-1-idx]++ // oldest bucket first, like the chart's X axis
+		out[buckets-1-idx]++ // oldest bucket first, like the chart's X axis
 	}
 
-	return buckets
+	return out
 }
 
 // recentCompletedDurations returns time-to-complete (CompletedAt minus
 // CreatedAt: queue wait + execution, honestly labeled) in minutes for the
-// newest n completed tasks.
+// newest buckets completed tasks.
 func recentCompletedDurations(ctx context.Context, store queue.Store, n int) []float64 {
 	completed := task.Completed
 
@@ -551,17 +551,17 @@ func recentCompletedDurations(ctx context.Context, store queue.Store, n int) []f
 // toQueueFilter maps the URL-carried filter onto the store's SQL filter,
 // bounded to limit rows (0 = unbounded).
 func (f FilterState) toQueueFilter(limit int) queue.Filter {
-	qf := queue.Filter{Query: f.Query, Limit: limit, Sort: f.Sort}
+	queueFilter := queue.Filter{Query: f.Query, Limit: limit, Sort: f.Sort}
 
 	if f.Project != "" {
-		qf.Project = &f.Project
+		queueFilter.Project = &f.Project
 	}
 
 	if f.Status != "" {
-		qf.Status = &f.Status
+		queueFilter.Status = &f.Status
 	}
 
-	return qf
+	return queueFilter
 }
 
 func projectSummaries(counts map[string]map[task.Status]int) []ProjectSummary {
@@ -608,26 +608,26 @@ func formatInt(n int) string {
 	return strconv.Itoa(n)
 }
 
-func truncate(s string, limit int) string {
-	s = strings.Join(strings.Fields(s), " ")
-	if len(s) <= limit {
-		return s
+func truncate(text string, limit int) string {
+	text = strings.Join(strings.Fields(text), " ")
+	if len(text) <= limit {
+		return text
 	}
 
-	return s[:limit-1] + "…"
+	return text[:limit-1] + "…"
 }
 
 // durationUntil renders a coarse humanized forward duration (waits).
-func durationUntil(d time.Duration) string {
+func durationUntil(duration time.Duration) string {
 	switch {
-	case d < time.Minute:
-		return fmt.Sprintf("%ds", int(d.Seconds()))
-	case d < time.Hour:
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	case d < hoursPerDay:
-		return fmt.Sprintf("%dh", int(d.Hours()))
+	case duration < time.Minute:
+		return fmt.Sprintf("%ds", int(duration.Seconds()))
+	case duration < time.Hour:
+		return fmt.Sprintf("%dm", int(duration.Minutes()))
+	case duration < hoursPerDay:
+		return fmt.Sprintf("%dh", int(duration.Hours()))
 	default:
-		return fmt.Sprintf("%dd", int(d.Hours()/hoursPerDay.Hours()))
+		return fmt.Sprintf("%dd", int(duration.Hours()/hoursPerDay.Hours()))
 	}
 }
 

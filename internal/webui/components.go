@@ -342,14 +342,14 @@ func sortHeaderDirection(f FilterState, column string) display.SortDirection {
 // none (back to the severity order). Clicking a column while ANOTHER
 // column's sort is active starts this column's own cycle (descending
 // first). The href keeps the current filter.
-func sortHeaderHref(f FilterState, column string) string {
+func sortHeaderHref(filter FilterState, column string) string {
 	cycle := sortableColumns[column]
 
 	// Default: activate the column's first meaningful sort (descending).
 	next := cycle[1]
 
 	for i, v := range cycle {
-		if v == f.Sort {
+		if v == filter.Sort {
 			if i+1 < len(cycle) {
 				next = cycle[i+1]
 			} else {
@@ -360,7 +360,7 @@ func sortHeaderHref(f FilterState, column string) string {
 		}
 	}
 
-	toggled := f
+	toggled := filter
 	toggled.Sort = next
 	toggled.Page = 1
 
@@ -453,15 +453,15 @@ func settledTasks(rows []task.Task) []task.Task {
 }
 
 func countStatus(rows []task.Task, st task.Status) int {
-	n := 0
+	count := 0
 
 	for _, t := range rows {
 		if t.Status == st {
-			n++
+			count++
 		}
 	}
 
-	return n
+	return count
 }
 
 // settledDeadSuffix renders the summary's dead clause only when dead tasks

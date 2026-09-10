@@ -89,15 +89,15 @@ func startOfDay(t time.Time) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 }
 
-func firstLine(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		s = s[:i]
+func firstLine(line string) string {
+	line = strings.TrimSpace(line)
+	if i := strings.IndexByte(line, '\n'); i >= 0 {
+		line = line[:i]
 	}
 
-	if s == "" {
+	if line == "" {
 		return "exit status non-zero"
 	}
 
-	return s
+	return line
 }

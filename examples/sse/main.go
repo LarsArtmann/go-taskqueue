@@ -64,14 +64,14 @@ func main() {
 				return
 			}
 
-			for _, f := range facts {
-				body, err := json.Marshal(f)
+			for _, fact := range facts {
+				body, err := json.Marshal(fact)
 				if err != nil {
 					return
 				}
 
-				_, _ = fmt.Fprintf(w, "id: %d\nevent: fact\ndata: %s\n\n", f.Seq, body)
-				after = f.Seq
+				_, _ = fmt.Fprintf(w, "id: %d\nevent: fact\ndata: %s\n\n", fact.Seq, body)
+				after = fact.Seq
 			}
 
 			if len(facts) > 0 {

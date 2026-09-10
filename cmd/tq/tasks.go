@@ -36,31 +36,31 @@ func cmdTasks(args []string) error {
 
 	ctx := context.Background()
 
-	f := queue.Filter{Sort: "age-desc"}
+	filter := queue.Filter{Sort: "age-desc"}
 	if *project != "" {
-		f.Project = project
+		filter.Project = project
 	}
 
 	if *status != "" {
 		st := task.Status(*status)
-		f.Status = &st
+		filter.Status = &st
 	}
 
 	if *taskType != "" {
-		f.Type = taskType
+		filter.Type = taskType
 	}
 
 	// Creation window rides in the store (SQL pushdown, inclusive bound).
 	if *since > 0 {
 		cutoff := time.Now().Add(-*since)
-		f.Since = &cutoff
+		filter.Since = &cutoff
 	}
 
 	if *limit > 0 {
-		f.Limit = *limit
+		filter.Limit = *limit
 	}
 
-	tasks, err := store.List(ctx, f)
+	tasks, err := store.List(ctx, filter)
 	if err != nil {
 		return err
 	}

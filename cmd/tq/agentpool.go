@@ -372,27 +372,27 @@ func registerAgentExecutors(reg *executor.Registry, agentExec *executor.AgentExe
 // printAgentPoolBanner prints the startup summary: pool shape, the yolo
 // trust warning, and the agent-binary probe (a broken binary is a startup
 // warning, not a mid-task surprise).
-func printAgentPoolBanner(o agentPoolOptions) {
+func printAgentPoolBanner(poolOpts agentPoolOptions) {
 	fmt.Fprintf(
 		os.Stderr,
 		"tq: agent-pool: %d agent(s) over %s (yolo=%v, dirty=%v, exclusive=%v, harvest every %s, verify enforced)\n",
-		o.conc,
-		repoRootDesc(o.projectsDir, o.repos),
-		o.yolo,
-		o.allowDirty,
-		o.exclusive,
-		o.interval,
+		poolOpts.conc,
+		repoRootDesc(poolOpts.projectsDir, poolOpts.repos),
+		poolOpts.yolo,
+		poolOpts.allowDirty,
+		poolOpts.exclusive,
+		poolOpts.interval,
 	)
 
-	if o.yolo {
+	if poolOpts.yolo {
 		fmt.Fprintf(
 			os.Stderr,
 			"tq: WARNING: autonomy requested — agents may run shell commands unsandboxed in every repo whose .crushrc (or your user-global crush config) grants bash; the trust root is the filesystem. Cap the blast radius with --daily-budget / --budget-cmd and --max-per-tick (see SECURITY.md)\n",
 		)
 	}
 
-	if o.cqaURL != "" {
-		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick\n", o.cqaURL)
+	if poolOpts.cqaURL != "" {
+		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick\n", poolOpts.cqaURL)
 	}
 
 	if version, err := executor.AgentVersion(context.Background(), ""); err != nil {
@@ -405,20 +405,20 @@ func printAgentPoolBanner(o agentPoolOptions) {
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: agent binary: %s\n", version)
 	}
 
-	if o.doReview {
+	if poolOpts.doReview {
 		desc := "verdicts recorded"
-		if o.reviewAutofix {
+		if poolOpts.reviewAutofix {
 			desc = "request_changes mints fix tasks"
 		}
 
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: agent reviews enabled (%s)\n", desc)
 	}
 
-	if o.statusEvery > 0 {
+	if poolOpts.statusEvery > 0 {
 		fmt.Fprintf(
 			os.Stderr,
 			"tq: agent-pool: automated status reports every %d agent completion(s) per project\n",
-			o.statusEvery,
+			poolOpts.statusEvery,
 		)
 	}
 }

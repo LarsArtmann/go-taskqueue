@@ -233,8 +233,8 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 
 	var lastReport time.Time
 
-	for _, st := range statusTasks {
-		if st.Status == task.Pending || st.Status == task.Running {
+	for _, statusTask := range statusTasks {
+		if statusTask.Status == task.Pending || statusTask.Status == task.Running {
 			// A report for this project is already in flight; let it land
 			// before minting the next window's.
 			stats.Skipped++
@@ -242,8 +242,8 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 			return
 		}
 
-		if st.CreatedAt.After(lastReport) {
-			lastReport = st.CreatedAt
+		if statusTask.CreatedAt.After(lastReport) {
+			lastReport = statusTask.CreatedAt
 		}
 	}
 
@@ -256,31 +256,31 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 
 	window := make([]executor.StatusCompletion, 0, s.cfg.Every)
 
-	for _, at := range agentTasks {
-		if at.Status != task.Completed {
+	for _, agentTask := range agentTasks {
+		if agentTask.Status != task.Completed {
 			continue
 		}
 
 		// Completion time, not creation: a task created before the last
 		// report but finished after it belongs to THIS window.
-		if !lastReport.IsZero() && !at.UpdatedAt.After(lastReport) {
+		if !lastReport.IsZero() && !agentTask.UpdatedAt.After(lastReport) {
 			continue
 		}
 
 		completion := executor.StatusCompletion{
-			TaskID:      at.ID.String(),
-			CompletedAt: at.UpdatedAt.UTC().Format(time.RFC3339),
+			TaskID:      agentTask.ID.String(),
+			CompletedAt: agentTask.UpdatedAt.UTC().Format(time.RFC3339),
 		}
 
 		var ap executor.AgentPayload
-		if json.Unmarshal(at.Payload, &ap) == nil {
+		if json.Unmarshal(agentTask.Payload, &ap) == nil {
 			completion.Item = workItemLabel(ap)
 		}
 
 		// Every entry carries its own mechanical outcome (commit + files),
 		// pulled from the task's completion fact — richer reports without
 		// git-log guesswork.
-		completion.Commit, completion.Files, _ = s.completionDetail(ctx, at.ID)
+		completion.Commit, completion.Files, _ = s.completionDetail(ctx, agentTask.ID)
 
 		window = append(window, completion)
 	}
@@ -301,7 +301,7 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		window = window[len(window)-maxWindowItems:]
 	}
 
-	sp := executor.StatusPayload{
+	payload := executor.StatusPayload{
 		Repo:      agentPayload.Repo,
 		Project:   t.Project,
 		Completed: window,
@@ -312,10 +312,10 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		RequireClean: new(!s.cfg.AllowDirty),
 	}
 	if s.cfg.TaskTimeout > 0 {
-		sp.TimeoutMinutes = int(s.cfg.TaskTimeout / time.Minute)
+		payload.TimeoutMinutes = int(s.cfg.TaskTimeout / time.Minute)
 	}
 
-	payload, err := json.Marshal(sp)
+	blob, err := json.Marshal(payload)
 	if err != nil {
 		stats.Skipped++
 
@@ -326,7 +326,7 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		Type:     executor.TaskTypeStatus,
 		Project:  t.Project,
 		Priority: t.Priority,
-		Payload:  payload,
+		Payload:  blob,
 		DedupKey: StatusDedupKey(t.Project, t.ID),
 	})
 	if err != nil {
