@@ -82,7 +82,7 @@ not here.
 - [ ] dogfood smoke: scripts/smoke/dogfood-once.sh replicating the 2026-09-10 --once proof (env-gated TQ_DOGFOOD=1 because it spends API money; stub-agent variant runs ungated) (02:00 f10)
 - [ ] archive dogfood evidence durably: copy the 2026-09-10 proof journal (/tmp/tq-dogfood.db) + review log into docs/status/ assets or ~/.local/state/tq/ before /tmp reboots (02:00 f9)
 - [ ] `tq pool-health`: one-shot summarizing per-repo skip streaks + last harvest activity from the journal (liveness ≠ process up) (02:00 f27)
-- [ ] worktree-per-agent design doc: claim → dedicated git worktree → verify → merge; the intra-repo parallelism path — write to docs/planning/ with tradeoffs and open questions listed for a later go/no-go (02:00 f15)
+- [ ] worktree-per-agent design doc: claim → dedicated git worktree → verify → merge; the intra-repo parallelism path — write to docs/planning/ with tradeoffs and an explicit open-questions section (02:00 f15)
 
 - [x] Cut v0.2.0: full ci-local gate + nix-binary smoke green, annotated tag v0.2.0 pushed, module proxy verified, clean-room go get verified, GitHub Release published (also fixed a release.sh bug: the awk section cut matched the bare heading, not the dated one) — 2026-09-09 `v0.2.0`, module proxy + GitHub release + smokes (19:49 f2; v0.1.0 shipped 2026-09-06)
 - [x] Kill the stray `/tmp/papdbg` worker (PID 1039418) — killed 2026-09-09 (second-signal force-exit; audit had verified it self-contained and inert)
