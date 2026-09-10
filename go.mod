@@ -69,3 +69,5 @@ replace github.com/larsartmann/go-taskqueue/internal/worker => ./internal/worker
 tool github.com/a-h/templ/cmd/templ
 
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ./internal/queue/sqlite
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/postgres => ./internal/queue/postgres
