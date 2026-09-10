@@ -66,6 +66,10 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 			t.Errorf("%s: Referrer-Policy = %q, want no-referrer", path, got)
 		}
 
+		if got := resp.Header.Get("Permissions-Policy"); got != "camera=(), microphone=(), geolocation=()" {
+			t.Errorf("%s: Permissions-Policy = %q, want device features denied", path, got)
+		}
+
 		if got := resp.Header.Get("X-Frame-Options"); got != "DENY" {
 			t.Errorf("%s: X-Frame-Options = %q, want DENY", path, got)
 		}

@@ -226,6 +226,9 @@ func securityHeaders(w http.ResponseWriter, nonce string) {
 	h.Set("Content-Security-Policy",
 		"default-src 'none'; style-src 'self'; script-src 'self' 'nonce-"+nonce+"'; img-src 'self' data:; "+
 			"font-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'")
+	// The dashboard never needs device capabilities; deny them outright so
+	// any future embed/iframe drift cannot grant a rendered payload access.
+	h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 	h.Set("Referrer-Policy", "no-referrer")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("X-Frame-Options", "DENY")

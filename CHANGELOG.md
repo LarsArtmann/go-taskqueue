@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`checks.module-eval` used `mkIf`, leaving a dangling option); the check
   now uses `optionalAttrs`.
 ### Added
+- Dashboard responses now carry `Permissions-Policy: camera=(), microphone=(),
+  geolocation=()` alongside the strict CSP — device capabilities a task-queue
+  dashboard never needs are denied outright, closing the last header gap the
+  httputil comparison surfaced.
 - `govulncheck` CI job (advisory): scans the root module plus every
   sub-module (disk-derived loop) with a pinned govulncheck; job-level
   `continue-on-error` keeps it non-blocking until the findings baseline is
