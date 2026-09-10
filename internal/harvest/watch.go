@@ -63,6 +63,12 @@ type WatchConfig struct {
 	RepoIntervals map[string]time.Duration
 	// Log receives connection and drop warnings; nil discards.
 	Log *slog.Logger
+	// InitialBackoff is the first reconnect delay after a dropped stream;
+	// it doubles up to MaxBackoff. Zero uses the default (500ms).
+	InitialBackoff time.Duration
+	// MaxBackoff caps the reconnect backoff ladder. Zero uses the default
+	// (30s).
+	MaxBackoff time.Duration
 }
 
 // Watcher subscribes to the daemon's GET /v1/watch SSE stream and converts
@@ -82,10 +88,15 @@ type Watcher struct {
 // of capacity one: while a tick runs, further events collapse into at most
 // one pending tick.
 func NewWatcher(cfg WatchConfig) *Watcher {
+	initial := cfg.InitialBackoff
+	if initial <= 0 {
+		initial = defaultWatchInitialBackoff
+	}
+
 	return &Watcher{
 		cfg:            cfg,
 		triggers:       make(chan struct{}, 1),
-		initialBackoff: defaultWatchInitialBackoff,
+		initialBackoff: initial,
 		lastTrigger:    make(map[string]time.Time),
 	}
 }
@@ -101,8 +112,9 @@ func (w *Watcher) Triggers() <-chan struct{} { return w.triggers }
 // to interval-only harvesting, never a stalled pool.
 func (w *Watcher) Run(ctx context.Context) error {
 	backoff := w.initialBackoff
-	if backoff <= 0 {
-		backoff = defaultWatchInitialBackoff
+	maxBackoff := w.cfg.MaxBackoff
+	if maxBackoff <= 0 {
+		maxBackoff = defaultWatchMaxBackoff
 	}
 
 	for {

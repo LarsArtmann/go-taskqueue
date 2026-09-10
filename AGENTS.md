@@ -238,6 +238,10 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   temp+rename does NOT help). `runAgent`/`AgentVersion` retry it
   (`execWithTransientRetry`) — if another exec site starts flaking the same
   way, route it through that helper instead of chasing a writer.
+- ⚠️ **Session-start ritual**: run `git log --oneline -5 -- internal` before
+  editing — concurrent agents land real changes mid-flight (worker's
+  go-retry require, flake vendorHash fixes, AGENTS.md corrections have all
+  arrived mid-session). Build on them; never revert.
 - ⚠️ **Dead-export audits must use SUBSTRING matching**: `rg -w Symbol`
   misses suffixed references (`NewSink`, `NewCommandExecutor` use `Sink`,
   `CommandExecutor`) and undercounts — the 2026-09-10 re-derivation found
