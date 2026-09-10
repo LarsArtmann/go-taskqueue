@@ -295,3 +295,18 @@ raise `alert.triggered` (fact Seq = Idempotency-Key); a later completion
 posts `alert.resolved` — rescue flows close their own alerts. The watermark
 starts at head per bridge process; incidents fired while down are not
 replayed (review via `tq dlq`). Details: FEATURES.md, CHANGELOG.md.
+
+**httputil** (`~/projects/httputil`, sibling middleware library): assessed
+2026-09-10, verdict NOT adopted as a dependency. Two reasons: (1) LICENSE is
+Proprietary while this repo is MIT with an all-MIT dep tree — a code-level
+require would poison every tq binary redistribution (don't re-litigate
+without relicensing); (2) scope mismatch — tq serve is a loopback SSE
+dashboard whose bespoke middlewares are deliberately narrower and stricter
+than httputil's generic defaults (nonce-CSP `default-src 'none'` vs
+`RecommendedCSP` `default-src 'self'`; `no-referrer` vs
+`strict-origin-when-cross-origin`; SSE needs `WriteTimeout=0` + Flush
+forwarding the generic stack doesn't model). The one real gap found —
+`Permissions-Policy` — was ported natively into `securityHeaders`
+(webui.go), and the write-route CSRF/lockout pair must keep its ADR-0003
+treatment regardless of library availability. Re-run the comparison only if
+the license changes or a second HTTP surface appears.
