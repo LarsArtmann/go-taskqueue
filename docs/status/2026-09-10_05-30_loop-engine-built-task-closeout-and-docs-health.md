@@ -67,12 +67,12 @@ accident.
 
 ## b) PARTIALLY DONE
 
-1. **Close-out LIVE proof**: unit-tested, flag on, workforce restarted with
-   it — but no `*_task_*.md` report exists yet (the first closeout-enabled
-   work task is still in flight at report time). The one review that ran
-   under the closeout build completed without a visible report and its
-   sidecar was empty — I could not determine whether its close-out ran,
-   skipped (no session id), or the pre-scoping binary was responsible.
+1. ~~**Close-out LIVE proof**: unit-tested, flag on, workforce restarted with~~ done (first *_task-<id>.md closeout report exists — docs/status/2026-09-10_05-58_task-…37826.md)
+   ~~it — but no `*_task_*.md` report exists yet (the first closeout-enabled~~
+   ~~work task is still in flight at report time). The one review that ran~~
+   ~~under the closeout build completed without a visible report and its~~
+   ~~sidecar was empty — I could not determine whether its close-out ran,~~
+   ~~skipped (no session id), or the pre-scoping binary was responsible.~~
 2. **AGENTS.md not updated** for the two new loops (payload-contracts
    section still describes the old status prompt). CHANGELOG has it;
    AGENTS.md will drift until the docs-health pass or I fix it.
@@ -137,11 +137,11 @@ accident.
 
 ## f) Up to 50 things next (impact-sorted; ⭐ = owner-gated)
 
-1. Live-prove the close-out: first `docs/status/<ts>_task-<id>.md` from a
-   work task; inspect its verdict/review interplay.
-2. Full `./scripts/ci-local.sh` on the final tree (post loop changes).
-3. AGENTS.md payload-contract section: document `--task-closeout` and the
-   docs-health status prompt.
+1. ~~Live-prove the close-out: first `docs/status/<ts>_task-<id>.md` from a~~ done (live proof landed as docs/status/2026-09-10_05-58_task-…37826.md)
+   ~~work task; inspect its verdict/review interplay.~~
+2. ~~Full `./scripts/ci-local.sh` on the final tree (post loop changes).~~ done (05-58 session ran full ci-local — ALL CI GATES GREEN at 05:58)
+3. ~~AGENTS.md payload-contract section: document `--task-closeout` and the~~ done (docs-health pass 2026-09-10 06:25 — AGENTS.md agent payload contract now documents --task-closeout + the close-out-free clone)
+   ~~docs-health status prompt.~~
 4. ⭐ Closeout report placement: `docs/status/tasks/` subdir + index rule
    (or root with naming convention) — needs a call before volume arrives.
 5. ⭐ Status-prompt append cap: ~50 → ~10? (TODO at 50 unchecked and

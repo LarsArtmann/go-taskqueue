@@ -135,29 +135,29 @@ Working tree clean (auto-commit daemon).
 
 ## c) NOT STARTED
 
-1. **`docs/DOMAIN_LANGUAGE.md`** — the vocabulary is rich and load-bearing
-   (task, fact, claim, lease, release, dead-letter, rescue, harvest, dedup
-   key, item, tick, verify gate) but undocumented. Not started because the
-   six core docs came first; glossary next. Priority: medium-high — harvested
-   agent prompts literally instruct workers to "read AGENTS.md", which has no
-   glossary.
+1. ~~**`docs/DOMAIN_LANGUAGE.md`** — the vocabulary is rich and load-bearing~~ done (docs/DOMAIN_LANGUAGE.md exists (glossary shipped since))
+   ~~(task, fact, claim, lease, release, dead-letter, rescue, harvest, dedup~~
+   ~~key, item, tick, verify gate) but undocumented. Not started because the~~
+   ~~six core docs came first; glossary next. Priority: medium-high — harvested~~
+   ~~agent prompts literally instruct workers to "read AGENTS.md", which has no~~
+   ~~glossary.~~
 
-2. **ADR-0002 (agent-pool architecture).** Autonomy/trust model, pacing vs
-   exclusivity, drain-context semantics. Now a TODO_LIST High Impact item;
-   no file written.
+2. ~~**ADR-0002 (agent-pool architecture).** Autonomy/trust model, pacing vs~~ done (docs/adr/0002-agent-pool-autonomy-pacing-drain.md exists)
+   ~~exclusivity, drain-context semantics. Now a TODO_LIST High Impact item;~~
+   ~~no file written.~~
 
-3. **golangci-lint policy.** CONTRIBUTING tells contributors to run it; CI
-   runs only vet+gofmt+tests; the baseline carries errcheck findings on
-   idiomatic `defer x.Close()` lines. Either gate it (and configure
-   exclusions) or stop advertising it. Needs an owner decision (section g).
+3. ~~**golangci-lint policy.** CONTRIBUTING tells contributors to run it; CI~~ done (decided — advisory baseline, AGENTS.md Known Issues (2026-09-10 triage))
+   ~~runs only vet+gofmt+tests; the baseline carries errcheck findings on~~
+   ~~idiomatic `defer x.Close()` lines. Either gate it (and configure~~
+   ~~exclusions) or stop advertising it. Needs an owner decision (section g).~~
 
-4. **dprint in the dev shell.** Declared in `dprint.json`, absent from
-   `flake.nix` devShell packages. Not started; trivial.
+4. ~~**dprint in the dev shell.** Declared in `dprint.json`, absent from~~ done (decided — docs formatting stays MANUAL, AGENTS.md conventions (2026-09-08))
+   ~~`flake.nix` devShell packages. Not started; trivial.~~
 
-5. **v0.1.0 release.** No tag exists; README's `go install …@latest`
-   instruction cannot be honored until one does. Release prep (history-squash
-   decision, tag, GitHub release, pkg.go.dev surface, `doc.go` files) is
-   TODO_LIST High Impact; zero of it started.
+5. ~~**v0.1.0 release.** No tag exists; README's `go install …@latest`~~ done (v0.1.0 shipped 2026-09-06 (tag + release))
+   ~~instruction cannot be honored until one does. Release prep (history-squash~~
+   ~~decision, tag, GitHub release, pkg.go.dev surface, `doc.go` files) is~~
+   ~~TODO_LIST High Impact; zero of it started.~~
 
 ## d) TOTALLY FUCKED UP!
 

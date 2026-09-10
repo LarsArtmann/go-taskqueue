@@ -102,7 +102,7 @@ The window spent itself entirely on its own five items; nothing from the surroun
 6. ci-local.sh: run the release-gates smoke with `GIT_CONFIG_GLOBAL=/dev/null` (or empty HOME) so identity-dependent git ops fail locally the way they do on runners.
 7. Add a master-CI state gate: `scripts/check-ci.sh` (fail when the latest master run is a failure via `gh`), wired into ci-local.sh — five DONE verdicts landed on a red master without anyone looking.
 8. Add a changed-lines line-length gate (lll/golines, 120 cols) to ci-local.sh so signature-wrap regressions (the `c5c654c` class) are caught before commit.
-9. Backfill CHANGELOG: gosec advisory job + the two examples G114 ReadHeaderTimeout fixes (`17a5940`) never got an entry.
+9. ~~Backfill CHANGELOG: gosec advisory job + the two examples G114 ReadHeaderTimeout fixes (`17a5940`) never got an entry.~~ done (docs-health pass 2026-09-10 06:25 — gosec job + G114 fixes backfilled under CHANGELOG Added)
 10. Export the status enum list from `internal/task` (`task.AllStatuses`) and retire the twin lists (webui `allStatuses`, httpapi `apiStatuses`) — rides the next sub-module re-tag.
 11. Publish gosec/govulncheck findings as job-summary artifacts so advisory-red runs are readable without log-diving.
 12. Write the required-checks proposal (test-windows + release-gates smoke, then the scan jobs) into docs/planning/ for the next release window.
@@ -113,7 +113,7 @@ The window spent itself entirely on its own five items; nothing from the surroun
 17. docs/planning/: verification-claims guidance — DONE notes must state gate scope (the govulncheck "local scans clean" claim was root+sqlite only while postgres carried the real finding).
 18. Fix the err113 finding at `cmd/tq/doctor.go:472` (dynamic `errors.New("failing checks found")`) as a static sentinel — it hard-failed lint-annotations once, then silently aged into the `--new-from-rev` baseline.
 19. SECURITY.md: add the two advisory scan jobs (govulncheck, gosec) to the defense-layers matrix.
-20. Confirm a CI run exists for the current HEAD (`c5c654c` had none at 04:09 despite being pushed at 04:02) and record the outcome.
+20. ~~Confirm a CI run exists for the current HEAD (`c5c654c` had none at 04:09 despite being pushed at 04:02) and record the outcome.~~ done (runs exist for HEAD 7c5f5e0 (34436225021): RED — nix/test-windows/test/govulncheck/gosec; recorded in TODO_LIST + 06-25 report)
 
 ## g) QUESTIONS FOR THE OWNER
 
