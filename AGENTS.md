@@ -119,6 +119,10 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **`status`**: `StatusPayload` JSON; the done-prompt agent writes
   `docs/status/<ts>_<name>.md` and appends next items (questions as
   `— BLOCKED:`) to TODO_LIST.md — that append IS the harvest loop-back.
+  Its docs-health pass annotates (never rewrites) 2026-* reports, keeps
+  TODO_LIST/CHANGELOG/AGENTS/README/ROADMAP/FEATURES current with what
+  the window's tasks actually shipped, and archives fully-done reports
+  to `docs/status/archived/`; hard scope: docs only, never code/config.
   Two gates: the `TQ_RESULT` contract naming an existing REPO-RELATIVE
   report file, and the repo verify command. One report in flight per
   project; `status:<project>:<trigger-id>` dedup.
