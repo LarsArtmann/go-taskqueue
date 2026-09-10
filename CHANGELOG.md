@@ -22,6 +22,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`checks.module-eval` used `mkIf`, leaving a dangling option); the check
   now uses `optionalAttrs`.
 ### Added
+- `govulncheck` CI job (advisory): scans the root module plus every
+  sub-module (disk-derived loop) with a pinned govulncheck; job-level
+  `continue-on-error` keeps it non-blocking until the findings baseline is
+  triaged. Runner-only — the live vuln DB fetch means it can never run in
+  the hermetic nix gates or ci-local.sh.
 - `cmdAgentPool` decomposed (652 lines → orchestrator + `cmd/tq/agentpool.go`:
   flag/config parsing, harvest-config assembly, startup banner); the
   agent-family executor registration is one shared helper used by
