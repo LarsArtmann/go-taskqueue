@@ -358,8 +358,15 @@ func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
 // another pool minted instead of failing them at executor lookup.
 func registerAgentExecutors(reg *executor.Registry, agentExec *executor.AgentExecutor) {
 	reg.Register(executor.TaskTypeAgent, agentExec)
-	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: agentExec})
-	reg.Register(executor.TaskTypeStatus, &executor.StatusExecutor{Agent: agentExec})
+
+	// The close-out turn belongs to WORK tasks only: reviews already are
+	// the second opinion and status tasks already are the report — giving
+	// them their own self-review doubles agent cost for no new signal.
+	reviewExec := *agentExec
+	reviewExec.CloseoutPrompt = ""
+
+	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: &reviewExec})
+	reg.Register(executor.TaskTypeStatus, &executor.StatusExecutor{Agent: &reviewExec})
 }
 
 // printAgentPoolBanner prints the startup summary: pool shape, the yolo
