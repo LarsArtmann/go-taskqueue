@@ -243,3 +243,20 @@ func TestStreamSnapshotHonorsView(t *testing.T) {
 		t.Error("stream snapshot rendered the table for ?view=board")
 	}
 }
+
+// TestParseFilterQuery pins the search param name: emitters send ?q= (the
+// search box is name="q", filterHref writes q=), so parse must read "q".
+// The filterHref round-trip guards the emitter/parse pair against drift.
+func TestParseFilterQuery(t *testing.T) {
+	t.Parallel()
+
+	f := parseFilter(httptest.NewRequest(http.MethodGet, "/?q=sh", nil))
+	if f.Query != "sh" {
+		t.Errorf("parseFilter(/?q=sh).Query = %q, want %q", f.Query, "sh")
+	}
+
+	href := filterHref(FilterState{Query: "sh"})
+	if got := parseFilter(httptest.NewRequest(http.MethodGet, href, nil)).Query; got != "sh" {
+		t.Errorf("filterHref round-trip lost query: href %q parsed Query %q", href, got)
+	}
+}

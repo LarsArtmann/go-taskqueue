@@ -45,7 +45,7 @@ func parseFilter(r *http.Request) FilterState {
 	filter := FilterState{
 		Project: query.Get("project"),
 		Status:  task.Status(query.Get("status")),
-		Query:   query.Get("query"),
+		Query:   query.Get("q"),
 		Page:    page,
 		Sort:    sort,
 		View:    view,
