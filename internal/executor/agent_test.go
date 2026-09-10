@@ -189,11 +189,17 @@ func TestAgentExecutorContextCancelKillsAgent(t *testing.T) {
 	repo := t.TempDir()
 
 	start := time.Now()
-	e := &AgentExecutor{Bin: makeStubAgent(t, "sleep 30")}
+	e := &AgentExecutor{Bin: makeStubAgent(t, "echo evidence-marker-7f3a; sleep 30")}
 
 	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
 	if err == nil || !strings.Contains(err.Error(), "cancelled") {
 		t.Fatalf("want cancel error, got %v", err)
+	}
+	// The captured output must survive the cancel: it IS the failure
+	// evidence the worker pins into task.failed (regression guard for the
+	// go-retry migration, where DoWithValue dropped the value on error).
+	if !strings.Contains(err.Error(), "evidence-marker-7f3a") {
+		t.Fatalf("err = %v: cancel path lost the captured output tail", err)
 	}
 
 	if elapsed := time.Since(start); elapsed > 10*time.Second {
@@ -369,6 +375,11 @@ func TestExecWithTransientRetry(t *testing.T) {
 
 			if calls != tt.wantCalls {
 				t.Errorf("calls = %d, want %d", calls, tt.wantCalls)
+			}
+			if tt.wantErr && tt.name == "three etxtbsy give up" && !errors.Is(err, syscall.ETXTBSY) {
+				// Wrap-chain guard: retry exhaustion must keep the original
+				// errno reachable via errors.Is so callers can classify it.
+				t.Errorf("err = %v: ETXTBSY no longer reachable through the wrap chain", err)
 			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("err = %v, wantErr %v", err, tt.wantErr)
