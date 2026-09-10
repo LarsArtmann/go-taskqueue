@@ -32,6 +32,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `nix flake check --all-systems` failed at eval time on aarch64-darwin
   (`checks.module-eval` used `mkIf`, leaving a dangling option); the check
   now uses `optionalAttrs`.
+- **Postgres backend off the vulnerable `golang.org/x/text`**: the module
+  still resolved `x/text v0.29.0` (GO-2026-5970, reachable via
+  `postgres.Open` → `pgxpool` → `norm.Form`) while every other module sat on
+  v0.41.0 — the advisory govulncheck job flagged it on its first CI run.
+  Bumped to v0.41.0; `govulncheck ./...` in the module now reports no
+  vulnerabilities.
+- **The red-master CI trio repaired**: (1) the release-gates smoke cut fixture
+  tags without a committer identity, so every CI runner died at `git tag`
+  with exit 128 (local hosts masked it with a global git identity) — the tag
+  now carries the same `-c user.email/-c user.name` as the fixture commit;
+  (2) `TestHarvestConfigFromOptionsExpandsBareRepoNames` asserted POSIX
+  string literals and failed windows-latest — inputs and expectations now
+  follow the running OS's path rules (separator- and volume-aware
+  absolutes); (3) the flake `vendorHash` resynced after the root go.mod
+  postgres replace moved the module graph.
 ### Added
 - `examples/fullcore`: the full library embed demo in one file — enqueue, custom + shell
   executors (including a retry proof), a worker pool draining the queue, and the
