@@ -14,6 +14,7 @@ Archive counter (update when moving files): 1 report in `archived/`,
 
 | Date       | Report                                                                              | Scope                                                                                             |
 | ---------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 2026-09-10 | `2026-09-10_04-09_scan-jobs-webui-contracts-and-red-master.md`                        | Window f20–f24 verified done (scan jobs, templ audit, webui dedup, stats contract); master CI red since 01:15 with two hard-gate breaks + a real postgres vuln found by the new govulncheck job |
 | 2026-09-10 | `2026-09-10_03-05_httputil-assessment-and-permissions-policy.md`                     | httputil assessed, NOT adopted (Proprietary vs MIT + scope mismatch); Permissions-Policy header ported to webui, docs synced, gates green |
 | 2026-09-10 | `2026-09-10_02-51_backlog-50-execution-complete.md`                               | 50-item backlog executed: real-ETXTBSY e2e test, payload v-gate, watch knobs, ADR-0013, live-pool verify, all gates green |
 | 2026-09-10 | `2026-09-10_02-04_go-retry-adoption-and-dependency-review.md`                       | go-retry adopted for generic retry loops (ADR-0013), 8-module dep inventory, reuse-first verdicts, 50-item plan |

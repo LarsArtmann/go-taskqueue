@@ -91,3 +91,29 @@ not here.
 - [x] Hard mechanical cap on status-agent TODO_LIST appends: DECIDED (default policy 2026-09-09): prompt-level caps + the budget guard remain the ceiling — a diff-parsing hard cap would reject legitimate multi-item reports and add a fragile parser; blast radius is bounded by `--daily-budget`/`--max-per-tick` on every minted item (20:56 g3)
 - [x] `tq cancel` dedup-key release: DECIDED (default policy 2026-09-09): keys stay suppressive after cancel — releasing them would let a stale harvest re-arm withdrawn work; the documented escape hatch (edit the item text → new key) is deliberate and now also re-arms correctly since absent items are pruned
 - [ ] Verify the CQA bridge against a live CQA API instance and fix contract drift (`internal/bridge/cqa` response shapes are httptest-informed guesses today); upgrade its FEATURES.md status after (plan C25) — BLOCKED: needs a live CQA instance URL + owner ID + token from the owner
+
+## Window f20–f24 follow-ups (harvested from docs/status/2026-09-10_04-09, verified 2026-09-10)
+
+- [ ] Fix test-windows red: `TestHarvestConfigFromOptionsExpandsBareRepoNames` (subtests mixed_entries_with_spacing, absolute_repos_stay_untouched) fails on windows-latest — audit bare-repo-name expansion for `filepath.Separator`/abs-path assumptions (landed a0b720e 01:38; red on master since)
+- [ ] Fix release-gates smoke on runners: `scripts/smoke/release-gates.sh:42` `git tag -a` lacks the `-c user.email/-c user.name` the init commit (line 40) carries — annotated tags need committer identity, runners have none (exit 128 since 00:22)
+- [ ] Bump `golang.org/x/text` to ≥v0.39.0 in `internal/queue/postgres` (GO-2026-5970 infinite loop, reachable via `postgres.Open` → pgxpool per the first govulncheck CI run) and sweep every module for the same x/text floor
+- [ ] Add a gosec config encoding the 2026-09-10 FP triage (exclude-rule list for G204/G702/G703/G304/G306/G301/G302/G124/G710/G118/G104/G404/G202) so the advisory job goes green and future new classes stand out
+- [ ] Flip govulncheck's `continue-on-error` to a hard gate once the x/text bump makes the job green on the runner
+- [ ] ci-local.sh: run the release-gates smoke under `GIT_CONFIG_GLOBAL=/dev/null` (or sanitized HOME) so identity-dependent git ops fail locally the way they do on runners
+- [ ] Add a master-CI state gate: `scripts/check-ci.sh` failing when the latest master run is a failure (via `gh run list`), wired into ci-local.sh — five DONE verdicts landed on a 3h-red master without anyone looking
+- [ ] Add a changed-lines line-length gate (lll/golines, 120 cols) to ci-local.sh so signature-wrap regressions (the c5c654c class) are caught before commit
+- [ ] Backfill CHANGELOG: the gosec advisory job + the two examples G114 ReadHeaderTimeout fixes (17a5940) never got an entry (govulncheck's did)
+- [ ] Export the status enum list from `internal/task` (`task.AllStatuses`) and retire the twin lists (webui `allStatuses`, httpapi `apiStatuses`) — rides the next sub-module re-tag
+- [ ] Publish gosec/govulncheck findings as CI job-summary artifacts so advisory-red runs are readable without log-diving
+- [ ] Write the required-checks proposal (test-windows + release-gates smoke first, then the scan jobs) into docs/planning/ for the next release window
+- [ ] Triage the webui zero-importer exports the dedup pass left behind (`BudgetView`, `BoardColumn`, `DashboardData`; part of the 48-symbol check-dead-exports advisory report)
+- [ ] Evaluate templ-components `KanbanBoard` (added v1.15+) against the custom board columns/cards in internal/webui/fragments.templ
+- [ ] Evaluate templ-components `PageProps.SEO` + `icons.Render` adoption for layout.Base and the filter/empty-state icons (04-09 report §a/f22)
+- [ ] Harden the two example servers beyond `ReadHeaderTimeout` (IdleTimeout/ReadTimeout), keeping the SSE `WriteTimeout=0` exemption documented (examples/api, examples/sse)
+- [ ] docs/planning/: verification-claims guidance — DONE notes must state gate SCOPE (the govulncheck "local scans clean" claim was root+sqlite only while postgres carried the real finding)
+- [ ] Fix the err113 finding at `cmd/tq/doctor.go:472` (dynamic `errors.New("failing checks found")`) as a static sentinel — it hard-failed lint-annotations once, then silently aged into the `--new-from-rev` baseline
+- [ ] SECURITY.md: add the two advisory scan jobs (govulncheck f20, gosec f21) to the defense-layers matrix
+- [ ] Confirm a CI run exists for the current HEAD (c5c654c had none at 04:09 despite being pushed 04:02) and record the outcome
+- [ ] gosec gating: once a suppression config encodes the triage, should gosec become a blocking required check or stay advisory permanently? — BLOCKED: owner gate-vs-advisory call on the security-scan jobs
+- [ ] `internal/task` public surface: export `task.AllStatuses` in the next minor release to kill the httpapi/webui twin status lists, or keep the duplication + cross-module pin test (TestStatsSurfacesAgree) as the permanent shape? — BLOCKED: needs a public-API/versioning call on the task sub-module
+- [ ] Pool policy when master CI is red: refuse agent DONE verdicts (fix-forward or park required) vs report-only disclosure of the red state — BLOCKED: needs a pool completion-contract decision
