@@ -243,7 +243,11 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
 - ⚠️ **golangci-lint is advisory** (`continue-on-error`, ~400-finding
   baseline): never mass-"fix" the baseline; don't add new findings in
   functions you touch. Hard gates: vet + gofmt + tests. `*_templ.go` is
-  lint-excluded (`templ fmt` owns `.templ`).
+  lint-excluded (`templ fmt` owns `.templ`). wrapcheck + varnamelen were
+  triaged to zero (2026-09-10, task 000001a089c3): wrapcheck ignores
+  internal-package globs + stdlib idioms + tests; varnamelen ignores tests
+  + `w`/`r`/`fs`/`db`/`id` idioms; remaining sites were renamed, not
+  suppressed.
 - ⚠️ **gosec advisory baseline is all FP/by-design** (triaged 2026-09-10,
   v2.29.0, 48 findings over root + all sub-modules; advisory CI job, f21):
   G204/G702 (exec with variable) — executors and bootstrap RUN commands
