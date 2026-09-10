@@ -3,9 +3,8 @@ package executor
 import (
 	"bytes"
 	"errors"
-	"os/exec"
-
 	"os"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 	"testing"
