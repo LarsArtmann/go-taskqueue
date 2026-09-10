@@ -670,9 +670,6 @@ type fragment struct {
 	HTML string `json:"html"`
 }
 
-// Badge class shared with the status CSS classes.
-const badgePending = "pending"
-
 // Fragment container ids shared by the page layout, the SSE payloads and
 // the client JS.
 const (

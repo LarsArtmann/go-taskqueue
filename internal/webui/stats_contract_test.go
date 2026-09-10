@@ -77,10 +77,10 @@ func TestStatsSurfacesAgree(t *testing.T) {
 		}
 	}
 
-	if rec := apiServer.Handler().ServeHTTP(
-		httptest.NewRecorder(),
-		authedRequest(http.MethodGet, "/api/stats", "sekrit"),
-	); rec.Code != http.StatusNotFound {
+	rec := httptest.NewRecorder()
+	apiServer.Handler().ServeHTTP(rec, authedRequest(http.MethodGet, "/api/stats", "sekrit"))
+
+	if rec.Code != http.StatusNotFound {
 		t.Errorf("write API serves unversioned /api/stats: status = %d, want 404", rec.Code)
 	}
 }

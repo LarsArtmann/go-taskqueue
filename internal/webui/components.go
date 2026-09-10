@@ -171,12 +171,8 @@ const (
 	labelError     = "last error"
 	labelID        = "id"
 	labelBudget    = "budget today"
-	labelPending   = "pending"
-	labelRunning   = "running"
 	labelCompleted = "completed"
 	labelTotal     = "total"
-	labelDead      = "dead"
-	labelCancelled = "cancelled"
 )
 
 // detailItems builds the task detail page's definition list.
