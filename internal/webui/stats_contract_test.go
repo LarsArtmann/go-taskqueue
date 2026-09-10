@@ -20,8 +20,14 @@ import (
 // handlers once computed the shape independently (dashboard: full
 // snapshot projection keyed by HTML badge labels; API: raw GROUP BY rows
 // with zero-count statuses omitted), so the wire could drift silently in
-// three directions. Any divergence — new status missed by either side,
-// label rename, total computed differently — now fails here.
+// three directions. What is actually enforced: maps.Equal fails any
+// one-sided divergence, and the store-truth loop below fails if BOTH
+// surfaces drop a status the store reports (the seed walks a task into
+// every status but pending). Residual gap: a new Status omitted from
+// both hand-mirrored lists AND absent from the seed still slips through;
+// the structural fix — one canonical status list exported from
+// internal/task, both lists derived from it — is parked in TODO_LIST
+// pending the sub-module API-surface call.
 func TestStatsSurfacesAgree(t *testing.T) {
 	t.Parallel()
 
@@ -46,8 +52,13 @@ func TestStatsSurfacesAgree(t *testing.T) {
 		t.Fatalf("complete: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	doomed, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
 		t.Fatalf("claim 2: %v", err)
+	}
+
+	if err := s.FailPermanent(ctx, doomed.ID, "w1", "boom: contract seed", nil); err != nil {
+		t.Fatalf("fail permanent: %v", err)
 	}
 
 	srv := New(s, Config{})
@@ -66,6 +77,26 @@ func TestStatsSurfacesAgree(t *testing.T) {
 	for _, st := range allStatuses {
 		if _, ok := apiStats[string(st)]; !ok {
 			t.Errorf("stats payload omits status %q: zeros must stay present so producers see a stable key set", st)
+		}
+	}
+
+	// Store truth: every status the seeded store reports (the seed covers
+	// running, completed, dead, cancelled) must surface as a wire key on
+	// BOTH payloads — a status both handlers forgot would otherwise fold
+	// its count into total invisibly.
+	storeCounts, err := s.StatusCounts(ctx)
+	if err != nil {
+		t.Fatalf("status counts: %v", err)
+	}
+
+	for st, n := range storeCounts {
+		key := string(st)
+		if _, ok := dashStats[key]; !ok {
+			t.Errorf("dashboard /api/stats omits store status %q (count %d)", key, n)
+		}
+
+		if _, ok := apiStats[key]; !ok {
+			t.Errorf("write API /api/v1/stats omits store status %q (count %d)", key, n)
 		}
 	}
 
