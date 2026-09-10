@@ -57,7 +57,7 @@ not here.
 
 - [x] Dead-export audit script as a periodic check: exported-with-zero-importers detector (substring matching, NOT `rg -w` — it misses suffixed references like NewSink/NewCommandExecutor and undercounts); park it next to scripts/check-go-mods.sh (23:47 f19; manual re-derivation lives in the 2026-09-10 session) — DONE 2026-09-10: scripts/check-dead-exports.sh (advisory report, `--strict` to gate), wired into ci-local.sh
 - [x] govulncheck step in CI (non-blocking job first; needs network on the runner) (23:47 f20) — DONE 2026-09-10: separate continue-on-error `govulncheck` job in ci.yml (govulncheck@v1.8.0, root + disk-derived sub-module loop); local root+sqlite scans clean
-- [ ] gosec advisory scan pass over the modules (23:47 f21)
+- [x] gosec advisory scan pass over the modules (23:47 f21) — DONE 2026-09-10: gosec v2.29.0 over root + every sub-module (48 findings); triaged all FP/by-design with per-rule rationale in the AGENTS.md "gosec advisory baseline" note; the two real findings (G114 timeout-less serves in examples/) fixed; advisory `gosec` job added to ci.yml (continue-on-error, mirrors govulncheck)
 - [ ] templ-components deep-dive audit: adoption table says v1.16 — verify we use the current component APIs and none of the retired ones (23:47 f22; internal/webui/fragments.templ)
 - [ ] webui dedup deep pass: render path 728 + handlers 527 LOC have grown similar branches (23:47 f23; internal/webui/render.go, handlers.go)
 - [ ] httpapi/webui API-surface split-brain check: overlapping handler + route definitions between `tq api` and `tq serve` (23:47 f24)

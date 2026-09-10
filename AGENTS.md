@@ -232,6 +232,21 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   baseline): never mass-"fix" the baseline; don't add new findings in
   functions you touch. Hard gates: vet + gofmt + tests. `*_templ.go` is
   lint-excluded (`templ fmt` owns `.templ`).
+- ⚠️ **gosec advisory baseline is all FP/by-design** (triaged 2026-09-10,
+  v2.29.0, 48 findings over root + all sub-modules; advisory CI job, f21):
+  G204/G702 (exec with variable) — executors and bootstrap RUN commands
+  from task payloads/`.tq-verify`/user config as their core feature, argv
+  is never shell-interpolated; G703/G304 (path taint) — a local CLI
+  operating on user-named repo/config paths (G304 already golangci-excluded);
+  G306/G301/G302 — 0644 repo/unit files and shared 0o1777 slot-lock dirs
+  are deliberate (pool.conf correctly 0600); G124 — auth cookies set
+  HttpOnly+SameSite, `Secure` deliberately conditional on TLS (LAN binds);
+  G710 — redirects target `/task/<id>` where the id must first resolve in
+  the store; G118 — canonical fresh-context graceful shutdown; G104 —
+  `os.Setenv`; G404 — backoff jitter (non-crypto); G202 — sort keys come
+  from a fixed allowlist switch, values bind via `?`. New gosec classes on
+  code you touch: triage before assuming baseline. The two REAL findings
+  (G114 timeout-less serves in examples/) are fixed.
 - ⚠️ **Kernel 7.2 ETXTBSY anomaly**: `execve` of freshly written binaries
   intermittently fails with "text file busy" on this host (kernel 7.2.3,
   reproduced standalone with NO writer holding the file; tmpfs + btrfs;

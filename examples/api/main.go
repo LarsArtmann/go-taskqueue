@@ -23,6 +23,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -123,7 +124,8 @@ func main() {
 	})
 
 	log.Printf("api: serving %s on http://%s (no auth — localhost only)", *db, *addr)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	server := &http.Server{Addr: *addr, ReadHeaderTimeout: 5 * time.Second}
+	log.Fatal(server.ListenAndServe())
 }
 
 func statusCounts(s *sqlite.Store, ctx context.Context) (map[string]int, error) {

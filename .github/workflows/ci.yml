@@ -180,3 +180,27 @@ jobs:
             echo "== $m"
             ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/govulncheck" ./... ) || exit 1
           done
+
+  gosec:
+    # Advisory security scan (round-2 f21), sibling of the govulncheck job:
+    # job-level continue-on-error keeps it non-blocking. The 2026-09-10
+    # triage (gosec v2.29.0, root + all sub-modules) found every finding a
+    # false positive or by-design — see the AGENTS.md "gosec advisory
+    # baseline" note for the per-rule rationale — so this stays advisory
+    # until that note says otherwise. Needs network (module downloads), and
+    # the disk-derived module loop mirrors "Module isolation gates".
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: stable
+      - name: Gosec (root + every sub-module)
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
+          "$(go env GOPATH)/bin/gosec" -quiet ./...
+          for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+            echo "== $m"
+            ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/gosec" -quiet ./... ) || exit 1
+          done

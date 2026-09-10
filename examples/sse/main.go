@@ -86,5 +86,6 @@ func main() {
 		}
 	})
 	log.Printf("sse: streaming %s on http://%s/events", *db, *addr)
-	log.Fatal(http.ListenAndServe(*addr, nil))
+	server := &http.Server{Addr: *addr, ReadHeaderTimeout: 5 * time.Second}
+	log.Fatal(server.ListenAndServe())
 }
