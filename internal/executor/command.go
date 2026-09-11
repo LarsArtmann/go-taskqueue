@@ -119,6 +119,15 @@ func quoteSh(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'+"'"+'`) + "'"
 }
 
+// CommandFromPayload is the read-only view of unwrapCommand for surfaces
+// that DISPLAY a command without executing it (tq show, the web dashboard):
+// same accepted shapes — raw shell line, JSON string, {"cmd": "..."} — and
+// the same "true" default for an empty payload. It lives beside the executor
+// so the display can never drift from what actually runs.
+func CommandFromPayload(payload []byte) string {
+	return unwrapCommand(payload)
+}
+
 // unwrapCommand accepts either a raw shell line or {"cmd": "..."} JSON and
 // returns the command to run.
 func unwrapCommand(payload []byte) string {
