@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -97,6 +98,16 @@ type AgentExecutor struct {
 	// (the owner's brutal self-review + status report) before verify runs.
 	// Empty = off (single turn, pinned argv contract unchanged).
 	CloseoutPrompt string
+
+	// rateLimitUntil is the UnixNano instant the provider is next expected
+	// to accept requests (0 = clear). Set when a run's output reports
+	// provider exhaustion (Z.ai 5-hour usage windows, synthetic.new quota
+	// 429s); while it holds, runAgent fast-refuses without spawning the
+	// agent binary. In-process by design: one pool per machine is the
+	// deployment norm (tq-agent-pool), and each pool that does probe pays
+	// one cheap refused run to re-learn the window. Gate logic lives in
+	// ratelimit.go.
+	rateLimitUntil atomic.Int64
 }
 
 // NewAgentExecutor builds an AgentExecutor for a projects directory.
@@ -330,6 +341,16 @@ func assertCleanTree(ctx context.Context, repo string) error {
 
 // runAgent spawns the headless agent in the repo and waits for it.
 func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload, id task.ID) (string, error) {
+	// Provider gate: a sibling task just observed the provider refusing
+	// (429/usage limit). Refuse BEFORE spawning crush — a probe into a
+	// spent quota costs a process spawn, agent-side retry noise, and on
+	// metered providers potentially billed tokens. The returned class
+	// carries the wait, so the worker requeues until the reset without
+	// burning an attempt.
+	if wait, limited := e.rateLimitWait(); limited {
+		return "", RateLimited(errors.New("agent: provider rate limit in effect (observed by a sibling run); deferring until reset"), wait)
+	}
+
 	// The queue task ID is only known at execution time (the harvester
 	// renders prompts before enqueue), so the {{TASK_ID}} placeholder in
 	// prompt contracts resolves HERE — it lets agents put `Task-Queue-ID:
@@ -391,6 +412,15 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 			return buf.String(), fmt.Errorf("agent run cancelled (%w): %s", ctx.Err(), tailBytes(buf.Bytes(), 8192))
 		}
 
+		// Provider exhaustion (Z.ai 429 usage-limit windows, OpenAI-style
+		// quota refusals from synthetic.new and friends): return the
+		// requeue-able class instead of a plain failure, so the worker
+		// parks the task until the provider resets WITHOUT burning an
+		// attempt. Detection also arms the gate for sibling runs.
+		if rl := e.rateLimitedTurn("agent run", err, buf.String()); rl != nil {
+			return buf.String(), rl
+		}
+
 		return buf.String(), fmt.Errorf("agent run failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))
 	}
 
@@ -422,6 +452,10 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 			if err != nil {
 				if ctx.Err() != nil {
 					return buf.String(), fmt.Errorf("agent closeout cancelled (%w): %s", ctx.Err(), tailBytes(buf.Bytes(), 8192))
+				}
+
+				if rl := e.rateLimitedTurn("agent closeout", err, buf.String()); rl != nil {
+					return buf.String(), rl
 				}
 
 				return buf.String(), fmt.Errorf("agent closeout failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))

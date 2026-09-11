@@ -77,6 +77,16 @@ func ExpBackoff(attempt int) time.Duration {
 	return d
 }
 
+// rateLimitDelay spreads a provider reset delay by ±5% (capped at ±1min):
+// enough that many parked tasks do not reclaim in the same instant and
+// stampede the freshly reset quota, without warping a multi-hour Z.ai
+// window the way percentage jitter would.
+func rateLimitDelay(d time.Duration) time.Duration {
+	spread := min(d/20, time.Minute)
+
+	return d - spread + time.Duration(rand.Int64N(2*int64(spread)+1))
+}
+
 // Pool runs N concurrent claim-execute loops against a store.
 type Pool struct {
 	cfg   Config
@@ -401,6 +411,23 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		} else if p.preflightShouldLog(t.ID) {
 			p.log.Warn("preflight refused; requeued without attempt burn",
 				"task", t.ID, "retry after", delay, "consecutive", p.preflightCount(t.ID), "reason", pre.Cause.Error())
+		}
+
+		return
+	}
+
+	if rl, ok := errors.AsType[*executor.RateLimitError](execErr); ok {
+		// Provider exhaustion (429 / usage limit): not the task's fault,
+		// and the identical retry fails identically until the provider's
+		// window resets. Requeue WITHOUT burning an attempt, parked until
+		// the parsed reset time (± small jitter so many parked tasks do
+		// not reclaim in lockstep and stampede the freshly reset quota).
+		delay := rateLimitDelay(rl.RetryAfter)
+		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, rl.Error(), delay); err != nil {
+			p.log.Error("rate-limit requeue failed", "task", t.ID, "err", err)
+		} else {
+			p.log.Warn("provider rate limited; requeued without attempt burn",
+				"task", t.ID, "retry after", delay.Round(time.Second), "reason", rl.Cause.Error())
 		}
 
 		return
