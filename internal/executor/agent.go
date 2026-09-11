@@ -115,6 +115,22 @@ func NewAgentExecutor(projectsDir string) *AgentExecutor {
 	return &AgentExecutor{ProjectsDir: projectsDir}
 }
 
+// WithoutCloseout returns a clone with CloseoutPrompt cleared, for the
+// review and status executors (they ARE the second opinion; giving them
+// the work turn's self-review would double agent cost for no new signal).
+// The clone carries every runtime setting but starts with a FRESH
+// rate-limit gate: gates are per-executor-instance (re-arming from fresh
+// provider evidence is one cheap refused run), and an armed
+// atomic.Int64 must never be struct-copied (copylocks).
+func (e *AgentExecutor) WithoutCloseout() *AgentExecutor {
+	return &AgentExecutor{
+		Bin:           e.Bin,
+		ProjectsDir:   e.ProjectsDir,
+		Yolo:          e.Yolo,
+		MaxConcurrent: e.MaxConcurrent,
+	}
+}
+
 func (e *AgentExecutor) binary() string {
 	if e.Bin != "" {
 		return e.Bin

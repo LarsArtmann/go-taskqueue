@@ -426,11 +426,10 @@ func registerAgentExecutors(reg *executor.Registry, agentExec *executor.AgentExe
 	// The close-out turn belongs to WORK tasks only: reviews already are
 	// the second opinion and status tasks already are the report — giving
 	// them their own self-review doubles agent cost for no new signal.
-	reviewExec := *agentExec
-	reviewExec.CloseoutPrompt = ""
+	reviewExec := agentExec.WithoutCloseout()
 
-	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: &reviewExec})
-	reg.Register(executor.TaskTypeStatus, &executor.StatusExecutor{Agent: &reviewExec})
+	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: reviewExec})
+	reg.Register(executor.TaskTypeStatus, &executor.StatusExecutor{Agent: reviewExec})
 }
 
 // printAgentPoolBanner prints the startup summary: pool shape, the yolo

@@ -149,3 +149,31 @@ func TestRateLimitGate(t *testing.T) {
 		t.Fatal("stale gate must report clear")
 	}
 }
+
+// TestWithoutCloseoutCarriesSettings pins the review/status clone contract:
+// every runtime setting rides along, the close-out prompt is stripped, and
+// the clone starts with a FRESH rate-limit gate (an armed atomic.Int64 must
+// never be struct-copied — cmd/tq/agentpool.go registers this clone).
+func TestWithoutCloseoutCarriesSettings(t *testing.T) {
+	e := &AgentExecutor{
+		Bin:           "/opt/crush",
+		ProjectsDir:   "/srv/projects",
+		Yolo:          true,
+		MaxConcurrent: 7,
+	}
+	e.armRateLimit(time.Hour)
+
+	clone := e.WithoutCloseout()
+
+	if clone.Bin != e.Bin || clone.ProjectsDir != e.ProjectsDir || !clone.Yolo || clone.MaxConcurrent != 7 {
+		t.Fatalf("clone lost settings: %+v", clone)
+	}
+
+	if clone.CloseoutPrompt != "" {
+		t.Fatalf("clone kept the close-out prompt %q, want empty", clone.CloseoutPrompt)
+	}
+
+	if _, limited := clone.rateLimitWait(); limited {
+		t.Fatal("clone inherited an armed rate-limit gate, want fresh")
+	}
+}
