@@ -63,22 +63,6 @@ func enqueue(t *testing.T, s *sqlite.Store, typ, project string) task.Task {
 	return tk
 }
 
-// waitFor polls cond until true or the timeout elapses.
-func waitFor(t *testing.T, timeout time.Duration, what string, cond func() bool) {
-	t.Helper()
-
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-
-		time.Sleep(5 * time.Millisecond)
-	}
-
-	t.Fatalf("timed out waiting for %s", what)
-}
-
 func TestIndexRendersFragments(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")

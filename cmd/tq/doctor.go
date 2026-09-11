@@ -36,6 +36,10 @@ const (
 	checkFail = "fail"
 )
 
+// errDoctorFailed is the static exit-1 error: `tq doctor` found at least
+// one FAIL check (the caller still printed every result first).
+var errDoctorFailed = errors.New("failing checks found")
+
 // checkResult is one doctor finding.
 type checkResult struct {
 	Name   string `json:"name"`
@@ -534,7 +538,7 @@ func cmdDoctor(args []string) error {
 	fmt.Printf("doctor: %s\n", worst)
 
 	if worst == checkFail {
-		return errors.New("failing checks found")
+		return errDoctorFailed
 	}
 
 	return nil

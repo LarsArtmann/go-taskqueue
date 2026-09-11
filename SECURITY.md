@@ -114,6 +114,17 @@ one agent's spend.
 - [ ] database file owned by the pool user, 0600, not on a shared mount
 - [ ] bridges behind TLS when not on localhost
 
+## Automated defense layers (CI)
+
+Two advisory scanners run on every push (job-level `continue-on-error`;
+triage before assuming baseline — see AGENTS.md):
+
+- **govulncheck** — known-vulnerability scan over the root module and every
+  sub-module (`govulncheck ./...` per module, GOWORK=off).
+- **gosec** — static security findings over the same surface; the
+  2026-09-10 triage found every finding a false positive or by-design
+  (per-rule rationale in AGENTS.md's gosec baseline note).
+
 ## Reporting a vulnerability
 
 Open a private GitHub security advisory on
