@@ -56,7 +56,7 @@ timeout 60 "$TMP/tq" worker --agents --once --poll 50ms --lease 5s --task-timeou
 }
 
 echo "== assert the task parked: pending, attempts 0, requeued fact carries retry_in_ms"
-TASK_ID="$("$TMP/tq" facts --json 2>/dev/null | grep -oE '"task_id":"[a-f0-9]+"' | head -1 | cut -d'"' -f4)"
+TASK_ID="$("$TMP/tq" facts --json 2>/dev/null | grep -oE '"taskId": ?"[a-f0-9]+"' | head -1 | grep -oE '[a-f0-9]{16,}' || true)"
 if [ -z "$TASK_ID" ]; then
 	echo "FAIL: could not resolve task id from facts"
 	cat "$TMP/worker.log"
@@ -64,26 +64,26 @@ if [ -z "$TASK_ID" ]; then
 fi
 
 "$TMP/tq" show "$TASK_ID" >"$TMP/show.json"
-grep -q '"status": *"pending"\|"status":"pending"' "$TMP/show.json" || {
+grep -Eq '"status": ?"pending"' "$TMP/show.json" || {
 	echo "FAIL: task is not pending after the 429"
 	cat "$TMP/show.json"
 	exit 1
 }
-grep -q '"attempts": *0\|"attempts":0' "$TMP/show.json" || {
+grep -Eq '"attempts": ?0[,}]' "$TMP/show.json" || {
 	echo "FAIL: the 429 burned an attempt"
 	cat "$TMP/show.json"
 	exit 1
 }
 
-"$TMP/tq" facts --json >"$TMP/facts.json" || "$TMP/tq" facts >"$TMP/facts.json"
+"$TMP/tq" facts --json >"$TMP/facts.json"
 grep -q 'task.requeued' "$TMP/facts.json" || {
 	echo "FAIL: no task.requeued fact"
 	cat "$TMP/facts.json"
 	exit 1
 }
-grep -Eq '"retry_in_ms": *"?[1-9]' "$TMP/facts.json" || {
+grep -Eq '"retry_in_ms": ?"?[1-9]' "$TMP/facts.json" || {
 	echo "FAIL: requeued fact lost retry_in_ms"
-	cat "$TMP/facts.json"
+	grep 'task.requeued' -A1 "$TMP/facts.json"
 	exit 1
 }
 
