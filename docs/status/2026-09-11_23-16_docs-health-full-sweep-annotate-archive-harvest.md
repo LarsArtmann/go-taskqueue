@@ -1,0 +1,175 @@
+# Status Report — 2026-09-11 23:16 CEST — Docs-Health Full Sweep: ALL 132 2026-0* Files, Annotate+Archive, Harvest, Living-Doc Sync
+
+**Scope**: user-directed docs-health AUDIT ("view ALL `**/2026-0*` files, execute the skill
+PROPERLY"): survey every timestamped file, resolve/annotate/archive fully-done reports,
+harvest forward-looking items, verify and sync all six living docs. This report covers
+ONLY this session's run + what it noticed along the way.
+
+**Session state**: ALL doc gates GREEN at end (doc-refs, status-index, todo-list,
+features-roadmap, ghost-archives) + root `go build && go vet && go test -race` GREEN.
+Master CI: still red on 4 jobs (test-windows, test, test-postgres, gosec) — the setup-go
+1.26.7 pin IS on disk (verified in ci.yml) but its green run is still owed.
+
+---
+
+## a) FULLY DONE
+
+Each item: what + evidence + scope.
+
+| # | What | Evidence | Scope |
+|---|------|----------|-------|
+| a1 | **Viewed ALL `2026-0*` files** — 132 total: 93 status + 7 archived-status + 8 planning + 9 planning-archived + 2 reviews + 3 modularization + 7 architecture-understanding + 1 release-archived + diagrams. 6 parallel survey agents produced per-item verdicts (2 rate-limited, relaunched); the 4 SUPERB-plan files the truncated glob initially hid were caught and covered in a second pass | survey outputs in session; `find . -name "2026-0*" \| wc -l` = 132 | whole repo docs |
+| a2 | **All 6 living docs read in full** (TODO_LIST 208→235 lines, CHANGELOG head, FEATURES, ROADMAP, README, AGENTS via context + targeted reads) before any edit | session | living docs |
+| a3 | **14-22 report's 3 open questions ANNOTATED inline** (the explicit docs-health ask, flagged by 15-39 b6/f16): fold-default → owner-approved as shipped; retry-strip dead-letters → yes (implemented, `TestRetryTrailCountsDeadLetter`); app.css pipeline → accidental, guard wired into ci-local | `docs/status/2026-09-11_14-22_task-detail-page-redesign.md` §g | ANNOTATE |
+| a4 | **6 status reports annotated + ARCHIVED** (`git mv` → `docs/status/archived/`): 05-20 round10 (2 BLOCKED items got TODO pointers), 23-47 queue-backend-split (b-list struck with evidence; 50-item f-list got a per-number resolution block — 36 done cited, 5 BLOCKED→TODO rows, 2 ROADMAP), 00-41 (§c 15 routed items verified ALL `[x]`), 04-09 (7 done rows struck, TL;DR CI-red claim corrected), 06-25 (f1/e2/g3 FOD theory SUPERSEDED with the corrected toolchain diagnosis), 08-25 (f10-f17 struck, f13 done 16-00, g1/g2 resolved de facto) | `docs/status/archived/` now 7 files; index rows repointed to `archived/<name>` | ANNOTATE+ARCHIVE |
+| a5 | **3 planning docs annotated/verified + ARCHIVED** (`docs/planning/archived/`, now 9): ROUND10 plan (declared EXECUTED), cordis-test-suite-verification (DONE record), persisted-bridge-watermark-design (8/8 struck in-file already) | git mv set | ANNOTATE+ARCHIVE |
+| a6 | **7 stale-done TODO_LIST rows fixed with re-verified verdicts**: L109 check-ci.sh (verified script + ci-local:20-21), L115 dead-export triage (15-10 M82 verdict: all LIVE in-package), L120 err113 (static `errDoctorFailed` at doctor.go:41), L121 SECURITY scan jobs (defense-layers verified), L129 nix-FOD (RESOLVED with the CORRECTED root cause), L155 filename-date drift (DONE 16-00, was missed by the concurrent session's own sweep), L179 waitFor (deleted) | multiedit set + fresh greps/`gh run view` | VERIFY |
+| a7 | **HARVEST: 27-item "Docs-health harvest (2026-09-11 evening)" section in TODO_LIST** — deduped against all existing rows; sources: 16-00/15-39/15-10/13-29 f-lists + the task-closeout surveys' top unharvested fuel (TQ_BIN rot-guard, review-pipeline anchors, daemon-hook bypass, version-agreement gate, doc↔script drift smoke, `golangci config verify`, rename-hygiene scanner, review-loop e2e, `enqueue --wait`, `doctor --hygiene`, rate-limiter global prune, httpapi parity, webui smoke payload assertions, golden test, ci-local retry wrapper, small rate-limit batch, release.md additions, re-dispatch cap/dedup) | TODO_LIST.md new section | HARVEST |
+| a8 | **ROADMAP synced**: v0.2.0 "cut the release" marked shipped (was still open!); stale raw ideas inline-resolved (Filter.Since, 429-classification half-done, gosec triage done, govulncheck/dependabot done, status-color consolidation done, cookie-hardening rate-limit clause); detail-page idea cluster added; 2 new owner questions (toolchain 1.27 policy, concurrent-writer protocol) | ROADMAP.md edits | BUILD |
+| a9 | **AGENTS.md**: re-added the CLOBBERED setup-go toolchain-drift gotcha (16-00 f3 — `stable` floats to 1.27.1, stdversion gates json/v2 regardless of GOEXPERIMENT, all 7 steps pinned 1.26.7, "verify against the environment that failed"); pinned the owner-approved fold-default + dead-letter-strip decisions (15-39 f17/d5); documented the archive-citation convention (repoint citations BEFORE `git mv`, update index row + counter) | AGENTS.md 3 edits | BUILD |
+| a10 | **README**: type-aware task-detail view one-liner (15-39 f36) — payload-as-content + retry trail in the dashboard section | README.md L74-80 | BUILD |
+| a11 | **Status index maintained**: 6 archived rows repointed to `archived/` paths; archive counter 1→7 reports, 6→9 plans; the 15-39 row (missing at session start per agent 6) was already added by the concurrent session | docs/status/README.md | VERIFY |
+| a12 | **6 stale citations repointed** to the moved planning docs (ADR-0004 ×3, ADR-0009, sse-mapping, 21-40 report, CHANGELOG L995) — `check-doc-refs` caught the drift my own archive moves created, exactly as designed | `./scripts/check-doc-refs.sh` → ok | GATE |
+| a13 | **3 stale planning claims fixed on sight**: FLIP-CHECKLIST master-CI caveat (FOD premise struck, corrected diagnosis inlined — this is the owner's flip runbook, the stale premise would have misdirected the flip), seeds D80 "`--store postgres` wired" (still BLOCKED — was false), SSE spike checklist (2 boxes done silently, struck with code refs; 3 genuinely open boxes left unmarked) | 3 planning docs | VERIFY |
+| a14 | **All gates green at end**: doc-refs, status-index (only the known WARNING-level f26 trailer case), todo-list, features-roadmap, ghost-archives + root `build/vet/test -race` all ok | gate runs in session | GATE |
+
+## b) PARTIALLY DONE
+
+| # | Item | Works now | Open gap |
+|---|------|-----------|----------|
+| b1 | Survey→annotation pipeline for the 2026-09-08 batch | ALL 18 files surveyed with per-item verdicts (agent pass) | 7 files verdicted KEEP with unmarked residue NOT annotated inline: 07-48 (f1/f2/f4/g2), 17-21 (d9/#11/#16/#18/#26), 20-58 (largest untracked tail f10-f12/f22-f38), 21-22 (gate-integrity f16-f21/f26), 21-51 (~15 small), 23-10 (owner cost questions), 22-42 (thin) |
+| b2 | Six 2026-09-07 reports (TODO L134, L161) | surveyed (agent 1); consistent with the prior "none archivable" verdict | no NEW annotations by this session; all still carry open items (correct per convention — they stay) |
+| b3 | 22 task-closeout reports (13× 09-10 + 9× 09-11) | fully surveyed; 0/13+9 archive-eligible; unique unharvested fuel identified and ranked | f/c-lists NOT annotated inline (queue artifacts — see g3); only the TOP unharvested items were harvested into TODO_LIST |
+| b4 | Harvest debt | ~27 high-value items landed (a7) + ROADMAP cluster | ~200+ unrouted items remain in surveyed reports (deliberate flood discipline — TODO_LIST must not become a dump — but it IS partial) |
+| b5 | FEATURES.md VERIFY | spot-checked the recently-shipped rows + `check-features-roadmap` + adoption pinning tests | NOT a full per-row re-verification against running code |
+| b6 | Master CI | 1.26.7 pin verified ON DISK (ci.yml ×3 visible of 7) | green-run proof still owed (not my push to make — agents never push) |
+
+## c) NOT STARTED
+
+- Inline annotation of the 7 KEEP 09-08 reports + 6× 09-07 reports + 22 task reports (b1-b3).
+- The remaining ~200 unrouted survey items (b4) — full list lives in the survey verdicts; the freshest slice is in TODO_LIST.
+- Agent-2's forward-looking dozen (review-loop e2e, `--redact`, bridge→consumer migration, `--repo-model`, `pg-verify.sh`, FLAKE-LEDGER, completions, per-pool sidecar subdirs) — surveyed, ranked, NOT routed (deliberate; see g2).
+- `docs/modularization/*.html` `<title>` fixes (3 files say template-default "Report Title").
+- Any v0.3.0 planning (Unreleased keeps growing; 15-39 c10).
+
+## d) TOTALLY FUCKED UP
+
+Radical honesty. What I got wrong, severity, root cause.
+
+1. **I first wrote a WRONG root-cause verdict into TODO_LIST L129 — and only caught it by luck.**
+   Severity: high (a living doc would have enshrined a false diagnosis).
+   What happened: I marked the nix-FOD item resolved citing "the real cause was missing
+   GOEXPERIMENT" (15-10's diagnosis). The 16-00 report — which landed MID-SESSION —
+   corrected that exact diagnosis: GOEXPERIMENT was necessary-but-insufficient; the real
+   cause was `setup-go: stable` floating to 1.27.1 (stdversion gate). I caught it only
+   because I re-listed `docs/status/` before archiving and noticed a file I'd never seen.
+   I rewrote my verdict to the corrected chain. Irony noted: I nearly repeated, in a
+   docs-integrity pass, the exact "declared fixed on a half-diagnosis" mistake the 16-00
+   author confessed in §d1.
+2. **The initial "View ALL files" instruction was silently unfulfilled for ~30 minutes.**
+   The glob tool truncates at 100 results; my inventory said 131 files and I did not
+   notice. The 4 missed SUPERB plans surfaced only when `ls docs/planning/archived/`
+   showed names my glob never returned. Root cause: trusted one tool's output for a
+   completeness claim. Fix applied mid-session (`find \| wc -l` first) — but the miss is
+   on me, and "view ALL" deserved a count-first reflex.
+3. **Three edit-tool failures from not reading before editing / sloppy old_strings**
+   (14-22 "must read file first", 00-41 stray `\|` in old_string, FLIP-CHECKLIST same
+   error). All recovered, but the FLIP-CHECKLIST one I only retried near the end —
+   if the session had been interrupted, the owner's flip runbook would still carry the
+   stale FOD premise.
+4. **Two survey agents died to rate limits** (parallel launch of 6). Lost ~10 minutes;
+   relaunched smaller. Should have split the launch or retried with backoff immediately.
+5. **Archive-bar judgment call made solo**: 06-25/08-25/23-47 were archived with scoped
+   "Resolution" blocks + targeted row strikes rather than literal per-row strikes on
+   every open row. I believe this honors the skill's intent (every item gets a verdict;
+   open items stay unmarked per the "absence = open" rule; "So what?" test) — but it
+   bends the letter of "EVERY item resolved → archive" for rows whose only disposition
+   is "open, owned by TODO_LIST row N". Flagged as g1 for a ruling rather than silently
+   repeated.
+6. **The auto-commit daemon folded my work into 6+ heuristic `chore:` commits** —
+   expected per AGENTS.md, but it means attribution for this docs pass is scattered and
+   no single commit boundary holds the whole verified state (a15's "gates green" was
+   true per-run, not per-commit).
+
+## e) WHAT WE SHOULD IMPROVE
+
+| # | Pattern that hurt | Concrete fix |
+|---|--------------------|--------------|
+| e1 | Completeness claims built on a single truncated tool output | For any "ALL files" task: `find \| wc -l` FIRST, then chunk the listing; never trust glob's silent cap |
+| e2 | Mid-session report arrivals can invalidate verdicts already written | Session-start AND session-end ritual step: re-list `docs/status/` and diff against session start; re-verify any verdict that names a root cause before finalizing (would have caught d1 without luck) |
+| e3 | Hand-rolled multiedits for repetitive row annotations (~15 edits/report) | Next annotation batch uses the skill's `annotate-rows.py`/`annotate-prose.py` (dry-run first, per the skill) |
+| e4 | The archive convention has an unwritten judgment layer (owner-BLOCKED residue → pointer block instead of per-row noise) | Codify it: one paragraph in AGENTS.md's status-index bullet or the docs-health skill — "archive requires every item to have a verdict; owner-BLOCKED residue is a pointer to TODO_LIST, not a strikethrough" (pending g1) |
+| e5 | KEEP-verdict reports accumulate untracked residue silently | After each survey, route or explicitly decline each untracked item cluster; " surveyed but not routed" is how the ~250-item debt grew |
+| e6 | AGENTS.md has grown to 32,156 B (the round-10 era budgeted ≤15 KB) | The size-budget idea (06-01 c3) deserves revival: what is the CURRENT budget, and what gets pruned to meet it? |
+| e7 | `check-dead-exports` false-positives on in-package templ usage (BudgetView/BoardColumn/DashboardData flagged "zero importers" while LIVE via fragments_templ.go in-package) | Teach the detector in-package usage, or document the known-FP list so triage verdicts stop needing re-derivation |
+
+## f) UP TO 50 THINGS WE SHOULD GET DONE NEXT
+
+Ranked by impact; items already in TODO_LIST referenced, not duplicated.
+
+| # | Task | Impact | Effort | Category |
+|---|------|--------|--------|----------|
+| 1 | Push/verify the setup-go 1.26.7 pin → master CI green (closes the toolchain saga; unblocks everyone's check-ci) | Critical | S | Bug |
+| 2 | Owner: SystemNix flip + deploy + DLQ triage per the (now-corrected) runbook | Critical | M | Owner |
+| 3 | Annotate the 7 KEEP 09-08 reports (b1 list) — resolve-or-route their unmarked residue, re-evaluate archive eligibility | High | M | Documentation |
+| 4 | Harvest-or-strike SUPERB-DEPENDENCY-REUSE-REVIEW A3–A5, fix its stale A4 premise, then archive it | High | S | Documentation |
+| 5 | Annotate the six 2026-09-07 reports (TODO L134) — the standing continuation item, now with survey verdicts in hand | High | M | Documentation |
+| 6 | Re-dispatch root cause + status-append cap/dedup (14-01's proven-lost-item class; TODO docs-health section) | High | M | Process |
+| 7 | Orphaned-guard audit: every `scripts/check-*.sh` wired or deleted (TODO docs-health section; check-webui-css was the proof) | High | S | Quality |
+| 8 | Wire `check-webui-css.sh` into ci.yml (byte pin, not just minify-property) | High | S | Quality |
+| 9 | gosec FP config encoding the 2026-09-10 triage (fixes the red gh badge too) | High | S | Quality |
+| 10 | TQ_BIN rot-guard for smokes (TODO docs-health section) | High | S | Quality |
+| 11 | Daemon-hook bypass: unindexed reports lost twice; gate or document (TODO docs-health section) | High | M | Process |
+| 12 | Review-pipeline hardening: sha+quoted anchors, re-anchoring pre-flight, disposition rules (TODO docs-health section) | High | M | Quality |
+| 13 | Version-agreement gate + single flake version literal (TODO docs-health section) | Medium | S | Quality |
+| 14 | `golangci-lint config verify` in ci-local (TODO docs-health section) | Medium | S | Quality |
+| 15 | Rename-hygiene scanner script (TODO docs-health section; AGENTS rule already shipped) | Medium | M | Quality |
+| 16 | Review-loop e2e smoke `scripts/smoke/reviews.sh` (TODO docs-health section) | Medium | M | Quality |
+| 17 | `enqueue --wait` blocking UX + `$TQ_DB` divergence warning (TODO docs-health section) | Medium | M | UX |
+| 18 | `tq doctor --hygiene` stale-verify gate (TODO docs-health section) | Medium | M | Quality |
+| 19 | httpapi parity hardening: nosniff + bearer lockout (TODO docs-health section) | Medium | S | Security |
+| 20 | Rate-limiter global prune (TODO docs-health section) | Medium | S | Security |
+| 21 | Secrets-in-logs pass + `--redact` (agent-2 f33/17-21 #18) | Medium | M | Security |
+| 22 | Route-or-decline agent-2's residue: bridge→consumer migration pilot, `--repo-model`, `pg-verify.sh`, FLAKE-LEDGER, per-pool sidecar subdirs, completions, `--no-harvest`, `tq status`/`tq loop-stats` | Medium | S | Backlog hygiene |
+| 23 | Route-or-decline agent-3's residue: `tq journal verify`, backup timer + restore drill, `--audit-every`, budget telemetry, prompt version marker, agentprompt consolidation | Medium | S | Backlog hygiene |
+| 24 | Decide task-closeout annotate/archive policy (g3) and, if in-scope, batch-resolve the 22 f-lists with annotate-rows.py | Medium | L | Documentation |
+| 25 | Fix 3 modularization HTML titles ("Report Title") | Low | S | Documentation |
+| 26 | Codify the archive pointer-block pattern (g1 ruling → AGENTS.md paragraph) | Low | S | Documentation |
+| 27 | Revive the AGENTS.md size budget with a current number (e6; 32 KB today) | Low | M | Documentation |
+| 28 | Teach check-dead-exports in-package templ usage (e7) or document the known-FP set | Low | S | Tooling |
+| 29 | Session ritual: add "new reports since session start" end-check (e2) — AGENTS.md one-liner | Low | S | Process |
+| 30 | `factLines` deletion + DOMAIN_LANGUAGE terms (`retry trail`, `payload section`, `work item`, `verify gate`) (TODO docs-health section) | Low | S | Cleanup |
+| 31 | Annotate 14-22's remaining unmarked f-list rows (#1-#50, ~40 open) — its questions are answered, its f-list is not | Low | M | Documentation |
+| 32 | 15-39 f-list rows: same treatment (its §a/b are current; f-list ~30 unmarked) | Low | M | Documentation |
+| 33 | 16-00 f-list rows 29-50: already mirrored into TODO docs-health section — strike them in-report | Low | S | Documentation |
+| 34 | Add `archived/` counter to a gate (counter drifted silently for weeks; TODO L162 adjacent) | Low | S | Tooling |
+| 35 | `check-status-index`: date-drift + trailer checks exist — consider archived/-path row validation (rows must point at files that exist) | Low | S | Tooling |
+| 36 | 13-29 residue not yet harvested: gate-arming banner line, 6h-cap monthly-quota audit, jitter property test, review/status-sweeper dedup-during-park pins (survey verdicts OPEN/QUESTION) | Low | S | Quality |
+| 37 | 15-10 residue: `--commits` on `tq facts` (in TODO), Retry-After HTTP-date fixture (in TODO), stats parked JSON contract (in TODO) — verify strike-through after landing | Low | S | Documentation |
+| 38 | FuzzParseRepo + FuzzDetectRateLimit nightly campaign health check (15-39 f35) | Low | S | Quality |
+| 39 | Dependabot PR backlog review (15-39 f31; several update runs succeeded today) | Low | S | Cleanup |
+| 40 | /tmp + root-fs hygiene (15-39 f21/f22; burned ci-local run #3 this window per 16-00 d3) | Low | M | Ops |
+| 41 | `scripts/for-each-module.sh` extraction (TODO L182; 4+ copies) | Low | S | Tooling |
+| 42 | actionlint in devShell + ci-local (TODO L183) | Low | S | Tooling |
+| 43 | ci.yml concurrency group (TODO docs-health section; daemon burst-pushes cancel each other's runs) | Low | S | Tooling |
+| 44 | RELEASE.md: multi-commits-per-task norm + clean-room backend step (TODO docs-health section) | Low | S | Documentation |
+| 45 | v0.3.0 cut checklist draft (Unreleased carries rate-limit armor + detail-page redesign + this docs pass; 15-39 c10/f32) | Medium | M | Release |
+| 46 | Post-deploy 429 retro (2026-09-18 per runbook; TODO L207) | Low | S | Ops |
+| 47 | Board golden snapshot test (00-21 f2; still the only untested projection) | Low | M | Quality |
+| 48 | `statusHref` view-preservation (00-21 f7; board↔table round-trip loses `?view=`) | Low | S | Bug |
+| 49 | Detail-page: "+N more" retry-strip cap + golden test (TODO docs-health section rows 19-20) | Low | S | Feature |
+| 50 | Verify the six 2026-09-06 round-2 reports' 4 struck f-items (21/28/39/45) still hold post-split — oldest strikes, never re-verified | Low | S | Documentation |
+
+## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
+
+1. **Archive-bar ruling**: I archived 06-25/08-25/23-47 whose only "open" rows are owner-BLOCKED items tracked in TODO_LIST, using a scoped Resolution block (per-item verdicts) instead of striking every open row. Codify this pointer-block pattern as the convention (AGENTS.md paragraph + maybe the skill), or do you want strict per-row markers before ANY archive? The 7 reports now in `archived/` embody my interpretation — veto and I re-drop them to `docs/status/`.
+2. **The KEEP reports' ~40 untracked small items** (07-48/17-21/20-58/21-22/21-51/23-10 residue: review-loop e2e, `--redact`, `pg-verify.sh`, FLAKE-LEDGER, completions, `tq status`/`loop-stats`, `--no-harvest`, per-pool sidecars, bridge→consumer pilot...): bulk-route to ROADMAP raw ideas, cherry-pick into TODO_LIST now, or declare them dead-in-reports (survey verdicts are the only record)? I did NOT route them, pending your appetite — TODO_LIST is already at 235 lines.
+3. **Are the 22 task-closeout reports queue artifacts exempt from annotate/archive?** They are machine-minted per dispatch (up to 5 re-fires per task, multiple revisions each), their f-lists are the re-dispatch epidemic's firehose, and annotating all of them is days of work. Options: (a) exempt + rely on the status-index + archive cadence, (b) annotate latest-revision-only per task id, (c) fix the dispatcher first (re-fires stop, then annotate the survivors). My pick is (c), but it is your queue-contract call (it also folds into the status-append cap item).
+
+---
+
+**HARVEST note**: this report's f-list is intentionally a pointer layer over the new
+TODO_LIST "Docs-health harvest (2026-09-11 evening)" section (rows landed this session)
+— no duplication.
+
+**WAITING FOR INSTRUCTIONS.**
