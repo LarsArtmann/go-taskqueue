@@ -24,6 +24,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   first tick with a readable repo posts `alert.resolved` and resets the
   streak.
 
+### Changed
+- **Task detail page renders payloads as content, not escaped JSON** (2026-09-11): the
+  `/task/{id}` payload row — previously one break-all escaped-JSON line squeezed into the
+  record definition list — is now a type-aware section between the record and the fact
+  timeline. Agent tasks show the work item as the lede (prompt-as-lede when the item is
+  empty), the executor-contract spec grid (repo, branch, model, verify gate, timeout), the
+  prompt contract in a collapsed fold, and the raw payload as pretty JSON in a second
+  fold; review/status/`sh` payloads get the same treatment, parsed with the executor's own
+  payload structs plus a new exported `executor.CommandFromPayload` so the displayed shell
+  line cannot drift from the executed one; unknown or unparseable payloads fall back to
+  the raw view. The section is static (payloads are immutable) and sits outside the
+  SSE-swapped fragments, so open folds survive live updates. Repeated requeues stop
+  stuttering: Error/Detail.reason duplicates on a fact collapse to the fuller text, facts
+  carry `(attempt N)`, and ≥2 requeued/failed/released events aggregate into a
+  `retry trail ×N` strip (distinct reasons × counts, loudest first) above the timeline.
+
 ### Fixed
 - **Dashboard and write-API stats surfaces pinned to one wire contract**: `tq serve`'s
   `/api/stats` and `tq api`'s `/api/v1/stats` computed the same payload through two

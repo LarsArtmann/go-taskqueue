@@ -151,6 +151,33 @@ func doctorQueueMix(ctx context.Context, store queue.Store) []checkResult {
 			Name: "dlq", Status: doctorCountStatus(counts[task.Dead]),
 			Detail: fmt.Sprintf("%d dead-lettered task(s)", counts[task.Dead]),
 		},
+		doctorParked(ctx, store),
+	}
+}
+
+// doctorParked surfaces rate-limit-parked tasks (pending, not_before in the
+// future): an idle pool with parked tasks is WAITING on the provider, not
+// broken — the 13:29 incident's "is it dead or just limited?" question
+// answered in one line.
+func doctorParked(ctx context.Context, store queue.Store) checkResult {
+	parked := true
+
+	n, err := store.CountTasks(ctx, queue.Filter{Parked: &parked})
+	if err != nil {
+		return checkResult{Name: "parked", Status: checkWarn, Detail: "count: " + err.Error()}
+	}
+
+	if n == 0 {
+		return checkResult{Name: "parked", Status: checkOK, Detail: "no rate-limit-parked tasks"}
+	}
+
+	return checkResult{
+		Name:   "parked",
+		Status: checkWarn,
+		Detail: fmt.Sprintf(
+			"%d task(s) parked by a provider rate limit — WAITING, not broken; see `tq tasks --parked`",
+			n,
+		),
 	}
 }
 

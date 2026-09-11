@@ -488,8 +488,12 @@ func (b *Bridge) post(
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 500 {
-		return fmt.Errorf("ingest %s: PapDashboard returned %d", eventType, resp.StatusCode)
+	if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
+		// 429 is transient by the same rule as 5xx: a rate-limited
+		// dashboard must not silently drop the alert (the permanent
+		// branch advances the checkpoint past the fact — the 2026-09-11
+		// bridge audit's finding). Retry on the next poll instead.
+		return fmt.Errorf("ingest %s: PapDashboard returned %d (transient)", eventType, resp.StatusCode)
 	}
 
 	if resp.StatusCode >= 400 {
