@@ -56,6 +56,50 @@ alone only resolves metadata and cannot catch a broken sub-module require);
 creates the GitHub Release (`--prerelease`, notes from the CHANGELOG
 section). Remaining manual step: confirm CI is green on `refs/tags/vX.Y.Z`.
 
+## Tag ancestry (forked lineages)
+
+Release tags are only meaningful if master can reach them. A lineage fork
+(rebase/reword under the auto-commit daemon — the 2026-09-10 incident class)
+leaves the old side's tags unreachable: `git describe` answers with fork
+tags, and the next release's version-ordering gate compares against a tag
+on the wrong side. Rules:
+
+- `scripts/release.sh` gates read the highest `v*` tag GLOBALLY (ordering
+  must move forward repo-wide, even across a fork) but cut the new tag on
+  HEAD — so a release must never be cut while a higher tag is unreachable;
+  heal the fork first (owner call: the forked commits are either cherry-pick
+  replayed or the tag is accepted as orphaned history — tags are immutable).
+- `tq doctor` carries a `tag-ancestry` check: WARNs when any `v*` tag is
+  not an ancestor of HEAD, OK-skips outside a git repo (deployed
+  environments). It is a warning, never a failure — healing is an owner
+  decision.
+- Fixture-proof note (round-11 T14): the sibling-replace allowlist and the
+  require-tag gate hardcode the real module path, so fixture releases must
+  mimic it (`github.com/larsartmann/go-taskqueue`). `gate_gomod` is
+  parameterized by nothing else by design — the gate SHOULD refuse foreign
+  module shapes.
+
+## The --push failure path
+
+`--push` is the only owner-gated phase and the only one that touches the
+outside world; its steps and their failure modes:
+
+1. `git push origin master` + root tag + sub-tags — a rejected push (remote
+   moved) is a HARD stop: re-run the gates (the tree changed under you).
+   Never `--force`.
+2. Module proxy wait: `go list -m -versions`, 5 attempts x 30s. Timeout is
+   NOT a failure of the release — verify
+   `https://proxy.golang.org/<module>/@v/vX.Y.Z.info` manually; NEVER re-tag
+   (the proxy caches forever; a re-tag poisons every future consumer).
+3. Clean-room `go get` + `go install` of `cmd/tq@vX.Y.Z` — this is the proof
+   the published tree is installable; a failure here means a sub-module
+   require is broken and the release must be superseded by a NEW version.
+4. GitHub Release (`--prerelease` for v0.x).
+5. CI green on the tag (automated since round-11 T15): the script polls
+   `gh run list --commit <tag-sha>` until the CI run completes (up to 30
+   minutes). A red tag run does not un-publish (impossible — immutable) but
+   MUST be triaged before the next release.
+
 ## Sub-tag cutting (internal/<mod>/vX.Y.Z)
 
 Every internal sub-module ships with the release under a shared version:

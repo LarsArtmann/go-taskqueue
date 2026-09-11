@@ -419,7 +419,55 @@ func doctorEnvironment(opts doctorOptions) []checkResult {
 		results = append(results, doctorRepoAutonomy(repo)...)
 	}
 
+	results = append(results, doctorTagAncestry())
+
 	return results
+}
+
+// doctorTagAncestry is the release-hygiene check (round-11 T15): a release
+// tag that HEAD cannot reach means the lineage forked (the 2026-09-10
+// reword incident's failure class) — the next release would gate its
+// version ordering against a tag on the wrong side and `git describe`
+// would answer with the fork's tags. Warn, never fail: tags are immutable
+// and healing the fork is an owner decision.
+func doctorTagAncestry() checkResult {
+	const name = "tag-ancestry"
+
+	revParse := exec.Command("git", "rev-parse", "--git-dir")
+	if err := revParse.Run(); err != nil {
+		return checkResult{Name: name, Status: checkOK, Detail: "not a git repo — ancestry check skipped"}
+	}
+
+	out, err := exec.Command("git", "tag", "--list", "v*").Output()
+	if err != nil {
+		return checkResult{Name: name, Status: checkWarn, Detail: "git tag: " + err.Error()}
+	}
+
+	var unreachable []string
+
+	for tag := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+
+		if err := exec.Command("git", "merge-base", "--is-ancestor", tag, "HEAD").Run(); err != nil {
+			unreachable = append(unreachable, tag)
+		}
+	}
+
+	if len(unreachable) == 0 {
+		return checkResult{Name: name, Status: checkOK, Detail: "all release tags reachable from HEAD"}
+	}
+
+	return checkResult{
+		Name:   name,
+		Status: checkWarn,
+		Detail: fmt.Sprintf(
+			"%d release tag(s) unreachable from HEAD (forked lineage — releases must not cut until healed): %s",
+			len(unreachable), strings.Join(unreachable, ", "),
+		),
+	}
 }
 
 // doctorRepoAutonomy checks one repo's TODO_LIST.md (harvestable) and
