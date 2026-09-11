@@ -164,15 +164,19 @@ func TestDetailItems(t *testing.T) {
 
 		want := []string{
 			labelProject, labelType, labelStatus, labelAttempts, "priority", "created", "updated",
-			"lease owner", labelCompleted, "payload",
+			"lease owner", labelCompleted,
 		}
 
 		if strings.Join(terms, ",") != strings.Join(want, ",") {
 			t.Fatalf("terms = %v, want %v", terms, want)
 		}
 
-		if last := items[len(items)-1]; last.Term != "payload" || last.DetailComponent == nil {
-			t.Errorf("payload must be the final item and render as a component, got %+v", last)
+		// Payload is the task's CONTENT, not its metadata: it must never
+		// re-enter the definition list — it renders as its own section.
+		for _, it := range items {
+			if it.Term == "payload" {
+				t.Errorf("payload term must stay out of detailItems (own section), got %+v", it)
+			}
 		}
 	})
 
@@ -198,18 +202,29 @@ func TestDetailItems(t *testing.T) {
 // TestDetailFactsSurfacesCancelReason pins the 21:40 §e item: a
 // task.cancelled fact carrying {"reason": ...} must render the reason in the
 // trail line, so a withdrawn task answers "why" without reading the journal.
+// A requeue refusal stores the SAME text in Error and Detail.reason — the
+// line must merge them, not stutter.
 func TestDetailFactsSurfacesCancelReason(t *testing.T) {
 	now := time.Now()
 	lines := detailFacts(now, []journalFactView{
 		{Seq: 2, Type: journal.Cancelled, Owner: "op", Detail: json.RawMessage(`{"reason":"item done by hand"}`)},
 		{Seq: 1, Type: journal.Cancelled, Owner: "op", Detail: json.RawMessage(`{}`)},
+		{Seq: 3, Type: journal.Requeued, Owner: "worker-1", Error: "preflight: repo dirty", Detail: json.RawMessage(`{"reason":"preflight: repo dirty","retry_in_ms":5000}`)},
 	})
 
-	if !strings.Contains(lines[0].Text, "— item done by hand") {
+	if !strings.Contains(lines[0].Text, "item done by hand") {
 		t.Fatalf("cancel line = %q, want the reason surfaced", lines[0].Text)
 	}
 
-	if strings.Contains(lines[1].Text, "—") {
-		t.Fatalf("reasonless cancel line = %q, want no reason marker", lines[1].Text)
+	if strings.Contains(lines[1].Text, "item done by hand") {
+		t.Fatalf("reasonless cancel line = %q, want no reason", lines[1].Text)
+	}
+
+	if got, want := lines[2].Text, "preflight: repo dirty preflight: repo dirty"; strings.Contains(got, want) {
+		t.Fatalf("requeue line = %q, want the duplicated error/reason merged", got)
+	}
+
+	if strings.Count(lines[2].Text, "preflight: repo dirty") != 1 {
+		t.Fatalf("requeue line = %q, want the reason exactly once", lines[2].Text)
 	}
 }

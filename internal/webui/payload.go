@@ -78,8 +78,7 @@ type payloadView struct {
 	// Raw is the full payload text, pretty-printed when the payload parses
 	// as JSON. Always populated: a structured view that silently drops
 	// unknown fields is a lie; this pane cannot lie.
-	Raw     string
-	RawJSON bool
+	Raw string
 }
 
 // hasRaw reports whether the raw pane adds anything the structured view does
@@ -90,9 +89,7 @@ func (v payloadView) hasRaw() bool {
 
 // payloadViewFor projects a task's payload for the detail page.
 func payloadViewFor(t task.Task) payloadView {
-	raw, pretty := prettyJSON(string(t.Payload))
-
-	view := payloadView{Kind: payloadRaw, Raw: raw, RawJSON: pretty}
+	view := payloadView{Kind: payloadRaw, Raw: prettyJSON(string(t.Payload))}
 
 	switch t.Type {
 	case executor.TaskTypeAgent:
@@ -244,25 +241,25 @@ func (v *payloadView) fromStatus(raw string) bool {
 	return true
 }
 
-// prettyJSON pretty-prints s when it parses as a JSON object or array; the
-// second result reports success. Non-JSON payloads (a raw shell line) pass
-// through untouched.
-func prettyJSON(s string) (string, bool) {
+// prettyJSON pretty-prints s when it parses as a JSON object or array;
+// anything else (a raw shell line, a bare JSON string) passes through
+// trimmed and untouched.
+func prettyJSON(s string) string {
 	trimmed := strings.TrimSpace(s)
 	if trimmed == "" || !(strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[")) {
-		return strings.TrimSpace(s), false
+		return trimmed
 	}
 
 	if !json.Valid([]byte(trimmed)) {
-		return strings.TrimSpace(s), false
+		return trimmed
 	}
 
 	var out bytes.Buffer
 	if err := json.Indent(&out, []byte(trimmed), "", "  "); err != nil {
-		return strings.TrimSpace(s), false
+		return trimmed
 	}
 
-	return out.String(), true
+	return out.String()
 }
 
 // plural picks singular/plural (tiny helper; the count is already rendered).
