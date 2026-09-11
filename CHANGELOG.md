@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Anti-ghost-archive gate for evidence archives**: new
+  `scripts/check-ghost-archives.sh` (gated in ci-local + CI) asserts every
+  evidence file a `docs/status/assets/*/README.md` promises is actually
+  git-tracked. The global `*.log` gitignore plus the auto-commit daemon's
+  add-everything sweep can otherwise ship an archive as README-only, losing
+  the evidence at the next checkout (the f9 dogfood-archive near-miss, 06-41
+  report §d1).
 - **Dead-pool detection alert for agent pools**: `tq agent-pool
   --dead-pool-ticks N` (default 3, `0` = off) raises a PapDashboard alert
   when EVERY watched repo scan-fails for N consecutive harvest ticks — the
