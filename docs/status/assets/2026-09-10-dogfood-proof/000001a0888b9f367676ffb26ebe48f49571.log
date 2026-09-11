@@ -1,0 +1,19 @@
+Now I'll write the detector script.Script works and shellcheck is clean. Verify the substring-matching claim with a spot check (NewCommandExecutor must NOT be flagged — it's referenced via `CommandExecutor` suffix):Substring matching verified (`NewCommandExecutor` alive via suffix ref, not flagged; `ExpBackoff` truly has zero external refs). Now wire it in as an advisory ci-local step:Pre-existing doc-ref failure (AGENTS.md cites `harvest/watch.go`, file is at `internal/harvest/watch.go`) — trivial staleness, fixing on sight:Done. `scripts/check-dead-exports.sh` (advisory zero-importers detector, substring matching via `rg -F`, `--strict` to gate; 48 findings on the current tree, including the deliberately-kept `CanTransitionTo`/`ExpBackoff`), wired into `scripts/ci-local.sh` after the go-mod gate. Shellcheck-clean; verified substring semantics (`NewCommandExecutor` correctly alive, `ExpBackoff` correctly dead). Root build/vet/tests green, doc guards green (fixed a pre-existing stale `harvest/watch.go` path citation in AGENTS.md that broke `check-doc-refs.sh`). TODO_LIST item marked done. Most changes were swept into auto-commit 3b774ed; my closing commit is 1586ed5.
+
+TQ_RESULT: {"files_changed": ["scripts/check-dead-exports.sh", "scripts/ci-local.sh", "AGENTS.md", "TODO_LIST.md"], "commit_sha": "1586ed5"}
+
+--- verify ---
+ok  	github.com/larsartmann/go-taskqueue/cmd/tq	7.433s
+?   	github.com/larsartmann/go-taskqueue/examples/api	[no test files]
+?   	github.com/larsartmann/go-taskqueue/examples/sse	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/bridge/cqa	1.018s
+ok  	github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard	1.711s
+ok  	github.com/larsartmann/go-taskqueue/internal/budget	1.015s
+ok  	github.com/larsartmann/go-taskqueue/internal/consumer	1.268s
+ok  	github.com/larsartmann/go-taskqueue/internal/e2e	15.502s
+ok  	github.com/larsartmann/go-taskqueue/internal/harvest	1.872s
+ok  	github.com/larsartmann/go-taskqueue/internal/httpapi	1.106s
+ok  	github.com/larsartmann/go-taskqueue/internal/review	1.095s
+ok  	github.com/larsartmann/go-taskqueue/internal/runactor	1.071s
+ok  	github.com/larsartmann/go-taskqueue/internal/status	1.193s
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	10.469s

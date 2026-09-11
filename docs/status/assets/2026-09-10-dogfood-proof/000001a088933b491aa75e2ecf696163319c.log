@@ -1,0 +1,8 @@
+The work spans three commits (two auto-commits plus a doc-fix); reviewing the aggregate. Let me verify the script actually runs and behaves as claimed.The change spans three commits (f1ac912, 3b774ed, 1586ed5 — the latter two partly auto-commits from the concurrent-agent daemon). Verification:
+
+- **Correctness**: `scripts/check-dead-exports.sh` runs cleanly (exit 0, advisory; `--strict` gates). Declaration extraction (single decls + var/const blocks) and substring matching are correct — I spot-checked flagged symbols (`Dispatcher`, `NewAgentExecutor`, `CanTransitionTo`) and all are genuinely zero-importer outside their package, so no false "dead" flags on live code. Substring search can only overcount liveness, which the script's own header honestly documents.
+- **Contracts**: matches the TODO item exactly (substring, not `rg -w`; parked next to `check-go-mods.sh`), wired as an advisory step in `scripts/ci-local.sh:50-52`, documented in AGENTS.md command table and Known Issues, TODO_LIST closed with a DONE note following the file's convention.
+- **Scope**: the 1586ed5 one-line `harvest/watch.go` → `internal/harvest/watch.go` doc fix is technically outside the item but is the sanctioned fix-on-sight class; go.mod/vendorHash churn in 3b774ed is the auto-commit daemon sweeping parallel agents' work, not this agent's.
+- **Build**: `go build ./... && go vet ./...` green; script passes `bash -n`.
+
+TQ_RESULT: {"verdict":"approve","summary":"Dead-export audit script implemented per contract (substring matching, advisory exit-0, --strict option), wired into ci-local.sh after check-go-mods, documented in AGENTS.md and TODO_LIST closed. Spot-checks confirm no live symbol is wrongly flagged; build and vet pass.","findings":[]}

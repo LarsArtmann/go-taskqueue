@@ -87,3 +87,6 @@ yarn-error.log*
 # nix build output symlink
 result
 result-*
+
+## Archived evidence logs (docs/status/assets) are deliberate content, not build logs
+!docs/status/assets/**/*.log
