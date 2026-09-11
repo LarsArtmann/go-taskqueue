@@ -845,6 +845,91 @@ func TestAgentExecutorRateLimitClassifiedAndGated(t *testing.T) {
 	}
 }
 
+// TestCloseoutRateLimitResumesNotReRuns pins the f15 fix: a 429 during the
+// CLOSE-OUT turn requeues the task without burning an attempt, and the
+// re-claim RESUMES at closeout — the work turn must NOT run a second time
+// (it already succeeded and cost real agent tokens).
+func TestCloseoutRateLimitResumesNotReRuns(t *testing.T) {
+	repo := t.TempDir()
+	setupGitRepo(t, repo)
+
+	reset := time.Now().Add(2 * time.Hour).Format("2006-01-02 15:04:05")
+	stub := makeStubAgent(t, `
+is_closeout=
+prev=
+for a in "$@"; do
+	[ "$prev" = "--session" ] && is_closeout=1
+	prev="$a"
+done
+if [ -z "$is_closeout" ]; then
+	n=$(($(cat work.log 2>/dev/null | wc -l) + 1))
+	echo "run $n" >> work.log
+	echo "session: sess-$n"
+	echo 'TQ_RESULT: {"verdict":"complete"}'
+	exit 0
+fi
+n=$(($(cat closeout.log 2>/dev/null | wc -l) + 1))
+echo "closeout $n" >> closeout.log
+if [ "$n" = "1" ]; then
+	echo 'WARN Provider request failed status_code=429 message="Usage limit reached for 5 hour. Your limit will reset at RESET_TS"'
+	exit 1
+fi
+echo 'TQ_RESULT: {"verdict":"complete"}'
+exit 0
+`)
+	stub = strings.Replace(stub, "RESET_TS", reset, 1)
+
+	e := &AgentExecutor{Bin: stub, CloseoutPrompt: "self-review"}
+	tk := agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})
+
+	// First Execute: work turn succeeds, closeout hits the 429 →
+	// *RateLimitError (requeue without attempt burn).
+	err := e.Execute(context.Background(), tk)
+	rl, ok := errors.AsType[*RateLimitError](err)
+	if !ok {
+		t.Fatalf("closeout 429 classified as %v (%T), want *RateLimitError", err, err)
+	}
+
+	if rl.RetryAfter <= 0 {
+		t.Fatalf("RetryAfter = %s, want positive", rl.RetryAfter)
+	}
+
+	// Re-claim: resumes at closeout; the WORK turn must not re-run.
+	if err := e.Execute(context.Background(), tk); err != nil {
+		t.Fatalf("resumed execute: %v", err)
+	}
+
+	work, err := os.ReadFile(filepath.Join(repo, "work.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if lines := len(nonEmptyLines(string(work))); lines != 1 {
+		t.Fatalf("work turn ran %d times, want 1 (resume must skip the paid work turn)", lines)
+	}
+
+	closeoutLog, err := os.ReadFile(filepath.Join(repo, "closeout.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if lines := len(nonEmptyLines(string(closeoutLog))); lines != 2 {
+		t.Fatalf("closeout ran %d times, want 2 (429 turn + resumed turn)", lines)
+	}
+}
+
+func nonEmptyLines(s string) []string {
+	var out []string
+
+	for _, l := range strings.Split(strings.TrimRight(s, "\n"), "\n") {
+		if l != "" {
+			out = append(out, l)
+		}
+	}
+
+	return out
+}
+
 func runInOutput(dir, cmdLine string) (string, error) {
 	cmd := exec.Command("sh", "-c", cmdLine)
 	cmd.Dir = dir
