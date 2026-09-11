@@ -1065,6 +1065,11 @@ func listWhere(f queue.Filter) (string, []any) {
 		args = append(args, f.Since.UnixMilli())
 	}
 
+	if f.Parked != nil && *f.Parked {
+		where = append(where, "status = 'pending' AND not_before > ?")
+		args = append(args, time.Now().UnixMilli())
+	}
+
 	if f.Query != "" {
 		like := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
 

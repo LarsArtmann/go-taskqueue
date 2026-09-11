@@ -162,6 +162,10 @@ type Filter struct {
 	// (inclusive) — pushed into SQL as a created_at comparison, not a
 	// post-filter.
 	Since *time.Time
+	// Parked restricts the listing to rate-limit-parked tasks: pending
+	// with not_before in the future (the "11 tasks parked until 19:40"
+	// one-glance view). false or nil leaves the filter off.
+	Parked *bool
 }
 
 // Queue is the facade most consumers use: a Store plus convenience methods.

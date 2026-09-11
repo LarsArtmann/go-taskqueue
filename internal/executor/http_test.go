@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -57,6 +58,103 @@ func TestHTTPExecutorStatusClassification(t *testing.T) {
 				t.Fatalf("permanent = %v, want %v (err: %v)", ok, tt.wantPermanent, err)
 			}
 		})
+	}
+}
+
+// TestHTTPExecutor429ClassifiedAsRateLimit pins the f4c contract: an HTTP
+// 429 must surface as *RateLimitError (requeued WITHOUT attempt burn by the
+// worker, same as agent tasks) — never as a plain transient error that
+// burns the retry budget like the 2026-09-11 incident.
+func TestHTTPExecutor429ClassifiedAsRateLimit(t *testing.T) {
+	t.Parallel()
+
+	t.Run("retry-after header wins", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Retry-After", "30")
+			w.WriteHeader(http.StatusTooManyRequests)
+		}))
+		defer srv.Close()
+
+		err := NewHTTPExecutor(srv.URL).Execute(context.Background(), httpTask())
+
+		rl, ok := errors.AsType[*RateLimitError](err)
+		if !ok {
+			t.Fatalf("429 classified as %T (%v), want *RateLimitError", err, err)
+		}
+
+		if rl.RetryAfter < 30*time.Second || rl.RetryAfter > 31*time.Second+rateLimitGrace {
+			t.Fatalf("RetryAfter = %s, want ~30s + grace", rl.RetryAfter)
+		}
+	})
+
+	t.Run("body reset timestamp when no header", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"error":{"message":"Usage limit reached for 5 hour. Your limit will reset at 2099-01-01 00:00:00"}}`))
+		}))
+		defer srv.Close()
+
+		err := NewHTTPExecutor(srv.URL).Execute(context.Background(), httpTask())
+
+		rl, ok := errors.AsType[*RateLimitError](err)
+		if !ok {
+			t.Fatalf("429 classified as %T (%v), want *RateLimitError", err, err)
+		}
+
+		if rl.RetryAfter != maxRateLimitWait {
+			t.Fatalf("RetryAfter = %s, want the 6h cap", rl.RetryAfter)
+		}
+	})
+
+	t.Run("bare 429 falls back to the default backoff", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusTooManyRequests)
+		}))
+		defer srv.Close()
+
+		err := NewHTTPExecutor(srv.URL).Execute(context.Background(), httpTask())
+
+		rl, ok := errors.AsType[*RateLimitError](err)
+		if !ok {
+			t.Fatalf("429 classified as %T (%v), want *RateLimitError", err, err)
+		}
+
+		if rl.RetryAfter != defaultRateLimitBackoff {
+			t.Fatalf("RetryAfter = %s, want %s", rl.RetryAfter, defaultRateLimitBackoff)
+		}
+	})
+}
+
+// TestParseRetryAfterHeader pins the header grammar: delay-seconds and
+// HTTP-date both parse, garbage and past dates return 0.
+func TestParseRetryAfterHeader(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		in   string
+		want time.Duration
+	}{
+		{"", 0},
+		{"30", 30 * time.Second},
+		{" 120 ", 2 * time.Minute},
+		{"-5", 0},
+		{"abc", 0},
+		{now.Add(time.Hour).Format(http.TimeFormat), time.Hour},
+		{now.Add(-time.Hour).Format(http.TimeFormat), 0},
+	}
+
+	for _, tt := range cases {
+		if got := parseRetryAfterHeader(tt.in, now); got != tt.want {
+			t.Errorf("parseRetryAfterHeader(%q) = %s, want %s", tt.in, got, tt.want)
+		}
 	}
 }
 

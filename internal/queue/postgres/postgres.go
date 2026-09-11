@@ -963,6 +963,11 @@ func pgWhere(f queue.Filter) (string, []any) {
 		where = append(where, fmt.Sprintf("created_at >= $%d", len(args)))
 	}
 
+	if f.Parked != nil && *f.Parked {
+		args = append(args, time.Now().UnixMilli())
+		where = append(where, fmt.Sprintf("status = 'pending' AND not_before > $%d", len(args)))
+	}
+
 	if f.Query != "" {
 		args = append(args, "%"+escapeLike(f.Query)+"%")
 		idx := len(args)
