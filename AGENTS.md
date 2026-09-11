@@ -106,7 +106,16 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **`agent`**: `AgentPayload` JSON (repo, prompt, verify command, timeout).
   Verify must exit 0. A payload model makes the executor pass `crush run
   -m`, which RESETS reasoning effort — the repo `.crushrc` managed block
-  (`tq bootstrap`) is the only model+effort carrier. `--yolo` without a
+  (`tq bootstrap`) is the only model+effort carrier. The managed block's
+  tool grant IS the agent's toolset (headless mode denies unlisted tools,
+  no prompts): `view ls grep glob edit multiedit write bash fetch download
+  todos` + `option metrics false` (headless telemetry off — every run
+  otherwise pays a PostHog flush at shutdown; `fetch` verified empirically
+  2026-09-12). Agents inherit the user's global crush config (providers,
+  skills, LSPs, qmd MCP) since the pool runs as the same user; repo-local
+  `lsp add <name> --disabled true` overrides broken host LSPs (statix on
+  this host has no LSP mode — disabled in SystemNix 2026-09-12 after 900+
+  init-timeout failures). `--yolo` without a
   repo-local `.crushrc` fails fast by design (argv pinned by
   `TestAgentExecutorArgvContract`). With `--task-closeout` the work turn is
   followed by a close-out turn that resumes the EXACT session (`--session`,

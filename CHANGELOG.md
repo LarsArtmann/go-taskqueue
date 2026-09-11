@@ -19,6 +19,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   run time).
 
 ### Added
+- **Fuller agent toolset in the bootstrap managed block**: the headless
+  allow list grows from 7 tools to `view ls grep glob edit multiedit write
+  bash fetch download todos` — in non-interactive mode unlisted tools are
+  denied, so the list IS the agent's toolset; agents can now read web docs
+  (fetch, verified empirically headless), pull artifacts (download), batch
+  edits (multiedit), and track multi-step work (todos). The block also sets
+  `option metrics false`: every headless run previously paid a PostHog
+  flush at shutdown (observed "Failed to flush PostHog events" + "shutdown
+  timeout exceeded" in dead task tails). Existing repos pick the upgrade up
+  on the next `tq bootstrap` run.
 - **Worktree-per-agent design doc**
   (`docs/planning/2026-09-12_worktree-per-agent-design.md`): the
   intra-repo parallelism path (claim → dedicated git worktree → verify →
