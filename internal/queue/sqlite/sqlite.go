@@ -503,7 +503,7 @@ func (s *Store) Fail(
 
 		newAttempts := attempts + 1
 		if newAttempts >= maxAttempts {
-			_, err = tx.ExecContext(ctx, `
+			res, err := tx.ExecContext(ctx, `
 				UPDATE tasks
 				SET status = 'dead', attempts = ?, last_error = ?, updated_at = ?,
 				    lease_owner = '', lease_expires = NULL
@@ -511,6 +511,13 @@ func (s *Store) Fail(
 				newAttempts, errText, now.UnixMilli(), id.String(), owner)
 			if err != nil {
 				return err
+			}
+
+			// A stale owner must not dead-letter a task it no longer
+			// holds (e.g. one parked by a rate-limit requeue) — gate the
+			// facts on the same rows check as Complete.
+			if n, _ := res.RowsAffected(); n == 0 {
+				return s.leaseErr(ctx, tx, id, owner)
 			}
 
 			if err := s.appendFact(ctx, tx, journal.Fact{
@@ -526,7 +533,7 @@ func (s *Store) Fail(
 			})
 		}
 
-		_, err = tx.ExecContext(ctx, `
+		res, err := tx.ExecContext(ctx, `
 			UPDATE tasks
 			SET status = 'pending', attempts = ?, last_error = ?, not_before = ?,
 			    updated_at = ?, lease_owner = '', lease_expires = NULL
@@ -534,6 +541,10 @@ func (s *Store) Fail(
 			newAttempts, errText, now.Add(backoff).UnixMilli(), now.UnixMilli(), id.String(), owner)
 		if err != nil {
 			return err
+		}
+
+		if n, _ := res.RowsAffected(); n == 0 {
+			return s.leaseErr(ctx, tx, id, owner)
 		}
 
 		return s.appendFact(ctx, tx, journal.Fact{

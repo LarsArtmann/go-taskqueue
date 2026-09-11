@@ -831,6 +831,64 @@ func TestProjectExclusivityAcrossStoreHandles(t *testing.T) {
 	}
 }
 
+// TestParkedRequeueNotResurrectableByStaleLease pins the rate-limit park
+// contract (13:29 report f16): a Requeue with a future not_before parks the
+// task as pending with the lease fully cleared, so NOTHING can bring it
+// back early — not the expired-lease reclaim branch (it only matches
+// status='running'), and not the stale owner's lease-taking calls.
+func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk, _ := s.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 3})
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	// Rate-limit park: requeue with a delay longer than the original lease.
+	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited (retry after 1h)", time.Hour); err != nil {
+		t.Fatalf("Requeue: %v", err)
+	}
+
+	parked, _ := s.Get(ctx, tk.ID)
+	if parked.Status != task.Pending || parked.LeaseOwner != "" || parked.LeaseExpires != nil {
+		t.Fatalf("parked task must be pending with a cleared lease, got %+v", parked)
+	}
+
+	if parked.NotBefore.Before(time.Now().Add(50 * time.Minute)) {
+		t.Fatalf("parked not_before = %v, want ~1h out", parked.NotBefore)
+	}
+
+	// The expired-lease reclaim branch must not see it: a claim while the
+	// park is live returns ErrNoTaskDue (the stale lease is GONE, and the
+	// pending branch is gated on not_before).
+	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("claim during park err = %v, want ErrNoTaskDue", err)
+	}
+
+	// The stale owner cannot resurrect the parked task through any
+	// lease-taking call — the parked task holds no lease to match.
+	if err := s.Heartbeat(ctx, tk.ID, "w1", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+		t.Errorf("stale Heartbeat err = %v, want ErrLeaseNotHeld", err)
+	}
+
+	if err := s.Complete(ctx, tk.ID, "w1", jsontext.Value(`"x"`)); !errors.Is(err, task.ErrLeaseNotHeld) {
+		t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
+	}
+
+	if err := s.Requeue(ctx, tk.ID, "w1", "stale", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+		t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
+	}
+
+	if err := s.Fail(ctx, tk.ID, "w1", "stale", time.Minute, jsontext.Value(`"x"`)); !errors.Is(err, task.ErrLeaseNotHeld) {
+		t.Errorf("stale Fail err = %v, want ErrLeaseNotHeld", err)
+	}
+
+	if got, _ := s.Get(ctx, tk.ID); got.Status != task.Pending {
+		t.Fatalf("parked task mutated by stale calls: %+v", got)
+	}
+}
+
 func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
