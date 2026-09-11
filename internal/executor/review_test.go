@@ -248,6 +248,93 @@ func TestReviewExecutorPromptCarriesReviewContext(t *testing.T) {
 	}
 }
 
+// TestReviewPromptResolvesQuotedContractTaskID pins the review-side
+// placeholder rule: the quoted work contract's {{TASK_ID}} resolves to the
+// REVIEWED task's id — what the work agent actually saw at run time — and
+// footer-bearing contracts gain the explicit cross-reference criterion, so
+// a reviewer can never mistake the reviewed run's correct commit footer
+// for a foreign one (2026-09-12 Hermes review: runAgent's blanket
+// substitution stamped the review's own id into the quoted contract and a
+// sound fix got request_changes over its correct footer).
+func TestReviewPromptResolvesQuotedContractTaskID(t *testing.T) {
+	t.Parallel()
+
+	prompt := reviewPrompt(ReviewPayload{
+		ReviewedTask: "000001a0reviewedtaskid00000000000",
+		Item:         "do the work\n\nTask-Queue-ID: {{TASK_ID}}",
+	})
+
+	if strings.Contains(prompt, "{{TASK_ID}}") {
+		t.Fatal("prompt still carries an unresolved {{TASK_ID}} placeholder")
+	}
+
+	if !strings.Contains(prompt, "Task-Queue-ID: 000001a0reviewedtaskid00000000000") {
+		t.Fatal("quoted contract must resolve the footer to the reviewed task's id")
+	}
+
+	if !strings.Contains(prompt, "6. Queue cross-reference") {
+		t.Fatal("footer-bearing contracts must gain the cross-reference criterion")
+	}
+
+	plain := reviewPrompt(ReviewPayload{ReviewedTask: "t-1", Item: "just an item"})
+	if strings.Contains(plain, "Queue cross-reference") {
+		t.Fatal("footer-less items must not get the cross-reference criterion")
+	}
+}
+
+// TestReviewExecutorPromptDoesNotRestampQuotedFooter runs the full review
+// path against a stub agent and pins the argv actually sent: the quoted
+// work contract carries the REVIEWED task's id in its footer line, and the
+// review task's own id never appears in that contract.
+func TestReviewExecutorPromptDoesNotRestampQuotedFooter(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	promptLog := filepath.Join(dir, "prompt.log")
+	bin := filepath.Join(dir, "argv-agent")
+
+	script := "#!/bin/sh\nfor a in \"$@\"; do echo \"$a\"; done > \"" + promptLog + "\"\n"
+	script += "printf '%s\\n' 'TQ_RESULT: {\"verdict\":\"approve\"}'\n"
+
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write stub: %v", err)
+	}
+
+	repo := filepath.Join(dir, "repo")
+	if err := os.MkdirAll(repo, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	setupGitRepo(t, repo)
+
+	tk := reviewTaskT(t, ReviewPayload{
+		Repo:         repo,
+		ReviewedTask: "000001a0reviewedtaskid00000000000",
+		Item:         "work item\n\nCommit footer contract: Task-Queue-ID: {{TASK_ID}}",
+	})
+	tk.ID = task.ID("000001a0thereviewtaskid000000000")
+
+	e := &ReviewExecutor{Agent: &AgentExecutor{Bin: bin}}
+	if err := e.Execute(context.Background(), tk); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	raw, err := os.ReadFile(promptLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	prompt := string(raw)
+
+	if !strings.Contains(prompt, "Task-Queue-ID: 000001a0reviewedtaskid00000000000") {
+		t.Fatalf("quoted contract must carry the reviewed task's footer id, got:\n%s", prompt)
+	}
+
+	if strings.Contains(prompt, "Task-Queue-ID: "+tk.ID.String()) {
+		t.Fatalf("review task's own id must not be stamped into the quoted contract, got:\n%s", prompt)
+	}
+}
+
 func TestReviewExecutorInvalidOutputFailsAttemptRetryable(t *testing.T) {
 	t.Parallel()
 

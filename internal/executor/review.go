@@ -188,13 +188,24 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 
 // reviewPrompt builds the reviewer instruction: context, judging criteria,
 // the read-only rule, and the exact output contract.
+//
+// The quoted task is the REVIEWED run's contract, so its {{TASK_ID}}
+// placeholder resolves to the reviewed task's id here — exactly what the
+// work agent saw at run time. runAgent's substitution resolves leftovers
+// against THIS task's id; leaving the placeholder in place would rewrite
+// the quoted contract to demand the review's own id in commits, and a
+// diligent reviewer then flags the work run's correct footer as foreign
+// (the 2026-09-12 Hermes review: a sound fix got request_changes over
+// exactly this).
 func reviewPrompt(p ReviewPayload) string {
 	var b strings.Builder
+
+	item := strings.ReplaceAll(strings.TrimSpace(p.Item), "{{TASK_ID}}", p.ReviewedTask)
 
 	b.WriteString(
 		"You are a strict senior code reviewer. Review a change another agent made in this repository. READ-ONLY: do not create, modify, or delete any file; run only read-only commands.\n\n",
 	)
-	b.WriteString("## The task the agent was given\n\n" + strings.TrimSpace(p.Item) + "\n\n")
+	b.WriteString("## The task the agent was given\n\n" + item + "\n\n")
 
 	if p.CommitSHA != "" {
 		b.WriteString(
@@ -217,8 +228,17 @@ func reviewPrompt(p ReviewPayload) string {
 3. Tests: behavior covered where it matters; the repo's own test suite would pass.
 4. Scope: no unrelated changes, no drive-by rewrites, no dead code left behind.
 5. Honesty: claims in the change match what the code does.
-
 `)
+
+	// Only footer-bearing contracts need the rule; for anything else it
+	// would be noise (and pre-resolved or hand-written items still get it).
+	if strings.Contains(item, "Task-Queue-ID") {
+		b.WriteString(
+			"6. Queue cross-reference: the quoted task's `Task-Queue-ID` footer contract refers to the REVIEWED task's id, " +
+				p.ReviewedTask + ". A commit ending with `Task-Queue-ID: " + p.ReviewedTask +
+				"` satisfies it; that is the correct state, never a finding. A different id in that footer is a finding.\n\n",
+		)
+	}
 
 	if extra := strings.TrimSpace(p.Extra); extra != "" {
 		b.WriteString("## Additional focus for this review\n\n" + extra + "\n\n")

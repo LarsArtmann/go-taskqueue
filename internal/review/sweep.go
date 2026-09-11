@@ -318,13 +318,20 @@ func FixDedupKey(review task.ID, findingTitle string) string {
 }
 
 // fixPrompt builds the instruction for a fix task minted from one finding.
+// The quoted original is the REVIEWED run's contract: its {{TASK_ID}}
+// placeholder resolves to the reviewed task's id (what that agent actually
+// saw). The fix task's OWN footer instruction keeps the placeholder —
+// runAgent resolves it to the fix task's id at run time, so fix commits
+// cross-reference the fix run, not the original.
 func fixPrompt(payload executor.ReviewPayload, finding executor.ReviewFinding) string {
 	var b strings.Builder
+
+	original := strings.ReplaceAll(strings.TrimSpace(payload.Item), "{{TASK_ID}}", payload.ReviewedTask)
 
 	b.WriteString(
 		"A code reviewer rejected your earlier work on this task and filed one finding. Fix EXACTLY this finding — no unrelated changes.\n\n",
 	)
-	b.WriteString("## Original task\n\n" + strings.TrimSpace(payload.Item) + "\n\n")
+	b.WriteString("## Original task\n\n" + original + "\n\n")
 	b.WriteString("## Reviewer finding (" + finding.Severity + ")\n\n" + strings.TrimSpace(finding.Title) + "\n\n")
 
 	if detail := strings.TrimSpace(finding.Detail); detail != "" {
@@ -336,7 +343,9 @@ func fixPrompt(payload executor.ReviewPayload, finding executor.ReviewFinding) s
 	}
 
 	b.WriteString(
-		"Address the finding minimally, keep the repository's contracts (AGENTS.md / docs), and make the repo's own gates (build, vet, tests, format) pass before finishing.",
+		"Address the finding minimally, keep the repository's contracts (AGENTS.md / docs), and make the repo's own gates " +
+			"(build, vet, tests, format) pass before finishing. Commit the fix with a message ending in this exact footer " +
+			"line (you have explicit permission to commit for this task):\n\nTask-Queue-ID: {{TASK_ID}}\n\nNever push.",
 	)
 
 	return b.String()

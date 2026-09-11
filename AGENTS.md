@@ -120,6 +120,15 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   completions) mints `review:<task-id>`-deduped review tasks and, with
   `--review-autofix`, `reviewfix:<id>:<hash>`-deduped fix tasks. Every
   agent-pool and `tq worker --agents` registers the executor (carry parity).
+  The review prompt quotes the work run's contract with its `{{TASK_ID}}`
+  resolved to the REVIEWED task's id, plus a `6. Queue cross-reference`
+  judging criterion for footer-bearing quotes — runAgent's blanket
+  substitution would otherwise stamp the REVIEW's own id into the quoted
+  contract and a diligent reviewer flags the work run's correct footer as
+  foreign (the 2026-09-12 Hermes review, task 000001a092aa: a sound fix got
+  request_changes over exactly that). Fix prompts resolve the quoted
+  original the same way and carry exactly one remaining `{{TASK_ID}}` —
+  the fix run's OWN footer instruction.
 - **`status`**: `StatusPayload` JSON; the done-prompt agent writes
   `docs/status/<ts>_<name>.md` and appends next items (questions as
   `— BLOCKED:`) to TODO_LIST.md — that append IS the harvest loop-back.

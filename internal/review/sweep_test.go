@@ -301,6 +301,35 @@ func TestSweepAutofixMintsFixTasksPerFinding(t *testing.T) {
 	}
 }
 
+// TestFixPromptFooterContract pins the fix prompt's two id surfaces: the
+// QUOTED original contract resolves {{TASK_ID}} to the reviewed task's id
+// (what the work agent actually saw), while the fix task's own commit
+// instruction keeps the placeholder so runAgent resolves it to the fix
+// task's id at run time. Mixing them up is how a reviewer or fix agent
+// ends up demanding the wrong run's id in commit footers.
+func TestFixPromptFooterContract(t *testing.T) {
+	t.Parallel()
+
+	prompt := fixPrompt(executor.ReviewPayload{
+		ReviewedTask: "000001a0reviewedtaskid00000000000",
+		Item:         "do the work\n\nTask-Queue-ID: {{TASK_ID}}",
+		CommitSHA:    "abc1234",
+	}, executor.ReviewFinding{Title: "nil map write", Severity: "high"})
+
+	if !strings.Contains(prompt, "Task-Queue-ID: 000001a0reviewedtaskid00000000000") {
+		t.Fatalf("quoted original must resolve its footer to the reviewed task's id:\n%s", prompt)
+	}
+
+	if strings.Count(prompt, "{{TASK_ID}}") != 1 {
+		t.Fatalf("exactly the fix task's own footer instruction keeps the placeholder, got %d occurrences",
+			strings.Count(prompt, "{{TASK_ID}}"))
+	}
+
+	if !strings.Contains(prompt, "Task-Queue-ID: {{TASK_ID}}\n") {
+		t.Fatalf("fix task's own footer instruction must carry the placeholder verbatim:\n%s", prompt)
+	}
+}
+
 func TestSweepAutofixIgnoresApproveAndOffSwitch(t *testing.T) {
 	t.Parallel()
 
