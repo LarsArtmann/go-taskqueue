@@ -7,6 +7,20 @@ import (
 	"time"
 )
 
+// incidentFixture loads the EXACT lastError tail of dead task
+// 000001a08edf (the 2026-09-11 Z.ai 429 wall) so provider phrasing drift
+// fails the suite instead of silently degrading to the fallback.
+func incidentFixture(t *testing.T) string {
+	t.Helper()
+
+	data, err := os.ReadFile(filepath.Join("testdata", "ratelimit_incident_000001a08edf.txt"))
+	if err != nil {
+		t.Fatalf("read incident fixture: %v", err)
+	}
+
+	return string(data)
+}
+
 // TestDetectRateLimit pins recognition of the provider exhaustion shapes
 // observed in the wild, and the delay-derivation order: provider reset
 // timestamp > numeric retry-after > conservative default.

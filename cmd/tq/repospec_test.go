@@ -17,6 +17,7 @@ import (
 // audits <cwd>/alpha and reports the real repo as a scan failure.
 func TestCmdAuditResolvesBareRepoNamesAgainstProjectsDir(t *testing.T) {
 	projects := t.TempDir()
+
 	repo := filepath.Join(projects, "drifty")
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatalf("mkdir repo: %v", err)
@@ -62,12 +63,17 @@ func TestCmdAuditResolvesBareRepoNamesAgainstProjectsDir(t *testing.T) {
 // it stat'ed <cwd>/alpha and warned "no TODO_LIST.md" for a healthy repo.
 func TestCmdDoctorResolvesBareRepoNamesAgainstProjectsDir(t *testing.T) {
 	projects := t.TempDir()
+
 	repo := filepath.Join(projects, "drifty")
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatalf("mkdir repo: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(repo, harvest.DefaultTodoFile), []byte("## Work\n\n- [ ] item\n"), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repo, harvest.DefaultTodoFile),
+		[]byte("## Work\n\n- [ ] item\n"),
+		0o644,
+	); err != nil {
 		t.Fatalf("write todo: %v", err)
 	}
 
@@ -129,6 +135,7 @@ func TestResolveHarvestReposExpandsBareNames(t *testing.T) {
 	t.Chdir(scratch)
 
 	cfg := harvest.Config{TodoFile: harvest.DefaultTodoFile}
+
 	err := resolveHarvestRepos(&cfg, projects, " drifty , "+absRepo, "")
 	if err != nil {
 		t.Fatalf("resolveHarvestRepos: %v", err)
@@ -161,6 +168,7 @@ func TestExpandRepoSpecs(t *testing.T) {
 	absRepo := filepath.Join(root, "srv", "overview")
 
 	existing := t.TempDir()
+
 	cwdRepo := filepath.Join(existing, "localrepo")
 	if err := os.MkdirAll(cwdRepo, 0o755); err != nil {
 		t.Fatalf("mkdir cwd repo: %v", err)

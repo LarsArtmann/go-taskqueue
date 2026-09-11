@@ -127,6 +127,7 @@ func TestPayloadViewReview(t *testing.T) {
 	}
 
 	var linked bool
+
 	for _, f := range pv.Fields {
 		if f.Label == "reviewed task" {
 			linked = f.Href == "/task/000001a08edfbc90bf02dd35ec0d5e7bf524"

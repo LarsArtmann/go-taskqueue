@@ -57,5 +57,6 @@ func (h *Hub) Shutdown(ctx context.Context) error {
 	if err := h.bc.Shutdown(ctx); err != nil {
 		return fmt.Errorf("shutdown broadcaster: %w", err)
 	}
+
 	return nil
 }

@@ -1,0 +1,17 @@
+agent run failed: exit status 1: INFO Running in non-interactive mode
+INFO Created session for non-interactive run session_id=9805c2e4-76de-48ff-bc11-90fce55767a8
+INFO ModelProvider called provider=zai model=glm-5.3-flash
+WARN Provider request failed, retrying retry_delay=5s status_code=429 title="too many requests" message="Usage limit reached for 5 hour. Your limit will reset at 2026-09-11 19:40:34"
+INFO ModelProvider called provider=zai model=glm-5.3-flash
+WARN Provider request failed, retrying retry_delay=10s status_code=429 title="too many requests" message="Usage limit reached for 5 hour. Your limit will reset at 2026-09-11 19:40:34"
+INFO ModelProvider called provider=zai model=glm-5.3-flash
+WARN Provider request failed, retrying retry_delay=20s status_code=429 title="too many requests" message="Usage limit reached for 5 hour. Your limit will reset at 2026-09-11 19:40:34"
+INFO ModelProvider called provider=zai model=glm-5.3-flash
+INFO Agent stream returned error error="retry error: too many requests: Usage limit reached for 5 hour. Your limit will reset at 2026-09-11 19:40:34" error_type=*fantasy.RetryError is_hyper=false is_cancel=false
+INFO Skill turn summary component=skills session_id=9805c2e4-76de-48ff-bc11-90fce55767a8 prompt_len=1615 active_total=48 loaded_total=0 loaded_this_turn=[]
+
+          
+   ERROR  
+          
+  Agent processing failed: failed to start agent processing stream: retry error: too many requests: Usage limit       
+  reached for 5 hour. Your limit will reset at 2026-09-11 19:40:34.

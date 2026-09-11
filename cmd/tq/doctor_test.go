@@ -224,6 +224,7 @@ func TestDoctorToolPathChecks(t *testing.T) {
 	t.Setenv("PATH", empty)
 
 	opts := doctorOptions{DBPath: doctorTestStore(t)}
+
 	self, err := filepath.Abs(os.Args[0])
 	if err != nil {
 		t.Fatalf("abs test binary: %v", err)

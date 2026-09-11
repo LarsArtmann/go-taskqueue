@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite"
-
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -22,6 +20,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/review"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	_ "modernc.org/sqlite"
 )
 
 // tq doctor answers "why is nothing happening?" in one command: database
@@ -365,11 +364,19 @@ func doctorEnvironment(opts doctorOptions) []checkResult {
 	} {
 		if _, err := exec.LookPath(tool.name); err != nil {
 			results = append(results, checkResult{
-				Name: "tool:" + tool.name, Status: checkWarn,
-				Detail: fmt.Sprintf("%q not found on PATH (%s; check the service PATH, e.g. agentPath)", tool.name, tool.why),
+				Name:   "tool:" + tool.name,
+				Status: checkWarn,
+				Detail: fmt.Sprintf(
+					"%q not found on PATH (%s; check the service PATH, e.g. agentPath)",
+					tool.name,
+					tool.why,
+				),
 			})
 		} else {
-			results = append(results, checkResult{Name: "tool:" + tool.name, Status: checkOK, Detail: tool.name + " found"})
+			results = append(
+				results,
+				checkResult{Name: "tool:" + tool.name, Status: checkOK, Detail: tool.name + " found"},
+			)
 		}
 	}
 
@@ -438,7 +445,11 @@ func cmdDoctor(args []string) error {
 	db := dbFlag(fs)
 	asJSON := fs.Bool("json", false, "machine-readable output")
 	dailyBudget := fs.Int("daily-budget", 0, "report spend against this daily enqueue cap (0 = skip)")
-	repos := fs.String("repos", "", "comma-separated repo paths: check TODO_LIST.md and .crushrc autonomy files (bare names resolve against --projects-dir)")
+	repos := fs.String(
+		"repos",
+		"",
+		"comma-separated repo paths: check TODO_LIST.md and .crushrc autonomy files (bare names resolve against --projects-dir)",
+	)
 	projectsDir := fs.String(
 		"projects-dir",
 		defaultProjectsDir(),

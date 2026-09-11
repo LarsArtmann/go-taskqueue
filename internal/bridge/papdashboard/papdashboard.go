@@ -605,7 +605,9 @@ func (b *Bridge) NotifyDeadPool(ctx context.Context, triggered bool, repos int, 
 		"title":    "agent-pool dead pool",
 		"body": fmt.Sprintf(
 			"Every watched repo (%d) scan-failed for %d consecutive ticks: the pool reads no TODO_LIST and enqueues nothing. First example: %s",
-			repos, streak, firstLine(example),
+			repos,
+			streak,
+			firstLine(example),
 		),
 		"sourceApp": b.cfg.SourceApp,
 		"metadata": map[string]string{

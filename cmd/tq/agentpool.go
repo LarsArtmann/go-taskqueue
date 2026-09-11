@@ -216,7 +216,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 			return agentPoolOptions{}, fmt.Errorf("log dir: %w", err)
 		}
 
-		os.Setenv("TQ_LOG_DIR", *logDir)
+		_ = os.Setenv("TQ_LOG_DIR", *logDir)
 	}
 
 	if envAge := os.Getenv("TQ_LOG_DIR_MAX_AGE"); envAge != "" && *logDirMaxAge == 0 {
@@ -237,7 +237,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 
 	// Fully-absolute --repos entries never touch the projects dir, so a
 	// risky (or default) projects root must not block the run.
-	if !(*repos != "" && allReposAbsolute(*repos)) {
+	if *repos == "" || !allReposAbsolute(*repos) {
 		if err := checkProjectsDir(*projectsDir); err != nil {
 			return agentPoolOptions{}, err
 		}
@@ -357,6 +357,7 @@ func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
 				cfg.Repos[i] = filepath.Join(o.projectsDir, repo)
 			}
 		}
+
 		cfg.ProjectsDir = ""
 	}
 
@@ -386,9 +387,11 @@ func (d *deadPoolDetector) observe(res harvest.Result) {
 	scanFailed := 0
 
 	example := ""
+
 	for _, skip := range res.Skipped {
 		if class, _, _ := strings.Cut(skip.Reason, ":"); class == harvest.ReasonScanFailed {
 			scanFailed++
+
 			if example == "" {
 				example = skip.Reason
 			}

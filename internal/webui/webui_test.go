@@ -19,12 +19,11 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-sse/ssetest"
-	"github.com/larsartmann/templ-components/display"
-
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	"github.com/larsartmann/templ-components/display"
 )
 
 // newTestStore opens a throwaway SQLite store.

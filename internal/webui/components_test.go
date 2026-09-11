@@ -209,7 +209,13 @@ func TestDetailFactsSurfacesCancelReason(t *testing.T) {
 	lines := detailFacts(now, []journalFactView{
 		{Seq: 2, Type: journal.Cancelled, Owner: "op", Detail: json.RawMessage(`{"reason":"item done by hand"}`)},
 		{Seq: 1, Type: journal.Cancelled, Owner: "op", Detail: json.RawMessage(`{}`)},
-		{Seq: 3, Type: journal.Requeued, Owner: "worker-1", Error: "preflight: repo dirty", Detail: json.RawMessage(`{"reason":"preflight: repo dirty","retry_in_ms":5000}`)},
+		{
+			Seq:    3,
+			Type:   journal.Requeued,
+			Owner:  "worker-1",
+			Error:  "preflight: repo dirty",
+			Detail: json.RawMessage(`{"reason":"preflight: repo dirty","retry_in_ms":5000}`),
+		},
 	})
 
 	if !strings.Contains(lines[0].Text, "item done by hand") {

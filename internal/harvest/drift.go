@@ -137,6 +137,7 @@ func (h *Harvester) projectTaskIndex(ctx context.Context, repo string) ([]Item, 
 	}
 
 	repoName := filepath.Base(repo)
+
 	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
 	if err != nil {
 		return nil, nil, err

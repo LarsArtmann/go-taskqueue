@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -39,6 +40,7 @@ func main() {
 	dsn := flag.String("dsn", "postgres://127.0.0.1:5432/taskqueue?sslmode=disable", "postgres DSN (backend=postgres)")
 	concurrency := flag.Int("concurrency", 2, "parallel task executions")
 	timeout := flag.Duration("timeout", time.Minute, "overall drain deadline")
+
 	flag.Parse()
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
@@ -47,6 +49,7 @@ func main() {
 	// Backend choice: the import above IS the choice. Both types implement
 	// queue.Store, so everything below compiles against either one.
 	var store queue.Store
+
 	switch *backend {
 	case "sqlite":
 		store, err := sqlite.Open(*db)
@@ -96,16 +99,20 @@ func main() {
 		}
 
 		fmt.Printf("greet: hello, %s (task %s)\n", v.Name, t.ID)
+
 		return nil
 	})
+
 	flaky := 0
+
 	executors.RegisterFunc("flaky", func(_ context.Context, _ task.Task) error {
 		flaky++
 		if flaky == 1 {
-			return fmt.Errorf("deliberate first-attempt failure")
+			return errors.New("deliberate first-attempt failure")
 		}
 
 		fmt.Println("flaky: succeeded on retry")
+
 		return nil
 	})
 
@@ -115,8 +122,10 @@ func main() {
 	}, slog.Default())
 
 	done := make(chan struct{})
+
 	go func() {
 		_ = pool.Start(ctx)
+
 		close(done)
 	}()
 
@@ -169,6 +178,7 @@ func report(store queue.Store) {
 	}
 
 	fmt.Println("drained; final counts:")
+
 	for _, s := range []task.Status{task.Completed, task.Pending, task.Running, task.Dead, task.Cancelled} {
 		if counts[s] > 0 {
 			fmt.Printf("  %-9s %d\n", s, counts[s])

@@ -62,6 +62,7 @@ func TestStatsSurfacesAgree(t *testing.T) {
 	}
 
 	srv := New(s, Config{})
+
 	apiServer, err := httpapi.New(s, "sekrit", nil)
 	if err != nil {
 		t.Fatalf("httpapi.New: %v", err)
@@ -71,7 +72,11 @@ func TestStatsSurfacesAgree(t *testing.T) {
 	apiStats := getJSONStats(t, apiServer.Handler(), "/api/v1/stats", "sekrit")
 
 	if !maps.Equal(dashStats, apiStats) {
-		t.Errorf("stats surfaces diverged:\ndashboard /api/stats    = %v\nwrite API /api/v1/stats = %v", dashStats, apiStats)
+		t.Errorf(
+			"stats surfaces diverged:\ndashboard /api/stats    = %v\nwrite API /api/v1/stats = %v",
+			dashStats,
+			apiStats,
+		)
 	}
 
 	for _, st := range allStatuses {

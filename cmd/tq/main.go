@@ -652,7 +652,11 @@ func cmdAgentPool(args []string) error {
 
 	taskQueue := queue.New(store)
 
-	agentExec := &executor.AgentExecutor{ProjectsDir: poolOpts.projectsDir, Yolo: poolOpts.yolo, MaxConcurrent: poolOpts.maxAgents}
+	agentExec := &executor.AgentExecutor{
+		ProjectsDir:   poolOpts.projectsDir,
+		Yolo:          poolOpts.yolo,
+		MaxConcurrent: poolOpts.maxAgents,
+	}
 	if poolOpts.closeout {
 		agentExec.CloseoutPrompt = executor.DefaultCloseoutPrompt
 	}
@@ -856,14 +860,17 @@ func cmdAgentPool(args []string) error {
 					if prev, seen := skipLogExamples[class]; seen && prev == g.example {
 						continue
 					}
+
 					skipLogExamples[class] = g.example
 					if class == harvest.ReasonScanFailed {
 						// A scan failure means the pool cannot see a repo at
 						// all — surface the full reason, not just the class,
 						// or a dead deployment reads as a quiet one.
 						log.Warn("harvest: skipped", "reason", class, "count", g.count, "example", g.example)
+
 						continue
 					}
+
 					log.Info("harvest: skipped", "reason", class, "count", g.count, "example", g.example)
 				}
 
@@ -1101,10 +1108,12 @@ func groupedSkips(skips []harvest.Skipped) map[string]skipClass {
 		}
 
 		g := groups[class]
+
 		g.count++
 		if g.example == "" {
 			g.example = truncateSkipReason(skip.Reason)
 		}
+
 		groups[class] = g
 	}
 
@@ -1116,6 +1125,7 @@ func truncateSkipReason(reason string) string {
 	if len(reason) <= maxLen {
 		return reason
 	}
+
 	return reason[:maxLen] + "…"
 }
 

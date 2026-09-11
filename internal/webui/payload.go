@@ -219,7 +219,13 @@ func (v *payloadView) fromStatus(raw string) bool {
 	)
 
 	if len(sp.Completed) > 0 {
-		v.Lede = fmt.Sprintf("reporting window: %s", formatInt(len(sp.Completed))+" completed "+plural(len(sp.Completed), "task", "tasks"))
+		v.Lede = "reporting window: " + formatInt(
+			len(sp.Completed),
+		) + " completed " + plural(
+			len(sp.Completed),
+			"task",
+			"tasks",
+		)
 
 		for _, c := range sp.Completed {
 			v.Window = append(v.Window, c.TaskID)
@@ -246,7 +252,7 @@ func (v *payloadView) fromStatus(raw string) bool {
 // trimmed and untouched.
 func prettyJSON(s string) string {
 	trimmed := strings.TrimSpace(s)
-	if trimmed == "" || !(strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[")) {
+	if trimmed == "" || (!strings.HasPrefix(trimmed, "{") && !strings.HasPrefix(trimmed, "[")) {
 		return trimmed
 	}
 

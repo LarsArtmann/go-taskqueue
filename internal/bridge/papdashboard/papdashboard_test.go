@@ -500,11 +500,21 @@ func TestDeadPoolAlertTriggerAndResolve(t *testing.T) {
 	}
 
 	if calls[0].Event != "alert.triggered" || calls[0].AggregateID != deadPoolAggregate {
-		t.Fatalf("first ingest = %s/%s, want alert.triggered/%s", calls[0].Event, calls[0].AggregateID, deadPoolAggregate)
+		t.Fatalf(
+			"first ingest = %s/%s, want alert.triggered/%s",
+			calls[0].Event,
+			calls[0].AggregateID,
+			deadPoolAggregate,
+		)
 	}
 
 	if calls[1].Event != "alert.resolved" || calls[1].AggregateID != deadPoolAggregate {
-		t.Fatalf("second ingest = %s/%s, want alert.resolved/%s", calls[1].Event, calls[1].AggregateID, deadPoolAggregate)
+		t.Fatalf(
+			"second ingest = %s/%s, want alert.resolved/%s",
+			calls[1].Event,
+			calls[1].AggregateID,
+			deadPoolAggregate,
+		)
 	}
 
 	if calls[0].IdempotencyKey == calls[1].IdempotencyKey {
@@ -526,7 +536,8 @@ func TestDeadPoolAlertTriggerAndResolve(t *testing.T) {
 		t.Fatalf("payload: %v", err)
 	}
 
-	if triggered.Severity != "critical" || triggered.Title != "agent-pool dead pool" || triggered.SourceApp != SourceApp {
+	if triggered.Severity != "critical" || triggered.Title != "agent-pool dead pool" ||
+		triggered.SourceApp != SourceApp {
 		t.Errorf("severity/title/sourceApp = %q/%q/%q", triggered.Severity, triggered.Title, triggered.SourceApp)
 	}
 

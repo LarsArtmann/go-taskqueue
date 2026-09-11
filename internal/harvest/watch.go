@@ -112,6 +112,7 @@ func (w *Watcher) Triggers() <-chan struct{} { return w.triggers }
 // to interval-only harvesting, never a stalled pool.
 func (w *Watcher) Run(ctx context.Context) error {
 	backoff := w.initialBackoff
+
 	maxBackoff := w.cfg.MaxBackoff
 	if maxBackoff <= 0 {
 		maxBackoff = defaultWatchMaxBackoff

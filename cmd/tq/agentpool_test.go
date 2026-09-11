@@ -21,6 +21,7 @@ func TestHarvestConfigFromOptionsExpandsBareRepoNames(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		volume = `C:`
 	}
+
 	root := volume + string(filepath.Separator)
 	projectsDir := filepath.Join(root, "home", "lars", "projects")
 	srv := func(name string) string { return filepath.Join(root, "srv", name) }

@@ -275,7 +275,7 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 	noExclusive := fs.Bool("no-exclusive", false, "allow two tasks of one project in flight across pools")
 
 	fs.Usage = func() {
-		fmt.Fprint(fs.Output(), usageBootstrap)
+		_, _ = fmt.Fprint(fs.Output(), usageBootstrap)
 		fs.PrintDefaults()
 	}
 

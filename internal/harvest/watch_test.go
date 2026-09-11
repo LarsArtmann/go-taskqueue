@@ -301,8 +301,11 @@ func TestWatcherLogsDropWarning(t *testing.T) {
 
 	fx := newDaemonFixture(t)
 
-	var mu sync.Mutex
-	var messages []string
+	var (
+		mu       sync.Mutex
+		messages []string
+	)
+
 	log := slog.New(countingHandler{mu: &mu, messages: &messages})
 
 	srv, _ := watchStubServer(t, func(conn int32, emit func(string), ctx context.Context) {
@@ -325,18 +328,22 @@ func TestWatcherLogsDropWarning(t *testing.T) {
 	if !awaitTrigger(t, triggers) {
 		t.Fatal("no trigger before the drop")
 	}
+
 	if !awaitTrigger(t, triggers) {
 		t.Fatal("no trigger after reconnect")
 	}
 
 	mu.Lock()
 	defer mu.Unlock()
+
 	dropped := 0
+
 	for _, msg := range messages {
 		if strings.Contains(msg, "watch stream dropped") && strings.Contains(msg, srv.Listener.Addr().String()) {
 			dropped++
 		}
 	}
+
 	if dropped == 0 {
 		t.Fatalf("no drop warning logged; got %d warnings", len(messages))
 	}
@@ -353,12 +360,16 @@ func (h countingHandler) Enabled(_ context.Context, _ slog.Level) bool { return 
 func (h countingHandler) Handle(_ context.Context, r slog.Record) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
 	line := r.Message
 	r.Attrs(func(a slog.Attr) bool {
 		line += " " + a.String()
+
 		return true
 	})
+
 	*h.messages = append(*h.messages, line)
+
 	return nil
 }
 
