@@ -147,10 +147,16 @@ func TestDetectRateLimit(t *testing.T) {
 func FuzzDetectRateLimit(f *testing.F) {
 	f.Add("", time.Now().UnixNano())
 	f.Add(incidentFixture(f), time.Date(2026, 9, 11, 12, 0, 0, 0, time.Local).UnixNano())
-	f.Add(`WARN Provider request failed, retrying retry_delay=5s status_code=429 title="too many requests" message="Rate limit reached for requests"`, time.Now().UnixNano())
+	f.Add(
+		`WARN Provider request failed, retrying retry_delay=5s status_code=429 title="too many requests" message="Rate limit reached for requests"`,
+		time.Now().UnixNano(),
+	)
 	f.Add(`status_code=429 quota exceeded; your quota renews at 2026-09-11T18:00:00Z`, time.Now().UnixNano())
 	f.Add("ERROR 429 too many requests retry_after=99999999999", time.Now().UnixNano())
 	f.Add("resets at 9999-99-99 99:99:99 rate limit", time.Now().UnixNano())
+	// Regression seed (fuzz finding): a far-future reset used to overflow
+	// time.Duration in reset.Sub and produce a bogus delay.
+	f.Add("quotA eXCeededrenew At 4000-01-01T00:00:00", int64(1789129566108809255))
 
 	f.Fuzz(func(t *testing.T, output string, nowUnix int64) {
 		now := time.Unix(0, nowUnix)
