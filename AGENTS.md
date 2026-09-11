@@ -233,6 +233,11 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - Status reports are indexed on creation (`check-status-index.sh` +
   pre-commit hook via `scripts/install-pre-commit.sh`); CHANGELOG is
   append-only; `check-features-roadmap.sh` guards shipped-vs-planned drift.
+  Archiving a report/plan (`git mv` to `archived/`) requires REPOINTING
+  every citation to the moved path FIRST (ADR-0004/0009 + CHANGELOG all
+  cited two 2026-09-08 planning docs; `check-doc-refs.sh` fails the move
+  otherwise) and updating the index row to `archived/<name>` + the archive
+  counter in `docs/status/README.md`
   The installer also writes a commit-msg hook (2026-09-11): a commit
   carrying `Task-Queue-ID:` footers must carry EXACTLY ONE, well-formed
   (hex, 16+ chars) — duplicates/malformed footers corrupt the queue↔git

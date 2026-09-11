@@ -8,8 +8,10 @@ problem. Implemented-in-this-round items are marked ✅ with pointers.
 
 ### D80 — Postgres store sketch ✅ SHIPPED
 
-_(Shipped 2026-09-08: `internal/queue/postgres.go` — conformance-tested,
-`--store postgres` wired; the sketch below is the historical seed.)_
+_(Shipped 2026-09-08: `internal/queue/postgres` driver module —
+conformance-tested. The `--store postgres` CLI wiring was aspirational and
+is still BLOCKED (TODO_LIST "Owner-blocked decisions"); the sketch below is
+the historical seed.)_
 
 Replace `internal/queue/sqlite.go` behind the existing `Store` interface
 (ADR-0001 seam). Claim becomes:

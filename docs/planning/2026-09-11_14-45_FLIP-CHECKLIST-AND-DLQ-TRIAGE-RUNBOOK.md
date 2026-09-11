@@ -22,8 +22,11 @@
 | Smokes: webui, status-loop, dogfood-once, bootstrap-install, release-gates, **ratelimit-e2e (new)** | ALL GREEN |
 | Rate-limit armor | incident fixture, TZ-sweep (6 zones), parked-requeue pin (sqlite+postgres), `FuzzDetectRateLimit` (found+fixed a Duration-overflow bug) |
 
-**Known master-CI caveat**: the nix CI job was red at the last push (runner
-FOD mismatch, T5) — local `nix build` is green; do not block the flip on CI,
+**Known master-CI caveat**: ~~the nix CI job was red at the last push (runner
+FOD mismatch, T5)~~ — the FOD premise was SUPERSEDED 2026-09-11 (16-00
+report §a): the real cause was `setup-go: stable` floating to go 1.27.1
+(stdversion gate), fixed by pinning all 7 setup-go steps to 1.26.7; the nix
+job is green on recent runs — local `nix build` is green; do not block the flip on CI,
 but re-run `nix build` right before `nix run .#deploy`.
 
 ## 2. The flip (owner, ~5 min)

@@ -194,14 +194,16 @@ the seam is already in place: ids are journal Seqs today, so
 `Facts(N+1, …)` needs no ID translation layer. Decision: do not build
 Subscribe for the dashboard's sake.
 
-## 7. Implementation checklist (follow-ups; none done in this spike)
+## 7. Implementation checklist (annotated 2026-09-11 docs-health: two boxes
+## done silently; re-verified against the tree)
 
-- [ ] `app.js`: forward `project/status/q/page` from the page URL to the
-      EventSource URL, merged with `token` (the §4 bug — tracked as its own
-      TODO_LIST item).
-- [ ] `handleEvents`: reconnect-lag log line per §3.2; `N > head` and
-      non-numeric → fresh-connect handling per §3.3/3.4 (defensive
-      `strconv.ParseInt` on the header value).
+- [x] `app.js`: forward `project/status/q/page` from the page URL to the
+      EventSource URL, merged with `token` (the §4 bug) — DONE (filter
+      forwarding lives in `internal/webui/static/app.js:120-147`).
+- [x] `handleEvents`: reconnect-lag log line per §3.2 — DONE
+      (`internal/webui/handlers.go:222-228`); the `N > head`/non-numeric
+      fresh-connect handling remains covered by `watermarkUnknown`
+      (next box).
 - [ ] `sendSnapshot`: id the initial snapshot with `HeadSeq()` per §3.1
       (replaces `watermarkUnknown`).
 - [ ] Tests: extend `TestResumeAfterFactsBacklog` shapes with a
