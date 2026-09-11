@@ -56,6 +56,64 @@ func TestCmdAuditResolvesBareRepoNamesAgainstProjectsDir(t *testing.T) {
 	}
 }
 
+// TestCmdDoctorResolvesBareRepoNamesAgainstProjectsDir pins the doctor half
+// of the same contract: `tq doctor --repos alpha` must stat the bare name
+// against --projects-dir no matter the working directory (02:00 f8). Pre-fix
+// it stat'ed <cwd>/alpha and warned "no TODO_LIST.md" for a healthy repo.
+func TestCmdDoctorResolvesBareRepoNamesAgainstProjectsDir(t *testing.T) {
+	projects := t.TempDir()
+	repo := filepath.Join(projects, "drifty")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatalf("mkdir repo: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(repo, harvest.DefaultTodoFile), []byte("## Work\n\n- [ ] item\n"), 0o644); err != nil {
+		t.Fatalf("write todo: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(repo, ".crushrc"), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write crushrc: %v", err)
+	}
+
+	db := filepath.Join(t.TempDir(), "doctor.db")
+
+	// A working directory that does NOT contain the repo: pre-fix, doctor
+	// stat'ed <cwd>/drifty and flagged the healthy repo as unharvestable.
+	scratch := t.TempDir()
+	t.Chdir(scratch)
+
+	// The agent-binary check points at the test binary itself: the nix
+	// sandbox has no crush on PATH (see TestDoctorHealthyEmptyDB).
+	self, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		t.Fatalf("abs test binary: %v", err)
+	}
+
+	out := captureStdout(t, func() {
+		err := cmdDoctor([]string{
+			"--projects-dir", projects,
+			"--repos", "drifty",
+			"--db", db,
+			"--agent-bin", self,
+		})
+		if err != nil {
+			t.Errorf("cmdDoctor: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "TODO_LIST.md present") {
+		t.Errorf("doctor output missing ok repo:drifty detail, got:\n%s", out)
+	}
+
+	if strings.Contains(out, "no TODO_LIST.md") {
+		t.Errorf("doctor warned about a repo that resolves via --projects-dir:\n%s", out)
+	}
+
+	if !strings.Contains(out, ".crushrc present") {
+		t.Errorf("doctor output missing ok autonomy:drifty detail, got:\n%s", out)
+	}
+}
+
 // TestResolveHarvestReposExpandsBareNames pins the harvest command's half of
 // the same contract (--prune-stale shares this path).
 func TestResolveHarvestReposExpandsBareNames(t *testing.T) {
@@ -88,10 +146,10 @@ func TestResolveHarvestReposExpandsBareNames(t *testing.T) {
 	}
 }
 
-// TestExpandRepoSpecs pins the resolution policy shared by the harvest and
-// audit commands: absolute paths and existing cwd-relative paths pass
-// through, bare names join the projects dir, and without a projects dir the
-// spec is left for the sweep to report.
+// TestExpandRepoSpecs pins the resolution policy shared by the harvest,
+// audit, and doctor commands: absolute paths and existing cwd-relative paths
+// pass through, bare names join the projects dir, and without a projects
+// dir the spec is left for the sweep to report.
 func TestExpandRepoSpecs(t *testing.T) {
 	volume := ""
 	if runtime.GOOS == "windows" {

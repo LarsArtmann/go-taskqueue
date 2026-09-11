@@ -166,13 +166,14 @@ func splitRepos(spec string) []string {
 	return repos
 }
 
-// expandRepoSpecs makes --repos entries cwd-independent for the harvest and
-// audit commands: absolute paths and relative paths that exist against the
-// working directory pass through, while anything else joins the projects
-// dir — so a bare repo name ("alpha") resolves there instead of becoming
-// <cwd>/alpha when the sweep Abs()es it. bootstrap.resolveRepos and the
-// agent-pool option parse apply the same policy. Specs that resolve nowhere
-// are left as-is: the sweeps report them per-repo as scan failures.
+// expandRepoSpecs makes --repos entries cwd-independent for the harvest,
+// audit, and doctor commands: absolute paths and relative paths that exist
+// against the working directory pass through, while anything else joins the
+// projects dir — so a bare repo name ("alpha") resolves there instead of
+// becoming <cwd>/alpha when the sweep Abs()es it (doctor stats the joined
+// path directly). bootstrap.resolveRepos and the agent-pool option parse
+// apply the same policy. Specs that resolve nowhere are left as-is: the
+// sweeps report them per-repo as scan failures.
 func expandRepoSpecs(projectsDir string, specs []string) []string {
 	expanded := make([]string, len(specs))
 	for i, spec := range specs {

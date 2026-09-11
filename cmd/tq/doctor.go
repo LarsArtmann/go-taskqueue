@@ -49,6 +49,7 @@ type doctorOptions struct {
 	DBPath      string
 	DailyBudget int    // 0: skip the budget check
 	Repos       string // comma-separated repo paths: enables autonomy checks
+	ProjectsDir string // root for bare names in Repos (mirrors harvest/audit)
 	AgentBin    string // agent binary override (defaults to crush)
 	// MarkOrphans, when set, appends task.orphaned facts for stranded
 	// Running tasks (expired lease, no reclaim) — the only write `tq
@@ -334,7 +335,8 @@ func doctorBudget(ctx context.Context, store queue.Store, dailyBudget int) []che
 }
 
 // doctorEnvironment checks the pool's dependencies: the agent binary and,
-// when --repos is given, each repo's harvest + autonomy files.
+// when --repos is given, each repo's harvest + autonomy files (bare repo
+// names resolve against --projects-dir, like harvest/audit).
 func doctorEnvironment(opts doctorOptions) []checkResult {
 	var results []checkResult
 
@@ -352,7 +354,7 @@ func doctorEnvironment(opts doctorOptions) []checkResult {
 		results = append(results, checkResult{Name: "agent-binary", Status: checkOK, Detail: bin + " found"})
 	}
 
-	for _, repo := range splitRepos(opts.Repos) {
+	for _, repo := range expandRepoSpecs(opts.ProjectsDir, splitRepos(opts.Repos)) {
 		if repo == "" {
 			continue
 		}
@@ -417,7 +419,12 @@ func cmdDoctor(args []string) error {
 	db := dbFlag(fs)
 	asJSON := fs.Bool("json", false, "machine-readable output")
 	dailyBudget := fs.Int("daily-budget", 0, "report spend against this daily enqueue cap (0 = skip)")
-	repos := fs.String("repos", "", "comma-separated repo paths: check TODO_LIST.md and .crushrc autonomy files")
+	repos := fs.String("repos", "", "comma-separated repo paths: check TODO_LIST.md and .crushrc autonomy files (bare names resolve against --projects-dir)")
+	projectsDir := fs.String(
+		"projects-dir",
+		defaultProjectsDir(),
+		"root for bare repo names in --repos (default $TQ_PROJECTS_DIR or ~/projects)",
+	)
 	agentBin := fs.String("agent-bin", "", "agent binary to look for (default crush)")
 	markOrphans := fs.Bool(
 		"mark-orphans",
@@ -433,6 +440,7 @@ func cmdDoctor(args []string) error {
 		DBPath:      resolveDB(*db),
 		DailyBudget: *dailyBudget,
 		Repos:       *repos,
+		ProjectsDir: *projectsDir,
 		AgentBin:    *agentBin,
 		MarkOrphans: *markOrphans,
 	}
