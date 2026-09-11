@@ -5,6 +5,11 @@
 # (buildflow-managed block) silently excluded the evidence from the
 # auto-commit daemon's add-everything sweep (06-41 report §d1) — an
 # archive whose promised files are not in git is lost at the next checkout.
+#
+# Each archive must also carry a git-tracked SHA256SUMS manifest covering
+# its whole file set; the gate re-verifies the hashes so a manifest that
+# drifted from the evidence fails instead of falsely certifying it
+# (06-41 report §c2/§f2).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -26,6 +31,22 @@ while IFS= read -r readme; do
 	# directory is a lost tree the moment the working tree goes away.
 	if ! git ls-files --error-unmatch "$readme" >/dev/null 2>&1; then
 		echo "UNTRACKED: $readme (the archive index itself must be committed)"
+		fail=1
+	fi
+
+	# Completeness + tamper-evidence: the manifest must exist, be tracked,
+	# verify against the archived bytes, and list every file in the dir.
+	if [ ! -f "$dir/SHA256SUMS" ]; then
+		echo "NO MANIFEST: $dir/SHA256SUMS is absent (every archive ships one)"
+		fail=1
+	elif ! git ls-files --error-unmatch "$dir/SHA256SUMS" >/dev/null 2>&1; then
+		echo "UNTRACKED: $dir/SHA256SUMS (the manifest must be committed)"
+		fail=1
+	elif ! (cd "$dir" && sha256sum --check --quiet SHA256SUMS >/dev/null 2>&1); then
+		echo "STALE: $dir/SHA256SUMS does not match the archived files (regenerate it)"
+		fail=1
+	elif ! diff <(cd "$dir" && ls | grep -v '^SHA256SUMS$') <(cd "$dir" && awk '{print $2}' SHA256SUMS) >/dev/null; then
+		echo "INCOMPLETE: $dir/SHA256SUMS does not cover every file in $dir"
 		fail=1
 	fi
 
