@@ -4,7 +4,7 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -815,6 +815,7 @@ func TestAgentExecutorRateLimitClassifiedAndGated(t *testing.T) {
 	// While the gate holds, the next Execute must refuse WITHOUT spawning
 	// the stub (the ran.log line count stays at 1).
 	err = e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
+
 	gated, ok := errors.AsType[*RateLimitError](err)
 	if !ok {
 		t.Fatalf("gated err = %v (%T), want *RateLimitError", err, err)

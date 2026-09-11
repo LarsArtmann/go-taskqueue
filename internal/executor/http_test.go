@@ -2,7 +2,8 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"io"
 	"net/http"
@@ -84,11 +85,11 @@ func TestHTTPExecutorPostsTaskEnvelope(t *testing.T) {
 	}
 
 	var env struct {
-		ID      string          `json:"id"`
-		Project string          `json:"project"`
-		Type    string          `json:"type"`
-		Payload json.RawMessage `json:"payload"`
-		Attempt int             `json:"attempt"`
+		ID      string         `json:"id"`
+		Project string         `json:"project"`
+		Type    string         `json:"type"`
+		Payload jsontext.Value `json:"payload"`
+		Attempt int            `json:"attempt"`
 	}
 	if err := json.Unmarshal([]byte(gotBody), &env); err != nil {
 		t.Fatalf("envelope not JSON: %v: %q", err, gotBody)
@@ -121,7 +122,7 @@ func TestHTTPExecutorEmptyPayloadBecomesObject(t *testing.T) {
 		t.Fatalf("Execute: %v", err)
 	}
 
-	if !json.Valid([]byte(gotBody)) {
+	if !jsontext.Value([]byte(gotBody)).IsValid() {
 		t.Fatalf("envelope with empty payload must stay valid JSON, got %q", gotBody)
 	}
 }

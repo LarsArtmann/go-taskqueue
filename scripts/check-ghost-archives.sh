@@ -34,7 +34,7 @@ while IFS= read -r readme; do
 		# Not promises: paths outside the archive dir, placeholders
 		# (`<id>.log`), globs (`*.log`) and dotfiles (`.tq-verify`).
 		case "$token" in
-			*/* | *\<* | *\>* | *\** | *\?* | *\[* | *\]* | .*) continue ;;
+		*/* | *\<* | *\>* | *\** | *\?* | *\[* | *\]* | .*) continue ;;
 		esac
 		promised="$dir/$token"
 		if git ls-files --error-unmatch "$promised" >/dev/null 2>&1; then

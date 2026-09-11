@@ -2,7 +2,8 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"os/exec"
 	"regexp"
@@ -55,8 +56,8 @@ type sinkKey struct{}
 // Sink collects structured outcome detail for ONE task execution.
 type Sink struct {
 	mu      sync.Mutex
-	detail  json.RawMessage
-	failure json.RawMessage
+	detail  jsontext.Value
+	failure jsontext.Value
 }
 
 // NewSink returns a context carrying the sink and the sink itself.
@@ -68,7 +69,7 @@ func NewSink(ctx context.Context) (context.Context, *Sink) {
 
 // SetResultDetail attaches outcome detail to the current execution; a
 // no-op when the context carries no sink (plain executors, tests).
-func SetResultDetail(ctx context.Context, detail json.RawMessage) {
+func SetResultDetail(ctx context.Context, detail jsontext.Value) {
 	if s, ok := ctx.Value(sinkKey{}).(*Sink); ok && len(detail) > 0 {
 		s.mu.Lock()
 		s.detail = detail
@@ -77,7 +78,7 @@ func SetResultDetail(ctx context.Context, detail json.RawMessage) {
 }
 
 // Detail returns the recorded outcome detail, or nil.
-func (s *Sink) Detail() json.RawMessage {
+func (s *Sink) Detail() jsontext.Value {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -100,7 +101,7 @@ func SetFailureEvidence(ctx context.Context, stage string, err error, tail strin
 }
 
 // Failure returns the recorded failure evidence, or nil.
-func (s *Sink) Failure() json.RawMessage {
+func (s *Sink) Failure() jsontext.Value {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -138,7 +139,9 @@ func ExtractSessionID(output string) string {
 // verboseSessionRe matches the crush verbose session marker (see
 // ExtractSessionID); not line-anchored because the marker rides an INFO
 // log line.
-var verboseSessionRe = regexp.MustCompile(`(?i)Created session for non-interactive run session_id=([A-Za-z0-9][A-Za-z0-9_-]+)`)
+var verboseSessionRe = regexp.MustCompile(
+	`(?i)Created session for non-interactive run session_id=([A-Za-z0-9][A-Za-z0-9_-]+)`,
+)
 
 // resultLineRe matches the agent's self-report line: a single line of JSON
 // after the TQ_RESULT: marker. Everything else in the output is free-form.
@@ -148,13 +151,13 @@ var resultLineRe = regexp.MustCompile(`(?im)^\s*TQ_RESULT:\s*(\{.+\})\s*$`)
 // output. Executors with a mechanical output contract (review, status) build
 // their strict parsing on top of it; ExtractResultPayload is the lenient
 // consumer for plain agent runs.
-func ResultLine(output string) (json.RawMessage, error) {
+func ResultLine(output string) (jsontext.Value, error) {
 	m := resultLineRe.FindStringSubmatch(output)
 	if m == nil {
 		return nil, errors.New("output has no TQ_RESULT line")
 	}
 
-	return json.RawMessage(m[1]), nil
+	return jsontext.Value(m[1]), nil
 }
 
 // ExtractResultPayload parses the agent's structured self-report

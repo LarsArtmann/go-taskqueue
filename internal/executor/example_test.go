@@ -2,7 +2,8 @@ package executor_test
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 
@@ -33,7 +34,7 @@ func ExampleRegistry() {
 	err = ex.Execute(context.Background(), task.Task{
 		ID:      task.ID("t1"),
 		Type:    "greet",
-		Payload: json.RawMessage(`"world"`),
+		Payload: jsontext.Value(`"world"`),
 	})
 	if err != nil {
 		log.Fatal(err)

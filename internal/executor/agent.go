@@ -3,7 +3,8 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -364,7 +365,10 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// carries the wait, so the worker requeues until the reset without
 	// burning an attempt.
 	if wait, limited := e.rateLimitWait(); limited {
-		return "", RateLimited(errors.New("agent: provider rate limit in effect (observed by a sibling run); deferring until reset"), wait)
+		return "", RateLimited(
+			errors.New("agent: provider rate limit in effect (observed by a sibling run); deferring until reset"),
+			wait,
+		)
 	}
 
 	// The queue task ID is only known at execution time (the harvester
@@ -415,6 +419,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 
 		cmd.WaitDelay = 10 * time.Second
 		err := cmd.Run()
+
 		return &buf, err
 	}
 
@@ -460,14 +465,20 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 				prepareProcessGroup(cmd)
 				cmd.WaitDelay = 10 * time.Second
 				err := cmd.Run()
+
 				return &closeoutBuf, err
 			}
 
 			closeoutBuf, err := execWithTransientRetry(closeoutOnce)
 			buf.WriteString(closeoutBuf.String())
+
 			if err != nil {
 				if ctx.Err() != nil {
-					return buf.String(), fmt.Errorf("agent closeout cancelled (%w): %s", ctx.Err(), tailBytes(buf.Bytes(), 8192))
+					return buf.String(), fmt.Errorf(
+						"agent closeout cancelled (%w): %s",
+						ctx.Err(),
+						tailBytes(buf.Bytes(), 8192),
+					)
 				}
 
 				if rl := e.rateLimitedTurn("agent closeout", err, buf.String()); rl != nil {
@@ -509,6 +520,7 @@ End your final output with EXACTLY ONE line and nothing after it: the same TQ_RE
 // error passes through untouched.
 func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
 	var out T
+
 	err := retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
 		MaxAttempts:  3,
 		InitialDelay: 50 * time.Millisecond,
@@ -517,9 +529,12 @@ func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
 		IsRetryable:  func(err error) bool { return errors.Is(err, syscall.ETXTBSY) },
 	}, func(_ context.Context, _ int) error {
 		var attemptErr error
+
 		out, attemptErr = run()
+
 		return attemptErr
 	})
+
 	return out, err
 }
 
@@ -680,7 +695,7 @@ func autoDetectVerify(repo string) string {
 func DetectVerify(repo string) string { return autoDetectVerify(repo) }
 
 // RenderAgentPayload marshals a payload for tasks of type agent.
-func RenderAgentPayload(p AgentPayload) (json.RawMessage, error) {
+func RenderAgentPayload(p AgentPayload) (jsontext.Value, error) {
 	b, err := json.Marshal(p)
 	if err != nil {
 		return nil, fmt.Errorf("agent: encode payload: %w", err)

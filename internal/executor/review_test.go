@@ -4,7 +4,8 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"os"
 	"path/filepath"
@@ -287,7 +288,7 @@ func TestReviewExecutorPayloadContractMissesArePermanent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := e.Execute(context.Background(), task.Task{Type: TaskTypeReview, Payload: json.RawMessage(tt.raw)})
+			err := e.Execute(context.Background(), task.Task{Type: TaskTypeReview, Payload: jsontext.Value(tt.raw)})
 			if err == nil {
 				t.Fatal("want error")
 			}

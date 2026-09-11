@@ -12,10 +12,9 @@ package queue
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"

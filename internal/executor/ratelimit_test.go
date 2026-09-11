@@ -61,11 +61,15 @@ func TestDetectRateLimit(t *testing.T) {
 			// host-timezone independent (the reset parses to an absolute
 			// time); the 6h cap applies on hosts far ahead of UTC.
 			wantFrom: min(time.Date(2026, 9, 11, 18, 0, 0, 0, time.UTC).Sub(now)+rateLimitGrace, maxRateLimitWait),
-			wantTo:   min(time.Date(2026, 9, 11, 18, 0, 0, 0, time.UTC).Sub(now)+rateLimitGrace+time.Minute, maxRateLimitWait),
+			wantTo: min(
+				time.Date(2026, 9, 11, 18, 0, 0, 0, time.UTC).Sub(now)+rateLimitGrace+time.Minute,
+				maxRateLimitWait,
+			),
 		},
 		{
-			name:     "reset far in the future is capped",
-			output:   fmt.Sprintf(`status_code=429 usage limit reached; resets at %s`, now.Add(24*time.Hour).Format("2006-01-02 15:04:05")),
+			name: "reset far in the future is capped",
+			output: "status_code=429 usage limit reached; resets at " + now.Add(24*time.Hour).
+				Format("2006-01-02 15:04:05"),
 			want:     true,
 			wantFrom: maxRateLimitWait,
 			wantTo:   maxRateLimitWait,
@@ -106,7 +110,7 @@ func TestRateLimitedIdempotent(t *testing.T) {
 	first := RateLimited(cause, 5*time.Minute)
 
 	second := RateLimited(first, 9*time.Hour)
-	if second != first {
+	if !errors.Is(second, first) {
 		t.Fatalf("RateLimited double-wrap returned a new error: %v", second)
 	}
 

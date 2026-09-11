@@ -91,4 +91,4 @@
 
 ---
 
-*Session artifacts: review executed at window tip 73610f0 (worktree-verified); this report indexed via check-status-index.sh. Format note: repo convention (and the explicit request) is Markdown — the status-report skill's HTML default was deliberately overridden.*
+_Session artifacts: review executed at window tip 73610f0 (worktree-verified); this report indexed via check-status-index.sh. Format note: repo convention (and the explicit request) is Markdown — the status-report skill's HTML default was deliberately overridden._

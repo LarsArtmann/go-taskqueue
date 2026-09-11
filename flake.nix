@@ -148,164 +148,161 @@
             # `nix flake check --all-systems` at eval time ("accessed but has
             # no value"). optionalAttrs simply omits the attribute.
             module-eval = pkgs.runCommand "nixos-module-eval" { } (
-                let
-                  inherit (inputs) nixpkgs;
-                  nixosModule = import ./deploy/nixos/tq-agent-pool.nix;
-                  evalFull =
-                    extra:
-                    (nixpkgs.lib.nixosSystem {
-                      system = pkgs.stdenv.hostPlatform.system;
-                      modules = [
-                        {
-                          nixpkgs.overlays = [
-                            (_final: _prev: {
-                              tq = config.packages.default;
-                            })
-                          ];
-                        }
-                        nixosModule
-                        { services.tq-agent-pool.enable = true; }
-                        extra
-                      ];
-                    }).config;
-                  eval = extra: (evalFull extra).systemd.services;
-                  defaultUnits = eval { };
-                  # Third branch: an unknown poolSettings key must flow into the
-                  # rendered pool.conf (NixOS cannot know tq's flag set — the
-                  # LOUD rejection is tq's applyPoolConfigFile at unit start,
-                  # which this check's runtime smoke exercises via the binary's
-                  # own config parsing). If the key silently VANISHED instead,
-                  # typos would run with defaults — the exact failure this
-                  # branch guards against.
-                  unknownKeyConfig = evalFull {
-                    services.tq-agent-pool = {
-                      poolSettings = {
-                        projects-dir = "/home/alice/projects";
-                        typo-key-that-tq-rejects = "true";
-                      };
-                    };
-                  };
-                  # The rendered config is a store file — pure eval cannot
-                  # read it; the check script greps it at build time.
-                  unknownKeyConfPath = unknownKeyConfig.services.tq-agent-pool.renderedConfigFile;
-                  tokenUnits = eval {
-                    services.tq-agent-pool = {
-                      serve = {
-                        enable = true;
-                        addr = "127.0.0.1:8100";
-                        authTokenFile = "/run/tq-token";
-                      };
-                    };
-                  };
-                  deployedUnits = eval {
-                    services.tq-agent-pool = {
-                      user = "alice";
-                      group = "users";
-                      dbPath = "/mnt/pool/services/tq/tq.db";
-                      poolSettings = {
-                        projects-dir = "/home/alice/projects";
-                        yolo = "true";
-                      };
-                      # systemd argv: flag and value are SEPARATE elements —
-                      # one glued "--max-per-tick 3" string would quote into a
-                      # single argument and fail flag parsing at start.
-                      extraArgs = [
-                        "--max-per-tick"
-                        "3"
-                      ];
-                      serve = {
-                        enable = true;
-                        addr = "127.0.0.1:8100";
-                      };
-                    };
-                  };
-                  defaultPool = defaultUnits.tq-agent-pool;
-                  deployedPool = deployedUnits.tq-agent-pool;
-                  deployedServe = deployedUnits.tq-serve;
-                  tokenServe = tokenUnits.tq-serve;
-                  # The pool unit must carry a non-empty agent-toolchain PATH
-                  # (f11, 2026-09-10 pool-deploy incident: systemd's default
-                  # service PATH has no git/go/crush — a vanished/empty PATH
-                  # renders the pool un-deployable).
-                  poolHasPath =
-                    unit:
-                    builtins.any (e: builtins.match "PATH=.+" e != null) (
-                      unit.serviceConfig.Environment or [ ]
-                    );
-                  drainInvariants =
-                    unit:
-                    builtins.all (kv: kv != null) [
-                      unit.serviceConfig.KillSignal or null
-                      unit.serviceConfig.KillMode or null
-                      unit.serviceConfig.TimeoutStopSec or null
+              let
+                inherit (inputs) nixpkgs;
+                nixosModule = import ./deploy/nixos/tq-agent-pool.nix;
+                evalFull =
+                  extra:
+                  (nixpkgs.lib.nixosSystem {
+                    system = pkgs.stdenv.hostPlatform.system;
+                    modules = [
+                      {
+                        nixpkgs.overlays = [
+                          (_final: _prev: {
+                            tq = config.packages.default;
+                          })
+                        ];
+                      }
+                      nixosModule
+                      { services.tq-agent-pool.enable = true; }
+                      extra
                     ];
-                  # Pin the exact binary token (2026-09-08): a lib.getExe pname
-                  # fallback (e.g. .../bin/go-taskqueue) silently renders
-                  # ExecStarts that fragment regexes still matched — the pool's
-                  # first token must be the package's own /bin/tq, and the serve
-                  # line must equal its full expected string exactly.
-                  expectedBin = "${config.packages.default}/bin/tq";
-                  poolFirstToken = builtins.head (lib.splitString " " deployedPool.serviceConfig.ExecStart);
-                  allOk =
-                    # default path: synthetic user + StateDirectory, no mount gate
-                    defaultPool.serviceConfig.StateDirectory or "" == "tq"
-                    && !(defaultPool.unitConfig ? RequiresMountsFor)
-                    # deployment path: pool user, mount gate, config file wired
-                    && deployedPool.serviceConfig.User == "alice"
-                    && deployedPool.unitConfig.RequiresMountsFor == [ "/mnt/pool/services/tq" ]
-                    # exact binary + config file wired (store paths render as
-                    # <hash>-tq-pool.conf — dash, not slash)
-                    && poolFirstToken == expectedBin
-                    && builtins.match ".*--config .*tq-pool\\.conf.*" deployedPool.serviceConfig.ExecStart != null
-                    && builtins.elem "TQ_DB=/mnt/pool/services/tq/tq.db" deployedPool.serviceConfig.Environment
-                    # pool unit PATH non-empty (agent toolchain must survive)
-                    && poolHasPath deployedPool
-                    # serve unit exists with the addr + no StateDirectory branch
-                    && deployedServe.serviceConfig != { }
-                    && deployedServe.serviceConfig.ExecStart == "${expectedBin} serve --addr 127.0.0.1:8100"
-                    && !(deployedServe.serviceConfig ? StateDirectory)
-                    # unknown poolSettings keys must SURVIVE rendering (tq
-                    # rejects them loudly at unit start; vanishing = silent
-                    # defaults) — checked by the grep below — and the
-                    # extraArgs example renders as two argv tokens
-                    &&
-                      builtins.match ".*--config .*tq-pool\.conf.* --max-per-tick 3.*" deployedPool.serviceConfig.ExecStart
-                      != null
-                    # authTokenFile wires EnvironmentFile on the serve unit
-                    && tokenServe.serviceConfig.EnvironmentFile == [ "/run/tq-token" ]
-                    # drain invariants survive on both units
-                    && drainInvariants deployedPool
-                    && (deployedPool.serviceConfig.KillSignal or "" == "SIGINT")
-                    && (deployedPool.serviceConfig.KillMode or "" == "process")
-                    && (deployedPool.serviceConfig.TimeoutStopSec or "" == "45min");
-                in
-                ''
-                  echo "pool ExecStart: ${deployedPool.serviceConfig.ExecStart}"
-                  echo "serve ExecStart: ${deployedServe.serviceConfig.ExecStart}"
-                  if ! grep -q 'typo-key-that-tq-rejects' '${unknownKeyConfPath}'; then
-                    echo 'nixos-module-eval FAILED: unknown poolSettings key vanished from the rendered pool.conf (typos would run with silent defaults)'
-                    exit 1
-                  fi
-                  echo "assertions: ${
-                    builtins.toJSON {
-                      defaultStateDirectory = defaultPool.serviceConfig.StateDirectory or null;
-                      defaultRequiresMountsFor = defaultPool.unitConfig ? RequiresMountsFor;
-                      deployedUser = deployedPool.serviceConfig.User or null;
-                      deployedRequiresMountsFor = deployedPool.unitConfig.RequiresMountsFor or null;
-                      deployedEnvironment = deployedPool.serviceConfig.Environment or null;
-                      inherit expectedBin;
-                      inherit poolFirstToken;
-                      serveExecStart = deployedServe.serviceConfig.ExecStart or null;
-                      serveStateDirectoryPresent = deployedServe.serviceConfig ? StateDirectory;
-                      killSignal = deployedPool.serviceConfig.KillSignal or null;
-                      killMode = deployedPool.serviceConfig.KillMode or null;
-                      timeoutStopSec = deployedPool.serviceConfig.TimeoutStopSec or null;
-                    }
-                  }"
-                  ${lib.optionalString allOk "touch $out"}
-                  ${lib.optionalString (!allOk) "echo 'nixos-module-eval FAILED'; exit 1"}
-                ''
-              );
+                  }).config;
+                eval = extra: (evalFull extra).systemd.services;
+                defaultUnits = eval { };
+                # Third branch: an unknown poolSettings key must flow into the
+                # rendered pool.conf (NixOS cannot know tq's flag set — the
+                # LOUD rejection is tq's applyPoolConfigFile at unit start,
+                # which this check's runtime smoke exercises via the binary's
+                # own config parsing). If the key silently VANISHED instead,
+                # typos would run with defaults — the exact failure this
+                # branch guards against.
+                unknownKeyConfig = evalFull {
+                  services.tq-agent-pool = {
+                    poolSettings = {
+                      projects-dir = "/home/alice/projects";
+                      typo-key-that-tq-rejects = "true";
+                    };
+                  };
+                };
+                # The rendered config is a store file — pure eval cannot
+                # read it; the check script greps it at build time.
+                unknownKeyConfPath = unknownKeyConfig.services.tq-agent-pool.renderedConfigFile;
+                tokenUnits = eval {
+                  services.tq-agent-pool = {
+                    serve = {
+                      enable = true;
+                      addr = "127.0.0.1:8100";
+                      authTokenFile = "/run/tq-token";
+                    };
+                  };
+                };
+                deployedUnits = eval {
+                  services.tq-agent-pool = {
+                    user = "alice";
+                    group = "users";
+                    dbPath = "/mnt/pool/services/tq/tq.db";
+                    poolSettings = {
+                      projects-dir = "/home/alice/projects";
+                      yolo = "true";
+                    };
+                    # systemd argv: flag and value are SEPARATE elements —
+                    # one glued "--max-per-tick 3" string would quote into a
+                    # single argument and fail flag parsing at start.
+                    extraArgs = [
+                      "--max-per-tick"
+                      "3"
+                    ];
+                    serve = {
+                      enable = true;
+                      addr = "127.0.0.1:8100";
+                    };
+                  };
+                };
+                defaultPool = defaultUnits.tq-agent-pool;
+                deployedPool = deployedUnits.tq-agent-pool;
+                deployedServe = deployedUnits.tq-serve;
+                tokenServe = tokenUnits.tq-serve;
+                # The pool unit must carry a non-empty agent-toolchain PATH
+                # (f11, 2026-09-10 pool-deploy incident: systemd's default
+                # service PATH has no git/go/crush — a vanished/empty PATH
+                # renders the pool un-deployable).
+                poolHasPath =
+                  unit: builtins.any (e: builtins.match "PATH=.+" e != null) (unit.serviceConfig.Environment or [ ]);
+                drainInvariants =
+                  unit:
+                  builtins.all (kv: kv != null) [
+                    unit.serviceConfig.KillSignal or null
+                    unit.serviceConfig.KillMode or null
+                    unit.serviceConfig.TimeoutStopSec or null
+                  ];
+                # Pin the exact binary token (2026-09-08): a lib.getExe pname
+                # fallback (e.g. .../bin/go-taskqueue) silently renders
+                # ExecStarts that fragment regexes still matched — the pool's
+                # first token must be the package's own /bin/tq, and the serve
+                # line must equal its full expected string exactly.
+                expectedBin = "${config.packages.default}/bin/tq";
+                poolFirstToken = builtins.head (lib.splitString " " deployedPool.serviceConfig.ExecStart);
+                allOk =
+                  # default path: synthetic user + StateDirectory, no mount gate
+                  defaultPool.serviceConfig.StateDirectory or "" == "tq"
+                  && !(defaultPool.unitConfig ? RequiresMountsFor)
+                  # deployment path: pool user, mount gate, config file wired
+                  && deployedPool.serviceConfig.User == "alice"
+                  && deployedPool.unitConfig.RequiresMountsFor == [ "/mnt/pool/services/tq" ]
+                  # exact binary + config file wired (store paths render as
+                  # <hash>-tq-pool.conf — dash, not slash)
+                  && poolFirstToken == expectedBin
+                  && builtins.match ".*--config .*tq-pool\\.conf.*" deployedPool.serviceConfig.ExecStart != null
+                  && builtins.elem "TQ_DB=/mnt/pool/services/tq/tq.db" deployedPool.serviceConfig.Environment
+                  # pool unit PATH non-empty (agent toolchain must survive)
+                  && poolHasPath deployedPool
+                  # serve unit exists with the addr + no StateDirectory branch
+                  && deployedServe.serviceConfig != { }
+                  && deployedServe.serviceConfig.ExecStart == "${expectedBin} serve --addr 127.0.0.1:8100"
+                  && !(deployedServe.serviceConfig ? StateDirectory)
+                  # unknown poolSettings keys must SURVIVE rendering (tq
+                  # rejects them loudly at unit start; vanishing = silent
+                  # defaults) — checked by the grep below — and the
+                  # extraArgs example renders as two argv tokens
+                  &&
+                    builtins.match ".*--config .*tq-pool\.conf.* --max-per-tick 3.*" deployedPool.serviceConfig.ExecStart
+                    != null
+                  # authTokenFile wires EnvironmentFile on the serve unit
+                  && tokenServe.serviceConfig.EnvironmentFile == [ "/run/tq-token" ]
+                  # drain invariants survive on both units
+                  && drainInvariants deployedPool
+                  && (deployedPool.serviceConfig.KillSignal or "" == "SIGINT")
+                  && (deployedPool.serviceConfig.KillMode or "" == "process")
+                  && (deployedPool.serviceConfig.TimeoutStopSec or "" == "45min");
+              in
+              ''
+                echo "pool ExecStart: ${deployedPool.serviceConfig.ExecStart}"
+                echo "serve ExecStart: ${deployedServe.serviceConfig.ExecStart}"
+                if ! grep -q 'typo-key-that-tq-rejects' '${unknownKeyConfPath}'; then
+                  echo 'nixos-module-eval FAILED: unknown poolSettings key vanished from the rendered pool.conf (typos would run with silent defaults)'
+                  exit 1
+                fi
+                echo "assertions: ${
+                  builtins.toJSON {
+                    defaultStateDirectory = defaultPool.serviceConfig.StateDirectory or null;
+                    defaultRequiresMountsFor = defaultPool.unitConfig ? RequiresMountsFor;
+                    deployedUser = deployedPool.serviceConfig.User or null;
+                    deployedRequiresMountsFor = deployedPool.unitConfig.RequiresMountsFor or null;
+                    deployedEnvironment = deployedPool.serviceConfig.Environment or null;
+                    inherit expectedBin;
+                    inherit poolFirstToken;
+                    serveExecStart = deployedServe.serviceConfig.ExecStart or null;
+                    serveStateDirectoryPresent = deployedServe.serviceConfig ? StateDirectory;
+                    killSignal = deployedPool.serviceConfig.KillSignal or null;
+                    killMode = deployedPool.serviceConfig.KillMode or null;
+                    timeoutStopSec = deployedPool.serviceConfig.TimeoutStopSec or null;
+                  }
+                }"
+                ${lib.optionalString allOk "touch $out"}
+                ${lib.optionalString (!allOk) "echo 'nixos-module-eval FAILED'; exit 1"}
+              ''
+            );
           };
 
           # `nix run .#test` must cover EVERY module: the go-standard default

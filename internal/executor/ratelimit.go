@@ -71,13 +71,17 @@ const (
 //   - OpenAI-convention bodies relayed by agents (synthetic.new and any
 //     OpenAI-compatible provider): "insufficient_quota", "rate limit",
 //     "subscription limit".
-var rateLimitRe = regexp.MustCompile(`(?i)status[ _-]?code[=: ]+["']?429|https? 429|too many requests|rate limit|usage limit|insufficient_quota|quota exceeded|subscription limit`)
+var rateLimitRe = regexp.MustCompile(
+	`(?i)status[ _-]?code[=: ]+["']?429|https? 429|too many requests|rate limit|usage limit|insufficient_quota|quota exceeded|subscription limit`,
+)
 
 // resetAtRe extracts WHEN the limit resets. Known shapes: Z.ai's
 // "Your limit will reset at 2026-09-11 19:40:34" (wall-clock, no zone —
 // parsed as the agent host's local time, matching what the operator's
 // provider dashboard shows) and RFC3339 timestamps.
-var resetAtRe = regexp.MustCompile(`(?i)(?:reset|renew)[a-z]*\s+at\s+(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)`)
+var resetAtRe = regexp.MustCompile(
+	`(?i)(?:reset|renew)[a-z]*\s+at\s+(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)`,
+)
 
 var resetAtLayouts = []string{
 	"2006-01-02 15:04:05",
@@ -138,6 +142,7 @@ func (e *AgentExecutor) armRateLimit(retryAfter time.Duration) {
 	}
 
 	until := time.Now().Add(retryAfter).UnixNano()
+
 	for {
 		cur := e.rateLimitUntil.Load()
 		if cur >= until || e.rateLimitUntil.CompareAndSwap(cur, until) {
