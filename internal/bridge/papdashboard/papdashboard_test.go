@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -474,5 +475,77 @@ func TestBudgetTelemetryOffByDefault(t *testing.T) {
 
 	if got := len(pap.calls()); got != 0 {
 		t.Fatalf("got %d events with budget telemetry off, want 0", got)
+	}
+}
+
+func TestDeadPoolAlertTriggerAndResolve(t *testing.T) {
+	pap := newFakePap(t)
+	src := &fakeSource{}
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "secret", Logger: quietLogger()})
+
+	ctx := context.Background()
+	if err := b.NotifyDeadPool(ctx, true, 3,
+		"scan failed: open /srv/CV/TODO_LIST.md: no such file or directory\nline two", 3); err != nil {
+		t.Fatalf("trigger: %v", err)
+	}
+
+	if err := b.NotifyDeadPool(ctx, false, 3, "", 3); err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+
+	calls := pap.calls()
+
+	if len(calls) != 2 {
+		t.Fatalf("got %d ingests, want 2: %+v", len(calls), calls)
+	}
+
+	if calls[0].Event != "alert.triggered" || calls[0].AggregateID != deadPoolAggregate {
+		t.Fatalf("first ingest = %s/%s, want alert.triggered/%s", calls[0].Event, calls[0].AggregateID, deadPoolAggregate)
+	}
+
+	if calls[1].Event != "alert.resolved" || calls[1].AggregateID != deadPoolAggregate {
+		t.Fatalf("second ingest = %s/%s, want alert.resolved/%s", calls[1].Event, calls[1].AggregateID, deadPoolAggregate)
+	}
+
+	if calls[0].IdempotencyKey == calls[1].IdempotencyKey {
+		t.Errorf("trigger and resolve share idempotency key %q", calls[0].IdempotencyKey)
+	}
+
+	if calls[0].Authorization != "Bearer secret" {
+		t.Errorf("authorization = %q", calls[0].Authorization)
+	}
+
+	var triggered struct {
+		Severity  string            `json:"severity"`
+		Title     string            `json:"title"`
+		Body      string            `json:"body"`
+		SourceApp string            `json:"sourceApp"`
+		Metadata  map[string]string `json:"metadata"`
+	}
+	if err := json.Unmarshal(calls[0].Payload, &triggered); err != nil {
+		t.Fatalf("payload: %v", err)
+	}
+
+	if triggered.Severity != "critical" || triggered.Title != "agent-pool dead pool" || triggered.SourceApp != SourceApp {
+		t.Errorf("severity/title/sourceApp = %q/%q/%q", triggered.Severity, triggered.Title, triggered.SourceApp)
+	}
+
+	if triggered.Metadata["repos"] != "3" || triggered.Metadata["streak"] != "3" {
+		t.Errorf("metadata = %+v", triggered.Metadata)
+	}
+
+	if !strings.Contains(triggered.Body, "3 consecutive ticks") || strings.Contains(triggered.Body, "line two") {
+		t.Errorf("body = %q, want the streak count and a first-line-only example", triggered.Body)
+	}
+
+	var resolved struct {
+		ResolvedBy string `json:"resolvedBy"`
+	}
+	if err := json.Unmarshal(calls[1].Payload, &resolved); err != nil {
+		t.Fatalf("resolve payload: %v", err)
+	}
+
+	if resolved.ResolvedBy != SourceApp+"-agent-pool" {
+		t.Errorf("resolvedBy = %q", resolved.ResolvedBy)
 	}
 }

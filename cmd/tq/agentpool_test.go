@@ -133,3 +133,99 @@ func TestGroupedSkipsTruncatesLongExamples(t *testing.T) {
 		t.Fatalf("long example not truncated to 200 runes + ellipsis: len=%d tail=%q", len(got), got[len(got)-5:])
 	}
 }
+
+// TestDeadPoolDetectorStreakLifecycle pins the dead-pool detection
+// contract: a streak counts CONSECUTIVE all-repos scan-failed ticks, fires
+// its notify exactly once per streak at the configured tick, and a
+// readable tick resolves the standing alert and resets the count.
+func TestDeadPoolDetectorStreakLifecycle(t *testing.T) {
+	t.Parallel()
+
+	blind := harvest.Result{Repos: 2, Skipped: []harvest.Skipped{
+		{Reason: "scan failed: open /srv/CV/TODO_LIST.md: no such file or directory"},
+		{Reason: "scan failed: open /srv/go-taskqueue/TODO_LIST.md: no such file or directory"},
+	}}
+	healthy := harvest.Result{Repos: 2, Skipped: []harvest.Skipped{{Reason: "blocked: owner"}}}
+	partial := harvest.Result{Repos: 2, Skipped: []harvest.Skipped{
+		{Reason: "scan failed: open /srv/CV/TODO_LIST.md: no such file or directory"},
+	}}
+
+	tests := []struct {
+		name       string
+		ticks      int
+		observes   []harvest.Result
+		wantNotifs []string
+		wantStreak int
+	}{
+		{
+			name:     "disabled detector never notifies",
+			ticks:    0,
+			observes: []harvest.Result{blind, blind, blind},
+		},
+		{
+			name:     "zero watched repos means nothing to go blind on",
+			ticks:    1,
+			observes: []harvest.Result{{Repos: 0}},
+		},
+		{
+			name:       "streak below the threshold stays quiet",
+			ticks:      3,
+			observes:   []harvest.Result{blind, blind},
+			wantStreak: 2,
+		},
+		{
+			name:       "full streak fires once, not per extra tick",
+			ticks:      3,
+			observes:   []harvest.Result{blind, blind, blind, blind},
+			wantNotifs: []string{"triggered"},
+			wantStreak: 4,
+		},
+		{
+			name:     "partial blindness never counts as a dead pool",
+			ticks:    2,
+			observes: []harvest.Result{partial, partial, partial},
+		},
+		{
+			name:       "recovery resolves, resets, and can re-fire",
+			ticks:      2,
+			observes:   []harvest.Result{blind, blind, healthy, blind, blind},
+			wantNotifs: []string{"triggered", "resolved", "triggered"},
+			wantStreak: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got []string
+
+			d := &deadPoolDetector{ticks: tt.ticks}
+			d.notify = func(triggered bool, _ int, _ string, _ int) {
+				if triggered {
+					got = append(got, "triggered")
+				} else {
+					got = append(got, "resolved")
+				}
+			}
+
+			for _, res := range tt.observes {
+				d.observe(res)
+			}
+
+			if len(got) != len(tt.wantNotifs) {
+				t.Fatalf("notifications = %v, want %v", got, tt.wantNotifs)
+			}
+
+			for i := range got {
+				if got[i] != tt.wantNotifs[i] {
+					t.Fatalf("notifications = %v, want %v", got, tt.wantNotifs)
+				}
+			}
+
+			if d.streak != tt.wantStreak {
+				t.Errorf("final streak = %d, want %d", d.streak, tt.wantStreak)
+			}
+		})
+	}
+}
