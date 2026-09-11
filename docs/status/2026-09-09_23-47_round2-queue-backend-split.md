@@ -98,18 +98,18 @@ suite 12/12, vendorHash refreshed, `nix build` + `nix flake check` green,
 
 ## b) PARTIALLY DONE
 
-1. **8 local tags unpushed** (5 round-1 + 2 round-2 + none for root since
+1. ~~**8 local tags unpushed** (5 round-1 + 2 round-2 + none for root since
    v0.2.0): the go-install fix and the new backend tags stay latent until an
-   owner-gated push.
-2. **Round-1 architecture diagrams** depict the pre-split queue module —
-   accurate as snapshots, stale as current truth (annotate or regenerate).
-3. **Dead-export prune prep**: list needs re-derivation after the renames;
-   not started.
-4. **docs-health HARVEST** of the two status reports' (f) lists into
-   TODO_LIST/ROADMAP — still pending your instruction.
-5. **Release-gate smoke script** (fixture go.mods for the allowlist/tag
-   gates) — designed, not built.
-6. **CI parity**: hygiene audits still run only in ci-local.sh, not ci.yml.
+   owner-gated push.~~ done 2026-09-10 — owner pushed master + root/round-1 tags; both backend tags verified on the remote (`git ls-remote`, TODO_LIST L130/L49); proxy + clean-room install proven 15-20
+2. ~~**Round-1 architecture diagrams** depict the pre-split queue module —
+   accurate as snapshots, stale as current truth (annotate or regenerate).~~ done 00-41 a12 — regenerated 2026-09-10 diagram + SUPERSEDED head-notes on the old set
+3. ~~**Dead-export prune prep**: list needs re-derivation after the renames;
+   not started.~~ done 00-41 a4 — re-derived with substring matching (most "dead" exports were alive); `scripts/check-dead-exports.sh` shipped
+4. ~~**docs-health HARVEST** of the two status reports' (f) lists into
+   TODO_LIST/ROADMAP — still pending your instruction.~~ done 00-41 a15
+5. ~~**Release-gate smoke script** (fixture go.mods for the allowlist/tag
+   gates) — designed, not built.~~ done 00-41 a2 — `scripts/smoke/release-gates.sh` (positive+negative, wired into CI + ci-local)
+6. ~~**CI parity**: hygiene audits still run only in ci-local.sh, not ci.yml.~~ done 00-41 a7 + L69 — `check-go-mods.sh` on both runners; advisory lint loops every sub-module in ci.yml
 
 ## c) NOT STARTED
 
@@ -150,8 +150,35 @@ suite 12/12, vendorHash refreshed, `nix build` + `nix flake check` green,
 
 ## f) UP TO 50 THINGS TO GET DONE NEXT
 
+## f) UP TO 50 THINGS TO GET DONE NEXT
+
 Carried from the previous report unless marked NEW (routing per docs-health:
 most extra items are ROADMAP fuel; — BLOCKED marks owner-gated).
+
+> **Resolution (docs-health 2026-09-11, pre-archive; per item):**
+> DONE (verified in code or TODO_LIST `[x]` with verdict): 6 (agent-pool
+> decomposition, CHANGELOG), 7 (release-gates smoke), 8 (CI parity), 9
+> (ETXTBSY retry, `execWithTransientRetry`), 10 (HARVEST), 11 (diagrams),
+> 12 (`nix run .#test` multi-module), 13 (proxy + clean-room 15-20), 14
+> (`var _ queue.Store` assertions), 15 (naming sweeps), 16 (flake
+> meta.description), 17 (`--all-systems` in ci.yml), 19 (`check-dead-exports.sh`),
+> 20 (govulncheck job), 21 (gosec pass + triage), 22 (templ-components
+> audit), 23 (webui dedup −67 LOC), 24 (TestStatsSurfacesAgree), 25
+> (examples/fullcore), 26 (docs/release/RELEASE.md), 27
+> (docs/release/VERSION-SURFACES.md), 28+29 (wrapcheck/varnamelen triaged
+> to zero), 34 (doctor multi-module checks), 36+37 (README blurb + store
+> section), 38 (checks.version-sync covers attr↔binary), 39 (docs-health
+> VERIFY passes), 40 (FEATURES backend-split row), 42 (sub-tag bump order
+> documented in VERSION-SURFACES), 43 (toolchain alignment in
+> check-go-mods.sh), 44 (conformance name-level parity review 00-41), 45
+> (queue.go package docs), 46 (live-journal audit — nothing to drain), 47
+> (multi-repo smoke green + TQ_BIN), 48 (docker one-liner documented), 49
+> (CI timing measured, no tuning warranted). 30/31/32/35 struck inline
+> below. STILL OPEN — owner-BLOCKED in TODO_LIST "Owner-blocked decisions":
+> 2→L50 (consumer wire-or-delete), 4→L51 (interface dedup), 5→L52 (postgres
+> CLI wiring), 33→L53 (dependabot policy), 50→L54 (release retrospective);
+> push (1) resolved 2026-09-10. ROADMAP fuel: 18 (data-model review), 41
+> (interface segregation). Nothing unowned remains.
 
 1. **P1 — owner-gated**: push master + all 8 local tags (go-install fix +
    backend tags stay latent until then).

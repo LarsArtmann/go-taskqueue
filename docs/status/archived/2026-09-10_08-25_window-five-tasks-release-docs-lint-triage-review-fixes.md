@@ -173,6 +173,15 @@
 
 ## f) NEXT THINGS (appended to TODO_LIST; existing backlog not duplicated)
 
+> Resolution (docs-health 2026-09-11, pre-archive): f10-f17 ALL done (each
+> carries a DONE verdict in TODO_LIST.md §"Window follow-ups"; f12/f17
+> landed 15-15/15-22). f13 done 16-00 (T12 date-drift check live in
+> check-status-index.sh). g1/g2 RESOLVED de facto 14-55 (merge-append healed
+> the fork; TODO_LIST L164/L165). Open rows live in TODO_LIST.md §"Window
+> follow-ups": f1→L143, f2→L144, f3→L145, f4→L146, f5→L147, f6→L148,
+> f7→L149, f8→L150, f9→L151, f18→L160, f19→L161, f20→L162, f21→L163, g3→L166
+> (BLOCKED: owner). Nothing unowned remains.
+
 1. Rename the two varnamelen raw sites (`o` cmd/tq/agentpool.go:278, `f`
    cmd/tq/poolconfig.go:26) or extend the ignore list, so scoped
    `--enable-only` diagnostics agree with full-config runs (2 vs 0
@@ -209,19 +218,20 @@
 12. check-status-index.sh family: cross-check each report's filename ID
     against some commit trailer (or mark report-task artifacts) — the f26
     three-ID cluster would have been flagged mechanically.
-13. Extend check-status-index.sh: flag filename-date vs report "Written"
-    line drift.
-14. CHANGELOG audit: confirm the v0.2.0 section cites no commit SHAs from
-    the pre-reword lineage (they would dangle).
-15. Sweep non-status docs for references to `41b817b` (today only
+13. ~~Extend check-status-index.sh: flag filename-date vs report "Written"
+    line drift.~~ done 16-00 (T12/M43: BODY-DATE DRIFT check live in
+    scripts/check-status-index.sh; TODO_LIST L155 verdict applies)
+14. ~~CHANGELOG audit: confirm the v0.2.0 section cites no commit SHAs from
+    the pre-reword lineage (they would dangle).~~ done 14-55 (TODO_LIST L156: CHANGELOG cites no SHAs at all)
+15. ~~Sweep non-status docs for references to `41b817b` (today only
     docs/status hits) — keep it that way; the remote-only bad-footer twin
-    must not leak into living docs.
-16. CI check: confirm no workflow assumes fast-forward from `origin/master`
-    while the local/remote divergence (14/1) stands.
-17. Mark the stale-done TODO items [x] with DONE verdicts after
+    must not leak into living docs.~~ done 14-55 (TODO_LIST L157)
+16. ~~CI check: confirm no workflow assumes fast-forward from `origin/master`
+    while the local/remote divergence (14/1) stands.~~ done 14-55 (TODO_LIST L158)
+17. ~~Mark the stale-done TODO items [x] with DONE verdicts after
     re-verification: windows-test fix, release-gates identity, x/text ≥0.39
     (all three fixed per the red-master-trio CHANGELOG entry; verified this
-    pass at HEAD).
+    pass at HEAD).~~ done 15-22 (TODO_LIST L159; re-confirmed 2026-09-11)
 18. Attribution convention for daemon-swept work: when the auto-commit
     daemon folds a task's working-tree changes into a footer-less `chore:`
     commit (the lint triage: content in bebc35a/fc495e8, footer-only

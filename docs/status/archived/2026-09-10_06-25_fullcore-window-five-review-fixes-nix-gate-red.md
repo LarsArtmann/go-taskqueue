@@ -146,19 +146,24 @@ Consistent with the done-prompt contract, noted for completeness.
 
 ## f) NEXT THINGS (new items appended to TODO_LIST; existing backlog not duplicated)
 
-**From this window's evidence (all appended):**
+> Resolution (docs-health 2026-09-11, pre-archive): f1/e2/g3 were rooted in
+> the nix-FOD theory — SUPERSEDED: the FOD never recurred and the real CI
+> cause was the setup-go toolchain float to 1.27.1, fixed by pinning 1.26.7
+> (16-00 report §a). f2 done 15-20 (TODO_LIST L130). f3-f6 remain open in
+> TODO_LIST.md §"Fullcore-window follow-ups" (f3→L131, f4→L132, f5→L133,
+> f6→L134); g1→L137 BLOCKED, g2→L138 (resolved de facto 14-55), g3 obsolete.
 
-1. Restore the nix CI gate: diagnose the runner-only go-modules FOD hash mismatch (full
-   evidence package in this report, d1).
-2. Run the now-unblocked backend-tag verification: per-module `go list -m -versions` proxy
-   check + clean-room `go install` for `internal/queue/{sqlite,postgres}/v0.2.0`.
+1. ~~Restore the nix CI gate: diagnose the runner-only go-modules FOD hash mismatch (full
+   evidence package in this report, d1).~~ RESOLVED 2026-09-11 — the FOD never recurred; the concurrent red was the setup-go `stable` → 1.27.1 float (stdversion gate), fixed by the 1.26.7 pin (16-00 report §a)
+2. ~~Run the now-unblocked backend-tag verification: per-module `go list -m -versions` proxy
+   check + clean-room `go install` for `internal/queue/{sqlite,postgres}/v0.2.0`.~~ done 15-20 (TODO_LIST L130: proxy resolves both, clean-room fetch verified; internal-import refusal is by design)
 3. Run the fullcore example once against a throwaway postgres DB (`--backend postgres`;
    the example applies its schema — keep it off any real instance).
 4. Hermetic `scripts/smoke/fullcore.sh` (sqlite path, explicit `TQ_DB=<scratch>` export).
 5. Status-task window payload: include the window's closeout/report paths so the done
    prompt reads them directly (05-30 f25, still unfilled).
 6. Docs-health continuation: annotate + archive the six 2026-09-07 reports (batch left
-   for the next pass — this pass verified and archived none of them).
+   for the next pass — this pass verified and archived none of them). — still open → TODO_LIST L134 (successive passes annotated/verified several; none of the six archived — all carry open items)
 
 **Already filed, re-escalated by this window (do NOT re-append; listed for the next task
 picker):** test-windows fix, release-gates smoke identity, x/text ≥v0.39.0, gosec config,
