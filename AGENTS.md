@@ -334,6 +334,18 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   (the NixOS module now sets `services.tq-agent-pool.agentPath`). The
   aggregate skip log carries one full example reason; scan failures log at
   WARN.
+- ⚠️ **Pool verify runs WITHOUT GOEXPERIMENT=jsonv2 → env-only gate
+  failures** (2026-09-11, task 000001a08ebf, 3 attempts burned): the
+  tq-agent-pool unit env has no GOEXPERIMENT and `~/.config/go/env` is an
+  EMPTY home-manager store symlink (`go env -w` is refused against the
+  read-only store; the user's `env.local` jsonv2 line and `env.backup`
+  show a prior manual attempt being eaten at activation). So every
+  root-module `.tq-verify` run outside the flake devShell dies on the
+  encoding/json/v2 build constraints REGARDLESS of repo state. Owner fix:
+  `Environment=GOEXPERIMENT=jsonv2` on the NixOS tq-agent-pool module
+  (same treatment as agentPath). Until then: a task.verify failure with
+  that error is the environment lying, not a regression — re-run the gate
+  with the export before judging the work.
 
 ## Relation to other projects
 
