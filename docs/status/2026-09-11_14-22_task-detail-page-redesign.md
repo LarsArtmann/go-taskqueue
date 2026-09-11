@@ -179,19 +179,19 @@ Mid-term (ROADMAP fuel — apply HARVEST routing rigor):
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
-1. **Prompt fold default**: for agent payloads WITH a harvested item I collapse the prompt
+1. ~~**Prompt fold default**: for agent payloads WITH a harvested item I collapse the prompt
    (item leads). For agent tasks WITHOUT an item I made the prompt the lede (always
    visible). Is that the split you want, or should the prompt always stay folded with the
-   item-less case showing a "no work item — see prompt" hint instead?
-2. **Retry strip scope**: should dead-lettered reasons count into the retry trail
+   item-less case showing a "no work item — see prompt" hint instead?~~ ANSWERED 2026-09-11 (owner, structured-question tool; 15-39 report a10): keep as shipped — item→collapsed prompt, no-item→prompt-as-lede.
+2. ~~**Retry strip scope**: should dead-lettered reasons count into the retry trail
    (currently excluded — the dead task's "last error" alert already carries them), or is
-   the strip meant to be strictly about "came back and will come again"?
-3. **app.css pipeline conflict**: commit 04aace4 (the concurrent round-11 session) shipped a
+   the strip meant to be strictly about "came back and will come again"?~~ ANSWERED 2026-09-11 (owner, structured-question tool; 15-39 report a10/a7): yes — dead-lettered reasons count; implemented as `journal.DeadLettered` in the `retryTrail` case (`TestRetryTrailCountsDeadLetter`).
+3. ~~**app.css pipeline conflict**: commit 04aace4 (the concurrent round-11 session) shipped a
    6300-line unminified `static/app.css` that broke the pinned minified-CSS test; I
    regenerated the canonical minified artifact. Was that unminified build intentional (new
    pipeline I should adopt + test change), or an accidental dev-build commit — i.e. should
    the OTHER session be told to run `nix run .#webui-css`, or should I expect another fight
-   over this file?
+   over this file?~~ ANSWERED 2026-09-11 (15-39 report a8): accidental — root-caused to the round-5 `check-webui-css.sh` guard being wired into NOTHING; the canonical script always had `--minify`. The artifact was re-minified (a1; it shipped unminified AGAIN as 20d1a69 before the fix landed) and the guard is now a ci-local step.
 
 ---
 
