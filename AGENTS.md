@@ -344,7 +344,11 @@ pools over durable queues); composes with both, depends on neither.
 raise `alert.triggered` (fact Seq = Idempotency-Key); a later completion
 posts `alert.resolved` — rescue flows close their own alerts. The watermark
 starts at head per bridge process; incidents fired while down are not
-replayed (review via `tq dlq`). Details: FEATURES.md, CHANGELOG.md.
+replayed (review via `tq dlq`). Dead-pool detection
+(`tq agent-pool --dead-pool-ticks`, default 3) is the one DIRECT-notify
+path: `NotifyDeadPool` posts trigger/resolve outside the journal because
+harvest skips are process-local observations; delivery is best-effort.
+Details: FEATURES.md, CHANGELOG.md.
 
 **httputil** (`~/projects/httputil`, sibling middleware library): assessed
 2026-09-10, verdict NOT adopted as a dependency. Two reasons: (1) LICENSE is

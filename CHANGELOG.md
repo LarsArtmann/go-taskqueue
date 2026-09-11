@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Added
+- **Dead-pool detection alert for agent pools**: `tq agent-pool
+  --dead-pool-ticks N` (default 3, `0` = off) raises a PapDashboard alert
+  when EVERY watched repo scan-fails for N consecutive harvest ticks — the
+  pool reads no TODO_LIST at all, so it silently enqueues nothing (the
+  2026-09-10 pool-deploy incident stayed invisible for 20h). One
+  `alert.triggered` fires per streak via the bridge's new direct
+  `NotifyDeadPool` path (harvest skips are process-local observations, not
+  journal facts), a WARN is logged even without `--alert-url`, and the
+  first tick with a readable repo posts `alert.resolved` and resets the
+  streak.
+
 ### Fixed
 - **Dashboard and write-API stats surfaces pinned to one wire contract**: `tq serve`'s
   `/api/stats` and `tq api`'s `/api/v1/stats` computed the same payload through two
