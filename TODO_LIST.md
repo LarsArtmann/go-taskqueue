@@ -78,7 +78,7 @@ not here.
 - [x] module-eval hardening: extend the flake module-eval check to assert the tq-agent-pool unit's Environment carries a non-empty PATH (02:00 f11; flake.nix, deploy/nixos/tq-agent-pool.nix) — DONE 2026-09-11: `poolHasPath` helper asserts some Environment entry matches `PATH=.+` on the deployed-shape pool unit in checks.module-eval; nix build of the check green
 - [x] `checkProjectsDir` should not require the projects dir when every `--repos` entry is absolute (02:00 f16; cmd/tq/agentpool.go + test)
 - [x] harvest skip-log change detection: log a skip class only when its example changes (or on first tick) instead of every 5m tick flooding journald (02:00 f17; cmd/tq/main.go)
-- [ ] `tq doctor`: warn when crush/git/go are missing from PATH — pool-context visibility of the exact failure class that killed the deployed pool for 20h (02:00 f18; cmd/tq/doctor.go)
+- [x] `tq doctor`: warn when crush/git/go are missing from PATH — pool-context visibility of the exact failure class that killed the deployed pool for 20h (02:00 f18; cmd/tq/doctor.go)
 - [ ] dead-pool detection: alert via the PapDashboard bridge when a pool's scan-failed skip count covers every repo for N consecutive ticks (02:00 f6; cmd/tq agent-pool tick loop + internal/bridge)
 - [ ] dogfood smoke: scripts/smoke/dogfood-once.sh replicating the 2026-09-10 --once proof (env-gated TQ_DOGFOOD=1 because it spends API money; stub-agent variant runs ungated) (02:00 f10)
 - [ ] archive dogfood evidence durably: copy the 2026-09-10 proof journal (/tmp/tq-dogfood.db) + review log into docs/status/ assets or ~/.local/state/tq/ before /tmp reboots (02:00 f9)

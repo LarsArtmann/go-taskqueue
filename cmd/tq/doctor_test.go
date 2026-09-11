@@ -44,7 +44,9 @@ func TestDoctorHealthyEmptyDB(t *testing.T) {
 
 	// Point the agent-binary check at the test binary itself: worst==ok
 	// must not depend on `crush` being installed on the host (the nix
-	// sandbox has no crush — its checkPhase caught this assumption).
+	// sandbox has no crush — its checkPhase caught this assumption). The
+	// tool:git/tool:go checks are likewise host-PATH-dependent, so they are
+	// excluded from the worst computation.
 	self, err := filepath.Abs(os.Args[0])
 	if err != nil {
 		t.Fatalf("abs test binary: %v", err)
@@ -55,7 +57,7 @@ func TestDoctorHealthyEmptyDB(t *testing.T) {
 		t.Fatalf("runDoctor: %v", err)
 	}
 
-	if worst := doctorWorst(results); worst != checkOK {
+	if worst := doctorWorst(doctorIgnoreTools(results)); worst != checkOK {
 		t.Fatalf("worst = %s, want ok; results: %+v", worst, results)
 	}
 
@@ -198,6 +200,44 @@ func TestDoctorRepoAutonomy(t *testing.T) {
 
 	if r := resultByName(results, "autonomy:bare"); r.Status != checkWarn {
 		t.Errorf("autonomy:bare = %s (%s), want warn", r.Status, r.Detail)
+	}
+}
+
+// doctorIgnoreTools drops the tool:<name> checks: they reflect the host
+// PATH, which a hermetic test cannot assume.
+func doctorIgnoreTools(results []checkResult) []checkResult {
+	var kept []checkResult
+
+	for _, r := range results {
+		if strings.HasPrefix(r.Name, "tool:") {
+			continue
+		}
+
+		kept = append(kept, r)
+	}
+
+	return kept
+}
+
+func TestDoctorToolPathChecks(t *testing.T) {
+	empty := t.TempDir()
+	t.Setenv("PATH", empty)
+
+	opts := doctorOptions{DBPath: doctorTestStore(t)}
+	self, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		t.Fatalf("abs test binary: %v", err)
+	}
+
+	opts.AgentBin = self
+
+	results := doctorEnvironment(opts)
+
+	for _, name := range []string{"tool:git", "tool:go"} {
+		r := resultByName(results, name)
+		if r.Status != checkWarn {
+			t.Errorf("%s = %s (%s), want warn (empty PATH)", name, r.Status, r.Detail)
+		}
 	}
 }
 

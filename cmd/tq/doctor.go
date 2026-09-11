@@ -334,9 +334,12 @@ func doctorBudget(ctx context.Context, store queue.Store, dailyBudget int) []che
 	}}
 }
 
-// doctorEnvironment checks the pool's dependencies: the agent binary and,
-// when --repos is given, each repo's harvest + autonomy files (bare repo
-// names resolve against --projects-dir, like harvest/audit).
+// doctorEnvironment checks the pool's dependencies: the agent binary, the
+// build tools the task paths rely on (git, go), and, when --repos is
+// given, each repo's harvest + autonomy files (bare repo names resolve
+// against --projects-dir, like harvest/audit). The deployed pool once
+// shipped with a systemd PATH missing git/go/crush — these checks make
+// that failure class visible from the pool context (02:00 f18).
 func doctorEnvironment(opts doctorOptions) []checkResult {
 	var results []checkResult
 
@@ -352,6 +355,22 @@ func doctorEnvironment(opts doctorOptions) []checkResult {
 		})
 	} else {
 		results = append(results, checkResult{Name: "agent-binary", Status: checkOK, Detail: bin + " found"})
+	}
+
+	for _, tool := range []struct {
+		name, why string
+	}{
+		{"git", "harvest scans and task verify commands that use it cannot run"},
+		{"go", "task verify commands that build/test cannot run"},
+	} {
+		if _, err := exec.LookPath(tool.name); err != nil {
+			results = append(results, checkResult{
+				Name: "tool:" + tool.name, Status: checkWarn,
+				Detail: fmt.Sprintf("%q not found on PATH (%s; check the service PATH, e.g. agentPath)", tool.name, tool.why),
+			})
+		} else {
+			results = append(results, checkResult{Name: "tool:" + tool.name, Status: checkOK, Detail: tool.name + " found"})
+		}
 	}
 
 	for _, repo := range expandRepoSpecs(opts.ProjectsDir, splitRepos(opts.Repos)) {
