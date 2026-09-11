@@ -178,6 +178,31 @@ step "GitHub Release (pre-release: v0.x policy)"
 command -v gh >/dev/null || die "gh CLI missing — create the release manually from /tmp/tq-release-notes.md"
 gh release create "$VERSION" --title "$VERSION" --notes-file /tmp/tq-release-notes.md --prerelease
 
+step "CI green on $VERSION (blocking confirm — was the manual final step)"
+# The tag is immutable and already published, so a red run cannot un-publish
+# it — but the next release must not be cut until this one is triaged.
+command -v gh >/dev/null || die "gh CLI missing — verify the CI run on refs/tags/$VERSION manually (gh run list --limit 3)"
+tag_sha="$(git rev-list -n1 "$VERSION")"
+ci_green=false
+for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
+	run_state="$(gh run list --commit "$tag_sha" --workflow CI --limit 1 --json status,conclusion --jq '.[0] | "\(.status) \(.conclusion // "-")"' 2>/dev/null || true)"
+	status="${run_state%% *}"
+	case "$status" in
+	completed)
+		conclusion="${run_state#* }"
+		if [ "$conclusion" = "success" ]; then
+			ci_green=true
+			break
+		fi
+		die "CI run on $VERSION ($tag_sha) completed '$conclusion' — triage before the next release (the tag itself is immutable)"
+		;;
+	*)
+		echo "CI on $VERSION: ${run_state:-no run visible yet} (attempt $attempt/30)"
+		sleep 60
+		;;
+	esac
+done
+[ "$ci_green" = "true" ] || die "CI on $VERSION did not complete within 30 minutes — check: gh run list --commit $tag_sha"
+
 echo
-echo "RELEASE $VERSION PUBLISHED — remaining manual step: verify the CI run on"
-echo "refs/tags/$VERSION is green (gh run list --limit 3)."
+echo "RELEASE $VERSION PUBLISHED — CI green on refs/tags/$VERSION."

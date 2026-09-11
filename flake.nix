@@ -79,6 +79,8 @@
           pkgs.git
           pkgs.gotools
           pkgs.gofumpt
+          # GitHub Actions workflow linter — wired as a ci-local step (M56).
+          pkgs.actionlint
           # dprint is available but deliberately NOT gated in treefmt: docs
           # formatting stays manual. Autoformatting *.md would rewrap the
           # machine-consumed TODO_LIST.md (one checkbox item per line — the
