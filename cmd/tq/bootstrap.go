@@ -21,7 +21,14 @@ import (
 const (
 	tqManagedStart = "# >>> tq bootstrap (managed) >>>"
 	tqManagedEnd   = "# <<< tq bootstrap (managed) <<<"
-	agentTools     = "view ls grep glob edit write bash"
+	// agentTools is the autonomy grant the managed block pins: the tools a
+	// headless agent may use WITHOUT a human to approve prompts. In
+	// non-interactive mode an unlisted tool is denied, so this list IS the
+	// agent's toolset — keep it at "everything a senior engineer needs to
+	// work a repo unattended". fetch/download are the sanctioned web/artifact
+	// paths (bash-side curl is discouraged by crush's own prompt), todos keeps
+	// long tasks organized, multiedit avoids N sequential edit round-trips.
+	agentTools = "view ls grep glob edit multiedit write bash fetch download todos"
 )
 
 // systemdUnitTemplate is deploy/systemd/tq-agent-pool.service embedded so
@@ -564,6 +571,11 @@ func (o bootstrapOptions) ensureCrushConfig(repo string) (bool, error) {
 	block := []string{
 		tqManagedStart,
 		"permissions allow " + agentTools,
+		// Headless pool runs have no interest in telemetry: without this
+		// every `crush run` spawns a PostHog flush that only adds shutdown
+		// latency (observed "Failed to flush PostHog events" + "shutdown
+		// timeout exceeded" in dead task tails) and network noise.
+		"option metrics false",
 	}
 	if o.model != "" {
 		block = append(block, "model large "+o.model+" --reasoning-effort "+o.reasoning)

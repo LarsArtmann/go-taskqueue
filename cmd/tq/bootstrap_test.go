@@ -52,7 +52,8 @@ func TestEnsureCrushConfigCreatesIdempotentBlocks(t *testing.T) {
 
 	got := readRepo(t, repo, ".crushrc")
 	for _, want := range []string{
-		"permissions allow view ls grep glob edit write bash",
+		"permissions allow " + agentTools,
+		"option metrics false",
 		"model large zai/glm-5.3-flash --reasoning-effort xhigh",
 		tqManagedStart, tqManagedEnd,
 	} {
@@ -87,7 +88,7 @@ func TestEnsureCrushConfigPreservesUserContentAndReplacesBlock(t *testing.T) {
 		t.Fatalf("old managed block not replaced:\n%s", got)
 	}
 
-	if !strings.Contains(got, "permissions allow view ls grep glob edit write bash") {
+	if !strings.Contains(got, "permissions allow "+agentTools) {
 		t.Fatalf("new block missing:\n%s", got)
 	}
 }
