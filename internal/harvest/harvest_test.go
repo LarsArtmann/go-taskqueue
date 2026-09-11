@@ -210,6 +210,39 @@ func TestRunEnqueuesOneItemPerRepoPerTick(t *testing.T) {
 	}
 }
 
+// TestRunSameSessionPriority pins the --same-session-priority plumbing:
+// items whose text references /tmp paths are enqueued at the hot priority
+// and flagged Hot, ordinary items keep the base priority.
+func TestRunSameSessionPriority(t *testing.T) {
+	q := openQueue(t)
+	dir := t.TempDir()
+	writeRepo(t, dir, "delta", "## Work\n\n- [ ] archive the evidence before /tmp reboots\n- [ ] plain item\n")
+
+	h := New(q, Config{ProjectsDir: dir, SameSessionPriority: 7})
+
+	res, err := h.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if len(res.Enqueued) != 1 {
+		t.Fatalf("enqueued = %+v, want 1", res.Enqueued)
+	}
+
+	if !res.Enqueued[0].Hot {
+		t.Fatalf("enqueued = %+v, want the /tmp item flagged Hot", res.Enqueued)
+	}
+
+	got, err := q.Get(context.Background(), res.Enqueued[0].TaskID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	if got.Priority != 7 {
+		t.Fatalf("/tmp item priority = %d, want 7", got.Priority)
+	}
+}
+
 // TestRunModelLandsInAgentPayload pins the --model plumbing: Config.Model
 // must reach the AgentPayload inside the stored payload, so a pool operator
 // can pin a cheaper/better model without editing repos.

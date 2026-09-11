@@ -445,6 +445,11 @@ func cmdHarvest(args []string) error {
 		"project-discovery-daemon endpoint for repo discovery INSTEAD of the local scan: unix socket (/run/project-discovery/daemon.sock, unix:// ok) or host:port; unreachable daemon = warning + local scan fallback ($TQ_DISCOVERY_ADDR)",
 	)
 	dryRun := fs.Bool("dry-run", false, "report what would be enqueued, change nothing")
+	sameSessionPriority := fs.Int(
+		"same-session-priority",
+		0,
+		"enqueue harvested items whose text references /tmp paths at this priority (hot: work them this session, the files will not survive); 0 disables",
+	)
 	asJSON := fs.Bool("json", false, "JSON output of the harvest result")
 	pruneStale := fs.Bool(
 		"prune-stale",
@@ -466,16 +471,17 @@ func cmdHarvest(args []string) error {
 	}
 
 	cfg := harvest.Config{
-		ProjectsDir:   *projectsDir,
-		DiscoveryAddr: *discoveryAddr,
-		Log:           slog.Default(),
-		TodoFile:      *todoFile,
-		Type:          *taskType,
-		MaxPerTick:    *maxPerTick,
-		Priority:      *priority,
-		MaxAttempts:   *maxAttempts,
-		Model:         *model,
-		DryRun:        *dryRun,
+		ProjectsDir:         *projectsDir,
+		DiscoveryAddr:       *discoveryAddr,
+		Log:                 slog.Default(),
+		TodoFile:            *todoFile,
+		Type:                *taskType,
+		MaxPerTick:          *maxPerTick,
+		Priority:            *priority,
+		MaxAttempts:         *maxAttempts,
+		Model:               *model,
+		SameSessionPriority: *sameSessionPriority,
+		DryRun:              *dryRun,
 	}
 
 	if *allowDirty {
@@ -569,12 +575,21 @@ func printHarvestLines(res harvest.Result, dryRun bool) {
 			id = "(dry-run)"
 		}
 
-		fmt.Printf("ENQUEUED  %-24s %s  %s\n", enqueued.Item.RepoName, enqueued.Item.Text, id)
+		fmt.Printf("ENQUEUED  %-24s %s  %s%s\n", enqueued.Item.RepoName, enqueued.Item.Text, id, hotMark(enqueued.Hot))
 	}
 
 	for _, sk := range res.Skipped {
 		fmt.Printf("SKIP      %-24s %s  — %s\n", sk.Item.RepoName, sk.Item.Text, sk.Reason)
 	}
+}
+
+// hotMark renders the /tmp hot marker for harvest output.
+func hotMark(hot bool) string {
+	if hot {
+		return "  [hot:/tmp]"
+	}
+
+	return ""
 }
 
 // printPruneResult renders a --prune-stale pass: cancelled zombies first

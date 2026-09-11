@@ -92,6 +92,10 @@ type Config struct {
 	MaxAttempts int
 	// Priority for harvested tasks.
 	Priority int
+	// SameSessionPriority promotes items whose text references /tmp paths
+	// to this priority at enqueue time ("hot": work the same session, the
+	// files will not survive). Zero disables the promotion.
+	SameSessionPriority int
 	// PromptTemplate overrides DefaultPromptTemplate.
 	PromptTemplate string
 	// Model overrides the crush model ("provider/model") in every harvested
@@ -156,6 +160,7 @@ type Enqueued struct {
 	Item   Item
 	TaskID task.ID
 	Fresh  bool // true when this run actually created the task
+	Hot    bool // text referenced /tmp: enqueued at SameSessionPriority
 }
 
 // Skipped records an item deliberately not enqueued, and why. Reasons are
@@ -319,7 +324,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 		case len(res.Enqueued) >= h.cfg.MaxPerTick:
 			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "tick cap reached (--max-per-tick)"})
 		case h.cfg.DryRun:
-			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true})
+			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: sameSession(item.Text)})
 			known[item.Key] = task.Pending
 			enqueuedThisRepo = true
 		default:
@@ -334,7 +339,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			enqueuedThisRepo = true
 
 			if t.Status == task.Pending && t.Attempts == 0 {
-				res.Enqueued = append(res.Enqueued, Enqueued{Item: item, TaskID: t.ID, Fresh: true})
+				res.Enqueued = append(res.Enqueued, Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: sameSession(item.Text)})
 			} else {
 				// Store dedup returned a pre-existing row (another pool won
 				// the race). Count item as known, not fresh.
@@ -364,17 +369,28 @@ func blockedReason(text string) (reason string, ok bool) {
 	return reason, true
 }
 
+// sameSession reports whether the item text references a /tmp path, the
+// signal for same-session priority promotion.
+func sameSession(text string) bool {
+	return strings.Contains(text, "/tmp")
+}
+
 func (h *Harvester) enqueue(ctx context.Context, item Item) (task.Task, error) {
 	payload, err := h.buildPayload(item, h.cfg.PromptTemplate, item.Key)
 	if err != nil {
 		return task.Task{}, err
 	}
 
+	priority := h.cfg.Priority
+	if h.cfg.SameSessionPriority > 0 && sameSession(item.Text) {
+		priority = h.cfg.SameSessionPriority
+	}
+
 	return h.q.Enqueue(ctx, task.New{
 		Project:     item.RepoName,
 		Type:        h.cfg.Type,
 		Payload:     payload,
-		Priority:    h.cfg.Priority,
+		Priority:    priority,
 		MaxAttempts: h.cfg.MaxAttempts,
 		DedupKey:    item.Key,
 	})
