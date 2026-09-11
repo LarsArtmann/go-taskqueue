@@ -10,7 +10,7 @@
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | The five window tasks      | All five delivered what they claimed, verified in code/diffs                                                                         |
 | Local gates at report time | Green (build, vet, full race suite, gofmt)                                                                                           |
-| **Master CI**              | **RED since ~01:15 CEST — before the window started; still red at HEAD**                                                             |
+| **Master CI**              | **RED since ~01:15 CEST — before the window started; still red at HEAD** — RESOLVED same day: the red-master trio (windows test, release-gates identity, x/text) repaired 2026-09-10 (TODO_LIST L103-105 + CHANGELOG); the CI-red root-cause line was later re-diagnosed as the setup-go toolchain float (16-00 report §a) |
 | Advisory scan jobs         | Both red on their first runner run: gosec by design (FP triage), govulncheck with a REAL reachable vuln in `internal/queue/postgres` |
 | Verification honesty       | One false gate claim in the window (dedup "lint clean"), self-corrected by `c5c654c` 44 min later                                    |
 
@@ -99,25 +99,32 @@ The window spent itself entirely on its own five items; nothing from the surroun
 
 ## f) NEXT THINGS (new items only — appended to TODO_LIST.md; the existing unchecked backlog in section (c) is NOT duplicated here)
 
-1. Fix test-windows: `TestHarvestConfigFromOptionsExpandsBareRepoNames` (2 subtests) fails on windows-latest — audit the bare-repo-name expansion for `filepath.Separator`/abs-path assumptions (landed `a0b720e`).
-2. Fix release-gates smoke for identity-less environments: give `scripts/smoke/release-gates.sh:42`'s `git tag -a` the same `-c user.email/-c user.name` the init commit carries (or export GIT_COMMITTER_* at script top).
-3. Bump `golang.org/x/text` to ≥v0.39.0 in `internal/queue/postgres` (GO-2026-5970, reachable via `postgres.Open` → pgxpool) and sweep every module for the same x/text floor.
+> Resolution (docs-health 2026-09-11, pre-archive): done rows struck below
+> (verified against code/CHANGELOG at HEAD); every unmarked row is still
+> open and lives in TODO_LIST.md §"Window f20–f24 follow-ups" (f4→L106,
+> f5→L107, f6→L108, f8→L110, f10→L112/L124 BLOCKED, f11→L113, f12→L114,
+> f14→L116, f15→L117, f16→L118, f17→L119); §g questions → TODO_LIST L123/L124/L125
+> (BLOCKED: owner). Nothing unowned remains.
+
+1. ~~Fix test-windows: `TestHarvestConfigFromOptionsExpandsBareRepoNames` (2 subtests) fails on windows-latest — audit the bare-repo-name expansion for `filepath.Separator`/abs-path assumptions (landed `a0b720e`).~~ done 2026-09-10 (TODO_LIST L103; separator-aware logic confirmed)
+2. ~~Fix release-gates smoke for identity-less environments: give `scripts/smoke/release-gates.sh:42`'s `git tag -a` the same `-c user.email/-c user.name` the init commit carries (or export GIT_COMMITTER_* at script top).~~ done 2026-09-10 (TODO_LIST L104; fixture commit+tag carry `-c` identity)
+3. ~~Bump `golang.org/x/text` to ≥v0.39.0 in `internal/queue/postgres` (GO-2026-5970, reachable via `postgres.Open` → pgxpool) and sweep every module for the same x/text floor.~~ done 2026-09-10 (TODO_LIST L105; postgres go.mod at v0.41.0)
 4. Add a gosec config encoding the 2026-09-10 FP triage (exclude-rule list for G204/G702/G703/G304/G306/G301/G302/G124/G710/G118/G104/G404/G202) so the advisory job goes green and new classes stand out.
 5. Flip govulncheck's `continue-on-error` off once the x/text bump makes the job green.
 6. ci-local.sh: run the release-gates smoke with `GIT_CONFIG_GLOBAL=/dev/null` (or empty HOME) so identity-dependent git ops fail locally the way they do on runners.
-7. Add a master-CI state gate: `scripts/check-ci.sh` (fail when the latest master run is a failure via `gh`), wired into ci-local.sh — five DONE verdicts landed on a red master without anyone looking.
+7. ~~Add a master-CI state gate: `scripts/check-ci.sh` (fail when the latest master run is a failure via `gh`), wired into ci-local.sh — five DONE verdicts landed on a red master without anyone looking.~~ done 2026-09-11 (verified: scripts/check-ci.sh wired at ci-local.sh:20-21)
 8. Add a changed-lines line-length gate (lll/golines, 120 cols) to ci-local.sh so signature-wrap regressions (the `c5c654c` class) are caught before commit.
 9. ~~Backfill CHANGELOG: gosec advisory job + the two examples G114 ReadHeaderTimeout fixes (`17a5940`) never got an entry.~~ done (docs-health pass 2026-09-10 06:25 — gosec job + G114 fixes backfilled under CHANGELOG Added)
 10. Export the status enum list from `internal/task` (`task.AllStatuses`) and retire the twin lists (webui `allStatuses`, httpapi `apiStatuses`) — rides the next sub-module re-tag.
 11. Publish gosec/govulncheck findings as job-summary artifacts so advisory-red runs are readable without log-diving.
 12. Write the required-checks proposal (test-windows + release-gates smoke, then the scan jobs) into docs/planning/ for the next release window.
-13. Triage the webui zero-importer exports the dedup pass left behind (`BudgetView`, `BoardColumn`, `DashboardData`; part of the 48-symbol dead-export advisory).
+13. ~~Triage the webui zero-importer exports the dedup pass left behind (`BudgetView`, `BoardColumn`, `DashboardData`; part of the 48-symbol dead-export advisory).~~ done 15-10 (15-10 report M82: all LIVE — used in-package by templ fragments; zero dead exports)
 14. Evaluate templ-components `KanbanBoard` (added v1.15+) against the custom board columns/cards in fragments.templ.
 15. Evaluate templ-components `PageProps.SEO` + `icons.Render` for layout.Base and the filter/empty-state icons.
 16. Harden the two example servers beyond `ReadHeaderTimeout` (IdleTimeout/ReadTimeout), keeping the SSE `WriteTimeout=0` exemption documented.
 17. docs/planning/: verification-claims guidance — DONE notes must state gate scope (the govulncheck "local scans clean" claim was root+sqlite only while postgres carried the real finding).
-18. Fix the err113 finding at `cmd/tq/doctor.go:472` (dynamic `errors.New("failing checks found")`) as a static sentinel — it hard-failed lint-annotations once, then silently aged into the `--new-from-rev` baseline.
-19. SECURITY.md: add the two advisory scan jobs (govulncheck, gosec) to the defense-layers matrix.
+18. ~~Fix the err113 finding at `cmd/tq/doctor.go:472` (dynamic `errors.New("failing checks found")`) as a static sentinel — it hard-failed lint-annotations once, then silently aged into the `--new-from-rev` baseline.~~ done 15-10 (static `var errDoctorFailed`, cmd/tq/doctor.go:41; verified at HEAD 2026-09-11)
+19. ~~SECURITY.md: add the two advisory scan jobs (govulncheck, gosec) to the defense-layers matrix.~~ done (verified at HEAD 2026-09-11: defense-layers carries both)
 20. ~~Confirm a CI run exists for the current HEAD (`c5c654c` had none at 04:09 despite being pushed at 04:02) and record the outcome.~~ done (runs exist for HEAD 7c5f5e0 (34436225021): RED — nix/test-windows/test/govulncheck/gosec; recorded in TODO_LIST + 06-25 report)
 
 ## g) QUESTIONS FOR THE OWNER

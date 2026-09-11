@@ -91,11 +91,21 @@ extracted empty.
 
 ## c) Remaining (the honest tail)
 
+> Resolution (docs-health 2026-09-11): both items remain owner-BLOCKED and
+> live in TODO_LIST.md (Fleet/deploy + Owner-blocked decisions); the CI
+> watch below closed green with the release. Archived with these pointers
+> — nothing unowned remains.
+
 - **SystemNix cutover** — the one BLOCKED row left: sudo on evo-x2; the
-  input flip to `github:…?ref=master` is ready (push done).
-- **CQA live verification** — needs owner creds.
-- CI on the v0.2.0 tag/master push: watched (verdict in the final report
-  line below when green).
+  input flip to `github:…?ref=master` is ready (push done). — OPEN →
+  TODO_LIST.md "Fleet / deploy" (BLOCKED: owner-run; pool found dead
+  2026-09-10, fixes landed, flip + redeploy still pending)
+- **CQA live verification** — needs owner creds. — OPEN → TODO_LIST.md
+  "Owner-blocked decisions" (BLOCKED: live CQA instance URL + owner ID +
+  token)
+- ~~CI on the v0.2.0 tag/master push: watched (verdict in the final report
+  line below when green)~~ done — v0.2.0 published 2026-09-09 (tag, module
+  proxy, GitHub Release verified; TODO_LIST "Cut v0.2.0" `[x]`)
 
 ## d) Verification ledger
 

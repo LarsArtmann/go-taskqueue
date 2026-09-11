@@ -19,6 +19,16 @@ false-positived the real tree at the next release; `nix flake check
 kernel, not the code. One honesty gap closed (HTTPExecutor: documented
 FULLY_FUNCTIONAL, had zero tests — now tested).
 
+> **Resolution (docs-health 2026-09-11, pre-archive):** every item here is
+> closed. §c's 15 routed TODO items are ALL `[x]` with DONE verdicts in
+> TODO_LIST.md ("Post-split follow-ups" + "Dogfood round" sections, done
+> 2026-09-10/11); §b1's tag re-cut resolved via its inline CORRECTION; the
+> push question (§g1) resolved 2026-09-10 (owner pushed master + tags);
+> release retrospective stays BLOCKED on the next release (TODO_LIST
+> "Owner-blocked decisions"). Residual §e2/e3 (ETXTBSY upstream report,
+> suite-parity script) remain minor open ideas carried by this line — no
+> unowned work.
+
 ## a) FULLY DONE
 
 1. **P2-9 — ETXTBSY flake**: root-caused to a kernel 7.2.3 anomaly, NOT test
@@ -147,9 +157,14 @@ FULLY_FUNCTIONAL, had zero tests — now tested).
   release checklist doc, version-surface doc, lint slices, ExitCause rename,
   per-module golangci in ci.yml, nix-binary multi-repo smoke, CI timing,
   dogfood drain) — they are live pool food now; the dogfood agent-pool may
-  pick them up at any tick.
+  pick them up at any tick. — ALL DONE 2026-09-10/11 (TODO_LIST "Post-split
+  follow-ups" + "Dogfood round", every row `[x]` with a DONE verdict)
 - The 6 owner-blocked decisions and 2 ROADMAP ideas (see TODO_LIST/ROADMAP).
-- Item 50 (release retrospective) — blocked on the release itself.
+  — several since resolved (push 2026-09-10, tag verification 15-20); the
+  rest still live in TODO_LIST "Owner-blocked decisions"
+- ~~Item 50 (release retrospective) — blocked on the release itself.~~
+  STILL OPEN → TODO_LIST.md "Owner-blocked decisions" (BLOCKED: needs the
+  next real release)
 
 ## d) TOTALLY FUCKED UP (all caught + fixed inside the session; nothing broken now)
 
