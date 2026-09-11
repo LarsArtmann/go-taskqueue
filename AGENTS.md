@@ -255,7 +255,14 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   MISSING = absent, UNTRACKED README = whole archive uncommitted;
   backticked placeholders/globs/paths/dotfiles are exempt) — the global
   `*.log` ignore otherwise silently drops logs from daemon commits (the f9
-  near-miss)
+  near-miss). Every archive must also ship a git-tracked SHA256SUMS
+  manifest; the gate re-verifies hashes and completeness against the dir's
+  file set (NO MANIFEST / UNTRACKED / STALE / INCOMPLETE — UNTRACKED
+  short-circuits the other two, so commit the manifest when adding files).
+  Regenerate from inside the archive after ANY file change:
+  `ls | grep -v '^SHA256SUMS$' | sort | xargs sha256sum > SHA256SUMS`
+  (manifest filenames have no spaces — the gate's awk coverage check
+  assumes it)
 
 ### templ-components adoption
 
@@ -281,6 +288,10 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   immediately before every write and checkpoint with `go build ./...`
   mid-session. Never generate/patch Go source via shell heredocs or python
   string surgery — heredoc escaping broke compilation repeatedly.
+  Negative-test fixtures created INSIDE gated trees are daemon-food: the
+  2026-09-12 manifest task's scratch archive was auto-committed to master
+  within minutes (needed a follow-up deletion commit). Build fixtures under
+  /tmp or create+assert+trash in ONE shell chain.
 - ⚠️ **vendorHash drift**: after go.mod/go.sum changes run the fakeHash
   dance (`vendorHash = lib.fakeHash` → `nix build` → copy `got:`). NOTE
   (2026-09-10): a runner-ONLY variant exists — CI's nix job failed with a
