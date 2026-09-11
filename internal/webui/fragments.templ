@@ -493,7 +493,10 @@ templ filterChip(kind, value, clearHref string) {
 
 // TaskDetail renders the per-task detail page body. The two live regions sit
 // in #frag-detail / #frag-timeline containers so the /task/{id}/events
-// stream can swap them over SSE exactly like the dashboard fragments.
+// stream can swap them over SSE exactly like the dashboard fragments. The
+// payload section sits BETWEEN them, deliberately static: a payload is
+// immutable after enqueue, so an open prompt or raw pane survives every
+// live swap, and the SSE stream only re-renders what can actually change.
 templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
 	<div class="mx-auto w-full max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
 		<a
@@ -503,6 +506,7 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
 		<div id="frag-detail">
 			@taskDetailCard(data, t)
 		</div>
+		@payloadSection(t, payloadViewFor(t))
 		<div class="tq-heading">
 			@display.Eyebrow(display.EyebrowProps{Text: "fact timeline"})
 		</div>
@@ -599,7 +603,9 @@ templ statusReportCard(res executor.StatusResult) {
 }
 
 // taskDetailTimeline is the task's live fact trail, newest last (inner
-// content of #frag-timeline).
+// content of #frag-timeline). The retry strip above it aggregates repeated
+// refusals/failures into one glance; the Scrollback below stays the full,
+// faithful trail.
 templ taskDetailTimeline(data DashboardData, facts []journalFactView) {
 	if len(facts) == 0 {
 		@display.EmptyState(display.EmptyStateProps{
@@ -608,6 +614,7 @@ templ taskDetailTimeline(data DashboardData, facts []journalFactView) {
 			Icon:        icons.CircleStack,
 		})
 	} else {
+		@retryStrip(retryTrail(facts))
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 			@display.Scrollback(display.ScrollbackProps{
 				Stagger:   false,
@@ -618,14 +625,88 @@ templ taskDetailTimeline(data DashboardData, facts []journalFactView) {
 	}
 }
 
+// retryStrip is the retry trail's summary: distinct requeue/failure reasons
+// with counts, loudest first. One <span> per reason; the timeline underneath
+// carries every individual occurrence.
+templ retryStrip(trail []retryReason) {
+	if len(trail) > 0 {
+		<div class="tq-retries" aria-label="retry summary">
+			<span class="tq-retries-label">retry trail</span>
+			for _, r := range trail {
+				<span class="tq-retries-row">
+					<span class="tq-retries-count">×{ formatInt(r.Count) }</span>
+					<span class="tq-retries-reason" title={ r.Reason }>{ r.Reason }</span>
+				</span>
+			}
+		</div>
+	}
+}
+
+// payloadSection is the task's content, type-aware (payloadView): the work
+// item (or command) leads, the executor contract reads as a spec grid, and
+// the prompt plus the raw payload fold away — readable by default, exact on
+// demand, never lossy.
+templ payloadSection(t task.Task, pv payloadView) {
+	<div class="tq-heading">
+		@display.Eyebrow(display.EyebrowProps{Text: "payload · " + string(pv.Kind)})
+	</div>
+	<div class="tq-payload">
+		if pv.Lede != "" {
+			if pv.LedeMono {
+				<pre class="tq-payload-cmd">{ pv.Lede }</pre>
+			} else {
+				<p class="tq-payload-item">{ pv.Lede }</p>
+			}
+		}
+		if pv.Note != "" {
+			<p class="tq-payload-note">{ pv.Note }</p>
+		}
+		if len(pv.Window) > 0 {
+			<div class="tq-payload-window">
+				<span class="tq-payload-label">window</span>
+				<span class="tq-payload-window-links">
+					for _, id := range pv.Window {
+						<a
+							class="font-mono text-xs text-blue-600 hover:underline dark:text-blue-400"
+							href={ templ.URL("/task/" + id) }
+							title={ id }
+						>{ shortIDTail(id) }</a>
+					}
+				</span>
+			</div>
+		}
+		if len(pv.Fields) > 0 {
+			<dl class="tq-payload-spec">
+				for _, f := range pv.Fields {
+					<dt>{ f.Label }</dt>
+					<dd>
+						if f.Href != "" {
+							<a class="break-all hover:underline" href={ templ.URL(f.Href) }>{ f.Value }</a>
+						} else {
+							<span class="break-all">{ f.Value }</span>
+						}
+					</dd>
+				}
+			</dl>
+		}
+		if pv.Prompt != "" {
+			<details class="tq-fold">
+				<summary>prompt</summary>
+				<pre class="tq-payload-pre">{ pv.Prompt }</pre>
+			</details>
+		}
+		if pv.hasRaw() {
+			<details class="tq-fold">
+				<summary>raw payload</summary>
+				<pre class="tq-payload-pre">{ pv.Raw }</pre>
+			</details>
+		}
+	</div>
+}
+
 // statusBadge is a shared dot badge for a status string.
 templ statusBadge(s string, typ display.BadgeType) {
 	@display.Badge(display.BadgeProps{Text: s, Type: typ, Dot: true})
-}
-
-// payloadCode renders a task payload as a breakable code block.
-templ payloadCode(p string) {
-	<code class="block break-all font-mono text-xs text-gray-700 dark:text-gray-300">{ p }</code>
 }
 
 // MetricsRow renders the overview's two pure-SVG charts (M19): the fact

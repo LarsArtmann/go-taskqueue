@@ -175,7 +175,9 @@ const (
 	labelTotal     = "total"
 )
 
-// detailItems builds the task detail page's definition list.
+// Payload intentionally stays OUT of the record's definition list: it is
+// the task's content, not its metadata, and it renders as its own type-aware
+// section (payloadSection in fragments.templ) below this card.
 func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
 	items := []display.DefinitionItem{
 		{Term: labelProject, Detail: t.Project},
@@ -198,8 +200,6 @@ func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
 		})
 	}
 
-	items = append(items, display.DefinitionItem{Term: "payload", DetailComponent: payloadCode(string(t.Payload))})
-
 	return items
 }
 
@@ -215,12 +215,15 @@ func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLin
 			text += " " + fact.Owner
 		}
 
-		if fact.Error != "" {
-			text += " " + truncate(fact.Error, errorPreviewLen)
+		// Error and Detail.reason often carry the SAME text (a requeue
+		// refusal is stored in both fields); repeating it reads like the
+		// journal stuttered. factLineText merges them into one line.
+		if line := factLineText(fact); line != "" {
+			text += " " + truncate(line, errorPreviewLen)
 		}
 
-		if reason := factReason(fact); reason != "" {
-			text += " — " + truncate(reason, errorPreviewLen)
+		if fact.Attempt > 0 {
+			text += fmt.Sprintf(" (attempt %d)", fact.Attempt)
 		}
 
 		lines = append(lines, display.ScrollbackLine{
@@ -232,6 +235,26 @@ func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLin
 	}
 
 	return lines
+}
+
+// factLineText merges a fact's Error and its Detail reason into ONE honest
+// line: identical texts collapse to the fuller one, genuinely different
+// texts keep the classic "error — reason" pair.
+func factLineText(fact journalFactView) string {
+	reason := factReason(fact)
+
+	switch {
+	case reason == "":
+		return fact.Error
+	case fact.Error == "":
+		return reason
+	case strings.Contains(reason, fact.Error):
+		return reason
+	case strings.Contains(fact.Error, reason):
+		return fact.Error
+	default:
+		return fact.Error + " — " + reason
+	}
 }
 
 // factReason extracts the human cancellation reason from a fact's detail
