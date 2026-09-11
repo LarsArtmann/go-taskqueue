@@ -118,6 +118,12 @@ type AgentExecutor struct {
 	// f4b/g3). Repo-less evidence (no payload repo) falls back to the
 	// shared gate above.
 	rateLimitGates sync.Map
+
+	// closeoutPending holds finished WORK turns whose close-out is owed
+	// (rate-limited close-out → requeue without attempt burn; the
+	// re-claim resumes at closeout instead of re-running the paid work
+	// turn). task.ID → closeoutPending; see runAgent/runCloseoutTurn.
+	closeoutPending sync.Map
 }
 
 // NewAgentExecutor builds an AgentExecutor for a projects directory.
@@ -367,6 +373,27 @@ func assertCleanTree(ctx context.Context, repo string) error {
 
 // runAgent spawns the headless agent in the repo and waits for it.
 func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload, id task.ID) (string, error) {
+	// Closeout resume (13:29 report f15): a prior attempt finished the WORK
+	// turn but was rate-limited during the close-out; re-running the work
+	// turn on re-claim would double real agent cost. Resume at closeout
+	// instead. In-process only (an executor restart forgets it — the
+	// fallback is the old full re-run, never a lost close-out).
+	if v, ok := e.closeoutPending.Load(id.String()); ok {
+		pending := v.(closeoutPending)
+		if pending.repoDir == repoDir {
+			e.closeoutPending.Delete(id.String())
+
+			buf := &bytes.Buffer{}
+			if err := e.runCloseoutTurn(ctx, repoDir, pending.session, id, buf); err != nil {
+				return buf.String(), err
+			}
+
+			return buf.String(), nil
+		}
+
+		e.closeoutPending.Delete(id.String())
+	}
+
 	// Provider gate: a sibling task just observed the provider refusing
 	// (429/usage limit). Refuse BEFORE spawning crush — a probe into a
 	// spent quota costs a process spawn, agent-side retry noise, and on
@@ -460,41 +487,8 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// degrades to a logged skip (the work itself already succeeded).
 	if e.CloseoutPrompt != "" {
 		if session := ExtractSessionID(buf.String()); session != "" {
-			closeout := strings.ReplaceAll(e.CloseoutPrompt, "{{TASK_ID}}", id.String())
-			closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir, "--session", session, "--", closeout}
-
-			closeoutOnce := func() (*bytes.Buffer, error) {
-				cmd := exec.CommandContext(ctx, e.binary(), closeoutArgs...)
-				cmd.Dir = repoDir
-
-				var closeoutBuf bytes.Buffer
-
-				cmd.Stdout = &closeoutBuf
-				cmd.Stderr = &closeoutBuf
-				prepareProcessGroup(cmd)
-				cmd.WaitDelay = 10 * time.Second
-				err := cmd.Run()
-
-				return &closeoutBuf, err
-			}
-
-			closeoutBuf, err := execWithTransientRetry(closeoutOnce)
-			buf.WriteString(closeoutBuf.String())
-
-			if err != nil {
-				if ctx.Err() != nil {
-					return buf.String(), fmt.Errorf(
-						"agent closeout cancelled (%w): %s",
-						ctx.Err(),
-						tailBytes(buf.Bytes(), 8192),
-					)
-				}
-
-				if rl := e.rateLimitedTurn("agent closeout", repoDir, err, buf.String()); rl != nil {
-					return buf.String(), rl
-				}
-
-				return buf.String(), fmt.Errorf("agent closeout failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))
+			if err := e.runCloseoutTurn(ctx, repoDir, session, id, buf); err != nil {
+				return buf.String(), err
 			}
 		} else {
 			buf.WriteString("\n[tq] closeout skipped: no session id in agent output\n")
@@ -502,6 +496,64 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	}
 
 	return buf.String(), nil
+}
+
+// closeoutPending records a finished WORK turn whose close-out is owed: a
+// rate-limited close-out requeues the task WITHOUT burning an attempt, and
+// the re-claim must resume here instead of re-running the paid work turn.
+type closeoutPending struct {
+	repoDir string
+	session string
+}
+
+// runCloseoutTurn runs the second conversation turn (the close-out
+// self-review) in the session the work turn opened, appending its output to
+// buf. Rate-limited close-outs register closeoutPending BEFORE returning
+// the *RateLimitError so the re-claim resumes here.
+func (e *AgentExecutor) runCloseoutTurn(ctx context.Context, repoDir, session string, id task.ID, buf *bytes.Buffer) error {
+	closeout := strings.ReplaceAll(e.CloseoutPrompt, "{{TASK_ID}}", id.String())
+	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir, "--session", session, "--", closeout}
+
+	closeoutOnce := func() (*bytes.Buffer, error) {
+		cmd := exec.CommandContext(ctx, e.binary(), closeoutArgs...)
+		cmd.Dir = repoDir
+
+		var closeoutBuf bytes.Buffer
+
+		cmd.Stdout = &closeoutBuf
+		cmd.Stderr = &closeoutBuf
+		prepareProcessGroup(cmd)
+		cmd.WaitDelay = 10 * time.Second
+		err := cmd.Run()
+
+		return &closeoutBuf, err
+	}
+
+	closeoutBuf, err := execWithTransientRetry(closeoutOnce)
+	buf.WriteString(closeoutBuf.String())
+
+	if err == nil {
+		return nil
+	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf(
+			"agent closeout cancelled (%w): %s",
+			ctx.Err(),
+			tailBytes(buf.Bytes(), 8192),
+		)
+	}
+
+	if rl := e.rateLimitedTurn("agent closeout", repoDir, err, buf.String()); rl != nil {
+		// The work turn SUCCEEDED and its session is alive: on re-claim,
+		// resume at closeout instead of paying for the work turn twice
+		// (13:29 report f15).
+		e.closeoutPending.Store(id.String(), closeoutPending{repoDir: repoDir, session: session})
+
+		return rl
+	}
+
+	return fmt.Errorf("agent closeout failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))
 }
 
 // DefaultCloseoutPrompt is the second conversation turn every agent task
