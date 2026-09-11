@@ -74,6 +74,7 @@ not here.
 ## Dogfood round (harvested from docs/status/2026-09-10_02-00 self-review §f)
 
 - [x] cwd-dependence sweep: audit every repo-name consuming command (`tq audit`, prune, harvest) for bare-name resolution against the projects dir, add tests, fix any cwd-dependent path found (02:00 f8) — DONE 2026-09-11: audit found `tq harvest --repos` (resolveHarvestRepos) and `tq audit --repos` passing bare names raw, so the sweeps Abs()ed them against the cwd (agent-pool + bootstrap already expanded); both now route through a shared expandRepoSpecs (absolute + existing cwd-relative pass through, bare names join --projects-dir), which also covers `tq harvest --prune-stale`; pinned by cmd/tq/repospec_test.go (expandRepoSpecs table, harvest wiring, audit e2e from a foreign cwd)
+- [ ] `tq doctor --repos`: expand bare repo names via expandRepoSpecs like harvest/audit — last raw splitRepos consumer; bare names stat against the cwd in doctorRepoAutonomy (02:00 f8 residue, 04:05 verify session; cmd/tq/doctor.go:355 + repospec_test.go row)
 - [ ] module-eval hardening: extend the flake module-eval check to assert the tq-agent-pool unit's Environment carries a non-empty PATH (02:00 f11; flake.nix, deploy/nixos/tq-agent-pool.nix)
 - [ ] `checkProjectsDir` should not require the projects dir when every `--repos` entry is absolute (02:00 f16; cmd/tq/agentpool.go + test)
 - [ ] harvest skip-log change detection: log a skip class only when its example changes (or on first tick) instead of every 5m tick flooding journald (02:00 f17; cmd/tq/main.go)
