@@ -787,6 +787,11 @@ func cmdAgentPool(args []string) error {
 		return true
 	}
 
+	// skipLogExamples remembers the last logged example per skip class:
+	// a class is logged only on first sight or when its example changes,
+	// so a steady state does not flood journald every tick.
+	skipLogExamples := map[string]string{}
+
 	runTick := func() {
 		// Sidecar retention: sweep aged logs before new work so a
 		// long-running pool'store output directory cannot grow forever.
@@ -825,6 +830,10 @@ func cmdAgentPool(args []string) error {
 				}
 
 				for class, g := range groupedSkips(res.Skipped) {
+					if prev, seen := skipLogExamples[class]; seen && prev == g.example {
+						continue
+					}
+					skipLogExamples[class] = g.example
 					if class == harvest.ReasonScanFailed {
 						// A scan failure means the pool cannot see a repo at
 						// all — surface the full reason, not just the class,
