@@ -145,6 +145,19 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **Fact forensics**: `task.failed` carries `FailureEvidence{stage,
   exit_code, tail}` (tail size: one `EvidenceTailBytes` constant);
   `task.requeued` carries `RequeueEvidence{reason, retry_in_ms}`.
+- **Provider rate limits (429 / usage limit)**: a failed agent turn's
+  output is scanned (`executor.DetectRateLimit`); a Z.ai-style reset
+  timestamp ("Your limit will reset at <ts>"), an RFC3339 renews-at, or a
+  numeric `retry_after` yields a `*executor.RateLimitError` carrying the
+  wait, and the worker requeues WITHOUT burning an attempt (±5% jitter
+  capped ±1min; unparseable reset falls back to 15min, capped at 6h).
+  synthetic.new's OpenAI-style quota 429 (`insufficient_quota`, no
+  timestamp in the body) is covered by the fallback. `AgentExecutor` also
+  keeps an in-process gate (`rateLimitUntil`): after one 429, sibling
+  agent/review/status runs in the same pool fast-refuse without spawning
+  the binary until the window passes — gates are per executor instance
+  (`WithoutCloseout()` clones start fresh), so cross-pool/cross-provider
+  setups each re-learn their own window with one probe.
 - **PapDashboard ingest**: `userId` is a REQUIRED metadata property (no
   omitempty) — omit it and ingest 422s. The bridge always sends `userId: ""`.
 
