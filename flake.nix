@@ -223,6 +223,15 @@
                   deployedPool = deployedUnits.tq-agent-pool;
                   deployedServe = deployedUnits.tq-serve;
                   tokenServe = tokenUnits.tq-serve;
+                  # The pool unit must carry a non-empty agent-toolchain PATH
+                  # (f11, 2026-09-10 pool-deploy incident: systemd's default
+                  # service PATH has no git/go/crush — a vanished/empty PATH
+                  # renders the pool un-deployable).
+                  poolHasPath =
+                    unit:
+                    builtins.any (e: builtins.match "PATH=.+" e != null) (
+                      unit.serviceConfig.Environment or [ ]
+                    );
                   drainInvariants =
                     unit:
                     builtins.all (kv: kv != null) [
@@ -249,6 +258,8 @@
                     && poolFirstToken == expectedBin
                     && builtins.match ".*--config .*tq-pool\\.conf.*" deployedPool.serviceConfig.ExecStart != null
                     && builtins.elem "TQ_DB=/mnt/pool/services/tq/tq.db" deployedPool.serviceConfig.Environment
+                    # pool unit PATH non-empty (agent toolchain must survive)
+                    && poolHasPath deployedPool
                     # serve unit exists with the addr + no StateDirectory branch
                     && deployedServe.serviceConfig != { }
                     && deployedServe.serviceConfig.ExecStart == "${expectedBin} serve --addr 127.0.0.1:8100"
