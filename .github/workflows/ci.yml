@@ -92,6 +92,8 @@ jobs:
         run: ./scripts/smoke/release-gates.sh
       - name: Ghost-reference check (doc-cited paths exist)
         run: ./scripts/check-doc-refs.sh
+      - name: Ghost-archive check (asset README promises are git-tracked)
+        run: ./scripts/check-ghost-archives.sh
 
   test-windows:
     # Platform honesty (round-5 M11/F56): POSIX-only suites (e2e, chaos,

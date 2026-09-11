@@ -119,6 +119,9 @@ step "doc-reference check"
 step "status-index check"
 ./scripts/check-status-index.sh
 
+step "asset-archive ghost check"
+./scripts/check-ghost-archives.sh
+
 step "TODO_LIST honesty check"
 ./scripts/check-todo-list.sh
 

@@ -204,6 +204,13 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - Status reports are indexed on creation (`check-status-index.sh` +
   pre-commit hook via `scripts/install-pre-commit.sh`); CHANGELOG is
   append-only; `check-features-roadmap.sh` guards shipped-vs-planned drift
+- Evidence archives (`docs/status/assets/*/README.md`) are gated by
+  `scripts/check-ghost-archives.sh` (ci-local + CI): every bare filename a
+  README promises must be git-tracked (GHOST = on disk but ignored,
+  MISSING = absent, UNTRACKED README = whole archive uncommitted;
+  backticked placeholders/globs/paths/dotfiles are exempt) — the global
+  `*.log` ignore otherwise silently drops logs from daemon commits (the f9
+  near-miss)
 
 ### templ-components adoption
 
