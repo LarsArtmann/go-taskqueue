@@ -109,6 +109,14 @@ type AgentExecutor struct {
 	// one cheap refused run to re-learn the window. Gate logic lives in
 	// ratelimit.go.
 	rateLimitUntil atomic.Int64
+
+	// rateLimitGates holds PER-REPO gates (repoDir → *atomic.Int64):
+	// which provider a repo's agents use is fixed by that repo's .crushrc,
+	// so the repo is the isolation key — a Z.ai 429 in repo A must not
+	// park repo B's synthetic.new tasks in the same pool (13:29 report
+	// f4b/g3). Repo-less evidence (no payload repo) falls back to the
+	// shared gate above.
+	rateLimitGates sync.Map
 }
 
 // NewAgentExecutor builds an AgentExecutor for a projects directory.

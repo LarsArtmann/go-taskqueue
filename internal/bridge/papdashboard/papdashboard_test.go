@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -299,6 +300,34 @@ func TestCompletionWithoutAlertIsSilent(t *testing.T) {
 
 	if got := len(pap.calls()); got != 1 {
 		t.Fatalf("completed task with no alert produced %d extra ingests, want 1 total", got)
+	}
+}
+
+// Test429IsTransientNotDropped pins the bridge-audit fix (2026-09-11): a
+// rate-limited PapDashboard must retry like a 5xx — the permanent branch
+// advances the checkpoint past the fact and the alert is silently lost.
+func Test429IsTransientNotDropped(t *testing.T) {
+	var status int32 = http.StatusTooManyRequests
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/ingest", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(int(atomic.LoadInt32(&status)))
+	})
+
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	facts, tasks := deadLetterFacts()
+	b := New(&fakeSource{facts: facts, tasks: tasks}, nil, Config{Endpoint: server.URL, Logger: quietLogger()})
+
+	if err := b.forward(context.Background(), facts[1]); err == nil {
+		t.Fatal("429 must surface as a retryable error, not a silent drop")
+	}
+
+	atomic.StoreInt32(&status, http.StatusOK)
+
+	if err := b.forward(context.Background(), facts[1]); err != nil {
+		t.Fatalf("retry after 429: %v", err)
 	}
 }
 
