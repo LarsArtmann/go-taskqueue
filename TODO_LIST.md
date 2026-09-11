@@ -194,14 +194,14 @@ not here.
 
 ## Rate-limit window follow-ups (harvested from docs/status/2026-09-11_13-29, verified 2026-09-11)
 
-- [ ] Incident-paste regression fixture: pin `DetectRateLimit` against the EXACT Z.ai dashboard tail of dead task `000001a08edf` (committed as testdata) so provider phrasing drift fails the suite instead of silently degrading to the 15min fallback (13:29 report f5)
-- [ ] Pin the parked-requeue vs lease-expiry-reclaim contract: a `Requeue`-parked task (rate-limited, not_before in the future) must not be resurrectable by a stale twin's lease write — store-level test on sqlite + postgres parity (13:29 report f16)
+- [x] Incident-paste regression fixture: pin `DetectRateLimit` against the EXACT Z.ai dashboard tail of dead task `000001a08edf` (committed as testdata) so provider phrasing drift fails the suite instead of silently degrading to the 15min fallback (13:29 report f5; DONE 14-50 rc-gate report)
+- [x] Pin the parked-requeue vs lease-expiry-reclaim contract: a `Requeue`-parked task (rate-limited, not_before in the future) must not be resurrectable by a stale twin's lease write — store-level test on sqlite + postgres parity (13:29 report f16; DONE 14-50 — also fixed sqlite Store.Fail's missing lease re-check)
 - [ ] `http` executor: classify 429 responses as `*executor.RateLimitError` (same no-attempt-burn requeue as agent tasks; today an HTTP 429 burns the retry budget exactly like the incident) (13:29 report f4c)
 - [ ] Provider-tagged rate-limit gates: extract `provider=<x>` from crush output so side-by-side Z.ai/synthetic pools don't cross-park each other's tasks (13:29 report f4b/g3)
 - [ ] Closeout-429 double-work gap: a 429 during the close-out turn requeues the WHOLE task and re-runs the WORK turn on re-claim (doubling agent cost) — persist the work turn's session id into the payload so re-claim resumes at closeout, or document the double cost as accepted (13:29 report f15)
 - [ ] `tq doctor`: surface the armed rate-limit gate (provider, parked counts, until-time) so an idle pool diagnoses as WAITING, not broken (13:29 report f10)
 - [ ] `tq tasks --parked` filter + rate-limit park counts in `tq stats` — "11 tasks parked until 19:40" should be one glance, not a journal dive (13:29 report f11/f14/f49)
-- [ ] Hermetic rate-limit e2e smoke: stub 429 agent against a scratch DB (`TQ_DB` exported per the production-trap rule) asserting the requeued fact carries `retry_in_ms>0` and attempts stay 0 through the real CLI binary (13:29 report f32)
-- [ ] Fuzz `DetectRateLimit` (nightly-campaign pattern, seed corpus from real provider failure logs) — regexes over untrusted output deserve the same treatment as FuzzParseRepo (13:29 report f8/f42)
+- [x] Hermetic rate-limit e2e smoke: stub 429 agent against a scratch DB (`TQ_DB` exported per the production-trap rule) asserting the requeued fact carries `retry_in_ms>0` and attempts stay 0 through the real CLI binary (13:29 report f32; DONE 14-50 — scripts/smoke/ratelimit-e2e.sh)
+- [x] Fuzz `DetectRateLimit` (nightly-campaign pattern, seed corpus from real provider failure logs) — regexes over untrusted output deserve the same treatment as FuzzParseRepo (13:29 report f8/f42; DONE 14-50 — FuzzDetectRateLimit, found+fixed a Duration-overflow)
 - [ ] Audit PapDashboard bridge HTTP calls for 429 backoff: `alert.triggered`/`NotifyDeadPool` posts must not hammer a rate-limited PapDashboard (13:29 report f9)
 - [ ] Post-deploy retro: one week after the input flip, count 429 requeues vs pre-deploy dead-letters and record the number in a status report (13:29 report f50)
