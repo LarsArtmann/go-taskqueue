@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -773,6 +774,74 @@ func runIn(dir, cmdLine string) error {
 	cmd.Dir = dir
 
 	return cmd.Run()
+}
+
+// TestAgentExecutorRateLimitClassifiedAndGated pins the provider-exhaustion
+// contract end-to-end: a run whose output reports a 429 usage limit (the
+// Z.ai shape from the 2026-09-11 dead-lettered task) returns a
+// *RateLimitError carrying the parsed wait — NOT a plain failure — and the
+// executor's gate then refuses the NEXT run without invoking the agent
+// binary again, until the gate window elapses.
+func TestAgentExecutorRateLimitClassifiedAndGated(t *testing.T) {
+	repo := t.TempDir()
+	setupGitRepo(t, repo)
+
+	reset := time.Now().Add(2 * time.Hour).Format("2006-01-02 15:04:05")
+	stub := makeStubAgent(t, fmt.Sprintf(
+		`echo 'WARN Provider request failed, retrying retry_delay=5s status_code=429 title="too many requests" message="Usage limit reached for 5 hour. Your limit will reset at %s"'; echo ran >> ran.log; exit 1`,
+		reset,
+	))
+
+	e := &AgentExecutor{Bin: stub}
+
+	err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
+	if err == nil {
+		t.Fatal("Execute must fail on a rate-limited run")
+	}
+
+	rl, ok := errors.AsType[*RateLimitError](err)
+	if !ok {
+		t.Fatalf("err = %v (%T), want *RateLimitError", err, err)
+	}
+
+	if rl.RetryAfter <= 0 || rl.RetryAfter > 2*time.Hour+rateLimitGrace+time.Minute {
+		t.Fatalf("RetryAfter = %s, want ~2h + grace", rl.RetryAfter)
+	}
+
+	if !strings.Contains(rl.Error(), "429") {
+		t.Fatalf("error text must keep the 429 evidence: %q", rl.Error())
+	}
+
+	// While the gate holds, the next Execute must refuse WITHOUT spawning
+	// the stub (the ran.log line count stays at 1).
+	err = e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
+	gated, ok := errors.AsType[*RateLimitError](err)
+	if !ok {
+		t.Fatalf("gated err = %v (%T), want *RateLimitError", err, err)
+	}
+
+	if gated.RetryAfter <= 0 || gated.RetryAfter > 2*time.Hour+rateLimitGrace {
+		t.Fatalf("gated RetryAfter = %s, want the remaining window", gated.RetryAfter)
+	}
+
+	ran, err := os.ReadFile(filepath.Join(repo, "ran.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if lines := strings.Count(strings.TrimRight(string(ran), "\n"), "\n") + 1; lines != 1 {
+		t.Fatalf("agent binary ran %d times, want 1 (gate must refuse without spawning)", lines)
+	}
+
+	// Gate elapsed: the executor probes again (the stub runs, fails, and
+	// re-arms the gate from fresh evidence).
+	e.rateLimitUntil.Store(time.Now().Add(-time.Second).UnixNano())
+
+	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})); err == nil {
+		t.Fatal("post-gate run must re-classify from fresh evidence")
+	} else if _, ok := errors.AsType[*RateLimitError](err); !ok {
+		t.Fatalf("post-gate err = %v, want *RateLimitError from a fresh probe", err)
+	}
 }
 
 func runInOutput(dir, cmdLine string) (string, error) {

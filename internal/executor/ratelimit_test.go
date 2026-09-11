@@ -59,9 +59,9 @@ func TestDetectRateLimit(t *testing.T) {
 			want:   true,
 			// Expected is computed against the UTC instant so the test is
 			// host-timezone independent (the reset parses to an absolute
-			// time; only the wall-clock shape is ambiguous).
-			wantFrom: time.Date(2026, 9, 11, 18, 0, 0, 0, time.UTC).Sub(now) + rateLimitGrace,
-			wantTo:   time.Date(2026, 9, 11, 18, 0, 0, 0, time.UTC).Sub(now) + rateLimitGrace + time.Minute,
+			// time); the 6h cap applies on hosts far ahead of UTC.
+			wantFrom: min(time.Date(2026, 9, 11, 18, 0, 0, 0, time.UTC).Sub(now)+rateLimitGrace, maxRateLimitWait),
+			wantTo:   min(time.Date(2026, 9, 11, 18, 0, 0, 0, time.UTC).Sub(now)+rateLimitGrace+time.Minute, maxRateLimitWait),
 		},
 		{
 			name:     "reset far in the future is capped",
