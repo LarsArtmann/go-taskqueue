@@ -27,7 +27,8 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
       until a real double-write justifies the schema change.
 - Consumer-group pool: multi-process safety with fencing tokens (sketched in
   ADR-0008 as a WHERE clause, not a router)
-- Cut the release (`scripts/release.sh v0.2.0`) — owner go/no-go
+- [x] Cut the release (`scripts/release.sh v0.2.0`) — shipped 2026-09-09
+      (tag, module proxy, clean-room install, GitHub Release all verified)
 
 ## v0.3.0 — Ecosystem bridges
 
@@ -70,7 +71,8 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - Cross-repo DAG from harvest: configurable templates like "docs item
   depends on code item" (D97 seed)
 - Session continuation chains via `AgentPayload.Session` (D94 seed)
-- `Filter.Since` SQL pushdown + `tq tasks` webui twin (`--since` URL param)
+- ~~`Filter.Since` SQL pushdown~~ DONE 2026-09-10 (CLI `--since` + SQL
+  pushdown in both stores); the webui `?since=` twin remains below
 - Batched facts-by-ids query in `queue.Store` for status-window detail
   lookups
 - `tq journal compact --before`: turn the shipped ADR-0006 prototype
@@ -78,9 +80,9 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   fire (~50k facts or an operator ask); Postgres twin ships in the same
   change
 - `tq journal verify`: checksum chain over facts for tamper-evidence
-- Transient-error (DNS/429) retry classification for agent runs — requeue
-  instead of burning the attempt budget (4 of 6 early dogfood deaths were
-  DNS timeouts)
+- ~~Transient-error (DNS/429) retry classification~~ 429 half DONE
+  2026-09-11 (`DetectRateLimit`/`RateLimitError`, no attempt burn); generic
+  DNS-timeout classification still open
 - Example corpus: runnable `examples/agent-pool/` demo repo with `.crushrc`
   - TODO_LIST.md
 - `tq daemon`: serve + agent-pool + bridges + harvest scheduler in one
@@ -125,7 +127,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - Write-action audit strip (last N cancels/rescues with reasons) on the
   dashboard; bulk rescue-all from the DLQ section (CLI parity)
 - Cookie session hardening: `Max-Age`, rotation on token change,
-  revocation story; rate-limit write endpoints (TODO_LIST)
+  revocation story (write-endpoint rate limiting SHIPPED 2026-09-10)
 - `Task-Queue-ID` footer awareness: detail page could show the originating
   TODO item text (data exists in the payload)
 - Board follow-ups: per-project swimlanes, WIP highlighting, verdict badges
@@ -135,7 +137,8 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   bar; distinct lease-owner count in the band
 - `tq serve --open` (browser auto-open); SSE `retry:` hint; humanized
   payload preview in rows; inline-SVG favicon
-- Consolidate the status-color maps and shared empty-state copy (TODO_LIST)
+- Consolidate the status-color maps and shared empty-state copy — DONE
+  2026-09-10 (one `statusColorTable` + shared empty-state helper)
 - `?since=` URL param on the dashboard table (the `tq tasks --since` twin —
   the filter exists CLI-side only today)
 - Define the stats payload once — text, `--json`, and webui budget card are
@@ -164,8 +167,9 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   auto-commit daemon pushes in bursts)
 - Advisory lint cost: scope to changed packages (diff-based) or move to a
   scheduled job instead of recomputing a known ~400-finding result per push
-- `govulncheck` step (binary already in the flake devShell); dependabot for
-  actions + modules; upgrade pinned actions past the Node 20 deprecation
+- ~~govulncheck step (binary already in the flake devShell); dependabot for
+  actions + modules~~ DONE 2026-09-10 (advisory CI jobs + .github/dependabot.yml);
+  upgrade pinned actions past the Node 20 deprecation
 - Nightly `-race -count=3` full-suite job (flake-catching for the race
   gate); CI split (full `-race` suite takes >7 min)
 - User-facing string corpus snapshot test: extract all flag help + error
@@ -175,7 +179,14 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   hostile input); rotate nightly fuzz targets per-day-of-week
 - Sentinel errors per package (`errors.go` convention) to burn down the
   err113 findings — post lint-endgame decision
-- Triage the 32 gosec findings: real issues vs false positives
+- ~~Triage the 32 gosec findings: real issues vs false positives~~ DONE
+  2026-09-10 (48 findings over all modules triaged FP/by-design; encode the
+  triage as config — TODO_LIST)
+- Detail-page follow-up ideas (2026-09-11 redesign residue): structured
+  rendering of the prompt contract's numbered items; "+N more" cap on the
+  retry-strip reasons; `Fact.Attempt` parity in the dashboard fact feed;
+  retry-cause analytics; attempt heatmap; payload diff view; j/k navigation
+  and copy-task-id buttons on the detail page
 - templ LSP false diagnostics against a green `go build`: investigate
   gopls/templ-lsp coexistence; until fixed, "LSP webui diagnostics are
   false positives, trust the CLI"
@@ -268,6 +279,14 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - Board as the default landing projection, or opt-in per URL?
 - Sibling-collision policy: gap-fill obviously-intended symbols of a
   concurrent session, or strictly hands-off + wait/report?
+- Toolchain policy (16-00 report g1): bump the whole repo to go 1.27
+  (go.mods + setup-go pin together) in the next release window — json/v2
+  stable without the experiment — or stay pinned on 1.26.7 until the
+  rate-limit fix bakes in production?
+- Concurrent-writer protocol (16-00 report g3): are parallel agent sessions
+  on this repo intentional/budgeted, or should the pool pause during
+  owner-directed windows? Two edits were clobbered by whole-file writers on
+  2026-09-11
 
 ## Deferred-bundle seeds
 
