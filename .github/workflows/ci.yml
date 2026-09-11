@@ -7,6 +7,15 @@ on:
 permissions:
   contents: read
 
+# encoding/json/v2 symbols (jsontext.Value et al.) are gated behind
+# GOEXPERIMENT=jsonv2 on the go 1.26 toolchain — local builds get it from
+# ~/.config/go/env and flake.nix sets it for the nix gate; CI runners have
+# a pristine env, so without this the stdversion check fails every package
+# that touches json/v2 ("jsontext.Value requires go1.27"). One env here
+# covers test, test-windows, test-postgres, govulncheck and gosec.
+env:
+  GOEXPERIMENT: jsonv2
+
 jobs:
   test:
     runs-on: ubuntu-latest
