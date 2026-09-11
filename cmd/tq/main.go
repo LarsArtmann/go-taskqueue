@@ -673,8 +673,10 @@ func cmdAgentPool(args []string) error {
 
 	ctx := g.Ctx()
 
+	var alertBridge *papdashboard.Bridge
+
 	if poolOpts.alertURL != "" {
-		bridge := papdashboard.New(store, store, papdashboard.Config{
+		alertBridge = papdashboard.New(store, store, papdashboard.Config{
 			Endpoint:     poolOpts.alertURL,
 			APIKey:       poolOpts.alertKey,
 			PollInterval: poolOpts.alertPoll,
@@ -683,7 +685,7 @@ func cmdAgentPool(args []string) error {
 			DailyBudget: poolOpts.dailyBudget,
 		})
 
-		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
+		g.Go("alert-bridge", func(ctx context.Context) error { return alertBridge.Run(ctx) })
 
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: forwarding dead letters + budget exhaustion to %s\n", poolOpts.alertURL)
 	}
@@ -692,6 +694,27 @@ func cmdAgentPool(args []string) error {
 	cfg.Log = log
 	guard := budget.Guard{DailyCap: poolOpts.dailyBudget, BudgetCmd: poolOpts.budgetCmd}
 	harvester := harvest.New(taskQueue, cfg)
+
+	// Dead-pool detection (02:00 f6): the skip log makes a blind pool loud
+	// on the FIRST tick; the detector decides when it has STAYED blind — N
+	// consecutive all-repos scan-failed ticks — and raises (then resolves)
+	// a PapDashboard alert, so the incident surfaces outside journald too.
+	deadPool := &deadPoolDetector{ticks: poolOpts.deadPoolTicks}
+	deadPool.notify = func(triggered bool, repos int, example string, streak int) {
+		if triggered {
+			log.Warn("dead pool: every repo scan-failed", "ticks", streak, "repos", repos, "example", example)
+		} else {
+			log.Info("dead pool resolved", "repos", repos)
+		}
+
+		if alertBridge == nil {
+			return
+		}
+
+		if err := alertBridge.NotifyDeadPool(ctx, triggered, repos, example, streak); err != nil {
+			log.Error("dead-pool alert failed", "triggered", triggered, "err", err)
+		}
+	}
 
 	// Startup zombie sweep, SYNCHRONOUSLY before any actor starts: the
 	// worker'store first claim would otherwise race the sweep and turn
@@ -846,6 +869,8 @@ func cmdAgentPool(args []string) error {
 
 				log.Info("harvest tick done", "repos", res.Repos, "items", res.Items,
 					"enqueued", len(res.Enqueued), "skipped", len(res.Skipped))
+
+				deadPool.observe(res)
 			}
 		}) {
 			return

@@ -573,6 +573,51 @@ func (b *Bridge) trackBudget(ctx context.Context, fact journal.Fact) error {
 	return nil
 }
 
+// deadPoolAggregate is the alert identity for the dead-pool incident: a
+// synthetic, stable aggregate id (the incident is pool-scoped, not
+// task-scoped), so a streak's trigger/resolve pair — and a later re-fire —
+// keep one alert instead of stacking duplicates.
+const deadPoolAggregate = "agent-pool-dead-pool"
+
+// NotifyDeadPool reports the agent-pool detector's verdict: triggered=true
+// raises alert.triggered when every watched repo has scan-failed for the
+// configured number of consecutive harvest ticks (the pool is blind — no
+// TODO_LIST can be read, so no new work can be enqueued); triggered=false
+// resolves that alert on the first tick with a readable repo. The pool
+// calls this directly instead of through the journal: harvest skips are
+// process-local observations, not facts, so delivery is best-effort (a
+// failed post is logged by post and the next verdict re-sends).
+func (b *Bridge) NotifyDeadPool(ctx context.Context, triggered bool, repos int, example string, streak int) error {
+	if !triggered {
+		payload := map[string]any{
+			"title":      "agent-pool dead pool",
+			"body":       "At least one watched repo scanned again; the dead-pool alert resolves.",
+			"sourceApp":  b.cfg.SourceApp,
+			"resolvedBy": b.cfg.SourceApp + "-agent-pool",
+		}
+
+		return b.post(ctx, "alert.resolved",
+			idempotencyKey("deadpool-resolve", time.Now().Unix()), deadPoolAggregate, 0, payload)
+	}
+
+	payload := map[string]any{
+		"severity": b.cfg.Severity,
+		"title":    "agent-pool dead pool",
+		"body": fmt.Sprintf(
+			"Every watched repo (%d) scan-failed for %d consecutive ticks: the pool reads no TODO_LIST and enqueues nothing. First example: %s",
+			repos, streak, firstLine(example),
+		),
+		"sourceApp": b.cfg.SourceApp,
+		"metadata": map[string]string{
+			"repos":  strconv.Itoa(repos),
+			"streak": strconv.Itoa(streak),
+		},
+	}
+
+	return b.post(ctx, "alert.triggered",
+		idempotencyKey("deadpool", time.Now().Unix()), deadPoolAggregate, 0, payload)
+}
+
 func firstLine(line string) string {
 	for i, r := range line {
 		if r == '\n' {

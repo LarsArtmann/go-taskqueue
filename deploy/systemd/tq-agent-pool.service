@@ -13,6 +13,8 @@ Wants=network-online.target
 #                            # per project (0 = off; each report can append
 #                            # follow-up TODO items — budget caps it)
 #   daily-budget = 15        # hard enqueue cap per calendar day
+#   dead-pool-ticks = 3      # PapDashboard alert when EVERY repo scan-fails
+#                            # this many consecutive harvest ticks (0 = off)
 #   review = true
 #   review-autofix = true
 ExecStart=%h/go/bin/tq agent-pool

@@ -46,6 +46,7 @@ type agentPoolOptions struct {
 	alertURL       string
 	alertKey       string
 	alertPoll      time.Duration
+	deadPoolTicks  int
 	repoTimeout    string
 	maxAgents      int
 	reviewAutofix  bool
@@ -144,6 +145,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	)
 	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
 	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
+	deadPoolTicks := fs.Int(
+		"dead-pool-ticks",
+		3,
+		"dead-pool detection: raise a PapDashboard alert (and WARN log) when EVERY watched repo scan-fails this many consecutive harvest ticks; the first tick with a readable repo resolves it (0 = off)",
+	)
 	repoTimeout := fs.String(
 		"repo-timeout",
 		"",
@@ -266,6 +272,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		alertURL:       *alertURL,
 		alertKey:       *alertKey,
 		alertPoll:      *alertPoll,
+		deadPoolTicks:  *deadPoolTicks,
 		repoTimeout:    *repoTimeout,
 		maxAgents:      *maxAgents,
 		reviewAutofix:  *reviewAutofix,
@@ -356,6 +363,59 @@ func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
 	return cfg, nil
 }
 
+// deadPoolDetector watches consecutive harvest results and fires its
+// notify hook once per all-repos-blind streak: a tick whose scan-failed
+// skips cover every watched repo means the pool cannot read a single
+// TODO_LIST (the 2026-09-10 pool-deploy incident class), and ticks of it
+// in a row is a dead pool, not a hiccup. The first tick with a readable
+// repo resolves the standing alert and resets the streak.
+type deadPoolDetector struct {
+	ticks   int // streak length that fires (<= 0 disables)
+	streak  int
+	alerted bool
+	// notify receives triggered=true once per streak and triggered=false on
+	// recovery; nil = track state only.
+	notify func(triggered bool, repos int, example string, streak int)
+}
+
+func (d *deadPoolDetector) observe(res harvest.Result) {
+	if d.ticks <= 0 || res.Repos == 0 {
+		return
+	}
+
+	scanFailed := 0
+
+	example := ""
+	for _, skip := range res.Skipped {
+		if class, _, _ := strings.Cut(skip.Reason, ":"); class == harvest.ReasonScanFailed {
+			scanFailed++
+			if example == "" {
+				example = skip.Reason
+			}
+		}
+	}
+
+	if scanFailed < res.Repos {
+		if d.alerted && d.notify != nil {
+			d.notify(false, res.Repos, example, d.streak)
+		}
+
+		d.streak, d.alerted = 0, false
+
+		return
+	}
+
+	d.streak++
+	if d.streak < d.ticks || d.alerted {
+		return
+	}
+
+	d.alerted = true
+	if d.notify != nil {
+		d.notify(true, res.Repos, example, d.streak)
+	}
+}
+
 // registerAgentExecutors wires the agent-family executors around one
 // AgentExecutor: reviews and status reports execute wherever agent tasks
 // do, so even a pool without --review / --status-every drains the tasks
@@ -423,6 +483,14 @@ func printAgentPoolBanner(poolOpts agentPoolOptions) {
 			os.Stderr,
 			"tq: agent-pool: automated status reports every %d agent completion(s) per project\n",
 			poolOpts.statusEvery,
+		)
+	}
+
+	if poolOpts.deadPoolTicks > 0 {
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: agent-pool: dead-pool detection: alert after %d all-repo scan-failed tick(s)\n",
+			poolOpts.deadPoolTicks,
 		)
 	}
 }
