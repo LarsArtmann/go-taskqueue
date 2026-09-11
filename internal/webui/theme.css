@@ -417,6 +417,259 @@ kbd {
 }
 
 /* ---------------------------------------------------------------------------
+ * Task detail — payload section & retry trail.
+ * The payload is the task's CONTENT: the work item leads (the one cyan
+ * rule on the page — it marks THE task), the executor contract reads as a
+ * spec grid, and the prompt/raw JSON fold away. The retry strip aggregates
+ * repeated refusals so fifteen identical requeues read as one line.
+ * ------------------------------------------------------------------------- */
+
+.tq-payload-item {
+  border-inline-start: 2px solid var(--color-blue-500);
+  padding-inline-start: 0.9rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--color-gray-800);
+}
+
+.dark .tq-payload-item {
+  color: var(--color-gray-200);
+}
+
+.tq-payload-note {
+  margin-top: 0.5rem;
+  padding-inline-start: 0.9rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-gray-500);
+}
+
+.dark .tq-payload-note {
+  color: var(--color-gray-400);
+}
+
+.tq-payload-cmd {
+  overflow-x: auto;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.5rem;
+  background: var(--color-gray-50);
+  padding: 0.6rem 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: var(--color-gray-800);
+}
+
+.dark .tq-payload-cmd {
+  border-color: var(--color-gray-800);
+  background: var(--color-gray-900);
+  color: var(--color-gray-200);
+}
+
+.tq-payload-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-gray-400);
+}
+
+.tq-payload-window {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tq-payload-window-links {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.tq-payload-spec {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr);
+  column-gap: 1.25rem;
+  margin-top: 0.25rem;
+}
+
+.tq-payload-spec dt {
+  padding: 0.4rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--color-gray-400);
+  border-bottom: 1px solid var(--color-gray-100);
+  align-self: baseline;
+}
+
+.dark .tq-payload-spec dt {
+  border-bottom-color: var(--color-gray-800);
+}
+
+.tq-payload-spec dd {
+  margin: 0;
+  padding: 0.4rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--color-gray-700);
+  border-bottom: 1px solid var(--color-gray-100);
+}
+
+.dark .tq-payload-spec dd {
+  border-bottom-color: var(--color-gray-800);
+  color: var(--color-gray-300);
+}
+
+.tq-payload-spec dt:last-of-type,
+.tq-payload-spec dd:last-of-type {
+  border-bottom: none;
+}
+
+.tq-fold {
+  margin-top: 0.75rem;
+}
+
+.tq-fold > summary {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-gray-400);
+}
+
+.tq-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tq-fold > summary::before {
+  content: "▸";
+  font-size: 0.8rem;
+  transition: transform 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tq-fold > summary::before {
+    transition: none;
+  }
+}
+
+.tq-fold[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.tq-fold > summary:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-600);
+}
+
+.dark .tq-fold > summary:hover {
+  background: var(--color-gray-800);
+  color: var(--color-gray-300);
+}
+
+.tq-payload-pre {
+  max-height: 26rem;
+  overflow: auto;
+  margin-top: 0.5rem;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.5rem;
+  background: var(--color-gray-50);
+  padding: 0.7rem 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: var(--color-gray-700);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+}
+
+.dark .tq-payload-pre {
+  border-color: var(--color-gray-800);
+  background: var(--color-gray-950);
+  color: var(--color-gray-300);
+  scrollbar-color: var(--color-gray-700) transparent;
+}
+
+.tq-retries {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--color-amber-300);
+  border-radius: 0.5rem;
+  background: var(--color-amber-50);
+  padding: 0.5rem 0.75rem;
+}
+
+.dark .tq-retries {
+  border-color: var(--color-amber-800);
+  background: color-mix(in srgb, var(--color-amber-950) 45%, transparent);
+}
+
+.tq-retries-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-amber-700);
+}
+
+.dark .tq-retries-label {
+  color: var(--color-amber-400);
+}
+
+.tq-retries-row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.tq-retries-count {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-amber-700);
+}
+
+.dark .tq-retries-count {
+  color: var(--color-amber-300);
+}
+
+.tq-retries-reason {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--color-gray-700);
+}
+
+.dark .tq-retries-reason {
+  color: var(--color-gray-300);
+}
+
+/* ---------------------------------------------------------------------------
  * Admin actions (AllowWrites): quiet verbs that open reason forms.
  * ------------------------------------------------------------------------- */
 

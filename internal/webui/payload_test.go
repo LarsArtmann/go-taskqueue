@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -19,7 +20,7 @@ func TestPayloadViewAgent(t *testing.T) {
 	t.Parallel()
 
 	payload := `{"repo":"/repos/demo","prompt":"Contract:\n1. Read AGENTS.md\n2. Do the work","item":"Anti-ghost-archive gate: CI check","verify":"go build ./...","model":"prov/model-x","dedup":"todo:abc123","timeout_minutes":45,"yolo":true}`
-	pv := payloadViewFor(task.Task{Type: "agent", Payload: json.RawMessage(payload)})
+	pv := payloadViewFor(task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(payload)})
 
 	if pv.Kind != payloadAgent {
 		t.Fatalf("kind = %q, want %q", pv.Kind, payloadAgent)
@@ -64,7 +65,7 @@ func TestPayloadViewAgentAutoDetectAndNoItem(t *testing.T) {
 	t.Parallel()
 
 	payload := `{"repo":"/repos/demo","prompt":"Do the thing"}`
-	pv := payloadViewFor(task.Task{Type: "agent", Payload: json.RawMessage(payload)})
+	pv := payloadViewFor(task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(payload)})
 
 	for _, f := range pv.Fields {
 		if f.Label == "verify gate" && f.Value != "auto-detect" {
@@ -82,15 +83,17 @@ func TestPayloadViewAgentAutoDetectAndNoItem(t *testing.T) {
 		t.Errorf("prompt fold = %q, want empty (already the lede)", pv.Prompt)
 	}
 
-	if pv.hasRaw() {
-		t.Error("raw pane would duplicate the lede; want it hidden")
+	// The raw pane still earns its place: the JSON object carries fields
+	// (repo) the lede does not.
+	if !pv.hasRaw() {
+		t.Error("raw pane must stay available for the JSON object")
 	}
 }
 
 func TestPayloadViewAgentUnparseableFallsBackToRaw(t *testing.T) {
 	t.Parallel()
 
-	pv := payloadViewFor(task.Task{Type: "agent", Payload: json.RawMessage(`{"repo":`)})
+	pv := payloadViewFor(task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(`{"repo":`)})
 
 	if pv.Kind != payloadRaw {
 		t.Fatalf("kind = %q, want %q (never fabricate structure)", pv.Kind, payloadRaw)
@@ -109,7 +112,7 @@ func TestPayloadViewReview(t *testing.T) {
 	t.Parallel()
 
 	payload := `{"repo":"/repos/demo","reviewed_task":"000001a08edfbc90bf02dd35ec0d5e7bf524","item":"fix the gate","commit_sha":"abc123","files_changed":["a.go","b.go"],"extra":"focus on the CI wiring"}`
-	pv := payloadViewFor(task.Task{Type: "review", Payload: json.RawMessage(payload)})
+	pv := payloadViewFor(task.Task{Type: executor.TaskTypeReview, Payload: json.RawMessage(payload)})
 
 	if pv.Kind != payloadReview {
 		t.Fatalf("kind = %q, want %q", pv.Kind, payloadReview)
@@ -145,7 +148,7 @@ func TestPayloadViewStatus(t *testing.T) {
 	t.Parallel()
 
 	payload := `{"repo":"/repos/demo","project":"demo","verify":"go test ./...","completed":[{"task_id":"task-a","item":"one"},{"task_id":"task-b","item":"two"}]}`
-	pv := payloadViewFor(task.Task{Type: "status", Payload: json.RawMessage(payload)})
+	pv := payloadViewFor(task.Task{Type: executor.TaskTypeStatus, Payload: json.RawMessage(payload)})
 
 	if pv.Kind != payloadStatus {
 		t.Fatalf("kind = %q, want %q", pv.Kind, payloadStatus)
