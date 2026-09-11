@@ -92,7 +92,8 @@ if lint_out="$(lint 2>&1)"; then
 	echo "lint: no findings"
 else
 	echo "$lint_out"
-	echo "lint: findings or lint failure — advisory only, continuing"
+	lint_findings="$(printf '%s\n' "$lint_out" | grep -c '\.go:[0-9][0-9]*:[0-9][0-9]*:' || true)"
+	echo "lint summary: ${lint_findings:-0} findings (advisory baseline ~400, AGENTS.md) — continuing"
 fi
 
 # CI turns findings on lines changed since the base revision into real
@@ -107,6 +108,16 @@ if command -v jq >/dev/null 2>&1; then
 else
 	echo "jq not on PATH — skipped locally (CI runners ship jq)"
 fi
+
+step "actionlint (GitHub Actions workflows)"
+if command -v actionlint >/dev/null 2>&1; then
+	actionlint .github/workflows/*.yml
+else
+	nix shell nixpkgs#actionlint -c actionlint .github/workflows/*.yml
+fi
+
+step "line-length gate (changed lines only, 120 cols)"
+./scripts/lint-lll-changed.sh
 
 step "harvest-parse guard"
 go test ./internal/harvest/ -run TestRepoTodoListParses -count=1

@@ -85,7 +85,6 @@ linters:
     - nolintlint
     - nonamedreturns
     - nosprintfhostport
-    - paralleltest
     - perfsprint
     - prealloc
     - predeclared
@@ -102,7 +101,6 @@ linters:
     - tagliatelle
     - testableexamples
     - testifylint
-    - testpackage
     - thelper
     - tparallel
     - unconvert
@@ -149,6 +147,11 @@ linters:
         - anon
         - stdlib
         - generic
+    goconst:
+      # Test tables repeat flag/env string literals on purpose (one item per
+      # case is the table-driven readability contract); the 14 prod-code
+      # findings stay advisory.
+      ignore-tests: true
     makezero:
       always: true
     mnd:

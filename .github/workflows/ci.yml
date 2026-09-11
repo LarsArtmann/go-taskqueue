@@ -73,14 +73,19 @@ jobs:
         run: |
           echo "::remove-matcher owner=go::"
           go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
-          "$(go env GOPATH)/bin/golangci-lint" run ./...
+          lint_out="$("$(go env GOPATH)/bin/golangci-lint" run ./... 2>&1 || true)"
+          printf '%s\n' "$lint_out"
+          lint_total="$(printf '%s\n' "$lint_out" | grep -c '\.go:[0-9]*:[0-9]*:' || true)"
           # ./... from the root never descends into nested sub-modules
           # (ADR-0011) — mirror ci-local.sh's disk-derived loop so every
           # sub-module gets the same advisory run.
           for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
             echo "== $m"
-            ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/golangci-lint" run ./... ) || true
+            mod_out="$( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/golangci-lint" run ./... 2>&1 || true )"
+            printf '%s\n' "$mod_out"
+            lint_total=$(( lint_total + $(printf '%s\n' "$mod_out" | grep -c '\.go:[0-9]*:[0-9]*:' || true) ))
           done
+          echo "lint summary: $lint_total findings (advisory baseline ~400, AGENTS.md)"
       - name: Lint annotations (new findings on changed lines)
         # golangci-lint v2 has no github-actions output format and its text
         # output emits no ::warning commands, so nothing from the advisory run
