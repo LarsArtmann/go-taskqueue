@@ -263,6 +263,13 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   `ls | grep -v '^SHA256SUMS$' | sort | xargs sha256sum > SHA256SUMS`
   (manifest filenames have no spaces — the gate's awk coverage check
   assumes it)
+- Evidence copies into the repo must run `git check-ignore -v <targets>`
+  FIRST (copy second) and diff the auto-commit daemon commit's `--stat`
+  against the intended file set — a clean `git status` is not a complete
+  archive while the daemon is live: global ignores + the daemon + a
+  clean-looking commit form the silent-loss triangle (f9 near-miss: 16
+  `*.log` files invisible to git behind an archive README, caught only by
+  reading the daemon commit's stat; 06-41 report §d1/§e1-2)
 
 ### templ-components adoption
 
