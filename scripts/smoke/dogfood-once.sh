@@ -33,7 +33,7 @@ mkdir -p "$REPO"
 git -C "$REPO" init -q
 git -C "$REPO" config user.email smoke@tq.local
 git -C "$REPO" config user.name "tq smoke"
-printf -- '- [ ] stub dogfood work item\n' >"$REPO/TODO_LIST.md"
+printf '%s\n' '- [ ] stub dogfood work item. Commit with footer: Task-Queue-ID: {{TASK_ID}}' >"$REPO/TODO_LIST.md"
 printf 'test -f work.txt\n' >"$REPO/.tq-verify"
 git -C "$REPO" add -A
 git -C "$REPO" commit -qm "seed"
@@ -54,9 +54,9 @@ case "$prompt" in
 		printf '%s\n' 'TQ_RESULT: {"verdict":"approve","summary":"stub review","findings":[]}'
 		;;
 	*)
-		qid="$(printf '%s\n' "$prompt" | sed -n 's/^Task-Queue-ID: //p' | head -1)"
+		qid="$(printf '%s\n' "$prompt" | grep -o 'Task-Queue-ID: [0-9a-f]*' | head -1 | cut -d' ' -f2)"
 		echo done >work.txt
-		sed -i 's/^- \[ \] stub dogfood work item$/- [x] stub dogfood work item/' TODO_LIST.md
+		sed -i 's/^- \[ \] stub dogfood work item.*$/- [x] stub dogfood work item/' TODO_LIST.md
 		git add -A
 		git commit -qm "stub dogfood work" -m "Task-Queue-ID: $qid"
 		printf 'did the work\n'

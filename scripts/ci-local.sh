@@ -104,6 +104,9 @@ step "web UI live smoke"
 step "status-loop live smoke"
 ./scripts/smoke/status-loop.sh
 
+step "dogfood-once live smoke (stub agent; TQ_DOGFOOD=1 adds the real-agent proof)"
+./scripts/smoke/dogfood-once.sh
+
 step "bootstrap --install smoke"
 ./scripts/smoke/bootstrap-install.sh
 

@@ -45,6 +45,7 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ```bash
 ./scripts/smoke/webui.sh        # worker + tq serve + HTTP/SSE + write-route lockout assertions
 ./scripts/smoke/status-loop.sh  # stub agent; sweeper mint → report → TODO append → re-arm
+./scripts/smoke/dogfood-once.sh  # stub agent; harvest → work (footer commit) → review approve; TQ_DOGFOOD=1 runs the real-agent proof (spends money)
 ./scripts/smoke/bootstrap-install.sh  # --install renders unit + pool.conf against a fake $HOME
 ./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
 ./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)
