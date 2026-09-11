@@ -210,6 +210,55 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 
+	t.Run("parked requeue is not resurrectable by a stale lease", func(t *testing.T) {
+		pk, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := s.ClaimDue(ctx, "park-w", time.Minute); err != nil {
+			t.Fatal(err)
+		}
+
+		// Rate-limit park: delay longer than the original lease.
+		if err := s.Requeue(ctx, pk.ID, "park-w", "rate limited (retry after 1h)", time.Hour); err != nil {
+			t.Fatal(err)
+		}
+
+		parked, err := s.Get(ctx, pk.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if parked.Status != task.Pending || parked.LeaseOwner != "" || parked.LeaseExpires != nil {
+			t.Fatalf("parked task must be pending with a cleared lease, got %+v", parked)
+		}
+
+		if _, err := s.ClaimDue(ctx, "park-w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+			t.Fatalf("claim during park err = %v, want ErrNoTaskDue", err)
+		}
+
+		if err := s.Heartbeat(ctx, pk.ID, "park-w", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+			t.Errorf("stale Heartbeat err = %v, want ErrLeaseNotHeld", err)
+		}
+
+		if err := s.Complete(ctx, pk.ID, "park-w", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+			t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
+		}
+
+		if err := s.Requeue(ctx, pk.ID, "park-w", "stale", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+			t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
+		}
+
+		if err := s.Fail(ctx, pk.ID, "park-w", "stale", time.Minute, failureDetail(jsontext.Value(`"x"`), "")); !errors.Is(err, task.ErrLeaseNotHeld) {
+			t.Errorf("stale Fail err = %v, want ErrLeaseNotHeld", err)
+		}
+
+		if got, _ := s.Get(ctx, pk.ID); got.Status != task.Pending {
+			t.Fatalf("parked task mutated by stale calls: %+v", got)
+		}
+	})
+
 	t.Run("cancel reason lands on the fact", func(t *testing.T) {
 		cancelled, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project})
 		if err != nil {
