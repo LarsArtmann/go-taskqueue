@@ -1170,6 +1170,14 @@ func cmdStats(args []string) error {
 		return err
 	}
 
+	// Parked = rate-limit parked (pending with a future not_before) — the
+	// "11 tasks parked until 19:40" one-glance count (13:29 report f11/f49).
+	parked := true
+	parkedCount, err := store.CountTasks(ctx, queue.Filter{Project: filter.Project, Parked: &parked})
+	if err != nil {
+		return err
+	}
+
 	head, err := store.HeadSeq(ctx)
 	if err != nil {
 		return err
@@ -1188,10 +1196,14 @@ func cmdStats(args []string) error {
 			Budget:      budgetView{SpentToday: spent, Cap: *dailyBudget},
 			Lag:         consumerLag(ctx, store),
 			JournalHead: head,
+			Parked:      parkedCount,
 		})
 	}
 
 	printStats(byStatus, byProject, *project == "")
+	if parkedCount > 0 {
+		fmt.Printf("parked       %6d (rate-limit requeues waiting out their window)\n", parkedCount)
+	}
 	printBudgetSpend(spent, *dailyBudget, *project != "")
 	printConsumerLag(store)
 
@@ -1206,6 +1218,7 @@ type statsPayload struct {
 	Budget      budgetView                `json:"budget"`
 	Lag         []consumerLagEntry        `json:"consumer_lag,omitempty"`
 	JournalHead int64                     `json:"journal_head"`
+	Parked      int                       `json:"parked,omitempty"`
 }
 
 type budgetView struct {

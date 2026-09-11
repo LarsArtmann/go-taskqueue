@@ -889,6 +889,45 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	}
 }
 
+// TestParkedFilter pins the --parked contract: only pending tasks with a
+// future not_before match; completed/pending-due tasks never do.
+func TestParkedFilter(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk, _ := s.Enqueue(ctx, task.New{Type: "agent"})
+
+	parked := true
+	notParked := false
+
+	// Freshly enqueued: pending and due now — not parked.
+	if n, _ := s.CountTasks(ctx, queue.Filter{Parked: &parked}); n != 0 {
+		t.Fatalf("fresh task counted as parked (%d)", n)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited (retry after 1h)", time.Hour); err != nil {
+		t.Fatalf("Requeue: %v", err)
+	}
+
+	list, err := s.List(ctx, queue.Filter{Parked: &parked})
+	if err != nil {
+		t.Fatalf("List parked: %v", err)
+	}
+
+	if len(list) != 1 || list[0].ID != tk.ID {
+		t.Fatalf("parked list = %v, want exactly the parked task", list)
+	}
+
+	// The explicit-false form must behave like the filter being absent.
+	if n, _ := s.CountTasks(ctx, queue.Filter{Parked: &notParked}); n < 1 {
+		t.Fatalf("not-parked count = %d, want >= 1", n)
+	}
+}
+
 func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)

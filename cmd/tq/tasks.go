@@ -23,6 +23,7 @@ func cmdTasks(args []string) error {
 	status := fs.String("status", "", "filter by status (pending|running|completed|dead|cancelled)")
 	taskType := fs.String("type", "", "filter by task type (e.g. agent, sh)")
 	since := fs.Duration("since", 0, "only tasks created within this window (e.g. 6h, 30m; 0 = all time)")
+	parked := fs.Bool("parked", false, "only rate-limit-parked tasks (pending with a future not_before)")
 	limit := fs.Int("limit", 50, "max tasks to list (0 = all)")
 	asJSON := fs.Bool("json", false, "JSON output of the matching task list")
 
@@ -54,6 +55,10 @@ func cmdTasks(args []string) error {
 	if *since > 0 {
 		cutoff := time.Now().Add(-*since)
 		filter.Since = &cutoff
+	}
+
+	if *parked {
+		filter.Parked = parked
 	}
 
 	if *limit > 0 {
