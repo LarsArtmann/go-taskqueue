@@ -8,7 +8,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# encoding/json/v2 needs GOEXPERIMENT=jsonv2 on go 1.26 — do NOT rely on
+# ~/.config/go/env (a fresh machine, a service env or a read-only store
+# symlink can drop it; that exact dependence made CI red while local was
+# green, 2026-09-11). One export covers every step below, incl. the
+# sub-module loops which inherit the environment.
+export GOEXPERIMENT=jsonv2
+
 step() { printf '\n== %s\n' "$*"; }
+
+step "master CI state (check-ci; CI_CHECK=off to bypass)"
+./scripts/check-ci.sh
 
 # --- CI test job (exact ci.yml order; lint advisory exactly like CI) -------
 
