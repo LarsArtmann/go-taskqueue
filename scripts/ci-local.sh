@@ -80,8 +80,11 @@ lint() {
 			(cd "$m" && golangci-lint run ./...)
 		done
 	else
-		echo "golangci-lint not on PATH — installing the CI-pinned version (v2.13.2)"
-		go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+		# Single source for the pin: .github/workflows/ci.yml owns the
+		# version; ci-local derives it so the two can never drift (M55).
+		pin="$(grep -oE 'golangci-lint/v2/cmd/golangci-lint@v[0-9.]+' .github/workflows/ci.yml | head -1 | cut -d@ -f2)"
+		echo "golangci-lint not on PATH — installing the CI-pinned version (${pin:-unknown})"
+		go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${pin}"
 		"$(go env GOPATH)/bin/golangci-lint" run ./...
 	fi
 }
