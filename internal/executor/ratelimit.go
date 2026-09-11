@@ -110,8 +110,16 @@ func DetectRateLimit(output string, now time.Time) (time.Duration, bool) {
 	if m := resetAtRe.FindStringSubmatch(output); m != nil {
 		for _, layout := range resetAtLayouts {
 			if reset, err := time.ParseInLocation(layout, m[1], time.Local); err == nil {
-				if until := reset.Sub(now); until > 0 {
-					delay = until + rateLimitGrace
+				// Compare via now.Add (never reset.Sub) — Sub overflows
+				// int64 Duration for far-future resets (fuzz finding:
+				// "renew At 4000-01-01T00:00:00" wrapped to a bogus delay).
+				switch {
+				case reset.After(now.Add(maxRateLimitWait)):
+					delay = maxRateLimitWait
+				default:
+					if until := reset.Sub(now); until > 0 {
+						delay = until + rateLimitGrace
+					}
 				}
 
 				break

@@ -3,6 +3,8 @@ package executor
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -10,12 +12,12 @@ import (
 // incidentFixture loads the EXACT lastError tail of dead task
 // 000001a08edf (the 2026-09-11 Z.ai 429 wall) so provider phrasing drift
 // fails the suite instead of silently degrading to the fallback.
-func incidentFixture(t *testing.T) string {
-	t.Helper()
+func incidentFixture(tb testing.TB) string {
+	tb.Helper()
 
 	data, err := os.ReadFile(filepath.Join("testdata", "ratelimit_incident_000001a08edf.txt"))
 	if err != nil {
-		t.Fatalf("read incident fixture: %v", err)
+		tb.Fatalf("read incident fixture: %v", err)
 	}
 
 	return string(data)
@@ -98,6 +100,27 @@ func TestDetectRateLimit(t *testing.T) {
 			output: "ERROR agent processing failed: failed to start agent processing stream: connection refused",
 			want:   false,
 		},
+		{
+			// The EXACT tail of dead task 000001a08edf: reset at
+			// 19:40:34 local wall-clock, probe time 12:00 local → 7h40m
+			// until, which the 6h cap clamps. Deterministic across host
+			// timezones because both the parse and `now` are local.
+			name:     "incident fixture 000001a08edf (zai 5h usage limit)",
+			output:   incidentFixture(t),
+			want:     true,
+			wantFrom: maxRateLimitWait,
+			wantTo:   maxRateLimitWait,
+		},
+		{
+			// The incident's OTHER failure shape (attempt-1 evidence):
+			// request-rate 429 with NO reset timestamp — must fall back to
+			// the conservative default, never to a bogus parse.
+			name:     "incident request-rate shape, no reset timestamp",
+			output:   `WARN Provider request failed, retrying retry_delay=5s status_code=429 title="too many requests" message="Rate limit reached for requests"`,
+			want:     true,
+			wantFrom: defaultRateLimitBackoff,
+			wantTo:   defaultRateLimitBackoff,
+		},
 	}
 
 	for _, tt := range tests {
@@ -116,6 +139,31 @@ func TestDetectRateLimit(t *testing.T) {
 			}
 		})
 	}
+}
+
+// FuzzDetectRateLimit hammers the untrusted-output regexes (same treatment
+// as FuzzParseRepo): no panics, no negative delays, no unbounded waits.
+// Seed corpus: the real provider failure logs from the 2026-09-11 incident.
+func FuzzDetectRateLimit(f *testing.F) {
+	f.Add("", time.Now().UnixNano())
+	f.Add(incidentFixture(f), time.Date(2026, 9, 11, 12, 0, 0, 0, time.Local).UnixNano())
+	f.Add(`WARN Provider request failed, retrying retry_delay=5s status_code=429 title="too many requests" message="Rate limit reached for requests"`, time.Now().UnixNano())
+	f.Add(`status_code=429 quota exceeded; your quota renews at 2026-09-11T18:00:00Z`, time.Now().UnixNano())
+	f.Add("ERROR 429 too many requests retry_after=99999999999", time.Now().UnixNano())
+	f.Add("resets at 9999-99-99 99:99:99 rate limit", time.Now().UnixNano())
+
+	f.Fuzz(func(t *testing.T, output string, nowUnix int64) {
+		now := time.Unix(0, nowUnix)
+
+		delay, ok := DetectRateLimit(output, now)
+		if !ok {
+			return
+		}
+
+		if delay <= 0 || delay > maxRateLimitWait {
+			t.Fatalf("DetectRateLimit(delay=%s) out of bounds for %q", delay, output)
+		}
+	})
 }
 
 // TestRateLimitedIdempotent: defensive double wrapping stays a single class.
