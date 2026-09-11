@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: stable
+          go-version: 1.26.7
       - name: Fuzz campaign rotation
         run: ./scripts/fuzz/nightly.sh "${{ github.event.inputs.fuzztime || '60s' }}"
       - name: Commit new seed corpora

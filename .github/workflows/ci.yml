@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: stable
+          go-version: 1.26.7
       - name: Vet
         run: go vet ./...
       - name: Build
@@ -115,7 +115,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: stable
+          go-version: 1.26.7
       - name: Test
         run: go test ./... -count=1 -timeout 300s
       - name: Module isolation gates (per sub-module)
@@ -156,7 +156,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: stable
+          go-version: 1.26.7
       - name: Postgres store conformance
         run: cd internal/queue/postgres && GOWORK=off go test . -run TestPostgres -count=1 -v
 
@@ -190,7 +190,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: stable
+          go-version: 1.26.7
       - name: Govulncheck (root + every sub-module)
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
@@ -214,7 +214,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: stable
+          go-version: 1.26.7
       - name: Gosec (root + every sub-module)
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
