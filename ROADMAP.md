@@ -96,6 +96,9 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ### Agent pool / loop
 
+- Worktree-per-agent (the intra-repo parallelism path): design written —
+  `docs/planning/2026-09-12_worktree-per-agent-design.md` (claim → worktree →
+  verify → merge → reap; the merge-policy owner call gates implementation)
 - `tq status` subcommand: loop state per project (window count, last
   report, next mint at N) instead of deriving it from `stats` + facts
 - `tq loop-stats` retrospective projection (reports minted, items appended,

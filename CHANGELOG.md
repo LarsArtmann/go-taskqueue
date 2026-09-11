@@ -19,6 +19,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   run time).
 
 ### Added
+- **Worktree-per-agent design doc**
+  (`docs/planning/2026-09-12_worktree-per-agent-design.md`): the
+  intra-repo parallelism path (claim → dedicated git worktree → verify →
+  merge → reap) with the three-layer serial lock named, executor/review/
+  rate-limit/daemon contract interactions, a tradeoffs table, and an
+  explicit open-questions section (merge policy is the gating owner call).
+  Design only — nothing built (02:00 self-review f15).
 - **Provider rate-limit regression armor**: the exact Z.ai 429 output of the
   dead-lettered incident task is pinned as testdata; parked-requeue-vs-stale-
   lease contract pinned on sqlite AND postgres conformance; new hermetic
