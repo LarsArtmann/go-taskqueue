@@ -157,7 +157,15 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   agent/review/status runs in the same pool fast-refuse without spawning
   the binary until the window passes — gates are per executor instance
   (`WithoutCloseout()` clones start fresh), so cross-pool/cross-provider
-  setups each re-learn their own window with one probe.
+  setups each re-learn their own window with one probe. Gates are keyed
+  PER REPO (`rateLimitGates`, 2026-09-11): a repo's `.crushrc` fixes its
+  provider, so a Z.ai 429 in repo A must never park repo B's synthetic.new
+  tasks; repo-less evidence falls back to the shared gate. The `http`
+  executor classifies 429 responses the same way (Retry-After header first,
+  then body detection). A 429 during the CLOSE-OUT turn registers
+  `closeoutPending` (task.ID → repo+session) so the re-claim RESUMES at
+  closeout instead of re-running the paid work turn (in-process only; an
+  executor restart degrades to a full re-run, never a lost close-out).
 - **PapDashboard ingest**: `userId` is a REQUIRED metadata property (no
   omitempty) — omit it and ingest 422s. The bridge always sends `userId: ""`.
 
@@ -216,7 +224,18 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   `scripts/check-todo-list.sh` in ci-local)
 - Status reports are indexed on creation (`check-status-index.sh` +
   pre-commit hook via `scripts/install-pre-commit.sh`); CHANGELOG is
-  append-only; `check-features-roadmap.sh` guards shipped-vs-planned drift
+  append-only; `check-features-roadmap.sh` guards shipped-vs-planned drift.
+  The installer also writes a commit-msg hook (2026-09-11): a commit
+  carrying `Task-Queue-ID:` footers must carry EXACTLY ONE, well-formed
+  (hex, 16+ chars) — duplicates/malformed footers corrupt the queue↔git
+  cross-reference; multiple COMMITS per task remain the norm (work +
+  close-out), so ID reuse across commits is NOT rejected
+- `ci-local.sh` checks master-CI state first (`scripts/check-ci.sh`, gh):
+  a local green gate is worthless if master is red (five DONE verdicts
+  shipped on a 3h-red master before this). Bypass consciously with
+  `CI_CHECK=off`. It also exports `GOEXPERIMENT=jsonv2` itself — never
+  rely on `~/.config/go/env` (that dependence made CI red while local was
+  green; ci.yml sets the env workflow-wide for the same reason)
 - Evidence archives (`docs/status/assets/*/README.md`) are gated by
   `scripts/check-ghost-archives.sh` (ci-local + CI): every bare filename a
   README promises must be git-tracked (GHOST = on disk but ignored,

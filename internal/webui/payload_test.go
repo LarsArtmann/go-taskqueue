@@ -278,3 +278,27 @@ func TestRetryTrailReasonlessDefaults(t *testing.T) {
 		t.Fatalf("trail = %+v, want one honest placeholder row ×2", trail)
 	}
 }
+
+func TestRetryTrailCountsDeadLetter(t *testing.T) {
+	t.Parallel()
+
+	t1 := time.Date(2026, 9, 11, 7, 17, 0, 0, time.UTC)
+	t2 := t1.Add(3 * time.Minute)
+
+	trail := retryTrail([]journalFactView{
+		{Seq: 1, Type: journal.Requeued, Error: "preflight: repo dirty", Time: t1},
+		{Seq: 2, Type: journal.DeadLettered, Error: "verify failed", Attempt: 3, Time: t2},
+	})
+
+	if len(trail) != 2 {
+		t.Fatalf("trail = %+v, want the refusal and the dead-letter reason", trail)
+	}
+
+	if trail[0].Reason != "verify failed" || trail[0].Count != 1 {
+		t.Errorf("first reason = %+v, want the newest (dead-letter) failure first", trail[0])
+	}
+
+	if trail[1].Reason != "preflight: repo dirty" || trail[1].Count != 1 {
+		t.Errorf("second reason = %+v, want the earlier refusal", trail[1])
+	}
+}

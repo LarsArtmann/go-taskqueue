@@ -34,6 +34,8 @@ Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 | **Retry**                   | A failed transient attempt, after exponential **backoff** (gated by `not_before`), within the task's attempt budget.                                               |
 | **Permanent error**         | An error class retrying cannot fix (bad payload, missing repo, unknown type). Dead-letters after ONE attempt.                                                      |
 | **Preflight refusal**       | "The environment wasn't ready" (dirty tree, missing autonomy config). Requeues WITHOUT burning an attempt — the task retries when a human fixes the environment.   |
+| **Rate-limit park**         | A provider exhaustion response (Z.ai usage window, synthetic.new quota) requeues the task to `not_before` = reset time WITHOUT burning an attempt — identical retries fail identically until the window resets. `tq tasks --parked` lists them; the parked count is a WAITING pool, not a broken one. |
+| **Rate-limit gate**         | The executor's in-process memory of a provider's exhaustion (per-REPO: a repo's `.crushrc` fixes its provider, so a Z.ai 429 in one repo never parks another repo's tasks). Armed on detection; fast-refuses sibling runs without spawning the agent binary. |
 | **DLQ (dead-letter queue)** | Where tasks land when attempts are exhausted or the error is permanent. Inspect with `tq dlq`, inspect reasons via the fact's error class.                         |
 | **Rescue**                  | Re-queueing a dead task with a fresh attempt budget — always a human decision (`tq dlq --rescue`).                                                                 |
 

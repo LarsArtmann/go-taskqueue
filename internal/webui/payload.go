@@ -286,10 +286,10 @@ type retryReason struct {
 }
 
 // retryTrail aggregates a task's refusals and failures (task.requeued,
-// task.failed, task.released) into distinct reasons — the one-glance answer
-// to "why does this keep coming back?" above the full, faithful trail. Nil
-// until there is something to summarize: a single occurrence is already
-// readable in the timeline.
+// task.failed, task.released, task.dead-lettered) into distinct reasons —
+// the one-glance answer to "why does this keep coming back?" above the
+// full, faithful trail. Nil until there is something to summarize: a
+// single occurrence is already readable in the timeline.
 func retryTrail(facts []journalFactView) []retryReason {
 	var (
 		order []string
@@ -299,7 +299,7 @@ func retryTrail(facts []journalFactView) []retryReason {
 
 	for _, f := range facts {
 		switch f.Type {
-		case journal.Requeued, journal.Failed, journal.Released:
+		case journal.Requeued, journal.Failed, journal.Released, journal.DeadLettered:
 		default:
 			continue
 		}
