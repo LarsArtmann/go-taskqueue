@@ -6,8 +6,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if ! command -v tailwindcss >/dev/null 2>&1 && [ -z "${IN_NIX_SHELL:-}" ]; then
-	echo "tailwindcss not on PATH — enter the devShell (nix develop) or run: nix run .#webui-css" >&2
+if ! command -v nix >/dev/null 2>&1; then
+	echo "nix not on PATH — cannot rebuild app.css (the rebuild goes through nix run .#webui-css)" >&2
 	exit 1
 fi
 

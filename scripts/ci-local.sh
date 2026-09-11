@@ -111,6 +111,9 @@ go test ./internal/harvest/ -run TestRepoTodoListParses -count=1
 step "web UI live smoke"
 ./scripts/smoke/webui.sh
 
+step "web UI css drift (committed app.css must equal the tailwind rebuild)"
+./scripts/check-webui-css.sh
+
 step "status-loop live smoke"
 ./scripts/smoke/status-loop.sh
 

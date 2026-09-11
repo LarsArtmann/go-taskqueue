@@ -6,6 +6,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Provider rate-limit regression armor**: the exact Z.ai 429 output of the
+  dead-lettered incident task is pinned as testdata; parked-requeue-vs-stale-
+  lease contract pinned on sqlite AND postgres conformance; new hermetic
+  e2e smoke `scripts/smoke/ratelimit-e2e.sh` (stub 429 agent, real binary,
+  scratch DB — asserts the requeue without attempt burn); `FuzzDetectRateLimit`
+  campaign with real-provider seeds. The fuzzer and the pins found and fixed
+  three real bugs: a `time.Duration` overflow on far-future reset timestamps,
+  a timezone-fragile RFC3339 test expectation, and sqlite `Store.Fail`
+  missing the lease re-check (a stale owner could append failure facts for a
+  task it no longer holds — postgres already had the check).
+- **Per-repo rate-limit gates**: a 429 observed in one repo no longer parks
+  sibling tasks of other repos in the same pool (the repo's `.crushrc`
+  fixes its provider, so repo = provider isolation key).
+- **Closeout resume after 429**: a rate-limited CLOSE-OUT turn requeues the
+  task without attempt burn and the re-claim resumes at closeout — the paid
+  work turn is never re-run because of a provider 429 (in-process registry).
+- **HTTP executor 429 classification**: webhook 429s now surface as
+  `*executor.RateLimitError` (Retry-After header and body reset honored,
+  same no-attempt-burn requeue as agent tasks).
+- **Parked-task visibility**: `tq tasks --parked` filter (SQL pushdown on
+  both stores), a parked count in `tq stats` (text + JSON), and a `tq
+  doctor` parked check — an idle pool with parked tasks diagnoses as
+  WAITING, not broken.
+- **Task-Queue-ID commit-msg hook**: `scripts/install-pre-commit.sh` also
+  installs a commit-msg guard — exactly one well-formed footer per commit,
+  catching the malformed/duplicate-footer cross-reference corruption class
+  at write time.
+- **Commits-per-ID view**: `tq show --commits` scans the task's payload
+  repo git log and verdicts MISSING FOOTER / AMBIGUOUS / ok.
+- **Master-CI state gate**: `scripts/check-ci.sh` (wired into ci-local.sh)
+  fails the pre-push gate when the latest CI run on the branch is red; CI
+  workflows now set `GOEXPERIMENT=jsonv2` at workflow level (the missing
+  env made CI red while local builds passed via `~/.config/go/env`).
+- **CSS drift gate wired into ci-local**: the round-5 `check-webui-css.sh`
+  guard (committed `app.css` must byte-equal the tailwind rebuild) existed
+  since 2026-09-08 but was wired into NOTHING — unminified or hand-edited
+  artifacts shipped to master twice (04aace4, 20d1a69), each breaking the
+  minified-CSS a11y test after the fact. It now runs as a ci-local step
+  (needs only nix, not a devShell — the rebuild goes through
+  `nix run .#webui-css`), failing the pre-push gate while leaving the
+  regenerated canonical file in place to commit.
 - **Anti-ghost-archive gate for evidence archives**: new
   `scripts/check-ghost-archives.sh` (gated in ci-local + CI) asserts every
   evidence file a `docs/status/assets/*/README.md` promises is actually
@@ -37,8 +78,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the raw view. The section is static (payloads are immutable) and sits outside the
   SSE-swapped fragments, so open folds survive live updates. Repeated requeues stop
   stuttering: Error/Detail.reason duplicates on a fact collapse to the fuller text, facts
-  carry `(attempt N)`, and ≥2 requeued/failed/released events aggregate into a
-  `retry trail ×N` strip (distinct reasons × counts, loudest first) above the timeline.
+  carry `(attempt N)`, and ≥2 requeued/failed/released/dead-lettered events aggregate into
+  a `retry trail ×N` strip (distinct reasons × counts, loudest first) above the timeline —
+  the final dead-letter reason is included, so the page answers "why did it give up?" too.
 
 ### Fixed
 - **Dashboard and write-API stats surfaces pinned to one wire contract**: `tq serve`'s

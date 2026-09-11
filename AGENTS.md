@@ -209,7 +209,10 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - Generated `*_templ.go` and the minified `app.css` are COMMITTED (Nix
   builds vendor source without `templ generate`); after template edits run
   `templ generate` + `nix run .#webui-css` (build script scans the
-  module-cache copy of templ-components — rerun on version bumps)
+  module-cache copy of templ-components — rerun on version bumps);
+  ci-local GATES the artifact via `check-webui-css.sh` (byte-equal tailwind
+  rebuild; needs nix, not a devShell — unminified/hand-edited css shipped to
+  master twice in 2026-09-11 before the orphaned guard got wired)
 - Docs formatting stays MANUAL by decision (2026-09-08): dprint is an
   on-demand devShell tool, NOT gated — don't re-litigate without solving
   plugin pinning AND the multi-writer problem
