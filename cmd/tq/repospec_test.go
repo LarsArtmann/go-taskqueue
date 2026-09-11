@@ -134,7 +134,7 @@ func TestExpandRepoSpecs(t *testing.T) {
 		{
 			name:   "existing cwd-relative paths win over the projects dir",
 			specs:  []string{relative},
-			want:   []string{filepath.Clean(relative)},
+			want:   []string{relative},
 			proDir: projects,
 		},
 		{

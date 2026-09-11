@@ -52,7 +52,7 @@ func cmdAudit(args []string) error {
 	}
 
 	if *repos != "" {
-		cfg.Repos = splitRepos(*repos)
+		cfg.Repos = expandRepoSpecs(*projectsDir, splitRepos(*repos))
 	}
 
 	s := mustOpenDB(resolveDB(*db))
