@@ -213,6 +213,11 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   ci-local GATES the artifact via `check-webui-css.sh` (byte-equal tailwind
   rebuild; needs nix, not a devShell — unminified/hand-edited css shipped to
   master twice in 2026-09-11 before the orphaned guard got wired)
+- Detail-page payload-section decisions (owner-approved 2026-09-11, 14-22/15-39
+  reports): agent payloads WITH a work item lead with the item and keep the
+  prompt COLLAPSED; item-less payloads lead WITH the prompt (no separate
+  hint). Dead-lettered reasons COUNT into the retry-trail strip
+  (`journal.DeadLettered` in `retryTrail`, `TestRetryTrailCountsDeadLetter`).
 - Docs formatting stays MANUAL by decision (2026-09-08): dprint is an
   on-demand devShell tool, NOT gated — don't re-litigate without solving
   plugin pinning AND the multi-writer problem
@@ -283,6 +288,15 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
 - ⚠️ **GOEXPERIMENT=jsonv2 in flake.nix** (go-sse imports
   `encoding/json/v2`): removing it yields "build constraints exclude all
   Go files" AND an empty output path — the build failure is swallowed.
+- ⚠️ **setup-go must stay PINNED, never `stable`** (2026-09-11, 16-00 report
+  §a): `go-version: stable` floated to go 1.27.1 on runners — on go 1.27,
+  encoding/json/v2 is stable but stdversion-gated to modules declaring
+  `go 1.27`, so vet fails with "json.Unmarshal requires go1.27" REGARDLESS
+  of GOEXPERIMENT (the experiment satisfies 1.26's availability gate, not
+  1.27's language-version gate). All 7 setup-go steps (ci.yml ×6, fuzz.yml
+  ×1) are pinned to `1.26.7` matching go.mod + the toolchain-alignment gate;
+  a GOEXPERIMENT-only fix reproduces locally and still fails on runners —
+  verify against the environment that failed, not just locally.
 - ⚠️ **Flakes only see git-tracked files**: `git add` new files before
   `nix build`.
 - ⚠️ **templ LSP diagnostics are false positives** (phantom syntax errors

@@ -73,7 +73,10 @@ One tab shows the whole system updating live: status cards, the task table
 status), the dead-letter queue, per-project progress, and the fact feed —
 pushed by SSE as server-rendered fragments, reconnect-safe, filterable and
 searchable (`?project=demo&status=running&q=flake`), paginated, with a detail
-page per task at `/task/{id}`. A journal browser pages through the full fact
+page per task at `/task/{id}` that renders the task's payload as content —
+the work item, prompt contract, and verify gate for agent tasks, the shell
+line for commands — plus a retry trail summarizing why a task keeps coming
+back. A journal browser pages through the full fact
 history. Press `/` to search, `1`–`4` to jump between sections.
 
 The dashboard is a pure projection of the journal: it cannot mutate the
