@@ -992,7 +992,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   statement coverage, 176 PASS / 0 FAIL / 0 SKIP (`loader` weakest at
   74.6%). The framework-free verdict is unchanged: gates T1/T2/T4/T5
   remain open. Record and reproducibility commands:
-  `docs/planning/2026-09-08_cordis-test-suite-verification.md`.
+  `docs/planning/archived/2026-09-08_cordis-test-suite-verification.md`.
 ### Fixed
 - **Budget guard now gates EVERY minting pass** (2026-09-09): the agent
   pool's review/status sweepers, cqa ingest, and the `--once` drain sweeps

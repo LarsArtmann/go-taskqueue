@@ -90,7 +90,7 @@ status-sweeper lag 0. Build + vet green; full `go test ./... -race -count=1`
 
 17. **Persisted-bridge-watermark design** — storage shape, ack semantics,
     resend window, bootstrap precedence, §7 implementation checklist.
-    Commit `e15864a` → `docs/planning/2026-09-08_persisted-bridge-watermark-design.md`.
+    Commit `e15864a` → `docs/planning/archived/2026-09-08_persisted-bridge-watermark-design.md`.
     The next interactive session executed §7 the same day (watermarks table,
     `tq watermarks show/set`, restart battery) — the queue→design→implementation
     pipeline worked end to end.
@@ -107,7 +107,7 @@ status-sweeper lag 0. Build + vet green; full `go test ./... -race -count=1`
 21. **cordis test suite independently verified** — 5/5 packages under
     `-race`, 86.2 % statements, 176 PASS/0 FAIL in the fork at `61ec9f9`;
     ADR-0004 T3 amended from claim to verified. Commit `50711df` →
-    `docs/planning/2026-09-08_cordis-test-suite-verification.md`.
+    `docs/planning/archived/2026-09-08_cordis-test-suite-verification.md`.
 
 ### Micro-task (1 task)
 

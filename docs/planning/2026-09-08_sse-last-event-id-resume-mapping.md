@@ -12,7 +12,7 @@ watermarks").
 **Companion docs:**
 `docs/planning/2026-09-08_journal-subscription-surface-inventory.md` (§2 row 3
 and §4 gap 6 are the entries this spike answers) and
-`docs/planning/2026-09-08_persisted-bridge-watermark-design.md` (§2.1 already
+`docs/planning/archived/2026-09-08_persisted-bridge-watermark-design.md` (§2.1 already
 anticipated this spike; §5 below mirrors its §6 bootstrap/persistence/garbage
 answers with the client-side twist).
 
