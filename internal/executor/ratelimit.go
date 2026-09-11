@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
@@ -169,18 +170,70 @@ func (e *AgentExecutor) rateLimitWait() (time.Duration, bool) {
 	return 0, false
 }
 
+// rateLimitGateFor returns the per-repo gate, creating it on first use.
+func (e *AgentExecutor) rateLimitGateFor(repoDir string) *atomic.Int64 {
+	g, _ := e.rateLimitGates.LoadOrStore(repoDir, &atomic.Int64{})
+
+	return g.(*atomic.Int64)
+}
+
+// armRateLimitRepo records the wait for ONE repo's provider (same max-merge
+// as armRateLimit). The repo is the isolation key: provider identity is
+// fixed by the repo's .crushrc, so a Z.ai 429 must not park other repos'
+// synthetic.new tasks in the same pool.
+func (e *AgentExecutor) armRateLimitRepo(repoDir string, retryAfter time.Duration) {
+	if repoDir == "" || retryAfter <= 0 {
+		return
+	}
+
+	until := time.Now().Add(retryAfter).UnixNano()
+	g := e.rateLimitGateFor(repoDir)
+
+	for {
+		cur := g.Load()
+		if cur >= until || g.CompareAndSwap(cur, until) {
+			return
+		}
+	}
+}
+
+// rateLimitWaitRepo reports how much longer repoDir's provider is believed
+// exhausted: the repo gate first, then the shared gate (repo-less
+// evidence). false when both are clear or stale.
+func (e *AgentExecutor) rateLimitWaitRepo(repoDir string) (time.Duration, bool) {
+	if repoDir != "" {
+		if g, ok := e.rateLimitGates.Load(repoDir); ok {
+			if d := time.Until(time.Unix(0, g.(*atomic.Int64).Load())); d > 0 {
+				return d, true
+			}
+		}
+
+		// Repo-specific evidence is authoritative — a stale shared gate
+		// must not park tasks whose provider is fine.
+		return 0, false
+	}
+
+	return e.rateLimitWait()
+}
+
 // rateLimitedTurn classifies one failed agent turn (work or closeout): on
 // provider exhaustion it arms the executor's gate — so sibling tasks
 // fast-refuse instead of probing a spent quota — and returns the
-// requeue-able *RateLimitError carrying the parsed wait. nil means the
-// failure is NOT a rate limit and the caller's ordinary wrapping applies.
-func (e *AgentExecutor) rateLimitedTurn(stage string, runErr error, output string) error {
+// requeue-able *RateLimitError carrying the parsed wait. The repo gates
+// the arm when known (provider isolation per .crushrc); repo-less turns
+// fall back to the shared gate. nil means the failure is NOT a rate limit
+// and the caller's ordinary wrapping applies.
+func (e *AgentExecutor) rateLimitedTurn(stage string, repoDir string, runErr error, output string) error {
 	wait, ok := detectRateLimit(output)
 	if !ok {
 		return nil
 	}
 
-	e.armRateLimit(wait)
+	if repoDir != "" {
+		e.armRateLimitRepo(repoDir, wait)
+	} else {
+		e.armRateLimit(wait)
+	}
 
 	return RateLimited(fmt.Errorf("%s failed: %w: %s", stage, runErr, tailBytes([]byte(output), 8192)), wait)
 }

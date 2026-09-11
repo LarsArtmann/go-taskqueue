@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -372,7 +373,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// metered providers potentially billed tokens. The returned class
 	// carries the wait, so the worker requeues until the reset without
 	// burning an attempt.
-	if wait, limited := e.rateLimitWait(); limited {
+	if wait, limited := e.rateLimitWaitRepo(repoDir); limited {
 		return "", RateLimited(
 			errors.New("agent: provider rate limit in effect (observed by a sibling run); deferring until reset"),
 			wait,
@@ -446,7 +447,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		// requeue-able class instead of a plain failure, so the worker
 		// parks the task until the provider resets WITHOUT burning an
 		// attempt. Detection also arms the gate for sibling runs.
-		if rl := e.rateLimitedTurn("agent run", err, buf.String()); rl != nil {
+		if rl := e.rateLimitedTurn("agent run", repoDir, err, buf.String()); rl != nil {
 			return buf.String(), rl
 		}
 
@@ -489,7 +490,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 					)
 				}
 
-				if rl := e.rateLimitedTurn("agent closeout", err, buf.String()); rl != nil {
+				if rl := e.rateLimitedTurn("agent closeout", repoDir, err, buf.String()); rl != nil {
 					return buf.String(), rl
 				}
 

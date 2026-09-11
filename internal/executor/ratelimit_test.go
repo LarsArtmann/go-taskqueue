@@ -220,6 +220,65 @@ func TestRateLimitGate(t *testing.T) {
 	}
 }
 
+// TestRateLimitGateRepoIsolation pins the per-repo gates (13:29 report
+// f4b/g3): a 429 observed in repo A must NOT park repo B's tasks in the
+// same pool — provider identity is fixed per repo by its .crushrc. Repo
+// evidence also overrides a stale shared gate.
+func TestRateLimitGateRepoIsolation(t *testing.T) {
+	e := &AgentExecutor{}
+
+	e.armRateLimitRepo("/srv/zai", time.Hour)
+
+	if wait, limited := e.rateLimitWaitRepo("/srv/zai"); !limited || wait <= 50*time.Minute {
+		t.Fatalf("zai repo gate: wait=%s limited=%v, want ~1h", wait, limited)
+	}
+
+	if _, limited := e.rateLimitWaitRepo("/srv/synthetic"); limited {
+		t.Fatal("repo B must be unaffected by repo A's 429")
+	}
+
+	// Repo evidence wins over a stale shared gate: the shared gate is
+	// armed, but the repo's own provider is fine.
+	e.armRateLimit(time.Hour)
+
+	if _, limited := e.rateLimitWaitRepo("/srv/synthetic"); limited {
+		t.Fatal("repo-scoped wait must not inherit the shared gate")
+	}
+
+	// Repo-less evidence falls back to the shared gate.
+	if _, limited := e.rateLimitWaitRepo(""); !limited {
+		t.Fatal("repo-less wait must consult the shared gate")
+	}
+
+	// Max-merge per repo.
+	e.armRateLimitRepo("/srv/zai", 2*time.Hour)
+
+	if wait, _ := e.rateLimitWaitRepo("/srv/zai"); wait <= time.Hour+30*time.Minute {
+		t.Fatalf("per-repo arm must keep the max observation, wait=%s", wait)
+	}
+}
+
+// TestRateLimitedTurnArmsRepoGate pins that a repo-scoped failed turn arms
+// ONLY the repo gate — the shared gate stays clear so other providers keep
+// running.
+func TestRateLimitedTurnArmsRepoGate(t *testing.T) {
+	e := &AgentExecutor{}
+
+	rl := e.rateLimitedTurn("agent run", "/srv/zai", errors.New("exit 1"),
+		`status_code=429 message="Usage limit reached. Your limit will reset at 2099-01-01 00:00:00"`)
+	if rl == nil {
+		t.Fatal("expected a *RateLimitError")
+	}
+
+	if _, limited := e.rateLimitWait(); limited {
+		t.Fatal("shared gate armed by a repo-scoped turn — cross-provider parking")
+	}
+
+	if wait, limited := e.rateLimitWaitRepo("/srv/zai"); !limited || wait <= time.Hour {
+		t.Fatalf("repo gate not armed: wait=%s limited=%v", wait, limited)
+	}
+}
+
 // TestWithoutCloseoutCarriesSettings pins the review/status clone contract:
 // every runtime setting rides along, the close-out prompt is stripped, and
 // the clone starts with a FRESH rate-limit gate (an armed atomic.Int64 must
