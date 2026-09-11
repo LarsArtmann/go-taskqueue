@@ -792,9 +792,10 @@ func TestAgentExecutorRateLimitClassifiedAndGated(t *testing.T) {
 		reset,
 	))
 
+	noClean := false // stub writes ran.log/work.log into the repo; the rate-limit pins are not the clean-tree preflight's business
 	e := &AgentExecutor{Bin: stub}
 
-	err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
+	err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &noClean}))
 	if err == nil {
 		t.Fatal("Execute must fail on a rate-limited run")
 	}
@@ -814,7 +815,7 @@ func TestAgentExecutorRateLimitClassifiedAndGated(t *testing.T) {
 
 	// While the gate holds, the next Execute must refuse WITHOUT spawning
 	// the stub (the ran.log line count stays at 1).
-	err = e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
+	err = e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &noClean}))
 
 	gated, ok := errors.AsType[*RateLimitError](err)
 	if !ok {
@@ -838,7 +839,7 @@ func TestAgentExecutorRateLimitClassifiedAndGated(t *testing.T) {
 	// re-arms the gate from fresh evidence).
 	e.rateLimitUntil.Store(time.Now().Add(-time.Second).UnixNano())
 
-	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})); err == nil {
+	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &noClean})); err == nil {
 		t.Fatal("post-gate run must re-classify from fresh evidence")
 	} else if _, ok := errors.AsType[*RateLimitError](err); !ok {
 		t.Fatalf("post-gate err = %v, want *RateLimitError from a fresh probe", err)
@@ -879,8 +880,9 @@ exit 0
 `)
 	stub = strings.Replace(stub, "RESET_TS", reset, 1)
 
+	noClean := false // stub writes work.log/closeout.log into the repo; this pin is not the clean-tree preflight's business
 	e := &AgentExecutor{Bin: stub, CloseoutPrompt: "self-review"}
-	tk := agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"})
+	tk := agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &noClean})
 
 	// First Execute: work turn succeeds, closeout hits the 429 →
 	// *RateLimitError (requeue without attempt burn).

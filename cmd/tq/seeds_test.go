@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -68,15 +69,23 @@ func TestCheckProjectsDir(t *testing.T) {
 }
 
 func TestAllReposAbsolute(t *testing.T) {
+	// filepath.IsAbs is platform-defined: "/srv/a" is absolute on POSIX but
+	// relative on Windows (no drive letter). Build the absolute specs from
+	// the platform's own notion so both runners exercise the same contract.
+	absA, absB, absC := "/srv/a", "/srv/b", "/srv/c"
+	if runtime.GOOS == "windows" {
+		absA, absB, absC = `C:\srv\a`, `C:\srv\b`, `C:\srv\c`
+	}
+
 	tests := []struct {
 		name string
 		spec string
 		want bool
 	}{
 		{name: "empty spec", spec: "", want: false},
-		{name: "single absolute", spec: "/srv/repos/foo", want: true},
-		{name: "all absolute", spec: "/srv/a, /srv/b ,/srv/c", want: true},
-		{name: "relative entry", spec: "/srv/a,foo", want: false},
+		{name: "single absolute", spec: filepath.Join(absA, "foo"), want: true},
+		{name: "all absolute", spec: absA + ", " + absB + " ," + absC, want: true},
+		{name: "relative entry", spec: absA + ",foo", want: false},
 		{name: "only relative", spec: "foo,bar", want: false},
 	}
 
