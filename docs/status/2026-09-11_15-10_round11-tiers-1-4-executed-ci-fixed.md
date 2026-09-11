@@ -134,6 +134,15 @@ mapped in the Round-11 plan with micro-task granularity.
 
 ---
 
-Gates at window end: root build/vet/race GREEN; all 7 sub-modules race
-GREEN; gofmt clean; doc gates (todo/status-index/features/ghost-archives/
-doc-refs/go-mods) GREEN; smokes ratelimit-e2e + status-loop + webui GREEN.
+Gates at window end: root build/vet/test GREEN; all 7 sub-modules GREEN;
+gofmt clean; doc gates (todo/status-index/features/ghost-archives/doc-refs/
+go-mods) GREEN; smokes ratelimit-e2e + status-loop + webui GREEN.
+
+**Environmental note (end of window)**: /tmp (48G tmpfs) hit 100% from OTHER
+projects' artifacts (monitor365 ~24G, playwright/pnpm caches) — late
+verification runs needed `TMPDIR`/`GOTMPDIR` redirected to
+`~/.cache/go-tmp` (git init + cgo write to /tmp regardless of GOTMPDIR).
+One webui SSE race test flaked under the parallel-load of my own background
+jobs and passed standalone + in a full re-run (no webui runtime code was
+touched this window). The host's /tmp needs an owner-side cleanup or a
+tmpfs size bump; other sessions' files were not touched.
