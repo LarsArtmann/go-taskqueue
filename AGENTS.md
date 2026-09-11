@@ -14,7 +14,7 @@ them, never revert them.
 
 ```bash
 ./scripts/ci-local.sh     # the pre-push gate: full CI replicant (vet/build/race/smokes/nix)
-go build ./... && go vet ./... && go test ./... -race   # standard verify gate (ROOT MODULE ONLY — see below)
+export GOEXPERIMENT=jsonv2; go build ./... && go vet ./... && go test ./... -race   # standard verify gate (ROOT MODULE ONLY — see below; the export is REQUIRED outside the flake devShell: go-sse imports encoding/json/v2, and without it the build dies with "build constraints exclude all Go files" while gopls shows the same phantoms)
 nix build                 # reproducible build; nix run .#test = tests; nix run .#webui-css = stylesheet
 ./scripts/fuzz/nightly.sh # 60s FuzzParseRepo campaign; nightly workflow commits new seeds
 ```
