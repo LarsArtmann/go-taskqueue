@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Fixed
+- **Review prompts no longer stamp the review's own task id into the quoted
+  work contract**: the reviewer prompt resolves the quoted `{{TASK_ID}}`
+  placeholder to the REVIEWED task's id (what the work agent actually saw)
+  and gains an explicit queue-cross-reference criterion for footer-bearing
+  contracts. Previously `runAgent`'s blanket substitution resolved the
+  quoted placeholder to the REVIEW task's id, so diligent reviewers flagged
+  the work run's correct `Task-Queue-ID` commit footer as a foreign id and
+  rejected sound changes (2026-09-12 Hermes cron review). Fix-task prompts
+  resolve the quoted original the same way and now carry an explicit
+  own-footer instruction (`{{TASK_ID}}` resolves to the fix task's id at
+  run time).
+
 ### Added
 - **Provider rate-limit regression armor**: the exact Z.ai 429 output of the
   dead-lettered incident task is pinned as testdata; parked-requeue-vs-stale-

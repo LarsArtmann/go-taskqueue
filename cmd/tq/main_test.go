@@ -213,7 +213,8 @@ func TestPrintDriftJSONGolden(t *testing.T) {
         "Done": false
       },
       "TaskID": "t9",
-      "Fresh": true
+      "Fresh": true,
+      "Hot": false
     }
   ],
   "ScanFailures": [
