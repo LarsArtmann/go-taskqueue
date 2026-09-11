@@ -89,7 +89,13 @@ step "full CI gate (scripts/ci-local.sh — test + nix jobs on this exact tree)"
 ./scripts/ci-local.sh
 
 step "smoke the nix-built binary through the web UI"
-TQ_BIN="$(nix build --print-out-paths)/bin/tq" ./scripts/smoke/webui.sh
+# NOT `TQ_BIN="$(nix build ...)/bin/tq" ./smoke`: bash does NOT abort when a
+# command substitution inside an env-prefix assignment fails — the command
+# still runs and the exit status comes from the command, so a failed nix
+# build would smoke a garbage path and the gate would only trip on the
+# smoke's own (confusing) error. A standalone assignment DOES abort.
+nix_out="$(nix build --print-out-paths)"
+TQ_BIN="$nix_out/bin/tq" ./scripts/smoke/webui.sh
 
 if [ -z "$MODE" ]; then
 	echo
