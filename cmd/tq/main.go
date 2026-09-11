@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
 	"path/filepath"
@@ -1348,6 +1349,7 @@ func printStats(byStatus map[string]int, byProject map[string]map[string]int, sc
 
 func cmdShow(args []string) error {
 	fs := flag.NewFlagSet("show", flag.ExitOnError)
+	commits := fs.Bool("commits", false, "also scan the task's repo git log for Task-Queue-ID footer commits (0 = missing footer, >1 = ambiguous cross-reference)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -1379,11 +1381,80 @@ func cmdShow(args []string) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 
+	var commitView any
+	if *commits {
+		cv, err := commitsForTask(t)
+		if err != nil {
+			return err
+		}
+
+		commitView = cv
+	}
+
 	return enc.Encode(struct {
-		Task   task.Task      `json:"task"`
-		Facts  []journal.Fact `json:"facts,omitempty"`
-		Result any            `json:"result,omitempty"`
-	}{t, trail, resultDetail(t, trail)})
+		Task    task.Task      `json:"task"`
+		Facts   []journal.Fact `json:"facts,omitempty"`
+		Result  any            `json:"result,omitempty"`
+		Commits any            `json:"commits,omitempty"`
+	}{t, trail, resultDetail(t, trail), commitView})
+}
+
+// commitHit is one git commit carrying the task's Task-Queue-ID footer.
+type commitHit struct {
+	SHA     string `json:"sha"`
+	Author  string `json:"author"`
+	Date    string `json:"date"`
+	Subject string `json:"subject"`
+}
+
+// commitsForTask scans the task's repo git log for footer commits (the
+// queue↔git cross-reference): count 0 means the footer contract was
+// breached (work landed unreferenced), count >1 means an ambiguous
+// cross-reference (the f26 three-ID cluster class).
+func commitsForTask(t task.Task) (map[string]any, error) {
+	repo := struct {
+		Repo string `json:"repo"`
+	}{}
+
+	if err := json.Unmarshal(t.Payload, &repo); err != nil || repo.Repo == "" {
+		return map[string]any{"note": "no repo in payload — footer scan unavailable"}, nil
+	}
+
+	if _, err := os.Stat(filepath.Join(repo.Repo, ".git")); err != nil {
+		return map[string]any{"note": "repo not accessible: " + repo.Repo}, nil
+	}
+
+	cmd := exec.Command("git", "-C", repo.Repo, "log",
+		"--pretty=format:%H%x09%an%x09%aI%x09%s", "--grep", "Task-Queue-ID: "+t.ID.String())
+	out, err := cmd.Output()
+	if err != nil {
+		return map[string]any{"note": "git log failed: " + err.Error()}, nil
+	}
+
+	var hits []commitHit
+
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == "" {
+			continue
+		}
+
+		parts := strings.SplitN(line, "\t", 4)
+		for len(parts) < 4 {
+			parts = append(parts, "")
+		}
+
+		hits = append(hits, commitHit{SHA: parts[0], Author: parts[1], Date: parts[2], Subject: parts[3]})
+	}
+
+	verdict := "ok: exactly one footer commit"
+	switch {
+	case len(hits) == 0:
+		verdict = "MISSING FOOTER: no commit references this task ID"
+	case len(hits) > 1:
+		verdict = "AMBIGUOUS: multiple commits reference this task ID"
+	}
+
+	return map[string]any{"task_id": t.ID.String(), "count": len(hits), "verdict": verdict, "commits": hits}, nil
 }
 
 // resolveTask looks a task up by its full ID, falling back to a UNIQUE
