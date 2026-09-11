@@ -166,6 +166,28 @@ func splitRepos(spec string) []string {
 	return repos
 }
 
+// expandRepoSpecs makes --repos entries cwd-independent for the harvest and
+// audit commands: absolute paths and relative paths that exist against the
+// working directory pass through, while anything else joins the projects
+// dir — so a bare repo name ("alpha") resolves there instead of becoming
+// <cwd>/alpha when the sweep Abs()es it. bootstrap.resolveRepos and the
+// agent-pool option parse apply the same policy. Specs that resolve nowhere
+// are left as-is: the sweeps report them per-repo as scan failures.
+func expandRepoSpecs(projectsDir string, specs []string) []string {
+	expanded := make([]string, len(specs))
+	for i, spec := range specs {
+		if !filepath.IsAbs(spec) {
+			if _, err := os.Stat(spec); err != nil && projectsDir != "" {
+				spec = filepath.Join(projectsDir, spec)
+			}
+		}
+
+		expanded[i] = spec
+	}
+
+	return expanded
+}
+
 func cmdEnqueue(args []string) error {
 	fs := flag.NewFlagSet("enqueue", flag.ExitOnError)
 	project := fs.String("project", "", "project the task belongs to")
@@ -510,7 +532,7 @@ func cmdHarvest(args []string) error {
 func resolveHarvestRepos(cfg *harvest.Config, projectsDir, repos, subset string) error {
 	if repos != "" {
 		cfg.ProjectsDir = ""
-		cfg.Repos = splitRepos(repos)
+		cfg.Repos = expandRepoSpecs(projectsDir, splitRepos(repos))
 
 		return nil
 	}
