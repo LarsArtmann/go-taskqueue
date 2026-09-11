@@ -229,8 +229,12 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		return agentPoolOptions{}, errors.New("no repos: pass --repos or --projects-dir (or set $TQ_PROJECTS_DIR)")
 	}
 
-	if err := checkProjectsDir(*projectsDir); err != nil {
-		return agentPoolOptions{}, err
+	// Fully-absolute --repos entries never touch the projects dir, so a
+	// risky (or default) projects root must not block the run.
+	if !(*repos != "" && allReposAbsolute(*repos)) {
+		if err := checkProjectsDir(*projectsDir); err != nil {
+			return agentPoolOptions{}, err
+		}
 	}
 
 	return agentPoolOptions{

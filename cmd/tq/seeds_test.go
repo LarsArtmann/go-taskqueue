@@ -66,3 +66,25 @@ func TestCheckProjectsDir(t *testing.T) {
 		})
 	}
 }
+
+func TestAllReposAbsolute(t *testing.T) {
+	tests := []struct {
+		name string
+		spec string
+		want bool
+	}{
+		{name: "empty spec", spec: "", want: false},
+		{name: "single absolute", spec: "/srv/repos/foo", want: true},
+		{name: "all absolute", spec: "/srv/a, /srv/b ,/srv/c", want: true},
+		{name: "relative entry", spec: "/srv/a,foo", want: false},
+		{name: "only relative", spec: "foo,bar", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := allReposAbsolute(tt.spec); got != tt.want {
+				t.Fatalf("allReposAbsolute(%q) = %v, want %v", tt.spec, got, tt.want)
+			}
+		})
+	}
+}
