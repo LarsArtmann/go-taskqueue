@@ -178,7 +178,11 @@ func TestBoardHonorsProjectFilter(t *testing.T) {
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?view=board&project=alpha", nil))
 
 	board := tableFragment(rec.Body.String())
-	if !strings.Contains(board, "alpha") || strings.Contains(board, "beta") {
+	// Narrowing means alpha's tasks render and beta's never do. The project
+	// LABEL itself is hidden once pinned to one project (round-13 T14: the
+	// column/cell would repeat the same value), so presence is asserted via
+	// the task cards, not the name.
+	if strings.Contains(board, "beta") || !strings.Contains(board, `href="/task/`) {
 		t.Error("board ignored the project filter")
 	}
 }

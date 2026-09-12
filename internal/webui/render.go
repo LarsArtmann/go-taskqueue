@@ -44,9 +44,12 @@ type taskDetailData struct {
 	ID    string
 }
 
-// ProjectSummary aggregates one project's live counts for the overview chips.
+// ProjectSummary aggregates one project's live counts for the overview
+// chips. Total is the project's task count across ALL statuses — the chip's
+// headline number (R/P/D stay the operational breakdown).
 type ProjectSummary struct {
 	Name    string
+	Total   int
 	Pending int
 	Running int
 	Dead    int
@@ -576,8 +579,14 @@ func projectSummaries(counts map[string]map[task.Status]int) []ProjectSummary {
 			display = "(default)"
 		}
 
+		total := 0
+		for _, n := range byStatus {
+			total += n
+		}
+
 		out = append(out, ProjectSummary{
 			Name:    display,
+			Total:   total,
 			Pending: byStatus[task.Pending],
 			Running: byStatus[task.Running],
 			Dead:    byStatus[task.Dead],
@@ -587,6 +596,19 @@ func projectSummaries(counts map[string]map[task.Status]int) []ProjectSummary {
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 
 	return out
+}
+
+// chipMaxVisible bounds the overview chips row: beyond this the row wraps
+// into noise, so the tail collapses into a "+N more" marker.
+const chipMaxVisible = 12
+
+// visibleProjects returns the chips to render and how many were cut.
+func visibleProjects(all []ProjectSummary) ([]ProjectSummary, int) {
+	if len(all) <= chipMaxVisible {
+		return all, 0
+	}
+
+	return all[:chipMaxVisible], len(all) - chipMaxVisible
 }
 
 func pageTitle(data DashboardData) string {

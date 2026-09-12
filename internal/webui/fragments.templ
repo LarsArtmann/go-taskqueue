@@ -56,9 +56,22 @@ templ StatusCards(data DashboardData) {
 		if len(data.Projects) == 0 {
 			<span class="font-mono text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">no projects</span>
 		} else {
-			for _, p := range data.Projects {
+			if !data.Filter.Empty() {
 				@display.Badge(display.BadgeProps{
-					Text: p.Name + " " + formatInt(p.Running) + "R/" + formatInt(p.Pending) + "P/" + formatInt(p.Dead) + "D",
+					Text: "all projects",
+					Type: display.BadgeInfo,
+					Href: filterHref(FilterState{}),
+				})
+			}
+			for i, p := range data.Projects {
+				if i == chipMaxVisible {
+					<span class="font-mono text-xs text-gray-400 dark:text-gray-500">+{ formatInt(len(data.Projects) - chipMaxVisible) } more projects</span>
+				}
+				if i >= chipMaxVisible {
+					continue
+				}
+				@display.Badge(display.BadgeProps{
+					Text: p.Name + " " + formatInt(p.Total) + " · " + formatInt(p.Running) + "R/" + formatInt(p.Pending) + "P/" + formatInt(p.Dead) + "D",
 					Type: display.BadgeNeutral,
 					Href: "?project=" + p.Name,
 				})
@@ -187,9 +200,11 @@ templ taskRows(data DashboardData, rows []task.Task) {
 					title={ t.ID.String() }
 				>{ shortID(t.ID) }</a>
 			</td>
-			<td class={ tdCellClass(true) }>
-				<a class="whitespace-nowrap hover:underline" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
-			</td>
+			if data.Filter.Project == "" {
+				<td class={ tdCellClass(true) }>
+					<a class="whitespace-nowrap hover:underline" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
+				</td>
+			}
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
 			<td class={ tdCellClass(true) }>
 				@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: display.BadgeSizeSM})
@@ -416,7 +431,9 @@ templ boardCard(data DashboardData, t task.Task) {
 			<span class="font-mono text-xs text-gray-400 dark:text-gray-500" data-age={ fmt.Sprintf("%d", t.CreatedAt.UnixMilli()) } title={ t.CreatedAt.Format(timeFormat) }>{ timeAgo(data.Now, t.CreatedAt) }</span>
 		</div>
 		<div class="mt-1 flex items-baseline gap-2 font-mono text-xs">
-			<a class="truncate text-gray-700 hover:underline dark:text-gray-300" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
+			if data.Filter.Project == "" {
+				<a class="truncate text-gray-700 hover:underline dark:text-gray-300" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
+			}
 			<span class="shrink-0 text-gray-400 dark:text-gray-500">{ t.Type }</span>
 		</div>
 		if r := readiness(data.Now, t); r != "" {

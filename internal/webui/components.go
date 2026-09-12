@@ -498,14 +498,22 @@ func settledDeadSuffix(rows []task.Task) string {
 }
 
 // taskHeaders builds the task table's header row; the actions column exists
-// only when writes are enabled, so header and body cells always agree.
+// only when writes are enabled, and the project column exists only when the
+// view is NOT pinned to one project (a single-project table would repeat
+// the same value in every row) — header and body cells always agree.
 func taskHeaders(data DashboardData) []display.TableHeader {
 	headers := []display.TableHeader{
 		{Label: labelID},
-		{Label: labelProject},
-		{Label: labelType},
-		{Label: labelStatus},
 	}
+	if data.Filter.Project == "" {
+		headers = append(headers, display.TableHeader{Label: labelProject})
+	}
+
+	headers = append(
+		headers,
+		display.TableHeader{Label: labelType},
+		display.TableHeader{Label: labelStatus},
+	)
 	if data.AllowWrites {
 		// Actions sit right after status so they stay inside the visible
 		// card width; the table tail (age, error) is the clip-prone end.

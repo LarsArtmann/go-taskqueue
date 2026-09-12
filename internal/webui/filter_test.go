@@ -186,3 +186,61 @@ func TestDashboardFilterE2E(t *testing.T) {
 		t.Error("/project/{name} did not pin the project filter")
 	}
 }
+
+// TestPerProjectUXBatch pins the round-13 T14 board decisions: chips carry
+// a total + R/P/D breakdown, an "all projects" reset chip appears when any
+// filter is active, the chips row collapses beyond the cap, and the project
+// column disappears from the task table when pinned to one project.
+func TestPerProjectUXBatch(t *testing.T) {
+	srv, s := newTestServer(t)
+	enqueue(t, s, "sh", "alpha")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?project=alpha", nil))
+	page := rec.Body.String()
+
+	if !strings.Contains(page, "all projects") {
+		t.Error("filtered view must offer the all-projects reset chip")
+	}
+
+	if !strings.Contains(page, " · ") || !strings.Contains(page, "1P/0R/0D") {
+		t.Errorf("project chip must carry total + R/P/D breakdown, got: %s", page)
+	}
+
+	if strings.Contains(tableFragment(page), "alpha") {
+		t.Error("project column must be dropped when pinned to one project")
+	}
+
+	// Unfiltered view keeps the project column.
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if !strings.Contains(tableFragment(rec.Body.String()), "alpha") {
+		t.Error("unfiltered table must render the project column")
+	}
+
+	if strings.Contains(rec.Body.String(), "all projects") {
+		t.Error("reset chip must not render without an active filter")
+	}
+}
+
+// TestVisibleProjectsCap pins the chips-row overflow helper.
+func TestVisibleProjectsCap(t *testing.T) {
+	t.Parallel()
+
+	all := make([]ProjectSummary, 0, chipMaxVisible+3)
+	for i := range chipMaxVisible + 3 {
+		all = append(all, ProjectSummary{Name: fmt.Sprintf("p%02d", i), Total: i})
+	}
+
+	shown, hidden := visibleProjects(all)
+	if len(shown) != chipMaxVisible || hidden != 3 {
+		t.Errorf("visibleProjects = %d shown/%d hidden, want %d/3", len(shown), hidden, chipMaxVisible)
+	}
+
+	small := all[:4]
+
+	if got, hidden := visibleProjects(small); len(got) != 4 || hidden != 0 {
+		t.Errorf("visibleProjects(4) = %d shown/%d hidden, want 4/0", len(got), hidden)
+	}
+}
