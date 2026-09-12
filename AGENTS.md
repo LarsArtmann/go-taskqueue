@@ -82,6 +82,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/dlqfix`                                  | DLQ-autopsy sweeper (`--dlq-fix`): dead agent tasks gain ONE autopsy task; `fixed` verdict rescues, `wontfix` dismisses (`Dead → Cancelled` via `DismissDead`)                      |
 | `internal/review`                                  | Sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks                                                                                             |
 | `internal/status`                                  | Sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)                                                                                  |
+| `internal/prioritize`                              | Score-cache sweeper (`--prioritize`): repos holding unscored backlog items mint ONE machine-band batch-scorer task; verdicts cache into `priority_scores` and re-rank PENDING tasks (marker > AI > keyword)             |
 | `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                                     |
 | `internal/runactor`                                | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                                  |
 | `internal/webui`                                   | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                                        |
@@ -179,6 +180,25 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   like every mint, and the `{{TASK_ID}}` in the fix-commit footer resolves
   to the AUTOPSY's id. Cursor `dlqfix-sweeper` (head-bootstrapped,
   rewindable). Design: docs/planning/2026-09-12_dlq-autopsy-design.md.
+- **`prioritize` (AI batch scorer, `--prioritize`)**: `PrioritizePayload`
+  JSON (repo, batch items with dedup keys, model/yolo/clean knobs). A
+  repo holding UNSCORED backlog items (pending agent tasks with `todo:`
+  dedup keys, uncached + not claimed by any minted batch) mints ONE
+  machine-band (150) batch task, dedup
+  `prioritize:<repo>:<hash-of-key-set>` — an unchanged set never mints
+  twice (a dead batch recovers only on the next key-set change; the DLQ
+  is the human surface until then). The scorer run is READ-ONLY,
+  closeout-free (review-pattern clone); mechanical gate is the strict
+  `TQ_RESULT: {"verdicts":[...]}` line (every item exactly once, scores
+  0-100 — `executor.ParsePrioritizeResult`). The sweeper
+  (cursor `prioritize-sweeper`, head-bootstrapped, budget-gated via the
+  pool's mintPass) caches verdicts into `priority_scores`
+  (`ai:batch-scorer`) and re-ranks matching PENDING tasks via
+  `UpdatePendingPriority` source `ai`: marker items are protected by the
+  payload-pinned `markerLevel` (marker > AI), hot/machine by
+  `RepriMutable`, and scores clamp to the backlog band. `tq reprioritize`
+  and the startup sweep feed the same cache (one ladder everywhere).
+  Default OFF — it is AI spend.
 - **Session-close bridge** (`tq session begin/close`, prototype
   2026-09-12): interactive sessions get the pool close-out — begin mints
   `session.opened`; close scans `Crush-Session: <id>` git trailers (git ≥

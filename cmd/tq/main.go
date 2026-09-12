@@ -1522,11 +1522,76 @@ func cmdShow(args []string) error {
 	}
 
 	return enc.Encode(struct {
-		Task    task.Task      `json:"task"`
-		Facts   []journal.Fact `json:"facts,omitempty"`
-		Result  any            `json:"result,omitempty"`
-		Commits any            `json:"commits,omitempty"`
-	}{t, trail, resultDetail(t, trail), commitView})
+		Task     task.Task          `json:"task"`
+		Facts    []journal.Fact     `json:"facts,omitempty"`
+		Result   any                `json:"result,omitempty"`
+		Commits  any                `json:"commits,omitempty"`
+		Priority priorityProvenance `json:"priority"`
+	}{t, trail, resultDetail(t, trail), commitView, buildPriorityProvenance(ctx, store, t, trail)})
+}
+
+// priorityProvenance is the `tq show` priority section (ADR-0015): what
+// the task's priority is, which band it sits in, the cached AI verdict
+// behind it (when the item was ever scored), and its reprioritization
+// history — the answer to "why is this task ranked here?".
+type priorityProvenance struct {
+	Current      int                  `json:"current"`
+	Band         string               `json:"band"`
+	ItemKey      string               `json:"itemKey,omitempty"`
+	MarkerLevel  int                  `json:"markerLevel,omitempty"`
+	CachedScore  *queue.PriorityScore `json:"cachedScore,omitempty"`
+	RepriHistory []repriEvent         `json:"repriHistory,omitempty"`
+}
+
+// repriEvent is one distilled task.reprioritized fact.
+type repriEvent struct {
+	At     string `json:"at"`
+	Old    int    `json:"old"`
+	New    int    `json:"new"`
+	Source string `json:"source"`
+	Reason string `json:"reason,omitempty"`
+}
+
+// buildPriorityProvenance reads the task's priority story: the payload's
+// item identity (harvest-minted tasks only), the score cache, and the
+// fact trail's reprioritization history.
+func buildPriorityProvenance(
+	ctx context.Context,
+	store *sqlite.Store,
+	t task.Task,
+	trail []journal.Fact,
+) priorityProvenance {
+	provenance := priorityProvenance{Current: t.Priority, Band: string(queue.BandOf(t.Priority))}
+
+	if item, ok := harvest.PayloadItemOf(t); ok {
+		provenance.ItemKey = item.Key
+		provenance.MarkerLevel = item.MarkerLevel
+
+		if score, cached, err := store.PriorityScore(ctx, item.Key); err == nil && cached {
+			provenance.CachedScore = &score
+		}
+	}
+
+	for _, f := range trail {
+		if f.Type != journal.Reprioritized {
+			continue
+		}
+
+		var evidence queue.ReprioritizeEvidence
+		if err := json.Unmarshal(f.Detail, &evidence); err != nil {
+			continue
+		}
+
+		provenance.RepriHistory = append(provenance.RepriHistory, repriEvent{
+			At:     f.Time.UTC().Format(time.RFC3339),
+			Old:    evidence.OldPriority,
+			New:    evidence.NewPriority,
+			Source: evidence.Source,
+			Reason: evidence.Reason,
+		})
+	}
+
+	return provenance
 }
 
 // commitHit is one git commit carrying the task's Task-Queue-ID footer.
