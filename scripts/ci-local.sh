@@ -148,9 +148,13 @@ step "bootstrap --install smoke"
 ./scripts/smoke/bootstrap-install.sh
 
 step "release-gates smoke (fixture go.mods, positive + negative)"
-# Runners carry no global git identity — run the smoke identity-blind so an
-# identity-dependent git op inside it fails locally the way it does there.
-GIT_CONFIG_GLOBAL=/dev/null ./scripts/smoke/release-gates.sh
+# Runner parity: no global git identity locally either. /dev/null alone is
+# NOT enough — this host auto-detects identity from the passwd GECOS and
+# commits anyway; user.useConfigOnly makes identity-blindness strict, so a
+# dropped -c user.* flag in the smoke fails here the way it does on runners.
+GIT_CONFIG_GLOBAL=/dev/null \
+	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.useConfigOnly GIT_CONFIG_VALUE_0=true \
+	./scripts/smoke/release-gates.sh
 
 # Round-13 T8: the version surfaces are one set (flake attr = ldflags source;
 # CHANGELOG latest release never older). Red-probed 2026-09-12.
