@@ -498,6 +498,13 @@ func printAgentPoolBanner(poolOpts agentPoolOptions) {
 		)
 	}
 
+	if poolOpts.dlqFix {
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: agent-pool: DLQ autopsies enabled (dead agent tasks get one diagnosis run; fixed rescues, wontfix dismisses)\n",
+		)
+	}
+
 	if poolOpts.deadPoolTicks > 0 {
 		fmt.Fprintf(
 			os.Stderr,

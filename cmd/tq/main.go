@@ -25,6 +25,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/bridge/cqa"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/budget"
+	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
@@ -63,7 +64,7 @@ Usage:
   tq doctor [--json] [--daily-budget N] [--repos a,b] [--db PATH]
   tq top [--interval DUR] [--once] [--json] [--db PATH]
   tq show TASK_ID [--db PATH]   (a unique ID prefix works)
-  tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]]
+  tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]] [--dismiss TASK_ID [--reason WHY]]
 tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative cancel of a running task)
   tq facts [--db PATH] [--after SEQ]
   tq tail [-f] [--db PATH] [--after SEQ]
@@ -820,6 +821,20 @@ func cmdAgentPool(args []string) error {
 		}
 	}
 
+	var dlqfixSweeper *dlqfix.Sweeper
+
+	if poolOpts.dlqFix {
+		var err error
+
+		dlqfixSweeper, err = dlqfix.NewSweeper(ctx, store, dlqfix.SweeperConfig{
+			Model: poolOpts.model,
+			Log:   log,
+		})
+		if err != nil {
+			return fmt.Errorf("dlqfix sweeper: %w", err)
+		}
+	}
+
 	// mintPass gates one budget-consuming pass: EVERY enqueue (harvested,
 	// review, status, CQA) must clear the guard immediately before it — a
 	// completion inside the same tick can spend the last slot after an
@@ -927,6 +942,19 @@ func cmdAgentPool(args []string) error {
 				} else if stats.ReportsEnqueued > 0 || stats.Skipped > 0 {
 					log.Info("status sweep done", "facts", stats.Facts,
 						"reports", stats.ReportsEnqueued, "known", stats.ReportsKnown, "skipped", stats.Skipped)
+				}
+			})
+		}
+
+		if dlqfixSweeper != nil {
+			mintPass("dlq-fix sweep", func() {
+				stats, err := dlqfixSweeper.Sweep(ctx)
+				if err != nil {
+					log.Error("dlq-fix sweep failed", "err", err)
+				} else if stats.FixesEnqueued > 0 || stats.Rescued > 0 || stats.Dismissed > 0 || stats.Skipped > 0 {
+					log.Info("dlq-fix sweep done", "facts", stats.Facts,
+						"autopsies", stats.FixesEnqueued, "known", stats.FixesKnown,
+						"rescued", stats.Rescued, "dismissed", stats.Dismissed, "skipped", stats.Skipped)
 				}
 			})
 		}
@@ -1572,6 +1600,12 @@ func cmdDLQ(args []string) error {
 	rescueAll := fs.Bool("rescue-all", false, "re-queue EVERY dead task (only after a human decided they can succeed)")
 	olderThan := fs.Duration("older-than", 0, "with --rescue-all: only tasks dead for at least this long (e.g. 24h)")
 	maxAttempts := fs.Int("max-attempts", 3, "attempt budget for rescued task(s)")
+	dismiss := fs.String(
+		"dismiss",
+		"",
+		"cancel this dead task ID with a recorded reason (the same disposition the DLQ-autopsy sweeper makes on a wontfix verdict)",
+	)
+	reason := fs.String("reason", "", "why the task is dismissed; stored in the cancelled fact detail")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -1593,6 +1627,16 @@ func cmdDLQ(args []string) error {
 		}
 
 		fmt.Printf("rescued %s\n", *rescue)
+
+		return nil
+	}
+
+	if *dismiss != "" {
+		if err := store.DismissDead(context.Background(), task.ID(*dismiss), strings.TrimSpace(*reason), "operator"); err != nil {
+			return err
+		}
+
+		fmt.Printf("dismissed %s  (reason recorded on the cancelled fact)\n", *dismiss)
 
 		return nil
 	}
