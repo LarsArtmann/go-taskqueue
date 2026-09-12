@@ -298,7 +298,10 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   shipped on a 3h-red master before this). Bypass consciously with
   `CI_CHECK=off`. It also exports `GOEXPERIMENT=jsonv2` itself — never
   rely on `~/.config/go/env` (that dependence made CI red while local was
-  green; ci.yml sets the env workflow-wide for the same reason)
+  green; ci.yml sets the env workflow-wide for the same reason, and
+  fuzz.yml got the same env after its 2026-09-12 nightly died at setup
+  while the script misreported the build failure as a fuzz crasher —
+  nightly.sh now says CAMPAIGN SETUP FAILED when no crasher was written)
 - Evidence archives (`docs/status/assets/*/README.md`) are gated by
   `scripts/check-ghost-archives.sh` (ci-local + CI): every bare filename a
   README promises must be git-tracked (GHOST = on disk but ignored,

@@ -47,9 +47,15 @@ for campaign in "${campaigns[@]}"; do
 	# (internal/executor is), and directory patterns from the repo root never
 	# cross module boundaries.
 	echo "fuzzing $target in $pkg_dir for $fuzztime (private GOCACHE=$cache)"
+	seeds_before=$(find "$seed_dir" -type f 2>/dev/null | wc -l)
 	if ! (cd "$pkg_dir" && GOCACHE="$cache" go test . -run '^$' -fuzz "^$target\$" -fuzztime "$fuzztime"); then
-		echo "FUZZ FAILURE: go test wrote the crash input to $seed_dir" >&2
-		echo "Reproduce with: (cd $pkg_dir && go test . -run '^$target\$')" >&2
+		seeds_after=$(find "$seed_dir" -type f 2>/dev/null | wc -l)
+		if [ "$seeds_after" -gt "$seeds_before" ]; then
+			echo "FUZZ FAILURE: go test wrote the crash input to $seed_dir" >&2
+			echo "Reproduce with: (cd $pkg_dir && go test . -run '^$target\$')" >&2
+			exit 1
+		fi
+		echo "CAMPAIGN SETUP FAILED (no crasher written): build or environment error, likely GOEXPERIMENT=jsonv2 missing — see the go test output above" >&2
 		exit 1
 	fi
 
