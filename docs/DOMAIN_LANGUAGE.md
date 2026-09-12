@@ -54,6 +54,19 @@ Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 | **Drift**         | File-vs-queue disagreement found by `tq audit`: _stale-open_ (task completed, checkbox unticked — repaired by a **catch-up task**) or _stale-done_ (checkbox ticked, task unfinished — report-only). |
 | **Catch-up task** | A dedup-keyed (`catchup:` prefix) agent task whose only job is to close the loop in the file for work already done and verified. Armed at most once.                                                 |
 
+## Prioritization
+
+| Term                  | Meaning                                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Importance**        | Per-repo owner intent, 0–100, read from each repo's `.config/metadata.yaml` (project-meta file contract). Default 50 when absent; malformed file ⇒ repo skip reason. Ordering only, never budget (ADR-0015). |
+| **Marker**            | Trailing TODO_LIST item suffix `— P[1-4]` (optional `: <note>`), mapping to 90/70/50/30. Highest-precedence human priority signal; stripped before the dedup-key hash so edits never fork tasks. |
+| **Item score**        | Harvest-time effective priority resolved by precedence: marker > hot (same-session) > AI score > importance + keyword bumps > default 50. Clamped to the backlog band (0–99).                 |
+| **Band**              | Reserved range of the ONE priority scale: backlog 0–99, hot 100–149 (session urgency), machine 150+ (operational tasks). Crossing upward requires an explicit human/flag act; scorers clamp below it. |
+| **Working set**       | The pending slice actually eligible for admission (`MaxPendingPerRepo`); TODO_LIST.md is the warehouse, the queue is the working set — AI scoring cost is O(working set), not O(backlog).      |
+| **Aging**             | Claim-query scheduling term: `priority + LEAST(age/AgingDays, MaxAgeBonus)` keyed on immutable `created_at`. Scheduling, not state — stored priority never changes (ADR-0015 §4).             |
+| **Unblock bump**      | Priority bump applied to dependents when their dependency completes — the queue's answer to "the blocker finished, now it matters".                                                            |
+| **Score cache**       | `priority_scores` rows keyed by the item dedup-key derivation: (score, effort, source, reasoning, tokens, scored_at). An AI verdict persists and re-derives the same priority until the text changes. |
+
 ## Observation
 
 | Term                     | Meaning                                                                                                                                                                                                                                                                                      |
