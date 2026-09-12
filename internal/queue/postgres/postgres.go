@@ -907,6 +907,44 @@ func (s *Store) RescueDead(ctx context.Context, id task.ID, maxAttempts int) err
 	})
 }
 
+// DismissDead cancels a Dead task with a recorded reason (DLQ dismiss): the
+// autopsy verdict "unfixable" or an operator's ruling. The task.cancelled
+// fact's detail carries the reason and by ("dlqfix-sweeper" or "operator"),
+// so the journal keeps the death evidence AND the why of the withdrawal.
+func (s *Store) DismissDead(ctx context.Context, id task.ID, reason, by string) error {
+	return s.withTx(ctx, func(tx pgx.Tx) error {
+		var st string
+
+		err := tx.QueryRow(ctx, `SELECT status FROM tasks WHERE id = $1 FOR UPDATE`, id.String()).Scan(&st)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return task.ErrNotFound
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if st != string(task.Dead) {
+			return fmt.Errorf("%w: %s -> cancelled", task.ErrInvalidTransition, st)
+		}
+
+		tag, err := tx.Exec(ctx, `
+			UPDATE tasks SET status = 'cancelled', updated_at = $1, lease_owner = '', lease_expires = NULL
+			WHERE id = $2 AND status = 'dead'`, time.Now().UnixMilli(), id.String())
+		if err != nil {
+			return err
+		}
+
+		if tag.RowsAffected() == 0 {
+			return task.ErrInvalidTransition
+		}
+
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(), Type: journal.Cancelled, Detail: dismissReasonDetail(reason, by),
+		})
+	})
+}
+
 func pgOrderClause(f queue.Filter) string {
 	order := `ORDER BY priority DESC, created_at ASC`
 	if f.SeverityOrder {

@@ -308,6 +308,74 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 
+	t.Run("dismiss dead cancels with reason", func(t *testing.T) {
+		doomed, err := s.Enqueue(ctx, task.New{Type: "flaky", Project: project, MaxAttempts: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := s.ClaimDue(ctx, "dismiss-w", time.Minute); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := s.Fail(ctx, doomed.ID, "dismiss-w", "boom", 0, nil); err != nil {
+			t.Fatal(err)
+		}
+
+		if got, err := s.Get(ctx, doomed.ID); err != nil || got.Status != task.Dead {
+			t.Fatalf("pre-dismiss status = %v (%v), want dead", got.Status, err)
+		}
+
+		if err := s.DismissDead(ctx, doomed.ID, "root cause is external", "dlqfix-sweeper"); err != nil {
+			t.Fatal(err)
+		}
+
+		if got, err := s.Get(ctx, doomed.ID); err != nil || got.Status != task.Cancelled {
+			t.Fatalf("post-dismiss status = %v (%v), want cancelled", got.Status, err)
+		}
+
+		trail, err := s.FactsForTask(ctx, doomed.ID.String(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var detail struct {
+			Reason      string `json:"reason"`
+			DismissedBy string `json:"dismissed_by"`
+		}
+
+		sawFact := false
+
+		for _, f := range trail {
+			if f.Type != journal.Cancelled {
+				continue
+			}
+
+			sawFact = true
+
+			if json.Unmarshal(f.Detail, &detail) != nil {
+				t.Fatalf("dismiss fact detail not JSON: %s", f.Detail)
+			}
+		}
+
+		if !sawFact || detail.Reason != "root cause is external" || detail.DismissedBy != "dlqfix-sweeper" {
+			t.Fatalf("dismiss fact = %+v (fact seen: %v)", detail, sawFact)
+		}
+
+		if err := s.DismissDead(ctx, doomed.ID, "again", "operator"); !errors.Is(err, task.ErrInvalidTransition) {
+			t.Fatalf("double dismiss err = %v, want ErrInvalidTransition", err)
+		}
+
+		pending, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := s.DismissDead(ctx, pending.ID, "nope", "operator"); !errors.Is(err, task.ErrInvalidTransition) {
+			t.Fatalf("dismiss pending err = %v, want ErrInvalidTransition", err)
+		}
+	})
+
 	t.Run("cooperative cancel carries the reason", func(t *testing.T) {
 		running, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project})
 		if err != nil {

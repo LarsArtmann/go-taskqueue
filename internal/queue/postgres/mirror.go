@@ -82,3 +82,15 @@ func cooperativeCancelDetail(reason, after string) jsontext.Value {
 
 	return mustJSON(detail)
 }
+
+// dismissReasonDetail builds the task.cancelled detail for a DLQ dismiss:
+// the reason plus who ruled ("dlqfix-sweeper" or "operator"). The reason is
+// the point of the dismissal — an empty one still records the by.
+func dismissReasonDetail(reason, by string) jsontext.Value {
+	detail := map[string]string{"dismissed_by": by}
+	if reason != "" {
+		detail["reason"] = reason
+	}
+
+	return mustJSON(detail)
+}

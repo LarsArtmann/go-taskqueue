@@ -158,6 +158,78 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 	}
 }
 
+func TestDismissDead(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky", MaxAttempts: 2})
+
+	for range 2 {
+		if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := s.Fail(ctx, tk.ID, "w1", "boom", 0, nil); err != nil {
+			t.Fatalf("fail: %v", err)
+		}
+	}
+
+	if got, _ := s.Get(ctx, tk.ID); got.Status != task.Dead {
+		t.Fatalf("pre-dismiss status = %s, want dead", got.Status)
+	}
+
+	// Dismiss: dead -> cancelled with the reason on the fact.
+	if err := s.DismissDead(ctx, tk.ID, "root cause is external", "dlqfix-sweeper"); err != nil {
+		t.Fatalf("DismissDead: %v", err)
+	}
+
+	got, _ := s.Get(ctx, tk.ID)
+	if got.Status != task.Cancelled {
+		t.Fatalf("after dismiss: %+v", got)
+	}
+
+	facts, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
+
+	var cancelled journal.Fact
+
+	for _, f := range facts {
+		if f.Type == journal.Cancelled {
+			cancelled = f
+		}
+	}
+
+	if cancelled.Type != journal.Cancelled {
+		t.Fatalf("no cancelled fact after dismiss: %+v", facts)
+	}
+
+	var detail struct {
+		Reason      string `json:"reason"`
+		DismissedBy string `json:"dismissed_by"`
+	}
+	if err := json.Unmarshal(cancelled.Detail, &detail); err != nil {
+		t.Fatalf("cancelled detail not JSON: %v (%s)", err, cancelled.Detail)
+	}
+
+	if detail.Reason != "root cause is external" || detail.DismissedBy != "dlqfix-sweeper" {
+		t.Fatalf("dismiss detail = %+v", detail)
+	}
+
+	// Terminal: a second dismiss is a transition refusal, not a duplicate.
+	if err := s.DismissDead(ctx, tk.ID, "again", "operator"); !errors.Is(err, task.ErrInvalidTransition) {
+		t.Fatalf("double dismiss err = %v, want ErrInvalidTransition", err)
+	}
+
+	// Non-dead tasks refuse: cancel of a pending task stays Cancel's job.
+	pending, _ := s.Enqueue(ctx, task.New{Type: "a"})
+	if err := s.DismissDead(ctx, pending.ID, "nope", "operator"); !errors.Is(err, task.ErrInvalidTransition) {
+		t.Fatalf("dismiss pending err = %v, want ErrInvalidTransition", err)
+	}
+
+	// Unknown id: not found.
+	if err := s.DismissDead(ctx, task.ID("000000000000000000000000000000000000"), "", "operator"); !errors.Is(err, task.ErrNotFound) {
+		t.Fatalf("dismiss unknown err = %v, want ErrNotFound", err)
+	}
+}
+
 func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
