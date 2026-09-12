@@ -104,11 +104,13 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **`sh`**: payload is the shell line; accepted shapes raw text / JSON
   string / `{"cmd":"..."}` (`unwrapCommand`). Other types need valid JSON.
 - **`agent`**: `AgentPayload` JSON (repo, prompt, verify command, timeout).
-  Verify must exit 0, and the verify command must be ENV-SELF-CONTAINED:
-  minted Go verifies (bootstrap auto-detect + this repo's `.tq-verify`)
-  carry `export GOEXPERIMENT=jsonv2; ` so the gate is identical inside and
-  outside the flake devShell (the pool unit env carries no GOEXPERIMENT —
-  the env lie that burned 5+ windows, 2026-09-11 task 000001a08ebf). A
+  Verify must exit 0, and MINTED Go verifies (bootstrap auto-detect) must
+  be ENV-SELF-CONTAINED: they carry `export GOEXPERIMENT=jsonv2; ` so the
+  gate is identical inside and outside the flake devShell (the pool unit
+  env carries no GOEXPERIMENT — the env lie that burned 5+ windows,
+  2026-09-11 task 000001a08ebf; this repo's `.tq-verify` is owner-owned
+  and prelude-free until that unit-env fix lands — an agent must never
+  edit its own gate, review ruling 2026-09-12). A
   payload model makes the executor pass `crush run
   -m`, which RESETS reasoning effort — the repo `.crushrc` managed block
   (`tq bootstrap`) is the only model+effort carrier. The managed block's
