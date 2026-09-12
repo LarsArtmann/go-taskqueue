@@ -13,10 +13,10 @@ import (
 
 func TestSplitMarker(t *testing.T) {
 	cases := []struct {
-		name    string
-		text    string
-		wantOK  bool
-		level   int
+		name     string
+		text     string
+		wantOK   bool
+		level    int
 		stripped string
 	}{
 		{"marker with note", "Fix the token check — P1: security-adjacent", true, 1, "Fix the token check"},
@@ -26,7 +26,7 @@ func TestSplitMarker(t *testing.T) {
 		{"P5 is not a marker", "Something — P5", false, 0, "Something — P5"},
 		{"hyphen is not a marker", "Something - P2", false, 0, "Something - P2"},
 		{"no marker", "Plain item", false, 0, "Plain item"},
-		{"marker without leading text", "— P2: only a marker", true, 2, "— P2: only a marker"},
+		{"marker-only line is not a marker", "— P2: only a marker", false, 0, "— P2: only a marker"},
 		{"note may contain colons", "Do it — P2: yes: really", true, 2, "Do it"},
 		{"lowercase p is not a marker", "Something — p1", false, 0, "Something — p1"},
 	}
@@ -143,6 +143,7 @@ func TestKeywordBump(t *testing.T) {
 func TestReadImportance(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		repo := writeMetadata(t, "tags: [go]\nimportance: 70\ncreated_at: 2026-01-01\n")
+
 		got, err := ReadImportance(repo)
 		if err != nil || got != 70 {
 			t.Fatalf("ReadImportance = (%d, %v), want (70, nil)", got, err)
@@ -151,6 +152,7 @@ func TestReadImportance(t *testing.T) {
 
 	t.Run("quoted scalar", func(t *testing.T) {
 		repo := writeMetadata(t, "importance: \"55\"\n")
+
 		got, err := ReadImportance(repo)
 		if err != nil || got != 55 {
 			t.Fatalf("ReadImportance = (%d, %v), want (55, nil)", got, err)
@@ -166,6 +168,7 @@ func TestReadImportance(t *testing.T) {
 
 	t.Run("file without importance defaults to 50", func(t *testing.T) {
 		repo := writeMetadata(t, "tags: [rust]\n")
+
 		got, err := ReadImportance(repo)
 		if err != nil || got != DefaultImportance {
 			t.Fatalf("ReadImportance = (%d, %v), want (%d, nil)", got, err, DefaultImportance)
@@ -174,6 +177,7 @@ func TestReadImportance(t *testing.T) {
 
 	t.Run("nested license importance is ignored", func(t *testing.T) {
 		repo := writeMetadata(t, "tags: []\nimportance: 40\nlicense:\n  importance: 999\n")
+
 		got, err := ReadImportance(repo)
 		if err != nil || got != 40 {
 			t.Fatalf("ReadImportance = (%d, %v), want (40, nil) — nested keys must not win", got, err)
@@ -227,8 +231,15 @@ func TestResolvePriority(t *testing.T) {
 	}{
 		{
 			"hot beats marker",
-			ResolveInput{Text: "see /tmp/scratch", MarkerLevel: 1, HotPriority: 120, ImportanceEnabled: true, AIScore: ai(99)},
-			120, PrioritySourceHot,
+			ResolveInput{
+				Text:              "see /tmp/scratch",
+				MarkerLevel:       1,
+				HotPriority:       120,
+				ImportanceEnabled: true,
+				AIScore:           ai(99),
+			},
+			120,
+			PrioritySourceHot,
 		},
 		{
 			"marker beats ai and importance",
@@ -285,10 +296,13 @@ func TestHarvestPriorityWiring(t *testing.T) {
 	ctx := context.Background()
 	projects := t.TempDir()
 
-	writeRepo(projects, "calm", "- [ ] water the plants\n")
-	writeRepo(projects, "marked", "- [ ] Fix the deploy — P1\n- [ ] tidy the docs — P4\n")
-	writeRepo(projects, "spicy", "- [ ] urgent production hotfix\n") // keyword bump
-	writeRepo(projects, "broken", "- [ ] should never enqueue\n")
+	// One item per repo: harvest pacing admits one NEW item per repo per
+	// run, so multi-item repos would hide items behind pacing skips.
+	writeRepo(t, projects, "calm", "- [ ] water the plants\n")
+	writeRepo(t, projects, "p1", "- [ ] Fix the deploy — P1\n")
+	writeRepo(t, projects, "p4", "- [ ] tidy the docs — P4\n")
+	writeRepo(t, projects, "spicy", "- [ ] urgent production hotfix\n") // keyword bump
+	writeRepo(t, projects, "broken", "- [ ] should never enqueue\n")
 
 	// calm: importance 35 (below default). marked: no file (default 50).
 	// spicy: importance 80 + keyword bump -> clamped. broken: malformed.
@@ -300,16 +314,16 @@ func TestHarvestPriorityWiring(t *testing.T) {
 	h := New(tq, Config{
 		Repos: []string{
 			filepath.Join(projects, "calm"),
-			filepath.Join(projects, "marked"),
+			filepath.Join(projects, "p1"),
+			filepath.Join(projects, "p4"),
 			filepath.Join(projects, "spicy"),
 			filepath.Join(projects, "broken"),
 		},
-		Type:              "agent",
-		TodoFile:          DefaultTodoFile,
-		MaxPerTick:        10,
-		UseImportance:     true,
-		RequireClean:      false,
-		PromptTemplate:    "work {{ITEM}}",
+		Type:           "agent",
+		TodoFile:       DefaultTodoFile,
+		MaxPerTick:     10,
+		UseImportance:  true,
+		PromptTemplate: "work {{ITEM}}",
 	})
 
 	res, err := h.Run(ctx)
@@ -318,6 +332,7 @@ func TestHarvestPriorityWiring(t *testing.T) {
 	}
 
 	prio := map[string]int{}
+
 	for _, en := range res.Enqueued {
 		tk, err := tq.Get(ctx, en.TaskID)
 		if err != nil {
@@ -356,7 +371,7 @@ func TestHarvestPriorityWiring(t *testing.T) {
 func TestHarvestPriorityLegacyOff(t *testing.T) {
 	ctx := context.Background()
 	projects := t.TempDir()
-	repo := writeRepo(projects, "legacy", "- [ ] plain — P2\n- [ ] unmarked\n")
+	repo := writeRepo(t, projects, "legacy", "- [ ] plain — P2\n- [ ] unmarked\n")
 	writeMetadataTo(t, repo, "importance: 90\n")
 
 	tq := openQueue(t)

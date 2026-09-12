@@ -128,7 +128,12 @@ func TestPostgresConformance(t *testing.T) {
 		// effective 55+queue.PriorityAgingMaxBonus must beat the newer's
 		// 60 — the mirror of the sqlite white-box suite (ADR-0015 §4).
 		backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
-		if _, err := s.pool.Exec(ctx, `UPDATE tasks SET created_at = $1 WHERE id = $2`, backdated, older.ID); err != nil {
+		if _, err := s.pool.Exec(
+			ctx,
+			`UPDATE tasks SET created_at = $1 WHERE id = $2`,
+			backdated,
+			older.ID,
+		); err != nil {
 			t.Fatal(err)
 		}
 
@@ -138,7 +143,12 @@ func TestPostgresConformance(t *testing.T) {
 		}
 
 		if got.ID != older.ID {
-			t.Fatalf("aging did not flip claim order: claimed %s, want older %s over newer %s", got.ID, older.ID, newer.ID)
+			t.Fatalf(
+				"aging did not flip claim order: claimed %s, want older %s over newer %s",
+				got.ID,
+				older.ID,
+				newer.ID,
+			)
 		}
 
 		if err := s.Complete(ctx, older.ID, "aging-w", nil); err != nil {
@@ -158,7 +168,12 @@ func TestPostgresConformance(t *testing.T) {
 		}
 
 		ancientDate := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
-		if _, err := s.pool.Exec(ctx, `UPDATE tasks SET created_at = $1 WHERE id = $2`, ancientDate, ancient.ID); err != nil {
+		if _, err := s.pool.Exec(
+			ctx,
+			`UPDATE tasks SET created_at = $1 WHERE id = $2`,
+			ancientDate,
+			ancient.ID,
+		); err != nil {
 			t.Fatal(err)
 		}
 
@@ -177,6 +192,7 @@ func TestPostgresConformance(t *testing.T) {
 		if err := s.Complete(ctx, stronger.ID, "aging-w", nil); err != nil {
 			t.Fatal(err)
 		}
+
 		for _, id := range []task.ID{newer.ID, ancient.ID} {
 			if err := s.Cancel(ctx, id, "conformance cleanup"); err != nil {
 				t.Fatal(err)

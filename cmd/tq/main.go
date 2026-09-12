@@ -460,6 +460,11 @@ func cmdHarvest(args []string) error {
 		0,
 		"enqueue harvested items whose text references /tmp paths at this priority (hot: work them this session, the files will not survive); 0 disables",
 	)
+	priorityFrom := fs.String(
+		"priority-from",
+		"",
+		`resolve harvested priorities from each repo's .config/metadata.yaml importance (0-100, default 50) plus keyword bumps, clamped to the backlog band; "importance" enables, empty keeps the flat --priority (markers and hot promotion apply either way; ADR-0015)`,
+	)
 	asJSON := fs.Bool("json", false, "JSON output of the harvest result")
 	pruneStale := fs.Bool(
 		"prune-stale",
@@ -470,6 +475,10 @@ func cmdHarvest(args []string) error {
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	if *priorityFrom != "" && *priorityFrom != "importance" {
+		return fmt.Errorf(`--priority-from: want "importance" or empty, got %q`, *priorityFrom)
 	}
 
 	if *projectsDir == "" && *repos == "" {
@@ -491,6 +500,7 @@ func cmdHarvest(args []string) error {
 		MaxAttempts:         *maxAttempts,
 		Model:               *model,
 		SameSessionPriority: *sameSessionPriority,
+		UseImportance:       *priorityFrom == "importance",
 		DryRun:              *dryRun,
 	}
 

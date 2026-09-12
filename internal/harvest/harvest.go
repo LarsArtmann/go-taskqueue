@@ -651,13 +651,13 @@ func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 			}
 
 			items = append(items, Item{
-				Repo:         abs,
-				RepoName:     repoName,
-				Heading:      heading,
-				Text:         text,
-				Key:          ItemKey(repoName, text),
-				Done:         done,
-				MarkerLevel:  level,
+				Repo:        abs,
+				RepoName:    repoName,
+				Heading:     heading,
+				Text:        text,
+				Key:         ItemKey(repoName, text),
+				Done:        done,
+				MarkerLevel: level,
 			})
 		}
 	}

@@ -225,7 +225,15 @@ func TestDismissDead(t *testing.T) {
 	}
 
 	// Unknown id: not found.
-	if err := s.DismissDead(ctx, task.ID("000000000000000000000000000000000000"), "", "operator"); !errors.Is(err, task.ErrNotFound) {
+	if err := s.DismissDead(
+		ctx,
+		task.ID("000000000000000000000000000000000000"),
+		"",
+		"operator",
+	); !errors.Is(
+		err,
+		task.ErrNotFound,
+	) {
 		t.Fatalf("dismiss unknown err = %v, want ErrNotFound", err)
 	}
 }
@@ -316,6 +324,7 @@ func TestClaimAgingFlipsOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enqueue older: %v", err)
 	}
+
 	newer, err := s.Enqueue(ctx, task.New{Type: "newer", Priority: 60})
 	if err != nil {
 		t.Fatalf("enqueue newer: %v", err)
@@ -334,6 +343,7 @@ func TestClaimAgingFlipsOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
+
 	if got.ID != older.ID {
 		t.Fatalf("aging did not flip claim order: claimed %s, want older %s over newer %s", got.ID, older.ID, newer.ID)
 	}
@@ -347,6 +357,7 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enqueue older: %v", err)
 	}
+
 	newer, err := s.Enqueue(ctx, task.New{Type: "newer", Priority: 65})
 	if err != nil {
 		t.Fatalf("enqueue newer: %v", err)
@@ -363,6 +374,7 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
+
 	if got.ID != newer.ID {
 		t.Fatalf("aging bonus not capped: claimed %s, want newer %s", got.ID, newer.ID)
 	}
@@ -375,17 +387,19 @@ func TestClaimAgingRespectsNotBefore(t *testing.T) {
 	// An ancient, high-priority task gated by NotBefore must stay gated —
 	// aging reorders claimable tasks, it never bypasses the not-before gate.
 	gated, err := s.Enqueue(ctx, task.New{
-		Type:       "gated",
-		Priority:   90,
-		NotBefore:  time.Now().Add(time.Hour),
+		Type:      "gated",
+		Priority:  90,
+		NotBefore: time.Now().Add(time.Hour),
 	})
 	if err != nil {
 		t.Fatalf("enqueue gated: %v", err)
 	}
+
 	ready, err := s.Enqueue(ctx, task.New{Type: "ready", Priority: 1})
 	if err != nil {
 		t.Fatalf("enqueue ready: %v", err)
 	}
+
 	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
 	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, gated.ID); err != nil {
 		t.Fatalf("backdate: %v", err)
@@ -395,8 +409,14 @@ func TestClaimAgingRespectsNotBefore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
+
 	if got.ID != ready.ID {
-		t.Fatalf("aging bypassed NotBefore: claimed %s, want gated %s behind, ready %s first", got.ID, gated.ID, ready.ID)
+		t.Fatalf(
+			"aging bypassed NotBefore: claimed %s, want gated %s behind, ready %s first",
+			got.ID,
+			gated.ID,
+			ready.ID,
+		)
 	}
 }
 
@@ -421,6 +441,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim old: %v", err)
 	}
+
 	if err := s.Requeue(ctx, old.ID, "w1", "preflight", 0); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
@@ -432,6 +453,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
+
 	if got.ID != old.ID {
 		t.Fatalf("requeue reset aging: claimed %s, want %s over fresh %s", got.ID, old.ID, fresh.ID)
 	}
@@ -449,6 +471,7 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enqueue low: %v", err)
 	}
+
 	high, err := s.Enqueue(ctx, task.New{Type: "high", Priority: 41})
 	if err != nil {
 		t.Fatalf("enqueue high: %v", err)
@@ -463,9 +486,11 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
+
 	if got.ID != low.ID {
 		t.Fatalf("two aging windows did not flip a 1-point gap: claimed %s, want %s", got.ID, low.ID)
 	}
+
 	if err := s.Complete(ctx, low.ID, "w1", nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
@@ -479,6 +504,7 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
+
 	if got.ID != high.ID {
 		t.Fatalf("three aging windows did not outrank two: claimed %s, want %s", got.ID, high.ID)
 	}
