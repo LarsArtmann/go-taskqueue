@@ -96,6 +96,12 @@ type Config struct {
 	// to this priority at enqueue time ("hot": work the same session, the
 	// files will not survive). Zero disables the promotion.
 	SameSessionPriority int
+	// UseImportance resolves harvested priorities from the repo's
+	// .config/metadata.yaml importance (default 50) plus keyword bumps,
+	// clamped to the backlog band (ADR-0015 §3). Markers and hot promotion
+	// apply regardless of this flag; a malformed metadata file skips the
+	// repo's items with a reason instead of guessing.
+	UseImportance bool
 	// PromptTemplate overrides DefaultPromptTemplate.
 	PromptTemplate string
 	// Model overrides the crush model ("provider/model") in every harvested
@@ -150,9 +156,13 @@ type Item struct {
 	Repo     string // absolute repo path
 	RepoName string // project name (repo dir base name)
 	Heading  string // nearest markdown heading above the item
-	Text     string // the checkbox text, trimmed
-	Key      string // stable dedup key: hash of repo name + item text
+	Text     string // the checkbox text, trimmed, priority marker stripped
+	Key      string // stable dedup key: hash of repo name + MARKER-STRIPPED text
 	Done     bool   // true when the checkbox is ticked ([x])
+	// MarkerLevel is the parsed trailing `— P[1-4]` marker (1–4); 0 = none.
+	// Stripped from Text before hashing so editing a marker never forks a
+	// task (ADR-0015 §2).
+	MarkerLevel int
 }
 
 // Enqueued records a task created (or already present) for an item.
@@ -606,13 +616,22 @@ func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 				continue
 			}
 
+			// Strip the priority marker before the item exists at all: Text,
+			// Key, and the payload all carry the marker-free text, so editing
+			// `— P1` to `— P2` re-derives the SAME dedup key (ADR-0015 §2).
+			level := 0
+			if l, stripped, ok := SplitMarker(text); ok {
+				level, text = l, strings.TrimSpace(stripped)
+			}
+
 			items = append(items, Item{
-				Repo:     abs,
-				RepoName: repoName,
-				Heading:  heading,
-				Text:     text,
-				Key:      ItemKey(repoName, text),
-				Done:     done,
+				Repo:         abs,
+				RepoName:     repoName,
+				Heading:      heading,
+				Text:         text,
+				Key:          ItemKey(repoName, text),
+				Done:         done,
+				MarkerLevel:  level,
 			})
 		}
 	}
