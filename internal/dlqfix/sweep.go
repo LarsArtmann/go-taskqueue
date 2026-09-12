@@ -260,14 +260,14 @@ func (s *Sweeper) lastFailureEvidence(ctx context.Context, id task.ID) executor.
 		return executor.FailureEvidence{}
 	}
 
-	for _, tf := range slices.Backward(trail) {
-		if tf.Type != journal.Failed {
+	for _, trailFact := range slices.Backward(trail) {
+		if trailFact.Type != journal.Failed {
 			continue
 		}
 
 		var evidence executor.FailureEvidence
 
-		if json.Unmarshal(tf.Detail, &evidence) == nil {
+		if json.Unmarshal(trailFact.Detail, &evidence) == nil {
 			return evidence
 		}
 

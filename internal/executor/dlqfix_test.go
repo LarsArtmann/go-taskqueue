@@ -51,9 +51,9 @@ func TestParseDLQFixResultTable(t *testing.T) {
 			wantSumm: "provider quota exhausted; retry later",
 		},
 		{
-			name:   "verdict case-insensitive",
-			output: "TQ_RESULT: {\"verdict\":\"FIXED\",\"summary\":\"ok\"}\n",
-			want:   VerdictFixed,
+			name:     "verdict case-insensitive",
+			output:   "TQ_RESULT: {\"verdict\":\"FIXED\",\"summary\":\"ok\"}\n",
+			want:     VerdictFixed,
 			wantSumm: "ok",
 		},
 		{
@@ -126,16 +126,21 @@ func TestDLQFixExecutorVerdictContract(t *testing.T) {
 		name     string
 		agentOut string
 		want     DLQFixVerdict
+		wantSHA  string
+		wantSumm string
 	}{
 		{
 			name:     "fixed completes",
 			agentOut: "autopsy...\nTQ_RESULT: {\"verdict\":\"fixed\",\"summary\":\"bad flag name\",\"commit_sha\":\"deadbee\"}\n",
 			want:     VerdictFixed,
+			wantSHA:  "deadbee",
+			wantSumm: "bad flag name",
 		},
 		{
 			name:     "wontfix also completes",
 			agentOut: "TQ_RESULT: {\"verdict\":\"wontfix\",\"summary\":\"needs credentials from the operator\"}\n",
 			want:     VerdictWontFix,
+			wantSumm: "needs credentials from the operator",
 		},
 	}
 
@@ -160,8 +165,8 @@ func TestDLQFixExecutorVerdictContract(t *testing.T) {
 				t.Fatalf("sink detail %s: %v", sink.Detail(), err)
 			}
 
-			if got.Verdict != tt.want {
-				t.Fatalf("verdict = %q, want %q", got.Verdict, tt.want)
+			if got.Verdict != tt.want || got.CommitSHA != tt.wantSHA || got.Summary != tt.wantSumm {
+				t.Fatalf("result = %+v, want verdict %q sha %q summary %q", got, tt.want, tt.wantSHA, tt.wantSumm)
 			}
 		})
 	}

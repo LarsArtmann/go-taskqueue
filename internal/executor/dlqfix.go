@@ -125,18 +125,9 @@ func (e *DLQFixExecutor) base() *AgentExecutor {
 // fails the attempt — retryable, the model may comply on a retry.
 // Input-contract misses are permanent.
 func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
-	var p DLQFixPayload
-
-	if len(t.Payload) == 0 {
-		return Permanent(errors.New("dlqfix: empty payload, want {repo, dead_task, work}"))
-	}
-
-	if err := json.Unmarshal(t.Payload, &p); err != nil {
-		return Permanent(fmt.Errorf("dlqfix: decode payload: %w", err))
-	}
-
-	if p.Repo == "" || p.DeadTask == "" || p.Work == "" {
-		return Permanent(errors.New("dlqfix: payload needs non-empty repo, dead_task and work"))
+	p, err := decodeDLQFixPayload(t)
+	if err != nil {
+		return err
 	}
 
 	agent := e.base()
@@ -189,6 +180,26 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 	SetResultDetail(ctx, detail)
 
 	return nil
+}
+
+// decodeDLQFixPayload enforces the input contract: present, parseable, and
+// carrying the three fields without which no autopsy can start.
+func decodeDLQFixPayload(t task.Task) (DLQFixPayload, error) {
+	if len(t.Payload) == 0 {
+		return DLQFixPayload{}, Permanent(errors.New("dlqfix: empty payload, want {repo, dead_task, work}"))
+	}
+
+	var p DLQFixPayload
+
+	if err := json.Unmarshal(t.Payload, &p); err != nil {
+		return DLQFixPayload{}, Permanent(fmt.Errorf("dlqfix: decode payload: %w", err))
+	}
+
+	if p.Repo == "" || p.DeadTask == "" || p.Work == "" {
+		return DLQFixPayload{}, Permanent(errors.New("dlqfix: payload needs non-empty repo, dead_task and work"))
+	}
+
+	return p, nil
 }
 
 // dlqFixPrompt builds the autopsy instruction: the dead task's original
