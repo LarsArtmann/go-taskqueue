@@ -144,6 +144,13 @@ type Store interface {
 	// (never regresses). It records consumer progress, not task state, so
 	// no fact is appended.
 	SaveWatermark(ctx context.Context, consumer string, seq int64) error
+	// SavePriorityScore upserts one cached item score (ADR-0015 score
+	// cache): an AI verdict persists and re-derives the same priority
+	// until the item text changes and re-keys. No fact — the cache is a
+	// projection input, not queue history.
+	SavePriorityScore(ctx context.Context, score PriorityScore) error
+	// PriorityScore returns the cached verdict for an item key, if any.
+	PriorityScore(ctx context.Context, itemKey string) (PriorityScore, bool, error)
 	// FactsForTask returns one task's facts in Seq order, bounded to the
 	// most recent limit when > 0 (0 = unbounded).
 	FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error)
@@ -226,6 +233,21 @@ type WatermarkEntry struct {
 	Consumer  string
 	Seq       int64
 	UpdatedAt int64 // unix millis
+}
+
+// PriorityScore is one cached AI verdict for a TODO_LIST item, keyed by
+// the SAME dedup-key derivation the harvester uses (harvest.ItemKey), so
+// a score survives until the item text changes and re-keys (ADR-0015
+// score cache). Effort feeds budget-aware claims; tokens feed cost
+// measurement.
+type PriorityScore struct {
+	ItemKey       string
+	Score         int    // 0-100 (clamped to the backlog band on use)
+	EffortMinutes int    // estimated agent effort
+	Source        string // scorer identity, e.g. "ai:<model>"
+	Reasoning     string // one-line why
+	Tokens        int    // tokens the verdict cost
+	ScoredAt      int64  // unix millis
 }
 
 // New wraps a Store.

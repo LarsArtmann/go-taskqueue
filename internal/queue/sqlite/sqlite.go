@@ -155,6 +155,16 @@ CREATE TABLE IF NOT EXISTS watermarks (
 	seq        INTEGER NOT NULL, -- last checkpointed fact seq
 	updated_at INTEGER NOT NULL  -- unix millis
 );
+
+CREATE TABLE IF NOT EXISTS priority_scores (
+	item_key       TEXT PRIMARY KEY, -- the harvest dedup key (repo + item text)
+	score          INTEGER NOT NULL, -- 0-100
+	effort_minutes INTEGER NOT NULL, -- estimated agent effort
+	source         TEXT NOT NULL,    -- scorer identity, e.g. "ai:<model>"
+	reasoning      TEXT NOT NULL,    -- one-line why
+	tokens         INTEGER NOT NULL, -- what the verdict cost
+	scored_at      INTEGER NOT NULL  -- unix millis
+);
 `
 
 func (s *Store) migrate(ctx context.Context) error {
@@ -1475,6 +1485,43 @@ func (s *Store) SetWatermark(ctx context.Context, consumer string, seq int64) er
 		consumer, seq, time.Now().UnixMilli())
 
 	return err
+}
+
+// SavePriorityScore upserts one cached item score (ADR-0015 score cache).
+func (s *Store) SavePriorityScore(ctx context.Context, score queue.PriorityScore) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO priority_scores
+			(item_key, score, effort_minutes, source, reasoning, tokens, scored_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(item_key) DO UPDATE SET
+			score = excluded.score,
+			effort_minutes = excluded.effort_minutes,
+			source = excluded.source,
+			reasoning = excluded.reasoning,
+			tokens = excluded.tokens,
+			scored_at = excluded.scored_at`,
+		score.ItemKey, score.Score, score.EffortMinutes, score.Source, score.Reasoning, score.Tokens, score.ScoredAt)
+
+	return err
+}
+
+// PriorityScore returns the cached verdict for an item key, if any.
+func (s *Store) PriorityScore(ctx context.Context, itemKey string) (queue.PriorityScore, bool, error) {
+	var score queue.PriorityScore
+
+	err := s.db.QueryRowContext(ctx, `
+		SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at
+		FROM priority_scores WHERE item_key = ?`, itemKey).
+		Scan(&score.ItemKey, &score.Score, &score.EffortMinutes, &score.Source, &score.Reasoning, &score.Tokens, &score.ScoredAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return queue.PriorityScore{}, false, nil
+	}
+
+	if err != nil {
+		return queue.PriorityScore{}, false, err
+	}
+
+	return score, true, nil
 }
 
 // escapeLike escapes LIKE wildcards so a user query containing %, _ or \

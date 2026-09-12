@@ -517,7 +517,16 @@ func (h *Harvester) enqueue(ctx context.Context, item Item, importance int) (tas
 	}
 
 	// Effective priority resolves the ADR-0015 §3 precedence ladder: hot >
-	// marker > (AI cache, phase 5) > importance + keyword bumps > flat.
+	// marker > cached AI score > importance + keyword bumps > flat. The
+	// cache lookup keys on the item's dedup key, so a verdict survives
+	// until the text changes.
+	var aiScore *int
+
+	if score, ok, err := h.q.PriorityScore(ctx, item.Key); err == nil && ok {
+		clamped := queue.ClampBacklog(score.Score)
+		aiScore = &clamped
+	}
+
 	priority, _ := ResolvePriority(ResolveInput{
 		Text:              item.Text,
 		MarkerLevel:       item.MarkerLevel,
@@ -525,6 +534,7 @@ func (h *Harvester) enqueue(ctx context.Context, item Item, importance int) (tas
 		FlatPriority:      h.cfg.Priority,
 		Importance:        importance,
 		ImportanceEnabled: h.cfg.UseImportance,
+		AIScore:           aiScore,
 	})
 
 	return h.q.Enqueue(ctx, task.New{

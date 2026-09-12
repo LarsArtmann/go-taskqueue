@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -2624,5 +2624,40 @@ func TestListSinceFilter(t *testing.T) {
 
 	if n != 1 {
 		t.Fatalf("CountTasks window = %d, want 1", n)
+	}
+}
+
+func TestPriorityScoreRoundtrip(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if _, ok, err := s.PriorityScore(ctx, "todo:missing"); err != nil || ok {
+		t.Fatalf("missing key = (%v, %v), want (false, nil)", ok, err)
+	}
+
+	first := queue.PriorityScore{
+		ItemKey: "todo:abc", Score: 72, EffortMinutes: 45,
+		Source: "ai:test-model", Reasoning: "touches auth paths", Tokens: 1200,
+		ScoredAt: 1700000000000,
+	}
+	if err := s.SavePriorityScore(ctx, first); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	got, ok, err := s.PriorityScore(ctx, "todo:abc")
+	if err != nil || !ok || got != first {
+		t.Fatalf("read = (%+v, %v, %v), want (%+v, true, nil)", got, ok, err, first)
+	}
+
+	second := first
+	second.Score = 12
+	second.Reasoning = "re-scored"
+	if err := s.SavePriorityScore(ctx, second); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	got, _, _ = s.PriorityScore(ctx, "todo:abc")
+	if got.Score != 12 || got.Reasoning != "re-scored" || got.Tokens != first.Tokens {
+		t.Fatalf("upsert result = %+v", got)
 	}
 }

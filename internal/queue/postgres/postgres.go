@@ -84,6 +84,16 @@ CREATE TABLE IF NOT EXISTS watermarks (
 	seq        BIGINT NOT NULL,
 	updated_at BIGINT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS priority_scores (
+	item_key       TEXT PRIMARY KEY, -- the harvest dedup key (repo + item text)
+	score          INTEGER NOT NULL,
+	effort_minutes INTEGER NOT NULL,
+	source         TEXT NOT NULL,
+	reasoning      TEXT NOT NULL,
+	tokens         INTEGER NOT NULL,
+	scored_at      BIGINT NOT NULL
+);
 `
 
 // Open connects to dsn (e.g. "postgres://user:pass@host:5432/db"),
@@ -1352,6 +1362,44 @@ func (s *Store) ListWatermarks(ctx context.Context) ([]queue.WatermarkEntry, err
 	}
 
 	return out, rows.Err()
+}
+
+// SavePriorityScore upserts one cached item score (ADR-0015 score cache).
+// Mirror of the sqlite store's method (ADR-0007 conformance twin).
+func (s *Store) SavePriorityScore(ctx context.Context, score queue.PriorityScore) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO priority_scores
+			(item_key, score, effort_minutes, source, reasoning, tokens, scored_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT(item_key) DO UPDATE SET
+			score = excluded.score,
+			effort_minutes = excluded.effort_minutes,
+			source = excluded.source,
+			reasoning = excluded.reasoning,
+			tokens = excluded.tokens,
+			scored_at = excluded.scored_at`,
+		score.ItemKey, score.Score, score.EffortMinutes, score.Source, score.Reasoning, score.Tokens, score.ScoredAt)
+
+	return err
+}
+
+// PriorityScore returns the cached verdict for an item key, if any.
+func (s *Store) PriorityScore(ctx context.Context, itemKey string) (queue.PriorityScore, bool, error) {
+	var score queue.PriorityScore
+
+	err := s.pool.QueryRow(ctx, `
+		SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at
+		FROM priority_scores WHERE item_key = $1`, itemKey).
+		Scan(&score.ItemKey, &score.Score, &score.EffortMinutes, &score.Source, &score.Reasoning, &score.Tokens, &score.ScoredAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return queue.PriorityScore{}, false, nil
+	}
+
+	if err != nil {
+		return queue.PriorityScore{}, false, err
+	}
+
+	return score, true, nil
 }
 
 // SetWatermark overwrites a consumer cursor unconditionally — the ops

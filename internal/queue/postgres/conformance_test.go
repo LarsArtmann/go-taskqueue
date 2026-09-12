@@ -263,6 +263,34 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 
+	t.Run("priority score cache upsert", func(t *testing.T) {
+		if _, ok, err := s.PriorityScore(ctx, "todo:none"); err != nil || ok {
+			t.Fatalf("missing key = (%v, %v), want (false, nil)", ok, err)
+		}
+
+		first := queue.PriorityScore{
+			ItemKey: "todo:pg", Score: 80, EffortMinutes: 30,
+			Source: "ai:test", Reasoning: "r", Tokens: 42, ScoredAt: 1700000000000,
+		}
+		if err := s.SavePriorityScore(ctx, first); err != nil {
+			t.Fatal(err)
+		}
+
+		got, ok, err := s.PriorityScore(ctx, "todo:pg")
+		if err != nil || !ok || got != first {
+			t.Fatalf("read = (%+v, %v, %v)", got, ok, err)
+		}
+
+		first.Score = 5
+		if err := s.SavePriorityScore(ctx, first); err != nil {
+			t.Fatal(err)
+		}
+
+		if got, _, _ = s.PriorityScore(ctx, "todo:pg"); got.Score != 5 {
+			t.Fatalf("upsert score = %d, want 5", got.Score)
+		}
+	})
+
 	t.Run("retry backoff ladder with evidence", func(t *testing.T) {
 		retry, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, MaxAttempts: 5})
 		if err != nil {
