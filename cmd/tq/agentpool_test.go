@@ -285,6 +285,7 @@ func TestStarvationDetectorLifecycle(t *testing.T) {
 			t.Parallel()
 
 			var got []bool
+
 			detector := &starvationDetector{after: tt.after}
 			detector.notify = func(triggered bool, _ time.Duration, _ string, _ int) {
 				got = append(got, triggered)

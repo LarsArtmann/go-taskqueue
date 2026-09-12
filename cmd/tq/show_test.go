@@ -18,6 +18,47 @@ import (
 func TestBuildPriorityProvenance(t *testing.T) {
 	t.Parallel()
 
+	store, got := seedProvenanceTask(t)
+
+	trail, err := store.FactsForTask(ctxOf(t), got.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	provenance := buildPriorityProvenance(context.Background(), store, got, trail)
+
+	if provenance.Current != 85 || provenance.Band != "backlog" {
+		t.Fatalf("current/band = %d/%q, want 85/backlog", provenance.Current, provenance.Band)
+	}
+
+	if provenance.ItemKey != "todo:abc" || provenance.MarkerLevel != 0 {
+		t.Fatalf("item identity = %q/%d, want todo:abc/0", provenance.ItemKey, provenance.MarkerLevel)
+	}
+
+	if provenance.CachedScore == nil || provenance.CachedScore.Score != 85 ||
+		provenance.CachedScore.Source != "ai:batch-scorer" {
+		t.Fatalf("cached score = %+v", provenance.CachedScore)
+	}
+
+	if len(provenance.RepriHistory) != 1 {
+		t.Fatalf("repri history = %+v, want one event", provenance.RepriHistory)
+	}
+
+	event := provenance.RepriHistory[0]
+	if event.Old != 50 || event.New != 85 || event.Source != "ai" || event.Reason != "unblocks the release" {
+		t.Fatalf("repri event = %+v", event)
+	}
+
+	if event.At == "" {
+		t.Fatal("repri event carries no timestamp")
+	}
+}
+
+// seedProvenanceTask builds a scored, once-reprioritized harvest task over
+// a scratch store and returns the store plus the task's current record.
+func seedProvenanceTask(t *testing.T) (*sqlite.Store, task.Task) {
+	t.Helper()
+
 	ctx := context.Background()
 
 	store, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
@@ -62,38 +103,7 @@ func TestBuildPriorityProvenance(t *testing.T) {
 		t.Fatalf("get: %v", err)
 	}
 
-	trail, err := store.FactsForTask(ctx, enq.ID.String(), 0)
-	if err != nil {
-		t.Fatalf("facts: %v", err)
-	}
-
-	provenance := buildPriorityProvenance(ctx, store, got, trail)
-
-	if provenance.Current != 85 || provenance.Band != "backlog" {
-		t.Fatalf("current/band = %d/%q, want 85/backlog", provenance.Current, provenance.Band)
-	}
-
-	if provenance.ItemKey != "todo:abc" || provenance.MarkerLevel != 0 {
-		t.Fatalf("item identity = %q/%d, want todo:abc/0", provenance.ItemKey, provenance.MarkerLevel)
-	}
-
-	if provenance.CachedScore == nil || provenance.CachedScore.Score != 85 ||
-		provenance.CachedScore.Source != "ai:batch-scorer" {
-		t.Fatalf("cached score = %+v", provenance.CachedScore)
-	}
-
-	if len(provenance.RepriHistory) != 1 {
-		t.Fatalf("repri history = %+v, want one event", provenance.RepriHistory)
-	}
-
-	event := provenance.RepriHistory[0]
-	if event.Old != 50 || event.New != 85 || event.Source != "ai" || event.Reason != "unblocks the release" {
-		t.Fatalf("repri event = %+v", event)
-	}
-
-	if event.At == "" {
-		t.Fatal("repri event carries no timestamp")
-	}
+	return store, got
 }
 
 // TestBuildPriorityProvenanceForeignTask pins the section for a

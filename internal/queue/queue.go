@@ -278,10 +278,10 @@ const PrioritySourceUnblock = "unblock"
 
 // UnblockChange records one applied (or would-be) unblock bump.
 type UnblockChange struct {
-	TaskID        task.ID
-	OldPriority   int
-	NewPriority   int
-	CompletedDeps int
+	TaskID        task.ID `json:"task_id"`
+	OldPriority   int     `json:"old_priority"`
+	NewPriority   int     `json:"new_priority"`
+	CompletedDeps int     `json:"completed_deps"`
 }
 
 // BumpUnblocked lifts PENDING tasks whose dependencies have ALL completed

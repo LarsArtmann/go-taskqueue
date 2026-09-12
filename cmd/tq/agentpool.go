@@ -332,8 +332,8 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 // harvestConfigFromOptions assembles the harvester configuration, parsing
 // the name=duration ladder flags (--repo-timeout, --repo-interval).
 func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
-	if o.priorityFrom != "" && o.priorityFrom != "importance" {
-		return harvest.Config{}, fmt.Errorf(`--priority-from: want "importance" or empty, got %q`, o.priorityFrom)
+	if o.priorityFrom != "" && o.priorityFrom != priorityFromImportance {
+		return harvest.Config{}, fmt.Errorf(`--priority-from: want %q or empty, got %q`, priorityFromImportance, o.priorityFrom)
 	}
 
 	cfg := harvest.Config{
@@ -342,7 +342,7 @@ func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
 		MaxPerTick:        o.maxPerTick,
 		Model:             o.model,
 		DLQBackoff:        o.dlqBackoff,
-		UseImportance:     o.priorityFrom == "importance",
+		UseImportance:     o.priorityFrom == priorityFromImportance,
 		MaxPendingPerRepo: o.maxPending,
 	}
 
@@ -531,6 +531,7 @@ func observeStarvation(ctx context.Context, store *sqlite.Store, detector *starv
 	}
 
 	pendingStatus := task.Pending
+
 	oldest, err := store.List(ctx, queue.Filter{Status: &pendingStatus, Sort: "age-asc", Limit: 1})
 	if err != nil {
 		return

@@ -176,6 +176,7 @@ func TestSweeperMintsOneBatchForUnscoredItems(t *testing.T) {
 	// Dedup identity is proven through the idempotent-enqueue contract:
 	// re-enqueueing the same key set returns the SAME task.
 	wantDedup := DedupKey("demo", []string{"todo:abc", "todo:def"})
+
 	again, err := s.Enqueue(context.Background(), task.New{
 		Type:     executor.TaskTypePrioritize,
 		Project:  "demo",

@@ -119,14 +119,7 @@ func TestBumpUnblocked(t *testing.T) {
 		t.Fatalf("dry-run changes = %+v, want only the blocked task", changes)
 	}
 
-	got, err := store.Get(ctx, blocked.ID)
-	if err != nil {
-		t.Fatalf("get: %v", err)
-	}
-
-	if got.Priority != 50 {
-		t.Fatalf("dry-run mutated priority to %d", got.Priority)
-	}
+	mustPriority(t, ctx, store, blocked.ID, 50)
 
 	// Real sweep: the bump lands with exactly one unblock fact.
 	changes, err = q.BumpUnblocked(ctx, false)
@@ -138,9 +131,7 @@ func TestBumpUnblocked(t *testing.T) {
 		t.Fatalf("changes = %+v", changes)
 	}
 
-	if got, err = store.Get(ctx, blocked.ID); err != nil || got.Priority != 50+queue.UnblockBumpPriority {
-		t.Fatalf("post-bump priority = %d (%v)", got.Priority, err)
-	}
+	mustPriority(t, ctx, store, blocked.ID, 50+queue.UnblockBumpPriority)
 
 	facts, err := store.FactsForTask(ctx, blocked.ID.String(), 0)
 	if err != nil {
@@ -166,12 +157,24 @@ func TestBumpUnblocked(t *testing.T) {
 		t.Fatalf("unblock facts = %d, want exactly 1", unblockFacts)
 	}
 
-	if hotGot, err := store.Get(ctx, hot.ID); err != nil || hotGot.Priority != 120 {
-		t.Fatalf("hot task priority = %d (%v) — must stay protected", hotGot.Priority, err)
-	}
+	mustPriority(t, ctx, store, hot.ID, 120)
 
 	// Second sweep: the fact guard holds — no double bump.
 	if changes, err = q.BumpUnblocked(ctx, false); err != nil || len(changes) != 0 {
 		t.Fatalf("second sweep re-bumped: %+v (%v)", changes, err)
+	}
+}
+
+// mustPriority fetches one task and asserts its stored priority.
+func mustPriority(t *testing.T, ctx context.Context, store *sqlite.Store, id task.ID, want int) {
+	t.Helper()
+
+	got, err := store.Get(ctx, id)
+	if err != nil {
+		t.Fatalf("get %s: %v", id, err)
+	}
+
+	if got.Priority != want {
+		t.Fatalf("task %s priority = %d, want %d", id, got.Priority, want)
 	}
 }

@@ -47,8 +47,8 @@ func cmdReprioritize(args []string) error {
 		return err
 	}
 
-	if *priorityFrom != "" && *priorityFrom != "importance" {
-		return fmt.Errorf(`--priority-from: want "importance" or empty, got %q`, *priorityFrom)
+	if *priorityFrom != "" && *priorityFrom != priorityFromImportance {
+		return fmt.Errorf(`--priority-from: want %q or empty, got %q`, priorityFromImportance, *priorityFrom)
 	}
 
 	cfg := harvest.Config{
@@ -57,7 +57,7 @@ func cmdReprioritize(args []string) error {
 		Type:                *taskType,
 		Priority:            *priority,
 		SameSessionPriority: *sameSessionPriority,
-		UseImportance:       *priorityFrom == "importance",
+		UseImportance:       *priorityFrom == priorityFromImportance,
 		PromptTemplate:      harvest.DefaultPromptTemplate,
 	}
 
@@ -92,24 +92,8 @@ func cmdReprioritize(args []string) error {
 		}{Changes: changes, Unblocks: unblocked, Failures: failures})
 	}
 
-	for _, c := range changes {
-		verb := "reprioritized"
-		if *dryRun {
-			verb = "would reprioritize"
-		}
-
-		fmt.Printf("%s %s %d -> %d (%s): %s\n", verb, c.TaskID, c.OldPriority, c.NewPriority, c.Source, c.ItemText)
-	}
-
-	for _, bump := range unblocked {
-		verb := "unblocked"
-		if *dryRun {
-			verb = "would bump"
-		}
-
-		fmt.Printf("%s %s %d -> %d (unblock, %d dep(s) completed)\n",
-			verb, bump.TaskID, bump.OldPriority, bump.NewPriority, bump.CompletedDeps)
-	}
+	printRepriChanges(changes, *dryRun)
+	printUnblockBumps(unblocked, *dryRun)
 
 	for _, f := range failures {
 		fmt.Fprintf(os.Stderr, "tq reprioritize: %s\n", f)
@@ -127,4 +111,30 @@ func cmdReprioritize(args []string) error {
 	}
 
 	return nil
+}
+
+// printRepriChanges reports applied (or, dry-run, would-be) marker and
+// importance re-resolutions.
+func printRepriChanges(changes []harvest.RepriChange, dryRun bool) {
+	for _, change := range changes {
+		verb := "reprioritized"
+		if dryRun {
+			verb = "would reprioritize"
+		}
+
+		fmt.Printf("%s %s %d -> %d (%s): %s\n", verb, change.TaskID, change.OldPriority, change.NewPriority, change.Source, change.ItemText)
+	}
+}
+
+// printUnblockBumps reports the unblock pass's priority bumps.
+func printUnblockBumps(bumps []queue.UnblockChange, dryRun bool) {
+	for _, bump := range bumps {
+		verb := "unblocked"
+		if dryRun {
+			verb = "would bump"
+		}
+
+		fmt.Printf("%s %s %d -> %d (unblock, %d dep(s) completed)\n",
+			verb, bump.TaskID, bump.OldPriority, bump.NewPriority, bump.CompletedDeps)
+	}
 }

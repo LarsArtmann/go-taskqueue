@@ -484,9 +484,6 @@ func cmdHarvest(args []string) error {
 		return err
 	}
 
-	// priorityFromImportance is the only --priority-from mode value
-	// (ADR-0015 §5): markers always apply; this switches on the metadata
-	// importance feed.
 	if *priorityFrom != "" && *priorityFrom != priorityFromImportance {
 		return fmt.Errorf(`--priority-from: want %q or empty, got %q`, priorityFromImportance, *priorityFrom)
 	}
@@ -1625,7 +1622,7 @@ func buildPriorityProvenance(
 		}
 
 		provenance.RepriHistory = append(provenance.RepriHistory, repriEvent{
-			At:     f.Time.UTC().Format(time.RFC3339),
+			At:     fact.Time.UTC().Format(time.RFC3339),
 			Old:    evidence.OldPriority,
 			New:    evidence.NewPriority,
 			Source: evidence.Source,
@@ -2260,6 +2257,11 @@ func cmdAPI(args []string) error {
 // version is overridden at build time (-ldflags "-X main.version=...");
 // "dev" marks an untagged go-build checkout, where debug.ReadBuildInfo
 // still reports the VCS revision.
+// priorityFromImportance is the sole --priority-from mode value
+// (ADR-0015): markers always apply; it additionally resolves priorities
+// from each repo's .config/metadata.yaml importance.
+const priorityFromImportance = "importance"
+
 var version = "dev"
 
 func cmdVersion(args []string) error {

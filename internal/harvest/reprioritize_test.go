@@ -206,11 +206,15 @@ func TestReprioritizeAppliesCachedAIScores(t *testing.T) {
 		t.Fatalf("seed priorities = %v, want plain 5 / pinned 90", pending)
 	}
 
-	if err := tq.SavePriorityScore(ctx, queue.PriorityScore{ItemKey: plainKey, Score: 42, Source: "ai:batch-scorer"}); err != nil {
+	if err := tq.SavePriorityScore(ctx, queue.PriorityScore{
+		ItemKey: plainKey, Score: 42, Source: "ai:batch-scorer",
+	}); err != nil {
 		t.Fatalf("cache plain score: %v", err)
 	}
 
-	if err := tq.SavePriorityScore(ctx, queue.PriorityScore{ItemKey: pinnedKey, Score: 10, Source: "ai:batch-scorer"}); err != nil {
+	if err := tq.SavePriorityScore(ctx, queue.PriorityScore{
+		ItemKey: pinnedKey, Score: 10, Source: "ai:batch-scorer",
+	}); err != nil {
 		t.Fatalf("cache pinned score: %v", err)
 	}
 
@@ -219,7 +223,8 @@ func TestReprioritizeAppliesCachedAIScores(t *testing.T) {
 		t.Fatalf("failures: %v", failures)
 	}
 
-	if len(changes) != 1 || changes[0].ItemText != "plain work" || changes[0].NewPriority != 42 || changes[0].Source != PrioritySourceAI {
+	if len(changes) != 1 || changes[0].ItemText != "plain work" ||
+		changes[0].NewPriority != 42 || changes[0].Source != PrioritySourceAI {
 		t.Fatalf("changes = %+v, want one 5->42 ai change for the plain item", changes)
 	}
 
