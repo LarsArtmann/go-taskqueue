@@ -247,7 +247,7 @@ func (h *Harvester) Run(ctx context.Context) (Result, error) {
 //   - items already known to the queue (any status) are never re-enqueued,
 //     relying on the store's DedupKey idempotency as the final guard.
 func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res *Result) {
-	st, ok := h.surveyRepo(ctx, repo, items, res)
+	state, ok := h.surveyRepo(ctx, repo, items, res)
 	if !ok {
 		return
 	}
@@ -255,7 +255,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 	enqueuedThisRepo := false
 
 	for _, item := range items {
-		reason := h.itemDenial(st, item, enqueuedThisRepo, len(res.Enqueued))
+		reason := h.itemDenial(state, item, enqueuedThisRepo, len(res.Enqueued))
 		if reason != "" {
 			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: reason})
 
@@ -264,14 +264,14 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 
 		if h.cfg.DryRun {
 			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: sameSession(item.Text)})
-			st.known[item.Key] = task.Pending
+			state.known[item.Key] = task.Pending
 			enqueuedThisRepo = true
 
 			continue
 		}
 
 		if h.admitItem(ctx, item, res) {
-			st.known[item.Key] = task.Pending
+			state.known[item.Key] = task.Pending
 			enqueuedThisRepo = true
 		}
 	}
@@ -294,7 +294,7 @@ type repoState struct {
 // the ReasonScanFailed pattern).
 func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, res *Result) (repoState, bool) {
 	repoName := filepath.Base(repo)
-	st := repoState{
+	state := repoState{
 		repoName:     repoName,
 		known:        make(map[string]task.Status),
 		repoInterval: h.cfg.RepoIntervals[repoName],
@@ -306,7 +306,7 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "list failed: " + err.Error()})
 		}
 
-		return st, false
+		return state, false
 	}
 
 	var (
@@ -316,7 +316,7 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 
 	for _, t := range tasks {
 		if t.Status == task.Pending || t.Status == task.Running {
-			st.busy = true
+			state.busy = true
 		}
 
 		if t.Status == task.Dead {
@@ -331,13 +331,13 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 			hasCompleted = true
 		}
 
-		if t.CreatedAt.After(st.lastCreated) {
-			st.lastCreated = t.CreatedAt
+		if t.CreatedAt.After(state.lastCreated) {
+			state.lastCreated = t.CreatedAt
 		}
 
 		if key := payloadDedup(t); key != "" {
-			if _, dup := st.known[key]; !dup {
-				st.known[key] = t.Status
+			if _, dup := state.known[key]; !dup {
+				state.known[key] = t.Status
 			}
 		}
 	}
@@ -345,39 +345,39 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 	// Poisoned repo: everything item touched recently is dead. New items
 	// would die the same way — give the human the backoff window to fix
 	// or rescue instead of enqueueing fresh failures every tick.
-	st.poisoned = hasDead && !hasCompleted && h.cfg.DLQBackoff > 0 && time.Since(lastDead) < h.cfg.DLQBackoff
+	state.poisoned = hasDead && !hasCompleted && h.cfg.DLQBackoff > 0 && time.Since(lastDead) < h.cfg.DLQBackoff
 
-	return st, true
+	return state, true
 }
 
 // itemDenial reports why one item must NOT be enqueued this run, in the
 // pacing precedence order; "" means the item is admissible (subject to
 // DryRun, which never denies but never enqueues either).
-func (h *Harvester) itemDenial(st repoState, item Item, enqueuedThisRepo bool, enqueuedThisTick int) string {
+func (h *Harvester) itemDenial(state repoState, item Item, enqueuedThisRepo bool, enqueuedThisTick int) string {
 	if reason, blocked := blockedReason(item.Text); blocked {
 		return "blocked: " + reason
 	}
 
 	switch {
-	case item.Key != "" && st.known[item.Key] != "":
-		switch task.Status(st.known[item.Key]) {
+	case item.Key != "" && state.known[item.Key] != "":
+		switch task.Status(state.known[item.Key]) {
 		case task.Dead:
 			return "in DLQ (tq dlq --rescue to retry)"
 		case task.Cancelled:
 			return "cancelled (edit the item text to re-arm item)"
 		}
 
-		return "tracked: " + string(st.known[item.Key])
-	case st.poisoned:
+		return "tracked: " + string(state.known[item.Key])
+	case state.poisoned:
 		return fmt.Sprintf(
 			"poisoned: recent dead-letter, DLQ backoff %s (fix the repo or rescue dead tasks)", h.cfg.DLQBackoff)
-	case st.repoInterval > 0 && !st.lastCreated.IsZero() && time.Since(st.lastCreated) < st.repoInterval:
+	case state.repoInterval > 0 && !state.lastCreated.IsZero() && time.Since(state.lastCreated) < state.repoInterval:
 		return fmt.Sprintf(
 			"paced: per-repo interval %s (last enqueue %s ago)",
-			st.repoInterval,
-			time.Since(st.lastCreated).Round(time.Second),
+			state.repoInterval,
+			time.Since(state.lastCreated).Round(time.Second),
 		)
-	case st.busy:
+	case state.busy:
 		return "repo busy: one agent per repo"
 	case enqueuedThisRepo:
 		return "paced: one new item per repo per run"

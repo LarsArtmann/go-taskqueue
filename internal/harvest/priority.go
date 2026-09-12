@@ -21,11 +21,43 @@ import (
 // .config/metadata.yaml (project-meta file contract, ADR-0015 §7).
 const DefaultImportance = 50
 
-// MarkerPriorities maps marker levels P1–P4 to their priority values
-// (ADR-0015 §2). Adjacent levels differ by 20 — strictly more than
-// queue.PriorityAgingMaxBonus — so aging can never reorder across marker
-// levels.
-var MarkerPriorities = [4]int{90, 70, 50, 30}
+// MaxMarkerLevel is the highest valid marker level (P4).
+const MaxMarkerLevel = 4
+
+// The marker levels as constants (P1–P4), for switch cases and range
+// checks.
+const (
+	markerLevel1 = 1
+	markerLevel2 = 2
+	markerLevel3 = 3
+)
+
+// The marker ladder (ADR-0015 §2): adjacent levels differ by 20, strictly
+// more than queue.PriorityAgingMaxBonus, so aging can never reorder across
+// marker levels.
+const (
+	markerPriorityP1 = 90
+	markerPriorityP2 = 70
+	markerPriorityP3 = 50
+	markerPriorityP4 = 30
+)
+
+// MarkerPriority returns the backlog priority of a marker level — P1
+// through P4. 0 ("no marker") maps to 0.
+func MarkerPriority(level int) int {
+	switch level {
+	case markerLevel1:
+		return markerPriorityP1
+	case markerLevel2:
+		return markerPriorityP2
+	case markerLevel3:
+		return markerPriorityP3
+	case MaxMarkerLevel:
+		return markerPriorityP4
+	}
+
+	return 0
+}
 
 // markerPattern matches a trailing marker segment: an em dash (U+2014,
 // the established `— BLOCKED:` convention), the marker P1–P4, and an
@@ -36,57 +68,56 @@ var markerPattern = regexp.MustCompile(`\s+—\s*P([1-4])(?::.*)?$`)
 // SplitMarker splits a trailing priority marker off an item line,
 // returning the marker level (1–4) and the marker-free text. ok is false
 // when the text carries no marker.
-func SplitMarker(text string) (level int, stripped string, ok bool) {
+func SplitMarker(text string) (int, string, bool) {
 	m := markerPattern.FindStringSubmatchIndex(text)
 	if m == nil {
 		return 0, text, false
 	}
 
 	level, err := strconv.Atoi(text[m[2]:m[3]])
-	if err != nil || level < 1 || level > len(MarkerPriorities) {
+	if err != nil || level < 1 || level > MaxMarkerLevel {
 		return 0, text, false
 	}
 
 	return level, strings.TrimRight(text[:m[0]], " \t"), true
 }
 
-// MarkerPriority returns the backlog priority of a marker level (P1=90 …
-// P4=30); 0 for "no marker".
-func MarkerPriority(level int) int {
-	if level < 1 || level > len(MarkerPriorities) {
-		return 0
-	}
-
-	return MarkerPriorities[level-1]
-}
-
-// keywordTable is the keyword-bump ladder, strongest match first (one bump
-// wins, they do not stack). REWRITTEN FROM SPEC (ADR-0015 §3) — the shape
-// is inspired by ai-task-prioritizer's urgency keywords, the table itself
-// is this repo's own; nothing is copied (proprietary license, ADR-0015 §7).
-var keywordTable = []struct {
-	keywords []string
-	bump     int
-}{
-	{[]string{"security", "vulnerab", "cve"}, 30},
-	{[]string{"critical", "urgent", "asap"}, 25},
-	{[]string{"production", "breaking", "outage"}, 20},
-}
+// The keyword-bump ladder, strongest first (ADR-0015 §3). One bump wins —
+// they do not stack. REWRITTEN FROM SPEC: the shape is inspired by
+// ai-task-prioritizer's urgency keywords, the table itself is this repo's
+// own; nothing is copied (proprietary license, ADR-0015 §7).
+const (
+	keywordBumpSecurity   = 30
+	keywordBumpCritical   = 25
+	keywordBumpProduction = 20
+)
 
 // KeywordBump reports the strongest keyword bump for an item text, 0 when
 // none matches. Case-insensitive.
 func KeywordBump(text string) int {
 	lower := strings.ToLower(text)
 
-	for _, row := range keywordTable {
-		for _, kw := range row.keywords {
-			if strings.Contains(lower, kw) {
-				return row.bump
-			}
-		}
+	switch {
+	case containsAny(lower, "security", "vulnerab", "cve"):
+		return keywordBumpSecurity
+	case containsAny(lower, "critical", "urgent", "asap"):
+		return keywordBumpCritical
+	case containsAny(lower, "production", "breaking", "outage"):
+		return keywordBumpProduction
 	}
 
 	return 0
+}
+
+// containsAny reports whether s contains any of the substrings.
+func containsAny(s string, subs ...string) bool {
+	for _, sub := range subs {
+		if strings.Contains(s, sub) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // errImportanceMalformed is the static class behind every metadata parse
@@ -194,7 +225,7 @@ func ResolvePriority(input ResolveInput) (int, PrioritySource) {
 		return input.HotPriority, PrioritySourceHot
 	}
 
-	if input.MarkerLevel >= 1 && input.MarkerLevel <= len(MarkerPriorities) {
+	if input.MarkerLevel >= 1 && input.MarkerLevel <= MaxMarkerLevel {
 		return MarkerPriority(input.MarkerLevel), PrioritySourceMarker
 	}
 
