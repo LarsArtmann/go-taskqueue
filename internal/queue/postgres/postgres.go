@@ -348,9 +348,11 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 			    SELECT 1 FROM tasks r
 			    WHERE r.project = t.project AND r.status = 'running' AND r.id != t.id
 			  ))
-			ORDER BY t.priority DESC, t.created_at ASC, t.id ASC
+			ORDER BY t.priority + LEAST(($3 - t.created_at) / 86400000.0 / $4, $5) DESC, t.created_at ASC, t.id ASC
 			LIMIT 1
-			FOR UPDATE SKIP LOCKED`, now.UnixMilli(), exclusive)
+			FOR UPDATE SKIP LOCKED`,
+			now.UnixMilli(), exclusive,
+			now.UnixMilli(), float64(queue.PriorityAgingDaysPerPoint), float64(queue.PriorityAgingMaxBonus))
 
 		var id, st, prevOwner string
 		if err := row.Scan(&id, &st, &prevOwner); err != nil {

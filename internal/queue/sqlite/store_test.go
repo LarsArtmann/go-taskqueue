@@ -308,6 +308,66 @@ func TestPriorityOrdersClaims(t *testing.T) {
 	_ = low
 }
 
+func TestClaimAgingFlipsOrder(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	older, err := s.Enqueue(ctx, task.New{Type: "older", Priority: 55})
+	if err != nil {
+		t.Fatalf("enqueue older: %v", err)
+	}
+	newer, err := s.Enqueue(ctx, task.New{Type: "newer", Priority: 60})
+	if err != nil {
+		t.Fatalf("enqueue newer: %v", err)
+	}
+
+	// Without aging the newer task (60) outranks the older (55). Backdate
+	// the older task past the aging saturation point (45 days at
+	// PriorityAgingDaysPerPoint=3 earns the full PriorityAgingMaxBonus=10):
+	// its effective 65 must beat the newer's 60.
+	backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
+	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, older.ID); err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+
+	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if got.ID != older.ID {
+		t.Fatalf("aging did not flip claim order: claimed %s, want older %s over newer %s", got.ID, older.ID, newer.ID)
+	}
+}
+
+func TestClaimAgingBonusCapped(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	older, err := s.Enqueue(ctx, task.New{Type: "older", Priority: 50})
+	if err != nil {
+		t.Fatalf("enqueue older: %v", err)
+	}
+	newer, err := s.Enqueue(ctx, task.New{Type: "newer", Priority: 65})
+	if err != nil {
+		t.Fatalf("enqueue newer: %v", err)
+	}
+
+	// 300 days of age would be +100 uncapped (50 -> 150, beating 65). The
+	// cap holds the bonus at 10 (60 < 65): the newer task still wins.
+	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
+	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, older.ID); err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+
+	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if got.ID != newer.ID {
+		t.Fatalf("aging bonus not capped: claimed %s, want newer %s", got.ID, newer.ID)
+	}
+}
+
 func TestNotBeforeDelays(t *testing.T) {
 	ctx := context.Background()
 

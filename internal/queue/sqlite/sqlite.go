@@ -343,7 +343,9 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
 		// Candidate: pending-and-due OR running-with-expired-lease (crashed
-		// worker reclaim), priority first, oldest first — and every
+		// worker reclaim), effective priority first (stored priority + the
+		// bounded age bonus from queue.PriorityAging*, ADR-0015 §4:
+		// scheduling, not state), oldest first — and every
 		// dependency completed (deps not met => not selectable). With
 		// project exclusivity on, a project that already has a running task
 		// yields nothing (except reclaiming that very task; empty projects
@@ -360,8 +362,9 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 			    SELECT 1 FROM tasks r
 			    WHERE r.project = t.project AND r.status = 'running' AND r.id != t.id
 			  ))
-			ORDER BY t.priority DESC, t.created_at ASC, t.id ASC
-			LIMIT 1`, now.UnixMilli(), now.UnixMilli(), boolInt(s.projectExclusive))
+			ORDER BY t.priority + MIN((? - t.created_at) / 86400000.0 / ?, ?) DESC, t.created_at ASC, t.id ASC
+			LIMIT 1`, now.UnixMilli(), now.UnixMilli(), boolInt(s.projectExclusive),
+			now.UnixMilli(), float64(queue.PriorityAgingDaysPerPoint), float64(queue.PriorityAgingMaxBonus))
 
 		var id, st, prevOwner string
 		if err := row.Scan(&id, &st, &prevOwner); err != nil {

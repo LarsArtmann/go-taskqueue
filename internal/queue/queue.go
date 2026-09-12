@@ -27,6 +27,21 @@ var ErrNoTaskDue = errors.New("queue: no due task")
 // cannot invent a type; callers must choose an executor).
 var ErrEmptyType = errors.New("queue: task type must not be empty")
 
+// Priority aging (ADR-0015 §4): ClaimDue orders by an EFFECTIVE priority —
+// stored priority plus a bounded age bonus computed inside the claim query
+// (scheduling, not state; the stored priority never changes). Defined once
+// here, referenced by both backends, so the semantics cannot drift.
+const (
+	// PriorityAgingDaysPerPoint is the task age — keyed on created_at, the
+	// only immutable timestamp in the row (updated_at moves on every
+	// heartbeat) — that earns one priority point.
+	PriorityAgingDaysPerPoint = 3
+	// PriorityAgingMaxBonus caps the age bonus. It stays below the smallest
+	// marker-level gap (20, ADR-0015 §2) so aging can reorder within a band
+	// but never across marker levels or bands.
+	PriorityAgingMaxBonus = 10
+)
+
 // Store is the persistence boundary for tasks and facts.
 type Store interface {
 	// Enqueue persists a new task (ID and defaults assigned here) and records
