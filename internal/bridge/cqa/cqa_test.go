@@ -120,7 +120,7 @@ func TestCollectGroupsFixableIssuesPerFile(t *testing.T) {
 		t.Fatalf("dedup key = %s", ft.Template.DedupKey)
 	}
 
-	if ft.Template.Project != "repo-a" || ft.Template.Type != "agent" || ft.Template.Priority != 80 {
+	if ft.Template.Project != "repo-a" || ft.Template.Type != "agent" || ft.Template.Priority != 150 {
 		t.Fatalf("template = %+v", ft.Template)
 	}
 
