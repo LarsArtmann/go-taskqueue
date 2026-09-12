@@ -89,8 +89,10 @@ func TestCmdSessionBridgeEndToEnd(t *testing.T) {
 	git("add", "-A")
 	git("commit", "-qm", "unattributed after-hours commit")
 
-	if err := sessionClose([]string{"--id", "sess-e2e", "--repo", repo, "--project", "demo",
-		"--summary", "Shipped the bridge", "--db", dbPath}); err != nil {
+	if err := sessionClose([]string{
+		"--id", "sess-e2e", "--repo", repo, "--project", "demo",
+		"--summary", "Shipped the bridge", "--db", dbPath,
+	}); err != nil {
 		t.Fatalf("close: %v", err)
 	}
 

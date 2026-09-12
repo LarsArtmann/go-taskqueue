@@ -316,7 +316,7 @@ func reviewItem(in CloseInput) string {
 func reviewExtra(in CloseInput, commits []Commit) string {
 	first, last := commits[0], commits[len(commits)-1]
 
-	var b = new(strings.Builder)
+	b := new(strings.Builder)
 	b.WriteString("This review covers an INTERACTIVE session, not a single queued task. Commits attributed via the " +
 		Trailer + ": " + in.ID + " footer, oldest first:\n\n")
 	for _, c := range commits {
