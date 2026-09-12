@@ -333,7 +333,8 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 // the name=duration ladder flags (--repo-timeout, --repo-interval).
 func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
 	if o.priorityFrom != "" && o.priorityFrom != priorityFromImportance {
-		return harvest.Config{}, fmt.Errorf(`--priority-from: want %q or empty, got %q`, priorityFromImportance, o.priorityFrom)
+		return harvest.Config{}, fmt.Errorf(
+			`--priority-from: want %q or empty, got %q`, priorityFromImportance, o.priorityFrom)
 	}
 
 	cfg := harvest.Config{

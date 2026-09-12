@@ -291,7 +291,8 @@ func TestBandFilterRoundTrip(t *testing.T) {
 		t.Fatalf("machine band min = %v, want 150", qf.PriorityMin)
 	}
 
-	if qf := parseFilter(httptest.NewRequest("GET", "/", nil)).toQueueFilter(0); qf.PriorityMin != nil || qf.PriorityMax != nil {
-		t.Fatalf("no band must leave the priority bounds open: %+v", qf)
+	noBand := parseFilter(httptest.NewRequest("GET", "/", nil)).toQueueFilter(0)
+	if noBand.PriorityMin != nil || noBand.PriorityMax != nil {
+		t.Fatalf("no band must leave the priority bounds open: %+v", noBand)
 	}
 }

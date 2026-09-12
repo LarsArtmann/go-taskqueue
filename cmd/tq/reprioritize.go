@@ -122,7 +122,8 @@ func printRepriChanges(changes []harvest.RepriChange, dryRun bool) {
 			verb = "would reprioritize"
 		}
 
-		fmt.Printf("%s %s %d -> %d (%s): %s\n", verb, change.TaskID, change.OldPriority, change.NewPriority, change.Source, change.ItemText)
+		fmt.Printf("%s %s %d -> %d (%s): %s\n",
+			verb, change.TaskID, change.OldPriority, change.NewPriority, change.Source, change.ItemText)
 	}
 }
 

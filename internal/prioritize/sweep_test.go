@@ -346,26 +346,34 @@ func TestApplyCachesVerdictsAndReprioritizes(t *testing.T) {
 		t.Fatalf("work priority = %d, want 85 (clamped verdict)", got.Priority)
 	}
 
-	facts, err := s.FactsForTask(context.Background(), work.ID.String(), 0)
+	assertOneRepriFact(t, s, work.ID, 50, 85, "ai")
+}
+
+// assertOneRepriFact verifies the task's trail carries exactly one
+// task.reprioritized fact with the given evidence.
+func assertOneRepriFact(t *testing.T, s *sqlite.Store, id task.ID, wantOld, wantNew int, wantSource string) {
+	t.Helper()
+
+	facts, err := s.FactsForTask(context.Background(), id.String(), 0)
 	if err != nil {
-		t.Fatalf("facts for work task: %v", err)
+		t.Fatalf("facts for task: %v", err)
 	}
 
 	repri := 0
 
-	for _, f := range facts {
-		if f.Type != journal.Reprioritized {
+	for _, fact := range facts {
+		if fact.Type != journal.Reprioritized {
 			continue
 		}
 
 		repri++
 
 		var evidence queue.ReprioritizeEvidence
-		if err := json.Unmarshal(f.Detail, &evidence); err != nil {
+		if err := json.Unmarshal(fact.Detail, &evidence); err != nil {
 			t.Fatalf("decode repri evidence: %v", err)
 		}
 
-		if evidence.OldPriority != 50 || evidence.NewPriority != 85 || evidence.Source != "ai" {
+		if evidence.OldPriority != wantOld || evidence.NewPriority != wantNew || evidence.Source != wantSource {
 			t.Fatalf("repri evidence = %+v", evidence)
 		}
 	}

@@ -429,15 +429,15 @@ func (state *repoState) observe(t task.Task) {
 
 // trackedItemDenial explains why an item already known to the queue is
 // denied admission, by its stored status.
-func trackedItemDenial(status string) string {
-	switch task.Status(status) {
+func trackedItemDenial(status task.Status) string {
+	switch status {
 	case task.Dead:
 		return "in DLQ (tq dlq --rescue to retry)"
 	case task.Cancelled:
 		return "cancelled (edit the item text to re-arm item)"
 	}
 
-	return "tracked: " + status
+	return "tracked: " + string(status)
 }
 
 // occupancyDenial reports the repo-level occupancy rule. With

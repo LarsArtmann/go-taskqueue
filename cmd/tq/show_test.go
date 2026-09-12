@@ -20,12 +20,14 @@ func TestBuildPriorityProvenance(t *testing.T) {
 
 	store, got := seedProvenanceTask(t)
 
-	trail, err := store.FactsForTask(ctxOf(t), got.ID.String(), 0)
+	ctx := context.Background()
+
+	trail, err := store.FactsForTask(ctx, got.ID.String(), 0)
 	if err != nil {
 		t.Fatalf("facts: %v", err)
 	}
 
-	provenance := buildPriorityProvenance(context.Background(), store, got, trail)
+	provenance := buildPriorityProvenance(ctx, store, got, trail)
 
 	if provenance.Current != 85 || provenance.Band != "backlog" {
 		t.Fatalf("current/band = %d/%q, want 85/backlog", provenance.Current, provenance.Band)
