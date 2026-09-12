@@ -164,6 +164,11 @@ step "version-agreement gate"
 step "doc-reference check"
 ./scripts/check-doc-refs.sh
 
+# Round-13 T16: RELEASE.md's cited modes/gates/mechanisms pinned to
+# scripts/release.sh reality (06-55 f3/e1 drift class).
+step "release-doc drift check"
+./scripts/check-release-docs.sh
+
 step "status-index check"
 ./scripts/check-status-index.sh
 

@@ -100,11 +100,35 @@ outside world; its steps and their failure modes:
    minutes). A red tag run does not un-publish (impossible — immutable) but
    MUST be triaged before the next release.
 
+## Multi-commits per task (queue↔git attribution)
+
+Multiple commits per `Task-Queue-ID` are the NORM, not an anomaly: a task's
+work turn and its close-out turn each land their own commit (and fix-ups
+can add more), all carrying the SAME footer verbatim. Consequences for
+releases:
+
+- Release notes and verification that attribute work via footers must
+  expect an ID to appear on SEVERAL commits in the range — `git log
+  --grep "Task-Queue-ID: <id>"` returning multiple hits is the healthy
+  shape. The failure modes are ZERO hits (the footer was dropped or
+  mangled) and one ID on commits that belong to DIFFERENT tasks (the f26
+  three-ID class — never merge IDs; report the discrepancy instead).
+- `tq show <id> --commits` is the forensics view: it scans the task's
+  payload repo for footer commits and classifies 0 = missing footer,
+  >1 = expected for work+close-out (cross-repo duplicates for one task
+  are the ambiguous case). It degrades honestly instead of crashing: no
+  repo in the payload, an inaccessible repo path, or a failed git log each
+  surface as a `note` line (cmd/tq/main.go `commitsForTask`).
+- The commit-msg hook (scripts/install-pre-commit.sh) enforces the
+  footer's shape (exactly one, well-formed) per commit — it deliberately
+  does NOT reject an already-used ID, because multi-commits per task are
+  the norm.
+
 ## Sub-tag cutting (internal/<mod>/vX.Y.Z)
 
 Every internal sub-module ships with the release under a shared version:
-after the root tag, the script derives the sub-tag list FROM DISK (`find
-internal -name go.mod`) and cuts one annotated
+after the root tag, the script derives the sub-tag list FROM DISK —
+`find internal -name go.mod` — and cuts one annotated
 `internal/<mod>/vX.Y.Z` tag per module — including modules nothing requires
 yet (e.g. `internal/queue/postgres` before CLI store wiring), so they stay
 proxy-resolvable. Sub-tag cutting is idempotent (existing tags are skipped),
@@ -115,6 +139,36 @@ releases, bump BOTH its `require` line in the root `go.mod` AND cut the
 matching `internal/<mod>/vX.Y.Z` subdirectory tag before the release tag is
 cut. `scripts/check-go-mods.sh` enforces the pin shape (real tagged
 versions, never `v0.0.0` — `go install` resolves them via the proxy).
+
+**Clean-room verification of a cut sub-tag** — the documented module-tag
+step (fixture-proven, round-12 T14): a sub-tag is only real when a consumer
+that knows NOTHING about this checkout can resolve it. From a scratch
+directory outside the repo:
+
+```bash
+cat > go.mod <<'EOF'
+module cleanroom
+
+go 1.26
+
+require github.com/larsartmann/go-taskqueue/internal/queue/sqlite vX.Y.Z
+
+replace github.com/larsartmann/go-taskqueue => github.com/larsartmann/go-taskqueue@vX.Y.Z
+EOF
+
+git config --global url."git@github.com:LarsArtmann/go-taskqueue".insteadOf \
+  https://github.com/larsartmann/go-taskqueue
+
+GOFLAGS=-mod=mod GOPROXY=direct \
+  go get github.com/larsartmann/go-taskqueue/internal/queue/sqlite@vX.Y.Z \
+  && GOFLAGS=-mod=mod GOPROXY=direct go list -m all
+```
+
+`go get` + `go list -m all` green means the sub-tag is proxy-resolvable AND
+its require graph closes; `go get` alone can pass on metadata while the
+tree is broken, so `go list` (which loads the module graph) is the gate.
+For the ROOT module the stronger `--push` clean-room step applies:
+`go install .../cmd/tq@vX.Y.Z` and run the binary's `version`.
 
 ## Sibling-replace allowlist (release gates)
 
