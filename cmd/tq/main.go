@@ -764,6 +764,28 @@ func cmdAgentPool(args []string) error {
 		}
 	}
 
+	// Starvation alarm (ADR-0015 companion): the oldest PENDING task waiting
+	// past the threshold despite the aging bonus means the backlog outgrows
+	// the drain - surfaced outside journald like dead-pool, resolved the first
+	// tick back under the threshold.
+	starvation := &starvationDetector{after: poolOpts.starveAfter}
+	starvation.notify = func(triggered bool, oldestWait time.Duration, taskID string, pending int) {
+		if triggered {
+			log.Warn("starvation: oldest pending task beyond threshold",
+				"task", taskID, "waited", oldestWait.Round(time.Minute), "pending", pending)
+		} else {
+			log.Info("starvation resolved", "pending", pending)
+		}
+
+		if alertBridge == nil {
+			return
+		}
+
+		if err := alertBridge.NotifyStarvation(ctx, triggered, oldestWait, taskID, pending); err != nil {
+			log.Error("starvation alert failed", "triggered", triggered, "err", err)
+		}
+	}
+
 	// Startup zombie sweep, SYNCHRONOUSLY before any actor starts: the
 	// worker'store first claim would otherwise race the sweep and turn
 	// cancellable zombies into running tasks (observed in the e2e). One
@@ -990,6 +1012,7 @@ func cmdAgentPool(args []string) error {
 					"enqueued", len(res.Enqueued), "skipped", len(res.Skipped))
 
 				deadPool.observe(res)
+				observeStarvation(ctx, store, starvation)
 			}
 		}) {
 			return

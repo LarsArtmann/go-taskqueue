@@ -230,3 +230,77 @@ func TestDeadPoolDetectorStreakLifecycle(t *testing.T) {
 		})
 	}
 }
+
+// TestStarvationDetectorLifecycle pins the starvation alarm contract: the
+// oldest PENDING task past the threshold fires ONCE per episode, further
+// over-threshold ticks stay quiet, a tick back under the threshold (or an
+// empty queue) resolves, and a disabled detector never notifies.
+func TestStarvationDetectorLifecycle(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	old := &task.Task{CreatedAt: now.Add(-48 * time.Hour)}
+	fresh := &task.Task{CreatedAt: now.Add(-1 * time.Hour)}
+
+	tests := []struct {
+		name       string
+		after      time.Duration
+		observes   []*task.Task
+		wantNotifs []bool
+	}{
+		{
+			name:     "disabled detector never notifies",
+			after:    0,
+			observes: []*task.Task{old, old, old},
+		},
+		{
+			name:       "past threshold fires once, not per tick",
+			after:      24 * time.Hour,
+			observes:   []*task.Task{old, old, old},
+			wantNotifs: []bool{true},
+		},
+		{
+			name:       "under threshold stays quiet",
+			after:      24 * time.Hour,
+			observes:   []*task.Task{fresh, fresh},
+		},
+		{
+			name:       "recovery resolves and a later re-fire alerts again",
+			after:      24 * time.Hour,
+			observes:   []*task.Task{old, fresh, old},
+			wantNotifs: []bool{true, false, true},
+		},
+		{
+			name:       "empty queue resolves a standing alert",
+			after:      24 * time.Hour,
+			observes:   []*task.Task{old, nil},
+			wantNotifs: []bool{true, false},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got []bool
+			detector := &starvationDetector{after: tt.after}
+			detector.notify = func(triggered bool, _ time.Duration, _ string, _ int) {
+				got = append(got, triggered)
+			}
+
+			for _, oldest := range tt.observes {
+				detector.observe(now, oldest, 7)
+			}
+
+			if len(got) != len(tt.wantNotifs) {
+				t.Fatalf("notifications = %v, want %v", got, tt.wantNotifs)
+			}
+
+			for i, want := range tt.wantNotifs {
+				if got[i] != want {
+					t.Fatalf("notification %d = %v, want %v (all: %v)", i, got[i], want, got)
+				}
+			}
+		})
+	}
+}

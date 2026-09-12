@@ -13,6 +13,9 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // agentPoolOptions is the resolved agent-pool configuration: flag values
@@ -52,6 +55,7 @@ type agentPoolOptions struct {
 	alertKey       string
 	alertPoll      time.Duration
 	deadPoolTicks  int
+	starveAfter    time.Duration
 	repoTimeout    string
 	maxAgents      int
 	reviewAutofix  bool
@@ -175,6 +179,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	)
 	alertKey := fs.String("alert-api-key", os.Getenv("TQ_PAP_API_KEY"), "PapDashboard API key (Bearer)")
 	alertPoll := fs.Duration("alert-poll", 5*time.Second, "journal tail interval for alert forwarding")
+	starvationAfter := fs.Duration(
+		"starvation-after",
+		0,
+		"starvation alarm: raise a PapDashboard alert (and WARN log) when the OLDEST pending task has waited longer than this despite the aging bonus — the backlog outgrows the drain; back under the threshold resolves it (0 = off, e.g. 24h)",
+	)
 	deadPoolTicks := fs.Int(
 		"dead-pool-ticks",
 		3,
@@ -308,6 +317,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		alertKey:       *alertKey,
 		alertPoll:      *alertPoll,
 		deadPoolTicks:  *deadPoolTicks,
+		starveAfter:    *starvationAfter,
 		repoTimeout:    *repoTimeout,
 		maxAgents:      *maxAgents,
 		reviewAutofix:  *reviewAutofix,
@@ -511,6 +521,32 @@ func (d *starvationDetector) observe(now time.Time, oldest *task.Task, pending i
 	}
 
 	d.alerted = false
+}
+
+// observeStarvation runs one starvation-detector tick: it queries the
+// oldest PENDING task and the pending count, then feeds the detector.
+func observeStarvation(ctx context.Context, store *sqlite.Store, detector *starvationDetector) {
+	if detector.after <= 0 {
+		return
+	}
+
+	pendingStatus := task.Pending
+	oldest, err := store.List(ctx, queue.Filter{Status: &pendingStatus, Sort: "age-asc", Limit: 1})
+	if err != nil {
+		return
+	}
+
+	pending := 0
+	if counts, err := store.StatusCounts(ctx); err == nil {
+		pending = counts[task.Pending]
+	}
+
+	var oldestTask *task.Task
+	if len(oldest) > 0 {
+		oldestTask = &oldest[0]
+	}
+
+	detector.observe(time.Now(), oldestTask, pending)
 }
 
 // registerAgentExecutors wires the agent-family executors around one
