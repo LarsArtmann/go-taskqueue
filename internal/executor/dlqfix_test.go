@@ -255,7 +255,11 @@ func TestDLQFixExecutorRunsDirtyTree(t *testing.T) {
 	dir := t.TempDir()
 	setupGitRepo(t, dir)
 
-	if err := os.WriteFile(filepath.Join(dir, "partial.txt"), []byte("dead agent's unfinished work\n"), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(dir, "partial.txt"),
+		[]byte("dead agent's unfinished work\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -312,8 +316,16 @@ func TestDLQFixExecutorPayloadContractMissesArePermanent(t *testing.T) {
 	}{
 		{"empty payload", task.Task{Type: TaskTypeDLQFix}, "empty payload"},
 		{"bad json", task.Task{Type: TaskTypeDLQFix, Payload: []byte("{oops")}, "decode payload"},
-		{"missing dead_task", task.Task{Type: TaskTypeDLQFix, Payload: []byte(`{"repo":"/tmp/r","work":"w"}`)}, "needs non-empty"},
-		{"missing work", task.Task{Type: TaskTypeDLQFix, Payload: []byte(`{"repo":"/tmp/r","dead_task":"t"}`)}, "needs non-empty"},
+		{
+			"missing dead_task",
+			task.Task{Type: TaskTypeDLQFix, Payload: []byte(`{"repo":"/tmp/r","work":"w"}`)},
+			"needs non-empty",
+		},
+		{
+			"missing work",
+			task.Task{Type: TaskTypeDLQFix, Payload: []byte(`{"repo":"/tmp/r","dead_task":"t"}`)},
+			"needs non-empty",
+		},
 	}
 
 	for _, tt := range tests {
@@ -323,6 +335,7 @@ func TestDLQFixExecutorPayloadContractMissesArePermanent(t *testing.T) {
 			e := &DLQFixExecutor{Agent: &AgentExecutor{Bin: makeStubAgent(t, "false")}}
 
 			err := e.Execute(context.Background(), tt.raw)
+
 			perm, ok := errors.AsType[*PermanentError](err)
 			if !ok {
 				t.Fatalf("err = %v, want permanent containing %q", err, tt.wantSub)

@@ -229,7 +229,8 @@ func dlqFixPrompt(p DLQFixPayload) string {
 	b.WriteString(p.Work + "\n\n")
 
 	if p.Attempts > 0 {
-		b.WriteString(fmt.Sprintf("It burned %d attempt(s) before dying", p.Attempts))
+		fmt.Fprintf(&b, "It burned %d attempt(s) before dying", p.Attempts)
+
 		if p.LastError != "" {
 			b.WriteString("; last error: " + p.LastError)
 		}
@@ -243,7 +244,7 @@ func dlqFixPrompt(p DLQFixPayload) string {
 		b.WriteString("## Failure evidence\n\n")
 
 		if p.Failure.Stage != "" {
-			b.WriteString(fmt.Sprintf("Stage %q exited with code %d. Last output:\n\n", p.Failure.Stage, p.Failure.ExitCode))
+			fmt.Fprintf(&b, "Stage %q exited with code %d. Last output:\n\n", p.Failure.Stage, p.Failure.ExitCode)
 		} else {
 			b.WriteString("Last output:\n\n")
 		}
@@ -311,7 +312,9 @@ func ParseDLQFixResult(output string) (DLQFixResult, error) {
 	case VerdictFixed, VerdictWontFix:
 		summary := strings.TrimSpace(parsed.Summary)
 		if summary == "" {
-			return DLQFixResult{}, errors.New("verdict JSON has no summary (a diagnosis is required for either verdict)")
+			return DLQFixResult{}, errors.New(
+				"verdict JSON has no summary (a diagnosis is required for either verdict)",
+			)
 		}
 
 		return DLQFixResult{Verdict: v, Summary: summary, CommitSHA: strings.TrimSpace(parsed.CommitSHA)}, nil

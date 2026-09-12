@@ -68,7 +68,7 @@ collided with mine. Per instruction, report format is Markdown at `docs/status/`
 11. **Gates**: root build/vet/**full race suite** green (after the a11y fix below);
     all 7 sub-module build+test loops green; `internal/dlqfix` golangci-lint **0
     issues** (advisory classes fixed in new code: cyclop split, slices.Backward,
-    varnamelen, wsl, golines); gofmt clean; `check-todo-list.sh` + 
+    varnamelen, wsl, golines); gofmt clean; `check-todo-list.sh` +
     `check-features-roadmap.sh` green.
 12. **Smokes**: multi-repo (6/6 drained, two pools), status-loop, dogfood-once
     stub variant — all green (the pool paths the wiring rides).
@@ -186,6 +186,7 @@ collided with mine. Per instruction, report format is Markdown at `docs/status/`
 ## f) TOP 50 NEXT ITEMS (impact-ordered; owner-gated marked 👤; most beyond #20 are ROADMAP fuel)
 
 **Feature completion**
+
 1. Extend `tq show` completion-detail switch with `TaskTypeDLQFix` → `DLQFixResult` (+ test). Fixes d1.
 2. `scripts/smoke/dlq-fix.sh`: stub-agent e2e through real pool wiring (seed dead → mint → fixed + wontfix verdicts → assert rescue/dismiss), wire into ci-local.
 3. Webui: dlqfix payload section (owner-approved collapsed conventions) + result rendering on the detail page.

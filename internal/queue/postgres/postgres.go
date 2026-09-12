@@ -944,8 +944,60 @@ func (s *Store) DismissDead(ctx context.Context, id task.ID, reason, by string) 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Cancelled, Detail: dismissReasonDetail(reason, by),
 		})
-	})
-}
+		})
+	}
+
+	// UpdatePendingPriority changes a PENDING task's priority (ADR-0015 §5).
+	// The task.reprioritized fact — old/new priority, source, reason — is
+	// appended IN THE SAME transaction; a same-value update appends nothing.
+	// Mirror of the sqlite store's method (ADR-0007 conformance twin).
+	func (s *Store) UpdatePendingPriority(ctx context.Context, id task.ID, newPriority int, source, reason string) error {
+		return s.withTx(ctx, func(tx pgx.Tx) error {
+			var status string
+
+			var oldPriority int
+
+			err := tx.QueryRow(ctx, `SELECT status, priority FROM tasks WHERE id = $1 FOR UPDATE`, id.String()).
+				Scan(&status, &oldPriority)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return task.ErrNotFound
+			}
+
+			if err != nil {
+				return err
+			}
+
+			if status != string(task.Pending) {
+				return fmt.Errorf("%w: %s priority change", task.ErrInvalidTransition, status)
+			}
+
+			if oldPriority == newPriority {
+				return nil // idempotent: same value, no fact
+			}
+
+			tag, err := tx.Exec(ctx, `
+				UPDATE tasks SET priority = $1, updated_at = $2
+				WHERE id = $3 AND status = 'pending'`, newPriority, time.Now().UnixMilli(), id.String())
+			if err != nil {
+				return err
+			}
+
+			if tag.RowsAffected() == 0 {
+				return task.ErrInvalidTransition
+			}
+
+			return s.appendFact(ctx, tx, journal.Fact{
+				TaskID: id.String(),
+				Type:   journal.Reprioritized,
+				Detail: mustJSON(queue.ReprioritizeEvidence{
+					OldPriority: oldPriority,
+					NewPriority: newPriority,
+					Source:      source,
+					Reason:      reason,
+				}),
+			})
+		})
+	}
 
 func pgOrderClause(f queue.Filter) string {
 	order := `ORDER BY priority DESC, created_at ASC`

@@ -58,6 +58,9 @@ func TestAgingConstantsPinTheADR(t *testing.T) {
 	}
 
 	if PriorityAgingMaxBonus <= 0 || PriorityAgingMaxBonus >= 20 {
-		t.Fatalf("PriorityAgingMaxBonus = %d, want in (0, 20) — the marker-gap invariant (ADR-0015 §2/§4)", PriorityAgingMaxBonus)
+		t.Fatalf(
+			"PriorityAgingMaxBonus = %d, want in (0, 20) — the marker-gap invariant (ADR-0015 §2/§4)",
+			PriorityAgingMaxBonus,
+		)
 	}
 }

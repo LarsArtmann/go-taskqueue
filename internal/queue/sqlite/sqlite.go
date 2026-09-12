@@ -1062,6 +1062,63 @@ func (s *Store) RescueDead(ctx context.Context, id task.ID, maxAttempts int) err
 	})
 }
 
+// UpdatePendingPriority changes a PENDING task's priority (ADR-0015 §5).
+// The task.reprioritized fact — old/new priority, source, reason — is
+// appended IN THE SAME transaction; a same-value update appends nothing.
+func (s *Store) UpdatePendingPriority(ctx context.Context, id task.ID, newPriority int, source, reason string) error {
+	now := time.Now()
+
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		var status string
+
+		var oldPriority int
+
+		err := tx.QueryRowContext(ctx, `SELECT status, priority FROM tasks WHERE id = ?`, id.String()).
+			Scan(&status, &oldPriority)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return task.ErrNotFound
+			}
+
+			return err
+		}
+
+		if status != "pending" {
+			return fmt.Errorf("%w: %s priority change", task.ErrInvalidTransition, status)
+		}
+
+		if oldPriority == newPriority {
+			return nil // idempotent: same value, no fact
+		}
+
+		res, err := tx.ExecContext(ctx, `
+			UPDATE tasks SET priority = ?, updated_at = ?
+			WHERE id = ? AND status = 'pending'`, newPriority, now.UnixMilli(), id.String())
+		if err != nil {
+			return err
+		}
+
+		if n, _ := res.RowsAffected(); n == 0 {
+			return fmt.Errorf("%w: pending priority change", task.ErrInvalidTransition)
+		}
+
+		return s.appendFact(
+			ctx,
+			tx,
+			journal.Fact{
+				TaskID: id.String(),
+				Type:   journal.Reprioritized,
+				Detail: mustJSON(queue.ReprioritizeEvidence{
+					OldPriority: oldPriority,
+					NewPriority: newPriority,
+					Source:      source,
+					Reason:      reason,
+				}),
+			},
+		)
+	})
+}
+
 // DismissDead cancels a Dead task with a recorded reason (DLQ dismiss): the
 // autopsy verdict "unfixable" or an operator's ruling. The task.cancelled
 // fact's detail carries the reason and by ("dlqfix-sweeper" or "operator"),

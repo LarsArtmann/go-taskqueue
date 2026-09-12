@@ -44,13 +44,13 @@ the diagnosis — the same division of labor the review sweeper established.
 
 ## Components
 
-| Piece                          | Home                       | Shape                                                       |
-| ------------------------------ | -------------------------- | ----------------------------------------------------------- |
-| `TaskTypeDLQFix`, payload, result, strict verdict parser, autopsy prompt | `internal/executor/dlqfix.go` (executor sub-module) | Mirrors `review.go`: wraps the closeout-free `AgentExecutor` clone, both verdicts COMPLETE, malformed output is a failed attempt |
-| `Sweeper` (mint + dispose over one watermark cursor) | `internal/dlqfix/sweep.go` (root module) | Mirrors `internal/review/sweep.go`: store facts paging, `ConsumerKey = "dlqfix-sweeper"`, head-bootstrap, checkpoint-after-page |
-| `Dead → Cancelled` transition  | `internal/task/status.go` + both stores | `DismissDead(ctx, id, reason)` alongside `RescueDead`; reason rides the `task.cancelled` fact detail |
-| Pool wiring                    | `cmd/tq`                   | `--dlq-fix` flag (agent-pool), sweep tick under the budget guard, executor registered by `registerAgentExecutors` (carry parity with `tq worker --agents`) |
-| Operator lever                 | `tq dlq --dismiss ID --reason WHY` | The human gets the same disposition the sweeper has |
+| Piece                                                                    | Home                                                | Shape                                                                                                                                                      |
+| ------------------------------------------------------------------------ | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TaskTypeDLQFix`, payload, result, strict verdict parser, autopsy prompt | `internal/executor/dlqfix.go` (executor sub-module) | Mirrors `review.go`: wraps the closeout-free `AgentExecutor` clone, both verdicts COMPLETE, malformed output is a failed attempt                           |
+| `Sweeper` (mint + dispose over one watermark cursor)                     | `internal/dlqfix/sweep.go` (root module)            | Mirrors `internal/review/sweep.go`: store facts paging, `ConsumerKey = "dlqfix-sweeper"`, head-bootstrap, checkpoint-after-page                            |
+| `Dead → Cancelled` transition                                            | `internal/task/status.go` + both stores             | `DismissDead(ctx, id, reason)` alongside `RescueDead`; reason rides the `task.cancelled` fact detail                                                       |
+| Pool wiring                                                              | `cmd/tq`                                            | `--dlq-fix` flag (agent-pool), sweep tick under the budget guard, executor registered by `registerAgentExecutors` (carry parity with `tq worker --agents`) |
+| Operator lever                                                           | `tq dlq --dismiss ID --reason WHY`                  | The human gets the same disposition the sweeper has                                                                                                        |
 
 ## Contracts
 
@@ -74,6 +74,7 @@ the diagnosis — the same division of labor the review sweeper established.
     TQ_RESULT: {"verdict":"wontfix","summary":"why this is not fixable from the repo"}
 
 Parse rules (strict where it matters, mirroring `ParseResult`):
+
 - verdict must be exactly `fixed` or `wontfix` (case-insensitive)
 - `wontfix` without a non-empty summary is INVALID (a failed attempt) — an
   unexplained dismissal is exactly the DLQ behavior we are automating away

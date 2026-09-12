@@ -27,11 +27,11 @@ on label heuristics because its DB score bridge is stubbed at
 
 All priorities live on ONE integer scale with reserved upper bands:
 
-| Band       | Range     | Who may set it                                              |
-| ---------- | --------- | ----------------------------------------------------------- |
-| backlog    | 0–99      | humans (markers), importance, AI scores, keyword fallback   |
-| hot        | 100–149   | `--same-session-priority` only (session-scoped urgency)     |
-| machine    | 150+      | machine-generated operational tasks (cqa fixes today)       |
+| Band    | Range   | Who may set it                                            |
+| ------- | ------- | --------------------------------------------------------- |
+| backlog | 0–99    | humans (markers), importance, AI scores, keyword fallback |
+| hot     | 100–149 | `--same-session-priority` only (session-scoped urgency)   |
+| machine | 150+    | machine-generated operational tasks (cqa fixes today)     |
 
 Backlog computations (importance base, keyword bumps, AI scores) CLAMP to
 0–99: no scorer, keyword rule, or importance value can smuggle a task into

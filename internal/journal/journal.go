@@ -35,6 +35,12 @@ const (
 	// ClaimDue reclaim (or a human) picks it up. Appended idempotently by
 	// Store.MarkOrphaned, so `tq show` can explain a stranded task.
 	Orphaned FactType = "task.orphaned"
+	// Reprioritized records that a PENDING task's priority changed
+	// (ADR-0015 §5): the mutation is UpdatePendingPriority's in-tx fact,
+	// carrying old/new priority, the source (marker|importance|ai|keyword|
+	// manual|unblock|migration) and why. Priority never mutates
+	// running/terminal tasks — those facts do not exist by construction.
+	Reprioritized FactType = "task.reprioritized"
 	// SessionOpened / SessionClosed record the lifecycle of an INTERACTIVE
 	// crush session (the session-close bridge, internal/session). They are
 	// observations, not task state: TaskID carries the synthetic

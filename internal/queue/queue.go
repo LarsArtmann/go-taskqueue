@@ -78,6 +78,14 @@ type Store interface {
 	// refusals: the environment was not ready, not the task. Facts:
 	// task.requeued.
 	Requeue(ctx context.Context, id task.ID, owner string, errText string, delay time.Duration) error
+	// UpdatePendingPriority changes a PENDING task's priority (ADR-0015
+	// §5) and records the task.reprioritized fact (old/new, source,
+	// reason) in the SAME transaction. Running/terminal tasks are refused
+	// with task.ErrInvalidTransition — priority is enqueue-time truth for
+	// anything already claimed or finished. A same-value update is a
+	// no-op: no error, no fact (idempotency: reruns and racing sweepers
+	// never spam the journal).
+	UpdatePendingPriority(ctx context.Context, id task.ID, newPriority int, source, reason string) error
 	// Heartbeat extends the lease of a Running task held by owner.
 	Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error
 	// Cancel withdraws a Pending task. A non-empty reason is stored in the
@@ -200,6 +208,16 @@ type Queue struct {
 type RequeueEvidence struct {
 	Reason  string `json:"reason"`
 	RetryIn int64  `json:"retry_in_ms"`
+}
+
+// ReprioritizeEvidence is the structured detail on task.reprioritized
+// facts (ADR-0015 §5): what the priority was, what it became, which source
+// decided, and why.
+type ReprioritizeEvidence struct {
+	OldPriority int    `json:"old_priority"`
+	NewPriority int    `json:"new_priority"`
+	Source      string `json:"source"`
+	Reason      string `json:"reason,omitempty"`
 }
 
 // WatermarkEntry is one consumer cursor row (tq watermarks show). Shared by

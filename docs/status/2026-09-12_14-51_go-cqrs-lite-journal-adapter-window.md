@@ -103,7 +103,7 @@ the deferred tiers.
    `facts_cqrs_test.go` via a python heredoc) — the exact trap AGENTS.md
    says "broke compilation repeatedly". No damage this time (it compiled),
    and the file-modified guard then forced a re-read before the next edit —
-   but that guard firing was *caused by* the violation. Second confession of
+   but that guard firing was _caused by_ the violation. Second confession of
    this class in recent repo history (round-13: "heredocs-for-Go twice").
 2. **Wrote tests against a GUESSED signature**: assumed `ClaimDue` returns
    `[]task.Task`; it returns `task.Task` → two broken build/test cycles.
@@ -145,6 +145,7 @@ the deferred tiers.
 ## f) Up to 50 things to get done next (brainstorm, not commitment — HARVEST should route; 🔒 = owner-gated)
 
 **Verify the new seam (highest value first):**
+
 1. Pin the adapter-over-compacted-journal test (`ArchiveFactsBefore` → drain; dangling-cursor semantics under gaps) — validates ADR-0014's central claim.
 2. Postgres twin of `TestFactsCQRSOverStore` in the postgres conformance battery.
 3. Verify tonight's fuzz nightly goes green (03:30 run on fixed HEAD).

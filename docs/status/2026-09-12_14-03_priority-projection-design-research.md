@@ -145,6 +145,7 @@ importance defaults to 50 and the whole axis is a no-op in practice).
 ## f) Next items (50)
 
 **Hygiene / capture (do first)**
+
 1. Write the v2 design into `docs/planning/2026-09-12_priority-projection-design.md` [v-claims only, ATP cites tagged]
 2. ADR: priority projection & band ladder (next ADR number — verify at write time)
 3. Spot-verify ATP headline claims (weights sum, stub at next_task_issue_conversion.go:101, cache key, dedupe-is-code-dup)
@@ -227,9 +228,10 @@ an unruled design. HARVEST after owner ruling.
    ONLY sanctioned model carrier, so this needs an explicit carve-out.)
 
 ---
-*Overrides noted: user explicitly requested `.md` at `docs/status/` — the
+
+_Overrides noted: user explicitly requested `.md` at `docs/status/` — the
 status-report skill's HTML default and the brutal-self-review skill's
 `docs/reviews/` HTML output were both overridden by that instruction; the
 self-review content is folded into §d/§e. No commits made by the session
 (auto-commit daemon owns that); the index row below was added in the same
-working tree so the daemon's commit carries both.*
+working tree so the daemon's commit carries both._

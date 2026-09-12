@@ -2,8 +2,8 @@ package cqrs
 
 import (
 	"context"
-	"encoding/json"
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 

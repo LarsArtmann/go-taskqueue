@@ -31,7 +31,6 @@ require (
 	github.com/larsartmann/go-branded-id v0.5.1 // indirect
 	github.com/larsartmann/go-codec v0.2.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.11.0 // indirect
-	github.com/larsartmann/go-cqrs-lite/id/v4 v4.6.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/metadata/v4 v4.7.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.5.0 // indirect
 	github.com/larsartmann/go-error-family v0.10.0 // indirect
@@ -55,6 +54,7 @@ require (
 )
 
 require (
+	github.com/larsartmann/go-cqrs-lite/id/v4 v4.6.0
 	github.com/larsartmann/go-taskqueue/internal/executor v0.2.0
 	github.com/larsartmann/go-taskqueue/internal/journal v0.2.0
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.2.0
