@@ -431,8 +431,8 @@ func TestMaxPendingPerRepo(t *testing.T) {
 		PromptTemplate:    "work {{ITEM}}",
 	})
 
-	// Run 1: first admits (cap 1 reached by the enqueue itself... the
-	// survey runs before any enqueue, so pendingCount=0: one item admits).
+	// Run 1: the survey runs before any enqueue (pendingCount=0), so the
+	// first item admits; the siblings wait behind the one-per-run pacing.
 	res, err := h.Run(ctx)
 	if err != nil {
 		t.Fatalf("run 1: %v", err)
@@ -442,19 +442,8 @@ func TestMaxPendingPerRepo(t *testing.T) {
 		t.Fatalf("run 1 enqueued = %+v, want exactly 'first'", res.Enqueued)
 	}
 
-	admitted := 0
-
-	for _, sk := range res.Skipped {
-		if strings.Contains(sk.Reason, "admission:") {
-			admitted++
-		}
-	}
-
-	if admitted != 2 {
-		t.Fatalf("run 1 admission skips = %d, want 2 (second and third held)", admitted)
-	}
-
-	// Run 2: still at cap (first is PENDING) — nothing new admits.
+	// Run 2: the cap (1 pending) now DENIES before pacing — the skip
+	// reason must say admission, and nothing enqueues.
 	res, err = h.Run(ctx)
 	if err != nil {
 		t.Fatalf("run 2: %v", err)
@@ -464,10 +453,28 @@ func TestMaxPendingPerRepo(t *testing.T) {
 		t.Fatalf("run 2 admitted past the cap: %+v", res.Enqueued)
 	}
 
-	// Claim the pending task: it becomes RUNNING, the pending slot frees,
-	// and run 3 admits the next item — small caps do not starve.
-	if _, err := tq.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	held := 0
+
+	for _, sk := range res.Skipped {
+		if strings.Contains(sk.Reason, "admission:") {
+			held++
+		}
+	}
+
+	if held == 0 {
+		t.Fatal("run 2 held no item with an admission reason")
+	}
+
+	// Complete the pending task: the slot frees and run 3 admits the next
+	// item — small caps do not starve. (A mere CLAIM is not enough: the
+	// one-agent-per-repo rule holds while the task runs.)
+	claimed, err := tq.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
 		t.Fatalf("claim: %v", err)
+	}
+
+	if err := tq.Complete(ctx, claimed.ID, "w1", nil); err != nil {
+		t.Fatalf("complete: %v", err)
 	}
 
 	res, err = h.Run(ctx)
@@ -476,6 +483,6 @@ func TestMaxPendingPerRepo(t *testing.T) {
 	}
 
 	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "second" {
-		t.Fatalf("run 3 enqueued = %+v, want 'second' after the claim freed the slot", res.Enqueued)
+		t.Fatalf("run 3 enqueued = %+v, want 'second' after the completion freed the slot", res.Enqueued)
 	}
 }

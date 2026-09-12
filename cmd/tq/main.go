@@ -466,6 +466,11 @@ func cmdHarvest(args []string) error {
 		"",
 		`resolve harvested priorities from each repo's .config/metadata.yaml importance (0-100, default 50) plus keyword bumps, clamped to the backlog band; "importance" enables, empty keeps the flat --priority (markers and hot promotion apply either way; ADR-0015)`,
 	)
+	maxPendingPerRepo := fs.Int(
+		"max-pending-per-repo",
+		0,
+		"cap how many PENDING tasks one repo may hold in the queue (0 = legacy: any pending/running task holds the repo). The queue becomes the working set; TODO_LIST.md is the warehouse; admission resumes as claims drain",
+	)
 	asJSON := fs.Bool("json", false, "JSON output of the harvest result")
 	pruneStale := fs.Bool(
 		"prune-stale",
@@ -502,6 +507,7 @@ func cmdHarvest(args []string) error {
 		Model:               *model,
 		SameSessionPriority: *sameSessionPriority,
 		UseImportance:       *priorityFrom == "importance",
+		MaxPendingPerRepo:   *maxPendingPerRepo,
 		DryRun:              *dryRun,
 	}
 

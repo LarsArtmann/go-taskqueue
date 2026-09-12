@@ -167,8 +167,9 @@ type Item struct {
 	Done     bool   // true when the checkbox is ticked ([x])
 	// MarkerLevel is the parsed trailing `— P[1-4]` marker (1–4); 0 = none.
 	// Stripped from Text before hashing so editing a marker never forks a
-	// task (ADR-0015 §2).
-	MarkerLevel int
+	// task (ADR-0015 §2). omitempty keeps legacy JSON consumers and golden
+	// fixtures byte-stable for unmarked items.
+	MarkerLevel int `json:"markerLevel,omitempty"`
 }
 
 // Enqueued records a task created (or already present) for an item.
@@ -290,6 +291,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 type repoState struct {
 	repoName     string
 	busy         bool
+	anyRunning   bool
 	pendingCount int
 	known        map[string]task.Status
 	poisoned     bool
@@ -326,6 +328,10 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 	for _, t := range tasks {
 		if t.Status == task.Pending || t.Status == task.Running {
 			state.busy = true
+		}
+
+		if t.Status == task.Running {
+			state.anyRunning = true
 		}
 
 		if t.Status == task.Pending {
@@ -389,6 +395,8 @@ func (h *Harvester) itemDenial(state repoState, item Item, enqueuedThisRepo bool
 		return "blocked: " + reason
 	}
 
+	occupancy := h.occupancyDenial(state)
+
 	switch {
 	case item.Key != "" && state.known[item.Key] != "":
 		switch task.Status(state.known[item.Key]) {
@@ -408,16 +416,40 @@ func (h *Harvester) itemDenial(state repoState, item Item, enqueuedThisRepo bool
 			state.repoInterval,
 			time.Since(state.lastCreated).Round(time.Second),
 		)
-	case state.busy:
-		return "repo busy: one agent per repo"
-	case h.cfg.MaxPendingPerRepo > 0 && state.pendingCount >= h.cfg.MaxPendingPerRepo:
-		return fmt.Sprintf(
-			"admission: repo holds %d pending task(s), cap %d (--max-pending-per-repo; queue = working set, TODO_LIST.md = warehouse)",
-			state.pendingCount, h.cfg.MaxPendingPerRepo)
+	case occupancy != "":
+		return occupancy
 	case enqueuedThisRepo:
 		return "paced: one new item per repo per run"
 	case enqueuedThisTick >= h.cfg.MaxPerTick:
 		return "tick cap reached (--max-per-tick)"
+	}
+
+	return ""
+}
+
+// occupancyDenial reports the repo-level occupancy rule. With
+// MaxPendingPerRepo > 0 the working-set cap REPLACES the legacy
+// any-pending-is-busy rule: a repo may hold up to the cap in PENDING
+// (queue = working set, ADR-0015 context) while a RUNNING task still
+// always denies — one agent executing per repo. Without the knob the
+// legacy rule stands: any pending or running task holds the repo.
+func (h *Harvester) occupancyDenial(state repoState) string {
+	if h.cfg.MaxPendingPerRepo > 0 {
+		if state.anyRunning {
+			return "repo busy: one agent per repo"
+		}
+
+		if state.pendingCount >= h.cfg.MaxPendingPerRepo {
+			return fmt.Sprintf(
+				"admission: repo holds %d pending task(s), cap %d (--max-pending-per-repo; queue = working set, TODO_LIST.md = warehouse)",
+				state.pendingCount, h.cfg.MaxPendingPerRepo)
+		}
+
+		return ""
+	}
+
+	if state.busy {
+		return "repo busy: one agent per repo"
 	}
 
 	return ""

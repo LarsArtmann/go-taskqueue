@@ -31,6 +31,7 @@ type agentPoolOptions struct {
 	yolo           bool
 	maxPerTick     int
 	priorityFrom   string
+	maxPending     int
 	allowDirty     bool
 	model          string
 	once           bool
@@ -96,6 +97,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"priority-from",
 		"",
 		`resolve harvested priorities from each repo's .config/metadata.yaml importance (0-100, default 50) plus keyword bumps, clamped to the backlog band; "importance" enables, empty keeps flat priority 0 (markers and hot promotion apply either way; ADR-0015)`,
+	)
+	maxPending := fs.Int(
+		"max-pending-per-repo",
+		0,
+		"cap how many PENDING tasks one repo may hold in the queue (0 = legacy: any pending/running task holds the repo); the queue becomes the working set, TODO_LIST.md the warehouse",
 	)
 	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
 	model := fs.String(
@@ -275,6 +281,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		yolo:           *yolo,
 		maxPerTick:     *maxPerTick,
 		priorityFrom:   *priorityFrom,
+		maxPending:     *maxPending,
 		allowDirty:     *allowDirty,
 		model:          *model,
 		once:           *once,
@@ -313,12 +320,13 @@ func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
 	}
 
 	cfg := harvest.Config{
-		ProjectsDir:   o.projectsDir,
-		DiscoveryAddr: o.discoveryAddr,
-		MaxPerTick:    o.maxPerTick,
-		Model:         o.model,
-		DLQBackoff:    o.dlqBackoff,
-		UseImportance: o.priorityFrom == "importance",
+		ProjectsDir:       o.projectsDir,
+		DiscoveryAddr:     o.discoveryAddr,
+		MaxPerTick:        o.maxPerTick,
+		Model:             o.model,
+		DLQBackoff:        o.dlqBackoff,
+		UseImportance:     o.priorityFrom == "importance",
+		MaxPendingPerRepo: o.maxPending,
 	}
 
 	if o.repoTimeout != "" {
