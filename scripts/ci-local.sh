@@ -150,6 +150,11 @@ step "bootstrap --install smoke"
 step "release-gates smoke (fixture go.mods, positive + negative)"
 ./scripts/smoke/release-gates.sh
 
+# Round-13 T8: the version surfaces are one set (flake attr = ldflags source;
+# CHANGELOG latest release never older). Red-probed 2026-09-12.
+step "version-agreement gate"
+./scripts/check-version-agreement.sh
+
 step "doc-reference check"
 ./scripts/check-doc-refs.sh
 
