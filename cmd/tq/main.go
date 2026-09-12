@@ -882,11 +882,11 @@ func cmdAgentPool(args []string) error {
 		var err error
 
 		prioritizeSweeper, err = prioritize.NewSweeper(ctx, store, prioritize.SweeperConfig{
-			Model:     poolOpts.model,
-			Yolo:      poolOpts.yolo,
+			Model:      poolOpts.model,
+			Yolo:       poolOpts.yolo,
 			AllowDirty: poolOpts.allowDirty,
-			BootMint:  true,
-			Log:       log,
+			BootMint:   true,
+			Log:        log,
 		})
 		if err != nil {
 			return fmt.Errorf("prioritize sweeper: %w", err)
