@@ -113,6 +113,77 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 
+	t.Run("aging flips claim order within the cap", func(t *testing.T) {
+		older, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Priority: 55})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		newer, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Priority: 60})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Backdate past the aging saturation point: the older task's
+		// effective 55+queue.PriorityAgingMaxBonus must beat the newer's
+		// 60 — the mirror of the sqlite white-box suite (ADR-0015 §4).
+		backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
+		if _, err := s.pool.Exec(ctx, `UPDATE tasks SET created_at = $1 WHERE id = $2`, backdated, older.ID); err != nil {
+			t.Fatal(err)
+		}
+
+		got, err := s.ClaimDue(ctx, "aging-w", time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if got.ID != older.ID {
+			t.Fatalf("aging did not flip claim order: claimed %s, want older %s over newer %s", got.ID, older.ID, newer.ID)
+		}
+
+		if err := s.Complete(ctx, older.ID, "aging-w", nil); err != nil {
+			t.Fatal(err)
+		}
+
+		// The cap: 300 days of age would be +100 uncapped; the bonus holds
+		// at 10 (60 < 65) and the stronger fresh task still wins.
+		ancient, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Priority: 50})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		stronger, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Priority: 65})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		ancientDate := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
+		if _, err := s.pool.Exec(ctx, `UPDATE tasks SET created_at = $1 WHERE id = $2`, ancientDate, ancient.ID); err != nil {
+			t.Fatal(err)
+		}
+
+		got, err = s.ClaimDue(ctx, "aging-w", time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if got.ID != stronger.ID {
+			t.Fatalf("aging bonus not capped: claimed %s, want %s", got.ID, stronger.ID)
+		}
+
+		// Leave nothing behind: later subtests claim against an empty ready
+		// set. stronger is running (lease held); the other two never claimed —
+		// cancel those.
+		if err := s.Complete(ctx, stronger.ID, "aging-w", nil); err != nil {
+			t.Fatal(err)
+		}
+		for _, id := range []task.ID{newer.ID, ancient.ID} {
+			if err := s.Cancel(ctx, id, "conformance cleanup"); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+
 	t.Run("retry backoff ladder with evidence", func(t *testing.T) {
 		retry, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, MaxAttempts: 5})
 		if err != nil {
