@@ -451,16 +451,17 @@ var doctorProbeGoEnv = func(ctx context.Context) checkResult {
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 
-	bareErr, envErr := runGoEnvProbe(ctx, dir, os.Environ())
+	ambErr, capErr := runGoEnvProbe(ctx, dir, os.Environ())
 
-	return classifyGoEnvProbe(bareErr, envErr)
+	return classifyGoEnvProbe(ambErr, capErr)
 }
 
 // runGoEnvProbe builds a synthetic module importing encoding/json/v2 twice
-// in dir: once with GOEXPERIMENT stripped from baseEnv (the pool-unit
-// simulation), once with executor.GoEnvExperiment forced on (the toolchain
-// capability check). Empty return = build succeeded.
-func runGoEnvProbe(ctx context.Context, dir string, baseEnv []string) (bareErr, envErr string) {
+// in dir: once with baseEnv untouched (the AMBIENT environment — does this
+// very shell lie?), once with executor.GoEnvExperiment forced on (the
+// toolchain capability check that separates a missing env var from a
+// version gate). Empty return = build succeeded.
+func runGoEnvProbe(ctx context.Context, dir string, baseEnv []string) (ambErr, capErr string) {
 	const goMod = "module tqenvprobe\n\ngo 1.26\n"
 	const mainGo = "package main\n\nimport _ \"encoding/json/v2\"\n\nfunc main() {}\n"
 
@@ -472,10 +473,10 @@ func runGoEnvProbe(ctx context.Context, dir string, baseEnv []string) (bareErr, 
 		return "probe scratch: " + err.Error(), "probe scratch: " + err.Error()
 	}
 
-	bare := goEnvBuild(ctx, dir, withoutGoExperiment(baseEnv))
-	with := goEnvBuild(ctx, dir, append(baseEnv, executor.GoEnvExperiment))
+	ambient := goEnvBuild(ctx, dir, baseEnv)
+	capable := goEnvBuild(ctx, dir, append(baseEnv, executor.GoEnvExperiment))
 
-	return bare, with
+	return ambient, capable
 }
 
 // goEnvBuild runs one `go build ./...` in dir with env, returning the
@@ -499,40 +500,23 @@ func goEnvBuild(ctx context.Context, dir string, env []string) string {
 	return ""
 }
 
-// withoutGoExperiment strips any ambient GOEXPERIMENT so the bare probe
-// simulates the pool-unit environment, not whatever the doctor's caller
-// happened to export.
-func withoutGoExperiment(environ []string) []string {
-	var out []string
-
-	for _, kv := range environ {
-		if strings.HasPrefix(kv, "GOEXPERIMENT=") {
-			continue
-		}
-
-		out = append(out, kv)
-	}
-
-	return out
-}
-
 // classifyGoEnvProbe turns the two probe results into one verdict:
-// bare-build failure + experiment-build success is the ENV-LIE (a missing
-// env var, fixable with one line); both failing is a toolchain capability
-// gap (version gate), warned — never a reason to burn attempts.
-func classifyGoEnvProbe(bareErr, envErr string) checkResult {
+// ambient-build failure + experiment-build success is the ENV-LIE (a
+// missing env var, fixable with one line); both failing is a toolchain
+// capability gap (version gate), warned — never a reason to burn attempts.
+func classifyGoEnvProbe(ambErr, capErr string) checkResult {
 	const name = "go-env"
 
 	switch {
-	case bareErr == "":
+	case ambErr == "":
 		return checkResult{
 			Name: name, Status: checkOK,
-			Detail: "encoding/json/v2 builds without " + executor.GoEnvExperiment + " — no env lie",
+			Detail: "encoding/json/v2 builds in this environment — no env lie",
 		}
-	case envErr == "":
+	case capErr == "":
 		return checkResult{
 			Name: name, Status: checkFail,
-			Detail: "ENV-LIE: encoding/json/v2 fails in this shell (" + bareErr + ") but builds with " +
+			Detail: "ENV-LIE: encoding/json/v2 fails in this environment (" + ambErr + ") but builds with " +
 				executor.GoEnvExperiment + " — bare-shell verifies of jsonv2 repos will lie; fix: `export " +
 				executor.GoEnvExperiment + "` or `Environment=" + executor.GoEnvExperiment +
 				"` on the tq-agent-pool unit (SystemNix)",
@@ -541,7 +525,7 @@ func classifyGoEnvProbe(bareErr, envErr string) checkResult {
 		return checkResult{
 			Name: name, Status: checkWarn,
 			Detail: "go toolchain cannot build encoding/json/v2 even WITH " + executor.GoEnvExperiment +
-				" (" + envErr + ") — toolchain/version gate, not a missing env var",
+				" (" + capErr + ") — toolchain/version gate, not a missing env var",
 		}
 	}
 }

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Added
+- **Session-close bridge prototype (`tq session begin/close`)**: interactive
+  crush sessions can now get the same close-out pool agents get. Begin
+  records a `session.opened` journal fact; close attributes the session's
+  `Crush-Session: <id>` footer commits (one trailer-scoped `git log` scan),
+  directly enqueues ONE review over the commit range and ONE done-prompt
+  status task (dedup keys shared with the sweeper namespaces, so replays
+  never duplicate work), and appends the `session.closed` fact carrying the
+  lineage. Close is enqueue-only — fast enough for a future SessionEnd hook
+  (crush PR #3146); the pool does everything else. New `internal/session`
+  package, `(*sqlite.Store).AppendFact` as the one sanctioned non-task fact
+  write, and the design/tradeoffs doc
+  `docs/planning/2026-09-12_session-close-bridge-design.md`. Trigger
+  automation, daemon-commit attribution, budget routing and Postgres
+  `AppendFact` parity remain open (documented in the design doc).
+
 ### Fixed
 - **Review prompts no longer stamp the review's own task id into the quoted
   work contract**: the reviewer prompt resolves the quoted `{{TASK_ID}}`

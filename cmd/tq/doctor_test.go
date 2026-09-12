@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -232,13 +233,118 @@ func TestDoctorToolPathChecks(t *testing.T) {
 
 	opts.AgentBin = self
 
-	results := doctorEnvironment(opts)
+	results := doctorEnvironment(context.Background(), opts)
 
 	for _, name := range []string{"tool:git", "tool:go"} {
 		r := resultByName(results, name)
 		if r.Status != checkWarn {
 			t.Errorf("%s = %s (%s), want warn (empty PATH)", name, r.Status, r.Detail)
 		}
+	}
+}
+
+// TestClassifyGoEnvProbe pins the env-lie verdict table: bare-build failure
+// with a working experiment build is the FAIL (one-line fix, never an
+// attempt burn); both failing is a toolchain gap (warn); a clean bare build
+// is ok regardless of the forced-experiment arm.
+func TestClassifyGoEnvProbe(t *testing.T) {
+	t.Parallel()
+
+	const constraintErr = "package probe imports encoding/json/v2: build constraints exclude all Go files"
+
+	cases := []struct {
+		name        string
+		bareErr     string
+		envErr      string
+		wantStatus  string
+		wantInDetal []string
+	}{
+		{
+			"clean env",
+			"", "",
+			checkOK,
+			[]string{"no env lie"},
+		},
+		{
+			"env lie",
+			constraintErr, "",
+			checkFail,
+			[]string{"ENV-LIE", "export GOEXPERIMENT=jsonv2", "Environment=GOEXPERIMENT=jsonv2"},
+		},
+		{
+			"toolchain cannot build jsonv2 at all",
+			constraintErr, "go: updates to go.mod needed; requires go >= 1.27",
+			checkWarn,
+			[]string{"toolchain/version gate"},
+		},
+		{
+			"bare ok wins even if forced arm failed",
+			"", "anything",
+			checkOK,
+			nil,
+		},
+	}
+
+	for _, tc := range cases {
+		got := classifyGoEnvProbe(tc.bareErr, tc.envErr)
+		if got.Status != tc.wantStatus {
+			t.Errorf("%s: status = %s, want %s (detail %q)", tc.name, got.Status, tc.wantStatus, got.Detail)
+		}
+
+		for _, want := range tc.wantInDetal {
+			if !strings.Contains(got.Detail, want) {
+				t.Errorf("%s: detail %q missing %q", tc.name, got.Detail, want)
+			}
+		}
+	}
+}
+
+// TestDoctorEnvironmentIncludesGoEnvCheck pins the wiring: the doctor's
+// environment sweep reports a go-env result (stubbed hermetically — the
+// real probe needs a go toolchain and is covered separately).
+func TestDoctorEnvironmentIncludesGoEnvCheck(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+
+	orig := doctorProbeGoEnv
+	t.Cleanup(func() { doctorProbeGoEnv = orig })
+
+	doctorProbeGoEnv = func(context.Context) checkResult {
+		return checkResult{Name: "go-env", Status: checkFail, Detail: "ENV-LIE (stub)"}
+	}
+
+	results := doctorEnvironment(context.Background(), doctorOptions{DBPath: doctorTestStore(t)})
+
+	r := resultByName(results, "go-env")
+	if r.Status != checkFail || !strings.Contains(r.Detail, "ENV-LIE") {
+		t.Errorf("go-env check = %+v, want stubbed ENV-LIE fail", r)
+	}
+}
+
+// TestDoctorGoEnvProbeReal exercises the real probe when a toolchain is
+// present (nix checkPhase, dev shells): any sane verdict is acceptable —
+// the environment decides — but the probe must produce a classified result
+// and never panic or hang. GOCACHE is isolated so sandboxed homes cannot
+// poison the run.
+func TestDoctorGoEnvProbeReal(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not on PATH")
+	}
+
+	dir := t.TempDir()
+	cache := filepath.Join(t.TempDir(), "gocache")
+
+	env := append(os.Environ(), "GOCACHE="+cache)
+
+	ambErr, capErr := runGoEnvProbe(context.Background(), dir, env)
+	got := classifyGoEnvProbe(ambErr, capErr)
+
+	switch got.Status {
+	case checkOK, checkWarn, checkFail:
+		if got.Detail == "" {
+			t.Fatalf("probe verdict %s must carry a detail", got.Status)
+		}
+	default:
+		t.Fatalf("probe produced unknown status %q (%s)", got.Status, got.Detail)
 	}
 }
 
