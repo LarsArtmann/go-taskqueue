@@ -27,7 +27,7 @@ layer. `./...` never descends into nested modules — per-module gates
 
 ```bash
 for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
-  ( cd "$m" && GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 ) || exit 1
+  ( cd "$m" && export GOEXPERIMENT=jsonv2 && GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 ) || exit 1
 done
 ```
 
@@ -378,7 +378,7 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   functions you touch. Hard gates: vet + gofmt + tests. Baseline GROWTH is
   now a ci-local GATE (round-13 T5): `scripts/lint-baseline.sh --check`
   (wired after the advisory lint step) fails on any per-module/linter count
-  above `.golangci-baseline.txt` (regen total 835 findings, 110
+  above `.golangci-baseline.txt` (regen total 887 findings, 114
   module/linter rows, 2026-09-12) or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`

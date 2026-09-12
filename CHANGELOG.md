@@ -43,6 +43,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   resolve the quoted original the same way and now carry an explicit
   own-footer instruction (`{{TASK_ID}}` resolves to the fix task's id at
   run time).
+- **`scripts/release.sh` gates could print GREEN after a failed nix
+  build**: a command substitution inside an env-prefix assignment
+  (`TQ_BIN="$(nix build …)/bin/tq" step`) does not abort under `set -e` —
+  the substitution's failure vanished and the gate read the step's exit
+  status, so a dead `nix build` still ended in "GATES GREEN". The
+  out-path is now captured in a standalone assignment, which does abort.
+  Found by the first live fixture execution of the release flow
+  (round-12 T14).
 
 ### Added
 - **Fuller agent toolset in the bootstrap managed block**: the headless

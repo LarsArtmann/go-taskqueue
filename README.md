@@ -280,6 +280,7 @@ toolchain PATH baked in) — see `deploy/nixos/tq-agent-pool.nix`.
 | `tq doctor`     | Health checks: DB integrity, expired leases, worker heartbeats, budget, agent binary, per-repo autonomy files               |
 | `tq audit`      | TODO-vs-queue drift: stale-open items repaired by catch-up tasks, stale-done reported                                       |
 | `tq watermarks` | Journal consumer cursors + lag (`show`); `set CONSUMER SEQ` rewinds for safe replay                                         |
+| `tq session`    | Interactive-session close-out bridge (prototype): `begin` records the opening; `close` attributes the session's `Crush-Session:` footer commits and enqueues one review + one status task |
 | `tq version`    | Build identity (version, VCS revision)                                                                                      |
 
 ## Concepts
