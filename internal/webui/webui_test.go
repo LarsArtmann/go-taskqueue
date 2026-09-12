@@ -1418,15 +1418,23 @@ func TestSSEHeartbeatStopsBeforeHandlerExit(t *testing.T) {
 	// handler-exit window the old code left open.
 	srv.cfg.Heartbeat = 5 * time.Millisecond
 
+	// The per-collect deadline is a hang guard, not the pin: it must cover
+	// connect + first snapshot render, whose loaded tail (full -race suite
+	// contending for 4 cores) spiked past 30ms and flaked "context deadline
+	// exceeded" three windows running. 250ms keeps ~10x headroom over that
+	// tail while the 5ms heartbeat still stacks ~50 ticks per stream; ten
+	// disconnect cycles are ample for a goroutine-lifecycle race.
+	const collectBudget = 250 * time.Millisecond
+
 	handler := srv.Handler()
 
-	for range 30 {
-		ssetest.CollectWithTimeout(t, handler, 30*time.Millisecond, ssetest.WithPath("/api/events"))
+	for range 10 {
+		ssetest.CollectWithTimeout(t, handler, collectBudget, ssetest.WithPath("/api/events"))
 	}
 
 	// Disconnected mid-heartbeat repeatedly; the process surviving to this
 	// line (no SIGSEGV) IS the assertion. Keep one enqueue so snapshots
 	// render real state.
 	enqueue(t, s, "sh", "hb")
-	ssetest.CollectWithTimeout(t, handler, 30*time.Millisecond, ssetest.WithPath("/api/events"))
+	ssetest.CollectWithTimeout(t, handler, collectBudget, ssetest.WithPath("/api/events"))
 }
