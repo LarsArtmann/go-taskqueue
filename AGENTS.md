@@ -21,7 +21,8 @@ nix build                 # reproducible build; nix run .#test = tests; nix run 
 
 **Multi-module repo (ADR-0011):** `internal/{task,journal,queue,executor,worker}`
 are sub-modules plus `internal/queue/{sqlite,postgres}` backend modules
-(ADR-0011 + ADR-0012; import paths unchanged); the root module is the app
+and the `internal/journal/cqrs` go-cqrs-lite adapter module (ADR-0011 +
+ADR-0012 + ADR-0014; import paths unchanged); the root module is the app
 layer. `./...` never descends into nested modules — per-module gates
 (disk-derived, same as CI):
 
@@ -70,6 +71,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `internal/task`                                    | Task record, Status enum with `CanTransitionTo`, sentinel errors                                                                                                                    |
 | `internal/journal`                                 | Fact types, append-only Journal interface, MemoryJournal                                                                                                                            |
+| `internal/journal/cqrs`                            | Read-only adapter: the fact journal as go-cqrs-lite `event.Journal`/`event.SeekableJournal`; synthetic seq-encoded ULIDs (ADR-0014); `tq facts --cqrs` consumes it                  |
 | `internal/queue`                                   | Store contract: interface, Filter, Queue facade, watermarks entry (deps: task+journal only)                                                                                         |
 | `internal/queue/sqlite`, `internal/queue/postgres` | Driver-style backend modules (`sqlite.Store`/`Open`, `postgres.Store`/`Open`); mirrored helpers + conformance suites (ADR-0007/0012)                                                |
 | `internal/worker`                                  | Claim → heartbeat → execute loop; concurrency, panics, drain, preflight requeue ladder                                                                                              |
@@ -517,7 +519,13 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
 ## Relation to other projects
 
 Semantics proven in go-cqrs-lite (facts/journal) and PapDashboard (worker
-pools over durable queues); composes with both, depends on neither.
+pools over durable queues). PapDashboard is a runtime bridge only;
+go-cqrs-lite is now also a CODE dependency at exactly one seam:
+`internal/journal/cqrs` (ADR-0014) exposes the fact journal as a
+go-cqrs-lite `SeekableJournal` (read-only; seq-encoded ULIDs; the store
+invariants are untouched). PROPRIETARY license — owner-authorized
+2026-09-12; do not extend the surface (no `event.Store` write path) and
+do not import it below the root module without revisiting ADR-0014.
 
 **PapDashboard bridge**: `tq worker --alert-url http://<pap>:8080
 --alert-api-key <KEY>` (env `TQ_PAP_URL`/`TQ_PAP_API_KEY`). Dead letters

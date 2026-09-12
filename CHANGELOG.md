@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **go-cqrs-lite journal adapter (`internal/journal/cqrs`, `tq facts
+  --cqrs`)**: the fact journal is now consumable as a native
+  go-cqrs-lite `event.Journal`/`event.SeekableJournal` (event/v4
+  v4.11.0), so projections, `watermill.CatchUpSubscriber`, and SSE
+  replay tooling from the go-cqrs-lite ecosystem can read queue facts
+  directly. Read-only by contract (writes stay in the queue stores'
+  transactions); synthetic sequence-encoded ULIDs mean zero schema
+  migration, lexicographic ID order equals Seq order, the zero event ID
+  is the journal start, and foreign cursors drain empty (the
+  dangling-cursor contract — never a replay). Facts map verbatim
+  (`task.*`/`session.*` → event types, task/session stream types, fact
+  body JSON as payload, global Seq as Version). Pinned by adapter unit
+  tests plus a store-backed integration test through real `sqlite.Store`
+  and the CLI render path. PROPRIETARY license adopted by owner
+  instruction 2026-09-12 — decision + deferred tiers (per-task
+  `EventSource`, watermill bus, branded IDs, idempotency stores) in
+  ADR-0014. Lint baseline regenerated deliberately (892 findings, 107
+  rows; new-module err113 + repo-wide paralleltest drift).
 - **DLQ autopsies — the self-fixing dead-letter queue (`--dlq-fix`)**: when
   an AGENT task dead-letters, the new `internal/dlqfix` sweeper mints ONE
   autopsy task (dedup `dlqfix:<dead-id>`, agent-type deaths only — so a
