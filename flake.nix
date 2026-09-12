@@ -37,7 +37,7 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.2.0";
-        vendorHash = "sha256-NQi6Xpiizmc5cc7dHTLVt5KxCJhKn16fyzdC59w2la8=";
+        vendorHash = "sha256-8zjS/KNmEm6Es2n4Xyj/a6Mn+oLntLycRXpGNTkWPWg=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
         # nixpkgs 26.11 dropped x86_64-darwin; the go-standard default system

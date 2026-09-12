@@ -75,6 +75,7 @@ func TestReadAllMapsFactsInSeqOrder(t *testing.T) {
 	}
 
 	prev := ""
+
 	for i, evt := range events {
 		fact := journal.FactType(evt.Type())
 		if fact == "" {
@@ -85,6 +86,7 @@ func TestReadAllMapsFactsInSeqOrder(t *testing.T) {
 		if prev != "" && id <= prev {
 			t.Fatalf("event ids not strictly increasing: %s after %s", id, prev)
 		}
+
 		prev = id
 
 		if uint64(evt.Version()) != uint64(i+1) {
@@ -96,12 +98,15 @@ func TestReadAllMapsFactsInSeqOrder(t *testing.T) {
 	if first.StreamID().String() != "000001a0deadbeef" {
 		t.Fatalf("first event stream id = %s", first.StreamID())
 	}
+
 	if string(first.StreamType()) != StreamTypeTask {
 		t.Fatalf("first event stream type = %s, want %s", first.StreamType(), StreamTypeTask)
 	}
+
 	if !first.OccurredAt().Equal(time.Date(2026, 9, 12, 10, 0, 0, 0, time.UTC)) {
 		t.Fatalf("first event occurred at %v", first.OccurredAt())
 	}
+
 	if string(first.Type()) != string(journal.Enqueued) {
 		t.Fatalf("first event type = %s, want %s", first.Type(), journal.Enqueued)
 	}
@@ -230,9 +235,11 @@ func TestSessionFactsUseSessionStreamType(t *testing.T) {
 	if string(last.StreamType()) != StreamTypeSession {
 		t.Fatalf("session fact stream type = %s, want %s", last.StreamType(), StreamTypeSession)
 	}
+
 	if last.StreamID().String() != "session:abc123" {
 		t.Fatalf("session fact stream id = %s", last.StreamID())
 	}
+
 	if string(last.Type()) != string(journal.SessionOpened) {
 		t.Fatalf("session fact type = %s", last.Type())
 	}
@@ -270,6 +277,7 @@ func TestSeqEventIDRoundTripAndOrdering(t *testing.T) {
 	}
 
 	prev := ""
+
 	for seq := int64(1); seq <= 500; seq++ {
 		eventID, err := seqEventID(seq)
 		if err != nil {

@@ -120,49 +120,49 @@ func mapFacts(facts []journal.Fact) ([]event.Event, error) {
 	return events, nil
 }
 
-func factEvent(f journal.Fact) (event.Event, error) {
-	if f.Seq <= 0 {
-		return nil, fmt.Errorf("cqrs: fact for task %s has non-positive seq %d", f.TaskID, f.Seq)
+func factEvent(fact journal.Fact) (event.Event, error) {
+	if fact.Seq <= 0 {
+		return nil, fmt.Errorf("cqrs: fact for task %s has non-positive seq %d", fact.TaskID, fact.Seq)
 	}
 
 	payload, err := json.Marshal(factPayload{
-		TaskID:  f.TaskID,
-		Type:    f.Type,
-		Owner:   f.Owner,
-		Attempt: f.Attempt,
-		Error:   f.Error,
-		Detail:  f.Detail,
+		TaskID:  fact.TaskID,
+		Type:    fact.Type,
+		Owner:   fact.Owner,
+		Attempt: fact.Attempt,
+		Error:   fact.Error,
+		Detail:  fact.Detail,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("cqrs: marshal fact seq %d: %w", f.Seq, err)
+		return nil, fmt.Errorf("cqrs: marshal fact seq %d: %w", fact.Seq, err)
 	}
 
-	eventID, err := seqEventID(f.Seq)
+	eventID, err := seqEventID(fact.Seq)
 	if err != nil {
 		return nil, err
 	}
 
-	streamID, err := id.ParseStreamID(f.TaskID)
+	streamID, err := id.ParseStreamID(fact.TaskID)
 	if err != nil {
-		return nil, fmt.Errorf("cqrs: fact seq %d stream id: %w", f.Seq, err)
+		return nil, fmt.Errorf("cqrs: fact seq %d stream id: %w", fact.Seq, err)
 	}
 
 	streamType := id.StreamType(StreamTypeTask)
-	if strings.HasPrefix(f.TaskID, "session:") {
+	if strings.HasPrefix(fact.TaskID, "session:") {
 		streamType = id.StreamType(StreamTypeSession)
 	}
 
 	evt, err := event.NewEvent(
-		event.Type(f.Type),
+		event.Type(fact.Type),
 		streamID,
 		streamType,
-		event.Version(uint64(f.Seq)),
+		event.Version(uint64(fact.Seq)),
 		payload,
 		event.WithEventID(eventID),
-		event.WithOccurredAt(f.Time),
+		event.WithOccurredAt(fact.Time),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("cqrs: build event for fact seq %d: %w", f.Seq, err)
+		return nil, fmt.Errorf("cqrs: build event for fact seq %d: %w", fact.Seq, err)
 	}
 
 	return evt, nil
