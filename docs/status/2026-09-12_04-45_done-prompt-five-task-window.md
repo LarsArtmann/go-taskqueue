@@ -1,4 +1,4 @@
-# Done prompt — five-task window (2026-09-10 09:00 → 2026-09-12 03:42)
+# Done prompt — 2026-09-12: five-task window close-out (window 09-10 09:00 → 09-12 03:42)
 
 - **Written**: 2026-09-12 04:45 CEST
 - **Window**: queue tasks `000001a08a1a8b…`, `…84b16`, `000001a08a2846…`,

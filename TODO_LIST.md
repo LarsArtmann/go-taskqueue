@@ -265,7 +265,7 @@ not here.
 - [ ] Session ergonomics: git ≥ 2.15 guard with an actionable message; zero-commit close prints the footer-convention hint (begin already does) (03-28 §f12/f13)
 - [ ] gosec post-config scan over internal/session + the cmd/tq session call sites stays zero; extend the AGENTS.md gosec triage note with the new exec(git) sites (03-28 §f23)
 - [ ] Dead-export audit re-run (scripts/check-dead-exports.sh, substring matching) over internal/session's exports (Trailer, SyntheticTaskID, CloseInput, CloseResult, GitScanner, …) (03-28 §f31)
-- [ ] Session E2E dogfood proof: one REAL interactive session through begin→commits→close on this repo with the pool reviewing the minted task (spends money — owner-gated) (03-28 §f28)
+- [ ] Session E2E dogfood proof: one REAL interactive session through begin→commits→close on this repo with the pool reviewing the minted task (03-28 §f28) — BLOCKED: spends API money on the real agent run (owner-gated spend)
 - [ ] Mirror the git-identity sanitizer into ci.yml's release-gates step (ci.yml:106) or document the ci-local-only asymmetry as deliberate (03-46 §f2)
 - [ ] Self-testing negative fixture in release-gates.sh: a temp copy with the `-c user.*` flags stripped must fail "Author identity unknown", so the identity-blind property can't rot silently (03-46 §f3)
 - [ ] AGENTS.md one-liner near the smoke list: the release-gates smoke runs identity-blind via ci-local (`GIT_CONFIG_GLOBAL=/dev/null` + `user.useConfigOnly`) — so nobody "simplifies" it away (03-46 §f5)
