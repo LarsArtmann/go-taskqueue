@@ -283,13 +283,14 @@ type repoState struct {
 // false when the listing failed (every item is reported skipped, mirroring
 // the ReasonScanFailed pattern).
 func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, res *Result) (repoState, bool) {
+	repoName := filepath.Base(repo)
 	st := repoState{
-		repoName:     filepath.Base(repo),
+		repoName:     repoName,
 		known:        make(map[string]task.Status),
-		repoInterval: h.cfg.RepoIntervals[st.repoName],
+		repoInterval: h.cfg.RepoIntervals[repoName],
 	}
 
-	tasks, err := h.q.List(ctx, queue.Filter{Project: &st.repoName, Type: &h.cfg.Type})
+	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
 	if err != nil {
 		for _, item := range items {
 			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "list failed: " + err.Error()})
@@ -379,7 +380,8 @@ func (h *Harvester) itemDenial(st repoState, item Item, enqueuedThisRepo bool, e
 
 // admitItem enqueues one item and records the outcome: a fresh task under
 // res.Enqueued, a store-dedup return (another pool won the race) under
-// res.Skipped. ok is false when the item must not count against pacing.
+// res.Skipped. ok is false only when the enqueue FAILED — a dedup return
+// still counts against pacing exactly like the original inline code.
 func (h *Harvester) admitItem(ctx context.Context, item Item, res *Result) bool {
 	t, err := h.enqueue(ctx, item)
 	if err != nil {
@@ -398,13 +400,14 @@ func (h *Harvester) admitItem(ctx context.Context, item Item, res *Result) bool 
 	}
 
 	// Store dedup returned a pre-existing row (another pool won the race).
-	// Count item as known, not fresh.
+	// Count item as known, not fresh — but still consumed this run's
+	// one-new-item slot, matching the pre-refactor pacing behavior.
 	res.Skipped = append(
 		res.Skipped,
 		Skipped{Item: item, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"},
 	)
 
-	return false
+	return true
 }
 
 // blockedReason reports the "BLOCKED: <reason>" suffix that the agent
