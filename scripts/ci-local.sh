@@ -109,6 +109,16 @@ else
 	echo "jq not on PATH — skipped locally (CI runners ship jq)"
 fi
 
+# Round-13 T5: the advisory sea is documented, but GROWTH beyond it is a
+# gate failure (new findings in touched code, or a policy change that must
+# regenerate the baseline deliberately). Shrink is advisory-only.
+step "lint baseline gate (growth fails, shrink advisory)"
+if command -v golangci-lint >/dev/null 2>&1 || [[ -x "$(go env GOPATH)/bin/golangci-lint" ]]; then
+	PATH="$(go env GOPATH)/bin:$PATH" ./scripts/lint-baseline.sh --check
+else
+	echo "golangci-lint unavailable — baseline gate skipped (CI installs the pinned version)"
+fi
+
 step "actionlint (GitHub Actions workflows)"
 if command -v actionlint >/dev/null 2>&1; then
 	actionlint .github/workflows/*.yml

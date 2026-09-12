@@ -375,7 +375,14 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   SECURITY.md. Don't add write endpoints without the same treatment.
 - ⚠️ **golangci-lint is advisory** (`continue-on-error`, ~400-finding
   baseline): never mass-"fix" the baseline; don't add new findings in
-  functions you touch. Hard gates: vet + gofmt + tests. `*_templ.go` is
+  functions you touch. Hard gates: vet + gofmt + tests. Baseline GROWTH is
+  now a ci-local GATE (round-13 T5): `scripts/lint-baseline.sh --check`
+  (wired after the advisory lint step) fails on any per-module/linter count
+  above `.golangci-baseline.txt` (regen total 835 findings, 110
+  module/linter rows, 2026-09-12) or on a NEW (module, linter) class;
+  shrink is advisory-only — regenerate deliberately when a policy change
+  owns it.
+  `*_templ.go` is
   lint-excluded (`templ fmt` owns `.templ`). wrapcheck + varnamelen were
   triaged to zero (2026-09-10, task 000001a089c3): wrapcheck ignores
   internal-package globs + stdlib idioms + tests; varnamelen ignores tests

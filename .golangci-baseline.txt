@@ -1,4 +1,4 @@
-internal/executor	cyclop:	6
+internal/executor	cyclop:	0
 internal/executor	err113:	26
 internal/executor	forcetypeassert:	3
 internal/executor	gochecknoglobals:	2
