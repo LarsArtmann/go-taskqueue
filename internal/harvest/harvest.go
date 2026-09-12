@@ -102,6 +102,12 @@ type Config struct {
 	// apply regardless of this flag; a malformed metadata file skips the
 	// repo's items with a reason instead of guessing.
 	UseImportance bool
+	// MaxPendingPerRepo caps how many PENDING tasks one repo may hold in
+	// the queue (0 = unlimited): the queue is the WORKING SET, TODO_LIST.md
+	// is the warehouse — prompts stay fresh and AI cost stays O(working
+	// set). Admission resumes as claims drain the slot; running tasks do
+	// not count (the repo-busy rule owns those).
+	MaxPendingPerRepo int
 	// PromptTemplate overrides DefaultPromptTemplate.
 	PromptTemplate string
 	// Model overrides the crush model ("provider/model") in every harvested
@@ -284,6 +290,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 type repoState struct {
 	repoName     string
 	busy         bool
+	pendingCount int
 	known        map[string]task.Status
 	poisoned     bool
 	repoInterval time.Duration
@@ -319,6 +326,10 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 	for _, t := range tasks {
 		if t.Status == task.Pending || t.Status == task.Running {
 			state.busy = true
+		}
+
+		if t.Status == task.Pending {
+			state.pendingCount++
 		}
 
 		if t.Status == task.Dead {
@@ -399,6 +410,10 @@ func (h *Harvester) itemDenial(state repoState, item Item, enqueuedThisRepo bool
 		)
 	case state.busy:
 		return "repo busy: one agent per repo"
+	case h.cfg.MaxPendingPerRepo > 0 && state.pendingCount >= h.cfg.MaxPendingPerRepo:
+		return fmt.Sprintf(
+			"admission: repo holds %d pending task(s), cap %d (--max-pending-per-repo; queue = working set, TODO_LIST.md = warehouse)",
+			state.pendingCount, h.cfg.MaxPendingPerRepo)
 	case enqueuedThisRepo:
 		return "paced: one new item per repo per run"
 	case enqueuedThisTick >= h.cfg.MaxPerTick:

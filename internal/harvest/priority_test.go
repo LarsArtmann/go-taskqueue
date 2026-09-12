@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -408,4 +409,73 @@ func TestHarvestPriorityLegacyOff(t *testing.T) {
 
 func contains(s, sub string) bool {
 	return strings.Contains(s, sub)
+}
+
+// TestMaxPendingPerRepo pins the admission knob (ADR working set): below
+// the cap items admit, at the cap they wait with a reason, and a claim
+// frees a slot so a later run admits the next item (no starvation at
+// small caps).
+func TestMaxPendingPerRepo(t *testing.T) {
+	ctx := context.Background()
+	projects := t.TempDir()
+
+	repo := writeRepo(t, projects, "capped", "- [ ] first\n- [ ] second\n- [ ] third\n")
+
+	tq := openQueue(t)
+	h := New(tq, Config{
+		Repos:             []string{repo},
+		Type:              "agent",
+		TodoFile:          DefaultTodoFile,
+		MaxPerTick:        10,
+		MaxPendingPerRepo: 1,
+		PromptTemplate:    "work {{ITEM}}",
+	})
+
+	// Run 1: first admits (cap 1 reached by the enqueue itself... the
+	// survey runs before any enqueue, so pendingCount=0: one item admits).
+	res, err := h.Run(ctx)
+	if err != nil {
+		t.Fatalf("run 1: %v", err)
+	}
+
+	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "first" {
+		t.Fatalf("run 1 enqueued = %+v, want exactly 'first'", res.Enqueued)
+	}
+
+	admitted := 0
+
+	for _, sk := range res.Skipped {
+		if strings.Contains(sk.Reason, "admission:") {
+			admitted++
+		}
+	}
+
+	if admitted != 2 {
+		t.Fatalf("run 1 admission skips = %d, want 2 (second and third held)", admitted)
+	}
+
+	// Run 2: still at cap (first is PENDING) — nothing new admits.
+	res, err = h.Run(ctx)
+	if err != nil {
+		t.Fatalf("run 2: %v", err)
+	}
+
+	if len(res.Enqueued) != 0 {
+		t.Fatalf("run 2 admitted past the cap: %+v", res.Enqueued)
+	}
+
+	// Claim the pending task: it becomes RUNNING, the pending slot frees,
+	// and run 3 admits the next item — small caps do not starve.
+	if _, err := tq.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	res, err = h.Run(ctx)
+	if err != nil {
+		t.Fatalf("run 3: %v", err)
+	}
+
+	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "second" {
+		t.Fatalf("run 3 enqueued = %+v, want 'second' after the claim freed the slot", res.Enqueued)
+	}
 }
