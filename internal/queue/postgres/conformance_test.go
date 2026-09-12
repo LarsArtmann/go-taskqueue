@@ -912,6 +912,8 @@ func TestPostgresConformance(t *testing.T) {
 // PriorityMin/PriorityMax pushdown sees stored priorities and composes
 // with CountTasks.
 func TestPostgresBandFilter(t *testing.T) {
+	t.Parallel()
+
 	s := testPostgresStore(t)
 	ctx := context.Background()
 

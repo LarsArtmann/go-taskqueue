@@ -300,6 +300,8 @@ func TestDepsBlockUntilCompleted(t *testing.T) {
 }
 
 func TestPriorityOrdersClaims(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 	low, _ := s.Enqueue(ctx, task.New{Type: "low", Priority: 1})
@@ -318,6 +320,8 @@ func TestPriorityOrdersClaims(t *testing.T) {
 }
 
 func TestClaimAgingFlipsOrder(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -336,7 +340,7 @@ func TestClaimAgingFlipsOrder(t *testing.T) {
 	// PriorityAgingDaysPerPoint=3 earns the full PriorityAgingMaxBonus=10):
 	// its effective 65 must beat the newer's 60.
 	backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, older.ID); err != nil {
+	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, older.ID); err != nil {
 		t.Fatalf("backdate: %v", err)
 	}
 
@@ -351,6 +355,8 @@ func TestClaimAgingFlipsOrder(t *testing.T) {
 }
 
 func TestClaimAgingBonusCapped(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -367,7 +373,7 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 	// 300 days of age would be +100 uncapped (50 -> 150, beating 65). The
 	// cap holds the bonus at 10 (60 < 65): the newer task still wins.
 	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, older.ID); err != nil {
+	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, older.ID); err != nil {
 		t.Fatalf("backdate: %v", err)
 	}
 
@@ -382,6 +388,8 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 }
 
 func TestClaimAgingRespectsNotBefore(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -402,7 +410,7 @@ func TestClaimAgingRespectsNotBefore(t *testing.T) {
 	}
 
 	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, gated.ID); err != nil {
+	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, gated.ID); err != nil {
 		t.Fatalf("backdate: %v", err)
 	}
 
@@ -422,6 +430,8 @@ func TestClaimAgingRespectsNotBefore(t *testing.T) {
 }
 
 func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -435,7 +445,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 	// deterministically (same-millisecond created_at ties would otherwise
 	// be broken by random ID order).
 	backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, old.ID); err != nil {
+	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, old.ID); err != nil {
 		t.Fatalf("backdate: %v", err)
 	}
 
@@ -461,6 +471,8 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 }
 
 func TestClaimAgingAccruesPerWindow(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -479,7 +491,7 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 	}
 
 	twoWindows := time.Now().Add(-2 * time.Duration(queue.PriorityAgingDaysPerPoint) * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, twoWindows, low.ID); err != nil {
+	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, twoWindows, low.ID); err != nil {
 		t.Fatalf("backdate low: %v", err)
 	}
 
@@ -497,7 +509,7 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 	}
 
 	threeWindows := time.Now().Add(-3 * time.Duration(queue.PriorityAgingDaysPerPoint) * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, threeWindows, high.ID); err != nil {
+	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, threeWindows, high.ID); err != nil {
 		t.Fatalf("backdate high: %v", err)
 	}
 
@@ -525,6 +537,8 @@ func mustEnqueueZero(t *testing.T, s *Store, n task.New) task.Task {
 }
 
 func TestUpdatePendingPriority(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -577,6 +591,8 @@ func TestUpdatePendingPriority(t *testing.T) {
 }
 
 func TestUpdatePendingPriorityIdempotent(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -596,6 +612,8 @@ func TestUpdatePendingPriorityIdempotent(t *testing.T) {
 }
 
 func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -632,6 +650,8 @@ func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
 }
 
 func TestUpdatePendingPriorityFlipsClaimOrder(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -2667,6 +2687,8 @@ func TestPriorityScoreRoundtrip(t *testing.T) {
 // filter sees the STORED priority (aging is scheduling, not state) and
 // composes with CountTasks.
 func TestBandFilter(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
