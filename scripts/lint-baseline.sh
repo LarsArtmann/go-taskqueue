@@ -74,7 +74,8 @@ if [[ "$mode" == "--check" ]]; then
 			fi
 			while IFS=$'\t' read -r m linter _; do
 				[[ "$m" == "$module" ]] || continue
-				files="$(printf '%s\n' "$lint_out" | grep -F "($linter)" | cut -d: -f1 | sort -u)"
+				linter="${linter%:}"
+				files="$(printf '%s\n' "$lint_out" | grep -F "($linter)" | cut -d: -f1 | sort -u || true)"
 				if [[ -n "$files" ]]; then
 					echo "  $m/$linter carries findings in:" >&2
 					printf '%s\n' "$files" | sed 's/^/    /' >&2

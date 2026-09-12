@@ -1,7 +1,7 @@
-# Owner rulings package — O1–O6 (round-13 M21)
+# Owner rulings package — O1–O7 (round-13 M21, O7 appended 05-5x)
 
 - **When**: 2026-09-12 02:48 CEST
-- **Purpose**: one sitting, six rulings. Each question lists the options,
+- **Purpose**: one sitting, seven rulings. Each question lists the options,
   the cost/benefit, and an ANSWER line to fill. Nothing here blocks a
   "no ruling yet" — but every answered question un-blocks a queued task
   (T9/T10/T14/T6/T25/T18/T26/T27).
@@ -87,6 +87,28 @@ lost-update generator (the 01-06 correction exists because of it).
    checklist? [ ] attached  [ ] skip live-verify.
 4. **AllStatuses release call** (L124): export in next re-tag? [ ] yes
    [ ] hold.
+
+## O7 — Daemon-folded commit attribution (un-blocks: L160; T12 residue)
+
+When the auto-commit daemon folds a task's working-tree changes into a
+footer-less `chore:` commit (lint triage: content in bebc35a/fc495e8,
+footer-only eaf73a9), ticket↔content attribution has no footer to ride.
+
+- **a) Report-side attribution (recommended)**: `chore:` commits are
+  attribution deserts BY DESIGN; the task's own `TQ_RESULT` `commits`
+  array + the close-out report's citations are the canonical map, and
+  `tq show <id> --commits` is the forensics view. Cost: forensics needs
+  the report; benefit: zero daemon changes, works for already-folded
+  history.
+- **b) Daemon carries footers**: the daemon embeds a
+  `Task-Queue-ID` when the folded tree's TQ_RESULT names exactly one task.
+  Cost: daemon change outside this repo; race when several tasks' changes
+  interleave in one fold (the common case makes the footer a LIE).
+- **c) File-level ledger**: a committed map (commit → task ids) appended
+  by agents at close-out. Cost: a second source of truth that rots;
+  benefit: greppable without the journal.
+
+**ANSWER**: [ ] a) report-side  [ ] b) daemon footers  [ ] c) ledger  [ ] other: ______________
 
 ---
 
