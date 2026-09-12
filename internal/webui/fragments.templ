@@ -126,11 +126,11 @@ templ taskActiveCard(data DashboardData) {
 				CellPadding:  display.TableCellPaddingCompact,
 				Body:         taskRows(data, activeTasks(data.Tasks)),
 			})
-				<p class="px-1 pt-2 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">
-					claim order = stored priority + aging (+1 per
-					{ formatInt(queue.PriorityAgingDaysPerPoint) } days waiting, max +
-					{ formatInt(queue.PriorityAgingMaxBonus) }) - aging is scheduling, the stored value never changes (ADR-0015)
-				</p>
+			<p class="px-1 pt-2 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">
+				claim order = stored priority + aging (+1 per
+				{ formatInt(queue.PriorityAgingDaysPerPoint) } days waiting, max +
+				{ formatInt(queue.PriorityAgingMaxBonus) }) - aging is scheduling, the stored value never changes (ADR-0015)
+			</p>
 		}
 	}
 }
