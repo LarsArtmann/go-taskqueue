@@ -81,8 +81,8 @@ re-verified.
   repo in surveyRepo (malformed ⇒ all items skipped with reason),
   `enqueue` resolves via `ResolvePriority` (hot > marker > cached AI score
   > importance+keyword > flat). Legacy mode bit-identical (pinned by
-  test). E2E verified with a scratch repo + scratch DB: `— P1` ⇒ priority
-  90, stripped text in prompt/payload.
+  > test). E2E verified with a scratch repo + scratch DB: `— P1` ⇒ priority
+  > 90, stripped text in prompt/payload.
 - T16: flags — `--priority-from importance` on BOTH `tq harvest` and `tq
   agent-pool` (validated, default empty = legacy).
 
@@ -273,7 +273,7 @@ re-verified.
     order (the review-driven calibration from T34 feeds this).
 20. Post-pilot: revisit G1 (2000/50) — admission cap sizing from
     observed drain rate.
-21-50. The out-of-scope list from the plan stays out (per-repo budget
+    21-50. The out-of-scope list from the plan stays out (per-repo budget
     scaling, cross-project dedup, cross-repo dep inference, project-meta
     tags in formula) unless the owner re-opens them; the remaining
     ~30 slots are the L0 micro-steps of items 1-15 above, each ≤12 min,

@@ -1803,7 +1803,12 @@ func cmdDLQ(args []string) error {
 	}
 
 	if *dismiss != "" {
-		if err := store.DismissDead(context.Background(), task.ID(*dismiss), strings.TrimSpace(*reason), "operator"); err != nil {
+		if err := store.DismissDead(
+			context.Background(),
+			task.ID(*dismiss),
+			strings.TrimSpace(*reason),
+			"operator",
+		); err != nil {
 			return err
 		}
 

@@ -192,7 +192,7 @@ func prioritizePrompt(payload PrioritizePayload) string {
 			heading = "-"
 		}
 
-		b.WriteString(fmt.Sprintf("- `%s` | %s | %s\n", item.Key, heading, strings.ReplaceAll(item.Text, "\n", " ")))
+		fmt.Fprintf(&b, "- `%s` | %s | %s\n", item.Key, heading, strings.ReplaceAll(item.Text, "\n", " "))
 	}
 
 	b.WriteString(`
@@ -258,7 +258,12 @@ func ParsePrioritizeResult(output string, items []PrioritizeItem) (PrioritizeRes
 		}
 
 		if verdict.Score < 0 || verdict.Score > 100 {
-			return PrioritizeResult{}, fmt.Errorf("item %q score %d %w", verdict.ItemKey, verdict.Score, ErrPrioritizeScoreRange)
+			return PrioritizeResult{}, fmt.Errorf(
+				"item %q score %d %w",
+				verdict.ItemKey,
+				verdict.Score,
+				ErrPrioritizeScoreRange,
+			)
 		}
 
 		got[verdict.ItemKey] = true

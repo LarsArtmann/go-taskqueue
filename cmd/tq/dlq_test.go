@@ -76,7 +76,9 @@ func TestCmdDLQDismissDeadTask(t *testing.T) {
 	}
 
 	cmdOut := captureStdout(t, func() {
-		if err := cmdDLQ([]string{"--db", dbPath, "--dismiss", enq.ID.String(), "--reason", "autopsy ruled it unfixable"}); err != nil {
+		if err := cmdDLQ(
+			[]string{"--db", dbPath, "--dismiss", enq.ID.String(), "--reason", "autopsy ruled it unfixable"},
+		); err != nil {
 			t.Errorf("cmdDLQ: %v", err)
 		}
 	})

@@ -64,7 +64,7 @@ Provenance tags: [v] = personally verified by gate/test run this window;
   PapDashboard trigger per episode (`NotifyStarvation`, dead-pool
   direct-notify pattern) + WARN without `--alert-url`; back under
   threshold or empty queue resolves. Detector lifecycle test (5 cases)
-  + bridge trigger/resolve test green.
+  - bridge trigger/resolve test green.
 - **T35 — paused-repo rule** [v]: explicit `importance: 0` in
   importance mode denies all admission ("paused:" skip reason); raising
   importance resumes on the next run (test pins both directions).
@@ -207,7 +207,7 @@ Provenance tags: [v] = personally verified by gate/test run this window;
     — feeds T34).
 13. Fuzz `FuzzSplitMarker`/`FuzzReadImportance` ride the next nightly —
     watch the first run after this lands on master.
-14-50. The §f ledger from the 15-43 report carries forward (calibration,
+    14-50. The §f ledger from the 15-43 report carries forward (calibration,
     per-project budget surfaces, worktree-per-agent decision, compaction
     pin test, postgres adapter parity, …) minus everything this window
     closed; each remaining slot is the L0 micro-steps of items 1-13,

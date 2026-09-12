@@ -340,7 +340,12 @@ func TestClaimAgingFlipsOrder(t *testing.T) {
 	// PriorityAgingDaysPerPoint=3 earns the full PriorityAgingMaxBonus=10):
 	// its effective 65 must beat the newer's 60.
 	backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, older.ID); err != nil {
+	if _, err := s.db.ExecContext(
+		ctx,
+		`UPDATE tasks SET created_at = ? WHERE id = ?`,
+		backdated,
+		older.ID,
+	); err != nil {
 		t.Fatalf("backdate: %v", err)
 	}
 
@@ -373,7 +378,12 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 	// 300 days of age would be +100 uncapped (50 -> 150, beating 65). The
 	// cap holds the bonus at 10 (60 < 65): the newer task still wins.
 	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, older.ID); err != nil {
+	if _, err := s.db.ExecContext(
+		ctx,
+		`UPDATE tasks SET created_at = ? WHERE id = ?`,
+		backdated,
+		older.ID,
+	); err != nil {
 		t.Fatalf("backdate: %v", err)
 	}
 
@@ -410,7 +420,12 @@ func TestClaimAgingRespectsNotBefore(t *testing.T) {
 	}
 
 	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, gated.ID); err != nil {
+	if _, err := s.db.ExecContext(
+		ctx,
+		`UPDATE tasks SET created_at = ? WHERE id = ?`,
+		backdated,
+		gated.ID,
+	); err != nil {
 		t.Fatalf("backdate: %v", err)
 	}
 
@@ -509,7 +524,12 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 	}
 
 	threeWindows := time.Now().Add(-3 * time.Duration(queue.PriorityAgingDaysPerPoint) * 24 * time.Hour).UnixMilli()
-	if _, err := s.db.ExecContext(ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, threeWindows, high.ID); err != nil {
+	if _, err := s.db.ExecContext(
+		ctx,
+		`UPDATE tasks SET created_at = ? WHERE id = ?`,
+		threeWindows,
+		high.ID,
+	); err != nil {
 		t.Fatalf("backdate high: %v", err)
 	}
 
@@ -585,7 +605,8 @@ func TestUpdatePendingPriority(t *testing.T) {
 		t.Fatal("no task.reprioritized fact appended")
 	}
 
-	if evidence.OldPriority != 10 || evidence.NewPriority != 70 || evidence.Source != "marker" || evidence.Reason != "P1 marker added" {
+	if evidence.OldPriority != 10 || evidence.NewPriority != 70 || evidence.Source != "marker" ||
+		evidence.Reason != "P1 marker added" {
 		t.Fatalf("evidence = %+v", evidence)
 	}
 }

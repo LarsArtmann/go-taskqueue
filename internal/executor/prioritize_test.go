@@ -32,9 +32,18 @@ func TestParsePrioritizeResultContract(t *testing.T) {
 		out  string
 	}{
 		{"missing item", "TQ_RESULT: {\"verdicts\":[{\"item_key\":\"todo:aaa\",\"score\":50}]}"},
-		{"duplicate item", "TQ_RESULT: {\"verdicts\":[{\"item_key\":\"todo:aaa\",\"score\":50},{\"item_key\":\"todo:aaa\",\"score\":60},{\"item_key\":\"todo:bbb\",\"score\":1}]}"},
-		{"unknown item", "TQ_RESULT: {\"verdicts\":[{\"item_key\":\"todo:zzz\",\"score\":50},{\"item_key\":\"todo:aaa\",\"score\":1},{\"item_key\":\"todo:bbb\",\"score\":1}]}"},
-		{"score out of range", "TQ_RESULT: {\"verdicts\":[{\"item_key\":\"todo:aaa\",\"score\":101},{\"item_key\":\"todo:bbb\",\"score\":1}]}"},
+		{
+			"duplicate item",
+			"TQ_RESULT: {\"verdicts\":[{\"item_key\":\"todo:aaa\",\"score\":50},{\"item_key\":\"todo:aaa\",\"score\":60},{\"item_key\":\"todo:bbb\",\"score\":1}]}",
+		},
+		{
+			"unknown item",
+			"TQ_RESULT: {\"verdicts\":[{\"item_key\":\"todo:zzz\",\"score\":50},{\"item_key\":\"todo:aaa\",\"score\":1},{\"item_key\":\"todo:bbb\",\"score\":1}]}",
+		},
+		{
+			"score out of range",
+			"TQ_RESULT: {\"verdicts\":[{\"item_key\":\"todo:aaa\",\"score\":101},{\"item_key\":\"todo:bbb\",\"score\":1}]}",
+		},
 		{"no result line", "I forgot the contract line"},
 		{"unparsable json", "TQ_RESULT: {verdicts: not json}"},
 	}

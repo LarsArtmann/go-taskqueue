@@ -19,13 +19,13 @@ is command-line flags on the existing pool unit.
 
 ## Proposed flag set
 
-| Flag | Value | Why |
-| --- | --- | --- |
-| (aging) | unconditional — nothing to set | Aging is a claim-time query term (ADR-0015 §4), always on since T09; the pilot only OBSERVES it (claim-order flips as items age past thresholds). |
-| `--priority-from importance` | enable | Resolves backlog priorities from each repo's `.config/metadata.yaml` importance (0-100, default 50) through the one resolution ladder (marker > AI > keyword > importance); `importance: 0` pauses a repo's auto-admission entirely (T35, tested both directions). |
-| `--max-pending-per-repo 4` | working-set cap | Replaces the legacy any-pending-is-busy rule: a repo may hold up to 4 PENDING tasks (queue = working set, TODO_LIST.md = warehouse) while one agent per repo still executes at a time. 3-5 is the sane band; 4 gives the pilot signal without flooding. |
-| `--starvation-after 24h` | alarm only | The oldest PENDING task past 24h despite aging fires ONE PapDashboard trigger per episode (`agent-pool-starvation`, direct-notify pattern) plus a WARN log even without `--alert-url`. Pure observability; frees the owner from watching claim order. |
-| `--prioritize` | NOT yet (see gate) | The AI batch scorer. Shipped, default OFF, budget-gated like every mint. Enabling spends real API money; gate below. |
+| Flag                         | Value                          | Why                                                                                                                                                                                                                                                                |
+| ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| (aging)                      | unconditional — nothing to set | Aging is a claim-time query term (ADR-0015 §4), always on since T09; the pilot only OBSERVES it (claim-order flips as items age past thresholds).                                                                                                                  |
+| `--priority-from importance` | enable                         | Resolves backlog priorities from each repo's `.config/metadata.yaml` importance (0-100, default 50) through the one resolution ladder (marker > AI > keyword > importance); `importance: 0` pauses a repo's auto-admission entirely (T35, tested both directions). |
+| `--max-pending-per-repo 4`   | working-set cap                | Replaces the legacy any-pending-is-busy rule: a repo may hold up to 4 PENDING tasks (queue = working set, TODO_LIST.md = warehouse) while one agent per repo still executes at a time. 3-5 is the sane band; 4 gives the pilot signal without flooding.            |
+| `--starvation-after 24h`     | alarm only                     | The oldest PENDING task past 24h despite aging fires ONE PapDashboard trigger per episode (`agent-pool-starvation`, direct-notify pattern) plus a WARN log even without `--alert-url`. Pure observability; frees the owner from watching claim order.              |
+| `--prioritize`               | NOT yet (see gate)             | The AI batch scorer. Shipped, default OFF, budget-gated like every mint. Enabling spends real API money; gate below.                                                                                                                                               |
 
 Existing stays as-is: `--reprioritize` on (startup re-resolution — already
 the deployed default), `--dead-pool-ticks 3` (shipped 2026-09-11),

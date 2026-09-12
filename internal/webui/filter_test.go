@@ -262,12 +262,12 @@ func TestBandFilterRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	for _, band := range []string{"backlog", "hot", "machine"} {
-		filter := parseFilter(httptest.NewRequest("GET", "/?band="+band, nil))
+		filter := parseFilter(httptest.NewRequest(http.MethodGet, "/?band="+band, nil))
 		if filter.Band != band {
 			t.Fatalf("band %q: parsed %+v", band, filter)
 		}
 
-		back := parseFilter(httptest.NewRequest("GET", filterHref(filter), nil))
+		back := parseFilter(httptest.NewRequest(http.MethodGet, filterHref(filter), nil))
 		if back.Band != band {
 			t.Fatalf("band %q: round-trip = %q", band, back.Band)
 		}
@@ -277,21 +277,21 @@ func TestBandFilterRoundTrip(t *testing.T) {
 		}
 	}
 
-	if filter := parseFilter(httptest.NewRequest("GET", "/?band=EVIL", nil)); filter.Band != "" {
+	if filter := parseFilter(httptest.NewRequest(http.MethodGet, "/?band=EVIL", nil)); filter.Band != "" {
 		t.Fatalf("unknown band parsed as %q, want empty", filter.Band)
 	}
 
-	qf := parseFilter(httptest.NewRequest("GET", "/?band=hot", nil)).toQueueFilter(0)
+	qf := parseFilter(httptest.NewRequest(http.MethodGet, "/?band=hot", nil)).toQueueFilter(0)
 	if qf.PriorityMin == nil || qf.PriorityMax == nil || *qf.PriorityMin != 100 || *qf.PriorityMax != 149 {
 		t.Fatalf("hot band bounds = %v-%v, want 100-149", qf.PriorityMin, qf.PriorityMax)
 	}
 
-	qf = parseFilter(httptest.NewRequest("GET", "/?band=machine", nil)).toQueueFilter(0)
+	qf = parseFilter(httptest.NewRequest(http.MethodGet, "/?band=machine", nil)).toQueueFilter(0)
 	if qf.PriorityMin == nil || *qf.PriorityMin != 150 {
 		t.Fatalf("machine band min = %v, want 150", qf.PriorityMin)
 	}
 
-	noBand := parseFilter(httptest.NewRequest("GET", "/", nil)).toQueueFilter(0)
+	noBand := parseFilter(httptest.NewRequest(http.MethodGet, "/", nil)).toQueueFilter(0)
 	if noBand.PriorityMin != nil || noBand.PriorityMax != nil {
 		t.Fatalf("no band must leave the priority bounds open: %+v", noBand)
 	}

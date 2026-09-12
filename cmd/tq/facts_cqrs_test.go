@@ -103,6 +103,7 @@ func TestFactsCQRSOverStore(t *testing.T) {
 	}
 
 	var rendered []map[string]any
+
 	out := captureStdout(t, func() {
 		if err := cmdFacts([]string{"--db", dbPath, "--cqrs"}); err != nil {
 			t.Errorf("cmdFacts --cqrs: %v", err)
