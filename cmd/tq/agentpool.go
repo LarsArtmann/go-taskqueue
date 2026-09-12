@@ -43,6 +43,7 @@ type agentPoolOptions struct {
 	cqaOwner       string
 	cqaToken       string
 	doReview       bool
+	dlqFix         bool
 	alertURL       string
 	alertKey       string
 	alertPoll      time.Duration
@@ -137,6 +138,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"review",
 		false,
 		"agent reviews: each completed agent task gets ONE review by a second agent (reviews are never reviewed)",
+	)
+	dlqFix := fs.Bool(
+		"dlq-fix",
+		false,
+		"DLQ autopsies: each dead-lettered AGENT task gets ONE autopsy task by a second agent; a fixed verdict rescues the original, a wontfix verdict dismisses it with the recorded reason (autopsies are never autopsied)",
 	)
 	alertURL := fs.String(
 		"alert-url",
@@ -269,6 +275,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		cqaOwner:       *cqaOwner,
 		cqaToken:       *cqaToken,
 		doReview:       *doReview,
+		dlqFix:         *dlqFix,
 		alertURL:       *alertURL,
 		alertKey:       *alertKey,
 		alertPoll:      *alertPoll,
@@ -429,10 +436,13 @@ func registerAgentExecutors(reg *executor.Registry, agentExec *executor.AgentExe
 	// The close-out turn belongs to WORK tasks only: reviews already are
 	// the second opinion and status tasks already are the report — giving
 	// them their own self-review doubles agent cost for no new signal.
-	reviewExec := agentExec.WithoutCloseout()
+	// DLQ autopsies run the same closeout-free clone (they are a diagnosis
+	// instrument, not work).
+	secondOpinion := agentExec.WithoutCloseout()
 
-	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: reviewExec})
-	reg.Register(executor.TaskTypeStatus, &executor.StatusExecutor{Agent: reviewExec})
+	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: secondOpinion})
+	reg.Register(executor.TaskTypeStatus, &executor.StatusExecutor{Agent: secondOpinion})
+	reg.Register(executor.TaskTypeDLQFix, &executor.DLQFixExecutor{Agent: secondOpinion})
 }
 
 // printAgentPoolBanner prints the startup summary: pool shape, the yolo

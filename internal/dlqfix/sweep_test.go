@@ -132,14 +132,23 @@ func pendingDLQFixTasks(t *testing.T, s *sqlite.Store) []task.Task {
 }
 
 func TestSweeperMintsOneAutopsyPerDeadAgentTask(t *testing.T) {
+	t.Parallel()
+
 	s := newTestStore(t)
+	sw := newTestSweeper(t, s)
+
+	// The head BEFORE the death — the cursor a crash-before-checkpoint
+	// would resume from.
+	headBeforeDeath, err := s.HeadSeq(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dead := seedDeadAgentTask(t, s, executor.AgentPayload{
 		Repo:   "demo",
 		Prompt: "ship the frobnicator\n\nTask-Queue-ID: {{TASK_ID}}",
 		Yolo:   true,
 	})
-
-	sw := newTestSweeper(t, s)
 
 	stats, err := sw.Sweep(context.Background())
 	if err != nil {
@@ -177,7 +186,8 @@ func TestSweeperMintsOneAutopsyPerDeadAgentTask(t *testing.T) {
 		t.Fatal("payload must mirror the dead task's yolo")
 	}
 
-	if payload.Failure.Stage != "verify" || payload.Failure.ExitCode != 2 || payload.Failure.Tail != "FAIL: TestShipTheThing" {
+	wantEvidence := executor.FailureEvidence{Stage: "verify", ExitCode: 2, Tail: "FAIL: TestShipTheThing"}
+	if payload.Failure != wantEvidence {
 		t.Fatalf("payload evidence wrong: %+v", payload.Failure)
 	}
 
@@ -185,19 +195,32 @@ func TestSweeperMintsOneAutopsyPerDeadAgentTask(t *testing.T) {
 		t.Fatalf("DedupKey = %q", DedupKey(dead.ID))
 	}
 
-	// Idempotent by dedup: a second sweep (replayed page, extra tick) must
-	// not mint a second autopsy.
-	stats, err = sw.Sweep(context.Background())
+	// Idempotent by dedup: a REPLAYED page (crash between consumption and
+	// checkpoint — simulated with the SetWatermark ops hatch, the rewind
+	// `tq watermarks set` exposes) must not mint a second autopsy. The
+	// autopsy is CLAIMED first so the fresh-vs-known stats heuristic is
+	// deterministic: a claimed stored task can only count as known.
+	if _, err := s.ClaimDue(context.Background(), testOwner, testLease); err != nil {
+		t.Fatalf("claim autopsy: %v", err)
+	}
+
+	if err := s.SetWatermark(context.Background(), ConsumerKey, headBeforeDeath); err != nil {
+		t.Fatal(err)
+	}
+
+	replay := newTestSweeper(t, s)
+
+	stats, err = replay.Sweep(context.Background())
 	if err != nil {
-		t.Fatalf("second sweep: %v", err)
+		t.Fatalf("replay sweep: %v", err)
 	}
 
 	if stats.FixesEnqueued != 0 || stats.FixesKnown != 1 {
-		t.Fatalf("second sweep stats = %+v, want known-only", stats)
+		t.Fatalf("replay sweep stats = %+v, want known-only", stats)
 	}
 
 	if tasks := pendingDLQFixTasks(t, s); len(tasks) != 1 {
-		t.Fatalf("dlqfix tasks after second sweep = %d, want 1", len(tasks))
+		t.Fatalf("dlqfix tasks after replay = %d, want 1 (no duplicate row)", len(tasks))
 	}
 }
 
@@ -205,8 +228,12 @@ func TestSweeperMintsOneAutopsyPerDeadAgentTask(t *testing.T) {
 // tasks are autopsied — a dead autopsy can never mint another autopsy, and
 // sh/review/status deaths stay human surfaces.
 func TestSweeperNeverAutopsiesNonAgentDeaths(t *testing.T) {
+	t.Parallel()
+
 	s := newTestStore(t)
 	ctx := context.Background()
+
+	sw := newTestSweeper(t, s)
 
 	for _, taskType := range []string{"sh", executor.TaskTypeReview, executor.TaskTypeStatus, executor.TaskTypeDLQFix} {
 		enq, err := s.Enqueue(ctx, task.New{
@@ -226,7 +253,7 @@ func TestSweeperNeverAutopsiesNonAgentDeaths(t *testing.T) {
 		}
 	}
 
-	stats, err := newTestSweeper(t, s).Sweep(ctx)
+	stats, err := sw.Sweep(ctx)
 	if err != nil {
 		t.Fatalf("sweep: %v", err)
 	}
@@ -241,10 +268,12 @@ func TestSweeperNeverAutopsiesNonAgentDeaths(t *testing.T) {
 }
 
 func TestSweeperRescuesOnFixedVerdict(t *testing.T) {
-	s := newTestStore(t)
-	dead := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
+	t.Parallel()
 
+	s := newTestStore(t)
 	sw := newTestSweeper(t, s)
+
+	dead := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
 
 	if _, err := sw.Sweep(context.Background()); err != nil {
 		t.Fatalf("mint sweep: %v", err)
@@ -277,10 +306,12 @@ func TestSweeperRescuesOnFixedVerdict(t *testing.T) {
 }
 
 func TestSweeperDismissesOnWontfixVerdict(t *testing.T) {
-	s := newTestStore(t)
-	dead := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
+	t.Parallel()
 
+	s := newTestStore(t)
 	sw := newTestSweeper(t, s)
+
+	dead := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
 
 	if _, err := sw.Sweep(context.Background()); err != nil {
 		t.Fatalf("mint sweep: %v", err)
@@ -315,10 +346,7 @@ func TestSweeperDismissesOnWontfixVerdict(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var detail struct {
-		Reason      string `json:"reason"`
-		DismissedBy string `json:"dismissed_by"`
-	}
+	var detail map[string]string
 
 	sawFact := false
 
@@ -334,8 +362,9 @@ func TestSweeperDismissesOnWontfixVerdict(t *testing.T) {
 		}
 	}
 
-	if !sawFact || detail.Reason != "needs credentials only the operator holds" || detail.DismissedBy != DismissedBySweeper {
-		t.Fatalf("dismiss fact = %+v (fact seen: %v)", detail, sawFact)
+	wantReason := "needs credentials only the operator holds"
+	if !sawFact || detail["reason"] != wantReason || detail["dismissed_by"] != DismissedBySweeper {
+		t.Fatalf("dismiss fact = %v (fact seen: %v)", detail, sawFact)
 	}
 }
 
@@ -344,10 +373,12 @@ func TestSweeperDismissesOnWontfixVerdict(t *testing.T) {
 // autopsy's completion and the sweep, the disposition degrades to a skipped
 // counter instead of crashing or double-acting.
 func TestSweeperDispositionIsBenignWhenMovedElsewhere(t *testing.T) {
-	s := newTestStore(t)
-	dead := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
+	t.Parallel()
 
+	s := newTestStore(t)
 	sw := newTestSweeper(t, s)
+
+	dead := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
 
 	if _, err := sw.Sweep(context.Background()); err != nil {
 		t.Fatalf("mint sweep: %v", err)
@@ -378,37 +409,62 @@ func TestSweeperDispositionIsBenignWhenMovedElsewhere(t *testing.T) {
 // pass through the cursor without dispositions (they are not even skips —
 // they are simply not ours).
 func TestSweeperIgnoresForeignCompletions(t *testing.T) {
+	t.Parallel()
+
 	s := newTestStore(t)
 	ctx := context.Background()
 
-	seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
-
 	sw := newTestSweeper(t, s)
 
-	if _, err := sw.Sweep(ctx); err != nil {
-		t.Fatalf("mint sweep: %v", err)
+	// D1 dies and STAYS dead. D2 is a plain agent task that completes
+	// normally (never dead) — its completed fact must pass the sweeper
+	// without a disposition.
+	stillDead := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p-one"})
+
+	foreignRaw, err := json.Marshal(executor.AgentPayload{Repo: "demo", Prompt: "p-two"})
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	// A plain agent task completes (normal pool work).
-	seed := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "other"})
-	if err := s.RescueDead(ctx, seed.ID, 1); err != nil {
-		t.Fatalf("rescue: %v", err)
+	foreign, err := s.Enqueue(ctx, task.New{
+		Type: executor.TaskTypeAgent, Project: "demo", Payload: foreignRaw, DedupKey: "foreign",
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	if _, err := s.ClaimDue(ctx, testOwner, testLease); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Complete(ctx, seed.ID, testOwner, nil); err != nil {
+	if err := s.Complete(ctx, foreign.ID, testOwner, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
 	stats, err := sw.Sweep(ctx)
 	if err != nil {
-		t.Fatalf("dispose sweep: %v", err)
+		t.Fatalf("mint sweep: %v", err)
+	}
+
+	if stats.FixesEnqueued != 1 {
+		t.Fatalf("FixesEnqueued = %d, want 1 (only the dead task)", stats.FixesEnqueued)
 	}
 
 	if stats.Rescued != 0 || stats.Dismissed != 0 {
 		t.Fatalf("stats = %+v, want no dispositions from foreign completions", stats)
+	}
+
+	tasks := pendingDLQFixTasks(t, s)
+	if len(tasks) != 1 {
+		t.Fatalf("dlqfix tasks = %d, want 1", len(tasks))
+	}
+
+	var payload executor.DLQFixPayload
+	if err := json.Unmarshal(tasks[0].Payload, &payload); err != nil {
+		t.Fatal(err)
+	}
+
+	if payload.DeadTask != stillDead.ID.String() {
+		t.Fatalf("autopsy minted for %s, want the still-dead %s", payload.DeadTask, stillDead.ID)
 	}
 }
