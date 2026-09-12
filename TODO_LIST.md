@@ -235,3 +235,15 @@ not here.
 - [ ] Status-append cap/dedup + re-dispatch root cause: the loop's top fix (36/75 close-outs, up to 5× re-fires; a TODO fix item was proven LOST between report and TODO append) (14-01 report; 16-00 f50)
 - [ ] Delete dead `factLines` (`internal/webui/components.go:133`, gopls unusedfunc) + add `retry trail`/`payload section`/`work item`/`verify gate` terms to docs/DOMAIN_LANGUAGE.md (15-39 f18/f19; 14-22 f49)
 - [ ] Triage the 3 gosec findings ci-local surfaced on the ratelimit code; check pending dependabot PRs (15-39 f20/f31)
+
+## Round-13 planning additions (harvested from docs/status/2026-09-12_01-47 + the round-12 T17 tail; verified 2026-09-12)
+
+- [ ] Wire `scripts/lint-baseline.sh` + `.golangci-baseline.txt` into ci-local's advisory lint step (fail on growth), red-probe the gate before declaring done, record per-module baseline counts (2026-09-12 01-09 report T17 tail)
+- [ ] Minted verify commands become env-self-contained: every producer (agent-pool mint, `.tq-verify` contract, AGENTS.md gate line) embeds the GOEXPERIMENT=jsonv2 export itself so the pool-env lie cannot eat attempts (2026-09-12 01-06/00-54 reports)
+- [ ] `tq doctor` environment check: detect the encoding/json/v2 build-constraint failure (missing GOEXPERIMENT), verdict ENV-LIE + exact fix line, before any verify is judged (2026-09-12 00-35 §f)
+- [ ] SystemNix tq-agent-pool unit gains `Environment=GOEXPERIMENT=jsonv2` (same treatment as agentPath) — ends the 5-window re-dispatch burn; rides the L45 input flip + deploy — BLOCKED: owner sudo on evo-x2 (2026-09-12 01-06 §g1)
+- [ ] Ruling: TQ_RESULT contract schema — fields allowlist (no invented fields), record-vs-work sha semantics, verification-only attempt semantics — BLOCKED: owner contract call (2026-09-12 00-54/00-35 §g)
+- [ ] Ruling: close-out report placement — file-per-window vs append-to-one-report (01-06 CONTRADICTS 00-54 §e3); implement the ruling in the closeout executor — BLOCKED: owner placement call (2026-09-12 01-06 §g2)
+- [ ] Webui rulings: unknown `/project/{name}` behavior (404 vs empty-state) + per-project-vs-global budget display in filtered views — BLOCKED: owner UX calls (2026-09-12 01-47 §g1/§g2)
+- [ ] Webui UX batch (after the 01-47 rulings): project-chip totals + "all" reset link, drop redundant project column when filtered, chips overflow cap (2026-09-12 01-47 §f)
+- [ ] AGENTS.md claims-with-citations convention: every filter-scope/behavior claim in reports and handoffs carries file:line or a test name (2026-09-12 01-47 §d3)
