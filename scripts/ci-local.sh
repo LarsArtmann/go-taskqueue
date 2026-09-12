@@ -148,7 +148,9 @@ step "bootstrap --install smoke"
 ./scripts/smoke/bootstrap-install.sh
 
 step "release-gates smoke (fixture go.mods, positive + negative)"
-./scripts/smoke/release-gates.sh
+# Runners carry no global git identity — run the smoke identity-blind so an
+# identity-dependent git op inside it fails locally the way it does there.
+GIT_CONFIG_GLOBAL=/dev/null ./scripts/smoke/release-gates.sh
 
 # Round-13 T8: the version surfaces are one set (flake attr = ldflags source;
 # CHANGELOG latest release never older). Red-probed 2026-09-12.
