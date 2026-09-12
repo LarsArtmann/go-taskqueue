@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 	"testing"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 )

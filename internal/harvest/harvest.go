@@ -593,7 +593,6 @@ func (h *Harvester) buildPayload(item Item, prompt, dedupKey string) ([]byte, er
 	// from the payload alone, without rescanning the file.
 	payload.MarkerLevel = item.MarkerLevel
 
-
 	encoded, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("harvest: encode payload: %w", err)

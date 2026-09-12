@@ -32,6 +32,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/journal/cqrs"
+	"github.com/larsartmann/go-taskqueue/internal/prioritize"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/review"
@@ -875,6 +876,23 @@ func cmdAgentPool(args []string) error {
 		}
 	}
 
+	var prioritizeSweeper *prioritize.Sweeper
+
+	if poolOpts.prioritize {
+		var err error
+
+		prioritizeSweeper, err = prioritize.NewSweeper(ctx, store, prioritize.SweeperConfig{
+			Model:     poolOpts.model,
+			Yolo:      poolOpts.yolo,
+			AllowDirty: poolOpts.allowDirty,
+			BootMint:  true,
+			Log:       log,
+		})
+		if err != nil {
+			return fmt.Errorf("prioritize sweeper: %w", err)
+		}
+	}
+
 	// mintPass gates one budget-consuming pass: EVERY enqueue (harvested,
 	// review, status, CQA) must clear the guard immediately before it — a
 	// completion inside the same tick can spend the last slot after an
@@ -995,6 +1013,20 @@ func cmdAgentPool(args []string) error {
 					log.Info("dlq-fix sweep done", "facts", stats.Facts,
 						"autopsies", stats.FixesEnqueued, "known", stats.FixesKnown,
 						"rescued", stats.Rescued, "dismissed", stats.Dismissed, "skipped", stats.Skipped)
+				}
+			})
+		}
+
+		if prioritizeSweeper != nil {
+			mintPass("prioritize sweep", func() {
+				stats, err := prioritizeSweeper.Sweep(ctx)
+				if err != nil {
+					log.Error("prioritize sweep failed", "err", err)
+				} else if stats.BatchesEnqueued > 0 || stats.VerdictsCached > 0 || stats.Skipped > 0 {
+					log.Info("prioritize sweep done", "facts", stats.Facts,
+						"batches", stats.BatchesEnqueued, "known", stats.BatchesKnown,
+						"verdicts", stats.VerdictsCached, "reprioritized", stats.TasksReprioritized,
+						"skipped", stats.Skipped)
 				}
 			})
 		}

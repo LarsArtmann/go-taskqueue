@@ -105,13 +105,13 @@ func TestReprioritizeProtectsBands(t *testing.T) {
 
 	tq := openQueue(t)
 	h := New(tq, Config{
-		Repos:              []string{repo},
-		Type:               "agent",
-		TodoFile:           DefaultTodoFile,
-		MaxPerTick:         10,
+		Repos:               []string{repo},
+		Type:                "agent",
+		TodoFile:            DefaultTodoFile,
+		MaxPerTick:          10,
 		SameSessionPriority: 120,
-		UseImportance:      true,
-		PromptTemplate:     "work {{ITEM}}",
+		UseImportance:       true,
+		PromptTemplate:      "work {{ITEM}}",
 	})
 
 	if _, err := h.Run(ctx); err != nil {
@@ -168,3 +168,90 @@ func pendingPriorities(t *testing.T, tq *queue.Queue, repoName string) map[strin
 }
 
 func itemKey(repoName, text string) string { return ItemKey(repoName, text) }
+
+// TestReprioritizeAppliesCachedAIScores pins the cache feed of the repri
+// pass (the same ADR-0015 §3 ladder the enqueue path uses): a cached
+// verdict re-resolves an unmarked item to its clamped score with source
+// "ai", while a marked item keeps its marker priority — marker > AI —
+// even with a cached verdict of its own.
+func TestReprioritizeAppliesCachedAIScores(t *testing.T) {
+	ctx := context.Background()
+	projects := t.TempDir()
+
+	repo := writeRepo(t, projects, "airepri", `- [ ] plain work
+- [ ] pinned work — P1
+`)
+	plainKey := itemKey("airepri", "plain work")
+	pinnedKey := itemKey("airepri", "pinned work")
+
+	tq := openQueue(t)
+	h := New(tq, Config{
+		Repos:             []string{repo},
+		Type:              "agent",
+		TodoFile:          DefaultTodoFile,
+		MaxPerTick:        10,
+		Priority:          5,
+		PromptTemplate:    "work {{ITEM}}",
+		MaxPendingPerRepo: 2,
+	})
+
+	for range 2 {
+		if _, err := h.Run(ctx); err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+	}
+
+	pending := pendingPriorities(t, tq, "airepri")
+	if pending[plainKey] != 5 || pending[pinnedKey] != 90 {
+		t.Fatalf("seed priorities = %v, want plain 5 / pinned 90", pending)
+	}
+
+	if err := tq.SavePriorityScore(ctx, queue.PriorityScore{ItemKey: plainKey, Score: 42, Source: "ai:batch-scorer"}); err != nil {
+		t.Fatalf("cache plain score: %v", err)
+	}
+
+	if err := tq.SavePriorityScore(ctx, queue.PriorityScore{ItemKey: pinnedKey, Score: 10, Source: "ai:batch-scorer"}); err != nil {
+		t.Fatalf("cache pinned score: %v", err)
+	}
+
+	changes, failures := h.Reprioritize(ctx, false)
+	if len(failures) != 0 {
+		t.Fatalf("failures: %v", failures)
+	}
+
+	if len(changes) != 1 || changes[0].ItemText != "plain work" || changes[0].NewPriority != 42 || changes[0].Source != PrioritySourceAI {
+		t.Fatalf("changes = %+v, want one 5->42 ai change for the plain item", changes)
+	}
+
+	pending = pendingPriorities(t, tq, "airepri")
+	if pending[plainKey] != 42 || pending[pinnedKey] != 90 {
+		t.Fatalf("post-repri priorities = %v, want 42 / 90 (marker beats AI)", pending)
+	}
+
+	// The enqueue path also pins the marker level into the payload, so
+	// automated re-resolution can honor marker precedence from the store
+	// alone.
+	agentType := "agent"
+	tasks, err := tq.List(ctx, queue.Filter{Project: strPtr("airepri"), Type: &agentType})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+
+	for _, tk := range tasks {
+		item, ok := PayloadItemOf(tk)
+		if !ok {
+			t.Fatalf("harvest-minted task %s has no payload item", tk.ID)
+		}
+
+		wantMarker := 0
+		if item.Key == pinnedKey {
+			wantMarker = 1
+		}
+
+		if item.MarkerLevel != wantMarker {
+			t.Fatalf("item %s markerLevel = %d, want %d", item.Key, item.MarkerLevel, wantMarker)
+		}
+	}
+}
+
+func strPtr(s string) *string { return &s }

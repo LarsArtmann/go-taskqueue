@@ -47,6 +47,7 @@ type agentPoolOptions struct {
 	cqaToken       string
 	doReview       bool
 	dlqFix         bool
+	prioritize     bool
 	alertURL       string
 	alertKey       string
 	alertPoll      time.Duration
@@ -161,6 +162,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"dlq-fix",
 		false,
 		"DLQ autopsies: each dead-lettered AGENT task gets ONE autopsy task by a second agent; a fixed verdict rescues the original, a wontfix verdict dismisses it with the recorded reason (autopsies are never autopsied)",
+	)
+	prioritize := fs.Bool(
+		"prioritize",
+		false,
+		"AI batch scorer: when a repo holds unscored backlog items in the queue, mint ONE prioritize task per repo whose verdicts cache scores and re-rank the pending tasks (marker > AI > keyword precedence, hot/machine bands protected; budget-guarded like every mint)",
 	)
 	alertURL := fs.String(
 		"alert-url",
@@ -297,6 +303,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		cqaToken:       *cqaToken,
 		doReview:       *doReview,
 		dlqFix:         *dlqFix,
+		prioritize:     *prioritize,
 		alertURL:       *alertURL,
 		alertKey:       *alertKey,
 		alertPoll:      *alertPoll,

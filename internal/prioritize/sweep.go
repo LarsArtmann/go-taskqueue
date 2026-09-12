@@ -376,8 +376,12 @@ func (s *Sweeper) pendingItems(ctx context.Context, project string) []workingIte
 	return items
 }
 
-// coveredKeys returns the item keys already claimed by an in-flight batch
-// of this repo (pending or running scorer tasks).
+// coveredKeys returns the item keys already claimed by a batch of this
+// repo — ANY minted batch, regardless of status. A completed batch whose
+// verdicts this sweep has not applied yet (its completion fact sits later
+// in the stream) still claims its items; a dead batch claims them too,
+// mirroring the store's dedup-forever semantics (recovery rides the next
+// key-set change, never a re-mint of the same set).
 func (s *Sweeper) coveredKeys(ctx context.Context, project string) map[string]bool {
 	scorerType := executor.TaskTypePrioritize
 
@@ -389,10 +393,6 @@ func (s *Sweeper) coveredKeys(ctx context.Context, project string) map[string]bo
 	covered := map[string]bool{}
 
 	for _, t := range tasks {
-		if t.Status != task.Pending && t.Status != task.Running {
-			continue
-		}
-
 		var payload executor.PrioritizePayload
 		if json.Unmarshal(t.Payload, &payload) != nil {
 			continue

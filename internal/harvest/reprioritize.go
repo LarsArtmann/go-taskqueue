@@ -19,6 +19,7 @@ type RepriChange struct {
 	NewPriority int
 	Source      PrioritySource
 }
+
 // Reprioritize re-resolves the priorities of PENDING tasks from the
 // CURRENT truth in the todo files (markers) and, with UseImportance, each
 // repo's metadata importance — so an owner's marker edit or importance
