@@ -79,11 +79,14 @@ type FilterState struct {
 	// View picks the task projection: viewTable (default) or viewBoard.
 	// Board drops Status (columns ARE the statuses) and ignores Sort/Page.
 	View string
+	// Band bounds the listing to one ADR-0015 band (backlog | hot |
+	// machine); empty means all bands.
+	Band string
 }
 
 // Empty reports whether no filter is active.
 func (f FilterState) Empty() bool {
-	return f.Project == "" && f.Status == "" && f.Query == ""
+	return f.Project == "" && f.Status == "" && f.Query == "" && f.Band == ""
 }
 
 // QueryString renders the filter as URL query parameters. Values are
@@ -106,6 +109,10 @@ func (f FilterState) QueryString() string {
 
 	if f.Sort != "" {
 		fmt.Fprintf(&b, "sort=%s&", f.Sort)
+	}
+
+	if f.Band != "" {
+		fmt.Fprintf(&b, "band=%s&", f.Band)
 	}
 
 	if f.View != "" && f.View != viewTable {
@@ -285,6 +292,12 @@ func clearStatus(f FilterState) string {
 
 func clearQuery(f FilterState) string {
 	f.Query = ""
+
+	return filterHref(f)
+}
+
+func clearBand(f FilterState) string {
+	f.Band = ""
 
 	return filterHref(f)
 }
@@ -559,7 +572,27 @@ func (f FilterState) toQueueFilter(limit int) queue.Filter {
 		queueFilter.Status = &f.Status
 	}
 
+	if min, max, ok := bandBounds(f.Band); ok {
+		queueFilter.PriorityMin = &min
+		queueFilter.PriorityMax = &max
+	}
+
 	return queueFilter
+}
+
+// bandBounds maps a band name onto its stored-priority range (ADR-0015).
+// ok is false for the empty/unknown name: no bound.
+func bandBounds(band string) (min, max int, ok bool) {
+	switch band {
+	case string(queue.BandBacklog):
+		return 0, queue.BacklogMax, true
+	case string(queue.BandHot):
+		return queue.HotMin, queue.HotMax, true
+	case string(queue.BandMachine):
+		return queue.MachineMin, 1 << 30, true
+	default:
+		return 0, 0, false
+	}
 }
 
 func projectSummaries(counts map[string]map[task.Status]int) []ProjectSummary {

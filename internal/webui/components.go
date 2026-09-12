@@ -8,6 +8,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/templ-components/layout"
@@ -165,6 +166,7 @@ const (
 	labelProject   = "project"
 	labelType      = "type"
 	labelStatus    = "status"
+	labelPrio      = "prio"
 	labelAttempts  = "attempts"
 	labelReady     = "ready"
 	labelAge       = "age"
@@ -513,6 +515,12 @@ func taskHeaders(data DashboardData) []display.TableHeader {
 		headers,
 		display.TableHeader{Label: labelType},
 		display.TableHeader{Label: labelStatus},
+		display.TableHeader{
+			Label:         labelPrio,
+			Sortable:      true,
+			SortDirection: sortHeaderDirection(data.Filter, "priority"),
+			Href:          sortHeaderHref(data.Filter, "priority"),
+		},
 	)
 	if data.AllowWrites {
 		// Actions sit right after status so they stay inside the visible
@@ -539,6 +547,19 @@ func taskHeaders(data DashboardData) []display.TableHeader {
 	)
 
 	return headers
+}
+
+// bandBadgeType picks the badge tone for a priority band (ADR-0015): hot
+// is urgent-warm, machine is operational-violet; backlog renders bare.
+func bandBadgeType(band queue.Band) display.BadgeType {
+	switch band {
+	case queue.BandHot:
+		return display.BadgeWarning
+	case queue.BandMachine:
+		return display.BadgeInfo
+	default:
+		return display.BadgeNeutral
+	}
 }
 
 // reasonPlaceholder keeps the cancel form honest: a running agent deserves

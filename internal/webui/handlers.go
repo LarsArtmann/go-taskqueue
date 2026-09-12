@@ -12,6 +12,7 @@ import (
 
 	"github.com/larsartmann/go-sse"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -42,6 +43,14 @@ func parseFilter(r *http.Request) FilterState {
 		view = viewTable
 	}
 
+	// Allowlist: only the three ADR-0015 bands.
+	band := query.Get("band")
+	switch band {
+	case "", string(queue.BandBacklog), string(queue.BandHot), string(queue.BandMachine):
+	default:
+		band = ""
+	}
+
 	filter := FilterState{
 		Project: query.Get("project"),
 		Status:  task.Status(query.Get("status")),
@@ -49,6 +58,7 @@ func parseFilter(r *http.Request) FilterState {
 		Page:    page,
 		Sort:    sort,
 		View:    view,
+		Band:    band,
 	}
 
 	// The board's columns ARE the statuses: a status filter would empty four
