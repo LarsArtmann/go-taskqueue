@@ -270,7 +270,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			continue
 		}
 
-		if h.admitItem(ctx, item, res) {
+		if h.admitItem(ctx, item, state.importance, res) {
 			state.known[item.Key] = task.Pending
 			enqueuedThisRepo = true
 		}
@@ -279,7 +279,8 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 
 // repoState is one repo's queue-side situation, surveyed once per run: the
 // known dedup keys with their statuses, whether a non-terminal task holds
-// the repo busy, the poisoned-repo verdict, and the pacing timestamps.
+// the repo busy, the poisoned-repo verdict, the pacing timestamps, and
+// (with UseImportance) the repo's metadata importance.
 type repoState struct {
 	repoName     string
 	busy         bool
@@ -287,6 +288,7 @@ type repoState struct {
 	poisoned     bool
 	repoInterval time.Duration
 	lastCreated  time.Time
+	importance   int
 }
 
 // surveyRepo lists the repo's tasks and folds them into a repoState. ok is
@@ -347,6 +349,24 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 	// or rescue instead of enqueueing fresh failures every tick.
 	state.poisoned = hasDead && !hasCompleted && h.cfg.DLQBackoff > 0 && time.Since(lastDead) < h.cfg.DLQBackoff
 
+	// Importance mode: read the repo's metadata once per run. A malformed
+	// file skips the whole repo — an importance the owner DID set must
+	// never silently degrade to the default (ADR-0015 §7).
+	if h.cfg.UseImportance {
+		importance, err := ReadImportance(repo)
+		if err != nil {
+			for _, item := range items {
+				res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "metadata: " + err.Error()})
+			}
+
+			return state, false
+		}
+
+		state.importance = importance
+	} else {
+		state.importance = DefaultImportance
+	}
+
 	return state, true
 }
 
@@ -392,8 +412,8 @@ func (h *Harvester) itemDenial(state repoState, item Item, enqueuedThisRepo bool
 // res.Enqueued, a store-dedup return (another pool won the race) under
 // res.Skipped. ok is false only when the enqueue FAILED — a dedup return
 // still counts against pacing exactly like the original inline code.
-func (h *Harvester) admitItem(ctx context.Context, item Item, res *Result) bool {
-	t, err := h.enqueue(ctx, item)
+func (h *Harvester) admitItem(ctx context.Context, item Item, importance int, res *Result) bool {
+	t, err := h.enqueue(ctx, item, importance)
 	if err != nil {
 		res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "enqueue failed: " + err.Error()})
 
@@ -443,16 +463,22 @@ func sameSession(text string) bool {
 	return strings.Contains(text, "/tmp")
 }
 
-func (h *Harvester) enqueue(ctx context.Context, item Item) (task.Task, error) {
+func (h *Harvester) enqueue(ctx context.Context, item Item, importance int) (task.Task, error) {
 	payload, err := h.buildPayload(item, h.cfg.PromptTemplate, item.Key)
 	if err != nil {
 		return task.Task{}, err
 	}
 
-	priority := h.cfg.Priority
-	if h.cfg.SameSessionPriority > 0 && sameSession(item.Text) {
-		priority = h.cfg.SameSessionPriority
-	}
+	// Effective priority resolves the ADR-0015 §3 precedence ladder: hot >
+	// marker > (AI cache, phase 5) > importance + keyword bumps > flat.
+	priority, _ := ResolvePriority(ResolveInput{
+		Text:              item.Text,
+		MarkerLevel:       item.MarkerLevel,
+		HotPriority:       h.cfg.SameSessionPriority,
+		FlatPriority:      h.cfg.Priority,
+		Importance:        importance,
+		ImportanceEnabled: h.cfg.UseImportance,
+	})
 
 	return h.q.Enqueue(ctx, task.New{
 		Project:     item.RepoName,
