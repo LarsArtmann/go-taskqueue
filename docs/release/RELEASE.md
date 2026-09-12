@@ -78,6 +78,10 @@ on the wrong side. Rules:
   mimic it (`github.com/larsartmann/go-taskqueue`). `gate_gomod` is
   parameterized by nothing else by design — the gate SHOULD refuse foreign
   module shapes.
+- Fixture-execution caveat (round-12 T14; recorded 2026-09-12): the one
+  live fixture release ran with the nix leg STUBBED (sandbox limitation),
+  so the release-gates nix gate is runner-proven only — the fixture proof
+  covers the git/CHANGELOG/go.mod legs, never the nix build leg.
 
 ## The --push failure path
 
