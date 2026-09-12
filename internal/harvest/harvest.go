@@ -237,122 +237,174 @@ func (h *Harvester) Run(ctx context.Context) (Result, error) {
 //   - items already known to the queue (any status) are never re-enqueued,
 //     relying on the store's DedupKey idempotency as the final guard.
 func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res *Result) {
-	repoName := filepath.Base(repo)
+	st, ok := h.surveyRepo(ctx, repo, items, res)
+	if !ok {
+		return
+	}
 
-	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
+	enqueuedThisRepo := false
+
+	for _, item := range items {
+		reason := h.itemDenial(st, item, enqueuedThisRepo, len(res.Enqueued))
+		if reason != "" {
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: reason})
+
+			continue
+		}
+
+		if h.cfg.DryRun {
+			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: sameSession(item.Text)})
+			st.known[item.Key] = task.Pending
+			enqueuedThisRepo = true
+
+			continue
+		}
+
+		if h.admitItem(ctx, item, res) {
+			st.known[item.Key] = task.Pending
+			enqueuedThisRepo = true
+		}
+	}
+}
+
+// repoState is one repo's queue-side situation, surveyed once per run: the
+// known dedup keys with their statuses, whether a non-terminal task holds
+// the repo busy, the poisoned-repo verdict, and the pacing timestamps.
+type repoState struct {
+	repoName     string
+	busy         bool
+	known        map[string]task.Status
+	poisoned     bool
+	repoInterval time.Duration
+	lastCreated  time.Time
+}
+
+// surveyRepo lists the repo's tasks and folds them into a repoState. ok is
+// false when the listing failed (every item is reported skipped, mirroring
+// the ReasonScanFailed pattern).
+func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, res *Result) (repoState, bool) {
+	st := repoState{
+		repoName:     filepath.Base(repo),
+		known:        make(map[string]task.Status),
+		repoInterval: h.cfg.RepoIntervals[st.repoName],
+	}
+
+	tasks, err := h.q.List(ctx, queue.Filter{Project: &st.repoName, Type: &h.cfg.Type})
 	if err != nil {
 		for _, item := range items {
 			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "list failed: " + err.Error()})
 		}
 
-		return
+		return st, false
 	}
-
-	busy := false
-	known := make(map[string]task.Status, len(tasks))
 
 	var (
 		hasDead, hasCompleted bool
-		lastDead, lastCreated time.Time
+		lastDead              time.Time
 	)
 
 	for _, t := range tasks {
 		if t.Status == task.Pending || t.Status == task.Running {
-			busy = true
+			st.busy = true
 		}
 
-		switch t.Status {
-		case task.Dead:
+		if t.Status == task.Dead {
 			hasDead = true
 
 			if t.UpdatedAt.After(lastDead) {
 				lastDead = t.UpdatedAt
 			}
-		case task.Completed:
+		}
+
+		if t.Status == task.Completed {
 			hasCompleted = true
 		}
 
-		if t.CreatedAt.After(lastCreated) {
-			lastCreated = t.CreatedAt
+		if t.CreatedAt.After(st.lastCreated) {
+			st.lastCreated = t.CreatedAt
 		}
 
 		if key := payloadDedup(t); key != "" {
-			if _, dup := known[key]; !dup {
-				known[key] = t.Status
+			if _, dup := st.known[key]; !dup {
+				st.known[key] = t.Status
 			}
 		}
 	}
+
 	// Poisoned repo: everything item touched recently is dead. New items
 	// would die the same way — give the human the backoff window to fix
 	// or rescue instead of enqueueing fresh failures every tick.
-	poisoned := hasDead && !hasCompleted && h.cfg.DLQBackoff > 0 && time.Since(lastDead) < h.cfg.DLQBackoff
-	repoInterval := h.cfg.RepoIntervals[repoName]
+	st.poisoned = hasDead && !hasCompleted && h.cfg.DLQBackoff > 0 && time.Since(lastDead) < h.cfg.DLQBackoff
 
-	enqueuedThisRepo := false
+	return st, true
+}
 
-	for _, item := range items {
-		if reason, blocked := blockedReason(item.Text); blocked {
-			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "blocked: " + reason})
-
-			continue
-		}
-
-		switch {
-		case item.Key != "" && known[item.Key] != "":
-			reason := "tracked: " + string(known[item.Key])
-			switch task.Status(known[item.Key]) {
-			case task.Dead:
-				reason = "in DLQ (tq dlq --rescue to retry)"
-			case task.Cancelled:
-				reason = "cancelled (edit the item text to re-arm item)"
-			}
-
-			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: reason})
-		case poisoned:
-			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: fmt.Sprintf(
-				"poisoned: recent dead-letter, DLQ backoff %s (fix the repo or rescue dead tasks)", h.cfg.DLQBackoff)})
-		case repoInterval > 0 && !lastCreated.IsZero() && time.Since(lastCreated) < repoInterval:
-			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: fmt.Sprintf(
-				"paced: per-repo interval %s (last enqueue %s ago)",
-				repoInterval,
-				time.Since(lastCreated).Round(time.Second),
-			)})
-		case busy:
-			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "repo busy: one agent per repo"})
-		case enqueuedThisRepo:
-			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "paced: one new item per repo per run"})
-		case len(res.Enqueued) >= h.cfg.MaxPerTick:
-			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "tick cap reached (--max-per-tick)"})
-		case h.cfg.DryRun:
-			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: sameSession(item.Text)})
-			known[item.Key] = task.Pending
-			enqueuedThisRepo = true
-		default:
-			t, err := h.enqueue(ctx, item)
-			if err != nil {
-				res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "enqueue failed: " + err.Error()})
-
-				continue
-			}
-
-			known[item.Key] = task.Pending
-			enqueuedThisRepo = true
-
-			if t.Status == task.Pending && t.Attempts == 0 {
-				res.Enqueued = append(
-					res.Enqueued,
-					Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: sameSession(item.Text)},
-				)
-			} else {
-				// Store dedup returned a pre-existing row (another pool won
-				// the race). Count item as known, not fresh.
-				res.Skipped = append(
-					res.Skipped,
-					Skipped{Item: item, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"},
-				)
-			}
-		}
+// itemDenial reports why one item must NOT be enqueued this run, in the
+// pacing precedence order; "" means the item is admissible (subject to
+// DryRun, which never denies but never enqueues either).
+func (h *Harvester) itemDenial(st repoState, item Item, enqueuedThisRepo bool, enqueuedThisTick int) string {
+	if reason, blocked := blockedReason(item.Text); blocked {
+		return "blocked: " + reason
 	}
+
+	switch {
+	case item.Key != "" && st.known[item.Key] != "":
+		switch task.Status(st.known[item.Key]) {
+		case task.Dead:
+			return "in DLQ (tq dlq --rescue to retry)"
+		case task.Cancelled:
+			return "cancelled (edit the item text to re-arm item)"
+		}
+
+		return "tracked: " + string(st.known[item.Key])
+	case st.poisoned:
+		return fmt.Sprintf(
+			"poisoned: recent dead-letter, DLQ backoff %s (fix the repo or rescue dead tasks)", h.cfg.DLQBackoff)
+	case st.repoInterval > 0 && !st.lastCreated.IsZero() && time.Since(st.lastCreated) < st.repoInterval:
+		return fmt.Sprintf(
+			"paced: per-repo interval %s (last enqueue %s ago)",
+			st.repoInterval,
+			time.Since(st.lastCreated).Round(time.Second),
+		)
+	case st.busy:
+		return "repo busy: one agent per repo"
+	case enqueuedThisRepo:
+		return "paced: one new item per repo per run"
+	case enqueuedThisTick >= h.cfg.MaxPerTick:
+		return "tick cap reached (--max-per-tick)"
+	}
+
+	return ""
+}
+
+// admitItem enqueues one item and records the outcome: a fresh task under
+// res.Enqueued, a store-dedup return (another pool won the race) under
+// res.Skipped. ok is false when the item must not count against pacing.
+func (h *Harvester) admitItem(ctx context.Context, item Item, res *Result) bool {
+	t, err := h.enqueue(ctx, item)
+	if err != nil {
+		res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "enqueue failed: " + err.Error()})
+
+		return false
+	}
+
+	if t.Status == task.Pending && t.Attempts == 0 {
+		res.Enqueued = append(
+			res.Enqueued,
+			Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: sameSession(item.Text)},
+		)
+
+		return true
+	}
+
+	// Store dedup returned a pre-existing row (another pool won the race).
+	// Count item as known, not fresh.
+	res.Skipped = append(
+		res.Skipped,
+		Skipped{Item: item, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"},
+	)
+
+	return false
 }
 
 // blockedReason reports the "BLOCKED: <reason>" suffix that the agent

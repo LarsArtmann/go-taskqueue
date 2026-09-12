@@ -368,6 +368,135 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 	}
 }
 
+func TestClaimAgingRespectsNotBefore(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	// An ancient, high-priority task gated by NotBefore must stay gated —
+	// aging reorders claimable tasks, it never bypasses the not-before gate.
+	gated, err := s.Enqueue(ctx, task.New{
+		Type:       "gated",
+		Priority:   90,
+		NotBefore:  time.Now().Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("enqueue gated: %v", err)
+	}
+	ready, err := s.Enqueue(ctx, task.New{Type: "ready", Priority: 1})
+	if err != nil {
+		t.Fatalf("enqueue ready: %v", err)
+	}
+	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
+	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, gated.ID); err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+
+	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if got.ID != ready.ID {
+		t.Fatalf("aging bypassed NotBefore: claimed %s, want gated %s behind, ready %s first", got.ID, gated.ID, ready.ID)
+	}
+}
+
+func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	// ADR-0015 §4: aging keys on created_at, so a requeue (which touches
+	// updated_at and not_before) never resets or inflates age — the bonus
+	// stays a pure function of enqueue time.
+	old := mustEnqueueZero(t, s, task.New{Type: "old", Priority: 50})
+	fresh := mustEnqueueZero(t, s, task.New{Type: "fresh", Priority: 50})
+
+	// Backdate BEFORE the first claim so the older task claims first
+	// deterministically (same-millisecond created_at ties would otherwise
+	// be broken by random ID order).
+	backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
+	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, old.ID); err != nil {
+		t.Fatalf("backdate: %v", err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim old: %v", err)
+	}
+	if err := s.Requeue(ctx, old.ID, "w1", "preflight", 0); err != nil {
+		t.Fatalf("requeue: %v", err)
+	}
+
+	// Old task requeued now (updated_at = now, created_at still far in the
+	// past): effective 50+10 must beat the fresh sibling's 50+0 — the
+	// requeue did not reset aging.
+	got, err := s.ClaimDue(ctx, "w2", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if got.ID != old.ID {
+		t.Fatalf("requeue reset aging: claimed %s, want %s over fresh %s", got.ID, old.ID, fresh.ID)
+	}
+}
+
+func TestClaimAgingAccruesPerWindow(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	// Two tasks, integer priority gap 1. Aging accrues one point per
+	// PriorityAgingDaysPerPoint window, so a 2-window age flips the gap
+	// and a larger age on the other task flips it back — no exact ties
+	// (fresh-task ε never enters the comparison).
+	low, err := s.Enqueue(ctx, task.New{Type: "low", Priority: 40})
+	if err != nil {
+		t.Fatalf("enqueue low: %v", err)
+	}
+	high, err := s.Enqueue(ctx, task.New{Type: "high", Priority: 41})
+	if err != nil {
+		t.Fatalf("enqueue high: %v", err)
+	}
+
+	twoWindows := time.Now().Add(-2 * time.Duration(queue.PriorityAgingDaysPerPoint) * 24 * time.Hour).UnixMilli()
+	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, twoWindows, low.ID); err != nil {
+		t.Fatalf("backdate low: %v", err)
+	}
+
+	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if got.ID != low.ID {
+		t.Fatalf("two aging windows did not flip a 1-point gap: claimed %s, want %s", got.ID, low.ID)
+	}
+	if err := s.Complete(ctx, low.ID, "w1", nil); err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+
+	threeWindows := time.Now().Add(-3 * time.Duration(queue.PriorityAgingDaysPerPoint) * 24 * time.Hour).UnixMilli()
+	if _, err := s.db.Exec(`UPDATE tasks SET created_at = ? WHERE id = ?`, threeWindows, high.ID); err != nil {
+		t.Fatalf("backdate high: %v", err)
+	}
+
+	got, err = s.ClaimDue(ctx, "w2", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+	if got.ID != high.ID {
+		t.Fatalf("three aging windows did not outrank two: claimed %s, want %s", got.ID, high.ID)
+	}
+}
+
+// mustEnqueueZero enqueues and returns the task; a named helper keeps the
+// aging interaction tests focused on their assertions.
+func mustEnqueueZero(t *testing.T, s *Store, n task.New) task.Task {
+	t.Helper()
+
+	tk, err := s.Enqueue(context.Background(), n)
+	if err != nil {
+		t.Fatalf("enqueue %s: %v", n.Type, err)
+	}
+
+	return tk
+}
+
 func TestNotBeforeDelays(t *testing.T) {
 	ctx := context.Background()
 

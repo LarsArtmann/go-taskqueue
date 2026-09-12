@@ -445,6 +445,15 @@ func TestPostgresConformance(t *testing.T) {
 		if err := s.DismissDead(ctx, pending.ID, "nope", "operator"); !errors.Is(err, task.ErrInvalidTransition) {
 			t.Fatalf("dismiss pending err = %v, want ErrInvalidTransition", err)
 		}
+
+		// The rejected dismiss leaves the task pending; cancel it so later
+		// subtests (which claim expecting THEIR fresh task) see an empty
+		// ready set — an equal-priority older leftover would claim first
+		// (priority DESC, created_at ASC) and derail them. This is what
+		// broke cooperative-cancel and heartbeat on CI 2026-09-12.
+		if err := s.Cancel(ctx, pending.ID, "conformance cleanup"); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	t.Run("cooperative cancel carries the reason", func(t *testing.T) {
