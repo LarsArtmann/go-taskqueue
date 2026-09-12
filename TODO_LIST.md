@@ -15,6 +15,7 @@ not here.
 
 ## High Impact
 
+- [ ] Self-fixing dead-letter queue with AI agents: when a task dead-letters, a sweeper mints ONE agent task (dedup `dlqfix:<id>:<hash>`, mirroring the review-sweeper pattern) that diagnoses the failure from its FailureEvidence tail and either applies a fix + rescues the original or cancels with a reasoned verdict — write the design in docs/planning/ first (code paths: `tq dlq` rescue/cancel, `internal/worker` DLQ path, `internal/review` sweeper)
 - [x] `--prune-stale` zombie-matching gap: absent item text is now stale too — pending harvested tasks (payload dedup key, `catchup:` prefixes stripped) whose item is gone from the file are cancelled with a key-carrying reason; external tasks untouched. Policy decided + implemented + tested 2026-09-09 (`internal/harvest/prune.go`, round-10 session)
 - [x] Pin the cooperative-cancel finalize contract in a test: wrapped `context.Canceled` through `runAgent` finalizes as Cancelled, never Failed, no `task.failed` fact, attempts unburned (`TestCooperativeCancelWrappedErrorFinalizesAsCancelled`, 01:48 report d7/e5)
 - [x] `tq bootstrap` parity check against the hand-rolled sibling-repo rails — fleet switched to the managed-block form (one commit per repo), bootstrap dry-run now reports truthful change state (22:42 §d1/f2, 01:35 §c1/f1)
