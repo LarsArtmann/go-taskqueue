@@ -470,6 +470,7 @@ func registerAgentExecutors(reg *executor.Registry, agentExec *executor.AgentExe
 	reg.Register(executor.TaskTypeReview, &executor.ReviewExecutor{Agent: secondOpinion})
 	reg.Register(executor.TaskTypeStatus, &executor.StatusExecutor{Agent: secondOpinion})
 	reg.Register(executor.TaskTypeDLQFix, &executor.DLQFixExecutor{Agent: secondOpinion})
+	reg.Register(executor.TaskTypePrioritize, &executor.PrioritizeExecutor{Agent: secondOpinion})
 }
 
 // printAgentPoolBanner prints the startup summary: pool shape, the yolo
