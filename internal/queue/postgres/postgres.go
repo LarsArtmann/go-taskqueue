@@ -1070,6 +1070,16 @@ func pgWhere(f queue.Filter) (string, []any) {
 		where = append(where, fmt.Sprintf("status = 'pending' AND not_before > $%d", len(args)))
 	}
 
+	if f.PriorityMin != nil {
+		args = append(args, *f.PriorityMin)
+		where = append(where, fmt.Sprintf("priority >= $%d", len(args)))
+	}
+
+	if f.PriorityMax != nil {
+		args = append(args, *f.PriorityMax)
+		where = append(where, fmt.Sprintf("priority <= $%d", len(args)))
+	}
+
 	if f.Query != "" {
 		args = append(args, "%"+escapeLike(f.Query)+"%")
 		idx := len(args)

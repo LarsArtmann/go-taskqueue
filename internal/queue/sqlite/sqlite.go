@@ -1204,6 +1204,16 @@ func listWhere(f queue.Filter) (string, []any) {
 		args = append(args, time.Now().UnixMilli())
 	}
 
+	if f.PriorityMin != nil {
+		where = append(where, "priority >= ?")
+		args = append(args, *f.PriorityMin)
+	}
+
+	if f.PriorityMax != nil {
+		where = append(where, "priority <= ?")
+		args = append(args, *f.PriorityMax)
+	}
+
 	if f.Query != "" {
 		like := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
 

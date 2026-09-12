@@ -204,6 +204,12 @@ type Filter struct {
 	// with not_before in the future (the "11 tasks parked until 19:40"
 	// one-glance view). false or nil leaves the filter off.
 	Parked *bool
+	// PriorityMin/PriorityMax bound the listing to a STORED-priority
+	// range - the band filter's pushdown (hot = [100,149], machine =
+	// [150,infinity)). nil leaves the bound open. Aging is scheduling,
+	// not state: the range sees the stored value, not the effective rank.
+	PriorityMin *int
+	PriorityMax *int
 }
 
 // Queue is the facade most consumers use: a Store plus convenience methods.
