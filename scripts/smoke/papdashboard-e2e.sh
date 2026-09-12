@@ -29,8 +29,19 @@ PY
 
 STUB_PORT="${PAP_SMOKE_PORT:-$(free_port)}"
 
-echo "== build tq"
-go build -o "$TMP/tq" ./cmd/tq
+# TQ_BIN points at a prebuilt binary (e.g. the nix-built result/bin/tq);
+# unset, the script builds from source with `go build`. Either way the
+# binary's version + path print first, so a green can never hide WHICH tq
+# produced it (the 09-01 green-lie class).
+if [ -n "${TQ_BIN:-}" ]; then
+	echo "== using prebuilt tq: $TQ_BIN"
+	cp "$TQ_BIN" "$TMP/tq"
+	chmod +x "$TMP/tq"
+else
+	echo "== build tq"
+	go build -o "$TMP/tq" ./cmd/tq
+fi
+"$TMP/tq" version
 
 INGEST_LOG="$TMP/ingest.log"
 if [ -z "$PAP_URL" ]; then

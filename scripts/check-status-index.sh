@@ -16,7 +16,7 @@ fail=0
 while IFS= read -r report; do
 	name="$(basename "$report")"
 	if ! grep -qF "$name" "$index"; then
-		echo "UNINDEXED: $report (add a row to $index)"
+		echo "UNINDEXED: $report (add a row to $index; if a daemon chore-commit folded it in unindexed, amend the row into that commit — AGENTS.md status-reports rule)"
 		fail=1
 		continue
 	fi

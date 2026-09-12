@@ -277,6 +277,12 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - Status reports are indexed on creation (`check-status-index.sh` +
   pre-commit hook via `scripts/install-pre-commit.sh`); CHANGELOG is
   append-only; `check-features-roadmap.sh` guards shipped-vs-planned drift.
+  Daemon-folded reports: the auto-commit daemon bypasses that hook, so a
+  report riding into a `chore:` commit unindexed is the KNOWN hole (it
+  silently lost reports twice, 2026-09-09) — the rule is the AMEND
+  MANEUVER: amend the index row into the daemon commit when it hasn't
+  shipped, otherwise a follow-up indexing commit immediately;
+  `check-status-index.sh` in ci-local/CI is the catcher, not the preventer.
   Archiving a report/plan (`git mv` to `archived/`) requires REPOINTING
   every citation to the moved path FIRST (ADR-0004/0009 + CHANGELOG all
   cited two 2026-09-08 planning docs; `check-doc-refs.sh` fails the move
