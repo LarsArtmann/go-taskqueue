@@ -153,7 +153,8 @@ baseline triage (unblocks the push), session smoke + trigger registry,
 postgres fail-fast, ci.yml sanitizer symmetry, AllStatuses re-tag at the
 next release, and the duplicate-claim policy ruling. See the new
 "Done-prompt window harvest (2026-09-12)" section in TODO_LIST.md —
-36 items minted, 8 stale rows closed, 3 owner questions filed BLOCKED.
+34 items minted (31 tasks + 3 owner rulings BLOCKED), 8 stale rows
+closed with citations.
 
 ## g) QUESTIONS ONLY THE OWNER CAN ANSWER
 
@@ -171,3 +172,12 @@ next release, and the duplicate-claim policy ruling. See the new
    window do and what may its TQ_RESULT claim — verification-only
    short-circuit as the sanctioned shape, or a queue-side fix (don't
    re-dispatch tasks whose terminal fact exists)?
+
+---
+
+*Commit map*: this report and its doc updates landed via auto-commit
+daemon commits `2f379bc` (this report), `1c615cf` (AGENTS/CHANGELOG/
+FEATURES/README/TODO_LIST/status-index — stat-diffed against the
+intended set, docs only), and `e8dc1cd` (report count fix + E2E-item
+BLOCKED suffix); the commit carrying this report's `Task-Queue-ID`
+footer is the attribution commit per the daemon-fold precedent.
