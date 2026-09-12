@@ -303,3 +303,22 @@ D80 (Postgres store), D90 (per-repo timeouts, shipped as `--repo-timeout`)
 and D91 (agent-binary version probe) shipped 2026-09-08 — the seeds file
 carries their ✅ stamps. The v0.3 design pack lives in
 `docs/planning/2026-09-08_round5-m23-feature-designs.md`.
+
+## go-cqrs-lite deferred tiers (ADR-0014)
+
+The journal adapter (`internal/journal/cqrs`, 2026-09-12) is the adopted
+seam; deeper integration ideas, in rough order of expected value:
+
+- Per-task-stream `event.EventSource` on the adapter (`Load`/`LoadFromVersion`
+  per task): facts(task_id, seq) is already indexed; needs a per-task
+  ordinal version contract and a use case that wants stream replay.
+- Watermill `CatchUpSubscriber` over the tq journal for cross-process
+  projection hosts — requires a broker decision (tq is deliberately
+  single-binary, zero external services; ADR-0009's consumer already
+  covers in-process delivery).
+- Branded task IDs via go-cqrs-lite `id/v4`: a cross-module earthquake
+  (every sub-module, the CLI, the web UI, session/footer formats) with no
+  interop payoff — only revisit alongside the internal→public promotion.
+- go-cqrs-lite `middleware`/`metadata` tracing IDs on facts (correlation
+  across the bridge boundaries): only if PapDashboard ingest grows
+  multi-hop causality needs.
