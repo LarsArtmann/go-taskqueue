@@ -29,7 +29,7 @@ var transitions = map[Status]map[Status]bool{
 	Pending:   {Running: true, Cancelled: true},
 	Running:   {Pending: true, Completed: true, Dead: true, Cancelled: true},
 	Completed: {},
-	Dead:      {Pending: true}, // dead-letter rescue: re-queue for retry
+	Dead:      {Pending: true, Cancelled: true}, // rescue re-queues; dismiss (autopsy verdict / operator) withdraws
 	Cancelled: {},
 }
 

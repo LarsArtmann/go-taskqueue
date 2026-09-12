@@ -878,6 +878,18 @@ func cancelReasonDetail(reason string) jsontext.Value {
 	return mustJSON(map[string]string{"reason": reason})
 }
 
+// dismissReasonDetail builds the task.cancelled detail for a DLQ dismiss:
+// the reason plus who ruled ("dlqfix-sweeper" or "operator"). The reason is
+// the point of the dismissal — an empty one still records the by.
+func dismissReasonDetail(reason, by string) jsontext.Value {
+	detail := map[string]string{"dismissed_by": by}
+	if reason != "" {
+		detail["reason"] = reason
+	}
+
+	return mustJSON(detail)
+}
+
 // cooperativeCancelDetail builds the task.cancelled detail for a
 // cooperative finalize: the cooperative marker, the finalize context
 // ("after" key, when set) and the operator's reason, when one was given.
@@ -1044,6 +1056,44 @@ func (s *Store) RescueDead(ctx context.Context, id task.ID, maxAttempts int) err
 				Detail: mustJSON(map[string]string{"rescue": "true"}),
 			},
 		)
+	})
+}
+
+// DismissDead cancels a Dead task with a recorded reason (DLQ dismiss): the
+// autopsy verdict "unfixable" or an operator's ruling. The task.cancelled
+// fact's detail carries the reason and by ("dlqfix-sweeper" or "operator"),
+// so the journal keeps the death evidence AND the why of the withdrawal.
+func (s *Store) DismissDead(ctx context.Context, id task.ID, reason, by string) error {
+	now := time.Now()
+
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `
+			UPDATE tasks
+			SET status = 'cancelled', updated_at = ?, lease_owner = '', lease_expires = NULL
+			WHERE id = ? AND status = 'dead'`, now.UnixMilli(), id.String())
+		if err != nil {
+			return err
+		}
+
+		if n, _ := res.RowsAffected(); n == 0 {
+			var st string
+			if err := tx.QueryRowContext(ctx, `SELECT status FROM tasks WHERE id = ?`, id.String()).
+				Scan(&st); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return task.ErrNotFound
+				}
+
+				return err
+			}
+
+			return fmt.Errorf("%w: %s -> cancelled", task.ErrInvalidTransition, st)
+		}
+
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(),
+			Type:   journal.Cancelled,
+			Detail: dismissReasonDetail(reason, by),
+		})
 	})
 }
 

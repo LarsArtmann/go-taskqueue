@@ -10,6 +10,7 @@ func TestCanTransitionTo(t *testing.T) {
 		{Running, Completed}, // success
 		{Running, Dead},      // exhausted retries
 		{Dead, Pending},      // DLQ rescue
+		{Dead, Cancelled},    // DLQ dismiss (autopsy verdict / operator)
 	}
 	for _, tr := range legal {
 		if !CanTransitionTo(tr.from, tr.to) {
@@ -23,6 +24,7 @@ func TestCanTransitionTo(t *testing.T) {
 		{Completed, Pending},       // terminal
 		{Completed, Running},       // terminal
 		{Dead, Running},            // dead must go through pending
+		{Dead, Dead},               // no self-loop
 		{Cancelled, Pending},       // terminal
 		{Cancelled, Running},       // terminal
 		{Running, Running},         // no self-loop

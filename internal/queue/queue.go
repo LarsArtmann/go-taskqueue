@@ -91,6 +91,12 @@ type Store interface {
 	MarkOrphaned(ctx context.Context, cutoff time.Time) (int, error)
 	// RescueDead re-queues a Dead task with a fresh attempt budget.
 	RescueDead(ctx context.Context, id task.ID, maxAttempts int) error
+	// DismissDead cancels a Dead task with a recorded reason (DLQ dismiss):
+	// the autopsy verdict "unfixable" or an operator's ruling. The
+	// task.cancelled fact's detail carries the reason and who dismissed it,
+	// so the journal keeps the full death evidence plus the WHY of the
+	// withdrawal. Dead is terminal otherwise; facts are never deleted.
+	DismissDead(ctx context.Context, id task.ID, reason, by string) error
 	// Get returns the current task record.
 	Get(ctx context.Context, id task.ID) (task.Task, error)
 	// List returns tasks matching the filter.
