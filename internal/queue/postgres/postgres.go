@@ -1389,7 +1389,6 @@ func (s *Store) SavePriorityScore(ctx context.Context, score queue.PriorityScore
 			tokens = excluded.tokens,
 			scored_at = excluded.scored_at`,
 		score.ItemKey, score.Score, score.EffortMinutes, score.Source, score.Reasoning, score.Tokens, score.ScoredAt)
-
 	if err != nil {
 		return fmt.Errorf("queue: save priority score: %w", err)
 	}

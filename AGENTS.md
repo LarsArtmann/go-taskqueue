@@ -438,8 +438,14 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   functions you touch. Hard gates: vet + gofmt + tests. Baseline GROWTH is
   now a ci-local GATE (round-13 T5): `scripts/lint-baseline.sh --check`
   (wired after the advisory lint step) fails on any per-module/linter count
-  above `.golangci-baseline.txt` (regen total 887 findings, 114
-  module/linter rows, 2026-09-12) or on a NEW (module, linter) class;
+  above `.golangci-baseline.txt` (regen total 850 findings, 104
+  module/linter rows, 2026-09-12 second regen: the T38 window fixed all
+  growth rows mechanically AND added a path-scoped tagliatelle exclusion —
+  machine-payload wire structs are snake_case by contract (executor
+  payloads, queue fact evidence, harvest RepriChange: keys are quoted in
+  agent prompts and persisted in journal facts, so they must never drift
+  to camelCase; core domain types stay camelCase) — first regen 887/114)
+  or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
   is the only config — there are no per-module files, and golangci-lint

@@ -248,6 +248,9 @@ linters:
       - path: internal/queue/queue\.go
         linters:
           - tagliatelle
+      - path: internal/harvest/reprioritize\.go
+        linters:
+          - tagliatelle
       - path: _test\.go
         linters:
           - errcheck

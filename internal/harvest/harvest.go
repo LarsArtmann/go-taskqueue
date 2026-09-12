@@ -328,14 +328,15 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 	for _, t := range tasks {
 		state.observe(t)
 
-		switch t.Status {
-		case task.Dead:
+		if t.Status == task.Dead {
 			hasDead = true
 
 			if t.UpdatedAt.After(lastDead) {
 				lastDead = t.UpdatedAt
 			}
-		case task.Completed:
+		}
+
+		if t.Status == task.Completed {
 			hasCompleted = true
 		}
 	}
@@ -353,6 +354,7 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 		importance, err := ReadImportance(repo)
 		if err != nil {
 			skipAll(res, items, "metadata: "+err.Error())
+
 			return state, false
 		}
 
@@ -410,6 +412,8 @@ func (state *repoState) observe(t task.Task) {
 	case task.Running:
 		state.busy = true
 		state.anyRunning = true
+	case task.Completed, task.Dead, task.Cancelled:
+		// No occupancy effect: lifecycle signals are derived by the caller.
 	}
 
 	if t.CreatedAt.After(state.lastCreated) {
@@ -450,10 +454,11 @@ func (h *Harvester) stateDenial(state repoState) string {
 // trackedItemDenial explains why an item already known to the queue is
 // denied admission, by its stored status.
 func trackedItemDenial(status task.Status) string {
-	switch status {
-	case task.Dead:
+	if status == task.Dead {
 		return "in DLQ (tq dlq --rescue to retry)"
-	case task.Cancelled:
+	}
+
+	if status == task.Cancelled {
 		return "cancelled (edit the item text to re-arm item)"
 	}
 

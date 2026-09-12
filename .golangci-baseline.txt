@@ -1,5 +1,5 @@
 internal/executor	cyclop:	3
-internal/executor	err113:	31
+internal/executor	err113:	30
 internal/executor	forcetypeassert:	3
 internal/executor	gochecknoglobals:	2
 internal/executor	gocognit:	2
@@ -15,11 +15,9 @@ internal/executor	nonamedreturns:	1
 internal/executor	paralleltest:	39
 internal/executor	predeclared:	1
 internal/executor	staticcheck:	1
-internal/executor	tagliatelle:	34
 internal/executor	unparam:	1
 internal/executor	varnamelen:	13
 internal/executor	wrapcheck:	4
-internal/executor	wsl_v5:	2
 internal/journal/cqrs	err113:	3
 internal/journal/cqrs	paralleltest:	12
 internal/journal	makezero:	1
@@ -52,7 +50,6 @@ internal/queue/sqlite	tagliatelle:	2
 internal/queue/sqlite	unused:	1
 internal/queue/sqlite	varnamelen:	35
 internal/queue/sqlite	wrapcheck:	50
-internal/queue	tagliatelle:	1
 internal/task	exhaustive:	1
 internal/task	gochecknoglobals:	1
 internal/task	paralleltest:	5
@@ -74,7 +71,7 @@ root	errchkjson:	1
 root	exhaustive:	10
 root	forbidigo:	23
 root	gochecknoglobals:	5
-root	gocognit:	7
+root	gocognit:	6
 root	goconst:	19
 root	gocritic:	5
 root	gocyclo:	3
@@ -88,7 +85,7 @@ root	makezero:	3
 root	mnd:	50
 root	musttag:	4
 root	nestif:	2
-root	nilerr:	5
+root	nilerr:	3
 root	noctx:	29
 root	nonamedreturns:	7
 root	paralleltest:	50
@@ -99,7 +96,7 @@ root	staticcheck:	1
 root	tagliatelle:	19
 root	thelper:	1
 root	tparallel:	1
-root	unconvert:	2
+root	unconvert:	1
 root	unparam:	7
 root	unused:	1
 root	varnamelen:	10
