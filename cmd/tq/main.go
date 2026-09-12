@@ -92,26 +92,27 @@ func main() {
 	}
 
 	commands := map[string]func([]string) error{
-		"bootstrap":  cmdBootstrap,
-		"enqueue":    cmdEnqueue,
-		"worker":     cmdWorker,
-		"harvest":    cmdHarvest,
-		"agent-pool": cmdAgentPool,
-		"stats":      cmdStats,
-		"tasks":      cmdTasks,
-		"audit":      cmdAudit,
-		"doctor":     cmdDoctor,
-		"top":        cmdTop,
-		"show":       cmdShow,
-		"dlq":        cmdDLQ,
-		"cancel":     cmdCancel,
-		"facts":      cmdFacts,
-		"tail":       cmdTail,
-		"watermarks": cmdWatermarks,
-		"session":    cmdSession,
-		"serve":      cmdServe,
-		"version":    cmdVersion,
-		"api":        cmdAPI,
+		"bootstrap":    cmdBootstrap,
+		"enqueue":      cmdEnqueue,
+		"worker":       cmdWorker,
+		"harvest":      cmdHarvest,
+		"reprioritize": cmdReprioritize,
+		"agent-pool":   cmdAgentPool,
+		"stats":        cmdStats,
+		"tasks":        cmdTasks,
+		"audit":        cmdAudit,
+		"doctor":       cmdDoctor,
+		"top":          cmdTop,
+		"show":         cmdShow,
+		"dlq":          cmdDLQ,
+		"cancel":       cmdCancel,
+		"facts":        cmdFacts,
+		"tail":         cmdTail,
+		"watermarks":   cmdWatermarks,
+		"session":      cmdSession,
+		"serve":        cmdServe,
+		"version":      cmdVersion,
+		"api":          cmdAPI,
 	}
 
 	switch name := os.Args[1]; name {
@@ -788,6 +789,27 @@ func cmdAgentPool(args []string) error {
 			for _, f := range res.ScanFailures {
 				log.Warn("startup prune: repo skipped", "repo", f.Repo, "reason", f.Reason)
 			}
+		}
+	}
+
+	// Startup reprioritize sweep, same pre-actor slot as prune-stale
+	// (ADR-0015 §5): marker edits and importance changes reach PENDING
+	// tasks on every pool relaunch. Value-idempotent — same-value
+	// resolutions write nothing — and free (local SQL, no agent spend).
+	if poolOpts.reprioritize {
+		changes, failures := harvester.Reprioritize(ctx, false)
+		for _, c := range changes {
+			log.Info("startup reprioritize",
+				"task", c.TaskID.String(),
+				"old", c.OldPriority,
+				"new", c.NewPriority,
+				"source", string(c.Source),
+				"item", c.ItemText,
+			)
+		}
+
+		for _, f := range failures {
+			log.Warn("startup reprioritize: repo skipped", "reason", f)
 		}
 	}
 

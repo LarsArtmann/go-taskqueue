@@ -249,3 +249,12 @@ func ResolvePriority(input ResolveInput) (int, PrioritySource) {
 
 	return input.FlatPriority, PrioritySourceDefault
 }
+
+// RepriMutable reports whether a re-resolution pass (tq reprioritize, the
+// prioritize sweeper) may rewrite a task currently stored at current:
+// hot (100–149) and machine (150+) priorities are explicit human/flag
+// acts and are never overwritten by automated re-resolution — the band
+// protection half of the ADR-0015 §3 precedence.
+func RepriMutable(current int) bool {
+	return queue.BandOf(current) == queue.BandBacklog
+}

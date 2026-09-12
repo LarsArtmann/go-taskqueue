@@ -35,6 +35,7 @@ type agentPoolOptions struct {
 	model          string
 	once           bool
 	pruneStale     bool
+	reprioritize   bool
 	exclusive      bool
 	dailyBudget    int
 	budgetCmd      string
@@ -107,6 +108,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"prune-stale",
 		true,
 		"one zombie sweep before the first harvest tick: cancel PENDING tasks whose TODO_LIST item is now [x] or gone from the file, so a relaunch never inherits stale work (--prune-stale=false to skip)",
+	)
+	reprioritize := fs.Bool(
+		"reprioritize",
+		true,
+		"one priority sweep before the first harvest tick: re-resolve PENDING task priorities from current TODO_LIST markers and (with --priority-from importance) repo metadata; value-idempotent, hot/machine bands protected (--reprioritize=false to skip)",
 	)
 	exclusive := fs.Bool(
 		"project-exclusive",
@@ -273,6 +279,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		model:          *model,
 		once:           *once,
 		pruneStale:     *pruneStale,
+		reprioritize:   *reprioritize,
 		exclusive:      *exclusive,
 		dailyBudget:    *dailyBudget,
 		budgetCmd:      *budgetCmd,

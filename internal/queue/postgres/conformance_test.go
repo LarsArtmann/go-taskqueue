@@ -200,6 +200,69 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 
+	t.Run("pending priority updates are fact-backed and guarded", func(t *testing.T) {
+		tk, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Priority: 10})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Same-value: no error, no fact (idempotency, the sqlite twin).
+		if err := s.UpdatePendingPriority(ctx, tk.ID, 10, "importance", "same"); err != nil {
+			t.Fatal(err)
+		}
+
+		// Real update: fact with evidence, appended in the same tx.
+		if err := s.UpdatePendingPriority(ctx, tk.ID, 70, "marker", "P1"); err != nil {
+			t.Fatal(err)
+		}
+
+		if got, _ := s.Get(ctx, tk.ID); got.Priority != 70 {
+			t.Fatalf("priority = %d, want 70", got.Priority)
+		}
+
+		facts, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var evidence queue.ReprioritizeEvidence
+
+		var sawFact bool
+
+		for _, f := range facts {
+			if f.Type != journal.Reprioritized {
+				continue
+			}
+
+			sawFact = true
+
+			if err := json.Unmarshal(f.Detail, &evidence); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		if !sawFact || evidence.OldPriority != 10 || evidence.NewPriority != 70 || evidence.Source != "marker" {
+			t.Fatalf("reprioritized fact = %+v (seen %v)", evidence, sawFact)
+		}
+
+		// Non-pending: refused and unmutated.
+		if _, err := s.ClaimDue(ctx, "repri-w", time.Minute); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := s.UpdatePendingPriority(ctx, tk.ID, 90, "marker", "x"); !errors.Is(err, task.ErrInvalidTransition) {
+			t.Fatalf("running update err = %v, want ErrInvalidTransition", err)
+		}
+
+		if got, _ := s.Get(ctx, tk.ID); got.Priority != 70 {
+			t.Fatalf("running task mutated: %d", got.Priority)
+		}
+
+		if err := s.Complete(ctx, tk.ID, "repri-w", nil); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("retry backoff ladder with evidence", func(t *testing.T) {
 		retry, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, MaxAttempts: 5})
 		if err != nil {

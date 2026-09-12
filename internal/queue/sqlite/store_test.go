@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"path/filepath"
 	"testing"
 	"time"
@@ -521,6 +522,134 @@ func mustEnqueueZero(t *testing.T, s *Store, n task.New) task.Task {
 	}
 
 	return tk
+}
+
+func TestUpdatePendingPriority(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk, err := s.Enqueue(ctx, task.New{Type: "a", Priority: 10})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if err := s.UpdatePendingPriority(ctx, tk.ID, 70, "marker", "P1 marker added"); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+
+	got, err := s.Get(ctx, tk.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	if got.Priority != 70 {
+		t.Fatalf("priority = %d, want 70", got.Priority)
+	}
+
+	facts, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	var evidence queue.ReprioritizeEvidence
+
+	var sawFact bool
+
+	for _, f := range facts {
+		if f.Type != journal.Reprioritized {
+			continue
+		}
+
+		sawFact = true
+
+		if err := json.Unmarshal(f.Detail, &evidence); err != nil {
+			t.Fatalf("decode evidence: %v", err)
+		}
+	}
+
+	if !sawFact {
+		t.Fatal("no task.reprioritized fact appended")
+	}
+
+	if evidence.OldPriority != 10 || evidence.NewPriority != 70 || evidence.Source != "marker" || evidence.Reason != "P1 marker added" {
+		t.Fatalf("evidence = %+v", evidence)
+	}
+}
+
+func TestUpdatePendingPriorityIdempotent(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk, _ := s.Enqueue(ctx, task.New{Type: "a", Priority: 42})
+
+	if err := s.UpdatePendingPriority(ctx, tk.ID, 42, "importance", "same"); err != nil {
+		t.Fatalf("same-value update err = %v, want nil", err)
+	}
+
+	facts, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
+
+	for _, f := range facts {
+		if f.Type == journal.Reprioritized {
+			t.Fatal("same-value update appended a fact")
+		}
+	}
+}
+
+func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	running, _ := s.Enqueue(ctx, task.New{Type: "a"})
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.UpdatePendingPriority(ctx, running.ID, 90, "marker", "x"); !errors.Is(err, task.ErrInvalidTransition) {
+		t.Fatalf("running update err = %v, want ErrInvalidTransition", err)
+	}
+
+	if got, _ := s.Get(ctx, running.ID); got.Priority != 0 {
+		t.Fatalf("running task priority mutated: %d", got.Priority)
+	}
+
+	dead, _ := s.Enqueue(ctx, task.New{Type: "b", MaxAttempts: 1})
+	if _, err := s.ClaimDue(ctx, "w2", time.Minute); err != nil {
+		t.Fatalf("claim dead: %v", err)
+	}
+
+	if err := s.Fail(ctx, dead.ID, "w2", "boom", 0, nil); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	if err := s.UpdatePendingPriority(ctx, dead.ID, 90, "marker", "x"); !errors.Is(err, task.ErrInvalidTransition) {
+		t.Fatalf("dead update err = %v, want ErrInvalidTransition", err)
+	}
+
+	missing := task.ID(strings.Repeat("f", 32))
+	if err := s.UpdatePendingPriority(ctx, missing, 90, "marker", "x"); !errors.Is(err, task.ErrNotFound) {
+		t.Fatalf("missing update err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestUpdatePendingPriorityFlipsClaimOrder(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	low, _ := s.Enqueue(ctx, task.New{Type: "low", Priority: 10})
+	high, _ := s.Enqueue(ctx, task.New{Type: "high", Priority: 50})
+
+	if err := s.UpdatePendingPriority(ctx, low.ID, 90, "importance", "repo importance rose"); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+
+	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if got.ID != low.ID {
+		t.Fatalf("reprioritized task did not outrank: claimed %s, want %s over %s", got.ID, low.ID, high.ID)
+	}
 }
 
 func TestNotBeforeDelays(t *testing.T) {

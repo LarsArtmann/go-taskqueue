@@ -222,7 +222,7 @@ TQ_RESULT: {"files_changed": [%q], "commit_sha": "the commit sha"}
 		Project:  project.RepoName,
 		Type:     b.cfg.Type,
 		Payload:  payload,
-		Priority: 80, // concrete scanner findings outrank generic backlog items
+		Priority: 150, // machine band (ADR-0015 §1): scanner findings outrank the whole backlog, not just rank inside it
 		DedupKey: DedupKey(project.RepoName, scan.ID, fixTask.File),
 	}
 }
