@@ -62,6 +62,27 @@ if [[ "$mode" == "--check" ]]; then
 		echo "lint-baseline: GROWTH beyond the committed baseline (gate failure):" >&2
 		echo "module	linter	baseline	now" >&2
 		cat "$violations" >&2
+		# Attribution aid (04-31 §f15): name the files carrying each growing
+		# linter's findings so triage starts informed. One lint run per
+		# affected module, reused across that module's rows.
+		modules="$(cut -f1 "$violations" | sort -u)"
+		for module in $modules; do
+			if [[ "$module" == "root" ]]; then
+				lint_out="$(golangci-lint run ./... 2>/dev/null || true)"
+			else
+				lint_out="$(cd "$module" && GOWORK=off golangci-lint run ./... 2>/dev/null || true)"
+			fi
+			while IFS=$'\t' read -r m linter _; do
+				[[ "$m" == "$module" ]] || continue
+				files="$(printf '%s\n' "$lint_out" | grep -F "($linter)" | cut -d: -f1 | sort -u)"
+				if [[ -n "$files" ]]; then
+					echo "  $m/$linter carries findings in:" >&2
+					printf '%s\n' "$files" | sed 's/^/    /' >&2
+				else
+					echo "  $m/$linter: no per-file output (re-run golangci-lint manually)" >&2
+				fi
+			done <"$violations"
+		done
 		echo "fix the new findings, or regenerate deliberately (scripts/lint-baseline.sh) if a policy change owns them" >&2
 		exit 1
 	fi
