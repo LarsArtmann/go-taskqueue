@@ -30,10 +30,12 @@
       # (bank-sync deploy/nixos pattern; usage header in the module file)
       flake.nixosModules.default = import ./deploy/nixos/tq-agent-pool.nix;
 
-      go-standard = {
+      go-standard = rec {
         pname = "go-taskqueue";
-        # Keep in sync with the latest release tag (and the ldflags line
-        # below) — release.sh does not bump this; `tq version` reports it.
+        # Keep in sync with the latest release tag — release.sh does not
+        # bump this; `tq version` reports it. The ldflags line below derives
+        # from THIS attr (single source; check-version-agreement.sh verifies
+        # the set against CHANGELOG).
         version = "0.2.0";
         vendorHash = "sha256-NQi6Xpiizmc5cc7dHTLVt5KxCJhKn16fyzdC59w2la8=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
@@ -66,8 +68,8 @@
             export HOME=$TMPDIR
           '';
           # `tq version` reports the release, not "dev" (round-5 M25/F133).
-          # Keep in sync with go-standard.version above.
-          buildFlagsArray = [ "-ldflags=-X main.version=0.2.0" ];
+          # Derived from the version attr above — never a second literal.
+          buildFlagsArray = [ "-ldflags=-X main.version=${version}" ];
         };
 
         shellExtraEnv = {

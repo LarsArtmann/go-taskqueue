@@ -181,16 +181,17 @@ jobs:
         run: nix flake check
 
   govulncheck:
-    # Advisory vulnerability scan (round-2 f20): job-level
-    # continue-on-error keeps it non-blocking until the findings baseline
-    # is understood — flip it off to make this a gate. Needs network on
-    # the runner (the vuln DB is fetched live from vuln.go.dev), so unlike
-    # the hermetic nix gates this can never run in checkPhase or
-    # ci-local.sh. The version pin mirrors the golangci-lint step, and the
-    # disk-derived module loop mirrors "Module isolation gates" above:
-    # ./... from the root never descends into the nested sub-modules.
+    # Vulnerability scan (round-2 f20), HARD gate since round-13 T7
+    # (2026-09-12): the scan was locally clean at HEAD (root + all
+    # sub-modules, v1.8.0) AND runner-green at step level (run
+    # 34661978016), so continue-on-error came off with evidence, not hope.
+    # Needs network on the runner (the vuln DB is fetched live from
+    # vuln.go.dev), so unlike the hermetic nix gates this can never run in
+    # checkPhase or ci-local.sh. The version pin mirrors the golangci-lint
+    # step, and the disk-derived module loop mirrors "Module isolation
+    # gates" above: ./... from the root never descends into the nested
+    # sub-modules.
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
@@ -199,10 +200,18 @@ jobs:
       - name: Govulncheck (root + every sub-module)
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
-          "$(go env GOPATH)/bin/govulncheck" ./...
+          {
+            echo "## govulncheck (v1.8.0)"
+            echo ""
+            echo "| module | verdict |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          "$(go env GOPATH)/bin/govulncheck" ./... && \
+            echo "| root (incl. app layer) | clean |" >> "$GITHUB_STEP_SUMMARY"
           for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
             echo "== $m"
             ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/govulncheck" ./... ) || exit 1
+            echo "| $m | clean |" >> "$GITHUB_STEP_SUMMARY"
           done
 
   gosec:
@@ -232,3 +241,9 @@ jobs:
             echo "== $m"
             ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/gosec" -quiet $GOSEC_EXCLUDES ./... ) || exit 1
           done
+          {
+            echo "## gosec (v2.29.0, triage-encoded excludes)"
+            echo ""
+            echo "0 findings across root + every sub-module; any finding here is a NEW class —"
+            echo "triage it and extend the AGENTS.md note, never silently re-exclude."
+          } >> "$GITHUB_STEP_SUMMARY"
