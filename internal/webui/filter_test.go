@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -203,19 +204,27 @@ func TestPerProjectUXBatch(t *testing.T) {
 		t.Error("filtered view must offer the all-projects reset chip")
 	}
 
-	if !strings.Contains(page, " · ") || !strings.Contains(page, "1P/0R/0D") {
+	if !strings.Contains(page, " · ") || !strings.Contains(page, "0R/1P/0D") {
 		t.Errorf("project chip must carry total + R/P/D breakdown, got: %s", page)
 	}
 
-	if strings.Contains(tableFragment(page), "alpha") {
+	// The task table drops the project column when pinned: no per-row
+	// /project/ link and no "project" header remain in the fragment (the
+	// filter chip's ?project= link is a different element and stays).
+	if strings.Contains(tableFragment(page), `href="/project/`) {
 		t.Error("project column must be dropped when pinned to one project")
+	}
+
+	if thIdx := strings.Index(tableFragment(page), ">project<"); thIdx >= 0 {
+		t.Errorf("project header must be dropped when pinned, found at %d", thIdx)
 	}
 
 	// Unfiltered view keeps the project column.
 	rec = httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	unfiltered := tableFragment(rec.Body.String())
 
-	if !strings.Contains(tableFragment(rec.Body.String()), "alpha") {
+	if !strings.Contains(unfiltered, `href="/project/`) || !strings.Contains(unfiltered, ">project<") {
 		t.Error("unfiltered table must render the project column")
 	}
 
