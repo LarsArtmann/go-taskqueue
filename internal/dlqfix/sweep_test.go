@@ -137,13 +137,6 @@ func TestSweeperMintsOneAutopsyPerDeadAgentTask(t *testing.T) {
 	s := newTestStore(t)
 	sw := newTestSweeper(t, s)
 
-	// The head BEFORE the death — the cursor a crash-before-checkpoint
-	// would resume from.
-	headBeforeDeath, err := s.HeadSeq(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	dead := seedDeadAgentTask(t, s, executor.AgentPayload{
 		Repo:   "demo",
 		Prompt: "ship the frobnicator\n\nTask-Queue-ID: {{TASK_ID}}",

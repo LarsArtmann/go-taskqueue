@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **DLQ autopsies — the self-fixing dead-letter queue (`--dlq-fix`)**: when
+  an AGENT task dead-letters, the new `internal/dlqfix` sweeper mints ONE
+  autopsy task (dedup `dlqfix:<dead-id>`, agent-type deaths only — so a
+  dead autopsy can never spawn another) whose second agent diagnoses the
+  failure from the journal's own evidence (`FailureEvidence` stage/exit/tail
+  + the dead task's original prompt, riding in a self-contained
+  `DLQFixPayload`). Strict `TQ_RESULT` verdict contract: `fixed` rescues the
+  original with its original attempt budget; `wontfix` (reason REQUIRED)
+  dismisses it — a new `Dead → Cancelled` transition with the reason +
+  `dismissed_by` recorded on the `task.cancelled` fact (mirrored
+  `DismissDead` in sqlite + postgres, conformance-pinned). Operators get the
+  same lever as `tq dlq --dismiss ID --reason WHY`. Dispositions are
+  idempotent (transition-guarded, race-with-human benign), every mint runs
+  under the pool's budget guard, autopsies run the closeout-free agent
+  clone and are dirty-tree-capable by default (a dead agent's partial work
+  IS evidence), and one watermark cursor (`dlqfix-sweeper`,
+  head-bootstrapped, rewindable) drives mint + dispose. Design:
+  `docs/planning/2026-09-12_dlq-autopsy-design.md`.
 - **Session-close bridge prototype (`tq session begin/close`)**: interactive
   crush sessions can now get the same close-out pool agents get. Begin
   records a `session.opened` journal fact; close attributes the session's

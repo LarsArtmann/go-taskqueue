@@ -77,6 +77,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/executor`                                | Pluggable execution: `sh`, HTTP, agent (headless AI), review, status, registry                                                                                                      |
 | `internal/harvest`                                 | Scans repos' TODO_LIST.md into agent tasks; drift audit (`tq audit`); prune-stale sweeps                                                                                            |
 | `internal/budget`                                  | Daily-cap + budget-command projections over the journal, checked before each pool tick                                                                                              |
+| `internal/dlqfix`                                  | DLQ-autopsy sweeper (`--dlq-fix`): dead agent tasks gain ONE autopsy task; `fixed` verdict rescues, `wontfix` dismisses (`Dead → Cancelled` via `DismissDead`)                        |
 | `internal/review`                                  | Sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks                                                                                             |
 | `internal/status`                                  | Sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)                                                                                  |
 | `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                                     |
@@ -159,6 +160,23 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   task unchanged. A cancelled/dead task's key still suppresses re-enqueue;
   for harvested items the escape hatch is editing the item text (the key
   hashes repo + text).
+- **`dlqfix` (DLQ autopsies, `--dlq-fix`)**: `DLQFixPayload` JSON (repo,
+  dead_task, work, FailureEvidence, yolo). Dead AGENT tasks mint ONE
+  `dlqfix:<dead-id>`-deduped autopsy task (type scope IS the loop guard: a
+  dead autopsy never mints another; sh/review/status deaths stay human
+  surfaces). Both verdicts COMPLETE; mechanical gate is the
+  `TQ_RESULT: {"verdict":"fixed|wontfix","summary":...}` line — wontfix
+  without a summary is a failed attempt. The sweeper disposes: fixed →
+  `RescueDead` with the dead task's ORIGINAL budget; wontfix →
+  `DismissDead` (Dead → Cancelled, reason + `dismissed_by` on the
+  cancelled fact; operators have `tq dlq --dismiss`). A rescued task that
+  dies AGAIN gets NO second autopsy (dedup is forever) — the second death
+  is a human surface. Autopsies run the closeout-free agent clone,
+  dirty-capable by DEFAULT (a dead agent's partial work is evidence;
+  only explicit `require_clean=true` restores the preflight), budget-gated
+  like every mint, and the `{{TASK_ID}}` in the fix-commit footer resolves
+  to the AUTOPSY's id. Cursor `dlqfix-sweeper` (head-bootstrapped,
+  rewindable). Design: docs/planning/2026-09-12_dlq-autopsy-design.md.
 - **Session-close bridge** (`tq session begin/close`, prototype
   2026-09-12): interactive sessions get the pool close-out — begin mints
   `session.opened`; close scans `Crush-Session: <id>` git trailers (git ≥
