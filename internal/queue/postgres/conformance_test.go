@@ -907,3 +907,49 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 }
+
+// TestPostgresBandFilter mirrors the sqlite band-filter pin: the
+// PriorityMin/PriorityMax pushdown sees stored priorities and composes
+// with CountTasks.
+func TestPostgresBandFilter(t *testing.T) {
+	s := testPostgresStore(t)
+	ctx := context.Background()
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "agent", Priority: 50}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "agent", Priority: 120}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "agent", Priority: 150}); err != nil {
+		t.Fatal(err)
+	}
+
+	hotMin, hotMax := queue.HotMin, queue.HotMax
+
+	got, err := s.List(ctx, queue.Filter{PriorityMin: &hotMin, PriorityMax: &hotMax})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(got) != 1 || got[0].Priority != 120 {
+		t.Fatalf("hot band list = %v, want exactly the 120 task", got)
+	}
+
+	machineMin := queue.MachineMin
+
+	got, err = s.List(ctx, queue.Filter{PriorityMin: &machineMin})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(got) != 1 || got[0].Priority != 150 {
+		t.Fatalf("machine band list = %v, want exactly the 150 task", got)
+	}
+
+	if n, err := s.CountTasks(ctx, queue.Filter{PriorityMin: &machineMin}); err != nil || n != 1 {
+		t.Fatalf("machine count = %d (%v), want 1", n, err)
+	}
+}

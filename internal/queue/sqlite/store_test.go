@@ -2661,3 +2661,54 @@ func TestPriorityScoreRoundtrip(t *testing.T) {
 		t.Fatalf("upsert result = %+v", got)
 	}
 }
+
+// TestBandFilter pins the PriorityMin/PriorityMax pushdown: the band
+// filter sees the STORED priority (aging is scheduling, not state) and
+// composes with CountTasks.
+func TestBandFilter(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "agent", Priority: 50}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "agent", Priority: 120}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "agent", Priority: 150}); err != nil {
+		t.Fatal(err)
+	}
+
+	hotMin, hotMax := queue.HotMin, queue.HotMax
+
+	got, err := s.List(ctx, queue.Filter{PriorityMin: &hotMin, PriorityMax: &hotMax})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(got) != 1 || got[0].Priority != 120 {
+		t.Fatalf("hot band list = %v, want exactly the 120 task", got)
+	}
+
+	machineMin := queue.MachineMin
+
+	got, err = s.List(ctx, queue.Filter{PriorityMin: &machineMin})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(got) != 1 || got[0].Priority != 150 {
+		t.Fatalf("machine band list = %v, want exactly the 150 task", got)
+	}
+
+	if n, err := s.CountTasks(ctx, queue.Filter{PriorityMin: &machineMin}); err != nil || n != 1 {
+		t.Fatalf("machine count = %d (%v), want 1", n, err)
+	}
+
+	// Open bounds behave like the filter being absent.
+	if n, err := s.CountTasks(ctx, queue.Filter{}); err != nil || n != 3 {
+		t.Fatalf("unfiltered count = %d (%v), want 3", n, err)
+	}
+}
