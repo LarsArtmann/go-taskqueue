@@ -315,7 +315,9 @@ Prepares each repo for unattended agent work (idempotent — safe to re-run):
 
   1. validates the repo (git checkout, TODO_LIST.md with open items)
   2. ensures .tq-verify   — the verify command agents are gated by
-     (--verify name=cmd overrides; otherwise auto-detected and pinned)
+     (--verify name=cmd overrides; otherwise auto-detected and pinned;
+     detected Go commands are env-self-contained — they export
+     GOEXPERIMENT=jsonv2 so the gate survives shells without it)
   3. ensures .crushrc     — a managed block granting agent autonomy
      (permissions allow ` + agentTools + `) and, when --model is set, pinning
      the model + reasoning effort (applies to interactive crush in that

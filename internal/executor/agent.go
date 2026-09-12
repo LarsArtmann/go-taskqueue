@@ -706,6 +706,27 @@ func readTQVerify(repoDir string) string {
 // payloads (the harvester pins the repo's verify contract into tasks).
 func ReadTQVerify(repoDir string) string { return readTQVerify(repoDir) }
 
+// goEnvPrelude makes a minted Go verify command env-self-contained: the
+// tq-agent-pool unit (and any bare shell) carries no GOEXPERIMENT, and repos
+// importing encoding/json/v2 then die with "build constraints exclude all Go
+// files" — an environment lie that judges finished work on a broken gate.
+// Minted Go verifies carry the export so the gate is identical inside and
+// outside the flake devShell. Non-Go stacks are untouched; a repo pinning an
+// older toolchain that rejects the experiment pins its own .tq-verify (the
+// file is the source of truth and is never auto-rewritten behind an
+// existing value).
+const goEnvPrelude = "export GOEXPERIMENT=jsonv2; "
+
+// withGoEnvPrelude prefixes a minted verify command with goEnvPrelude unless
+// the command already manages GOEXPERIMENT itself (idempotent).
+func withGoEnvPrelude(verify string) string {
+	if strings.Contains(verify, "GOEXPERIMENT") {
+		return verify
+	}
+
+	return goEnvPrelude + verify
+}
+
 // defaultVerify picks a sensible verification command for a repo.
 func defaultVerify(repo string) string {
 	if _, err := os.Stat(filepath.Join(repo, "go.mod")); err == nil {
@@ -716,9 +737,9 @@ func defaultVerify(repo string) string {
 		// an explicit exit. Word-split find output: module paths containing
 		// spaces are rare enough for a heuristic default; a repo can pin its
 		// own .tq-verify when it needs more.
-		return "go build ./... && go test ./... -count=1" +
+		return withGoEnvPrelude("go build ./... && go test ./... -count=1" +
 			" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*');" +
-			" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done"
+			" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done")
 	}
 
 	if _, err := os.Stat(filepath.Join(repo, "package.json")); err == nil {

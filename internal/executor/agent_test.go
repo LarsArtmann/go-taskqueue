@@ -523,7 +523,7 @@ func TestVerifyStrategy(t *testing.T) {
 		{
 			"go module",
 			map[string]string{"go.mod": "module x\n"},
-			"go build ./... && go test ./... -count=1" +
+			"export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1" +
 				" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*');" +
 				" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done",
 		},
@@ -577,6 +577,51 @@ func TestVerifyStrategy(t *testing.T) {
 	empty := t.TempDir()
 	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: empty, Prompt: "hi"})); err != nil {
 		t.Fatalf("verify-less repo must pass when the agent succeeds, got %v", err)
+	}
+}
+
+// TestMintedGoVerifyIsEnvSelfContained pins the env prelude on minted Go
+// verify commands: the pool unit carries no GOEXPERIMENT, so a bare
+// `go build` mint dies on encoding/json/v2 build constraints and judges
+// finished work on a broken gate. Non-Go stacks stay untouched, the prelude
+// is idempotent, and a command managing GOEXPERIMENT itself is never doubled.
+func TestMintedGoVerifyIsEnvSelfContained(t *testing.T) {
+	t.Parallel()
+
+	goDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(goDir, "go.mod"), []byte("module x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := autoDetectVerify(goDir)
+	if !strings.HasPrefix(got, goEnvPrelude) {
+		t.Errorf("minted Go verify must carry the env prelude, got %q", got)
+	}
+
+	if again := withGoEnvPrelude(got); again != got {
+		t.Errorf("prelude must be idempotent, got %q", again)
+	}
+
+	if managed := withGoEnvPrelude("GOEXPERIMENT=nojsonv2 go test ./..."); managed != "GOEXPERIMENT=nojsonv2 go test ./..." {
+		t.Errorf("command managing GOEXPERIMENT must not be rewritten, got %q", managed)
+	}
+
+	for _, stack := range []struct {
+		file, content, want string
+	}{
+		{"package.json", "{}", "npm test --silent"},
+		{"Makefile", "all:\n\ttrue\n", "make test"},
+		{"flake.nix", "{}", "nix build && nix flake check"},
+		{"Cargo.toml", "[package]\n", "cargo test --quiet"},
+	} {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, stack.file), []byte(stack.content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		if got := autoDetectVerify(dir); got != stack.want {
+			t.Errorf("%s stack: autoDetectVerify = %q, want untouched %q", stack.file, got, stack.want)
+		}
 	}
 }
 

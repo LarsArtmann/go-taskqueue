@@ -1,1 +1,1 @@
-go build ./... && go vet ./... && go test ./... -count=1 -race -timeout 180s && test -z "$(gofmt -l .)"
+export GOEXPERIMENT=jsonv2; go build ./... && go vet ./... && go test ./... -count=1 -race -timeout 180s && test -z "$(gofmt -l .)"

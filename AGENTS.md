@@ -104,7 +104,12 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **`sh`**: payload is the shell line; accepted shapes raw text / JSON
   string / `{"cmd":"..."}` (`unwrapCommand`). Other types need valid JSON.
 - **`agent`**: `AgentPayload` JSON (repo, prompt, verify command, timeout).
-  Verify must exit 0. A payload model makes the executor pass `crush run
+  Verify must exit 0, and the verify command must be ENV-SELF-CONTAINED:
+  minted Go verifies (bootstrap auto-detect + this repo's `.tq-verify`)
+  carry `export GOEXPERIMENT=jsonv2; ` so the gate is identical inside and
+  outside the flake devShell (the pool unit env carries no GOEXPERIMENT —
+  the env lie that burned 5+ windows, 2026-09-11 task 000001a08ebf). A
+  payload model makes the executor pass `crush run
   -m`, which RESETS reasoning effort — the repo `.crushrc` managed block
   (`tq bootstrap`) is the only model+effort carrier. The managed block's
   tool grant IS the agent's toolset (headless mode denies unlisted tools,
@@ -211,6 +216,10 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 
 - Table-driven tests with plain `testing`; sentinel errors in
   `internal/task/errors.go`, checked with `errors.Is`
+- **Claims carry citations** (2026-09-12): DONE notes, close-outs, and
+  verify-then-close annotations cite the gate run or commit SHA they rest
+  on — an uncited claim is a hypothesis; a stale-DONE row is closed only
+  with commit + gate evidence, never memory
 - Pure-Go deps only (`CGO_ENABLED=0` valid); Go 1.26 idioms are deliberate
   (`errors.AsType[E]`, `strings.SplitSeq`, `for range n`) — do not
   "modernize" them back

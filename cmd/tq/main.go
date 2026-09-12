@@ -69,6 +69,12 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
   tq tail [-f] [--db PATH] [--after SEQ]
   tq watermarks show [--db PATH]   (journal consumer cursors)
   tq watermarks set CONSUMER SEQ [--db PATH]   (rewind = safe replay)
+  tq session begin --id ID [--repo DIR] [--project P] [--db PATH]
+                  (record an interactive session's opening; default id $CRUSH_SESSION_ID)
+  tq session close --id ID [--repo DIR] [--project P] [--summary TEXT]
+                  [--allow-dirty] [--db PATH]   (attribute the session's
+                  Crush-Session-footer commits; enqueues one review + one
+                  status task over them — the pool does the rest)
   tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose]
   tq api [--addr ADDR] --auth-token TOKEN [--db PATH]   (write API: POST /api/v1/tasks)
   tq version
@@ -99,6 +105,7 @@ func main() {
 		"facts":      cmdFacts,
 		"tail":       cmdTail,
 		"watermarks": cmdWatermarks,
+		"session":    cmdSession,
 		"serve":      cmdServe,
 		"version":    cmdVersion,
 		"api":        cmdAPI,
