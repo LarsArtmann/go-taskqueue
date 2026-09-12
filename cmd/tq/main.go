@@ -484,8 +484,11 @@ func cmdHarvest(args []string) error {
 		return err
 	}
 
-	if *priorityFrom != "" && *priorityFrom != "importance" {
-		return fmt.Errorf(`--priority-from: want "importance" or empty, got %q`, *priorityFrom)
+	// priorityFromImportance is the only --priority-from mode value
+	// (ADR-0015 §5): markers always apply; this switches on the metadata
+	// importance feed.
+	if *priorityFrom != "" && *priorityFrom != priorityFromImportance {
+		return fmt.Errorf(`--priority-from: want %q or empty, got %q`, priorityFromImportance, *priorityFrom)
 	}
 
 	if *projectsDir == "" && *repos == "" {
@@ -507,7 +510,7 @@ func cmdHarvest(args []string) error {
 		MaxAttempts:         *maxAttempts,
 		Model:               *model,
 		SameSessionPriority: *sameSessionPriority,
-		UseImportance:       *priorityFrom == "importance",
+		UseImportance:       *priorityFrom == priorityFromImportance,
 		MaxPendingPerRepo:   *maxPendingPerRepo,
 		DryRun:              *dryRun,
 	}
@@ -827,13 +830,13 @@ func cmdAgentPool(args []string) error {
 	// resolutions write nothing — and free (local SQL, no agent spend).
 	if poolOpts.reprioritize {
 		changes, failures := harvester.Reprioritize(ctx, false)
-		for _, c := range changes {
+		for _, change := range changes {
 			log.Info("startup reprioritize",
-				"task", c.TaskID.String(),
-				"old", c.OldPriority,
-				"new", c.NewPriority,
-				"source", string(c.Source),
-				"item", c.ItemText,
+				"task", change.TaskID.String(),
+				"old", change.OldPriority,
+				"new", change.NewPriority,
+				"source", string(change.Source),
+				"item", change.ItemText,
 			)
 		}
 
@@ -1611,13 +1614,13 @@ func buildPriorityProvenance(
 		}
 	}
 
-	for _, f := range trail {
-		if f.Type != journal.Reprioritized {
+	for _, fact := range trail {
+		if fact.Type != journal.Reprioritized {
 			continue
 		}
 
 		var evidence queue.ReprioritizeEvidence
-		if err := json.Unmarshal(f.Detail, &evidence); err != nil {
+		if err := json.Unmarshal(fact.Detail, &evidence); err != nil {
 			continue
 		}
 

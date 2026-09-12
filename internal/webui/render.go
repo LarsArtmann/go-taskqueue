@@ -572,17 +572,17 @@ func (f FilterState) toQueueFilter(limit int) queue.Filter {
 		queueFilter.Status = &f.Status
 	}
 
-	if min, max, ok := bandBounds(f.Band); ok {
-		queueFilter.PriorityMin = &min
-		queueFilter.PriorityMax = &max
+	if lo, hi, ok := bandBounds(f.Band); ok {
+		queueFilter.PriorityMin = &lo
+		queueFilter.PriorityMax = &hi
 	}
 
 	return queueFilter
 }
 
-// bandBounds maps a band name onto its stored-priority range (ADR-0015).
-// ok is false for the empty/unknown name: no bound.
-func bandBounds(band string) (min, max int, ok bool) {
+// bandBounds maps a band name onto its stored-priority range (ADR-0015):
+// (low, high, true). false for the empty/unknown name: no bound.
+func bandBounds(band string) (int, int, bool) {
 	switch band {
 	case string(queue.BandBacklog):
 		return 0, queue.BacklogMax, true
