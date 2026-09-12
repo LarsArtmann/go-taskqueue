@@ -66,22 +66,22 @@ facts. Claim exclusivity comes from lease TTL + expiry reclaim. The library
 core (task, journal, queue, executor, worker) is split into sub-modules
 whose DAG the compiler enforces; everything above them is the root module.
 
-| Package                                            | Purpose                                                                                                                                                                   |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `internal/task`                                    | Task record, Status enum with `CanTransitionTo`, sentinel errors                                                                                                          |
-| `internal/journal`                                 | Fact types, append-only Journal interface, MemoryJournal                                                                                                                  |
-| `internal/queue`                                   | Store contract: interface, Filter, Queue facade, watermarks entry (deps: task+journal only)                                                                               |
-| `internal/queue/sqlite`, `internal/queue/postgres` | Driver-style backend modules (`sqlite.Store`/`Open`, `postgres.Store`/`Open`); mirrored helpers + conformance suites (ADR-0007/0012)                                      |
-| `internal/worker`                                  | Claim → heartbeat → execute loop; concurrency, panics, drain, preflight requeue ladder                                                                                    |
-| `internal/bridge`                                  | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                                                                                       |
-| `internal/executor`                                | Pluggable execution: `sh`, HTTP, agent (headless AI), review, status, registry                                                                                            |
-| `internal/harvest`                                 | Scans repos' TODO_LIST.md into agent tasks; drift audit (`tq audit`); prune-stale sweeps                                                                                  |
-| `internal/budget`                                  | Daily-cap + budget-command projections over the journal, checked before each pool tick                                                                                    |
-| `internal/review`                                  | Sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks                                                                                   |
-| `internal/status`                                  | Sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)                                                                        |
-| `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                           |
-| `internal/runactor`                                | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                        |
-| `internal/webui`                                   | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                              |
+| Package                                            | Purpose                                                                                                                                                                             |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `internal/task`                                    | Task record, Status enum with `CanTransitionTo`, sentinel errors                                                                                                                    |
+| `internal/journal`                                 | Fact types, append-only Journal interface, MemoryJournal                                                                                                                            |
+| `internal/queue`                                   | Store contract: interface, Filter, Queue facade, watermarks entry (deps: task+journal only)                                                                                         |
+| `internal/queue/sqlite`, `internal/queue/postgres` | Driver-style backend modules (`sqlite.Store`/`Open`, `postgres.Store`/`Open`); mirrored helpers + conformance suites (ADR-0007/0012)                                                |
+| `internal/worker`                                  | Claim → heartbeat → execute loop; concurrency, panics, drain, preflight requeue ladder                                                                                              |
+| `internal/bridge`                                  | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                                                                                                 |
+| `internal/executor`                                | Pluggable execution: `sh`, HTTP, agent (headless AI), review, status, registry                                                                                                      |
+| `internal/harvest`                                 | Scans repos' TODO_LIST.md into agent tasks; drift audit (`tq audit`); prune-stale sweeps                                                                                            |
+| `internal/budget`                                  | Daily-cap + budget-command projections over the journal, checked before each pool tick                                                                                              |
+| `internal/review`                                  | Sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks                                                                                             |
+| `internal/status`                                  | Sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)                                                                                  |
+| `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                                     |
+| `internal/runactor`                                | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                                  |
+| `internal/webui`                                   | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                                        |
 | `cmd/tq`                                           | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / facts / tail / watermarks / session / serve / api / doctor / version |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001,
@@ -105,7 +105,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   string / `{"cmd":"..."}` (`unwrapCommand`). Other types need valid JSON.
 - **`agent`**: `AgentPayload` JSON (repo, prompt, verify command, timeout).
   Verify must exit 0, and MINTED Go verifies (bootstrap auto-detect) must
-  be ENV-SELF-CONTAINED: they carry `export GOEXPERIMENT=jsonv2; ` so the
+  be ENV-SELF-CONTAINED: they carry `export GOEXPERIMENT=jsonv2;` so the
   gate is identical inside and outside the flake devShell (the pool unit
   env carries no GOEXPERIMENT — the env lie that burned 5+ windows,
   2026-09-11 task 000001a08ebf; this repo's `.tq-verify` is owner-owned

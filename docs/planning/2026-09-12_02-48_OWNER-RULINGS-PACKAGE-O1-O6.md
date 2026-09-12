@@ -18,7 +18,7 @@ Exact diff + deploy + post-flip verification:
 now env-self-contained and `tq doctor` detects the lie either way; this line
 is still the true fix.
 
-**ANSWER**: [ ] apply §6 at next flip  [ ] defer (accept known-lying gates; doctor is the reference)
+**ANSWER**: [ ] apply §6 at next flip [ ] defer (accept known-lying gates; doctor is the reference)
 
 ## O2 — TQ_RESULT schema ruling (un-blocks: T9, T11)
 
@@ -34,7 +34,7 @@ Invented TQ_RESULT fields re-offended across 3 windows. Proposed contract:
    verify gate (work already done) may re-emit the ORIGINAL TQ_RESULT
    verbatim; it must not invent new fields to explain itself.
 
-**ANSWER**: [ ] as proposed  [ ] amended: ______________  [ ] keep loose (gate stays parse-only)
+**ANSWER**: [ ] as proposed [ ] amended: ______________ [ ] keep loose (gate stays parse-only)
 
 ## O3 — Report placement ruling (un-blocks: T10, T12)
 
@@ -51,40 +51,40 @@ currently guesses.
 Recommendation: **a)** — the concurrent-agent reality makes appends a
 lost-update generator (the 01-06 correction exists because of it).
 
-**ANSWER**: [ ] a) file-per-window  [ ] b) append  [ ] other: ______________
+**ANSWER**: [ ] a) file-per-window [ ] b) append [ ] other: ______________
 
 ## O4 — Webui per-project rulings (un-blocks: T14)
 
-1. **Unknown `/project/{name}`**: [ ] 404 page  [ ] empty dashboard with
+1. **Unknown `/project/{name}`**: [ ] 404 page [ ] empty dashboard with
    filter chip (current behavior). Recommendation: 404 — a typo'd URL should
    say so, not show a plausible-looking empty board.
 2. **Budget scope**: [ ] keep budget GLOBAL with an explicit "global" marker
-   when a project filter is active  [ ] add per-project budget projection.
+   when a project filter is active [ ] add per-project budget projection.
    Recommendation: global + marker now (the journal has no per-project cap
    concept yet); per-project budgets as a separate feature with real
    config, not a side effect of the filter.
 
-**ANSWER**: 1: ______  2: ______
+**ANSWER**: 1: ______ 2: ______
 
 ## O5 — gosec gate-vs-advisory + CI-time budget (un-blocks: T6 final flip, T25)
 
 1. gosec: with the FP triage encoded as config (T6, in flight), the job can
-   go hard-gate or stay advisory-with-config. [ ] hard  [ ] advisory.
+   go hard-gate or stay advisory-with-config. [ ] hard [ ] advisory.
    Recommendation: advisory until one fully-green runner week, then hard.
 2. CI-time budget: full matrix ≈ N minutes per push × pushes/hour under the
    daemon. What is the acceptable ceiling? ______ (drives T25's retry /
    concurrency-group / scope decisions).
 
-**ANSWER**: 1: ______  2: ______
+**ANSWER**: 1: ______ 2: ______
 
 ## O6 — Policies + credentials (un-blocks: T18, T26, T27)
 
 1. **Backlog append-cap policy** (L136): cap status-appends per task?
-   [ ] yes: ____  [ ] no, dedup keys suffice.
+   [ ] yes: ____ [ ] no, dedup keys suffice.
 2. **Module-fetch trust** (L139): require `go mod verify` + checksum pin on
-   release builds? [ ] yes  [ ] advisory.
+   release builds? [ ] yes [ ] advisory.
 3. **CQA creds** (L99): provide test credentials for the live-verify
-   checklist? [ ] attached  [ ] skip live-verify.
+   checklist? [ ] attached [ ] skip live-verify.
 4. **AllStatuses release call** (L124): export in next re-tag? [ ] yes
    [ ] hold.
 
@@ -108,9 +108,9 @@ footer-only eaf73a9), ticket↔content attribution has no footer to ride.
   by agents at close-out. Cost: a second source of truth that rots;
   benefit: greppable without the journal.
 
-**ANSWER**: [ ] a) report-side  [ ] b) daemon footers  [ ] c) ledger  [ ] other: ______________
+**ANSWER**: [ ] a) report-side [ ] b) daemon footers [ ] c) ledger [ ] other: ______________
 
 ---
 
-*Answers recorded here close the loop: edit this file's ANSWER lines (or
-reply in chat); the queued tasks read the ruling and land same-window.*
+_Answers recorded here close the loop: edit this file's ANSWER lines (or
+reply in chat); the queued tasks read the ruling and land same-window._

@@ -462,8 +462,10 @@ var doctorProbeGoEnv = func(ctx context.Context) checkResult {
 // toolchain capability check that separates a missing env var from a
 // version gate). Empty return = build succeeded.
 func runGoEnvProbe(ctx context.Context, dir string, baseEnv []string) (ambErr, capErr string) {
-	const goMod = "module tqenvprobe\n\ngo 1.26\n"
-	const mainGo = "package main\n\nimport _ \"encoding/json/v2\"\n\nfunc main() {}\n"
+	const (
+		goMod  = "module tqenvprobe\n\ngo 1.26\n"
+		mainGo = "package main\n\nimport _ \"encoding/json/v2\"\n\nfunc main() {}\n"
+	)
 
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(goMod), 0o600); err != nil {
 		return "probe scratch: " + err.Error(), "probe scratch: " + err.Error()
@@ -490,6 +492,7 @@ func goEnvBuild(ctx context.Context, dir string, env []string) string {
 	cmd.Env = env
 
 	var buf bytes.Buffer
+
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
 

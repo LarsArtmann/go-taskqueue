@@ -339,7 +339,10 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			enqueuedThisRepo = true
 
 			if t.Status == task.Pending && t.Attempts == 0 {
-				res.Enqueued = append(res.Enqueued, Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: sameSession(item.Text)})
+				res.Enqueued = append(
+					res.Enqueued,
+					Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: sameSession(item.Text)},
+				)
 			} else {
 				// Store dedup returned a pre-existing row (another pool won
 				// the race). Count item as known, not fresh.

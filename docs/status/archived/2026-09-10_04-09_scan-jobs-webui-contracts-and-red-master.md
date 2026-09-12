@@ -6,13 +6,13 @@
 
 ## TL;DR
 
-| Area                       | Verdict                                                                                                                              |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| The five window tasks      | All five delivered what they claimed, verified in code/diffs                                                                         |
-| Local gates at report time | Green (build, vet, full race suite, gofmt)                                                                                           |
+| Area                       | Verdict                                                                                                                                                                                                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The five window tasks      | All five delivered what they claimed, verified in code/diffs                                                                                                                                                                                                                                                               |
+| Local gates at report time | Green (build, vet, full race suite, gofmt)                                                                                                                                                                                                                                                                                 |
 | **Master CI**              | **RED since ~01:15 CEST — before the window started; still red at HEAD** — RESOLVED same day: the red-master trio (windows test, release-gates identity, x/text) repaired 2026-09-10 (TODO_LIST L103-105 + CHANGELOG); the CI-red root-cause line was later re-diagnosed as the setup-go toolchain float (16-00 report §a) |
-| Advisory scan jobs         | Both red on their first runner run: gosec by design (FP triage), govulncheck with a REAL reachable vuln in `internal/queue/postgres` |
-| Verification honesty       | One false gate claim in the window (dedup "lint clean"), self-corrected by `c5c654c` 44 min later                                    |
+| Advisory scan jobs         | Both red on their first runner run: gosec by design (FP triage), govulncheck with a REAL reachable vuln in `internal/queue/postgres`                                                                                                                                                                                       |
+| Verification honesty       | One false gate claim in the window (dedup "lint clean"), self-corrected by `c5c654c` 44 min later                                                                                                                                                                                                                          |
 
 ---
 

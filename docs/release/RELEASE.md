@@ -119,10 +119,10 @@ releases:
   three-ID class — never merge IDs; report the discrepancy instead).
 - `tq show <id> --commits` is the forensics view: it scans the task's
   payload repo for footer commits and classifies 0 = missing footer,
-  >1 = expected for work+close-out (cross-repo duplicates for one task
-  are the ambiguous case). It degrades honestly instead of crashing: no
-  repo in the payload, an inaccessible repo path, or a failed git log each
-  surface as a `note` line (cmd/tq/main.go `commitsForTask`).
+  > 1 = expected for work+close-out (cross-repo duplicates for one task
+  > are the ambiguous case). It degrades honestly instead of crashing: no
+  > repo in the payload, an inaccessible repo path, or a failed git log each
+  > surface as a `note` line (cmd/tq/main.go `commitsForTask`).
 - The commit-msg hook (scripts/install-pre-commit.sh) enforces the
   footer's shape (exactly one, well-formed) per commit — it deliberately
   does NOT reject an already-used ID, because multi-commits per task are

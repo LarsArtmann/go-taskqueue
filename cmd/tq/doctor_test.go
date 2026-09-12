@@ -306,6 +306,7 @@ func TestDoctorEnvironmentIncludesGoEnvCheck(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 
 	orig := doctorProbeGoEnv
+
 	t.Cleanup(func() { doctorProbeGoEnv = orig })
 
 	doctorProbeGoEnv = func(context.Context) checkResult {

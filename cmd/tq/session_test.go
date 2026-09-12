@@ -33,6 +33,7 @@ func TestCmdSessionBridgeEndToEnd(t *testing.T) {
 
 		cmd := exec.Command("git", args...)
 		cmd.Dir = repo
+
 		cmd.Env = append(os.Environ(),
 			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
 			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
@@ -55,11 +56,15 @@ func TestCmdSessionBridgeEndToEnd(t *testing.T) {
 	git("add", "-A")
 	git("commit", "-qm", "work one", "-m", "Crush-Session: sess-e2e")
 
-	if err := sessionBegin([]string{"--id", "sess-e2e", "--repo", repo, "--project", "demo", "--db", dbPath}); err != nil {
+	if err := sessionBegin(
+		[]string{"--id", "sess-e2e", "--repo", repo, "--project", "demo", "--db", dbPath},
+	); err != nil {
 		t.Fatalf("begin: %v", err)
 	}
 
-	if err := sessionBegin([]string{"--id", "sess-e2e", "--repo", repo, "--project", "demo", "--db", dbPath}); err == nil {
+	if err := sessionBegin(
+		[]string{"--id", "sess-e2e", "--repo", repo, "--project", "demo", "--db", dbPath},
+	); err == nil {
 		t.Fatal("double begin accepted")
 	}
 
@@ -111,7 +116,9 @@ func TestCmdSessionBridgeEndToEnd(t *testing.T) {
 	}
 
 	// A replay close holds the dedup and does not mint again.
-	if err := sessionClose([]string{"--id", "sess-e2e", "--repo", repo, "--project", "demo", "--db", dbPath}); err != nil {
+	if err := sessionClose(
+		[]string{"--id", "sess-e2e", "--repo", repo, "--project", "demo", "--db", dbPath},
+	); err != nil {
 		t.Fatalf("re-close: %v", err)
 	}
 
@@ -130,6 +137,7 @@ func TestCmdSessionBridgeEndToEnd(t *testing.T) {
 	}
 
 	var closedCount int
+
 	for _, f := range closed {
 		if f.Type == journal.SessionClosed {
 			closedCount++

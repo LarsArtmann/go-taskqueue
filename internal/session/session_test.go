@@ -70,7 +70,14 @@ func TestBeginRecordsOpenedFactAndRefusesDoubleBegin(t *testing.T) {
 		t.Fatalf("opened detail = %+v", detail)
 	}
 
-	if err := Begin(ctx, s, "sess-abc", "/repos/demo", "demo"); err == nil || !strings.Contains(err.Error(), "already open") {
+	if err := Begin(
+		ctx,
+		s,
+		"sess-abc",
+		"/repos/demo",
+		"demo",
+	); err == nil ||
+		!strings.Contains(err.Error(), "already open") {
 		t.Fatalf("double begin err = %v, want already-open refusal", err)
 	}
 }
@@ -169,6 +176,7 @@ func TestCloseMintsReviewAndStatusOverAttributedRange(t *testing.T) {
 	}
 
 	var closed *journal.Fact
+
 	for i := range facts {
 		if facts[i].Type == journal.SessionClosed {
 			closed = &facts[i]

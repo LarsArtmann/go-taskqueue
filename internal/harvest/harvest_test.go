@@ -504,11 +504,11 @@ func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
 	}
 
 	tk, _ := q.Get(ctx, res.Enqueued[0].TaskID)
-	if _, err := q.Store.ClaimDue(ctx, "w", time.Minute); err != nil {
+	if _, err := q.ClaimDue(ctx, "w", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := q.Store.FailPermanent(ctx, tk.ID, "w", "repo is broken", nil); err != nil {
+	if err := q.FailPermanent(ctx, tk.ID, "w", "repo is broken", nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
@@ -534,11 +534,11 @@ func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
 	}
 
 	// A completed task lifts the guard even with backoff on.
-	if _, err := q.Store.ClaimDue(ctx, "w", time.Minute); err != nil {
+	if _, err := q.ClaimDue(ctx, "w", time.Minute); err != nil {
 		t.Fatalf("claim2: %v", err)
 	}
 
-	if err := q.Store.Complete(ctx, res.Enqueued[0].TaskID, "w", nil); err != nil {
+	if err := q.Complete(ctx, res.Enqueued[0].TaskID, "w", nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 

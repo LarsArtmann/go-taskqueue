@@ -40,6 +40,7 @@ func sessionBegin(args []string) error {
 	id := fs.String("id", os.Getenv("CRUSH_SESSION_ID"), "interactive session id (default $CRUSH_SESSION_ID)")
 	repo := fs.String("repo", ".", "repository the session works in")
 	project := fs.String("project", "", "queue project (default: the repo directory's name)")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -66,7 +67,11 @@ func sessionBegin(args []string) error {
 	}
 
 	fmt.Printf("session %s opened (repo %s, project %s)\n", *id, abs, *project)
-	fmt.Printf("attribute your commits by ending the commit message with this footer line:\n\n%s: %s\n", session.Trailer, *id)
+	fmt.Printf(
+		"attribute your commits by ending the commit message with this footer line:\n\n%s: %s\n",
+		session.Trailer,
+		*id,
+	)
 
 	return nil
 }
@@ -77,8 +82,17 @@ func sessionClose(args []string) error {
 	id := fs.String("id", os.Getenv("CRUSH_SESSION_ID"), "interactive session id (default $CRUSH_SESSION_ID)")
 	repo := fs.String("repo", ".", "repository the session worked in")
 	project := fs.String("project", "", "queue project (default: the repo directory's name)")
-	summary := fs.String("summary", "", "one-paragraph account of what the session did (the review's bar, the status entry's item)")
-	allowDirty := fs.Bool("allow-dirty", false, "minted review/status tolerate an uncommitted tree (mirror of the pool's --allow-dirty)")
+	summary := fs.String(
+		"summary",
+		"",
+		"one-paragraph account of what the session did (the review's bar, the status entry's item)",
+	)
+	allowDirty := fs.Bool(
+		"allow-dirty",
+		false,
+		"minted review/status tolerate an uncommitted tree (mirror of the pool's --allow-dirty)",
+	)
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err

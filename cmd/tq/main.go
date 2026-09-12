@@ -1196,6 +1196,7 @@ func cmdStats(args []string) error {
 	// Parked = rate-limit parked (pending with a future not_before) — the
 	// "11 tasks parked until 19:40" one-glance count (13:29 report f11/f49).
 	parked := true
+
 	parkedCount, err := store.CountTasks(ctx, queue.Filter{Project: filter.Project, Parked: &parked})
 	if err != nil {
 		return err
@@ -1224,9 +1225,11 @@ func cmdStats(args []string) error {
 	}
 
 	printStats(byStatus, byProject, *project == "")
+
 	if parkedCount > 0 {
 		fmt.Printf("parked       %6d (rate-limit requeues waiting out their window)\n", parkedCount)
 	}
+
 	printBudgetSpend(spent, *dailyBudget, *project != "")
 	printConsumerLag(store)
 
@@ -1371,7 +1374,11 @@ func printStats(byStatus map[string]int, byProject map[string]map[string]int, sc
 
 func cmdShow(args []string) error {
 	fs := flag.NewFlagSet("show", flag.ExitOnError)
-	commits := fs.Bool("commits", false, "also scan the task's repo git log for Task-Queue-ID footer commits (0 = missing footer, >1 = ambiguous cross-reference)")
+	commits := fs.Bool(
+		"commits",
+		false,
+		"also scan the task's repo git log for Task-Queue-ID footer commits (0 = missing footer, >1 = ambiguous cross-reference)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -1404,6 +1411,7 @@ func cmdShow(args []string) error {
 	enc.SetIndent("", "  ")
 
 	var commitView any
+
 	if *commits {
 		cv, err := commitsForTask(t)
 		if err != nil {
@@ -1448,6 +1456,7 @@ func commitsForTask(t task.Task) (map[string]any, error) {
 
 	cmd := exec.Command("git", "-C", repo.Repo, "log",
 		"--pretty=format:%H%x09%an%x09%aI%x09%s", "--grep", "Task-Queue-ID: "+t.ID.String())
+
 	out, err := cmd.Output()
 	if err != nil {
 		return map[string]any{"note": "git log failed: " + err.Error()}, nil
@@ -1455,7 +1464,7 @@ func commitsForTask(t task.Task) (map[string]any, error) {
 
 	var hits []commitHit
 
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
 		if line == "" {
 			continue
 		}
@@ -1469,6 +1478,7 @@ func commitsForTask(t task.Task) (map[string]any, error) {
 	}
 
 	verdict := "ok: exactly one footer commit"
+
 	switch {
 	case len(hits) == 0:
 		verdict = "MISSING FOOTER: no commit references this task ID"

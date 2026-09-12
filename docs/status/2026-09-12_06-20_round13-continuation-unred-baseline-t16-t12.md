@@ -89,6 +89,6 @@
    sites that keep flapping scoped-vs-full lint).
 4. T13 review/status pipeline hardening (re-dispatch loop's TOP fix).
 5. T19 pool-health tooling. 6. T18 fullcore/postgres proof.
-7. T25 CI consistency batch. 8. T22 docs-health batch (six 2026-09-07
+6. T25 CI consistency batch. 8. T22 docs-health batch (six 2026-09-07
    reports still unannotated). 9. T24 templ-components evals.
-10. T21 ADR prep once O6's release call lands.
+7. T21 ADR prep once O6's release call lands.

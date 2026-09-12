@@ -3,6 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -85,7 +86,7 @@ func (e *HTTPExecutor) rateLimited(resp *http.Response) error {
 		delay = d
 	}
 
-	return RateLimited(fmt.Errorf("http executor: status 429"), delay)
+	return RateLimited(errors.New("http executor: status 429"), delay)
 }
 
 // parseRetryAfterHeader parses an HTTP Retry-After value: delay-seconds or

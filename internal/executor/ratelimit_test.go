@@ -74,8 +74,9 @@ func TestDetectRateLimit(t *testing.T) {
 			// future in every host timezone (UTC+14 … UTC-11), so the
 			// expectation is deterministic — this case guards the
 			// RFC3339 layout, not the cap (see the 24h case below).
-			name:     "rfc3339 renews-at timestamp",
-			output:   `status_code=429 quota exceeded; your quota renews at ` + now.Add(3*time.Hour).Format(time.RFC3339),
+			name: "rfc3339 renews-at timestamp",
+			output: `status_code=429 quota exceeded; your quota renews at ` + now.Add(3*time.Hour).
+				Format(time.RFC3339),
 			want:     true,
 			wantFrom: 3*time.Hour + rateLimitGrace,
 			wantTo:   3*time.Hour + rateLimitGrace + time.Minute,

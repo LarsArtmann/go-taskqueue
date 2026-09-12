@@ -602,7 +602,9 @@ func TestMintedGoVerifyIsEnvSelfContained(t *testing.T) {
 		t.Errorf("prelude must be idempotent, got %q", again)
 	}
 
-	if managed := withGoEnvPrelude("GOEXPERIMENT=nojsonv2 go test ./..."); managed != "GOEXPERIMENT=nojsonv2 go test ./..." {
+	if managed := withGoEnvPrelude(
+		"GOEXPERIMENT=nojsonv2 go test ./...",
+	); managed != "GOEXPERIMENT=nojsonv2 go test ./..." {
 		t.Errorf("command managing GOEXPERIMENT must not be rewritten, got %q", managed)
 	}
 
@@ -840,7 +842,10 @@ func TestAgentExecutorRateLimitClassifiedAndGated(t *testing.T) {
 	noClean := false // stub writes ran.log/work.log into the repo; the rate-limit pins are not the clean-tree preflight's business
 	e := &AgentExecutor{Bin: stub}
 
-	err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &noClean}))
+	err := e.Execute(
+		context.Background(),
+		agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &noClean}),
+	)
 	if err == nil {
 		t.Fatal("Execute must fail on a rate-limited run")
 	}
@@ -884,9 +889,14 @@ func TestAgentExecutorRateLimitClassifiedAndGated(t *testing.T) {
 	// re-arms the gate from fresh evidence).
 	e.rateLimitUntil.Store(time.Now().Add(-time.Second).UnixNano())
 
-	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &noClean})); err == nil {
+	if err := e.Execute(
+		context.Background(),
+		agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", RequireClean: &noClean}),
+	); err == nil {
 		t.Fatal("post-gate run must re-classify from fresh evidence")
-	} else if _, ok := errors.AsType[*RateLimitError](err); !ok {
+	} else if _, ok := errors.AsType[*RateLimitError](
+		err,
+	); !ok {
 		t.Fatalf("post-gate err = %v, want *RateLimitError from a fresh probe", err)
 	}
 }
@@ -932,6 +942,7 @@ exit 0
 	// First Execute: work turn succeeds, closeout hits the 429 →
 	// *RateLimitError (requeue without attempt burn).
 	err := e.Execute(context.Background(), tk)
+
 	rl, ok := errors.AsType[*RateLimitError](err)
 	if !ok {
 		t.Fatalf("closeout 429 classified as %v (%T), want *RateLimitError", err, err)
@@ -968,7 +979,7 @@ exit 0
 func nonEmptyLines(s string) []string {
 	var out []string
 
-	for _, l := range strings.Split(strings.TrimRight(s, "\n"), "\n") {
+	for l := range strings.SplitSeq(strings.TrimRight(s, "\n"), "\n") {
 		if l != "" {
 			out = append(out, l)
 		}

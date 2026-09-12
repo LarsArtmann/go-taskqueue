@@ -32,13 +32,13 @@
    continue-on-error). check-ci RE-ARMED. The push also carried the
    concurrent agent's session-facts commit (`1a8b42c`), pre-gated on
    journal + sqlite sub-modules.
-2. **T2 — env-self-contained verifies**: `export GOEXPERIMENT=jsonv2; `
+2. **T2 — env-self-contained verifies**: `export GOEXPERIMENT=jsonv2;`
    minted into every Go verify (executor `defaultVerify` — shared by agent
-   + status executors — and bootstrap's pin path); this repo's committed
-   `.tq-verify` carries it; `executor.GoEnvExperiment` is the single
-   constant; non-Go stacks untouched; idempotence + never-rewrite pinned
-   (`TestMintedGoVerifyIsEnvSelfContained`); contract documented in
-   AGENTS.md + bootstrap help text.
+   - status executors — and bootstrap's pin path); this repo's committed
+     `.tq-verify` carries it; `executor.GoEnvExperiment` is the single
+     constant; non-Go stacks untouched; idempotence + never-rewrite pinned
+     (`TestMintedGoVerifyIsEnvSelfContained`); contract documented in
+     AGENTS.md + bootstrap help text.
 3. **T3 — `tq doctor` ENV-LIE detector** (cmd/tq/doctor.go): ambient-env
    probe builds a synthetic encoding/json/v2 module; forced-experiment arm
    separates missing-env-var from toolchain version gate; FAIL carries the
@@ -219,6 +219,7 @@
 ## f) Up to 50 things to get done next (impact-ordered, plan + noticed)
 
 **Proof debts from THIS window (before anything else):**
+
 1. Baseline-gate triage-or-regen: lint-baseline --check is RED at HEAD
    (7 growth rows from the concurrent 03-46→04-45 lineages' code) —
    attribute each row (mine vs concurrent) and either fix findings or
@@ -243,17 +244,17 @@
 
 **Ruling-gated (unblocks the moment O-answers land):**
 9. O1: SystemNix `Environment=GOEXPERIMENT=jsonv2` + input flip + deploy
-   (runbook §6), then post-flip `tq doctor` on the host.
+(runbook §6), then post-flip `tq doctor` on the host.
 10. O2 answered → T9: collect the TQ_RESULT variant table (M41), schema
-    pins (M43), land the executor-gate diff (M44).
+pins (M43), land the executor-gate diff (M44).
 11. O3 answered → T10: placement diff (M46), retro-index convention (M47),
-    check-status-index expectations (M48).
+check-status-index expectations (M48).
 12. O4 answered → T14 residue: unknown `/project/{name}` behavior (M62),
-    budget scope marker (M63).
+budget scope marker (M63).
 13. O5/O6 answered → gosec gate-vs-advisory flip, CI-time budget, policies.
 14. T11: enumerate f26 artifacts citing each of the three IDs (M49);
-    repoint per ruling (M50); trailer-warning resolution path (M51);
-    close the phantom-footer ticket (M52).
+repoint per ruling (M50); trailer-warning resolution path (M51);
+close the phantom-footer ticket (M52).
 
 **Queue↔git trust (T12/T13):**
 15. Daemon commit path runs check-status-index or emits the amend rule (M54).
@@ -266,9 +267,9 @@
 **Release tail (T16):**
 21. RELEASE.md: multi-commits norm, clean-room backend step, --push notes (M82).
 22. Doc↔script drift smoke for RELEASE.md (M83) — NOTE: L147/L150 were
-    REFUTED as open by the 04-45 lineage (round-12 T14 shipped both); my
-    T17 routing was wrong, no fixture-release smoke gap remains open
-    unless the drift smoke proves otherwise.
+REFUTED as open by the 04-45 lineage (round-12 T14 shipped both); my
+T17 routing was wrong, no fixture-release smoke gap remains open
+unless the drift smoke proves otherwise.
 23. First-multi-module-release retro scaffold (M84).
 
 **Remainder (T18–T27 highlights):**
@@ -278,14 +279,14 @@
 29. T19: `tq enqueue --wait` (M94).
 30. T19: rate-limit observability slices (M92/M93).
 31. T20: session-close bridge — sweeper minting close-outs for interactive
-    sessions (journal fact types + AppendFact landed; the 03-28 close-out
-    lists the design doc's open triggers as the next slice).
+sessions (journal fact types + AppendFact landed; the 03-28 close-out
+lists the design doc's open triggers as the next slice).
 32. T21: consumer ghost-package ADR + interface-trio comparison (M98/M99) —
-    NOTE the AllStatuses half of T21 (M100) was DONE by the concurrent
-    04-13/04-31 lineage (`task.AllStatuses()` function + twin deletions).
+NOTE the AllStatuses half of T21 (M100) was DONE by the concurrent
+04-13/04-31 lineage (`task.AllStatuses()` function + twin deletions).
 33. T22: annotate + archive the six 2026-09-07 reports (M101/M102).
 34. T23: delete dead `factLines` (still flagged by gopls RIGHT NOW at
-    components.go:133) + DOMAIN_LANGUAGE terms (L236).
+components.go:133) + DOMAIN_LANGUAGE terms (L236).
 35. T23: rename-hygiene scanner script (M109).
 36. T23: `tq enqueue` TQ_DB guardrail (M110).
 37. T23: auth strikes-map prune (M111).
@@ -295,25 +296,25 @@
 41. T25: orphaned-guard audit (M121); check-webui-css into ci.yml (M122).
 42. T25: ci.yml concurrency group + GOMODCACHE pin (M125).
 43. T26: policy drafts batch (dependabot, required-checks, CI topology,
-    history-rewrite, CHANGELOG, TODO-accuracy) (M126–M131).
+history-rewrite, CHANGELOG, TODO-accuracy) (M126–M131).
 44. T27: secrets-in-logs redact pass (M133); httpapi nosniff parity (M134).
 45. T27: --allow-writes flip prep + post-deploy retro setup (M135/M136).
 
 **Noticed in passing (not this window's work, but live):**
 46. Root fs back to 58% (the 99% landmine from the 02-12 report §d is
-    resolved) — worth a one-line DONE note on that report's pointer.
+resolved) — worth a one-line DONE note on that report's pointer.
 47. Duplicate-claim class: the 04-13/04-31 pair re-delivered a closed
-    task 18 min apart — a policy question the 04-31 §g already asks the
-    owner; do not re-litigate here, just don't double-mint T21 rows
-    against their landing.
+task 18 min apart — a policy question the 04-31 §g already asks the
+owner; do not re-litigate here, just don't double-mint T21 rows
+against their landing.
 48. `go vet`'s templ QF1003 hints (fragments.templ:947/2835 tagged switch)
-    — advisory, but trivially fixable next time fragments are touched.
+— advisory, but trivially fixable next time fragments are touched.
 49. Anchor-rot: this report cites components.go:133 and agent.go line
-    numbers; the 02-17 lineage measured ±1 drift within 3h — anchor by
-    symbol name where possible.
+numbers; the 02-17 lineage measured ±1 drift within 3h — anchor by
+symbol name where possible.
 50. Re-run `git log origin/master..HEAD` before ANY next push — 26+
-    unpushed commits past the last runner-green run (04-45 count); the
-    push must carry a stat-diffed, intended file set (f9 rule).
+unpushed commits past the last runner-green run (04-45 count); the
+push must carry a stat-diffed, intended file set (f9 rule).
 
 ## g) Questions only the owner can answer
 
@@ -331,5 +332,5 @@
    O2/O3/O4 ANSWER lines so T9/T10/T14-residue land complete in one pass
    each?
 
-*Point-in-time snapshot, 2026-09-12 04:59 CEST. TODO_LIST.md remains the
-living source; the round-13 plan + this report are the trail.*
+_Point-in-time snapshot, 2026-09-12 04:59 CEST. TODO_LIST.md remains the
+living source; the round-13 plan + this report are the trail._

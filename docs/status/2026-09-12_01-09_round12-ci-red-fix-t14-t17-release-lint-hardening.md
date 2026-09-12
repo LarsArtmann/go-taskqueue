@@ -241,9 +241,9 @@ govulncheck hard gate, dependabot draft, M124 retro).
 ## f) Next items (≤50, rough priority order)
 
 1. AGENTS.md: golangci config-resolution rule (parent-walk proof, M60/61)
-   + the four triage verdicts (paralleltest/testpackage disabled, goconst
-   ignore-tests, mnd advisory) + baseline-file workflow
-   (regenerate-via-script, never bulk-fix).
+   - the four triage verdicts (paralleltest/testpackage disabled, goconst
+     ignore-tests, mnd advisory) + baseline-file workflow
+     (regenerate-via-script, never bulk-fix).
 2. Wire `check-lint-baseline.sh` into ci-local (lint() emits `== module`
    markers; pipe lint_out through the checker; hard gate) + fix the
    install-branch asymmetry in the same edit.
@@ -335,5 +335,5 @@ govulncheck hard gate, dependabot draft, M124 retro).
 
 ---
 
-*Window closed by status-report interrupt; next session starts at §f item 1
-(AGENTS.md lint documentation) then item 2 (baseline wiring).*
+_Window closed by status-report interrupt; next session starts at §f item 1
+(AGENTS.md lint documentation) then item 2 (baseline wiring)._

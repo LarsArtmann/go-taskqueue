@@ -66,7 +66,6 @@ linters:
     - intrange
     - iotamixing
     - ireturn
-    - lll
     - loggercheck
     - maintidx
     - makezero
@@ -85,6 +84,7 @@ linters:
     - nolintlint
     - nonamedreturns
     - nosprintfhostport
+    - paralleltest
     - perfsprint
     - prealloc
     - predeclared
@@ -101,6 +101,7 @@ linters:
     - tagliatelle
     - testableexamples
     - testifylint
+    - testpackage
     - thelper
     - tparallel
     - unconvert
@@ -118,29 +119,24 @@ linters:
   settings:
     cyclop:
       max-complexity: 12
-    errcheck:
-      exclude-functions:
-        - (*database/sql.Rows).Close
-        - (io.ReadCloser).Close
-        - (*os.File).Sync
-        - (net/http.ResponseWriter).Write
-        - (*github.com/larsartmann/go-taskqueue/internal/queue.SQLiteStore).Close
     funlen:
       lines: 200
       statements: 100
     ginkgolinter:
       forbid-focus-container: true
       forbid-spec-pollution: true
+    gocognit:
+      min-complexity: 25
+    goconst:
+      ignore-tests: true
     gocritic:
       disabled-checks:
         - ifElseChain
+    gocyclo:
+      min-complexity: 20
     gomoddirectives:
       replace-local: true
     gosec:
-      # The 2026-09-10 triage (AGENTS.md "gosec advisory baseline") encoded
-      # as excludes, kept in parity with the standalone gosec CI job's
-      # -exclude list (ci.yml). A new finding in an excluded class needs a
-      # fresh triage note, not a silent pass.
       excludes:
         - G104
         - G115
@@ -163,11 +159,6 @@ linters:
         - anon
         - stdlib
         - generic
-    goconst:
-      # Test tables repeat flag/env string literals on purpose (one item per
-      # case is the table-driven readability contract); the 14 prod-code
-      # findings stay advisory.
-      ignore-tests: true
     makezero:
       always: true
     mnd:
@@ -176,16 +167,25 @@ linters:
         - "1"
         - "2"
         - "100"
+    nestif:
+      min-complexity: 6
     revive:
       rules:
         - disabled: true
           name: exported
         - disabled: true
           name: package-comments
-    staticcheck:
-      checks:
-        - all
-        - -QF1008
+    tagalign:
+      align: false
+      order:
+        - binding
+        - json
+        - yaml
+        - xml
+        - toml
+        - validate
+        - mapstructure
+      sort: true
     testifylint:
       disable:
         - go-require
@@ -211,6 +211,10 @@ linters:
         - v
       ignore-type-assert-ok: true
     wrapcheck:
+      ignore-interface-regexps:
+        - queue\.Store
+      ignore-package-globs:
+        - github.com/larsartmann/go-taskqueue/internal/*
       ignore-sigs:
         - .Errorf(
         - errors.New(
@@ -230,10 +234,6 @@ linters:
         - func (net/http.ResponseWriter).Write(
         - func (context.Context).Err(
         - func (*net/http.Server).ListenAndServe(
-      ignore-package-globs:
-        - github.com/larsartmann/go-taskqueue/internal/*
-      ignore-interface-regexps:
-        - queue\.Store
   exclusions:
     generated: lax
     rules:
@@ -242,6 +242,18 @@ linters:
           - errcheck
           - wrapcheck
           - varnamelen
+          - exhaustruct
+          - testpackage
+          - gochecknoglobals
+          - funlen
+          - cyclop
+          - goconst
+          - forcetypeassert
+          - gosec
+          - ireturn
+          - recvcheck
+          - contextcheck
+          - exhaustive
       - path: _test\.go
         text: unused
         linters:

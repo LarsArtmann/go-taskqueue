@@ -80,11 +80,11 @@ checkout — the clobbered-edit incidents live in ROADMAP's
      branch once the review verdict approves;
    - (b) push the branch and open a real PR (pr-mode PoC mechanics);
    - (c) leave `tq/<task-id>` branches for the owner to merge by hand.
-   Today's dogfood shape is "commit straight to master, review after" —
-   policy (a) is the least disruptive (review gates the merge instead of
-   trailing it), (b) is the most conservative, (c) is the zero-code
-   fallback that still wins isolation. This choice is Open Question 1 and
-   blocks implementation, not the rest of the design.
+     Today's dogfood shape is "commit straight to master, review after" —
+     policy (a) is the least disruptive (review gates the merge instead of
+     trailing it), (b) is the most conservative, (c) is the zero-code
+     fallback that still wins isolation. This choice is Open Question 1 and
+     blocks implementation, not the rest of the design.
 6. **Reap.** `git worktree remove` + branch delete after merge, cancel,
    or dead-letter. A crash between create and reap leaves an orphan
    worktree + branch, so the pool tick runs a reaper sweep:
@@ -155,13 +155,13 @@ forensics actually demand it — same bar that produced
 
 ## Tradeoffs
 
-| Gain | Cost |
-| ---- | ---- |
-| Intra-repo parallelism N× (store exclusivity relaxable per repo) | Merge-conflict surface replaces file-collision luck: two agents editing the same file now collide at MERGE time, visibly, instead of at write time, silently |
-| Human interactive sessions no longer park the pool | One checkout per in-flight task (disk) + worktree admin (admin metadata, reaper, prune) |
-| Agent work is daemon-invisible → attribution gap shrinks | Two new failure modes to reap and diagnose: orphan worktrees, base drift before merge |
-| Verify moves to a disposable tree (rerun-friendly, throwaway on failure) | Branch-tip verify proves the branch, not the integration — the merged state may differ from what passed |
-| Review can gate the merge (stronger guarantee than today's trailing review) | Review payload contract grows branch/range; worktree lifetime couples to review completion |
+| Gain                                                                        | Cost                                                                                                                                                         |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Intra-repo parallelism N× (store exclusivity relaxable per repo)            | Merge-conflict surface replaces file-collision luck: two agents editing the same file now collide at MERGE time, visibly, instead of at write time, silently |
+| Human interactive sessions no longer park the pool                          | One checkout per in-flight task (disk) + worktree admin (admin metadata, reaper, prune)                                                                      |
+| Agent work is daemon-invisible → attribution gap shrinks                    | Two new failure modes to reap and diagnose: orphan worktrees, base drift before merge                                                                        |
+| Verify moves to a disposable tree (rerun-friendly, throwaway on failure)    | Branch-tip verify proves the branch, not the integration — the merged state may differ from what passed                                                      |
+| Review can gate the merge (stronger guarantee than today's trailing review) | Review payload contract grows branch/range; worktree lifetime couples to review completion                                                                   |
 
 ## Rollout (smallest correct change)
 

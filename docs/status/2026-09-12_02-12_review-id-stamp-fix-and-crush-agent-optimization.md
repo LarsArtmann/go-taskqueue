@@ -15,7 +15,7 @@ is fed the work run's original prompt as "the task the agent was given"; that
 prompt carries the literal `{{TASK_ID}}` placeholder. `runAgent`'s blanket
 substitution (`internal/executor/agent.go:415`) resolved it against the
 REVIEW task's id, rewriting the quoted contract to demand `000001a092aa…` in
-the work commit. The reviewer then *correctly* flagged that commit `9502c138`
+the work commit. The reviewer then _correctly_ flagged that commit `9502c138`
 carries `000001a0927c…` (the right id, verbatim what the work agent was told)
 as "a different run's footer" → `request_changes` on a sound change. Diligent
 reviewer, poisoned prompt.
@@ -163,6 +163,7 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 ## f) NEXT (ranked, session-derived; ~30 honest items over padded 50)
 
 **Owner-blocking (chain: release → deploy → effect):**
+
 1. Free disk below ~90% (7.9G free on 723G `/`).
 2. After disk: `tq dlq` review + rescue the SQLITE_FULL dead tasks.
 3. Cut the release carrying the review-prompt fix + bootstrap upgrade
@@ -175,48 +176,48 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 
 **Crush surface:**
 7. Bump crush to v0.93.1 in LarsArtmann/crush-config (heap-leak fix #3683 —
-   GLM xhigh reasoning runs are the leak's exact profile).
+GLM xhigh reasoning runs are the leak's exact profile).
 8. Fix statix properly in crush-config (nixpkgs statix WITH LSP mode, or
-   global `lsp add statix --disabled true`).
+global `lsp add statix --disabled true`).
 9. Sweep other nix-filetype repos for the statix failure class.
 10. Exercise `multiedit`/`download`/`todos` in a real headless run.
 11. Determine whether `lsp_*`/`mcp_*` tools are permission-gated headless;
-    if yes, extend the allow list.
+if yes, extend the allow list.
 12. Re-audit v0.93.x options surface for headless-relevant defaults
-    (configurable timeouts landed; hyper routing).
+(configurable timeouts landed; hyper routing).
 13. Consider a pinned small-model for agents (cheap summarization turns).
 
 **Queue/review harness:**
 14. Decide the Hermes verdict's fate (see question g3).
 15. Apply legit finding-2: SystemNix TODO wording "VM test green
-    (store-cached for HEAD)".
+(store-cached for HEAD)".
 16. Add a grep-guard test: no unresolved `{{` placeholder may leave the
-    executor in any prompt (generalizes this session's fix).
+executor in any prompt (generalizes this session's fix).
 17. `tq doctor` LSP-health check over harvested repos' crush logs.
 18. Consider `agent` subagent tool for pool agents WITH budget guardrails
-    (deliberately excluded this session — unbounded token multiplication).
+(deliberately excluded this session — unbounded token multiplication).
 19. SECURITY.md note: the managed block now grants agents outbound web read
-    (fetch/download) — repo owners should know when opting in.
+(fetch/download) — repo owners should know when opting in.
 20. Per-repo tool-grant override mechanism (opt-down from web, opt-up later).
 
 **Housekeeping:**
 21. Mint TODO_LIST items for items 1–9 with `— BLOCKED:` markers (owner
-    levers).
+levers).
 22. Run `./scripts/ci-local.sh` before the release push.
 23. Remove the duplicate `permissions allow` line in this repo's `.crushrc`
-    (user content — owner or explicitly delegated).
+(user content — owner or explicitly delegated).
 24. Clean `/tmp/crush-permtest`.
 25. Consider a per-pool crush `--data-dir` on a roomier fs to decouple
-    session DBs from the root disk (after cleanup; also keeps the close-out
-    resume registry's session data tidy).
+session DBs from the root disk (after cleanup; also keeps the close-out
+resume registry's session data tidy).
 26. Monitor next agent run's output for PostHog-absence after metrics-off
-    lands (confirms the tax is gone in production).
+lands (confirms the tax is gone in production).
 27. SystemNix `.crush/init` is an EMPTY stale file — candidate for deletion
-    (their repo).
+(their repo).
 28. The unused-session question: SystemNix review session `6204725`
-    ("Senior Code Review of Hermes Cron Scheduler Fix") sits resumable;
-    harmless, but worth knowing `crush -y` lands you in the most recent
-    session — a resume-into-agent-context surprise for the operator.
+("Senior Code Review of Hermes Cron Scheduler Fix") sits resumable;
+harmless, but worth knowing `crush -y` lands you in the most recent
+session — a resume-into-agent-context surprise for the operator.
 
 ## g) QUESTIONS (cannot figure these out myself)
 
@@ -234,7 +235,7 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 
 ---
 
-*Verified in-session: sub-module gates (executor, review), root build/vet/
+_Verified in-session: sub-module gates (executor, review), root build/vet/
 full `-race` (12 pkgs, 0 FAIL), cmd/tq tests, bootstrap-install smoke,
 headless empirical runs (fetch, statix-disable). NOT run: ci-local.sh full
-replicant, nix build.*
+replicant, nix build._

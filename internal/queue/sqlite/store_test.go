@@ -880,7 +880,17 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 		t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID, "w1", "stale", time.Minute, jsontext.Value(`"x"`)); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Fail(
+		ctx,
+		tk.ID,
+		"w1",
+		"stale",
+		time.Minute,
+		jsontext.Value(`"x"`),
+	); !errors.Is(
+		err,
+		task.ErrLeaseNotHeld,
+	) {
 		t.Errorf("stale Fail err = %v, want ErrLeaseNotHeld", err)
 	}
 

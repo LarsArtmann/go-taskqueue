@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"slices"
 	"strings"
 )
 
@@ -55,7 +56,7 @@ func (s GitLogScanner) CommitsByTrailer(ctx context.Context, repo, key, value st
 	// (one per line) separated by \x1f. The trailer machinery matches the
 	// footer exactly (value-only, key-scoped), so a message merely quoting
 	// someone else's footer is never attributed.
-	cmd := exec.CommandContext( //nolint:gosec // G204: repo is the operator's own path, the format literal is fixed; running git over user-named repos is the bridge's core feature (AGENTS.md gosec triage)
+	cmd := exec.CommandContext(
 		ctx, bin, "-C", repo, "log",
 		"--format=%H%x1f%s%x1f%(trailers:key="+key+",valueonly)",
 	)
@@ -110,12 +111,8 @@ func parseTrailerCommits(out, sessionID string) []Commit {
 	var commits []Commit
 
 	for _, r := range records {
-		for _, trailer := range r.trailers {
-			if trailer == sessionID {
-				commits = append(commits, r.commit)
-
-				break
-			}
+		if slices.Contains(r.trailers, sessionID) {
+			commits = append(commits, r.commit)
 		}
 	}
 

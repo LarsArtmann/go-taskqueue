@@ -175,7 +175,7 @@ closed with citations.
 
 ---
 
-*Commit map*: this report and its doc updates landed via auto-commit
+_Commit map_: this report and its doc updates landed via auto-commit
 daemon commits `2f379bc` (this report), `1c615cf` (AGENTS/CHANGELOG/
 FEATURES/README/TODO_LIST/status-index — stat-diffed against the
 intended set, docs only), and `e8dc1cd` (report count fix + E2E-item

@@ -7,15 +7,15 @@
 
 ## Gates
 
-| Gate | Result | Notes |
-| --- | --- | --- |
-| Root build+vet+`go test -race` (GOEXPERIMENT=jsonv2) | GREEN | cmd/tq 8s, e2e 18s, webui 11s |
-| 7 sub-modules, GOWORK=off build+vet+test -race | GREEN | executor, journal, queue(+sqlite/postgres), task, worker |
-| `./scripts/ci-local.sh` | GREEN | after aligning task/journal/queue go.mods to `go 1.26.7` (the check caught the drift the module split left); `go mod verify` flaked once on `/mnt/buildcache` (missing file), green on retry — environmental |
-| `nix build` | GREEN | no vendorHash drift after the go.mod bumps |
-| `nix flake check` | GREEN | x86_64-linux |
-| Smoke webui / status-loop / dogfood-once / bootstrap-install / release-gates | ALL GREEN | |
-| Smoke ratelimit-e2e (NEW, `scripts/smoke/ratelimit-e2e.sh`) | GREEN | stub 429 agent → parked pending, attempts 0, `retry_in_ms>0` fact, real binary, scratch DB |
+| Gate                                                                         | Result    | Notes                                                                                                                                                                                                        |
+| ---------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Root build+vet+`go test -race` (GOEXPERIMENT=jsonv2)                         | GREEN     | cmd/tq 8s, e2e 18s, webui 11s                                                                                                                                                                                |
+| 7 sub-modules, GOWORK=off build+vet+test -race                               | GREEN     | executor, journal, queue(+sqlite/postgres), task, worker                                                                                                                                                     |
+| `./scripts/ci-local.sh`                                                      | GREEN     | after aligning task/journal/queue go.mods to `go 1.26.7` (the check caught the drift the module split left); `go mod verify` flaked once on `/mnt/buildcache` (missing file), green on retry — environmental |
+| `nix build`                                                                  | GREEN     | no vendorHash drift after the go.mod bumps                                                                                                                                                                   |
+| `nix flake check`                                                            | GREEN     | x86_64-linux                                                                                                                                                                                                 |
+| Smoke webui / status-loop / dogfood-once / bootstrap-install / release-gates | ALL GREEN |                                                                                                                                                                                                              |
+| Smoke ratelimit-e2e (NEW, `scripts/smoke/ratelimit-e2e.sh`)                  | GREEN     | stub 429 agent → parked pending, attempts 0, `retry_in_ms>0` fact, real binary, scratch DB                                                                                                                   |
 
 ## Rate-limit armor added this window (T3)
 

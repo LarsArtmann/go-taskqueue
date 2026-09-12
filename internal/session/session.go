@@ -92,7 +92,11 @@ func Begin(ctx context.Context, s Store, id, repo, project string) error {
 
 	for _, f := range facts {
 		if f.Type == journal.SessionOpened {
-			return fmt.Errorf("session: %s is already open (opened %s) — close it before beginning again", id, f.Time.Format("2006-01-02 15:04:05"))
+			return fmt.Errorf(
+				"session: %s is already open (opened %s) — close it before beginning again",
+				id,
+				f.Time.Format("2006-01-02 15:04:05"),
+			)
 		}
 	}
 
@@ -173,6 +177,7 @@ func Close(ctx context.Context, s Store, scanner GitScanner, in CloseInput) (Clo
 	}
 
 	var res CloseResult
+
 	res.Commits = commits
 
 	if len(commits) > 0 {
@@ -319,9 +324,11 @@ func reviewExtra(in CloseInput, commits []Commit) string {
 	b := new(strings.Builder)
 	b.WriteString("This review covers an INTERACTIVE session, not a single queued task. Commits attributed via the " +
 		Trailer + ": " + in.ID + " footer, oldest first:\n\n")
+
 	for _, c := range commits {
 		b.WriteString("- " + c.SHA + " " + c.Subject + "\n")
 	}
+
 	b.WriteString("\nJudge the cumulative range " + first.SHA + "^.." + last.SHA +
 		"; if " + first.SHA + "^ does not exist (root commit), review the listed commits individually.\n")
 

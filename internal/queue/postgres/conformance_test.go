@@ -250,7 +250,17 @@ func TestPostgresConformance(t *testing.T) {
 			t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
 		}
 
-		if err := s.Fail(ctx, pk.ID, "park-w", "stale", time.Minute, failureDetail(jsontext.Value(`"x"`), "")); !errors.Is(err, task.ErrLeaseNotHeld) {
+		if err := s.Fail(
+			ctx,
+			pk.ID,
+			"park-w",
+			"stale",
+			time.Minute,
+			failureDetail(jsontext.Value(`"x"`), ""),
+		); !errors.Is(
+			err,
+			task.ErrLeaseNotHeld,
+		) {
 			t.Errorf("stale Fail err = %v, want ErrLeaseNotHeld", err)
 		}
 

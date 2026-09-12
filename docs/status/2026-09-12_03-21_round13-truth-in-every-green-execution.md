@@ -23,7 +23,7 @@
    session.opened/closed facts + sqlite AppendFact (gated green first:
    journal + sqlite sub-modules).
 2. **T2 env-self-contained verifies**: minted Go verify commands now carry
-   `export GOEXPERIMENT=jsonv2; ` — executor's `defaultVerify` (shared by
+   `export GOEXPERIMENT=jsonv2;` — executor's `defaultVerify` (shared by
    agent + status executors) and bootstrap's pin path inherit; THIS repo's
    committed `.tq-verify` carries the prelude too. Non-Go stacks untouched;
    a command managing GOEXPERIMENT itself is never rewritten.
@@ -138,19 +138,19 @@
 
 ## e) Gate evidence (all at HEAD this window)
 
-| Gate | Result |
-| --- | --- |
-| Root: `GOEXPERIMENT=jsonv2` build + vet + `go test -race` | GREEN (exit 0, closing step; incl. the concurrent agent's internal/session suite) |
-| internal/executor, queue/sqlite, queue/postgres (GOWORK=off, race) | GREEN |
-| internal/webui full suite -race (post-regen) | GREEN |
-| internal/journal, queue/sqlite (T1 push pre-gate) | GREEN |
-| scripts/smoke/webui.sh (with new payload asserts) | GREEN |
-| lint-baseline --check | exit 0 (887/887) |
-| gosec v2.29.0 with triage excludes | 0 findings, every module |
-| actionlint on ci.yml | GREEN |
-| check-version-agreement | ok (0.2.0 set) |
-| check-todo-list | ok |
-| Master CI (runs 34661441493, 34661978016) | SUCCESS (gosec job advisory per design) |
+| Gate                                                               | Result                                                                            |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Root: `GOEXPERIMENT=jsonv2` build + vet + `go test -race`          | GREEN (exit 0, closing step; incl. the concurrent agent's internal/session suite) |
+| internal/executor, queue/sqlite, queue/postgres (GOWORK=off, race) | GREEN                                                                             |
+| internal/webui full suite -race (post-regen)                       | GREEN                                                                             |
+| internal/journal, queue/sqlite (T1 push pre-gate)                  | GREEN                                                                             |
+| scripts/smoke/webui.sh (with new payload asserts)                  | GREEN                                                                             |
+| lint-baseline --check                                              | exit 0 (887/887)                                                                  |
+| gosec v2.29.0 with triage excludes                                 | 0 findings, every module                                                          |
+| actionlint on ci.yml                                               | GREEN                                                                             |
+| check-version-agreement                                            | ok (0.2.0 set)                                                                    |
+| check-todo-list                                                    | ok                                                                                |
+| Master CI (runs 34661441493, 34661978016)                          | SUCCESS (gosec job advisory per design)                                           |
 
 ## f) Pointer for the next window
 

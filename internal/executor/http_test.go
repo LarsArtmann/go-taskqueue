@@ -94,7 +94,11 @@ func TestHTTPExecutor429ClassifiedAsRateLimit(t *testing.T) {
 
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusTooManyRequests)
-			_, _ = w.Write([]byte(`{"error":{"message":"Usage limit reached for 5 hour. Your limit will reset at 2099-01-01 00:00:00"}}`))
+			_, _ = w.Write(
+				[]byte(
+					`{"error":{"message":"Usage limit reached for 5 hour. Your limit will reset at 2099-01-01 00:00:00"}}`,
+				),
+			)
 		}))
 		defer srv.Close()
 

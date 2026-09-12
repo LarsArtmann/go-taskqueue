@@ -195,6 +195,7 @@ the seam is already in place: ids are journal Seqs today, so
 Subscribe for the dashboard's sake.
 
 ## 7. Implementation checklist (annotated 2026-09-11 docs-health: two boxes
+
 ## done silently; re-verified against the tree)
 
 - [x] `app.js`: forward `project/status/q/page` from the page URL to the

@@ -510,7 +510,12 @@ type closeoutPending struct {
 // self-review) in the session the work turn opened, appending its output to
 // buf. Rate-limited close-outs register closeoutPending BEFORE returning
 // the *RateLimitError so the re-claim resumes here.
-func (e *AgentExecutor) runCloseoutTurn(ctx context.Context, repoDir, session string, id task.ID, buf *bytes.Buffer) error {
+func (e *AgentExecutor) runCloseoutTurn(
+	ctx context.Context,
+	repoDir, session string,
+	id task.ID,
+	buf *bytes.Buffer,
+) error {
 	closeout := strings.ReplaceAll(e.CloseoutPrompt, "{{TASK_ID}}", id.String())
 	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir, "--session", session, "--", closeout}
 

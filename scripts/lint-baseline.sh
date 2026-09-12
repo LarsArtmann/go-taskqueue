@@ -55,8 +55,8 @@ if [[ "$mode" == "--check" ]]; then
 		"$baseline" "$out" >>"$violations"
 
 	# New finding classes: (module, linter) pairs the baseline does not know.
-	comm -13 <(cut -f1,2 "$baseline" | sort -s) <(cut -f1,2 "$out" | sort -s) \
-		| awk -F'\t' -v v="$violations" '{ print $1 "\t" $2 "\tNEW\t(new class)" > v }'
+	comm -13 <(cut -f1,2 "$baseline" | sort -s) <(cut -f1,2 "$out" | sort -s) |
+		awk -F'\t' -v v="$violations" '{ print $1 "\t" $2 "\tNEW\t(new class)" > v }'
 
 	if [[ -s "$violations" ]]; then
 		echo "lint-baseline: GROWTH beyond the committed baseline (gate failure):" >&2
