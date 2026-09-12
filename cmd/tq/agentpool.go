@@ -30,6 +30,7 @@ type agentPoolOptions struct {
 	owner          string
 	yolo           bool
 	maxPerTick     int
+	priorityFrom   string
 	allowDirty     bool
 	model          string
 	once           bool
@@ -89,6 +90,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"max-per-tick",
 		harvest.DefaultMaxPerTick,
 		"max new agent tasks per harvest tick (cost throttle)",
+	)
+	priorityFrom := fs.String(
+		"priority-from",
+		"",
+		`resolve harvested priorities from each repo's .config/metadata.yaml importance (0-100, default 50) plus keyword bumps, clamped to the backlog band; "importance" enables, empty keeps flat priority 0 (markers and hot promotion apply either way; ADR-0015)`,
 	)
 	allowDirty := fs.Bool("allow-dirty", false, "let agents run in repos with uncommitted changes (default: refuse)")
 	model := fs.String(
@@ -262,6 +268,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		owner:          *owner,
 		yolo:           *yolo,
 		maxPerTick:     *maxPerTick,
+		priorityFrom:   *priorityFrom,
 		allowDirty:     *allowDirty,
 		model:          *model,
 		once:           *once,
@@ -294,12 +301,17 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 // harvestConfigFromOptions assembles the harvester configuration, parsing
 // the name=duration ladder flags (--repo-timeout, --repo-interval).
 func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
+	if o.priorityFrom != "" && o.priorityFrom != "importance" {
+		return harvest.Config{}, fmt.Errorf(`--priority-from: want "importance" or empty, got %q`, o.priorityFrom)
+	}
+
 	cfg := harvest.Config{
 		ProjectsDir:   o.projectsDir,
 		DiscoveryAddr: o.discoveryAddr,
 		MaxPerTick:    o.maxPerTick,
 		Model:         o.model,
 		DLQBackoff:    o.dlqBackoff,
+		UseImportance: o.priorityFrom == "importance",
 	}
 
 	if o.repoTimeout != "" {

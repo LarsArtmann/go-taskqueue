@@ -67,7 +67,8 @@ var markerPattern = regexp.MustCompile(`\s+—\s*P([1-4])(?::.*)?$`)
 
 // SplitMarker splits a trailing priority marker off an item line,
 // returning the marker level (1–4) and the marker-free text. ok is false
-// when the text carries no marker.
+// when the text carries no marker — including a marker-only line (there is
+// no item left to prioritize).
 func SplitMarker(text string) (int, string, bool) {
 	m := markerPattern.FindStringSubmatchIndex(text)
 	if m == nil {
@@ -79,7 +80,12 @@ func SplitMarker(text string) (int, string, bool) {
 		return 0, text, false
 	}
 
-	return level, strings.TrimRight(text[:m[0]], " \t"), true
+	stripped := strings.TrimRight(text[:m[0]], " \t")
+	if strings.TrimSpace(stripped) == "" {
+		return 0, text, false
+	}
+
+	return level, stripped, true
 }
 
 // The keyword-bump ladder, strongest first (ADR-0015 §3). One bump wins —
