@@ -250,7 +250,7 @@ not here.
 
 ## Done-prompt window harvest (2026-09-12; sources: docs/status/2026-09-12_04-45_done-prompt-five-task-window.md + the 03-28/03-46 close-outs + round-13 residue; verified against code this pass; 8 stale rows closed above)
 
-- [ ] Triage the RED lint-baseline gate at HEAD: 7 growth rows (executor mnd 20→24 + noctx 1→5; queue/sqlite varnamelen 32→33; worker mnd 7→8; root lll 37→38 + noctx 22→29 + varnamelen 9→10) — fix the noctx class for real, deliberate regen for mnd/varnamelen/lll with a policy note; this hard ci-local gate blocks the next full gate/push until then (verified live 2026-09-12 04:40; 04-45 report §d1)
+- [ ] Triage the RED lint-baseline gate at HEAD: 7 growth rows (executor mnd 20→24 + noctx 1→5; queue/sqlite varnamelen 32→33; worker mnd 7→8; root lll 37→38 + noctx 22→29 + varnamelen 9→10) — fix the noctx class for real, deliberate regen for mnd/varnamelen/lll with a policy note; this hard ci-local gate blocks the next full gate/push until then (verified live 2026-09-12 04:40; 04-45 report §d1) — UPDATE 2026-09-12 05:27: re-verified live, SIX rows resolved since (treefmt 2f70deb + owning lineages), ONE left: queue/sqlite varnamelen 32→33 (05-27 report header; function-level attribution still owed)
 - [ ] `scripts/smoke/session-close.sh`: scratch-TQ_DB smoke — begin → footer commit → close → assert one review + one status + replay-safe second close; wire into ci-local (03-28 report §f7)
 - [ ] Session trigger #1 — PreToolUse session registry: hook appends {id, cwd, last_seen} per tool call; a sweeper mints the close-out when no crush process owns the ID (03-28 §f1; design doc OQ3)
 - [ ] Session trigger #2 — `tq crush` wrapper that calls `session close` on process exit, the no-hook fallback (03-28 §f2)
