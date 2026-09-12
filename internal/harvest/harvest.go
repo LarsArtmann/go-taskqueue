@@ -326,45 +326,25 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 	)
 
 	for _, t := range tasks {
-		if t.Status == task.Pending || t.Status == task.Running {
-			state.busy = true
-		}
+		state.observe(t)
 
-		if t.Status == task.Running {
-			state.anyRunning = true
-		}
-
-		if t.Status == task.Pending {
-			state.pendingCount++
-		}
-
-		if t.Status == task.Dead {
+		switch t.Status {
+		case task.Dead:
 			hasDead = true
 
 			if t.UpdatedAt.After(lastDead) {
 				lastDead = t.UpdatedAt
 			}
-		}
-
-		if t.Status == task.Completed {
+		case task.Completed:
 			hasCompleted = true
-		}
-
-		if t.CreatedAt.After(state.lastCreated) {
-			state.lastCreated = t.CreatedAt
-		}
-
-		if key := payloadDedup(t); key != "" {
-			if _, dup := state.known[key]; !dup {
-				state.known[key] = t.Status
-			}
 		}
 	}
 
 	// Poisoned repo: everything item touched recently is dead. New items
 	// would die the same way — give the human the backoff window to fix
 	// or rescue instead of enqueueing fresh failures every tick.
-	state.poisoned = hasDead && !hasCompleted && h.cfg.DLQBackoff > 0 && time.Since(lastDead) < h.cfg.DLQBackoff
+	poisoned := hasDead && !hasCompleted && h.cfg.DLQBackoff > 0 && time.Since(lastDead) < h.cfg.DLQBackoff
+	state.poisoned = poisoned
 
 	// Importance mode: read the repo's metadata once per run. A malformed
 	// file skips the whole repo — an importance the owner DID set must
@@ -399,14 +379,7 @@ func (h *Harvester) itemDenial(state repoState, item Item, enqueuedThisRepo bool
 
 	switch {
 	case item.Key != "" && state.known[item.Key] != "":
-		switch task.Status(state.known[item.Key]) {
-		case task.Dead:
-			return "in DLQ (tq dlq --rescue to retry)"
-		case task.Cancelled:
-			return "cancelled (edit the item text to re-arm item)"
-		}
-
-		return "tracked: " + string(state.known[item.Key])
+		return trackedItemDenial(state.known[item.Key])
 	case h.cfg.UseImportance && state.importance == 0:
 		return "paused: importance 0 (repo paused from auto-admission; raise importance to resume)"
 	case state.poisoned:
@@ -427,6 +400,44 @@ func (h *Harvester) itemDenial(state repoState, item Item, enqueuedThisRepo bool
 	}
 
 	return ""
+}
+
+// observe folds one task into the repo state: occupancy counters (busy,
+// running, pending), the newest creation time, and the dedup-key index.
+// Dead-letter recency and completions stay with the caller — they feed the
+// poison check.
+func (state *repoState) observe(t task.Task) {
+	switch t.Status {
+	case task.Pending:
+		state.busy = true
+		state.pendingCount++
+	case task.Running:
+		state.busy = true
+		state.anyRunning = true
+	}
+
+	if t.CreatedAt.After(state.lastCreated) {
+		state.lastCreated = t.CreatedAt
+	}
+
+	if key := payloadDedup(t); key != "" {
+		if _, dup := state.known[key]; !dup {
+			state.known[key] = t.Status
+		}
+	}
+}
+
+// trackedItemDenial explains why an item already known to the queue is
+// denied admission, by its stored status.
+func trackedItemDenial(status string) string {
+	switch task.Status(status) {
+	case task.Dead:
+		return "in DLQ (tq dlq --rescue to retry)"
+	case task.Cancelled:
+		return "cancelled (edit the item text to re-arm item)"
+	}
+
+	return "tracked: " + status
 }
 
 // occupancyDenial reports the repo-level occupancy rule. With

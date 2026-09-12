@@ -13,11 +13,11 @@ import (
 // RepriChange records one would-be or applied priority change from a
 // Reprioritize pass.
 type RepriChange struct {
-	TaskID      task.ID
-	ItemText    string
-	OldPriority int
-	NewPriority int
-	Source      PrioritySource
+	TaskID      task.ID        `json:"task_id"`
+	ItemText    string         `json:"item_text"`
+	OldPriority int            `json:"old_priority"`
+	NewPriority int            `json:"new_priority"`
+	Source      PrioritySource `json:"source"`
 }
 
 // Reprioritize re-resolves the priorities of PENDING tasks from the
@@ -30,7 +30,12 @@ type RepriChange struct {
 // fact); dryRun reports without writing. Per-repo scan failures are
 // returned in failures, never as errors — a broken repo must not block
 // the others.
-func (h *Harvester) Reprioritize(ctx context.Context, dryRun bool) (changes []RepriChange, failures []string) {
+func (h *Harvester) Reprioritize(ctx context.Context, dryRun bool) ([]RepriChange, []string) {
+	var (
+		changes  []RepriChange
+		failures []string
+	)
+
 	repos := h.cfg.Repos
 	if len(repos) == 0 && h.cfg.ProjectsDir != "" {
 		discovered, err := DiscoverReposFor(ctx, h.cfg.DiscoveryAddr, h.cfg.ProjectsDir, h.cfg.TodoFile, h.cfg.Log)
@@ -78,8 +83,8 @@ func (h *Harvester) repriRepo(
 	pending := h.pendingByKey(ctx, repoName)
 
 	for _, item := range items {
-		tk, ok := pending[item.Key]
-		if !ok || !RepriMutable(tk.Priority) {
+		pendingTask, ok := pending[item.Key]
+		if !ok || !RepriMutable(pendingTask.Priority) {
 			continue
 		}
 
@@ -103,22 +108,24 @@ func (h *Harvester) repriRepo(
 			AIScore:           aiScore,
 		})
 
-		if priority == tk.Priority {
+		if priority == pendingTask.Priority {
 			continue // value-idempotent
 		}
 
 		if !dryRun {
-			if err := h.q.UpdatePendingPriority(ctx, tk.ID, priority, string(source), repriReason(item, source)); err != nil {
-				failures = append(failures, fmt.Sprintf("%s: update %s: %v", repoName, tk.ID, err))
+			if err := h.q.UpdatePendingPriority(
+				ctx, pendingTask.ID, priority, string(source), repriReason(item, source),
+			); err != nil {
+				failures = append(failures, fmt.Sprintf("%s: update %s: %v", repoName, pendingTask.ID, err))
 
 				continue
 			}
 		}
 
 		changes = append(changes, RepriChange{
-			TaskID:      tk.ID,
+			TaskID:      pendingTask.ID,
 			ItemText:    item.Text,
-			OldPriority: tk.Priority,
+			OldPriority: pendingTask.Priority,
 			NewPriority: priority,
 			Source:      source,
 		})

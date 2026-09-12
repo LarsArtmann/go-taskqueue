@@ -28,6 +28,8 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"log/slog"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -436,9 +438,9 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 
 	sort.Slice(batch, func(i, j int) bool { return batch[i].Key < batch[j].Key })
 
-	keys := make([]string, len(batch))
-	for i, item := range batch {
-		keys[i] = item.Key
+	keys := make([]string, 0, len(batch))
+	for _, item := range batch {
+		keys = append(keys, item.Key)
 	}
 
 	requireClean := !s.cfg.AllowDirty
@@ -547,12 +549,5 @@ func DedupKey(repo string, keys []string) string {
 }
 
 func sortedKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for key := range m {
-		keys = append(keys, key)
-	}
-
-	sort.Strings(keys)
-
-	return keys
+	return slices.Sorted(maps.Keys(m))
 }
