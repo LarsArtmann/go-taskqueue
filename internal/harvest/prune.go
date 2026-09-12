@@ -145,12 +145,6 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 	return nil
 }
 
-// tracked reports whether an item key has a queue task.
-func tracked(byDedup map[string]task.Task, key string) bool {
-	_, ok := byDedup[key]
-	return ok
-}
-
 // pruneTickedTask applies the ticked rule to one done item: a PENDING task
 // whose checkbox is now [x] is cancelled (dry-run reports instead), RUNNING
 // and DEAD tasks are reported, never stopped.
