@@ -117,7 +117,8 @@ func TestGitLogScannerNotARepoFails(t *testing.T) {
 		t.Skip("git not on PATH")
 	}
 
-	if _, err := GitLogScanner{}.CommitsByTrailer(context.Background(), t.TempDir(), Trailer, "x"); err == nil {
+	_, err := GitLogScanner{}.CommitsByTrailer(context.Background(), t.TempDir(), Trailer, "x")
+	if err == nil {
 		t.Fatal("non-repo scan must fail")
 	}
 }

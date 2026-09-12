@@ -164,6 +164,14 @@ func Close(ctx context.Context, s Store, scanner GitScanner, in CloseInput) (Clo
 		return CloseResult{}, err
 	}
 
+	// A session.closed fact means this close is a replay: the dedup keys
+	// below already hold the minted tasks, so "fresh" must not be claimed
+	// again (the pending-task heuristic alone cannot tell the two apart).
+	replay, err := wasClosed(ctx, s, in.ID)
+	if err != nil {
+		return CloseResult{}, err
+	}
+
 	var res CloseResult
 	res.Commits = commits
 
@@ -172,9 +180,13 @@ func Close(ctx context.Context, s Store, scanner GitScanner, in CloseInput) (Clo
 			return res, err
 		}
 
+		res.ReviewFresh = res.ReviewFresh && !replay
+
 		if res.StatusTask, res.StatusFresh, err = mintStatus(ctx, s, in, commits); err != nil {
 			return res, err
 		}
+
+		res.StatusFresh = res.StatusFresh && !replay
 	}
 
 	detail, err := json.Marshal(CloseDetail{
@@ -199,6 +211,23 @@ func Close(ctx context.Context, s Store, scanner GitScanner, in CloseInput) (Clo
 	}
 
 	return res, nil
+}
+
+// wasClosed reports whether the session already carries a session.closed
+// fact — close number two is a replay, not a first close.
+func wasClosed(ctx context.Context, s Store, id string) (bool, error) {
+	facts, err := s.FactsForTask(ctx, SyntheticTaskID(id).String(), 0)
+	if err != nil {
+		return false, fmt.Errorf("session: read facts: %w", err)
+	}
+
+	for _, f := range facts {
+		if f.Type == journal.SessionClosed {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // mintReview enqueues the one review task over the session's attributed

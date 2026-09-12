@@ -11,7 +11,6 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
-	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 func testStore(t *testing.T) *sqlite.Store {
@@ -71,7 +70,7 @@ func TestBeginRecordsOpenedFactAndRefusesDoubleBegin(t *testing.T) {
 		t.Fatalf("opened detail = %+v", detail)
 	}
 
-	if _, err := Begin(ctx, s, "sess-abc", "/repos/demo", "demo"); err == nil || !strings.Contains(err.Error(), "already open") {
+	if err := Begin(ctx, s, "sess-abc", "/repos/demo", "demo"); err == nil || !strings.Contains(err.Error(), "already open") {
 		t.Fatalf("double begin err = %v, want already-open refusal", err)
 	}
 }
