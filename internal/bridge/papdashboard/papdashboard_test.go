@@ -589,3 +589,42 @@ func TestDeadPoolAlertTriggerAndResolve(t *testing.T) {
 		t.Errorf("resolvedBy = %q", resolved.ResolvedBy)
 	}
 }
+
+func TestStarvationAlertTriggerAndResolve(t *testing.T) {
+	pap := newFakePap(t)
+	src := &fakeSource{}
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "secret", Logger: quietLogger()})
+
+	ctx := context.Background()
+	if err := b.NotifyStarvation(ctx, true, 49*time.Hour, "0000test", 12); err != nil {
+		t.Fatalf("trigger: %v", err)
+	}
+
+	if err := b.NotifyStarvation(ctx, false, 0, "", 0); err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+
+	calls := pap.calls()
+
+	if len(calls) != 2 {
+		t.Fatalf("got %d ingests, want 2: %+v", len(calls), calls)
+	}
+
+	if calls[0].Event != "alert.triggered" || calls[0].AggregateID != starvationAggregate {
+		t.Fatalf(
+			"first ingest = %s/%s, want alert.triggered/%s",
+			calls[0].Event,
+			calls[0].AggregateID,
+			starvationAggregate,
+		)
+	}
+
+	if calls[1].Event != "alert.resolved" || calls[1].AggregateID != starvationAggregate {
+		t.Fatalf(
+			"second ingest = %s/%s, want alert.resolved/%s",
+			calls[1].Event,
+			calls[1].AggregateID,
+			starvationAggregate,
+		)
+	}
+}

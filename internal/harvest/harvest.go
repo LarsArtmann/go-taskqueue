@@ -407,6 +407,8 @@ func (h *Harvester) itemDenial(state repoState, item Item, enqueuedThisRepo bool
 		}
 
 		return "tracked: " + string(state.known[item.Key])
+	case h.cfg.UseImportance && state.importance == 0:
+		return "paused: importance 0 (repo paused from auto-admission; raise importance to resume)"
 	case state.poisoned:
 		return fmt.Sprintf(
 			"poisoned: recent dead-letter, DLQ backoff %s (fix the repo or rescue dead tasks)", h.cfg.DLQBackoff)

@@ -486,3 +486,53 @@ func TestMaxPendingPerRepo(t *testing.T) {
 		t.Fatalf("run 3 enqueued = %+v, want 'second' after the completion freed the slot", res.Enqueued)
 	}
 }
+
+// TestPausedRepoRule pins the ADR-0015 paused-repo rule: an EXPLICIT
+// importance of 0 in importance mode pauses the repo's auto-admission -
+// every item skips with the paused reason, and raising the importance
+// resumes admission.
+func TestPausedRepoRule(t *testing.T) {
+	ctx := context.Background()
+	projects := t.TempDir()
+
+	repo := writeRepo(t, projects, "paused", `- [ ] some work
+`)
+	writeMetadataTo(t, repo, `importance: 0
+`)
+
+	tq := openQueue(t)
+	h := New(tq, Config{
+		Repos:          []string{repo},
+		Type:           "agent",
+		TodoFile:       DefaultTodoFile,
+		MaxPerTick:     10,
+		PromptTemplate: "work {{ITEM}}",
+		UseImportance:  true,
+	})
+
+	res, err := h.Run(ctx)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if len(res.Enqueued) != 0 {
+		t.Fatalf("paused repo enqueued %d task(s)", len(res.Enqueued))
+	}
+
+	if len(res.Skipped) != 1 || !strings.Contains(res.Skipped[0].Reason, "paused") {
+		t.Fatalf("skips = %+v, want one paused skip", res.Skipped)
+	}
+
+	// Raising the importance resumes admission on the next run.
+	writeMetadataTo(t, repo, `importance: 40
+`)
+
+	res, err = h.Run(ctx)
+	if err != nil {
+		t.Fatalf("resume Run: %v", err)
+	}
+
+	if len(res.Enqueued) != 1 {
+		t.Fatalf("resumed repo enqueued %d task(s), want 1", len(res.Enqueued))
+	}
+}

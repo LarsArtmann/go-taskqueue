@@ -261,7 +261,8 @@ c) NOT STARTED — backlog items the window skipped;
 d) TOTALLY FUCKED UP — regressions, broken gates, dead-lettered work, tech debt introduced;
 e) WHAT WE SHOULD IMPROVE — process and code, concrete and actionable;
 f) UP TO 50 NEXT THINGS — the most valuable next work items, small and concrete;
-g) UP TO 3 QUESTIONS you cannot answer yourself — things only the repository owner can decide.
+g) UP TO 3 QUESTIONS you cannot answer yourself — things only the repository owner can decide;
+h) BAND DRIFT — priorities that moved this window: read the queue journal for task.reprioritized facts in the window's timespan (tq facts, or the journal directly) and summarize each move (task, old -> new, source: marker/ai/unblock/importance, reason); write "none recorded" when the journal holds none. This is the ADR-0015 accountability section: priority changes must be explainable after the fact.
 
 DO NOT RESEARCH UNRELATED STUFF. Report on this window and what you noticed in passing.
 

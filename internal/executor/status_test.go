@@ -364,3 +364,21 @@ func TestStatusExecutorVerifyGateGatesCompletion(t *testing.T) {
 		})
 	}
 }
+
+// TestStatusPromptCarriesBandDriftSection pins the T36 parity: the
+// done-prompt report contract includes the ADR-0015 band-drift section,
+// and the session-close mint (same StatusPayload + executor) inherits it
+// structurally.
+func TestStatusPromptCarriesBandDriftSection(t *testing.T) {
+	t.Parallel()
+
+	prompt := statusPrompt(StatusPayload{Repo: "demo", Completed: []StatusCompletion{
+		{TaskID: "000test", Item: "ship the thing"},
+	}})
+
+	for _, want := range []string{"BAND DRIFT", "task.reprioritized", "none recorded"} {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("prompt lacks %q (band-drift section missing)", want)
+		}
+	}
+}

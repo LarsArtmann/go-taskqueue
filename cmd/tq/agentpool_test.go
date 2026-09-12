@@ -5,9 +5,11 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 func TestHarvestConfigFromOptionsExpandsBareRepoNames(t *testing.T) {
@@ -260,9 +262,9 @@ func TestStarvationDetectorLifecycle(t *testing.T) {
 			wantNotifs: []bool{true},
 		},
 		{
-			name:       "under threshold stays quiet",
-			after:      24 * time.Hour,
-			observes:   []*task.Task{fresh, fresh},
+			name:     "under threshold stays quiet",
+			after:    24 * time.Hour,
+			observes: []*task.Task{fresh, fresh},
 		},
 		{
 			name:       "recovery resolves and a later re-fire alerts again",
