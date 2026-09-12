@@ -16,7 +16,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export GOEXPERIMENT=jsonv2
 
-mode="${1:-regen}"
+mode="${1:---regen}"
 if [[ "$mode" != "--check" && "$mode" != "--regen" ]]; then
 	echo "usage: $0 [--check|--regen]" >&2
 	exit 2

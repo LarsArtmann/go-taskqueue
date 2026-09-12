@@ -381,7 +381,11 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   above `.golangci-baseline.txt` (regen total 835 findings, 110
   module/linter rows, 2026-09-12) or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
-  owns it.
+  owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
+  is the only config — there are no per-module files, and golangci-lint
+  ascends from the module cwd to find it, so sub-module runs
+  (`cd internal/<mod> && GOWORK=off golangci-lint run ./...`) apply the root
+  policy; never add a nested config without re-baselining every module.
   `*_templ.go` is
   lint-excluded (`templ fmt` owns `.templ`). wrapcheck + varnamelen were
   triaged to zero (2026-09-10, task 000001a089c3): wrapcheck ignores
