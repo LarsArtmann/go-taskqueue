@@ -44,6 +44,17 @@ start processes on the host is inside the trust boundary.
    rescue. Whether status reports themselves should be reviewed is a
    deliberate open trust-policy question, not an oversight.
 
+6. **The prioritize scorer reads your repos, and its verdicts re-rank the
+   queue.** `--prioritize` (default OFF) spawns a READ-ONLY scorer agent
+   per repo holding unscored backlog items: it may read any file in the
+   repo (same trust boundary as every agent turn) but its prompt forbids
+   writes, and its only powers are cached scores and PENDING-task
+   priority changes clamped to the backlog band — hot/machine priorities
+   and marker items are structurally protected. Every batch mint counts
+   against `--daily-budget` / `--budget-cmd` like any other enqueue; the
+   dedup key (hash of the batch's key set) means an unchanged backlog
+   never re-scores.
+
 ## UI-originated writes (`tq serve --allow-writes`)
 
 The dashboard is read-only by construction (ADR-0003) EXCEPT for exactly

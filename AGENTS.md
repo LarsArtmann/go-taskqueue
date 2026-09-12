@@ -262,6 +262,15 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   gates forwarding. `tq watermarks show/set` — set may rewind (replay is
   idempotent via seq-derived keys). A lagging cursor may simply mean the
   consumer is off.
+- **Priority mechanics (ADR-0015)**: claim order = STORED priority +
+  aging (`queue.PriorityAgingDaysPerPoint`=3d/pt, cap
+  `queue.PriorityAgingMaxBonus`=10) — aging is scheduling, the stored
+  value never mutates; constants live ONCE in the contract, both
+  backends mirror them, conformance pins them. Markers (`— P[1-4]`) are
+  stripped before the dedup hash. The repri sweep (startup + `tq
+  reprioritize`) is O(repos × (parse + one filtered List)) — bounded by
+  the working set, not the warehouse. `tq show` carries a priority
+  provenance section (band, cached verdict, repri history).
 - **prune-stale**: cancels PENDING tasks whose item is now `[x]` OR whose
   item text is gone from the file (done-and-deleted / reworded — harvest
   provenance via payload dedup key guards external tasks; `catchup:`

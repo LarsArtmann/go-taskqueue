@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Priority system (ADR-0015)**: one 0-100 priority scale with three
+  bands — backlog 0-99 (markers, importance, AI scores, keywords), hot
+  100-149 (same-session promotion), machine 150+ (operational tasks;
+  cqa migrated 80 -> 150). Claim order = stored priority + aging
+  (+1 per 3 days waiting, capped +10; constants live once in the queue
+  contract, mirrored in both backends and pinned by conformance tests
+  run against a live postgres). TODO_LIST items accept trailing
+  `— P[1-4]` markers (90/70/50/30; stripped before the dedup hash, so
+  marker edits never fork tasks) and `tq harvest`/`tq agent-pool` gain
+  `--priority-from importance` (reads each repo's
+  `.config/metadata.yaml` importance, default 50; malformed files skip
+  the repo) plus keyword bumps (security/critical/urgent...). New
+  `task.reprioritized` fact + `Store.UpdatePendingPriority` (PENDING
+  only, same-tx evidence, value-idempotent) power `tq reprioritize`
+  (dry-run/JSON; also applies unblock bumps: pending tasks whose deps
+  ALL completed gain +15 once) and the pool's default-on startup
+  repri sweep. `--max-pending-per-repo` turns the queue into a working
+  set (cap replaces the legacy one-task-per-repo rule). An explicit
+  `importance: 0` pauses a repo from auto-admission. AI batch scorer:
+  `priority_scores` cache table (both backends) + `internal/prioritize`
+  sweeper (`--prioritize`, default OFF): repos holding unscored backlog
+  items mint ONE machine-band batch task (dedup
+  `prioritize:<repo>:<hash-of-key-set>`) whose READ-ONLY scorer verdicts
+  cache scores and re-rank pending tasks (marker > AI > keyword
+  precedence; hot/machine protected; scores clamp to backlog).
+  `tq show` gains a priority provenance section (band, cached verdict,
+  repri history). Web UI: prio column with band badges, `?band=`
+  filter (stored-priority range pushdown in both backends), and the
+  aging hint under the active table. Starvation alarm
+  `--starvation-after` (oldest pending task past the threshold despite
+  aging -> PapDashboard trigger/resolve, dead-pool pattern).
 - **go-cqrs-lite journal adapter (`internal/journal/cqrs`, `tq facts
   --cqrs`)**: the fact journal is now consumable as a native
   go-cqrs-lite `event.Journal`/`event.SeekableJournal` (event/v4

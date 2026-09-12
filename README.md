@@ -12,6 +12,20 @@ Built on the semantics proven in [go-cqrs-lite](https://github.com/LarsArtmann/g
 (worker pools over durable queues). Not a wrapper around either — a standalone
 library with its own small core, designed to be embeddable and observable.
 
+## Priority system (ADR-0015)
+
+One 0-100 priority scale with three bands — **backlog 0-99** (TODO_LIST
+`— P[1-4]` markers, per-repo importance via `--priority-from importance`,
+keyword bumps, cached AI scores), **hot 100-149** (same-session
+promotion), **machine 150+** (operational tasks). Claim order is stored
+priority plus **aging**: a waiting task climbs +1 per 3 days, capped at
++10, so nothing starves forever. `tq reprioritize` re-resolves pending
+tasks from the current truth; `--max-pending-per-repo` turns the queue
+into a per-repo working set; a dependency completing bumps its unblocked
+dependents; an optional AI batch scorer (`--prioritize`, default off)
+caches verdicts per item and re-ranks the backlog under marker > AI >
+keyword precedence.
+
 ## Why
 
 I have too many projects. Cross-project work (builds, releases, scrapes,
