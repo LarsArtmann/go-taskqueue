@@ -818,6 +818,22 @@ func cmdAgentPool(args []string) error {
 		for _, f := range failures {
 			log.Warn("startup reprioritize: repo skipped", "reason", f)
 		}
+
+		// Unblock bump (ADR-0015) rides the same sweep: PENDING tasks whose
+		// deps ALL completed gain the queue-level lift, once, band-protected.
+		unblocked, err := taskQueue.BumpUnblocked(ctx, false)
+		if err != nil {
+			log.Warn("startup unblock bump failed", "err", err)
+		}
+
+		for _, bump := range unblocked {
+			log.Info("startup unblock bump",
+				"task", bump.TaskID.String(),
+				"old", bump.OldPriority,
+				"new", bump.NewPriority,
+				"deps", bump.CompletedDeps,
+			)
+		}
 	}
 
 	var cqaBridge *cqa.Bridge

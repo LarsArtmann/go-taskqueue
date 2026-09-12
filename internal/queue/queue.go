@@ -13,7 +13,9 @@ package queue
 import (
 	"context"
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -256,4 +258,134 @@ func New(s Store) *Queue { return &Queue{Store: s} }
 // Enqueue normalized-and-enqueues a task.
 func (q *Queue) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 	return q.Store.Enqueue(ctx, n.Normalize())
+}
+
+// UnblockBumpPriority is the priority bump a task gains when ALL its
+// dependencies have completed (ADR-0015 unblock bump): half a marker
+// level — meaningful against importance spacing, never a full ladder
+// jump. Clamped to the backlog band on use.
+const UnblockBumpPriority = 15
+
+// PrioritySourceUnblock labels task.reprioritized facts written by the
+// unblock bump (the ADR-0015 source enum).
+const PrioritySourceUnblock = "unblock"
+
+// UnblockChange records one applied (or would-be) unblock bump.
+type UnblockChange struct {
+	TaskID        task.ID
+	OldPriority   int
+	NewPriority   int
+	CompletedDeps int
+}
+
+// BumpUnblocked lifts PENDING tasks whose dependencies have ALL completed
+// by UnblockBumpPriority (source "unblock") — the queue's answer to "the
+// blocker finished, now it matters" (ADR-0015). Designed for repri time:
+// no worker coupling, no new backend SQL — the deps table and its
+// dep_id index already answer the reverse lookup, and enumeration is
+// Go-side over List/Get (deps-carrying tasks are rare).
+//
+// Rules: hot/machine tasks are protected (backlog band only); a task that
+// already carries an unblock fact is never bumped twice (the fact trail
+// is the idempotency guard); same-value writes append nothing. dryRun
+// reports without writing.
+func (q *Queue) BumpUnblocked(ctx context.Context, dryRun bool) ([]UnblockChange, error) {
+	pendingStatus := task.Pending
+
+	tasks, err := q.Store.List(ctx, Filter{Status: &pendingStatus})
+	if err != nil {
+		return nil, fmt.Errorf("queue: unblock bump: list pending: %w", err)
+	}
+
+	var changes []UnblockChange
+
+	for _, t := range tasks {
+		if len(t.Deps) == 0 || BandOf(t.Priority) != BandBacklog {
+			continue
+		}
+
+		completed, err := q.completedDeps(ctx, t)
+		if err != nil {
+			return changes, err
+		}
+
+		if completed != len(t.Deps) {
+			continue // still blocked
+		}
+
+		bumped, err := q.bumpIfFresh(ctx, t, dryRun)
+		if err != nil {
+			return changes, err
+		}
+
+		if bumped != nil {
+			changes = append(changes, *bumped)
+		}
+	}
+
+	return changes, nil
+}
+
+// completedDeps counts how many of the task's dependencies are COMPLETED.
+func (q *Queue) completedDeps(ctx context.Context, t task.Task) (int, error) {
+	completed := 0
+
+	for _, dep := range t.Deps {
+		depTask, err := q.Store.Get(ctx, dep)
+		if err != nil {
+			if errors.Is(err, task.ErrNotFound) {
+				continue // vanished dep never completes: treat as still blocked
+			}
+
+			return 0, fmt.Errorf("queue: unblock bump: dep %s: %w", dep, err)
+		}
+
+		if depTask.Status == task.Completed {
+			completed++
+		}
+	}
+
+	return completed, nil
+}
+
+// bumpIfFresh applies the bump unless the task already carries an unblock
+// fact (idempotency guard) or the clamped value changes nothing.
+func (q *Queue) bumpIfFresh(ctx context.Context, t task.Task, dryRun bool) (*UnblockChange, error) {
+	trail, err := q.Store.FactsForTask(ctx, t.ID.String(), 0)
+	if err != nil {
+		return nil, fmt.Errorf("queue: unblock bump: facts for %s: %w", t.ID, err)
+	}
+
+	for _, f := range trail {
+		if f.Type != journal.Reprioritized {
+			continue
+		}
+
+		var evidence ReprioritizeEvidence
+		if json.Unmarshal(f.Detail, &evidence) == nil && evidence.Source == PrioritySourceUnblock {
+			return nil, nil // already bumped once
+		}
+	}
+
+	newPriority := ClampBacklog(t.Priority + UnblockBumpPriority)
+	if newPriority == t.Priority {
+		return nil, nil
+	}
+
+	change := UnblockChange{
+		TaskID:        t.ID,
+		OldPriority:   t.Priority,
+		NewPriority:   newPriority,
+		CompletedDeps: len(t.Deps),
+	}
+
+	if !dryRun {
+		reason := fmt.Sprintf("all %d dep(s) completed", len(t.Deps))
+
+		if err := q.Store.UpdatePendingPriority(ctx, t.ID, newPriority, PrioritySourceUnblock, reason); err != nil {
+			return nil, fmt.Errorf("queue: unblock bump: update %s: %w", t.ID, err)
+		}
+	}
+
+	return &change, nil
 }

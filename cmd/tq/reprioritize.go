@@ -74,14 +74,22 @@ func cmdReprioritize(args []string) error {
 
 	changes, failures := harvest.New(queue.New(store), cfg).Reprioritize(context.Background(), *dryRun)
 
+	// Unblock pass (ADR-0015): PENDING tasks whose deps ALL completed gain
+	// the queue-level bump - same sweep slot, same protections.
+	unblocked, err := queue.New(store).BumpUnblocked(context.Background(), *dryRun)
+	if err != nil {
+		failures = append(failures, "unblock bump: "+err.Error())
+	}
+
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 
 		return enc.Encode(struct {
 			Changes  []harvest.RepriChange `json:"changes"`
+			Unblocks []queue.UnblockChange `json:"unblocks"`
 			Failures []string              `json:"failures,omitempty"`
-		}{Changes: changes, Failures: failures})
+		}{Changes: changes, Unblocks: unblocked, Failures: failures})
 	}
 
 	for _, c := range changes {
@@ -93,11 +101,21 @@ func cmdReprioritize(args []string) error {
 		fmt.Printf("%s %s %d -> %d (%s): %s\n", verb, c.TaskID, c.OldPriority, c.NewPriority, c.Source, c.ItemText)
 	}
 
+	for _, bump := range unblocked {
+		verb := "unblocked"
+		if *dryRun {
+			verb = "would bump"
+		}
+
+		fmt.Printf("%s %s %d -> %d (unblock, %d dep(s) completed)\n",
+			verb, bump.TaskID, bump.OldPriority, bump.NewPriority, bump.CompletedDeps)
+	}
+
 	for _, f := range failures {
 		fmt.Fprintf(os.Stderr, "tq reprioritize: %s\n", f)
 	}
 
-	summary := fmt.Sprintf("%d change(s)", len(changes))
+	summary := fmt.Sprintf("%d change(s), %d unblock bump(s)", len(changes), len(unblocked))
 	if *dryRun {
 		summary = "dry-run: " + summary
 	}
