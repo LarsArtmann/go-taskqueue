@@ -146,7 +146,12 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 		return Permanent(err)
 	}
 
-	if requireClean(AgentPayload{RequireClean: p.RequireClean}) {
+	// Autopsies run dirty-capable by default: a dead agent's uncommitted
+	// partial work IS evidence, and a clean-tree preflight would requeue
+	// the autopsy forever on exactly the cases the feature exists for.
+	// Only an explicit true restores the guard (repos without .git skip
+	// it as usual).
+	if p.RequireClean != nil && *p.RequireClean {
 		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
 			if err := assertCleanTree(ctx, repoDir); err != nil {
 				return &PreflightError{Cause: err}
