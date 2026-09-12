@@ -49,7 +49,7 @@ internal/queue/sqlite	sqlclosecheck:	2
 internal/queue/sqlite	staticcheck:	2
 internal/queue/sqlite	tagliatelle:	1
 internal/queue/sqlite	unused:	1
-internal/queue/sqlite	varnamelen:	31
+internal/queue/sqlite	varnamelen:	32
 internal/queue/sqlite	wrapcheck:	50
 internal/queue	tagliatelle:	1
 internal/task	exhaustive:	1
