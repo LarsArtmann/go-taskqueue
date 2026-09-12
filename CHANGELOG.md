@@ -110,6 +110,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   changes. `scripts/check-version-agreement.sh` pins the flake version
   string, the root `.version` file and the CHANGELOG's latest release
   heading to the same value.
+- **Lint-baseline policy regen (2026-09-12, T38 close-out)**: all 21
+  growth rows were fixed mechanically (sentinel errors, `t.Parallel()`,
+  complexity extractions, renames, line wraps — no suppression), and
+  tagliatelle gained a path-scoped exclusion for the machine-payload wire
+  surfaces (`internal/executor` payload files, `internal/queue/queue.go`,
+  `internal/harvest/reprioritize.go`): those structs are snake_case by
+  contract — keys are quoted verbatim in agent prompts (TQ_RESULT lines)
+  and persisted in journal facts — while core domain types stay
+  camelCase. Baseline regenerated deliberately: 104 module/linter rows,
+  850 findings (was 114/892).
 
 ### Changed
 - **The status enum has one canonical list (`task.AllStatuses()`)**: the
