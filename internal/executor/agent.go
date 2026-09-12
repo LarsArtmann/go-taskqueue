@@ -706,6 +706,13 @@ func readTQVerify(repoDir string) string {
 // payloads (the harvester pins the repo's verify contract into tasks).
 func ReadTQVerify(repoDir string) string { return readTQVerify(repoDir) }
 
+// GoEnvExperiment is the GOEXPERIMENT value minted Go verify commands export
+// so the gate is identical inside and outside the flake devShell: without
+// it, encoding/json/v2 imports die with "build constraints exclude all Go
+// files" (the tq-agent-pool unit env carries no GOEXPERIMENT — the env lie
+// that judged finished work on a broken gate).
+const GoEnvExperiment = "GOEXPERIMENT=jsonv2"
+
 // goEnvPrelude makes a minted Go verify command env-self-contained: the
 // tq-agent-pool unit (and any bare shell) carries no GOEXPERIMENT, and repos
 // importing encoding/json/v2 then die with "build constraints exclude all Go
@@ -715,7 +722,7 @@ func ReadTQVerify(repoDir string) string { return readTQVerify(repoDir) }
 // older toolchain that rejects the experiment pins its own .tq-verify (the
 // file is the source of truth and is never auto-rewritten behind an
 // existing value).
-const goEnvPrelude = "export GOEXPERIMENT=jsonv2; "
+const goEnvPrelude = "export " + GoEnvExperiment + "; "
 
 // withGoEnvPrelude prefixes a minted verify command with goEnvPrelude unless
 // the command already manages GOEXPERIMENT itself (idempotent).

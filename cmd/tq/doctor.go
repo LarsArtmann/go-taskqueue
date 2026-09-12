@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -81,7 +83,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
-	results = append(results, doctorEnvironment(opts)...)
+	results = append(results, doctorEnvironment(ctx, opts)...)
 
 	if opts.MarkOrphans {
 		results = append(results, doctorMarkOrphans(ctx, store)...)
@@ -370,7 +372,7 @@ func doctorBudget(ctx context.Context, store queue.Store, dailyBudget int) []che
 // against --projects-dir, like harvest/audit). The deployed pool once
 // shipped with a systemd PATH missing git/go/crush — these checks make
 // that failure class visible from the pool context (02:00 f18).
-func doctorEnvironment(opts doctorOptions) []checkResult {
+func doctorEnvironment(ctx context.Context, opts doctorOptions) []checkResult {
 	var results []checkResult
 
 	bin := opts.AgentBin
@@ -411,6 +413,8 @@ func doctorEnvironment(opts doctorOptions) []checkResult {
 		}
 	}
 
+	results = append(results, doctorProbeGoEnv(ctx))
+
 	for _, repo := range expandRepoSpecs(opts.ProjectsDir, splitRepos(opts.Repos)) {
 		if repo == "" {
 			continue
@@ -422,6 +426,124 @@ func doctorEnvironment(opts doctorOptions) []checkResult {
 	results = append(results, doctorTagAncestry())
 
 	return results
+}
+
+// goEnvProbeTimeout bounds one probe build: a cold-cache build of the
+// synthetic jsonv2 module is seconds, not minutes; a hung toolchain must
+// not hang the doctor.
+const goEnvProbeTimeout = time.Minute
+
+// doctorProbeGoEnv is the env-lie detector (round-13 T3): probes whether
+// this shell can build encoding/json/v2 — the import that dies with
+// "build constraints exclude all Go files" when GOEXPERIMENT=jsonv2 is
+// missing (the tq-agent-pool unit's env; five-plus windows burned judging
+// finished work on that lying gate). A failing check means every
+// bare-shell verify of a jsonv2 repo will lie. Var so tests stub it
+// hermetically (the real probe needs a go toolchain).
+var doctorProbeGoEnv = func(ctx context.Context) checkResult {
+	if _, err := exec.LookPath("go"); err != nil {
+		return checkResult{Name: "go-env", Status: checkOK, Detail: "go not on PATH — env-lie probe skipped"}
+	}
+
+	dir, err := os.MkdirTemp("", "tq-doctor-goenv")
+	if err != nil {
+		return checkResult{Name: "go-env", Status: checkWarn, Detail: "probe scratch: " + err.Error()}
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+
+	bareErr, envErr := runGoEnvProbe(ctx, dir, os.Environ())
+
+	return classifyGoEnvProbe(bareErr, envErr)
+}
+
+// runGoEnvProbe builds a synthetic module importing encoding/json/v2 twice
+// in dir: once with GOEXPERIMENT stripped from baseEnv (the pool-unit
+// simulation), once with executor.GoEnvExperiment forced on (the toolchain
+// capability check). Empty return = build succeeded.
+func runGoEnvProbe(ctx context.Context, dir string, baseEnv []string) (bareErr, envErr string) {
+	const goMod = "module tqenvprobe\n\ngo 1.26\n"
+	const mainGo = "package main\n\nimport _ \"encoding/json/v2\"\n\nfunc main() {}\n"
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(goMod), 0o600); err != nil {
+		return "probe scratch: " + err.Error(), "probe scratch: " + err.Error()
+	}
+
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte(mainGo), 0o600); err != nil {
+		return "probe scratch: " + err.Error(), "probe scratch: " + err.Error()
+	}
+
+	bare := goEnvBuild(ctx, dir, withoutGoExperiment(baseEnv))
+	with := goEnvBuild(ctx, dir, append(baseEnv, executor.GoEnvExperiment))
+
+	return bare, with
+}
+
+// goEnvBuild runs one `go build ./...` in dir with env, returning the
+// trimmed output on failure and "" on success.
+func goEnvBuild(ctx context.Context, dir string, env []string) string {
+	ctx, cancel := context.WithTimeout(ctx, goEnvProbeTimeout)
+	defer func() { cancel() }()
+
+	cmd := exec.CommandContext(ctx, "go", "build", "./...")
+	cmd.Dir = dir
+	cmd.Env = env
+
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+
+	if err := cmd.Run(); err != nil {
+		return strings.TrimSpace(buf.String())
+	}
+
+	return ""
+}
+
+// withoutGoExperiment strips any ambient GOEXPERIMENT so the bare probe
+// simulates the pool-unit environment, not whatever the doctor's caller
+// happened to export.
+func withoutGoExperiment(environ []string) []string {
+	var out []string
+
+	for _, kv := range environ {
+		if strings.HasPrefix(kv, "GOEXPERIMENT=") {
+			continue
+		}
+
+		out = append(out, kv)
+	}
+
+	return out
+}
+
+// classifyGoEnvProbe turns the two probe results into one verdict:
+// bare-build failure + experiment-build success is the ENV-LIE (a missing
+// env var, fixable with one line); both failing is a toolchain capability
+// gap (version gate), warned — never a reason to burn attempts.
+func classifyGoEnvProbe(bareErr, envErr string) checkResult {
+	const name = "go-env"
+
+	switch {
+	case bareErr == "":
+		return checkResult{
+			Name: name, Status: checkOK,
+			Detail: "encoding/json/v2 builds without " + executor.GoEnvExperiment + " — no env lie",
+		}
+	case envErr == "":
+		return checkResult{
+			Name: name, Status: checkFail,
+			Detail: "ENV-LIE: encoding/json/v2 fails in this shell (" + bareErr + ") but builds with " +
+				executor.GoEnvExperiment + " — bare-shell verifies of jsonv2 repos will lie; fix: `export " +
+				executor.GoEnvExperiment + "` or `Environment=" + executor.GoEnvExperiment +
+				"` on the tq-agent-pool unit (SystemNix)",
+		}
+	default:
+		return checkResult{
+			Name: name, Status: checkWarn,
+			Detail: "go toolchain cannot build encoding/json/v2 even WITH " + executor.GoEnvExperiment +
+				" (" + envErr + ") — toolchain/version gate, not a missing env var",
+		}
+	}
 }
 
 // doctorTagAncestry is the release-hygiene check (round-11 T15): a release

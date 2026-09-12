@@ -74,9 +74,10 @@ func (s GitLogScanner) CommitsByTrailer(ctx context.Context, repo, key, value st
 }
 
 // parseTrailerCommits splits git-log output into commit records (a record
-// starts at a hex SHA field) and keeps those whose trailer block contains a
-// line equal to the session id. Records arrive newest first; the result is
-// oldest first.
+// starts at a hex SHA field; every line after it that is not a new record is
+// one of that commit's trailer values) and keeps those whose trailer block
+// contains a line equal to the session id. Records arrive newest first; the
+// result is oldest first.
 func parseTrailerCommits(out, sessionID string) []Commit {
 	type record struct {
 		commit   Commit
@@ -89,13 +90,19 @@ func parseTrailerCommits(out, sessionID string) []Commit {
 	)
 
 	for line := range strings.SplitSeq(out, "\n") {
-		sha, subject, trailer, ok := splitRecordLine(line)
-		if ok {
-			records = append(records, record{commit: Commit{SHA: sha, Subject: subject}})
+		parts := strings.SplitN(line, "\x1f", 3)
+		if len(parts) == 3 && isHexSHA(parts[0]) {
+			records = append(records, record{commit: Commit{SHA: parts[0], Subject: parts[1]}})
 			current = &records[len(records)-1]
 		}
 
-		if current != nil && trailer != "" {
+		if current == nil {
+			continue
+		}
+
+		// The record line's own trailer field, or a continuation line of a
+		// multi-value trailer block.
+		if trailer := strings.TrimSpace(parts[len(parts)-1]); trailer != "" {
 			current.trailers = append(current.trailers, trailer)
 		}
 	}
@@ -104,7 +111,7 @@ func parseTrailerCommits(out, sessionID string) []Commit {
 
 	for _, r := range records {
 		for _, trailer := range r.trailers {
-			if strings.TrimSpace(trailer) == sessionID {
+			if trailer == sessionID {
 				commits = append(commits, r.commit)
 
 				break
@@ -118,18 +125,6 @@ func parseTrailerCommits(out, sessionID string) []Commit {
 	}
 
 	return commits
-}
-
-// splitRecordLine splits one output line into (sha, subject, trailer-line,
-// ok). A record line carries two \x1f separators and a hex SHA first field;
-// continuation lines (multi-value trailer output) return ok=false.
-func splitRecordLine(line string) (sha, subject, trailer string, ok bool) {
-	parts := strings.SplitN(line, "\x1f", 3)
-	if len(parts) != 3 || !isHexSHA(parts[0]) {
-		return "", "", "", false
-	}
-
-	return parts[0], parts[1], parts[2], true
 }
 
 func isHexSHA(s string) bool {

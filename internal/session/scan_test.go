@@ -59,8 +59,8 @@ func TestParseTrailerCommitsMultiValueTrailers(t *testing.T) {
 	}, "\n")
 
 	got := parseTrailerCommits(out, "sess-abc")
-	if len(got) != 2 || got[0].SHA != shaB || got[1].SHA != shaA {
-		t.Fatalf("parsed = %+v, want both commits", got)
+	if len(got) != 2 || got[0].SHA != shaA || got[1].SHA != shaB {
+		t.Fatalf("parsed = %+v, want both commits, oldest first", got)
 	}
 }
 
