@@ -460,6 +460,59 @@ func (d *deadPoolDetector) observe(res harvest.Result) {
 	}
 }
 
+// starvationDetector watches the oldest PENDING task's wait and fires its
+// notify hook once per over-threshold episode (ADR-0015 aging companion):
+// a task that has waited longer than the threshold DESPITE the aging
+// bonus is starving — the pool drains slower than the backlog grows, or
+// claims are stuck. Back under the threshold (or an empty queue) resolves
+// the standing alert.
+type starvationDetector struct {
+	after time.Duration // threshold that fires (<= 0 disables)
+	// pendingCount, when set, bounds the query (alert context only).
+	alerted bool
+	// notify receives triggered=true once per episode and triggered=false
+	// on recovery; nil = track state only.
+	notify func(triggered bool, oldestWait time.Duration, taskID string, pending int)
+}
+
+// observe applies one tick's observation: the oldest pending task (nil
+// when the queue holds no pending work).
+func (d *starvationDetector) observe(now time.Time, oldest *task.Task, pending int) {
+	if d.after <= 0 {
+		return
+	}
+
+	if oldest == nil {
+		if d.alerted && d.notify != nil {
+			d.notify(false, 0, "", 0)
+		}
+
+		d.alerted = false
+
+		return
+	}
+
+	wait := now.Sub(oldest.CreatedAt)
+	if wait > d.after {
+		if d.alerted {
+			return
+		}
+
+		d.alerted = true
+		if d.notify != nil {
+			d.notify(true, wait, oldest.ID.String(), pending)
+		}
+
+		return
+	}
+
+	if d.alerted && d.notify != nil {
+		d.notify(false, wait, oldest.ID.String(), pending)
+	}
+
+	d.alerted = false
+}
+
 // registerAgentExecutors wires the agent-family executors around one
 // AgentExecutor: reviews and status reports execute wherever agent tasks
 // do, so even a pool without --review / --status-every drains the tasks

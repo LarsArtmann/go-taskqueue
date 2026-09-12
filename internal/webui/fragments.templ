@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/templ-components/feedback"
@@ -125,6 +126,11 @@ templ taskActiveCard(data DashboardData) {
 				CellPadding:  display.TableCellPaddingCompact,
 				Body:         taskRows(data, activeTasks(data.Tasks)),
 			})
+				<p class="px-1 pt-2 text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">
+					claim order = stored priority + aging (+1 per
+					{ formatInt(queue.PriorityAgingDaysPerPoint) } days waiting, max +
+					{ formatInt(queue.PriorityAgingMaxBonus) }) - aging is scheduling, the stored value never changes (ADR-0015)
+				</p>
 		}
 	}
 }
@@ -224,6 +230,16 @@ templ taskRows(data DashboardData, rows []task.Task) {
 					} else if t.Status == task.Dead {
 						@rescueAction(t.ID)
 					}
+				</td>
+			}
+			if band := queue.BandOf(t.Priority); band != queue.BandBacklog {
+				<td class={ tdCellClass(false) } title={ "band " + string(band) + " (ADR-0015)" }>
+					<span class="font-mono text-xs">{ formatInt(t.Priority) }</span>
+					@display.Badge(display.BadgeProps{Text: string(band), Type: bandBadgeType(band), Size: display.BadgeSizeSM})
+				</td>
+			} else {
+				<td class={ tdCellClass(false) } title="band backlog (ADR-0015)">
+					<span class="font-mono text-xs">{ formatInt(t.Priority) }</span>
 				</td>
 			}
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span></td>
@@ -471,6 +487,9 @@ templ FilterBar(data DashboardData) {
 		if data.Filter.Query != "" {
 			@filterChip("search", data.Filter.Query, filterURL(data.Filter, clearQuery))
 		}
+		if data.Filter.Band != "" {
+			@filterChip("band", data.Filter.Band, filterURL(data.Filter, clearBand))
+		}
 		<input
 			type="search"
 			id="search-box"
@@ -486,6 +505,12 @@ templ FilterBar(data DashboardData) {
 					<option value={ string(st) } selected?={ data.Filter.Status == st }>{ string(st) }</option>
 				}
 			</select>
+			<select name="band" class={ inputClass + " font-mono text-xs" }>
+				<option value="">band: all</option>
+				<option value={ string(queue.BandBacklog) } selected?={ data.Filter.Band == string(queue.BandBacklog) }>backlog 0-99</option>
+				<option value={ string(queue.BandHot) } selected?={ data.Filter.Band == string(queue.BandHot) }>hot 100-149</option>
+				<option value={ string(queue.BandMachine) } selected?={ data.Filter.Band == string(queue.BandMachine) }>machine 150+</option>
+			</select>
 		}
 		@display.Button(display.ButtonProps{
 			Text:    "apply",
@@ -493,7 +518,7 @@ templ FilterBar(data DashboardData) {
 			Variant: display.ButtonPrimary,
 			Size:    display.ButtonSizeSM,
 		})
-		if data.Filter.Project != "" || data.Filter.Status != "" || data.Filter.Query != "" {
+		if data.Filter.Project != "" || data.Filter.Status != "" || data.Filter.Query != "" || data.Filter.Band != "" {
 			<a class="font-mono text-xs uppercase tracking-[0.14em] text-gray-500 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400" href="/">clear all</a>
 		}
 	</form>

@@ -624,6 +624,57 @@ func (b *Bridge) NotifyDeadPool(ctx context.Context, triggered bool, repos int, 
 		idempotencyKey("deadpool", time.Now().Unix()), deadPoolAggregate, 0, payload)
 }
 
+// starvationAggregate is the alert identity for the starvation incident:
+// pool-scoped and synthetic, so a streak's trigger/resolve pair — and a
+// later re-fire — keep one alert instead of stacking duplicates.
+const starvationAggregate = "agent-pool-starvation"
+
+// NotifyStarvation reports the starvation detector's verdict:
+// triggered=true raises alert.triggered when the OLDEST pending task has
+// waited longer than the configured threshold despite the aging bonus
+// (ADR-0015: +1 per 3 days, capped) — the backlog is growing faster than
+// the pool drains it, or claims are stuck; triggered=false resolves on
+// the first observation back under the threshold. Direct-notify like
+// NotifyDeadPool: queue observations, not facts, best-effort delivery.
+func (b *Bridge) NotifyStarvation(
+	ctx context.Context,
+	triggered bool,
+	oldestWait time.Duration,
+	taskID string,
+	pendingCount int,
+) error {
+	if !triggered {
+		payload := map[string]any{
+			"title":      "agent-pool starvation",
+			"body":       "The oldest pending task is back under the threshold; the starvation alert resolves.",
+			"sourceApp":  b.cfg.SourceApp,
+			"resolvedBy": b.cfg.SourceApp + "-agent-pool",
+		}
+
+		return b.post(ctx, "alert.resolved",
+			idempotencyKey("starvation-resolve", time.Now().Unix()), starvationAggregate, 0, payload)
+	}
+
+	payload := map[string]any{
+		"severity": b.cfg.Severity,
+		"title":    "agent-pool starvation",
+		"body": fmt.Sprintf(
+			"The oldest pending task has waited %s (threshold exceeded) with %d task(s) pending: aging cannot keep up. Oldest: %s",
+			oldestWait.Round(time.Minute),
+			pendingCount,
+			taskID,
+		),
+		"sourceApp": b.cfg.SourceApp,
+		"metadata": map[string]string{
+			"oldest_wait_hours": strconv.Itoa(int(oldestWait.Hours())),
+			"pending":           strconv.Itoa(pendingCount),
+		},
+	}
+
+	return b.post(ctx, "alert.triggered",
+		idempotencyKey("starvation", time.Now().Unix()), starvationAggregate, 0, payload)
+}
+
 func firstLine(line string) string {
 	for i, r := range line {
 		if r == '\n' {
