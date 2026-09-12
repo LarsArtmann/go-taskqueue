@@ -482,7 +482,7 @@ templ FilterBar(data DashboardData) {
 		if data.Filter.View != viewBoard {
 			<select name="status" class={ inputClass + " font-mono text-xs" }>
 				<option value="">status: all</option>
-				for _, st := range allStatuses {
+				for _, st := range task.AllStatuses() {
 					<option value={ string(st) } selected?={ data.Filter.Status == st }>{ string(st) }</option>
 				}
 			</select>

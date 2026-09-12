@@ -60,6 +60,29 @@ func TestStatusTableExhaustive(t *testing.T) {
 	}
 }
 
+// TestAllStatuses pins the exported list against a hardcoded oracle: a new
+// Status must be added to BOTH AllStatuses and the transitions table, and
+// this test fails until the two agree. Lifecycle order is part of the
+// contract (board columns and stats keys iterate in this order).
+func TestAllStatuses(t *testing.T) {
+	declared := []Status{Pending, Running, Completed, Dead, Cancelled}
+
+	got := AllStatuses()
+	if len(got) != len(declared) {
+		t.Fatalf("AllStatuses has %d statuses, want %d", len(got), len(declared))
+	}
+
+	for i, s := range declared {
+		if got[i] != s {
+			t.Errorf("AllStatuses[%d] = %q, want %q", i, got[i], s)
+		}
+
+		if !got[i].Valid() {
+			t.Errorf("AllStatuses contains invalid status %q", got[i])
+		}
+	}
+}
+
 func TestTerminal(t *testing.T) {
 	for _, s := range []Status{Completed, Dead, Cancelled} {
 		if !Terminal(s) {

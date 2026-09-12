@@ -16,6 +16,14 @@ const (
 	Cancelled Status = "cancelled"
 )
 
+// AllStatuses returns every Status in lifecycle order (the single list
+// other packages range over for enum-complete iteration). A function, not
+// an exported slice var, so no caller can mutate the enum list for the
+// whole process.
+func AllStatuses() []Status {
+	return []Status{Pending, Running, Completed, Dead, Cancelled}
+}
+
 // transitions lists every legal from→to pair. Anything else is invalid.
 var transitions = map[Status]map[Status]bool{
 	Pending:   {Running: true, Cancelled: true},

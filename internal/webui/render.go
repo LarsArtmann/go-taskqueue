@@ -336,14 +336,6 @@ func pageHref(f FilterState, page int) string {
 	return "/?" + queryString
 }
 
-var allStatuses = []task.Status{
-	task.Pending,
-	task.Running,
-	task.Completed,
-	task.Dead,
-	task.Cancelled,
-}
-
 // loadSnapshot queries the store for the complete current projection
 // (status counts, visible tasks, DLQ, recent facts) under the filter.
 func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (DashboardData, error) {
@@ -468,9 +460,9 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 // newest boardColumnLimit cards, oldest truncated with an escape hatch
 // into the status-filtered table view.
 func (s *Server) loadBoard(ctx context.Context, filter FilterState) ([]BoardColumn, error) {
-	columns := make([]BoardColumn, 0, len(allStatuses))
+	columns := make([]BoardColumn, 0, len(task.AllStatuses()))
 
-	for _, status := range allStatuses {
+	for _, status := range task.AllStatuses() {
 		queueFilter := filter.toQueueFilter(0)
 		queueFilter.Status = &status
 

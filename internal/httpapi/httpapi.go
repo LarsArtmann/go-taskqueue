@@ -184,18 +184,6 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// apiStatuses is the status set handleStats reports, zeros included, so
-// producers see a stable key set regardless of queue state. task's enum
-// has no exported list; drift against the dashboard's twin surface fails
-// TestStatsSurfacesAgree (internal/webui).
-var apiStatuses = []task.Status{
-	task.Pending,
-	task.Running,
-	task.Completed,
-	task.Dead,
-	task.Cancelled,
-}
-
 // handleStats reports the per-status counts + total — the same payload as
 // the dashboard's GET /api/stats (internal/webui); the two surfaces are
 // pinned equal by TestStatsSurfacesAgree.
@@ -213,9 +201,9 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 		total += n
 	}
 
-	out := make(map[string]int, len(apiStatuses)+1)
+	out := make(map[string]int, len(task.AllStatuses())+1)
 
-	for _, st := range apiStatuses {
+	for _, st := range task.AllStatuses() {
 		out[string(st)] = counts[st]
 	}
 

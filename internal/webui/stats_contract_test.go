@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // TestStatsSurfacesAgree pins the stats split-brain shut (23:47 f24): the
@@ -79,7 +80,7 @@ func TestStatsSurfacesAgree(t *testing.T) {
 		)
 	}
 
-	for _, st := range allStatuses {
+	for _, st := range task.AllStatuses() {
 		if _, ok := apiStats[string(st)]; !ok {
 			t.Errorf("stats payload omits status %q: zeros must stay present so producers see a stable key set", st)
 		}

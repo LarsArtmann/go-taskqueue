@@ -180,9 +180,9 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 		total += n
 	}
 
-	out := make(map[string]int, len(allStatuses)+1)
+	out := make(map[string]int, len(task.AllStatuses())+1)
 
-	for _, st := range allStatuses {
+	for _, st := range task.AllStatuses() {
 		out[string(st)] = counts[st]
 	}
 
