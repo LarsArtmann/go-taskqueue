@@ -298,7 +298,7 @@ type UnblockChange struct {
 func (q *Queue) BumpUnblocked(ctx context.Context, dryRun bool) ([]UnblockChange, error) {
 	pendingStatus := task.Pending
 
-	tasks, err := q.Store.List(ctx, Filter{Status: &pendingStatus})
+	tasks, err := q.List(ctx, Filter{Status: &pendingStatus})
 	if err != nil {
 		return nil, fmt.Errorf("queue: unblock bump: list pending: %w", err)
 	}
@@ -319,13 +319,13 @@ func (q *Queue) BumpUnblocked(ctx context.Context, dryRun bool) ([]UnblockChange
 			continue // still blocked
 		}
 
-		bumped, err := q.bumpIfFresh(ctx, t, dryRun)
+		bumped, applied, err := q.bumpIfFresh(ctx, t, dryRun)
 		if err != nil {
 			return changes, err
 		}
 
-		if bumped != nil {
-			changes = append(changes, *bumped)
+		if applied {
+			changes = append(changes, bumped)
 		}
 	}
 
@@ -337,7 +337,7 @@ func (q *Queue) completedDeps(ctx context.Context, t task.Task) (int, error) {
 	completed := 0
 
 	for _, dep := range t.Deps {
-		depTask, err := q.Store.Get(ctx, dep)
+		depTask, err := q.Get(ctx, dep)
 		if err != nil {
 			if errors.Is(err, task.ErrNotFound) {
 				continue // vanished dep never completes: treat as still blocked
@@ -355,30 +355,37 @@ func (q *Queue) completedDeps(ctx context.Context, t task.Task) (int, error) {
 }
 
 // bumpIfFresh applies the bump unless the task already carries an unblock
-// fact (idempotency guard) or the clamped value changes nothing.
-func (q *Queue) bumpIfFresh(ctx context.Context, t task.Task, dryRun bool) (*UnblockChange, error) {
-	trail, err := q.Store.FactsForTask(ctx, t.ID.String(), 0)
+// fact (idempotency guard) or the clamped value changes nothing; applied
+// is false in both skip cases.
+func (q *Queue) bumpIfFresh(
+	ctx context.Context,
+	t task.Task,
+	dryRun bool,
+) (UnblockChange, bool, error) {
+	var change UnblockChange
+
+	trail, err := q.FactsForTask(ctx, t.ID.String(), 0)
 	if err != nil {
-		return nil, fmt.Errorf("queue: unblock bump: facts for %s: %w", t.ID, err)
+		return change, false, fmt.Errorf("queue: unblock bump: facts for %s: %w", t.ID, err)
 	}
 
-	for _, f := range trail {
-		if f.Type != journal.Reprioritized {
+	for _, trailFact := range trail {
+		if trailFact.Type != journal.Reprioritized {
 			continue
 		}
 
 		var evidence ReprioritizeEvidence
-		if json.Unmarshal(f.Detail, &evidence) == nil && evidence.Source == PrioritySourceUnblock {
-			return nil, nil // already bumped once
+		if json.Unmarshal(trailFact.Detail, &evidence) == nil && evidence.Source == PrioritySourceUnblock {
+			return change, false, nil // already bumped once
 		}
 	}
 
 	newPriority := ClampBacklog(t.Priority + UnblockBumpPriority)
 	if newPriority == t.Priority {
-		return nil, nil
+		return change, false, nil
 	}
 
-	change := UnblockChange{
+	change = UnblockChange{
 		TaskID:        t.ID,
 		OldPriority:   t.Priority,
 		NewPriority:   newPriority,
@@ -388,10 +395,10 @@ func (q *Queue) bumpIfFresh(ctx context.Context, t task.Task, dryRun bool) (*Unb
 	if !dryRun {
 		reason := fmt.Sprintf("all %d dep(s) completed", len(t.Deps))
 
-		if err := q.Store.UpdatePendingPriority(ctx, t.ID, newPriority, PrioritySourceUnblock, reason); err != nil {
-			return nil, fmt.Errorf("queue: unblock bump: update %s: %w", t.ID, err)
+		if err := q.UpdatePendingPriority(ctx, t.ID, newPriority, PrioritySourceUnblock, reason); err != nil {
+			return change, false, fmt.Errorf("queue: unblock bump: update %s: %w", t.ID, err)
 		}
 	}
 
-	return &change, nil
+	return change, true, nil
 }

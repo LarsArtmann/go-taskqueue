@@ -232,7 +232,9 @@ func TestReprioritizeAppliesCachedAIScores(t *testing.T) {
 	// automated re-resolution can honor marker precedence from the store
 	// alone.
 	agentType := "agent"
-	tasks, err := tq.List(ctx, queue.Filter{Project: strPtr("airepri"), Type: &agentType})
+	projectName := "airepri"
+
+	tasks, err := tq.List(ctx, queue.Filter{Project: &projectName, Type: &agentType})
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -253,5 +255,3 @@ func TestReprioritizeAppliesCachedAIScores(t *testing.T) {
 		}
 	}
 }
-
-func strPtr(s string) *string { return &s }

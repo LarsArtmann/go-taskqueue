@@ -2652,6 +2652,7 @@ func TestPriorityScoreRoundtrip(t *testing.T) {
 	second := first
 	second.Score = 12
 	second.Reasoning = "re-scored"
+
 	if err := s.SavePriorityScore(ctx, second); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}

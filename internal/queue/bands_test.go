@@ -3,6 +3,8 @@ package queue
 import "testing"
 
 func TestBandOf(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		priority int
 		want     Band
@@ -29,6 +31,8 @@ func TestBandOf(t *testing.T) {
 // (ADR-0015 §1): nothing computed can cross into hot or machine, and
 // nothing goes below the floor.
 func TestClampBacklog(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		priority int
 		want     int
@@ -53,6 +57,8 @@ func TestClampBacklog(t *testing.T) {
 // the aging cap must stay below the smallest marker-level gap (20) so
 // aging reorders within a band but never across marker levels or bands.
 func TestAgingConstantsPinTheADR(t *testing.T) {
+	t.Parallel()
+
 	if PriorityAgingDaysPerPoint <= 0 {
 		t.Fatalf("PriorityAgingDaysPerPoint = %d, want > 0", PriorityAgingDaysPerPoint)
 	}
