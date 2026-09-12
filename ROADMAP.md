@@ -316,7 +316,7 @@ seam; deeper integration ideas, in rough order of expected value:
   projection hosts — requires a broker decision (tq is deliberately
   single-binary, zero external services; ADR-0009's consumer already
   covers in-process delivery).
-- Branded task IDs via go-cqrs-lite `id/v4`: a cross-module earthquake
+- Branded task IDs via go-cqrs-lite's id module: a cross-module earthquake
   (every sub-module, the CLI, the web UI, session/footer formats) with no
   interop payoff — only revisit alongside the internal→public promotion.
 - go-cqrs-lite `middleware`/`metadata` tracing IDs on facts (correlation
