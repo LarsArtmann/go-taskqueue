@@ -1,6 +1,8 @@
 package webui
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -335,15 +337,19 @@ func TestPayloadSectionGoldenRender(t *testing.T) {
 			t.Fatalf("rendered section missing the work item lede: %s", html)
 		}
 
-		if strings.Contains(html, "Secret contract text") {
-			t.Error("collapsed prompt leaked its body into the HTML")
+		// The prompt lives inside the collapsed <details class="tq-fold">
+		// fold, which renders BELOW the item lede: present in the DOM,
+		// hidden behind the fold.
+		foldIdx := strings.Index(html, `<details class="tq-fold"><summary>prompt</summary>`)
+		if foldIdx < itemIdx {
+			t.Errorf("prompt fold (at %d) must render below the item lede (at %d)", foldIdx, itemIdx)
 		}
 
-		if strings.Index(html, "payload__prompt") < itemIdx && strings.Contains(html, "payload__prompt") {
-			t.Error("prompt fold must render below the item lede")
+		if !strings.Contains(html, "Secret contract text") {
+			t.Error("the fold must still carry the full prompt text in the DOM")
 		}
 
-		for _, marker := range []string{"verify gate", "go build ./..."} {
+		for _, marker := range []string{"tq-payload-item", "verify gate", "go build ./..."} {
 			if !strings.Contains(html, marker) {
 				t.Errorf("rendered section missing %q", marker)
 			}
@@ -366,8 +372,8 @@ func TestPayloadSectionGoldenRender(t *testing.T) {
 
 		html := render(t, task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(`{"repo":`)})
 
-		if !strings.Contains(html, "payload__raw") {
-			t.Error("raw pane class missing for the unparseable payload")
+		if !strings.Contains(html, "raw payload") || !strings.Contains(html, "tq-payload-pre") {
+			t.Error("raw pane fold missing for the unparseable payload")
 		}
 	})
 }

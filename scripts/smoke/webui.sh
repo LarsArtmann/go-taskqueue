@@ -112,6 +112,10 @@ with urllib.request.urlopen(f"{base}/task/{task_id}", timeout=2) as r:
     detail = r.read().decode()
 for frag in ("frag-detail", "frag-timeline"):
     assert frag in detail, f"detail page missing {frag}"
+# Round-13 T5 armor: the detail page must render the payload section (the
+# sh command pane) and the retry strip, not just the cards.
+assert "tq-payload-cmd" in detail, "detail page missing the payload command pane"
+assert "retry" in detail, "detail page missing the retry strip"
 
 req = urllib.request.Request(f"{base}/task/{task_id}/events", headers={"Accept": "text/event-stream"})
 buf = ""
