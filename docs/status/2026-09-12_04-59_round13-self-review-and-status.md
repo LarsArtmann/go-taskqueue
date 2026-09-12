@@ -12,6 +12,16 @@
   version-agreement ok; check-doc-refs ok. NOT run this window: full
   `ci-local.sh`, `nix build`/`nix flake check` after the flake edit,
   `check-webui-css.sh` byte gate — three provenance gaps §d2–§d4 own up to.
+- **AMENDED 04:59 during write-up**: concurrent lineages (03-46→04-45
+  reports) landed after my window and REFUTED two of my claims — (1) my
+  T17 "L147/L150 genuinely open" verdict was WRONG (round-12 T14 had
+  shipped both; the rows were stale-DONE, and I took the open checkboxes
+  at face value instead of verifying the work — my own §d-class sin,
+  again); (2) the lint-baseline gate is now RED at HEAD (7 growth rows in
+  executor/queue-sqlite/worker/root from the concurrent lineages' code —
+  my 887 regen lasted ~2 hours). §f updated accordingly. This is also
+  proof of the 04-45 report's thesis: the baseline gate needs a
+  triage-or-regen decision EVERY window that lands code, not once.
 
 ## a) FULLY DONE (implemented + verified this window)
 
@@ -209,19 +219,27 @@
 ## f) Up to 50 things to get done next (impact-ordered, plan + noticed)
 
 **Proof debts from THIS window (before anything else):**
-1. Push the round-13 pile (owner-authorized) → CI proof for the govulncheck
+1. Baseline-gate triage-or-regen: lint-baseline --check is RED at HEAD
+   (7 growth rows from the concurrent 03-46→04-45 lineages' code) —
+   attribute each row (mine vs concurrent) and either fix findings or
+   regen deliberately; the gate blocks the next push until then.
+2. Push the round-13 pile (owner-authorized) → CI proof for the govulncheck
    hard flip, gosec excludes (job should read GREEN now), baseline gate.
-2. Watch that run; record the gosec job's first green verdict in the index.
-3. `nix build` + `nix run` the built binary: `tq version` must say 0.2.0
+3. Watch that run; record the gosec job's first green verdict in the index.
+4. `nix build` + `nix run` the built binary: `tq version` must say 0.2.0
    (proves the flake `rec` ldflags interpolation end-to-end).
-4. Run `check-webui-css.sh` (byte-equal gate) against the rebuilt app.css.
-5. Run the FULL `./scripts/ci-local.sh` at HEAD (incl. check-ci, smokes).
-6. Write CHANGELOG [Unreleased] entries for the whole window (Added:
+5. Run `check-webui-css.sh` (byte-equal gate) against the rebuilt app.css.
+6. Run the FULL `./scripts/ci-local.sh` at HEAD (incl. check-ci, smokes).
+7. Write CHANGELOG [Unreleased] entries for the whole window (Added:
    doctor env-lie check, version gate, baseline gate, chip UX; Fixed:
    filter URL-encoding; Changed: govulncheck hard gate, gosec excludes,
    minted verifies self-contained).
-7. Mint a TODO row for the dependabot #2 decision (merge vs hold).
-8. Record per-module baseline counts in a human-readable note (M25 tail).
+8. Mint a TODO row for the dependabot #2 decision (merge vs hold).
+9. Record per-module baseline counts in a human-readable note (M25 tail).
+10. Add a process rule born this window: BEFORE closing a stale-DONE
+    candidate, grep for the WORK (script, section, test) — an open
+    checkbox is a claim, not evidence; my L147/L150 refutation is the
+    live example.
 
 **Ruling-gated (unblocks the moment O-answers land):**
 9. O1: SystemNix `Environment=GOEXPERIMENT=jsonv2` + input flip + deploy
@@ -246,13 +264,12 @@
 20. scripts/smoke/reviews.sh — stub reviewer approve/request_changes (M61).
 
 **Release tail (T16):**
-21. Fixture-release smoke: run release.sh --tag + sub-tag cutting on a
-    throwaway repo (L147 — routed here).
-22. Sub-tag end-to-end: cut internal/<mod>/vX.Y.Z on a fixture, resolve
-    via local module resolution (L150 — routed here).
-23. RELEASE.md: multi-commits norm, clean-room backend step, --push notes (M82).
-24. Doc↔script drift smoke for RELEASE.md (M83).
-25. First-multi-module-release retro scaffold (M84).
+21. RELEASE.md: multi-commits norm, clean-room backend step, --push notes (M82).
+22. Doc↔script drift smoke for RELEASE.md (M83) — NOTE: L147/L150 were
+    REFUTED as open by the 04-45 lineage (round-12 T14 shipped both); my
+    T17 routing was wrong, no fixture-release smoke gap remains open
+    unless the drift smoke proves otherwise.
+23. First-multi-module-release retro scaffold (M84).
 
 **Remainder (T18–T27 highlights):**
 26. T18: fullcore smoke with explicit TQ_DB (M85); postgres example proof (M86).
@@ -261,8 +278,11 @@
 29. T19: `tq enqueue --wait` (M94).
 30. T19: rate-limit observability slices (M92/M93).
 31. T20: session-close bridge — sweeper minting close-outs for interactive
-    sessions (journal fact types + AppendFact already landed this window).
-32. T21: consumer ghost-package ADR + interface-trio comparison (M98/M99).
+    sessions (journal fact types + AppendFact landed; the 03-28 close-out
+    lists the design doc's open triggers as the next slice).
+32. T21: consumer ghost-package ADR + interface-trio comparison (M98/M99) —
+    NOTE the AllStatuses half of T21 (M100) was DONE by the concurrent
+    04-13/04-31 lineage (`task.AllStatuses()` function + twin deletions).
 33. T22: annotate + archive the six 2026-09-07 reports (M101/M102).
 34. T23: delete dead `factLines` (still flagged by gopls RIGHT NOW at
     components.go:133) + DOMAIN_LANGUAGE terms (L236).
@@ -282,17 +302,18 @@
 **Noticed in passing (not this window's work, but live):**
 46. Root fs back to 58% (the 99% landmine from the 02-12 report §d is
     resolved) — worth a one-line DONE note on that report's pointer.
-47. The AllStatuses twin-retirement lineage (ad1ae42/7828368/80aec29)
-    landed concurrently — cross-check its TODO rows against T21's M100
-    (AllStatuses export) for double-booking.
+47. Duplicate-claim class: the 04-13/04-31 pair re-delivered a closed
+    task 18 min apart — a policy question the 04-31 §g already asks the
+    owner; do not re-litigate here, just don't double-mint T21 rows
+    against their landing.
 48. `go vet`'s templ QF1003 hints (fragments.templ:947/2835 tagged switch)
     — advisory, but trivially fixable next time fragments are touched.
-49. Anchor-rot item from the 02-17 close-out (bare line cites drifted ±1
-    in 3h) — my report cites components.go:133 and agent.go line numbers;
-    expect the same rot; anchor by symbol name where possible.
-50. Re-run `git log origin/master..HEAD` before ANY next push — the daemon
-    and concurrent lineages commit constantly; the push must carry a
-    stat-diffed, intended file set (f9 rule).
+49. Anchor-rot: this report cites components.go:133 and agent.go line
+    numbers; the 02-17 lineage measured ±1 drift within 3h — anchor by
+    symbol name where possible.
+50. Re-run `git log origin/master..HEAD` before ANY next push — 26+
+    unpushed commits past the last runner-green run (04-45 count); the
+    push must carry a stat-diffed, intended file set (f9 rule).
 
 ## g) Questions only the owner can answer
 
