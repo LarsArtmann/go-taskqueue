@@ -82,7 +82,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                           |
 | `internal/runactor`                                | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                        |
 | `internal/webui`                                   | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                              |
-| `cmd/tq`                                           | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / facts / tail / watermarks / serve / api / doctor / version |
+| `cmd/tq`                                           | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / facts / tail / watermarks / session / serve / api / doctor / version |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001,
 ADR-0002: `docs/adr/`; plans in `docs/planning/`). Domain vocabulary is
@@ -157,6 +157,21 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   task unchanged. A cancelled/dead task's key still suppresses re-enqueue;
   for harvested items the escape hatch is editing the item text (the key
   hashes repo + text).
+- **Session-close bridge** (`tq session begin/close`, prototype
+  2026-09-12): interactive sessions get the pool close-out — begin mints
+  `session.opened`; close scans `Crush-Session: <id>` git trailers (git ≥
+  2.15 `%(trailers)`, ONE log call) and direct-enqueues ONE review (dedup
+  `review:session:<id>`) + ONE status task (dedup
+  `status:<project>:session:<id>`) — keys share the sweeper namespaces —
+  then appends `session.closed` carrying commits + minted IDs. The
+  synthetic `session:<id>` TaskID can never collide with a real task; zero
+  attributed commits → fact only, nothing minted. Minted payloads pin
+  `Yolo` and omit `Model` (the repo `.crushrc` owns model+effort);
+  `--allow-dirty` mirrors into `RequireClean=false`. Close is enqueue-only
+  (SessionEnd-hook budget). `(*sqlite.Store).AppendFact` is the ONLY
+  sanctioned non-task fact write; never write task facts through it. Open:
+  trigger automation (crush #3146), daemon-commit attribution gap, budget
+  bypass, postgres parity — docs/planning/2026-09-12_session-close-bridge-design.md.
 - **`Task-Queue-ID` commit footer**: every prompt contract tells agents to
   end commits with it; the executor resolves the placeholder at RUN time.
   Never hardcode the placeholder inside backtick raw strings (a backtick

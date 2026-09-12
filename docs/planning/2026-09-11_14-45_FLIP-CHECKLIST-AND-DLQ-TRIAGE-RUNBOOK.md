@@ -109,3 +109,50 @@ tq dlq --rescue 000001a08f2d8e6f94... --max-attempts 3
 
 Record the numbers in a status report (`docs/status/`, indexed) per TODO
 item "Post-deploy retro" (M124).
+
+## 6. Flip v2 — the GOEXPERIMENT env fix (round-13 T4, 2026-09-12)
+
+The pool unit env carries no `GOEXPERIMENT`, so every root-module verify
+dies on `encoding/json/v2` build constraints REGARDLESS of repo state
+(5+ windows burned, 2026-09-11 task 000001a08ebf). Minted verifies are now
+env-self-contained (round-13 T2), and `tq doctor` carries an env-lie
+detector (round-13 T3) — but the true fix is one line only the owner can
+set. Bundling it into the next flip costs zero extra deploys.
+
+**The one line** (SystemNix module, wherever `services.tq-agent-pool` is
+declared — mirrors the existing `agentPath` treatment):
+
+```nix
+services.tq-agent-pool.environment.GOEXPERIMENT = "jsonv2";
+```
+
+If the module has no `environment` option yet, the raw NixOS override on
+the generated unit is equivalent:
+
+```nix
+systemd.services.tq-agent-pool.environment.GOEXPERIMENT = "jsonv2";
+```
+
+**Deploy sequence** (same window as the input flip, §2):
+
+1. Add the line above next to the existing `services.tq-agent-pool.agentPath`.
+2. Bump the go-taskqueue input (needs a build with the T2/T3 code — the
+   detector ships with `tq doctor`).
+3. `nix run .#deploy`.
+
+**Post-flip verification (new `tq doctor` env check, run ON the host)**:
+
+```bash
+systemctl status tq-agent-pool            # active, fresh log lines
+sudo -u <pool-user> env systemctl show tq-agent-pool -p Environment | grep GOEXPERIMENT
+# expect: Environment=GOEXPERIMENT=jsonv2 (backticked file §6 evidence: doctor exit 0)
+TQ_DB=/mnt/pool/services/tq/tq.db /run/current-system/sw/bin/tq doctor | grep go-env
+# expect: ok   go-env   encoding/json/v2 builds in this environment — no env lie
+```
+
+A `FAIL go-env ENV-LIE ...` verdict after this flip means the line did not
+reach the unit — re-check `systemctl show` before anything else.
+
+Answer format for the owner: apply §6 now (one line + the scheduled flip),
+or defer explicitly — but then every jsonv2 verify failure in the pool is
+a KNOWN lie, and `tq doctor` is the reference for it.
