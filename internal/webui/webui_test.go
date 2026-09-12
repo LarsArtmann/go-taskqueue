@@ -1147,7 +1147,10 @@ func TestA11yChrome(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(string(css), "prefers-reduced-motion:reduce") {
+	// The rebuilt css formats the query with a space after the colon
+	// (`prefers-reduced-motion: reduce`), so match the feature, not one
+	// byte-exact spelling of it.
+	if !regexp.MustCompile(`prefers-reduced-motion:\s*reduce`).Match(css) {
 		t.Error("committed CSS lacks prefers-reduced-motion handling")
 	}
 }

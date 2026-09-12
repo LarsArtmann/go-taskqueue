@@ -194,12 +194,31 @@ func TestSweeperMintsOneAutopsyPerDeadAgentTask(t *testing.T) {
 	if DedupKey(dead.ID) != "dlqfix:"+dead.ID.String() {
 		t.Fatalf("DedupKey = %q", DedupKey(dead.ID))
 	}
+}
 
-	// Idempotent by dedup: a REPLAYED page (crash between consumption and
-	// checkpoint — simulated with the SetWatermark ops hatch, the rewind
-	// `tq watermarks set` exposes) must not mint a second autopsy. The
-	// autopsy is CLAIMED first so the fresh-vs-known stats heuristic is
-	// deterministic: a claimed stored task can only count as known.
+// TestSweeperReplayDoesNotDuplicateAutopsy pins the crash-recovery story: a
+// REPLAYED page (crash between consumption and checkpoint — simulated with
+// the SetWatermark ops hatch, the rewind `tq watermarks set` exposes) must
+// not mint a second autopsy. The autopsy is CLAIMED first so the
+// fresh-vs-known stats heuristic is deterministic: a claimed stored task can
+// only count as known.
+func TestSweeperReplayDoesNotDuplicateAutopsy(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	sw := newTestSweeper(t, s)
+
+	headBeforeDeath, err := s.HeadSeq(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
+
+	if _, err := sw.Sweep(context.Background()); err != nil {
+		t.Fatalf("mint sweep: %v", err)
+	}
+
 	if _, err := s.ClaimDue(context.Background(), testOwner, testLease); err != nil {
 		t.Fatalf("claim autopsy: %v", err)
 	}
@@ -210,7 +229,7 @@ func TestSweeperMintsOneAutopsyPerDeadAgentTask(t *testing.T) {
 
 	replay := newTestSweeper(t, s)
 
-	stats, err = replay.Sweep(context.Background())
+	stats, err := replay.Sweep(context.Background())
 	if err != nil {
 		t.Fatalf("replay sweep: %v", err)
 	}
