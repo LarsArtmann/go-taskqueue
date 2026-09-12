@@ -95,6 +95,9 @@
    per-linter baseline, tag-ancestry audit, RELEASE.md ancestry/--push
    docs, --push CI poll). L147/L150 (fixture release.sh execution +
    sub-tag end-to-end) verified genuinely open and routed to T16.
+   CORRECTION (04-59 self-review §d3): the L147/L150 half of that
+   verdict was wrong — round-12 T14 had already shipped the
+   fixture-release smoke; open checkboxes were trusted over work-grep.
 10. **T14 mechanical batch**: project chips now carry
     `name TOTAL · R/P/D`; an "all projects" reset chip appears when any
     filter is active; the chips row caps at 12 + "+N more projects"; the

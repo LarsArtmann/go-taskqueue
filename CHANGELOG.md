@@ -20,6 +20,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `docs/planning/2026-09-12_session-close-bridge-design.md`. Trigger
   automation, daemon-commit attribution, budget routing and Postgres
   `AppendFact` parity remain open (documented in the design doc).
+- **`tq doctor` now diagnoses the Go build environment (2026-09-12)**: a
+  new check builds a synthetic `encoding/json/v2` module twice — once with
+  the ambient environment and once with `GOEXPERIMENT=jsonv2` — and
+  classifies the result. The failure mode it names is the real one that
+  burned three pool attempts (2026-09-11, task 000001a08ebf): a
+  jsonv2-only repo verified in an environment without the experiment set
+  reports "build constraints exclude all Go files" and the fix is the
+  environment (`GOEXPERIMENT=jsonv2`), not the repo. Green when either
+  build passes; a verdict line states which side failed and why.
+- **Project filter UX on the dashboard (2026-09-12)**: an active project
+  filter now renders a chips row (all-projects reset, running/pending/dead
+  counts, visible-projects cap at 12 with a +N overflow chip), and
+  per-project views drop the now-redundant project cells from task rows
+  and board cards instead of repeating the filtered value 50 times.
+- **Advisory-lint growth gate and version-agreement gate in ci-local
+  (2026-09-12)**: `.golangci-baseline.txt` pins the per-module,
+  per-linter finding counts of the documented advisory sea (~400
+  findings, AGENTS.md); `scripts/lint-baseline.sh --check` fails the gate
+  on growth or a new finding class while shrink stays advisory, and
+  regeneration is the sanctioned deliberate path for policy-owned
+  changes. `scripts/check-version-agreement.sh` pins the flake version
+  string, the root `.version` file and the CHANGELOG's latest release
+  heading to the same value.
 
 ### Changed
 - **The status enum has one canonical list (`task.AllStatuses()`)**: the
@@ -30,6 +53,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   test in `internal/task` hardcodes the expected set as an oracle. No wire
   change; the exported list rides the next `internal/task` sub-module
   re-tag for proxy consumers.
+- **CI security scanning is triage-encoded, not ignored (2026-09-12)**:
+  the gosec job passes its 14 triaged all-FP classes as `-exclude` rules
+  (matching `.golangci.yml`), so a NEW gosec class fails loudly instead of
+  drowning in the baseline, and findings land in the job summary with the
+  re-triage rule spelled out. govulncheck loses `continue-on-error` on the
+  modules it gates and reports a per-module table in the summary.
 
 ### Fixed
 - **Review prompts no longer stamp the review's own task id into the quoted
@@ -51,6 +80,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   out-path is now captured in a standalone assignment, which does abort.
   Found by the first live fixture execution of the release flow
   (round-12 T14).
+- **`tq version` printed `dev` for nix-built binaries**: the flake built
+  with Go's default flags and never passed `-ldflags "-X
+  main.version=…"`, so release binaries could not be told apart from
+  scratch builds. `flake.nix` now threads the flake version through
+  `buildFlagsArray` (2026-09-12).
+- **Dashboard filter links URL-escape their query strings and cap query
+  length**: `QueryString` escapes metacharacters (`&`, `#`, `%`, spaces)
+  so a project named `a&b` can no longer corrupt the link or smuggle
+  markup into `href`s, and `parseFilter` clamps the `query` parameter to
+  200 chars (2026-09-12).
 
 ### Added
 - **Fuller agent toolset in the bootstrap managed block**: the headless
