@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"flag"
 	"fmt"
@@ -30,6 +31,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/journal/cqrs"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/review"
@@ -66,7 +68,7 @@ Usage:
   tq show TASK_ID [--db PATH]   (a unique ID prefix works)
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]] [--dismiss TASK_ID [--reason WHY]]
 tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative cancel of a running task)
-  tq facts [--db PATH] [--after SEQ]
+  tq facts [--db PATH] [--after SEQ] [--cqrs]
   tq tail [-f] [--db PATH] [--after SEQ]
   tq watermarks show [--db PATH]   (journal consumer cursors)
   tq watermarks set CONSUMER SEQ [--db PATH]   (rewind = safe replay)
@@ -1789,6 +1791,11 @@ func cmdFacts(args []string) error {
 	fs := flag.NewFlagSet("facts", flag.ExitOnError)
 	after := fs.Int64("after", 0, "only facts with seq > this")
 	asJSON := fs.Bool("json", false, "JSON output of the fact list (full detail, non-truncating)")
+	asCQRS := fs.Bool(
+		"cqrs",
+		false,
+		"render the facts as go-cqrs-lite journal events (JSON array; see internal/journal/cqrs)",
+	)
 	withDetail := fs.Bool(
 		"detail",
 		false,
@@ -1806,6 +1813,10 @@ func cmdFacts(args []string) error {
 	facts, err := s.Facts(context.Background(), *after, 0)
 	if err != nil {
 		return err
+	}
+
+	if *asCQRS {
+		return printCQRSEvents(facts)
 	}
 
 	if *asJSON {
@@ -1826,6 +1837,44 @@ func cmdFacts(args []string) error {
 	fmt.Printf("(%d facts)\n", len(facts))
 
 	return nil
+}
+
+// cqrsEventJSON is the wire shape of one go-cqrs-lite journal event as
+// rendered by `tq facts --cqrs` (the payload stays raw fact JSON).
+type cqrsEventJSON struct {
+	ID         string         `json:"id"`
+	Type       string         `json:"type"`
+	StreamID   string         `json:"streamId"`
+	StreamType string         `json:"streamType"`
+	Version    uint64         `json:"version"`
+	OccurredAt time.Time      `json:"occurredAt"`
+	Payload    jsontext.Value `json:"payload"`
+}
+
+func printCQRSEvents(facts []journal.Fact) error {
+	events, err := cqrs.NewFactJournal(cqrs.NewSliceSource(facts)).ReadAll(context.Background())
+	if err != nil {
+		return err
+	}
+
+	out := make([]cqrsEventJSON, 0, len(events))
+
+	for _, evt := range events {
+		out = append(out, cqrsEventJSON{
+			ID:         evt.ID().String(),
+			Type:       string(evt.Type()),
+			StreamID:   evt.StreamID().String(),
+			StreamType: string(evt.StreamType()),
+			Version:    uint64(evt.Version()),
+			OccurredAt: evt.OccurredAt(),
+			Payload:    jsontext.Value(evt.Payload()),
+		})
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+
+	return enc.Encode(out)
 }
 
 // formatFactDetail renders a fact's detail JSON verbatim and non-truncated
