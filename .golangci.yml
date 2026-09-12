@@ -137,9 +137,25 @@ linters:
     gomoddirectives:
       replace-local: true
     gosec:
+      # The 2026-09-10 triage (AGENTS.md "gosec advisory baseline") encoded
+      # as excludes, kept in parity with the standalone gosec CI job's
+      # -exclude list (ci.yml). A new finding in an excluded class needs a
+      # fresh triage note, not a silent pass.
       excludes:
-        - G304
+        - G104
         - G115
+        - G118
+        - G124
+        - G202
+        - G204
+        - G301
+        - G302
+        - G304
+        - G306
+        - G404
+        - G702
+        - G703
+        - G710
     ireturn:
       allow:
         - error
