@@ -191,3 +191,15 @@ importance 50 when absent, malformed file ⇒ repo skip reason (the
   grammar; mid-text P1 never matches.
 - Band migration on the live journal — offline, enumerated, backed up,
   verified (§6).
+
+## 10. Deferred: effort-aware claims (ruling G2)
+
+The score cache persists `effort_minutes` per item, but claim selection
+stays priority+aging only. G2 (owner-ratified default): the daily budget
+is GLOBAL-FLAT — every pending task competes on the same ladder; effort
+does not bias claims while budget remains, and near-exhaustion preference
+for cheap tasks is deliberately NOT built. Prerequisite plumbing (the
+cache column) exists; the claim-side term would be
+`ORDER BY ..., effort_minutes ASC` joined through the score cache, gated
+on remaining-budget < threshold. Flip G2 first — building the term now
+would ship a dead knob (YAGNI).
