@@ -45,7 +45,7 @@ func parseFilter(r *http.Request) FilterState {
 	filter := FilterState{
 		Project: query.Get("project"),
 		Status:  task.Status(query.Get("status")),
-		Query:   query.Get("q"),
+		Query:   clampQuery(query.Get("q")),
 		Page:    page,
 		Sort:    sort,
 		View:    view,
@@ -59,6 +59,21 @@ func parseFilter(r *http.Request) FilterState {
 	}
 
 	return filter
+}
+
+// maxQueryLen caps the free-text ?q= scan (round-13 T5 armor): q feeds a
+// LIKE scan over the task table, and an unbounded value lets any request
+// pin the dashboard's read path. The cap is generous for real searches and
+// trivially small for the store.
+const maxQueryLen = 200
+
+// clampQuery truncates the query filter at maxQueryLen.
+func clampQuery(q string) string {
+	if len(q) > maxQueryLen {
+		return q[:maxQueryLen]
+	}
+
+	return q
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {

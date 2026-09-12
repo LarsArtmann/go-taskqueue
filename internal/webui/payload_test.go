@@ -302,3 +302,72 @@ func TestRetryTrailCountsDeadLetter(t *testing.T) {
 		t.Errorf("second reason = %+v, want the earlier refusal", trail[1])
 	}
 }
+
+// TestPayloadSectionGoldenRender pins the RENDERED payload-section HTML for
+// the two owner-approved shapes (2026-09-11 detail-page decisions): an
+// item'd agent payload LEADS with the item and keeps the prompt COLLAPSED;
+// an item-less payload leads WITH the prompt. The golden markers are the
+// structural substrings (element classes and order) any payload regression
+// would disturb.
+func TestPayloadSectionGoldenRender(t *testing.T) {
+	t.Parallel()
+
+	render := func(t *testing.T, tk task.Task) string {
+		t.Helper()
+
+		var buf bytes.Buffer
+
+		if err := payloadSection(tk, payloadViewFor(tk)).Render(context.Background(), &buf); err != nil {
+			t.Fatalf("payloadSection render: %v", err)
+		}
+
+		return buf.String()
+	}
+
+	t.Run("item leads, prompt collapsed", func(t *testing.T) {
+		t.Parallel()
+
+		payload := `{"repo":"/repos/demo","prompt":"Secret contract text","item":"Anti-ghost-archive gate","verify":"go build ./..."}`
+		html := render(t, task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(payload)})
+
+		itemIdx := strings.Index(html, "Anti-ghost-archive gate")
+		if itemIdx < 0 {
+			t.Fatalf("rendered section missing the work item lede: %s", html)
+		}
+
+		if strings.Contains(html, "Secret contract text") {
+			t.Error("collapsed prompt leaked its body into the HTML")
+		}
+
+		if strings.Index(html, "payload__prompt") < itemIdx && strings.Contains(html, "payload__prompt") {
+			t.Error("prompt fold must render below the item lede")
+		}
+
+		for _, marker := range []string{"verify gate", "go build ./..."} {
+			if !strings.Contains(html, marker) {
+				t.Errorf("rendered section missing %q", marker)
+			}
+		}
+	})
+
+	t.Run("item-less leads with the prompt", func(t *testing.T) {
+		t.Parallel()
+
+		payload := `{"repo":"/repos/demo","prompt":"Do the thing"}`
+		html := render(t, task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(payload)})
+
+		if !strings.Contains(html, "Do the thing") {
+			t.Error("item-less payload must lead with the prompt as content")
+		}
+	})
+
+	t.Run("unparseable degrades to the raw pane", func(t *testing.T) {
+		t.Parallel()
+
+		html := render(t, task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(`{"repo":`)})
+
+		if !strings.Contains(html, "payload__raw") {
+			t.Error("raw pane class missing for the unparseable payload")
+		}
+	})
+}

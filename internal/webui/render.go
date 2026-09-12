@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"slices"
 	"sort"
 	"strconv"
@@ -82,20 +83,22 @@ func (f FilterState) Empty() bool {
 	return f.Project == "" && f.Status == "" && f.Query == ""
 }
 
-// QueryString renders the filter as URL query parameters.
+// QueryString renders the filter as URL query parameters. Values are
+// URL-escaped: a project or query containing &/=/space/% must round-trip
+// through filterHref → parseFilter byte-identical (round-13 T5 armor).
 func (f FilterState) QueryString() string {
 	var b strings.Builder
 
 	if f.Project != "" {
-		fmt.Fprintf(&b, "project=%s&", f.Project)
+		fmt.Fprintf(&b, "project=%s&", url.QueryEscape(f.Project))
 	}
 
 	if f.Status != "" {
-		fmt.Fprintf(&b, "status=%s&", f.Status)
+		fmt.Fprintf(&b, "status=%s&", url.QueryEscape(string(f.Status)))
 	}
 
 	if f.Query != "" {
-		fmt.Fprintf(&b, "q=%s&", f.Query)
+		fmt.Fprintf(&b, "q=%s&", url.QueryEscape(f.Query))
 	}
 
 	if f.Sort != "" {
