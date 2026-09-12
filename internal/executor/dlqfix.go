@@ -26,6 +26,12 @@ import (
 // failed attempt.
 const TaskTypeDLQFix = "dlqfix"
 
+// ErrDLQFixSummaryMissing pins the wontfix-needs-a-diagnosis rule: an
+// unexplained dismissal is exactly the behavior being automated away.
+var ErrDLQFixSummaryMissing = errors.New(
+	"verdict JSON has no summary (a diagnosis is required for either verdict)",
+)
+
 // DLQFixPayload is the payload contract for "dlqfix" tasks. Self-contained,
 // like ReviewPayload: the evidence travels in the payload, so the executor
 // stays a pure process runner.
@@ -312,9 +318,7 @@ func ParseDLQFixResult(output string) (DLQFixResult, error) {
 	case VerdictFixed, VerdictWontFix:
 		summary := strings.TrimSpace(parsed.Summary)
 		if summary == "" {
-			return DLQFixResult{}, errors.New(
-				"verdict JSON has no summary (a diagnosis is required for either verdict)",
-			)
+			return DLQFixResult{}, ErrDLQFixSummaryMissing
 		}
 
 		return DLQFixResult{Verdict: v, Summary: summary, CommitSHA: strings.TrimSpace(parsed.CommitSHA)}, nil

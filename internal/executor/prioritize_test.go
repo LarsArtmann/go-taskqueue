@@ -6,6 +6,8 @@ import (
 )
 
 func TestParsePrioritizeResultContract(t *testing.T) {
+	t.Parallel()
+
 	items := []PrioritizeItem{
 		{Key: "todo:aaa", Text: "Fix the flaky gate"},
 		{Key: "todo:bbb", Text: "Water the plants"},
@@ -39,6 +41,8 @@ func TestParsePrioritizeResultContract(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			if _, err := ParsePrioritizeResult(tc.out, items); err == nil {
 				t.Fatal("expected contract failure, got nil")
 			}
@@ -50,6 +54,8 @@ func TestParsePrioritizeResultContract(t *testing.T) {
 // every item key appears, the TQ_RESULT shape is spelled out, and the
 // read-only rule is stated.
 func TestPrioritizePromptContract(t *testing.T) {
+	t.Parallel()
+
 	p := PrioritizePayload{
 		Repo:     "demo",
 		RepoName: "demo",

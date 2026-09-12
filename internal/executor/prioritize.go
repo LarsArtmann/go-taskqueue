@@ -21,6 +21,21 @@ import (
 // pool prioritize-capable.
 const TaskTypePrioritize = "prioritize"
 
+// Prioritize contract sentinels: call sites match with errors.Is; the
+// wrapped forms render exactly the messages the ad-hoc errors carried.
+var (
+	ErrPrioritizeEmptyPayload = errors.New("prioritize: empty payload, want {repo, items}")
+	// ErrPrioritizeSparsePayload covers a decoded payload missing repo/items.
+	ErrPrioritizeSparsePayload = errors.New("prioritize: payload needs non-empty repo and items")
+	// ErrPrioritizeUnknownItem, ErrPrioritizeDuplicateVerdict, and
+	// ErrPrioritizeMissingVerdict pin the exactly-once coverage rule.
+	ErrPrioritizeUnknownItem      = errors.New("verdict for unknown item")
+	ErrPrioritizeDuplicateVerdict = errors.New("duplicate verdict for item")
+	ErrPrioritizeMissingVerdict   = errors.New("no verdict for item")
+	// ErrPrioritizeScoreRange pins the 0-100 score domain.
+	ErrPrioritizeScoreRange = errors.New("out of range 0-100")
+)
+
 // PrioritizeItem is one item the scorer must verdict, with the dedup key
 // the verdict will be cached under (the sweeper derives it with the same
 // harvest.ItemKey derivation the queue dedup uses).
@@ -99,28 +114,28 @@ func (e *PrioritizeExecutor) base() *AgentExecutor {
 // failed attempt (retryable — the model may comply on a retry), input
 // misses are permanent, dirty trees are preflight requeues.
 func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
-	var p PrioritizePayload
+	var payload PrioritizePayload
 
 	if len(t.Payload) == 0 {
-		return Permanent(errors.New("prioritize: empty payload, want {repo, items}"))
+		return Permanent(ErrPrioritizeEmptyPayload)
 	}
 
-	if err := json.Unmarshal(t.Payload, &p); err != nil {
+	if err := json.Unmarshal(t.Payload, &payload); err != nil {
 		return Permanent(fmt.Errorf("prioritize: decode payload: %w", err))
 	}
 
-	if p.Repo == "" || len(p.Items) == 0 {
-		return Permanent(errors.New("prioritize: payload needs non-empty repo and items"))
+	if payload.Repo == "" || len(payload.Items) == 0 {
+		return Permanent(ErrPrioritizeSparsePayload)
 	}
 
 	agent := e.base()
 
-	repoDir, err := agent.repoDir(p.Repo)
+	repoDir, err := agent.repoDir(payload.Repo)
 	if err != nil {
 		return Permanent(err)
 	}
 
-	if requireClean(AgentPayload{RequireClean: p.RequireClean}) {
+	if requireClean(AgentPayload{RequireClean: payload.RequireClean}) {
 		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
 			if err := assertCleanTree(ctx, repoDir); err != nil {
 				return &PreflightError{Cause: err}
@@ -129,24 +144,24 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	timeout := defaultPrioritizeTaskTimeout
-	if p.TimeoutMinutes > 0 {
-		timeout = time.Duration(p.TimeoutMinutes) * time.Minute
+	if payload.TimeoutMinutes > 0 {
+		timeout = time.Duration(payload.TimeoutMinutes) * time.Minute
 	}
 
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	output, err := agent.runAgent(runCtx, repoDir, &AgentPayload{
-		Repo:   p.Repo,
-		Prompt: prioritizePrompt(p),
-		Model:  p.Model,
-		Yolo:   p.Yolo,
+		Repo:   payload.Repo,
+		Prompt: prioritizePrompt(payload),
+		Model:  payload.Model,
+		Yolo:   payload.Yolo,
 	}, t.ID)
 	if err != nil {
 		return err
 	}
 
-	result, err := ParsePrioritizeResult(output, p.Items)
+	result, err := ParsePrioritizeResult(output, payload.Items)
 	if err != nil {
 		return fmt.Errorf("prioritize: %w", err)
 	}
@@ -162,7 +177,7 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 
 // prioritizePrompt builds the scorer instruction: the batch, the scoring
 // rubric, the read-only rule, and the exact output contract.
-func prioritizePrompt(p PrioritizePayload) string {
+func prioritizePrompt(payload PrioritizePayload) string {
 	var b strings.Builder
 
 	b.WriteString(
@@ -171,7 +186,7 @@ func prioritizePrompt(p PrioritizePayload) string {
 
 	b.WriteString("## Items to score (key | section | text)\n\n")
 
-	for _, item := range p.Items {
+	for _, item := range payload.Items {
 		heading := item.Heading
 		if heading == "" {
 			heading = "-"
@@ -235,15 +250,15 @@ func ParsePrioritizeResult(output string, items []PrioritizeItem) (PrioritizeRes
 
 	for _, verdict := range parsed.Verdicts {
 		if !want[verdict.ItemKey] {
-			return PrioritizeResult{}, fmt.Errorf("verdict for unknown item %q", verdict.ItemKey)
+			return PrioritizeResult{}, fmt.Errorf("%w %q", ErrPrioritizeUnknownItem, verdict.ItemKey)
 		}
 
 		if got[verdict.ItemKey] {
-			return PrioritizeResult{}, fmt.Errorf("duplicate verdict for item %q", verdict.ItemKey)
+			return PrioritizeResult{}, fmt.Errorf("%w %q", ErrPrioritizeDuplicateVerdict, verdict.ItemKey)
 		}
 
 		if verdict.Score < 0 || verdict.Score > 100 {
-			return PrioritizeResult{}, fmt.Errorf("item %q score %d out of range 0-100", verdict.ItemKey, verdict.Score)
+			return PrioritizeResult{}, fmt.Errorf("item %q score %d %w", verdict.ItemKey, verdict.Score, ErrPrioritizeScoreRange)
 		}
 
 		got[verdict.ItemKey] = true
@@ -251,7 +266,7 @@ func ParsePrioritizeResult(output string, items []PrioritizeItem) (PrioritizeRes
 
 	for key := range want {
 		if !got[key] {
-			return PrioritizeResult{}, fmt.Errorf("no verdict for item %q", key)
+			return PrioritizeResult{}, fmt.Errorf("%w %q", ErrPrioritizeMissingVerdict, key)
 		}
 	}
 
