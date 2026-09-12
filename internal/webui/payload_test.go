@@ -21,7 +21,9 @@ import (
 func TestPayloadViewAgent(t *testing.T) {
 	t.Parallel()
 
-	payload := `{"repo":"/repos/demo","prompt":"Contract:\n1. Read AGENTS.md\n2. Do the work","item":"Anti-ghost-archive gate: CI check","verify":"go build ./...","model":"prov/model-x","dedup":"todo:abc123","timeout_minutes":45,"yolo":true}`
+	payload := `{"repo":"/repos/demo","prompt":"Contract:\n1. Read AGENTS.md\n2. Do the work",` +
+		`"item":"Anti-ghost-archive gate: CI check","verify":"go build ./...","model":"prov/model-x",` +
+		`"dedup":"todo:abc123","timeout_minutes":45,"yolo":true}`
 	pv := payloadViewFor(task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(payload)})
 
 	if pv.Kind != payloadAgent {
@@ -113,7 +115,9 @@ func TestPayloadViewAgentUnparseableFallsBackToRaw(t *testing.T) {
 func TestPayloadViewReview(t *testing.T) {
 	t.Parallel()
 
-	payload := `{"repo":"/repos/demo","reviewed_task":"000001a08edfbc90bf02dd35ec0d5e7bf524","item":"fix the gate","commit_sha":"abc123","files_changed":["a.go","b.go"],"extra":"focus on the CI wiring"}`
+	payload := `{"repo":"/repos/demo","reviewed_task":"000001a08edfbc90bf02dd35ec0d5e7bf524",` +
+		`"item":"fix the gate","commit_sha":"abc123","files_changed":["a.go","b.go"],` +
+		`"extra":"focus on the CI wiring"}`
 	pv := payloadViewFor(task.Task{Type: executor.TaskTypeReview, Payload: json.RawMessage(payload)})
 
 	if pv.Kind != payloadReview {
@@ -150,7 +154,8 @@ func TestPayloadViewReview(t *testing.T) {
 func TestPayloadViewStatus(t *testing.T) {
 	t.Parallel()
 
-	payload := `{"repo":"/repos/demo","project":"demo","verify":"go test ./...","completed":[{"task_id":"task-a","item":"one"},{"task_id":"task-b","item":"two"}]}`
+	payload := `{"repo":"/repos/demo","project":"demo","verify":"go test ./...",` +
+		`"completed":[{"task_id":"task-a","item":"one"},{"task_id":"task-b","item":"two"}]}`
 	pv := payloadViewFor(task.Task{Type: executor.TaskTypeStatus, Payload: json.RawMessage(payload)})
 
 	if pv.Kind != payloadStatus {
@@ -329,7 +334,8 @@ func TestPayloadSectionGoldenRender(t *testing.T) {
 	t.Run("item leads, prompt collapsed", func(t *testing.T) {
 		t.Parallel()
 
-		payload := `{"repo":"/repos/demo","prompt":"Secret contract text","item":"Anti-ghost-archive gate","verify":"go build ./..."}`
+		payload := `{"repo":"/repos/demo","prompt":"Secret contract text",` +
+			`"item":"Anti-ghost-archive gate","verify":"go build ./..."}`
 		html := render(t, task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(payload)})
 
 		itemIdx := strings.Index(html, "Anti-ghost-archive gate")
