@@ -176,6 +176,37 @@ func TestHandlerErrorPausesOnlyThatSubscriber(t *testing.T) {
 		time.Sleep(2 * time.Millisecond)
 	}
 
+	flakySnapshot := func() []int64 {
+		flakyMu.Lock()
+		defer flakyMu.Unlock()
+
+		return append([]int64(nil), flakySeen...)
+	}
+
+	sawFact2 := func() bool {
+		for _, seq := range flakySnapshot() {
+			if seq == 2 {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	// The cursor pin is only meaningful once the pause engaged: tick
+	// drains subscribers sequentially, so the healthy count alone can be
+	// observed before the flaky drain first reaches fact 2 (cursor still
+	// 0 — the 2026-09-13 load transient). Gate on the attempt, then pin.
+	deadline = time.Now().Add(2 * time.Second)
+
+	for time.Now().Before(deadline) && !sawFact2() {
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	if !sawFact2() {
+		t.Fatalf("flaky handler never attempted fact 2, seen %v", flakySnapshot())
+	}
+
 	if cursor, _ := d.Cursor("flaky"); cursor != 1 {
 		t.Fatalf("flaky cursor = %d while handler fails, want 1 (never past an unaccepted fact)", cursor)
 	}
