@@ -55,7 +55,7 @@ func FuzzReadImportance(f *testing.F) {
 	f.Add("importance: 50\n")
 	f.Add("tags: [go]\nimportance: 70\ncreated_at: 2026-01-01\n")
 	f.Add("importance: \"55\"\n")
-	f.Add("importance:\n  importance: 999\n")
+	f.Add("tags: []\nimportance: 40\nlicense:\n  spdx: MIT\n")
 	f.Add("importance: high\n")
 	f.Add("importance: -1\n")
 	f.Add("# importance: 90\n")
