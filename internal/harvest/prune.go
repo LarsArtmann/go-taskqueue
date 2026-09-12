@@ -120,34 +120,12 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 			continue
 		}
 
-		t, tracked := byDedup[item.Key]
-		if !tracked {
+		t, isTracked := byDedup[item.Key]
+		if !isTracked {
 			continue
 		}
 
-		switch t.Status {
-		case task.Pending:
-			if h.cfg.DryRun {
-				res.Cancelled = append(res.Cancelled, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
-
-				continue
-			}
-
-			reason := pruneReasonPrefix + truncateItem(item.Text)
-			if err := h.q.Cancel(ctx, t.ID, reason); err != nil {
-				res.ScanFailures = append(res.ScanFailures, ScanFailure{
-					Repo: repo, Reason: fmt.Sprintf("cancel %s failed: %s", t.ID, err),
-				})
-
-				continue
-			}
-
-			res.Cancelled = append(res.Cancelled, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
-		case task.Running:
-			res.Running = append(res.Running, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
-		case task.Dead:
-			res.Dead = append(res.Dead, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
-		}
+		h.pruneTickedTask(ctx, repo, item, t, res)
 	}
 
 	repoName := filepath.Base(repo)
@@ -165,6 +143,41 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 	}
 
 	return nil
+}
+
+// tracked reports whether an item key has a queue task.
+func tracked(byDedup map[string]task.Task, key string) bool {
+	_, ok := byDedup[key]
+	return ok
+}
+
+// pruneTickedTask applies the ticked rule to one done item: a PENDING task
+// whose checkbox is now [x] is cancelled (dry-run reports instead), RUNNING
+// and DEAD tasks are reported, never stopped.
+func (h *Harvester) pruneTickedTask(ctx context.Context, repo string, item Item, t task.Task, res *PruneResult) {
+	switch t.Status {
+	case task.Pending:
+		if h.cfg.DryRun {
+			res.Cancelled = append(res.Cancelled, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
+
+			return
+		}
+
+		reason := pruneReasonPrefix + truncateItem(item.Text)
+		if err := h.q.Cancel(ctx, t.ID, reason); err != nil {
+			res.ScanFailures = append(res.ScanFailures, ScanFailure{
+				Repo: repo, Reason: fmt.Sprintf("cancel %s failed: %s", t.ID, err),
+			})
+
+			return
+		}
+
+		res.Cancelled = append(res.Cancelled, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
+	case task.Running:
+		res.Running = append(res.Running, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
+	case task.Dead:
+		res.Dead = append(res.Dead, PrunedTask{Item: item, TaskID: t.ID, Why: PruneTicked})
+	}
 }
 
 // pruneAbsentTask applies the absent rule to one harvested task: when its

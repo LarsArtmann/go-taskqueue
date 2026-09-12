@@ -138,20 +138,7 @@ func TestBumpUnblocked(t *testing.T) {
 		t.Fatalf("facts: %v", err)
 	}
 
-	unblockFacts := 0
-
-	for _, f := range facts {
-		if f.Type != journal.Reprioritized {
-			continue
-		}
-
-		unblockFacts++
-
-		var evidence queue.ReprioritizeEvidence
-		if err := json.Unmarshal(f.Detail, &evidence); err != nil || evidence.Source != queue.PrioritySourceUnblock {
-			t.Fatalf("unblock fact evidence = %+v (%v)", evidence, err)
-		}
-	}
+	unblockFacts := countUnblockFacts(t, facts)
 
 	if unblockFacts != 1 {
 		t.Fatalf("unblock facts = %d, want exactly 1", unblockFacts)
@@ -163,6 +150,29 @@ func TestBumpUnblocked(t *testing.T) {
 	if changes, err = q.BumpUnblocked(ctx, false); err != nil || len(changes) != 0 {
 		t.Fatalf("second sweep re-bumped: %+v (%v)", changes, err)
 	}
+}
+
+// countUnblockFacts counts the task.reprioritized facts carrying the
+// unblock source, failing on a malformed one.
+func countUnblockFacts(t *testing.T, facts []journal.Fact) int {
+	t.Helper()
+
+	unblockFacts := 0
+
+	for _, fact := range facts {
+		if fact.Type != journal.Reprioritized {
+			continue
+		}
+
+		unblockFacts++
+
+		var evidence queue.ReprioritizeEvidence
+		if err := json.Unmarshal(fact.Detail, &evidence); err != nil || evidence.Source != queue.PrioritySourceUnblock {
+			t.Fatalf("unblock fact evidence = %+v (%v)", evidence, err)
+		}
+	}
+
+	return unblockFacts
 }
 
 // mustPriority fetches one task and asserts its stored priority.

@@ -237,6 +237,17 @@ linters:
   exclusions:
     generated: lax
     rules:
+      # Machine-payload wire structs are snake_case by contract: executor
+      # payloads and journal fact evidence quote their keys verbatim in
+      # agent prompts (TQ_RESULT lines) and persist them in journal facts,
+      # so they must never drift to camelCase. Core domain types (task,
+      # journal) stay camelCase. Scope: the payload-bearing files only.
+      - path: internal/executor/[a-z_]+\.go
+        linters:
+          - tagliatelle
+      - path: internal/queue/queue\.go
+        linters:
+          - tagliatelle
       - path: _test\.go
         linters:
           - errcheck

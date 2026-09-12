@@ -49,7 +49,8 @@ func TestReprioritize(t *testing.T) {
 
 	// Second phase: importance now ON, and the owner removed the marker
 	// from the deploy item (plain text now, resolves to importance 80).
-	if err := overwriteRepoTodo(t, repo, "- [ ] Fix the deploy\n- [ ] unmarked item\n- [ ] gone from file\n"); err != nil {
+	if err := overwriteRepoTodo(t, repo,
+		"- [ ] Fix the deploy\n- [ ] unmarked item\n- [ ] gone from file\n"); err != nil {
 		t.Fatal(err)
 	}
 

@@ -352,10 +352,7 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 	if h.cfg.UseImportance {
 		importance, err := ReadImportance(repo)
 		if err != nil {
-			for _, item := range items {
-				res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "metadata: " + err.Error()})
-			}
-
+			skipAll(res, items, "metadata: "+err.Error())
 			return state, false
 		}
 
@@ -367,6 +364,13 @@ func (h *Harvester) surveyRepo(ctx context.Context, repo string, items []Item, r
 	return state, true
 }
 
+// skipAll reports every item of a repo as skipped with one reason.
+func skipAll(res *Result, items []Item, reason string) {
+	for _, item := range items {
+		res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: reason})
+	}
+}
+
 // itemDenial reports why one item must NOT be enqueued this run, in the
 // pacing precedence order; "" means the item is admissible (subject to
 // DryRun, which never denies but never enqueues either).
@@ -376,21 +380,13 @@ func (h *Harvester) itemDenial(state repoState, item Item, enqueuedThisRepo bool
 	}
 
 	occupancy := h.occupancyDenial(state)
+	stateReason := h.stateDenial(state)
 
 	switch {
 	case item.Key != "" && state.known[item.Key] != "":
 		return trackedItemDenial(state.known[item.Key])
-	case h.cfg.UseImportance && state.importance == 0:
-		return "paused: importance 0 (repo paused from auto-admission; raise importance to resume)"
-	case state.poisoned:
-		return fmt.Sprintf(
-			"poisoned: recent dead-letter, DLQ backoff %s (fix the repo or rescue dead tasks)", h.cfg.DLQBackoff)
-	case state.repoInterval > 0 && !state.lastCreated.IsZero() && time.Since(state.lastCreated) < state.repoInterval:
-		return fmt.Sprintf(
-			"paced: per-repo interval %s (last enqueue %s ago)",
-			state.repoInterval,
-			time.Since(state.lastCreated).Round(time.Second),
-		)
+	case stateReason != "":
+		return stateReason
 	case occupancy != "":
 		return occupancy
 	case enqueuedThisRepo:
@@ -427,6 +423,30 @@ func (state *repoState) observe(t task.Task) {
 	}
 }
 
+// stateDenial reports the repo-lifecycle admission stops: paused
+// (importance 0 in importance mode), poisoned (recent dead-letters inside
+// the backoff window), or paced (per-repo enqueue interval not elapsed).
+func (h *Harvester) stateDenial(state repoState) string {
+	if h.cfg.UseImportance && state.importance == 0 {
+		return "paused: importance 0 (repo paused from auto-admission; raise importance to resume)"
+	}
+
+	if state.poisoned {
+		return fmt.Sprintf(
+			"poisoned: recent dead-letter, DLQ backoff %s (fix the repo or rescue dead tasks)", h.cfg.DLQBackoff)
+	}
+
+	if state.repoInterval > 0 && !state.lastCreated.IsZero() && time.Since(state.lastCreated) < state.repoInterval {
+		return fmt.Sprintf(
+			"paced: per-repo interval %s (last enqueue %s ago)",
+			state.repoInterval,
+			time.Since(state.lastCreated).Round(time.Second),
+		)
+	}
+
+	return ""
+}
+
 // trackedItemDenial explains why an item already known to the queue is
 // denied admission, by its stored status.
 func trackedItemDenial(status task.Status) string {
@@ -454,7 +474,8 @@ func (h *Harvester) occupancyDenial(state repoState) string {
 
 		if state.pendingCount >= h.cfg.MaxPendingPerRepo {
 			return fmt.Sprintf(
-				"admission: repo holds %d pending task(s), cap %d (--max-pending-per-repo; queue = working set, TODO_LIST.md = warehouse)",
+				"admission: repo holds %d pending task(s), cap %d (--max-pending-per-repo; "+
+					"queue = working set, TODO_LIST.md = warehouse)",
 				state.pendingCount, h.cfg.MaxPendingPerRepo)
 		}
 

@@ -1552,12 +1552,7 @@ func cmdShow(args []string) error {
 	var commitView any
 
 	if *commits {
-		cv, err := commitsForTask(t)
-		if err != nil {
-			return err
-		}
-
-		commitView = cv
+		commitView = commitsForTask(t)
 	}
 
 	return enc.Encode(struct {
@@ -1645,17 +1640,17 @@ type commitHit struct {
 // queue↔git cross-reference): count 0 means the footer contract was
 // breached (work landed unreferenced), count >1 means an ambiguous
 // cross-reference (the f26 three-ID cluster class).
-func commitsForTask(t task.Task) (map[string]any, error) {
+func commitsForTask(t task.Task) map[string]any {
 	repo := struct {
 		Repo string `json:"repo"`
 	}{}
 
 	if err := json.Unmarshal(t.Payload, &repo); err != nil || repo.Repo == "" {
-		return map[string]any{"note": "no repo in payload — footer scan unavailable"}, nil
+		return map[string]any{"note": "no repo in payload — footer scan unavailable"}
 	}
 
 	if _, err := os.Stat(filepath.Join(repo.Repo, ".git")); err != nil {
-		return map[string]any{"note": "repo not accessible: " + repo.Repo}, nil
+		return map[string]any{"note": "repo not accessible: " + repo.Repo}
 	}
 
 	cmd := exec.Command("git", "-C", repo.Repo, "log",
@@ -1663,7 +1658,7 @@ func commitsForTask(t task.Task) (map[string]any, error) {
 
 	out, err := cmd.Output()
 	if err != nil {
-		return map[string]any{"note": "git log failed: " + err.Error()}, nil
+		return map[string]any{"note": "git log failed: " + err.Error()}
 	}
 
 	var hits []commitHit
@@ -1690,7 +1685,7 @@ func commitsForTask(t task.Task) (map[string]any, error) {
 		verdict = "AMBIGUOUS: multiple commits reference this task ID"
 	}
 
-	return map[string]any{"task_id": t.ID.String(), "count": len(hits), "verdict": verdict, "commits": hits}, nil
+	return map[string]any{"task_id": t.ID.String(), "count": len(hits), "verdict": verdict, "commits": hits}
 }
 
 // resolveTask looks a task up by its full ID, falling back to a UNIQUE

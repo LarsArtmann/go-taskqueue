@@ -249,13 +249,13 @@ type WatermarkEntry struct {
 // score cache). Effort feeds budget-aware claims; tokens feed cost
 // measurement.
 type PriorityScore struct {
-	ItemKey       string
-	Score         int    // 0-100 (clamped to the backlog band on use)
-	EffortMinutes int    // estimated agent effort
-	Source        string // scorer identity, e.g. "ai:<model>"
-	Reasoning     string // one-line why
-	Tokens        int    // tokens the verdict cost
-	ScoredAt      int64  // unix millis
+	ItemKey       string `json:"itemKey"`
+	Score         int    `json:"score"`         // 0-100 (clamped to the backlog band on use)
+	EffortMinutes int    `json:"effortMinutes"` // estimated agent effort
+	Source        string `json:"source"`        // scorer identity, e.g. "ai:<model>"
+	Reasoning     string `json:"reasoning"`     // one-line why
+	Tokens        int    `json:"tokens"`        // tokens the verdict cost
+	ScoredAt      int64  `json:"scoredAt"`      // unix millis
 }
 
 // New wraps a Store.
