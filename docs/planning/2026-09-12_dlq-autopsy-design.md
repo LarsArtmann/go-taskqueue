@@ -1,7 +1,18 @@
 # DLQ Autopsy — the self-fixing dead-letter queue
 
 Status: DESIGN → IMPLEMENTED 2026-09-12 (this document describes the shipped
-shape; deviations are annotated inline).
+shape; deviations from the first draft are annotated inline).
+
+Implementation deviations from the draft below (all improvements found while
+building): (1) the dirty-capable default lives in the EXECUTOR, not the
+sweeper's minting — `DLQFixExecutor` only restores the clean-tree preflight
+on an explicit `require_clean=true`, so the type-level contract cannot be
+forgotten by a future minting path; (2) the verdict parser requires a
+non-empty `summary` for BOTH verdicts (a diagnosis is the product; the
+draft's wontfix-only rule was the weaker form); (3) minting classifies a
+re-hit as "known" only when the stored autopsy is claimed/finished — an
+unclaimed pending autopsy counts as enqueued again (cosmetic stats; dedup
+still guarantees one row, pinned by TestSweeperReplayDoesNotDuplicateAutopsy).
 
 Idea origin: owner TODO item "self fixing dead-lettered queue with AI Agents?"
 (added to TODO_LIST.md 2026-09-12).
