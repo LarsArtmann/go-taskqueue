@@ -192,6 +192,20 @@ func (s *Store) migrate(ctx context.Context) error {
 // Close releases the database connection.
 func (s *Store) Close() error { return s.db.Close() }
 
+// AppendFact records a NON-task journal fact (session.opened /
+// session.closed). Task facts are never written through it — every task
+// mutation appends its fact inside its own operation's transaction, and that
+// pairing is what keeps the journal a consistent history of the queue. The
+// session bridge is the one sanctioned out-of-band writer: session facts are
+// observations about interactive crush sessions, keyed by the synthetic
+// "session:<id>" identity that no task row will ever carry. Seq is assigned
+// by the facts table (AUTOINCREMENT), Time when zero.
+func (s *Store) AppendFact(ctx context.Context, f journal.Fact) error {
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		return s.appendFact(ctx, tx, f)
+	})
+}
+
 func (s *Store) appendFact(ctx context.Context, tx *sql.Tx, f journal.Fact) error {
 	if f.Time.IsZero() {
 		f.Time = time.Now()

@@ -35,6 +35,14 @@ const (
 	// ClaimDue reclaim (or a human) picks it up. Appended idempotently by
 	// Store.MarkOrphaned, so `tq show` can explain a stranded task.
 	Orphaned FactType = "task.orphaned"
+	// SessionOpened / SessionClosed record the lifecycle of an INTERACTIVE
+	// crush session (the session-close bridge, internal/session). They are
+	// observations, not task state: TaskID carries the synthetic
+	// "session:<id>" identity, never a real task row, so no enqueue/claim
+	// machinery can ever pick them up. SessionClosed's detail names the
+	// attributed commits and the minted review/status task IDs.
+	SessionOpened FactType = "session.opened"
+	SessionClosed FactType = "session.closed"
 )
 
 // Fact is one immutable observation about one task.
