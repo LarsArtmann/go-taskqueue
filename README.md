@@ -142,7 +142,7 @@ checkbox, commit, never push). The executor enforces the safety rails:
 
   ```sh
   # in each repo that wants agents (committed, reviewable, per-repo scope):
-  echo 'permissions allow view ls grep glob edit write bash' > .crushrc
+  echo 'permissions allow view ls grep glob edit multiedit write bash fetch download todos' > .crushrc
   ```
 - **Clean tree required** — agents refuse repos with uncommitted changes
   (the pool never tramples human WIP; `--allow-dirty` opts out).
