@@ -82,6 +82,16 @@ func (h *Harvester) repriRepo(
 			continue
 		}
 
+		// Cached AI verdicts join the ladder here too (ADR-0015 §3: marker
+		// > AI > keyword/importance) — the same feed the enqueue path uses,
+		// so a scored item re-resolves consistently everywhere.
+		var aiScore *int
+
+		if score, ok, err := h.q.PriorityScore(ctx, item.Key); err == nil && ok {
+			clamped := queue.ClampBacklog(score.Score)
+			aiScore = &clamped
+		}
+
 		priority, source := ResolvePriority(ResolveInput{
 			Text:              item.Text,
 			MarkerLevel:       item.MarkerLevel,
@@ -89,6 +99,7 @@ func (h *Harvester) repriRepo(
 			FlatPriority:      h.cfg.Priority,
 			Importance:        importance,
 			ImportanceEnabled: h.cfg.UseImportance,
+			AIScore:           aiScore,
 		})
 
 		if priority == tk.Priority {

@@ -588,6 +588,12 @@ func (h *Harvester) buildPayload(item Item, prompt, dedupKey string) ([]byte, er
 		payload.TimeoutMinutes = int(d / time.Minute)
 	}
 
+	// Pin the marker level so later automated re-resolution (the
+	// prioritize sweeper's apply step) can honor marker > AI precedence
+	// from the payload alone, without rescanning the file.
+	payload.MarkerLevel = item.MarkerLevel
+
+
 	encoded, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("harvest: encode payload: %w", err)
@@ -597,12 +603,55 @@ func (h *Harvester) buildPayload(item Item, prompt, dedupKey string) ([]byte, er
 }
 
 // harvestPayload is the agent payload plus the harvester's dedup key. The
-// agent executor ignores the extra field; the harvester reads item back to
-// recognize its own tasks.
+// agent executor ignores the extra fields; the harvester (and the
+// prioritize sweeper) read them back to recognize harvest-minted tasks.
 type harvestPayload struct {
 	executor.AgentPayload
 
-	Dedup string `json:"dedup,omitempty"`
+	Dedup       string `json:"dedup,omitempty"`
+	MarkerLevel int    `json:"markerLevel,omitempty"`
+}
+
+// PayloadItem is the harvested backlog-item identity carried by a task
+// payload: what was harvested, from where, under which dedup key.
+type PayloadItem struct {
+	// Repo is the payload's AgentPayload.Repo — the resolution-ready
+	// reference the agent executor itself uses.
+	Repo string
+	// Text is the marker-stripped item text.
+	Text string
+	// Key is the item's dedup key (ItemKey derivation) — the score-cache
+	// key.
+	Key string
+	// MarkerLevel is 0 (no marker) or 1-4 when the item carried a
+	// `— P[1-4]` marker at harvest time.
+	MarkerLevel int
+}
+
+// PayloadItemOf reads one task's payload back into its harvested item
+// identity. ok is false for non-harvest payloads (foreign agent tasks,
+// review/status/dlqfix mints): only harvest-minted tasks carry the
+// "dedup" key.
+func PayloadItemOf(t task.Task) (PayloadItem, bool) {
+	if len(t.Payload) == 0 {
+		return PayloadItem{}, false
+	}
+
+	var payload harvestPayload
+	if err := json.Unmarshal(t.Payload, &payload); err != nil {
+		return PayloadItem{}, false
+	}
+
+	if payload.Dedup == "" || payload.Item == "" || payload.Repo == "" {
+		return PayloadItem{}, false
+	}
+
+	return PayloadItem{
+		Repo:        payload.Repo,
+		Text:        payload.Item,
+		Key:         payload.Dedup,
+		MarkerLevel: payload.MarkerLevel,
+	}, true
 }
 
 // DiscoverRepos returns the depth-1 subdirectories of dir that contain the
