@@ -186,7 +186,9 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 
 // handleStats reports the per-status counts + total — the same payload as
 // the dashboard's GET /api/stats (internal/webui); the two surfaces are
-// pinned equal by TestStatsSurfacesAgree.
+// pinned equal by TestStatsSurfacesAgree. Zeros are included (both
+// handlers range task.AllStatuses) so producers see a stable key set
+// regardless of queue state.
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	counts, err := s.store.StatusCounts(r.Context())
 	if err != nil {

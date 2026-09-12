@@ -21,6 +21,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   automation, daemon-commit attribution, budget routing and Postgres
   `AppendFact` parity remain open (documented in the design doc).
 
+### Changed
+- **The status enum has one canonical list (`task.AllStatuses()`)**: the
+  webui `allStatuses` and httpapi `apiStatuses` twin slices are retired;
+  the board columns, both `/stats` handlers (dashboard + `/api/v1`) and
+  the filter dropdown now range the exported list, so a new Status can no
+  longer render as a missing board column or a missing stats key. A pin
+  test in `internal/task` hardcodes the expected set as an oracle. No wire
+  change; the exported list rides the next `internal/task` sub-module
+  re-tag for proxy consumers.
+
 ### Fixed
 - **Review prompts no longer stamp the review's own task id into the quoted
   work contract**: the reviewer prompt resolves the quoted `{{TASK_ID}}`
