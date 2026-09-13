@@ -73,8 +73,12 @@ awk -v v="## [$VERSION]" '
 
 step "flake.nix version sync (tq version reports it)"
 flake_ver="$(sed -n 's/^[[:space:]]*version = "\(.*\)";$/\1/p' flake.nix | head -1)"
-[ "$flake_ver" = "${VERSION#v}" ] || die "flake.nix version ($flake_ver) != release ${VERSION#v} — bump the version attr AND the -ldflags line"
-grep -q "main.version=${VERSION#v}" flake.nix || die "flake.nix ldflags does not carry ${VERSION#v} — nix binaries would report the wrong tq version"
+[ "$flake_ver" = "${VERSION#v}" ] || die "flake.nix version ($flake_ver) != release ${VERSION#v} — bump the version attr (the ldflags line derives from it)"
+# The ldflags wiring is single-source (check-version-agreement.sh guards the
+# derivation): the build line must interpolate the attr, not carry a second
+# literal. The old literal grep (`main.version=X.Y.Z`) can never match since
+# the round-5 single-source refactor.
+grep -qF 'main.version=${version}' flake.nix || die "flake.nix ldflags no longer derives from the version attr — restore -X main.version=\${version}"
 
 step "go.mod hygiene"
 # Sibling-relative replaces for the internal sub-modules are the multi-module

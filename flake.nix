@@ -36,7 +36,7 @@
         # bump this; `tq version` reports it. The ldflags line below derives
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
-        version = "0.2.0";
+        version = "0.3.0";
         vendorHash = "sha256-8zjS/KNmEm6Es2n4Xyj/a6Mn+oLntLycRXpGNTkWPWg=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         subPackages = [ "cmd/tq" ];
