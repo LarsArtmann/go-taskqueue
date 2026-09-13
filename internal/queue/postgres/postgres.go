@@ -100,6 +100,37 @@ CREATE TABLE IF NOT EXISTS priority_scores (
 // applies the schema, and returns a ready store. maxConns bounds the pool
 // (0 = pgx default).
 func Open(ctx context.Context, dsn string, maxConns int32) (*Store, error) {
+	pool, err := newPool(ctx, dsn, maxConns)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := pool.Exec(ctx, postgresSchema); err != nil {
+		pool.Close()
+
+		return nil, fmt.Errorf("queue: postgres migrate: %w", err)
+	}
+
+	return &Store{pool: pool}, nil
+}
+
+// OpenWithPool wraps a caller-owned pool into a ready store, applying the
+// schema on it. The caller keeps pool ownership: Close still releases the
+// pool (it is the same object), so consumers with an existing pool pass
+// THEIR pool in instead of opening a second one via Open.
+func OpenWithPool(ctx context.Context, pool *pgxpool.Pool) (*Store, error) {
+	if pool == nil {
+		return nil, fmt.Errorf("queue: postgres: nil pool")
+	}
+
+	if _, err := pool.Exec(ctx, postgresSchema); err != nil {
+		return nil, fmt.Errorf("queue: postgres migrate: %w", err)
+	}
+
+	return &Store{pool: pool}, nil
+}
+
+func newPool(ctx context.Context, dsn string, maxConns int32) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("queue: parse dsn: %w", err)
@@ -114,13 +145,7 @@ func Open(ctx context.Context, dsn string, maxConns int32) (*Store, error) {
 		return nil, fmt.Errorf("queue: connect postgres: %w", err)
 	}
 
-	if _, err := pool.Exec(ctx, postgresSchema); err != nil {
-		pool.Close()
-
-		return nil, fmt.Errorf("queue: postgres migrate: %w", err)
-	}
-
-	return &Store{pool: pool}, nil
+	return pool, nil
 }
 
 // Close releases the pool.
