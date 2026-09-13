@@ -22,3 +22,5 @@ replace github.com/larsartmann/go-taskqueue/internal/executor => ../internal/exe
 replace github.com/larsartmann/go-taskqueue/internal/journal => ../internal/journal
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ../internal/task
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../internal/queue/sqlite
