@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Fixed
+- **go-cqrs-lite journal adapter events carried an empty encoding stamp**,
+  so every downstream `event.DecodePayloadAuto` — the decode path
+  projections, watermill bridges, and metaengine use — failed with
+  `codec.ErrUnknownEncoding`. `factEvent` now builds events through
+  `event.New` with `WithCodec(codec.JSONCodec{})`, which stamps `json`
+  onto the event (payload bytes are unchanged), and pins
+  `WithSchemaVersion(1)` explicitly. Found by a `cqrs-lint` pass whose
+  deprecated-API framing hid the real defect; pinned by
+  `TestPayloadDecodesThroughLibraryAPI` (2026-09-13).
 ### Added
 - **Public facade modules (ADR-0016)**: the library core is now importable
   from outside the repo. Seven facade modules — `task`, `journal`, `queue`,

@@ -614,6 +614,16 @@ go-cqrs-lite `SeekableJournal` (read-only; seq-encoded ULIDs; the store
 invariants are untouched). PROPRIETARY license — owner-authorized
 2026-09-12; do not extend the surface (no `event.Store` write path) and
 do not import it below the root module without revisiting ADR-0014.
+`.cqrs-lint.json` (2026-09-13) pins that intent for `cqrs-lint`
+(read-only, library-framework) and documents the triaged false positives —
+verified against event/v4 v4.11.0 source: `event.NewEvent` is NOT
+deprecated, `buildEvent` already defaults schemaVersion to 1, and V006's
+"mixed pins" are each module's latest tag (the library versions its
+modules independently). Real defect the 2026-09-13 lint pass fixed: the
+adapter's events carried an EMPTY encoding stamp, so every downstream
+`event.DecodePayloadAuto` failed (`codec.ForEncoding("")` errors);
+`factEvent` now builds via `event.New` + `WithCodec(JSONCodec)` (pinned
+by `TestPayloadDecodesThroughLibraryAPI`).
 
 **go-cqrs-lite storage ≠ the queue stores** (assessed 2026-09-13, verdict
 NOT adopted — extends ADR-0001 "rejected: do-it-inside-go-cqrs-lite" and

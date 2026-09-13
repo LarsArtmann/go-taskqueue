@@ -25,5 +25,6 @@ var OpenWithPool = internalpostgres.OpenWithPool
 // already hold.
 var _ = func(p *pgxpool.Pool) error {
 	_, err := OpenWithPool(context.Background(), p)
+
 	return err
 }

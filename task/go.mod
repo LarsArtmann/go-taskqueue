@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/task
 
-go 1.26.7
+go 1.26
 
 require github.com/larsartmann/go-taskqueue/internal/task v0.2.0
 
