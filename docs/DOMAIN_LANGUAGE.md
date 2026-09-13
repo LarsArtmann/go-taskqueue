@@ -103,3 +103,14 @@ Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 
 The seams are one-directional: the loop enqueues through the core; workers
 execute through the core; observation only reads.
+
+## Public surface
+
+- **Facade module**: a public module (`task`, `journal`, `queue`,
+  `queue/sqlite`, `queue/postgres`, `executor`, `worker`) that re-exports
+  one internal implementation module's entire exported surface via type
+  aliases and var/const re-exports (ADR-0016). The facade pins NAMES; the
+  implementation stays internal and free to refactor. In-repo code keeps
+  importing `internal/…` — facades are the external contract only, and
+  every new internal export gains its alias in the same change (pinned by
+  `scripts/check-facade-parity.sh`).

@@ -118,3 +118,20 @@ The owner ran `cqrs-lint` (domain-aware linter for go-cqrs-lite consumers, 203 r
 | Landing | daemon commits 28cfcb7 (code+config), 536b5da (config edit), 565c2f4 (AGENTS/CHANGELOG/go-mod repairs) | all on local master |
 
 *Point-in-time snapshot — re-verify before treating any claim as current.*
+
+## Addendum (same session, ~08:20 — owner asked "Is that all?"; continuation closed the declared gaps)
+
+§b/§f rows executed in the continuation (all verified):
+
+- **Row 6 DONE**: `TestPayloadWireFormatPinned` — byte-exact pin of `evt.Payload()` against a plain json/v2 marshal of the payload struct (guards constructor/codec drift).
+- **Row 8 DONE**: `assertEventsEncodingStamped` helper in `cmd/tq/facts_cqrs_test.go` — store-level (sqlite → adapter) encoding assertion; extracted to a helper after my inline loop pushed gocyclo to 21 (gate discipline: no new findings in touched functions).
+- **Row 9 DONE**: `lint-baseline.sh --check` — first run FAILED on two NEW classes from `scripts/facadeparity/main.go` (concurrent window's file, zero growth from mine); by the full-battery re-run the concurrent window had fixed it: **886 vs 886, within baseline**.
+- **Row 10 DONE**: full `ci-local.sh` (first run aborted at step 1 — master CI red, by design). Diagnosed the red run 34741576449: (1) go-mod drift — the class I repaired on disk, needs owner push; (2) `TestPostgresOpenWithPool` — concurrent facade window's new test; (3) `TestConcurrentClientsRace` webui on windows. None from this session's changes. With `CI_CHECK=off` (conscious bypass, root cause documented): **ALL CI GATES GREEN — "this exact tree is what CI will see"**, including nix flake check.
+- **Rows 14/15/21 DONE**: FEATURES.md adapter row now states the encoding-stamp guarantee + test pins; ADR-0014 gained a "Post-adoption note (2026-09-13)" appendix; `.cqrs-lint.json` gained the S002/S003 conscious-acceptance note.
+- **Rows 16/17 CLOSED (verified, no action)**: dependabot covers all 17 module dirs incl. `/internal/journal/cqrs` + facades; release.sh sub-tags via `find … -name go.mod` — cqrs rides automatically.
+- **Row 27 CLOSED (non-issue)**: the `internal/queue/sqlite/store_test.go` "go-cqrs-lite" hit is a fixture string (`Project: "go-cqrs-lite"`), not an import.
+- **Row 30 DONE**: CHANGELOG entry already conforms (trailing date, house shape) — verified, no edit.
+- **NEW FIX (found by running the full battery)**: `check-doc-refs.sh` failed on `AGENTS.md` citing `example/taskmanager` — a go-cqrs-lite LIBRARY-repo path written repo-ambiguously by the concurrent storage-verdict window (d7ec03a). Verified the path exists in `~/projects/go-cqrs-lite/example/`, added the documented allowlist entry with provenance comment. Doc-refs gate green.
+- **§f row 4 clarified (provenance)**: `cqrs-lint` is `cmd/cqrs-lint` **inside the local go-cqrs-lite repo** (owner's own tool, `v4.8.2-0.20260904…`). A014's "NewEvent deprecated" claim verified FALSE at library HEAD too (no Deprecated marker). Rule-semantics changes (V006 policy, A014 fix, D013 default-awareness) are the owner's call in his own tool — precise evidence recorded here + in `.cqrs-lint.json` instead of patching the sibling repo unasked.
+
+Gates after continuation: adapter module `-race` green, `cmd/tq` facts tests green, `check-go-mods.sh` 0, doc-refs ok, lint-baseline within, ci-local ALL GREEN, `cqrs-lint` clean, gofmt clean. Working tree clean (daemon swept; latest local master f33b675 — unpushed, agents never push).

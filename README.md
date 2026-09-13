@@ -383,6 +383,14 @@ wiring (`--store postgres://…`) is on the ROADMAP. Executors are pluggable
 in Go (register funcs on an `executor.Registry` and hand a `worker.Pool`
 any `queue.Store`).
 
+If you only need one job type, see
+[the minimal queue profile](docs/references/single-job-type-queue-profile.md)
+— the right-sized semantics this library's store contract implements —
+before deciding to embed or to build your own ~500-LOC fork. A runnable
+version of the embed story on public imports lives at
+`examples/embed` (`go run ./examples/embed`, `--backend postgres --dsn …`
+for the OpenWithPool path).
+
 ## Distribution
 
 Single-node SQLite by default. The Store interface is the distribution seam —

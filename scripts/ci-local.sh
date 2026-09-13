@@ -54,6 +54,9 @@ for m in $mods; do
 		GOWORK=off go test ./... -count=1 -timeout 120s) || exit 1
 done
 
+step "embed example builds on facade paths (adopter on-ramp rot guard)"
+(cd examples/embed && GOWORK=off go build ./... && GOWORK=off go vet ./...) || exit 1
+
 step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
 ./scripts/check-go-mods.sh
 

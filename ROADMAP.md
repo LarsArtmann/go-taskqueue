@@ -32,6 +32,12 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ## v0.3.0 — Ecosystem bridges
 
+- [x] Public facade modules (ADR-0016): the library core is importable
+      from outside the repo (`go get github.com/larsartmann/go-taskqueue/…`)
+      once the release tags ship; `postgres.OpenWithPool` lets embedders
+      reuse their own pool. Un-blocks the Postgres CLI `--store` wiring
+      decision: the store contract and both backends are now consumer
+      surface, so CLI wiring is a flag away rather than an API question.
 - PapDashboard integration: dead-letter alerting, resolve correlation, and
   budget-mirror alerts are shipped; the remaining arc is decision → question
   fan-out (agent asks, human answers in the dashboard, queue proceeds —
