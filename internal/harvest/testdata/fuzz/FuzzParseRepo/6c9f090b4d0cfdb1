@@ -1,0 +1,2 @@
+go test fuzz v1
+string("*[X]000000\n*[X]000\x04\x000")
