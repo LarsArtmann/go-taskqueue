@@ -27,7 +27,7 @@ fi
 TMP="$(mktemp -d)"
 trap 'kill "${SERVE_PID:-0}" 2>/dev/null || true; rm -rf "$TMP"' EXIT
 
-TQ_DB="$TMP/shots.db" go build -o "$TMP/tq" ./cmd/tq
+"$REPO_ROOT/scripts/build-tq.sh" "$TMP/tq"
 TQ_DB="$TMP/shots.db" "$TMP/tq" enqueue --type sh --project demo --payload '"true"' >/dev/null
 "$TMP/tq" serve --db "$TMP/shots.db" --addr 127.0.0.1:8097 &
 SERVE_PID=$!

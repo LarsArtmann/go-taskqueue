@@ -24,7 +24,7 @@ if [ -n "${TQ_BIN:-}" ]; then
 	chmod +x "$TQ"
 else
 	echo "== building tq =="
-	(cd "$REPO_ROOT" && go build -o "$TQ" ./cmd/tq) || exit 1
+	"$REPO_ROOT/scripts/build-tq.sh" "$TQ" || exit 1
 fi
 
 STUB="$WORK/stub-agent"

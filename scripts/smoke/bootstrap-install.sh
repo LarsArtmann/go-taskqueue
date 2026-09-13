@@ -21,7 +21,7 @@ trap cleanup EXIT
 
 if [ -z "${TQ_BIN:-}" ]; then
 	echo "== building tq =="
-	(cd "$REPO_ROOT" && go build -o "$TQ" ./cmd/tq) || exit 1
+	"$REPO_ROOT/scripts/build-tq.sh" "$TQ" || exit 1
 fi
 
 export HOME="$WORK/home"

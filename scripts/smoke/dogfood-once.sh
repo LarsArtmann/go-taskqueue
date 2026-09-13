@@ -22,7 +22,7 @@ if [ -n "${TQ_BIN:-}" ]; then
 	chmod +x "$TMP/tq"
 else
 	echo "== build tq"
-	GOEXPERIMENT=jsonv2 go build -o "$TMP/tq" ./cmd/tq
+	"$REPO_ROOT/scripts/build-tq.sh" "$TMP/tq"
 fi
 
 export TQ_DB="$TMP/tasks.db"

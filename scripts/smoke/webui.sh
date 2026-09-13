@@ -27,7 +27,7 @@ if [ -n "${TQ_BIN:-}" ]; then
 	chmod +x "$TMP/tq"
 else
 	echo "== build tq"
-	go build -o "$TMP/tq" ./cmd/tq
+	"$REPO_ROOT/scripts/build-tq.sh" "$TMP/tq"
 fi
 
 echo "== seed tasks"
