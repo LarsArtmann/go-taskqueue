@@ -27,7 +27,9 @@ Everything shipped this session is inert on the proxy until
 no facade is `go get`-able, OpenWithPool doesn't exist for consumers, the
 Help Centre stays forked-and-drifting, and all downstream items (docs on
 pkg.go.dev, conformance offer, adoption) are blocked behind it. One command
-sequence, owner-gated, delivers the majority of the total outcome.
+sequence, owner-gated, delivers the majority of the total outcome. (The cut
+is only valid after T0's version-bump sweep + parity audit — see the task
+table; tags are immutable.)
 
 ### The 4% → 64% (the 1% plus)
 
@@ -61,7 +63,7 @@ sequence, owner-gated, delivers the majority of the total outcome.
    honest shrink, update AGENTS.md's stale "~400" prose number.
 8. **Docs coherence pass** — FEATURES.md facade entry, ROADMAP movement
    (Postgres CLI wiring un-blocked narrative), link the profile doc from
-   README, DOMIAN_LANGUAGE "facade module" term, VERSION-SURFACES facades
+   README, DOMAIN_LANGUAGE "facade module" term, VERSION-SURFACES facades
    as the 8th surface.
 
 ### The remaining 80% → 100%
@@ -171,6 +173,7 @@ graph TD
     T2 --> T4
     T2 --> T5
     T3 --> T5
+    T3 --> DONE
     T1 --> T9
     T9 --> T10
     T8 --> T5
