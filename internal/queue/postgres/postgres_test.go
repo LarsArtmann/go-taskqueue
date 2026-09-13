@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -179,6 +180,43 @@ func TestPostgresLifecycle(t *testing.T) {
 	tail, err := s.LastFacts(ctx, 3)
 	if err != nil || len(tail) != 3 {
 		t.Fatalf("last facts = %d (%v)", len(tail), err)
+	}
+}
+
+// TestPostgresOpenWithPool covers the caller-owned-pool constructor: the
+// store works, the schema is applied, and Close leaves the pool usable
+// (ownership stays with the caller).
+func TestPostgresOpenWithPool(t *testing.T) {
+	dsn := os.Getenv("TQ_TEST_POSTGRES")
+	if dsn == "" {
+		t.Skip("TQ_TEST_POSTGRES unset — Postgres conformance needs a database")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatalf("open pool: %v", err)
+	}
+	defer pool.Close()
+
+	s, err := OpenWithPool(ctx, pool)
+	if err != nil {
+		t.Fatalf("OpenWithPool: %v", err)
+	}
+
+	n := task.New{Type: "sh", Project: "facade-test", Payload: []byte("true")}
+	if _, err := s.Enqueue(ctx, n); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if err := s.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	if pool.Ping(ctx) != nil {
+		t.Fatal("Close must not tear down a caller-owned pool")
 	}
 }
 
