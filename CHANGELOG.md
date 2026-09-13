@@ -12,7 +12,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   in via `OpenWithPool` are caller-owned; only pools the store opened via
   `Open` are released by `Close`. CI's postgres service job runs the test;
   the local proof is the throwaway-initdb recipe in the facade plan T10.
-### Fixed
 - **go-cqrs-lite journal adapter events carried an empty encoding stamp**,
   so every downstream `event.DecodePayloadAuto` — the decode path
   projections, watermill bridges, and metaengine use — failed with

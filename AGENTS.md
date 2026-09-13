@@ -486,18 +486,20 @@ prose, not the table.
   non-loopback binds (incl. `:port`, hostnames) refuse to start without
   `--auth-token` (constant-time bearer/`?token=`). Full matrix:
   SECURITY.md. Don't add write endpoints without the same treatment.
-- ⚠️ **golangci-lint is advisory** (`continue-on-error`, ~400-finding
+- ⚠️ **golangci-lint is advisory** (`continue-on-error`, ~890-finding
   baseline): never mass-"fix" the baseline; don't add new findings in
   functions you touch. Hard gates: vet + gofmt + tests. Baseline GROWTH is
   now a ci-local GATE (round-13 T5): `scripts/lint-baseline.sh --check`
   (wired after the advisory lint step) fails on any per-module/linter count
-  above `.golangci-baseline.txt` (regen total 850 findings, 104
-  module/linter rows, 2026-09-12 second regen: the T38 window fixed all
-  growth rows mechanically AND added a path-scoped tagliatelle exclusion —
-  machine-payload wire structs are snake_case by contract (executor
-  payloads, queue fact evidence, harvest RepriChange: keys are quoted in
-  agent prompts and persisted in journal facts, so they must never drift
-  to camelCase; core domain types stay camelCase) — first regen 887/114)
+  above `.golangci-baseline.txt` (2026-09-13 third regen: 886 findings, 111
+  module/linter rows — policy change: gochecknoglobals excluded for the
+  seven ADR-0016 facade alias files, whose package-level re-exports ARE the
+  facade pattern; earlier regens 850/104, 887/114, 917/125 — the 917 bundled
+  concurrent drift. The 2026-09-12 regen also added the path-scoped
+  tagliatelle exclusion: machine-payload wire structs (executor payloads,
+  queue fact evidence, harvest RepriChange) are snake_case BY CONTRACT —
+  keys are quoted in agent prompts and persisted in journal facts; core
+  domain types stay camelCase)
   or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
