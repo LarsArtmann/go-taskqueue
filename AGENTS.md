@@ -615,6 +615,23 @@ invariants are untouched). PROPRIETARY license — owner-authorized
 2026-09-12; do not extend the surface (no `event.Store` write path) and
 do not import it below the root module without revisiting ADR-0014.
 
+**go-cqrs-lite storage ≠ the queue stores** (assessed 2026-09-13, verdict
+NOT adopted — extends ADR-0001 "rejected: do-it-inside-go-cqrs-lite" and
+ADR-0014 "direct storage adoption was rejected"): go-cqrs-lite's
+`storage/` is a per-stream append event store (`Save(aggregate,
+events, expectedVersion)` + `Load`) with snapshots and projection
+checkpoints; `scheduling/` is fire-once deadline timers, not a worker
+pool; `example/taskmanager` is a demo app, not a library. None provide
+the queue's actual semantics — lease-based `ClaimDue` with expired-lease
+reclaim, DAG `NOT EXISTS` dep gating, project exclusivity, in-ORDER BY
+priority aging, dedup'd enqueue, cooperative cancel, per-consumer
+watermarks, GROUP BY pushdowns — and none can append facts in the SAME
+transaction as the task-row mutation (the ADR-0001 invariant). Replacing
+the stores would relocate all that SQL on top of a generic event store
+(net MORE code) plus a live-journal migration; the one seam worth having
+(the journal contract) is already adopted above. Re-litigate only if
+go-cqrs-lite ships a real work-queue primitive (leases, DAG, retries).
+
 **PapDashboard bridge**: `tq worker --alert-url http://<pap>:8080
 --alert-api-key <KEY>` (env `TQ_PAP_URL`/`TQ_PAP_API_KEY`). Dead letters
 raise `alert.triggered` (fact Seq = Idempotency-Key); a later completion
