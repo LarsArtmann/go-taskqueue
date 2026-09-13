@@ -30,6 +30,11 @@ import (
 type Store struct {
 	pool             *pgxpool.Pool
 	projectExclusive bool
+	// ownsPool is true only for pools the store opened itself (Open).
+	// A pool handed in via OpenWithPool stays caller-owned: Close must
+	// not tear down a pool the caller still uses (pinned live by
+	// TestPostgresOpenWithPool against TQ_TEST_POSTGRES).
+	ownsPool bool
 }
 
 // Store implements the queue contract at compile time; the conformance
@@ -111,13 +116,14 @@ func Open(ctx context.Context, dsn string, maxConns int32) (*Store, error) {
 		return nil, fmt.Errorf("queue: postgres migrate: %w", err)
 	}
 
-	return &Store{pool: pool}, nil
+	return &Store{pool: pool, ownsPool: true}, nil
 }
 
 // OpenWithPool wraps a caller-owned pool into a ready store, applying the
-// schema on it. The caller keeps pool ownership: Close still releases the
-// pool (it is the same object), so consumers with an existing pool pass
-// THEIR pool in instead of opening a second one via Open.
+// schema on it. The caller keeps pool ownership: Store.Close does NOT
+// close a caller-owned pool — shut the pool down yourself once the whole
+// application is done with it. Consumers with an existing pool pass THEIR
+// pool in instead of opening a second one via Open.
 func OpenWithPool(ctx context.Context, pool *pgxpool.Pool) (*Store, error) {
 	if pool == nil {
 		return nil, errors.New("queue: postgres: nil pool")
@@ -148,9 +154,13 @@ func newPool(ctx context.Context, dsn string, maxConns int32) (*pgxpool.Pool, er
 	return pool, nil
 }
 
-// Close releases the pool.
+// Close releases the store's resources. A pool the store opened via Open
+// is closed; a caller-owned pool passed to OpenWithPool is left running —
+// its lifecycle belongs to the caller.
 func (s *Store) Close() error {
-	s.pool.Close()
+	if s.ownsPool {
+		s.pool.Close()
+	}
 
 	return nil
 }

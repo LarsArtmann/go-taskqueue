@@ -373,7 +373,7 @@ import "github.com/larsartmann/go-taskqueue/queue/postgres"
 
 store, err := postgres.Open(ctx, "postgres://…", 4)
 // already holding a *pgxpool.Pool? reuse it instead of a second pool:
-store, err := postgres.OpenWithPool(ctx, myPool)
+store, err := postgres.OpenWithPool(ctx, myPool) // pool stays yours; Store.Close will not close it
 ```
 
 SQLite serializes writers through one connection (WAL + busy_timeout);
