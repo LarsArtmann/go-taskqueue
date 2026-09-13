@@ -2,6 +2,7 @@
 /tq
 /tq-linux-*
 dist/
+/examples/embed/embed
 
 # Stray session artifacts (bare task IDs piped to a file by test sessions)
 taskid.txt
