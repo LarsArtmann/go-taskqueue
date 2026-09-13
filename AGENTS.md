@@ -5,8 +5,9 @@ lease-based claims with crash reclaim, DAG dependencies, retries with a
 dead-letter queue, pluggable executors (including headless AI coding agents).
 Zero external services — one Go binary, one file.
 
-**STATUS: v0.1.0 shipped 2026-09-06; actively developed by MULTIPLE
-concurrent agents.** Re-read files and re-run tests before editing; expect
+**STATUS: v0.1.0 shipped 2026-09-06, v0.2.0 shipped 2026-09-09; v0.3.0
+(facade release sweep) tagged locally and awaiting owner push; actively
+developed by MULTIPLE concurrent agents.** Re-read files and re-run tests before editing; expect
 uncommitted changes from parallel sessions — read them, judge them, build on
 them, never revert them.
 
