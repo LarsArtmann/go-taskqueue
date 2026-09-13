@@ -1,5 +1,7 @@
 # Round 13 execution — Truth in Every Green (T1–T8 + T14/T15/T17)
 
+*(Archived 2026-09-13 docs-health pass: T1-T8 + T14/T15/T17 all landed and runner-proven (green master runs since); remaining items were ruling-gated and live in TODO_LIST. Point-in-time snapshot — re-verify before treating any claim as current.)*
+
 - **Written**: 2026-09-12 03:21 CEST
 - **Session**: single interactive window executing
   `docs/planning/2026-09-12_02-15_SUPERB-PLAN-ROUND13-TRUTH-IN-EVERY-GREEN.md`

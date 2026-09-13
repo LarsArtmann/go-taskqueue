@@ -1,5 +1,7 @@
 # go-cqrs-lite journal-adapter window — status report
 
+*(Archived 2026-09-13 docs-health pass: adapter shipped (internal/journal/cqrs, ADR-0014); the 2026-09-13 cqrs-lint window found and fixed the encoding bug this window shipped — both reports now historical. Point-in-time snapshot — re-verify before treating any claim as current.)*
+
 **Date:** 2026-09-12 14:51
 **Window:** ~13:20–14:51 (single session, one workstream)
 **Trigger:** owner instruction: "use /home/lars/projects/go-cqrs-lite SUPERBLY

@@ -1,5 +1,7 @@
 # Done prompt — 2026-09-12: five-task window close-out (window 09-10 09:00 → 09-12 03:42)
 
+*(Archived 2026-09-13 docs-health pass: five tasks verified done; the NOT-STARTED list was harvested to TODO_LIST and the docs-health continuation is itself now done (this 2026-09-13 archive sweep). Point-in-time snapshot — re-verify before treating any claim as current.)*
+
 - **Written**: 2026-09-12 04:45 CEST
 - **Window**: queue tasks `000001a08a1a8b…`, `…84b16`, `000001a08a2846…`,
   `000001a08a3f2a…`, `000001a092fc97…`, `000001a0934141…` — three 09-10

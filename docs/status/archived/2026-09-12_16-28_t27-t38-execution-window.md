@@ -1,5 +1,7 @@
 # T27–T38 Execution Window — Status Report (Phases 5–6 continuation)
 
+*(Archived 2026-09-13 docs-health pass: window complete: T27-T36 shipped, T38 closed in the same-day follow-ups (lint-baseline regen + nix green on later runs); T39/T40 pointers harvested to TODO_LIST. Point-in-time snapshot — re-verify before treating any claim as current.)*
+
 **Session:** 2026-09-12 ~15:50–16:28 (post-status-update continuation on
 the standing G0 order)
 **Plan:** `docs/planning/2026-09-12_14-19_PRIORITY-SYSTEM-SUPERB-PARETO-EXECUTION-PLAN.md`

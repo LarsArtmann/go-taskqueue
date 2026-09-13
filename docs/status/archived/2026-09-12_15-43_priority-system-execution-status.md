@@ -1,5 +1,7 @@
 # Priority System Execution — Status Report (Phase 0–5 of 6)
 
+*(Archived 2026-09-13 docs-health pass: phases 0-5 of 6 shipped (T38 lint close-out landed in the follow-up 16-28 window; residue = the §f/§g pointers, harvested to TODO_LIST). Point-in-time snapshot — re-verify before treating any claim as current.)*
+
 **Session:** 2026-09-12 ~14:30–15:45 (post-G0 execution window)
 **Plan:** `docs/planning/2026-09-12_14-19_PRIORITY-SYSTEM-SUPERB-PARETO-EXECUTION-PLAN.md`
 **Spec:** ADR-0015 (`docs/adr/0015-priority-bands-importance-aging.md`)

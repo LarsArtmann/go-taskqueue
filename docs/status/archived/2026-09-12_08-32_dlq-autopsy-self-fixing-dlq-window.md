@@ -1,5 +1,7 @@
 # DLQ-Autopsy Window — Full Status Report (brutal a)–g))
 
+*(Archived 2026-09-13 docs-health pass: feature shipped (DLQ autopsies live, --dlq-fix); the §d split-brain (tq show autopsy verdicts) and §b/§g questions ride TODO_LIST/ROADMAP. Point-in-time snapshot — re-verify before treating any claim as current.)*
+
 Written: 2026-09-12 08:32
 Scope: THIS interactive session only (TODO item → design → full implementation of the
 self-fixing dead-letter queue). Concurrent agents' work is mentioned only where it
