@@ -125,6 +125,31 @@ sed 's|=> ../internal/task|=> ../../outside/task|' "$fixture/task/go.mod" >"$fix
 	expect_fail task/escape.go.mod "fixture: facade go.mod replace escaping the repo root"
 )
 
+# CLI module shape (ADR-0017): cmd/tq is its own REPLACE-FREE module whose
+# requires pin the root module AND internal sub-modules at tagged versions —
+# the widened require-tag check must accept it and reject a poisoned pin.
+git -C "$fixture" -c user.email=t@t -c user.name=t tag -a v0.2.0 -m fixture
+mkdir -p "$fixture/cmd/tq"
+cat >"$fixture/cmd/tq/go.mod" <<'GOMOD'
+module github.com/larsartmann/go-taskqueue/cmd/tq
+
+go 1.26.7
+
+require (
+	github.com/larsartmann/go-taskqueue v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.2.0
+)
+GOMOD
+(
+	cd "$fixture"
+	expect_pass cmd/tq/go.mod "fixture: CLI module go.mod (replace-free, root + internal tagged requires)"
+)
+sed 's|go-taskqueue v0.2.0|go-taskqueue v9.9.9|' "$fixture/cmd/tq/go.mod" >"$fixture/cmd/tq/untagged.go.mod"
+(
+	cd "$fixture"
+	expect_fail cmd/tq/untagged.go.mod "fixture: CLI module with untagged root-module pin"
+)
+
 if [ "$fails" -gt 0 ]; then
 	echo "$fails release-gate case(s) failed"
 	exit 1

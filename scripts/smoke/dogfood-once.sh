@@ -12,6 +12,7 @@
 # journal: the script pins TQ_DB to a scratch path in both modes.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+REPO_ROOT="$(pwd)"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT

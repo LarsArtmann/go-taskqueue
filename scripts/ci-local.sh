@@ -41,6 +41,9 @@ for m in $mods; do
 		GOWORK=off GOOS=windows go build ./... &&
 		GOWORK=off GOOS=windows go vet ./...) || exit 1
 done
+# cmd/tq is its own replace-free module (ADR-0017): gated through the
+# devmod shim instead of the generic per-module loops above.
+CMD_TQ_OS=windows ./scripts/test-cmd-tq.sh
 
 step "tests (-race)"
 go test ./... -count=1 -race -timeout 120s
@@ -53,6 +56,8 @@ for m in $mods; do
 		GOWORK=off go vet ./... &&
 		GOWORK=off go test ./... -count=1 -timeout 120s) || exit 1
 done
+# cmd/tq module (ADR-0017) — replace-free go.mod, devmod shim gate.
+./scripts/test-cmd-tq.sh
 
 step "embed example builds on facade paths (adopter on-ramp rot guard)"
 (cd examples/embed && GOWORK=off go build ./... && GOWORK=off go vet ./...) || exit 1

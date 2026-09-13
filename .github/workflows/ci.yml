@@ -38,6 +38,8 @@ jobs:
           for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
             ( cd "$m" && GOWORK=off GOOS=windows go build ./... && GOWORK=off GOOS=windows go vet ./... ) || exit 1
           done
+          # cmd/tq is its own replace-free module (ADR-0017): devmod shim gate.
+          CMD_TQ_OS=windows ./scripts/test-cmd-tq.sh
       - name: Test
         run: go test ./... -count=1 -race -timeout 120s
       - name: Module isolation gates (GOWORK=off per sub-module)
@@ -53,6 +55,8 @@ jobs:
               && GOWORK=off go vet ./... \
               && GOWORK=off go test ./... -count=1 -timeout 120s ) || exit 1
           done
+          # cmd/tq module (ADR-0017) — replace-free go.mod, devmod shim gate.
+          ./scripts/test-cmd-tq.sh
       - name: go.mod health (replaces, pins, toolchain alignment, mod verify)
         # Parity with scripts/ci-local.sh — the shared script owns the rules.
         run: ./scripts/check-go-mods.sh

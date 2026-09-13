@@ -68,7 +68,9 @@ gate_gomod() {
 	# through the module proxy: every internal require must be a real version
 	# whose subdirectory tag exists BEFORE the release tag is cut. Applies to
 	# facade go.mod files the same way — their internal requires are what a
-	# consumer's `go get` resolves through the proxy.
+	# consumer's `go get` resolves through the proxy. ADR-0017 widens this to
+	# the ROOT module path: cmd/tq requires go-taskqueue vX directly, so the
+	# bare vX tag is part of the CLI's dependency contract too.
 	local mod ver sub_tag
 	while read -r mod ver; do
 		[ -n "$mod" ] || continue
@@ -77,5 +79,5 @@ gate_gomod() {
 			echo "FAIL: $mod requires $ver but tag $sub_tag does not exist — cut it (git tag -a $sub_tag) before releasing"
 			return 1
 		fi
-	done < <(sed 's/^require[[:space:]]\+//' "$gomod" | grep -E '^[[:space:]]*github\.com/larsartmann/go-taskqueue/internal/[a-z0-9-]+(/[a-z0-9-]+)? v[0-9]+' | awk '{print $1, $2}')
+	done < <(sed 's/^require[[:space:]]\+//' "$gomod" | grep -E '^[[:space:]]*github\.com/larsartmann/go-taskqueue(/[a-z0-9-]+(/[a-z0-9-]+)?)? v[0-9]+' | awk '{print $1, $2}')
 }

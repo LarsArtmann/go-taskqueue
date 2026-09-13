@@ -6,8 +6,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-mods="$(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort)"
-mapfile -t modfiles < <(find internal task journal queue executor worker -name go.mod | sort)
+mods="$(find internal task journal queue executor worker cmd/tq -name go.mod | sed 's|/go.mod$||' | sort)"
+mapfile -t modfiles < <(find internal task journal queue executor worker cmd/tq -name go.mod | sort)
 fail=0
 
 bad="$(grep -hE '^replace ' "${modfiles[@]}" | grep -E '=> */' || true)"

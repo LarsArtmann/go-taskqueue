@@ -5,6 +5,7 @@
 # (this host class has none — run where one exists).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+REPO_ROOT="$(pwd)"
 
 OUT="docs/screenshots"
 mkdir -p "$OUT"

@@ -39,9 +39,9 @@ func TestMain(m *testing.M) {
 	defer os.RemoveAll(dir)
 
 	tqBin = filepath.Join(dir, "tq")
-	build := exec.Command("go", "build", "-o", tqBin, "github.com/larsartmann/go-taskqueue/cmd/tq")
-	build.Dir = repoRoot()
-
+	// cmd/tq is its own replace-free module (ADR-0017); the build goes
+	// through the repo's devmod shim script.
+	build := exec.Command("bash", filepath.Join(repoRoot(), "scripts", "build-tq.sh"), tqBin)
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "build tq: %v\n%s", err, out)

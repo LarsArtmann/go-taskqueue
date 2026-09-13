@@ -93,7 +93,7 @@ step "go.mod hygiene"
 # pre-cut (git tag -a internal/<mod>/vX.Y.Z etc.) BEFORE these gates run —
 # the documented pre-cut flow in the header above.
 source "$(dirname "$0")/lib/release-gates.sh"
-for mod_go in go.mod $(find internal task journal queue executor worker -name go.mod | sort); do
+for mod_go in go.mod $(find internal task journal queue executor worker cmd/tq -name go.mod | sort); do
 	gate_gomod "$mod_go"
 done
 
@@ -136,7 +136,7 @@ step "cut internal sub-module tags (go install resolution for the split)"
 # Every internal module ships with the release (shared versioning, ADR-0011):
 # disk-derived so modules nothing requires (queue/postgres until the CLI
 # store wiring lands) are still tagged and proxy-resolvable.
-internal_tags="$(find internal task journal queue executor worker -name go.mod | sed "s|/go.mod\$|/$VERSION|" | sort)"
+internal_tags="$(find internal task journal queue executor worker cmd/tq -name go.mod | sed "s|/go.mod\$|/$VERSION|" | sort)"
 for sub_tag in $internal_tags; do
 	if git rev-parse -q --verify "refs/tags/$sub_tag" >/dev/null; then
 		echo "$sub_tag already exists"
