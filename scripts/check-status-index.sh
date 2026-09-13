@@ -36,7 +36,7 @@ while IFS= read -r report; do
 	# own "# Status Report — <date>" / "Written" header line must carry the
 	# same date as the filename — a renamed-but-not-redated report reads as
 	# a different point in time than it was written at.
-	body_date="$(grep -m1 -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' "$report" || true)"
+	body_date="$(grep -m1 -oE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' "$report" | head -1)"
 	if [ -n "$body_date" ] && [ "$body_date" != "$date_part" ]; then
 		echo "BODY-DATE DRIFT: $report filename says $date_part but its header says $body_date"
 		fail=1
