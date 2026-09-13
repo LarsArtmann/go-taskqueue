@@ -330,7 +330,7 @@
                   set -euo pipefail
                   export GOWORK=off GOEXPERIMENT=jsonv2
                   go test -race -v -coverprofile=coverage.out ./...
-                  for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+                  for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
                     echo "== module $m =="
                     ( cd "$m" && go test -race ./... )
                   done

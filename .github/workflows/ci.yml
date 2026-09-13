@@ -35,7 +35,7 @@ jobs:
       - name: Windows build (cross-compile gate)
         run: |
           GOOS=windows go build ./... && GOOS=windows go vet ./...
-          for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+          for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
             ( cd "$m" && GOWORK=off GOOS=windows go build ./... && GOWORK=off GOOS=windows go vet ./... ) || exit 1
           done
       - name: Test
@@ -46,7 +46,7 @@ jobs:
         # gate. Disk-derived: new modules are covered without editing this
         # workflow.
         run: |
-          for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+          for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
             echo "== $m"
             ( cd "$m" \
               && GOWORK=off go build ./... \
@@ -79,7 +79,7 @@ jobs:
           # ./... from the root never descends into nested sub-modules
           # (ADR-0011) — mirror ci-local.sh's disk-derived loop so every
           # sub-module gets the same advisory run.
-          for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+          for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
             echo "== $m"
             mod_out="$( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/golangci-lint" run ./... 2>&1 || true )"
             printf '%s\n' "$mod_out"
@@ -126,7 +126,7 @@ jobs:
       - name: Module isolation gates (per sub-module)
         shell: bash
         run: |
-          for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+          for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
             echo "== $m"
             ( cd "$m" \
               && GOWORK=off go build ./... \
@@ -208,7 +208,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           "$(go env GOPATH)/bin/govulncheck" ./... && \
             echo "| root (incl. app layer) | clean |" >> "$GITHUB_STEP_SUMMARY"
-          for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+          for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
             echo "== $m"
             ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/govulncheck" ./... ) || exit 1
             echo "| $m | clean |" >> "$GITHUB_STEP_SUMMARY"
@@ -237,7 +237,7 @@ jobs:
           go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
           GOSEC_EXCLUDES="-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,G702,G703,G710"
           "$(go env GOPATH)/bin/gosec" -quiet $GOSEC_EXCLUDES ./...
-          for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+          for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
             echo "== $m"
             ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/gosec" -quiet $GOSEC_EXCLUDES ./... ) || exit 1
           done

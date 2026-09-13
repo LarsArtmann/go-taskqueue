@@ -41,7 +41,7 @@ grep -qF -- 'gate_gomod' "$doc" || miss "RELEASE.md allowlist section lost the g
 
 # Mechanisms the doc cites in its phase descriptions.
 need_in_both 'go list -m -versions' 'module-proxy wait'
-need_in_both 'find internal -name go.mod' 'disk-derived sub-tag list'
+need_in_both 'find internal task journal queue executor worker -name go.mod' 'disk-derived sub-tag list'
 need_in_both --prerelease 'GitHub Release prerelease flag'
 need_in_both 'gh run list --commit' 'tag CI poll'
 need_in_both 'go install' 'clean-room install step'

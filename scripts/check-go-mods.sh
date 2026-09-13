@@ -6,8 +6,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-mods="$(find internal -name go.mod | sed 's|/go.mod$||' | sort)"
-mapfile -t modfiles < <(find internal -name go.mod | sort)
+mods="$(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort)"
+mapfile -t modfiles < <(find internal task journal queue executor worker -name go.mod | sort)
 fail=0
 
 bad="$(grep -hE '^replace ' "${modfiles[@]}" | grep -E '=> */' || true)"
@@ -17,7 +17,7 @@ if [ -n "$bad" ]; then
 	fail=1
 fi
 
-bad="$({ grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' "${modfiles[@]}" go.mod; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+bad="$({ grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' "${modfiles[@]}" go.mod | sed 's|//.*||'; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
 if [ -n "$bad" ]; then
 	echo "$bad"
 	echo "FAIL: internal requires must be real tagged versions (vX.Y.Z) —"

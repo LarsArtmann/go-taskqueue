@@ -50,7 +50,7 @@ var (
 
 // Functions.
 var (
-	New           = internalqueue.New
-	BandOf        = internalqueue.BandOf
-	ClampBacklog  = internalqueue.ClampBacklog
+	New          = internalqueue.New
+	BandOf       = internalqueue.BandOf
+	ClampBacklog = internalqueue.ClampBacklog
 )

@@ -35,7 +35,7 @@ GOOS=windows go vet ./...
 # own cross-compile gate or Windows-only code could rot invisibly. The list
 # is disk-derived so newly added modules are gated without editing this
 # script.
-mods="$(find internal -name go.mod | sed 's|/go.mod$||' | sort)"
+mods="$(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort)"
 for m in $mods; do
 	(cd "$m" &&
 		GOWORK=off GOOS=windows go build ./... &&

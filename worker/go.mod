@@ -1,0 +1,24 @@
+module github.com/larsartmann/go-taskqueue/worker
+
+go 1.26.7
+
+require github.com/larsartmann/go-taskqueue/internal/worker v0.2.0
+
+require (
+	github.com/larsartmann/go-error-family v0.10.0 // indirect
+	github.com/larsartmann/go-retry v0.5.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/executor v0.2.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.2.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue v0.2.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/task v0.2.0 // indirect
+)
+
+replace github.com/larsartmann/go-taskqueue/internal/queue => ../internal/queue
+
+replace github.com/larsartmann/go-taskqueue/internal/worker => ../internal/worker
+
+replace github.com/larsartmann/go-taskqueue/internal/executor => ../internal/executor
+
+replace github.com/larsartmann/go-taskqueue/internal/journal => ../internal/journal
+
+replace github.com/larsartmann/go-taskqueue/internal/task => ../internal/task
