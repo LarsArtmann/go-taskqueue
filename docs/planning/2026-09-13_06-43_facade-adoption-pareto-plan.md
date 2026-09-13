@@ -78,7 +78,8 @@ hygiene sweeps (22, 25, 29, 38, 39, 41, 46-48), and park-lot items
 
 | # | Task (T-ID) | Items covered | Impact | Effort | Value | Why this order |
 |---|-------------|---------------|--------|--------|-------|----------------|
-| 1 | T1: Cut release v0.3.0 (CHANGELOG section, flake version+ldflags bump, `release.sh v0.3.0 --tag`, CI-green poll, `--push`, GH Release) | §f 1, 40 | **51%** | 60-100min | ★★★ | The 1%. Everything else is blocked behind it |
+| 0 | **T0: Version-bump sweep + pre-tag parity audit** (all internal requires v0.2.0 → the cut version in root + 7 facade go.mods + internal cross-requires; tidy ×16; manual parity diff per facade) | NEW (flaw fix) | blocker | 30-45min | ★★★ | CRITICAL: queue/postgres facade pins internal/queue/postgres@v0.2.0 — a tag that PREDATES OpenWithPool. In-repo replaces hide it; on the proxy the published facade would not compile. Also: v0.3.0 scope must be confirmed with the owner (05-29 report earmarks v0.3 for Postgres CLI wiring) |
+| 1 | T1: Cut release v0.3.0 (CHANGELOG section, flake version+ldflags bump, `release.sh v0.3.0 --tag`, CI-green poll, `--push`, GH Release) | §f 1, 40 | **51%** | 60-100min | ★★★ | The 1%. Everything else is blocked behind it — but ONLY valid after T0 |
 | 2 | T2: Clean-room published-consumer proof (go get facades, build+run, pkg.go.dev check ×7, `go list -m -versions` per facade) | §f 2, 3, 32 | 13% | 30-45min | ★★★ | The 4%. Without proof the release is unverified |
 | 3 | T3: Facade parity gate (`scripts/check-facade-parity.sh`, go/parser over internal pkgs vs alias files, wire into ci-local + ci.yml) | §f 6, b2 | 6% | 60-90min | ★★★ | Closes ADR-0016's structural hole permanently |
 | 4 | T4: Consumer loop — notify Help Centre, tracking issue for port diff + conformance | §f 4, 16, 43 | 4% | 30min | ★★★ | External review pipeline, near-free |
@@ -98,11 +99,16 @@ hygiene sweeps (22, 25, 29, 38, 39, 41, 46-48), and park-lot items
 
 | # | Subtask | Belongs to | ≤12min because |
 |---|---------|-----------|----------------|
+| 0.1 | Owner scope call: v0.3.0 = facades only, or facades + Postgres CLI wiring (05-29 report earmarked v0.3 for it)? | T0 | one question |
+| 0.2 | Sweep: sed all internal requires v0.2.0 → v0.3.0 in go.mod + 7 facade go.mods + internal cross-requires | T0 | loop + verify |
+| 0.3 | `go mod tidy` × 16 modules; rebuild + retest module loop | T0 | loop |
+| 0.4 | Verify the sweep: `queue/postgres` facade resolves OpenWithPool from the PINNED version, not the replace (GOWORK=off + GOFLAGS=-mod=mod spot check; full proof is T2) | T0 | targeted check |
+| 0.5 | Manual parity audit: `go doc -all ./internal/<pkg>` exports vs facade alias file, ×7 (the 12-min spike of T3, done pre-tag because tags are immutable) | T0 | diff ×7 |
 | 1.1 | Write `## [v0.3.0] - 2026-09-13` CHANGELOG section from [Unreleased] | T1 | pure edit |
 | 1.2 | Bump flake.nix version attr + ldflags line to 0.3.0 | T1 | 2-line sed, gate-checked |
 | 1.3 | Run `release.sh v0.3.0` (gates-only, safe mode) and fix anything it flags | T1 | read-only gate run |
 | 1.4 | Confirm master CI green (`check-ci`) before tagging | T1 | gh run list |
-| 1.5 | `release.sh v0.3.0 --tag`; verify all 22 tags cut (root + 15 modules + 7 facades = count with `git tag --list '*v0.3.0'`) | T1 | command + count |
+| 1.5 | `release.sh v0.3.0 --tag`; verify all 16 tags cut (root + 15 module dirs incl. internal/journal/cqrs; count with `git tag --list '*v0.3.0'` — NOT 22, that number was wrong) | T1 | command + count |
 | 1.6 | `release.sh v0.3.0 --push`; watch CI on the tag; GH Release publishes | T1 | owner-gated command + poll |
 | 2.1 | Clean-room: fresh /tmp module, `go get` all 7 facades (NO replaces), build | T2 | single command chain |
 | 2.2 | Run enqueue→claim→complete consumer against published facades | T2 | reuse session proof main.go |
@@ -143,7 +149,9 @@ hygiene sweeps (22, 25, 29, 38, 39, 41, 46-48), and park-lot items
 
 ```mermaid
 graph TD
+    T0[T0: Version-bump sweep +<br/>pre-tag parity audit<br/>CRITICAL pre-step]
     T1[T1: Cut release v0.3.0<br/>THE 1% → 51%]
+    T0 -->|broken facade otherwise| T1
     T2[T2: Clean-room published proof<br/>→ 64% with T1]
     T3[T3: Facade parity gate]
     T4[T4: Help Centre loop]
@@ -179,6 +187,10 @@ graph TD
 
 ## Sequencing rules (VERSCHLIMMBESSER-prevention)
 
+0. **T0 before the tag, always** — a facade whose go.mod pins an internal
+   version that predates its aliases' symbols ships BROKEN on the proxy
+   (in-repo replaces make it look green; the version-bump sweep + pin-check
+   is the only thing that catches it pre-tag). Tags are immutable.
 1. **Nothing edits scripts/ or gates while T1's release tree must stay
    byte-stable** — release.sh requires a clean tree; T3/T6/T8 land AFTER
    `--push`, or on separate commits BEFORE 1.1 that re-run ci-local.
