@@ -187,6 +187,30 @@ step "TODO_LIST honesty check"
 step "FEATURES/ROADMAP cross-check"
 ./scripts/check-features-roadmap.sh
 
+# Pareto M4: FEATURES rows citing CI run ids must cite GREEN runs — a red
+# citation means the feature table claims evidence that no longer holds.
+step "FEATURES CI-freshness check"
+./scripts/check-features-ci.sh
+
+# Advisory (Pareto M5): cqrs-lint over internal/journal/cqrs, the ADR-0014
+# go-cqrs-lite seam (.cqrs-lint.json pins the read-only/library intent).
+# Provenance: cmd/cqrs-lint in the OWNER-LOCAL go-cqrs-lite checkout — not
+# a flake input, so the step SKIPs without it. NON-BLOCKING by decision
+# (TODO row, 08-00 §c1 / 08-21 §c1): a hard-gate flip needs (a) a soak
+# window of clean CI runs and (b) a hermetic tool source (flake input or
+# nix package) — both are separate rulings, do not flip silently here.
+step "cqrs-lint (advisory)"
+if [ -d "${HOME}/projects/go-cqrs-lite/cmd/cqrs-lint" ]; then
+	if (cd "${HOME}/projects/go-cqrs-lite/cmd/cqrs-lint" && go build -o /tmp/cqrs-lint-bin .) &&
+		/tmp/cqrs-lint-bin internal/journal/cqrs; then
+		echo "cqrs-lint clean"
+	else
+		echo "ADVISORY (non-blocking): cqrs-lint reported findings or failed to build/run"
+	fi
+else
+	echo "SKIP: local go-cqrs-lite checkout not found (${HOME}/projects/go-cqrs-lite)"
+fi
+
 # --- CI nix job, on a fully tracked tree ------------------------------------
 # Flakes only see git-tracked files, so stage everything first and then prove
 # no untracked stragglers remain BEFORE nix sees the tree. Measuring nix on a

@@ -111,6 +111,8 @@ jobs:
         run: ./scripts/check-doc-refs.sh
       - name: Ghost-archive check (asset README promises are git-tracked)
         run: ./scripts/check-ghost-archives.sh
+      - name: FEATURES CI-freshness check (cited run ids are green)
+        run: ./scripts/check-features-ci.sh
 
   test-windows:
     # Platform honesty (round-5 M11/F56): POSIX-only suites (e2e, chaos,
@@ -249,4 +251,35 @@ jobs:
             echo ""
             echo "0 findings across root + every sub-module; any finding here is a NEW class —"
             echo "triage it and extend the AGENTS.md note, never silently re-exclude."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  cqrs-lint:
+    # Advisory (Pareto M5): domain linter over internal/journal/cqrs, the
+    # ADR-0014 go-cqrs-lite seam (.cqrs-lint.json pins the read-only /
+    # library-framework intent). Job-level continue-on-error keeps it
+    # non-blocking; the gate-vs-advisory flip needs a clean soak window AND
+    # a hermetic tool source (the tool builds from the go-cqrs-lite repo —
+    # flip-later ruling recorded in TODO_LIST, 08-00 §c1 / 08-21 §c1).
+    # Provenance parity with ci-local.sh's advisory step, which builds the
+    # same tool from the owner-local checkout.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: LarsArtmann/go-cqrs-lite
+          path: go-cqrs-lite
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: 1.26.7
+      - name: Build cqrs-lint and lint the journal adapter
+        run: |
+          ( cd go-cqrs-lite/cmd/cqrs-lint && go build -o "${GITHUB_WORKSPACE}/cqrs-lint-bin" . )
+          "${GITHUB_WORKSPACE}/cqrs-lint-bin" internal/journal/cqrs
+          {
+            echo "## cqrs-lint (advisory, internal/journal/cqrs)"
+            echo ""
+            echo "Findings here are triage-first: ADR-0014 pins the adapter read-only; false"
+            echo "positives get suppressions in .cqrs-lint.json with reasons, never silent."
           } >> "$GITHUB_STEP_SUMMARY"
