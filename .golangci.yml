@@ -251,6 +251,13 @@ linters:
       - path: internal/harvest/reprioritize\.go
         linters:
           - tagliatelle
+      # Facade alias files (ADR-0016): every re-export is a package-level
+      # var/const/type BY DESIGN — the facade pattern IS the global
+      # re-export list. Pinned to the seven alias files exactly; a new
+      # non-alias file in a facade dir stays linted.
+      - path: ^(task/task|journal/journal|queue/queue|queue/sqlite/sqlite|queue/postgres/postgres|executor/executor|worker/worker)\.go$
+        linters:
+          - gochecknoglobals
       - path: _test\.go
         linters:
           - errcheck

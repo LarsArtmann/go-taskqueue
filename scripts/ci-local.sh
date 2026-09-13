@@ -57,6 +57,9 @@ done
 step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
 ./scripts/check-go-mods.sh
 
+step "facade parity (ADR-0016: facades mirror internal exports)"
+./scripts/check-facade-parity.sh
+
 step "dead-export audit (advisory report)"
 ./scripts/check-dead-exports.sh
 

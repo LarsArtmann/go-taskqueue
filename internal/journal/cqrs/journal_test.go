@@ -1,6 +1,7 @@
 package cqrs
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
@@ -175,6 +176,38 @@ func TestPayloadDecodesThroughLibraryAPI(t *testing.T) {
 
 	if string(got.Detail) != `{"stage":"verify","exit_code":1,"tail":"boom"}` {
 		t.Fatalf("decoded detail = %s", got.Detail)
+	}
+}
+
+// TestPayloadWireFormatPinned freezes the exact payload bytes: whatever
+// constructor or codec the adapter uses, the wire format must stay
+// byte-identical to a plain encoding/json/v2 marshal of the fact payload —
+// `tq facts --cqrs` renders these bytes raw and every consumer's decoder
+// is keyed to this shape.
+func TestPayloadWireFormatPinned(t *testing.T) {
+	fact := testFacts()[2] // fullest fact: owner, attempt, error, detail
+
+	want, err := json.Marshal(factPayload{
+		TaskID:  fact.TaskID,
+		Type:    fact.Type,
+		Owner:   fact.Owner,
+		Attempt: fact.Attempt,
+		Error:   fact.Error,
+		Detail:  fact.Detail,
+	})
+	if err != nil {
+		t.Fatalf("marshal expected payload: %v", err)
+	}
+
+	j := NewFactJournal(&fakeSource{facts: []journal.Fact{fact}})
+
+	events, err := j.ReadAll(context.Background())
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+
+	if !bytes.Equal(events[0].Payload(), want) {
+		t.Fatalf("payload bytes drifted:\n got: %s\nwant: %s", events[0].Payload(), want)
 	}
 }
 

@@ -56,6 +56,9 @@ jobs:
       - name: go.mod health (replaces, pins, toolchain alignment, mod verify)
         # Parity with scripts/ci-local.sh — the shared script owns the rules.
         run: ./scripts/check-go-mods.sh
+      - name: Facade parity (ADR-0016)
+        # Parity with scripts/ci-local.sh — the checker owns the rules.
+        run: ./scripts/check-facade-parity.sh
       - name: Gofmt
         run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
       - name: Lint (golangci-lint, config in .golangci.yml)

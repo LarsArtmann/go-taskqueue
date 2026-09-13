@@ -18,12 +18,13 @@ type (
 
 // Built-in executors.
 type (
-	CommandExecutor = internalexecutor.CommandExecutor
-	HTTPExecutor    = internalexecutor.HTTPExecutor
-	AgentExecutor   = internalexecutor.AgentExecutor
-	ReviewExecutor  = internalexecutor.ReviewExecutor
-	StatusExecutor  = internalexecutor.StatusExecutor
-	DLQFixExecutor  = internalexecutor.DLQFixExecutor
+	CommandExecutor    = internalexecutor.CommandExecutor
+	HTTPExecutor       = internalexecutor.HTTPExecutor
+	AgentExecutor      = internalexecutor.AgentExecutor
+	ReviewExecutor     = internalexecutor.ReviewExecutor
+	StatusExecutor     = internalexecutor.StatusExecutor
+	DLQFixExecutor     = internalexecutor.DLQFixExecutor
+	PrioritizeExecutor = internalexecutor.PrioritizeExecutor
 )
 
 // Payloads, results, and verdicts.

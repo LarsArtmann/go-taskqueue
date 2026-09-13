@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-codec"
+	"github.com/larsartmann/go-cqrs-lite/event/v4"
 	"github.com/larsartmann/go-cqrs-lite/id/v4"
 	"github.com/larsartmann/go-taskqueue/internal/journal/cqrs"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
@@ -67,6 +69,8 @@ func TestFactsCQRSOverStore(t *testing.T) {
 		t.Fatalf("ReadAll returned %d events, want 4 (enqueued x2, claimed, completed)", len(events))
 	}
 
+	assertEventsEncodingStamped(t, events)
+
 	if string(events[3].StreamID().String()) != claimed.ID.String() {
 		t.Fatalf("completed event stream = %s, want task %s", events[3].StreamID(), claimed.ID)
 	}
@@ -120,5 +124,18 @@ func TestFactsCQRSOverStore(t *testing.T) {
 
 	if rendered[3]["type"] != "task.completed" || rendered[3]["version"] != float64(4) {
 		t.Fatalf("rendered fourth event = %v", rendered[3])
+	}
+}
+
+// assertEventsEncodingStamped pins the store-backed path to the encoding
+// contract the adapter's unit tests carry: downstream DecodePayloadAuto
+// refuses unstamped payloads (the bug the 2026-09-13 lint pass fixed).
+func assertEventsEncodingStamped(t *testing.T, events []event.Event) {
+	t.Helper()
+
+	for i, evt := range events {
+		if evt.Encoding() != codec.EncodingJSON {
+			t.Fatalf("store event %d encoding = %q, want %q", i, evt.Encoding(), codec.EncodingJSON)
+		}
 	}
 }

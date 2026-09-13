@@ -36,5 +36,12 @@
       // state, single serialized writer).
       "A018"
     ]
-  }
+  },
+
+  // Note: the library-framework preset also disables S002 (payload
+  // encryption) and S003 (event signing). That is consciously accepted:
+  // fact payloads (task prompts, repo names, failure evidence) live in a
+  // local journal behind tq serve's loopback/auth model; transport
+  // protection is the webui's job, not the journal's.
+  "health": {}
 }

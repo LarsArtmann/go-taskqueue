@@ -97,3 +97,16 @@ rewrite; the right unit of integration is the journal contract itself.
 - flake vendorHash updated (`sha256-8zjS/KNmEm6Es2n4Xyj/a6Mn+oLntLycRXp
   GNTkWPWg=`); watch for the runner-variant hash mismatch class
   (2026-09-10) on the first CI nix run.
+
+## Post-adoption note (2026-09-13)
+
+A `cqrs-lint` pass found the adapter's events carried an **empty encoding
+stamp**: `event.NewEvent` never stamps `encoding`, so every downstream
+`event.DecodePayloadAuto` — the decode path this adapter exists to serve —
+failed with `codec.ErrUnknownEncoding`. `factEvent` now builds events via
+`event.New` + `WithCodec(codec.JSONCodec{})` (payload bytes unchanged) and
+pins `WithSchemaVersion(1)` explicitly. The consumer contract is pinned by
+`TestPayloadDecodesThroughLibraryAPI`, a store-level encoding assertion
+(`cmd/tq/facts_cqrs_test.go`), and a byte-exact wire-format pin
+(`TestPayloadWireFormatPinned`). Read-only intent + triaged linter rules
+live in `.cqrs-lint.json`.
