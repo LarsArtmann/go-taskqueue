@@ -52,19 +52,21 @@ func main() {
 
 	switch *backend {
 	case "sqlite":
-		store, err := sqlite.Open(*db)
+		sqliteStore, err := sqlite.Open(*db)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		defer store.Close()
+		defer sqliteStore.Close()
+		store = sqliteStore
 	case "postgres":
-		store, err := postgres.Open(ctx, *dsn, 0)
+		postgresStore, err := postgres.Open(ctx, *dsn, 0)
 		if err != nil {
 			log.Fatalf("postgres backend: %v", err)
 		}
 
-		defer store.Close()
+		defer postgresStore.Close()
+		store = postgresStore
 	default:
 		log.Fatalf("unknown --backend %q (want sqlite or postgres)", *backend)
 	}
