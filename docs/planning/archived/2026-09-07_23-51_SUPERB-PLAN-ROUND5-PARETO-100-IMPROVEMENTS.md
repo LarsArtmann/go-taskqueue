@@ -28,7 +28,7 @@
 | Fresh verification         | build/vet/tests green as of the 23:08 report; re-run before push (§5)                                                                                                                                                                                 |
 
 Sources read before planning: `AGENTS.md`, `TODO_LIST.md`, `FEATURES.md`,
-`ROADMAP.md`, `docs/status/2026-09-07_23-08_webui-templ-components-redesign-ledger-and-lamp.md`
+`ROADMAP.md`, `docs/status/archived/2026-09-07_23-08_webui-templ-components-redesign-ledger-and-lamp.md`
 (sections e/f), `docs/adr/0003-web-ui-architecture.md`, prior round plans in
 `docs/planning/`.
 

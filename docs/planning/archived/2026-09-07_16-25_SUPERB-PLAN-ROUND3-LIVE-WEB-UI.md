@@ -3,7 +3,7 @@
 **Date:** 2026-09-07 16:25 CEST
 **Status:** EXECUTED 2026-09-07 — W01–W14 (all Phase A–C fine steps) shipped,
 verified (`go test ./... -race`, smoke script, `nix build`), committed; see
-`docs/status/2026-09-07_18-41_round3-live-web-ui-executed-verified-committed.md`.
+`docs/status/archived/2026-09-07_18-41_round3-live-web-ui-executed-verified-committed.md`.
 Phase D (W15–W22 polish/hardening) largely shipped since (auth, pagination, board, admin writes); remainder on ROADMAP.
 
 > **Archived 2026-09-09 (docs-health):** fully executed — moved from docs/planning/.

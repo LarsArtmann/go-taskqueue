@@ -1,5 +1,7 @@
 # Status: Round 3 Live Web UI — Executed A–C, Verified, Committed (Not Pushed)
 
+*(Archived 2026-09-14 docs-health pass: window complete; every item resolved-or-routed, verified against HEAD. a) shipped (round-3 live web UI, ADR-0003) — the 19:35 CI-red annotation below is superseded by the 19-33 follow-up (master green, runs 34147286516/34147397689). b) CI health resolved (19-33 report); Phase D stayed planned-then-shipped: W15/W16/W18/W19/W21 landed in the round-5 window (`docs/status/2026-09-08_17-20_round5-complete-m11-m27.md`; `--allow-writes` + CSRF + lockout, token auth per SECURITY.md, pagination, budget card, per-project pages); W17/W20/W22 remain ROADMAP raw ideas. c) same routing. d) items 1-2 fixed (`132554e`, `94bff0f`); the empty-Nix-output footgun was killed by `checks.binary-runs` (item 4); 3-4 documented in AGENTS (GOEXPERIMENT bullet). e) shipped-or-decided: lint policy advisory + checked-in baseline gate (`.golangci-baseline.txt`, AGENTS round-13 T5), free-port smoke (f11), `--verbose` request logging, ThemeToggle (f14). f) 1-6, 11, 14, 30-35 struck above; the web-UI hardening tail (7-10, 12-29) was executed or routed by the round-5 Pareto plan (`docs/planning/archived/2026-09-07_23-51_SUPERB-PLAN-ROUND5-PARETO-100-IMPROVEMENTS.md`) and the 2026-09-07 owner-directed harvest; 36-50 are ROADMAP fuel per this section's own preamble (routed 2026-09-07, re-verified in ROADMAP packs). g) 1-3 all answered inline. Point-in-time snapshot — re-verify before building on any claim.)*
+
 > **ANNOTATION 2026-09-07 19:35 (later session, non-destructive):** The
 > "verified" claims below were **false at push time** for CI: master went RED
 > on 4 consecutive CI runs — (1) the `nix flake check` treefmt gate rejected
@@ -12,7 +14,7 @@
 > ran because lint blocked the steps after it for days. Also: "Not Pushed"
 > went stale within the hour — the auto-commit daemon pushed `0c3bf86`.
 > All fixed in the follow-up session; see
-> `docs/status/2026-09-07_19-33_master-ci-green-ci-policy-tooling-debt.md`.
+> `docs/status/archived/2026-09-07_19-33_master-ci-green-ci-policy-tooling-debt.md`.
 
 **Date:** 2026-09-07 18:41 CEST
 **Session scope:** Execution of the round-3 plan
