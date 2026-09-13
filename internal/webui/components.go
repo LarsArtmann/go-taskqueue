@@ -293,6 +293,12 @@ func dashboardProps(title, nonce string) layout.PageProps {
 	props.HTMXResponseTargets = false
 	props.ThemeColor = "#f6f8fb"
 	props.DarkThemeColor = "#0a0f1a"
+	// Operator surface: keep it out of search indexes if it is ever bound
+	// beyond loopback (--auth-token allows that) or exposed via a tunnel —
+	// task pages carry prompts, repo names, and failure evidence. The other
+	// SEOMeta fields (canonical/hreflang/JSON-LD) stay zero: meaningless
+	// without a public crawler surface.
+	props.SEO.NoIndex = true
 	props.HeadContent = refreshMeta()
 	props.Footer = pageFooter()
 	props.Nonce = nonce

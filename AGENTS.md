@@ -398,6 +398,23 @@ accent rule, and it renders `data-tc-kanban-column` instead of the
 `data-status` attributes board_test.go pins. Do not re-litigate without
 an API change in the library.
 
+Evaluated 2026-09-13 (`PageProps.SEO` + `icons.Render`, 04-09 f22):
+`SEO` is adopted for `NoIndex` ONLY (`dashboardProps` in
+components.go emits robots noindex — the operator surface carries task
+prompts, repo names, and failure evidence, and the security model
+documents non-loopback `--auth-token` binds plus shareable `?token=`
+URLs; noindex is one-line defense-in-depth against a crawler indexing a
+tunneled/leaked URL). Canonical/hreflang/JSON-LD stay zero — meaningless
+without a public crawler surface, and JSONLD is a verbatim Raw-injection
+field. `icons.Render` is REJECTED: it is the extension point for
+CONSUMER-supplied `CustomIcon` path data (brand logos, foreign icon
+sets); the filter/empty-state icons are built-in typed `icons.Name`
+constants already adopted via `display.EmptyStateProps.Icon`, and
+routing them through Render would hand-copy library path data into this
+repo, losing type safety and upstream path fixes. The adoption table is
+template-call-scoped by the guard tests, so both verdicts live in this
+prose, not the table.
+
 ## Known Issues
 
 - ⚠️ **Concurrent agents commit constantly**: re-run `go test ./... -race`
