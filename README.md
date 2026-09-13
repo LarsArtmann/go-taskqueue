@@ -61,9 +61,13 @@ happened to this task?" always has an answer.
 ## Quickstart
 
 ```sh
-go install github.com/larsartmann/go-taskqueue/cmd/tq@latest
+# the library (v0.3.0+) is proxy-installable per module — see Embedding below.
+# The tq BINARY cannot be `go install`ed from the proxy while the root module
+# carries its dev-time replace directives (Go refuses @version installs of
+# replaced modules); build it from a clone or use nix:
+git clone https://github.com/LarsArtmann/go-taskqueue && cd go-taskqueue
+go build -o ~/.local/bin/tq ./cmd/tq    # or: nix run github:LarsArtmann/go-taskqueue
 
-# a task whose payload is the shell command itself
 tq enqueue --type sh --project demo --payload 'echo hello from $(uname -s)'
 
 # or as JSON

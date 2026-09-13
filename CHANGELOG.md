@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+### Known issues
+- **v0.3.0 regression: `go install github.com/larsartmann/go-taskqueue/cmd/tq@vX.Y.Z`
+  fails** ("module providing named packages contains one or more replace
+  directives") — the root module's dev-time relative replaces (the ADR-0011
+  local-dev decision) make the published root module un-installable at a
+  version. v0.2.0 installed cleanly because its root carried no replaces.
+  Caught by release.sh's clean-room step AFTER the tag was pushed (tags are
+  immutable). Library consumption (`go get` of any facade or internal
+  module) is unaffected and proxy-verified. Binary workarounds: build from
+  clone (`go build ./cmd/tq`) or nix. Fix under consideration: move the
+  binary to its own replace-free module.
+
 ## [v0.3.0] - 2026-09-13
 ### Fixed
 - **`postgres.OpenWithPool` no longer closes the caller's pool on
