@@ -153,7 +153,7 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 		fmt.Printf("  %s: stored=%s replayed=%s\n", row.TaskID, row.StoredStatus, row.Replayed)
 	}
 
-	fmt.Println("(advisory: investigate with `tq show <id>` and `tq facts --task <id>` before repairing)")
+	fmt.Println("(advisory: investigate with `tq show <id>` and `tq facts -detail` before repairing)")
 
 	return nil
 }
