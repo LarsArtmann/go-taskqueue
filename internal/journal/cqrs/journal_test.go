@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-codec"
 	"github.com/larsartmann/go-cqrs-lite/event/v4"
 	"github.com/larsartmann/go-cqrs-lite/id/v4"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -139,6 +140,41 @@ func TestPayloadRoundTrip(t *testing.T) {
 
 	if len(events[0].Payload()) == 0 {
 		t.Fatal("enqueued event payload is empty")
+	}
+}
+
+func TestPayloadDecodesThroughLibraryAPI(t *testing.T) {
+	j := NewFactJournal(&fakeSource{facts: testFacts()})
+
+	events, err := j.ReadAll(context.Background())
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+
+	// Downstream go-cqrs-lite consumers (projections, watermill, metaengine)
+	// decode through DecodePayloadAuto, which dispatches on the event's
+	// encoding stamp; codec.ForEncoding refuses an empty stamp.
+	for i, evt := range events {
+		if enc := evt.Encoding(); enc != codec.EncodingJSON {
+			t.Fatalf("event %d encoding = %q, want %q", i, enc, codec.EncodingJSON)
+		}
+
+		if v := evt.SchemaVersion(); v != 1 {
+			t.Fatalf("event %d schema version = %d, want 1", i, v)
+		}
+	}
+
+	got, err := event.DecodePayloadAuto[factPayload](events[2])
+	if err != nil {
+		t.Fatalf("DecodePayloadAuto: %v", err)
+	}
+
+	if got.TaskID != "000001a0deadbeef" || got.Type != journal.Failed || got.Error != "exit status 1" {
+		t.Fatalf("decoded payload = %+v", got)
+	}
+
+	if string(got.Detail) != `{"stage":"verify","exit_code":1,"tail":"boom"}` {
+		t.Fatalf("decoded detail = %s", got.Detail)
 	}
 }
 

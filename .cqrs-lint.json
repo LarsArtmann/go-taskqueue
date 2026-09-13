@@ -1,0 +1,28 @@
+{
+  // go-taskqueue is not a CQRS app: internal/journal/cqrs is a READ-ONLY
+  // adapter exposing the fact journal as event.Journal/SeekableJournal
+  // (ADR-0014). Facts are written exclusively by the queue stores inside
+  // their state-mutating transactions; implementing event.Store's write
+  // path is deliberately NOT adopted. The adapter is a library surface
+  // (public facades, ADR-0016), so app-shaped adoption coaching (F-series)
+  // contradicts a recorded ADR rather than coaching anything.
+  "preset": "library-framework",
+
+  // Pin the ADR-0014 intent so auto-detection drift can't re-enable
+  // command-write rules against a read-only contract.
+  "features": {
+    "command-flow": "read-only"
+  },
+
+  "rules": {
+    "disable": [
+      // V006: go-cqrs-lite versions its modules independently (same
+      // architecture as this repo, ADR-0011). Every pin in the cqrs go.mod
+      // IS that module's latest tag as of 2026-09-13 (event v4.11.0,
+      // id v4.6.0, metadata v4.7.0, record v4.5.0); "aligning" them would
+      // mean pinning stale releases. Revisit only if the library starts
+      // tag-lockstepping its modules.
+      "V006"
+    ]
+  }
+}

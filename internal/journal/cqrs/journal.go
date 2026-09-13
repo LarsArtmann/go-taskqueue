@@ -3,10 +3,10 @@ package cqrs
 import (
 	"context"
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 	"fmt"
 	"strings"
 
+	"github.com/larsartmann/go-codec"
 	"github.com/larsartmann/go-cqrs-lite/event/v4"
 	"github.com/larsartmann/go-cqrs-lite/id/v4"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -122,19 +122,8 @@ func mapFacts(facts []journal.Fact) ([]event.Event, error) {
 
 func factEvent(fact journal.Fact) (event.Event, error) {
 	if fact.Seq <= 0 {
+		//cqrs-lint:ignore(C025) validation error built from fact data; no wrapped cause exists
 		return nil, fmt.Errorf("cqrs: fact for task %s has non-positive seq %d", fact.TaskID, fact.Seq)
-	}
-
-	payload, err := json.Marshal(factPayload{
-		TaskID:  fact.TaskID,
-		Type:    fact.Type,
-		Owner:   fact.Owner,
-		Attempt: fact.Attempt,
-		Error:   fact.Error,
-		Detail:  fact.Detail,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("cqrs: marshal fact seq %d: %w", fact.Seq, err)
 	}
 
 	eventID, err := seqEventID(fact.Seq)
@@ -152,14 +141,27 @@ func factEvent(fact journal.Fact) (event.Event, error) {
 		streamType = id.StreamType(StreamTypeSession)
 	}
 
-	evt, err := event.NewEvent(
+	// event.New (not NewEvent) marshals the payload through the codec and
+	// stamps the encoding: a bare NewEvent leaves Encoding empty, and
+	// DecodePayloadAuto — the decode path every go-cqrs-lite consumer of
+	// this journal uses — refuses unstamped payloads.
+	evt, err := event.New(
 		event.Type(fact.Type),
 		streamID,
 		streamType,
 		event.Version(uint64(fact.Seq)),
-		payload,
+		factPayload{
+			TaskID:  fact.TaskID,
+			Type:    fact.Type,
+			Owner:   fact.Owner,
+			Attempt: fact.Attempt,
+			Error:   fact.Error,
+			Detail:  fact.Detail,
+		},
+		event.WithCodec(codec.JSONCodec{}),
 		event.WithEventID(eventID),
 		event.WithOccurredAt(fact.Time),
+		event.WithSchemaVersion(event.SchemaVersion(1)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("cqrs: build event for fact seq %d: %w", fact.Seq, err)
@@ -171,6 +173,7 @@ func factEvent(fact journal.Fact) (event.Event, error) {
 // factPayload carries the fact body; Seq and Time are deliberately absent
 // because they are the event's Version and OccurredAt.
 type factPayload struct {
+	//cqrs-lint:ignore(A032) wire mirror of journal.Fact.TaskID (a plain string in the leaf module); branding here buys coupling, not safety
 	TaskID  string           `json:"taskId"`
 	Type    journal.FactType `json:"type"`
 	Owner   string           `json:"owner,omitempty"`
