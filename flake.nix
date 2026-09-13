@@ -66,6 +66,7 @@
           };
           preBuild = ''
             export HOME=$TMPDIR
+            printf '\nreplace github.com/larsartmann/go-taskqueue => ../..\n' >> go.mod
           '';
           # `tq version` reports the release, not "dev" (round-5 M25/F133).
           # Derived from the version attr above — never a second literal.
