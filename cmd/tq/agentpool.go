@@ -331,26 +331,26 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 
 // harvestConfigFromOptions assembles the harvester configuration, parsing
 // the name=duration ladder flags (--repo-timeout, --repo-interval).
-func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
-	if o.priorityFrom != "" && o.priorityFrom != priorityFromImportance {
+func harvestConfigFromOptions(opts agentPoolOptions) (harvest.Config, error) {
+	if opts.priorityFrom != "" && opts.priorityFrom != priorityFromImportance {
 		return harvest.Config{}, fmt.Errorf(
-			`--priority-from: want %q or empty, got %q`, priorityFromImportance, o.priorityFrom)
+			`--priority-from: want %q or empty, got %q`, priorityFromImportance, opts.priorityFrom)
 	}
 
 	cfg := harvest.Config{
-		ProjectsDir:       o.projectsDir,
-		DiscoveryAddr:     o.discoveryAddr,
-		MaxPerTick:        o.maxPerTick,
-		Model:             o.model,
-		DLQBackoff:        o.dlqBackoff,
-		UseImportance:     o.priorityFrom == priorityFromImportance,
-		MaxPendingPerRepo: o.maxPending,
+		ProjectsDir:       opts.projectsDir,
+		DiscoveryAddr:     opts.discoveryAddr,
+		MaxPerTick:        opts.maxPerTick,
+		Model:             opts.model,
+		DLQBackoff:        opts.dlqBackoff,
+		UseImportance:     opts.priorityFrom == priorityFromImportance,
+		MaxPendingPerRepo: opts.maxPending,
 	}
 
-	if o.repoTimeout != "" {
+	if opts.repoTimeout != "" {
 		cfg.RepoTimeouts = make(map[string]time.Duration)
 
-		for spec := range strings.SplitSeq(o.repoTimeout, ",") {
+		for spec := range strings.SplitSeq(opts.repoTimeout, ",") {
 			spec = strings.TrimSpace(spec)
 			if spec == "" {
 				continue
@@ -370,10 +370,10 @@ func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
 		}
 	}
 
-	if o.repoInterval != "" {
+	if opts.repoInterval != "" {
 		cfg.RepoIntervals = make(map[string]time.Duration)
 
-		for spec := range strings.SplitSeq(o.repoInterval, ",") {
+		for spec := range strings.SplitSeq(opts.repoInterval, ",") {
 			spec = strings.TrimSpace(spec)
 			if spec == "" {
 				continue
@@ -393,20 +393,20 @@ func harvestConfigFromOptions(o agentPoolOptions) (harvest.Config, error) {
 		}
 	}
 
-	if o.allowDirty {
+	if opts.allowDirty {
 		no := false
 		cfg.RequireClean = &no
 	}
 
-	if o.repos != "" {
+	if opts.repos != "" {
 		// Bare repo names resolve against the projects dir, never the
 		// working directory: harvest Abs()es each entry, so un-expanded
 		// names made every scan cwd-dependent (the systemd pool scans
 		// from dirOf(dbPath) and skipped all repos as "scan failed").
-		cfg.Repos = splitRepos(o.repos)
+		cfg.Repos = splitRepos(opts.repos)
 		for i, repo := range cfg.Repos {
 			if !filepath.IsAbs(repo) {
-				cfg.Repos[i] = filepath.Join(o.projectsDir, repo)
+				cfg.Repos[i] = filepath.Join(opts.projectsDir, repo)
 			}
 		}
 

@@ -23,15 +23,15 @@ var poolConfigEnvBacked = map[string]string{
 // or double quotes) into a map. Keys use the flag spelling (--projects-dir
 // style, without the dashes prefix).
 func loadPoolConfigFile(path string) (map[string]string, error) {
-	f, err := os.Open(path)
+	configFile, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("pool config: %w", err)
 	}
-	defer f.Close()
+	defer configFile.Close()
 
 	out := map[string]string{}
 
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(configFile)
 	for lineNo := 1; scanner.Scan(); lineNo++ {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {

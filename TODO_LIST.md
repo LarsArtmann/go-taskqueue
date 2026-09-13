@@ -145,7 +145,7 @@ not here.
 
 ## Window follow-ups (harvested from docs/status/2026-09-10_08-25, verified 2026-09-10)
 
-- [ ] Rename the two varnamelen raw sites (`o` cmd/tq/agentpool.go:278, `f` cmd/tq/poolconfig.go:26) or extend the ignore list, so scoped `--enable-only` diagnostics agree with full-config runs (2 vs 0 discrepancy, 08:25 report b2)
+- [x] Rename the two varnamelen raw sites (`o` cmd/tq/agentpool.go:278, `f` cmd/tq/poolconfig.go:26) or extend the ignore list, so scoped `--enable-only` diagnostics agree with full-config runs (2 vs 0 discrepancy, 08:25 report b2) — DONE: renamed `o`→`opts` and `f`→`configFile`; scoped varnamelen run on cmd/tq (dev.mod shim) now 0 issues
 - [ ] Pin the fullcore drain-deadline determinism mechanically: extend the planned hermetic fullcore smoke to exercise the deadline path N times (`16a15d8` was hand-verified only; 08:25 report b3)
 - [ ] Lint-baseline slice-triage round 2: goconst (≥50), mnd (≥50), paralleltest (≥50), testpackage (30) — same triage-or-policy discipline as wrapcheck/varnamelen, never mass-fix (08:25 report f3)
 - [x] Record a per-linter findings baseline (checked-in file or CI job summary) so shrink claims are measurable; backfill the current root count (~380 across 29 classes, wrapcheck/varnamelen 0) as the starting point (08:25 report f4) — DONE 2026-09-12 round-13 T5: `.golangci-baseline.txt` checked in (per-module × linter counts, CI-pinned golangci-lint v2.13.2) AND wired as a ci-local gate (`scripts/lint-baseline.sh --check`: growth/new-class fails, shrink advisory); regen + green check verified at HEAD
