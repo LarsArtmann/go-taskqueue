@@ -16,9 +16,9 @@ and a full queue library is too much. It generalizes beyond this repo.
 
 2. **Claim via `FOR UPDATE SKIP LOCKED` + visibility timeout.**
    The claim transaction selects candidate rows with
-   `SELECT … FOR UPDATE SKIP LOCKED SKIP LOCKED`-style semantics (Postgres:
-   `FOR UPDATE SKIP LOCKED`; SQLite: a single serialized writer needs no
-   lock skipping at all), marks the job `running`, and stamps a deadline.
+   `SELECT … FOR UPDATE SKIP LOCKED` (Postgres; SQLite's single serialized
+   writer needs no lock skipping at all), marks the job `running`, and
+   stamps a deadline.
    A crashed worker's jobs become claimable again when the deadline passes
    — crash reclaim WITHOUT a lease owner column or heartbeats. This is the
    single-process profile; multi-process fleets want go-taskqueue's

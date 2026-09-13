@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Public facade modules (ADR-0016)**: the library core is now importable
+  from outside the repo. Seven facade modules — `task`, `journal`, `queue`,
+  `queue/sqlite`, `queue/postgres`, `executor`, `worker` (all under
+  `github.com/larsartmann/go-taskqueue/…`) — re-export the internal
+  implementations via type aliases, pinning the public names while the
+  implementations stay internal and free to refactor. Release tooling tags
+  facades alongside the internals; the module enumeration in every gate
+  (ci-local, ci.yml, flake test loop, check-go-mods, lint-baseline,
+  release.sh) now covers the facade dirs. Motivated by the first external
+  adoption attempt, which was blocked by the internal-path rule
+  (docs/feedback/new/2026-09-13_external-adoption-blocked-by-internal-paths.md).
+- `postgres.OpenWithPool(ctx, pool)` wraps a caller-owned `*pgxpool.Pool`
+  into a ready store (schema applied, pool ownership stays with the
+  caller) — consumers with an existing pool no longer inherit a second one.
+- `docs/references/single-job-type-queue-profile.md`: the minimal durable
+  queue profile (PK dedup + visibility-timeout claim + version-guarded
+  revive + bounded ladder + dead flag) that adopters otherwise re-derive.
 - **Priority system (ADR-0015)**: one 0-100 priority scale with three
   bands — backlog 0-99 (markers, importance, AI scores, keywords), hot
   100-149 (same-session promotion), machine 150+ (operational tasks;

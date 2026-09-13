@@ -27,10 +27,24 @@ layer. `./...` never descends into nested modules — per-module gates
 (disk-derived, same as CI):
 
 ```bash
-for m in $(find internal -name go.mod | sed 's|/go.mod$||' | sort); do
+for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
   ( cd "$m" && export GOEXPERIMENT=jsonv2 && GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 ) || exit 1
 done
 ```
+
+**Public facades (ADR-0016):** `task/`, `journal/`, `queue/`,
+`queue/sqlite/`, `queue/postgres/`, `executor/`, `worker/` are facade
+MODULES re-exporting the internal implementations via type aliases — the
+only importable surface for external consumers. In-repo code keeps
+importing `internal/…` directly. Rules: every internal module in a
+facade's dependency graph needs a require (vX.Y.Z) AND a relative replace
+in the facade go.mod (missing replaces resolve through the proxy and hit
+stale tags — worker's facade failed exactly that way with
+`journal.Reprioritized` undefined); when adding an exported symbol to a
+facaded internal package, add the alias in the same change (parity is a
+review convention, no compiler gate); facade tests may import internal
+packages (same-path rule), never sibling FACADES (would pin unpublished
+versions).
 
 Internal requires point at real tagged versions (never `v0.0.0` —
 `go install` resolves them via the proxy; `internal/*/vX.Y.Z` subdirectory
