@@ -18,7 +18,11 @@ import (
 // so auditing again never re-arms it).
 func cmdAudit(args []string) error {
 	fs := flag.NewFlagSet("audit", flag.ExitOnError)
-	journalFlag := fs.Bool("journal", false, "journal-drift audit: rebuild task state from the fact journal and diff against the tasks table (advisory)")
+	journalFlag := fs.Bool(
+		"journal",
+		false,
+		"journal-drift audit: rebuild task state from the fact journal and diff against the tasks table (advisory)",
+	)
 	projectsDir := fs.String("projects-dir", "", "directory of repos to audit (each with a TODO_LIST.md)")
 	repos := fs.String("repos", "", "comma-separated explicit repo paths (overrides --projects-dir)")
 	todoFile := fs.String("todo-file", harvest.DefaultTodoFile, "backlog file name inside each repo")
@@ -64,10 +68,6 @@ func cmdAudit(args []string) error {
 
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
-
-	if *journalFlag {
-		return cmdJournalAudit(context.Background(), s, *asJSON)
-	}
 
 	res, err := harvest.New(queue.New(s), cfg).Audit(context.Background())
 	if err != nil {
