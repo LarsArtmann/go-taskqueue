@@ -158,6 +158,9 @@ step "dogfood-once live smoke (stub agent; TQ_DOGFOOD=1 adds the real-agent proo
 step "bootstrap --install smoke"
 ./scripts/smoke/bootstrap-install.sh
 
+step "fullcore embed smoke (sqlite, scratch TQ_DB)"
+./scripts/smoke/fullcore.sh
+
 step "release-gates smoke (fixture go.mods, positive + negative)"
 # Runner parity: no global git identity locally either. /dev/null alone is
 # NOT enough — this host auto-detects identity from the passwd GECOS and
