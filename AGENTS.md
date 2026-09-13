@@ -389,6 +389,15 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows`
 (both directions of rot fail the suite).
 
+Evaluated and REJECTED 2026-09-13: `display.KanbanBoard` (library v1.15+)
+does not fit the custom board — its value is the drag/keyboard move
+exchange (inert on a read-only board per ADR-0003 Phase D), its count
+badge shows the truncated `len(col.Cards)` instead of the true count,
+there is no hook for the "+N older" escape-hatch link or the per-status
+accent rule, and it renders `data-tc-kanban-column` instead of the
+`data-status` attributes board_test.go pins. Do not re-litigate without
+an API change in the library.
+
 ## Known Issues
 
 - ⚠️ **Concurrent agents commit constantly**: re-run `go test ./... -race`
