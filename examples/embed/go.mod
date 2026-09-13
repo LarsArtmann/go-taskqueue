@@ -4,12 +4,12 @@ go 1.26.7
 
 require (
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/larsartmann/go-taskqueue/executor v0.2.0
-	github.com/larsartmann/go-taskqueue/queue v0.2.0
-	github.com/larsartmann/go-taskqueue/queue/postgres v0.2.0
-	github.com/larsartmann/go-taskqueue/queue/sqlite v0.2.0
-	github.com/larsartmann/go-taskqueue/task v0.2.0
-	github.com/larsartmann/go-taskqueue/worker v0.2.0
+	github.com/larsartmann/go-taskqueue/executor v0.3.0
+	github.com/larsartmann/go-taskqueue/queue v0.3.0
+	github.com/larsartmann/go-taskqueue/queue/postgres v0.3.0
+	github.com/larsartmann/go-taskqueue/queue/sqlite v0.3.0
+	github.com/larsartmann/go-taskqueue/task v0.3.0
+	github.com/larsartmann/go-taskqueue/worker v0.3.0
 )
 
 require (
@@ -20,13 +20,13 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/larsartmann/go-error-family v0.10.0 // indirect
 	github.com/larsartmann/go-retry v0.5.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/executor v0.2.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal v0.2.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue v0.2.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.2.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.2.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/task v0.2.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/worker v0.2.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/worker v0.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

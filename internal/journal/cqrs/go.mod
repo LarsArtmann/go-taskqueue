@@ -6,7 +6,7 @@ require (
 	github.com/larsartmann/go-codec v0.2.0
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.11.0
 	github.com/larsartmann/go-cqrs-lite/id/v4 v4.6.0
-	github.com/larsartmann/go-taskqueue/internal/journal v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
 	github.com/oklog/ulid/v2 v2.1.2
 )
 

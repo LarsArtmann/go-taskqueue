@@ -329,7 +329,12 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   host tools — a test once assumed `crush` on PATH and broke the nix build)
 - Generated `*_templ.go` and the minified `app.css` are COMMITTED (Nix
   builds vendor source without `templ generate`); after template edits run
-  `templ generate` + `nix run .#webui-css` (build script scans the
+  `templ generate` + `nix run .#webui-css`. Since 2026-09-13 the
+  pre-commit hook (install-pre-commit.sh) ALSO guards staged app.css
+  (nix rebuild byte-equal when nix exists, line-count heuristic
+  otherwise); the daemon still bypasses hooks, so ci-local remains the
+  catcher — and the hook's checks are sequential now (the old
+  `exec A && exec B` chain never reached the TODO gate) (build script scans the
   module-cache copy of templ-components — rerun on version bumps);
   ci-local GATES the artifact via `check-webui-css.sh` (byte-equal tailwind
   rebuild; needs nix, not a devShell — unminified/hand-edited css shipped to
@@ -641,22 +646,32 @@ adapter's events carried an EMPTY encoding stamp, so every downstream
 `factEvent` now builds via `event.New` + `WithCodec(JSONCodec)` (pinned
 by `TestPayloadDecodesThroughLibraryAPI`).
 
-**go-cqrs-lite storage ≠ the queue stores** (assessed 2026-09-13, verdict
-NOT adopted — extends ADR-0001 "rejected: do-it-inside-go-cqrs-lite" and
-ADR-0014 "direct storage adoption was rejected"): go-cqrs-lite's
-`storage/` is a per-stream append event store (`Save(aggregate,
-events, expectedVersion)` + `Load`) with snapshots and projection
-checkpoints; `scheduling/` is fire-once deadline timers, not a worker
-pool; `example/taskmanager` is a demo app, not a library. None provide
-the queue's actual semantics — lease-based `ClaimDue` with expired-lease
-reclaim, DAG `NOT EXISTS` dep gating, project exclusivity, in-ORDER BY
-priority aging, dedup'd enqueue, cooperative cancel, per-consumer
-watermarks, GROUP BY pushdowns — and none can append facts in the SAME
-transaction as the task-row mutation (the ADR-0001 invariant). Replacing
-the stores would relocate all that SQL on top of a generic event store
-(net MORE code) plus a live-journal migration; the one seam worth having
-(the journal contract) is already adopted above. Re-litigate only if
-go-cqrs-lite ships a real work-queue primitive (leases, DAG, retries).
+**go-cqrs-lite storage ≠ the queue stores — TODAY** (assessed 2026-09-13,
+deepened same day after the owner challenge; verdict for shipped code: NOT
+adopted — extends ADR-0001 and ADR-0014's "direct storage adoption was
+rejected"): module by module — `storage/` is a per-stream append event store
+(`Save(aggregate, events, expectedVersion)` + `Load`); `metaengine/` is the
+READ side (cost-based planner: data enters via event folds `Apply(...)`,
+queries are fold-built result types, engines assigned per query; planned
+tables push FilterSpec/SortSpec/keyset down via json_extract, `MapUpdater`
+gives per-key atomic RMW — no cross-collection anti-join, no multi-key
+conditional claim ADT); `system/` is the composition root (DomainConfig +
+DeploymentConfig wiring — the ceremony ADR-0001 stripped); `scheduling/` is
+fire-once deadline timers. BUT the scheduling module's sqlstore
+`ClaimingTimerStore` already implements THE claim core — lease_until
+stamping, PG `FOR UPDATE SKIP LOCKED` CTE→UPDATE→RETURNING, SQLite
+single-writer UPDATE..RETURNING, MySQL 10.6+, lease-expiry reclaim,
+`RenewLease`, `ClaimMetrics` — the exact pattern of our backends, three
+dialects, unassembled into a task store (timers are deleted on fire; no
+lifecycle/retries/DLQ/priorities/DAG/owners/journal-in-tx). The assembly is
+now PROPOSED upstream: go-cqrs-lite `docs/planning/2026-09-13_durable-work-
+queue-module.md` + 🔥 TODO_LIST row (new `queue/` sibling module; spec source
+of truth = THIS repo's `internal/queue` Store contract; tq named first
+consumer, PapDashboard second). Until that module ships with parity, the
+stores stay hand-rolled: replacing them today would relocate all the claim
+SQL on top of a generic event store (net MORE code) plus a live-journal
+migration. When the upstream queue module reaches parity, re-open via ADR
+(conformance-suite parity is the bar, not feature-list parity).
 
 **PapDashboard bridge**: `tq worker --alert-url http://<pap>:8080
 --alert-api-key <KEY>` (env `TQ_PAP_URL`/`TQ_PAP_API_KEY`). Dead letters

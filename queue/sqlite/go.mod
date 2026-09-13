@@ -3,9 +3,9 @@ module github.com/larsartmann/go-taskqueue/queue/sqlite
 go 1.26.7
 
 require (
-	github.com/larsartmann/go-taskqueue/internal/queue v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/task v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 )
 
 require (
@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/larsartmann/go-error-family v0.10.0 // indirect
 	github.com/larsartmann/go-retry v0.5.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal v0.2.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

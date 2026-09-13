@@ -21,6 +21,118 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `WithSchemaVersion(1)` explicitly. Found by a `cqrs-lint` pass whose
   deprecated-API framing hid the real defect; pinned by
   `TestPayloadDecodesThroughLibraryAPI` (2026-09-13).
+- **Review prompts no longer stamp the review's own task id into the quoted
+  work contract**: the reviewer prompt resolves the quoted `{{TASK_ID}}`
+  placeholder to the REVIEWED task's id (what the work agent actually saw)
+  and gains an explicit queue-cross-reference criterion for footer-bearing
+  contracts. Previously `runAgent`'s blanket substitution resolved the
+  quoted placeholder to the REVIEW task's id, so diligent reviewers flagged
+  the work run's correct `Task-Queue-ID` commit footer as a foreign id and
+  rejected sound changes (2026-09-12 Hermes cron review). Fix-task prompts
+  resolve the quoted original the same way and now carry an explicit
+  own-footer instruction (`{{TASK_ID}}` resolves to the fix task's id at
+  run time).
+- **`scripts/release.sh` gates could print GREEN after a failed nix
+  build**: a command substitution inside an env-prefix assignment
+  (`TQ_BIN="$(nix build …)/bin/tq" step`) does not abort under `set -e` —
+  the substitution's failure vanished and the gate read the step's exit
+  status, so a dead `nix build` still ended in "GATES GREEN". The
+  out-path is now captured in a standalone assignment, which does abort.
+  Found by the first live fixture execution of the release flow
+  (round-12 T14).
+- **`tq version` printed `dev` for nix-built binaries**: the flake built
+  with Go's default flags and never passed `-ldflags "-X
+  main.version=…"`, so release binaries could not be told apart from
+  scratch builds. `flake.nix` now threads the flake version through
+  `buildFlagsArray` (2026-09-12).
+- **Dashboard filter links URL-escape their query strings and cap query
+  length**: `QueryString` escapes metacharacters (`&`, `#`, `%`, spaces)
+  so a project named `a&b` can no longer corrupt the link or smuggle
+  markup into `href`s, and `parseFilter` clamps the `query` parameter to
+  200 chars (2026-09-12).
+- **Dashboard and write-API stats surfaces pinned to one wire contract**: `tq serve`'s
+  `/api/stats` and `tq api`'s `/api/v1/stats` computed the same payload through two
+  independent paths (dashboard keyed by HTML badge labels; API emitted raw GROUP BY rows
+  that dropped zero-count statuses), so the shape could drift silently. Both now derive
+  keys from the task status list and always emit all five statuses plus total;
+  `TestStatsSurfacesAgree` pins the payloads equal over one seeded store and locks the
+  disjoint route namespaces (`/api/v1/*` vs `/api/*`).
+- **Root module now builds against the local postgres backend**: the
+  `internal/queue/postgres` require had no relative `replace`, so root builds compiled the
+  proxy's tagged copy and local edits to the backend never applied. The replace matches the
+  other internal modules' local-dev layout.
+- **Executor absorbs the kernel-7.2 `ETXTBSY` flake**: `execve` of a freshly
+  written binary intermittently returned "text file busy" with no writer
+  holding the file (reproduced standalone on kernel 7.2.3 under process
+  churn, tmpfs and btrfs alike — temp+rename did NOT fix it). `runAgent` and
+  `AgentVersion` now retry ETXTBSY twice (50ms, 100ms); the previously flaky
+  stub-agent test set is 40x green.
+- **release.sh allowlist could not match nested modules**: after the
+  `internal/queue/sqlite` split, the sibling-replace allowlist read the
+  legit replace as poison and the require-tag check silently skipped the
+  nested module. The gates moved to `scripts/lib/release-gates.sh` with
+  fixture-tested positive AND negative paths
+  (`scripts/smoke/release-gates.sh`, wired into CI + ci-local).
+- `nix flake check --all-systems` failed at eval time on aarch64-darwin
+  (`checks.module-eval` used `mkIf`, leaving a dangling option); the check
+  now uses `optionalAttrs`.
+- **Postgres backend off the vulnerable `golang.org/x/text`**: the module
+  still resolved `x/text v0.29.0` (GO-2026-5970, reachable via
+  `postgres.Open` → `pgxpool` → `norm.Form`) while every other module sat on
+  v0.41.0 — the advisory govulncheck job flagged it on its first CI run.
+  Bumped to v0.41.0; `govulncheck ./...` in the module now reports no
+  vulnerabilities.
+- **The red-master CI trio repaired**: (1) the release-gates smoke cut fixture
+  tags without a committer identity, so every CI runner died at `git tag`
+  with exit 128 (local hosts masked it with a global git identity) — the tag
+  now carries the same `-c user.email/-c user.name` as the fixture commit;
+  (2) `TestHarvestConfigFromOptionsExpandsBareRepoNames` asserted POSIX
+  string literals and failed windows-latest — inputs and expectations now
+  follow the running OS's path rules (separator- and volume-aware
+  absolutes); (3) the flake `vendorHash` resynced after the root go.mod
+  postgres replace moved the module graph.
+- **`examples/fullcore` drain deadline reported deterministically**: the
+  drain loop selected on both `ctx.Done()` and the deadline tick, and since
+  `Pool.Start` returns only after cancellation both were ready at the
+  deadline — Go's random pick let the example exit 0 with no report about
+  half the time. The redundant done case is gone; a timeout always produces
+  the intended fatal.
+- **Two mechanical-rename leaks corrupted user-facing string literals** (both
+  fixed within the same morning, before any release): the wrapcheck/varnamelen
+  rename sweep changed the webui filter to read `query.Get("query")` while
+  every emitter still sends `?q=`, silently deadening the dashboard text
+  filter and view-toggle scope with all tests green — restored plus a
+  `filterHref`↔`parseFilter` round-trip regression test; the same sweep's
+  regex turned `tq dlq --max-attempts` help into "rescued task(store)" —
+  restored, and the parent diff swept for further corrupted literals
+  (none found).
+- Version-surface drift: flake.nix still declared 0.1.0 after the v0.2.0
+  release, so nix-built binaries reported the wrong version (now 0.2.0).
+- Nightly fuzz campaigns and the Postgres conformance CI job used directory
+  package patterns that silently stop matching across module boundaries;
+  both now run from inside their module directory.
+- `internal/harvest`: the audit and prune sweeps shared an identical
+  20-line repo/task-index preamble; extracted into `projectTaskIndex`.
+- Sub-module tags `internal/{executor,queue}/v0.2.0` had been re-cut
+  locally at the new tree on the false premise they were unpushed; both
+  were already published, so the published signed tags were restored
+  (tags are immutable once on the remote/proxy — the post-split content
+  ships with the next release's module tags, cut automatically by
+  `scripts/release.sh`).
+- agent-pool harvested nothing under systemd: bare `--repos` names
+  resolved against the process working directory (the unit's is the DB
+  dir), so every tick skipped every repo as `scan failed`; names now
+  expand against `--projects-dir`. The NixOS module's pool unit
+  additionally sets an explicit agent-toolchain PATH (new
+  `services.tq-agent-pool.agentPath`: hermetic git+go, system and
+  per-user profiles, GOBIN) — systemd's default service PATH has no
+  git/go/crush, which would have failed every preflight, agent exec and
+  verify gate even with the scan fixed.
+- The aggregate `harvest: skipped` log cut every reason at the first
+  colon, hiding the underlying error (a dead deployment read as a quiet
+  one for 20h); groups now carry one full example reason, and scan
+  failures log at WARN.
+
 ### Added
 - **Public facade modules (ADR-0016)**: the library core is now importable
   from outside the repo. Seven facade modules — `task`, `journal`, `queue`,
@@ -153,55 +265,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   and persisted in journal facts — while core domain types stay
   camelCase. Baseline regenerated deliberately: 104 module/linter rows,
   850 findings (was 114/892).
-
-### Changed
-- **The status enum has one canonical list (`task.AllStatuses()`)**: the
-  webui `allStatuses` and httpapi `apiStatuses` twin slices are retired;
-  the board columns, both `/stats` handlers (dashboard + `/api/v1`) and
-  the filter dropdown now range the exported list, so a new Status can no
-  longer render as a missing board column or a missing stats key. A pin
-  test in `internal/task` hardcodes the expected set as an oracle. No wire
-  change; the exported list rides the next `internal/task` sub-module
-  re-tag for proxy consumers.
-- **CI security scanning is triage-encoded, not ignored (2026-09-12)**:
-  the gosec job passes its 14 triaged all-FP classes as `-exclude` rules
-  (matching `.golangci.yml`), so a NEW gosec class fails loudly instead of
-  drowning in the baseline, and findings land in the job summary with the
-  re-triage rule spelled out. govulncheck loses `continue-on-error` on the
-  modules it gates and reports a per-module table in the summary.
-
-### Fixed
-- **Review prompts no longer stamp the review's own task id into the quoted
-  work contract**: the reviewer prompt resolves the quoted `{{TASK_ID}}`
-  placeholder to the REVIEWED task's id (what the work agent actually saw)
-  and gains an explicit queue-cross-reference criterion for footer-bearing
-  contracts. Previously `runAgent`'s blanket substitution resolved the
-  quoted placeholder to the REVIEW task's id, so diligent reviewers flagged
-  the work run's correct `Task-Queue-ID` commit footer as a foreign id and
-  rejected sound changes (2026-09-12 Hermes cron review). Fix-task prompts
-  resolve the quoted original the same way and now carry an explicit
-  own-footer instruction (`{{TASK_ID}}` resolves to the fix task's id at
-  run time).
-- **`scripts/release.sh` gates could print GREEN after a failed nix
-  build**: a command substitution inside an env-prefix assignment
-  (`TQ_BIN="$(nix build …)/bin/tq" step`) does not abort under `set -e` —
-  the substitution's failure vanished and the gate read the step's exit
-  status, so a dead `nix build` still ended in "GATES GREEN". The
-  out-path is now captured in a standalone assignment, which does abort.
-  Found by the first live fixture execution of the release flow
-  (round-12 T14).
-- **`tq version` printed `dev` for nix-built binaries**: the flake built
-  with Go's default flags and never passed `-ldflags "-X
-  main.version=…"`, so release binaries could not be told apart from
-  scratch builds. `flake.nix` now threads the flake version through
-  `buildFlagsArray` (2026-09-12).
-- **Dashboard filter links URL-escape their query strings and cap query
-  length**: `QueryString` escapes metacharacters (`&`, `#`, `%`, spaces)
-  so a project named `a&b` can no longer corrupt the link or smuggle
-  markup into `href`s, and `parseFilter` clamps the `query` parameter to
-  200 chars (2026-09-12).
-
-### Added
 - **Fuller agent toolset in the bootstrap managed block**: the headless
   allow list grows from 7 tools to `view ls grep glob edit multiedit write
   bash fetch download todos` — in non-interactive mode unlisted tools are
@@ -277,82 +340,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   journal facts), a WARN is logged even without `--alert-url`, and the
   first tick with a readable repo posts `alert.resolved` and resets the
   streak.
-
-### Changed
-- **Task detail page renders payloads as content, not escaped JSON** (2026-09-11): the
-  `/task/{id}` payload row — previously one break-all escaped-JSON line squeezed into the
-  record definition list — is now a type-aware section between the record and the fact
-  timeline. Agent tasks show the work item as the lede (prompt-as-lede when the item is
-  empty), the executor-contract spec grid (repo, branch, model, verify gate, timeout), the
-  prompt contract in a collapsed fold, and the raw payload as pretty JSON in a second
-  fold; review/status/`sh` payloads get the same treatment, parsed with the executor's own
-  payload structs plus a new exported `executor.CommandFromPayload` so the displayed shell
-  line cannot drift from the executed one; unknown or unparseable payloads fall back to
-  the raw view. The section is static (payloads are immutable) and sits outside the
-  SSE-swapped fragments, so open folds survive live updates. Repeated requeues stop
-  stuttering: Error/Detail.reason duplicates on a fact collapse to the fuller text, facts
-  carry `(attempt N)`, and ≥2 requeued/failed/released/dead-lettered events aggregate into
-  a `retry trail ×N` strip (distinct reasons × counts, loudest first) above the timeline —
-  the final dead-letter reason is included, so the page answers "why did it give up?" too.
-
-### Fixed
-- **Dashboard and write-API stats surfaces pinned to one wire contract**: `tq serve`'s
-  `/api/stats` and `tq api`'s `/api/v1/stats` computed the same payload through two
-  independent paths (dashboard keyed by HTML badge labels; API emitted raw GROUP BY rows
-  that dropped zero-count statuses), so the shape could drift silently. Both now derive
-  keys from the task status list and always emit all five statuses plus total;
-  `TestStatsSurfacesAgree` pins the payloads equal over one seeded store and locks the
-  disjoint route namespaces (`/api/v1/*` vs `/api/*`).
-- **Root module now builds against the local postgres backend**: the
-  `internal/queue/postgres` require had no relative `replace`, so root builds compiled the
-  proxy's tagged copy and local edits to the backend never applied. The replace matches the
-  other internal modules' local-dev layout.
-- **Executor absorbs the kernel-7.2 `ETXTBSY` flake**: `execve` of a freshly
-  written binary intermittently returned "text file busy" with no writer
-  holding the file (reproduced standalone on kernel 7.2.3 under process
-  churn, tmpfs and btrfs alike — temp+rename did NOT fix it). `runAgent` and
-  `AgentVersion` now retry ETXTBSY twice (50ms, 100ms); the previously flaky
-  stub-agent test set is 40x green.
-- **release.sh allowlist could not match nested modules**: after the
-  `internal/queue/sqlite` split, the sibling-replace allowlist read the
-  legit replace as poison and the require-tag check silently skipped the
-  nested module. The gates moved to `scripts/lib/release-gates.sh` with
-  fixture-tested positive AND negative paths
-  (`scripts/smoke/release-gates.sh`, wired into CI + ci-local).
-- `nix flake check --all-systems` failed at eval time on aarch64-darwin
-  (`checks.module-eval` used `mkIf`, leaving a dangling option); the check
-  now uses `optionalAttrs`.
-- **Postgres backend off the vulnerable `golang.org/x/text`**: the module
-  still resolved `x/text v0.29.0` (GO-2026-5970, reachable via
-  `postgres.Open` → `pgxpool` → `norm.Form`) while every other module sat on
-  v0.41.0 — the advisory govulncheck job flagged it on its first CI run.
-  Bumped to v0.41.0; `govulncheck ./...` in the module now reports no
-  vulnerabilities.
-- **The red-master CI trio repaired**: (1) the release-gates smoke cut fixture
-  tags without a committer identity, so every CI runner died at `git tag`
-  with exit 128 (local hosts masked it with a global git identity) — the tag
-  now carries the same `-c user.email/-c user.name` as the fixture commit;
-  (2) `TestHarvestConfigFromOptionsExpandsBareRepoNames` asserted POSIX
-  string literals and failed windows-latest — inputs and expectations now
-  follow the running OS's path rules (separator- and volume-aware
-  absolutes); (3) the flake `vendorHash` resynced after the root go.mod
-  postgres replace moved the module graph.
-- **`examples/fullcore` drain deadline reported deterministically**: the
-  drain loop selected on both `ctx.Done()` and the deadline tick, and since
-  `Pool.Start` returns only after cancellation both were ready at the
-  deadline — Go's random pick let the example exit 0 with no report about
-  half the time. The redundant done case is gone; a timeout always produces
-  the intended fatal.
-- **Two mechanical-rename leaks corrupted user-facing string literals** (both
-  fixed within the same morning, before any release): the wrapcheck/varnamelen
-  rename sweep changed the webui filter to read `query.Get("query")` while
-  every emitter still sends `?q=`, silently deadening the dashboard text
-  filter and view-toggle scope with all tests green — restored plus a
-  `filterHref`↔`parseFilter` round-trip regression test; the same sweep's
-  regex turned `tq dlq --max-attempts` help into "rescued task(store)" —
-  restored, and the parent diff swept for further corrupted literals
-  (none found).
-### Added
 - `examples/fullcore`: the full library embed demo in one file — enqueue, custom + shell
   executors (including a retry proof), a worker pool draining the queue, and the
   sqlite-vs-postgres backend picked at run time from two store imports that both satisfy
@@ -404,7 +391,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (flake attr, ldflags, root tag, per-module tags, internal requires,
   CHANGELOG, toolchain) with the gate or manual step that verifies each,
   the manual bump order, and the deliberate coverage gaps.
+
 ### Changed
+- **The status enum has one canonical list (`task.AllStatuses()`)**: the
+  webui `allStatuses` and httpapi `apiStatuses` twin slices are retired;
+  the board columns, both `/stats` handlers (dashboard + `/api/v1`) and
+  the filter dropdown now range the exported list, so a new Status can no
+  longer render as a missing board column or a missing stats key. A pin
+  test in `internal/task` hardcodes the expected set as an oracle. No wire
+  change; the exported list rides the next `internal/task` sub-module
+  re-tag for proxy consumers.
+- **CI security scanning is triage-encoded, not ignored (2026-09-12)**:
+  the gosec job passes its 14 triaged all-FP classes as `-exclude` rules
+  (matching `.golangci.yml`), so a NEW gosec class fails loudly instead of
+  drowning in the baseline, and findings land in the job summary with the
+  re-triage rule spelled out. govulncheck loses `continue-on-error` on the
+  modules it gates and reports a per-module table in the summary.
+- **Task detail page renders payloads as content, not escaped JSON** (2026-09-11): the
+  `/task/{id}` payload row — previously one break-all escaped-JSON line squeezed into the
+  record definition list — is now a type-aware section between the record and the fact
+  timeline. Agent tasks show the work item as the lede (prompt-as-lede when the item is
+  empty), the executor-contract spec grid (repo, branch, model, verify gate, timeout), the
+  prompt contract in a collapsed fold, and the raw payload as pretty JSON in a second
+  fold; review/status/`sh` payloads get the same treatment, parsed with the executor's own
+  payload structs plus a new exported `executor.CommandFromPayload` so the displayed shell
+  line cannot drift from the executed one; unknown or unparseable payloads fall back to
+  the raw view. The section is static (payloads are immutable) and sits outside the
+  SSE-swapped fragments, so open folds survive live updates. Repeated requeues stop
+  stuttering: Error/Detail.reason duplicates on a fact collapse to the fuller text, facts
+  carry `(attempt N)`, and ≥2 requeued/failed/released/dead-lettered events aggregate into
+  a `retry trail ×N` strip (distinct reasons × counts, loudest first) above the timeline —
+  the final dead-letter reason is included, so the page answers "why did it give up?" too.
 - **Store backends become driver modules (ADR-0012)**: `internal/queue`
   keeps only the Store contract (deps: task + journal); the SQLite and
   Postgres implementations move to `internal/queue/sqlite` and
@@ -454,39 +471,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - The CI advisory lint step now runs golangci-lint over the root module AND
   every `internal/*` sub-module (disk-derived loop), mirroring ci-local.sh —
   module-local findings stopped being invisible to CI when the split landed.
-### Fixed
-- Version-surface drift: flake.nix still declared 0.1.0 after the v0.2.0
-  release, so nix-built binaries reported the wrong version (now 0.2.0).
-- Nightly fuzz campaigns and the Postgres conformance CI job used directory
-  package patterns that silently stop matching across module boundaries;
-  both now run from inside their module directory.
-- `internal/harvest`: the audit and prune sweeps shared an identical
-  20-line repo/task-index preamble; extracted into `projectTaskIndex`.
-- Sub-module tags `internal/{executor,queue}/v0.2.0` had been re-cut
-  locally at the new tree on the false premise they were unpushed; both
-  were already published, so the published signed tags were restored
-  (tags are immutable once on the remote/proxy — the post-split content
-  ships with the next release's module tags, cut automatically by
-  `scripts/release.sh`).
-- agent-pool harvested nothing under systemd: bare `--repos` names
-  resolved against the process working directory (the unit's is the DB
-  dir), so every tick skipped every repo as `scan failed`; names now
-  expand against `--projects-dir`. The NixOS module's pool unit
-  additionally sets an explicit agent-toolchain PATH (new
-  `services.tq-agent-pool.agentPath`: hermetic git+go, system and
-  per-user profiles, GOBIN) — systemd's default service PATH has no
-  git/go/crush, which would have failed every preflight, agent exec and
-  verify gate even with the scan fixed.
-- The aggregate `harvest: skipped` log cut every reason at the first
-  colon, hiding the underlying error (a dead deployment read as a quiet
-  one for 20h); groups now carry one full example reason, and scan
-  failures log at WARN.
 
 ### Removed
 - Deprecated pre-convergence aliases `executor.CrushPayload`,
   `executor.RenderCrushPayload`, `executor.TaskTypeCrush` (zero in-repo
   users; ships with the next `internal/executor` version tag — the
   published v0.2.0 tag is immutable and stays at its release tree).
+
 
 ## [v0.2.0] - 2026-09-09
 ### Added

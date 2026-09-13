@@ -55,14 +55,14 @@ require (
 	github.com/larsartmann/go-codec v0.2.0
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.11.0
 	github.com/larsartmann/go-cqrs-lite/id/v4 v4.6.0
-	github.com/larsartmann/go-taskqueue/internal/executor v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/journal v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/queue v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/task v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/worker v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
 )
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ./internal/task

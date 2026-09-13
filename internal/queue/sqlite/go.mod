@@ -4,9 +4,9 @@ go 1.26.7
 
 require (
 	github.com/larsartmann/go-retry v0.5.0
-	github.com/larsartmann/go-taskqueue/internal/journal v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/queue v0.2.0
-	github.com/larsartmann/go-taskqueue/internal/task v0.2.0
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 	modernc.org/sqlite v1.58.0
 )
 
