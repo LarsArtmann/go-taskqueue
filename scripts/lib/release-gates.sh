@@ -74,7 +74,9 @@ gate_gomod() {
 	local mod ver sub_tag
 	while read -r mod ver; do
 		[ -n "$mod" ] || continue
-		sub_tag="${mod#github.com/larsartmann/go-taskqueue/}/$ver"
+		sub_tag="${mod#github.com/larsartmann/go-taskqueue}"
+		sub_tag="${sub_tag#/}/$ver"
+		sub_tag="${sub_tag#/}"
 		if ! git rev-parse -q --verify "refs/tags/$sub_tag" >/dev/null; then
 			echo "FAIL: $mod requires $ver but tag $sub_tag does not exist — cut it (git tag -a $sub_tag) before releasing"
 			return 1
