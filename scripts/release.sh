@@ -81,9 +81,17 @@ step "go.mod hygiene"
 # pattern (ADR-0011): consumers ignore them and resolve via the require
 # versions, which the subdirectory tags below make real. Anything else is
 # proxy poison. The rules live in scripts/lib/release-gates.sh so the
-# release-gates smoke tests the exact same code path.
+# release-gates smoke tests the exact same code path. EVERY module go.mod is
+# gated (root, internal, and the ADR-0016 facades): a facade's internal
+# requires resolve through the proxy exactly like the root's, so an untagged
+# or poison pin anywhere in the tree blocks the release here. NOTE the
+# ordering this implies: after a version sweep, the bumped sub-tags must be
+# pre-cut (git tag -a internal/<mod>/vX.Y.Z etc.) BEFORE these gates run —
+# the documented pre-cut flow in the header above.
 source "$(dirname "$0")/lib/release-gates.sh"
-gate_gomod go.mod
+for mod_go in go.mod $(find internal task journal queue executor worker -name go.mod | sort); do
+	gate_gomod "$mod_go"
+done
 
 step "full CI gate (scripts/ci-local.sh — test + nix jobs on this exact tree)"
 ./scripts/ci-local.sh

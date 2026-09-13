@@ -182,17 +182,26 @@ which the sub-tags make real. Anything else in `replace` position is proxy
 poison. The rules live in `scripts/lib/release-gates.sh` (`gate_gomod`),
 sourced by both `scripts/release.sh` (real tree) and
 `scripts/smoke/release-gates.sh` (fixtures), so the rules can never drift
-from their tests. `gate_gomod` fails the release on:
+from their tests. Since ADR-0016 the release gates EVERY module go.mod
+(root, the eight internal modules, and the seven facades) — a facade's
+internal requires resolve through the proxy exactly like the root's. This
+also fixes the ordering the gates imply: after a version sweep, pre-cut
+the bumped sub-tags (`git tag -a internal/<mod>/vX.Y.Z …`, facades
+included) BEFORE running the gates, so the require-tag checks see them.
+`gate_gomod` fails the release on:
 
-- **Non-sibling replaces.** Allowlist shape:
-  `github.com/larsartmann/go-taskqueue/internal/<mod>(/<nested>)? =>
-  ./internal/<mod>(/<nested>)?` — one nesting level, added in round-2 when
-  the store backends became nested modules (`internal/queue/sqlite`). The
-  original single-segment pattern silently stopped matching nested paths:
-  the gate false-positived the real replace while SKIPPING the require-tag
-  check for the very module it failed to parse. Regex gates without
-  fixtures rot — the smoke covers the real tree plus poison fixtures
-  (absolute path, parent-relative path, untagged require, pseudo-version).
+- **Non-repo-relative replaces.** Left side must stay
+  `github.com/larsartmann/go-taskqueue/internal/<mod>(/<nested>)?`; the
+  right side may be any relative path (`./internal/…` from the root,
+  `../task` between internal siblings, `../internal/…` /
+  `../../internal/…` from facade dirs) that resolves INSIDE the repo root
+  from the go.mod's directory — the round-2 lesson generalized: the
+  original single-segment pattern silently stopped matching nested paths,
+  and the v0.3.0 fixture work caught single-line `require x vY` forms
+  skipping the require-tag check entirely. Regex gates without fixtures
+  rot — the smoke covers the real tree plus poison fixtures (absolute
+  path, parent-relative path, repo-root escape from a facade dir,
+  untagged require in block AND single-line form, pseudo-version).
 - **Pseudo-versions** (`00010101` in any require) — the signature of a
   replace-directive leak.
 - **Requires without cut sub-tags.** Every

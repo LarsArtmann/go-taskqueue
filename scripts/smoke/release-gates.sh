@@ -91,6 +91,40 @@ EOF
 	expect_fail stranger.go.mod "fixture: parent-relative replace is poison"
 )
 
+# Facade shape (ADR-0016): a top-level module (task/) whose internal require
+# resolves through the proxy exactly like the root's, and whose replace
+# points UP into the tree (../internal/…) — repo-contained, must pass.
+mkdir -p "$fixture/task"
+cat >"$fixture/task/go.mod" <<'EOF'
+module github.com/larsartmann/go-taskqueue/task
+
+go 1.26.7
+
+require github.com/larsartmann/go-taskqueue/internal/task v0.2.0
+
+replace github.com/larsartmann/go-taskqueue/internal/task => ../internal/task
+EOF
+(
+	cd "$fixture"
+	expect_pass task/go.mod "fixture: facade go.mod (../internal replace + tagged require)"
+)
+
+# Facade poison: an untagged internal pin would publish a facade that
+# cannot resolve on the proxy (the T0 flaw class).
+sed 's|internal/task v0.2.0|internal/task v9.9.9|' "$fixture/task/go.mod" >"$fixture/task/untagged.go.mod"
+(
+	cd "$fixture"
+	expect_fail task/untagged.go.mod "fixture: facade go.mod with untagged internal pin"
+)
+
+# Facade poison: a replace climbing above the repo root is the stranger
+# shape even from a facade dir.
+sed 's|=> ../internal/task|=> ../../outside/task|' "$fixture/task/go.mod" >"$fixture/task/escape.go.mod"
+(
+	cd "$fixture"
+	expect_fail task/escape.go.mod "fixture: facade go.mod replace escaping the repo root"
+)
+
 if [ "$fails" -gt 0 ]; then
 	echo "$fails release-gate case(s) failed"
 	exit 1

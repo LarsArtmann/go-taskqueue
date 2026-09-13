@@ -36,7 +36,7 @@ grep -qF -- 'scripts/release.sh vX.Y.Z --push' "$doc" || miss "RELEASE.md usage 
 
 # Gate library: the allowlist section names gate_gomod and claims both callers.
 grep -qF -- 'gate_gomod()' "$lib" || miss "gate_gomod no longer defined in $lib"
-grep -qF -- 'gate_gomod go.mod' "$script" || miss "release.sh no longer runs gate_gomod"
+grep -qF -- 'gate_gomod "$mod_go"' "$script" || miss "release.sh no longer runs gate_gomod on every module go.mod"
 grep -qF -- 'gate_gomod' "$doc" || miss "RELEASE.md allowlist section lost the gate_gomod name"
 
 # Mechanisms the doc cites in its phase descriptions.
