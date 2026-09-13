@@ -124,7 +124,13 @@ func main() {
 	})
 
 	log.Printf("api: serving %s on http://%s (no auth — localhost only)", *db, *addr)
-	server := &http.Server{Addr: *addr, ReadHeaderTimeout: 5 * time.Second}
+	// WriteTimeout stays 0: handlers stream SSE of unbounded duration.
+	server := &http.Server{
+		Addr:              *addr,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 	log.Fatal(server.ListenAndServe())
 }
 

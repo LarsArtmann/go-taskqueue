@@ -86,6 +86,12 @@ func main() {
 		}
 	})
 	log.Printf("sse: streaming %s on http://%s/events", *db, *addr)
-	server := &http.Server{Addr: *addr, ReadHeaderTimeout: 5 * time.Second}
+	// WriteTimeout stays 0: SSE streams are long-lived by design.
+	server := &http.Server{
+		Addr:              *addr,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 	log.Fatal(server.ListenAndServe())
 }
