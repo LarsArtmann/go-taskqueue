@@ -30,14 +30,14 @@ path, from anywhere outside this repository.
 
 ## Why it stings
 
-- The work is *tagged* but not *reachable*: per ADR-0012, release tooling
+- The work is _tagged_ but not _reachable_: per ADR-0012, release tooling
   tags the `internal/` sub-modules (v0.2.0 exists). A tagged module whose
   path Go forbids importing is a release in name only.
 - ADR-0012 already made the right naming decision — `database/sql`-driver
   style (`queue/postgres`, constructor `Open`) — it just lives behind the
   `internal/` wall.
 - The evaluation cost is real: we read the README, AGENTS.md, ADRs, the
-  `Store` contract, and the `fullcore` example (which is *exactly* our use
+  `Store` contract, and the `fullcore` example (which is _exactly_ our use
   case) before discovering no import path exists. The README did not stop
   us earlier.
 

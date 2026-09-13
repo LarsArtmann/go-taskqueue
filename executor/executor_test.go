@@ -12,6 +12,7 @@ import (
 func TestFacadeSurface(t *testing.T) {
 	r := tq.NewRegistry()
 	called := false
+
 	r.RegisterFunc("noop", func(ctx context.Context, t internaltask.Task) error {
 		called = true
 
@@ -22,12 +23,15 @@ func TestFacadeSurface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lookup: %v", err)
 	}
+
 	if err := ex.Execute(context.Background(), internaltask.Task{}); err != nil || !called {
 		t.Fatalf("execute called=%v err=%v", called, err)
 	}
+
 	if _, err := r.Lookup("missing"); !errors.Is(err, tq.ErrUnknownType) {
 		t.Fatalf("missing lookup = %v, want ErrUnknownType", err)
 	}
+
 	if tq.TaskTypeAgent != "agent" || tq.EvidenceTailBytes != 4096 {
 		t.Fatal("const re-exports drifted")
 	}

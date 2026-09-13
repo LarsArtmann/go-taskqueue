@@ -12,13 +12,13 @@ One question, answered with a three-source verification chain: does go-taskqueue
 
 ## The answer delivered (the deliverable)
 
-| Question | Verdict | Evidence |
-| --- | --- | --- |
-| Dependency at all? | **YES** | `flake.nix:11-15` input `github:LarsArtmann/go-nix-helpers/master` (HTTPS — keyless CI runners can't fetch git+ssh); `flake.nix:24` imports `flakeModules.go-standard` |
-| What it provides | The whole Go flake scaffolding | `go-standard.*` option surface (pname/version/vendorHash/subPackages/enableTempl/extraBuildAttrs/shellExtraEnv/devShellExtraPackages, `flake.nix:33-78`) + derived packages/apps/fmt/lint/devShell; go-taskqueue only `mkForce`-overrides `apps.test` for the multi-module loop (`flake.nix:318-340`) |
-| Local path consumed? | **NO** | `nix flake metadata . --json` resolves the node as `type: github`, rev `16c3184`; `nix registry list` + `~/.config/nix/registry.json` contain no override for it |
-| Local == pin right now? | **YES (coincidental)** | helpers HEAD = `16c3184262c55377aba2126dc20e028637f58aa0` = locked rev; tree proven clean untruncated afterwards (porcelain=0), 0 unpushed; pin `lastModified` 1789008741 = **2026-09-10 04:52 CEST = the helpers master tip**, so the pin is fresh and nothing needs updating |
-| Fleet usage | **~40 consumer flakes + itself** | `rg -l 'go-nix-helpers' ~/projects/*/flake.nix` → 41 files (SystemNix, CV, PapDashboard, bank-sync, go-cqrs-lite, overview, …) |
+| Question                | Verdict                          | Evidence                                                                                                                                                                                                                                                                                              |
+| ----------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dependency at all?      | **YES**                          | `flake.nix:11-15` input `github:LarsArtmann/go-nix-helpers/master` (HTTPS — keyless CI runners can't fetch git+ssh); `flake.nix:24` imports `flakeModules.go-standard`                                                                                                                                |
+| What it provides        | The whole Go flake scaffolding   | `go-standard.*` option surface (pname/version/vendorHash/subPackages/enableTempl/extraBuildAttrs/shellExtraEnv/devShellExtraPackages, `flake.nix:33-78`) + derived packages/apps/fmt/lint/devShell; go-taskqueue only `mkForce`-overrides `apps.test` for the multi-module loop (`flake.nix:318-340`) |
+| Local path consumed?    | **NO**                           | `nix flake metadata . --json` resolves the node as `type: github`, rev `16c3184`; `nix registry list` + `~/.config/nix/registry.json` contain no override for it                                                                                                                                      |
+| Local == pin right now? | **YES (coincidental)**           | helpers HEAD = `16c3184262c55377aba2126dc20e028637f58aa0` = locked rev; tree proven clean untruncated afterwards (porcelain=0), 0 unpushed; pin `lastModified` 1789008741 = **2026-09-10 04:52 CEST = the helpers master tip**, so the pin is fresh and nothing needs updating                        |
+| Fleet usage             | **~40 consumer flakes + itself** | `rg -l 'go-nix-helpers' ~/projects/*/flake.nix` → 41 files (SystemNix, CV, PapDashboard, bank-sync, go-cqrs-lite, overview, …)                                                                                                                                                                        |
 
 Bottom line given to the owner: yes it's a hard dependency, but via the GitHub-pinned flake input; the local checkout only matters when it is pushed and the consumer lock is updated.
 
@@ -59,7 +59,7 @@ Honest grading: **nothing catastrophic** — read-only session, zero code touche
 
 1. **CONTRIBUTING.md was not read at turn 1** — the index's most-repeated sin (rows 03-20, 02-58, 02-47, 02-31, 02-19 document the 3rd-7th consecutive occurrences); this is the 8th. A read-only Q&A happened to have no binding gates — that is luck, not discipline. Read at close-out.
 2. **Session-start ritual skipped**: no `git log`/`git status`/`git stash list` before investigating. Discovered only at close-out that **master is ahead 14 unpushed commits** after a busy concurrent-agent night — context that should have framed the session from minute one.
-3. **Verification by truncated read**: the helpers cleanliness check ran `git status -sb | head -5` — a >4-file dirty tree would have been reported "clean" from truncated output. The masked-capture genus from tonight's index rows, in miniature. It did not bite (re-proven: porcelain=0), but the *pattern* is the sin, not the outcome.
+3. **Verification by truncated read**: the helpers cleanliness check ran `git status -sb | head -5` — a >4-file dirty tree would have been reported "clean" from truncated output. The masked-capture genus from tonight's index rows, in miniature. It did not bite (re-proven: porcelain=0), but the _pattern_ is the sin, not the outcome.
 
 ## e) WHAT WE SHOULD IMPROVE
 
@@ -150,4 +150,4 @@ Honest grading: **nothing catastrophic** — read-only session, zero code touche
 
 ---
 
-*Point-in-time snapshot — re-verify claims against current state before relying on them. The three-source verification chain (flake.nix, flake.lock, live git/registry/metadata checks) was re-run in full during this session; the §b partial items mark where the chain is thinner than it looks.*
+_Point-in-time snapshot — re-verify claims against current state before relying on them. The three-source verification chain (flake.nix, flake.lock, live git/registry/metadata checks) was re-run in full during this session; the §b partial items mark where the chain is thinner than it looks._

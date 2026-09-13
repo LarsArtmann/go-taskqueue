@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -184,13 +185,7 @@ func TestHandlerErrorPausesOnlyThatSubscriber(t *testing.T) {
 	}
 
 	sawFact2 := func() bool {
-		for _, seq := range flakySnapshot() {
-			if seq == 2 {
-				return true
-			}
-		}
-
-		return false
+		return slices.Contains(flakySnapshot(), 2)
 	}
 
 	// The cursor pin is only meaningful once the pause engaged: tick

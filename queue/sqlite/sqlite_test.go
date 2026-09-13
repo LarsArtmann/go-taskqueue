@@ -17,10 +17,12 @@ func TestFacadeSurface(t *testing.T) {
 	defer s.Close()
 
 	ctx := context.Background()
+
 	n, err := s.Enqueue(ctx, internaltask.New{Type: "sh", Project: "facade", Payload: []byte("true")})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
+
 	got, err := s.Get(ctx, n.ID)
 	if err != nil || got.ID != n.ID {
 		t.Fatalf("get = %v/%v", got.ID, err)

@@ -58,6 +58,7 @@ func main() {
 		}
 
 		defer sqliteStore.Close()
+
 		store = sqliteStore
 	case "postgres":
 		postgresStore, err := postgres.Open(ctx, *dsn, 0)
@@ -66,6 +67,7 @@ func main() {
 		}
 
 		defer postgresStore.Close()
+
 		store = postgresStore
 	default:
 		log.Fatalf("unknown --backend %q (want sqlite or postgres)", *backend)

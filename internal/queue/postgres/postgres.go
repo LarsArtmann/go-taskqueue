@@ -120,7 +120,7 @@ func Open(ctx context.Context, dsn string, maxConns int32) (*Store, error) {
 // THEIR pool in instead of opening a second one via Open.
 func OpenWithPool(ctx context.Context, pool *pgxpool.Pool) (*Store, error) {
 	if pool == nil {
-		return nil, fmt.Errorf("queue: postgres: nil pool")
+		return nil, errors.New("queue: postgres: nil pool")
 	}
 
 	if _, err := pool.Exec(ctx, postgresSchema); err != nil {

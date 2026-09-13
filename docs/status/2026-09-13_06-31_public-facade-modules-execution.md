@@ -20,10 +20,10 @@ check — "ALL CI GATES GREEN").
    is non-breaking for facade consumers. Rejected alternatives documented
    (god-facade at root, wrappers, wait-for-stabilization).
 2. **Seven public facade modules created**, each with go.mod (tagged requires
-   + relative replaces), one alias file, and a behavioral test:
-   `task/`, `journal/`, `queue/`, `queue/sqlite/`, `queue/postgres/`,
-   `executor/`, `worker/` — full exported-surface re-export (types, consts,
-   sentinels, funcs).
+   - relative replaces), one alias file, and a behavioral test:
+     `task/`, `journal/`, `queue/`, `queue/sqlite/`, `queue/postgres/`,
+     `executor/`, `worker/` — full exported-surface re-export (types, consts,
+     sentinels, funcs).
 3. **`postgres.OpenWithPool(ctx, pool)`** — feedback item 4. Caller-owned
    `*pgxpool.Pool`, schema applied, nil-pool refused; test proves `Close`
    does NOT tear down the caller's pool. DB-verified variant exists; the
@@ -143,6 +143,7 @@ check — "ALL CI GATES GREEN").
 ## f) UP TO 50 THINGS TO GET DONE NEXT (prioritized, first = highest impact)
 
 **Release-critical (unblocks the external consumer)**
+
 1. Cut the next release with `scripts/release.sh vX.Y.Z --tag` then
    `--push` — facades + `OpenWithPool` go live on the proxy.
 2. Verify `go install`/`go get` of each facade from a clean machine
@@ -160,96 +161,96 @@ check — "ALL CI GATES GREEN").
 7. Facade-scoped lint exclusions (e3) + baseline regen with honest shrink.
 8. Pre-commit css drift guard or daemon exclusion (e2).
 9. Add the facades to `scripts/check-dead-exports.sh` reasoning — alias
-   files are INTENTIONAL re-exports; make sure the audit never flags them.
+files are INTENTIONAL re-exports; make sure the audit never flags them.
 10. Windows CI sanity on facades (cross-compile ran green locally; confirm
-    the ci.yml facade loop is green on the runner after push).
+the ci.yml facade loop is green on the runner after push).
 11. Postgres OpenWithPool: get one local live-DB run (dev-shell container
-    or flake testPostgres) so the constructor is proven outside CI.
+or flake testPostgres) so the constructor is proven outside CI.
 
 **Docs / adopter experience**
 12. Move the "Postgres CLI store wiring" ROADMAP item up — facades make the
-    Postgres store consumer-reachable today; the CLI is still SQLite-only.
+Postgres store consumer-reachable today; the CLI is still SQLite-only.
 13. Add a minimal end-to-end embedder example (`examples/embed/`) using
-    ONLY facade paths — currently the proof lived in /tmp and is gone.
+ONLY facade paths — currently the proof lived in /tmp and is gone.
 14. Link the single-job-type profile doc from README (it is only reachable
-    from CHANGELOG/ADR right now).
+from CHANGELOG/ADR right now).
 15. FEATURES.md entry for the public facade surface.
 16. ROADMAP entry: "external consumer conformance harness" (their offer).
 17. `docs/DOMAIN_LANGUAGE.md` — add "facade module" as a defined term.
 18. Version-surfaces doc: facades are an 8th version surface; confirm
-    VERSION-SURFACES.md language still holds or amend it.
+VERSION-SURFACES.md language still holds or amend it.
 
 **Queue health / hygiene from this session**
 19. Guard against hand-written go.mods (e6 generator script).
 20. Feedback lifecycle convention (e5).
 21. Investigate the daemon's mid-session file reverts (d2) — a concurrent
-    agent or the heuristic daemon rewrote files under active editing;
-    identify which and whether a lock/scope fix is possible.
+agent or the heuristic daemon rewrote files under active editing;
+identify which and whether a lock/scope fix is possible.
 22. Re-triange the root-module lint drift bundled into the baseline regen
-    (errcheck +2, gocognit +1, modernize +1) — someone else's forward
-    progress, but it is now invisible inside my regen.
+(errcheck +2, gocognit +1, modernize +1) — someone else's forward
+progress, but it is now invisible inside my regen.
 23. Local test-Postgres recipe (e4).
 24. Confirm `TQ_TEST_POSTGRES`-gated facade/postgres tests actually run in
-    the next CI push (first run with the new tests).
+the next CI push (first run with the new tests).
 25. Sweep `docs/status/` index: this report + the usual annotate/archive
-    pass (docs-health skill).
+pass (docs-health skill).
 
 **Lower priority / opportunistic**
 26. Add facade examples to the module table in AGENTS.md architecture
-    section (currently only the prose paragraph).
+section (currently only the prose paragraph).
 27. `tq doctor` could report facade/version skew (facade require vs
-    internal tag) once released.
+internal tag) once released.
 28. Consider `//go:build` contracts: facades must never grow real logic —
-    a lint rule banning non-alias declarations in facade files would
-    enforce "names only" forever.
+a lint rule banning non-alias declarations in facade files would
+enforce "names only" forever.
 29. Bench: alias-vs-direct call overhead is zero (compile-time); add one
-    doc sentence proving it so nobody "optimizes" it later.
+doc sentence proving it so nobody "optimizes" it later.
 30. Review whether `queue/postgres` facade should also expose
-    `pgxpool.Config` knobs or stays minimal (current: minimal — keep).
+`pgxpool.Config` knobs or stays minimal (current: minimal — keep).
 31. Smoke: a release-gates fixture for a facade go.mod (positive + a
-    poison case: facade require pointing at v0.0.0).
+poison case: facade require pointing at v0.0.0).
 32. After release: tag-ancestry gate covers facade tags automatically —
-    verify with `git tag --list 'task/v*'` post-release.
+verify with `git tag --list 'task/v*'` post-release.
 33. Consider dependabot config covering the new go.mod files (dependabot
-    was touched in 201041e; nested modules may need explicit entries).
+was touched in 201041e; nested modules may need explicit entries).
 34. Nil-store fullcore example (commit 3faaf0b) + facades: the fullcore
-    example still imports internal paths — migrating it to facade paths
-    would dogfood the public surface in-repo.
+example still imports internal paths — migrating it to facade paths
+would dogfood the public surface in-repo.
 35. Write the "who imports the facades?" conformance story: a CI job that
-    builds an out-of-tree consumer module (the /tmp proof, but permanent,
-    in `examples/` or a test workflow).
+builds an out-of-tree consumer module (the /tmp proof, but permanent,
+in `examples/` or a test workflow).
 
 **Park / revisit later**
 36. API stabilization: promotion plan (move implementations to public
-    paths) once the API freezes — ADR-0016 keeps this non-breaking.
+paths) once the API freezes — ADR-0016 keeps this non-breaking.
 37. Multi-provider pool gating regressions: none this session, but the
-    rate-limit gate keys are per-repo — a facade consumer embedding two
-    stores gets two executor instances; document the expectation.
+rate-limit gate keys are per-repo — a facade consumer embedding two
+stores gets two executor instances; document the expectation.
 38. Revisit the ~48 dead-export advisory hits (unchanged this session).
 39. `.golangci-baseline.txt`: 917 findings vs the "~400" figure in
-    AGENTS.md prose — the prose is stale; update the AGENTS.md number.
+AGENTS.md prose — the prose is stale; update the AGENTS.md number.
 40. CHANGELOG: move the whole [Unreleased] block into the release section
-    when cutting (already enforced by release.sh; just don't fight it).
+when cutting (already enforced by release.sh; just don't fight it).
 41. Consider a `docs/adr/INDEX.md` (17 ADRs and counting).
 42. Facade module discoverability: `go get github.com/larsartmann/go-taskqueue/queue`
-    works per-module, but no root "meta" docs page lists them — README
-    table covers it; a pkg.go.dev-friendly doc.go at the root module would
-    need the root module to gain Go files (deliberate decision not to).
+works per-module, but no root "meta" docs page lists them — README
+table covers it; a pkg.go.dev-friendly doc.go at the root module would
+need the root module to gain Go files (deliberate decision not to).
 43. Hook the Help Centre port diff into a tracking issue when it arrives.
 44. Check whether `nix run .#test` app (flake.nix:333) covers facades on
-    non-linux systems (ci runs windows separately; darwin untested).
+non-linux systems (ci runs windows separately; darwin untested).
 45. Postgres `maxConns=0` path (pgx default) — never explicitly tested;
-    one conformance line would pin it.
+one conformance line would pin it.
 46. dprint formatting of the new markdown files (manual-by-decision, but
-    a one-off pass keeps the docs consistent).
+a one-off pass keeps the docs consistent).
 47. `docs/references/` has no README/index; one file exists now, more will
-    follow.
+follow.
 48. Add facade dirs to any `.gitignore`-adjacent tooling that assumes
-    `internal/`-only module layout (grep for `^internal` in scripts).
+`internal/`-only module layout (grep for `^internal` in scripts).
 49. Consider making the clean-room consumer test a flake check (hermetic,
-    no /tmp) using a vendored fixture module.
+no /tmp) using a vendored fixture module.
 50. Celebrate: the library is finally importable — then actually tell
-    someone (overlaps #4, deliberately).
+someone (overlaps #4, deliberately).
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 

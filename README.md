@@ -347,15 +347,15 @@ The library core is importable. Public **facade modules** re-export each
 internal implementation module via type aliases (ADR-0016), so the names
 you import are stable while the implementations stay free to refactor:
 
-| Facade module                | Purpose                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------- |
-| `task`                       | Task record, status state machine, sentinel errors                        |
-| `journal`                    | Fact types, append-only Journal interface, in-memory Journal              |
-| `queue`                      | The store CONTRACT: `Store` interface, `Filter`, `Queue` facade           |
-| `queue/sqlite`               | Embedded SQLite driver (`sqlite.Store`) — the default backend             |
-| `queue/postgres`             | Networked PostgreSQL driver (`postgres.Store`) for shared-machine pools   |
-| `executor`                   | Pluggable execution: `sh`, HTTP, headless agent, review, status, registry |
-| `worker`                     | Claim → heartbeat → execute loop over any `queue.Store`                   |
+| Facade module    | Purpose                                                                   |
+| ---------------- | ------------------------------------------------------------------------- |
+| `task`           | Task record, status state machine, sentinel errors                        |
+| `journal`        | Fact types, append-only Journal interface, in-memory Journal              |
+| `queue`          | The store CONTRACT: `Store` interface, `Filter`, `Queue` facade           |
+| `queue/sqlite`   | Embedded SQLite driver (`sqlite.Store`) — the default backend             |
+| `queue/postgres` | Networked PostgreSQL driver (`postgres.Store`) for shared-machine pools   |
+| `executor`       | Pluggable execution: `sh`, HTTP, headless agent, review, status, registry |
+| `worker`         | Claim → heartbeat → execute loop over any `queue.Store`                   |
 
 (All under `github.com/larsartmann/go-taskqueue/…`. Each facade is an
 independently tagged Go module; the `internal/…` modules behind them are

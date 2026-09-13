@@ -15,6 +15,7 @@ func TestFacadeSurface(t *testing.T) {
 	if err != nil || f.Seq != 1 {
 		t.Fatalf("append = seq %d (%v), want 1", f.Seq, err)
 	}
+
 	if f, err := j.Append(ctx, tq.Fact{TaskID: "t1", Type: tq.Claimed}); err != nil || f.Seq != 2 {
 		t.Fatalf("append = seq %d (%v), want 2", f.Seq, err)
 	}

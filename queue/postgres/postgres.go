@@ -23,4 +23,7 @@ var OpenWithPool = internalpostgres.OpenWithPool
 
 // compile-time proof the pool parameter type is the pgx/v5 pool consumers
 // already hold.
-var _ = func(p *pgxpool.Pool) error { _, err := OpenWithPool(context.Background(), p); return err }
+var _ = func(p *pgxpool.Pool) error {
+	_, err := OpenWithPool(context.Background(), p)
+	return err
+}

@@ -19,15 +19,15 @@ only.
    ENTIRE exported surface via type aliases (`type X = internal.X`) and
    var/const re-exports:
 
-   | Facade                          | Re-exports                |
-   | ------------------------------- | ------------------------- |
-   | `.../task`                      | `internal/task`           |
-   | `.../journal`                   | `internal/journal`        |
-   | `.../queue`                     | `internal/queue`          |
-   | `.../queue/sqlite`              | `internal/queue/sqlite`   |
-   | `.../queue/postgres`            | `internal/queue/postgres` |
-   | `.../executor`                  | `internal/executor`       |
-   | `.../worker`                    | `internal/worker`         |
+   | Facade               | Re-exports                |
+   | -------------------- | ------------------------- |
+   | `.../task`           | `internal/task`           |
+   | `.../journal`        | `internal/journal`        |
+   | `.../queue`          | `internal/queue`          |
+   | `.../queue/sqlite`   | `internal/queue/sqlite`   |
+   | `.../queue/postgres` | `internal/queue/postgres` |
+   | `.../executor`       | `internal/executor`       |
+   | `.../worker`         | `internal/worker`         |
 
    The internal-package rule is path-prefix based: a facade at
    `github.com/larsartmann/go-taskqueue/queue` shares the

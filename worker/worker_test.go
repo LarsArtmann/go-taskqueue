@@ -13,9 +13,11 @@ func TestFacadeSurface(t *testing.T) {
 	if p == nil {
 		t.Fatal("New returned nil pool")
 	}
+
 	if p.InFlight() != 0 {
 		t.Fatalf("InFlight = %d, want 0", p.InFlight())
 	}
+
 	if tq.ExpBackoff(1) <= 0 {
 		t.Fatal("ExpBackoff must be positive")
 	}
