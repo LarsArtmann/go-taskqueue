@@ -25,7 +25,9 @@ nix build                 # reproducible build; nix run .#test = tests; nix run 
 are sub-modules plus `internal/queue/{sqlite,postgres}` backend modules
 and the `internal/journal/cqrs` go-cqrs-lite adapter module (ADR-0011 +
 ADR-0012 + ADR-0014; import paths unchanged); the root module is the app
-layer. `./...` never descends into nested modules — per-module gates
+layer. `cmd/tq` is ITS OWN replace-free module (ADR-0017) so
+`go install …/cmd/tq@vX.Y.Z` works — in-repo builds go through the
+generated devmod shim (`scripts/build-tq.sh`, `scripts/test-cmd-tq.sh`); `./...` never descends into nested modules — per-module gates
 (disk-derived, same as CI):
 
 ```bash
@@ -82,7 +84,7 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/check-facade-parity.sh # ADR-0016 gate: go/parser walk, every internal export needs a kind-compatible facade alias (scripts/facadeparity)
 ./scripts/new-module.sh <dir> [deps…] # scaffold a new module go.mod (latest cut tag + relative replace per dep; no hand-writing go.mods)
 nix run .#test                  # full multi-module suite (root + every internal/* module)
-go build -o /tmp/tq ./cmd/tq    # CLI scratch: enqueue/worker/stats (--once drains then exits)
+scripts/build-tq.sh /tmp/tq     # CLI scratch build (cmd/tq is its own replace-free module, ADR-0017; the script runs the devmod shim)
 ```
 
 No Makefile — flake.nix owns automation. Pure Go (modernc.org/sqlite):
@@ -116,7 +118,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                                                             |
 | `internal/runactor`                                | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                                                          |
 | `internal/webui`                                   | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                                                                |
-| `cmd/tq`                                           | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / facts / tail / watermarks / session / serve / api / doctor / version                         |
+| `cmd/tq` (module, ADR-0017)                        | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / facts / tail / watermarks / session / serve / api / doctor / version                         |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001,
 ADR-0002: `docs/adr/`; plans in `docs/planning/`). Domain vocabulary is

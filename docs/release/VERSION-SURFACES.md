@@ -14,7 +14,7 @@ this inventory (2026-09-10).
 | 2 | ldflags version    | `flake.nix` `buildFlagsArray` (`-X main.version=...`)                                                 | `0.2.0`                    | same check: binary `tq version` must equal attr                                                                                    |
 | 3 | Root tag           | git `vX.Y.Z`, annotated, on HEAD                                                                      | `v0.2.0`                   | `scripts/release.sh` preconditions (forward-only, not pre-existing, clean tree, points at HEAD)                                    |
 | 4 | Per-module tags    | every module dir (`internal/<mod>` + the seven ADR-0016 facades), `vX.Y.Z` derived from disk          | 8 sub-tags at v0.2.0 (facades join at the next release; 15 total then) | release gate `gate_gomod`: every internal `require` version must have its subdirectory tag BEFORE the root tag is cut              |
-| 5 | Internal requires  | each module's `go.mod` requires sibling modules at real tagged versions + relative `replace`          | `v0.2.0`                   | `scripts/check-go-mods.sh` (real versions, never `v0.0.0`, no pseudo-version `00010101`, aligned `go` directives, `go mod verify`) |
+| 5 | Internal requires  | each module's `go.mod` requires sibling modules at real tagged versions + relative `replace`; `cmd/tq` (ADR-0017) additionally requires the ROOT module replace-free | `v0.2.0`                   | `scripts/check-go-mods.sh` (real versions, never `v0.0.0`, no pseudo-version `00010101`, aligned `go` directives, `go mod verify`) |
 | 6 | CHANGELOG          | `CHANGELOG.md` `[Unreleased]` → `## [vX.Y.Z]` section                                                 | append-only                | manual; `--tag` derives release notes from it (reused as tag message + GitHub notes)                                               |
 | 7 | Toolchain          | `go` directive in root + every module `go.mod`                                                        | aligned across all modules | `check-go-mods.sh` (per-module `go` must match root)                                                                               |
 | 8 | Facade module tags | `task/`, `journal/`, `queue/`, `queue/sqlite/`, `queue/postgres/`, `executor/`, `worker/` sub-tags   | none yet — first cut rides the next release (ADR-0016) | release.sh disk-derived enumeration (same gate_gomod pass; surface 4 generalizes: every module dir, internal or facade, gets its sub-tag) |
@@ -38,7 +38,10 @@ Cutting release `vX.Y.Z` — `scripts/release.sh vX.Y.Z --tag` automates 3–5;
    consumer's `go install` of the root tag resolves internal requires
    through the proxy (#5), which is why `gate_gomod` runs pre-tag.
 5. **Publish** (`--push`): master + root tag + all sub-tags, then proxy
-   wait, `go mod verify`, and `go install .../cmd/tq@vX.Y.Z` smoke.
+   wait, `go mod verify`, and `go install .../cmd/tq@vX.Y.Z` smoke
+   (ADR-0017: installs the cmd/tq MODULE at sub-tag `cmd/tq/vX.Y.Z` — the
+   sweep must bump cmd/tq's root-module require to `vX.Y.Z` or the
+   clean-room install fails proxy resolution).
 
 ## What is NOT version-bearing
 

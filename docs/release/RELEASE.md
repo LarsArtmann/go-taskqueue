@@ -52,7 +52,10 @@ tag BEFORE the release commits land is the classic mistake. Verifies
 sub-tag; waits on the module proxy (`go list -m -versions`, 5 attempts);
 clean-room verifies the real consumer path (`go get` the module, `go mod
 verify`, then `go install .../cmd/tq@vX.Y.Z` and run its `version` — go get
-alone only resolves metadata and cannot catch a broken sub-module require);
+alone only resolves metadata and cannot catch a broken sub-module require;
+ADR-0017: this installs the cmd/tq MODULE, whose replace-free go.mod is
+exactly what makes the install work — the root go.mod keeps its dev-time
+replaces);
 creates the GitHub Release (`--prerelease`, notes from the CHANGELOG
 section). Remaining manual step: confirm CI is green on `refs/tags/vX.Y.Z`.
 
