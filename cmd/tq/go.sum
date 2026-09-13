@@ -66,6 +66,8 @@ github.com/larsartmann/go-sse v0.6.0 h1:ITsMQi4Cfg+cXE5YYChk3p6wYsn33AxKJPVwd5hs
 github.com/larsartmann/go-sse v0.6.0/go.mod h1:ndYQ/lEnJVzTWqvF/h4+XMG/hJK/bEn6zSkfpkBAuUg=
 github.com/larsartmann/go-sse/ssetest v0.3.0 h1:HEP3nFUsaWAz6fz8WmbeR2nUj6jv/cAHf+7HVeMeRRY=
 github.com/larsartmann/go-sse/ssetest v0.3.0/go.mod h1:VNpjSMfzdCeIT5YKAmJPB6jGN4PBjJF0/aXc/YM/OVQ=
+github.com/larsartmann/go-taskqueue v0.3.0 h1:JGxmOD8TUbJO0fnQ9UaXos2WYCaC2P2/wWdNsYrLHGA=
+github.com/larsartmann/go-taskqueue v0.3.0/go.mod h1:vnbXeATtIi0DiZcc10fDeYwCQpoiX/XrVMAES7QwtiE=
 github.com/larsartmann/go-taskqueue/internal/executor v0.3.0 h1:nJh8JLkG+pQYMW4GyemyT8dBaVGPYLWezYMlk87rHo4=
 github.com/larsartmann/go-taskqueue/internal/executor v0.3.0/go.mod h1:E60Mi6cClDogEJn2rOzQ6MOz0D55gNkoZQFGlBhlu+E=
 github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 h1:MpTn5vlNUvtvPXLNBU2I2IVCrq4hyfJTOmVPZrHSZ8s=
