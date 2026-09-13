@@ -41,10 +41,22 @@ facade's dependency graph needs a require (vX.Y.Z) AND a relative replace
 in the facade go.mod (missing replaces resolve through the proxy and hit
 stale tags — worker's facade failed exactly that way with
 `journal.Reprioritized` undefined); when adding an exported symbol to a
-facaded internal package, add the alias in the same change (parity is a
-review convention, no compiler gate); facade tests may import internal
-packages (same-path rule), never sibling FACADES (would pin unpublished
-versions).
+facaded internal package, add the alias in the same change — parity is
+GATED since 2026-09-13 by `scripts/check-facade-parity.sh` (go/parser
+walk in `scripts/facadeparity`, wired into ci-local + CI; the audit's
+first catch was the missing `PrioritizeExecutor` alias); facade tests may
+import internal packages (same-path rule), never sibling FACADES (would
+pin unpublished versions). `postgres.OpenWithPool` pools are
+CALLER-OWNED: `Store.Close` closes only pools the store opened via `Open`
+(ownsPool flag; the first live TQ_TEST_POSTGRES run caught Close tearing
+down caller pools — the env-gated CI postgres job runs that test, so a
+broken ownership model is a RED MASTER, not a local skip).
+`examples/embed` is a separate module importing ONLY facade paths (the
+adopter on-ramp; ci-local builds it as a rot guard). Release gates run
+`gate_gomod` over EVERY module go.mod (containment-based replace rule +
+single-line-require tag check — fixtures in smoke/release-gates.sh), so
+after a version sweep the bumped sub-tags must be PRE-CUT before
+`release.sh` gates run.
 
 Internal requires point at real tagged versions (never `v0.0.0` —
 `go install` resolves them via the proxy; `internal/*/vX.Y.Z` subdirectory
@@ -65,6 +77,8 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
 ./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)
 ./scripts/check-dead-exports.sh # advisory dead-export audit: zero-importers detector, substring matching (NOT rg -w)
+./scripts/check-facade-parity.sh # ADR-0016 gate: go/parser walk, every internal export needs a kind-compatible facade alias (scripts/facadeparity)
+./scripts/new-module.sh <dir> [deps…] # scaffold a new module go.mod (latest cut tag + relative replace per dep; no hand-writing go.mods)
 nix run .#test                  # full multi-module suite (root + every internal/* module)
 go build -o /tmp/tq ./cmd/tq    # CLI scratch: enqueue/worker/stats (--once drains then exits)
 ```
