@@ -69,7 +69,7 @@ root	contextcheck:	13
 root	cyclop:	8
 root	dogsled:	4
 root	err113:	50
-root	errcheck:	19
+root	errcheck:	20
 root	errchkjson:	1
 root	exhaustive:	10
 root	forbidigo:	23
@@ -88,7 +88,7 @@ root	mnd:	50
 root	musttag:	4
 root	nestif:	2
 root	nilerr:	3
-root	nlreturn:	4
+root	nlreturn:	5
 root	noctx:	29
 root	nonamedreturns:	7
 root	paralleltest:	50
