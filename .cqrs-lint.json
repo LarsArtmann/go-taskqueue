@@ -22,7 +22,19 @@
       // id v4.6.0, metadata v4.7.0, record v4.5.0); "aligning" them would
       // mean pinning stale releases. Revisit only if the library starts
       // tag-lockstepping its modules.
-      "V006"
+      "V006",
+
+      // A009: stack presets wire up a CQRS app (store + bus + dispatcher).
+      // The adapter IMPLEMENTS a go-cqrs-lite journal over the queue's fact
+      // source; there is no stack to adopt, and ADR-0014 explicitly rejected
+      // rewiring the queue stores onto go-cqrs-lite event stores.
+      "A009",
+
+      // A018: never calling Save/Publish/Dispatch IS the contract — the
+      // adapter is read-only by design (ADR-0014); a generic Save would
+      // bypass the task-state invariants (facts appended in the same tx as
+      // state, single serialized writer).
+      "A018"
     ]
   }
 }
