@@ -30,7 +30,8 @@ leftovers (scratch dirs, tracking, release notes — all re-checked 09:14).
    pushed early — deviation, see d3).
 5. **Owner loop**: 3 questions asked, answered (push-now; gh_issue);
    scope challenge answered from the recorded 08:01 verdict; tracking
-   issue #3 + voice-checked reply draft staged in docs/feedback/.
+   a (since-deleted, confidentiality) tracking issue + voice-checked
+   reply draft staged in docs/feedback/.
 6. **Session hygiene**: status reports indexed (09-06 then this one);
    all doc gates green at close; master synced; scratch dirs verified
    gone; examples/embed go.sum verified tracked.
@@ -49,7 +50,8 @@ leftovers (scratch dirs, tracking, release notes — all re-checked 09:14).
 - **T5** out-of-tree consumer CI job (post-release by design; T2 covered
   the ground once, nothing guards it per-push).
 - **T15** park lot (5 items, unchanged, owner-independent, low value).
-- **README → issue #3 cross-link**: README's consumer-status line does
+- **README → external-conformance cross-link** (the public issue was
+  deleted; a private channel note replaces it): README's consumer-status line does
   not point at the tracking issue (the reply draft does).
 
 ## d) TOTALLY FUCKED UP (own goals, honestly)
@@ -107,7 +109,7 @@ leftovers (scratch dirs, tracking, release notes — all re-checked 09:14).
 
 1. release.sh: clean-room install check in gates mode (e1; ~15min, prevents d1's class)
 2. cmd/tq as replace-free module — restores `go install` (TODO row exists; needs ADR)
-3. README consumer-status line → link issue #3
+3. README consumer-status line → note the conformance follow-up (no public issue; confidentiality)
 4. pkg.go.dev generation re-check ×7 (TODO row; minutes, time-delayed)
 5. T5: out-of-tree consumer CI job (also closes the embed ci.yml parity gap)
 6. examples/embed build step into ci.yml (parity with ci-local guard)

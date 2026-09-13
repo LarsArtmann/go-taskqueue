@@ -82,7 +82,9 @@ another agent pushing master + annotating TODO_LIST mid-release).
     ran enqueue→fail→retry→complete on sqlite AND live Postgres via
     published OpenWithPool. `go list -m -versions` ×7 → v0.3.0. pkg.go.dev
     pages not yet generated (lazy; 404 requests queue generation).
-15. **T4**: tracking issue #3 (voice-checked draft) + owner-send reply
+15. **T4**: a public tracking issue was opened, then DELETED at owner
+    request same day (the evaluator is private; the repo is public — the
+    issue named them) + owner-send reply
     draft at docs/feedback/2026-09-13_helpcentre-reply-draft.md.
 16. **v0.3.0 REGRESSION caught by the release's own clean-room step**:
     `go install …/cmd/tq@v0.3.0` fails — root module carries dev-time

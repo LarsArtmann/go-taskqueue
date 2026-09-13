@@ -1,7 +1,7 @@
 # Help Centre reply draft (owner sends)
 
-_Re: "Can we learn from go-taskqueue? or use it?" — reply via your channel;
-tracking issue: https://github.com/LarsArtmann/go-taskqueue/issues/3_
+_Re: "Can we learn from go-taskqueue? or use it?" — reply via the private
+evaluator channel (no public tracking issue: their identity is confidential)._
 
 ---
 

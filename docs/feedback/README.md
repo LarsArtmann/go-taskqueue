@@ -22,6 +22,8 @@ cite it, never rewrite it (metadata fixes only).
 evaluator; identity redacted at owner request) is fully executed: ADR-0016 facades shipped and PUBLISHED at
 v0.3.0 (proxy-verified, clean-room consumer ran both backends),
 `postgres.OpenWithPool` live, references doc + README status line in.
-The offer half is tracked in issue #3; the owner-send reply draft is
+The offer half is tracked privately by the owner (a public tracking
+issue was opened and deleted the same day, 2026-09-13 — the evaluator
+is a private organization; this repo is public); the reply draft is
 `2026-09-13_helpcentre-reply-draft.md` in this directory. Move both to
 done/ once the reply is sent.

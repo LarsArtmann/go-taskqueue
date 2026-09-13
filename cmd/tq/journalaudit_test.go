@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -30,26 +31,21 @@ func TestJournalDriftNoDriftOverFullLifecycle(t *testing.T) {
 	ctx := context.Background()
 	store := journalAuditStore(t)
 
-	t1, err := store.Enqueue(ctx, task.New{Project: "j", Type: "sh", Payload: []byte(`"true"`)})
-	if err != nil {
+	if _, err := store.Enqueue(ctx, task.New{Project: "j", Type: "sh", Payload: []byte(`"true"`)}); err != nil {
 		t.Fatalf("Enqueue: %v", err)
 	}
 
 	if _, err := store.Enqueue(ctx, task.New{Project: "j", Type: "sh", Payload: []byte(`"false"`)}); err != nil {
-		t.Fatalf("Enqueue: %v", err)
+		t.Fatalf("Enqueue #2: %v", err)
 	}
 
-	t3, err := store.Enqueue(ctx, task.New{Project: "j", Type: "sh", Payload: []byte(`"true"`)})
+	// First claim: complete whichever task came up (happy path).
+	first, err := store.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
-		t.Fatalf("Enqueue: %v", err)
+		t.Fatalf("ClaimDue #1: %v", err)
 	}
 
-	// t1: full happy path.
-	if _, err := store.ClaimDue(ctx, "w1", time.Minute); err != nil {
-		t.Fatalf("ClaimDue t1: %v", err)
-	}
-
-	if err := store.Complete(ctx, t1.ID, "w1", nil); err != nil {
+	if err := store.Complete(ctx, first.ID, "w1", nil); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -63,9 +59,24 @@ func TestJournalDriftNoDriftOverFullLifecycle(t *testing.T) {
 		t.Fatalf("FailPermanent: %v", err)
 	}
 
-	// t3: cancel while pending.
-	if err := store.Cancel(ctx, t3.ID, "no longer needed"); err != nil {
-		t.Fatalf("Cancel: %v", err)
+	// The remaining pending task: cancel before it is ever claimed.
+	if _, err := store.Enqueue(ctx, task.New{Project: "j", Type: "sh", Payload: []byte(`"true"`)}); err != nil {
+		t.Fatalf("Enqueue #3: %v", err)
+	}
+
+	pending, err := store.List(ctx, queue.Filter{})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	for i := range pending {
+		if pending[i].Status == task.Pending {
+			if err := store.Cancel(ctx, pending[i].ID, "no longer needed"); err != nil {
+				t.Fatalf("Cancel: %v", err)
+			}
+
+			break
+		}
 	}
 
 	report, err := journalDrift(ctx, store)
