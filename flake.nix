@@ -39,7 +39,12 @@
         version = "0.3.0";
         vendorHash = "sha256-8zjS/KNmEm6Es2n4Xyj/a6Mn+oLntLycRXpGNTkWPWg=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
-        subPackages = [ "cmd/tq" ];
+        # ADR-0017: cmd/tq is its own replace-free module (proxy
+        # installability). modRoot + subPackages route the hermetic build
+        # at that module; the preBuild below replaces the root module with
+        # the local tree, exactly like the dev.mod shim the repo gates use.
+        subPackages = [ "." ];
+        extraBuildAttrs.modRoot = "cmd/tq";
         # nixpkgs 26.11 dropped x86_64-darwin; the go-standard default system
         # list still carries it and fails `nix flake check --all-systems` at
         # eval time. Pin the supported systems explicitly.
@@ -67,6 +72,7 @@
           preBuild = ''
             export HOME=$TMPDIR
             printf '\nreplace github.com/larsartmann/go-taskqueue => ../..\n' >> go.mod
+            sed -n 's|^replace \(github.com/larsartmann/go-taskqueue/internal[^ ]*\) => ./\(.*\)$|replace \1 => ../../\2|p' ../../go.mod >> go.mod
           '';
           # `tq version` reports the release, not "dev" (round-5 M25/F133).
           # Derived from the version attr above — never a second literal.
