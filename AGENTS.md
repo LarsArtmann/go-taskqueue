@@ -422,6 +422,19 @@ Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows
   ×1) are pinned to `1.26.7` matching go.mod + the toolchain-alignment gate;
   a GOEXPERIMENT-only fix reproduces locally and still fails on runners —
   verify against the environment that failed, not just locally.
+- ⚠️ **Never lower a module's `go` directive — zero-dep leaves have no
+  floor** (2026-09-12 red master, run 34726154600): every go.mod must
+  declare the root's exact version (`go 1.26.7`; `check-go-mods.sh` is the
+  gate). The T38–T40 window aligned go.mods DOWN; `go mod tidy` reverted
+  the dep-bearing modules but the stdlib-only leaves (`internal/task`,
+  `internal/journal` — no require lines) have NO dependency floor, so the
+  downgrade survived there, rode daemon commit 201041e, and failed the CI
+  `go.mod health` step after push. Repro: `go mod tidy` on a leaf with
+  `go 1.26` silently leaves it. Restore with
+  `go mod edit -go=$(awk '$1 == "go" { print $2; exit }' go.mod)` in the
+  drifted module, then run `./scripts/check-go-mods.sh` BEFORE the daemon
+  sweeps the drift up. If a toolchain refuses the pinned version, fix the
+  toolchain (GOTOOLCHAIN / devShell), not the directive.
 - ⚠️ **Flakes only see git-tracked files**: `git add` new files before
   `nix build`.
 - ⚠️ **templ LSP diagnostics are false positives** (phantom syntax errors
