@@ -39,7 +39,7 @@ The long tail: session triggers 1–3, prioritize pilot enablement (owner spend 
 
 | ID | Task (30–100 min) | Impact | Effort | Value | Covers (TODO/report rows) | Pareto |
 |----|-------------------|--------|--------|-------|---------------------------|--------|
-| M1 | **Push master + v0.3.0 tag set explicitly** (`git push origin master` + the 10 cut v0.3.0 tags, NEVER `--tags`), watch the release-gates smoke flip green | 🔥🔥🔥 | XS | External consumer unblocked | red run 34743045962; L279-supersede; f-row 1 | 1% |
+| M1 | ~~**Push master + v0.3.0 tag set explicitly**~~ **DONE 2026-09-13 09:0x** — the owner pushed the tag set; master CI FULLY GREEN (run 34743982491, all 6 jobs); clean-room proxy `go get task@v0.3.0 + queue/sqlite@v0.3.0` ran enqueue end-to-end (PROXY-FACADE-OK). Remaining 1% tail: GitHub Release publish, pkg.go.dev spot-check, Help Centre notify, 5-facade clean-room sweep (minted as TODO rows) | 🔥🔥🔥 | XS | External consumer unblocked | red run 34743045962; L279-supersede; f-row 1 | 1% |
 | M2 | **Cut the release:** `scripts/release.sh v0.3.0 --push` path per RELEASE.md (gates already green post-M1), GitHub Release, `gh run watch` on the tag | 🔥🔥🔥 | S | Facades live on proxy | 06-31 §c1/f1–f5 | 1% |
 | M3 | **Post-release verification + adopter loop:** clean-room `go get` of all 7 facades, pkg.go.dev render check, notify Help Centre (accept conformance offer), flip FEATURES facade row to FULLY_FUNCTIONAL, confirm sub-tag resolution | 🔥🔥 | S | External | 06-31 §c2/f2–f4, L134 pattern | 1% |
 | M4 | **FEATURES CI-freshness gate:** `scripts/check-features-ci.sh` (parse FEATURES CI rows → assert vs `gh run list` latest master), wire into ci-local, red-probe | 🔥🔥 | M | Ops truth | 08-49 e1 | 4% |
