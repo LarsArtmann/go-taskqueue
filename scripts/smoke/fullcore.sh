@@ -36,4 +36,20 @@ if ! grep -q '^  completed 4$' "$TMP/out.log"; then
 	echo "FAIL: expected 4 completed (sh x2, greet, flaky retry)"; cat "$TMP/out.log"; exit 1
 fi
 
+# Deadline-path determinism (08-25 report b3): a too-short --timeout must
+# deterministically kill the run with the drain-deadline message — 16a15d8
+# verified this only by hand. 50ms is far below worker-start latency on this
+# host (250ms still trips), so the failure mode is stable, not a race.
+DEADLINE_RUNS=3
+
+echo "== deadline path x$DEADLINE_RUNS (50ms timeout must fail with drain deadline)"
+for i in $(seq 1 "$DEADLINE_RUNS"); do
+	if "$TMP/fullcore" --backend sqlite --db "$TMP/fullcore-deadline.db" --timeout 50ms >"$TMP/deadline-$i.log" 2>&1; then
+		echo "FAIL: deadline run $i exited zero (queue drained inside 50ms?)"; cat "$TMP/deadline-$i.log"; exit 1
+	fi
+	if ! grep -q 'deadline exceeded before the queue drained' "$TMP/deadline-$i.log"; then
+		echo "FAIL: deadline run $i failed for the wrong reason"; cat "$TMP/deadline-$i.log"; exit 1
+	fi
+done
+
 echo "PASS: fullcore drained 4/4 on sqlite (scratch TQ_DB honored)"
