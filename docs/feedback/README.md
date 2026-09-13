@@ -18,8 +18,8 @@ cite it, never rewrite it (metadata fixes only).
    `done/` with a trailing disposition note appended by the closing
    session (what was done, where the evidence lives).
 
-`new/2026-09-13_external-adoption-blocked-by-internal-paths.md` (MTU Help
-Centre) is fully executed: ADR-0016 facades shipped and PUBLISHED at
+`new/2026-09-13_external-adoption-blocked-by-internal-paths.md` (external
+evaluator; identity redacted at owner request) is fully executed: ADR-0016 facades shipped and PUBLISHED at
 v0.3.0 (proxy-verified, clean-room consumer ran both backends),
 `postgres.OpenWithPool` live, references doc + README status line in.
 The offer half is tracked in issue #3; the owner-send reply draft is

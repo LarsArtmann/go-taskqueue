@@ -1,7 +1,8 @@
-# Feedback: adoption attempt from an external consumer (MTU Help Centre)
+# Feedback: adoption attempt from an external consumer
 
 **Date**: 2026-09-13
-**Who**: Help Centre session (`Rolls-Royce-mtuGoHelpCenter-golang`)
+**Who**: an external evaluator, private organization (identity redacted
+2026-09-13 at owner request — this repo is public; the evaluator is not)
 **Question asked**: "Can we learn from go-taskqueue? or use it?"
 **Outcome**: learned from it, could not use it — and the reason is purely
 structural, not quality. The library is good. It is also unreachable.

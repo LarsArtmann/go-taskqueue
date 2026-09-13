@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-13 06:31 CEST
 **Session scope:** review + execute `docs/feedback/new/2026-09-13_external-adoption-blocked-by-internal-paths.md`
-(MTU Help Centre could not import the library — every module lives behind Go's
+(an external evaluator could not import the library — every module lives behind Go's
 internal-package rule and the root module has zero Go files).
 **Gate evidence:** `./scripts/ci-local.sh` FULLY GREEN on the final tree
 (build/vet/race, Windows cross-compile, 15-module isolation loop, go.mod
