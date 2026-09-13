@@ -626,3 +626,17 @@ forwarding the generic stack doesn't model). The one real gap found —
 (webui.go), and the write-route CSRF/lockout pair must keep its ADR-0003
 treatment regardless of library availability. Re-run the comparison only if
 the license changes or a second HTTP surface appears.
+
+**go-nix-helpers** (`~/projects/go-nix-helpers`, flake input): the flake's
+only build-time dependency — `flakeModules.go-standard` (flake.nix:24)
+provides the whole Go flake scaffolding (`go-standard.*` option surface,
+packages/apps/devShell/treefmt; only `apps.test` is `mkForce`-overridden for
+the multi-module loop, flake.nix:318). Consumed as
+`github:LarsArtmann/go-nix-helpers/master` (HTTPS for keyless CI runners)
+and pinned in flake.lock — the local checkout is NEVER a build input;
+local-pin equality is coincidental freshness, not consumption (verified
+2026-09-13: lock rev 16c3184 == local HEAD == origin/master; no registry
+override exists). ~40 sibling flakes consume it the same way. A local edit
+reaches this build only after push + `nix flake update go-nix-helpers` (a
+one-off `--override-input go-nix-helpers <path>` is the testing escape
+hatch; recipe not yet documented).
