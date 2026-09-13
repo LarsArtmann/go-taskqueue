@@ -56,7 +56,8 @@ type (
 	RateLimitError = internalexecutor.RateLimitError
 )
 
-// Error sinks (context-carried failure/result detail).
+// Sink carries failure/result detail through the context (error and
+// result sinks).
 type Sink = internalexecutor.Sink
 
 // Task-type keys.
