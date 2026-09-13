@@ -17,7 +17,7 @@ if [ -n "$bad" ]; then
 	fail=1
 fi
 
-bad="$({ grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' "${modfiles[@]}" go.mod | sed 's|//.*||'; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+$' || true)"
+bad="$({ grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' "${modfiles[@]}" go.mod | sed 's|//.*||'; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$' || true)"
 if [ -n "$bad" ]; then
 	echo "$bad"
 	echo "FAIL: internal requires must be real tagged versions (vX.Y.Z) —"

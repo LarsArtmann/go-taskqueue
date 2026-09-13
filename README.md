@@ -12,6 +12,12 @@ Built on the semantics proven in [go-cqrs-lite](https://github.com/LarsArtmann/g
 (worker pools over durable queues). Not a wrapper around either — a standalone
 library with its own small core, designed to be embeddable and observable.
 
+**Library consumers: import the public facade modules**
+(`github.com/larsartmann/go-taskqueue/queue`, `.../queue/sqlite`,
+`.../queue/postgres`, `.../task`, `.../journal`, `.../executor`,
+`.../worker` — see [Embedding it in Go](#embedding-it-in-go)). The
+`internal/…` modules behind them are implementation detail (ADR-0016).
+
 ## Priority system (ADR-0015)
 
 One 0-100 priority scale with three bands — **backlog 0-99** (TODO_LIST
@@ -337,39 +343,45 @@ toolchain PATH baked in) — see `deploy/nixos/tq-agent-pool.nix`.
 
 ## Embedding it in Go
 
-The library core is a set of independently tagged modules, so embedders
-depend on exactly the piece they need (import paths are stable; the repo is
-a multi-module tree by design):
+The library core is importable. Public **facade modules** re-export each
+internal implementation module via type aliases (ADR-0016), so the names
+you import are stable while the implementations stay free to refactor:
 
-| Module                    | Purpose                                                                   |
-| ------------------------- | ------------------------------------------------------------------------- |
-| `internal/task`           | Task record, status state machine, sentinel errors                        |
-| `internal/journal`        | Fact types, append-only Journal interface, in-memory Journal              |
-| `internal/queue`          | The store CONTRACT: `Store` interface, `Filter`, `Queue` facade           |
-| `internal/queue/sqlite`   | Embedded SQLite driver (`sqlite.Store`) — the default backend             |
-| `internal/queue/postgres` | Networked PostgreSQL driver (`postgres.Store`) for shared-machine pools   |
-| `internal/executor`       | Pluggable execution: `sh`, HTTP, headless agent, review, status, registry |
-| `internal/worker`         | Claim → heartbeat → execute loop over any `queue.Store`                   |
+| Facade module                | Purpose                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `task`                       | Task record, status state machine, sentinel errors                        |
+| `journal`                    | Fact types, append-only Journal interface, in-memory Journal              |
+| `queue`                      | The store CONTRACT: `Store` interface, `Filter`, `Queue` facade           |
+| `queue/sqlite`               | Embedded SQLite driver (`sqlite.Store`) — the default backend             |
+| `queue/postgres`             | Networked PostgreSQL driver (`postgres.Store`) for shared-machine pools   |
+| `executor`                   | Pluggable execution: `sh`, HTTP, headless agent, review, status, registry |
+| `worker`                     | Claim → heartbeat → execute loop over any `queue.Store`                   |
+
+(All under `github.com/larsartmann/go-taskqueue/…`. Each facade is an
+independently tagged Go module; the `internal/…` modules behind them are
+implementation detail.)
 
 Both store drivers implement the same `queue.Store` contract with
 byte-compatible facts, so the choice is one import line:
 
 ```go
-import "github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+import "github.com/larsartmann/go-taskqueue/queue/sqlite"
 
 store, err := sqlite.Open("tq.db", sqlite.WithProjectExclusivity())
 // or
-import "github.com/larsartmann/go-taskqueue/internal/queue/postgres"
+import "github.com/larsartmann/go-taskqueue/queue/postgres"
 
 store, err := postgres.Open(ctx, "postgres://…", 4)
+// already holding a *pgxpool.Pool? reuse it instead of a second pool:
+store, err := postgres.OpenWithPool(ctx, myPool)
 ```
 
 SQLite serializes writers through one connection (WAL + busy_timeout);
 Postgres uses `SELECT … FOR UPDATE SKIP LOCKED` so competing workers lock
 disjoint rows. The CLI itself wires the SQLite driver today; Postgres CLI
 wiring (`--store postgres://…`) is on the ROADMAP. Executors are pluggable
-in Go (`internal/executor/executor.go`) — note the packages are `internal/`
-for now, so the CLI is the public surface until the library API stabilizes.
+in Go (register funcs on an `executor.Registry` and hand a `worker.Pool`
+any `queue.Store`).
 
 ## Distribution
 
@@ -387,7 +399,7 @@ work (CLI store wiring, consumer-group fencing tokens).
 ## Development
 
 ```sh
-nix run .#test        # full multi-module suite (root + every internal/* module)
+nix run .#test        # full multi-module suite (root + every library module)
 ./scripts/ci-local.sh # the pre-push gate: full CI replicant (vet/build/race/smokes/nix)
 go build ./... && go vet ./... && go test ./... -race   # root-module suite
 ./scripts/smoke/multi-repo.sh   # live smoke: 3 repos, 2 pools, 1 shared DB
