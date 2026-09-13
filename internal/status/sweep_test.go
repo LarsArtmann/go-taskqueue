@@ -3,6 +3,7 @@ package status
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -62,8 +63,14 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 func runAgentTask(t *testing.T, s *sqlite.Store, n int, result executor.AgentResult) task.Task {
 	t.Helper()
 
+	return runAgentTaskRepo(t, s, n, "demo", result)
+}
+
+func runAgentTaskRepo(t *testing.T, s *sqlite.Store, n int, repo string, result executor.AgentResult) task.Task {
+	t.Helper()
+
 	payload, err := json.Marshal(executor.AgentPayload{
-		Repo:   "demo",
+		Repo:   repo,
 		Prompt: "do thing " + strconv.Itoa(n),
 		Item:   "todo item " + strconv.Itoa(n),
 	})
@@ -204,6 +211,56 @@ func TestSweepNthCompletionMintsOneReport(t *testing.T) {
 
 	if payload.Completed[0].Item != "todo item 0" || payload.Completed[1].Item != "todo item 1" {
 		t.Fatalf("window labels must be the pinned work items, not prompt boilerplate: %+v", payload.Completed)
+	}
+}
+
+// TestSweepPinsCloseoutReportPaths mints a window whose first task has a
+// closeout report on disk (docs/status/<ts>_task-<id>.md) and whose second
+// does not: the entry with a report pins the repo-relative path, the one
+// without stays empty, and the done prompt reads them directly.
+func TestSweepPinsCloseoutReportPaths(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	sw := newSweeperOrDie(t, s, 2)
+
+	repo := t.TempDir()
+	statusDir := filepath.Join(repo, "docs", "status")
+	if err := os.MkdirAll(statusDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	first := runAgentTaskRepo(t, s, 0, repo, executor.AgentResult{CommitSHA: "aaaa"})
+	if err := os.WriteFile(
+		filepath.Join(statusDir, "2026-09-14_10-00_task-"+first.ID.String()+".md"),
+		[]byte("# self-review\n"), 0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	runAgentTaskRepo(t, s, 1, repo, executor.AgentResult{CommitSHA: "bbbb"})
+
+	if _, err := sw.Sweep(context.Background()); err != nil {
+		t.Fatalf("Sweep: %v", err)
+	}
+
+	reports := listByType(t, s, executor.TaskTypeStatus)
+	if len(reports) != 1 {
+		t.Fatalf("status tasks = %d, want 1", len(reports))
+	}
+
+	window := payloadPayload(t, reports[0]).Completed
+	if len(window) != 2 {
+		t.Fatalf("window = %d entries, want 2", len(window))
+	}
+
+	wantReport := "docs/status/2026-09-14_10-00_task-" + first.ID.String() + ".md"
+	if window[0].Report != wantReport {
+		t.Fatalf("first entry report = %q, want %q", window[0].Report, wantReport)
+	}
+
+	if window[1].Report != "" {
+		t.Fatalf("second entry report = %q, want empty (no file on disk)", window[1].Report)
 	}
 }
 

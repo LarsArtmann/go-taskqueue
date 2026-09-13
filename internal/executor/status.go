@@ -29,6 +29,11 @@ type StatusCompletion struct {
 	Commit      string   `json:"commit,omitempty"`
 	Files       []string `json:"files,omitempty"`
 	CompletedAt string   `json:"completed_at,omitempty"`
+	// Report is the repo-relative path of the task's closeout report
+	// (docs/status/<ts>_task-<id>.md), resolved by the sweeper when it
+	// could find one — the done prompt reads it directly instead of
+	// re-deriving it from the task id. Empty when none was found.
+	Report string `json:"report,omitempty"`
 }
 
 // StatusPayload is the payload contract for "status" tasks. Self-contained,
@@ -242,11 +247,15 @@ func statusPrompt(p StatusPayload) string {
 			b.WriteString(" (commit " + c.Commit + ")")
 		}
 
+		if c.Report != "" {
+			b.WriteString(" (closeout report: " + c.Report + ")")
+		}
+
 		b.WriteString("\n")
 	}
 
 	b.WriteString(`
-Inspect what these tasks actually changed (git log, git show, the repository's docs and TODO_LIST.md). Base the report on what you can verify — no invented history.
+Inspect what these tasks actually changed (git log, git show, the repository's docs and TODO_LIST.md). When a task above lists a closeout report, read that file FIRST — it is the task's own full self-review; never re-derive it from the task id. Base the report on what you can verify — no invented history.
 
 ## Write a full status report
 

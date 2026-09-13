@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -281,6 +282,7 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		// pulled from the task's completion fact — richer reports without
 		// git-log guesswork.
 		completion.Commit, completion.Files, _ = s.completionDetail(ctx, agentTask.ID)
+		completion.Report = closeoutReportPath(agentPayload.Repo, agentTask.ID)
 
 		window = append(window, completion)
 	}
@@ -375,6 +377,32 @@ func (s *Sweeper) completionDetail(ctx context.Context, id task.ID) (commit stri
 	}
 
 	return "", nil, false
+}
+
+// closeoutReportPath resolves one completed task's closeout report under
+// the repo's docs/status/ (the DefaultCloseoutPrompt names it
+// <YYYY-MM-DD_HH-MM>_task-<id>.md; only the task id is stable). Best-effort:
+// no match, no repo on disk or a bad pattern returns "" and the window
+// entry carries no report. Returns the repo-relative path of the NEWEST
+// match (several matches only when a task somehow reported twice).
+func closeoutReportPath(repo string, id task.ID) string {
+	if repo == "" {
+		return ""
+	}
+
+	matches, err := filepath.Glob(filepath.Join(repo, "docs", "status", "*_task-"+id.String()+".md"))
+	if err != nil || len(matches) == 0 {
+		return ""
+	}
+
+	sort.Strings(matches)
+
+	rel, err := filepath.Rel(repo, matches[len(matches)-1])
+	if err != nil {
+		return ""
+	}
+
+	return filepath.ToSlash(rel)
 }
 
 // StatusDedupKey is the dedup identity of the report for one window: the

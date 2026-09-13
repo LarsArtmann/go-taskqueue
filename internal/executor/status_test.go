@@ -277,6 +277,7 @@ func TestStatusExecutorPromptCarriesWindowContext(t *testing.T) {
 
 	payload := statusPayloadT()
 	payload.Repo = repo
+	payload.Completed[0].Report = "docs/status/2026-09-14_10-00_task-t-1.md"
 
 	if err := e.Execute(context.Background(), statusTaskT(t, payload)); err != nil {
 		t.Fatalf("Execute: %v", err)
@@ -293,6 +294,7 @@ func TestStatusExecutorPromptCarriesWindowContext(t *testing.T) {
 		"t-1",
 		"add the frobnicator",
 		"abc1234",
+		"closeout report: docs/status/2026-09-14_10-00_task-t-1.md",
 		"t-2",
 		"docs/status/<YYYY-MM-DD_HH-MM_WELL-NAMED>.md",
 		"TODO_LIST.md",
