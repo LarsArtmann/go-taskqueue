@@ -96,6 +96,7 @@ func TestReplayStatusesTransitions(t *testing.T) {
 		{"e", journal.Released, task.Pending},
 	}
 	var fs []journal.Fact
+
 	for _, s := range steps {
 		fs = append(fs, journal.Fact{TaskID: s.id, Type: s.typ})
 	}

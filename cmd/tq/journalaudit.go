@@ -19,29 +19,33 @@ import (
 // observations and are ignored.
 func replayStatuses(facts []journal.Fact) map[task.ID]task.Status {
 	out := make(map[task.ID]task.Status)
-	for _, f := range facts {
-		switch f.Type {
+
+	for _, fact := range facts {
+		switch fact.Type {
 		case journal.Enqueued:
-			out[task.ID(f.TaskID)] = task.Pending
+			out[task.ID(fact.TaskID)] = task.Pending
 		case journal.Claimed:
-			out[task.ID(f.TaskID)] = task.Running
+			out[task.ID(fact.TaskID)] = task.Running
 		case journal.Completed:
-			out[task.ID(f.TaskID)] = task.Completed
+			out[task.ID(fact.TaskID)] = task.Completed
 		case journal.Failed:
 			// task.failed alone means the attempt was recorded and the
 			// task returned to Pending (attempts remained); exhaustion is
 			// its own fact.
-			out[task.ID(f.TaskID)] = task.Pending
+			out[task.ID(fact.TaskID)] = task.Pending
 		case journal.DeadLettered:
-			out[task.ID(f.TaskID)] = task.Dead
+			out[task.ID(fact.TaskID)] = task.Dead
 		case journal.Cancelled:
-			out[task.ID(f.TaskID)] = task.Cancelled
+			out[task.ID(fact.TaskID)] = task.Cancelled
 		case journal.Requeued:
 			// preflight refusal: back to Pending, no attempt burned
-			out[task.ID(f.TaskID)] = task.Pending
+			out[task.ID(fact.TaskID)] = task.Pending
 		case journal.Released:
 			// lease expiry: back to Pending until reclaimed
-			out[task.ID(f.TaskID)] = task.Pending
+			out[task.ID(fact.TaskID)] = task.Pending
+		case journal.Heartbeat, journal.CancelRequested, journal.Orphaned,
+			journal.Reprioritized, journal.SessionOpened, journal.SessionClosed:
+			// Observation facts: no state change.
 		}
 	}
 	return out
@@ -89,22 +93,27 @@ func journalDrift(ctx context.Context, s queue.Store) (DriftReport, error) {
 
 	replay := replayStatuses(facts)
 	report := DriftReport{TasksCompared: len(tasks), FactsReplayed: len(facts)}
-	for _, t := range tasks {
-		want, ok := replay[t.ID]
+
+	for _, tk := range tasks {
+		want, ok := replay[tk.ID]
 		if !ok {
 			// A stored task with NO enqueue fact is drift by definition.
 			report.Drift = append(report.Drift, DriftRow{
-				TaskID: string(t.ID), StoredStatus: string(t.Status), Replayed: "(no facts)",
+				TaskID: string(tk.ID), StoredStatus: string(tk.Status), Replayed: "(no facts)",
 			})
+
 			continue
 		}
-		if want != t.Status {
+
+		if want != tk.Status {
 			report.Drift = append(report.Drift, DriftRow{
-				TaskID: string(t.ID), StoredStatus: string(t.Status), Replayed: string(want),
+				TaskID: string(tk.ID), StoredStatus: string(tk.Status), Replayed: string(want),
 			})
 		}
 	}
+
 	sort.Slice(report.Drift, func(i, j int) bool { return report.Drift[i].TaskID < report.Drift[j].TaskID })
+
 	return report, nil
 }
 
@@ -125,10 +134,12 @@ func cmdJournalAudit(ctx context.Context, s queue.Store, asJSON bool) error {
 		fmt.Println("no drift: stored statuses equal the fact replay (ADR-0001 invariant holds)")
 		return nil
 	}
+
 	fmt.Printf("DRIFT: %d task(s) diverge between the tasks table and the fact journal:\n", len(report.Drift))
 	for _, row := range report.Drift {
 		fmt.Printf("  %s: stored=%s replayed=%s\n", row.TaskID, row.StoredStatus, row.Replayed)
 	}
+
 	fmt.Println("(advisory: investigate with `tq show <id>` and `tq facts --task <id>` before repairing)")
 	return nil
 }
