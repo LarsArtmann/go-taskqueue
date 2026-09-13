@@ -65,16 +65,16 @@ check — "ALL CI GATES GREEN").
    password file). The test compiles and skips; CI's postgres:16 service
    will exercise it. Local proof is the nil-pool unit + the internal
    conformance suite, not a live run of the new constructor.
-2. **Facade surface parity is manual** (documented ADR decision): nothing
+2. ~~**Facade surface parity is manual** (documented ADR decision): nothing
    compiler-enforces that a new exported internal symbol gets an alias.
    The hermetic-parity-test idea was rejected for nix-checkPhase
    hermeticity reasons, but that means the NEXT exported symbol added to
-   `internal/queue` silently misses the facade until a human notices.
-3. **Lint findings from facades are baselined, not cleaned**: ~35 advisory
+   `internal/queue` silently misses the facade until a human notices.~~ done at `scripts/check-facade-parity.sh` + `scripts/facadeparity` (go/parser walk, filesystem-based exactly as e1 proposed; gated in ci-local + CI since 2026-09-13; its first catch was the missing `PrioritizeExecutor` alias)
+3. ~~**Lint findings from facades are baselined, not cleaned**: ~35 advisory
    findings (gochecknoglobals on alias vars — by design; wsl_v5/
    paralleltest/godoclint noise in test files). Within baseline policy,
    but a facade-scoped exclusion for the alias-idiom would shrink the
-   baseline honestly.
+   baseline honestly.~~ done 2026-09-13: gochecknoglobals excluded for the seven facade alias files in `.golangci.yml` (the package-level re-exports ARE the facade pattern); baseline regen recorded in AGENTS.md (886 findings, third regen)
 4. **The feedback file itself is still in `docs/feedback/new/`** — no
    processed/ convention exists, so it was left in place and cited from
    ADR-0016/CHANGELOG instead of being moved or annotated.

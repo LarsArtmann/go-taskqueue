@@ -1,5 +1,7 @@
 # go-nix-helpers consumption audit — status report
 
+*(Archived 2026-09-13 docs-health pass: owner question answered; verdict recorded in AGENTS.md (go-nix-helpers paragraph) — no open residue. Point-in-time snapshot — re-verify before treating any claim as current.)*
+
 **Date:** 2026-09-13 03:28 CEST
 **Session type:** interactive owner session (not a pool task — no Task-Queue-ID, no `TQ_RESULT`, no code changes)
 **Scope:** ONLY this session's work: the owner question "Are we using `/home/lars/projects/go-nix-helpers/`?" and this close-out. No unrelated research performed.
