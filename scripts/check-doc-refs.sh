@@ -14,7 +14,7 @@ allow=(
 	'^encoding/json/'         # stdlib json/v2 import path (AGENTS.md GOEXPERIMENT bullet)
 	'^docs/services/'         # SystemNix repo paths cited as deploy targets (CHANGELOG round-8)
 	'^modules/nixos/'         # SystemNix house module cited as the deployed shape (FEATURES round-8)
-	'^example/taskmanager/'   # go-cqrs-lite LIBRARY repo path, cited library-side in the storage verdict (AGENTS.md, verified 2026-09-13)
+	'^example/taskmanager'   # go-cqrs-lite LIBRARY repo path, cited library-side in the storage verdict (AGENTS.md, verified 2026-09-13)
 )
 
 fail=0
