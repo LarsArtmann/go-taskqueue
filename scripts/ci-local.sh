@@ -161,6 +161,9 @@ step "bootstrap --install smoke"
 step "fullcore embed smoke (sqlite, scratch TQ_DB)"
 ./scripts/smoke/fullcore.sh
 
+step "help-text smoke (no parenthesized-identifier artifacts in tq help)"
+./scripts/smoke/help-text.sh
+
 # Advisory (2026-09-14 O5 ruling): journal-drift audit smoke over a seeded
 # fixture — reported, never a hard gate on task state.
 step "journal-drift audit smoke (advisory)"

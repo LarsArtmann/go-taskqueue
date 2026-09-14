@@ -83,6 +83,7 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/dogfood-once.sh  # stub agent; harvest → work (footer commit) → review approve; TQ_DOGFOOD=1 runs the real-agent proof (spends money)
 ./scripts/smoke/bootstrap-install.sh  # --install renders unit + pool.conf against a fake $HOME
 ./scripts/smoke/journal-drift.sh # tq audit --journal over a seeded scratch fixture (ADVISORY, O5)
+./scripts/smoke/help-text.sh    # every tq subcommand help: no parenthesized-identifier artifacts (rename-leak class, 08:42 e3/f2)
 ./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
 ./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)
 ./scripts/check-dead-exports.sh # advisory dead-export audit: zero-importers detector, substring matching (NOT rg -w)
