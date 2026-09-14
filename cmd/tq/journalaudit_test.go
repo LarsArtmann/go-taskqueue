@@ -2,14 +2,46 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
+
+	_ "modernc.org/sqlite"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
+// seedDrift corrupts the tasks table of a CLOSED store's database file and
+// returns the store reopened for the audit (hermetic: facts stay truthful,
+// the projection lies).
+func seedDrift(t *testing.T, path string) *sqlite.Store {
+	t.Helper()
+
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("raw open: %v", err)
+	}
+
+	if _, err := db.Exec(`UPDATE tasks SET status = 'completed', attempts = 99, priority = 42, dedup_key = 'seeded'`); err != nil {
+		t.Fatalf("seed drift: %v", err)
+	}
+
+	if err := db.Close(); err != nil {
+		t.Fatalf("raw close: %v", err)
+	}
+
+	store, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+
+	t.Cleanup(func() { _ = store.Close() })
+
+	return store
+}
 
 // journalAuditStore builds a scratch sqlite store (the doctor-test pattern).
 func journalAuditStore(t *testing.T) *sqlite.Store {
@@ -97,7 +129,7 @@ func TestJournalDriftNoDriftOverFullLifecycle(t *testing.T) {
 	}
 }
 
-func TestReplayStatusesTransitions(t *testing.T) {
+func TestReplayProjectionTransitions(t *testing.T) {
 	t.Parallel()
 
 	steps := []struct {
@@ -121,19 +153,62 @@ func TestReplayStatusesTransitions(t *testing.T) {
 
 	facts := make([]journal.Fact, 0, len(steps))
 
-	for _, step := range steps {
-		facts = append(facts, journal.Fact{TaskID: step.id, Type: step.typ})
+	for i, step := range steps {
+		attempt := 0
+		if step.typ == journal.Failed || step.typ == journal.DeadLettered {
+			attempt = i // any post-increment number; max() takes the last
+		}
+
+		facts = append(facts, journal.Fact{TaskID: step.id, Type: step.typ, Attempt: attempt})
 	}
 
-	got := replayStatuses(facts)
+	got := replayProjection(facts)
 
 	want := map[string]task.Status{
 		"a": task.Completed, "b": task.Dead, "c": task.Cancelled, "d": task.Pending, "e": task.Pending,
 	}
 
 	for id, expected := range want {
-		if got[task.ID(id)] != expected {
-			t.Errorf("task %s: replayed %v, want %v", id, got[task.ID(id)], expected)
+		if got[task.ID(id)] == nil {
+			t.Errorf("task %s: missing from replay", id)
+
+			continue
 		}
+
+		if got[task.ID(id)].status != expected {
+			t.Errorf("task %s: replayed %v, want %v", id, got[task.ID(id)].status, expected)
+		}
+	}
+
+	if got[task.ID("b")].attempts != len(steps)-1 {
+		t.Errorf("task b: attempts = %d, want %d (max failed/dead-lettered attempt)",
+			got[task.ID("b")].attempts, len(steps)-1)
+	}
+}
+
+func TestReplayProjectionPriorityAndDedup(t *testing.T) {
+	t.Parallel()
+
+	p := 7
+	facts := []journal.Fact{
+		{TaskID: "p", Type: journal.Enqueued, Detail: jsontext.Value(`{"priority":3,"dedup_key":"todo:x"}`)},
+		{TaskID: "p", Type: journal.Reprioritized, Detail: jsontext.Value(`{"old_priority":3,"new_priority":7,"source":"manual"}`)},
+		{TaskID: "legacy", Type: journal.Enqueued},
+	}
+
+	got := replayProjection(facts)
+
+	state := got[task.ID("p")]
+	if state == nil || state.priority == nil || *state.priority != p {
+		t.Fatalf("task p: replayed priority = %v, want %d", state, p)
+	}
+
+	if state.dedupKey != "todo:x" || !state.dedupKnown {
+		t.Errorf("task p: dedup = %q known=%v, want todo:x known=true", state.dedupKey, state.dedupKnown)
+	}
+
+	legacy := got[task.ID("legacy")]
+	if legacy.priorityKnown || legacy.dedupKnown {
+		t.Errorf("legacy thin fact must not claim knowledge: %+v", legacy)
 	}
 }

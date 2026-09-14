@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -15,39 +16,123 @@ import (
 // factsPageSize bounds each Facts read when draining the journal.
 const factsPageSize = 1000
 
-// replayStatuses rebuilds each task's status from the fact journal alone
-// (ADR-0001: every state change is a fact; the queue view is a projection).
+// replayState is one task's projection rebuilt from facts alone (ADR-0001:
+// every state change is a fact; the queue view is a projection).
+type replayState struct {
+	status   task.Status
+	attempts int
+	priority *int
+	dedupKey string
+	// known flags guard legacy/thin facts: fields whose facts never
+	// carried the value are not diffed (an absence of evidence is not
+	// drift).
+	priorityKnown bool
+	dedupKnown    bool
+}
+
+// replayProjection rebuilds each task's state from the fact journal alone.
 // Only facts that CARRY a state change move the projection; heartbeat,
-// orphaned, cancel-requested, reprioritized and session.* facts are
-// observations and are ignored.
-func replayStatuses(facts []journal.Fact) map[task.ID]task.Status {
-	out := make(map[task.ID]task.Status)
+// orphaned, cancel-requested and session.* facts are observations and are
+// ignored.
+func replayProjection(facts []journal.Fact) map[task.ID]*replayState {
+	out := make(map[task.ID]*replayState)
+
+	// maxAttempt raises the replayed attempt count: failed and
+	// dead-lettered facts carry the post-increment attempt number.
+	maxAttempt := func(id task.ID, attempt int) {
+		state := out[id]
+		if state == nil {
+			state = &replayState{}
+			out[id] = state
+		}
+
+		if attempt > state.attempts {
+			state.attempts = attempt
+		}
+	}
 
 	for _, fact := range facts {
+		id := task.ID(fact.TaskID)
+
 		switch fact.Type {
 		case journal.Enqueued:
-			out[task.ID(fact.TaskID)] = task.Pending
+			state := out[id]
+			if state == nil {
+				state = &replayState{}
+				out[id] = state
+			}
+
+			state.status = task.Pending
+
+			// RescueDead re-emits task.enqueued with only Rescue set:
+			// the original identity fields stay untouched.
+			var detail queue.EnqueueDetail
+			if err := json.Unmarshal(fact.Detail, &detail); err == nil {
+				if detail.Priority != nil {
+					p := *detail.Priority
+					state.priority = &p
+					state.priorityKnown = true
+				}
+
+				if detail.DedupKey != "" {
+					state.dedupKey = detail.DedupKey
+					state.dedupKnown = true
+				}
+			}
 		case journal.Claimed:
-			out[task.ID(fact.TaskID)] = task.Running
+			state := out[id]
+			if state == nil {
+				state = &replayState{}
+				out[id] = state
+			}
+
+			state.status = task.Running
 		case journal.Completed:
-			out[task.ID(fact.TaskID)] = task.Completed
+			out[id].status = task.Completed
 		case journal.Failed:
 			// task.failed alone means the attempt was recorded and the
 			// task returned to Pending (attempts remained); exhaustion is
 			// its own fact.
-			out[task.ID(fact.TaskID)] = task.Pending
+			maxAttempt(id, fact.Attempt)
+
+			if state := out[id]; state != nil {
+				state.status = task.Pending
+			}
 		case journal.DeadLettered:
-			out[task.ID(fact.TaskID)] = task.Dead
+			maxAttempt(id, fact.Attempt)
+
+			if state := out[id]; state != nil {
+				state.status = task.Dead
+			}
 		case journal.Cancelled:
-			out[task.ID(fact.TaskID)] = task.Cancelled
+			if state := out[id]; state != nil {
+				state.status = task.Cancelled
+			}
 		case journal.Requeued:
 			// preflight refusal: back to Pending, no attempt burned
-			out[task.ID(fact.TaskID)] = task.Pending
+			if state := out[id]; state != nil {
+				state.status = task.Pending
+			}
 		case journal.Released:
 			// lease expiry: back to Pending until reclaimed
-			out[task.ID(fact.TaskID)] = task.Pending
+			if state := out[id]; state != nil {
+				state.status = task.Pending
+			}
+		case journal.Reprioritized:
+			var evidence queue.ReprioritizeEvidence
+			if err := json.Unmarshal(fact.Detail, &evidence); err == nil {
+				state := out[id]
+				if state == nil {
+					state = &replayState{}
+					out[id] = state
+				}
+
+				p := evidence.NewPriority
+				state.priority = &p
+				state.priorityKnown = true
+			}
 		case journal.Heartbeat, journal.CancelRequested, journal.Orphaned,
-			journal.Reprioritized, journal.SessionOpened, journal.SessionClosed:
+			journal.SessionOpened, journal.SessionClosed:
 			// Observation facts: no state change.
 		}
 	}
@@ -55,11 +140,13 @@ func replayStatuses(facts []journal.Fact) map[task.ID]task.Status {
 	return out
 }
 
-// DriftRow is one task whose stored status disagrees with the fact replay.
+// DriftRow is one field of one task whose stored value disagrees with the
+// fact replay.
 type DriftRow struct {
-	TaskID       string `json:"taskId"`
-	StoredStatus string `json:"stored"`
-	Replayed     string `json:"replayed"`
+	TaskID   string `json:"taskId"`
+	Field    string `json:"field"` // status | attempts | priority | dedup_key
+	Stored   string `json:"stored"`
+	Replayed string `json:"replayed"`
 }
 
 // DriftReport is the journal-vs-store divergence result.
@@ -73,8 +160,8 @@ type DriftReport struct {
 func (r DriftReport) HasDrift() bool { return len(r.Drift) > 0 }
 
 // journalDrift rebuilds task state from the journal and diffs it against
-// the stored tasks table. Advisory by contract: the caller decides whether
-// divergence fails anything.
+// the stored tasks table (status, attempts, priority, dedup key). Advisory
+// by contract: the caller decides whether divergence fails anything.
 func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 	var facts []journal.Fact
 
@@ -99,7 +186,7 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 		return DriftReport{}, fmt.Errorf("list tasks: %w", err)
 	}
 
-	replay := replayStatuses(facts)
+	replay := replayProjection(facts)
 	report := DriftReport{TasksCompared: len(tasks), FactsReplayed: len(facts)}
 
 	for _, candidate := range tasks {
@@ -107,20 +194,54 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 		if !ok {
 			// A stored task with NO enqueue fact is drift by definition.
 			report.Drift = append(report.Drift, DriftRow{
-				TaskID: string(candidate.ID), StoredStatus: string(candidate.Status), Replayed: "(no facts)",
+				TaskID: string(candidate.ID), Field: "status",
+				Stored: string(candidate.Status), Replayed: "(no facts)",
 			})
 
 			continue
 		}
 
-		if want != candidate.Status {
+		if want.status != candidate.Status {
 			report.Drift = append(report.Drift, DriftRow{
-				TaskID: string(candidate.ID), StoredStatus: string(candidate.Status), Replayed: string(want),
+				TaskID: string(candidate.ID), Field: "status",
+				Stored: string(candidate.Status), Replayed: string(want.status),
+			})
+		}
+
+		if want.attempts != candidate.Attempts {
+			report.Drift = append(report.Drift, DriftRow{
+				TaskID: string(candidate.ID), Field: "attempts",
+				Stored: strconv.Itoa(candidate.Attempts), Replayed: strconv.Itoa(want.attempts),
+			})
+		}
+
+		if want.priorityKnown && (want.priority == nil || *want.priority != candidate.Priority) {
+			replayed := "(unknown)"
+			if want.priority != nil {
+				replayed = strconv.Itoa(*want.priority)
+			}
+
+			report.Drift = append(report.Drift, DriftRow{
+				TaskID: string(candidate.ID), Field: "priority",
+				Stored: strconv.Itoa(candidate.Priority), Replayed: replayed,
+			})
+		}
+
+		if want.dedupKnown && want.dedupKey != candidate.DedupKey {
+			report.Drift = append(report.Drift, DriftRow{
+				TaskID: string(candidate.ID), Field: "dedup_key",
+				Stored: candidate.DedupKey, Replayed: want.dedupKey,
 			})
 		}
 	}
 
-	sort.Slice(report.Drift, func(i, j int) bool { return report.Drift[i].TaskID < report.Drift[j].TaskID })
+	sort.Slice(report.Drift, func(i, j int) bool {
+		if report.Drift[i].TaskID != report.Drift[j].TaskID {
+			return report.Drift[i].TaskID < report.Drift[j].TaskID
+		}
+
+		return report.Drift[i].Field < report.Drift[j].Field
+	})
 
 	return report, nil
 }
@@ -138,19 +259,19 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 		return json.NewEncoder(os.Stdout).Encode(report)
 	}
 
-	fmt.Printf("journal drift audit: %d task(s) compared against %d fact(s)\n",
+	fmt.Printf("journal drift audit: %d task(s) compared against %d fact(s) (status, attempts, priority, dedup key)\n",
 		report.TasksCompared, report.FactsReplayed)
 
 	if !report.HasDrift() {
-		fmt.Println("no drift: stored statuses equal the fact replay (ADR-0001 invariant holds)")
+		fmt.Println("no drift: stored projections equal the fact replay (ADR-0001 invariant holds)")
 
 		return nil
 	}
 
-	fmt.Printf("DRIFT: %d task(s) diverge between the tasks table and the fact journal:\n", len(report.Drift))
+	fmt.Printf("DRIFT: %d field(s) diverge between the tasks table and the fact journal:\n", len(report.Drift))
 
 	for _, row := range report.Drift {
-		fmt.Printf("  %s: stored=%s replayed=%s\n", row.TaskID, row.StoredStatus, row.Replayed)
+		fmt.Printf("  %s: %s stored=%s replayed=%s\n", row.TaskID, row.Field, row.Stored, row.Replayed)
 	}
 
 	fmt.Println("(advisory: investigate with `tq show <id>` and `tq facts -detail` before repairing)")
