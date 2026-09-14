@@ -296,12 +296,14 @@
     return "/api/events" + (query ? "?" + query : "");
   }
 
+  var es = null;
+
   function connect() {
     /* Forwarding the page's filter params keeps live ticks and reconnects
        scoped to the view on screen: the browser reuses this exact URL when
        reconnecting, so resume restores the same filtered projection
        instead of clobbering it with the unfiltered table. */
-    var es = new EventSource(streamURL());
+    es = new EventSource(streamURL());
 
     es.addEventListener("frag", function (e) {
       applyFragment(e.data);
@@ -320,6 +322,79 @@
       /* EventSource retries automatically; nothing else to do. */
     };
   }
+
+  function reconnectStream() {
+    if (es) es.close();
+    connect();
+  }
+
+  /* Filter auto-submit (G1): the filter form applies via fetch + fragment
+     swap + pushState — no full reload, the SSE stream re-scopes itself to
+     the new filter from the pushed location. The swap-guard and state
+     re-apply above apply to these swaps too. A seq counter drops stale
+     responses when a debounce fires after an Enter submit. */
+  var FRAG_IDS = ["frag-filters", "frag-stats", "frag-table", "frag-dlq"];
+  var applySeq = 0;
+  var searchDebounce = null;
+
+  function formURL(form) {
+    var qs = new URLSearchParams(new FormData(form)).toString();
+    return window.location.pathname + (qs ? "?" + qs : "");
+  }
+
+  function applyFilterURL(url, push) {
+    var seq = ++applySeq;
+    var btn = document.querySelector("#frag-filters button[type='submit']");
+    if (btn) btn.classList.add("tq-busy");
+
+    fetch(url, { headers: { "X-TQ-Fragment": "1" } })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.text();
+      })
+      .then(function (html) {
+        if (seq !== applySeq) return;
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        FRAG_IDS.forEach(function (id) {
+          var remote = doc.getElementById(id);
+          var local = document.getElementById(id);
+          if (remote && local) swapIn(local, { html: remote.innerHTML });
+        });
+        if (push) history.pushState({}, "", url);
+        reconnectStream();
+      })
+      .catch(function () {
+        /* Network or server hiccup: fall back to a full navigation so the
+           operator's action still lands. */
+        if (seq === applySeq) window.location.href = url;
+      })
+      .finally(function () {
+        if (btn) btn.classList.remove("tq-busy");
+      });
+  }
+
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if ((form.getAttribute("method") || "get").toLowerCase() !== "get") return;
+    if (!form.querySelector("#search-box, select[name='status'], select[name='band']")) return;
+    e.preventDefault();
+    if (searchDebounce) clearTimeout(searchDebounce);
+    applyFilterURL(formURL(form), true);
+  });
+
+  document.addEventListener("input", function (e) {
+    if (!e.target || e.target.id !== "search-box") return;
+    if (searchDebounce) clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(function () {
+      var form = e.target.closest("form");
+      if (form) applyFilterURL(formURL(form), true);
+    }, 300);
+  });
+
+  window.addEventListener("popstate", function () {
+    applyFilterURL(window.location.pathname + window.location.search, false);
+  });
 
   /* Full-journal browser: pages forward through history via the
      /api/facts cursor (the SSE feed above only carries the tail). Opens

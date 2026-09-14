@@ -213,6 +213,16 @@ h3,
 }
 
 /* ---------------------------------------------------------------------------
+ * Filter auto-submit busy cue: the apply button dims while its fetch is in
+ * flight (G1). Pointer events off so a double-submit can't race the swap.
+ * ------------------------------------------------------------------------- */
+
+.tq-busy {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
  * Board scroll affordance: when the lane strip actually overflows, edge
  * fades hint the hidden lanes (C2). app.js toggles the class by measuring
  * scrollWidth — a fitting board gets no misleading fade.
