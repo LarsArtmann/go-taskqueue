@@ -55,7 +55,7 @@ not here.
 
 ## Review-window follow-ups (harvested from the 07:49/08:32/08:39/08:42/08:47 close-outs, verified 2026-09-10 09:13)
 
-- [ ] Run golangci-lint scoped to `internal/runactor` to confirm errname is quiet after the ExitError rename — the close-out verified via compiler + `rg`, not the linter that filed the original finding (08:32 report b2)
+- [x] Run golangci-lint scoped to `internal/runactor` to confirm errname is quiet after the ExitError rename — the close-out verified via compiler + `rg`, not the linter that filed the original finding (08:32 report b2)
 - [ ] Sweep the eaf73a9 rename diff repo-wide for further literal leaks (`git log -S` probes for receiver-equals-key `Get("query")` patterns and parenthesized-identifier corruptions like `task(store)`) (08:39 f3/f22; 08:42 f4)
 - [ ] Help-text smoke: run `tq` subcommand help (minimum `tq dlq -h`) asserting no parenthesized-identifier artifacts in flag strings — help text is exercised by no test and the class has bitten once (08:42 report e3/f2)
 - [ ] Extend `scripts/lint-annotations.sh` to the sub-module loop, or decide root-only annotations deliberately (needs a per-module `--new-from-rev` baseline strategy) (08:47 report c1/f1/g2)
