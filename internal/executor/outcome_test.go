@@ -8,9 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	_ "modernc.org/sqlite" // fixture crush.db driver
-
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	_ "modernc.org/sqlite" // fixture crush.db driver
 )
 
 // fixtureCrushDB writes the minimal sessions schema go-crush-data reads
@@ -26,7 +25,7 @@ func fixtureCrushDB(t *testing.T, dataDir string) *sql.DB {
 
 	t.Cleanup(func() { _ = db.Close() })
 
-	schema := `CREATE TABLE sessions (
+	const schema = `CREATE TABLE sessions (
 		id TEXT PRIMARY KEY,
 		title TEXT,
 		message_count INTEGER,
@@ -45,7 +44,7 @@ func fixtureCrushDB(t *testing.T, dataDir string) *sql.DB {
 		updated_at INTEGER
 	)`
 
-	if _, err := db.Exec(schema); err != nil {
+	if _, err := db.ExecContext(context.Background(), schema); err != nil {
 		t.Fatalf("fixture schema: %v", err)
 	}
 
@@ -55,14 +54,29 @@ func fixtureCrushDB(t *testing.T, dataDir string) *sql.DB {
 func seedFixtureSession(t *testing.T, db *sql.DB, id string) {
 	t.Helper()
 
-	_, err := db.Exec(
-		`INSERT INTO sessions (id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at)
-		 VALUES (?, ?, 7, 1200, 3400, 0.42, 1790000000, 1790000000)`,
-		id, "fixture session",
-	)
-	if err != nil {
+	const insert = `INSERT INTO sessions
+		(id, title, message_count, prompt_tokens, completion_tokens, cost, updated_at, created_at)
+		VALUES (?, ?, 7, 1200, 3400, 0.42, 1790000000, 1790000000)`
+
+	if _, err := db.ExecContext(context.Background(), insert, id, "fixture session"); err != nil {
 		t.Fatalf("seed session: %v", err)
 	}
+}
+
+// fixtureRegistryJSON renders a one-project registry mapping repo → dataDir.
+func fixtureRegistryJSON(t *testing.T, repo, dataDir string) []byte {
+	t.Helper()
+
+	raw, err := json.Marshal(map[string]any{
+		"projects": []map[string]any{
+			{"path": repo, "data_dir": dataDir, "last_accessed": "2026-09-14T00:00:00Z"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return raw
 }
 
 // TestDeriveOutcomeSessionStats pins the go-crush-data enrichment: the
@@ -73,16 +87,9 @@ func TestDeriveOutcomeSessionStats(t *testing.T) {
 	global := t.TempDir()
 	data := t.TempDir()
 
-	raw, err := json.Marshal(map[string]any{
-		"projects": []map[string]any{
-			{"path": repo, "data_dir": data, "last_accessed": "2026-09-14T00:00:00Z"},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	registryPath := filepath.Join(global, "projects.json")
 
-	if err := os.WriteFile(filepath.Join(global, "projects.json"), raw, 0o600); err != nil {
+	if err := os.WriteFile(registryPath, fixtureRegistryJSON(t, repo, data), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -105,9 +112,9 @@ func TestDeriveOutcomeSessionStats(t *testing.T) {
 func TestDeriveOutcomeUnknownSessionLeavesZero(t *testing.T) {
 	repo := t.TempDir()
 	global := t.TempDir()
+	registryPath := filepath.Join(global, "projects.json")
 
-	raw := []byte(`{"projects":[{"path":` + jsonString(repo) + `,"data_dir":` + jsonString(global) + `,"last_accessed":"2026-09-14T00:00:00Z"}]}`)
-	if err := os.WriteFile(filepath.Join(global, "projects.json"), raw, 0o600); err != nil {
+	if err := os.WriteFile(registryPath, fixtureRegistryJSON(t, repo, global), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -118,10 +125,4 @@ func TestDeriveOutcomeUnknownSessionLeavesZero(t *testing.T) {
 	if got.SessionCostUSD != 0 || got.SessionMessageCount != 0 {
 		t.Fatalf("unknown session must leave zeros, got %+v", got)
 	}
-}
-
-func jsonString(s string) string {
-	raw, _ := json.Marshal(s)
-
-	return string(raw)
 }

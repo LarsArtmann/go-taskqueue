@@ -69,6 +69,17 @@
             # Workspace mode must never leak into the hermetic build.
             GOWORK = "off";
           };
+          # Same replace set inside the FOD so `go mod download all`
+          # fetches what the LOCAL graph needs (e.g. deps internal
+          # modules gained after the last tag bump) — the plain
+          # download only fetches the committed proxy graph.
+          modBuildPhase = ''
+            cd $modRoot
+            export GOCACHE=$TMPDIR/go-cache GOPATH=$TMPDIR/go HOME=$TMPDIR
+            printf '\nreplace github.com/larsartmann/go-taskqueue => ../..\n' >> go.mod
+            sed -n 's|^replace \(github.com/larsartmann/go-taskqueue/internal[^ ]*\) => ./\(.*\)$|replace \1 => ../../\2|p' ../../go.mod >> go.mod
+            go mod download all
+          '';
           preBuild = ''
             export HOME=$TMPDIR
             printf '\nreplace github.com/larsartmann/go-taskqueue => ../..\n' >> go.mod

@@ -212,3 +212,24 @@ be filler, and §f quality gates say vague items die in HARVEST anyway.)
 — Recorded 2026-09-13 08:0x CEST. Format note: user explicitly requested
 `.md` (status-report skill default is HTML; override honored, flagged
 here per skill contract). Waiting for instructions.
+
+## Addendum — §g rulings (2026-09-14)
+
+1. §g1 ANSWERED: deeper first-hand verification DONE — metaengine
+   `MapUpdate` is a per-key RMW under single-row `FOR UPDATE`
+   (metaengine/engine.go:278; pgengine/map_update.go:81), planned tables
+   are single-collection (no anti-join), so the AGENTS.md verdict note's
+   claims held verbatim; no rewrite needed.
+2. §g2 RULED: journal-drift audit minted as agent-executable TODO_LIST
+   work (High Impact row, 2026-09-14) — hermetic fixtures only; the
+   production journal stays operator-invoked.
+3. §g3 RULED: end-state is a read-only operator command
+   (`tq audit --journal`); a ci-local smoke over a seeded fixture is
+   advisory when the feature lands — never a hard gate on task state
+   (recorded in the row).
+4. Arc note: the upstream proposal's P0 (claim-core extraction) landed in
+   go-cqrs-lite as `claiming/` and was KEPT as a faithful extraction —
+   statements byte-identical, pinned by tests; the one speculative knob
+   (`Spec.And`) was trimmed 2026-09-14 so the module is exactly
+   "extraction + minimal parameterization". The queue/ assembly (P1+)
+   still awaits owner green-light.

@@ -12,17 +12,18 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// gitFixtureRepo creates a committed git repo and returns helpers to write
-// files and commit them with an optional trailer footer.
-func gitFixtureRepo(t *testing.T) (repo string, write func(name, body string), commit func(msg, trailer string)) {
+// gitFixtureRepo creates a committed git repo and returns the repo path
+// plus helpers to write files and commit them with an optional trailer
+// footer.
+func gitFixtureRepo(t *testing.T) (string, func(name, body string), func(msg, trailer string)) {
 	t.Helper()
 
-	repo = t.TempDir()
+	repo := t.TempDir()
 
 	git := func(args ...string) {
 		t.Helper()
 
-		cmd := exec.Command("git", append([]string{"-C", repo}, args...)...)
+		cmd := exec.CommandContext(context.Background(), "git", append([]string{"-C", repo}, args...)...)
 
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v: %s", args, err, out)
@@ -33,7 +34,7 @@ func gitFixtureRepo(t *testing.T) (repo string, write func(name, body string), c
 	git("config", "user.email", "test@example.com")
 	git("config", "user.name", "t")
 
-	write = func(name, body string) {
+	write := func(name, body string) {
 		t.Helper()
 
 		if err := os.WriteFile(filepath.Join(repo, name), []byte(body), 0o600); err != nil {
@@ -43,11 +44,12 @@ func gitFixtureRepo(t *testing.T) (repo string, write func(name, body string), c
 		git("add", name)
 	}
 
-	commit = func(msg, trailer string) {
+	commit := func(msg, trailer string) {
 		t.Helper()
 
 		if trailer != "" {
 			git("commit", "-qm", msg, "-m", trailer)
+
 			return
 		}
 
