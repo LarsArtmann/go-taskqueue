@@ -161,6 +161,15 @@ step "bootstrap --install smoke"
 step "fullcore embed smoke (sqlite, scratch TQ_DB)"
 ./scripts/smoke/fullcore.sh
 
+# Advisory (2026-09-14 O5 ruling): journal-drift audit smoke over a seeded
+# fixture — reported, never a hard gate on task state.
+step "journal-drift audit smoke (advisory)"
+if ./scripts/smoke/journal-drift.sh; then
+	echo "journal-drift smoke: PASS"
+else
+	echo "WARNING: journal-drift audit smoke failed (advisory — not gating)"
+fi
+
 step "release-gates smoke (fixture go.mods, positive + negative)"
 # Runner parity: no global git identity locally either. /dev/null alone is
 # NOT enough — this host auto-detects identity from the passwd GECOS and
