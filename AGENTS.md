@@ -597,9 +597,10 @@ prose, not the table.
   has been PUSHED (including daemon commits already on origin/master) —
   wrong Task-Queue-ID footers, typos, and bad messages get a follow-up
   correcting commit or a queue-side note, never a rewrite; tags are
-  immutable, so a rewrite forks the lineage permanently (v0.2.0 + seven
-  sub-tags still descend from the pre-reword side of the 2026-09-10
-  incident). Exception: owner-approved only, for a defect that a follow-up
+  immutable, so a rewrite forks the lineage permanently (the 2026-09-10
+  incident forked v0.2.0 + seven sub-tags from the pre-reword side; that
+  specific fork was later healed by merge-append, but only because someone
+  noticed — treat every fork as permanent until proven otherwise). Exception: owner-approved only, for a defect that a follow-up
   commit cannot fix (e.g. a footer poisoning the queue↔git
   cross-reference beyond repair), scripted per the daemon rules above. If
   approved and executed, RECORD the fork in the same session: (a) the
