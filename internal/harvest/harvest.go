@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -63,6 +64,47 @@ Contract:
    Task-Queue-ID: {{TASK_ID}}
 
    (so git log and the queue cross-reference). Never push.
+5. Follow-up work you discover belongs in the backlog, not this run: you MAY append NEW unchecked
+   items to TODO_LIST.md (one per line, agent-executable, correct section) — the queue's pacing,
+   budget and priority gates decide when they run. Never append an item describing THIS task's work.
+
+The queue derives what you did — commits via the footer above, changed files via git — so do NOT
+report files or commit SHAs yourself.`
+
+// DefaultBatchPromptTemplate is the agent contract for BATCHED work items
+// (harvest --batch-items > 1): one task carries a run of adjacent items from
+// the same TODO_LIST.md section, worked in order by ONE session. Placeholders:
+// {{REPO_ABS}}, {{REPO}}, {{HEADING}}, {{COUNT}}, {{ITEMS}} (numbered list)
+// and {{TASK_ID}} (resolved at EXECUTION time, one footer for every commit
+// of the batch — derived outcomes attribute them all to this task).
+const DefaultBatchPromptTemplate = `You are an autonomous agent working from a shared task queue, unsupervised.
+Your repo's AGENTS.md is already in your context — follow it.
+
+Repository: {{REPO_ABS}}
+Work batch from TODO_LIST.md, section "{{HEADING}}" — {{COUNT}} related items, ONE session:
+
+{{ITEMS}}
+
+Contract:
+1. Work the items IN ORDER as one batch: you already hold the repo context from earlier items —
+   use it. The smallest correct change per item wins: no scope creep, no drive-by refactors.
+   An item already ticked [x] is done (an earlier attempt may have finished it) — skip it.
+   Verify as you go: run the project's build and tests. Never leave the repo broken.
+2. Never edit .crushrc, crush.json, or .tq-verify: they define your autonomy and your verify gate;
+   changing them is self-dealing.
+3. Close the loop per item in TODO_LIST.md: mark each finished item done ([x]) or remove it,
+   following the file's own conventions. An item you could NOT finish stays unchecked with
+   " — BLOCKED: <one-line reason>" appended; finish the remaining items anyway — partial
+   completion with a green verify gate is a SUCCESS for this task.
+4. Commit each item separately with a clear message ending in this exact footer line (you have
+   explicit permission to commit for this task):
+
+   Task-Queue-ID: {{TASK_ID}}
+
+   (so git log and the queue cross-reference). Never push.
+5. Follow-up work you discover belongs in the backlog, not this run: you MAY append NEW unchecked
+   items to TODO_LIST.md (one per line, agent-executable, correct section) — the queue's pacing,
+   budget and priority gates decide when they run. Never append an item describing THIS batch's work.
 
 The queue derives what you did — commits via the footer above, changed files via git — so do NOT
 report files or commit SHAs yourself.`
@@ -109,6 +151,16 @@ type Config struct {
 	MaxPendingPerRepo int
 	// PromptTemplate overrides DefaultPromptTemplate.
 	PromptTemplate string
+	// BatchPromptTemplate overrides DefaultBatchPromptTemplate (used only
+	// when BatchItems > 1).
+	BatchPromptTemplate string
+	// BatchItems groups up to this many ADJACENT open items from the same
+	// TODO_LIST.md section into ONE agent task (one session works the run
+	// in order): fewer cold sessions, more done per provider window.
+	// 0/1 = off (one item per task, the fleet default). A batch is ONE task
+	// against every gate (--max-per-tick, daily budget, repo pacing) — the
+	// per-item cost is amortized, so raise the gates consciously.
+	BatchItems int
 	// Model overrides the crush model ("provider/model") in every harvested
 	// agent payload. Empty = the agent binary's default model.
 	Model string
@@ -151,6 +203,14 @@ func (c Config) withDefaults() Config {
 
 	if c.PromptTemplate == "" {
 		c.PromptTemplate = DefaultPromptTemplate
+	}
+
+	if c.BatchPromptTemplate == "" {
+		c.BatchPromptTemplate = DefaultBatchPromptTemplate
+	}
+
+	if c.BatchItems < 1 {
+		c.BatchItems = 1
 	}
 
 	return c
@@ -260,6 +320,11 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 
 	enqueuedThisRepo := false
 
+	if h.cfg.BatchItems > 1 {
+		h.runRepoBatched(ctx, state, items, res)
+		return
+	}
+
 	for _, item := range items {
 		reason := h.itemDenial(state, item, enqueuedThisRepo, len(res.Enqueued))
 		if reason != "" {
@@ -281,6 +346,249 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 			enqueuedThisRepo = true
 		}
 	}
+}
+
+// runRepoBatched is the batched admission path (Config.BatchItems > 1):
+// runs of consecutive ADMISSIBLE items from the same TODO_LIST section
+// become ONE agent task — one session works the run in order. Inadmissible
+// items (blocked, known, paused, poisoned, occupied) are skipped with their
+// own reasons and BREAK a run: a batch never mixes items the single-item
+// path would have skipped. The first admitted run consumes the repo's
+// one-new-task slot exactly like a single enqueue; later runs are paced
+// out with the same reason strings the single path uses.
+func (h *Harvester) runRepoBatched(ctx context.Context, state repoState, items []Item, res *Result) {
+	// Phase 1: base denial per item, pacing EXCLUDED (pacing applies at run
+	// granularity below). Denied items are reported and break runs.
+	admissible := make([]bool, len(items))
+
+	for i, item := range items {
+		if reason := h.itemDenial(state, item, false, len(res.Enqueued)); reason != "" {
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: reason})
+			continue
+		}
+
+		admissible[i] = true
+	}
+
+	// Phase 2: walk runs of consecutive admissible same-heading items.
+	enqueuedThisRepo := false
+
+	for i := 0; i < len(items); {
+		if !admissible[i] {
+			i++
+			continue
+		}
+
+		end := i + 1
+		for end < len(items) &&
+			admissible[end] &&
+			items[end].Heading == items[i].Heading &&
+			end-i < h.cfg.BatchItems {
+			end++
+		}
+
+		run := items[i:end]
+		i = end
+
+		switch {
+		case enqueuedThisRepo:
+			h.skipRun(run, res, "paced: one new item per repo per run")
+		case len(res.Enqueued) >= h.cfg.MaxPerTick:
+			h.skipRun(run, res, "tick cap reached (--max-per-tick)")
+		default:
+			if h.admitRun(ctx, run, state.importance, res) {
+				enqueuedThisRepo = true
+
+				for _, item := range run {
+					state.known[item.Key] = task.Pending
+				}
+			}
+		}
+	}
+}
+
+// skipRun reports every member of a paced-out run with one reason.
+func (h *Harvester) skipRun(run []Item, res *Result, reason string) {
+	for _, item := range run {
+		res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: reason})
+	}
+}
+
+// admitRun enqueues one batched run and records every member under
+// res.Enqueued with the SAME TaskID (one task, many items). Failure and
+// store-dedup semantics mirror admitItem, reported per member.
+func (h *Harvester) admitRun(ctx context.Context, run []Item, importance int, res *Result) bool {
+	if h.cfg.DryRun {
+		for _, item := range run {
+			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: sameSession(item.Text)})
+		}
+
+		return true
+	}
+
+	t, err := h.enqueueBatch(ctx, run, importance)
+	if err != nil {
+		for _, item := range run {
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "enqueue failed: " + err.Error()})
+		}
+
+		return false
+	}
+
+	fresh := t.Status == task.Pending && t.Attempts == 0
+	for _, item := range run {
+		if fresh {
+			res.Enqueued = append(
+				res.Enqueued,
+				Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: sameSession(item.Text)},
+			)
+
+			continue
+		}
+
+		res.Skipped = append(
+			res.Skipped,
+			Skipped{Item: item, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"},
+		)
+	}
+
+	return true
+}
+
+// batchKeyOf derives the deterministic batch dedup key over a run's member
+// keys: same member set → same key (an unchanged set never re-mints); any
+// member edit forks the batch, mirroring single-item text-edit semantics.
+// Sorted, so reordering the same items in the file does not fork the batch
+// (order is cosmetic; the item set is the work).
+func batchKeyOf(run []Item) string {
+	keys := make([]string, len(run))
+	for i, item := range run {
+		keys[i] = item.Key
+	}
+
+	sort.Strings(keys)
+	sum := sha256.Sum256([]byte(strings.Join(keys, "\n")))
+
+	return "batch:" + hex.EncodeToString(sum[:])[:16]
+}
+
+// BatchKeyPrefix marks a batched task's dedup key (harvest --batch-items).
+const BatchKeyPrefix = "batch:"
+
+func (h *Harvester) enqueueBatch(ctx context.Context, run []Item, importance int) (task.Task, error) {
+	payload, err := h.buildBatchPayload(run)
+	if err != nil {
+		return task.Task{}, err
+	}
+
+	// Batch priority: the MAX over the members' resolved priorities — a
+	// batch carrying one hot or marker item must not sink below it, and a
+	// batch of P4s must not ride a P1 sibling's rank.
+	priority := 0
+
+	for _, item := range run {
+		var aiScore *int
+
+		if score, ok, err := h.q.PriorityScore(ctx, item.Key); err == nil && ok {
+			clamped := queue.ClampBacklog(score.Score)
+			aiScore = &clamped
+		}
+
+		p, _ := ResolvePriority(ResolveInput{
+			Text:              item.Text,
+			MarkerLevel:       item.MarkerLevel,
+			HotPriority:       h.cfg.SameSessionPriority,
+			FlatPriority:      h.cfg.Priority,
+			Importance:        importance,
+			ImportanceEnabled: h.cfg.UseImportance,
+			AIScore:           aiScore,
+		})
+
+		priority = max(priority, p)
+	}
+
+	return h.q.Enqueue(ctx, task.New{
+		Project:     run[0].RepoName,
+		Type:        h.cfg.Type,
+		Payload:     payload,
+		Priority:    priority,
+		MaxAttempts: h.cfg.MaxAttempts,
+		DedupKey:    batchKeyOf(run),
+	})
+}
+
+// defaultBatchTimeoutMinutes is the per-item ceiling a batch scales from
+// when the repo timeout ladder has no entry (executor default: 30).
+const defaultBatchTimeoutMinutes = 30
+
+// buildBatchPayload renders the batch prompt for one run and encodes the
+// members' texts and keys into the payload (Item stays the FIRST member so
+// review quoting, status windows and `tq show` provenance keep working).
+// The payload timeout scales with the member count — one ladder/default
+// ceiling per item — so a batch is not killed by a single-item ceiling;
+// the pool's --task-timeout stays the hard cap above it.
+func (h *Harvester) buildBatchPayload(run []Item) ([]byte, error) {
+	first := run[0]
+
+	texts := make([]string, len(run))
+	keys := make([]string, len(run))
+	maxMarker := 0
+
+	for i, item := range run {
+		texts[i] = item.Text
+		keys[i] = item.Key
+		maxMarker = max(maxMarker, item.MarkerLevel)
+	}
+
+	var list strings.Builder
+	for i, text := range texts {
+		fmt.Fprintf(&list, "%d. %s\n", i+1, text)
+	}
+
+	prompt := strings.ReplaceAll(h.cfg.BatchPromptTemplate, "{{REPO_ABS}}", first.Repo)
+	prompt = strings.ReplaceAll(prompt, "{{REPO}}", first.RepoName)
+	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", first.Heading)
+	prompt = strings.ReplaceAll(prompt, "{{COUNT}}", strconv.Itoa(len(run)))
+	prompt = strings.ReplaceAll(prompt, "{{ITEMS}}", strings.TrimRight(list.String(), "\n"))
+
+	repo := first.Repo
+	if h.cfg.ProjectsDir != "" {
+		if abs, err := filepath.Abs(
+			h.cfg.ProjectsDir,
+		); err == nil &&
+			strings.HasPrefix(first.Repo, abs+string(filepath.Separator)) {
+			repo = first.RepoName
+		}
+	}
+
+	perItemMinutes := defaultBatchTimeoutMinutes
+	if d, ok := h.cfg.RepoTimeouts[first.RepoName]; ok && d > 0 {
+		perItemMinutes = int(d / time.Minute)
+	}
+
+	payload := harvestPayload{
+		AgentPayload: executor.AgentPayload{
+			Repo:         repo,
+			Prompt:       prompt,
+			Item:         first.Text,
+			Items:        texts,
+			Model:        h.cfg.Model,
+			Verify:       executor.ReadTQVerify(first.Repo),
+			RequireClean: h.cfg.RequireClean,
+
+			TimeoutMinutes: perItemMinutes * len(run),
+		},
+		Dedup:       batchKeyOf(run),
+		ItemKeys:    keys,
+		MarkerLevel: maxMarker,
+	}
+
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("harvest: encode batch payload: %w", err)
+	}
+
+	return encoded, nil
 }
 
 // repoState is one repo's queue-side situation, surveyed once per run: the
@@ -422,6 +730,15 @@ func (state *repoState) observe(t task.Task) {
 	if key := payloadDedup(t); key != "" {
 		if _, dup := state.known[key]; !dup {
 			state.known[key] = t.Status
+		}
+
+		// Batched tasks track their MEMBERS too: next tick must not re-attempt
+		// items already inside a pending batch (the store dedup would catch
+		// it, but the survey should not even try).
+		for _, member := range payloadItemKeys(t) {
+			if _, dup := state.known[member]; !dup {
+				state.known[member] = t.Status
+			}
 		}
 	}
 }
@@ -645,8 +962,9 @@ func (h *Harvester) buildPayload(item Item, prompt, dedupKey string) ([]byte, er
 type harvestPayload struct {
 	executor.AgentPayload
 
-	Dedup       string `json:"dedup,omitempty"`
-	MarkerLevel int    `json:"markerLevel,omitempty"`
+	Dedup       string   `json:"dedup,omitempty"`
+	MarkerLevel int      `json:"markerLevel,omitempty"`
+	ItemKeys    []string `json:"itemKeys,omitempty"`
 }
 
 // PayloadItem is the harvested backlog-item identity carried by a task
@@ -859,6 +1177,21 @@ func checkboxOf(line string) (text string, done bool, ok bool) {
 	}
 
 	return "", false, false
+}
+
+// payloadItemKeys extracts the batch member keys ("itemKeys") from a task
+// payload; empty for single-item and non-harvest payloads.
+func payloadItemKeys(t task.Task) []string {
+	if len(t.Payload) == 0 {
+		return nil
+	}
+
+	var payload harvestPayload
+	if err := json.Unmarshal(t.Payload, &payload); err != nil {
+		return nil
+	}
+
+	return payload.ItemKeys
 }
 
 // payloadDedup extracts the "dedup" field from a task payload, if present.

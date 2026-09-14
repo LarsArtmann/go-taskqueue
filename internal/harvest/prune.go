@@ -101,7 +101,7 @@ func (h *Harvester) PruneStale(ctx context.Context) (PruneResult, error) {
 }
 
 func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult) error {
-	items, byDedup, err := h.projectTaskIndex(ctx, repo)
+	items, byDedup, batches, err := h.projectTaskIndex(ctx, repo)
 	if err != nil {
 		return err
 	}
@@ -130,9 +130,15 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 
 	repoName := filepath.Base(repo)
 
-	// Absent-item pass, sorted for deterministic output.
+	// Absent-item pass, sorted for deterministic output. Batch tasks are
+	// evaluated by their MEMBER keys in the batch pass below — their
+	// `batch:` dedup key never matches a present item key by construction.
 	keys := make([]string, 0, len(byDedup))
 	for key := range byDedup {
+		if strings.HasPrefix(key, BatchKeyPrefix) {
+			continue
+		}
+
 		keys = append(keys, key)
 	}
 
@@ -142,7 +148,92 @@ func (h *Harvester) pruneRepo(ctx context.Context, repo string, res *PruneResult
 		h.pruneAbsentTask(ctx, repo, repoName, key, byDedup[key], presentKeys, res)
 	}
 
+	h.pruneBatchTasks(ctx, repo, repoName, batches, items, res)
+
 	return nil
+}
+
+// pruneBatchTasks applies the stale rules to BATCHED tasks (harvest
+// --batch-items): a batch is withdrawn only when EVERY member item is
+// stale — all ticked, or all gone from the file. Partial staleness leaves
+// the task: once a batch runs, the per-item BLOCKED escape owns partial
+// outcomes, and a human edits the remaining items.
+func (h *Harvester) pruneBatchTasks(
+	ctx context.Context, repo, repoName string,
+	batches []task.Task, items []Item, res *PruneResult,
+) {
+	if len(batches) == 0 {
+		return
+	}
+
+	byKey := make(map[string]Item, len(items))
+	for _, item := range items {
+		byKey[item.Key] = item
+	}
+
+	for _, t := range batches {
+		members := payloadItemKeys(t)
+		if len(members) == 0 {
+			continue
+		}
+
+		allTicked, allAbsent := true, true
+		display := Item{Repo: repo, RepoName: repoName, Key: payloadDedup(t)}
+
+		for _, key := range members {
+			item, present := byKey[key]
+			if !present {
+				allTicked = false
+
+				continue
+			}
+
+			allAbsent = false
+
+			if !item.Done {
+				allTicked = false
+			} else {
+				display = item
+			}
+		}
+
+		if !allTicked && !allAbsent {
+			continue
+		}
+
+		why := PruneTicked
+		reason := pruneReasonPrefix + truncateItem(display.Text)
+
+		if allAbsent {
+			why = PruneAbsent
+			reason = fmt.Sprintf(pruneAbsentReasonPrefix, payloadDedup(t))
+		}
+
+		switch t.Status {
+		case task.Pending:
+			if h.cfg.DryRun {
+				res.Cancelled = append(res.Cancelled, PrunedTask{Item: display, TaskID: t.ID, Why: why})
+
+				continue
+			}
+
+			if err := h.q.Cancel(ctx, t.ID, reason); err != nil {
+				res.ScanFailures = append(res.ScanFailures, ScanFailure{
+					Repo: repo, Reason: fmt.Sprintf("cancel %s failed: %s", t.ID, err),
+				})
+
+				continue
+			}
+
+			res.Cancelled = append(res.Cancelled, PrunedTask{Item: display, TaskID: t.ID, Why: why})
+		case task.Running:
+			res.Running = append(res.Running, PrunedTask{Item: display, TaskID: t.ID, Why: why})
+		case task.Dead:
+			res.Dead = append(res.Dead, PrunedTask{Item: display, TaskID: t.ID, Why: why})
+		case task.Completed, task.Cancelled:
+			// Terminal: nothing to withdraw.
+		}
+	}
 }
 
 // pruneTickedTask applies the ticked rule to one done item: a PENDING task

@@ -48,6 +48,10 @@ type AgentPayload struct {
 	// the real work instead of the prompt template's first line. Empty for
 	// tasks minted outside the harvester.
 	Item string `json:"item,omitempty"`
+	// Items carries the full member list when the task was minted as a
+	// BATCH (harvest --batch-items > 1): one task, many work items, one
+	// session. Item stays the FIRST member; purely informational.
+	Items []string `json:"items,omitempty"`
 	// Verify is a shell command that must exit 0 after the agent run for the
 	// task to complete — the enforced quality gate. Empty means auto-detect:
 	// Go repositories (go.mod present) run "go build ./... && go test ./...
