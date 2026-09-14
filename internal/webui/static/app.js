@@ -104,8 +104,10 @@
       scrolls[i].scrollTop = st.scrolls[i];
     }
     if (st.focus) {
-      var target = el.querySelector('[data-state-key="' + st.focus + '"], [name="' + st.focus + '"], #' + st.focus);
-      if (target) target.focus();
+      try {
+        var target = el.querySelector('[data-state-key="' + st.focus + '"], [name="' + st.focus + '"], #' + st.focus);
+        if (target) target.focus();
+      } catch (e) { /* malformed key: skip focus restore */ }
     }
   }
 
