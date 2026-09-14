@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/larsartmann/go-taskqueue/executor"
 	"github.com/larsartmann/go-taskqueue/queue"
 	"github.com/larsartmann/go-taskqueue/queue/postgres"
@@ -40,6 +39,7 @@ func main() {
 	backend := flag.String("backend", "sqlite", "sqlite or postgres")
 	dbPath := flag.String("db", "", "sqlite file (sqlite backend)")
 	dsn := flag.String("dsn", "", "postgres DSN (postgres backend)")
+
 	flag.Parse()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -101,6 +101,7 @@ func main() {
 	})
 
 	attempts := 0
+
 	executors.RegisterFunc("flaky", func(_ context.Context, _ task.Task) error {
 		attempts++
 		if attempts == 1 {

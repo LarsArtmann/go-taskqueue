@@ -235,6 +235,7 @@ func (e *DepBumpExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	if err := e.verify(ctx, repoDir, cmdTimeout, "verify"); err != nil {
 		_ = e.rollback(ctx, repoDir)
+
 		return fmt.Errorf(
 			"depbump: verify failed in %s (touched paths rolled back): %w",
 			payload.Repo,
@@ -245,6 +246,7 @@ func (e *DepBumpExecutor) Execute(ctx context.Context, t task.Task) error {
 	if len(payload.Bumps) > 0 {
 		if err := e.commit(ctx, repoDir, payload.Bumps); err != nil {
 			_ = e.rollback(ctx, repoDir)
+
 			return fmt.Errorf(
 				"depbump: commit failed in %s (touched paths rolled back): %w",
 				payload.Repo,
@@ -311,6 +313,7 @@ func (e *DepBumpExecutor) applyBumps(
 	for _, bump := range bumps {
 		if out, err := e.runGo(ctx, repoDir, timeout, "get", bump.Module+"@"+bump.Version); err != nil {
 			_ = e.rollback(ctx, repoDir)
+
 			return fmt.Errorf("depbump: go get %s@%s failed (rolled back): %w: %s",
 				bump.Module, bump.Version, err, tailOutput(out))
 		}
@@ -318,12 +321,14 @@ func (e *DepBumpExecutor) applyBumps(
 
 	if out, err := e.runGo(ctx, repoDir, timeout, "mod", "tidy"); err != nil {
 		_ = e.rollback(ctx, repoDir)
+
 		return fmt.Errorf("depbump: go mod tidy failed (rolled back): %w: %s", err, tailOutput(out))
 	}
 
 	if _, err := os.Stat(filepath.Join(repoDir, "vendor")); err == nil {
 		if out, err := e.runGo(ctx, repoDir, timeout, "mod", "vendor"); err != nil {
 			_ = e.rollback(ctx, repoDir)
+
 			return fmt.Errorf(
 				"depbump: go mod vendor failed (rolled back): %w: %s",
 				err,
@@ -334,6 +339,7 @@ func (e *DepBumpExecutor) applyBumps(
 
 	if err := e.regenerateTempl(ctx, repoDir); err != nil {
 		_ = e.rollback(ctx, repoDir)
+
 		return fmt.Errorf("depbump: templ regenerate failed (rolled back): %w", err)
 	}
 
@@ -412,6 +418,7 @@ func (e *DepBumpExecutor) regenerateTempl(ctx context.Context, repoDir string) e
 
 	cmd.Stdout = &out
 	cmd.Stderr = &out
+
 	cmd.Env = append(os.Environ(), e.ExtraEnv...)
 
 	if err := cmd.Run(); err != nil {
@@ -480,7 +487,7 @@ func (e *DepBumpExecutor) release(ctx context.Context, repoDir string, rel *DepB
 
 	if out, err := e.runGit(ctx, "-C", root, "rev-parse", "-q", "--verify", "refs/tags/"+tagName); err == nil &&
 		out != "" {
-		return nil //nolint:nilerr // tag exists: idempotent success
+		return nil
 	}
 
 	if out, err := e.runGit(ctx, "-C", root, "tag", "-a", tagName, "-m", "release "+tagName); err != nil {
@@ -643,6 +650,7 @@ func (e *DepBumpExecutor) run(
 
 	cmd.Stdout = &out
 	cmd.Stderr = &out
+
 	cmd.Env = append(os.Environ(), e.ExtraEnv...)
 
 	err := cmd.Run()

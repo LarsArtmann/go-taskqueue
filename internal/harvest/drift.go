@@ -171,6 +171,7 @@ func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult
 	// task so drift is judged per item even though the queue row is one
 	// task covering several checkboxes.
 	byMember := make(map[string]task.Task)
+
 	for _, b := range batches {
 		for _, key := range payloadItemKeys(b) {
 			if _, seen := byMember[key]; !seen {
@@ -184,6 +185,7 @@ func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult
 		if !tracked {
 			t, tracked = byMember[item.Key]
 		}
+
 		switch {
 		case !item.Done && tracked && t.Status == task.Completed:
 			d := Drift{Kind: DriftStaleOpen, Item: item, TaskID: t.ID, TaskStatus: t.Status}

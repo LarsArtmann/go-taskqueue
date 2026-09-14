@@ -133,7 +133,7 @@ func BuildWork(modules []PlanModule, cfg SweeperConfig) ([]WorkSpec, []Skip) {
 
 		repoDirs[m.Key] = m.Dir
 
-		if !m.StaleBuild && !(cfg.IncludeUnreleased && m.HasUnreleasedWork) {
+		if !m.StaleBuild && (!cfg.IncludeUnreleased || !m.HasUnreleasedWork) {
 			continue
 		}
 

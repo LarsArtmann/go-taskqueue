@@ -322,6 +322,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 
 	if h.cfg.BatchItems > 1 {
 		h.runRepoBatched(ctx, state, items, res)
+
 		return
 	}
 
@@ -364,6 +365,7 @@ func (h *Harvester) runRepoBatched(ctx context.Context, state repoState, items [
 	for i, item := range items {
 		if reason := h.itemDenial(state, item, false, len(res.Enqueued)); reason != "" {
 			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: reason})
+
 			continue
 		}
 
@@ -376,6 +378,7 @@ func (h *Harvester) runRepoBatched(ctx context.Context, state repoState, items [
 	for i := 0; i < len(items); {
 		if !admissible[i] {
 			i++
+
 			continue
 		}
 

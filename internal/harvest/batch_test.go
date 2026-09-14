@@ -160,6 +160,7 @@ func TestBatchKeyDeterminism(t *testing.T) {
 		for i, text := range texts {
 			items[i] = Item{Text: text, Key: ItemKey("batchy", text)}
 		}
+
 		return items
 	}
 
@@ -206,6 +207,7 @@ func TestBatchSurveyTracksMembers(t *testing.T) {
 	}
 
 	covered := map[string]int{}
+
 	for _, tk := range pending {
 		payload := decodeBatchPayload(t, tk)
 
@@ -314,6 +316,7 @@ func TestBatchPruneAllTicked(t *testing.T) {
 	}
 
 	cancelled := false
+
 	for _, c := range res.Cancelled {
 		if c.TaskID == batchID {
 			cancelled = true
@@ -364,6 +367,7 @@ func TestBatchPruneAllAbsent(t *testing.T) {
 	}
 
 	found := false
+
 	for _, c := range res.Cancelled {
 		if c.TaskID == pending[0].ID {
 			found = true
@@ -414,6 +418,7 @@ func TestBatchAuditMemberDrift(t *testing.T) {
 	}
 
 	staleOpen := 0
+
 	for _, d := range res.StaleOpen {
 		if d.TaskID == batch.ID {
 			staleOpen++
@@ -459,6 +464,7 @@ func TestBatchAuditMemberDrift(t *testing.T) {
 	}
 
 	foundStaleDone := false
+
 	for _, d := range res2.StaleDone {
 		if d.TaskID == batchyPending[0].ID {
 			foundStaleDone = true
@@ -499,6 +505,7 @@ func TestSinglePathUntouchedByBatchConfig(t *testing.T) {
 // nothing from them — the prompt IS the batch).
 func TestBatchExecutorPayloadFields(t *testing.T) {
 	var payload executor.AgentPayload
+
 	body := `{"repo":"r","prompt":"p","item":"first","items":["first","second"]}`
 	if err := json.Unmarshal([]byte(body), &payload); err != nil {
 		t.Fatal(err)

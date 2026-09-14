@@ -133,6 +133,7 @@ func TestTaskRowClass(t *testing.T) {
 	if !strings.HasPrefix(dead, base(task.Dead)) || !strings.Contains(dead, "tq-row-dead") {
 		t.Errorf("dead row class = %q, want base %q + severity rule marker", dead, base(task.Dead))
 	}
+
 	if strings.Contains(dead, "bg-red-50") {
 		t.Errorf("dead row class = %q, want neutral background (severity lives on the left rule)", dead)
 	}

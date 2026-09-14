@@ -38,6 +38,7 @@ func compatible(ik, fk kind) bool {
 	case kindFunc:
 		return fk == kindVar
 	}
+
 	return false
 }
 
@@ -57,13 +58,16 @@ func exportedDecls(dir string) (map[string]kind, []string, error) {
 	}
 
 	var files []string
+
 	for _, e := range entries {
 		name := e.Name()
 		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
 			continue
 		}
+
 		files = append(files, filepath.Join(dir, name))
 	}
+
 	if len(files) == 0 {
 		return nil, nil, fmt.Errorf("no non-test Go files in %s", dir)
 	}
@@ -71,24 +75,31 @@ func exportedDecls(dir string) (map[string]kind, []string, error) {
 	fset := token.NewFileSet()
 	filter := func(fi os.FileInfo) bool {
 		name := fi.Name()
+
 		return strings.HasSuffix(name, ".go") && !strings.HasSuffix(name, "_test.go")
 	}
+
 	pkgs, err := parser.ParseDir(fset, dir, filter, parser.SkipObjectResolution)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	decls := make(map[string]kind)
+
 	var order []string
+
 	add := func(name string, k kind) {
 		if !ast.IsExported(name) {
 			return
 		}
+
 		if _, seen := decls[name]; !seen {
 			order = append(order, name)
 		}
+
 		decls[name] = k
 	}
+
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Files {
 			for _, d := range file.Decls {
@@ -107,6 +118,7 @@ func exportedDecls(dir string) (map[string]kind, []string, error) {
 							if n.Tok == token.CONST {
 								k = kindConst
 							}
+
 							for _, name := range s.Names {
 								add(name.Name, k)
 							}
@@ -116,6 +128,7 @@ func exportedDecls(dir string) (map[string]kind, []string, error) {
 			}
 		}
 	}
+
 	return decls, order, nil
 }
 
@@ -136,11 +149,13 @@ func run(root string) error {
 	}
 
 	skew := 0
+
 	for _, p := range pairs {
 		internalDecls, order, err := exportedDecls(filepath.Join(root, p.internal))
 		if err != nil {
 			return fmt.Errorf("parse %s: %w", p.internal, err)
 		}
+
 		facadeDecls, _, err := exportedDecls(filepath.Join(root, p.facade))
 		if err != nil {
 			return fmt.Errorf("parse %s: %w", p.facade, err)
@@ -150,23 +165,40 @@ func run(root string) error {
 			ik := internalDecls[name]
 			if fk, ok := facadeDecls[name]; !ok {
 				fmt.Printf("MISSING-ALIAS %s: %s.%s (%s) has no facade re-export\n", p.facade, p.internal, name, ik)
+
 				skew++
 			} else if !compatible(ik, fk) {
-				fmt.Printf("KIND-MISMATCH %s: %s.%s is %s internally but %s in the facade\n", p.facade, p.internal, name, ik, fk)
+				fmt.Printf(
+					"KIND-MISMATCH %s: %s.%s is %s internally but %s in the facade\n",
+					p.facade,
+					p.internal,
+					name,
+					ik,
+					fk,
+				)
+
 				skew++
 			}
 		}
+
 		for name, fk := range facadeDecls {
 			if _, ok := internalDecls[name]; !ok {
 				fmt.Printf("DANGLING-ALIAS %s: %s (%s) has no counterpart in %s\n", p.facade, name, fk, p.internal)
+
 				skew++
 			}
 		}
 	}
+
 	if skew > 0 {
-		return fmt.Errorf("%d facade parity skew finding(s) — add the alias in the same change that adds the export (ADR-0016)", skew)
+		return fmt.Errorf(
+			"%d facade parity skew finding(s) — add the alias in the same change that adds the export (ADR-0016)",
+			skew,
+		)
 	}
+
 	fmt.Println("facade parity OK: 7 facades mirror their internal packages")
+
 	return nil
 }
 
@@ -178,6 +210,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: facadeparity [repo-root]")
 		os.Exit(2)
 	}
+
 	if err := run(root); err != nil {
 		fmt.Fprintln(os.Stderr, "FAIL:", err)
 		os.Exit(1)

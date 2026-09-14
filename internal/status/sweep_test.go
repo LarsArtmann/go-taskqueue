@@ -225,6 +225,7 @@ func TestSweepPinsCloseoutReportPaths(t *testing.T) {
 	sw := newSweeperOrDie(t, s, 2)
 
 	repo := t.TempDir()
+
 	statusDir := filepath.Join(repo, "docs", "status")
 	if err := os.MkdirAll(statusDir, 0o750); err != nil {
 		t.Fatal(err)

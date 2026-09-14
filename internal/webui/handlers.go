@@ -381,11 +381,13 @@ func (s *Server) sendSnapshot(
 		if frags[i].ID != fragFilters {
 			continue
 		}
+
 		if frags[i].HTML == seen.last {
 			frags = append(frags[:i:i], frags[i+1:]...)
 		} else {
 			seen.last = frags[i].HTML
 		}
+
 		break
 	}
 
