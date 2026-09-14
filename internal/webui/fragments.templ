@@ -225,15 +225,15 @@ templ taskRows(data DashboardData, rows []task.Task) {
 			</td>
 			if data.AllowWrites {
 				<td class={ tdCellClass(false) }>
-							switch t.Status {
-							case task.Pending:
-								@cancelAction(t.ID, false)
-							case task.Running:
-								@cancelAction(t.ID, true)
-							case task.Dead:
-								@rescueAction(t.ID)
-							}
-						</td>
+					switch t.Status {
+						case task.Pending:
+							@cancelAction(t.ID, false)
+						case task.Running:
+							@cancelAction(t.ID, true)
+						case task.Dead:
+							@rescueAction(t.ID)
+					}
+				</td>
 			}
 			if band := queue.BandOf(t.Priority); band != queue.BandBacklog {
 				<td class={ tdCellClass(false) } title={ "band " + string(band) + " (ADR-0015)" }>
@@ -600,12 +600,12 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 	if data.AllowWrites {
 		<div class="tq-actions">
 			switch t.Status {
-			case task.Pending:
-				@cancelAction(t.ID, false)
-			case task.Running:
-				@cancelAction(t.ID, true)
-			case task.Dead:
-				@rescueAction(t.ID)
+				case task.Pending:
+					@cancelAction(t.ID, false)
+				case task.Running:
+					@cancelAction(t.ID, true)
+				case task.Dead:
+					@rescueAction(t.ID)
 			}
 		</div>
 	}
