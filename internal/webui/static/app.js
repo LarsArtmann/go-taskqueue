@@ -20,6 +20,99 @@
     }, 45000);
   }
 
+  /* Swap-guard: a fragment the operator is interacting with (text entry,
+     open cancel/reason form, expanded error cell) must not be replaced
+     mid-interaction. Skipped ids queue their LATEST payload and flush on
+     the next tick after a short grace window — data never goes stale by
+     more than ~2 ticks; the re-apply below preserves the open state when
+     the grace period forces the swap through. */
+  var pendingSwap = {};
+  var FLUSH_GRACE_MS = 2500;
+
+  function fragmentBusy(el) {
+    var ae = document.activeElement;
+    if (ae && el.contains(ae)) {
+      var tag = (ae.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "select" || tag === "textarea" || ae.isContentEditable) return true;
+    }
+    if (el.querySelector("details[open]")) return true;
+    if (el.querySelector('[data-expanded="1"]')) return true;
+    return false;
+  }
+
+  /* State re-apply: capture the bits the swap would reset — per-<details>
+     open state (matched by summary text, stable across re-renders) and
+     expanded error cells (matched by their short text) — then put them
+     back on the fresh subtree. Scroll containers keep their scrollTop. */
+  function captureState(el) {
+    var st = { details: {}, expanded: {}, scrolls: [] };
+    el.querySelectorAll("details").forEach(function (d) {
+      var key = d.getAttribute("data-state-key");
+      if (!key) {
+        var s = d.querySelector("summary");
+        key = s ? s.textContent.trim() : d.id || d.className;
+      }
+      st.details[key] = d.open;
+    });
+    el.querySelectorAll('[data-expanded="1"]').forEach(function (c) {
+      st.expanded[c.getAttribute("data-short") || c.textContent] = true;
+    });
+    el.querySelectorAll(".journal-scroll").forEach(function (s) {
+      st.scrolls.push(s.scrollTop);
+    });
+    return st;
+  }
+
+  function restoreState(el, st) {
+    el.querySelectorAll("details").forEach(function (d) {
+      var key = d.getAttribute("data-state-key");
+      if (!key) {
+        var s = d.querySelector("summary");
+        key = s ? s.textContent.trim() : d.id || d.className;
+      }
+      if (st.details[key]) d.open = true;
+    });
+    el.querySelectorAll("[data-error]").forEach(function (c) {
+      var short = c.getAttribute("data-short") || "";
+      if (st.expanded[short] && c.getAttribute("data-expanded") !== "1") {
+        c.textContent = c.getAttribute("data-error") || "";
+        c.setAttribute("data-expanded", "1");
+      }
+    });
+    var scrolls = el.querySelectorAll(".journal-scroll");
+    for (var i = 0; i < scrolls.length && i < st.scrolls.length; i++) {
+      scrolls[i].scrollTop = st.scrolls[i];
+    }
+  }
+
+  function swapIn(el, frag) {
+    var st = captureState(el);
+    el.innerHTML = frag.html;
+    restoreState(el, st);
+  }
+
+  function flushPendingSwap() {
+    var now = Date.now();
+    var youngest = Infinity;
+    for (var id in pendingSwap) {
+      var entry = pendingSwap[id];
+      var age = now - entry.at;
+      if (age < FLUSH_GRACE_MS) {
+        youngest = Math.min(youngest, FLUSH_GRACE_MS - age);
+        continue;
+      }
+      var el = document.getElementById(id);
+      if (!el) {
+        delete pendingSwap[id];
+        continue;
+      }
+      swapIn(el, entry.frag);
+      delete pendingSwap[id];
+    }
+    pendingTimer = youngest < Infinity ? setTimeout(flushPendingSwap, youngest + 50) : null;
+  }
+  var pendingTimer = null;
+
   function applyFragment(raw) {
     var frag;
     try {
@@ -28,7 +121,13 @@
       return;
     }
     var el = document.getElementById(frag.id);
-    if (el) el.innerHTML = frag.html;
+    if (!el) return;
+    if (fragmentBusy(el)) {
+      pendingSwap[frag.id] = { frag: frag, at: Date.now() };
+      if (!pendingTimer) pendingTimer = setTimeout(flushPendingSwap, FLUSH_GRACE_MS);
+      return;
+    }
+    swapIn(el, frag);
   }
 
   /* Live relative ages between SSE bursts: cells carry their wall time in

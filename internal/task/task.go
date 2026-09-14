@@ -43,10 +43,10 @@ type Task struct {
 	// DedupKey mirrors the tasks table column (empty when the task does
 	// not opt into idempotent enqueue). The journal-drift audit diffs it,
 	// so the row projection carries it like every other diffed field.
-	DedupKey     string         `json:"dedupKey,omitempty"`
-	CreatedAt    time.Time      `json:"createdAt"`
-	UpdatedAt    time.Time      `json:"updatedAt"`
-	CompletedAt  *time.Time     `json:"completedAt,omitempty"`
+	DedupKey    string     `json:"dedupKey,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
 }
 
 // New is a task template for enqueueing. ID, Attempts, Status and timestamps

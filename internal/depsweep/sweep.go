@@ -15,6 +15,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
 // taskPriority places depbump tasks in the machine band: queue plumbing,
 // not user work (same ruling as the prioritize batches).
 var taskPriority = queue.MachineMin
@@ -342,6 +343,8 @@ func splitSemver(v string) ([3]int, string) {
 			break
 		}
 
+		// #nosec G602 -- false positive: the guard above caps i at 2 and
+		// segments is a [3]int; the index cannot leave bounds.
 		_, _ = fmt.Sscanf(part, "%d", &segments[i])
 	}
 

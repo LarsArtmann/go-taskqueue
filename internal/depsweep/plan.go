@@ -40,13 +40,13 @@ type PlanModule struct {
 	NextVersion       string `json:"nextVersion"`
 	SuggestedBump     string `json:"suggestedBump"`
 
-	HasOutdatedConsumers bool            `json:"hasOutdatedConsumers"`
-	OutdatedConsumers    []PlanConsumer  `json:"outdatedConsumers"`
-	StaleBuild           bool            `json:"staleBuild"`
-	StaleDeps            []PlanStaleDep  `json:"staleDeps"`
-	Wave                 int             `json:"wave"`
-	ConsumerCount        int             `json:"consumerCount"`
-	Dependencies         []PlanDepKey    `json:"dependencies"`
+	HasOutdatedConsumers bool           `json:"hasOutdatedConsumers"`
+	OutdatedConsumers    []PlanConsumer `json:"outdatedConsumers"`
+	StaleBuild           bool           `json:"staleBuild"`
+	StaleDeps            []PlanStaleDep `json:"staleDeps"`
+	Wave                 int            `json:"wave"`
+	ConsumerCount        int            `json:"consumerCount"`
+	Dependencies         []PlanDepKey   `json:"dependencies"`
 }
 
 // PlanConsumer is one outdated consumer of a released module.

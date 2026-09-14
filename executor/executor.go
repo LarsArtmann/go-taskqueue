@@ -140,4 +140,6 @@ var (
 	ParseDLQFixResult     = internalexecutor.ParseDLQFixResult
 	ParsePrioritizeResult = internalexecutor.ParsePrioritizeResult
 	NewSink               = internalexecutor.NewSink
+	NewDepBumpExecutor    = internalexecutor.NewDepBumpExecutor
+	IsStableSemver        = internalexecutor.IsStableSemver
 )
