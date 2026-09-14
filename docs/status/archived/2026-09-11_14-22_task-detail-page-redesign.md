@@ -1,5 +1,7 @@
 # Status Report — 2026-09-11 14:22 CEST — Task Detail Page Redesign
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Payload section + golden test verified; CHANGELOG/FEATURES done; questions answered. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 Session scope: redesign the `/task/{id}` detail page (`tq serve` webui) — user verdict on the
 old page: "sucks ass a bit — especially 'payload'". The payload (the task's CONTENT: work
 item, prompt contract, verify gate) rendered as one break-all escaped-JSON line inside a

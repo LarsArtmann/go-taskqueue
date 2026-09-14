@@ -1,5 +1,7 @@
 # Module Split + Review Sweep — Session Status (2026-09-09 23:21)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Split/ADR-0011 shipped; tags pushed + proxy-proven; release.sh fixture run done; consumer ghost tracked. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Session scope:** execution of the `go-modularize` skill end-to-end (7 phases),
 then the follow-up review-skill sweep (error modernization, code quality scan,
 ecosystem upgrade, architecture review + D2 visualization, nix review, scoped

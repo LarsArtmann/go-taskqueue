@@ -1,7 +1,7 @@
 # templ-components Consumer Sweep — Execution Plan
 
 **Plan minted**: 2026-09-14 12:34 (interactive session; parent design session
-12:05–12:14, report `docs/status/2026-09-14_12-14_templ-components-consumer-sweep-fanout-design.md`)
+12:05–12:14, report `docs/status/archived/2026-09-14_12-14_templ-components-consumer-sweep-fanout-design.md`)
 **Goal**: Run the library-maximization prompt ("adopt latest
 templ-components, use it superbly to the MAX") across every consumer repo
 reported by `project-dependency-graph who-uses`, executed by go-taskqueue

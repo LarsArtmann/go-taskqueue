@@ -1,5 +1,7 @@
 # Fleet Onboarding: Agent Pool × project-discovery/overview — Status Report
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — --discovery-addr + watch harvest shipped; bootstrap parity done; persistent pool superseded by round-9/SystemNix (owner row in TODO_LIST). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-08 22:42 CEST
 **Session scope:** go-taskqueue agent-pool explained (models, `--repos` semantics), then integration analysis + execution across `project-discovery-sdk`, `overview`, `project-discovery-daemon`.
 **Companion review:** brutal self-review answers are folded into sections (d) and (e) per the single-report instruction.

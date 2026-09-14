@@ -1,5 +1,7 @@
 # Second-Order Self-Review: The Docs-Health Pass Re-Audited Itself — Four New Defects Found and Fixed
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — 4 defects fixed and verified (FEATURES D83 status, BLOCKED markers, TODO header convention). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Session:** 2026-09-09 02:16–02:52 CEST (continuation of the docs-health
 audit session; this report answers "what did you forget / do worse / can
 improve" a SECOND time, i.e. what the 02:16 report itself missed). Scope:

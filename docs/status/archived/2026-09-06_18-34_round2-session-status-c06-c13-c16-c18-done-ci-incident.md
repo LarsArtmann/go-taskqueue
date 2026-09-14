@@ -1,5 +1,7 @@
 # Session Execution Report — Slices 1–2 Done + C06/C13/C16/C17/C18; Docs Debt & Lessons
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — multi-repo smoke, internal/e2e, FuzzParseRepo nightly verified; v0.2.0 shipped; CQA routed to TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-06 18:36 CEST
 **Scope:** continued execution of the round-2 plan (docs/planning/2026-09-06_16-28)
 after the 18:00 report, plus a brutally honest self-audit of the whole session.

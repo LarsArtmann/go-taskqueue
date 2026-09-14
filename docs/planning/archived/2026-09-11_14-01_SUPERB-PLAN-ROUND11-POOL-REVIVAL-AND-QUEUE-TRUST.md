@@ -1,5 +1,7 @@
 # SUPERB PLAN — ROUND 11: Pool Revival & Queue Trust (Pareto execution plan)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Round-11 executed (CI root cause fixed, setup-go pinned, ratelimit smoke shipped). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 - **When**: 2026-09-11 14:01 CEST (via `date`)
 - **Method**: Pareto breakdown of the ENTIRE open backlog (102 open TODO_LIST items
   - 11 new rate-limit items added this window) into tiers (1% → 51%, 4% → 64%,

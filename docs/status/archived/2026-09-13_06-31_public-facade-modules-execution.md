@@ -1,5 +1,7 @@
 # Status report — external adoption unblocked: public facade modules (ADR-0016)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — ADR-0016 + 7 facades + parity gate shipped; v0.3.0 pushed, CI green; pkg.go.dev re-check tracked. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-13 06:31 CEST
 **Session scope:** review + execute `docs/feedback/new/2026-09-13_external-adoption-blocked-by-internal-paths.md`
 (an external evaluator could not import the library — every module lives behind Go's

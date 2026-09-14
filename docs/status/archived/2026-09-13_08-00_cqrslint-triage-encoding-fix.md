@@ -1,5 +1,7 @@
 # cqrs-lint review: triage of 8 findings, real encoding-stamp bug fixed, read-only intent encoded
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Encoding fix + wire-format tests verified; cqrs-lint gate wired; rulings BLOCKED-tracked. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 Date: 2026-09-13 08:00 CEST · Session: interactive (owner pasted `cqrs-lint` output → "review!", then "doctor/rules — what we WANT TO BE, not what we are") · Format: **Markdown** per explicit owner instruction (skill default is HTML — override flagged per spec)
 
 ## Summary

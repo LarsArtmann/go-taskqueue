@@ -1,5 +1,7 @@
 # Brutal Self-Review + Full Status — Round-5 Execution Session (M11–M27)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Defects d1-d7 fixed and verified at HEAD; push/CI proven later (round-12/13). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-08 17:21 CEST
 **Session:** resumed round-5 execution on owner's "execute and verify, keep
 going" instruction; M11 through Wave-4 slices; closing ci-local gate GREEN.

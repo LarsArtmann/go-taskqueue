@@ -1,5 +1,7 @@
 # Status Report — ROUND7: The Automated DONE-PROMPT Loop Shipped
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — StatusExecutor verify gate + status-loop smoke + live window verified; g1-g3 policy questions decided (TODO_LIST). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Written:** 2026-09-08 20:56 CEST (interactive session, not a status task)
 **Session scope:** harvest explanation → todo-list-ai relation → status-loop design →
 full implementation → gates → push. No unrelated research.

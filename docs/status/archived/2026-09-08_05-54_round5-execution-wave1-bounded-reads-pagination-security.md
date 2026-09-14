@@ -1,5 +1,7 @@
 # Round-5 Execution Status — Wave 1 (M1–M6) shipped, M7 in flight
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — M1-M6 verified in tree (TestLoadSnapshotScaleAt100k, bounded facts cursor, CSP); wave-2 superseded by 17-20. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Report time:** 2026-09-08 05:54 CEST · **Session start:** ~04:57
 **Mandate:** "GET SHIT DONE! The WHOLE TODO LIST!" — execute the Round-5
 Pareto plan (`docs/planning/2026-09-07_23-51_SUPERB-PLAN-ROUND5-PARETO-100-IMPROVEMENTS.md`,

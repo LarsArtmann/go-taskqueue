@@ -1,5 +1,7 @@
 # Provider rate-limit handling (Z.ai 429 usage windows, synthetic.new quota) — feature window close-out
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — DetectRateLimit + incident fixture + fuzz + ratelimit-e2e smoke verified on disk; follow-ups done in TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 - **When**: 2026-09-11, ~13:05–13:29 CEST (report written 13:29)
 - **Branch**: master, unpushed (never pushes)
 - **Dispatch type**: direct owner instruction in-session ("go-taskqueue needs to

@@ -1,5 +1,7 @@
 # Status Report — "Do things?" execution session
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Cross-repo items closed (papdashboard flake fix, FailureEvidence, DLQ emptied, retention); CV/owner items external. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **When:** 2026-09-08 21:19 CEST · **Repos:** go-taskqueue (primary) + CV (TODO_LIST) · **Baseline:** session resumed from the 19:59 bootstrap report; HEAD was `ec5fcdc`
 
 Honesty note: this report re-verified every claim with real exit codes after catching one

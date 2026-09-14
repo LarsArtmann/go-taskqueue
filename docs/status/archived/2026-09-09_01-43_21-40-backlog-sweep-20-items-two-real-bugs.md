@@ -1,5 +1,7 @@
 # Status Report — 21:40 Dogfood Backlog Sweep: 20 Items Executed, 2 Real Bugs Found
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — All 20 items verifiable in tree (prune.go, FailureEvidence, check-status-index.sh, ADR-0010, budget-bypass e2e). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 Session: 2026-09-09 00:00–01:45 (interactive, concurrent with the webui
 write-actions session and the auto-commit daemon). Scope: the entire
 unchecked remainder of the "first full dogfood window (22 agent tasks)"

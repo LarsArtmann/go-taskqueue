@@ -3,7 +3,7 @@
 Status: PROPOSAL (owner-run steps only; every flag below is shipped on
 master behind defaults that change nothing until set)
 
-Plan: `docs/planning/2026-09-12_14-19_PRIORITY-SYSTEM-SUPERB-PARETO-EXECUTION-PLAN.md` (T40)
+Plan: `docs/planning/archived/2026-09-12_14-19_PRIORITY-SYSTEM-SUPERB-PARETO-EXECUTION-PLAN.md` (T40)
 Spec: ADR-0015 (`docs/adr/0015-priority-bands-importance-aging.md`)
 Deployment surface: SystemNix `services.tq-agent-pool` (binary pinned by
 the SystemNix input; the input flip + `nix run .#deploy` are owner-run by

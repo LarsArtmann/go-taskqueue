@@ -1,5 +1,7 @@
 # SUPERB PLAN — ROUND 13: Truth in Every Green (Pareto execution plan)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Round-13 fully executed (T1-T17; deliverables live as gates/docs). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 - **When**: 2026-09-12 02:15 CEST (via `date`)
 - **Method**: Pareto breakdown of the ENTIRE open backlog (98 open TODO_LIST items
   - 9 new items harvested from the 2026-09-12 01-47 per-project session and the

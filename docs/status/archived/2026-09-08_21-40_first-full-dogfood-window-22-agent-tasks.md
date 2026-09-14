@@ -1,5 +1,7 @@
 # Status Report — the first full dogfood window: 22 queue-carried agent tasks
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — First dogfood window; all defects closed (prune-stale, failure evidence, index gate, stray worker killed, dedup policy decided). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Written:** 2026-09-08 21:40 CEST
 **Written by:** the status loop itself — status task `8a3dcbfc`, minted by the
 `--status-every 1` sweeper at 21:33:46 and executed by a real headless agent

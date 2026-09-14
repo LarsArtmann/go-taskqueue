@@ -1,5 +1,7 @@
 # Status Report — 2026-09-11 15:10 CEST — Round-11 execution: tiers 1%+4% shipped, CI red root-caused & fixed
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — T1-T13 done; T5 pin runner-proven; remaining tails tracked in TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 Session scope: execute `docs/planning/2026-09-11_14-01` (Pareto Round 11)
 top-down. Delivered the complete 1% tier (pool revival prep), the complete
 4% tier (reliability blind spots), and the first slice of the 20% tier

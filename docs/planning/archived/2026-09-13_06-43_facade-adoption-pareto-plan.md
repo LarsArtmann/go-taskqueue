@@ -1,5 +1,7 @@
 # Plan: monetize the facade work — Pareto execution plan (facade adoption)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Facade adoption executed (v0.3.0 cut, examples/embed, parity gate); remainder routed to the 08-54 plan/TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Created:** 2026-09-13 06:43 CEST
 **Context:** The external-adoption feedback (docs/feedback/new/2026-09-13_external-adoption-blocked-by-internal-paths.md)
 has been EXECUTED: seven public facade modules (ADR-0016), `postgres.OpenWithPool`,

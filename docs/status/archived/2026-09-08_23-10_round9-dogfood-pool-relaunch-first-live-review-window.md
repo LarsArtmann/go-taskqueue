@@ -1,5 +1,7 @@
 # Status — ROUND9: dogfood pool relaunch, first live review window, flake filed
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Live review window proven; Tier-1 items verified in tree; budget accounting owner-tracked. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **When:** 2026-09-08 23:10 CEST · **Scope:** this session's run only (relaunch the
 dogfood agent-pool against this repo, verify the full autonomous loop live,
 deliver the never-yet-observed live review window) · **Format:** Markdown by

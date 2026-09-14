@@ -1,5 +1,7 @@
 # Status Report — 2026-09-11 16:00 CEST — Round-11 tail: T7/T12 landed, CI root cause CORRECTED (runner "stable" floated to go 1.27.1)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — setup-go pin landed + runner-proven; AGENTS gotcha present; rest tracked. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 Session scope: continuation of the 15:10 Round-11 execution window. Landed
 T7/T12/T18 + M55/M58, then chased the still-red master CI and **corrected my
 own earlier root-cause diagnosis** — the honest headline of this window.

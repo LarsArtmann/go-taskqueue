@@ -1,5 +1,7 @@
 # Window Status Report — five tasks: three review-finding fixes, the ExitError rename, per-module CI lint
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Verification pass: all five fixes re-confirmed at HEAD; 22-item harvest landed in TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 - **Written**: 2026-09-10 09:27 CEST
 - **Window**: five tasks completed 2026-09-10 ~07:15–08:47 CEST:
   | task        | work commit | what                                                                                 |

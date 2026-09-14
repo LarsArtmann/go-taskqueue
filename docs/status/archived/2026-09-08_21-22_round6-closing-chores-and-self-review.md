@@ -1,5 +1,7 @@
 # Status — ROUND6 closing chores, doc sync, and a brutal self-review
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — 6/6 chores verified (AGENTS rows, DOMAIN_LANGUAGE terms, CHANGELOG); owner gates since resolved. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **When:** 2026-09-08 21:22 CEST · **Scope:** this session's run (resume → closing
 chores → full ci-local gate) plus what I noticed and what I got wrong.
 **Companion reports:** round-6 execution at

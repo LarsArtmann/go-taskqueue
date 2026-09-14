@@ -8,7 +8,7 @@ journal/tailer subscription surface (`internal/journal`,
 `internal/webui/tailer.go`), document the gaps vs the proposed
 `Subscribe(ctx, since Seq)` fact-stream contract from the 05:24 report, and
 confirm that `2d5e729`'s bounded journal reads cannot break replay-from-seq.
-**Inputs:** 05:24 report (`docs/status/2026-09-08_05-24_cordis-samber-evaluation-journal-bus-recommendation.md`,
+**Inputs:** 05:24 report (`docs/status/archived/2026-09-08_05-24_cordis-samber-evaluation-journal-bus-recommendation.md`,
 d1/f1/f3), commit `2d5e729`, AGENTS.md, ADR-0001/0003, and the source files
 cited inline.
 

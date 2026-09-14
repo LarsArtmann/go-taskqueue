@@ -635,7 +635,7 @@ prose, not the table.
   replay); a reword forks the lineage from any pushed twin and from release
   tags — tags are immutable, so the fork persists; verify by path
   (`git log -1 -- <path>`), not by `--grep` phrase. Full playbook:
-  docs/status/2026-09-10_07-49 report §e.
+  docs/status/archived/2026-09-10_07-49_task-000001a089c3919ce4a6807036db62c5aee7.md §e.
 - ⚠️ **History-rewrite policy**: NEVER reword/amend/rebase any commit that
   has been PUSHED (including daemon commits already on origin/master) —
   wrong Task-Queue-ID footers, typos, and bad messages get a follow-up

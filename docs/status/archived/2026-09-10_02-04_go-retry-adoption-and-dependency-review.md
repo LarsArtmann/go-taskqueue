@@ -1,5 +1,7 @@
 # Status: go-retry Adoption, Dependency Review & Reuse-First Audit
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — go-retry v0.5.0 adopted (executor go.mod + AGENTS.md convention); §f consumed by the 02-51 session. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-10 02:04 CEST
 **Session scope:** go-retry v0.5.0 adoption (executor), dependency
 inventory across all 8 modules, "decided against" dependency re-verify,

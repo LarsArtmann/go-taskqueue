@@ -1,5 +1,7 @@
 # Status Report — ROUND6 Execution Session (the whole TODO list)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Watermarks table, review catch-up, runactor/consumer shipped; defects d1-d7 resolved; v0.2.0 done. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-08 20:58 CEST
 **Session type:** EXECUTION. Owner instruction: "NOW GET SHIT DONE! The
 WHOLE TODO LIST! … DO NOT STOP UNTIL THE ENTIRE LIST IS FINISHED and

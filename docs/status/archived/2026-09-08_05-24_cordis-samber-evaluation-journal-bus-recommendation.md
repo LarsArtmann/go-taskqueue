@@ -1,5 +1,7 @@
 # Status Report — Library Evaluation Session (cordis / samber-do / samber-ro) and the Journal-Bus Recommendation
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Advisory recommendation landed (ADR-0009/0004, internal/consumer + runactor); consumer ghost tracked in TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-08 05:24
 **Session type:** Advisory / architecture exploration. **Zero code changes, zero commits authored by this session.**
 **Conversation-start HEAD:** `b1fd2c0` → **HEAD at report time:** `e19767d` (master moved underneath us mid-session — see d3).

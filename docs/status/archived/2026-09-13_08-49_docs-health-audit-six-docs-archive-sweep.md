@@ -1,5 +1,7 @@
 # Docs-health full audit — six living docs + archive sweep (27 reports archived)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Docs-health AUDIT executed (FEATURES fixes, TODO harvest, 27 reports archived); top follow-ups since executed. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 2026-09-13 08:49 CEST · INTERACTIVE session (owner command: "docs-health SKILL, PROPERLY") · docs-only session, zero Go code changes · Mode: AUDIT (VERIFY + HARVEST + ANNOTATE/ARCHIVE)
 
 ## Summary

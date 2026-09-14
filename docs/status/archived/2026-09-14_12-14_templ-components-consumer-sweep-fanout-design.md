@@ -1,5 +1,7 @@
 # templ-components consumer sweep — fan-out design session (interactive, no pool task)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Design adjudicated downstream (ADR-0018 + execution plan + fanout script); tq enqueue --dedup-key shipped. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Session**: 2026-09-14 ~12:05–12:14 (interactive exploration; no pool task, no
 TQ_RESULT, zero code changes by design)
 **Prompt**: "How could go-taskqueue be used to run [library-maximization]

@@ -1,5 +1,7 @@
 # Board View Shipped — Session Status & Brutal Self-Review
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Board view shipped and tested; its follow-ups done (statusColorTable, empty-state, banner const). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Report:** 2026-09-09 00:21 CEST
 **Session question:** "Should we add a Kanban Board UI?"
 **Session answer:** Yes — decided after research, implemented end-to-end, verified, shipped (committed via the auto-commit daemon; sibling feature commit `5d9f1fd` landed in parallel).

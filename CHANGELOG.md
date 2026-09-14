@@ -1103,7 +1103,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   process with uptime, DB path, serve addr, and journal freshness. An
   audit of the dogfooding agent commits found no self-modification
   violations and green verify tails on all recent completions
-  (docs/status/2026-09-08_16-20_round5-m14-dogfood-ops.md).
+  (docs/status/archived/2026-09-08_16-20_round5-m14-dogfood-ops.md).
 - **Hygiene pack**: the JetBrains Mono font subsets now ship with their
   SIL OFL 1.1 license (`internal/webui/static/fonts/OFL.txt`); a guard
   test cross-checks the AGENTS.md templ-components adoption table against

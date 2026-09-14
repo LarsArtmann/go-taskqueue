@@ -3,7 +3,7 @@
 **Status:** Accepted (2026-09-08; same-day amendment: trigger T3's
 vendor claim replaced by the locally verified suite results —
 `docs/planning/archived/2026-09-08_cordis-test-suite-verification.md`)
-**Context:** An advisory session (05:24 report, `docs/status/2026-09-08_05-24_cordis-samber-evaluation-journal-bus-recommendation.md`)
+**Context:** An advisory session (05:24 report, `docs/status/archived/2026-09-08_05-24_cordis-samber-evaluation-journal-bus-recommendation.md`)
 compared three libraries against this repo — **cordis** (the local
 `/home/lars/forks/cordis` fiber/lifecycle framework), **samber/do** (DI
 container), **samber/ro** (ReactiveX-style observables) — and reached a

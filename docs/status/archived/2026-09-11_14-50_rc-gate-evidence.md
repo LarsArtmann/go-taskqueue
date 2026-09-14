@@ -1,5 +1,7 @@
 # RC gate at HEAD — release-candidate evidence (Round 11, T1)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — RC gate snapshot; fixture/fuzz/smoke verified; sqlite-Fail fix + setup-go pin landed. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 - **When**: 2026-09-11 14:50 CEST
 - **HEAD**: `097a8b1` at gate time (working tree: concurrent agent's format
   pass + this window's rate-limit armor, all gate-green together)

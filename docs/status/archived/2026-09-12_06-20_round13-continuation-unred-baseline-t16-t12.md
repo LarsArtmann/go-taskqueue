@@ -1,5 +1,7 @@
 # Round-13 continuation — un-red, baseline triage, T16+T12 execution
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — check-release-docs.sh + fuzz GOEXPERIMENT verified; un-red + baseline regen done. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 - **When**: 2026-09-12 05:00–06:20 CEST
 - **Trigger**: owner prompt "Execute and Verify them one step at the time.
   Repeat until done" on the round-13 continuation state (04-59 self-review

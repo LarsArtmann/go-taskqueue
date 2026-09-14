@@ -1,5 +1,7 @@
 # Status: 50-Item Backlog Execution — Retry Hygiene, Type Pins, Contract Versioning
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — retry e2e test, ADR-0013, plan doc on disk; gates mirrored in TODO_LIST; residue = labeled brainstorm. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-10 02:51 CEST
 **Session scope:** full execution of the 50-item list from the 02-04 report's
 §f — every item implemented, verified, or explicitly rejected with reasoning.

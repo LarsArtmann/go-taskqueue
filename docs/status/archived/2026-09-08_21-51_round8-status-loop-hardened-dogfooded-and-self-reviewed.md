@@ -1,5 +1,7 @@
 # Status — ROUND8: the status loop hardened, surfaced, smoked, and eaten by its own dogfood
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Verify gate, scope rule, watermark liveness, smoke verified; 25 minted items executed by the 01-43 sweep. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **When:** 2026-09-08 21:51 CEST · **Scope:** this session's run (ROUND7 follow-ups from
 the 20:56 report → full TODO_LIST execution → live dogfood → all gates green).
 **Companion reports:** ROUND7 status loop at

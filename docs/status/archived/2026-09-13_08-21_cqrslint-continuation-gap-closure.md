@@ -1,5 +1,7 @@
 # cqrs-lint continuation: gap-closure round — full battery green, overclaim corrected
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Same cluster as 08-00; un-red resolved by the v0.3.0 push; remainder BLOCKED-tracked. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 Date: 2026-09-13 08:21 CEST · Session: continuation of `2026-09-13_08-00_cqrslint-triage-encoding-fix.md` (owner: "Is that all?") · Format: **Markdown** per explicit owner instruction (skill default is HTML — override flagged per spec)
 
 ## Summary

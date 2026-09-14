@@ -1,5 +1,7 @@
 # Status Report — Round 2 Completion: tq top, audit, docs set, tooling policy, seeds
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Round-2 debt fixed and verified (audit scan-failure reporting, TestCheckProjectsDir, bounded reads, ArchiveFactsBefore); design leftovers routed to planning/ROADMAP. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-06 19:49 CEST
 **Session scope:** Executed the remaining round-2 plan rows (C14, C15, C19,
 C20–C24, C26, C27) on top of the previously shipped slices; second living-docs

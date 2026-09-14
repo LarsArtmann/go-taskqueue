@@ -1,5 +1,7 @@
 # Docs-Health Audit: Six Living Docs Rebuilt, 12 Reports Annotated, 7 Files Archived — and the Rebuild Found Its Own Regression
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — 7 archives + 12 annotations verified in place; prune-gap decided and shipped. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Session:** 2026-09-09 ~01:50–02:16 CEST (interactive, ordered: "View ALL
 2026-0* files, execute the docs-health skill PROPERLY, make the six living
 docs superb, archive fully-done files"). Scope: exactly that audit; this

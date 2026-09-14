@@ -1,5 +1,7 @@
 # go-cqrs-lite storage-vs-queue verdict — interactive session (brutal a–g)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Storage verdict recorded in AGENTS.md; §g questions answered in the 09-14 addendum; drift audit shipped. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 INTERACTIVE session (no pool task, no TQ_RESULT, zero Go code changes):
 owner challenge "why do we need any manual postgres or sqlite stuff when
 we have go-cqrs-lite!?!!" → verdict research + recording, two follow-up

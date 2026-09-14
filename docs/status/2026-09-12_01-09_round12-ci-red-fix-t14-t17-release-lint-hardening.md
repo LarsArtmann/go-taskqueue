@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-12 01:09 CEST · **Session start:** 23:15 the previous evening
 **Scope:** Continuation of the Round-11 plan
-(`docs/planning/2026-09-11_14-01_SUPERB-PLAN-ROUND11-POOL-REVIVAL-AND-QUEUE-TRUST.md`);
+(`docs/planning/archived/2026-09-11_14-01_SUPERB-PLAN-ROUND11-POOL-REVIVAL-AND-QUEUE-TRUST.md`);
 window opened by triaging the NEW CI red that arrived after the toolchain
 pins, then executed T14–T17 top-down until the status-report interrupt.
 

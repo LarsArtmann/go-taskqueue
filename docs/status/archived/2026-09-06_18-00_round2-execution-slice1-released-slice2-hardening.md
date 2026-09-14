@@ -1,5 +1,7 @@
 # Session Execution Report — Round-2 Plan: Slice 1 Shipped, Slice 2 Nearly Done
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — v0.1.0 released; chaos/e2e/budget verified in tree; leftover D-seeds routed to ROADMAP + FEATURES. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-06 18:00 CEST
 **Session scope:** execute docs/planning/2026-09-06_16-28_SUPERB-PLAN-ROUND2 (C01–C27,
 D01–D100) end to end: READ → execute → verify per task, one step at a time.

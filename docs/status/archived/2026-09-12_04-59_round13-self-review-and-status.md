@@ -1,5 +1,7 @@
 # Round-13 execution self-review — what shipped, what I fucked up, what's next
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Round-13 gates verified on disk; baseline RED resolved (TODO_LIST row). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 - **Written**: 2026-09-12 04:59 CEST
 - **Session**: the round-13 plan execution window
   (`docs/planning/2026-09-12_02-15_SUPERB-PLAN-ROUND13-TRUTH-IN-EVERY-GREEN.md`),

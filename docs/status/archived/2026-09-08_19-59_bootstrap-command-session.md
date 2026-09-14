@@ -1,5 +1,7 @@
 # Session Status Report — `tq bootstrap`: The One-Command Meta Harness Bootstrap
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — cmd/tq/bootstrap.go shipped (retention flags rendered); install path smoke-covered; provider/install ops are owner rows in TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 | Field               | Value                                                                                                                    |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Date                | 2026-09-08 19:59 CEST                                                                                                    |

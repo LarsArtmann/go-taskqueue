@@ -1,7 +1,7 @@
 # Facade adoption Pareto plan — T0–T14 executed, v0.3.0 released
 
 EXECUTION session over
-docs/planning/2026-09-13_06-43_facade-adoption-pareto-plan.md: tasks
+docs/planning/archived/2026-09-13_06-43_facade-adoption-pareto-plan.md: tasks
 T0.5, T3, T6, T7, T8, T10, T11, T12, T13, T14 (all pre-release-unblocked
 work), then the owner-gated chain T0.2–T0.4 → T1 → T2 → T4. Window
 ~08:00–09:06 CEST, 2026-09-13. Concurrent sessions active throughout

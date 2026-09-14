@@ -1,5 +1,7 @@
 # Status Report — Docs-Health Audit: Six Living Documents
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Six-docs audit: rebuilt docs all exist, guards shipped (check-doc-refs.sh, harvest-parse, nix CI); CQA + papdashboard live-verification routed to TODO_LIST BLOCKED rows. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-06 16:19 CEST
 **Session scope:** Full docs-health AUDIT (BUILD + HARVEST + VERIFY) over
 README.md, AGENTS.md, FEATURES.md, TODO_LIST.md, ROADMAP.md, CHANGELOG.md —

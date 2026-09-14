@@ -1,5 +1,7 @@
 # ROUND8 Execution Status — SystemNix/Evo-x2 Integration
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — deploy/nixos module + module-eval fix verified; activation/input-flip is the owner BLOCKED row in TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **2026-09-08 23:48 · session scope: plan creation + fleet-coordinated
 execution + verification of the go-taskqueue → SystemNix integration.**
 Companion artifact: `docs/planning/2026-09-08_22-55_SUPERB-PLAN-ROUND8-SYSTEMNIX-EVO-X2-INTEGRATION.md`

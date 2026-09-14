@@ -1,5 +1,7 @@
 # Status Report — Session Continuation: Detail-Page Redesign Close-Out, CSS-Gate Wiring, Dead-Letter Strip
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — CSS gate wired into ci-local; golden test + webui smoke done; only minor UX polish untracked. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Timestamp**: 2026-09-11 15:39 CEST
 **Scope**: Continuation session after the 14:22 redesign report (`2026-09-11_14-22_task-detail-page-redesign.md`). This report covers ONLY this session's run + what it noticed. Companion report stands; its f-list items are folded in below where still valid.
 **Format note**: `.md` per explicit user instruction (status-report skill's HTML default overridden — one-off, not propagated).

@@ -1,5 +1,7 @@
 # Round-5 Execution — Wave 2 Shipped (M7–M10), M11 Just Started
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — M7-M10 in tree (cooperative-cancel pin, tq doctor, task SSE); M11+ completed by the 17-20 report. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Point-in-time status report, 2026-09-08 15:30 CEST.**
 Continuation of the round-5 Pareto execution
 (`docs/planning/2026-09-07_23-51_SUPERB-PLAN-ROUND5-PARETO-100-IMPROVEMENTS.md`,

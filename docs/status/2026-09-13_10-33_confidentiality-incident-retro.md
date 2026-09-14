@@ -12,7 +12,7 @@ research beyond verifying my own remediation coverage.
    owner alarm ~09:20; deletion verified — view no longer resolves).
 2. **Public master scrubbed to zero references**: 4 files redacted
    (docs/feedback/new/2026-09-13_external-adoption-blocked-by-internal-paths.md,
-   docs/status/2026-09-13_06-31_public-facade-modules-execution.md,
+   docs/status/archived/2026-09-13_06-31_public-facade-modules-execution.md,
    docs/references/single-job-type-queue-profile.md, docs/feedback/README.md)
    to "external evaluator (identity redacted at owner request)"; dangling
    `#3` references neutralized in 5 more files incl. both of this

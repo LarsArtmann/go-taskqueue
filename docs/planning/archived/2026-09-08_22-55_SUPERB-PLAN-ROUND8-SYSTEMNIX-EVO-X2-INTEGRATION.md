@@ -1,5 +1,7 @@
 # SUPERB PLAN ROUND8 — SystemNix/Evo-x2 Integration
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Round-8 SystemNix integration executed (deploy/nixos module + flake checks verified). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 > **EXECUTION STATUS (annotated 2026-09-08 23:30, point-in-time snapshot —
 > re-verify claims against the tree before treating as current):** executed
 > 2026-09-08 by a multi-agent fleet in BOTH repos, mostly within the hour.

@@ -1,5 +1,7 @@
 # Round-5 M14 — Dogfood Ops: Agent-Commit Review, Session Status, Budget Telemetry
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — tq-session-status script + alert forwarding + budget mirror shipped; follow-ups annotated resolved. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-08 16:20 CEST
 **Scope:** plan `docs/planning/2026-09-07_23-51_SUPERB-PLAN-ROUND5-PARETO-100-IMPROVEMENTS.md`
 M14/F72–F76 (ideas I23, I24, I25). Wave 2 (M11–M13) closed earlier today.

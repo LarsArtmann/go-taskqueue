@@ -1,5 +1,7 @@
 # Priority System — SUPERB Pareto Execution Plan
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — T1-T40 complete; priority system shipped (bands, reprioritize, AI scorer); calibration routed to TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Created:** 2026-09-12 14:19 (interactive owner session)
 **Input:** `docs/status/2026-09-12_14-03_priority-projection-design-research.md`
 (design v2 + §f 50-item backlog + §g open questions) and the owner's Pareto

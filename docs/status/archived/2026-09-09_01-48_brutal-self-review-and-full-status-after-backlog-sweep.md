@@ -1,5 +1,7 @@
 # Brutal Self-Review & Full Status — After the 21:40 Backlog Sweep
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — §f executed (coop-cancel pin, Since pushdown, journal_head, retention, footer cross-ref, startup prune). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 Session: 2026-09-09 00:00–01:48 (this report: 01:48). Scope of this report:
 ONLY what this session did and noticed, per instruction. Format note: written
 as `.md` by explicit user instruction (the status-report skill's HTML default

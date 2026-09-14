@@ -1,5 +1,7 @@
 # Status: LAN Dashboard Fixes → UI Redesign → Admin Control
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — Cookie auth/CSP nonce/allow-writes verified; carried items all done (bootstrap parity, SECURITY.md, CSRF lockout). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-09 01:35 CEST
 **Session scope:** everything after the 22:42 fleet-onboarding report: live-view troubleshooting (CSP/cookies/ghosted app.js), the design critique + redesign (now band, two-tier table), and the control layer (`--allow-writes`, CSRF, cancel/rescue). Compares against the 22:42 report's own promises — two of its items are still open on purpose.
 **Companion:** brutal-self-review answers folded into (d)/(e) per the single-report instruction.

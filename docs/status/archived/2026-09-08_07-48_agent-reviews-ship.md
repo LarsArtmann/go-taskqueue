@@ -1,5 +1,7 @@
 # Status Report — Agent Reviews Shipped (can/should → built & verified)
 
+> **ARCHIVED 2026-09-14 (docs-health sweep)** — internal/review + review executor shipped and verified (badges, watermark catch-up, live reviews); review smoke tracked in TODO_LIST. Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
+
 **Date:** 2026-09-08 07:48 CEST
 **Session scope:** "Can and should we leverage Agent 'reviews'?" — researched the
 three reference projects, decided, designed, implemented, tested, verified,
