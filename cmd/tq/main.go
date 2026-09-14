@@ -81,6 +81,8 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
                   status task over them — the pool does the rest)
   tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose]
   tq api [--addr ADDR] --auth-token TOKEN [--db PATH]   (write API: POST /api/v1/tasks)
+  tq verdict '<json>'   (agent-facing: record this task's structured result
+                  into $TQ_RESULT_FILE; validates JSON, no database access)
   tq version
 
 Default database: $TQ_DB or ./tasks.db
@@ -98,6 +100,7 @@ func main() {
 		"worker":       cmdWorker,
 		"harvest":      cmdHarvest,
 		"reprioritize": cmdReprioritize,
+		"verdict":      cmdVerdict,
 		"agent-pool":   cmdAgentPool,
 		"stats":        cmdStats,
 		"tasks":        cmdTasks,

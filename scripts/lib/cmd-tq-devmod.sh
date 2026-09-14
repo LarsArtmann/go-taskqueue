@@ -17,6 +17,12 @@ cmdtq_devmod() {
 		sed -n 's|^replace \(github.com/larsartmann/go-taskqueue/internal[^ ]*\) => ./\(.*\)$|replace \1 => ../../\2|p' "$root/go.mod"
 	} >"$dir/dev.mod"
 	cp "$dir/go.sum" "$dir/dev.sum"
+	# The replaced internal modules can gain external dependencies between
+	# releases (before the next tag bump lands in cmd/tq's committed
+	# requires); the ROOT go.sum already sums that exact graph (root builds
+	# with the same replace set), so union it in — dev.sum is derived, never
+	# committed, and extra entries are harmless.
+	cat "$root/go.sum" >>"$dir/dev.sum"
 	CMD_TQ_DIR="$dir"
 }
 
