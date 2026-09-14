@@ -46,7 +46,21 @@ linters:
     - gochecknoinits
     - gochecksumtype
     - gocognit
-    - goconst
+    # goconst/mnd/paralleltest: triaged to POLICY-DISABLED 2026-09-14
+    # (slice-triage round 2, same discipline as wrapcheck/varnamelen):
+    # - goconst: remaining ~27 sites are sort-vocabulary tokens pinned by
+    #   allowlist switches + webui tests, payload display labels, and wire
+    #   map keys (papdashboard API contract) — extraction churns hot files
+    #   for zero behavior gain.
+    # - mnd: findings are deliberate domain values — POSIX file modes
+    #   (gosec-triaged by design), buffer sizes, retry/backoff ladders
+    #   pinned by conformance tests; ~90 sites across 12 modules is the
+    #   mass-fix the discipline forbids.
+    # - paralleltest: the suite is intentionally serial — SQLite
+    #   single-writer fixtures (MaxOpenConns(1)), hermetic nix checkPhase,
+    #   shared TQ_DB env; t.Parallel() everywhere would race fixtures.
+    # testpackage (also triaged round 2): zero findings since the
+    # _test.go exclusion rule below — no further action.
     - gocritic
     - gocyclo
     - godoclint
@@ -71,7 +85,6 @@ linters:
     - makezero
     - mirror
     - misspell
-    - mnd
     - modernize
     - musttag
     - nakedret
@@ -84,7 +97,6 @@ linters:
     - nolintlint
     - nonamedreturns
     - nosprintfhostport
-    - paralleltest
     - perfsprint
     - prealloc
     - predeclared
@@ -127,8 +139,6 @@ linters:
       forbid-spec-pollution: true
     gocognit:
       min-complexity: 25
-    goconst:
-      ignore-tests: true
     gocritic:
       disabled-checks:
         - ifElseChain
@@ -161,12 +171,6 @@ linters:
         - generic
     makezero:
       always: true
-    mnd:
-      ignored-numbers:
-        - "0"
-        - "1"
-        - "2"
-        - "100"
     nestif:
       min-complexity: 6
     revive:
