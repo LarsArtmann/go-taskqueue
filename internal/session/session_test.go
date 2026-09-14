@@ -11,6 +11,8 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/review"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 func testStore(t *testing.T) *sqlite.Store {
@@ -316,6 +318,30 @@ func TestCloseNeedsIDAndRepo(t *testing.T) {
 func TestSyntheticTaskIDNamespaced(t *testing.T) {
 	if got := SyntheticTaskID("abc").String(); got != "session:abc" {
 		t.Fatalf("synthetic id = %q", got)
+	}
+}
+
+// TestSessionAndSweeperReviewKeysStayDisjoint pins the review-namespace
+// interplay (sweep vs session-close bridge): both mint through
+// review.ReviewDedupKey over the shared "review:<id>" prefix, but a
+// session's synthetic id can never equal a real task id — so closing a
+// session can neither suppress nor duplicate the sweeper's per-task review
+// of the same work, and replaying either path still dedups to one task.
+func TestSessionAndSweeperReviewKeysStayDisjoint(t *testing.T) {
+	realID := task.ID("000001a09f8a4d42a9c15ca7a714adac6c4e")
+	sessionKey := review.ReviewDedupKey(SyntheticTaskID(realID.String()))
+	taskKey := review.ReviewDedupKey(realID)
+
+	if sessionKey != "review:session:"+realID.String() {
+		t.Fatalf("session review key = %q, want review:session:<id>", sessionKey)
+	}
+
+	if !strings.HasPrefix(sessionKey, "review:session:") {
+		t.Fatalf("session review key %q lost the session: namespace guard", sessionKey)
+	}
+
+	if sessionKey == taskKey {
+		t.Fatal("session review key collided with the task review key — a close would suppress or double-mint a task review")
 	}
 }
 

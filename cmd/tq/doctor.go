@@ -80,6 +80,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 
 	results = append(results, doctorSQLiteChecks(ctx, opts.DBPath)...)
 	results = append(results, doctorQueueMix(ctx, store)...)
+	results = append(results, doctorRepoCoverage(ctx, store, opts.ProjectsDir)...)
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
