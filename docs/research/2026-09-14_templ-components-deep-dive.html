@@ -918,40 +918,98 @@
         <section id="summary">
           <h2><span class="num">00</span>Summary</h2>
           <p>
-            Replace this with the bottom-line verdict. A good summary tells the
-            reader whether the subject is ready, what the biggest risk is, and
-            what one action would unlock the most value.
+            The dashboard's aesthetic identity is <strong>not</strong> the problem — the
+            "ledger &amp; lamp" theming is a textbook execution of the library's
+            theme-bridge recipe, and every custom surface is a documented, test-pinned
+            decision. The problem is <strong>interaction state versus live updates</strong>:
+            every journal tick re-renders and swaps all five dashboard fragments, and that
+            swap destroys whatever the operator was doing — typing in the search box,
+            filling in a cancel-reason form, reading an expanded error cell. On a busy
+            dogfood pool, ticks arrive every few seconds.
+          </p>
+          <p>
+            On the library side, the audit found one critical gap, three places where tq
+            hand-rolls what the library already ships (sortable table headers, relative-time
+            auto-refresh, pagination), and a handful of free wins (CopyButton, ListNote).
+            Nothing found requires a library change; the biggest fix is roughly ten lines in
+            <code>app.js</code>.
           </p>
           <div class="callout callout-amber">
             <strong>The bottom line</strong>
-            State the verdict plainly. If the report is blocking, say so. If
-            it's mostly positive, lead with that.
+            Adopt what already ships: a swap-guard in the SSE client (fixes the state
+            clobbering), <code>Table.TypedHeaders</code> sort links (the handler already
+            parses <code>?sort=</code> — only the UI is missing), and
+            <code>display.RelativeTime</code> to delete the hand-rolled age ticker. Defer
+            the htmx question (auto-submit filter bar) until the swap-guard lands; it
+            changes what "apply" needs to be.
           </div>
+          <p style="font-size: 0.9rem; color: var(--text-muted);">
+            Method: full read of the library repo at head (v1.17.0, AGENTS.md 383 lines,
+            39 ADRs, 35 recipes), component source deep-reads, then a capability-by-capability
+            comparison against <code>internal/webui</code> at go-taskqueue master. Every
+            finding cites file:line in both repos. Capability existence was verified against
+            the pinned v1.16.0 tag, not just master.
+          </p>
         </section>
 
         <!-- Strengths -->
         <section id="strengths">
           <h2><span class="num">&#9670;</span>What's already excellent</h2>
           <p>
-            Before the criticism: acknowledge what works. This builds trust and
-            keeps the report from reading like a pure complaint list.
+            Before the findings: the adoption that exists is genuinely good, and the
+            rejections are documented decisions, not oversights.
           </p>
 
           <div class="strengths">
             <div class="strength">
               <div class="check">+</div>
               <div class="text">
-                <strong>Specific strength one</strong>
-                <span>Explain why it matters and what it enables.</span>
+                <strong>Theme-bridge executed exactly per the library's recipe</strong>
+                <span><code>theme.css:24-54</code> remaps <code>gray-*</code> onto steel-navy and
+                <code>blue-*</code> onto signal cyan — the precise "remap, don't replace"
+                pattern of <code>docs/recipes/theme-bridge.md</code>. Zero components forked,
+                all library colors flow through one token table.</span>
               </div>
             </div>
             <div class="strength">
               <div class="check">+</div>
               <div class="text">
-                <strong>Specific strength two</strong>
-                <span
-                  >Reference files, metrics, or patterns where possible.</span
-                >
+                <strong>Custom surfaces are decisions, with guard tests both directions</strong>
+                <span>The nowband (vs <code>StatCard</code>) and the read-only board (vs
+                <code>KanbanBoard</code>, re-evaluated 2026-09-13 against its drag-move
+                value) are pinned in the AGENTS.md adoption table and enforced by
+                <code>adoption_test.go</code> — templates invoking undocumented components
+                fail CI, and so do table rows that rot.</span>
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>SSE fragment mechanics match the library's own recipe</strong>
+                <span>Named events, server-rendered HTML swapped by container id, no scripts
+                inside fragments, connection lamp as <code>role="status"</code> +
+                <code>aria-live="polite"</code> (<code>layout.templ:105</code>) — all four
+                checklist items of <code>docs/recipes/sse-fragments.md</code> are met by
+                <code>hub.go</code>/<code>app.js</code>.</span>
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>No-JS-first discipline uses the platform, not workarounds</strong>
+                <span>Native <code>&lt;details&gt;</code> folds for settled tasks, cancel forms
+                and the journal browser; view state rides the URL; keyboard hints
+                (<code>/</code>, <code>1-4</code>, <code>?</code>) and skip-link in the
+                header. The library's HATEOAS-first principle, applied.</span>
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Domain-to-visual mapping is single-sourced</strong>
+                <span><code>components.go:34-40</code> is the one status→color table feeding
+                badges, board accents and stat tone together — the exact split-brain the
+                00:21 report caught with two hand-synced maps, fixed at the root.</span>
               </div>
             </div>
           </div>
@@ -965,66 +1023,240 @@
           <!-- Issue 1 -->
           <div class="issue issue-critical" id="issue-1">
             <span class="severity severity-critical"
-              >Blocking &middot; High impact</span
+              >Critical &middot; live swaps destroy operator state</span
             >
-            <h3>Critical issue title</h3>
+            <h3>Every journal tick clobbers typing, open forms, and expanded cells</h3>
             <div class="where">
-              path/to/file.go:42-58 &middot; short context
+              internal/webui/handlers.go:339,395-396 &middot; render.go:741-757 &middot;
+              static/app.js applyFragment &middot; fragments.templ cancelAction/rescueAction
             </div>
             <p>
-              Describe the problem, cite the code or behavior, and explain why
-              it matters to the reader's goals.
+              On every change notification the server re-renders <em>all five</em> dashboard
+              fragments — including <code>#frag-filters</code> (the search input) and
+              <code>#frag-table</code> — and streams each as a <code>frag</code> event
+              (handlers.go:395-396). The client replaces <code>innerHTML</code> wholesale
+              (<code>applyFragment</code>). Under an active pool this fires every few
+              seconds, so: text typed into the search box but not yet submitted is reverted
+              to the server's value; an open cancel/stop/rescue reason form (it lives
+              <em>inside</em> a table row, fragments.templ:270-309) collapses mid-typing; an
+              expanded error cell snaps shut; the settled-tasks fold resets; keyboard focus
+              inside a swapped fragment drops to <code>&lt;body&gt;</code>. This is very
+              likely the concrete "the UI sucks" experience.
             </p>
-            <pre><code>// Example of the problematic pattern
-func BadExample() {}</code></pre>
+            <pre><code>// handlers.go — every fragment, every tick, no state guard
+return sendSnapshotPayload(ctx, stream, renderFragments(ctx, data), pageTitle(data), seq)
+...
+for _, frag := range frags {
+    if err := stream.SendJSON("frag", frag); err != nil {</code></pre>
             <div class="callout callout-teal">
-              <strong>Fix: recommended action</strong>
-              State the concrete fix, including file names, function names, or
-              configuration changes.
+              <strong>Fix: a swap-guard in applyFragment (~10 lines), no library change</strong>
+              Skip swapping a container while it <code>contains(document.activeElement)</code>
+              or an open <code>&lt;details&gt;</code>/<code>[data-expanded]</code> (defer that
+              fragment to the next quiet tick), and diff-skip re-rendering
+              <code>#frag-filters</code> server-side unless the filter state changed. For fold
+              persistence, the library's <code>CollapsibleSection</code> singleton
+              (collapsible_section.templ:69-94) demonstrates the exact re-apply-after-swap
+              pattern; mirror it for <code>.tq-settled</code>. The library's own recipe sums it
+              up: "state flags ride data-* attributes read by the page controller" — the
+              controller currently doesn't read them back after a swap.
             </div>
           </div>
 
           <!-- Issue 2 -->
           <div class="issue issue-important" id="issue-2">
             <span class="severity severity-important"
-              >Important &middot; Medium impact</span
+              >High &middot; shipped feature unused</span
             >
-            <h3>Important issue title</h3>
-            <div class="where">path/to/another.go:12-19</div>
+            <h3>Sort is parsed but has no UI — TypedHeaders is the exact shipped answer</h3>
+            <div class="where">
+              internal/webui/handlers.go:32-40 (allowlist) &middot; fragments.templ FilterBar
+              &middot; library display/table.templ:13-44 (verified present in v1.16.0)
+            </div>
             <p>
-              Explain the risk. Important issues are not blockers but would make
-              a careful reviewer hesitate before shipping.
+              The handler allowlists six <code>?sort=</code> values
+              (age/priority/attempts × asc/desc) and the filter bar preserves it as a hidden
+              input — but nothing renders it. The operator cannot sort the ledger at all.
+              The library's <code>TableHeader{Sortable, SortDirection, Href}</code> renders
+              server-side sort links with <code>aria-sort</code> and ↑/↓ indicators — pure
+              links, no JS runtime needed, CSP-safe by construction.
             </p>
+            <div class="callout callout-teal">
+              <strong>Fix</strong>
+              Emit each header's <code>Href</code> via the existing <code>sortURL</code>-style
+              helper and set <code>SortDirection</code> from <code>data.Filter.Sort</code>.
+              Works unchanged with the hand-rendered <code>Body</code> slot — sorting is a
+              header-level feature. Roughly an hour, pure operator win.
+            </div>
           </div>
 
           <!-- Issue 3 -->
-          <div class="issue issue-nice" id="issue-3">
-            <span class="severity severity-nice"
-              >Nice to have &middot; Low impact</span
+          <div class="issue issue-important" id="issue-3">
+            <span class="severity severity-important"
+              >High &middot; duplicate work</span
             >
-            <h3>Nice-to-have improvement</h3>
-            <div class="where">docs/ or config</div>
+            <h3>Hand-rolled age ticker reimplements RelativeTime (AutoRefresh)</h3>
+            <div class="where">
+              internal/webui/static/app.js:28-45 (fmtAge/tickAges/data-age) &middot; library
+              display/shared.go:190-215 &middot; display/relative_time.templ (verified in
+              v1.16.0)
+            </div>
             <p>
-              Minor polish, documentation gaps, or future-proofing suggestions
-              go here.
+              tq ships its own live relative ages: <code>data-age</code> epoch attributes, a
+              <code>fmtAge</code> formatter, a 30-second <code>setInterval</code>. The library
+              ships the same capability: <code>RelativeTimeProps{Time, Now}</code> renders
+              <code>&lt;time datetime&gt;</code> with a title tooltip, and its
+              <code>AutoRefresh</code> singleton re-queries
+              <code>time[data-tc-relative]</code> on every tick — meaning it keeps working
+              across tq's raw-SSE innerHTML swaps without any htmx dependency. The library
+              version also adds i18n (<code>Intl.RelativeTimeFormat</code>) and correct
+              screen-reader semantics.
             </p>
+            <div class="callout callout-teal">
+              <strong>Fix, with one honest tradeoff</strong>
+              Adopt <code>RelativeTime</code> for the detail page's created/updated rows and
+              the fact feed timestamps (exact fit) and delete the duplicated client code.
+              The task table's compact band ("3m", "2d") is a deliberate density choice —
+              either keep the short form there or accept the longer "3 minutes ago". Note
+              <code>components.go:134 factLines</code> is already dead code (LSP-confirmed
+              unused) from this same hand-rolled area — delete it in the same change.
+            </div>
+          </div>
+
+          <!-- Issue 4 -->
+          <div class="issue issue-important" id="issue-4">
+            <span class="severity severity-important"
+              >Medium &middot; shipped feature unused</span
+            >
+            <h3>Prev/next-only pager where navigation.Pagination ships page numbers</h3>
+            <div class="where">
+              internal/webui/fragments.templ taskPager:170-195 &middot; library
+              navigation/pagination.templ (verified in v1.16.0)
+            </div>
+            <p>
+              The hand-rolled pager offers only ← prev / next →. The library's
+              <code>Pagination</code> adds numbered pages with ellipsis, <code>rel</code>
+              attributes, mobile/desktop responsive rows, and container awareness — all
+              rendered as pure links from <code>BaseURL</code> + <code>QueryParam</code>, so
+              it composes with tq's URL-carried filter state with zero JS.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Fix</strong>
+              Replace <code>taskPager</code> with <code>Pagination{BaseURL: "/", QueryParam:
+              "page"}</code>; the existing filter params are already carried by
+              <code>pageHref</code>'s URL building — keep that helper for <code>BaseURL</code>.
+              The matching-count line can stay alongside it.
+            </div>
+          </div>
+
+          <!-- Issue 5 -->
+          <div class="issue issue-nice" id="issue-5">
+            <span class="severity severity-nice"
+              >Medium &middot; decision point</span
+            >
+            <h3>Filter apply forces a full page reload; FilterInput/recipe show the lighter path</h3>
+            <div class="where">
+              internal/webui/fragments.templ FilterBar:473-525 &middot; components.go:291-293
+              (HTMX deliberately stripped) &middot; library forms/filter_input.templ,
+              docs/recipes/horizontal-filter-bar.md
+            </div>
+            <p>
+              Applying a filter is a full GET: the page repaints and the SSE stream
+              reconnects. The library's <code>FilterInput</code> (300 ms debounce,
+              auto-submit, <code>&lt;search&gt;</code> landmark, no-JS fallback) and the
+              horizontal-filter-bar recipe's <code>hx-get</code> + <code>hx-target</code> +
+              <code>hx-push-url</code> pattern solve this — but require the htmx runtime that
+              tq explicitly strips in <code>dashboardProps</code> (it's still embedded in
+              <code>layout.Base</code> via <code>//go:embed</code>, so re-enabling is a
+              one-liner with zero extra requests). The recipe's footgun #1 (silent
+              query-param drop) is already handled correctly by tq's hidden inputs.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Fix: sequence it after issue 1</strong>
+              Once the swap-guard exists, either (a) re-enable embedded htmx and wire the
+              filter form to target <code>#frag-table</code> only, or (b) add a ~15-line
+              fetch-submit to app.js with <code>history.pushState</code>. Decision hinges on
+              whether htmx returns for other interactions too — worth one deliberate ADR
+              note rather than an ad-hoc choice.
+            </div>
+          </div>
+
+          <!-- Issue 6 -->
+          <div class="issue issue-nice" id="issue-6">
+            <span class="severity severity-nice"
+              >Low &middot; free wins</span
+            >
+            <h3>Small duplications and missed conveniences</h3>
+            <div class="where">
+              fragments.templ:56-81, 69-79 &middot; task detail page &middot; library
+              display/copy_button.templ, display/list_note.templ, errorpage/ module
+            </div>
+            <ul style="margin: 0 0 1rem 1.2rem; color: var(--text-muted);">
+              <li>
+                <strong>ListNote:</strong> the "+N more projects" chip in StatusCards is a
+                hand-rolled <code>ListNote</code> ("Showing N of M", <code>role="status"</code>).
+              </li>
+              <li>
+                <strong>CopyButton:</strong> the status-report card calls its path "copyable
+                code" — nothing copies it. CSP-safe CopyButton with "Copied!" feedback fits
+                there, on task IDs, and on payload panes.
+              </li>
+              <li>
+                <strong>errorpage module:</strong> tq's chrome-consistent 404 is better than
+                the generic one for this UI, but <code>errorpage.WriteError</code> would give
+                500s the same treatment; today they are bare.
+              </li>
+              <li>
+                <strong>Icons:</strong> 4 of 102 used (empty states). The apply button,
+                clear-all link and DLQ heading are icon candidates.
+              </li>
+              <li>
+                <strong>TableRow.Href:</strong> whole-row click + keyboard navigation exists
+                upstream, but only on the <code>Rows</code> path — tq's rich
+                <code>Body</code>-slot rows can't adopt it without giving up badges/actions.
+                An upstream <code>Body</code>-slot row-href hook is the only gap found that
+                would need a library change.
+              </li>
+            </ul>
           </div>
         </section>
 
         <!-- Proposal -->
         <section id="proposal">
-          <h2><span class="num">02</span>What the solution could look like</h2>
+          <h2><span class="num">02</span>The roadmap, in impact × effort order</h2>
           <p>
-            If the findings were fixed, what would the new state be? Show the
-            target API, structure, or workflow.
+            Every step is tq-side. Only step 5 touches a decision that needs an owner
+            ruling (htmx or not); nothing requires a library change.
           </p>
-          <pre><code>// Target state after the recommended changes
-type BetterAPI struct {
-    Field string
-}</code></pre>
+          <pre><code>1. Swap-guard + state re-apply in app.js          high impact, ~10 lines
+   skip fragments containing focus/open forms; re-apply details/expanded
+   state after swap; server: skip frag-filters unless filter changed
+
+2. Sortable headers via Table.TypedHeaders        high impact, ~1h
+   taskHeaders() gains Sortable+Href+SortDirection; handler already parses sort
+
+3. display.RelativeTime adoption                  medium impact, ~1h
+   detail page + fact feed; delete fmtAge/tickAges/data-age + dead factLines
+
+4. navigation.Pagination replaces taskPager       medium impact, ~30min
+   numbered pages, ellipsis, rel attrs, responsive rows — pure links
+
+5. Filter submit without full reload              medium impact, needs decision
+   (a) re-enable embedded htmx → FilterInput wired to #frag-table, or
+   (b) ~15-line fetch-submit + pushState in app.js
+
+6. CopyButton on IDs/paths, ListNote chip,        low impact, trivial each
+   errorpage.WriteError for 500s, icon pass
+
+7. Version bump v1.16.0 → next release            free when it ships
+   unreleased a11y pack: touch targets ≥24px, forced-colors focus restore,
+   prefers-contrast hardening, aria-live policy, LoadMore FocusOnSwap,
+   AppShell/SidebarNav theming tokens</code></pre>
           <div class="callout callout-teal">
-            <strong>This is the target</strong>
-            Summarize why this state is better and what it unlocks.
+            <strong>What this unlocks</strong>
+            Steps 1+2 alone turn the dashboard from "look, don't touch" into an operable
+            console: the operator can type, act, and sort while it stays live — with the
+            visual identity, the custom nowband/board, and the no-JS fallbacks fully
+            preserved.
           </div>
         </section>
 
@@ -1032,40 +1264,133 @@ type BetterAPI struct {
         <section id="appendix">
           <h2><span class="num">03</span>Appendix</h2>
           <p>
-            Methodology, links to related files, or a priority matrix can live
-            here.
+            Adoption ledger as audited. "Adopted" = actively used in
+            <code>internal/webui</code>; statuses verified by reading the templates, not by
+            trusting the AGENTS.md table (which this audit found accurate).
           </p>
           <table class="compare">
             <thead>
               <tr>
-                <th>Issue</th>
-                <th>Severity</th>
-                <th>Effort</th>
-                <th>Status</th>
+                <th>Capability area</th>
+                <th>Library surface</th>
+                <th>tq status</th>
+                <th>Verdict</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Issue one</td>
-                <td class="no">Critical</td>
-                <td>Low</td>
-                <td class="no">Open</td>
+                <td>Page shell, SEO, theme</td>
+                <td>layout.Base, ThemeToggle, PageProps.SEO</td>
+                <td>adopted (noindex, nonce, HeadContent)</td>
+                <td class="yes">Fully leveraged</td>
               </tr>
               <tr>
-                <td>Issue two</td>
-                <td class="no">Important</td>
-                <td>Medium</td>
-                <td class="yes">In progress</td>
+                <td>Color identity</td>
+                <td>@theme remapping (theme-bridge)</td>
+                <td>adopted exactly per recipe</td>
+                <td class="yes">Fully leveraged</td>
+              </tr>
+              <tr>
+                <td>Tables core</td>
+                <td>Card+Table Flush/Compact, Body slots</td>
+                <td>adopted (two-tier ledger)</td>
+                <td class="yes">Fully leveraged</td>
+              </tr>
+              <tr>
+                <td>Table sorting</td>
+                <td>TypedHeaders + SortDirection + Href</td>
+                <td>handler parses, no UI</td>
+                <td class="no">Missed</td>
+              </tr>
+              <tr>
+                <td>Clickable rows</td>
+                <td>TableRow.Href + keyboard singleton</td>
+                <td>id-cell links only (Body-slot limit)</td>
+                <td class="no">Constrained</td>
+              </tr>
+              <tr>
+                <td>Empty states</td>
+                <td>EmptyState + 4 icons</td>
+                <td>adopted, copy single-sourced</td>
+                <td class="yes">Fully leveraged</td>
+              </tr>
+              <tr>
+                <td>Badges &amp; status colors</td>
+                <td>Badge/Dot/Size + one color table</td>
+                <td>adopted, split-brain fixed</td>
+                <td class="yes">Fully leveraged</td>
+              </tr>
+              <tr>
+                <td>Charts</td>
+                <td>AreaChart (zero-JS SVG)</td>
+                <td>adopted ×2, honest labels</td>
+                <td class="yes">Fully leveraged</td>
+              </tr>
+              <tr>
+                <td>Terminal trail</td>
+                <td>Scrollback</td>
+                <td>detail page; feed hand-rolled for links</td>
+                <td>Partial</td>
+              </tr>
+              <tr>
+                <td>Relative time</td>
+                <td>RelativeTime AutoRefresh</td>
+                <td>hand-rolled duplicate in app.js</td>
+                <td class="no">Duplicate</td>
+              </tr>
+              <tr>
+                <td>Pagination</td>
+                <td>navigation.Pagination</td>
+                <td>prev/next hand-rolled</td>
+                <td>Partial</td>
+              </tr>
+              <tr>
+                <td>Fold persistence</td>
+                <td>CollapsibleSection + PersistState</td>
+                <td>native details, state lost on swap</td>
+                <td class="no">Gap (finding 1)</td>
+              </tr>
+              <tr>
+                <td>Copy / truncation notices</td>
+                <td>CopyButton, ListNote</td>
+                <td>not adopted; chip hand-rolled</td>
+                <td>Partial</td>
+              </tr>
+              <tr>
+                <td>Error pages</td>
+                <td>errorpage module (4 components)</td>
+                <td>custom 404 only; 500s bare</td>
+                <td>Partial</td>
+              </tr>
+              <tr>
+                <td>Stat band / board</td>
+                <td>StatCard, KanbanBoard</td>
+                <td>deliberate custom, documented + guarded</td>
+                <td class="yes">Justified custom</td>
+              </tr>
+              <tr>
+                <td>htmx layer</td>
+                <td>FilterInput, PolledRegion, Toast, wire</td>
+                <td>deliberately stripped (SSE-first)</td>
+                <td>Deferred decision</td>
               </tr>
             </tbody>
           </table>
+          <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 1rem;">
+            Version currency: go-taskqueue pins v1.16.0 (2026-09-09). v1.17.0 (2026-09-13)
+            is mostly library infrastructure (website rewrite, <code>tc doctor</code>,
+            published invariants) — no consumer-facing urgency. The unreleased a11y pack is
+            the next meaningful consumer bump. Every capability cited in the findings was
+            verified present in the pinned v1.16.0 tag via <code>git show v1.16.0:…</code>.
+          </p>
         </section>
 
         <!-- Footer -->
         <footer class="footer">
           <p>
-            Generated YYYY-MM-DD &middot; Reviewed against version X.Y.Z
-            &middot; All claims verified against source code where noted
+            Generated 2026-09-14 &middot; Library audited at v1.17.0 + unreleased head,
+            consumer claims verified against pinned v1.16.0 &middot; All file:line claims
+            read from source in both repos
           </p>
         </footer>
       </main>
