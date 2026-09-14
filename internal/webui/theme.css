@@ -322,6 +322,28 @@ kbd {
     color-mix(in srgb, var(--color-blue-400) 45%, transparent);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  /* A running count breathes: the ambient glow pulses slowly so "work is
+     happening now" is visible in peripheral vision. Static under
+     reduced-motion. */
+  .tq-seg.card-running.tq-seg-hot .tq-seg-num {
+    animation: tq-live-pulse 2.8s ease-in-out infinite;
+  }
+
+  @keyframes tq-live-pulse {
+    0%,
+    100% {
+      text-shadow: 0 0 8px
+        color-mix(in srgb, var(--color-blue-400) 25%, transparent);
+    }
+
+    50% {
+      text-shadow: 0 0 18px
+        color-mix(in srgb, var(--color-blue-400) 55%, transparent);
+    }
+  }
+}
+
 /* Dead: quiet at zero, an alarm at any other number. */
 .tq-seg.card-dead .tq-seg-num {
   color: var(--color-gray-500);
@@ -354,11 +376,11 @@ kbd {
 
 @media (max-width: 640px) {
   /* The band reads as one instrument row even on phones: a uniform grid
-     (min 64px per segment = five across at 320px) instead of flex-wrap's
-     ragged 4+1 leftovers. */
+     (min 56px per segment = five across at ~320px of band width) instead
+     of flex-wrap's ragged 4+1 leftovers. */
   .tq-nowband-inner {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
     gap: 0.5rem 0;
     width: 100%;
   }
