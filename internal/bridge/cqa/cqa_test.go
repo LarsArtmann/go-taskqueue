@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
 )
 
 func newTestServer(t *testing.T) *httptest.Server {

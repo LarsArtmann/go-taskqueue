@@ -174,11 +174,37 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   `TestAgentExecutorArgvContract`). With `--task-closeout` the work turn is
   followed by a close-out turn that resumes the EXACT session (`--session`,
   never `--continue` — concurrent agents) to run the brutal a)-g) self-review
-  and re-emit the work turn's `TQ_RESULT` (the gate reads the last line);
+  (it no longer re-emits any result line — derivation covers it);
   the report lands at `docs/status/<ts>_task-<id>.md`. Reviews and status
   tasks run a close-out-free clone (they ARE the second opinion).
+- **Derived outcomes (2026-09-14, owner ruling "no self-report")**: the
+  queue DERIVES what an agent run did — commits via the `Task-Queue-ID`
+  footer (`executor.GitLogScanner`, moved from internal/session), files via
+  `git diff-tree` over those commits, and session usage (cost/tokens/
+  messages) via `go-crush-data` (executor dep, read-only, registry lookup
+  repo→dataDir; only when the run's session id was extractable). Derivation
+  fills `AgentResult{Commits, FilesChanged, CommitSHA, Session*}` after
+  verify; the legacy `TQ_RESULT` stdout self-report only fills gaps for
+  in-flight tasks. NO prompt teaches the self-report anymore (pinned by
+  `TestAgentPromptsDropSelfReport`). The recurring no-op-sha-semantics
+  ruling asks died with the choice: a no-op re-dispatch derives "zero
+  footer commits" automatically. Design + MCP rejection:
+  docs/planning/2026-09-14_derived-outcomes-verdict-channel.md.
+- **Verdict channel (`tq verdict` + `$TQ_RESULT_FILE`, 2026-09-14)**:
+  runAgent hands every agent process a per-run temp file via the
+  `TQ_RESULT_FILE` env; verdict-gated tasks record their structured result
+  by running `tq verdict '<one-line JSON>'` (validates JSON, writes the
+  file, no DB access). runAgent appends the file's content to the returned
+  output as the LAST `TQ_RESULT:` line — file outranks any stdout line
+  (`ResultLine` now honors its documented last-line-wins semantics;
+  FindStringSubmatch had silently read the FIRST line for the regex's whole
+  life, pinned by `TestVerdictFileOutranksStdoutLine`). A stdout
+  `TQ_RESULT:` line remains the LEGACY fallback (in-flight pool tasks,
+  stub smokes) — delete it only after the live pool shows derived
+  outcomes.
 - **`review`**: `ReviewPayload` JSON. Both verdicts COMPLETE the task; the
-  mechanical gate is a parseable final `TQ_RESULT: {"verdict":...}` line.
+  mechanical gate is a valid verdict JSON recorded via `tq verdict`
+  (`TQ_RESULT_FILE` channel; legacy stdout line still honored).
   The sweeper (watermark head-bootstrapped — never replays pre-start
   completions) mints `review:<task-id>`-deduped review tasks and, with
   `--review-autofix`, `reviewfix:<id>:<hash>`-deduped fix tasks. Every
@@ -199,8 +225,8 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   TODO_LIST/CHANGELOG/AGENTS/README/ROADMAP/FEATURES current with what
   the window's tasks actually shipped, and archives fully-done reports
   to `docs/status/archived/`; hard scope: docs only, never code/config.
-  Two gates: the `TQ_RESULT` contract naming an existing REPO-RELATIVE
-  report file, and the repo verify command. One report in flight per
+  Two gates: the recorded verdict naming an existing REPO-RELATIVE
+  report file (`tq verdict` channel), and the repo verify command. One report in flight per
   project; `status:<project>:<trigger-id>` dedup.
 - **Idempotent enqueue**: `DedupKey` set → re-enqueue returns the stored
   task unchanged. A cancelled/dead task's key still suppresses re-enqueue;
@@ -211,7 +237,8 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   `dlqfix:<dead-id>`-deduped autopsy task (type scope IS the loop guard: a
   dead autopsy never mints another; sh/review/status deaths stay human
   surfaces). Both verdicts COMPLETE; mechanical gate is the
-  `TQ_RESULT: {"verdict":"fixed|wontfix","summary":...}` line — wontfix
+  recorded `{"verdict":"fixed|wontfix","summary":...}` JSON (`tq verdict`
+  channel) — wontfix
   without a summary is a failed attempt. The sweeper disposes: fixed →
   `RescueDead` with the dead task's ORIGINAL budget; wontfix →
   `DismissDead` (Dead → Cancelled, reason + `dismissed_by` on the
@@ -232,7 +259,8 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   twice (a dead batch recovers only on the next key-set change; the DLQ
   is the human surface until then). The scorer run is READ-ONLY,
   closeout-free (review-pattern clone); mechanical gate is the strict
-  `TQ_RESULT: {"verdicts":[...]}` line (every item exactly once, scores
+  recorded `{"verdicts":[...]}` JSON (`tq verdict` channel; every item
+  exactly once, scores
   0-100 — `executor.ParsePrioritizeResult`). The sweeper
   (cursor `prioritize-sweeper`, head-bootstrapped, budget-gated via the
   pool's mintPass) caches verdicts into `priority_scores`
