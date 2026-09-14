@@ -84,6 +84,7 @@ const (
 	DefaultCloseoutPrompt = internalexecutor.DefaultCloseoutPrompt
 	EvidenceTailBytes     = internalexecutor.EvidenceTailBytes
 	GoEnvExperiment       = internalexecutor.GoEnvExperiment
+	TaskTrailer           = internalexecutor.TaskTrailer
 )
 
 // Verdicts.
