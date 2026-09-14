@@ -41,11 +41,17 @@
   }
 
   /* State re-apply: capture the bits the swap would reset — per-<details>
-     open state (matched by summary text, stable across re-renders) and
-     expanded error cells (matched by their short text) — then put them
-     back on the fresh subtree. Scroll containers keep their scrollTop. */
+     open state (matched by data-state-key or summary text, stable across
+     re-renders), expanded error cells (matched by their short text),
+     form-control values the operator typed (matched by name/id), and
+     keyboard focus — then put them back on the fresh subtree. Scroll
+     containers keep their scrollTop. */
+  function controlKey(c) {
+    return c.getAttribute("data-state-key") || c.name || c.id || "";
+  }
+
   function captureState(el) {
-    var st = { details: {}, expanded: {}, scrolls: [] };
+    var st = { details: {}, expanded: {}, scrolls: [], values: {}, focus: "" };
     el.querySelectorAll("details").forEach(function (d) {
       var key = d.getAttribute("data-state-key");
       if (!key) {
@@ -57,6 +63,14 @@
     el.querySelectorAll('[data-expanded="1"]').forEach(function (c) {
       st.expanded[c.getAttribute("data-short") || c.textContent] = true;
     });
+    el.querySelectorAll("input, select, textarea").forEach(function (c) {
+      var t = (c.type || "").toLowerCase();
+      if (t === "hidden" || t === "submit" || t === "button") return;
+      var key = controlKey(c);
+      if (key) st.values[key] = c.value;
+    });
+    var ae = document.activeElement;
+    if (ae && el.contains(ae)) st.focus = controlKey(ae) || ae.tagName;
     el.querySelectorAll(".journal-scroll").forEach(function (s) {
       st.scrolls.push(s.scrollTop);
     });
@@ -79,9 +93,19 @@
         c.setAttribute("data-expanded", "1");
       }
     });
+    el.querySelectorAll("input, select, textarea").forEach(function (c) {
+      var t = (c.type || "").toLowerCase();
+      if (t === "hidden" || t === "submit" || t === "button") return;
+      var key = controlKey(c);
+      if (key && Object.prototype.hasOwnProperty.call(st.values, key)) c.value = st.values[key];
+    });
     var scrolls = el.querySelectorAll(".journal-scroll");
     for (var i = 0; i < scrolls.length && i < st.scrolls.length; i++) {
       scrolls[i].scrollTop = st.scrolls[i];
+    }
+    if (st.focus) {
+      var target = el.querySelector('[data-state-key="' + st.focus + '"], [name="' + st.focus + '"], #' + st.focus);
+      if (target) target.focus();
     }
   }
 
