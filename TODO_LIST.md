@@ -172,7 +172,7 @@ not here.
 
 ## Review-window follow-ups (harvested from the 07:49/08:32/08:39/08:42/08:47 close-outs, verified 2026-09-10 09:13)
 
-- [ ] Rename the `exitCause` local in `internal/runactor` `Run()` (runactor.go:162) to the `exitErr`/`exitError` vocabulary — the ExitError rename commit left the old identifier behind (08:32 report b3)
+- [x] Rename the `exitCause` local in `internal/runactor` `Run()` (runactor.go:162) to the `exitErr`/`exitError` vocabulary — the ExitError rename commit left the old identifier behind (08:32 report b3) — DONE 2026-09-14: renamed to `exitErr`, runactor module build+vet+test green
 - [ ] Run golangci-lint scoped to `internal/runactor` to confirm errname is quiet after the ExitError rename — the close-out verified via compiler + `rg`, not the linter that filed the original finding (08:32 report b2)
 - [x] Extend `TestParseFilterQuery`-style round-trip pins to the other FilterState fields (Project/Status/Sort/View) so emitter↔parse drift fails the suite in either direction (08:39 report c1/f1) — DONE 2026-09-12 round-13 T15: TestFilterRoundTripAllFields (internal/webui/filter_test.go) pins all fields + allowlist fallbacks + board-drops-status + href round-trips incl. escaped/unicode values
 - [x] Handler-level end-to-end webui test: GET `/?q=sh` renders filtered rows and the search chip carries the query (08:39 report f6/f31) — DONE 2026-09-12 round-13 T15: TestDashboardFilterE2E (?q=, ?project=, /project/{name} through the real handler; chips + narrowing asserted)

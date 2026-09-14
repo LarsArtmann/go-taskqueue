@@ -159,8 +159,8 @@ func (g *Group) Run() error {
 	}
 
 	if cause := context.Cause(g.ctx); cause != nil {
-		if exitCause, ok := errors.AsType[ExitError](cause); ok {
-			return errors.Join(exitCause, teardownErr)
+		if exitErr, ok := errors.AsType[ExitError](cause); ok {
+			return errors.Join(exitErr, teardownErr)
 		}
 
 		switch {
