@@ -595,6 +595,7 @@ func TestAgentPromptsDropSelfReport(t *testing.T) {
 		prompt string
 	}{
 		{"work item", DefaultPromptTemplate},
+		{"work batch", DefaultBatchPromptTemplate},
 		{"catch-up", DefaultCatchupPrompt},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -627,7 +628,12 @@ func TestAgentPromptsGuardrails(t *testing.T) {
 		{
 			name:       "work item",
 			prompt:     DefaultPromptTemplate,
-			wantSubstr: []string{".crushrc", ".tq-verify", "Never push", "— BLOCKED: <one-line reason>"},
+			wantSubstr: []string{".crushrc", ".tq-verify", "Never push", "— BLOCKED: <one-line reason>", "append NEW unchecked"},
+		},
+		{
+			name:       "work batch",
+			prompt:     DefaultBatchPromptTemplate,
+			wantSubstr: []string{".crushrc", ".tq-verify", "Never push", "— BLOCKED: <one-line reason>", "append NEW unchecked"},
 		},
 		{
 			name:       "catch-up",

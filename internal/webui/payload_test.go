@@ -65,6 +65,33 @@ func TestPayloadViewAgent(t *testing.T) {
 	}
 }
 
+// TestPayloadViewAgentBatch pins the batch projection: a multi-item task
+// leads with the FULL member list (the first member alone would
+// misrepresent the run's scope) and carries a batch size field.
+func TestPayloadViewAgentBatch(t *testing.T) {
+	t.Parallel()
+
+	payload := `{"repo":"/repos/demo","prompt":"Contract:\n1. Work the items in order",` +
+		`"item":"first of three","items":["first of three","second item","third item"],` +
+		`"dedup":"batch:abc123","timeout_minutes":90}`
+	pv := payloadViewFor(task.Task{Type: executor.TaskTypeAgent, Payload: json.RawMessage(payload)})
+
+	if !strings.Contains(pv.Lede, "batch of 3") ||
+		!strings.Contains(pv.Lede, "second item") ||
+		!strings.Contains(pv.Lede, "third item") {
+		t.Errorf("lede = %q, want the full member list under a batch header", pv.Lede)
+	}
+
+	fields := map[string]string{}
+	for _, f := range pv.Fields {
+		fields[f.Label] = f.Value
+	}
+
+	if fields["batch"] != "3 items" {
+		t.Errorf("batch field = %q, want \"3 items\"", fields["batch"])
+	}
+}
+
 func TestPayloadViewAgentAutoDetectAndNoItem(t *testing.T) {
 	t.Parallel()
 

@@ -92,6 +92,35 @@ func TestHarvestConfigFromOptionsKeepsProjectsDirForDiscovery(t *testing.T) {
 	}
 }
 
+// TestParseAgentPoolOptionsBatchItems pins the batching flag: values within
+// 0..10 plumb into the harvest config, values above fail fast (one session
+// working more than ~10 items drowns in its own history).
+func TestParseAgentPoolOptionsBatchItems(t *testing.T) {
+	t.Parallel()
+
+	opts, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--batch-items", "3"})
+	if err != nil {
+		t.Fatalf("parse --batch-items 3: %v", err)
+	}
+
+	if opts.batchItems != 3 {
+		t.Fatalf("batchItems = %d, want 3", opts.batchItems)
+	}
+
+	cfg, err := harvestConfigFromOptions(opts)
+	if err != nil {
+		t.Fatalf("harvestConfigFromOptions: %v", err)
+	}
+
+	if cfg.BatchItems != 3 {
+		t.Fatalf("harvest cfg BatchItems = %d, want the flag plumbed through", cfg.BatchItems)
+	}
+
+	if _, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--batch-items", "11"}); err == nil {
+		t.Fatal("--batch-items 11 must fail fast (context-explosion guard)")
+	}
+}
+
 // TestGroupedSkipsKeepsFullExample pins the observability contract: the
 // aggregate harvest-skip log line must carry one full example reason, or a
 // pool that cannot see any repo ("scan failed: open …: no such file") reads

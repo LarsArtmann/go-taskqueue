@@ -1165,39 +1165,9 @@ func (s *Store) List(ctx context.Context, f queue.Filter) ([]task.Task, error) {
 	var out []task.Task
 
 	for rows.Next() {
-		var (
-			t            task.Task
-			id           string
-			depsJSON     string
-			payload      string
-			leaseExpires *int64
-			completedAt  *int64
-		)
-
-		var notBefore, createdAt, updatedAt int64
-
-		err := rows.Scan(&id, &t.Project, &t.Type, &payload, &depsJSON, &t.Priority,
-			&t.Attempts, &t.MaxAttempts, &notBefore, &t.Status, &t.LeaseOwner,
-			&leaseExpires, &t.LastError, &createdAt, &updatedAt, &completedAt)
+		t, err := scanPGTask(rows)
 		if err != nil {
 			return nil, err
-		}
-
-		t.ID = task.ID(id)
-		t.Payload = jsontext.Value(payload)
-		t.NotBefore = time.UnixMilli(notBefore)
-		t.CreatedAt = time.UnixMilli(createdAt)
-		t.UpdatedAt = time.UnixMilli(updatedAt)
-		_ = json.Unmarshal([]byte(depsJSON), &t.Deps)
-
-		if leaseExpires != nil {
-			le := time.UnixMilli(*leaseExpires)
-			t.LeaseExpires = &le
-		}
-
-		if completedAt != nil {
-			ca := time.UnixMilli(*completedAt)
-			t.CompletedAt = &ca
 		}
 
 		out = append(out, t)
