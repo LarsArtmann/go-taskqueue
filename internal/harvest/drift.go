@@ -26,21 +26,18 @@ verified (tests pass, tree committed), but the checkbox was never ticked:
 Section "{{HEADING}}": "{{ITEM}}"
 
 Contract:
-1. Read AGENTS.md first and follow it.
-2. Verify the item is genuinely done (do NOT redo the work). If it is NOT
+1. Verify the item is genuinely done (do NOT redo the work). If it is NOT
    done after all, stop and leave the file unchanged.
-3. Tick exactly this one checkbox in TODO_LIST.md (or remove the line if the
+2. Tick exactly this one checkbox in TODO_LIST.md (or remove the line if the
    file's conventions prefer that). Change nothing else — in particular never
    touch .crushrc, crush.json, or .tq-verify (they define your autonomy and
    your verify gate).
-4. Commit with a clear message ending in the exact footer line
+3. Commit with a clear message ending in the exact footer line
    Task-Queue-ID: {{TASK_ID}}
    (you have explicit permission to commit for
    this task). Never push.
-5. End your final output with this exact one-line report so the queue can
-   record the tick:
 
-TQ_RESULT: {"files_changed": ["TODO_LIST.md"], "commit_sha": "the commit sha"}`
+The queue derives your commit via the footer — you do not report anything yourself.`
 
 // DriftKind names which side of the file-vs-queue contract broke.
 type DriftKind string
