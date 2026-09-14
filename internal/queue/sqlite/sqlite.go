@@ -308,7 +308,12 @@ func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: t.ID.String(), Type: journal.Enqueued, Attempt: 0,
-			Detail: mustJSON(map[string]any{"project": t.Project, "type": t.Type}),
+			Detail: mustJSON(queue.EnqueueDetail{
+				Project:  t.Project,
+				Type:     t.Type,
+				Priority: &t.Priority,
+				DedupKey: n.DedupKey,
+			}),
 		})
 	})
 	if err != nil {
@@ -1066,7 +1071,7 @@ func (s *Store) RescueDead(ctx context.Context, id task.ID, maxAttempts int) err
 			journal.Fact{
 				TaskID: id.String(),
 				Type:   journal.Enqueued,
-				Detail: mustJSON(map[string]string{"rescue": "true"}),
+				Detail: mustJSON(queue.EnqueueDetail{Rescue: "true"}),
 			},
 		)
 	})
@@ -1260,7 +1265,7 @@ func (s *Store) List(ctx context.Context, f queue.Filter) ([]task.Task, error) {
 
 	q := `SELECT id, project, type, payload, deps, priority, attempts, max_attempts,
 	             not_before, status, lease_owner, lease_expires, last_error,
-	             created_at, updated_at, completed_at
+	             created_at, updated_at, completed_at, dedup_key
 	      FROM tasks WHERE ` + where + `
 	      ` + order
 
@@ -1648,7 +1653,7 @@ func (s *Store) loadTaskTx(ctx context.Context, q interface {
 	row := q.QueryRowContext(ctx, `
 		SELECT id, project, type, payload, deps, priority, attempts, max_attempts,
 		       not_before, status, lease_owner, lease_expires, last_error,
-		       created_at, updated_at, completed_at
+		       created_at, updated_at, completed_at, dedup_key
 		FROM tasks WHERE id = ?`, id)
 
 	t, err := scanTaskRow(row)
@@ -1682,7 +1687,7 @@ func scanTaskRow(r scanner) (task.Task, error) {
 	)
 	if err := r.Scan(&id, &t.Project, &t.Type, &payload, &deps, &t.Priority, &t.Attempts,
 		&t.MaxAttempts, &notBeforeMS, &status, &t.LeaseOwner, &leaseExpires, &t.LastError,
-		&createdAtMS, &updatedAtMS, &completedAt); err != nil {
+		&createdAtMS, &updatedAtMS, &completedAt, &t.DedupKey); err != nil {
 		return task.Task{}, err
 	}
 

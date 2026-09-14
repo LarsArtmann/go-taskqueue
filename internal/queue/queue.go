@@ -235,6 +235,21 @@ type ReprioritizeEvidence struct {
 	Reason      string `json:"reason,omitempty"`
 }
 
+// EnqueueDetail is the structured detail on task.enqueued facts. The plain
+// enqueue records the task's identity plus the two projection fields the
+// journal must be able to re-derive on its own (priority, dedup key — the
+// inputs of the journal-drift audit); Priority is a pointer so the zero
+// priority stays expressible and distinguishable from a legacy thin fact.
+// RescueDead re-emits task.enqueued with only Rescue set: the marker that
+// a dead task was re-queued with a fresh attempt budget.
+type EnqueueDetail struct {
+	Project  string `json:"project,omitempty"`
+	Type     string `json:"type,omitempty"`
+	Priority *int   `json:"priority,omitempty"`
+	DedupKey string `json:"dedup_key,omitempty"`
+	Rescue   string `json:"rescue,omitempty"`
+}
+
 // WatermarkEntry is one consumer cursor row (tq watermarks show). Shared by
 // every Store backend's ListWatermarks read.
 type WatermarkEntry struct {

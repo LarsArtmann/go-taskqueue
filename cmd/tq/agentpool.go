@@ -33,6 +33,7 @@ type agentPoolOptions struct {
 	owner          string
 	yolo           bool
 	maxPerTick     int
+	batchItems     int
 	priorityFrom   string
 	maxPending     int
 	allowDirty     bool
@@ -97,6 +98,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"max-per-tick",
 		harvest.DefaultMaxPerTick,
 		"max new agent tasks per harvest tick (cost throttle)",
+	)
+	batchItems := fs.Int(
+		"batch-items",
+		0,
+		"group up to this many adjacent open TODO_LIST items of one section into ONE agent task (one session works them in order): fewer cold sessions, more done per provider window; a batch counts as ONE task against --max-per-tick and the daily budget (per-item cost is amortized — raise the gates consciously, and raise --task-timeout: batch timeouts scale per item; 0/1 = off)",
 	)
 	priorityFrom := fs.String(
 		"priority-from",
@@ -240,6 +246,12 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		return agentPoolOptions{}, err
 	}
 
+	// Context-explosion guard: a batch shares one session — beyond ~10
+	// items the history dwarfs the work and the run dies on the ceiling.
+	if *batchItems > 10 {
+		return agentPoolOptions{}, fmt.Errorf("--batch-items: want 0..10, got %d", *batchItems)
+	}
+
 	if *configPath != "" {
 		if err := applyPoolConfigFile(fs, *configPath); err != nil {
 			return agentPoolOptions{}, err
@@ -295,6 +307,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		owner:          *owner,
 		yolo:           *yolo,
 		maxPerTick:     *maxPerTick,
+		batchItems:     *batchItems,
 		priorityFrom:   *priorityFrom,
 		maxPending:     *maxPending,
 		allowDirty:     *allowDirty,
@@ -341,6 +354,7 @@ func harvestConfigFromOptions(opts agentPoolOptions) (harvest.Config, error) {
 		ProjectsDir:       opts.projectsDir,
 		DiscoveryAddr:     opts.discoveryAddr,
 		MaxPerTick:        opts.maxPerTick,
+		BatchItems:        opts.batchItems,
 		Model:             opts.model,
 		DLQBackoff:        opts.dlqBackoff,
 		UseImportance:     opts.priorityFrom == priorityFromImportance,
@@ -590,6 +604,14 @@ func printAgentPoolBanner(poolOpts agentPoolOptions) {
 		fmt.Fprintf(
 			os.Stderr,
 			"tq: WARNING: autonomy requested — agents may run shell commands unsandboxed in every repo whose .crushrc (or your user-global crush config) grants bash; the trust root is the filesystem. Cap the blast radius with --daily-budget / --budget-cmd and --max-per-tick (see SECURITY.md)\n",
+		)
+	}
+
+	if poolOpts.batchItems > 1 {
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: agent-pool: batching up to %d items per task — payload timeouts scale per item; raise --task-timeout accordingly (batch deaths dead-letter the whole run: tq dlq is the human surface)\n",
+			poolOpts.batchItems,
 		)
 	}
 

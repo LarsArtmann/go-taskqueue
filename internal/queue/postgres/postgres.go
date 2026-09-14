@@ -211,7 +211,7 @@ func scanPGTask(row pgx.Row) (task.Task, error) {
 
 	err := row.Scan(&id, &t.Project, &t.Type, &payload, &depsJSON, &t.Priority,
 		&t.Attempts, &t.MaxAttempts, &notBefore, &t.Status, &t.LeaseOwner,
-		&leaseExpires, &t.LastError, &createdAt, &updatedAt, &completedAt)
+		&leaseExpires, &t.LastError, &createdAt, &updatedAt, &completedAt, &t.DedupKey)
 	if err != nil {
 		return task.Task{}, err
 	}
@@ -241,7 +241,7 @@ func scanPGTask(row pgx.Row) (task.Task, error) {
 
 const taskColumns = `id, project, type, payload, deps, priority, attempts, max_attempts,
                      not_before, status, lease_owner, lease_expires, last_error,
-                     created_at, updated_at, completed_at`
+                     created_at, updated_at, completed_at, dedup_key`
 
 func (s *Store) loadTaskTx(ctx context.Context, tx pgx.Tx, id string) (task.Task, error) {
 	return scanPGTask(tx.QueryRow(ctx, `SELECT `+taskColumns+` FROM tasks WHERE id = $1`, id))
@@ -331,7 +331,12 @@ func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: t.ID.String(), Type: journal.Enqueued, Attempt: 0,
-			Detail: mustJSON(map[string]any{"project": t.Project, "type": t.Type}),
+			Detail: mustJSON(queue.EnqueueDetail{
+				Project:  t.Project,
+				Type:     t.Type,
+				Priority: &t.Priority,
+				DedupKey: n.DedupKey,
+			}),
 		})
 	})
 	if err != nil {

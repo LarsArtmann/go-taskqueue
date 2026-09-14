@@ -124,24 +124,33 @@ func (h *Harvester) Audit(ctx context.Context) (DriftResult, error) {
 	return res, nil
 }
 
-// projectTaskIndex loads a repo's TODO items and indexes the harvester's
-// in-queue tasks for that project by payload dedup key (first task wins).
-// Shared preamble of the audit (drift) and prune sweeps.
-func (h *Harvester) projectTaskIndex(ctx context.Context, repo string) ([]Item, map[string]task.Task, error) {
+// projectTaskIndex loads a repo's TODO items, indexes the harvester's
+// in-queue tasks for that project by payload dedup key (first task wins),
+// and collects BATCHED tasks separately (payload carries member item
+// keys). Shared preamble of the audit (drift) and prune sweeps.
+func (h *Harvester) projectTaskIndex(
+	ctx context.Context, repo string,
+) ([]Item, map[string]task.Task, []task.Task, error) {
 	items, err := ParseRepoAll(repo, h.cfg.TodoFile)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	repoName := filepath.Base(repo)
 
 	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	byDedup := make(map[string]task.Task, len(tasks))
+	batches := make([]task.Task, 0)
+
 	for _, t := range tasks {
+		if len(payloadItemKeys(t)) > 0 {
+			batches = append(batches, t)
+		}
+
 		if key := payloadDedup(t); key != "" {
 			if _, seen := byDedup[key]; !seen {
 				byDedup[key] = t
@@ -149,17 +158,32 @@ func (h *Harvester) projectTaskIndex(ctx context.Context, repo string) ([]Item, 
 		}
 	}
 
-	return items, byDedup, nil
+	return items, byDedup, batches, nil
 }
 
 func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult) error {
-	items, byDedup, err := h.projectTaskIndex(ctx, repo)
+	items, byDedup, batches, err := h.projectTaskIndex(ctx, repo)
 	if err != nil {
 		return err
 	}
 
+	// Batched tasks track their MEMBERS: resolve a member item to its batch
+	// task so drift is judged per item even though the queue row is one
+	// task covering several checkboxes.
+	byMember := make(map[string]task.Task)
+	for _, b := range batches {
+		for _, key := range payloadItemKeys(b) {
+			if _, seen := byMember[key]; !seen {
+				byMember[key] = b
+			}
+		}
+	}
+
 	for _, item := range items {
 		t, tracked := byDedup[item.Key]
+		if !tracked {
+			t, tracked = byMember[item.Key]
+		}
 		switch {
 		case !item.Done && tracked && t.Status == task.Completed:
 			d := Drift{Kind: DriftStaleOpen, Item: item, TaskID: t.ID, TaskStatus: t.Status}

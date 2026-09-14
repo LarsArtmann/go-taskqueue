@@ -131,12 +131,23 @@ func (v *payloadView) fromAgent(raw string) bool {
 
 	// The work item is the task; the prompt is the boilerplate contract
 	// around it. Without a harvested item the prompt IS the content, so it
-	// takes the lede instead of hiding behind a fold.
+	// takes the lede instead of hiding behind a fold. Batches lead with
+	// the full member list (the first member alone would misrepresent the
+	// run's scope).
 	if ap.Item != "" {
-		v.Lede = ap.Item
+		if len(ap.Items) > 1 {
+			v.Lede = fmt.Sprintf("batch of %d:\n", len(ap.Items)) + strings.Join(ap.Items, "\n")
+		} else {
+			v.Lede = ap.Item
+		}
+
 		v.Prompt = ap.Prompt
 	} else {
 		v.Lede = ap.Prompt
+	}
+
+	if len(ap.Items) > 1 {
+		v.Fields = append(v.Fields, payloadField{Label: "batch", Value: fmt.Sprintf("%d items", len(ap.Items))})
 	}
 
 	if ap.Model != "" {
