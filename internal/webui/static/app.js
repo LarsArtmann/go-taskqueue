@@ -116,7 +116,22 @@
     var st = captureState(el);
     el.innerHTML = frag.html;
     restoreState(el, st);
+    updateBoardAffordance();
   }
+
+  /* Board scroll affordance: the edge fade (theme.css .board-overflow) is
+     honest — it only appears when the lane strip actually overflows. */
+  function updateBoardAffordance() {
+    var boards = document.querySelectorAll(".board");
+    for (var i = 0; i < boards.length; i++) {
+      var b = boards[i];
+      if (b.scrollWidth > b.clientWidth + 4) b.classList.add("board-overflow");
+      else b.classList.remove("board-overflow");
+    }
+  }
+  window.addEventListener("resize", updateBoardAffordance);
+  document.addEventListener("DOMContentLoaded", updateBoardAffordance);
+  updateBoardAffordance();
 
   function flushPendingSwap() {
     var now = Date.now();

@@ -199,6 +199,30 @@ h3,
 }
 
 /* ---------------------------------------------------------------------------
+ * Severity discipline: dead rows keep a neutral background and carry their
+ * severity in ONE accent — a 2px inset left rule. Calm incident list, not
+ * a wall of red.
+ * ------------------------------------------------------------------------- */
+
+.tq-row-dead {
+  box-shadow: inset 2px 0 0 var(--color-red-600);
+}
+
+.dark .tq-row-dead {
+  box-shadow: inset 2px 0 0 var(--color-red-500);
+}
+
+/* ---------------------------------------------------------------------------
+ * Board scroll affordance: when the lane strip actually overflows, edge
+ * fades hint the hidden lanes (C2). app.js toggles the class by measuring
+ * scrollWidth — a fitting board gets no misleading fade.
+ * ------------------------------------------------------------------------- */
+
+.board-overflow {
+  mask-image: linear-gradient(to right, transparent 0, #000 1rem, #000 calc(100% - 1rem), transparent 100%);
+}
+
+/* ---------------------------------------------------------------------------
  * Keyboard hints.
  * ------------------------------------------------------------------------- */
 

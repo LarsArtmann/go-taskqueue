@@ -19,33 +19,29 @@ templ Page(data DashboardData) {
 				</div>
 			</section>
 			@MetricsRow(data)
-			<div class="grid gap-8 pb-10 pt-8 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-				<div class="min-w-0 space-y-8">
-					<section id="sec-tasks" class="space-y-3">
-						<div class="flex items-center justify-between gap-4">
-							@pageHeading("tasks", "")
-							@viewToggle(data.Filter)
-						</div>
-						<div id="frag-filters">
-							@FilterBar(data)
-						</div>
-						<div id="frag-table">
-							if data.Filter.View == viewBoard {
-								@Board(data)
-							} else {
-								@TaskTable(data)
-							}
-						</div>
-					</section>
-					<section id="sec-dlq" class="space-y-3">
-						@pageHeading("dead-letter queue", "text-red-600 dark:text-red-400")
-						<div id="frag-dlq">
-							@DeadLetterTable(data)
-						</div>
-					</section>
-				</div>
-				<aside class="min-w-0">
-					<section id="sec-feed" class="space-y-3 xl:sticky xl:top-20">
+			if data.Filter.View == viewBoard {
+				<!-- Board view: the lanes are the instrument — the task section
+				spans the full content width and the feed/DLQ flow below. -->
+				<section id="sec-tasks" class="space-y-3 pb-8 pt-8">
+					<div class="flex items-center justify-between gap-4">
+						@pageHeading("tasks", "")
+						@viewToggle(data.Filter)
+					</div>
+					<div id="frag-filters">
+						@FilterBar(data)
+					</div>
+					<div id="frag-table">
+						@Board(data)
+					</div>
+				</section>
+				<section id="sec-dlq" class="space-y-3 pb-8">
+					@pageHeading("dead-letter queue", "text-red-600 dark:text-red-400")
+					<div id="frag-dlq">
+						@DeadLetterTable(data)
+					</div>
+				</section>
+				<aside class="min-w-0 pb-10">
+					<section id="sec-feed" class="space-y-3">
 						@pageHeading("fact feed", "")
 						<div id="frag-feed">
 							@FactFeed(data)
@@ -53,7 +49,43 @@ templ Page(data DashboardData) {
 						@journalBrowser()
 					</section>
 				</aside>
-			</div>
+			} else {
+				<div class="grid gap-8 pb-10 pt-8 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+					<div class="min-w-0 space-y-8">
+						<section id="sec-tasks" class="space-y-3">
+							<div class="flex items-center justify-between gap-4">
+								@pageHeading("tasks", "")
+								@viewToggle(data.Filter)
+							</div>
+							<div id="frag-filters">
+								@FilterBar(data)
+							</div>
+							<div id="frag-table">
+								if data.Filter.View == viewBoard {
+									@Board(data)
+								} else {
+									@TaskTable(data)
+								}
+							</div>
+						</section>
+						<section id="sec-dlq" class="space-y-3">
+							@pageHeading("dead-letter queue", "text-red-600 dark:text-red-400")
+							<div id="frag-dlq">
+								@DeadLetterTable(data)
+							</div>
+						</section>
+					</div>
+					<aside class="min-w-0">
+						<section id="sec-feed" class="space-y-3 xl:sticky xl:top-20">
+							@pageHeading("fact feed", "")
+							<div id="frag-feed">
+								@FactFeed(data)
+							</div>
+							@journalBrowser()
+						</section>
+					</aside>
+				</div>
+			}
 		</div>
 		<!-- The SSE client: the page renders fully without it, then app.js
 		     swaps fragments in live (ADR-0003). Last in body so it never

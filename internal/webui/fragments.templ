@@ -406,7 +406,7 @@ templ Board(data DashboardData) {
 		@taskEmptyState(!data.Filter.Empty())
 	} else {
 		<div class="board overflow-x-auto pb-2">
-			<ol class="flex min-w-max items-start gap-4" aria-label="tasks by lifecycle status">
+			<ol class="flex items-start gap-4 snap-x" aria-label="tasks by lifecycle status">
 				for _, col := range data.Board {
 					@boardColumn(data, col)
 				}
@@ -419,7 +419,7 @@ templ Board(data DashboardData) {
 // count, the newest cards, and an honest "+N older" escape hatch into the
 // status-filtered table view when the column is truncated.
 templ boardColumn(data DashboardData, col BoardColumn) {
-	<li class="w-64 shrink-0" data-status={ string(col.Status) } aria-label={ string(col.Status) + " column" }>
+	<li class="w-64 min-w-52 snap-start" data-status={ string(col.Status) } aria-label={ string(col.Status) + " column" }>
 		<div class={ "border-t-2 pt-2 " + statusAccentClass(col.Status) }>
 			<div class="flex items-baseline justify-between gap-2">
 				<span class="font-mono text-xs font-medium uppercase tracking-[0.18em] text-gray-700 dark:text-gray-300">{ string(col.Status) }</span>
