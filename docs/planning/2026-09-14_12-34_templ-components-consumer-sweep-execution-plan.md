@@ -253,3 +253,59 @@ flowchart TD
 6. **Prompts pin concrete versions** (`v1.8.3 → v1.17.0`), never "latest".
 7. **Wave gating**: no wave starts without the previous wave's post-mortem
    (M15) and G2 budget approval.
+
+---
+
+## 8. Execution annotations (appended during execution — annotate, never rewrite)
+
+### 8.1 G1 verdict — M7 (2026-09-14, default took effect)
+
+| Option | License | Tags | Maintenance | Verdict |
+|--------|---------|------|-------------|---------|
+| Bridge inside pdg (proprietary imports tq MIT facades) | CLEAN (MIT consumed by proprietary) | tq facades tagged v0.3.0 ✓ | New Go module in pdg + upstream `who-uses --format json` (M8) | BEST long-term, blocked on G1 |
+| Tree-parse script in tq `scripts/sweeps/` | CLEAN (no foreign repo) | n/a | One bash file; glyph-robust tree parse | **SELECTED (G1 default — owner silent)** |
+| Relicense pdg + tag sub-modules | Owner decision | Needs cuts | Upstream ceremony | Rejected: biggest hammer for a one-off sweep |
+
+The script is the reversible choice: if the owner later approves G1=pdg, the
+fixture + template + dedup keys carry over unchanged (M8/M9 become the engine,
+script retires).
+
+### 8.2 429/serialization runbook — M11 (updated with pilot telemetry 12:52)
+
+**Observed in the pilot (first run, 12:52)**: the agent turn died to
+account-wide Z.ai 429s ~30s in (the production dogfood pool was running
+concurrently), AFTER the skill loaded and discovery started. tq's
+`DetectRateLimit` path performed to spec: requeued without burning an
+attempt, retry-after parsed to 14m41s.
+
+Design consequences (verified, not hypothetical):
+1. **The 429 gate is per-executor-instance and PER REPO** (`rateLimitGates`),
+   but the PROVIDER CAP IS ACCOUNT-WIDE. Two pools sharing one Z.ai account
+   contend regardless of tq's per-repo gating. Every sweep pool therefore
+   runs against the SAME account as the production pool — stagger waves, do
+   not parallelize across accounts.
+2. **Serialization choice**: `--agents 2` (two concurrent agents max) for
+   wave pools + the production pool idle or busy on other repos. The
+   executor's in-process gate fast-refuses sibling runs until the window
+   passes, so a 429 storm self-throttles; `--repo-timeout` ladders keep
+   long repos from hogging the two slots.
+3. **Delay ladder at mint time**: stagger wave tasks with `--delay <i*7m>`
+   so claim times spread out; combined with retry-after requeues this keeps
+   at most ~2 turns in flight against one provider account.
+4. **Never burn attempts**: 429s requeue without attempt burn by design —
+   a wave is therefore SAFE to run to completion; the failure mode to watch
+   is the DLQ (non-429 failures), not lost attempts.
+5. **Monitoring**: watch `tq facts` for `task.requeued` facts carrying
+   `RequeueEvidence.reason` = rate-limit; more than 2 requeues on one task
+   within an hour = stop the wave, widen the ladder.
+
+Wave pool template (laggards, wave 1):
+```bash
+TQ_DB=<sweep journal> tq agent-pool \
+  --projects-dir /home/lars/projects \
+  --repos <repo1>,<repo2>,<repo3> \
+  --agents 2 --concurrency 2 --max-concurrent-agents 2 \
+  --once --review --review-autofix --dlq-fix --task-closeout \
+  --task-timeout 45m --yolo --daily-budget <G2 number> \
+  --log-dir <sweep log dir>
+```

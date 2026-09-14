@@ -191,6 +191,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (the same semantics harvest and the sweepers already get from
   `task.New.DedupKey`). Makes fan-out sweeps re-runnable from shell:
   an unchanged key set never mints twice.
+- `tq enqueue` agent conveniences: `--repo`, `--prompt`, `--prompt-file`,
+  `--verify`, `--timeout-minutes`, `--yolo-task` assemble a validated
+  `AgentPayload` in code (mutual exclusion with `--payload` enforced,
+  prompt source required, `--type agent` implied). Removes the need to
+  hand-write payload JSON for one-off agent mints.
 - **Public facade modules (ADR-0016)**: the library core is now importable
   from outside the repo. Seven facade modules — `task`, `journal`, `queue`,
   `queue/sqlite`, `queue/postgres`, `executor`, `worker` (all under

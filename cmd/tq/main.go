@@ -314,6 +314,69 @@ func cmdEnqueue(args []string) error {
 	return nil
 }
 
+// payloadFlags carries the agent-convenience flag values into
+// buildAgentConveniencePayload.
+type payloadFlags struct {
+	repo       string
+	promptText string
+	promptFile string
+	verify     string
+	timeoutMin int
+	yolo       bool
+	rawPayload string
+}
+
+// agentConvenienceRequested reports whether any --repo/--prompt* agent
+// convenience flag was set (the payload is then assembled in code instead
+// of passed as raw JSON).
+func agentConvenienceRequested(repo, promptText, promptFile, verify string, timeoutMin int, yolo bool) bool {
+	return repo != "" || promptText != "" || promptFile != "" || verify != "" || timeoutMin > 0 || yolo
+}
+
+// buildAgentConveniencePayload assembles an executor.AgentPayload from the
+// convenience flags, failing fast on conflicts and missing prompt sources.
+func buildAgentConveniencePayload(f payloadFlags) (json.RawMessage, error) {
+	if f.rawPayload != "" {
+		return nil, errors.New("--payload cannot be combined with the agent convenience flags (--repo/--prompt/--prompt-file/--verify/--timeout-minutes/--yolo-task)")
+	}
+
+	if f.repo == "" {
+		return nil, errors.New("--repo is required with the agent convenience flags")
+	}
+
+	prompt := f.promptText
+
+	if f.promptFile != "" {
+		if prompt != "" {
+			return nil, errors.New("--prompt and --prompt-file are mutually exclusive")
+		}
+
+		b, err := os.ReadFile(f.promptFile)
+		if err != nil {
+			return nil, fmt.Errorf("read prompt file: %w", err)
+		}
+
+		prompt = string(b)
+	}
+
+	if strings.TrimSpace(prompt) == "" {
+		return nil, errors.New("agent task needs a prompt (--prompt or --prompt-file)")
+	}
+
+	raw, err := json.Marshal(executor.AgentPayload{
+		Repo:           f.repo,
+		Prompt:         prompt,
+		Verify:         f.verify,
+		TimeoutMinutes: f.timeoutMin,
+		Yolo:           f.yolo,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("encode agent payload: %w", err)
+	}
+
+	return raw, nil
+}
+
 func cmdWorker(args []string) error {
 	fs := flag.NewFlagSet("worker", flag.ExitOnError)
 	conc := fs.Int("concurrency", 2, "parallel executions")
