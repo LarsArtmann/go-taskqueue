@@ -206,6 +206,27 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   `TQ_RESULT:` line remains the LEGACY fallback (in-flight pool tasks,
   stub smokes) — delete it only after the live pool shows derived
   outcomes.
+- **Batched harvest + backlog grant (`--batch-items N`, 2026-09-14, default
+  OFF)**: with `--batch-items` > 1 the harvester groups up to N ADJACENT
+  admissible items of the same TODO_LIST section into ONE agent task (one
+  session, `DefaultBatchPromptTemplate`: per-item commit+footer+checkoff,
+  per-item `— BLOCKED:` escape = partial success, retry skips `[x]`
+  members). Dedup = `batch:` + hash over the SORTED member keys (reorder
+  never forks, member edit forks); payload carries `items` +
+  `itemKeys` (`Item` stays the first member — review quoting/status windows
+  keep working); `TimeoutMinutes` scales per member (raise `--task-timeout`
+  with it); priority = max over members; marker level = max. A batch is ONE
+  task against every gate (--max-per-tick, daily budget — per-item cost is
+  amortized, so raise gates CONSCIOUSLY). prune-stale cancels a pending
+  batch only when EVERY member is ticked/absent; `tq audit` maps member
+  items to the batch (catch-ups stay per-item); batch keys are invisible to
+  the `todo:`-keyed AI scorer (documented interaction). BOTH work prompts
+  (single + batch) grant the backlog move: agents MAY append NEW unchecked
+  follow-up items to TODO_LIST.md — the pacing/budget/priority gates own
+  admission, so the grant cannot bypass spend control (direct `tq enqueue`
+  stays forbidden: mint-bypass). Pinned by `internal/harvest/batch_test.go`
+  + batch rows in the prompt guardrail pins. Design + rejected
+  alternatives: docs/planning/2026-09-14_batched-harvest-agent-power.md.
 - **`review`**: `ReviewPayload` JSON. Both verdicts COMPLETE the task; the
   mechanical gate is a valid verdict JSON recorded via `tq verdict`
   (`TQ_RESULT_FILE` channel; legacy stdout line still honored).

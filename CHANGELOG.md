@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Added
+- **Batched harvest (`--batch-items N`, default off)**: one agent task can
+  now carry a run of up to N adjacent open items from the same TODO_LIST.md
+  section — ONE session works them in order (fewer cold sessions, more done
+  per provider rate-limit window, per-item cost amortized). Deterministic
+  `batch:` dedup key over the sorted member set (reorders don't fork, member
+  edits do); payload timeout scales per member; batch priority = max over
+  members; prune-stale cancels a pending batch only when EVERY member is
+  stale; `tq audit` resolves member items to their batch task (per-item
+  catch-ups unchanged). A batch counts as ONE task against `--max-per-tick`
+  and the daily budget. The web UI detail page leads with the full member
+  list. `--batch-items` clamps to 0..10 (context-explosion guard).
+- **Agent backlog grant (prompt contract, both single and batch templates)**:
+  work agents MAY append newly-discovered follow-up work as NEW unchecked
+  TODO_LIST.md items instead of doing it in the run — the queue's existing
+  pacing, budget and priority gates own admission (unlike direct
+  `tq enqueue`, which would bypass the mint gates). Never an item describing
+  the task's own work. Design + rejected alternatives (warm-session chaining,
+  in-run claim loop, direct enqueue):
+  docs/planning/2026-09-14_batched-harvest-agent-power.md.
+
 ### Changed
 - **Agent outcomes are DERIVED, not self-reported** (owner ruling
   2026-09-14: "figure out what an agent session did without them needing
