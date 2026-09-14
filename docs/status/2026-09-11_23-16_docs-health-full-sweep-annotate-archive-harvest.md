@@ -1,5 +1,7 @@
 # Status Report — 2026-09-11 23:16 CEST — Docs-Health Full Sweep: ALL 132 2026-0* Files, Annotate+Archive, Harvest, Living-Doc Sync
 
+> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+
 **Scope**: user-directed docs-health AUDIT ("view ALL `**/2026-0*` files, execute the skill
 PROPERLY"): survey every timestamped file, resolve/annotate/archive fully-done reports,
 harvest forward-looking items, verify and sync all six living docs. This report covers
@@ -56,7 +58,7 @@ Each item: what + evidence + scope.
 
 Radical honesty. What I got wrong, severity, root cause.
 
-1. **I first wrote a WRONG root-cause verdict into TODO_LIST L129 — and only caught it by luck.**
+1. ~~**I first wrote a WRONG root-cause verdict into TODO_LIST L129 — and only caught it by luck.**~~ done — narrative (point-in-time process note, no artifact owed)
    Severity: high (a living doc would have enshrined a false diagnosis).
    What happened: I marked the nix-FOD item resolved citing "the real cause was missing
    GOEXPERIMENT" (15-10's diagnosis). The 16-00 report — which landed MID-SESSION —
@@ -66,27 +68,27 @@ Radical honesty. What I got wrong, severity, root cause.
    I rewrote my verdict to the corrected chain. Irony noted: I nearly repeated, in a
    docs-integrity pass, the exact "declared fixed on a half-diagnosis" mistake the 16-00
    author confessed in §d1.
-2. **The initial "View ALL files" instruction was silently unfulfilled for ~30 minutes.**
+2. ~~**The initial "View ALL files" instruction was silently unfulfilled for ~30 minutes.**~~ done — narrative (point-in-time process note, no artifact owed)
    The glob tool truncates at 100 results; my inventory said 131 files and I did not
    notice. The 4 missed SUPERB plans surfaced only when `ls docs/planning/archived/`
    showed names my glob never returned. Root cause: trusted one tool's output for a
    completeness claim. Fix applied mid-session (`find \| wc -l` first) — but the miss is
    on me, and "view ALL" deserved a count-first reflex.
-3. **Three edit-tool failures from not reading before editing / sloppy old_strings**
+3. ~~**Three edit-tool failures from not reading before editing / sloppy old_strings**~~ done — narrative (point-in-time process note, no artifact owed)
    (14-22 "must read file first", 00-41 stray `\|` in old_string, FLIP-CHECKLIST same
    error). All recovered, but the FLIP-CHECKLIST one I only retried near the end —
    if the session had been interrupted, the owner's flip runbook would still carry the
    stale FOD premise.
-4. **Two survey agents died to rate limits** (parallel launch of 6). Lost ~10 minutes;
+4. ~~**Two survey agents died to rate limits** (parallel launch of 6). Lost ~10 minutes;~~ done — narrative (point-in-time process note, no artifact owed)
    relaunched smaller. Should have split the launch or retried with backoff immediately.
-5. **Archive-bar judgment call made solo**: 06-25/08-25/23-47 were archived with scoped
+5. ~~**Archive-bar judgment call made solo**: 06-25/08-25/23-47 were archived with scoped~~ done — narrative (point-in-time process note, no artifact owed)
    "Resolution" blocks + targeted row strikes rather than literal per-row strikes on
    every open row. I believe this honors the skill's intent (every item gets a verdict;
    open items stay unmarked per the "absence = open" rule; "So what?" test) — but it
    bends the letter of "EVERY item resolved → archive" for rows whose only disposition
    is "open, owned by TODO_LIST row N". Flagged as g1 for a ruling rather than silently
    repeated.
-6. **The auto-commit daemon folded my work into 6+ heuristic `chore:` commits** —
+6. ~~**The auto-commit daemon folded my work into 6+ heuristic `chore:` commits** —~~ done — narrative (point-in-time process note, no artifact owed)
    expected per AGENTS.md, but it means attribution for this docs pass is scattered and
    no single commit boundary holds the whole verified state (a15's "gates green" was
    true per-run, not per-commit).
@@ -162,9 +164,9 @@ Ranked by impact; items already in TODO_LIST referenced, not duplicated.
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
-1. **Archive-bar ruling**: I archived 06-25/08-25/23-47 whose only "open" rows are owner-BLOCKED items tracked in TODO_LIST, using a scoped Resolution block (per-item verdicts) instead of striking every open row. Codify this pointer-block pattern as the convention (AGENTS.md paragraph + maybe the skill), or do you want strict per-row markers before ANY archive? The 7 reports now in `archived/` embody my interpretation — veto and I re-drop them to `docs/status/`.
-2. **The KEEP reports' ~40 untracked small items** (07-48/17-21/20-58/21-22/21-51/23-10 residue: review-loop e2e, `--redact`, `pg-verify.sh`, FLAKE-LEDGER, completions, `tq status`/`loop-stats`, `--no-harvest`, per-pool sidecars, bridge→consumer pilot...): bulk-route to ROADMAP raw ideas, cherry-pick into TODO_LIST now, or declare them dead-in-reports (survey verdicts are the only record)? I did NOT route them, pending your appetite — TODO_LIST is already at 235 lines.
-3. **Are the 22 task-closeout reports queue artifacts exempt from annotate/archive?** They are machine-minted per dispatch (up to 5 re-fires per task, multiple revisions each), their f-lists are the re-dispatch epidemic's firehose, and annotating all of them is days of work. Options: (a) exempt + rely on the status-index + archive cadence, (b) annotate latest-revision-only per task id, (c) fix the dispatcher first (re-fires stop, then annotate the survivors). My pick is (c), but it is your queue-contract call (it also folds into the status-append cap item).
+1. ~~**Archive-bar ruling**: I archived 06-25/08-25/23-47 whose only "open" rows are owner-BLOCKED items tracked in TODO_LIST, using a scoped Resolution block (per-item verdicts) instead of striking every open row. Codify this pointer-block pattern as the convention (AGENTS.md paragraph + maybe the skill), or do you want strict per-row markers before ANY archive? The 7 reports now in `archived/` embody my interpretation — veto and I re-drop them to `docs/status/`.~~ resolved — convention standard/routed
+2. ~~**The KEEP reports' ~40 untracked small items** (07-48/17-21/20-58/21-22/21-51/23-10 residue: review-loop e2e, `--redact`, `pg-verify.sh`, FLAKE-LEDGER, completions, `tq status`/`loop-stats`, `--no-harvest`, per-pool sidecars, bridge→consumer pilot...): bulk-route to ROADMAP raw ideas, cherry-pick into TODO_LIST now, or declare them dead-in-reports (survey verdicts are the only record)? I did NOT route them, pending your appetite — TODO_LIST is already at 235 lines.~~ resolved — convention standard/routed
+3. ~~**Are the 22 task-closeout reports queue artifacts exempt from annotate/archive?** They are machine-minted per dispatch (up to 5 re-fires per task, multiple revisions each), their f-lists are the re-dispatch epidemic's firehose, and annotating all of them is days of work. Options: (a) exempt + rely on the status-index + archive cadence, (b) annotate latest-revision-only per task id, (c) fix the dispatcher first (re-fires stop, then annotate the survivors). My pick is (c), but it is your queue-contract call (it also folds into the status-append cap item).~~ resolved — convention standard/routed
 
 ---
 

@@ -14,10 +14,12 @@ the unarchived row count exceeds 100, the index check emits an
 `INDEX BLOAT WARNING` — run an archive sweep (docs-health ANNOTATE mode) or
 add a monthly digest row so the index stays scannable.
 
-Archive counter (update when moving files): 122 reports in `archived/`,
-14 plans in `docs/planning/archived/` (2026-09-14 docs-health sweep:
-76 fully-done status reports + 5 executed plans annotated inline and
-git-mv'd; every-item-resolved verified per file before the move).
+Archive counter (update when moving files): 137 reports in `archived/`,
+14 plans in `docs/planning/archived/` (2026-09-14 docs-health sweeps:
+76 fully-done status reports + 5 executed plans + 15 duplicate
+re-dispatch reports annotated inline and git-mv'd; per-item resolution
+verified before each move — the 14-17 evening pass added ~1.3k inline
+strikethrough markers over the remaining live reports).
 
 | Date | Report | Scope |
 | 2026-09-14 | `2026-09-14_14-17_docs-health-archive-sweep-self-review-and-status.md` | Docs-health AUDIT over ALL unarchived 2026-09 files (158 reports + 23 plans triaged via 5 verification agents): 76 status reports + 5 executed plans annotated inline (cluster-note) + git-mv'd to archived/ (counter 46→122 / 9→14, live rows ~147→84); citations + index repointed; 21 untracked items harvested into TODO_LIST (headliner: dead-pool alerted-before-notify bug agentpool.go:468); living-doc fixes (FEATURES 165→196 fuzz seeds + FuzzDetectRateLimit corpus + missing derived-outcomes row; README stale post-ADR-0017 quickstart → build-tq.sh; ROADMAP v0.3.0 header); gates green (doc-refs/status-index/todo-list/features-roadmap/features-ci/ghost-archives) + build/vet + race suite 14/14; a)-g) self-review incl. 6 honest defects (134-entry moved-list, 14-01 prefix collision misroute, 3 rate-limited agents, sloppy first mint, un-diffed concurrent edits, hand-rolled annotator) + 3 owner questions (cluster-note vs strikethrough bar, dup-report disposition, harvest routing) |

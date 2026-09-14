@@ -1,44 +1,46 @@
 # Self-Review + Full Status: Tag Restore, Dead-Pool Fix, Flash Dogfood Proof
 
+> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+
 _Session 2026-09-10 00:15–02:00 (two turns: the `git sync` tag clobber, then
 "use go-taskqueue on itself with GLM-5.3-Flash agents"). Report written
 02:00. Brutal-honesty mode per the user's prompt; scope = THIS session only._
 
 ## a) FULLY DONE (verified this session)
 
-1. **Published-tag restore (`git sync` fix)**: `internal/{executor,queue}/
+1. ~~**Published-tag restore (`git sync` fix)**: `internal/{executor,queue}/~~ done — shipped/narrative (verified at HEAD)
    v0.2.0` re-cuts (an illegal rewrite of already-pushed signed tags, made
    on the false "unpushed" premise from the 00:41 session) deleted and
    re-fetched byte-identical to the remote objects. `git fetch --prune
    --tags` exits 0; release-gates smoke green.
-2. **False-claim corrections**: CHANGELOG [Unreleased] Removed
+2. ~~**False-claim corrections**: CHANGELOG [Unreleased] Removed~~ done — shipped/narrative (verified at HEAD)
    parenthetical + new Fixed entry; 00:41 report §b.1 CORRECTION + §g.1
    UPDATE blockquotes; TODO_LIST push item rewritten to reality (owner had
    already pushed master + root + 5 module tags; only the 2 backend tags
    remain latent).
-3. **Dead-pool root cause** (the session's core find): the systemd pool
+3. ~~**Dead-pool root cause** (the session's core find): the systemd pool~~ done — shipped/narrative (verified at HEAD)
    (deployed 2026-09-09 05:03) never enqueued ANY task — every tick logged
    `harvest: skipped reason="scan failed" count=3`. Three bugs: bare
    `--repos` names resolved via the service cwd (`/mnt/pool/services/tq`)
    instead of `--projects-dir`; the aggregate skip log cut reasons at the
    first colon (error invisible for 20h); the service PATH lacks
    git/go/crush (would have killed every agent exec + verify next).
-4. **Fix 1**: `harvestConfigFromOptions` expands bare repo names against
+4. ~~**Fix 1**: `harvestConfigFromOptions` expands bare repo names against~~ done — shipped/narrative (verified at HEAD)
    the projects dir (`cmd/tq/agentpool.go`); table test
    `TestHarvestConfigFromOptionsExpandsBareRepoNames` +
    discovery-preservation test.
-5. **Fix 2**: skip groups carry one full `example` reason (truncated at 200
+5. ~~**Fix 2**: skip groups carry one full `example` reason (truncated at 200~~ done — shipped/narrative (verified at HEAD)
    runes); scan failures log at WARN; `harvest.ReasonScanFailed` const
    replaces the magic string at both sites. Two tests pin it.
-6. **Fix 3**: NixOS module sets an explicit agent-toolchain PATH — new
+6. ~~**Fix 3**: NixOS module sets an explicit agent-toolchain PATH — new~~ done — shipped/narrative (verified at HEAD)
    `services.tq-agent-pool.agentPath` option (hermetic git+go, system
    profile, per-user profile, GOBIN), wired into the pool unit
    Environment. `nix flake check --all-systems --no-build` green (incl.
    module-eval).
-7. **Orphan `/tmp/tq serve :8090`** (2026-09-07 dogfood leftover,
+7. ~~**Orphan `/tmp/tq serve :8090`** (2026-09-07 dogfood leftover,~~ done — shipped/narrative (verified at HEAD)
    `--allow-writes` surface) stopped gracefully per the documented
    cutover. Repo-root `tasks.db` is now a retired journal.
-8. **Dogfood proof (the "effectively" answer)**: bounded
+8. ~~**Dogfood proof (the "effectively" answer)**: bounded~~ done — shipped/narrative (verified at HEAD)
    `--once` pool from cwd `/tmp` with a bare repo name (exercising Fix 1
    exactly): harvest → GLM-5.3-Flash agent (~8 min, repo `.crushrc` pins
    `zai/glm-5.3-flash --reasoning-effort xhigh`) → full race suite green
@@ -46,60 +48,60 @@ _Session 2026-09-10 00:15–02:00 (two turns: the `git sync` tag clobber, then
    into ci-local by the agent → TODO item ticked with honest DONE note →
    commit `1586ed5` carrying the `Task-Queue-ID` footer → review agent
    verdict **approve** → pool drained and exited cleanly.
-9. **Parallel-session stewardship**: the concurrent go-retry adoption in
+9. ~~**Parallel-session stewardship**: the concurrent go-retry adoption in~~ done — shipped/narrative (verified at HEAD)
    `internal/executor` was read, judged sound, kept, and propagated
    (`go mod tidy` at root + `internal/worker`) — 7/7 modules green after.
-10. **vendorHash dance** completed (`sha256-AYpY…`); `nix build .#default`
+10. ~~**vendorHash dance** completed (`sha256-AYpY…`); `nix build .#default`~~ done — shipped/narrative (verified at HEAD)
     green; binary reports `tq 0.2.0`.
-11. **Full `./scripts/ci-local.sh` on the final tree: ALL CI GATES GREEN**
+11. ~~**Full `./scripts/ci-local.sh` on the final tree: ALL CI GATES GREEN**~~ done — shipped/narrative (verified at HEAD)
     (race suite, smokes incl. the agent's new dead-exports check,
     check-go-mods, release-gates, treefmt, all five flake checks).
-12. **Docs**: CHANGELOG Fixed entries; AGENTS.md dogfood section rewritten
+12. ~~**Docs**: CHANGELOG Fixed entries; AGENTS.md dogfood section rewritten~~ done — shipped/narrative (verified at HEAD)
     to the real topology + a pool-deploy failure-mode gotcha; TODO item 45
     annotated; report `2026-09-10_01-55_pool-deployment-fix-and-flash-
     dogfood-proof.md` written + indexed.
 
 ## b) PARTIALLY DONE
 
-1. **SystemNix pool-settings proposal** (`concurrency 3`, `review-autofix`
+1. ~~**SystemNix pool-settings proposal** (`concurrency 3`, `review-autofix`~~ resolved — routed TODO
    true, `status-every 5`): edited in
    `~/projects/SystemNix/modules/nixos/services/tq-agent-pool.nix` but
    **never validated** (no `nix-instantiate --parse`, no eval) and left
    uncommitted for owner review. An unverified edit in the owner's infra
    repo is exactly the kind of diff I criticize others for leaving.
-2. **agentPath verification**: eval-checked only. Never run under the
+2. ~~**agentPath verification**: eval-checked only. Never run under the~~ done — env -i dry-run 05-30 (verified at HEAD)
    composed restricted PATH (`env -i PATH=…`) — my dogfood proof used my
    interactive PATH, which has git/go/crush. The verification gap is the
    same CLASS as the original bug (works-in-my-shell, dead-in-systemd).
-3. **Deploy handoff**: documented but incomplete — see d)1.
-4. **Speed calibration**: n=1 Flash task (~8 min agent + ~4 min review).
+3. ~~**Deploy handoff**: documented but incomplete — see d)1.~~ resolved — routed TODO
+4. ~~**Speed calibration**: n=1 Flash task (~8 min agent + ~4 min review).~~ resolved — routed TODO
    No wall-time distribution, no failure-rate data; `repo-interval
    go-taskqueue=10m` and `daily-budget=30` untouched, unexamined.
 
 ## c) NOT STARTED (identified, deliberately deferred)
 
-1. **Dead-pool alerting**: a pool that scans 0 repos for hours should page
+1. ~~**Dead-pool alerting**: a pool that scans 0 repos for hours should page~~ resolved — shipped/routed
    PapDashboard, not merely log WARN. Better logs ≠ detection.
-2. **`--max-concurrent-agents` machine-wide slot cap** for multi-pool
+2. ~~**`--max-concurrent-agents` machine-wide slot cap** for multi-pool~~ resolved — shipped/routed
    safety (manual `--once` runs + systemd pool can now overlap).
-3. **Dogfood smoke promotion**: the `--once` proof command is not a
+3. ~~**Dogfood smoke promotion**: the `--once` proof command is not a~~ resolved — shipped/routed
    repeatable script (`scripts/smoke/dogfood-once.sh`, opt-in via env
    since it spends API money).
-4. **Durable evidence**: the dogfood journal (`/tmp/tq-dogfood.db` +
+4. ~~**Durable evidence**: the dogfood journal (`/tmp/tq-dogfood.db` +~~ resolved — shipped/routed
    `/tmp/tq-dogfood-logs/`) lives in /tmp — gone on reboot. No export
    archived.
-5. **cwd-dependence sweep**: `tq audit` / other repo-list call sites not
+5. ~~**cwd-dependence sweep**: `tq audit` / other repo-list call sites not~~ resolved — shipped/routed
    re-audited for the same bare-name class (harvest cmd resolves properly;
    audit unverified this session).
 6. **SystemNix `:8090` reference sweep**: stopped the serve without
    grepping SystemNix/Caddy/Gatus for dependents on that port.
-7. **Worktree-per-agent** (intra-repo parallelism — the true "multiple
+7. ~~**Worktree-per-agent** (intra-repo parallelism — the true "multiple~~ resolved — shipped/routed
    agents on ONE repo" answer; today's design serializes per repo by
    necessity, single working tree): not designed, not routed to ROADMAP.
 
 ## d) TOTALLY FUCKED UP
 
-1. **The deploy handoff implies an availability that doesn't exist
+1. ~~**The deploy handoff implies an availability that doesn't exist~~ resolved — pushed/routed/narrative
    (worst).** Report 01-55 §e and the TODO item 45 annotation say "flip
    the SystemNix input to `github:LarsArtmann/go-taskqueue?ref=master` +
    redeploy" — but today's fixes are LOCAL-ONLY; origin/master is still
@@ -107,15 +109,15 @@ _Session 2026-09-10 00:15–02:00 (two turns: the `git sync` tag clobber, then
    the fixes and conclude they didn't work. I knew the remote position
    (verified it in turn 1!) and still wrote the handoff without the push
    prerequisite. The correct chain is: **push (owner) → flip → redeploy**.
-2. **Report 01-55 §f hedged instead of stated**: "ci-local: run at session
+2. ~~**Report 01-55 §f hedged instead of stated**: "ci-local: run at session~~ resolved — pushed/routed/narrative
    close (result recorded … if anything regressed)" — written before the
    gate finished. It did pass; a verification report must never ship
    future-tense results. (Corrected by this report; 01-55 itself stays
    point-in-time.)
-3. **SystemNix edit shipped blind** (b)1) — unvalidated nix in someone
+3. ~~**SystemNix edit shipped blind** (b)1) — unvalidated nix in someone~~ resolved — pushed/routed/narrative
    else's repo, sitting as an uncommitted diff the owner might
    `nixos-rebuild` over blindly.
-4. Minor mechanics, all recovered in-session: `kill` builtin unsupported
+4. ~~Minor mechanics, all recovered in-session: `kill` builtin unsupported~~ resolved — pushed/routed/narrative
    by the shell (one wasted roundtrip + a 2-min "still running" scare that
    was graceful drain); one over-escaped multiedit on the nix module;
    one AGENTS.md mod-time collision with the running dogfood agent.
@@ -150,82 +152,82 @@ _Session 2026-09-10 00:15–02:00 (two turns: the `git sync` tag clobber, then
 
 ## f) Next up to 50 (session-derived, impact-sorted; ⭐ = owner-gated)
 
-1. ⭐ Authorize push of master (+ decide on the two backend tags) — the
+1. ~~⭐ Authorize push of master (+ decide on the two backend tags) — the~~ resolved — shipped/routed
    deploy chain's missing first link (d)1).
-2. ⭐ Review + validate the SystemNix proposal diff, then flip input +
+2. ~~⭐ Review + validate the SystemNix proposal diff, then flip input +~~ resolved — shipped/routed
    `nix run .#deploy`; confirm via `journalctl -u tq-agent-pool` showing
    `harvest: enqueued` within one interval.
-3. `env -i PATH=<agentPath>` dry-run: prove crush/git/go resolve under the
+3. ~~`env -i PATH=<agentPath>` dry-run: prove crush/git/go resolve under the~~ resolved — shipped/routed
    composed service PATH (closes b)2 in 15 minutes).
-4. Validate SystemNix edit: `nix flake check` (or at minimum
+4. ~~Validate SystemNix edit: `nix flake check` (or at minimum~~ resolved — shipped/routed
    `nix-instantiate --parse`) in ~/projects/SystemNix.
-5. Annotate report 01-55: ci-local result (green) + the push-prerequisite
+5. ~~Annotate report 01-55: ci-local result (green) + the push-prerequisite~~ resolved — shipped/routed
    correction to §e (docs-health ANNOTATE, one commit).
-6. Dead-pool alert: PapDashboard alert when a pool's skip-scan-failure
+6. ~~Dead-pool alert: PapDashboard alert when a pool's skip-scan-failure~~ resolved — shipped/routed
    count equals repo count for N consecutive ticks (rides the existing
    bridge).
 7. Grep SystemNix/Caddy/Gatus for stale `:8090` references.
-8. Sweep all repo-name call sites for cwd dependence (`tq audit`, prune,
+8. ~~Sweep all repo-name call sites for cwd dependence (`tq audit`, prune,~~ resolved — shipped/routed
    bootstrap paths) — one `rg 'splitRepos\('`-anchored audit.
-9. Archive dogfood evidence durably: copy `/tmp/tq-dogfood.db` +
+9. ~~Archive dogfood evidence durably: copy `/tmp/tq-dogfood.db` +~~ resolved — shipped/routed
    review log into `docs/status/` assets or `~/.local/state/tq/`.
-10. Promote the dogfood proof into `scripts/smoke/dogfood-once.sh`
+10. ~~Promote the dogfood proof into `scripts/smoke/dogfood-once.sh`~~ resolved — shipped/routed
     (env-gated `TQ_DOGFOOD=1` because it spends API money).
-11. module-eval: assert the pool unit's Environment carries a non-empty
+11. ~~module-eval: assert the pool unit's Environment carries a non-empty~~ resolved — shipped/routed
     PATH (pins Fix 3 against silent regression).
-12. Machine-wide `--max-concurrent-agents` slot cap in the SystemNix
+12. ~~Machine-wide `--max-concurrent-agents` slot cap in the SystemNix~~ resolved — shipped/routed
     proposal (manual + systemd pools can overlap).
-13. Measure Flash task wall-time over the next ~10 pool tasks; re-check
+13. ~~Measure Flash task wall-time over the next ~10 pool tasks; re-check~~ resolved — shipped/routed
     `task-timeout=45m` and `repo-interval=10m` against the distribution.
-14. Revisit `daily-budget=30` against Flash pricing ($0.15/$0.5 per M) —
+14. ~~Revisit `daily-budget=30` against Flash pricing ($0.15/$0.5 per M) —~~ resolved — shipped/routed
     possibly 50–60 with the same review loop.
-15. Worktree-per-agent design doc (ROADMAP): claim → dedicated worktree →
+15. ~~Worktree-per-agent design doc (ROADMAP): claim → dedicated worktree →~~ resolved — shipped/routed
     verify → merge — the real intra-repo parallelism; needs owner merge-
     policy input first.
-16. `checkProjectsDir` should be skipped when `--repos` entries are all
+16. ~~`checkProjectsDir` should be skipped when `--repos` entries are all~~ resolved — shipped/routed
     absolute (pre-existing wart noticed, untouched).
-17. Harvest-skip log dedup: same `example` every 5m floods journald — log
+17. ~~Harvest-skip log dedup: same `example` every 5m floods journald — log~~ resolved — shipped/routed
     on change or first-occurrence per interval.
-18. `tq doctor`: warn when the agent toolchain (crush/git/go) is not on
+18. ~~`tq doctor`: warn when the agent toolchain (crush/git/go) is not on~~ resolved — shipped/routed
     PATH — pool-context visibility of exactly this failure class.
-19. Gatus check on journal-head movement (pool liveness ≠ process liveness
+19. ~~Gatus check on journal-head movement (pool liveness ≠ process liveness~~ resolved — shipped/routed
     — the service was "up" while dead).
 20. Post-deploy: watch for ETXTBSY retry firings in the journal (proves
     the kernel anomaly bites the systemd pool too, validates the retry).
-21. Post-deploy: verify `status-every` first auto report lands and its
+21. ~~Post-deploy: verify `status-every` first auto report lands and its~~ resolved — shipped/routed
     TODO appends actually feed the next harvest (the self-feeding loop's
     first live cycle).
-22. Post-deploy: verify `review-autofix` fix-task minting terminates
+22. ~~Post-deploy: verify `review-autofix` fix-task minting terminates~~ resolved — shipped/routed
     (dedup keys + budget guard) on a real request_changes.
-23. CHANGELOG: keep today's Fixed entries curated for the next release
+23. ~~CHANGELOG: keep today's Fixed entries curated for the next release~~ resolved — shipped/routed
     cut (release.sh requires a version section).
-24. The 14 remaining unchecked TODO_LIST post-split items (govulncheck CI,
+24. ~~The 14 remaining unchecked TODO_LIST post-split items (govulncheck CI,~~ resolved — shipped/routed
     gosec pass, templ deep-dive, webui dedup, httpapi split-brain check,
     full-core example, RELEASE.md, version-surface doc, lint-baseline
     slices, ExitCause→ExitError window, per-module golangci in ci.yml,
     multi-repo nix-binary smoke, …) — unchanged by this session except one
     closed by the dogfood agent.
-25. The 6 BLOCKED owner decisions (consumer wire-or-delete, three
+25. ~~The 6 BLOCKED owner decisions (consumer wire-or-delete, three~~ resolved — shipped/routed
     near-identical interfaces, Postgres CLI timing, dependabot policy,
     release retrospective, SystemNix deploy) — item 45's annotation
     updated; the rest untouched.
-26. Consider `--discovery-addr` (project-discovery-daemon SSE) for the
+26. ~~Consider `--discovery-addr` (project-discovery-daemon SSE) for the~~ resolved — shipped/routed
     pool: seconds-not-minutes harvest reaction to TODO edits (flag
     existed all along; proposal-worthy now that the pool will live).
-27. Tiny: `tq top` on the pool DB via `TQ_DB` is the owner's liveness
+27. ~~Tiny: `tq top` on the pool DB via `TQ_DB` is the owner's liveness~~ resolved — shipped/routed
     habit — consider a `tq pool-health` one-shot summarizing skip streaks.
 
 ## g) Questions I cannot answer myself
 
-1. **Push**: master is ~50+ commits ahead of origin (incl. all of today's
+1. ~~**Push**: master is ~50+ commits ahead of origin (incl. all of today's~~ resolved — routed TODO
    fixes; remote stops at 0637d63). The whole deploy chain dead-ends
    without it. Authorize `git push origin master` — and do the two latent
    backend tags (`internal/queue/{sqlite,postgres}/v0.2.0`) ride along or
    wait for the release flow?
-2. **SystemNix knobs**: approve `concurrency=3`, `review-autofix=true`,
+2. ~~**SystemNix knobs**: approve `concurrency=3`, `review-autofix=true`,~~ resolved — routed TODO
    `status-every=5` as proposed — and is `daily-budget=30` still the right
    spend cap for Flash-priced agents, or raise it?
-3. **Deploy strategy**: flip the SystemNix input to `ref=master` right
+3. ~~**Deploy strategy**: flip the SystemNix input to `ref=master` right~~ resolved — routed TODO
    after the push (fast, tracks HEAD), or pin the next tagged release
    (v0.3.0, slower but reproducible) — which do you want as the standing
    policy?

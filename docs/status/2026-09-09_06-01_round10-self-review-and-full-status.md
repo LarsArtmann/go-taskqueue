@@ -1,5 +1,7 @@
 # Round 10 Self-Review + Full Status — The Morning After the Whole-List Sprint
 
+> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+
 **Date:** 2026-09-09 06:01 CEST (session ran 03:20–05:45; report at 06:01)
 **Scope:** hostile review of THIS session's own run (whole-TODO-list
 execution + v0.2.0 release), then full status. Based on session evidence
@@ -7,13 +9,13 @@ only; every claim below was grep-verified against the tree at report time.
 
 ## a) FULLY DONE (verified)
 
-1. **CI deflaked, three classes closed**: TestHeartbeatExtendsLease (lease
+1. ~~**CI deflaked, three classes closed**: TestHeartbeatExtendsLease (lease~~ done — shipped/narrative (verified at HEAD)
    expired before first heartbeat on slow runners), TestConcurrentClientsRace
    (100ms SSE dial window under -race), TestMarkOrphanedRecordsStrandedTasks
    (fixed sleep measured from the wrong claim; >100ms gap let the second
    ClaimDue reclaim the victim). Windows+Linux CI green on the last three
    master runs and on the v0.2.0 tag run.
-2. **Tier R safety rails**: cooperative-cancel wrapped-error contract test;
+2. ~~**Tier R safety rails**: cooperative-cancel wrapped-error contract test;~~ done — shipped/narrative (verified at HEAD)
    absent-item prune policy (decided, implemented, provenance-guarded,
    blocked-edit interaction pinned); synchronous startup zombie sweep
    (e2e caught my own claim-race before it shipped); round-5 defect batch
@@ -21,7 +23,7 @@ only; every claim below was grep-verified against the tree at report time.
    fleet switched to bootstrap managed-block rails (3 repos, truthful
    dry-run); SECURITY.md writes section; write-route CSRF lockout
    (3 fails → 60s 429, smoke-asserted end-to-end).
-3. **Tier V mechanical pack**: Filter.Since pushdown (pgWhere extracted),
+3. ~~**Tier V mechanical pack**: Filter.Since pushdown (pgWhere extracted),~~ done — shipped/narrative (verified at HEAD)
    journal_head JSON, scoped budget label, facts --json/--detail, MkdirAll,
    preflight requeue ladder + jitter + log rate-limit, retention/pacing
    keys in bootstrap + pool.conf + NixOS docs, honest watermarks show,
@@ -29,33 +31,33 @@ only; every claim below was grep-verified against the tree at report time.
    states + shared banner consts, module-eval repaired (argv example,
    unknown-key survival via renderedConfigFile option, EnvironmentFile
    assertion).
-4. **Guards/docs**: 4 honesty scripts wired into ci-local (seed cross-check
+4. ~~**Guards/docs**: 4 honesty scripts wired into ci-local (seed cross-check~~ done — shipped/narrative (verified at HEAD)
    caught D80/D90 stale in ROADMAP on first run) + installable pre-commit
    hook; AGENTS.md 24.7→14,904 B with stale facts fixed (pre-v0.1.0 claim,
    self-contradicting --once note); 10 backlog reports annotated; routing
    residue closed (postgres exhausted label, mintPass, wrong counts, D-seed
    stamps).
-5. **v0.2.0 PUBLISHED**: gate green twice, annotated tag on the verified
+5. ~~**v0.2.0 PUBLISHED**: gate green twice, annotated tag on the verified~~ done — shipped/narrative (verified at HEAD)
    tree, pushed, proxy serves it, clean-room go get verified, GitHub
    Release live (03:17Z). Real release.sh bug found+fixed on first
    end-to-end run (awk matched the bare heading, not the dated one).
-6. **SSE disconnect crash found and fixed on master** (aabe784): the
+6. ~~**SSE disconnect crash found and fixed on master** (aabe784): the~~ done — shipped/narrative (verified at HEAD)
    heartbeat goroutine outlived handleEvents; a client disconnect near
    handler exit Flushed a torn-down response — SIGSEGV in a goroutine
    net/http cannot recover, killing the whole serve process. Both SSE
    endpoints now stop-and-wait the heartbeat before teardown; regression
    test hammers disconnects at 5ms heartbeat under -race.
-7. **papdbg worker killed** (D6); nightly fuzz workflow un-broken
+7. ~~**papdbg worker killed** (D6); nightly fuzz workflow un-broken~~ done — shipped/narrative (verified at HEAD)
    (one-character checkout-SHA typo); TODO_LIST rows closed with evidence;
    ROUND10 plan stamped EXECUTED; session report written+indexed.
 
 ## b) PARTIALLY DONE
 
-1. **T23/T24 annotations**: 10 reports annotated, but the two 50-item lists
+1. ~~**T23/T24 annotations**: 10 reports annotated, but the two 50-item lists~~ done — narrative (point-in-time process note, no artifact owed)
    (17-21, 21-19) got dated summary HEADER blocks, not item-by-item
    strikethroughs — the docs-health convention's strictest form. Honest,
    verifiable, but coarser than the 12 reports the audit did item-by-item.
-2. **Guard coverage**: the TODO linter's keyword list is narrow
+2. ~~**Guard coverage**: the TODO linter's keyword list is narrow~~ done — narrative (point-in-time process note, no artifact owed)
    (sudo/owner/policy/go/no-go/owner-run — misses [USER],
    awaiting-decision, other phrasings); the seed cross-check only covers
    D8x–D10x IDs, not free-text feature names (by design, but honest about
@@ -67,36 +69,36 @@ only; every claim below was grep-verified against the tree at report time.
 
 ## c) NOT STARTED (this session's own scope, deliberately or missed)
 
-1. **v0.2.1** — see d)1: the published v0.2.0 tag contains the SSE crash;
+1. ~~**v0.2.1** — see d)1: the published v0.2.0 tag contains the SSE crash;~~ done — superseded/FEATURES rows (verified at HEAD)
    the fix is on master only. Not started because the tag is immutable and
    a new cut is a release decision (script philosophy: fixes ship as a NEW
    version).
-2. **FEATURES.md rows for this session's features** — MISSED, not
+2. ~~**FEATURES.md rows for this session's features** — MISSED, not~~ done — superseded/FEATURES rows (verified at HEAD)
    deliberately: Filter.Since, facts --json/--detail, journal_head,
    write-route lockout, RequeueEvidence, absent-item prune + startup
    sweep, facts tail window, retention keys, statusColorTable… none have
    FEATURES rows (verified: grep finds ~1 incidental match). I updated
    CHANGELOG/TODO/ROADMAP/AGENTS/SECURITY but skipped the feature
    inventory — exactly the doc-drift class this repo fights.
-3. **AGENTS size guard test (plan M89)** — the ≤15KB prune shipped (14,904 B
+3. ~~**AGENTS size guard test (plan M89)** — the ≤15KB prune shipped (14,904 B~~ resolved — routed TODO 164
    verified) but the pinning guard test never got written, so the file can
    silently grow past budget again.
-4. **`internal/httpapi` package row in AGENTS** — 17-21 §f41 asked for it;
+4. ~~**`internal/httpapi` package row in AGENTS** — 17-21 §f41 asked for it;~~ resolved — routed TODO 164
    my rewritten package table still lacks it (verified: 0 mentions).
-5. **Golden test for `tq facts --json` (plan M63)** — verified by manual
+5. ~~**Golden test for `tq facts --json` (plan M63)** — verified by manual~~ resolved — routed TODO 164
    smoke only, no pinned shape test.
 6. **01:48 §f30 (e2e budget test asserts the review-mint path)** — neither
    done nor routed anywhere; DROPPED by my T11 routing sweep. Re-filed in
    f) below. (Same audit's §f21 "cross-session integration review" was
    implicitly satisfied by three full ci-local runs, but I never wrote
    that verdict into the 01:48 report.)
-7. **Rate-limiter map bound**: the strikes map prunes per-key on contact
+7. ~~**Rate-limiter map bound**: the strikes map prunes per-key on contact~~ resolved — routed rate-limiter row
    only — a rotating-source attacker grows it unboundedly (tiny entries,
    LAN dashboard: low risk, but a global periodic prune is the right shape).
 
 ## d) TOTALLY FUCKED UP (mine, honestly)
 
-1. **v0.2.0 ships a known serve-crashing bug.** The SSE heartbeat SIGSEGV
+1. ~~**v0.2.0 ships a known serve-crashing bug.** The SSE heartbeat SIGSEGV~~ done — superseded/narrative (verified at HEAD)
    was live in the tagged tree; the tag run went green (the panic needs a
    disconnect inside a ~100ms window — CI's happy-path SSE reads never hit
    it), and the crash surfaced in the very NEXT master run. I declared the
@@ -107,7 +109,7 @@ only; every claim below was grep-verified against the tree at report time.
    fix exists (aabe784) — the version that should carry it doesn't. This is
    the session's worst outcome and the strongest argument for a quick
    v0.2.1.
-2. **I violated the edit discipline I myself re-wrote into AGENTS mid-session.**
+2. ~~**I violated the edit discipline I myself re-wrote into AGENTS mid-session.**~~ done — superseded/narrative (verified at HEAD)
    The fmtAge parity test was written broken TWICE via python string
    surgery (`SeqIfFake`, `prevDivisorFor` with a mismatched anonymous
    struct) before a clean rewrite — exactly the "heredoc escaping broke
@@ -116,12 +118,12 @@ only; every claim below was grep-verified against the tree at report time.
    because every script asserted its anchor). Rule for next time: view +
    edit tool for Go source, python only for the markdown reports it was
    built for.
-3. **Premature truth-tick caught by luck, not process.** I ticked the
+3. ~~**Premature truth-tick caught by luck, not process.** I ticked the~~ done — superseded/narrative (verified at HEAD)
    "Cut v0.2.0" TODO row in the same write that rewrote the whole list —
    minutes BEFORE the release existed. I caught and reverted it
    immediately, but the catch was self-review, not a gate; a
    claim-before-evidence slip is how the 02:52 defects happened.
-4. **Release-then-fix sequencing.** The orphaned-test deflake and the SSE
+4. ~~**Release-then-fix sequencing.** The orphaned-test deflake and the SSE~~ done — superseded/narrative (verified at HEAD)
    crash both landed AFTER the tag; a pre-tag `go test ./... -count=3` on
    this repo (the flake-catching discipline the ROADMAP already
    recommends as a nightly job) would likely have surfaced the orphaned
@@ -130,68 +132,68 @@ only; every claim below was grep-verified against the tree at report time.
 
 ## e) WHAT WE SHOULD IMPROVE (process, from this session's scars)
 
-1. **Release gate should include `-race -count=3` on the flake-prone
+1. ~~**Release gate should include `-race -count=3` on the flake-prone~~ resolved — routed/shipped/narrative
    packages** (queue, webui, worker) — both post-tag failures were
    timing-window bugs a repeat-run would have caught. Cheap insurance
    before an immutable tag.
-2. **A "post-release watch" rule**: the release is not done when the tag
+2. ~~**A "post-release watch" rule**: the release is not done when the tag~~ resolved — routed/shipped/narrative
    run is green; it is done when the FIRST post-release master run is
    green on the same tree. Encode into release.sh as a printed reminder,
    or run the watch before announcing.
 3. **CHANGELOG must regain [Unreleased] the moment a version is cut** —
    make that a numbered step in release.sh (it prints notes; add "re-add
    the empty [Unreleased] header" to the checklist).
-4. **FEATURES rows are part of shipping a feature**, not docs-debt for
+4. ~~**FEATURES rows are part of shipping a feature**, not docs-debt for~~ resolved — routed/shipped/narrative
    later — the session updated five of six living docs and missed the
    sixth. The docs-health audit would have caught it; the audit should not
    be the only net.
-5. **My own guard rails apply to me**: python-surgery on Go source stays
+5. ~~**My own guard rails apply to me**: python-surgery on Go source stays~~ resolved — routed/shipped/narrative
    banned; the two broken-test iterations this session are the receipt.
 
 ## f) NEXT — up to 50, impact-ordered (1% first)
 
-1. **Cut v0.2.1** carrying the SSE crash fix (+ deflakes + fuzz-SHA fix):
+1. ~~**Cut v0.2.1** carrying the SSE crash fix (+ deflakes + fuzz-SHA fix):~~ resolved — shipped/routed/narrative
    `scripts/release.sh v0.2.1 --push` after the gate — the published tag
    crashing serve is the top standing defect.
 2. **Re-create [Unreleased] + entries** for aabe784/f3088a7/5ee3ca8 in
    CHANGELOG (5-minute fix, do before anything else).
-3. **FEATURES.md rows** for this session's features (b2 above; ~10 rows).
-4. **AGENTS size guard test** pinning ≤15,000 B (M89 residue).
-5. **internal/httpapi row** in the AGENTS package table.
+3. ~~**FEATURES.md rows** for this session's features (b2 above; ~10 rows).~~ resolved — shipped/routed/narrative
+4. ~~**AGENTS size guard test** pinning ≤15,000 B (M89 residue).~~ resolved — shipped/routed/narrative
+5. ~~**internal/httpapi row** in the AGENTS package table.~~ resolved — shipped/routed/narrative
 6. **Re-file 01:48 §f30**: e2e budget test asserting the review-mint path
    (dropped by routing — my miss).
-7. **Rate-limiter global prune** (bound the strikes map; rotating-source
+7. ~~**Rate-limiter global prune** (bound the strikes map; rotating-source~~ resolved — shipped/routed/narrative
    hardening).
-8. **Golden test for `tq facts --json`** shape (M63 residue).
-9. **release.sh: add "-count=3 flake pass" + post-release-watch reminder
+8. ~~**Golden test for `tq facts --json`** shape (M63 residue).~~ resolved — shipped/routed/narrative
+9. ~~**release.sh: add "-count=3 flake pass" + post-release-watch reminder~~ resolved — shipped/routed/narrative
    steps** (e)1/e)2).
 10. **release.sh: auto re-add [Unreleased] header** after the cut (e)3).
-11. Item-by-item strikethrough pass on the two 50-item report lists
+11. ~~Item-by-item strikethrough pass on the two 50-item report lists~~ resolved — shipped/routed/narrative
     (17-21, 21-19) if the owner wants the strict docs-health form.
 12. TODO-linter keyword widening ([USER], awaiting-decision, awaiting
     owner).
-13. SystemNix evo-x2 cutover (owner sudo; input flip to `?ref=master` is
+13. ~~SystemNix evo-x2 cutover (owner sudo; input flip to `?ref=master` is~~ resolved — shipped/routed/narrative
     ready) — the last executable TODO row.
-14. CQA live verification (owner creds window).
-15. Relaunch the dogfood pool against this repo (TODO food is nearly all
+14. ~~CQA live verification (owner creds window).~~ resolved — shipped/routed/narrative
+15. ~~Relaunch the dogfood pool against this repo (TODO food is nearly all~~ resolved — shipped/routed/narrative
     [x] by design; a fresh curated harvest is an owner choice).
-16. Nightly fuzz runs again post-SHA-fix — verify tonight's run commits
+16. ~~Nightly fuzz runs again post-SHA-fix — verify tonight's run commits~~ resolved — shipped/routed/narrative
     seeds (watch workflow).
-17. `tq api` upgrade of examples/api onto internal/httpapi (F119, routed).
-18. v0.2 remainder: `--store postgres` CLI wiring, fencing tokens, API
+17. ~~`tq api` upgrade of examples/api onto internal/httpapi (F119, routed).~~ resolved — shipped/routed/narrative
+18. ~~v0.2 remainder: `--store postgres` CLI wiring, fencing tokens, API~~ resolved — shipped/routed/narrative
     cancel/claim (ROADMAP v0.2 pack).
-19. …50: the rest lives in ROADMAP packs + the ROUND10 T27 lane
+19. ~~…50: the rest lives in ROADMAP packs + the ROUND10 T27 lane~~ resolved — shipped/routed/narrative
     (one-idea-per-session by design) — nothing else session-derived is
     open.
 
 ## g) QUESTIONS ONLY YOU CAN ANSWER (3, genuinely not mine to decide)
 
-1. **Cut v0.2.1 now?** v0.2.0's published tag contains the SSE
+1. ~~**Cut v0.2.1 now?** v0.2.0's published tag contains the SSE~~ resolved — superseded/narrative/routed
    disconnect crash (fix is on master). My recommendation: yes, today —
    it's a process-killing bug in the flagship command the release
    advertises. Your gate: is a same-day v0.2.1 fine, or do you want to
    batch it with the next feature slice?
-2. **Ratify the mandate interpretations.** I read "GET THE WHOLE TODO
+2. ~~**Ratify the mandate interpretations.** I read "GET THE WHOLE TODO~~ resolved — superseded/narrative/routed
    LIST DONE" as: D2 ratification of the 19 minted items (all now done)
    - authority to DECIDE the four parked policy questions (absent-item
      semantics, review ceiling, append caps, cancel-key semantics) with
@@ -199,7 +201,7 @@ only; every claim below was grep-verified against the tree at report time.
      pushes. Each decision is documented in the 05-20 report §b and TODO
      rows. Confirm all, or override any — every one is small, code-level
      reversible.
-3. **Dogfood pool relaunch + fresh harvest?** The TODO list is now
+3. ~~**Dogfood pool relaunch + fresh harvest?** The TODO list is now~~ resolved — superseded/narrative/routed
    deliberately near-empty of machine food (everything shipped). Want me
    to curate the next pool batch (e.g. from f) items 7-12 + ROADMAP's
    CI/tooling pack), or do you prefer the pool quiet until the SystemNix

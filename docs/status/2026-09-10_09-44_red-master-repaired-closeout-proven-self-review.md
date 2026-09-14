@@ -1,5 +1,7 @@
 # Session status — red master repaired, closeout loop proven, brutal self-review
 
+> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+
 - **Written**: 2026-09-10 09:44 CEST (session wall clock 07:33–09:44, of which ~1h50m
   was idle gap between owner messages — see d)2)
 - **Scope**: this session only — executing the standing queue left by the 05-30
@@ -27,13 +29,13 @@
 
 ## a) FULLY DONE
 
-1. **Closeout live-proof.** `docs/status/*_task-*.md` grew 5 → 13 during the
+1. ~~**Closeout live-proof.** `docs/status/*_task-*.md` grew 5 → 13 during the~~ done — verified/narrative/CHANGELOG (verified at HEAD)
    session; the 07-15 (version-surface inventory) report was read in full and
    is a genuine brutal self-review: a)-g) structure honored, every claim
    traced to a script/flake check, honest gaps named, ~50 next items. The full
    loop is proven end-to-end: agent task → closeout report → review task →
    fix-task minting (one live example: wrong `Task-Queue-ID` footer → fix task).
-2. **Red-master claim verified TRUE and every break fixed:**
+2. ~~**Red-master claim verified TRUE and every break fixed:**~~ done — verified/narrative/CHANGELOG (verified at HEAD)
    - `test-windows`: `TestHarvestConfigFromOptionsExpandsBareRepoNames`
      asserted POSIX string literals (previous session's own regression);
      rewritten with OS-derived separators and volume-aware absolutes
@@ -53,17 +55,17 @@
      `nix flake check` green including `checks.vendor-hash`.
    - `gosec`/`govulncheck` jobs were already `continue-on-error` in the
      current tree (round-2 f20/f21 work) — no change needed.
-3. **Full gate**: `./scripts/ci-local.sh` → **ALL CI GATES GREEN**; plus an
+3. ~~**Full gate**: `./scripts/ci-local.sh` → **ALL CI GATES GREEN**; plus an~~ done — verified/narrative/CHANGELOG (verified at HEAD)
    explicit final root `go build ./... && go vet ./... && go test ./... -race`
    green AFTER the lint agent's ~95 renames landed mid-run.
-4. **Docs**: docs-health pass added to the `status` payload bullet in
+4. ~~**Docs**: docs-health pass added to the `status` payload bullet in~~ done — verified/narrative/CHANGELOG (verified at HEAD)
    AGENTS.md (the closeout-turn half was already present from a parallel
    session); two CHANGELOG [Unreleased]/Fixed entries (x/text security bump,
    red-master trio); missing status-index row for the 07-39 closeout report
    (a daemon race — its commit claimed "index row" but the row never landed)
    added; `check-status-index.sh`, `check-doc-refs.sh`, `check-todo-list.sh`
    all green at the end.
-5. **Workforce monitoring, bounded**: 1C5 pool (PID 494121) alive 4h18m,
+5. ~~**Workforce monitoring, bounded**: 1C5 pool (PID 494121) alive 4h18m,~~ done — verified/narrative/CHANGELOG (verified at HEAD)
    31 → 50 done over the session, 0 dead, queue fully drained at 09:44.
    SQLITE_BUSY claim-failure blips observed (two pools share the DB) —
    transient, retried; root cause is the stale systemd pool (deploy is the
@@ -71,19 +73,19 @@
 
 ## b) PARTIALLY DONE
 
-1. **Windows fix is typecheck- and logic-verified only** — no windows runner
+1. ~~**Windows fix is typecheck- and logic-verified only** — no windows runner~~ done — narrative/shipped/superseded (verified at HEAD)
    exists here; the CI job proves it on push (still unpushed, see g)1).
-2. **Final verification covered the root module only**: `go test ./...` from
+2. ~~**Final verification covered the root module only**: `go test ./...` from~~ done — narrative/shipped/superseded (verified at HEAD)
    the root does not descend into the 7 nested modules (disk-derived loop is
    separate); I re-ran postgres (changed) but not the other six after the
    lint renames — covered by the lint agent's own gate claims and ci-local's
    mid-flight module phase, not by my own post-change pass.
-3. **ci-local green-run attribution**: the run started pre-fix and its late
+3. ~~**ci-local green-run attribution**: the run started pre-fix and its late~~ done — narrative/shipped/superseded (verified at HEAD)
    phases staged post-fix content; I inferred (not timestamp-verified) which
    phases saw which tree. Mitigated by the explicit post-fix passes above.
-4. **gosec suppression config**: left as TODO_LIST item 101 (workforce food);
+4. ~~**gosec suppression config**: left as TODO_LIST item 101 (workforce food);~~ done — narrative/shipped/superseded (verified at HEAD)
    the advisory job still reports red content on runs until then.
-5. **Push readiness**: origin diverged — its tip `41b817b` was rewritten out
+5. ~~**Push readiness**: origin diverged — its tip `41b817b` was rewritten out~~ done — narrative/shipped/superseded (verified at HEAD)
    of local master (the known daemon/agent twin-commit phenomenon; the 05-58
    report already tracks "dangling review target vs master twin"). Push will
    be non-FF; not investigated beyond identifying the commit (no reset, no
@@ -91,36 +93,36 @@
 
 ## c) NOT STARTED (owner-gated, deliberately untouched)
 
-1. Push master (now 33 commits ahead incl. all CI fixes + both loops; needs
+1. ~~Push master (now 33 commits ahead incl. all CI fixes + both loops; needs~~ resolved — superseded/routed
    the 41b817b divergence reconciled first).
-2. SystemNix redeploy — the systemd pool still runs the broken 0.1.0 binary
+2. ~~SystemNix redeploy — the systemd pool still runs the broken 0.1.0 binary~~ resolved — superseded/routed
    (harvests nothing; also the SQLITE_BUSY co-tenant).
-3. Closeout-report placement decision (`docs/status/` root vs `tasks/`
+3. ~~Closeout-report placement decision (`docs/status/` root vs `tasks/`~~ resolved — superseded/routed
    subdir — the index already carries 13 task rows).
-4. TODO append caps decision (~50/report vs 60 enqueues/day).
-5. The two local-only backend tags (`internal/queue/{sqlite,postgres}/v0.2.0`).
+4. ~~TODO append caps decision (~50/report vs 60 enqueues/day).~~ resolved — superseded/routed
+5. ~~The two local-only backend tags (`internal/queue/{sqlite,postgres}/v0.2.0`).~~ resolved — superseded/routed
 
 ## d) TOTALLY FUCKED UP
 
-1. **I shipped a non-evaluating flake.nix to master for ~10 minutes.** I
+1. ~~**I shipped a non-evaluating flake.nix to master for ~10 minutes.** I~~ done — narrative (point-in-time process note, no artifact owed)
    wrote `vendorHash = lib.fakeHash;` from the AGENTS.md dance note without
    reading the flake's binding structure — the parallel-session rework to
    flake-parts left `lib` out of scope at that position. `nix build` failed
    with "undefined variable 'lib'", and the auto-commit daemon folded the
    broken state into master before I fixed it. The AGENTS note reproduces
    this exact mistake for the next agent (see e)1).
-2. **I hung a shell on a live pipe for ~2 hours.** `tq top` is a refreshing
+2. ~~**I hung a shell on a live pipe for ~2 hours.** `tq top` is a refreshing~~ done — narrative (point-in-time process note, no artifact owed)
    command; I piped it to `sed -n '2,4p'`, which never exits, so the job sat
    between owner messages while the clock ran 07:54 → 09:44. I had even
    documented this trap ("NEVER `job_output wait=true` on long jobs; use
    bounded polls") and earlier used `head -5` correctly — then reached for
    `sed`. The owner-time lost is real; the workforce used it well (19 more
    tasks done) but that is luck, not design.
-3. **Narrative-first slip**: I called the `M AGENTS.md` I saw in recon
+3. ~~**Narrative-first slip**: I called the `M AGENTS.md` I saw in recon~~ done — narrative (point-in-time process note, no artifact owed)
    "someone's in-flight edit" before checking that the daemon had simply
    folded it between my two commands — the exact liveness-before-narrative
    rule the 05-30 session recorded after the zombie-pool misdiagnosis.
-4. **Overstated gate claim in my summary**: "ci-local ALL GATES GREEN on the
+4. ~~**Overstated gate claim in my summary**: "ci-local ALL GATES GREEN on the~~ done — narrative (point-in-time process note, no artifact owed)
    fixed tree" leaned on inferred phase timing (see b)3). The final explicit
    passes made the conclusion true, but the sentence as first written was
    sharper than the evidence — the verification-chaining lesson again.
@@ -134,12 +136,12 @@
 2. **Multi-step dances should be one atomic script** (set fake → build →
    capture → set real → build) so the daemon can only ever commit the
    completed dance, never a broken intermediate.
-3. **Live-pipe discipline**: refreshing CLIs (`tq top`) get `head` or
+3. ~~**Live-pipe discipline**: refreshing CLIs (`tq top`) get `head` or~~ done — AGENTS rule/narrative (verified at HEAD)
    `timeout`, never `sed`/`cat`; add it next to the existing bounded-poll
    note.
-4. **Verify gate-phase coverage before claiming green**: timestamp the
+4. ~~**Verify gate-phase coverage before claiming green**: timestamp the~~ done — AGENTS rule/narrative (verified at HEAD)
    phases or re-run the cheap ones post-change; inference is not evidence.
-5. **Check push-readiness (origin divergence) before any "safe to push"
+5. ~~**Check push-readiness (origin divergence) before any "safe to push"~~ done — AGENTS rule/narrative (verified at HEAD)
    framing** — the twin-commit phenomenon makes non-FF the default ending
    here, and it belongs in the handoff, not in a surprise.
 6. `go install` is policy-blocked in this environment; `go run pkg@version`
@@ -150,61 +152,61 @@
 
 Brainstorm, not commitments; items already tracked in TODO_LIST are marked.
 
-1. **Owner**: reconcile the `41b817b` origin divergence, then push master —
+1. ~~**Owner**: reconcile the `41b817b` origin divergence, then push master —~~ resolved — superseded/routed/shipped/narrative
    expect all five previously-failing jobs green (windows job is the real
    test of the a)2 rewrite).
-2. **Owner**: SystemNix redeploy (kills the stale systemd pool + the
+2. ~~**Owner**: SystemNix redeploy (kills the stale systemd pool + the~~ resolved — superseded/routed/shipped/narrative
    SQLITE_BUSY co-tenancy class).
-3. **Owner**: decide closeout-report placement; if `docs/status/tasks/`,
+3. ~~**Owner**: decide closeout-report placement; if `docs/status/tasks/`,~~ resolved — superseded/routed/shipped/narrative
    move the 13 existing reports and teach the closeout prompt + index check
    the new path.
-4. **Owner**: TODO append caps policy.
-5. **Owner**: cut the two local-only backend tags via `scripts/release.sh`
+4. ~~**Owner**: TODO append caps policy.~~ resolved — superseded/routed/shipped/narrative
+5. ~~**Owner**: cut the two local-only backend tags via `scripts/release.sh`~~ resolved — superseded/routed/shipped/narrative
    at release time (do not hand-tag).
-6. TODO 101 (tracked): gosec suppression config so the advisory job goes
+6. ~~TODO 101 (tracked): gosec suppression config so the advisory job goes~~ resolved — superseded/routed/shipped/narrative
    green and new classes stand out.
-7. Re-baseline the "~400-finding advisory" number in AGENTS.md after the
+7. ~~Re-baseline the "~400-finding advisory" number in AGENTS.md after the~~ resolved — superseded/routed/shipped/narrative
    wrapcheck/varnamelen slices (the 07-39 report flagged it stale).
-8. Run the disk-derived nested-module loop once on a quiet tree to stamp
+8. ~~Run the disk-derived nested-module loop once on a quiet tree to stamp~~ resolved — superseded/routed/shipped/narrative
    all 7 modules green post-lint-renames with my own eyes (b)2).
-9. Watch the first post-push CI run end-to-end; if windows still fails,
+9. ~~Watch the first post-push CI run end-to-end; if windows still fails,~~ resolved — superseded/routed/shipped/narrative
    the fix is wrong despite the typecheck.
-10. Add `timeout`/`head` guidance for refreshing CLIs to AGENTS.md (e)3).
+10. ~~Add `timeout`/`head` guidance for refreshing CLIs to AGENTS.md (e)3).~~ resolved — superseded/routed/shipped/narrative
 11. Fix the AGENTS.md vendorHash-dance note per e)1) (literal fake string).
 12. Script the vendorHash dance atomically per e)2) (small `scripts/`
     helper; NixOS-only guard).
-13. Record in the AGENTS dogfood section: background pools can outlive
+13. ~~Record in the AGENTS dogfood section: background pools can outlive~~ resolved — superseded/routed/shipped/narrative
     their session (1C5 ran 4h18m across session boundaries) — the
     "dies with this session" handoff claim was wrong.
-14. Investigate whether the daemon's heuristic auto-commits can be made
+14. ~~Investigate whether the daemon's heuristic auto-commits can be made~~ resolved — superseded/routed/shipped/narrative
     history-stable (the twin/dangling-commit class keeps costing push
     readiness) — likely an owner/architecture discussion.
-15. The 04:09 report's aged-into-baseline err113 finding and the 48
+15. ~~The 04:09 report's aged-into-baseline err113 finding and the 48~~ resolved — superseded/routed/shipped/narrative
     dead exports (tracked there) — keep them visible.
-16. Consider a `tq top --once` flag (or `--no-watch`) so tooling never
+16. ~~Consider a `tq top --once` flag (or `--no-watch`) so tooling never~~ resolved — superseded/routed/shipped/narrative
     hangs on it — small, high leverage for exactly d)2.
 17. Add a CI phase-timestamp (start/end per gate) to ci-local output so
     "which tree did this phase see" is answerable from the log (b)3).
-18. Snapshot `git rev-list --left-right --count master...origin/master`
+18. ~~Snapshot `git rev-list --left-right --count master...origin/master`~~ resolved — superseded/routed/shipped/narrative
     into every status report's TL;DR — push readiness is a standing blind
     spot (this report: 33 ahead, 1 behind).
-19. Harvest-check: confirm items 6-12 above don't duplicate TODO_LIST rows
+19. ~~Harvest-check: confirm items 6-12 above don't duplicate TODO_LIST rows~~ resolved — superseded/routed/shipped/narrative
     before enqueueing anything (docs-health pass owns the merge).
-20. Once pushed + deployed, run one `journalctl -u tq-agent-pool` review
+20. ~~Once pushed + deployed, run one `journalctl -u tq-agent-pool` review~~ resolved — superseded/routed/shipped/narrative
     to confirm the systemd pool harvests with the fixed binary and the
     agentPath option.
 
 ## g) QUESTIONS FOR THE OWNER (cannot be answered from here)
 
-1. **Push**: master is 33 ahead / 1 behind (origin tip `41b817b` was
+1. ~~**Push**: master is 33 ahead / 1 behind (origin tip `41b817b` was~~ resolved — superseded/routed
    rewritten out of local history by the daemon/agent twin phenomenon).
    Push with `--force-with-lease` after you eyeball the twin, or do you
    want a rebase-onto-origin first? All CI breaks are fixed locally; the
    windows job is the only fix without local proof.
-2. **Closeout reports**: keep them in `docs/status/` root (13 rows and
+2. ~~**Closeout reports**: keep them in `docs/status/` root (13 rows and~~ resolved — superseded/routed
    growing ~1/task) or move to `docs/status/tasks/` with the index
    unchanged? This changes the closeout prompt, the index check, and the
    docs-health archive convention in one move — your call.
-3. **Cutover order**: when you redeploy SystemNix, should I stop workforce
+3. ~~**Cutover order**: when you redeploy SystemNix, should I stop workforce~~ resolved — superseded/routed
    1C5 first (clean handover, no double-harvest, no BUSY contention) or let
    the lease/reclaim machinery absorb the overlap?

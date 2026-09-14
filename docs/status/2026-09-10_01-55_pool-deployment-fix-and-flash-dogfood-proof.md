@@ -1,5 +1,7 @@
 # Pool Deployment Fixed: Dead Pool Root-Caused, Flash Dogfood Loop Proven
 
+> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+
 _Session 2026-09-10 ~00:45–02:00. Question asked: "how can we use
 go-taskqueue on itself to effectively use multiple GLM-5.3-Flash agents?"_
 
@@ -21,18 +23,18 @@ flips the SystemNix input and redeploys.
 Symptom chain (evidence: `journalctl -u tq-agent-pool`, `tq top` on
 `/mnt/pool/services/tq/tq.db`):
 
-1. `harvest: skipped reason="scan failed" count=3` every 5 minutes since
+1. ~~`harvest: skipped reason="scan failed" count=3` every 5 minutes since~~ done — narrative/shipped (verified at HEAD)
    deploy; `tq top` showed 0/0/0/0 forever.
-2. The systemd unit (from OUR upstream module `deploy/nixos/tq-agent-pool.nix`)
+2. ~~The systemd unit (from OUR upstream module `deploy/nixos/tq-agent-pool.nix`)~~ done — narrative/shipped (verified at HEAD)
    runs with `WorkingDirectory = dirOf(dbPath)` — and pool.conf carries
    bare repo names (`repos = CV,SystemNix,go-taskqueue`).
    `harvest.ParseRepoAll` Abs()es each entry against the **cwd**, so the
    pool scanned `/mnt/pool/services/tq/CV/TODO_LIST.md` — no such file,
    every repo, every tick.
-3. `groupedSkips` classified skip reasons by cutting at the first colon,
+3. ~~`groupedSkips` classified skip reasons by cutting at the first colon,~~ done — narrative/shipped (verified at HEAD)
    so the journal showed `reason="scan failed"` with the actual error
    dropped — a dead deployment read as a quiet one for 20 hours.
-4. Even with the scan fixed, the next wall was already loaded: systemd's
+4. ~~Even with the scan fixed, the next wall was already loaded: systemd's~~ done — narrative/shipped (verified at HEAD)
    default service PATH contains no `git`, no `go`, no `crush` — the
    dirty-check preflight, the agent exec, and the `.tq-verify` gate would
    all have failed.
@@ -55,19 +57,19 @@ Bounded run — `TQ_DB=/tmp/tq-dogfood.db tq agent-pool --repos go-taskqueue
 --yolo --review --once --max-per-tick 1 --allow-dirty` from cwd `/tmp`
 (bare name + foreign cwd exercises the fix exactly):
 
-1. Harvest enqueued ONE item (dead-export audit script); skip log showed
+1. ~~Harvest enqueued ONE item (dead-export audit script); skip log showed~~ done — narrative/check-dead-exports (verified at HEAD)
    the new `example=` fields live (`blocked count=8`, `paced count=14`).
-2. A GLM-5.3-Flash agent (`crush run`, repo `.crushrc` carries model +
+2. ~~A GLM-5.3-Flash agent (`crush run`, repo `.crushrc` carries model +~~ done — narrative/check-dead-exports (verified at HEAD)
    xhigh effort) executed the full prompt contract for ~8 minutes.
-3. Verify gate passed: the task's `verify_tail` shows the entire race
+3. ~~Verify gate passed: the task's `verify_tail` shows the entire race~~ done — narrative/check-dead-exports (verified at HEAD)
    suite green.
-4. Result: `scripts/check-dead-exports.sh` created (advisory,
+4. ~~Result: `scripts/check-dead-exports.sh` created (advisory,~~ done — narrative/check-dead-exports (verified at HEAD)
    `--strict` to gate), wired into `ci-local.sh`, AGENTS.md note fixed,
    TODO item ticked with an honest DONE annotation, commit `1586ed5`
    carrying `Task-Queue-ID: 000001a0888b9f367676ffb26ebe48f49571`.
-5. Review agent (second Flash run) verdict: **approve** — "spot-checks
+5. ~~Review agent (second Flash run) verdict: **approve** — "spot-checks~~ done — narrative/check-dead-exports (verified at HEAD)
    confirm no live symbol is wrongly flagged".
-6. Pool drained and exited cleanly (`--once`).
+6. ~~Pool drained and exited cleanly (`--once`).~~ done — narrative/check-dead-exports (verified at HEAD)
 
 ## d) Effectiveness model (what makes Flash work well here)
 

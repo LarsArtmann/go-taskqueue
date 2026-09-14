@@ -1,5 +1,7 @@
 # Round-12 execution window: CI-red triage, T14 fixture release proof, T15–T17 hardening
 
+> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+
 **Date:** 2026-09-12 01:09 CEST · **Session start:** 23:15 the previous evening
 **Scope:** Continuation of the Round-11 plan
 (`docs/planning/archived/2026-09-11_14-01_SUPERB-PLAN-ROUND11-POOL-REVIVAL-AND-QUEUE-TRUST.md`);
@@ -186,7 +188,7 @@ govulncheck hard gate, dependabot draft, M124 retro).
 
 ## d) Totally fucked up (honest ledger)
 
-1. **Heredoc/python patching of Go source — TWICE**, exactly the failure
+1. ~~**Heredoc/python patching of Go source — TWICE**, exactly the failure~~ done — narrative (point-in-time process note, no artifact owed)
    mode AGENTS.md warns about ("never generate/patch Go source via shell
    heredocs"): mvdan/sh re-interprets `\\n` escapes differently than bash,
    leaving a literal newline inside a Go string literal
@@ -194,62 +196,62 @@ govulncheck hard gate, dependabot draft, M124 retro).
    literals into control characters (`\a`, `\b` are shell escapes). Both
    were caught by immediate `go build`/inspection and fixed via the edit
    tool or byte-wise python. LESSON RE-LEARNED: the edit tool, always.
-2. **A blind global replace hit 12 payload sites when 4 were intended**
+2. ~~**A blind global replace hit 12 payload sites when 4 were intended**~~ done — narrative (point-in-time process note, no artifact owed)
    (`AgentPayload{Repo: repo, Prompt: "hi"}` → `&noClean` everywhere),
    breaking 8 unrelated tests' compilation. Caught by `go vet`, reverted
    line-by-line. The correct move was reading the four target lines and
    editing each.
-3. **Probe-commit noise in master history:** the lll-gate positive probe
+3. ~~**Probe-commit noise in master history:** the lll-gate positive probe~~ done — narrative (point-in-time process note, no artifact owed)
    was verified by COMMITTING a 142-char violation (`f619c23 "probe"`)
    then `git rm`-ing it (`989ebc0`), because `git reset` is banned. Two
    junk commits now ride master forever. A scratch-branch or
    `--allow-empty`-free temp-file-in-`git add -N` approach would have been
    cleaner.
-4. **The window's final edit was an empty tool call** (malformed JSON) —
+4. ~~**The window's final edit was an empty tool call** (malformed JSON) —~~ done — narrative (point-in-time process note, no artifact owed)
    the ci-local lint()/baseline wiring never happened, leaving T17's most
    user-visible piece (the growth gate actually gating) unshipped despite
    the report claiming the scripts exist. This report corrects that.
-5. **release.sh fixture used a stubbed `nix`** (fake `nix` on PATH after
+5. ~~**release.sh fixture used a stubbed `nix`** (fake `nix` on PATH after~~ done — narrative (point-in-time process note, no artifact owed)
    the sandbox refused undeclared store paths). Legitimate for testing the
    script's logic, but it means `nix build --print-out-paths` consumption
    is still only line-read in a fixture context. The REAL repo's release
    gates (T1, previous window) remain the nix-side proof.
-6. **One `edit` tool call was defeated by the mod-time guard** twice in a
+6. ~~**One `edit` tool call was defeated by the mod-time guard** twice in a~~ done — narrative (point-in-time process note, no artifact owed)
    row (my own python writes had touched the file) and I switched to
    python instead of re-viewing — which then caused failure #1. Vicious
    circle, acknowledged.
 
 ## e) What we should improve (process-level)
 
-1. **Stop patching Go via any string-interpolation path.** The edit tool's
+1. ~~**Stop patching Go via any string-interpolation path.** The edit tool's~~ done — AGENTS rule/narrative/green (verified at HEAD)
    mod-time guard exists for concurrent-writer safety; fighting it with
    python is how §d-1/§d-6 happen. Re-view, then edit.
-2. **Gate-probe hygiene:** verification probes that need git state belong
+2. ~~**Gate-probe hygiene:** verification probes that need git state belong~~ done — AGENTS rule/narrative/green (verified at HEAD)
    on a scratch branch or in the fixture repo, never as master commits.
 3. **ci-local's lint install-branch asymmetry** (root-only when
    golangci-lint must be installed) predates this window and is now the
    only place the module-marker restructure has to touch — fix both in one
    edit next window.
-4. **Wire-then-verify-then-REPORT:** a script that exists but isn't wired
+4. ~~**Wire-then-verify-then-REPORT:** a script that exists but isn't wired~~ done — AGENTS rule/narrative/green (verified at HEAD)
    is "partially done", and reports must say so at the time, not after an
    interrupt forces honesty.
-5. **The two CI test fixes are unproven on CI** (nothing pushed, per
+5. ~~**The two CI test fixes are unproven on CI** (nothing pushed, per~~ done — AGENTS rule/narrative/green (verified at HEAD)
    rule). The next push is the proof; if the executor tests fail again,
    the next suspect is ordering (gate-before-preflight) semantics, not the
    payloads.
 
 ## f) Next items (≤50, rough priority order)
 
-1. AGENTS.md: golangci config-resolution rule (parent-walk proof, M60/61)
+1. ~~AGENTS.md: golangci config-resolution rule (parent-walk proof, M60/61)~~ resolved — shipped/routed/superseded
    - the four triage verdicts (paralleltest/testpackage disabled, goconst
      ignore-tests, mnd advisory) + baseline-file workflow
      (regenerate-via-script, never bulk-fix).
-2. Wire `check-lint-baseline.sh` into ci-local (lint() emits `== module`
+2. ~~Wire `check-lint-baseline.sh` into ci-local (lint() emits `== module`~~ resolved — shipped/routed/superseded
    markers; pipe lint_out through the checker; hard gate) + fix the
    install-branch asymmetry in the same edit.
-3. Re-run full suite after `.golangci.yml` changes (root + 7 sub-modules,
+3. ~~Re-run full suite after `.golangci.yml` changes (root + 7 sub-modules,~~ resolved — shipped/routed/superseded
    race) — cheap insurance.
-4. Push (owner-gated) and watch run on master: executor + windows test
+4. ~~Push (owner-gated) and watch run on master: executor + windows test~~ resolved — shipped/routed/superseded
    fixes are the proof; also confirms gosec job is the only red X left
    (advisory).
 5. T20: `FilterState` round-trip pins (query → state → query) in webui.
@@ -257,39 +259,39 @@ govulncheck hard gate, dependabot draft, M124 retro).
    rendered fragment).
 7. T20: LIKE-injection cap test (special chars in `q` escaped/bounded in
    both stores).
-8. T19: verify the 23:16 concurrent docs-health sweep actually annotated
+8. ~~T19: verify the 23:16 concurrent docs-health sweep actually annotated~~ resolved — shipped/routed/superseded
    the six 2026-09-07 reports; annotate the remainder if not (M70–M72).
-9. T23 M90: `tq pool-health` subcommand (claims, DLQ depth, parked count,
+9. ~~T23 M90: `tq pool-health` subcommand (claims, DLQ depth, parked count,~~ resolved — routed TODO
    watermark lag, per-repo gate state).
 10. T23 M91: harvest /tmp hot-item flag (`--hot-items` surfacing
     recently-touched items? per plan).
-11. T23 M92–M93: pool-health wiring into doctor or its own output modes.
-12. T22 M85: fullcore hermetic smoke (postgres suite runnable without a
+11. ~~T23 M92–M93: pool-health wiring into doctor or its own output modes.~~ resolved — routed TODO
+12. ~~T22 M85: fullcore hermetic smoke (postgres suite runnable without a~~ resolved — shipped/routed/superseded
     daemon on CI? per plan).
 13. T22 M86: drain-deadline pin test (task context survives pool
     shutdown, bounded only by --task-timeout — regression-test the
     invariant from AGENTS.md).
-14. T22 M87–M89: postgres example/README wiring per plan.
-15. T24 M94: worktree-per-agent design doc (isolated checkouts per task,
+14. ~~T22 M87–M89: postgres example/README wiring per plan.~~ resolved — routed TODO
+15. ~~T24 M94: worktree-per-agent design doc (isolated checkouts per task,~~ resolved — routed TODO
     merge protocol, cost).
-16. T24 M95: daemon attribution design (which agent did what, commit
+16. ~~T24 M95: daemon attribution design (which agent did what, commit~~ resolved — routed TODO
     footers vs session ids).
 17. T24 M96: history-rewrite policy doc (the 2026-09-10 reword playbook
     formalized).
-18. T24 M97–M98: consumer-ghost ADR (watermark-lag ≠ off semantics).
-19. T24 M99–M101: interface dedup design (store/queue facade overlaps).
-20. T26 M110–M113: session-close bridge design + PreToolUse hook
+18. ~~T24 M97–M98: consumer-ghost ADR (watermark-lag ≠ off semantics).~~ resolved — routed TODO
+19. ~~T24 M99–M101: interface dedup design (store/queue facade overlaps).~~ resolved — routed TODO
+20. ~~T26 M110–M113: session-close bridge design + PreToolUse hook~~ resolved — routed TODO
     prototype (crush hook → tq journal?).
-21. T25 M103–M105: varnamelen rename tails (three sites per plan).
+21. ~~T25 M103–M105: varnamelen rename tails (three sites per plan).~~ resolved — shipped/routed/superseded
 22. T25 M106: examples/ hardening (timeouts on serves).
 23. T25 M109: SHA256SUMS in release --push (binary artifact hashes).
 24. T25 M116: required-checks proposal doc (which jobs become blocking).
-25. T25 M118: gosec FP config (move the triaged baseline from prose to
+25. ~~T25 M118: gosec FP config (move the triaged baseline from prose to~~ resolved — shipped/routed/superseded
     `-exclude` rules where mechanical).
-26. T25 M119: govulncheck hard gate promotion (currently advisory? per
+26. ~~T25 M119: govulncheck hard gate promotion (currently advisory? per~~ resolved — shipped/routed/superseded
     plan it's a job — decide blocking).
-27. T25 M123: dependabot draft config (gomod + actions, grouped).
-28. T27 M124: retro on 2026-09-18 (scheduled by plan).
+27. ~~T25 M123: dependabot draft config (gomod + actions, grouped).~~ resolved — shipped/routed/superseded
+28. ~~T27 M124: retro on 2026-09-18 (scheduled by plan).~~ resolved — routed TODO
 29. gosec job: consider `-exclude G703,G304` (both classes are triaged
     baseline) so the advisory job goes green-X-free and ONLY new classes
     surface. (This collapses items; deliberate decision needed.)
@@ -299,32 +301,32 @@ govulncheck hard gate, dependabot draft, M124 retro).
     only my shell history).
 31. `scripts/lint-baseline.sh` runtime (~3 min): consider caching per
     module or moving to CI-only when it blocks local iteration.
-32. CHANGELOG: entries for this window (release.sh env-prefix fix,
+32. ~~CHANGELOG: entries for this window (release.sh env-prefix fix,~~ resolved — shipped/routed/superseded
     doctor tag-ancestry, --push CI confirm, actionlint, lll gate, lint
     baseline) — docs-health pass can harvest from this report.
-33. TODO_LIST: harvest next-items from §f per the loop-back contract.
+33. ~~TODO_LIST: harvest next-items from §f per the loop-back contract.~~ resolved — shipped/routed/superseded
 34. Consider gating `check-lint-baseline.sh` in CI too (ci.yml lint step
     runs the same loop — pipe its captured output through the checker).
 35. `tq doctor` tag-ancestry: unit-testable variant (inject repo dir) if
     worth it; currently only live-verified.
-36. Windows CI: after the seeds_test fix lands, watch for the NEXT
+36. ~~Windows CI: after the seeds_test fix lands, watch for the NEXT~~ done — narrative (point-in-time process note, no artifact owed)
     windows-only failure class (the job has caught two shape bugs so far —
     `IsAbs` and earlier ones — it's earning its keep).
 37. Re-check `/tmp` pressure (was 100% full pre-window, 24G free now) —
     M90's hot-item flag motivation stands.
-38. Verify the dependabot actions-bump PR (run 34648724116, red) after
+38. ~~Verify the dependabot actions-bump PR (run 34648724116, red) after~~ resolved — shipped/routed/superseded
     pins land — it may need rebase or carries a real breakage.
-39. Owner questions from the 16:00 report remain OPEN: go 1.27 vs stay
+39. ~~Owner questions from the 16:00 report remain OPEN: go 1.27 vs stay~~ resolved — routed TODO
     1.26.7; f26 canonical ID/whitelist; parallel-session protocol.
 
 ## g) Questions for the owner (cannot be self-answered)
 
-1. **Push policy for the CI-proof commits:** the executor-test +
+1. ~~**Push policy for the CI-proof commits:** the executor-test +~~ resolved — routed/decided
    Windows-test fixes and all T14–T17 work sit on master (auto-daemon
    commits, nothing pushed). Repo rule says never push without explicit
    request — but CI red on master only heals via a push. Say the word
    (or push yourself) and I'll watch the run.
-2. **gosec job signal-to-noise:** make the advisory gosec job green by
+2. ~~**gosec job signal-to-noise:** make the advisory gosec job green by~~ resolved — routed/decided
    `-exclude`-ing the triaged G703/G304 path-taint classes (new classes
    still surface), or keep it red-X-until-triaged as a forcing function?
    Both defensible; it's a taste call on advisory hygiene.

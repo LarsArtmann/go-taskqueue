@@ -1,5 +1,7 @@
 # Stale re-dispatch close-out — f16 absolute-repos guard bypass (2026-09-11)
 
+> **DUPLICATE — ARCHIVED 2026-09-14 (docs-health)** — verify-only re-dispatch of task ?; zero unique items. Every concern resolves via the canonical same-ID report in docs/status/ (per-item inline markers), which owns the open residue.
+
 Re-dispatched TODO_LIST item: "checkProjectsDir should not require the
 projects dir when every --repos entry is absolute (02:00 f16;
 cmd/tq/agentpool.go + test)".

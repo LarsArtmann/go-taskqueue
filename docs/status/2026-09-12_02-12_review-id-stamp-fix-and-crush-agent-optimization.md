@@ -1,5 +1,7 @@
 # Review-ID-Stamp Fix + Crush Agent Optimization — Session Report
 
+> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+
 **Session:** 2026-09-12 ~01:15–02:12 (interactive Crush session, go-taskqueue)
 **Scope:** two user asks — (1) why task `000001a092aa`'s review verdict was
 nonsense ("we are using Crush very badly"), (2) study latest crush + our
@@ -31,50 +33,50 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 
 ## a) FULLY DONE
 
-1. **Review-prompt ID-stamp bug fixed** (`internal/executor/review.go:203`):
+1. ~~**Review-prompt ID-stamp bug fixed** (`internal/executor/review.go:203`):~~ done — fix+tests shipped/narrative (verified at HEAD)
    the quoted work contract's `{{TASK_ID}}` now resolves to the REVIEWED
    task's id (what the work agent actually saw), and footer-bearing quotes
    gain an explicit `6. Queue cross-reference` judging criterion so even
    hand-written payloads cannot reproduce the confusion.
-2. **Same-class bug fixed in fix-task prompts**
+2. ~~**Same-class bug fixed in fix-task prompts**~~ done — fix+tests shipped/narrative (verified at HEAD)
    (`internal/review/sweep.go:329`): quoted original resolves to the reviewed
    task's id; the fix agent gets its OWN explicit footer contract (the one
    remaining `{{TASK_ID}}` resolves to the fix task at run time — previously
    correct only by accident of the blanket substitution).
-3. **Regression tests**: `TestReviewPromptResolvesQuotedContractTaskID`,
+3. ~~**Regression tests**: `TestReviewPromptResolvesQuotedContractTaskID`,~~ done — fix+tests shipped/narrative (verified at HEAD)
    `TestReviewExecutorPromptDoesNotRestampQuotedFooter` (argv-level, stub
    agent), `TestFixPromptFooterContract`.
-4. **Bug-class sweep**: grep-audited every `{{TASK_ID}}` site repo-wide —
+4. ~~**Bug-class sweep**: grep-audited every `{{TASK_ID}}` site repo-wide —~~ done — fix+tests shipped/narrative (verified at HEAD)
    harvest/status/closeout/drift prompts are all self-owned contracts; only
    review + fixPrompt quoted foreign prompts (both fixed).
-5. **Golden completion for a concurrent agent's change**: `2af16e8` added
+5. ~~**Golden completion for a concurrent agent's change**: `2af16e8` added~~ done — fix+tests shipped/narrative (verified at HEAD)
    `"Hot"` to harvest output but never regenerated the golden; added
    `"Hot": false` to `TestPrintDriftJSONGolden` (gated the whole suite).
-6. **Agent toolset upgrade** (`cmd/tq/bootstrap.go:31`): `agentTools` 7 → 10
+6. ~~**Agent toolset upgrade** (`cmd/tq/bootstrap.go:31`): `agentTools` 7 → 10~~ done — fix+tests shipped/narrative (verified at HEAD)
    (`view ls grep glob edit multiedit write bash fetch download todos`). In
    headless mode the allow list IS the toolset (unlisted = denied) — agents
    previously had NO web access. `fetch` verified empirically with a live
    headless run (fetched example.com through the exact new permission line).
-7. **Telemetry off for headless runs**: managed block now writes
+7. ~~**Telemetry off for headless runs**: managed block now writes~~ done — fix+tests shipped/narrative (verified at HEAD)
    `option metrics false` — every agent run previously paid a PostHog flush
    at shutdown (the "Failed to flush PostHog events" + "shutdown timeout
    exceeded" noise in dead task tails).
-8. **statix auto-LSP disabled in SystemNix** (commit `c291fee6`, passed their
+8. ~~**statix auto-LSP disabled in SystemNix** (commit `c291fee6`, passed their~~ done — fix+tests shipped/narrative (verified at HEAD)
    full pre-commit gauntlet): crush auto-detects statix for nix files, but
    this host's statix build has NO LSP mode — 923 init-timeout failures in
    `.crush/logs/crush.log`, latest 2026-09-11. Verified headless with a
    nix-file read: zero new init attempts.
-9. **qmd MCP reachability proven**: read the live pool's `/proc/<pid>/environ`
+9. ~~**qmd MCP reachability proven**: read the live pool's `/proc/<pid>/environ`~~ done — fix+tests shipped/narrative (verified at HEAD)
    PATH — `/run/current-system/sw/bin` present; the 3 old qmd init failures
    are 2026-09-04/06 (pre-agentPath era), none since.
-10. **Docs**: AGENTS.md agent-payload contract bullet rewritten (toolset =
+10. ~~**Docs**: AGENTS.md agent-payload contract bullet rewritten (toolset =~~ done — fix+tests shipped/narrative (verified at HEAD)
     allow list, metrics-off rationale, statix precedent, empirical-verification
     note); CHANGELOG entries (Fixed + Added); README autonomy snippet updated
     to the 10-tool line.
-11. **Gates**: both touched sub-modules (executor, review) build/vet/test
+11. ~~**Gates**: both touched sub-modules (executor, review) build/vet/test~~ done — fix+tests shipped/narrative (verified at HEAD)
     green; root build + vet + full `-race` suite green (12 pkgs, 0 FAIL);
     cmd/tq tests green; `bootstrap-install` smoke green.
-12. **Index-lock discipline**: SystemNix's running agent held `index.lock` for
+12. ~~**Index-lock discipline**: SystemNix's running agent held `index.lock` for~~ done — fix+tests shipped/narrative (verified at HEAD)
     7+ min (its pre-commit hook runs a full flake check) — waited it out in a
     background retry loop instead of touching the lock; my pathspec commit
     landed cleanly without disturbing the agent's staged work.
@@ -88,7 +90,7 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 2. **statix sweep**: fixed SystemNix only. Did NOT check whether other
    nix-filetype repos (project-discovery-*? CV?) hit the same broken
    auto-LSP.
-3. **Tool-grant rollout**: the new managed block exists in code but NO repo
+3. ~~**Tool-grant rollout**: the new managed block exists in code but NO repo~~ resolved — routed SystemNix flip row
    has it yet — it lands when `tq bootstrap` next runs (the deploy-time
    oneshot). Deliberate (the on-PATH `tq` binary is the OLD deployed one;
    running it would write the OLD block), but it means zero live effect
@@ -102,12 +104,12 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 
 ## c) NOT STARTED
 
-1. Release + deploy of this session's fixes (owner: two-phase release flow,
+1. ~~Release + deploy of this session's fixes (owner: two-phase release flow,~~ resolved — routed rows
    SystemNix input flip, `nix run .#deploy`).
 2. TODO_LIST items for the owner-decision follow-ups (this repo's
    machine-consumed convention — I put everything in CHANGELOG/AGENTS and
    ZERO items in TODO_LIST.md; the pool cannot eat what was never minted).
-3. `./scripts/ci-local.sh` full pre-push gate (I ran its pieces: build, vet,
+3. ~~`./scripts/ci-local.sh` full pre-push gate (I ran its pieces: build, vet,~~ resolved — routed rows
    race, bootstrap smoke — but not the whole replicant incl. webui-css,
    check-todo-list, doc-ref gates, master-CI state check).
 4. Investigation of what consumes 705G on `/` (disk hogs) — diagnosed the
@@ -118,7 +120,7 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 
 ## d) TOTALLY FUCKED UP (or still fucked)
 
-1. **The review bug is STILL LIVE in production** until release + deploy:
+1. ~~**The review bug is STILL LIVE in production** until release + deploy:~~ resolved — routed/narrative
    every harvested agent task embeds the footer contract, so EVERY review
    minted until then gets the poisoned prompt. The Hermes task was the
    noticable one; there will be more silent `request_changes` noise (only
@@ -127,7 +129,7 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 2. **Root filesystem at 99% (7.9G free)**: the 5+ dead tasks all died on
    `SQLITE_FULL` creating crush session DBs. Unfixed and actively killing
    pool runs; rescues before cleanup will just re-die.
-3. **My own misses (brutal)**: (i) claimed "all gates green" without running
+3. ~~**My own misses (brutal)**: (i) claimed "all gates green" without running~~ resolved — routed/narrative
    the repo's own pre-push replicant — overclaimed; (ii) TODO_LIST minting
    forgotten entirely — the follow-up machine-consumption loop I myself
    documented in AGENTS.md was not used by me; (iii) first two SystemNix
@@ -144,7 +146,7 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
    generalizes**: any prompt that QUOTES another run's prompt must resolve
    that run's placeholders at build time. Consider a test that greps for
    `{{` in every prompt leaving the executor if we add more task types.
-2. **Empirical verification of agent capability changes** (new tool names,
+2. ~~**Empirical verification of agent capability changes** (new tool names,~~ done — narrative advice (verified at HEAD)
    LSP overrides) should be a standing checklist item — config loading
    without an error proves nothing about runtime usability.
 3. **The `agentTools` grant deserves a per-repo override path** (some repos
@@ -152,11 +154,11 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 4. **Auto-LSP health is invisible until it hurts**: 923 failures accumulated
    silently. A `tq doctor` check (parse `.crush/logs/crush.log` for repeated
    LSP init failures in harvested repos) would surface the next statix.
-5. **Headless telemetry/metrics defaults** should be part of the bootstrap
+5. ~~**Headless telemetry/metrics defaults** should be part of the bootstrap~~ done — narrative advice (verified at HEAD)
    contract from day one on any new option surface — re-audit on every crush
    version bump (v0.93.x adds `ui mouse`, hyper routing, configurable
    timeouts).
-6. **TODO_LIST minting is the pool's food pipeline** — interactive sessions
+6. ~~**TODO_LIST minting is the pool's food pipeline** — interactive sessions~~ done — narrative advice (verified at HEAD)
    like this one should mint owner-decision items with `— BLOCKED:` markers
    as routinely as they write CHANGELOG entries.
 
@@ -165,11 +167,11 @@ they lacked: web access, telemetry tax, and a saboteur LSP.
 **Owner-blocking (chain: release → deploy → effect):**
 
 1. Free disk below ~90% (7.9G free on 723G `/`).
-2. After disk: `tq dlq` review + rescue the SQLITE_FULL dead tasks.
-3. Cut the release carrying the review-prompt fix + bootstrap upgrade
+2. ~~After disk: `tq dlq` review + rescue the SQLITE_FULL dead tasks.~~ resolved — routed/released
+3. ~~Cut the release carrying the review-prompt fix + bootstrap upgrade~~ resolved — routed/released
    (docs/release/RELEASE.md two-phase flow).
-4. Flip SystemNix go-taskqueue input + `nix run .#deploy` (owner-run).
-5. Verify the deploy-time `tq-bootstrap` oneshot applied the new managed
+4. ~~Flip SystemNix go-taskqueue input + `nix run .#deploy` (owner-run).~~ resolved — routed/released
+5. ~~Verify the deploy-time `tq-bootstrap` oneshot applied the new managed~~ resolved — routed/released
    block to CV / SystemNix / go-taskqueue (`.crushrc` diff per repo).
 6. Interim decision: pause the review sweeper until deploy, or accept
    poisoned-review noise (see question g1).
@@ -203,7 +205,7 @@ executor in any prompt (generalizes this session's fix).
 **Housekeeping:**
 21. Mint TODO_LIST items for items 1–9 with `— BLOCKED:` markers (owner
 levers).
-22. Run `./scripts/ci-local.sh` before the release push.
+22. ~~Run `./scripts/ci-local.sh` before the release push.~~ resolved — routed/released
 23. Remove the duplicate `permissions allow` line in this repo's `.crushrc`
 (user content — owner or explicitly delegated).
 24. Clean `/tmp/crush-permtest`.

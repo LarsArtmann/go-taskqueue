@@ -1,5 +1,7 @@
 # Status Report — httputil Assessment + Permissions-Policy Port
 
+> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+
 **Session:** 2026-09-10, ~02:10–03:05 CEST · **Repo:** go-taskqueue @ master
 **Trigger:** "Could we benefit from /home/lars/projects/httputil/?"
 **Method:** READ → UNDERSTAND → RESEARCH → REFLECT → execute the one worthwhile change → verify.
@@ -22,25 +24,25 @@ gate re-run green (12/12 packages, `-race`, exit 0).
 
 ## a) FULLY DONE
 
-1. **httputil dependency assessment, verdict recorded.**
+1. ~~**httputil dependency assessment, verdict recorded.**~~ done — verified/narrative (verified at HEAD)
    - Read httputil's README, FEATURES.md, `security.go`, go.mod, LICENSE, tags (latest v0.9.1).
    - Decisive finding: httputil LICENSE = PROPRIETARY; every existing taskqueue dep (go-sse, templ-components, go-retry, go-error-family, go-branded-id) = MIT. First proprietary dep would be a licensing regression for an MIT repo.
    - Scope comparison done header-by-header: taskqueue's CSP (`default-src 'none'`, per-request nonce, `form-action 'none'`) is strictly stronger than httputil's `RecommendedCSP` (`default-src 'self'`); `Referrer-Policy: no-referrer` stronger than httputil's `strict-origin-when-cross-origin`; SSE requires `WriteTimeout=0` + Flush forwarding that httputil's stack doesn't model; nosurf-based CSRF would displace the ADR-0003-reviewed CSRF/lockout pair for zero gain.
    - Evidence: decision record appended to `AGENTS.md` § "Relation to other projects" (committed by auto-daemon; grep-verified present post-commit).
    - Scope: AGENTS.md only.
 
-2. **`Permissions-Policy` security header ported natively** (the one real gap).
+2. ~~**`Permissions-Policy` security header ported natively** (the one real gap).~~ done — verified/narrative (verified at HEAD)
    - `Permissions-Policy: camera=(), microphone=(), geolocation=()` set in `securityHeaders` — internal/webui/webui.go:231 — on every response including 401s and SSE (wrapper sits outermost except request logging).
    - Rationale in code: device capabilities a task-queue dashboard never needs; closes embed/iframe drift.
    - Evidence: `TestSecurityHeadersOnEveryResponse` extended (internal/webui/security_test.go) asserting the exact value across `/`, `/task/nope`, `/api/stats`, `/static/definitely-missing.css`; dedicated run green, then full suite green.
 
-3. **Docs synced (append-only conventions respected).**
+3. ~~**Docs synced (append-only conventions respected).**~~ done — verified/narrative (verified at HEAD)
    - FEATURES.md: security-headers row now lists Permissions-Policy.
    - CHANGELOG.md: `[Unreleased] → Added` entry.
    - AGENTS.md: full adoption verdict + "re-run only if license changes or a second HTTP surface appears" trigger.
    - Evidence: grep-verified all three files carry the new content; survived auto-daemon commits (`f988396`, `29d6c95`).
 
-4. **Verification gates green.**
+4. ~~**Verification gates green.**~~ done — verified/narrative (verified at HEAD)
    - `gofmt -l internal/webui/` → clean; `go vet ./internal/webui/` → clean.
    - `go test ./... -race -count=1` (root module) → **12 packages ok, exit 0, zero FAIL lines**, exit code captured via file redirect (not a filtered pipeline).
    - Scope: internal/webui/{webui.go, security_test.go} + three docs.
@@ -49,12 +51,12 @@ gate re-run green (12/12 packages, `-race`, exit 0).
 
 ## b) PARTIALLY DONE
 
-1. **Benefit extraction from httputil (pattern-level, not dependency-level).**
+1. ~~**Benefit extraction from httputil (pattern-level, not dependency-level).**~~ resolved — narrative/routed httpapi row
    - Works: the header-parity sweep produced one concrete port (Permissions-Policy); the license finding is durably recorded so future sessions don't re-litigate.
    - Open: the remaining httputil design space (Request-ID log correlation, `ParseUintQuery`-style helpers, health endpoints, server-lifecycle wrapper) was assessed as not-worth-it but that judgment lives only in a condensed AGENTS.md note, not a formal ADR.
    - Blocker: none; effort to formalize = S. Priority: only if a second HTTP surface appears (per the recorded trigger).
 
-2. **httpapi (`tq api`) security posture — observed, intentionally not touched this session.**
+2. ~~**httpapi (`tq api`) security posture — observed, intentionally not touched this session.**~~ resolved — narrative/routed httpapi row
    - Works: bearer auth mandatory (fail-closed), constant-time compare, `Cache-Control: no-store`.
    - Open: `internal/httpapi` sets **no** `X-Content-Type-Options: nosniff` and has **no** auth-failure lockout (unlike webui's 3-strikes CSRF lockout). Deliberately left out of scope (session focus was the httputil question against webui).
    - Blocker: a policy decision (see section g, Q2). Effort: M (lockout), S (nosniff).
@@ -63,9 +65,9 @@ gate re-run green (12/12 packages, `-race`, exit 0).
 
 ## c) NOT STARTED
 
-1. **HARVEST of section (f) into TODO_LIST.md / ROADMAP.md** — waiting for owner instruction (this report was written in "then wait" mode per the tasking). Without harvest, the (f) items die in this timestamped file.
-2. **httputil re-license conversation** — nothing started; a licensing decision belongs to the owner alone (see g, Q1).
-3. **Anything httputil-dependency-related** — deliberately zero code written toward adoption; no branch, no go.mod change.
+1. ~~**HARVEST of section (f) into TODO_LIST.md / ROADMAP.md** — waiting for owner instruction (this report was written in "then wait" mode per the tasking). Without harvest, the (f) items die in this timestamped file.~~ resolved — routed/narrative
+2. ~~**httputil re-license conversation** — nothing started; a licensing decision belongs to the owner alone (see g, Q1).~~ resolved — routed/narrative
+3. ~~**Anything httputil-dependency-related** — deliberately zero code written toward adoption; no branch, no go.mod change.~~ resolved — routed/narrative
 
 ---
 
@@ -73,11 +75,11 @@ gate re-run green (12/12 packages, `-race`, exit 0).
 
 **Nothing in this session broke the tree** — full root `-race` suite green before, during (checkpoint builds), and after. Radical-honesty items that stop short of fucked-up:
 
-1. **Pipeline-masked gate exit code (process slip, caught and corrected).**
+1. ~~**Pipeline-masked gate exit code (process slip, caught and corrected).**~~ done — narrative (point-in-time process note, no artifact owed)
    - First verification ran `go test ./... | rg -v ... | head; echo GATE_EXIT=$?` — `$?` captured `head`'s exit, not go test's. This repo's own memory warns about exactly this masking pattern.
    - Root cause: composing the gate through filters. Mitigation applied: re-ran with `> /tmp/tq-root-test.log; echo TEST_EXIT=$?` → explicit `TEST_EXIT=0`, `rg FAIL` → no matches. Severity: none in the end (result was genuinely green); the slip is repeatable-process debt, now re-demonstrated here so it stays expensive to repeat.
 
-2. **Three wasted edit round-trips ("read the file before editing").**
+2. ~~**Three wasted edit round-trips ("read the file before editing").**~~ done — narrative (point-in-time process note, no artifact owed)
    - Edited FEATURES.md and AGENTS.md from content obtained via grep/context instead of `view`; the edit tool (correctly) refused twice each. Cost: 3 dead turns.
    - Root cause: treated grep output as "read". The rule is view-then-edit, no substitutes.
 
@@ -85,13 +87,13 @@ gate re-run green (12/12 packages, `-race`, exit 0).
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. **View-then-edit discipline.** grep/rg output must never be treated as having "read" a file for edit purposes. Impact: wasted turns, risk of whitespace mismatches on exact-match edits. Fix: always `view` the target region immediately before `edit`, even when the content is "already known".
-2. **Gate verification pattern.** Any CI-replicating command must be `cmd > log 2>&1; echo EXIT=$?` — never exit codes sampled from a filtered pipeline tail. Impact: false-green banners (this repo has been burned before; AGENTS.md documents it).
+1. ~~**View-then-edit discipline.** grep/rg output must never be treated as having "read" a file for edit purposes. Impact: wasted turns, risk of whitespace mismatches on exact-match edits. Fix: always `view` the target region immediately before `edit`, even when the content is "already known".~~ resolved — narrative/goconst policy/routed
+2. ~~**Gate verification pattern.** Any CI-replicating command must be `cmd > log 2>&1; echo EXIT=$?` — never exit codes sampled from a filtered pipeline tail. Impact: false-green banners (this repo has been burned before; AGENTS.md documents it).~~ resolved — narrative/goconst policy/routed
 3. **Header asserts as a table.** `TestSecurityHeadersOnEveryResponse` asserts headers one `if` at a time; a header→want map would make the next header a one-line addition. Impact: S effort, pays off every security-header change. (Deliberately not refactored this session — surgical-change policy on existing code.)
-4. **Advisory lint debt in the function I touched.** `goconst` (`"GET"` ×8 in the route tables) and `varnamelen` (`h`) fire on webui.go; pre-existing baseline, left per the advisory policy — but the route-table `GET` could become a named constant next time the route table is touched.
-5. **Duplication worth extracting: bearer-token extraction exists twice.** webui `presentedToken` (header/cookie/query + SHA-256 compare) vs httpapi `bearerToken` (header/query + `subtle` compare) — same contract, two implementations, drifting semantics (cookie support, compare mechanism). If a third HTTP surface appears, extract `internal/httpauth` first.
-6. **SECURITY.md has no response-header inventory.** The serve-side header set is documented only in passing (line ~79) + a FEATURES row. A short per-surface header matrix (serve vs api) would make gaps like the missing Permissions-Policy (or httpapi's missing nosniff) visible at audit time.
-7. **No dedicated test for `redactedRequestURI`** (the `?token=` log-redaction helper). The behavior is security-relevant (token must not land in access logs); if it's covered only incidentally, it deserves a pinned table test.
+4. ~~**Advisory lint debt in the function I touched.** `goconst` (`"GET"` ×8 in the route tables) and `varnamelen` (`h`) fire on webui.go; pre-existing baseline, left per the advisory policy — but the route-table `GET` could become a named constant next time the route table is touched.~~ resolved — narrative/goconst policy/routed
+5. ~~**Duplication worth extracting: bearer-token extraction exists twice.** webui `presentedToken` (header/cookie/query + SHA-256 compare) vs httpapi `bearerToken` (header/query + `subtle` compare) — same contract, two implementations, drifting semantics (cookie support, compare mechanism). If a third HTTP surface appears, extract `internal/httpauth` first.~~ resolved — narrative/goconst policy/routed
+6. ~~**SECURITY.md has no response-header inventory.** The serve-side header set is documented only in passing (line ~79) + a FEATURES row. A short per-surface header matrix (serve vs api) would make gaps like the missing Permissions-Policy (or httpapi's missing nosniff) visible at audit time.~~ resolved — narrative/goconst policy/routed
+7. ~~**No dedicated test for `redactedRequestURI`** (the `?token=` log-redaction helper). The behavior is security-relevant (token must not land in access logs); if it's covered only incidentally, it deserves a pinned table test.~~ resolved — narrative/goconst policy/routed
 
 ---
 
@@ -131,8 +133,8 @@ _(25 substantive items; the ask was "up to 50" — the honest count from this se
 
 ## g) Questions I cannot answer myself (max 3)
 
-1. **Will httputil be relicensed to MIT (or dual-licensed)?** I verified the Proprietary/LICENSE vs MIT/taskqueue conflict and that every other larsartmann dep is MIT. Whether to relicense (or carve out) is an owner-only licensing decision; the answer either reopens the dependency question or closes it permanently (AGENTS.md trigger).
-2. **Is `tq api` (httpapi) contractually machine-only and exempt from brute-force lockout + security headers?** I observed the guard has no failed-attempt lockout and sets no nosniff — defensible for an authenticated machine API, but it's a threat-model/policy call (LAN exposure intent), not a code question.
+1. ~~**Will httputil be relicensed to MIT (or dual-licensed)?** I verified the Proprietary/LICENSE vs MIT/taskqueue conflict and that every other larsartmann dep is MIT. Whether to relicense (or carve out) is an owner-only licensing decision; the answer either reopens the dependency question or closes it permanently (AGENTS.md trigger).~~ resolved — narrative/routed
+2. ~~**Is `tq api` (httpapi) contractually machine-only and exempt from brute-force lockout + security headers?** I observed the guard has no failed-attempt lockout and sets no nosniff — defensible for an authenticated machine API, but it's a threat-model/policy call (LAN exposure intent), not a code question.~~ resolved — narrative/routed
 3. **Should the webui auth session cookie carry a hash of the token instead of the raw token value?** I read the code (`Value: token`, HttpOnly+SameSite=Lax, Secure-on-TLS) and the gosec G124 baseline triage, but whether raw-value-in-cookie is a deliberate simplicity tradeoff or an accepted-risk oversight is owner knowledge.
 
 ---
