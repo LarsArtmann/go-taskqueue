@@ -214,6 +214,7 @@ func cmdEnqueue(args []string) error {
 	priority := fs.Int("priority", 0, "higher claims first")
 	maxAttempts := fs.Int("max-attempts", 0, "default 3")
 	delay := fs.Duration("delay", 0, "delay before claimable (e.g. 30s, 5m)")
+	dedupKey := fs.String("dedup-key", "", "idempotency key: re-enqueueing with the same key returns the stored task unchanged (harvest/sweeper semantics)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -264,6 +265,7 @@ func cmdEnqueue(args []string) error {
 		Priority:    *priority,
 		MaxAttempts: *maxAttempts,
 		NotBefore:   time.Now().Add(*delay),
+		DedupKey:    *dedupKey,
 	}
 
 	for d := range strings.SplitSeq(*deps, ",") {
