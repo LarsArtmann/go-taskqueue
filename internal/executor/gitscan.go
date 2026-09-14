@@ -39,12 +39,16 @@ type GitLogScanner struct {
 	Bin string
 }
 
+// errEmptyRepo is the empty-path rejection (a caller bug, not a scan
+// failure).
+var errEmptyRepo = errors.New("gitscan: empty repo path")
+
 // CommitsByTrailer implements GitScanner. A repository without any commit
 // yet (unborn HEAD) attributes nothing — that is an empty session, not an
 // error.
 func (s GitLogScanner) CommitsByTrailer(ctx context.Context, repo, key, value string) ([]Commit, error) {
 	if repo == "" {
-		return nil, errors.New("gitscan: empty repo path")
+		return nil, errEmptyRepo
 	}
 
 	bin := s.Bin

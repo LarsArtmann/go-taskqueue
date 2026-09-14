@@ -56,9 +56,9 @@ func WithProjectExclusivity() StoreOption {
 
 // Open opens (creating if needed) the queue database at path.
 func Open(path string, opts ...StoreOption) (*Store, error) {
-	var o storeOptions
+	var options storeOptions
 	for _, opt := range opts {
-		opt(&o)
+		opt(&options)
 	}
 
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)", path)
@@ -70,7 +70,7 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 	// Serialize writers: one connection makes every SELECT…UPDATE sequence
 	// inside a transaction atomic without relying on BEGIN IMMEDIATE tricks.
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db, projectExclusive: o.projectExclusive}
+	store := &Store{db: db, projectExclusive: options.projectExclusive}
 	// Two processes opening a FRESH database race the schema writes: the
 	// loser gets SQLITE_BUSY even with busy_timeout. The retry always
 	// converges — IF NOT EXISTS migrations on an already-migrated DB are a
@@ -82,7 +82,7 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 		Multiplier:   2.0,
 		IsRetryable:  func(error) bool { return true },
 	}, func(_ context.Context, _ int) error {
-		return s.migrate(context.Background())
+		return store.migrate(context.Background())
 	})
 	if merr != nil {
 		_ = db.Close()
@@ -90,7 +90,7 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 		return nil, merr
 	}
 
-	return s, nil
+	return store, nil
 }
 
 const schema = `
