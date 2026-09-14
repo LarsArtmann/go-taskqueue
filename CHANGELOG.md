@@ -186,6 +186,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   failures log at WARN.
 
 ### Added
+- `tq enqueue --dedup-key <key>`: idempotent enqueue from the CLI —
+  re-enqueueing with the same key returns the stored task unchanged
+  (the same semantics harvest and the sweepers already get from
+  `task.New.DedupKey`). Makes fan-out sweeps re-runnable from shell:
+  an unchanged key set never mints twice.
 - **Public facade modules (ADR-0016)**: the library core is now importable
   from outside the repo. Seven facade modules — `task`, `journal`, `queue`,
   `queue/sqlite`, `queue/postgres`, `executor`, `worker` (all under

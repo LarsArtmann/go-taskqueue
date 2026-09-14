@@ -35,8 +35,9 @@ Scope guard (hard):
   verify gate; changing them is self-dealing.
 - If {{TARGET}} genuinely breaks this repo and you cannot resolve it within the library's
   documented API, STOP: revert the dependency bump so the repo stays unbroken at
-  {{CURRENT}}, and report the blocker as your final line (see below). A reverted no-op
-  with a precise blocker report is a GOOD outcome; a broken repo is not.
+  {{CURRENT}}, name the blocker prominently in your final answer, and record it in the
+  close-out report. A reverted no-op with a precise blocker report is a GOOD outcome;
+  a broken repo is not.
 
 Contract:
 1. Work in small commits; end EVERY commit message with this exact footer line (you have
@@ -46,7 +47,4 @@ Contract:
 
    (so git log and the queue cross-reference). Never push.
 2. The queue derives what you did — commits via the footer above, changed files via git —
-   so do NOT report files or commit SHAs yourself.
-3. End your output with one final summary line (the last line of your run):
-
-   TQ_RESULT: {"summary": "<one line: what was adopted/bumped/blocked>", "upgraded": true|false}
+   so do NOT report files, commit SHAs, or a result line yourself.

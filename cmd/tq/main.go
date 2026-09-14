@@ -215,17 +215,44 @@ func cmdEnqueue(args []string) error {
 	maxAttempts := fs.Int("max-attempts", 0, "default 3")
 	delay := fs.Duration("delay", 0, "delay before claimable (e.g. 30s, 5m)")
 	dedupKey := fs.String("dedup-key", "", "idempotency key: re-enqueueing with the same key returns the stored task unchanged (harvest/sweeper semantics)")
+	repoFlag := fs.String("repo", "", "agent convenience: repository the agent works in (name resolved against the executor's projects dir, or an absolute path; implies --type agent)")
+	promptText := fs.String("prompt", "", "agent convenience: inline prompt text")
+	promptFile := fs.String("prompt-file", "", "agent convenience: file with the prompt text")
+	verifyCmd := fs.String("verify", "", "agent convenience: shell command that must exit 0 after the run (empty = auto-detect)")
+	timeoutMin := fs.Int("timeout-minutes", 0, "agent convenience: cap for agent run + verify (default 30)")
+	yoloTask := fs.Bool("yolo-task", false, "agent convenience: request autonomy — fails fast if the repo has no .crushrc permission grant")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
+	var payloadJSON json.RawMessage
+
+	if agentConvenienceRequested(*repoFlag, *promptText, *promptFile, *verifyCmd, *timeoutMin, *yoloTask) {
+		raw, err := buildAgentConveniencePayload(payloadFlags{
+			repo:       *repoFlag,
+			promptText: *promptText,
+			promptFile: *promptFile,
+			verify:     *verifyCmd,
+			timeoutMin: *timeoutMin,
+			yolo:       *yoloTask,
+			rawPayload: *payload,
+		})
+		if err != nil {
+			return err
+		}
+
+		if *taskType == "" {
+			*taskType = executor.TaskTypeAgent
+		}
+
+		payloadJSON = raw
+	}
+
 	if *taskType == "" {
 		return errors.New("--type is required")
 	}
-
-	var payloadJSON json.RawMessage
 
 	if *payload != "" {
 		raw := []byte(*payload)
