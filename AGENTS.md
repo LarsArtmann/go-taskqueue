@@ -514,10 +514,13 @@ prose, not the table.
   functions you touch. Hard gates: vet + gofmt + tests. Baseline GROWTH is
   now a ci-local GATE (round-13 T5): `scripts/lint-baseline.sh --check`
   (wired after the advisory lint step) fails on any per-module/linter count
-  above `.golangci-baseline.txt` (2026-09-13 third regen: 886 findings, 111
-  module/linter rows — policy change: gochecknoglobals excluded for the
-  seven ADR-0016 facade alias files, whose package-level re-exports ARE the
-  facade pattern; earlier regens 850/104, 887/114, 917/125 — the 917 bundled
+  above `.golangci-baseline.txt` (2026-09-14 fourth regen: 500 findings, 87
+  module/linter rows — policy change: goconst/mnd/paralleltest
+  POLICY-DISABLED (slice-triage round 2, rationale comment in
+  .golangci.yml; testpackage already excluded via the _test.go rule);
+  earlier regens 886/111 (gochecknoglobals excluded for the seven ADR-0016
+  facade alias files, whose package-level re-exports ARE the
+  facade pattern), 850/104, 887/114, 917/125 — the 917 bundled
   concurrent drift. The 2026-09-12 regen also added the path-scoped
   tagliatelle exclusion: machine-payload wire structs (executor payloads,
   queue fact evidence, harvest RepriChange) are snake_case BY CONTRACT —
