@@ -863,6 +863,7 @@
           <a href="#summary">Summary</a>
           <a href="#strengths">Strengths</a>
           <a href="#findings">Findings</a>
+          <a href="#visual">Visual pass</a>
           <a href="#proposal">Roadmap</a>
           <a href="#appendix">Appendix</a>
         </nav>
@@ -928,7 +929,7 @@
             dogfood pool, ticks arrive every few seconds.
           </p>
           <p>
-            On the library side, the audit found one critical gap, three places where tq
+            On the library side, the audit found one critical gap, two places where tq
             hand-rolls what the library already ships (sortable table headers, relative-time
             auto-refresh, pagination), and a handful of free wins (CopyButton, ListNote).
             Nothing found requires a library change; the biggest fix is roughly ten lines in
@@ -1065,9 +1066,19 @@ for _, frag := range frags {
           <!-- Issue 2 -->
           <div class="issue issue-important" id="issue-2">
             <span class="severity severity-important"
-              >High &middot; shipped feature unused</span
+              >RETRACTED same-day &middot; audit error</span
             >
             <h3>Sort is parsed but has no UI — TypedHeaders is the exact shipped answer</h3>
+            <div class="callout callout-teal">
+              <strong>Correction (2026-09-14 13:10, screenshot pass)</strong>
+              The claim below is WRONG: <code>taskHeaders</code> (components.go:512) already
+              builds <code>Sortable</code> + <code>SortDirection</code> + <code>Href</code>
+              for prio/attempts/age — shipped 2026-09-12 (commit 6feaa7d, before this
+              audit). The visible table headers carry working sort links. The audit inferred
+              "no UI" from the filter bar's hidden input without reading the header builder —
+              exactly the verify-before-claiming failure this report preaches. Retained below
+              unedited for the record.
+            </div>
             <div class="where">
               internal/webui/handlers.go:32-40 (allowlist) &middot; fragments.templ FilterBar
               &middot; library display/table.templ:13-44 (verified present in v1.16.0)
@@ -1231,7 +1242,7 @@ for _, frag := range frags {
    skip fragments containing focus/open forms; re-apply details/expanded
    state after swap; server: skip frag-filters unless filter changed
 
-2. Sortable headers via Table.TypedHeaders        high impact, ~1h
+2. [RETRACTED — sort UI already ships, see correction in findings]  
    taskHeaders() gains Sortable+Href+SortDirection; handler already parses sort
 
 3. display.RelativeTime adoption                  medium impact, ~1h
@@ -1260,9 +1271,59 @@ for _, frag := range frags {
           </div>
         </section>
 
+        <!-- Visual pass -->
+        <section id="visual">
+          <h2><span class="num">04</span>Visual pass — 2026-09-14 13:00-13:10</h2>
+          <p>
+            The dashboard was seeded with a scratch journal (<code>TQ_DB=/tmp/tqshot</code>,
+            production untouched) and captured with headless Chromium: table light+dark,
+            board, task detail, mobile 375px, tablet 768px, populated active state, opened
+            settled fold. The additions below correct and extend the code-level findings.
+          </p>
+          <div class="issue issue-critical" id="issue-charts">
+            <span class="severity severity-critical">Confirmed worst visual bug</span>
+            <h3>Chart y-axis labels render as an illegible vertical smear</h3>
+            <div class="where">
+              library line_chart.go:123 lineChartMaxTicks=8 (private const, no prop) &middot;
+              tq passes Height: 120
+            </div>
+            <p>
+              Up to 8 tick labels are drawn into a 120px plot in every theme — overlapping
+              on desktop, rotated into a solid bar on mobile. tq cannot fix this via props:
+              no tick-count option is exposed. tq-side stopgap: raise Height. Real fix is
+              upstream: tick thinning by plot height, or a MaxTicks prop (verify-before-filing
+              applies before any upstream report).
+            </p>
+          </div>
+          <div class="issue issue-important" id="issue-boardclip">
+            <span class="severity severity-important">Confirmed on capture</span>
+            <h3>Board clips two of five columns with no scroll affordance</h3>
+            <div class="where">fragments.templ Board: 5 &times; w-64 (~1344px) inside the 2fr column (~880px)</div>
+            <p>
+              DEAD and CANCELLED exist only off-screen; nothing hints they are reachable.
+              Fix directions: scroll hint/fade, responsive column width, or full-width board
+              when the task region is the page's focus.
+            </p>
+          </div>
+          <div class="issue issue-nice">
+            <span class="severity severity-nice">Also confirmed</span>
+            <h3>Smaller visual findings</h3>
+            <ul style="margin: 0 0 1rem 1.2rem; color: var(--text-muted);">
+              <li>Fact-rate y-domain 0-35 from one burst: the chart reads as empty space with a right-edge spike — domain compression or annotation needed.</li>
+              <li>Populated active table's last column (last error) clips at the card edge — scrollable via the library's overflow-x-auto wrapper, but no fade/scroll hint; with --allow-writes an actions column joins the clip-prone tail (the code comment knows: components.go "the table tail (age, error) is the clip-prone end").</li>
+              <li>Mobile 375px: charts (fixed Width: 560) clip their x-labels at both card edges.</li>
+              <li>Aside dead-ends below "browse the full journal"; board view leaves the main column mostly void.</li>
+              <li>DLQ is a wall of red when dead dominates: red text on tinted rows, mid-word truncation without ellipsis.</li>
+              <li>Detail page headline is the full 26-char ULID at 2xl — noise; CopyButton gap confirmed visually.</li>
+              <li>Tablet 768px is the best layout: single-column stack, everything fits, nothing clips.</li>
+              <li>What works: dark identity (bezel nowband, signal cyan, mono headings, terminal feed), detail-page hierarchy, live age ticker, retry-backoff readiness countdown, two-tier active/settled concept when populated.</li>
+            </ul>
+          </div>
+        </section>
+
         <!-- Appendix -->
         <section id="appendix">
-          <h2><span class="num">03</span>Appendix</h2>
+          <h2><span class="num">05</span>Appendix</h2>
           <p>
             Adoption ledger as audited. "Adopted" = actively used in
             <code>internal/webui</code>; statuses verified by reading the templates, not by
@@ -1299,8 +1360,8 @@ for _, frag := range frags {
               <tr>
                 <td>Table sorting</td>
                 <td>TypedHeaders + SortDirection + Href</td>
-                <td>handler parses, no UI</td>
-                <td class="no">Missed</td>
+                <td>audit miss — headers ship Sortable+Href since 6feaa7d (09-12)</td>
+                <td>Corrected</td>
               </tr>
               <tr>
                 <td>Clickable rows</td>

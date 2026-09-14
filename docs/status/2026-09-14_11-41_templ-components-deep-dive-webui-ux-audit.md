@@ -183,7 +183,56 @@ fuel (docs-health HARVEST must route these, not commit them).
 
 ---
 
-*Snapshot written 2026-09-14 11:41 CEST. All file:line claims read from source this
-session; the one claim written before verification (500s bare) is flagged in §a8/§d3
-and was subsequently verified. Index row added same-session per
-check-status-index.sh convention.*
+## Addendum — visual pass (same day, 13:15 CEST)
+
+After the owner said "it's just ugly", the dashboard was finally LOOKED at:
+scratch journal (`TQ_DB=/tmp/tqshot/tasks.db`), `build-tq.sh` binary, worker +
+`serve` on loopback, headless Chromium (nix store build) via a throwaway
+chromedp harness in /tmp. Ten captures: table light+dark, board dark, detail
+dark, mobile 375, tablet 768, populated active state, settled fold open,
+chart-aging comparison. Screenshots + harness: `/tmp/tqshot/`.
+
+**Corrections to this report (annotated, not rewritten):**
+- §f item 5 (sort UI) is **RETRACTED**: `taskHeaders` (components.go:512)
+  already ships `Sortable`+`Href`+`SortDirection` for prio/attempts/age —
+  commit 6feaa7d, 2026-09-12 16:14, i.e. before this audit. The morning claim
+  inferred "no UI" from the filter bar's hidden input without reading the
+  header builder. The deep-dive HTML carries the same correction inline.
+- §d3 pattern recurred and was caught same-session: the sort claim sat in two
+  reports until the visual pass exposed it. Third verify-before-deliverable
+  data point today (after the 500-claim miss).
+
+**New visual findings (full detail: research report §04):**
+1. **Worst bug, both themes**: chart y-axis labels overlap into an illegible
+   smear — `lineChartMaxTicks=8` is a private library const with no prop; tq's
+   `Height: 120` cannot fit it. tq stopgap: raise Height. Real fix upstream
+   (tick thinning / MaxTicks prop).
+2. **Board clips 2 of 5 columns** (5×w-64 ≈ 1344px inside ~880px column), no
+   scroll affordance — DEAD/CANCELLED invisible.
+3. Mobile 375: fixed `Width: 560` charts clip x-labels; filter row crushes the
+   search box; nowband wraps to two rows.
+4. Populated active table clips the last column at the card edge (scrollable
+   via the library's overflow wrapper, no hint); DLQ reads as a wall of red;
+   detail headline is the full 26-char ULID; aside/main column dead-ends in
+   void; settled fold duplicates DLQ rows.
+5. Tablet 768 stack is the best layout. What works: dark identity end-to-end,
+   detail hierarchy, live ages (ticker verified across captures), retry
+   readiness countdown, two-tier table when populated.
+6. Hygiene: the `curl` ban rejected an entire seeding chain pre-execution —
+   the first re-seed silently never ran and captures showed the stale dataset
+   until ground-truthed via `tq tasks`; re-seeded without curl. Master CI
+   green at 13:00 (a transient failure on a docs-only commit had self-healed;
+   the scratch queue's ci-local task error was that stale state).
+
+**Verdict for "it's just ugly":** the identity is NOT the problem — the
+captures show a coherent instrument aesthetic. The ugliness is concentrated:
+broken chart axes, clipped board/table edges, red flood, dead whitespace, and
+the swap-clobber interaction defects from the morning audit.
+
+---
+
+*Snapshot written 2026-09-14 11:41 CEST; addendum 13:15 CEST. All file:line
+claims read from source this session; two claims were written before
+verification (500s bare — flagged §a8/§d3, later verified; sort-UI-missing —
+retracted above). Index row added same-session per check-status-index.sh
+convention.*
