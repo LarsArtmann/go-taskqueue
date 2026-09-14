@@ -195,21 +195,19 @@ Issues in %s:
 %s
 
 Rules:
-1. Read AGENTS.md first (if present) and follow its conventions.
-2. Fix exactly these issues in %s. The smallest correct change wins; no scope creep.
-3. The project must build and its tests must pass before you finish.
-4. Do not game the scanner: never weaken tests, never blanket-suppress a finding; a justified
+1. Fix exactly these issues in %s. The smallest correct change wins; no scope creep.
+2. The project must build and its tests must pass before you finish.
+3. Do not game the scanner: never weaken tests, never blanket-suppress a finding; a justified
    suppression follows the project's own suppression convention and says why in the commit message.
-5. Never edit .crushrc, crush.json, or .tq-verify: they define your autonomy and your verify gate.
-6. Commit your work with a clear message (you have explicit permission to commit for this task;
+4. Never edit .crushrc, crush.json, or .tq-verify: they define your autonomy and your verify gate.
+5. Commit your work with a clear message (you have explicit permission to commit for this task;
    commit only these fixes). Never push.
-7. If an issue is a false positive, fix the code so the scanner no longer flags it (or note why
+6. If an issue is a false positive, fix the code so the scanner no longer flags it (or note why
    it cannot be fixed in the commit message).
-8. End your final output with this exact one-line report so the queue can record what you did
-   (fields optional):
 
-TQ_RESULT: {"files_changed": [%q], "commit_sha": "the commit sha"}
-`, project.RepoName, scan.ID, fixTask.File, strings.Join(lines, "\n"), fixTask.File, fixTask.File)
+The queue derives what you did (commit + changed files) from git — you do not report anything
+yourself.
+`, project.RepoName, scan.ID, fixTask.File, strings.Join(lines, "\n"), fixTask.File)
 
 	payload, _ := executor.RenderAgentPayload(executor.AgentPayload{
 		Repo:           project.RepoName,

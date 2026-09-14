@@ -305,9 +305,11 @@ Do not modify code, configuration, tests, or any other tracked file. If you noti
 1. Commit your changes with a clear message ending in the exact footer line
    Task-Queue-ID: {{TASK_ID}}
    (you have explicit permission to commit for this task). Never push.
-2. End your final output with EXACTLY ONE line of this shape and nothing after it:
+2. Record your result by running EXACTLY:
 
-TQ_RESULT: {"report": "docs/status/<the-file-you-wrote>.md", "next_items": <number of items appended>}
+tq verdict '{"report": "docs/status/<the-file-you-wrote>.md", "next_items": <number of items appended>}
+
+(tq validates the JSON and writes $TQ_RESULT_FILE — the queue reads that file after you exit; if tq is not on PATH, write the same one-line JSON to $TQ_RESULT_FILE yourself)
 
 The report path must be relative to the repository root; the file must exist when you finish.
 `)

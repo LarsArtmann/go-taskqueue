@@ -250,13 +250,13 @@ func reviewPrompt(p ReviewPayload) string {
 - "request_changes": you found at least one concrete, actionable problem. Every finding must be specific enough that a fix agent can act on it without re-doing the review (name the file, the behavior, and the expected direction).
 - Never request changes without findings; never report findings under approve.
 
-End your reply with EXACTLY ONE line of this shape and nothing after it:
+Record your verdict by running EXACTLY ONE of:
 
-TQ_RESULT: {"verdict":"approve","summary":"...","findings":[]}
+tq verdict '{"verdict":"approve","summary":"...","findings":[]}'
 
-or
+tq verdict '{"verdict":"request_changes","summary":"...","findings":[{"title":"...","severity":"low|medium|high","detail":"..."}]}'
 
-TQ_RESULT: {"verdict":"request_changes","summary":"...","findings":[{"title":"...","severity":"low|medium|high","detail":"..."}]}
+(tq validates the JSON and writes $TQ_RESULT_FILE — the queue reads that file after you exit; if tq is not on PATH, write the same one-line JSON to $TQ_RESULT_FILE yourself)
 
 `)
 

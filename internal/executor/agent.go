@@ -637,8 +637,8 @@ func (e *AgentExecutor) runCloseoutTurn(
 // runs when the pool enables --task-closeout: the same brutal self-review
 // the owner uses interactively, answered by the agent that did the work,
 // in the same session. {{TASK_ID}} resolves at execution time (report path
-// + commit footer); the TQ_RESULT re-emit keeps the queue's mechanical
-// gate green, since parsing reads the LAST TQ_RESULT line in the output.
+// + commit footer). The queue derives the run's commits and files from git
+// trailers — the close-out no longer re-emits any result line.
 const DefaultCloseoutPrompt = `What did you forget? What could you have done better? What could you still improve?
 
 FULL COMPREHENSIVE & DETAILED STATUS UPDATE!
@@ -646,9 +646,7 @@ INCLUDE WORK: a) FULLY DONE; b) PARTIALLY DONE; c) NOT STARTED; d) TOTALLY FUCKE
 
 Run "date" (CLI) to get the current date-time, then write the full report at docs/status/<YYYY-MM-DD_HH-MM>_task-{{TASK_ID}}.md. Commit it with the same Task-Queue-ID footer as your work commit. Never push.
 
-DO NOT RESEARCH UNRELATED STUFF. Report based on THIS task's work and what you noticed in passing.
-
-End your final output with EXACTLY ONE line and nothing after it: the same TQ_RESULT line you reported for the work above (the queue's mechanical gate reads the last one).`
+DO NOT RESEARCH UNRELATED STUFF. Report based on THIS task's work and what you noticed in passing.`
 
 // execWithTransientRetry retries exec attempts that failed with ETXTBSY
 // ("text file busy"). Kernel 7.2 was observed returning it for freshly

@@ -279,13 +279,13 @@ Never push.
 
 ## Verdict
 
-End your reply with EXACTLY ONE line of this shape and nothing after it:
+Record your verdict by running EXACTLY ONE of:
 
-TQ_RESULT: {"verdict":"fixed","summary":"root cause + what you changed","commit_sha":"<sha or empty>"}
+tq verdict '{"verdict":"fixed","summary":"root cause + what you changed","commit_sha":"<sha or empty>"}'
 
-or
+tq verdict '{"verdict":"wontfix","summary":"why this task cannot be fixed from inside this repository"}'
 
-TQ_RESULT: {"verdict":"wontfix","summary":"why this task cannot be fixed from inside this repository"}
+(tq validates the JSON and writes $TQ_RESULT_FILE — the queue reads that file after you exit; if tq is not on PATH, write the same one-line JSON to $TQ_RESULT_FILE yourself)
 
 A wontfix without a summary is invalid output.
 `)
