@@ -8,6 +8,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"encoding/json/jsontext"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
@@ -129,6 +130,69 @@ func TestJournalDriftNoDriftOverFullLifecycle(t *testing.T) {
 	}
 }
 
+func TestJournalDriftSeededDriftAllFields(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	path := t.TempDir() + "/drift.db"
+
+	store, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("sqlite.Open: %v", err)
+	}
+
+	if _, err := store.Enqueue(ctx, task.New{
+		Project: "j", Type: "sh", Payload: []byte(`"true"`), Priority: 3, DedupKey: "todo:real",
+	}); err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	store = seedDrift(t, path)
+
+	report, err := journalDrift(ctx, store)
+	if err != nil {
+		t.Fatalf("journalDrift: %v", err)
+	}
+
+	if !report.HasDrift() {
+		t.Fatalf("expected seeded drift, got %+v", report)
+	}
+
+	fields := map[string]DriftRow{}
+	for _, row := range report.Drift {
+		fields[row.Field] = row
+	}
+
+	for _, field := range []string{"status", "attempts", "priority", "dedup_key"} {
+		row, ok := fields[field]
+		if !ok {
+			t.Errorf("no drift row for field %s (report: %+v)", field, report)
+
+			continue
+		}
+
+		if row.Replayed == row.Stored {
+			t.Errorf("field %s: stored == replayed == %q, expected divergence", field, row.Stored)
+		}
+	}
+
+	if fields["status"].Stored != "completed" || fields["status"].Replayed != "pending" {
+		t.Errorf("status row = %+v, want stored=completed replayed=pending", fields["status"])
+	}
+
+	if fields["priority"].Replayed != "3" {
+		t.Errorf("priority row = %+v, want replayed=3", fields["priority"])
+	}
+
+	if fields["dedup_key"].Replayed != "todo:real" {
+		t.Errorf("dedup row = %+v, want replayed=todo:real", fields["dedup_key"])
+	}
+}
+
 func TestReplayProjectionTransitions(t *testing.T) {
 	t.Parallel()
 
@@ -180,9 +244,9 @@ func TestReplayProjectionTransitions(t *testing.T) {
 		}
 	}
 
-	if got[task.ID("b")].attempts != len(steps)-1 {
-		t.Errorf("task b: attempts = %d, want %d (max failed/dead-lettered attempt)",
-			got[task.ID("b")].attempts, len(steps)-1)
+	if got[task.ID("b")].attempts != 5 {
+		t.Errorf("task b: attempts = %d, want 5 (max failed/dead-lettered attempt)",
+			got[task.ID("b")].attempts)
 	}
 }
 
