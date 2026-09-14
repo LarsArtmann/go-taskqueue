@@ -1,4 +1,4 @@
-package session
+package executor
 
 import (
 	"context"
@@ -9,15 +9,15 @@ import (
 	"strings"
 )
 
-// Commit is one session-attributed commit.
+// Commit is one trailer-attributed commit (git footer `key: value`).
 type Commit struct {
 	SHA     string `json:"sha"`
 	Subject string `json:"subject"`
 }
 
 // GitScanner attributes commits: which commits in repo carry the git footer
-// `key: value`. The interface keeps Close hermetic to test; GitLogScanner is
-// the real implementation.
+// `key: value`. The interface keeps consumers (the session-close bridge,
+// outcome derivation) testable; GitLogScanner is the real implementation.
 type GitScanner interface {
 	CommitsByTrailer(ctx context.Context, repo, key, value string) ([]Commit, error)
 }
@@ -44,7 +44,7 @@ type GitLogScanner struct {
 // error.
 func (s GitLogScanner) CommitsByTrailer(ctx context.Context, repo, key, value string) ([]Commit, error) {
 	if repo == "" {
-		return nil, errors.New("session: empty repo path")
+		return nil, errors.New("gitscan: empty repo path")
 	}
 
 	bin := s.Bin
@@ -68,7 +68,7 @@ func (s GitLogScanner) CommitsByTrailer(ctx context.Context, repo, key, value st
 			return nil, nil
 		}
 
-		return nil, fmt.Errorf("session: git log %s: %w", repo, err)
+		return nil, fmt.Errorf("gitscan: git log %s: %w", repo, err)
 	}
 
 	return parseTrailerCommits(string(out), value), nil

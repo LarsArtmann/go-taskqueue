@@ -1,6 +1,6 @@
 //go:build unix
 
-package session
+package executor
 
 import (
 	"context"
@@ -60,7 +60,7 @@ func TestGitLogScannerAttributesRealCommits(t *testing.T) {
 
 	scanner := GitLogScanner{}
 
-	got, err := scanner.CommitsByTrailer(context.Background(), repo, Trailer, "sess-42")
+	got, err := scanner.CommitsByTrailer(context.Background(), repo, "Crush-Session", "sess-42")
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestGitLogScannerAttributesRealCommits(t *testing.T) {
 		t.Fatalf("order wrong: %+v", got)
 	}
 
-	foreign, err := scanner.CommitsByTrailer(context.Background(), repo, Trailer, "sess-other")
+	foreign, err := scanner.CommitsByTrailer(context.Background(), repo, "Crush-Session", "sess-other")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestGitLogScannerEmptyRepoAttributesNothing(t *testing.T) {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 
-	got, err := GitLogScanner{}.CommitsByTrailer(context.Background(), repo, Trailer, "sess-1")
+	got, err := GitLogScanner{}.CommitsByTrailer(context.Background(), repo, "Crush-Session", "sess-1")
 	if err != nil {
 		t.Fatalf("empty repo scan: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestGitLogScannerNotARepoFails(t *testing.T) {
 		t.Skip("git not on PATH")
 	}
 
-	_, err := GitLogScanner{}.CommitsByTrailer(context.Background(), t.TempDir(), Trailer, "x")
+	_, err := GitLogScanner{}.CommitsByTrailer(context.Background(), t.TempDir(), "Crush-Session", "x")
 	if err == nil {
 		t.Fatal("non-repo scan must fail")
 	}

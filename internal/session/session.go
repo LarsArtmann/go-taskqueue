@@ -43,6 +43,16 @@ import (
 // attributes exactly the commits whose trailer value equals the session id.
 const Trailer = "Crush-Session"
 
+// The commit-attribution scanner lives in internal/executor (gitscan.go,
+// shared with outcome derivation); these aliases keep the bridge's signatures
+// stable. Aliases, not copies: the types are identical.
+type (
+	Commit         = executor.Commit
+	GitScanner     = executor.GitScanner
+	GitScannerFunc = executor.GitScannerFunc
+	GitLogScanner  = executor.GitLogScanner
+)
+
 // SyntheticTaskID returns the session's task-ID-shaped lineage key: the
 // TaskID on session facts and the ReviewedTask / Completed.TaskID lineage in
 // the minted review and status payloads. It is namespaced so it can never

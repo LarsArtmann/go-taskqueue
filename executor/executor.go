@@ -60,6 +60,15 @@ type (
 // result sinks).
 type Sink = internalexecutor.Sink
 
+// Commit-attribution scanner (gitscan.go): which commits carry a git
+// footer `key: value`.
+type (
+	Commit         = internalexecutor.Commit
+	GitScanner     = internalexecutor.GitScanner
+	GitScannerFunc = internalexecutor.GitScannerFunc
+	GitLogScanner  = internalexecutor.GitLogScanner
+)
+
 // Task-type keys.
 const (
 	TaskTypeAgent      = internalexecutor.TaskTypeAgent
