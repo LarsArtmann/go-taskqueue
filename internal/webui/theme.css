@@ -213,6 +213,48 @@ h3,
 }
 
 /* ---------------------------------------------------------------------------
+ * A11y: forced-colors + high-contrast (H2). Windows High Contrast strips
+ * shadows/tints — restore visible focus and a structural border; users who
+ * ask for more contrast get firmer hairlines in both themes.
+ * ------------------------------------------------------------------------- */
+
+@media (forced-colors: active) {
+  a:focus-visible,
+  button:focus-visible,
+  summary:focus-visible,
+  [data-error]:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  .tq-nowband,
+  .tq-seg,
+  .journal-scroll {
+    border: 1px solid canvastext;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .tq-nowband {
+    border-color: var(--color-gray-500);
+  }
+
+  .dark .tq-nowband {
+    border-color: var(--color-gray-400);
+  }
+
+  .tq-seg {
+    border-inline-start-color: var(--color-gray-400);
+  }
+
+  .dark .tq-seg {
+    border-inline-start-color: var(--color-gray-500);
+  }
+}
+
+/* ---------------------------------------------------------------------------
  * Filter auto-submit busy cue: the apply button dims while its fetch is in
  * flight (G1). Pointer events off so a double-submit can't race the swap.
  * ------------------------------------------------------------------------- */
@@ -447,6 +489,12 @@ kbd {
   font-family: var(--font-mono);
   color: var(--color-gray-400);
   transition: transform 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tq-settled > summary::before {
+    transition: none;
+  }
 }
 
 .tq-settled[open] > summary::before {
