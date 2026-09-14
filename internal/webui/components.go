@@ -187,8 +187,11 @@ func detailItems(t task.Task, now time.Time, nonce string) []display.DefinitionI
 
 // relativeTimeComponent renders a timestamp as the library's <time> element:
 // server-rendered relative text, machine-readable datetime attribute, and
-// (nonce permitting) live self-refresh every 30s.
-func relativeTimeComponent(ts time.Time, nonce string) templ.Component { //nolint:ireturn // templ.Component is the library component contract
+// (nonce permitting) live self-refresh every 30s. Returning the library's
+// component interface is the pattern's contract, not an abstraction leak.
+//
+//nolint:ireturn // templ.Component is the library component contract
+func relativeTimeComponent(ts time.Time, nonce string) templ.Component {
 	return display.RelativeTime(display.RelativeTimeProps{
 		Time:      ts,
 		BaseProps: utils.BaseProps{Nonce: nonce},
@@ -409,7 +412,8 @@ const inputClass = "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-
 // text stays neutral gray (severity is carried by the row rule / fact tag,
 // never by a wall of red), with the click/keyboard expand affordance that
 // app.js toggles via data-error/data-short.
-const tqErrorCellClass = "cursor-pointer rounded text-gray-600 dark:text-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+const tqErrorCellClass = "cursor-pointer rounded text-gray-600 dark:text-gray-400 " +
+	"focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
 
 // tdCellClass is the table body cell style; nowrap keeps the ledger dense.
 func tdCellClass(wrap bool) string {
