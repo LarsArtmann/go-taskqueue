@@ -463,3 +463,64 @@ func TestDoctorWatermarkLiveness(t *testing.T) {
 		t.Errorf("review-sweeper = %s (%s), want ok (never ran)", r.Status, r.Detail)
 	}
 }
+
+// TestDoctorRepoCoverageOrphanAndCovered pins the PENDING-forever check:
+// a project whose directory is missing under the projects root warns with
+// its pending count; a covered project and an empty journal stay ok.
+func TestDoctorRepoCoverageOrphanAndCovered(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "coverage.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	if err := os.MkdirAll(filepath.Join(root, "covered"), 0o755); err != nil {
+		t.Fatalf("mkdir covered: %v", err)
+	}
+
+	for _, project := range []string{"covered", "ghosted"} {
+		if _, err := s.Enqueue(ctx, task.New{
+			Type:    "agent",
+			Project: project,
+			Payload: []byte(`{"repo":"` + project + `","prompt":"p"}`),
+		}); err != nil {
+			t.Fatalf("enqueue %s: %v", project, err)
+		}
+	}
+
+	results := doctorRepoCoverage(ctx, s, root)
+	got := resultByName(results, "repo-coverage")
+
+	if got.Status != checkWarn {
+		t.Fatalf("status = %q, want warn (ghosted project must surface)", got.Status)
+	}
+
+	if !strings.Contains(got.Detail, "ghosted") || !strings.Contains(got.Detail, "1 pending task(s)") {
+		t.Fatalf("detail = %q, want ghosted project with pending count", got.Detail)
+	}
+
+	if strings.Contains(got.Detail, "covered (") {
+		t.Fatalf("detail = %q: existing project must not be reported", got.Detail)
+	}
+
+	empty, err := sqlite.Open(filepath.Join(t.TempDir(), "empty.db"))
+	if err != nil {
+		t.Fatalf("open empty: %v", err)
+	}
+	defer func() { _ = empty.Close() }()
+
+	ok := doctorRepoCoverage(ctx, empty, root)
+	if got := resultByName(ok, "repo-coverage"); got.Status != checkOK {
+		t.Fatalf("empty journal status = %q (%s), want ok", got.Status, got.Detail)
+	}
+
+	if got := doctorRepoCoverage(ctx, empty, ""); got != nil {
+		t.Fatalf("empty projects dir must disable the check (nil), got %+v", got)
+	}
+}

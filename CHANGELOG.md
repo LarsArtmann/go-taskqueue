@@ -196,6 +196,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `AgentPayload` in code (mutual exclusion with `--payload` enforced,
   prompt source required, `--type agent` implied). Removes the need to
   hand-write payload JSON for one-off agent mints.
+- `tq doctor` repo-coverage check: warns when PENDING tasks belong to a
+  project whose repo directory is missing under `--projects-dir` — the
+  PENDING-forever class (a harvest-driven pool can never claim them;
+  moved/renamed/deleted repo). Pool `--repos` coverage is process state
+  and not journaled, so directory existence is the one durable signal.
 - **Public facade modules (ADR-0016)**: the library core is now importable
   from outside the repo. Seven facade modules — `task`, `journal`, `queue`,
   `queue/sqlite`, `queue/postgres`, `executor`, `worker` (all under

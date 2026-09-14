@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -227,6 +228,64 @@ func doctorMarkOrphans(ctx context.Context, store queue.Store) []checkResult {
 	}
 
 	return []checkResult{{Name: "mark-orphans", Status: checkOK, Detail: detail}}
+}
+
+// doctorRepoCoverage checks the PENDING-forever class: PENDING tasks whose
+// project resolves to a missing repo directory under the projects root. Pool
+// coverage (--repos lists) is process state and not journaled, so the one
+// durable signal is directory existence: a PENDING task for a project whose
+// directory is gone (moved/renamed/deleted) can never be claimed by a
+// harvest-driven pool — the tasks sit until an operator cancels them.
+func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
+	if projectsDir == "" {
+		return nil
+	}
+
+	pending := task.Pending
+	tasks, err := store.List(ctx, queue.Filter{Status: &pending})
+	if err != nil {
+		return []checkResult{{Name: "repo-coverage", Status: checkFail, Detail: "list pending: " + err.Error()}}
+	}
+
+	counts := map[string]int{}
+	for _, t := range tasks {
+		if t.Project != "" {
+			counts[t.Project]++
+		}
+	}
+
+	var missing []string
+	for p, n := range counts {
+		dir := p
+		if !filepath.IsAbs(dir) {
+			dir = filepath.Join(projectsDir, p)
+		}
+
+		if _, err := os.Stat(dir); err == nil {
+			continue
+		}
+
+		missing = append(missing, fmt.Sprintf("%s (%d pending task(s); no dir at %s)", p, n, dir))
+	}
+
+	if len(missing) == 0 {
+		return []checkResult{{
+			Name:   "repo-coverage",
+			Status: checkOK,
+			Detail: fmt.Sprintf("every project with PENDING tasks resolves under %s", projectsDir),
+		}}
+	}
+
+	sort.Strings(missing)
+
+	return []checkResult{{
+		Name:   "repo-coverage",
+		Status: checkWarn,
+		Detail: fmt.Sprintf(
+			"%d project(s) with PENDING tasks have no repo directory — no pool can ever claim them (cancel via tq cancel): %s",
+			len(missing), strings.Join(missing, "; "),
+		),
+	}}
 }
 
 // doctorCountStatus maps DLQ size to severity: 0-2 is normal operation,
