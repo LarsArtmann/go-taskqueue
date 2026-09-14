@@ -157,7 +157,7 @@ func TestDetailItems(t *testing.T) {
 			CreatedAt:   now.Add(-2 * time.Hour),
 			UpdatedAt:   now.Add(-2 * time.Minute),
 			CompletedAt: &done,
-		}, now)
+		}, now, "")
 
 		var terms []string
 
@@ -191,7 +191,7 @@ func TestDetailItems(t *testing.T) {
 			Payload:   json.RawMessage(`{}`),
 			CreatedAt: now,
 			UpdatedAt: now,
-		}, now)
+		}, now, "")
 
 		for _, it := range items {
 			switch it.Term {

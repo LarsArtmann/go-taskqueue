@@ -574,8 +574,18 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
 // taskDetailCard is the task's live summary: id, status, last error, and
 // the full record definition list (inner content of #frag-detail).
 templ taskDetailCard(data DashboardData, t task.Task) {
-	<div class="flex flex-wrap items-baseline gap-x-4 gap-y-2">
-		<h2 class="text-2xl font-semibold text-gray-900 dark:text-white">{ t.ID.String() }</h2>
+	<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+		<div class="min-w-0">
+			<div class="flex items-center gap-2">
+				<h2 class="font-mono text-2xl font-semibold text-gray-900 dark:text-white" title={ t.ID.String() }>{ shortID(t.ID) }</h2>
+				@display.CopyButton(display.CopyButtonProps{
+					Text:      t.ID.String(),
+					Label:     "copy id",
+					BaseProps: utils.BaseProps{Nonce: ctxNonce(ctx)},
+				})
+			</div>
+			<p class="mt-0.5 break-all font-mono text-xs text-gray-400 dark:text-gray-500" aria-hidden="true">{ t.ID.String() }</p>
+		</div>
 		@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true})
 		if verdict, ok := data.Reviews[t.ID.String()]; ok {
 			@display.Badge(display.BadgeProps{Text: verdictLabel(verdict.Verdict), Type: verdictBadgeType(verdict.Verdict), Dot: true})
@@ -609,7 +619,7 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 		@statusReportCard(st)
 	}
 	@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
-		@display.DefinitionList(display.DefinitionListProps{Items: detailItems(t, data.Now)})
+		@display.DefinitionList(display.DefinitionListProps{Items: detailItems(t, data.Now, ctxNonce(ctx))})
 	}
 }
 
@@ -708,7 +718,14 @@ templ payloadSection(t task.Task, pv payloadView) {
 	<div class="tq-payload">
 		if pv.Lede != "" {
 			if pv.LedeMono {
-				<pre class="tq-payload-cmd">{ pv.Lede }</pre>
+				<div class="flex items-start gap-2">
+					<pre class="tq-payload-cmd min-w-0 flex-1">{ pv.Lede }</pre>
+					@display.CopyButton(display.CopyButtonProps{
+						Text:      pv.Lede,
+						Label:     "copy",
+						BaseProps: utils.BaseProps{Nonce: ctxNonce(ctx)},
+					})
+				</div>
 			} else {
 				<p class="tq-payload-item">{ pv.Lede }</p>
 			}
@@ -753,7 +770,14 @@ templ payloadSection(t task.Task, pv payloadView) {
 		if pv.hasRaw() {
 			<details class="tq-fold">
 				<summary>raw payload</summary>
-				<pre class="tq-payload-pre">{ pv.Raw }</pre>
+				<div class="flex items-start gap-2">
+					<pre class="tq-payload-pre min-w-0 flex-1">{ pv.Raw }</pre>
+					@display.CopyButton(display.CopyButtonProps{
+						Text:      pv.Raw,
+						Label:     "copy",
+						BaseProps: utils.BaseProps{Nonce: ctxNonce(ctx)},
+					})
+				</div>
 			</details>
 		}
 	</div>
