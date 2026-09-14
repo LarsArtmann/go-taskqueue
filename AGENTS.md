@@ -483,12 +483,20 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 | `display.Badge/Eyebrow/DefinitionList/Scrollback`                                                | adopted | `fragments.templ`                                                               |
 | `display.AreaChart`                                                                              | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`)     |
 | `display.Button`                                                                                 | adopted | filter bar (apply)                                                              |
+| `display.CopyButton`                                                                             | adopted | detail page: task-id copy, payload lede + raw payload, status-report path (2026-09-14 overhaul) |
 | `feedback.Alert`                                                                                 | adopted | task detail (last error)                                                        |
 | `icons.ArchiveBox/CircleStack/Filter/Inbox`                                                      | adopted | empty-state + filter icons (`fragments.templ`)                                  |
 | status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband) |
 
 Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows`
 (both directions of rot fail the suite).
+
+Adopted 2026-09-14 (overhaul), Go-invoked so OUTSIDE the template-scoped
+table: `display.RelativeTime` renders the detail definition list's
+created/updated/completed rows (AutoRefresh + CSP nonce via
+`relativeTimeComponent` in components.go). The fact feed keeps wall-clock
+timestamps + the client `data-age` ticker by decision — a terminal tail
+reads absolute, and per-line components would each re-render on swap.
 
 Evaluated and REJECTED 2026-09-13: `display.KanbanBoard` (library v1.15+)
 does not fit the custom board — its value is the drag/keyboard move

@@ -131,28 +131,6 @@ func factTone(t journal.FactType) display.ScrollbackTone {
 	return display.ScrollbackToneNeutral
 }
 
-// factLines renders the journal pane's terminal lines: one per fact, newest
-// last (a tail, like `tq tail -f`).
-func factLines(data DashboardData) []display.ScrollbackLine {
-	lines := make([]display.ScrollbackLine, 0, len(data.Facts))
-
-	for _, fact := range data.Facts {
-		text := "#" + formatInt(int(fact.Seq)) + " " + shortIDTail(fact.TaskID)
-		if fact.Error != "" {
-			text += " " + truncate(fact.Error, errorPreviewLen)
-		}
-
-		lines = append(lines, display.ScrollbackLine{
-			Timestamp: factTimestamp(data.Now, fact.Time),
-			Tag:       string(fact.Type),
-			Text:      text,
-			Tone:      factTone(fact.Type),
-		})
-	}
-
-	return lines
-}
-
 // factTimestamp renders a wall-clock time; facts older than a day gain a
 // date prefix so the tail stays unambiguous.
 func factTimestamp(now, t time.Time) string {

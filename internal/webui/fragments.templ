@@ -660,6 +660,13 @@ templ statusReportCard(res executor.StatusResult) {
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 			@display.Badge(display.BadgeProps{Text: fmt.Sprintf("%d next items", res.NextItems), Type: display.BadgeInfo, Size: display.BadgeSizeSM})
 			<code class="break-all font-mono text-xs text-gray-700 dark:text-gray-300">{ res.Report }</code>
+			if res.Report != "" {
+				@display.CopyButton(display.CopyButtonProps{
+					Text:      res.Report,
+					Label:     "copy path",
+					BaseProps: utils.BaseProps{Nonce: ctxNonce(ctx)},
+				})
+			}
 		</div>
 		if res.LogPath != "" {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
