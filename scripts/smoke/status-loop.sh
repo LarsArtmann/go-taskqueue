@@ -6,6 +6,7 @@
 # then runs. No real agent, no network; TQ_AGENT_BIN points at a shell stub.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+REPO_ROOT="$(pwd)"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
