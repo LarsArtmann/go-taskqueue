@@ -395,8 +395,26 @@ func assertCleanTree(ctx context.Context, repo string) error {
 	return nil
 }
 
+// verdictFileEnv names the per-run channel the executor hands the agent:
+// `tq verdict '<json>'` (or a plain write) lands the structured result in
+// this file, and runAgent appends it to the returned output as the LAST
+// TQ_RESULT line — the file is the authoritative channel, a stdout
+// TQ_RESULT line is the legacy fallback for in-flight tasks.
+const verdictFileEnv = "TQ_RESULT_FILE"
+
 // runAgent spawns the headless agent in the repo and waits for it.
 func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload, id task.ID) (string, error) {
+	// The verdict channel: one temp file per run, exported to the agent
+	// process. Best-effort — when the temp dir is unusable the channel is
+	// absent and the legacy stdout line still works.
+	verdictPath := ""
+	if f, err := os.CreateTemp("", "tq-verdict-*.json"); err == nil {
+		_ = f.Close()
+
+		verdictPath = f.Name()
+
+		defer os.Remove(verdictPath)
+	}
 	// Closeout resume (13:29 report f15): a prior attempt finished the WORK
 	// turn but was rate-limited during the close-out; re-running the work
 	// turn on re-claim would double real agent cost. Resume at closeout
@@ -408,11 +426,11 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 			e.closeoutPending.Delete(id.String())
 
 			buf := &bytes.Buffer{}
-			if err := e.runCloseoutTurn(ctx, repoDir, pending.session, id, buf); err != nil {
-				return buf.String(), err
+			if err := e.runCloseoutTurn(ctx, repoDir, pending.session, id, buf, verdictPath); err != nil {
+				return appendVerdictLine(buf.String(), verdictPath), err
 			}
 
-			return buf.String(), nil
+			return appendVerdictLine(buf.String(), verdictPath), nil
 		}
 
 		e.closeoutPending.Delete(id.String())
@@ -468,6 +486,9 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	runOnce := func() (*bytes.Buffer, error) {
 		cmd := exec.CommandContext(ctx, e.binary(), args...)
 		cmd.Dir = repoDir
+		if verdictPath != "" {
+			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
+		}
 
 		var buf bytes.Buffer
 
@@ -511,15 +532,38 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// degrades to a logged skip (the work itself already succeeded).
 	if e.CloseoutPrompt != "" {
 		if session := ExtractSessionID(buf.String()); session != "" {
-			if err := e.runCloseoutTurn(ctx, repoDir, session, id, buf); err != nil {
-				return buf.String(), err
+			if err := e.runCloseoutTurn(ctx, repoDir, session, id, buf, verdictPath); err != nil {
+				return appendVerdictLine(buf.String(), verdictPath), err
 			}
 		} else {
 			buf.WriteString("\n[tq] closeout skipped: no session id in agent output\n")
 		}
 	}
 
-	return buf.String(), nil
+	return appendVerdictLine(buf.String(), verdictPath), nil
+}
+
+// appendVerdictLine merges the verdict file into the run output as a
+// synthetic trailing TQ_RESULT line. Appended LAST on purpose: ResultLine
+// reads the last match, so the file outranks any legacy stdout line. Empty
+// or missing files leave the output untouched (the stdout fallback stays
+// the only channel).
+func appendVerdictLine(output, path string) string {
+	if path == "" {
+		return output
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return output
+	}
+
+	body := strings.TrimSpace(string(raw))
+	if body == "" {
+		return output
+	}
+
+	return output + "\nTQ_RESULT: " + body
 }
 
 // closeoutPending records a finished WORK turn whose close-out is owed: a
@@ -539,6 +583,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 	repoDir, session string,
 	id task.ID,
 	buf *bytes.Buffer,
+	verdictPath string,
 ) error {
 	closeout := strings.ReplaceAll(e.CloseoutPrompt, "{{TASK_ID}}", id.String())
 	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir, "--session", session, "--", closeout}
@@ -546,6 +591,9 @@ func (e *AgentExecutor) runCloseoutTurn(
 	closeoutOnce := func() (*bytes.Buffer, error) {
 		cmd := exec.CommandContext(ctx, e.binary(), closeoutArgs...)
 		cmd.Dir = repoDir
+		if verdictPath != "" {
+			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
+		}
 
 		var closeoutBuf bytes.Buffer
 

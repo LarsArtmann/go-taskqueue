@@ -35,6 +35,14 @@ func fixtureCrushDB(t *testing.T, dataDir string) *sql.DB {
 		cost REAL,
 		updated_at INTEGER,
 		created_at INTEGER
+	);
+	CREATE TABLE messages (
+		id TEXT,
+		session_id TEXT,
+		role TEXT,
+		parts TEXT,
+		created_at INTEGER,
+		updated_at INTEGER
 	)`
 
 	if _, err := db.Exec(schema); err != nil {
