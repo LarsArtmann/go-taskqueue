@@ -12,6 +12,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/templ-components/layout"
+	"github.com/larsartmann/templ-components/utils"
 )
 
 // This file maps domain vocabulary (task.Status, journal.FactType) onto the
@@ -180,15 +181,15 @@ const (
 // Payload intentionally stays OUT of the record's definition list: it is
 // the task's content, not its metadata, and it renders as its own type-aware
 // section (payloadSection in fragments.templ) below this card.
-func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
+func detailItems(t task.Task, now time.Time, nonce string) []display.DefinitionItem {
 	items := []display.DefinitionItem{
 		{Term: labelProject, Detail: t.Project},
 		{Term: labelType, Detail: t.Type},
 		{Term: labelStatus, DetailComponent: statusBadge(string(t.Status), statusBadgeType(t.Status))},
 		{Term: labelAttempts, Detail: formatInt(t.Attempts) + "/" + formatInt(t.MaxAttempts)},
 		{Term: "priority", Detail: formatInt(t.Priority)},
-		{Term: "created", Detail: timeAgo(now, t.CreatedAt) + " ago"},
-		{Term: "updated", Detail: timeAgo(now, t.UpdatedAt) + " ago"},
+		{Term: "created", DetailComponent: relativeTimeComponent(t.CreatedAt, nonce)},
+		{Term: "updated", DetailComponent: relativeTimeComponent(t.UpdatedAt, nonce)},
 	}
 
 	if t.LeaseOwner != "" {
@@ -197,12 +198,22 @@ func detailItems(t task.Task, now time.Time) []display.DefinitionItem {
 
 	if t.CompletedAt != nil {
 		items = append(items, display.DefinitionItem{
-			Term:   labelCompleted,
-			Detail: timeAgo(now, *t.CompletedAt) + " ago",
+			Term:            labelCompleted,
+			DetailComponent: relativeTimeComponent(*t.CompletedAt, nonce),
 		})
 	}
 
 	return items
+}
+
+// relativeTimeComponent renders a timestamp as the library's <time> element:
+// server-rendered relative text, machine-readable datetime attribute, and
+// (nonce permitting) live self-refresh every 30s.
+func relativeTimeComponent(ts time.Time, nonce string) templ.Component {
+	return display.RelativeTime(display.RelativeTimeProps{
+		Time:      ts,
+		BaseProps: utils.BaseProps{Nonce: nonce},
+	})
 }
 
 // detailFacts renders the detail page's fact timeline as journal lines.

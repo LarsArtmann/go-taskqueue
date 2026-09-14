@@ -375,12 +375,12 @@ kbd {
 }
 
 @media (max-width: 640px) {
-  /* The band reads as one instrument row even on phones: a uniform grid
-     (min 56px per segment = five across at ~320px of band width) instead
-     of flex-wrap's ragged 4+1 leftovers. */
+  /* The band reads as one instrument even on phones: a uniform grid
+     (3+2 at 375px, one row ≥640px) instead of flex-wrap's ragged 4+1
+     leftovers. 88px per segment keeps the uppercase labels uncrushed. */
   .tq-nowband-inner {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
     gap: 0.5rem 0;
     width: 100%;
   }
