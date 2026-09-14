@@ -1322,8 +1322,79 @@ for _, frag := range frags {
         </section>
 
         <!-- Appendix -->
+        <section id="execution">
+          <h2><span class="num">05</span>Execution log — the overhaul, 2026-09-14 15:50-17:30</h2>
+          <p>
+            The GO decision landed and the plan shipped the same day. Everything below ran on a
+            scratch journal (<code>TQ_DB=/tmp/tqshot/tasks.db</code> — production untouched) and was
+            verified by headless-Chromium captures plus the repo gates (vet, race tests, webui
+            smoke, treefmt, CSS byte-rebuild).
+          </p>
+          <table class="compare">
+            <thead>
+              <tr><th>Workstream</th><th>What shipped</th><th>Proof</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>A — charts</td>
+                <td>AreaChart height 120→200 (both charts); library viewBox <code>w-full h-auto</code> confirmed — charts scale at 375/768/1440 with unclipped labels.</td>
+                <td>dark captures pre/post: y-axis smear gone (0-50 ticks legible)</td>
+              </tr>
+              <tr>
+                <td>B — live swaps</td>
+                <td>Swap-guard (<code>fragmentBusy</code>: focus/details[open]/expanded cells defer the swap, grace 2.5s, latest-wins queue) + state re-apply (fold open, expanded errors, typed values, focus, feed scroll) + server-side <code>frag-filters</code> change-detection (per-stream byte-compare).</td>
+                <td>chromedp soak: typed <code>repo1</code> + open fold + expanded error during 12 enqueued bursts — all survived (<code>LIVECHECK-OK</code>)</td>
+              </tr>
+              <tr>
+                <td>C — board</td>
+                <td>Board view spans the full content width (aside flows below); lanes <code>w-64 min-w-52</code> shrink to fit five-across ≥1280; <code>snap-x</code>; edge-fade affordance toggled by measured overflow (<code>.board-overflow</code>), never decorative.</td>
+                <td>1440 capture: all five lanes visible, DLQ+feed below</td>
+              </tr>
+              <tr>
+                <td>D — error discipline</td>
+                <td>Dead-row red tint dropped; severity = 2px inset left rule (<code>.tq-row-dead</code>, light+dark). Error text neutral gray everywhere (table, DLQ, board cards, feed tails). Expandable cells gained <code>tabindex/role=button/aria-expanded</code> + Enter/Space handling.</td>
+                <td>11-dead capture: calm incident list, no red wall</td>
+              </tr>
+              <tr>
+                <td>E — mobile/tablet</td>
+                <td>Search input <code>basis-full</code> (own row on phones), selects+apply compact row (apply right-aligned); nowband uniform <code>auto-fit minmax(88px,1fr)</code> grid (3+2 at 375px, one row ≥640). Matrix 375/768/1024/1440 captured.</td>
+                <td>375 captures: nothing crushed, labels uncrushed</td>
+              </tr>
+              <tr>
+                <td>F — detail page</td>
+                <td>Short-ID headline + <code>display.CopyButton</code> (id, payload lede, raw payload, report path) + quiet full-ULID subtitle + badge row; <code>display.RelativeTime</code> on created/updated/completed rows (nonce, AutoRefresh); dead <code>factLines</code> deleted.</td>
+                <td>detail capture: hierarchy reads at a glance; adoption guard green</td>
+              </tr>
+              <tr>
+                <td>G — filter auto-submit</td>
+                <td>GET form submit intercepted → fetch → swap <code>frag-filters/stats/table/dlq</code> → <code>pushState</code> → SSE stream re-scoped from the pushed URL; 300ms debounce on search, Enter immediate, seq-counter drops stale responses, popstate re-applies, apply button busy cue. Empty params stripped from the pushed URL.</td>
+                <td>chromedp: type <code>overview</code> → URL <code>/?q=overview</code>, table narrowed, no reload (JS marker survived), history.back() restores</td>
+              </tr>
+              <tr>
+                <td>H — polish</td>
+                <td>Filtered-empty state gained "clear filters" action; forced-colors focus restore + structural borders; <code>prefers-contrast: more</code> hairline bump; reduced-motion fallback on the fold chevron; running-count glow pulses (reduced-motion safe).</td>
+                <td>motion audit: all animation/transition sites carry fallbacks</td>
+              </tr>
+              <tr>
+                <td>I — hygiene</td>
+                <td><code>factLines</code> deleted; two templ QF1003 if-chains → tagged switch; <code>go mod tidy -diff</code> clean (webui + root); <code>TestFiltersNarrowTable</code> hardened (<code>&gt;sh&lt;</code> — the new empty-state button's <code>shadow-xs</code> class tripped the bare substring).</td>
+                <td>module + root gates green</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>Deliberate skips / rulings:</strong> htmx stays OUT — the fetch+pushState path
+            above covers auto-submit with zero new dependencies (plan §G1 ruling, closes the
+            owner question). <code>sse.WithBufferSize</code> type-arg inference is NOT possible
+            (T only in return position) — the explicit arg stays. Icon accents on the apply
+            button skipped as decorative-only. Note: CSP <code>form-action 'none'</code> means the
+            no-JS filter fallback was already dead before this work; auto-submit makes the JS
+            path the only path (pre-existing, documented here).
+          </p>
+        </section>
+
         <section id="appendix">
-          <h2><span class="num">05</span>Appendix</h2>
+          <h2><span class="num">06</span>Appendix</h2>
           <p>
             Adoption ledger as audited. "Adopted" = actively used in
             <code>internal/webui</code>; statuses verified by reading the templates, not by

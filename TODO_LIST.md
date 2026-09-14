@@ -177,3 +177,13 @@ not here.
 - [ ] `cmd/tq/tq.exe` committed binary + no `.gitignore` entry + cmd/tq missing from the ci.yml per-module lint loop (00-37/01-46/01-54 report tails; `rg --files cmd/tq` shows the exe at HEAD)
 - [ ] Status-index gate hardening: derive the bloat threshold instead of the bare 100, self-test fixture for the live-row counter, archived-row backtick convention pin, digest-row format proposal — the mechanical items are executable; the WARNING-vs-FAIL flip stays with the owner — BLOCKED: owner ruling on WARNING-vs-FAIL (02-24 report §e/§g; docs/status/2026-09-14_02-24_task-000001a09d4b7836c71a8e0e25e4b3c1c018.md)
 - [ ] Codify the turn-1 ritual in AGENTS.md: grep prior same-ID reports AND read CONTRIBUTING.md at turn 1 — both misses are documented Nth-recurrence in every closeout since 09-12 and neither is written down as a rule (02-17/00-52/00-37 §e tails)
+
+## Webui overhaul leftovers (2026-09-14 stunning-overhaul execution; docs/research/2026-09-14_templ-components-deep-dive.html §05)
+
+- [ ] Adopt `navigation.Pagination` for the numbered task pager (replaces the hand-rolled prev/next row in fragments.templ taskPager; library ships numbered pages + ellipsis)
+- [ ] Adopt `display.ListNote` for the "+N more projects" chip in the filter bar project chips row
+- [ ] `errorpage.WriteError` adoption: styled 500s consistent with the chrome (currently bare http.Error paths in handlers.go)
+- [ ] File upstream templ-components chart contribution: MaxTicks/MaxYTicks prop (lineChartMaxTicks is a private const; Height 200 was the tq-side stopgap — verify-before-filing against latest master first)
+- [ ] templ-components bump when the unreleased a11y pack ships (a11y_new_test.go present at v1.16.0 but the forced-colors/prefers-contrast sweep landed after; re-run the version-pinned audit on bump)
+- [ ] Sort state as removable filter chip + sort-header link visual verification against theme duality (G2 polish, deferred)
+- [ ] CSP `form-action 'none'` kills the no-JS filter fallback — allow form-action 'self' or accept JS-only filters — BLOCKED: owner ruling on the security posture (surfaced during G1)
