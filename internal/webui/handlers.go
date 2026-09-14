@@ -262,16 +262,16 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	// id still carries reconnect-lag signal: head − id is how far the
 	// browser's last view trailed the journal when it dropped.
 	if lastID := sse.LastEventIDFromRequest(r); !lastID.IsZero() {
-		if n, err := strconv.ParseInt(lastID.Get(), 10, 64); err == nil && n >= 0 {
-			if head, err := s.store.HeadSeq(r.Context()); err == nil && head > n {
+		if idNum, err := strconv.ParseInt(lastID.Get(), 10, 64); err == nil && idNum >= 0 {
+			if head, err := s.store.HeadSeq(r.Context()); err == nil && head > idNum {
 				slog.Info(
 					"webui: client reconnect",
 					"last-event-id",
-					n,
+					idNum,
 					"head",
 					head,
 					"reconnect lag",
-					head-n,
+					head-idNum,
 				)
 			}
 		}

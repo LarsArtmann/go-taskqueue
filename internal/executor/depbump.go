@@ -130,7 +130,10 @@ func (e *DepBumpExecutor) repoDir(repo string) (string, error) {
 	}
 
 	if e.ProjectsDir == "" {
-		return "", fmt.Errorf("depbump: relative repo %q needs a projects dir on the executor", repo)
+		return "", fmt.Errorf(
+			"depbump: relative repo %q needs a projects dir on the executor",
+			repo,
+		)
 	}
 
 	dir := filepath.Join(e.ProjectsDir, repo)
@@ -171,7 +174,8 @@ func (e *DepBumpExecutor) Execute(ctx context.Context, t task.Task) error {
 	if payload.V > currentDepBumpPayloadV {
 		return Permanent(fmt.Errorf(
 			"depbump: payload contract version %d is newer than this binary understands (%d); upgrade tq",
-			payload.V, currentDepBumpPayloadV,
+			payload.V,
+			currentDepBumpPayloadV,
 		))
 	}
 
@@ -185,12 +189,16 @@ func (e *DepBumpExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	for _, bump := range payload.Bumps {
 		if bump.Module == "" || !IsStableSemver(bump.Version) {
-			return Permanent(fmt.Errorf("%w: %s@%s", ErrDepBumpBadVersion, bump.Module, bump.Version))
+			return Permanent(
+				fmt.Errorf("%w: %s@%s", ErrDepBumpBadVersion, bump.Module, bump.Version),
+			)
 		}
 	}
 
 	if payload.Release != nil && !IsStableSemver(payload.Release.Version) {
-		return Permanent(fmt.Errorf("%w: release %s", ErrDepBumpBadVersion, payload.Release.Version))
+		return Permanent(
+			fmt.Errorf("%w: release %s", ErrDepBumpBadVersion, payload.Release.Version),
+		)
 	}
 
 	repoDir, err := e.repoDir(payload.Repo)
@@ -212,7 +220,11 @@ func (e *DepBumpExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	if err := e.verify(ctx, repoDir, cmdTimeout, "baseline"); err != nil {
-		return fmt.Errorf("depbump: baseline failed in %s (pre-existing breakage, repo untouched): %w", payload.Repo, err)
+		return fmt.Errorf(
+			"depbump: baseline failed in %s (pre-existing breakage, repo untouched): %w",
+			payload.Repo,
+			err,
+		)
 	}
 
 	if len(payload.Bumps) > 0 {
@@ -223,19 +235,31 @@ func (e *DepBumpExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	if err := e.verify(ctx, repoDir, cmdTimeout, "verify"); err != nil {
 		_ = e.rollback(ctx, repoDir)
-		return fmt.Errorf("depbump: verify failed in %s (touched paths rolled back): %w", payload.Repo, err)
+		return fmt.Errorf(
+			"depbump: verify failed in %s (touched paths rolled back): %w",
+			payload.Repo,
+			err,
+		)
 	}
 
 	if len(payload.Bumps) > 0 {
 		if err := e.commit(ctx, repoDir, payload.Bumps); err != nil {
 			_ = e.rollback(ctx, repoDir)
-			return fmt.Errorf("depbump: commit failed in %s (touched paths rolled back): %w", payload.Repo, err)
+			return fmt.Errorf(
+				"depbump: commit failed in %s (touched paths rolled back): %w",
+				payload.Repo,
+				err,
+			)
 		}
 	}
 
 	if payload.Release != nil {
 		if err := e.release(ctx, repoDir, payload.Release); err != nil {
-			return fmt.Errorf("depbump: release failed in %s (bumps, if any, stay committed): %w", payload.Repo, err)
+			return fmt.Errorf(
+				"depbump: release failed in %s (bumps, if any, stay committed): %w",
+				payload.Repo,
+				err,
+			)
 		}
 	}
 
@@ -244,8 +268,16 @@ func (e *DepBumpExecutor) Execute(ctx context.Context, t task.Task) error {
 
 // verify runs build + test as the mechanical gate. label names the phase
 // for error context (baseline vs verify).
-func (e *DepBumpExecutor) verify(ctx context.Context, repoDir string, timeout time.Duration, label string) error {
-	buildOut := filepath.Join(os.TempDir(), fmt.Sprintf("tq-depbump-build-%d", time.Now().UnixNano()))
+func (e *DepBumpExecutor) verify(
+	ctx context.Context,
+	repoDir string,
+	timeout time.Duration,
+	label string,
+) error {
+	buildOut := filepath.Join(
+		os.TempDir(),
+		fmt.Sprintf("tq-depbump-build-%d", time.Now().UnixNano()),
+	)
 
 	if out, err := e.runGo(ctx, repoDir, timeout, "build", "-o", buildOut, "./..."); err != nil {
 		return fmt.Errorf("%s build: %w: %s", label, err, tailOutput(out))
@@ -292,7 +324,11 @@ func (e *DepBumpExecutor) applyBumps(
 	if _, err := os.Stat(filepath.Join(repoDir, "vendor")); err == nil {
 		if out, err := e.runGo(ctx, repoDir, timeout, "mod", "vendor"); err != nil {
 			_ = e.rollback(ctx, repoDir)
-			return fmt.Errorf("depbump: go mod vendor failed (rolled back): %w: %s", err, tailOutput(out))
+			return fmt.Errorf(
+				"depbump: go mod vendor failed (rolled back): %w: %s",
+				err,
+				tailOutput(out),
+			)
 		}
 	}
 
@@ -308,13 +344,22 @@ func (e *DepBumpExecutor) applyBumps(
 		if err != nil {
 			_ = e.rollback(ctx, repoDir)
 
-			return fmt.Errorf("depbump: pin check failed for %s (rolled back): %w", bump.Module, err)
+			return fmt.Errorf(
+				"depbump: pin check failed for %s (rolled back): %w",
+				bump.Module,
+				err,
+			)
 		}
 
 		if pinned != bump.Version {
 			_ = e.rollback(ctx, repoDir)
 
-			return fmt.Errorf("depbump: %s pinned at %q, want %q (rolled back)", bump.Module, pinned, bump.Version)
+			return fmt.Errorf(
+				"depbump: %s pinned at %q, want %q (rolled back)",
+				bump.Module,
+				pinned,
+				bump.Version,
+			)
 		}
 	}
 
@@ -433,7 +478,8 @@ func (e *DepBumpExecutor) release(ctx context.Context, repoDir string, rel *DepB
 		tagName = subdir + "/" + rel.Version
 	}
 
-	if out, err := e.runGit(ctx, "-C", root, "rev-parse", "-q", "--verify", "refs/tags/"+tagName); err == nil && out != "" {
+	if out, err := e.runGit(ctx, "-C", root, "rev-parse", "-q", "--verify", "refs/tags/"+tagName); err == nil &&
+		out != "" {
 		return nil //nolint:nilerr // tag exists: idempotent success
 	}
 
@@ -583,7 +629,11 @@ func (e *DepBumpExecutor) runGit(ctx context.Context, args ...string) (string, e
 	return e.run(ctx, e.gitBin(), dir, args...)
 }
 
-func (e *DepBumpExecutor) run(ctx context.Context, bin, dir string, args ...string) (string, error) {
+func (e *DepBumpExecutor) run(
+	ctx context.Context,
+	bin, dir string,
+	args ...string,
+) (string, error) {
 	cmd := exec.CommandContext(ctx, bin, args...)
 	if dir != "" {
 		cmd.Dir = dir
