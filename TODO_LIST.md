@@ -16,7 +16,7 @@ not here.
 
 ## High Impact
 
-- [ ] Journal-drift audit: `tq audit --journal` rebuilds task state by replaying the fact journal and diffs it against the `tasks` table projection (status, attempts, priority, dedup key) — read-only report, no repair mode yet; hermetic fixture tests only (seeded facts + seeded drift → detector output; NEVER the production journal in tests); ruling 2026-09-14: stays an operator command, a ci-local smoke over a seeded fixture is advisory when it lands — never a hard gate on task state (O5 precedent) — source: docs/status/archived/2026-09-13_08-01_cqrs-storage-verdict-interactive-session.md §g2+§g3, §f4/f5/f8
+- [x] Journal-drift audit: `tq audit --journal` rebuilds task state by replaying the fact journal and diffs it against the `tasks` table projection (status, attempts, priority, dedup key) — read-only report, no repair mode yet; hermetic fixture tests only (seeded facts + seeded drift → detector output; NEVER the production journal in tests); ruling 2026-09-14: stays an operator command, a ci-local smoke over a seeded fixture is advisory when it lands — never a hard gate on task state (O5 precedent) — source: docs/status/archived/2026-09-13_08-01_cqrs-storage-verdict-interactive-session.md §g2+§g3, §f4/f5/f8
 
 ## Fleet / deploy
 
