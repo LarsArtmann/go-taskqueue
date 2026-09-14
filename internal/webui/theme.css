@@ -353,12 +353,22 @@ kbd {
 }
 
 @media (max-width: 640px) {
+  /* The band reads as one instrument row even on phones: a uniform grid
+     (min 64px per segment = five across at 320px) instead of flex-wrap's
+     ragged 4+1 leftovers. */
   .tq-nowband-inner {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
     gap: 0.5rem 0;
+    width: 100%;
   }
 
   .tq-seg {
     padding-inline: 0.75rem;
+  }
+
+  .tq-seg:first-child {
+    padding-inline-start: 0;
   }
 
   .tq-nowband-meta {
