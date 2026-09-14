@@ -414,7 +414,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 
 		verdictPath = f.Name()
 
-		defer os.Remove(verdictPath)
+		defer func() { _ = os.Remove(verdictPath) }()
 	}
 	// Closeout resume (13:29 report f15): a prior attempt finished the WORK
 	// turn but was rate-limited during the close-out; re-running the work

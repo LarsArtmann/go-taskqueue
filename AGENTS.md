@@ -739,14 +739,19 @@ single-writer UPDATE..RETURNING, MySQL 10.6+, lease-expiry reclaim,
 `RenewLease`, `ClaimMetrics` — the exact pattern of our backends, three
 dialects, unassembled into a task store (timers are deleted on fire; no
 lifecycle/retries/DLQ/priorities/DAG/owners/journal-in-tx). The assembly is
-now PROPOSED upstream: go-cqrs-lite `docs/planning/2026-09-13_durable-work-
+now IN PROGRESS upstream: go-cqrs-lite `docs/planning/2026-09-13_durable-work-
 queue-module.md` + 🔥 TODO_LIST row (new `queue/` sibling module; spec source
 of truth = THIS repo's `internal/queue` Store contract; tq named first
-consumer, PapDashboard second). Until that module ships with parity, the
-stores stay hand-rolled: replacing them today would relocate all the claim
-SQL on top of a generic event store (net MORE code) plus a live-journal
-migration. When the upstream queue module reaches parity, re-open via ADR
-(conformance-suite parity is the bar, not feature-list parity).
+consumer, PapDashboard second). P0 SHIPPED 2026-09-13/14: the claim SQL
+core is extracted upstream as `claiming/` (Spec-parameterized statements,
+byte-identical to the timer store's, which now delegates; the one
+speculative knob `Spec.And` was trimmed so the module is purely an
+extraction) — tq itself consumes nothing yet. Until that module ships
+with parity, the stores stay hand-rolled: replacing them today would
+relocate all the claim SQL on top of a generic event store (net MORE
+code) plus a live-journal migration. When the upstream queue module
+reaches parity, re-open via ADR (conformance-suite parity is the bar, not
+feature-list parity).
 
 **PapDashboard bridge**: `tq worker --alert-url http://<pap>:8080
 --alert-api-key <KEY>` (env `TQ_PAP_URL`/`TQ_PAP_API_KEY`). Dead letters

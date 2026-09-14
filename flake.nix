@@ -37,7 +37,7 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.3.0";
-        vendorHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        vendorHash = "sha256-NNuycVSnxoEXi3h/AgaAhR4thORd/ddRM2rUp7K3P/g=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         # ADR-0017: cmd/tq is its own replace-free module (proxy
         # installability). modRoot + subPackages route the hermetic build
@@ -74,7 +74,8 @@
           # modules gained after the last tag bump) — the plain
           # download only fetches the committed proxy graph.
           modBuildPhase = ''
-            cd $modRoot
+            modRootDir="$(dirname "$(find "$PWD" -maxdepth 4 -path '*/cmd/tq/go.mod' | head -1)")"
+            cd "$modRootDir"
             export GOCACHE=$TMPDIR/go-cache GOPATH=$TMPDIR/go HOME=$TMPDIR
             printf '\nreplace github.com/larsartmann/go-taskqueue => ../..\n' >> go.mod
             sed -n 's|^replace \(github.com/larsartmann/go-taskqueue/internal[^ ]*\) => ./\(.*\)$|replace \1 => ../../\2|p' ../../go.mod >> go.mod
