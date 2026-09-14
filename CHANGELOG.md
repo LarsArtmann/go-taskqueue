@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Journal-drift audit (`tq audit --journal`)**: rebuilds task state by
+  replaying the fact journal and diffs it against the `tasks` table
+  projection (status, attempts, priority, dedup key) — read-only operator
+  command, no repair mode, never a hard gate on task state (2026-09-14 O5
+  ruling). An advisory ci-local smoke (`scripts/smoke/journal-drift.sh`)
+  runs it over a hermetic seeded fixture: a truthful lifecycle projection
+  must report no drift, and a corrupted tasks table must surface all four
+  diffed fields.
 - **Batched harvest (`--batch-items N`, default off)**: one agent task can
   now carry a run of up to N adjacent open items from the same TODO_LIST.md
   section — ONE session works them in order (fewer cold sessions, more done

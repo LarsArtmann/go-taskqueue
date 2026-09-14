@@ -82,6 +82,7 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/status-loop.sh  # stub agent; sweeper mint → report → TODO append → re-arm
 ./scripts/smoke/dogfood-once.sh  # stub agent; harvest → work (footer commit) → review approve; TQ_DOGFOOD=1 runs the real-agent proof (spends money)
 ./scripts/smoke/bootstrap-install.sh  # --install renders unit + pool.conf against a fake $HOME
+./scripts/smoke/journal-drift.sh # tq audit --journal over a seeded scratch fixture (ADVISORY, O5)
 ./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
 ./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)
 ./scripts/check-dead-exports.sh # advisory dead-export audit: zero-importers detector, substring matching (NOT rg -w)
