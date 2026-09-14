@@ -270,14 +270,38 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 
 		return err
 	}
-	// Success: record structured outcome detail for `tq show` (best
-	// effort — a missing session id or self-report is not an error).
+	// Success: record structured outcome detail for `tq show`. Derivation
+	// first (git + crush session data — the queue's own view of what the
+	// run did); the legacy TQ_RESULT self-report only fills gaps for
+	// in-flight tasks minted before the derivation contract. Best effort —
+	// a missing session id or empty derivation is not an error.
+	sessionID := ExtractSessionID(output)
+
 	result := AgentResult{
-		SessionID:  ExtractSessionID(output),
+		SessionID:  sessionID,
 		VerifyTail: tail,
 	}
+
+	derived := deriveOutcome(ctx, repoDir, sessionID, t.ID)
+	result.Commits = derived.Commits
+	result.FilesChanged = derived.Files
+	result.SessionCostUSD = derived.SessionCostUSD
+	result.SessionPromptTokens = derived.SessionPromptTokens
+	result.SessionCompletionTokens = derived.SessionCompletionTokens
+	result.SessionMessageCount = derived.SessionMessageCount
+
+	if n := len(derived.Commits); n > 0 {
+		result.CommitSHA = derived.Commits[n-1].SHA
+	}
+
 	if files, sha, ok := ExtractResultPayload(output); ok {
-		result.FilesChanged, result.CommitSHA = files, sha
+		if len(result.FilesChanged) == 0 {
+			result.FilesChanged = files
+		}
+
+		if result.CommitSHA == "" {
+			result.CommitSHA = sha
+		}
 	}
 
 	result.LogPath = writeOutputSidecar(t.ID, output, tail)
