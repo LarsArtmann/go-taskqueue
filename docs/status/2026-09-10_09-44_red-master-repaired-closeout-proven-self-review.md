@@ -1,6 +1,6 @@
 # Session status — red master repaired, closeout loop proven, brutal self-review
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 - **Written**: 2026-09-10 09:44 CEST (session wall clock 07:33–09:44, of which ~1h50m
   was idle gap between owner messages — see d)2)

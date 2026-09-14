@@ -1,6 +1,6 @@
 # Status Report — httputil Assessment + Permissions-Policy Port
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 **Session:** 2026-09-10, ~02:10–03:05 CEST · **Repo:** go-taskqueue @ master
 **Trigger:** "Could we benefit from /home/lars/projects/httputil/?"

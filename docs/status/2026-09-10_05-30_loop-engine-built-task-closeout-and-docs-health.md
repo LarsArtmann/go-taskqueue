@@ -1,6 +1,6 @@
 # Loop Engine Built: Task Close-out + Docs-Health Status + Workforce Live
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 _Session 2026-09-10 ~02:00–05:30 (continuation: dogfood directive → "MY GOAL
 is: 3-4-5 loops"). Report 05:30. Brutal-honesty mode; scope = this run._

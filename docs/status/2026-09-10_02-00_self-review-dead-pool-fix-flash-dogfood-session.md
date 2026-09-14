@@ -1,6 +1,6 @@
 # Self-Review + Full Status: Tag Restore, Dead-Pool Fix, Flash Dogfood Proof
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 _Session 2026-09-10 00:15–02:00 (two turns: the `git sync` tag clobber, then
 "use go-taskqueue on itself with GLM-5.3-Flash agents"). Report written

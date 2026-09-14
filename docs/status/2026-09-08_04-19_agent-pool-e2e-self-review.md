@@ -1,6 +1,6 @@
 # Status Report — Agent-Pool Session (Sep 6) & Self-Review
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 **Date:** 2026-09-08 04:19 CEST
 **Scope:** This session's run only — the "self-managing pool of crush/AI agents" question and its execution. Not a repo-wide audit.

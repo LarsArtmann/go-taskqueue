@@ -1,6 +1,6 @@
 # Review-ID-Stamp Fix + Crush Agent Optimization — Session Report
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 **Session:** 2026-09-12 ~01:15–02:12 (interactive Crush session, go-taskqueue)
 **Scope:** two user asks — (1) why task `000001a092aa`'s review verdict was

@@ -1,6 +1,6 @@
 # Session Report — README overhaul from verified facts, TQ_DB production incident, live pool PATH evidence
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 - **Written**: 2026-09-10 05:29 CEST
 - **Session window**: 2026-09-10 ~04:55–05:30 CEST, one session, docs-only deliverable plus one self-inflicted incident and one live-infrastructure discovery.

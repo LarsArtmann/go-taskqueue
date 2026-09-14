@@ -1,6 +1,6 @@
 # Round-12 execution window: CI-red triage, T14 fixture release proof, T15–T17 hardening
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 **Date:** 2026-09-12 01:09 CEST · **Session start:** 23:15 the previous evening
 **Scope:** Continuation of the Round-11 plan

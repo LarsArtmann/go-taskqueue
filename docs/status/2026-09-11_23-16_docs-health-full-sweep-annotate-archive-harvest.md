@@ -1,6 +1,6 @@
 # Status Report — 2026-09-11 23:16 CEST — Docs-Health Full Sweep: ALL 132 2026-0* Files, Annotate+Archive, Harvest, Living-Doc Sync
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 **Scope**: user-directed docs-health AUDIT ("view ALL `**/2026-0*` files, execute the skill
 PROPERLY"): survey every timestamped file, resolve/annotate/archive fully-done reports,

@@ -1,6 +1,6 @@
 # Round 10 Self-Review + Full Status — The Morning After the Whole-List Sprint
 
-> **ANNOTATED 2026-09-14 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
+> **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
 **Date:** 2026-09-09 06:01 CEST (session ran 03:20–05:45; report at 06:01)
 **Scope:** hostile review of THIS session's own run (whole-TODO-list
