@@ -256,3 +256,4 @@ strikethrough markers over the remaining live reports).
 Earlier round-1 sessions (2026-09-05/06) live in `docs/planning/` alongside
 their plans; the round-2 report series above is where the report convention
 stabilized.
+| 2026-09-15 | `2026-09-15_01-18_task-000001a0a2316011800b7f53710213ba08ce.md` | re-dispatch of the SAME task ID (lint-annotations sub-module extension): verification-only session — prior work (bd9f50c/fbec002, 01:15 report) confirmed real; fresh live run reproduced 0 findings over all 16 module runs at HEAD~1, tree clean, no code changed; §d sequencing nit (TODO state should have been checked first); §f carries the adjacent backlog (CI-run observation, jq guard, self-test, pre-filter, for-each-module.sh) and refuses 35 filler rows; §g 3 (daemon-fold sanction carried, re-dispatch policy, CI runtime budget) |
