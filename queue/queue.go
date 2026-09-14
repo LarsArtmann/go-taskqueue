@@ -16,6 +16,7 @@ type (
 	Queue                = internalqueue.Queue
 	Band                 = internalqueue.Band
 	PriorityScore        = internalqueue.PriorityScore
+	EnqueueDetail        = internalqueue.EnqueueDetail
 	RequeueEvidence      = internalqueue.RequeueEvidence
 	ReprioritizeEvidence = internalqueue.ReprioritizeEvidence
 	UnblockChange        = internalqueue.UnblockChange

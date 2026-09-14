@@ -25,6 +25,7 @@ type (
 	StatusExecutor     = internalexecutor.StatusExecutor
 	DLQFixExecutor     = internalexecutor.DLQFixExecutor
 	PrioritizeExecutor = internalexecutor.PrioritizeExecutor
+	DepBumpExecutor    = internalexecutor.DepBumpExecutor
 )
 
 // Payloads, results, and verdicts.
@@ -45,6 +46,9 @@ type (
 	PrioritizeItem    = internalexecutor.PrioritizeItem
 	PrioritizeResult  = internalexecutor.PrioritizeResult
 	PrioritizeVerdict = internalexecutor.PrioritizeVerdict
+	DepBump           = internalexecutor.DepBump
+	DepBumpRelease    = internalexecutor.DepBumpRelease
+	DepBumpPayload    = internalexecutor.DepBumpPayload
 	FailureEvidence   = internalexecutor.FailureEvidence
 )
 
@@ -76,6 +80,7 @@ const (
 	TaskTypeStatus     = internalexecutor.TaskTypeStatus
 	TaskTypeDLQFix     = internalexecutor.TaskTypeDLQFix
 	TaskTypePrioritize = internalexecutor.TaskTypePrioritize
+	TaskTypeDepBump    = internalexecutor.TaskTypeDepBump
 )
 
 // Defaults and knobs.
@@ -105,6 +110,9 @@ var (
 	ErrPrioritizeDuplicateVerdict = internalexecutor.ErrPrioritizeDuplicateVerdict
 	ErrPrioritizeMissingVerdict   = internalexecutor.ErrPrioritizeMissingVerdict
 	ErrPrioritizeScoreRange       = internalexecutor.ErrPrioritizeScoreRange
+	ErrDepBumpEmptyPayload        = internalexecutor.ErrDepBumpEmptyPayload
+	ErrDepBumpNoWork              = internalexecutor.ErrDepBumpNoWork
+	ErrDepBumpBadVersion          = internalexecutor.ErrDepBumpBadVersion
 )
 
 // Functions.
