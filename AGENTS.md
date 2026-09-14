@@ -27,13 +27,17 @@ and the `internal/journal/cqrs` go-cqrs-lite adapter module (ADR-0011 +
 ADR-0012 + ADR-0014; import paths unchanged); the root module is the app
 layer. `cmd/tq` is ITS OWN replace-free module (ADR-0017) so
 `go install …/cmd/tq@vX.Y.Z` works — in-repo builds go through the
-generated devmod shim (`scripts/build-tq.sh`, `scripts/test-cmd-tq.sh`); `./...` never descends into nested modules — per-module gates
-(disk-derived, same as CI):
+generated devmod shim (`scripts/build-tq.sh` for binaries,
+`scripts/test-cmd-tq.sh` for the CLI gate; plain `go build` inside cmd/tq
+fails with "ambiguous import" until the next root tag containing the split
+lands on the proxy). `./...` never descends into nested modules —
+per-module gates (disk-derived, same as CI):
 
 ```bash
 for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
   ( cd "$m" && export GOEXPERIMENT=jsonv2 && GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 ) || exit 1
 done
+./scripts/test-cmd-tq.sh   # cmd/tq module (ADR-0017): devmod shim gate; CMD_TQ_OS=windows for cross-compile
 ```
 
 **Public facades (ADR-0016):** `task/`, `journal/`, `queue/`,

@@ -4,6 +4,7 @@
 # dashboard page, /api/stats and the SSE stream all reflect live state.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+REPO_ROOT="$(pwd)"
 
 TMP="$(mktemp -d)"
 trap 'kill "${WORKER_PID:-0}" "${SERVE_PID:-0}" "${AUTH_SERVE_PID:-0}" "${WRITES_SERVE_PID:-0}" 2>/dev/null || true; rm -rf "$TMP"' EXIT

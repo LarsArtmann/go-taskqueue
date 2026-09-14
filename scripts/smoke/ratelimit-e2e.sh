@@ -6,6 +6,7 @@
 # command would otherwise touch the PRODUCTION dogfood journal).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+REPO_ROOT="$(pwd)"
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT

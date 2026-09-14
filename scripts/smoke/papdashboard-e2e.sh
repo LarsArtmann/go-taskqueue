@@ -8,6 +8,7 @@
 # accepted ingest POST; then optionally check the dashboard UI too).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+REPO_ROOT="$(pwd)"
 
 PAP_URL="${PAP_URL:-}"
 REAL_MODE=""
