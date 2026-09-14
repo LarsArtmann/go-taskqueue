@@ -293,7 +293,7 @@ func TestFiltersNarrowTable(t *testing.T) {
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?status=completed", nil))
 
 	table = tableFragment(rec.Body.String())
-	if strings.Contains(table, ">pending<") || strings.Contains(table, "sh") {
+	if strings.Contains(table, ">pending<") || strings.Contains(table, ">sh<") {
 		t.Error("status filter did not narrow the table")
 	}
 }
