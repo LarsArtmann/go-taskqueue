@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-09-14 (docs-health sweep)** — 75-commit review complete; re-dispatch root cause tracked; red master + push superseded (master green). Every forward-looking item is resolved or routed (verified against HEAD); open residue lives in TODO_LIST.md / CHANGELOG.md. Re-verify before citing any claim as current.
 
-
 **Session:** 2026-09-11, interactive review session (~13:30–14:01)
 **Scope:** review of the last 75 commits (`521c2a1..1c8f078`, 09-10 08:41 → 09-11 13:38) and this session's own work. No unrelated research. Everything below is either verified this session or explicitly marked unverified.
 

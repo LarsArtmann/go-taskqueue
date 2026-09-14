@@ -44,7 +44,7 @@ against a hot file **while a concurrent agent was editing it**.
    - Full root gate `export GOEXPERIMENT=jsonv2; go build ./... && go vet ./... &&
      go test ./... -race`: ALL GREEN (all packages ok).
    - Working tree clean; no changes of mine remained → no commit; `TQ_RESULT`
-   emitted with `commit_sha: b198572…`, `files_changed: []`.
+     emitted with `commit_sha: b198572…`, `files_changed: []`.
 5. **Damage assessment after the checkout incident** (see d1): HEAD at that
    moment already contained `b198572`'s fix; both `git checkout --` calls
    restored HEAD, and both of my `sed -i` probes had landed as no-ops (one on
@@ -132,38 +132,38 @@ against a hot file **while a concurrent agent was editing it**.
 
 Impact: H/M/L · Effort: S <30min / M 30min-2hr / L >2hr · Cat: Bug/Feature/Quality/Cleanup/Docs
 
-| #  | Task                                                                                                                                                                        | Imp | Eff | Cat    |
-| -- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- | ------ |
-| 1  | Scripted done-guard: `scripts/queue/done-guard.sh <Task-Queue-ID>` → greps TODO_LIST DONE notes, `git log -S <ID>`, docs/status index; exit non-zero if claimed/done         | H   | S   | Quality|
-| 2  | Wire done-guard into the AGENTS.md session-start ritual (one line, before log/status/stash)                                                                                 | H   | S   | Docs   |
-| 3  | Crush hook blocking banned commands (`git checkout`, `git reset`, plain `rm`) at tool-input level                                                                            | H   | S   | Quality|
-| 4  | Dispatcher-side dedup: dispatch loop greps the queue ID against landed commit footers before minting a window                                                               | H   | M   | Quality|
-| 5  | Ruling + doc: canonical under-load protocol for flake triage (CPU-burner proxy vs real concurrent suite `-race`)                                                            | H   | S   | Docs   |
-| 6  | Re-run the ORIGINAL reproduction post-fix once (real concurrent full-suite `-race`), pin the run evidence to row 116                                                        | M   | S   | Quality|
-| 7  | Load-injection harness: `scripts/stress/load-burners.sh N` with trap-safe cleanup (both windows hand-rolled burner loops)                                                   | M   | S   | Quality|
-| 8  | Sweep remaining timing-fragile tests for collectBudget-style hardening (family: 00-10 SSE, 00-19 papdashboard, f24 SSE, consumer row 117 — 4 recurrences)                   | H   | M   | Quality|
-| 9  | Audit `TestSSELiveUpdateAfterEnqueue` (3s budget + 100ms connect sleep, webui_test.go:245) — same starvation family, verify load-safe or rebalance                          | M   | S   | Quality|
-| 10 | CI `-race` contention: evaluate `-p` tuning or package sharding in ci.yml (16 packages, small runners = the flake generator)                                                | M   | M   | Quality|
-| 11 | Opt-in flake probe in ci-local: `FLAKE_PROBE=webui` runs target `-race -count=10` pre-push                                                                                  | M   | M   | Quality|
-| 12 | Nightly budget-sweep stress job (flake-prone tests under artificial load, scheduled — catches load transients before windows burn)                                          | M   | M   | Quality|
-| 13 | Upstream go-sse proposal: tolerant CollectWithTimeout (AllowEmpty option) — crash-survival pins shouldn't fatal on zero events                                              | M   | M   | Feature|
-| 14 | Upstream go-sse: distinguish "zero events before deadline" from mid-stream cutoff in the CollectWithTimeout error message                                                   | L   | S   | Feature|
-| 15 | Upstream go-sse: reusable test server across collects (doRequest spins httptest.NewServer per call; per-call cost showed up in the 250ms rebalance)                          | L   | M   | Feature|
-| 16 | No-op window protocol ruling (7th ask in the index): minimal gates + report shape for DONE-on-arrival windows; my full-root-gate re-verify (~5min) is the cheap baseline     | M   | S   | Docs   |
-| 17 | TQ_RESULT convention: `verified_existing_commit` field so re-dispatch windows cross-reference verification, not just the original sha                                       | L   | S   | Quality|
-| 18 | Consolidate the DONE-on-arrival series (02-38…02-52 + this report) into one decision doc / ADR with the final policy                                                        | M   | S   | Docs   |
-| 19 | Pin gopls env (GOEXPERIMENT=jsonv2) in repo LSP config so agents stop re-triaging the 49 phantom errors every session                                                       | M   | S   | Quality|
-| 20 | One focused pass on the root `go mod tidy` warnings (cbor, ulid, float16, go-cqrs-lite metadata/record/event flagged unused) — stale requires or multi-module false positives | L   | S   | Cleanup|
-| 21 | AGENTS.md concurrency bullet: add the concrete symptom "if your line numbers shift mid-session, STOP and re-assess" (codifies the d1 near-miss)                             | M   | S   | Docs   |
-| 22 | Codify "print the line after every in-place mutation" into the lesson (or make the hook from #3 also require a follow-up read on repo-file writes)                          | M   | S   | Quality|
-| 23 | Record burner-stress baseline numbers (webui 11s → 35s under 6 burners, 4 cores) as the reference point for #5's protocol ruling                                            | L   | S   | Docs   |
-| 24 | templ QF1003 hints in fragments.templ (tagged switch, ×2) — fold into the next templ-touching change, not standalone                                                        | L   | S   | Cleanup|
-| 25 | Post-fix flake watch: one week of CI without a webui SSE transient = confirm row 116's fix holds under the real load; then annotate the row                                 | M   | S   | Quality|
-| 26 | Decide whether probe scripts (sed experiments) get a documented /tmp-only pattern in AGENTS.md (extends the existing "build fixtures under /tmp" rule to file mutations)     | M   | S   | Docs   |
-| 27 | Consider `-count` defaults in CI vs locally for load-sensitive packages (local -count=10 caught nothing because code was already fixed — make the probe target the RIGHT commit) | L | S   | Quality|
-| 28 | Status-index hygiene: this report's row added at creation (doing now) — keep the daemon-fold amendment maneuver documented for the next unindexed report                     | L   | S   | Docs   |
-| 29 | Fold "verify the gate's raw summary, never a filtered tail" into a checklist the done-guard script prints on every run                                                       | M   | S   | Quality|
-| 30 | Ask upstream go-cqrs-lite queue-module proposal status (AGENTS.md says PROPOSED) — out of this session's scope, noted only as a dangling thread I noticed in AGENTS.md        | L   | S   | Docs   |
+| #  | Task                                                                                                                                                                             | Imp | Eff | Cat     |
+| -- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --- | ------- |
+| 1  | Scripted done-guard: `scripts/queue/done-guard.sh <Task-Queue-ID>` → greps TODO_LIST DONE notes, `git log -S <ID>`, docs/status index; exit non-zero if claimed/done             | H   | S   | Quality |
+| 2  | Wire done-guard into the AGENTS.md session-start ritual (one line, before log/status/stash)                                                                                      | H   | S   | Docs    |
+| 3  | Crush hook blocking banned commands (`git checkout`, `git reset`, plain `rm`) at tool-input level                                                                                | H   | S   | Quality |
+| 4  | Dispatcher-side dedup: dispatch loop greps the queue ID against landed commit footers before minting a window                                                                    | H   | M   | Quality |
+| 5  | Ruling + doc: canonical under-load protocol for flake triage (CPU-burner proxy vs real concurrent suite `-race`)                                                                 | H   | S   | Docs    |
+| 6  | Re-run the ORIGINAL reproduction post-fix once (real concurrent full-suite `-race`), pin the run evidence to row 116                                                             | M   | S   | Quality |
+| 7  | Load-injection harness: `scripts/stress/load-burners.sh N` with trap-safe cleanup (both windows hand-rolled burner loops)                                                        | M   | S   | Quality |
+| 8  | Sweep remaining timing-fragile tests for collectBudget-style hardening (family: 00-10 SSE, 00-19 papdashboard, f24 SSE, consumer row 117 — 4 recurrences)                        | H   | M   | Quality |
+| 9  | Audit `TestSSELiveUpdateAfterEnqueue` (3s budget + 100ms connect sleep, webui_test.go:245) — same starvation family, verify load-safe or rebalance                               | M   | S   | Quality |
+| 10 | CI `-race` contention: evaluate `-p` tuning or package sharding in ci.yml (16 packages, small runners = the flake generator)                                                     | M   | M   | Quality |
+| 11 | Opt-in flake probe in ci-local: `FLAKE_PROBE=webui` runs target `-race -count=10` pre-push                                                                                       | M   | M   | Quality |
+| 12 | Nightly budget-sweep stress job (flake-prone tests under artificial load, scheduled — catches load transients before windows burn)                                               | M   | M   | Quality |
+| 13 | Upstream go-sse proposal: tolerant CollectWithTimeout (AllowEmpty option) — crash-survival pins shouldn't fatal on zero events                                                   | M   | M   | Feature |
+| 14 | Upstream go-sse: distinguish "zero events before deadline" from mid-stream cutoff in the CollectWithTimeout error message                                                        | L   | S   | Feature |
+| 15 | Upstream go-sse: reusable test server across collects (doRequest spins httptest.NewServer per call; per-call cost showed up in the 250ms rebalance)                              | L   | M   | Feature |
+| 16 | No-op window protocol ruling (7th ask in the index): minimal gates + report shape for DONE-on-arrival windows; my full-root-gate re-verify (~5min) is the cheap baseline         | M   | S   | Docs    |
+| 17 | TQ_RESULT convention: `verified_existing_commit` field so re-dispatch windows cross-reference verification, not just the original sha                                            | L   | S   | Quality |
+| 18 | Consolidate the DONE-on-arrival series (02-38…02-52 + this report) into one decision doc / ADR with the final policy                                                             | M   | S   | Docs    |
+| 19 | Pin gopls env (GOEXPERIMENT=jsonv2) in repo LSP config so agents stop re-triaging the 49 phantom errors every session                                                            | M   | S   | Quality |
+| 20 | One focused pass on the root `go mod tidy` warnings (cbor, ulid, float16, go-cqrs-lite metadata/record/event flagged unused) — stale requires or multi-module false positives    | L   | S   | Cleanup |
+| 21 | AGENTS.md concurrency bullet: add the concrete symptom "if your line numbers shift mid-session, STOP and re-assess" (codifies the d1 near-miss)                                  | M   | S   | Docs    |
+| 22 | Codify "print the line after every in-place mutation" into the lesson (or make the hook from #3 also require a follow-up read on repo-file writes)                               | M   | S   | Quality |
+| 23 | Record burner-stress baseline numbers (webui 11s → 35s under 6 burners, 4 cores) as the reference point for #5's protocol ruling                                                 | L   | S   | Docs    |
+| 24 | templ QF1003 hints in fragments.templ (tagged switch, ×2) — fold into the next templ-touching change, not standalone                                                             | L   | S   | Cleanup |
+| 25 | Post-fix flake watch: one week of CI without a webui SSE transient = confirm row 116's fix holds under the real load; then annotate the row                                      | M   | S   | Quality |
+| 26 | Decide whether probe scripts (sed experiments) get a documented /tmp-only pattern in AGENTS.md (extends the existing "build fixtures under /tmp" rule to file mutations)         | M   | S   | Docs    |
+| 27 | Consider `-count` defaults in CI vs locally for load-sensitive packages (local -count=10 caught nothing because code was already fixed — make the probe target the RIGHT commit) | L   | S   | Quality |
+| 28 | Status-index hygiene: this report's row added at creation (doing now) — keep the daemon-fold amendment maneuver documented for the next unindexed report                         | L   | S   | Docs    |
+| 29 | Fold "verify the gate's raw summary, never a filtered tail" into a checklist the done-guard script prints on every run                                                           | M   | S   | Quality |
+| 30 | Ask upstream go-cqrs-lite queue-module proposal status (AGENTS.md says PROPOSED) — out of this session's scope, noted only as a dangling thread I noticed in AGENTS.md           | L   | S   | Docs    |
 
 Items 30+ would be padding — 30 grounded items is the honest yield from one
 window. HARVEST: #1-#5 are TODO_LIST-grade (actionable, bounded); #6-#15
@@ -190,7 +190,7 @@ TODO_LIST with effort notes; #16-#18 need owner rulings first (ROADMAP);
 
 ---
 
-*Point-in-time snapshot. Session: single queue item, no code changes, two
+_Point-in-time snapshot. Session: single queue item, no code changes, two
 process incidents (d1-d3), full root gate re-verified green at
 b1985729f1d2d68463cab67dd0270d157b021988. §f feeds docs-health HARVEST on
-your go — waiting for instructions.*
+your go — waiting for instructions._

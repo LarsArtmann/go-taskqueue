@@ -10,10 +10,19 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 features="FEATURES.md"
-[ -f "$features" ] || { echo "MISSING: $features"; exit 1; }
+[ -f "$features" ] || {
+	echo "MISSING: $features"
+	exit 1
+}
 
-command -v gh >/dev/null 2>&1 || { echo "SKIP: gh not on PATH"; exit 0; }
-[ -n "${CI:-}" ] && [ -z "${GITHUB_TOKEN:-}" ] && { echo "SKIP: no gh auth in CI"; exit 0; }
+command -v gh >/dev/null 2>&1 || {
+	echo "SKIP: gh not on PATH"
+	exit 0
+}
+[ -n "${CI:-}" ] && [ -z "${GITHUB_TOKEN:-}" ] && {
+	echo "SKIP: no gh auth in CI"
+	exit 0
+}
 
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo master)"
 

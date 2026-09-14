@@ -12,7 +12,7 @@ require (
 require (
 	github.com/LarsArtmann/go-crush-data v0.4.0 // indirect
 	github.com/larsartmann/go-error-family v0.10.0 // indirect
-	github.com/larsartmann/go-retry v0.5.0 // indirect
+	github.com/larsartmann/go-retry v0.6.0 // indirect
 )
 
 require (

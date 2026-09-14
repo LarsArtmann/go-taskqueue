@@ -82,7 +82,7 @@ Full docs-health AUDIT over the six living docs (TODO_LIST, CHANGELOG, AGENTS, R
 24. Consider a `docs/status/README.md` per-cluster index compression: 27 rows for 9 windows could collapse to 9 cluster rows with member lists.
 25. Owner question follow-ups routed this session (cqrs facade scope; cqrs-lint patch authorization) — answers should land as AGENTS.md rulings, not chat.
 
-*(25 honest items; the remaining slots would be filler.)*
+_(25 honest items; the remaining slots would be filler.)_
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
@@ -92,20 +92,20 @@ Full docs-health AUDIT over the six living docs (TODO_LIST, CHANGELOG, AGENTS, R
 
 ## Verification log (this session)
 
-| Claim | Gate/command | Result |
-| --- | --- | --- |
-| Nix CI green (flip evidence) | `gh run view 34743045962 / 34741576449 --json jobs` | nix: success ×2 |
-| Red master = tags only | `gh run view 34743045962` failed-job list + `--log-failed` | only `test` / release-gates step |
-| v0.3.0 tags cut locally | `git tag \| grep v0.3.0` | 10 tags |
-| Remote lacks them | `gh release list` (v0.1/v0.2 only) + gate log on runner | confirmed |
-| check-facade-parity exists | `ls scripts/check-facade-parity.sh scripts/facadeparity` | ok |
-| gochecknoglobals facade exclusion | grep `.golangci.yml` | present |
-| Status index (post-move) | `check-status-index.sh` | ok (TRAILER WARNING pre-existing) |
-| Doc refs (post-move) | `check-doc-refs.sh` | ok |
-| Features/Roadmap cross-check | `check-features-roadmap.sh` | ok |
-| TODO honesty gate | `check-todo-list.sh` | ok (after 2 rewords) |
-| Ghost archives | `check-ghost-archives.sh` | ok |
-| 27 files tracked in archived/ | `git ls-files docs/status/archived \| grep -c 2026-09-13` | 27 |
-| Landing | daemon commits 750b28f + 0c505b9; TODO_LIST edit awaiting sweep | local master, unpushed |
+| Claim                             | Gate/command                                                    | Result                            |
+| --------------------------------- | --------------------------------------------------------------- | --------------------------------- |
+| Nix CI green (flip evidence)      | `gh run view 34743045962 / 34741576449 --json jobs`             | nix: success ×2                   |
+| Red master = tags only            | `gh run view 34743045962` failed-job list + `--log-failed`      | only `test` / release-gates step  |
+| v0.3.0 tags cut locally           | `git tag \| grep v0.3.0`                                        | 10 tags                           |
+| Remote lacks them                 | `gh release list` (v0.1/v0.2 only) + gate log on runner         | confirmed                         |
+| check-facade-parity exists        | `ls scripts/check-facade-parity.sh scripts/facadeparity`        | ok                                |
+| gochecknoglobals facade exclusion | grep `.golangci.yml`                                            | present                           |
+| Status index (post-move)          | `check-status-index.sh`                                         | ok (TRAILER WARNING pre-existing) |
+| Doc refs (post-move)              | `check-doc-refs.sh`                                             | ok                                |
+| Features/Roadmap cross-check      | `check-features-roadmap.sh`                                     | ok                                |
+| TODO honesty gate                 | `check-todo-list.sh`                                            | ok (after 2 rewords)              |
+| Ghost archives                    | `check-ghost-archives.sh`                                       | ok                                |
+| 27 files tracked in archived/     | `git ls-files docs/status/archived \| grep -c 2026-09-13`       | 27                                |
+| Landing                           | daemon commits 750b28f + 0c505b9; TODO_LIST edit awaiting sweep | local master, unpushed            |
 
-*Point-in-time snapshot — re-verify before treating any claim as current.*
+_Point-in-time snapshot — re-verify before treating any claim as current._

@@ -6,7 +6,7 @@ Date: 2026-09-13 08:21 CEST · Session: continuation of `2026-09-13_08-00_cqrsli
 
 ## Summary
 
-The owner's "Is that all?" challenge exposed the round-1 report's central flaw: I declared the session done while two gates I had *listed* as not-run (`lint-baseline.sh --check`, full `ci-local.sh`) had never been executed. This round closed every runnable gap: both hardening tests added, the FULL ci-local battery run to **ALL CI GATES GREEN**, a live doc-reference gate failure fixed (concurrent window's cross-repo citation), four docs/config rows closed, three §f rows verified as already-true, and the cqrs-lint provenance question answered (it lives in the owner's local go-cqrs-lite repo). Master CI red was diagnosed precisely: none of its three failure causes are this session's. The report is a point-in-time addendum-era snapshot; this file covers the continuation only.
+The owner's "Is that all?" challenge exposed the round-1 report's central flaw: I declared the session done while two gates I had _listed_ as not-run (`lint-baseline.sh --check`, full `ci-local.sh`) had never been executed. This round closed every runnable gap: both hardening tests added, the FULL ci-local battery run to **ALL CI GATES GREEN**, a live doc-reference gate failure fixed (concurrent window's cross-repo citation), four docs/config rows closed, three §f rows verified as already-true, and the cqrs-lint provenance question answered (it lives in the owner's local go-cqrs-lite repo). Master CI red was diagnosed precisely: none of its three failure causes are this session's. The report is a point-in-time addendum-era snapshot; this file covers the continuation only.
 
 ## a) FULLY DONE (this round; the prior round's work is in the 08-00 report)
 
@@ -82,7 +82,7 @@ The owner's "Is that all?" challenge exposed the round-1 report's central flaw: 
 24. Upstream (post-authorization): cqrs-lint could read go.mod `go` directives to avoid A014-style stale claims (version-aware rule gating).
 25. Watch dependabot's first gomod PRs against the 17-module graph (relative replaces + internal requires are a known friction class — release-gates.sh has fixtures).
 
-*(25 grounded items; the rest of the round-1 list is either done, verified-true, or carried above — padding to 50 would be filler.)*
+_(25 grounded items; the rest of the round-1 list is either done, verified-true, or carried above — padding to 50 would be filler.)_
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
@@ -92,16 +92,16 @@ The owner's "Is that all?" challenge exposed the round-1 report's central flaw: 
 
 ## Verification log (this round)
 
-| Claim | Gate/command | Result |
-| --- | --- | --- |
-| Byte-pin + encoding tests green | `go test -race` cqrs module + `go test ./cmd/tq -run TestFactsCQRS` | ok |
-| go.mod health incl. tidy side-effects | `check-go-mods.sh` | exit 0 |
-| Doc-reference gate | `check-doc-refs.sh` | ok (after allowlist fix) |
-| Lint baseline | `lint-baseline.sh --check` | 886 vs 886, within baseline |
-| Full battery | `CI_CHECK=off ./scripts/ci-local.sh` | ALL CI GATES GREEN |
-| cqrs-lint | `cqrs-lint` | No findings. Clean! |
-| Status index | `check-status-index.sh` | ok |
-| Formatting | gofmt on touched files | clean |
-| Landing | local master ae17093 (daemon) | working tree clean; unpushed |
+| Claim                                 | Gate/command                                                        | Result                       |
+| ------------------------------------- | ------------------------------------------------------------------- | ---------------------------- |
+| Byte-pin + encoding tests green       | `go test -race` cqrs module + `go test ./cmd/tq -run TestFactsCQRS` | ok                           |
+| go.mod health incl. tidy side-effects | `check-go-mods.sh`                                                  | exit 0                       |
+| Doc-reference gate                    | `check-doc-refs.sh`                                                 | ok (after allowlist fix)     |
+| Lint baseline                         | `lint-baseline.sh --check`                                          | 886 vs 886, within baseline  |
+| Full battery                          | `CI_CHECK=off ./scripts/ci-local.sh`                                | ALL CI GATES GREEN           |
+| cqrs-lint                             | `cqrs-lint`                                                         | No findings. Clean!          |
+| Status index                          | `check-status-index.sh`                                             | ok                           |
+| Formatting                            | gofmt on touched files                                              | clean                        |
+| Landing                               | local master ae17093 (daemon)                                       | working tree clean; unpushed |
 
-*Point-in-time snapshot — re-verify before treating any claim as current.*
+_Point-in-time snapshot — re-verify before treating any claim as current._

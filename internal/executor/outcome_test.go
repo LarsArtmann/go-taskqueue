@@ -3,7 +3,7 @@ package executor
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"

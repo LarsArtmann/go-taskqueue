@@ -33,7 +33,8 @@
     var ae = document.activeElement;
     if (ae && el.contains(ae)) {
       var tag = (ae.tagName || "").toLowerCase();
-      if (tag === "input" || tag === "select" || tag === "textarea" || ae.isContentEditable) return true;
+      if (tag === "input" || tag === "select" || tag === "textarea" || ae.isContentEditable)
+        return true;
     }
     if (el.querySelector("details[open]")) return true;
     if (el.querySelector('[data-expanded="1"]')) return true;
@@ -106,9 +107,13 @@
     }
     if (st.focus) {
       try {
-        var target = el.querySelector('[data-state-key="' + st.focus + '"], [name="' + st.focus + '"], #' + st.focus);
+        var target = el.querySelector(
+          '[data-state-key="' + st.focus + '"], [name="' + st.focus + '"], #' + st.focus,
+        );
         if (target) target.focus();
-      } catch (e) { /* malformed key: skip focus restore */ }
+      } catch (e) {
+        /* malformed key: skip focus restore */
+      }
     }
   }
 

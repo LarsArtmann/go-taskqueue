@@ -20,7 +20,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/larsartmann/go-error-family v0.10.0 // indirect
-	github.com/larsartmann/go-retry v0.5.0 // indirect
+	github.com/larsartmann/go-retry v0.6.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0 // indirect

@@ -46,21 +46,7 @@ linters:
     - gochecknoinits
     - gochecksumtype
     - gocognit
-    # goconst/mnd/paralleltest: triaged to POLICY-DISABLED 2026-09-14
-    # (slice-triage round 2, same discipline as wrapcheck/varnamelen):
-    # - goconst: remaining ~27 sites are sort-vocabulary tokens pinned by
-    #   allowlist switches + webui tests, payload display labels, and wire
-    #   map keys (papdashboard API contract) — extraction churns hot files
-    #   for zero behavior gain.
-    # - mnd: findings are deliberate domain values — POSIX file modes
-    #   (gosec-triaged by design), buffer sizes, retry/backoff ladders
-    #   pinned by conformance tests; ~90 sites across 12 modules is the
-    #   mass-fix the discipline forbids.
-    # - paralleltest: the suite is intentionally serial — SQLite
-    #   single-writer fixtures (MaxOpenConns(1)), hermetic nix checkPhase,
-    #   shared TQ_DB env; t.Parallel() everywhere would race fixtures.
-    # testpackage (also triaged round 2): zero findings since the
-    # _test.go exclusion rule below — no further action.
+    - goconst
     - gocritic
     - gocyclo
     - godoclint
@@ -85,6 +71,7 @@ linters:
     - makezero
     - mirror
     - misspell
+    - mnd
     - modernize
     - musttag
     - nakedret
@@ -97,6 +84,7 @@ linters:
     - nolintlint
     - nonamedreturns
     - nosprintfhostport
+    - paralleltest
     - perfsprint
     - prealloc
     - predeclared
@@ -139,6 +127,10 @@ linters:
       forbid-spec-pollution: true
     gocognit:
       min-complexity: 25
+    goconst:
+      ignore-tests: true
+      min-len: 4
+      min-occurrences: 5
     gocritic:
       disabled-checks:
         - ifElseChain
@@ -171,6 +163,9 @@ linters:
         - generic
     makezero:
       always: true
+    mnd:
+      ignored-files:
+        - _test\.go
     nestif:
       min-complexity: 6
     revive:
@@ -241,11 +236,6 @@ linters:
   exclusions:
     generated: lax
     rules:
-      # Machine-payload wire structs are snake_case by contract: executor
-      # payloads and journal fact evidence quote their keys verbatim in
-      # agent prompts (TQ_RESULT lines) and persist them in journal facts,
-      # so they must never drift to camelCase. Core domain types (task,
-      # journal) stay camelCase. Scope: the payload-bearing files only.
       - path: internal/executor/[a-z_]+\.go
         linters:
           - tagliatelle
@@ -255,10 +245,6 @@ linters:
       - path: internal/harvest/reprioritize\.go
         linters:
           - tagliatelle
-      # Facade alias files (ADR-0016): every re-export is a package-level
-      # var/const/type BY DESIGN — the facade pattern IS the global
-      # re-export list. Pinned to the seven alias files exactly; a new
-      # non-alias file in a facade dir stays linted.
       - path: ^(task/task|journal/journal|queue/queue|queue/sqlite/sqlite|queue/postgres/postgres|executor/executor|worker/worker)\.go$
         linters:
           - gochecknoglobals

@@ -13,20 +13,20 @@ close-out. Window ~07:2x–08:01 CEST, 2026-09-13.
 1. **Core challenge answered and the verdict RECORDED.** go-cqrs-lite's
    persistence surface does not replace the queue stores: `storage/` is a
    per-stream append event store (`Save(aggregate, events, expectedVersion)`
-   + `Load`, snapshots, projection checkpoints — README first-hand);
-   `scheduling/` is fire-once deadline timers ("cancel order after 30
-   minutes" — README first-hand), not a worker pool; `example/taskmanager`
-   is a demo app (decider+handlers+HTTP+SSE), not a library — exactly
-   ADR-0001's recorded rejection. None provide lease-based `ClaimDue` with
-   expired-lease reclaim + DAG `NOT EXISTS` gating + project exclusivity +
-   in-ORDER-BY priority aging (all first-hand: sqlite.go:347-377) or
-   dedup'd enqueue / cooperative cancel / per-consumer watermarks / GROUP BY
-   pushdowns (contract first-hand: internal/queue/queue.go:48-173), and
-   none can append facts in the SAME transaction as the task-row mutation
-   (ADR-0001 invariant). Evidence chain: ADR-0001, ADR-0012, ADR-0014
-   re-read; go-cqrs-lite local checkout read (storage/README,
-   scheduling/README, module ls); tq sources read (queue.go, sqlite.go
-   ClaimDue/Enqueue/appendFact region).
+   - `Load`, snapshots, projection checkpoints — README first-hand);
+     `scheduling/` is fire-once deadline timers ("cancel order after 30
+     minutes" — README first-hand), not a worker pool; `example/taskmanager`
+     is a demo app (decider+handlers+HTTP+SSE), not a library — exactly
+     ADR-0001's recorded rejection. None provide lease-based `ClaimDue` with
+     expired-lease reclaim + DAG `NOT EXISTS` gating + project exclusivity +
+     in-ORDER-BY priority aging (all first-hand: sqlite.go:347-377) or
+     dedup'd enqueue / cooperative cancel / per-consumer watermarks / GROUP BY
+     pushdowns (contract first-hand: internal/queue/queue.go:48-173), and
+     none can append facts in the SAME transaction as the task-row mutation
+     (ADR-0001 invariant). Evidence chain: ADR-0001, ADR-0012, ADR-0014
+     re-read; go-cqrs-lite local checkout read (storage/README,
+     scheduling/README, module ls); tq sources read (queue.go, sqlite.go
+     ClaimDue/Enqueue/appendFact region).
 2. **AGENTS.md verdict paragraph added and COMMITTED.** "go-cqrs-lite
    storage ≠ the queue stores" note (~16 lines) inserted under "Relation
    to other projects" directly after the ADR-0014 seam paragraph, citing
@@ -140,6 +140,7 @@ close-out. Window ~07:2x–08:01 CEST, 2026-09-13.
    exit-code-captured runs.
 
 ## f) Up to 50 next things (session-scoped; committed items first, then
+
 explicitly-labeled brainstorm tail)
 
 1. Deliver the metaengine/system verdict in full; fold one sentence into
@@ -181,17 +182,17 @@ explicitly-labeled brainstorm tail)
 
 Brainstorm tail (ROADMAP fuel, explicitly NOT commitments):
 15. Drift-audit `--repair` mode (rebuild table from journal) once the
-    read-only audit exists.
+read-only audit exists.
 16. metaengine as a webui read-model backend IF the dashboard ever
-    outgrows hand SQL — queue claim path stays hand-SQL regardless;
-    needs its own ADR.
+outgrows hand SQL — queue claim path stays hand-SQL regardless;
+needs its own ADR.
 17. Evaluate system/-style composition for tq's actor wiring (likely
-    reject: internal/runactor already owns it; evaluate-only).
+reject: internal/runactor already owns it; evaluate-only).
 18. A drift-audit ADR if the feature grows policy (gate vs advisory).
 19. Codify "re-litigation gate" as a documented ADR-reading convention
-    (several AGENTS.md notes now carry one).
+(several AGENTS.md notes now carry one).
 20. Extend check-dead-exports.sh to catch test-helper unusedfunc (the
-    ptrStatus class) — advisory only.
+ptrStatus class) — advisory only.
 
 (20 honest items; padding to 50 rejected — the remaining 30 slots would
 be filler, and §f quality gates say vague items die in HARVEST anyway.)

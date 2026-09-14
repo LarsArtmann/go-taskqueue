@@ -110,7 +110,7 @@ Nothing catastrophic. Honest near-misses, self-caught mid-session:
 9. Status windows: summarize batch Items (first member misrepresents scope).
 10. Per-repo batch ladder (`--batch-items` map, like `--repo-timeout`).
 11. Decide agent-appended item rules: forbid `— P[1-4]` markers in
-   agent-written items? (see g)3)
+    agent-written items? (see g)3)
 12. Batch-aware `--prune-stale` report line: "batch of N, M/N members
     stale" instead of silence on partial staleness.
 13. e2e: batch + 429 requeue mid-batch (verdict-closeout resume semantics

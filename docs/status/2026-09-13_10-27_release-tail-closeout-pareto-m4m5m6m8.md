@@ -287,6 +287,7 @@ for this window's changes (the earlier grant covered the plan doc + doc flips).
    its own findings?
 
 ---
-*Point-in-time snapshot — re-verify claims against the tree before acting
+
+_Point-in-time snapshot — re-verify claims against the tree before acting
 on them. Gates at recording: all 6 doc gates green, root vet + race suite
-green, baseline 888/111 within.*
+green, baseline 888/111 within._

@@ -24,18 +24,54 @@ projects_dir="${HOME}/projects" cohort="" template="" import_file="" self_test=f
 
 while [ $# -gt 0 ]; do
 	case "$1" in
-	--wave) wave="$2"; shift 2 ;;
-	--target) target="$2"; shift 2 ;;
-	--db) db="$2"; shift 2 ;;
-	--dry-run) dry_run=true; shift ;;
-	--delay-step) delay_step="$2"; shift 2 ;;
-	--start-delay) start_delay="$2"; shift 2 ;;
-	--projects-dir) projects_dir="$2"; shift 2 ;;
-	--cohort) cohort="$2"; shift 2 ;;
-	--template) template="$2"; shift 2 ;;
-	--import) import_file="$2"; shift 2 ;;
-	--self-test) self_test=true; shift ;;
-	*) echo "unknown flag: $1" >&2; exit 2 ;;
+	--wave)
+		wave="$2"
+		shift 2
+		;;
+	--target)
+		target="$2"
+		shift 2
+		;;
+	--db)
+		db="$2"
+		shift 2
+		;;
+	--dry-run)
+		dry_run=true
+		shift
+		;;
+	--delay-step)
+		delay_step="$2"
+		shift 2
+		;;
+	--start-delay)
+		start_delay="$2"
+		shift 2
+		;;
+	--projects-dir)
+		projects_dir="$2"
+		shift 2
+		;;
+	--cohort)
+		cohort="$2"
+		shift 2
+		;;
+	--template)
+		template="$2"
+		shift 2
+		;;
+	--import)
+		import_file="$2"
+		shift 2
+		;;
+	--self-test)
+		self_test=true
+		shift
+		;;
+	*)
+		echo "unknown flag: $1" >&2
+		exit 2
+		;;
 	esac
 done
 
@@ -88,18 +124,33 @@ if [ -n "$import_file" ]; then
 	exit 0
 fi
 
-[ -n "$wave" ] || { echo "--wave is required" >&2; exit 2; }
-[ -n "$target" ] || { echo "--target is required (e.g. v1.17.0)" >&2; exit 2; }
+[ -n "$wave" ] || {
+	echo "--wave is required" >&2
+	exit 2
+}
+[ -n "$target" ] || {
+	echo "--target is required (e.g. v1.17.0)" >&2
+	exit 2
+}
 [ -n "$db" ] || {
 	echo "--db is REQUIRED (never mint into an inherited TQ_DB / production journal)" >&2
 	exit 2
 }
 cohort="${cohort:-$cohort_default}"
 template="${template:-$template_default}"
-[ -f "$cohort" ] || { echo "cohort fixture not found: $cohort" >&2; exit 2; }
-[ -f "$template" ] || { echo "prompt template not found: $template" >&2; exit 2; }
+[ -f "$cohort" ] || {
+	echo "cohort fixture not found: $cohort" >&2
+	exit 2
+}
+[ -f "$template" ] || {
+	echo "prompt template not found: $template" >&2
+	exit 2
+}
 
-command -v jq >/dev/null || { echo "jq is required" >&2; exit 2; }
+command -v jq >/dev/null || {
+	echo "jq is required" >&2
+	exit 2
+}
 tq_bin="${TQ_BIN:-tq}"
 
 tmpdir="$(mktemp -d)"
@@ -108,12 +159,18 @@ trap 'rm -rf "$tmpdir"' EXIT
 i=0
 minted=0
 while IFS=$'\t' read -r key dir pin_gomod pin_whouses repo_wave note; do
-	case "$key" in ""|"#"*) continue ;; esac
+	case "$key" in "" | "#"*) continue ;; esac
 	[ "$repo_wave" = "$wave" ] || continue
 
 	repo_abs="$projects_dir/$dir"
-	[ -d "$repo_abs" ] || { echo "SKIP $key: dir missing: $repo_abs" >&2; continue; }
-	[ -f "$repo_abs/go.mod" ] || { echo "SKIP $key: no go.mod in $repo_abs" >&2; continue; }
+	[ -d "$repo_abs" ] || {
+		echo "SKIP $key: dir missing: $repo_abs" >&2
+		continue
+	}
+	[ -f "$repo_abs/go.mod" ] || {
+		echo "SKIP $key: no go.mod in $repo_abs" >&2
+		continue
+	}
 
 	delay="$(awk -v i="$i" -v step="$delay_step" 'BEGIN {
 		num = step + 0

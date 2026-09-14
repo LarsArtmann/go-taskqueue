@@ -225,8 +225,8 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   follow-up items to TODO_LIST.md — the pacing/budget/priority gates own
   admission, so the grant cannot bypass spend control (direct `tq enqueue`
   stays forbidden: mint-bypass). Pinned by `internal/harvest/batch_test.go`
-  + batch rows in the prompt guardrail pins. Design + rejected
-  alternatives: docs/planning/2026-09-14_batched-harvest-agent-power.md.
+  - batch rows in the prompt guardrail pins. Design + rejected
+    alternatives: docs/planning/2026-09-14_batched-harvest-agent-power.md.
 - **`review`**: `ReviewPayload` JSON. Both verdicts COMPLETE the task; the
   mechanical gate is a valid verdict JSON recorded via `tq verdict`
   (`TQ_RESULT_FILE` channel; legacy stdout line still honored).
@@ -476,17 +476,17 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 
 ### templ-components adoption
 
-| Library component                                                                                | Status  | Where                                                                           |
-| ------------------------------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------- |
-| `layout.Base`, `ThemeToggle`                                                                     | adopted | `layout.templ`                                                                  |
-| `display.Card/Table/EmptyState`                                                                  | adopted | `fragments.templ`                                                               |
-| `display.Badge/Eyebrow/DefinitionList/Scrollback`                                                | adopted | `fragments.templ`                                                               |
-| `display.AreaChart`                                                                              | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`)     |
-| `display.Button`                                                                                 | adopted | filter bar (apply)                                                              |
+| Library component                                                                                | Status  | Where                                                                                           |
+| ------------------------------------------------------------------------------------------------ | ------- | ----------------------------------------------------------------------------------------------- |
+| `layout.Base`, `ThemeToggle`                                                                     | adopted | `layout.templ`                                                                                  |
+| `display.Card/Table/EmptyState`                                                                  | adopted | `fragments.templ`                                                                               |
+| `display.Badge/Eyebrow/DefinitionList/Scrollback`                                                | adopted | `fragments.templ`                                                                               |
+| `display.AreaChart`                                                                              | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`)                     |
+| `display.Button`                                                                                 | adopted | filter bar (apply)                                                                              |
 | `display.CopyButton`                                                                             | adopted | detail page: task-id copy, payload lede + raw payload, status-report path (2026-09-14 overhaul) |
-| `feedback.Alert`                                                                                 | adopted | task detail (last error)                                                        |
-| `icons.ArchiveBox/CircleStack/Filter/Inbox`                                                      | adopted | empty-state + filter icons (`fragments.templ`)                                  |
-| status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband) |
+| `feedback.Alert`                                                                                 | adopted | task detail (last error)                                                                        |
+| `icons.ArchiveBox/CircleStack/Filter/Inbox`                                                      | adopted | empty-state + filter icons (`fragments.templ`)                                                  |
+| status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband)                 |
 
 Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows`
 (both directions of rot fail the suite).

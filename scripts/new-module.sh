@@ -16,7 +16,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 dir="${1:-}"
-[ -n "$dir" ] || { echo "usage: scripts/new-module.sh <module-dir> [internal-dep...]" >&2; exit 2; }
+[ -n "$dir" ] || {
+	echo "usage: scripts/new-module.sh <module-dir> [internal-dep...]" >&2
+	exit 2
+}
 
 case "$dir" in
 internal/* | task | journal | queue | queue/* | executor | worker) ;;
@@ -26,7 +29,10 @@ internal/* | task | journal | queue | queue/* | executor | worker) ;;
 	;;
 esac
 
-[ -f "$dir/go.mod" ] && { echo "FAIL: $dir/go.mod already exists" >&2; exit 1; }
+[ -f "$dir/go.mod" ] && {
+	echo "FAIL: $dir/go.mod already exists" >&2
+	exit 1
+}
 
 go_ver="$(awk '$1 == "go" { print $2; exit }' go.mod)"
 
@@ -42,13 +48,19 @@ mkdir -p "$dir"
 		if [ "$#" -eq 1 ]; then
 			dep="$1"
 			latest="$(git tag --list "$dep/v*" | sort -V | tail -1)"
-			[ -n "$latest" ] || { echo "FAIL: no cut tag for $dep — require a real version manually" >&2; exit 1; }
+			[ -n "$latest" ] || {
+				echo "FAIL: no cut tag for $dep — require a real version manually" >&2
+				exit 1
+			}
 			echo "require github.com/larsartmann/go-taskqueue/$dep ${latest##*/}"
 		else
 			echo "require ("
 			for dep in "$@"; do
 				latest="$(git tag --list "$dep/v*" | sort -V | tail -1)"
-				[ -n "$latest" ] || { echo "FAIL: no cut tag for $dep — require a real version manually" >&2; exit 1; }
+				[ -n "$latest" ] || {
+					echo "FAIL: no cut tag for $dep — require a real version manually" >&2
+					exit 1
+				}
 				echo "	github.com/larsartmann/go-taskqueue/$dep ${latest##*/}"
 			done
 			echo ")"

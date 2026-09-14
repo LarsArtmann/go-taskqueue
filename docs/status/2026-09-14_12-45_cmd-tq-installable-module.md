@@ -248,74 +248,74 @@ Sorted roughly by impact; first ~10 are the ones I'd actually do:
     and then invoke tests/subprocesses.
 19. windows smoke for build-tq (GOOS=windows artifact exists and is
     non-empty) — the shim gate vets but doesn't assert an artifact.
-20.examples/embed rot-guard: also `go install` it locally against the
+    20.examples/embed rot-guard: also `go install` it locally against the
     facades to catch future facade-path drift beyond build.
-21. Track "root tags containing cmd/tq package" explicitly in the ADR so
+20. Track "root tags containing cmd/tq package" explicitly in the ADR so
     future archaeologists know exactly which versions are uninstallable.
-22. `go mod verify` in check-go-mods runs with the committed go.mod — add a
+21. `go mod verify` in check-go-mods runs with the committed go.mod — add a
     `-modfile=dev.mod` variant for cmd/tq so dev.sum is verified too.
-23. Daemon-food hardening: pre-commit hook that rejects `cmd/tq/dev.*` and
+22. Daemon-food hardening: pre-commit hook that rejects `cmd/tq/dev.*` and
     `cmd/tq/tq` blobs (currently only .gitignore + cleanup).
-24. Add the ADR-0017 id to the queue item's DONE note (footer → ADR
+23. Add the ADR-0017 id to the queue item's DONE note (footer → ADR
     cross-ref) when the review turn lands.
-25. FOD `modBuildPhase`: replace the `find` heuristic by exporting the
+24. FOD `modBuildPhase`: replace the `find` heuristic by exporting the
     source root path from nix (`set -x`-free absolute reference).
-26. Evaluate `goUnion`/`go-standard` upstream: request a `modRoot` option
+25. Evaluate `goUnion`/`go-standard` upstream: request a `modRoot` option
     (upstream PR candidate; go-nix-helpers is yours).
-27. Release notes template: add a standing "installability" line
+26. Release notes template: add a standing "installability" line
     (`go install …/cmd/tq@vX.Y.Z`) so every release self-documents it.
-28. e2e TestMain: cache the built tq binary across test runs (TMPDIR keyed
+27. e2e TestMain: cache the built tq binary across test runs (TMPDIR keyed
     by go.mod hash) to shave ~7s per run.
-29. Consider tagging `cmd/tq` with its own version clock (decouple from
+28. Consider tagging `cmd/tq` with its own version clock (decouple from
     root bumps) — VERSION-SURFACES assumes shared versioning; note the
     tradeoff or kill the idea.
-30. status-loop/webui smoke: pin build-tq output hash assertion (binary
+29. status-loop/webui smoke: pin build-tq output hash assertion (binary
     changes when internals change) — ultra-cheap drift canary.
-31. `scripts/check-release-docs.sh`: extend to check-release-docs the NEW
+30. `scripts/check-release-docs.sh`: extend to check-release-docs the NEW
     literals (devmod shim, test-cmd-tq) so scripts and ADR can't drift.
-32. AGENTS commands block: the per-module loop snippet should mention the
+31. AGENTS commands block: the per-module loop snippet should mention the
     cmd-tq line is REQUIRED for full coverage (it's there; make the
     comment louder).
-33. FAQ/troubleshooting entry: "ambiguous import: found package …/cmd/tq
+32. FAQ/troubleshooting entry: "ambiguous import: found package …/cmd/tq
     in multiple modules" → "you're in the bootstrap window; use the shim
     scripts".
-34. Reduce shim surface: `dev.sum` generation could hardlink instead of
+33. Reduce shim surface: `dev.sum` generation could hardlink instead of
     copy (cosmetic).
-35. CI: one job that runs the release-gates smoke against the REAL tags
+34. CI: one job that runs the release-gates smoke against the REAL tags
     (not just fixtures) — catches tag/require drift pre-push.
-36. TODO_LIST: the closed item's annotation should cite this report path
+35. TODO_LIST: the closed item's annotation should cite this report path
     (citations rule: DONE claims cite their evidence).
-37. Sweep for other `go build … ./cmd/tq` patterns in docs
+36. Sweep for other `go build … ./cmd/tq` patterns in docs
     (docs/status, planning docs) that are now stale commands.
-38. Add `cmd/tq` to the facade-parity tooling's ignore rationale (it's not
+37. Add `cmd/tq` to the facade-parity tooling's ignore rationale (it's not
     a facade; a comment prevents future confusion).
-39. Consider `go vet` in the doctor go-env probe honoring GOEXPERIMENT
+38. Consider `go vet` in the doctor go-env probe honoring GOEXPERIMENT
     explicitly (its temp-dir build inherits env — that's how the -modfile
     leak surfaced; make the probe sanitize env by design).
-40. flake: assert in version-sync that the binary was built from cmd/tq
+39. flake: assert in version-sync that the binary was built from cmd/tq
     module (modRoot) — guards against someone reverting subPackages.
-41. Split dev shell story: `nix develop` cwd=root uses the root module;
+40. Split dev shell story: `nix develop` cwd=root uses the root module;
     document that cmd/tq work happens via the shim scripts (devShell README
     note).
-42. Queue hygiene: the same task id appeared in two sessions' outputs —
+41. Queue hygiene: the same task id appeared in two sessions' outputs —
     add a dedupe/lease discussion to the session-close bridge design doc.
-43. Baseline `.golangci-baseline.txt` regen trigger: wire the regen note
+42. Baseline `.golangci-baseline.txt` regen trigger: wire the regen note
     into the release checklist (it must happen after the split lands).
-44. go-nix-helpers docs: the local-pin-equality note in AGENTS mentions
+43. go-nix-helpers docs: the local-pin-equality note in AGENTS mentions
     the escape hatch recipe "not yet documented" — this run is a good
     candidate doc for it.
-45. Follow-through check: verify `check-features-ci.sh` (new gate from
+44. Follow-through check: verify `check-features-ci.sh` (new gate from
     earlier tail work) still passes with ci.yml's new steps (it greps
     workflow structure — my steps could trip or be missed by it).
-46. Verify `install-pre-commit.sh` hooks cover the new scripts (shellcheck
+45. Verify `install-pre-commit.sh` hooks cover the new scripts (shellcheck
     is not gated; test-cmd-tq.sh has non-trivial bash).
-47. Dogfood: enqueue a real TODO item for "cut v0.3.1" so the pool itself
+46. Dogfood: enqueue a real TODO item for "cut v0.3.1" so the pool itself
     carries the release prep.
-48. Roadmap: ADR-0017 consequence review date — when go.work/module
+47. Roadmap: ADR-0017 consequence review date — when go.work/module
     tooling evolves, revisit replace-vs-workspace decision.
-49. Audit other repos on the tq rails (project-discovery-sdk etc.) for
+48. Audit other repos on the tq rails (project-discovery-sdk etc.) for
     install docs that cite the broken path.
-50. Celebrate: check-release-docs + release-gates smoke both caught real
+49. Celebrate: check-release-docs + release-gates smoke both caught real
     drift this session — the gate culture is paying; keep feeding new
     invariants into fixtures.
 

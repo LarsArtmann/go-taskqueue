@@ -96,7 +96,7 @@ The owner ran `cqrs-lint` (domain-aware linter for go-cqrs-lite consumers, 203 r
 32. Consider `tq facts --cqrs --json` streaming output for large journals (currently full array encode; NDJSON would stream — low priority, real journal is small).
 33. `WithSource`/`ActorID=Owner` metadata enrichment on fact events — YAGNI flag: only when a consumer needs attribution metadata (ADR-0014 deferred tiers).
 
-*(Stopped at 33 grounded items — the remaining rows would be filler; the skill says extra N is brainstorm, not commitment.)*
+_(Stopped at 33 grounded items — the remaining rows would be filler; the skill says extra N is brainstorm, not commitment.)_
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
@@ -106,20 +106,20 @@ The owner ran `cqrs-lint` (domain-aware linter for go-cqrs-lite consumers, 203 r
 
 ## Verification log (claims → evidence)
 
-| Claim | Gate/command | Result |
-| --- | --- | --- |
-| Adapter fix correct | `cd internal/journal/cqrs && go build/vet/test -race -count=1` | ok |
-| Repo-wide green | 16-module loop (build+vet+test per module) | ALL-MODULES-OK |
-| Root green | `go build ./... && go vet ./... && go test ./... -race` | ok |
-| go.mod health | `./scripts/check-go-mods.sh` | exit 0 (after drift repair) |
-| Nix reproducibility | `nix build` | exit 0, vendorHash unchanged |
-| Formatting | `gofmt -l internal/journal/cqrs/` | clean |
-| Linter | `cqrs-lint` | No findings. Clean! (3 inline suppressions) |
-| Consumer path | scratch-DB `enqueue` → `tq facts --cqrs` | raw-JSON payload, no corruption |
-| Single fix site | repo-wide grep `event.NewEvent` / `go-cqrs-lite` | only `internal/journal/cqrs` constructs events |
-| Landing | daemon commits 28cfcb7 (code+config), 536b5da (config edit), 565c2f4 (AGENTS/CHANGELOG/go-mod repairs) | all on local master |
+| Claim               | Gate/command                                                                                           | Result                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| Adapter fix correct | `cd internal/journal/cqrs && go build/vet/test -race -count=1`                                         | ok                                             |
+| Repo-wide green     | 16-module loop (build+vet+test per module)                                                             | ALL-MODULES-OK                                 |
+| Root green          | `go build ./... && go vet ./... && go test ./... -race`                                                | ok                                             |
+| go.mod health       | `./scripts/check-go-mods.sh`                                                                           | exit 0 (after drift repair)                    |
+| Nix reproducibility | `nix build`                                                                                            | exit 0, vendorHash unchanged                   |
+| Formatting          | `gofmt -l internal/journal/cqrs/`                                                                      | clean                                          |
+| Linter              | `cqrs-lint`                                                                                            | No findings. Clean! (3 inline suppressions)    |
+| Consumer path       | scratch-DB `enqueue` → `tq facts --cqrs`                                                               | raw-JSON payload, no corruption                |
+| Single fix site     | repo-wide grep `event.NewEvent` / `go-cqrs-lite`                                                       | only `internal/journal/cqrs` constructs events |
+| Landing             | daemon commits 28cfcb7 (code+config), 536b5da (config edit), 565c2f4 (AGENTS/CHANGELOG/go-mod repairs) | all on local master                            |
 
-*Point-in-time snapshot — re-verify before treating any claim as current.*
+_Point-in-time snapshot — re-verify before treating any claim as current._
 
 ## Addendum (same session, ~08:20 — owner asked "Is that all?"; continuation closed the declared gaps)
 

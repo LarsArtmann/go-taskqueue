@@ -113,58 +113,58 @@ audit by design); the repo's verify gates were therefore not re-run.
 P0 = operator pain, direct from the audit; P1 = quality/verification; P2 = ROADMAP
 fuel (docs-health HARVEST must route these, not commit them).
 
-| # | P | Item |
-|---|---|------|
-| 1 | P0 | Swap-guard in app.js `applyFragment`: skip a fragment while it contains `document.activeElement`, an open `<details>`, or an expanded `[data-error]`; defer that fragment to the next tick |
-| 2 | P0 | Server-side: skip re-rendering `#frag-filters` unless `FilterState` changed (hash compare in renderFragments) |
-| 3 | P0 | Re-apply fold/expanded state after each swap (port CollapsibleSection's re-apply singleton) — fixes settled-fold + error-cell resets |
-| 4 | P0 | Fix feed-scroll reset: `#frag-feed` swap yanks `.journal-scroll` to top mid-read — preserve scrollTop across swap |
-| 5 | P0 | Sortable task-table headers via `Table.TypedHeaders` (Href from the existing 6-value sort allowlist; `SortDirection` from `data.Filter.Sort`) |
-| 6 | P0 | Adopt `display.RelativeTime` on detail created/updated + fact feed; delete `fmtAge`/`tickAges`/`data-age` plumbing |
-| 7 | P0 | Delete dead `factLines` (components.go:134) — or in the same commit as #6 |
-| 8 | P1 | Replace hand-rolled `taskPager` with `navigation.Pagination` (numbered pages, ellipsis, rel attrs) |
-| 9 | P1 | Owner ruling: may tq re-enable the embedded htmx runtime (zero-request, already in layout.Base) for the filter bar? Then: FilterInput wired to `#frag-table` OR ~15-line fetch-submit+pushState |
-| 10 | P1 | `CopyButton` on task IDs (detail header), report path (statusReportCard), prompt/raw payload panes |
-| 11 | P1 | Replace "+N more projects" chip with `display.ListNote` |
-| 12 | P1 | `errorpage.WriteError` for 500s — verified bare today; keep the chrome-consistent custom 404 |
-| 13 | P1 | Harvest §f into TODO_LIST.md (docs-health HARVEST; P2 items → ROADMAP) |
-| 14 | P1 | Measure tick frequency on the live pool (one number; sizes the swap-guard dwell) |
-| 15 | P1 | Screenshot pass: `tq serve` + light/dark/mobile captures; eyeball before judging visuals further |
-| 16 | P1 | Run `./scripts/smoke/webui.sh` green before and after the P0 batch |
-| 17 | P1 | A11y audit of custom surfaces vs library standards: board cards/columns, `tq-action` summaries, viewToggle touch targets (≥24px @375px) |
-| 18 | P1 | forced-colors: focus outlines for custom links (viewToggle, clear-all, action summaries) — library restores rings; custom CSS needs the same |
-| 19 | P1 | prefers-contrast: remap border grays in theme.css like the library's hardening |
-| 20 | P1 | prefers-reduced-motion: audit `tq-pulse`, board hover glow, seg text-shadow |
-| 21 | P1 | Search input a11y: placeholder-only labeling — add sr-only label or AriaLabel |
-| 22 | P1 | Cancel/rescue POST feedback: verify current redirect UX; if silent, add inline confirmation |
-| 23 | P1 | Journal-browser "load older" button: align markup/a11y with `navigation.LoadMore`/`EndOfList` styling |
-| 24 | P1 | Compact-age decision for the table band (keep "3m" vs RelativeTime's "3 minutes ago") — one deliberate call, documented |
-| 25 | P1 | Triage the gopls pile: `go mod tidy -diff` on root module; hub.go infertypeargs one-liner; 2× templ QF1003 |
-| 26 | P2 | Track upstream Unreleased; bump templ-components when the a11y pack ships (touch targets, forced-colors, FocusOnSwap, AppShell tokens) |
-| 27 | P2 | Adoption-table rows in AGENTS.md for every component adopted from #5-#12 (guard test enforces) |
-| 28 | P2 | Upstream idea: Scrollback line-link support (tq FactFeed needs it; hand-rolled today) — verify-before-filing first |
-| 29 | P2 | Upstream idea: Body-slot `TableRow.Href` (whole-row click for rich rows) — verify-before-filing first |
-| 30 | P2 | Sparkline for fact-rate (compact form) or Heatmap for hourly activity — design choice, nowband already carries counts |
-| 31 | P2 | Sticky-header anchor jump: check scroll-margin for `#sec-*` targets under the 56px header |
-| 32 | P2 | Dark-mode QA sweep of custom CSS additions (nowband is deliberately always-dark; verify the rest) |
-| 33 | P2 | Physical CSS props in custom CSS: `border-inline-start` already logical; sweep the remainder |
-| 34 | P2 | Board horizontal-scroll on mobile: keyboard/AT reachability of `+N older` escape hatches |
-| 35 | P2 | DLQ table: rescue currently only in task table — verify DLQ-row action parity is intentional |
-| 36 | P2 | `?token=` on SSE URLs (non-loopback binds): verify it never lands in request logs |
-| 37 | P2 | `/project/{name}` route behavior: verify it redirects to filtered table vs dedicated page; document |
-| 38 | P2 | Settled table at scale: `Table.LazyRows` (content-visibility) if pages exceed ~100 rows |
-| 39 | P2 | Print stylesheet for task detail (ops runbook printout) |
-| 40 | P2 | Empty-state affordances: EmptyState `Action` slot unused — "clear filters" button on the filtered variant |
-| 41 | P2 | Budget chip in nowband: title-only explanation; consider tooltip or link to budget semantics |
-| 42 | P2 | Keyboard: `/` `1-4` `?` exist; consider `t`/`b` for table/board toggle (view state is URL-carried already) |
-| 43 | P2 | FactFeed: timestamp column alignment (min-w on tag) — cosmetic pass with screenshots from #15 |
-| 44 | P2 | i18n note: RelativeTime brings Intl.RelativeTimeFormat — decide en-only vs locale-follow before #6 |
-| 45 | P2 | Fix the installed skill catalogue drift (118 vs 121) if the installed copy is stale vs repo skill/SKILL.md |
-| 46 | P2 | Consider `tc doctor` run against tq (v1.17 ships it): @source scanning + templ pin check for the webui CSS build |
-| 47 | P2 | Annotate ADR-0003 with the swap-guard amendment once #1-#4 land (docs-health ANNOTATE, not rewrite) |
-| 48 | P2 | Arch-judgment: is `#frag-filters` in the swap set ever NEEDED live (chips reflect filter changes from links)? — answer belongs with #2 |
-| 49 | P2 | Research-report indexing: decide whether docs/research/*.html belong in the status index or stay gitignore-adjacent (current: neither; daemon will commit) |
-| 50 | P2 | Meta: repeat this audit after the P0 batch lands — re-score the 16-area ledger, expect 64 → 80+ |
+| #  | P  | Item                                                                                                                                                                                            |
+| -- | -- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1  | P0 | Swap-guard in app.js `applyFragment`: skip a fragment while it contains `document.activeElement`, an open `<details>`, or an expanded `[data-error]`; defer that fragment to the next tick      |
+| 2  | P0 | Server-side: skip re-rendering `#frag-filters` unless `FilterState` changed (hash compare in renderFragments)                                                                                   |
+| 3  | P0 | Re-apply fold/expanded state after each swap (port CollapsibleSection's re-apply singleton) — fixes settled-fold + error-cell resets                                                            |
+| 4  | P0 | Fix feed-scroll reset: `#frag-feed` swap yanks `.journal-scroll` to top mid-read — preserve scrollTop across swap                                                                               |
+| 5  | P0 | Sortable task-table headers via `Table.TypedHeaders` (Href from the existing 6-value sort allowlist; `SortDirection` from `data.Filter.Sort`)                                                   |
+| 6  | P0 | Adopt `display.RelativeTime` on detail created/updated + fact feed; delete `fmtAge`/`tickAges`/`data-age` plumbing                                                                              |
+| 7  | P0 | Delete dead `factLines` (components.go:134) — or in the same commit as #6                                                                                                                       |
+| 8  | P1 | Replace hand-rolled `taskPager` with `navigation.Pagination` (numbered pages, ellipsis, rel attrs)                                                                                              |
+| 9  | P1 | Owner ruling: may tq re-enable the embedded htmx runtime (zero-request, already in layout.Base) for the filter bar? Then: FilterInput wired to `#frag-table` OR ~15-line fetch-submit+pushState |
+| 10 | P1 | `CopyButton` on task IDs (detail header), report path (statusReportCard), prompt/raw payload panes                                                                                              |
+| 11 | P1 | Replace "+N more projects" chip with `display.ListNote`                                                                                                                                         |
+| 12 | P1 | `errorpage.WriteError` for 500s — verified bare today; keep the chrome-consistent custom 404                                                                                                    |
+| 13 | P1 | Harvest §f into TODO_LIST.md (docs-health HARVEST; P2 items → ROADMAP)                                                                                                                          |
+| 14 | P1 | Measure tick frequency on the live pool (one number; sizes the swap-guard dwell)                                                                                                                |
+| 15 | P1 | Screenshot pass: `tq serve` + light/dark/mobile captures; eyeball before judging visuals further                                                                                                |
+| 16 | P1 | Run `./scripts/smoke/webui.sh` green before and after the P0 batch                                                                                                                              |
+| 17 | P1 | A11y audit of custom surfaces vs library standards: board cards/columns, `tq-action` summaries, viewToggle touch targets (≥24px @375px)                                                         |
+| 18 | P1 | forced-colors: focus outlines for custom links (viewToggle, clear-all, action summaries) — library restores rings; custom CSS needs the same                                                    |
+| 19 | P1 | prefers-contrast: remap border grays in theme.css like the library's hardening                                                                                                                  |
+| 20 | P1 | prefers-reduced-motion: audit `tq-pulse`, board hover glow, seg text-shadow                                                                                                                     |
+| 21 | P1 | Search input a11y: placeholder-only labeling — add sr-only label or AriaLabel                                                                                                                   |
+| 22 | P1 | Cancel/rescue POST feedback: verify current redirect UX; if silent, add inline confirmation                                                                                                     |
+| 23 | P1 | Journal-browser "load older" button: align markup/a11y with `navigation.LoadMore`/`EndOfList` styling                                                                                           |
+| 24 | P1 | Compact-age decision for the table band (keep "3m" vs RelativeTime's "3 minutes ago") — one deliberate call, documented                                                                         |
+| 25 | P1 | Triage the gopls pile: `go mod tidy -diff` on root module; hub.go infertypeargs one-liner; 2× templ QF1003                                                                                      |
+| 26 | P2 | Track upstream Unreleased; bump templ-components when the a11y pack ships (touch targets, forced-colors, FocusOnSwap, AppShell tokens)                                                          |
+| 27 | P2 | Adoption-table rows in AGENTS.md for every component adopted from #5-#12 (guard test enforces)                                                                                                  |
+| 28 | P2 | Upstream idea: Scrollback line-link support (tq FactFeed needs it; hand-rolled today) — verify-before-filing first                                                                              |
+| 29 | P2 | Upstream idea: Body-slot `TableRow.Href` (whole-row click for rich rows) — verify-before-filing first                                                                                           |
+| 30 | P2 | Sparkline for fact-rate (compact form) or Heatmap for hourly activity — design choice, nowband already carries counts                                                                           |
+| 31 | P2 | Sticky-header anchor jump: check scroll-margin for `#sec-*` targets under the 56px header                                                                                                       |
+| 32 | P2 | Dark-mode QA sweep of custom CSS additions (nowband is deliberately always-dark; verify the rest)                                                                                               |
+| 33 | P2 | Physical CSS props in custom CSS: `border-inline-start` already logical; sweep the remainder                                                                                                    |
+| 34 | P2 | Board horizontal-scroll on mobile: keyboard/AT reachability of `+N older` escape hatches                                                                                                        |
+| 35 | P2 | DLQ table: rescue currently only in task table — verify DLQ-row action parity is intentional                                                                                                    |
+| 36 | P2 | `?token=` on SSE URLs (non-loopback binds): verify it never lands in request logs                                                                                                               |
+| 37 | P2 | `/project/{name}` route behavior: verify it redirects to filtered table vs dedicated page; document                                                                                             |
+| 38 | P2 | Settled table at scale: `Table.LazyRows` (content-visibility) if pages exceed ~100 rows                                                                                                         |
+| 39 | P2 | Print stylesheet for task detail (ops runbook printout)                                                                                                                                         |
+| 40 | P2 | Empty-state affordances: EmptyState `Action` slot unused — "clear filters" button on the filtered variant                                                                                       |
+| 41 | P2 | Budget chip in nowband: title-only explanation; consider tooltip or link to budget semantics                                                                                                    |
+| 42 | P2 | Keyboard: `/` `1-4` `?` exist; consider `t`/`b` for table/board toggle (view state is URL-carried already)                                                                                      |
+| 43 | P2 | FactFeed: timestamp column alignment (min-w on tag) — cosmetic pass with screenshots from #15                                                                                                   |
+| 44 | P2 | i18n note: RelativeTime brings Intl.RelativeTimeFormat — decide en-only vs locale-follow before #6                                                                                              |
+| 45 | P2 | Fix the installed skill catalogue drift (118 vs 121) if the installed copy is stale vs repo skill/SKILL.md                                                                                      |
+| 46 | P2 | Consider `tc doctor` run against tq (v1.17 ships it): @source scanning + templ pin check for the webui CSS build                                                                                |
+| 47 | P2 | Annotate ADR-0003 with the swap-guard amendment once #1-#4 land (docs-health ANNOTATE, not rewrite)                                                                                             |
+| 48 | P2 | Arch-judgment: is `#frag-filters` in the swap set ever NEEDED live (chips reflect filter changes from links)? — answer belongs with #2                                                          |
+| 49 | P2 | Research-report indexing: decide whether docs/research/*.html belong in the status index or stay gitignore-adjacent (current: neither; daemon will commit)                                      |
+| 50 | P2 | Meta: repeat this audit after the P0 batch lands — re-score the 16-area ledger, expect 64 → 80+                                                                                                 |
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
@@ -193,6 +193,7 @@ dark, mobile 375, tablet 768, populated active state, settled fold open,
 chart-aging comparison. Screenshots + harness: `/tmp/tqshot/`.
 
 **Corrections to this report (annotated, not rewritten):**
+
 - §f item 5 (sort UI) is **RETRACTED**: `taskHeaders` (components.go:512)
   already ships `Sortable`+`Href`+`SortDirection` for prio/attempts/age —
   commit 6feaa7d, 2026-09-12 16:14, i.e. before this audit. The morning claim
@@ -203,6 +204,7 @@ chart-aging comparison. Screenshots + harness: `/tmp/tqshot/`.
   data point today (after the 500-claim miss).
 
 **New visual findings (full detail: research report §04):**
+
 1. **Worst bug, both themes**: chart y-axis labels overlap into an illegible
    smear — `lineChartMaxTicks=8` is a private library const with no prop; tq's
    `Height: 120` cannot fit it. tq stopgap: raise Height. Real fix upstream
@@ -231,8 +233,8 @@ the swap-clobber interaction defects from the morning audit.
 
 ---
 
-*Snapshot written 2026-09-14 11:41 CEST; addendum 13:15 CEST. All file:line
+_Snapshot written 2026-09-14 11:41 CEST; addendum 13:15 CEST. All file:line
 claims read from source this session; two claims were written before
 verification (500s bare — flagged §a8/§d3, later verified; sort-UI-missing —
 retracted above). Index row added same-session per check-status-index.sh
-convention.*
+convention._

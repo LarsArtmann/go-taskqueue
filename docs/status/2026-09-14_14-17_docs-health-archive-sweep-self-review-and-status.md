@@ -99,11 +99,11 @@ and all mutations were mine.
 2. No index digest row for the archived batch (the README asks for a
    "monthly digest row" option; the counter note covers it instead).
 3. No AGENTS.md/AGENTS-memory update from this session — nothing durable
-   about *code* behavior was learned; the archive/convention knowledge
+   about _code_ behavior was learned; the archive/convention knowledge
    already lives in the docs.
 4. `tq pool-health`, `tq session` smoke, postgres session bridge, and the
    rest of the open session-bridge backlog — untouched (pre-existing rows).
-5. The worktree design's 9 open questions are minted as a *pointer* row —
+5. The worktree design's 9 open questions are minted as a _pointer_ row —
    the per-question TODO/ROADMAP split itself is not done.
 
 ## d) TOTALLY FUCKED UP (honest defects, in-session, all caught except #5)
@@ -171,9 +171,9 @@ and all mutations were mine.
 
 ## f) UP TO 50 THINGS TO GET DONE NEXT
 
-*(1–21 are minted TODO rows from this session's harvest; 22–27 are this
+_(1–21 are minted TODO rows from this session's harvest; 22–27 are this
 session's own residue; 28+ are the pre-existing backlog rows I verified
-still open — carried here so the session report is self-contained.)*
+still open — carried here so the session report is self-contained.)_
 
 1. Fix dead-pool `alerted=true`-before-notify (cmd/tq/agentpool.go:468).
 2. Confidentiality outbound-artifact gate (10-33 retro §f4); proxy-zip
@@ -201,7 +201,7 @@ still open — carried here so the session report is self-contained.)*
 12. `tq doctor` service-context mode (diagnose the unit's PATH, not the
     caller's).
 13. AGENTS.md `internal/httpapi` architecture row + AGENTS size-guard test
-    + `tq facts --json` golden test.
+    - `tq facts --json` golden test.
 14. Orphan-SHA cleanup: repoint 674320f → 15ff1f9 (README:166), annotate
     the 09-33 report.
 15. AGENTS.md vendorHash note: replace the stale `lib.fakeHash` dance.

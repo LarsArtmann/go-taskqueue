@@ -86,7 +86,7 @@ inline with evidence, and only genuinely fully-done files get archived.
    they cite as `[x]` no longer exist as rows — the citations inside
    annotations still say "row NNN [x]", now pointing at deleted rows).
 5. **Sub-module gates + ci-local not run** (docs-only changes; root gates
-   + root race suite only).
+   - root race suite only).
 
 ## c) NOT STARTED
 
@@ -165,9 +165,9 @@ inline with evidence, and only genuinely fully-done files get archived.
 
 ## f) UP TO 50 THINGS TO GET DONE NEXT
 
-*(1–10 are this run's own residue; 11–20 are the substantive open items
+_(1–10 are this run's own residue; 11–20 are the substantive open items
 surfaced by this run's triage and left unminted; 21+ carry over the still
-open backlog from the 14-17 report — unchanged, still valid.)*
+open backlog from the 14-17 report — unchanged, still valid.)_
 
 1. Re-audit ~50 sampled strikes against agent verdicts (trust-but-verify
    the hand transcription).
@@ -212,9 +212,9 @@ open backlog from the 14-17 report — unchanged, still valid.)*
 20. turn-1 mechanical checklist script (01-14 e2/f6) + `--payload-file`
     enqueue flag (04-19 e2) + BerryBig upstream patch disposition (04-19
     b4/c5/f1/g3, owner-adjacent) + agent env-file convention (04-19 b2/e4)
-    + Discord integration (04-19 f23) + `--repo` routing flag (04-19 f30) +
-    `:8090` sweep verification (02-00 c6) + ETXTBSY journal-watch note
-    (02-00 f20).
+    - Discord integration (04-19 f23) + `--repo` routing flag (04-19 f30) +
+      `:8090` sweep verification (02-00 c6) + ETXTBSY journal-watch note
+      (02-00 f20).
 21. Dead-pool `alerted`-before-notify fix (cmd/tq/agentpool.go:468) —
     minted in the morning, still open.
 22. Confidentiality outbound-artifact gate (proxy/history half owner).

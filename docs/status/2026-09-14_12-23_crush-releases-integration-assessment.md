@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-14 12:23 CEST
 **Session type:** research / assessment (read-only repo + external verification) — **zero code changed**, one docs edit (AGENTS.md memory).
-**Trigger:** owner prompt with the crush releases URL + "What could we use and improve?"; mid-session owner ruling: *glm-5.3-flash reasoning_levels are [low, high, xhigh] and the pool ALWAYS wants xhigh*.
+**Trigger:** owner prompt with the crush releases URL + "What could we use and improve?"; mid-session owner ruling: _glm-5.3-flash reasoning_levels are [low, high, xhigh] and the pool ALWAYS wants xhigh_.
 **Method:** every external claim verified against a primary source (gh release notes, installed binary runs, crush source via gh api, providers.json catalog) per the verify-external-claims skill; two micro-probes ran on the flash model (≪1 cent, disclosed before running).
 
 ---
@@ -11,7 +11,7 @@
 
 1. **Release digest v0.89.0 → v0.94.1** fetched from the primary source (`gh release view`, all 10 stable releases; `nightly` noted and excluded as pre-release). Evidence: gh output in-session.
 2. **Local version pin verified:** installed crush = **v0.94.1 = latest stable** (`/run/current-system/sw/bin/crush`, NixOS-managed). No version-lag problem exists.
-3. **`crush run --reasoning-effort` empirically verified on-host:** `low` and `xhigh` are ACCEPTED for glm-5.3-flash (two probes returning "OK"); an invalid value (`bogus`) is rejected — but with the misleading message *"Model glm-5.3-flash does not support reasoning effort."* instead of listing accepted values.
+3. **`crush run --reasoning-effort` empirically verified on-host:** `low` and `xhigh` are ACCEPTED for glm-5.3-flash (two probes returning "OK"); an invalid value (`bogus`) is rejected — but with the misleading message _"Model glm-5.3-flash does not support reasoning effort."_ instead of listing accepted values.
 4. **Z.ai catalog ground truth** (`~/.local/share/crush/providers.json`): glm-5.3-flash has `can_reason: true`, `reasoning_levels: ["low","high","xhigh"]`, `default_reasoning_effort: "xhigh"` — confirms the owner ruling and resolved the false alarm from the invalid-value probe.
 5. **`request_timeout` verified in crush source** (`internal/config/config.go` via gh api): default **60 seconds of stream inactivity** (`DefaultRequestTimeout`), `0` disables, negative invalid; knob added v0.93.1 (PR #3677).
 6. **PR triage:** #3748 — model-line effort was never SENT to local OpenAI-compatible providers pre-0.94.1 (fixed in 0.94.1; whether zai is classed as such is unverified); #3677 — the request_timeout knob.
@@ -120,9 +120,9 @@ Honesty note: items 36-38 are standing AGENTS.md "Open" items noticed en route, 
 ## g) Top 3 questions (cannot answer myself)
 
 1. **Routing:** implement the two concrete improvements (doctor crush check incl. the xhigh managed-block pin; bootstrap xhigh default) directly in cmd/tq now, or queue them into TODO_LIST as pool food? cmd/tq is untouched by the in-flight executor session, so direct implementation is technically safe — this is a policy call, not a technical one.
-2. **Spend:** approve ONE `crush run --debug` micro-probe to confirm reasoning_effort actually reaches the Z.ai request body? The xhigh pin is only proven *accepted locally*; if it silently never reaches the server, every pool run runs at provider-default effort and the ruling is decorative. Zero-spend alternative: a crush source dive into zai's provider classification (says how it WOULD be sent, not that it IS).
+2. **Spend:** approve ONE `crush run --debug` micro-probe to confirm reasoning_effort actually reaches the Z.ai request body? The xhigh pin is only proven _accepted locally_; if it silently never reaches the server, every pool run runs at provider-default effort and the ruling is decorative. Zero-spend alternative: a crush source dive into zai's provider classification (says how it WOULD be sent, not that it IS).
 3. **Upstream:** file the misleading `--reasoning-effort` invalid-value error upstream to charmbracelet/crush (after the verify-before-filing gate: master check first, github-voice drafting)? And if Q2 reveals effort never reaches Z.ai, that becomes a second, bigger issue — same filing policy question.
 
 ---
 
-*Format note: the status-report skill's canonical output is a styled HTML dashboard; the owner explicitly requested `.md` at `docs/status/`, so the override is honored here per the skill's own instruction.*
+_Format note: the status-report skill's canonical output is a styled HTML dashboard; the owner explicitly requested `.md` at `docs/status/`, so the override is honored here per the skill's own instruction._

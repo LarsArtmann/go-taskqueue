@@ -13,13 +13,13 @@ Owner direction 2026-09-14: the `TQ_RESULT: {"files_changed": [...],
 
 ## What the queue wants to know after a work task
 
-| Question                     | Source of truth                        | Self-report needed? |
-| ---------------------------- | -------------------------------------- | ------------------- |
-| Did it succeed?              | exit code + verify gate (existing)     | no                  |
-| Which commits landed?        | git log `Task-Queue-ID: <id>` trailers | no — derivable      |
-| Which files shipped?         | `git show --name-only` over those SHAs | no — derivable      |
-| What did the session do?     | go-crush-data (cost, tokens, messages) | no — derivable      |
-| Verdict (review/dlqfix/prioritize/status) | the agent's judgment     | YES — communication |
+| Question                                  | Source of truth                        | Self-report needed? |
+| ----------------------------------------- | -------------------------------------- | ------------------- |
+| Did it succeed?                           | exit code + verify gate (existing)     | no                  |
+| Which commits landed?                     | git log `Task-Queue-ID: <id>` trailers | no — derivable      |
+| Which files shipped?                      | `git show --name-only` over those SHAs | no — derivable      |
+| What did the session do?                  | go-crush-data (cost, tokens, messages) | no — derivable      |
+| Verdict (review/dlqfix/prioritize/status) | the agent's judgment                   | YES — communication |
 
 The recurring no-op/TQ_RESULT sha-semantics ruling asks (TODO rows 250,
 311; a dozen report §g items) existed only because the agent had to CHOOSE

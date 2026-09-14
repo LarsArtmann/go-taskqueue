@@ -6,9 +6,9 @@ require (
 	github.com/a-h/templ v0.3.1020
 	github.com/larsartmann/go-sse v0.6.0
 	github.com/larsartmann/go-sse/ssetest v0.3.0
-	github.com/larsartmann/templ-components v1.16.0
-	github.com/larsartmann/templ-components/icons v1.16.0
-	github.com/larsartmann/templ-components/utils v1.16.0
+	github.com/larsartmann/templ-components v1.17.0
+	github.com/larsartmann/templ-components/icons v1.17.0
+	github.com/larsartmann/templ-components/utils v1.17.0
 	golang.org/x/sync v0.23.0
 	modernc.org/sqlite v1.58.0 // indirect
 )
@@ -30,8 +30,8 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/larsartmann/go-branded-id v0.5.1 // indirect
 	github.com/larsartmann/go-error-family v0.10.0 // indirect
-	github.com/larsartmann/go-retry v0.5.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.16.0 // indirect
+	github.com/larsartmann/go-retry v0.6.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.17.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect

@@ -204,6 +204,7 @@ the pushed commit (7/7 jobs, run 34863840301).
 ## f) NEXT — up to 50 things (impact ÷ effort ordered within tiers)
 
 **Ship-the-evidence (this window's debts):**
+
 1. Re-run the /tmp/tqshot harness, commit the before/after strip under
    `docs/research/assets/2026-09-14-overhaul/` + README + SHA256SUMS
    (ghost-archive gate compliant), link from §05.
@@ -223,89 +224,89 @@ the pushed commit (7/7 jobs, run 34863840301).
 
 **Upstream / library leverage:**
 9. Verify-before-file the upstream chart MaxTicks contribution against
-   templ-components master; file it with the Height-200 stopgap data.
+templ-components master; file it with the Height-200 stopgap data.
 10. Bump templ-components when the a11y pack ships; re-run the version-pinned
-    audit + adoption sweep rails (ADR-0018 fanout exists).
+audit + adoption sweep rails (ADR-0018 fanout exists).
 11. `navigation.Pagination` adoption for the task pager (numbered pages).
 12. `display.ListNote` for the "+N more projects" chip.
 13. `errorpage.WriteError` for styled 500s (chrome-consistent).
 14. CopyButton audit on remaining copy-worthy surfaces (fact IDs in feed rows
-    are links already; journal browser ids; board card ids).
+are links already; journal browser ids; board card ids).
 15. Sort state as a removable filter chip (G2 remainder) + sort-link theme
-    verification in both themes.
+verification in both themes.
 16. Icon accents (apply ✓, DLQ heading) — decide in/out (question 3).
 
 **Robustness / correctness found during the window:**
 17. CSP `form-action 'none'` — owner ruling (question 1): allow 'self' to
-    restore no-JS filters or accept JS-only.
+restore no-JS filters or accept JS-only.
 18. `swapIn` drops ALL event listeners on swapped subtrees — currently fine
-    (delegation on document), but document the invariant: never attach direct
-    listeners inside fragments (a comment in app.js would pin it).
+(delegation on document), but document the invariant: never attach direct
+listeners inside fragments (a comment in app.js would pin it).
 19. `applyFilterURL` full-page fallback on fetch failure — verify the fallback
-    doesn't fight EventSource auto-reconnect (double recovery path).
+doesn't fight EventSource auto-reconnect (double recovery path).
 20. Feed trim behavior under burst: pendingSwap is latest-wins per id, but 4
-    fragments × fast bursts can still render transiently inconsistent
-    projections (stats new, table old within the same grace window). Decide
-    whether per-id deferral is acceptable or swaps should be batched
-    per-burst.
+fragments × fast bursts can still render transiently inconsistent
+projections (stats new, table old within the same grace window). Decide
+whether per-id deferral is acceptable or swaps should be batched
+per-burst.
 21. `filterURL`/`pageHref` with auto-submit: pagination links inside
-    `#frag-table` now navigate full-page while the search box auto-submits —
-    confirm pager links keep working after a pushState (they carry the full
-    query string; spot-check page=2 under `?q=`).
+`#frag-table` now navigate full-page while the search box auto-submits —
+confirm pager links keep working after a pushState (they carry the full
+query string; spot-check page=2 under `?q=`).
 22. Board lanes `min-w-52` floor — verify at exactly 1280 with long project
-    names (truncate paths inside cards under shrink).
+names (truncate paths inside cards under shrink).
 23. `tq-busy` pointer-events:none on the apply button — ensure the form is
-    still Enter-submittable during flight (seq-guard makes it safe, but
-    check the UX).
+still Enter-submittable during flight (seq-guard makes it safe, but
+check the UX).
 24. ResizeObserver vs resize event for `updateBoardAffordance` (fragment swaps
-    don't fire window resize; post-swap hook covers it — confirm no path
-    swaps board content without going through swapIn).
+don't fire window resize; post-swap hook covers it — confirm no path
+swaps board content without going through swapIn).
 25. Document the swap-guard contract (ids, grace, keys) in SECURITY.md's
-    neighbor: a short docs/webui-live-contract.md or AGENTS.md section.
+neighbor: a short docs/webui-live-contract.md or AGENTS.md section.
 
 **Hygiene / repo:**
 26. Sweep AGENTS.md webui conventions for the new invariants (data-state-key,
-    swap-guard, embed-rebuild, lll-safe nolint placement).
+swap-guard, embed-rebuild, lll-safe nolint placement).
 27. `internal/executor/depbump.go` — owner should fix the remaining
-    `dupBranchBody` (gocritic) and err113 class findings.
+`dupBranchBody` (gocritic) and err113 class findings.
 28. Confirm the daemon's 50-file commit (25052fb) content is what the
-    facade-parity fix claimed (spot-audit at next docs-health pass).
+facade-parity fix claimed (spot-audit at next docs-health pass).
 29. Add `scripts/dev/` home for the screenshot harness (see e4).
 30. Retire the stale `-listen` flag confusion: `tq serve --help` vs docs
-    mentions (docs say `--addr`; verify README quickstart).
+mentions (docs say `--addr`; verify README quickstart).
 31. Run `go mod tidy -diff` across EVERY module (I covered webui + root).
 32. Close the templ LSP stale-cache annoyance: a documented `templ generate`
-    step in the session-start ritual when diagnostics disagree.
+step in the session-start ritual when diagnostics disagree.
 
 **Features from the original audit (P2 backlog, unchanged):**
 33. Board drag/keyboard move behind `--allow-writes` (ADR-0003 Phase D).
 34. Journal browser: keyboard `/` focus parity inside the browser pane.
 35. nowband segments: aria-current for the zero-state segments?
 36. Fact feed: relative-time decision revisit (currently wall-clock by
-    design; revisit if operators ask).
+design; revisit if operators ask).
 37. DLQ autopsy integration on the dashboard (`--dlq-fix` surfaces).
 38. Review verdicts surfaced as first-class board card badges.
 39. Budget widget states beyond today's spend (projection line?).
 40. Web UI: `?token=` shareable URLs already noindex'd — consider a
-    copy-link affordance on the auth banner.
+copy-link affordance on the auth banner.
 41. Perf pass: fragment HTML sizes (each burst re-renders all fragments;
-    the filters dedup removed one — measure the other four).
+the filters dedup removed one — measure the other four).
 42. Consider ETag on /static/ (embed hash) for cache-friendliness.
 43. Keyboard shortcuts: 1-4 jump targets after board full-width reflow
-    (section ids unchanged — verify scroll targets still sane on board view).
+(section ids unchanged — verify scroll targets still sane on board view).
 44. Theme toggle flash-of-wrong-theme on slow loads (inline script exists?
-    verify).
+verify).
 45. Mobile: horizontal scroll on the task table is inevitable — consider
-    sticky first column at 375.
+sticky first column at 375.
 46. Error-cell expand: after expand, the row height jump can scroll the row
-    out of view (scrollIntoView on expand?).
+out of view (scrollIntoView on expand?).
 47. `tq serve` banner could print the UI version/commit for support.
 48. Fuzz the filters parser (`parseFilter`) like `FuzzParseRepo` — query
-    strings are untrusted input.
+strings are untrusted input.
 49. Pin the chromedp harness's chromium path via `nix run .#chromium` style
-    indirection instead of a hardcoded store path in scripts.
+indirection instead of a hardcoded store path in scripts.
 50. Decide the fate of `/tmp/tqshot` conventions — promote to repo scripts
-    or document as ephemeral (ties to 29).
+or document as ephemeral (ties to 29).
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
@@ -323,6 +324,6 @@ the pushed commit (7/7 jobs, run 34863840301).
 
 ---
 
-*Report written 2026-09-14 18:14 CEST from the session's own run log, captures
+_Report written 2026-09-14 18:14 CEST from the session's own run log, captures
 in /tmp/tqshot (ephemeral), and the repo state at `c537f4e` with CI run
-34863840301 green.*
+34863840301 green._
