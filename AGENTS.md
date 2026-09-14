@@ -690,14 +690,14 @@ prose, not the table.
   (same treatment as agentPath). Until then: a task.verify failure with
   that error is the environment lying, not a regression — re-run the gate
   with the export before judging the work.
-- ⚠️ **Pool agents must never run under Crush client/server mode**
-  (`CRUSH_CLIENT_SERVER` unset everywhere, verified 2026-09-14): the
-  env-gated mode groups same-cwd clients into one workspace with
-  FIRST-WINS `--yolo`/`--debug` — a non-yolo first client would silently
-  park headless `crush run -m` executors on permission prompts, breaking
-  the no-prompts argv contract, and one shared server would collapse the
-  per-project `.crush` data-dir isolation. Analysis + the TUI-fleet-only
-  per-repo-server experiment:
+- ⚠️ **Crush client/server mode stays OFF for pool agents until a
+  per-repo experiment passes** (`CRUSH_CLIENT_SERVER` unset everywhere,
+  verified 2026-09-14): first-wins `--yolo` is a non-issue under the
+  all-yolo fleet (owner ruling 2026-09-14 — headless yolo is already
+  allowlist-restricted), but the real blockers remain: one shared server
+  collapses the per-project `.crush` data-dir isolation (needs per-repo
+  servers), and short-lived `crush run -m` workspace-joiner behavior is
+  unverified. Analysis + experiment design:
   `~/.config/crush/docs/research/2026-09-14_crush-client-server-mode.md`.
 
 ## Relation to other projects

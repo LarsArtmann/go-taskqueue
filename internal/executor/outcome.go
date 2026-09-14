@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +20,15 @@ import (
 // Outcome derivation reads the same trailer the session-close bridge reads
 // for `Crush-Session`.
 const TaskTrailer = "Task-Queue-ID"
+
+// Derivation is best-effort: these sentinels never surface to users, they
+// only mark which enrichment source came back empty.
+var (
+	errDeriveDiscover = errors.New("derive: discover crush projects")
+	errDeriveOpenDB   = errors.New("derive: open crush db")
+	errDeriveSession  = errors.New("derive: read session")
+	errDeriveProject  = errors.New("derive: no crush project registered for repo")
+)
 
 // deriveTimeout bounds outcome derivation (trailer scan, file listing,
 // crush registry lookup). Derivation is best-effort enrichment and must
@@ -101,7 +111,7 @@ func filesInCommits(ctx context.Context, repoDir string, commits []Commit) []str
 func crushSession(ctx context.Context, repoDir, sessionID string) (crushdata.Session, error) {
 	projects, err := crushdata.DiscoverProjects(ctx, crushdata.DiscoverOptions{})
 	if err != nil {
-		return crushdata.Session{}, fmt.Errorf("derive: discover crush projects: %w", err)
+		return crushdata.Session{}, fmt.Errorf("%w: %w", errDeriveDiscover, err)
 	}
 
 	for _, project := range projects {
@@ -111,18 +121,18 @@ func crushSession(ctx context.Context, repoDir, sessionID string) (crushdata.Ses
 
 		db, err := crushdata.OpenContext(ctx, project.DataDir)
 		if err != nil {
-			return crushdata.Session{}, fmt.Errorf("derive: open crush db: %w", err)
+			return crushdata.Session{}, fmt.Errorf("%w: %w", errDeriveOpenDB, err)
 		}
 
 		session, err := db.Session(ctx, sessionID)
 		_ = db.Close()
 
 		if err != nil {
-			return crushdata.Session{}, fmt.Errorf("derive: read session: %w", err)
+			return crushdata.Session{}, fmt.Errorf("%w: %w", errDeriveSession, err)
 		}
 
 		return session, nil
 	}
 
-	return crushdata.Session{}, fmt.Errorf("derive: no crush project registered for %s", repoDir)
+	return crushdata.Session{}, fmt.Errorf("%w: %s", errDeriveProject, repoDir)
 }

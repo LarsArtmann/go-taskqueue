@@ -25,7 +25,7 @@ func TestGitLogScannerAttributesRealCommits(t *testing.T) {
 	git := func(args ...string) {
 		t.Helper()
 
-		cmd := exec.Command("git", args...)
+		cmd := exec.CommandContext(context.Background(), "git", args...)
 		cmd.Dir = repo
 
 		cmd.Env = append(os.Environ(),
@@ -92,7 +92,7 @@ func TestGitLogScannerEmptyRepoAttributesNothing(t *testing.T) {
 
 	repo := t.TempDir()
 
-	cmd := exec.Command("git", "init", "-q", "-b", "main")
+	cmd := exec.CommandContext(context.Background(), "git", "init", "-q", "-b", "main")
 	cmd.Dir = repo
 
 	cmd.Env = append(os.Environ(),
