@@ -32,7 +32,13 @@ func parseFilter(r *http.Request) FilterState {
 	// Allowlist: unknown sort values fall back to the default order.
 	sort := query.Get("sort")
 	switch sort {
-	case "", "age-asc", "age-desc", "priority-asc", "priority-desc", "attempts-asc", "attempts-desc":
+	case "",
+		"age-asc",
+		"age-desc",
+		"priority-asc",
+		"priority-desc",
+		"attempts-asc",
+		"attempts-desc":
 	default:
 		sort = ""
 	}
@@ -143,7 +149,8 @@ func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	limit := factViewerPageSize
-	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= factViewerPageSize {
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 &&
+		v <= factViewerPageSize {
 		limit = v
 	}
 
@@ -225,8 +232,18 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 	// The review loop's verdict and the status loop's outcome, when this
 	// task is one of those finished kinds: the badge + result card render
 	// from the completion-fact detail.
-	data.Reviews = pageResults(r.Context(), []task.Task{t}, executor.TaskTypeReview, s.reviewResultFor)
-	data.Statuses = pageResults(r.Context(), []task.Task{t}, executor.TaskTypeStatus, s.statusResultFor)
+	data.Reviews = pageResults(
+		r.Context(),
+		[]task.Task{t},
+		executor.TaskTypeReview,
+		s.reviewResultFor,
+	)
+	data.Statuses = pageResults(
+		r.Context(),
+		[]task.Task{t},
+		executor.TaskTypeStatus,
+		s.statusResultFor,
+	)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
@@ -247,7 +264,15 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	if lastID := sse.LastEventIDFromRequest(r); !lastID.IsZero() {
 		if n, err := strconv.ParseInt(lastID.Get(), 10, 64); err == nil && n >= 0 {
 			if head, err := s.store.HeadSeq(r.Context()); err == nil && head > n {
-				slog.Info("webui: client reconnect", "last-event-id", n, "head", head, "reconnect lag", head-n)
+				slog.Info(
+					"webui: client reconnect",
+					"last-event-id",
+					n,
+					"head",
+					head,
+					"reconnect lag",
+					head-n,
+				)
 			}
 		}
 	}
@@ -339,7 +364,13 @@ type filtersHTML struct {
 }
 
 // sendSnapshot renders and streams one full dashboard snapshot burst.
-func (s *Server) sendSnapshot(ctx context.Context, stream *sse.Stream, r *http.Request, seq int64, seen *filtersHTML) error {
+func (s *Server) sendSnapshot(
+	ctx context.Context,
+	stream *sse.Stream,
+	r *http.Request,
+	seq int64,
+	seen *filtersHTML,
+) error {
 	data, err := s.loadSnapshot(ctx, parseFilter(r))
 	if err != nil {
 		return queryErr(ctx, "webui: snapshot query", err)
@@ -413,7 +444,13 @@ func queryErr(ctx context.Context, msg string, err error, attrs ...any) error {
 // sendSnapshotPayload streams one full snapshot burst: the fragments
 // followed by the trailing title event carrying the journal watermark id,
 // keeping every stream's resume semantics identical.
-func sendSnapshotPayload(ctx context.Context, stream *sse.Stream, frags []fragment, title string, seq int64) error {
+func sendSnapshotPayload(
+	ctx context.Context,
+	stream *sse.Stream,
+	frags []fragment,
+	title string,
+	seq int64,
+) error {
 	for _, frag := range frags {
 		if err := stream.SendJSON("frag", frag); err != nil {
 			return fmt.Errorf("send snapshot fragment: %w", err)
@@ -432,7 +469,12 @@ func sendSnapshotPayload(ctx context.Context, stream *sse.Stream, frags []fragme
 	return ctx.Err()
 }
 
-func (s *Server) sendTaskSnapshot(ctx context.Context, stream *sse.Stream, id string, seq int64) error {
+func (s *Server) sendTaskSnapshot(
+	ctx context.Context,
+	stream *sse.Stream,
+	id string,
+	seq int64,
+) error {
 	t, err := s.store.Get(ctx, task.ID(id))
 	if err != nil {
 		return queryErr(ctx, "webui: task snapshot query", err, "task", id)
@@ -445,7 +487,13 @@ func (s *Server) sendTaskSnapshot(ctx context.Context, stream *sse.Stream, id st
 
 	data := DashboardData{Now: time.Now()}
 
-	return sendSnapshotPayload(ctx, stream, renderTaskFragments(ctx, data, t, facts), detailPageTitle(id), seq)
+	return sendSnapshotPayload(
+		ctx,
+		stream,
+		renderTaskFragments(ctx, data, t, facts),
+		detailPageTitle(id),
+		seq,
+	)
 }
 
 // taskFromPath fetches the {id} path task, rendering the styled 404 when
@@ -511,7 +559,11 @@ func (s *Server) handleTaskRescuePOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.Status != task.Dead {
-		http.Error(w, "task is "+string(t.Status)+"; only dead-lettered tasks can be rescued", http.StatusConflict)
+		http.Error(
+			w,
+			"task is "+string(t.Status)+"; only dead-lettered tasks can be rescued",
+			http.StatusConflict,
+		)
 
 		return
 	}

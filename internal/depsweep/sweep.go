@@ -299,7 +299,7 @@ func compareSemver(a, b string) int {
 	asegs, apre := splitSemver(a)
 	bsegs, bpre := splitSemver(b)
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if asegs[i] != bsegs[i] {
 			if asegs[i] < bsegs[i] {
 				return -1

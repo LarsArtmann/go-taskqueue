@@ -105,7 +105,11 @@ func TestCloseMintsReviewAndStatusOverAttributedRange(t *testing.T) {
 	}
 
 	if !res.ReviewFresh || !res.StatusFresh {
-		t.Fatalf("first close should mint fresh, got review=%v status=%v", res.ReviewFresh, res.StatusFresh)
+		t.Fatalf(
+			"first close should mint fresh, got review=%v status=%v",
+			res.ReviewFresh,
+			res.StatusFresh,
+		)
 	}
 
 	reviewTask, err := s.Get(ctx, res.ReviewTask.ID)
@@ -167,7 +171,8 @@ func TestCloseMintsReviewAndStatusOverAttributedRange(t *testing.T) {
 	}
 
 	entry := sp.Completed[0]
-	if entry.TaskID != "session:sess-abc" || entry.Commit != commits[1].SHA || entry.CompletedAt == "" {
+	if entry.TaskID != "session:sess-abc" || entry.Commit != commits[1].SHA ||
+		entry.CompletedAt == "" {
 		t.Fatalf("status completion = %+v", entry)
 	}
 
@@ -341,7 +346,9 @@ func TestSessionAndSweeperReviewKeysStayDisjoint(t *testing.T) {
 	}
 
 	if sessionKey == taskKey {
-		t.Fatal("session review key collided with the task review key — a close would suppress or double-mint a task review")
+		t.Fatal(
+			"session review key collided with the task review key — a close would suppress or double-mint a task review",
+		)
 	}
 }
 

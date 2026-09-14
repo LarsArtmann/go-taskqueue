@@ -188,7 +188,7 @@ func detailItems(t task.Task, now time.Time, nonce string) []display.DefinitionI
 // relativeTimeComponent renders a timestamp as the library's <time> element:
 // server-rendered relative text, machine-readable datetime attribute, and
 // (nonce permitting) live self-refresh every 30s.
-func relativeTimeComponent(ts time.Time, nonce string) templ.Component {
+func relativeTimeComponent(ts time.Time, nonce string) templ.Component { //nolint:ireturn // templ.Component is the library component contract
 	return display.RelativeTime(display.RelativeTimeProps{
 		Time:      ts,
 		BaseProps: utils.BaseProps{Nonce: nonce},
