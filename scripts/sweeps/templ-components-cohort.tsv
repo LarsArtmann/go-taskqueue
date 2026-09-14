@@ -1,0 +1,27 @@
+# templ-components consumer sweep cohort — grounded 2026-09-14
+# Source: pdg who-uses (12:05 paste) cross-checked against every repo's go.mod (F1.1/F1.3).
+# key        pdg consumer key (dedup-key namespace)
+# dir        directory relative to ~/projects (pool resolves filepath.Join(projectsDir, dir))
+# pin_go.mod  templ-components version observed in go.mod require lines today
+# pin_whouses version reported by pdg who-uses 12:05 paste (resolved graph)
+# wave       1=laggards (pilot first)  2=v1.16 upgrade cohort  3=v1.17 maximize-only
+# note       divergences and gotchas
+key	dir	pin_go.mod	pin_whouses	wave	note
+DiscordSync	DiscordSync	v1.17.0	v1.17.0	3	maximize-only; no upgrade needed
+bank-sync	bank-sync	v1.17.0	v1.17.0	3	maximize-only
+dnsblockd	dnsblockd	v1.17.0	v1.17.0	3	maximize-only
+go-cqrs-lite	go-cqrs-lite	v1.17.0	v1.17.0	3	maximize-only
+zlota44	Zlota44	v1.17.0	v1.17.0	3	CASE-MAP: key zlota44 -> dir Zlota44
+Rolls-Royce-mtuGoHelpCenter-golang	Rolls-Royce-mtuGoHelpCenter-golang	v1.16.0	v1.17.0	2	DIVERGENCE: go.mod require v1.16.0 (4 sub-facades), who-uses resolved v1.17.0; treat as upgrade
+CV	CV	v1.16.0	v1.16.0	2	production dogfood repo (SystemNix pool works it)
+Cyberdom	Cyberdom	v1.16.0	v1.16.0	2
+InboxClean	InboxClean	v1.16.0	v1.16.0	2
+KeyHolderAI	KeyHolderAI	v1.16.0	v1.16.0	2
+crush-daily	crush-daily	v1.16.0	v1.16.0	2
+cqrs-htmx	cqrs-htmx	v1.16.0	v1.16.0	2	go.sum carries v1.8.x ghosts (integration_test indirect v1.16.0 family); direct pin v1.16.0
+go-health-dashboard	go-health-dashboard	v1.16.0	v1.16.0	2
+go-taskqueue	go-taskqueue	v1.16.0	v1.16.0	2	THIS repo; .tq-verify is owner-owned (agent must never edit its own gate, ruling 2026-09-12)
+overview	overview	v1.16.0	v1.16.0	2	owner-gated TODO items carry -- BLOCKED: markers
+nsfw-classifier	nsfw-classifier	v1.13.0	v1.13.0	1	laggard (4 minor versions behind)
+SwettySwipperWeb	games/SwettySwipperWeb	v1.11.0	v1.11.0	1	NESTED under games/; multi-module (services/*); root go.mod github.com/LarsArtmann/SwettySwipperWeb
+browser-history	browser-history	v1.8.3	v1.8.3	1	PILOT (worst laggard, 9 minors behind); go.sum carries v1.8.2 ghost
