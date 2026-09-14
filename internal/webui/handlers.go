@@ -253,7 +253,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.runEventStream(w, r, func(ctx context.Context, stream *sse.Stream, seq int64) error {
-		return s.sendSnapshot(ctx, stream, r, seq)
+		return s.sendSnapshot(ctx, stream, r, seq, &filtersHTML{})
 	})
 }
 
@@ -329,14 +329,36 @@ func (s *Server) runEventStream(
 	}
 }
 
+// filtersHTML is the per-stream change-detection memory for the filter
+// fragment: the filter bar is pure function of the query string (project
+// chips, search box, view toggle), so re-sending it on every journal tick
+// only risks clobbering live operator input. When its rendered HTML is
+// byte-identical to the last burst, the fragment is omitted entirely.
+type filtersHTML struct {
+	last string
+}
+
 // sendSnapshot renders and streams one full dashboard snapshot burst.
-func (s *Server) sendSnapshot(ctx context.Context, stream *sse.Stream, r *http.Request, seq int64) error {
+func (s *Server) sendSnapshot(ctx context.Context, stream *sse.Stream, r *http.Request, seq int64, seen *filtersHTML) error {
 	data, err := s.loadSnapshot(ctx, parseFilter(r))
 	if err != nil {
 		return queryErr(ctx, "webui: snapshot query", err)
 	}
 
-	return sendSnapshotPayload(ctx, stream, renderFragments(ctx, data), pageTitle(data), seq)
+	frags := renderFragments(ctx, data)
+	for i := range frags {
+		if frags[i].ID != fragFilters {
+			continue
+		}
+		if frags[i].HTML == seen.last {
+			frags = append(frags[:i:i], frags[i+1:]...)
+		} else {
+			seen.last = frags[i].HTML
+		}
+		break
+	}
+
+	return sendSnapshotPayload(ctx, stream, frags, pageTitle(data), seq)
 }
 
 // handleTaskEvents streams the per-task detail page's live fragments: the

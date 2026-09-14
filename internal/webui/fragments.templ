@@ -140,7 +140,7 @@ templ taskActiveCard(data DashboardData) {
 // drowning the live ones.
 templ taskSettledDetails(data DashboardData) {
 	if len(settledTasks(data.Tasks)) > 0 {
-		<details class="tq-settled">
+		<details class="tq-settled" data-state-key="settled">
 			<summary>
 				<span class="tq-settled-title">settled</span>
 				<span class="tq-settled-counts">
@@ -271,7 +271,7 @@ templ taskRows(data DashboardData, rows []task.Task) {
 // Pending tasks are withdrawn outright; running tasks get a cooperative
 // stop REQUEST the agent honors between steps.
 templ cancelAction(id task.ID, running bool) {
-	<details class="tq-action">
+	<details class="tq-action" data-state-key={ "cancel-" + id.String() }>
 		<summary>
 			if running {
 				<span class="tq-action-stop">stop</span>
@@ -293,7 +293,7 @@ templ cancelAction(id task.ID, running bool) {
 
 // rescueAction re-queues a dead-lettered task with a fresh attempt budget.
 templ rescueAction(id task.ID) {
-	<details class="tq-action">
+	<details class="tq-action" data-state-key={ "rescue-" + id.String() }>
 		<summary><span class="tq-action-rescue">rescue</span></summary>
 		<form class="tq-action-form" method="post" action={ templ.URL("/task/" + id.String() + "/rescue") }>
 			<input type="hidden" name="csrf" value={ ctxCSRF(ctx) }/>
