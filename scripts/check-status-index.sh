@@ -58,6 +58,18 @@ while IFS= read -r report; do
 	fi
 done < <(find docs/status -maxdepth 1 -name '*.md' ! -name 'README.md' | sort)
 
+# Index-scannability cadence (TODO row 166, 08-25 f20 / 07-49 f39): the live
+# index grows ~10 rows/day; when unarchived rows exceed the threshold, nudge
+# a monthly archive sweep into docs/status/archived/ (docs-health ANNOTATE
+# mode) or a monthly digest row so the index stays scannable.
+live_rows=$(grep -cE '^\| 20[0-9]{2}-' "$index" || true)
+archived_rows=$(grep -cE '^\| 20[0-9]{2}-.*`archived/' "$index" || true)
+live=$((live_rows - archived_rows))
+threshold=100
+if [ "$live" -gt "$threshold" ]; then
+	echo "INDEX BLOAT WARNING: $live live rows in $index (threshold $threshold) — run an archive sweep (docs-health ANNOTATE) or add a monthly digest row (08-25 f20)"
+fi
+
 if [ "$fail" = 0 ]; then
 	echo "status index ok"
 fi

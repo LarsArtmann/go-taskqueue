@@ -9,6 +9,11 @@ Every `docs/status/*.md` file must have a row here — `scripts/check-status-ind
 every forward-looking item is resolved (inline strikethroughs) move to
 `archived/` — the row above points at the archived path.
 
+**Scannability cadence** (08-25 f20): the live index grows ~10 rows/day. When
+the unarchived row count exceeds 100, the index check emits an
+`INDEX BLOAT WARNING` — run an archive sweep (docs-health ANNOTATE mode) or
+add a monthly digest row so the index stays scannable.
+
 Archive counter (update when moving files): 46 reports in `archived/`,
 9 plans in `docs/planning/archived/` (2026-09-11 docs-health pass).
 
