@@ -1,3 +1,5 @@
+github.com/LarsArtmann/go-crush-data v0.4.0 h1:5XxkxQ1qiMlztgxj6FyWHPREpapoCBBZYQ2zvSzil9c=
+github.com/LarsArtmann/go-crush-data v0.4.0/go.mod h1:nAgCuKs3+NscfWdoS7uRnOqR7pNEPqvbecxEYsUBnZA=
 github.com/Masterminds/semver/v3 v3.5.0 h1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=
 github.com/Masterminds/semver/v3 v3.5.0/go.mod h1:4V+yj/TJE1HU9XfppCwVMZq3I84lprf4nC11bSS5beM=
 github.com/Oudwins/tailwind-merge-go v0.2.3 h1:RCiZ/DlLpoJnE5QSs1sRPDtIs3We0RQpsLH7bBWfbUI=
