@@ -671,6 +671,13 @@ prose, not the table.
   only). If the pool misbehaves: stop it, review `tq dlq`, rescue or
   cancel. The repo-root `tasks.db` is the retired 2026-09-07 dogfood
   journal (its orphan serve was stopped 2026-09-10).
+- **templ-components consumer sweep rails** (2026-09-14, ADR-0018): the
+  fan-out lives HERE (`scripts/sweeps/fanout-libdive.sh` + cohort TSV +
+  version-pinned prompt template; `--self-test` pins the who-uses tree
+  parse; `--db` hard-required — never mints into an inherited TQ_DB). pdg
+  is PROPRIETARY with no sub-module tags — its SDK never enters this repo;
+  the pdg-resident bridge option stays owner-gated. Waves serialize against
+  the shared Z.ai account (429 runbook: plan §8.2).
 - ⚠️ **Pool-deploy failure mode** (2026-09-10): `harvest: skipped
   reason="scan failed"` for EVERY repo means environment, not data — bare
   `--repos` names once resolved via the service cwd (now expanded against

@@ -309,3 +309,33 @@ TQ_DB=<sweep journal> tq agent-pool \
   --task-timeout 45m --yolo --daily-budget <G2 number> \
   --log-dir <sweep log dir>
 ```
+
+### 8.3 Cost model — M12 (G2 input; pilot telemetry as of 12:52)
+
+Known so far: the pilot's first turn burned ~40 provider calls in ~90s of
+model work (mostly 429 retries), then requeued with a 14m41s Z.ai reset
+window. Per-run cost has three multipliers: work turn (long: library audit
++ adoption), close-out turn (short: self-review + report), review turn
+(medium: read diff, judge). Until the pilot completes, the budget
+SUGGESTION for wave 1 is `--daily-budget 6` (3 tasks × 2 runs worst-case
+work+closeout, review rides the same day) — an owner-set G2 number
+REPLACES this placeholder.
+
+### 8.4 Option C (permanent TODO_LIST rails) — M24 onboarding checklist, G3 = one-off by default
+
+If the owner later answers G3 = "permanent rails", onboarding a cohort repo
+means: (1) append ONE unchecked TODO_LIST item per repo, text-pinned to the
+target version (harvest dedup hashes repo+text — a version bump re-mints),
+e.g. `- [ ] Adopt templ-components v1.17.0 to the MAX (library-deep-dive
+audit; bump all sub-facades, adopt+leverage, templ generate, commit
+generated files)`, (2) NO wave fixture entry needed (harvest feeds the
+production pool directly), (3) prune-stale owns cleanup, review/status
+sweepers own the second opinions, (4) budget = the production pool's
+`--daily-budget`, not a sweep-pool number. NEVER do this without the owner
+gate: unchecked TODO items are live pool food.
+
+### 8.5 G3 gate row (updated)
+
+| Gate | Default if silent | Status |
+|------|-------------------|--------|
+| G3 rails end-state | One-off sweep (no TODO_LIST harvest of sweep items) | APPLIED — checklist §8.4 recorded for a future yes |
