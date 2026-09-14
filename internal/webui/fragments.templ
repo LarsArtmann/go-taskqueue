@@ -90,6 +90,8 @@ templ taskEmptyState(filtered bool) {
 			Title:       "no tasks match the filter",
 			Description: "Adjust or clear the filters above.",
 			Icon:        icons.Filter,
+			ActionText:  "clear filters",
+			ActionHref:  "/",
 		})
 	} else {
 		@display.EmptyState(display.EmptyStateProps{

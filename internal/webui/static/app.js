@@ -338,7 +338,11 @@
   var searchDebounce = null;
 
   function formURL(form) {
-    var qs = new URLSearchParams(new FormData(form)).toString();
+    var params = new URLSearchParams();
+    new FormData(form).forEach(function (value, key) {
+      if (value !== "") params.set(key, value);
+    });
+    var qs = params.toString();
     return window.location.pathname + (qs ? "?" + qs : "");
   }
 
