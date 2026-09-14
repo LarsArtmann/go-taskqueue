@@ -593,6 +593,21 @@ prose, not the table.
   tags — tags are immutable, so the fork persists; verify by path
   (`git log -1 -- <path>`), not by `--grep` phrase. Full playbook:
   docs/status/2026-09-10_07-49 report §e.
+- ⚠️ **History-rewrite policy**: NEVER reword/amend/rebase any commit that
+  has been PUSHED (including daemon commits already on origin/master) —
+  wrong Task-Queue-ID footers, typos, and bad messages get a follow-up
+  correcting commit or a queue-side note, never a rewrite; tags are
+  immutable, so a rewrite forks the lineage permanently (v0.2.0 + seven
+  sub-tags still descend from the pre-reword side of the 2026-09-10
+  incident). Exception: owner-approved only, for a defect that a follow-up
+  commit cannot fix (e.g. a footer poisoning the queue↔git
+  cross-reference beyond repair), scripted per the daemon rules above. If
+  approved and executed, RECORD the fork in the same session: (a) the
+  old + new SHAs and the fork point in a status report, (b) a note that
+  release tags and remote twins now descend from the abandoned side, (c)
+  a `tq doctor` / release-gate check for `git tag --no-merged master`
+  before the next release, and (d) no doc may cite the dead SHAs
+  (CHANGELOG cites no SHAs at all for this reason).
 - ⚠️ **Dead-export audits must use SUBSTRING matching**: `rg -w Symbol`
   misses suffixed references (`NewSink`, `NewCommandExecutor` use `Sink`,
   `CommandExecutor`) and undercounts — the 2026-09-10 re-derivation found
