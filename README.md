@@ -62,11 +62,11 @@ happened to this task?" always has an answer.
 
 ```sh
 # the library (v0.3.0+) is proxy-installable per module — see Embedding below.
-# The tq BINARY cannot be `go install`ed from the proxy while the root module
-# carries its dev-time replace directives (Go refuses @version installs of
-# replaced modules); build it from a clone or use nix:
+# The tq BINARY becomes `go install github.com/larsartmann/go-taskqueue/cmd/tq@vX.Y.Z`
+# at the next tag cut (cmd/tq is its own replace-free module, ADR-0017; the
+# v0.3.0 root zip predates the split). Until then, build from a clone or use nix:
 git clone https://github.com/LarsArtmann/go-taskqueue && cd go-taskqueue
-go build -o ~/.local/bin/tq ./cmd/tq    # or: nix run github:LarsArtmann/go-taskqueue
+./scripts/build-tq.sh ~/.local/bin/tq    # or: nix run github:LarsArtmann/go-taskqueue
 
 tq enqueue --type sh --project demo --payload 'echo hello from $(uname -s)'
 

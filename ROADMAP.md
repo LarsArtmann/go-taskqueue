@@ -30,7 +30,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - [x] Cut the release (`scripts/release.sh v0.2.0`) — shipped 2026-09-09
       (tag, module proxy, clean-room install, GitHub Release all verified)
 
-## v0.3.0 — Ecosystem bridges
+## v0.3.0 — Ecosystem bridges (facades shipped 2026-09-13; remainder rolls forward)
 
 - [x] Public facade modules (ADR-0016): the library core is importable
       from outside the repo (`go get github.com/larsartmann/go-taskqueue/…`)
