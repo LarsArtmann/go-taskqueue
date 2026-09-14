@@ -57,7 +57,7 @@ not here.
 
 - [x] Run golangci-lint scoped to `internal/runactor` to confirm errname is quiet after the ExitError rename — the close-out verified via compiler + `rg`, not the linter that filed the original finding (08:32 report b2)
 - [x] Sweep the eaf73a9 rename diff repo-wide for further literal leaks (`git log -S` probes for receiver-equals-key `Get("query")` patterns and parenthesized-identifier corruptions like `task(store)`) (08:39 f3/f22; 08:42 f4) — swept 2026-09-15: zero leaks at HEAD (rg probes for `%store`/`%queue`/`task(store)`/`Get("query")` all clean; the earlier fixes c95adb8 + d5ee08d caught the real ones)
-- [ ] Help-text smoke: run `tq` subcommand help (minimum `tq dlq -h`) asserting no parenthesized-identifier artifacts in flag strings — help text is exercised by no test and the class has bitten once (08:42 report e3/f2)
+- [x] Help-text smoke: run `tq` subcommand help (minimum `tq dlq -h`) asserting no parenthesized-identifier artifacts in flag strings — help text is exercised by no test and the class has bitten once (08:42 report e3/f2) — done 2026-09-15: `scripts/smoke/help-text.sh` (all 23 subcommand helps, wired into ci-local; positive + negative verified)
 - [ ] Extend `scripts/lint-annotations.sh` to the sub-module loop, or decide root-only annotations deliberately (needs a per-module `--new-from-rev` baseline strategy) (08:47 report c1/f1/g2)
 - [ ] Extract the disk-derived module loop into `scripts/for-each-module.sh` and consume it from ci.yml (4+ copies) and ci-local.sh (08:47 report e1/f4)
 - [ ] Unify the golangci-lint version pin (duplicated in ci.yml and ci-local.sh) into one source so the two can never drift (08:47 report f22/f23)
