@@ -21,12 +21,21 @@ type AgentResult struct {
 	// VerifyTail is the last lines of the verify command's output: the
 	// proof the task completed on.
 	VerifyTail string `json:"verify_tail,omitempty"`
-	// FilesChanged and CommitSHA are the agent's own structured report,
-	// parsed from a final `TQ_RESULT: {"files_changed": [...], "commit_sha":
-	// "..."}` output line (the agent prompt convention). Absent when the
-	// agent did not emit one.
+	// Commits are the commits whose `Task-Queue-ID: <id>` footer names this
+	// task, DERIVED from git after the run (oldest first) — the agent never
+	// reports them. FilesChanged is the union of files those commits
+	// touched; CommitSHA is the newest one (the review sweeper and web UI
+	// read both). A legacy `TQ_RESULT` self-report still fills them when
+	// derivation finds nothing (in-flight tasks minted before derivation).
+	Commits      []Commit `json:"commits,omitempty"`
 	FilesChanged []string `json:"files_changed,omitempty"`
 	CommitSHA    string   `json:"commit_sha,omitempty"`
+	// Session usage, derived from the local crush data (go-crush-data) when
+	// the run's session id was extractable. Zero on stub or non-crush runs.
+	SessionCostUSD          float64 `json:"session_cost_usd,omitempty"`
+	SessionPromptTokens     int64   `json:"session_prompt_tokens,omitempty"`
+	SessionCompletionTokens int64   `json:"session_completion_tokens,omitempty"`
+	SessionMessageCount     int     `json:"session_message_count,omitempty"`
 	// LogPath is the sidecar file holding the FULL agent + verify output,
 	// written when TQ_LOG_DIR is set on the worker/pool. Absent otherwise.
 	LogPath string `json:"log_path,omitempty"`
