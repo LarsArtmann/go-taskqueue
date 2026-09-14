@@ -149,7 +149,18 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   edit its own gate, review ruling 2026-09-12). A
   payload model makes the executor pass `crush run
   -m`, which RESETS reasoning effort — the repo `.crushrc` managed block
-  (`tq bootstrap`) is the only model+effort carrier. The managed block's
+  (`tq bootstrap`) is the only model+effort carrier (v0.94.1 DID add
+  `crush run --reasoning-effort <level>` — verified 2026-09-14 on this
+  host: accepted for zai/glm-5.3-flash incl. `xhigh`; a mistyped level
+  fails with a misleading "does not support reasoning effort" instead of
+  listing accepted values, upstream-issue candidate — payload-carried
+  effort stays a non-goal until a pinned-model task needs it). Owner
+  ruling 2026-09-14: glm-5.3-flash levels are low|high|xhigh and the pool
+  ALWAYS wants xhigh. Crush v0.93.1 added `option request_timeout <s>`
+  (per-request LLM timeout, default 60s of stream inactivity) — the knob
+  if reasoning stalls ever kill runs; none in the DLQ as of 2026-09-14
+  (429 storms dominate; the 2026-09-11 06-07h 429 deaths predate
+  DetectRateLimit, created 15:07 that day). The managed block's
   tool grant IS the agent's toolset (headless mode denies unlisted tools,
   no prompts): `view ls grep glob edit multiedit write bash fetch download
   todos` + `option metrics false` (headless telemetry off — every run

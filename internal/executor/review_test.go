@@ -239,7 +239,8 @@ func TestReviewExecutorPromptCarriesReviewContext(t *testing.T) {
 		"git show abc1234",
 		"frob.go, frob_test.go",
 		"do not create, modify, or delete",
-		"TQ_RESULT:",
+		"tq verdict '{",
+		"TQ_RESULT_FILE",
 		"senior code reviewer",
 	} {
 		if !strings.Contains(prompt, want) {

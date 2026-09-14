@@ -213,11 +213,11 @@ fine anchors) and confidence 0-100 (how sure you are of the score).
 - Judge by THIS repository's reality (check code when unsure), not generic priors.
 - Do not invent items. Do not skip items.
 
-End your reply with EXACTLY ONE line of this shape and nothing after it:
+Record your verdicts by running EXACTLY:
 
-TQ_RESULT: {"verdicts":[{"item_key":"...","score":80,"effort_minutes":30,"confidence":70,"reasoning":"one line"}]}
+tq verdict '{"verdicts":[{"item_key":"...","score":80,"effort_minutes":30,"confidence":70,"reasoning":"one line"}]}
 
-(one array entry per input item, in any order)
+(tq validates the JSON and writes $TQ_RESULT_FILE — the queue reads that file after you exit; if tq is not on PATH, write the same one-line JSON to $TQ_RESULT_FILE yourself. One array entry per input item, in any order.)
 `)
 
 	return b.String()

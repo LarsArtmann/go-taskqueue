@@ -80,7 +80,8 @@ func TestPrioritizePromptContract(t *testing.T) {
 		"todo:aaa",
 		"todo:bbb",
 		"Fix the gate",
-		"TQ_RESULT:",
+		"tq verdict '{",
+		"TQ_RESULT_FILE",
 		"READ-ONLY",
 		`"verdicts"`,
 	} {

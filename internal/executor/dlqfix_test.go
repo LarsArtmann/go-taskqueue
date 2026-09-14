@@ -232,7 +232,8 @@ func TestDLQFixExecutorPromptCarriesEvidence(t *testing.T) {
 		// The autopsy's own id substituted into the footer instruction;
 		// no placeholder may survive to the agent.
 		"Task-Queue-ID: 000001a0autopsyid000000000",
-		"TQ_RESULT:",
+		"tq verdict '{",
+		"TQ_RESULT_FILE",
 		"autopsy",
 	} {
 		if !strings.Contains(prompt, want) {
