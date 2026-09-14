@@ -253,19 +253,19 @@ templ taskRows(data DashboardData, rows []task.Task) {
 			<td class={ tdCellClass(true) } title={ t.CreatedAt.Format(timeFormat) } data-age={ fmt.Sprintf("%d", t.CreatedAt.UnixMilli()) }>{ timeAgo(data.Now, t.CreatedAt) }</td>
 			if t.LastError != "" {
 				<td class={ tdCellClass(false) }>
-				<span
-					class={ tqErrorCellClass }
-					title={ t.LastError }
-					data-error={ t.LastError }
-					data-short={ truncate(t.LastError, errorPreviewLen) }
-					tabindex="0"
-					role="button"
-					aria-expanded="false"
-				>{ truncate(t.LastError, errorPreviewLen) }</span>
-			</td>
-		} else {
-			<td class={ tdCellClass(false) }></td>
-		}
+					<span
+						class={ tqErrorCellClass }
+						title={ t.LastError }
+						data-error={ t.LastError }
+						data-short={ truncate(t.LastError, errorPreviewLen) }
+						tabindex="0"
+						role="button"
+						aria-expanded="false"
+					>{ truncate(t.LastError, errorPreviewLen) }</span>
+				</td>
+			} else {
+				<td class={ tdCellClass(false) }></td>
+			}
 		</tr>
 	}
 }
