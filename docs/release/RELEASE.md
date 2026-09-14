@@ -135,10 +135,11 @@ releases:
 
 Every internal sub-module ships with the release under a shared version:
 after the root tag, the script derives the sub-tag list FROM DISK —
-`find internal task journal queue executor worker -name go.mod` — and cuts one annotated
-`internal/<mod>/vX.Y.Z` tag per module — including modules nothing requires
-yet (e.g. `internal/queue/postgres` before CLI store wiring), so they stay
-proxy-resolvable. Sub-tag cutting is idempotent (existing tags are skipped),
+`find internal task journal queue executor worker cmd/tq -name go.mod` — and
+cuts one annotated `<mod-path>/vX.Y.Z` tag per module (`internal/<mod>/vX.Y.Z`
+plus the ADR-0016 facades and `cmd/tq/vX.Y.Z` for the CLI module) — including
+modules nothing requires yet (e.g. `internal/queue/postgres` before CLI store
+wiring), so they stay proxy-resolvable. Sub-tag cutting is idempotent (existing tags are skipped),
 and `--push` pushes every sub-tag it cut.
 
 Consequence for development: when a sub-module changes semantically between

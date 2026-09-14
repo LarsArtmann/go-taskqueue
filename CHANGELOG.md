@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Changed
+- **Agent outcomes are DERIVED, not self-reported** (owner ruling
+  2026-09-14: "figure out what an agent session did without them needing
+  to report back"). After verify, the executor derives the run's commits
+  via the `Task-Queue-ID` git footer (the trailer scanner moved from
+  internal/session into the executor module), the changed files via
+  `git diff-tree`, and session usage (cost/tokens/messages) via
+  `go-crush-data` (new read-only executor dependency). `AgentResult` gains
+  `commits` + `session_*` fields; `files_changed`/`commit_sha` are now
+  derived (a legacy `TQ_RESULT` stdout line still fills gaps for in-flight
+  tasks). No prompt teaches the self-report line anymore — a no-op
+  re-dispatch derives "zero footer commits" with no sha-semantics ruling
+  needed. Design + MCP rejection:
+  docs/planning/2026-09-14_derived-outcomes-verdict-channel.md.
+- **Verdict channel: `tq verdict` + `$TQ_RESULT_FILE`** replaces the
+  stdout `TQ_RESULT:` line as the way verdict-gated tasks (review, status,
+  dlqfix, prioritize) report their structured result. runAgent hands every
+  agent process a per-run temp file via the `TQ_RESULT_FILE` env; `tq
+  verdict '<json>'` validates and writes it; the executor appends it to
+  the run output as the LAST `TQ_RESULT:` line, so the file outranks any
+  stdout line. The stdout line stays honored as a legacy fallback
+  (in-flight pool tasks, stub smokes). The close-out turn no longer asks
+  agents to re-emit a result line.
+- **`tq verdict` CLI verb** (agent-facing): records a task's structured
+  result into `$TQ_RESULT_FILE`; validates JSON; no database access, no
+  `TQ_DB` coupling. Outside a queue task it fails with guidance.
+- The default work/catch-up/cqa-fix prompts were slimmed: AGENTS.md is
+  auto-loaded by crush (the "Read AGENTS.md first" step was dead tokens),
+  and the self-report step is gone (see above).
+### Fixed
+- **`executor.ResultLine`/`ExtractResultPayload` now actually read the
+  LAST `TQ_RESULT:` line** as every doc comment promised: the regex scan
+  used `FindStringSubmatch`, which returns the FIRST match — the exact
+  inversion of the documented last-line-wins contract (invisible until a
+  second line could legitimately appear; pinned by
+  `TestVerdictFileOutranksStdoutLine`).
+- `scripts/smoke/status-loop.sh` referenced an unset `REPO_ROOT` when
+  `TQ_BIN` was not provided (every sibling smoke defines it) — the smoke
+  could not run from source.
 ### Known issues
 - **v0.3.0 regression: `go install github.com/larsartmann/go-taskqueue/cmd/tq@vX.Y.Z`
   fails** ("module providing named packages contains one or more replace

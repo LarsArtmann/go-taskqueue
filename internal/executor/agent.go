@@ -408,6 +408,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// process. Best-effort — when the temp dir is unusable the channel is
 	// absent and the legacy stdout line still works.
 	verdictPath := ""
+
 	if f, err := os.CreateTemp("", "tq-verdict-*.json"); err == nil {
 		_ = f.Close()
 
@@ -486,6 +487,7 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	runOnce := func() (*bytes.Buffer, error) {
 		cmd := exec.CommandContext(ctx, e.binary(), args...)
 		cmd.Dir = repoDir
+
 		if verdictPath != "" {
 			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
 		}
@@ -591,6 +593,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 	closeoutOnce := func() (*bytes.Buffer, error) {
 		cmd := exec.CommandContext(ctx, e.binary(), closeoutArgs...)
 		cmd.Dir = repoDir
+
 		if verdictPath != "" {
 			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
 		}
