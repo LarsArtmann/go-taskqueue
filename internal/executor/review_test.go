@@ -417,3 +417,61 @@ func TestReviewExecutorRefusesDirtyTreeAsPreflight(t *testing.T) {
 		t.Fatalf("dirty tree must be preflight, got: %v", err)
 	}
 }
+
+// TestVerdictFileOutranksStdoutLine pins the channel precedence: when the
+// agent writes $TQ_RESULT_FILE AND prints a legacy stdout TQ_RESULT line,
+// the FILE wins (runAgent appends it last; ResultLine reads the last
+// match). This is the tq-verdict contract the prompts teach.
+func TestVerdictFileOutranksStdoutLine(t *testing.T) {
+	t.Parallel()
+
+	body := `printf '%s\n' 'TQ_RESULT: {"verdict":"request_changes","findings":[{"title":"stale stdout line"}]}'
+printf '%s' '{"verdict":"approve","summary":"from the file"}' > "$TQ_RESULT_FILE"`
+	bin := makeStubAgent(t, body)
+	e := &ReviewExecutor{Agent: &AgentExecutor{Bin: bin}}
+
+	ctx, sink := NewSink(context.Background())
+	if err := e.Execute(ctx, reviewTaskT(t, ReviewPayload{
+		Repo:         t.TempDir(),
+		ReviewedTask: "t-1",
+		Item:         "write the thing",
+	})); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	var got ReviewResult
+	if err := json.Unmarshal(sink.Detail(), &got); err != nil {
+		t.Fatalf("sink detail %s: %v", sink.Detail(), err)
+	}
+
+	if got.Verdict != VerdictApprove || got.Summary != "from the file" {
+		t.Fatalf("verdict = %+v, want the FILE's approve (the stdout line must lose)", got)
+	}
+}
+
+// TestVerdictFileAloneSatisfiesGate: no stdout line at all — the file is
+// the whole contract and the executor's synthetic append feeds the parser.
+func TestVerdictFileAloneSatisfiesGate(t *testing.T) {
+	t.Parallel()
+
+	bin := makeStubAgent(t, `printf '%s' '{"verdict":"approve","summary":"file only"}' > "$TQ_RESULT_FILE"`)
+	e := &ReviewExecutor{Agent: &AgentExecutor{Bin: bin}}
+
+	ctx, sink := NewSink(context.Background())
+	if err := e.Execute(ctx, reviewTaskT(t, ReviewPayload{
+		Repo:         t.TempDir(),
+		ReviewedTask: "t-1",
+		Item:         "write the thing",
+	})); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	var got ReviewResult
+	if err := json.Unmarshal(sink.Detail(), &got); err != nil {
+		t.Fatalf("sink detail %s: %v", sink.Detail(), err)
+	}
+
+	if got.Verdict != VerdictApprove || got.Summary != "file only" {
+		t.Fatalf("verdict = %+v, want the file-only approve", got)
+	}
+}

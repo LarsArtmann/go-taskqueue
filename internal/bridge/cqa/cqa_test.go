@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/larsartmann/go-taskqueue/internal/executor"
 )
 
 func newTestServer(t *testing.T) *httptest.Server {
@@ -192,10 +191,9 @@ func TestSeverityAtLeast(t *testing.T) {
 	}
 }
 
-// TestFixTaskPromptContract pins what the fix prompt teaches: the TQ_RESULT
-// example must parse with the executor's real parser (if prompt and parser
-// drift, `tq show` silently loses files_changed/commit_sha), and the
-// anti-scanner-gaming plus autonomy guardrails must stay present.
+// TestFixTaskPromptContract pins what the fix prompt teaches: the
+// derivation contract (NO self-report line — the queue derives commits and
+// files from git) and the anti-scanner-gaming plus autonomy guardrails.
 func TestFixTaskPromptContract(t *testing.T) {
 	t.Parallel()
 
@@ -228,23 +226,8 @@ func TestFixTaskPromptContract(t *testing.T) {
 		t.Fatalf("payload has no prompt: %+v", payload)
 	}
 
-	var line string
-
-	for l := range strings.SplitSeq(prompt, "\n") {
-		if strings.HasPrefix(l, "TQ_RESULT: ") {
-			line = l
-
-			break
-		}
-	}
-
-	if line == "" {
-		t.Fatalf("fix prompt does not teach the TQ_RESULT self-report line:\n%s", prompt)
-	}
-
-	files, sha, ok := executor.ExtractResultPayload(line)
-	if !ok || len(files) == 0 || sha == "" {
-		t.Fatalf("taught line %q does not parse to files+sha", line)
+	if strings.Contains(prompt, "TQ_RESULT") {
+		t.Fatalf("fix prompt still teaches the retired self-report line:\n%s", prompt)
 	}
 
 	for _, want := range []string{".crushrc", ".tq-verify", "Never push", "explicit permission to commit", "never weaken tests"} {

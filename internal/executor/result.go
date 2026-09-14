@@ -152,16 +152,30 @@ var verboseSessionRe = regexp.MustCompile(
 	`(?i)Created session for non-interactive run session_id=([A-Za-z0-9][A-Za-z0-9_-]+)`,
 )
 
-// resultLineRe matches the agent's self-report line: a single line of JSON
+// resultLineRe matches the agent's result line: a single line of JSON
 // after the TQ_RESULT: marker. Everything else in the output is free-form.
 var resultLineRe = regexp.MustCompile(`(?im)^\s*TQ_RESULT:\s*(\{.+\})\s*$`)
+
+// lastResultLine scans all TQ_RESULT lines and returns the LAST match's
+// JSON: last-line-wins is the documented contract (the close-out turn
+// re-emits after the work turn; the verdict file is appended after both).
+// FindStringSubmatch would silently read the FIRST line instead — the
+// exact inversion this helper exists to prevent.
+func lastResultLine(output string) []string {
+	matches := resultLineRe.FindAllStringSubmatch(output, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	return matches[len(matches)-1]
+}
 
 // ResultLine extracts the raw JSON of the LAST TQ_RESULT line from agent
 // output. Executors with a mechanical output contract (review, status) build
 // their strict parsing on top of it; ExtractResultPayload is the lenient
 // consumer for plain agent runs.
 func ResultLine(output string) (jsontext.Value, error) {
-	m := resultLineRe.FindStringSubmatch(output)
+	m := lastResultLine(output)
 	if m == nil {
 		return nil, errors.New("output has no TQ_RESULT line")
 	}
@@ -170,10 +184,11 @@ func ResultLine(output string) (jsontext.Value, error) {
 }
 
 // ExtractResultPayload parses the agent's structured self-report
-// ({files_changed, commit_sha}) from its output. Best-effort: no line, no
-// problem — the fields simply stay empty in the result detail.
+// ({files_changed, commit_sha}) from its output — the legacy fallback for
+// in-flight tasks; derivation is the primary source. Best-effort: no line,
+// no problem — the fields simply stay empty in the result detail.
 func ExtractResultPayload(output string) (files []string, sha string, ok bool) {
-	m := resultLineRe.FindStringSubmatch(output)
+	m := lastResultLine(output)
 	if m == nil {
 		return nil, "", false
 	}
