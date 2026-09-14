@@ -399,11 +399,12 @@ func sortHeaderHref(filter FilterState, column string) string {
 }
 
 // taskRowClass carries the row's status marker plus hover affordance; dead
-// rows get a faint alarm tint.
+// rows get the severity left rule (theme.css) — the row background stays
+// neutral so a full DLQ reads as a calm incident list, not a red wall.
 func taskRowClass(t task.Task) string {
 	class := "row-" + string(t.Status) + " hover:bg-gray-100 dark:hover:bg-gray-800"
 	if t.Status == task.Dead {
-		class += " bg-red-50/50 dark:bg-red-950/20"
+		class += " tq-row-dead"
 	}
 
 	return class
@@ -413,6 +414,12 @@ func taskRowClass(t task.Task) string {
 const inputClass = "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 " +
 	"placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 " +
 	"dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+
+// tqErrorCellClass is the shared expandable error-cell style: the message
+// text stays neutral gray (severity is carried by the row rule / fact tag,
+// never by a wall of red), with the click/keyboard expand affordance that
+// app.js toggles via data-error/data-short.
+const tqErrorCellClass = "cursor-pointer rounded text-gray-600 dark:text-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
 
 // tdCellClass is the table body cell style; nowrap keeps the ledger dense.
 func tdCellClass(wrap bool) string {

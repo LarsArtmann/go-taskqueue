@@ -253,16 +253,19 @@ templ taskRows(data DashboardData, rows []task.Task) {
 			<td class={ tdCellClass(true) } title={ t.CreatedAt.Format(timeFormat) } data-age={ fmt.Sprintf("%d", t.CreatedAt.UnixMilli()) }>{ timeAgo(data.Now, t.CreatedAt) }</td>
 			if t.LastError != "" {
 				<td class={ tdCellClass(false) }>
-					<span
-						class="cursor-pointer text-red-600 dark:text-red-400"
-						title={ t.LastError }
-						data-error={ t.LastError }
-						data-short={ truncate(t.LastError, errorPreviewLen) }
-					>{ truncate(t.LastError, errorPreviewLen) }</span>
-				</td>
-			} else {
-				<td class={ tdCellClass(false) }></td>
-			}
+				<span
+					class={ tqErrorCellClass }
+					title={ t.LastError }
+					data-error={ t.LastError }
+					data-short={ truncate(t.LastError, errorPreviewLen) }
+					tabindex="0"
+					role="button"
+					aria-expanded="false"
+				>{ truncate(t.LastError, errorPreviewLen) }</span>
+			</td>
+		} else {
+			<td class={ tdCellClass(false) }></td>
+		}
 		</tr>
 	}
 }
@@ -345,7 +348,15 @@ templ deadRows(data DashboardData) {
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span></td>
 			<td class={ tdCellClass(false) }>
-				<span class="text-red-600 dark:text-red-400" title={ t.LastError }>{ truncate(t.LastError, errorPreviewLen) }</span>
+				<span
+					class={ tqErrorCellClass }
+					title={ t.LastError }
+					data-error={ t.LastError }
+					data-short={ truncate(t.LastError, errorPreviewLen) }
+					tabindex="0"
+					role="button"
+					aria-expanded="false"
+				>{ truncate(t.LastError, errorPreviewLen) }</span>
 			</td>
 		</tr>
 	}
@@ -376,7 +387,7 @@ templ FactFeed(data DashboardData) {
 							title={ fact.TaskID }
 						>{ shortIDTail(fact.TaskID) }</a>
 						if fact.Error != "" {
-							<span class="text-red-600 dark:text-red-400">{ truncate(fact.Error, errorPreviewLen) }</span>
+							<span class="text-gray-500 dark:text-gray-500">{ truncate(fact.Error, errorPreviewLen) }</span>
 						}
 					</div>
 				}
@@ -460,9 +471,9 @@ templ boardCard(data DashboardData, t task.Task) {
 		}
 		if t.Status == task.Dead {
 			<div class="mt-1 flex items-baseline gap-2 font-mono text-xs">
-				<span class="shrink-0 text-red-600 dark:text-red-400">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span>
+				<span class="shrink-0 text-gray-500 dark:text-gray-400">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span>
 				if t.LastError != "" {
-					<span class="truncate text-red-600/80 dark:text-red-400/80" title={ t.LastError }>{ truncate(t.LastError, errorPreviewLen) }</span>
+					<span class="truncate text-gray-600 dark:text-gray-400" title={ t.LastError }>{ truncate(t.LastError, errorPreviewLen) }</span>
 				}
 			</div>
 		}

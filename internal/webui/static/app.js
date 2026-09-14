@@ -91,6 +91,7 @@
       if (st.expanded[short] && c.getAttribute("data-expanded") !== "1") {
         c.textContent = c.getAttribute("data-error") || "";
         c.setAttribute("data-expanded", "1");
+        c.setAttribute("aria-expanded", "true");
       }
     });
     el.querySelectorAll("input, select, textarea").forEach(function (c) {
@@ -177,20 +178,36 @@
 
   setInterval(tickAges, 30000);
 
-  /* Error cells expand on click: the full message lives in title=, the
-     click toggles it into view (keyboard: Enter on the focused cell). */
-  document.addEventListener("click", function (e) {
-    var cell = e.target.closest ? e.target.closest("[data-error]") : null;
-    if (!cell) return;
+  /* Error cells expand on click (or Enter/Space when focused): the full
+     message lives in title=/data-error, the toggle swaps it into view.
+     aria-expanded tracks the state for assistive tech. */
+  function toggleErrorCell(cell) {
     var full = cell.getAttribute("data-error") || "";
     var short = cell.getAttribute("data-short") || cell.textContent;
-    if (cell.getAttribute("data-expanded") === "1") {
+    var expanded = cell.getAttribute("data-expanded") === "1";
+    if (expanded) {
       cell.textContent = short;
       cell.setAttribute("data-expanded", "0");
+      cell.setAttribute("aria-expanded", "false");
     } else {
       cell.textContent = full;
       cell.setAttribute("data-expanded", "1");
+      cell.setAttribute("aria-expanded", "true");
     }
+  }
+
+  document.addEventListener("click", function (e) {
+    var cell = e.target.closest ? e.target.closest("[data-error]") : null;
+    if (!cell) return;
+    toggleErrorCell(cell);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var cell = e.target.closest ? e.target.closest("[data-error]") : null;
+    if (!cell) return;
+    e.preventDefault();
+    toggleErrorCell(cell);
   });
 
   /* "?" toggles the keyboard-shortcut overlay. */
