@@ -12,7 +12,21 @@ every forward-looking item is resolved (inline strikethroughs) move to
 **Scannability cadence** (08-25 f20): the live index grows ~10 rows/day. When
 the unarchived row count exceeds 100, the index check emits an
 `INDEX BLOAT WARNING` — run an archive sweep (docs-health ANNOTATE mode) or
-add a monthly digest row so the index stays scannable.
+add a monthly digest row so the index stays scannable. Two row conventions
+are pinned by `scripts/check-status-index.sh --self-test` (wired into
+ci-local):
+
+- **Archived rows** carry the archived path in BACKTICKS. A row archived
+  without backticks counts as live forever — that is the point: the
+  convention bug surfaces as index bloat instead of silently vanishing
+  from the count.
+- **Digest rows** start `| digest 20…` — deliberately not a bare date, so a
+  digest row can never inflate the live count (digest-awareness folded in
+  before the first digest row lands, 02-24 e3). Proposed format:
+  `| digest 2026-09 | 44 reports archived (scopes: executor 12, gates 9, webui 7) | — |`
+  (month in the DATE cell, archived row count + top scopes in the Scope
+  cell). Whether digest rows or a sweep become the standing ritual is an
+  open owner question; both paths keep the index scannable.
 
 Archive counter (update when moving files): 137 reports in `archived/`,
 14 plans in `docs/planning/archived/` (2026-09-14 docs-health sweeps:

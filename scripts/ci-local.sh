@@ -237,6 +237,9 @@ step "release-doc drift check"
 step "status-index check"
 ./scripts/check-status-index.sh
 
+step "status-index self-test (live-row counter pin)"
+./scripts/check-status-index.sh --self-test
+
 # Orphaned-guard audit (15-39 report c7/f5, e1): every check-*/smoke script
 # must be wired (this file, ci.yml, or flake.nix) — the check-webui-css
 # lesson generalized into a gate.
