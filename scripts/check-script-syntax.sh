@@ -4,9 +4,10 @@
 # findings across 12 files (2026-09-15) — all fixed, so the gate is born HARD:
 # any finding fails. Style/info severities are deliberately not gated.
 #
-# shellcheck resolves from PATH first (preinstalled on GitHub ubuntu runners),
-# else through `nix shell` (this host). If neither exists the gate FAILS — a
-# syntax gate that silently skips would be a lying green banner.
+# The shellcheck binary resolves from PATH first (preinstalled on GitHub
+# ubuntu runners), else through `nix shell` (this host). If neither exists
+# the gate FAILS — a syntax gate that silently skips would be a lying green
+# banner.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 

@@ -578,6 +578,26 @@ func TestVerifyStrategy(t *testing.T) {
 	if err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: empty, Prompt: "hi"})); err != nil {
 		t.Fatalf("verify-less repo must pass when the agent succeeds, got %v", err)
 	}
+
+	// Reresolve drops the enqueue-time pin: detection owns the gate, the
+	// file still outranks everything. This is --reresolve-verify, the
+	// remedy doctor --hygiene points stale pins at.
+	dir2 := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir2, "go.mod"), []byte("module x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := verifyFor(dir2, &AgentPayload{Verify: "echo stale-pin"}, true); got != autoDetectVerify(dir2) {
+		t.Fatalf("verifyFor reresolve = %q, want auto-detection (stale pin ignored)", got)
+	}
+
+	if err := os.WriteFile(filepath.Join(dir2, ".tq-verify"), []byte("false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := verifyFor(dir2, &AgentPayload{Verify: "echo stale-pin"}, true); got != "false" {
+		t.Fatalf("verifyFor reresolve with file = %q, want the file command (file outranks reresolve)", got)
+	}
 }
 
 // TestMintedGoVerifyIsEnvSelfContained pins the env prelude on minted Go

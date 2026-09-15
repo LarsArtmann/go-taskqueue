@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Deterministic dependency-upgrade pipeline (`depbump` executor +
+  `--dep-sweep` pool sweeper)**: `internal/executor/depbump.go` applies
+  exact-version bumps in one repo — baseline gate, `go get` under go.work
+  quarantine, tidy/vendor/templ fixups, pin re-check, build+test verify,
+  conventional commit, dir-prefixed annotated tag (push opt-in). Git
+  scope honesty is load-bearing: add/checkout fatal on pathspecs matching
+  nothing, so templ globs join the stage scope per-glob via `ls-files`
+  and rollback restores CONCRETE tracked paths + cleans untracked
+  leftovers on a detached context; a re-bump that stages nothing
+  succeeds (idempotent — racing tasks must not dead-letter). The
+  `internal/depsweep` sweeper (`--dep-sweep{,-bin,-dir,-interval,-push,
+  -unreleased}`, default OFF) turns a project-dependency-graph
+  `update-plan --format json` into wave-ordered depbump tasks chained by
+  the plan's DAG (stale builds → release tasks, consumers → exact-pin
+  bump tasks); trap rows (downgrades, `-dev`, never-released, suggested
+  majors) surface as skips; deduped `depsweep:*`, machine-band priority,
+  budget-gated. Unit + sqlite-integration tested; fixture-verified
+  planner JSON contract (both sides pinned by tests); first live pool
+  run pending the rollout ruling.
 - **Anchored review findings (review-pipeline hardening)**: every
   `request_changes` finding must quote the verbatim text it attaches to
   (`anchor`) and is commit-anchored (`commit_sha`, backfilled from the

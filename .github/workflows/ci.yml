@@ -92,6 +92,11 @@ jobs:
             printf '%s\n' "$mod_out"
             lint_total=$(( lint_total + $(printf '%s\n' "$mod_out" | grep -c '\.go:[0-9]*:[0-9]*:' || true) ))
           done
+          # cmd/tq (ADR-0017): golangci-lint rejects the devmod -modfile in its
+          # env probes, so the tooling run goes through the lib's derived go.work.
+          cmdtq_out="$( source scripts/lib/cmd-tq-devmod.sh && cmdtq_devmod && cmdtq_devwork && trap cmdtq_devmod_cleanup EXIT && cd cmd/tq && GOWORK="$CMD_TQ_WORK" "$(go env GOPATH)/bin/golangci-lint" run ./... 2>&1 || true )"
+          printf '%s\n' "$cmdtq_out"
+          lint_total=$(( lint_total + $(printf '%s\n' "$cmdtq_out" | grep -c '\.go:[0-9]*:[0-9]*:' || true) ))
           echo "lint summary: $lint_total findings (advisory baseline ~400, AGENTS.md)"
       - name: Lint annotations (new findings on changed lines)
         # golangci-lint v2 has no github-actions output format and its text
@@ -119,6 +124,10 @@ jobs:
         run: ./scripts/check-doc-refs.sh
       - name: Ghost-archive check (asset README promises are git-tracked)
         run: ./scripts/check-ghost-archives.sh
+      - name: Script syntax gate (bash -n + shellcheck, zero findings)
+        # Parity with ci-local.sh — the gate owns the rules; ubuntu runners
+        # ship shellcheck on PATH.
+        run: ./scripts/check-script-syntax.sh
       - name: FEATURES CI-freshness check (cited run ids are green)
         run: ./scripts/check-features-ci.sh
 

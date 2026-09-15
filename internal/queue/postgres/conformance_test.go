@@ -563,6 +563,85 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 
+	// Fact-shape pins (ADR-0007 parity with the sqlite suite): the enqueue
+	// detail contract and the rescue re-enqueue marker are what the
+	// journal-drift audit (tq audit --journal) replays against.
+	t.Run("enqueue fact detail carries identity", func(t *testing.T) {
+		zero := 0
+
+		pinned, err := s.Enqueue(ctx, task.New{
+			Type: "sh", Project: project, Payload: []byte(`"true"`),
+			Priority: zero, DedupKey: "todo:pgpin",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Cleanup(func() { _ = s.Cancel(ctx, pinned.ID, "conformance cleanup") })
+
+		trail, err := s.FactsForTask(ctx, pinned.ID.String(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(trail) == 0 || trail[0].Type != journal.Enqueued {
+			t.Fatalf("first fact = %+v, want task.enqueued", trail)
+		}
+
+		var detail queue.EnqueueDetail
+		if err := json.Unmarshal(trail[0].Detail, &detail); err != nil {
+			t.Fatalf("unmarshal enqueue detail %s: %v", trail[0].Detail, err)
+		}
+
+		if detail.Project != project || detail.Type != "sh" || detail.DedupKey != "todo:pgpin" {
+			t.Errorf("enqueue detail = %+v, want project=%s type=sh dedup=todo:pgpin", detail, project)
+		}
+
+		if detail.Priority == nil || *detail.Priority != zero {
+			t.Errorf("enqueue detail priority = %v, want explicit &0 (zero must stay expressible)", detail.Priority)
+		}
+	})
+
+	t.Run("rescue dead emits rescue enqueue", func(t *testing.T) {
+		rescued, err := s.Enqueue(ctx, task.New{Type: "flaky", Project: project, MaxAttempts: 1})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Cleanup(func() { _ = s.Cancel(ctx, rescued.ID, "conformance cleanup") })
+
+		if _, err := s.ClaimDue(ctx, "rescue-w", time.Minute); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := s.Fail(ctx, rescued.ID, "rescue-w", "boom", 0, nil); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := s.RescueDead(ctx, rescued.ID, 3); err != nil {
+			t.Fatal(err)
+		}
+
+		trail, err := s.FactsForTask(ctx, rescued.ID.String(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		last := trail[len(trail)-1]
+		if last.Type != journal.Enqueued {
+			t.Fatalf("rescue fact type = %s, want task.enqueued", last.Type)
+		}
+
+		var detail queue.EnqueueDetail
+		if err := json.Unmarshal(last.Detail, &detail); err != nil {
+			t.Fatalf("unmarshal rescue detail %s: %v", last.Detail, err)
+		}
+
+		if detail.Rescue != "true" {
+			t.Errorf("rescue detail = %+v, want rescue=true", detail)
+		}
+	})
+
 	t.Run("cooperative cancel carries the reason", func(t *testing.T) {
 		running, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project})
 		if err != nil {

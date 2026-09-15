@@ -369,7 +369,9 @@ func TestDiffProjectionCoverageSkipsLegacyThinFacts(t *testing.T) {
 
 	stored := []task.Task{
 		{ID: "enriched", Status: task.Pending, Attempts: 1, Priority: 3, DedupKey: "todo:e"},
-		{ID: "legacy", Status: task.Pending, Attempts: 2, Priority: 9, DedupKey: "todo:l"},
+		// attempts 0: claims never burn attempts (only failed facts do), so
+		// a thin-fact task with no failed facts must hold zero.
+		{ID: "legacy", Status: task.Pending, Attempts: 0, Priority: 9, DedupKey: "todo:l"},
 		{ID: "ghost", Status: task.Running},
 	}
 
@@ -377,23 +379,26 @@ func TestDiffProjectionCoverageSkipsLegacyThinFacts(t *testing.T) {
 		{TaskID: "enriched", Type: journal.Enqueued, Detail: jsontext.Value(`{"priority":3,"dedup_key":"todo:e"}`)},
 		{TaskID: "enriched", Type: journal.Claimed},
 		{TaskID: "enriched", Type: journal.Failed, Attempt: 1},
-		// Thin fact: recorded before enrichment — nothing verifiable.
+		// Thin fact: recorded before enrichment — priority/dedup unverifiable.
 		{TaskID: "legacy", Type: journal.Enqueued},
 	}
 
 	report := diffProjection(stored, replayProjection(facts))
 
-	if report.HasDrift() {
-		t.Fatalf("unexpected drift: %+v", report.Drift)
+	// The ghost row is drift by definition (no facts at all); legacy must
+	// NOT drift — its stored priority 9 / dedup todo:l were never diffed,
+	// an absence of evidence is not drift.
+	if len(report.Drift) != 1 || report.Drift[0].TaskID != "ghost" ||
+		report.Drift[0].Field != "status" || report.Drift[0].Replayed != "(no facts)" {
+		t.Fatalf("drift = %+v, want exactly the ghost status row", report.Drift)
 	}
 
 	if report.TasksCompared != 3 {
 		t.Errorf("TasksCompared = %d, want 3", report.TasksCompared)
 	}
 
-	// legacy's stored priority 9 / dedup todo:l were never diffed: the
-	// thin fact cannot contradict them, and the ghost row consumed no
-	// coverage at all.
+	// The ghost row consumed no coverage at all; legacy contributed only
+	// status/attempts (always recorded), never priority/dedup.
 	if report.Coverage != (FieldCoverage{Status: 2, Attempts: 2, Priority: 1, DedupKey: 1}) {
 		t.Errorf("coverage = %+v, want status/attempts 2, priority/dedup 1", report.Coverage)
 	}

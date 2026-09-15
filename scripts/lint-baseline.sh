@@ -37,6 +37,21 @@ for m in $(find internal task journal queue executor worker -name go.mod | sed '
 	record "$m" "$(cd "$m" && GOWORK=off golangci-lint run ./... 2>&1 || true)"
 done
 
+# cmd/tq (ADR-0017): never part of the internal module loop — linted through
+# the devmod + devwork shims (golangci-lint rejects -modfile in its env
+# probes, so the tooling run goes through the derived go.work; the lib owns
+# both shims).
+echo "== cmd/tq" >&2
+cmdtq_lint_out="$(
+	source scripts/lib/cmd-tq-devmod.sh
+	cmdtq_devmod
+	cmdtq_devwork
+	trap cmdtq_devmod_cleanup EXIT
+	cd cmd/tq
+	GOWORK="$CMD_TQ_WORK" golangci-lint run ./... 2>&1 || true
+)"
+record cmd/tq "$cmdtq_lint_out"
+
 sort -u "$out" -o "$out"
 
 if [[ "$mode" == "--check" ]]; then
@@ -69,6 +84,15 @@ if [[ "$mode" == "--check" ]]; then
 		for module in $modules; do
 			if [[ "$module" == "root" ]]; then
 				lint_out="$(golangci-lint run ./... 2>/dev/null || true)"
+			elif [[ "$module" == "cmd/tq" ]]; then
+				lint_out="$(
+					source scripts/lib/cmd-tq-devmod.sh
+					cmdtq_devmod
+					cmdtq_devwork
+					trap cmdtq_devmod_cleanup EXIT
+					cd cmd/tq
+					GOWORK="$CMD_TQ_WORK" golangci-lint run ./... 2>/dev/null || true
+				)"
 			else
 				lint_out="$(cd "$module" && GOWORK=off golangci-lint run ./... 2>/dev/null || true)"
 			fi

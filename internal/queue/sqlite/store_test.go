@@ -2756,3 +2756,89 @@ func TestBandFilter(t *testing.T) {
 		t.Fatalf("unfiltered count = %d (%v), want 3", n, err)
 	}
 }
+
+// TestEnqueueFactDetailCarriesIdentity pins the enqueue-fact wire contract
+// the journal-drift audit replays against (tq audit --journal): identity and
+// priority/dedup key ride the fact detail, and a zero priority is an
+// EXPLICIT zero, not an omitted field — a thin detail would silently
+// downgrade the audit's coverage for every modern task.
+func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	zero := 0
+
+	tk, err := s.Enqueue(ctx, task.New{
+		Project: "pin", Type: "sh", Payload: []byte(`"true"`),
+		Priority: zero, DedupKey: "todo:pin",
+	})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	facts, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("FactsForTask: %v", err)
+	}
+
+	if len(facts) == 0 || facts[0].Type != journal.Enqueued {
+		t.Fatalf("first fact = %+v, want task.enqueued", facts)
+	}
+
+	var detail queue.EnqueueDetail
+	if err := json.Unmarshal(facts[0].Detail, &detail); err != nil {
+		t.Fatalf("unmarshal enqueue detail %s: %v", facts[0].Detail, err)
+	}
+
+	if detail.Project != "pin" || detail.Type != "sh" || detail.DedupKey != "todo:pin" {
+		t.Errorf("enqueue detail = %+v, want project=pin type=sh dedup=todo:pin", detail)
+	}
+
+	if detail.Priority == nil || *detail.Priority != zero {
+		t.Errorf("enqueue detail priority = %v, want explicit &0 (zero must stay expressible)", detail.Priority)
+	}
+}
+
+// TestRescueDeadEmitsRescueEnqueue pins the rescue-fact wire contract:
+// RescueDead re-emits task.enqueued (NOT task.requeued) with the rescue
+// marker, so a replay treats rescue as a budget reset, not an attempt burn.
+func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk, err := s.Enqueue(ctx, task.New{Type: "flaky", MaxAttempts: 1})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.Fail(ctx, tk.ID, "w1", "boom", 0, nil); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	if err := s.RescueDead(ctx, tk.ID, 3); err != nil {
+		t.Fatalf("RescueDead: %v", err)
+	}
+
+	facts, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("FactsForTask: %v", err)
+	}
+
+	last := facts[len(facts)-1]
+	if last.Type != journal.Enqueued {
+		t.Fatalf("rescue fact type = %s, want task.enqueued", last.Type)
+	}
+
+	var detail queue.EnqueueDetail
+	if err := json.Unmarshal(last.Detail, &detail); err != nil {
+		t.Fatalf("unmarshal rescue detail %s: %v", last.Detail, err)
+	}
+
+	if detail.Rescue != "true" {
+		t.Errorf("rescue detail = %+v, want rescue=true", detail)
+	}
+}

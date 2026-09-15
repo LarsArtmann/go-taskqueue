@@ -34,4 +34,33 @@ cmdtq_devmod() {
 
 cmdtq_devmod_cleanup() {
 	rm -f "${CMD_TQ_DIR:?CMD_TQ_DIR not set}/dev.mod" "${CMD_TQ_DIR:?}/dev.sum"
+	if [ -n "${CMD_TQ_WORK:-}" ]; then
+		rm -rf "$(dirname "$CMD_TQ_WORK")"
+	fi
+}
+
+# cmdtq_devwork: generates a throwaway go.work (in a /tmp scratch dir, never
+# the repo tree — the auto-commit daemon sweeps everything committable) whose
+# use-set mirrors the root go.mod's replace targets. golangci-lint cannot
+# consume the dev.mod -modfile (its internal `go env -json` probes reject
+# build flags: "build flag -modfile only valid when using modules"), but it
+# consumes GOWORK natively — so module-aware TOOLING lint runs through this
+# second shim. Sets CMD_TQ_WORK to the work file path.
+cmdtq_devwork() {
+	local root gover
+	root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+	gover="$(awk '$1 == "go" { print $2; exit }' "$root/go.mod")"
+	CMD_TQ_WORK="$(mktemp -d "${TMPDIR:-/tmp}/cmdtq-work.XXXXXX")/go.work"
+	{
+		echo "go ${gover:?root go.mod has no go directive}"
+		echo "use ("
+		echo "	$root"
+		echo "	$root/cmd/tq"
+		awk -v root="$root" '/^replace github\.com\/larsartmann\/go-taskqueue.* => \.\// {
+			path = $NF
+			sub(/^\.\//, "", path)
+			print "\t" root "/" path
+		}' "$root/go.mod" | sort -u
+		echo ")"
+	} >"$CMD_TQ_WORK"
 }

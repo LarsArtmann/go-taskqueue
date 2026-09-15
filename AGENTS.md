@@ -127,6 +127,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/review`                                  | Sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks                                                                                                                     |
 | `internal/status`                                  | Sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)                                                                                                          |
 | `internal/prioritize`                              | Score-cache sweeper (`--prioritize`): repos holding unscored backlog items mint ONE machine-band batch-scorer task; verdicts cache into `priority_scores` and re-rank PENDING tasks (marker > AI > keyword) |
+| `internal/depsweep`                                | Dependency-upgrade sweeper (`--dep-sweep`, 2026-09-15): depgraph `update-plan --format json` → depbump tasks (stale builds → release tasks, consumers → exact-pin bump tasks wired by the plan's DAG); trap rows skip; plan JSON is the ONLY seam (no depgraph import) |
 | `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                                                             |
 | `internal/runactor`                                | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                                                          |
 | `internal/webui`                                   | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                                                                |
@@ -315,6 +316,29 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   `RepriMutable`, and scores clamp to the backlog band. `tq reprioritize`
   and the startup sweep feed the same cache (one ladder everywhere).
   Default OFF — it is AI spend.
+- **`depbump` (deterministic dependency bumps, 2026-09-15)**:
+  `DepBumpPayload` JSON (repo, exact `bumps[{module,version}]`, optional
+  `release{version,push}`, require_clean, timeout_minutes). Flow:
+  payload misses are Permanent; dirty tree is a Preflight requeue (someone
+  else holds the repo); red baseline fails untouched; then `go get` exact
+  pins under go.work quarantine → tidy → vendor-if-present → templ
+  regenerate (soft skip without the binary; `TemplBin` override for
+  pinned deployments/tests) → pin re-check → build+test verify → commit →
+  dir-prefixed annotated tag (+ optional push, the irreversible step).
+  Git scope honesty: add/checkout FATAL on pathspecs matching nothing, so
+  the `*_templ.go`/`*_templ.txt` globs join the stage scope PER GLOB via
+  `ls-files`, and rollback checks out CONCRETE tracked paths + cleans
+  untracked leftovers on a DETACHED context (a checkout carrying one
+  unmatched pathspec aborts restoring NOTHING — the 2026-09-15 lesson;
+  rollback must survive the very timeout that triggered it). A re-bump
+  that stages nothing SUCCEEDS (goal already met — two tasks racing to
+  one pin must not DLQ the second). Minted by the depsweep sweeper
+  (`--dep-sweep{,-bin,-dir,-interval,-push,-unreleased}`, default OFF):
+  dedup `depsweep:<repo>:release:<v>` / `depsweep:<repo>:bump:<hash>`,
+  machine-band priority, budget-gated via the pool's mintPass; skips
+  never-released / suggested-major / trap rows (downgrades, `-dev`,
+  not-newer). Design + research: the 2026-09-15 status report; planner
+  side: project-dependency-graph `update-plan --format json`.
 - **Session-close bridge** (`tq session begin/close`, prototype
   2026-09-12): interactive sessions get the pool close-out — begin mints
   `session.opened`; close scans `Crush-Session: <id>` git trailers (git ≥

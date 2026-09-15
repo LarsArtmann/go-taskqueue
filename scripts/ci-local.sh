@@ -74,6 +74,9 @@ step "dead-export audit (advisory report)"
 step "rename-hygiene scan (advisory; quoted literals shadowing removed identifiers)"
 ./scripts/check-rename-hygiene.sh
 
+step "script syntax gate (bash -n + shellcheck, zero findings)"
+./scripts/check-script-syntax.sh
+
 step "gofmt"
 unformatted="$(gofmt -l .)"
 if [ -n "$unformatted" ]; then
@@ -103,6 +106,17 @@ lint() {
 		for m in $mods; do
 			(cd "$m" && golangci-lint run ./...)
 		done
+		# cmd/tq (ADR-0017) through the devmod + devwork shims: golangci-lint
+		# rejects -modfile in its internal env probes, so the tooling run goes
+		# through the derived go.work instead (the lib owns both shims).
+		(
+			source scripts/lib/cmd-tq-devmod.sh
+			cmdtq_devmod
+			cmdtq_devwork
+			trap cmdtq_devmod_cleanup EXIT
+			cd cmd/tq
+			GOWORK="$CMD_TQ_WORK" golangci-lint run ./...
+		)
 	else
 		# Single source for the pin: .github/workflows/ci.yml owns the
 		# version; ci-local derives it so the two can never drift (M55).
