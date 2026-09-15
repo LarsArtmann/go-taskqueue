@@ -655,6 +655,11 @@ prose, not the table.
   non-loopback binds (incl. `:port`, hostnames) refuse to start without
   `--auth-token` (constant-time bearer/`?token=`). Full matrix:
   SECURITY.md. Don't add write endpoints without the same treatment.
+  `tq api` (internal/httpapi) carries the SAME hardening (2026-09-16,
+  03-05 report f2/f3 — decision CLOSED, do not re-open): mandatory token
+  on every bind, nosniff on every response, and a 3-strikes bearer-auth
+  lockout (per client IP, all routes, 60s 429 + Retry-After, success
+  resets, `authRateLimiter` mirrors webui's writeRateLimiter).
 - ⚠️ **golangci-lint is advisory** (`continue-on-error`, ~890-finding
   baseline): never mass-"fix" the baseline; don't add new findings in
   functions you touch. Hard gates: vet + gofmt + tests. Baseline GROWTH is

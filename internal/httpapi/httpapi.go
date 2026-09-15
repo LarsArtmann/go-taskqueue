@@ -255,6 +255,7 @@ func (l *authRateLimiter) boundLocked() {
 
 	for len(l.strikes) > l.maxKeys {
 		oldestKey := ""
+
 		var oldest *authStrikes
 
 		for key, strikes := range l.strikes {
