@@ -221,6 +221,8 @@ func cmdEnqueue(args []string) error {
 	verifyCmd := fs.String("verify", "", "agent convenience: shell command that must exit 0 after the run (empty = auto-detect)")
 	timeoutMin := fs.Int("timeout-minutes", 0, "agent convenience: cap for agent run + verify (default 30)")
 	yoloTask := fs.Bool("yolo-task", false, "agent convenience: request autonomy — fails fast if the repo has no .crushrc permission grant")
+	wait := fs.Bool("wait", false, "block until the task reaches a terminal status, streaming its journal facts to the terminal (cron one-shots)")
+	waitTimeout := fs.Duration("timeout", 0, "with --wait: give up after this long (0 = wait forever)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -319,7 +321,60 @@ func cmdEnqueue(args []string) error {
 
 	fmt.Println(t.ID)
 
+	if *wait {
+		return waitForTask(context.Background(), s, t.ID, *waitTimeout)
+	}
+
 	return nil
+}
+
+// waitForTask blocks until the task reaches a terminal status, printing each
+// new journal fact as it lands (seq-ordered, never re-printed). It returns a
+// non-nil error for a non-Completed terminal status or a --timeout expiry, so
+// a cron one-shot can gate on the exit code instead of tail+grep.
+func waitForTask(ctx context.Context, s *sqlite.Store, id task.ID, timeout time.Duration) error {
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
+	lastSeq := int64(0)
+
+	for {
+		facts, err := s.FactsForTask(ctx, id.String(), 0)
+		if err != nil {
+			return fmt.Errorf("stream facts for %s: %w", id, err)
+		}
+
+		for _, f := range facts {
+			if f.Seq > lastSeq {
+				fmt.Println(formatFact(f))
+				lastSeq = f.Seq
+			}
+		}
+
+		t, err := s.Get(ctx, id)
+		if err != nil {
+			return fmt.Errorf("load %s: %w", id, err)
+		}
+
+		if task.Terminal(t.Status) {
+			fmt.Printf("task %s: %s\n", t.ID, t.Status)
+
+			if t.Status != task.Completed {
+				return fmt.Errorf("task %s finished %s", t.ID, t.Status)
+			}
+
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timed out after %s waiting for task %s (status %s)", timeout, id, t.Status)
+		case <-time.After(250 * time.Millisecond):
+		}
+	}
 }
 
 // payloadFlags carries the agent-convenience flag values into
