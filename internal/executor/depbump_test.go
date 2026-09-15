@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -35,8 +32,8 @@ func TestIsStableSemver(t *testing.T) {
 		{"v0.0.1", true},
 		{"v10.20.30", true},
 		{"", false},
-		{"1.2.3", false},   // missing v prefix
-		{"v1.2", false},    // two segments
+		{"1.2.3", false},    // missing v prefix
+		{"v1.2", false},     // two segments
 		{"v1.2.3.4", false}, // four segments
 		{"v1.2.3-rc1", false},
 		{"v1.2.3-dev", false},
