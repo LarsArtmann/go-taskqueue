@@ -26,6 +26,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/bridge/cqa"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/budget"
+	"github.com/larsartmann/go-taskqueue/internal/depsweep"
 	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
@@ -867,6 +868,16 @@ func cmdAgentPool(args []string) error {
 	reg.Register("sh", executor.NewCommandExecutor(""))
 	registerAgentExecutors(reg, agentExec)
 
+	// depbump is deterministic (no model): every pool drains such tasks
+	// wherever they were minted (carry parity with the agent family). The
+	// pool unit env carries no GOEXPERIMENT, so hand it to every go
+	// command the executor spawns (the env lie that burned agent verifies,
+	// 2026-09-11 task 000001a08ebf).
+	reg.Register(executor.TaskTypeDepBump, &executor.DepBumpExecutor{
+		ProjectsDir: poolOpts.projectsDir,
+		ExtraEnv:    []string{executor.GoEnvExperiment},
+	})
+
 	printAgentPoolBanner(poolOpts)
 
 	// One signal story (runactor): interrupt cancels the pool loop, the
@@ -1089,6 +1100,35 @@ func cmdAgentPool(args []string) error {
 		}
 	}
 
+	// depsweep turns the depgraph plan into depbump tasks on an interval
+	// (dedup makes every pass idempotent; a zero interval disables even the
+	// startup sweep). depbump tasks are deterministic, but the documented
+	// cap is "EVERY enqueue clears the budget guard" — mintPass it anyway.
+	var depSweeper *depsweep.Sweeper
+
+	depSweepDir := poolOpts.depSweepDir
+	if depSweepDir == "" {
+		depSweepDir = poolOpts.projectsDir
+	}
+
+	if poolOpts.depSweep && poolOpts.depSweepEvery > 0 {
+		depSweeper = depsweep.NewSweeper(store, depsweep.SweeperConfig{
+			Source: depsweep.DepgraphSource{
+				Bin: poolOpts.depSweepBin,
+				Dir: depSweepDir,
+			},
+			PushReleases:      poolOpts.depSweepPush,
+			IncludeUnreleased: poolOpts.depSweepUnrel,
+			Log:               log,
+		})
+
+		fmt.Fprintf(os.Stderr,
+			"tq: agent-pool: dep-sweep every %s (planner %s, dir %s, push=%t)\n",
+			poolOpts.depSweepEvery, poolOpts.depSweepBin, depSweepDir, poolOpts.depSweepPush)
+	}
+
+	lastDepSweep := time.Time{} // zero: the first tick sweeps immediately
+
 	// mintPass gates one budget-consuming pass: EVERY enqueue (harvested,
 	// review, status, CQA) must clear the guard immediately before it — a
 	// completion inside the same tick can spend the last slot after an
@@ -1224,6 +1264,19 @@ func cmdAgentPool(args []string) error {
 						"batches", stats.BatchesEnqueued, "known", stats.BatchesKnown,
 						"verdicts", stats.VerdictsCached, "reprioritized", stats.TasksReprioritized,
 						"skipped", stats.Skipped)
+				}
+			})
+		}
+
+		if depSweeper != nil && time.Since(lastDepSweep) >= poolOpts.depSweepEvery {
+			lastDepSweep = time.Now()
+
+			mintPass("dep sweep", func() {
+				stats, err := depSweeper.Sweep(ctx)
+				if err != nil {
+					log.Error("dep sweep failed", "err", err)
+				} else if stats.Minted > 0 || stats.Known > 0 || len(stats.Skips) > 0 {
+					log.Info("dep sweep done", "minted", stats.Minted, "known", stats.Known, "skipped", len(stats.Skips))
 				}
 			})
 		}
