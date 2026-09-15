@@ -641,7 +641,12 @@ prose, not the table.
   tagliatelle exclusion: machine-payload wire structs (executor payloads,
   queue fact evidence, harvest RepriChange) are snake_case BY CONTRACT —
   keys are quoted in agent prompts and persisted in journal facts; core
-  domain types stay camelCase)
+  domain types stay camelCase; 2026-09-15 fifth regen: 1089 findings, 145
+  rows — the regen added cmd/tq to the lint+baseline loops (ADR-0017 module
+  was never linted; +268 findings/31 rows via the devmod+devwork shims in
+  `scripts/lib/cmd-tq-devmod.sh` — golangci-lint rejects -modfile in its env
+  probes, so tooling lint runs under a derived go.work; non-cmd/tq counts
+  byte-identical across the regen))
   or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
