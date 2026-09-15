@@ -84,6 +84,18 @@ type ReviewFinding struct {
 	Severity string `json:"severity,omitempty"`
 	// Detail is the free-form explanation and suggested direction.
 	Detail string `json:"detail,omitempty"`
+	// CommitSHA is the commit the finding is anchored to (what the reviewer
+	// inspected). Empty in model output is backfilled from the review
+	// payload's CommitSHA at parse time — every request_changes finding
+	// ends up anchored to a commit even when the model omits it.
+	CommitSHA string `json:"commit_sha,omitempty"`
+	// Anchor is the short VERBATIM text the finding is attached to (a line
+	// or hunk of the cited file AS IT READS at the anchored commit). A bare
+	// line-range citation ("lines 12-18", "x.go:3") is rejected at parse
+	// time: line numbers go stale on the first rebase, and a fix agent that
+	// must re-derive the location is re-doing the review (the 2026-09-10
+	// 05-58 stale-anchor incident cost a rework day).
+	Anchor string `json:"anchor,omitempty"`
 }
 
 // ReviewResult is the structured outcome of one review run, stored in the
@@ -177,6 +189,16 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 		return fmt.Errorf("review: %w", err)
 	}
 
+	// Backfill the anchor commit: a finding that omits commit_sha is
+	// anchored to the change under review.
+	if p.CommitSHA != "" {
+		for i := range result.Findings {
+			if result.Findings[i].CommitSHA == "" {
+				result.Findings[i].CommitSHA = p.CommitSHA
+			}
+		}
+	}
+
 	result.SessionID = ExtractSessionID(output)
 	result.LogPath = writeOutputSidecar(t.ID, output, "")
 
@@ -248,13 +270,15 @@ func reviewPrompt(p ReviewPayload) string {
 
 - "approve": the change is correct and complete as it stands. Trivial nits do NOT block approval.
 - "request_changes": you found at least one concrete, actionable problem. Every finding must be specific enough that a fix agent can act on it without re-doing the review (name the file, the behavior, and the expected direction).
+- Every finding must carry "anchor": a short VERBATIM quote of the text the finding is attached to, exactly as the file reads at the commit you inspected. Never cite bare positions ("lines 12-18", "x.go:3") without the quoted text — line numbers go stale.
+- Optionally carry "commit_sha": the commit the finding is anchored to (defaults to the change under review).
 - Never request changes without findings; never report findings under approve.
 
 Record your verdict by running EXACTLY ONE of:
 
 tq verdict '{"verdict":"approve","summary":"...","findings":[]}'
 
-tq verdict '{"verdict":"request_changes","summary":"...","findings":[{"title":"...","severity":"low|medium|high","detail":"..."}]}'
+tq verdict '{"verdict":"request_changes","summary":"...","findings":[{"title":"...","severity":"low|medium|high","detail":"...","anchor":"<verbatim quoted text>","commit_sha":"<sha>"}]}'
 
 (tq validates the JSON and writes $TQ_RESULT_FILE — the queue reads that file after you exit; if tq is not on PATH, write the same one-line JSON to $TQ_RESULT_FILE yourself)
 
@@ -294,6 +318,14 @@ func ParseResult(output string) (ReviewResult, error) {
 			}
 
 			f.Severity = normalizeSeverity(f.Severity)
+			f.Anchor = strings.TrimSpace(f.Anchor)
+
+			if v == VerdictRequestChanges {
+				if err := validateAnchor(f.Anchor); err != nil {
+					return ReviewResult{}, fmt.Errorf("finding %q: %w", strings.TrimSpace(f.Title), err)
+				}
+			}
+
 			result.Findings = append(result.Findings, f)
 		}
 
@@ -309,6 +341,61 @@ func ParseResult(output string) (ReviewResult, error) {
 	default:
 		return ReviewResult{}, fmt.Errorf("unknown verdict %q (want approve or request_changes)", parsed.Verdict)
 	}
+}
+
+// validateAnchor is the queue-side re-anchoring pre-flight: it runs at
+// verdict-parse time, so a finding that cites only a position (which cannot
+// be re-anchored to content after a rebase) fails the attempt while the
+// reviewer can still re-file it, instead of surfacing later as an unactionable
+// fix task.
+func validateAnchor(anchor string) error {
+	if anchor == "" {
+		return errors.New("finding has no anchor: request_changes findings must quote the verbatim text they attach to")
+	}
+
+	if anchorLooksPositional(anchor) {
+		return fmt.Errorf("finding anchor %q is a bare position: quote the verbatim text the finding attaches to, not line numbers", anchor)
+	}
+
+	return nil
+}
+
+// anchorLooksPositional reports whether the anchor is only a line, line
+// range, or file:line citation ("lines 12-18", "12-18", "x.go:34", "L40") —
+// precisely the anchors that go stale on a rebase.
+func anchorLooksPositional(a string) bool {
+	trimmed := strings.TrimSpace(a)
+	if trimmed == "" {
+		return false
+	}
+
+	lower := strings.ToLower(trimmed)
+	for _, prefix := range []string{"line ", "lines ", "line:", "lines:"} {
+		if strings.HasPrefix(lower, prefix) && !strings.ContainsAny(strings.TrimSpace(lower[len(prefix):]), "abcdefghijklmnopqrstuvwxyz") {
+			return true
+		}
+	}
+
+	body := strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(lower, "l"), ":"), " ")
+	if body == "" {
+		return false
+	}
+
+	for _, part := range strings.FieldsFunc(body, func(r rune) bool {
+		return r == '-' || r == '–' || r == ':' || r == '.' || r == ',' || r == ' ' || r == '\t'
+	}) {
+		if part == "" {
+			continue
+		}
+
+		for _, r := range part {
+			if r < '0' || r > '9' {
+				return false // a letter or symbol survives: content, not a position
+			}
+		}
+	}
+
+	return true
 }
 
 // normalizeSeverity maps arbitrary model output onto the three display

@@ -338,14 +338,29 @@ func fixPrompt(payload executor.ReviewPayload, finding executor.ReviewFinding) s
 		b.WriteString(detail + "\n\n")
 	}
 
-	if payload.CommitSHA != "" {
-		b.WriteString("The rejected change is commit " + payload.CommitSHA + ".\n\n")
+	if anchor := strings.TrimSpace(finding.Anchor); anchor != "" {
+		b.WriteString("The finding is anchored to this verbatim text: `" + anchor + "`. Use it to locate the site — never a line number.\n\n")
+	}
+
+	sha := strings.TrimSpace(finding.CommitSHA)
+	if sha == "" {
+		sha = strings.TrimSpace(payload.CommitSHA)
+	}
+
+	if sha != "" {
+		b.WriteString("The rejected change is (or was) commit " + sha + ".\n\n")
+		b.WriteString(
+			"Disposition for a dangling commit: verify the commit still exists (`git cat-file -e " + sha + "`). If it is gone (rebased away), re-anchor via the verbatim anchor text above and judge the CURRENT tree; the stale sha is context, not a requirement. If the anchor text is also gone, the finding no longer applies — state that in your final output instead of inventing a change.\n\n",
+		)
 	}
 
 	b.WriteString(
 		"Address the finding minimally, keep the repository's contracts (AGENTS.md / docs), and make the repo's own gates " +
 			"(build, vet, tests, format) pass before finishing. Commit the fix with a message ending in this exact footer " +
-			"line (you have explicit permission to commit for this task):\n\nTask-Queue-ID: {{TASK_ID}}\n\nNever push.",
+			"line (you have explicit permission to commit for this task):\n\nTask-Queue-ID: {{TASK_ID}}\n\n" +
+			"Footer convention: exactly ONE Task-Queue-ID footer per commit — the FIX ticket's id above. Do not add a second " +
+			"footer for the original task; that lineage lives in the queue (this fix task descends from its review), and " +
+			"duplicate footers corrupt the queue↔git cross-reference.\n\nNever push.",
 	)
 
 	return b.String()
