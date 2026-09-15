@@ -392,26 +392,23 @@ func (e *DepBumpExecutor) applyBumps(
 func (e *DepBumpExecutor) regenerateTempl(ctx context.Context, repoDir string) error {
 	hasTempl := false
 
-	err := filepath.WalkDir(repoDir, func(_ string, d os.DirEntry, err error) error {
-		if err != nil || !d.IsDir() {
+	err := filepath.WalkDir(repoDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
 			return err
 		}
 
-		if d.Name() == ".git" || d.Name() == "vendor" || d.Name() == "node_modules" {
-			return filepath.SkipDir
-		}
-
-		entries, err := os.ReadDir(filepath.Join(repoDir, d.Name()))
-		if err != nil {
-			return nil //nolint:nilerr // unreadable dir is not fatal for detection
-		}
-
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".templ") {
-				hasTempl = true
-
-				return filepath.SkipAll
+		if d.IsDir() {
+			if d.Name() == ".git" || d.Name() == "vendor" || d.Name() == "node_modules" {
+				return filepath.SkipDir
 			}
+
+			return nil
+		}
+
+		if strings.HasSuffix(d.Name(), ".templ") {
+			hasTempl = true
+
+			return filepath.SkipAll
 		}
 
 		return nil
@@ -479,26 +476,30 @@ func (e *DepBumpExecutor) commit(ctx context.Context, repoDir string, bumps []De
 	return nil
 }
 
-// templGlobs returns the templ output pathspecs when the repo has files
-// matching them: tracked ones always, fresh untracked ones only with
-// includeUntracked (staging must see first-ever generated files; checkout
-// only restores what HEAD knows). Detection goes through ls-files because
-// git fatal-errors on add/checkout pathspecs that match nothing.
+// templGlobs returns the templ output pathspecs the repo actually has,
+// each checked independently — git fatal-errors on an add/checkout
+// pathspec that matches nothing, and a repo can well have *_templ.go
+// artifacts without any *_templ.txt (or vice versa). Tracked files count
+// always; fresh untracked ones only with includeUntracked (staging must
+// see first-ever generated files; checkout only restores what HEAD
+// knows).
 func (e *DepBumpExecutor) templGlobs(ctx context.Context, repoDir string, includeUntracked bool) []string {
-	args := []string{"-C", repoDir, "ls-files", "--cached"}
-	if includeUntracked {
-		args = append(args, "--others", "--exclude-standard")
+	var globs []string
+
+	for _, glob := range depbumpTemplGlobs {
+		args := []string{"-C", repoDir, "ls-files", "--cached"}
+		if includeUntracked {
+			args = append(args, "--others", "--exclude-standard")
+		}
+
+		args = append(args, "--", glob)
+
+		if out, err := e.runGit(ctx, args...); err == nil && strings.TrimSpace(out) != "" {
+			globs = append(globs, glob)
+		}
 	}
 
-	args = append(args, "--")
-	args = append(args, depbumpTemplGlobs...)
-
-	out, err := e.runGit(ctx, args...)
-	if err != nil || strings.TrimSpace(out) == "" {
-		return nil //nolint:nilerr // detection failure degrades to omitting the globs
-	}
-
-	return depbumpTemplGlobs
+	return globs
 }
 
 // commitMessageForBumps renders the conventional commit line for a bump
