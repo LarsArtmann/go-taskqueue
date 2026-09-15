@@ -529,6 +529,8 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 | `display.Button`                                                                                 | adopted | filter bar (apply)                                                                              |
 | `display.CopyButton`                                                                             | adopted | detail page: task-id copy, payload lede + raw payload, status-report path (2026-09-14 overhaul) |
 | `feedback.Alert`                                                                                 | adopted | task detail (last error)                                                                        |
+| `navigation.Pagination`                                                                          | adopted | task table pager (2026-09-15: numbered pages + ellipsis replace the hand-rolled prev/next)      |
+| `display.ListNote`                                                                               | adopted | task table pager: "showing N of M" truncation note (2026-09-15)                                 |
 | `icons.ArchiveBox/CircleStack/Filter/Inbox`                                                      | adopted | empty-state + filter icons (`fragments.templ`)                                                  |
 | status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband)                 |
 
@@ -541,6 +543,18 @@ created/updated/completed rows (AutoRefresh + CSP nonce via
 `relativeTimeComponent` in components.go). The fact feed keeps wall-clock
 timestamps + the client `data-age` ticker by decision — a terminal tail
 reads absolute, and per-line components would each re-render on swap.
+
+Evaluated and REJECTED 2026-09-15 (`errorpage.WriteError`/`ErrorPage`,
+separate errorpage MODULE): the library error pages render their OWN page
+chrome (full standalone document), while every tq surface is an in-chrome
+view of the themed, auth-gated, noindex dashboard shell (`layout.Base`) —
+a library-chrome 404/500 would visually strand the operator mid-session.
+The one full-page error that matters (task id does not resolve) already
+renders the in-chrome styled 404 (`renderTaskNotFound`), and the remaining
+`http.Error` sites are form-post/fragment contexts (cancel/rescue 409/500)
+where a plain text + browser-back is honest. Adopting would also add the
+errorpage module require (+ vendorHash dance) for four error lines. Do not
+re-litigate without a chrome-less variant upstream.
 
 Evaluated and REJECTED 2026-09-13: `display.KanbanBoard` (library v1.15+)
 does not fit the custom board — its value is the drag/keyboard move
