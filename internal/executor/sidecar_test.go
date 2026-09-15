@@ -142,6 +142,10 @@ func TestSweepSidecarsByBytes(t *testing.T) {
 func TestWriteVerifyEvidence(t *testing.T) {
 	id := task.ID("test-task-1")
 
+	// Hermetic: agent shells inherit TQ_LOG_DIR from the pool unit — the
+	// no-dir assertions below must not depend on the host env.
+	t.Setenv("TQ_LOG_DIR", "")
+
 	if got := writeVerifyEvidence(id, []byte("out")); got != "" {
 		t.Fatalf("writeVerifyEvidence without TQ_LOG_DIR = %q, want \"\"", got)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json/jsontext"
+	"strings"
 	"testing"
 	"time"
 
@@ -401,5 +402,62 @@ func TestDiffProjectionCoverageSkipsLegacyThinFacts(t *testing.T) {
 	// status/attempts (always recorded), never priority/dedup.
 	if report.Coverage != (FieldCoverage{Status: 2, Attempts: 2, Priority: 1, DedupKey: 1}) {
 		t.Errorf("coverage = %+v, want status/attempts 2, priority/dedup 1", report.Coverage)
+	}
+}
+
+// fakeAuditToken is shape-valid but fake: an OpenAI-style key body long
+// enough to trip the detector.
+const fakeAuditToken = "sk-abcdefghijklmnopqrstuvwxyz012345"
+
+func TestScanFactSecretsFindsTokenShapedEvidence(t *testing.T) {
+	t.Parallel()
+
+	facts := []journal.Fact{
+		// Evidence carriers: failed detail + dead-letter error text.
+		{Seq: 3, TaskID: "leak-detail", Type: journal.Failed, Detail: jsontext.Value(`{"stage":"agent","tail":"boom ` + fakeAuditToken + `"}`)},
+		{Seq: 4, TaskID: "leak-error", Type: journal.DeadLettered, Error: "agent run failed: " + fakeAuditToken},
+		// Two hits in one field count as two.
+		{Seq: 5, TaskID: "leak-twice", Type: journal.Failed, Error: fakeAuditToken + " / " + fakeAuditToken},
+		// NOT scanned: enqueue payloads are provided, not leaked.
+		{Seq: 6, TaskID: "payload-clean", Type: journal.Enqueued, Detail: jsontext.Value(`{"payload":"` + fakeAuditToken + `"}`)},
+		// Clean facts produce no rows.
+		{Seq: 7, TaskID: "clean", Type: journal.Failed, Error: "exit status 1", Detail: jsontext.Value(`{"tail":"build failed"}`)},
+	}
+
+	hits := scanFactSecrets(facts)
+
+	if len(hits) != 3 {
+		t.Fatalf("hits = %+v, want 3 rows", hits)
+	}
+
+	if hits[0].Seq != 3 || hits[0].Field != "detail" || hits[0].Count != 1 {
+		t.Errorf("row 0 = %+v, want seq 3 detail x1", hits[0])
+	}
+
+	if hits[1].Seq != 4 || hits[1].Field != "error" || hits[1].TaskID != "leak-error" {
+		t.Errorf("row 1 = %+v, want seq 4 error on leak-error", hits[1])
+	}
+
+	if hits[2].Count != 2 {
+		t.Errorf("row 2 count = %d, want 2", hits[2].Count)
+	}
+
+	for _, hit := range hits {
+		if strings.Contains(hit.Type, fakeAuditToken) || strings.Contains(hit.TaskID, "sk-") {
+			t.Errorf("hit row must never carry the secret itself: %+v", hit)
+		}
+	}
+}
+
+func TestScanFactSecretsCleanJournalIsEmpty(t *testing.T) {
+	t.Parallel()
+
+	facts := []journal.Fact{
+		{Seq: 1, TaskID: "t", Type: journal.Enqueued},
+		{Seq: 2, TaskID: "t", Type: journal.Failed, Error: "command failed: exit status 2: make: *** [all] Error 2"},
+	}
+
+	if hits := scanFactSecrets(facts); len(hits) != 0 {
+		t.Errorf("hits = %+v, want none", hits)
 	}
 }
