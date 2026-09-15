@@ -50,7 +50,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ruling). An advisory ci-local smoke (`scripts/smoke/journal-drift.sh`)
   runs it over a hermetic seeded fixture: a truthful lifecycle projection
   must report no drift, and a corrupted tasks table must surface all four
-  diffed fields.
+  diffed fields. The report carries per-field `coverage` counts (text +
+  JSON): fields the journal never recorded — priority/dedup key on facts
+  written before enrichment — are excluded from the diff by design, and
+  the counts make that honesty visible instead of silently under-reporting.
+  The fact-shape contracts the replay depends on (enqueue detail carries
+  project/type/priority/dedup key with an explicit zero priority; rescue
+  re-emits `task.enqueued` with the rescue marker) are pinned in BOTH
+  backend suites (sqlite store tests, postgres conformance battery).
 - **Batched harvest (`--batch-items N`, default off)**: one agent task can
   now carry a run of up to N adjacent open items from the same TODO_LIST.md
   section — ONE session works them in order (fewer cold sessions, more done
