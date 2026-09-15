@@ -3,7 +3,7 @@
 # Doc drift caught here dies in PRs, not in audits. TODO_LIST.md and
 # docs/planning/ are exempt on purpose — they name paths that are yet to be.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 docs=(README.md AGENTS.md CONTRIBUTING.md CHANGELOG.md FEATURES.md ROADMAP.md)
 

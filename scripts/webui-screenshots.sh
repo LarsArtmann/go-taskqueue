@@ -33,7 +33,7 @@ TQ_DB="$TMP/shots.db" "$TMP/tq" enqueue --type sh --project demo --payload '"tru
 "$TMP/tq" serve --db "$TMP/shots.db" --addr 127.0.0.1:8097 &
 SERVE_PID=$!
 
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
 	curl -sf http://127.0.0.1:8097/ >/dev/null 2>&1 && break
 	sleep 0.2
 done 2>/dev/null || true

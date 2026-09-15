@@ -27,7 +27,7 @@ for proc in /proc/[0-9]*; do
 	pid="${proc#/proc/}"
 	cmdline="$(tr '\0' ' ' 2>/dev/null <"$proc/cmdline" || true)"
 	case "$cmdline" in
-	*tq\ agent-pool* | *tq\ worker* | *tq\ serve* | *"./tq agent-pool"* | *"./tq worker"* | *"./tq serve"*) ;;
+	*tq\ agent-pool* | *tq\ worker* | *tq\ serve*) ;;
 	*) continue ;;
 	esac
 

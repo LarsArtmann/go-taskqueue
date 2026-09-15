@@ -5,7 +5,7 @@
 # ROADMAP listed cron recurring as future). Scoped to seed IDs because
 # free-text feature matching is too fuzzy to gate on.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 features="FEATURES.md"
 roadmap="ROADMAP.md"

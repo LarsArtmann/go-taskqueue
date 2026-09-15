@@ -4,7 +4,7 @@
 # single day (21:40 report §d6) — the index is the only discovery surface for
 # point-in-time reports, so an unindexed report is effectively lost.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 index="docs/status/README.md"
 [ -f "$index" ] || {

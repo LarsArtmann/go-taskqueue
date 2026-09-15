@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Sourced by scripts/build-tq.sh and scripts/test-cmd-tq.sh (ADR-0017).
 #
 # The committed cmd/tq/go.mod is REPLACE-FREE so `go install …/cmd/tq@vX.Y.Z`
@@ -25,8 +26,8 @@ cmdtq_devmod() {
 	# files stay proxy-clean. Needs every module in the local cache (the
 	# root build fetches them).
 	(
-		cd "$dir"
-		GOWORK=off GOFLAGS= go mod tidy -modfile=dev.mod >/dev/null 2>&1 || true
+		cd "$dir" || exit 1
+		GOWORK=off GOFLAGS='' go mod tidy -modfile=dev.mod >/dev/null 2>&1 || true
 	)
 	CMD_TQ_DIR="$dir"
 }

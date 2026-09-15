@@ -158,7 +158,7 @@ trap 'rm -rf "$tmpdir"' EXIT
 
 i=0
 minted=0
-while IFS=$'\t' read -r key dir pin_gomod pin_whouses repo_wave note; do
+while IFS=$'\t' read -r key dir pin_gomod _ repo_wave _; do
 	case "$key" in "" | "#"*) continue ;; esac
 	[ "$repo_wave" = "$wave" ] || continue
 
@@ -172,11 +172,14 @@ while IFS=$'\t' read -r key dir pin_gomod pin_whouses repo_wave note; do
 		continue
 	}
 
-	delay="$(awk -v i="$i" -v step="$delay_step" 'BEGIN {
+	delay="$(awk -v i="$i" -v step="$delay_step" -v base="$start_delay" 'BEGIN {
 		num = step + 0
 		unit = substr(step, length(step), 1)
 		secs = (unit == "m") ? num * 60 : num
-		printf "%dm", int(secs * i / 60)
+		num = base + 0
+		unit = substr(base, length(base), 1)
+		base_secs = (unit == "m") ? num * 60 : num
+		printf "%dm", int((base_secs + secs * i) / 60)
 	}')"
 
 	sed -e "s|{{REPO_ABS}}|$repo_abs|g" \

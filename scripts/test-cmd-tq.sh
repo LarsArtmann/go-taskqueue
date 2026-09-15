@@ -24,4 +24,4 @@ go vet ./...
 # GOFLAGS carries -modfile for the gate itself; clear it for `go test` so the
 # flag does not leak into subprocess probes (doctor's go-env check builds in
 # a temp dir where dev.mod does not exist).
-GOFLAGS= go test -modfile=dev.mod ./... -count=1 -timeout 120s
+GOFLAGS='' go test -modfile=dev.mod ./... -count=1 -timeout 120s

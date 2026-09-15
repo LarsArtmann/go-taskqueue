@@ -5,7 +5,7 @@
 # agent cannot or should not execute (the 02:52 review's d2 defect class:
 # a sudo-gated item and an owner-policy item sat unchecked and unblocked).
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 todo="TODO_LIST.md"
 [ -f "$todo" ] || {

@@ -1,5 +1,7 @@
 # Dependency-Upgrade Automation — v1 (driver) + v2 (tq-native depbump/depsweep)
 
+Recorded 2026-09-15 (the session it documents ran 2026-09-14 12:06 → 2026-09-15 05:20).
+
 Session 2026-09-14 12:06 → 2026-09-15 05:20. Prompt: "How could we automate
 these upgrades? SMARTLY!?!" over the project-dependency-graph `update-plan`
 output (178 modules, 78 stale builds, 237 consumer bumps, 5 waves), later

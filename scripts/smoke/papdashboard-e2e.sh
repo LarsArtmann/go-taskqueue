@@ -14,7 +14,13 @@ PAP_URL="${PAP_URL:-}"
 REAL_MODE=""
 [ -n "$PAP_URL" ] && REAL_MODE=1
 TMP="$(mktemp -d)"
-trap 'for pid in "${WORKER_PID:-}" "${STUB_PID:-}"; do [ -n "$pid" ] && kill "$pid" 2>/dev/null; done; rm -rf "$TMP"' EXIT
+cleanup() {
+	for pid in "${WORKER_PID:-}" "${STUB_PID:-}"; do
+		[ -n "$pid" ] && kill "$pid" 2>/dev/null
+	done
+	rm -rf "$TMP"
+}
+trap cleanup EXIT
 
 # A kernel-chosen ephemeral port: the historical fixed port collided with a
 # real PapDashboard instance running on this machine (the stub silently

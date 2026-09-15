@@ -7,7 +7,7 @@
 # fresh). Advisory about AGE, gating about TRUTH: a green-but-old run is
 # fine; a red one fails the gate.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 features="FEATURES.md"
 [ -f "$features" ] || {

@@ -11,7 +11,7 @@
 # drifted from the evidence fails instead of falsely certifying it
 # (06-41 report §c2/§f2).
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 # A promise is a bare filename ending in an evidence extension; anything
 # else in backticks (versions, commit hashes, flags, prose) is not a file.
@@ -45,7 +45,7 @@ while IFS= read -r readme; do
 	elif ! (cd "$dir" && sha256sum --check --quiet SHA256SUMS >/dev/null 2>&1); then
 		echo "STALE: $dir/SHA256SUMS does not match the archived files (regenerate it)"
 		fail=1
-	elif ! diff <(cd "$dir" && ls | grep -v '^SHA256SUMS$') <(cd "$dir" && awk '{print $2}' SHA256SUMS) >/dev/null; then
+	elif ! diff <(cd "$dir" && for f in *; do [ "$f" = SHA256SUMS ] || printf '%s\n' "$f"; done) <(cd "$dir" && awk '{print $2}' SHA256SUMS) >/dev/null; then
 		echo "INCOMPLETE: $dir/SHA256SUMS does not cover every file in $dir"
 		fail=1
 	fi
