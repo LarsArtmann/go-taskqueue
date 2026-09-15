@@ -453,7 +453,7 @@ func cmdWorker(args []string) error {
 		false,
 		"enable the 'agent' executor: runs a headless AI agent (crush) per task — OPT-IN",
 	)
-		yolo := fs.Bool("yolo", false, "with --agents: agents auto-accept all permissions (operator decision)")
+	yolo := fs.Bool("yolo", false, "with --agents: agents auto-accept all permissions (operator decision)")
 	reresolveVerify := fs.Bool(
 		"reresolve-verify",
 		false,

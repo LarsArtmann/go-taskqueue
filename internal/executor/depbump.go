@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -87,9 +88,19 @@ const currentDepBumpPayloadV = 1
 const defaultDepBumpCommandTimeout = 10 * time.Minute
 
 // depbumpTouchedPaths are the paths a bump can modify; rollback and the
-// commit stage exactly this scope, so concurrent changes outside it are
-// never folded in and never reverted.
+// commit stage exactly this scope (plus the conditional templ globs), so
+// concurrent changes outside it are never folded in and never reverted.
 var depbumpTouchedPaths = []string{"go.mod", "go.sum", "vendor"}
+
+// depbumpTemplGlobs are the templ generator's output pathspecs. Git
+// fatal-errors add/checkout pathspecs that match nothing, so these join
+// command scopes ONLY when the repo actually has such files.
+var depbumpTemplGlobs = []string{"*_templ.go", "*_templ.txt"}
+
+// depbumpRollbackTimeout caps the rollback's detached context: rollback
+// must survive the very task timeout that may have triggered it, but not
+// hang forever.
+const depbumpRollbackTimeout = time.Minute
 
 // DepBumpExecutor applies DepBumpPayloads deterministically.
 type DepBumpExecutor struct {
@@ -373,8 +384,8 @@ func (e *DepBumpExecutor) applyBumps(
 }
 
 // regenerateTempl re-runs the templ generator when the repo has .templ
-// sources; missing templ binary is a soft skip (the delivering layer is
-// then unverified and the commit gate says so via the message suffix).
+// sources; missing templ binary is a soft skip (the delivering layer then
+// stays unregenerated and the verify gate judges the build as-is).
 func (e *DepBumpExecutor) regenerateTempl(ctx context.Context, repoDir string) error {
 	hasTempl := false
 
@@ -428,21 +439,27 @@ func (e *DepBumpExecutor) regenerateTempl(ctx context.Context, repoDir string) e
 	return nil
 }
 
-// commit stages exactly the touched paths scope and commits with a
-// conventional message naming every bump.
+// commit stages exactly the touched-path scope and commits with a
+// conventional message naming every bump. A scope that staged nothing
+// means the target pins are already committed — the task's goal is met,
+// so this is a success, not a failure (two tasks racing to the same pin
+// must not dead-letter the second one).
 func (e *DepBumpExecutor) commit(ctx context.Context, repoDir string, bumps []DepBump) error {
-	args := []string{"-C", repoDir, "add", "--"}
+	args := []string{"-C", repoDir, "add", "--", "go.mod", "go.sum"}
 
 	if _, err := os.Stat(filepath.Join(repoDir, "vendor")); err == nil {
-		args = append(args, depbumpTouchedPaths...)
 		args = append(args, "vendor")
-		args = append(args, "*_templ.go", "*_templ.txt")
-	} else {
-		args = append(args, "go.mod", "go.sum", "*_templ.go", "*_templ.txt")
 	}
+
+	args = append(args, e.templGlobs(ctx, repoDir, true)...)
 
 	if out, err := e.runGit(ctx, args...); err != nil {
 		return fmt.Errorf("stage: %w: %s", err, tailOutput(out))
+	}
+
+	if out, err := e.runGit(ctx, "-C", repoDir, "diff", "--cached", "--name-only"); err == nil &&
+		strings.TrimSpace(out) == "" {
+		return nil
 	}
 
 	message := commitMessageForBumps(bumps)
@@ -452,6 +469,28 @@ func (e *DepBumpExecutor) commit(ctx context.Context, repoDir string, bumps []De
 	}
 
 	return nil
+}
+
+// templGlobs returns the templ output pathspecs when the repo has files
+// matching them: tracked ones always, fresh untracked ones only with
+// includeUntracked (staging must see first-ever generated files; checkout
+// only restores what HEAD knows). Detection goes through ls-files because
+// git fatal-errors on add/checkout pathspecs that match nothing.
+func (e *DepBumpExecutor) templGlobs(ctx context.Context, repoDir string, includeUntracked bool) []string {
+	args := []string{"-C", repoDir, "ls-files", "--cached"}
+	if includeUntracked {
+		args = append(args, "--others", "--exclude-standard")
+	}
+
+	args = append(args, "--")
+	args = append(args, depbumpTemplGlobs...)
+
+	out, err := e.runGit(ctx, args...)
+	if err != nil || strings.TrimSpace(out) == "" {
+		return nil //nolint:nilerr // detection failure degrades to omitting the globs
+	}
+
+	return depbumpTemplGlobs
 }
 
 // commitMessageForBumps renders the conventional commit line for a bump
@@ -504,20 +543,34 @@ func (e *DepBumpExecutor) release(ctx context.Context, repoDir string, rel *DepB
 }
 
 // rollback restores the touched-path scope to HEAD so a failed attempt
-// leaves the repo exactly as it started.
+// leaves the repo exactly as it started. Tracked scope files are checked
+// out by their CONCRETE paths — a checkout carrying even one unmatched
+// pathspec aborts without restoring anything, so the scope is resolved
+// through ls-files first — and untracked scope leftovers (a fresh go.sum,
+// first-ever templ artifacts) are cleaned. It runs on a detached context:
+// rollback must survive the very cancellation that triggered it. Errors
+// are swallowed by design; callers treat rollback as best-effort.
 func (e *DepBumpExecutor) rollback(ctx context.Context, repoDir string) error {
-	args := []string{"-C", repoDir, "checkout", "HEAD", "--"}
-	args = append(args, depbumpTouchedPaths...)
+	rollbackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), depbumpRollbackTimeout)
+	defer cancel()
 
-	if _, err := os.Stat(filepath.Join(repoDir, "vendor")); err == nil {
-		args = append(args, "*_templ.go", "*_templ.txt")
-	} else {
-		args = append(args, "*_templ.go", "*_templ.txt")
+	specs := slices.Concat(dpbumpTouchedPaths, depbumpTemplGlobs)
+
+	if out, err := e.runGit(rollbackCtx, lsFilesArgs(repoDir, specs)...); err == nil {
+		if paths := strings.Split(strings.TrimRight(out, "\x00"), "\x00"); len(paths) > 0 && paths[0] != "" {
+			_, _ = e.runGit(rollbackCtx, append([]string{"-C", repoDir, "checkout", "HEAD", "--"}, paths...)...)
+		}
 	}
 
-	_, _ = e.runGit(ctx, args...)
+	_, _ = e.runGit(rollbackCtx, append([]string{"-C", repoDir, "clean", "-fqd", "--"}, specs...)...)
 
 	return nil
+}
+
+// lsFilesArgs builds a `git ls-files -z --cached -- <specs>` invocation.
+func lsFilesArgs(repoDir string, specs []string) []string {
+	args := []string{"-C", repoDir, "ls-files", "-z", "--cached", "--"}
+	return append(args, specs...)
 }
 
 // quarantineGoWork renames go.work to go.work.bak for the duration of the

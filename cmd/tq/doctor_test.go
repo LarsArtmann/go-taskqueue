@@ -524,3 +524,103 @@ func TestDoctorRepoCoverageOrphanAndCovered(t *testing.T) {
 		t.Fatalf("empty projects dir must disable the check (nil), got %+v", got)
 	}
 }
+
+func TestDoctorVerifyPinsFlagsStalePins(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	root := t.TempDir()
+
+	for repo, gate := range map[string]string{
+		"repo-current": "echo current-gate",
+		"repo-same":    "echo same-gate",
+		"repo-gone":    "", // no .tq-verify; a go.mod below makes auto-detect own the gate
+	} {
+		if err := os.MkdirAll(filepath.Join(root, repo), 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", repo, err)
+		}
+
+		if gate != "" {
+			if err := os.WriteFile(filepath.Join(root, repo, ".tq-verify"), []byte(gate+"\n"), 0o600); err != nil {
+				t.Fatalf("write .tq-verify in %s: %v", repo, err)
+			}
+		}
+	}
+
+	if err := os.WriteFile(filepath.Join(root, "repo-gone", "go.mod"), []byte("module gone\n"), 0o600); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "pins.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	enqueued := map[string]task.Task{}
+
+	for name, tc := range map[string]struct {
+		typ, payload string
+	}{
+		"staleOverride": {"agent", `{"repo":"repo-current","verify":"echo old-gate"}`},
+		"staleFires":    {"agent", `{"repo":"repo-gone","verify":"echo pre-split-gate"}`},
+		"current":       {"agent", `{"repo":"repo-same","verify":"echo same-gate"}`},
+		"unpinned":      {"agent", `{"repo":"repo-same","prompt":"p"}`},
+		"review":        {"review", `{"repo":"repo-same"}`},
+	} {
+		tt, err := s.Enqueue(ctx, task.New{Type: tc.typ, Payload: []byte(tc.payload)})
+		if err != nil {
+			t.Fatalf("enqueue %s: %v", name, err)
+		}
+
+		enqueued[name] = tt
+	}
+
+	got := resultByName(doctorVerifyPins(ctx, s, root), "verify-pins")
+
+	if got.Status != checkWarn {
+		t.Fatalf("status = %q (%s), want warn (two stale pins must surface)", got.Status, got.Detail)
+	}
+
+	for _, id := range []string{enqueued["staleOverride"].ID, enqueued["staleFires"].ID} {
+		if !strings.Contains(got.Detail, id) {
+			t.Errorf("detail must name stale task %s: %s", id, got.Detail)
+		}
+	}
+
+	if strings.Contains(got.Detail, enqueued["current"].ID) {
+		t.Errorf("current pin %s must not be reported: %s", enqueued["current"].ID, got.Detail)
+	}
+
+	if !strings.Contains(got.Detail, "--reresolve-verify") {
+		t.Errorf("detail must point at the reresolve remedy: %s", got.Detail)
+	}
+
+	if !strings.Contains(got.Detail, "STALE PIN WILL FIRE") || !strings.Contains(got.Detail, "overrides it") {
+		t.Errorf("detail must separate the firing class from the overridden class: %s", got.Detail)
+	}
+
+	// With only current + unpinned tasks in the store, the check flips to
+	// ok and counts just the pinned ones.
+	fresh, err := sqlite.Open(filepath.Join(t.TempDir(), "fresh.db"))
+	if err != nil {
+		t.Fatalf("open fresh: %v", err)
+	}
+	defer func() { _ = fresh.Close() }()
+
+	for _, payload := range []string{`{"repo":"repo-same","verify":"echo same-gate"}`, `{"repo":"repo-same","prompt":"p"}`} {
+		if _, err := fresh.Enqueue(ctx, task.New{Type: "agent", Payload: []byte(payload)}); err != nil {
+			t.Fatalf("enqueue fresh: %v", err)
+		}
+	}
+
+	ok := resultByName(doctorVerifyPins(ctx, fresh, root), "verify-pins")
+
+	if ok.Status != checkOK {
+		t.Fatalf("fresh status = %q (%s), want ok", ok.Status, ok.Detail)
+	}
+
+	if !strings.Contains(ok.Detail, "1 pending agent task(s) pin a verify command") {
+		t.Errorf("fresh detail must count only pinned tasks: %s", ok.Detail)
+	}
+}
