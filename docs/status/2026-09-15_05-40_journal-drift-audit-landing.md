@@ -345,3 +345,54 @@ dashboard — override honored, flagged here per skill contract, not
 propagated back as a default. §f feeds docs-health HARVEST (items 1-14 →
 TODO_LIST, rest → ROADMAP); if the session continues without a harvest,
 run it before closing. Waiting for instructions.*
+
+---
+
+## Close-out (2026-09-15, later session) — the two named gaps are closed
+
+Both gaps this report named are now landed and gated:
+
+1. **Coverage counts shipped** (§b5/§f6): `DriftReport.Coverage`
+   (additive `coverage` JSON field + a text line) counts, per diffed
+   field, how many compared tasks the journal could actually verify —
+   legacy thin-fact tasks consume no priority/dedup coverage and the
+   counts say so, which also answers question 3 below by default: the
+   disclosure exists; silencing it is now a one-line owner preference.
+   Pinned by `TestDiffProjectionCoverageSkipsLegacyThinFacts` (pure
+   diff function, extracted for exactly this testability) plus coverage
+   assertions in the rescue and seeded-drift store tests.
+2. **Backend fact-shape pins shipped** (ADR-0007/0012 same-change rule):
+   sqlite `TestEnqueueFactDetailCarriesIdentity` +
+   `TestRescueDeadEmitsRescueEnqueue`; postgres mirrors both as
+   conformance-battery subtests, verified against a live throwaway
+   postgres container on this host, not just compile-skipped locally.
+
+Also this session, root-cause fixes for the red master CI run (02:50,
+commit 534d088 — both failure classes predate today's tree):
+
+- **vendorHash refreshed** to the real FOD hash after the
+  dependabot-driven graph drift (go-retry v0.6.0, templ-components
+  v1.17.0).
+- **cmd/tq committed pins bumped** to the same versions: the nix build
+  assembles cmd/tq's replace graph WITHOUT the devmod shim's tidy step,
+  so stale committed requires fail hermetically with a terse
+  "updates to go.mod needed" (reproduced and verified fixed in a
+  no-tidy replica before touching the flake). go.sum gained only the
+  new versions' entries; the internal-module v0.3.0 sums the proxy
+  install path needs are untouched.
+- **`.golangci-baseline.txt` one-row repair**: the 06:03 regen recorded
+  sqlite varnamelen 32 from a partial lint load; every stable run of
+  unchanged code yields 33. Corrected that row only — the executor rows
+  that differ under the CURRENT worktree belong to the in-flight
+  dep-sweep window and were deliberately NOT re-baselined.
+- Formatter pass (treefmt) picked up an import-ordering slip in the
+  coverage test and the dep-sweep window's `sweep_test.go`.
+
+Verification lap: `./scripts/test-cmd-tq.sh` (incl. windows
+cross-compile) green, sqlite/postgres/queue/task module suites green
+(postgres against the live container), `check-facade-parity.sh` +
+`check-go-mods.sh` green, `lint-baseline.sh --check` green (growth
+owned, shrink advisory), `journal-drift.sh` smoke PASS, full
+`CI_CHECK=off ./scripts/ci-local.sh` = ALL GATES GREEN, `nix build`
+produces `tq 0.3.0, go1.26.7-X:jsonv2`. The three §g owner questions
+stand except that question 3 is now answered in code by default.
