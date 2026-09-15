@@ -582,13 +582,13 @@ func TestDoctorVerifyPinsFlagsStalePins(t *testing.T) {
 		t.Fatalf("status = %q (%s), want warn (two stale pins must surface)", got.Status, got.Detail)
 	}
 
-	for _, id := range []string{enqueued["staleOverride"].ID, enqueued["staleFires"].ID} {
-		if !strings.Contains(got.Detail, id) {
+	for _, id := range []task.ID{enqueued["staleOverride"].ID, enqueued["staleFires"].ID} {
+		if !strings.Contains(got.Detail, string(id)) {
 			t.Errorf("detail must name stale task %s: %s", id, got.Detail)
 		}
 	}
 
-	if strings.Contains(got.Detail, enqueued["current"].ID) {
+	if strings.Contains(got.Detail, string(enqueued["current"].ID)) {
 		t.Errorf("current pin %s must not be reported: %s", enqueued["current"].ID, got.Detail)
 	}
 
