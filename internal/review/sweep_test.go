@@ -330,6 +330,51 @@ func TestFixPromptFooterContract(t *testing.T) {
 	}
 }
 
+// TestFixPromptAnchorsAndDanglingDisposition pins the hardening contract:
+// the fix prompt carries the finding's anchor text (falling back to the
+// payload's commit for the sha), and a dangling-commit disposition rule —
+// re-anchor via the quoted text, never invent a change when the anchor is
+// gone. The single-footer ruling (one Task-Queue-ID per commit, fix
+// ticket's id) is pinned verbatim.
+func TestFixPromptAnchorsAndDanglingDisposition(t *testing.T) {
+	t.Parallel()
+
+	prompt := fixPrompt(executor.ReviewPayload{
+		ReviewedTask: "000001a0reviewedtaskid00000000000",
+		Item:         "do the work",
+		CommitSHA:    "payloadsha1",
+	}, executor.ReviewFinding{Title: "nil map write", Severity: "high", Anchor: "m[k] = v", CommitSHA: "findingsha2"})
+
+	for _, want := range []string{
+		"`m[k] = v`",
+		"git cat-file -e findingsha2",
+		"re-anchor via the verbatim anchor text",
+		"exactly ONE Task-Queue-ID footer",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Errorf("fix prompt missing %q:\n%s", want, prompt)
+		}
+	}
+
+	if !strings.Contains(prompt, "findingsha2") || strings.Contains(prompt, "payloadsha1") {
+		t.Errorf("finding-level commit sha must win over the payload's:\n%s", prompt)
+	}
+
+	if strings.Count(prompt, "Task-Queue-ID:") != 1 {
+		t.Errorf("fix prompt must carry exactly one footer instruction, got:\n%s", prompt)
+	}
+
+	// Without a finding-level sha the payload's commit is the anchor.
+	fallback := fixPrompt(executor.ReviewPayload{
+		ReviewedTask: "000001a0reviewedtaskid00000000000",
+		Item:         "do the work",
+		CommitSHA:    "payloadsha1",
+	}, executor.ReviewFinding{Title: "t", Severity: "low", Anchor: "some text"})
+	if !strings.Contains(fallback, "git cat-file -e payloadsha1") {
+		t.Errorf("payload sha must anchor the finding when the finding omits its own:\n%s", fallback)
+	}
+}
+
 func TestSweepAutofixIgnoresApproveAndOffSwitch(t *testing.T) {
 	t.Parallel()
 

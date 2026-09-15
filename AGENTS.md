@@ -236,6 +236,18 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **`review`**: `ReviewPayload` JSON. Both verdicts COMPLETE the task; the
   mechanical gate is a valid verdict JSON recorded via `tq verdict`
   (`TQ_RESULT_FILE` channel; legacy stdout line still honored).
+  Findings are commit-anchored (2026-09-15 hardening, the 05-58
+  stale-anchor lesson): every `request_changes` finding must carry a
+  quoted verbatim `anchor` — bare positions ("lines 12-18", "x.go:34",
+  "12-18", "L40") are REJECTED at parse time by the re-anchoring
+  pre-flight, so the attempt fails while the reviewer can re-file — and
+  gets `commit_sha` backfilled from the review payload when the model
+  omits it. Fix prompts carry the anchor text, the finding's sha (payload
+  sha as fallback), and the dangling-commit disposition (`git cat-file -e`
+  first; re-anchor via the quoted text; anchor gone = finding no longer
+  applies, never invent a change). Footer ruling: exactly ONE
+  `Task-Queue-ID` footer per commit — the fix ticket's own; the original
+  task's lineage lives in the queue, not a second footer.
   The sweeper (watermark head-bootstrapped — never replays pre-start
   completions) mints `review:<task-id>`-deduped review tasks and, with
   `--review-autofix`, `reviewfix:<id>:<hash>`-deduped fix tasks. Every

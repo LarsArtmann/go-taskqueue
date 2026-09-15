@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -376,7 +377,11 @@ func anchorLooksPositional(a string) bool {
 		}
 	}
 
-	body := strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(lower, "l"), ":"), " ")
+	if fileLinePattern.MatchString(trimmed) {
+		return true
+	}
+
+	body := strings.TrimPrefix(strings.TrimPrefix(lower, "l"), ":")
 	if body == "" {
 		return false
 	}
@@ -397,6 +402,9 @@ func anchorLooksPositional(a string) bool {
 
 	return true
 }
+
+// fileLinePattern matches bare path:line (and path:line-range) citations.
+var fileLinePattern = regexp.MustCompile(`^[^\s:]+:\d+(?:[-–]\d+)?$`)
 
 // normalizeSeverity maps arbitrary model output onto the three display
 // ratings; unknown or empty degrades to medium.

@@ -30,12 +30,13 @@ func TestParseResultTable(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		output     string
-		wantErr    bool
-		want       ReviewVerdict
-		wantSev    []string
-		wantTitles []string
+		name        string
+		output      string
+		wantErr     bool
+		want        ReviewVerdict
+		wantSev     []string
+		wantTitles  []string
+		wantAnchors []string
 	}{
 		{
 			name:    "approve with summary",
@@ -44,11 +45,12 @@ func TestParseResultTable(t *testing.T) {
 			wantSev: []string{},
 		},
 		{
-			name:       "request changes with findings",
-			output:     "TQ_RESULT: {\"verdict\":\"request_changes\",\"summary\":\"broken edge case\",\"findings\":[{\"title\":\"nil map write\",\"severity\":\"HIGH\",\"detail\":\"see x.go:3\"}]}\n",
-			want:       VerdictRequestChanges,
-			wantSev:    []string{"high"},
-			wantTitles: []string{"nil map write"},
+			name:        "request changes with findings",
+			output:      "TQ_RESULT: {\"verdict\":\"request_changes\",\"summary\":\"broken edge case\",\"findings\":[{\"title\":\"nil map write\",\"severity\":\"HIGH\",\"detail\":\"see x.go:3\",\"anchor\":\"m[k] = v\",\"commit_sha\":\"abc1234\"}]}\n",
+			want:        VerdictRequestChanges,
+			wantSev:     []string{"high"},
+			wantTitles:  []string{"nil map write"},
+			wantAnchors: []string{"m[k] = v"},
 		},
 		{
 			name:    "verdict case-insensitive",
@@ -58,21 +60,41 @@ func TestParseResultTable(t *testing.T) {
 		},
 		{
 			name:    "empty severity degrades to medium",
-			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"t\",\"severity\":\"\"}]}\n",
+			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"t\",\"severity\":\"\",\"anchor\":\"some code\"}]}\n",
 			want:    VerdictRequestChanges,
 			wantSev: []string{"medium"},
 		},
 		{
 			name:    "unknown severity degrades to medium",
-			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"t\",\"severity\":\"catastrophic\"}]}\n",
+			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"t\",\"severity\":\"catastrophic\",\"anchor\":\"some code\"}]}\n",
 			want:    VerdictRequestChanges,
 			wantSev: []string{"medium"},
 		},
 		{
 			name:    "findings without titles are dropped",
-			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"\",\"severity\":\"low\"},{\"title\":\"real\"}]}\n",
+			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"\",\"severity\":\"low\"},{\"title\":\"real\",\"anchor\":\"some code\"}]}\n",
 			want:    VerdictRequestChanges,
 			wantSev: []string{"medium"},
+		},
+		{
+			name:    "finding without anchor is invalid",
+			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"t\"}]}\n",
+			wantErr: true,
+		},
+		{
+			name:    "bare line-range anchor is invalid",
+			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"t\",\"anchor\":\"lines 12-18\"}]}\n",
+			wantErr: true,
+		},
+		{
+			name:    "file:line anchor is invalid",
+			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"t\",\"anchor\":\"x.go:34\"}]}\n",
+			wantErr: true,
+		},
+		{
+			name:    "bare number-range anchor is invalid",
+			output:  "TQ_RESULT: {\"verdict\":\"request_changes\",\"findings\":[{\"title\":\"t\",\"anchor\":\"12-18\"}]}\n",
+			wantErr: true,
 		},
 		{
 			name:    "request changes without findings is invalid",
@@ -134,6 +156,10 @@ func TestParseResultTable(t *testing.T) {
 				if len(tt.wantTitles) > i && f.Title != tt.wantTitles[i] {
 					t.Fatalf("finding %d title = %q, want %q", i, f.Title, tt.wantTitles[i])
 				}
+
+				if len(tt.wantAnchors) > i && f.Anchor != tt.wantAnchors[i] {
+					t.Fatalf("finding %d anchor = %q, want %q", i, f.Anchor, tt.wantAnchors[i])
+				}
 			}
 		})
 	}
@@ -158,7 +184,7 @@ func TestReviewExecutorVerdictContract(t *testing.T) {
 		},
 		{
 			name:     "request_changes also completes",
-			agentOut: `TQ_RESULT: {"verdict":"request_changes","findings":[{"title":"add test","severity":"medium"}]}` + "\n",
+			agentOut: `TQ_RESULT: {"verdict":"request_changes","findings":[{"title":"add test","severity":"medium","anchor":"func main() {"}]}` + "\n",
 			want:     VerdictRequestChanges,
 		},
 	}
@@ -188,6 +214,36 @@ func TestReviewExecutorVerdictContract(t *testing.T) {
 				t.Fatalf("verdict = %q, want %q", got.Verdict, tt.want)
 			}
 		})
+	}
+}
+
+// TestReviewExecutorBackfillsFindingCommitSHA pins the commit-anchoring
+// half of the findings contract: a request_changes finding that omits
+// commit_sha is anchored to the reviewed change at execute time, so every
+// stored finding carries a commit anchor even when the model forgets.
+func TestReviewExecutorBackfillsFindingCommitSHA(t *testing.T) {
+	t.Parallel()
+
+	bin := makeStubAgent(t, "cat <<'EOF'\n"+`TQ_RESULT: {"verdict":"request_changes","findings":[{"title":"fix leak","severity":"high","anchor":"conn.Close()"}]}`+"\nEOF")
+	e := &ReviewExecutor{Agent: &AgentExecutor{Bin: bin}}
+
+	ctx, sink := NewSink(context.Background())
+	if err := e.Execute(ctx, reviewTaskT(t, ReviewPayload{
+		Repo:         t.TempDir(),
+		ReviewedTask: "t-1",
+		Item:         "write the thing",
+		CommitSHA:    "deadbeef",
+	})); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+
+	var got ReviewResult
+	if err := json.Unmarshal(sink.Detail(), &got); err != nil {
+		t.Fatalf("sink detail %s: %v", sink.Detail(), err)
+	}
+
+	if len(got.Findings) != 1 || got.Findings[0].CommitSHA != "deadbeef" {
+		t.Fatalf("finding commit sha not backfilled: %+v", got.Findings)
 	}
 }
 
