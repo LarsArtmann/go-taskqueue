@@ -70,7 +70,7 @@ not here.
 
 ## Rate-limit window follow-ups (harvested from docs/status/2026-09-11_13-29, verified 2026-09-11)
 
-- [ ] Post-deploy retro: one week after the input flip, count 429 requeues vs pre-deploy dead-letters and record the number in a status report (13:29 report f50)
+- [x] Post-deploy retro: one week after the input flip, count 429 requeues vs pre-deploy dead-letters and record the number in a status report (13:29 report f50) — DONE 2026-09-15, interim at day +4: docs/status/2026-09-15_02-30_post-deploy-rate-limit-retro.md (pre-flip 8 429-dead vs post-flip 0; zero 429 requeues — zero 429s occurred; 7-day re-check 2026-09-18)
 
 ## Docs-health harvest (2026-09-11 evening; sources: 16-00/15-39/15-10/13-29 reports + task-closeout residue; deduped against existing rows)
 
