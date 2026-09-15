@@ -379,13 +379,7 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	taskIDs := make(map[string]task.ID, len(specs))
 
 	for _, spec := range specs {
-		payload, err := payloadFor(spec, s.cfg)
-		if err != nil {
-			skipped := Skip{Repo: spec.Repo, Reason: "payload: " + err.Error()}
-			stats.Skips = append(stats.Skips, skipped)
-
-			continue
-		}
+		payload := payloadFor(spec)
 
 		deps := make([]task.ID, 0, len(spec.DepRepos))
 		for _, depRepo := range spec.DepRepos {
@@ -442,7 +436,7 @@ func kindOf(spec WorkSpec) string {
 	return "bump"
 }
 
-func payloadFor(spec WorkSpec, cfg SweeperConfig) (jsontext.Value, error) {
+func payloadFor(spec WorkSpec) jsontext.Value {
 	payload := executor.DepBumpPayload{
 		Repo:     spec.Dir,
 		RepoName: spec.Repo,
@@ -453,8 +447,10 @@ func payloadFor(spec WorkSpec, cfg SweeperConfig) (jsontext.Value, error) {
 
 	encoded, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("encode: %w", err)
+		// A struct of strings cannot fail to marshal; hand the executor an
+		// empty payload it rejects as permanent instead of aborting the sweep.
+		return jsontext.Value("null")
 	}
 
-	return jsontext.Value(encoded), nil
+	return jsontext.Value(encoded)
 }

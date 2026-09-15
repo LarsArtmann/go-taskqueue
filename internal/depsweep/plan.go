@@ -121,7 +121,8 @@ func (s DepgraphSource) Plan(ctx context.Context) ([]PlanModule, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	args := []string{"release-overview", "--dir", s.Dir, "--format", "json"}
+	args := make([]string, 0, 5+len(s.ExtraArgs))
+	args = append(args, "release-overview", "--dir", s.Dir, "--format", "json")
 	args = append(args, s.ExtraArgs...)
 
 	cmd := exec.CommandContext(ctx, bin, args...)

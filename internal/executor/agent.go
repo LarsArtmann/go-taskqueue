@@ -104,6 +104,13 @@ type AgentExecutor struct {
 	// (the owner's brutal self-review + status report) before verify runs.
 	// Empty = off (single turn, pinned argv contract unchanged).
 	CloseoutPrompt string
+	// ReresolveVerify enables claim-time verify re-resolution: the payload's
+	// enqueue-time verify pin is IGNORED and the gate is resolved fresh
+	// (.tq-verify file, then auto-detect) — a verify-contract change in the
+	// repo can no longer fire a stale pinned command at a task queued before
+	// the change (09-39 f3). Default false keeps the payload contract:
+	// file > pin > detect.
+	ReresolveVerify bool
 
 	// rateLimitUntil is the UnixNano instant the provider is next expected
 	// to accept requests (0 = clear). Set when a run's output reports
@@ -144,10 +151,11 @@ func NewAgentExecutor(projectsDir string) *AgentExecutor {
 // atomic.Int64 must never be struct-copied (copylocks).
 func (e *AgentExecutor) WithoutCloseout() *AgentExecutor {
 	return &AgentExecutor{
-		Bin:           e.Bin,
-		ProjectsDir:   e.ProjectsDir,
-		Yolo:          e.Yolo,
-		MaxConcurrent: e.MaxConcurrent,
+		Bin:             e.Bin,
+		ProjectsDir:     e.ProjectsDir,
+		Yolo:            e.Yolo,
+		MaxConcurrent:   e.MaxConcurrent,
+		ReresolveVerify: e.ReresolveVerify,
 	}
 }
 
@@ -268,7 +276,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	tail, err := runVerify(runCtx, repoDir, &p)
+	tail, err := runVerify(runCtx, repoDir, &p, e.ReresolveVerify)
 	if err != nil {
 		SetFailureEvidence(ctx, "verify", err, tail)
 
@@ -683,9 +691,11 @@ func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
 
 // runVerify enforces the quality gate after the agent exited cleanly. The
 // repo's .tq-verify file wins over everything (the repo is the source of
-// truth for how it proves itself), then the payload, then auto-detect.
-func runVerify(ctx context.Context, repoDir string, p *AgentPayload) (string, error) {
-	verify := verifyFor(repoDir, p)
+// truth for how it proves itself), then the payload, then auto-detect —
+// unless reresolve drops the enqueue-time pin (AgentExecutor.ReresolveVerify):
+// then the file, then auto-detect, never a stale pin.
+func runVerify(ctx context.Context, repoDir string, p *AgentPayload, reresolve bool) (string, error) {
+	verify := verifyFor(repoDir, p, reresolve)
 	if verify == "" {
 		return "", nil // nothing to verify (unknown stack, no explicit command)
 	}
@@ -761,13 +771,14 @@ func requireRepoAutonomy(repoDir string) error {
 }
 
 // verifyFor resolves the verify command: .tq-verify file in the repo, then
-// the payload's explicit verify, then auto-detection from the repo layout.
-func verifyFor(repoDir string, p *AgentPayload) string {
+// (unless reresolve) the payload's explicit verify, then auto-detection from
+// the repo layout.
+func verifyFor(repoDir string, p *AgentPayload, reresolve bool) string {
 	if v := readTQVerify(repoDir); v != "" {
 		return v
 	}
 
-	if p.Verify != "" {
+	if p.Verify != "" && !reresolve {
 		return p.Verify
 	}
 
