@@ -137,7 +137,7 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 		}
 
 		if failTask {
-			err = store.Fail(ctx, tsk.ID, "test-worker", "boom", 0, nil)
+			err = store.FailPermanent(ctx, tsk.ID, "test-worker", "boom", nil)
 		} else {
 			err = store.Complete(ctx, tsk.ID, "test-worker", nil)
 		}

@@ -81,7 +81,7 @@ not here.
 - [x] Rename-hygiene scanner script: sweep quoted string literals in a diff for identifier-shaped corruptions (the `q.Get("query")`/`task(store)` class caught twice by hand) (07-39 report f4; AGENTS.md rule already shipped) — DONE 2026-09-15: `scripts/check-rename-hygiene.sh` (flags double-quoted literals on added lines whose content exactly matches an identifier removed by the diff; `--strict` hard-fails, default advisory) wired into ci-local after the dead-export audit
 - [x] Review-loop e2e: `scripts/smoke/reviews.sh` (stub reviewer; review approve/request_changes paths through the real binary) (07-48 report f1/f2)
 - [x] `tq enqueue` guardrail: warn when `$TQ_DB` points somewhere other than `./tasks.db` (the production-DB trap cost a live enqueue 2026-09-10) (05-29 report c4/d2/e2)
-- [ ] `tq enqueue --wait [--timeout]`: blocking run streaming the task's facts to the terminal — cron one-shots today need tail+grep dance (05-29 report c1/f5/g3)
+- [x] `tq enqueue --wait [--timeout]`: blocking run streaming the task's facts to the terminal — cron one-shots today need tail+grep dance (05-29 report c1/f5/g3)
 - [ ] `tq doctor --hygiene`: stale `.tq-verify` payload pins vs current repo gate + claim-time re-resolution option — retires the stale-payload audit class (09-39 report f2/f3)
 - [ ] Rate-limiter global prune: bound the write-lockout strikes map against rotating source IPs (per-contact prune only today, `internal/webui/auth.go:315`) (06-01 report c7)
 - [ ] Secrets-in-logs pass + `--redact`: agent output tails can carry provider tokens into facts/sidecars (17-21 report #18; 20-58 f33)
