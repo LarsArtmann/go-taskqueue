@@ -218,7 +218,11 @@ func TestDepBumpExecutorBaselineRefusesBrokenRepo(t *testing.T) {
 
 	repo := depBumpFixtureRepo(t, "v1.10.0")
 
-	if err := os.WriteFile(filepath.Join(repo, "broken.go"), []byte("package main\n\nfunc broken( {\n"), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repo, "broken.go"),
+		[]byte("package main\n\nfunc broken( {\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -375,7 +379,7 @@ func TestDepBumpExecutorRollbackRestoresRealChanges(t *testing.T) {
 	err := e.Execute(context.Background(), depBumpTaskT(t, DepBumpPayload{
 		Repo: repo,
 		Bumps: []DepBump{
-			{Module: "github.com/stretchr/testify", Version: "v1.11.1"}, // lands
+			{Module: "github.com/stretchr/testify", Version: "v1.11.1"},   // lands
 			{Module: "example.invalid/does/not/exist", Version: "v1.0.0"}, // fails
 		},
 	}))

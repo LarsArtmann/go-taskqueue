@@ -113,8 +113,8 @@ type DepBumpExecutor struct {
 	// GoBin, GitBin, and TemplBin default to "go", "git", and "templ"
 	// from PATH (templ absent is a soft skip; see regenerateTempl). The
 	// overrides exist for tests and pinned deployments.
-	GoBin   string
-	GitBin  string
+	GoBin    string
+	GitBin   string
 	TemplBin string
 }
 
