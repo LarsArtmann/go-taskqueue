@@ -301,6 +301,14 @@ func cmdEnqueue(args []string) error {
 		}
 	}
 
+	// Production-DB trap guard (2026-09-10 live enqueue): agent shells inherit
+	// TQ_DB pointing at the production journal; a bare `tq enqueue` must say so.
+	if *db == "" {
+		if p := os.Getenv("TQ_DB"); p != "" {
+			fmt.Fprintf(os.Stderr, "tq enqueue: warning: $TQ_DB is set (%s) — this enqueue targets that database, not ./tasks.db (pass --db to override)\n", p)
+		}
+	}
+
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
 
