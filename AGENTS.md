@@ -93,6 +93,7 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
 ./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)
 ./scripts/check-dead-exports.sh # advisory dead-export audit: zero-importers detector, substring matching (NOT rg -w)
+./scripts/check-script-syntax.sh # bash -n + shellcheck (severity >= warning) hard gate over every tracked *.sh — zero-findings policy since birth (2026-09-15)
 ./scripts/check-facade-parity.sh # ADR-0016 gate: go/parser walk, every internal export needs a kind-compatible facade alias (scripts/facadeparity)
 ./scripts/new-module.sh <dir> [deps…] # scaffold a new module go.mod (latest cut tag + relative replace per dep; no hand-writing go.mods)
 nix run .#test                  # full multi-module suite (root + every internal/* module)
