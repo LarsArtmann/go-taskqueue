@@ -6,7 +6,7 @@ require (
 	github.com/LarsArtmann/go-crush-data v0.4.0
 	github.com/larsartmann/go-retry v0.6.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
-	modernc.org/sqlite v1.58.0
+	modernc.org/sqlite v1.59.0
 )
 
 require (

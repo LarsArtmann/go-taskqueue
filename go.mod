@@ -10,7 +10,7 @@ require (
 	github.com/larsartmann/templ-components/icons v1.17.0
 	github.com/larsartmann/templ-components/utils v1.17.0
 	golang.org/x/sync v0.23.0
-	modernc.org/sqlite v1.58.0 // indirect
+	modernc.org/sqlite v1.59.0 // indirect
 )
 
 require (

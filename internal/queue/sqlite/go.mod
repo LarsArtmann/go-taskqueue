@@ -7,7 +7,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
-	modernc.org/sqlite v1.58.0
+	modernc.org/sqlite v1.59.0
 )
 
 require (
