@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // SweepSidecars deletes agent-output sidecar logs older than maxAge from
@@ -118,4 +120,30 @@ func SweepSidecarsByBytes(dir string, maxBytes int64) (int, error) {
 	}
 
 	return removed, nil
+}
+
+// writeVerifyEvidence persists the FULL verify output (combined stdout +
+// stderr) to $TQ_LOG_DIR/<task-id>.verify-failure.log and returns the path —
+// "" when the sidecar dir is unset or the write fails (evidence must never
+// fail the failure path it documents). The *.log suffix keeps the file
+// inside the existing sidecar retention sweeps (SweepSidecars and
+// SweepSidecarsByBytes), so failed-gate forensics age out like agent logs.
+func writeVerifyEvidence(id task.ID, output []byte) string {
+	dir := os.Getenv("TQ_LOG_DIR")
+
+	if dir == "" || len(output) == 0 {
+		return ""
+	}
+
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return ""
+	}
+
+	path := filepath.Join(dir, id.String()+".verify-failure.log")
+
+	if err := os.WriteFile(path, output, 0o600); err != nil {
+		return ""
+	}
+
+	return path
 }

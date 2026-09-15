@@ -276,7 +276,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	tail, err := runVerify(runCtx, repoDir, &p, e.ReresolveVerify)
+	tail, err := runVerify(runCtx, t.ID, repoDir, &p, e.ReresolveVerify)
 	if err != nil {
 		SetFailureEvidence(ctx, "verify", err, tail)
 
@@ -694,7 +694,7 @@ func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
 // truth for how it proves itself), then the payload, then auto-detect —
 // unless reresolve drops the enqueue-time pin (AgentExecutor.ReresolveVerify):
 // then the file, then auto-detect, never a stale pin.
-func runVerify(ctx context.Context, repoDir string, p *AgentPayload, reresolve bool) (string, error) {
+func runVerify(ctx context.Context, id task.ID, repoDir string, p *AgentPayload, reresolve bool) (string, error) {
 	verify := verifyFor(repoDir, p, reresolve)
 	if verify == "" {
 		return "", nil // nothing to verify (unknown stack, no explicit command)
@@ -712,8 +712,17 @@ func runVerify(ctx context.Context, repoDir string, p *AgentPayload, reresolve b
 	cmd.WaitDelay = 10 * time.Second
 	if err := cmd.Run(); err != nil {
 		// The tail rides along even on error: it IS the failure evidence
-		// (what the gate printed before dying).
-		tail := tailBytes(buf.Bytes(), EvidenceTailBytes)
+		// (what the gate printed before dying) — but bounded small: verify
+		// gates like `nix flake check` print thousands of warning/trace
+		// lines and the tail lands verbatim in the task.failed journal
+		// fact. The full output goes to the sidecar evidence file; the
+		// fact carries the excerpt plus the path.
+		tail := tailBytes(buf.Bytes(), verifyErrorTailBytes)
+
+		if evidence := writeVerifyEvidence(id, buf.Bytes()); evidence != "" {
+			tail = fmt.Sprintf("%s\n(full verify output: %s)", tail, evidence)
+		}
+
 		if ctx.Err() != nil {
 			return tail, fmt.Errorf("agent verify cancelled (%w): %s", ctx.Err(), tail)
 		}
@@ -723,6 +732,11 @@ func runVerify(ctx context.Context, repoDir string, p *AgentPayload, reresolve b
 
 	return tailBytes(buf.Bytes(), 2048), nil
 }
+
+// verifyErrorTailBytes bounds the verify-failure excerpt inlined into the
+// task.failed journal fact; the full output goes to the sidecar evidence
+// file (writeVerifyEvidence) instead of the journal stream.
+const verifyErrorTailBytes = 512
 
 // userGlobalCrushConfig reports whether a user-global crush config exists:
 // permissions can be granted globally, so a repo-local config is not

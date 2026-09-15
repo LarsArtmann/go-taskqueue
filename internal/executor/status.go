@@ -170,7 +170,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	// the payload timeout bounds the whole task (agent + verify).
 	// reresolve=false: the pin comes from THIS payload built at run time,
 	// not a stale enqueue-time pin, so there is nothing to drop.
-	if _, err := runVerify(runCtx, repoDir, &AgentPayload{Verify: payload.Verify}, false); err != nil {
+	if _, err := runVerify(runCtx, t.ID, repoDir, &AgentPayload{Verify: payload.Verify}, false); err != nil {
 		return err
 	}
 
