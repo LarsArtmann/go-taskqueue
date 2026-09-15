@@ -17,50 +17,73 @@ export GOEXPERIMENT=jsonv2
 
 step() { printf '\n== %s\n' "$*"; }
 
+# 15-39 report f9/e2: a concurrent session's mid-edit state transiently breaks
+# the tree-reading Go gates (the `undefined: atomic` class) and kills
+# 10-minute runs with a confusing red. On failure, poll (sleep 45s, retry) up
+# to 3 times before giving up; a gate still red after that fails with explicit
+# context instead of looking like a real regression. Deliberately NOT wrapped:
+# the nix steps (they measure the staged tree — a foreign break there is about
+# to be pushed and must fail) and the smokes (each owns its own cleanup;
+# extending the wrapper there is a deliberate follow-up, not drive-by). The
+# env defaults exist so the loop can be exercised without sleeping.
+TRANSIENT_POLL_SECS="${TRANSIENT_POLL_SECS:-45}"
+TRANSIENT_MAX_POLLS="${TRANSIENT_MAX_POLLS:-3}"
+
+with_transient_retry() {
+	local label="$1"
+	shift
+	local polls=0
+	while ! "$@"; do
+		polls=$((polls + 1))
+		if [ "$polls" -gt "$TRANSIENT_MAX_POLLS" ]; then
+			echo "FAIL: $label still failing after $TRANSIENT_MAX_POLLS retry polls (${TRANSIENT_POLL_SECS}s apart)."
+			echo "If the errors above are in files you did not edit, a concurrent edit was likely in flight — let it land (or re-run this gate on a quiet tree) before judging the work."
+			return 1
+		fi
+		echo "WARN: $label failed — possible concurrent edit in flight; retry poll $polls/$TRANSIENT_MAX_POLLS in ${TRANSIENT_POLL_SECS}s"
+		sleep "$TRANSIENT_POLL_SECS"
+	done
+}
+
 step "master CI state (check-ci; CI_CHECK=off to bypass)"
 ./scripts/check-ci.sh
 
 # --- CI test job (exact ci.yml order; lint advisory exactly like CI) -------
 
 step "vet"
-go vet ./...
+with_transient_retry "vet" go vet ./...
 
 step "build"
-go build ./...
+with_transient_retry "build" go build ./...
 
 step "windows cross-compile (build + vet)"
-GOOS=windows go build ./...
-GOOS=windows go vet ./...
+with_transient_retry "windows build (root)" env GOOS=windows go build ./...
+with_transient_retry "windows vet (root)" env GOOS=windows go vet ./...
 # Root ./... never descends into nested modules — every sub-module needs its
 # own cross-compile gate or Windows-only code could rot invisibly. The list
 # is disk-derived so newly added modules are gated without editing this
 # script.
 mods="$(./scripts/for-each-module.sh)"
 for m in $mods; do
-	(cd "$m" &&
-		GOWORK=off GOOS=windows go build ./... &&
-		GOWORK=off GOOS=windows go vet ./...) || exit 1
+	with_transient_retry "windows cross-compile ($m)" bash -c 'cd "$1" && GOWORK=off GOOS=windows go build ./... && GOWORK=off GOOS=windows go vet ./...' _ "$m" || exit 1
 done
 # cmd/tq is its own replace-free module (ADR-0017): gated through the
 # devmod shim instead of the generic per-module loops above.
-CMD_TQ_OS=windows ./scripts/test-cmd-tq.sh
+with_transient_retry "cmd/tq windows gate" env CMD_TQ_OS=windows ./scripts/test-cmd-tq.sh
 
 step "tests (-race)"
-go test ./... -count=1 -race -timeout 120s
+with_transient_retry "tests (-race)" go test ./... -count=1 -race -timeout 120s
 
 step "module isolation gates (GOWORK=off per sub-module)"
 for m in $mods; do
 	echo "== $m"
-	(cd "$m" &&
-		GOWORK=off go build ./... &&
-		GOWORK=off go vet ./... &&
-		GOWORK=off go test ./... -count=1 -timeout 120s) || exit 1
+	with_transient_retry "module gate ($m)" bash -c 'cd "$1" && GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 -timeout 120s' _ "$m" || exit 1
 done
 # cmd/tq module (ADR-0017) — replace-free go.mod, devmod shim gate.
-./scripts/test-cmd-tq.sh
+with_transient_retry "cmd/tq gate" ./scripts/test-cmd-tq.sh
 
 step "embed example builds on facade paths (adopter on-ramp rot guard)"
-(cd examples/embed && GOWORK=off go build ./... && GOWORK=off go vet ./...) || exit 1
+with_transient_retry "embed example (facade paths)" bash -c 'cd examples/embed && GOWORK=off go build ./... && GOWORK=off go vet ./...' || exit 1
 
 step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
 ./scripts/check-go-mods.sh
@@ -168,7 +191,7 @@ step "line-length gate (changed lines only, 120 cols)"
 ./scripts/lint-lll-changed.sh
 
 step "harvest-parse guard"
-go test ./internal/harvest/ -run TestRepoTodoListParses -count=1
+with_transient_retry "harvest-parse guard" go test ./internal/harvest/ -run TestRepoTodoListParses -count=1
 
 step "web UI live smoke"
 ./scripts/smoke/webui.sh
