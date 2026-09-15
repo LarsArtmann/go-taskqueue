@@ -84,6 +84,10 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/bootstrap-install.sh  # --install renders unit + pool.conf against a fake $HOME
 ./scripts/smoke/journal-drift.sh # tq audit --journal over a seeded scratch fixture (ADVISORY, O5)
 ./scripts/smoke/help-text.sh    # every tq subcommand help: no parenthesized-identifier artifacts (rename-leak class, 08:42 e3/f2)
+./scripts/smoke/multi-repo.sh   # two agent-pool processes, one DB, three repos: per-project exclusivity + dedup (D24)
+./scripts/smoke/papdashboard-e2e.sh # stub dashboard: dead letter raises alert.triggered, dlq --rescue posts alert.resolved
+./scripts/smoke/ratelimit-e2e.sh # hermetic: a Z.ai-429 stub failure parks the task (no attempt burned)
+./scripts/check-guard-wiring.sh # orphaned-guard audit: every check-*/smoke script must be referenced by ci-local/ci.yml/flake or be deleted
 ./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
 ./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)
 ./scripts/check-dead-exports.sh # advisory dead-export audit: zero-importers detector, substring matching (NOT rg -w)

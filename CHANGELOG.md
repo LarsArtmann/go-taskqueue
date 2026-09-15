@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Orphaned-guard audit gate (`scripts/check-guard-wiring.sh`, wired into
+  ci-local)**: every `scripts/check-*.sh` and `scripts/smoke/*.sh` must be
+  referenced by ci-local.sh, ci.yml, or flake.nix — a guard nothing runs
+  ships nothing (the check-webui-css failure mode, generalized into a
+  gate per the 15-39 report audit). Found and resolved three orphaned
+  smokes (multi-repo, papdashboard-e2e, ratelimit-e2e — now gating
+  ci-local steps) and one dead duplicate (`check-lint-baseline.sh`,
+  superseded by `lint-baseline.sh --check`, deleted).
 - **Journal-drift audit (`tq audit --journal`)**: rebuilds task state by
   replaying the fact journal and diffs it against the `tasks` table
   projection (status, attempts, priority, dedup key) — read-only operator

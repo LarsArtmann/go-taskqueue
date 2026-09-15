@@ -74,7 +74,7 @@ not here.
 
 ## Docs-health harvest (2026-09-11 evening; sources: 16-00/15-39/15-10/13-29 reports + task-closeout residue; deduped against existing rows)
 
-- [ ] Orphaned-guard audit: every `scripts/check-*.sh` + smoke must be referenced by ci-local/ci.yml/flake or be deleted — generalize the check-webui-css lesson into a ci-local meta-check (15-39 report c7/f5, e1)
+- [x] Orphaned-guard audit: every `scripts/check-*.sh` + smoke must be referenced by ci-local/ci.yml/flake or be deleted — generalize the check-webui-css lesson into a ci-local meta-check (15-39 report c7/f5, e1) — DONE 2026-09-15: `scripts/check-guard-wiring.sh` wired into ci-local; dead duplicate `check-lint-baseline.sh` deleted (superseded by `lint-baseline.sh --check`); orphaned smokes multi-repo/papdashboard-e2e/ratelimit-e2e wired into ci-local (all hermetic, verified passing)
 - [ ] Wire `check-webui-css.sh` into ci.yml (byte-canonical pin, not just the a11y minify-property test) (15-39 report b1/f6, e4)
 - [ ] Review-pipeline hardening: review findings must anchor commit sha + quoted anchor text; queue-side re-anchoring pre-flight for cited line ranges; disposition rule for rejected/dangling commits; dual-footer convention (05-58 report f16-f19, g1-g3 — one bad anchor cost a rework day)
 - [ ] `golangci-lint config verify` in ci-local before the run — schema-invalid keys silently disable linter settings (07-39 report f3)
