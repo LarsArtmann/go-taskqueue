@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Secrets-in-logs redaction (`--redact`, default ON) + journal secret
+  scan**: agent output tails can carry provider tokens into evidence
+  facts, worker logs and sidecar files (17-21 report #18, 20-58 f33).
+  Every tail is now masked through one choke point (`tailBytes`,
+  `internal/executor/redact.go`) BEFORE the cut — provider-token shapes
+  (sk-/sk-ant-/sk-proj-, ghp_/github_pat_, AKIA/ASIA, AIza, xoxb, bearer
+  and auth headers, secret-shaped key=value assignments) become
+  `[REDACTED]` in failure evidence, result-detail verify tails, the error
+  text that embeds tails, and both sidecar writers (full-output logs and
+  verify-failure evidence). Opt-out is per pool/worker
+  (`--redact=false` / `$TQ_REDACT=false`) for raw-output debugging; a
+  redaction false positive only mangles a debug tail, a miss persists a
+  live credential. The audit half: `tq audit --journal` additionally
+  reports `SECRET EVIDENCE` rows (fact seq/task/type/field/hit-count,
+  never the secret itself) for stored facts whose error/detail still
+  carries a token-shaped string — facts written before the pass shipped
+  are findable via `tq show <id>`. Executor facade gained `RedactSecrets`,
+  `SecretHits`, `RedactMarker` (parity-gated).
 - **Deterministic dependency-upgrade pipeline (`depbump` executor +
   `--dep-sweep` pool sweeper)**: `internal/executor/depbump.go` applies
   exact-version bumps in one repo — baseline gate, `go get` under go.work

@@ -28,20 +28,20 @@ func TestRedactSecretsMasksProviderTokens(t *testing.T) {
 	t.Parallel()
 
 	samples := map[string]string{
-		"anthropic":  fakeAnthropic,
-		"openai-proj": fakeOpenAI,
+		"anthropic":      fakeAnthropic,
+		"openai-proj":    fakeOpenAI,
 		"openai-classic": fakeOpenAICls,
-		"github":     fakeGitHub,
-		"github-pat": fakeGitHubPat,
-		"aws":        fakeAWS,
-		"google":     fakeGoogle,
-		"slack":      fakeSlack,
-		"bearer":     fakeJWT,
-		"assignment": fakeAssign,
+		"github":         fakeGitHub,
+		"github-pat":     fakeGitHubPat,
+		"aws":            fakeAWS,
+		"google":         fakeGoogle,
+		"slack":          fakeSlack,
+		"bearer":         fakeJWT,
+		"assignment":     fakeAssign,
 	}
 
 	for name, secret := range samples {
-		got := RedactSecrets("failed with: "+secret+" — retrying")
+		got := RedactSecrets("failed with: " + secret + " — retrying")
 
 		if strings.Contains(got, secret) {
 			t.Errorf("%s: secret survived redaction: %s", name, got)
@@ -57,16 +57,16 @@ func TestRedactSecretsKeepsBenignOutput(t *testing.T) {
 	t.Parallel()
 
 	benign := []string{
-		"go test ./... -race",                            // plain command output
-		"task-skills-configuration-handler failed",       // sk- prose false positive
-		"password: (none)",                               // short assignment value
-		"3 tasks succeeded",                              // ordinary log line
-		"token count: 128",                               // free-form 'token' word survives
-		"asking for bearer token required for endpoint",  // bearer prose, no key
-		"sk- short prefix",                               // sk- without a key body
-		"AKIA too short",                                 // AWS prefix without key body
-		"exit status 1: build failed in pkg/api/key.go",  // path containing api/key
-		"",                                               // empty stays empty
+		"go test ./... -race",                           // plain command output
+		"task-skills-configuration-handler failed",      // sk- prose false positive
+		"password: (none)",                              // short assignment value
+		"3 tasks succeeded",                             // ordinary log line
+		"token count: 128",                              // free-form 'token' word survives
+		"asking for bearer token required for endpoint", // bearer prose, no key
+		"sk- short prefix",                              // sk- without a key body
+		"AKIA too short",                                // AWS prefix without key body
+		"exit status 1: build failed in pkg/api/key.go", // path containing api/key
+		"", // empty stays empty
 	}
 
 	for _, line := range benign {

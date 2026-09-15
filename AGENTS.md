@@ -366,6 +366,21 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **Fact forensics**: `task.failed` carries `FailureEvidence{stage,
   exit_code, tail}` (tail size: one `EvidenceTailBytes` constant);
   `task.requeued` carries `RequeueEvidence{reason, retry_in_ms}`.
+- **Secrets-in-logs redaction (default ON, `--redact=false` /
+  `$TQ_REDACT=false` to disable, worker + agent-pool)**: every output tail
+  goes through the redaction pass (`internal/executor/redact.go`) BEFORE
+  the tail is cut — provider-token-shaped strings (sk-/sk-ant-/ghp_/AKIA/
+  AIza/xoxb/bearer/auth-header/secret-assignments) are masked to
+  `[REDACTED]` in evidence tails, the error text that embeds them
+  (facts, worker logs, LastError) and both sidecar writers. `tailBytes` is
+  the single choke point — a new output→evidence site needs no extra work.
+  Escape hatch is per-POOL (a redacted debug tail is the tradeoff). The
+  audit half: `tq audit --journal` scans stored fact error/detail of the
+  output-derived fact types (failed/dead-lettered/completed/requeued —
+  enqueue payloads are user-provided, never scanned) via
+  `executor.SecretHits` and reports `SECRET EVIDENCE` rows (seq/task/
+  field/hit-count, never the secret itself) so facts written before the
+  pass shipped are findable (17-21 report #18; 20-58 f33).
 - **Provider rate limits (429 / usage limit)**: a failed agent turn's
   output is scanned (`executor.DetectRateLimit`); a Z.ai-style reset
   timestamp ("Your limit will reset at <ts>"), an RFC3339 renews-at, or a
