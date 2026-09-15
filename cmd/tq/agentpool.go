@@ -52,6 +52,12 @@ type agentPoolOptions struct {
 	doReview       bool
 	dlqFix         bool
 	prioritize     bool
+	depSweep       bool
+	depSweepBin    string
+	depSweepDir    string
+	depSweepEvery  time.Duration
+	depSweepPush   bool
+	depSweepUnrel  bool
 	alertURL       string
 	alertKey       string
 	alertPoll      time.Duration
@@ -177,6 +183,24 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"prioritize",
 		false,
 		"AI batch scorer: when a repo holds unscored backlog items in the queue, mint ONE prioritize task per repo whose verdicts cache scores and re-rank the pending tasks (marker > AI > keyword precedence, hot/machine bands protected; budget-guarded like every mint)",
+	)
+	depSweep := fs.Bool(
+		"dep-sweep",
+		false,
+		"dependency upgrade sweep: pull the project-dependency-graph release-overview plan and mint deterministic depbump tasks (stale builds release, consumers bump exact pins, plan DAG becomes task deps; majors and never-released modules are skipped to the log — migration is agent/human work)",
+	)
+	depSweepBin := fs.String("dep-sweep-bin", "project-dependency-graph", "dep-sweep: planner binary (PATH name or absolute)")
+	depSweepDir := fs.String("dep-sweep-dir", "", "dep-sweep: projects dir the planner scans (default: --projects-dir)")
+	depSweepEvery := fs.Duration("dep-sweep-interval", 15*time.Minute, "dep-sweep: re-plan interval (dedup makes shorter intervals free)")
+	depSweepPush := fs.Bool(
+		"dep-sweep-push",
+		false,
+		"dep-sweep: release tasks also push master+tag (what unblocks consumer bumps via the module proxy); default tags locally and a human pushes",
+	)
+	depSweepUnrel := fs.Bool(
+		"dep-sweep-unreleased",
+		false,
+		"dep-sweep: also release modules whose only work is unreleased feature commits (version decisions from commit analysis; default off)",
 	)
 	alertURL := fs.String(
 		"alert-url",
@@ -326,6 +350,12 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		doReview:       *doReview,
 		dlqFix:         *dlqFix,
 		prioritize:     *prioritize,
+		depSweep:       *depSweep,
+		depSweepBin:    *depSweepBin,
+		depSweepDir:    *depSweepDir,
+		depSweepEvery:  *depSweepEvery,
+		depSweepPush:   *depSweepPush,
+		depSweepUnrel:  *depSweepUnrel,
 		alertURL:       *alertURL,
 		alertKey:       *alertKey,
 		alertPoll:      *alertPoll,

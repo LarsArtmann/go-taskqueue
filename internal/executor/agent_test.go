@@ -560,7 +560,7 @@ func TestVerifyStrategy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := verifyFor(dir, &AgentPayload{Verify: "true"})
+	got := verifyFor(dir, &AgentPayload{Verify: "true"}, false)
 	if got != "false" {
 		t.Fatalf("verifyFor with file = %q, want the file command (payload and detection lose)", got)
 	}

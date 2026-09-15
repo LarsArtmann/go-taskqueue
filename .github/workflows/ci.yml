@@ -109,6 +109,10 @@ jobs:
         run: go test ./internal/harvest/ -run TestRepoTodoListParses -count=1
       - name: Web UI live smoke (no browser)
         run: ./scripts/smoke/webui.sh
+      - name: Fullcore embed smoke (sqlite, scratch TQ_DB, deadline path)
+        # Parity with ci-local.sh: this smoke was ci-local-only until
+        # 2026-09-15 (fullcore hardening batch).
+        run: ./scripts/smoke/fullcore.sh
       - name: Release-gates smoke (fixture go.mods, positive + negative)
         run: ./scripts/smoke/release-gates.sh
       - name: Ghost-reference check (doc-cited paths exist)
@@ -173,6 +177,11 @@ jobs:
           go-version: 1.26.7
       - name: Postgres store conformance
         run: cd internal/queue/postgres && GOWORK=off go test . -run TestPostgres -count=1 -v
+      - name: Fullcore postgres smoke (drain + deadline path)
+        # TQ_TEST_POSTGRES is already exported at job level; fullcore.sh
+        # runs its postgres variant (drain 4/4 + 50ms deadline) against the
+        # same service in addition to the default sqlite pass.
+        run: ./scripts/smoke/fullcore.sh
 
   nix:
     runs-on: ubuntu-latest

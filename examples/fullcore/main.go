@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -34,9 +35,20 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/worker"
 )
 
+// dbDefault honors TQ_DB, the repo-wide sqlite-location convention: an
+// inherited production TQ_DB is CONSUMED (an explicit --db still wins), so
+// scratch-DB smokes that export TQ_DB are a real guard, not belt-and-braces.
+func dbDefault() string {
+	if env := os.Getenv("TQ_DB"); env != "" {
+		return env
+	}
+
+	return "fullcore.db"
+}
+
 func main() {
 	backend := flag.String("backend", "sqlite", "queue backend: sqlite or postgres")
-	db := flag.String("db", "fullcore.db", "sqlite database path (backend=sqlite)")
+	db := flag.String("db", dbDefault(), "sqlite database path (backend=sqlite; defaults to $TQ_DB when set)")
 	dsn := flag.String("dsn", "postgres://127.0.0.1:5432/taskqueue?sslmode=disable", "postgres DSN (backend=postgres)")
 	concurrency := flag.Int("concurrency", 2, "parallel task executions")
 	timeout := flag.Duration("timeout", time.Minute, "overall drain deadline")
