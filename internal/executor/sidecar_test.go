@@ -1,12 +1,18 @@
 package executor
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
+var evidencePathRe = regexp.MustCompile(`\(full verify output: ([^)]+)\)`)
 
 func TestSweepSidecarsRemovesAgedKeepsLive(t *testing.T) {
 	dir := t.TempDir()
@@ -130,5 +136,77 @@ func TestSweepSidecarsByBytes(t *testing.T) {
 
 	if n, err := SweepSidecarsByBytes("", 100); err != nil || n != 0 {
 		t.Fatalf("empty-dir sweep = %d/%v, want 0/nil", n, err)
+	}
+}
+
+func TestWriteVerifyEvidence(t *testing.T) {
+	id := task.ID("test-task-1")
+
+	if got := writeVerifyEvidence(id, []byte("out")); got != "" {
+		t.Fatalf("writeVerifyEvidence without TQ_LOG_DIR = %q, want \"\"", got)
+	}
+
+	if got := writeVerifyEvidence(id, nil); got != "" {
+		t.Fatalf("writeVerifyEvidence with empty output = %q, want \"\"", got)
+	}
+
+	dir := t.TempDir()
+	t.Setenv("TQ_LOG_DIR", dir)
+
+	got := writeVerifyEvidence(id, []byte("combined output"))
+	if got != filepath.Join(dir, "test-task-1.verify-failure.log") {
+		t.Fatalf("writeVerifyEvidence = %q, want the sidecar path", got)
+	}
+
+	body, err := os.ReadFile(got)
+	if err != nil {
+		t.Fatalf("read evidence: %v", err)
+	}
+
+	if string(body) != "combined output" {
+		t.Fatalf("evidence body = %q, want the full output", body)
+	}
+
+	if removed, err := SweepSidecars(dir, time.Hour); err != nil || removed != 0 {
+		t.Fatalf("fresh evidence must survive the sweep (removed=%d, err=%v)", removed, err)
+	}
+}
+
+func TestVerifyFailureWritesEvidenceNotInlineDump(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("TQ_LOG_DIR", dir)
+
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(filepath.Join(repo, ".tq-verify"), []byte("echo line-one; echo line-two; false"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := e.Execute(context.Background(), agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi"}))
+	if err == nil || !strings.Contains(err.Error(), "verify failed") {
+		t.Fatalf("failing verify must fail the task, got %v", err)
+	}
+
+	if strings.Count(err.Error(), "line-one") != 1 {
+		t.Fatalf("error must carry the excerpt exactly once, got: %v", err)
+	}
+
+	matches := evidencePathRe.FindAllStringSubmatch(err.Error(), 1)
+	if len(matches) != 1 {
+		t.Fatalf("error must reference exactly one evidence file, got: %v", err)
+	}
+
+	body, rerr := os.ReadFile(matches[0][1])
+	if rerr != nil {
+		t.Fatalf("read referenced evidence %s: %v", matches[0][1], rerr)
+	}
+
+	if !strings.Contains(string(body), "line-two") {
+		t.Fatalf("evidence file must hold the full output, got: %s", body)
 	}
 }
