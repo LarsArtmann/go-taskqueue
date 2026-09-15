@@ -128,14 +128,24 @@ type authStrikes struct {
 	last        time.Time
 }
 
+// Auth lockout knobs, mirroring the dashboard's writeRateLimiter defaults
+// (same strikes, window, and memory bounds so the two surfaces behave
+// identically to operators).
+const (
+	authMaxHits  = 3
+	authLockout  = time.Minute
+	authIdleKeep = 10 * time.Minute
+	authMaxKeys  = 1024
+)
+
 func newAuthRateLimiter() *authRateLimiter {
 	return &authRateLimiter{
 		strikes:  make(map[string]*authStrikes),
-		maxHits:  3,
-		lockout:  time.Minute,
+		maxHits:  authMaxHits,
+		lockout:  authLockout,
 		nowFunc:  time.Now,
-		idleKeep: 10 * time.Minute,
-		maxKeys:  1024,
+		idleKeep: authIdleKeep,
+		maxKeys:  authMaxKeys,
 	}
 }
 

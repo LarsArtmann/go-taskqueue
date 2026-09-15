@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **HTTP API hardening (`tq api`)**: the production write API now matches
+  the dashboard's write-surface hardening (03-05 report f2/f3). Every
+  response carries `X-Content-Type-Options: nosniff` (auth failures
+  included), and three failed bearer auths from one client IP lock that
+  client out of ALL routes for 60 s (429 + `Retry-After`) — a successful
+  auth resets the strikes. Bounded-memory per-IP strike map mirrors the
+  dashboard's CSRF limiter (idle prune + least-recently-active eviction;
+  a live lockout survives both). Security model documented in SECURITY.md.
 - **Secrets-in-logs redaction (`--redact`, default ON) + journal secret
   scan**: agent output tails can carry provider tokens into evidence
   facts, worker logs and sidecar files (17-21 report #18, 20-58 f33).

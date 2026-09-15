@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
@@ -189,3 +190,148 @@ func TestDedupKeyIdempotency(t *testing.T) {
 
 //go:fix inline
 func ptr(s string) *string { return new(s) }
+
+// TestNosniffOnEveryResponse pins the 03-05 report f2 hardening: every
+// response the API can emit — auth failures included — carries
+// X-Content-Type-Options: nosniff, not just the happy paths.
+func TestNosniffOnEveryResponse(t *testing.T) {
+	srv, _ := newTestAPI(t)
+	h := srv.Handler()
+
+	cases := []struct {
+		name, method, path string
+		auth               bool
+	}{
+		{"auth failure", http.MethodGet, "/api/v1/healthz", false},
+		{"healthz", http.MethodGet, "/api/v1/healthz", true},
+		{"stats", http.MethodGet, "/api/v1/stats", true},
+		{"validation error", http.MethodPost, "/api/v1/tasks", true},
+		{"unknown route", http.MethodGet, "/api/v1/nope", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(`{}`))
+			if tc.auth {
+				req.Header.Set("Authorization", "Bearer secret-token")
+			}
+
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+
+			if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+				t.Fatalf("%s %s: X-Content-Type-Options = %q, want nosniff", tc.method, tc.path, got)
+			}
+		})
+	}
+}
+
+// TestAuthLockout pins the 03-05 report f3 decision: three failed bearer
+// auths lock the client out of ALL routes for the window — a valid token
+// during the lockout still gets 429 — and access returns once it expires.
+func TestAuthLockout(t *testing.T) {
+	srv, _ := newTestAPI(t)
+	srv.strikes.lockout = 40 * time.Millisecond
+	h := srv.Handler()
+
+	try := func(token string) int {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		return rec.Code
+	}
+
+	for i := range 3 {
+		if code := try("wrong"); code != http.StatusUnauthorized {
+			t.Fatalf("failed auth %d = %d, want 401", i+1, code)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
+	req.Header.Set("Authorization", "Bearer secret-token")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("locked valid token = %d, want 429", rec.Code)
+	}
+
+	if rec.Header().Get("Retry-After") == "" {
+		t.Fatal("429 must carry Retry-After")
+	}
+
+	time.Sleep(60 * time.Millisecond)
+
+	if code := try("secret-token"); code != http.StatusOK {
+		t.Fatalf("after lockout expiry = %d, want 200", code)
+	}
+}
+
+// TestAuthLockoutIsPerClient: one client's lockout must not muzzle another.
+func TestAuthLockoutIsPerClient(t *testing.T) {
+	srv, _ := newTestAPI(t)
+	srv.strikes.lockout = time.Hour
+	h := srv.Handler()
+
+	try := func(addr, token string) int {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
+		req.RemoteAddr = addr
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		return rec.Code
+	}
+
+	for i := range 3 {
+		if code := try("10.0.0.1:1000", "wrong"); code != http.StatusUnauthorized {
+			t.Fatalf("attacker failed auth %d = %d, want 401", i+1, code)
+		}
+	}
+
+	if code := try("10.0.0.1:1000", "secret-token"); code != http.StatusTooManyRequests {
+		t.Fatalf("locked client = %d, want 429", code)
+	}
+
+	if code := try("10.0.0.2:2000", "secret-token"); code != http.StatusOK {
+		t.Fatalf("other client = %d, want 200 (lockout is per client IP)", code)
+	}
+}
+
+// TestAuthStrikesResetOnSuccess mirrors the dashboard limiter: a successful
+// auth clears the strikes, so scattered one-off failures never lock out a
+// legitimate producer.
+func TestAuthStrikesResetOnSuccess(t *testing.T) {
+	srv, _ := newTestAPI(t)
+	srv.strikes.lockout = time.Hour
+	h := srv.Handler()
+
+	try := func(token string) int {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		return rec.Code
+	}
+
+	try("wrong")
+	try("wrong")
+
+	if code := try("secret-token"); code != http.StatusOK {
+		t.Fatalf("valid token with two strikes = %d, want 200", code)
+	}
+
+	try("wrong")
+	try("wrong")
+
+	if code := try("secret-token"); code != http.StatusOK {
+		t.Fatalf("valid token after 2+2 strikes = %d, want 200 (a success resets the strikes)", code)
+	}
+}

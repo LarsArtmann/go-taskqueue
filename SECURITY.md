@@ -99,6 +99,33 @@ the lockout is per-IP, so a distributed attacker is only slowed by the
 hygiene, not the wall); writes can rescue a dead task whose re-run costs
 one agent's spend.
 
+## Production write API (`tq api`)
+
+The HTTP API is the one surface DESIGNED for non-loopback exposure
+(ADR-0008): it writes tasks, so the bearer token (`--auth-token`) is
+mandatory on every bind and guards every route — there is no loopback
+exemption and no unauthenticated read surface.
+
+**Defense layers:**
+
+1. **Mandatory token** — the API refuses to start without one; every
+   request is checked with a constant-time compare (header or `?token=`).
+2. **Auth lockout** — three failed auths from one client IP lock that
+   client out of ALL routes for 60 s (429 + `Retry-After`, checked before
+   the token compare); any successful auth resets the strikes. Same
+   per-IP tradeoff as the dashboard's CSRF lockout: behind a NAT all
+   clients share one key, and a distributed attacker is only slowed —
+   the token entropy is the real barrier, the lockout is hygiene.
+3. **Response headers** — every response carries
+   `X-Content-Type-Options: nosniff`; authenticated responses carry
+   `Cache-Control: no-store`. The API returns JSON only and renders
+   nothing, so the dashboard's full CSP set does not apply here.
+
+**Residual risks, honestly:** enqueue over plain HTTP sends the token in
+cleartext — put the API behind TLS (or a tunnel) when it leaves the host;
+the lockout window is per-IP, so one noisy misconfigured producer can
+briefly lock out its NAT neighbors.
+
 ## Data handling
 
 - The journal (`tasks.db`) stores task payloads and prompts verbatim —
