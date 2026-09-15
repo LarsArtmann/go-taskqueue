@@ -125,9 +125,11 @@ func SweepSidecarsByBytes(dir string, maxBytes int64) (int, error) {
 // writeVerifyEvidence persists the FULL verify output (combined stdout +
 // stderr) to $TQ_LOG_DIR/<task-id>.verify-failure.log and returns the path —
 // "" when the sidecar dir is unset or the write fails (evidence must never
-// fail the failure path it documents). The *.log suffix keeps the file
-// inside the existing sidecar retention sweeps (SweepSidecars and
-// SweepSidecarsByBytes), so failed-gate forensics age out like agent logs.
+// fail the failure path it documents). The body goes through the
+// secrets-in-logs pass first, like every other output surface. The *.log
+// suffix keeps the file inside the existing sidecar retention sweeps
+// (SweepSidecars and SweepSidecarsByBytes), so failed-gate forensics age
+// out like agent logs.
 func writeVerifyEvidence(id task.ID, output []byte) string {
 	dir := os.Getenv("TQ_LOG_DIR")
 
@@ -141,7 +143,7 @@ func writeVerifyEvidence(id task.ID, output []byte) string {
 
 	path := filepath.Join(dir, id.String()+".verify-failure.log")
 
-	if err := os.WriteFile(path, output, 0o600); err != nil {
+	if err := os.WriteFile(path, redactBytes(output), 0o600); err != nil {
 		return ""
 	}
 

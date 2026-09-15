@@ -477,11 +477,20 @@ func cmdWorker(args []string) error {
 		false,
 		"run until the claimable queue is drained, then exit (scripts/tests; parity with agent-pool --once)",
 	)
+	redact := fs.Bool(
+		"redact",
+		os.Getenv("TQ_REDACT") != "false",
+		"mask provider-token-shaped secrets in output tails before they reach facts, logs and sidecars ($TQ_REDACT; --redact=false keeps raw output for debugging)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
+	// The executor's redaction pass reads the env at execution time; the
+	// flag must reach it regardless of how it was set (parity with TQ_LOG_DIR).
+	_ = os.Setenv("TQ_REDACT", strconv.FormatBool(*redact))
 
 	var opts []sqlite.StoreOption
 	if *exclusive {

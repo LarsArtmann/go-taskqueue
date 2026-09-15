@@ -325,7 +325,9 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 
 // writeOutputSidecar persists the FULL agent + verify output to
 // $TQ_LOG_DIR/<task-id>.log and returns the path — "" when the directory is
-// unset or the write fails (logging must never fail a completed task).
+// unset or the write fails (logging must never fail a completed task). The
+// body goes through the secrets-in-logs pass first: sidecars are the
+// token-bearing surface named beside the facts (17-21 #18 / 20-58 f33).
 func writeOutputSidecar(id task.ID, agentOutput, verifyOutput string) string {
 	dir := os.Getenv("TQ_LOG_DIR")
 	if dir == "" {
@@ -338,9 +340,9 @@ func writeOutputSidecar(id task.ID, agentOutput, verifyOutput string) string {
 
 	path := filepath.Join(dir, id.String()+".log")
 
-	body := agentOutput
+	body := redactOutput(agentOutput)
 	if verifyOutput != "" {
-		body += "\n--- verify ---\n" + verifyOutput
+		body += "\n--- verify ---\n" + redactOutput(verifyOutput)
 	}
 
 	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {

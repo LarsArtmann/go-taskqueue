@@ -253,7 +253,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	logDir := fs.String(
 		"log-dir",
 		os.Getenv("TQ_LOG_DIR"),
-		"write full agent + verify output sidecars to DIR/<task-id>.log ($TQ_LOG_DIR; empty = off — result detail keeps only a tail). WARNING: sidecars are PLAINTEXT and may contain repo paths and prompt content",
+		"write full agent + verify output sidecars to DIR/<task-id>.log ($TQ_LOG_DIR; empty = off — result detail keeps only a tail). WARNING: sidecars are PLAINTEXT — provider-token-shaped secrets are redacted (--redact) but repo paths and prompt content remain",
 	)
 	logDirMaxAge := fs.Duration(
 		"log-dir-max-age",
@@ -264,6 +264,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"log-dir-max-bytes",
 		0,
 		"cap the total size of sidecar logs in --log-dir: oldest *.log files are deleted each tick until the total fits (e.g. 5368709120 = 5GiB; 0 = uncapped; $TQ_LOG_DIR_MAX_BYTES)",
+	)
+	redact := fs.Bool(
+		"redact",
+		os.Getenv("TQ_REDACT") != "false",
+		"mask provider-token-shaped secrets in output tails before they reach facts, logs and sidecars ($TQ_REDACT; --redact=false keeps raw output for debugging)",
 	)
 	configPath := fs.String(
 		"config",
@@ -299,6 +304,10 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 
 		_ = os.Setenv("TQ_LOG_DIR", *logDir)
 	}
+
+	// Same for the secrets-in-logs pass: the executor reads TQ_REDACT at
+	// execution time, so the flag mirrors into the env (flag > env).
+	_ = os.Setenv("TQ_REDACT", strconv.FormatBool(*redact))
 
 	if envAge := os.Getenv("TQ_LOG_DIR_MAX_AGE"); envAge != "" && *logDirMaxAge == 0 {
 		if parsed, err := time.ParseDuration(envAge); err == nil {

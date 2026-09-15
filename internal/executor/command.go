@@ -154,6 +154,11 @@ func unwrapCommand(payload []byte) string {
 }
 
 func tailBytes(b []byte, n int) string {
+	// Secrets-in-logs pass (17-21 #18 / 20-58 f33): provider tokens are
+	// masked over the FULL output before the tail is cut, so neither the
+	// evidence facts nor the error text that embeds these tails can carry
+	// one. TQ_REDACT=false restores raw tails for debugging.
+	b = redactBytes(b)
 	b = bytes.TrimSpace(b)
 	if len(b) > n {
 		b = b[len(b)-n:]
