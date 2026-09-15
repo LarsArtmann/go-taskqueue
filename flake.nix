@@ -37,7 +37,7 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.3.0";
-        vendorHash = "sha256-NNuycVSnxoEXi3h/AgaAhR4thORd/ddRM2rUp7K3P/g=";
+        vendorHash = "sha256-DsTIeeVnvm+162g3WVmds/RG0xnEwmzA0Hi7r3mbuaY=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         # ADR-0017: cmd/tq is its own replace-free module (proxy
         # installability). modRoot + subPackages route the hermetic build
