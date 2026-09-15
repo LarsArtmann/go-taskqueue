@@ -955,7 +955,10 @@ func (s *Store) RescueDead(ctx context.Context, id task.ID, maxAttempts int) err
 			return task.ErrInvalidTransition
 		}
 
-		return s.appendFact(ctx, tx, journal.Fact{TaskID: id.String(), Type: journal.Requeued})
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(), Type: journal.Enqueued,
+			Detail: mustJSON(queue.EnqueueDetail{Rescue: "true"}),
+		})
 	})
 }
 
