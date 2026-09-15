@@ -479,7 +479,7 @@ func batchKeyOf(run []Item) string {
 const BatchKeyPrefix = "batch:"
 
 func (h *Harvester) enqueueBatch(ctx context.Context, run []Item, importance int) (task.Task, error) {
-	payload, err := h.buildBatchPayload(run)
+	payload, err := h.buildBatchPayload(ctx, run)
 	if err != nil {
 		return task.Task{}, err
 	}
@@ -530,7 +530,7 @@ const defaultBatchTimeoutMinutes = 30
 // The payload timeout scales with the member count — one ladder/default
 // ceiling per item — so a batch is not killed by a single-item ceiling;
 // the pool's --task-timeout stays the hard cap above it.
-func (h *Harvester) buildBatchPayload(run []Item) ([]byte, error) {
+func (h *Harvester) buildBatchPayload(ctx context.Context, run []Item) ([]byte, error) {
 	first := run[0]
 
 	texts := make([]string, len(run))
@@ -553,6 +553,10 @@ func (h *Harvester) buildBatchPayload(run []Item) ([]byte, error) {
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", first.Heading)
 	prompt = strings.ReplaceAll(prompt, "{{COUNT}}", strconv.Itoa(len(run)))
 	prompt = strings.ReplaceAll(prompt, "{{ITEMS}}", strings.TrimRight(list.String(), "\n"))
+
+	if dangles := danglingSHAs(ctx, first.Repo, strings.Join(texts, "\n")); len(dangles) > 0 {
+		prompt += "\n\n" + citationBlock(dangles)
+	}
 
 	repo := first.Repo
 	if h.cfg.ProjectsDir != "" {
@@ -869,7 +873,7 @@ func sameSession(text string) bool {
 }
 
 func (h *Harvester) enqueue(ctx context.Context, item Item, importance int) (task.Task, error) {
-	payload, err := h.buildPayload(item, h.cfg.PromptTemplate, item.Key)
+	payload, err := h.buildPayload(ctx, item, h.cfg.PromptTemplate, item.Key)
 	if err != nil {
 		return task.Task{}, err
 	}
@@ -910,11 +914,15 @@ func (h *Harvester) enqueue(ctx context.Context, item Item, importance int) (tas
 // loop-closing tasks). Repos discovered under ProjectsDir are named
 // relatively so payloads stay valid when the projects root moves; explicit
 // repos outside item keep their absolute path.
-func (h *Harvester) buildPayload(item Item, prompt, dedupKey string) ([]byte, error) {
+func (h *Harvester) buildPayload(ctx context.Context, item Item, prompt, dedupKey string) ([]byte, error) {
 	prompt = strings.ReplaceAll(prompt, "{{REPO_ABS}}", item.Repo)
 	prompt = strings.ReplaceAll(prompt, "{{REPO}}", item.RepoName)
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", item.Heading)
 	prompt = strings.ReplaceAll(prompt, "{{ITEM}}", item.Text)
+
+	if dangles := danglingSHAs(ctx, item.Repo, item.Text); len(dangles) > 0 {
+		prompt += "\n\n" + citationBlock(dangles)
+	}
 
 	repo := item.Repo
 	if h.cfg.ProjectsDir != "" {

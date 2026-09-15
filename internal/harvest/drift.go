@@ -219,7 +219,7 @@ func (h *Harvester) auditRepo(ctx context.Context, repo string, res *DriftResult
 
 // enqueueCatchup arms the loop-closing agent task for one drifted item.
 func (h *Harvester) enqueueCatchup(ctx context.Context, item Item, catchupKey string) (task.ID, error) {
-	payload, err := h.buildPayload(item, DefaultCatchupPrompt, catchupKey)
+	payload, err := h.buildPayload(ctx, item, DefaultCatchupPrompt, catchupKey)
 	if err != nil {
 		return "", err
 	}
