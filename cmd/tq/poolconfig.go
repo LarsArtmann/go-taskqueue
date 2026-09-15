@@ -16,6 +16,7 @@ var poolConfigEnvBacked = map[string]string{
 	"cqa-owner": "CQA_OWNER_ID",
 	"cqa-token": "CQA_TOKEN",
 	"log-dir":   "TQ_LOG_DIR",
+	"redact":    "TQ_REDACT",
 }
 
 // loadPoolConfigFile reads a flat key=value file (one setting per line,

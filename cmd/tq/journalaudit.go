@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -167,6 +168,23 @@ type DriftReport struct {
 	FactsReplayed int           `json:"factsReplayed"`
 	Coverage      FieldCoverage `json:"coverage"`
 	Drift         []DriftRow    `json:"drift,omitempty"`
+	// SecretEvidence rows are the secrets-in-logs audit (17-21 #18 / 20-58
+	// f33): stored facts whose error text or evidence detail carries a
+	// provider-token-shaped string — almost always written before the
+	// executor's redaction pass shipped. Advisory; never includes the
+	// matched secret itself.
+	SecretEvidence []SecretHit `json:"secret_evidence,omitempty"`
+}
+
+// SecretHit locates token-shaped strings in one stored fact WITHOUT
+// printing them: count and location only, the remedy is operator action
+// (tq show <id>, or editing the journal), never a re-print.
+type SecretHit struct {
+	Seq    int64  `json:"seq"`
+	TaskID string `json:"taskId"`
+	Type   string `json:"type"`
+	Field  string `json:"field"` // error | detail
+	Count  int    `json:"count"`
 }
 
 // HasDrift reports whether any task state diverged.
@@ -275,8 +293,38 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 
 	report := diffProjection(tasks, replayProjection(facts))
 	report.FactsReplayed = len(facts)
+	report.SecretEvidence = scanFactSecrets(facts)
 
 	return report, nil
+}
+
+// scanFactSecrets runs the secrets-in-logs detector over the evidence-bearing
+// fields of every fact (error text + detail JSON) and returns one row per
+// fact/field with hits. Payloads are NOT scanned: whatever an enqueuer
+// stored there was provided intentionally, not leaked through an output tail.
+func scanFactSecrets(facts []journal.Fact) []SecretHit {
+	var hits []SecretHit
+
+	for _, fact := range facts {
+		for field, content := range map[string]string{
+			"error":  fact.Error,
+			"detail": string(fact.Detail),
+		} {
+			if n := executor.SecretHits(content); n > 0 {
+				hits = append(hits, SecretHit{
+					Seq:    fact.Seq,
+					TaskID: fact.TaskID,
+					Type:   string(fact.Type),
+					Field:  field,
+					Count:  n,
+				})
+			}
+		}
+	}
+
+	sort.Slice(hits, func(i, j int) bool { return hits[i].Seq < hits[j].Seq })
+
+	return hits
 }
 
 // cmdJournalAudit runs the drift audit and renders it (text or JSON).
@@ -303,14 +351,24 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 
 	if !report.HasDrift() {
 		fmt.Println("no drift: stored projections equal the fact replay (ADR-0001 invariant holds)")
+	} else {
+		fmt.Printf("DRIFT: %d field(s) diverge between the tasks table and the fact journal:\n", len(report.Drift))
 
-		return nil
+		for _, row := range report.Drift {
+			fmt.Printf("  %s: %s stored=%s replayed=%s\n", row.TaskID, row.Field, row.Stored, row.Replayed)
+		}
 	}
 
-	fmt.Printf("DRIFT: %d field(s) diverge between the tasks table and the fact journal:\n", len(report.Drift))
+	if len(report.SecretEvidence) == 0 {
+		fmt.Println("secret scan: no provider-token-shaped strings in fact evidence")
+	} else {
+		fmt.Printf("SECRET EVIDENCE: %d fact field(s) carry provider-token-shaped strings:\n", len(report.SecretEvidence))
 
-	for _, row := range report.Drift {
-		fmt.Printf("  %s: %s stored=%s replayed=%s\n", row.TaskID, row.Field, row.Stored, row.Replayed)
+		for _, hit := range report.SecretEvidence {
+			fmt.Printf("  seq=%d %s %s field=%s hits=%d\n", hit.Seq, hit.Type, hit.TaskID, hit.Field, hit.Count)
+		}
+
+		fmt.Println("  (advisory: facts written before the redaction pass are the likely source; inspect with `tq show <id>`, never re-print the secret)")
 	}
 
 	fmt.Println("(advisory: investigate with `tq show <id>` and `tq facts -detail` before repairing)")
