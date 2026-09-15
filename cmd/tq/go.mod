@@ -30,12 +30,12 @@ require (
 	github.com/larsartmann/go-cqrs-lite/metadata/v4 v4.7.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.5.0 // indirect
 	github.com/larsartmann/go-error-family v0.10.0 // indirect
-	github.com/larsartmann/go-retry v0.5.0 // indirect
+	github.com/larsartmann/go-retry v0.6.0 // indirect
 	github.com/larsartmann/go-sse v0.6.0 // indirect
-	github.com/larsartmann/templ-components v1.16.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.16.0 // indirect
-	github.com/larsartmann/templ-components/icons v1.16.0 // indirect
-	github.com/larsartmann/templ-components/utils v1.16.0 // indirect
+	github.com/larsartmann/templ-components v1.17.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.17.0 // indirect
+	github.com/larsartmann/templ-components/icons v1.17.0 // indirect
+	github.com/larsartmann/templ-components/utils v1.17.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/oklog/ulid/v2 v2.1.2 // indirect
