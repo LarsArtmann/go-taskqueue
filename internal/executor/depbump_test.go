@@ -83,7 +83,10 @@ func TestDepBumpPayloadContract(t *testing.T) {
 	}
 
 	// No repo: permanent.
-	err = e.Execute(context.Background(), depBumpTaskT(t, DepBumpPayload{Bumps: []DepBump{{Module: "m", Version: "v1.0.0"}}}))
+	err = e.Execute(
+		context.Background(),
+		depBumpTaskT(t, DepBumpPayload{Bumps: []DepBump{{Module: "m", Version: "v1.0.0"}}}),
+	)
 	if !isPermanent(t, err) {
 		t.Fatalf("missing repo must be permanent, got %v", err)
 	}
@@ -105,6 +108,7 @@ func TestDepBumpPayloadContract(t *testing.T) {
 
 	// Payload contract version from the future: permanent.
 	raw := `{"v":99,"repo":"/tmp","bumps":[{"module":"m","version":"v1.0.0"}]}`
+
 	err = e.Execute(context.Background(), task.Task{ID: task.NewID(), Type: TaskTypeDepBump, Payload: []byte(raw)})
 	if !isPermanent(t, err) || !strings.Contains(err.Error(), "upgrade tq") {
 		t.Fatalf("future payload version must fail permanently with upgrade guidance, got %v", err)

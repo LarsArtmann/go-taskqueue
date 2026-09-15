@@ -182,4 +182,4 @@ webui adoptions), docs-health (harvest/annotate conventions for this close-out).
 
 ---
 
-*Not BLOCKED; the executed batch is verified (gates cited inline). §c/§f await the next instruction window.*
+_Not BLOCKED; the executed batch is verified (gates cited inline). §c/§f await the next instruction window._

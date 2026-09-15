@@ -579,6 +579,7 @@ func (e *DepBumpExecutor) rollback(ctx context.Context, repoDir string) error {
 // lsFilesArgs builds a `git ls-files -z --cached -- <specs>` invocation.
 func lsFilesArgs(repoDir string, specs []string) []string {
 	args := []string{"-C", repoDir, "ls-files", "-z", "--cached", "--"}
+
 	return append(args, specs...)
 }
 

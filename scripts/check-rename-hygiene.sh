@@ -44,7 +44,10 @@ trap 'rm -f "$added" "$removed"' EXIT
 
 # Identifier-shaped tokens from removed lines: the rename's old names.
 old_names="$(grep -ohE '[A-Za-z_][A-Za-z0-9_]{2,}' "$removed" | sort -u || true)"
-[ -n "$old_names" ] || { echo "rename-hygiene: no removed identifiers in diff — clean"; exit 0; }
+[ -n "$old_names" ] || {
+	echo "rename-hygiene: no removed identifiers in diff — clean"
+	exit 0
+}
 
 # Double-quoted literals on added lines whose content is EXACTLY
 # identifier-shaped; flag when the literal equals an old name.
@@ -67,7 +70,7 @@ while IFS= read -r line; do
 			hits=$((hits + 1))
 		fi
 	done < <(printf '%s' "$line" | grep -oE '"[^"]*"' | sed 's/^"\(.*\)"$/\1/')
-done < "$added"
+done <"$added"
 
 if [ "$hits" -eq 0 ]; then
 	echo "rename-hygiene: clean — no identifier-shaped literal shadows a removed identifier"

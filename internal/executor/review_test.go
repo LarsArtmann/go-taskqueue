@@ -224,7 +224,10 @@ func TestReviewExecutorVerdictContract(t *testing.T) {
 func TestReviewExecutorBackfillsFindingCommitSHA(t *testing.T) {
 	t.Parallel()
 
-	bin := makeStubAgent(t, "cat <<'EOF'\n"+`TQ_RESULT: {"verdict":"request_changes","findings":[{"title":"fix leak","severity":"high","anchor":"conn.Close()"}]}`+"\nEOF")
+	bin := makeStubAgent(
+		t,
+		"cat <<'EOF'\n"+`TQ_RESULT: {"verdict":"request_changes","findings":[{"title":"fix leak","severity":"high","anchor":"conn.Close()"}]}`+"\nEOF",
+	)
 	e := &ReviewExecutor{Agent: &AgentExecutor{Bin: bin}}
 
 	ctx, sink := NewSink(context.Background())

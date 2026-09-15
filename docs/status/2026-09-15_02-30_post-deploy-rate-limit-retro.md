@@ -25,12 +25,12 @@ flip v2 GOEXPERIMENT env same day; last pre-flip 429 attempt 2026-09-11
 
 ## Numbers
 
-| Metric                                          | Pre-flip (09-10 → 09-11) | Post-flip (09-12 → 09-15) |
-| ----------------------------------------------- | ------------------------ | ------------------------- |
-| 429-class failed attempts                       | 28                       | **0**                     |
-| 429-class dead-letters                          | 8 (of 21 dead total)     | **0** (of 52 dead total)  |
-| attempts burned by 429-class dead tasks         | 24                       | **0**                     |
-| `task.requeued` via the rate-limit path         | n/a (mechanism not deployed) | **0**                 |
+| Metric                                  | Pre-flip (09-10 → 09-11)     | Post-flip (09-12 → 09-15) |
+| --------------------------------------- | ---------------------------- | ------------------------- |
+| 429-class failed attempts               | 28                           | **0**                     |
+| 429-class dead-letters                  | 8 (of 21 dead total)         | **0** (of 52 dead total)  |
+| attempts burned by 429-class dead tasks | 24                           | **0**                     |
+| `task.requeued` via the rate-limit path | n/a (mechanism not deployed) | **0**                     |
 
 Baseline check: the runbook's §4 snapshot (2026-09-11 14:40) counted 27 dead
 total, 6 of them 429-class; this retro's journal-derived count is 21 dead / 8

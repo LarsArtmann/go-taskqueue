@@ -36,6 +36,7 @@ func depBumpFixtureRepo(t *testing.T, oldVersion string) string {
 
 		cmd := exec.Command("git", args...)
 		cmd.Dir = repo
+
 		cmd.Env = append(os.Environ(),
 			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
 			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t",
@@ -79,6 +80,7 @@ func runGo(t *testing.T, dir string, args ...string) {
 
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
+
 	cmd.Env = append(os.Environ(), "GOEXPERIMENT=jsonv2", "GOFLAGS=")
 
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -179,6 +181,7 @@ func TestDepBumpExecutorRollsBackFailedBump(t *testing.T) {
 	goSumBefore := readFile(t, filepath.Join(repo, "go.sum"))
 
 	e := &DepBumpExecutor{ExtraEnv: []string{GoEnvExperiment}}
+
 	err := e.Execute(context.Background(), depBumpTaskT(t, DepBumpPayload{
 		Repo: repo,
 		Bumps: []DepBump{
@@ -232,6 +235,7 @@ func TestDepBumpExecutorBaselineRefusesBrokenRepo(t *testing.T) {
 	goModBefore := readFile(t, filepath.Join(repo, "go.mod"))
 
 	e := &DepBumpExecutor{ExtraEnv: []string{GoEnvExperiment}}
+
 	err := e.Execute(context.Background(), depBumpTaskT(t, DepBumpPayload{
 		Repo:  repo,
 		Bumps: []DepBump{{Module: "github.com/stretchr/testify", Version: "v1.11.1"}},
@@ -261,6 +265,7 @@ func runGoOut(t *testing.T, dir string, args ...string) string {
 
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
+
 	cmd.Env = append(os.Environ(), "GOEXPERIMENT=jsonv2", "GOFLAGS=")
 
 	out, err := cmd.CombinedOutput()
@@ -276,6 +281,7 @@ func runGit(t *testing.T, dir string, args ...string) {
 
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+
 	cmd.Env = append(os.Environ(),
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
 		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t",
@@ -376,6 +382,7 @@ func TestDepBumpExecutorRollbackRestoresRealChanges(t *testing.T) {
 	goSumBefore := readFile(t, filepath.Join(repo, "go.sum"))
 
 	e := &DepBumpExecutor{ExtraEnv: []string{GoEnvExperiment}}
+
 	err := e.Execute(context.Background(), depBumpTaskT(t, DepBumpPayload{
 		Repo: repo,
 		Bumps: []DepBump{

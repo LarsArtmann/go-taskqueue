@@ -355,7 +355,10 @@ func validateAnchor(anchor string) error {
 	}
 
 	if anchorLooksPositional(anchor) {
-		return fmt.Errorf("finding anchor %q is a bare position: quote the verbatim text the finding attaches to, not line numbers", anchor)
+		return fmt.Errorf(
+			"finding anchor %q is a bare position: quote the verbatim text the finding attaches to, not line numbers",
+			anchor,
+		)
 	}
 
 	return nil
@@ -372,7 +375,8 @@ func anchorLooksPositional(a string) bool {
 
 	lower := strings.ToLower(trimmed)
 	for _, prefix := range []string{"line ", "lines ", "line:", "lines:"} {
-		if strings.HasPrefix(lower, prefix) && !strings.ContainsAny(strings.TrimSpace(lower[len(prefix):]), "abcdefghijklmnopqrstuvwxyz") {
+		if strings.HasPrefix(lower, prefix) &&
+			!strings.ContainsAny(strings.TrimSpace(lower[len(prefix):]), "abcdefghijklmnopqrstuvwxyz") {
 			return true
 		}
 	}

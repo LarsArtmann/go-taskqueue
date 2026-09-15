@@ -339,7 +339,9 @@ func fixPrompt(payload executor.ReviewPayload, finding executor.ReviewFinding) s
 	}
 
 	if anchor := strings.TrimSpace(finding.Anchor); anchor != "" {
-		b.WriteString("The finding is anchored to this verbatim text: `" + anchor + "`. Use it to locate the site — never a line number.\n\n")
+		b.WriteString(
+			"The finding is anchored to this verbatim text: `" + anchor + "`. Use it to locate the site — never a line number.\n\n",
+		)
 	}
 
 	sha := strings.TrimSpace(finding.CommitSHA)

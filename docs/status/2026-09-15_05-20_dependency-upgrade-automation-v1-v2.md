@@ -189,7 +189,7 @@ challenged ("best most scalable and reliable way?") and re-commissioned
 21. Multi-module repo support test: dir-prefixed tags for a monorepo
     sub-module fixture (executor release path).
 22. quarantineGoWork: add a test with a go.work fixture proving rename
-    + restore around go get.
+    - restore around go get.
 23. depsweep: skip-log dedup (like the pool's skipLogExamples) so a steady
     141-skip plan doesn't flood journald every 15m tick.
 24. Interval default sanity: 15m re-plan on a 4.7s plan is fine; consider

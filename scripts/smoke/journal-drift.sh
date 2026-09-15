@@ -25,7 +25,10 @@ if [ -z "${TQ_BIN:-}" ]; then
 fi
 
 DB="$WORK/q.db"
-fail() { echo "FAIL: $*" >&2; exit 1; }
+fail() {
+	echo "FAIL: $*" >&2
+	exit 1
+}
 
 echo "== phase 1: full lifecycle, truthful projection =="
 "$TQ" enqueue --db "$DB" --type sh '"true"' >/dev/null || fail "enqueue #1"

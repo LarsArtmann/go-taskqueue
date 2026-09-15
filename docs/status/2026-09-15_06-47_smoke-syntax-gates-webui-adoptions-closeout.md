@@ -415,8 +415,8 @@ No queue task ID — interactive session.
 
 1. **templ-components release timing**: MaxTicks is committed on master
    (df0d70f4, unpushed). Do you want me to run its release flow now (cut
-   + push + sub-module tags), and should tq immediately bump + adopt
-   MaxTicks in the dashboard charts, or ride the next planned tq release?
+   - push + sub-module tags), and should tq immediately bump + adopt
+     MaxTicks in the dashboard charts, or ride the next planned tq release?
 2. **Shellcheck gate policy**: the gate is born-hard at zero findings
    using whatever shellcheck the runner ships — a runner version bump
    that adds checks would red CI with findings my local version doesn't

@@ -129,6 +129,7 @@ func TestBuildWorkConsumerTraps(t *testing.T) {
 	specs, skips := BuildWork([]PlanModule{lib}, SweeperConfig{})
 
 	bumps := map[string]bool{}
+
 	for _, spec := range specs {
 		if spec.Release == nil {
 			bumps[spec.Repo] = true

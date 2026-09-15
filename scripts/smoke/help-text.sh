@@ -34,7 +34,10 @@ check_help() {
 	fi
 }
 
-root_help="$("$TQ" -h 2>&1)" || { echo "FAIL: tq -h failed"; exit 1; }
+root_help="$("$TQ" -h 2>&1)" || {
+	echo "FAIL: tq -h failed"
+	exit 1
+}
 check_help "tq" "$root_help"
 
 # Subcommands (kept in sync with the Usage block of `tq -h`; the explicit
@@ -42,13 +45,21 @@ check_help "tq" "$root_help"
 cmds="enqueue worker harvest bootstrap agent-pool stats tasks audit doctor top show dlq cancel facts tail serve api version"
 
 for cmd in $cmds; do
-	out="$("$TQ" "$cmd" -h 2>&1)" || { echo "FAIL: tq $cmd -h failed"; failed=1; continue; }
+	out="$("$TQ" "$cmd" -h 2>&1)" || {
+		echo "FAIL: tq $cmd -h failed"
+		failed=1
+		continue
+	}
 	check_help "tq $cmd" "$out"
 done
 
 # Grouped subcommands reject a bare -h; probe the leaf commands instead.
 for cmd in "watermarks show" "watermarks set" "session begin" "session close"; do
-	out="$("$TQ" $cmd -h 2>&1)" || { echo "FAIL: tq $cmd -h failed"; failed=1; continue; }
+	out="$("$TQ" $cmd -h 2>&1)" || {
+		echo "FAIL: tq $cmd -h failed"
+		failed=1
+		continue
+	}
 	check_help "tq $cmd" "$out"
 done
 
@@ -57,7 +68,10 @@ out="$("$TQ" verdict -h 2>&1)"
 check_help "tq verdict" "$out"
 
 # Explicit minimum coverage per the work item, independent of parsing.
-out="$("$TQ" dlq -h 2>&1)" || { echo "FAIL: tq dlq -h failed"; exit 1; }
+out="$("$TQ" dlq -h 2>&1)" || {
+	echo "FAIL: tq dlq -h failed"
+	exit 1
+}
 check_help "tq dlq" "$out"
 
 if [ "$failed" -ne 0 ]; then

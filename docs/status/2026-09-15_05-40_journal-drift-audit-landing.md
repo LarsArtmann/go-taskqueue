@@ -266,43 +266,43 @@ tooling, not by me.
 TODO_LIST and the rest to ROADMAP. Padding to 50 rejected — the remaining
 15 slots would be filler.)
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 1 | Run `golangci-lint run` on all 5 touched modules; fix or justify any finding vs `.golangci-baseline.txt` before ci-local surprises us | Critical | S | Quality |
-| 2 | Run full `./scripts/ci-local.sh` (the pre-push gate) over the union state | Critical | M | Process |
-| 3 | Add conformance pins: enqueue fact detail carries priority+dedup_key; RescueDead emits rescue-enqueued (both backends) | High | S/M | Quality |
-| 4 | Land the release sub-tag set for task/queue/sqlite/postgres/facades/cmd-tq before the next release.sh (gates demand pre-cut tags) | High | M | Process |
-| 5 | `nix build` after the go-directive fixes to confirm vendorHash did not move | High | S | Quality |
-| 6 | Add `coverage` (per-field compared counts) to DriftReport so legacy thin facts' sparse priority/dedupKey checks are explained in output | High | S | Feature |
-| 7 | Watch next CI run for the postgres-gated job as the real verifier of this session's postgres edits (rides the fullcore postgres variant) | High | S | Process |
-| 8 | Update AGENTS.md payload-contracts: enqueue fact detail shape + postgres rescue parity + audit's derivability rules (what makes a field "unknown") | High | S | Documentation |
-| 9 | Mint-time done-check in the harvester/pool: skip dispatch when the row is already `[x]` (kills the paid re-dispatch loop flagged by 4+ reports) | High | M | Feature |
-| 10 | Land `--repair` design doc BEFORE any repair code: replay-vs-table conflict policy, idempotency, who may run it (owner-gated) | High | S | Documentation |
-| 11 | Verify/finish the concurrent window's dep-sweep work sitting uncommitted in the worktree (agentpool.go/main.go/depbump.go) — CI parity + flags + docs | High | M | Feature |
-| 12 | Extend the drift smoke's seeded-drift fixture with a rescue scenario (rescue + corrupt → detector must stay correct on the reset path) | Medium | S | Quality |
-| 13 | Add a requeue-vs-rescue conformance assertion (requeue keeps attempts; rescue resets) so the replay story is pinned at the store layer | Medium | S | Quality |
-| 14 | Fold §e1/e2/e3 into AGENTS.md session-ritual + conformance sections (hot-file re-read; broad gates first; fact-pins rule) | Medium | S | Documentation |
-| 15 | Fuzz the new `EnqueueDetail` parse path (`replayProjection` unmarshals attacker-shaped journal bytes if a journal is ever adversarial) — one FuzzParseRepo-style campaign | Medium | S | Quality |
-| 16 | `tq facts` renderers: surface the new priority/dedup_key keys in fact detail views (webui + CLI) so the enrichment is visible, not just machine-read | Medium | S | Feature |
-| 17 | Journal-drift smoke into ci.yml (currently ci-local-only; the guard-wiring gate accepts either) — advisory, same O5 caveat | Medium | S | Process |
-| 18 | Domain language: does `replay`/`projection`/`coverage` belong in docs/DOMAIN_LANGUAGE.md? The audit just gave the terms operational meaning | Medium | S | Documentation |
-| 19 | Consider `dedup_key` on the webui task detail (field exists in Task now; detail page doesn't show it) | Medium | S | Feature |
-| 20 | Baseline regen policy check: does the audit's new cmd/tq code change the per-module lint rows? Fold into #1 | Medium | S | Quality |
-| 21 | Postgres session bridge row (standing TODO): still open, still the biggest postgres parity gap | Medium | L | Feature |
-| 22 | `internal/consumer` wire-or-delete decision (standing TODO row 27): the drift audit is now a second potential consumer — decide before it grows a third | Medium | M | Cleanup |
-| 23 | Executor usage parsing (`tokens` field, standing TODO row 124): derived-outcomes work left it always-empty | Medium | M | Feature |
-| 24 | `--prioritize` pool enablement (standing TODO row 129) — gated on scorer cost measurement, unchanged | Medium | S | Feature |
-| 25 | Batched-harvest interaction note: batch tasks mint BEFORE this enrichment — their enqueue facts carry priority+dedup_key like everything else; verify one live batch task audits clean | Medium | S | Quality |
-| 26 | SystemNix pool validation rows (standing TODOs 22/157): owner-gated, unchanged | Medium | S | Process |
-| 27 | ADR for the audit? Ruling says operator command, no policy growth — write the one-paragraph decision record only if --repair revives the gate-vs-advisory question (source report brainstorm 18) | Low | S | Documentation |
-| 28 | journal/cqrs facade ruling (standing TODO row 127): ADR-0016 surface question, unchanged by this session | Low | S | Decision |
-| 29 | Check whether `tq audit --journal` should accept `--project`/`--status` filters (List already supports them; full-table scan is fine at current scale) | Low | S | Feature |
-| 30 | Rename-hygiene/self-review scans on the new code paths (the repo's own new scanners should eat their own dogfood: run check-rename-hygiene.sh scoped to this diff) | Low | S | Quality |
-| 31 | Docs: one FEATURES.md row for the audit under a "operator tools" grouping if FEATURES groups that way (check format first) | Low | S | Documentation |
-| 32 | Consider exposing `FactsForTask` in the drift output when drift exists (auto-attach the task's fact trail to the advisory line) | Low | M | Feature |
-| 33 | Delete my abandoned draft's unique-but-rejected ideas explicitly in the next docs-health pass (coverage → item 6 keeps it; pointer fields in replayState → dropped, note why) | Low | S | Cleanup |
-| 34 | Enrichment backfill consideration: NEVER rewrite history (policy), but document that pre-enrichment journals permanently lack priority/dedupKey derivability — sets expectations for §6's coverage numbers | Low | S | Documentation |
-| 35 | Kill zero TODO_LIST rows this window — if HARVEST runs, close the loop on items 1-14 within the same session, not "later" | Medium | S | Process |
+| #  | Task                                                                                                                                                                                                       | Impact   | Effort | Category      |
+| -- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------- |
+| 1  | Run `golangci-lint run` on all 5 touched modules; fix or justify any finding vs `.golangci-baseline.txt` before ci-local surprises us                                                                      | Critical | S      | Quality       |
+| 2  | Run full `./scripts/ci-local.sh` (the pre-push gate) over the union state                                                                                                                                  | Critical | M      | Process       |
+| 3  | Add conformance pins: enqueue fact detail carries priority+dedup_key; RescueDead emits rescue-enqueued (both backends)                                                                                     | High     | S/M    | Quality       |
+| 4  | Land the release sub-tag set for task/queue/sqlite/postgres/facades/cmd-tq before the next release.sh (gates demand pre-cut tags)                                                                          | High     | M      | Process       |
+| 5  | `nix build` after the go-directive fixes to confirm vendorHash did not move                                                                                                                                | High     | S      | Quality       |
+| 6  | Add `coverage` (per-field compared counts) to DriftReport so legacy thin facts' sparse priority/dedupKey checks are explained in output                                                                    | High     | S      | Feature       |
+| 7  | Watch next CI run for the postgres-gated job as the real verifier of this session's postgres edits (rides the fullcore postgres variant)                                                                   | High     | S      | Process       |
+| 8  | Update AGENTS.md payload-contracts: enqueue fact detail shape + postgres rescue parity + audit's derivability rules (what makes a field "unknown")                                                         | High     | S      | Documentation |
+| 9  | Mint-time done-check in the harvester/pool: skip dispatch when the row is already `[x]` (kills the paid re-dispatch loop flagged by 4+ reports)                                                            | High     | M      | Feature       |
+| 10 | Land `--repair` design doc BEFORE any repair code: replay-vs-table conflict policy, idempotency, who may run it (owner-gated)                                                                              | High     | S      | Documentation |
+| 11 | Verify/finish the concurrent window's dep-sweep work sitting uncommitted in the worktree (agentpool.go/main.go/depbump.go) — CI parity + flags + docs                                                      | High     | M      | Feature       |
+| 12 | Extend the drift smoke's seeded-drift fixture with a rescue scenario (rescue + corrupt → detector must stay correct on the reset path)                                                                     | Medium   | S      | Quality       |
+| 13 | Add a requeue-vs-rescue conformance assertion (requeue keeps attempts; rescue resets) so the replay story is pinned at the store layer                                                                     | Medium   | S      | Quality       |
+| 14 | Fold §e1/e2/e3 into AGENTS.md session-ritual + conformance sections (hot-file re-read; broad gates first; fact-pins rule)                                                                                  | Medium   | S      | Documentation |
+| 15 | Fuzz the new `EnqueueDetail` parse path (`replayProjection` unmarshals attacker-shaped journal bytes if a journal is ever adversarial) — one FuzzParseRepo-style campaign                                  | Medium   | S      | Quality       |
+| 16 | `tq facts` renderers: surface the new priority/dedup_key keys in fact detail views (webui + CLI) so the enrichment is visible, not just machine-read                                                       | Medium   | S      | Feature       |
+| 17 | Journal-drift smoke into ci.yml (currently ci-local-only; the guard-wiring gate accepts either) — advisory, same O5 caveat                                                                                 | Medium   | S      | Process       |
+| 18 | Domain language: does `replay`/`projection`/`coverage` belong in docs/DOMAIN_LANGUAGE.md? The audit just gave the terms operational meaning                                                                | Medium   | S      | Documentation |
+| 19 | Consider `dedup_key` on the webui task detail (field exists in Task now; detail page doesn't show it)                                                                                                      | Medium   | S      | Feature       |
+| 20 | Baseline regen policy check: does the audit's new cmd/tq code change the per-module lint rows? Fold into #1                                                                                                | Medium   | S      | Quality       |
+| 21 | Postgres session bridge row (standing TODO): still open, still the biggest postgres parity gap                                                                                                             | Medium   | L      | Feature       |
+| 22 | `internal/consumer` wire-or-delete decision (standing TODO row 27): the drift audit is now a second potential consumer — decide before it grows a third                                                    | Medium   | M      | Cleanup       |
+| 23 | Executor usage parsing (`tokens` field, standing TODO row 124): derived-outcomes work left it always-empty                                                                                                 | Medium   | M      | Feature       |
+| 24 | `--prioritize` pool enablement (standing TODO row 129) — gated on scorer cost measurement, unchanged                                                                                                       | Medium   | S      | Feature       |
+| 25 | Batched-harvest interaction note: batch tasks mint BEFORE this enrichment — their enqueue facts carry priority+dedup_key like everything else; verify one live batch task audits clean                     | Medium   | S      | Quality       |
+| 26 | SystemNix pool validation rows (standing TODOs 22/157): owner-gated, unchanged                                                                                                                             | Medium   | S      | Process       |
+| 27 | ADR for the audit? Ruling says operator command, no policy growth — write the one-paragraph decision record only if --repair revives the gate-vs-advisory question (source report brainstorm 18)           | Low      | S      | Documentation |
+| 28 | journal/cqrs facade ruling (standing TODO row 127): ADR-0016 surface question, unchanged by this session                                                                                                   | Low      | S      | Decision      |
+| 29 | Check whether `tq audit --journal` should accept `--project`/`--status` filters (List already supports them; full-table scan is fine at current scale)                                                     | Low      | S      | Feature       |
+| 30 | Rename-hygiene/self-review scans on the new code paths (the repo's own new scanners should eat their own dogfood: run check-rename-hygiene.sh scoped to this diff)                                         | Low      | S      | Quality       |
+| 31 | Docs: one FEATURES.md row for the audit under a "operator tools" grouping if FEATURES groups that way (check format first)                                                                                 | Low      | S      | Documentation |
+| 32 | Consider exposing `FactsForTask` in the drift output when drift exists (auto-attach the task's fact trail to the advisory line)                                                                            | Low      | M      | Feature       |
+| 33 | Delete my abandoned draft's unique-but-rejected ideas explicitly in the next docs-health pass (coverage → item 6 keeps it; pointer fields in replayState → dropped, note why)                              | Low      | S      | Cleanup       |
+| 34 | Enrichment backfill consideration: NEVER rewrite history (policy), but document that pre-enrichment journals permanently lack priority/dedupKey derivability — sets expectations for §6's coverage numbers | Low      | S      | Documentation |
+| 35 | Kill zero TODO_LIST rows this window — if HARVEST runs, close the loop on items 1-14 within the same session, not "later"                                                                                  | Medium   | S      | Process       |
 
 ---
 
@@ -321,12 +321,12 @@ TODO_LIST and the rest to ROADMAP. Padding to 50 rejected — the remaining
 
 2. **Release cadence for this session's module changes:** cut the sub-tag
    set now as a v0.3.x patch wave (task, queue, sqlite, postgres + facades
-   + cmd/tq all changed; release gates need pre-cut sub-tags), or batch
-   with the in-flight dep-sweep and batched-harvest work into v0.4.0? I
-   tried to infer the answer from VERSION-SURFACES.md and the release doc
-   (both describe mechanics, not cadence policy) — the call is yours
-   because it decides whether the enrichment ships to `go install` users
-   before or with the bigger features.
+   - cmd/tq all changed; release gates need pre-cut sub-tags), or batch
+     with the in-flight dep-sweep and batched-harvest work into v0.4.0? I
+     tried to infer the answer from VERSION-SURFACES.md and the release doc
+     (both describe mechanics, not cadence policy) — the call is yours
+     because it decides whether the enrichment ships to `go install` users
+     before or with the bigger features.
 
 3. **Should legacy journals get an explicit "unenriched" disclosure in the
    audit output** (the §b5/§f6 coverage counts), or is silence acceptable
@@ -339,12 +339,12 @@ TODO_LIST and the rest to ROADMAP. Padding to 50 rejected — the remaining
 
 ---
 
-*Recorded 2026-09-15 05:40 CEST. Format note: user explicitly requested
+_Recorded 2026-09-15 05:40 CEST. Format note: user explicitly requested
 `.md`; the status-report skill's canonical format is a styled HTML
 dashboard — override honored, flagged here per skill contract, not
 propagated back as a default. §f feeds docs-health HARVEST (items 1-14 →
 TODO_LIST, rest → ROADMAP); if the session continues without a harvest,
-run it before closing. Waiting for instructions.*
+run it before closing. Waiting for instructions._
 
 ---
 

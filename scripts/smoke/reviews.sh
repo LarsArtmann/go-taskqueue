@@ -24,7 +24,7 @@ fi
 
 export TQ_DB="$TMP/tasks.db"
 export GOEXPERIMENT=jsonv2 # tq doctor's go-env check fails the bare-shell env otherwise
-export TQ_TQ="$TMP/tq" # the stub reviewer records verdicts through the real `tq verdict` channel
+export TQ_TQ="$TMP/tq"     # the stub reviewer records verdicts through the real `tq verdict` channel
 
 echo "== seed repo (clean tree, .tq-verify gate, one DONE item)"
 REPO="$TMP/repo"
