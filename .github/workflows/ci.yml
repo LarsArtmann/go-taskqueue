@@ -188,6 +188,12 @@ jobs:
       # supported-systems pin lives in flake.nix.
       - name: Nix flake check
         run: nix flake check
+      # Byte-canonical app.css pin (15-39 report b1/f6, e4): the committed
+      # stylesheet must equal what `nix run .#webui-css` rebuilds — CI-side
+      # twin of the ci-local gate (unminified/hand-edited css shipped to
+      # master twice on 2026-09-11 behind an orphaned guard).
+      - name: Web UI CSS canonical check
+        run: ./scripts/check-webui-css.sh
 
   govulncheck:
     # Vulnerability scan (round-2 f20), HARD gate since round-13 T7
