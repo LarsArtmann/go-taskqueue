@@ -1406,6 +1406,103 @@ func TestWriteRateLimitPerClient(t *testing.T) {
 	}
 }
 
+// TestWriteRateLimitBoundedAgainstRotatingIPs (06-01 report c7): per-contact
+// pruning only fires for a key's OWN next request, so a source rotating IPs
+// would grow the strikes map without limit. Past maxKeys the global sweep
+// takes idle unlocked entries, least-recently-active eviction takes the
+// oldest, and a live lockout survives both.
+func TestWriteRateLimitBoundedAgainstRotatingIPs(t *testing.T) {
+	l := newWriteRateLimiter()
+	l.maxKeys = 4
+	l.lockout = time.Hour
+
+	clock := time.Now()
+	l.nowFunc = func() time.Time { return clock }
+
+	hit := func(remote string) int {
+		inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/task/x/cancel", strings.NewReader("csrf=bad"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.AddCookie(&http.Cookie{Name: tqCSRFCookie, Value: "real"})
+		req.RemoteAddr = remote
+
+		l.wrap(withCSRF(inner)).ServeHTTP(rec, req)
+
+		return rec.Code
+	}
+
+	if code := hit("10.0.0.1:1000"); code != http.StatusForbidden {
+		t.Fatalf("ip1 bad CSRF = %d, want 403", code)
+	}
+
+	clock = clock.Add(time.Second)
+
+	for range 3 {
+		if code := hit("10.0.0.2:1000"); code != http.StatusForbidden {
+			t.Fatalf("ip2 bad CSRF = %d, want 403", code)
+		}
+	}
+
+	clock = clock.Add(time.Second)
+
+	for _, remote := range []string{"10.0.0.3:1000", "10.0.0.4:1000"} {
+		if code := hit(remote); code != http.StatusForbidden {
+			t.Fatalf("%s bad CSRF = %d, want 403", remote, code)
+		}
+	}
+
+	clock = clock.Add(time.Second)
+
+	// Fifth key over the cap: the oldest (ip1) is evicted, the live ip2
+	// lockout survives.
+	if code := hit("10.0.0.5:1000"); code != http.StatusForbidden {
+		t.Fatalf("ip5 bad CSRF = %d, want 403", code)
+	}
+
+	if len(l.strikes) != l.maxKeys {
+		t.Fatalf("strikes map holds %d entries, want capped at %d", len(l.strikes), l.maxKeys)
+	}
+
+	if _, ok := l.strikes["10.0.0.1"]; ok {
+		t.Fatal("least-recently-active entry survived the cap")
+	}
+
+	for _, ip := range []string{"10.0.0.2", "10.0.0.3", "10.0.0.4", "10.0.0.5"} {
+		if _, ok := l.strikes[ip]; !ok {
+			t.Fatalf("%s was evicted; want it retained", ip)
+		}
+	}
+
+	if code := hit("10.0.0.2:1000"); code != http.StatusTooManyRequests {
+		t.Fatalf("locked ip2 after bound = %d, want 429 (lockout must survive eviction)", code)
+	}
+
+	// Idle sweep: without ever re-contacting ip3/ip4/ip5, they vanish once
+	// idle past idleKeep while the still-locked ip2 stays (lockout is 1h,
+	// the idle horizon 10min).
+	clock = clock.Add(11 * time.Minute)
+
+	if code := hit("10.0.0.6:1000"); code != http.StatusForbidden {
+		t.Fatalf("ip6 bad CSRF = %d, want 403", code)
+	}
+
+	if len(l.strikes) != 2 {
+		t.Fatalf("after idle sweep the map holds %d entries, want 2 (locked + new)", len(l.strikes))
+	}
+
+	if _, ok := l.strikes["10.0.0.2"]; !ok {
+		t.Fatal("locked entry was swept while its lockout was live")
+	}
+
+	if code := hit("10.0.0.2:1000"); code != http.StatusTooManyRequests {
+		t.Fatalf("locked ip2 after sweep = %d, want 429", code)
+	}
+}
+
 // TestSSEHeartbeatStopsBeforeHandlerExit pins the crash fix: an SSE client
 // disconnecting while heartbeats are in flight must never panic the test
 // process. Before the fix, the heartbeat goroutine outlived the handler

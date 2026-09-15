@@ -217,7 +217,11 @@ func withCSRF(next http.Handler) http.Handler {
 // that fails CSRF three times is locked out of ALL write POSTs for a short,
 // fixed window (reads are untouched — the limiter only wraps the two write
 // routes). Strikes reset on any successful write. Bounded memory: entries
-// idle for long are pruned on contact.
+// idle for long are pruned on contact, and the whole map is capped at
+// maxKeys — a source rotating IPs never re-contacts its own key, so the cap
+// first sweeps entries idle past idleKeep globally, then evicts the
+// least-recently-active; a live lockout survives both unless every entry is
+// locked.
 type writeRateLimiter struct {
 	mu       sync.Mutex
 	strikes  map[string]*writeStrikes
@@ -225,6 +229,7 @@ type writeRateLimiter struct {
 	lockout  time.Duration
 	nowFunc  func() time.Time
 	idleKeep time.Duration
+	maxKeys  int
 }
 
 type writeStrikes struct {
@@ -240,6 +245,7 @@ func newWriteRateLimiter() *writeRateLimiter {
 		lockout:  time.Minute,
 		nowFunc:  time.Now,
 		idleKeep: 10 * time.Minute,
+		maxKeys:  1024,
 	}
 }
 
@@ -309,6 +315,8 @@ func (l *writeRateLimiter) wrap(next http.Handler) http.Handler {
 			strikes.count = 0
 			strikes.lockedUntil = time.Time{}
 		}
+
+		l.boundLocked()
 	})
 }
 
@@ -329,6 +337,42 @@ func (l *writeRateLimiter) pruneLocked(key string) *writeStrikes {
 	delete(l.strikes, key)
 
 	return nil
+}
+
+// boundLocked caps the map against rotating source IPs: per-contact pruning
+// only fires for a key's OWN next request, so keys that never come back
+// would grow the map without limit. Entries idle past idleKeep (and not
+// locked) are swept globally — the exact per-contact predicate applied to
+// every key; if the map is still over maxKeys, the least-recently-active
+// entries are evicted oldest-first (a locked entry is evicted only when the
+// whole map is locked — under that pressure the bound wins).
+// Caller holds mu.
+func (l *writeRateLimiter) boundLocked() {
+	if len(l.strikes) <= l.maxKeys {
+		return
+	}
+
+	now := l.nowFunc()
+	for key, strikes := range l.strikes {
+		if now.Before(strikes.lockedUntil) || now.Sub(strikes.last) < l.idleKeep {
+			continue
+		}
+
+		delete(l.strikes, key)
+	}
+
+	for len(l.strikes) > l.maxKeys {
+		oldestKey := ""
+		var oldest *writeStrikes
+
+		for key, strikes := range l.strikes {
+			if oldest == nil || strikes.last.Before(oldest.last) {
+				oldestKey, oldest = key, strikes
+			}
+		}
+
+		delete(l.strikes, oldestKey)
+	}
 }
 
 // remoteHost is the rate-limit key: the client IP without port. Behind a
