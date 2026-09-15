@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Anchored review findings (review-pipeline hardening)**: every
+  `request_changes` finding must quote the verbatim text it attaches to
+  (`anchor`) and is commit-anchored (`commit_sha`, backfilled from the
+  review payload when the model omits it). The queue-side re-anchoring
+  pre-flight rejects bare positions ("lines 12-18", "x.go:34", "12-18")
+  at verdict-parse time — the attempt fails while the reviewer can still
+  re-file. Fix prompts carry the anchor, the finding's sha, and a
+  dangling-commit disposition rule (`git cat-file -e` first; anchor gone =
+  finding no longer applies), plus the single-footer ruling (exactly one
+  `Task-Queue-ID` per commit, the fix ticket's own).
 - **Orphaned-guard audit gate (`scripts/check-guard-wiring.sh`, wired into
   ci-local)**: every `scripts/check-*.sh` and `scripts/smoke/*.sh` must be
   referenced by ci-local.sh, ci.yml, or flake.nix — a guard nothing runs
