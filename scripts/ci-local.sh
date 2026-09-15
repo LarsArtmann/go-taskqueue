@@ -164,6 +164,15 @@ step "fullcore embed smoke (sqlite, scratch TQ_DB)"
 step "help-text smoke (no parenthesized-identifier artifacts in tq help)"
 ./scripts/smoke/help-text.sh
 
+step "multi-repo live smoke (two pools, one DB, per-project exclusivity)"
+./scripts/smoke/multi-repo.sh
+
+step "papdashboard bridge e2e smoke (stub dashboard; alert raise + rescue resolve)"
+./scripts/smoke/papdashboard-e2e.sh
+
+step "rate-limit e2e smoke (429 parks the task without burning an attempt)"
+./scripts/smoke/ratelimit-e2e.sh
+
 # Advisory (2026-09-14 O5 ruling): journal-drift audit smoke over a seeded
 # fixture — reported, never a hard gate on task state.
 step "journal-drift audit smoke (advisory)"
@@ -197,6 +206,12 @@ step "release-doc drift check"
 
 step "status-index check"
 ./scripts/check-status-index.sh
+
+# Orphaned-guard audit (15-39 report c7/f5, e1): every check-*/smoke script
+# must be wired (this file, ci.yml, or flake.nix) — the check-webui-css
+# lesson generalized into a gate.
+step "guard-wiring check (no orphaned check-*/smoke scripts)"
+./scripts/check-guard-wiring.sh
 
 step "asset-archive ghost check"
 ./scripts/check-ghost-archives.sh
