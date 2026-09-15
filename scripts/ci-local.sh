@@ -186,6 +186,9 @@ step "papdashboard bridge e2e smoke (stub dashboard; alert raise + rescue resolv
 step "rate-limit e2e smoke (429 parks the task without burning an attempt)"
 ./scripts/smoke/ratelimit-e2e.sh
 
+step "review-loop e2e smoke (stub reviewer; approve + request_changes + autofix)"
+./scripts/smoke/reviews.sh
+
 # Advisory (2026-09-14 O5 ruling): journal-drift audit smoke over a seeded
 # fixture — reported, never a hard gate on task state.
 step "journal-drift audit smoke (advisory)"

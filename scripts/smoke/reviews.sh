@@ -23,6 +23,7 @@ else
 fi
 
 export TQ_DB="$TMP/tasks.db"
+export GOEXPERIMENT=jsonv2 # tq doctor's go-env check fails the bare-shell env otherwise
 export TQ_TQ="$TMP/tq" # the stub reviewer records verdicts through the real `tq verdict` channel
 
 echo "== seed repo (clean tree, .tq-verify gate, one DONE item)"
@@ -49,7 +50,10 @@ done
 case "$prompt" in
 	*"strict senior code reviewer"*)
 		case "$prompt" in
-			*"good work item"*)
+			# A fix task's review quotes the original item, so "bad work item"
+			# alone cannot discriminate — only the top-level work review
+			# (item == the bare work prompt) requests changes.
+			*"good work item"*|*"A code reviewer rejected"*)
 				"$TQ_TQ" verdict '{"verdict":"approve","summary":"looks fine","findings":[]}'
 				;;
 			*)
@@ -98,15 +102,15 @@ fi
 
 echo "== assert verdicts in the journal: 2 approvals, 1 request_changes"
 "$TMP/tq" facts --json >"$TMP/facts.json"
-[ "$(grep -o '"verdict":"approve"' "$TMP/facts.json" | wc -l)" -eq 2 ] || {
+[ "$(grep -o '"verdict": *"approve"' "$TMP/facts.json" | wc -l)" -eq 2 ] || {
 	echo "FAIL: want exactly 2 approve verdicts"
 	exit 1
 }
-[ "$(grep -o '"verdict":"request_changes"' "$TMP/facts.json" | wc -l)" -eq 1 ] || {
+[ "$(grep -o '"verdict": *"request_changes"' "$TMP/facts.json" | wc -l)" -eq 1 ] || {
 	echo "FAIL: want exactly 1 request_changes verdict"
 	exit 1
 }
-grep -q '"title":"fix the thing"' "$TMP/facts.json" || {
+grep -q '"title": *"fix the thing"' "$TMP/facts.json" || {
 	echo "FAIL: finding detail not journaled"
 	exit 1
 }
