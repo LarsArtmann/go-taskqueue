@@ -79,6 +79,16 @@ if [ -n "$unformatted" ]; then
 	exit 1
 fi
 
+# Gate, not advisory: a schema-invalid key in .golangci.yml silently
+# disables linter settings (07-39 report f3) — config verify catches that
+# before the advisory runs pretend the policy applied.
+step "lint config verify (schema-invalid keys are silent)"
+if command -v golangci-lint >/dev/null 2>&1; then
+	golangci-lint config verify
+else
+	"$(go env GOPATH)/bin/golangci-lint" config verify
+fi
+
 # Advisory, not a gate: the ~400-finding repo baseline (wrapcheck,
 # varnamelen, paralleltest, ...) is documented in AGENTS.md. Any failure
 # inside this block — including golangci-lint being missing — must not
