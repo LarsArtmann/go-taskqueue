@@ -65,8 +65,10 @@ func TestBuildWorkStaleReleases(t *testing.T) {
 		staleModule("libx", "/p/libx", "v0.1.0", "v0.2.0"), // plan nextVersion wins
 		staleModule("liby", "/p/liby", "v0.5.1", ""),       // patch fallback
 		{Key: "never", Dir: "/p/never", StaleBuild: true},  // never released
-		{Key: "majorlib", Dir: "/p/ml", StaleBuild: true, CurrentVersion: "v1.0.0",
-			NextVersion: "v2.0.0", SuggestedBump: "major"},
+		{
+			Key: "majorlib", Dir: "/p/ml", StaleBuild: true, CurrentVersion: "v1.0.0",
+			NextVersion: "v2.0.0", SuggestedBump: "major",
+		},
 	}
 
 	specs, skips := BuildWork(modules, SweeperConfig{})

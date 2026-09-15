@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json/jsontext"
 	"testing"
 	"time"
 
 	_ "modernc.org/sqlite"
 
-	"encoding/json/jsontext"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
