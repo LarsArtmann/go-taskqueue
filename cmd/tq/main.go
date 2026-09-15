@@ -49,7 +49,7 @@ const usage = `tq — projects-aware task work queue
 Usage:
   tq enqueue --type TYPE [--project P] [--payload JSON] [--deps id,...] [--priority N]
             [--max-attempts N] [--delay DUR] [--db PATH]
-  tq worker [--concurrency N] [--agents [--yolo]] [--db PATH] [--poll DUR] [--lease DUR]
+  tq worker [--concurrency N] [--agents [--yolo] [--reresolve-verify]] [--db PATH] [--poll DUR] [--lease DUR]
            [--task-timeout DUR] [--alert-url URL [--alert-api-key K]]
   tq harvest --projects-dir DIR [--repos a,b] [--max-per-tick N] [--allow-dirty]
             [--prune-stale] [--dry-run] [--db PATH]
@@ -59,13 +59,13 @@ Usage:
               autonomy + .tq-verify, commits them, previews the harvest,
               then runs agent-pool — or installs the systemd unit)
   tq agent-pool --projects-dir DIR [--repos a,b] [--interval DUR] [--concurrency N]
-               [--yolo] [--max-per-tick N] [--task-timeout DUR]
+               [--yolo] [--reresolve-verify] [--max-per-tick N] [--task-timeout DUR]
                [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH]
   tq stats [--project P] [--status S] [--daily-budget N] [--db PATH] [--json]
   tq tasks [--project P] [--status S] [--type T] [--since DUR] [--limit N] [--json] [--db PATH]
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
           [--max-attempts N] [--dry-run] [--json] [--db PATH]
-  tq doctor [--json] [--daily-budget N] [--repos a,b] [--db PATH]
+  tq doctor [--json] [--hygiene] [--daily-budget N] [--repos a,b] [--db PATH]
   tq top [--interval DUR] [--once] [--json] [--db PATH]
   tq show TASK_ID [--db PATH]   (a unique ID prefix works)
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]] [--dismiss TASK_ID [--reason WHY]]
@@ -453,7 +453,12 @@ func cmdWorker(args []string) error {
 		false,
 		"enable the 'agent' executor: runs a headless AI agent (crush) per task — OPT-IN",
 	)
-	yolo := fs.Bool("yolo", false, "with --agents: agents auto-accept all permissions (operator decision)")
+		yolo := fs.Bool("yolo", false, "with --agents: agents auto-accept all permissions (operator decision)")
+	reresolveVerify := fs.Bool(
+		"reresolve-verify",
+		false,
+		"with --agents: ignore each payload's enqueue-time verify pin and resolve the gate at claim time (.tq-verify file, then auto-detect) — a verify-contract change can no longer fire stale pins at queued tasks",
+	)
 	exclusive := fs.Bool(
 		"project-exclusive",
 		false,
@@ -497,7 +502,7 @@ func cmdWorker(args []string) error {
 			"tq: --agents: autonomous agent execution enabled (headless crush; dirty repos are skipped; verify is enforced)",
 		)
 
-		registerAgentExecutors(reg, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo})
+		registerAgentExecutors(reg, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo, ReresolveVerify: *reresolveVerify})
 	}
 
 	pool := worker.New(store, worker.Config{
@@ -856,9 +861,10 @@ func cmdAgentPool(args []string) error {
 	taskQueue := queue.New(store)
 
 	agentExec := &executor.AgentExecutor{
-		ProjectsDir:   poolOpts.projectsDir,
-		Yolo:          poolOpts.yolo,
-		MaxConcurrent: poolOpts.maxAgents,
+		ProjectsDir:     poolOpts.projectsDir,
+		Yolo:            poolOpts.yolo,
+		MaxConcurrent:   poolOpts.maxAgents,
+		ReresolveVerify: poolOpts.reresolveVerify,
 	}
 	if poolOpts.closeout {
 		agentExec.CloseoutPrompt = executor.DefaultCloseoutPrompt

@@ -61,6 +61,10 @@ type doctorOptions struct {
 	// Running tasks (expired lease, no reclaim) — the only write `tq
 	// doctor` can perform, and only on explicit request.
 	MarkOrphans bool
+	// Hygiene, when set (--hygiene), audits PENDING agent tasks'
+	// enqueue-time verify pins against each repo's current gate — the
+	// stale-payload audit class (09-39 f2), encoded as a check.
+	Hygiene bool
 }
 
 // doctorHeartbeatWindow is how long ago a task.heartbeat fact still counts
@@ -82,6 +86,11 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorSQLiteChecks(ctx, opts.DBPath)...)
 	results = append(results, doctorQueueMix(ctx, store)...)
 	results = append(results, doctorRepoCoverage(ctx, store, opts.ProjectsDir)...)
+
+	if opts.Hygiene {
+		results = append(results, doctorVerifyPins(ctx, store, opts.ProjectsDir)...)
+	}
+
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
@@ -286,6 +295,97 @@ func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir stri
 			len(missing), strings.Join(missing, "; "),
 		),
 	}}
+}
+
+// doctorVerifyPins is the stale-payload hygiene check (09-39 report f2/§e3):
+// every PENDING agent task carries an enqueue-time verify pin, and a repo
+// whose verify contract changed after enqueue would fire that stale command
+// at claim time (the f46 incident class). Each pin is compared against the
+// repo's CURRENT gate — the .tq-verify file if present, else today's
+// auto-detection (executor.DetectVerify), the same ladder runVerify
+// resolves at run time. Warn, never fail: a pin that a current .tq-verify
+// overrides is latent, not firing, and cancelling queued work is an
+// operator decision (tq cancel).
+func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
+	pending := task.Pending
+	tasks, err := store.List(ctx, queue.Filter{Status: &pending})
+	if err != nil {
+		return []checkResult{{Name: "verify-pins", Status: checkFail, Detail: "list pending: " + err.Error()}}
+	}
+
+	var stale []string
+	pinned := 0
+
+	for _, t := range tasks {
+		if t.Type != executor.TaskTypeAgent {
+			continue
+		}
+
+		var p executor.AgentPayload
+		if err := json.Unmarshal(t.Payload, &p); err != nil {
+			stale = append(stale, fmt.Sprintf("%s: payload does not parse as an agent payload (%v)", t.ID, err))
+
+			continue
+		}
+
+		if p.Verify == "" || p.Repo == "" {
+			continue // nothing pinned (auto-detect owns the gate) or no repo to resolve it against
+		}
+
+		pinned++
+
+		repoDir := p.Repo
+		if !filepath.IsAbs(repoDir) {
+			repoDir = filepath.Join(projectsDir, repoDir)
+		}
+
+		if _, err := os.Stat(repoDir); err != nil {
+			continue // missing repo dir is repo-coverage's finding, not this check's
+		}
+
+		current := executor.ReadTQVerify(repoDir)
+
+		switch {
+		case current == p.Verify:
+			continue // pin matches the repo's current gate
+		case current != "":
+			stale = append(stale, fmt.Sprintf(
+				"%s (%s): stale pin %q — .tq-verify currently overrides it, but it fires again if the file is deleted",
+				t.ID, p.Repo, excerpt(p.Verify)))
+		case executor.DetectVerify(repoDir) != p.Verify:
+			stale = append(stale, fmt.Sprintf(
+				"%s (%s): STALE PIN WILL FIRE — no .tq-verify and today's auto-detected gate differs: pin %q vs detect %q",
+				t.ID, p.Repo, excerpt(p.Verify), excerpt(executor.DetectVerify(repoDir))))
+		}
+	}
+
+	if len(stale) == 0 {
+		detail := fmt.Sprintf("%d pending agent task(s) pin a verify command, all matching the repos' current gates", pinned)
+		if pinned == 0 {
+			detail = "no pending agent task pins a verify command"
+		}
+
+		return []checkResult{{Name: "verify-pins", Status: checkOK, Detail: detail}}
+	}
+
+	return []checkResult{{
+		Name:   "verify-pins",
+		Status: checkWarn,
+		Detail: fmt.Sprintf(
+			"%d of %d pinned task(s) carry stale verify pins: %s — --reresolve-verify (agent-pool / worker --agents) ignores enqueue-time pins entirely",
+			len(stale), pinned, strings.Join(stale, "; ")),
+	}}
+}
+
+// excerpt shortens a verify command for one-line doctor output: the full
+// minted Go gates are hundreds of characters and the detail only needs to
+// identify the command.
+func excerpt(s string) string {
+	if len(s) <= 60 {
+		return s
+	}
+
+	return s[:60] + "…"
 }
 
 // doctorCountStatus maps DLQ size to severity: 0-2 is normal operation,
@@ -709,6 +809,11 @@ func cmdDoctor(args []string) error {
 		false,
 		"record stranded Running tasks (expired lease, no reclaim) as task.orphaned facts — doctor's only write",
 	)
+	hygiene := fs.Bool(
+		"hygiene",
+		false,
+		"audit PENDING agent tasks' enqueue-time verify pins against each repo's current gate (.tq-verify, else auto-detect) — the stale-payload check",
+	)
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -721,6 +826,7 @@ func cmdDoctor(args []string) error {
 		ProjectsDir: *projectsDir,
 		AgentBin:    *agentBin,
 		MarkOrphans: *markOrphans,
+		Hygiene:     *hygiene,
 	}
 
 	results, err := runDoctor(context.Background(), opts)

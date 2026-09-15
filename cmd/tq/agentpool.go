@@ -32,6 +32,7 @@ type agentPoolOptions struct {
 	timeout        time.Duration
 	owner          string
 	yolo           bool
+	reresolveVerify bool
 	maxPerTick     int
 	batchItems     int
 	priorityFrom   string
@@ -99,6 +100,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"yolo",
 		false,
 		"agents auto-accept all permissions — required for unattended pools whose items need writes/commits",
+	)
+	reresolveVerify := fs.Bool(
+		"reresolve-verify",
+		false,
+		"ignore each payload's enqueue-time verify pin and resolve the gate at claim time (.tq-verify file, then auto-detect): a verify-contract change can no longer fire stale pins at queued tasks (tq doctor --hygiene audits the pins)",
 	)
 	maxPerTick := fs.Int(
 		"max-per-tick",
@@ -330,6 +336,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		timeout:        *timeout,
 		owner:          *owner,
 		yolo:           *yolo,
+		reresolveVerify: *reresolveVerify,
 		maxPerTick:     *maxPerTick,
 		batchItems:     *batchItems,
 		priorityFrom:   *priorityFrom,
@@ -642,6 +649,13 @@ func printAgentPoolBanner(poolOpts agentPoolOptions) {
 			os.Stderr,
 			"tq: agent-pool: batching up to %d items per task — payload timeouts scale per item; raise --task-timeout accordingly (batch deaths dead-letter the whole run: tq dlq is the human surface)\n",
 			poolOpts.batchItems,
+		)
+	}
+
+	if poolOpts.reresolveVerify {
+		fmt.Fprintln(
+			os.Stderr,
+			"tq: agent-pool: claim-time verify re-resolution on — enqueue-time verify pins are ignored (.tq-verify, then auto-detect, own the gate)",
 		)
 	}
 
