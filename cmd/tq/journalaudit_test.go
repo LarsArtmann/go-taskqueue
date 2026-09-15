@@ -191,6 +191,12 @@ func TestJournalDriftSeededDriftAllFields(t *testing.T) {
 	if fields["dedup_key"].Replayed != "todo:real" {
 		t.Errorf("dedup row = %+v, want replayed=todo:real", fields["dedup_key"])
 	}
+
+	// The seeded task was enqueued AFTER enrichment, so every field was
+	// diffable despite all four drifting.
+	if report.Coverage != (FieldCoverage{Status: 1, Attempts: 1, Priority: 1, DedupKey: 1}) {
+		t.Errorf("coverage = %+v, want all fields at 1/1", report.Coverage)
+	}
 }
 
 func TestReplayProjectionTransitions(t *testing.T) {
@@ -344,5 +350,51 @@ func TestJournalDriftNoDriftAfterRescue(t *testing.T) {
 
 	if report.HasDrift() {
 		t.Fatalf("unexpected drift after rescue: %+v", report.Drift)
+	}
+
+	// Enrichment wrote priority (as an explicit 0) but the empty dedup key
+	// is indistinguishable from a legacy fact — coverage reports that
+	// honestly instead of pretending to have diffed it.
+	if report.TasksCompared != 1 {
+		t.Errorf("TasksCompared = %d, want 1", report.TasksCompared)
+	}
+
+	if report.Coverage != (FieldCoverage{Status: 1, Attempts: 1, Priority: 1, DedupKey: 0}) {
+		t.Errorf("coverage = %+v, want status/attempts/priority 1, dedup 0", report.Coverage)
+	}
+}
+
+func TestDiffProjectionCoverageSkipsLegacyThinFacts(t *testing.T) {
+	t.Parallel()
+
+	stored := []task.Task{
+		{ID: "enriched", Status: task.Pending, Attempts: 1, Priority: 3, DedupKey: "todo:e"},
+		{ID: "legacy", Status: task.Pending, Attempts: 2, Priority: 9, DedupKey: "todo:l"},
+		{ID: "ghost", Status: task.Running},
+	}
+
+	facts := []journal.Fact{
+		{TaskID: "enriched", Type: journal.Enqueued, Detail: jsontext.Value(`{"priority":3,"dedup_key":"todo:e"}`)},
+		{TaskID: "enriched", Type: journal.Claimed},
+		{TaskID: "enriched", Type: journal.Failed, Attempt: 1},
+		// Thin fact: recorded before enrichment — nothing verifiable.
+		{TaskID: "legacy", Type: journal.Enqueued},
+	}
+
+	report := diffProjection(stored, replayProjection(facts))
+
+	if report.HasDrift() {
+		t.Fatalf("unexpected drift: %+v", report.Drift)
+	}
+
+	if report.TasksCompared != 3 {
+		t.Errorf("TasksCompared = %d, want 3", report.TasksCompared)
+	}
+
+	// legacy's stored priority 9 / dedup todo:l were never diffed: the
+	// thin fact cannot contradict them, and the ghost row consumed no
+	// coverage at all.
+	if report.Coverage != (FieldCoverage{Status: 2, Attempts: 2, Priority: 1, DedupKey: 1}) {
+		t.Errorf("coverage = %+v, want status/attempts 2, priority/dedup 1", report.Coverage)
 	}
 }

@@ -149,45 +149,34 @@ type DriftRow struct {
 	Replayed string `json:"replayed"`
 }
 
+// FieldCoverage counts, per diffed field, how many compared tasks the
+// journal could actually verify. Legacy journals (facts recorded before
+// enqueue details carried priority/dedup_key) leave those counts below
+// TasksCompared: sparseness there means "nothing to diff against", never
+// hidden drift — the known-flags deliberately skip unverifiable fields.
+type FieldCoverage struct {
+	Status   int `json:"status"`
+	Attempts int `json:"attempts"`
+	Priority int `json:"priority"`
+	DedupKey int `json:"dedupKey"`
+}
+
 // DriftReport is the journal-vs-store divergence result.
 type DriftReport struct {
-	TasksCompared int        `json:"tasksCompared"`
-	FactsReplayed int        `json:"factsReplayed"`
-	Drift         []DriftRow `json:"drift,omitempty"`
+	TasksCompared int           `json:"tasksCompared"`
+	FactsReplayed int           `json:"factsReplayed"`
+	Coverage      FieldCoverage `json:"coverage"`
+	Drift         []DriftRow    `json:"drift,omitempty"`
 }
 
 // HasDrift reports whether any task state diverged.
 func (r DriftReport) HasDrift() bool { return len(r.Drift) > 0 }
 
-// journalDrift rebuilds task state from the journal and diffs it against
-// the stored tasks table (status, attempts, priority, dedup key). Advisory
-// by contract: the caller decides whether divergence fails anything.
-func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
-	var facts []journal.Fact
-
-	after := int64(0)
-
-	for {
-		batch, err := store.Facts(ctx, after, factsPageSize)
-		if err != nil {
-			return DriftReport{}, fmt.Errorf("read facts after %d: %w", after, err)
-		}
-
-		facts = append(facts, batch...)
-		if len(batch) < factsPageSize {
-			break
-		}
-
-		after = batch[len(batch)-1].Seq
-	}
-
-	tasks, err := store.List(ctx, queue.Filter{})
-	if err != nil {
-		return DriftReport{}, fmt.Errorf("list tasks: %w", err)
-	}
-
-	replay := replayProjection(facts)
-	report := DriftReport{TasksCompared: len(tasks), FactsReplayed: len(facts)}
+// diffProjection compares stored rows against the replayed projection,
+// collecting drift rows and per-field coverage. Pure: no I/O, directly
+// testable without a store.
+func diffProjection(tasks []task.Task, replay map[task.ID]*replayState) DriftReport {
+	report := DriftReport{TasksCompared: len(tasks)}
 
 	for _, candidate := range tasks {
 		want, ok := replay[candidate.ID]
@@ -199,6 +188,17 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 			})
 
 			continue
+		}
+
+		report.Coverage.Status++
+		report.Coverage.Attempts++
+
+		if want.priorityKnown {
+			report.Coverage.Priority++
+		}
+
+		if want.dedupKnown {
+			report.Coverage.DedupKey++
 		}
 
 		if want.status != candidate.Status {
@@ -243,6 +243,39 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 		return report.Drift[i].Field < report.Drift[j].Field
 	})
 
+	return report
+}
+
+// journalDrift rebuilds task state from the journal and diffs it against
+// the stored tasks table (status, attempts, priority, dedup key). Advisory
+// by contract: the caller decides whether divergence fails anything.
+func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
+	var facts []journal.Fact
+
+	after := int64(0)
+
+	for {
+		batch, err := store.Facts(ctx, after, factsPageSize)
+		if err != nil {
+			return DriftReport{}, fmt.Errorf("read facts after %d: %w", after, err)
+		}
+
+		facts = append(facts, batch...)
+		if len(batch) < factsPageSize {
+			break
+		}
+
+		after = batch[len(batch)-1].Seq
+	}
+
+	tasks, err := store.List(ctx, queue.Filter{})
+	if err != nil {
+		return DriftReport{}, fmt.Errorf("list tasks: %w", err)
+	}
+
+	report := diffProjection(tasks, replayProjection(facts))
+	report.FactsReplayed = len(facts)
+
 	return report, nil
 }
 
@@ -261,6 +294,12 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 
 	fmt.Printf("journal drift audit: %d task(s) compared against %d fact(s) (status, attempts, priority, dedup key)\n",
 		report.TasksCompared, report.FactsReplayed)
+	fmt.Printf("coverage: status %d/%d, attempts %d/%d, priority %d/%d, dedup key %d/%d"+
+		" (below-total priority/dedup means legacy facts predate enrichment)\n",
+		report.Coverage.Status, report.TasksCompared,
+		report.Coverage.Attempts, report.TasksCompared,
+		report.Coverage.Priority, report.TasksCompared,
+		report.Coverage.DedupKey, report.TasksCompared)
 
 	if !report.HasDrift() {
 		fmt.Println("no drift: stored projections equal the fact replay (ADR-0001 invariant holds)")
