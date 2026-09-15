@@ -110,9 +110,12 @@ type DepBumpExecutor struct {
 	// ExtraEnv is appended to every spawned go/git environment (e.g.
 	// GOEXPERIMENT=jsonv2 — the pool unit env does not carry it).
 	ExtraEnv []string
-	// GoBin and GitBin default to "go" and "git" from PATH.
-	GoBin  string
-	GitBin string
+	// GoBin, GitBin, and TemplBin default to "go", "git", and "templ"
+	// from PATH (templ absent is a soft skip; see regenerateTempl). The
+	// overrides exist for tests and pinned deployments.
+	GoBin   string
+	GitBin  string
+	TemplBin string
 }
 
 // NewDepBumpExecutor returns a DepBumpExecutor resolving repos under
@@ -417,9 +420,14 @@ func (e *DepBumpExecutor) regenerateTempl(ctx context.Context, repoDir string) e
 		return nil //nolint:nilerr // detection walk errors degrade to skip
 	}
 
-	bin, err := exec.LookPath("templ")
-	if err != nil {
-		return nil //nolint:nilerr // no templ on PATH: soft skip, documented
+	bin := e.TemplBin
+	if bin == "" {
+		located, err := exec.LookPath("templ")
+		if err != nil {
+			return nil //nolint:nilerr // no templ on PATH: soft skip, documented
+		}
+
+		bin = located
 	}
 
 	cmd := exec.CommandContext(ctx, bin, "generate")
@@ -554,7 +562,7 @@ func (e *DepBumpExecutor) rollback(ctx context.Context, repoDir string) error {
 	rollbackCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), depbumpRollbackTimeout)
 	defer cancel()
 
-	specs := slices.Concat(dpbumpTouchedPaths, depbumpTemplGlobs)
+	specs := slices.Concat(depbumpTouchedPaths, depbumpTemplGlobs)
 
 	if out, err := e.runGit(rollbackCtx, lsFilesArgs(repoDir, specs)...); err == nil {
 		if paths := strings.Split(strings.TrimRight(out, "\x00"), "\x00"); len(paths) > 0 && paths[0] != "" {
