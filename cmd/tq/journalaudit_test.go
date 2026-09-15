@@ -276,3 +276,73 @@ func TestReplayProjectionPriorityAndDedup(t *testing.T) {
 		t.Errorf("legacy thin fact must not claim knowledge: %+v", legacy)
 	}
 }
+
+func TestReplayProjectionRescueResetsAttempts(t *testing.T) {
+	t.Parallel()
+
+	p := 5
+	facts := []journal.Fact{
+		{TaskID: "r", Type: journal.Enqueued, Detail: jsontext.Value(`{"priority":5,"dedup_key":"todo:r"}`)},
+		{TaskID: "r", Type: journal.Claimed},
+		{TaskID: "r", Type: journal.Failed, Attempt: 1},
+		{TaskID: "r", Type: journal.DeadLettered, Attempt: 1},
+		{TaskID: "r", Type: journal.Enqueued, Detail: jsontext.Value(`{"rescue":"true"}`)},
+	}
+
+	got := replayProjection(facts)
+
+	state := got[task.ID("r")]
+	if state == nil {
+		t.Fatal("task r: missing from replay")
+	}
+
+	if state.status != task.Pending {
+		t.Errorf("rescued status = %v, want pending", state.status)
+	}
+
+	if state.attempts != 0 {
+		t.Errorf("rescued attempts = %d, want 0 (the store resets the budget)", state.attempts)
+	}
+
+	if state.priority == nil || *state.priority != p || state.dedupKey != "todo:r" {
+		t.Errorf("rescue must not touch identity: %+v", state)
+	}
+}
+
+func TestJournalDriftNoDriftAfterRescue(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := journalAuditStore(t)
+
+	enqueued, err := store.Enqueue(ctx, task.New{Project: "j", Type: "sh", Payload: []byte(`"false"`), MaxAttempts: 1})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	claimed, err := store.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	if claimed.ID != enqueued.ID {
+		t.Fatalf("claimed %s, want %s", claimed.ID, enqueued.ID)
+	}
+
+	if err := store.Fail(ctx, enqueued.ID, "w1", "boom", 0, nil); err != nil {
+		t.Fatalf("Fail: %v", err)
+	}
+
+	if err := store.RescueDead(ctx, enqueued.ID, 2); err != nil {
+		t.Fatalf("RescueDead: %v", err)
+	}
+
+	report, err := journalDrift(ctx, store)
+	if err != nil {
+		t.Fatalf("journalDrift: %v", err)
+	}
+
+	if report.HasDrift() {
+		t.Fatalf("unexpected drift after rescue: %+v", report.Drift)
+	}
+}

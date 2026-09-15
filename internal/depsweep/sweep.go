@@ -18,7 +18,7 @@ import (
 
 // taskPriority places depbump tasks in the machine band: queue plumbing,
 // not user work (same ruling as the prioritize batches).
-var taskPriority = queue.MachineMin
+const taskPriority = queue.MachineMin
 
 // SweeperConfig controls one Sweeper.
 type SweeperConfig struct {
@@ -74,6 +74,141 @@ type SweepStats struct {
 	Skips []Skip
 }
 
+// releaseSpecs builds one release work spec per stale (or, when
+// configured, unreleased) plan module. repoHasWork tracks which repos the
+// plan says hold work — consumer specs sort after every release spec.
+func releaseSpecs(
+	modules []PlanModule,
+	cfg SweeperConfig,
+	skip func(repo, reason string),
+) []WorkSpec {
+	specs := make([]WorkSpec, 0)
+
+	for _, m := range modules {
+		if m.Dir == "" {
+			continue
+		}
+
+		if !m.StaleBuild && (!cfg.IncludeUnreleased || !m.HasUnreleasedWork) {
+			continue
+		}
+
+		switch {
+		case m.CurrentVersion == "":
+			skip(m.Key, "never released: pick v0.1.0 manually")
+		case m.SuggestedBump == "major":
+			skip(m.Key, "major release suggested (v"+strings.TrimPrefix(m.NextVersion, "v")+
+				"): module-path migration is human/agent work")
+		default:
+			version := releaseVersion(m)
+			if version == "" || !executor.IsStableSemver(version) {
+				skip(m.Key, "cannot derive a stable next version from "+m.CurrentVersion)
+
+				continue
+			}
+
+			specs = append(specs, WorkSpec{
+				Repo:     m.Key,
+				Dir:      m.Dir,
+				Release:  &executor.DepBumpRelease{Version: version, Push: cfg.PushReleases},
+				DepRepos: depKeys(m),
+				DedupKey: fmt.Sprintf("depsweep:%s:release:%s", m.Key, version),
+			})
+		}
+	}
+
+	return specs
+}
+
+// consumerWork accumulates one consumer repo's pending pins.
+type consumerWork struct {
+	dir  string
+	deps map[string]bool
+	set  map[string]string // module -> target version
+}
+
+// consumerSpecs flattens every plan module's outdated consumers into one
+// bump spec per consumer repo (one task applies all its pins, verifies
+// once, commits once) and returns the extended spec list plus the
+// repo-has-work index used for release-first ordering.
+func consumerSpecs(
+	modules []PlanModule,
+	skip func(repo, reason string),
+	specs []WorkSpec,
+) ([]WorkSpec, map[string]bool) {
+	repoHasWork := make(map[string]bool, len(modules))
+	consumers := make(map[string]*consumerWork)
+
+	for _, m := range modules {
+		if m.Dir == "" {
+			continue
+		}
+
+		for _, consumer := range m.OutdatedConsumers {
+			if consumer.Dir == "" || consumer.Key == "" {
+				continue
+			}
+
+			switch {
+			case consumer.IsMajorBump:
+				skip(consumer.Key, "major bump "+consumer.CurrentVersion+" -> "+consumer.TargetVersion+
+					" of "+consumer.DependencyKey+": import-path migration is agent work")
+			case !executor.IsStableSemver(consumer.TargetVersion):
+				skip(consumer.Key, "unstable target "+consumer.TargetVersion+" of "+consumer.DependencyKey)
+			case !isNewerVersion(consumer.TargetVersion, consumer.CurrentVersion):
+				skip(consumer.Key, "target "+consumer.TargetVersion+" not newer than pin "+consumer.CurrentVersion)
+			default:
+				work := consumers[consumer.Key]
+				if work == nil {
+					work = &consumerWork{dir: consumer.Dir, deps: make(map[string]bool), set: make(map[string]string)}
+					consumers[consumer.Key] = work
+				}
+
+				work.set[consumer.DependencyKey] = consumer.TargetVersion
+				work.deps[m.Key] = true
+			}
+		}
+	}
+
+	for repo, work := range consumers {
+		bumps := make([]executor.DepBump, 0, len(work.set))
+		modulesSorted := make([]string, 0, len(work.set))
+
+		for module := range work.set {
+			modulesSorted = append(modulesSorted, module)
+		}
+
+		sort.Strings(modulesSorted)
+
+		for _, module := range modulesSorted {
+			bumps = append(bumps, executor.DepBump{Module: module, Version: work.set[module]})
+		}
+
+		deps := make([]string, 0, len(work.deps))
+		for dep := range work.deps {
+			deps = append(deps, dep)
+		}
+
+		sort.Strings(deps)
+
+		specs = append(specs, WorkSpec{
+			Repo:     repo,
+			Dir:      work.dir,
+			Bumps:    bumps,
+			DepRepos: deps,
+			DedupKey: fmt.Sprintf("depsweep:%s:bump:%s", repo, hashWork(modulesSorted, work.set)),
+		})
+	}
+
+	for _, spec := range specs {
+		if spec.Release != nil {
+			repoHasWork[spec.Repo] = true
+		}
+	}
+
+	return specs, repoHasWork
+}
+
 // releaseVersion decides a release spec's tag: the plan's nextVersion when
 // present, else a patch bump of the current tag. Major suggestions are
 // skipped upstream (module-path migration is code work).
@@ -116,119 +251,15 @@ func patchBump(current string) string {
 //   - targets must be stable semver strictly newer than the current pin
 //     (the plan carries dev-version and downgrade traps).
 func BuildWork(modules []PlanModule, cfg SweeperConfig) ([]WorkSpec, []Skip) {
-	specs := make([]WorkSpec, 0)
 	skips := make([]Skip, 0)
 
 	skip := func(repo, reason string) {
 		skips = append(skips, Skip{Repo: repo, Reason: reason})
 	}
 
-	repoDirs := make(map[string]string, len(modules))
-	repoHasWork := make(map[string]bool, len(modules))
+	specs := releaseSpecs(modules, cfg, skip)
+	specs, repoHasWork := consumerSpecs(modules, skip, specs)
 
-	for _, m := range modules {
-		if m.Dir == "" {
-			continue
-		}
-
-		repoDirs[m.Key] = m.Dir
-
-		if !m.StaleBuild && (!cfg.IncludeUnreleased || !m.HasUnreleasedWork) {
-			continue
-		}
-
-		repoHasWork[m.Key] = true
-
-		switch {
-		case m.CurrentVersion == "":
-			skip(m.Key, "never released: pick v0.1.0 manually")
-		case m.SuggestedBump == "major":
-			skip(m.Key, "major release suggested (v"+strings.TrimPrefix(m.NextVersion, "v")+
-				"): module-path migration is human/agent work")
-		default:
-			version := releaseVersion(m)
-			if version == "" || !executor.IsStableSemver(version) {
-				skip(m.Key, "cannot derive a stable next version from "+m.CurrentVersion)
-
-				continue
-			}
-
-			specs = append(specs, WorkSpec{
-				Repo:     m.Key,
-				Dir:      m.Dir,
-				Release:  &executor.DepBumpRelease{Version: version, Push: cfg.PushReleases},
-				DepRepos: depKeys(m),
-				DedupKey: fmt.Sprintf("depsweep:%s:release:%s", m.Key, version),
-			})
-		}
-	}
-
-	// Consumer bumps grouped per repo: one task per repo applying all its
-	// pending pins (fewer tasks, one verification pass, one commit).
-	type consumerWork struct {
-		dir  string
-		deps map[string]bool
-		set  map[string]string // module -> target version
-	}
-
-	consumers := make(map[string]*consumerWork)
-
-	for _, m := range modules {
-		for _, consumer := range m.OutdatedConsumers {
-			if consumer.Dir == "" || consumer.Key == "" {
-				continue
-			}
-
-			switch {
-			case consumer.IsMajorBump:
-				skip(consumer.Key, "major bump "+consumer.CurrentVersion+" -> "+consumer.TargetVersion+
-					" of "+consumer.DependencyKey+": import-path migration is agent work")
-			case !executor.IsStableSemver(consumer.TargetVersion):
-				skip(consumer.Key, "unstable target "+consumer.TargetVersion+" of "+consumer.DependencyKey)
-			case !isNewerVersion(consumer.TargetVersion, consumer.CurrentVersion):
-				skip(consumer.Key, "target "+consumer.TargetVersion+" not newer than pin "+consumer.CurrentVersion)
-			default:
-				work := consumers[consumer.Key]
-				if work == nil {
-					work = &consumerWork{dir: consumer.Dir, deps: make(map[string]bool), set: make(map[string]string)}
-					consumers[consumer.Key] = work
-				}
-
-				work.set[consumer.DependencyKey] = consumer.TargetVersion
-				work.deps[m.Key] = true
-			}
-		}
-	}
-
-	for repo, work := range consumers {
-		bumps := make([]executor.DepBump, 0, len(work.set))
-		modules2 := make([]string, 0, len(work.set))
-
-		for module := range work.set {
-			modules2 = append(modules2, module)
-		}
-
-		sort.Strings(modules2)
-
-		for _, module := range modules2 {
-			bumps = append(bumps, executor.DepBump{Module: module, Version: work.set[module]})
-		}
-
-		deps := make([]string, 0, len(work.deps))
-		for dep := range work.deps {
-			deps = append(deps, dep)
-		}
-
-		sort.Strings(deps)
-
-		specs = append(specs, WorkSpec{
-			Repo:     repo,
-			Dir:      work.dir,
-			Bumps:    bumps,
-			DepRepos: deps,
-			DedupKey: fmt.Sprintf("depsweep:%s:bump:%s", repo, hashWork(modules2, work.set)),
-		})
-	}
 
 	sort.Slice(specs, func(i, j int) bool {
 		a, b := waveOf(specs[i], repoHasWork), waveOf(specs[j], repoHasWork)

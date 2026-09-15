@@ -63,9 +63,9 @@ func replayProjection(facts []journal.Fact) map[task.ID]*replayState {
 			}
 
 			state.status = task.Pending
-
-			// RescueDead re-emits task.enqueued with only Rescue set:
-			// the original identity fields stay untouched.
+			// Plain enqueue starts the budget at zero; RescueDead's
+			// re-emitted enqueue resets it (the store does attempts = 0).
+			state.attempts = 0
 			var detail queue.EnqueueDetail
 			if err := json.Unmarshal(fact.Detail, &detail); err == nil {
 				if detail.Priority != nil {
