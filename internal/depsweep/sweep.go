@@ -150,7 +150,7 @@ func consumerSpecs(
 			}
 
 			switch {
-			case consumer.IsMajorBump:
+			case consumer.IsMajorBump || isMajorBump(consumer.TargetVersion, consumer.CurrentVersion):
 				skip(consumer.Key, "major bump "+consumer.CurrentVersion+" -> "+consumer.TargetVersion+
 					" of "+consumer.DependencyKey+": import-path migration is agent work")
 			case !executor.IsStableSemver(consumer.TargetVersion):
@@ -322,6 +322,21 @@ func isNewerVersion(target, current string) bool {
 	return c > 0
 }
 
+// isMajorBump reports whether target crosses a major version boundary
+// relative to current. The plan's IsMajorBump flag is authoritative, but a
+// wrong flag must never let a scripted import-path-breaking bump through —
+// detection is defense in depth.
+func isMajorBump(target, current string) bool {
+	if current == "" {
+		return false // unpinned: any pin is additive
+	}
+
+	targetMajor, _ := splitSemver(target)
+	currentMajor, _ := splitSemver(current)
+
+	return targetMajor[0] != currentMajor[0]
+}
+
 // compareSemver compares two v-prefixed semver strings by numeric
 // segments; pre-release suffixes compare as OLDER than the bare version
 // (so "-dev" traps never look newer). Returns -1, 0, or 1.
@@ -406,7 +421,26 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	specs, skips := BuildWork(modules, s.cfg)
 	stats.Skips = skips
 
-	taskIDs := make(map[string]task.ID, len(specs))
+	// Index existing depbump tasks by dedup key: Enqueue's dedup hit
+	// returns the stored task with no "already existed" signal, so mint
+	// counting and dep wiring for tasks minted in EARLIER sweeps resolve
+	// here (one list query per sweep).
+	depBumpType := executor.TaskTypeDepBump
+
+	existing, err := s.store.List(ctx, queue.Filter{Type: &depBumpType})
+	if err != nil {
+		return stats, fmt.Errorf("depsweep: list existing tasks: %w", err)
+	}
+
+	taskIDs := make(map[string]task.ID, len(existing)+len(specs))
+	knownKeys := make(map[string]bool, len(existing))
+
+	for i := range existing {
+		if existing[i].DedupKey != "" {
+			taskIDs[existing[i].Project] = existing[i].ID
+			knownKeys[existing[i].DedupKey] = true
+		}
+	}
 
 	for _, spec := range specs {
 		payload := payloadFor(spec)
@@ -432,10 +466,10 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 
 		taskIDs[spec.Repo] = created.ID
 
-		if created.Attempts == 0 && created.Status == task.Pending {
-			stats.Minted++
-		} else {
+		if knownKeys[spec.DedupKey] {
 			stats.Known++
+		} else {
+			stats.Minted++
 		}
 
 		if s.cfg.Log != nil {
