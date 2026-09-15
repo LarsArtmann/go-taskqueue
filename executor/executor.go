@@ -89,6 +89,7 @@ const (
 	DefaultCloseoutPrompt = internalexecutor.DefaultCloseoutPrompt
 	EvidenceTailBytes     = internalexecutor.EvidenceTailBytes
 	GoEnvExperiment       = internalexecutor.GoEnvExperiment
+	RedactMarker          = internalexecutor.RedactMarker
 	TaskTrailer           = internalexecutor.TaskTrailer
 )
 
@@ -132,6 +133,8 @@ var (
 	ReadTQVerify          = internalexecutor.ReadTQVerify
 	RenderAgentPayload    = internalexecutor.RenderAgentPayload
 	ResultLine            = internalexecutor.ResultLine
+	RedactSecrets         = internalexecutor.RedactSecrets
+	SecretHits            = internalexecutor.SecretHits
 	SetFailureEvidence    = internalexecutor.SetFailureEvidence
 	SetResultDetail       = internalexecutor.SetResultDetail
 	SweepSidecars         = internalexecutor.SweepSidecars

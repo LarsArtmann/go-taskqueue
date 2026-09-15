@@ -299,13 +299,25 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 }
 
 // scanFactSecrets runs the secrets-in-logs detector over the evidence-bearing
-// fields of every fact (error text + detail JSON) and returns one row per
-// fact/field with hits. Payloads are NOT scanned: whatever an enqueuer
-// stored there was provided intentionally, not leaked through an output tail.
+// fields (error text + detail JSON) of the OUTPUT-derived fact types and
+// returns one row per fact/field with hits. Payloads are NOT scanned:
+// whatever an enqueuer stored there was provided intentionally, not leaked
+// through an output tail.
 func scanFactSecrets(facts []journal.Fact) []SecretHit {
+	evidenceCarriers := map[journal.FactType]bool{
+		journal.Failed:       true,
+		journal.DeadLettered: true,
+		journal.Completed:    true,
+		journal.Requeued:     true,
+	}
+
 	var hits []SecretHit
 
 	for _, fact := range facts {
+		if !evidenceCarriers[fact.Type] {
+			continue
+		}
+
 		for field, content := range map[string]string{
 			"error":  fact.Error,
 			"detail": string(fact.Detail),
