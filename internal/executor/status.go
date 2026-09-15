@@ -168,7 +168,9 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	// resolution order as the agent executor (.tq-verify file, payload,
 	// auto-detect; empty resolves to nothing to run). Runs under runCtx:
 	// the payload timeout bounds the whole task (agent + verify).
-	if _, err := runVerify(runCtx, repoDir, &AgentPayload{Verify: payload.Verify}); err != nil {
+	// reresolve=false: the pin comes from THIS payload built at run time,
+	// not a stale enqueue-time pin, so there is nothing to drop.
+	if _, err := runVerify(runCtx, repoDir, &AgentPayload{Verify: payload.Verify}, false); err != nil {
 		return err
 	}
 

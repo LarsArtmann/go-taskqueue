@@ -87,6 +87,8 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/multi-repo.sh   # two agent-pool processes, one DB, three repos: per-project exclusivity + dedup (D24)
 ./scripts/smoke/papdashboard-e2e.sh # stub dashboard: dead letter raises alert.triggered, dlq --rescue posts alert.resolved
 ./scripts/smoke/ratelimit-e2e.sh # hermetic: a Z.ai-429 stub failure parks the task (no attempt burned)
+./scripts/smoke/fullcore.sh  # examples/fullcore drains 4/4 on sqlite + deadline path xN (50ms timeout calibrated: trips on this host at 250ms worker-start latency; DEADLINE_RUNS/DEADLINE_TIMEOUT_MS knobs; TQ_TEST_POSTGRES adds the postgres variant)
+./scripts/smoke/reviews.sh   # stub reviewer; approve + request_changes + autofix loop
 ./scripts/check-guard-wiring.sh # orphaned-guard audit: every check-*/smoke script must be referenced by ci-local/ci.yml/flake or be deleted
 ./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
 ./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)
@@ -674,6 +676,14 @@ prose, not the table.
   concurrent agents land real changes mid-flight (worker's go-retry
   require, flake vendorHash fixes, AGENTS.md corrections have all arrived
   mid-session). Build on them; never revert.
+  **Turn-1 additions (codified 2026-09-15 after Nth-recurrence misses in
+  every closeout since 09-12):** (1) grep prior reports for the SAME task
+  ID before doing anything (`rg -l <task-id> docs/status/`) — repeat
+  dispatches are routine, and the fastest correct response to a DONE row
+  is verify → cite → stop; (2) check for and read `CONTRIBUTING.md` (and
+  `CLAUDE.md` if present) at turn 1 — the task contract requires it,
+  `CONTRIBUTING.md` exists in this repo, and skipping it is a documented
+  recurring miss (00-52 d4, 02-17 d3).
 - ⚠️ **Scripted history edits under the auto-commit daemon** (2026-09-10
   reword incident): inline-quoted `GIT_EDITOR`/`GIT_SEQUENCE_EDITOR` values
   get mangled through the mvdan/sh → git handoff and can SILENTLY no-op —
