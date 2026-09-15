@@ -9,6 +9,7 @@ import (
 	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/templ-components/feedback"
 	"github.com/larsartmann/templ-components/icons"
+	"github.com/larsartmann/templ-components/navigation"
 	"github.com/larsartmann/templ-components/utils"
 )
 
@@ -167,32 +168,22 @@ templ taskSettledDetails(data DashboardData) {
 	}
 }
 
-// taskPager renders prev/next pagination under the task table. It shows
+// taskPager renders the library pagination under the task table: a
+// "showing N of M" truncation note plus numbered page links with ellipsis
+// and prev/next (the library keeps the rel prev/next SEO hints). It shows
 // only when there is more than one page; the current page never links.
 templ taskPager(data DashboardData) {
 	if data.TotalPages > 1 {
-		<nav class="flex items-center justify-between pt-3 text-xs text-gray-500 dark:text-gray-400" aria-label="Task table pages">
-			<div>
-				page { formatInt(data.Page) } of { formatInt(data.TotalPages) }
-				<span class="pl-2 font-normal text-gray-400 dark:text-gray-500">{ formatInt(data.MatchTotal) } matching tasks</span>
-			</div>
-			<div class="flex gap-2">
-				if data.Page > 1 {
-					<a
-						class="rounded-md border border-gray-200 px-2 py-1 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-						href={ templ.URL(pageHref(data.Filter, data.Page-1)) }
-						rel="prev"
-					>← prev</a>
-				}
-				if data.Page < data.TotalPages {
-					<a
-						class="rounded-md border border-gray-200 px-2 py-1 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-						href={ templ.URL(pageHref(data.Filter, data.Page+1)) }
-						rel="next"
-					>next →</a>
-				}
-			</div>
-		</nav>
+		@display.ListNote(display.ListNoteProps{
+			Shown: len(data.Tasks),
+			Total: data.MatchTotal,
+		})
+		@navigation.Pagination(navigation.PaginationProps{
+			BaseProps:   utils.BaseProps{AriaLabel: "Task table pages"},
+			CurrentPage: uint(data.Page),
+			TotalPages:  uint(data.TotalPages),
+			BaseURL:     pagerBaseURL(data.Filter),
+		})
 	}
 }
 

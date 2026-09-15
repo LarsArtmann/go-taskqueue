@@ -330,18 +330,13 @@ func viewToggleHref(filter FilterState, view string) string {
 	return filterHref(filter)
 }
 
-// pageHref renders the current filter pinned to a specific page; filter
-// chips keep using filterHref, which resets to page 1.
-func pageHref(f FilterState, page int) string {
+// pagerBaseURL builds the task-table pagination BaseURL: the dashboard
+// path carrying the current filter as its query. The navigation.Pagination
+// component appends the page param itself (url.Parse + Set), so page 1
+// renders as an explicit page=1 instead of the bare path the old
+// hand-rolled pager emitted.
+func pagerBaseURL(f FilterState) string {
 	queryString := f.QueryString()
-	if page > 1 {
-		if queryString != "" {
-			queryString += "&"
-		}
-
-		queryString += "page=" + strconv.Itoa(page)
-	}
-
 	if queryString == "" {
 		return "/"
 	}
