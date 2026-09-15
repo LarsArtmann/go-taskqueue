@@ -130,11 +130,11 @@ func TestSetFailureEvidenceRedactsTail(t *testing.T) {
 	}
 }
 
-func errFailed() error { return errFailedSentinel{} }
+func errFailed() error { return fakeRunError{} }
 
-type errFailedSentinel struct{}
+type fakeRunError struct{}
 
-func (errFailedSentinel) Error() string { return "agent run failed" }
+func (fakeRunError) Error() string { return "agent run failed" }
 
 func TestWriteOutputSidecarRedacts(t *testing.T) {
 	dir := t.TempDir()
