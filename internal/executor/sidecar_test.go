@@ -183,7 +183,7 @@ func TestVerifyFailureWritesEvidenceNotInlineDump(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(repo, ".tq-verify"), []byte("echo line-one; echo line-two; false"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(repo, ".tq-verify"), []byte("seq 1 5000; false"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -192,8 +192,15 @@ func TestVerifyFailureWritesEvidenceNotInlineDump(t *testing.T) {
 		t.Fatalf("failing verify must fail the task, got %v", err)
 	}
 
-	if strings.Count(err.Error(), "line-one") != 1 {
-		t.Fatalf("error must carry the excerpt exactly once, got: %v", err)
+	// The journal fact carries a BOUNDED excerpt, not the full gate output
+	// (28KB of seq here would drown the journal stream — the 10:39/11:12
+	// facts carried 4KB tails mid-trace).
+	if len(err.Error()) >= 4096 {
+		t.Fatalf("error must stay a bounded excerpt, got %d bytes: %.200s...", len(err.Error()), err.Error())
+	}
+
+	if strings.Count(err.Error(), "(full verify output:") != 1 {
+		t.Fatalf("error must reference exactly one evidence file, got: %v", err)
 	}
 
 	matches := evidencePathRe.FindAllStringSubmatch(err.Error(), 1)
@@ -206,7 +213,7 @@ func TestVerifyFailureWritesEvidenceNotInlineDump(t *testing.T) {
 		t.Fatalf("read referenced evidence %s: %v", matches[0][1], rerr)
 	}
 
-	if !strings.Contains(string(body), "line-two") {
-		t.Fatalf("evidence file must hold the full output, got: %s", body)
+	if !strings.Contains(string(body), "5000") {
+		t.Fatalf("evidence file must hold the FULL output, got %d bytes", len(body))
 	}
 }
