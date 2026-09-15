@@ -71,6 +71,9 @@ step "facade parity (ADR-0016: facades mirror internal exports)"
 step "dead-export audit (advisory report)"
 ./scripts/check-dead-exports.sh
 
+step "rename-hygiene scan (advisory; quoted literals shadowing removed identifiers)"
+./scripts/check-rename-hygiene.sh
+
 step "gofmt"
 unformatted="$(gofmt -l .)"
 if [ -n "$unformatted" ]; then

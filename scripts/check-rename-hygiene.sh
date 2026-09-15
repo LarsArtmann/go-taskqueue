@@ -12,9 +12,11 @@
 #
 # Usage: check-rename-hygiene.sh [--strict] [git diff args...]
 #   default diff: working tree vs HEAD (git diff HEAD)
+# Operates on the repository of the INVOKING directory (ci-local runs from
+# the repo root; point the invocation elsewhere to scan another checkout).
 set -euo pipefail
-cd "$(dirname "$0")/.."
 
+diff_cmd=(git diff)
 strict=0
 args=()
 for a in "$@"; do
@@ -23,8 +25,11 @@ for a in "$@"; do
 	*) args+=("$a") ;;
 	esac
 done
-
-diff_cmd=(git diff HEAD "${args[@]+"${args[@]}"}")
+if [ "${#args[@]}" -gt 0 ]; then
+	diff_cmd+=("${args[@]}")
+else
+	diff_cmd+=(HEAD)
+fi
 
 added="$(mktemp)"
 removed="$(mktemp)"
