@@ -82,7 +82,7 @@ not here.
 - [x] Review-loop e2e: `scripts/smoke/reviews.sh` (stub reviewer; review approve/request_changes paths through the real binary) (07-48 report f1/f2)
 - [x] `tq enqueue` guardrail: warn when `$TQ_DB` points somewhere other than `./tasks.db` (the production-DB trap cost a live enqueue 2026-09-10) (05-29 report c4/d2/e2)
 - [x] `tq enqueue --wait [--timeout]`: blocking run streaming the task's facts to the terminal — cron one-shots today need tail+grep dance (05-29 report c1/f5/g3)
-- [ ] `tq doctor --hygiene`: stale `.tq-verify` payload pins vs current repo gate + claim-time re-resolution option — retires the stale-payload audit class (09-39 report f2/f3)
+- [x] `tq doctor --hygiene`: stale `.tq-verify` payload pins vs current repo gate + claim-time re-resolution option — retires the stale-payload audit class (09-39 report f2/f3) (shipped 2026-09-15, commit 7d2825b)
 - [ ] Rate-limiter global prune: bound the write-lockout strikes map against rotating source IPs (per-contact prune only today, `internal/webui/auth.go:315`) (06-01 report c7)
 - [ ] Secrets-in-logs pass + `--redact`: agent output tails can carry provider tokens into facts/sidecars (17-21 report #18; 20-58 f33)
 - [ ] httpapi parity hardening: `X-Content-Type-Options: nosniff` + failed-bearer-auth lockout decision on `tq api` (03-05 report f2/f3/g2)
