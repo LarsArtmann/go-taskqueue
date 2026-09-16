@@ -1783,13 +1783,15 @@ func boolInt(b bool) int {
 // Requeue returns a claimed task to Pending without counting an attempt:
 // the executor refused to start (preflight), so the task itself is fine and
 // the environment is expected to become ready later. Claimable again after
-// delay. Fact: task.requeued.
+// delay. resumeCloseout marks the rate-limited-close-out park (16-00 f31).
+// Fact: task.requeued.
 func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
 	owner string,
 	errText string,
 	delay time.Duration,
+	resumeCloseout bool,
 ) error {
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now()
@@ -1810,7 +1812,9 @@ func (s *Store) Requeue(
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: owner, Error: errText,
-			Detail: mustJSON(queue.RequeueEvidence{Reason: errText, RetryIn: delay.Milliseconds()}),
+			Detail: mustJSON(queue.RequeueEvidence{
+				Reason: errText, RetryIn: delay.Milliseconds(), ResumeCloseout: resumeCloseout,
+			}),
 		})
 	})
 }

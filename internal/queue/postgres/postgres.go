@@ -673,12 +673,14 @@ func (s *Store) FailPermanent(
 }
 
 // Requeue returns a claimed task to Pending without counting an attempt.
+// resumeCloseout marks the rate-limited-close-out park (16-00 f31).
 func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
 	owner string,
 	errText string,
 	delay time.Duration,
+	resumeCloseout bool,
 ) error {
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
@@ -698,7 +700,9 @@ func (s *Store) Requeue(
 
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: owner, Error: errText,
-			Detail: mustJSON(queue.RequeueEvidence{Reason: errText, RetryIn: delay.Milliseconds()}),
+			Detail: mustJSON(queue.RequeueEvidence{
+				Reason: errText, RetryIn: delay.Milliseconds(), ResumeCloseout: resumeCloseout,
+			}),
 		})
 	})
 }

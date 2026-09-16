@@ -77,9 +77,11 @@ type Store interface {
 	FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence jsontext.Value) error
 	// Requeue returns a claimed task to Pending WITHOUT counting an
 	// attempt; it becomes claimable again after delay. For preflight
-	// refusals: the environment was not ready, not the task. Facts:
-	// task.requeued.
-	Requeue(ctx context.Context, id task.ID, owner string, errText string, delay time.Duration) error
+	// refusals: the environment was not ready, not the task. A
+	// rate-limited close-out passes resumeCloseout so the journal records
+	// that the re-claim resumes the owed close-out turn instead of
+	// re-running the paid work turn. Facts: task.requeued.
+	Requeue(ctx context.Context, id task.ID, owner string, errText string, delay time.Duration, resumeCloseout bool) error
 	// UpdatePendingPriority changes a PENDING task's priority (ADR-0015
 	// §5) and records the task.reprioritized fact (old/new, source,
 	// reason) in the SAME transaction. Running/terminal tasks are refused
@@ -220,9 +222,14 @@ type Queue struct {
 // RequeueEvidence is the structured detail on task.requeued facts: why the
 // executor refused to start and how long the task waits before it becomes
 // claimable again (01:48 report f2: the reason was a plain error string).
+// ResumeCloseout marks the rate-limited-close-out park: the work turn is
+// DONE and its session alive, so the re-claim resumes at close-out (16-00
+// report f31) — without the flag the journal cannot distinguish a parked
+// work turn from an owed close-out.
 type RequeueEvidence struct {
-	Reason  string `json:"reason"`
-	RetryIn int64  `json:"retry_in_ms"`
+	Reason         string `json:"reason"`
+	RetryIn        int64  `json:"retry_in_ms"`
+	ResumeCloseout bool   `json:"resume_closeout,omitempty"`
 }
 
 // ReprioritizeEvidence is the structured detail on task.reprioritized
