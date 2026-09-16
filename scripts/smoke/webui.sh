@@ -93,6 +93,42 @@ assert page_headers.get("X-Content-Type-Options") == "nosniff", "missing nosniff
 assert page_headers.get("Referrer-Policy") == "no-referrer", "missing referrer policy"
 print("page fragments + security headers OK")
 
+# Health dashboard (go-health-dashboard mount, 2026-09-16): live page +
+# JSON probes from the running server.
+with urllib.request.urlopen(f"{base}/health", timeout=2) as r:
+    health_page = r.read().decode()
+    health_headers = dict(r.headers)
+hcsp = health_headers.get("Content-Security-Policy", "")
+assert "default-src 'self'" in hcsp and "'unsafe-eval'" in hcsp, f"health CSP wrong: {hcsp}"
+assert "'nonce-" in hcsp, "health CSP missing per-request nonce"
+for frag in ("/health/datastar.js", "/static/app.css", "tq queue health"):
+    assert frag in health_page, f"health page missing {frag}"
+print("health dashboard page OK")
+
+with urllib.request.urlopen(f"{base}/healthz", timeout=2) as r:
+    liveness = json.load(r)
+assert liveness.get("status") == "pass", f"liveness not pass: {liveness}"
+
+readiness = None
+for _ in range(20):
+    try:
+        with urllib.request.urlopen(f"{base}/readyz", timeout=2) as r:
+            readiness = json.load(r)
+        break
+    except Exception:
+        time.sleep(0.2)
+assert readiness is not None, "readyz never answered"
+checks = readiness.get("checks", {})
+assert readiness["status"] in ("pass", "warn"), f"readiness status: {readiness}"
+assert checks.get("database", {}).get("status") == "pass", f"database check: {checks}"
+assert checks.get("workers", {}).get("status") in ("pass", "warn"), f"workers check: {checks}"
+print(f"health probes OK: overall={readiness['status']} database=pass")
+
+with urllib.request.urlopen(f"{base}/health/datastar.js", timeout=2) as r:
+    assert r.headers.get("Content-Type", "").startswith("text/javascript"), "SDK content-type"
+    assert len(r.read()) > 1000, "SDK bundle suspiciously small"
+print("health SDK bundle OK")
+
 with urllib.request.urlopen(f"{base}/?view=board", timeout=2) as r:
     board = r.read().decode()
 for col in ("pending", "running", "completed", "dead", "cancelled"):
