@@ -123,7 +123,7 @@ templ TaskTable(data DashboardData) {
 templ taskActiveCard(data DashboardData) {
 	if len(activeTasks(data.Tasks)) > 0 {
 		<div class="tq-kicker">active now</div>
-		@display.Card(display.CardProps{Padding: display.CardPaddingNone}) {
+		<div class="tq-panel">
 			@display.Table(display.TableProps{
 				Caption:      "Active tasks",
 				TypedHeaders: taskHeaders(data),
@@ -137,7 +137,7 @@ templ taskActiveCard(data DashboardData) {
 				{ formatInt(queue.PriorityAgingDaysPerPoint) } days waiting, max +
 				{ formatInt(queue.PriorityAgingMaxBonus) }) - aging is scheduling, the stored value never changes (ADR-0015)
 			</p>
-		}
+		</div>	
 	}
 }
 
@@ -156,7 +156,7 @@ templ taskSettledDetails(data DashboardData) {
 				</span>
 			</summary>
 			<div class="mt-2">
-				@display.Card(display.CardProps{Padding: display.CardPaddingNone}) {
+				<div class="tq-panel">
 					@display.Table(display.TableProps{
 						Caption:      "Settled tasks",
 						TypedHeaders: taskHeaders(data),
@@ -165,7 +165,7 @@ templ taskSettledDetails(data DashboardData) {
 						CellPadding:  display.TableCellPaddingCompact,
 						Body:         taskRows(data, settledTasks(data.Tasks)),
 					})
-				}
+				</div>
 			</div>
 		</details>
 	}
