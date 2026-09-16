@@ -453,7 +453,11 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **Claims carry citations** (2026-09-12): DONE notes, close-outs, and
   verify-then-close annotations cite the gate run or commit SHA they rest
   on — an uncited claim is a hypothesis; a stale-DONE row is closed only
-  with commit + gate evidence, never memory
+  with commit + gate evidence, never memory. Filter-scope/behavior claims
+  (what a view, filter, or code path displays/restricts) additionally cite
+  file:line or a pinning test name in reports and handoffs — a confident
+  wrong scope claim burned the 2026-09-12 01-47 §d3 budget-display answer
+  (source: docs/status/2026-09-12_01-47_per-project-ui-question.md)
 - Pure-Go deps only (`CGO_ENABLED=0` valid); Go 1.26 idioms are deliberate
   (`errors.AsType[E]`, `strings.SplitSeq`, `for range n`) — do not
   "modernize" them back

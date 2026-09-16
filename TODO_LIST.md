@@ -97,7 +97,7 @@ not here.
 - [ ] SystemNix tq-agent-pool unit gains `Environment=GOEXPERIMENT=jsonv2` (same treatment as agentPath) — ends the 5-window re-dispatch burn; rides the L45 input flip + deploy — BLOCKED: owner sudo on evo-x2 (2026-09-12 01-06 §g1)
 - [ ] Ruling: close-out report placement — file-per-window vs append-to-one-report (01-06 CONTRADICTS 00-54 §e3); implement the ruling in the closeout executor — BLOCKED: owner placement call (2026-09-12 01-06 §g2)
 - [ ] Webui rulings: unknown `/project/{name}` behavior (404 vs empty-state) + per-project-vs-global budget display in filtered views — BLOCKED: owner UX calls (2026-09-12 01-47 §g1/§g2)
-- [ ] AGENTS.md claims-with-citations convention: every filter-scope/behavior claim in reports and handoffs carries file:line or a test name (2026-09-12 01-47 §d3)
+- [x] AGENTS.md claims-with-citations convention: every filter-scope/behavior claim in reports and handoffs carries file:line or a test name (2026-09-12 01-47 §d3)
 
 ## Done-prompt window harvest (2026-09-12; sources: docs/status/archived/2026-09-12_04-45_done-prompt-five-task-window.md + the 03-28/03-46 close-outs + round-13 residue; verified against code this pass; 8 stale rows closed above)
 
