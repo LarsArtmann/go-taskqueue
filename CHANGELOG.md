@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **ratelimit-e2e second-claim pin (16-00 report f37)**: the smoke's stub
+  reset timestamp is now computed ~5 s into the future (was a frozen past
+  date, which silently degraded the park to the 15 min fallback as days
+  advanced), making the park window (reset + 30 s claim grace) assertable
+  in smoke time. Two new assertions through the real binary: a worker
+  claim issued INSIDE the window reaches no agent (stub-invocation count
+  stays 1, task stays pending, attempts stay 0), and after the window
+  expires the re-claim fires exactly once more (count 2) — the second
+  claim provably happens only after `not_before`.
 - **Durable self-test pin for ci-local's transient-retry wrapper**:
   `scripts/check-transient-retry.sh` (01-46 report f2) sed-extracts the
   SHIPPED `with_transient_retry` helper from `scripts/ci-local.sh` and
