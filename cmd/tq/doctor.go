@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -14,8 +14,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
@@ -856,8 +854,8 @@ func cmdDoctor(args []string) error {
 	results, err := runDoctor(context.Background(), opts)
 	if err != nil {
 		if *asJSON {
-			enc := jsontext.NewEncoder(os.Stdout)
-			_ = json.MarshalEncode(enc,
+			enc := json.NewEncoder(os.Stdout)
+			_ = enc.Encode(
 				map[string]any{
 					"status": checkFail,
 					"checks": []checkResult{{Name: "doctor", Status: checkFail, Detail: err.Error()}},
@@ -871,9 +869,9 @@ func cmdDoctor(args []string) error {
 	}
 
 	if *asJSON {
-		enc := jsontext.NewEncoder(os.Stdout)
+		enc := json.NewEncoder(os.Stdout)
 
-		return json.MarshalEncode(enc, map[string]any{"status": doctorWorst(results), "checks": results})
+		return enc.Encode(map[string]any{"status": doctorWorst(results), "checks": results})
 	}
 
 	worst := doctorWorst(results)

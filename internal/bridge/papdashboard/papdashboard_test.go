@@ -2,7 +2,7 @@ package papdashboard
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -12,8 +12,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -100,9 +98,9 @@ func (f *fakeSource) add(fcts ...journal.Fact) {
 
 // recordedIngest is one request the fake PapDashboard captured.
 type recordedIngest struct {
-	Event          string         `json:"type"`
-	AggregateID    string         `json:"aggregateId"`
-	Payload        jsontext.Value `json:"payload"`
+	Event          string          `json:"type"`
+	AggregateID    string          `json:"aggregateId"`
+	Payload        json.RawMessage `json:"payload"`
 	IdempotencyKey string
 	Authorization  string
 }

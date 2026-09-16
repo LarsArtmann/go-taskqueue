@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -11,8 +11,6 @@ import (
 	"sort"
 	"syscall"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -194,9 +192,10 @@ func cmdTop(args []string) error {
 		views := aggregateTop(tasks, facts, time.Now())
 
 		if *asJSON {
-			enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
 
-			return json.MarshalEncode(enc, views)
+			return enc.Encode(views)
 		}
 
 		if !*once && isTerminal(os.Stdout) {

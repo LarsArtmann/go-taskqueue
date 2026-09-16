@@ -14,7 +14,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"

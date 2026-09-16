@@ -2,12 +2,10 @@ package main
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -84,9 +82,10 @@ func cmdReprioritize(args []string) error {
 	}
 
 	if *asJSON {
-		enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
 
-		return json.MarshalEncode(enc, struct {
+		return enc.Encode(struct {
 			Changes  []harvest.RepriChange `json:"changes"`
 			Unblocks []queue.UnblockChange `json:"unblocks"`
 			Failures []string              `json:"failures,omitempty"`

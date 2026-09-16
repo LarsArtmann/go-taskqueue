@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -92,9 +90,10 @@ func cmdAudit(args []string) error {
 // printDriftJSON writes the audit result as indented JSON, mirroring the
 // tq harvest --json output shape.
 func printDriftJSON(res harvest.DriftResult) error {
-	enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
 
-	return json.MarshalEncode(enc, res)
+	return enc.Encode(res)
 }
 
 // printDriftReport writes the drift report produced by harvest.Audit: stale

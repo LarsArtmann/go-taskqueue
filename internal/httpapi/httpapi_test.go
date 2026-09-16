@@ -3,7 +3,7 @@ package httpapi
 import (
 	"bytes"
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"

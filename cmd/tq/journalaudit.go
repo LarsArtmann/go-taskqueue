@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -349,7 +349,7 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 	}
 
 	if asJSON {
-		return json.MarshalWrite(os.Stdout, report)
+		return json.NewEncoder(os.Stdout).Encode(report)
 	}
 
 	fmt.Printf("journal drift audit: %d task(s) compared against %d fact(s) (status, attempts, priority, dedup key)\n",

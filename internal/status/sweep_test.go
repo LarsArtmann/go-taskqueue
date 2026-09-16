@@ -2,14 +2,12 @@ package status
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -39,7 +37,7 @@ const (
 // claim loop skips past other pending tasks (the sweeper's minted reports can
 // outrank the target in claim order); a task already Running under this
 // owner's lease is completed directly.
-func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail jsontext.Value) {
+func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessage) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -315,7 +313,7 @@ func TestStatusCompletionsNeverTrigger(t *testing.T) {
 		t.Fatalf("status tasks = %d, want 1", len(reports))
 	}
 
-	finishTask(t, s, reports[0].ID, jsontext.Value(`{"report":"docs/status/r.md","next_items":1}`))
+	finishTask(t, s, reports[0].ID, json.RawMessage(`{"report":"docs/status/r.md","next_items":1}`))
 
 	if _, err := sw.Sweep(context.Background()); err != nil {
 		t.Fatalf("Sweep after report completion: %v", err)
@@ -354,7 +352,7 @@ func TestInFlightReportSuppressesUntilLanded(t *testing.T) {
 	// Report lands; the next agent completion opens the new window's mint
 	// (window counts completions since the report was created).
 	reports := listByType(t, s, executor.TaskTypeStatus)
-	finishTask(t, s, reports[0].ID, jsontext.Value(`{"report":"docs/status/r.md","next_items":0}`))
+	finishTask(t, s, reports[0].ID, json.RawMessage(`{"report":"docs/status/r.md","next_items":0}`))
 
 	runAgentTask(t, s, 4, executor.AgentResult{})
 
@@ -424,7 +422,7 @@ func TestForeignAgentPayloadsAreSkipped(t *testing.T) {
 	enq, err := s.Enqueue(context.Background(), task.New{
 		Type:    executor.TaskTypeAgent,
 		Project: "demo",
-		Payload: jsontext.Value(`{"nope": true}`),
+		Payload: json.RawMessage(`{"nope": true}`),
 	})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)

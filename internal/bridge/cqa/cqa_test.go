@@ -2,7 +2,7 @@ package cqa
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,19 +22,19 @@ func newTestServer(t *testing.T) *httptest.Server {
 			return
 		}
 
-		_ = json.MarshalWrite(w, []Project{
+		_ = json.NewEncoder(w).Encode([]Project{
 			{ID: "p1", RepoName: "repo-a"},
 			{ID: "p2", RepoName: "not-local"},
 		})
 	})
 	mux.HandleFunc("/api/v1/projects/p1/scans", func(w http.ResponseWriter, r *http.Request) {
-		_ = json.MarshalWrite(w, []Scan{{ID: "s7", Status: "completed"}})
+		_ = json.NewEncoder(w).Encode([]Scan{{ID: "s7", Status: "completed"}})
 	})
 	mux.HandleFunc("/api/v1/projects/p2/scans", func(w http.ResponseWriter, r *http.Request) {
-		_ = json.MarshalWrite(w, []Scan{{ID: "s8", Status: "completed"}})
+		_ = json.NewEncoder(w).Encode([]Scan{{ID: "s8", Status: "completed"}})
 	})
 	mux.HandleFunc("/api/v1/scans/s7/issues", func(w http.ResponseWriter, r *http.Request) {
-		_ = json.MarshalWrite(w, []Issue{
+		_ = json.NewEncoder(w).Encode([]Issue{
 			{
 				Analyzer:  "artdupl",
 				Severity:  "critical",
@@ -71,7 +71,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 		})
 	})
 	mux.HandleFunc("/api/v1/scans/s8/issues", func(w http.ResponseWriter, r *http.Request) {
-		_ = json.MarshalWrite(w, []Issue{})
+		_ = json.NewEncoder(w).Encode([]Issue{})
 	})
 
 	return httptest.NewServer(mux)

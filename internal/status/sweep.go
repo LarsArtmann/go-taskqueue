@@ -14,7 +14,7 @@ package status
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"path/filepath"

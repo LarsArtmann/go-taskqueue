@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -73,9 +71,10 @@ func cmdTasks(args []string) error {
 	}
 
 	if *asJSON {
-		enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
 
-		return json.MarshalEncode(enc, tasks)
+		return enc.Encode(tasks)
 	}
 
 	printTaskList(tasks)

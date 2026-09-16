@@ -2,7 +2,7 @@ package webui
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -72,6 +72,7 @@ func TestHealthDashboardPage(t *testing.T) {
 			t.Errorf("health CSP missing composed %s, got %q", want, csp)
 		}
 	}
+
 	if strings.Contains(csp, "base-uri 'self'") {
 		t.Errorf("health CSP kept the library's lax base-uri, got %q", csp)
 	}

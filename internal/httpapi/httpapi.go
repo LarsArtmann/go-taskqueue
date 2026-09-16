@@ -8,7 +8,7 @@ package httpapi
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net"
@@ -17,8 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -284,14 +282,14 @@ func remoteHost(r *http.Request) string {
 // enqueueRequest is the wire contract for POST /api/v1/tasks. Payload is
 // the executor-specific JSON document, passed through verbatim.
 type enqueueRequest struct {
-	Project     string         `json:"project"`
-	Type        string         `json:"type"`
-	Payload     jsontext.Value `json:"payload"`
-	Priority    int            `json:"priority"`
-	MaxAttempts int            `json:"maxAttempts"`
-	NotBefore   string         `json:"notBefore,omitempty"` // RFC3339; empty = now
-	Deps        []string       `json:"deps,omitempty"`
-	DedupKey    string         `json:"dedupKey,omitempty"`
+	Project     string          `json:"project"`
+	Type        string          `json:"type"`
+	Payload     json.RawMessage `json:"payload"`
+	Priority    int             `json:"priority"`
+	MaxAttempts int             `json:"maxAttempts"`
+	NotBefore   string          `json:"notBefore,omitempty"` // RFC3339; empty = now
+	Deps        []string        `json:"deps,omitempty"`
+	DedupKey    string          `json:"dedupKey,omitempty"`
 }
 
 type enqueueResponse struct {
@@ -304,7 +302,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
-	if err := json.MarshalWrite(w, v); err != nil {
+	if err := json.NewEncoder(w).Encode(v); err != nil {
 		slog.Error("httpapi: encode response", "err", err)
 	}
 }
@@ -317,7 +315,7 @@ func writeError(w http.ResponseWriter, status int, what, fix string) {
 // non-Go producer gets actionable errors, not a 500.
 func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 	var req enqueueRequest
-	if err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 1<<20), &req); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
 		writeError(
 			w,
 			http.StatusBadRequest,

@@ -3,7 +3,7 @@ package webui
 import (
 	"bytes"
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"slices"

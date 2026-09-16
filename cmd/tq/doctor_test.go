@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"

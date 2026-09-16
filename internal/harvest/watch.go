@@ -3,7 +3,7 @@ package harvest
 import (
 	"bufio"
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"

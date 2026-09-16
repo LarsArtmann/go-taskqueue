@@ -2,7 +2,7 @@ package harvest
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net"
@@ -92,7 +92,7 @@ func daemonStubHandler(projects []daemonProject, requests *[]daemonDiscoverReque
 		}
 
 		var req daemonDiscoverRequest
-		if err := json.UnmarshalRead(r.Body, &req); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "bad request body", http.StatusBadRequest)
 
 			return
@@ -105,7 +105,7 @@ func daemonStubHandler(projects []daemonProject, requests *[]daemonDiscoverReque
 
 		w.Header().Set("Content-Type", "application/json")
 
-		_ = json.MarshalWrite(w, daemonDiscoverResponse{Projects: projects})
+		_ = json.NewEncoder(w).Encode(daemonDiscoverResponse{Projects: projects})
 	})
 }
 

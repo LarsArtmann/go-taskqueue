@@ -2,14 +2,13 @@ package webui
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -418,7 +417,7 @@ func TestWriteFlowCancelAndRescue(t *testing.T) {
 		dead.ID,
 		owner,
 		"boom: rescue test",
-		jsontext.Value(`{}`),
+		json.RawMessage(`{}`),
 	); err != nil {
 		t.Fatalf("fail permanent: %v", err)
 	}

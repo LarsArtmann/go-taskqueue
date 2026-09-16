@@ -3,7 +3,7 @@ package webui
 import (
 	"bytes"
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,8 +17,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -56,7 +54,7 @@ func enqueue(t *testing.T, s *sqlite.Store, typ, project string) task.Task {
 
 	tk, err := s.Enqueue(
 		context.Background(),
-		task.New{Type: typ, Project: project, Payload: jsontext.Value(`"echo hi"`)},
+		task.New{Type: typ, Project: project, Payload: json.RawMessage(`"echo hi"`)},
 	)
 	if err != nil {
 		t.Fatalf("Enqueue: %v", err)
@@ -860,7 +858,7 @@ func TestTaskDetailSSESnapshot(t *testing.T) {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), claimed.ID, claimed.LeaseOwner, jsontext.Value(`"done"`)); err != nil {
+	if err := s.Complete(context.Background(), claimed.ID, claimed.LeaseOwner, json.RawMessage(`"done"`)); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -928,7 +926,7 @@ func TestTaskDetailSSELiveUpdate(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond) // let the SSE connect
 
-	if err := s.Complete(context.Background(), claimed.ID, claimed.LeaseOwner, jsontext.Value(`"done"`)); err != nil {
+	if err := s.Complete(context.Background(), claimed.ID, claimed.LeaseOwner, json.RawMessage(`"done"`)); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 

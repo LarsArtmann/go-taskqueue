@@ -1,11 +1,10 @@
 package webui
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -155,7 +154,7 @@ func TestDetailItems(t *testing.T) {
 			Attempts:    2,
 			MaxAttempts: 3,
 			LeaseOwner:  "worker-1",
-			Payload:     jsontext.Value(`"echo hi"`),
+			Payload:     json.RawMessage(`"echo hi"`),
 			CreatedAt:   now.Add(-2 * time.Hour),
 			UpdatedAt:   now.Add(-2 * time.Minute),
 			CompletedAt: &done,
@@ -190,7 +189,7 @@ func TestDetailItems(t *testing.T) {
 			Project:   "demo",
 			Type:      "sh",
 			Status:    task.Pending,
-			Payload:   jsontext.Value(`{}`),
+			Payload:   json.RawMessage(`{}`),
 			CreatedAt: now,
 			UpdatedAt: now,
 		}, now, "")
@@ -212,14 +211,14 @@ func TestDetailItems(t *testing.T) {
 func TestDetailFactsSurfacesCancelReason(t *testing.T) {
 	now := time.Now()
 	lines := detailFacts(now, []journalFactView{
-		{Seq: 2, Type: journal.Cancelled, Owner: "op", Detail: jsontext.Value(`{"reason":"item done by hand"}`)},
-		{Seq: 1, Type: journal.Cancelled, Owner: "op", Detail: jsontext.Value(`{}`)},
+		{Seq: 2, Type: journal.Cancelled, Owner: "op", Detail: json.RawMessage(`{"reason":"item done by hand"}`)},
+		{Seq: 1, Type: journal.Cancelled, Owner: "op", Detail: json.RawMessage(`{}`)},
 		{
 			Seq:    3,
 			Type:   journal.Requeued,
 			Owner:  "worker-1",
 			Error:  "preflight: repo dirty",
-			Detail: jsontext.Value(`{"reason":"preflight: repo dirty","retry_in_ms":5000}`),
+			Detail: json.RawMessage(`{"reason":"preflight: repo dirty","retry_in_ms":5000}`),
 		},
 	})
 
