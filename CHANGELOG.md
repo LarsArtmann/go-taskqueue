@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Changed
+- **Status-append dedup + cap (re-dispatch loop fix)**: the status
+  task's TODO_LIST.md append contract now requires a DEDUP CHECK against
+  the file's existing unchecked items before appending (a merely reworded
+  duplicate mints a fresh dedup key and a fresh paid dispatch: the
+  2026-09-11 75-commit review measured single tasks re-fired up to 5x
+  with 36 of the 75 commits being close-outs), caps new appends at 10 (down
+  from ~50), and permits evidence-backed `[x]` ticks of items whose work
+  already landed, with ticking the ONLY allowed edit to existing lines
+  (work done but never ticked was the proven LOST-signal root cause: a
+  fix recorded in a report vanished between report and TODO append and
+  re-fired). The rules are pinned by the status prompt-contract test.
+  (`internal/executor/status.go`)
 ### Added
 - **Verify-evidence sidecar for failed verifies**: when a task's verify
   turn fails, the FULL verify output (combined stdout + stderr) is
