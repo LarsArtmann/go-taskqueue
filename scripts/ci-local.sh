@@ -48,6 +48,13 @@ with_transient_retry() {
 step "master CI state (check-ci; CI_CHECK=off to bypass)"
 ./scripts/check-ci.sh
 
+# Pin the retry helper BEFORE any gate rides on it (01-46 report f2): the
+# self-test exercises the shipped bytes of with_transient_retry, so an edit
+# that breaks the poll counter, the context message or argument forwarding
+# fails here instead of mid-run.
+step "transient-retry self-test (with_transient_retry behavior pin)"
+./scripts/check-transient-retry.sh
+
 # --- CI test job (exact ci.yml order; lint advisory exactly like CI) -------
 
 step "vet"
