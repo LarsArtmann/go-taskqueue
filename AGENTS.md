@@ -268,7 +268,14 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   the fix run's OWN footer instruction.
 - **`status`**: `StatusPayload` JSON; the done-prompt agent writes
   `docs/status/<ts>_<name>.md` and appends next items (questions as
-  `— BLOCKED:`) to TODO_LIST.md — that append IS the harvest loop-back.
+  `— BLOCKED:`) to TODO_LIST.md — that append IS the harvest loop-back
+  (DEDUP-GATED since 2026-09-17, the 14-01 report's top fix for the
+  re-dispatch loop where reworded duplicates minted fresh dedup keys and
+  one task re-fired up to 5x: the prompt requires a dedup check against
+  existing unchecked items, HARD CAP 10 new items, and permits
+  evidence-backed `[x]` ticks of already-done items, the only allowed
+  edit to existing lines — unticked-but-done items were the proven
+  LOST-signal root cause).
   Its docs-health pass annotates (never rewrites) 2026-* reports, keeps
   TODO_LIST/CHANGELOG/AGENTS/README/ROADMAP/FEATURES current with what
   the window's tasks actually shipped, and archives fully-done reports
