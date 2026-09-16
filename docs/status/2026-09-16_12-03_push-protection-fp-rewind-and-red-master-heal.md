@@ -185,7 +185,7 @@ HARVEST routing rigor; most §c/§e items are repeated here in actionable form)
 | 25 | Add `refs/original` cleanup to the history-surgery playbook (kept-then-deleted manually this session) | Low | S | Documentation |
 | 26 | Check whether GitHub's pushed-secret scanning produced alerts on ANY older fixture pushed before push protection existed (API was empty for open alerts; closed-state sweep optional) | Low | S | Quality |
 | 27 | CHANGELOG: nothing needed this session (no user-visible surface changed) — recorded here so the docs-health pass doesn't hunt for one | Low | S | Documentation |
-| 28 | Renamed-flag sweep on the fixture rename: `rg 'xoxb-…'` over the whole repo returns zero (verified for tracked files at rewrite time; re-verify after untracked-land) | Low | S | Quality |
+| 28 | Renamed-flag sweep on the fixture rename: `rg 'xoxb-'` over the whole repo returns zero non-composed occurrences (verified for tracked files at rewrite time; re-verify after untracked-land) | Low | S | Quality |
 | 29 | ci-local: consider adding the vendor-hash fast gate as an explicit early step when go.mod/go.sum changed (it exists as a flake check; surfacing it earlier saves minutes) | Medium | S | Quality |
 | 30 | Post-incident: encode §d2 (build-vs-vet under GOOS) as a one-line gotcha in AGENTS.md Known Issues if it bites again — for now CONTRIBUTING item 5 covers it | Low | S | Documentation |
 
