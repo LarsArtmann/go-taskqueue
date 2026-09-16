@@ -706,7 +706,13 @@ prose, not the table.
   from the secrets-in-logs redact.go (748e989) landing after the fifth
   regen — plus cmd/tq tagliatelle 9→10 / varnamelen 6→7 and root mnd
   44→45 from concurrent post-regen windows; the repairing window's own
-  diff was lint-clean (`--new-from-rev HEAD~1`: zero findings))
+  diff was lint-clean (`--new-from-rev HEAD~1`: zero findings));
+  2026-09-16 sixth regen: 1101 findings, 140 rows — the health-adoption
+  window fixed its OWN growth (root/errchkjson: writeHealthJSON's
+  discarded Encode error, now checked) and absorbed concurrent drift
+  (worker nestif from the 03-30 window, cmd/tq gosmopolitan from the
+  12-54 64-file window); the window's webui `--new-from-rev 3c8e858`
+  was zero findings after two wsl_v5 blank-line fixes)
   or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
