@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -115,8 +116,75 @@ func TestDoctorFlagsDeadWorker(t *testing.T) {
 	}
 }
 
+// TestDoctorParkedNamesEarliestRelease pins the 16-00 f34 observability:
+// when tasks are parked by a provider rate limit, the doctor's parked
+// check names the earliest not_before ("earliest release 19:40") so the
+// operator knows when to look again.
+func TestDoctorParkedNamesEarliestRelease(t *testing.T) {
+	path := doctorTestStore(t)
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	park := func(delay time.Duration) {
+		t.Helper()
+
+		tk, err := s.Enqueue(ctx, task.New{Type: "agent"})
+		if err != nil {
+			t.Fatalf("enqueue: %v", err)
+		}
+
+		if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := s.Requeue(ctx, tk.ID, "w1", "rate limited", delay, false); err != nil {
+			t.Fatalf("requeue: %v", err)
+		}
+	}
+
+	park(2 * time.Hour)
+	park(time.Hour)
+
+	parkedFlag := true
+
+	var earliest time.Time
+
+	if parked, err := s.List(ctx, queue.Filter{Parked: &parkedFlag}); err != nil {
+		t.Fatalf("list parked: %v", err)
+	} else {
+		for _, tk := range parked {
+			if earliest.IsZero() || tk.NotBefore.Before(earliest) {
+				earliest = tk.NotBefore
+			}
+		}
+	}
+
+	if earliest.IsZero() {
+		t.Fatal("no parked not_before found — fixture broken")
+	}
+
+	r := doctorParked(ctx, s)
+
+	if r.Status != checkWarn {
+		t.Errorf("parked = %s, want warn", r.Status)
+	}
+
+	want := "earliest release " + earliest.Local().Format("15:04")
+	if !strings.Contains(r.Detail, want) {
+		t.Errorf("parked detail = %q, want it to name %q", r.Detail, want)
+	}
+}
+
 func TestDoctorBudgetAtCap(t *testing.T) {
-	path := doctorTestStore(t)	s, err := sqlite.Open(path)
+	path := doctorTestStore(t)
+
+	s, err := sqlite.Open(path)
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}
