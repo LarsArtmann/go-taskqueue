@@ -184,7 +184,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - The default work/catch-up/cqa-fix prompts were slimmed: AGENTS.md is
   auto-loaded by crush (the "Read AGENTS.md first" step was dead tokens),
   and the self-report step is gone (see above).
+- **Dashboard visual identity: "instrument pass" redesign** of `tq serve`
+  (markup + theme tokens only, zero behavior changes). The generic
+  SaaS-kit chrome — floating card islands, ALL-CAPS eyebrows, ghost
+  header on a bare page top — is replaced with an instrument-panel
+  identity: a hull-dark sticky topbar carrying brand + theme toggle in
+  BOTH themes (the old header vanished against the light page), a
+  paper-gray light ground, the three remaining `display.Card` islands on
+  the dashboard swapped for full-bleed seam panels (`tq-panel` with
+  transparent table heads), and eyebrows retired for quiet terminal
+  labels (`tq-label`, one grouped rule also retuning the kicker/settled/
+  payload labels). A semantic `tq-fault` action line appears under the
+  status nowband only when DEAD > 0, linking straight to the DLQ.
+  `internal/webui/theme.css` owns every token; the templ-components
+  adoption table (and its bidirectional guard tests) records the
+  reshuffle.
+- `scripts/build-webui-css.sh` resolves the templ-components module dir
+  with `go list -m -mod=mod` (vendor/ fallback) — in vendor mode plain
+  `go list -m` prints an empty Dir and the Tailwind build silently
+  scanned `/tmp`.
 ### Fixed
+- **Health routes carry the task dashboard's full hardening**: the
+  `/health*` CSP override used the library's `RecommendedCSP` verbatim,
+  silently dropping `frame-ancestors`/`form-action` entirely and
+  downgrading `base-uri` to `'self'` — the override now composes the
+  missing directives in and strips the laxer `base-uri` (CSP is
+  first-occurrence-wins, so a pure append would be ignored). `/health`
+  and `/health/sse` also send `X-Robots-Tag: noindex`, giving them the
+  same crawler defense as the task pages' robots meta (the library head
+  offers no injection point; pinned by the extended
+  `TestHealthDashboardPage`).
 - **Dashboard write-lockout strikes map is bounded against rotating source IPs**:
   the CSRF limiter pruned strike entries only when the same client contacted a write
   route again, so a source rotating IPs grew the map without limit. Past a 1024-key cap,

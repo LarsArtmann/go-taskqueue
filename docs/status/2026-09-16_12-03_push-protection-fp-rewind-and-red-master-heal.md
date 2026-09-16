@@ -266,9 +266,34 @@ locally reproducible has been reproduced and is green.
   exposed it (SHAs unchanged across a "successful" rewrite). Re-ran with
   `-f`, then verified per-commit, not just at the tip.
 
-**Lap 4 verdict (run on 47a0add)**: filled at the end of this report's
-session — see the poll result below if still reading mid-flight. Expected:
-`test` job green (fix verified on the remote tip); `nix` job expected to
-STAY red solely on the runner-ONLY vendorHash variant (owner-grade chase,
-§f item 1) unless the runner's module fetch agrees with the local one this
-time.
+**Lap 4 verdict (run on 47a0add)**: `test` STILL red — the depbump fix had
+been clobbered OUT of the tree (see lap 3), so lap 4 ran without it; nix
+red as before.
+
+**Lap 5 verdict (run 35086318624, on 4e52427 — final state at session close):**
+
+- Re-landed the depbump identity fix with per-hop verification (working tree
+  → folded commit → remote tip), and repaired the NEXT exposed gate: the
+  documented lowered-`go`-directive class — four zero-dep leaves/facades
+  (`internal/journal`, `internal/task`, `journal`, `task`) drifted to
+  `go 1.26`; restored `1.26.7` via `go mod edit`, `check-go-mods.sh` exit 0.
+- Result: **`test` job FULLY GREEN (7m18s — every step incl. smokes, facade
+  parity, gofmt, lint)**, plus ✓ test-windows, ✓ test-postgres, ✓ gosec, ✓
+  govulncheck, ✓ cqrs-lint. The depbump git-identity fix and the go.mod
+  repair are confirmed by the runner itself.
+- **The ONE remaining red gate: `nix` → vendorHash FOD mismatch**, and the
+  evidence is now conclusive: runner `got: sha256-iQv0f2…` IDENTICAL across
+  four runs and two different trees, while the local FOD deterministically
+  produces the committed `sha256-dtC0Y6…`. This is not flake and not tree
+  drift — it is a deterministic environment divergence in the module fetch
+  (most plausibly proxy-side content skew between GitHub runners' fetch path
+  and the local one), exactly the 2026-09-10 incident (got `sha256-/rKFWqGR…`
+  then, docs/status/archived/2026-09-10_06-25… §d1/d2). Structural fix per
+  the 06-25 recommendation: **pin/mirror the fetch (vendor/)** — owner-grade
+  decision (vendoring tradeoffs are documented repo policy); flipping
+  vendorHash to the runner's hash would trade a red CI for a red local
+  build, so it was deliberately NOT done.
+
+**Master state at close: red ONLY on the nix vendorHash job, with a
+twice-documented, deterministically-reproduced environment cause and a
+structural fix proposal on file awaiting an owner ruling.**

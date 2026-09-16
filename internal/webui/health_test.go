@@ -63,6 +63,22 @@ func TestHealthDashboardPage(t *testing.T) {
 		}
 	}
 
+	// The library's RecommendedCSP under-specifies the embed/form posture
+	// the task dashboard enforces; the override must compose it in, and its
+	// laxer base-uri 'self' must be GONE (CSP is first-occurrence-wins, so
+	// an append-instead-of-replace regression would leave 'self' winning).
+	for _, want := range []string{"base-uri 'none'", "frame-ancestors 'none'", "form-action 'none'"} {
+		if !strings.Contains(csp, want) {
+			t.Errorf("health CSP missing composed %s, got %q", want, csp)
+		}
+	}
+	if strings.Contains(csp, "base-uri 'self'") {
+		t.Errorf("health CSP kept the library's lax base-uri, got %q", csp)
+	}
+	if header.Get("X-Robots-Tag") != "noindex" {
+		t.Errorf("health page missing X-Robots-Tag noindex, got %q", header.Get("X-Robots-Tag"))
+	}
+
 	if strings.Contains(csp, "default-src 'none'") {
 		t.Errorf("health CSP must be the dashboard policy, got %q", csp)
 	}
