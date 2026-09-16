@@ -373,7 +373,9 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   AIza/xoxb/bearer/auth-header/secret-assignments) are masked to
   `[REDACTED]` in evidence tails, the error text that embeds them
   (facts, worker logs, LastError) and both sidecar writers. `tailBytes` is
-  the single choke point — a new output→evidence site needs no extra work.
+  the choke point for byte tails; depbump's line-based `tailOutput`
+  delegates to the same redactOutput pass — a new output→evidence site
+  needs no extra work.
   Escape hatch is per-POOL (a redacted debug tail is the tradeoff). The
   audit half: `tq audit --journal` scans stored fact error/detail of the
   output-derived fact types (failed/dead-lettered/completed/requeued —

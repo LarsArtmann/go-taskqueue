@@ -21,6 +21,21 @@ func depBumpTaskT(t *testing.T, payload DepBumpPayload) task.Task {
 	return task.Task{ID: task.NewID(), Type: TaskTypeDepBump, Payload: raw}
 }
 
+func TestDepBumpTailOutputRedactsSecrets(t *testing.T) {
+	t.Parallel()
+
+	filler := strings.Repeat("go get: module fetch line\n", 30)
+	out := tailOutput(filler + fakeGitHub + "\nfatal: unable to access")
+
+	if strings.Contains(out, fakeGitHub) {
+		t.Error("depbump tail carries the raw secret")
+	}
+
+	if !strings.Contains(out, RedactMarker) || !strings.Contains(out, "fatal: unable to access") {
+		t.Errorf("tail lost content: %q", out)
+	}
+}
+
 func TestIsStableSemver(t *testing.T) {
 	t.Parallel()
 

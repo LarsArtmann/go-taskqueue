@@ -30,7 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Secrets-in-logs redaction (`--redact`, default ON) + journal secret
   scan**: agent output tails can carry provider tokens into evidence
   facts, worker logs and sidecar files (17-21 report #18, 20-58 f33).
-  Every tail is now masked through one choke point (`tailBytes`,
+  Every tail is now masked through one redaction pass (`tailBytes`;
+  depbump's line-based `tailOutput` delegates to it,
   `internal/executor/redact.go`) BEFORE the cut — provider-token shapes
   (sk-/sk-ant-/sk-proj-, ghp_/github_pat_, AKIA/ASIA, AIza, xoxb, bearer
   and auth headers, secret-shaped key=value assignments) become

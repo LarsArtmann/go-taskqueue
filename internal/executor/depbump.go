@@ -722,6 +722,11 @@ func (e *DepBumpExecutor) run(
 }
 
 func tailOutput(out string) string {
+	// Secrets-in-logs pass: depbump failures carry these tails as bare
+	// error text into task.failed facts, so mask the FULL output before
+	// the cut (TQ_REDACT=false restores the raw tail).
+	out = redactOutput(out)
+
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) > 12 {
 		lines = lines[len(lines)-12:]
