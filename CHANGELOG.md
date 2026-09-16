@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Durable self-test pin for ci-local's transient-retry wrapper**:
+  `scripts/check-transient-retry.sh` (01-46 report f2) sed-extracts the
+  SHIPPED `with_transient_retry` helper from `scripts/ci-local.sh` and
+  exercises its real behavior — marker-guarded extraction (a rotted sed
+  range fails loudly instead of pinning the wrong text), shipped 45s×3
+  default budget, first-try success, heal-on-retry through the compound
+  `bash -c` module-loop shape, poll exhaustion (3 polls, then the
+  "concurrent edit in flight" context fail), and the
+  `TRANSIENT_MAX_POLLS=0` escape hatch. Wired as a ci-local step BEFORE
+  the Go gates; sub-second (`TRANSIENT_POLL_SECS=0`). The authoring-time
+  /tmp functional test this replaces verified the shipped bytes once and
+  protected nothing going forward. Smoke-side wrapper extension still
+  awaits the owner runtime-budget ruling (01-46 §g3).
 - **`tq doctor --hygiene` stale-pin audit + claim-time re-resolution**: the audit
   compares every PENDING agent task's enqueue-time `.tq-verify` pin against the repo's
   CURRENT gate ladder (`.tq-verify` file, else auto-detect) with a three-way verdict —

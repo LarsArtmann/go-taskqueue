@@ -95,6 +95,7 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/check-dead-exports.sh # advisory dead-export audit: zero-importers detector, substring matching (NOT rg -w)
 ./scripts/check-script-syntax.sh # bash -n + shellcheck (severity >= warning) hard gate over every tracked *.sh — zero-findings policy since birth (2026-09-15)
 ./scripts/check-facade-parity.sh # ADR-0016 gate: go/parser walk, every internal export needs a kind-compatible facade alias (scripts/facadeparity)
+./scripts/check-transient-retry.sh # durable behavior pin for ci-local's with_transient_retry: sed-extracts the SHIPPED helper, marker-guards the extraction, exercises heal/exhaust/TRANSIENT_MAX_POLLS=0 semantics sub-second (01-46 f2; ci-local step)
 ./scripts/new-module.sh <dir> [deps…] # scaffold a new module go.mod (latest cut tag + relative replace per dep; no hand-writing go.mods)
 nix run .#test                  # full multi-module suite (root + every internal/* module)
 scripts/build-tq.sh /tmp/tq     # CLI scratch build (cmd/tq is its own replace-free module, ADR-0017; the script runs the devmod shim)
