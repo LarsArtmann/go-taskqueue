@@ -1,7 +1,7 @@
 package webui
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"

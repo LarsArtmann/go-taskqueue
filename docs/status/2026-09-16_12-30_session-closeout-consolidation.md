@@ -96,6 +96,7 @@ session's second-biggest deliverable (the redesign) still has no CHANGELOG entry
    unlock for every UI claim this repo makes).
 
 ## f) Next-lap delta list (the five that matter; everything else lives in the two prior
+
 reports' §f sections and is carried by reference)
 
 1. CHANGELOG `[Unreleased]` + FEATURES row for the instrument pass (Changed: visual
@@ -104,7 +105,7 @@ reports' §f sections and is carried by reference)
 2. Merged-tree gate: `go vet ./... && go build ./...` + webui race suite + one smoke,
    AFTER the concurrent heal window settles — first verification of the combined tree.
 3. CSP composition fix for `withDashboardCSP` (frame-ancestors/form-action/base-uri)
-   + health_test pin — two laps stale, ~20 lines.
+   - health_test pin — two laps stale, ~20 lines.
 4. `ci-local.sh` end-to-end once, with `lint-baseline.sh --check` — closes the
    longest-open verification debt on both laps.
 5. Screenshot spike: `nix shell nixpkgs#chromium` + chromedp against a scratch serve,
@@ -112,6 +113,7 @@ reports' §f sections and is carried by reference)
    visually" into a closed item or a bug list.
 
 ## g) Questions I cannot figure out myself (carried — asked at 08-28 and 12-11, still
+
 unanswered; they gate the next real lap)
 
 1. Which theme mode do you run, and what SPECIFICALLY reads ugly now (density, mono

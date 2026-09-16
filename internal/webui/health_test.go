@@ -2,7 +2,7 @@ package webui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"io"
 	"net/http"
@@ -75,6 +75,7 @@ func TestHealthDashboardPage(t *testing.T) {
 	if strings.Contains(csp, "base-uri 'self'") {
 		t.Errorf("health CSP kept the library's lax base-uri, got %q", csp)
 	}
+
 	if header.Get("X-Robots-Tag") != "noindex" {
 		t.Errorf("health page missing X-Robots-Tag noindex, got %q", header.Get("X-Robots-Tag"))
 	}

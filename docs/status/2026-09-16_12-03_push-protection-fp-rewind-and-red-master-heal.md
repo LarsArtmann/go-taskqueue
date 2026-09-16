@@ -154,40 +154,41 @@ every failed CI gate locally green, pushed the healing batch, and watched CI.
    hoping CI's nix job catches drift.
 
 ## f) NEXT TASKS (30 honest items — padding to 50 would violate the
+
 HARVEST routing rigor; most §c/§e items are repeated here in actionable form)
 
-| #  | Task | Impact | Effort | Category |
-|----|------|--------|--------|----------|
-| 1  | Verify CI green on c160efd (in flight at write time; see §CI) | Critical | S | Quality |
-| 2  | Run full `./scripts/ci-local.sh` green on the healed tree | High | M | Quality |
-| 3  | `scripts/check-secret-shapes.sh`: token-shape scan over the unpushed diff (`git log -p origin/master..master`), composed-literal allowlist, wire into ci-local as advisory | High | M | Feature |
-| 4  | Owner ruling then normalize the 9 remaining shape-valid fixtures to composed literals | Medium | S | Quality |
-| 5  | CONTRIBUTING: document that the GOOS=windows gate must be `go vet` (tests) not `go build`; audit ci-local.sh parity with the CI step | High | S | Documentation |
-| 6  | Build-tag hygiene detector: untagged `_test.go` referencing symbols from `//go:build unix` files (the sidecar_test class) — grep-level, diff-scoped like check-rename-hygiene.sh | Medium | M | Quality |
-| 7  | Push-protection FP playbook into docs/release/RELEASE.md (release pushes are when this bites) | Medium | S | Documentation |
-| 8  | Harvest this report's §f into TODO_LIST/ROADMAP (docs-health HARVEST) | High | S | Documentation |
-| 9  | Mint-time done-check for harvested items (recurring §d theme in 2026-09-15/16 reports: paid re-dispatch laps on already-done tasks) | High | M | Feature |
-| 10 | TQ_REDACT=false pin for depbump tailOutput (carried from 02-26 report §b) | Medium | S | Test |
-| 11 | Redaction e2e smoke: a 429-stub failure whose evidence tail contains a fake token, asserting [REDACTED] in facts (carried from 02-26 §f top) | Medium | M | Test |
-| 12 | Run `tq audit --journal` against the production journal (prior §f carry; secrets predating the pass) | Medium | S | Quality |
-| 13 | fuzz.yml concurrency-group ruling (carried from 04-21 §f) | Medium | S | Quality |
-| 14 | go mod verify retry: durable behavior pin (carried from 04-21 §f) | Medium | S | Test |
-| 15 | SECURITY.md: one paragraph on scanner-safe fake fixtures + why composed literals are the convention | Low | S | Documentation |
-| 16 | git-filter-repo evaluation note for future history surgery (filter-branch is deprecated) | Low | S | Documentation |
-| 17 | `tq doctor`/CI check for `git tag --no-merged master` after any history-adjacent incident (history-rewrite policy item (c), cheap automation) | Low | S | Quality |
-| 18 | Preserve the rewrite-verification checklist as a runnable helper script (count/metadata/net-diff/pickaxe) or explicitly declare YAGNI in AGENTS.md | Low | S | Cleanup |
-| 19 | check-doc-refs.sh: the concurrent session's in-flight edit at session end — confirm it landed gated (uncommitted at 12:03) | Low | S | Quality |
-| 20 | Consider `git push --atomic`/branch-protection "require CI green" ruling (§g2) — structural fix for the ungated-batch hole | High | S | Quality |
-| 21 | Sweep docs/status index for reports claiming "master green" that predate the 68-commit batch — re-verify claims per the stale-DONE rule | Low | S | Quality |
-| 22 | AGENTS.md: fold the "gate the push, not the delta" rule into the session-start ritual section | Medium | S | Documentation |
-| 23 | webui: confirm the concurrent health-dashboard session's remaining work is gated (their window overlapped ours 11:48–12:00) | Medium | S | Quality |
-| 24 | Executor fixtures: extract a tiny `composeSecret(parts ...string)` helper if item 4 lands, so tests stop hand-writing concatenations | Low | S | Cleanup |
-| 25 | Add `refs/original` cleanup to the history-surgery playbook (kept-then-deleted manually this session) | Low | S | Documentation |
-| 26 | Check whether GitHub's pushed-secret scanning produced alerts on ANY older fixture pushed before push protection existed (API was empty for open alerts; closed-state sweep optional) | Low | S | Quality |
-| 27 | CHANGELOG: nothing needed this session (no user-visible surface changed) — recorded here so the docs-health pass doesn't hunt for one | Low | S | Documentation |
-| 28 | Renamed-flag sweep on the fixture rename: `rg 'xoxb-'` over the whole repo returns zero non-composed occurrences (verified for tracked files at rewrite time; re-verify after untracked-land) | Low | S | Quality |
-| 29 | ci-local: consider adding the vendor-hash fast gate as an explicit early step when go.mod/go.sum changed (it exists as a flake check; surfacing it earlier saves minutes) | Medium | S | Quality |
-| 30 | Post-incident: encode §d2 (build-vs-vet under GOOS) as a one-line gotcha in AGENTS.md Known Issues if it bites again — for now CONTRIBUTING item 5 covers it | Low | S | Documentation |
+| #  | Task                                                                                                                                                                                          | Impact   | Effort | Category      |
+| -- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------- |
+| 1  | Verify CI green on c160efd (in flight at write time; see §CI)                                                                                                                                 | Critical | S      | Quality       |
+| 2  | Run full `./scripts/ci-local.sh` green on the healed tree                                                                                                                                     | High     | M      | Quality       |
+| 3  | `scripts/check-secret-shapes.sh`: token-shape scan over the unpushed diff (`git log -p origin/master..master`), composed-literal allowlist, wire into ci-local as advisory                    | High     | M      | Feature       |
+| 4  | Owner ruling then normalize the 9 remaining shape-valid fixtures to composed literals                                                                                                         | Medium   | S      | Quality       |
+| 5  | CONTRIBUTING: document that the GOOS=windows gate must be `go vet` (tests) not `go build`; audit ci-local.sh parity with the CI step                                                          | High     | S      | Documentation |
+| 6  | Build-tag hygiene detector: untagged `_test.go` referencing symbols from `//go:build unix` files (the sidecar_test class) — grep-level, diff-scoped like check-rename-hygiene.sh              | Medium   | M      | Quality       |
+| 7  | Push-protection FP playbook into docs/release/RELEASE.md (release pushes are when this bites)                                                                                                 | Medium   | S      | Documentation |
+| 8  | Harvest this report's §f into TODO_LIST/ROADMAP (docs-health HARVEST)                                                                                                                         | High     | S      | Documentation |
+| 9  | Mint-time done-check for harvested items (recurring §d theme in 2026-09-15/16 reports: paid re-dispatch laps on already-done tasks)                                                           | High     | M      | Feature       |
+| 10 | TQ_REDACT=false pin for depbump tailOutput (carried from 02-26 report §b)                                                                                                                     | Medium   | S      | Test          |
+| 11 | Redaction e2e smoke: a 429-stub failure whose evidence tail contains a fake token, asserting [REDACTED] in facts (carried from 02-26 §f top)                                                  | Medium   | M      | Test          |
+| 12 | Run `tq audit --journal` against the production journal (prior §f carry; secrets predating the pass)                                                                                          | Medium   | S      | Quality       |
+| 13 | fuzz.yml concurrency-group ruling (carried from 04-21 §f)                                                                                                                                     | Medium   | S      | Quality       |
+| 14 | go mod verify retry: durable behavior pin (carried from 04-21 §f)                                                                                                                             | Medium   | S      | Test          |
+| 15 | SECURITY.md: one paragraph on scanner-safe fake fixtures + why composed literals are the convention                                                                                           | Low      | S      | Documentation |
+| 16 | git-filter-repo evaluation note for future history surgery (filter-branch is deprecated)                                                                                                      | Low      | S      | Documentation |
+| 17 | `tq doctor`/CI check for `git tag --no-merged master` after any history-adjacent incident (history-rewrite policy item (c), cheap automation)                                                 | Low      | S      | Quality       |
+| 18 | Preserve the rewrite-verification checklist as a runnable helper script (count/metadata/net-diff/pickaxe) or explicitly declare YAGNI in AGENTS.md                                            | Low      | S      | Cleanup       |
+| 19 | check-doc-refs.sh: the concurrent session's in-flight edit at session end — confirm it landed gated (uncommitted at 12:03)                                                                    | Low      | S      | Quality       |
+| 20 | Consider `git push --atomic`/branch-protection "require CI green" ruling (§g2) — structural fix for the ungated-batch hole                                                                    | High     | S      | Quality       |
+| 21 | Sweep docs/status index for reports claiming "master green" that predate the 68-commit batch — re-verify claims per the stale-DONE rule                                                       | Low      | S      | Quality       |
+| 22 | AGENTS.md: fold the "gate the push, not the delta" rule into the session-start ritual section                                                                                                 | Medium   | S      | Documentation |
+| 23 | webui: confirm the concurrent health-dashboard session's remaining work is gated (their window overlapped ours 11:48–12:00)                                                                   | Medium   | S      | Quality       |
+| 24 | Executor fixtures: extract a tiny `composeSecret(parts ...string)` helper if item 4 lands, so tests stop hand-writing concatenations                                                          | Low      | S      | Cleanup       |
+| 25 | Add `refs/original` cleanup to the history-surgery playbook (kept-then-deleted manually this session)                                                                                         | Low      | S      | Documentation |
+| 26 | Check whether GitHub's pushed-secret scanning produced alerts on ANY older fixture pushed before push protection existed (API was empty for open alerts; closed-state sweep optional)         | Low      | S      | Quality       |
+| 27 | CHANGELOG: nothing needed this session (no user-visible surface changed) — recorded here so the docs-health pass doesn't hunt for one                                                         | Low      | S      | Documentation |
+| 28 | Renamed-flag sweep on the fixture rename: `rg 'xoxb-'` over the whole repo returns zero non-composed occurrences (verified for tracked files at rewrite time; re-verify after untracked-land) | Low      | S      | Quality       |
+| 29 | ci-local: consider adding the vendor-hash fast gate as an explicit early step when go.mod/go.sum changed (it exists as a flake check; surfacing it earlier saves minutes)                     | Medium   | S      | Quality       |
+| 30 | Post-incident: encode §d2 (build-vs-vet under GOOS) as a one-line gotcha in AGENTS.md Known Issues if it bites again — for now CONTRIBUTING item 5 covers it                                  | Low      | S      | Documentation |
 
 ## g) QUESTIONS (3 I cannot answer myself)
 

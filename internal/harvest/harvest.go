@@ -12,7 +12,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log/slog"
 	"os"
@@ -335,7 +335,7 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 		}
 
 		if h.cfg.DryRun {
-			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: sameSession(item.Text)})
+			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")})
 			state.known[item.Key] = task.Pending
 			enqueuedThisRepo = true
 
@@ -423,7 +423,7 @@ func (h *Harvester) skipRun(run []Item, res *Result, reason string) {
 func (h *Harvester) admitRun(ctx context.Context, run []Item, importance int, res *Result) bool {
 	if h.cfg.DryRun {
 		for _, item := range run {
-			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: sameSession(item.Text)})
+			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")})
 		}
 
 		return true
@@ -443,7 +443,7 @@ func (h *Harvester) admitRun(ctx context.Context, run []Item, importance int, re
 		if fresh {
 			res.Enqueued = append(
 				res.Enqueued,
-				Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: sameSession(item.Text)},
+				Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")},
 			)
 
 			continue
@@ -832,7 +832,7 @@ func (h *Harvester) admitItem(ctx context.Context, item Item, importance int, re
 	if t.Status == task.Pending && t.Attempts == 0 {
 		res.Enqueued = append(
 			res.Enqueued,
-			Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: sameSession(item.Text)},
+			Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")},
 		)
 
 		return true
@@ -864,12 +864,6 @@ func blockedReason(text string) (reason string, ok bool) {
 	}
 
 	return reason, true
-}
-
-// sameSession reports whether the item text references a /tmp path, the
-// signal for same-session priority promotion.
-func sameSession(text string) bool {
-	return strings.Contains(text, "/tmp")
 }
 
 func (h *Harvester) enqueue(ctx context.Context, item Item, importance int) (task.Task, error) {

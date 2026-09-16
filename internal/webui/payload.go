@@ -3,11 +3,13 @@ package webui
 import (
 	"bytes"
 	"cmp"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"slices"
 	"strings"
 	"time"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -267,12 +269,16 @@ func prettyJSON(s string) string {
 		return trimmed
 	}
 
-	if !json.Valid([]byte(trimmed)) {
+	if !jsontext.Value([]byte(trimmed)).IsValid() {
 		return trimmed
 	}
 
 	var out bytes.Buffer
-	if err := json.Indent(&out, []byte(trimmed), "", "  "); err != nil {
+	if err := func() error {
+		out, err := jsontext.AppendFormat(nil, []byte(trimmed), jsontext.WithIndent("  "))
+		(&out).Write(out)
+		return err
+	}(); err != nil {
 		return trimmed
 	}
 
@@ -349,7 +355,7 @@ func retryTrail(facts []journalFactView) []retryReason {
 
 	slices.SortStableFunc(trail, func(a, b retryReason) int {
 		if a.Count != b.Count {
-			return b.Count - a.Count
+			return cmp.Compare(b.Count, a.Count)
 		}
 
 		return b.Last.Compare(a.Last)

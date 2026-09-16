@@ -2,11 +2,13 @@ package harvest
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -26,7 +28,7 @@ func mustWrite(t *testing.T, path, content string) {
 	}
 }
 
-func mustJSON(t *testing.T, v any) json.RawMessage {
+func mustJSON(t *testing.T, v any) jsontext.Value {
 	t.Helper()
 
 	b, err := json.Marshal(v)

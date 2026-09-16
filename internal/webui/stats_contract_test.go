@@ -2,13 +2,15 @@ package webui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/httpapi"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -49,7 +51,7 @@ func TestStatsSurfacesAgree(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Complete(ctx, claimed.ID, "w1", json.RawMessage(`"ok"`)); err != nil {
+	if err := s.Complete(ctx, claimed.ID, "w1", jsontext.Value(`"ok"`)); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 

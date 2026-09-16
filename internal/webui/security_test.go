@@ -2,12 +2,13 @@ package webui
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -139,7 +140,7 @@ func TestPaginationEdges(t *testing.T) {
 	for range 5 {
 		if _, err := store.Enqueue(
 			ctx,
-			task.New{Project: "p", Type: "sh", Payload: json.RawMessage(`"true"`)},
+			task.New{Project: "p", Type: "sh", Payload: jsontext.Value(`"true"`)},
 		); err != nil {
 			t.Fatalf("seed: %v", err)
 		}

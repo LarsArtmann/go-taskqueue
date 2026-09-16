@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -114,7 +114,7 @@ func TestFactsCQRSOverStore(t *testing.T) {
 		}
 	})
 
-	if err := json.NewDecoder(strings.NewReader(out)).Decode(&rendered); err != nil {
+	if err := json.UnmarshalRead(strings.NewReader(out), &rendered); err != nil {
 		t.Fatalf("rendered output is not a JSON array: %v\n%s", err, out)
 	}
 

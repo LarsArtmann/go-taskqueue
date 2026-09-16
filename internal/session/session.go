@@ -23,8 +23,8 @@ package session
 
 import (
 	"context"
-	"encoding/json"
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"

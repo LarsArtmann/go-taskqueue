@@ -2,7 +2,7 @@ package webui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -169,7 +169,7 @@ func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
 		next = facts[len(facts)-1].Seq
 	}
 
-	if err := json.NewEncoder(w).Encode(map[string]any{
+	if err := json.MarshalWrite(w, map[string]any{
 		"facts": facts,
 		"next":  next,
 	}); err != nil {
@@ -207,7 +207,7 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(out); err != nil {
+	if err := json.MarshalWrite(w, out); err != nil {
 		slog.Error("webui: encode stats", "err", err)
 	}
 }

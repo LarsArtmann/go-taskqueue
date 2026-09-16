@@ -2,11 +2,13 @@ package review
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -33,7 +35,7 @@ const (
 )
 
 // finishTask claims and completes one pending task with result detail.
-func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessage) {
+func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail jsontext.Value) {
 	t.Helper()
 
 	ctx := context.Background()
@@ -196,7 +198,7 @@ func TestSweepSkipsNonAgentCompletions(t *testing.T) {
 	s := newTestStore(t)
 	ctx := context.Background()
 
-	enq, err := s.Enqueue(ctx, task.New{Type: "sh", Payload: json.RawMessage(`{"cmd":"echo hi"}`)})
+	enq, err := s.Enqueue(ctx, task.New{Type: "sh", Payload: jsontext.Value(`{"cmd":"echo hi"}`)})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}

@@ -48,7 +48,7 @@ host, so nothing here is pixel-verified — the one honest ceiling on this lap.
    page (still used at fragments.templ:619/628/657), Eyebrow removed from the Badge row
    and given a retirement verdict in prose (with a do-not-re-adopt note), custom row
    extended with tq-topbar/tq-panel/tq-label/tq-fault; `TestAdoptionTableCoversTemplates`
-   + `PinsCustomRows` green.
+   - `PinsCustomRows` green.
 9. **vendor/-mode fix in `build-webui-css.sh`**: a concurrent agent's git-ignored
    `vendor/` dir flipped go into vendor mode → `go list -m` resolved Dir EMPTY → the
    css build died with `Can't resolve '/templates/custom.css'`. New `module_dir()`

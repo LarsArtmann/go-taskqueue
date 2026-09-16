@@ -4,8 +4,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"flag"
 	"fmt"
@@ -230,7 +230,7 @@ func cmdEnqueue(args []string) error {
 		return err
 	}
 
-	var payloadJSON json.RawMessage
+	var payloadJSON jsontext.Value
 
 	if agentConvenienceRequested(*repoFlag, *promptText, *promptFile, *verifyCmd, *timeoutMin, *yoloTask) {
 		raw, err := buildAgentConveniencePayload(payloadFlags{
@@ -268,7 +268,7 @@ func cmdEnqueue(args []string) error {
 			raw = b
 		}
 
-		if !json.Valid(raw) {
+		if !jsontext.Value(raw).IsValid() {
 			// The shell path takes the payload as the command line itself
 			// (tq enqueue --type sh --payload 'echo hi'), so wrap a non-JSON
 			// payload as a JSON string instead of rejecting it. The stored
@@ -399,7 +399,7 @@ func agentConvenienceRequested(repo, promptText, promptFile, verify string, time
 
 // buildAgentConveniencePayload assembles an executor.AgentPayload from the
 // convenience flags, failing fast on conflicts and missing prompt sources.
-func buildAgentConveniencePayload(f payloadFlags) (json.RawMessage, error) {
+func buildAgentConveniencePayload(f payloadFlags) (jsontext.Value, error) {
 	if f.rawPayload != "" {
 		return nil, errors.New("--payload cannot be combined with the agent convenience flags (--repo/--prompt/--prompt-file/--verify/--timeout-minutes/--yolo-task)")
 	}
@@ -705,10 +705,9 @@ func cmdHarvest(args []string) error {
 		}
 
 		if *asJSON {
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
+			enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
 
-			return enc.Encode(pruned)
+			return json.MarshalEncode(enc, pruned)
 		}
 
 		printPruneResult(pruned, *dryRun)
@@ -722,10 +721,9 @@ func cmdHarvest(args []string) error {
 	}
 
 	if *asJSON {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
+		enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
 
-		return enc.Encode(res)
+		return json.MarshalEncode(enc, res)
 	}
 
 	printHarvestResult(res)
@@ -1576,10 +1574,9 @@ func cmdStats(args []string) error {
 	spent := budget.Guard{DailyCap: *dailyBudget}.SpentToday(ctx, store)
 
 	if *asJSON {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
+		enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
 
-		return enc.Encode(statsPayload{
+		return json.MarshalEncode(enc, statsPayload{
 			ByStatus:    byStatus,
 			ByProject:   byProject,
 			Budget:      budgetView{SpentToday: spent, Cap: *dailyBudget},
@@ -1772,8 +1769,7 @@ func cmdShow(args []string) error {
 		return err
 	}
 
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
+	enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
 
 	var commitView any
 
@@ -1781,7 +1777,7 @@ func cmdShow(args []string) error {
 		commitView = commitsForTask(t)
 	}
 
-	return enc.Encode(struct {
+	return json.MarshalEncode(enc, struct {
 		Task     task.Task          `json:"task"`
 		Facts    []journal.Fact     `json:"facts,omitempty"`
 		Result   any                `json:"result,omitempty"`
@@ -2229,10 +2225,9 @@ func cmdFacts(args []string) error {
 	}
 
 	if *asJSON {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
+		enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
 
-		return enc.Encode(facts)
+		return json.MarshalEncode(enc, facts)
 	}
 
 	for _, f := range facts {
@@ -2328,10 +2323,9 @@ func printCQRSEvents(facts []journal.Fact) error {
 		})
 	}
 
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
+	enc := jsontext.NewEncoder(os.Stdout, jsontext.WithIndent("  "))
 
-	return enc.Encode(out)
+	return json.MarshalEncode(enc, out)
 }
 
 // formatFactDetail renders a fact's detail JSON verbatim and non-truncated

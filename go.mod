@@ -53,7 +53,7 @@ require (
 
 require (
 	github.com/larsartmann/go-datastar/static v0.5.0
-	github.com/larsartmann/go-health v0.1.3
+	github.com/larsartmann/go-health v0.2.0
 	github.com/larsartmann/go-health-dashboard v0.8.1
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0

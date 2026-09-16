@@ -2,12 +2,14 @@ package webui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -85,7 +87,7 @@ func moveNextTask(t *testing.T, s store, dest task.Status) task.Task {
 
 	switch dest {
 	case task.Completed:
-		if err := s.Complete(ctx, tk.ID, "board-test", json.RawMessage(`{}`)); err != nil {
+		if err := s.Complete(ctx, tk.ID, "board-test", jsontext.Value(`{}`)); err != nil {
 			t.Fatalf("Complete: %v", err)
 		}
 	case task.Dead:
@@ -105,8 +107,8 @@ func moveNextTask(t *testing.T, s store, dest task.Status) task.Task {
 type store interface {
 	Enqueue(ctx context.Context, n task.New) (task.Task, error)
 	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error)
-	Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error
-	FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error
+	Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error
+	FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence jsontext.Value) error
 }
 
 func TestBoardViewRendersColumns(t *testing.T) {

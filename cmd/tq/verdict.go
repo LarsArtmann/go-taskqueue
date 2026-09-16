@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"flag"
 	"fmt"
@@ -48,7 +48,7 @@ func cmdVerdict(args []string) error {
 		return errors.New("tq verdict: empty payload — pass the result JSON as the argument (or via stdin with -)")
 	}
 
-	if !json.Valid(body) {
+	if !jsontext.Value(body).IsValid() {
 		return fmt.Errorf("tq verdict: payload is not valid JSON: %.200s — fix the JSON and re-run; the executor would reject this as a failed attempt", body)
 	}
 

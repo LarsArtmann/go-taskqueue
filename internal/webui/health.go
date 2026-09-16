@@ -9,7 +9,7 @@ package webui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -278,7 +278,7 @@ func errText(err error) string {
 func writeHealthJSON(w http.ResponseWriter, code int, resp health.Response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(resp)
+	_ = json.MarshalWrite(w, resp)
 }
 
 // newHealthDashboard builds the health dashboard wired to tq's surfaces:

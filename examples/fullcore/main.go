@@ -18,7 +18,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"flag"
 	"fmt"
@@ -26,6 +26,8 @@ import (
 	"log/slog"
 	"os"
 	"time"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -89,10 +91,10 @@ func main() {
 
 	// Producers: plain enqueue calls, same shapes the tq CLI uses.
 	demos := []task.New{
-		{Project: "demo", Type: "sh", Payload: json.RawMessage(`{"cmd":"echo hello from fullcore"}`)},
-		{Project: "demo", Type: "sh", Payload: json.RawMessage(`{"cmd":"echo second shell task"}`)},
-		{Project: "demo", Type: "greet", Payload: json.RawMessage(`{"name":"embedder"}`)},
-		{Project: "demo", Type: "flaky", Payload: json.RawMessage(`"attempt 1 fails, attempt 2 succeeds"`)},
+		{Project: "demo", Type: "sh", Payload: jsontext.Value(`{"cmd":"echo hello from fullcore"}`)},
+		{Project: "demo", Type: "sh", Payload: jsontext.Value(`{"cmd":"echo second shell task"}`)},
+		{Project: "demo", Type: "greet", Payload: jsontext.Value(`{"name":"embedder"}`)},
+		{Project: "demo", Type: "flaky", Payload: jsontext.Value(`"attempt 1 fails, attempt 2 succeeds"`)},
 	}
 
 	for i, n := range demos {

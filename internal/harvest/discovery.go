@@ -3,7 +3,7 @@ package harvest
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log/slog"
@@ -89,7 +89,7 @@ func DiscoverReposDaemon(ctx context.Context, addr, projectsDir, todoFile string
 	}
 
 	var decoded daemonDiscoverResponse
-	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &decoded); err != nil {
 		return nil, fmt.Errorf("harvest: decode daemon discovery response: %w", err)
 	}
 
