@@ -55,22 +55,18 @@ type queueProber struct {
 	store     queue.Store
 	startedAt time.Time
 
-	mu         sync.Mutex
-	resp       health.Response
-	evalAt     time.Time
-	evaluated  bool
-	startupOK  bool
-	checkSince map[string]time.Time
-	lastStatus map[string]health.Status
+	mu        sync.Mutex
+	resp      health.Response
+	evalAt    time.Time
+	evaluated bool
+	startupOK bool
 }
 
 func newQueueProber(store queue.Store) *queueProber {
 	return &queueProber{
-		store:      store,
-		startedAt:  time.Now(),
-		resp:       health.Response{Status: health.StatusWarn, Checks: map[string]health.Check{}},
-		checkSince: map[string]time.Time{},
-		lastStatus: map[string]health.Status{},
+		store:     store,
+		startedAt: time.Now(),
+		resp:      health.Response{Status: health.StatusWarn, Checks: map[string]health.Check{}},
 	}
 }
 
@@ -139,7 +135,7 @@ func (p *queueProber) StartupHandler() http.HandlerFunc {
 }
 
 // evaluate runs one store-backed check batch (the doctor subset that needs
-// nothing but the store) and stamps per-check status transitions.
+// nothing but the store).
 func (p *queueProber) evaluate(now time.Time) {
 	ctx, cancel := context.WithTimeout(context.Background(), healthEvalTimeout)
 	defer cancel()
@@ -147,8 +143,7 @@ func (p *queueProber) evaluate(now time.Time) {
 	checks := map[string]health.Check{}
 
 	counts, err := p.store.StatusCounts(ctx)
-	checks["database"] = p.stamp("database", now,
-		statusOr(err == nil, health.StatusPass, health.StatusFail), errText(err))
+	checks["database"] = mkCheck(statusOr(err == nil, health.StatusPass, health.StatusFail), errText(err))
 	if err != nil {
 		// Every check below reads the same store; one verdict beats five
 		// identical failures.
@@ -170,29 +165,25 @@ func (p *queueProber) evaluate(now time.Time) {
 			"no worker heartbeat in "+healthHeartbeatWindow.String()+" — pool idle or down"
 	}
 
-	checks["workers"] = p.stamp("workers", now, workersStatus, workersErr)
+	checks["workers"] = mkCheck(workersStatus, workersErr)
 
 	stuck := countStuckRunning(ctx, p.store, now)
-	checks["queue"] = p.stamp("queue", now,
+	checks["queue"] = mkCheck(
 		statusOr(stuck == 0, health.StatusPass, health.StatusWarn),
 		stuckNote(stuck))
 
 	dead := counts[task.Dead]
-	checks["dlq"] = p.stamp("dlq", now,
+	checks["dlq"] = mkCheck(
 		statusOr(dead == 0, health.StatusPass, health.StatusWarn),
 		dlqNote(dead))
 
 	p.finishEval(now, checks)
 }
 
-func (p *queueProber) stamp(name string, now time.Time, st health.Status, errMsg string) health.Check {
-	if p.lastStatus[name] != st || p.checkSince[name].IsZero() {
-		p.checkSince[name] = now
-	}
-
-	p.lastStatus[name] = st
-
-	return health.Check{Status: st, Error: errMsg, Since: p.checkSince[name]}
+// mkCheck builds one check result; go-health grades the overall response
+// from the per-check statuses.
+func mkCheck(st health.Status, errMsg string) health.Check {
+	return health.Check{Status: st, Error: errMsg}
 }
 
 func (p *queueProber) finishEval(now time.Time, checks map[string]health.Check) {

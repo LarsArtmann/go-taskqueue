@@ -19,7 +19,9 @@ import (
 func TestRoutesAreReadOnly(t *testing.T) {
 	t.Parallel()
 
-	bindings := (&Server{}).routeBindings()
+	s := New(newTestStore(t), Config{})
+
+	bindings := append(s.routeBindings(), s.healthBindings()...)
 
 	if len(bindings) == 0 {
 		t.Fatal("route table is empty")
