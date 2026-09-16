@@ -641,7 +641,12 @@ func (e *AgentExecutor) runCloseoutTurn(
 	if rl := e.rateLimitedTurn("agent closeout", repoDir, err, buf.String()); rl != nil {
 		// The work turn SUCCEEDED and its session is alive: on re-claim,
 		// resume at closeout instead of paying for the work turn twice
-		// (13:29 report f15).
+		// (13:29 report f15). The flag rides the error so the worker pins
+		// the resume contract into the requeue fact (16-00 f31).
+		if rle, ok := errors.AsType[*RateLimitError](rl); ok {
+			rle.ResumeCloseout = true
+		}
+
 		e.closeoutPending.Store(id.String(), closeoutPending{repoDir: repoDir, session: session})
 
 		return rl

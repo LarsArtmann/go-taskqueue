@@ -378,7 +378,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("claim: %v (%v)", got.ID, err)
 		}
 
-		if err := s.Requeue(ctx, rq.ID, "rq-w", "dirty tree", time.Minute); err != nil {
+		if err := s.Requeue(ctx, rq.ID, "rq-w", "dirty tree", time.Minute, false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -399,7 +399,7 @@ func TestPostgresConformance(t *testing.T) {
 		}
 
 		// Rate-limit park: delay longer than the original lease.
-		if err := s.Requeue(ctx, pk.ID, "park-w", "rate limited (retry after 1h)", time.Hour); err != nil {
+		if err := s.Requeue(ctx, pk.ID, "park-w", "rate limited (retry after 1h)", time.Hour, false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -424,8 +424,16 @@ func TestPostgresConformance(t *testing.T) {
 			t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
 		}
 
-		if err := s.Requeue(ctx, pk.ID, "park-w", "stale", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+		if err := s.Requeue(ctx, pk.ID, "park-w", "stale", time.Minute, false); !errors.Is(err, task.ErrLeaseNotHeld) {
 			t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
+		}
+
+		// Facts before/after the stale Fail: the lease-gated RowsAffected
+		// check must keep the fact trail frozen too (the sqlite fix's
+		// parity, 15:10 report f40).
+		before, err := s.FactsForTask(ctx, pk.ID.String(), 0)
+		if err != nil {
+			t.Fatal(err)
 		}
 
 		if err := s.Fail(
@@ -440,6 +448,28 @@ func TestPostgresConformance(t *testing.T) {
 			task.ErrLeaseNotHeld,
 		) {
 			t.Errorf("stale Fail err = %v, want ErrLeaseNotHeld", err)
+		}
+
+		after, err := s.FactsForTask(ctx, pk.ID.String(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(after) != len(before) {
+			t.Errorf("stale Fail grew the fact trail: %d -> %d facts", len(before), len(after))
+		}
+
+		// The parked-PENDING twin of an orphaned-RUNNING task (no live
+		// lease either) must stay invisible to MarkOrphaned — it holds no
+		// lease and is not stranded, only waiting (16-00 report f30).
+		if n, err := s.MarkOrphaned(ctx, time.Now()); err != nil || n != 0 {
+			t.Errorf("MarkOrphaned during park = %d (%v), want 0", n, err)
+		}
+
+		for _, f := range after {
+			if f.Type == journal.Orphaned {
+				t.Error("parked pending task carries a task.orphaned fact")
+			}
 		}
 
 		if got, _ := s.Get(ctx, pk.ID); got.Status != task.Pending {

@@ -406,7 +406,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// refusals escalate (base * 2^n capped, ±20% jitter) so a
 		// sustained-dirty repo does not bounce at the base backoff.
 		delay := p.preflightDelay(t.ID)
-		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, pre.Error(), delay); err != nil {
+		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, pre.Error(), delay, false); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
 		} else if p.preflightShouldLog(t.ID) {
 			p.log.Warn("preflight refused; requeued without attempt burn",
@@ -423,11 +423,22 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// the parsed reset time (± small jitter so many parked tasks do
 		// not reclaim in lockstep and stampede the freshly reset quota).
 		delay := rateLimitDelay(rl.RetryAfter)
-		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, rl.Error(), delay); err != nil {
+		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, rl.Error(), delay, rl.ResumeCloseout); err != nil {
 			p.log.Error("rate-limit requeue failed", "task", t.ID, "err", err)
 		} else {
-			p.log.Warn("provider rate limited; requeued without attempt burn",
-				"task", t.ID, "retry after", delay.Round(time.Second), "reason", rl.Cause.Error())
+			// resume_closeout on the requeue fact says the re-claim resumes
+			// the owed close-out turn; the provider tag (16-00 f35) names
+			// WHICH provider armed the gate when the output carried one.
+			attrs := []any{"task", t.ID, "retry after", delay.Round(time.Second), "reason", rl.Cause.Error()}
+			if rl.Provider != "" {
+				attrs = append(attrs, "provider", rl.Provider)
+			}
+
+			if rl.ResumeCloseout {
+				attrs = append(attrs, "resume", "closeout")
+			}
+
+			p.log.Warn("provider rate limited; requeued without attempt burn", attrs...)
 		}
 
 		return

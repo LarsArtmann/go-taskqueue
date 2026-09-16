@@ -23,6 +23,16 @@ type RateLimitError struct {
 	// RetryAfter is how long to wait before the next attempt. Always
 	// positive; capped by maxRateLimitWait.
 	RetryAfter time.Duration
+	// Provider is the provider tag parsed from the failing output
+	// (crush logs "provider=synthetic"), empty when the output carries
+	// none. Observability only: the worker's requeue log surfaces it so
+	// operators can see WHICH provider armed the gate (16-00 f35).
+	Provider string
+	// ResumeCloseout marks a rate-limited CLOSE-OUT turn: the work turn
+	// finished and its session is alive, so the re-claim resumes at
+	// closeout instead of re-running the paid work turn. The worker
+	// mirrors the flag into the requeue fact's evidence (16-00 f31).
+	ResumeCloseout bool
 }
 
 func (e *RateLimitError) Error() string {
@@ -95,6 +105,20 @@ var resetAtLayouts = []string{
 // (its 5s/10s/20s ladder is the agent's own short game, not the provider's
 // quota window).
 var retryAfterRe = regexp.MustCompile(`(?i)retry[ _-]after(?:[ _-]seconds)?[=: ]+["']?(\d{1,6})["']?`)
+
+// providerRe extracts the provider tag crush stamps on model calls
+// ("provider=synthetic") so the armed-gate log names the provider that
+// is exhausted. Best-effort: no match means no tag in the output.
+var providerRe = regexp.MustCompile(`(?i)\bprovider=([a-zA-Z0-9_.-]+)`)
+
+// providerTag returns the provider= tag of the output, "" when absent.
+func providerTag(output string) string {
+	if m := providerRe.FindStringSubmatch(output); m != nil {
+		return m[1]
+	}
+
+	return ""
+}
 
 // DetectRateLimit scans agent output for provider exhaustion and returns
 // how long to wait before the next attempt. The delay is, in order of
@@ -235,5 +259,10 @@ func (e *AgentExecutor) rateLimitedTurn(stage string, repoDir string, runErr err
 		e.armRateLimit(wait)
 	}
 
-	return RateLimited(fmt.Errorf("%s failed: %w: %s", stage, runErr, tailBytes([]byte(output), 8192)), wait)
+	rl := RateLimited(fmt.Errorf("%s failed: %w: %s", stage, runErr, tailBytes([]byte(output), 8192)), wait)
+	if rle, ok := errors.AsType[*RateLimitError](rl); ok {
+		rle.Provider = providerTag(output)
+	}
+
+	return rl
 }

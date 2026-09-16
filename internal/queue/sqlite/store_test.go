@@ -468,7 +468,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 		t.Fatalf("claim old: %v", err)
 	}
 
-	if err := s.Requeue(ctx, old.ID, "w1", "preflight", 0); err != nil {
+	if err := s.Requeue(ctx, old.ID, "w1", "preflight", 0, false); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 
@@ -1303,7 +1303,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	}
 
 	// Rate-limit park: requeue with a delay longer than the original lease.
-	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited (retry after 1h)", time.Hour); err != nil {
+	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited (retry after 1h)", time.Hour, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1333,7 +1333,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 		t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, "w1", "stale", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(ctx, tk.ID, "w1", "stale", time.Minute, false); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
@@ -1376,7 +1376,7 @@ func TestParkedFilter(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited (retry after 1h)", time.Hour); err != nil {
+	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited (retry after 1h)", time.Hour, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1405,11 +1405,11 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 
 	// Wrong owner cannot requeue.
-	if err := s.Requeue(ctx, tk.ID, "w2", "nope", time.Second); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(ctx, tk.ID, "w2", "nope", time.Second, false); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("wrong-owner Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, "w1", "preflight: repo dirty", 150*time.Millisecond); err != nil {
+	if err := s.Requeue(ctx, tk.ID, "w1", "preflight: repo dirty", 150*time.Millisecond, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
