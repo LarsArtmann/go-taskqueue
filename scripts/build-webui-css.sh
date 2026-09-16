@@ -17,6 +17,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TC_DIR="$(go list -m -f '{{.Dir}}' github.com/larsartmann/templ-components)"
+GHD_DIR="$(go list -m -f '{{.Dir}}' github.com/larsartmann/go-health-dashboard)"
 REPO="$(pwd)"
 OUT="internal/webui/static/app.css"
 ENTRY="$(mktemp /tmp/tq-webui-app-XXXXXX.css)"
@@ -27,6 +28,10 @@ trap 'rm -f "$ENTRY"' EXIT
 	echo "@source \"$REPO/internal/webui/*.templ\";"
 	echo "@source \"$REPO/internal/webui/*.go\";"
 	echo "@source \"$TC_DIR\";"
+	# The /health dashboard (go-health-dashboard, mounted 2026-09-16) renders
+	# from its module-cache copy — its templ output carries the tailwind
+	# utility classes the page needs.
+	echo "@source \"$GHD_DIR\";"
 	echo "@import \"$REPO/internal/webui/theme.css\";"
 	# The library's tc-* utility classes (terminal log lines, dialog
 	# animations, …) live outside Tailwind and must be imported explicitly.

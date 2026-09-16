@@ -14,22 +14,32 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
-	modernc.org/sqlite v1.58.0
+	modernc.org/sqlite v1.59.0
+)
+
+require (
+	github.com/larsartmann/go-datastar v0.5.0 // indirect
+	github.com/larsartmann/go-datastar/static v0.5.0 // indirect
+	github.com/larsartmann/go-health v0.1.3 // indirect
+	github.com/larsartmann/go-health-dashboard v0.8.1 // indirect
+	github.com/larsartmann/templ-components/datastar v1.17.0 // indirect
+	github.com/samber/do/v2 v2.1.0 // indirect
+	github.com/samber/go-type-to-string v1.8.0 // indirect
 )
 
 require (
 	// Pinned for the replace-based local build graph (internal/executor needs it since v0.3.0); the FOD for the hermetic nix build downloads
 	// per committed go.mod, which is replace-free (ADR-0017).
-	github.com/LarsArtmann/go-crush-data v0.4.0
+	github.com/LarsArtmann/go-crush-data v0.4.0 // indirect
 	github.com/Oudwins/tailwind-merge-go v0.2.3 // indirect
 	github.com/a-h/templ v0.3.1020 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/fxamacker/cbor/v2 v2.9.3 // indirect
+	github.com/fxamacker/cbor/v2 v2.9.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/larsartmann/go-branded-id v0.5.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/metadata/v4 v4.7.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.5.0 // indirect
-	github.com/larsartmann/go-error-family v0.10.0 // indirect
+	github.com/larsartmann/go-error-family v0.10.1 // indirect
 	github.com/larsartmann/go-retry v0.6.0 // indirect
 	github.com/larsartmann/go-sse v0.6.0 // indirect
 	github.com/larsartmann/templ-components v1.17.0 // indirect
@@ -47,3 +57,12 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
+
+
+
+
+
+
+
+
+
