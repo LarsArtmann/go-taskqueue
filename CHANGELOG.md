@@ -66,6 +66,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   stays 1, task stays pending, attempts stay 0), and after the window
   expires the re-claim fires exactly once more (count 2) — the second
   claim provably happens only after `not_before`.
+- **CI resilience set (transient-foreign-break retry + burst-cancel +
+  honest red reporting)**: `scripts/ci-local.sh` wraps its tree-reading
+  Go gates in `with_transient_retry` (45s×3 polls, env-overridable via
+  `TRANSIENT_POLL_SECS`/`TRANSIENT_MAX_POLLS`), so a red gate caused by a
+  concurrent session's mid-edit tree fails with "concurrent edit in
+  flight" context instead of a mystery break; nix steps stay unwrapped
+  (they measure the staged tree). `scripts/check-transient-retry.sh`
+  pins the helper's shipped semantics as a ci-local step (negative-proven
+  against broken extractions). `ci.yml` gains a `concurrency` group with
+  `cancel-in-progress` so daemon burst-pushes supersede instead of
+  queueing duplicate runs; `check-ci.sh` distinguishes a red run whose
+  commit predates the local tree ("pushing a fix? Bypass consciously with
+  CI_CHECK=off") from a red master that IS your tree; `check-go-mods.sh`
+  retries each module's `go mod verify` once with an observable WARN,
+  absorbing the shared-module-cache write flake.
 - **Durable self-test pin for ci-local's transient-retry wrapper**:
   `scripts/check-transient-retry.sh` (01-46 report f2) sed-extracts the
   SHIPPED `with_transient_retry` helper from `scripts/ci-local.sh` and
