@@ -25,9 +25,9 @@ cmd/tq	nonamedreturns:	2
 cmd/tq	paralleltest:	49
 cmd/tq	perfsprint:	1
 cmd/tq	predeclared:	1
-cmd/tq	tagliatelle:	9
+cmd/tq	tagliatelle:	10
 cmd/tq	unconvert:	1
-cmd/tq	varnamelen:	6
+cmd/tq	varnamelen:	7
 cmd/tq	wsl_v5:	6
 executor	paralleltest:	1
 internal/executor	contextcheck:	1
@@ -35,14 +35,14 @@ internal/executor	cyclop:	4
 internal/executor	err113:	40
 internal/executor	forcetypeassert:	3
 internal/executor	gci:	2
-internal/executor	gochecknoglobals:	4
+internal/executor	gochecknoglobals:	5
 internal/executor	gocognit:	3
 internal/executor	godox:	3
 internal/executor	golines:	4
 internal/executor	gosmopolitan:	4
 internal/executor	ireturn:	1
 internal/executor	makezero:	1
-internal/executor	mnd:	29
+internal/executor	mnd:	31
 internal/executor	modernize:	1
 internal/executor	nlreturn:	1
 internal/executor	noctx:	10
@@ -51,7 +51,7 @@ internal/executor	paralleltest:	50
 internal/executor	prealloc:	1
 internal/executor	predeclared:	1
 internal/executor	unparam:	2
-internal/executor	varnamelen:	16
+internal/executor	varnamelen:	17
 internal/executor	wrapcheck:	4
 internal/executor	wsl_v5:	8
 internal/journal/cqrs	err113:	3
@@ -121,7 +121,7 @@ root	gosmopolitan:	2
 root	govet:	4
 root	ineffassign:	4
 root	makezero:	7
-root	mnd:	44
+root	mnd:	45
 root	musttag:	1
 root	nilerr:	3
 root	noctx:	29

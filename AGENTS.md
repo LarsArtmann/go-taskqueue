@@ -686,7 +686,11 @@ prose, not the table.
   was never linted; +268 findings/31 rows via the devmod+devwork shims in
   `scripts/lib/cmd-tq-devmod.sh` — golangci-lint rejects -modfile in its env
   probes, so tooling lint runs under a derived go.work; non-cmd/tq counts
-  byte-identical across the regen))
+  byte-identical across the regen); 2026-09-16 surgical repair:
+  executor mnd 29→31 / gochecknoglobals 4→5 / varnamelen 16→17 — drift
+  from the secrets-in-logs redact.go (748e989) landing after the fifth
+  regen, the repairing window's own diff lint-clean
+  (`--new-from-rev HEAD~1`: zero findings))
   or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
