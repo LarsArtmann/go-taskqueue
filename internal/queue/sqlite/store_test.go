@@ -1458,6 +1458,75 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 }
 
+// TestRequeueFactCarriesResumeCloseout pins the 16-00 f31 contract: a
+// closeout-resume requeue stamps resume_closeout into the fact detail so
+// the journal distinguishes an owed close-out turn from a parked work
+// turn; a plain preflight requeue omits the key entirely (omitempty).
+func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	claimAndRequeue := func(resume bool) task.Task {
+		t.Helper()
+
+		tk, err := s.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 2})
+		if err != nil {
+			t.Fatalf("enqueue: %v", err)
+		}
+
+		if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := s.Requeue(ctx, tk.ID, "w1", "rate limited", time.Minute, resume); err != nil {
+			t.Fatalf("Requeue: %v", err)
+		}
+
+		return tk
+	}
+
+	for _, tc := range []struct {
+		name   string
+		resume bool
+		want   bool
+	}{
+		{name: "closeout resume stamps the flag", resume: true, want: true},
+		{name: "plain requeue omits the flag", resume: false, want: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tk := claimAndRequeue(tc.resume)
+
+			trail, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+			if err != nil {
+				t.Fatalf("facts: %v", err)
+			}
+
+			for _, f := range trail {
+				if f.Type != journal.Requeued {
+					continue
+				}
+
+				var ev queue.RequeueEvidence
+				if err := json.Unmarshal(f.Detail, &ev); err != nil {
+					t.Fatalf("detail not RequeueEvidence: %v (%s)", err, f.Detail)
+				}
+
+				if ev.ResumeCloseout != tc.want {
+					t.Errorf("resume_closeout = %v, want %v (%s)", ev.ResumeCloseout, tc.want, f.Detail)
+				}
+
+				if tc.want != ev.ResumeCloseout && strings.Contains(string(f.Detail), "resume_closeout") {
+					t.Errorf("omitted flag leaked into detail: %s", f.Detail)
+				}
+
+				return
+			}
+
+			t.Fatal("no task.requeued fact in the trail")
+		})
+	}
+}
+
 // seedFacts appends n enqueued facts (unique task ids) to the journal.
 func seedFacts(ctx context.Context, t *testing.T, s *Store, n int) {
 	t.Helper()

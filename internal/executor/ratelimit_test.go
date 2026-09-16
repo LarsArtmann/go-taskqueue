@@ -280,6 +280,41 @@ func TestRateLimitedTurnArmsRepoGate(t *testing.T) {
 	}
 }
 
+// TestRateLimitedTurnCarriesProviderTag pins the observability contract
+// (16-00 report f35): when the failing output carries crush's
+// "provider=<x>" stamp, the RateLimitError surfaces it so the worker's
+// requeue log names WHICH provider armed the gate. A work-turn
+// classification never claims a closeout resume.
+func TestRateLimitedTurnCarriesProviderTag(t *testing.T) {
+	e := &AgentExecutor{}
+
+	rl := e.rateLimitedTurn("agent run", "/srv/zai", errors.New("exit 1"),
+		`INFO ModelProvider called provider=zai model=glm-5.3-flash
+WARN Provider request failed status_code=429 message="Usage limit reached"`)
+	if rl == nil {
+		t.Fatal("expected a *RateLimitError")
+	}
+
+	rle, ok := errors.AsType[*RateLimitError](rl)
+	if !ok {
+		t.Fatalf("classified as %T, want *RateLimitError", rl)
+	}
+
+	if rle.Provider != "zai" {
+		t.Fatalf("provider tag = %q, want zai", rle.Provider)
+	}
+
+	if rle.ResumeCloseout {
+		t.Fatal("work-turn classification must not set ResumeCloseout")
+	}
+
+	if tagged := e.rateLimitedTurn("agent run", "", errors.New("exit 1"), `status_code=429 too many requests`); tagged == nil {
+		t.Fatal("expected a *RateLimitError")
+	} else if rle, ok := errors.AsType[*RateLimitError](tagged); !ok || rle.Provider != "" {
+		t.Fatalf("output without a provider tag must yield empty, got %q", rle.Provider)
+	}
+}
+
 // TestWithoutCloseoutCarriesSettings pins the review/status clone contract:
 // every runtime setting rides along, the close-out prompt is stripped, and
 // the clone starts with a FRESH rate-limit gate (an armed atomic.Int64 must
@@ -292,6 +327,10 @@ func TestWithoutCloseoutCarriesSettings(t *testing.T) {
 		MaxConcurrent: 7,
 	}
 	e.armRateLimit(time.Hour)
+	// Repo-scoped evidence must not leak either: a Z.ai 429 in the WORK
+	// executor must never park the review clone's runs for the same repo
+	// (16-00 report f46).
+	e.armRateLimitRepo("/srv/zai", time.Hour)
 
 	clone := e.WithoutCloseout()
 
@@ -305,5 +344,9 @@ func TestWithoutCloseoutCarriesSettings(t *testing.T) {
 
 	if _, limited := clone.rateLimitWait(); limited {
 		t.Fatal("clone inherited an armed rate-limit gate, want fresh")
+	}
+
+	if _, limited := clone.rateLimitWaitRepo("/srv/zai"); limited {
+		t.Fatal("clone inherited a repo-armed rate-limit gate, want fresh")
 	}
 }

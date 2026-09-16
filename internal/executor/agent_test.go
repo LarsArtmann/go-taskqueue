@@ -968,6 +968,10 @@ exit 0
 		t.Fatalf("closeout 429 classified as %v (%T), want *RateLimitError", err, err)
 	}
 
+	if !rl.ResumeCloseout {
+		t.Fatal("closeout 429 must carry ResumeCloseout so the requeue fact pins the resume (16-00 f31)")
+	}
+
 	if rl.RetryAfter <= 0 {
 		t.Fatalf("RetryAfter = %s, want positive", rl.RetryAfter)
 	}
