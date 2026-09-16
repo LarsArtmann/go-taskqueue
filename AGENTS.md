@@ -89,6 +89,7 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/ratelimit-e2e.sh # hermetic: a Z.ai-429 stub failure parks the task (no attempt burned)
 ./scripts/smoke/fullcore.sh  # examples/fullcore drains 4/4 on sqlite + deadline path xN (50ms timeout calibrated: trips on this host at 250ms worker-start latency; DEADLINE_RUNS/DEADLINE_TIMEOUT_MS knobs; TQ_TEST_POSTGRES adds the postgres variant)
 ./scripts/smoke/reviews.sh   # stub reviewer; approve + request_changes + autofix loop
+./scripts/smoke/session-close.sh # session-close bridge: begin → footer commit → close → one review + one status + replay-safe second close
 ./scripts/check-guard-wiring.sh # orphaned-guard audit: every check-*/smoke script must be referenced by ci-local/ci.yml/flake or be deleted
 ./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
 ./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)

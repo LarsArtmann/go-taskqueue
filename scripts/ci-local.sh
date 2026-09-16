@@ -233,6 +233,9 @@ step "rate-limit e2e smoke (429 parks the task without burning an attempt)"
 step "review-loop e2e smoke (stub reviewer; approve + request_changes + autofix)"
 ./scripts/smoke/reviews.sh
 
+step "session-close bridge smoke (begin → footer commit → close → replay-safe second close)"
+./scripts/smoke/session-close.sh
+
 # Advisory (2026-09-14 O5 ruling): journal-drift audit smoke over a seeded
 # fixture — reported, never a hard gate on task state.
 step "journal-drift audit smoke (advisory)"
