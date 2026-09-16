@@ -62,6 +62,7 @@ Executed the 12-30 report's delta-5 list end-to-end: CSP composition + noindex (
 ## f) Up to 50 things to get done next (delta-first, carried marked ⛳)
 
 **Finish this session's arc**
+
 1. Dark-mode CDP screenshot loop; verify topbar hover overrides + `.tq-panel` dark borders + nowband/ground interplay.
 2. Screenshot the remaining surfaces: board view, /tasks, filter interactions, 404 page, writes-locked mode.
 3. Act on the visual nits found today: chart panels still carry rounded Card chrome (vs the new seam language); `/health` stat cards are library-rounded; fact-rate y-axis shows fractional ticks (0.2…1) for integer counts; `RAW PAYLOAD`/`RETRY TRAIL` caps vs lowercase terminal labels consistency call.
@@ -130,4 +131,5 @@ Executed the 12-30 report's delta-5 list end-to-end: CSP composition + noindex (
 3. **Scope + upstream consent: do board and task-detail get the full instrument treatment (they render coherently today but keep library Card chrome on charts/stat cards), and may I file the two go-health-dashboard issues (CSP parity + head-injection option) after verify-before-filing?**
 
 ---
-*Gates this lap: gofmt clean · root build/vet green (GOEXPERIMENT=jsonv2) · webui race suite green · webui module gate green · webui smoke PASS on fresh binary · check-features-roadmap ok · check-doc-refs ok · check-status-index ok · lint-baseline --check green (1101/140 after owned regen) · webui --new-from-rev zero · three screenshots rendered and visually verified (light mode). Evidence: /tmp/shots/*.png (transient — archiving is §f7), commits 815db17 (health/webui fix), 7caf8df (CHANGELOG/FEATURES), plus daemon-swept docs.*
+
+_Gates this lap: gofmt clean · root build/vet green (GOEXPERIMENT=jsonv2) · webui race suite green · webui module gate green · webui smoke PASS on fresh binary · check-features-roadmap ok · check-doc-refs ok · check-status-index ok · lint-baseline --check green (1101/140 after owned regen) · webui --new-from-rev zero · three screenshots rendered and visually verified (light mode). Evidence: /tmp/shots/_.png (transient — archiving is §f7), commits 815db17 (health/webui fix), 7caf8df (CHANGELOG/FEATURES), plus daemon-swept docs.*
