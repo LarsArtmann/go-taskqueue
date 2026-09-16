@@ -39,10 +39,12 @@ done
 for m in . $mods; do
 	# go mod verify flakes when the shared module cache is written
 	# concurrently (16-00 report f41): retry once before failing.
-	if ! (cd "$m" && GOWORK=off go mod verify >/dev/null) &&
-		! (cd "$m" && GOWORK=off go mod verify >/dev/null); then
-		echo "FAIL: go mod verify in $m"
-		fail=1
+	if ! (cd "$m" && GOWORK=off go mod verify >/dev/null); then
+		echo "WARN: go mod verify flaked in $m — retrying once"
+		if ! (cd "$m" && GOWORK=off go mod verify >/dev/null); then
+			echo "FAIL: go mod verify in $m (retry also failed)"
+			fail=1
+		fi
 	fi
 done
 
