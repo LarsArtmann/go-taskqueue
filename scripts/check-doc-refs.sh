@@ -15,6 +15,8 @@ allow=(
 	'^docs/services/'         # SystemNix repo paths cited as deploy targets (CHANGELOG round-8)
 	'^modules/nixos/'         # SystemNix house module cited as the deployed shape (FEATURES round-8)
 	'^example/taskmanager'    # go-cqrs-lite LIBRARY repo path, cited library-side in the storage verdict (AGENTS.md, verified 2026-09-13)
+	'^origin/master'          # git revision RANGE in the filter-branch playbook — a rev, not a path (AGENTS.md, 2026-09-16)
+	'^refs/original'          # git backup-ref namespace written by filter-branch — a ref, not a path (AGENTS.md, 2026-09-16)
 )
 
 fail=0

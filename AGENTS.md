@@ -855,8 +855,9 @@ prose, not the table.
 - ⚠️ **GitHub Push Protection false-positives on shape-valid FAKE token
   fixtures** (2026-09-16: a push of 68 commits blocked over the
   `redact_test.go` Slack fixture, the only fixture whose shape matched
-  GitHub's pattern — the AWS `…EXAMPLE` and checksummed-`ghp_` fixtures
-  pass because they fail the stricter real patterns). The scanner matches
+  GitHub's pattern — HYPOTHESIS, unverified against GitHub's unpublished
+  regexes: the AWS `…EXAMPLE` and checksummed-`ghp_` fixtures pass
+  because they fail the stricter real patterns). The scanner matches
   token SHAPES in source, not realness. Fix class: COMPOSE the fixture
   literal (`"xox" + "b-…"`) so no scanner can match the source while the
   runtime value still exercises the redactor byte-identically (redact.go's
