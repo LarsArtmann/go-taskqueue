@@ -10,6 +10,7 @@ package webui
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -179,7 +180,7 @@ func (p *queueProber) evaluate(now time.Time) {
 	dead := counts[task.Dead]
 	checks["dlq"] = p.stamp("dlq", now,
 		statusOr(dead == 0, health.StatusPass, health.StatusWarn),
-		stuckDLQ(dead))
+		dlqNote(dead))
 
 	p.finishEval(now, checks)
 }
@@ -250,15 +251,15 @@ func stuckNote(stuck int) string {
 		return ""
 	}
 
-	return fmtStuck(stuck)
+	return fmt.Sprintf("%d running task(s) hold an EXPIRED lease and no worker reclaimed them — see tq doctor --mark-orphans", stuck)
 }
 
-func stuckDLQ(dead int) string {
+func dlqNote(dead int) string {
 	if dead == 0 {
 		return ""
 	}
 
-	return fmtDLQ(dead)
+	return fmt.Sprintf("%d dead-lettered task(s) — inspect with tq dlq", dead)
 }
 
 func statusOr(ok bool, pass, fail health.Status) health.Status {
@@ -306,6 +307,23 @@ func newHealthDashboard(pro dashboard.Prober) *dashboard.Dashboard {
 		dashboard.WithCSSPath("/static/app.css"),
 		dashboard.WithNonceExtractor(func(r *http.Request) string { return ctxNonce(r.Context()) }),
 	)
+}
+
+// withDashboardCSP swaps the strict task-dashboard CSP for the health
+// dashboard's own policy on its routes: the Datastar SDK needs 'unsafe-eval',
+// which securityHeaders deliberately never grants. It runs INSIDE
+// withSecurityHeaders, so only the CSP header is overridden — nosniff,
+// X-Frame-Options and friends stay. The nonce is the same per-request one
+// the security-headers middleware published, so the page's inline bootstrap
+// script stays nonce-authorized.
+func withDashboardCSP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if nonce := ctxNonce(r.Context()); nonce != "" {
+			w.Header().Set("Content-Security-Policy", dashboard.RecommendedCSP(nonce))
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 // serveDatastarSDK serves the embedded Datastar client bundle same-origin —

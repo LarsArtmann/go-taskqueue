@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/larsartmann/go-health-dashboard"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 )
 
@@ -91,6 +92,11 @@ type Server struct {
 	hub   *Hub
 	cfg   Config
 
+	// prober derives store-backed health for the go-health-dashboard mount;
+	// dash renders it at /health (+ JSON probes). See health.go.
+	prober *queueProber
+	dash   *dashboard.Dashboard
+
 	// writes throttles CSRF brute force on the two write routes.
 	writes *writeRateLimiter
 
@@ -102,10 +108,14 @@ type Server struct {
 func New(store queue.Store, cfg Config) *Server {
 	cfg = cfg.withDefaults()
 
+	prober := newQueueProber(store)
+
 	return &Server{
 		store:  store,
 		hub:    NewHub(),
 		cfg:    cfg,
+		prober: prober,
+		dash:   newHealthDashboard(prober),
 		writes: newWriteRateLimiter(),
 	}
 }
@@ -133,6 +143,30 @@ func (s *Server) routeBindings() []struct {
 		{"GET", "/api/stats", s.handleStats},
 		{"GET", "/api/facts", s.handleFacts},
 		{"GET", "/static/", nil}, // staticHandler, wired in Handler
+	}
+}
+
+// healthBindings is the go-health-dashboard route table (health.go): the
+// severity dashboard at /health, its SSE stream, same-origin SDK bundle,
+// favicon, and the three JSON probes. All GET — the ADR-0003 read-only
+// guardrail test walks this table next to routeBindings.
+func (s *Server) healthBindings() []struct {
+	method  string
+	pattern string
+	handler func(http.ResponseWriter, *http.Request)
+} {
+	return []struct {
+		method  string
+		pattern string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"GET", HealthDashboardPath, withDashboardCSP(s.dash.Handler()).ServeHTTP},
+		{"GET", HealthSSEPath, withDashboardCSP(s.dash.SSEHandler()).ServeHTTP},
+		{"GET", HealthSDKPath, serveDatastarSDK},
+		{"GET", HealthFaviconPath, s.dash.FaviconHandler()},
+		{"GET", HealthLivenessPath, s.prober.LivenessHandler()},
+		{"GET", HealthReadinessPath, s.prober.ReadinessHandler()},
+		{"GET", HealthStartupPath, s.prober.StartupHandler()},
 	}
 }
 
@@ -164,6 +198,11 @@ func (s *Server) writeBindings() []struct {
 //	GET /api/stats         JSON status counts
 //	GET /api/facts         JSON journal cursor (?after=SEQ&limit=N)
 //
+// The go-health-dashboard surface (healthBindings) mounts on top: /health,
+// /health/sse, /health/datastar.js, /health/favicon.svg, and the JSON
+// probes /healthz, /readyz, /startupz — all read-only, all behind the same
+// auth gate; the /health page runs the dashboard's own CSP (health.go).
+//
 // With Config.AllowWrites the admin routes are added on top:
 //
 //	POST /task/{id}/cancel  withdraw a pending task / request a running stop
@@ -182,6 +221,10 @@ func (s *Server) Handler() http.Handler {
 			continue
 		}
 
+		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
+	}
+
+	for _, route := range s.healthBindings() {
 		mux.HandleFunc(route.method+" "+route.pattern, route.handler)
 	}
 
@@ -287,6 +330,12 @@ func (s *Server) Run(ctx context.Context) error {
 		return err
 	}
 
+	// The health dashboard's SSE pusher must be active before any /health/sse
+	// subscriber connects; it exits with ctx.
+	if err := s.dash.Start(ctx); err != nil {
+		slog.Error("webui: health dashboard pusher failed to start", "err", err)
+	}
+
 	tailerDone := make(chan struct{})
 
 	go func() {
@@ -334,6 +383,8 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 
 	<-tailerDone
+
+	s.dash.Shutdown()
 
 	if err := s.hub.Shutdown(shutdownCtx); err != nil {
 		slog.Error("webui: hub shutdown", "err", err)
