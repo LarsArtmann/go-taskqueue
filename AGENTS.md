@@ -652,6 +652,9 @@ prose, not the table.
 - ⚠️ **`tq serve` security model**: loopback-only and read-only by default;
   `--allow-writes` adds exactly two CSRF-guarded admin routes (cancel,
   rescue) with a failed-attempt lockout (3 bad CSRF tokens → 60s 429);
+  the strikes map is bounded against rotating source IPs (1024-key cap:
+  global idle sweep + least-recently-active eviction; live lockouts
+  survive both);
   non-loopback binds (incl. `:port`, hostnames) refuse to start without
   `--auth-token` (constant-time bearer/`?token=`). Full matrix:
   SECURITY.md. Don't add write endpoints without the same treatment.

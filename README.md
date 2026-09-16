@@ -336,9 +336,9 @@ toolchain PATH baked in) — see `deploy/nixos/tq-agent-pool.nix`.
   own Go func. Workers look executors up by task `type`.
 - **Repo-side claim marker** — the queue lease dedupes WORKERS, not two
   dispatches racing on the same task in the target repo. The consumer-side
-  convention (`scripts/tq-claim.sh` pre-flight claim + `already_done` /
-  `blocked_owner` / `blocked_claimed` verdict shapes, adopted by CV):
-  `docs/operations/task-dispatch-contract.md` in the LarsArtmann/CV repo.
+  convention (a pre-flight `tq-claim.sh` claim + `already_done` /
+  `blocked_owner` / `blocked_claimed` verdict shapes) is adopted by CV;
+  the task-dispatch contract lives in the LarsArtmann/CV repo, not here.
 
 ## Status codes
 

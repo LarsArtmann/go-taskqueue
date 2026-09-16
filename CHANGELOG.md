@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **`tq doctor --hygiene` stale-pin audit + claim-time re-resolution**: the audit
+  compares every PENDING agent task's enqueue-time `.tq-verify` pin against the repo's
+  CURRENT gate ladder (`.tq-verify` file, else auto-detect) with a three-way verdict —
+  match / latent (a file now overrides the pin) / STALE PIN WILL FIRE — retiring the
+  stale-payload audit class (09-39 report f2/f3). `--reresolve-verify` on
+  `tq worker --agents` and `tq agent-pool` makes claim-time resolution ignore
+  enqueue-time pins entirely. Warn-level by design; repair of stored payloads is a
+  non-goal (enqueue immutability).
+- **`task.AllStatuses()` facade export**: the status enum list is exported once from
+  `internal/task` (a function, so no caller can mutate it) with a hardcoded-oracle pin
+  test; the webui and httpapi twin lists are deleted and both stats surfaces + board
+  columns range the export. Shipped in the `task/v0.3.0` + `internal/task/v0.3.0` tags.
 - **HTTP API hardening (`tq api`)**: the production write API now matches
   the dashboard's write-surface hardening (03-05 report f2/f3). Every
   response carries `X-Content-Type-Options: nosniff` (auth failures
@@ -134,6 +146,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   auto-loaded by crush (the "Read AGENTS.md first" step was dead tokens),
   and the self-report step is gone (see above).
 ### Fixed
+- **Dashboard write-lockout strikes map is bounded against rotating source IPs**:
+  the CSRF limiter pruned strike entries only when the same client contacted a write
+  route again, so a source rotating IPs grew the map without limit. Past a 1024-key cap,
+  entries idle past the keep horizon are swept globally and the least-recently-active
+  are evicted; live lockouts survive both unless every entry is locked. The `tq api`
+  bearer-auth limiter ships the same bound. Pinned by
+  `TestWriteRateLimitBoundedAgainstRotatingIPs`.
 - **`executor.ResultLine`/`ExtractResultPayload` now actually read the
   LAST `TQ_RESULT:` line** as every doc comment promised: the regex scan
   used `FindStringSubmatch`, which returns the FIRST match — the exact
