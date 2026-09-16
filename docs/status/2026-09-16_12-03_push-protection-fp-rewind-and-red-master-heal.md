@@ -243,3 +243,32 @@ HARVEST routing rigor; most §c/§e items are repeated here in actionable form)
 **State at close**: fix for (1) pushed; (2) is the one remaining red gate and
 needs the owner's runner-side differential dump (§f item 1). Everything
 locally reproducible has been reproduced and is green.
+
+**Lap 3 addendum (12:40 CEST) — the clobber, self-caught:**
+
+- Run on 8a66642: module gates STILL red with the SAME `empty ident name` —
+  and the pushed tree did NOT contain my depbump fix. Root cause: the
+  concurrent session overwrote `depbump_unix_test.go` after my edit (their
+  write lacked my Setenv; the documented concurrent-clobber class from the
+  03-41/03-43 reports, this time in the reverse direction — MY change was
+  the casualty). The fix existed only in my working tree when I tested, and
+  never reached a commit; my wait-for-clean-tree loop then mistook the
+  daemon's fold of OTHER files for the fix being landed — I verified the
+  count and the metadata but never verified THE FIX ITSELF was in the folded
+  commit. Gate-that-lies, second instance of the day: verified everything
+  AROUND the change instead of the change.
+- Repair: re-applied the fix, re-verified sanitized-env green, then verified
+  at EVERY hop — present in the working tree, present in the folded tip
+  commit, present on `origin/master` after push (`47a0add`).
+- Also self-caught this lap: the second filter-branch silently DID NOT RUN —
+  it refused on the existing `refs/original` backup and my `tail -1` read
+  the refusal hint as if it were progress output; per-commit tree grep
+  exposed it (SHAs unchanged across a "successful" rewrite). Re-ran with
+  `-f`, then verified per-commit, not just at the tip.
+
+**Lap 4 verdict (run on 47a0add)**: filled at the end of this report's
+session — see the poll result below if still reading mid-flight. Expected:
+`test` job green (fix verified on the remote tip); `nix` job expected to
+STAY red solely on the runner-ONLY vendorHash variant (owner-grade chase,
+§f item 1) unless the runner's module fetch agrees with the local one this
+time.
