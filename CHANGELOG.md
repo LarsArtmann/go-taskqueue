@@ -42,7 +42,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   redaction false positive only mangles a debug tail, a miss persists a
   live credential. The audit half: `tq audit --journal` additionally
   reports `SECRET EVIDENCE` rows (fact seq/task/type/field/hit-count,
-  never the secret itself) for stored facts whose error/detail still
+  never the secret itself; a hit is a distinct secret location —
+  overlapping pattern spans merge, so one `Authorization: Bearer …` line
+  is one hit) for stored facts whose error/detail still
   carries a token-shaped string — facts written before the pass shipped
   are findable via `tq show <id>`. Executor facade gained `RedactSecrets`,
   `SecretHits`, `RedactMarker` (parity-gated).
