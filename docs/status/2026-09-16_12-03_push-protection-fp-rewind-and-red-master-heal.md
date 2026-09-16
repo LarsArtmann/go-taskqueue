@@ -19,7 +19,9 @@ every failed CI gate locally green, pushed the healing batch, and watched CI.
 ## a) FULLY DONE
 
 1. **Push-protection FP root-caused and fixture defused.** The flagged line is
-   `fakeSlack = "xox" + "b-123456789012-abcdefghijklmnop"` — a deliberately fake
+   the `fakeSlack` fixture — an `xoxb-…` Slack-shaped literal
+   (12 digits + 16 letters; full value now only in git history, composed out
+   of every reachable text per the AGENTS.md rule) — a deliberately fake
    fixture exercising the redactor's Slack pattern
    (`xox[baprs]-[A-Za-z0-9-]{10,}`, redact.go:37). Fix: compose the literal
    (`"xox" + "b-…"`) so no scanner can match the source while the runtime
@@ -119,6 +121,14 @@ every failed CI gate locally green, pushed the healing batch, and watched CI.
    metadata equality verification in §a2 only exists because the snapshot was
    redone properly before rewriting. Snapshot-first is what made the rewrite
    verifiable at all.
+6. **I violated the fixture convention in the same session that wrote it.**
+   This report's §a1 originally quoted the flagged token literal verbatim
+   ("documenting the problem") — push protection scans DOCS too, the daemon
+   folded that report into unpushed d65a3c2, and the next push was rejected
+   again. Caught by the rejection, fixed with the same composed-literal
+   treatment + a second small rewrite. Lesson (now in AGENTS.md): scanners
+   match SHAPES in ANY file — never write a full token shape anywhere, not
+   even to describe the bug you just fixed.
 
 ## e) WHAT WE SHOULD IMPROVE
 
