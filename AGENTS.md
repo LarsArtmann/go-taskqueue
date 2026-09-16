@@ -689,8 +689,9 @@ prose, not the table.
   byte-identical across the regen); 2026-09-16 surgical repair:
   executor mnd 29→31 / gochecknoglobals 4→5 / varnamelen 16→17 — drift
   from the secrets-in-logs redact.go (748e989) landing after the fifth
-  regen, the repairing window's own diff lint-clean
-  (`--new-from-rev HEAD~1`: zero findings))
+  regen — plus cmd/tq tagliatelle 9→10 / varnamelen 6→7 and root mnd
+  44→45 from concurrent post-regen windows; the repairing window's own
+  diff was lint-clean (`--new-from-rev HEAD~1`: zero findings))
   or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
