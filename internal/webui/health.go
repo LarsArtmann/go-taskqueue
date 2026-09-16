@@ -143,6 +143,7 @@ func (p *queueProber) evaluate(now time.Time) {
 	checks := map[string]health.Check{}
 
 	counts, err := p.store.StatusCounts(ctx)
+
 	checks["database"] = mkCheck(statusOr(err == nil, health.StatusPass, health.StatusFail), errText(err))
 	if err != nil {
 		// Every check below reads the same store; one verdict beats five
@@ -157,6 +158,7 @@ func (p *queueProber) evaluate(now time.Time) {
 	workersErr := ""
 
 	workersStatus := health.StatusPass
+
 	switch {
 	case err != nil:
 		workersStatus, workersErr = health.StatusFail, errText(err)
@@ -242,7 +244,10 @@ func stuckNote(stuck int) string {
 		return ""
 	}
 
-	return fmt.Sprintf("%d running task(s) hold an EXPIRED lease and no worker reclaimed them — see tq doctor --mark-orphans", stuck)
+	return fmt.Sprintf(
+		"%d running task(s) hold an EXPIRED lease and no worker reclaimed them — see tq doctor --mark-orphans",
+		stuck,
+	)
 }
 
 func dlqNote(dead int) string {

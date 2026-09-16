@@ -713,8 +713,7 @@ func TestRateLimitRequeuesWithoutAttemptBurn(t *testing.T) {
 func TestCloseoutResumeFlagReachesRequeueFact(t *testing.T) {
 	store := testStore(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	reg := executor.NewRegistry()
 	reg.RegisterFunc("agent", func(context.Context, task.Task) error {

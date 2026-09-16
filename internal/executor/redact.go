@@ -40,7 +40,9 @@ var secretPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\bauthorization["']?\s*[:=]\s*["']?(?:bearer\s+)?[A-Za-z0-9._~+/=-]{16,}`),
 	// Secret-shaped key=value / key: value assignments (12+ value chars so
 	// "password=true" style prose survives)
-	regexp.MustCompile(`(?i)\b(?:api[_-]?key|apikey|secret|access[_-]?token|auth[_-]?token|password|passwd)\b["']?\s*[:=]\s*["']?[A-Za-z0-9+/_-]{12,}`),
+	regexp.MustCompile(
+		`(?i)\b(?:api[_-]?key|apikey|secret|access[_-]?token|auth[_-]?token|password|passwd)\b["']?\s*[:=]\s*["']?[A-Za-z0-9+/_-]{12,}`,
+	),
 }
 
 // SecretHits counts distinct provider-token-shaped locations in s — the
@@ -54,6 +56,7 @@ func SecretHits(s string) int {
 	type span struct{ start, end int }
 
 	var spans []span
+
 	for _, re := range secretPatterns {
 		for _, loc := range re.FindAllStringIndex(s, -1) {
 			spans = append(spans, span{start: loc[0], end: loc[1]})
@@ -72,8 +75,10 @@ func SecretHits(s string) int {
 	for _, candidate := range spans[1:] {
 		if candidate.start < mergedEnd {
 			mergedEnd = max(mergedEnd, candidate.end)
+
 			continue
 		}
+
 		hits++
 		mergedEnd = candidate.end
 	}

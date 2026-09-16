@@ -906,3 +906,118 @@ kbd {
 .tq-fact-cancelled {
   opacity: 0.5;
 }
+
+/* ---------------------------------------------------------------------------
+ * Instrument pass (2026-09-16): one continuous control surface, not cards.
+ * The identity anchors are the hull-dark topbar and nowband; content sits on
+ * seams and panels instead of floating shadow boxes; labels follow the
+ * quiet terminal convention (lowercase mono, tight tracking) — the loud
+ * all-caps eyebrow treatment read as templated chrome.
+ * ------------------------------------------------------------------------- */
+
+/* Ground: light mode gets navy-tinted paper (BodyClass in components.go),
+   dark keeps the abyss. Panels and seams read against it. */
+
+/* Hull-dark topbar in BOTH themes — the identity anchor that keeps light
+   mode coherent instead of generic-white. Overrides the toggle's light-mode
+   utilities, which were tuned for a light bar. */
+.tq-topbar {
+  background: var(--color-gray-950);
+  border-bottom: 1px solid var(--color-gray-800);
+}
+
+.tq-topbar [data-theme-toggle] {
+  color: var(--color-gray-400);
+}
+
+.tq-topbar [data-theme-toggle]:hover {
+  background: var(--color-gray-800);
+  color: var(--color-gray-200);
+}
+
+/* Panels: seam-bordered surfaces on the ground — structure by hairline,
+   not by drop shadow. Light = paper card, dark = hull. */
+.tq-panel {
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.5rem;
+  background: var(--color-white);
+  overflow: hidden;
+}
+
+.dark .tq-panel {
+  border-color: var(--color-gray-800);
+  background: var(--color-gray-900);
+}
+
+/* Panel tables lose the library's gray band — the seam already frames them. */
+.tq-panel thead {
+  background: transparent;
+}
+
+.tq-panel thead th {
+  color: var(--color-gray-500);
+  text-transform: lowercase;
+  letter-spacing: 0.08em;
+}
+
+.dark .tq-panel thead th {
+  color: var(--color-gray-400);
+}
+
+/* Terminal label: the one label convention (was: repeated all-caps
+   0.18em eyebrows). Later rules win at equal specificity, so this group
+   retunes the legacy label classes in place. */
+.tq-label,
+.tq-kicker,
+.tq-settled-title,
+.tq-payload-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-transform: lowercase;
+  letter-spacing: 0.08em;
+  color: var(--color-gray-500);
+}
+
+.dark .tq-label,
+.dark .tq-kicker,
+.dark .tq-settled-title,
+.dark .tq-payload-label {
+  color: var(--color-gray-400);
+}
+
+/* Fault line: dead tasks are the one thing that must always offer an
+   action — the alarm number alone is a dead end. */
+.tq-fault {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--color-red-200);
+  border-radius: 0.375rem;
+  background: var(--color-red-50);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-red-700);
+}
+
+.tq-fault::before {
+  content: "▸";
+  font-size: 0.6rem;
+}
+
+.tq-fault:hover {
+  border-color: var(--color-red-400);
+}
+
+.dark .tq-fault {
+  border-color: var(--color-red-900);
+  background: color-mix(in srgb, var(--color-red-900) 20%, transparent);
+  color: var(--color-red-300);
+}
+
+.dark .tq-fault:hover {
+  border-color: var(--color-red-700);
+}

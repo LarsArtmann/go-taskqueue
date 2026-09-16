@@ -135,6 +135,7 @@ func TestSetFailureEvidenceRedactsTail(t *testing.T) {
 
 	ctx, sink := NewSink(t.Context())
 	SetFailureEvidence(ctx, "agent", errFailed(), tailBytes([]byte("boom\n"+fakeAWS), EvidenceTailBytes))
+
 	failure := string(sink.Failure())
 	if strings.Contains(failure, fakeAWS) {
 		t.Errorf("failure evidence carries the raw secret: %s", failure)

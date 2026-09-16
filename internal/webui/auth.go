@@ -363,6 +363,7 @@ func (l *writeRateLimiter) boundLocked() {
 
 	for len(l.strikes) > l.maxKeys {
 		oldestKey := ""
+
 		var oldest *writeStrikes
 
 		for key, strikes := range l.strikes {

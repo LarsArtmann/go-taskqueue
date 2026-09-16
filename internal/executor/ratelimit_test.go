@@ -308,9 +308,17 @@ WARN Provider request failed status_code=429 message="Usage limit reached"`)
 		t.Fatal("work-turn classification must not set ResumeCloseout")
 	}
 
-	if tagged := e.rateLimitedTurn("agent run", "", errors.New("exit 1"), `status_code=429 too many requests`); tagged == nil {
+	if tagged := e.rateLimitedTurn(
+		"agent run",
+		"",
+		errors.New("exit 1"),
+		`status_code=429 too many requests`,
+	); tagged == nil {
 		t.Fatal("expected a *RateLimitError")
-	} else if rle, ok := errors.AsType[*RateLimitError](tagged); !ok || rle.Provider != "" {
+	} else if rle, ok := errors.AsType[*RateLimitError](
+		tagged,
+	); !ok ||
+		rle.Provider != "" {
 		t.Fatalf("output without a provider tag must yield empty, got %q", rle.Provider)
 	}
 }

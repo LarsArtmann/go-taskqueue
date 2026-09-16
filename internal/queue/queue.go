@@ -81,7 +81,14 @@ type Store interface {
 	// rate-limited close-out passes resumeCloseout so the journal records
 	// that the re-claim resumes the owed close-out turn instead of
 	// re-running the paid work turn. Facts: task.requeued.
-	Requeue(ctx context.Context, id task.ID, owner string, errText string, delay time.Duration, resumeCloseout bool) error
+	Requeue(
+		ctx context.Context,
+		id task.ID,
+		owner string,
+		errText string,
+		delay time.Duration,
+		resumeCloseout bool,
+	) error
 	// UpdatePendingPriority changes a PENDING task's priority (ADR-0015
 	// §5) and records the task.reprioritized fact (old/new, source,
 	// reason) in the SAME transaction. Running/terminal tasks are refused

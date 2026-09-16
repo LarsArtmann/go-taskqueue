@@ -159,6 +159,7 @@ func tailBytes(b []byte, n int) string {
 	// evidence facts nor the error text that embeds these tails can carry
 	// one. TQ_REDACT=false restores raw tails for debugging.
 	b = redactBytes(b)
+
 	b = bytes.TrimSpace(b)
 	if len(b) > n {
 		b = b[len(b)-n:]
