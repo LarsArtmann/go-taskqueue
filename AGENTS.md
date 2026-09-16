@@ -841,6 +841,23 @@ prose, not the table.
   servers), and short-lived `crush run -m` workspace-joiner behavior is
   unverified. Analysis + experiment design:
   `~/.config/crush/docs/research/2026-09-14_crush-client-server-mode.md`.
+- ⚠️ **GitHub Push Protection false-positives on shape-valid FAKE token
+  fixtures** (2026-09-16: a push of 68 commits blocked over the
+  `redact_test.go` Slack fixture, the only fixture whose shape matched
+  GitHub's pattern — the AWS `…EXAMPLE` and checksummed-`ghp_` fixtures
+  pass because they fail the stricter real patterns). The scanner matches
+  token SHAPES in source, not realness. Fix class: COMPOSE the fixture
+  literal (`"xox" + "b-…"`) so no scanner can match the source while the
+  runtime value still exercises the redactor byte-identically (redact.go's
+  own regex literals are safe — bracketed char classes never match token
+  shapes). Push protection scans EVERY commit in the push, so a follow-up
+  commit is useless once the fixture sits in unpushed history — the fix is
+  a scripted `git filter-branch --tree-filter` over
+  `origin/master..master` (script file per the daemon playbook; unpushed
+  range only, never PUSHED commits), verified by: worktree test of the
+  exact transformation first, then count + author/date/subject metadata +
+  net-diff equality before vs after, pickaxe zero over the token string,
+  and `refs/original` kept until the push lands.
 
 ## Relation to other projects
 

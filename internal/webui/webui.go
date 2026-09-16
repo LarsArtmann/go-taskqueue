@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/larsartmann/go-health-dashboard"
+	dashboard "github.com/larsartmann/go-health-dashboard"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 )
 

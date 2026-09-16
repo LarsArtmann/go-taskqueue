@@ -57,6 +57,11 @@ templ StatusCards(data DashboardData) {
 			}
 		</div>
 	</div>
+	if data.Counts[task.Dead] > 0 {
+		<a class="tq-fault" href={ templ.URL(statusHref(task.Dead)) }>
+			{ formatInt(data.Counts[task.Dead]) } dead — inspect the dead-letter queue
+		</a>
+	}
 	<div class="mt-3 flex flex-wrap items-center gap-1.5">
 		if len(data.Projects) == 0 {
 			<span class="font-mono text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">no projects</span>
@@ -137,7 +142,7 @@ templ taskActiveCard(data DashboardData) {
 				{ formatInt(queue.PriorityAgingDaysPerPoint) } days waiting, max +
 				{ formatInt(queue.PriorityAgingMaxBonus) }) - aging is scheduling, the stored value never changes (ADR-0015)
 			</p>
-		</div>	
+		</div>
 	}
 }
 
@@ -318,7 +323,7 @@ templ DeadLetterTable(data DashboardData) {
 			Icon:        icons.ArchiveBox,
 		})
 	} else {
-		@display.Card(display.CardProps{Padding: display.CardPaddingNone}) {
+		<div class="tq-panel">
 			@display.Table(display.TableProps{
 				Caption:     "Dead-letter queue",
 				Headers:     []string{labelID, labelProject, labelType, labelAttempts, labelError},
@@ -327,7 +332,7 @@ templ DeadLetterTable(data DashboardData) {
 				CellPadding: display.TableCellPaddingCompact,
 				Body:        deadRows(data),
 			})
-		}
+		</div>
 	}
 }
 
@@ -560,7 +565,7 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
 		</div>
 		@payloadSection(t, payloadViewFor(t))
 		<div class="tq-heading">
-			@display.Eyebrow(display.EyebrowProps{Text: "fact timeline"})
+			<span class="tq-label">fact timeline</span>
 		</div>
 		<div id="frag-timeline">
 			@taskDetailTimeline(data, facts)
@@ -718,7 +723,7 @@ templ retryStrip(trail []retryReason) {
 // demand, never lossy.
 templ payloadSection(t task.Task, pv payloadView) {
 	<div class="tq-heading">
-		@display.Eyebrow(display.EyebrowProps{Text: "payload · " + string(pv.Kind)})
+		<span class="tq-label">payload · { string(pv.Kind) }</span>
 	</div>
 	<div class="tq-payload">
 		if pv.Lede != "" {

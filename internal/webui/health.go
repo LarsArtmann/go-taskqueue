@@ -17,7 +17,7 @@ import (
 
 	"github.com/larsartmann/go-datastar/static"
 	health "github.com/larsartmann/go-health"
-	"github.com/larsartmann/go-health-dashboard"
+	dashboard "github.com/larsartmann/go-health-dashboard"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"

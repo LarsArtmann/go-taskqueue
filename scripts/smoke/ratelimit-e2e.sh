@@ -133,7 +133,7 @@ if [ -z "$NOT_BEFORE" ]; then
 	exit 1
 fi
 
-TARGET="$(( $(date -d "$NOT_BEFORE" +%s) + 2 ))"
+TARGET="$(($(date -d "$NOT_BEFORE" +%s) + 2))"
 if [ "$(date +%s)" -ge "$TARGET" ]; then
 	echo "FAIL: park window already expired before the refusal could be asserted ($NOT_BEFORE) — window too short to pin f37"
 	exit 1

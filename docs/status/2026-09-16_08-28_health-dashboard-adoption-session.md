@@ -36,8 +36,8 @@ deliberate confessions, not hypotheses.
    (same per-request nonce via `WithNonceExtractor(ctxNonce)`) inside
    `withSecurityHeaders`, so `'unsafe-eval'` exists ONLY on `/health*`; every other route
    keeps nonce'd `default-src 'none'`. SDK served same-origin (`WithEmbeddedDatastarSDK`
-   + self-served go-datastar/static bytes — never the jsdelivr CDN fallback); stylesheet
-   is tq's own `/static/app.css` via `WithCSSPath` (never the Tailwind Play CDN fallback).
+   - self-served go-datastar/static bytes — never the jsdelivr CDN fallback); stylesheet
+     is tq's own `/static/app.css` via `WithCSSPath` (never the Tailwind Play CDN fallback).
 6. **Read-only guardrail**: `TestRoutesAreReadOnly` now walks `routeBindings() +
    healthBindings()` (all GET proven).
 7. **Tests** (`internal/webui/health_test.go`, 6 test funcs): dashboard page + CSP
@@ -52,8 +52,8 @@ deliberate confessions, not hypotheses.
    (13 dashboard utilities: decoration-blue/red-300, min-w-24, select-text, …);
    rebuild is byte-stable (second `nix run .#webui-css` → empty diff).
 9. **cmd/tq hand-pins**: the new modules pinned as indirects in its replace-free go.mod
-   + go.sum closure merged (ADR-0017 FOD contract; plain `go mod tidy` there fails on
-   the known ambiguous-import, per design).
+   - go.sum closure merged (ADR-0017 FOD contract; plain `go mod tidy` there fails on
+     the known ambiguous-import, per design).
 10. **Gate battery (all green)**: `go build ./...`, `go vet ./...`, `GOOS=windows go
     build ./...`, full root `go test -race` (ok, incl. webui 12.5s), `nix build` ✓
     (binary runs: `tq 0.3.0, go1.26.7-X:jsonv2`), `check-go-mods.sh` exit 0,

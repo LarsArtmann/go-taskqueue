@@ -6,13 +6,13 @@
 **Method:** every claim below re-verified against code/git this session; gates re-run at
 HEAD a3b97f2-era tree (pre-report commit). Report + docs pass only; no code touched.
 
-| # | Task | Deliverable | Landing commit(s) |
-|---|------|-------------|-------------------|
-| 1 | 000001a0934efd9d… | `task.AllStatuses` export, twin lists retired | `aeebe888` (09-12 04:08) |
-| 2 | 000001a0a2f63b92… | `tq doctor --hygiene` stale-pin audit + `--reresolve-verify` | `7d2825b` (daemon, footerless) + `bfe3323` (checkoff) |
-| 3 | 000001a0a715d4ea… | webui write-lockout strikes map bounded | `8b82c99` (09-16 00:05, clean) |
-| 4 | 000001a0a7237f14… | Secrets-in-logs pass + `--redact` + journal secret scan | `748e989` (daemon, footerless) |
-| 5 | 000001a0a75157… | httpapi nosniff + bearer-auth lockout | `dd26e4c`+`a09bcf6` (daemon) + `ac9da37` (footer tail) |
+| # | Task              | Deliverable                                                  | Landing commit(s)                                      |
+| - | ----------------- | ------------------------------------------------------------ | ------------------------------------------------------ |
+| 1 | 000001a0934efd9d… | `task.AllStatuses` export, twin lists retired                | `aeebe888` (09-12 04:08)                               |
+| 2 | 000001a0a2f63b92… | `tq doctor --hygiene` stale-pin audit + `--reresolve-verify` | `7d2825b` (daemon, footerless) + `bfe3323` (checkoff)  |
+| 3 | 000001a0a715d4ea… | webui write-lockout strikes map bounded                      | `8b82c99` (09-16 00:05, clean)                         |
+| 4 | 000001a0a7237f14… | Secrets-in-logs pass + `--redact` + journal secret scan      | `748e989` (daemon, footerless)                         |
+| 5 | 000001a0a75157…   | httpapi nosniff + bearer-auth lockout                        | `dd26e4c`+`a09bcf6` (daemon) + `ac9da37` (footer tail) |
 
 ---
 
@@ -239,10 +239,10 @@ machinery is so far unexercised in the only journal that matters.
 
 ---
 
-*Docs-health pass riding this report: CHANGELOG rows for `doctor --hygiene`,
+_Docs-health pass riding this report: CHANGELOG rows for `doctor --hygiene`,
 `--reresolve-verify`, the webui strikes bound, and the facade `AllStatuses` export;
 FEATURES doctor/agent-pool/admin-writes row updates; AGENTS.md tq-serve security bullet
 gains the strikes-map bound; README ghost citations fixed (check-doc-refs green);
 TODO_LIST row 40 (AllStatuses) checked off with citations; 2026-09-16_01-21 §c5/§f3 and
 2026-09-15_06-43 §c2/§f1/§f2 annotated inline; monthly digest row added to the status
-index. No code, config, or test files touched.*
+index. No code, config, or test files touched._
