@@ -92,14 +92,14 @@ grep -q "known (dedup)" "$TMP/close2.out" || {
 	exit 1
 }
 
-echo "== assert journal facts: one session.opened + one session.closed"
+echo "== assert journal facts: one session.opened + one session.closed per close (replay appends a fact, mints nothing)"
 FACTS="$("$TQ" facts)"
 [ "$(grep -c 'session.opened' <<<"$FACTS")" -eq 1 ] || {
 	echo "FAIL: want exactly 1 session.opened fact"
 	exit 1
 }
-[ "$(grep -c 'session.closed' <<<"$FACTS")" -eq 1 ] || {
-	echo "FAIL: want exactly 1 session.closed fact"
+[ "$(grep -c 'session.closed' <<<"$FACTS")" -eq 2 ] || {
+	echo "FAIL: want exactly 2 session.closed facts (one per close)"
 	exit 1
 }
 
