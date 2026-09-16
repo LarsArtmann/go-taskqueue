@@ -17,7 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **`task.AllStatuses()` facade export**: the status enum list is exported once from
   `internal/task` (a function, so no caller can mutate it) with a hardcoded-oracle pin
   test; the webui and httpapi twin lists are deleted and both stats surfaces + board
-  columns range the export. Shipped in the `task/v0.3.0` + `internal/task/v0.3.0` tags.
+  columns range the export. Shipped in the v0.3.0 tags of `task/` and
+  `internal/task/`.
 - **HTTP API hardening (`tq api`)**: the production write API now matches
   the dashboard's write-surface hardening (03-05 report f2/f3). Every
   response carries `X-Content-Type-Options: nosniff` (auth failures
