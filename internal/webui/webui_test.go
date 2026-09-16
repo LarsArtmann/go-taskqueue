@@ -704,6 +704,59 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 	}
 }
 
+// TestParkedSegmentRendersFromSnapshot pins the 16-00 f44 wiring: the
+// nowband meta surfaces the rate-limit-parked count when tasks are parked
+// and stays silent when none are — the "is it dead or just limited?"
+// answer at a glance.
+func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	ctx := context.Background()
+
+	// No parked tasks: no segment.
+	enqueue(t, s, "sh", "demo")
+
+	data, err := srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if data.Parked != 0 {
+		t.Fatalf("parked = %d, want 0 with only a fresh task", data.Parked)
+	}
+
+	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-parked") {
+		t.Error("stats fragment shows a parked segment with nothing parked")
+	}
+
+	// Park one: claim + rate-limit requeue, then the segment renders.
+	tk := enqueue(t, s, "agent", "demo")
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited", time.Hour, false); err != nil {
+		t.Fatalf("requeue: %v", err)
+	}
+
+	data, err = srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if data.Parked != 1 {
+		t.Fatalf("parked = %d, want 1 after the rate-limit requeue", data.Parked)
+	}
+
+	stats := renderComponent(ctx, StatusCards(data))
+	for _, want := range []string{"card-parked", "parked", "parked 1"} {
+		if !strings.Contains(stats, want) {
+			t.Errorf("stats fragment missing %q", want)
+		}
+	}
+}
+
 // TestBudgetCardAbsentWithoutCap pins the default: no DailyBudget, no card.
 func TestBudgetCardAbsentWithoutCap(t *testing.T) {
 	srv, s := newTestServer(t)

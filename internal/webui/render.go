@@ -188,6 +188,11 @@ type DashboardData struct {
 	// visible: an approve/request-changes badge in the table and findings
 	// on the detail page. Absent when the page shows no finished reviews.
 	Reviews map[string]executor.ReviewResult
+	// Parked is the rate-limit-parked count (pending with not_before in
+	// the future) — the "11 tasks parked until 19:40" one-glance segment
+	// in the nowband meta (16-00 report f44; the stats payload already
+	// carries the same number).
+	Parked int
 	// AllowWrites mirrors Config.AllowWrites: the templates render the
 	// admin affordances (cancel/stop/rescue forms) only when writes are
 	// enabled server-side.
@@ -198,6 +203,19 @@ type DashboardData struct {
 	// count on the detail page. Absent when the page shows no finished
 	// status reports.
 	Statuses map[string]executor.StatusResult
+}
+
+// parkedCount counts rate-limit-parked tasks (pending, not_before in the
+// future) for the nowband meta. Best effort: a failed read parks nothing.
+func parkedCount(ctx context.Context, store queue.Store) int {
+	parked := true
+
+	n, err := store.CountTasks(ctx, queue.Filter{Parked: &parked})
+	if err != nil {
+		return 0
+	}
+
+	return n
 }
 
 // completionDetail reads a task's outcome from its own completion-fact
@@ -368,6 +386,8 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 		data.Counts[st] += n
 		data.Total += n
 	}
+
+	data.Parked = parkedCount(ctx, s.store)
 
 	projectCounts, err := s.store.ProjectCounts(ctx)
 	if err != nil {

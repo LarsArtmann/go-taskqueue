@@ -48,6 +48,9 @@ templ StatusCards(data DashboardData) {
 		</div>
 		<div class="tq-nowband-meta">
 			<span class="card-total" title="all tasks ever">total { formatInt(data.Total) }</span>
+			if data.Parked > 0 {
+				<span class="card-parked" title="rate-limit requeues waiting out their window">parked { formatInt(data.Parked) }</span>
+			}
 			<span class="card-journal" title="journal watermark — highest fact seq">journal { formatInt(int(data.JournalSeq)) }</span>
 			if data.Budget != nil {
 				<span class="card-budget">budget today { formatInt(data.Budget.Spent) }/{ formatInt(data.Budget.Cap) }</span>
