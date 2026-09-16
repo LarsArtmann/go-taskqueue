@@ -202,11 +202,34 @@ HARVEST routing rigor; most §c/§e items are repeated here in actionable form)
 
 ## §CI — verdict slot
 
-*(filled at the end of the session — see the addendum line below if this
-still says "in flight")*
+**Two-lap reality (updated 12:20 CEST):**
 
-CI run for c160efd: **PENDING AT WRITE TIME** — background poll running.
-All locally-replicable gates were green before the push (§a5); the only
-CI-only gates left unverified locally are the full nix flake check (build ✓
-locally via vendor-hash + treefmt 0-changed proxies) and the windows-runner
-test job.
+- **Lap 1 (run 35081404304, on 3c8e858 — the original batch)**: 3 jobs red —
+  windows cross-compile vet (sidecar build-tag), test-windows module gates
+  (same root), nix flake check (treefmt drift). All three root-caused and
+  fixed; windows gates verified GREEN on lap 2 (my build-tag fix worked).
+- **Lap 2 (run 35082752333, on c160efd — the healing push)**: windows gate ✓,
+  root Test ✓, gosec/govulncheck/cqrs-lint ✓. Two NEW failures:
+  1. **`test` job, module isolation gates**: 3 depbump tests fail on the
+     runner with `fatal: empty ident name` — `depBumpFixtureRepo` set git
+     identity only for its OWN fixture commits; the executor's internal
+     `git commit` inherited the test process env, and runners have no git
+     identity. Depbump was BORN in this batch — these tests had never run on
+     a runner until my push. **FIXED**: `t.Setenv` identity in the fixture
+     helper (covers all 9 call sites); verified under a sanitized env
+     (`GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1` — runner-
+     equivalent, green) + full executor suite green.
+  2. **`nix` job, Nix build**: vendorHash FOD mismatch — specified
+     `sha256-dtC0Y6…` (= committed hash, verified green locally via the
+     vendor-hash fast gate ON THE SAME TREE), runner `got: sha256-iQv0f2…`.
+     This is the documented **runner-ONLY variant** (second occurrence: the
+     2026-09-10 incident got `sha256-/rKFWqGR…`, "same got-hash on two
+     different trees", local build of the exact failed drv green —
+     docs/status/archived/2026-09-10_06-25… §d1/d2). NOT locally fixable —
+     the 06-25 recommendation stands: pin/mirror the fetch (vendor/) or chase
+     the runner environment. Owner-grade; left un-pinned deliberately (pinning
+     the runner hash would break the verified-green local build).
+
+**State at close**: fix for (1) pushed; (2) is the one remaining red gate and
+needs the owner's runner-side differential dump (§f item 1). Everything
+locally reproducible has been reproduced and is green.
