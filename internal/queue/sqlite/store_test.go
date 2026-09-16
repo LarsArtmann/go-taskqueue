@@ -1354,6 +1354,26 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	if got, _ := s.Get(ctx, tk.ID); got.Status != task.Pending {
 		t.Fatalf("parked task mutated by stale calls: %+v", got)
 	}
+
+	// MarkOrphaned interplay (16-00 report f30): the parked task is the
+	// PENDING twin of an orphaned RUNNING task — leaseless too, but
+	// WAITING, not stranded. The orphan scan must not see it, and the
+	// parked record must survive the pass untouched.
+	if n, err := s.MarkOrphaned(ctx, time.Now()); err != nil || n != 0 {
+		t.Errorf("MarkOrphaned during park = %d (%v), want 0", n, err)
+	}
+
+	trail, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
+	for _, f := range trail {
+		if f.Type == journal.Orphaned {
+			t.Error("parked pending task carries a task.orphaned fact")
+		}
+	}
+
+	twin, _ := s.Get(ctx, tk.ID)
+	if twin.Status != task.Pending || twin.LeaseOwner != "" || twin.LeaseExpires != nil {
+		t.Fatalf("MarkOrphaned mutated the parked task: %+v", twin)
+	}
 }
 
 // TestParkedFilter pins the --parked contract: only pending tasks with a

@@ -705,6 +705,69 @@ func TestRateLimitRequeuesWithoutAttemptBurn(t *testing.T) {
 	cancel()
 }
 
+// TestCloseoutResumeFlagReachesRequeueFact pins the 16-00 f31 wiring: a
+// rate-limited CLOSE-OUT (ResumeCloseout on the error) must stamp
+// resume_closeout into the task.requeued fact's evidence, so the journal
+// (and `tq facts`) shows the re-claim resumes the owed close-out instead
+// of re-running the paid work turn.
+func TestCloseoutResumeFlagReachesRequeueFact(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
+		return &executor.RateLimitError{
+			Cause:          errors.New("agent closeout failed: exit status 1: status_code=429"),
+			RetryAfter:     time.Minute,
+			ResumeCloseout: true,
+		}
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 1})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		Executors: reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		got, _ := store.Get(context.Background(), enq.ID)
+		if got.Status == task.Pending && got.LastError != "" {
+			break
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	trail, err := store.FactsForTask(context.Background(), enq.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	for _, f := range trail {
+		if f.Type != journal.Requeued {
+			continue
+		}
+
+		var ev queue.RequeueEvidence
+		if err := json.Unmarshal(f.Detail, &ev); err != nil {
+			t.Fatalf("detail not RequeueEvidence: %v (%s)", err, f.Detail)
+		}
+
+		if !ev.ResumeCloseout {
+			t.Fatalf("requeued fact lost resume_closeout: %s", f.Detail)
+		}
+
+		return
+	}
+
+	t.Fatal("no task.requeued fact recorded")
+}
+
 // TestCooperativeCancelMidRun drives the full cooperative-cancel loop: an
 // operator requests the cancel while the executor is mid-run, the heartbeat
 // observes the fact, the execution context is cancelled, and the task
