@@ -114,6 +114,31 @@ func TestHTTPExecutor429ClassifiedAsRateLimit(t *testing.T) {
 		}
 	})
 
+	t.Run("HTTP-date retry-after header via fixture server", func(t *testing.T) {
+		t.Parallel()
+
+		// The unit pin (TestParseRetryAfterHeader) covers the grammar;
+		// this drives the HTTP-date form through the real 429 response
+		// path so the header's second wire format stays wired to
+		// rateLimited (16-00 report f32).
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Retry-After", time.Now().Add(45*time.Second).UTC().Format(http.TimeFormat))
+			w.WriteHeader(http.StatusTooManyRequests)
+		}))
+		defer srv.Close()
+
+		err := NewHTTPExecutor(srv.URL).Execute(context.Background(), httpTask())
+
+		rl, ok := errors.AsType[*RateLimitError](err)
+		if !ok {
+			t.Fatalf("429 classified as %T (%v), want *RateLimitError", err, err)
+		}
+
+		if rl.RetryAfter < 44*time.Second || rl.RetryAfter > 46*time.Second+rateLimitGrace {
+			t.Fatalf("RetryAfter = %s, want ~45s + grace", rl.RetryAfter)
+		}
+	})
+
 	t.Run("bare 429 falls back to the default backoff", func(t *testing.T) {
 		t.Parallel()
 

@@ -175,7 +175,8 @@ func doctorQueueMix(ctx context.Context, store queue.Store) []checkResult {
 // doctorParked surfaces rate-limit-parked tasks (pending, not_before in the
 // future): an idle pool with parked tasks is WAITING on the provider, not
 // broken — the 13:29 incident's "is it dead or just limited?" question
-// answered in one line.
+// answered in one line. With tasks parked, the earliest not_before is
+// named so the operator knows WHEN to look again (16-00 report f34).
 func doctorParked(ctx context.Context, store queue.Store) checkResult {
 	parked := true
 
@@ -188,14 +189,35 @@ func doctorParked(ctx context.Context, store queue.Store) checkResult {
 		return checkResult{Name: "parked", Status: checkOK, Detail: "no rate-limit-parked tasks"}
 	}
 
-	return checkResult{
-		Name:   "parked",
-		Status: checkWarn,
-		Detail: fmt.Sprintf(
-			"%d task(s) parked by a provider rate limit — WAITING, not broken; see `tq tasks --parked`",
-			n,
-		),
+	detail := fmt.Sprintf(
+		"%d task(s) parked by a provider rate limit — WAITING, not broken; see `tq tasks --parked`",
+		n,
+	)
+
+	if tasks, err := store.List(ctx, queue.Filter{Parked: &parked}); err == nil {
+		earliest := time.Time{}
+
+		for _, tk := range tasks {
+			if tk.NotBefore.IsZero() {
+				continue
+			}
+
+			if earliest.IsZero() || tk.NotBefore.Before(earliest) {
+				earliest = tk.NotBefore
+			}
+		}
+
+		if !earliest.IsZero() {
+			layout := "15:04"
+			if earliest.Local().Day() != time.Now().Day() {
+				layout = "Jan 2 15:04"
+			}
+
+			detail += fmt.Sprintf("; earliest release %s", earliest.Local().Format(layout))
+		}
 	}
+
+	return checkResult{Name: "parked", Status: checkWarn, Detail: detail}
 }
 
 // doctorStuckRunning counts running tasks whose lease expired without a

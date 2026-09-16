@@ -116,9 +116,7 @@ func TestDoctorFlagsDeadWorker(t *testing.T) {
 }
 
 func TestDoctorBudgetAtCap(t *testing.T) {
-	path := doctorTestStore(t)
-
-	s, err := sqlite.Open(path)
+	path := doctorTestStore(t)	s, err := sqlite.Open(path)
 	if err != nil {
 		t.Fatalf("OpenSQLite: %v", err)
 	}

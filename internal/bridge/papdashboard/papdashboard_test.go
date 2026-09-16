@@ -331,6 +331,39 @@ func Test429IsTransientNotDropped(t *testing.T) {
 	}
 }
 
+// TestNotifyDeadPool429IsTransient pins the direct-post half of the bridge
+// audit (16-00 report f36): the dead-pool notify does not flow through
+// forward/checkpoints, but it shares post — a rate-limited dashboard must
+// surface as a retryable error (the next detector verdict re-sends), never
+// as a silently swallowed alert.
+func TestNotifyDeadPool429IsTransient(t *testing.T) {
+	var status int32 = http.StatusTooManyRequests
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/ingest", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(int(atomic.LoadInt32(&status)))
+	})
+
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	b := New(&fakeSource{}, nil, Config{Endpoint: server.URL, Logger: quietLogger()})
+
+	if err := b.NotifyDeadPool(context.Background(), true, 2, "scan failed: boom", 3); err == nil {
+		t.Fatal("429 on the dead-pool trigger must surface as a retryable error")
+	}
+
+	atomic.StoreInt32(&status, http.StatusOK)
+
+	if err := b.NotifyDeadPool(context.Background(), true, 2, "scan failed: boom", 3); err != nil {
+		t.Fatalf("trigger after 429 clears: %v", err)
+	}
+
+	if err := b.NotifyDeadPool(context.Background(), false, 2, "", 0); err != nil {
+		t.Fatalf("resolve after 429 clears: %v", err)
+	}
+}
+
 func TestServerErrorRetriesWithSameIdempotencyKey(t *testing.T) {
 	pap := newFakePap(t)
 	pap.fail(1)
