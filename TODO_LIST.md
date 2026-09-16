@@ -245,3 +245,12 @@ not here.
 - [ ] Pin `tq stats --project X` parked-count × project-filter interaction (04-03 §f10)
 - [ ] Smoke-retry budget for ci-local smokes (row 89's blocked half, third ask): two-phase tree-quiet probe (recommended — milliseconds vs multiplying minutes-long smokes ×3), whole re-run ×3, or wrap-only-cheap-smokes (01-46 §g3, 03-04 §g1) — BLOCKED: owner runtime-budget ruling
 - [ ] Daemon-race attribution protocol (fifth recorded instance: a1b4588, 896339b, c5eac41, 0fd2cf2 + today's report commit): ratify daemon-SHA citation as permanent, or bless content-first explicit commits (work commit BEFORE docs/TODO edits) so the footer commit carries the pinned bytes (01-46 §g1, 02-37 §g1, 04-03 §g1) — BLOCKED: owner queue-convention call
+
+## Done-prompt harvest (2026-09-17; sources: the lint-baseline row-104 re-dispatch close-outs 01-17/01-22/01-23, first harvested this pass; row 104 itself is DONE + re-verified 3x)
+
+- [ ] Spot-check round-13's noctx "fix for real" claim against code: the row-104 close-outs confirmed absence-of-growth but never verified the noctx findings (executor 1→5, root 22→29) got REAL context-carrier fixes, not a baseline regen (01-17 §f14, 01-23 §b1)
+- [ ] Queue-side dedup-key→COMPLETED short-circuit: when a dispatch's task ID already has a COMPLETED task, mint a zero-cost verify stub or skip — now argued from 3+ sibling re-dispatch windows in as many days (01-17 §f1, 01-22 §e2, 01-23 §e2)
+- [ ] Owner ruling: adopt or policy-disable `modernize` (per-gate whack-a-mole burns a window per drift class) (01-17 §g1)
+- [ ] Pin golangci-lint version in the flake to stop analyzer-drift gate-killers (01-17 §g2)
+- [ ] `lint-baseline.sh --check`: print a final verdict line (`lint-baseline: OK/FAIL`) so piped/untruncated reads can't misread the verdict (01-17 §e3, 01-23 §e3)
+- [ ] Pre-commit hook (or gate) validating report filename timestamps against `date` — the 01-22 report shipped a fabricated `04-52` timestamp (01-23 §d1/§e1)
