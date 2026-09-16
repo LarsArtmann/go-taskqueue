@@ -2201,10 +2201,19 @@ func cmdFacts(args []string) error {
 		false,
 		"print each fact's full detail JSON verbatim below its line (multi-line tails stay intact)",
 	)
+	withCommits := fs.Bool(
+		"commits",
+		false,
+		"after the fact lines, scan every mentioned task's repo git log for Task-Queue-ID footer commits (the tq show --commits cross-reference, journal-wide)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	if *withCommits && (*asJSON || *asCQRS) {
+		return errors.New("tq facts --commits renders human output only; drop --json/--cqrs")
 	}
 
 	s := mustOpenDB(resolveDB(*db))
@@ -2236,7 +2245,55 @@ func cmdFacts(args []string) error {
 
 	fmt.Printf("(%d facts)\n", len(facts))
 
+	if *withCommits {
+		printFactCommitViews(s, facts)
+	}
+
 	return nil
+}
+
+// printFactCommitViews runs the footer cross-reference (tq show --commits)
+// for every DISTINCT task mentioned in the fact range, first appearance
+// order (16-00 report f29: the show-only surface missed the facts-first
+// workflow). One git log per task — an explicit operator flag, not a
+// default pass.
+func printFactCommitViews(s *sqlite.Store, facts []journal.Fact) {
+	seen := map[string]bool{}
+
+	var ids []string
+
+	for _, f := range facts {
+		if f.TaskID == "" || seen[f.TaskID] {
+			continue
+		}
+
+		seen[f.TaskID] = true
+		ids = append(ids, f.TaskID)
+	}
+
+	if len(ids) == 0 {
+		return
+	}
+
+	fmt.Println()
+	fmt.Println("footer cross-reference (Task-Queue-ID commits per task):")
+
+	for _, id := range ids {
+		t, err := s.Get(context.Background(), task.ID(id))
+		if err != nil {
+			fmt.Printf("  %s  (task record gone — synthetic or pruned)\n", id)
+
+			continue
+		}
+
+		view := commitsForTask(t)
+		verdict, _ := view["verdict"].(string)
+		if verdict == "" {
+			verdict, _ = view["note"].(string)
+		}
+
+		fmt.Printf("  %s  %s\n", id, verdict)
+	}
 }
 
 // cqrsEventJSON is the wire shape of one go-cqrs-lite journal event as

@@ -714,7 +714,7 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 	ctx := context.Background()
 
 	// No parked tasks: no segment.
-	enqueue(t, s, "sh", "demo")
+	fresh := enqueue(t, s, "sh", "demo")
 
 	data, err := srv.loadSnapshot(ctx, FilterState{})
 	if err != nil {
@@ -727,6 +727,12 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 
 	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-parked") {
 		t.Error("stats fragment shows a parked segment with nothing parked")
+	}
+
+	// Get the fresh task out of the way so the claim below hits the agent
+	// task (claims are priority/age ordered, no filter).
+	if err := s.Cancel(ctx, fresh.ID, "test: out of the way"); err != nil {
+		t.Fatalf("cancel fresh: %v", err)
 	}
 
 	// Park one: claim + rate-limit requeue, then the segment renders.
