@@ -279,10 +279,12 @@ DO NOT RESEARCH UNRELATED STUFF. Report on this window and what you noticed in p
 
 ## Close the loop in TODO_LIST.md
 
-is machine-consumed: one checkbox item per line, "- [ ] text", never tables. Append:
-- the next things from (f) as new "- [ ]" items (max ~50, each a self-contained task);
-- each question from (g) as an item ending with " — BLOCKED: <the question>" (a human answers by editing the item; blocked items are never harvested until then).
-Never delete or reword existing items; only append.
+is machine-consumed: one checkbox item per line, "- [ ] text", never tables. DEDUP CHECK first: read the existing UNCHECKED items, then
+- skip any candidate that duplicates or merely REWORDS an existing item (a reworded duplicate mints a fresh dedup key and a fresh paid dispatch; the 2026-09-11 75-commit review found this exact loop re-fired single tasks up to 5 times);
+- never append an item whose work already landed: if a report in docs/status/ or a commit proves it done, TICK that existing box to "- [x]" instead (cite the evidence in your report; ticking is the ONLY edit allowed to existing items, never reword or delete);
+- add the next things from (f) as new "- [ ]" items (HARD CAP 10, each a self-contained task; prefer (d) fixes);
+- add each question from (g) as an item ending with " — BLOCKED: <the question>" (a human answers by editing the item; blocked items are never harvested until then).
+Never reword or delete existing items; appending new items and evidence-backed [x] ticks are the only writes.
 
 ## Docs-health pass
 
