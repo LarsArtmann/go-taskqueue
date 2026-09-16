@@ -468,7 +468,8 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   otherwise); the daemon still bypasses hooks, so ci-local remains the
   catcher — and the hook's checks are sequential now (the old
   `exec A && exec B` chain never reached the TODO gate) (build script scans the
-  module-cache copy of templ-components — rerun on version bumps);
+  module-cache copies of templ-components AND go-health-dashboard — rerun on
+  version bumps of either);
   ci-local GATES the artifact via `check-webui-css.sh` (byte-equal tailwind
   rebuild; needs nix, not a devShell — unminified/hand-edited css shipped to
   master twice in 2026-09-11 before the orphaned guard got wired)
@@ -921,23 +922,39 @@ treatment regardless of library availability. Re-run the comparison only if
 the license changes or a second HTTP surface appears.
 
 **go-health-dashboard** (`~/projects/go-health-dashboard`, sibling library,
-MIT, v0.7.0): assessed 2026-09-16, verdict NOT adopted (assessment, not an
-owner ADR — challenge welcome). It renders a registry of named per-service
-checks (go-health `Prober` seam, Datastar SSE) with severity grouping and
-trend export — a model for processes with MANY named checks in a DI
-container. tq's health is the opposite shape: journal-derived aggregate
-state (worker heartbeats, expired leases, budget burn, DLQ, per-repo
-harvest streaks) computed from the store, already surfaced by `tq doctor`,
-`tq api` healthz, the loopback webui, dead-pool alerts, and the planned
-`tq pool-health` + Gatus journal-head probe. Mounting it under `tq serve`
-would add a second live-update stack (Datastar vs HTMX SSE) and force
-CSP loosening: the Datastar SDK needs 'unsafe-eval' while the webui CSP is
-nonce'd `default-src 'none'`. The `Prober` interface IS consumer-side
-(no samber/do needed for an adapter), so re-open when a fleet/operator
-console (multi-pool per-check board, trend/export endpoints) or a standard
-K8s probe contract becomes a goal — the adapter is then a contained seam
-implementing `Prober` over the store; it still imports go-health for
-`health.Response`, and go-datastar/go-sse ride along.
+MIT): ADOPTED 2026-09-16 (owner ruling "just add it", hours after a
+NOT-adopted assessment whose blockers were then engineered away one by one).
+`tq serve` mounts it at `/health` (+ `/health/sse`, `/health/datastar.js`,
+`/health/favicon.svg`, JSON probes `/healthz` `/readyz` `/startupz`). The
+adapter (`internal/webui/health.go`, `queueProber`) implements the
+consumer-side `dashboard.Prober` over `queue.Store` — the store-backed
+`tq doctor` subset (database via StatusCounts, worker heartbeats via
+CountFacts(Heartbeat, 10m window), expired-lease stuck running, DLQ depth)
+on a 5s evaluation cache that doubles as the SSE push cadence; NO samber/do
+(any DI stays out — the Prober interface is the whole seam). Integration
+rails, each a considered tradeoff: ALL health routes sit INSIDE the
+existing withTokenAuth gate — the library's kubelet probes-bypass-auth
+default was rejected on the ADR-0008 "no unauthenticated oracle" ruling;
+the /health page + SSE run `dashboard.RecommendedCSP` (the Datastar SDK
+needs 'unsafe-eval') as a per-route override INSIDE withSecurityHeaders —
+every other route keeps nonce'd `default-src 'none'` (pinned by
+`TestHealthTaskDashboardCSPUnchanged`); the SDK ships same-origin
+(WithEmbeddedDatastarSDK + self-served go-datastar/static bytes, never the
+jsdelivr CDN the library falls back to without it); the stylesheet is tq's
+own `/static/app.css` (WithCSSPath — without it the library falls back to
+the Tailwind Play CDN) and `build-webui-css.sh` scans the library's
+module-cache copy for its tailwind classes (rerun on version bumps, same
+as templ-components). cmd/tq/go.mod hand-pins the new modules as
+indirects (its FOD downloads per the committed replace-free go.mod,
+ADR-0017 — plain `go mod tidy` there fails on the known cmd/tq ambiguity,
+and a stray hand-edit race with a concurrent tidy self-resolved). Gates:
+`TestRoutesAreReadOnly` walks the health table, `internal/webui/health_test.go`
+pins probes/CSP/auth/store-failure 503s, the webui smoke asserts the live
+page + probes + SDK bundle. Versions: go-health-dashboard v0.8.1 — the
+PROXY is ahead of the local v0.7.0 checkout (there `health.Check` still
+carried `Since`; v0.8.1 is `{status, error}` only), go-health v0.1.3,
+go-datastar(+static) v0.5.0, samber/do v2.1.0 + go-type-to-string (both
+indirect only).
 
 **go-nix-helpers** (`~/projects/go-nix-helpers`, flake input): the flake's
 only build-time dependency — `flakeModules.go-standard` (flake.nix:24)

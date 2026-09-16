@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Health dashboard on `tq serve` (`/health` + JSON probes)**: the server
+  now mounts `github.com/larsartmann/go-health-dashboard` (v0.8.1) — a
+  live severity-grouped view of derived queue health next to the
+  conventional `/healthz`/`/readyz`/`/startupz` probes. The checks are the
+  store-backed `tq doctor` subset (database, worker heartbeats, expired
+  leases, DLQ depth) evaluated on a shared 5s cache; readiness 503s only
+  on a failing store, startup latches after the first successful
+  evaluation. Every health route sits behind the existing token gate (no
+  unauthenticated oracle), the Datastar SDK ships same-origin under the
+  page's own nonce'd CSP (`'unsafe-eval'` confined to `/health*`), and the
+  CSS build scans the library's module so the page renders themed.
+  (`internal/webui/health.go`, guardrail + unit tests, webui smoke
+  assertions)
 - **ratelimit-e2e second-claim pin (16-00 report f37)**: the smoke's stub
   reset timestamp is now computed ~5 s into the future (was a frozen past
   date, which silently degraded the park to the 15 min fallback as days
