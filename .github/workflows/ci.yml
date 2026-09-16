@@ -7,6 +7,13 @@ on:
 permissions:
   contents: read
 
+# The auto-commit daemon pushes in bursts: a newer push supersedes the
+# in-flight run on the same ref, so cancel it instead of queueing a pile of
+# runs racing for runners (16-00 report f39).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 # encoding/json/v2 symbols (jsontext.Value et al.) are gated behind
 # GOEXPERIMENT=jsonv2 on the go 1.26 toolchain — local builds get it from
 # ~/.config/go/env and flake.nix sets it for the nix gate; CI runners have

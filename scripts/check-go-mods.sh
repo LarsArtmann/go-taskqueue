@@ -37,7 +37,10 @@ for m in $mods; do
 done
 
 for m in . $mods; do
-	if ! (cd "$m" && GOWORK=off go mod verify >/dev/null); then
+	# go mod verify flakes when the shared module cache is written
+	# concurrently (16-00 report f41): retry once before failing.
+	if ! (cd "$m" && GOWORK=off go mod verify >/dev/null) &&
+		! (cd "$m" && GOWORK=off go mod verify >/dev/null); then
 		echo "FAIL: go mod verify in $m"
 		fail=1
 	fi

@@ -32,13 +32,21 @@ if [ -z "$RUN" ] || [ "$RUN" = "[]" ]; then
 fi
 
 CONCLUSION="$(echo "$RUN" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["conclusion"])')"
-SHA="$(echo "$RUN" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["headSha"][:9])')"
+RUN_SHA="$(echo "$RUN" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["headSha"])')"
+SHA="${RUN_SHA:0:9}"
 TITLE="$(echo "$RUN" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["displayTitle"])')"
 
 if [ "$CONCLUSION" != "success" ]; then
 	echo "check-ci: FAIL — latest CI run on $BRANCH ($SHA, \"$TITLE\") is $CONCLUSION"
-	echo "  Fix master first (gh run list --branch $BRANCH; gh run view --log-failed <id>)"
-	echo "  or bypass consciously with CI_CHECK=off."
+	if [ "$RUN_SHA" != "$(git rev-parse HEAD)" ]; then
+		# The red run tested an older commit than the local tree: a fix
+		# may already be in flight (push pending or CI still running).
+		echo "  The red run predates your tree — pushing a fix?"
+		echo "  Bypass consciously with CI_CHECK=off."
+	else
+		echo "  Fix master first (gh run list --branch $BRANCH; gh run view --log-failed <id>)"
+		echo "  or bypass consciously with CI_CHECK=off."
+	fi
 	exit 1
 fi
 
