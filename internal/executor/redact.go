@@ -69,13 +69,13 @@ func SecretHits(s string) int {
 	hits := 1
 	mergedEnd := spans[0].end
 
-	for _, sp := range spans[1:] {
-		if sp.start < mergedEnd {
-			mergedEnd = max(mergedEnd, sp.end)
+	for _, candidate := range spans[1:] {
+		if candidate.start < mergedEnd {
+			mergedEnd = max(mergedEnd, candidate.end)
 			continue
 		}
 		hits++
-		mergedEnd = sp.end
+		mergedEnd = candidate.end
 	}
 
 	return hits
