@@ -574,20 +574,18 @@ func (h *Harvester) buildBatchPayload(ctx context.Context, run []Item) ([]byte, 
 	}
 
 	payload := harvestPayload{
-		AgentPayload: executor.AgentPayload{
-			Repo:         repo,
-			Prompt:       prompt,
-			Item:         first.Text,
-			Items:        texts,
-			Model:        h.cfg.Model,
-			Verify:       executor.ReadTQVerify(first.Repo),
-			RequireClean: h.cfg.RequireClean,
+		Repo:         repo,
+		Prompt:       prompt,
+		Item:         first.Text,
+		Items:        texts,
+		Model:        h.cfg.Model,
+		Verify:       executor.ReadTQVerify(first.Repo),
+		RequireClean: h.cfg.RequireClean,
 
-			TimeoutMinutes: perItemMinutes * len(run),
-		},
-		Dedup:       batchKeyOf(run),
-		ItemKeys:    keys,
-		MarkerLevel: maxMarker,
+		TimeoutMinutes: perItemMinutes * len(run),
+		Dedup:          batchKeyOf(run),
+		ItemKeys:       keys,
+		MarkerLevel:    maxMarker,
 	}
 
 	encoded, err := json.Marshal(payload)
@@ -937,15 +935,13 @@ func (h *Harvester) buildPayload(ctx context.Context, item Item, prompt, dedupKe
 	// Pin the repo's own verify command into the payload when item declares
 	// one, so the task records what item will be gated by.
 	payload := harvestPayload{
-		AgentPayload: executor.AgentPayload{
-			Repo:         repo,
-			Prompt:       prompt,
-			Item:         item.Text,
-			Model:        h.cfg.Model,
-			Verify:       executor.ReadTQVerify(item.Repo),
-			RequireClean: h.cfg.RequireClean,
-		},
-		Dedup: dedupKey,
+		Repo:         repo,
+		Prompt:       prompt,
+		Item:         item.Text,
+		Model:        h.cfg.Model,
+		Verify:       executor.ReadTQVerify(item.Repo),
+		RequireClean: h.cfg.RequireClean,
+		Dedup:        dedupKey,
 	}
 
 	// Per-repo timeout ladder: pin the ceiling into the payload so the

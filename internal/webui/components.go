@@ -13,7 +13,6 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 	"github.com/larsartmann/templ-components/layout"
-	"github.com/larsartmann/templ-components/utils"
 )
 
 // This file maps domain vocabulary (task.Status, journal.FactType) onto the
@@ -193,8 +192,8 @@ func detailItems(t task.Task, now time.Time, nonce string) []display.DefinitionI
 //nolint:ireturn // templ.Component is the library component contract
 func relativeTimeComponent(ts time.Time, nonce string) templ.Component {
 	return display.RelativeTime(display.RelativeTimeProps{
-		Time:      ts,
-		BaseProps: utils.BaseProps{Nonce: nonce},
+		Time:  ts,
+		Nonce: nonce,
 	})
 }
 
