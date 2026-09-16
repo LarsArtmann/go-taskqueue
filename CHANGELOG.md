@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Verify-evidence sidecar for failed verifies**: when a task's verify
+  turn fails, the FULL verify output (combined stdout + stderr) is
+  persisted to `$TQ_LOG_DIR/<task-id>.log` (0600) and the `task.failed`
+  journal fact carries a 512-byte tail excerpt plus the sidecar path, so
+  diagnosis no longer truncates at the fact's tail while the raw bytes
+  stay on disk. The agent-output sidecar (`writeOutputSidecar`) now runs
+  the body through the secrets-in-logs redaction pass first, and two
+  sweep helpers (`SweepSidecars` by age, `SweepSidecarsByBytes` by dir
+  budget) bound retention. (`internal/executor/sidecar.go`,
+  `internal/executor/agent.go`)
+- **Dangling-SHA citation check on harvested task text**: harvest now
+  probes every SHA-like token (7-40 lowercase hex, word-bounded, deduped)
+  in generated task payloads via
+  `git merge-base --is-ancestor <sha> HEAD` against the payload's repo.
+  Proven-dangling SHAs (pre-rebase/history-rewrite leftovers) get a
+  `CITATION CHECK` warning block appended to the task prompt telling the
+  working session to re-resolve them before relying on them — annotate
+  and enqueue, never deny (a deny would starve the item forever since
+  nothing rewrites the source TODO automatically). Unresolvable tokens,
+  repo-less payloads, and missing git stay silent skips: the check
+  annotates, it never blocks. Wired into all three payload builders
+  (single, batch, and drift catch-up via the shared `buildPayload` path).
+  (`internal/harvest/citation.go`, `internal/harvest/harvest.go`,
+  `internal/harvest/drift.go`; 4 tests incl. a real temp-git-repo
+  commit→amend dangle fixture)
 - **Health dashboard on `tq serve` (`/health` + JSON probes)**: the server
   now mounts `github.com/larsartmann/go-health-dashboard` (v0.8.1) — a
   live severity-grouped view of derived queue health next to the
