@@ -381,8 +381,10 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   output-derived fact types (failed/dead-lettered/completed/requeued —
   enqueue payloads are user-provided, never scanned) via
   `executor.SecretHits` and reports `SECRET EVIDENCE` rows (seq/task/
-  field/hit-count, never the secret itself) so facts written before the
-  pass shipped are findable (17-21 report #18; 20-58 f33).
+  field/hit-count, never the secret itself; a hit is a distinct secret
+  LOCATION — overlapping pattern spans merge, so one
+  `Authorization: Bearer <token>` line is ONE hit) so facts written before
+  the pass shipped are findable (17-21 report #18; 20-58 f33).
 - **Provider rate limits (429 / usage limit)**: a failed agent turn's
   output is scanned (`executor.DetectRateLimit`); a Z.ai-style reset
   timestamp ("Your limit will reset at <ts>"), an RFC3339 renews-at, or a
