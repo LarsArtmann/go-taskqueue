@@ -90,6 +90,21 @@ func TestSecretHitsCountsMatches(t *testing.T) {
 	}
 }
 
+func TestSecretHitsMergesOverlappingPatternSpans(t *testing.T) {
+	t.Parallel()
+
+	header := "Authorization: Bearer " + fakeJWT[len("Bearer "):]
+
+	if got := SecretHits(header); got != 1 {
+		t.Errorf("SecretHits = %d, want 1 (one secret, two overlapping patterns): %s", got, header)
+	}
+
+	mixed := header + "\n" + fakeAssign
+	if got := SecretHits(mixed); got != 2 {
+		t.Errorf("SecretHits = %d, want 2 (distinct secrets stay distinct): %s", got, mixed)
+	}
+}
+
 func TestTailBytesRedactsSecrets(t *testing.T) {
 	t.Parallel()
 

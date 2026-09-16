@@ -1,8 +1,10 @@
 package executor
 
 import (
+	"cmp"
 	"os"
 	"regexp"
+	"slices"
 )
 
 // RedactMarker replaces every provider-token-shaped match in tails,
@@ -41,15 +43,39 @@ var secretPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(?:api[_-]?key|apikey|secret|access[_-]?token|auth[_-]?token|password|passwd)\b["']?\s*[:=]\s*["']?[A-Za-z0-9+/_-]{12,}`),
 }
 
-// SecretHits counts provider-token-shaped matches in s — the detector half
-// of the pass: tq audit --journal scans stored facts with it so tokens that
-// landed in evidence BEFORE the redaction pass are findable without ever
-// printing them.
+// SecretHits counts distinct provider-token-shaped locations in s — the
+// detector half of the pass: tq audit --journal scans stored facts with it
+// so tokens that landed in evidence BEFORE the redaction pass are findable
+// without ever printing them. Pattern shapes overlap by design (the bearer
+// and authorization-header shapes both match one "Authorization: Bearer …"
+// line), so overlapping match spans are merged before counting — the hit
+// count estimates secret LOCATIONS, not pattern matches.
 func SecretHits(s string) int {
-	hits := 0
+	type span struct{ start, end int }
 
+	var spans []span
 	for _, re := range secretPatterns {
-		hits += len(re.FindAllString(s, -1))
+		for _, loc := range re.FindAllStringIndex(s, -1) {
+			spans = append(spans, span{start: loc[0], end: loc[1]})
+		}
+	}
+
+	if len(spans) == 0 {
+		return 0
+	}
+
+	slices.SortFunc(spans, func(a, b span) int { return cmp.Compare(a.start, b.start) })
+
+	hits := 1
+	mergedEnd := spans[0].end
+
+	for _, sp := range spans[1:] {
+		if sp.start < mergedEnd {
+			mergedEnd = max(mergedEnd, sp.end)
+			continue
+		}
+		hits++
+		mergedEnd = sp.end
 	}
 
 	return hits
