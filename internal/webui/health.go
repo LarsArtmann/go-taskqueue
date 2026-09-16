@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -305,17 +306,27 @@ func newHealthDashboard(pro dashboard.Prober) *dashboard.Dashboard {
 	)
 }
 
-// withDashboardCSP swaps the strict task-dashboard CSP for the health
-// dashboard's own policy on its routes: the Datastar SDK needs 'unsafe-eval',
-// which securityHeaders deliberately never grants. It runs INSIDE
-// withSecurityHeaders, so only the CSP header is overridden — nosniff,
-// X-Frame-Options and friends stay. The nonce is the same per-request one
-// the security-headers middleware published, so the page's inline bootstrap
-// script stays nonce-authorized.
-func withDashboardCSP(next http.Handler) http.Handler {
+// withHealthHeaders adapts the shared security posture for the health
+// dashboard's own routes. The Datastar SDK needs 'unsafe-eval', which
+// securityHeaders deliberately never grants, so the CSP becomes the health
+// dashboard's recommended policy COMPOSED with the task dashboard's
+// embed/form hardening: the library's RecommendedCSP under-specifies both
+// (no frame-ancestors/form-action at all, base-uri 'self'), so ours is
+// stripped and re-appended stricter — CSP is first-occurrence-wins, a pure
+// append would be ignored. X-Robots-Tag: noindex gives /health* the same
+// crawler defense as the task pages' robots meta (the library head has no
+// injection point). It runs INSIDE withSecurityHeaders, so only these
+// headers are overridden — nosniff, X-Frame-Options and friends stay. The
+// nonce is the same per-request one the security-headers middleware
+// published, so the page's inline bootstrap script stays nonce-authorized.
+func withHealthHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Robots-Tag", "noindex")
 		if nonce := ctxNonce(r.Context()); nonce != "" {
-			w.Header().Set("Content-Security-Policy", dashboard.RecommendedCSP(nonce))
+			csp := strings.Replace(dashboard.RecommendedCSP(nonce),
+				"base-uri 'self'", "base-uri 'none'", 1)
+			csp += "; frame-ancestors 'none'; form-action 'none'"
+			w.Header().Set("Content-Security-Policy", csp)
 		}
 
 		next.ServeHTTP(w, r)

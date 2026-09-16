@@ -160,8 +160,8 @@ func (s *Server) healthBindings() []struct {
 		pattern string
 		handler func(http.ResponseWriter, *http.Request)
 	}{
-		{"GET", HealthDashboardPath, withDashboardCSP(s.dash.Handler()).ServeHTTP},
-		{"GET", HealthSSEPath, withDashboardCSP(s.dash.SSEHandler()).ServeHTTP},
+		{"GET", HealthDashboardPath, withHealthHeaders(s.dash.Handler()).ServeHTTP},
+		{"GET", HealthSSEPath, withHealthHeaders(s.dash.SSEHandler()).ServeHTTP},
 		{"GET", HealthSDKPath, serveDatastarSDK},
 		{"GET", HealthFaviconPath, s.dash.FaviconHandler()},
 		{"GET", HealthLivenessPath, s.prober.LivenessHandler()},
