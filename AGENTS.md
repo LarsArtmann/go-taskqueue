@@ -920,6 +920,25 @@ forwarding the generic stack doesn't model). The one real gap found —
 treatment regardless of library availability. Re-run the comparison only if
 the license changes or a second HTTP surface appears.
 
+**go-health-dashboard** (`~/projects/go-health-dashboard`, sibling library,
+MIT, v0.7.0): assessed 2026-09-16, verdict NOT adopted (assessment, not an
+owner ADR — challenge welcome). It renders a registry of named per-service
+checks (go-health `Prober` seam, Datastar SSE) with severity grouping and
+trend export — a model for processes with MANY named checks in a DI
+container. tq's health is the opposite shape: journal-derived aggregate
+state (worker heartbeats, expired leases, budget burn, DLQ, per-repo
+harvest streaks) computed from the store, already surfaced by `tq doctor`,
+`tq api` healthz, the loopback webui, dead-pool alerts, and the planned
+`tq pool-health` + Gatus journal-head probe. Mounting it under `tq serve`
+would add a second live-update stack (Datastar vs HTMX SSE) and force
+CSP loosening: the Datastar SDK needs 'unsafe-eval' while the webui CSP is
+nonce'd `default-src 'none'`. The `Prober` interface IS consumer-side
+(no samber/do needed for an adapter), so re-open when a fleet/operator
+console (multi-pool per-check board, trend/export endpoints) or a standard
+K8s probe contract becomes a goal — the adapter is then a contained seam
+implementing `Prober` over the store; it still imports go-health for
+`health.Response`, and go-datastar/go-sse ride along.
+
 **go-nix-helpers** (`~/projects/go-nix-helpers`, flake input): the flake's
 only build-time dependency — `flakeModules.go-standard` (flake.nix:24)
 provides the whole Go flake scaffolding (`go-standard.*` option surface,
