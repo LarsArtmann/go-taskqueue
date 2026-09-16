@@ -16,8 +16,28 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-TC_DIR="$(go list -m -f '{{.Dir}}' github.com/larsartmann/templ-components)"
-GHD_DIR="$(go list -m -f '{{.Dir}}' github.com/larsartmann/go-health-dashboard)"
+# Module dir resolution: plain `go list -m` resolves Dir as EMPTY when a
+# (git-ignored) vendor/ directory flips go into vendor mode — pin -mod=mod
+# for the cache copy, and fall back to the vendored source when the cache
+# is unavailable (offline sandbox).
+module_dir() {
+	local dir
+	dir="$(go list -m -mod=mod -f '{{.Dir}}' "$1" 2>/dev/null || true)"
+
+	if [ -z "$dir" ] && [ -d "vendor/$1" ]; then
+		dir="vendor/$1"
+	fi
+
+	if [ -z "$dir" ]; then
+		echo "cannot resolve module dir for $1 (no cache, no vendor/)" >&2
+		exit 1
+	fi
+
+	printf '%s' "$dir"
+}
+
+TC_DIR="$(module_dir github.com/larsartmann/templ-components)"
+GHD_DIR="$(module_dir github.com/larsartmann/go-health-dashboard)"
 REPO="$(pwd)"
 OUT="internal/webui/static/app.css"
 ENTRY="$(mktemp /tmp/tq-webui-app-XXXXXX.css)"
