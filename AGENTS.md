@@ -545,8 +545,8 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 | Library component                                                                                | Status  | Where                                                                                           |
 | ------------------------------------------------------------------------------------------------ | ------- | ----------------------------------------------------------------------------------------------- |
 | `layout.Base`, `ThemeToggle`                                                                     | adopted | `layout.templ`                                                                                  |
-| `display.Card/Table/EmptyState`                                                                  | adopted | `fragments.templ`                                                                               |
-| `display.Badge/Eyebrow/DefinitionList/Scrollback`                                                | adopted | `fragments.templ`                                                                               |
+| `display.Card/Table/EmptyState`                                                                  | adopted | `fragments.templ` (Card since 2026-09-16 only on the DETAIL page — the main-page table/chart wrappers moved to the custom `tq-panel`; Table/EmptyState unchanged) |
+| `display.Badge/DefinitionList/Scrollback`                                                        | adopted | `fragments.templ`                                                                               |
 | `display.AreaChart`                                                                              | adopted | metrics row: fact-rate sparkline + completion histogram (`fragments.templ`)                     |
 | `display.Button`                                                                                 | adopted | filter bar (apply)                                                                              |
 | `display.CopyButton`                                                                             | adopted | detail page: task-id copy, payload lede + raw payload, status-report path (2026-09-14 overhaul) |
@@ -554,7 +554,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 | `navigation.Pagination`                                                                          | adopted | task table pager (2026-09-15: numbered pages + ellipsis replace the hand-rolled prev/next)      |
 | `display.ListNote`                                                                               | adopted | task table pager: "showing N of M" truncation note (2026-09-15)                                 |
 | `icons.ArchiveBox/CircleStack/Filter/Inbox`                                                      | adopted | empty-state + filter icons (`fragments.templ`)                                                  |
-| status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband)                 |
+| status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines, instrument panels (tq-topbar/tq-panel/tq-label/tq-fault) | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband)                 |
 
 Guarded by `TestAdoptionTableCoversTemplates` + `TestAdoptionTablePinsCustomRows`
 (both directions of rot fail the suite).
@@ -577,6 +577,17 @@ renders the in-chrome styled 404 (`renderTaskNotFound`), and the remaining
 where a plain text + browser-back is honest. Adopting would also add the
 errorpage module require (+ vendorHash dance) for four error lines. Do not
 re-litigate without a chrome-less variant upstream.
+
+Retired 2026-09-16 (instrument pass): `display.Eyebrow` — its rendered
+treatment (ALL-CAPS, 0.18em tracked mono) is exactly the templated-chrome
+tell, repeated on every section; replaced by the custom `tq-label`
+convention (lowercase mono, 0.08em, gray-500/400), which also retunes the
+legacy `tq-kicker`/`tq-settled-title`/`tq-payload-label` classes in
+theme.css. Do not re-adopt without a design reversal. Same pass: the
+main-page table/chart wrappers moved from `display.Card` to custom
+`tq-panel` (seam-bordered, no shadow-box islands), the page header became
+the always-dark `tq-topbar` hull bar, and dead>0 renders a `tq-fault`
+action line under the nowband.
 
 Evaluated and REJECTED 2026-09-13: `display.KanbanBoard` (library v1.15+)
 does not fit the custom board — its value is the drag/keyboard move
