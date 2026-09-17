@@ -24,12 +24,15 @@ func writeRegistry(t *testing.T, entries []RegistryEntry) string {
 }
 
 func TestPingRegistryAppendsAndLoadIsLatestWins(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "session-registry.jsonl")
 	old := time.Now().Add(-time.Hour).UTC()
 
 	if err := PingRegistry(path, "sess-a", "/repos/demo", old); err != nil {
 		t.Fatalf("ping 1: %v", err)
 	}
+
 	if err := PingRegistry(path, "sess-a", "/repos/demo", time.Now().UTC()); err != nil {
 		t.Fatalf("ping 2: %v", err)
 	}
@@ -43,16 +46,19 @@ func TestPingRegistryAppendsAndLoadIsLatestWins(t *testing.T) {
 		t.Fatalf("entries = %d, want one per session id", len(entries))
 	}
 
-	e := entries[0]
-	if e.ID != "sess-a" || e.CWD != "/repos/demo" {
-		t.Fatalf("entry = %+v", e)
+	entry := entries[0]
+	if entry.ID != "sess-a" || entry.CWD != "/repos/demo" {
+		t.Fatalf("entry = %+v", entry)
 	}
-	if e.LastSeen.Round(time.Second).Equal(old.Round(time.Second)) {
-		t.Fatalf("latest-wins violated: kept the oldest ping (%s)", e.LastSeen)
+
+	if entry.LastSeen.Round(time.Second).Equal(old.Round(time.Second)) {
+		t.Fatalf("latest-wins violated: kept the oldest ping (%s)", entry.LastSeen)
 	}
 }
 
 func TestPingRegistryRefusesEmptyID(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "session-registry.jsonl")
 
 	if err := PingRegistry(path, "", "/repos/demo", time.Now()); err == nil {
@@ -61,20 +67,26 @@ func TestPingRegistryRefusesEmptyID(t *testing.T) {
 }
 
 func TestLoadRegistryMissingFileIsEmptyAndTornLinesAreSkipped(t *testing.T) {
+	t.Parallel()
+
 	entries, err := LoadRegistry(filepath.Join(t.TempDir(), "absent.jsonl"))
 	if err != nil {
 		t.Fatalf("missing file: %v", err)
 	}
+
 	if len(entries) != 0 {
 		t.Fatalf("missing file yielded %d entries", len(entries))
 	}
 
 	path := filepath.Join(t.TempDir(), "torn.jsonl")
+
 	good, err := json.Marshal(RegistryEntry{ID: "sess-a", CWD: "/repos/demo", LastSeen: time.Now().UTC()})
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	body := "\n" + string(good) + "\n" + `{"id": "sess-b", "cwd": ` + "\n" + "garbage\n"
+
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -83,10 +95,13 @@ func TestLoadRegistryMissingFileIsEmptyAndTornLinesAreSkipped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load torn: %v", err)
 	}
+
 	if len(entries) != 1 || entries[0].ID != "sess-a" {
 		t.Fatalf("entries = %+v, want only sess-a", entries)
 	}
 }
+
+var errStubOwnerCheck = errors.New("stub owner check failure")
 
 type stubOwner struct {
 	owned map[string]bool
@@ -102,6 +117,8 @@ func (o stubOwner) Owns(_ context.Context, id string) (bool, error) {
 }
 
 func TestSweepClosesQuietUnownedAndPrunes(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := testStore(t)
 
@@ -126,12 +143,14 @@ func TestSweepClosesQuietUnownedAndPrunes(t *testing.T) {
 	}
 
 	byID := map[string]SweepOutcome{}
-	for _, o := range outcomes {
-		byID[o.Entry.ID] = o
+	for _, outcome := range outcomes {
+		byID[outcome.Entry.ID] = outcome
 	}
+
 	if !byID["sess-old"].Closed {
 		t.Fatalf("sess-old not closed: %+v", byID["sess-old"])
 	}
+
 	if byID["sess-fresh"].Closed || byID["sess-fresh"].Err != nil {
 		t.Fatalf("sess-fresh should be kept as fresh: %+v", byID["sess-fresh"])
 	}
@@ -140,12 +159,14 @@ func TestSweepClosesQuietUnownedAndPrunes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	sawClosed := false
 	for _, f := range facts {
 		if f.Type == "session.closed" && f.TaskID == "session:sess-old" {
 			sawClosed = true
 		}
 	}
+
 	if !sawClosed {
 		t.Fatalf("no session.closed fact for sess-old in %d fact(s)", len(facts))
 	}
@@ -154,12 +175,15 @@ func TestSweepClosesQuietUnownedAndPrunes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(kept) != 1 || kept[0].ID != "sess-fresh" {
 		t.Fatalf("registry after sweep = %+v, want only sess-fresh", kept)
 	}
 }
 
 func TestSweepKeepsOwnedSessions(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := testStore(t)
 
@@ -176,6 +200,7 @@ func TestSweepKeepsOwnedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sweep: %v", err)
 	}
+
 	if outcomes[0].Closed {
 		t.Fatalf("owned session closed: %+v", outcomes[0])
 	}
@@ -184,12 +209,15 @@ func TestSweepKeepsOwnedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(kept) != 1 {
 		t.Fatalf("owned session pruned from registry: %+v", kept)
 	}
 }
 
 func TestSweepKeepsEntryWhenOwnerCheckFails(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	s := testStore(t)
 
@@ -200,12 +228,13 @@ func TestSweepKeepsEntryWhenOwnerCheckFails(t *testing.T) {
 	outcomes, err := Sweep(ctx, s, stubScanner(nil), SweepInput{
 		RegistryPath: path,
 		StaleAfter:   10 * time.Minute,
-		Owner:        stubOwner{err: errors.New("pgrep unavailable")},
+		Owner:        stubOwner{err: errStubOwnerCheck},
 		Now:          time.Now().UTC(),
 	})
 	if err != nil {
 		t.Fatalf("sweep: %v", err)
 	}
+
 	if outcomes[0].Err == nil || outcomes[0].Closed {
 		t.Fatalf("owner-check failure should keep the entry: %+v", outcomes[0])
 	}
@@ -214,12 +243,15 @@ func TestSweepKeepsEntryWhenOwnerCheckFails(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(kept) != 1 {
 		t.Fatalf("failed-ownership session pruned from registry: %+v", kept)
 	}
 }
 
 func TestSweepDefaultsOwnerAndNow(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "empty.jsonl")
 
 	outcomes, err := Sweep(context.Background(), testStore(t), stubScanner(nil), SweepInput{
@@ -229,6 +261,7 @@ func TestSweepDefaultsOwnerAndNow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("sweep with defaults: %v", err)
 	}
+
 	if len(outcomes) != 0 {
 		t.Fatalf("outcomes = %+v, want none for an empty registry", outcomes)
 	}
@@ -239,6 +272,8 @@ func TestSweepDefaultsOwnerAndNow(t *testing.T) {
 }
 
 func TestPgrepOwnerFindsNothingForAbsentPattern(t *testing.T) {
+	t.Parallel()
+
 	if _, err := exec.LookPath("pgrep"); err != nil {
 		t.Skip("pgrep unavailable")
 	}
@@ -247,21 +282,23 @@ func TestPgrepOwnerFindsNothingForAbsentPattern(t *testing.T) {
 	if err != nil {
 		t.Fatalf("pgrep: %v", err)
 	}
+
 	if owned {
 		t.Fatal("pgrep reported ownership for a pattern no process carries")
 	}
 }
 
 func TestRegistryEntriesAreJSONLines(t *testing.T) {
-	var b strings.Builder
-	e := RegistryEntry{ID: "sess-a", CWD: "/repos/demo", LastSeen: time.Date(2026, 9, 17, 0, 0, 0, 0, time.UTC)}
-	line, err := json.Marshal(e)
+	t.Parallel()
+
+	entry := RegistryEntry{ID: "sess-a", CWD: "/repos/demo", LastSeen: time.Date(2026, 9, 17, 0, 0, 0, 0, time.UTC)}
+
+	line, err := json.Marshal(entry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	b.Write(line)
 
-	if strings.Contains(b.String(), `"last_seen"`) == strings.Contains(b.String(), `"LastSeen"`) {
-		t.Fatalf("registry wire format must stay snake_case: %s", b.String())
+	if strings.Contains(string(line), `"last_seen"`) == strings.Contains(string(line), `"LastSeen"`) {
+		t.Fatalf("registry wire format must stay snake_case: %s", line)
 	}
 }

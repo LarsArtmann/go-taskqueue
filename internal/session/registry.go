@@ -119,6 +119,7 @@ func LoadRegistry(path string) ([]RegistryEntry, error) {
 		if _, seen := latest[entry.ID]; !seen {
 			order = append(order, entry.ID)
 		}
+
 		latest[entry.ID] = entry
 	}
 
@@ -148,6 +149,7 @@ func RewriteRegistry(path string, entries []RegistryEntry) error {
 		if err != nil {
 			return fmt.Errorf("session: encode registry entry: %w", err)
 		}
+
 		b.Write(line)
 		b.WriteByte('\n')
 	}
@@ -179,6 +181,7 @@ func (PgrepOwner) Owns(ctx context.Context, id string) (bool, error) {
 	}
 
 	cmd := exec.CommandContext(ctx, "pgrep", "-f", id)
+
 	err := cmd.Run()
 	if err == nil {
 		return true, nil
