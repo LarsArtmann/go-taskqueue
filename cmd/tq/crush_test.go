@@ -67,7 +67,7 @@ func TestCrushWrapperClosesOnExit(t *testing.T) {
 	git("add", "-A")
 	git("commit", "-qm", "wrapped work", "-m", "Crush-Session: sess-wrap")
 
-	stub := crushStub(t, "TQ_RESULT: ok session_id=\"sess-wrap\"", 0)
+	stub := crushStub(t, "session_id: sess-wrap", 0)
 
 	var out, errOut bytes.Buffer
 
@@ -83,7 +83,7 @@ func TestCrushWrapperClosesOnExit(t *testing.T) {
 		t.Fatalf("child exit code = %d, want 0", code)
 	}
 
-	if !strings.Contains(out.String(), "TQ_RESULT") {
+	if !strings.Contains(out.String(), "session_id: sess-wrap") {
 		t.Fatalf("child stdout not forwarded: %q", out.String())
 	}
 
