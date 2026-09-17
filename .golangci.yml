@@ -245,6 +245,9 @@ linters:
       - path: internal/harvest/reprioritize\.go
         linters:
           - tagliatelle
+      - path: internal/session/registry\.go
+        linters:
+          - tagliatelle
       - path: ^(task/task|journal/journal|queue/queue|queue/sqlite/sqlite|queue/postgres/postgres|executor/executor|worker/worker)\.go$
         linters:
           - gochecknoglobals
