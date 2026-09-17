@@ -444,7 +444,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		return
 	}
 
-	if qp, ok := errors.AsType[*executor.QuestionPendingError](execErr); ok {
+	if questionErr, ok := errors.AsType[*executor.QuestionPendingError](execErr); ok {
 		// Owner question (PapDashboard questions): the agent parked the run
 		// awaiting a ruling. The identical retry is pointless until the
 		// answer arrives — requeue WITHOUT burning an attempt, parked until
@@ -455,14 +455,18 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 			terminalCtx,
 			t.ID,
 			p.cfg.Owner,
-			qp.Error(),
-			qp.RetryAfter,
-			qp.ResumeCloseout,
+			questionErr.Error(),
+			questionErr.RetryAfter,
+			questionErr.ResumeCloseout,
 		); err != nil {
 			p.log.Error("question requeue failed", "task", t.ID, "err", err)
 		} else {
-			attrs := []any{"task", t.ID, "retry after", qp.RetryAfter.Round(time.Second), "question", qp.Cause.Error()}
-			if qp.ResumeCloseout {
+			attrs := []any{
+				"task", t.ID,
+				"retry after", questionErr.RetryAfter.Round(time.Second),
+				"question", questionErr.Cause.Error(),
+			}
+			if questionErr.ResumeCloseout {
 				attrs = append(attrs, "resume", "closeout")
 			}
 
