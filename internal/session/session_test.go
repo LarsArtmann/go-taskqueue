@@ -371,3 +371,51 @@ func TestReviewItemDefaultsWhenSummaryEmpty(t *testing.T) {
 func ptr[v any](val v) *v {
 	return new(val)
 }
+
+func TestListReturnsOnlyOpenSessionsNewestFirst(t *testing.T) {
+	ctx := context.Background()
+	s := testStore(t)
+
+	if err := Begin(ctx, s, "sess-1", "/repos/one", "one"); err != nil {
+		t.Fatalf("begin sess-1: %v", err)
+	}
+
+	if err := Begin(ctx, s, "sess-2", "/repos/two", "two"); err != nil {
+		t.Fatalf("begin sess-2: %v", err)
+	}
+
+	commits := []Commit{{SHA: "abc123", Subject: "work"}}
+	if _, err := Close(ctx, s, stubScanner(commits), closeInput); err != nil {
+		t.Fatalf("close sess-abc: %v", err)
+	}
+
+	open, err := List(ctx, s)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+
+	if len(open) != 2 {
+		t.Fatalf("want 2 open sessions (sess-1, sess-2 — sess-abc is closed), got %d: %+v", len(open), open)
+	}
+
+	if open[0].ID != "sess-2" || open[1].ID != "sess-1" {
+		t.Errorf("want newest first [sess-2 sess-1], got %v", open)
+	}
+
+	for _, info := range open {
+		if info.Repo == "" || info.Project == "" || info.OpenedAt.IsZero() {
+			t.Errorf("session %s missing detail: %+v", info.ID, info)
+		}
+	}
+}
+
+func TestListEmptyJournalIsNoOpenSessions(t *testing.T) {
+	open, err := List(context.Background(), testStore(t))
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+
+	if len(open) != 0 {
+		t.Errorf("want zero open sessions, got %+v", open)
+	}
+}
