@@ -27,6 +27,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -444,8 +445,8 @@ func List(ctx context.Context, src FactSource) ([]SessionInfo, error) {
 	}
 
 	open := make([]SessionInfo, 0, len(order))
-	for i := len(order) - 1; i >= 0; i-- {
-		if st := seen[order[i]]; st.open {
+	for _, ref := range slices.Backward(order) {
+		if st := seen[ref]; st.open {
 			open = append(open, st.info)
 		}
 	}

@@ -14,18 +14,18 @@ type (
 
 // Fact types.
 const (
-	Enqueued        = internaljournal.Enqueued
-	Claimed         = internaljournal.Claimed
-	Heartbeat       = internaljournal.Heartbeat
-	Completed       = internaljournal.Completed
-	Failed          = internaljournal.Failed
-	DeadLettered    = internaljournal.DeadLettered
-	Cancelled       = internaljournal.Cancelled
-	CancelRequested = internaljournal.CancelRequested
-	Released        = internaljournal.Released
-	Requeued        = internaljournal.Requeued
-	Orphaned        = internaljournal.Orphaned
-	Reprioritized   = internaljournal.Reprioritized
+	Enqueued         = internaljournal.Enqueued
+	Claimed          = internaljournal.Claimed
+	Heartbeat        = internaljournal.Heartbeat
+	Completed        = internaljournal.Completed
+	Failed           = internaljournal.Failed
+	DeadLettered     = internaljournal.DeadLettered
+	Cancelled        = internaljournal.Cancelled
+	CancelRequested  = internaljournal.CancelRequested
+	Released         = internaljournal.Released
+	Requeued         = internaljournal.Requeued
+	Orphaned         = internaljournal.Orphaned
+	Reprioritized    = internaljournal.Reprioritized
 	SessionOpened    = internaljournal.SessionOpened
 	SessionClosed    = internaljournal.SessionClosed
 	QuestionAsked    = internaljournal.QuestionAsked
