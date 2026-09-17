@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -89,5 +90,66 @@ func TestStatsJSONParkedContract(t *testing.T) {
 
 	if !strings.Contains(human, "parked") {
 		t.Errorf("human stats output lost the parked line:\n%s", human)
+	}
+}
+
+// TestStatsOpenSessions pins the stale-open-session visibility surface
+// (03-28 §f9): `tq stats --json` carries the open-session count under
+// `open_sessions` (omitted when none), and the human output names the
+// line only while sessions are open.
+func TestStatsOpenSessions(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "stats.db")
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	// Bare store: no open_sessions key at all.
+	out := captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path, "--json"}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("stats payload not JSON: %v (%s)", err, out)
+	}
+
+	if _, ok := payload["open_sessions"]; ok {
+		t.Errorf("bare store carried an open_sessions key: %s", out)
+	}
+
+	if err := session.Begin(ctx, s, "sess-stats", "/tmp/repo", "repo"); err != nil {
+		t.Fatalf("session begin: %v", err)
+	}
+
+	out = captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path, "--json"}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	payload = map[string]any{}
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("stats payload not JSON: %v (%s)", err, out)
+	}
+
+	if got := payload["open_sessions"]; got != float64(1) {
+		t.Errorf("open_sessions = %v, want 1 (%s)", got, out)
+	}
+
+	human := captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	if !strings.Contains(human, "open sessions") {
+		t.Errorf("human stats output lost the open-sessions line:\n%s", human)
 	}
 }

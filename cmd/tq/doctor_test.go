@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -697,5 +699,68 @@ func TestDoctorVerifyPinsFlagsStalePins(t *testing.T) {
 
 	if !strings.Contains(ok.Detail, "1 pending agent task(s) pin a verify command") {
 		t.Errorf("fresh detail must count only pinned tasks: %s", ok.Detail)
+	}
+}
+
+// TestDoctorOpenSessions pins the stale-open-session visibility check
+// (03-28 §f9): a session that began and never closed surfaces as a WARN
+// naming the session and pointing at the explicit close path, while a
+// clean store is ok. The check is observation-only — its detail must
+// carry the never-auto-close disclaimer.
+func TestDoctorOpenSessions(t *testing.T) {
+	path := doctorTestStore(t)
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	// Bare store: no open sessions, check is ok.
+	results, err := runDoctor(ctx, doctorOptions{DBPath: path})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	if r := resultByName(results, "open-sessions"); r.Status != checkOK {
+		t.Errorf("bare store open-sessions = %s (%s), want ok", r.Status, r.Detail)
+	}
+
+	if err := session.Begin(ctx, s, "sess-abc", "/tmp/repo", "repo"); err != nil {
+		t.Fatalf("session begin: %v", err)
+	}
+
+	results, err = runDoctor(ctx, doctorOptions{DBPath: path})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	r := resultByName(results, "open-sessions")
+
+	if r.Status != checkWarn {
+		t.Errorf("open-sessions = %s (%s), want warn", r.Status, r.Detail)
+	}
+
+	if !strings.Contains(r.Detail, "sess-abc") {
+		t.Errorf("detail must name the open session: %s", r.Detail)
+	}
+
+	if !strings.Contains(r.Detail, "never auto-closes") {
+		t.Errorf("detail must carry the never-auto-close disclaimer: %s", r.Detail)
+	}
+
+	if err := s.AppendFact(ctx, journal.Fact{TaskID: "session:sess-abc", Type: journal.SessionClosed}); err != nil {
+		t.Fatalf("append closed fact: %v", err)
+	}
+
+	results, err = runDoctor(ctx, doctorOptions{DBPath: path})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	if r := resultByName(results, "open-sessions"); r.Status != checkOK {
+		t.Errorf("post-close open-sessions = %s (%s), want ok", r.Status, r.Detail)
 	}
 }
