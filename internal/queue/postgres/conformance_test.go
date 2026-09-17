@@ -1054,6 +1054,140 @@ func TestPostgresConformance(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("question answer unblocks, injects, and replays clean", func(t *testing.T) {
+		askFact := func(id task.ID, ref, question string) {
+			t.Helper()
+
+			if err := s.AppendFact(ctx, journal.Fact{
+				TaskID: id.String(),
+				Type:   journal.QuestionAsked,
+				Detail: mustJSON(queue.QuestionAskedDetail{Ref: ref, Type: queue.QuestionTypeConfirmation, Question: question}),
+			}); err != nil {
+				t.Fatalf("append asked fact: %v", err)
+			}
+		}
+
+		// Parked + JSON-object payload: the answer unblocks and injects.
+		pq, err := s.Enqueue(ctx, task.New{Type: "agent", Project: project, Payload: jsontext.Value(`{"repo":"x","prompt":"y"}`)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		askFact(pq.ID, "pq-1", "Ship as v3 now?")
+
+		if err := s.Requeue(ctx, pq.ID, "pq-w", "question pending: pq-1", time.Hour, false); err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+			t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
+		}
+
+		if err := s.RecordAnswer(ctx, pq.ID, queue.AnswerRecord{Ref: "pq-1", Answer: "yes", PapID: "pap-9"}); err != nil {
+			t.Fatalf("RecordAnswer: %v", err)
+		}
+
+		// Replayed delivery (at-least-once poller) is a no-op.
+		if err := s.RecordAnswer(ctx, pq.ID, queue.AnswerRecord{Ref: "pq-1", Answer: "yes", PapID: "pap-9"}); err != nil {
+			t.Fatalf("replayed RecordAnswer: %v", err)
+		}
+
+		got, err := s.Get(ctx, pq.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if got.Status != task.Pending {
+			t.Fatalf("status = %s, want pending", got.Status)
+		}
+
+		if !got.NotBefore.IsZero() && got.NotBefore.After(time.Now()) {
+			t.Fatalf("NotBefore = %v, want cleared", got.NotBefore)
+		}
+
+		var payload struct {
+			Answered []struct {
+				Ref      string `json:"ref"`
+				Question string `json:"question"`
+				Answer   string `json:"answer"`
+			} `json:"answered"`
+		}
+		if err := json.Unmarshal(jsontext.Value(got.Payload), &payload); err != nil {
+			t.Fatalf("payload: %v (%s)", err, got.Payload)
+		}
+
+		if len(payload.Answered) != 1 {
+			t.Fatalf("answered entries = %d, want 1 after replay (%s)", len(payload.Answered), got.Payload)
+		}
+
+		if payload.Answered[0].Ref != "pq-1" || payload.Answered[0].Answer != "yes" {
+			t.Errorf("answered entry = %+v", payload.Answered[0])
+		}
+
+		if payload.Answered[0].Question != "Ship as v3 now?" {
+			t.Errorf("question not backfilled from the asked fact: %q", payload.Answered[0].Question)
+		}
+
+		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); err != nil {
+			t.Fatalf("claim after answer: %v", err)
+		}
+
+		// Raw payload: ruling is journal-only, payload untouched, task
+		// stays parked until the expiry safety valve.
+		raw, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Payload: jsontext.Value(`echo hi`)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); err != nil {
+			t.Fatalf("raw claim: %v", err)
+		}
+
+		askFact(raw.ID, "pq-2", "Proceed?")
+
+		if err := s.Requeue(ctx, raw.ID, "pq-w", "question pending: pq-2", time.Hour, false); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := s.RecordAnswer(ctx, raw.ID, queue.AnswerRecord{Ref: "pq-2", Answer: "ok"}); err != nil {
+			t.Fatalf("raw RecordAnswer: %v", err)
+		}
+
+		rawGot, err := s.Get(ctx, raw.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if strings.TrimSpace(string(rawGot.Payload)) != "echo hi" {
+			t.Errorf("raw payload mutated: %q", rawGot.Payload)
+		}
+
+		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+			t.Fatalf("raw-payload task unblocked err = %v, want still parked", err)
+		}
+
+		trail, err := s.FactsForTask(ctx, raw.ID.String(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		found := false
+
+		for _, f := range trail {
+			if f.Type == journal.QuestionAnswered {
+				found = true
+			}
+		}
+
+		if !found {
+			t.Fatal("raw-payload ruling fact lost")
+		}
+	})
 }
 
 // TestPostgresBandFilter mirrors the sqlite band-filter pin: the

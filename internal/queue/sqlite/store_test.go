@@ -3146,8 +3146,9 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 
 	var payload struct {
 		Answered []struct {
-			Ref    string `json:"ref"`
-			Answer string `json:"answer"`
+			Ref      string `json:"ref"`
+			Question string `json:"question"`
+			Answer   string `json:"answer"`
 		} `json:"answered"`
 	}
 	if err := json.Unmarshal(jsontext.Value(got.Payload), &payload); err != nil {
@@ -3171,10 +3172,13 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, time.Hour)
+	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, 50*time.Millisecond)
 
-	// The task got re-claimed (stale cursor replay): the ruling is journal
-	// truth but must not touch a live task.
+	// The safety valve fired (short park) and a worker re-claimed before
+	// the answer landed: the ruling is journal truth but must not touch a
+	// live task.
+	time.Sleep(150 * time.Millisecond)
+
 	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -3256,7 +3260,7 @@ func TestRecordAnswerValidation(t *testing.T) {
 	}{
 		{name: "missing ref", ans: queue.AnswerRecord{Answer: "yes"}},
 		{name: "blank answer", ans: queue.AnswerRecord{Ref: "q-1", Answer: "   "}},
-		{name: "unknown task", ans: queue.AnswerRecord{Ref: "q-1", Answer: "yes"}, },
+		{name: "unknown task", ans: queue.AnswerRecord{Ref: "q-1", Answer: "yes"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			id := tk.ID

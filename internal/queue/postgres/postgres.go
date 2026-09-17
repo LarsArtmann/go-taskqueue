@@ -1095,7 +1095,7 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 			return err
 		}
 
-		if answered[ans.Ref] {
+		if _, done := answered[ans.Ref]; done {
 			return nil
 		}
 
