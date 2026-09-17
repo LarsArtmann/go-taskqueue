@@ -2931,3 +2931,356 @@ func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
 		t.Errorf("rescue detail = %+v, want rescue=true", detail)
 	}
 }
+
+// parkOnQuestion drives a task into the parked-on-question state — the
+// exact queue-side shape of the PapDashboard question flow: enqueue,
+// claim, task.question-asked fact (what tq ask records), then the
+// worker's question-pending requeue with the question expiry as the
+// NotBefore safety valve.
+func parkOnQuestion(t *testing.T, s *Store, ref, payload string, requeueIn time.Duration) task.Task {
+	t.Helper()
+
+	ctx := context.Background()
+
+	tk, err := s.Enqueue(ctx, task.New{Type: "agent", Payload: jsontext.Value(payload)})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	asked := queue.QuestionAskedDetail{
+		Ref:      ref,
+		Type:     queue.QuestionTypeConfirmation,
+		Question: "Ship as v3 now, or stay on v2 until the proxy settles?",
+		Repo:     "go-taskqueue",
+	}
+	if err := s.AppendFact(ctx, journal.Fact{
+		TaskID: tk.ID.String(),
+		Type:   journal.QuestionAsked,
+		Detail: mustJSON(asked),
+	}); err != nil {
+		t.Fatalf("append asked fact: %v", err)
+	}
+
+	if err := s.Requeue(ctx, tk.ID, "w1", "question pending: "+ref, requeueIn, false); err != nil {
+		t.Fatalf("park requeue: %v", err)
+	}
+
+	return tk
+}
+
+func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk := parkOnQuestion(t, s, "q-1", `{"repo":"go-taskqueue","prompt":"do the thing"}`, time.Hour)
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
+	}
+
+	err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
+	if err != nil {
+		t.Fatalf("RecordAnswer: %v", err)
+	}
+
+	got, err := s.Get(ctx, tk.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	if got.Status != task.Pending {
+		t.Fatalf("status = %s, want pending", got.Status)
+	}
+
+	if !got.NotBefore.IsZero() && got.NotBefore.After(time.Now()) {
+		t.Fatalf("NotBefore = %v, want cleared (immediately claimable)", got.NotBefore)
+	}
+
+	var payload struct {
+		Repo     string `json:"repo"`
+		Answered []struct {
+			Ref        string `json:"ref"`
+			Question   string `json:"question"`
+			Answer     string `json:"answer"`
+			PapID      string `json:"pap_id"`
+			AnsweredAt int64  `json:"answered_at"`
+		} `json:"answered"`
+	}
+	if err := json.Unmarshal(jsontext.Value(got.Payload), &payload); err != nil {
+		t.Fatalf("payload not JSON: %v (%s)", err, got.Payload)
+	}
+
+	if len(payload.Answered) != 1 {
+		t.Fatalf("answered entries = %d, want 1 (%s)", len(payload.Answered), got.Payload)
+	}
+
+	a := payload.Answered[0]
+	if a.Ref != "q-1" || a.Answer != "Stay on v2." || a.PapID != "pap-42" || a.AnsweredAt <= 0 {
+		t.Errorf("answered entry = %+v, want ref/answer/pap_id/answered_at", a)
+	}
+
+	if a.Question != "Ship as v3 now, or stay on v2 until the proxy settles?" {
+		t.Errorf("question not backfilled from the asked fact: %q", a.Question)
+	}
+
+	// The answer must be claimable RIGHT NOW — no residual delay.
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim after answer: %v", err)
+	}
+
+	// The answered fact is self-contained forensics.
+	trail, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	var answered queue.QuestionAnsweredDetail
+
+	found := false
+
+	for _, f := range trail {
+		if f.Type != journal.QuestionAnswered {
+			continue
+		}
+
+		found = true
+
+		if err := json.Unmarshal(f.Detail, &answered); err != nil {
+			t.Fatalf("answered fact detail: %v (%s)", err, f.Detail)
+		}
+	}
+
+	if !found {
+		t.Fatal("no task.question-answered fact")
+	}
+
+	if answered.Ref != "q-1" || answered.Answer != "Stay on v2." || answered.PapID != "pap-42" {
+		t.Errorf("answered fact = %+v", answered)
+	}
+
+	if answered.Question != "Ship as v3 now, or stay on v2 until the proxy settles?" {
+		t.Errorf("answered fact question = %q, want backfilled asked text", answered.Question)
+	}
+}
+
+func TestRecordAnswerReplayIsNoop(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, time.Hour)
+
+	ans := queue.AnswerRecord{Ref: "q-1", Answer: "Go ahead.", PapID: "pap-7"}
+	if err := s.RecordAnswer(ctx, tk.ID, ans); err != nil {
+		t.Fatalf("RecordAnswer: %v", err)
+	}
+
+	if err := s.RecordAnswer(ctx, tk.ID, ans); err != nil {
+		t.Fatalf("replayed RecordAnswer: %v", err)
+	}
+
+	got, _ := s.Get(ctx, tk.ID)
+
+	var payload struct {
+		Answered []map[string]any `json:"answered"`
+	}
+	if err := json.Unmarshal(jsontext.Value(got.Payload), &payload); err != nil {
+		t.Fatalf("payload: %v", err)
+	}
+
+	if len(payload.Answered) != 1 {
+		t.Fatalf("answered entries = %d, want 1 after replay (%s)", len(payload.Answered), got.Payload)
+	}
+
+	trail, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
+
+	n := 0
+
+	for _, f := range trail {
+		if f.Type == journal.QuestionAnswered {
+			n++
+		}
+	}
+
+	if n != 1 {
+		t.Fatalf("question-answered facts = %d, want 1 after replay", n)
+	}
+}
+
+func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, time.Hour)
+
+	if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "first"}); err != nil {
+		t.Fatalf("RecordAnswer q-1: %v", err)
+	}
+
+	// A follow-up question (different ref) on the re-claimed task parks it
+	// again; its answer joins the same answered array.
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("reclaim: %v", err)
+	}
+
+	if err := s.AppendFact(ctx, journal.Fact{
+		TaskID: tk.ID.String(),
+		Type:   journal.QuestionAsked,
+		Detail: mustJSON(queue.QuestionAskedDetail{Ref: "q-2", Type: queue.QuestionTypeInfo, Question: "Which module owns the cursor?"}),
+	}); err != nil {
+		t.Fatalf("append q-2: %v", err)
+	}
+
+	if err := s.Requeue(ctx, tk.ID, "w1", "question pending: q-2", time.Hour, false); err != nil {
+		t.Fatalf("park q-2: %v", err)
+	}
+
+	if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-2", Answer: "queue", Question: "Which module owns the cursor?"}); err != nil {
+		t.Fatalf("RecordAnswer q-2: %v", err)
+	}
+
+	got, _ := s.Get(ctx, tk.ID)
+
+	var payload struct {
+		Answered []struct {
+			Ref    string `json:"ref"`
+			Answer string `json:"answer"`
+		} `json:"answered"`
+	}
+	if err := json.Unmarshal(jsontext.Value(got.Payload), &payload); err != nil {
+		t.Fatalf("payload: %v", err)
+	}
+
+	if len(payload.Answered) != 2 {
+		t.Fatalf("answered entries = %d, want 2 (%s)", len(payload.Answered), got.Payload)
+	}
+
+	if payload.Answered[0].Ref != "q-1" || payload.Answered[1].Ref != "q-2" {
+		t.Errorf("answered order = [%s %s], want [q-1 q-2]", payload.Answered[0].Ref, payload.Answered[1].Ref)
+	}
+
+	if payload.Answered[1].Question != "Which module owns the cursor?" {
+		t.Errorf("explicit question not honored: %q", payload.Answered[1].Question)
+	}
+}
+
+func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, time.Hour)
+
+	// The task got re-claimed (stale cursor replay): the ruling is journal
+	// truth but must not touch a live task.
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "too late"}); err != nil {
+		t.Fatalf("RecordAnswer: %v", err)
+	}
+
+	got, _ := s.Get(ctx, tk.ID)
+	if got.Status != task.Running {
+		t.Fatalf("status = %s, want running (untouched)", got.Status)
+	}
+
+	if strings.Contains(string(got.Payload), "answered") {
+		t.Errorf("running task payload mutated: %s", got.Payload)
+	}
+
+	trail, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
+
+	found := false
+
+	for _, f := range trail {
+		if f.Type == journal.QuestionAnswered {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatal("ruling fact lost on a running task")
+	}
+}
+
+func TestRecordAnswerRawPayloadFactOnly(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	// Raw (non-object) payloads cannot carry the injection — the ruling
+	// lives in the journal only, and the parked task stays parked (the
+	// safety-valve expiry owns it).
+	tk := parkOnQuestion(t, s, "q-1", `echo hi`, time.Hour)
+
+	if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "ok"}); err != nil {
+		t.Fatalf("RecordAnswer: %v", err)
+	}
+
+	got, _ := s.Get(ctx, tk.ID)
+	if strings.TrimSpace(string(got.Payload)) != "echo hi" {
+		t.Fatalf("raw payload mutated: %q", got.Payload)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("raw-payload task unblocked err = %v, want still parked", err)
+	}
+
+	trail, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
+
+	found := false
+
+	for _, f := range trail {
+		if f.Type == journal.QuestionAnswered {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatal("ruling fact lost on a raw payload")
+	}
+}
+
+func TestRecordAnswerValidation(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, time.Hour)
+
+	for _, tc := range []struct {
+		name string
+		ans  queue.AnswerRecord
+	}{
+		{name: "missing ref", ans: queue.AnswerRecord{Answer: "yes"}},
+		{name: "blank answer", ans: queue.AnswerRecord{Ref: "q-1", Answer: "   "}},
+		{name: "unknown task", ans: queue.AnswerRecord{Ref: "q-1", Answer: "yes"}, },
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			id := tk.ID
+			if tc.name == "unknown task" {
+				id = task.ID("0001NONEXISTENT")
+			}
+
+			err := s.RecordAnswer(ctx, id, tc.ans)
+			if err == nil {
+				t.Fatal("RecordAnswer succeeded, want error")
+			}
+
+			if tc.name == "unknown task" && !errors.Is(err, task.ErrNotFound) {
+				t.Fatalf("err = %v, want task.ErrNotFound", err)
+			}
+		})
+	}
+
+	// No invalid call leaked a fact.
+	trail, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
+
+	for _, f := range trail {
+		if f.Type == journal.QuestionAnswered {
+			t.Errorf("invalid answer appended a fact: %s", f.Detail)
+		}
+	}
+}
