@@ -1,7 +1,39 @@
 # Design note: decision → question fan-out (PapDashboard)
 
-**Status:** Proposed (2026-09-06) — plan row C24 / D74. Not implemented; this
-note is the contract any implementation must satisfy.
+**Status:** Accepted (2026-09-17) — SHIPPED as the fact-park model
+described below, with two deliberate deviations (polling replaces the
+POST sketch; parked-not-running replaces the running-with-deps blocking).
+Implementation arc: the 2026-09-17 14-37 foundation report (design) +
+21-04 report (all layers, gates). Open owner rulings: agent ask-policy
+(no prompt teaches `tq ask` yet) and the 72h expiry default.
+
+**What shipped (the short contract):**
+
+- `tq ask --task <id>` validates the task is RUNNING, redacts the question,
+  appends `task.question-asked`, and writes the per-run
+  `$TQ_QUESTION_FILE` marker — the question is a FACT, not a task. The ref
+  is sha256(taskID + normalized question), truncated to 16 hex; re-asking
+  converges on the same ref (a pending ref re-arms the marker, an answered
+  ref is a no-op).
+- The agent's turn ENDS with `QuestionPendingError`; the worker requeues
+  WITHOUT burning an attempt, NotBefore = the question's expiry (default
+  72h, cap 7d) as the safety valve — expired questions re-enter the task.
+- The PapDashboard bridge forwards the question (correlation tokens
+  `task:<id>` / `qref:<ref>` LEAD the body so truncation can never sever
+  the route home); the owner answers in the dashboard.
+- The AnswerPoller polls answered questions back (watermark cursor on
+  AnsweredAt, bootstrap-at-now, at-least-once — RecordAnswer is idempotent
+  per ref) and the store injects the ruling into the payload (`answered`
+  array), clears NotBefore, and appends `task.question-answered`. The
+  resumed run sees "Answers from the owner" rendered into its prompt.
+
+**Deviations from the sketch below:** (1) the question is NOT a task —
+parking the asking task directly (requeue-without-burn, mirroring the
+RateLimitError ladder) avoids a whole task lifecycle for one boolean and
+keeps attempts honest; (2) the answer does NOT POST into the queue — the
+poller PULLS it, keeping the zero-inbound-write-path posture (the queue
+is never a server for the dashboard; the 2026-09-17 14-37 report chose
+polling for exactly this).
 
 ## Problem
 
