@@ -38,6 +38,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/review"
 	"github.com/larsartmann/go-taskqueue/internal/runactor"
+	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/webui"
@@ -1657,17 +1658,26 @@ func cmdStats(args []string) error {
 	byStatus, byProject := tallyStats(tasks)
 	spent := budget.Guard{DailyCap: *dailyBudget}.SpentToday(ctx, store)
 
+	// Open sessions: begun and never closed — the crash-recovery count
+	// (03-28 §f9). Read-only observation; closing stays an explicit operator
+	// ruling (tq session close / sweep).
+	openSessions, err := session.List(ctx, store)
+	if err != nil {
+		return err
+	}
+
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 
 		return enc.Encode(statsPayload{
-			ByStatus:    byStatus,
-			ByProject:   byProject,
-			Budget:      budgetView{SpentToday: spent, Cap: *dailyBudget},
-			Lag:         consumerLag(ctx, store),
-			JournalHead: head,
-			Parked:      parkedCount,
+			ByStatus:     byStatus,
+			ByProject:    byProject,
+			Budget:       budgetView{SpentToday: spent, Cap: *dailyBudget},
+			Lag:          consumerLag(ctx, store),
+			JournalHead:  head,
+			Parked:       parkedCount,
+			OpenSessions: len(openSessions),
 		})
 	}
 
@@ -1675,6 +1685,10 @@ func cmdStats(args []string) error {
 
 	if parkedCount > 0 {
 		fmt.Printf("parked       %6d (rate-limit requeues waiting out their window)\n", parkedCount)
+	}
+
+	if len(openSessions) > 0 {
+		fmt.Printf("open sessions %5d (began, never closed — tq session list)\n", len(openSessions))
 	}
 
 	printBudgetSpend(spent, *dailyBudget, *project != "")
@@ -1686,12 +1700,13 @@ func cmdStats(args []string) error {
 // statsPayload is the --json shape of `tq stats`: the aggregates a script or
 // dashboard consumes, never the raw task list (that is `tq tasks --json`).
 type statsPayload struct {
-	ByStatus    map[string]int            `json:"by_status"`
-	ByProject   map[string]map[string]int `json:"by_project,omitempty"`
-	Budget      budgetView                `json:"budget"`
-	Lag         []consumerLagEntry        `json:"consumer_lag,omitempty"`
-	JournalHead int64                     `json:"journal_head"`
-	Parked      int                       `json:"parked,omitempty"`
+	ByStatus     map[string]int            `json:"by_status"`
+	ByProject    map[string]map[string]int `json:"by_project,omitempty"`
+	Budget       budgetView                `json:"budget"`
+	Lag          []consumerLagEntry        `json:"consumer_lag,omitempty"`
+	JournalHead  int64                     `json:"journal_head"`
+	Parked       int                       `json:"parked,omitempty"`
+	OpenSessions int                       `json:"open_sessions,omitempty"`
 }
 
 type budgetView struct {

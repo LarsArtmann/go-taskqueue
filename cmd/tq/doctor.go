@@ -21,6 +21,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/review"
+	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	_ "modernc.org/sqlite"
@@ -93,6 +94,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
+	results = append(results, doctorOpenSessions(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
 	results = append(results, doctorEnvironment(ctx, opts)...)
 
@@ -528,6 +530,43 @@ func doctorWorkerLiveness(ctx context.Context, store queue.Store) []checkResult 
 			),
 		},
 	}
+}
+
+// doctorOpenSessions surfaces interactive sessions that began and never
+// closed (03-28 §f9): an open session means its close-out (review + status)
+// never ran. Doctor only REPORTS them — closing enqueues budget-spending
+// tasks, so it never happens without an explicit operator ruling
+// (tq session close / sweep); the check says so in its detail.
+func doctorOpenSessions(ctx context.Context, store *sqlite.Store) []checkResult {
+	open, err := session.List(ctx, store)
+	if err != nil {
+		return []checkResult{{Name: "open-sessions", Status: checkFail, Detail: err.Error()}}
+	}
+
+	if len(open) == 0 {
+		return []checkResult{{Name: "open-sessions", Status: checkOK, Detail: "no open sessions"}}
+	}
+
+	parts := make([]string, 0, len(open))
+
+	for _, s := range open {
+		repo := s.Repo
+		if repo == "" {
+			repo = "-"
+		}
+
+		parts = append(parts, fmt.Sprintf("%s (opened %s, repo %s)", s.ID, s.OpenedAt.Format("2006-01-02 15:04"), repo))
+	}
+
+	return []checkResult{{
+		Name:   "open-sessions",
+		Status: checkWarn,
+		Detail: fmt.Sprintf(
+			"%d session(s) began and never closed — their close-out never ran; close explicitly with tq session close (doctor never auto-closes): %s",
+			len(open),
+			strings.Join(parts, "; "),
+		),
+	}}
 }
 
 // doctorBudget compares today's enqueues against the operator's cap.
