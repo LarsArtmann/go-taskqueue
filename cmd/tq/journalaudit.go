@@ -384,7 +384,8 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 		}
 
 		fmt.Println(
-			"  (advisory: facts written before the redaction pass are the likely source; inspect with `tq show <id>`, never re-print the secret)",
+			"  (advisory: facts written before the redaction pass are the likely source; " +
+				"inspect with `tq show <id>`, never re-print the secret)",
 		)
 	}
 

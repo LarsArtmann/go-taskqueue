@@ -245,7 +245,8 @@ func cmdEnqueue(args []string) error {
 	repoFlag := fs.String(
 		"repo",
 		"",
-		"agent convenience: repository the agent works in (name resolved against the executor's projects dir, or an absolute path; implies --type agent)",
+		"agent convenience: repository the agent works in (name resolved against the executor's projects dir, "+
+			"or an absolute path; implies --type agent)",
 	)
 	promptText := fs.String("prompt", "", "agent convenience: inline prompt text")
 	promptFile := fs.String("prompt-file", "", "agent convenience: file with the prompt text")
@@ -352,7 +353,8 @@ func cmdEnqueue(args []string) error {
 		if p := os.Getenv("TQ_DB"); p != "" {
 			fmt.Fprintf(
 				os.Stderr,
-				"tq enqueue: warning: $TQ_DB is set (%s) — this enqueue targets that database, not ./tasks.db (pass --db to override)\n",
+				"tq enqueue: warning: $TQ_DB is set (%s) — this enqueue targets that database, "+
+					"not ./tasks.db (pass --db to override)\n",
 				p,
 			)
 		}
@@ -448,7 +450,8 @@ func agentConvenienceRequested(repo, promptText, promptFile, verify string, time
 func buildAgentConveniencePayload(f payloadFlags) (json.RawMessage, error) {
 	if f.rawPayload != "" {
 		return nil, errors.New(
-			"--payload cannot be combined with the agent convenience flags (--repo/--prompt/--prompt-file/--verify/--timeout-minutes/--yolo-task)",
+			"--payload cannot be combined with the agent convenience flags " +
+				"(--repo/--prompt/--prompt-file/--verify/--timeout-minutes/--yolo-task)",
 		)
 	}
 

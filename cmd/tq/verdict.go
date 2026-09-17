@@ -50,7 +50,8 @@ func cmdVerdict(args []string) error {
 
 	if !json.Valid(body) {
 		return fmt.Errorf(
-			"tq verdict: payload is not valid JSON: %.200s — fix the JSON and re-run; the executor would reject this as a failed attempt",
+			"tq verdict: payload is not valid JSON: %.200s — fix the JSON and re-run; "+
+				"the executor would reject this as a failed attempt",
 			body,
 		)
 	}
