@@ -37,6 +37,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   and status tasks that would be minted) WITHOUT enqueueing anything,
   so an operator can verify attribution before spending close-out
   budget. (`cmd/tq/session.go`)
+- **Session forensics surfaces**: the `session.closed` fact's detail now
+  records the AllowDirty decision and the attributed review range
+  (`from..to` SHAs) alongside the minted lineage, so the fact answers
+  "why did close tolerate a dirty tree / which commits did the reviewer
+  see" without re-deriving them from payloads. `tq facts --type` filters
+  by comma-separated fact types (e.g. `--type
+  session.opened,session.closed`), and `tq show session:<id>` renders
+  the synthetic identity's forensics (opened/closed details, attributed
+  commits, minted review/status tasks, full fact trail) without needing
+  a task row — unknown session IDs degrade to a graceful no-facts error.
+  (`internal/session/session.go`, `cmd/tq/main.go`)
 ### Changed
 - **Status-append dedup + cap (re-dispatch loop fix)**: the status
   task's TODO_LIST.md append contract now requires a DEDUP CHECK against
