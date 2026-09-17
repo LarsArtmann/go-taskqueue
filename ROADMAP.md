@@ -39,11 +39,11 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
       decision: the store contract and both backends are now consumer
       surface, so CLI wiring is a flag away rather than an API question.
 - PapDashboard integration: dead-letter alerting, resolve correlation, and
-  budget-mirror alerts are shipped; the remaining arc is decision → question
-  fan-out (agent asks, human answers in the dashboard, queue proceeds —
-  design note
-  `docs/planning/2026-09-06_decision-question-fanout.md`) and surfacing
-  PapDashboard questions inside `tq serve`
+  budget-mirror alerts are shipped; the question fan-out half SHIPPED
+  2026-09-17 (`tq ask` fact-park loop + AnswerPoller — design note now
+  Accepted: `docs/planning/2026-09-06_decision-question-fanout.md`); the
+  remaining arc is agent ask-policy (teaching the prompts, owner ruling
+  pending) and surfacing PapDashboard questions inside `tq serve`
 - Web UI Phase D remainder: enqueue-from-UI and board drag-and-drop behind
   the existing `--allow-writes` + CSRF gate (cancel/rescue shipped);
   `/metrics` merge; Datastar upgrade path
