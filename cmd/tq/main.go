@@ -557,7 +557,17 @@ func cmdWorker(args []string) error {
 
 		g.Go("alert-bridge", func(ctx context.Context) error { return bridge.Run(ctx) })
 
-		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters to %s\n", *alertURL)
+		// The producer half of the questions loop: answered questions flow
+		// back and unblock the parked tasks that asked them.
+		poller := papdashboard.NewAnswerPoller(store, store, papdashboard.AnswerConfig{
+			Endpoint: *alertURL,
+			APIKey:   *alertKey,
+			Interval: *alertPoll,
+		})
+
+		g.Go("answer-poller", func(ctx context.Context) error { return poller.Run(ctx) })
+
+		fmt.Fprintf(os.Stderr, "tq: forwarding dead letters and questions to %s\n", *alertURL)
 	}
 
 	if *once {
@@ -935,6 +945,16 @@ func cmdAgentPool(args []string) error {
 		})
 
 		g.Go("alert-bridge", func(ctx context.Context) error { return alertBridge.Run(ctx) })
+
+		// The producer half of the questions loop: answers recorded on
+		// PapDashboard flow back and unblock the parked agent tasks.
+		answerPoller := papdashboard.NewAnswerPoller(store, store, papdashboard.AnswerConfig{
+			Endpoint: poolOpts.alertURL,
+			APIKey:   poolOpts.alertKey,
+			Interval: poolOpts.alertPoll,
+		})
+
+		g.Go("answer-poller", func(ctx context.Context) error { return answerPoller.Run(ctx) })
 
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: forwarding dead letters + budget exhaustion to %s\n", poolOpts.alertURL)
 	}
