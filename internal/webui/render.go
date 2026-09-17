@@ -16,6 +16,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 )
@@ -193,6 +194,15 @@ type DashboardData struct {
 	// in the nowband meta (16-00 report f44; the stats payload already
 	// carries the same number).
 	Parked int
+	// SessionsOpened / SessionsClosed count the interactive-session
+	// lifecycle facts (session.opened / session.closed) — the session
+	// volume one-glance segment in the nowband meta (03-28 §f20).
+	SessionsOpened int
+	SessionsClosed int
+	// SessionsOpen is the begun-but-never-closed count — the lamp next to
+	// the volume segment (03-28 §f9/f20). Read-only observation: closing
+	// stays an explicit operator ruling.
+	SessionsOpen int
 	// AllowWrites mirrors Config.AllowWrites: the templates render the
 	// admin affordances (cancel/stop/rescue forms) only when writes are
 	// enabled server-side.
@@ -216,6 +226,32 @@ func parkedCount(ctx context.Context, store queue.Store) int {
 	}
 
 	return n
+}
+
+// sessionStats reads the session volume for the nowband meta: lifecycle
+// fact totals plus the open (begun, never closed) lamp count. Best effort:
+// a failed read renders nothing.
+func sessionStats(ctx context.Context, store queue.Store) (opened, closed, open int) {
+	n, err := store.CountFacts(ctx, journal.SessionOpened, time.Time{})
+	if err != nil {
+		return 0, 0, 0
+	}
+
+	opened = int(n)
+
+	n, err = store.CountFacts(ctx, journal.SessionClosed, time.Time{})
+	if err != nil {
+		return 0, 0, 0
+	}
+
+	closed = int(n)
+
+	sessions, err := session.List(ctx, store)
+	if err != nil {
+		return opened, closed, 0
+	}
+
+	return opened, closed, len(sessions)
 }
 
 // completionDetail reads a task's outcome from its own completion-fact
@@ -388,6 +424,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	data.Parked = parkedCount(ctx, s.store)
+	data.SessionsOpened, data.SessionsClosed, data.SessionsOpen = sessionStats(ctx, s.store)
 
 	projectCounts, err := s.store.ProjectCounts(ctx)
 	if err != nil {

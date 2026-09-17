@@ -51,6 +51,12 @@ templ StatusCards(data DashboardData) {
 			if data.Parked > 0 {
 				<span class="card-parked" title="rate-limit requeues waiting out their window">parked { formatInt(data.Parked) }</span>
 			}
+			if data.SessionsOpened > 0 || data.SessionsOpen > 0 {
+				<span class="card-sessions" title="interactive sessions: opened/closed facts">sessions { formatInt(data.SessionsOpened) }/{ formatInt(data.SessionsClosed) }</span>
+			}
+			if data.SessionsOpen > 0 {
+				<span class="card-sessions-lamp" title="begun, never closed — tq session list">{ formatInt(data.SessionsOpen) } open</span>
+			}
 			<span class="card-journal" title="journal watermark — highest fact seq">journal { formatInt(int(data.JournalSeq)) }</span>
 			if data.Budget != nil {
 				<span class="card-budget">budget today { formatInt(data.Budget.Spent) }/{ formatInt(data.Budget.Cap) }</span>

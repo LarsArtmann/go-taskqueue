@@ -1666,6 +1666,18 @@ func cmdStats(args []string) error {
 		return err
 	}
 
+	// Session volume (03-28 §f20): totals over the interactive-session
+	// lifecycle facts, alongside the open-session lamp above.
+	sessionsOpened, err := store.CountFacts(ctx, journal.SessionOpened, time.Time{})
+	if err != nil {
+		return err
+	}
+
+	sessionsClosed, err := store.CountFacts(ctx, journal.SessionClosed, time.Time{})
+	if err != nil {
+		return err
+	}
+
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
@@ -1678,6 +1690,8 @@ func cmdStats(args []string) error {
 			JournalHead:  head,
 			Parked:       parkedCount,
 			OpenSessions: len(openSessions),
+			SessionsOpened: int(sessionsOpened),
+			SessionsClosed: int(sessionsClosed),
 		})
 	}
 
@@ -1689,6 +1703,10 @@ func cmdStats(args []string) error {
 
 	if len(openSessions) > 0 {
 		fmt.Printf("open sessions %5d (began, never closed — tq session list)\n", len(openSessions))
+	}
+
+	if sessionsOpened > 0 {
+		fmt.Printf("sessions     %6d opened / %d closed\n", sessionsOpened, sessionsClosed)
 	}
 
 	printBudgetSpend(spent, *dailyBudget, *project != "")
@@ -1707,6 +1725,8 @@ type statsPayload struct {
 	JournalHead  int64                     `json:"journal_head"`
 	Parked       int                       `json:"parked,omitempty"`
 	OpenSessions int                       `json:"open_sessions,omitempty"`
+	SessionsOpened int                     `json:"sessions_opened,omitempty"`
+	SessionsClosed int                     `json:"sessions_closed,omitempty"`
 }
 
 type budgetView struct {
