@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
+### Added
+- **`tq session list` + `tq session close --dry-run`**: `session list`
+  surfaces OPEN sessions (an `session.opened` fact with no matching
+  `session.closed`) for crash recovery — which interactive session never
+  got its close-out. `session close --dry-run` previews the exact
+  close-out plan (attributed `Crush-Session:` trailer commits, the review
+  and status tasks that would be minted) WITHOUT enqueueing anything,
+  so an operator can verify attribution before spending close-out
+  budget. (`cmd/tq/session.go`)
 ### Changed
 - **Status-append dedup + cap (re-dispatch loop fix)**: the status
   task's TODO_LIST.md append contract now requires a DEDUP CHECK against
