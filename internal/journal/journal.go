@@ -49,6 +49,18 @@ const (
 	// attributed commits and the minted review/status task IDs.
 	SessionOpened FactType = "session.opened"
 	SessionClosed FactType = "session.closed"
+	// QuestionAsked records an agent's request for a human decision while
+	// its task is parked (PapDashboard questions). TaskID is the PARKED
+	// task; detail carries the question contract (ref, type, text,
+	// options, repo, expiry). The task stays PENDING — the park is a
+	// requeue without attempt burn — until RecordAnswer unblocks it.
+	QuestionAsked FactType = "task.question-asked"
+	// QuestionAnswered records the owner's decision arriving from
+	// PapDashboard. Written by Store.RecordAnswer in the SAME transaction
+	// that injects the answer into the parked task's payload and clears
+	// its NotBefore, so "answered but still parked" is unrepresentable.
+	// Idempotent per question ref: a replayed pickup appends nothing.
+	QuestionAnswered FactType = "task.question-answered"
 )
 
 // Fact is one immutable observation about one task.

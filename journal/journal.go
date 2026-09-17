@@ -26,8 +26,10 @@ const (
 	Requeued        = internaljournal.Requeued
 	Orphaned        = internaljournal.Orphaned
 	Reprioritized   = internaljournal.Reprioritized
-	SessionOpened   = internaljournal.SessionOpened
-	SessionClosed   = internaljournal.SessionClosed
+	SessionOpened    = internaljournal.SessionOpened
+	SessionClosed    = internaljournal.SessionClosed
+	QuestionAsked    = internaljournal.QuestionAsked
+	QuestionAnswered = internaljournal.QuestionAnswered
 )
 
 // Journal boundary and the in-memory implementation.
