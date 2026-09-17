@@ -127,10 +127,52 @@
           lib,
           ...
         }:
+        let
+          # Same tarball-built toolchain the goTarballVersion module option
+          # builds for the package (that goPkg is not exposed to consumers,
+          # so the formatters below rebuild it — keep the hash in sync with
+          # goTarballHash above).
+          goTarballPkg = pkgs.go_1_26.overrideAttrs (finalAttrs: _prev: {
+            version = "1.27.1";
+            src = pkgs.fetchurl {
+              url = "https://go.dev/dl/go${finalAttrs.version}.src.tar.gz";
+              hash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+            };
+            patches = builtins.filter (
+              p: builtins.match "go_no_vendor_checks-.*[.]patch" (baseNameOf p) == null
+            ) _prev.patches;
+          });
+
+          # Wrap a treefmt formatter so its `go` subprocess (templ fmt
+          # resolves imports; goimports loads the module) sees the 1.27.1
+          # toolchain locally instead of attempting a sandbox-blocked
+          # download — drop with the goTarball block above.
+          formatterWithGo =
+            name: formatterPkg:
+            pkgs.writeShellApplication {
+              inherit name;
+              runtimeInputs = [
+                formatterPkg
+                goTarballPkg
+              ];
+              text = ''
+                export GOTOOLCHAIN=local
+                exec ${name} "$@"
+              '';
+            };
+        in
         {
           # Generated templ output never satisfies gofumpt/goimports; the
           # .templ sources carry the formatting contract via templ fmt.
           treefmt.settings.excludes = [ "*_templ.go" ];
+
+          # go.mod's 1.27.1 floor vs the sandbox's go_1_26: the formatters
+          # that shell out to `go` (templ fmt resolves imports, goimports
+          # loads the module) try to DOWNLOAD the 1.27.1 toolchain and the
+          # treefmt check dies in the no-network sandbox — master CI red
+          # since 2026-09-17 12:54.
+          treefmt.programs.templ.package = formatterWithGo "templ" pkgs.templ;
+          treefmt.programs.goimports.package = formatterWithGo "goimports" pkgs.gotools;
 
           # Fast vendorHash drift gate: realizes ONLY the go-modules FOD so a
           # go.mod/go.sum change fails in seconds with the hash mismatch.
