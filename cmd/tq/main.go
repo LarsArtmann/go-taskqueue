@@ -80,6 +80,13 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
                   [--allow-dirty] [--db PATH]   (attribute the session's
                   Crush-Session-footer commits; enqueues one review + one
                   status task over them — the pool does the rest)
+  tq session ping [--id ID] [--cwd DIR] [--registry FILE]
+                  (PreToolUse hook: append {id, cwd, last_seen} to the
+                  session registry; default id $CRUSH_SESSION_ID)
+  tq session sweep [--registry FILE] [--stale-after DUR] [--allow-dirty]
+                  [--summary TEXT] [--db PATH]   (close every registry
+                  session that is quiet and no longer owned by a live crush
+                  process; replay-safe via the close dedup keys)
   tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose]
   tq api [--addr ADDR] --auth-token TOKEN [--db PATH]   (write API: POST /api/v1/tasks)
   tq verdict '<json>'   (agent-facing: record this task's structured result
