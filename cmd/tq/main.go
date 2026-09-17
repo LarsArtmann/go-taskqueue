@@ -2450,15 +2450,7 @@ func cmdFacts(args []string) error {
 		return err
 	}
 
-	if wanted := strings.Split(*typeFilter, ","); *typeFilter != "" {
-		types := make(map[string]bool, len(wanted))
-
-		for _, typ := range wanted {
-			types[strings.TrimSpace(typ)] = true
-		}
-
-		facts = slices.DeleteFunc(facts, func(f journal.Fact) bool { return !types[string(f.Type)] })
-	}
+	facts = filterFactsByType(facts, *typeFilter)
 
 	if *asCQRS {
 		return printCQRSEvents(facts)
@@ -2486,6 +2478,23 @@ func cmdFacts(args []string) error {
 	}
 
 	return nil
+}
+
+// filterFactsByType keeps only facts whose type is named in the
+// comma-separated filter (`tq facts --type session.opened,session.closed`).
+// An empty filter is a no-op.
+func filterFactsByType(facts []journal.Fact, filter string) []journal.Fact {
+	if filter == "" {
+		return facts
+	}
+
+	wanted := make(map[string]bool)
+
+	for _, typ := range strings.Split(filter, ",") {
+		wanted[strings.TrimSpace(typ)] = true
+	}
+
+	return slices.DeleteFunc(facts, func(f journal.Fact) bool { return !wanted[string(f.Type)] })
 }
 
 // printFactCommitViews runs the footer cross-reference (tq show --commits)

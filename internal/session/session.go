@@ -76,7 +76,7 @@ type OpenDetail struct {
 	Project   string `json:"project,omitempty"`
 }
 
-//	CloseDetail is the session.closed fact's detail: what the session
+// CloseDetail is the session.closed fact's detail: what the session
 //
 // committed (as far as attribution can see), what close minted, and the
 // clean-tree decision + review range it acted on (forensics: the fact
