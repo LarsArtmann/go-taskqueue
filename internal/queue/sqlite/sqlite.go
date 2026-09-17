@@ -1323,7 +1323,9 @@ func mergeAnsweredPayload(
 
 	var obj map[string]any
 	if err := json.Unmarshal(jsontext.Value(trimmed), &obj); err != nil {
-		return jsontext.Value(payload), false, nil //nolint:nilerr // unparseable payload: the fact appended by the caller still records the ruling
+		// Unparseable payload: the fact appended by the caller still
+		// records the ruling.
+		return jsontext.Value(payload), false, nil //nolint:nilerr // fact-only path
 	}
 
 	answered, _ := obj["answered"].([]any)

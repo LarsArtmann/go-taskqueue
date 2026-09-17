@@ -1200,7 +1200,7 @@ func pgFactDetailRefs(
 		return nil, err
 	}
 
-	defer func() { _ = rows.Close() }()
+	defer rows.Close()
 
 	out := map[string]string{}
 
