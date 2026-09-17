@@ -1069,6 +1069,164 @@ func (s *Store) UpdatePendingPriority(ctx context.Context, id task.ID, newPriori
 	})
 }
 
+// RecordAnswer records an owner's decision for a parked task's question
+// (see queue.Store). Mirrors sqlite.Store.RecordAnswer exactly: idempotent
+// per answer ref, answer injection + NotBefore clear in the same
+// transaction as the task.question-answered fact.
+func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRecord) error {
+	if ans.Ref == "" {
+		return errors.New("queue/postgres: record answer needs a question ref")
+	}
+
+	if strings.TrimSpace(ans.Answer) == "" {
+		return errors.New("queue/postgres: record answer needs a non-empty answer")
+	}
+
+	now := time.Now()
+
+	answeredAt := ans.AnsweredAt
+	if answeredAt.IsZero() {
+		answeredAt = now
+	}
+
+	return s.withTx(ctx, func(tx pgx.Tx) error {
+		answered, err := pgFactDetailRefs(ctx, tx, id.String(), journal.QuestionAnswered)
+		if err != nil {
+			return err
+		}
+
+		if answered[ans.Ref] {
+			return nil
+		}
+
+		var status string
+
+		var payload string
+
+		err = tx.QueryRow(ctx,
+			`SELECT status, payload FROM tasks WHERE id = $1 FOR UPDATE`, id.String()).
+			Scan(&status, &payload)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return task.ErrNotFound
+		}
+
+		if err != nil {
+			return err
+		}
+
+		question := ans.Question
+		if question == "" {
+			asked, err := pgFactDetailRefs(ctx, tx, id.String(), journal.QuestionAsked)
+			if err != nil {
+				return err
+			}
+
+			question = asked[ans.Ref]
+		}
+
+		detail := queue.QuestionAnsweredDetail{
+			Ref:        ans.Ref,
+			Question:   question,
+			Answer:     ans.Answer,
+			PapID:      ans.PapID,
+			AnsweredAt: answeredAt.UnixMilli(),
+		}
+
+		if status == string(task.Pending) {
+			if merged, ok, err := pgMergeAnsweredPayload(payload, ans, question, answeredAt); err != nil {
+				return err
+			} else if ok {
+				if _, err := tx.Exec(ctx, `
+					UPDATE tasks
+					SET payload = $1, not_before = $2, updated_at = $3
+					WHERE id = $4 AND status = 'pending'`,
+					string(merged), now.UnixMilli(), now.UnixMilli(), id.String()); err != nil {
+					return err
+				}
+			}
+		}
+
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(),
+			Type:   journal.QuestionAnswered,
+			Detail: mustJSON(detail),
+		})
+	})
+}
+
+// pgFactDetailRefs mirrors sqlite's factDetailRefs over pgx.
+func pgFactDetailRefs(ctx context.Context, tx pgx.Tx, taskID string, ftype journal.FactType) (map[string]string, error) {
+	rows, err := tx.Query(ctx,
+		`SELECT detail FROM facts WHERE task_id = $1 AND type = $2`,
+		taskID, string(ftype))
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	out := map[string]string{}
+
+	for rows.Next() {
+		var detail string
+
+		if err := rows.Scan(&detail); err != nil {
+			return nil, err
+		}
+
+		switch ftype {
+		case journal.QuestionAsked:
+			var parsed queue.QuestionAskedDetail
+			if err := json.Unmarshal(jsontext.Value(detail), &parsed); err != nil {
+				continue // unparseable detail: never silently dedup on it
+			}
+
+			out[parsed.Ref] = parsed.Question
+		case journal.QuestionAnswered:
+			var parsed queue.QuestionAnsweredDetail
+			if err := json.Unmarshal(jsontext.Value(detail), &parsed); err != nil {
+				continue
+			}
+
+			out[parsed.Ref] = parsed.Answer
+		}
+	}
+
+	return out, rows.Err()
+}
+
+// pgMergeAnsweredPayload mirrors sqlite's mergeAnsweredPayload: inject one
+// answered question into a JSON-object payload's "answered" array; raw
+// (non-object) payloads report ok=false.
+func pgMergeAnsweredPayload(payload string, ans queue.AnswerRecord, question string, answeredAt time.Time) (jsontext.Value, bool, error) {
+	trimmed := strings.TrimSpace(payload)
+	if !strings.HasPrefix(trimmed, "{") {
+		return jsontext.Value(payload), false, nil
+	}
+
+	var obj map[string]any
+	if err := json.Unmarshal(jsontext.Value(trimmed), &obj); err != nil {
+		return jsontext.Value(payload), false, nil
+	}
+
+	answered, _ := obj["answered"].([]any)
+	answered = append(answered, map[string]any{
+		"ref":         ans.Ref,
+		"question":    question,
+		"answer":      ans.Answer,
+		"pap_id":      ans.PapID,
+		"answered_at": answeredAt.UnixMilli(),
+	})
+	obj["answered"] = answered
+
+	merged, err := json.Marshal(obj)
+	if err != nil {
+		return jsontext.Value(payload), false, err
+	}
+
+	return merged, true, nil
+}
+
 func pgOrderClause(f queue.Filter) string {
 	order := `ORDER BY priority DESC, created_at ASC`
 	if f.SeverityOrder {

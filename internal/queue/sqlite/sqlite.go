@@ -1203,12 +1203,19 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 			if merged, ok, err := mergeAnsweredPayload(payload, ans, question, answeredAt); err != nil {
 				return err
 			} else if ok {
-				if _, err := tx.ExecContext(ctx, `
+				res, err := tx.ExecContext(ctx, `
 					UPDATE tasks
 					SET payload = ?, not_before = ?, updated_at = ?
 					WHERE id = ? AND status = 'pending'`,
-					string(merged), now.UnixMilli(), now.UnixMilli(), id.String()); err != nil {
+					string(merged), now.UnixMilli(), now.UnixMilli(), id.String())
+				if err != nil {
 					return err
+				}
+
+				if n, _ := res.RowsAffected(); n == 0 {
+					// Not parked anymore (claim/cancel raced the read): the
+					// fact below still records the ruling, nothing is lost.
+					_ = n
 				}
 			}
 		}

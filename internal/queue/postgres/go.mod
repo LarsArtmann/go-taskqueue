@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/internal/queue/postgres
 
-go 1.26.7
+go 1.27.1
 
 require (
 	github.com/jackc/pgx/v5 v5.11.0
