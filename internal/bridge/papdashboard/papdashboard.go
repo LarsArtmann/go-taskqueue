@@ -28,9 +28,11 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -422,6 +424,30 @@ func (b *Bridge) forward(ctx context.Context, fact journal.Fact) error {
 		); err != nil {
 			return err
 		}
+
+	case journal.QuestionAsked:
+		var asked queue.QuestionAskedDetail
+		if err := json.Unmarshal(fact.Detail, &asked); err != nil {
+			return fmt.Errorf("parse question detail (fact %d): %w", fact.Seq, err)
+		}
+
+		if asked.Ref == "" || asked.Question == "" {
+			b.log.Warn("question fact missing ref/question; not forwarded",
+				"seq", fact.Seq, "task", fact.TaskID)
+
+			return nil
+		}
+
+		if err := b.post(
+			ctx,
+			"question.asked",
+			idempotencyKey("question", fact.Seq),
+			fact.TaskID,
+			fact.Seq,
+			questionIngestPayload(b.cfg.SourceApp, fact.TaskID, asked),
+		); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -429,8 +455,7 @@ func (b *Bridge) forward(ctx context.Context, fact journal.Fact) error {
 
 // everDeadLettered answers from the task's own fact trail — the journal is
 // the source of truth for "this task once exhausted its attempts", so the
-// bridge holds no correlation state of its own.
-func (b *Bridge) everDeadLettered(ctx context.Context, taskID string) (bool, error) {
+// bridge holds no correlation state of its own.func (b *Bridge) everDeadLettered(ctx context.Context, taskID string) (bool, error) {
 	trail, err := b.store.FactsForTask(ctx, taskID, 0)
 	if err != nil {
 		return false, fmt.Errorf("load fact trail for %s: %w", taskID, err)
@@ -687,4 +712,53 @@ func firstLine(line string) string {
 
 func idempotencyKey(kind string, seq int64) string {
 	return fmt.Sprintf("%s-%s-%d", SourceApp, kind, seq)
+}
+
+// PapDashboard question ingest limits (internal/domain/question/content.go:
+// Title ≤ 500, Body ≤ 10000). Oversized posts would 4xx and the bridge
+// accepts 4xx as permanent — the question would be silently lost, so
+// truncate BEFORE posting.
+const (
+	questionTitleLimit = 500
+	questionBodyLimit  = 10000
+)
+
+// questionIngestPayload builds the question.asked ingest payload: the
+// asked text (title = its first line) plus the machine correlation tokens
+// the AnswerPoller parses back. The tokens lead the body ON PURPOSE: a
+// pathologically long question gets truncated from the tail, and a
+// correlation-proof body is what routes the answer home — the human reads
+// two short machine lines first, the agent task gets its answer.
+func questionIngestPayload(sourceApp, taskID string, asked queue.QuestionAskedDetail) map[string]any {
+	var b strings.Builder
+
+	fmt.Fprintf(&b, "task:%s\nqref:%s\n\n%s", taskID, asked.Ref, asked.Question)
+
+	for _, option := range asked.Options {
+		fmt.Fprintf(&b, "\n- %s", option)
+	}
+
+	payload := map[string]any{
+		"type":      asked.Type,
+		"title":     truncateRunes(firstLine(asked.Question), questionTitleLimit),
+		"body":      truncateRunes(b.String(), questionBodyLimit),
+		"sourceApp": sourceApp,
+	}
+
+	if asked.ExpiresAt > 0 {
+		payload["expiresAt"] = time.UnixMilli(asked.ExpiresAt).UTC().Format(time.RFC3339)
+	}
+
+	return payload
+}
+
+// truncateRunes cuts s to at most limit runes (PapDashboard validates
+// limits in runes; byte slicing would split multi-byte characters).
+func truncateRunes(s string, limit int) string {
+	runes := []rune(s)
+	if len(runes) <= limit {
+		return s
+	}
+
+	return string(runes[:limit])
 }
