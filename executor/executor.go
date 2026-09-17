@@ -54,10 +54,11 @@ type (
 
 // Typed errors.
 type (
-	LeaseLostError = internalexecutor.LeaseLostError
-	PermanentError = internalexecutor.PermanentError
-	PreflightError = internalexecutor.PreflightError
-	RateLimitError = internalexecutor.RateLimitError
+	LeaseLostError       = internalexecutor.LeaseLostError
+	PermanentError       = internalexecutor.PermanentError
+	PreflightError       = internalexecutor.PreflightError
+	QuestionPendingError = internalexecutor.QuestionPendingError
+	RateLimitError       = internalexecutor.RateLimitError
 )
 
 // Sink carries failure/result detail through the context (error and
@@ -129,6 +130,7 @@ var (
 	ExtractResultPayload  = internalexecutor.ExtractResultPayload
 	ExtractSessionID      = internalexecutor.ExtractSessionID
 	Permanent             = internalexecutor.Permanent
+	QuestionPending       = internalexecutor.QuestionPending
 	RateLimited           = internalexecutor.RateLimited
 	ReadTQVerify          = internalexecutor.ReadTQVerify
 	RenderAgentPayload    = internalexecutor.RenderAgentPayload

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-retry"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -72,6 +73,11 @@ type AgentPayload struct {
 	// autonomy is requested but the repo has no such config, instead of
 	// burning agent attempts on runs that stall on permission prompts.
 	Yolo bool `json:"yolo,omitempty"`
+	// Answered carries the owner's rulings for questions this task asked
+	// (PapDashboard questions): the store injects them when the answer
+	// unblocks the parked task, and the executor renders them into the
+	// prompt so the resumed run honors the decisions instead of re-asking.
+	Answered []queue.QuestionAnsweredDetail `json:"answered,omitempty"`
 }
 
 // DefaultAgentBinary is used when Bin, $TQ_AGENT_BIN and $TQ_CRUSH_BIN are
@@ -232,6 +238,11 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	if p.Repo == "" || p.Prompt == "" {
 		return Permanent(errors.New("agent: payload needs non-empty repo and prompt"))
 	}
+
+	// Owner rulings from the park: render them into the prompt so the
+	// resumed run starts knowing the answers (claim-time rendering keeps
+	// the payload the single source of truth).
+	p.Prompt = renderAnswered(p.Prompt, p.Answered)
 
 	repoDir, err := e.repoDir(p.Repo)
 	if err != nil {
@@ -430,6 +441,18 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 
 		defer func() { _ = os.Remove(verdictPath) }()
 	}
+
+	// The question channel: same per-run pattern. `tq ask` writes the
+	// marker; a written marker parks the task after the run (question.go).
+	questionPath := ""
+
+	if f, err := os.CreateTemp("", "tq-question-*.json"); err == nil {
+		_ = f.Close()
+
+		questionPath = f.Name()
+
+		defer func() { _ = os.Remove(questionPath) }()
+	}
 	// Closeout resume (13:29 report f15): a prior attempt finished the WORK
 	// turn but was rate-limited during the close-out; re-running the work
 	// turn on re-claim would double real agent cost. Resume at closeout
@@ -441,8 +464,18 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 			e.closeoutPending.Delete(id.String())
 
 			buf := &bytes.Buffer{}
-			if err := e.runCloseoutTurn(ctx, repoDir, pending.session, id, buf, verdictPath); err != nil {
+			if err := e.runCloseoutTurn(ctx, repoDir, pending.session, id, buf, verdictPath, questionPath); err != nil {
 				return appendVerdictLine(buf.String(), verdictPath), err
+			}
+
+			if qp := questionPendingFrom(questionPath, time.Now()); qp != nil {
+				e.armCloseoutResume(id.String(), repoDir, pending.session)
+
+				if qpe, ok := errors.AsType[*QuestionPendingError](qp); ok {
+					qpe.ResumeCloseout = true
+				}
+
+				return appendVerdictLine(buf.String(), verdictPath), qp
 			}
 
 			return appendVerdictLine(buf.String(), verdictPath), nil
@@ -506,6 +539,10 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
 		}
 
+		if questionPath != "" {
+			cmd.Env = append(cmd.Env, questionFileEnv+"="+questionPath)
+		}
+
 		var buf bytes.Buffer
 
 		cmd.Stdout = &buf
@@ -542,14 +579,31 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		return buf.String(), fmt.Errorf("agent run failed: %w: %s", err, tailBytes(buf.Bytes(), 8192))
 	}
 
+	// Owner question parked the run (tq ask wrote the marker): the turn
+	// ends here — no verify (nothing to prove yet) and no close-out (the
+	// task is not done). The worker requeues without burning an attempt.
+	if qp := questionPendingFrom(questionPath, time.Now()); qp != nil {
+		return buf.String(), qp
+	}
+
 	// Second turn, same conversation: the agent that did the work answers
 	// the close-out self-review before the task completes. A failed closeout
 	// fails the attempt like any other contract breach; a missing session id
 	// degrades to a logged skip (the work itself already succeeded).
 	if e.CloseoutPrompt != "" {
 		if session := ExtractSessionID(buf.String()); session != "" {
-			if err := e.runCloseoutTurn(ctx, repoDir, session, id, buf, verdictPath); err != nil {
+			if err := e.runCloseoutTurn(ctx, repoDir, session, id, buf, verdictPath, questionPath); err != nil {
 				return appendVerdictLine(buf.String(), verdictPath), err
+			}
+
+			if qp := questionPendingFrom(questionPath, time.Now()); qp != nil {
+				e.armCloseoutResume(id.String(), repoDir, session)
+
+				if qpe, ok := errors.AsType[*QuestionPendingError](qp); ok {
+					qpe.ResumeCloseout = true
+				}
+
+				return appendVerdictLine(buf.String(), verdictPath), qp
 			}
 		} else {
 			buf.WriteString("\n[tq] closeout skipped: no session id in agent output\n")
@@ -590,6 +644,13 @@ type closeoutPending struct {
 	session string
 }
 
+// armCloseoutResume registers a finished WORK turn whose close-out is owed
+// because the run asked a question: the re-claim resumes at closeout
+// instead of re-running the paid work turn.
+func (e *AgentExecutor) armCloseoutResume(id, repoDir, session string) {
+	e.closeoutPending.Store(id, closeoutPending{repoDir: repoDir, session: session})
+}
+
 // runCloseoutTurn runs the second conversation turn (the close-out
 // self-review) in the session the work turn opened, appending its output to
 // buf. Rate-limited close-outs register closeoutPending BEFORE returning
@@ -600,6 +661,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 	id task.ID,
 	buf *bytes.Buffer,
 	verdictPath string,
+	questionPath string,
 ) error {
 	closeout := strings.ReplaceAll(e.CloseoutPrompt, "{{TASK_ID}}", id.String())
 	closeoutArgs := []string{"run", "--quiet", "--cwd", repoDir, "--session", session, "--", closeout}
@@ -610,6 +672,10 @@ func (e *AgentExecutor) runCloseoutTurn(
 
 		if verdictPath != "" {
 			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
+		}
+
+		if questionPath != "" {
+			cmd.Env = append(cmd.Env, questionFileEnv+"="+questionPath)
 		}
 
 		var closeoutBuf bytes.Buffer
