@@ -120,6 +120,7 @@ func sessionSweep(args []string) error {
 	}
 
 	closed := 0
+
 	for _, out := range outcomes {
 		if out.Err != nil {
 			fmt.Printf("session %s (%s): %v\n", out.Entry.ID, out.Entry.CWD, out.Err)
