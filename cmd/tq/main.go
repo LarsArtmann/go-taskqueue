@@ -71,7 +71,7 @@ Usage:
   tq show TASK_ID [--db PATH]   (a unique ID prefix works)
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]] [--dismiss TASK_ID [--reason WHY]]
 tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative cancel of a running task)
-  tq facts [--db PATH] [--after SEQ] [--cqrs]
+  tq facts [--db PATH] [--after SEQ] [--type T,T] [--cqrs]
   tq tail [-f] [--db PATH] [--after SEQ]
   tq watermarks show [--db PATH]   (journal consumer cursors)
   tq watermarks set CONSUMER SEQ [--db PATH]   (rewind = safe replay)
@@ -1929,10 +1929,10 @@ func showSessionView(ctx context.Context, store *sqlite.Store, arg string) error
 	enc.SetIndent("", "  ")
 
 	return enc.Encode(struct {
-		Session string                `json:"session"`
-		Opened  *session.OpenDetail   `json:"opened,omitempty"`
-		Closed  *session.CloseDetail  `json:"closed,omitempty"`
-		Facts   []journal.Fact        `json:"facts"`
+		Session string               `json:"session"`
+		Opened  *session.OpenDetail  `json:"opened,omitempty"`
+		Closed  *session.CloseDetail `json:"closed,omitempty"`
+		Facts   []journal.Fact       `json:"facts"`
 	}{arg, opened, closed, trail})
 }
 
@@ -2430,7 +2430,7 @@ func cmdFacts(args []string) error {
 	typeFilter := fs.String(
 		"type",
 		"",
-		"only facts of these types (comma-separated, e.g. --type session.opened,closed)",
+		"only facts of these types (comma-separated, e.g. --type session.opened,session.closed)",
 	)
 
 	db := dbFlag(fs)

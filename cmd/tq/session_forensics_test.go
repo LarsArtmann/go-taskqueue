@@ -52,7 +52,7 @@ func TestFactsTypeFilterSelectsSessionLifecycle(t *testing.T) {
 	dbPath := sessionForensicsFixture(t)
 
 	out := captureStdout(t, func() {
-		if err := cmdFacts([]string{"--db", dbPath, "--type", "session.opened,closed"}); err != nil {
+		if err := cmdFacts([]string{"--db", dbPath, "--type", "session.opened,session.closed"}); err != nil {
 			t.Errorf("cmdFacts --type: %v", err)
 		}
 	})
