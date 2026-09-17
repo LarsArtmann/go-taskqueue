@@ -82,9 +82,13 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
   tq session begin --id ID [--repo DIR] [--project P] [--db PATH]
                   (record an interactive session's opening; default id $CRUSH_SESSION_ID)
   tq session close --id ID [--repo DIR] [--project P] [--summary TEXT]
-                  [--allow-dirty] [--db PATH]   (attribute the session's
-                  Crush-Session-footer commits; enqueues one review + one
-                  status task over them — the pool does the rest)
+                  [--allow-dirty] [--dry-run] [--db PATH]   (attribute the
+                  session's Crush-Session-footer commits; enqueues one review
+                  + one status task over them — the pool does the rest;
+                  --dry-run previews the attributed commits without touching
+                  the database)
+  tq session list [--db PATH]   (open sessions: begun but never closed —
+                  the crash-recovery surface)
   tq session ping [--id ID] [--cwd DIR] [--registry FILE]
                   (PreToolUse hook: append {id, cwd, last_seen} to the
                   session registry; default id $CRUSH_SESSION_ID)

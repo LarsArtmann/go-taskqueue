@@ -366,3 +366,89 @@ func excerpt(summary string) string {
 }
 
 func trim(s string) string { return strings.TrimSpace(s) }
+
+// FactSource is List's read side: page through journal facts in Seq order.
+type FactSource interface {
+	Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error)
+}
+
+// SessionInfo describes one journal-recorded interactive session.
+type SessionInfo struct {
+	// ID is the session's CRUSH_SESSION_ID.
+	ID string
+	// Repo / Project mirror the session.opened fact's detail.
+	Repo string
+	// Project may be empty (older opens without the field).
+	Project string
+	// OpenedAt is the opened fact's timestamp.
+	OpenedAt time.Time
+}
+
+// List returns every session that has an opened fact but no closed fact —
+// the crash-recovery surface: sessions that began and never closed, whether
+// the process died or the close hook never ran. Newest opens first.
+func List(ctx context.Context, src FactSource) ([]SessionInfo, error) {
+	const pageSize = 500
+
+	type state struct {
+		info SessionInfo
+		open bool
+	}
+
+	seen := map[string]*state{}
+	var order []string
+	var after int64
+
+	for {
+		facts, err := src.Facts(ctx, after, pageSize)
+		if err != nil {
+			return nil, fmt.Errorf("session: read facts: %w", err)
+		}
+
+		for _, f := range facts {
+			if f.Type != journal.SessionOpened && f.Type != journal.SessionClosed {
+				continue
+			}
+
+			if !strings.HasPrefix(f.TaskID, "session:") {
+				continue
+			}
+
+			id := strings.TrimPrefix(f.TaskID, "session:")
+			st, ok := seen[id]
+			if !ok {
+				st = &state{}
+				seen[id] = st
+				order = append(order, id)
+			}
+
+			switch f.Type {
+			case journal.SessionOpened:
+				var d OpenDetail
+				if err := json.Unmarshal(f.Detail, &d); err != nil {
+					return nil, fmt.Errorf("session: decode opened detail for %s: %w", id, err)
+				}
+
+				st.info = SessionInfo{ID: id, Repo: d.Repo, Project: d.Project, OpenedAt: f.Time}
+				st.open = true
+			case journal.SessionClosed:
+				st.open = false
+			}
+		}
+
+		if len(facts) < pageSize {
+			break
+		}
+
+		after = facts[len(facts)-1].Seq
+	}
+
+	open := make([]SessionInfo, 0, len(order))
+	for i := len(order) - 1; i >= 0; i-- {
+		if st := seen[order[i]]; st.open {
+			open = append(open, st.info)
+		}
+	}
+
+	return open, nil
+}

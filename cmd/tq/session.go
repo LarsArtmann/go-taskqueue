@@ -22,7 +22,7 @@ import (
 // budget) can call it.
 func cmdSession(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: tq session begin | close | ping | sweep")
+		return errors.New("usage: tq session begin | close | list | ping | sweep")
 	}
 
 	switch args[0] {
@@ -30,6 +30,8 @@ func cmdSession(args []string) error {
 		return sessionBegin(args[1:])
 	case "close":
 		return sessionClose(args[1:])
+	case "list":
+		return sessionList(args[1:])
 	case "ping":
 		return sessionPing(args[1:])
 	case "sweep":
@@ -139,6 +141,41 @@ func sessionSweep(args []string) error {
 	return nil
 }
 
+func sessionList(args []string) error {
+	fs := flag.NewFlagSet("session list", flag.ExitOnError)
+	db := dbFlag(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
+
+	open, err := session.List(context.Background(), store)
+	if err != nil {
+		return err
+	}
+
+	if len(open) == 0 {
+		fmt.Println("no open sessions")
+
+		return nil
+	}
+
+	fmt.Printf("%d open session(s), newest first:\n", len(open))
+
+	for _, s := range open {
+		project := s.Project
+		if project == "" {
+			project = "-"
+		}
+
+		fmt.Printf("  %s  opened %s  repo %s  project %s\n", s.ID, s.OpenedAt.Format("2006-01-02 15:04:05"), s.Repo, project)
+	}
+
+	return nil
+}
+
 func sessionBegin(args []string) error {
 	fs := flag.NewFlagSet("session begin", flag.ExitOnError)
 
@@ -197,6 +234,11 @@ func sessionClose(args []string) error {
 		false,
 		"minted review/status tolerate an uncommitted tree (mirror of the pool's --allow-dirty)",
 	)
+	dryRun := fs.Bool(
+		"dry-run",
+		false,
+		"preview the attributed commits and what close would enqueue, without touching the database",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -216,7 +258,37 @@ func sessionClose(args []string) error {
 		*project = filepath.Base(abs)
 	}
 
+	if *dryRun {
+		return runSessionDryRun(*id, abs)
+	}
+
 	return runSessionClose(*id, abs, *project, *summary, *allowDirty, resolveDB(*db))
+}
+
+// runSessionDryRun previews close's attribution without enqueueing anything:
+// the same git scan Close runs, printed oldest first, plus the tasks close
+// WOULD mint. No database access.
+func runSessionDryRun(id, abs string) error {
+	commits, err := session.GitLogScanner{}.CommitsByTrailer(context.Background(), abs, session.Trailer, id)
+	if err != nil {
+		return err
+	}
+
+	if len(commits) == 0 {
+		fmt.Printf("dry run: no commits carry the %s: %s footer — close would enqueue nothing\n", session.Trailer, id)
+
+		return nil
+	}
+
+	fmt.Printf("dry run: %d attributed commit(s), oldest first:\n", len(commits))
+
+	for _, c := range commits {
+		fmt.Printf("  %s %s\n", shortSHA(c.SHA), c.Subject)
+	}
+
+	fmt.Println("close would enqueue one review task and one status task over these commits (dedup-keyed, replay-safe)")
+
+	return nil
 }
 
 // runSessionClose is the shared close flow behind `tq session close` and the
