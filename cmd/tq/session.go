@@ -216,28 +216,36 @@ func sessionClose(args []string) error {
 		*project = filepath.Base(abs)
 	}
 
-	store := mustOpenDB(resolveDB(*db))
+	return runSessionClose(*id, abs, *project, *summary, *allowDirty, resolveDB(*db))
+}
+
+// runSessionClose is the shared close flow behind `tq session close` and the
+// `tq crush` wrapper: attribute the session's footer commits, record the
+// session.closed fact, mint the review + status close-out, and print the
+// human outcome. Replay-safe via the close dedup keys.
+func runSessionClose(id, abs, project, summary string, allowDirty bool, dbPath string) error {
+	store := mustOpenDB(dbPath)
 	defer store.Close()
 
 	res, err := session.Close(context.Background(), store, session.GitLogScanner{}, session.CloseInput{
-		ID:         *id,
+		ID:         id,
 		Repo:       abs,
-		Project:    *project,
-		Summary:    *summary,
-		AllowDirty: *allowDirty,
+		Project:    project,
+		Summary:    summary,
+		AllowDirty: allowDirty,
 	})
 	if err != nil {
 		return err
 	}
 
 	if len(res.Commits) == 0 {
-		fmt.Printf("session %s closed (repo %s)\n", *id, abs)
-		fmt.Printf("no commits carry the %s: %s footer — nothing to review or report\n", session.Trailer, *id)
+		fmt.Printf("session %s closed (repo %s)\n", id, abs)
+		fmt.Printf("no commits carry the %s: %s footer — nothing to review or report\n", session.Trailer, id)
 
 		return nil
 	}
 
-	fmt.Printf("session %s closed (repo %s): %d attributed commit(s), oldest first:\n", *id, abs, len(res.Commits))
+	fmt.Printf("session %s closed (repo %s): %d attributed commit(s), oldest first:\n", id, abs, len(res.Commits))
 
 	for _, c := range res.Commits {
 		fmt.Printf("  %s %s\n", shortSHA(c.SHA), c.Subject)
