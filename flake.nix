@@ -37,7 +37,7 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.3.0";
-        vendorHash = "sha256-dtC0Y6qqQSovlc8yKxEmD611tr+I2Vq1chcyFo1vGL8=";
+        vendorHash = "sha256-8hIpGUm1IuKoZ57YmWPGttKgcegm07iJZpW8HI1axec=";
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
@@ -90,6 +90,10 @@
             export HOME=$TMPDIR
             printf '\nreplace github.com/larsartmann/go-taskqueue => ../..\n' >> go.mod
             sed -n 's|^replace \(github.com/larsartmann/go-taskqueue/internal[^ ]*\) => ./\(.*\)$|replace \1 => ../../\2|p' ../../go.mod >> go.mod
+            # Go 1.27 requires the go.sum to cover the injected replace
+            # graph; tidy regenerates it (proxy fetch is permitted in this
+            # FOD).
+            go mod tidy
           '';
           # `tq version` reports the release, not "dev" (round-5 M25/F133).
           # Derived from the version attr above — never a second literal.
