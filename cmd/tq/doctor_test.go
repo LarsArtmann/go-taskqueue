@@ -176,15 +176,15 @@ func TestDoctorParkedNamesEarliestRelease(t *testing.T) {
 	}
 
 	// Mirror doctorParked's day-aware layout: crossing midnight flips the
-	// format to "Jan 2 15:04" (the 23:xx flake).
+	// format to "Jan 2 15:04" (the 23:xx flake). In(time.Now().Location())
+	// equals Local() but keeps gosmopolitan quiet about time.Local.
+	localNow := time.Now()
 	layout := "15:04"
-	if earliest.Local().Day() != time.Now().Day() { //nolint:gosmopolitan // mirrors the doctor's Local-time output
+	if earliest.In(localNow.Location()).Day() != localNow.Day() {
 		layout = "Jan 2 15:04"
 	}
 
-	want := "earliest release " + earliest.Local().
-		Format(layout)
-		//nolint:gosmopolitan // mirrors the doctor's Local-time output
+	want := "earliest release " + earliest.In(localNow.Location()).Format(layout)
 	if !strings.Contains(r.Detail, want) {
 		t.Errorf("parked detail = %q, want it to name %q", r.Detail, want)
 	}
