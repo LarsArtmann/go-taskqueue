@@ -95,7 +95,7 @@ func TestCrushWrapperClosesOnExit(t *testing.T) {
 	t.Cleanup(func() { _ = store.Close() })
 
 	ctx := t.Context()
-	assertMinted(t, ctx, store, repo, "sess-wrap", "demo")
+	assertMinted(t, ctx, store, "sess-wrap", "demo")
 }
 
 // TestCrushWrapperClosesOnCrash pins the crash path: a failing child still
@@ -175,7 +175,7 @@ func assertMinted(
 	t *testing.T,
 	ctx context.Context,
 	store *sqlite.Store,
-	repo, id, project string,
+	id, project string,
 ) {
 	t.Helper()
 

@@ -1179,7 +1179,7 @@ func pgFactDetailRefs(
 			return nil, err
 		}
 
-		switch ftype {
+		switch ftype { //nolint:exhaustive // only the two question fact types carry ref-keyed detail; the caller passes exactly those
 		case journal.QuestionAsked:
 			var parsed queue.QuestionAskedDetail
 			if err := json.Unmarshal(jsontext.Value(detail), &parsed); err != nil {

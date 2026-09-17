@@ -1062,7 +1062,9 @@ func TestPostgresConformance(t *testing.T) {
 			if err := s.AppendFact(ctx, journal.Fact{
 				TaskID: id.String(),
 				Type:   journal.QuestionAsked,
-				Detail: mustJSON(queue.QuestionAskedDetail{Ref: ref, Type: queue.QuestionTypeConfirmation, Question: question}),
+				Detail: mustJSON(
+					queue.QuestionAskedDetail{Ref: ref, Type: queue.QuestionTypeConfirmation, Question: question},
+				),
 			}); err != nil {
 				t.Fatalf("append asked fact: %v", err)
 			}
@@ -1091,12 +1093,20 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
 		}
 
-		if err := s.RecordAnswer(ctx, pq.ID, queue.AnswerRecord{Ref: "pq-1", Answer: "yes", PapID: "pap-9"}); err != nil {
+		if err := s.RecordAnswer(
+			ctx,
+			pq.ID,
+			queue.AnswerRecord{Ref: "pq-1", Answer: "yes", PapID: "pap-9"},
+		); err != nil {
 			t.Fatalf("RecordAnswer: %v", err)
 		}
 
 		// Replayed delivery (at-least-once poller) is a no-op.
-		if err := s.RecordAnswer(ctx, pq.ID, queue.AnswerRecord{Ref: "pq-1", Answer: "yes", PapID: "pap-9"}); err != nil {
+		if err := s.RecordAnswer(
+			ctx,
+			pq.ID,
+			queue.AnswerRecord{Ref: "pq-1", Answer: "yes", PapID: "pap-9"},
+		); err != nil {
 			t.Fatalf("replayed RecordAnswer: %v", err)
 		}
 

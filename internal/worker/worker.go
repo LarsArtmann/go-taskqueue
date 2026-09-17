@@ -451,7 +451,14 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// the question expires (the safety valve re-enters the task when
 		// the answer never comes). No jitter: the expiry is the answer
 		// deadline, not a quota window.
-		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, qp.Error(), qp.RetryAfter, qp.ResumeCloseout); err != nil {
+		if err := p.store.Requeue(
+			terminalCtx,
+			t.ID,
+			p.cfg.Owner,
+			qp.Error(),
+			qp.RetryAfter,
+			qp.ResumeCloseout,
+		); err != nil {
 			p.log.Error("question requeue failed", "task", t.ID, "err", err)
 		} else {
 			attrs := []any{"task", t.ID, "retry after", qp.RetryAfter.Round(time.Second), "question", qp.Cause.Error()}
