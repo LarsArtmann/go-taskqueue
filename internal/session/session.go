@@ -76,16 +76,21 @@ type OpenDetail struct {
 	Project   string `json:"project,omitempty"`
 }
 
-// CloseDetail is the session.closed fact's detail: what the session
-// committed (as far as attribution can see) and what close minted.
+//	CloseDetail is the session.closed fact's detail: what the session
+// committed (as far as attribution can see), what close minted, and the
+// clean-tree decision + review range it acted on (forensics: the fact
+// answers "why did close tolerate a dirty tree / which commits did the
+// reviewer see" without re-deriving them from the payload).
 type CloseDetail struct {
-	SessionID  string   `json:"session_id"`
-	Repo       string   `json:"repo"`
-	Project    string   `json:"project,omitempty"`
-	Summary    string   `json:"summary,omitempty"`
-	Commits    []Commit `json:"commits"`
-	ReviewTask string   `json:"review_task,omitempty"`
-	StatusTask string   `json:"status_task,omitempty"`
+	SessionID   string   `json:"session_id"`
+	Repo        string   `json:"repo"`
+	Project     string   `json:"project,omitempty"`
+	Summary     string   `json:"summary,omitempty"`
+	AllowDirty  bool     `json:"allow_dirty"`
+	ReviewRange string   `json:"review_range,omitempty"`
+	Commits     []Commit `json:"commits"`
+	ReviewTask  string   `json:"review_task,omitempty"`
+	StatusTask  string   `json:"status_task,omitempty"`
 }
 
 // Begin records the session's opening as a session.opened fact. Refusing a
@@ -206,13 +211,15 @@ func Close(ctx context.Context, s Store, scanner GitScanner, in CloseInput) (Clo
 	}
 
 	detail, err := json.Marshal(CloseDetail{
-		SessionID:  in.ID,
-		Repo:       in.Repo,
-		Project:    in.Project,
-		Summary:    in.Summary,
-		Commits:    commits,
-		ReviewTask: res.ReviewTask.ID.String(),
-		StatusTask: res.StatusTask.ID.String(),
+		SessionID:   in.ID,
+		Repo:        in.Repo,
+		Project:     in.Project,
+		Summary:     in.Summary,
+		AllowDirty:  in.AllowDirty,
+		ReviewRange: reviewRange(commits),
+		Commits:     commits,
+		ReviewTask:  res.ReviewTask.ID.String(),
+		StatusTask:  res.StatusTask.ID.String(),
 	})
 	if err != nil {
 		return res, fmt.Errorf("session: marshal closed detail: %w", err)
@@ -227,6 +234,17 @@ func Close(ctx context.Context, s Store, scanner GitScanner, in CloseInput) (Clo
 	}
 
 	return res, nil
+}
+
+// reviewRange is the "from..to" span the minted review covers (the same
+// commit list the reviewer's focus block pins); empty for a commit-less
+// close.
+func reviewRange(commits []Commit) string {
+	if len(commits) == 0 {
+		return ""
+	}
+
+	return commits[0].SHA + ".." + commits[len(commits)-1].SHA
 }
 
 // wasClosed reports whether the session already carries a session.closed

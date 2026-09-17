@@ -1888,6 +1888,50 @@ func cmdShow(args []string) error {
 	}{t, trail, resultDetail(t, trail), commitView, buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail)})
 }
 
+// showSessionView renders the journal trail of a session's synthetic
+// identity (`tq show session:<id>`): the opened/closed facts with their
+// decoded details, the attributed commits, and the minted task lineage —
+// without requiring a task row to exist.
+func showSessionView(ctx context.Context, store *sqlite.Store, arg string) error {
+	trail, err := store.FactsForTask(ctx, arg, 0)
+	if err != nil {
+		return err
+	}
+
+	if len(trail) == 0 {
+		return fmt.Errorf("no session facts for %q (never begun, or the id is wrong)", arg)
+	}
+
+	var opened *session.OpenDetail
+
+	var closed *session.CloseDetail
+
+	for i := range trail {
+		switch trail[i].Type {
+		case journal.SessionOpened:
+			var d session.OpenDetail
+			if json.Unmarshal(trail[i].Detail, &d) == nil {
+				opened = &d
+			}
+		case journal.SessionClosed:
+			var d session.CloseDetail
+			if json.Unmarshal(trail[i].Detail, &d) == nil {
+				closed = &d
+			}
+		}
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+
+	return enc.Encode(struct {
+		Session string                `json:"session"`
+		Opened  *session.OpenDetail   `json:"opened,omitempty"`
+		Closed  *session.CloseDetail  `json:"closed,omitempty"`
+		Facts   []journal.Fact        `json:"facts"`
+	}{arg, opened, closed, trail})
+}
+
 // questionView is one entry of tq show's questions section: a question
 // the task asked (PapDashboard questions) and whether the owner's ruling
 // has landed. Open questions are the answer to "why is this task parked?".
@@ -2379,6 +2423,11 @@ func cmdFacts(args []string) error {
 		false,
 		"after the fact lines, scan every mentioned task's repo git log for Task-Queue-ID footer commits (the tq show --commits cross-reference, journal-wide)",
 	)
+	typeFilter := fs.String(
+		"type",
+		"",
+		"only facts of these types (comma-separated, e.g. --type session.opened,closed)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -2395,6 +2444,16 @@ func cmdFacts(args []string) error {
 	facts, err := s.Facts(context.Background(), *after, 0)
 	if err != nil {
 		return err
+	}
+
+	if wanted := strings.Split(*typeFilter, ","); *typeFilter != "" {
+		types := make(map[string]bool, len(wanted))
+
+		for _, typ := range wanted {
+			types[strings.TrimSpace(typ)] = true
+		}
+
+		facts = slices.DeleteFunc(facts, func(f journal.Fact) bool { return !types[string(f.Type)] })
 	}
 
 	if *asCQRS {
