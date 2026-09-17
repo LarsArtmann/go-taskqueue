@@ -203,6 +203,14 @@ func TestCloseMintsReviewAndStatusOverAttributedRange(t *testing.T) {
 		t.Fatalf("closed detail lineage = %q/%q", cd.ReviewTask, cd.StatusTask)
 	}
 
+	if cd.AllowDirty {
+		t.Fatal("closed detail must record the clean-tree decision (default false)")
+	}
+
+	if want := commits[0].SHA + ".." + commits[1].SHA; cd.ReviewRange != want {
+		t.Fatalf("closed detail review range = %q, want %q", cd.ReviewRange, want)
+	}
+
 	if len(cd.Commits) != 2 || cd.Commits[0].SHA != commits[0].SHA {
 		t.Fatalf("closed detail commits = %+v, want oldest first", cd.Commits)
 	}

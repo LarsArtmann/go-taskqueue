@@ -1856,6 +1856,10 @@ func cmdShow(args []string) error {
 
 	ctx := context.Background()
 
+	if strings.HasPrefix(fs.Arg(0), "session:") {
+		return showSessionView(ctx, store, fs.Arg(0))
+	}
+
 	t, err := resolveTask(ctx, store, fs.Arg(0))
 	if err != nil {
 		return err
