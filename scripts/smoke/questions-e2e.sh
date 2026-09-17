@@ -145,8 +145,9 @@ STUB
 chmod +x "$TMP/stub-agent"
 
 echo "== start worker with bridge + answer poller -> $PAP_URL"
-timeout 90 "$TMP/tq" worker --alert-url "$PAP_URL" --alert-api-key smoke-key --alert-poll 1s \
-	--poll 500ms --agent-bin "$TMP/stub-agent" --projects-dir "$TMP/projects" \
+TQ_AGENT_BIN="$TMP/stub-agent" timeout 90 "$TMP/tq" worker --agents \
+	--alert-url "$PAP_URL" --alert-api-key smoke-key --alert-poll 1s \
+	--poll 500ms --projects-dir "$TMP/projects" \
 	>"$TMP/worker.log" 2>&1 &
 WORKER_PID=$!
 
@@ -167,7 +168,7 @@ done
 [ "$parked" -eq 0 ] || { echo "FAIL: task never parked on the question"; cat "$TMP/worker.log"; exit 1; }
 echo "   parked OK"
 
-ATTEMPTS="$( "$TMP/tq" show "$TASK_ID" --db "$TQ_DB" | python3 -c 'import json,sys; print(json.load(sys.stdin)["task"]["attempts"])')"
+ATTEMPTS="$( "$TMP/tq" show --db "$TQ_DB" "$TASK_ID" | python3 -c 'import json,sys; print(json.load(sys.stdin)["task"]["attempts"])')"
 [ "$ATTEMPTS" = "0" ] || { echo "FAIL: park burned an attempt (attempts=$ATTEMPTS)"; exit 1; }
 echo "   no attempt burn OK"
 
@@ -189,7 +190,7 @@ echo "   forwarded OK (task + qref tokens present)"
 echo "== wait for the answer to come back and the task to complete"
 completed=1
 for _ in $(seq 1 60); do
-	STATUS="$( "$TMP/tq" show "$TASK_ID" --db "$TQ_DB" | python3 -c 'import json,sys; print(json.load(sys.stdin)["task"]["status"])' 2>/dev/null || echo unknown)"
+	STATUS="$( "$TMP/tq" show --db "$TQ_DB" "$TASK_ID" | python3 -c 'import json,sys; print(json.load(sys.stdin)["task"]["status"])' 2>/dev/null || echo unknown)"
 	[ "$STATUS" = "completed" ] && { completed=0; break; }
 	sleep 0.5
 done
@@ -200,7 +201,7 @@ echo "== verify the resumed run saw the rendered answer"
 [ -f "$DONE_FLAG" ] || { echo "FAIL: stub agent completed without the answered prompt"; exit 1; }
 
 echo "== verify the questions section + attempt accounting"
-"$TMP/tq" show "$TASK_ID" --db "$TQ_DB" | python3 -c '
+"$TMP/tq" show --db "$TQ_DB" "$TASK_ID" | python3 -c '
 import json, sys
 d = json.load(sys.stdin)
 t = d["task"]
@@ -209,7 +210,7 @@ assert qs, "no questions section"
 q = qs[0]
 assert q["answered"] is True, "question not marked answered: %r" % q
 assert q["answer"] == "yes", "answer lost: %r" % q
-assert t["attempts"] == 1, "attempts = %s, want exactly the successful run" % t["attempts"]
+assert t["attempts"] == 0, "attempts = %s, want 0 (attempts count failures; the park must have burned none and neither did the successful run)" % t["attempts"]
 print("   attempts=%s question answered=%r" % (t["attempts"], q["answer"]))
 '
 
