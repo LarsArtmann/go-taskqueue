@@ -115,6 +115,10 @@ not here.
 - [ ] Multi-repo session semantics: document one-close-per-(session,repo) or design multi-repo close (replay-dedup assumes one close today) (03-28 §f11)
 - [ ] Session ergonomics: git ≥ 2.15 guard with an actionable message; zero-commit close prints the footer-convention hint (begin already does) (03-28 §f12/f13)
 - [ ] gosec post-config scan over internal/session + the cmd/tq session call sites stays zero; extend the AGENTS.md gosec triage note with the new exec(git) sites (03-28 §f23)
+- [ ] Add `crush` to the AGENTS.md cmd/tq subcommand list + a one-line wrapper note in the session-close bridge bullet (the 02-51 close-out's top starred item, still unfixed at the 02-54 re-dispatch)
+- [ ] Re-cite `scripts/smoke/session-close.sh` green over the `runSessionClose` extraction AS USED BY the `tq crush` wrapper (one smoke run + citation; unit tests cover the wrapper path, the smoke hasn't been re-cited since the refactor) (02-51/02-54 §f)
+- [ ] Document `tq crush` in README (short subsection under session triggers) + FEATURES.md row (02-54 §f)
+- [ ] Live-no-id smoke assertion: wrapper exit preserves child code, nothing closed, no DB touched (no-id path is unit-pinned; live path isn't) (02-54 §f)
 
 ## Priority-system follow-ups (harvested from the 2026-09-12 T27-T38 windows; reports 15-43 + 16-28; verified against code at mint time)
 
