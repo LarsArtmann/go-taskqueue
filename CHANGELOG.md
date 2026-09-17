@@ -19,6 +19,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   re-fired). The rules are pinned by the status prompt-contract test.
   (`internal/executor/status.go`)
 ### Added
+- **`tq crush` session wrapper (close-out trigger #2, the no-hook
+  fallback)**: `tq crush [flags] [crush args...]` runs a crush session with
+  inherited stdio while teeing its output, and on the child's exit — clean
+  OR crashed — runs the same replay-safe `tq session close` (shared
+  `runSessionClose` flow), minting the review + status close-out over the
+  session's footer commits. Session id: `--id` > `$CRUSH_SESSION_ID` > a
+  scan of the child output; with no id anywhere, nothing is closed and no
+  database is opened. The child's exit code is preserved and
+  SIGINT/SIGTERM are forwarded. (`cmd/tq/crush.go`, pinned by
+  `cmd/tq/crush_test.go`)
 - **Verify-evidence sidecar for failed verifies**: when a task's verify
   turn fails, the FULL verify output (combined stdout + stderr) is
   persisted to `$TQ_LOG_DIR/<task-id>.log` (0600) and the `task.failed`
