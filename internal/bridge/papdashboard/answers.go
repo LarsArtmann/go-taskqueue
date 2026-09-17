@@ -54,6 +54,10 @@ type AnswerStore interface {
 	RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRecord) error
 }
 
+// errListQuestions classifies list-endpoint failures (wraps the HTTP
+// status detail).
+var errListQuestions = errors.New("list questions")
+
 // answerPageLimit bounds each list page; memory stays flat regardless of
 // the answer backlog.
 const answerPageLimit = 50
@@ -181,22 +185,22 @@ func (p *AnswerPoller) pollOnce(ctx context.Context, cursor time.Time) (time.Tim
 
 		pageHasNew := false
 
-		for _, q := range questions {
-			if !q.IsAnswered || q.Answer == "" {
+		for _, question := range questions {
+			if !question.IsAnswered || question.Answer == "" {
 				continue
 			}
 
-			if !q.AnsweredAt.After(cursor) {
+			if !question.AnsweredAt.After(cursor) {
 				continue
 			}
 
 			pageHasNew = true
 
-			if q.AnsweredAt.After(maxSeen) {
-				maxSeen = q.AnsweredAt
+			if question.AnsweredAt.After(maxSeen) {
+				maxSeen = question.AnsweredAt
 			}
 
-			if err := p.apply(ctx, q); err != nil {
+			if err := p.apply(ctx, question); err != nil {
 				return cursor, err
 			}
 		}
@@ -256,7 +260,7 @@ func (p *AnswerPoller) list(ctx context.Context, offset int) ([]papQuestion, err
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, errorBodyCap))
 
-		return nil, fmt.Errorf("list questions: HTTP %d: %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("%w: HTTP %d: %s", errListQuestions, resp.StatusCode, body)
 	}
 
 	var doc struct {
@@ -302,27 +306,27 @@ func parseQuestionCorrelation(body string) (string, string, bool) {
 // apply routes one answered question home. A question without parseable
 // correlation is logged and skipped — never an error (the poll keeps its
 // cursor; there is no task to route it to).
-func (p *AnswerPoller) apply(ctx context.Context, q papQuestion) error {
-	taskID, ref, ok := parseQuestionCorrelation(q.Body)
+func (p *AnswerPoller) apply(ctx context.Context, question papQuestion) error {
+	taskID, ref, ok := parseQuestionCorrelation(question.Body)
 	if !ok {
 		p.log.Warn("answered question without correlation tokens; skipped",
-			"pap_id", q.ID, "title", q.Title)
+			"pap_id", question.ID, "title", question.Title)
 
 		return nil
 	}
 
 	err := p.store.RecordAnswer(ctx, task.ID(taskID), queue.AnswerRecord{
 		Ref:        ref,
-		Answer:     q.Answer,
-		PapID:      q.ID,
-		AnsweredAt: q.AnsweredAt,
+		Answer:     question.Answer,
+		PapID:      question.ID,
+		AnsweredAt: question.AnsweredAt,
 	})
 	if err != nil {
 		return fmt.Errorf("record answer %s on task %s: %w", ref, taskID, err)
 	}
 
 	p.log.Info("answer routed",
-		"pap_id", q.ID, "task", taskID, "ref", ref, "answer", firstLine(q.Answer))
+		"pap_id", question.ID, "task", taskID, "ref", ref, "answer", firstLine(question.Answer))
 
 	return nil
 }

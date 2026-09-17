@@ -175,6 +175,8 @@ type fakeQuestionAPI struct {
 }
 
 func newFakeQuestionAPI(t *testing.T, questions []papQuestion) *fakeQuestionAPI {
+	t.Helper()
+
 	f := &fakeQuestionAPI{questions: questions}
 
 	mux := http.NewServeMux()
@@ -235,12 +237,17 @@ func answeredQuestion(id, body, answer string, answeredAt time.Time) papQuestion
 	}
 }
 
+// errStoreDown is the fake store's failure for the record-error retry test
+// (static: err113 wants no dynamic error constructors).
+var errStoreDown = errors.New("store down")
+
 func correlatedBody(taskID, ref, question string) string {
 	return fmt.Sprintf("task:%s\nqref:%s\n\n%s", taskID, ref, question)
 }
 
 func TestParseQuestionCorrelation(t *testing.T) {
 	body := correlatedBody("0001abcDEF01234567", "q-9", "Which module?")
+
 	taskID, ref, ok := parseQuestionCorrelation(body)
 	if !ok || taskID != "0001abcDEF01234567" || ref != "q-9" {
 		t.Fatalf("parse = %q/%q/%v, want the task id and q-9", taskID, ref, ok)
@@ -398,7 +405,7 @@ func TestAnswerPollerRecordErrorKeepsCursor(t *testing.T) {
 		answeredQuestion("pap-1", correlatedBody("0001task0000aaaa", "q-1", "?"), "a", at),
 	})
 
-	boom := errors.New("store down")
+	boom := errStoreDown
 	store := &fakeAnswerStore{err: boom}
 	wm := newFakeWatermarks()
 

@@ -362,7 +362,7 @@ func (b *Bridge) forward(ctx context.Context, fact journal.Fact) error {
 		return err
 	}
 
-	switch fact.Type {
+	switch fact.Type { //nolint:exhaustive // the bridge forwards a deliberate subset of the fact stream; every other type is queue-internal
 	case journal.DeadLettered:
 		t, err := b.store.Get(ctx, task.ID(fact.TaskID))
 		if err != nil {
@@ -426,36 +426,39 @@ func (b *Bridge) forward(ctx context.Context, fact journal.Fact) error {
 		}
 
 	case journal.QuestionAsked:
-		var asked queue.QuestionAskedDetail
-		if err := json.Unmarshal(fact.Detail, &asked); err != nil {
-			// Unparseable detail is permanent — retrying would wedge the
-			// cursor on this fact forever. Log and move on.
-			b.log.Warn("question fact detail unparseable; not forwarded",
-				"seq", fact.Seq, "task", fact.TaskID, "err", err)
-
-			return nil
-		}
-
-		if asked.Ref == "" || asked.Question == "" {
-			b.log.Warn("question fact missing ref/question; not forwarded",
-				"seq", fact.Seq, "task", fact.TaskID)
-
-			return nil
-		}
-
-		if err := b.post(
-			ctx,
-			"question.asked",
-			idempotencyKey("question", fact.Seq),
-			fact.TaskID,
-			fact.Seq,
-			questionIngestPayload(b.cfg.SourceApp, fact.TaskID, asked),
-		); err != nil {
-			return err
-		}
+		return b.forwardQuestion(ctx, fact)
 	}
 
 	return nil
+}
+
+// forwardQuestion posts one owner question to PapDashboard. Unparseable or
+// incomplete details are logged and skipped — retrying would wedge the
+// cursor on this fact forever.
+func (b *Bridge) forwardQuestion(ctx context.Context, fact journal.Fact) error {
+	var asked queue.QuestionAskedDetail
+	if err := json.Unmarshal(fact.Detail, &asked); err != nil {
+		b.log.Warn("question fact detail unparseable; not forwarded",
+			"seq", fact.Seq, "task", fact.TaskID, "err", err)
+
+		return nil
+	}
+
+	if asked.Ref == "" || asked.Question == "" {
+		b.log.Warn("question fact missing ref/question; not forwarded",
+			"seq", fact.Seq, "task", fact.TaskID)
+
+		return nil
+	}
+
+	return b.post(
+		ctx,
+		"question.asked",
+		idempotencyKey("question", fact.Seq),
+		fact.TaskID,
+		fact.Seq,
+		questionIngestPayload(b.cfg.SourceApp, fact.TaskID, asked),
+	)
 }
 
 // everDeadLettered answers from the task's own fact trail — the journal is
