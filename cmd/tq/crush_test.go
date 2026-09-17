@@ -136,8 +136,9 @@ func TestCrushWrapperClosesOnCrash(t *testing.T) {
 
 	t.Cleanup(func() { _ = store.Close() })
 
-	ctx := t.Context()
-	assertMinted(t, ctx, store, dbPath, repo, "sess-wrap", "demo")
+	// An empty repo attributes zero commits: the close must record ONLY the
+	// session.closed fact — the crash is captured, nothing is minted.
+	assertClosedFact(t, t.Context(), store, "sess-wrap")
 }
 
 // TestCrushWrapperNoSessionID pins the honest no-id path: without an id from
@@ -195,6 +196,12 @@ func assertMinted(
 	if len(reviews) != 1 || len(statuses) != 1 {
 		t.Fatalf("close minted %d reviews, %d statuses; want 1/1", len(reviews), len(statuses))
 	}
+
+	assertClosedFact(t, ctx, store, id)
+}
+
+func assertClosedFact(t *testing.T, ctx context.Context, store *sqlite.Store, id string) {
+	t.Helper()
 
 	facts, err := store.FactsForTask(ctx, session.SyntheticTaskID(id).String(), 0)
 	if err != nil {
