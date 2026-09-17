@@ -11,16 +11,19 @@ import (
 
 // Contract types.
 type (
-	Store                = internalqueue.Store
-	Filter               = internalqueue.Filter
-	Queue                = internalqueue.Queue
-	Band                 = internalqueue.Band
-	PriorityScore        = internalqueue.PriorityScore
-	EnqueueDetail        = internalqueue.EnqueueDetail
-	RequeueEvidence      = internalqueue.RequeueEvidence
-	ReprioritizeEvidence = internalqueue.ReprioritizeEvidence
-	UnblockChange        = internalqueue.UnblockChange
-	WatermarkEntry       = internalqueue.WatermarkEntry
+	Store                  = internalqueue.Store
+	Filter                 = internalqueue.Filter
+	Queue                  = internalqueue.Queue
+	Band                   = internalqueue.Band
+	PriorityScore          = internalqueue.PriorityScore
+	EnqueueDetail          = internalqueue.EnqueueDetail
+	RequeueEvidence        = internalqueue.RequeueEvidence
+	ReprioritizeEvidence   = internalqueue.ReprioritizeEvidence
+	UnblockChange          = internalqueue.UnblockChange
+	WatermarkEntry         = internalqueue.WatermarkEntry
+	QuestionAskedDetail    = internalqueue.QuestionAskedDetail
+	QuestionAnsweredDetail = internalqueue.QuestionAnsweredDetail
+	AnswerRecord           = internalqueue.AnswerRecord
 )
 
 // Priority bands (ADR-0015).
@@ -35,12 +38,17 @@ const (
 	MachineMin = internalqueue.MachineMin
 )
 
-// Priority aging (ADR-0015) and unblock bumps.
+// Priority aging (ADR-0015), unblock bumps, and owner-question kinds.
 const (
 	PriorityAgingDaysPerPoint = internalqueue.PriorityAgingDaysPerPoint
 	PriorityAgingMaxBonus     = internalqueue.PriorityAgingMaxBonus
 	PrioritySourceUnblock     = internalqueue.PrioritySourceUnblock
 	UnblockBumpPriority       = internalqueue.UnblockBumpPriority
+
+	QuestionTypeInfo         = internalqueue.QuestionTypeInfo
+	QuestionTypeApproval     = internalqueue.QuestionTypeApproval
+	QuestionTypeConfirmation = internalqueue.QuestionTypeConfirmation
+	QuestionTypeInput        = internalqueue.QuestionTypeInput
 )
 
 // Sentinel errors.
@@ -51,7 +59,8 @@ var (
 
 // Functions.
 var (
-	New          = internalqueue.New
-	BandOf       = internalqueue.BandOf
-	ClampBacklog = internalqueue.ClampBacklog
+	New               = internalqueue.New
+	BandOf            = internalqueue.BandOf
+	ClampBacklog      = internalqueue.ClampBacklog
+	ValidQuestionType = internalqueue.ValidQuestionType
 )
