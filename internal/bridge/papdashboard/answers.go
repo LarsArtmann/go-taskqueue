@@ -20,6 +20,7 @@ package papdashboard
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -183,26 +184,11 @@ func (p *AnswerPoller) pollOnce(ctx context.Context, cursor time.Time) (time.Tim
 			break
 		}
 
-		pageHasNew := false
+		var pageHasNew bool
 
-		for _, question := range questions {
-			if !question.IsAnswered || question.Answer == "" {
-				continue
-			}
-
-			if !question.AnsweredAt.After(cursor) {
-				continue
-			}
-
-			pageHasNew = true
-
-			if question.AnsweredAt.After(maxSeen) {
-				maxSeen = question.AnsweredAt
-			}
-
-			if err := p.apply(ctx, question); err != nil {
-				return cursor, err
-			}
+		maxSeen, pageHasNew, err = p.applyPage(ctx, questions, cursor, maxSeen)
+		if err != nil {
+			return cursor, err
 		}
 
 		// Pages are newest-first: a page with nothing newer means
@@ -219,6 +205,39 @@ func (p *AnswerPoller) pollOnce(ctx context.Context, cursor time.Time) (time.Tim
 	}
 
 	return maxSeen, nil
+}
+
+// applyPage routes one list page's new answers home. Returns the advanced
+// maxSeen and whether the page held anything newer than cursor (newest-first
+// paging stops when a page holds nothing new).
+func (p *AnswerPoller) applyPage(
+	ctx context.Context,
+	questions []papQuestion,
+	cursor, maxSeen time.Time,
+) (time.Time, bool, error) {
+	sawNew := false
+
+	for _, question := range questions {
+		if !question.IsAnswered || question.Answer == "" {
+			continue
+		}
+
+		if !question.AnsweredAt.After(cursor) {
+			continue
+		}
+
+		sawNew = true
+
+		if question.AnsweredAt.After(maxSeen) {
+			maxSeen = question.AnsweredAt
+		}
+
+		if err := p.apply(ctx, question); err != nil {
+			return maxSeen, sawNew, err
+		}
+	}
+
+	return maxSeen, sawNew, nil
 }
 
 // papQuestion is the list-endpoint slice of PapDashboard's Question the
