@@ -74,6 +74,11 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
   tq tail [-f] [--db PATH] [--after SEQ]
   tq watermarks show [--db PATH]   (journal consumer cursors)
   tq watermarks set CONSUMER SEQ [--db PATH]   (rewind = safe replay)
+  tq crush [--bin BIN] [--repo DIR] [--project P] [--summary TEXT]
+           [--allow-dirty] [--db PATH] [--id ID] -- <crush args...>
+                  (wrap a crush session: on exit — clean or crashed — runs
+                  the replay-safe session close; the session id comes from
+                  $CRUSH_SESSION_ID or the child's output)
   tq session begin --id ID [--repo DIR] [--project P] [--db PATH]
                   (record an interactive session's opening; default id $CRUSH_SESSION_ID)
   tq session close --id ID [--repo DIR] [--project P] [--summary TEXT]
@@ -122,6 +127,7 @@ func main() {
 		"tail":         cmdTail,
 		"watermarks":   cmdWatermarks,
 		"session":      cmdSession,
+		"crush":        cmdCrush,
 		"serve":        cmdServe,
 		"version":      cmdVersion,
 		"api":          cmdAPI,
