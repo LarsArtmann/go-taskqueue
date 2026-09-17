@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **PapDashboard questions loop (`tq ask`)**: an agent parked on a
+  decision can now ask its owner. `tq ask --task <id>` (RUNNING only)
+  redacts the question, appends a `task.question-asked` fact, and writes
+  the per-run `$TQ_QUESTION_FILE` marker; the executor parks the run
+  (`QuestionPendingError`) and the worker requeues WITHOUT burning an
+  attempt, NotBefore set to the question's expiry (`--expires`, default
+  72h, cap 7d — expired questions re-enter the task as the safety valve).
+  The PapDashboard bridge forwards the question with `task:`/`qref:`
+  correlation tokens leading the body; the new AnswerPoller (runs under
+  `--alert-url` in `tq worker` and `tq agent-pool`) polls answered
+  questions back (watermark cursor, bootstrap-at-now, at-least-once) and
+  the store's `RecordAnswer` injects the ruling into the payload
+  (`answered` array), clears NotBefore, and appends
+  `task.question-answered`. The resumed run sees "Answers from the owner"
+  rendered into its prompt; `tq show` renders a questions section.
+  Re-asking converges on the same ref (pending re-arms the marker,
+  answered is a no-op). Store sentinels `ErrEmptyAnswerRef` /
+  `ErrEmptyAnswer` added to the queue contract + facades. Deliberate gap:
+  no prompt teaches `tq ask` yet — agent ask-policy needs an owner
+  ruling. (`internal/executor/question.go`, `internal/worker/worker.go`,
+  `internal/bridge/papdashboard/answers.go`, `internal/queue/*/sqlite.go`
+  + `postgres.go`, `cmd/tq/ask.go`; design:
+  `docs/planning/2026-09-06_decision-question-fanout.md`)
 - **`tq session list` + `tq session close --dry-run`**: `session list`
   surfaces OPEN sessions (an `session.opened` fact with no matching
   `session.closed`) for crash recovery — which interactive session never

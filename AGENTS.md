@@ -86,6 +86,7 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/help-text.sh    # every tq subcommand help: no parenthesized-identifier artifacts (rename-leak class, 08:42 e3/f2)
 ./scripts/smoke/multi-repo.sh   # two agent-pool processes, one DB, three repos: per-project exclusivity + dedup (D24)
 ./scripts/smoke/papdashboard-e2e.sh # stub dashboard: dead letter raises alert.triggered, dlq --rescue posts alert.resolved
+./scripts/smoke/questions-e2e.sh # stub agent + stub dashboard: tq ask → parked (no attempt burn) → forwarded → answered → unblocked → completed (D-questions)
 ./scripts/smoke/ratelimit-e2e.sh # hermetic: a Z.ai-429 stub failure parks the task (no attempt burned)
 ./scripts/smoke/fullcore.sh  # examples/fullcore drains 4/4 on sqlite + deadline path xN (50ms timeout calibrated: trips on this host at 250ms worker-start latency; DEADLINE_RUNS/DEADLINE_TIMEOUT_MS knobs; TQ_TEST_POSTGRES adds the postgres variant)
 ./scripts/smoke/reviews.sh   # stub reviewer; approve + request_changes + autofix loop
@@ -134,7 +135,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                                                                                                                        |
 | `internal/runactor`                                | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                                                                                                                     |
 | `internal/webui`                                   | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                                                                                                                           |
-| `cmd/tq` (module, ADR-0017)                        | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / facts / tail / watermarks / session / serve / api / doctor / version                                                                                    |
+| `cmd/tq` (module, ADR-0017)                        | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / ask / facts / tail / watermarks / session / serve / api / doctor / version                                                                                    |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001,
 ADR-0002: `docs/adr/`; plans in `docs/planning/`). Domain vocabulary is
@@ -364,6 +365,29 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   sanctioned non-task fact write; never write task facts through it. Open:
   trigger automation (crush #3146), daemon-commit attribution gap, budget
   bypass, postgres parity — docs/planning/2026-09-12_session-close-bridge-design.md.
+- **PapDashboard questions (`tq ask`, 2026-09-17, SHIPPED)**: an agent
+  parked on a decision asks the owner — `tq ask --task <id>` (RUNNING
+  only) redacts, appends `task.question-asked`, writes the per-run
+  `$TQ_QUESTION_FILE` marker (`QuestionAskedDetail` JSON); the executor
+  converts the marker into `QuestionPendingError` (work-turn question
+  skips verify+closeout; closeout-turn question arms `closeoutPending`
+  resume) and the worker requeues WITHOUT burning an attempt, NotBefore =
+  the question's expiry (`--expires` default 72h, cap 7d — the safety
+  valve re-enters the task). Ref = sha256(taskID + normalized question)
+  16-hex; re-ask converges (pending ref re-arms the marker, answered ref
+  is a no-op). The bridge forwards with `task:`/`qref:` tokens LEADING the
+  body; the AnswerPoller (runs under `--alert-url` in worker + agent-pool,
+  watermark cursor `papdashboard-answers:<endpoint>`, bootstrap-at-now,
+  at-least-once) routes answers home via `RecordAnswer` (idempotent per
+  ref; injects `answered` into object payloads + clears NotBefore; raw
+  payloads are fact-only). `tq show` renders the questions section
+  (`questions[0].answered`). Store-level sentinels:
+  `queue.ErrEmptyAnswerRef` / `queue.ErrEmptyAnswer` (both stores).
+  DELIBERATELY NOT DONE: no prompt teaches `tq ask` — agents won't
+  discover it until the owner rules on ask-policy (§g of the 21-04
+  report). Design: docs/planning/2026-09-06_decision-question-fanout.md
+  (Accepted 2026-09-17 — fact-park + polling deviation from the original
+  POST sketch).
 - **`Task-Queue-ID` commit footer**: every prompt contract tells agents to
   end commits with it; the executor resolves the placeholder at RUN time.
   Never hardcode the placeholder inside backtick raw strings (a backtick
@@ -777,6 +801,25 @@ prose, not the table.
   (cost one stray `demo` enqueue + a live-pool claim, 2026-09-10). Any
   scratch-DB smoke MUST export `TQ_DB=<scratch path>` (or pass `--db`)
   explicitly; assume every bare `tq …` in a session shell touches production.
+- ⚠️ **Root-module builds auto-use `vendor/` — stale vendored internals
+  poison root builds** (2026-09-17 questions arc, d2): after changing ANY
+  internal/ module, root `go build ./...` can fail with misleading
+  "undefined: queue.AnswerRecord"-style cascades while per-module
+  `GOWORK=off` builds stay green — the root module resolves
+  `github.com/larsartmann/go-taskqueue/internal/...` from the committed
+  `vendor/` tree, not the workspace. Fix: `go mod vendor` before root
+  builds. The three-layer dep-graph lesson: facade requires+replaces →
+  root vendor refresh → per-module GOWORK=off builds.
+- ⚠️ **golangci-lint's cache is not invalidated by Go toolchain flips**
+  (2026-09-17 lint-fix arc): after the 19-go.mod 1.27.1 bump, a WARM cache
+  serves pre-bump analysis results while changed files re-analyze under
+  1.27.1 semantics — `./scripts/lint-baseline.sh --check` then flip-flops
+  between near-green and broad "growth" on unchanged files. Trust the
+  CLEAN-cache reading: `golangci-lint cache clean` before judging the
+  gate (CI is always clean-cache, so the clean reading is the CI truth).
+  Also: golangci's embedded golines diverges from a standalone
+  `/home/lars/go/bin/golines` (different version) — always finish
+  formatting with `golangci-lint fmt` for byte-parity with the linter.
 - ⚠️ **Session-start ritual**: run `git log --oneline -5` over the WHOLE
   repo (not just `-- internal` — concurrent work lands in cmd/, scripts/,
   and docs/ too) plus `git status` and `git stash list` before editing —
