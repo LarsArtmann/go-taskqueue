@@ -25,6 +25,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -57,6 +58,16 @@ type AnswerStore interface {
 // the answer backlog.
 const answerPageLimit = 50
 
+const (
+	// defaultPollInterval is the AnswerConfig.Interval fallback.
+	defaultPollInterval = 10 * time.Second
+	// defaultHTTPTimeout bounds one list call.
+	defaultHTTPTimeout = 30 * time.Second
+	// errorBodyCap limits how much of an error response body is kept for
+	// diagnostics.
+	errorBodyCap = 4096
+)
+
 // AnswerPoller polls PapDashboard for answered questions and routes each
 // ruling back to its task via AnswerStore.
 type AnswerPoller struct {
@@ -76,7 +87,7 @@ func NewAnswerPoller(store AnswerStore, checkpoints WatermarkStore, cfg AnswerCo
 	}
 
 	if cfg.Interval <= 0 {
-		cfg.Interval = 10 * time.Second
+		cfg.Interval = defaultPollInterval
 	}
 
 	if cfg.Logger == nil {
@@ -84,7 +95,7 @@ func NewAnswerPoller(store AnswerStore, checkpoints WatermarkStore, cfg AnswerCo
 	}
 
 	if cfg.Client == nil {
-		cfg.Client = &http.Client{Timeout: 30 * time.Second}
+		cfg.Client = &http.Client{Timeout: defaultHTTPTimeout}
 	}
 
 	return &AnswerPoller{
@@ -231,8 +242,8 @@ func (p *AnswerPoller) list(ctx context.Context, offset int) ([]papQuestion, err
 
 	q := req.URL.Query()
 	q.Set("sourceApp", p.cfg.SourceApp)
-	q.Set("limit", fmt.Sprint(answerPageLimit))
-	q.Set("offset", fmt.Sprint(offset))
+	q.Set("limit", strconv.Itoa(answerPageLimit))
+	q.Set("offset", strconv.Itoa(offset))
 	req.URL.RawQuery = q.Encode()
 
 	resp, err := p.client.Do(req)
@@ -243,7 +254,7 @@ func (p *AnswerPoller) list(ctx context.Context, offset int) ([]papQuestion, err
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, errorBodyCap))
 
 		return nil, fmt.Errorf("list questions: HTTP %d: %s", resp.StatusCode, body)
 	}
@@ -272,19 +283,20 @@ var (
 // from a PapDashboard question body. Missing tokens mean the question did
 // not originate from a parked task (operator-created, foreign format) —
 // the caller logs and skips.
-func parseQuestionCorrelation(body string) (taskID, ref string, ok bool) {
+func parseQuestionCorrelation(body string) (string, string, bool) {
 	m := questionTaskTokenRe.FindStringSubmatch(body)
 	if m == nil {
 		return "", "", false
 	}
 
-	taskID = m[1]
+	id := m[1]
 
-	if m := questionRefTokenRe.FindStringSubmatch(body); m != nil {
-		ref = m[1]
+	mref := questionRefTokenRe.FindStringSubmatch(body)
+	if mref == nil {
+		return id, "", false
 	}
 
-	return taskID, ref, ref != ""
+	return id, mref[1], true
 }
 
 // apply routes one answered question home. A question without parseable

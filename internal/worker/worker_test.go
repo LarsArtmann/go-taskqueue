@@ -622,13 +622,25 @@ func TestPreflightRequeuesWithoutAttemptBurn(t *testing.T) {
 	cancel()
 }
 
-// TestRateLimitRequeuesWithoutAttemptBurn pins the provider-exhaustion
-// contract: a *RateLimitError (429 usage limit from Z.ai / synthetic.new)
-// must NOT dead-letter, NOT burn an attempt, and NOT retry on the ordinary
-// backoff — the task parks until the parsed provider reset, then completes
-// without any rescue even with MaxAttempts=1 (the 2026-09-11 incident
-// dead-lettered a healthy task exactly because 429s burned the budget).
-func TestRateLimitRequeuesWithoutAttemptBurn(t *testing.T) {
+// parkScenario is the data behind the park→resume pin: a stub executor
+// returns parkErr until flag flips, then succeeds. phase names the blocker
+// in assertion messages; lastErrPrefix is the error-class prefix the
+// worker must record in LastError.
+type parkScenario struct {
+	phase         string
+	lastErrPrefix string
+	parkErr       func() error
+}
+
+// runParkWithoutAttemptBurn drives the shared park→resume contract: a
+// parked task must NOT dead-letter, NOT burn an attempt, and NOT retry on
+// the ordinary backoff — it stays pending until the blocker lifts, then
+// completes from the very same attempt budget even with MaxAttempts=1
+// (the 2026-09-11 incident dead-lettered a healthy task exactly because
+// 429s burned the budget).
+func runParkWithoutAttemptBurn(t *testing.T, sc parkScenario) {
+	t.Helper()
+
 	store := testStore(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -637,19 +649,16 @@ func TestRateLimitRequeuesWithoutAttemptBurn(t *testing.T) {
 	reg := executor.NewRegistry()
 
 	var (
-		ready   atomic.Bool
-		limited atomic.Int32
+		blocker atomic.Bool
+		parks   atomic.Int32
 		ran     atomic.Int32
 	)
 
 	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
-		if !ready.Load() {
-			limited.Add(1)
+		if !blocker.Load() {
+			parks.Add(1)
 
-			return &executor.RateLimitError{
-				Cause:      errors.New("agent run failed: exit status 1: status_code=429 usage limit reached"),
-				RetryAfter: 80 * time.Millisecond,
-			}
+			return sc.parkErr()
 		}
 
 		ran.Add(1)
@@ -665,89 +674,7 @@ func TestRateLimitRequeuesWithoutAttemptBurn(t *testing.T) {
 	}, quietLog())
 	go func() { _ = pool.Start(ctx) }()
 
-	// First pass is rate-limited: the task must stay pending with zero
-	// attempts, not dead despite MaxAttempts=1.
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		got, _ := store.Get(context.Background(), enq.ID)
-		if got.LastError != "" && got.Status == task.Pending && got.Attempts == 0 {
-			break
-		}
-
-		time.Sleep(5 * time.Millisecond)
-	}
-
-	first, _ := store.Get(context.Background(), enq.ID)
-	if first.Status != task.Pending || first.Attempts != 0 {
-		t.Fatalf("after rate limit: status=%s attempts=%d, want pending/0", first.Status, first.Attempts)
-	}
-
-	if !strings.Contains(first.LastError, "rate limited") {
-		t.Fatalf("lastError = %q, want the rate-limit class prefix", first.LastError)
-	}
-
-	// Provider window resets: the very same task completes without rescue.
-	ready.Store(true)
-
-	got := waitFor(t, ctx, store, enq.ID, task.Completed)
-	if ran.Load() != 1 {
-		t.Fatalf("executor ran %d times after reset, want 1", ran.Load())
-	}
-
-	if got.Status != task.Completed {
-		t.Fatalf("status = %s, want completed", got.Status)
-	}
-
-	if limited.Load() != 1 {
-		t.Fatalf("executor hit the rate limit %d times, want 1", limited.Load())
-	}
-
-	cancel()
-}
-
-// TestQuestionParksWithoutAttemptBurn pins the owner-question contract: a
-// *QuestionPendingError (the agent asked via `tq ask`) must NOT dead-letter,
-// NOT burn an attempt, and NOT retry on the ordinary backoff — the task
-// parks until the answer (or the question's expiry safety valve), then
-// completes from the very same attempt budget.
-func TestQuestionParksWithoutAttemptBurn(t *testing.T) {
-	store := testStore(t)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	reg := executor.NewRegistry()
-
-	var (
-		answered atomic.Bool
-		asked    atomic.Int32
-		ran      atomic.Int32
-	)
-
-	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
-		if !answered.Load() {
-			asked.Add(1)
-
-			return &executor.QuestionPendingError{
-				Cause:      errors.New("agent asked: ship v3 or stay on v2?"),
-				RetryAfter: 80 * time.Millisecond,
-			}
-		}
-
-		ran.Add(1)
-
-		return nil
-	})
-
-	enq, _ := store.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 1})
-
-	pool := New(store, Config{
-		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
-		Executors: reg,
-	}, quietLog())
-	go func() { _ = pool.Start(ctx) }()
-
-	// First pass asks: the task must stay pending with zero attempts, not
+	// First pass parks: the task must stay pending with zero attempts, not
 	// dead despite MaxAttempts=1.
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
@@ -761,30 +688,63 @@ func TestQuestionParksWithoutAttemptBurn(t *testing.T) {
 
 	first, _ := store.Get(context.Background(), enq.ID)
 	if first.Status != task.Pending || first.Attempts != 0 {
-		t.Fatalf("after question: status=%s attempts=%d, want pending/0", first.Status, first.Attempts)
+		t.Fatalf("after %s: status=%s attempts=%d, want pending/0", sc.phase, first.Status, first.Attempts)
 	}
 
-	if !strings.Contains(first.LastError, "question pending") {
-		t.Fatalf("lastError = %q, want the question class prefix", first.LastError)
+	if !strings.Contains(first.LastError, sc.lastErrPrefix) {
+		t.Fatalf("lastError = %q, want the %s class prefix", first.LastError, sc.phase)
 	}
 
-	// The answer arrives: the very same task completes without rescue.
-	answered.Store(true)
+	// The blocker lifts: the very same task completes without rescue.
+	blocker.Store(true)
 
 	got := waitFor(t, ctx, store, enq.ID, task.Completed)
 	if ran.Load() != 1 {
-		t.Fatalf("executor ran %d times after the answer, want 1", ran.Load())
+		t.Fatalf("executor ran %d times after the %s cleared, want 1", ran.Load(), sc.phase)
 	}
 
 	if got.Status != task.Completed {
 		t.Fatalf("status = %s, want completed", got.Status)
 	}
 
-	if asked.Load() != 1 {
-		t.Fatalf("executor asked %d times, want 1", asked.Load())
+	if parks.Load() != 1 {
+		t.Fatalf("executor parked on the %s %d times, want 1", sc.phase, parks.Load())
 	}
 
 	cancel()
+}
+
+// TestRateLimitRequeuesWithoutAttemptBurn pins the provider-exhaustion
+// contract: a *RateLimitError (429 usage limit from Z.ai / synthetic.new)
+// parks the task until the parsed provider reset (runParkWithoutAttemptBurn
+// owns the no-burn/no-dead assertions).
+func TestRateLimitRequeuesWithoutAttemptBurn(t *testing.T) {
+	runParkWithoutAttemptBurn(t, parkScenario{
+		phase:         "rate limit",
+		lastErrPrefix: "rate limited",
+		parkErr: func() error {
+			return &executor.RateLimitError{
+				Cause:      errors.New("agent run failed: exit status 1: status_code=429 usage limit reached"),
+				RetryAfter: 80 * time.Millisecond,
+			}
+		},
+	})
+}
+
+// TestQuestionParksWithoutAttemptBurn pins the owner-question contract: a
+// *QuestionPendingError (the agent asked via `tq ask`) parks the task until
+// the answer (or the question's expiry safety valve).
+func TestQuestionParksWithoutAttemptBurn(t *testing.T) {
+	runParkWithoutAttemptBurn(t, parkScenario{
+		phase:         "question",
+		lastErrPrefix: "question pending",
+		parkErr: func() error {
+			return &executor.QuestionPendingError{
+				Cause:      errors.New("agent asked: ship v3 or stay on v2?"),
+				RetryAfter: 80 * time.Millisecond,
+			}
+		},
+	})
 }
 
 // TestCloseoutResumeFlagReachesRequeueFact pins the 16-00 f31 wiring: a
