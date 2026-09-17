@@ -860,6 +860,45 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 
+	t.Run("session facts (AppendFact)", func(t *testing.T) {
+		if err := s.AppendFact(ctx, journal.Fact{
+			TaskID: "session:sess-conformance",
+			Type:   journal.SessionOpened,
+			Detail: []byte(`{"session_id":"sess-conformance","repo":"/repos/demo"}`),
+		}); err != nil {
+			t.Fatalf("AppendFact: %v", err)
+		}
+
+		facts, err := s.FactsForTask(ctx, "session:sess-conformance", 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(facts) != 1 {
+			t.Fatalf("session facts = %d, want 1", len(facts))
+		}
+
+		f := facts[0]
+		if f.Type != journal.SessionOpened || f.TaskID != "session:sess-conformance" {
+			t.Fatalf("fact = %s/%s", f.Type, f.TaskID)
+		}
+
+		if f.Seq <= 0 || f.Time.IsZero() {
+			t.Fatalf("store must assign Seq and Time, got seq=%d time=%v", f.Seq, f.Time)
+		}
+
+		var detail struct {
+			SessionID string `json:"session_id"`
+		}
+		if err := json.Unmarshal(f.Detail, &detail); err != nil || detail.SessionID != "sess-conformance" {
+			t.Fatalf("detail roundtrip = %q / %v", string(f.Detail), err)
+		}
+
+		if _, err := s.Get(ctx, "session:sess-conformance"); !errors.Is(err, task.ErrNotFound) {
+			t.Fatalf("Get(session:sess-conformance) err = %v, want task.ErrNotFound", err)
+		}
+	})
+
 	t.Run("watermark roundtrip is monotonic", func(t *testing.T) {
 		consumer := "conformance-wm-" + project
 

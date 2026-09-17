@@ -165,6 +165,19 @@ func (s *Store) Close() error {
 	return nil
 }
 
+// AppendFact records a NON-task journal fact (session.opened /
+// session.closed) — the postgres mirror of sqlite.Store.AppendFact, the
+// session bridge's sanctioned out-of-band write. Task facts are never
+// written through it — every task mutation appends its fact inside its own
+// operation's transaction, and that pairing is what keeps the journal a
+// consistent history of the queue. Seq is assigned by the facts table
+// (BIGSERIAL), Time when zero.
+func (s *Store) AppendFact(ctx context.Context, f journal.Fact) error {
+	return s.withTx(ctx, func(tx pgx.Tx) error {
+		return s.appendFact(ctx, tx, f)
+	})
+}
+
 // withTx runs fn in one transaction; ANY error rolls back (same contract
 // as sqlite.Store.withTx).
 func (s *Store) withTx(ctx context.Context, fn func(pgx.Tx) error) error {
