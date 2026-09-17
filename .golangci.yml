@@ -251,6 +251,9 @@ linters:
       - path: internal/queue/(sqlite|postgres)/[a-z_]+_test\.go
         linters:
           - tagliatelle
+      - path: cmd/tq/session_forensics_test\.go
+        linters:
+          - tagliatelle
       - path: ^(task/task|journal/journal|queue/queue|queue/sqlite/sqlite|queue/postgres/postgres|executor/executor|worker/worker)\.go$
         linters:
           - gochecknoglobals

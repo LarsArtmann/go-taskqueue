@@ -2494,7 +2494,7 @@ func filterFactsByType(facts []journal.Fact, filter string) []journal.Fact {
 		wanted[strings.TrimSpace(typ)] = true
 	}
 
-	return slices.DeleteFunc(facts, func(f journal.Fact) bool { return !wanted[string(f.Type)] })
+	return slices.DeleteFunc(facts, func(fact journal.Fact) bool { return !wanted[string(fact.Type)] })
 }
 
 // printFactCommitViews runs the footer cross-reference (tq show --commits)
