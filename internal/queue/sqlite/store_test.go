@@ -2936,9 +2936,12 @@ func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
 // exact queue-side shape of the PapDashboard question flow: enqueue,
 // claim, task.question-asked fact (what tq ask records), then the
 // worker's question-pending requeue with the question expiry as the
-// NotBefore safety valve.
-func parkOnQuestion(t *testing.T, s *Store, ref, payload string, requeueIn time.Duration) task.Task {
+// NotBefore safety valve. The question ref is always "q-1"; follow-up
+// questions append their own facts directly.
+func parkOnQuestion(t *testing.T, s *Store, payload string, requeueIn time.Duration) task.Task {
 	t.Helper()
+
+	const ref = "q-1"
 
 	ctx := context.Background()
 
@@ -2972,33 +2975,11 @@ func parkOnQuestion(t *testing.T, s *Store, ref, payload string, requeueIn time.
 	return tk
 }
 
-func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
-
-	tk := parkOnQuestion(t, s, "q-1", `{"repo":"go-taskqueue","prompt":"do the thing"}`, time.Hour)
-
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
-		t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
-	}
-
-	err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
-	if err != nil {
-		t.Fatalf("RecordAnswer: %v", err)
-	}
-
-	got, err := s.Get(ctx, tk.ID)
-	if err != nil {
-		t.Fatalf("Get: %v", err)
-	}
-
-	if got.Status != task.Pending {
-		t.Fatalf("status = %s, want pending", got.Status)
-	}
-
-	if !got.NotBefore.IsZero() && got.NotBefore.After(time.Now()) {
-		t.Fatalf("NotBefore = %v, want cleared (immediately claimable)", got.NotBefore)
-	}
+// assertAnswerInjected decodes the parked task's payload and pins the
+// injected answered entry: ref/answer/pap_id/answered_at, plus the
+// question backfilled from the asked fact.
+func assertAnswerInjected(t *testing.T, got task.Task) {
+	t.Helper()
 
 	var payload struct {
 		Repo     string `json:"repo"`
@@ -3010,7 +2991,7 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 			AnsweredAt int64  `json:"answered_at"`
 		} `json:"answered"`
 	}
-	if err := json.Unmarshal(jsontext.Value(got.Payload), &payload); err != nil {
+	if err := json.Unmarshal(got.Payload, &payload); err != nil {
 		t.Fatalf("payload not JSON: %v (%s)", err, got.Payload)
 	}
 
@@ -3026,14 +3007,15 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 	if a.Question != "Ship as v3 now, or stay on v2 until the proxy settles?" {
 		t.Errorf("question not backfilled from the asked fact: %q", a.Question)
 	}
+}
 
-	// The answer must be claimable RIGHT NOW — no residual delay.
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
-		t.Fatalf("claim after answer: %v", err)
-	}
+// assertAnsweredFact finds the task.question-answered fact and pins its
+// detail — the answer is self-contained forensics even after the payload
+// moves on.
+func assertAnsweredFact(t *testing.T, ctx context.Context, s *Store, id task.ID) {
+	t.Helper()
 
-	// The answered fact is self-contained forensics.
-	trail, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+	trail, err := s.FactsForTask(ctx, id.String(), 0)
 	if err != nil {
 		t.Fatalf("facts: %v", err)
 	}
@@ -3067,11 +3049,49 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 	}
 }
 
+func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk := parkOnQuestion(t, s, `{"repo":"go-taskqueue","prompt":"do the thing"}`, time.Hour)
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
+	}
+
+	err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
+	if err != nil {
+		t.Fatalf("RecordAnswer: %v", err)
+	}
+
+	got, err := s.Get(ctx, tk.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	if got.Status != task.Pending {
+		t.Fatalf("status = %s, want pending", got.Status)
+	}
+
+	if !got.NotBefore.IsZero() && got.NotBefore.After(time.Now()) {
+		t.Fatalf("NotBefore = %v, want cleared (immediately claimable)", got.NotBefore)
+	}
+
+	assertAnswerInjected(t, got)
+
+	// The answer must be claimable RIGHT NOW — no residual delay.
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim after answer: %v", err)
+	}
+
+	assertAnsweredFact(t, ctx, s, tk.ID)
+}
+
 func TestRecordAnswerReplayIsNoop(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, time.Hour)
+	tk := parkOnQuestion(t, s, `{"prompt":"x"}`, time.Hour)
 
 	ans := queue.AnswerRecord{Ref: "q-1", Answer: "Go ahead.", PapID: "pap-7"}
 	if err := s.RecordAnswer(ctx, tk.ID, ans); err != nil {
@@ -3087,7 +3107,7 @@ func TestRecordAnswerReplayIsNoop(t *testing.T) {
 	var payload struct {
 		Answered []map[string]any `json:"answered"`
 	}
-	if err := json.Unmarshal(jsontext.Value(got.Payload), &payload); err != nil {
+	if err := json.Unmarshal(got.Payload, &payload); err != nil {
 		t.Fatalf("payload: %v", err)
 	}
 
@@ -3114,7 +3134,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, time.Hour)
+	tk := parkOnQuestion(t, s, `{"prompt":"x"}`, time.Hour)
 
 	if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "first"}); err != nil {
 		t.Fatalf("RecordAnswer q-1: %v", err)
@@ -3151,7 +3171,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 			Answer   string `json:"answer"`
 		} `json:"answered"`
 	}
-	if err := json.Unmarshal(jsontext.Value(got.Payload), &payload); err != nil {
+	if err := json.Unmarshal(got.Payload, &payload); err != nil {
 		t.Fatalf("payload: %v", err)
 	}
 
@@ -3172,7 +3192,7 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, 50*time.Millisecond)
+	tk := parkOnQuestion(t, s, `{"prompt":"x"}`, 50*time.Millisecond)
 
 	// The safety valve fired (short park) and a worker re-claimed before
 	// the answer landed: the ruling is journal truth but must not touch a
@@ -3218,7 +3238,7 @@ func TestRecordAnswerRawPayloadFactOnly(t *testing.T) {
 	// Raw (non-object) payloads cannot carry the injection — the ruling
 	// lives in the journal only, and the parked task stays parked (the
 	// safety-valve expiry owns it).
-	tk := parkOnQuestion(t, s, "q-1", `echo hi`, time.Hour)
+	tk := parkOnQuestion(t, s, `echo hi`, time.Hour)
 
 	if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "ok"}); err != nil {
 		t.Fatalf("RecordAnswer: %v", err)
@@ -3252,7 +3272,7 @@ func TestRecordAnswerValidation(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
-	tk := parkOnQuestion(t, s, "q-1", `{"prompt":"x"}`, time.Hour)
+	tk := parkOnQuestion(t, s, `{"prompt":"x"}`, time.Hour)
 
 	for _, tc := range []struct {
 		name string

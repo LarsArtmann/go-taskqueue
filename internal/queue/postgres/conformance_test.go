@@ -1117,7 +1117,7 @@ func TestPostgresConformance(t *testing.T) {
 				Answer   string `json:"answer"`
 			} `json:"answered"`
 		}
-		if err := json.Unmarshal(jsontext.Value(got.Payload), &payload); err != nil {
+		if err := json.Unmarshal(got.Payload, &payload); err != nil {
 			t.Fatalf("payload: %v (%s)", err, got.Payload)
 		}
 
