@@ -444,6 +444,27 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		return
 	}
 
+	if qp, ok := errors.AsType[*executor.QuestionPendingError](execErr); ok {
+		// Owner question (PapDashboard questions): the agent parked the run
+		// awaiting a ruling. The identical retry is pointless until the
+		// answer arrives — requeue WITHOUT burning an attempt, parked until
+		// the question expires (the safety valve re-enters the task when
+		// the answer never comes). No jitter: the expiry is the answer
+		// deadline, not a quota window.
+		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, qp.Error(), qp.RetryAfter, qp.ResumeCloseout); err != nil {
+			p.log.Error("question requeue failed", "task", t.ID, "err", err)
+		} else {
+			attrs := []any{"task", t.ID, "retry after", qp.RetryAfter.Round(time.Second), "question", qp.Cause.Error()}
+			if qp.ResumeCloseout {
+				attrs = append(attrs, "resume", "closeout")
+			}
+
+			p.log.Warn("parked on owner question; requeued without attempt burn", attrs...)
+		}
+
+		return
+	}
+
 	if perm, ok := errors.AsType[*executor.PermanentError](execErr); ok {
 		// The identical retry would fail identically (bad payload, missing
 		// repo). Dead-letter now instead of burning the retry budget — for

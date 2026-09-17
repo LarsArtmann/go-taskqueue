@@ -705,6 +705,88 @@ func TestRateLimitRequeuesWithoutAttemptBurn(t *testing.T) {
 	cancel()
 }
 
+// TestQuestionParksWithoutAttemptBurn pins the owner-question contract: a
+// *QuestionPendingError (the agent asked via `tq ask`) must NOT dead-letter,
+// NOT burn an attempt, and NOT retry on the ordinary backoff — the task
+// parks until the answer (or the question's expiry safety valve), then
+// completes from the very same attempt budget.
+func TestQuestionParksWithoutAttemptBurn(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var (
+		answered atomic.Bool
+		asked    atomic.Int32
+		ran      atomic.Int32
+	)
+
+	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
+		if !answered.Load() {
+			asked.Add(1)
+
+			return &executor.QuestionPendingError{
+				Cause:      errors.New("agent asked: ship v3 or stay on v2?"),
+				RetryAfter: 80 * time.Millisecond,
+			}
+		}
+
+		ran.Add(1)
+
+		return nil
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 1})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		Executors: reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	// First pass asks: the task must stay pending with zero attempts, not
+	// dead despite MaxAttempts=1.
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		got, _ := store.Get(context.Background(), enq.ID)
+		if got.LastError != "" && got.Status == task.Pending && got.Attempts == 0 {
+			break
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	first, _ := store.Get(context.Background(), enq.ID)
+	if first.Status != task.Pending || first.Attempts != 0 {
+		t.Fatalf("after question: status=%s attempts=%d, want pending/0", first.Status, first.Attempts)
+	}
+
+	if !strings.Contains(first.LastError, "question pending") {
+		t.Fatalf("lastError = %q, want the question class prefix", first.LastError)
+	}
+
+	// The answer arrives: the very same task completes without rescue.
+	answered.Store(true)
+
+	got := waitFor(t, ctx, store, enq.ID, task.Completed)
+	if ran.Load() != 1 {
+		t.Fatalf("executor ran %d times after the answer, want 1", ran.Load())
+	}
+
+	if got.Status != task.Completed {
+		t.Fatalf("status = %s, want completed", got.Status)
+	}
+
+	if asked.Load() != 1 {
+		t.Fatalf("executor asked %d times, want 1", asked.Load())
+	}
+
+	cancel()
+}
+
 // TestCloseoutResumeFlagReachesRequeueFact pins the 16-00 f31 wiring: a
 // rate-limited CLOSE-OUT (ResumeCloseout on the error) must stamp
 // resume_closeout into the task.requeued fact's evidence, so the journal
