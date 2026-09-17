@@ -104,6 +104,33 @@ existing in-tx call sites are unchanged.
 - `cmd/tq`: end-to-end begin → work (footer commits) → close → replay close
   against real git + sqlite; double-begin and missing-id refusals.
 
+## Session/repository model (documented 2026-09-18)
+
+The bridge implements one close per (session, repo) — and today that
+degenerates to one close per session, first close wins. `Close` takes an
+explicit `--repo` and attributes only commits in that repo, but every dedup
+surface keys on the session id alone:
+
+- the replay check (`wasClosed`) fires on ANY prior `session.closed` fact
+  for the session, regardless of repo;
+- the review dedup key (`review:session:<id>`) carries no repo component —
+  a second close against repo B collides with repo A's review task and
+  returns it (idempotent enqueue), so repo B's attributed commits never get
+  their own review;
+- only the status dedup key is project-scoped
+  (`status:<project>:session:<id>`), so a genuinely different project still
+  mints its own report.
+
+Consequence: a session that worked across multiple repos must be closed
+once, against the repo that owns the review; a close against another repo
+of the same session re-attributes that repo's commits into a new
+`session.closed` fact but mints no fresh review. This is a documented
+limitation, not an accident: interactive sessions are overwhelmingly
+single-repo, and the operator escape hatch is one session id per repo.
+True multi-repo close means repo-scoping BOTH dedup keys AND the closed
+fact lookup (e.g. `session:<id>:<repo>`), plus a `tq facts` rendering
+decision — deferred until a real multi-repo session shows up.
+
 ## Deliberate choices and tradeoffs
 
 - **Facts after enqueues.** The closed fact carries the minted task IDs, so

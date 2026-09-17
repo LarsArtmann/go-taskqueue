@@ -364,7 +364,10 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   (SessionEnd-hook budget). `(*sqlite.Store).AppendFact` is the ONLY
   sanctioned non-task fact write; never write task facts through it. Open:
   trigger automation (crush #3146), daemon-commit attribution gap, budget
-  bypass, postgres parity — docs/planning/2026-09-12_session-close-bridge-design.md.
+  bypass, postgres parity; session/repo model documented (one close per
+  session, first-repo wins — review dedup key is repo-blind, so a second
+  repo's close is a replay that mints no fresh review; true multi-repo close
+  is deferred) — docs/planning/2026-09-12_session-close-bridge-design.md.
 - **PapDashboard questions (`tq ask`, 2026-09-17, SHIPPED)**: an agent
   parked on a decision asks the owner — `tq ask --task <id>` (RUNNING
   only) redacts, appends `task.question-asked`, writes the per-run
