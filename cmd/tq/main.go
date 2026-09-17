@@ -2490,7 +2490,7 @@ func filterFactsByType(facts []journal.Fact, filter string) []journal.Fact {
 
 	wanted := make(map[string]bool)
 
-	for _, typ := range strings.Split(filter, ",") {
+	for typ := range strings.SplitSeq(filter, ",") {
 		wanted[strings.TrimSpace(typ)] = true
 	}
 
