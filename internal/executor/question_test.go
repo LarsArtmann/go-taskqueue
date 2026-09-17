@@ -18,7 +18,12 @@ func TestQuestionPendingFromMarker(t *testing.T) {
 	expiry := time.Now().Add(time.Hour)
 
 	marker := func(ref, question string, expiresMillis int64) string {
-		return fmt.Sprintf(`{"ref":%q,"type":"confirmation","question":%q,"expires_at":%d}`, ref, question, expiresMillis)
+		return fmt.Sprintf(
+			`{"ref":%q,"type":"confirmation","question":%q,"expires_at":%d}`,
+			ref,
+			question,
+			expiresMillis,
+		)
 	}
 
 	for _, tc := range []struct {
@@ -54,6 +59,7 @@ func TestQuestionPendingFromMarker(t *testing.T) {
 			}
 
 			err := questionPendingFrom(path, time.Now())
+
 			switch {
 			case tc.wantNil:
 				if err != nil {

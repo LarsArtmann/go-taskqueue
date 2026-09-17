@@ -1069,7 +1069,10 @@ func TestPostgresConformance(t *testing.T) {
 		}
 
 		// Parked + JSON-object payload: the answer unblocks and injects.
-		pq, err := s.Enqueue(ctx, task.New{Type: "agent", Project: project, Payload: jsontext.Value(`{"repo":"x","prompt":"y"}`)})
+		pq, err := s.Enqueue(
+			ctx,
+			task.New{Type: "agent", Project: project, Payload: jsontext.Value(`{"repo":"x","prompt":"y"}`)},
+		)
 		if err != nil {
 			t.Fatal(err)
 		}

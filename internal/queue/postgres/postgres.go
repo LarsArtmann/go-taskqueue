@@ -1155,7 +1155,12 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 }
 
 // pgFactDetailRefs mirrors sqlite's factDetailRefs over pgx.
-func pgFactDetailRefs(ctx context.Context, tx pgx.Tx, taskID string, ftype journal.FactType) (map[string]string, error) {
+func pgFactDetailRefs(
+	ctx context.Context,
+	tx pgx.Tx,
+	taskID string,
+	ftype journal.FactType,
+) (map[string]string, error) {
 	rows, err := tx.Query(ctx,
 		`SELECT detail FROM facts WHERE task_id = $1 AND type = $2`,
 		taskID, string(ftype))
@@ -1201,7 +1206,12 @@ func pgFactDetailRefs(ctx context.Context, tx pgx.Tx, taskID string, ftype journ
 // pgMergeAnsweredPayload mirrors sqlite's mergeAnsweredPayload: inject one
 // answered question into a JSON-object payload's "answered" array; raw
 // (non-object) payloads report ok=false.
-func pgMergeAnsweredPayload(payload string, ans queue.AnswerRecord, question string, answeredAt time.Time) (jsontext.Value, bool, error) {
+func pgMergeAnsweredPayload(
+	payload string,
+	ans queue.AnswerRecord,
+	question string,
+	answeredAt time.Time,
+) (jsontext.Value, bool, error) {
 	trimmed := strings.TrimSpace(payload)
 	if !strings.HasPrefix(trimmed, "{") {
 		return jsontext.Value(payload), false, nil

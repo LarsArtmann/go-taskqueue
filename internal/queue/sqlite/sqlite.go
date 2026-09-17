@@ -1279,7 +1279,12 @@ func factDetailRefs(ctx context.Context, tx *sql.Tx, taskID string, ftype journa
 // payload's "answered" array (creating it when absent). Raw (non-object)
 // payloads report ok=false: answers cannot be merged into a raw-text
 // payload, and the fact alone still records the ruling.
-func mergeAnsweredPayload(payload string, ans queue.AnswerRecord, question string, answeredAt time.Time) (jsontext.Value, bool, error) {
+func mergeAnsweredPayload(
+	payload string,
+	ans queue.AnswerRecord,
+	question string,
+	answeredAt time.Time,
+) (jsontext.Value, bool, error) {
 	trimmed := strings.TrimSpace(payload)
 	if !strings.HasPrefix(trimmed, "{") {
 		return jsontext.Value(payload), false, nil

@@ -458,30 +458,8 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// turn on re-claim would double real agent cost. Resume at closeout
 	// instead. In-process only (an executor restart forgets it — the
 	// fallback is the old full re-run, never a lost close-out).
-	if v, ok := e.closeoutPending.Load(id.String()); ok {
-		pending := v.(closeoutPending)
-		if pending.repoDir == repoDir {
-			e.closeoutPending.Delete(id.String())
-
-			buf := &bytes.Buffer{}
-			if err := e.runCloseoutTurn(ctx, repoDir, pending.session, id, buf, verdictPath, questionPath); err != nil {
-				return appendVerdictLine(buf.String(), verdictPath), err
-			}
-
-			if qp := questionPendingFrom(questionPath, time.Now()); qp != nil {
-				e.armCloseoutResume(id.String(), repoDir, pending.session)
-
-				if qpe, ok := errors.AsType[*QuestionPendingError](qp); ok {
-					qpe.ResumeCloseout = true
-				}
-
-				return appendVerdictLine(buf.String(), verdictPath), qp
-			}
-
-			return appendVerdictLine(buf.String(), verdictPath), nil
-		}
-
-		e.closeoutPending.Delete(id.String())
+	if out, handled, err := e.resumePendingCloseout(ctx, id, repoDir, verdictPath, questionPath); handled {
+		return out, err
 	}
 
 	// Provider gate: a sibling task just observed the provider refusing
@@ -590,24 +568,89 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// the close-out self-review before the task completes. A failed closeout
 	// fails the attempt like any other contract breach; a missing session id
 	// degrades to a logged skip (the work itself already succeeded).
-	if e.CloseoutPrompt != "" {
-		if session := ExtractSessionID(buf.String()); session != "" {
-			if err := e.runCloseoutTurn(ctx, repoDir, session, id, buf, verdictPath, questionPath); err != nil {
-				return appendVerdictLine(buf.String(), verdictPath), err
-			}
+	return e.runCloseoutIfNeeded(ctx, id, repoDir, buf, verdictPath, questionPath)
+}
 
-			if qp := questionPendingFrom(questionPath, time.Now()); qp != nil {
-				e.armCloseoutResume(id.String(), repoDir, session)
+// parkedAfterCloseout checks the question marker after a close-out turn: a
+// written marker parks the task and arms the closeout resume, so the
+// re-claim resumes at closeout instead of re-running the paid work turn.
+// Returns nil when no question is pending.
+func (e *AgentExecutor) parkedAfterCloseout(id task.ID, repoDir, session, questionPath string) error {
+	qp := questionPendingFrom(questionPath, time.Now())
+	if qp == nil {
+		return nil
+	}
 
-				if qpe, ok := errors.AsType[*QuestionPendingError](qp); ok {
-					qpe.ResumeCloseout = true
-				}
+	e.armCloseoutResume(id.String(), repoDir, session)
 
-				return appendVerdictLine(buf.String(), verdictPath), qp
-			}
-		} else {
-			buf.WriteString("\n[tq] closeout skipped: no session id in agent output\n")
-		}
+	if qpe, ok := errors.AsType[*QuestionPendingError](qp); ok {
+		qpe.ResumeCloseout = true
+	}
+
+	return qp
+}
+
+// resumePendingCloseout resumes a parked close-out when a prior attempt of
+// this task registered one for this repoDir (rate-limited or question
+// parked). Returns handled=false when nothing was registered or the
+// registration went stale — the caller proceeds with the normal work turn.
+func (e *AgentExecutor) resumePendingCloseout(
+	ctx context.Context,
+	id task.ID,
+	repoDir, verdictPath, questionPath string,
+) (string, bool, error) {
+	v, ok := e.closeoutPending.Load(id.String())
+	if !ok {
+		return "", false, nil
+	}
+
+	pending := v.(closeoutPending)
+
+	e.closeoutPending.Delete(id.String())
+
+	if pending.repoDir != repoDir {
+		return "", false, nil
+	}
+
+	buf := &bytes.Buffer{}
+	if err := e.runCloseoutTurn(ctx, repoDir, pending.session, id, buf, verdictPath, questionPath); err != nil {
+		return appendVerdictLine(buf.String(), verdictPath), true, err
+	}
+
+	if qp := e.parkedAfterCloseout(id, repoDir, pending.session, questionPath); qp != nil {
+		return appendVerdictLine(buf.String(), verdictPath), true, qp
+	}
+
+	return appendVerdictLine(buf.String(), verdictPath), true, nil
+}
+
+// runCloseoutIfNeeded performs the configured close-out turn: a missing
+// session id degrades to a logged skip; a parked question after the
+// close-out arms the resume and parks the task.
+func (e *AgentExecutor) runCloseoutIfNeeded(
+	ctx context.Context,
+	id task.ID,
+	repoDir string,
+	buf *bytes.Buffer,
+	verdictPath, questionPath string,
+) (string, error) {
+	if e.CloseoutPrompt == "" {
+		return appendVerdictLine(buf.String(), verdictPath), nil
+	}
+
+	session := ExtractSessionID(buf.String())
+	if session == "" {
+		buf.WriteString("\n[tq] closeout skipped: no session id in agent output\n")
+
+		return appendVerdictLine(buf.String(), verdictPath), nil
+	}
+
+	if err := e.runCloseoutTurn(ctx, repoDir, session, id, buf, verdictPath, questionPath); err != nil {
+		return appendVerdictLine(buf.String(), verdictPath), err
+	}
+
+	if qp := e.parkedAfterCloseout(id, repoDir, session, questionPath); qp != nil {
+		return appendVerdictLine(buf.String(), verdictPath), qp
 	}
 
 	return appendVerdictLine(buf.String(), verdictPath), nil

@@ -118,7 +118,9 @@ func renderAnswered(prompt string, answered []queue.QuestionAnsweredDetail) stri
 	var b strings.Builder
 
 	b.WriteString(prompt)
-	b.WriteString("\n\n# Answers from the owner\n\nThese rulings arrived while this task was parked on your questions. Honor them — do not re-ask what is already answered, and do not re-do work the answer supersedes.")
+	b.WriteString(
+		"\n\n# Answers from the owner\n\nThese rulings arrived while this task was parked on your questions. Honor them — do not re-ask what is already answered, and do not re-do work the answer supersedes.",
+	)
 
 	for _, a := range answered {
 		fmt.Fprintf(&b, "\n\nQ: %s\nA: %s", a.Question, a.Answer)
