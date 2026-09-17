@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/session"
 )
@@ -21,7 +22,7 @@ import (
 // budget) can call it.
 func cmdSession(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: tq session begin | close")
+		return errors.New("usage: tq session begin | close | ping | sweep")
 	}
 
 	switch args[0] {
@@ -29,9 +30,108 @@ func cmdSession(args []string) error {
 		return sessionBegin(args[1:])
 	case "close":
 		return sessionClose(args[1:])
+	case "ping":
+		return sessionPing(args[1:])
+	case "sweep":
+		return sessionSweep(args[1:])
 	default:
-		return fmt.Errorf("unknown tq session command %q (want begin or close)", args[0])
+		return fmt.Errorf("unknown tq session command %q (want begin, close, ping, or sweep)", args[0])
 	}
+}
+
+// sessionPing is the PreToolUse hook entry point: append one {id, cwd,
+// last_seen} observation to the session registry. It touches no database —
+// only the registry file — so it fits any hook budget.
+func sessionPing(args []string) error {
+	fs := flag.NewFlagSet("session ping", flag.ExitOnError)
+
+	id := fs.String("id", os.Getenv("CRUSH_SESSION_ID"), "interactive session id (default $CRUSH_SESSION_ID)")
+	cwd := fs.String("cwd", "", "working directory to record (default: the current directory)")
+	registry := fs.String("registry", "", "registry file (default $TQ_SESSION_REGISTRY or the user cache dir)")
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if *id == "" {
+		return errors.New("tq session ping: no session id — pass --id or run inside crush ($CRUSH_SESSION_ID)")
+	}
+
+	if *cwd == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("tq session ping: resolve working directory: %w", err)
+		}
+		*cwd = wd
+	}
+
+	path := *registry
+	if path == "" {
+		p, err := session.RegistryPath()
+		if err != nil {
+			return err
+		}
+		path = p
+	}
+
+	return session.PingRegistry(path, *id, *cwd, time.Now())
+}
+
+// sessionSweep closes every registry session that has gone quiet and is no
+// longer owned by a live crush process: the interim trigger for the
+// interactive-session close-out until crush #3146 SessionEnd hooks land.
+// Close is replay-safe, so re-sweeping never duplicates minted tasks.
+func sessionSweep(args []string) error {
+	fs := flag.NewFlagSet("session sweep", flag.ExitOnError)
+
+	registry := fs.String("registry", "", "registry file (default $TQ_SESSION_REGISTRY or the user cache dir)")
+	staleAfter := fs.Duration("stale-after", 10*time.Minute, "close a session only after this much silence")
+	allowDirty := fs.Bool("allow-dirty", false, "minted review/status tolerate an uncommitted tree")
+	summary := fs.String("summary", "", "one-paragraph summary attached to every minted close")
+
+	db := dbFlag(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	path := *registry
+	if path == "" {
+		p, err := session.RegistryPath()
+		if err != nil {
+			return err
+		}
+		path = p
+	}
+
+	store := mustOpenDB(resolveDB(*db))
+	defer store.Close()
+
+	outcomes, err := session.Sweep(context.Background(), store, session.GitLogScanner{}, session.SweepInput{
+		RegistryPath: path,
+		StaleAfter:   *staleAfter,
+		AllowDirty:   *allowDirty,
+		Summary:      *summary,
+	})
+	if err != nil {
+		return err
+	}
+
+	closed := 0
+	for _, out := range outcomes {
+		if out.Err != nil {
+			fmt.Printf("session %s (%s): %v\n", out.Entry.ID, out.Entry.CWD, out.Err)
+
+			continue
+		}
+		if out.Closed {
+			closed++
+		}
+		fmt.Printf("session %s (%s): %s\n", out.Entry.ID, out.Entry.CWD, out.Reason)
+	}
+
+	fmt.Printf("swept %d session(s), closed %d\n", len(outcomes), closed)
+
+	return nil
 }
 
 func sessionBegin(args []string) error {
