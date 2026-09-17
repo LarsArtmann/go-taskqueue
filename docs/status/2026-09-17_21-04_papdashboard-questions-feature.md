@@ -119,6 +119,30 @@ Every layer below is implemented AND has green tests, run with
 
 ## b) PARTIALLY DONE
 
+**UPDATE (2026-09-17 23:2x, same arc, gates now FULLY GREEN):** the lint
+fix pass landed (all 16 remaining classes fixed by hand — contract
+sentinels `ErrEmptyAnswerRef`/`ErrEmptyAnswer` + facade aliases, exhaustive
+nolints with reasons, gocyclo/nestif/gocognit extractions in both stores,
+worker park→resume shared runner killing the dupl, answers.go
+strconv/constants/renames, cross-window mechanical drift in
+session/health/depsweep/harvest); baseline regen ×2 absorbed formatter +
+concurrent-window drift (140→137 rows, zero new classes); my own diff
+verified lint-clean via `--new-from-rev`. Docs sweep DONE (design note →
+Accepted, AGENTS.md contract + Known Issues, FEATURES row, CHANGELOG,
+ROADMAP, DOMAIN_LANGUAGE terms, TODO_LIST rows). nix build GREEN with NO
+vendorHash drift. Two REAL finds fixed beyond the plan: `question_test.go`
+needed `//go:build unix` (windows cross-compile broke on unix-only
+`agentTaskT`) and ci-local's gofmt step now excludes `vendor/` (today's
+transitive deps are not gofmt-clean; `grep -v` empty-match + set -e was
+also fixed). Flake fix LANDED: treefmt's templ/goimports formatters wrapped
+with the tarball-built go 1.27.1 (formatterWithGo) — the sandbox blocked
+the toolchain download, which is what has kept `nix flake check` red since
+12:54. Full ci-local composite: **ALL GATES GREEN** (`CI_CHECK=off` —
+master CI was red since 12:54 on the pre-existing treefmt/postgres/
+cqrs-lint/windows fallout; the flake fix should heal the treefmt leg).
+Known Issues gained the vendor-staleness trap and the warm-lint-cache
+gotcha. Historical record of the interrupted state follows.
+
 1. **Lint baseline gate is RED** (`./scripts/lint-baseline.sh --check`
    RC=1, 19 new (module, linter) classes — all in THIS feature's new code
    plus two mechanical strays). Fix pass IN PROGRESS at interrupt time:
