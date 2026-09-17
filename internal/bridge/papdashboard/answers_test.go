@@ -240,10 +240,10 @@ func correlatedBody(taskID, ref, question string) string {
 }
 
 func TestParseQuestionCorrelation(t *testing.T) {
-	body := correlatedBody("0001abc", "q-9", "Which module?")
+	body := correlatedBody("0001abcDEF01234567", "q-9", "Which module?")
 	taskID, ref, ok := parseQuestionCorrelation(body)
-	if !ok || taskID != "0001abc" || ref != "q-9" {
-		t.Fatalf("parse = %q/%q/%v, want 0001abc/q-9/true", taskID, ref, ok)
+	if !ok || taskID != "0001abcDEF01234567" || ref != "q-9" {
+		t.Fatalf("parse = %q/%q/%v, want the task id and q-9", taskID, ref, ok)
 	}
 
 	if _, _, ok := parseQuestionCorrelation("no tokens at all, task: mentioned inline"); ok {
@@ -259,7 +259,7 @@ func TestAnswerPollerRoutesAnswerHome(t *testing.T) {
 	at := time.Now().Add(-time.Minute)
 
 	api := newFakeQuestionAPI(t, []papQuestion{
-		answeredQuestion("pap-1", correlatedBody("t-1", "q-1", "Ship v3?"), "Stay on v2.", at),
+		answeredQuestion("pap-1", correlatedBody("0001task0000aaaa", "q-1", "Ship v3?"), "Stay on v2.", at),
 	})
 
 	store := &fakeAnswerStore{}
@@ -289,8 +289,8 @@ func TestAnswerPollerRoutesAnswerHome(t *testing.T) {
 		t.Errorf("record = %+v", got)
 	}
 
-	if store.onTasks[0] != "t-1" {
-		t.Errorf("routed to task %s, want t-1", store.onTasks[0])
+	if store.onTasks[0] != "0001task0000aaaa" {
+		t.Errorf("routed to task %s, want 0001task0000aaaa", store.onTasks[0])
 	}
 
 	if !got.AnsweredAt.Equal(at) {
@@ -370,7 +370,7 @@ func TestAnswerPollerStopsPagingWhenPageIsOld(t *testing.T) {
 	for i := range answerPageLimit {
 		page = append(page, answeredQuestion(
 			fmt.Sprintf("pap-%d", i),
-			correlatedBody("t-1", fmt.Sprintf("q-%d", i), "old"),
+			correlatedBody("0001task0000aaaa", fmt.Sprintf("q-%d", i), "old"),
 			"a", old))
 	}
 
@@ -380,7 +380,9 @@ func TestAnswerPollerStopsPagingWhenPageIsOld(t *testing.T) {
 	p := NewAnswerPoller(store, nil, AnswerConfig{Endpoint: api.server.URL, APIKey: "k"})
 	p.client = api.server.Client()
 
-	if _, err := p.pollOnce(context.Background(), old.Add(-time.Minute)); err != nil {
+	// The cursor sits AFTER the page: everything on it is old, so the
+	// (newest-first) API has nothing deeper — stop after one request.
+	if _, err := p.pollOnce(context.Background(), old.Add(time.Minute)); err != nil {
 		t.Fatalf("pollOnce: %v", err)
 	}
 
@@ -393,7 +395,7 @@ func TestAnswerPollerRecordErrorKeepsCursor(t *testing.T) {
 	at := time.Now().Add(-time.Minute)
 
 	api := newFakeQuestionAPI(t, []papQuestion{
-		answeredQuestion("pap-1", correlatedBody("t-1", "q-1", "?"), "a", at),
+		answeredQuestion("pap-1", correlatedBody("0001task0000aaaa", "q-1", "?"), "a", at),
 	})
 
 	boom := errors.New("store down")
