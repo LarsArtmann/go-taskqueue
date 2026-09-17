@@ -97,6 +97,18 @@ type Store interface {
 	// no-op: no error, no fact (idempotency: reruns and racing sweepers
 	// never spam the journal).
 	UpdatePendingPriority(ctx context.Context, id task.ID, newPriority int, source, reason string) error
+	// RecordAnswer records an owner's decision for a parked task's
+	// question (PapDashboard questions): appends task.question-answered
+	// and — when the task is PENDING — injects the answer into the task's
+	// JSON-object payload under the "answered" key and clears NotBefore,
+	// all in the SAME transaction, so the next claim runs knowing the
+	// decision and "answered but still parked" is unrepresentable.
+	// Idempotent per question ref: a replayed record appends nothing and
+	// mutates nothing. A task in any other state (running, terminal)
+	// records the fact only — the journal keeps the ruling, a live or
+	// finished task cannot use it. Non-object payloads get the fact only
+	// too: answers cannot be merged into a raw-text payload.
+	RecordAnswer(ctx context.Context, id task.ID, ans AnswerRecord) error
 	// Heartbeat extends the lease of a Running task held by owner.
 	Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error
 	// Cancel withdraws a Pending task. A non-empty reason is stored in the
@@ -247,6 +259,74 @@ type ReprioritizeEvidence struct {
 	NewPriority int    `json:"new_priority"`
 	Source      string `json:"source"`
 	Reason      string `json:"reason,omitempty"`
+}
+
+// Valid question types, mirroring PapDashboard's question kinds: the ask
+// surface validates against these so a forwarded question can never be
+// rejected by the ingest route for an unknown type.
+const (
+	QuestionTypeInfo         = "info"
+	QuestionTypeApproval     = "approval"
+	QuestionTypeConfirmation = "confirmation"
+	QuestionTypeInput        = "input"
+)
+
+// ValidQuestionType reports whether t is one of the PapDashboard question
+// kinds.
+func ValidQuestionType(t string) bool {
+	switch t {
+	case QuestionTypeInfo, QuestionTypeApproval, QuestionTypeConfirmation, QuestionTypeInput:
+		return true
+	}
+
+	return false
+}
+
+// QuestionAskedDetail is the structured detail on task.question-asked
+// facts: what the agent asked, under which stable ref (the correlation key
+// across journal, PapDashboard row and payload injection — a hash over
+// task + normalized question text, so a re-ask after a crash converges on
+// the same ref), which PapDashboard question kind it rides, and when the
+// question expires (unix millis; the parked task's NotBefore matches it —
+// the safety valve if the answer never comes).
+type QuestionAskedDetail struct {
+	Ref       string   `json:"ref"`
+	Type      string   `json:"type"`
+	Question  string   `json:"question"`
+	Options   []string `json:"options,omitempty"`
+	Repo      string   `json:"repo,omitempty"`
+	ExpiresAt int64    `json:"expires_at,omitempty"`
+}
+
+// QuestionAnsweredDetail is the structured detail on task.question-answered
+// facts: the ruling itself plus its provenance (which PapDashboard row,
+// when the human answered). Question echoes the asked text when known so
+// the answered fact is self-contained forensics.
+type QuestionAnsweredDetail struct {
+	Ref        string `json:"ref"`
+	Question   string `json:"question,omitempty"`
+	Answer     string `json:"answer"`
+	PapID      string `json:"pap_id,omitempty"`
+	AnsweredAt int64  `json:"answered_at,omitempty"`
+}
+
+// AnswerRecord is the RecordAnswer input: the owner's decision arriving
+// from PapDashboard, correlated to the asking task by Ref (the question
+// ref from the task.question-asked fact).
+type AnswerRecord struct {
+	// Ref is the question ref being answered. Required.
+	Ref string
+	// Answer is the owner's decision text. Required.
+	Answer string
+	// PapID is the PapDashboard question ID, for provenance. Optional.
+	PapID string
+	// AnsweredAt is when the answer was recorded on PapDashboard. Zero
+	// means now.
+	AnsweredAt time.Time
+	// Question optionally carries the asked text (the PapDashboard body
+	// carries it); when empty, RecordAnswer copies it from the matching
+	// task.question-asked fact so the answered fact stays self-contained.
+	Question string
 }
 
 // EnqueueDetail is the structured detail on task.enqueued facts. The plain

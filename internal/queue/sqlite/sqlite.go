@@ -1134,6 +1134,170 @@ func (s *Store) UpdatePendingPriority(ctx context.Context, id task.ID, newPriori
 	})
 }
 
+// RecordAnswer records an owner's decision for a parked task's question
+// (see queue.Store). Idempotent per answer ref: the ref is matched against
+// the task's existing task.question-answered facts, so a replayed pickup
+// (at-least-once bridge delivery) appends nothing and mutates nothing. The
+// answer injection and the NotBefore clear land in the same transaction as
+// the fact — the journal stays the complete history.
+func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRecord) error {
+	if ans.Ref == "" {
+		return errors.New("queue/sqlite: record answer needs a question ref")
+	}
+
+	if strings.TrimSpace(ans.Answer) == "" {
+		return errors.New("queue/sqlite: record answer needs a non-empty answer")
+	}
+
+	now := time.Now()
+
+	answeredAt := ans.AnsweredAt
+	if answeredAt.IsZero() {
+		answeredAt = now
+	}
+
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		answered, err := factDetailRefs(ctx, tx, id.String(), journal.QuestionAnswered)
+		if err != nil {
+			return err
+		}
+
+		if answered[ans.Ref] {
+			return nil
+		}
+
+		var status string
+
+		var payload string
+
+		err = tx.QueryRowContext(ctx,
+			`SELECT status, payload FROM tasks WHERE id = ?`, id.String()).
+			Scan(&status, &payload)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return task.ErrNotFound
+			}
+
+			return err
+		}
+
+		question := ans.Question
+		if question == "" {
+			asked, err := factDetailRefs(ctx, tx, id.String(), journal.QuestionAsked)
+			if err != nil {
+				return err
+			}
+
+			question = asked[ans.Ref]
+		}
+
+		detail := queue.QuestionAnsweredDetail{
+			Ref:        ans.Ref,
+			Question:   question,
+			Answer:     ans.Answer,
+			PapID:      ans.PapID,
+			AnsweredAt: answeredAt.UnixMilli(),
+		}
+
+		if status == "pending" {
+			if merged, ok, err := mergeAnsweredPayload(payload, ans, question, answeredAt); err != nil {
+				return err
+			} else if ok {
+				if _, err := tx.ExecContext(ctx, `
+					UPDATE tasks
+					SET payload = ?, not_before = ?, updated_at = ?
+					WHERE id = ? AND status = 'pending'`,
+					string(merged), now.UnixMilli(), now.UnixMilli(), id.String()); err != nil {
+					return err
+				}
+			}
+		}
+
+		return s.appendFact(ctx, tx, journal.Fact{
+			TaskID: id.String(),
+			Type:   journal.QuestionAnswered,
+			Detail: mustJSON(detail),
+		})
+	})
+}
+
+// factDetailRefs scans a task's facts of one question type and returns
+// ref -> text (QuestionAskedDetail: the asked text; QuestionAnsweredDetail:
+// the answer). Scanned in Go rather than SQL LIKE because the detail is
+// structured JSON and refs may share prefixes.
+func factDetailRefs(ctx context.Context, tx *sql.Tx, taskID string, ftype journal.FactType) (map[string]string, error) {
+	rows, err := tx.QueryContext(ctx,
+		`SELECT detail FROM facts WHERE task_id = ? AND type = ?`,
+		taskID, string(ftype))
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	out := map[string]string{}
+
+	for rows.Next() {
+		var detail string
+
+		if err := rows.Scan(&detail); err != nil {
+			return nil, err
+		}
+
+		switch ftype {
+		case journal.QuestionAsked:
+			var parsed queue.QuestionAskedDetail
+			if err := json.Unmarshal(jsontext.Value(detail), &parsed); err != nil {
+				continue // unparseable detail: never silently dedup on it
+			}
+
+			out[parsed.Ref] = parsed.Question
+		case journal.QuestionAnswered:
+			var parsed queue.QuestionAnsweredDetail
+			if err := json.Unmarshal(jsontext.Value(detail), &parsed); err != nil {
+				continue
+			}
+
+			out[parsed.Ref] = parsed.Answer
+		}
+	}
+
+	return out, rows.Err()
+}
+
+// mergeAnsweredPayload injects one answered question into a JSON-object
+// payload's "answered" array (creating it when absent). Raw (non-object)
+// payloads report ok=false: answers cannot be merged into a raw-text
+// payload, and the fact alone still records the ruling.
+func mergeAnsweredPayload(payload string, ans queue.AnswerRecord, question string, answeredAt time.Time) (jsontext.Value, bool, error) {
+	trimmed := strings.TrimSpace(payload)
+	if !strings.HasPrefix(trimmed, "{") {
+		return jsontext.Value(payload), false, nil
+	}
+
+	var obj map[string]any
+	if err := json.Unmarshal(jsontext.Value(trimmed), &obj); err != nil {
+		return jsontext.Value(payload), false, nil
+	}
+
+	answered, _ := obj["answered"].([]any)
+	answered = append(answered, map[string]any{
+		"ref":         ans.Ref,
+		"question":    question,
+		"answer":      ans.Answer,
+		"pap_id":      ans.PapID,
+		"answered_at": answeredAt.UnixMilli(),
+	})
+	obj["answered"] = answered
+
+	merged, err := json.Marshal(obj)
+	if err != nil {
+		return jsontext.Value(payload), false, err
+	}
+
+	return merged, true, nil
+}
+
 // DismissDead cancels a Dead task with a recorded reason (DLQ dismiss): the
 // autopsy verdict "unfixable" or an operator's ruling. The task.cancelled
 // fact's detail carries the reason and by ("dlqfix-sweeper" or "operator"),
