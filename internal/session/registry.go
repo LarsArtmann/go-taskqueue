@@ -28,6 +28,11 @@ const (
 	registryFilePerm = 0o644
 )
 
+var (
+	errPingNeedsID  = errors.New("session: ping needs a session id (--id or $CRUSH_SESSION_ID)")
+	errPingNeedsCWD = errors.New("session: ping needs a working directory")
+)
+
 // RegistryEntry is one ping's observation: which session, working where, seen
 // when. Snake_case keys: the file is a machine-payload wire format, appended
 // by hooks and consumed by the sweeper (tagliatelle exclusion below).
@@ -57,11 +62,11 @@ func RegistryPath() (string, error) {
 // never interleave mid-line on POSIX.
 func PingRegistry(path, id, cwd string, now time.Time) error {
 	if id == "" {
-		return errors.New("session: ping needs a session id (--id or $CRUSH_SESSION_ID)")
+		return errPingNeedsID
 	}
 
 	if cwd == "" {
-		return errors.New("session: ping needs a working directory")
+		return errPingNeedsCWD
 	}
 
 	if err := os.MkdirAll(filepath.Dir(path), registryDirPerm); err != nil {
@@ -217,7 +222,7 @@ type SweepOutcome struct {
 // not owned by a live crush process, minting the ordinary close (replay-safe
 // via the dedup keys) and rewriting the registry without the closed ids.
 // Entries that are fresh, still owned, or whose close failed stay in the file.
-func Sweep(ctx context.Context, s Store, scanner GitScanner, input SweepInput) ([]SweepOutcome, error) {
+func Sweep(ctx context.Context, store Store, scanner GitScanner, input SweepInput) ([]SweepOutcome, error) {
 	if input.Owner == nil {
 		input.Owner = PgrepOwner{}
 	}
@@ -269,7 +274,7 @@ func Sweep(ctx context.Context, s Store, scanner GitScanner, input SweepInput) (
 			continue
 		}
 
-		_, err = Close(ctx, s, scanner, CloseInput{
+		_, err = Close(ctx, store, scanner, CloseInput{
 			ID:         entry.ID,
 			Repo:       entry.CWD,
 			Project:    filepath.Base(entry.CWD),

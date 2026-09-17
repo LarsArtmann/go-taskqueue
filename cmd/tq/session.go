@@ -62,6 +62,7 @@ func sessionPing(args []string) error {
 		if err != nil {
 			return fmt.Errorf("tq session ping: resolve working directory: %w", err)
 		}
+
 		*cwd = wd
 	}
 
@@ -71,6 +72,7 @@ func sessionPing(args []string) error {
 		if err != nil {
 			return err
 		}
+
 		path = p
 	}
 
@@ -100,6 +102,7 @@ func sessionSweep(args []string) error {
 		if err != nil {
 			return err
 		}
+
 		path = p
 	}
 
@@ -123,6 +126,7 @@ func sessionSweep(args []string) error {
 
 			continue
 		}
+
 		if out.Closed {
 			closed++
 		}
