@@ -100,6 +100,10 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
   tq api [--addr ADDR] --auth-token TOKEN [--db PATH]   (write API: POST /api/v1/tasks)
   tq verdict '<json>'   (agent-facing: record this task's structured result
                   into $TQ_RESULT_FILE; validates JSON, no database access)
+  tq ask --task <id> [--type info|approval|confirmation|input]
+        [--expires 72h] [--options a,b,c] 'question'
+                  (agent-facing: ask the owner; records the question, parks
+                  the task via $TQ_QUESTION_FILE until the answer arrives)
   tq version
 
 Default database: $TQ_DB or ./tasks.db
@@ -114,6 +118,7 @@ func main() {
 	commands := map[string]func([]string) error{
 		"bootstrap":    cmdBootstrap,
 		"enqueue":      cmdEnqueue,
+		"ask":          cmdAsk,
 		"worker":       cmdWorker,
 		"harvest":      cmdHarvest,
 		"reprioritize": cmdReprioritize,
@@ -1819,12 +1824,88 @@ func cmdShow(args []string) error {
 	}
 
 	return enc.Encode(struct {
-		Task     task.Task          `json:"task"`
-		Facts    []journal.Fact     `json:"facts,omitempty"`
-		Result   any                `json:"result,omitempty"`
-		Commits  any                `json:"commits,omitempty"`
-		Priority priorityProvenance `json:"priority"`
-	}{t, trail, resultDetail(t, trail), commitView, buildPriorityProvenance(ctx, store, t, trail)})
+		Task      task.Task          `json:"task"`
+		Facts     []journal.Fact     `json:"facts,omitempty"`
+		Result    any                `json:"result,omitempty"`
+		Commits   any                `json:"commits,omitempty"`
+		Questions []questionView     `json:"questions,omitempty"`
+		Priority  priorityProvenance `json:"priority"`
+	}{t, trail, resultDetail(t, trail), commitView, buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail)})
+}
+
+// questionView is one entry of tq show's questions section: a question
+// the task asked (PapDashboard questions) and whether the owner's ruling
+// has landed. Open questions are the answer to "why is this task parked?".
+type questionView struct {
+	Ref       string   `json:"ref"`
+	Type      string   `json:"type,omitempty"`
+	Question  string   `json:"question"`
+	Options   []string `json:"options,omitempty"`
+	AskedAt   string   `json:"askedAt,omitempty"`
+	ExpiresAt string   `json:"expiresAt,omitempty"`
+	Answered  bool     `json:"answered"`
+	Answer    string   `json:"answer,omitempty"`
+}
+
+// buildQuestionView pairs asked and answered facts by ref — one view per
+// question, in asked order (an answered fact without a matching ask still
+// shows: the journal is the truth, not the pairing).
+func buildQuestionView(trail []journal.Fact) []questionView {
+	byRef := map[string]*questionView{}
+
+	order := []string{}
+
+	for _, fact := range trail {
+		switch fact.Type {
+		case journal.QuestionAsked:
+			var d queue.QuestionAskedDetail
+			if err := json.Unmarshal(fact.Detail, &d); err != nil || d.Ref == "" {
+				continue
+			}
+
+			if _, seen := byRef[d.Ref]; seen {
+				continue
+			}
+
+			v := &questionView{
+				Ref: d.Ref, Type: d.Type, Question: d.Question, Options: d.Options,
+				AskedAt: fact.Time.UTC().Format(time.RFC3339),
+			}
+			if d.ExpiresAt > 0 {
+				v.ExpiresAt = time.UnixMilli(d.ExpiresAt).UTC().Format(time.RFC3339)
+			}
+
+			byRef[d.Ref] = v
+			order = append(order, d.Ref)
+		case journal.QuestionAnswered:
+			var d queue.QuestionAnsweredDetail
+			if err := json.Unmarshal(fact.Detail, &d); err != nil || d.Ref == "" {
+				continue
+			}
+
+			v, seen := byRef[d.Ref]
+			if !seen {
+				v = &questionView{Ref: d.Ref, Question: d.Question}
+
+				byRef[d.Ref] = v
+				order = append(order, d.Ref)
+			}
+
+			v.Answered = true
+			v.Answer = d.Answer
+		}
+	}
+
+	if len(order) == 0 {
+		return nil
+	}
+
+	out := make([]questionView, 0, len(order))
+	for _, ref := range order {
+		out = append(out, *byRef[ref])
+	}
+
+	return out
 }
 
 // priorityProvenance is the `tq show` priority section (ADR-0015): what

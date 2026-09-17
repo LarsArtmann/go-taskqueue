@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/jsontext"
@@ -16,6 +17,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -130,7 +132,7 @@ func cmdAsk(args []string) error {
 	// the ruling is already in the payload — stop asking it. A pending ref
 	// means the question is already on the dashboard; just re-arm the park
 	// with a fresh expiry (no duplicate forward, no new fact).
-	answered, err := questionRefsAnswered(t.ID.String())
+	answered, err := questionRefsAsked(store, t.ID.String(), journal.QuestionAnswered)
 	if err != nil {
 		return err
 	}
@@ -141,7 +143,7 @@ func cmdAsk(args []string) error {
 		return nil
 	}
 
-	asked, err := questionRefsAsked(t.ID.String())
+	asked, err := questionRefsAsked(store, t.ID.String(), journal.QuestionAsked)
 	if err != nil {
 		return err
 	}
@@ -195,21 +197,9 @@ func normalizeQuestion(question string) string {
 	return strings.Join(strings.Fields(strings.ToLower(question)), " ")
 }
 
-// questionRefsAsked returns ref → true for every question this task asked.
-func questionRefsAsked(taskID string) (map[string]bool, error) {
-	return scanQuestionRefs(taskID, journal.QuestionAsked)
-}
-
-// questionRefsAnswered returns ref → true for every question of this task
-// that has a recorded ruling.
-func questionRefsAnswered(taskID string) (map[string]bool, error) {
-	return scanQuestionRefs(taskID, journal.QuestionAnswered)
-}
-
-func scanQuestionRefs(taskID string, ftype journal.FactType) (map[string]bool, error) {
-	store := mustOpenDB(resolveDB(""))
-	defer func() { _ = store.Close() }()
-
+// questionRefsAsked scans a task's question trail for refs of one kind:
+// asked facts (the question exists) or answered facts (the ruling landed).
+func questionRefsAsked(store *sqlite.Store, taskID string, ftype journal.FactType) (map[string]bool, error) {
 	trail, err := store.FactsForTask(context.Background(), taskID, 0)
 	if err != nil {
 		return nil, fmt.Errorf("tq ask: read fact trail: %w", err)
