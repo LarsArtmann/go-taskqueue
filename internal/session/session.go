@@ -404,6 +404,7 @@ func foldSessionFact(fact journal.Fact, seen map[string]*sessionState, order *[]
 	}
 
 	id := strings.TrimPrefix(fact.TaskID, "session:")
+
 	rec, ok := seen[id]
 	if !ok {
 		rec = &sessionState{}
