@@ -182,7 +182,9 @@ func TestDoctorParkedNamesEarliestRelease(t *testing.T) {
 		layout = "Jan 2 15:04"
 	}
 
-	want := "earliest release " + earliest.Local().Format(layout) //nolint:gosmopolitan // mirrors the doctor's Local-time output
+	want := "earliest release " + earliest.Local().
+		Format(layout)
+		//nolint:gosmopolitan // mirrors the doctor's Local-time output
 	if !strings.Contains(r.Detail, want) {
 		t.Errorf("parked detail = %q, want it to name %q", r.Detail, want)
 	}

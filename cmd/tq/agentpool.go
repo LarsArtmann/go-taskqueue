@@ -195,9 +195,17 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		false,
 		"dependency upgrade sweep: pull the project-dependency-graph release-overview plan and mint deterministic depbump tasks (stale builds release, consumers bump exact pins, plan DAG becomes task deps; majors and never-released modules are skipped to the log — migration is agent/human work)",
 	)
-	depSweepBin := fs.String("dep-sweep-bin", "project-dependency-graph", "dep-sweep: planner binary (PATH name or absolute)")
+	depSweepBin := fs.String(
+		"dep-sweep-bin",
+		"project-dependency-graph",
+		"dep-sweep: planner binary (PATH name or absolute)",
+	)
 	depSweepDir := fs.String("dep-sweep-dir", "", "dep-sweep: projects dir the planner scans (default: --projects-dir)")
-	depSweepEvery := fs.Duration("dep-sweep-interval", 15*time.Minute, "dep-sweep: re-plan interval (dedup makes shorter intervals free)")
+	depSweepEvery := fs.Duration(
+		"dep-sweep-interval",
+		15*time.Minute,
+		"dep-sweep: re-plan interval (dedup makes shorter intervals free)",
+	)
 	depSweepPush := fs.Bool(
 		"dep-sweep-push",
 		false,

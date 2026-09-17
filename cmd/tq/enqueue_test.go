@@ -296,7 +296,18 @@ func TestCmdEnqueueAgentConvenienceErrors(t *testing.T) {
 	}{
 		{
 			name: "payload conflicts with conveniences",
-			args: []string{"--type", "agent", "--payload", `{"repo":"d","prompt":"p"}`, "--repo", "d", "--prompt", "x", "--db", dbPath},
+			args: []string{
+				"--type",
+				"agent",
+				"--payload",
+				`{"repo":"d","prompt":"p"}`,
+				"--repo",
+				"d",
+				"--prompt",
+				"x",
+				"--db",
+				dbPath,
+			},
 			want: "--payload cannot be combined",
 		},
 		{

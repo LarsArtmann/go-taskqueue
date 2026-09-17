@@ -374,13 +374,18 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 	if len(report.SecretEvidence) == 0 {
 		fmt.Println("secret scan: no provider-token-shaped strings in fact evidence")
 	} else {
-		fmt.Printf("SECRET EVIDENCE: %d fact field(s) carry provider-token-shaped strings:\n", len(report.SecretEvidence))
+		fmt.Printf(
+			"SECRET EVIDENCE: %d fact field(s) carry provider-token-shaped strings:\n",
+			len(report.SecretEvidence),
+		)
 
 		for _, hit := range report.SecretEvidence {
 			fmt.Printf("  seq=%d %s %s field=%s hits=%d\n", hit.Seq, hit.Type, hit.TaskID, hit.Field, hit.Count)
 		}
 
-		fmt.Println("  (advisory: facts written before the redaction pass are the likely source; inspect with `tq show <id>`, never re-print the secret)")
+		fmt.Println(
+			"  (advisory: facts written before the redaction pass are the likely source; inspect with `tq show <id>`, never re-print the secret)",
+		)
 	}
 
 	fmt.Println("(advisory: investigate with `tq show <id>` and `tq facts -detail` before repairing)")

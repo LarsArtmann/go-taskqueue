@@ -30,7 +30,10 @@ func askFixture(t *testing.T, dbPath string) (task.Task, *sqlite.Store) {
 
 	t.Cleanup(func() { _ = store.Close() })
 
-	if _, err := store.Enqueue(ctx, task.New{Type: "agent", Project: "demo", Payload: jsontext.Value(`{"repo":"demo","prompt":"p"}`)}); err != nil {
+	if _, err := store.Enqueue(
+		ctx,
+		task.New{Type: "agent", Project: "demo", Payload: jsontext.Value(`{"repo":"demo","prompt":"p"}`)},
+	); err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
 

@@ -8,12 +8,11 @@ import (
 	"testing"
 	"time"
 
-	_ "modernc.org/sqlite"
-
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	_ "modernc.org/sqlite"
 )
 
 // seedDrift corrupts the tasks table of a CLOSED store's database file and
@@ -27,7 +26,9 @@ func seedDrift(t *testing.T, path string) *sqlite.Store {
 		t.Fatalf("raw open: %v", err)
 	}
 
-	if _, err := db.Exec(`UPDATE tasks SET status = 'completed', attempts = 99, priority = 42, dedup_key = 'seeded'`); err != nil {
+	if _, err := db.Exec(
+		`UPDATE tasks SET status = 'completed', attempts = 99, priority = 42, dedup_key = 'seeded'`,
+	); err != nil {
 		t.Fatalf("seed drift: %v", err)
 	}
 
@@ -263,7 +264,11 @@ func TestReplayProjectionPriorityAndDedup(t *testing.T) {
 	p := 7
 	facts := []journal.Fact{
 		{TaskID: "p", Type: journal.Enqueued, Detail: jsontext.Value(`{"priority":3,"dedup_key":"todo:x"}`)},
-		{TaskID: "p", Type: journal.Reprioritized, Detail: jsontext.Value(`{"old_priority":3,"new_priority":7,"source":"manual"}`)},
+		{
+			TaskID: "p",
+			Type:   journal.Reprioritized,
+			Detail: jsontext.Value(`{"old_priority":3,"new_priority":7,"source":"manual"}`),
+		},
 		{TaskID: "legacy", Type: journal.Enqueued},
 	}
 
@@ -414,14 +419,30 @@ func TestScanFactSecretsFindsTokenShapedEvidence(t *testing.T) {
 
 	facts := []journal.Fact{
 		// Evidence carriers: failed detail + dead-letter error text.
-		{Seq: 3, TaskID: "leak-detail", Type: journal.Failed, Detail: jsontext.Value(`{"stage":"agent","tail":"boom ` + fakeAuditToken + `"}`)},
+		{
+			Seq:    3,
+			TaskID: "leak-detail",
+			Type:   journal.Failed,
+			Detail: jsontext.Value(`{"stage":"agent","tail":"boom ` + fakeAuditToken + `"}`),
+		},
 		{Seq: 4, TaskID: "leak-error", Type: journal.DeadLettered, Error: "agent run failed: " + fakeAuditToken},
 		// Two hits in one field count as two.
 		{Seq: 5, TaskID: "leak-twice", Type: journal.Failed, Error: fakeAuditToken + " / " + fakeAuditToken},
 		// NOT scanned: enqueue payloads are provided, not leaked.
-		{Seq: 6, TaskID: "payload-clean", Type: journal.Enqueued, Detail: jsontext.Value(`{"payload":"` + fakeAuditToken + `"}`)},
+		{
+			Seq:    6,
+			TaskID: "payload-clean",
+			Type:   journal.Enqueued,
+			Detail: jsontext.Value(`{"payload":"` + fakeAuditToken + `"}`),
+		},
 		// Clean facts produce no rows.
-		{Seq: 7, TaskID: "clean", Type: journal.Failed, Error: "exit status 1", Detail: jsontext.Value(`{"tail":"build failed"}`)},
+		{
+			Seq:    7,
+			TaskID: "clean",
+			Type:   journal.Failed,
+			Error:  "exit status 1",
+			Detail: jsontext.Value(`{"tail":"build failed"}`),
+		},
 	}
 
 	hits := scanFactSecrets(facts)

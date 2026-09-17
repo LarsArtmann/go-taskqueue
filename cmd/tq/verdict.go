@@ -49,11 +49,16 @@ func cmdVerdict(args []string) error {
 	}
 
 	if !json.Valid(body) {
-		return fmt.Errorf("tq verdict: payload is not valid JSON: %.200s — fix the JSON and re-run; the executor would reject this as a failed attempt", body)
+		return fmt.Errorf(
+			"tq verdict: payload is not valid JSON: %.200s — fix the JSON and re-run; the executor would reject this as a failed attempt",
+			body,
+		)
 	}
 
 	if bytes.Contains(body, []byte("\n")) {
-		return errors.New("tq verdict: payload must be ONE line — compact the JSON (the result line is single-line by contract)")
+		return errors.New(
+			"tq verdict: payload must be ONE line — compact the JSON (the result line is single-line by contract)",
+		)
 	}
 
 	path := os.Getenv("TQ_RESULT_FILE")

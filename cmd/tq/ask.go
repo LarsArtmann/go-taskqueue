@@ -54,12 +54,19 @@ func cmdAsk(args []string) error {
 
 	taskID := fs.String("task", "", "the running task this question belongs to (required)")
 	qType := fs.String("type", queue.QuestionTypeInfo, "question kind: info|approval|confirmation|input")
-	expires := fs.String("expires", defaultQuestionTTL.String(), "how long the question stays open before the task re-enters (e.g. 72h)")
+	expires := fs.String(
+		"expires",
+		defaultQuestionTTL.String(),
+		"how long the question stays open before the task re-enters (e.g. 72h)",
+	)
 	options := fs.String("options", "", "comma-separated answer options shown to the owner")
 	dbPath := dbFlag(fs)
 
 	if err := fs.Parse(args); err != nil {
-		return fmt.Errorf("tq ask: %w (usage: tq ask --task <id> [--type …] [--expires 72h] [--options a,b] 'question')", err)
+		return fmt.Errorf(
+			"tq ask: %w (usage: tq ask --task <id> [--type …] [--expires 72h] [--options a,b] 'question')",
+			err,
+		)
 	}
 
 	if *taskID == "" {
@@ -85,7 +92,11 @@ func cmdAsk(args []string) error {
 	}
 
 	if ttl > maxQuestionTTL {
-		return fmt.Errorf("tq ask: --expires %s exceeds the %s cap — re-ask instead of parking that long", ttl, maxQuestionTTL)
+		return fmt.Errorf(
+			"tq ask: --expires %s exceeds the %s cap — re-ask instead of parking that long",
+			ttl,
+			maxQuestionTTL,
+		)
 	}
 
 	store := mustOpenDB(resolveDB(*dbPath))
@@ -99,7 +110,8 @@ func cmdAsk(args []string) error {
 	if t.Status != task.Running {
 		return fmt.Errorf(
 			"tq ask: task %s is %s, not running — questions can only be asked by the task's live run (check --task; the ID comes from the prompt contract)",
-			*taskID, t.Status,
+			*taskID,
+			t.Status,
 		)
 	}
 
@@ -138,7 +150,11 @@ func cmdAsk(args []string) error {
 	}
 
 	if answered[ref] {
-		fmt.Fprintf(os.Stderr, "tq ask: question %s was already answered — honor the ruling in the prompt instead of re-asking\n", ref)
+		fmt.Fprintf(
+			os.Stderr,
+			"tq ask: question %s was already answered — honor the ruling in the prompt instead of re-asking\n",
+			ref,
+		)
 
 		return nil
 	}
@@ -175,8 +191,13 @@ func cmdAsk(args []string) error {
 		return fmt.Errorf("tq ask: write marker %s: %w", path, err)
 	}
 
-	fmt.Fprintf(os.Stderr, "tq ask: question %s recorded for task %s (expires %s); end your turn — the task parks until the owner answers\n",
-		ref, *taskID, expiry.Format(time.RFC3339))
+	fmt.Fprintf(
+		os.Stderr,
+		"tq ask: question %s recorded for task %s (expires %s); end your turn — the task parks until the owner answers\n",
+		ref,
+		*taskID,
+		expiry.Format(time.RFC3339),
+	)
 
 	return nil
 }

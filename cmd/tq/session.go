@@ -170,7 +170,13 @@ func sessionList(args []string) error {
 			project = "-"
 		}
 
-		fmt.Printf("  %s  opened %s  repo %s  project %s\n", s.ID, s.OpenedAt.Format("2006-01-02 15:04:05"), s.Repo, project)
+		fmt.Printf(
+			"  %s  opened %s  repo %s  project %s\n",
+			s.ID,
+			s.OpenedAt.Format("2006-01-02 15:04:05"),
+			s.Repo,
+			project,
+		)
 	}
 
 	return nil

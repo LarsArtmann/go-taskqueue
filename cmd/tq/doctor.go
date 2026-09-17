@@ -314,7 +314,8 @@ func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir stri
 		Status: checkWarn,
 		Detail: fmt.Sprintf(
 			"%d project(s) with PENDING tasks have no repo directory — no pool can ever claim them (cancel via tq cancel): %s",
-			len(missing), strings.Join(missing, "; "),
+			len(missing),
+			strings.Join(missing, "; "),
 		),
 	}}
 }
@@ -377,12 +378,19 @@ func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string
 		case executor.DetectVerify(repoDir) != p.Verify:
 			stale = append(stale, fmt.Sprintf(
 				"%s (%s): STALE PIN WILL FIRE — no .tq-verify and today's auto-detected gate differs: pin %q vs detect %q",
-				t.ID, p.Repo, excerpt(p.Verify), excerpt(executor.DetectVerify(repoDir))))
+				t.ID,
+				p.Repo,
+				excerpt(p.Verify),
+				excerpt(executor.DetectVerify(repoDir)),
+			))
 		}
 	}
 
 	if len(stale) == 0 {
-		detail := fmt.Sprintf("%d pending agent task(s) pin a verify command, all matching the repos' current gates", pinned)
+		detail := fmt.Sprintf(
+			"%d pending agent task(s) pin a verify command, all matching the repos' current gates",
+			pinned,
+		)
 		if pinned == 0 {
 			detail = "no pending agent task pins a verify command"
 		}
@@ -395,7 +403,10 @@ func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string
 		Status: checkWarn,
 		Detail: fmt.Sprintf(
 			"%d of %d pinned task(s) carry stale verify pins: %s — --reresolve-verify (agent-pool / worker --agents) ignores enqueue-time pins entirely",
-			len(stale), pinned, strings.Join(stale, "; ")),
+			len(stale),
+			pinned,
+			strings.Join(stale, "; "),
+		),
 	}}
 }
 

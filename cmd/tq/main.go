@@ -237,14 +237,34 @@ func cmdEnqueue(args []string) error {
 	priority := fs.Int("priority", 0, "higher claims first")
 	maxAttempts := fs.Int("max-attempts", 0, "default 3")
 	delay := fs.Duration("delay", 0, "delay before claimable (e.g. 30s, 5m)")
-	dedupKey := fs.String("dedup-key", "", "idempotency key: re-enqueueing with the same key returns the stored task unchanged (harvest/sweeper semantics)")
-	repoFlag := fs.String("repo", "", "agent convenience: repository the agent works in (name resolved against the executor's projects dir, or an absolute path; implies --type agent)")
+	dedupKey := fs.String(
+		"dedup-key",
+		"",
+		"idempotency key: re-enqueueing with the same key returns the stored task unchanged (harvest/sweeper semantics)",
+	)
+	repoFlag := fs.String(
+		"repo",
+		"",
+		"agent convenience: repository the agent works in (name resolved against the executor's projects dir, or an absolute path; implies --type agent)",
+	)
 	promptText := fs.String("prompt", "", "agent convenience: inline prompt text")
 	promptFile := fs.String("prompt-file", "", "agent convenience: file with the prompt text")
-	verifyCmd := fs.String("verify", "", "agent convenience: shell command that must exit 0 after the run (empty = auto-detect)")
+	verifyCmd := fs.String(
+		"verify",
+		"",
+		"agent convenience: shell command that must exit 0 after the run (empty = auto-detect)",
+	)
 	timeoutMin := fs.Int("timeout-minutes", 0, "agent convenience: cap for agent run + verify (default 30)")
-	yoloTask := fs.Bool("yolo-task", false, "agent convenience: request autonomy — fails fast if the repo has no .crushrc permission grant")
-	wait := fs.Bool("wait", false, "block until the task reaches a terminal status, streaming its journal facts to the terminal (cron one-shots)")
+	yoloTask := fs.Bool(
+		"yolo-task",
+		false,
+		"agent convenience: request autonomy — fails fast if the repo has no .crushrc permission grant",
+	)
+	wait := fs.Bool(
+		"wait",
+		false,
+		"block until the task reaches a terminal status, streaming its journal facts to the terminal (cron one-shots)",
+	)
 	waitTimeout := fs.Duration("timeout", 0, "with --wait: give up after this long (0 = wait forever)")
 
 	db := dbFlag(fs)
@@ -330,7 +350,11 @@ func cmdEnqueue(args []string) error {
 	// TQ_DB pointing at the production journal; a bare `tq enqueue` must say so.
 	if *db == "" {
 		if p := os.Getenv("TQ_DB"); p != "" {
-			fmt.Fprintf(os.Stderr, "tq enqueue: warning: $TQ_DB is set (%s) — this enqueue targets that database, not ./tasks.db (pass --db to override)\n", p)
+			fmt.Fprintf(
+				os.Stderr,
+				"tq enqueue: warning: $TQ_DB is set (%s) — this enqueue targets that database, not ./tasks.db (pass --db to override)\n",
+				p,
+			)
 		}
 	}
 
@@ -423,7 +447,9 @@ func agentConvenienceRequested(repo, promptText, promptFile, verify string, time
 // convenience flags, failing fast on conflicts and missing prompt sources.
 func buildAgentConveniencePayload(f payloadFlags) (json.RawMessage, error) {
 	if f.rawPayload != "" {
-		return nil, errors.New("--payload cannot be combined with the agent convenience flags (--repo/--prompt/--prompt-file/--verify/--timeout-minutes/--yolo-task)")
+		return nil, errors.New(
+			"--payload cannot be combined with the agent convenience flags (--repo/--prompt/--prompt-file/--verify/--timeout-minutes/--yolo-task)",
+		)
 	}
 
 	if f.repo == "" {
@@ -533,7 +559,10 @@ func cmdWorker(args []string) error {
 			"tq: --agents: autonomous agent execution enabled (headless crush; dirty repos are skipped; verify is enforced)",
 		)
 
-		registerAgentExecutors(reg, &executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo, ReresolveVerify: *reresolveVerify})
+		registerAgentExecutors(
+			reg,
+			&executor.AgentExecutor{ProjectsDir: *projectsDir, Yolo: *yolo, ReresolveVerify: *reresolveVerify},
+		)
 	}
 
 	pool := worker.New(store, worker.Config{
@@ -1333,7 +1362,15 @@ func cmdAgentPool(args []string) error {
 				if err != nil {
 					log.Error("dep sweep failed", "err", err)
 				} else if stats.Minted > 0 || stats.Known > 0 || len(stats.Skips) > 0 {
-					log.Info("dep sweep done", "minted", stats.Minted, "known", stats.Known, "skipped", len(stats.Skips))
+					log.Info(
+						"dep sweep done",
+						"minted",
+						stats.Minted,
+						"known",
+						stats.Known,
+						"skipped",
+						len(stats.Skips),
+					)
 				}
 			})
 		}
