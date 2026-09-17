@@ -227,6 +227,9 @@ step "multi-repo live smoke (two pools, one DB, per-project exclusivity)"
 step "papdashboard bridge e2e smoke (stub dashboard; alert raise + rescue resolve)"
 ./scripts/smoke/papdashboard-e2e.sh
 
+step "papdashboard questions e2e smoke (ask -> forward -> answer -> unblock -> resume)"
+./scripts/smoke/questions-e2e.sh
+
 step "rate-limit e2e smoke (429 parks the task without burning an attempt)"
 ./scripts/smoke/ratelimit-e2e.sh
 
