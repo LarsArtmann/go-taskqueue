@@ -1142,11 +1142,11 @@ func (s *Store) UpdatePendingPriority(ctx context.Context, id task.ID, newPriori
 // the fact — the journal stays the complete history.
 func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRecord) error {
 	if ans.Ref == "" {
-		return errors.New("queue/sqlite: record answer needs a question ref")
+		return queue.ErrEmptyAnswerRef
 	}
 
 	if strings.TrimSpace(ans.Answer) == "" {
-		return errors.New("queue/sqlite: record answer needs a non-empty answer")
+		return queue.ErrEmptyAnswer
 	}
 
 	now := time.Now()
@@ -1266,6 +1266,9 @@ func factDetailRefs(ctx context.Context, tx *sql.Tx, taskID string, ftype journa
 			}
 
 			out[parsed.Ref] = parsed.Answer
+		default:
+			// Not a question fact (the caller only passes the two above);
+			// nothing to extract.
 		}
 	}
 

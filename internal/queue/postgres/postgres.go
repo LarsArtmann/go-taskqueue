@@ -1075,11 +1075,11 @@ func (s *Store) UpdatePendingPriority(ctx context.Context, id task.ID, newPriori
 // transaction as the task.question-answered fact.
 func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRecord) error {
 	if ans.Ref == "" {
-		return errors.New("queue/postgres: record answer needs a question ref")
+		return queue.ErrEmptyAnswerRef
 	}
 
 	if strings.TrimSpace(ans.Answer) == "" {
-		return errors.New("queue/postgres: record answer needs a non-empty answer")
+		return queue.ErrEmptyAnswer
 	}
 
 	now := time.Now()
@@ -1189,6 +1189,9 @@ func pgFactDetailRefs(ctx context.Context, tx pgx.Tx, taskID string, ftype journ
 			}
 
 			out[parsed.Ref] = parsed.Answer
+		default:
+			// Not a question fact (the caller only passes the two above);
+			// nothing to extract.
 		}
 	}
 

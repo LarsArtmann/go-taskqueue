@@ -53,8 +53,10 @@ const (
 
 // Sentinel errors.
 var (
-	ErrNoTaskDue = internalqueue.ErrNoTaskDue
-	ErrEmptyType = internalqueue.ErrEmptyType
+	ErrNoTaskDue      = internalqueue.ErrNoTaskDue
+	ErrEmptyType      = internalqueue.ErrEmptyType
+	ErrEmptyAnswerRef = internalqueue.ErrEmptyAnswerRef
+	ErrEmptyAnswer    = internalqueue.ErrEmptyAnswer
 )
 
 // Functions.

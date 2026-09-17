@@ -29,6 +29,14 @@ var ErrNoTaskDue = errors.New("queue: no due task")
 // cannot invent a type; callers must choose an executor).
 var ErrEmptyType = errors.New("queue: task type must not be empty")
 
+// ErrEmptyAnswerRef is returned by RecordAnswer when the answer record
+// carries no question ref (the correlation key of the park/unblock flow).
+var ErrEmptyAnswerRef = errors.New("queue: record answer needs a question ref")
+
+// ErrEmptyAnswer is returned by RecordAnswer when the answer text is blank
+// (a ruling that says nothing cannot be rendered into the parked prompt).
+var ErrEmptyAnswer = errors.New("queue: record answer needs a non-empty answer")
+
 // Priority aging (ADR-0015 §4): ClaimDue orders by an EFFECTIVE priority —
 // stored priority plus a bounded age bonus computed inside the claim query
 // (scheduling, not state; the stored priority never changes). Defined once
