@@ -428,7 +428,12 @@ func (b *Bridge) forward(ctx context.Context, fact journal.Fact) error {
 	case journal.QuestionAsked:
 		var asked queue.QuestionAskedDetail
 		if err := json.Unmarshal(fact.Detail, &asked); err != nil {
-			return fmt.Errorf("parse question detail (fact %d): %w", fact.Seq, err)
+			// Unparseable detail is permanent — retrying would wedge the
+			// cursor on this fact forever. Log and move on.
+			b.log.Warn("question fact detail unparseable; not forwarded",
+				"seq", fact.Seq, "task", fact.TaskID, "err", err)
+
+			return nil
 		}
 
 		if asked.Ref == "" || asked.Question == "" {
@@ -455,7 +460,8 @@ func (b *Bridge) forward(ctx context.Context, fact journal.Fact) error {
 
 // everDeadLettered answers from the task's own fact trail — the journal is
 // the source of truth for "this task once exhausted its attempts", so the
-// bridge holds no correlation state of its own.func (b *Bridge) everDeadLettered(ctx context.Context, taskID string) (bool, error) {
+// bridge holds no correlation state of its own.
+func (b *Bridge) everDeadLettered(ctx context.Context, taskID string) (bool, error) {
 	trail, err := b.store.FactsForTask(ctx, taskID, 0)
 	if err != nil {
 		return false, fmt.Errorf("load fact trail for %s: %w", taskID, err)
