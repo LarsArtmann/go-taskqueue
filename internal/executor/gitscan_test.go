@@ -92,6 +92,39 @@ func TestParseTrailerCommitsEmptyOutput(t *testing.T) {
 	}
 }
 
+// TestParseTrailerCommitsIgnoresBlankAndWhitespaceFooters pins the footer
+// edge cases (03-28 §f17): empty trailer fields, whitespace-only trailer
+// lines and empty footer VALUES never attribute a commit — and an empty
+// session id can never match anything.
+func TestParseTrailerCommitsIgnoresBlankAndWhitespaceFooters(t *testing.T) {
+	out := strings.Join([]string{
+		rec(shaC, "empty footer value", ""),
+		rec(shaB, "whitespace-only footer", "   "),
+		rec(shaA, "real footer", "sess-abc"),
+		"",
+	}, "\n")
+
+	if got := parseTrailerCommits(out, "sess-abc"); len(got) != 1 || got[0].SHA != shaA {
+		t.Fatalf("parsed = %+v, want only the real footer's commit", got)
+	}
+
+	if got := parseTrailerCommits(out, ""); got != nil {
+		t.Fatalf("empty session id attributed %+v, want nothing", got)
+	}
+}
+
+// TestParseTrailerCommitsRepeatedFooterAttributesOnce pins the repeated
+// footer case (03-28 §f17): the same session id twice on one commit (e.g. an
+// amend that stacked trailers) attributes the commit exactly once.
+func TestParseTrailerCommitsRepeatedFooterAttributesOnce(t *testing.T) {
+	out := rec(shaA, "amended twice", "sess-abc", "sess-abc") + "\n"
+
+	got := parseTrailerCommits(out, "sess-abc")
+	if len(got) != 1 || got[0].SHA != shaA {
+		t.Fatalf("parsed = %+v, want the commit once", got)
+	}
+}
+
 func TestIsHexSHAAcceptsSHA1AndSHA256(t *testing.T) {
 	if !isHexSHA(shaA) || !isHexSHA(strings.Repeat("b", 64)) {
 		t.Fatal("valid SHAs rejected")

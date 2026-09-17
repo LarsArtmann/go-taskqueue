@@ -320,6 +320,70 @@ func TestPruneStaleAbsentCatchupKey(t *testing.T) {
 	}
 }
 
+// TestPruneStaleNeverTouchesSessionMintedTasks pins the external-provenance
+// guard for the session-close bridge (03-28 §f15): session-minted review and
+// status tasks carry sweeper-namespace dedup keys ("review:session:<id>",
+// "status:<project>:session:<id>") that can never match a present TODO item,
+// but the prune sweep lists only the harvester's own task type — the
+// sweep-by-type wall, not key arithmetic, is what keeps a pool relaunch from
+// cancelling the bridge's pending work.
+func TestPruneStaleNeverTouchesSessionMintedTasks(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "sessproj", "# H\n- [x] done by hand\n")
+	q := openQueue(t)
+	ctx := context.Background()
+
+	sessionMinted := []task.New{
+		{
+			Project: "sessproj", Type: "review",
+			Payload:  []byte(`{"repo":"sessproj","reviewed_task":"session:sess-1"}`),
+			DedupKey: "review:session:sess-1",
+		},
+		{
+			Project: "sessproj", Type: "status",
+			Payload:  []byte(`{"repo":"sessproj"}`),
+			DedupKey: "status:sessproj:session:sess-1",
+		},
+	}
+
+	for _, nt := range sessionMinted {
+		if _, err := q.Enqueue(ctx, nt); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var minted []task.ID
+
+	for _, nt := range sessionMinted {
+		enqueued, err := q.Enqueue(ctx, nt)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		minted = append(minted, enqueued.ID)
+	}
+
+	res, err := New(q, Config{ProjectsDir: dir}).PruneStale(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(res.Cancelled) != 0 || len(res.Running) != 0 || len(res.Dead) != 0 {
+		t.Fatalf("prune touched session-minted work: %+v", res)
+	}
+
+	for _, id := range minted {
+		got, err := q.Get(ctx, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if got.Status != task.Pending {
+			t.Fatalf("session-minted %s status = %s, want still pending", id, got.Status)
+		}
+	}
+}
+
 // TestPruneStaleRewordedToBlockedIsWithdrawn pins the blocked-edit
 // interaction: appending "— BLOCKED:" changes the item text (new key, skipped
 // by the harvester), so the task minted from the OLD text is absent and gets
