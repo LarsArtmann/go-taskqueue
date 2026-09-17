@@ -1183,12 +1183,9 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 
 		question := ans.Question
 		if question == "" {
-			asked, err := factDetailRefs(ctx, tx, id.String(), journal.QuestionAsked)
-			if err != nil {
+			if question, err = askedQuestionText(ctx, tx, id, ans.Ref); err != nil {
 				return err
 			}
-
-			question = asked[ans.Ref]
 		}
 
 		detail := queue.QuestionAnsweredDetail{
@@ -1200,32 +1197,66 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 		}
 
 		if status == "pending" {
-			if merged, ok, err := mergeAnsweredPayload(payload, ans, question, answeredAt); err != nil {
+			if err := unblockParkedTask(ctx, tx, id, payload, question, ans, now, answeredAt); err != nil {
 				return err
-			} else if ok {
-				res, err := tx.ExecContext(ctx, `
-					UPDATE tasks
-					SET payload = ?, not_before = ?, updated_at = ?
-					WHERE id = ? AND status = 'pending'`,
-					string(merged), now.UnixMilli(), now.UnixMilli(), id.String())
-				if err != nil {
-					return err
-				}
-
-				if n, _ := res.RowsAffected(); n == 0 {
-					// Not parked anymore (claim/cancel raced the read): the
-					// fact below still records the ruling, nothing is lost.
-					_ = n
-				}
 			}
 		}
-
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(),
 			Type:   journal.QuestionAnswered,
 			Detail: mustJSON(detail),
 		})
 	})
+}
+
+// askedQuestionText backfills the question text from the task's
+// task.question-asked fact when the answer record does not carry it.
+func askedQuestionText(ctx context.Context, tx *sql.Tx, id task.ID, ref string) (string, error) {
+	asked, err := factDetailRefs(ctx, tx, id.String(), journal.QuestionAsked)
+	if err != nil {
+		return "", err
+	}
+
+	return asked[ref], nil
+}
+
+// unblockParkedTask injects the answer into a PARKED task's payload and
+// clears its NotBefore so the re-claim is immediate. Pending-only: the fact
+// appended by the caller still records the ruling for running or terminal
+// tasks.
+func unblockParkedTask(
+	ctx context.Context,
+	tx *sql.Tx,
+	id task.ID,
+	payload, question string,
+	ans queue.AnswerRecord,
+	now, answeredAt time.Time,
+) error {
+	merged, ok, err := mergeAnsweredPayload(payload, ans, question, answeredAt)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return nil
+	}
+
+	res, err := tx.ExecContext(ctx, `
+		UPDATE tasks
+		SET payload = ?, not_before = ?, updated_at = ?
+		WHERE id = ? AND status = 'pending'`,
+		string(merged), now.UnixMilli(), now.UnixMilli(), id.String())
+	if err != nil {
+		return err
+	}
+
+	if n, _ := res.RowsAffected(); n == 0 {
+		// Not parked anymore (claim/cancel raced the read): the fact below
+		// still records the ruling, nothing is lost.
+		_ = n
+	}
+
+	return nil
 }
 
 // factDetailRefs scans a task's facts of one question type and returns
@@ -1240,7 +1271,7 @@ func factDetailRefs(ctx context.Context, tx *sql.Tx, taskID string, ftype journa
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := map[string]string{}
 
@@ -1292,7 +1323,7 @@ func mergeAnsweredPayload(
 
 	var obj map[string]any
 	if err := json.Unmarshal(jsontext.Value(trimmed), &obj); err != nil {
-		return jsontext.Value(payload), false, nil
+		return jsontext.Value(payload), false, nil //nolint:nilerr // unparseable payload: the fact appended by the caller still records the ruling
 	}
 
 	answered, _ := obj["answered"].([]any)

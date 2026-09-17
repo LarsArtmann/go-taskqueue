@@ -248,6 +248,9 @@ linters:
       - path: internal/session/registry\.go
         linters:
           - tagliatelle
+      - path: internal/queue/(sqlite|postgres)/[a-z_]+_test\.go
+        linters:
+          - tagliatelle
       - path: ^(task/task|journal/journal|queue/queue|queue/sqlite/sqlite|queue/postgres/postgres|executor/executor|worker/worker)\.go$
         linters:
           - gochecknoglobals

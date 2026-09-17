@@ -1116,12 +1116,9 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 
 		question := ans.Question
 		if question == "" {
-			asked, err := pgFactDetailRefs(ctx, tx, id.String(), journal.QuestionAsked)
-			if err != nil {
+			if question, err = askedQuestionText(ctx, tx, id, ans.Ref); err != nil {
 				return err
 			}
-
-			question = asked[ans.Ref]
 		}
 
 		detail := queue.QuestionAnsweredDetail{
@@ -1133,16 +1130,8 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 		}
 
 		if status == string(task.Pending) {
-			if merged, ok, err := pgMergeAnsweredPayload(payload, ans, question, answeredAt); err != nil {
+			if err := unblockParkedTask(ctx, tx, id, payload, question, ans, now, answeredAt); err != nil {
 				return err
-			} else if ok {
-				if _, err := tx.Exec(ctx, `
-					UPDATE tasks
-					SET payload = $1, not_before = $2, updated_at = $3
-					WHERE id = $4 AND status = 'pending'`,
-					string(merged), now.UnixMilli(), now.UnixMilli(), id.String()); err != nil {
-					return err
-				}
 			}
 		}
 
@@ -1152,6 +1141,49 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 			Detail: mustJSON(detail),
 		})
 	})
+}
+
+// askedQuestionText backfills the question text from the task's
+// task.question-asked fact when the answer record does not carry it.
+func askedQuestionText(ctx context.Context, tx pgx.Tx, id task.ID, ref string) (string, error) {
+	asked, err := pgFactDetailRefs(ctx, tx, id.String(), journal.QuestionAsked)
+	if err != nil {
+		return "", err
+	}
+
+	return asked[ref], nil
+}
+
+// unblockParkedTask injects the answer into a PARKED task's payload and
+// clears its NotBefore so the re-claim is immediate. Pending-only: the fact
+// appended by the caller still records the ruling for running or terminal
+// tasks.
+func unblockParkedTask(
+	ctx context.Context,
+	tx pgx.Tx,
+	id task.ID,
+	payload, question string,
+	ans queue.AnswerRecord,
+	now, answeredAt time.Time,
+) error {
+	merged, ok, err := pgMergeAnsweredPayload(payload, ans, question, answeredAt)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return nil
+	}
+
+	if _, err := tx.Exec(ctx, `
+		UPDATE tasks
+		SET payload = $1, not_before = $2, updated_at = $3
+		WHERE id = $4 AND status = 'pending'`,
+		string(merged), now.UnixMilli(), now.UnixMilli(), id.String()); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // pgFactDetailRefs mirrors sqlite's factDetailRefs over pgx.
@@ -1168,7 +1200,7 @@ func pgFactDetailRefs(
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := map[string]string{}
 
@@ -1219,7 +1251,7 @@ func pgMergeAnsweredPayload(
 
 	var obj map[string]any
 	if err := json.Unmarshal(jsontext.Value(trimmed), &obj); err != nil {
-		return jsontext.Value(payload), false, nil
+		return jsontext.Value(payload), false, nil //nolint:nilerr // unparseable payload: the fact appended by the caller still records the ruling
 	}
 
 	answered, _ := obj["answered"].([]any)

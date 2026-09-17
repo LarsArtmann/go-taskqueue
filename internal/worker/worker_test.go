@@ -39,6 +39,10 @@ func quietLog() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 }
 
+// errAgentAsked is the stub question cause in the park-contract test
+// (static: err113 wants no dynamic error constructors).
+var errAgentAsked = errors.New("agent asked: ship v3 or stay on v2?")
+
 // waitFor polls until the task reaches a terminal status or the deadline hits.
 func waitFor(t *testing.T, ctx context.Context, store queue.Store, id task.ID, want ...task.Status) task.Task {
 	t.Helper()
@@ -740,7 +744,7 @@ func TestQuestionParksWithoutAttemptBurn(t *testing.T) {
 		lastErrPrefix: "question pending",
 		parkErr: func() error {
 			return &executor.QuestionPendingError{
-				Cause:      errors.New("agent asked: ship v3 or stay on v2?"),
+				Cause:      errAgentAsked,
 				RetryAfter: 80 * time.Millisecond,
 			}
 		},
