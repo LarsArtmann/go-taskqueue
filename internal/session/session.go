@@ -385,19 +385,59 @@ type SessionInfo struct {
 	OpenedAt time.Time
 }
 
+// sessionState is the fold state of one session's facts during List.
+type sessionState struct {
+	info SessionInfo
+	open bool
+}
+
+// foldSessionFact folds one fact into seen/order (order records first
+// sight). Non-session facts are ignored; a corrupt opened detail is an
+// error.
+func foldSessionFact(fact journal.Fact, seen map[string]*sessionState, order *[]string) error {
+	if fact.Type != journal.SessionOpened && fact.Type != journal.SessionClosed {
+		return nil
+	}
+
+	if !strings.HasPrefix(fact.TaskID, "session:") {
+		return nil
+	}
+
+	id := strings.TrimPrefix(fact.TaskID, "session:")
+	rec, ok := seen[id]
+	if !ok {
+		rec = &sessionState{}
+		seen[id] = rec
+		*order = append(*order, id)
+	}
+
+	if fact.Type == journal.SessionClosed {
+		rec.open = false
+
+		return nil
+	}
+
+	var d OpenDetail
+	if err := json.Unmarshal(fact.Detail, &d); err != nil {
+		return fmt.Errorf("session: decode opened detail for %s: %w", id, err)
+	}
+
+	rec.info = SessionInfo{ID: id, Repo: d.Repo, Project: d.Project, OpenedAt: fact.Time}
+	rec.open = true
+
+	return nil
+}
+
 // List returns every session that has an opened fact but no closed fact —
 // the crash-recovery surface: sessions that began and never closed, whether
 // the process died or the close hook never ran. Newest opens first.
 func List(ctx context.Context, src FactSource) ([]SessionInfo, error) {
 	const pageSize = 500
 
-	type state struct {
-		info SessionInfo
-		open bool
-	}
+	seen := map[string]*sessionState{}
 
-	seen := map[string]*state{}
 	var order []string
+
 	var after int64
 
 	for {
@@ -406,34 +446,9 @@ func List(ctx context.Context, src FactSource) ([]SessionInfo, error) {
 			return nil, fmt.Errorf("session: read facts: %w", err)
 		}
 
-		for _, f := range facts {
-			if f.Type != journal.SessionOpened && f.Type != journal.SessionClosed {
-				continue
-			}
-
-			if !strings.HasPrefix(f.TaskID, "session:") {
-				continue
-			}
-
-			id := strings.TrimPrefix(f.TaskID, "session:")
-			st, ok := seen[id]
-			if !ok {
-				st = &state{}
-				seen[id] = st
-				order = append(order, id)
-			}
-
-			switch f.Type {
-			case journal.SessionOpened:
-				var d OpenDetail
-				if err := json.Unmarshal(f.Detail, &d); err != nil {
-					return nil, fmt.Errorf("session: decode opened detail for %s: %w", id, err)
-				}
-
-				st.info = SessionInfo{ID: id, Repo: d.Repo, Project: d.Project, OpenedAt: f.Time}
-				st.open = true
-			case journal.SessionClosed:
-				st.open = false
+		for _, fact := range facts {
+			if err := foldSessionFact(fact, seen, &order); err != nil {
+				return nil, err
 			}
 		}
 
@@ -446,8 +461,8 @@ func List(ctx context.Context, src FactSource) ([]SessionInfo, error) {
 
 	open := make([]SessionInfo, 0, len(order))
 	for _, ref := range slices.Backward(order) {
-		if st := seen[ref]; st.open {
-			open = append(open, st.info)
+		if rec := seen[ref]; rec.open {
+			open = append(open, rec.info)
 		}
 	}
 

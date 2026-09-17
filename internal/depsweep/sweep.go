@@ -260,13 +260,13 @@ func BuildWork(modules []PlanModule, cfg SweeperConfig) ([]WorkSpec, []Skip) {
 	specs := releaseSpecs(modules, cfg, skip)
 	specs, repoHasWork := consumerSpecs(modules, skip, specs)
 
-	sort.Slice(specs, func(i, j int) bool {
-		a, b := waveOf(specs[i], repoHasWork), waveOf(specs[j], repoHasWork)
-		if a != b {
-			return a < b
+	sort.Slice(specs, func(ri, rj int) bool {
+		wi, wj := waveOf(specs[ri], repoHasWork), waveOf(specs[rj], repoHasWork)
+		if wi != wj {
+			return wi < wj
 		}
 
-		return specs[i].Repo < specs[j].Repo
+		return specs[ri].Repo < specs[rj].Repo
 	})
 
 	return specs, skips

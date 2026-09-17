@@ -497,7 +497,7 @@ func (h *Harvester) enqueueBatch(ctx context.Context, run []Item, importance int
 			aiScore = &clamped
 		}
 
-		p, _ := ResolvePriority(ResolveInput{
+		itemPriority, _ := ResolvePriority(ResolveInput{
 			Text:              item.Text,
 			MarkerLevel:       item.MarkerLevel,
 			HotPriority:       h.cfg.SameSessionPriority,
@@ -507,7 +507,7 @@ func (h *Harvester) enqueueBatch(ctx context.Context, run []Item, importance int
 			AIScore:           aiScore,
 		})
 
-		priority = max(priority, p)
+		priority = max(priority, itemPriority)
 	}
 
 	return h.q.Enqueue(ctx, task.New{

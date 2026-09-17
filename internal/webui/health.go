@@ -278,6 +278,7 @@ func errText(err error) string {
 func writeHealthJSON(w http.ResponseWriter, code int, resp health.Response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
+
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		return
 	}
@@ -324,6 +325,7 @@ func newHealthDashboard(pro dashboard.Prober) *dashboard.Dashboard {
 func withHealthHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Robots-Tag", "noindex")
+
 		if nonce := ctxNonce(r.Context()); nonce != "" {
 			csp := strings.Replace(dashboard.RecommendedCSP(nonce),
 				"base-uri 'self'", "base-uri 'none'", 1)
