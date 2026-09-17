@@ -1201,6 +1201,7 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 				return err
 			}
 		}
+
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: id.String(),
 			Type:   journal.QuestionAnswered,
