@@ -3149,7 +3149,13 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 	if err := s.AppendFact(ctx, journal.Fact{
 		TaskID: tk.ID.String(),
 		Type:   journal.QuestionAsked,
-		Detail: mustJSON(queue.QuestionAskedDetail{Ref: "q-2", Type: queue.QuestionTypeInfo, Question: "Which module owns the cursor?"}),
+		Detail: mustJSON(
+			queue.QuestionAskedDetail{
+				Ref:      "q-2",
+				Type:     queue.QuestionTypeInfo,
+				Question: "Which module owns the cursor?",
+			},
+		),
 	}); err != nil {
 		t.Fatalf("append q-2: %v", err)
 	}
@@ -3158,7 +3164,11 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 		t.Fatalf("park q-2: %v", err)
 	}
 
-	if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-2", Answer: "queue", Question: "Which module owns the cursor?"}); err != nil {
+	if err := s.RecordAnswer(
+		ctx,
+		tk.ID,
+		queue.AnswerRecord{Ref: "q-2", Answer: "queue", Question: "Which module owns the cursor?"},
+	); err != nil {
 		t.Fatalf("RecordAnswer q-2: %v", err)
 	}
 
