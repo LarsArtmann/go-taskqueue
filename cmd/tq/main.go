@@ -1683,13 +1683,13 @@ func cmdStats(args []string) error {
 		enc.SetIndent("", "  ")
 
 		return enc.Encode(statsPayload{
-			ByStatus:     byStatus,
-			ByProject:    byProject,
-			Budget:       budgetView{SpentToday: spent, Cap: *dailyBudget},
-			Lag:          consumerLag(ctx, store),
-			JournalHead:  head,
-			Parked:       parkedCount,
-			OpenSessions: len(openSessions),
+			ByStatus:       byStatus,
+			ByProject:      byProject,
+			Budget:         budgetView{SpentToday: spent, Cap: *dailyBudget},
+			Lag:            consumerLag(ctx, store),
+			JournalHead:    head,
+			Parked:         parkedCount,
+			OpenSessions:   len(openSessions),
 			SessionsOpened: int(sessionsOpened),
 			SessionsClosed: int(sessionsClosed),
 		})
@@ -1718,15 +1718,15 @@ func cmdStats(args []string) error {
 // statsPayload is the --json shape of `tq stats`: the aggregates a script or
 // dashboard consumes, never the raw task list (that is `tq tasks --json`).
 type statsPayload struct {
-	ByStatus     map[string]int            `json:"by_status"`
-	ByProject    map[string]map[string]int `json:"by_project,omitempty"`
-	Budget       budgetView                `json:"budget"`
-	Lag          []consumerLagEntry        `json:"consumer_lag,omitempty"`
-	JournalHead  int64                     `json:"journal_head"`
-	Parked       int                       `json:"parked,omitempty"`
-	OpenSessions int                       `json:"open_sessions,omitempty"`
-	SessionsOpened int                     `json:"sessions_opened,omitempty"`
-	SessionsClosed int                     `json:"sessions_closed,omitempty"`
+	ByStatus       map[string]int            `json:"by_status"`
+	ByProject      map[string]map[string]int `json:"by_project,omitempty"`
+	Budget         budgetView                `json:"budget"`
+	Lag            []consumerLagEntry        `json:"consumer_lag,omitempty"`
+	JournalHead    int64                     `json:"journal_head"`
+	Parked         int                       `json:"parked,omitempty"`
+	OpenSessions   int                       `json:"open_sessions,omitempty"`
+	SessionsOpened int                       `json:"sessions_opened,omitempty"`
+	SessionsClosed int                       `json:"sessions_closed,omitempty"`
 }
 
 type budgetView struct {

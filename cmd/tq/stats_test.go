@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -151,5 +152,76 @@ func TestStatsOpenSessions(t *testing.T) {
 
 	if !strings.Contains(human, "open sessions") {
 		t.Errorf("human stats output lost the open-sessions line:\n%s", human)
+	}
+}
+
+// TestStatsSessionVolume pins the 03-28 §f20 surface: `tq stats` carries
+// the session lifecycle fact counts (`sessions_opened` / `sessions_closed`,
+// omitempty in JSON) and a human "sessions" line once any session fact
+// exists — the volume read alongside the open-sessions lamp.
+func TestStatsSessionVolume(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "stats.db")
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	out := captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path, "--json"}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("stats payload not JSON: %v (%s)", err, out)
+	}
+
+	if _, ok := payload["sessions_opened"]; ok {
+		t.Errorf("bare store carried a sessions_opened key: %s", out)
+	}
+
+	if err := session.Begin(ctx, s, "sess-vol", "/tmp/repo", "repo"); err != nil {
+		t.Fatalf("session begin: %v", err)
+	}
+
+	if err := s.AppendFact(ctx, journal.Fact{
+		TaskID: string(session.SyntheticTaskID("sess-vol")),
+		Type:   journal.SessionClosed,
+	}); err != nil {
+		t.Fatalf("append session.closed: %v", err)
+	}
+
+	out = captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path, "--json"}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	payload = map[string]any{}
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("stats payload not JSON: %v (%s)", err, out)
+	}
+
+	if got := payload["sessions_opened"]; got != float64(1) {
+		t.Errorf("sessions_opened = %v, want 1 (%s)", got, out)
+	}
+
+	if got := payload["sessions_closed"]; got != float64(1) {
+		t.Errorf("sessions_closed = %v, want 1 (%s)", got, out)
+	}
+
+	human := captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	if !strings.Contains(human, "opened / 1 closed") {
+		t.Errorf("human stats output lost the sessions volume line:\n%s", human)
 	}
 }

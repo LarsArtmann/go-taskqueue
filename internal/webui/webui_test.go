@@ -22,6 +22,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
 )
@@ -760,6 +761,66 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 		if !strings.Contains(stats, want) {
 			t.Errorf("stats fragment missing %q", want)
 		}
+	}
+}
+
+// TestSessionSegmentsRenderFromSnapshot pins the 03-28 §f20 wiring: the
+// nowband meta surfaces the session volume (opened/closed fact counts)
+// once any session fact exists, plus the open-sessions lamp while a
+// session is begun-but-never-closed — and stays silent on a bare store.
+func TestSessionSegmentsRenderFromSnapshot(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	ctx := context.Background()
+
+	data, err := srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-sessions") {
+		t.Error("stats fragment shows a sessions segment on a bare store")
+	}
+
+	if err := session.Begin(ctx, s, "sess-ui", "/tmp/repo", "demo"); err != nil {
+		t.Fatalf("session begin: %v", err)
+	}
+
+	data, err = srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if data.SessionsOpened != 1 || data.SessionsClosed != 0 || data.SessionsOpen != 1 {
+		t.Fatalf("sessions = %d/%d open=%d, want 1/0 open=1", data.SessionsOpened, data.SessionsClosed, data.SessionsOpen)
+	}
+
+	stats := renderComponent(ctx, StatusCards(data))
+	for _, want := range []string{"card-sessions", "sessions 1/0", "card-sessions-lamp", "1 open"} {
+		if !strings.Contains(stats, want) {
+			t.Errorf("stats fragment missing %q", want)
+		}
+	}
+
+	if err := s.AppendFact(ctx, journal.Fact{
+		TaskID: string(session.SyntheticTaskID("sess-ui")),
+		Type:   journal.SessionClosed,
+		Time:   time.Now(),
+	}); err != nil {
+		t.Fatalf("append session.closed: %v", err)
+	}
+
+	data, err = srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if data.SessionsOpen != 0 {
+		t.Fatalf("open = %d, want 0 after close", data.SessionsOpen)
+	}
+
+	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-sessions-lamp") {
+		t.Error("stats fragment shows the open lamp after the session closed")
 	}
 }
 
