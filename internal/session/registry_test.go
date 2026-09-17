@@ -161,6 +161,7 @@ func TestSweepClosesQuietUnownedAndPrunes(t *testing.T) {
 	}
 
 	sawClosed := false
+
 	for _, f := range facts {
 		if f.Type == "session.closed" && f.TaskID == "session:sess-old" {
 			sawClosed = true

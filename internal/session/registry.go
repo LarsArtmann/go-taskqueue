@@ -258,7 +258,11 @@ func Sweep(ctx context.Context, s Store, scanner GitScanner, input SweepInput) (
 
 		quiet := now.Sub(entry.LastSeen)
 		if quiet < input.StaleAfter {
-			outcome.Reason = fmt.Sprintf("last seen %s ago (quiet threshold %s)", quiet.Round(time.Second), input.StaleAfter)
+			outcome.Reason = fmt.Sprintf(
+				"last seen %s ago (quiet threshold %s)",
+				quiet.Round(time.Second),
+				input.StaleAfter,
+			)
 			outcomes = append(outcomes, outcome)
 			kept = append(kept, entry)
 
