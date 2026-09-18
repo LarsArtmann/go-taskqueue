@@ -64,7 +64,7 @@ func (s GitLogScanner) bin() string {
 func checkGitVersion(ctx context.Context, bin, repo string) error {
 	out, err := exec.CommandContext(ctx, bin, "-C", repo, "--version").Output()
 	if err != nil {
-		return nil
+		return nil //nolint:nilerr // deliberate fail-open on a failing --version (see doc comment)
 	}
 
 	major, minor, ok := parseGitVersion(string(out))

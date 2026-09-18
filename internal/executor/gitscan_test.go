@@ -155,7 +155,16 @@ func TestParseGitVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			major, minor, ok := parseGitVersion(tc.out)
 			if ok != tc.ok || major != tc.major || minor != tc.minor {
-				t.Fatalf("parseGitVersion(%q) = %d, %d, %v; want %d, %d, %v", tc.out, major, minor, ok, tc.major, tc.minor, tc.ok)
+				t.Fatalf(
+					"parseGitVersion(%q) = %d, %d, %v; want %d, %d, %v",
+					tc.out,
+					major,
+					minor,
+					ok,
+					tc.major,
+					tc.minor,
+					tc.ok,
+				)
 			}
 		})
 	}
@@ -169,6 +178,7 @@ func TestCheckGitVersionRefusesPre215(t *testing.T) {
 	repo := t.TempDir()
 
 	cmd := exec.CommandContext(context.Background(), "git", "init", "-q", "-b", "main")
+
 	cmd.Dir = repo
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)

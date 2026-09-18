@@ -792,7 +792,12 @@ func TestSessionSegmentsRenderFromSnapshot(t *testing.T) {
 	}
 
 	if data.SessionsOpened != 1 || data.SessionsClosed != 0 || data.SessionsOpen != 1 {
-		t.Fatalf("sessions = %d/%d open=%d, want 1/0 open=1", data.SessionsOpened, data.SessionsClosed, data.SessionsOpen)
+		t.Fatalf(
+			"sessions = %d/%d open=%d, want 1/0 open=1",
+			data.SessionsOpened,
+			data.SessionsClosed,
+			data.SessionsOpen,
+		)
 	}
 
 	stats := renderComponent(ctx, StatusCards(data))
