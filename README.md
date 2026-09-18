@@ -307,6 +307,29 @@ toolchain PATH baked in) — see `deploy/nixos/tq-agent-pool.nix`.
 | `tq session`    | Interactive-session close-out bridge (prototype): `begin` records the opening; `close` attributes the session's `Crush-Session:` footer commits and enqueues one review + one status task |
 | `tq version`    | Build identity (version, VCS revision)                                                                                                                                                    |
 
+### Session triggers: `tq crush`
+
+`tq session close` needs a trigger that fires when an interactive session
+ends. The shipped one is the wrapper: run the session through it and the
+close-out happens on process exit — clean or crashed.
+
+```sh
+tq crush                                       # wraps the interactive crush session
+tq crush --repo ~/projects/CV -- run -m "…"    # everything after the flags is the crush invocation
+```
+
+The child runs with inherited stdio (you watch everything live) while the
+wrapper tees the output to resolve the session id — `--id`,
+`$CRUSH_SESSION_ID`, or a scan of the child output — then runs the same
+replay-safe `tq session close` (one review + one status task over the
+session's `Crush-Session:` footer commits). The child's exit code is
+preserved and SIGINT/SIGTERM are forwarded; no id derivable means nothing is
+closed and the database is never touched. Remaining flags: `--project`,
+`--summary`, `--allow-dirty`, `--db`, `--bin`. Two hook-based triggers exist
+alongside it: the PreToolUse session registry (`tq session ping`/`sweep`,
+`scripts/hook-session-registry.sh`) and crush's upstream SessionEnd hook
+(crush #3146, unreleased).
+
 ## Concepts
 
 - **Task** — unit of work: `type` (executor key), `project`, JSON `payload`,
