@@ -157,6 +157,33 @@ func TestHealthProbesHealthyStore(t *testing.T) {
 	}
 }
 
+func TestHealthVersionStamp(t *testing.T) {
+	t.Parallel()
+
+	// The configured version must reach every surface the health mount
+	// serves: the dashboard's Version stat card (the 2026-09-16 live gap
+	// rendered "unknown" forever because the hand-rolled prober never
+	// copied Config.Version into its responses) and all three JSON
+	// probes, which dashboard/textfile consumers read instead of the HTML.
+	s := New(newTestStore(t), Config{Version: "9.9.9-test"})
+	server := httptest.NewServer(s.Handler())
+	t.Cleanup(server.Close)
+
+	_, _, page := getBody(t, server.URL+HealthDashboardPath)
+
+	if !strings.Contains(page, "9.9.9-test") {
+		t.Errorf("health page missing configured version (stat card renders 'unknown')")
+	}
+
+	for _, path := range []string{HealthLivenessPath, HealthReadinessPath, HealthStartupPath} {
+		_, _, probe := getBody(t, server.URL+path)
+
+		if !strings.Contains(probe, `"version":"9.9.9-test"`) {
+			t.Errorf("%s body missing version stamp, got %s", path, probe)
+		}
+	}
+}
+
 func TestHealthProbesStoreFailure(t *testing.T) {
 	t.Parallel()
 

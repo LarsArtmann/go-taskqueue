@@ -55,6 +55,7 @@ const (
 type queueProber struct {
 	store     queue.Store
 	startedAt time.Time
+	version   string
 
 	mu        sync.Mutex
 	resp      health.Response
@@ -63,11 +64,12 @@ type queueProber struct {
 	startupOK bool
 }
 
-func newQueueProber(store queue.Store) *queueProber {
+func newQueueProber(store queue.Store, version string) *queueProber {
 	return &queueProber{
 		store:     store,
 		startedAt: time.Now(),
-		resp:      health.Response{Status: health.StatusWarn, Checks: map[string]health.Check{}},
+		version:   version,
+		resp:      health.Response{Status: health.StatusWarn, Version: version, Checks: map[string]health.Check{}},
 	}
 }
 
@@ -94,9 +96,10 @@ func (p *queueProber) RefreshInterval() time.Duration { return healthRefreshInte
 func (p *queueProber) LivenessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		writeHealthJSON(w, http.StatusOK, health.Response{
-			Status: health.StatusPass,
-			Uptime: time.Since(p.startedAt).Round(time.Second).String(),
-			Checks: map[string]health.Check{},
+			Status:  health.StatusPass,
+			Version: p.version,
+			Uptime:  time.Since(p.startedAt).Round(time.Second).String(),
+			Checks:  map[string]health.Check{},
 		})
 	}
 }
@@ -205,6 +208,7 @@ func (p *queueProber) finishEval(now time.Time, checks map[string]health.Check) 
 
 	p.resp = health.Response{
 		Status:    overall,
+		Version:   p.version,
 		Uptime:    time.Since(p.startedAt).Round(time.Second).String(),
 		Timestamp: now,
 		Checks:    checks,

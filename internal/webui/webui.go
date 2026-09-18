@@ -51,6 +51,12 @@ type Config struct {
 	Poll time.Duration
 	// Heartbeat is the SSE keepalive interval. Default 15s.
 	Heartbeat time.Duration
+	// Version is the application version stamped into every health
+	// response and the dashboard's Version stat card. Empty leaves the
+	// card on the dashboard's "unknown" fallback — cmd/tq always passes
+	// the ldflags-injected main.version, so only in-package test
+	// constructors see the fallback.
+	Version string
 	// RequestLog enables per-request access logging (method, path, status,
 	// duration) via slog at Info level. Off by default.
 	RequestLog bool
@@ -108,7 +114,7 @@ type Server struct {
 func New(store queue.Store, cfg Config) *Server {
 	cfg = cfg.withDefaults()
 
-	prober := newQueueProber(store)
+	prober := newQueueProber(store, cfg.Version)
 
 	return &Server{
 		store:  store,
