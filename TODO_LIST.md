@@ -125,6 +125,8 @@ not here.
 - [ ] check-gosec.sh: verify a pre-existing GOSEC_BIN is actually v2.29.0 (today the pin only governs the install path; stale binary silently changes what green means) (02-52 gosec-gate report §b)
 - [ ] Committed wrapper-path smoke leg: drive `tq crush --bin <stub child>` over a scratch repo (footer commit + `session_id:` output), assert id scan + 1 review + 1 status minted through runSessionClose + exit passthrough; wire into ci-local after session-close.sh — the wrapper's only E2E today is unit pins + the ad-hoc stub run cited in docs/status/2026-09-19_00-10_task-000001a0b68a0a70be1e9eb8ecdbb32cff59.md (gate-vs-cited-one-off ruling pending, report §g1)
 
+- [ ] Session-start ritual script: `scripts/session-start.sh` runs the turn-1 ritual (whole-repo `git log`/`git status`/`git stash list` + task-ID grep over `docs/status/` + CONTRIBUTING.md head) so the documented skip/late class (00-52 d4, 02-17 d3, 00-22 d1, 00-32 d2) becomes structurally impossible (00-22 §e1; recurring ask across ≥7 reports, first minted as a row 2026-09-19 00-32)
+
 ## Priority-system follow-ups (harvested from the 2026-09-12 T27-T38 windows; reports 15-43 + 16-28; verified against code at mint time)
 
 - [ ] `tq tasks --band hot|machine|backlog` CLI parity with the webui band filter — the store-level `Filter.PriorityMin/PriorityMax` pushdown exists in BOTH backends (`listWhere` sqlite, `pgWhere` postgres, conformance-tested); only the CLI flag is missing (16-28 report f9; cmd/tq tasks + internal/queue Filter)
