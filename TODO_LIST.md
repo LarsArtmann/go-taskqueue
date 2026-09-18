@@ -120,6 +120,8 @@ not here.
 - [ ] Re-cite `scripts/smoke/session-close.sh` green over the `runSessionClose` extraction AS USED BY the `tq crush` wrapper (one smoke run + citation; unit tests cover the wrapper path, the smoke hasn't been re-cited since the refactor) (02-51/02-54 §f)
 - [ ] Document `tq crush` in README (short subsection under session triggers) + FEATURES.md row (02-54 §f)
 - [ ] Live-no-id smoke assertion: wrapper exit preserves child code, nothing closed, no DB touched (no-id path is unit-pinned; live path isn't) (02-54 §f)
+- [ ] check-gosec.sh: cover cmd/tq (for-each-module.sh omits it, so the gate and the CI gosec loop both skip the CLI module; devmod shim or an owner ruling that CLI gosec stays CI-only) (02-52 gosec-gate report §b)
+- [ ] check-gosec.sh: verify a pre-existing GOSEC_BIN is actually v2.29.0 (today the pin only governs the install path; stale binary silently changes what green means) (02-52 gosec-gate report §b)
 
 ## Priority-system follow-ups (harvested from the 2026-09-12 T27-T38 windows; reports 15-43 + 16-28; verified against code at mint time)
 
