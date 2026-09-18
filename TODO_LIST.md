@@ -27,6 +27,7 @@ not here.
 - [ ] Decide the three near-identical interfaces (`consumer.Source`, `budget.FactSource`, `papdashboard.FactSource`) — one interface or documented duplication (23:47 f4) — BLOCKED: owner architecture decision
 - [ ] Postgres CLI store wiring (`--store postgres://…` on worker/serve/agent-pool): gives queue/postgres its consumer; root re-adds pgx; sequence BEFORE any public-API promotion (23:47 f5/g3) — BLOCKED: owner release-timing call (v0.3?)
 - [ ] Dependabot/renovate policy for the 8-module tree (23:47 f33) — BLOCKED: owner policy decision
+- [ ] Lint-baseline repair pass for the growth rows still failing `scripts/lint-baseline.sh --check` after the 2026-09-18 03-13 surgical repair (cmd/tq cyclop/tagliatelle, executor err113/mnd/nonamedreturns, root nonamedreturns/prealloc/varnamelen — pre-existing concurrent drift, ~10 findings across foreign files; `golangci-lint cache clean` first, warm cache flip-flops)
 
 ## Dogfood round (harvested from docs/status/2026-09-10_02-00 self-review §f)
 
@@ -120,7 +121,7 @@ not here.
 - [ ] Re-cite `scripts/smoke/session-close.sh` green over the `runSessionClose` extraction AS USED BY the `tq crush` wrapper (one smoke run + citation; unit tests cover the wrapper path, the smoke hasn't been re-cited since the refactor) (02-51/02-54 §f)
 - [ ] Document `tq crush` in README (short subsection under session triggers) + FEATURES.md row (02-54 §f)
 - [ ] Live-no-id smoke assertion: wrapper exit preserves child code, nothing closed, no DB touched (no-id path is unit-pinned; live path isn't) (02-54 §f)
-- [ ] check-gosec.sh: cover cmd/tq (for-each-module.sh omits it, so the gate and the CI gosec loop both skip the CLI module; devmod shim or an owner ruling that CLI gosec stays CI-only) (02-52 gosec-gate report §b)
+- [ ] check-gosec.sh: cover cmd/tq (for-each-module.sh omits it, so the gate and the CI gosec loop both skip the CLI module; devmod shim or an owner ruling that CLI gosec stays CI-only) (02-52 gosec-gate report §b) — BLOCKED: owner ruling on CLI gosec coverage (03-07 §g3)
 - [ ] check-gosec.sh: verify a pre-existing GOSEC_BIN is actually v2.29.0 (today the pin only governs the install path; stale binary silently changes what green means) (02-52 gosec-gate report §b)
 
 ## Priority-system follow-ups (harvested from the 2026-09-12 T27-T38 windows; reports 15-43 + 16-28; verified against code at mint time)
