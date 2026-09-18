@@ -1,6 +1,8 @@
 package executor
 
 import (
+	"context"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -132,5 +134,47 @@ func TestIsHexSHAAcceptsSHA1AndSHA256(t *testing.T) {
 
 	if isHexSHA(strings.Repeat("g", 40)) || isHexSHA("aaaa") || isHexSHA("") {
 		t.Fatal("invalid fields accepted")
+	}
+}
+
+func TestParseGitVersion(t *testing.T) {
+	cases := []struct {
+		name         string
+		out          string
+		major, minor int
+		ok           bool
+	}{
+		{"modern", "git version 2.51.0", 2, 51, true},
+		{"two-part", "git version 2.14", 2, 14, true},
+		{"prefix noise", "git for computers git version 1.9.1", 1, 9, true},
+		{"no version token", "something else entirely", 0, 0, false},
+		{"non-numeric", "git version banana", 0, 0, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			major, minor, ok := parseGitVersion(tc.out)
+			if ok != tc.ok || major != tc.major || minor != tc.minor {
+				t.Fatalf("parseGitVersion(%q) = %d, %d, %v; want %d, %d, %v", tc.out, major, minor, ok, tc.major, tc.minor, tc.ok)
+			}
+		})
+	}
+}
+
+func TestCheckGitVersionRefusesPre215(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+
+	repo := t.TempDir()
+
+	cmd := exec.CommandContext(context.Background(), "git", "init", "-q", "-b", "main")
+	cmd.Dir = repo
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+
+	if err := checkGitVersion(context.Background(), "git", repo); err != nil {
+		t.Fatalf("current git rejected: %v", err)
 	}
 }

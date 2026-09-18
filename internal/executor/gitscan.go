@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -43,6 +44,75 @@ type GitLogScanner struct {
 // failure).
 var errEmptyRepo = errors.New("gitscan: empty repo path")
 
+// minGitVersion is the floor for %(trailers) support; git older than this
+// renders unknown placeholders literally and would silently attribute
+// nothing.
+const minGitMajor, minGitMinor = 2, 15
+
+func (s GitLogScanner) bin() string {
+	if s.Bin != "" {
+		return s.Bin
+	}
+
+	return "git"
+}
+
+// checkGitVersion refuses git installs older than %(trailers) support: old
+// git prints the placeholder literally, so a scan would succeed with zero
+// attributions while the session's commits go unattributed. An unparseable
+// or failing --version fails open — exotic environments scan best-effort.
+func checkGitVersion(ctx context.Context, bin, repo string) error {
+	out, err := exec.CommandContext(ctx, bin, "-C", repo, "--version").Output()
+	if err != nil {
+		return nil
+	}
+
+	major, minor, ok := parseGitVersion(string(out))
+	if !ok {
+		return nil
+	}
+
+	if major < minGitMajor || (major == minGitMajor && minor < minGitMinor) {
+		return fmt.Errorf(
+			"gitscan: git %s in %s is version %d.%d; trailer attribution needs git >= %d.%d — upgrade git",
+			bin, repo, major, minor, minGitMajor, minGitMinor,
+		)
+	}
+
+	return nil
+}
+
+// parseGitVersion extracts the major/minor from `git version X.Y[.Z]`
+// output; ok is false when the text is not a recognizable version line.
+func parseGitVersion(out string) (major, minor int, ok bool) {
+	fields := strings.Fields(out)
+
+	for i, f := range fields {
+		if f != "version" || i+1 >= len(fields) {
+			continue
+		}
+
+		parts := strings.SplitN(fields[i+1], ".", 3)
+		if len(parts) < 2 {
+			return 0, 0, false
+		}
+
+		major, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return 0, 0, false
+		}
+
+		minor, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return 0, 0, false
+		}
+
+		return major, minor, true
+	}
+
+	return 0, 0, false
+}
+
 // CommitsByTrailer implements GitScanner. A repository without any commit
 // yet (unborn HEAD) attributes nothing — that is an empty session, not an
 // error.
@@ -51,10 +121,11 @@ func (s GitLogScanner) CommitsByTrailer(ctx context.Context, repo, key, value st
 		return nil, errEmptyRepo
 	}
 
-	bin := s.Bin
-	if bin == "" {
-		bin = "git"
+	if err := checkGitVersion(ctx, s.bin(), repo); err != nil {
+		return nil, err
 	}
+
+	bin := s.bin()
 
 	// One invocation, fields NUL-free: SHA, subject and the trailer values
 	// (one per line) separated by \x1f. The trailer machinery matches the

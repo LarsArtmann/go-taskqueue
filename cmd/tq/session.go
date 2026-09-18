@@ -319,6 +319,11 @@ func runSessionClose(id, abs, project, summary string, allowDirty bool, dbPath s
 	if len(res.Commits) == 0 {
 		fmt.Printf("session %s closed (repo %s)\n", id, abs)
 		fmt.Printf("no commits carry the %s: %s footer — nothing to review or report\n", session.Trailer, id)
+		fmt.Printf(
+			"next time, attribute your commits by ending the commit message with this footer line:\n\n%s: %s\n",
+			session.Trailer,
+			id,
+		)
 
 		return nil
 	}
