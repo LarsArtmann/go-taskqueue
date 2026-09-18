@@ -19,10 +19,14 @@ GOSEC_VERSION=v2.29.0
 GOSEC_EXCLUDES="-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,G702,G703,G710"
 
 GOSEC_BIN="${GOSEC:-}"
-if [ -z "$GOSEC_BIN" ]; then
+gosec_preexisting=0
+if [ -n "$GOSEC_BIN" ]; then
+	gosec_preexisting=1
+else
 	for candidate in "$(go env GOPATH)/bin/gosec" "$(command -v gosec || true)"; do
 		if [ -n "$candidate" ] && [ -x "$candidate" ]; then
 			GOSEC_BIN="$candidate"
+			gosec_preexisting=1
 			break
 		fi
 	done
@@ -31,6 +35,31 @@ if [ -z "$GOSEC_BIN" ]; then
 	echo "gosec not found; installing pinned $GOSEC_VERSION"
 	go install "github.com/securego/gosec/v2/cmd/gosec@$GOSEC_VERSION"
 	GOSEC_BIN="$(go env GOPATH)/bin/gosec"
+fi
+
+# The pin must hold for a pre-existing binary too (GOSEC override or
+# PATH/GOPATH discovery): a stale gosec silently changes what green means.
+# Only this script's own install path is exempt (v2.29.0 by construction).
+# An UNSTAMPED binary (Version: dev, e.g. a scratch-module build) cannot be
+# verified: it warns instead of failing because go install is
+# sandbox-blocked for agent sessions on this host and binary provenance is
+# an open owner ruling (2026-09-18_02-52 gosec-gate report §g q2).
+if [ "$gosec_preexisting" -eq 1 ]; then
+	gosec_version="$("$GOSEC_BIN" -version 2>&1 || true)"
+	gosec_version_first="${gosec_version%%$'\n'*}"
+	case "$gosec_version" in
+	*"$GOSEC_VERSION"*)
+		echo "ok: $GOSEC_BIN is $GOSEC_VERSION"
+		;;
+	*"Version: dev"* | *"Version: (devel)"*)
+		echo "WARN: $GOSEC_BIN is UNSTAMPED ('$gosec_version_first'), pin $GOSEC_VERSION UNVERIFIED (provenance ruling pending: 02-52 report §g q2); green stays unproven until the binary states its version"
+		;;
+	*)
+		echo "FAIL: $GOSEC_BIN reports '$gosec_version_first', not the pinned $GOSEC_VERSION. A stale gosec silently changes what green means; nothing was scanned"
+		echo "  fix: go install github.com/securego/gosec/v2/cmd/gosec@$GOSEC_VERSION (or point GOSEC at a $GOSEC_VERSION binary), then rerun"
+		exit 1
+		;;
+	esac
 fi
 
 scan() {
