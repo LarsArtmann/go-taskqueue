@@ -157,6 +157,13 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 - Multi-model fleet: 2–3 pools with distinct `--model` sharing one DB, or a
   `--repo-model` flag (model pinned per repo at harvest) — owner decision
+- Second inference provider (Sail Research): serves the same GLM-5.3 /
+  GLM-5.3-Flash models at 27-64% below Z.ai list price, with idempotent
+  submissions and per-repo credential/egress sandboxes; candidate for
+  429-storm failover and spend-aware budgeting. Assessment + verified
+  price tables: `docs/planning/2026-09-18_sail-research-provider-assessment.md`
+  (not adopted; owner decision pending, cheapest experiment is a Crush
+  provider entry in one repo's `.crushrc`)
 - Fleet onboarding runbook + smoke script (rails, triage, staleness
   screen, budget); fleet liveness `tq doctor` check (which repos have
   rails, which pools cover them)
