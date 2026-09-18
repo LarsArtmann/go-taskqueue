@@ -5,11 +5,13 @@
 # NEW class needing a fresh triage note (AGENTS.md "gosec advisory
 # baseline"), never a silent re-exclusion.
 #
-# Every scan runs FROM THE REPO ROOT via explicit package paths
-# (`./internal/session/...`), never `cd <module> && gosec ./...`: the
-# in-module form silently returns exit 0 with `Files: 0` (scanned nothing),
-# which this gate treats as a hard failure — a scanner must prove it
-# actually scanned (Files > 0), not trust the exit code.
+# Every scan must report Files > 0 — a scanner must prove it actually
+# scanned, not trust the exit code. Two known Files:0 silent-skip shapes
+# are therefore hard failures: (a) a module-context scan without
+# GOWORK=off (`cd internal/session && gosec ./...` returns 0/0 silently);
+# (b) a root-module package path resolved outside its module. Root-module
+# packages are covered by the root `./...` scan; each sub-module is scanned
+# in place with GOWORK=off.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -31,28 +33,34 @@ if [ -z "$GOSEC_BIN" ]; then
 	GOSEC_BIN="$(go env GOPATH)/bin/gosec"
 fi
 
-targets=("./...")
-while IFS= read -r m; do
-	targets+=("./$m/...")
-done < <(./scripts/for-each-module.sh)
-
-fail=0
-for target in "${targets[@]}"; do
-	echo "== $target"
-	out="$("$GOSEC_BIN" $GOSEC_EXCLUDES "$target" 2>&1 || true)"
+scan() {
+	local bin="$1" target="$2"
+	local out plain files issues
+	# shellcheck disable=SC2086  # GOSEC_EXCLUDES is a flag list, word-splitting intended
+	out="$(GOWORK=off "$bin" $GOSEC_EXCLUDES "$target" 2>&1 || true)"
 	plain="$(printf '%s' "$out" | sed 's/\x1b\[[0-9;]*m//g')"
 	files="$(printf '%s\n' "$plain" | awk '/^[[:space:]]*Files[[:space:]]*:/ { print $3 }')"
 	issues="$(printf '%s\n' "$plain" | awk '/^[[:space:]]*Issues[[:space:]]*:/ { print $3 }')"
 	if [ -z "$files" ] || [ "$files" -eq 0 ]; then
-		echo "FAIL: $target scanned 0 files (silent skip — check the scan path, never cd into the module)"
-		fail=1
+		echo "FAIL: $target scanned 0 files (silent skip — a scanner must prove it scanned; use GOWORK=off in-module or a root-module path)"
+		return 1
 	elif [ "${issues:-0}" -gt 0 ]; then
 		printf '%s\n' "$plain"
 		echo "FAIL: $target has $issues finding(s) — a NEW gosec class: triage it and extend the AGENTS.md baseline note, never silently re-exclude"
-		fail=1
-	else
-		echo "ok: Files=$files Issues=0"
+		return 1
 	fi
-done
+	echo "ok: Files=$files Issues=0"
+	return 0
+}
+
+fail=0
+echo "== (root) ./..."
+scan "$GOSEC_BIN" ./... || fail=1
+while IFS= read -r m; do
+	echo "== $m"
+	(
+		cd "$m" && GOWORK=off scan "$GOSEC_BIN" ./...
+	) || fail=1
+done < <(./scripts/for-each-module.sh)
 
 exit "$fail"
