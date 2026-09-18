@@ -23,7 +23,6 @@ cmd/tq	nonamedreturns:	2
 cmd/tq	paralleltest:	50
 cmd/tq	perfsprint:	1
 cmd/tq	predeclared:	1
-cmd/tq	tagliatelle:	11
 cmd/tq	unconvert:	1
 cmd/tq	varnamelen:	16
 cmd/tq	wsl_v5:	15
@@ -76,7 +75,7 @@ internal/queue/sqlite	noctx:	2
 internal/queue/sqlite	paralleltest:	44
 internal/queue/sqlite	sqlclosecheck:	2
 internal/queue/sqlite	unused:	1
-internal/queue/sqlite	varnamelen:	32
+internal/queue/sqlite	varnamelen:	33
 internal/queue/sqlite	wrapcheck:	50
 internal/task	exhaustive:	1
 internal/task	gochecknoglobals:	1

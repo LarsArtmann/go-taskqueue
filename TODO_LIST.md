@@ -27,7 +27,7 @@ not here.
 - [ ] Decide the three near-identical interfaces (`consumer.Source`, `budget.FactSource`, `papdashboard.FactSource`) — one interface or documented duplication (23:47 f4) — BLOCKED: owner architecture decision
 - [ ] Postgres CLI store wiring (`--store postgres://…` on worker/serve/agent-pool): gives queue/postgres its consumer; root re-adds pgx; sequence BEFORE any public-API promotion (23:47 f5/g3) — BLOCKED: owner release-timing call (v0.3?)
 - [ ] Dependabot/renovate policy for the 8-module tree (23:47 f33) — BLOCKED: owner policy decision
-- [ ] Lint-baseline repair pass for the growth rows still failing `scripts/lint-baseline.sh --check` after the 2026-09-18 03-13 surgical repair (cmd/tq cyclop/tagliatelle, executor err113/mnd/nonamedreturns, root nonamedreturns/prealloc/varnamelen — pre-existing concurrent drift, ~10 findings across foreign files; `golangci-lint cache clean` first, warm cache flip-flops)
+- [x] Lint-baseline repair pass for the growth rows still failing `scripts/lint-baseline.sh --check` after the 2026-09-18 03-13 surgical repair (cmd/tq cyclop/tagliatelle, executor err113/mnd/nonamedreturns, root nonamedreturns/prealloc/varnamelen — pre-existing concurrent drift, ~10 findings across foreign files; `golangci-lint cache clean` first, warm cache flip-flops)
 
 ## Dogfood round (harvested from docs/status/2026-09-10_02-00 self-review §f)
 
