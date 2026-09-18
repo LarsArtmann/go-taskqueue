@@ -135,7 +135,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                                                                                                                        |
 | `internal/runactor`                                | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                                                                                                                     |
 | `internal/webui`                                   | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                                                                                                                           |
-| `cmd/tq` (module, ADR-0017)                        | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / ask / facts / tail / watermarks / session / serve / api / doctor / version                                                                                    |
+| `cmd/tq` (module, ADR-0017)                        | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / ask / facts / tail / watermarks / session / serve / api / doctor / crush / version                                                                                    |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001,
 ADR-0002: `docs/adr/`; plans in `docs/planning/`). Domain vocabulary is
@@ -350,7 +350,8 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   never-released / suggested-major / trap rows (downgrades, `-dev`,
   not-newer). Design + research: the 2026-09-15 status report; planner
   side: project-dependency-graph `update-plan --format json`.
-- **Session-close bridge** (`tq session begin/close`, prototype
+- **Session-close bridge** (`tq session begin/close` + the `tq crush`
+  wrapper, prototype
   2026-09-12): interactive sessions get the pool close-out — begin mints
   `session.opened`; close scans `Crush-Session: <id>` git trailers (git ≥
   2.15 `%(trailers)`, ONE log call) and direct-enqueues ONE review (dedup
@@ -368,6 +369,11 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   session, first-repo wins — review dedup key is repo-blind, so a second
   repo's close is a replay that mints no fresh review; true multi-repo close
   is deferred) — docs/planning/2026-09-12_session-close-bridge-design.md.
+  `tq crush -- <crush args>` is the automation-friendly wrapper: runs a
+  crush session and, on exit (clean or crashed), runs the replay-safe
+  close using the session id from `$CRUSH_SESSION_ID` or the child's
+  output; with no id derivable the child's exit code is preserved and
+  nothing is closed.
 - **PapDashboard questions (`tq ask`, 2026-09-17, SHIPPED)**: an agent
   parked on a decision asks the owner — `tq ask --task <id>` (RUNNING
   only) redacts, appends `task.question-asked`, writes the per-run
