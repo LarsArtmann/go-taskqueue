@@ -781,7 +781,14 @@ prose, not the table.
   gate-vs-advisory flip is owner ruling O5):
   G204/G702 (exec with variable) — executors and bootstrap RUN commands
   from task payloads/`.tq-verify`/user config as their core feature, argv
-  is never shell-interpolated; G703/G304 (path taint) — a local CLI
+  is never shell-interpolated; the post-config 2026-09-12 re-scan confirms
+  the NEWER exec(git) sites stay in this same triaged class at ZERO
+  findings (v2.29.0, excludes as encoded): the session-forensics scanner
+  (`internal/session` `pgrep -f`, executor `git -C` in gitscan.go/outcome.go/
+  agent.go, and the cmd/tq session call sites — doctor tag checks,
+  bootstrap add/commit, main.go `git log` footer scan) all run fixed
+  subcommands with repo/user-supplied operands only, never shell-
+  interpolated; G703/G304 (path taint) — a local CLI
   operating on user-named repo/config paths (G304 already golangci-excluded);
   G306/G301/G302 — 0644 repo/unit files and shared 0o1777 slot-lock dirs
   are deliberate (pool.conf correctly 0600); G124 — auth cookies set
