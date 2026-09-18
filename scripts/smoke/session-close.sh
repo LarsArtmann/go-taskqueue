@@ -103,4 +103,28 @@ FACTS="$("$TQ" facts)"
 	exit 1
 }
 
+echo "== tq crush, live no-id path: child code preserved, nothing closed, no DB touched"
+cat >"$TMP/no-id-stub" <<'EOF'
+#!/bin/sh
+echo "plain child output, no session marker anywhere"
+exit 7
+EOF
+chmod +x "$TMP/no-id-stub"
+NOID_DB="$TMP/no-id.db"
+NOID_CODE=0
+"$TQ" crush --bin "$TMP/no-id-stub" --repo "$REPO" --project smokerepo --db "$NOID_DB" \
+	>"$TMP/noid.out" 2>"$TMP/noid.err" || NOID_CODE=$?
+[ "$NOID_CODE" -eq 7 ] || {
+	echo "FAIL: wrapper exit code $NOID_CODE, want the child's 7"
+	exit 1
+}
+grep -q "no session id" "$TMP/noid.err" || {
+	echo "FAIL: wrapper did not report the missing session id"
+	exit 1
+}
+[ ! -e "$NOID_DB" ] || {
+	echo "FAIL: wrapper touched the DB despite having nothing to close"
+	exit 1
+}
+
 echo "== session-close smoke passed"
