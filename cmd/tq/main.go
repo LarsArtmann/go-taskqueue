@@ -2882,6 +2882,7 @@ func cmdServe(args []string) error {
 	cfg := webui.Config{
 		Addr:        *addr,
 		Poll:        *poll,
+		Version:     version,
 		RequestLog:  *verbose,
 		AuthToken:   *authToken,
 		AllowWrites: *allowWrites,

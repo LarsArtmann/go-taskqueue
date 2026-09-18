@@ -4,7 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [v0.3.1] - 2026-09-18
+### Fixed
+- **`/health` stat card rendered "Version unknown" forever** — the
+  hand-rolled queue prober never copied the application version into its
+  `health.Response`, so the go-health-dashboard Version card (and the
+  JSON probes a textfile/dashboard consumer reads) had nothing to show
+  even though the binary knew its release (`tq version` reported it since
+  round-5 M25/F133). `tq serve` now threads the ldflags-injected
+  `main.version` through `webui.Config.Version` into every health
+  response — dashboard card, /healthz, /readyz, /startupz, and the SSE
+  snapshots ride the same cached response. (`internal/webui/health.go`,
+  `internal/webui/webui.go`, `cmd/tq/main.go`)
 ### Added
 - **PapDashboard questions loop (`tq ask`)**: an agent parked on a
   decision can now ask its owner. `tq ask --task <id>` (RUNNING only)
