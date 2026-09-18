@@ -123,6 +123,7 @@ not here.
 - [ ] Live-no-id smoke assertion: wrapper exit preserves child code, nothing closed, no DB touched (no-id path is unit-pinned; live path isn't) (02-54 §f)
 - [ ] check-gosec.sh: cover cmd/tq (for-each-module.sh omits it, so the gate and the CI gosec loop both skip the CLI module; devmod shim or an owner ruling that CLI gosec stays CI-only) (02-52 gosec-gate report §b) — BLOCKED: owner ruling on CLI gosec coverage (03-07 §g3)
 - [ ] check-gosec.sh: verify a pre-existing GOSEC_BIN is actually v2.29.0 (today the pin only governs the install path; stale binary silently changes what green means) (02-52 gosec-gate report §b)
+- [ ] Committed wrapper-path smoke leg: drive `tq crush --bin <stub child>` over a scratch repo (footer commit + `session_id:` output), assert id scan + 1 review + 1 status minted through runSessionClose + exit passthrough; wire into ci-local after session-close.sh — the wrapper's only E2E today is unit pins + the ad-hoc stub run cited in docs/status/2026-09-19_00-10_task-000001a0b68a0a70be1e9eb8ecdbb32cff59.md (gate-vs-cited-one-off ruling pending, report §g1)
 
 ## Priority-system follow-ups (harvested from the 2026-09-12 T27-T38 windows; reports 15-43 + 16-28; verified against code at mint time)
 
