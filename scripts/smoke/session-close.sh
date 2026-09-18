@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# End-to-end smoke of the session-close bridge (`tq session begin/close`):
-# an interactive session opens in the journal, its commit carries the
-# `Crush-Session:` footer, and close attributes the commit and mints exactly
-# ONE review + ONE status task — a second close is a replay (dedup, no new
-# tasks). No real agent, no network.
+# End-to-end smoke of the session-close bridge (`tq session begin/close`)
+# plus the live `tq crush` wrapper legs: an interactive session opens in the
+# journal, its commit carries the `Crush-Session:` footer, and close
+# attributes the commit and mints exactly ONE review + ONE status task — a
+# second close is a replay (dedup, no new tasks). The no-id wrapper leg pins
+# exit-code passthrough, live stdout forwarding, the honest no-id note, and
+# a DB that is never touched. No real agent, no network.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
@@ -116,6 +118,10 @@ NOID_CODE=0
 	>"$TMP/noid.out" 2>"$TMP/noid.err" || NOID_CODE=$?
 [ "$NOID_CODE" -eq 7 ] || {
 	echo "FAIL: wrapper exit code $NOID_CODE, want the child's 7"
+	exit 1
+}
+grep -q "plain child output" "$TMP/noid.out" || {
+	echo "FAIL: child stdout not forwarded live"
 	exit 1
 }
 grep -q "no session id" "$TMP/noid.err" || {
