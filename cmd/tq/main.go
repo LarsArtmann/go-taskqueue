@@ -1621,6 +1621,14 @@ func sessionVolume(ctx context.Context, store queue.Store) (int64, int64, error)
 	return opened, closed, nil
 }
 
+// printSessionVolume renders the lifecycle totals; silent while no session
+// was ever opened (bare stores stay uncluttered).
+func printSessionVolume(opened, closed int64) {
+	if opened > 0 {
+		fmt.Printf("sessions     %6d opened / %d closed\n", opened, closed)
+	}
+}
+
 func cmdStats(args []string) error {
 	fs := flag.NewFlagSet("stats", flag.ExitOnError)
 	project := fs.String("project", "", "filter by project")
@@ -1716,9 +1724,7 @@ func cmdStats(args []string) error {
 		fmt.Printf("open sessions %5d (began, never closed — tq session list)\n", len(openSessions))
 	}
 
-	if sessionsOpened > 0 {
-		fmt.Printf("sessions     %6d opened / %d closed\n", sessionsOpened, sessionsClosed)
-	}
+	printSessionVolume(sessionsOpened, sessionsClosed)
 
 	printBudgetSpend(spent, *dailyBudget, *project != "")
 	printConsumerLag(store)

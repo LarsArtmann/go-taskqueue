@@ -50,8 +50,8 @@ var errEmptyRepo = errors.New("gitscan: empty repo path")
 const minGitMajor, minGitMinor = 2, 15
 
 const (
-	maxGitVersionParts  = 3
-	minGitVersionParts  = 2
+	maxGitVersionParts = 3
+	minGitVersionParts = 2
 )
 
 // errGitTooOld is the static sentinel wrapped by checkGitVersion (err113:
