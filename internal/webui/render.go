@@ -231,27 +231,23 @@ func parkedCount(ctx context.Context, store queue.Store) int {
 // sessionStats reads the session volume for the nowband meta: lifecycle
 // fact totals plus the open (begun, never closed) lamp count. Best effort:
 // a failed read renders nothing.
-func sessionStats(ctx context.Context, store queue.Store) (opened, closed, open int) {
-	n, err := store.CountFacts(ctx, journal.SessionOpened, time.Time{})
+func sessionStats(ctx context.Context, store queue.Store) (int, int, int) {
+	openedFacts, err := store.CountFacts(ctx, journal.SessionOpened, time.Time{})
 	if err != nil {
 		return 0, 0, 0
 	}
 
-	opened = int(n)
-
-	n, err = store.CountFacts(ctx, journal.SessionClosed, time.Time{})
+	closedFacts, err := store.CountFacts(ctx, journal.SessionClosed, time.Time{})
 	if err != nil {
 		return 0, 0, 0
 	}
-
-	closed = int(n)
 
 	sessions, err := session.List(ctx, store)
 	if err != nil {
-		return opened, closed, 0
+		return int(openedFacts), int(closedFacts), 0
 	}
 
-	return opened, closed, len(sessions)
+	return int(openedFacts), int(closedFacts), len(sessions)
 }
 
 // completionDetail reads a task's outcome from its own completion-fact

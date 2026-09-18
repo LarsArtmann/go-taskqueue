@@ -1605,6 +1605,22 @@ func printHarvestResult(res harvest.Result) {
 		res.Repos, res.Items, len(res.Enqueued), len(res.Skipped))
 }
 
+// sessionVolume reads the interactive-session lifecycle totals (03-28 §f20):
+// opened vs closed session facts over the whole journal.
+func sessionVolume(ctx context.Context, store queue.Store) (int64, int64, error) {
+	opened, err := store.CountFacts(ctx, journal.SessionOpened, time.Time{})
+	if err != nil {
+		return 0, 0, err
+	}
+
+	closed, err := store.CountFacts(ctx, journal.SessionClosed, time.Time{})
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return opened, closed, nil
+}
+
 func cmdStats(args []string) error {
 	fs := flag.NewFlagSet("stats", flag.ExitOnError)
 	project := fs.String("project", "", "filter by project")
@@ -1668,12 +1684,7 @@ func cmdStats(args []string) error {
 
 	// Session volume (03-28 §f20): totals over the interactive-session
 	// lifecycle facts, alongside the open-session lamp above.
-	sessionsOpened, err := store.CountFacts(ctx, journal.SessionOpened, time.Time{})
-	if err != nil {
-		return err
-	}
-
-	sessionsClosed, err := store.CountFacts(ctx, journal.SessionClosed, time.Time{})
+	sessionsOpened, sessionsClosed, err := sessionVolume(ctx, store)
 	if err != nil {
 		return err
 	}

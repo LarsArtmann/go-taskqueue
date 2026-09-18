@@ -49,6 +49,15 @@ var errEmptyRepo = errors.New("gitscan: empty repo path")
 // nothing.
 const minGitMajor, minGitMinor = 2, 15
 
+const (
+	maxGitVersionParts  = 3
+	minGitVersionParts  = 2
+)
+
+// errGitTooOld is the static sentinel wrapped by checkGitVersion (err113:
+// no dynamic error construction at the call site).
+var errGitTooOld = errors.New("gitscan: git too old for trailer attribution")
+
 func (s GitLogScanner) bin() string {
 	if s.Bin != "" {
 		return s.Bin
@@ -74,8 +83,8 @@ func checkGitVersion(ctx context.Context, bin, repo string) error {
 
 	if major < minGitMajor || (major == minGitMajor && minor < minGitMinor) {
 		return fmt.Errorf(
-			"gitscan: git %s in %s is version %d.%d; trailer attribution needs git >= %d.%d — upgrade git",
-			bin, repo, major, minor, minGitMajor, minGitMinor,
+			"%w: git %s in %s is version %d.%d; trailer attribution needs git >= %d.%d — upgrade git",
+			errGitTooOld, bin, repo, major, minor, minGitMajor, minGitMinor,
 		)
 	}
 
@@ -84,7 +93,7 @@ func checkGitVersion(ctx context.Context, bin, repo string) error {
 
 // parseGitVersion extracts the major/minor from `git version X.Y[.Z]`
 // output; ok is false when the text is not a recognizable version line.
-func parseGitVersion(out string) (major, minor int, ok bool) {
+func parseGitVersion(out string) (int, int, bool) {
 	fields := strings.Fields(out)
 
 	for i, f := range fields {
@@ -92,8 +101,8 @@ func parseGitVersion(out string) (major, minor int, ok bool) {
 			continue
 		}
 
-		parts := strings.SplitN(fields[i+1], ".", 3)
-		if len(parts) < 2 {
+		parts := strings.SplitN(fields[i+1], ".", maxGitVersionParts)
+		if len(parts) < minGitVersionParts {
 			return 0, 0, false
 		}
 

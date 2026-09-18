@@ -352,7 +352,7 @@ func TestPruneStaleNeverTouchesSessionMintedTasks(t *testing.T) {
 		}
 	}
 
-	var minted []task.ID
+	minted := make([]task.ID, 0, len(sessionMinted))
 
 	for _, nt := range sessionMinted {
 		enqueued, err := q.Enqueue(ctx, nt)
