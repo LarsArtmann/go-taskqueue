@@ -757,7 +757,18 @@ prose, not the table.
   discarded Encode error, now checked) and absorbed concurrent drift
   (worker nestif from the 03-30 window, cmd/tq gosmopolitan from the
   12-54 64-file window); the window's webui `--new-from-rev 3c8e858`
-  was zero findings after two wsl_v5 blank-line fixes)
+  was zero findings after two wsl_v5 blank-line fixes);
+  2026-09-18 seventh regen: 1113 findings, 134 rows — the
+  session-forensics drift repaired IN CODE (cmdStats session-volume
+  extraction under the cyclop cap, gitscan err113 sentinel + mnd
+  constants + unnamed returns, webui sessionStats unnamed returns +
+  renamed accumulator, prune-test prealloc); cmd/tq tagliatelle
+  path-excluded for `cmd/tq/(main|top|journalaudit)\.go` (tq CLI wire
+  payloads are snake_case BY CONTRACT, whole statsPayload family
+  predates the linter and stats_test.go pins the exact keys); sqlite
+  varnamelen corrected 32→33 to the CLEAN-cache truth (the committed 32
+  was recorded on a warm cache — `golangci-lint cache clean` before
+  generating or judging baseline rows, CI is always clean-cache)
   or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
