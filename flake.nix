@@ -427,7 +427,7 @@
           apps.webui-css = {
             type = "app";
             meta.description = "Recompile internal/webui/static/app.css via tailwindcss --minify";
-            program = pkgs.writeShellApplication {
+            program = pkgs.lib.getExe (pkgs.writeShellApplication {
               name = "webui-css";
               runtimeInputs = [
                 pkgs.tailwindcss_4
@@ -436,7 +436,7 @@
               text = ''
                 exec bash scripts/build-webui-css.sh
               '';
-            };
+            });
           };
         };
     };
