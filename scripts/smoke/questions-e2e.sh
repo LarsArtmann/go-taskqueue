@@ -165,11 +165,18 @@ for _ in $(seq 1 40); do
 	fi
 	sleep 0.5
 done
-[ "$parked" -eq 0 ] || { echo "FAIL: task never parked on the question"; cat "$TMP/worker.log"; exit 1; }
+[ "$parked" -eq 0 ] || {
+	echo "FAIL: task never parked on the question"
+	cat "$TMP/worker.log"
+	exit 1
+}
 echo "   parked OK"
 
-ATTEMPTS="$( "$TMP/tq" show --db "$TQ_DB" "$TASK_ID" | python3 -c 'import json,sys; print(json.load(sys.stdin)["task"]["attempts"])')"
-[ "$ATTEMPTS" = "0" ] || { echo "FAIL: park burned an attempt (attempts=$ATTEMPTS)"; exit 1; }
+ATTEMPTS="$("$TMP/tq" show --db "$TQ_DB" "$TASK_ID" | python3 -c 'import json,sys; print(json.load(sys.stdin)["task"]["attempts"])')"
+[ "$ATTEMPTS" = "0" ] || {
+	echo "FAIL: park burned an attempt (attempts=$ATTEMPTS)"
+	exit 1
+}
 echo "   no attempt burn OK"
 
 echo "== wait for the question to reach the stub dashboard"
@@ -184,21 +191,35 @@ for _ in $(seq 1 40); do
 	fi
 	sleep 0.5
 done
-[ "$forwarded" -eq 0 ] || { echo "FAIL: question never forwarded"; cat "$INGEST_LOG"; exit 1; }
+[ "$forwarded" -eq 0 ] || {
+	echo "FAIL: question never forwarded"
+	cat "$INGEST_LOG"
+	exit 1
+}
 echo "   forwarded OK (task + qref tokens present)"
 
 echo "== wait for the answer to come back and the task to complete"
 completed=1
 for _ in $(seq 1 60); do
-	STATUS="$( "$TMP/tq" show --db "$TQ_DB" "$TASK_ID" | python3 -c 'import json,sys; print(json.load(sys.stdin)["task"]["status"])' 2>/dev/null || echo unknown)"
-	[ "$STATUS" = "completed" ] && { completed=0; break; }
+	STATUS="$("$TMP/tq" show --db "$TQ_DB" "$TASK_ID" | python3 -c 'import json,sys; print(json.load(sys.stdin)["task"]["status"])' 2>/dev/null || echo unknown)"
+	[ "$STATUS" = "completed" ] && {
+		completed=0
+		break
+	}
 	sleep 0.5
 done
-[ "$completed" -eq 0 ] || { echo "FAIL: task never completed (status=$STATUS)"; cat "$TMP/worker.log"; exit 1; }
+[ "$completed" -eq 0 ] || {
+	echo "FAIL: task never completed (status=$STATUS)"
+	cat "$TMP/worker.log"
+	exit 1
+}
 echo "   completed OK"
 
 echo "== verify the resumed run saw the rendered answer"
-[ -f "$DONE_FLAG" ] || { echo "FAIL: stub agent completed without the answered prompt"; exit 1; }
+[ -f "$DONE_FLAG" ] || {
+	echo "FAIL: stub agent completed without the answered prompt"
+	exit 1
+}
 
 echo "== verify the questions section + attempt accounting"
 "$TMP/tq" show --db "$TQ_DB" "$TASK_ID" | python3 -c '
