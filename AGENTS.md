@@ -813,7 +813,12 @@ prose, not the table.
   sub-modules internal/{task,journal,queue,executor,worker} — a renamed
   sub-module dropping out of `find` leaves survivors that scan and exit 0,
   invisible to both older guards; rename/removal must consciously update
-  the canary list in scripts/check-gosec.sh)):
+  the canary list in scripts/check-gosec.sh); since 2026-09-20 the
+  --self-test mode ALSO byte-guards ci.yml's sed derivation (the
+  workflow's exact lines are lifted from ci.yml, run against the shipped
+  script, and compared with the pinned constants — the derivation runs
+  only on runners inside a continue-on-error job, so drift was otherwise
+  advisory-only in CI)):
   G204/G702 (exec with variable) — executors and bootstrap RUN commands
   from task payloads/`.tq-verify`/user config as their core feature, argv
   is never shell-interpolated; the post-config 2026-09-12 re-scan confirms
