@@ -399,6 +399,13 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   POST sketch).
 - **`Task-Queue-ID` commit footer**: every prompt contract tells agents to
   end commits with it; the executor resolves the placeholder at RUN time.
+  The footer must be the LAST line of the message — git's trailer parser
+  (and therefore `executor.GitLogScanner.CommitsByTrailer`, the derivation
+  channel, internal/executor/gitscan.go:145) reads only the final
+  paragraph, so a footer placed ABOVE an attribution block
+  (Crush/Co-Authored-By) is INVISIBLE to task attribution and invites
+  re-dispatch; the 2026-09-19 0-target window had to msg-filter two
+  unpushed commits to heal it (d035911/ca514a8 over dd543ec/e9ef358).
   Never hardcode the placeholder inside backtick raw strings (a backtick
   terminates the literal). The footer must carry the queue-assigned ID from
   the task prompt VERBATIM — if a reviewer or a second artifact supplies a
