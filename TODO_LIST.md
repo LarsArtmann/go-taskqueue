@@ -134,6 +134,7 @@ not here.
 - [ ] Committed wrapper-path smoke leg: drive `tq crush --bin <stub child>` over a scratch repo (footer commit + `session_id:` output), assert id scan + 1 review + 1 status minted through runSessionClose + exit passthrough; wire into ci-local after session-close.sh — the wrapper's only E2E today is unit pins + the ad-hoc stub run cited in docs/status/2026-09-19_00-10_task-000001a0b68a0a70be1e9eb8ecdbb32cff59.md (gate-vs-cited-one-off ruling pending, report §g1)
 
 - [ ] Session-start ritual script: `scripts/session-start.sh` runs the turn-1 ritual (whole-repo `git log`/`git status`/`git stash list` + task-ID grep over `docs/status/` + CONTRIBUTING.md head) so the documented skip/late class (00-52 d4, 02-17 d3, 00-22 d1, 00-32 d2) becomes structurally impossible (00-22 §e1; recurring ask across ≥7 reports, first minted as a row 2026-09-19 00-32)
+- [ ] Verify-window minimum battery (AGENTS.md Conventions clause): a verify-only re-dispatch window must re-run the CHEAP gates itself at HEAD (check-doc-refs.sh + root build+vet under GOEXPERIMENT=jsonv2 — seconds each) and produce at least ONE fresh delta or state explicitly why none exists; expensive gates (race suite, nix) may be inherited only from a same-HEAD prior report (03-27 §e2 set the bar; the 03-39 window regressed by citing inherited gate runs in its stop verdict; extension of the citation-order row above)
 
 ## Priority-system follow-ups (harvested from the 2026-09-12 T27-T38 windows; reports 15-43 + 16-28; verified against code at mint time)
 
