@@ -204,6 +204,24 @@ EOF
 	fi
 	echo "ok: ci.yml derivation matches the pinned constants byte-for-byte"
 
+	# .golangci.yml scanner parity: the linter's gosec.excludes list must
+	# equal the pinned GOSEC_EXCLUDES (set-compare; the linter uses a YAML
+	# list, the gate a comma flag string). Without this a triage edit in
+	# this script would silently skew the two scanner surfaces apart.
+	lc_yml=".golangci.yml"
+	lc_excludes="$(awk '/^    gosec:/{f=1; next} f && /^    [^ ]/{f=0} f && /^ +- /{sub(/^ +- /, ""); print}' "$lc_yml" | sort)"
+	pin_excludes_sorted="$(printf '%s' "$pin_excludes" | sed 's/^-exclude=//' | tr ',' '\n' | sort)"
+	if [ -z "$lc_excludes" ]; then
+		echo "FAIL: .golangci.yml parity: gosec excludes list not found or empty in $lc_yml"
+		exit 1
+	fi
+	if [ "$lc_excludes" != "$pin_excludes_sorted" ]; then
+		echo "FAIL: .golangci.yml parity: linter gosec.excludes $(printf '%s' "$lc_excludes" | tr '\n' ' ')differ from GOSEC_EXCLUDES $(printf '%s' "$pin_excludes_sorted" | tr '\n' ' ')"
+		echo "  fix: update .golangci.yml gosec.excludes to match GOSEC_EXCLUDES in this script (the single triage source)"
+		exit 1
+	fi
+	echo "ok: .golangci.yml gosec.excludes matches the pinned GOSEC_EXCLUDES"
+
 	# Foreign-CWD re-entry: a caller parked anywhere must be able to run
 	# the mode — the guard var stops the child from re-running this
 	# assertion (it would recurse forever), one re-entry level total.
@@ -216,7 +234,7 @@ EOF
 		fi
 	fi
 
-	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty, broken, and short module enumeration pinned via stub gates, ci.yml derivation-drift byte-match, foreign-CWD re-entry)"
+	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty, broken, and short module enumeration pinned via stub gates, ci.yml derivation-drift byte-match, .golangci.yml gosec-excludes parity, foreign-CWD re-entry)"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
