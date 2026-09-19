@@ -798,7 +798,9 @@ prose, not the table.
   gate-vs-advisory flip is owner ruling O5; the canonical one-command gate
   entry is `./scripts/check-gosec.sh` — pins the same v2.29.0 + the same
   exclude set, scans root `./...` plus every sub-module with `GOWORK=off`,
-  and hard-fails any Files:0 silent skip):
+  and hard-fails any Files:0 silent skip AND a broken/zero-target module
+  enumeration (a failing or empty `scripts/for-each-module.sh` would
+  otherwise narrow the gate to the root scan and exit 0)):
   G204/G702 (exec with variable) — executors and bootstrap RUN commands
   from task payloads/`.tq-verify`/user config as their core feature, argv
   is never shell-interpolated; the post-config 2026-09-12 re-scan confirms

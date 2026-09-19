@@ -11,7 +11,11 @@
 # GOWORK=off (`cd internal/session && gosec ./...` returns 0/0 silently);
 # (b) a root-module package path resolved outside its module. Root-module
 # packages are covered by the root `./...` scan; each sub-module is scanned
-# in place with GOWORK=off.
+# in place with GOWORK=off. One silent-skip shape lives a level above the
+# scanner: a broken or empty module enumeration would silently narrow the
+# gate to the root scan and exit 0 (process-substitution exit status is
+# ignored), so a failing or zero-target enumeration hard-fails before any
+# scan runs (02-18 report §e6).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -21,8 +25,10 @@ GOSEC_EXCLUDES="-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,
 # --self-test pins the gate's decision branches with canned stub binaries
 # (02-52 gosec-gate report f3; the 2026-09-19 verify run's /tmp stubs are
 # the design): the three version branches (stamped pin ok / stamped
-# mismatch FAIL / unstamped WARN) plus the Files:0 silent-skip parse and
-# the Issues>0 parse, so the proof lives in a runnable gate instead of
+# mismatch FAIL / unstamped WARN), the Files:0 silent-skip parse, the
+# Issues>0 parse, and the module-enumeration failures (zero-target list /
+# non-zero enumerator exit, via the TQ_GOSEC_ENUM stub hook), so the proof
+# lives in a runnable gate instead of
 # report prose. Each case runs THIS script recursively with GOSEC pointed
 # at a stub, exercising the shipped bytes end to end. Stubs are created in
 # a mktemp dir outside the gated tree and removed on exit; stub outputs
@@ -45,9 +51,13 @@ EOF
 
 last_out=""
 gate_run() {
-	local name="$1" want_rc="$2" stub="$3"
+	local name="$1" want_rc="$2" stub="$3" enum="${4:-}"
 	local rc=0
-	last_out="$(GOSEC="$stub" "$0" 2>&1)" || rc=$?
+	if [ -n "$enum" ]; then
+		last_out="$(GOSEC="$stub" TQ_GOSEC_ENUM="$enum" "$0" 2>&1)" || rc=$?
+	else
+		last_out="$(GOSEC="$stub" "$0" 2>&1)" || rc=$?
+	fi
 	if [ "$rc" -ne "$want_rc" ]; then
 		echo "FAIL: $name (want rc=$want_rc, got rc=$rc)"
 		printf '%s\n' "$last_out"
@@ -91,6 +101,19 @@ self_test() {
 	stub_write "$dev" dev 5 0
 	stub_write "$files0" "$GOSEC_VERSION" 0 0
 	stub_write "$findings" "$GOSEC_VERSION" 3 2
+	emptyenum="$tmp/enum-empty"
+	failenum="$tmp/enum-fail"
+	cat >"$emptyenum" <<'EOF'
+#!/bin/sh
+exit 0
+EOF
+	chmod +x "$emptyenum"
+	cat >"$failenum" <<'EOF'
+#!/bin/sh
+echo "find: internal: No such file or directory" >&2
+exit 1
+EOF
+	chmod +x "$failenum"
 
 	gate_run "stamped pin ok: full gate passes on a $GOSEC_VERSION stub" 0 "$ok"
 	must_mention "ok: $ok is $GOSEC_VERSION" "stamped ok states the pin"
@@ -115,7 +138,15 @@ self_test() {
 	gate_run "Issues parse: findings hard-fail the gate" 1 "$findings"
 	must_mention "finding(s)" "Issues>0 reports the new-class failure"
 
-	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses pinned via stub gates)"
+	gate_run "empty enumeration: 0 module targets hard-fail" 1 "$ok" "$emptyenum"
+	must_mention "0 module targets" "empty enumeration reports the silent-narrow failure"
+	must_not_mention "== (root)" "empty enumeration fails before any scan"
+
+	gate_run "broken enumeration: non-zero exit hard-fail" 1 "$ok" "$failenum"
+	must_mention "enumeration exited non-zero" "broken enumeration reports the enumerator failure"
+	must_not_mention "== (root)" "broken enumeration fails before any scan"
+
+	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty and broken module enumeration pinned via stub gates)"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
@@ -188,6 +219,15 @@ scan() {
 }
 
 fail=0
+enum_cmd="${TQ_GOSEC_ENUM:-./scripts/for-each-module.sh}"
+modules="$("$enum_cmd")" || {
+	echo "FAIL: module enumeration exited non-zero ($enum_cmd) — a broken enumerator would silently narrow the gate to the root scan only"
+	exit 1
+}
+if [ -z "$modules" ]; then
+	echo "FAIL: module enumeration returned 0 module targets (silent skip one level up — the gate would narrow to the root scan only; fix $enum_cmd)"
+	exit 1
+fi
 echo "== (root) ./..."
 scan "$GOSEC_BIN" ./... || fail=1
 while IFS= read -r m; do
@@ -195,6 +235,6 @@ while IFS= read -r m; do
 	(
 		cd "$m" && GOWORK=off scan "$GOSEC_BIN" ./...
 	) || fail=1
-done < <(./scripts/for-each-module.sh)
+done <<<"$modules"
 
 exit "$fail"
