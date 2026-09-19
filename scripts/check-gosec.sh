@@ -39,8 +39,13 @@ GOSEC_EXCLUDES="-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,
 # non-zero enumerator exit, via the TQ_GOSEC_ENUM stub hook), plus the
 # foreign-CWD re-entry branch (the mode re-invoked from / through the
 # absolute self path; TQ_GOSEC_SELFTEST_REENTRY=1 guards the child against
-# infinite recursion — externally settable, a conscious escape hatch), so
-# the proof lives in a runnable gate instead of
+# infinite recursion — externally settable, a conscious escape hatch), plus
+# the ci.yml derivation-drift guard: the workflow's exact sed lines are
+# extracted from .github/workflows/ci.yml, run against THIS script, and
+# byte-compared with the pinned constants — the derivation runs only on
+# runners inside a continue-on-error job, so without this case a format
+# drift fails advisory-only in CI (harvested 2026-09-19, derive window).
+# The proof lives in a runnable gate instead of
 # report prose. Each case runs THIS script recursively with GOSEC pointed
 # at a stub, exercising the shipped bytes end to end. Stubs are created in
 # a mktemp dir outside the gated tree and removed on exit; stub outputs
@@ -175,6 +180,30 @@ EOF
 	must_mention "renamed or removed sub-module" "short enumeration carries the conscious-update fix hint"
 	must_not_mention "== (root)" "short enumeration fails before any scan"
 
+	# ci.yml derivation drift: run the workflow's EXACT sed lines (lifted
+	# from ci.yml itself, so any edit there is what gets tested) against
+	# this script and byte-compare with the pinned constants above.
+	pin_version="$GOSEC_VERSION"
+	pin_excludes="$GOSEC_EXCLUDES"
+	ci_yml=".github/workflows/ci.yml"
+	ci_v_line="$(grep -F 'GOSEC_VERSION="$(sed' "$ci_yml" | head -n1)"
+	ci_e_line="$(grep -F 'GOSEC_EXCLUDES="$(sed' "$ci_yml" | head -n1)"
+	if [ -z "$ci_v_line" ] || [ -z "$ci_e_line" ]; then
+		echo "FAIL: ci.yml derivation drift: sed line(s) not found in $ci_yml"
+		exit 1
+	fi
+	eval "$ci_v_line"
+	eval "$ci_e_line"
+	if [ -z "${GOSEC_VERSION:-}" ] || [ -z "${GOSEC_EXCLUDES:-}" ]; then
+		echo "FAIL: ci.yml derivation drift: workflow sed lines extract empty values"
+		exit 1
+	fi
+	if [ "$GOSEC_VERSION" != "$pin_version" ] || [ "$GOSEC_EXCLUDES" != "$pin_excludes" ]; then
+		echo "FAIL: ci.yml derivation drift: workflow derives version '$GOSEC_VERSION' / excludes '$GOSEC_EXCLUDES', but the pinned constants are '$pin_version' / '$pin_excludes'"
+		exit 1
+	fi
+	echo "ok: ci.yml derivation matches the pinned constants byte-for-byte"
+
 	# Foreign-CWD re-entry: a caller parked anywhere must be able to run
 	# the mode — the guard var stops the child from re-running this
 	# assertion (it would recurse forever), one re-entry level total.
@@ -187,7 +216,7 @@ EOF
 		fi
 	fi
 
-	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty, broken, and short module enumeration pinned via stub gates, foreign-CWD re-entry)"
+	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty, broken, and short module enumeration pinned via stub gates, ci.yml derivation-drift byte-match, foreign-CWD re-entry)"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
