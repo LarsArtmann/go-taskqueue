@@ -795,7 +795,10 @@ prose, not the table.
   G404,G702,G703,G710` and `.golangci.yml` gosec.excludes matches for
   scanner parity — post-config scan = 0 findings on every module, so any
   future gosec finding is a NEW class needing a fresh triage note, and the
-  gate-vs-advisory flip is owner ruling O5):
+  gate-vs-advisory flip is owner ruling O5; the canonical one-command gate
+  entry is `./scripts/check-gosec.sh` — pins the same v2.29.0 + the same
+  exclude set, scans root `./...` plus every sub-module with `GOWORK=off`,
+  and hard-fails any Files:0 silent skip):
   G204/G702 (exec with variable) — executors and bootstrap RUN commands
   from task payloads/`.tq-verify`/user config as their core feature, argv
   is never shell-interpolated; the post-config 2026-09-12 re-scan confirms
