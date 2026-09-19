@@ -840,6 +840,16 @@ prose, not the table.
   (cost one stray `demo` enqueue + a live-pool claim, 2026-09-10). Any
   scratch-DB smoke MUST export `TQ_DB=<scratch path>` (or pass `--db`)
   explicitly; assume every bare `tq …` in a session shell touches production.
+- ⚠️ **The session (mvdan) shell has NO usable `PIPESTATUS`**: it expands
+  EMPTY, and `$?` after a pipeline reports the LAST stage's status, so
+  `gate | filter; echo $?` reports a red gate as green. Confessed in report
+  prose by the 02-38 window (§d) and RE-HIT verbatim by the 2026-09-19 04-32
+  verify window's first battery command — codified only at the second hit.
+  Gate invocations from agent sessions must redirect to a file and capture
+  `$?` directly, counts grepped from the file
+  (`cmd >/tmp/x.log 2>&1; rc=$?; grep -c ... /tmp/x.log`). ci-local and CI
+  run stock bash where PIPESTATUS works — the hazard is agent-session
+  CLAIMS only.
 - ⚠️ **Root-module builds auto-use `vendor/` — stale vendored internals
   poison root builds** (2026-09-17 questions arc, d2): after changing ANY
   internal/ module, root `go build ./...` can fail with misleading
