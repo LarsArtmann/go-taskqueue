@@ -247,7 +247,7 @@ not here.
 - [ ] Audit every silent retry/absorption site in scripts/ for a WARN line (04-21 §e2 generalization)
 - [ ] check-ci.sh: single `gh run list --jq` call replacing three python3 subprocesses; print the local HEAD sha in the predates branch; ancestry-precise wording via `git merge-base --is-ancestor` (04-21 §e4/§e5)
 - [ ] fuzz.yml concurrency ruling recorded: whether the scheduled nightly opts out of cancel-in-progress (a manual push would kill a campaign mid-write) — question filed, ruling not yet recorded (04-21 §c1) — BLOCKED: owner ruling on scheduled-workflow concurrency semantics
-- [ ] CONTRIBUTING.md "individual gates" sweep: add check-transient-retry.sh, check-go-mods.sh, check-ci.sh, check-facade-parity.sh, check-status-index.sh (03-04 §f14, 04-21 §f4)
+- [ ] CONTRIBUTING.md "individual gates" sweep: add check-transient-retry.sh, check-go-mods.sh, check-ci.sh, check-facade-parity.sh, check-status-index.sh, check-gosec.sh + the lint-baseline gate (both postdate the sweep — the gate list every turn-1 reader sees teaches an incomplete inventory) (03-04 §f14, 04-21 §f4, 03-15 report §f7)
 - [ ] Table-driven pin over ALL secretPatterns pairs: assert bearer×auth-header is the ONLY overlapping pair so a future pattern fails loudly (02-37 §b4/§f1; docs/status/2026-09-16_02-37_task-000001a0a76cd0808802847ba630d2957bb5.md)
 - [ ] Property test: N injected non-overlapping fake tokens → SecretHits == N regardless of surrounding benign text (02-37 §f2)
 - [ ] Pin that RedactSecrets masks an auth-header line to exactly ONE marker (output-side mirror of the count fix) (02-37 §f11)
