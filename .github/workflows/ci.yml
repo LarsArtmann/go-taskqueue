@@ -42,7 +42,8 @@ jobs:
       - name: Windows build (cross-compile gate)
         run: |
           GOOS=windows go build ./... && GOOS=windows go vet ./...
-          for m in $(./scripts/for-each-module.sh); do
+          mods="$(./scripts/for-each-module.sh)"
+          for m in $mods; do
             ( cd "$m" && GOWORK=off GOOS=windows go build ./... && GOWORK=off GOOS=windows go vet ./... ) || exit 1
           done
           # cmd/tq is its own replace-free module (ADR-0017): devmod shim gate.
@@ -55,7 +56,8 @@ jobs:
         # gate. Disk-derived: new modules are covered without editing this
         # workflow.
         run: |
-          for m in $(./scripts/for-each-module.sh); do
+          mods="$(./scripts/for-each-module.sh)"
+          for m in $mods; do
             echo "== $m"
             ( cd "$m" \
               && GOWORK=off go build ./... \
@@ -93,7 +95,8 @@ jobs:
           # ./... from the root never descends into nested sub-modules
           # (ADR-0011) — mirror ci-local.sh's disk-derived loop so every
           # sub-module gets the same advisory run.
-          for m in $(./scripts/for-each-module.sh); do
+          mods="$(./scripts/for-each-module.sh)"
+          for m in $mods; do
             echo "== $m"
             mod_out="$( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/golangci-lint" run ./... 2>&1 || true )"
             printf '%s\n' "$mod_out"
@@ -155,7 +158,8 @@ jobs:
       - name: Module isolation gates (per sub-module)
         shell: bash
         run: |
-          for m in $(./scripts/for-each-module.sh); do
+          mods="$(./scripts/for-each-module.sh)"
+          for m in $mods; do
             echo "== $m"
             ( cd "$m" \
               && GOWORK=off go build ./... \
@@ -248,7 +252,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           "$(go env GOPATH)/bin/govulncheck" ./... && \
             echo "| root (incl. app layer) | clean |" >> "$GITHUB_STEP_SUMMARY"
-          for m in $(./scripts/for-each-module.sh); do
+          mods="$(./scripts/for-each-module.sh)"
+          for m in $mods; do
             echo "== $m"
             ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/govulncheck" ./... ) || exit 1
             echo "| $m | clean |" >> "$GITHUB_STEP_SUMMARY"
@@ -286,7 +291,8 @@ jobs:
           fi
           go install "github.com/securego/gosec/v2/cmd/gosec@$GOSEC_VERSION"
           "$(go env GOPATH)/bin/gosec" -quiet $GOSEC_EXCLUDES ./...
-          for m in $(./scripts/for-each-module.sh); do
+          mods="$(./scripts/for-each-module.sh)"
+          for m in $mods; do
             echo "== $m"
             ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/gosec" -quiet $GOSEC_EXCLUDES ./... ) || exit 1
           done
