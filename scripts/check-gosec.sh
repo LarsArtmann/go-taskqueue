@@ -118,6 +118,7 @@ EOF
 	gate_run "stamped pin ok: full gate passes on a $GOSEC_VERSION stub" 0 "$ok"
 	must_mention "ok: $ok is $GOSEC_VERSION" "stamped ok states the pin"
 	must_mention "ok: Files=" "Files>0 Issues=0 summary parses green"
+	must_mention "scans ok, 0 failed" "end-of-run summary counts scans (the version-ok line is not a scan)"
 	must_not_mention "WARN:" "stamped ok emits no WARN"
 	must_not_mention "FAIL:" "stamped ok emits no FAIL"
 
@@ -134,6 +135,7 @@ EOF
 
 	gate_run "Files:0 parse: silent-skip summary hard-fails the gate" 1 "$files0"
 	must_mention "scanned 0 files" "Files:0 reports the silent-skip failure"
+	must_mention "0 scans ok," "Files:0 run's summary counts every scan as failed"
 
 	gate_run "Issues parse: findings hard-fail the gate" 1 "$findings"
 	must_mention "finding(s)" "Issues>0 reports the new-class failure"
@@ -219,6 +221,8 @@ scan() {
 }
 
 fail=0
+scans_ok=0
+scans_failed=0
 enum_cmd="${TQ_GOSEC_ENUM:-./scripts/for-each-module.sh}"
 modules="$("$enum_cmd")" || {
 	echo "FAIL: module enumeration exited non-zero ($enum_cmd) — a broken enumerator would silently narrow the gate to the root scan only"
@@ -229,12 +233,21 @@ if [ -z "$modules" ]; then
 	exit 1
 fi
 echo "== (root) ./..."
-scan "$GOSEC_BIN" ./... || fail=1
+if scan "$GOSEC_BIN" ./...; then
+	scans_ok=$((scans_ok + 1))
+else
+	scans_failed=$((scans_failed + 1))
+	fail=1
+fi
 while IFS= read -r m; do
 	echo "== $m"
-	(
-		cd "$m" && GOWORK=off scan "$GOSEC_BIN" ./...
-	) || fail=1
+	if (cd "$m" && GOWORK=off scan "$GOSEC_BIN" ./...); then
+		scans_ok=$((scans_ok + 1))
+	else
+		scans_failed=$((scans_failed + 1))
+		fail=1
+	fi
 done <<<"$modules"
 
+echo "gosec summary: $scans_ok scans ok, $scans_failed failed"
 exit "$fail"
