@@ -797,10 +797,11 @@ prose, not the table.
     `internal/*` sub-module in ci.yml too (f32, parity with ci-local.sh).
 - ⚠️ **gosec advisory baseline is all FP/by-design** (triaged 2026-09-10,
   v2.29.0, 48 findings over root + all sub-modules; advisory CI job, f21;
-  round-13 T6 ENCODED the triage as excludes 2026-09-12: the ci.yml gosec
-  job runs `-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,
-  G404,G702,G703,G710` and `.golangci.yml` gosec.excludes matches for
-  scanner parity — post-config scan = 0 findings on every module, so any
+  round-13 T6 ENCODED the triage as excludes 2026-09-12: since 2026-09-19
+  the ci.yml gosec job DERIVES pin + excludes from scripts/check-gosec.sh
+  via sed (fail-closed on an empty derivation — a bump is one edit there)
+  and `.golangci.yml` gosec.excludes remains the hand-synced scanner-parity
+  copy — post-config scan = 0 findings on every module, so any
   future gosec finding is a NEW class needing a fresh triage note, and the
   gate-vs-advisory flip is owner ruling O5; the canonical one-command gate
   entry is `./scripts/check-gosec.sh` — pins the same v2.29.0 + the same
