@@ -263,7 +263,11 @@ jobs:
     # -exclude rules (G104/G115/G118/G124/G202/G204/G301/G302/G304/G306/
     # G404/G702/G703/G710), so the job reads green and any NEW class stands
     # out. A new finding in an excluded class needs a fresh triage note, not
-    # a silent pass. Needs network (module downloads), and the disk-derived
+    # a silent pass. Version + excludes are sed-derived from
+    # scripts/check-gosec.sh (the single pin source; a bump is one edit
+    # there) — the loop itself stays hand-rolled, so full convergence onto
+    # the script remains row 127 (owner-blocked CI-independence ruling).
+    # Needs network (module downloads), and the disk-derived
     # module loop mirrors "Module isolation gates".
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -274,15 +278,20 @@ jobs:
           go-version: 1.26.7
       - name: Gosec (root + every sub-module)
         run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
-          GOSEC_EXCLUDES="-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,G702,G703,G710"
+          GOSEC_VERSION="$(sed -n 's/^GOSEC_VERSION=//p' scripts/check-gosec.sh)"
+          GOSEC_EXCLUDES="$(sed -n 's/^GOSEC_EXCLUDES="\(.*\)"$/\1/p' scripts/check-gosec.sh)"
+          if [ -z "$GOSEC_VERSION" ] || [ -z "$GOSEC_EXCLUDES" ]; then
+            echo "FAIL: could not derive GOSEC_VERSION/GOSEC_EXCLUDES from scripts/check-gosec.sh"
+            exit 1
+          fi
+          go install "github.com/securego/gosec/v2/cmd/gosec@$GOSEC_VERSION"
           "$(go env GOPATH)/bin/gosec" -quiet $GOSEC_EXCLUDES ./...
           for m in $(./scripts/for-each-module.sh); do
             echo "== $m"
             ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/gosec" -quiet $GOSEC_EXCLUDES ./... ) || exit 1
           done
           {
-            echo "## gosec (v2.29.0, triage-encoded excludes)"
+            echo "## gosec ($GOSEC_VERSION, triage-encoded excludes)"
             echo ""
             echo "0 findings across root + every sub-module; any finding here is a NEW class —"
             echo "triage it and extend the AGENTS.md note, never silently re-exclude."
