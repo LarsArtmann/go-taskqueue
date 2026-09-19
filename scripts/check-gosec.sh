@@ -11,11 +11,14 @@
 # GOWORK=off (`cd internal/session && gosec ./...` returns 0/0 silently);
 # (b) a root-module package path resolved outside its module. Root-module
 # packages are covered by the root `./...` scan; each sub-module is scanned
-# in place with GOWORK=off. One silent-skip shape lives a level above the
+# in place with GOWORK=off. Silent-skip shapes live a level above the
 # scanner: a broken or empty module enumeration would silently narrow the
 # gate to the root scan and exit 0 (process-substitution exit status is
 # ignored), so a failing or zero-target enumeration hard-fails before any
-# scan runs (02-18 report §e6).
+# scan runs (02-18 report §e6). Zero targets is not the only blind spot:
+# a non-zero-but-SHORT enumeration (a renamed sub-module dropping out of
+# find) scans the survivors and still exits 0, so the enumeration must
+# also contain the pinned canary sub-modules or the gate fails fast.
 set -euo pipefail
 # gate_run re-invokes THIS script via "$0" after the cd below has moved the
 # working directory to the repo root; a CWD-relative $0 (e.g.
@@ -112,6 +115,7 @@ self_test() {
 	stub_write "$findings" "$GOSEC_VERSION" 3 2
 	emptyenum="$tmp/enum-empty"
 	failenum="$tmp/enum-fail"
+	shortenum="$tmp/enum-short"
 	cat >"$emptyenum" <<'EOF'
 #!/bin/sh
 exit 0
@@ -123,6 +127,15 @@ echo "find: internal: No such file or directory" >&2
 exit 1
 EOF
 	chmod +x "$failenum"
+	# Non-zero-but-short: a renamed sub-module dropping out of the
+	# enumeration leaves survivors behind — the shape both the 0-target
+	# guard and the per-scan Files>0 guard are blind to.
+	cat >"$shortenum" <<'EOF'
+#!/bin/sh
+printf '%s\n' internal/task internal/journal
+exit 0
+EOF
+	chmod +x "$shortenum"
 
 	gate_run "stamped pin ok: full gate passes on a $GOSEC_VERSION stub" 0 "$ok"
 	must_mention "ok: $ok is $GOSEC_VERSION" "stamped ok states the pin"
@@ -157,6 +170,11 @@ EOF
 	must_mention "enumeration exited non-zero" "broken enumeration reports the enumerator failure"
 	must_not_mention "== (root)" "broken enumeration fails before any scan"
 
+	gate_run "short enumeration: missing canary member hard-fail" 1 "$ok" "$shortenum"
+	must_mention "missing canary module(s): internal/queue internal/executor internal/worker" "short enumeration names every missing canary"
+	must_mention "renamed or removed sub-module" "short enumeration carries the conscious-update fix hint"
+	must_not_mention "== (root)" "short enumeration fails before any scan"
+
 	# Foreign-CWD re-entry: a caller parked anywhere must be able to run
 	# the mode — the guard var stops the child from re-running this
 	# assertion (it would recurse forever), one re-entry level total.
@@ -169,7 +187,7 @@ EOF
 		fi
 	fi
 
-	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty and broken module enumeration pinned via stub gates, foreign-CWD re-entry)"
+	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty, broken, and short module enumeration pinned via stub gates, foreign-CWD re-entry)"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
@@ -251,6 +269,27 @@ modules="$("$enum_cmd")" || {
 }
 if [ -z "$modules" ]; then
 	echo "FAIL: module enumeration returned 0 module targets (silent skip one level up — the gate would narrow to the root scan only; fix $enum_cmd)"
+	exit 1
+fi
+# Canary members: the 0-target guard cannot see a MISSING member, so pin
+# the five core sub-modules. A rename or removal of any of them must
+# consciously update this list instead of silently narrowing the gate to
+# the surviving modules (which would still scan and exit 0).
+canary_modules=(
+	internal/task
+	internal/journal
+	internal/queue
+	internal/executor
+	internal/worker
+)
+missing_canaries=""
+for canary in "${canary_modules[@]}"; do
+	if ! grep -qxF -- "$canary" <<<"$modules"; then
+		missing_canaries+=" $canary"
+	fi
+done
+if [ -n "$missing_canaries" ]; then
+	echo "FAIL: module enumeration is missing canary module(s):$missing_canaries — a short enumeration silently narrows the gate to the survivors (renamed or removed sub-module? update the canary list in $self_abs consciously; enumerator: $enum_cmd)"
 	exit 1
 fi
 echo "== (root) ./..."
