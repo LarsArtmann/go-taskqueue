@@ -23,6 +23,7 @@ declare_rx='^(func|type|var|const) ([A-Z][A-Za-z0-9_]*)[( ]'
 block_rx='^\t([A-Z][A-Za-z0-9_]*)[ =]'
 
 dead=0
+alive=0
 while IFS=$'\t' read -r file name; do
 	[ -n "$name" ] || continue
 	pkg_dir="$(dirname "$file")"
@@ -33,6 +34,8 @@ while IFS=$'\t' read -r file name; do
 	if [ -z "$hits" ]; then
 		echo "$file: exported symbol with zero importers: $name"
 		dead=$((dead + 1))
+	else
+		alive=$((alive + 1))
 	fi
 done < <(
 	git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go' |
@@ -50,6 +53,7 @@ done < <(
 )
 
 echo
+echo "dead-exports summary: $alive symbols ok, $dead dead"
 if [ "$dead" -eq 0 ]; then
 	echo "dead-exports: clean — every exported internal symbol has at least one importer"
 else

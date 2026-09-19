@@ -9,6 +9,8 @@ cd "$(dirname "$0")/.."
 
 refs=(scripts/ci-local.sh .github/workflows/ci.yml flake.nix)
 rc=0
+wired_ok=0
+wired_failed=0
 for f in scripts/check-*.sh scripts/smoke/*.sh; do
 	wired=0
 	for r in "${refs[@]}"; do
@@ -20,10 +22,14 @@ for f in scripts/check-*.sh scripts/smoke/*.sh; do
 	if [ "$wired" = 0 ]; then
 		echo "ORPHANED GUARD: $f is not referenced by ci-local.sh, ci.yml, or flake.nix — wire it or delete it"
 		rc=1
+		wired_failed=$((wired_failed + 1))
+	else
+		wired_ok=$((wired_ok + 1))
 	fi
 done
 
 if [ "$rc" = 0 ]; then
 	echo "guard wiring ok: every check-*/smoke script is referenced"
 fi
+echo "guard-wiring summary: $wired_ok scripts wired, $wired_failed orphaned"
 exit "$rc"

@@ -22,12 +22,17 @@ if [ "${#files[@]}" -eq 0 ]; then
 fi
 
 fail=0
+checks_ok=0
+checks_failed=0
 for f in "${files[@]}"; do
-	if ! bash -n "$f"; then
+	if bash -n "$f"; then
+		checks_ok=$((checks_ok + 1))
+	else
+		checks_failed=$((checks_failed + 1))
 		fail=1
 	fi
 done
-if [ "$fail" = 0 ]; then
+if [ "$checks_failed" = 0 ]; then
 	echo "bash -n ok (${#files[@]} scripts)"
 fi
 
@@ -44,9 +49,12 @@ fi
 findings="$("${sc[@]}" -f gcc -S warning "${files[@]}" 2>&1)"
 if [ -n "$findings" ]; then
 	echo "$findings"
+	checks_failed=$((checks_failed + 1))
 	fail=1
 else
 	echo "shellcheck ok (0 findings, severity >= warning)"
+	checks_ok=$((checks_ok + 1))
 fi
 
+echo "syntax summary: $checks_ok checks ok, $checks_failed failed"
 exit "$fail"

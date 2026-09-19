@@ -9,12 +9,17 @@ cd "$(dirname "$0")/.."
 mods="$(find internal task journal queue executor worker cmd/tq -name go.mod | sed 's|/go.mod$||' | sort)"
 mapfile -t modfiles < <(find internal task journal queue executor worker cmd/tq -name go.mod | sort)
 fail=0
+checks_ok=0
+checks_failed=0
 
 bad="$(grep -hE '^replace ' "${modfiles[@]}" | grep -E '=> */' || true)"
 if [ -n "$bad" ]; then
 	echo "$bad"
 	echo "FAIL: absolute replace paths are not portable"
+	checks_failed=$((checks_failed + 1))
 	fail=1
+else
+	checks_ok=$((checks_ok + 1))
 fi
 
 bad="$({ grep -hE '^[[:space:]]*github.com/larsartmann/go-taskqueue/internal/' "${modfiles[@]}" go.mod | sed 's|//.*||'; } | grep -vE ' v[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$' || true)"
@@ -24,7 +29,10 @@ if [ -n "$bad" ]; then
 	echo "go install of the published module resolves sub-modules through the"
 	echo "proxy, where v0.0.0 never exists (ADR-0011; local replaces make the"
 	echo "version cosmetic in-repo, which is why a wrong pin stays invisible)"
+	checks_failed=$((checks_failed + 1))
 	fail=1
+else
+	checks_ok=$((checks_ok + 1))
 fi
 
 want="$(awk '$1 == "go" { print $2; exit }' go.mod)"
@@ -32,7 +40,10 @@ for m in $mods; do
 	got="$(awk '$1 == "go" { print $2; exit }' "$m/go.mod")"
 	if [ "$got" != "$want" ]; then
 		echo "FAIL: $m/go.mod declares go $got, root declares go $want — keep toolchains aligned"
+		checks_failed=$((checks_failed + 1))
 		fail=1
+	else
+		checks_ok=$((checks_ok + 1))
 	fi
 done
 
@@ -43,9 +54,15 @@ for m in . $mods; do
 		echo "WARN: go mod verify flaked in $m — retrying once"
 		if ! (cd "$m" && GOWORK=off go mod verify >/dev/null); then
 			echo "FAIL: go mod verify in $m (retry also failed)"
+			checks_failed=$((checks_failed + 1))
 			fail=1
+		else
+			checks_ok=$((checks_ok + 1))
 		fi
+	else
+		checks_ok=$((checks_ok + 1))
 	fi
 done
 
+echo "go-mods summary: $checks_ok checks ok, $checks_failed failed"
 exit $fail
