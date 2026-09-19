@@ -17,6 +17,12 @@
 # ignored), so a failing or zero-target enumeration hard-fails before any
 # scan runs (02-18 report §e6).
 set -euo pipefail
+# gate_run re-invokes THIS script via "$0" after the cd below has moved the
+# working directory to the repo root; a CWD-relative $0 (e.g.
+# ./check-gosec.sh from inside scripts/) stops resolving there — the child
+# dies rc=127 under stock bash (mvdan/sh masks it). Capture the absolute
+# self path BEFORE moving (02-38 report §b).
+self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$0")/.."
 
 GOSEC_VERSION=v2.29.0
@@ -27,8 +33,11 @@ GOSEC_EXCLUDES="-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,
 # the design): the three version branches (stamped pin ok / stamped
 # mismatch FAIL / unstamped WARN), the Files:0 silent-skip parse, the
 # Issues>0 parse, and the module-enumeration failures (zero-target list /
-# non-zero enumerator exit, via the TQ_GOSEC_ENUM stub hook), so the proof
-# lives in a runnable gate instead of
+# non-zero enumerator exit, via the TQ_GOSEC_ENUM stub hook), plus the
+# foreign-CWD re-entry branch (the mode re-invoked from / through the
+# absolute self path; TQ_GOSEC_SELFTEST_REENTRY=1 guards the child against
+# infinite recursion — externally settable, a conscious escape hatch), so
+# the proof lives in a runnable gate instead of
 # report prose. Each case runs THIS script recursively with GOSEC pointed
 # at a stub, exercising the shipped bytes end to end. Stubs are created in
 # a mktemp dir outside the gated tree and removed on exit; stub outputs
@@ -54,9 +63,9 @@ gate_run() {
 	local name="$1" want_rc="$2" stub="$3" enum="${4:-}"
 	local rc=0
 	if [ -n "$enum" ]; then
-		last_out="$(GOSEC="$stub" TQ_GOSEC_ENUM="$enum" "$0" 2>&1)" || rc=$?
+		last_out="$(GOSEC="$stub" TQ_GOSEC_ENUM="$enum" "$self_abs" 2>&1)" || rc=$?
 	else
-		last_out="$(GOSEC="$stub" "$0" 2>&1)" || rc=$?
+		last_out="$(GOSEC="$stub" "$self_abs" 2>&1)" || rc=$?
 	fi
 	if [ "$rc" -ne "$want_rc" ]; then
 		echo "FAIL: $name (want rc=$want_rc, got rc=$rc)"
@@ -148,7 +157,19 @@ EOF
 	must_mention "enumeration exited non-zero" "broken enumeration reports the enumerator failure"
 	must_not_mention "== (root)" "broken enumeration fails before any scan"
 
-	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty and broken module enumeration pinned via stub gates)"
+	# Foreign-CWD re-entry: a caller parked anywhere must be able to run
+	# the mode — the guard var stops the child from re-running this
+	# assertion (it would recurse forever), one re-entry level total.
+	if [ -z "${TQ_GOSEC_SELFTEST_REENTRY:-}" ]; then
+		if (cd / && TQ_GOSEC_SELFTEST_REENTRY=1 "$self_abs" --self-test >/dev/null 2>&1); then
+			echo "ok: --self-test re-runs from a foreign CWD"
+		else
+			echo "FAIL: --self-test invoked from a foreign CWD"
+			exit 1
+		fi
+	fi
+
+	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty and broken module enumeration pinned via stub gates, foreign-CWD re-entry)"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
