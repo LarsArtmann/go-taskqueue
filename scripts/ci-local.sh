@@ -107,6 +107,9 @@ step "rename-hygiene scan (advisory; quoted literals shadowing removed identifie
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
 
+step "gosec self-test (version branches + Files:0 parse pin, canned stubs)"
+./scripts/check-gosec.sh --self-test
+
 step "gosec post-config gate (pinned v2.29.0, triage-encoded excludes, Files>0 asserted)"
 ./scripts/check-gosec.sh
 

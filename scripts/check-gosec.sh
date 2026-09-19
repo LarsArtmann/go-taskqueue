@@ -18,6 +18,111 @@ cd "$(dirname "$0")/.."
 GOSEC_VERSION=v2.29.0
 GOSEC_EXCLUDES="-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,G702,G703,G710"
 
+# --self-test pins the gate's decision branches with canned stub binaries
+# (02-52 gosec-gate report f3; the 2026-09-19 verify run's /tmp stubs are
+# the design): the three version branches (stamped pin ok / stamped
+# mismatch FAIL / unstamped WARN) plus the Files:0 silent-skip parse and
+# the Issues>0 parse, so the proof lives in a runnable gate instead of
+# report prose. Each case runs THIS script recursively with GOSEC pointed
+# at a stub, exercising the shipped bytes end to end. Stubs are created in
+# a mktemp dir outside the gated tree and removed on exit; stub outputs
+# auto-adapt to a future GOSEC_VERSION bump (only the stale and dev stamps
+# are hardcoded, and both stay correct under any pin).
+stub_write() {
+	local path="$1" version="$2" files="$3" issues="$4"
+	cat >"$path" <<EOF
+#!/bin/sh
+if [ "\$1" = "-version" ]; then
+	printf 'Version: $version\n'
+	exit 0
+fi
+printf '   Files : $files\n'
+printf '   Issues : $issues\n'
+exit 0
+EOF
+	chmod +x "$path"
+}
+
+last_out=""
+gate_run() {
+	local name="$1" want_rc="$2" stub="$3"
+	local rc=0
+	last_out="$(GOSEC="$stub" "$0" 2>&1)" || rc=$?
+	if [ "$rc" -ne "$want_rc" ]; then
+		echo "FAIL: $name (want rc=$want_rc, got rc=$rc)"
+		printf '%s\n' "$last_out"
+		exit 1
+	fi
+	echo "ok: $name"
+}
+
+must_mention() {
+	if grep -qF -- "$1" <<<"$last_out"; then
+		echo "ok: $2"
+	else
+		echo "FAIL: $2 (output is missing '$1')"
+		printf '%s\n' "$last_out"
+		exit 1
+	fi
+}
+
+must_not_mention() {
+	if grep -qF -- "$1" <<<"$last_out"; then
+		echo "FAIL: $2 (output must not contain '$1')"
+		printf '%s\n' "$last_out"
+		exit 1
+	fi
+	echo "ok: $2"
+}
+
+self_test() {
+	local ok stale dev files0 findings
+	# tmp is deliberately global: the EXIT trap reads it after self_test
+	# returned, and set -u would kill the trap on a function-local name.
+	tmp="$(mktemp -d)"
+	trap 'rm -rf "$tmp"' EXIT
+	ok="$tmp/gosec-ok-stub"
+	stale="$tmp/gosec-stale-stub"
+	dev="$tmp/gosec-dev-stub"
+	files0="$tmp/gosec-files0-stub"
+	findings="$tmp/gosec-findings-stub"
+	stub_write "$ok" "$GOSEC_VERSION" 5 0
+	stub_write "$stale" v2.28.1 5 0
+	stub_write "$dev" dev 5 0
+	stub_write "$files0" "$GOSEC_VERSION" 0 0
+	stub_write "$findings" "$GOSEC_VERSION" 3 2
+
+	gate_run "stamped pin ok: full gate passes on a $GOSEC_VERSION stub" 0 "$ok"
+	must_mention "ok: $ok is $GOSEC_VERSION" "stamped ok states the pin"
+	must_mention "ok: Files=" "Files>0 Issues=0 summary parses green"
+	must_not_mention "WARN:" "stamped ok emits no WARN"
+	must_not_mention "FAIL:" "stamped ok emits no FAIL"
+
+	gate_run "stamped mismatch: stale stub exits 1" 1 "$stale"
+	must_mention "reports 'Version: v2.28.1', not the pinned $GOSEC_VERSION" "mismatch names the detected version"
+	must_mention "go install github.com/securego/gosec/v2/cmd/gosec@$GOSEC_VERSION" "mismatch carries the install fix line"
+	must_mention "nothing was scanned" "mismatch fails fast before the first scan"
+	must_not_mention "== (root)" "mismatch runs zero scans"
+
+	gate_run "unstamped WARN: dev-stamped stub warns and continues" 0 "$dev"
+	must_mention "is UNSTAMPED ('Version: dev')" "unstamped names the provenance gap"
+	must_mention "== (root)" "unstamped gate proceeds to scans"
+	must_mention "ok: Files=" "unstamped scans still parse green"
+
+	gate_run "Files:0 parse: silent-skip summary hard-fails the gate" 1 "$files0"
+	must_mention "scanned 0 files" "Files:0 reports the silent-skip failure"
+
+	gate_run "Issues parse: findings hard-fail the gate" 1 "$findings"
+	must_mention "finding(s)" "Issues>0 reports the new-class failure"
+
+	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses pinned via stub gates)"
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+	self_test
+	exit 0
+fi
+
 GOSEC_BIN="${GOSEC:-}"
 gosec_preexisting=0
 if [ -n "$GOSEC_BIN" ]; then
