@@ -728,9 +728,7 @@ templ retryStrip(trail []retryReason) {
 // the prompt plus the raw payload fold away — readable by default, exact on
 // demand, never lossy.
 templ payloadSection(t task.Task, pv payloadView) {
-	<div class="tq-heading">
-		<span class="tq-label">payload · { string(pv.Kind) }</span>
-	</div>
+	@pageHeading("payload · "+string(pv.Kind), "")
 	<div class="tq-payload">
 		if pv.Lede != "" {
 			if pv.LedeMono {
