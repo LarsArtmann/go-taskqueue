@@ -129,7 +129,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/bridge`                                  | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                                                                                                                                                                                    |
 | `internal/executor`                                | Pluggable execution: `sh`, HTTP, agent (headless AI), review, status, registry                                                                                                                                                                                         |
 | `internal/harvest`                                 | Scans repos' TODO_LIST.md into agent tasks; drift audit (`tq audit`); prune-stale sweeps                                                                                                                                                                               |
-| `internal/budget`                                  | Daily-cap + budget-command projections over the journal, checked before each pool tick; `UsageToday` additionally sums derived session tokens/cost from the day's completion facts (AgentResult + PrioritizeResult share the usage json keys, drift-pinned by budget_test marshalling the real executor types) — surfaced in the Check refusal reason and `tq stats` (`budget.session_usage`), cap SEMANTICS stay task-count pending the owner's token-vs-count ruling |
+| `internal/budget`                                  | Daily-cap + budget-command projections over the journal, checked before each pool tick; `UsageToday` additionally sums derived session tokens/cost from the day's completion facts (AgentResult + PrioritizeResult + ReviewResult share the usage json keys, drift-pinned by budget_test marshalling the real executor types) — surfaced in the Check refusal reason and `tq stats` (`budget.session_usage`), cap SEMANTICS stay task-count pending the owner's token-vs-count ruling |
 | `internal/dlqfix`                                  | DLQ-autopsy sweeper (`--dlq-fix`): dead agent tasks gain ONE autopsy task; `fixed` verdict rescues, `wontfix` dismisses (`Dead → Cancelled` via `DismissDead`)                                                                                                         |
 | `internal/review`                                  | Sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks                                                                                                                                                                                |
 | `internal/status`                                  | Sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)                                                                                                                                                                     |
@@ -246,6 +246,12 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **`review`**: `ReviewPayload` JSON. Both verdicts COMPLETE the task; the
   mechanical gate is a valid verdict JSON recorded via `tq verdict`
   (`TQ_RESULT_FILE` channel; legacy stdout line still honored).
+  Session usage (cost/tokens) is DERIVED for review turns too (2026-09-21,
+  09-52 §f3): `deriveOutcome` fills ReviewResult's Session* fields after the
+  run, same json keys as AgentResult/PrioritizeResult, so reviews join the
+  budget token projection via the shared parse (drift-pinned in
+  budget_test's usage test); reviews make no commits, so only usage is
+  surfaced.
   Findings are commit-anchored (2026-09-15 hardening, the 05-58
   stale-anchor lesson): every `request_changes` finding must carry a
   quoted verbatim `anchor` — bare positions ("lines 12-18", "x.go:34",
