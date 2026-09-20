@@ -31,3 +31,11 @@ ce1a940
 d26252d
 e742fb4
 fddad84
+# Wrong-twin reverts (2026-09-20 shrink pass): daemon-fold/amend-pair commits with no
+# derivable reachable twin — same-subject collisions rejected during the audit.
+dd543ec
+e9ef358
+1537fd2
+c888be6
+4a28269
+5d93115
