@@ -1639,6 +1639,30 @@ func (s *Store) CountFacts(ctx context.Context, ftype journal.FactType, since ti
 	return n, err
 }
 
+// FactsSince returns facts of one type recorded at or after since, in Seq
+// order — the read sibling of CountFacts. Same WHERE shape, so the same
+// scan class the count pushdown already pays per tick.
+func (s *Store) FactsSince(ctx context.Context, ftype journal.FactType, since time.Time, limit int) ([]journal.Fact, error) {
+	query := `
+		SELECT seq, time, task_id, type, owner, attempt, error, detail
+		FROM facts WHERE type = ? AND time >= ? ORDER BY seq ASC`
+	args := []any{ftype, since.UnixMilli()}
+
+	if limit > 0 {
+		query += ` LIMIT ?`
+
+		args = append(args, limit)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanFacts(rows)
+}
+
 // Watermark returns the persisted read cursor for a journal consumer and
 // whether it ever checkpointed — the resume point for bridges and sweepers.
 // seq 0 with exists=true is a valid cursor ("consumed nothing yet").

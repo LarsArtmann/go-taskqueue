@@ -188,6 +188,12 @@ type Store interface {
 	// CountFacts counts facts of one type recorded at or after since —
 	// the SQL pushdown behind spend projections and stats.
 	CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error)
+	// FactsSince returns the facts of one type recorded at or after
+	// since, in Seq order — the read sibling of CountFacts for
+	// projections that must sum over the matching facts' detail (budget
+	// session-usage projection) rather than only count them. limit bounds
+	// the result when > 0; 0 means unbounded.
+	FactsSince(ctx context.Context, ftype journal.FactType, since time.Time, limit int) ([]journal.Fact, error)
 	// StatusCounts counts tasks per status — the GROUP BY behind dashboard
 	// counters: O(statuses) work instead of a full task scan.
 	StatusCounts(ctx context.Context) (map[task.Status]int, error)

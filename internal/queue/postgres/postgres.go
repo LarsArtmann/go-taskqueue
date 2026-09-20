@@ -1548,6 +1548,40 @@ func (s *Store) CountFacts(ctx context.Context, ftype journal.FactType, since ti
 	return n, err
 }
 
+// FactsSince returns facts of one type recorded at or after since, in Seq
+// order — the read sibling of CountFacts, same WHERE shape.
+func (s *Store) FactsSince(ctx context.Context, ftype journal.FactType, since time.Time, limit int) ([]journal.Fact, error) {
+	q := `SELECT seq, time, task_id, type, owner, attempt, error, detail
+	      FROM facts WHERE type = $1 AND time >= $2 ORDER BY seq ASC`
+	args := []any{string(ftype), since.UnixMilli()}
+
+	if limit > 0 {
+		q += ` LIMIT $3`
+
+		args = append(args, limit)
+	}
+
+	rows, err := s.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var out []journal.Fact
+
+	for rows.Next() {
+		f, err := scanFactRow(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, f)
+	}
+
+	return out, rows.Err()
+}
+
 // Watermark returns the persisted read cursor for a journal consumer and
 // whether it ever checkpointed. seq 0 with exists=true is a valid cursor.
 func (s *Store) Watermark(ctx context.Context, consumer string) (int64, bool, error) {
