@@ -21,6 +21,7 @@ func cmdTasks(args []string) error {
 	fs := flag.NewFlagSet("tasks", flag.ExitOnError)
 	project := fs.String("project", "", "filter by project")
 	status := fs.String("status", "", "filter by status (pending|running|completed|dead|cancelled)")
+	band := fs.String("band", "", "filter by priority band (hot|machine|backlog)")
 	taskType := fs.String("type", "", "filter by task type (e.g. agent, sh)")
 	since := fs.Duration("since", 0, "only tasks created within this window (e.g. 6h, 30m; 0 = all time)")
 	parked := fs.Bool("parked", false, "only rate-limit-parked tasks (pending with a future not_before)")
@@ -45,6 +46,23 @@ func cmdTasks(args []string) error {
 	if *status != "" {
 		st := task.Status(*status)
 		filter.Status = &st
+	}
+
+	if *band != "" {
+		b := queue.Band(*band)
+		switch b {
+		case queue.BandHot:
+			hotMin, hotMax := queue.HotMin, queue.HotMax
+			filter.PriorityMin, filter.PriorityMax = &hotMin, &hotMax
+		case queue.BandMachine:
+			machineMin := queue.MachineMin
+			filter.PriorityMin = &machineMin
+		case queue.BandBacklog:
+			backlogMax := queue.BacklogMax
+			filter.PriorityMax = &backlogMax
+		default:
+			return fmt.Errorf("unknown band %q (want hot|machine|backlog)", *band)
+		}
 	}
 
 	if *taskType != "" {
