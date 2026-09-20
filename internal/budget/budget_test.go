@@ -2,6 +2,8 @@ package budget
 
 import (
 	"context"
+	"encoding/json/v2"
+	"strings"
 	"testing"
 	"time"
 
@@ -120,6 +122,90 @@ func TestCheckRefusesAtDailyCap(t *testing.T) {
 
 	if reason == "" {
 		t.Fatal("refusal must carry a human-readable reason")
+	}
+}
+
+// appendCompleted marshals result into a task.completed fact at time at.
+func appendCompleted(t *testing.T, j *journal.MemoryJournal, id string, at time.Time, result any) {
+	t.Helper()
+
+	detail, err := json.Marshal(result)
+	if err != nil {
+		t.Fatalf("marshal result: %v", err)
+	}
+
+	_, _ = j.Append(context.Background(), journal.Fact{TaskID: id, Type: journal.Completed, Time: at, Detail: detail})
+}
+
+// TestUsageTodaySumsDerivedSessionUsage pins the token/cost projection:
+// completion facts carrying derived session usage sum into the day's
+// spend, marshalled through the REAL executor result types so a json key
+// rename in either result type fails here (both directions of drift).
+func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
+	ctx := context.Background()
+	j := journal.NewMemoryJournal()
+
+	// One agent run and one prioritize batch, both derived, both counted.
+	appendCompleted(t, j, "agent-1", time.Now(), executor.AgentResult{
+		SessionID:               "s1",
+		SessionCostUSD:          0.42,
+		SessionPromptTokens:     1200,
+		SessionCompletionTokens: 3400,
+		SessionMessageCount:     9,
+	})
+	appendCompleted(t, j, "prio-1", time.Now(), executor.PrioritizeResult{
+		SessionID:               "s2",
+		SessionCostUSD:          0.08,
+		SessionPromptTokens:     300,
+		SessionCompletionTokens: 700,
+		SessionMessageCount:     4,
+	})
+
+	// sh completion without usage and a detailless one: never counted.
+	appendCompleted(t, j, "sh-1", time.Now(), map[string]int{"exit_code": 0})
+	_, _ = j.Append(ctx, journal.Fact{TaskID: "bare-1", Type: journal.Completed})
+
+	// Yesterday's usage stays out of today's window.
+	appendCompleted(t, j, "old-1", time.Now().Add(-24*time.Hour), executor.AgentResult{
+		SessionCostUSD:      9.99,
+		SessionPromptTokens: 99,
+	})
+
+	got := (Guard{}).UsageToday(ctx, factSource{j})
+	want := SessionUsage{Runs: 2, CostUSD: 0.5, PromptTokens: 1500, CompletionTokens: 4100, Messages: 13}
+	if got != want {
+		t.Fatalf("usage today = %+v, want %+v (non-usage and yesterday's completions excluded)", got, want)
+	}
+}
+
+func TestUsageTodayIgnoresBrokenDetail(t *testing.T) {
+	ctx := context.Background()
+	j := journal.NewMemoryJournal()
+
+	_, _ = j.Append(ctx, journal.Fact{TaskID: "junk", Type: journal.Completed, Detail: []byte(`not json`)})
+	_, _ = j.Append(ctx, journal.Fact{TaskID: "zero", Type: journal.Completed, Detail: []byte(`{"session_prompt_tokens":0}`)})
+
+	if got := (Guard{}).UsageToday(ctx, factSource{j}); got.Runs != 0 {
+		t.Fatalf("broken/zero details must not count as runs, got %+v", got)
+	}
+}
+
+func TestCheckExhaustedReasonCarriesUsage(t *testing.T) {
+	ctx := context.Background()
+	j := journal.NewMemoryJournal()
+
+	_, _ = j.Append(ctx, journal.Fact{TaskID: "t", Type: journal.Enqueued})
+	appendCompleted(t, j, "agent-1", time.Now(), executor.AgentResult{SessionCostUSD: 0.25, SessionPromptTokens: 100})
+
+	ok, reason := (Guard{DailyCap: 1}).Check(ctx, factSource{j})
+	if ok {
+		t.Fatal("at cap must refuse")
+	}
+
+	for _, want := range []string{"1/1", "100 prompt", "$0.2500"} {
+		if !strings.Contains(reason, want) {
+			t.Fatalf("refusal reason %q lost the usage projection (want %q)", reason, want)
+		}
 	}
 }
 

@@ -1681,6 +1681,7 @@ func cmdStats(args []string) error {
 
 	byStatus, byProject := tallyStats(tasks)
 	spent := budget.Guard{DailyCap: *dailyBudget}.SpentToday(ctx, store)
+	usage := (budget.Guard{}).UsageToday(ctx, store)
 
 	// Open sessions: begun and never closed — the crash-recovery count
 	// (03-28 §f9). Read-only observation; closing stays an explicit operator
@@ -1697,6 +1698,17 @@ func cmdStats(args []string) error {
 		return err
 	}
 
+	budgetJSON := budgetView{SpentToday: spent, Cap: *dailyBudget}
+	if usage.Runs > 0 {
+		budgetJSON.SessionUsage = &budgetUsageView{
+			Runs:             usage.Runs,
+			CostUSD:          usage.CostUSD,
+			PromptTokens:     usage.PromptTokens,
+			CompletionTokens: usage.CompletionTokens,
+			Messages:         usage.Messages,
+		}
+	}
+
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
@@ -1704,7 +1716,7 @@ func cmdStats(args []string) error {
 		return enc.Encode(statsPayload{
 			ByStatus:       byStatus,
 			ByProject:      byProject,
-			Budget:         budgetView{SpentToday: spent, Cap: *dailyBudget},
+			Budget:         budgetJSON,
 			Lag:            consumerLag(ctx, store),
 			JournalHead:    head,
 			Parked:         parkedCount,
@@ -1726,7 +1738,7 @@ func cmdStats(args []string) error {
 
 	printSessionVolume(sessionsOpened, sessionsClosed)
 
-	printBudgetSpend(spent, *dailyBudget, *project != "")
+	printBudgetSpend(spent, *dailyBudget, usage, *project != "")
 	printConsumerLag(store)
 
 	return nil
@@ -1747,8 +1759,20 @@ type statsPayload struct {
 }
 
 type budgetView struct {
-	SpentToday int `json:"spent_today"`
-	Cap        int `json:"cap,omitempty"`
+	SpentToday   int              `json:"spent_today"`
+	Cap          int              `json:"cap,omitempty"`
+	SessionUsage *budgetUsageView `json:"session_usage,omitempty"`
+}
+
+// budgetUsageView is the derived session-usage projection (tokens/cost
+// summed from the day's completion facts), omitted while no completion
+// carried usage — same presence convention as open_sessions.
+type budgetUsageView struct {
+	Runs             int     `json:"runs"`
+	CostUSD          float64 `json:"cost_usd"`
+	PromptTokens     int64   `json:"prompt_tokens"`
+	CompletionTokens int64   `json:"completion_tokens"`
+	Messages         int     `json:"messages"`
 }
 
 type consumerLagEntry struct {
@@ -1779,11 +1803,12 @@ func consumerLag(ctx context.Context, store *sqlite.Store) []consumerLagEntry {
 }
 
 // printBudgetSpend surfaces the daily-budget projection in the CLI (the web
-// UI has a budget card; the text output had nothing). Spent counts today'store
-// task.enqueued facts — the same projection the pool'store budget guard uses.
+// UI has a budget card; the text output had nothing). Spent counts today's
+// task.enqueued facts — the same projection the pool's budget guard uses.
 // The count is always journal-wide, so a scoped table labels the line to
-// keep the numbers honest.
-func printBudgetSpend(spent, cap int, scoped bool) {
+// keep the numbers honest. Usage (when any completion carried derived
+// session data) adds the token/cost axis the task count cannot see.
+func printBudgetSpend(spent, cap int, usage budget.SessionUsage, scoped bool) {
 	label := "budget today"
 	if scoped {
 		label = "budget today (all projects)"
@@ -1791,11 +1816,13 @@ func printBudgetSpend(spent, cap int, scoped bool) {
 
 	if cap > 0 {
 		fmt.Printf("\n%s  %d/%d enqueued\n", label, spent, cap)
-
-		return
+	} else {
+		fmt.Printf("\n%s  %d enqueued (pass --daily-budget N to compare against a cap)\n", label, spent)
 	}
 
-	fmt.Printf("\n%s  %d enqueued (pass --daily-budget N to compare against a cap)\n", label, spent)
+	if usage.Runs > 0 {
+		fmt.Printf("  %s\n", usage)
+	}
 }
 
 // printConsumerLag renders the persisted journal-consumer cursors with
