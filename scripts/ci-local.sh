@@ -280,6 +280,9 @@ step "doc-reference check"
 step "dead-sha citation check"
 ./scripts/check-dead-sha-refs.sh
 
+step "dead-sha citation self-test (gate semantics pin)"
+./scripts/check-dead-sha-refs.sh --self-test
+
 # Round-13 T16: RELEASE.md's cited modes/gates/mechanisms pinned to
 # scripts/release.sh reality (06-55 f3/e1 drift class).
 step "release-doc drift check"
