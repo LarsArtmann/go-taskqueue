@@ -32,7 +32,8 @@ record() {
 
 echo "== root" >&2
 record root "$(golangci-lint run ./... 2>&1 || true)"
-for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
+mods="$(scripts/for-each-module.sh)"
+for m in $mods; do
 	echo "== $m" >&2
 	record "$m" "$(cd "$m" && GOWORK=off golangci-lint run ./... 2>&1 || true)"
 done

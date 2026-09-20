@@ -66,7 +66,8 @@ run_module() {
 }
 
 run_module root
-for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
+mods="$(scripts/for-each-module.sh)"
+for m in $mods; do
 	run_module "$m"
 done
 
