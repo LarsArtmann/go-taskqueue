@@ -800,8 +800,10 @@ prose, not the table.
   round-13 T6 ENCODED the triage as excludes 2026-09-12: since 2026-09-19
   the ci.yml gosec job DERIVES pin + excludes from scripts/check-gosec.sh
   via sed (fail-closed on an empty derivation — a bump is one edit there)
-  and `.golangci.yml` gosec.excludes remains the hand-synced scanner-parity
-  copy — post-config scan = 0 findings on every module, so any
+  and `.golangci.yml` gosec.excludes is parity-GATED against the same
+  GOSEC_EXCLUDES by `check-gosec.sh --self-test` (set-compare since
+  2026-09-20; a triage change is one edit in the script — drift fails
+  ci-local) — post-config scan = 0 findings on every module, so any
   future gosec finding is a NEW class needing a fresh triage note, and the
   gate-vs-advisory flip is owner ruling O5; the canonical one-command gate
   entry is `./scripts/check-gosec.sh` — pins the same v2.29.0 + the same
