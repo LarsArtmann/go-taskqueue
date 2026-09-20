@@ -234,7 +234,32 @@ EOF
 		fi
 	fi
 
-	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty, broken, and short module enumeration pinned via stub gates, ci.yml derivation-drift byte-match, .golangci.yml gosec-excludes parity, foreign-CWD re-entry)"
+	# Assertion-liveness negative control, daemon-proof (06-22 §f10):
+	# prove the foreign-CWD assertion can actually FIRE, without mutating
+	# the gated tree — the old control copied the script in-tree with
+	# "$0" restored and trashed it (daemon-food per AGENTS.md). A /tmp
+	# extract of THIS script with the self_abs line sed-reverted to the
+	# raw "$0" (the pre-fix shape) is invoked CWD-relative from the
+	# extract's scripts/ dir; the top-level cd then strands the recursive
+	# child, and the first gate_run reports got rc=127. The extract lives
+	# under $tmp and dies with the EXIT trap.
+	if [ -z "${TQ_GOSEC_SELFTEST_REENTRY:-}" ]; then
+		ctl_dir="$tmp/negctl/scripts"
+		mkdir -p "$ctl_dir"
+		sed 's|^self_abs=.*|self_abs="$0"|' "$self_abs" >"$ctl_dir/check-gosec.sh"
+		chmod +x "$ctl_dir/check-gosec.sh"
+		ctl_rc=0
+		ctl_out="$(cd "$ctl_dir" && TQ_GOSEC_SELFTEST_REENTRY=1 bash ./check-gosec.sh --self-test 2>&1)" || ctl_rc=$?
+		if [ "$ctl_rc" -ne 0 ] && grep -qF 'rc=127' <<<"$ctl_out"; then
+			echo "ok: negative control trips rc=127 on the reverted self_abs extract (assertion is live)"
+		else
+			echo "FAIL: negative control did not trip rc=127 (rc=$ctl_rc) — the foreign-CWD assertion may be dead"
+			printf '%s\n' "$ctl_out"
+			exit 1
+		fi
+	fi
+
+	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty, broken, and short module enumeration pinned via stub gates, ci.yml derivation-drift byte-match, .golangci.yml gosec-excludes parity, foreign-CWD re-entry, daemon-proof rc=127 negative control)"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
