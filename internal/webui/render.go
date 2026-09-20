@@ -223,6 +223,34 @@ type BoardColumn struct {
 	Truncated int
 }
 
+// BoardBandGroup is one priority band's slice of a board column's cards
+// (ADR-0015): the band as the board's secondary grouping under the status
+// lane, newest-first within the band.
+type BoardBandGroup struct {
+	Band  queue.Band
+	Tasks []task.Task
+}
+
+// bandGroups partitions a column's cards into the ADR-0015 bands in claim
+// order (hot, machine, backlog), preserving each band's newest-first order.
+// Bands with no cards are omitted.
+func bandGroups(tasks []task.Task) []BoardBandGroup {
+	order := []queue.Band{queue.BandHot, queue.BandMachine, queue.BandBacklog}
+	groups := make([]BoardBandGroup, 0, len(order))
+	for _, band := range order {
+		g := BoardBandGroup{Band: band}
+		for _, t := range tasks {
+			if queue.BandOf(t.Priority) == band {
+				g.Tasks = append(g.Tasks, t)
+			}
+		}
+		if len(g.Tasks) > 0 {
+			groups = append(groups, g)
+		}
+	}
+	return groups
+}
+
 // DashboardData is the full projection snapshot one burst renders from.
 type DashboardData struct {
 	Counts     map[task.Status]int

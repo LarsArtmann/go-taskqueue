@@ -264,3 +264,50 @@ func TestParseFilterQuery(t *testing.T) {
 		t.Errorf("filterHref round-trip lost query: href %q parsed Query %q", href, got)
 	}
 }
+
+// TestBoardBandGrouping pins the band as the board's secondary grouping
+// (ADR-0015, TODO row "band-grouped columns / band as secondary grouping"):
+// bandGroups partitions a column's cards hot → machine → backlog preserving
+// newest-first order, and the rendered lane shows band labels only when the
+// cards span more than one band.
+func TestBoardBandGrouping(t *testing.T) {
+	hot := task.Task{Priority: 120}
+	machine := task.Task{Priority: 150}
+	backlog := task.Task{Priority: 10}
+
+	groups := bandGroups([]task.Task{backlog, hot, machine})
+	if len(groups) != 3 {
+		t.Fatalf("groups = %d, want 3", len(groups))
+	}
+	for i, want := range []task.Task{hot, machine, backlog} {
+		if len(groups[i].Tasks) != 1 || groups[i].Tasks[0].Priority != want.Priority {
+			t.Errorf("group %d = %+v, want band of priority %d", i, groups[i], want.Priority)
+		}
+	}
+
+	// Single-band columns collapse to one unlabeled list.
+	if groups := bandGroups([]task.Task{backlog}); len(groups) != 1 {
+		t.Errorf("single-band groups = %d, want 1", len(groups))
+	}
+}
+
+func TestBoardRendersBandLabelsWhenMixed(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	ctx := context.Background()
+	for _, pri := range []int{10, 120} {
+		if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "alpha", Payload: json.RawMessage(`"echo hi"`), Priority: pri}); err != nil {
+			t.Fatalf("Enqueue: %v", err)
+		}
+	}
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?view=board", nil))
+
+	body := tableFragment(rec.Body.String())
+
+	// Two bands in the pending lane → both labels appear.
+	if !strings.Contains(body, ">hot</div>") || !strings.Contains(body, ">backlog</div>") {
+		t.Errorf("mixed-band board missing band labels, body: %s", body)
+	}
+}

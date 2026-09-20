@@ -425,7 +425,9 @@ templ Board(data DashboardData) {
 
 // boardColumn is one lifecycle lane: the status-colored top rule, the true
 // count, the newest cards, and an honest "+N older" escape hatch into the
-// status-filtered table view when the column is truncated.
+// status-filtered table view when the column is truncated. Within the lane,
+// the ADR-0015 priority band is the secondary grouping (hot above machine
+// above backlog) whenever the cards span more than one band.
 templ boardColumn(data DashboardData, col BoardColumn) {
 	<li class="w-64 min-w-52 snap-start" data-status={ string(col.Status) } aria-label={ string(col.Status) + " column" }>
 		<div class={ "border-t-2 pt-2 " + statusAccentClass(col.Status) }>
@@ -434,15 +436,7 @@ templ boardColumn(data DashboardData, col BoardColumn) {
 				<span class="font-mono text-xs text-gray-400 dark:text-gray-500">{ formatInt(col.Count) }</span>
 			</div>
 		</div>
-		<ul class="mt-3 space-y-2">
-			if len(col.Tasks) == 0 {
-				<li class="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-center font-mono text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">empty</li>
-			} else {
-				for _, t := range col.Tasks {
-					@boardCard(data, t)
-				}
-			}
-		</ul>
+		@boardColumnGroups(data, col, bandGroups(col.Tasks))
 		if col.Truncated > 0 {
 			<a
 				class="mt-2 inline-block font-mono text-xs text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
@@ -452,7 +446,34 @@ templ boardColumn(data DashboardData, col BoardColumn) {
 	</li>
 }
 
-// boardCard is one task on the board: id + live age, project + type, and
+// boardColumnGroups renders a lane's cards: a single list when the cards sit
+// in one band (labels would be noise), otherwise one labeled band section in
+// claim order.
+templ boardColumnGroups(data DashboardData, col BoardColumn, groups []BoardBandGroup) {
+	if len(groups) <= 1 {
+		<ul class="mt-3 space-y-2">
+			if len(col.Tasks) == 0 {
+				<li class="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-center font-mono text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">empty</li>
+			} else {
+				for _, t := range col.Tasks {
+					@boardCard(data, t)
+				}
+			}
+		</ul>
+	} else {
+		for _, g := range groups {
+			<div class="mt-3">
+				<div class="tq-label">{ string(g.Band) }</div>
+				<ul class="mt-1 space-y-2">
+					for _, t := range g.Tasks {
+						@boardCard(data, t)
+					}
+				</ul>
+			</div>
+		}
+	}
+}
+
 // the status-relevant detail — readiness countdown while pending, lease
 // owner while running, attempts + error tail once dead.
 templ boardCard(data DashboardData, t task.Task) {
