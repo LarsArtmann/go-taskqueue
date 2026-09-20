@@ -494,7 +494,11 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **Claims carry citations** (2026-09-12): DONE notes, close-outs, and
   verify-then-close annotations cite the gate run or commit SHA they rest
   on — an uncited claim is a hypothesis; a stale-DONE row is closed only
-  with commit + gate evidence, never memory. Filter-scope/behavior claims
+  with commit + gate evidence, never memory. The citation may only be
+  WRITTEN after the cited gate's output is in hand — never cite a gate
+  that is still running (the 2026-09-12 02-38 window claimed "real gate
+  re-run green" for a background gate whose exit code had not been
+  captured). Filter-scope/behavior claims
   (what a view, filter, or code path displays/restricts) additionally cite
   file:line or a pinning test name in reports and handoffs — a confident
   wrong scope claim burned the 2026-09-12 01-47 §d3 budget-display answer
