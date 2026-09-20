@@ -274,6 +274,12 @@ step "version-agreement gate"
 step "doc-reference check"
 ./scripts/check-doc-refs.sh
 
+# Dead-SHA citation gate (task 000001a0bcc86662ffff2bfdefc2ec7ee49f):
+# a real-but-unreachable commit SHA cited in the living docs fails the gate
+# unless baselined (scripts/dead-sha-baseline.txt) or recorded as old→new.
+step "dead-sha citation check"
+./scripts/check-dead-sha-refs.sh
+
 # Round-13 T16: RELEASE.md's cited modes/gates/mechanisms pinned to
 # scripts/release.sh reality (06-55 f3/e1 drift class).
 step "release-doc drift check"
