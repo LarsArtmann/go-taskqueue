@@ -886,7 +886,7 @@ prose, not the table.
   Also: golangci's embedded golines diverges from a standalone
   `/home/lars/go/bin/golines` (different version) — always finish
   formatting with `golangci-lint fmt` for byte-parity with the linter.
-- ⚠️ **Session-start ritual**: run `git log --oneline -5` over the WHOLE
+- ⚠️ **Session-start ritual**: run `scripts/session-start.sh [<task-id>…]` (covers all steps below; 000001a0bd48), then: run `git log --oneline -5` over the WHOLE
   repo (not just `-- internal` — concurrent work lands in cmd/, scripts/,
   and docs/ too) plus `git status` and `git stash list` before editing —
   concurrent agents land real changes mid-flight (worker's go-retry
