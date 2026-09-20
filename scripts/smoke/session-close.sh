@@ -133,4 +133,53 @@ grep -q "no session id" "$TMP/noid.err" || {
 	exit 1
 }
 
+echo "== tq crush, committed path: stub child commits with a footer, prints its session id; wrapper scans it, closes, mints review + status, passes the exit through"
+WWRAP_SID="wrapsession0001"
+WRAP_DB="$TMP/wrap.db"
+cat >"$TMP/wrap-stub" <<EOF
+#!/bin/sh
+printf 'wrapper work\n' >"$REPO/wrap.txt"
+git -C "$REPO" add -A
+git -C "$REPO" commit -qm "wrapped session work
+
+Crush-Session: $WWRAP_SID"
+echo "session_id: $WWRAP_SID"
+exit 5
+EOF
+chmod +x "$TMP/wrap-stub"
+WRAP_CODE=0
+"$TQ" crush --bin "$TMP/wrap-stub" --repo "$REPO" --project smokerepo --db "$WRAP_DB" \
+	>"$TMP/wrap.out" 2>"$TMP/wrap.err" || WRAP_CODE=$?
+[ "$WRAP_CODE" -eq 5 ] || {
+	echo "FAIL: wrapper exit code $WRAP_CODE, want the child's 5"
+	exit 1
+}
+grep -q "session_id: $WWRAP_SID" "$TMP/wrap.out" || {
+	echo "FAIL: child stdout not forwarded live"
+	exit 1
+}
+grep -q "1 attributed commit" "$TMP/wrap.out" || {
+	echo "FAIL: wrapper did not attribute the footer commit (id scan)"
+	exit 1
+}
+grep -q "review task .* enqueued" "$TMP/wrap.out" || {
+	echo "FAIL: wrapper did not mint a review task"
+	exit 1
+}
+grep -q "status task .* enqueued" "$TMP/wrap.out" || {
+	echo "FAIL: wrapper did not mint a status task"
+	exit 1
+}
+TQ_DB="$WRAP_DB" "$TQ" facts >"$TMP/wrap-facts.out"
+[ "$(grep -c 'session.closed' "$TMP/wrap-facts.out")" -eq 1 ] || {
+	echo "FAIL: want exactly 1 session.closed fact from the wrapper close"
+	exit 1
+}
+for t in review status; do
+	[ "$(TQ_DB="$WRAP_DB" "$TQ" tasks --type "$t" --json | grep -c '"id":')" -eq 1 ] || {
+		echo "FAIL: want exactly 1 $t task from the wrapper close"
+		exit 1
+	}
+done
+
 echo "== session-close smoke passed"
