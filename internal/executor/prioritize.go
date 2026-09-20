@@ -86,7 +86,15 @@ type PrioritizeVerdict struct {
 type PrioritizeResult struct {
 	Verdicts  []PrioritizeVerdict `json:"verdicts"`
 	SessionID string              `json:"session_id,omitempty"`
-	LogPath   string              `json:"log_path,omitempty"`
+	// Session usage, derived from the local crush data (go-crush-data) when
+	// the run's session id was extractable — makes one-batch scorer cost
+	// measurable from the journal (post-pilot calibration). Same sink
+	// convention as AgentResult.
+	SessionCostUSD          float64 `json:"session_cost_usd,omitempty"`
+	SessionPromptTokens     int64   `json:"session_prompt_tokens,omitempty"`
+	SessionCompletionTokens int64   `json:"session_completion_tokens,omitempty"`
+	SessionMessageCount     int     `json:"session_message_count,omitempty"`
+	LogPath                 string  `json:"log_path,omitempty"`
 }
 
 // defaultPrioritizeTaskTimeout bounds one batch unless overridden.
@@ -167,6 +175,16 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.SessionID = ExtractSessionID(output)
+
+	// Session usage derivation (best-effort, same as agent runs): the
+	// scorer's token/cost spend feeds the post-pilot calibration. A missing
+	// session id or unreadable crush data leaves the fields zero.
+	derived := deriveOutcome(ctx, repoDir, result.SessionID, t.ID)
+	result.SessionCostUSD = derived.SessionCostUSD
+	result.SessionPromptTokens = derived.SessionPromptTokens
+	result.SessionCompletionTokens = derived.SessionCompletionTokens
+	result.SessionMessageCount = derived.SessionMessageCount
+
 	result.LogPath = writeOutputSidecar(t.ID, output, "")
 
 	detail, _ := json.Marshal(result)
