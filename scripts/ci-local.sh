@@ -300,6 +300,13 @@ step "status-index self-test (live-row counter pin)"
 step "guard-wiring check (no orphaned check-*/smoke scripts)"
 ./scripts/check-guard-wiring.sh
 
+# Module-loop capture audit: every `for m in $mods` loop in this file and
+# ci.yml must be fed by the for-each-module.sh enumeration — a revert to
+# word-position substitution would silently drop new sub-modules from the
+# gates (TODO_LIST 2026-09-19 07:00 verify window row).
+step "module-loop capture check (for-each-module feed)"
+./scripts/check-module-loop-capture.sh
+
 step "asset-archive ghost check"
 ./scripts/check-ghost-archives.sh
 
