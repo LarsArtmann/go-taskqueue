@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+### Added
+- **Board band grouping**: the web UI board's status lanes now group their
+  cards by the ADR-0015 priority band (hot → machine → backlog) as a
+  secondary grouping whenever the cards span more than one band, with a
+  `tq-label` band heading per group; single-band lanes render as one
+  unlabeled list as before. (`internal/webui/fragments.templ`,
+  `internal/webui/render.go`)
+
 ## [v0.3.1] - 2026-09-18
 ### Fixed
 - **`/health` stat card rendered "Version unknown" forever** — the
