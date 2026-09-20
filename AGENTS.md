@@ -503,6 +503,14 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   file:line or a pinning test name in reports and handoffs — a confident
   wrong scope claim burned the 2026-09-12 01-47 §d3 budget-display answer
   (source: docs/status/2026-09-12_01-47_per-project-ui-question.md)
+- **Verify-window minimum battery**: a verify-only re-dispatch window must
+  re-run the CHEAP gates itself at HEAD (check-doc-refs.sh + root build+vet
+  under GOEXPERIMENT=jsonv2 — seconds each) and produce at least ONE fresh
+  delta or state explicitly why none exists; expensive gates (race suite,
+  nix) may be inherited only from a same-HEAD prior report (03-27 §e2 set
+  the bar; the 03-39 window regressed by citing inherited gate runs in its
+  stop verdict — promotion of the TODO row after a second confirming
+  window, 2026-09-20)
 - Pure-Go deps only (`CGO_ENABLED=0` valid); Go 1.26 idioms are deliberate
   (`errors.AsType[E]`, `strings.SplitSeq`, `for range n`) — do not
   "modernize" them back
