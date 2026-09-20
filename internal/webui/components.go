@@ -184,6 +184,74 @@ func detailItems(t task.Task, now time.Time, nonce string) []display.DefinitionI
 	return items
 }
 
+// provenanceItems builds the priority provenance section's definition rows:
+// current + band, harvest item identity, cached AI verdict, and one row per
+// reprioritization fact.
+func provenanceItems(v priorityProvenanceView, nonce string) []display.DefinitionItem {
+	items := []display.DefinitionItem{
+		{Term: "current", Detail: formatInt(v.Current) + " (" + v.Band + ")"},
+	}
+
+	if v.hasItem() {
+		items = append(items,
+			display.DefinitionItem{Term: "item key", Detail: v.ItemKey},
+			display.DefinitionItem{Term: "marker", Detail: markerText(v.MarkerLevel)},
+		)
+	}
+
+	if v.Score != nil {
+		items = append(items, display.DefinitionItem{
+			Term: "ai verdict",
+			Detail: fmt.Sprintf(
+				"score %d · %s · %s",
+				v.Score.Score,
+				v.Score.Source,
+				v.Score.Reasoning,
+			),
+		})
+	}
+
+	if len(v.History) == 0 {
+		items = append(items, display.DefinitionItem{Term: "repri history", Detail: "none recorded"})
+
+		return items
+	}
+
+	for _, ev := range v.History {
+		items = append(items, display.DefinitionItem{
+			Term:            "repri " + ev.At.Format("01-02 15:04"),
+			DetailComponent: repriEventComponent(ev, nonce),
+		})
+	}
+
+	return items
+}
+
+// markerText is the human text of a harvest-time marker level (0 = none).
+func markerText(level int) string {
+	if level == 0 {
+		return "none"
+	}
+
+	return "P" + formatInt(level)
+}
+
+// repriEventComponent renders one reprioritization as old → new with the
+// deciding source and reason.
+func repriEventComponent(ev repriEventView, nonce string) templ.Component {
+	text := fmt.Sprintf("%d → %d · %s", ev.Old, ev.New, ev.Source)
+
+	if ev.Reason != "" {
+		text += ": " + ev.Reason
+	}
+
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		_, err := fmt.Fprint(w, templ.KV{}.String())
+
+		return err
+	})
+}
+
 // relativeTimeComponent renders a timestamp as the library's <time> element:
 // server-rendered relative text, machine-readable datetime attribute, and
 // (nonce permitting) live self-refresh every 30s. Returning the library's

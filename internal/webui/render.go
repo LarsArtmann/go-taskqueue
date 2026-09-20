@@ -14,6 +14,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/session"
@@ -40,9 +41,74 @@ type journalFactView = journal.Fact
 
 // taskDetailData carries everything the per-task page renders.
 type taskDetailData struct {
-	Task  task.Task
-	Facts []journalFactView
-	ID    string
+	Task       task.Task
+	Facts      []journalFactView
+	ID         string
+	Provenance priorityProvenanceView
+}
+
+// repriEventView is one distilled task.reprioritized fact for the detail
+// page's priority provenance section.
+type repriEventView struct {
+	At     time.Time
+	Old    int
+	New    int
+	Source string
+	Reason string
+}
+
+// priorityProvenanceView is the web projection of a task's priority story
+// (ADR-0015), mirroring `tq show`'s buildPriorityProvenance: current value
+// and band, the harvested item identity plus its cached AI verdict, and the
+// reprioritization history from the fact trail.
+type priorityProvenanceView struct {
+	Current     int
+	Band        string
+	ItemKey     string
+	MarkerLevel int
+	Score       *queue.PriorityScore
+	History     []repriEventView
+}
+
+// hasItem reports whether the task is a harvest-minted task with an item
+// identity (item key + marker level rows render).
+func (v priorityProvenanceView) hasItem() bool { return v.ItemKey != "" }
+
+// priorityProvenanceFor reads a task's priority story off the store and its
+// fact trail. Best-effort by design: a score-cache or evidence-parse miss
+// simply omits the row rather than failing the page.
+func (s *Server) priorityProvenanceFor(ctx context.Context, t task.Task, facts []journal.Fact) priorityProvenanceView {
+	view := priorityProvenanceView{Current: t.Priority, Band: string(queue.BandOf(t.Priority))}
+
+	if item, ok := harvest.PayloadItemOf(t); ok {
+		view.ItemKey = item.Key
+		view.MarkerLevel = item.MarkerLevel
+
+		if score, cached, err := s.store.PriorityScore(ctx, item.Key); err == nil && cached {
+			view.Score = &score
+		}
+	}
+
+	for _, fact := range facts {
+		if fact.Type != journal.Reprioritized {
+			continue
+		}
+
+		var evidence queue.ReprioritizeEvidence
+		if err := json.Unmarshal(fact.Detail, &evidence); err != nil {
+			continue
+		}
+
+		view.History = append(view.History, repriEventView{
+			At:     fact.Time,
+			Old:    evidence.OldPriority,
+			New:    evidence.NewPriority,
+			Source: evidence.Source,
+			Reason: evidence.Reason,
+		})
+	}
+
+	return view
 }
 
 // ProjectSummary aggregates one project's live counts for the overview

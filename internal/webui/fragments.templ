@@ -560,7 +560,7 @@ templ filterChip(kind, value, clearHref string) {
 // payload section sits BETWEEN them, deliberately static: a payload is
 // immutable after enqueue, so an open prompt or raw pane survives every
 // live swap, and the SSE stream only re-renders what can actually change.
-templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
+templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView, prov priorityProvenanceView) {
 	<div class="mx-auto w-full max-w-4xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
 		<a
 			class="font-mono text-xs uppercase tracking-[0.18em] text-gray-500 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400"
@@ -570,6 +570,7 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView) {
 			@taskDetailCard(data, t)
 		</div>
 		@payloadSection(t, payloadViewFor(t))
+		@priorityProvenanceSection(prov)
 		<div class="tq-heading">
 			<span class="tq-label">fact timeline</span>
 		</div>
@@ -680,6 +681,17 @@ templ statusReportCard(res executor.StatusResult) {
 		if res.LogPath != "" {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
 		}
+	}
+}
+
+// priorityProvenanceSection is the task's priority story (ADR-0015): the
+// current value and its band, the harvested item identity plus the cached
+// AI verdict, and the reprioritization history distilled from the fact
+// trail — the same story `tq show` tells, on the operator's page.
+templ priorityProvenanceSection(v priorityProvenanceView) {
+	@pageHeading("priority provenance", "")
+	@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
+		@display.DefinitionList(display.DefinitionListProps{Items: provenanceItems(v, ctxNonce(ctx))})
 	}
 }
 

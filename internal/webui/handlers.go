@@ -247,7 +247,12 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	if err := TaskDetailPage(data, taskDetailData{Task: t, Facts: facts, ID: id}).Render(r.Context(), w); err != nil {
+	if err := TaskDetailPage(data, taskDetailData{
+		Task:       t,
+		Facts:      facts,
+		ID:         id,
+		Provenance: s.priorityProvenanceFor(r.Context(), t, facts),
+	}).Render(r.Context(), w); err != nil {
 		slog.Error("webui: render detail", "err", err)
 	}
 }
