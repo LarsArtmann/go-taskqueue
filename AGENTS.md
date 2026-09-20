@@ -70,7 +70,10 @@ Internal requires point at real tagged versions (never `v0.0.0` —
 `go install` resolves them via the proxy; `internal/*/vX.Y.Z` subdirectory
 tags ride every release) + relative `replace` for local dev (NO go.work —
 replace-only by decision); `go test ./internal/foo` from root FAILS by design
-(cd into the module instead). Release flow and version surfaces are
+(cd into the module instead — and a from-root directory pattern can even
+silently PASS via the root's require+replace while a sibling fails setup in
+the same invocation, 2026-09-21 00-39: budget ok / sqlite setup-failed; the
+in-module GOWORK=off run is the only canonical gate). Release flow and version surfaces are
 documented in `docs/release/RELEASE.md` (two-phase --tag/--push, sub-tag
 cutting, allowlist gates) and `docs/release/VERSION-SURFACES.md` (the seven
 surfaces and their bump order).
