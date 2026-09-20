@@ -94,7 +94,7 @@ templ Page(data DashboardData) {
 templ TaskDetailPage(data DashboardData, detail taskDetailData) {
 	@layout.Base(dashboardProps(detailPageTitle(detail.ID), ctxNonce(ctx))) {
 		@pageHeader()
-		@TaskDetail(data, detail.Task, detail.Facts)
+		@TaskDetail(data, detail.Task, detail.Facts, detail.Provenance)
 	}
 }
 

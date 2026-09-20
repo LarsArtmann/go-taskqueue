@@ -691,7 +691,7 @@ templ statusReportCard(res executor.StatusResult) {
 templ priorityProvenanceSection(v priorityProvenanceView) {
 	@pageHeading("priority provenance", "")
 	@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
-		@display.DefinitionList(display.DefinitionListProps{Items: provenanceItems(v, ctxNonce(ctx))})
+		@display.DefinitionList(display.DefinitionListProps{Items: provenanceItems(v)})
 	}
 }
 

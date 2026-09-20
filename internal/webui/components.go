@@ -187,7 +187,7 @@ func detailItems(t task.Task, now time.Time, nonce string) []display.DefinitionI
 // provenanceItems builds the priority provenance section's definition rows:
 // current + band, harvest item identity, cached AI verdict, and one row per
 // reprioritization fact.
-func provenanceItems(v priorityProvenanceView, nonce string) []display.DefinitionItem {
+func provenanceItems(v priorityProvenanceView) []display.DefinitionItem {
 	items := []display.DefinitionItem{
 		{Term: "current", Detail: formatInt(v.Current) + " (" + v.Band + ")"},
 	}
@@ -218,9 +218,15 @@ func provenanceItems(v priorityProvenanceView, nonce string) []display.Definitio
 	}
 
 	for _, ev := range v.History {
+		detail := fmt.Sprintf("%d → %d · %s", ev.Old, ev.New, ev.Source)
+
+		if ev.Reason != "" {
+			detail += ": " + ev.Reason
+		}
+
 		items = append(items, display.DefinitionItem{
-			Term:            "repri " + ev.At.Format("01-02 15:04"),
-			DetailComponent: repriEventComponent(ev, nonce),
+			Term:   "repri " + ev.At.Format("01-02 15:04"),
+			Detail: detail,
 		})
 	}
 
@@ -234,22 +240,6 @@ func markerText(level int) string {
 	}
 
 	return "P" + formatInt(level)
-}
-
-// repriEventComponent renders one reprioritization as old → new with the
-// deciding source and reason.
-func repriEventComponent(ev repriEventView, nonce string) templ.Component {
-	text := fmt.Sprintf("%d → %d · %s", ev.Old, ev.New, ev.Source)
-
-	if ev.Reason != "" {
-		text += ": " + ev.Reason
-	}
-
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		_, err := fmt.Fprint(w, templ.KV{}.String())
-
-		return err
-	})
 }
 
 // relativeTimeComponent renders a timestamp as the library's <time> element:
