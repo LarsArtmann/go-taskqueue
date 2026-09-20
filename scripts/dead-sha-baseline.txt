@@ -3,12 +3,53 @@
 # unreachable from HEAD — residue of the sanctioned history rewrites
 # (2026-09-10 msg-filter heal, 2026-09-19 0-target footer heal).
 # Shrink pass (2026-09-20, task 000001a0bce3dd86f7ddbc604c21b4b66781):
-# 220/242 re-resolved to reachable twins (subject+date / tree+date /
-# squash-descendant matching) and their living-doc citations repointed;
-# the 22 SHAs below are squashed-away daemon/rebase intermediates from
-# abandoned lineages — NO reachable twin exists, so their citations are
-# inherently unresolvable. Do not gc them away without accepting the
-# citation loss; shrink is advisory-only per the gate.
+# 220/242 re-resolved to reachable twins and repointed; the residue below is
+# the FINAL positional-mapping verdict (2026-09-20, task
+# 000001a0bd2d1b8972f150b0e7d530c78931, done while refs/original +
+# reflog still held the old lineages): every remaining SHA was checked by
+# exact patch-id match over HEAD (content-identity, immune to subject
+# collisions) and by positional anchoring (reachable parent / refs/original
+# ancestry). Verdict classes:
+#   RESOLVED  — exact patch-id twin on HEAD identified; the citations in
+#               docs deliberately DESCRIBE the dead side (daemon-fold /
+#               fork forensics), so they stay; row kept only to silence the
+#               gate until the refs/original drop lands.
+#   LOST      — squashed-away daemon/rebase intermediate from an abandoned
+#               lineage: no patch-id twin, no tree twin (checked); content
+#               absorbed across multiple surviving commits, absorber not
+#               derivable. Citation loss ACCEPTED — drop all rows when the
+#               refs/original drop lands (existing TODO row).
+#
+# RESOLVED (fork-forensics prose; reachable twins):
+#   dd543ec -> d035911 (msg-filter heal; the AGENTS.md fork-note pair)
+#   e9ef358 -> ca514a8 (msg-filter heal; the AGENTS.md fork-note pair)
+#   5d93115 -> d035911 (same patch-id as dd543ec; daemon fold amended into it)
+#   1537fd2 -> 9aaa7fc (same patch-id; fold absorbed)
+#   c888be6 -> 9aaa7fc (same patch-id; fold absorbed)
+#   4a28269 -> e2e3f2e (same patch-id; fold absorbed)
+# LOST (squashed-away intermediates; reachable parent where one exists):
+#   0ac7088, 102daea (chained: e394da3 lineage, parents dangling)
+#   0b8d9d6 (parent 433624b dangling)
+#   1b4a6c8 (parent 9bd565d reachable; content absorbed beyond it)
+#   1d925e5 (parent bc99b2e dangling)
+#   1f02e92 (parent 0042ce7 reachable, in refs/original lineage)
+#   227e2d8 (parent 0f448d3 dangling)
+#   2f91e01 (parent fce5454 reachable)
+#   32415f8 (parent 9419075 reachable)
+#   3a394f0 -> 8759e6d (same patch-id; amend-forensics prose)
+#   4ad6960 (parent f5433bd reachable)
+#   4d7605c -> d7a0f2e (same patch-id; amend-forensics prose)
+#   507de74 (parent c9aa941 reachable)
+#   88d9b10 (parent 45b99a8 reachable)
+#   8ef1330 -> 4ba81d8 (same patch-id; amend-forensics prose)
+#   a1a3fe6 -> 0369e09 (same patch-id; amend-forensics prose)
+#   b58eb01, be10f18 (parents 3c9afe2 / b5d4803 dangling)
+#   ce1a940 (parent f5a2839 reachable)
+#   d26252d -> d6f5ad0 (same patch-id; amend-forensics prose)
+#   e742fb4 (parent 38a1a8a reachable)
+#   fddad84 (parent 1c8daa1 reachable)
+# Do not gc refs/original or the reflog before accepting the LOST verdicts
+# and dropping these rows; shrink is advisory-only per the gate.
 0ac7088
 0b8d9d6
 102daea
@@ -31,11 +72,15 @@ ce1a940
 d26252d
 e742fb4
 fddad84
-# Wrong-twin reverts (2026-09-20 shrink pass): daemon-fold/amend-pair commits with no
-# derivable reachable twin — same-subject collisions rejected during the audit.
+# Fork-note prose + wrong-twin folds — RESOLVED twins above (kept until the
+# refs/original drop lands):
 dd543ec
 e9ef358
 1537fd2
 c888be6
 4a28269
 5d93115
+# New residue of the same daemon-amend class (found by this task's final
+# gate run, 2026-09-20): fold amended into 4172f1e (exact patch-id match);
+# citations describe the dead side, kept per the RESOLVED class.
+78e2768
