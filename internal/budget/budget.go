@@ -6,6 +6,7 @@ package budget
 
 import (
 	"context"
+	"encoding/json/v2"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -19,6 +20,7 @@ import (
 type FactSource interface {
 	Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error)
 	CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error)
+	FactsSince(ctx context.Context, ftype journal.FactType, since time.Time, limit int) ([]journal.Fact, error)
 }
 
 // Guard gates how much agent work a pool may start. Zero-value Guard
@@ -60,7 +62,12 @@ func (g Guard) Check(ctx context.Context, src FactSource) (bool, string) {
 
 	if g.DailyCap > 0 {
 		if spent := g.SpentToday(ctx, src); spent >= g.DailyCap {
-			return false, fmt.Sprintf("daily budget exhausted: %d/%d tasks enqueued today", spent, g.DailyCap)
+			reason := fmt.Sprintf("daily budget exhausted: %d/%d tasks enqueued today", spent, g.DailyCap)
+			if usage := g.UsageToday(ctx, src); usage.Runs > 0 {
+				reason += "; " + usage.String()
+			}
+
+			return false, reason
 		}
 	}
 
@@ -81,6 +88,74 @@ func (g Guard) spentSince(ctx context.Context, src FactSource, since time.Time) 
 	}
 
 	return int(n)
+}
+
+// SessionUsage is the derived agent-spend projection: tokens and cost
+// summed from the day's task.completed facts whose result detail carries
+// derived session usage. AgentResult (agent runs) and PrioritizeResult
+// (batch scorer runs) share the same json keys, so one parse covers both;
+// completion facts without usage (sh tasks, records from before the
+// derivation shipped) contribute nothing.
+type SessionUsage struct {
+	// Runs counts completion facts that carried derived session usage —
+	// the derivable subset of today's completions, not every task.
+	Runs             int
+	CostUSD          float64
+	PromptTokens     int64
+	CompletionTokens int64
+	Messages         int
+}
+
+func (u SessionUsage) String() string {
+	return fmt.Sprintf("%d derived runs: %d prompt + %d completion tokens, $%.4f session cost",
+		u.Runs, u.PromptTokens, u.CompletionTokens, u.CostUSD)
+}
+
+// sessionUsageDetail is the usage-carrying projection of a completion
+// fact's result detail. The json keys are owned by the executor result
+// types; budget_test marshals the REAL AgentResult and PrioritizeResult
+// so a key rename in either fails this projection's suite.
+type sessionUsageDetail struct {
+	CostUSD          float64 `json:"session_cost_usd"`
+	PromptTokens     int64   `json:"session_prompt_tokens"`
+	CompletionTokens int64   `json:"session_completion_tokens"`
+	Messages         int     `json:"session_message_count"`
+}
+
+// UsageToday sums today's derived session usage from completion facts —
+// spend measured in tokens and cost, the axis the enqueue count cannot
+// see. Fail-open like the count projection: a journal error reads as zero
+// usage, never blocks the pool.
+func (g Guard) UsageToday(ctx context.Context, src FactSource) SessionUsage {
+	return g.usageSince(ctx, src, startOfDay(g.now()))
+}
+
+func (g Guard) usageSince(ctx context.Context, src FactSource, since time.Time) SessionUsage {
+	facts, err := src.FactsSince(ctx, journal.Completed, since, 0)
+	if err != nil {
+		return SessionUsage{} // fail open: the queue keeps working if the journal errors
+	}
+
+	var usage SessionUsage
+
+	for _, f := range facts {
+		var d sessionUsageDetail
+		if err := json.Unmarshal(f.Detail, &d); err != nil {
+			continue // non-JSON or empty detail: not a usage-carrying result
+		}
+
+		if d.PromptTokens == 0 && d.CompletionTokens == 0 && d.CostUSD == 0 {
+			continue
+		}
+
+		usage.Runs++
+		usage.CostUSD += d.CostUSD
+		usage.PromptTokens += d.PromptTokens
+		usage.CompletionTokens += d.CompletionTokens
+		usage.Messages += d.Messages
+	}
+
+	return usage
 }
 
 func startOfDay(t time.Time) time.Time {

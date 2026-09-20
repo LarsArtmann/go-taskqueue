@@ -899,6 +899,45 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 
+	t.Run("FactsSince (type + time pushdown)", func(t *testing.T) {
+		now := time.Now()
+
+		if err := s.AppendFact(ctx, journal.Fact{
+			TaskID: "facts-since-old",
+			Type:   journal.Completed,
+			Time:   now.Add(-26 * time.Hour),
+		}); err != nil {
+			t.Fatalf("AppendFact(old): %v", err)
+		}
+
+		if err := s.AppendFact(ctx, journal.Fact{
+			TaskID: "facts-since-new",
+			Type:   journal.Completed,
+			Time:   now.Add(-time.Hour),
+			Detail: []byte(`{"session_cost_usd":0.01,"session_prompt_tokens":10}`),
+		}); err != nil {
+			t.Fatalf("AppendFact(new): %v", err)
+		}
+
+		facts, err := s.FactsSince(ctx, journal.Completed, now.Add(-2*time.Hour), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(facts) != 1 || facts[0].TaskID != "facts-since-new" {
+			t.Fatalf("FactsSince window = %+v, want only facts-since-new (yesterday's excluded)", facts)
+		}
+
+		limited, err := s.FactsSince(ctx, journal.Completed, now.Add(-48*time.Hour), 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(limited) != 1 || limited[0].TaskID != "facts-since-old" {
+			t.Fatalf("bounded FactsSince = %+v, want the OLDEST match in Seq order", limited)
+		}
+	})
+
 	t.Run("watermark roundtrip is monotonic", func(t *testing.T) {
 		consumer := "conformance-wm-" + project
 

@@ -1742,6 +1742,75 @@ func TestCountFactsByTypeSince(t *testing.T) {
 	}
 }
 
+func TestFactsSinceByType(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := openTestStore(t)
+	seedFacts(ctx, t, s, 2)
+
+	now := time.Now()
+
+	completed := []journal.Fact{
+		{
+			TaskID: "t1",
+			Type:   journal.Completed,
+			Time:   now.Add(-2 * time.Hour),
+			Detail: jsontext.Value(`{"session_cost_usd":0.01,"session_prompt_tokens":10}`),
+		},
+		{TaskID: "t2", Type: journal.Completed, Time: now.Add(-time.Hour)},
+		{TaskID: "t3", Type: journal.Completed, Time: now.Add(-26 * time.Hour)},
+	}
+
+	for _, f := range completed {
+		if err := s.AppendFact(ctx, f); err != nil {
+			t.Fatalf("AppendFact(%s): %v", f.TaskID, err)
+		}
+	}
+
+	got, err := s.FactsSince(ctx, journal.Completed, now.Add(-3*time.Hour), 0)
+	if err != nil {
+		t.Fatalf("FactsSince: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("completed since -3h = %d facts, want 2 (yesterday's excluded)", len(got))
+	}
+
+	for _, f := range got {
+		if f.Type != journal.Completed {
+			t.Fatalf("type filter leaked a %s fact", f.Type)
+		}
+	}
+
+	got, err = s.FactsSince(ctx, journal.Completed, now.Add(-90*time.Minute), 0)
+	if err != nil {
+		t.Fatalf("FactsSince(narrow): %v", err)
+	}
+
+	if len(got) != 1 || got[0].TaskID != "t2" {
+		t.Fatalf("time lower bound wrong: %+v, want only t2", got)
+	}
+
+	got, err = s.FactsSince(ctx, journal.Enqueued, time.Time{}, 0)
+	if err != nil {
+		t.Fatalf("FactsSince(enqueued): %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("enqueued = %d facts, want 2", len(got))
+	}
+
+	got, err = s.FactsSince(ctx, journal.Completed, time.Time{}, 1)
+	if err != nil {
+		t.Fatalf("FactsSince(limited): %v", err)
+	}
+
+	if len(got) != 1 || got[0].TaskID != "t1" {
+		t.Fatalf("limit must keep the OLDEST matches in Seq order: %+v, want only t1", got)
+	}
+}
+
 func TestListQueryPushdown(t *testing.T) {
 	t.Parallel()
 

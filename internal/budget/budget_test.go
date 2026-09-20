@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 )
 
@@ -40,6 +41,27 @@ func (m factSource) Facts(ctx context.Context, after int64, limit int) ([]journa
 	}
 
 	return facts, err
+}
+
+func (m factSource) FactsSince(ctx context.Context, ftype journal.FactType, since time.Time, limit int) ([]journal.Fact, error) {
+	all, err := m.j.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []journal.Fact
+
+	for _, f := range all {
+		if f.Type == ftype && !f.Time.Before(since) {
+			out = append(out, f)
+		}
+	}
+
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+
+	return out, nil
 }
 
 func (m factSource) CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error) {
