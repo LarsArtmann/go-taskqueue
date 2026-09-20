@@ -94,6 +94,98 @@ func TestStatsJSONParkedContract(t *testing.T) {
 	}
 }
 
+// TestStatsJSONSessionUsageContract pins the budget token/cost projection
+// surface (09-52 f1): `tq stats --json` carries the derived session usage
+// under `budget.session_usage` only while some completion fact carried
+// usage (omitempty via the nil pointer), and the human output names the
+// line alongside the enqueued count.
+func TestStatsJSONSessionUsageContract(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "stats-usage.db")
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	out := captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path, "--json"}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("stats payload not JSON: %v (%s)", err, out)
+	}
+
+	budget, _ := payload["budget"].(map[string]any)
+	if budget == nil {
+		t.Fatalf("bare store lost the budget object: %s", out)
+	}
+
+	if _, ok := budget["session_usage"]; ok {
+		t.Errorf("bare store carried a budget.session_usage key: %s", out)
+	}
+
+	// One completed agent task with derived usage: the projection appears
+	// with the exact sums.
+	tk, err := s.Enqueue(ctx, task.New{Type: "agent", Project: "demo"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	result := []byte(`{"session_id":"s1","session_cost_usd":0.42,"session_prompt_tokens":1200,"session_completion_tokens":3400,"session_message_count":9}`)
+	if err := s.Complete(ctx, tk.ID, "w1", result); err != nil {
+		t.Fatalf("complete: %v", err)
+	}
+
+	out = captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path, "--json"}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	payload = map[string]any{}
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("stats payload not JSON: %v (%s)", err, out)
+	}
+
+	budget, _ = payload["budget"].(map[string]any)
+	usage, _ := budget["session_usage"].(map[string]any)
+	if usage == nil {
+		t.Fatalf("completed usage lost the budget.session_usage key: %s", out)
+	}
+
+	if got := usage["runs"]; got != float64(1) {
+		t.Errorf("session_usage.runs = %v, want 1 (%s)", got, out)
+	}
+
+	if got := usage["prompt_tokens"]; got != float64(1200) {
+		t.Errorf("session_usage.prompt_tokens = %v, want 1200 (%s)", got, out)
+	}
+
+	if got := usage["cost_usd"]; got != float64(0.42) {
+		t.Errorf("session_usage.cost_usd = %v, want 0.42 (%s)", got, out)
+	}
+
+	human := captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	if !strings.Contains(human, "derived runs") {
+		t.Errorf("human stats output lost the session-usage line:\n%s", human)
+	}
+}
+
 // TestStatsOpenSessions pins the stale-open-session visibility surface
 // (03-28 §f9): `tq stats --json` carries the open-session count under
 // `open_sessions` (omitted when none), and the human output names the
