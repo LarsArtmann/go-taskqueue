@@ -405,7 +405,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   paragraph, so a footer placed ABOVE an attribution block
   (Crush/Co-Authored-By) is INVISIBLE to task attribution and invites
   re-dispatch; the 2026-09-19 0-target window had to msg-filter two
-  unpushed commits to heal it (d035911/ca514a8 over d035911/ca514a8).
+  unpushed commits to heal it (d035911/ca514a8 over dd543ec/e9ef358).
   Never hardcode the placeholder inside backtick raw strings (a backtick
   terminates the literal). The footer must carry the queue-assigned ID from
   the task prompt VERBATIM — if a reviewer or a second artifact supplies a
