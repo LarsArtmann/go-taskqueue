@@ -153,7 +153,7 @@ not here.
 
 ## Priority-system follow-ups (harvested from the 2026-09-12 T27-T38 windows; reports 15-43 + 16-28; verified against code at mint time)
 
-- [ ] `tq tasks --band hot|machine|backlog` CLI parity with the webui band filter — the store-level `Filter.PriorityMin/PriorityMax` pushdown exists in BOTH backends (`listWhere` sqlite, `pgWhere` postgres, conformance-tested); only the CLI flag is missing (16-28 report f9; cmd/tq tasks + internal/queue Filter)
+- [x] `tq tasks --band hot|machine|backlog` CLI parity with the webui band filter — the store-level `Filter.PriorityMin/PriorityMax` pushdown exists in BOTH backends (`listWhere` sqlite, `pgWhere` postgres, conformance-tested); only the CLI flag is missing (16-28 report f9; cmd/tq tasks + internal/queue Filter)
 - [ ] Webui task detail: priority provenance section (current + band, item key + markerLevel for harvest tasks, cached AI verdict, repri history distilled from the fact trail) — `tq show`'s `buildPriorityProvenance` (cmd/tq/main.go) has all of it; the page shows only the raw record (16-28 report f11; internal/webui render.go/handlers.go)
 - [ ] Webui board: band-grouped columns (hot / machine / backlog) instead of status columns, or band as a secondary grouping — plan item 44's tail (16-28 report f10; internal/webui/fragments.templ)
 - [ ] Executor usage parsing: populate the `tokens` field on PrioritizeResult/agent results (always 0 today) so one-batch scorer cost is measurable from the journal — feeds the post-pilot calibration (16-28 report f12; internal/executor result.go/agent.go, budget projections)

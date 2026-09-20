@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -100,5 +101,65 @@ func TestCmdTasksSincePushdown(t *testing.T) {
 
 	if len(got) != 1 || got[0].ID != fresh.ID {
 		t.Fatalf("pushdown window = %+v, want only the fresh task", got)
+	}
+}
+
+// TestCmdTasksBandFilter: --band maps to the store-level PriorityMin/Max
+// pushdown (ADR-0015 band ranges), not a CLI-side filter; unknown bands
+// are rejected.
+func TestCmdTasksBandFilter(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "tasks-cli-band.db")
+
+	seed, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	hot := task.New{Type: "sh", Project: "p"}
+	hot.Priority = queue.HotMin
+	machine := task.New{Type: "sh", Project: "p"}
+	machine.Priority = queue.MachineMin
+	backlog := task.New{Type: "sh", Project: "p"}
+
+	want := make(map[queue.Band]task.ID)
+
+	for band, n := range map[queue.Band]task.New{
+		queue.BandHot:     hot,
+		queue.BandMachine: machine,
+		queue.BandBacklog: backlog,
+	} {
+		enqueued, err := seed.Enqueue(ctx, n)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		want[band] = enqueued.ID
+	}
+
+	if err := seed.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	for band, id := range want {
+		out := captureStdout(t, func() {
+			if err := cmdTasks([]string{"--db", dbPath, "--band", string(band), "--json"}); err != nil {
+				t.Errorf("band %q: %v", band, err)
+			}
+		})
+
+		var got []task.Task
+		if err := json.Unmarshal([]byte(out), &got); err != nil {
+			t.Fatalf("band %q: decode output %q: %v", band, out, err)
+		}
+
+		if len(got) != 1 || got[0].ID != id {
+			t.Fatalf("band %q = %+v, want only %s", band, got, id)
+		}
+	}
+
+	err = cmdTasks([]string{"--db", dbPath, "--band", "bogus"})
+	if err == nil || !strings.Contains(err.Error(), "unknown band") {
+		t.Fatalf("band bogus err = %v, want unknown-band error", err)
 	}
 }
