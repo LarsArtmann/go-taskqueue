@@ -140,12 +140,13 @@ func appendCompleted(t *testing.T, j *journal.MemoryJournal, id string, at time.
 // TestUsageTodaySumsDerivedSessionUsage pins the token/cost projection:
 // completion facts carrying derived session usage sum into the day's
 // spend, marshalled through the REAL executor result types so a json key
-// rename in either result type fails here (both directions of drift).
+// rename in any of them fails here (both directions of drift).
 func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
 	ctx := context.Background()
 	j := journal.NewMemoryJournal()
 
-	// One agent run and one prioritize batch, both derived, both counted.
+	// One agent run, one prioritize batch and one review turn, all
+	// derived, all counted.
 	appendCompleted(t, j, "agent-1", time.Now(), executor.AgentResult{
 		SessionID:               "s1",
 		SessionCostUSD:          0.42,
@@ -160,6 +161,14 @@ func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
 		SessionCompletionTokens: 700,
 		SessionMessageCount:     4,
 	})
+	appendCompleted(t, j, "review-1", time.Now(), executor.ReviewResult{
+		Verdict:                 executor.VerdictApprove,
+		SessionID:               "s3",
+		SessionCostUSD:          0.15,
+		SessionPromptTokens:     800,
+		SessionCompletionTokens: 200,
+		SessionMessageCount:     5,
+	})
 
 	// sh completion without usage and a detailless one: never counted.
 	appendCompleted(t, j, "sh-1", time.Now(), map[string]int{"exit_code": 0})
@@ -172,7 +181,7 @@ func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
 	})
 
 	got := (Guard{}).UsageToday(ctx, factSource{j})
-	want := SessionUsage{Runs: 2, CostUSD: 0.5, PromptTokens: 1500, CompletionTokens: 4100, Messages: 13}
+	want := SessionUsage{Runs: 3, CostUSD: 0.65, PromptTokens: 2300, CompletionTokens: 4300, Messages: 18}
 	if got != want {
 		t.Fatalf("usage today = %+v, want %+v (non-usage and yesterday's completions excluded)", got, want)
 	}

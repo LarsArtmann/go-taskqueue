@@ -92,8 +92,9 @@ func (g Guard) spentSince(ctx context.Context, src FactSource, since time.Time) 
 
 // SessionUsage is the derived agent-spend projection: tokens and cost
 // summed from the day's task.completed facts whose result detail carries
-// derived session usage. AgentResult (agent runs) and PrioritizeResult
-// (batch scorer runs) share the same json keys, so one parse covers both;
+// derived session usage. AgentResult (agent runs), PrioritizeResult (batch
+// scorer runs) and ReviewResult (review turns) share the same json keys,
+// so one parse covers all;
 // completion facts without usage (sh tasks, records from before the
 // derivation shipped) contribute nothing.
 type SessionUsage struct {
@@ -113,7 +114,8 @@ func (u SessionUsage) String() string {
 
 // sessionUsageDetail is the usage-carrying projection of a completion
 // fact's result detail. The json keys are owned by the executor result
-// types; budget_test marshals the REAL AgentResult and PrioritizeResult
+// types; budget_test marshals the REAL AgentResult, PrioritizeResult and
+// ReviewResult
 // so a key rename in either fails this projection's suite.
 type sessionUsageDetail struct {
 	CostUSD          float64 `json:"session_cost_usd"`
