@@ -126,7 +126,7 @@ challenged ("best most scalable and reliable way?") and re-commissioned
    add templ globs ONLY when `.templ` sources exist (or stage the exact
    dirty set from `git status --porcelain` intersected with the touched
    scope). The red state was daemon-committed (working tree clean at
-   4c69b0e). Stopped mid-fix per the status-call instruction.
+   06f1751). Stopped mid-fix per the status-call instruction.
 2. Session mistakes (all found + fixed same-session, honest record):
    bash TSV delimiter collapse (tab is IFS whitespace → `|`), missing
    `mode` column in jq rows (field shift), apostrophe in a jq comment

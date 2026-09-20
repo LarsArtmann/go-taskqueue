@@ -90,7 +90,7 @@ are owner-run); every failure cause on the pushed tip is fixed locally.
 1. **The lint flake is repaired, not root-caused.** Gate run #1 reported
    `journal` + `queue/postgres` `typecheck: NEW` classes that vanished
    in every manual re-run; the 06:03 regen (committed by another window,
-   `2bbb37b`) recorded sqlite varnamelen 32 while every stable run of
+   `0a6a3a2`) recorded sqlite varnamelen 32 while every stable run of
    unchanged code yields 33. I repaired the row surgically, but the
    underlying intermittent partial-load (my top suspect: golangci-lint
    v2.13.2 is BUILT WITH go1.27.1 while the tree targets go 1.26.7 with

@@ -104,17 +104,17 @@ inbound write API).
 
 All committed by the daemon mid-window (expected behavior):
 
-- **journal** (c7d1b94): `QuestionAsked`/`QuestionAnswered` fact consts
+- **journal** (7188217): `QuestionAsked`/`QuestionAnswered` fact consts
   (`internal/journal/journal.go`) + facade aliases (`journal/journal.go`).
-- **queue contract** (a71a590): question type consts + `ValidQuestionType`,
+- **queue contract** (929e6d9): question type consts + `ValidQuestionType`,
   `QuestionAskedDetail`, `QuestionAnsweredDetail`, `AnswerRecord`,
   `Store.RecordAnswer` (doc states the invariants).
-- **sqlite impl** (a71a590 + 13b7d40): `RecordAnswer` + `factDetailRefs` +
+- **sqlite impl** (929e6d9 + c582577): `RecordAnswer` + `factDetailRefs` +
   `mergeAnsweredPayload` — idempotency scan in Go (never SQL LIKE on JSON),
   RowsAffected re-check honored (Store invariant), asked-text backfill.
-- **postgres impl** (13b7d40): mirrored exactly (pgx, FOR UPDATE, $n
+- **postgres impl** (c582577): mirrored exactly (pgx, FOR UPDATE, $n
   placeholders) — `pgFactDetailRefs`, `pgMergeAnsweredPayload`.
-- **go 1.27.1 module alignment** (13b7d40): ALL 19 go.mods raised to
+- **go 1.27.1 module alignment** (c582577): ALL 19 go.mods raised to
   `go 1.27.1` (file-path `go mod edit`; raises only, never lowers). This
   completes the migration 8d3de30 started and unblocks every sub-module
   build/vet under the pinned toolchain.
@@ -145,7 +145,7 @@ ROADMAP/TODO_LIST, DOMAIN_LANGUAGE).
   shell handoff) and failed SILENTLY; I moved on and only caught it by
   re-checking state. Lesson applied: file-path invocation + explicit verify.
 - **Dropped the RowsAffected re-check** in the first sqlite RecordAnswer
-  draft (explicit Store invariant); self-caught, fixed pre-commit (13b7d40).
+  draft (explicit Store invariant); self-caught, fixed pre-commit (c582577).
 - **Burned a cycle on the stdversion vet gate**: ran vet under the 1.27
   toolchain before checking module-go.mod alignment — the AGENTS.md documents
   this exact gate; alignment check should have been turn-1 alongside
@@ -162,8 +162,8 @@ ROADMAP/TODO_LIST, DOMAIN_LANGUAGE).
 - Conformance-first ordering: tests with the impl, before dependents.
 - Amend the design note BEFORE the layers that consume it (keeps the
   contract honest while the code lands).
-- The daemon split this feature across 3 auto-commits (c7d1b94/a71a590/
-  13b7d40) — attribution gap again; when explicit commits are authorized,
+- The daemon split this feature across 3 auto-commits (7188217/929e6d9/
+  c582577) — attribution gap again; when explicit commits are authorized,
   commit per layer.
 
 ## 8. Next (f) — ordered, the 1% first
@@ -202,7 +202,7 @@ ROADMAP/TODO_LIST, DOMAIN_LANGUAGE).
 
 ## 9. Owner questions (g)
 
-1. The 1.27.1 sub-module bump (19 go.mods, 13b7d40) completes migration
+1. The 1.27.1 sub-module bump (19 go.mods, c582577) completes migration
    8d3de30 — keep it inside this feature's arc, or is another agent's window
    owning the migration (conflict risk)?
 2. Answer return path: I chose POLLING (tq initiates; zero inbound write

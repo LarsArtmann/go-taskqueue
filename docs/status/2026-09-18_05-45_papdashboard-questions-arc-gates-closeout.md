@@ -10,7 +10,7 @@ breakages outside the plan), finish the docs sweep, and drive
 window). Full feature detail: the 21-04 report (indexed).
 
 Post-window fact-check (cited): my final baseline regen needed one
-touch-up by a later window — commit a94271e ("fix: repair lint-baseline
+touch-up by a later window — commit 9c39220 ("fix: repair lint-baseline
 growth rows from the session-forensics drift window", 03:48) adjusted
 `cmd/tq/tagliatelle` (row removed) and `internal/queue/sqlite varnamelen`
 32→33; the 03-52 report calls it the "seventh regen". So my "ALL GATES
@@ -64,7 +64,7 @@ more after me. That gap is owned in §d9.
      **cyclop** (papdashboard `forward` 15→ under 12 via the
      forwardQuestion extraction).
 3. **My own diff verified lint-clean**:
-   `golangci-lint run --new-from-rev 653bb9d^ ./internal/...` →
+   `golangci-lint run --new-from-rev 32558eb^ ./internal/...` →
    "0 issues" after the last two self-findings (depsweep `ri` rename,
    session.go blank line) were fixed.
 4. **Baseline regenerated deliberately, twice, documented** (the second
@@ -169,7 +169,7 @@ more after me. That gap is owned in §d9.
    it only via flake.nix.
 3. **Baseline stability under concurrency is unresolved**: my regen at
    ~23:2x was already stale for the daemon's in-flight fmt commits;
-   a94271e repaired two rows at 03:48 and the 03-52 report refers to a
+   9c39220 repaired two rows at 03:48 and the 03-52 report refers to a
    SEVENTH regen. The regen-reason/ownership question is minted as a
    TODO row (f8) but not settled.
 4. **The answered-pending re-ask path has no executor-loop test** —
@@ -250,7 +250,7 @@ more after me. That gap is owned in §d9.
    N+recurrence miss continues; no content loss this time, but the
    pattern is undefeated.
 9. **"ALL GATES GREEN" did not survive the night**: my final baseline
-   regen raced the daemon's in-flight fmt commits; a94271e (03:48,
+   regen raced the daemon's in-flight fmt commits; 9c39220 (03:48,
    another window) repaired `cmd/tq/tagliatelle` (row removed) and
    `sqlite varnamelen` 32→33, and the 03-52 report calls it the seventh
    regen. The regen protocol has a race the current process does not
@@ -309,7 +309,7 @@ more after me. That gap is owned in §d9.
    the treefmt leg is actually healed (my fix is local-green, not yet
    push-proven).
 5. Decide the baseline-regen protocol (f-item: reason trailer + quiet-
-   tree rule + owner sign-off) — a94271e + seventh regen show the churn.
+   tree rule + owner sign-off) — 9c39220 + seventh regen show the churn.
 6. Verify the TODO_LIST rows I minted survive
    `./scripts/check-todo-list.sh` (they were appended before the last
    ci-local green, which gates them — they passed, but re-verify after
@@ -436,6 +436,6 @@ before/after /tmp/baseline-before.txt vs `.golangci-baseline.txt`
 (137 rows); clean-cache gate runs /tmp/lb9.log, /tmp/lb12.log;
 ci-local green /tmp/cilocal14.log ("ALL CI GATES GREEN", RC=0,
 CI_CHECK=off); smokes /tmp/qe2e.log + /tmp/pape2e.log (RC=0);
-post-session repair cited: a94271e (03:48) + the 03-52 seventh-regen
+post-session repair cited: 9c39220 (03:48) + the 03-52 seventh-regen
 note; master-CI red legs: run 35223849100 (12:54). Daemon commits ride
 this window as usual — per-file SHAs via `git log -- <path>`.

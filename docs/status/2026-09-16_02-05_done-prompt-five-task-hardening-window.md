@@ -4,15 +4,15 @@
 **Window:** the five completed queue tasks below — landed between 2026-09-12 04:08 and
 2026-09-16 01:16 CEST (bulk: 09-15 06:42 → 09-16 01:16)
 **Method:** every claim below re-verified against code/git this session; gates re-run at
-HEAD a3b97f2-era tree (pre-report commit). Report + docs pass only; no code touched.
+HEAD c4a025e-era tree (pre-report commit). Report + docs pass only; no code touched.
 
 | # | Task              | Deliverable                                                  | Landing commit(s)                                      |
 | - | ----------------- | ------------------------------------------------------------ | ------------------------------------------------------ |
 | 1 | 000001a0934efd9d… | `task.AllStatuses` export, twin lists retired                | `aeebe888` (09-12 04:08)                               |
-| 2 | 000001a0a2f63b92… | `tq doctor --hygiene` stale-pin audit + `--reresolve-verify` | `7d2825b` (daemon, footerless) + `bfe3323` (checkoff)  |
-| 3 | 000001a0a715d4ea… | webui write-lockout strikes map bounded                      | `8b82c99` (09-16 00:05, clean)                         |
-| 4 | 000001a0a7237f14… | Secrets-in-logs pass + `--redact` + journal secret scan      | `748e989` (daemon, footerless)                         |
-| 5 | 000001a0a75157…   | httpapi nosniff + bearer-auth lockout                        | `dd26e4c`+`a09bcf6` (daemon) + `ac9da37` (footer tail) |
+| 2 | 000001a0a2f63b92… | `tq doctor --hygiene` stale-pin audit + `--reresolve-verify` | `d0e2a62` (daemon, footerless) + `1da0ee5` (checkoff)  |
+| 3 | 000001a0a715d4ea… | webui write-lockout strikes map bounded                      | `05962e2` (09-16 00:05, clean)                         |
+| 4 | 000001a0a7237f14… | Secrets-in-logs pass + `--redact` + journal secret scan      | `c7ca518` (daemon, footerless)                         |
+| 5 | 000001a0a75157…   | httpapi nosniff + bearer-auth lockout                        | `c273dcc`+`936d5b9` (daemon) + `5668e8f` (footer tail) |
 
 ---
 
@@ -30,7 +30,7 @@ HEAD a3b97f2-era tree (pre-report commit). Report + docs pass only; no code touc
    — external consumers get the export through the proxy, no local replace needed.
    The stale BLOCKED TODO row asking for exactly this decision is checked off in this pass.
 2. **`tq doctor --hygiene` + `--reresolve-verify` (task 2).** The feature session shipped
-   via footer-less daemon commit `7d2825b` (09-15 05:38); queue task `bfe3323` was the
+   via footer-less daemon commit `d0e2a62` (09-15 05:38); queue task `1da0ee5` was the
    verification-close (06-43 report). Verified at HEAD: `doctorVerifyPins`
    (`cmd/tq/doctor.go:300`, three-way match/latent/STALE verdicts over PENDING agent
    tasks' `.tq-verify` pins vs the repo's current gate ladder), wired at `doctor.go:812`,
@@ -126,8 +126,8 @@ HEAD a3b97f2-era tree (pre-report commit). Report + docs pass only; no code touc
    contract lives in the LarsArtmann/CV repo; the sentence now says so without
    backticked ghost paths). Gate expected green after this commit.
 3. **Queue↔git attribution degraded for 2 of 5 window tasks:** the secrets work rides
-   footer-less `748e989`; the httpapi work rides footer-less `dd26e4c`/`a09bcf6` while the
-   footer commit `ac9da37` carries only a 7-insertion tail (blank line + docs). The
+   footer-less `c7ca518`; the httpapi work rides footer-less `c273dcc`/`936d5b9` while the
+   footer commit `5668e8f` carries only a 7-insertion tail (blank line + docs). The
    cross-reference resolves only via report commits. Third window in a row with this
    finding; policy question re-asked in §g1.
 4. **Sixth paid no-op re-dispatch lap in two days:** task 4's dispatch (00-55 report) found

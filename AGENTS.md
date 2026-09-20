@@ -405,7 +405,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   paragraph, so a footer placed ABOVE an attribution block
   (Crush/Co-Authored-By) is INVISIBLE to task attribution and invites
   re-dispatch; the 2026-09-19 0-target window had to msg-filter two
-  unpushed commits to heal it (d035911/ca514a8 over dd543ec/e9ef358).
+  unpushed commits to heal it (d035911/ca514a8 over d035911/ca514a8).
   Never hardcode the placeholder inside backtick raw strings (a backtick
   terminates the literal). The footer must carry the queue-assigned ID from
   the task prompt VERBATIM — if a reviewer or a second artifact supplies a
@@ -755,7 +755,7 @@ prose, not the table.
   probes, so tooling lint runs under a derived go.work; non-cmd/tq counts
   byte-identical across the regen); 2026-09-16 surgical repair:
   executor mnd 29→31 / gochecknoglobals 4→5 / varnamelen 16→17 — drift
-  from the secrets-in-logs redact.go (748e989) landing after the fifth
+  from the secrets-in-logs redact.go (c7ca518) landing after the fifth
   regen — plus cmd/tq tagliatelle 9→10 / varnamelen 6→7 and root mnd
   44→45 from concurrent post-regen windows; the repairing window's own
   diff was lint-clean (`--new-from-rev HEAD~1`: zero findings));
@@ -790,7 +790,7 @@ prose, not the table.
   - `w`/`r`/`fs`/`db`/`id` idioms; remaining sites were renamed, not
     suppressed. That sweep's renames leaked into string literals twice
     (`q.Get("query")` deadened the webui filter, `task(store)` mangled
-    `tq dlq --max-attempts` help; fixed da8f331/9b7c46b): a variable rename
+    `tq dlq --max-attempts` help; fixed c95adb8/d5ee08d): a variable rename
     must never change a string literal — before calling a rename done, grep
     the diff's quoted lines when the variable name equals a nearby param
     name, JSON tag or flag text. The advisory lint step loops every

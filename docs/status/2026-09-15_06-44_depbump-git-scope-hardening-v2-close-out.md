@@ -2,7 +2,7 @@
 
 Session 2026-09-15 ~05:45–06:44, continuing `2026-09-15_05-20_dependency-upgrade-automation-v1-v2.md`
 (its §d1 RED blocker → resolved here). All claims cite gate runs from THIS
-session; daemon folded the changes (HEAD d687455 at report time).
+session; daemon folded the changes (HEAD 699dc77 at report time).
 
 ## a) FULLY DONE
 

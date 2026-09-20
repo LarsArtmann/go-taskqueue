@@ -124,7 +124,7 @@ every failed CI gate locally green, pushed the healing batch, and watched CI.
 6. **I violated the fixture convention in the same session that wrote it.**
    This report's §a1 originally quoted the flagged token literal verbatim
    ("documenting the problem") — push protection scans DOCS too, the daemon
-   folded that report into unpushed d65a3c2, and the next push was rejected
+   folded that report into unpushed e7aad13, and the next push was rejected
    again. Caught by the rejection, fixed with the same composed-literal
    treatment + a second small rewrite. Lesson (now in AGENTS.md): scanners
    match SHAPES in ANY file — never write a full token shape anywhere, not

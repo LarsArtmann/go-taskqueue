@@ -233,7 +233,7 @@ open backlog from the 14-17 report — unchanged, still valid.)_
 32. `tq doctor` service-context mode (unit PATH, not caller PATH).
 33. AGENTS.md `internal/httpapi` row + AGENTS size-guard + `tq facts
     --json` golden test.
-34. Orphan-SHA repoint 674320f → 15ff1f9 + 09-33 annotation.
+34. Orphan-SHA repoint 15ff1f9 → 15ff1f9 + 09-33 annotation.
 35. AGENTS.md vendorHash note correction (stale `lib.fakeHash` dance).
 36. `tq tasks` notBefore/backoff column + `tq show` lease-staleness.
 37. README-as-contract rot guard + `agent-pool --model` retirement ruling.

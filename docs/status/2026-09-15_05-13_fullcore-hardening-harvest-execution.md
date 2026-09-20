@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-15 05:13 CEST. **Session type:** interactive (owner-directed, no Task-Queue-ID — the
 pasted 2026-09-14 harvest + webui-leftover list, ordered "break into steps, execute and verify one at a
-time"). **Commits:** daemon heuristic commits `b94284b` (AGENTS.md) and `a3ed89e` (fullcore batch:
+time"). **Commits:** daemon heuristic commits `743ca3c` (AGENTS.md) and `6e40681` (fullcore batch:
 fullcore.sh, examples/fullcore/main.go, ci.yml, +2) — on local master, unpushed as of this report.
 
 **Skills loaded at turn 1:** buildflow (verdict: this repo has NO `.buildflow.yml` → NOT BuildFlow-covered;
@@ -13,7 +13,7 @@ webui adoptions), docs-health (harvest/annotate conventions for this close-out).
 
 ## a) FULLY DONE
 
-1. **Turn-1 ritual codified in AGENTS.md** (`b94284b`): the Session-start ritual bullet now carries the
+1. **Turn-1 ritual codified in AGENTS.md** (`743ca3c`): the Session-start ritual bullet now carries the
    two Nth-recurrence misses as written rules — (1) grep prior reports for the SAME task ID
    (`rg -l <task-id> docs/status/`) before anything else; (2) check for and read `CONTRIBUTING.md` /
    `CLAUDE.md` at turn 1, with the recurrence citations (00-52 d4, 02-17 d3). Verified fresh:
@@ -21,18 +21,18 @@ webui adoptions), docs-health (harvest/annotate conventions for this close-out).
 2. **AGENTS.md smoke-list gaps** (same commit): added the missing `fullcore.sh` entry (including the
    50ms/250ms calibration note — this closes 01-59 f7) and the missing `reviews.sh` entry; both were
    wired in ci-local but absent from the documented smoke list.
-3. **examples/fullcore consumes `TQ_DB`** (`a3ed89e`): new `dbDefault()` uses `$TQ_DB` as the `--db`
+3. **examples/fullcore consumes `TQ_DB`** (`6e40681`): new `dbDefault()` uses `$TQ_DB` as the `--db`
    default (explicit flag wins), matching the repo-wide sqlite-location convention — the smoke's env
    export is now a REAL guard, not belt-and-braces. Gate: `GOEXPERIMENT=jsonv2 go build ./examples/...`
    → BUILD-OK; LSP finding count unchanged (14 pre-existing advisory warnings, none new).
-4. **fullcore.sh hardening** (`a3ed89e`): `DEADLINE_RUNS` / `DEADLINE_TIMEOUT_MS` env knobs with
+4. **fullcore.sh hardening** (`6e40681`): `DEADLINE_RUNS` / `DEADLINE_TIMEOUT_MS` env knobs with
    committed defaults (3 / 50ms, 02-04 f2); the main drain run now OMITS `--db` so the TQ_DB default
    path is exercised, asserted mechanically (`[ -s "$TMP/tasks.db" ]`) plus the `rm -f fullcore.db`
    repo-hygiene guard; env-gated postgres variant (drain 4/4 + 50ms deadline lap on `$TQ_TEST_POSTGRES`,
    SKIP line when unset). Gate runs, fresh: `bash -n` PASS; smoke PASS (sqlite, 3 deadline laps, TQ_DB
    proof); knob run PASS (`DEADLINE_RUNS=1 DEADLINE_TIMEOUT_MS=250` — trips at the documented
    calibration point).
-5. **ci.yml parity** (`a3ed89e`): "Fullcore embed smoke" step added to the `test` job (the smoke was
+5. **ci.yml parity** (`6e40681`): "Fullcore embed smoke" step added to the `test` job (the smoke was
    ci-local-only, 02-04); "Fullcore postgres smoke" step added to `test-postgres` (job-level
    `TQ_TEST_POSTGRES` activates the variant).
 6. **tq.exe recon — two paste claims STALE, closed with evidence:** `cmd/tq/tq.exe` (22 MB, on disk)

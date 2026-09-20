@@ -24,7 +24,7 @@ accident.
    - status-every 5, project-exclusive, budget 60/day. Since launch: **18
      tasks completed, 0 dead-lettered** — govulncheck CI job, gosec triage,
      templ-components audit, webui dedup (−67 LOC), httpapi/webui stats
-     split-brain fix, plus reviews, one autofix (`c5c654c`, minted by a
+     split-brain fix, plus reviews, one autofix (`0006f45`, minted by a
      `request_changes` verdict that caught a real lint-baseline violation
      hidden across a daemon auto-commit) and one status report.
 2. ~~**Loop 1 — `--task-closeout`** (`internal/executor/agent.go`): work turn~~ resolved — shipped/narrative/routed

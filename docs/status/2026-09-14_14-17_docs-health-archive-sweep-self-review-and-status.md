@@ -202,7 +202,7 @@ still open — carried here so the session report is self-contained.)_
     caller's).
 13. AGENTS.md `internal/httpapi` architecture row + AGENTS size-guard test
     - `tq facts --json` golden test.
-14. Orphan-SHA cleanup: repoint 674320f → 15ff1f9 (README:166), annotate
+14. Orphan-SHA cleanup: repoint 15ff1f9 → 15ff1f9 (README:166), annotate
     the 09-33 report.
 15. AGENTS.md vendorHash note: replace the stale `lib.fakeHash` dance.
 16. `tq tasks` notBefore/backoff column + `tq show` lease-staleness.

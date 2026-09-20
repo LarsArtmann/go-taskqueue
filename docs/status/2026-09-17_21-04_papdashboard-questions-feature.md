@@ -21,10 +21,10 @@ Every layer below is implemented AND has green tests, run with
 
 1. **Journal facts** — `task.question-asked` / `task.question-answered`
    consts in `internal/journal/journal.go` + facade aliases (prior window,
-   commit c7d1b94; gofmt'd to green this session).
+   commit 7188217; gofmt'd to green this session).
 2. **Queue contract** — `Store.RecordAnswer`, `QuestionAskedDetail`,
    `QuestionAnsweredDetail`, `AnswerRecord`, question-type consts +
-   `ValidQuestionType` in `internal/queue/queue.go` (a71a590).
+   `ValidQuestionType` in `internal/queue/queue.go` (929e6d9).
 3. **SQLite store** — `RecordAnswer`: one tx; idempotent per ref;
    JSON-object payload injection into `answered` + NotBefore clear;
    raw-payload → fact-only; question backfill from the asked fact

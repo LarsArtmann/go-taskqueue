@@ -88,7 +88,7 @@
 14. ~~Flip govulncheck to a hard gate once #12 makes it green; same decision for gosec (#13) — BLOCKED: owner gate-vs-advisory call~~ resolved — shipped/routed/narrative
 15. ~~Publish gosec/govulncheck findings as CI job-summary artifacts (stop log-diving)~~ resolved — shipped/routed/narrative
 16. ~~ci-local: run release-gates smoke under `GIT_CONFIG_GLOBAL=/dev/null` so local matches runner failure modes~~ resolved — shipped/routed/narrative
-17. ~~Changed-lines 120-col line-length gate in ci-local (the c5c654c signature-wrap class)~~ resolved — shipped/routed/narrative
+17. ~~Changed-lines 120-col line-length gate in ci-local (the 0006f45 signature-wrap class)~~ resolved — shipped/routed/narrative
 18. ~~Add the two advisory scan jobs to SECURITY.md's defense-layers matrix~~ resolved — shipped/routed/narrative
 19. ~~Confirm a CI run exists for current HEAD and record the outcome (04-09 f-item, still open)~~ resolved — shipped/routed/narrative
 20. ~~Required-checks proposal (test-windows + release-gates first, then scan jobs) into docs/planning/~~ resolved — shipped/routed/narrative
