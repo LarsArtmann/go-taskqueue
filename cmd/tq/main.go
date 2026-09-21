@@ -2243,7 +2243,8 @@ func resolveTask(ctx context.Context, store *sqlite.Store, arg string) (task.Tas
 }
 
 // resultDetail decodes a task'store completion-fact detail into its typed result
-// (agent self-report, review verdict, or status outcome) so `tq show` answers
+// (agent self-report, review verdict, status outcome, or prioritize
+// verdicts) so `tq show` answers
 // "what did the agent actually do" without eyeballing raw JSON. nil for task
 // types without a structured result — the raw facts stay in the output.
 func resultDetail(t task.Task, trail []journal.Fact) any {
@@ -2265,6 +2266,11 @@ func resultDetail(t task.Task, trail []journal.Fact) any {
 			}
 		case executor.TaskTypeStatus:
 			var res executor.StatusResult
+			if json.Unmarshal(first.Detail, &res) == nil {
+				return res
+			}
+		case executor.TaskTypePrioritize:
+			var res executor.PrioritizeResult
 			if json.Unmarshal(first.Detail, &res) == nil {
 				return res
 			}

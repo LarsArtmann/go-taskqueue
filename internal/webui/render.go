@@ -307,6 +307,11 @@ type DashboardData struct {
 	// count on the detail page. Absent when the page shows no finished
 	// status reports.
 	Statuses map[string]executor.StatusResult
+	// Prioritizes holds the parsed outcome of every COMPLETED prioritize
+	// task on the detail page (keyed by task id) — the AI batch scorer's
+	// verdict count + derived session usage made visible. Nil when the
+	// page shows no finished scorer run.
+	Prioritizes map[string]executor.PrioritizeResult
 }
 
 // parkedCount counts rate-limit-parked tasks (pending, not_before in the
@@ -389,6 +394,14 @@ func (s *Server) statusResultFor(ctx context.Context, id string) (executor.Statu
 func (s *Server) reviewResultFor(ctx context.Context, id string) (executor.ReviewResult, bool) {
 	return completionDetail(ctx, s.store, id, func(res executor.ReviewResult) bool {
 		return res.Verdict != ""
+	})
+}
+
+// prioritizeResultFor reads a completed prioritize task's outcome from its
+// own completion-fact detail (executor.PrioritizeResult JSON).
+func (s *Server) prioritizeResultFor(ctx context.Context, id string) (executor.PrioritizeResult, bool) {
+	return completionDetail(ctx, s.store, id, func(res executor.PrioritizeResult) bool {
+		return len(res.Verdicts) > 0
 	})
 }
 

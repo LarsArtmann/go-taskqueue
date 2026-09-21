@@ -374,6 +374,22 @@ func TestResultDetailDecodesTypedResults(t *testing.T) {
 		t.Fatalf("agent result = %+v, want decoded AgentResult", got)
 	}
 
+	prioritizeDetail, err := json.Marshal(executor.PrioritizeResult{
+		Verdicts:            []executor.PrioritizeVerdict{{ItemKey: "todo:x", Score: 42}},
+		SessionPromptTokens: 1200,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	got = resultDetail(
+		task.Task{Type: executor.TaskTypePrioritize},
+		[]journal.Fact{{Type: journal.Completed, Detail: prioritizeDetail}},
+	)
+	if pr, ok := got.(executor.PrioritizeResult); !ok || len(pr.Verdicts) != 1 || pr.Verdicts[0].Score != 42 || pr.SessionPromptTokens != 1200 {
+		t.Fatalf("prioritize result = %+v, want decoded PrioritizeResult", got)
+	}
+
 	if got := resultDetail(
 		task.Task{Type: "sh"},
 		[]journal.Fact{{Type: journal.Completed, Detail: statusDetail}},
