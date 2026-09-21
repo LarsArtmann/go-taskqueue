@@ -621,6 +621,92 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 	}
 }
 
+// TestResultUsageRendersOnDetailPage pins the derived session usage on the
+// detail page: a prioritize scorer run renders its card (verdict count +
+// tokens/cost line) and a status run with usage extends its report card —
+// while a usage-less result (stub or non-crush run) stays quiet.
+func TestResultUsageRendersOnDetailPage(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	pz := enqueue(t, s, "prioritize", "demo")
+	if _, err := s.ClaimDue(context.Background(), "score-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	pzDetail, err := json.Marshal(executor.PrioritizeResult{
+		Verdicts:                []executor.PrioritizeVerdict{{ItemKey: "todo:a", Score: 80}, {ItemKey: "todo:b", Score: 20}},
+		SessionPromptTokens:     1200,
+		SessionCompletionTokens: 340,
+		SessionCostUSD:          0.0042,
+	})
+	if err != nil {
+		t.Fatalf("marshal prioritize result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), pz.ID, "score-owner", pzDetail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+pz.ID.String(), nil))
+
+	body := rec.Body.String()
+	for _, want := range []string{
+		"ai scoring", "2 verdicts",
+		"1200 prompt + 340 completion tokens · $0.0042 derived session cost",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("prioritize detail page missing %q", want)
+		}
+	}
+
+	st := enqueue(t, s, "status", "demo")
+	if _, err := s.ClaimDue(context.Background(), "status-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	stDetail, err := json.Marshal(executor.StatusResult{
+		Report:              "docs/status/2026-09-21_usage_demo.md",
+		SessionCostUSD:      0.01,
+		SessionPromptTokens: 10,
+	})
+	if err != nil {
+		t.Fatalf("marshal status result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), st.ID, "status-owner", stDetail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+st.ID.String(), nil))
+
+	if body := rec.Body.String(); !strings.Contains(body, "10 prompt + 0 completion tokens · $0.0100 derived session cost") {
+		t.Errorf("status detail page missing the usage line")
+	}
+
+	quiet := enqueue(t, s, "status", "demo")
+	if _, err := s.ClaimDue(context.Background(), "status-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	quietDetail, err := json.Marshal(executor.StatusResult{Report: "docs/status/2026-09-21_quiet_demo.md"})
+	if err != nil {
+		t.Fatalf("marshal quiet result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), quiet.ID, "status-owner", quietDetail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+quiet.ID.String(), nil))
+
+	if body := rec.Body.String(); strings.Contains(body, "derived session cost") {
+		t.Errorf("usage-less status task rendered a usage line")
+	}
+}
+
 func TestDLQMirrorsDeadTasks(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")
