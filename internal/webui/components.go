@@ -97,16 +97,28 @@ func statusBadgeText(res executor.StatusResult) string {
 
 // sessionUsageEmpty reports whether a result carries no derived session
 // usage (stub or non-crush run): the render-nothing gate for the usage line.
-func sessionUsageEmpty(costUSD float64, promptTokens, completionTokens int64) bool {
-	return costUSD == 0 && promptTokens == 0 && completionTokens == 0
+// A message-count-only run is NOT empty: the message count proves the
+// session ran even when token/cost extraction was unavailable.
+func sessionUsageEmpty(costUSD float64, promptTokens, completionTokens int64, messages int) bool {
+	return costUSD == 0 && promptTokens == 0 && completionTokens == 0 && messages == 0
 }
 
 // sessionUsageText renders the derived session usage the result types share
 // (same json keys by the budget projection's drift pin): tokens first, then
-// cost.
-func sessionUsageText(costUSD float64, promptTokens, completionTokens int64) string {
-	return fmt.Sprintf("%s prompt + %s completion tokens · $%.4f derived session cost",
+// cost, then the message count as a suffix — the message count alone when it
+// is the only extracted signal.
+func sessionUsageText(costUSD float64, promptTokens, completionTokens int64, messages int) string {
+	if promptTokens == 0 && completionTokens == 0 && costUSD == 0 {
+		return formatInt(messages) + " messages"
+	}
+
+	text := fmt.Sprintf("%s prompt + %s completion tokens · $%.4f derived session cost",
 		formatInt(int(promptTokens)), formatInt(int(completionTokens)), costUSD)
+	if messages > 0 {
+		text += " · " + formatInt(messages) + " messages"
+	}
+
+	return text
 }
 
 // findingSeverityType maps a review finding's severity hint onto the badge

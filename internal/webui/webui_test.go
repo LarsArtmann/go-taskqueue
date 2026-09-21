@@ -623,8 +623,11 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 
 // TestResultUsageRendersOnDetailPage pins the derived session usage on the
 // detail page: a prioritize scorer run renders its card (verdict count +
-// tokens/cost line) and a status run with usage extends its report card —
-// while a usage-less result (stub or non-crush run) stays quiet.
+// tokens/cost line, message count as suffix) and a status run with usage
+// extends its report card — while a result with no usage at all (stub or
+// non-crush run) stays quiet, and a message-count-only run still renders
+// (the message count proves the session ran when token/cost extraction
+// was unavailable).
 func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	t.Parallel()
 
@@ -643,6 +646,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		SessionPromptTokens:     1200,
 		SessionCompletionTokens: 340,
 		SessionCostUSD:          0.0042,
+		SessionMessageCount:     7,
 	})
 	if err != nil {
 		t.Fatalf("marshal prioritize result: %v", err)
@@ -659,7 +663,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		"ai scoring", "2 verdicts",
-		"1200 prompt + 340 completion tokens · $0.0042 derived session cost",
+		"1200 prompt + 340 completion tokens · $0.0042 derived session cost · 7 messages",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("prioritize detail page missing %q", want)
@@ -675,6 +679,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		Report:              "docs/status/2026-09-21_usage_demo.md",
 		SessionCostUSD:      0.01,
 		SessionPromptTokens: 10,
+		SessionMessageCount: 3,
 	})
 	if err != nil {
 		t.Fatalf("marshal status result: %v", err)
@@ -690,9 +695,34 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 
 	if body := rec.Body.String(); !strings.Contains(
 		body,
-		"10 prompt + 0 completion tokens · $0.0100 derived session cost",
+		"10 prompt + 0 completion tokens · $0.0100 derived session cost · 3 messages",
 	) {
 		t.Errorf("status detail page missing the usage line")
+	}
+
+	msgsOnly := enqueue(t, s, "status", "demo")
+	if _, err := s.ClaimDue(context.Background(), "status-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	msgsDetail, err := json.Marshal(executor.StatusResult{
+		Report:              "docs/status/2026-09-21_msgs_demo.md",
+		SessionMessageCount: 5,
+	})
+	if err != nil {
+		t.Fatalf("marshal msgs-only result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), msgsOnly.ID, "status-owner", msgsDetail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+msgsOnly.ID.String(), nil))
+
+	if body := rec.Body.String(); !strings.Contains(body, "5 messages") {
+		t.Errorf("message-count-only status task rendered no usage line")
 	}
 
 	quiet := enqueue(t, s, "status", "demo")

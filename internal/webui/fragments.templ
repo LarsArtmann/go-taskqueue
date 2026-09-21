@@ -703,8 +703,8 @@ templ statusReportCard(res executor.StatusResult) {
 				})
 			}
 		</div>
-		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens) {
-			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens) }</p>
+		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
+			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</p>
 		}
 		if res.LogPath != "" {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
@@ -719,8 +719,8 @@ templ prioritizeResultCard(res executor.PrioritizeResult) {
 	@display.Card(display.CardProps{Title: "ai scoring", Padding: display.CardPaddingMD}) {
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 			@display.Badge(display.BadgeProps{Text: fmt.Sprintf("%d verdicts", len(res.Verdicts)), Type: display.BadgeInfo, Size: display.BadgeSizeSM})
-			if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens) {
-				<span class="text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens) }</span>
+			if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
+				<span class="text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</span>
 			}
 		</div>
 		if res.LogPath != "" {
