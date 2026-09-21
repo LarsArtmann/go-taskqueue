@@ -9,7 +9,7 @@ wrote under `/tmp/tq-dogfood-logs/`.
 
 Provenance and narrative:
 
-- `docs/status/2026-09-10_01-55_pool-deployment-fix-and-flash-dogfood-proof.md` (§c — the proof run)
+- `docs/status/archived/2026-09-10_01-55_pool-deployment-fix-and-flash-dogfood-proof.md` (§c — the proof run)
 - `docs/status/2026-09-10_02-00_self-review-dead-pool-fix-flash-dogfood-session.md` (§f9 — why this archive exists)
 - Proof commit: `1586ed5` (footer `Task-Queue-ID: 000001a0888b9f367676ffb26ebe48f49571`)
 

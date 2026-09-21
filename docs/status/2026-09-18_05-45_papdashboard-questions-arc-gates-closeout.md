@@ -6,7 +6,7 @@ feature arc). Scope of THIS window: index the 21-04 report, land the lint
 fix pass, re-run every gate, fix what the gates caught (including two
 breakages outside the plan), finish the docs sweep, and drive
 `./scripts/ci-local.sh` to ALL GATES GREEN. Design source of truth:
-`docs/planning/2026-09-06_decision-question-fanout.md` (Accepted this
+`docs/planning/archived/2026-09-06_decision-question-fanout.md` (Accepted this
 window). Full feature detail: the 21-04 report (indexed).
 
 Post-window fact-check (cited): my final baseline regen needed one

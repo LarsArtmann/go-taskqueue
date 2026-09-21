@@ -10,10 +10,10 @@
 ## 0. Inputs (all re-verified at HEAD `b82d6b6`, tree clean)
 
 - `docs/status/2026-09-08_05-24_cordis-samber-evaluation-journal-bus-recommendation.md` — the 50-item brainstorm
-- `docs/planning/2026-09-08_journal-subscription-surface-inventory.md` — pool-verified: pull half of the bus already exists (`Facts`/`HeadSeq` on `queue.Store`); gaps are push-side; `journal.Journal` is production-dead (split brain)
+- `docs/planning/archived/2026-09-08_journal-subscription-surface-inventory.md` — pool-verified: pull half of the bus already exists (`Facts`/`HeadSeq` on `queue.Store`); gaps are push-side; `journal.Journal` is production-dead (split brain)
 - `docs/planning/2026-09-08_persisted-bridge-watermark-design.md` — pool-verified design with §7 implementation checklist (side table, checkpoint-after-forward, `alerted`→`FactsForTask` derivation, `FromSeq > persisted > head`)
 - `docs/adr/0004-lifecycle-streaming-library-stance.md` — framework-free stance; cordis gated behind T1–T5 (T3 verified 2026-09-08: 86.2% cov, race-clean)
-- `docs/planning/2026-09-08_sse-last-event-id-resume-mapping.md` — Subscribe NOT needed for the dashboard; filter-forwarding shipped
+- `docs/planning/archived/2026-09-08_sse-last-event-id-resume-mapping.md` — Subscribe NOT needed for the dashboard; filter-forwarding shipped
 - `TODO_LIST.md` (8 unchecked items), `ROADMAP.md` (v0.2.0 arc + raw ideas)
 
 **What changed since the 05:24 report:** the dogfood pool executed all 5 harvested verification/design items in ~2h, with code-verified verdicts. This plan is therefore an _implementation_ plan, not a research plan. The one discovery that reshapes it: the report's `Subscribe` proposal must target `queue.Store`, not `journal.Journal`, and its policy questions must be answered before dispatcher code exists.

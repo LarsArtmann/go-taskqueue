@@ -2,7 +2,7 @@
 
 Session: interactive (no Task-Queue-ID footer; this is the owner-driven
 implementation arc for the PapDashboard questions feature). Design source of
-truth: the 14-37 foundation report + `docs/planning/2026-09-06_decision-question-fanout.md`
+truth: the 14-37 foundation report + `docs/planning/archived/2026-09-06_decision-question-fanout.md`
 (amendment to Accepted still pending, see f).
 
 The feature: an agent working a queue task that is unsure how to proceed runs
@@ -171,7 +171,7 @@ gotcha. Historical record of the interrupted state follows.
 
 ## c) NOT STARTED
 
-1. Design note amendment: `docs/planning/2026-09-06_decision-question-fanout.md`
+1. Design note amendment: `docs/planning/archived/2026-09-06_decision-question-fanout.md`
    → Accepted (fact-park + polling deviation).
 2. AGENTS.md: payload contract (TQ_QUESTION_FILE, AgentPayload.Answered),
    bridge section (AnswerPoller), commands (tq ask).
@@ -283,7 +283,7 @@ gotcha. Historical record of the interrupted state follows.
 17. Re-run questions-e2e + papdashboard-e2e + fullcore smokes after the
     lint refactor (behavior must be byte-stable).
 18. Full `./scripts/ci-local.sh` end-to-end.
-19. Amend `docs/planning/2026-09-06_decision-question-fanout.md` →
+19. Amend `docs/planning/archived/2026-09-06_decision-question-fanout.md` →
     Accepted (fact-park model; POLLING replaces the POST sketch; expiry
     default 72h, re-enter on expiry).
 20. AGENTS.md: add the questions payload contract + TQ_QUESTION_FILE +

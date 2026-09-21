@@ -127,7 +127,7 @@ near-identical projections once per fact for no fidelity gain. The
 `Last-Event-ID` value is a freshness token: its uses are reconnect-lag
 observability (`head − N`) and a stable seam to a future per-fact stream, not
 a replay cursor. Full contract:
-`docs/planning/2026-09-08_sse-last-event-id-resume-mapping.md`.
+`docs/planning/archived/2026-09-08_sse-last-event-id-resume-mapping.md`.
 
 ## Amendment (2026-09-08): opt-in admin writes — `--allow-writes`
 

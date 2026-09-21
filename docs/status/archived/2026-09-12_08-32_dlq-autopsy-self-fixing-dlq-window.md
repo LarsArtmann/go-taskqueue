@@ -18,7 +18,7 @@ collided with mine. Per instruction, report format is Markdown at `docs/status/`
    `Cancel`, guarded updates, `RowsAffected` re-checks), `tq dlq`/`tq cancel` CLI
    semantics, pool tick wiring (`mintPass` budget guard), agent-pool flag/config
    plumbing, and the status machine. Every design claim traces to a file I read.
-2. **Design doc** `docs/planning/2026-09-12_dlq-autopsy-design.md`: concept diagram,
+2. **Design doc** `docs/planning/archived/2026-09-12_dlq-autopsy-design.md`: concept diagram,
    contracts (payload/result/dedup), six loop-safety invariants, rejected alternatives
    (agent-side rescue, executor-side disposition, death-epoch dedup keys, autopsying
    sh tasks), open questions, test plan. Deviations found during implementation are

@@ -3,7 +3,7 @@
 Written 2026-09-13 10:27 CEST. Continuation of the 08-49 docs-health audit +
 08-54 Pareto plan session. Mandate: "GET SHIT DONE! The WHOLE TODO LIST!" —
 the v0.3.0 release tail (plan M1 remaining 1%) plus M4, M5, M6 and M8 from
-`docs/planning/2026-09-13_08-54_SUPERB-PARETO-EXECUTION-PLAN.md`.
+`docs/planning/archived/2026-09-13_08-54_SUPERB-PARETO-EXECUTION-PLAN.md`.
 
 Work commit: `ec50d1c` (docs+gates: publish the v0.3.0 tail and machine-check
 two more invariants); earlier edits swept by daemon commits (43fc1d6, c771061,

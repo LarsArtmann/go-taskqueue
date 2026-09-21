@@ -1,10 +1,10 @@
 # 2026-09-14 18-14 — UI stunning overhaul: brutal self-review + full status
 
 **Window:** 2026-09-14 ~15:50 → 18:14 CEST. Scope: execution of
-`docs/planning/2026-09-14_13-24_ui-stunning-overhaul.md` (23 workstreams A1-I3)
+`docs/planning/archived/2026-09-14_13-24_ui-stunning-overhaul.md` (23 workstreams A1-I3)
 plus this self-review. Evidence base for the work itself:
 `docs/research/2026-09-14_templ-components-deep-dive.html` §05 and
-`docs/status/2026-09-14_17-35_ui-stunning-overhaul-execution.md` (that report
+`docs/status/archived/2026-09-14_17-35_ui-stunning-overhaul-execution.md` (that report
 was written mid-flight, before the final two gate fixes — this one supersedes
 it as the honest end-state).
 

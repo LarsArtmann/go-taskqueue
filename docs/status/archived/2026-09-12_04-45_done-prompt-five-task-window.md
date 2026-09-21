@@ -50,7 +50,7 @@ _(Archived 2026-09-13 docs-health pass: five tasks verified done; the NOT-STARTE
    SessionEnd or a PreToolUse registry), daemon-folded commits stay
    unattributed, direct enqueues bypass the daily budget, and `AppendFact`
    is sqlite-only. The design doc's open-questions section
-   (`docs/planning/2026-09-12_session-close-bridge-design.md`) is the
+   (`docs/planning/archived/2026-09-12_session-close-bridge-design.md`) is the
    authoritative gap list; harvested below.
 2. **`task.AllStatuses` export rides the next re-tag**: the webui/httpapi
    twin lists are retired at HEAD, but the root go.mod still requires

@@ -5,7 +5,7 @@
 **Scope:** owner ruling 2026-09-14 — kill the `TQ_RESULT` self-report
 line; the queue derives what an agent session did (go-crush-data + git);
 direct agent→queue communication goes through a small focused CLI, not
-stdout parsing. Plan: docs/planning/2026-09-14_derived-outcomes-verdict-channel.md.
+stdout parsing. Plan: docs/planning/archived/2026-09-14_derived-outcomes-verdict-channel.md.
 
 ## a) FULLY DONE
 

@@ -42,7 +42,7 @@ things, at least when it actually is supposed to get shit done")._
   the treefmt-drifted files (`nix fmt`; a second drift round in
   `fragments.templ` from the live webui agent was also formatted).
 - **Docs**: planning doc
-  `docs/planning/2026-09-14_batched-harvest-agent-power.md` (design +
+  `docs/planning/archived/2026-09-14_batched-harvest-agent-power.md` (design +
   rejected alternatives: warm-session chaining, in-run claim loop, direct
   enqueue), CHANGELOG (Added section), FEATURES row, AGENTS.md payload
   contract bullet, DOMAIN_LANGUAGE "Batch" term.

@@ -97,7 +97,7 @@ from the 05:24 session with its own verification labels: samber/ro
 v0.4.1 (2026-08-23, Apache-2.0, 47 importers — verified via pkg.go.dev
 in that session); samber/do v2 API via the loaded skill's verification
 block. The Subscribe seam correction comes from
-`docs/planning/2026-09-08_journal-subscription-surface-inventory.md`
+`docs/planning/archived/2026-09-08_journal-subscription-surface-inventory.md`
 (verified against code); the watermark gap analysis from
 `docs/planning/archived/2026-09-08_persisted-bridge-watermark-design.md`.
 Amendment 2026-09-08: the cordis suite was run in the fork that day

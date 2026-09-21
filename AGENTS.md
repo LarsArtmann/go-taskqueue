@@ -209,7 +209,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   `TestAgentPromptsDropSelfReport`). The recurring no-op-sha-semantics
   ruling asks died with the choice: a no-op re-dispatch derives "zero
   footer commits" automatically. Design + MCP rejection:
-  docs/planning/2026-09-14_derived-outcomes-verdict-channel.md.
+  docs/planning/archived/2026-09-14_derived-outcomes-verdict-channel.md.
 - **Verdict channel (`tq verdict` + `$TQ_RESULT_FILE`, 2026-09-14)**:
   runAgent hands every agent process a per-run temp file via the
   `TQ_RESULT_FILE` env; verdict-gated tasks record their structured result
@@ -242,7 +242,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   admission, so the grant cannot bypass spend control (direct `tq enqueue`
   stays forbidden: mint-bypass). Pinned by `internal/harvest/batch_test.go`
   - batch rows in the prompt guardrail pins. Design + rejected
-    alternatives: docs/planning/2026-09-14_batched-harvest-agent-power.md.
+    alternatives: docs/planning/archived/2026-09-14_batched-harvest-agent-power.md.
 - **`review`**: `ReviewPayload` JSON. Both verdicts COMPLETE the task; the
   mechanical gate is a valid verdict JSON recorded via `tq verdict`
   (`TQ_RESULT_FILE` channel; legacy stdout line still honored).
@@ -322,7 +322,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   only explicit `require_clean=true` restores the preflight), budget-gated
   like every mint, and the `{{TASK_ID}}` in the fix-commit footer resolves
   to the AUTOPSY's id. Cursor `dlqfix-sweeper` (head-bootstrapped,
-  rewindable). Design: docs/planning/2026-09-12_dlq-autopsy-design.md.
+  rewindable). Design: docs/planning/archived/2026-09-12_dlq-autopsy-design.md.
 - **`prioritize` (AI batch scorer, `--prioritize`)**: `PrioritizePayload`
   JSON (repo, batch items with dedup keys, model/yolo/clean knobs). A
   repo holding UNSCORED backlog items (pending agent tasks with `todo:`
@@ -391,7 +391,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   bypass, postgres parity; session/repo model documented (one close per
   session, first-repo wins — review dedup key is repo-blind, so a second
   repo's close is a replay that mints no fresh review; true multi-repo close
-  is deferred) — docs/planning/2026-09-12_session-close-bridge-design.md.
+  is deferred) — docs/planning/archived/2026-09-12_session-close-bridge-design.md.
   `tq crush -- <crush args>` is the automation-friendly wrapper: runs a
   crush session and, on exit (clean or crashed), runs the replay-safe
   close using the session id from `$CRUSH_SESSION_ID` or the child's
@@ -417,7 +417,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   `queue.ErrEmptyAnswerRef` / `queue.ErrEmptyAnswer` (both stores).
   DELIBERATELY NOT DONE: no prompt teaches `tq ask` — agents won't
   discover it until the owner rules on ask-policy (§g of the 21-04
-  report). Design: docs/planning/2026-09-06_decision-question-fanout.md
+  report). Design: docs/planning/archived/2026-09-06_decision-question-fanout.md
   (Accepted 2026-09-17 — fact-park + polling deviation from the original
   POST sketch).
 - **`Task-Queue-ID` commit footer**: every prompt contract tells agents to

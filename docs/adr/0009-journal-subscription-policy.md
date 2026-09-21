@@ -5,7 +5,7 @@
 **Depends on:** ADR-0001 (facts-first), ADR-0003 (web UI projection model),
 ADR-0004 (framework-free stance), ADR-0006 (compaction — contract
 interaction), the subscription-surface inventory
-(`docs/planning/2026-09-08_journal-subscription-surface-inventory.md`)
+(`docs/planning/archived/2026-09-08_journal-subscription-surface-inventory.md`)
 and the persisted-watermark design
 (`docs/planning/archived/2026-09-08_persisted-bridge-watermark-design.md`, shipped).
 

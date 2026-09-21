@@ -71,7 +71,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ruling. (`internal/executor/question.go`, `internal/worker/worker.go`,
   `internal/bridge/papdashboard/answers.go`, `internal/queue/*/sqlite.go`
   + `postgres.go`, `cmd/tq/ask.go`; design:
-  `docs/planning/2026-09-06_decision-question-fanout.md`)
+  `docs/planning/archived/2026-09-06_decision-question-fanout.md`)
 - **`tq session list` + `tq session close --dry-run`**: `session list`
   surfaces OPEN sessions (an `session.opened` fact with no matching
   `session.closed`) for crash recovery — which interactive session never
@@ -302,7 +302,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `tq enqueue`, which would bypass the mint gates). Never an item describing
   the task's own work. Design + rejected alternatives (warm-session chaining,
   in-run claim loop, direct enqueue):
-  docs/planning/2026-09-14_batched-harvest-agent-power.md.
+  docs/planning/archived/2026-09-14_batched-harvest-agent-power.md.
 
 ### Changed
 - **Agent outcomes are DERIVED, not self-reported** (owner ruling
@@ -317,7 +317,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   tasks). No prompt teaches the self-report line anymore — a no-op
   re-dispatch derives "zero footer commits" with no sha-semantics ruling
   needed. Design + MCP rejection:
-  docs/planning/2026-09-14_derived-outcomes-verdict-channel.md.
+  docs/planning/archived/2026-09-14_derived-outcomes-verdict-channel.md.
 - **Verdict channel: `tq verdict` + `$TQ_RESULT_FILE`** replaces the
   stdout `TQ_RESULT:` line as the way verdict-gated tasks (review, status,
   dlqfix, prioritize) report their structured result. runAgent hands every
@@ -619,7 +619,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   clone and are dirty-tree-capable by default (a dead agent's partial work
   IS evidence), and one watermark cursor (`dlqfix-sweeper`,
   head-bootstrapped, rewindable) drives mint + dispose. Design:
-  `docs/planning/2026-09-12_dlq-autopsy-design.md`.
+  `docs/planning/archived/2026-09-12_dlq-autopsy-design.md`.
 - **Session-close bridge prototype (`tq session begin/close`)**: interactive
   crush sessions can now get the same close-out pool agents get. Begin
   records a `session.opened` journal fact; close attributes the session's
@@ -631,7 +631,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (crush PR #3146); the pool does everything else. New `internal/session`
   package, `(*sqlite.Store).AppendFact` as the one sanctioned non-task fact
   write, and the design/tradeoffs doc
-  `docs/planning/2026-09-12_session-close-bridge-design.md`. Trigger
+  `docs/planning/archived/2026-09-12_session-close-bridge-design.md`. Trigger
   automation, daemon-commit attribution, budget routing and Postgres
   `AppendFact` parity remain open (documented in the design doc).
 - **`tq doctor` now diagnoses the Go build environment (2026-09-12)**: a
@@ -1095,7 +1095,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   PoC server (`examples/api`: enqueue endpoint, Prometheus `/metrics`, live
   stats page) next to the SSE stream PoC (`examples/sse`) and the
   PR-mode/worktree PoC scripts; sketches for the rest in
-  `docs/planning/2026-09-06_deferred-bundle-seeds.md`
+  `docs/planning/archived/2026-09-06_deferred-bundle-seeds.md`
 - Tooling policy decided and enforced: golangci-lint wired into CI
   (`.golangci.yml` with errcheck exclusions for idiomatic deferred Close and
   HTTP body/rows Close), dprint joins the flake devShell and the living docs

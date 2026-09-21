@@ -99,7 +99,7 @@ D01–D100) end to end: READ → execute → verify per task, one step at a time
 20. ~~D79 / C26 — dprint in devShell + one formatted pass over docs.~~ done (dprint in flake devShell + docs pass)
 21. D76–D77 / C25 — CQA live verification (BLOCKED on owner: instance URL + owner id + token); upgrade FEATURES row after.
 22. ~~D73 / C24 — PapDashboard E2E script (docker pap + tq worker `--alert-url`), run once green.~~ done (scripts/smoke/papdashboard-e2e.sh (stub mode; real-mode debt 19:49))
-23. ~~D74 / C24 — decision→question fan-out design note (docs/planning).~~ done (docs/planning/2026-09-06_decision-question-fanout.md)
+23. ~~D74 / C24 — decision→question fan-out design note (docs/planning).~~ done (docs/planning/archived/2026-09-06_decision-question-fanout.md)
 24. ~~D75 / C24 — SSE fan-out PoC (`tq tail -f` → HTTP stream, `curl` shows live facts).~~ done (examples/sse; superseded by tq serve (round 3))
 25. ~~D82 — internal→public decision note (which packages, when, what breaks).~~ done (decision recorded in the seeds doc (D82))
 26. ~~D80 — Postgres spike: schema + `FOR UPDATE SKIP LOCKED` claim sketch (docs/planning).~~ done (SQL sketch in the seeds doc (D80))

@@ -138,7 +138,7 @@ including the bad-spec error path.
 14. ~~★C26/D78 — golangci-lint: gate-or-drop decision; errcheck exclusions config if gate.~~ done (decided advisory (ci.yml continue-on-error, 19:33 report))
 15. ~~★C26/D79 — dprint into devShell + one formatted pass over docs.~~ done (dprint in flake devShell + docs pass)
 16. ~~★C24/D73 — PapDashboard E2E script (docker pap + worker `--alert-url`).~~ done (scripts/smoke/papdashboard-e2e.sh (stub mode; real-mode debt 19:49))
-17. ~~★C24/D74 — decision→question fan-out design note.~~ done (docs/planning/2026-09-06_decision-question-fanout.md)
+17. ~~★C24/D74 — decision→question fan-out design note.~~ done (docs/planning/archived/2026-09-06_decision-question-fanout.md)
 18. ~~★C24/D75 — SSE fan-out PoC (`tq tail -f` → HTTP stream).~~ done (examples/sse; superseded by tq serve (round 3))
 19. ~~★D55 polish — labelled CI step for the e2e suite.~~ done (e2e runs in CI via go test ./... (no dedicated step, accepted))
 20. ~~D18 — verify pkg.go.dev indexed; tick the release-checklist box.~~ done (pkg.go.dev serves v0.1.0 (verified 2026-09-07))

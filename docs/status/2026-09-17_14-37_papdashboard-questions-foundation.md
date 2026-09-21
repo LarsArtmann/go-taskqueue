@@ -2,7 +2,7 @@
 
 **Window:** 2026-09-17 ~13:45–14:37 CEST · **Feature:** decision → question fan-out
 (ROADMAP v0.3.0 remainder arc; design note
-`docs/planning/2026-09-06_decision-question-fanout.md`, still Proposed).
+`docs/planning/archived/2026-09-06_decision-question-fanout.md`, still Proposed).
 Owner intent: agents do what they know autonomously; what they are unsure
 about goes to the owner ASYNCHRONOUSLY via PapDashboard, for all repos at once.
 

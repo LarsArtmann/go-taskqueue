@@ -3,7 +3,7 @@
 **Date:** 2026-09-06 16:28 CEST
 **Status:** ~~PLANNED (awaiting approval → EXECUTING)~~ EXECUTED — all 26
 coarse rows shipped or explicitly seeded (see
-`docs/planning/2026-09-06_deferred-bundle-seeds.md`); v0.1.0 released at
+`docs/planning/archived/2026-09-06_deferred-bundle-seeds.md`); v0.1.0 released at
 C04 (2026-09-06). Completion report:
 `docs/status/2026-09-06_19-49_round2-complete-c14-c15-c19-c27-status-and-debt.md`;
 surviving open items live in TODO_LIST.md / ROADMAP.md (docs-health pass

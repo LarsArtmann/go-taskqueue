@@ -41,7 +41,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - PapDashboard integration: dead-letter alerting, resolve correlation, and
   budget-mirror alerts are shipped; the question fan-out half SHIPPED
   2026-09-17 (`tq ask` fact-park loop + AnswerPoller — design note now
-  Accepted: `docs/planning/2026-09-06_decision-question-fanout.md`); the
+  Accepted: `docs/planning/archived/2026-09-06_decision-question-fanout.md`); the
   remaining arc is agent ask-policy (teaching the prompts, owner ruling
   pending) and surfacing PapDashboard questions inside `tq serve`
 - Web UI Phase D remainder: enqueue-from-UI and board drag-and-drop behind
@@ -268,7 +268,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - ~~Should the pool be allowed to work on go-taskqueue itself?~~ ANSWERED
   2026-09-07 (owner): the pool runs on this repo — `.crushrc` (minimum
   autonomy) + `.tq-verify` (CI hard gates) are the rails; see
-  `docs/planning/2026-09-07_20-47_SUPERB-PLAN-ROUND4-DOGFOOD-POOL-EATS-THIS-REPO.md`.
+  `docs/planning/archived/2026-09-07_20-47_SUPERB-PLAN-ROUND4-DOGFOOD-POOL-EATS-THIS-REPO.md`.
 - What cost ceiling applies to a first production run (per day, per repo)?
 - Review budget accounting: every completion costs 2 enqueues (work +
   review) against ONE cap, halving the effective work ceiling — exempt
@@ -307,7 +307,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 ## Deferred-bundle seeds
 
 Raw ideas with enough shape to act on live in
-[docs/planning/2026-09-06_deferred-bundle-seeds.md](docs/planning/2026-09-06_deferred-bundle-seeds.md):
+[docs/planning/archived/2026-09-06_deferred-bundle-seeds.md](docs/planning/archived/2026-09-06_deferred-bundle-seeds.md):
 the internal→public promotion order (D82), cron recurring tasks via
 time-bucketed dedup keys (D83), session chains (D94), cross-repo DAG
 templates (D97), the AI prioritizer hook (D98), retry-policy table (D99),

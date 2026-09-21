@@ -3,7 +3,7 @@
 Status: accepted (G1 default; owner may override)
 Date: 2026-09-14
 Deciders: execution of
-[docs/planning/2026-09-14_12-34_templ-components-consumer-sweep-execution-plan.md](../planning/2026-09-14_12-34_templ-components-consumer-sweep-execution-plan.md)
+[docs/planning/archived/2026-09-14_12-34_templ-components-consumer-sweep-execution-plan.md](../planning/2026-09-14_12-34_templ-components-consumer-sweep-execution-plan.md)
 
 ## Context
 

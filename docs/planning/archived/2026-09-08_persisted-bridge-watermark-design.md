@@ -11,7 +11,7 @@ fact), ack semantics, idempotent resend window — against the real
 f9/f10: "Persisted watermark storage: side table vs metadata-fact (projection
 purity)" / "Migrate papdashboard bridge to resume-from-watermark"; the
 missed-incident gap is cross-process and framework-independent).
-**Companion doc:** `docs/planning/2026-09-08_journal-subscription-surface-inventory.md`
+**Companion doc:** `docs/planning/archived/2026-09-08_journal-subscription-surface-inventory.md`
 (the subscription-surface inventory this builds on; its §4 gap 3 named
 volatile watermarks as a Subscribe-adjacent but independent need).
 
