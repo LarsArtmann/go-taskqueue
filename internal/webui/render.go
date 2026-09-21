@@ -312,6 +312,11 @@ type DashboardData struct {
 	// verdict count + derived session usage made visible. Nil when the
 	// page shows no finished scorer run.
 	Prioritizes map[string]executor.PrioritizeResult
+	// AgentResults holds the parsed outcome of every COMPLETED agent task
+	// on the detail page (keyed by task id) — the run's derived outcome
+	// (footer commits) + derived session usage made visible. Nil when the
+	// page shows no finished agent run.
+	AgentResults map[string]executor.AgentResult
 }
 
 // parkedCount counts rate-limit-parked tasks (pending, not_before in the
@@ -402,6 +407,18 @@ func (s *Server) reviewResultFor(ctx context.Context, id string) (executor.Revie
 func (s *Server) prioritizeResultFor(ctx context.Context, id string) (executor.PrioritizeResult, bool) {
 	return completionDetail(ctx, s.store, id, func(res executor.PrioritizeResult) bool {
 		return len(res.Verdicts) > 0
+	})
+}
+
+// agentResultFor reads a completed agent task's outcome from its own
+// completion-fact detail (executor.AgentResult JSON). Every successful run
+// records a result, but an all-zero one (no-op re-dispatch, stub run) has
+// nothing to show — the card stays absent rather than an empty shell.
+func (s *Server) agentResultFor(ctx context.Context, id string) (executor.AgentResult, bool) {
+	return completionDetail(ctx, s.store, id, func(res executor.AgentResult) bool {
+		return res.SessionID != "" || res.VerifyTail != "" || res.CommitSHA != "" ||
+			res.LogPath != "" || len(res.Commits) > 0 || len(res.FilesChanged) > 0 ||
+			!sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount)
 	})
 }
 

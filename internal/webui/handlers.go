@@ -250,6 +250,12 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 		executor.TaskTypePrioritize,
 		s.prioritizeResultFor,
 	)
+	data.AgentResults = pageResults(
+		r.Context(),
+		[]task.Task{t},
+		executor.TaskTypeAgent,
+		s.agentResultFor,
+	)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 

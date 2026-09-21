@@ -643,6 +643,9 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 			Message: t.LastError,
 		})
 	}
+	if res, ok := data.AgentResults[t.ID.String()]; ok {
+		@agentResultCard(res)
+	}
 	if verdict, ok := data.Reviews[t.ID.String()]; ok {
 		@reviewFindings(verdict)
 	}
@@ -659,7 +662,8 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 
 // reviewFindings renders the review loop's verdict: the reviewer's summary
 // plus each finding with its severity — the operator's answer to "what did
-// the reviewer think of this change?".
+// the reviewer think of this change?" — plus the run's derived session
+// usage (reviews are paid turns too).
 templ reviewFindings(res executor.ReviewResult) {
 	@display.Card(display.CardProps{Title: "agent review", Padding: display.CardPaddingMD}) {
 		if res.Summary != "" {
@@ -681,6 +685,27 @@ templ reviewFindings(res executor.ReviewResult) {
 					</li>
 				}
 			</ul>
+		}
+		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
+			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</p>
+		}
+	}
+}
+
+// agentResultCard renders an agent run's derived outcome: the footer
+// commits the queue attributed to the task plus the run's derived session
+// usage — the dominant spend made visible (08-12 report f1: only the
+// status/prioritize cards carried a usage line).
+templ agentResultCard(res executor.AgentResult) {
+	@display.Card(display.CardProps{Title: "agent run", Padding: display.CardPaddingMD}) {
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+			@display.Badge(display.BadgeProps{Text: fmt.Sprintf("%d commits", len(res.Commits)), Type: display.BadgeInfo, Size: display.BadgeSizeSM})
+			if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
+				<span class="text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</span>
+			}
+		</div>
+		if res.LogPath != "" {
+			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
 		}
 	}
 }
