@@ -626,6 +626,8 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 // tokens/cost line) and a status run with usage extends its report card —
 // while a usage-less result (stub or non-crush run) stays quiet.
 func TestResultUsageRendersOnDetailPage(t *testing.T) {
+	t.Parallel()
+
 	srv, s := newTestServer(t)
 
 	pz := enqueue(t, s, "prioritize", "demo")
@@ -634,7 +636,10 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	pzDetail, err := json.Marshal(executor.PrioritizeResult{
-		Verdicts:                []executor.PrioritizeVerdict{{ItemKey: "todo:a", Score: 80}, {ItemKey: "todo:b", Score: 20}},
+		Verdicts: []executor.PrioritizeVerdict{
+			{ItemKey: "todo:a", Score: 80},
+			{ItemKey: "todo:b", Score: 20},
+		},
 		SessionPromptTokens:     1200,
 		SessionCompletionTokens: 340,
 		SessionCostUSD:          0.0042,
@@ -648,7 +653,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+pz.ID.String(), nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+pz.ID.String(), nil))
 
 	body := rec.Body.String()
 	for _, want := range []string{
@@ -679,9 +685,13 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+st.ID.String(), nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+st.ID.String(), nil))
 
-	if body := rec.Body.String(); !strings.Contains(body, "10 prompt + 0 completion tokens · $0.0100 derived session cost") {
+	if body := rec.Body.String(); !strings.Contains(
+		body,
+		"10 prompt + 0 completion tokens · $0.0100 derived session cost",
+	) {
 		t.Errorf("status detail page missing the usage line")
 	}
 
@@ -700,7 +710,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+quiet.ID.String(), nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+quiet.ID.String(), nil))
 
 	if body := rec.Body.String(); strings.Contains(body, "derived session cost") {
 		t.Errorf("usage-less status task rendered a usage line")
