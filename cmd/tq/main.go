@@ -1353,6 +1353,7 @@ func cmdAgentPool(args []string) error {
 					log.Info("prioritize sweep done", "facts", stats.Facts,
 						"batches", stats.BatchesEnqueued, "known", stats.BatchesKnown,
 						"verdicts", stats.VerdictsCached, "reprioritized", stats.TasksReprioritized,
+						"pruned", stats.CachePruned,
 						"skipped", stats.Skipped)
 				}
 			})
