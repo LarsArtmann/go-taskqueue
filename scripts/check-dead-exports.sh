@@ -19,8 +19,6 @@ strict=0
 
 # Declare files live in every internal package; usage search covers the
 # whole repo (all modules import from each other + root app layer).
-declare_rx='^(func|type|var|const) ([A-Z][A-Za-z0-9_]*)[( ]'
-block_rx='^\t([A-Z][A-Za-z0-9_]*)[ =]'
 
 dead=0
 alive=0
@@ -43,12 +41,12 @@ git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go' |
 	xargs awk -v d="$funcsig_rx" -v b="$blocksig_rx" '
 		/^(var|const) \(/ { inblock = 1; next }
 		inblock && /^\)/ { inblock = 0; next }
-		inblock && match($0, b) { print substr($0, RSTART + 1, RLENGTH - 2); next }
+		inblock && match($0, b) { print FILENAME "\t" substr($0, RSTART + 1, RLENGTH - 2); next }
 		match($0, d) {
 			s = substr($0, RSTART, RLENGTH)
 			sub(/^(func|type|var|const) /, "", s)
 			sub(/[( ]$/, "", s)
-			print s
+			print FILENAME "\t" s
 		}
 	' > "$declfile"
 
