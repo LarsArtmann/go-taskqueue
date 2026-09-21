@@ -129,6 +129,14 @@ jobs:
         # 2026-09-15 (fullcore hardening batch).
         run: ./scripts/smoke/fullcore.sh
       - name: Release-gates smoke (fixture go.mods, positive + negative)
+        # Identity sanitizer mirrored from ci-local.sh: the smoke's dropped
+        # `-c user.*` fixtures must fail the same way with and without a
+        # global git identity.
+        env:
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: user.useConfigOnly
+          GIT_CONFIG_VALUE_0: "true"
         run: ./scripts/smoke/release-gates.sh
       - name: Ghost-reference check (doc-cited paths exist)
         run: ./scripts/check-doc-refs.sh
