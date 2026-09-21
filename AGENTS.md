@@ -994,6 +994,24 @@ prose, not the table.
   (same treatment as agentPath). Until then: a task.verify failure with
   that error is the environment lying, not a regression — re-run the gate
   with the export before judging the work.
+- ⚠️ **The minted verify gate is structurally red on dev hosts with
+  `vendor/`** (2026-09-21, §f4 attempt-3 discovery): the bootstrap
+  auto-detect verify — gofmt tail `test -z "$(gofmt -l .)"`, verbatim in
+  the repo `.tq-verify` — walks the GITIGNORED `vendor/` tree (root
+  builds need it since the 2026-09-17 vendor arc, .gitignore:63), so the
+  gate dies at its LAST stage with rc=1 while every earlier stage is
+  green (44 vendor/*.go flagged, all third-party; `git ls-files '*.go'`
+  is gofmt-clean; every package ok incl. e2e). Deterministic
+  dead-letter machine since vendor/ materialized: 5 go-taskqueue tasks
+  dead 3/3 on this gate since 09-20 (000001a0bd9a…, 000001a0c124… tails
+  confirmed all-ok). Fix is OWNER-ONLY (agents never edit their own
+  gate): scope the gofmt stage to tracked files
+  (`gofmt -l $(git ls-files '*.go')`) in BOTH `.tq-verify` and the mint
+  template; CI is unaffected (runners have no vendor/). A task.verify
+  failure whose tail shows all-ok packages is THIS bug, not a work
+  defect. Separately, internal/e2e under -race is load-marginal vs the
+  180s stage cap (240s kill at 02:45, 181.6s ok at 03:05) — tracked in
+  its own TODO row.
 - ⚠️ **Crush client/server mode stays OFF for pool agents until a
   per-repo experiment passes** (`CRUSH_CLIENT_SERVER` unset everywhere,
   verified 2026-09-14): first-wins `--yolo` is a non-issue under the
