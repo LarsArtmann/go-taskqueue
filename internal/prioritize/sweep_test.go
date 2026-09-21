@@ -257,9 +257,10 @@ func TestCachedItemsLeaveTheBatch(t *testing.T) {
 }
 
 // TestStaleVerdictsRejoinTheBatch pins the TTL half of the score-cache
-// maintenance: a verdict older than ScoreTTL re-joins the next batch even
+// maintenance: a verdict older than ScoreTTL re-joins the next mint even
 // though an old batch covered the item (the refresh is the point), while
-// a fresh verdict stays out. ScoreTTL < 0 disables aging.
+// a fresh verdict stays out. Aging rides the existing triggers — a fresh
+// enqueue or a batch completion re-checks the repo's working set.
 func TestStaleVerdictsRejoinTheBatch(t *testing.T) {
 	t.Parallel()
 
@@ -280,8 +281,12 @@ func TestStaleVerdictsRejoinTheBatch(t *testing.T) {
 		executor.PrioritizeVerdict{ItemKey: "todo:new", Score: 60},
 	)
 
-	// Backdate one verdict past the TTL: it is now stale, its item's old
-	// batch coverage must not protect it from re-scoring.
+	if _, err := sw.Sweep(ctx); err != nil {
+		t.Fatalf("apply sweep: %v", err)
+	}
+
+	// Backdate one verdict past the TTL: stale, its item's old batch
+	// coverage must not protect it from re-scoring.
 	if err := s.SavePriorityScore(ctx, queue.PriorityScore{
 		ItemKey:  "todo:old",
 		Score:    40,
@@ -291,13 +296,17 @@ func TestStaleVerdictsRejoinTheBatch(t *testing.T) {
 		t.Fatalf("backdate cache: %v", err)
 	}
 
+	// A new enqueue re-checks the repo's working set and drags the stale
+	// item into the fresh batch alongside the unscored newcomer.
+	seedBacklogTask(t, s, "demo", "Later item", "todo:later", 0, 50)
+
 	stats, err := sw.Sweep(ctx)
 	if err != nil {
 		t.Fatalf("refresh sweep: %v", err)
 	}
 
 	if stats.BatchesEnqueued != 1 {
-		t.Fatalf("batches enqueued = %d, want 1 for the stale verdict", stats.BatchesEnqueued)
+		t.Fatalf("batches enqueued = %d, want 1 for the stale + new items", stats.BatchesEnqueued)
 	}
 
 	batches := scorerTasks(t, s)
@@ -310,19 +319,57 @@ func TestStaleVerdictsRejoinTheBatch(t *testing.T) {
 		t.Fatalf("decode payload: %v", err)
 	}
 
-	if len(payload.Items) != 1 || payload.Items[0].Key != "todo:old" {
-		t.Fatalf("refresh batch covers %v, want only the stale todo:old", payload.Items)
+	if len(payload.Items) != 2 || payload.Items[0].Key != "todo:later" || payload.Items[1].Key != "todo:old" {
+		t.Fatalf("refresh batch covers %v, want the stale todo:old plus the new todo:later", payload.Items)
+	}
+}
+
+// TestAgingDisabledKeepsCoveredItemsOut pins the ScoreTTL < 0 opt-out:
+// verdicts never go stale, so an old batch's coverage keeps its items out
+// of every future batch even when their cached verdict is ancient.
+func TestAgingDisabledKeepsCoveredItemsOut(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	sw := newTestSweeper(t, s, SweeperConfig{ScoreTTL: -1})
+
+	seedBacklogTask(t, s, "demo", "Ancient verdict", "todo:old", 0, 50)
+
+	ctx := context.Background()
+
+	if _, err := sw.Sweep(ctx); err != nil {
+		t.Fatalf("mint sweep: %v", err)
 	}
 
-	// Aging disabled: a negative ScoreTTL never goes stale.
-	off := newTestSweeper(t, s, SweeperConfig{ScoreTTL: -1})
-	if _, err := off.Sweep(ctx); err != nil {
-		t.Fatalf("aging-disabled sweep: %v", err)
+	completeScorer(t, s, executor.PrioritizeVerdict{ItemKey: "todo:old", Score: 40})
+
+	if _, err := sw.Sweep(ctx); err != nil {
+		t.Fatalf("apply sweep: %v", err)
 	}
 
-	batches = scorerTasks(t, s)
+	seedBacklogTask(t, s, "demo", "Newcomer", "todo:new", 0, 50)
+
+	stats, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("refresh sweep: %v", err)
+	}
+
+	if stats.BatchesEnqueued != 1 {
+		t.Fatalf("batches enqueued = %d, want 1 for the newcomer only", stats.BatchesEnqueued)
+	}
+
+	batches := scorerTasks(t, s)
 	if len(batches) != 2 {
-		t.Fatalf("scorer tasks after aging-disabled sweep = %d, want still 2", len(batches))
+		t.Fatalf("scorer tasks = %d, want 2", len(batches))
+	}
+
+	var payload executor.PrioritizePayload
+	if err := json.Unmarshal(batches[1].Payload, &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+
+	if len(payload.Items) != 1 || payload.Items[0].Key != "todo:new" {
+		t.Fatalf("batch covers %v, want only todo:new (aging disabled)", payload.Items)
 	}
 }
 

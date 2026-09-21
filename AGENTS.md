@@ -342,6 +342,13 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   payload-pinned `markerLevel` (marker > AI), hot/machine by
   `RepriMutable`, and scores clamp to the backlog band. `tq reprioritize`
   and the startup sweep feed the same cache (one ladder everywhere).
+  Cache maintenance (2026-09-21): verdicts AGE (`DefaultScoreTTL` 30d,
+  `SweeperConfig.ScoreTTL`; negative disables) — a stale item re-joins
+  the next mint even though an old batch covered it, and the re-score's
+  upsert overwrites in place; ORPHANED keys (item reworded/re-keyed,
+  checked off, task terminal) are evicted at every scorer completion
+  (`SweepStats.CachePruned`; store surface `PriorityScores` +
+  `DeletePriorityScores` in both backends).
   Default OFF — it is AI spend.
 - **`depbump` (deterministic dependency bumps, 2026-09-15)**:
   `DepBumpPayload` JSON (repo, exact `bumps[{module,version}]`, optional
