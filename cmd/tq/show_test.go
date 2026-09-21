@@ -159,8 +159,9 @@ func queuePriorityScore() queue.PriorityScore {
 // TestShowJSONCarriesDerivedSessionUsage is the e2e wire pin for derived
 // session usage on `tq show`: a status AND a prioritize task completed
 // against a scratch sqlite store must carry session_cost_usd,
-// session_prompt_tokens and session_completion_tokens through the show
-// JSON's wholesale-marshaled result section (04-07 report f1).
+// session_prompt_tokens, session_completion_tokens and
+// session_message_count through the show JSON's wholesale-marshaled
+// result section (04-07 report f1; message count added per 08-35 §f6).
 // resultDetail's decode (TestResultDetailDecodesTypedResults) and the
 // webui render (TestResultUsageRendersOnDetailPage) are pinned
 // separately — this is the only gate on the encoder step between them.
@@ -195,10 +196,12 @@ func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) {
 				SessionCostUSD:          0.0042,
 				SessionPromptTokens:     1200,
 				SessionCompletionTokens: 340,
+				SessionMessageCount:     7,
 			},
-			wantCost: 0.0042,
-			wantIn:   1200,
-			wantOut:  340,
+			wantCost:     0.0042,
+			wantIn:       1200,
+			wantOut:      340,
+			wantMessages: 7,
 		},
 		{
 			taskType: executor.TaskTypePrioritize,
@@ -212,10 +215,12 @@ func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) {
 				SessionCostUSD:          0.0137,
 				SessionPromptTokens:     4200,
 				SessionCompletionTokens: 910,
+				SessionMessageCount:     9,
 			},
-			wantCost: 0.0137,
-			wantIn:   4200,
-			wantOut:  910,
+			wantCost:     0.0137,
+			wantIn:       4200,
+			wantOut:      910,
+			wantMessages: 9,
 		},
 	}
 
@@ -242,7 +247,10 @@ type usageSeed struct {
 	wantCost float64
 	wantIn   int64
 	wantOut  int64
-	id       task.ID
+
+	wantMessages int64
+
+	id task.ID
 }
 
 // seedUsageTask takes one seed through the full store lifecycle —
@@ -323,6 +331,7 @@ func assertShowUsageWire(t *testing.T, dbPath string, seed *usageSeed) {
 		"session_cost_usd":          seed.wantCost,
 		"session_prompt_tokens":     float64(seed.wantIn),
 		"session_completion_tokens": float64(seed.wantOut),
+		"session_message_count":     float64(seed.wantMessages),
 	} {
 		got, ok := doc.Result[key]
 		if !ok {
