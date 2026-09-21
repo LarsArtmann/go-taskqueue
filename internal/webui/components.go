@@ -672,23 +672,30 @@ func budgetMeterClass(b BudgetView) string {
 	}
 }
 
-// budgetMeterFillClass is the meter's fill: the CSP forbids inline widths
-// (style-src 'self'), so the server emits one of twenty 5%-step classes
-// (theme.css .tq-meter-fill-N). A nonzero spend always shows a sliver —
-// rounding 2% down to an empty track would lie.
+// The meter's fill width is one of twenty 5%-step classes (theme.css
+// .tq-meter-fill-N) because the CSP forbids inline widths.
+const (
+	budgetMeterStepPct   = 5   // class granularity: .tq-meter-fill-5 … -100
+	budgetMeterRoundPct  = 2   // (pct+2)/5*5 rounds to the nearest step
+	budgetMeterMaxPct    = 100 // clamp at the full track
+	budgetMeterMinSliver = 5   // a nonzero spend always shows this much
+)
+
+// budgetMeterFillClass is the meter's fill: a nonzero spend always shows a
+// sliver — rounding 2% down to an empty track would lie.
 func budgetMeterFillClass(b BudgetView) string {
 	if b.Spent <= 0 || b.Cap <= 0 {
 		return "tq-meter-fill"
 	}
 
-	pct := b.Spent * 100 / b.Cap
-	if pct > 100 {
-		pct = 100
+	pct := b.Spent * budgetMeterMaxPct / b.Cap
+	if pct > budgetMeterMaxPct {
+		pct = budgetMeterMaxPct
 	}
 
-	quantized := ((pct + 2) / 5) * 5
-	if quantized < 5 {
-		quantized = 5
+	quantized := (pct + budgetMeterRoundPct) / budgetMeterStepPct * budgetMeterStepPct
+	if quantized < budgetMeterMinSliver {
+		quantized = budgetMeterMinSliver
 	}
 
 	return "tq-meter-fill tq-meter-fill-" + strconv.Itoa(quantized)
