@@ -168,7 +168,7 @@ func queuePriorityScore() queue.PriorityScore {
 // captureStdout tests must never overlap (see TestCmdDLQDismissDeadTask,
 // the one pre-existing parallel user — adding a second live one is what
 // tripped the unexpected-EOF flake in the full gate).
-func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) {
+func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) { //n:paralleltest // captureStdout swaps process-global os.Stdout — this test is sequential BY CONTRACT (see the doc comment); the linter's parallel demand is exactly what flaked the gate
 	dbPath := filepath.Join(t.TempDir(), "usage.db")
 
 	store, err := sqlite.Open(dbPath)
@@ -176,23 +176,15 @@ func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) {
 		t.Fatalf("open store: %v", err)
 	}
 
-	ctx := context.Background()
-
-	seeds := []struct {
-		taskType string
-		payload  any
-		detail   any
-		wantCost float64
-		wantIn   int64
-		wantOut  int64
-		id       task.ID
-	}{
+	seeds := []usageSeed{
 		{
 			taskType: executor.TaskTypeStatus,
 			payload: executor.StatusPayload{
-				Repo:      "demo",
-				Project:   "demo",
-				Completed: []executor.StatusCompletion{{TaskID: "000001a0c2452641", Item: "Fix the frobnicator"}},
+				Repo:    "demo",
+				Project: "demo",
+				Completed: []executor.StatusCompletion{
+					{TaskID: "000001a0c2452641", Item: "Fix the frobnicator"},
+				},
 			},
 			detail: executor.StatusResult{
 				Report:                  "docs/status/2026-09-21_10-00_demo.md",
@@ -226,85 +218,126 @@ func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) {
 	}
 
 	for i := range seeds {
-		raw, err := json.Marshal(seeds[i].payload)
-		if err != nil {
-			t.Fatalf("marshal %s payload: %v", seeds[i].taskType, err)
-		}
-
-		enq, err := store.Enqueue(ctx, task.New{Type: seeds[i].taskType, Project: "demo", Payload: raw})
-		if err != nil {
-			t.Fatalf("enqueue %s: %v", seeds[i].taskType, err)
-		}
-
-		claimed, err := store.ClaimDue(ctx, "show-usage-e2e", time.Minute)
-		if err != nil {
-			t.Fatalf("claim %s: %v", seeds[i].taskType, err)
-		}
-
-		if claimed.ID != enq.ID {
-			t.Fatalf("claimed %s, want the enqueued %s task %s", claimed.ID, seeds[i].taskType, enq.ID)
-		}
-
-		detail, err := json.Marshal(seeds[i].detail)
-		if err != nil {
-			t.Fatalf("marshal %s result: %v", seeds[i].taskType, err)
-		}
-
-		if err := store.Complete(ctx, enq.ID, "show-usage-e2e", detail); err != nil {
-			t.Fatalf("complete %s: %v", seeds[i].taskType, err)
-		}
-
-		seeds[i].id = enq.ID
+		seeds[i].id = seedUsageTask(t, store, &seeds[i])
 	}
 
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
 
-	for _, seed := range seeds {
-		t.Run(seed.taskType, func(t *testing.T) {
-			out := captureStdout(t, func() {
-				if err := cmdShow([]string{"--db", dbPath, seed.id.String()}); err != nil {
-					t.Errorf("cmdShow: %v", err)
-				}
-			})
+	for i := range seeds {
+		assertShowUsageWire(t, dbPath, &seeds[i])
+	}
+}
 
-			var doc struct {
-				Task struct {
-					ID     string `json:"id"`
-					Type   string `json:"type"`
-					Status string `json:"status"`
-				} `json:"task"`
-				Result struct {
-					SessionCostUSD          float64 `json:"session_cost_usd"`
-					SessionPromptTokens     int64   `json:"session_prompt_tokens"`
-					SessionCompletionTokens int64   `json:"session_completion_tokens"`
-				} `json:"result"`
-			}
+// usageSeed is one completed task in the wire pin: the payload it was
+// minted with, the typed result its completion fact carries, and the
+// derived-usage numbers the show JSON must surface.
+type usageSeed struct {
+	taskType string
+	payload  any
+	detail   any
+	wantCost float64
+	wantIn   int64
+	wantOut  int64
+	id       task.ID
+}
 
-			if err := json.Unmarshal([]byte(out), &doc); err != nil {
-				t.Fatalf("decode show output: %v\n%s", err, out)
-			}
+// seedUsageTask takes one seed through the full store lifecycle —
+// enqueue, claim, complete with the typed result detail — the same path
+// a real executor run takes through the store.
+func seedUsageTask(t *testing.T, store *sqlite.Store, seed *usageSeed) task.ID {
+	t.Helper()
 
-			if doc.Task.ID != seed.id.String() || doc.Task.Type != seed.taskType {
-				t.Fatalf("task = %s/%s, want %s/%s", doc.Task.ID, doc.Task.Type, seed.id, seed.taskType)
-			}
+	ctx := context.Background()
 
-			if doc.Task.Status != "completed" {
-				t.Fatalf("task status = %q, want completed", doc.Task.Status)
-			}
+	raw, err := json.Marshal(seed.payload)
+	if err != nil {
+		t.Fatalf("marshal %s payload: %v", seed.taskType, err)
+	}
 
-			if doc.Result.SessionCostUSD != seed.wantCost {
-				t.Errorf("result.session_cost_usd = %v, want %v", doc.Result.SessionCostUSD, seed.wantCost)
-			}
+	enq, err := store.Enqueue(ctx, task.New{Type: seed.taskType, Project: "demo", Payload: raw})
+	if err != nil {
+		t.Fatalf("enqueue %s: %v", seed.taskType, err)
+	}
 
-			if doc.Result.SessionPromptTokens != seed.wantIn {
-				t.Errorf("result.session_prompt_tokens = %v, want %v", doc.Result.SessionPromptTokens, seed.wantIn)
-			}
+	claimed, err := store.ClaimDue(ctx, "show-usage-e2e", time.Minute)
+	if err != nil {
+		t.Fatalf("claim %s: %v", seed.taskType, err)
+	}
 
-			if doc.Result.SessionCompletionTokens != seed.wantOut {
-				t.Errorf("result.session_completion_tokens = %v, want %v", doc.Result.SessionCompletionTokens, seed.wantOut)
-			}
-		})
+	if claimed.ID != enq.ID {
+		t.Fatalf("claimed %s, want the enqueued %s task %s", claimed.ID, seed.taskType, enq.ID)
+	}
+
+	detail, err := json.Marshal(seed.detail)
+	if err != nil {
+		t.Fatalf("marshal %s result: %v", seed.taskType, err)
+	}
+
+	if err := store.Complete(ctx, enq.ID, "show-usage-e2e", detail); err != nil {
+		t.Fatalf("complete %s: %v", seed.taskType, err)
+	}
+
+	return enq.ID
+}
+
+// assertShowUsageWire runs cmdShow for one completed task and pins the
+// wholesale-marshaled result on the raw wire: the usage keys must exist
+// as literal snake_case JSON keys at the seeded values, so the
+// assertion decodes into a string-keyed map — a re-tagged struct would
+// let a tag rename rot the pin silently.
+func assertShowUsageWire(t *testing.T, dbPath string, seed *usageSeed) {
+	t.Helper()
+
+	out := captureStdout(t, func() {
+		if err := cmdShow([]string{"--db", dbPath, seed.id.String()}); err != nil {
+			t.Errorf("cmdShow: %v", err)
+		}
+	})
+
+	var doc struct {
+		Task struct {
+			ID     string `json:"id"`
+			Type   string `json:"type"`
+			Status string `json:"status"`
+		} `json:"task"`
+		Result map[string]any `json:"result"`
+	}
+
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Fatalf("decode show output: %v\n%s", err, out)
+	}
+
+	if doc.Task.ID != seed.id.String() || doc.Task.Type != seed.taskType {
+		t.Fatalf("task = %s/%s, want %s/%s", doc.Task.ID, doc.Task.Type, seed.id, seed.taskType)
+	}
+
+	if doc.Task.Status != "completed" {
+		t.Fatalf("task status = %q, want completed", doc.Task.Status)
+	}
+
+	for key, want := range map[string]float64{
+		"session_cost_usd":          seed.wantCost,
+		"session_prompt_tokens":     float64(seed.wantIn),
+		"session_completion_tokens": float64(seed.wantOut),
+	} {
+		got, ok := doc.Result[key]
+		if !ok {
+			t.Errorf("show result missing wire key %q", key)
+
+			continue
+		}
+
+		gotNum, isNum := got.(float64)
+		if !isNum {
+			t.Errorf("show result key %q = %v (%T), want a number", key, got, got)
+
+			continue
+		}
+
+		if gotNum != want {
+			t.Errorf("show result key %q = %v, want %v", key, gotNum, want)
+		}
 	}
 }
