@@ -85,18 +85,18 @@ while IFS=$'\t' read -r file name; do
 done < "$declfile"
 
 # Second pass: annotate the structurally-alive class. A flagged name that
-# appears (word-delimited) in the signature of a DIFFERENT exported func of
-# the same package — one that is itself NOT flagged — is alive behind that
-# func's exported contract.
+# appears (word-delimited) in the signature of a DIFFERENT EXPORTED func of
+# the same package is alive behind that func's exported contract — even when
+# the func itself is flagged (LoadRegistry/RewriteRegistry are zero-importer
+# too, yet RegistryEntry is only reachable through them; Sweep/Close carry
+# SweepOutcome/CloseResult directly). Unexported helpers do NOT annotate.
 while IFS=$'\t' read -r file name; do
 	note=""
 	while IFS=$'\t' read -r sfile sname ssig; do
 		[ "$(dirname "$sfile")" = "$(dirname "$file")" ] || continue
 		[ "$sname" != "$name" ] || continue
+		case "$sname" in [A-Z]*) ;; *) continue ;; esac
 		grep -Eq "(^|[^A-Za-z0-9_])${name}([^A-Za-z0-9_]|$)" <<<"$ssig" || continue
-		if grep -qF "$(printf '%s\t%s' "$sfile" "$sname")" "$deadfile"; then
-			continue
-		fi
 		note="structurally alive: return/parameter type of ${sname}()"
 		break
 	done < "$sigfile"
