@@ -575,7 +575,18 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   plugin pinning AND the multi-writer problem
 - The web UI is themed with `github.com/larsartmann/templ-components`
   (v1.16.x); tokens in `internal/webui/theme.css`; JetBrains Mono woff2
-  subsets are SIL OFL 1.1 (© JetBrains)
+  subsets are SIL OFL 1.1 (© JetBrains). Design language refinements
+  (2026-09-21 pass): two-voice typography — mono is the MACHINE voice (ids,
+  counts, timestamps, commands), sans the HUMAN voice (project names, error
+  prose); lowercase terminal labels everywhere BELOW the hull chrome (the
+  topbar/nowband bezel keeps its engraved uppercase micro-labels); board
+  cards are status-left-ruled queue chips, not SaaS cards; the nowband
+  budget readout carries a CSP-safe quantized spend meter (`.tq-meter` —
+  `style-src 'self'` forbids inline widths, so the server emits one of
+  twenty 5%-step `.tq-meter-fill-N` classes; pinned by
+  `TestBudgetMeterToneAndQuantization`). The fact feed is sticky-bottom
+  (app.js keeps a pinned `.journal-scroll` pinned across swaps) and the
+  newest fact line settles in with a reduced-motion-guarded 240ms fade.
 - The `FuzzParseRepo` seed corpus is COMMITTED and grows via nightly
   campaigns; a fuzz crasher must be fixed, never committed
 - `TODO_LIST.md` is machine-consumed: `- [ ]` checkboxes, one item per

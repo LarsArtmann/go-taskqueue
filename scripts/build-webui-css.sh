@@ -16,6 +16,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# go.mod requires go >= 1.27.1; hosts pinning GOTOOLCHAIN=local on an older
+# toolchain (a nix-run env) would silently fail the go list resolution below
+# and fall into the vendor fallback, which never carries templates/. Honor
+# an explicit override, otherwise let go pick the module's toolchain.
+export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
+
 # Module dir resolution: plain `go list -m` resolves Dir as EMPTY when a
 # (git-ignored) vendor/ directory flips go into vendor mode — pin -mod=mod
 # for the cache copy, and fall back to the vendored source when the cache
