@@ -59,7 +59,10 @@ templ StatusCards(data DashboardData) {
 			}
 			<span class="card-journal" title="journal watermark — highest fact seq">journal { formatInt(int(data.JournalSeq)) }</span>
 			if data.Budget != nil {
-				<span class="card-budget">budget today { formatInt(data.Budget.Spent) }/{ formatInt(data.Budget.Cap) }</span>
+				<span class="card-budget inline-flex items-center gap-2" title="agent tasks enqueued today vs the daily cap">
+					budget today { formatInt(data.Budget.Spent) }/{ formatInt(data.Budget.Cap) }
+					<span class={ budgetMeterClass(*data.Budget) }><span class={ budgetMeterFillClass(*data.Budget) }></span></span>
+				</span>
 			}
 		</div>
 	</div>
@@ -70,7 +73,7 @@ templ StatusCards(data DashboardData) {
 	}
 	<div class="mt-3 flex flex-wrap items-center gap-1.5">
 		if len(data.Projects) == 0 {
-			<span class="font-mono text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">no projects</span>
+			<span class="tq-label">no projects</span>
 		} else {
 			if !data.Filter.Empty() {
 				@display.Badge(display.BadgeProps{
@@ -432,7 +435,7 @@ templ boardColumn(data DashboardData, col BoardColumn) {
 	<li class="w-64 min-w-52 snap-start" data-status={ string(col.Status) } aria-label={ string(col.Status) + " column" }>
 		<div class={ "border-t-2 pt-2 " + statusAccentClass(col.Status) }>
 			<div class="flex items-baseline justify-between gap-2">
-				<span class="font-mono text-xs font-medium uppercase tracking-[0.18em] text-gray-700 dark:text-gray-300">{ string(col.Status) }</span>
+				<span class="font-mono text-xs font-medium text-gray-700 dark:text-gray-300">{ string(col.Status) }</span>
 				<span class="font-mono text-xs text-gray-400 dark:text-gray-500">{ formatInt(col.Count) }</span>
 			</div>
 		</div>
@@ -441,7 +444,7 @@ templ boardColumn(data DashboardData, col BoardColumn) {
 			<a
 				class="mt-2 inline-block font-mono text-xs text-blue-600 underline-offset-4 hover:underline dark:text-blue-400"
 				href={ templ.URL(filterHref(FilterState{Status: col.Status, Project: data.Filter.Project, Query: data.Filter.Query})) }
-			>{ "+" + formatInt(col.Truncated) + " older →" }</a>
+			>{ "+" + formatInt(col.Truncated) + " older" }</a>
 		}
 	</li>
 }
@@ -453,7 +456,7 @@ templ boardColumnGroups(data DashboardData, col BoardColumn, groups []BoardBandG
 	if len(groups) <= 1 {
 		<ul class="mt-3 space-y-2">
 			if len(col.Tasks) == 0 {
-				<li class="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-center font-mono text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">empty</li>
+				<li class="rounded-md border border-dashed border-gray-200 px-3 py-4 text-center font-mono text-xs text-gray-400 dark:border-gray-800 dark:text-gray-500">empty</li>
 			} else {
 				for _, t := range col.Tasks {
 					@boardCard(data, t)
@@ -475,9 +478,12 @@ templ boardColumnGroups(data DashboardData, col BoardColumn, groups []BoardBandG
 }
 
 // the status-relevant detail — readiness countdown while pending, lease
-// owner while running, attempts + error tail once dead.
+// owner while running, attempts + error tail once dead. A card is a queue
+// chip, not a SaaS card: hairline body with the status as ONE 2px left rule
+// (the same severity language as the table's dead-row rule), transparent
+// ground, quiet hover.
 templ boardCard(data DashboardData, t task.Task) {
-	<li class="rounded-lg border border-gray-200 bg-white p-2.5 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800/60">
+	<li class={ "rounded-md border border-gray-200 border-l-2 p-2.5 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50 " + statusAccentClass(t.Status) }>
 		<div class="flex items-baseline justify-between gap-2">
 			<a
 				class="font-mono text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
@@ -486,11 +492,11 @@ templ boardCard(data DashboardData, t task.Task) {
 			>{ shortID(t.ID) }</a>
 			<span class="font-mono text-xs text-gray-400 dark:text-gray-500" data-age={ fmt.Sprintf("%d", t.CreatedAt.UnixMilli()) } title={ t.CreatedAt.Format(timeFormat) }>{ timeAgo(data.Now, t.CreatedAt) }</span>
 		</div>
-		<div class="mt-1 flex items-baseline gap-2 font-mono text-xs">
+		<div class="mt-1 flex items-baseline gap-2 text-xs">
 			if data.Filter.Project == "" {
-				<a class="truncate text-gray-700 hover:underline dark:text-gray-300" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
+				<a class="truncate font-medium text-gray-700 hover:underline dark:text-gray-300" href={ templ.URL("/project/" + t.Project) }>{ t.Project }</a>
 			}
-			<span class="shrink-0 text-gray-400 dark:text-gray-500">{ t.Type }</span>
+			<span class="shrink-0 font-mono text-gray-400 dark:text-gray-500">{ t.Type }</span>
 		</div>
 		if r := readiness(data.Now, t); r != "" {
 			<div class="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">{ r }</div>
@@ -560,16 +566,17 @@ templ FilterBar(data DashboardData) {
 				Size:    display.ButtonSizeSM,
 			})
 			if data.Filter.Project != "" || data.Filter.Status != "" || data.Filter.Query != "" || data.Filter.Band != "" {
-				<a class="font-mono text-xs uppercase tracking-[0.14em] text-gray-500 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400" href="/">clear all</a>
+				<a class="font-mono text-xs text-gray-500 underline-offset-4 hover:text-blue-600 hover:underline dark:text-gray-400 dark:hover:text-blue-400" href="/">clear all</a>
 			}
 		</div>
 	</form>
 }
 
-// filterChip is one active filter with a remove link.
+// filterChip is one active filter with a remove link: a quiet queue chip,
+// not a pill — rounded corners, hairline border, lowercase kind.
 templ filterChip(kind, value, clearHref string) {
-	<span class="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-		<span class="uppercase tracking-widest text-gray-400 dark:text-gray-500">{ kind }</span>
+	<span class="inline-flex items-center gap-1.5 rounded border border-gray-300 bg-gray-50 px-2 py-0.5 font-mono text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+		<span class="text-gray-400 dark:text-gray-500">{ kind }</span>
 		{ value }
 		<a class="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400" aria-label={ "clear " + kind + " filter" } href={ templ.URL(clearHref) }>×</a>
 	</span>
@@ -927,6 +934,6 @@ templ journalBrowser() {
 	<details id="journal-browser" class="pt-2">
 		<summary class="cursor-pointer select-none text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">browse the full journal (oldest first)</summary>
 		<div id="journal-browser-rows" class="mt-2 font-mono text-xs"></div>
-		<button id="journal-browser-more" type="button" class="mt-2 rounded-lg border border-gray-300 px-3 py-1 text-xs dark:border-gray-700" hidden>load older</button>
+		<button id="journal-browser-more" type="button" class="mt-2 rounded-md border border-gray-300 px-3 py-1 font-mono text-xs text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800" hidden>load older</button>
 	</details>
 }

@@ -3,6 +3,7 @@ package webui
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -655,6 +656,42 @@ func bandBadgeType(band queue.Band) display.BadgeType {
 	default:
 		return display.BadgeNeutral
 	}
+}
+
+// budgetMeterClass is the spend meter's track element: tone rides the same
+// operator thresholds as BudgetView.Tone (green under 75%, amber under the
+// cap, red at/over it).
+func budgetMeterClass(b BudgetView) string {
+	switch b.Tone() {
+	case display.StatToneYellow:
+		return "tq-meter tq-meter-warn"
+	case display.StatToneRed:
+		return "tq-meter tq-meter-over"
+	default:
+		return "tq-meter"
+	}
+}
+
+// budgetMeterFillClass is the meter's fill: the CSP forbids inline widths
+// (style-src 'self'), so the server emits one of twenty 5%-step classes
+// (theme.css .tq-meter-fill-N). A nonzero spend always shows a sliver —
+// rounding 2% down to an empty track would lie.
+func budgetMeterFillClass(b BudgetView) string {
+	if b.Spent <= 0 || b.Cap <= 0 {
+		return "tq-meter-fill"
+	}
+
+	pct := b.Spent * 100 / b.Cap
+	if pct > 100 {
+		pct = 100
+	}
+
+	quantized := ((pct + 2) / 5) * 5
+	if quantized < 5 {
+		quantized = 5
+	}
+
+	return "tq-meter-fill tq-meter-fill-" + strconv.Itoa(quantized)
 }
 
 // reasonPlaceholder keeps the cancel form honest: a running agent deserves

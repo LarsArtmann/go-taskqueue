@@ -25,7 +25,7 @@ module_dir() {
 	dir="$(go list -m -mod=mod -f '{{.Dir}}' "$1" 2>/dev/null || true)"
 
 	if [ -z "$dir" ] && [ -d "vendor/$1" ]; then
-		dir="vendor/$1"
+		dir="$(pwd)/vendor/$1"
 	fi
 
 	if [ -z "$dir" ]; then

@@ -490,7 +490,7 @@ func viewToggle(f FilterState) templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<nav class=\"flex shrink-0 items-center gap-3 font-mono text-xs uppercase tracking-[0.14em]\" aria-label=\"task view\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<nav class=\"flex shrink-0 items-center gap-3 font-mono text-xs tracking-[0.08em]\" aria-label=\"task view\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -670,7 +670,7 @@ func pageFooter() templ.Component {
 			templ_7745c5c3_Var23 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<footer class=\"border-t border-gray-200 py-6 dark:border-gray-800\"><div class=\"mx-auto w-full max-w-7xl px-4 font-mono text-xs text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8\">live projection of the journal · press <kbd>/</kbd> to search, <kbd>1</kbd>–<kbd>4</kbd> to jump</div></footer>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<footer class=\"border-t border-gray-200 py-6 dark:border-gray-800\"><div class=\"mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-5 gap-y-1 px-4 font-mono text-xs text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8\"><span>live projection of the journal</span> <span class=\"hidden items-center gap-1.5 sm:inline-flex\"><kbd>/</kbd> search <kbd>1</kbd>-<kbd>4</kbd> sections <kbd>?</kbd> shortcuts</span></div></footer>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

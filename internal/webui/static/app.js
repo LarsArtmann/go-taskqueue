@@ -73,7 +73,12 @@
     var ae = document.activeElement;
     if (ae && el.contains(ae)) st.focus = controlKey(ae) || ae.tagName;
     el.querySelectorAll(".journal-scroll").forEach(function (s) {
-      st.scrolls.push(s.scrollTop);
+      st.scrolls.push({
+        top: s.scrollTop,
+        /* A tail pane pinned to the bottom stays pinned: new facts must
+           roll into view instead of piling up below the fold. */
+        atBottom: s.scrollTop + s.clientHeight >= s.scrollHeight - 24,
+      });
     });
     return st;
   }
@@ -103,7 +108,8 @@
     });
     var scrolls = el.querySelectorAll(".journal-scroll");
     for (var i = 0; i < scrolls.length && i < st.scrolls.length; i++) {
-      scrolls[i].scrollTop = st.scrolls[i];
+      if (st.scrolls[i].atBottom) scrolls[i].scrollTop = scrolls[i].scrollHeight;
+      else scrolls[i].scrollTop = st.scrolls[i].top;
     }
     if (st.focus) {
       try {
@@ -230,17 +236,17 @@
     toggleErrorCell(cell);
   });
 
-  /* "?" toggles the keyboard-shortcut overlay. */
+  /* "?" toggles the keyboard-shortcut overlay. Surfaces come from
+     theme.css (.tq-overlay / .tq-overlay-box) so both themes render it. */
   var overlay = null;
 
   function shortcutOverlay() {
     if (overlay) return overlay;
     overlay = document.createElement("div");
     overlay.id = "shortcut-overlay";
+    overlay.className = "tq-overlay";
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-label", "keyboard shortcuts");
-    overlay.style.cssText =
-      "position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.4)";
     overlay.addEventListener("click", function () {
       overlay.style.display = "none";
     });
@@ -248,8 +254,7 @@
     /* Built via the CSSOM, not innerHTML: the strict CSP blocks inline
        style attributes, but el.style assignments are always allowed. */
     var box = document.createElement("div");
-    box.style.cssText =
-      "max-width:22rem;padding:1.25rem;border-radius:0.5rem;background:#fff;color:#111;font-size:0.875rem";
+    box.className = "tq-overlay-box";
     var list = document.createElement("table");
     var tbody = document.createElement("tbody");
     [
@@ -261,7 +266,6 @@
       var tr = document.createElement("tr");
       var kbd = document.createElement("td");
       kbd.textContent = row[0];
-      kbd.style.cssText = "font-family:monospace;padding-right:1rem";
       var desc = document.createElement("td");
       desc.textContent = row[1];
       tr.appendChild(kbd);
