@@ -182,6 +182,17 @@ type Store interface {
 	SavePriorityScore(ctx context.Context, score PriorityScore) error
 	// PriorityScore returns the cached verdict for an item key, if any.
 	PriorityScore(ctx context.Context, itemKey string) (PriorityScore, bool, error)
+	// PriorityScores returns every cached verdict (ADR-0015 score cache),
+	// ordered by item key — the scan domain of the score-cache prune
+	// pass. The cache stays small by construction (one row per scored
+	// item key), so the read is unbounded by design.
+	PriorityScores(ctx context.Context) ([]PriorityScore, error)
+	// DeletePriorityScores removes the cached verdicts for the given item
+	// keys — the score-cache prune half: a reworded or vanished item
+	// leaves its old key's verdict orphaned forever unless evicted.
+	// Unknown keys are not an error; an empty key list deletes nothing.
+	// Returns how many rows went away.
+	DeletePriorityScores(ctx context.Context, itemKeys []string) (int64, error)
 	// FactsForTask returns one task's facts in Seq order, bounded to the
 	// most recent limit when > 0 (0 = unbounded).
 	FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error)

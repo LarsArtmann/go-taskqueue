@@ -1684,6 +1684,62 @@ func (s *Store) PriorityScore(ctx context.Context, itemKey string) (queue.Priori
 	return score, true, nil
 }
 
+// PriorityScores returns every cached verdict, ordered by item key —
+// the scan domain of the score-cache prune pass.
+func (s *Store) PriorityScores(ctx context.Context) ([]queue.PriorityScore, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at
+		FROM priority_scores ORDER BY item_key`)
+	if err != nil {
+		return nil, fmt.Errorf("queue: list priority scores: %w", err)
+	}
+
+	defer rows.Close()
+
+	var scores []queue.PriorityScore
+
+	for rows.Next() {
+		var score queue.PriorityScore
+		if err := rows.Scan(&score.ItemKey, &score.Score, &score.EffortMinutes,
+			&score.Source, &score.Reasoning, &score.Tokens, &score.ScoredAt); err != nil {
+			return nil, fmt.Errorf("queue: scan priority score: %w", err)
+		}
+
+		scores = append(scores, score)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("queue: iterate priority scores: %w", err)
+	}
+
+	return scores, nil
+}
+
+// DeletePriorityScores removes the cached verdicts for the given item
+// keys and returns how many rows went away (score-cache prune).
+func (s *Store) DeletePriorityScores(ctx context.Context, itemKeys []string) (int64, error) {
+	if len(itemKeys) == 0 {
+		return 0, nil
+	}
+
+	placeholders := make([]string, len(itemKeys))
+	args := make([]any, len(itemKeys))
+
+	for i, key := range itemKeys {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = key
+	}
+
+	res, err := s.pool.Exec(ctx,
+		`DELETE FROM priority_scores WHERE item_key IN (`+strings.Join(placeholders, ", ")+`)`,
+		args...)
+	if err != nil {
+		return 0, fmt.Errorf("queue: delete priority scores: %w", err)
+	}
+
+	return res.RowsAffected(), nil
+}
+
 // SetWatermark overwrites a consumer cursor unconditionally — the ops
 // rewind hatch (`tq watermarks set`); deliberately bypasses the monotonic
 // guard because a rewind is an intentional force-replay.

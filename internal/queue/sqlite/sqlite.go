@@ -1776,6 +1776,57 @@ func (s *Store) PriorityScore(ctx context.Context, itemKey string) (queue.Priori
 	return score, true, nil
 }
 
+// PriorityScores returns every cached verdict, ordered by item key —
+// the scan domain of the score-cache prune pass.
+func (s *Store) PriorityScores(ctx context.Context) ([]queue.PriorityScore, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at
+		FROM priority_scores ORDER BY item_key`)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var scores []queue.PriorityScore
+
+	for rows.Next() {
+		var score queue.PriorityScore
+		if err := rows.Scan(&score.ItemKey, &score.Score, &score.EffortMinutes,
+			&score.Source, &score.Reasoning, &score.Tokens, &score.ScoredAt); err != nil {
+			return nil, err
+		}
+
+		scores = append(scores, score)
+	}
+
+	return scores, rows.Err()
+}
+
+// DeletePriorityScores removes the cached verdicts for the given item
+// keys and returns how many rows went away (score-cache prune).
+func (s *Store) DeletePriorityScores(ctx context.Context, itemKeys []string) (int64, error) {
+	if len(itemKeys) == 0 {
+		return 0, nil
+	}
+
+	args := make([]any, len(itemKeys))
+	placeholders := strings.Repeat("?,", len(itemKeys))
+	placeholders = placeholders[:len(placeholders)-1]
+
+	for i, key := range itemKeys {
+		args[i] = key
+	}
+
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM priority_scores WHERE item_key IN (`+placeholders+`)`, args...)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.RowsAffected()
+}
+
 // escapeLike escapes LIKE wildcards so a user query containing %, _ or \
 // matches literally. Pair with ESCAPE '\' in the SQL.
 func escapeLike(s string) string {
