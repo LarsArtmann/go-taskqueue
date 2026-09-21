@@ -25,6 +25,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   and their conformance suites). (`internal/prioritize/sweep.go`,
   `internal/queue/queue.go`, `internal/queue/sqlite/sqlite.go`,
   `internal/queue/postgres/postgres.go`)
+- **Derived session usage on the detail page for status + prioritize
+  outcomes**: the status report card now carries the run's derived session
+  usage line (prompt/completion tokens, cost) under the report path, and a
+  new prioritize card renders the AI scorer's verdict count plus the same
+  derived session usage and the full agent output path; usage-less results
+  render no line. `tq show` additionally decodes the prioritize completion
+  fact typed (`PrioritizeResult`), so its detail payload section shows the
+  structured scorer result. (`internal/webui/fragments.templ`,
+  `internal/webui/components.go`, `internal/webui/handlers.go`,
+  `internal/webui/render.go`, `cmd/tq/main.go`)
 
 ## [v0.3.1] - 2026-09-18
 ### Fixed
