@@ -623,11 +623,12 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 
 // TestResultUsageRendersOnDetailPage pins the derived session usage on the
 // detail page: a prioritize scorer run renders its card (verdict count +
-// tokens/cost line, message count as suffix) and a status run with usage
-// extends its report card — while a result with no usage at all (stub or
-// non-crush run) stays quiet, and a message-count-only run still renders
-// (the message count proves the session ran when token/cost extraction
-// was unavailable).
+// tokens/cost line, message count as suffix), a status run with usage
+// extends its report card, an agent run renders its result card (commit
+// count + usage), and a review run's findings card carries the same usage
+// line — while a result with no usage at all (stub or non-crush run) stays
+// quiet, and a message-count-only run still renders (the message count
+// proves the session ran when token/cost extraction was unavailable).
 func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	t.Parallel()
 
@@ -745,6 +746,97 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 
 	if body := rec.Body.String(); strings.Contains(body, "derived session cost") {
 		t.Errorf("usage-less status task rendered a usage line")
+	}
+
+	ag := enqueue(t, s, "agent", "demo")
+	if _, err := s.ClaimDue(context.Background(), "agent-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	agDetail, err := json.Marshal(executor.AgentResult{
+		SessionID:               "sess-agent-1",
+		Commits:                 []executor.Commit{{SHA: "abc1234", Subject: "work"}},
+		SessionPromptTokens:     54000,
+		SessionCompletionTokens: 2100,
+		SessionCostUSD:          0.12,
+		SessionMessageCount:     42,
+	})
+	if err != nil {
+		t.Fatalf("marshal agent result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), ag.ID, "agent-owner", agDetail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+ag.ID.String(), nil))
+
+	body = rec.Body.String()
+	for _, want := range []string{
+		"agent run", "1 commits",
+		"54000 prompt + 2100 completion tokens · $0.1200 derived session cost · 42 messages",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("agent detail page missing %q", want)
+		}
+	}
+
+	rv := enqueue(t, s, "review", "demo")
+	if _, err := s.ClaimDue(context.Background(), "review-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	rvDetail, err := json.Marshal(executor.ReviewResult{
+		Verdict:             executor.VerdictApprove,
+		Summary:             "sound change",
+		SessionCostUSD:      0.02,
+		SessionPromptTokens: 900,
+		SessionMessageCount: 4,
+	})
+	if err != nil {
+		t.Fatalf("marshal review result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), rv.ID, "review-owner", rvDetail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+rv.ID.String(), nil))
+
+	body = rec.Body.String()
+	for _, want := range []string{
+		"agent review", "review: approve", "sound change",
+		"900 prompt + 0 completion tokens · $0.0200 derived session cost · 4 messages",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("review detail page missing %q", want)
+		}
+	}
+
+	stub := enqueue(t, s, "agent", "demo")
+	if _, err := s.ClaimDue(context.Background(), "agent-owner", time.Minute); err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	stubDetail, err := json.Marshal(executor.AgentResult{})
+	if err != nil {
+		t.Fatalf("marshal stub result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), stub.ID, "agent-owner", stubDetail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+stub.ID.String(), nil))
+
+	if body := rec.Body.String(); strings.Contains(body, "agent run") {
+		t.Errorf("all-zero agent result rendered a result card")
 	}
 }
 
