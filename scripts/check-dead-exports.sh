@@ -23,6 +23,7 @@ strict=0
 dead=0
 alive=0
 structalive=0
+kept=0
 
 # Signature table for the structural-liveness annotation: every exported
 # func's full declaration text (accumulated across continuation lines up to
@@ -37,6 +38,20 @@ trap 'rm -f "$sigfile" "$declfile" "$deadfile"' EXIT
 
 funcsig_rx='^(func|type|var|const) ([A-Z][A-Za-z0-9_]*)[( ]'
 blocksig_rx='^\t([A-Z][A-Za-z0-9_]*)[ =]'
+
+# Annotated-keep list: verified-live symbols whose only call sites sit in
+# their DECLARING package, so the outside-package search flags them every
+# run. Not dead, not structurally alive — deliberately exported (sentinel
+# error contract / route-path constants shared across the package's files).
+# Each entry: <file><TAB><name>; substring-verified 2026-09-22:
+#   ErrTokenRequiredOnLAN  internal/webui/auth.go:39 (Validate), auth_test.go
+#   HealthDashboardPath    internal/webui/webui.go:169, health.go:298
+#   HealthSSEPath          internal/webui/webui.go:170, health.go:299
+annotated=(
+	"internal/webui/auth.go	ErrTokenRequiredOnLAN"
+	"internal/webui/health.go	HealthDashboardPath"
+	"internal/webui/health.go	HealthSSEPath"
+)
 git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go' |
 	xargs awk -v d="$funcsig_rx" -v b="$blocksig_rx" '
 		/^(var|const) \(/ { inblock = 1; next }
@@ -92,17 +107,24 @@ done < "$declfile"
 # SweepOutcome/CloseResult directly). Unexported helpers do NOT annotate.
 while IFS=$'\t' read -r file name; do
 	note=""
-	while IFS=$'\t' read -r sfile sname ssig; do
-		[ "$(dirname "$sfile")" = "$(dirname "$file")" ] || continue
-		[ "$sname" != "$name" ] || continue
-		case "$sname" in [A-Z]*) ;; *) continue ;; esac
-		grep -Eq "(^|[^A-Za-z0-9_])${name}([^A-Za-z0-9_]|$)" <<<"$ssig" || continue
-		note="structurally alive: return/parameter type of ${sname}()"
+	for entry in "${annotated[@]}"; do
+		[ "$entry" = "$file	$name" ] || continue
+		note="annotated keep: verified live via in-package call sites (see list in this script)"
 		break
-	done < "$sigfile"
+	done
+	if [ -z "$note" ]; then
+		while IFS=$'\t' read -r sfile sname ssig; do
+			[ "$(dirname "$sfile")" = "$(dirname "$file")" ] || continue
+			[ "$sname" != "$name" ] || continue
+			case "$sname" in [A-Z]*) ;; *) continue ;; esac
+			grep -Eq "(^|[^A-Za-z0-9_])${name}([^A-Za-z0-9_]|$)" <<<"$ssig" || continue
+			note="structurally alive: return/parameter type of ${sname}()"
+			break
+		done < "$sigfile"
+	fi
 	if [ -n "$note" ]; then
 		echo "$file: exported symbol with zero direct importers, $note: $name"
-		structalive=$((structalive + 1))
+		case "$note" in annotated*) kept=$((kept + 1)) ;; *) structalive=$((structalive + 1)) ;; esac
 	else
 		echo "$file: exported symbol with zero importers: $name"
 		dead=$((dead + 1))
@@ -110,7 +132,7 @@ while IFS=$'\t' read -r file name; do
 done < "$deadfile"
 
 echo
-echo "dead-exports summary: $alive symbols ok, $dead dead, $structalive structurally alive (advisory)"
+echo "dead-exports summary: $alive symbols ok, $dead dead, $structalive structurally alive, $kept annotated keep (advisory)"
 if [ "$dead" -eq 0 ]; then
 	echo "dead-exports: clean — every exported internal symbol has at least one importer"
 else
