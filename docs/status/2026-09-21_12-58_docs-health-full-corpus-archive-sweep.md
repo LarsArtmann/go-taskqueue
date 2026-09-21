@@ -90,8 +90,9 @@
    the documented env-lie family, hit fresh. Fixed with
    `GOTOOLCHAIN=auto` and codified into AGENTS.md; the first rc=1 was an
    environment lie, not a regression.
-2. **Dead-SHA gate went red mid-sweep from CONCURRENT windows** (0f0c1bf/
-   4f696cc citations landed after the last ci-local run): healed on
+2. **Dead-SHA gate went red mid-sweep from CONCURRENT windows**
+   (0f0c1bf→66d65ef/4f696cc→74fb357 citations landed after the last
+   ci-local run): healed on
    sight with patch-id/amend-twin arrow records rather than blaming the
    sweep; one site needed three whack-a-mole iterations before I grepped
    ALL sites at once — should have grepped globally on the first hit.
