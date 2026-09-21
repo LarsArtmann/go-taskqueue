@@ -169,6 +169,14 @@ func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
 		SessionCompletionTokens: 200,
 		SessionMessageCount:     5,
 	})
+	appendCompleted(t, j, "status-1", time.Now(), executor.StatusResult{
+		Report:                  "docs/status/2026-09-21_00-00_demo.md",
+		SessionID:               "s4",
+		SessionCostUSD:          0.10,
+		SessionPromptTokens:     400,
+		SessionCompletionTokens: 900,
+		SessionMessageCount:     6,
+	})
 
 	// sh completion without usage and a detailless one: never counted.
 	appendCompleted(t, j, "sh-1", time.Now(), map[string]int{"exit_code": 0})
@@ -181,7 +189,7 @@ func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
 	})
 
 	got := (Guard{}).UsageToday(ctx, factSource{j})
-	want := SessionUsage{Runs: 3, CostUSD: 0.65, PromptTokens: 2300, CompletionTokens: 4300, Messages: 18}
+	want := SessionUsage{Runs: 4, CostUSD: 0.75, PromptTokens: 2700, CompletionTokens: 5200, Messages: 24}
 	if got != want {
 		t.Fatalf("usage today = %+v, want %+v (non-usage and yesterday's completions excluded)", got, want)
 	}
