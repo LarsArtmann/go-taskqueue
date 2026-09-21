@@ -152,7 +152,7 @@ templ pageHeading(text, accent string) {
 // links — the view rides the URL like every other piece of view state, so
 // it survives reloads, sharing, and SSE reconnects.
 templ viewToggle(f FilterState) {
-	<nav class="flex shrink-0 items-center gap-3 font-mono text-xs uppercase tracking-[0.14em]" aria-label="task view">
+	<nav class="flex shrink-0 items-center gap-3 font-mono text-xs tracking-[0.08em]" aria-label="task view">
 		@viewToggleLink(f, viewTable, "table", f.View == viewTable)
 		@viewToggleLink(f, viewBoard, "board", f.View == viewBoard)
 	</nav>
@@ -183,8 +183,13 @@ func viewToggleClass(active bool) string {
 // outside the scrollable main region).
 templ pageFooter() {
 	<footer class="border-t border-gray-200 py-6 dark:border-gray-800">
-		<div class="mx-auto w-full max-w-7xl px-4 font-mono text-xs text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
-			live projection of the journal · press <kbd>/</kbd> to search, <kbd>1</kbd>–<kbd>4</kbd> to jump
+		<div class="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-5 gap-y-1 px-4 font-mono text-xs text-gray-500 dark:text-gray-400 sm:px-6 lg:px-8">
+			<span>live projection of the journal</span>
+			<span class="hidden items-center gap-1.5 sm:inline-flex">
+				<kbd>/</kbd> search
+				<kbd>1</kbd>-<kbd>4</kbd> sections
+				<kbd>?</kbd> shortcuts
+			</span>
 		</div>
 	</footer>
 }

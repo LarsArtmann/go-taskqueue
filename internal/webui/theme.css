@@ -12,8 +12,13 @@
  *     the queue's active-signal color.
  *   - Status hues carry the domain: amber=pending, cyan=running,
  *     green=completed, red=dead, gray=cancelled.
- *   - JetBrains Mono is the identity face: wordmark, headings, stat
- *     values, tags, timestamps, ids. Body text stays system sans.
+ *   - Two typographic voices: JetBrains Mono is the MACHINE voice (wordmark,
+ *     headings, stat values, tags, timestamps, ids, commands); system sans
+ *     is the HUMAN voice (project names, prose, error text). Machine facts
+ *     and human names never share a face, so a table scans by voice.
+ *   - Label discipline: the hull chrome (topbar, nowband bezel) keeps its
+ *     engraved uppercase micro-labels; everything below the fold follows
+ *     the quiet lowercase terminal convention.
  *   - The one ambient element is the header lamp (#conn): cyan pulsing
  *     when live, amber while reconnecting, red when stale.
  */
@@ -126,10 +131,9 @@ h3,
   align-items: center;
   gap: 0.45rem;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
 }
 
 .conn::before {
@@ -350,11 +354,12 @@ kbd {
 
 .tq-seg-num {
   font-family: var(--font-mono);
-  font-size: 1.6rem;
+  font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.1;
   color: var(--color-gray-100);
   font-feature-settings: "zero";
+  transition: color 0.15s ease;
 }
 
 .tq-seg-label {
@@ -364,6 +369,22 @@ kbd {
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--color-gray-400);
+}
+
+/* Segments link to their filtered view — say so on hover. The background
+   sits under the whole segment; state colors below win over the label
+   brightening where a segment is hot or in alarm. */
+.tq-seg {
+  border-radius: 0.375rem;
+  transition: background-color 0.15s ease;
+}
+
+.tq-seg:hover {
+  background: color-mix(in srgb, var(--color-gray-100) 7%, transparent);
+}
+
+.tq-seg:hover .tq-seg-label {
+  color: var(--color-gray-200);
 }
 
 /* Running: the signal color, alive when something is actually working. */
@@ -430,6 +451,114 @@ kbd {
 
 .tq-nowband-meta .card-budget {
   color: var(--color-blue-300);
+}
+
+/* Budget spend meter: a hairline track with a quantized fill (the CSP is
+   style-src 'self' — no inline widths, so the server emits one of twenty
+   5%-step classes). Tone rides the operator thresholds: green under 75%,
+   amber under the cap, red at/over it (BudgetView.Tone). */
+.tq-meter {
+  position: relative;
+  width: 3rem;
+  height: 0.25rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-gray-100) 16%, transparent);
+  overflow: hidden;
+}
+
+.tq-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--color-green-400);
+}
+
+.tq-meter-warn .tq-meter-fill {
+  background: var(--color-amber-400);
+}
+
+.tq-meter-over .tq-meter-fill {
+  background: var(--color-red-400);
+}
+
+.tq-meter-fill-5 {
+  width: 5%;
+}
+
+.tq-meter-fill-10 {
+  width: 10%;
+}
+
+.tq-meter-fill-15 {
+  width: 15%;
+}
+
+.tq-meter-fill-20 {
+  width: 20%;
+}
+
+.tq-meter-fill-25 {
+  width: 25%;
+}
+
+.tq-meter-fill-30 {
+  width: 30%;
+}
+
+.tq-meter-fill-35 {
+  width: 35%;
+}
+
+.tq-meter-fill-40 {
+  width: 40%;
+}
+
+.tq-meter-fill-45 {
+  width: 45%;
+}
+
+.tq-meter-fill-50 {
+  width: 50%;
+}
+
+.tq-meter-fill-55 {
+  width: 55%;
+}
+
+.tq-meter-fill-60 {
+  width: 60%;
+}
+
+.tq-meter-fill-65 {
+  width: 65%;
+}
+
+.tq-meter-fill-70 {
+  width: 70%;
+}
+
+.tq-meter-fill-75 {
+  width: 75%;
+}
+
+.tq-meter-fill-80 {
+  width: 80%;
+}
+
+.tq-meter-fill-85 {
+  width: 85%;
+}
+
+.tq-meter-fill-90 {
+  width: 90%;
+}
+
+.tq-meter-fill-95 {
+  width: 95%;
+}
+
+.tq-meter-fill-100 {
+  width: 100%;
 }
 
 @media (max-width: 640px) {
@@ -749,10 +878,9 @@ kbd {
 
 .tq-retries-label {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.08em;
   color: var(--color-amber-700);
 }
 
@@ -798,9 +926,8 @@ kbd {
   list-style: none;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
 }
 
 .tq-action > summary::-webkit-details-marker {
@@ -966,11 +1093,13 @@ kbd {
 
 /* Terminal label: the one label convention (was: repeated all-caps
    0.18em eyebrows). Later rules win at equal specificity, so this group
-   retunes the legacy label classes in place. */
+   retunes the legacy label classes in place — the fold summaries join
+   them (their own rule above still owns layout, this owns the type). */
 .tq-label,
 .tq-kicker,
 .tq-settled-title,
-.tq-payload-label {
+.tq-payload-label,
+.tq-fold > summary {
   font-family: var(--font-mono);
   font-size: 0.72rem;
   font-weight: 500;
@@ -982,7 +1111,8 @@ kbd {
 .dark .tq-label,
 .dark .tq-kicker,
 .dark .tq-settled-title,
-.dark .tq-payload-label {
+.dark .tq-payload-label,
+.dark .tq-fold > summary {
   color: var(--color-gray-400);
 }
 
@@ -1020,4 +1150,74 @@ kbd {
 
 .dark .tq-fault:hover {
   border-color: var(--color-red-700);
+}
+
+/* ---------------------------------------------------------------------------
+ * Fact feed: the newest line lands with a 240ms settle (a burst is an
+ * event; the eye should find it). Scrollback lines share the class, so
+ * the detail timeline's newest fact gets the same moment.
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .tc-log .tc-log-line:last-child {
+    animation: tq-fact-in 0.24s ease-out;
+  }
+}
+
+@keyframes tq-fact-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Keyboard-shortcut overlay (app.js builds the DOM). Theme-token surfaces
+ * instead of hardcoded white: the overlay must not blind the dark theme.
+ * ------------------------------------------------------------------------- */
+
+.tq-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--color-gray-950) 55%, transparent);
+}
+
+.tq-overlay-box {
+  max-width: 22rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 0.5rem;
+  background: var(--color-white);
+  color: var(--color-gray-800);
+  font-size: 0.875rem;
+}
+
+.dark .tq-overlay-box {
+  border-color: var(--color-gray-700);
+  background: var(--color-gray-900);
+  color: var(--color-gray-200);
+}
+
+.tq-overlay-box table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tq-overlay-box td {
+  padding: 0.3rem 0;
+}
+
+.tq-overlay-box td:first-child {
+  padding-right: 1.25rem;
+  font-family: var(--font-mono);
+  white-space: nowrap;
 }
