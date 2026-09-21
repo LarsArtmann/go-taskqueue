@@ -418,7 +418,12 @@ func (s *Server) agentResultFor(ctx context.Context, id string) (executor.AgentR
 	return completionDetail(ctx, s.store, id, func(res executor.AgentResult) bool {
 		return res.SessionID != "" || res.VerifyTail != "" || res.CommitSHA != "" ||
 			res.LogPath != "" || len(res.Commits) > 0 || len(res.FilesChanged) > 0 ||
-			!sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount)
+			!sessionUsageEmpty(
+				res.SessionCostUSD,
+				res.SessionPromptTokens,
+				res.SessionCompletionTokens,
+				res.SessionMessageCount,
+			)
 	})
 }
 

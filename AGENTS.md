@@ -549,7 +549,12 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   host tools — a test once assumed `crush` on PATH and broke the nix build)
 - Generated `*_templ.go` and the minified `app.css` are COMMITTED (Nix
   builds vendor source without `templ generate`); after template edits run
-  `templ generate` + `nix run .#webui-css`. Since 2026-09-13 the
+  `templ generate` + `nix run .#webui-css`. Run the generate from the REPO
+  ROOT, never from inside the module dir: the FileName paths embedded in
+  `templ.Error` are CWD-relative, so a module-dir run rewrites EVERY line
+  of both generated files to the short form (`layout.templ` vs the
+  canonical `internal/webui/layout.templ`) — a huge noisy diff with zero
+  content change (2026-09-21 usage-cards window). Since 2026-09-13 the
   pre-commit hook (install-pre-commit.sh) ALSO guards staged app.css
   (nix rebuild byte-equal when nix exists, line-count heuristic
   otherwise); the daemon still bypasses hooks, so ci-local remains the
