@@ -168,7 +168,9 @@ func queuePriorityScore() queue.PriorityScore {
 // captureStdout tests must never overlap (see TestCmdDLQDismissDeadTask,
 // the one pre-existing parallel user — adding a second live one is what
 // tripped the unexpected-EOF flake in the full gate).
-func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) { //n:paralleltest // captureStdout swaps process-global os.Stdout — this test is sequential BY CONTRACT (see the doc comment); the linter's parallel demand is exactly what flaked the gate
+//
+//nolint:paralleltest // sequential by contract: captureStdout swaps global os.Stdout
+func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "usage.db")
 
 	store, err := sqlite.Open(dbPath)
