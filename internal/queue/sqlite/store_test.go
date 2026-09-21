@@ -2862,6 +2862,58 @@ func TestPriorityScoreRoundtrip(t *testing.T) {
 	}
 }
 
+// TestPriorityScoresListAndDelete pins the score-cache prune surface:
+// the full list is ordered by item key, an empty key list deletes
+// nothing, unknown keys are not an error, and only matching rows go.
+func TestPriorityScoresListAndDelete(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	if got, err := s.PriorityScores(ctx); err != nil || len(got) != 0 {
+		t.Fatalf("empty cache = (%d rows, %v), want (0, nil)", len(got), err)
+	}
+
+	first := queue.PriorityScore{
+		ItemKey: "todo:b", Score: 72, EffortMinutes: 45,
+		Source: "ai:test-model", Reasoning: "touches auth paths", Tokens: 1200,
+		ScoredAt: 1700000000000,
+	}
+	second := queue.PriorityScore{
+		ItemKey: "todo:a", Score: 10, EffortMinutes: 5,
+		Source: "ai:test-model", Reasoning: "trivial", Tokens: 100,
+		ScoredAt: 1700000000001,
+	}
+
+	if err := s.SavePriorityScore(ctx, first); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	if err := s.SavePriorityScore(ctx, second); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	got, err := s.PriorityScores(ctx)
+	if err != nil || len(got) != 2 {
+		t.Fatalf("list = (%d rows, %v), want (2, nil)", len(got), err)
+	}
+
+	if got[0] != second || got[1] != first {
+		t.Fatalf("list = %+v, want item-key order [%+v %+v]", got, second, first)
+	}
+
+	if n, err := s.DeletePriorityScores(ctx, nil); err != nil || n != 0 {
+		t.Fatalf("empty delete = (%d, %v), want (0, nil)", n, err)
+	}
+
+	if n, err := s.DeletePriorityScores(ctx, []string{"todo:missing", "todo:a"}); err != nil || n != 1 {
+		t.Fatalf("delete = (%d, %v), want (1, nil)", n, err)
+	}
+
+	if got, err = s.PriorityScores(ctx); err != nil || len(got) != 1 || got[0].ItemKey != "todo:b" {
+		t.Fatalf("after delete = (%+v, %v), want only todo:b", got, err)
+	}
+}
+
 // TestBandFilter pins the PriorityMin/PriorityMax pushdown: the band
 // filter sees the STORED priority (aging is scheduling, not state) and
 // composes with CountTasks.

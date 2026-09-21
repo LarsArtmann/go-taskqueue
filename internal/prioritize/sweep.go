@@ -33,6 +33,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
@@ -69,6 +70,12 @@ const (
 	// PrioritySourceAI is the task.reprioritized source label for applied
 	// verdicts (ADR-0015 §3 ladder: ai).
 	PrioritySourceAI = "ai"
+
+	// DefaultScoreTTL is the default age at which a cached verdict goes
+	// stale (SweeperConfig.ScoreTTL): a month-old score of an unchanged
+	// item may no longer describe the repo, so the item re-joins the next
+	// batch instead of the verdict living forever.
+	DefaultScoreTTL = 30 * 24 * time.Hour
 )
 
 // SweeperConfig controls one Sweeper.
@@ -90,6 +97,12 @@ type SweeperConfig struct {
 	Log *slog.Logger
 	// PageSize bounds one fact-stream page; 0 selects the default.
 	PageSize int
+	// ScoreTTL ages cached verdicts: an item whose verdict is older than
+	// this re-joins the next batch and is re-scored (the cache upsert
+	// overwrites in place). Zero selects DefaultScoreTTL; a negative
+	// value disables aging — verdicts never go stale and only the prune
+	// pass evicts entries.
+	ScoreTTL time.Duration
 }
 
 // SweepStats summarizes one sweep pass.
@@ -109,6 +122,11 @@ type SweepStats struct {
 	// Skipped counts facts that could not yield work (vanished records,
 	// foreign payload shapes, unparsable results).
 	Skipped int
+	// CachePruned counts stale cache entries the prune pass evicted:
+	// verdicts whose item key no longer belongs to any PENDING backlog
+	// task (the item was reworded and re-keyed, checked off, or its task
+	// reached a terminal state).
+	CachePruned int
 }
 
 // Sweeper turns the journal's enqueue and scorer-completion facts into
@@ -130,6 +148,10 @@ type Sweeper struct {
 func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Sweeper, error) {
 	if cfg.PageSize <= 0 {
 		cfg.PageSize = defaultPageSize
+	}
+
+	if cfg.ScoreTTL == 0 {
+		cfg.ScoreTTL = DefaultScoreTTL
 	}
 
 	persisted, exists, err := store.Watermark(ctx, ConsumerKey)
@@ -298,6 +320,8 @@ func (s *Sweeper) onCompleted(ctx context.Context, fact journal.Fact, stats *Swe
 		s.applyVerdicts(ctx, t.Project, byKey, stats)
 	}
 
+	s.pruneCache(ctx, stats)
+
 	s.mintRepo(ctx, s.repoRef(ctx, t), t.Project, stats)
 }
 
@@ -418,11 +442,14 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 	var batch []executor.PrioritizeItem
 
 	for _, entry := range pending {
-		if covered[entry.item.Key] {
-			continue
-		}
+		score, cached, err := s.store.PriorityScore(ctx, entry.item.Key)
+		stale := err == nil && cached && s.verdictStale(score)
 
-		if _, cached, err := s.store.PriorityScore(ctx, entry.item.Key); err == nil && cached {
+		// A stale verdict re-joins the batch even though an old batch
+		// covered the item — the refresh pass is the point. Fresh or
+		// absent verdicts keep the original gates: never re-mint an item
+		// any batch already covers, never re-score a fresh verdict.
+		if !stale && (covered[entry.item.Key] || cached) {
 			continue
 		}
 
@@ -509,6 +536,93 @@ func (s *Sweeper) mintWorkingSet(ctx context.Context, stats *SweepStats) {
 	for _, project := range sortedKeys(seen) {
 		s.mintRepo(ctx, seen[project], project, stats)
 	}
+}
+
+// verdictStale reports whether a cached verdict has outlived the score
+// TTL. cfg.ScoreTTL < 0 disables aging: a verdict never goes stale.
+func (s *Sweeper) verdictStale(score queue.PriorityScore) bool {
+	if s.cfg.ScoreTTL < 0 {
+		return false
+	}
+
+	return time.Since(time.UnixMilli(score.ScoredAt)) >= s.cfg.ScoreTTL
+}
+
+// pruneCache evicts cached verdicts whose item key no longer belongs to
+// any PENDING backlog task — the item was reworded (re-keyed), checked
+// off, or its task reached a terminal state, and the orphaned verdict
+// would otherwise sit in the cache forever. It runs on every scorer
+// completion — the moment the cache can grow — so the pass costs one
+// cache scan plus one live-set listing per scoring cycle, never per
+// sweep. A store read failure is logged and skipped: the orphans are
+// evicted on the next completion.
+func (s *Sweeper) pruneCache(ctx context.Context, stats *SweepStats) {
+	scores, err := s.store.PriorityScores(ctx)
+	if err != nil {
+		s.warn("prioritize: cache prune read failed", "err", err)
+
+		return
+	}
+
+	if len(scores) == 0 {
+		return
+	}
+
+	live := s.liveItemKeys(ctx)
+
+	var orphans []string
+
+	for _, score := range scores {
+		if !live[score.ItemKey] {
+			orphans = append(orphans, score.ItemKey)
+		}
+	}
+
+	if len(orphans) == 0 {
+		return
+	}
+
+	removed, err := s.store.DeletePriorityScores(ctx, orphans)
+	if err != nil {
+		s.warn("prioritize: cache prune delete failed", "keys", len(orphans), "err", err)
+
+		return
+	}
+
+	if removed > 0 {
+		stats.CachePruned += int(removed)
+
+		s.log("prioritize: pruned stale cache entries", "count", removed)
+	}
+}
+
+// liveItemKeys collects the item keys of every PENDING harvested backlog
+// task across all projects — the working set the cache serves (mint and
+// apply both read PENDING items only).
+func (s *Sweeper) liveItemKeys(ctx context.Context) map[string]bool {
+	agentType := executor.TaskTypeAgent
+
+	tasks, err := s.store.List(ctx, queue.Filter{Type: &agentType})
+	if err != nil {
+		return nil
+	}
+
+	live := map[string]bool{}
+
+	for _, t := range tasks {
+		if t.Status != task.Pending {
+			continue
+		}
+
+		item, ok := harvest.PayloadItemOf(t)
+		if !ok || !strings.HasPrefix(item.Key, itemKeyPrefix) {
+			continue
+		}
+
+		live[item.Key] = true
+	}
+
+	return live
 }
 
 // repoRef reads the batch's own repo reference back from its payload (the

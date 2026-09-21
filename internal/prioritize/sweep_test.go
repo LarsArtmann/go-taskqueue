@@ -226,9 +226,10 @@ func TestCachedItemsLeaveTheBatch(t *testing.T) {
 	sw := newTestSweeper(t, s, SweeperConfig{})
 
 	if err := s.SavePriorityScore(context.Background(), queue.PriorityScore{
-		ItemKey: "todo:abc",
-		Score:   80,
-		Source:  SourceScorer,
+		ItemKey:  "todo:abc",
+		Score:    80,
+		Source:   SourceScorer,
+		ScoredAt: time.Now().UnixMilli(),
 	}); err != nil {
 		t.Fatalf("seed cache: %v", err)
 	}
@@ -252,6 +253,129 @@ func TestCachedItemsLeaveTheBatch(t *testing.T) {
 
 	if len(payload.Items) != 1 || payload.Items[0].Key != "todo:def" {
 		t.Fatalf("batch covers %v, want only the uncached todo:def", payload.Items)
+	}
+}
+
+// TestStaleVerdictsRejoinTheBatch pins the TTL half of the score-cache
+// maintenance: a verdict older than ScoreTTL re-joins the next batch even
+// though an old batch covered the item (the refresh is the point), while
+// a fresh verdict stays out. ScoreTTL < 0 disables aging.
+func TestStaleVerdictsRejoinTheBatch(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	sw := newTestSweeper(t, s, SweeperConfig{ScoreTTL: time.Hour})
+
+	seedBacklogTask(t, s, "demo", "Aged verdict", "todo:old", 0, 50)
+	seedBacklogTask(t, s, "demo", "Fresh verdict", "todo:new", 0, 50)
+
+	ctx := context.Background()
+
+	if _, err := sw.Sweep(ctx); err != nil {
+		t.Fatalf("mint sweep: %v", err)
+	}
+
+	completeScorer(t, s,
+		executor.PrioritizeVerdict{ItemKey: "todo:old", Score: 40},
+		executor.PrioritizeVerdict{ItemKey: "todo:new", Score: 60},
+	)
+
+	// Backdate one verdict past the TTL: it is now stale, its item's old
+	// batch coverage must not protect it from re-scoring.
+	if err := s.SavePriorityScore(ctx, queue.PriorityScore{
+		ItemKey:  "todo:old",
+		Score:    40,
+		Source:   SourceScorer,
+		ScoredAt: time.Now().Add(-2 * time.Hour).UnixMilli(),
+	}); err != nil {
+		t.Fatalf("backdate cache: %v", err)
+	}
+
+	stats, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("refresh sweep: %v", err)
+	}
+
+	if stats.BatchesEnqueued != 1 {
+		t.Fatalf("batches enqueued = %d, want 1 for the stale verdict", stats.BatchesEnqueued)
+	}
+
+	batches := scorerTasks(t, s)
+	if len(batches) != 2 {
+		t.Fatalf("scorer tasks = %d, want 2", len(batches))
+	}
+
+	var payload executor.PrioritizePayload
+	if err := json.Unmarshal(batches[1].Payload, &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+
+	if len(payload.Items) != 1 || payload.Items[0].Key != "todo:old" {
+		t.Fatalf("refresh batch covers %v, want only the stale todo:old", payload.Items)
+	}
+
+	// Aging disabled: a negative ScoreTTL never goes stale.
+	off := newTestSweeper(t, s, SweeperConfig{ScoreTTL: -1})
+	if _, err := off.Sweep(ctx); err != nil {
+		t.Fatalf("aging-disabled sweep: %v", err)
+	}
+
+	batches = scorerTasks(t, s)
+	if len(batches) != 2 {
+		t.Fatalf("scorer tasks after aging-disabled sweep = %d, want still 2", len(batches))
+	}
+}
+
+// TestPruneEvictsOrphanedCacheEntries pins the eviction half: after a
+// scorer completion, verdicts whose item key no longer belongs to any
+// PENDING backlog task are gone from the cache; the live item's verdict
+// survives.
+func TestPruneEvictsOrphanedCacheEntries(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	sw := newTestSweeper(t, s, SweeperConfig{})
+
+	seedBacklogTask(t, s, "demo", "Still pending", "todo:live", 0, 50)
+
+	ctx := context.Background()
+
+	// An orphaned verdict: the item was reworded away, so no pending task
+	// holds todo:gone anymore.
+	if err := s.SavePriorityScore(ctx, queue.PriorityScore{
+		ItemKey:  "todo:gone",
+		Score:    55,
+		Source:   SourceScorer,
+		ScoredAt: time.Now().UnixMilli(),
+	}); err != nil {
+		t.Fatalf("seed orphan: %v", err)
+	}
+
+	if _, err := sw.Sweep(ctx); err != nil {
+		t.Fatalf("mint sweep: %v", err)
+	}
+
+	if _, ok, _ := s.PriorityScore(ctx, "todo:gone"); !ok {
+		t.Fatal("orphan evicted before any cache growth — prune must ride the scorer completion")
+	}
+
+	completeScorer(t, s, executor.PrioritizeVerdict{ItemKey: "todo:live", Score: 70})
+
+	stats, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("apply sweep: %v", err)
+	}
+
+	if stats.CachePruned != 1 {
+		t.Fatalf("cache pruned = %d, want 1", stats.CachePruned)
+	}
+
+	if _, ok, err := s.PriorityScore(ctx, "todo:gone"); err != nil || ok {
+		t.Fatalf("orphan verdict = (ok=%v, err=%v), want evicted", ok, err)
+	}
+
+	if _, ok, err := s.PriorityScore(ctx, "todo:live"); err != nil || !ok {
+		t.Fatalf("live verdict = (ok=%v, err=%v), want kept", ok, err)
 	}
 }
 

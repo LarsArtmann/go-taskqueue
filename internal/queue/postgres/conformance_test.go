@@ -291,6 +291,37 @@ func TestPostgresConformance(t *testing.T) {
 		}
 	})
 
+	t.Run("priority score cache list and prune", func(t *testing.T) {
+		all, err := s.PriorityScores(ctx)
+		if err != nil || len(all) == 0 {
+			t.Fatalf("list after upserts = (%d rows, %v), want at least the todo:pg row", len(all), err)
+		}
+
+		saw := false
+
+		for _, score := range all {
+			if score.ItemKey == "todo:pg" {
+				saw = true
+			}
+		}
+
+		if !saw {
+			t.Fatalf("list = %v, want todo:pg present", all)
+		}
+
+		if n, err := s.DeletePriorityScores(ctx, nil); err != nil || n != 0 {
+			t.Fatalf("empty delete = (%d, %v), want (0, nil)", n, err)
+		}
+
+		if n, err := s.DeletePriorityScores(ctx, []string{"todo:missing", "todo:pg"}); err != nil || n != 1 {
+			t.Fatalf("delete = (%d, %v), want (1, nil)", n, err)
+		}
+
+		if _, ok, _ := s.PriorityScore(ctx, "todo:pg"); ok {
+			t.Fatal("todo:pg survived its delete")
+		}
+	})
+
 	t.Run("retry backoff ladder with evidence", func(t *testing.T) {
 		retry, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, MaxAttempts: 5})
 		if err != nil {
