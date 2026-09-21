@@ -12,6 +12,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `tq-label` band heading per group; single-band lanes render as one
   unlabeled list as before. (`internal/webui/fragments.templ`,
   `internal/webui/render.go`)
+- **Score-cache aging + orphan eviction (`--prioritize`)**: cached AI
+  verdicts in `priority_scores` no longer live forever. Verdicts AGE
+  (default `DefaultScoreTTL` 30d on `SweeperConfig.ScoreTTL`; a negative
+  value disables aging): a stale item re-joins the next scorer mint even
+  though an old batch covered it, and the re-score's upsert overwrites
+  in place. Orphaned keys (item reworded/re-keyed, checked off, task
+  terminal) are evicted at every scorer completion (`pruneCache` runs at
+  the cache-growth moment; the count surfaces as `SweepStats.CachePruned`)
+  through the new store surface `Store.PriorityScores` +
+  `Store.DeletePriorityScores` (queue contract, mirrored in both backends
+  and their conformance suites). (`internal/prioritize/sweep.go`,
+  `internal/queue/queue.go`, `internal/queue/sqlite/sqlite.go`,
+  `internal/queue/postgres/postgres.go`)
 
 ## [v0.3.1] - 2026-09-18
 ### Fixed
