@@ -16,7 +16,7 @@ them, never revert them.
 
 ```bash
 ./scripts/ci-local.sh     # the pre-push gate: full CI replicant (vet/build/race/smokes/nix); tree-reading Go gates retry transient foreign breaks (sleep 45s ×3, then fail with "concurrent edit in flight" context — 15-39 f9/e2; TRANSIENT_POLL_SECS/TRANSIENT_MAX_POLLS overridable)
-export GOEXPERIMENT=jsonv2; go build ./... && go vet ./... && go test ./... -race   # standard verify gate (ROOT MODULE ONLY — see below; the export is REQUIRED outside the flake devShell: go-sse imports encoding/json/v2, and without it the build dies with "build constraints exclude all Go files" while gopls shows the same phantoms)
+export GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto; go build ./... && go vet ./... && go test ./... -race   # standard verify gate (ROOT MODULE ONLY — see below; BOTH exports are REQUIRED outside the flake devShell: GOEXPERIMENT because go-sse imports encoding/json/v2 — without it the build dies with "build constraints exclude all Go files" while gopls shows the same phantoms; GOTOOLCHAIN=auto because go.mod declares go 1.27.1 since 2026-09-16 and a shell pinned GOTOOLCHAIN=local on an older toolchain dies with "go.mod requires go >= 1.27.1" — the same env-lie family, hit by the 2026-09-21 docs sweep)
 nix build                 # reproducible build; nix run .#test = tests; nix run .#webui-css = stylesheet
 ./scripts/fuzz/nightly.sh # 60s FuzzParseRepo campaign; nightly workflow commits new seeds
 ```
