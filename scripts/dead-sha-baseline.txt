@@ -84,3 +84,12 @@ c888be6
 # gate run, 2026-09-20): fold amended into 4172f1e (exact patch-id match);
 # citations describe the dead side, kept per the RESOLVED class.
 78e2768
+# Score-cache window msg-filter heal (2026-09-21 06-02 report, task
+# 000001a0c1fbe85b1c43d84a48539f16c43e): invisible-footer defect (footer
+# above attribution block, trailer parse empty), scripted filter-branch
+# over the unpushed range 30df914..HEAD; 68ffbe2→58c571b, f681a02→0a76bed
+# (metadata + net-diff verified identical, refs/original retained). The
+# 06-02 report's History-rewrite record DELIBERATELY cites the dead side
+# (old→new mapping) — RESOLVED-class rows.
+68ffbe2
+f681a02
