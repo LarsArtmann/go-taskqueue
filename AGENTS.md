@@ -129,7 +129,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/bridge`                                  | Outbound bridges: papdashboard (alerts), cqa (findings → fix tasks)                                                                                                                                                                                                    |
 | `internal/executor`                                | Pluggable execution: `sh`, HTTP, agent (headless AI), review, status, registry                                                                                                                                                                                         |
 | `internal/harvest`                                 | Scans repos' TODO_LIST.md into agent tasks; drift audit (`tq audit`); prune-stale sweeps                                                                                                                                                                               |
-| `internal/budget`                                  | Daily-cap + budget-command projections over the journal, checked before each pool tick; `UsageToday` additionally sums derived session tokens/cost from the day's completion facts (AgentResult + PrioritizeResult + ReviewResult share the usage json keys, drift-pinned by budget_test marshalling the real executor types) — surfaced in the Check refusal reason and `tq stats` (`budget.session_usage`), cap SEMANTICS stay task-count pending the owner's token-vs-count ruling |
+| `internal/budget`                                  | Daily-cap + budget-command projections over the journal, checked before each pool tick; `UsageToday` additionally sums derived session tokens/cost from the day's completion facts (AgentResult + PrioritizeResult + ReviewResult + StatusResult share the usage json keys, drift-pinned by budget_test marshalling the real executor types) — surfaced in the Check refusal reason and `tq stats` (`budget.session_usage`), cap SEMANTICS stay task-count pending the owner's token-vs-count ruling |
 | `internal/dlqfix`                                  | DLQ-autopsy sweeper (`--dlq-fix`): dead agent tasks gain ONE autopsy task; `fixed` verdict rescues, `wontfix` dismisses (`Dead → Cancelled` via `DismissDead`)                                                                                                         |
 | `internal/review`                                  | Sweeper: completed agent tasks gain ONE review task; `--review-autofix` mints fix tasks                                                                                                                                                                                |
 | `internal/status`                                  | Sweeper: every N agent completions per project mint ONE done-prompt report task (`--status-every`)                                                                                                                                                                     |
@@ -279,7 +279,14 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   the fix run's OWN footer instruction.
 - **`status`**: `StatusPayload` JSON; the done-prompt agent writes
   `docs/status/<ts>_<name>.md` and appends next items (questions as
-  `— BLOCKED:`) to TODO_LIST.md — that append IS the harvest loop-back
+  `— BLOCKED:`) to TODO_LIST.md — that append IS the harvest loop-back.
+  Session usage (cost/tokens) is DERIVED for report runs too (2026-09-21,
+  09-52 §f4): `deriveOutcome` fills StatusResult's Session* fields after
+  the run, same json keys as the other result types, so report turns join
+  the budget token projection via the shared parse. The reporter COMMITS
+  its report, but StatusResult deliberately surfaces usage only (the item
+  asked for usage fields; the report path is already recorded on the
+  result).
   (DEDUP-GATED since 2026-09-17, the 14-01 report's top fix for the
   re-dispatch loop where reworded duplicates minted fresh dedup keys and
   one task re-fired up to 5x: the prompt requires a dedup check against
