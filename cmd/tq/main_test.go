@@ -386,7 +386,8 @@ func TestResultDetailDecodesTypedResults(t *testing.T) {
 		task.Task{Type: executor.TaskTypePrioritize},
 		[]journal.Fact{{Type: journal.Completed, Detail: prioritizeDetail}},
 	)
-	if pr, ok := got.(executor.PrioritizeResult); !ok || len(pr.Verdicts) != 1 || pr.Verdicts[0].Score != 42 || pr.SessionPromptTokens != 1200 {
+	pr, ok := got.(executor.PrioritizeResult)
+	if !ok || len(pr.Verdicts) != 1 || pr.Verdicts[0].Score != 42 || pr.SessionPromptTokens != 1200 {
 		t.Fatalf("prioritize result = %+v, want decoded PrioritizeResult", got)
 	}
 
