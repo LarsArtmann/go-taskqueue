@@ -95,6 +95,20 @@ func statusBadgeText(res executor.StatusResult) string {
 	return "status: report"
 }
 
+// sessionUsageEmpty reports whether a result carries no derived session
+// usage (stub or non-crush run): the render-nothing gate for the usage line.
+func sessionUsageEmpty(costUSD float64, promptTokens, completionTokens int64) bool {
+	return costUSD == 0 && promptTokens == 0 && completionTokens == 0
+}
+
+// sessionUsageText renders the derived session usage the result types share
+// (same json keys by the budget projection's drift pin): tokens first, then
+// cost.
+func sessionUsageText(costUSD float64, promptTokens, completionTokens int64) string {
+	return fmt.Sprintf("%s prompt + %s completion tokens · $%.4f derived session cost",
+		formatInt(int(promptTokens)), formatInt(int(completionTokens)), costUSD)
+}
+
 // findingSeverityType maps a review finding's severity hint onto the badge
 // language (normalized to low/medium/high by the executor's parser).
 func findingSeverityType(severity string) display.BadgeType {

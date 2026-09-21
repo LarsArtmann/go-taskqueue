@@ -244,6 +244,12 @@ func (s *Server) handleTaskDetail(w http.ResponseWriter, r *http.Request) {
 		executor.TaskTypeStatus,
 		s.statusResultFor,
 	)
+	data.Prioritizes = pageResults(
+		r.Context(),
+		[]task.Task{t},
+		executor.TaskTypePrioritize,
+		s.prioritizeResultFor,
+	)
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 

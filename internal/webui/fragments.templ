@@ -649,6 +649,9 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 	if st, ok := data.Statuses[t.ID.String()]; ok {
 		@statusReportCard(st)
 	}
+	if pr, ok := data.Prioritizes[t.ID.String()]; ok {
+		@prioritizeResultCard(pr)
+	}
 	@display.Card(display.CardProps{Padding: display.CardPaddingLG}) {
 		@display.DefinitionList(display.DefinitionListProps{Items: detailItems(t, data.Now, ctxNonce(ctx))})
 	}
@@ -683,7 +686,8 @@ templ reviewFindings(res executor.ReviewResult) {
 }
 
 // statusReportCard renders the status loop's outcome: where the report
-// landed and how much fresh work it minted. The path is copyable code, not a
+// landed, how much fresh work it minted, and the run's derived session
+// usage. The path is copyable code, not a
 // link — `tq serve` is a read-only queue projection and never serves repo
 // files (ADR-0003).
 templ statusReportCard(res executor.StatusResult) {
@@ -697,6 +701,26 @@ templ statusReportCard(res executor.StatusResult) {
 					Label:     "copy path",
 					BaseProps: utils.BaseProps{Nonce: ctxNonce(ctx)},
 				})
+			}
+		</div>
+		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens) {
+			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens) }</p>
+		}
+		if res.LogPath != "" {
+			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
+		}
+	}
+}
+
+// prioritizeResultCard renders the AI batch scorer's outcome: the verdict
+// count plus the run's derived session usage — one-batch scorer spend made
+// visible (the calibration feed the deriveOutcome wiring records).
+templ prioritizeResultCard(res executor.PrioritizeResult) {
+	@display.Card(display.CardProps{Title: "ai scoring", Padding: display.CardPaddingMD}) {
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+			@display.Badge(display.BadgeProps{Text: fmt.Sprintf("%d verdicts", len(res.Verdicts)), Type: display.BadgeInfo, Size: display.BadgeSizeSM})
+			if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens) {
+				<span class="text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens) }</span>
 			}
 		</div>
 		if res.LogPath != "" {
