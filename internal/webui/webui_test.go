@@ -922,6 +922,54 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 			t.Errorf("stats fragment missing %q", want)
 		}
 	}
+	// The spend meter renders inside the budget readout: 2/5 quantizes to
+	// the 40% fill class, tone stays green under 75% (no warn/over class).
+	for _, want := range []string{"tq-meter", "tq-meter-fill-40"} {
+		if !strings.Contains(stats, want) {
+			t.Errorf("budget meter missing %q", want)
+		}
+	}
+	if strings.Contains(stats, "tq-meter-warn") || strings.Contains(stats, "tq-meter-over") {
+		t.Error("budget meter at 40%% must not carry warn/over tone")
+	}
+}
+
+// TestBudgetMeterToneAndQuantization pins the meter's server-side classes:
+// the CSP (style-src 'self') forbids inline widths, so the fill is one of
+// twenty 5%-step classes, and the tone thresholds mirror BudgetView.Tone
+// (amber at 75%, red at/over the cap).
+func TestBudgetMeterToneAndQuantization(t *testing.T) {
+	tests := []struct {
+		name  string
+		spent int
+		cap   int
+		fill  string
+		warn  bool
+		over  bool
+	}{
+		{"zero spend shows no fill class", 0, 5, "tq-meter-fill", false, false},
+		{"tiny spend still shows a sliver", 1, 100, "tq-meter-fill tq-meter-fill-5", false, false},
+		{"just under warn", 74, 100, "tq-meter-fill tq-meter-fill-75", false, false},
+		{"at warn", 75, 100, "tq-meter-fill tq-meter-fill-75", true, false},
+		{"over cap clamps to full", 9, 5, "tq-meter-fill tq-meter-fill-100", false, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := BudgetView{Spent: tt.spent, Cap: tt.cap}
+			if got := budgetMeterFillClass(b); got != tt.fill {
+				t.Errorf("fill = %q, want %q", got, tt.fill)
+			}
+
+			track := budgetMeterClass(b)
+			if tt.warn != strings.Contains(track, "tq-meter-warn") {
+				t.Errorf("track = %q, warn presence = %v", track, tt.warn)
+			}
+			if tt.over != strings.Contains(track, "tq-meter-over") {
+				t.Errorf("track = %q, over presence = %v", track, tt.over)
+			}
+		})
+	}
 }
 
 // TestParkedSegmentRendersFromSnapshot pins the 16-00 f44 wiring: the
