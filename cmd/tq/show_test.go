@@ -164,9 +164,11 @@ func queuePriorityScore() queue.PriorityScore {
 // resultDetail's decode (TestResultDetailDecodesTypedResults) and the
 // webui render (TestResultUsageRendersOnDetailPage) are pinned
 // separately — this is the only gate on the encoder step between them.
+// NOT parallel: captureStdout swaps the process-global os.Stdout, so
+// captureStdout tests must never overlap (see TestCmdDLQDismissDeadTask,
+// the one pre-existing parallel user — adding a second live one is what
+// tripped the unexpected-EOF flake in the full gate).
 func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) {
-	t.Parallel()
-
 	dbPath := filepath.Join(t.TempDir(), "usage.db")
 
 	store, err := sqlite.Open(dbPath)
