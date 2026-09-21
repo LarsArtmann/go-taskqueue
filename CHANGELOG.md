@@ -29,8 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   outcomes**: the status report card now carries the run's derived session
   usage line (prompt/completion tokens, cost) under the report path, and a
   new prioritize card renders the AI scorer's verdict count plus the same
-  derived session usage and the full agent output path; usage-less results
-  render no line. `tq show` additionally decodes the prioritize completion
+  derived session usage and the full agent output path; results with no
+  derived session data render no line. `tq show` additionally decodes the prioritize completion
   fact typed (`PrioritizeResult`), so its detail payload section shows the
   structured scorer result. (`internal/webui/fragments.templ`,
   `internal/webui/components.go`, `internal/webui/handlers.go`,
