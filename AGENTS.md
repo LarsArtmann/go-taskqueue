@@ -574,7 +574,7 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   on-demand devShell tool, NOT gated — don't re-litigate without solving
   plugin pinning AND the multi-writer problem
 - The web UI is themed with `github.com/larsartmann/templ-components`
-  (v1.16.x); tokens in `internal/webui/theme.css`; JetBrains Mono woff2
+  (v1.17.0); tokens in `internal/webui/theme.css`; JetBrains Mono woff2
   subsets are SIL OFL 1.1 (© JetBrains). Design language refinements
   (2026-09-21 pass): two-voice typography — mono is the MACHINE voice (ids,
   counts, timestamps, commands), sans the HUMAN voice (project names, error

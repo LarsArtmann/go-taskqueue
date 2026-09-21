@@ -179,8 +179,9 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ### CI / tooling
 
-- `concurrency:` group in ci.yml to cancel superseded runs (the
-  auto-commit daemon pushes in bursts)
+- ~~`concurrency:` group in ci.yml to cancel superseded runs (the
+  auto-commit daemon pushes in bursts)~~ DONE 2026-09-16
+  (`concurrency: ci-${{ github.ref }}` + `cancel-in-progress: true`)
 - Advisory lint cost: scope to changed packages (diff-based) or move to a
   scheduled job instead of recomputing a known ~400-finding result per push
 - ~~govulncheck step (binary already in the flake devShell); dependabot for

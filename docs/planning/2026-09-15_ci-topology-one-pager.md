@@ -15,8 +15,15 @@ run uses `GOWORK=off` (there is no go.work — replace-only by decision).
 roots, gated separately via the devmod shim (`scripts/test-cmd-tq.sh`).
 
 Workflow-level: both workflows pin `GOEXPERIMENT=jsonv2` workflow-wide
-(go-sse needs encoding/json/v2 on the 1.26 toolchain) and pin setup-go to
-`1.26.7` (never `stable` — see AGENTS.md known issue).
+and pin setup-go (never `stable` — see AGENTS.md known issue; the pins sit
+at `1.26.7` while the go.mod tree migrates to `go 1.27.1` — `GOTOOLCHAIN`
+defaults resolve each module up via its own `toolchain` directive). ci.yml
+carries a `concurrency: ci-${{ github.ref }}` group with `cancel-in-progress:`
+(2026-09-16) so the daemon's burst pushes cancel superseded runs. Since
+2026-09-19/20 every per-module loop feeds from a CAPTURED enumeration
+(`mods="$(./scripts/for-each-module.sh)"`) — the enumerator hard-fails on
+zero targets and pins five canary sub-modules, so a renamed module can no
+longer silently narrow a loop.
 
 ## ci.yml
 
@@ -31,13 +38,13 @@ Workflow-level: both workflows pin `GOEXPERIMENT=jsonv2` workflow-wide
 |                                 | HARD                                                    | `check-facade-parity.sh` (ADR-0016)                                                                                | facades         | go/parser walk: every internal export needs a facade alias                                                                                  |
 |                                 | HARD                                                    | Gofmt                                                                                                              | whole tree      |                                                                                                                                             |
 |                                 | advisory                                                | golangci-lint run (root + loop)                                                                                    | **YES**         | Advisory baseline; root `./...` alone misses sub-modules, so the loop mirrors ci-local.sh                                                   |
-|                                 | advisory                                                | lint annotations (`--new-from-rev`, changed lines only)                                                            | —               | Scoped so new findings fit GitHub's 10-annotation cap                                                                                       |
+|                                 | advisory                                                | lint annotations (`scripts/lint-annotations.sh` — module-looping since 2026-09-15, `--new-from-rev`, changed lines only)                                 | **YES** (in-script) | Scoped so new findings fit GitHub's 10-annotation cap                                          |
 |                                 | HARD                                                    | TODO_LIST harvest-parse guard                                                                                      | harvest pkg     | Machine-consumed TODO_LIST format                                                                                                           |
 |                                 | HARD                                                    | `smoke/webui.sh`, `smoke/release-gates.sh`, `check-doc-refs.sh`, `check-ghost-archives.sh`, `check-features-ci.sh` | —               | Smokes + doc/artifact gates                                                                                                                 |
 | `test-windows` (windows-latest) | HARD                                                    | Test (no -race: needs cgo+mingw; unix-tagged suites drop out)                                                      | no              | Root                                                                                                                                        |
 |                                 | HARD                                                    | Module isolation gates (build+test)                                                                                | **YES**         | Same loop, Windows side; platform honesty for every module                                                                                  |
 | `test-postgres`                 | HARD                                                    | Postgres conformance (`internal/queue/postgres`, TQ_TEST_POSTGRES service)                                         | postgres module | ADR-0007 conformance parity with SQLite; env-gated locally, CI runs it (the caller-owned-pool test is a red-master guard, not a local skip) |
-| `nix`                           | HARD                                                    | `nix build`, `nix flake check`                                                                                     | whole flake     | Hermetic reproducible build; NOT `--all-systems` (no aarch64/darwin runners)                                                                |
+| `nix`                           | HARD                                                    | `nix build`, `nix flake check`, `check-webui-css.sh` (byte-canonical stylesheet pin, added 2026-09-15)              | whole flake     | Hermetic reproducible build; NOT `--all-systems` (no aarch64/darwin runners); the css pin needs nix, so it lives in this job |
 | `govulncheck`                   | HARD (since round-13 T7)                                | root + loop                                                                                                        | **YES**         | Needs network (vuln DB live), so it can never be hermetic/ci-local; loop because root misses sub-modules                                    |
 | `gosec`                         | advisory (job-level continue-on-error, owner ruling O5) | root + loop with triage-encoded excludes                                                                           | **YES**         | Post-excludes = 0 findings; any finding is a NEW class needing triage                                                                       |
 | `cqrs-lint`                     | advisory                                                | builds tool from go-cqrs-lite checkout, lints `internal/journal/cqrs`                                              | one pkg         | ADR-0014 seam lint; non-blocking pending clean soak + hermetic tool source                                                                  |
