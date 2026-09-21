@@ -1,6 +1,8 @@
 package executor
 
 import (
+	"encoding/json/v2"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -88,5 +90,75 @@ func TestPrioritizePromptContract(t *testing.T) {
 		if !strings.Contains(prompt, want) {
 			t.Fatalf("prompt missing %q", want)
 		}
+	}
+}
+
+// TestPrioritizeResultUsageKeysMatchAgentResult pins the shared
+// session-usage json keys (09-52 f2): the budget projection and `tq show`
+// parse the SAME keys off every completion-fact result type, so a rename
+// in either struct — AgentResult's or PrioritizeResult's, either
+// direction of drift — must fail here.
+func TestPrioritizeResultUsageKeysMatchAgentResult(t *testing.T) {
+	t.Parallel()
+
+	usageKeys := []string{
+		"session_cost_usd",
+		"session_prompt_tokens",
+		"session_completion_tokens",
+		"session_message_count",
+	}
+
+	cases := []struct {
+		name  string
+		res   any
+		extra []string
+	}{
+		{
+			name: "AgentResult",
+			res: AgentResult{
+				SessionCostUSD:          1,
+				SessionPromptTokens:     2,
+				SessionCompletionTokens: 3,
+				SessionMessageCount:     4,
+			},
+		},
+		{
+			name: "PrioritizeResult",
+			res: PrioritizeResult{
+				Verdicts:                []PrioritizeVerdict{{ItemKey: "todo:aaa", Score: 50}},
+				SessionCostUSD:          1,
+				SessionPromptTokens:     2,
+				SessionCompletionTokens: 3,
+				SessionMessageCount:     4,
+			},
+			extra: []string{"verdicts"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			raw, err := json.Marshal(tc.res)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			var got map[string]any
+			if err := json.Unmarshal(raw, &got); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+
+			keys := make([]string, 0, len(got))
+			for k := range got {
+				keys = append(keys, k)
+			}
+			slices.Sort(keys)
+
+			want := append(slices.Clone(usageKeys), tc.extra...)
+			slices.Sort(want)
+			if !slices.Equal(keys, want) {
+				t.Fatalf("%s marshals %v, want exactly the shared usage keys %v (plus %v) — a rename here breaks the budget projection and tq show", tc.name, keys, usageKeys, tc.extra)
+			}
+		})
 	}
 }
