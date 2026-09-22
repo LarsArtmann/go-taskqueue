@@ -231,14 +231,12 @@ not here.
 
 ## Docs-window follow-ups (2026-09-21 usage-rendering docs window; sources: this window's close-out report §b2/§d4; docs-only)
 - [ ] FEATURES.md placement check for the 2026-09-21 usage-rendering cards: the statusReportCard/prioritizeResultCard rendering facts live only on the sweeper rows (done-prompt loop + AI batch scorer); decide whether the webui detail-page section should carry them as first-class surface rows and move/extend if yes (2026-09-21 08-56 report §b2; docs-only)
-- [ ] Fix the docs/status/README.md index-ordering drift: the header prose (README.md:8) says "newest first" while the live table runs oldest→newest (2026-09-20 rows at the top after the digest row, 2026-09-21 rows at the file tail) — fix the prose to match practice, or flip the ordering consciously (2026-09-21 09-10 report §f18; docs-only)
 
 ## Process follow-ups (2026-09-21 show-JSON message-count pin window; source: docs/status/2026-09-21_10-19_task-000001a0c3056902a0ee78d22edce0da668b.md §e1/§d1)
 
 ## Docs-health harvest (2026-09-21 archive sweep; sources: full-corpus per-item triage of every live report 09-08..09-21 + planning docs, deduped against open rows; claims tree-verified at mint time)
 
 - [ ] ci.yml parity sweep: wire the ci-local-only gates into ci.yml (or record each asymmetry deliberately) — check-dead-sha-refs.sh, check-guard-wiring.sh, check-module-loop-capture.sh, `golangci-lint config verify`, smoke/reviews.sh, smoke/journal-drift.sh, smoke/ratelimit-e2e.sh are all ci-local-only today (2026-09-20 05-16 §f4; 2026-09-15 02-41 §f1, 03-25 §f4, 03-55 §f2; 2026-09-15 05-40 §f17; .github/workflows/ci.yml)
-- [ ] CONTRIBUTING.md accuracy pass residue: none of the three 2026-09-17 asks remain open (baseline count, dprint fold, GOOS line — all fixed 2026-09-22)
 - [ ] Gosec binary provenance + stamped install: owner installs a stamped `golangci/gosec@v2.29.0` binary (every ci-local gosec step carries the UNSTAMPED WARN until then; go install is sandbox-blocked for agents) and rules on unstamped-binary provenance — BLOCKED: owner install + provenance ruling (2026-09-20 00-19 §f2; 2026-09-19 01-58 §f1/§f2, 02-38 §f3)
 - [ ] Owner ruling: budget cap unit (task-count vs token/cost) now that the token projection ships — decides cap semantics, `UsageToday` fail-open vs error-return (budget.go:138), and the cap-unit ADR (2026-09-21 00-27 §f12/§f13/§g1; 01-49 §g3) — BLOCKED: owner token-vs-count ruling (AGENTS.md budget section)
 - [ ] Owner ruling: DefaultScoreTTL 30d + aging-unification (score-cache aging constants were shipped on judgment, not ruling; refresh-burst pacing when many verdicts expire the same day) — BLOCKED: owner calibration ruling pending the --prioritize pilot (2026-09-21 05-39 §g1; 06-20 §g2)

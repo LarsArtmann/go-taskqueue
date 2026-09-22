@@ -53,7 +53,63 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   explicit `lint-baseline: OK/FAIL` verdict line so truncated reads
   cannot misjudge the result (01-17 §e3); `test-cmd-tq.sh` forwards its
   arguments to the `go test` line for targeted `-run` scoping without
-  hand-rolling the devmod shim (10-19 §d1).
+  hand-rolling the devmod shim, and forces `GOTOOLCHAIN=auto` so hosts
+  pinning `local` on an older binary stop dying the env-lie death
+  (10-19 §d1).
+- **Malformed TODO checkbox rows are loud (04-46 §d4/§f1)**: a backlog
+  row written as `--- [ ] …` was silently invisible to BOTH consumers —
+  the harvester skipped the line and `check-todo-list.sh` passed the
+  file. `ParseRepoAll` now REJECTS the file with a "malformed bullet"
+  error naming the line (a repo's harvest scan fails loudly instead of
+  minting nothing), and the gate emits a `DAMAGED-CHECKBOX` finding.
+  Well-formed `- [ ]`/`- [x]`/`*` bullets and the space-less `-[ ]`
+  shape the parser always tolerated are unaffected.
+  (`internal/harvest/harvest.go`, `scripts/check-todo-list.sh`)
+- **Owner-question channel is work-turn-only (21-04 §f42)**: the
+  second-opinion clones built via `WithoutCloseout` (review / status /
+  dlqfix / prioritize) no longer receive `$TQ_QUESTION_FILE`, so a
+  reviewer or scorer can never park a task on an owner question; work
+  executors (including closeout-less literal construction) keep the
+  channel and the park path. Pinned by
+  `TestQuestionChannelScopePinsSecondOpinions`.
+  (`internal/executor/agent.go`)
+- **Dead-pool / starvation alerts survive a failed delivery (06-06
+  §b1)**: the detectors armed their streak BEFORE calling notify, so one
+  transient post failure burned the streak's only alert forever. notify
+  now reports delivery, the alert arms only on delivery, and the next
+  blind tick retries the raise (both detectors; regression-pinned by
+  `TestDeadPoolDetectorRetriesFailedDelivery`). (`cmd/tq/agentpool.go`,
+  `cmd/tq/main.go`)
+- **Test-infrastructure hardening**: `captureStdout` in cmd/tq is
+  mutex-guarded — the helper swaps process-global `os.Stdout`, and
+  overlapping captures corrupted each other's output ("jsontext:
+  unexpected EOF"); the sequential-by-convention discipline is now
+  mechanical. New executor pins: secretPatterns overlap census
+  (bearer × auth-header is the only overlapping pair, 02-37 §b4), the
+  N-tokens-→-N-hits property over benign filler (02-37 §f2), and the
+  auth-header-masks-to-exactly-one-marker mirror (02-37 §f11);
+  `GitLogScanner` trailer visibility is pinned END-TO-END against a real
+  temp repo — a footer demoted out of the final paragraph by an
+  attribution block is INVISIBLE (03-00 report §e2 tripwire); the
+  internal/task status oracle literals collapsed into one shared var
+  (04-31 §f13).
+- **Session-start ritual completeness**: with task-ID arguments the
+  ritual now also prints each prior report's VERDICT line (a DONE
+  verdict is a stronger stop signal than a filename), the `tq show`
+  queue record (status/attempts/lastError), and the status-index tail —
+  the tq-show and sibling-report turn-1 gaps become mechanical (07-12
+  §d2/§f1; 04-46 §e1; 2026-09-22 repeat-dispatch window).
+- **Docs accuracy**: AGENTS.md's vendorHash note now prescribes the fast
+  `checks.vendor-hash` gate with the literal-hash copy instead of the
+  stale `lib.fakeHash` dance (09-44 §e1); `internal/httpapi` gained its
+  missing architecture-table row (06-01 §f); CONTRIBUTING's dprint
+  paragraph now matches the docs-formatting MANUAL ruling (2026-09-21
+  08-56 §d4), its gate list carries the six post-2026-09-16 gates, and
+  the baseline count is current (~1100); the status-index header prose
+  admits that ordering is presence-only (09-10 §f18); CHANGELOG caught
+  up on the shipped session-bridge surface (`session list/ping/sweep`,
+  `--dry-run`, Postgres `AppendFact`) and dropped the stale "parity
+  remain open" claim (2026-09-17 03-26 §f2).
 
 ## [v0.3.1] - 2026-09-18
 ### Fixed
