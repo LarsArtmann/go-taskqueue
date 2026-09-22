@@ -297,7 +297,10 @@ func TestBoardRendersBandLabelsWhenMixed(t *testing.T) {
 
 	ctx := context.Background()
 	for _, pri := range []int{10, 120} {
-		if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "alpha", Payload: json.RawMessage(`"echo hi"`), Priority: pri}); err != nil {
+		if _, err := s.Enqueue(
+			ctx,
+			task.New{Type: "sh", Project: "alpha", Payload: json.RawMessage(`"echo hi"`), Priority: pri},
+		); err != nil {
 			t.Fatalf("Enqueue: %v", err)
 		}
 	}

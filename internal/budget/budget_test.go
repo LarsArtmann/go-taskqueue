@@ -45,7 +45,12 @@ func (m factSource) Facts(ctx context.Context, after int64, limit int) ([]journa
 	return facts, err
 }
 
-func (m factSource) FactsSince(ctx context.Context, ftype journal.FactType, since time.Time, limit int) ([]journal.Fact, error) {
+func (m factSource) FactsSince(
+	ctx context.Context,
+	ftype journal.FactType,
+	since time.Time,
+	limit int,
+) ([]journal.Fact, error) {
 	all, err := m.j.All(ctx)
 	if err != nil {
 		return nil, err
@@ -201,7 +206,10 @@ func TestUsageTodayIgnoresBrokenDetail(t *testing.T) {
 	j := journal.NewMemoryJournal()
 
 	_, _ = j.Append(ctx, journal.Fact{TaskID: "junk", Type: journal.Completed, Detail: []byte(`not json`)})
-	_, _ = j.Append(ctx, journal.Fact{TaskID: "zero", Type: journal.Completed, Detail: []byte(`{"session_prompt_tokens":0}`)})
+	_, _ = j.Append(
+		ctx,
+		journal.Fact{TaskID: "zero", Type: journal.Completed, Detail: []byte(`{"session_prompt_tokens":0}`)},
+	)
 
 	if got := (Guard{}).UsageToday(ctx, factSource{j}); got.Runs != 0 {
 		t.Fatalf("broken/zero details must not count as runs, got %+v", got)
