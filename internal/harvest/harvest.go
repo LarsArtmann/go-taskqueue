@@ -1203,6 +1203,16 @@ func checkboxOf(line string) (text string, done bool, ok bool) {
 // the `--- [ ]` shape and it was silently invisible to every consumer
 // (04-46 §d4/§f1) — this is the runtime half of making that loud.
 func damagedCheckbox(line string) string {
+	// A single bullet (dash or star) followed by optional spaces and the
+	// bracket is a well-formed shape — checkboxOf parses it with or without
+	// the space — so it is never damaged, even though a naive bullet-run
+	// scan would land on the bracket.
+	if len(line) > 0 && (line[0] == '-' || line[0] == '*') {
+		if rest := strings.TrimLeft(line[1:], " \t"); len(rest) > 0 && rest[0] == '[' {
+			return ""
+		}
+	}
+
 	rest := line
 	for {
 		next := strings.TrimLeft(rest, "-* \t")
