@@ -64,5 +64,6 @@ var (
 	New               = internalqueue.New
 	BandOf            = internalqueue.BandOf
 	ClampBacklog      = internalqueue.ClampBacklog
+	CountStuckRunning = internalqueue.CountStuckRunning
 	ValidQuestionType = internalqueue.ValidQuestionType
 )
