@@ -2,6 +2,12 @@ package task
 
 import "testing"
 
+// oracleStatuses is the single hardcoded status oracle for this package's
+// tests: a new Status must be added HERE, to AllStatuses, and to the
+// transitions table — the exhaustive tests below fail until all three
+// agree (04-31 §f13 shared the two per-test literals into this one var).
+var oracleStatuses = []Status{Pending, Running, Completed, Dead, Cancelled}
+
 func TestCanTransitionTo(t *testing.T) {
 	legal := []struct{ from, to Status }{
 		{Pending, Running},
@@ -42,7 +48,7 @@ func TestCanTransitionTo(t *testing.T) {
 // the transitions table and agrees with Valid. A new Status added without
 // wiring fails here instead of silently accepting/rejecting at runtime.
 func TestStatusTableExhaustive(t *testing.T) {
-	declared := []Status{Pending, Running, Completed, Dead, Cancelled}
+	declared := oracleStatuses
 	if len(transitions) != len(declared) {
 		t.Fatalf(
 			"transitions table has %d source states, want %d (new Status without a transitions row?)",
@@ -67,7 +73,7 @@ func TestStatusTableExhaustive(t *testing.T) {
 // this test fails until the two agree. Lifecycle order is part of the
 // contract (board columns and stats keys iterate in this order).
 func TestAllStatuses(t *testing.T) {
-	declared := []Status{Pending, Running, Completed, Dead, Cancelled}
+	declared := oracleStatuses
 
 	got := AllStatuses()
 	if len(got) != len(declared) {

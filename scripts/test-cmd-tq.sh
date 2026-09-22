@@ -12,6 +12,12 @@ cmdtq_devmod
 trap cmdtq_devmod_cleanup EXIT
 
 cd "$CMD_TQ_DIR"
+# dev.mod carries the repo's go 1.27.1 floor. GOTOOLCHAIN is forced to auto
+# (not merely defaulted): hosts and agent-session shells pin
+# GOTOOLCHAIN=local on an older binary, and honoring that inherited value
+# is the env-lie that killed the first targeted-run passthrough. On a host
+# whose toolchain already satisfies the floor, auto never downloads.
+export GOTOOLCHAIN=auto
 export GOWORK=off GOEXPERIMENT=jsonv2 CGO_ENABLED=0 GOFLAGS=-modfile=dev.mod
 if [ "${CMD_TQ_OS:-}" = "windows" ]; then
 	export GOOS=windows
