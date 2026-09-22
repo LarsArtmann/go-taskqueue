@@ -17,6 +17,8 @@ allow=(
 	'^example/taskmanager'    # go-cqrs-lite LIBRARY repo path, cited library-side in the storage verdict (AGENTS.md, verified 2026-09-13)
 	'^origin/master'          # git revision RANGE in the filter-branch playbook — a rev, not a path (AGENTS.md, 2026-09-16)
 	'^refs/original'          # git backup-ref namespace written by filter-branch — a ref, not a path (AGENTS.md, 2026-09-16)
+	'^queue/v4'               # go-cqrs-lite module path@version, not a repo path (AGENTS.md ADR-0019 bullet; tags verified pushed on origin 2026-09-22)
+	'^claiming/v4'            # go-cqrs-lite module path@version, not a repo path (AGENTS.md ADR-0019 bullet; tags verified pushed on origin 2026-09-22)
 )
 
 fail=0

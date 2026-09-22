@@ -1099,37 +1099,38 @@ adapter's events carried an EMPTY encoding stamp, so every downstream
 `factEvent` now builds via `event.New` + `WithCodec(JSONCodec)` (pinned
 by `TestPayloadDecodesThroughLibraryAPI`).
 
-**go-cqrs-lite storage ≠ the queue stores — TODAY** (assessed 2026-09-13,
-deepened same day after the owner challenge; verdict for shipped code: NOT
-adopted — extends ADR-0001 and ADR-0014's "direct storage adoption was
-rejected"): module by module — `storage/` is a per-stream append event store
-(`Save(aggregate, events, expectedVersion)` + `Load`); `metaengine/` is the
-READ side (cost-based planner: data enters via event folds `Apply(...)`,
-queries are fold-built result types, engines assigned per query; planned
-tables push FilterSpec/SortSpec/keyset down via json_extract, `MapUpdater`
-gives per-key atomic RMW — no cross-collection anti-join, no multi-key
-conditional claim ADT); `system/` is the composition root (DomainConfig +
-DeploymentConfig wiring — the ceremony ADR-0001 stripped); `scheduling/` is
-fire-once deadline timers. BUT the scheduling module's sqlstore
-`ClaimingTimerStore` already implements THE claim core — lease_until
-stamping, PG `FOR UPDATE SKIP LOCKED` CTE→UPDATE→RETURNING, SQLite
-single-writer UPDATE..RETURNING, MySQL 10.6+, lease-expiry reclaim,
-`RenewLease`, `ClaimMetrics` — the exact pattern of our backends, three
-dialects, unassembled into a task store (timers are deleted on fire; no
-lifecycle/retries/DLQ/priorities/DAG/owners/journal-in-tx). The assembly is
-now IN PROGRESS upstream: go-cqrs-lite `docs/planning/2026-09-13_durable-work-
-queue-module.md` + 🔥 TODO_LIST row (new `queue/` sibling module; spec source
-of truth = THIS repo's `internal/queue` Store contract; tq named first
-consumer, PapDashboard second). P0 SHIPPED 2026-09-13/14: the claim SQL
-core is extracted upstream as `claiming/` (Spec-parameterized statements,
-byte-identical to the timer store's, which now delegates; the one
-speculative knob `Spec.And` was trimmed so the module is purely an
-extraction) — tq itself consumes nothing yet. Until that module ships
-with parity, the stores stay hand-rolled: replacing them today would
-relocate all the claim SQL on top of a generic event store (net MORE
-code) plus a live-journal migration. When the upstream queue module
-reaches parity, re-open via ADR (conformance-suite parity is the bar, not
-feature-list parity).
+**go-cqrs-lite IS the platform — ADOPTION RE-OPENED AND RULED 2026-09-22
+(ADR-0019)**: the owner restated the founding intent ("the whole idea of
+this project was that it uses go-cqrs-lite system/ + metaengine/") and
+the 2026-09-13 "NOT adopted" verdict is OVERRULED — its premises rotted:
+the upstream `queue/` family SHIPPED and is pushed (`queue/v4.0.0`,
+`queue/{sqlite,postgres,mysql}/v4.0.0`, `claiming/v4.0.0`, verified on
+origin 2026-09-22), its `Store[T]` contract is transcribed from THIS
+repo's contract (queue/README names tq the spec donor; lease claims +
+crash reclaim, dedup enqueue, retries→DLQ, RescueDead/DismissDead,
+MarkOrphaned, cooperative cancels, DAG-dep claim gating, bounded priority
+aging, same-tx facts, watermarks — ONE shared conformance suite), and
+token-fenced finalizes (upstream ADR-0134) supersede tq's owner-string
+finalizes. The upstream v5 direction (ADR-0123) makes `metaengine` Store
++ `system` composition root the blessed surface (v1 read-model tiers and
+`stack/` presets die in v5 — do not adopt them now). Staged plan in
+`docs/adr/0019-go-cqrs-lite-platform-adoption.md`, tracked in TODO_LIST
+("go-cqrs-lite platform adoption"): S1 swap the hand-rolled engines for
+thin drivers over `queue/sqlite|postgres/v4` (tq extras — questions/
+RecordAnswer, PriorityScores, CountFacts/FactsSince/LastFacts,
+ProjectCounts — as same-DB companion tables unless upstream grows them),
+S2 unify the journal on `facts.Fact` (open FactType; tq-specific fact
+types stay tq constants), S3 read models on metaengine
+(`Watcher`/`ServeSSE` replacing the hand tailer fan-out), S4 composition
+via `system/` DomainConfig + DELETE the mirrored backends (the 7-of-9
+art-dupl mirror clone groups die there). Facts-first replay is the
+migration story (projection-equality verify; dogfood cutover owner-run).
+The historical module-by-module assessment (storage/ = per-stream event
+store; metaengine/ = cost-based read side; system/ = composition root;
+scheduling/ `ClaimingTimerStore` = the extracted claim core) remains
+accurate as DESCRIPTION — it is no longer a verdict. tq is upstream's
+named first consumer; upstream's open owner-gate (dep-validation
+ratification M4 §f1) does not block S1 — Reply A behavior assumed.
 
 **PapDashboard bridge**: `tq worker --alert-url http://<pap>:8080
 --alert-api-key <KEY>` (env `TQ_PAP_URL`/`TQ_PAP_API_KEY`). Dead letters

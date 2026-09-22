@@ -27,6 +27,18 @@ not here.
 - [ ] Postgres CLI store wiring (`--store postgres://…` on worker/serve/agent-pool): gives queue/postgres its consumer; root re-adds pgx; sequence BEFORE any public-API promotion (23:47 f5/g3) — BLOCKED: owner release-timing call (v0.3?)
 - [ ] Dependabot/renovate policy for the 8-module tree (23:47 f33) — BLOCKED: owner policy decision
 
+## go-cqrs-lite platform adoption (ADR-0019, owner ruling 2026-09-22 — serialize S1→S4)
+
+- [ ] ADR-0019 S1 spike (sqlite): new module implementing tq's `queue.Store` over `queue/sqlite/v4.0.0` (tagged + pushed; `scripts/new-module.sh` scaffold) with the tq extras (RecordAnswer/questions, PriorityScores, CountFacts/FactsSince/LastFacts, ProjectCounts) as same-DB companion tables; run tq's existing sqlite suite against it and report every divergence (token- vs executor-string finalizes, fact vocabulary, heartbeat facts) in a status report citing docs/adr/0019-go-cqrs-lite-platform-adoption.md §S1
+- [ ] ADR-0019 S1 spike (postgres): same contract over `queue/postgres/v4.0.0`, judged by the TQ_TEST_POSTGRES suite; both spikes feed one decision memo
+- [ ] ADR-0019 S1 decision memo: per tq-extra surface choose upstream-grown vs companion-table (prefer upstream; upstream ratification-memo pipeline is the channel), pick the tq-fact append path (upstream escape vs companion journal), and sketch the replay tool; verdict appended to docs/adr/0019 or a docs/planning/ doc
+- [ ] ADR-0019 S1 replay tool: fact-journal → fresh engine store replay verified by projection equality (StatusCounts, per-task fact tails, DLQ contents, watermarks) — part of S1's definition of done (docs/adr/0019 §Data migration)
+- [ ] ADR-0019 S1 flip: make the queue/v4-backed store the default sqlite+postgres store, worker finalizes move to claim tokens, facades/vendorHash follow (ADR-0016 require+replace rules; `scripts/check-go-mods.sh` + the nix vendorHash fast gate)
+- [ ] ADR-0019 S2: unify the journal on upstream `facts.Fact` (open FactType) with tq-specific fact constants; re-point `internal/journal/cqrs`, webui tailer, sweepers, bridges; facts-in-same-tx becomes engine-enforced
+- [ ] ADR-0019 S3: `tq serve`/`tq stats`/httpapi read side onto metaengine Store collections (planned tables) + `Watcher`/`ServeSSE` live fragments replacing the hand tailer fan-out; `TestRoutesAreReadOnly` + health-CSP pins stay green
+- [ ] ADR-0019 S4: compose runtime (store, executors, sweepers, bridges) via `system/` DomainConfig; DELETE the hand-rolled sqlite/postgres engines + mirrored suites once proven in dogfood (the 7-of-9 art-dupl mirror clone groups die here)
+- [ ] ADR-0019 dogfood cutover: replay `/mnt/pool/services/tq/tq.db` into the new engine store, verify projection equality, swap `TQ_DB` in the systemd units — BLOCKED: owner-run (production journal; never without explicit owner go)
+
 ## Dogfood round (harvested from docs/status/2026-09-10_02-00 self-review §f)
 
 - [ ] `tq pool-health`: one-shot summarizing per-repo skip streaks + last harvest activity from the journal (liveness ≠ process up) (02:00 f27)
