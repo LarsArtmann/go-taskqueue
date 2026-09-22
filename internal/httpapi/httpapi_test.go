@@ -280,7 +280,12 @@ func TestAuthLockout(t *testing.T) {
 // TestAuthLockoutIsPerClient: one client's lockout must not muzzle another.
 func TestAuthLockoutIsPerClient(t *testing.T) {
 	srv, _ := newTestAPI(t)
-	srv.strikes.lockout = time.Hour
+	srv.strikes = lockout.New(lockout.Config{
+		MaxHits:  authMaxHits,
+		Lockout:  time.Hour,
+		IdleKeep: authIdleKeep,
+		MaxKeys:  authMaxKeys,
+	})
 	h := srv.Handler()
 
 	try := func(addr, token string) int {
@@ -314,7 +319,12 @@ func TestAuthLockoutIsPerClient(t *testing.T) {
 // legitimate producer.
 func TestAuthStrikesResetOnSuccess(t *testing.T) {
 	srv, _ := newTestAPI(t)
-	srv.strikes.lockout = time.Hour
+	srv.strikes = lockout.New(lockout.Config{
+		MaxHits:  authMaxHits,
+		Lockout:  time.Hour,
+		IdleKeep: authIdleKeep,
+		MaxKeys:  authMaxKeys,
+	})
 	h := srv.Handler()
 
 	try := func(token string) int {

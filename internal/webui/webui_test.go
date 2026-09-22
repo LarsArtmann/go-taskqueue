@@ -1861,16 +1861,16 @@ func TestWriteRateLimitBoundedAgainstRotatingIPs(t *testing.T) {
 		t.Fatalf("ip5 bad CSRF = %d, want 403", code)
 	}
 
-	if len(l.strikes) != l.maxKeys {
-		t.Fatalf("strikes map holds %d entries, want capped at %d", len(l.strikes), l.maxKeys)
+	if l.limiter.Len() != 4 {
+		t.Fatalf("strikes map holds %d entries, want capped at 4", l.limiter.Len())
 	}
 
-	if _, ok := l.strikes["10.0.0.1"]; ok {
+	if l.limiter.Has("10.0.0.1") {
 		t.Fatal("least-recently-active entry survived the cap")
 	}
 
 	for _, ip := range []string{"10.0.0.2", "10.0.0.3", "10.0.0.4", "10.0.0.5"} {
-		if _, ok := l.strikes[ip]; !ok {
+		if !l.limiter.Has(ip) {
 			t.Fatalf("%s was evicted; want it retained", ip)
 		}
 	}
@@ -1888,11 +1888,11 @@ func TestWriteRateLimitBoundedAgainstRotatingIPs(t *testing.T) {
 		t.Fatalf("ip6 bad CSRF = %d, want 403", code)
 	}
 
-	if len(l.strikes) != 2 {
-		t.Fatalf("after idle sweep the map holds %d entries, want 2 (locked + new)", len(l.strikes))
+	if l.limiter.Len() != 2 {
+		t.Fatalf("after idle sweep the map holds %d entries, want 2 (locked + new)", l.limiter.Len())
 	}
 
-	if _, ok := l.strikes["10.0.0.2"]; !ok {
+	if !l.limiter.Has("10.0.0.2") {
 		t.Fatal("locked entry was swept while its lockout was live")
 	}
 
