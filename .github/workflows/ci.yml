@@ -14,12 +14,16 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# encoding/json/v2 symbols (jsontext.Value et al.) are gated behind
-# GOEXPERIMENT=jsonv2 on the go 1.26 toolchain — local builds get it from
-# ~/.config/go/env and flake.nix sets it for the nix gate; CI runners have
-# a pristine env, so without this the stdversion check fails every package
-# that touches json/v2 ("jsontext.Value requires go1.27"). One env here
-# covers test, test-windows, test-postgres, govulncheck and gosec.
+# encoding/json/v2 (jsontext.Value et al.) was gated behind
+# GOEXPERIMENT=jsonv2 on the go 1.26 toolchain; on go 1.27.1 (the go.mod
+# floor since 2026-09-16) it is stable std and the env value is an accepted
+# no-op. It stays so local shells, the flake devShell and CI carry one
+# identical GOEXPERIMENT story (a mixed story is how the env-lie class
+# started). One env here covers test, test-windows, test-postgres,
+# govulncheck and gosec. setup-go pins match the go.mod toolchain floor
+# exactly: runners run GOTOOLCHAIN=local, so a pin below the floor dies
+# with "go.mod requires go >= 1.27.1" in every go step (master red
+# 2026-09-20..21 until this aligned).
 env:
   GOEXPERIMENT: jsonv2
 

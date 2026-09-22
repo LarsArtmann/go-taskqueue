@@ -16,7 +16,7 @@ them, never revert them.
 
 ```bash
 ./scripts/ci-local.sh     # the pre-push gate: full CI replicant (vet/build/race/smokes/nix); tree-reading Go gates retry transient foreign breaks (sleep 45s ×3, then fail with "concurrent edit in flight" context — 15-39 f9/e2; TRANSIENT_POLL_SECS/TRANSIENT_MAX_POLLS overridable)
-export GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto; go build ./... && go vet ./... && go test ./... -race   # standard verify gate (ROOT MODULE ONLY — see below; BOTH exports are REQUIRED outside the flake devShell: GOEXPERIMENT because go-sse imports encoding/json/v2 — without it the build dies with "build constraints exclude all Go files" while gopls shows the same phantoms; GOTOOLCHAIN=auto because go.mod declares go 1.27.1 since 2026-09-16 and a shell pinned GOTOOLCHAIN=local on an older toolchain dies with "go.mod requires go >= 1.27.1" — the same env-lie family, hit by the 2026-09-21 docs sweep)
+export GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto; go build ./... && go vet ./... && go test ./... -race   # standard verify gate (ROOT MODULE ONLY — see below; GOTOOLCHAIN=auto is REQUIRED outside the flake devShell because go.mod declares go 1.27.1 since 2026-09-16 and this host's shell pins GOTOOLCHAIN=local on a 1.26.7 binary — without it every go command dies with "go.mod requires go >= 1.27.1"; GOEXPERIMENT=jsonv2 rides along as an accepted NO-OP on 1.27, where json/v2 is stable std — on 1.26 it was load-bearing, keep it so every surface carries one identical env story until a toolchain-policy ruling drops it)
 nix build                 # reproducible build; nix run .#test = tests; nix run .#webui-css = stylesheet
 ./scripts/fuzz/nightly.sh # 60s FuzzParseRepo campaign; nightly workflow commits new seeds
 ```
@@ -748,13 +748,20 @@ prose, not the table.
   `go 1.27`, so vet fails with "json.Unmarshal requires go1.27" REGARDLESS
   of GOEXPERIMENT (the experiment satisfies 1.26's availability gate, not
   1.27's language-version gate). All 7 setup-go steps (ci.yml ×6, fuzz.yml
-  ×1) are pinned to `1.26.7` matching go.mod + the toolchain-alignment gate;
-  a GOEXPERIMENT-only fix reproduces locally and still fails on runners —
-  verify against the environment that failed, not just locally.
+  ×1) are pinned to `1.27.1` matching the go.mod toolchain floor + the
+  toolchain-alignment gate (the 1.26.7 pins went STALE when the go.mods
+  moved to 1.27.1 on 2026-09-16..20: runners run GOTOOLCHAIN=local, so
+  every go step — vet, govulncheck, windows, postgres, cqrs-lint — died
+  with "go.mod requires go >= 1.27.1" and master stayed red 09-20..21
+  until the 09-22 pin bump); a GOEXPERIMENT-only fix reproduces locally
+  and still fails on runners — verify against the environment that
+  failed, not just locally. The pin must equal the go.mod floor in BOTH
+  directions: floor above pin kills every runner step (this incident),
+  pin above floor re-floats the stable bug (the original one).
 - ⚠️ **Never lower a module's `go` directive — zero-dep leaves have no
   floor** (2026-09-12 red master, run 34726154600): every go.mod must
-  declare the root's exact version (`go 1.26.7`; `check-go-mods.sh` is the
-  gate). The T38–T40 window aligned go.mods DOWN; `go mod tidy` reverted
+  declare the root's exact version (`go 1.27.1` since the 2026-09-16
+  sweep; `check-go-mods.sh` is the gate). The T38–T40 window aligned go.mods DOWN; `go mod tidy` reverted
   the dep-bearing modules but the stdlib-only leaves (`internal/task`,
   `internal/journal` — no require lines) have NO dependency floor, so the
   downgrade survived there, rode daemon commit 201041e, and failed the CI

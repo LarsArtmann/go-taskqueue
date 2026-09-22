@@ -20,10 +20,11 @@ on:
 permissions:
   contents: write # commit new seed corpus back to master
 
-# GOEXPERIMENT=jsonv2 on the go 1.26 toolchain — same reason as ci.yml:
-# go-sse imports encoding/json/v2, and without the experiment the campaign
-# dies at setup ("build constraints exclude all Go files") while the script
-# misreports it as a fuzz crasher (2026-09-12 03:30 nightly failure).
+# GOEXPERIMENT: jsonv2 was REQUIRED on the go 1.26 toolchain or go-sse's
+# encoding/json/v2 imports died at setup ("build constraints exclude all
+# Go files", 2026-09-12 03:30 nightly); on go 1.27.1 json/v2 is stable std
+# and the value is an accepted no-op. Kept so CI and local shells carry
+# one identical value (same reason as the ci.yml env block).
 env:
   GOEXPERIMENT: jsonv2
 
