@@ -15,6 +15,14 @@ cd "$(dirname "$0")/.."
 # sub-module loops which inherit the environment.
 export GOEXPERIMENT=jsonv2
 
+# go.mod declares a 1.27.1 floor while this host's shell pins
+# GOTOOLCHAIN=local on a 1.26.7 binary — without the auto pin every go
+# step dies with "go.mod requires go >= 1.27.1" outside the flake devShell
+# (same failure class as the GOEXPERIMENT export above, hit 2026-09-22).
+# Runners run GOTOOLCHAIN=local on a pinned 1.27.1 setup, so this export
+# is a no-op there and a lifeline in agent sessions.
+export GOTOOLCHAIN=auto
+
 step() { printf '\n== %s\n' "$*"; }
 
 # 15-39 report f9/e2: a concurrent session's mid-edit state transiently breaks
