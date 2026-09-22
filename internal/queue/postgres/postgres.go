@@ -1693,11 +1693,11 @@ func (s *Store) DeletePriorityScores(ctx context.Context, itemKeys []string) (in
 	}
 
 	placeholders := make([]string, len(itemKeys))
-	args := make([]any, len(itemKeys))
+	args := make([]any, 0, len(itemKeys))
 
 	for i, key := range itemKeys {
 		placeholders[i] = fmt.Sprintf("$%d", i+1)
-		args[i] = key
+		args = append(args, key)
 	}
 
 	res, err := s.pool.Exec(ctx,

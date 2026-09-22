@@ -688,15 +688,10 @@ func budgetMeterFillClass(b BudgetView) string {
 		return "tq-meter-fill"
 	}
 
-	pct := b.Spent * budgetMeterMaxPct / b.Cap
-	if pct > budgetMeterMaxPct {
-		pct = budgetMeterMaxPct
-	}
+	pct := min(b.Spent*budgetMeterMaxPct/b.Cap, budgetMeterMaxPct)
 
 	quantized := (pct + budgetMeterRoundPct) / budgetMeterStepPct * budgetMeterStepPct
-	if quantized < budgetMeterMinSliver {
-		quantized = budgetMeterMinSliver
-	}
+	quantized = max(quantized, budgetMeterMinSliver)
 
 	return "tq-meter-fill tq-meter-fill-" + strconv.Itoa(quantized)
 }
