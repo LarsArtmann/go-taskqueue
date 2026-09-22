@@ -173,7 +173,7 @@ func (p *queueProber) evaluate(now time.Time) {
 
 	checks["workers"] = mkCheck(workersStatus, workersErr)
 
-	stuck := countStuckRunning(ctx, p.store, now)
+	stuck := queue.CountStuckRunning(ctx, p.store, now)
 	checks["queue"] = mkCheck(
 		statusOr(stuck == 0, health.StatusPass, health.StatusWarn),
 		stuckNote(stuck))
@@ -220,28 +220,6 @@ func (p *queueProber) finishEval(now time.Time, checks map[string]health.Check) 
 	if checks["database"].Status == health.StatusPass {
 		p.startupOK = true
 	}
-}
-
-// countStuckRunning mirrors `tq doctor`'s expired-lease detection: Running
-// tasks whose lease expired with no reclaim. A list error counts zero — the
-// database check already reports store failures.
-func countStuckRunning(ctx context.Context, store queue.Store, now time.Time) int {
-	running := task.Running
-
-	tasks, err := store.List(ctx, queue.Filter{Status: &running})
-	if err != nil {
-		return 0
-	}
-
-	stuck := 0
-
-	for _, t := range tasks {
-		if t.LeaseExpires != nil && t.LeaseExpires.Before(now) {
-			stuck++
-		}
-	}
-
-	return stuck
 }
 
 func stuckNote(stuck int) string {

@@ -150,7 +150,7 @@ func doctorQueueMix(ctx context.Context, store queue.Store) []checkResult {
 	}
 
 	running := counts[task.Running]
-	stuck := doctorStuckRunning(ctx, store, time.Now())
+	stuck := queue.CountStuckRunning(ctx, store, time.Now())
 
 	detail := fmt.Sprintf("pending=%d running=%d completed=%d dead=%d cancelled=%d",
 		counts[task.Pending], running, counts[task.Completed], counts[task.Dead], counts[task.Cancelled])
@@ -220,27 +220,6 @@ func doctorParked(ctx context.Context, store queue.Store) checkResult {
 	}
 
 	return checkResult{Name: "parked", Status: checkWarn, Detail: detail}
-}
-
-// doctorStuckRunning counts running tasks whose lease expired without a
-// reclaim: work that WOULD run if any worker were claiming.
-func doctorStuckRunning(ctx context.Context, store queue.Store, now time.Time) int {
-	running := task.Running
-
-	tasks, err := store.List(ctx, queue.Filter{Status: &running})
-	if err != nil {
-		return 0
-	}
-
-	stuck := 0
-
-	for _, t := range tasks {
-		if t.LeaseExpires != nil && t.LeaseExpires.Before(now) {
-			stuck++
-		}
-	}
-
-	return stuck
 }
 
 // doctorMarkOrphans records stranded Running tasks in the journal

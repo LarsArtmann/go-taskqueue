@@ -1416,6 +1416,23 @@ func scanFactRow(scanner interface{ Scan(...any) error }) (journal.Fact, error) 
 	return f, err
 }
 
+// scanFacts drains one facts result set — the shared tail of every facts
+// SELECT (the twin of the sqlite store's scanFacts; ADR-0007 mirroring).
+func scanFacts(rows pgx.Rows) ([]journal.Fact, error) {
+	var out []journal.Fact
+
+	for rows.Next() {
+		f, err := scanFactRow(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, f)
+	}
+
+	return out, rows.Err()
+}
+
 // Facts exposes the journal in Seq order after the cursor.
 func (s *Store) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
 	q := `SELECT seq, time, task_id, type, owner, attempt, error, detail
@@ -1432,21 +1449,9 @@ func (s *Store) Facts(ctx context.Context, after int64, limit int) ([]journal.Fa
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
-	var out []journal.Fact
-
-	for rows.Next() {
-		f, err := scanFactRow(rows)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, f)
-	}
-
-	return out, rows.Err()
+	return scanFacts(rows)
 }
 
 // LastFacts returns the most recent facts in ascending order.
@@ -1465,21 +1470,9 @@ func (s *Store) LastFacts(ctx context.Context, limit int) ([]journal.Fact, error
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
-	var out []journal.Fact
-
-	for rows.Next() {
-		f, err := scanFactRow(rows)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, f)
-	}
-
-	return out, rows.Err()
+	return scanFacts(rows)
 }
 
 // HeadSeq returns the highest fact seq (0 when empty).
@@ -1510,31 +1503,20 @@ func (s *Store) FactsForTask(ctx context.Context, id string, limit int) ([]journ
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
-	var out []journal.Fact
-
-	for rows.Next() {
-		f, err := scanFactRow(rows)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, f)
-	}
-
-	if err := rows.Err(); err != nil {
+	facts, err := scanFacts(rows)
+	if err != nil {
 		return nil, err
 	}
 
 	if limit > 0 {
-		for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-			out[i], out[j] = out[j], out[i]
+		for i, j := 0, len(facts)-1; i < j; i, j = i+1, j-1 {
+			facts[i], facts[j] = facts[j], facts[i]
 		}
 	}
 
-	return out, nil
+	return facts, nil
 }
 
 // CountFacts counts facts of one type since a time.
@@ -1565,21 +1547,9 @@ func (s *Store) FactsSince(ctx context.Context, ftype journal.FactType, since ti
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
-	var out []journal.Fact
-
-	for rows.Next() {
-		f, err := scanFactRow(rows)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, f)
-	}
-
-	return out, rows.Err()
+	return scanFacts(rows)
 }
 
 // Watermark returns the persisted read cursor for a journal consumer and
