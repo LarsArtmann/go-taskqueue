@@ -15,9 +15,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -102,32 +102,6 @@ func bearerToken(r *http.Request) string {
 	return r.URL.Query().Get("token")
 }
 
-// authRateLimiter throttles bearer brute force: a client that fails auth
-// three times is locked out of ALL routes for a short, fixed window (the
-// token guards every route — unlike the dashboard there is no
-// unauthenticated read surface to leave open). Strikes reset on any
-// successful auth. Bounded memory mirrors the dashboard's
-// writeRateLimiter: entries idle for long are pruned on contact, and the
-// whole map is capped at maxKeys — a source rotating IPs never re-contacts
-// its own key, so the cap first sweeps entries idle past idleKeep globally,
-// then evicts the least-recently-active; a live lockout survives both
-// unless every entry is locked.
-type authRateLimiter struct {
-	mu       sync.Mutex
-	strikes  map[string]*authStrikes
-	maxHits  int
-	lockout  time.Duration
-	nowFunc  func() time.Time
-	idleKeep time.Duration
-	maxKeys  int
-}
-
-type authStrikes struct {
-	count       int
-	lockedUntil time.Time
-	last        time.Time
-}
-
 // Auth lockout knobs, mirroring the dashboard's writeRateLimiter defaults
 // (same strikes, window, and memory bounds so the two surfaces behave
 // identically to operators).
@@ -156,125 +130,6 @@ func newAuthRateLimiter() *lockout.Limiter {
 			)
 		},
 	})
-}
-
-// locked reports the remaining lockout for key (false when none), pruning
-// the entry on contact when it went idle past idleKeep unlocked.
-func (l *authRateLimiter) locked(key string) (time.Duration, bool) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	strikes := l.pruneLocked(key)
-	if strikes == nil {
-		return 0, false
-	}
-
-	now := l.nowFunc()
-	if now.Before(strikes.lockedUntil) {
-		return strikes.lockedUntil.Sub(now), true
-	}
-
-	return 0, false
-}
-
-// add records one failed auth for key; at maxHits the client is locked out.
-func (l *authRateLimiter) add(key string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	strikes := l.pruneLocked(key)
-	if strikes == nil {
-		strikes = &authStrikes{}
-		l.strikes[key] = strikes
-	}
-
-	strikes.last = l.nowFunc()
-	strikes.count++
-
-	if strikes.count >= l.maxHits {
-		strikes.lockedUntil = strikes.last.Add(l.lockout)
-		strikes.count = 0
-
-		slog.Warn(
-			"httpapi: locked after repeated auth failures",
-			"client",
-			key,
-			"lockout",
-			l.lockout.String(),
-		)
-	}
-
-	l.boundLocked()
-}
-
-// reset clears key's strikes after a successful auth.
-func (l *authRateLimiter) reset(key string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	strikes := l.pruneLocked(key)
-	if strikes == nil {
-		return
-	}
-
-	strikes.count = 0
-	strikes.lockedUntil = time.Time{}
-}
-
-// pruneLocked drops the entry for key when it has been idle past idleKeep
-// and is not locked; returns the live entry (or nil) without removing it.
-// Caller holds mu.
-func (l *authRateLimiter) pruneLocked(key string) *authStrikes {
-	strikes, ok := l.strikes[key]
-	if !ok {
-		return nil
-	}
-
-	now := l.nowFunc()
-	if now.Before(strikes.lockedUntil) || now.Sub(strikes.last) < l.idleKeep {
-		return strikes
-	}
-
-	delete(l.strikes, key)
-
-	return nil
-}
-
-// boundLocked caps the map against rotating source IPs: per-contact pruning
-// only fires for a key's OWN next request, so keys that never come back
-// would grow the map without limit. Entries idle past idleKeep (and not
-// locked) are swept globally — the exact per-contact predicate applied to
-// every key; if the map is still over maxKeys, the least-recently-active
-// entries are evicted oldest-first (a locked entry is evicted only when the
-// whole map is locked — under that pressure the bound wins).
-// Caller holds mu.
-func (l *authRateLimiter) boundLocked() {
-	if len(l.strikes) <= l.maxKeys {
-		return
-	}
-
-	now := l.nowFunc()
-	for key, strikes := range l.strikes {
-		if now.Before(strikes.lockedUntil) || now.Sub(strikes.last) < l.idleKeep {
-			continue
-		}
-
-		delete(l.strikes, key)
-	}
-
-	for len(l.strikes) > l.maxKeys {
-		oldestKey := ""
-
-		var oldest *authStrikes
-
-		for key, strikes := range l.strikes {
-			if oldest == nil || strikes.last.Before(oldest.last) {
-				oldestKey, oldest = key, strikes
-			}
-		}
-
-		delete(l.strikes, oldestKey)
-	}
 }
 
 // remoteHost is the rate-limit key: the client IP without port. Behind a

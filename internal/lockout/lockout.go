@@ -127,6 +127,24 @@ func (l *Limiter) Reset(key string) {
 	entry.lockedUntil = time.Time{}
 }
 
+// Len reports how many keys are currently tracked (live or locked).
+func (l *Limiter) Len() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	return len(l.strikes)
+}
+
+// Has reports whether key is currently tracked (live or locked).
+func (l *Limiter) Has(key string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	_, ok := l.strikes[key]
+
+	return ok
+}
+
 // pruneLocked drops the entry for key when it has been idle past idleKeep
 // and is not locked; returns the live entry (or nil) without removing it.
 // Caller holds mu.

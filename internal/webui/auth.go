@@ -240,7 +240,7 @@ func newWriteRateLimiter() *writeRateLimiter {
 				lockout.String(),
 			)
 		},
-	})
+	})}
 }
 
 // wrap guards one write route: locked-out clients get 429 before any form

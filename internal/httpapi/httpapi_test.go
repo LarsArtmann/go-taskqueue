@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -231,7 +232,12 @@ func TestNosniffOnEveryResponse(t *testing.T) {
 // during the lockout still gets 429 — and access returns once it expires.
 func TestAuthLockout(t *testing.T) {
 	srv, _ := newTestAPI(t)
-	srv.strikes.lockout = 40 * time.Millisecond
+	srv.strikes = lockout.New(lockout.Config{
+		MaxHits:  authMaxHits,
+		Lockout:  40 * time.Millisecond,
+		IdleKeep: authIdleKeep,
+		MaxKeys:  authMaxKeys,
+	})
 	h := srv.Handler()
 
 	try := func(token string) int {
