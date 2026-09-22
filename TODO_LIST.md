@@ -268,3 +268,11 @@ not here.
 - [ ] Feature-window polish: `tq tasks` PRI/BAND column + derived band field in --json, `tq stats`/`tq top` band breakdowns (scope ruling), band deep-links from the board "+N older" link, shared `queue.ParseBand` helper (2026-09-20 08-43 §f1/§f2/§f9; 09-30 §f5/§f8; cmd/tq, internal/webui)
 - [ ] Legacy `TQ_RESULT` stdout channel deletion once the live pool shows derived outcomes (in-flight tasks retired) — flip the executor to file-channel-only and delete the stdout fallback (docs/planning/archived/2026-09-14_derived-outcomes-verdict-channel.md; 2026-09-14 12-52 §b2/§f1)
 - [ ] Webui overhaul P2 batch (the 11-41/18-14 untracked tail, highest-value first): measure SSE tick frequency on the live pool, a11y audit of custom surfaces, cancel/rescue POST feedback, sticky-header + keyboard t/b, dark-mode QA profile (2026-09-14_11-41 §f14/§f21/§f22; 18-14 §f33+ tail; internal/webui)
+
+## Repeat-dispatch window follow-ups (2026-09-22 02-06; sources: this window's close-out §e/§f, deduped against rows 88/92)
+- [ ] Harvester: skip minting a task when its TODO row is already `[x]` with a DONE annotation (compare row text at scan time, log `harvest: skipped reason="already done"`) — kills the repeat-dispatch class where closed rows 88/92 minted fresh windows (internal/harvest)
+- [ ] Session-start ritual: extend scripts/session-start.sh so the task-ID grep also prints each prior report's VERDICT line (first line of the `**Verdict` block), not just filenames — a DONE-row verdict is a stronger stop signal than a filename match
+- [ ] Dead-export audit: warn when the annotated-keep allowlist grows past 10 entries, forcing a revisit of the general in-package-use heuristic before silent allowlist rot (scripts/check-dead-exports.sh)
+- [ ] Dead-export audit: emit the full dead list to a committed reference file (e.g. docs/audits/dead-exports.txt) so triage windows stop re-deriving the 53-row set from scratch (scripts/check-dead-exports.sh)
+- [ ] Track the advisory audit's dead-count over time: append one summary line per ci-local run to a small log so prune candidates surface by trend instead of per-window triage
+- [ ] tq doctor check: flag queue tasks whose dedup-key TODO row is already ticked in the source repo's TODO_LIST.md (queue-side view of the harvester already-done skip)
