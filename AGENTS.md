@@ -95,7 +95,7 @@ Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 ./scripts/smoke/reviews.sh   # stub reviewer; approve + request_changes + autofix loop
 ./scripts/smoke/session-close.sh # session-close bridge: begin → footer commit → close → one review + one status + replay-safe second close
 ./scripts/check-guard-wiring.sh # orphaned-guard audit: every check-*/smoke script must be referenced by ci-local/ci.yml/flake or be deleted
-./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative
+./scripts/smoke/release-gates.sh # fixture go.mods: release allowlist/tag gates, positive + negative; runs IDENTITY-BLIND via ci-local (GIT_CONFIG_GLOBAL=/dev/null + user.useConfigOnly — bare /dev/null is INERT, this host autodetects GECOS identity) and self-tests the property with a stripped-commit fixture — never "simplify" the sanitizer or the -c user.* flags away
 ./scripts/check-go-mods.sh      # replaces, pins, toolchain alignment, go mod verify (all modules)
 ./scripts/check-dead-exports.sh # advisory dead-export audit: zero-importers detector, substring matching (NOT rg -w)
 ./scripts/check-script-syntax.sh # bash -n + shellcheck (severity >= warning) hard gate over every tracked *.sh — zero-findings policy since birth (2026-09-15)

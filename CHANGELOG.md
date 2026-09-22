@@ -36,6 +36,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `internal/webui/components.go`, `internal/webui/handlers.go`,
   `internal/webui/render.go`, `cmd/tq/main.go`)
 
+### Fixed
+- **CI toolchain alignment (master red since 2026-09-20)**: the go.mods
+  moved to a `go 1.27.1` floor but the seven `setup-go` pins stayed on
+  1.26.7 — runners run `GOTOOLCHAIN=local`, so every go step (vet, build,
+  windows, postgres, govulncheck, cqrs-lint) died with "go.mod requires
+  go >= 1.27.1". Pins now match the floor exactly (`1.27.1` in ci.yml ×6
+  + fuzz.yml ×1); `GOEXPERIMENT=jsonv2` stays as an accepted no-op on
+  1.27 so CI and local shells carry one identical env story. Also
+  nixfmt'd `flake.nix`, whose unformatted formatting had the nix job's
+  treefmt check red on runners. (`.github/workflows/ci.yml`,
+  `.github/workflows/fuzz.yml`, `flake.nix`)
+- **Gate-script ergonomics**: `check-go-mods.sh` now prints the
+  underlying stderr of a failed `go mod verify` instead of naming only
+  the module (04-21 §f14); `lint-baseline.sh --check` ends with an
+  explicit `lint-baseline: OK/FAIL` verdict line so truncated reads
+  cannot misjudge the result (01-17 §e3); `test-cmd-tq.sh` forwards its
+  arguments to the `go test` line for targeted `-run` scoping without
+  hand-rolling the devmod shim (10-19 §d1).
+
 ## [v0.3.1] - 2026-09-18
 ### Fixed
 - **`/health` stat card rendered "Version unknown" forever** — the
