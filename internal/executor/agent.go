@@ -517,7 +517,13 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
 		}
 
-		if questionPath != "" {
+		// The question channel is a WORK-turn capability (21-04 §f42):
+		// closeout-free clones (review/status/dlqfix/prioritize — they ARE
+		// the second opinion) must never receive $TQ_QUESTION_FILE, so a
+		// reviewer or scorer cannot park a task on an owner question. The
+		// closeout turn only exists for work executors, so the gate is
+		// belt-and-braces here.
+		if questionPath != "" && e.CloseoutPrompt != "" {
 			cmd.Env = append(cmd.Env, questionFileEnv+"="+questionPath)
 		}
 
@@ -717,7 +723,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
 		}
 
-		if questionPath != "" {
+		if questionPath != "" && e.CloseoutPrompt != "" {
 			cmd.Env = append(cmd.Env, questionFileEnv+"="+questionPath)
 		}
 
