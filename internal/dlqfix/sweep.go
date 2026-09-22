@@ -15,7 +15,6 @@ package dlqfix
 import (
 	"context"
 	"encoding/json/v2"
-	"fmt"
 	"log/slog"
 	"slices"
 

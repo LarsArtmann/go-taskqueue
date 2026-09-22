@@ -96,10 +96,10 @@ func New(ctx context.Context, cfg Config) (*Cursor, error) {
 
 func newCursor(cfg Config, watermark, persisted int64) *Cursor {
 	return &Cursor{
-		src:      cfg.Store,
-		key:      cfg.Key,
-		domain:   cfg.Domain,
-		pageSize: cfg.PageSize,
+		src:       cfg.Store,
+		key:       cfg.Key,
+		domain:    cfg.Domain,
+		pageSize:  cfg.PageSize,
 		watermark: watermark,
 		persisted: persisted,
 	}

@@ -164,8 +164,7 @@ func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Swe
 // mint check for their repo, scorer completions apply their verdicts.
 // Idempotent by dedup keys, cache upserts and same-value transition guards
 // — a replayed page (crash between consumption and checkpoint) re-hits
-// dedup instead of duplicating work. The cursor checkpoints after each
-// page; a failed checkpoint stops the sweep.
+// dedup instead of duplicating work.
 func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -180,43 +179,15 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 		}
 	}
 
-	// A pending checkpoint gates sweeping (same rule as the bridge and the
-	// dlqfix sweeper): retry it before consuming anything new.
-	if s.watermark > s.persisted {
-		if err := s.store.SaveWatermark(ctx, ConsumerKey, s.watermark); err != nil {
-			return stats, fmt.Errorf("prioritize sweep: checkpoint %d: %w", s.watermark, err)
-		}
+	err := s.cur.Sweep(ctx, func(ctx context.Context, f journal.Fact) error {
+		stats.Facts++
 
-		s.persisted = s.watermark
-	}
+		s.handleFact(ctx, f, &stats)
 
-	for {
-		facts, err := s.store.Facts(ctx, s.watermark, s.cfg.PageSize)
-		if err != nil {
-			return stats, fmt.Errorf("prioritize sweep: read facts after %d: %w", s.watermark, err)
-		}
+		return nil
+	})
 
-		for _, f := range facts {
-			s.watermark = f.Seq
-			stats.Facts++
-
-			s.handleFact(ctx, f, &stats)
-		}
-
-		// Page end: checkpoint AFTER the last consumed fact — never
-		// before, or a crash would silently skip the page's triggers.
-		if len(facts) > 0 {
-			if err := s.store.SaveWatermark(ctx, ConsumerKey, s.watermark); err != nil {
-				return stats, fmt.Errorf("prioritize sweep: checkpoint %d: %w", s.watermark, err)
-			}
-
-			s.persisted = s.watermark
-		}
-
-		if len(facts) < s.cfg.PageSize {
-			return stats, nil
-		}
-	}
+	return stats, err
 }
 
 // handleFact reacts to one fact: harvest enqueues gain a batch mint check,
