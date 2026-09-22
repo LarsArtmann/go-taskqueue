@@ -272,3 +272,8 @@ not here.
 - [ ] Dead-export audit: emit the full dead list to a committed reference file (e.g. docs/audits/dead-exports.txt) so triage windows stop re-deriving the 53-row set from scratch (scripts/check-dead-exports.sh)
 - [ ] Track the advisory audit's dead-count over time: append one summary line per ci-local run to a small log so prune candidates surface by trend instead of per-window triage
 - [ ] tq doctor check: flag queue tasks whose dedup-key TODO row is already ticked in the source repo's TODO_LIST.md (queue-side view of the harvester already-done skip)
+
+## Identity-blind one-liner window follow-ups (2026-09-22 03-05; source: docs/status/2026-09-22_03-05_task-000001a0c698f12f76176d0ecf682956927f.md §e/§f; deduped against rows 95-97)
+- [ ] Daemon-fold footer marker script: `scripts/fold-marker.sh <task-id> <folded-sha> <subject>` creates the empty footer commit with standard boilerplate (fold disclosure + foreign-hunk disclaimer) so windows stop hand-inventing the maneuver when the daemon folds footer-deserving work into chore commits
+- [ ] session-start.sh: surface a one-line prior-windows summary (window count + any DONE-row hits) inside the FINAL completion line, so tail-truncated invocations (`./scripts/session-start.sh <id> | tail -20`) still surface duplicates without a manual re-grep
+- [ ] AGENTS.md session-shell hazards: extend the PIPESTATUS bullet with the multi-file `tail -N` quirk ("option used in invalid context" in the session shell) so agents keep redirecting gate output to files instead of piping tails
