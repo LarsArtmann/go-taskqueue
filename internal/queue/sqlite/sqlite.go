@@ -1642,7 +1642,12 @@ func (s *Store) CountFacts(ctx context.Context, ftype journal.FactType, since ti
 // FactsSince returns facts of one type recorded at or after since, in Seq
 // order — the read sibling of CountFacts. Same WHERE shape, so the same
 // scan class the count pushdown already pays per tick.
-func (s *Store) FactsSince(ctx context.Context, ftype journal.FactType, since time.Time, limit int) ([]journal.Fact, error) {
+func (s *Store) FactsSince(
+	ctx context.Context,
+	ftype journal.FactType,
+	since time.Time,
+	limit int,
+) ([]journal.Fact, error) {
 	query := `
 		SELECT seq, time, task_id, type, owner, attempt, error, detail
 		FROM facts WHERE type = ? AND time >= ? ORDER BY seq ASC`
