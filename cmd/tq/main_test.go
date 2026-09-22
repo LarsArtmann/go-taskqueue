@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -237,8 +238,18 @@ func TestPrintDriftJSONGolden(t *testing.T) {
 	}
 }
 
+// captureMu serializes captureStdout: the helper swaps the process-global
+// os.Stdout, so two overlapping captures interleave the swap and corrupt
+// each other's output ("jsontext: unexpected EOF", 2026-09-21). The mutex
+// makes the previously convention-only discipline (sequential-by-contract,
+// show_test.go nolint note) mechanically safe instead.
+var captureMu sync.Mutex
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
+
+	captureMu.Lock()
+	defer captureMu.Unlock()
 
 	old := os.Stdout
 

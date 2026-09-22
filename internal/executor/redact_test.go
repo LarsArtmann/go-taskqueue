@@ -1,8 +1,10 @@
 package executor
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -87,6 +89,121 @@ func TestSecretHitsCountsMatches(t *testing.T) {
 
 	if got := SecretHits("clean output"); got != 0 {
 		t.Errorf("SecretHits = %d, want 0", got)
+	}
+}
+
+// TestSecretPatternsOverlapCensus pins the span-merge contract from the
+// other side (02-37 §b4/§f1): on each pattern's canonical sample, exactly
+// ONE unordered pair of patterns overlaps — bearer × authorization-header
+// (one "Authorization: Bearer …" line). A future pattern that overlaps an
+// existing sample shape lands here as a second pair and fails loudly,
+// forcing a span-merge/redaction-order review instead of a silent
+// double-redact. Extend the sample table in the same change as
+// secretPatterns; shapes absent from the table stay unpinned.
+func TestSecretPatternsOverlapCensus(t *testing.T) {
+	t.Parallel()
+
+	samples := map[int]string{
+		0:  fakeAnthropic,
+		1:  fakeOpenAI,
+		2:  fakeOpenAICls,
+		3:  fakeGitHub,
+		4:  fakeGitHubPat,
+		5:  fakeAWS,
+		6:  fakeGoogle,
+		7:  fakeSlack,
+		8:  fakeJWT,
+		9:  "Authorization: Bearer " + fakeJWT[len("Bearer "):],
+		10: fakeAssign,
+	}
+
+	if len(samples) != len(secretPatterns) {
+		t.Fatalf("overlap census covers %d of %d secretPatterns — extend samples together with the table",
+			len(samples), len(secretPatterns))
+	}
+
+	var overlapping []string
+	for i, sample := range samples {
+		own := secretPatterns[i].FindAllStringIndex(sample, -1)
+		if len(own) != 1 {
+			t.Fatalf("sample %d matches its own pattern %d times, want 1: %q", i, len(own), sample)
+		}
+
+		for j, re := range secretPatterns {
+			if j == i {
+				continue
+			}
+
+			for _, loc := range re.FindAllStringIndex(sample, -1) {
+				if loc[0] < own[0][1] && own[0][0] < loc[1] {
+					overlapping = append(overlapping, fmt.Sprintf("%d×%d", min(i, j), max(i, j)))
+				}
+			}
+		}
+	}
+
+	slices.Sort(overlapping)
+	overlapping = slices.Compact(overlapping)
+
+	want := []string{"8×9"}
+	if !slices.Equal(want, overlapping) {
+		t.Errorf("overlapping pattern pairs = %v, want %v — review span merging (SecretHits) and redaction order (RedactSecrets) before extending",
+			overlapping, want)
+	}
+}
+
+// TestSecretHitsCountsInjectedTokensIndependentOfContext is the property
+// half of the count contract (02-37 §f2): N non-overlapping injected fake
+// tokens yield exactly N locations no matter what benign text surrounds
+// them — the audit's hit-count must track secrets, not prose volume.
+func TestSecretHitsCountsInjectedTokensIndependentOfContext(t *testing.T) {
+	t.Parallel()
+
+	tokens := []string{
+		fakeAnthropic, fakeOpenAI, fakeOpenAICls, fakeGitHub, fakeGitHubPat,
+		fakeAWS, fakeGoogle, fakeSlack, fakeAssign,
+	}
+	fillers := []string{
+		"",
+		"build output\n",
+		"2026-09-22T00:00:00Z WARN retrying in 1s\n",
+		"exit status 1\n",
+		strings.Repeat("padding line\n", 37),
+	}
+
+	for n := 1; n <= len(tokens); n++ {
+		for _, filler := range fillers {
+			var b strings.Builder
+			for i := range n {
+				b.WriteString(filler)
+				b.WriteString(tokens[i%len(tokens)])
+				b.WriteString("\n")
+			}
+			b.WriteString(filler)
+
+			if got := SecretHits(b.String()); got != n {
+				t.Errorf("SecretHits = %d, want %d (filler %q)", got, n, filler[:min(len(filler), 20)])
+			}
+		}
+	}
+}
+
+// TestRedactSecretsMasksAuthHeaderToExactlyOneMarker is the output-side
+// mirror of the span-merge count fix (02-37 §f11): the overlapping
+// bearer × authorization-header patterns must mask one
+// "Authorization: Bearer …" line to a SINGLE marker, never two.
+func TestRedactSecretsMasksAuthHeaderToExactlyOneMarker(t *testing.T) {
+	t.Parallel()
+
+	header := "Authorization: Bearer " + fakeJWT[len("Bearer "):]
+	got := RedactSecrets("request rejected: " + header)
+
+	if count := strings.Count(got, RedactMarker); count != 1 {
+		t.Errorf("RedactSecrets emitted %d markers for one header, want 1: %s", count, got)
+	}
+
+	if strings.Contains(got, fakeJWT) {
+		t.Error("header token survived redaction")
 	}
 }
 

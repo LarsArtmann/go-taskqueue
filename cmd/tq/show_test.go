@@ -165,10 +165,10 @@ func queuePriorityScore() queue.PriorityScore {
 // resultDetail's decode (TestResultDetailDecodesTypedResults) and the
 // webui render (TestResultUsageRendersOnDetailPage) are pinned
 // separately — this is the only gate on the encoder step between them.
-// NOT parallel: captureStdout swaps the process-global os.Stdout, so
-// captureStdout tests must never overlap (see TestCmdDLQDismissDeadTask,
-// the one pre-existing parallel user — adding a second live one is what
-// tripped the unexpected-EOF flake in the full gate).
+// Sequential rather than t.Parallel by choice: captureStdout swaps the
+// process-global os.Stdout and is now mutex-guarded (main_test.go), but
+// parallel captures would still serialize the whole table behind the lock,
+// so the nolint stays as documentation of the deliberate shape.
 //
 //nolint:paralleltest // sequential by contract: captureStdout swaps global os.Stdout
 func TestShowJSONCarriesDerivedSessionUsage(t *testing.T) {
