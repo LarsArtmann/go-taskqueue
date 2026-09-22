@@ -29,7 +29,7 @@ same tree CI will see. The individual gates, when you need one in isolation:
 ```sh
 go vet ./...
 go build ./...
-GOOS=windows go build ./...    # cross-compile gate
+GOTOOLCHAIN=auto GOOS=windows go build ./...    # cross-compile gate (auto: hosts pinning GOTOOLCHAIN=local on an older binary die the env-lie)
 go test ./... -count=1 -race -timeout 120s
 test -z "$(gofmt -l .)"
 ./scripts/smoke/webui.sh       # live web UI smoke (no browser needed)
