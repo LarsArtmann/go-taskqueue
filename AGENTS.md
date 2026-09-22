@@ -138,6 +138,7 @@ whose DAG the compiler enforces; everything above them is the root module.
 | `internal/consumer`                                | Journal dispatcher: per-subscriber cursor, at-least-once in-order, lag observability (ADR-0009)                                                                                                                                                                        |
 | `internal/runactor`                                | run.Group actors, LIFO `OnShutdown`, `InterruptOn` (2nd signal = exit 130), detached task contexts                                                                                                                                                                     |
 | `internal/webui`                                   | Live dashboard (`tq serve`): journal tailer → hub → SSE server-rendered fragments (ADR-0003)                                                                                                                                                                           |
+| `internal/httpapi`                                 | Machine API (`tq api`): queue projection + enqueue over HTTP; mandatory token on every bind, nosniff everywhere, 3-strikes bearer lockout (2026-09-16 hardening, mirrors webui's write-route lockout)                                                                    |
 | `cmd/tq` (module, ADR-0017)                        | CLI: enqueue / worker / harvest / agent-pool / bootstrap / stats / tasks / audit / top / show / dlq / cancel / ask / facts / tail / watermarks / session / serve / api / doctor / crush / version                                                                                    |
 
 `internal/` layout is deliberate until the API stabilizes (ADR-0001,
@@ -730,8 +731,13 @@ prose, not the table.
   2026-09-12 manifest task's scratch archive was auto-committed to master
   within minutes (needed a follow-up deletion commit). Build fixtures under
   /tmp or create+assert+trash in ONE shell chain.
-- ⚠️ **vendorHash drift**: after go.mod/go.sum changes run the fakeHash
-  dance (`vendorHash = lib.fakeHash` → `nix build` → copy `got:`). NOTE
+- ⚠️ **vendorHash drift**: after go.mod/go.sum changes run
+  `nix build .#checks.x86_64-linux.vendor-hash` — the fast gate realizes
+  ONLY the go-modules FOD, so drift fails in seconds — and copy the
+  failure's `got:` hash into flake.nix's `vendorHash` literal (the old
+  `vendorHash = lib.fakeHash` dance is stale: nothing binds `lib` where
+  vendorHash lives, and a full `nix build` wastes minutes reaching the
+  same mismatch — 09-44 report §e1). NOTE
   (2026-09-10): a runner-ONLY variant exists — CI's nix job failed with a
   FOD hash mismatch while the committed hash verified green locally (even
   rebuilding the exact failed drv from the failed commit), same got-hash

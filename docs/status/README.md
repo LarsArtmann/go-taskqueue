@@ -1,6 +1,9 @@
 # Status Reports — Index
 
-Point-in-time session reports, newest first. Each is a snapshot of what a
+Point-in-time session reports, newest first (`check-status-index.sh`
+enforces PRESENCE, not ordering — late appends may sit at the file tail
+until the next docs-health sweep folds them into their date block). Each
+is a snapshot of what a
 session did, verified, and left open; they are historical records, not
 living documents (re-verify before treating any claim as current).
 

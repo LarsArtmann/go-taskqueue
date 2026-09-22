@@ -38,3 +38,55 @@ func TestRepoTodoListParses(t *testing.T) {
 
 	t.Logf("TODO_LIST.md parses: %d open items", len(items))
 }
+
+// TestDamagedCheckboxPrefix pins the malformed-bullet rejection (04-46
+// §d4/§f1): a row shipped as `--- [ ] …` was silently invisible to the
+// parser AND check-todo-list.sh until caught by eye. Damaged shapes are
+// flagged for rejection; well-formed bullets, the space-less tolerated
+// `-[ ]` shape, and plain prose bullets never match.
+func TestDamagedCheckboxPrefix(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		line string
+		want bool
+	}{
+		{"--- [ ] the 04-40 shape", true},
+		{"* - [x] doubled bullet", true},
+		{"- - [ ] space-separated bullets", true},
+		{"-- [x] no space before bracket", true},
+		{"- [ ] well-formed open", false},
+		{"- [x] well-formed done", false},
+		{"* [X] star bullet", false},
+		{"-[ ] tolerated space-less shape", false},
+		{"- prose mentioning [x] later", false},
+		{"plain paragraph", false},
+		{"--- just dashes", false},
+		{"", false},
+	}
+
+	for _, tc := range cases {
+		if got := damagedCheckbox(tc.line) != ""; got != tc.want {
+			t.Errorf("damagedCheckbox(%q) flagged = %v, want %v", tc.line, got, tc.want)
+		}
+	}
+}
+
+// TestParseRepoAllRejectsDamagedCheckbox pins the runtime half: a todo file
+// carrying a malformed-bullet row is an ERROR, not a silently skipped line
+// — the repo's harvest scan fails loudly instead of minting nothing.
+func TestParseRepoAllRejectsDamagedCheckbox(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	body := "# Backlog\n\n- [ ] good row one\n--- [ ] the damaged row\n- [ ] good row two\n"
+	if err := os.WriteFile(filepath.Join(repo, "TODO_LIST.md"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write todo file: %v", err)
+	}
+
+	if _, err := ParseRepoAll(repo, "TODO_LIST.md"); err == nil {
+		t.Fatal("ParseRepoAll accepted a file with a malformed-bullet checkbox row, want error")
+	} else if !strings.Contains(err.Error(), "malformed bullet") {
+		t.Fatalf("error %v does not name the malformed-bullet defect", err)
+	}
+}

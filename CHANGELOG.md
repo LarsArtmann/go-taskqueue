@@ -651,8 +651,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   package, `(*sqlite.Store).AppendFact` as the one sanctioned non-task fact
   write, and the design/tradeoffs doc
   `docs/planning/archived/2026-09-12_session-close-bridge-design.md`. Trigger
-  automation, daemon-commit attribution, budget routing and Postgres
-  `AppendFact` parity remain open (documented in the design doc).
+  automation, daemon-commit attribution and budget routing remain open
+  (documented in the design doc).
+- **Session registry triggers + Postgres non-task facts (catch-up for
+  2026-09-17/18 work missing entries)**: `tq session ping` refreshes a
+  live session's heartbeat and `tq session sweep` quiet-closes unowned
+  sessions (replay-safe: re-sweeping never duplicates minted tasks);
+  `(*postgres.Store).AppendFact` mirrors sqlite's sanctioned non-task
+  fact write, so `session.opened`/`session.closed` land in both backends.
+  (`cmd/tq/session.go`, `internal/queue/postgres/postgres.go`)
 - **`tq doctor` now diagnoses the Go build environment (2026-09-12)**: a
   new check builds a synthetic `encoding/json/v2` module twice — once with
   the ambient environment and once with `GOEXPERIMENT=jsonv2` — and

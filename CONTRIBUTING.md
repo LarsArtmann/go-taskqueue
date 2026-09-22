@@ -35,11 +35,19 @@ test -z "$(gofmt -l .)"
 ./scripts/smoke/webui.sh       # live web UI smoke (no browser needed)
 ./scripts/check-doc-refs.sh    # doc-cited paths must exist
 nix build && nix flake check   # reproducible build + vendor-hash gate
+./scripts/check-go-mods.sh         # go.mod health: replaces, pins, toolchain alignment, mod verify (all modules)
+./scripts/check-gosec.sh           # gosec over root + every sub-module (pinned version + triaged excludes)
+./scripts/check-facade-parity.sh   # ADR-0016: every internal export carries a facade alias
+./scripts/check-transient-retry.sh # behavior pin for ci-local's with_transient_retry wrapper
+./scripts/check-ci.sh              # master CI must be green before a local gate counts
+./scripts/check-status-index.sh    # every docs/status report is indexed
+scripts/lint-baseline.sh --check   # advisory lint baseline cannot grow
 ```
 
 golangci-lint (`golangci-lint run ./...`, config `.golangci.yml`) runs
-advisory in CI (non-blocking): the repo carries a ~400-finding baseline
-(documented in AGENTS.md). The full run is log-only — golangci-lint v2
+advisory in CI (non-blocking): the repo carries a ~1100-finding baseline
+(documented in AGENTS.md; growth over `.golangci-baseline.txt` is a hard
+gate via `scripts/lint-baseline.sh --check`). The full run is log-only — golangci-lint v2
 emits no GitHub annotation commands — but `scripts/lint-annotations.sh`
 re-runs it scoped to `--new-from-rev`, so findings on lines you changed
 surface as `::warning` CI annotations on green runs. Don't add new
@@ -56,8 +64,10 @@ committed stylesheet: `nix run .#webui-css` (minified output lands in
 `internal/webui/static/app.css`, which is go:embed'ed — the build never
 runs tailwind for you).
 
-Markdown, JSON and YAML are formatted with dprint (config: `dprint.json`,
-available in the flake devShell): `dprint fmt` before you commit docs.
+Docs formatting is MANUAL by decision (2026-09-08, AGENTS.md owns the
+ruling): dprint is an on-demand devShell tool, NOT gated — `dprint fmt`
+before commit is neither required nor checked. Do not re-litigate without
+solving plugin pinning AND the multi-writer problem.
 
 For changes to the agent-pool loop, also run the live multi-repo smoke
 (stub agents, no API cost), and keep `TODO_LIST.md` harvester-parseable
