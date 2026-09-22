@@ -62,6 +62,7 @@ All six extractions below are complete, wired end-to-end, and verified by the na
 ## f) 50 THINGS TO GET DONE NEXT (brainstorm — HARVEST with routing rigor; most §f items beyond ~15 are ROADMAP fuel)
 
 **Gates & verification**
+
 1. Run `./scripts/ci-local.sh` end-to-end at HEAD (the real pre-push gate).
 2. Deliberately regenerate `.golangci-baseline.txt` with policy note "absorbs 2026-09-21/22 concurrent drift rows" (owner ruling — see §g Q1).
 3. File-level verify of the six root-linter growths (confirm none live in watermark/lockout — closes §b1's stated uncertainty).
@@ -131,4 +132,4 @@ All six extractions below are complete, wired end-to-end, and verified by the na
 
 ---
 
-*Gates cited: root `build+vet+test -race` rc=0 (23:09); sub-module loop ALL-MODULES-GREEN; `test-cmd-tq.sh` ok (8.091s / 8.771s); `check-facade-parity.sh` "7 facades mirror"; `check-script-syntax.sh` 56/56; `art-dupl -t 5` 12 → 8 groups; pre-change A/B via worktree at `16d347f` (10/10 vs 10/10). Session file set: 29 files, daemon range `16d347f..ba8e92a`.*
+_Gates cited: root `build+vet+test -race` rc=0 (23:09); sub-module loop ALL-MODULES-GREEN; `test-cmd-tq.sh` ok (8.091s / 8.771s); `check-facade-parity.sh` "7 facades mirror"; `check-script-syntax.sh` 56/56; `art-dupl -t 5` 12 → 8 groups; pre-change A/B via worktree at `16d347f` (10/10 vs 10/10). Session file set: 29 files, daemon range `16d347f..ba8e92a`._

@@ -14,7 +14,6 @@ Items carry their evidence: a code path and/or the status report that filed
 them (`docs/status/<date>_<slug>.md`). Completed items live in CHANGELOG.md,
 not here.
 
-
 ## Fleet / deploy
 
 - [ ] SystemNix host-side deploy + round-9 cutover (sudo-gated, user-run): `nix run .#deploy` on evo-x2 starts tq-agent-pool/tq-serve/tq-storage-dir/tq-bootstrap (all wiring shipped 2026-09-08: rev-pinned git+file input 28a8ae4, house module `modules/nixos/services/tq-agent-pool.nix`, ports.tq 8100, tq.home.lan vHost + DNS, Gatus checks, btrbk-pool subvolume, dedicated sops bridge template, post-deploy smoke); then the one-time manual-pool cutover in SystemNix `docs/services/tq.md` (stop the `/tmp/tq` processes — DONE 2026-09-10, optionally copy the dogfood tasks.db onto the pool journal). The origin push is done — flip the SystemNix input to `github:LarsArtmann/go-taskqueue?ref=master` — 2026-09-10: the deployed pool was found DEAD (every tick skipped all repos: bare repo names resolved via service cwd + no git/go/crush on the service PATH + silent scan-fail logging); all three fixed on master, so the input flip + redeploy is what brings the Flash pool to life — BLOCKED: owner-run (sudo on evo-x2 — an agent cannot execute this; pool must not pick it up)
@@ -69,8 +68,6 @@ not here.
 - [ ] TODO-item accuracy bar: should the harvester verify each item against code at harvest time (f30's wrong package + wrong version-window claim cost a day of deferral across seven reports), or is pickup-time verification by the executing agent the accepted contract? — BLOCKED: owner process call (08:32 g3)
 - [ ] Enable `--allow-writes` on the deployed `tq-serve` (SystemNix module flag) so DLQ rescue/cancel work from the WebUI — the live 127.0.0.1:8100 instance runs read-only (no writes-ENABLED banner, no dead-task buttons), so the 21 dead tasks incl. `000001a08edf` need CLI `tq dlq --rescue` today; rescue AFTER the rate-limit-fix input flip so a rescued task doesn't re-burn attempts on 429s (13:29 report §b2/f1/f2) — BLOCKED: SystemNix service config + deploy are owner-run
 
-
-
 ## Docs-health harvest (2026-09-11 evening; sources: 16-00/15-39/15-10/13-29 reports + task-closeout residue; deduped against existing rows)
 
 - [ ] Extend ci-local transient-retry wrapper to the smokes + add a durable self-test pin for the retry loop (01-46 report f1/f2; smokes re-run whole up to 3× needs a runtime-budget ruling first) — self-test pin SHIPPED 2026-09-16: `scripts/check-transient-retry.sh` sed-extracts the SHIPPED helper (marker-guarded so a rotted range fails loudly), pins defaults 45s×3 + heal/exhaust/argument-forwarding/`TRANSIENT_MAX_POLLS=0` semantics, wired as a ci-local step before vet (negative-tested: catches marker rot + poll-counter drift) — BLOCKED: smoke half awaits the owner runtime-budget ruling (01-46 §g3: whole re-run ×3 vs two-phase tree-quiet probe)
@@ -87,7 +84,6 @@ not here.
 - [ ] check-gosec.sh: cover cmd/tq (for-each-module.sh omits it, so the gate and the CI gosec loop both skip the CLI module; devmod shim or an owner ruling that CLI gosec stays CI-only) (02-52 gosec-gate report §b) — BLOCKED: owner ruling on CLI gosec coverage (03-07 §g3)
 - [ ] Converge ci.yml's hand-rolled per-module gosec loop onto scripts/check-gosec.sh (settles whether the cd-without-GOWORK loop hits the Files:0 silent skip on runners; counter-risk: a broken script would then silence both layers) — BLOCKED: owner ruling on CI independence (02-52 report §g q3)
 - [ ] Drop the msg-filter backup refs (refs/original + any filter-branch backup) once the healed lineage is pushed — AGENTS.md history policy keeps them "until the push lands" (heal d035911/ca514a8 local-only, origin/master 34 commits behind as of 2026-09-19 04:2x); the DROP itself is a destructive git op — BLOCKED: owner push of the healed lineage + owner ruling on ref deletion
-
 
 ## Priority-system follow-ups (harvested from the 2026-09-12 T27-T38 windows; reports 15-43 + 16-28; verified against code at mint time)
 
@@ -147,8 +143,6 @@ not here.
 - [ ] Smoke forensics batch: keep-logs-on-fail flag for smokes, zero-requeue assertion, multi-repo.sh added to the AGENTS.md smoke list (09-01 report f5/f6/f8; docs/status/2026-09-10_09-01_task-000001a08a1a8b0e7666677dc99c4cd84b16.md)
 - [ ] Worktree design open questions minted: Q1 merge-policy is gating — lift the 9 open questions from docs/planning/2026-09-12_worktree-per-agent-design.md into TODO/ROADMAP rows (01-43 report §f; docs/status/2026-09-12_01-43_task-000001a092d3650a2b85c03583a22d9c2c5e.md)
 - [ ] Status-index re-sweep: live rows re-bloated past 100 after this pass's intake — the 12-39 e5 cadence item (row above) needs its next scheduled sweep (docs/status/2026-09-14_12-39_claiming-arc-brutal-status.md §e5)
-
-
 
 ## Webui overhaul leftovers (2026-09-14 stunning-overhaul execution; docs/research/2026-09-14_templ-components-deep-dive.html §05)
 
@@ -242,6 +236,7 @@ not here.
 - [ ] Doc-citation convention: citations into concurrently-edited DOC files (CHANGELOG/FEATURES/README/TODO rows) use section anchor + landing SHA instead of bare file:line — CHANGELOG.md:28-36 (09-10 row note) sat at :25-34 one hour later via concurrent edits above the block, so stale line-cites accumulate silently in DONE-row annotations (09-20 report §f2; AGENTS.md claims-carry-citations clause)
 
 ## Docs-window follow-ups (2026-09-21 usage-rendering docs window; sources: this window's close-out report §b2/§d4; docs-only)
+
 - [ ] FEATURES.md placement check for the 2026-09-21 usage-rendering cards: the statusReportCard/prioritizeResultCard rendering facts live only on the sweeper rows (done-prompt loop + AI batch scorer); decide whether the webui detail-page section should carry them as first-class surface rows and move/extend if yes (2026-09-21 08-56 report §b2; docs-only)
 
 ## Process follow-ups (2026-09-21 show-JSON message-count pin window; source: docs/status/2026-09-21_10-19_task-000001a0c3056902a0ee78d22edce0da668b.md §e1/§d1)
@@ -269,21 +264,25 @@ not here.
 - [ ] Webui overhaul P2 batch (the 11-41/18-14 untracked tail, highest-value first): measure SSE tick frequency on the live pool, a11y audit of custom surfaces, cancel/rescue POST feedback, sticky-header + keyboard t/b, dark-mode QA profile (2026-09-14_11-41 §f14/§f21/§f22; 18-14 §f33+ tail; internal/webui)
 
 ## Repeat-dispatch window follow-ups (2026-09-22 02-06; sources: this window's close-out §e/§f, deduped against rows 88/92)
+
 - [ ] Dead-export audit: warn when the annotated-keep allowlist grows past 10 entries, forcing a revisit of the general in-package-use heuristic before silent allowlist rot (scripts/check-dead-exports.sh)
 - [ ] Dead-export audit: emit the full dead list to a committed reference file (e.g. docs/audits/dead-exports.txt) so triage windows stop re-deriving the 53-row set from scratch (scripts/check-dead-exports.sh)
 - [ ] Track the advisory audit's dead-count over time: append one summary line per ci-local run to a small log so prune candidates surface by trend instead of per-window triage
 - [ ] tq doctor check: flag queue tasks whose dedup-key TODO row is already ticked in the source repo's TODO_LIST.md (queue-side view of the harvester already-done skip)
 
 ## Identity-blind one-liner window follow-ups (2026-09-22 03-05; source: docs/status/2026-09-22_03-05_task-000001a0c698f12f76176d0ecf682956927f.md §e/§f; deduped against rows 95-97)
+
 - [ ] Daemon-fold footer marker script: `scripts/fold-marker.sh <task-id> <folded-sha> <subject>` creates the empty footer commit with standard boilerplate (fold disclosure + foreign-hunk disclaimer) so windows stop hand-inventing the maneuver when the daemon folds footer-deserving work into chore commits
 - [ ] session-start.sh: surface a one-line prior-windows summary (window count + any DONE-row hits) inside the FINAL completion line, so tail-truncated invocations (`./scripts/session-start.sh <id> | tail -20`) still surface duplicates without a manual re-grep
 - [ ] AGENTS.md session-shell hazards: extend the PIPESTATUS bullet with the multi-file `tail -N` quirk ("option used in invalid context" in the session shell) so agents keep redirecting gate output to files instead of piping tails
 
 ## Verify-gate + pool-scheduling follow-ups (2026-09-22 11-50; source: docs/status/2026-09-22_11-50_task-000001a0c698f12f76176d0ecf682956927f.md §e/§f; deduped against rows 91/123/124/226)
+
 - [ ] AGENTS.md vendor-gofmt known-issue: correct the "all-ok tail = THIS bug" attribution rule to require grepping the FULL verify-failure log (FAIL/panic/ENOSPC lines) before attributing any gate death — task 000001a0c698's attempt-1 death shows the same all-ok tail but died on a mid-log `no space left on device` build-cache write, a proven false positive of the shape match
 - [ ] Pool-side dirty-tree starvation: task 000001a0c698 sat through ~35 consecutive claim→preflight-refuse→requeue cycles over 8.5h (03:12-11:27, fact seq 5485-5684) because require_clean refuses on a multi-agent repo whose tree is almost never clean — design a starvation counter/escalation (papdashboard alert after N consecutive dirty refusals on one task, or a quiet-window claim mode; read-only investigation over tq show fact trails)
 - [ ] Verify-failure FailureEvidence tail is too small to classify deaths: the 8-line tail of task 000001a0c698's attempt-1 log hid BOTH the real `FAIL internal/e2e` line AND the `no space left on device` cause — enlarge the tail or attach the failing stage's output (extends row 226's stage-capture fix to the tail size itself)
 
 ## Row-95 attempt-3 window follow-ups (2026-09-22 11-58; source: docs/status/2026-09-22_11-58_task-000001a0c698f12f76176d0ecf682956927f.md §e/§f; deduped against the 11-50 section)
+
 - [ ] Pin the re-dispatch work-turn protocol in AGENTS.md next to the session-start ritual: for any re-dispatched task (a) read the NEWEST prior report for the task id first, (b) run `tq show <task-id>` on the live record (attempt count, fact seqs — never cite lineage second-hand), (c) fresh battery at current HEAD with every rc captured to file, (d) persist the battery as a citable artifact in the SAME window — attempt 3 of task 000001a0c698 skipped (b) and (d), leaving its claim time and fact seqs unrecorded
 - [ ] While row 123 is live, extend the AGENTS.md verify-window minimum battery with two probe lines: a `gofmt -l .` check scoped to non-vendor output (separates "verified" from "verified-except-the-known-gate") and a cache-mount `df` headroom line (ENOSPC has killed two gates now: the 03-37 toolchain dir and task 000001a0c698 attempt 1)

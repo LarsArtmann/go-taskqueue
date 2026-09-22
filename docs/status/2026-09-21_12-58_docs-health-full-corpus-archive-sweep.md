@@ -7,7 +7,7 @@
 
 ## a) FULLY DONE
 
-1. **Full-corpus triage of EVERY live 2026-0* file.** 363 live status
+1. __Full-corpus triage of EVERY live 2026-0_ file._* 363 live status
    reports (317 task close-outs + 46 named) + 22 live planning docs,
    triaged by 11 read-only sub-agents in date buckets (≤2 concurrent per
    the standing rate-limit lesson; zero 429s), each file read and every

@@ -44,17 +44,17 @@ Every layer below is implemented AND has green tests, run with
    was wrong (lesson re-learned: trust the gate you ran, not the report you
    were handed).
 7. **Executor layer** — `QuestionPendingError{Cause,RetryAfter,ResumeCloseout}`
-   + `QuestionPending` constructor (`internal/executor/question.go`,
-   mirroring ratelimit.go); `$TQ_QUESTION_FILE` per-run temp-file channel
-   wired through `runAgent` AND `runCloseoutTurn` env; marker parsing
-   (`questionPendingFrom`); `AgentPayload.Answered []queue.QuestionAnsweredDetail`
-   (snake_case, one definition — no split-brain type) rendered into the
-   prompt at claim time via `renderAnswered`; work-turn question skips
-   verify + closeout; closeout-turn question arms closeout resume
-   (`armCloseoutResume`). Facade aliases (`QuestionPendingError`,
-   `QuestionPending`) added to `executor/executor.go`; facade go.mod gained
-   the internal/queue + internal/journal requires + replaces (the
-   dep-graph rule).
+   - `QuestionPending` constructor (`internal/executor/question.go`,
+     mirroring ratelimit.go); `$TQ_QUESTION_FILE` per-run temp-file channel
+     wired through `runAgent` AND `runCloseoutTurn` env; marker parsing
+     (`questionPendingFrom`); `AgentPayload.Answered []queue.QuestionAnsweredDetail`
+     (snake_case, one definition — no split-brain type) rendered into the
+     prompt at claim time via `renderAnswered`; work-turn question skips
+     verify + closeout; closeout-turn question arms closeout resume
+     (`armCloseoutResume`). Facade aliases (`QuestionPendingError`,
+     `QuestionPending`) added to `executor/executor.go`; facade go.mod gained
+     the internal/queue + internal/journal requires + replaces (the
+     dep-graph rule).
 8. **Executor tests** — marker parse table (expiry wait/clamps/absent/
    corrupt/missing-ref), render, full stub-agent park e2e, answered-prompt
    rendering, payload round-trip. Green with -race: executor module
@@ -255,6 +255,7 @@ gotcha. Historical record of the interrupted state follows.
 ## f) UP TO 50 THINGS TO GET DONE NEXT (ordered: finish-line first)
 
 **Finish this feature (must):**
+
 1. Fix remaining lint classes: sqlite err113 → package sentinel errors.
 2. sqlite+postgres exhaustive: `default:` in the factDetailRefs switch.
 3. sqlite store_test: split TestRecordAnswerUnblocksParkedTask (gocyclo 24>20).
@@ -300,51 +301,51 @@ gotcha. Historical record of the interrupted state follows.
 
 **Follow-on work (should):**
 28. TQ_TASK_ID env from the executor (kills the smoke's sed hack; helps
-    real agents too).
+real agents too).
 29. Prompt-contract teaching: WHEN may an agent ask vs decide (owner
-    ruling needed, g1) + add the contract line to the work-turn templates.
+ruling needed, g1) + add the contract line to the work-turn templates.
 30. `tq ask` should record the ask IN the worker log line (operator
-    visibility parity with rate-limit parks).
+visibility parity with rate-limit parks).
 31. Web UI: parked-on-question badge on the task table (Parked filter
-    already exists; a question marker would read better than last_error).
+already exists; a question marker would read better than last_error).
 32. Web UI: render the questions section on the task detail page.
 33. `tq tasks` filter for tasks with open questions (parked + asked-pending ref).
 34. Expiry sweep: when a question expires, append a fact noting the
-    re-entry (currently silent NotBefore lapse — forensics gap).
+re-entry (currently silent NotBefore lapse — forensics gap).
 35. Bridge: question ANSWERED forward (optional question.resolved event
-    to PapDashboard so the UI closes the row) — PapDashboard already
-    closes it natively; only needed if we want queue-side provenance there.
+to PapDashboard so the UI closes the row) — PapDashboard already
+closes it natively; only needed if we want queue-side provenance there.
 36. Conformance: postgres question tests need a real TQ_TEST_POSTGRES run
-    (CI job will do it; watch the next run).
+(CI job will do it; watch the next run).
 37. FuzzParseRepo-style hardening for parseQuestionCorrelation (regex on
-    adversarial bodies — low risk, line-anchored already).
+adversarial bodies — low risk, line-anchored already).
 38. AnswerPoller: bound max answers per poll (stampede guard when the
-    owner answers 50 questions at once).
+owner answers 50 questions at once).
 39. `tq ask --expires` interplay with `--task-timeout`: a parked task's
-    NotBefore can exceed the payload timeout — document or clamp.
+NotBefore can exceed the payload timeout — document or clamp.
 40. Metrics: questions asked/answered/expired counters in `tq stats`.
 41. dogfood: after prompt teaching (29), the live pool becomes the real
-    test; watch the first `tq ask` from a GLM agent for prompt-shape
-    surprises.
+test; watch the first `tq ask` from a GLM agent for prompt-shape
+surprises.
 42. Consistency check: review/status/dlqfix executors run the
-    closeout-free clone — confirm they should NOT get the question channel
-    (they answer TO the queue, not the owner) and pin with a test.
+closeout-free clone — confirm they should NOT get the question channel
+(they answer TO the queue, not the owner) and pin with a test.
 43. go-cqrs-lite durable-queue module: when it ships, the park/unblock
-    SQL joins the parity checklist.
+SQL joins the parity checklist.
 44. SECURITY.md: questions carry agent-authored text to PapDashboard —
-    note the redaction pass + the trust boundary.
+note the redaction pass + the trust boundary.
 45. Facade parity script: teach it about the `answered` payload KEY
-    (currently type-level only) — low value, note only.
+(currently type-level only) — low value, note only.
 46. Regenerate `.golangci-baseline.txt` ONLY IF a deliberate policy
-    change lands (not for absorbing this window's fixes).
+change lands (not for absorbing this window's fixes).
 47. `check-todo-list.sh`: no new TODO_LIST items until 19-27 land.
 48. Sub-tag cutting plan for the next release (queue/executor/worker/
-    bridge(root) all gained surface — VERSION-SURFACES.md order applies).
+bridge(root) all gained surface — VERSION-SURFACES.md order applies).
 49. Post-release: `go install .../cmd/tq@new-tag` smoke (ADR-0017 gate).
 50. Consider upstream issue: PapDashboard question-list endpoint has no
-    `answered=false` filter (poller over-fetches; sourcegraph of the SDK
-    confirmed only sourceApp/type/limit/offset) — candidate feature
-    request.
+`answered=false` filter (poller over-fetches; sourcegraph of the SDK
+confirmed only sourceApp/type/limit/offset) — candidate feature
+request.
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 

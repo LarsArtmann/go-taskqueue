@@ -96,7 +96,7 @@
    marker-placement bug, and the 17-15 pass's e1 lesson ("agents should
    emit a machine-applicable artifact; dry-run mandatory before apply").
    I got lucky: the insertion logic worked (verified by sampling
-   + gates). Luck is not a gate.
+   - gates). Luck is not a gate.
 5. **Sub-agent verdicts trusted wholesale.** The 9 FULLY_DONE archive
    decisions rest on agents' existence-checks; I re-verified none of
    their file:line claims myself (the 14-17 pass confessed the same

@@ -301,6 +301,7 @@ more after me. That gap is owned in §d9.
 ## f) UP TO 50 THINGS TO GET DONE NEXT (ordered: finish-line first)
 
 **Master CI + gates (must):**
+
 1. Triage `test-postgres` ("database tq does not exist" — the CI
    service likely lost its createdb/bootstrap step after the deps bump).
 2. Triage `cqrs-lint` (exit 1, cause unknown — I never opened its log).
@@ -324,85 +325,85 @@ more after me. That gap is owned in §d9.
 
 **Questions feature follow-ups (should — rows already minted):**
 11. Owner ruling → implement agent ask-policy (teach `tq ask` in
-    work-turn templates with a hard cap, interactive-only, or
-    teach+budget-exempt).
+work-turn templates with a hard cap, interactive-only, or
+teach+budget-exempt).
 12. Owner ruling → confirm 72h expiry default (re-enter) vs
-    cancel-on-expiry.
+cancel-on-expiry.
 13. Executor: export `TQ_TASK_ID` env (kills the smoke's sed hack; real
-    agents benefit).
+agents benefit).
 14. Expiry sweep: append a forensics fact when a question's NotBefore
-    lapse re-enters a task.
+lapse re-enters a task.
 15. Pin with a test: closeout-free executors (review/status/dlqfix/
-    prioritize) never receive `$TQ_QUESTION_FILE`.
+prioritize) never receive `$TQ_QUESTION_FILE`.
 16. SECURITY.md: agent-authored question text trust boundary (the
-    redaction pass covers it; document it).
+redaction pass covers it; document it).
 17. Answered-pending re-ask path through the executor loop (stub-agent
-    e2e, currently unit-level only).
+e2e, currently unit-level only).
 18. Bridge truncation width test (>10000-rune question; tokens-lead is
-    pinned by construction only).
+pinned by construction only).
 19. Live `TQ_TEST_POSTGRES` conformance run for the question tests
-    (CI owns execution; watch the next green master run).
+(CI owns execution; watch the next green master run).
 20. `parseQuestionCorrelation` fuzz seeds (FuzzParseRepo precedent).
 21. AnswerPoller: bound max answers per poll (stampede guard).
 22. Metrics: questions asked/answered/expired counters in `tq stats`.
 23. `tq ask` UX: default `--task` from a `TQ_TASK_ID` env (pairs with
-    13); keep the RUNNING-only refusal.
+13); keep the RUNNING-only refusal.
 24. Worker log line for the ask itself (operator visibility parity
-    with rate-limit parks).
+with rate-limit parks).
 25. Consistency check + test: `--task-timeout` vs a parked NotBefore
-    that exceeds it — document or clamp.
+that exceeds it — document or clamp.
 
 **Web UI + dogfood (should):**
 26. Parked-on-question badge in the task table (better than last_error).
 27. Questions section rendered on the task detail page.
 28. `tq tasks` filter for tasks with open questions.
 29. After ask-policy lands: dogfood the live pool's first GLM `tq ask`
-    and watch for prompt-shape surprises.
+and watch for prompt-shape surprises.
 30. Expiry-driven PapDashboard UI close (question.resolved forward) —
-    only if provenance there is wanted.
+only if provenance there is wanted.
 
 **Release mechanics (should):**
 31. Sub-tag cutting plan for the next release — queue/executor/worker/
-    bridge surfaces grew (VERSION-SURFACES.md order).
+bridge surfaces grew (VERSION-SURFACES.md order).
 32. Post-release `go install .../cmd/tq@<new-tag>` smoke (ADR-0017).
 33. CHANGELOG Unreleased → release cut when the arc ships a tag.
 34. go-cqrs-lite durable-queue module: add the park/unblock SQL to the
-    parity checklist when it ships upstream.
+parity checklist when it ships upstream.
 35. Upstream PapDashboard feature request: `answered=false` filter on
-    the question-list endpoint (poller over-fetches; sourcegraph
-    confirmed only sourceApp/type/limit/offset).
+the question-list endpoint (poller over-fetches; sourcegraph
+confirmed only sourceApp/type/limit/offset).
 
 **Process debt (should):**
 36. Baseline regen reason trailer (e2).
 37. Formatter-vs-linter ownership decision (e6) — wsl_v5/noctx on
-    fmt-owned patterns.
+fmt-owned patterns.
 38. nolint-anchor convention note in AGENTS.md (e7).
 39. session-start.sh executable ritual (e8) — ends the
-    CONTRIBUTING/stash miss streak.
+CONTRIBUTING/stash miss streak.
 40. Clock-dependence grep gate for test assertions (e5).
 41. Per-layer lint gate in the module loop (e1) — third report saying
-    it; make it a script flag so it stops being a memory task.
+it; make it a script flag so it stops being a memory task.
 42. Daemon-footer attribution: the feature files rode daemon commits
-    footer-less again; settle the standing footer-race answer (amend
-    window? post-commit footer pass?).
+footer-less again; settle the standing footer-race answer (amend
+window? post-commit footer pass?).
 43. The 00-14/00-18 verify-only windows paid 3x for one row — the
-    queue-side done-row short-circuit (mint-time dedup against indexed
-    reports) is still the top leverage ask.
+queue-side done-row short-circuit (mint-time dedup against indexed
+reports) is still the top leverage ask.
 44. check-status-index bloat: 187+ live rows — an ANNOTATE/archive
-    sweep is overdue (digest row exists; cadence broke).
+sweep is overdue (digest row exists; cadence broke).
 45. dprint/docs formatting stays manual — confirm the manual pass
-    happened for this window's docs (design note, AGENTS entries).
+happened for this window's docs (design note, AGENTS entries).
 
 **Nice-to-have (could):**
 46. `tq ask --options` rendering parity check on the PapDashboard side
-    (options bullets are constructed queue-side only).
+(options bullets are constructed queue-side only).
 47. questions-e2e: add an answered-ref re-ask no-op assertion (re-ask
-    dedup after answer is unit-tested, not smoke-tested).
+dedup after answer is unit-tested, not smoke-tested).
 48. FuzzParseRepo-style campaign for AnswerPoller's line parser.
 49. Investigate whether golangci-lint's cache can be keyed on
-    GOTOOLCHAIN (upstream issue?) — the flip-flop root cause.
+GOTOOLCHAIN (upstream issue?) — the flip-flop root cause.
 50. Close the 03-49/03-57/04-04/04-05 verify-window cluster with an
-    ANNOTATE pass (same task ID, four reports).
+ANNOTATE pass (same task ID, four reports).
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 

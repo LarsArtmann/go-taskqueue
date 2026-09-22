@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/worker
 
-go 1.27.1
+go 1.27
 
 require github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
 

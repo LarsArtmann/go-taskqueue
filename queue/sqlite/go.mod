@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/queue/sqlite
 
-go 1.27.1
+go 1.27
 
 require (
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0

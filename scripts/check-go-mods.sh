@@ -6,7 +6,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-mods="$(scripts/for-each-module.sh; echo cmd/tq)"
+mods="$(
+	scripts/for-each-module.sh
+	echo cmd/tq
+)"
 [[ -f cmd/tq/go.mod ]] # cmd/tq sits outside for-each-module's set (ADR-0017) — fail fast if it vanished
 mapfile -t modfiles < <(printf '%s\n' "$mods" | sed 's|$|/go.mod|')
 fail=0

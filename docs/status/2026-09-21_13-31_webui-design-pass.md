@@ -68,6 +68,7 @@ Nothing this session shipped is broken — all gates green, no red master create
 ## f) UP TO 50 THINGS TO GET DONE NEXT (impact-ordered within groups; brainstorm per skill, HARVEST routes)
 
 **This pass's immediate loose ends**
+
 1. Update AGENTS.md Commands: add `GOTOOLCHAIN=go1.27.1` to the standard verify gate + per-module loop (host hazard, verbatim-follower trap).
 2. Verify app.js Esc handler actually closes the overlay (read :400-504; pin with a test if the harness allows).
 3. Add `tq serve --daily-budget` (flag → `webui.Config.DailyBudget`) and set the cap in the SystemNix `tq-serve` module so the meter goes live.
@@ -138,4 +139,5 @@ Nothing this session shipped is broken — all gates green, no red master create
 3. **Host toolchain fix:** fix the host default once (nix-profile go 1.27.1 or `go env -w`-equivalent since `~/.config/go/env` is a read-only store symlink — so realistically global env or profile bump), or keep per-command `GOTOOLCHAIN=go1.27.1` overrides and document them in AGENTS.md Commands?
 
 ---
-*Battery citations: this session's gate runs are enumerated in §a12; every file/line claim above was read or rendered first-hand this session at the cited commits (`4e9aeb6`, `dbe155a`, `1e3ad85` + working tree). Format note: user explicitly requested `.md`; the status-report skill's HTML default was overridden by that instruction (one-off, not propagated).*
+
+_Battery citations: this session's gate runs are enumerated in §a12; every file/line claim above was read or rendered first-hand this session at the cited commits (`4e9aeb6`, `dbe155a`, `1e3ad85` + working tree). Format note: user explicitly requested `.md`; the status-report skill's HTML default was overridden by that instruction (one-off, not propagated)._

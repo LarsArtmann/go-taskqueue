@@ -61,6 +61,7 @@ dead-export audit trio + `tq doctor` already-ticked check · `tq pool-health` ·
 ## f) Up to 50 things to do next (ordered by impact/effort)
 
 **Unblock + prove P0**
+
 1. Owner push of the 30+ local commits; watch the next CI run — 7 setup-go pins should flip the 5 red jobs green.
 2. Delete `/mnt/buildcache/go-mod/golang.org/toolchain@v0.0.1-go1.27.1.linux-amd64.CORRUPT-partial-extraction-diskfull` (~250MB) — un-poisons shared-cache auto-heal.
 3. Relocate or free `/mnt/buildcache` (rust 155G dominates) or point GOCACHE/GOMODCACHE at a non-full mount — unblocks local ci-local.

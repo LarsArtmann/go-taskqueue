@@ -63,7 +63,7 @@ git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go' |
 			sub(/[( ]$/, "", s)
 			print FILENAME "\t" s
 		}
-	' > "$declfile"
+	' >"$declfile"
 
 git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go' |
 	xargs awk '
@@ -83,7 +83,7 @@ git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go' |
 			if (index($0, "{") > 0) { print FILENAME "\t" fname "\t" sig; infunc = 0 }
 			next
 		}
-	' > "$sigfile"
+	' >"$sigfile"
 
 while IFS=$'\t' read -r file name; do
 	[ -n "$name" ] || continue
@@ -93,11 +93,11 @@ while IFS=$'\t' read -r file name; do
 	# already, but usages IN tests of other packages count as importers.
 	hits="$(rg -l --no-ignore -g '*.go' -g "!${pkg_dir}/**" -F "$name" . || true)"
 	if [ -z "$hits" ]; then
-		printf '%s\t%s\n' "$file" "$name" >> "$deadfile"
+		printf '%s\t%s\n' "$file" "$name" >>"$deadfile"
 	else
 		alive=$((alive + 1))
 	fi
-done < "$declfile"
+done <"$declfile"
 
 # Second pass: annotate the structurally-alive class. A flagged name that
 # appears (word-delimited) in the signature of a DIFFERENT EXPORTED func of
@@ -120,7 +120,7 @@ while IFS=$'\t' read -r file name; do
 			grep -Eq "(^|[^A-Za-z0-9_])${name}([^A-Za-z0-9_]|$)" <<<"$ssig" || continue
 			note="structurally alive: return/parameter type of ${sname}()"
 			break
-		done < "$sigfile"
+		done <"$sigfile"
 	fi
 	if [ -n "$note" ]; then
 		echo "$file: exported symbol with zero direct importers, $note: $name"
@@ -129,7 +129,7 @@ while IFS=$'\t' read -r file name; do
 		echo "$file: exported symbol with zero importers: $name"
 		dead=$((dead + 1))
 	fi
-done < "$deadfile"
+done <"$deadfile"
 
 echo
 echo "dead-exports summary: $alive symbols ok, $dead dead, $structalive structurally alive, $kept annotated keep (advisory)"
