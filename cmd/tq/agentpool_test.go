@@ -233,12 +233,14 @@ func TestDeadPoolDetectorStreakLifecycle(t *testing.T) {
 			var got []string
 
 			d := &deadPoolDetector{ticks: tt.ticks}
-			d.notify = func(triggered bool, _ int, _ string, _ int) {
+			d.notify = func(triggered bool, _ int, _ string, _ int) bool {
 				if triggered {
 					got = append(got, "triggered")
 				} else {
 					got = append(got, "resolved")
 				}
+
+				return true
 			}
 
 			for _, res := range tt.observes {
@@ -316,8 +318,10 @@ func TestStarvationDetectorLifecycle(t *testing.T) {
 			var got []bool
 
 			detector := &starvationDetector{after: tt.after}
-			detector.notify = func(triggered bool, _ time.Duration, _ string, _ int) {
+			detector.notify = func(triggered bool, _ time.Duration, _ string, _ int) bool {
 				got = append(got, triggered)
+
+				return true
 			}
 
 			for _, oldest := range tt.observes {

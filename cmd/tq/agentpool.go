@@ -495,8 +495,11 @@ type deadPoolDetector struct {
 	streak  int
 	alerted bool
 	// notify receives triggered=true once per streak and triggered=false on
-	// recovery; nil = track state only.
-	notify func(triggered bool, repos int, example string, streak int)
+	// recovery; it reports whether the alert was DELIVERED (nil notify =
+	// track state only). The raise arms the streak only on delivery — a
+	// transient notify failure must retry the raise next tick, not burn
+	// the streak's only alert (06-06 report §b1).
+	notify func(triggered bool, repos int, example string, streak int) bool
 }
 
 func (d *deadPoolDetector) observe(res harvest.Result) {
@@ -533,10 +536,14 @@ func (d *deadPoolDetector) observe(res harvest.Result) {
 		return
 	}
 
-	d.alerted = true
+	delivered := true
 	if d.notify != nil {
-		d.notify(true, res.Repos, example, d.streak)
+		delivered = d.notify(true, res.Repos, example, d.streak)
 	}
+
+	// Arm from the notify OUTCOME (06-06 §b1): a failed delivery keeps the
+	// streak unarmed so the next blind tick retries the raise.
+	d.alerted = delivered
 }
 
 // starvationDetector watches the oldest PENDING task's wait and fires its
@@ -550,8 +557,10 @@ type starvationDetector struct {
 	// pendingCount, when set, bounds the query (alert context only).
 	alerted bool
 	// notify receives triggered=true once per episode and triggered=false
-	// on recovery; nil = track state only.
-	notify func(triggered bool, oldestWait time.Duration, taskID string, pending int)
+	// on recovery; it reports whether the alert was DELIVERED (nil notify
+	// = track state only) — the raise arms only on delivery, mirroring
+	// deadPoolDetector (06-06 report §b1).
+	notify func(triggered bool, oldestWait time.Duration, taskID string, pending int) bool
 }
 
 // observe applies one tick's observation: the oldest pending task (nil
@@ -577,10 +586,12 @@ func (d *starvationDetector) observe(now time.Time, oldest *task.Task, pending i
 			return
 		}
 
-		d.alerted = true
+		delivered := true
 		if d.notify != nil {
-			d.notify(true, wait, oldest.ID.String(), pending)
+			delivered = d.notify(true, wait, oldest.ID.String(), pending)
 		}
+
+		d.alerted = delivered
 
 		return
 	}

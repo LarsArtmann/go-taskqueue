@@ -1007,7 +1007,7 @@ func cmdAgentPool(args []string) error {
 	// consecutive all-repos scan-failed ticks — and raises (then resolves)
 	// a PapDashboard alert, so the incident surfaces outside journald too.
 	deadPool := &deadPoolDetector{ticks: poolOpts.deadPoolTicks}
-	deadPool.notify = func(triggered bool, repos int, example string, streak int) {
+	deadPool.notify = func(triggered bool, repos int, example string, streak int) bool {
 		if triggered {
 			log.Warn("dead pool: every repo scan-failed", "ticks", streak, "repos", repos, "example", example)
 		} else {
@@ -1015,12 +1015,16 @@ func cmdAgentPool(args []string) error {
 		}
 
 		if alertBridge == nil {
-			return
+			return true
 		}
 
 		if err := alertBridge.NotifyDeadPool(ctx, triggered, repos, example, streak); err != nil {
 			log.Error("dead-pool alert failed", "triggered", triggered, "err", err)
+
+			return false
 		}
+
+		return true
 	}
 
 	// Starvation alarm (ADR-0015 companion): the oldest PENDING task waiting
@@ -1028,7 +1032,7 @@ func cmdAgentPool(args []string) error {
 	// the drain - surfaced outside journald like dead-pool, resolved the first
 	// tick back under the threshold.
 	starvation := &starvationDetector{after: poolOpts.starveAfter}
-	starvation.notify = func(triggered bool, oldestWait time.Duration, taskID string, pending int) {
+	starvation.notify = func(triggered bool, oldestWait time.Duration, taskID string, pending int) bool {
 		if triggered {
 			log.Warn("starvation: oldest pending task beyond threshold",
 				"task", taskID, "waited", oldestWait.Round(time.Minute), "pending", pending)
@@ -1037,12 +1041,16 @@ func cmdAgentPool(args []string) error {
 		}
 
 		if alertBridge == nil {
-			return
+			return true
 		}
 
 		if err := alertBridge.NotifyStarvation(ctx, triggered, oldestWait, taskID, pending); err != nil {
 			log.Error("starvation alert failed", "triggered", triggered, "err", err)
+
+			return false
 		}
+
+		return true
 	}
 
 	// Startup zombie sweep, SYNCHRONOUSLY before any actor starts: the
