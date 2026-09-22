@@ -52,6 +52,7 @@ func (u *sessionUsage) deriveUsage(ctx context.Context, repoDir, output string, 
 // actually do" without SSH-ing into logs.
 type AgentResult struct {
 	sessionUsage
+
 	// VerifyTail is the last lines of the verify command's output: the
 	// proof the task completed on.
 	VerifyTail string `json:"verify_tail,omitempty"`

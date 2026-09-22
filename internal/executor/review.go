@@ -102,11 +102,11 @@ type ReviewFinding struct {
 // ReviewResult is the structured outcome of one review run, stored in the
 // completion fact detail (the sink convention) for the sweeper and `tq show`.
 type ReviewResult struct {
+	sessionUsage
+
 	Verdict  ReviewVerdict   `json:"verdict"`
 	Summary  string          `json:"summary,omitempty"`
 	Findings []ReviewFinding `json:"findings,omitempty"`
-
-	sessionUsage
 
 	LogPath string `json:"log_path,omitempty"`
 }

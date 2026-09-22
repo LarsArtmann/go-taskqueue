@@ -84,9 +84,9 @@ type PrioritizeVerdict struct {
 // PrioritizeResult is the structured outcome stored on the completion
 // fact detail, same sink convention as ReviewResult.
 type PrioritizeResult struct {
-	Verdicts []PrioritizeVerdict `json:"verdicts"`
-
 	sessionUsage
+
+	Verdicts []PrioritizeVerdict `json:"verdicts"`
 
 	LogPath string `json:"log_path,omitempty"`
 }

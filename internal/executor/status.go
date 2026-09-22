@@ -70,13 +70,13 @@ type StatusPayload struct {
 // StatusResult is the structured outcome of one status run, stored in the
 // completion fact detail (the sink convention) for `tq show` and the web UI.
 type StatusResult struct {
+	sessionUsage
+
 	// Report is the repo-relative path of the written status report.
 	Report string `json:"report"`
 	// NextItems counts the next-work items the agent appended to
 	// TODO_LIST.md (its own self-report, not re-verified).
 	NextItems int `json:"next_items"`
-
-	sessionUsage
 
 	LogPath string `json:"log_path,omitempty"`
 }
