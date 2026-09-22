@@ -1127,6 +1127,13 @@ func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 				Done:        done,
 				MarkerLevel: level,
 			})
+		} else if reason := damagedCheckbox(trimmed); reason != "" {
+			// A damaged checkbox shape must be LOUD (04-46 §d4/§f1): the
+			// 04-40 close-out shipped a backlog row as `--- [ ] …` and both
+			// consumers (this parser, check-todo-list.sh) stayed silent —
+			// the row was invisible to the pool until caught by eye. Reject
+			// the file instead of skipping the line.
+			return nil, fmt.Errorf("%s: %s; a checkbox line must start with exactly `- [ ] ` or `- [x] `", todoFile, reason)
 		}
 	}
 
@@ -1184,6 +1191,37 @@ func checkboxOf(line string) (text string, done bool, ok bool) {
 	}
 
 	return "", false, false
+}
+
+// damagedCheckbox reports a line that LOOKS like an attempted checkbox but
+// has a malformed bullet run — e.g. `--- [ ] text`, `* - [x] text` — where
+// bullets/dashes (plus optional spaces) run into a `[ ]`/`[x]`/`[X]`
+// bracket instead of the exact `- [ ] ` prefix. Only consulted when
+// checkboxOf rejected the line, so well-formed shapes never reach it;
+// plain prose bullets (`- see [x] below`) stop at the first non-bullet
+// character and never match. The 04-40 close-out shipped a backlog row in
+// the `--- [ ]` shape and it was silently invisible to every consumer
+// (04-46 §d4/§f1) — this is the runtime half of making that loud.
+func damagedCheckbox(line string) string {
+	rest := line
+	for {
+		next := strings.TrimLeft(rest, "-* \t")
+		if next == rest {
+			break
+		}
+
+		rest = next
+	}
+
+	if len(rest) < 3 || rest[0] != '[' {
+		return ""
+	}
+
+	if (rest[1] == ' ' || rest[1] == 'x' || rest[1] == 'X') && rest[2] == ']' {
+		return fmt.Sprintf("checkbox line has a malformed bullet: %q", line)
+	}
+
+	return ""
 }
 
 // payloadItemKeys extracts the batch member keys ("itemKeys") from a task

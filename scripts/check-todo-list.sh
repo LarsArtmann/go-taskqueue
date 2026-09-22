@@ -29,6 +29,20 @@ while IFS= read -r line; do
 	done
 done < <(grep -E '^\s*- \[ \]' "$todo")
 
+# Damaged checkbox shapes must fail the gate (04-46 §d4/§f1): the 04-40
+# close-out shipped a backlog row as `--- [ ] …` — it matched neither the
+# unchecked-grep above nor the harvester and was invisible to the pool
+# until caught by eye. Any bullet run that runs into a checkbox bracket
+# without the exact `- [ ] `/`- [x] ` (or `*`) prefix is a FAIL; the
+# well-formed single-bullet forms and the space-less `-[ ]` shape the
+# harvester tolerates are excluded.
+damaged="$(grep -nE '^[[:space:]]*[-*][-*[:space:]]*\[[xX ]\]' "$todo" | grep -vE '^[0-9]+:[[:space:]]*[-*][ ]?\[[xX ]\]' || true)"
+if [ -n "$damaged" ]; then
+	echo "DAMAGED-CHECKBOX: checkbox line with a malformed bullet (must be exactly '- [ ] ' or '- [x] '):"
+	printf '%s\n' "$damaged"
+	fail=1
+fi
+
 if [ "$fail" = 0 ]; then
 	echo "TODO_LIST gate ok (no unblocked owner-gated items)"
 fi
