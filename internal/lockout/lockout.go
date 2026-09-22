@@ -73,14 +73,14 @@ func (l *Limiter) Locked(key string) (time.Duration, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	s := l.pruneLocked(key)
-	if s == nil {
+	entry := l.pruneLocked(key)
+	if entry == nil {
 		return 0, false
 	}
 
 	now := l.nowFunc()
-	if now.Before(s.lockedUntil) {
-		return s.lockedUntil.Sub(now), true
+	if now.Before(entry.lockedUntil) {
+		return entry.lockedUntil.Sub(now), true
 	}
 
 	return 0, false
@@ -92,18 +92,18 @@ func (l *Limiter) Add(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	s := l.pruneLocked(key)
-	if s == nil {
-		s = &strikes{}
-		l.strikes[key] = s
+	entry := l.pruneLocked(key)
+	if entry == nil {
+		entry = &strikes{}
+		l.strikes[key] = entry
 	}
 
-	s.last = l.nowFunc()
-	s.count++
+	entry.last = l.nowFunc()
+	entry.count++
 
-	if s.count >= l.maxHits {
-		s.lockedUntil = s.last.Add(l.lockout)
-		s.count = 0
+	if entry.count >= l.maxHits {
+		entry.lockedUntil = entry.last.Add(l.lockout)
+		entry.count = 0
 
 		if l.onLock != nil {
 			l.onLock(key, l.lockout)
@@ -118,27 +118,27 @@ func (l *Limiter) Reset(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	s := l.pruneLocked(key)
-	if s == nil {
+	entry := l.pruneLocked(key)
+	if entry == nil {
 		return
 	}
 
-	s.count = 0
-	s.lockedUntil = time.Time{}
+	entry.count = 0
+	entry.lockedUntil = time.Time{}
 }
 
 // pruneLocked drops the entry for key when it has been idle past idleKeep
 // and is not locked; returns the live entry (or nil) without removing it.
 // Caller holds mu.
 func (l *Limiter) pruneLocked(key string) *strikes {
-	s, ok := l.strikes[key]
+	entry, ok := l.strikes[key]
 	if !ok {
 		return nil
 	}
 
 	now := l.nowFunc()
-	if now.Before(s.lockedUntil) || now.Sub(s.last) < l.idleKeep {
-		return s
+	if now.Before(entry.lockedUntil) || now.Sub(entry.last) < l.idleKeep {
+		return entry
 	}
 
 	delete(l.strikes, key)
@@ -160,8 +160,8 @@ func (l *Limiter) boundLocked() {
 	}
 
 	now := l.nowFunc()
-	for key, s := range l.strikes {
-		if now.Before(s.lockedUntil) || now.Sub(s.last) < l.idleKeep {
+	for key, entry := range l.strikes {
+		if now.Before(entry.lockedUntil) || now.Sub(entry.last) < l.idleKeep {
 			continue
 		}
 
@@ -173,9 +173,9 @@ func (l *Limiter) boundLocked() {
 
 		var oldest *strikes
 
-		for key, s := range l.strikes {
-			if oldest == nil || s.last.Before(oldest.last) {
-				oldestKey, oldest = key, s
+		for key, entry := range l.strikes {
+			if oldest == nil || entry.last.Before(oldest.last) {
+				oldestKey, oldest = key, entry
 			}
 		}
 
