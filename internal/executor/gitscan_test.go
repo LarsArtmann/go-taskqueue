@@ -2,6 +2,7 @@ package executor
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -186,5 +187,55 @@ func TestCheckGitVersionRefusesPre215(t *testing.T) {
 
 	if err := checkGitVersion(context.Background(), "git", repo); err != nil {
 		t.Fatalf("current git rejected: %v", err)
+	}
+}
+
+// TestGitLogScannerTrailerVisibilityEndToEnd runs the REAL scanner over a
+// REAL temp repo — the rec() fixtures above simulate git OUTPUT and are
+// structurally blind to git-side trailer detection. It pins the
+// demoted-footer defect (03-00 report §e2): a Task-Queue-ID footer that is
+// not in the final paragraph (the harness commit template appends a blank
+// line + attribution block after it) is INVISIBLE to %(trailers), so the
+// commit goes unattributed — the queue↔git cross-reference silently loses
+// it. The contrast commit keeps the footer last and IS attributed.
+// FLIP THE DEMOTED ASSERTION when the attribution fix lands (a %B
+// fallback or a footer-last shape rule): this test is the tripwire that
+// makes that flip loud.
+func TestGitLogScannerTrailerVisibilityEndToEnd(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+
+	repo := t.TempDir()
+	setupGitRepo(t, repo)
+
+	commit := func(msg string) {
+		t.Helper()
+
+		cmd := exec.Command("git", "-C", repo, "commit", "--allow-empty", "-qm", msg)
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
+			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git commit: %v: %s", err, out)
+		}
+	}
+
+	const session = "sess-e2e-visibility"
+
+	// Demoted shape: footer, blank line, attribution block last — git's
+	// trailer parser reads only the FINAL paragraph.
+	commit("work: demoted footer\n\nTask-Queue-ID: " + session + "\n\nGenerated with Crush\n\nAssisted-By: Crush:glm-5.3-flash\n")
+
+	// Well-formed shape: the footer is the LAST line.
+	commit("work: footer last\n\nAssisted-By: Crush:glm-5.3-flash\n\nTask-Queue-ID: " + session + "\n")
+
+	got, err := (GitLogScanner{}).CommitsByTrailer(context.Background(), repo, "Task-Queue-ID", session)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+
+	if len(got) != 1 || got[0].Subject != "work: footer last" {
+		t.Fatalf("attributed %+v, want only \"work: footer last\" — the demoted footer became VISIBLE; flip this assertion per the doc comment", got)
 	}
 }

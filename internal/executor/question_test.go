@@ -158,6 +158,49 @@ func TestAgentExecutorQuestionParksTask(t *testing.T) {
 	}
 }
 
+// TestQuestionChannelScopePinsSecondOpinions pins the channel scope
+// (21-04 §f42): literally-constructed work executors carry
+// $TQ_QUESTION_FILE (the park path IS the feature), while the
+// second-opinion clones built via WithoutCloseout (review / status /
+// dlqfix / prioritize) never do — a reviewer or scorer must not park a
+// task on an owner question.
+func TestQuestionChannelScopePinsSecondOpinions(t *testing.T) {
+	ctx := context.Background()
+	probe := `if [ -n "$TQ_QUESTION_FILE" ]; then echo with-channel >> env-probe.txt; else echo without-channel >> env-probe.txt; fi`
+
+	workRepo := t.TempDir()
+	setupGitRepo(t, workRepo)
+
+	work := &AgentExecutor{Bin: makeStubAgent(t, probe)}
+	if err := work.Execute(ctx, agentTaskT(t, AgentPayload{Repo: workRepo, Prompt: "do the thing"})); err != nil {
+		t.Fatalf("work run: %v", err)
+	}
+
+	workProbe, err := os.ReadFile(filepath.Join(workRepo, "env-probe.txt"))
+	if err != nil {
+		t.Fatalf("work run never wrote the probe: %v", err)
+	}
+	if probeOut := string(workProbe); strings.Contains(probeOut, "without-channel") || !strings.Contains(probeOut, "with-channel") {
+		t.Errorf("work executor question channel state wrong: %s", probeOut)
+	}
+
+	cloneRepo := t.TempDir()
+	setupGitRepo(t, cloneRepo)
+
+	clone := work.WithoutCloseout()
+	if err := clone.Execute(ctx, agentTaskT(t, AgentPayload{Repo: cloneRepo, Prompt: "review the thing"})); err != nil {
+		t.Fatalf("clone run: %v", err)
+	}
+
+	cloneProbe, err := os.ReadFile(filepath.Join(cloneRepo, "env-probe.txt"))
+	if err != nil {
+		t.Fatalf("clone run never wrote the probe: %v", err)
+	}
+	if probeOut := string(cloneProbe); strings.Contains(probeOut, "with-channel") || !strings.Contains(probeOut, "without-channel") {
+		t.Errorf("second-opinion clone must never receive %s: %s", questionFileEnv, probeOut)
+	}
+}
+
 // TestAgentPromptRendersAnsweredRulings pins the resume contract: a payload
 // carrying injected answers renders them into the prompt the agent sees.
 func TestAgentPromptRendersAnsweredRulings(t *testing.T) {

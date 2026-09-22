@@ -141,6 +141,14 @@ type AgentExecutor struct {
 	// re-claim resumes at closeout instead of re-running the paid work
 	// turn). task.ID → closeoutPending; see runAgent/runCloseoutTurn.
 	closeoutPending sync.Map
+
+	// secondOpinion marks the closeout-free clones (review/status/dlqfix/
+	// prioritize, all built via WithoutCloseout): they ARE the second
+	// opinion, so they never receive the $TQ_QUESTION_FILE channel — a
+	// reviewer or scorer must not park a task on an owner question
+	// (21-04 §f42). Zero value false keeps literally-constructed work
+	// executors ask-capable (the park path is pinned on a bare executor).
+	secondOpinion bool
 }
 
 // NewAgentExecutor builds an AgentExecutor for a projects directory.
@@ -154,7 +162,9 @@ func NewAgentExecutor(projectsDir string) *AgentExecutor {
 // The clone carries every runtime setting but starts with a FRESH
 // rate-limit gate: gates are per-executor-instance (re-arming from fresh
 // provider evidence is one cheap refused run), and an armed
-// atomic.Int64 must never be struct-copied (copylocks).
+// atomic.Int64 must never be struct-copied (copylocks). The clone is
+// marked secondOpinion: the owner-question channel stays work-turn-only
+// (21-04 §f42).
 func (e *AgentExecutor) WithoutCloseout() *AgentExecutor {
 	return &AgentExecutor{
 		Bin:             e.Bin,
@@ -162,6 +172,7 @@ func (e *AgentExecutor) WithoutCloseout() *AgentExecutor {
 		Yolo:            e.Yolo,
 		MaxConcurrent:   e.MaxConcurrent,
 		ReresolveVerify: e.ReresolveVerify,
+		secondOpinion:   true,
 	}
 }
 
@@ -518,12 +529,10 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		}
 
 		// The question channel is a WORK-turn capability (21-04 §f42):
-		// closeout-free clones (review/status/dlqfix/prioritize — they ARE
-		// the second opinion) must never receive $TQ_QUESTION_FILE, so a
-		// reviewer or scorer cannot park a task on an owner question. The
-		// closeout turn only exists for work executors, so the gate is
-		// belt-and-braces here.
-		if questionPath != "" && e.CloseoutPrompt != "" {
+		// second-opinion clones (review/status/dlqfix/prioritize) never
+		// receive $TQ_QUESTION_FILE — a reviewer or scorer must not park
+		// a task on an owner question.
+		if questionPath != "" && !e.secondOpinion {
 			cmd.Env = append(cmd.Env, questionFileEnv+"="+questionPath)
 		}
 
@@ -723,7 +732,10 @@ func (e *AgentExecutor) runCloseoutTurn(
 			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
 		}
 
-		if questionPath != "" && e.CloseoutPrompt != "" {
+		// Second-opinion clones never get the question channel (same gate
+		// as the work turn; the closeout turn only exists for work
+		// executors anyway).
+		if questionPath != "" && !e.secondOpinion {
 			cmd.Env = append(cmd.Env, questionFileEnv+"="+questionPath)
 		}
 
