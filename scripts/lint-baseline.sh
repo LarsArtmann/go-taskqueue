@@ -110,6 +110,7 @@ if [[ "$mode" == "--check" ]]; then
 			done <"$violations"
 		done
 		echo "fix the new findings, or regenerate deliberately (scripts/lint-baseline.sh) if a policy change owns them" >&2
+		echo "lint-baseline: FAIL" >&2
 		exit 1
 	fi
 
@@ -122,6 +123,7 @@ if [[ "$mode" == "--check" ]]; then
 	fi
 
 	echo "lint-baseline: within baseline ($(awk -F'\t' '{s+=$3} END{print s+0}' "$out") findings vs baseline $(awk -F'\t' '{s+=$3} END{print s+0}' "$baseline"))"
+	echo "lint-baseline: OK"
 	exit 0
 fi
 

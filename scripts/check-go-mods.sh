@@ -50,11 +50,14 @@ done
 
 for m in . $mods; do
 	# go mod verify flakes when the shared module cache is written
-	# concurrently (16-00 report f41): retry once before failing.
-	if ! (cd "$m" && GOWORK=off go mod verify >/dev/null); then
+	# concurrently (16-00 report f41): retry once before failing, and the
+	# FAIL line carries the underlying stderr (04-21 §f14) — a bare
+	# "FAIL: <module>" named the victim but not the symptom.
+	if ! err="$(cd "$m" && GOWORK=off go mod verify 2>&1 >/dev/null)"; then
 		echo "WARN: go mod verify flaked in $m — retrying once"
-		if ! (cd "$m" && GOWORK=off go mod verify >/dev/null); then
-			echo "FAIL: go mod verify in $m (retry also failed)"
+		if ! err="$(cd "$m" && GOWORK=off go mod verify 2>&1 >/dev/null)"; then
+			echo "FAIL: go mod verify in $m (retry also failed):"
+			printf '%s\n' "$err" | sed 's/^/  /'
 			checks_failed=$((checks_failed + 1))
 			fail=1
 		else

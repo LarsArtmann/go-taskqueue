@@ -23,5 +23,7 @@ go build -o "$(mktemp -d)/tq" .
 go vet ./...
 # GOFLAGS carries -modfile for the gate itself; clear it for `go test` so the
 # flag does not leak into subprocess probes (doctor's go-env check builds in
-# a temp dir where dev.mod does not exist).
-GOFLAGS='' go test -modfile=dev.mod ./... -count=1 -timeout 120s
+# a temp dir where dev.mod does not exist). Any script arguments are
+# forwarded to the test line (targeted runs: -run/-count scoping without
+# hand-rolling the devmod shim, 10-19 §d1); no arguments = the full suite.
+GOFLAGS='' go test -modfile=dev.mod ./... -count=1 -timeout 120s "$@"
