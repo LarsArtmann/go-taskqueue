@@ -327,15 +327,5 @@ The report path must be relative to the repository root; the file must exist whe
 // firstLine reduces a (possibly long) agent prompt to its first line, bounded
 // for prompt hygiene.
 func firstLine(text string) string {
-	line := strings.TrimSpace(text)
-	if idx := strings.IndexByte(line, '\n'); idx >= 0 {
-		line = line[:idx]
-	}
-
-	const maxItemLen = 200
-	if len(line) > maxItemLen {
-		line = line[:maxItemLen] + "…"
-	}
-
-	return strings.TrimSpace(line)
+	return Excerpt(text)
 }
