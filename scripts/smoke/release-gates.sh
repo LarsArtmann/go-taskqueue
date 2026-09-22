@@ -38,6 +38,24 @@ fixture="$(mktemp -d)"
 trap 'rm -rf "$fixture"' EXIT
 git -C "$fixture" init -q
 git -C "$fixture" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+
+# Self-test (03-46 §f3): with the -c user.* flags stripped and the ci-local
+# sanitizer active (GIT_CONFIG_GLOBAL=/dev/null + user.useConfigOnly), the
+# commit must fail with "Author identity unknown" — the fixture's identity
+# comes ONLY from its flags, so dropping one must break the smoke.
+stripped_out="$(mktemp)"
+stripped_rc=0
+env -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL \
+	GIT_CONFIG_GLOBAL=/dev/null \
+	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.useConfigOnly GIT_CONFIG_VALUE_0=true \
+	git -C "$fixture" commit -q --allow-empty -m identity-stripped >"$stripped_out" 2>&1 || stripped_rc=$?
+if [ "$stripped_rc" -eq 0 ] || ! grep -q "identity unknown" "$stripped_out"; then
+	echo "FAIL fixture: commit without -c user.* flags did not fail with identity unknown"
+	fails=$((fails + 1))
+else
+	echo "ok   fixture: stripped -c user.* commit fails (identity unknown)"
+fi
+rm -f "$stripped_out"
 for tag in internal/task/v0.2.0 internal/queue/sqlite/v0.2.0; do
 	# Annotated tags need a committer identity, and CI runners have none —
 	# the commit above carries -c flags for the same reason.
