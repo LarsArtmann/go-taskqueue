@@ -102,19 +102,13 @@ type ReviewFinding struct {
 // ReviewResult is the structured outcome of one review run, stored in the
 // completion fact detail (the sink convention) for the sweeper and `tq show`.
 type ReviewResult struct {
-	Verdict   ReviewVerdict   `json:"verdict"`
-	Summary   string          `json:"summary,omitempty"`
-	Findings  []ReviewFinding `json:"findings,omitempty"`
-	SessionID string          `json:"session_id,omitempty"`
-	// Session usage, derived from the local crush data (go-crush-data) when
-	// the run's session id was extractable — reviews are paid turns too,
-	// so their spend feeds the budget token projection. Same json keys and
-	// sink convention as AgentResult and PrioritizeResult.
-	SessionCostUSD          float64 `json:"session_cost_usd,omitempty"`
-	SessionPromptTokens     int64   `json:"session_prompt_tokens,omitempty"`
-	SessionCompletionTokens int64   `json:"session_completion_tokens,omitempty"`
-	SessionMessageCount     int     `json:"session_message_count,omitempty"`
-	LogPath                 string  `json:"log_path,omitempty"`
+	Verdict  ReviewVerdict   `json:"verdict"`
+	Summary  string          `json:"summary,omitempty"`
+	Findings []ReviewFinding `json:"findings,omitempty"`
+
+	sessionUsage
+
+	LogPath string `json:"log_path,omitempty"`
 }
 
 // defaultReviewTaskTimeout bounds one review unless the payload overrides.
@@ -206,17 +200,7 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 		}
 	}
 
-	result.SessionID = ExtractSessionID(output)
-
-	// Session usage derivation (best-effort, same as agent and prioritize
-	// runs): the reviewer's token/cost spend feeds the budget token
-	// projection. A missing session id or unreadable crush data leaves the
-	// fields zero.
-	derived := deriveOutcome(ctx, repoDir, result.SessionID, t.ID)
-	result.SessionCostUSD = derived.SessionCostUSD
-	result.SessionPromptTokens = derived.SessionPromptTokens
-	result.SessionCompletionTokens = derived.SessionCompletionTokens
-	result.SessionMessageCount = derived.SessionMessageCount
+	result.deriveUsage(ctx, repoDir, output, t.ID)
 
 	result.LogPath = writeOutputSidecar(t.ID, output, "")
 

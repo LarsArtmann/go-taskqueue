@@ -309,20 +309,13 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	// run did); the legacy TQ_RESULT self-report only fills gaps for
 	// in-flight tasks minted before the derivation contract. Best effort —
 	// a missing session id or empty derivation is not an error.
-	sessionID := ExtractSessionID(output)
-
 	result := AgentResult{
-		SessionID:  sessionID,
 		VerifyTail: tail,
 	}
 
-	derived := deriveOutcome(ctx, repoDir, sessionID, t.ID)
+	derived := result.deriveUsage(ctx, repoDir, output, t.ID)
 	result.Commits = derived.Commits
 	result.FilesChanged = derived.Files
-	result.SessionCostUSD = derived.SessionCostUSD
-	result.SessionPromptTokens = derived.SessionPromptTokens
-	result.SessionCompletionTokens = derived.SessionCompletionTokens
-	result.SessionMessageCount = derived.SessionMessageCount
 
 	if n := len(derived.Commits); n > 0 {
 		result.CommitSHA = derived.Commits[n-1].SHA
@@ -377,23 +370,31 @@ func writeOutputSidecar(id task.ID, agentOutput, verifyOutput string) string {
 // repoDir resolves a payload repo name: absolute paths pass through,
 // relative names resolve against ProjectsDir.
 func (e *AgentExecutor) repoDir(repo string) (string, error) {
+	return resolveRepoDir("agent", e.ProjectsDir, repo)
+}
+
+// resolveRepoDir is the shared repo resolution behind the executors that
+// run inside a repo (agent, depbump): absolute paths pass through, relative
+// names resolve against projectsDir. The domain string prefixes errors with
+// the calling executor's name.
+func resolveRepoDir(domain, projectsDir, repo string) (string, error) {
 	if filepath.IsAbs(repo) {
 		if info, err := os.Stat(repo); err != nil || !info.IsDir() {
-			return "", fmt.Errorf("agent: repo directory does not exist: %s", repo)
+			return "", fmt.Errorf("%s: repo directory does not exist: %s", domain, repo)
 		}
 
 		return repo, nil
 	}
 
-	if e.ProjectsDir == "" {
-		return "", fmt.Errorf("agent: relative repo %q needs a projects dir on the executor", repo)
+	if projectsDir == "" {
+		return "", fmt.Errorf("%s: relative repo %q needs a projects dir on the executor", domain, repo)
 	}
 
-	dir := filepath.Join(e.ProjectsDir, repo)
+	dir := filepath.Join(projectsDir, repo)
 
 	info, err := os.Stat(dir)
 	if err != nil || !info.IsDir() {
-		return "", fmt.Errorf("agent: repo %q does not exist under the projects dir", repo)
+		return "", fmt.Errorf("%s: repo %q does not exist under the projects dir", domain, repo)
 	}
 
 	return dir, nil

@@ -135,29 +135,7 @@ func (e *DepBumpExecutor) goBin() string {
 // repoDir resolves a payload repo name: absolute paths pass through,
 // relative names resolve against ProjectsDir (same rules as AgentExecutor).
 func (e *DepBumpExecutor) repoDir(repo string) (string, error) {
-	if filepath.IsAbs(repo) {
-		if info, err := os.Stat(repo); err != nil || !info.IsDir() {
-			return "", fmt.Errorf("depbump: repo directory does not exist: %s", repo)
-		}
-
-		return repo, nil
-	}
-
-	if e.ProjectsDir == "" {
-		return "", fmt.Errorf(
-			"depbump: relative repo %q needs a projects dir on the executor",
-			repo,
-		)
-	}
-
-	dir := filepath.Join(e.ProjectsDir, repo)
-
-	info, err := os.Stat(dir)
-	if err != nil || !info.IsDir() {
-		return "", fmt.Errorf("depbump: repo %q does not exist under the projects dir", repo)
-	}
-
-	return dir, nil
+	return resolveRepoDir("depbump", e.ProjectsDir, repo)
 }
 
 func (e *DepBumpExecutor) gitBin() string {

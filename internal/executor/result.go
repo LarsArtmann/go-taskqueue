@@ -8,16 +8,50 @@ import (
 	"os/exec"
 	"regexp"
 	"sync"
+
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
+// sessionUsage is the crush-session usage block every paid agent turn's
+// result type embeds (AgentResult, ReviewResult, StatusResult,
+// PrioritizeResult): one field set, one json spelling, one derivation path.
+// The budget token projection parses these keys across all four result
+// types (drift-pinned by the budget tests marshalling the real types).
+type sessionUsage struct {
+	// SessionID is the crush session id, best-effort extracted from the
+	// run's output (`crush run` prints it; formats vary between versions —
+	// absent when nothing matches).
+	SessionID string `json:"session_id,omitempty"`
+	// Session usage, derived from the local crush data (go-crush-data) when
+	// the run's session id was extractable. Zero on stub or non-crush runs.
+	SessionCostUSD          float64 `json:"session_cost_usd,omitempty"`
+	SessionPromptTokens     int64   `json:"session_prompt_tokens,omitempty"`
+	SessionCompletionTokens int64   `json:"session_completion_tokens,omitempty"`
+	SessionMessageCount     int     `json:"session_message_count,omitempty"`
+}
+
+// deriveUsage fills the session block from a finished run: the session id
+// comes from the output, the spend from deriveOutcome. Best-effort — a
+// missing session id or unreadable crush data leaves the fields zero.
+// Returns the full derivation so callers that also need commits/files reuse
+// the single git+crush pass instead of paying for it twice.
+func (u *sessionUsage) deriveUsage(ctx context.Context, repoDir, output string, id task.ID) derivedOutcome {
+	u.SessionID = ExtractSessionID(output)
+
+	derived := deriveOutcome(ctx, repoDir, u.SessionID, id)
+	u.SessionCostUSD = derived.SessionCostUSD
+	u.SessionPromptTokens = derived.SessionPromptTokens
+	u.SessionCompletionTokens = derived.SessionCompletionTokens
+	u.SessionMessageCount = derived.SessionMessageCount
+
+	return derived
+}
 
 // AgentResult is the structured outcome detail of one agent run, stored
 // alongside the completion so `tq show` can answer "what did the agent
 // actually do" without SSH-ing into logs.
 type AgentResult struct {
-	// SessionID is the crush session id, best-effort extracted from the
-	// agent's output (`crush run` prints it; formats vary between
-	// versions — absent when nothing matches).
-	SessionID string `json:"session_id,omitempty"`
+	sessionUsage
 	// VerifyTail is the last lines of the verify command's output: the
 	// proof the task completed on.
 	VerifyTail string `json:"verify_tail,omitempty"`
@@ -30,12 +64,6 @@ type AgentResult struct {
 	Commits      []Commit `json:"commits,omitempty"`
 	FilesChanged []string `json:"files_changed,omitempty"`
 	CommitSHA    string   `json:"commit_sha,omitempty"`
-	// Session usage, derived from the local crush data (go-crush-data) when
-	// the run's session id was extractable. Zero on stub or non-crush runs.
-	SessionCostUSD          float64 `json:"session_cost_usd,omitempty"`
-	SessionPromptTokens     int64   `json:"session_prompt_tokens,omitempty"`
-	SessionCompletionTokens int64   `json:"session_completion_tokens,omitempty"`
-	SessionMessageCount     int     `json:"session_message_count,omitempty"`
 	// LogPath is the sidecar file holding the FULL agent + verify output,
 	// written when TQ_LOG_DIR is set on the worker/pool. Absent otherwise.
 	LogPath string `json:"log_path,omitempty"`
