@@ -40,12 +40,10 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	"github.com/larsartmann/go-taskqueue/internal/watermark"
 )
 
 const (
-	// defaultPageSize bounds one Facts page per sweep iteration.
-	defaultPageSize = 500
-
 	// ConsumerKey is the sweeper's identity in the watermarks table: the
 	// persisted cursor shared by every sweeper instance over the same
 	// database, rewindable with `tq watermarks set prioritize-sweeper SEQ`
@@ -131,14 +129,14 @@ type SweepStats struct {
 
 // Sweeper turns the journal's enqueue and scorer-completion facts into
 // batch-scorer mints and score applications. It is safe for concurrent use
-// (a mutex serializes sweeps).
+// (the mutex serializes the first-sweep boot mint; the cursor serializes
+// the page pump).
 type Sweeper struct {
 	store queue.Store
 	cfg   SweeperConfig
 
-	mu         sync.Mutex
-	watermark  int64
-	persisted  int64 // last checkpoint written to the watermarks table
+	mu         sync.Mutex // guards bootMinted
+	cur        *watermark.Cursor
 	bootMinted bool
 }
 
@@ -146,35 +144,20 @@ type Sweeper struct {
 // persisted checkpoint; a first run bootstraps at the journal head (same
 // semantics as the review and dlqfix sweepers).
 func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Sweeper, error) {
-	if cfg.PageSize <= 0 {
-		cfg.PageSize = defaultPageSize
-	}
-
 	if cfg.ScoreTTL == 0 {
 		cfg.ScoreTTL = DefaultScoreTTL
 	}
 
-	persisted, exists, err := store.Watermark(ctx, ConsumerKey)
+	cur, err := watermark.New(ctx, watermark.Config{
+		Store:  store,
+		Key:    ConsumerKey,
+		Domain: "prioritize sweep",
+	})
 	if err != nil {
-		return nil, fmt.Errorf("prioritize sweep: read watermark: %w", err)
+		return nil, err
 	}
 
-	// seq 0 with a row is a real cursor ("bootstrapped on an empty
-	// journal, consumed nothing yet"): resume from it, do not jump to head.
-	if exists {
-		return &Sweeper{store: store, cfg: cfg, watermark: persisted, persisted: persisted}, nil
-	}
-
-	head, err := store.HeadSeq(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("prioritize sweep: read journal head: %w", err)
-	}
-
-	if err := store.SaveWatermark(ctx, ConsumerKey, head); err != nil {
-		return nil, fmt.Errorf("prioritize sweep: persist bootstrap watermark: %w", err)
-	}
-
-	return &Sweeper{store: store, cfg: cfg, watermark: head, persisted: head}, nil
+	return &Sweeper{store: store, cfg: cfg, cur: cur}, nil
 }
 
 // Sweep consumes new facts since the last pass: harvest enqueues trigger a

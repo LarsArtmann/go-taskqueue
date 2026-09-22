@@ -21,19 +21,16 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
+	"github.com/larsartmann/go-taskqueue/internal/watermark"
 )
 
 const (
-	// defaultPageSize bounds one Facts page per sweep iteration.
-	defaultPageSize = 500
-
 	// ConsumerKey is the sweeper's identity in the watermarks table. One
 	// cursor is shared by every status sweeper over the same database:
 	// completions recorded while no sweeper ran are counted on the next
@@ -85,15 +82,13 @@ type SweepStats struct {
 }
 
 // Sweeper turns the journal's completion facts into periodic status reports.
-// It is safe for concurrent use (a mutex serializes sweeps; ticks and the
+// It is safe for concurrent use (the cursor serializes sweeps; ticks and the
 // --once drain watcher may call it from different goroutines).
 type Sweeper struct {
 	store queue.Store
 	cfg   SweeperConfig
 
-	mu        sync.Mutex
-	watermark int64
-	persisted int64 // last checkpoint written to the watermarks table
+	cur *watermark.Cursor
 }
 
 // NewSweeper returns a sweeper over store. The cursor resumes from the
@@ -107,84 +102,34 @@ func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Swe
 		return nil, fmt.Errorf("status sweep: Every must be >= 1, got %d", cfg.Every)
 	}
 
-	if cfg.PageSize <= 0 {
-		cfg.PageSize = defaultPageSize
-	}
-
-	persisted, exists, err := store.Watermark(ctx, ConsumerKey)
+	cur, err := watermark.New(ctx, watermark.Config{
+		Store:  store,
+		Key:    ConsumerKey,
+		Domain: "status sweep",
+	})
 	if err != nil {
-		return nil, fmt.Errorf("status sweep: read watermark: %w", err)
+		return nil, err
 	}
 
-	// seq 0 with a row is a real cursor ("bootstrapped on an empty journal,
-	// consumed nothing yet"): resume from it, do not jump to head.
-	if exists {
-		return &Sweeper{store: store, cfg: cfg, watermark: persisted, persisted: persisted}, nil
-	}
-
-	head, err := store.HeadSeq(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("status sweep: read journal head: %w", err)
-	}
-
-	// First run: eagerly persist the head (even 0) so a crash before the
-	// first sweep still resumes exactly here (and never replays history).
-	if err := store.SaveWatermark(ctx, ConsumerKey, head); err != nil {
-		return nil, fmt.Errorf("status sweep: persist bootstrap watermark: %w", err)
-	}
-
-	return &Sweeper{store: store, cfg: cfg, watermark: head, persisted: head}, nil
+	return &Sweeper{store: store, cfg: cfg, cur: cur}, nil
 }
 
 // Sweep consumes new facts since the last pass and mints status tasks for
 // full windows. Idempotent by dedup: calling it twice never duplicates work,
 // so a replayed page (crash between consumption and checkpoint) re-hits
-// dedup keys instead of minting duplicates. The cursor checkpoints after
-// each page; a failed checkpoint stops the sweep — facts are never consumed
-// past an unpersisted cursor.
+// dedup keys instead of minting duplicates.
 func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var stats SweepStats
 
-	// A pending checkpoint gates sweeping: retry it before consuming
-	// anything new.
-	if s.watermark > s.persisted {
-		if err := s.store.SaveWatermark(ctx, ConsumerKey, s.watermark); err != nil {
-			return stats, fmt.Errorf("status sweep: checkpoint %d: %w", s.watermark, err)
-		}
+	err := s.cur.Sweep(ctx, func(ctx context.Context, f journal.Fact) error {
+		stats.Facts++
 
-		s.persisted = s.watermark
-	}
+		s.handleFact(ctx, f, &stats)
 
-	for {
-		facts, err := s.store.Facts(ctx, s.watermark, s.cfg.PageSize)
-		if err != nil {
-			return stats, fmt.Errorf("status sweep: read facts after %d: %w", s.watermark, err)
-		}
+		return nil
+	})
 
-		for _, f := range facts {
-			s.watermark = f.Seq
-			stats.Facts++
-
-			s.handleFact(ctx, f, &stats)
-		}
-
-		// Page end: checkpoint AFTER the last consumed fact — never before,
-		// or a crash would silently skip the page's completions.
-		if len(facts) > 0 {
-			if err := s.store.SaveWatermark(ctx, ConsumerKey, s.watermark); err != nil {
-				return stats, fmt.Errorf("status sweep: checkpoint %d: %w", s.watermark, err)
-			}
-
-			s.persisted = s.watermark
-		}
-
-		if len(facts) < s.cfg.PageSize {
-			return stats, nil
-		}
-	}
+	return stats, err
 }
 
 // handleFact reacts to one completion fact: only agent completions can fill
