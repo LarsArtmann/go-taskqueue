@@ -29,7 +29,6 @@ if [ "$#" -gt 0 ]; then
     if [ -z "$local_reports" ]; then
       echo "(no prior reports)"
     else
-      echo "$local_reports"
       echo "prior windows:"
       echo "$local_reports" | sed 's/^/  /'
       done_rows="$(rg -n "$id" docs/status/ 2>/dev/null | rg 'DONE|done row|\[x\]' || true)"
