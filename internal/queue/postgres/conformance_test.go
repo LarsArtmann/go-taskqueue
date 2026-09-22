@@ -955,8 +955,43 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(facts) != 1 || facts[0].TaskID != "facts-since-new" {
-			t.Fatalf("FactsSince window = %+v, want only facts-since-new (yesterday's excluded)", facts)
+		// The store is shared across subtests: completions recorded
+		// seconds ago legitimately sit inside the window. Pin the
+		// pushdown properties, not store emptiness.
+		sawNew := false
+
+		for _, f := range facts {
+			if f.Time.Before(now.Add(-2 * time.Hour)) {
+				t.Fatalf("FactsSince returned %s at %v, before the window start", f.TaskID, f.Time)
+			}
+
+			switch f.TaskID {
+			case "facts-since-old":
+				t.Fatal("facts-since-old leaked past the 2h window")
+			case "facts-since-new":
+				sawNew = true
+			}
+		}
+
+		if !sawNew {
+			t.Fatal("facts-since-new missing from a 2h window")
+		}
+
+		all, err := s.FactsSince(ctx, journal.Completed, now.Add(-48*time.Hour), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(all) == 0 {
+			t.Fatal("48h window empty despite the seeded facts")
+		}
+
+		oldest := all[0].Seq
+
+		for _, f := range all[1:] {
+			if f.Seq < oldest {
+				oldest = f.Seq
+			}
 		}
 
 		limited, err := s.FactsSince(ctx, journal.Completed, now.Add(-48*time.Hour), 1)
@@ -964,8 +999,8 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(limited) != 1 || limited[0].TaskID != "facts-since-old" {
-			t.Fatalf("bounded FactsSince = %+v, want the OLDEST match in Seq order", limited)
+		if len(limited) != 1 || limited[0].Seq != oldest {
+			t.Fatalf("bounded FactsSince = %+v, want only Seq %d (the oldest match)", limited, oldest)
 		}
 	})
 
@@ -1140,6 +1175,60 @@ func TestPostgresConformance(t *testing.T) {
 			}
 		}
 
+		// Shared store: earlier subtests leave due tasks behind, so a
+		// bare ClaimDue may win one of theirs instead of ours. Park
+		// foreign claims an hour out and keep claiming until ours
+		// surfaces (or prove ours can NOT surface).
+		claimUntil := func(owner string, want task.ID) {
+			t.Helper()
+
+			for i := 0; i < 64; i++ {
+				c, err := s.ClaimDue(ctx, owner, time.Minute)
+				if errors.Is(err, queue.ErrNoTaskDue) {
+					t.Fatalf("queue drained before %s surfaced", want)
+				}
+
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if c.ID == want {
+					return
+				}
+
+				if err := s.Requeue(ctx, c.ID, owner, "conformance: foreign claim", time.Hour, false); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			t.Fatalf("claimed 64 tasks without seeing %s", want)
+		}
+
+		claimNoneUntil := func(owner string, want task.ID) {
+			t.Helper()
+
+			for i := 0; i < 64; i++ {
+				c, err := s.ClaimDue(ctx, owner, time.Minute)
+				if errors.Is(err, queue.ErrNoTaskDue) {
+					return
+				}
+
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if c.ID == want {
+					t.Fatalf("%s was claimable; want parked beyond reach", want)
+				}
+
+				if err := s.Requeue(ctx, c.ID, owner, "conformance: foreign claim", time.Hour, false); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			t.Fatalf("claimed 64 tasks without exhausting the queue")
+		}
+
 		// Parked + JSON-object payload: the answer unblocks and injects.
 		pq, err := s.Enqueue(
 			ctx,
@@ -1149,9 +1238,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); err != nil {
-			t.Fatalf("claim: %v", err)
-		}
+		claimUntil("pq-w", pq.ID)
 
 		askFact(pq.ID, "pq-1", "Ship as v3 now?")
 
@@ -1159,9 +1246,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
-			t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
-		}
+		claimNoneUntil("pq-w", pq.ID)
 
 		if err := s.RecordAnswer(
 			ctx,
@@ -1216,9 +1301,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Errorf("question not backfilled from the asked fact: %q", payload.Answered[0].Question)
 		}
 
-		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); err != nil {
-			t.Fatalf("claim after answer: %v", err)
-		}
+		claimUntil("pq-w", pq.ID)
 
 		// Raw payload: ruling is journal-only, payload untouched, task
 		// stays parked until the expiry safety valve.
@@ -1227,9 +1310,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); err != nil {
-			t.Fatalf("raw claim: %v", err)
-		}
+		claimUntil("pq-w", raw.ID)
 
 		askFact(raw.ID, "pq-2", "Proceed?")
 
@@ -1250,9 +1331,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Errorf("raw payload mutated: %q", rawGot.Payload)
 		}
 
-		if _, err := s.ClaimDue(ctx, "pq-w", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
-			t.Fatalf("raw-payload task unblocked err = %v, want still parked", err)
-		}
+		claimNoneUntil("pq-w", raw.ID)
 
 		trail, err := s.FactsForTask(ctx, raw.ID.String(), 0)
 		if err != nil {
