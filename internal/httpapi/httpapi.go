@@ -27,7 +27,7 @@ type Server struct {
 	store   queue.Store
 	token   string
 	log     *slog.Logger
-	strikes *authRateLimiter
+	strikes *lockout.Limiter
 }
 
 // New builds a Server. token must be non-empty: the API refuses to start
@@ -58,13 +58,13 @@ func (s *Server) Handler() http.Handler {
 // The token may also ride the query (?token=) for clients that cannot set
 // headers — same contract as the dashboard stream. Every response carries
 // nosniff; repeated auth failures trip the per-client lockout
-// (authRateLimiter).
+// (internal/lockout).
 func (s *Server) guard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 
 		key := remoteHost(r)
-		if retry, locked := s.strikes.locked(key); locked {
+		if retry, locked := s.strikes.Locked(key); locked {
 			w.Header().Set("Retry-After", strconv.Itoa(int(retry/time.Second)+1))
 			http.Error(
 				w,
@@ -78,7 +78,7 @@ func (s *Server) guard(next http.Handler) http.Handler {
 		presented := bearerToken(r)
 
 		if subtle.ConstantTimeCompare([]byte(presented), []byte(s.token)) != 1 {
-			s.strikes.add(key)
+			s.strikes.Add(key)
 
 			w.Header().Set("WWW-Authenticate", `Bearer realm="tq-api"`)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -86,7 +86,7 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			return
 		}
 
-		s.strikes.reset(key)
+		s.strikes.Reset(key)
 
 		w.Header().Set("Cache-Control", "no-store")
 
@@ -138,15 +138,24 @@ const (
 	authMaxKeys  = 1024
 )
 
-func newAuthRateLimiter() *authRateLimiter {
-	return &authRateLimiter{
-		strikes:  make(map[string]*authStrikes),
-		maxHits:  authMaxHits,
-		lockout:  authLockout,
-		nowFunc:  time.Now,
-		idleKeep: authIdleKeep,
-		maxKeys:  authMaxKeys,
-	}
+// newAuthRateLimiter builds the shared strike limiter behind the bearer
+// guard (internal/lockout; the webui write-route limiter shares it).
+func newAuthRateLimiter() *lockout.Limiter {
+	return lockout.New(lockout.Config{
+		MaxHits:  authMaxHits,
+		Lockout:  authLockout,
+		IdleKeep: authIdleKeep,
+		MaxKeys:  authMaxKeys,
+		OnLock: func(key string, lockout time.Duration) {
+			slog.Warn(
+				"httpapi: locked after repeated auth failures",
+				"client",
+				key,
+				"lockout",
+				lockout.String(),
+			)
+		},
+	})
 }
 
 // locked reports the remaining lockout for key (false when none), pruning

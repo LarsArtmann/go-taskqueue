@@ -11,8 +11,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/larsartmann/go-taskqueue/internal/lockout"
 )
 
 // ErrTokenRequiredOnLAN is returned by Config.Validate and Server.Run when
@@ -216,37 +217,30 @@ func withCSRF(next http.Handler) http.Handler {
 // writeRateLimiter throttles CSRF brute force on the write routes: a client
 // that fails CSRF three times is locked out of ALL write POSTs for a short,
 // fixed window (reads are untouched — the limiter only wraps the two write
-// routes). Strikes reset on any successful write. Bounded memory: entries
-// idle for long are pruned on contact, and the whole map is capped at
-// maxKeys — a source rotating IPs never re-contacts its own key, so the cap
-// first sweeps entries idle past idleKeep globally, then evicts the
-// least-recently-active; a live lockout survives both unless every entry is
-// locked.
+// routes). Strikes reset on any successful write. The mechanics are the
+// shared lockout limiter — same strikes, window, and memory bounds as the
+// API's bearer-auth limiter, so the two surfaces behave identically to
+// operators.
 type writeRateLimiter struct {
-	mu       sync.Mutex
-	strikes  map[string]*writeStrikes
-	maxHits  int
-	lockout  time.Duration
-	nowFunc  func() time.Time
-	idleKeep time.Duration
-	maxKeys  int
-}
-
-type writeStrikes struct {
-	count       int
-	lockedUntil time.Time
-	last        time.Time
+	limiter *lockout.Limiter
 }
 
 func newWriteRateLimiter() *writeRateLimiter {
-	return &writeRateLimiter{
-		strikes:  make(map[string]*writeStrikes),
-		maxHits:  3,
-		lockout:  time.Minute,
-		nowFunc:  time.Now,
-		idleKeep: 10 * time.Minute,
-		maxKeys:  1024,
-	}
+	return &writeRateLimiter{limiter: lockout.New(lockout.Config{
+		MaxHits:  3,
+		Lockout:  time.Minute,
+		IdleKeep: 10 * time.Minute,
+		MaxKeys:  1024,
+		OnLock: func(key string, lockout time.Duration) {
+			slog.Warn(
+				"webui: write routes locked after repeated CSRF failures",
+				"client",
+				key,
+				"lockout",
+				lockout.String(),
+			)
+		},
+	})
 }
 
 // wrap guards one write route: locked-out clients get 429 before any form
@@ -257,123 +251,27 @@ func (l *writeRateLimiter) wrap(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := remoteHost(r)
 
-		l.mu.Lock()
-		strikes := l.pruneLocked(key)
-		now := l.nowFunc()
-
-		if strikes != nil && now.Before(strikes.lockedUntil) {
-			retry := time.Until(strikes.lockedUntil).Round(time.Second)
-
-			l.mu.Unlock()
-			w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(strikes.lockedUntil)/time.Second)+1))
+		if remaining, locked := l.limiter.Locked(key); locked {
+			w.Header().Set("Retry-After", strconv.Itoa(int(remaining/time.Second)+1))
 			http.Error(
 				w,
-				"too many failed attempts — write routes locked for "+retry.String(),
+				"too many failed attempts — write routes locked for "+remaining.Round(time.Second).String(),
 				http.StatusTooManyRequests,
 			)
 
 			return
 		}
 
-		l.mu.Unlock()
-
 		recorder := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(recorder, r)
 
-		l.mu.Lock()
-		defer l.mu.Unlock()
-
-		strikes = l.pruneLocked(key)
-		if strikes == nil {
-			if recorder.status != http.StatusForbidden {
-				return // nothing to track until a first strike
-			}
-
-			strikes = &writeStrikes{}
-			l.strikes[key] = strikes
-		}
-
-		strikes.last = l.nowFunc()
-
 		switch {
 		case recorder.status == http.StatusForbidden:
-			strikes.count++
-
-			if strikes.count >= l.maxHits {
-				strikes.lockedUntil = strikes.last.Add(l.lockout)
-				strikes.count = 0
-
-				slog.Warn(
-					"webui: write routes locked after repeated CSRF failures",
-					"client",
-					key,
-					"lockout",
-					l.lockout.String(),
-				)
-			}
+			l.limiter.Add(key)
 		case recorder.status < http.StatusBadRequest:
-			strikes.count = 0
-			strikes.lockedUntil = time.Time{}
+			l.limiter.Reset(key)
 		}
-
-		l.boundLocked()
 	})
-}
-
-// pruneLocked drops the entry for key when it has been idle past idleKeep
-// and is not locked; returns the live entry (or nil) without removing it.
-// Caller holds mu.
-func (l *writeRateLimiter) pruneLocked(key string) *writeStrikes {
-	strikes, ok := l.strikes[key]
-	if !ok {
-		return nil
-	}
-
-	now := l.nowFunc()
-	if now.Before(strikes.lockedUntil) || now.Sub(strikes.last) < l.idleKeep {
-		return strikes
-	}
-
-	delete(l.strikes, key)
-
-	return nil
-}
-
-// boundLocked caps the map against rotating source IPs: per-contact pruning
-// only fires for a key's OWN next request, so keys that never come back
-// would grow the map without limit. Entries idle past idleKeep (and not
-// locked) are swept globally — the exact per-contact predicate applied to
-// every key; if the map is still over maxKeys, the least-recently-active
-// entries are evicted oldest-first (a locked entry is evicted only when the
-// whole map is locked — under that pressure the bound wins).
-// Caller holds mu.
-func (l *writeRateLimiter) boundLocked() {
-	if len(l.strikes) <= l.maxKeys {
-		return
-	}
-
-	now := l.nowFunc()
-	for key, strikes := range l.strikes {
-		if now.Before(strikes.lockedUntil) || now.Sub(strikes.last) < l.idleKeep {
-			continue
-		}
-
-		delete(l.strikes, key)
-	}
-
-	for len(l.strikes) > l.maxKeys {
-		oldestKey := ""
-
-		var oldest *writeStrikes
-
-		for key, strikes := range l.strikes {
-			if oldest == nil || strikes.last.Before(oldest.last) {
-				oldestKey, oldest = key, strikes
-			}
-		}
-
-		delete(l.strikes, oldestKey)
-	}
 }
 
 // remoteHost is the rate-limit key: the client IP without port. Behind a

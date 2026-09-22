@@ -21,6 +21,7 @@ import (
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -1710,11 +1711,14 @@ func TestFmtAgeParityWithServer(t *testing.T) {
 // read routes stay untouched; the lockout expires and a good write clears
 // the strike count.
 func TestWriteRateLimitLockout(t *testing.T) {
-	l := newWriteRateLimiter()
-	l.lockout = 40 * time.Millisecond
-
 	clock := time.Now()
-	l.nowFunc = func() time.Time { return clock }
+	l := &writeRateLimiter{limiter: lockout.New(lockout.Config{
+		MaxHits:  3,
+		Lockout:  40 * time.Millisecond,
+		IdleKeep: 10 * time.Minute,
+		MaxKeys:  1024,
+		Now:      func() time.Time { return clock },
+	})}
 
 	post := func(csrf string) int {
 		inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -1804,12 +1808,14 @@ func TestWriteRateLimitPerClient(t *testing.T) {
 // takes idle unlocked entries, least-recently-active eviction takes the
 // oldest, and a live lockout survives both.
 func TestWriteRateLimitBoundedAgainstRotatingIPs(t *testing.T) {
-	l := newWriteRateLimiter()
-	l.maxKeys = 4
-	l.lockout = time.Hour
-
 	clock := time.Now()
-	l.nowFunc = func() time.Time { return clock }
+	l := &writeRateLimiter{limiter: lockout.New(lockout.Config{
+		MaxHits:  3,
+		Lockout:  time.Hour,
+		IdleKeep: 10 * time.Minute,
+		MaxKeys:  4,
+		Now:      func() time.Time { return clock },
+	})}
 
 	hit := func(remote string) int {
 		inner := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
