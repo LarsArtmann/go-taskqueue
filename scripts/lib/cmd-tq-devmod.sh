@@ -12,6 +12,11 @@ cmdtq_devmod() {
 	local root dir
 	root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 	dir="$root/cmd/tq"
+	# The tidy below must not inherit a pinned GOTOOLCHAIN=local on a binary
+	# older than the go.mod floor: the failure is swallowed (|| true) and the
+	# gate then dies at build with "updates to go.mod needed". Same env-lie
+	# the gate itself guards against one step later.
+	export GOTOOLCHAIN=auto
 	{
 		cat "$dir/go.mod"
 		printf '\nreplace github.com/larsartmann/go-taskqueue => ../..\n'
