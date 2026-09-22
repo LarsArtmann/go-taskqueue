@@ -250,6 +250,7 @@ func bandGroups(tasks []task.Task) []BoardBandGroup {
 			groups = append(groups, g)
 		}
 	}
+
 	return groups
 }
 
