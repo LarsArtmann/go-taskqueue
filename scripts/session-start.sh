@@ -25,7 +25,21 @@ echo "=== prior reports for current task ID(s) ==="
 if [ "$#" -gt 0 ]; then
   for id in "$@"; do
     echo "--- $id ---"
-    rg -l "$id" docs/status/ 2>/dev/null || echo "(no prior reports)"
+    local_reports="$(rg -l "$id" docs/status/ 2>/dev/null || true)"
+    if [ -z "$local_reports" ]; then
+      echo "(no prior reports)"
+    else
+      echo "$local_reports"
+      echo "prior windows:"
+      echo "$local_reports" | sed 's/^/  /'
+      done_rows="$(rg -n "$id" docs/status/ 2>/dev/null | rg 'DONE|done row|\[x\]' || true)"
+      if [ -n "$done_rows" ]; then
+        echo "DONE-row state:"
+        echo "$done_rows" | sed 's/^/  /'
+      else
+        echo "(no DONE rows mention this ID — repeat dispatch possible)"
+      fi
+    fi
   done
 else
   echo "(pass task IDs: scripts/session-start.sh <task-id>…; rg docs/status/ skipped)"
