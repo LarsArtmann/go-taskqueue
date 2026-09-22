@@ -31,6 +31,17 @@ if [ "$#" -gt 0 ]; then
     else
       echo "prior windows:"
       echo "$local_reports" | sed 's/^/  /'
+      # A DONE-row verdict is a stronger stop signal than a filename
+      # match, so each prior report's verdict line surfaces beside it
+      # (repeat-dispatch window, 2026-09-22).
+      echo "verdicts:"
+      while IFS= read -r f; do
+        [ -f "$f" ] || continue
+        v="$(rg -m1 '^\*\*Verdict' "$f" 2>/dev/null || true)"
+        if [ -n "$v" ]; then
+          echo "  $(basename "$f"): $v"
+        fi
+      done <<< "$local_reports"
       done_rows="$(rg -n "$id" docs/status/ 2>/dev/null | rg 'DONE|done row|\[x\]' || true)"
       if [ -n "$done_rows" ]; then
         echo "DONE-row state:"
@@ -39,10 +50,26 @@ if [ "$#" -gt 0 ]; then
         echo "(no DONE rows mention this ID — repeat dispatch possible)"
       fi
     fi
+    # The queue record (status / attempts / lastError tail / facts) — the
+    # tq-show turn-1 gap recurred even after the report documenting it was
+    # read, so it is mechanical now (07-12 report §d2/§f1).
+    if command -v tq >/dev/null 2>&1; then
+      echo "queue record (tq show $id, first 40 lines):"
+      tq show "$id" 2>&1 | head -40 | sed 's/^/  /'
+    else
+      echo "(tq not on PATH — queue record skipped)"
+    fi
   done
 else
   echo "(pass task IDs: scripts/session-start.sh <task-id>…; rg docs/status/ skipped)"
 fi
+
+echo
+echo "=== status index tail (docs/status/README.md, last 10 lines) ==="
+# Sibling close-outs carry the stop-artifact / §d remedy patterns; the
+# zero-artifact-stop class recurred because only the SAME-ID report got
+# read (04-46 §e1).
+tail -10 docs/status/README.md 2>/dev/null || echo "(no status index)"
 
 echo
 echo "=== CONTRIBUTING.md head ==="

@@ -264,6 +264,45 @@ func TestDeadPoolDetectorStreakLifecycle(t *testing.T) {
 	}
 }
 
+// TestDeadPoolDetectorRetriesFailedDelivery pins the 06-06 §b1 fix: a
+// transient notify failure must NOT arm the streak, so the next blind
+// tick retries the raise. The old code set alerted=true BEFORE calling
+// notify — one failed post burned the streak's only alert forever.
+func TestDeadPoolDetectorRetriesFailedDelivery(t *testing.T) {
+	t.Parallel()
+
+	blind := harvest.Result{Repos: 1, Skipped: []harvest.Skipped{
+		{Reason: "scan failed: no TODO_LIST.md"},
+	}}
+
+	var calls int
+
+	d := &deadPoolDetector{ticks: 2}
+	d.notify = func(triggered bool, _ int, _ string, _ int) bool {
+		calls++
+
+		return calls > 1
+	}
+
+	d.observe(blind) // streak 1 — quiet
+	d.observe(blind) // streak 2 — fires, delivery fails
+	d.observe(blind) // streak 3 — retries the raise, delivered
+	if calls != 2 {
+		t.Fatalf("raise attempts = %d, want 2 (failed delivery must retry next tick)", calls)
+	}
+
+	d.observe(blind)
+	if calls != 2 {
+		t.Fatalf("raise attempts = %d, want 2 (the delivered alert must arm the streak)", calls)
+	}
+
+	d.notify = func(bool, int, string, int) bool { return true }
+	d.observe(harvest.Result{Repos: 1, Skipped: []harvest.Skipped{{Reason: "harvested"}}})
+	if d.alerted {
+		t.Error("healthy tick must clear the standing alert")
+	}
+}
+
 // TestStarvationDetectorLifecycle pins the starvation alarm contract: the
 // oldest PENDING task past the threshold fires ONCE per episode, further
 // over-threshold ticks stay quiet, a tick back under the threshold (or an
