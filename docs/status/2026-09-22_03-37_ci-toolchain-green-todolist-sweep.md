@@ -1,4 +1,4 @@
-# TODO-list sweep: CI toolchain-green restoration + gate/test pins + docs reconciliation
+# 2026-09-22 — TODO-list sweep: CI toolchain-green restoration + gate/test pins + docs reconciliation
 
 **Verdict: WORK window — 12 TODO rows closed, master-CI red root-caused and fixed locally (push pending owner), 9 code/test/script changes + 6 docs changes landed, every touched gate re-run green.**
 
