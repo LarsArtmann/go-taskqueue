@@ -930,6 +930,7 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 			t.Errorf("budget meter missing %q", want)
 		}
 	}
+
 	if strings.Contains(stats, "tq-meter-warn") || strings.Contains(stats, "tq-meter-over") {
 		t.Error("budget meter at 40%% must not carry warn/over tone")
 	}
@@ -966,6 +967,7 @@ func TestBudgetMeterToneAndQuantization(t *testing.T) {
 			if tt.warn != strings.Contains(track, "tq-meter-warn") {
 				t.Errorf("track = %q, warn presence = %v", track, tt.warn)
 			}
+
 			if tt.over != strings.Contains(track, "tq-meter-over") {
 				t.Errorf("track = %q, over presence = %v", track, tt.over)
 			}

@@ -80,6 +80,7 @@ func TestParseRepoAllRejectsDamagedCheckbox(t *testing.T) {
 
 	repo := t.TempDir()
 	body := "# Backlog\n\n- [ ] good row one\n--- [ ] the damaged row\n- [ ] good row two\n"
+
 	if err := os.WriteFile(filepath.Join(repo, "TODO_LIST.md"), []byte(body), 0o644); err != nil {
 		t.Fatalf("write todo file: %v", err)
 	}

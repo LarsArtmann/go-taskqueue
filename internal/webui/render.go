@@ -237,6 +237,7 @@ type BoardBandGroup struct {
 func bandGroups(tasks []task.Task) []BoardBandGroup {
 	order := []queue.Band{queue.BandHot, queue.BandMachine, queue.BandBacklog}
 	groups := make([]BoardBandGroup, 0, len(order))
+
 	for _, band := range order {
 		g := BoardBandGroup{Band: band}
 		for _, t := range tasks {
@@ -244,6 +245,7 @@ func bandGroups(tasks []task.Task) []BoardBandGroup {
 				g.Tasks = append(g.Tasks, t)
 			}
 		}
+
 		if len(g.Tasks) > 0 {
 			groups = append(groups, g)
 		}

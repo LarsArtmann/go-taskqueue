@@ -279,6 +279,7 @@ func TestBoardBandGrouping(t *testing.T) {
 	if len(groups) != 3 {
 		t.Fatalf("groups = %d, want 3", len(groups))
 	}
+
 	for i, want := range []task.Task{hot, machine, backlog} {
 		if len(groups[i].Tasks) != 1 || groups[i].Tasks[0].Priority != want.Priority {
 			t.Errorf("group %d = %+v, want band of priority %d", i, groups[i], want.Priority)

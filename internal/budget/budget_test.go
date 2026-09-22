@@ -190,6 +190,7 @@ func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
 
 	got := (Guard{}).UsageToday(ctx, factSource{j})
 	want := SessionUsage{Runs: 4, CostUSD: 0.75, PromptTokens: 2700, CompletionTokens: 5200, Messages: 24}
+
 	if got != want {
 		t.Fatalf("usage today = %+v, want %+v (non-usage and yesterday's completions excluded)", got, want)
 	}
