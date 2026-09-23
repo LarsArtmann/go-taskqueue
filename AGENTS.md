@@ -851,6 +851,16 @@ prose, not the table.
   was recorded on a warm cache — `golangci-lint cache clean` before
   generating or judging baseline rows, CI is always clean-cache)
   or on a NEW (module, linter) class;
+  2026-09-23 eighth regen: 1410 findings, 168 rows — coverage fix, not
+  drift: the ADR-0019 spike modules `internal/queue/sqlitev4` and
+  `internal/queue/cqrsqlite` had ZERO baseline rows (the last regen
+  predated them), so the gate was structurally blind to new findings
+  there; clean-cache --check first CONFIRMED the blindness (gate failed
+  on the new classes), then regen admitted them (sqlitev4: 152 findings/17
+  rows, cqrsqlite: 122 findings/13 rows — dominated by paralleltest/
+  wrapcheck test-noise classes consistent with the mirrored sqlite
+  backend, no new triage policy); --check green at 1410 vs 1410 after
+  or on a NEW (module, linter) class;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
   is the only config — there are no per-module files, and golangci-lint
