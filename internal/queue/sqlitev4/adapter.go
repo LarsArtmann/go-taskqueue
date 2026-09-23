@@ -26,7 +26,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -202,7 +201,7 @@ func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 		return task.Task{}, mapErr(err)
 	}
 
-	return s.Get(ctx, created.ID)
+	return s.Get(ctx, task.ID(created.ID.String()))
 }
 
 // tokenFor resolves the current claim token for an owner-fenced finalize
@@ -211,13 +210,6 @@ func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 // token-fenced ones — theft detection stays at this gate (tq semantics),
 // not in the engine (upstream semantics).
 func (s *Store) tokenFor(ctx context.Context, id task.ID, owner string, requireLive bool) (string, error) {
-	q := struct {
-		querier interface {
-			QueryRowContext(context.Context, string, ...any) *sql.Row
-		}
-	}{}
-	_ = q
-
 	row := s.db.QueryRowContext(ctx, `
 		SELECT status, lease_owner, COALESCE(lease_expires, 0), COALESCE(lease_token, '')
 		FROM tasks WHERE id = ?`, id.String())
@@ -1394,14 +1386,6 @@ func leaseErr(ctx context.Context, q interface {
 	return task.ErrLeaseNotHeld
 }
 
-func cancelReasonDetail(reason string) jsontext.Value {
-	if reason == "" {
-		return nil
-	}
-
-	return mustJSON(map[string]string{"reason": reason})
-}
-
 func cooperativeCancelDetail(reason, after string) jsontext.Value {
 	detail := map[string]string{"cooperative": "true"}
 	if after != "" {
@@ -1439,6 +1423,3 @@ func boolInt(b bool) int {
 
 	return 0
 }
-
-var _ = cancelReasonDetail      //nolint:unused // parity helper (tq surface completeness)
-var _ = strconv.Itoa            //nolint:staticcheck // keep strconv import honest
