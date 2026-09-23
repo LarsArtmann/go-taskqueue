@@ -36,14 +36,13 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib" // database/sql driver for the companion handle
 	upostgres "github.com/larsartmann/go-cqrs-lite/queue/postgres/v4"
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
-
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
-	_ "github.com/jackc/pgx/v5/stdlib" // database/sql driver for the companion handle
 )
 
 // Store is the S1 spike store: tq's queue.Store contract over the upstream
@@ -461,13 +460,23 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 			}
 		}
 
-		res, err := execTx(ctx, tx, `
+		res, err := execTx(
+			ctx,
+			tx,
+			`
 			UPDATE tasks
 			SET status = 'running', lease_owner = ?, lease_expires = ?, lease_token = ?, updated_at = ?
 			WHERE id = ? AND (
 			    (status = 'pending' AND not_before <= ?)
 			    OR (status = 'running' AND lease_expires IS NOT NULL AND lease_expires <= ?))`,
-			owner, now.Add(lease).UnixMilli(), uqueue.NewClaimToken(), now.UnixMilli(), id, now.UnixMilli(), now.UnixMilli())
+			owner,
+			now.Add(lease).UnixMilli(),
+			uqueue.NewClaimToken(),
+			now.UnixMilli(),
+			id,
+			now.UnixMilli(),
+			now.UnixMilli(),
+		)
 		if err != nil {
 			return err
 		}

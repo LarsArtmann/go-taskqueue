@@ -953,7 +953,9 @@ func TestEnqueueWithoutDedupKeyIndependent(t *testing.T) {
 }
 
 func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
-	t.Skip("postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)")
+	t.Skip(
+		"postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)",
+	)
 }
 
 func TestWatermarkAbsentReturnsZero(t *testing.T) {
@@ -1045,7 +1047,9 @@ func TestWatermarkMonotonicGuard(t *testing.T) {
 }
 
 func TestMigrateAddsWatermarksTable(t *testing.T) {
-	t.Skip("postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)")
+	t.Skip(
+		"postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)",
+	)
 }
 
 func TestFailPermanentDeadLettersImmediately(t *testing.T) {
@@ -2597,7 +2601,9 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 // tasks' facts move to facts_archive; active tasks' facts stay hot; the
 // tasks projection and Facts() keep working; the watermark is recorded.
 func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
-	t.Skip("DIVERGENCE (S1 spike): the fact archive (facts_archive/journal_meta) has no upstream counterpart — hot-journal-only for now; see docs/status S1 report")
+	t.Skip(
+		"DIVERGENCE (S1 spike): the fact archive (facts_archive/journal_meta) has no upstream counterpart — hot-journal-only for now; see docs/status S1 report",
+	)
 	ctx := context.Background()
 
 	s := openTestStore(t)
@@ -2938,7 +2944,9 @@ func TestBandFilter(t *testing.T) {
 // EXPLICIT zero, not an omitted field — a thin detail would silently
 // downgrade the audit's coverage for every modern task.
 func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
-	t.Skip("DIVERGENCE (S1 spike): upstream task.enqueued detail carries only {project, type} — the priority/dedup_key projection fields the journal-drift audit needs are not written; see docs/status S1 report")
+	t.Skip(
+		"DIVERGENCE (S1 spike): upstream task.enqueued detail carries only {project, type} — the priority/dedup_key projection fields the journal-drift audit needs are not written; see docs/status S1 report",
+	)
 	ctx := context.Background()
 	s := openTestStore(t)
 

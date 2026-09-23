@@ -209,6 +209,8 @@ jobs:
           go-version: 1.27.1
       - name: Postgres store conformance
         run: cd internal/queue/postgres && GOWORK=off go test . -run TestPostgres -count=1 -v
+      - name: ADR-0019 S1 postgres spike suite (queue/postgres/v4-backed store)
+        run: cd internal/queue/postgresv4 && GOWORK=off go test . -count=1 -v
       - name: Fullcore postgres smoke (drain + deadline path)
         # TQ_TEST_POSTGRES is already exported at job level; fullcore.sh
         # runs its postgres variant (drain 4/4 + 50ms deadline) against the
