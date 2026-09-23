@@ -29,8 +29,8 @@ import (
 	"strings"
 	"time"
 
-	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	usqlite "github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4"
+	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -105,7 +105,8 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 // jsontext.Value, already JSON; the default JSONCodec would base64-encode
 // the bytes. A nil value binds as the EMPTY blob, never SQL NULL — the
 // upstream tasks.payload column is NOT NULL and tq's zero-value payloads
-// are empty, not null (tq's own schema stores '' the same way).
+// are empty, not null (tq's own schema stores the empty string the same
+// way).
 func identityCodec() uqueue.Codec[[]byte] {
 	return uqueue.Codec[[]byte]{
 		Encode: func(v []byte) ([]byte, error) {
