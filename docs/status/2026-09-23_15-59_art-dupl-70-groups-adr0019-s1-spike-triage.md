@@ -21,13 +21,13 @@ Nothing broke. The 70 clone groups are the **ADR-0019 S1 migration spikes
 landing on top of the freshly deduplicated tree**. Timeline, all from git
 log over the whole repo + the dated reports:
 
-| When (2026-09-23) | Event | Evidence |
-| --- | --- | --- |
-| 01:34 | Dedup pass #1: 22→18 actionable groups at `-t 4`, 3 extractions | `docs/status/2026-09-23_01-34_art-dupl-dedup-pass.md` |
-| 02:35 | Dedup pass #2 (continuation): `decodePayload`/`prepareRepo`/`payloadTimeout` extracted; end state **9 shown / 65 total** at `-t 5` | `docs/status/2026-09-23_02-35_dedup-continuation-window.md` §a5 |
-| 03:50 (`db0fa088` + f37ec7a6/5080ec56/b81496ad) | `internal/queue/cqrsqlite` lands (daemon commits): adapter 455 + extras 744 + store_test **3,440** lines — the migration plan's C03 scaffold | `git log -- internal/queue/cqrsqlite`; plan M011 |
-| 04:26 (`889c1888` + d8c94e26) | `internal/queue/sqlitev4` lands (daemon commits): adapter **1,425** lines — a SECOND S1 spike module over the same upstream `queue/sqlite/v4.0.0` | `git log -- internal/queue/sqlitev4` |
-| now | sqlitev4 still being edited (uncommitted) | `git status` |
+| When (2026-09-23)                               | Event                                                                                                                                             | Evidence                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 01:34                                           | Dedup pass #1: 22→18 actionable groups at `-t 4`, 3 extractions                                                                                   | `docs/status/2026-09-23_01-34_art-dupl-dedup-pass.md`           |
+| 02:35                                           | Dedup pass #2 (continuation): `decodePayload`/`prepareRepo`/`payloadTimeout` extracted; end state **9 shown / 65 total** at `-t 5`                | `docs/status/2026-09-23_02-35_dedup-continuation-window.md` §a5 |
+| 03:50 (`db0fa088` + f37ec7a6/5080ec56/b81496ad) | `internal/queue/cqrsqlite` lands (daemon commits): adapter 455 + extras 744 + store_test **3,440** lines — the migration plan's C03 scaffold      | `git log -- internal/queue/cqrsqlite`; plan M011                |
+| 04:26 (`889c1888` + d8c94e26)                   | `internal/queue/sqlitev4` lands (daemon commits): adapter **1,425** lines — a SECOND S1 spike module over the same upstream `queue/sqlite/v4.0.0` | `git log -- internal/queue/sqlitev4`                            |
+| now                                             | sqlitev4 still being edited (uncommitted)                                                                                                         | `git status`                                                    |
 
 The user's paste: **70 total, 18 shown** (24 non-actionable, 28 filtered
 suppressed). Recount against the paste, group by group: **13 of the 18 shown
@@ -202,53 +202,53 @@ radical honesty, so:
 
 Impact: Critical/High/Medium/Low · Effort: S (<30min) / M (30min-2h) / L (>2h)
 
-| # | Task | Impact | Effort | Category |
-| --- | --- | --- | --- | --- |
-| 1 | §g1 ruling → keep ONE S1 spike module (cqrsqlite per plan OR sqlitev4 per live work), delete the other (`git rm` + go.mod/facade/plan references updated) | Critical | S | Cleanup |
-| 2 | Land the in-flight sqlitev4 edits (dead-helper removal + dep promotion) only behind a green in-module run of tq's sqlite suite against the new store | Critical | M | Quality |
-| 3 | Write the S1 sqlite divergence report (finalizes semantics, fact vocabulary, heartbeat facts, tq-extras inventory) citing ADR-0019 §S1 — TODO row 31's definition of done | Critical | L | Documentation |
-| 4 | Run tq's sqlite conformance suite against the surviving spike store; per-subtest verdict table (plan M025/M037) | Critical | M | Quality |
-| 5 | Build the art-dupl accept-list gate (02-35 §f33): accepted-groups file, expiry annotations, growth = red — seed with 13 spike groups + 5 twins | High | M | Quality |
-| 6 | S1 postgres spike over `queue/postgres/v4.0.0` judged by TQ_TEST_POSTGRES suite (TODO row 32) | High | L | Feature |
-| 7 | S1 decision memo per tq-extra surface: upstream-grown vs companion-table (TODO row 33) | High | M | Documentation |
-| 8 | S1 replay tool: journal → fresh engine store, projection-equality verify (TODO row 34) | High | L | Feature |
-| 9 | S1 flip: default store swap + worker token finalizes + facades/vendorHash follow (TODO row 35) | High | L | Feature |
-| 10 | Root go.mod + facade wiring for the surviving spike module per ADR-0016 containment (require + relative replace per facade) | High | M | Feature |
-| 11 | Decide tq-fact append path (upstream escape vs companion journal) BEFORE S2 starts | High | M | Documentation |
-| 12 | Full ci-local green run on the current tree (carried 00-21 §b1) | High | M | Quality |
-| 13 | Master CI verdict on the post-a9e9332 lineage + spike commits (00-21 §c5 carried) | High | S | Quality |
-| 14 | vendorHash fast gate (`nix build .#checks.x86_64-linux.vendor-hash`) after spike go.mods + a9e9332; copy `got:` if drifted | High | S | Bug |
-| 15 | `nix build` over the tree with the two new tracked modules (new FOD inputs) | High | M | Quality |
-| 16 | Diagnose fuzz workflow red since 2026-09-22 03:32 (00-21 §c3) | Medium | S | Bug |
-| 17 | AGENTS.md: record the split-brain + surviving module name once ruled (§e1 class: no next session re-derives) | Medium | S | Documentation |
-| 18 | HARVEST this report's §f into TODO_LIST (docs-health) | Medium | S | Process |
-| 19 | Update ADR-0019 + migration plan module-name references if the survivor is NOT cqrsqlite (plan/ADR currently say cqrsqlite) | Medium | S | Documentation |
-| 20 | prioritize/depbump: migrate to `decodePayload[T]` + resolve the `errors.Is` sentinel split brain (02-35 §a3 residual) | Medium | S | Cleanup |
-| 21 | Rune-safe `executor.Excerpt` follow-up (02-35 TODO harvest row) | Medium | S | Bug |
-| 22 | Dedicated `TestRecordRunOutcome` unit test (02-35 §b4a) | Medium | S | Quality |
-| 23 | Move `LogPath` into `sessionUsage` (02-35 §b4b; wire-identical, zero literals) | Medium | S | Cleanup |
-| 24 | Accept-rationale one-liners at any remaining un-annotated accepted sites (01-34 §b1 residual) | Low | S | Documentation |
-| 25 | Dedup autopsy re-run at `-t 3` AFTER module resolution (02-35 §f; running it on the split brain now wastes the pass) | Medium | M | Quality |
-| 26 | Owner-only: scope `.tq-verify` gofmt stage to tracked files (vendor dead-letter machine, 5+ tasks dead — AGENTS.md known issue) | High | S | Bug |
-| 27 | Fold the full session-start ritual into `scripts/session-start.sh` output (carried 02-35 §f34; §d2 datapoint) | Medium | S | Process |
-| 28 | Script the cheap verify battery as `scripts/verify-quick.sh` (02-35 §f33, fourth re-derivation noted there) | Medium | S | DX |
-| 29 | Repo-level GOTOOLCHAIN=auto default (.envrc or session-start export) to kill the first-command tax (§e4) | Medium | S | DX |
-| 30 | New-queue-module → report pairing check (§e3: script or checklist row) | Low | S | Process |
-| 31 | Root-cause `TestSweepPinsCloseoutReportPaths` flake (02-35 §g1; repro protocol in that row) | Medium | M | Bug |
-| 32 | tq-side prior-report-for-this-task-id lookup in session-start.sh (00-31 §d class, carried) | Medium | S | DX |
-| 33 | tq-show gap: consult the queue record at session start (recurring miss class, carried 08-23/09-10) | Medium | M | DX |
-| 34 | Gates-then-commit hard rule for footer commits vs daemon folds (carried, Nth repeat across reports) | Medium | S | Process |
-| 35 | Dead-letter signature grouping in `tq dlq` (01-46 §f) | Low | M | Feature |
-| 36 | Pre-claim DONE-row refusal in the mint path (01-46 §f) | Medium | S | Bug |
-| 37 | Stop-report template for zero-delta verify windows (01-46 §f) | Low | S | Process |
-| 38 | Harvester mint-skip for already-DONE rows (02-06 §f) | Medium | S | Bug |
-| 39 | Sibling health-path triage lead from 02-01 §f14 | Low | M | Cleanup |
-| 40 | Generic ci-local↔ci.yml parity gate (`check-parity.sh`, 00-55 §f) | Low | M | Quality |
-| 41 | Sanitizer single-ownership: fold env into release-gates smoke (00-48 §e) | Low | S | Cleanup |
-| 42 | Review log-path surface (09-52 §f mint) | Low | S | Feature |
-| 43 | `tq api` verify row (09-52 §f mint) | Low | S | Quality |
-| 44 | Verify CHANGELOG carries the ADR-0019 adoption + spike-module entries (append-only policy; not checked this window) | Low | S | Documentation |
-| 45 | FEATURES.md: spike modules' status row once S1 lands (PLANNED → PARTIALLY DONE) | Low | S | Documentation |
+| #  | Task                                                                                                                                                                      | Impact   | Effort | Category      |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------ | ------------- |
+| 1  | §g1 ruling → keep ONE S1 spike module (cqrsqlite per plan OR sqlitev4 per live work), delete the other (`git rm` + go.mod/facade/plan references updated)                 | Critical | S      | Cleanup       |
+| 2  | Land the in-flight sqlitev4 edits (dead-helper removal + dep promotion) only behind a green in-module run of tq's sqlite suite against the new store                      | Critical | M      | Quality       |
+| 3  | Write the S1 sqlite divergence report (finalizes semantics, fact vocabulary, heartbeat facts, tq-extras inventory) citing ADR-0019 §S1 — TODO row 31's definition of done | Critical | L      | Documentation |
+| 4  | Run tq's sqlite conformance suite against the surviving spike store; per-subtest verdict table (plan M025/M037)                                                           | Critical | M      | Quality       |
+| 5  | Build the art-dupl accept-list gate (02-35 §f33): accepted-groups file, expiry annotations, growth = red — seed with 13 spike groups + 5 twins                            | High     | M      | Quality       |
+| 6  | S1 postgres spike over `queue/postgres/v4.0.0` judged by TQ_TEST_POSTGRES suite (TODO row 32)                                                                             | High     | L      | Feature       |
+| 7  | S1 decision memo per tq-extra surface: upstream-grown vs companion-table (TODO row 33)                                                                                    | High     | M      | Documentation |
+| 8  | S1 replay tool: journal → fresh engine store, projection-equality verify (TODO row 34)                                                                                    | High     | L      | Feature       |
+| 9  | S1 flip: default store swap + worker token finalizes + facades/vendorHash follow (TODO row 35)                                                                            | High     | L      | Feature       |
+| 10 | Root go.mod + facade wiring for the surviving spike module per ADR-0016 containment (require + relative replace per facade)                                               | High     | M      | Feature       |
+| 11 | Decide tq-fact append path (upstream escape vs companion journal) BEFORE S2 starts                                                                                        | High     | M      | Documentation |
+| 12 | Full ci-local green run on the current tree (carried 00-21 §b1)                                                                                                           | High     | M      | Quality       |
+| 13 | Master CI verdict on the post-a9e9332 lineage + spike commits (00-21 §c5 carried)                                                                                         | High     | S      | Quality       |
+| 14 | vendorHash fast gate (`nix build .#checks.x86_64-linux.vendor-hash`) after spike go.mods + a9e9332; copy `got:` if drifted                                                | High     | S      | Bug           |
+| 15 | `nix build` over the tree with the two new tracked modules (new FOD inputs)                                                                                               | High     | M      | Quality       |
+| 16 | Diagnose fuzz workflow red since 2026-09-22 03:32 (00-21 §c3)                                                                                                             | Medium   | S      | Bug           |
+| 17 | AGENTS.md: record the split-brain + surviving module name once ruled (§e1 class: no next session re-derives)                                                              | Medium   | S      | Documentation |
+| 18 | HARVEST this report's §f into TODO_LIST (docs-health)                                                                                                                     | Medium   | S      | Process       |
+| 19 | Update ADR-0019 + migration plan module-name references if the survivor is NOT cqrsqlite (plan/ADR currently say cqrsqlite)                                               | Medium   | S      | Documentation |
+| 20 | prioritize/depbump: migrate to `decodePayload[T]` + resolve the `errors.Is` sentinel split brain (02-35 §a3 residual)                                                     | Medium   | S      | Cleanup       |
+| 21 | Rune-safe `executor.Excerpt` follow-up (02-35 TODO harvest row)                                                                                                           | Medium   | S      | Bug           |
+| 22 | Dedicated `TestRecordRunOutcome` unit test (02-35 §b4a)                                                                                                                   | Medium   | S      | Quality       |
+| 23 | Move `LogPath` into `sessionUsage` (02-35 §b4b; wire-identical, zero literals)                                                                                            | Medium   | S      | Cleanup       |
+| 24 | Accept-rationale one-liners at any remaining un-annotated accepted sites (01-34 §b1 residual)                                                                             | Low      | S      | Documentation |
+| 25 | Dedup autopsy re-run at `-t 3` AFTER module resolution (02-35 §f; running it on the split brain now wastes the pass)                                                      | Medium   | M      | Quality       |
+| 26 | Owner-only: scope `.tq-verify` gofmt stage to tracked files (vendor dead-letter machine, 5+ tasks dead — AGENTS.md known issue)                                           | High     | S      | Bug           |
+| 27 | Fold the full session-start ritual into `scripts/session-start.sh` output (carried 02-35 §f34; §d2 datapoint)                                                             | Medium   | S      | Process       |
+| 28 | Script the cheap verify battery as `scripts/verify-quick.sh` (02-35 §f33, fourth re-derivation noted there)                                                               | Medium   | S      | DX            |
+| 29 | Repo-level GOTOOLCHAIN=auto default (.envrc or session-start export) to kill the first-command tax (§e4)                                                                  | Medium   | S      | DX            |
+| 30 | New-queue-module → report pairing check (§e3: script or checklist row)                                                                                                    | Low      | S      | Process       |
+| 31 | Root-cause `TestSweepPinsCloseoutReportPaths` flake (02-35 §g1; repro protocol in that row)                                                                               | Medium   | M      | Bug           |
+| 32 | tq-side prior-report-for-this-task-id lookup in session-start.sh (00-31 §d class, carried)                                                                                | Medium   | S      | DX            |
+| 33 | tq-show gap: consult the queue record at session start (recurring miss class, carried 08-23/09-10)                                                                        | Medium   | M      | DX            |
+| 34 | Gates-then-commit hard rule for footer commits vs daemon folds (carried, Nth repeat across reports)                                                                       | Medium   | S      | Process       |
+| 35 | Dead-letter signature grouping in `tq dlq` (01-46 §f)                                                                                                                     | Low      | M      | Feature       |
+| 36 | Pre-claim DONE-row refusal in the mint path (01-46 §f)                                                                                                                    | Medium   | S      | Bug           |
+| 37 | Stop-report template for zero-delta verify windows (01-46 §f)                                                                                                             | Low      | S      | Process       |
+| 38 | Harvester mint-skip for already-DONE rows (02-06 §f)                                                                                                                      | Medium   | S      | Bug           |
+| 39 | Sibling health-path triage lead from 02-01 §f14                                                                                                                           | Low      | M      | Cleanup       |
+| 40 | Generic ci-local↔ci.yml parity gate (`check-parity.sh`, 00-55 §f)                                                                                                         | Low      | M      | Quality       |
+| 41 | Sanitizer single-ownership: fold env into release-gates smoke (00-48 §e)                                                                                                  | Low      | S      | Cleanup       |
+| 42 | Review log-path surface (09-52 §f mint)                                                                                                                                   | Low      | S      | Feature       |
+| 43 | `tq api` verify row (09-52 §f mint)                                                                                                                                       | Low      | S      | Quality       |
+| 44 | Verify CHANGELOG carries the ADR-0019 adoption + spike-module entries (append-only policy; not checked this window)                                                       | Low      | S      | Documentation |
+| 45 | FEATURES.md: spike modules' status row once S1 lands (PLANNED → PARTIALLY DONE)                                                                                           | Low      | S      | Documentation |
 
 Items 6-11 restate TODO_LIST rows 32-35 + plan chain (they are the critical
 path; a §f without them would be incomplete). Items 26-43 are carried rows
@@ -280,9 +280,9 @@ re-confirmed live during this window's reading.
 
 ---
 
-*Report by the diagnostic window (15:59). Evidence is first-hand: git
+_Report by the diagnostic window (15:59). Evidence is first-hand: git
 log/status per path, full `git diff` of the uncommitted spike changes, both
 module builds rc=0 at the dirty tree (GOWORK=off, GOEXPERIMENT=jsonv2,
 GOTOOLCHAIN=auto), and the four docs read. Point-in-time snapshot — the
 concurrent sqlitev4 session may invalidates file-level claims at any moment;
-re-verify before treating claims as current.*
+re-verify before treating claims as current._

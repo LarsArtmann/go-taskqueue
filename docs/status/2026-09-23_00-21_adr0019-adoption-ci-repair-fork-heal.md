@@ -51,10 +51,10 @@ request. Concurrent context: a separate dedup/clone-extraction window
      an older task (priority aging) on a dirty store, so the following
      `Requeue(pq)` died "lease not held"; the two parked assertions
      wrongly demanded `ErrNoTaskDue` for the whole queue.
-   Fix is test-only: property-based FactsSince assertions (window predicate
-   honored, old excluded, new included, limit-1 = oldest in-window Seq
-   computed from an unbounded read) + `claimUntil`/`claimNoneUntil` helpers
-   that park foreign claims 1h out.
+     Fix is test-only: property-based FactsSince assertions (window predicate
+     honored, old excluded, new included, limit-1 = oldest in-window Seq
+     computed from an unbounded read) + `claimUntil`/`claimNoneUntil` helpers
+     that park foreign claims 1h out.
 7. **Fix verified on a real database**: throwaway `postgres:16` container on
    localhost:5433 — full `TestPostgresConformance` green at `-count=3` and
    `-race`; gofmt clean; sqlite twin suite green; root `go build ./...` +
@@ -273,6 +273,7 @@ request. Concurrent context: a separate dedup/clone-extraction window
    ratification lands?
 
 ---
-*Point-in-time snapshot; the living sources are TODO_LIST.md and the ADR.
+
+_Point-in-time snapshot; the living sources are TODO_LIST.md and the ADR.
 Format note: written as .md per the explicit session instruction, not the
-skill's default .html.*
+skill's default .html._

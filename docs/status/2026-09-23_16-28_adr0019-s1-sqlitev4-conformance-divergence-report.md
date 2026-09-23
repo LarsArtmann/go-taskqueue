@@ -66,6 +66,7 @@ finish a stop just after lease lapse, before reclaim). Theft detection
 therefore stays at tq's owner gate, not the engine token.
 
 Residual semantics deltas (spike-accepted, none suite-pinned yet):
+
 - **Cross-process same-owner finalization is allowed**: the owner check
   reads the DB row, so a restarted process with the same owner string can
   finalize a lease it did not claim in-process (cqrsqlite's in-process
@@ -139,11 +140,11 @@ is adapter-owned writing tq's full `RequeueEvidence` incl.
 
 ### Skip ledger (full)
 
-| Test | Why |
-| --- | --- |
-| TestArchiveFactsBeforeKeepsProjections | D4 |
-| TestEnqueueFactDetailCarriesIdentity | D2 |
-| TestEnqueueClaimBaseline10k | NOT a divergence — env-gated baseline (`TQ_BASELINE=1`), skips identically on tq's own suite (control run 16:2x, rc=0) |
+| Test                                   | Why                                                                                                                    |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| TestArchiveFactsBeforeKeepsProjections | D4                                                                                                                     |
+| TestEnqueueFactDetailCarriesIdentity   | D2                                                                                                                     |
+| TestEnqueueClaimBaseline10k            | NOT a divergence — env-gated baseline (`TQ_BASELINE=1`), skips identically on tq's own suite (control run 16:2x, rc=0) |
 
 ## b) PARTIALLY DONE
 

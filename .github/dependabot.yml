@@ -88,7 +88,7 @@ updates:
     groups:
       actions:
         patterns:
-          - "*"
+          - '*'
   - package-ecosystem: gomod
     directory: /internal/journal/cqrs
     schedule:
@@ -181,6 +181,26 @@ updates:
           - patch
   - package-ecosystem: gomod
     directory: /examples/embed
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: gomod
+    directory: /internal/queue/cqrsqlite
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: gomod
+    directory: /internal/queue/sqlitev4
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

@@ -68,7 +68,7 @@ commits mid-session (expected; observed as staged/MM states at wrap-up).
 2. **Verification depth vs the pre-push gate.** Targeted battery green (§a5),
    but `./scripts/ci-local.sh` (smokes, nix build, baseline check, master-CI
    state) was NOT run — this session never planned a push. Everything here is
-   push-ready *pending* ci-local. Effort M (mostly machine time). Blocker: none.
+   push-ready _pending_ ci-local. Effort M (mostly machine time). Blocker: none.
 3. **Lint baseline bookkeeping.** My change SHRINKS counts (cmd/tq err113
    4→2; large code-motion removals). `.golangci-baseline.txt` not
    regenerated — policy says shrink is advisory-only and regen needs a
@@ -183,53 +183,53 @@ visibility hole (no gate), not a break.
 (Ranked by impact. E=effort S<30m/M=30m-2h/L>2h. C=category.
 ⚠ = already tracked in an existing TODO row — verify before duplicating.)
 
-| # | Task | Impact | E | C |
-|---|------|--------|---|---|
-| 1 | Run `./scripts/ci-local.sh` at HEAD before the next push (smokes+nix+baseline+master-CI) | Critical | M | Gate |
-| 2 | Rune-safe `Excerpt` truncation (byte cut can split a UTF-8 rune at 200) | High | S | Bug |
-| 3 | HARVEST this §f into TODO_LIST (rows here die in the timestamped file otherwise) | High | S | Documentation |
-| 4 | Persist accept-rationales as one-line comments at the 19 accepted clone sites | High | S | Documentation |
-| 5 | Dedicated `TestRecordRunOutcome`: sink detail contains log_path + result fields, sidecar path honored | High | S | Quality |
-| 6 | art-dupl accept-list gate in ci-local (growth over an accepted-set file fails, lint-baseline pattern) | High | M | Gate |
-| 7 | Add multi-byte boundary cases to `TestExcerpt` (pin behavior even before #2) | Medium | S | Quality |
-| 8 | Move `LogPath` into `sessionUsage` (wire-identical), drop the two-pointer `recordRunOutcome` signature | Medium | M | Cleanup |
-| 9 | Wire dlqfix autopsies into `deriveUsage`/budget projection (needs §g3 ruling first) | High | M | Feature |
-| 10 | Convert `parseRepoDurations` errors to wrapped static errors (kills the 2 residual err113) | Low | S | Quality |
-| 11 | AGENTS.md one-liner: `executor.Excerpt` + `recordRunOutcome` are THE shared seams | Medium | S | Documentation |
-| 12 | Regenerate `.golangci-baseline.txt` deliberately (shrink: cmd/tq err113 4→2, mass down) | Low | S | Quality |
-| 13 | Decompose `status` `Sweeper.maybeMint` (gocognit 28 > 25, seen in diagnostics while editing) | Medium | M | Quality |
-| 14 | session.go lint hygiene in the file just touched: varnamelen `s`/`in` params, err113 sites | Low | S | Quality |
-| 15 | status/sweep.go err113 site (line ~102) | Low | S | Quality |
-| 16 | Rule on cqrs `journal_test` fake vs reusing production `SliceSource` | Low | S | Cleanup |
-| 17 | Audit remaining byte-slice truncation sites (`cmd/tq/main.go` `truncateSkipReason`, `tailBytes`) for UTF-8 | Medium | S | Audit |
-| 18 | rg-sweep webui/httpapi display paths for a 4th unflagged truncate copy (art-dupl threshold may miss small ones) | Low | S | Audit |
-| 19 | ⚠ e2e `-race` 180s-cap load marginality — existing TODO row, confirm still tracked | Medium | M | Quality |
-| 20 | ⚠ `.tq-verify` gofmt-vs-vendor/ owner fix (5 dead tasks class) — owner-only, nudge | High | S | Bug |
-| 21 | Run `./scripts/check-go-mods.sh` to confirm no go.mod drift (session claimed zero dep changes) | Low | S | Gate |
-| 22 | Verify the daemon's mid-session commits carry ONLY the intended dedup files (`git show --stat`) | Medium | S | Process |
-| 23 | Index this report: row added to `docs/status/README.md` (daemon bypasses the hook — verify it stuck) | Medium | S | Process |
-| 24 | CHANGELOG: decide whether a behavior-preserving dedup pass warrants an entry (append-only file) | Low | S | Documentation |
-| 25 | art-dupl local: check for a min-token floor / type-clone suppression flag before accepting the noise group | Low | S | Quality |
-| 26 | ADR-0019 prose: update "7 of 9 clone groups" to current 12 (stale claim in a ratified ADR) | Low | S | Documentation |
-| 27 | Note in AGENTS.md sweepers section: if a FIFTH watermark sweeper appears, revisit shell extraction | Low | S | Documentation |
-| 28 | Note the stats-surface trigger: a THIRD stats consumer should extract the shared projection (accept-#9 condition) | Low | S | Documentation |
-| 29 | `parseAgentPoolOptions` cyclop 18 (baseline) — per-flag helpers would also shrink the option struct fan-out | Medium | M | Quality |
-| 30 | Audit test fakes implementing `Facts` for silent drift from the store's after/limit contract | Low | S | Audit |
-| 31 | Script the cheap verify battery (gofmt+build+vet+parity+test-cmd-tq+touched tests) as `scripts/verify-quick.sh` | Medium | S | DX |
-| 32 | `internal/session` `trim()` wrapper: inline (it wraps `strings.TrimSpace`, used 2×, seen while editing) | Low | S | Cleanup |
-| 33 | Add whitespace-only input case to `TestExcerpt` | Low | S | Quality |
-| 34 | Re-run art-dupl at `-t 3` once the accept-list gate exists (see what stricter threshold surfaces) | Low | S | Audit |
-| 35 | Facade docs: if `Excerpt` gains external consumers, document in executor facade README/comment | Low | S | Documentation |
-| 36 | Update ADR-0019 S4 checklist: dedup pass shrank mirror-adjacent code; re-verify the 12-group count at S4 start | Low | S | Documentation |
-| 37 | dlqfix `SessionID`-only result: confirm intended (autopsy verdict channel may not want usage) before #9 | Medium | S | Audit |
-| 38 | Consider `SetFailureEvidence`+`recordRunOutcome` naming pair (record vs set verbs) for API consistency | Low | S | Cleanup |
-| 39 | Sweep for other generics-eligible `T any` + field-pointer warts introduced elsewhere (pattern check) | Low | S | Audit |
-| 40 | `check-dead-exports.sh` advisory run — confirm `Excerpt` has 3+ importers (it does) and nothing went dead | Low | S | Audit |
-| 41 | Decide: should `excerptMaxLen` become `EvidenceTailBytes`-style documented contract const in AGENTS.md payload contracts | Low | S | Documentation |
-| 42 | Add `TestParseRepoDurations` windows-parity note (pure stdlib; confirm CI windows job covers cmd/tq) | Low | S | Quality |
-| 43 | Backfill session-start verdicts ritual: run `scripts/session-start.sh` pattern check next window (no task ID this time) | Low | S | Process |
-| 44 | crush hook idea: warn on heredoc-append in repo (§e9) — propose in crush-config, don't self-merge | Medium | S | DX |
-| 45 | After #6 lands: delete the "accepted set" prose from this report's successor template into the gate file (single source) | Low | S | Documentation |
+| #  | Task                                                                                                                     | Impact   | E | C             |
+| -- | ------------------------------------------------------------------------------------------------------------------------ | -------- | - | ------------- |
+| 1  | Run `./scripts/ci-local.sh` at HEAD before the next push (smokes+nix+baseline+master-CI)                                 | Critical | M | Gate          |
+| 2  | Rune-safe `Excerpt` truncation (byte cut can split a UTF-8 rune at 200)                                                  | High     | S | Bug           |
+| 3  | HARVEST this §f into TODO_LIST (rows here die in the timestamped file otherwise)                                         | High     | S | Documentation |
+| 4  | Persist accept-rationales as one-line comments at the 19 accepted clone sites                                            | High     | S | Documentation |
+| 5  | Dedicated `TestRecordRunOutcome`: sink detail contains log_path + result fields, sidecar path honored                    | High     | S | Quality       |
+| 6  | art-dupl accept-list gate in ci-local (growth over an accepted-set file fails, lint-baseline pattern)                    | High     | M | Gate          |
+| 7  | Add multi-byte boundary cases to `TestExcerpt` (pin behavior even before #2)                                             | Medium   | S | Quality       |
+| 8  | Move `LogPath` into `sessionUsage` (wire-identical), drop the two-pointer `recordRunOutcome` signature                   | Medium   | M | Cleanup       |
+| 9  | Wire dlqfix autopsies into `deriveUsage`/budget projection (needs §g3 ruling first)                                      | High     | M | Feature       |
+| 10 | Convert `parseRepoDurations` errors to wrapped static errors (kills the 2 residual err113)                               | Low      | S | Quality       |
+| 11 | AGENTS.md one-liner: `executor.Excerpt` + `recordRunOutcome` are THE shared seams                                        | Medium   | S | Documentation |
+| 12 | Regenerate `.golangci-baseline.txt` deliberately (shrink: cmd/tq err113 4→2, mass down)                                  | Low      | S | Quality       |
+| 13 | Decompose `status` `Sweeper.maybeMint` (gocognit 28 > 25, seen in diagnostics while editing)                             | Medium   | M | Quality       |
+| 14 | session.go lint hygiene in the file just touched: varnamelen `s`/`in` params, err113 sites                               | Low      | S | Quality       |
+| 15 | status/sweep.go err113 site (line ~102)                                                                                  | Low      | S | Quality       |
+| 16 | Rule on cqrs `journal_test` fake vs reusing production `SliceSource`                                                     | Low      | S | Cleanup       |
+| 17 | Audit remaining byte-slice truncation sites (`cmd/tq/main.go` `truncateSkipReason`, `tailBytes`) for UTF-8               | Medium   | S | Audit         |
+| 18 | rg-sweep webui/httpapi display paths for a 4th unflagged truncate copy (art-dupl threshold may miss small ones)          | Low      | S | Audit         |
+| 19 | ⚠ e2e `-race` 180s-cap load marginality — existing TODO row, confirm still tracked                                       | Medium   | M | Quality       |
+| 20 | ⚠ `.tq-verify` gofmt-vs-vendor/ owner fix (5 dead tasks class) — owner-only, nudge                                       | High     | S | Bug           |
+| 21 | Run `./scripts/check-go-mods.sh` to confirm no go.mod drift (session claimed zero dep changes)                           | Low      | S | Gate          |
+| 22 | Verify the daemon's mid-session commits carry ONLY the intended dedup files (`git show --stat`)                          | Medium   | S | Process       |
+| 23 | Index this report: row added to `docs/status/README.md` (daemon bypasses the hook — verify it stuck)                     | Medium   | S | Process       |
+| 24 | CHANGELOG: decide whether a behavior-preserving dedup pass warrants an entry (append-only file)                          | Low      | S | Documentation |
+| 25 | art-dupl local: check for a min-token floor / type-clone suppression flag before accepting the noise group               | Low      | S | Quality       |
+| 26 | ADR-0019 prose: update "7 of 9 clone groups" to current 12 (stale claim in a ratified ADR)                               | Low      | S | Documentation |
+| 27 | Note in AGENTS.md sweepers section: if a FIFTH watermark sweeper appears, revisit shell extraction                       | Low      | S | Documentation |
+| 28 | Note the stats-surface trigger: a THIRD stats consumer should extract the shared projection (accept-#9 condition)        | Low      | S | Documentation |
+| 29 | `parseAgentPoolOptions` cyclop 18 (baseline) — per-flag helpers would also shrink the option struct fan-out              | Medium   | M | Quality       |
+| 30 | Audit test fakes implementing `Facts` for silent drift from the store's after/limit contract                             | Low      | S | Audit         |
+| 31 | Script the cheap verify battery (gofmt+build+vet+parity+test-cmd-tq+touched tests) as `scripts/verify-quick.sh`          | Medium   | S | DX            |
+| 32 | `internal/session` `trim()` wrapper: inline (it wraps `strings.TrimSpace`, used 2×, seen while editing)                  | Low      | S | Cleanup       |
+| 33 | Add whitespace-only input case to `TestExcerpt`                                                                          | Low      | S | Quality       |
+| 34 | Re-run art-dupl at `-t 3` once the accept-list gate exists (see what stricter threshold surfaces)                        | Low      | S | Audit         |
+| 35 | Facade docs: if `Excerpt` gains external consumers, document in executor facade README/comment                           | Low      | S | Documentation |
+| 36 | Update ADR-0019 S4 checklist: dedup pass shrank mirror-adjacent code; re-verify the 12-group count at S4 start           | Low      | S | Documentation |
+| 37 | dlqfix `SessionID`-only result: confirm intended (autopsy verdict channel may not want usage) before #9                  | Medium   | S | Audit         |
+| 38 | Consider `SetFailureEvidence`+`recordRunOutcome` naming pair (record vs set verbs) for API consistency                   | Low      | S | Cleanup       |
+| 39 | Sweep for other generics-eligible `T any` + field-pointer warts introduced elsewhere (pattern check)                     | Low      | S | Audit         |
+| 40 | `check-dead-exports.sh` advisory run — confirm `Excerpt` has 3+ importers (it does) and nothing went dead                | Low      | S | Audit         |
+| 41 | Decide: should `excerptMaxLen` become `EvidenceTailBytes`-style documented contract const in AGENTS.md payload contracts | Low      | S | Documentation |
+| 42 | Add `TestParseRepoDurations` windows-parity note (pure stdlib; confirm CI windows job covers cmd/tq)                     | Low      | S | Quality       |
+| 43 | Backfill session-start verdicts ritual: run `scripts/session-start.sh` pattern check next window (no task ID this time)  | Low      | S | Process       |
+| 44 | crush hook idea: warn on heredoc-append in repo (§e9) — propose in crush-config, don't self-merge                        | Medium   | S | DX            |
+| 45 | After #6 lands: delete the "accepted set" prose from this report's successor template into the gate file (single source) | Low      | S | Documentation |
 
 ## g) THREE QUESTIONS I CANNOT ANSWER MYSELF
 
@@ -309,8 +309,6 @@ original text.
 
 ---
 
-
-
-*Report by the dedup session (01-34) with a same-day continuation addendum;
+_Report by the dedup session (01-34) with a same-day continuation addendum;
 gates cited are reproducible from the commands listed. Point-in-time
-snapshot — re-verify before treating claims as current.*
+snapshot — re-verify before treating claims as current._
