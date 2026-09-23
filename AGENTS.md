@@ -861,6 +861,11 @@ prose, not the table.
   wrapcheck test-noise classes consistent with the mirrored sqlite
   backend, no new triage policy); --check green at 1410 vs 1410 after
   or on a NEW (module, linter) class;
+  2026-09-24 ninth regen: 1549 findings, 185 rows — the ADR-0019 S1
+  postgres spike `internal/queue/postgresv4` admitted proactively at
+  module birth (17 rows, paralleltest/wrapcheck/varnamelen test-noise
+  profile matching the sqlite spike — this time --check had no blindness
+  window because the regen ran before any gate did);
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
   is the only config — there are no per-module files, and golangci-lint
