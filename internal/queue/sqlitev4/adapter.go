@@ -257,13 +257,26 @@ func (s *Store) tokenFor(ctx context.Context, id task.ID, owner string, requireL
 }
 
 // Complete marks a Running task Completed (owner gate, engine finalize).
+// tq parity (divergence D1): tq's sqlite clears last_error in the same
+// UPDATE that completes the task; the upstream engine leaves a failed
+// attempt's error on the completed row, so the adapter clears it after
+// the finalize. A completed task can never Fail again, so the follow-up
+// UPDATE cannot race a new error onto the row.
 func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error {
 	token, err := s.tokenFor(ctx, id, owner, true)
 	if err != nil {
 		return err
 	}
 
-	return mapErr(s.engine.Complete(ctx, utask.ID(id.String()), token, []byte(result)))
+	if err := s.engine.Complete(ctx, utask.ID(id.String()), token, []byte(result)); err != nil {
+		return mapErr(err)
+	}
+
+	_, err = s.db.ExecContext(ctx,
+		`UPDATE tasks SET last_error = '' WHERE id = ? AND status = 'completed'`,
+		id.String())
+
+	return err
 }
 
 // Fail records a failed attempt: retry with backoff or dead-letter.

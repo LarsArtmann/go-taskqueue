@@ -90,6 +90,45 @@ func TestCompleteVerifiesLease(t *testing.T) {
 	}
 }
 
+func TestCompleteResetsLastError(t *testing.T) {
+	ctx := context.Background()
+	s := openTestStore(t)
+
+	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky"})
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim1: %v", err)
+	}
+
+	if err := s.Fail(ctx, tk.ID, "w1", "boom-1", 250*time.Millisecond, nil); err != nil {
+		t.Fatalf("fail1: %v", err)
+	}
+
+	got, _ := s.Get(ctx, tk.ID)
+	if got.LastError != "boom-1" {
+		t.Fatalf("after fail1 LastError = %q, want boom-1", got.LastError)
+	}
+
+	time.Sleep(300 * time.Millisecond)
+
+	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim2: %v", err)
+	}
+
+	if err := s.Complete(ctx, tk.ID, "w1", jsontext.Value(`{"ok":true}`)); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	got, _ = s.Get(ctx, tk.ID)
+	if got.Status != task.Completed {
+		t.Fatalf("status = %s, want completed", got.Status)
+	}
+
+	if got.LastError != "" {
+		t.Fatalf("completed task kept stale LastError %q, want empty", got.LastError)
+	}
+}
+
 func TestFailRetriesThenDeadLetters(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
