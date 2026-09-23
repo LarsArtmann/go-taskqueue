@@ -32,8 +32,8 @@ import (
 	"sync"
 	"time"
 
-	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	usqlite "github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4"
+	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	ufacts "github.com/larsartmann/go-cqrs-lite/queue/v4/facts"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
 
@@ -120,10 +120,15 @@ func (s *Store) Close() error {
 // Enqueue persists a new task and records the enqueued fact (idempotent
 // per DedupKey, per the engine).
 func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
+	payload := []byte(n.Payload)
+	if payload == nil {
+		payload = []byte{}
+	}
+
 	un := utask.New[[]byte]{
 		Project:     n.Project,
 		Type:        n.Type,
-		Payload:     []byte(n.Payload),
+		Payload:     payload,
 		Deps:        toUIDs(n.Deps),
 		Priority:    n.Priority,
 		MaxAttempts: n.MaxAttempts,

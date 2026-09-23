@@ -391,15 +391,13 @@ func listWhere(f queue.Filter) (string, []any) {
 		like := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
 
 		where = append(where, `(id LIKE ? ESCAPE '\' OR type LIKE ? ESCAPE '\' OR
-			project LIKE ? ESCAPE '\' OR payload LIKE ? ESCAPE '\' OR
+			project LIKE ? ESCAPE '\' OR CAST(payload AS TEXT) LIKE ? ESCAPE '\' OR
 			lease_owner LIKE ? ESCAPE '\' OR last_error LIKE ? ESCAPE '\')`)
 		args = append(args, like, like, like, like, like, like)
 	}
 
 	return strings.Join(where, " AND "), args
 }
-
-type scanner interface{ Scan(dest ...any) error }
 
 func scanTask(rows *sql.Rows) (task.Task, error) {
 	var (
@@ -740,6 +738,7 @@ func (s *Store) ArchiveSummary(ctx context.Context) (ArchiveStats, error) {
 
 // ArchiveStats mirrors the tq sqlite store's archive summary shape.
 type ArchiveStats struct {
-	Archived int64
-	Hot      int64
+	Hot       int64
+	Archived  int64
+	Watermark int64
 }
