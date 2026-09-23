@@ -127,6 +127,7 @@ var (
 	CommandFromPayload    = internalexecutor.CommandFromPayload
 	DetectRateLimit       = internalexecutor.DetectRateLimit
 	DetectVerify          = internalexecutor.DetectVerify
+	Excerpt               = internalexecutor.Excerpt
 	ExtractResultPayload  = internalexecutor.ExtractResultPayload
 	ExtractSessionID      = internalexecutor.ExtractSessionID
 	Permanent             = internalexecutor.Permanent

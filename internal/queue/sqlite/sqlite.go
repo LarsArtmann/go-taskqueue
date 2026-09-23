@@ -20,6 +20,10 @@ import (
 
 // Store is the embedded, durable Store. One queue per database file.
 //
+// postgres.Store mirrors this file's semantics and helpers one-for-one
+// (ADR-0007/0012): the side-by-side diff IS the contract, and the twin
+// mass is deleted at ADR-0019 S4.
+//
 // Concurrency model: a single serialized write connection (MaxOpenConns(1))
 // plus WAL journal mode. All task mutations and their journal facts happen in
 // one transaction, so the journal can never disagree with the task table.

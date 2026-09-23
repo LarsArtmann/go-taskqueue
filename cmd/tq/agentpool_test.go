@@ -379,3 +379,75 @@ func TestStarvationDetectorLifecycle(t *testing.T) {
 		})
 	}
 }
+
+func TestParseRepoDurations(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		flag    string
+		raw     string
+		want    map[string]time.Duration
+		wantErr string
+	}{
+		{
+			name: "single pair",
+			flag: "--repo-timeout",
+			raw:  "CV=90m",
+			want: map[string]time.Duration{"CV": 90 * time.Minute},
+		},
+		{
+			name: "multiple pairs with spacing",
+			flag: "--repo-interval",
+			raw:  " CV = 1h , go-taskqueue=30s ",
+			want: map[string]time.Duration{"CV": time.Hour, "go-taskqueue": 30 * time.Second},
+		},
+		{
+			name: "empty specs are skipped",
+			flag: "--repo-timeout",
+			raw:  ",,",
+			want: map[string]time.Duration{},
+		},
+		{
+			name:    "missing duration fails with the flag named",
+			flag:    "--repo-interval",
+			raw:     "CV",
+			wantErr: `--repo-interval: want name=duration, got "CV"`,
+		},
+		{
+			name:    "unparseable duration fails with the flag named",
+			flag:    "--repo-timeout",
+			raw:     "CV=soon",
+			wantErr: `--repo-timeout: "CV=soon"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := parseRepoDurations(tt.flag, tt.raw)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("parseRepoDurations() error = %v, want containing %q", err, tt.wantErr)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("parseRepoDurations(): %v", err)
+			}
+
+			if len(got) != len(tt.want) {
+				t.Fatalf("parseRepoDurations() = %v, want %v", got, tt.want)
+			}
+
+			for name, want := range tt.want {
+				if got[name] != want {
+					t.Errorf("parseRepoDurations()[%q] = %v, want %v", name, got[name], want)
+				}
+			}
+		})
+	}
+}

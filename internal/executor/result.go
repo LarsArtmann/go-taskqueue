@@ -115,6 +115,19 @@ func SetResultDetail(ctx context.Context, detail jsontext.Value) {
 	}
 }
 
+// recordRunOutcome finishes one paid run's bookkeeping: persist the FULL
+// run output sidecar, then record the result — with its log_path — as the
+// execution's outcome detail for `tq show`. logPath points at the result's
+// LogPath field so the sidecar path lands inside the recorded detail;
+// callers that derive session usage do so BEFORE calling (deriveUsage
+// returns its derivation for executors that also need commits/files).
+func recordRunOutcome[T any](ctx context.Context, result *T, logPath *string, output, tail string, id task.ID) {
+	*logPath = writeOutputSidecar(id, output, tail)
+
+	detail, _ := json.Marshal(result)
+	SetResultDetail(ctx, detail)
+}
+
 // Detail returns the recorded outcome detail, or nil.
 func (s *Sink) Detail() jsontext.Value {
 	s.mu.Lock()

@@ -39,8 +39,9 @@ verdict:
   engine store can be populated by replaying facts; the cutover needs no
   in-place schema surgery on the live DB.
 - The hand-rolled mirror backends are the repo's largest duplication
-  (art-dupl 2026-09-22: 7 of 9 clone groups are sqlite↔postgres mirror
-  pairs) — kept alive only by the rejected-adoption verdict.
+  (art-dupl 2026-09-23: 12 clone groups are sqlite↔postgres mirror pairs,
+  up from 7-of-9 when this ADR was written — recount before quoting) —
+  kept alive only by the rejected-adoption verdict.
 
 ## Decision — staged adoption; every stage ships green on its own
 

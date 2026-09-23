@@ -24,6 +24,9 @@ type fakeSource struct {
 	tasks map[string]task.Task
 }
 
+// This fake deliberately duplicates the shape rather than sharing code with
+// the cqrs adapter's: it is concurrency-safe (the bridge polls from
+// multiple goroutines) and carries a wider surface than the adapter needs.
 func (f *fakeSource) Facts(_ context.Context, after int64, limit int) ([]journal.Fact, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

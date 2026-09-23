@@ -109,14 +109,9 @@ func (e *StatusExecutor) base() *AgentExecutor {
 // output, a missing file or a failed verify is a retryable failure; payload
 // misses are permanent; dirty trees are preflight requeues.
 func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
-	var payload StatusPayload
-
-	if len(t.Payload) == 0 {
-		return Permanent(errors.New("status: empty payload, want {repo, project, completed}"))
-	}
-
-	if err := json.Unmarshal(t.Payload, &payload); err != nil {
-		return Permanent(fmt.Errorf("status: decode payload: %w", err))
+	payload, err := decodePayload[StatusPayload](t, "status", "{repo, project, completed}")
+	if err != nil {
+		return err
 	}
 
 	if payload.Repo == "" || payload.Project == "" || len(payload.Completed) == 0 {
@@ -125,23 +120,17 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	agent := e.base()
 
-	repoDir, err := agent.repoDir(payload.Repo)
+	repoDir, err := prepareRepo(
+		ctx,
+		agent,
+		payload.Repo,
+		requireClean(AgentPayload{RequireClean: payload.RequireClean}),
+	)
 	if err != nil {
-		return Permanent(err)
+		return err
 	}
 
-	if requireClean(AgentPayload{RequireClean: payload.RequireClean}) {
-		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
-			if err := assertCleanTree(ctx, repoDir); err != nil {
-				return &PreflightError{Cause: err}
-			}
-		}
-	}
-
-	timeout := defaultStatusTaskTimeout
-	if payload.TimeoutMinutes > 0 {
-		timeout = time.Duration(payload.TimeoutMinutes) * time.Minute
-	}
+	timeout := payloadTimeout(defaultStatusTaskTimeout, payload.TimeoutMinutes)
 
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -177,11 +166,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
-
-	result.LogPath = writeOutputSidecar(t.ID, output, "")
-
-	detail, _ := json.Marshal(result)
-	SetResultDetail(ctx, detail)
+	recordRunOutcome(ctx, &result, &result.LogPath, output, "", t.ID)
 
 	return nil
 }
@@ -246,7 +231,7 @@ func statusPrompt(p StatusPayload) string {
 	)
 
 	for _, c := range p.Completed {
-		b.WriteString("- task " + c.TaskID + ": " + firstLine(c.Item))
+		b.WriteString("- task " + c.TaskID + ": " + Excerpt(c.Item))
 
 		if c.Commit != "" {
 			b.WriteString(" (commit " + c.Commit + ")")
@@ -322,10 +307,4 @@ The report path must be relative to the repository root; the file must exist whe
 `)
 
 	return b.String()
-}
-
-// firstLine reduces a (possibly long) agent prompt to its first line, bounded
-// for prompt hygiene.
-func firstLine(text string) string {
-	return Excerpt(text)
 }

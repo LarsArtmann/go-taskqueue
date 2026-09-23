@@ -21,6 +21,8 @@ type fakeSource struct {
 	facts []journal.Fact
 }
 
+// Stand-in deliberately independent of this package's production
+// SliceSource: the adapter must not be tested against its own source.
 func (f *fakeSource) Facts(_ context.Context, after int64, limit int) ([]journal.Fact, error) {
 	var out []journal.Fact
 

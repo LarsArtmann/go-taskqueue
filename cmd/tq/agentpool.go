@@ -416,49 +416,21 @@ func harvestConfigFromOptions(opts agentPoolOptions) (harvest.Config, error) {
 	}
 
 	if opts.repoTimeout != "" {
-		cfg.RepoTimeouts = make(map[string]time.Duration)
-
-		for spec := range strings.SplitSeq(opts.repoTimeout, ",") {
-			spec = strings.TrimSpace(spec)
-			if spec == "" {
-				continue
-			}
-
-			name, dur, ok := strings.Cut(spec, "=")
-			if !ok {
-				return harvest.Config{}, fmt.Errorf("--repo-timeout: want name=duration, got %q", spec)
-			}
-
-			d, err := time.ParseDuration(strings.TrimSpace(dur))
-			if err != nil {
-				return harvest.Config{}, fmt.Errorf("--repo-timeout: %q: %w", spec, err)
-			}
-
-			cfg.RepoTimeouts[strings.TrimSpace(name)] = d
+		timeouts, err := parseRepoDurations("--repo-timeout", opts.repoTimeout)
+		if err != nil {
+			return harvest.Config{}, err
 		}
+
+		cfg.RepoTimeouts = timeouts
 	}
 
 	if opts.repoInterval != "" {
-		cfg.RepoIntervals = make(map[string]time.Duration)
-
-		for spec := range strings.SplitSeq(opts.repoInterval, ",") {
-			spec = strings.TrimSpace(spec)
-			if spec == "" {
-				continue
-			}
-
-			name, dur, ok := strings.Cut(spec, "=")
-			if !ok {
-				return harvest.Config{}, fmt.Errorf("--repo-interval: want name=duration, got %q", spec)
-			}
-
-			d, err := time.ParseDuration(strings.TrimSpace(dur))
-			if err != nil {
-				return harvest.Config{}, fmt.Errorf("--repo-interval: %q: %w", spec, err)
-			}
-
-			cfg.RepoIntervals[strings.TrimSpace(name)] = d
+		intervals, err := parseRepoDurations("--repo-interval", opts.repoInterval)
+		if err != nil {
+			return harvest.Config{}, err
 		}
+
+		cfg.RepoIntervals = intervals
 	}
 
 	if opts.allowDirty {
@@ -482,6 +454,35 @@ func harvestConfigFromOptions(opts agentPoolOptions) (harvest.Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// parseRepoDurations parses a comma-separated name=duration list (the
+// --repo-timeout and --repo-interval option shapes) into the per-repo map
+// the harvest config wants. flagName only feeds the error messages so both
+// callers fail with their own flag in the text.
+func parseRepoDurations(flagName, raw string) (map[string]time.Duration, error) {
+	out := make(map[string]time.Duration)
+
+	for spec := range strings.SplitSeq(raw, ",") {
+		spec = strings.TrimSpace(spec)
+		if spec == "" {
+			continue
+		}
+
+		name, dur, ok := strings.Cut(spec, "=")
+		if !ok {
+			return nil, fmt.Errorf("%s: want name=duration, got %q", flagName, spec)
+		}
+
+		d, err := time.ParseDuration(strings.TrimSpace(dur))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %q: %w", flagName, spec, err)
+		}
+
+		out[strings.TrimSpace(name)] = d
+	}
+
+	return out, nil
 }
 
 // deadPoolDetector watches consecutive harvest results and fires its

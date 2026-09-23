@@ -228,14 +228,9 @@ func AgentVersion(ctx context.Context, bin string) (string, error) {
 // are permanent: the identical retry would fail identically, and for agent
 // tasks every retry is real money.
 func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
-	var p AgentPayload
-
-	if len(t.Payload) == 0 {
-		return Permanent(errors.New("agent: empty payload, want {repo, prompt}"))
-	}
-
-	if err := json.Unmarshal(t.Payload, &p); err != nil {
-		return Permanent(fmt.Errorf("agent: decode payload: %w", err))
+	p, err := decodePayload[AgentPayload](t, "agent", "{repo, prompt}")
+	if err != nil {
+		return err
 	}
 
 	if p.V == 0 {
@@ -280,10 +275,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		}
 	}
 
-	timeout := defaultAgentTaskTimeout
-	if p.TimeoutMinutes > 0 {
-		timeout = time.Duration(p.TimeoutMinutes) * time.Minute
-	}
+	timeout := payloadTimeout(defaultAgentTaskTimeout, p.TimeoutMinutes)
 
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -331,9 +323,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		}
 	}
 
-	result.LogPath = writeOutputSidecar(t.ID, output, tail)
-	detail, _ := json.Marshal(result)
-	SetResultDetail(ctx, detail)
+	recordRunOutcome(ctx, &result, &result.LogPath, output, tail, t.ID)
 
 	return nil
 }

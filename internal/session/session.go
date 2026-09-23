@@ -366,20 +366,12 @@ func reviewExtra(in CloseInput, commits []Commit) string {
 }
 
 // excerpt reduces the summary to the status window entry's one-line item
-// pointer (same bound as the sweeper's item excerpts).
+// pointer (the shared executor.Excerpt bound), falling back to a marker
+// when the session carries no summary at all.
 func excerpt(summary string) string {
-	line := trim(summary)
+	line := executor.Excerpt(summary)
 	if line == "" {
 		line = "interactive session (no summary supplied)"
-	}
-
-	if idx := strings.IndexByte(line, '\n'); idx >= 0 {
-		line = line[:idx]
-	}
-
-	const maxLen = 200
-	if len(line) > maxLen {
-		line = line[:maxLen] + "…"
 	}
 
 	return line

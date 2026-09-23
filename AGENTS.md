@@ -547,6 +547,14 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   ended" (`internal/harvest/watch.go` Run — retry.Do's nil-stops semantics don't
   map) keep their own loop; domain backoff (queue NotBefore ladder,
   worker.Backoff) stays — it's persisted journal-fact state, not a loop.
+- **Executor shared seams — never hand-roll a new copy**: payload parsing
+  via `decodePayload[T]` (`internal/executor/payload.go`), outcome/sidecar
+  recording via `recordRunOutcome` (`internal/executor/result.go`), display
+  excerpts via `executor.Excerpt` (`internal/executor/excerpt.go`),
+  repo+clean-tree preflight via `prepareRepo` and timeout shape via
+  `payloadTimeout` (`internal/executor/preflight.go`). Copies collapsed on
+  2026-09-23: Excerpt 3, recordRunOutcome 5, decodePayload 4, prepareRepo 4,
+  payloadTimeout 5; art-dupl at `-t 4` catches recurrences.
 - Platform honesty: POSIX-only suites carry `//go:build unix`; CI runs the
   rest on windows-latest. Tests must be hermetic (nix checkPhase has no
   host tools — a test once assumed `crush` on PATH and broke the nix build)
@@ -1123,8 +1131,8 @@ finalizes. The upstream v5 direction (ADR-0123) makes `metaengine` Store
   S2 unify the journal on `facts.Fact` (open FactType; tq-specific fact
   types stay tq constants), S3 read models on metaengine
   (`Watcher`/`ServeSSE` replacing the hand tailer fan-out), S4 composition
-  via `system/` DomainConfig + DELETE the mirrored backends (the 7-of-9
-  art-dupl mirror clone groups die there). Facts-first replay is the
+  via `system/` DomainConfig + DELETE the mirrored backends (the 12
+  art-dupl mirror clone groups as of 2026-09-23 die there). Facts-first replay is the
   migration story (projection-equality verify; dogfood cutover owner-run).
   The historical module-by-module assessment (storage/ = per-stream event
   store; metaengine/ = cost-based read side; system/ = composition root;

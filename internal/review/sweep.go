@@ -66,6 +66,10 @@ type SweepStats struct {
 // Sweeper turns the journal's completion facts into review work. It is safe
 // for concurrent use (the cursor serializes sweeps; ticks and the --once
 // drain watcher may call it from different goroutines).
+//
+// The struct shell deliberately stays per-sweeper (config fields and fact
+// validation differ across the four sweepers); the shared pump is
+// watermark.Cursor.Sweep.
 type Sweeper struct {
 	store queue.Store
 	cfg   SweeperConfig

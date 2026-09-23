@@ -5,8 +5,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -138,14 +136,9 @@ func (e *ReviewExecutor) base() *AgentExecutor {
 // (retryable — the model may comply on a retry), input-contract misses are
 // permanent, dirty trees are preflight requeues.
 func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
-	var p ReviewPayload
-
-	if len(t.Payload) == 0 {
-		return Permanent(errors.New("review: empty payload, want {repo, reviewed_task, item}"))
-	}
-
-	if err := json.Unmarshal(t.Payload, &p); err != nil {
-		return Permanent(fmt.Errorf("review: decode payload: %w", err))
+	p, err := decodePayload[ReviewPayload](t, "review", "{repo, reviewed_task, item}")
+	if err != nil {
+		return err
 	}
 
 	if p.Repo == "" || p.ReviewedTask == "" || p.Item == "" {
@@ -154,23 +147,12 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	agent := e.base()
 
-	repoDir, err := agent.repoDir(p.Repo)
+	repoDir, err := prepareRepo(ctx, agent, p.Repo, requireClean(AgentPayload{RequireClean: p.RequireClean}))
 	if err != nil {
-		return Permanent(err)
+		return err
 	}
 
-	if requireClean(AgentPayload{RequireClean: p.RequireClean}) {
-		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
-			if err := assertCleanTree(ctx, repoDir); err != nil {
-				return &PreflightError{Cause: err}
-			}
-		}
-	}
-
-	timeout := defaultReviewTaskTimeout
-	if p.TimeoutMinutes > 0 {
-		timeout = time.Duration(p.TimeoutMinutes) * time.Minute
-	}
+	timeout := payloadTimeout(defaultReviewTaskTimeout, p.TimeoutMinutes)
 
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -201,11 +183,7 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
-
-	result.LogPath = writeOutputSidecar(t.ID, output, "")
-
-	detail, _ := json.Marshal(result)
-	SetResultDetail(ctx, detail)
+	recordRunOutcome(ctx, &result, &result.LogPath, output, "", t.ID)
 
 	return nil
 }

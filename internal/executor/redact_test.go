@@ -147,8 +147,11 @@ func TestSecretPatternsOverlapCensus(t *testing.T) {
 
 	want := []string{"8×9"}
 	if !slices.Equal(want, overlapping) {
-		t.Errorf("overlapping pattern pairs = %v, want %v — review span merging (SecretHits) and redaction order (RedactSecrets) before extending",
-			overlapping, want)
+		t.Errorf(
+			"overlapping pattern pairs = %v, want %v — review span merging (SecretHits) and redaction order (RedactSecrets) before extending",
+			overlapping,
+			want,
+		)
 	}
 }
 

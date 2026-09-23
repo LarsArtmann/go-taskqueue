@@ -5,8 +5,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -132,23 +130,17 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	agent := e.base()
 
-	repoDir, err := agent.repoDir(payload.Repo)
+	repoDir, err := prepareRepo(
+		ctx,
+		agent,
+		payload.Repo,
+		requireClean(AgentPayload{RequireClean: payload.RequireClean}),
+	)
 	if err != nil {
-		return Permanent(err)
+		return err
 	}
 
-	if requireClean(AgentPayload{RequireClean: payload.RequireClean}) {
-		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
-			if err := assertCleanTree(ctx, repoDir); err != nil {
-				return &PreflightError{Cause: err}
-			}
-		}
-	}
-
-	timeout := defaultPrioritizeTaskTimeout
-	if payload.TimeoutMinutes > 0 {
-		timeout = time.Duration(payload.TimeoutMinutes) * time.Minute
-	}
+	timeout := payloadTimeout(defaultPrioritizeTaskTimeout, payload.TimeoutMinutes)
 
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -169,11 +161,7 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
-
-	result.LogPath = writeOutputSidecar(t.ID, output, "")
-
-	detail, _ := json.Marshal(result)
-	SetResultDetail(ctx, detail)
+	recordRunOutcome(ctx, &result, &result.LogPath, output, "", t.ID)
 
 	return nil
 }

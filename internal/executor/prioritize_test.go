@@ -157,7 +157,13 @@ func TestPrioritizeResultUsageKeysMatchAgentResult(t *testing.T) {
 			want := append(slices.Clone(usageKeys), tc.extra...)
 			slices.Sort(want)
 			if !slices.Equal(keys, want) {
-				t.Fatalf("%s marshals %v, want exactly the shared usage keys %v (plus %v) — a rename here breaks the budget projection and tq show", tc.name, keys, usageKeys, tc.extra)
+				t.Fatalf(
+					"%s marshals %v, want exactly the shared usage keys %v (plus %v) — a rename here breaks the budget projection and tq show",
+					tc.name,
+					keys,
+					usageKeys,
+					tc.extra,
+				)
 			}
 		})
 	}

@@ -180,7 +180,10 @@ func TestQuestionChannelScopePinsSecondOpinions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("work run never wrote the probe: %v", err)
 	}
-	if probeOut := string(workProbe); strings.Contains(probeOut, "without-channel") || !strings.Contains(probeOut, "with-channel") {
+	if probeOut := string(
+		workProbe,
+	); strings.Contains(probeOut, "without-channel") ||
+		!strings.Contains(probeOut, "with-channel") {
 		t.Errorf("work executor question channel state wrong: %s", probeOut)
 	}
 
@@ -196,7 +199,10 @@ func TestQuestionChannelScopePinsSecondOpinions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("clone run never wrote the probe: %v", err)
 	}
-	if probeOut := string(cloneProbe); strings.Contains(probeOut, "with-channel") || !strings.Contains(probeOut, "without-channel") {
+	if probeOut := string(
+		cloneProbe,
+	); strings.Contains(probeOut, "with-channel") ||
+		!strings.Contains(probeOut, "without-channel") {
 		t.Errorf("second-opinion clone must never receive %s: %s", questionFileEnv, probeOut)
 	}
 }

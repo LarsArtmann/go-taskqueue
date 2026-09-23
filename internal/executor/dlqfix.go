@@ -5,8 +5,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -131,35 +129,28 @@ func (e *DLQFixExecutor) base() *AgentExecutor {
 // fails the attempt — retryable, the model may comply on a retry.
 // Input-contract misses are permanent.
 func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
-	p, err := decodeDLQFixPayload(t)
+	p, err := decodePayload[DLQFixPayload](t, "dlqfix", "{repo, dead_task, work}")
 	if err != nil {
 		return err
 	}
 
-	agent := e.base()
-
-	repoDir, err := agent.repoDir(p.Repo)
-	if err != nil {
-		return Permanent(err)
+	if p.Repo == "" || p.DeadTask == "" || p.Work == "" {
+		return Permanent(errors.New("dlqfix: payload needs non-empty repo, dead_task and work"))
 	}
+
+	agent := e.base()
 
 	// Autopsies run dirty-capable by default: a dead agent's uncommitted
 	// partial work IS evidence, and a clean-tree preflight would requeue
 	// the autopsy forever on exactly the cases the feature exists for.
 	// Only an explicit true restores the guard (repos without .git skip
 	// it as usual).
-	if p.RequireClean != nil && *p.RequireClean {
-		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
-			if err := assertCleanTree(ctx, repoDir); err != nil {
-				return &PreflightError{Cause: err}
-			}
-		}
+	repoDir, err := prepareRepo(ctx, agent, p.Repo, p.RequireClean != nil && *p.RequireClean)
+	if err != nil {
+		return err
 	}
 
-	timeout := defaultDLQFixTaskTimeout
-	if p.TimeoutMinutes > 0 {
-		timeout = time.Duration(p.TimeoutMinutes) * time.Minute
-	}
+	timeout := payloadTimeout(defaultDLQFixTaskTimeout, p.TimeoutMinutes)
 
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -180,32 +171,9 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.SessionID = ExtractSessionID(output)
-	result.LogPath = writeOutputSidecar(t.ID, output, "")
-
-	detail, _ := json.Marshal(result)
-	SetResultDetail(ctx, detail)
+	recordRunOutcome(ctx, &result, &result.LogPath, output, "", t.ID)
 
 	return nil
-}
-
-// decodeDLQFixPayload enforces the input contract: present, parseable, and
-// carrying the three fields without which no autopsy can start.
-func decodeDLQFixPayload(t task.Task) (DLQFixPayload, error) {
-	if len(t.Payload) == 0 {
-		return DLQFixPayload{}, Permanent(errors.New("dlqfix: empty payload, want {repo, dead_task, work}"))
-	}
-
-	var p DLQFixPayload
-
-	if err := json.Unmarshal(t.Payload, &p); err != nil {
-		return DLQFixPayload{}, Permanent(fmt.Errorf("dlqfix: decode payload: %w", err))
-	}
-
-	if p.Repo == "" || p.DeadTask == "" || p.Work == "" {
-		return DLQFixPayload{}, Permanent(errors.New("dlqfix: payload needs non-empty repo, dead_task and work"))
-	}
-
-	return p, nil
 }
 
 // dlqFixPrompt builds the autopsy instruction: the dead task's original

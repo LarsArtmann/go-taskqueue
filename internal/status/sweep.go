@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -357,31 +356,15 @@ func StatusDedupKey(project string, trigger task.ID) string {
 	return "status:" + project + ":" + trigger.String()
 }
 
-// itemExcerpt reduces an agent prompt to its first line, bounded — a window
-// entry pointer, not a transcript (full prompts live in `tq show`).
-func itemExcerpt(prompt string) string {
-	line := strings.TrimSpace(prompt)
-	if idx := strings.IndexByte(line, '\n'); idx >= 0 {
-		line = line[:idx]
-	}
-
-	const maxLen = 200
-	if len(line) > maxLen {
-		line = line[:maxLen] + "…"
-	}
-
-	return line
-}
-
 // workItemLabel is the human-readable line for a window entry: the raw
 // TODO_LIST item when the harvester pinned one, else the prompt's first line
 // (payloads minted before Item existed).
 func workItemLabel(ap executor.AgentPayload) string {
 	if ap.Item != "" {
-		return itemExcerpt(ap.Item)
+		return executor.Excerpt(ap.Item)
 	}
 
-	return itemExcerpt(ap.Prompt)
+	return executor.Excerpt(ap.Prompt)
 }
 
 //go:fix inline

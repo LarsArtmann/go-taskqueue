@@ -44,7 +44,7 @@ func TestExcerpt(t *testing.T) {
 		{
 			name: "trailing space inside the cut is trimmed",
 			in:   strings.Repeat("a", excerptMaxLen-2) + "  b\nnext",
-			want: strings.Repeat("a", excerptMaxLen-2),
+			want: strings.Repeat("a", excerptMaxLen-2) + "…",
 		},
 	}
 

@@ -9,8 +9,8 @@ const excerptMaxLen = 200
 // Excerpt reduces an item text, agent prompt, or session summary to its
 // first line, bounded to excerptMaxLen bytes — a one-line pointer, never a
 // transcript (the full text stays in the payload, read via `tq show`).
-// Trailing whitespace is trimmed after the cut so a mid-line truncation
-// never ends in a dangling space before the ellipsis.
+// Trailing whitespace is trimmed before the ellipsis so a mid-line
+// truncation never ends in a dangling space.
 func Excerpt(text string) string {
 	line := strings.TrimSpace(text)
 	if idx := strings.IndexByte(line, '\n'); idx >= 0 {
@@ -18,8 +18,8 @@ func Excerpt(text string) string {
 	}
 
 	if len(line) > excerptMaxLen {
-		line = line[:excerptMaxLen] + "…"
+		line = strings.TrimSpace(line[:excerptMaxLen]) + "…"
 	}
 
-	return strings.TrimSpace(line)
+	return line
 }

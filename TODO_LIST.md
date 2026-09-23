@@ -35,7 +35,7 @@ not here.
 - [ ] ADR-0019 S1 flip: make the queue/v4-backed store the default sqlite+postgres store, worker finalizes move to claim tokens, facades/vendorHash follow (ADR-0016 require+replace rules; `scripts/check-go-mods.sh` + the nix vendorHash fast gate)
 - [ ] ADR-0019 S2: unify the journal on upstream `facts.Fact` (open FactType) with tq-specific fact constants; re-point `internal/journal/cqrs`, webui tailer, sweepers, bridges; facts-in-same-tx becomes engine-enforced
 - [ ] ADR-0019 S3: `tq serve`/`tq stats`/httpapi read side onto metaengine Store collections (planned tables) + `Watcher`/`ServeSSE` live fragments replacing the hand tailer fan-out; `TestRoutesAreReadOnly` + health-CSP pins stay green
-- [ ] ADR-0019 S4: compose runtime (store, executors, sweepers, bridges) via `system/` DomainConfig; DELETE the hand-rolled sqlite/postgres engines + mirrored suites once proven in dogfood (the 7-of-9 art-dupl mirror clone groups die here)
+- [ ] ADR-0019 S4: compose runtime (store, executors, sweepers, bridges) via `system/` DomainConfig; DELETE the hand-rolled sqlite/postgres engines + mirrored suites once proven in dogfood (the 12 art-dupl mirror clone groups as of 2026-09-23 die here)
 - [ ] ADR-0019 dogfood cutover: replay `/mnt/pool/services/tq/tq.db` into the new engine store, verify projection equality, swap `TQ_DB` in the systemd units — BLOCKED: owner-run (production journal; never without explicit owner go)
 
 ## Dogfood round (harvested from docs/status/2026-09-10_02-00 self-review §f)
@@ -286,3 +286,13 @@ not here.
 
 - [ ] Pin the re-dispatch work-turn protocol in AGENTS.md next to the session-start ritual: for any re-dispatched task (a) read the NEWEST prior report for the task id first, (b) run `tq show <task-id>` on the live record (attempt count, fact seqs — never cite lineage second-hand), (c) fresh battery at current HEAD with every rc captured to file, (d) persist the battery as a citable artifact in the SAME window — attempt 3 of task 000001a0c698 skipped (b) and (d), leaving its claim time and fact seqs unrecorded
 - [ ] While row 123 is live, extend the AGENTS.md verify-window minimum battery with two probe lines: a `gofmt -l .` check scoped to non-vendor output (separates "verified" from "verified-except-the-known-gate") and a cache-mount `df` headroom line (ENOSPC has killed two gates now: the 03-37 toolchain dir and task 000001a0c698 attempt 1)
+
+## art-dupl dedup pass follow-ups (2026-09-23; sources: docs/status/2026-09-23_01-34_art-dupl-dedup-pass.md §f + the same-day continuation window; deduped against open rows — rationale comments, the 12-group count fix, and the AGENTS.md shared-seams bullet are DONE, not re-listed)
+
+- [ ] Rune-safe `executor.Excerpt` truncation: `line[:200]` is a byte cut and can split a UTF-8 rune on multi-byte prompts; all historical copies had the same behavior, now ONE choke point exists at internal/executor/excerpt.go so the fix is cheap + add a multi-byte boundary test (01-34 report §f2/§f7)
+- [ ] Dedicated `TestRecordRunOutcome`: sink detail contains log_path + result fields, sidecar path honored (01-34 report §f5)
+- [ ] Move `LogPath` into `sessionUsage` (wire-identical, embedding flattens JSON) and drop the two-pointer `recordRunOutcome` signature (01-34 report §f8)
+- [ ] art-dupl accept-list gate in ci-local: growth over an accepted-set file fails CI (lint-baseline pattern) — the mirror mass grew 7→12 groups unnoticed — BLOCKED: new hard gate needs an owner policy ruling (01-34 report §f6, §g2)
+- [ ] Wire dlqfix autopsies into `deriveUsage`/budget token projection — paid agent turns invisible to daily-cap accounting — BLOCKED: needs owner ruling on whether autopsy spend counts (01-34 report §f9/§g3, §f37)
+- [ ] Re-run art-dupl at `-t 3` once the accept-list gate exists, to see what a stricter threshold surfaces (01-34 report §f34)
+- [ ] Root-cause the `TestSweepPinsCloseoutReportPaths` one-off flake (02-35 continuation window): one full-suite run got `window[0].Report = ""` while isolation, package 5x, and a second full suite all pass — suspect completion-window ordering or the report-dir scan under parallel load; repro protocol: package runs at `-count=10` + full-suite repeat, then fix the ordering (docs/status/2026-09-23_02-35_dedup-continuation-window.md §c1)

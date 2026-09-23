@@ -225,7 +225,9 @@ func TestGitLogScannerTrailerVisibilityEndToEnd(t *testing.T) {
 
 	// Demoted shape: footer, blank line, attribution block last — git's
 	// trailer parser reads only the FINAL paragraph.
-	commit("work: demoted footer\n\nTask-Queue-ID: " + session + "\n\nGenerated with Crush\n\nAssisted-By: Crush:glm-5.3-flash\n")
+	commit(
+		"work: demoted footer\n\nTask-Queue-ID: " + session + "\n\nGenerated with Crush\n\nAssisted-By: Crush:glm-5.3-flash\n",
+	)
 
 	// Well-formed shape: the footer is the LAST line.
 	commit("work: footer last\n\nAssisted-By: Crush:glm-5.3-flash\n\nTask-Queue-ID: " + session + "\n")
@@ -236,6 +238,9 @@ func TestGitLogScannerTrailerVisibilityEndToEnd(t *testing.T) {
 	}
 
 	if len(got) != 1 || got[0].Subject != "work: footer last" {
-		t.Fatalf("attributed %+v, want only \"work: footer last\" — the demoted footer became VISIBLE; flip this assertion per the doc comment", got)
+		t.Fatalf(
+			"attributed %+v, want only \"work: footer last\" — the demoted footer became VISIBLE; flip this assertion per the doc comment",
+			got,
+		)
 	}
 }
