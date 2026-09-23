@@ -42,10 +42,19 @@ fi
 want="$(awk '$1 == "go" { print $2; exit }' go.mod)"
 for m in $mods; do
 	got="$(awk '$1 == "go" { print $2; exit }' "$m/go.mod")"
-	if [ "$got" != "$want" ]; then
-		echo "FAIL: $m/go.mod declares go $got, root declares go $want — keep toolchains aligned"
+	# A module may declare a NEWER go directive than root when a dependency
+	# requires it (ADR-0019 S1: go-cqrs-lite queue/v4 needs go 1.27.1 while
+	# root still declares 1.27) — a raise is additive and never runs a
+	# module on an older language version. A DOWNGRADE stays a hard FAIL:
+	# zero-dep leaves have no dependency floor, so `go mod tidy` can
+	# silently revert them (2026-09-12 red master, run 34726154600).
+	if [ "$(printf '%s\n' "$want" "$got" | sort -V | head -1)" != "$want" ]; then
+		echo "FAIL: $m/go.mod declares go $got, root declares go $want — a module may only RAISE the go directive (downgrades killed master: 2026-09-12)"
 		checks_failed=$((checks_failed + 1))
 		fail=1
+	elif [ "$got" != "$want" ]; then
+		echo "WARN: $m/go.mod declares go $got > root $want (dependency-required raise)"
+		checks_ok=$((checks_ok + 1))
 	else
 		checks_ok=$((checks_ok + 1))
 	fi
