@@ -103,10 +103,18 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 
 // identityCodec passes payloads through byte-for-byte: tq payloads are
 // jsontext.Value, already JSON; the default JSONCodec would base64-encode
-// the bytes.
+// the bytes. A nil value binds as the EMPTY blob, never SQL NULL — the
+// upstream tasks.payload column is NOT NULL and tq's zero-value payloads
+// are empty, not null (tq's own schema stores '' the same way).
 func identityCodec() uqueue.Codec[[]byte] {
 	return uqueue.Codec[[]byte]{
-		Encode: func(v []byte) ([]byte, error) { return v, nil },
+		Encode: func(v []byte) ([]byte, error) {
+			if v == nil {
+				return []byte{}, nil
+			}
+
+			return v, nil
+		},
 		Decode: func(b []byte) ([]byte, error) { return b, nil },
 	}
 }
@@ -771,8 +779,11 @@ func listWhere(f queue.Filter) (string, []any) {
 	if f.Query != "" {
 		like := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
 
+		// payload is BLOB under the upstream engine (tq stores TEXT), so
+		// the substring pushdown reads it through CAST — LIKE never
+		// matches a BLOB operand against a TEXT pattern.
 		where = append(where, `(id LIKE ? ESCAPE '\' OR type LIKE ? ESCAPE '\' OR
-			project LIKE ? ESCAPE '\' OR payload LIKE ? ESCAPE '\' OR
+			project LIKE ? ESCAPE '\' OR CAST(payload AS TEXT) LIKE ? ESCAPE '\' OR
 			lease_owner LIKE ? ESCAPE '\' OR last_error LIKE ? ESCAPE '\')`)
 		args = append(args, like, like, like, like, like, like)
 	}
