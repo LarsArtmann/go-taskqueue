@@ -726,3 +726,20 @@ func mustJSON(v any) jsontext.Value {
 
 	return b
 }
+
+// ArchiveFactsBefore is NOT implemented in the S1 spike: the fact archive
+// (facts_archive / journal_meta) has no upstream counterpart.
+func (s *Store) ArchiveFactsBefore(ctx context.Context, cutoff int64) (int64, error) {
+	return 0, errors.New("cqrsqlite: fact archive not implemented in the S1 spike")
+}
+
+// ArchiveSummary is NOT implemented in the S1 spike: see ArchiveFactsBefore.
+func (s *Store) ArchiveSummary(ctx context.Context) (ArchiveStats, error) {
+	return ArchiveStats{}, errors.New("cqrsqlite: fact archive not implemented in the S1 spike")
+}
+
+// ArchiveStats mirrors the tq sqlite store's archive summary shape.
+type ArchiveStats struct {
+	Archived int64
+	Hot      int64
+}
