@@ -16,7 +16,11 @@
 //     guarantee, D24), Requeue (tq's evidence carries resume_closeout),
 //     all reads, RecordAnswer, AppendFact, watermarks, priority scores.
 //
-// Known divergences are catalogued in docs/status (S1 spike report).
+// Known divergences are catalogued in
+// docs/status/2026-09-23_16-28_adr0019-s1-sqlitev4-conformance-divergence-report.md
+// (D1 finalizes, D2 enqueued detail, D3 heartbeat facts, D4 fact archive,
+// D5 payload storage class; D6 exclusivity/resume-closeout are
+// adapter-implemented, not divergences).
 package sqlitev4
 
 import (
