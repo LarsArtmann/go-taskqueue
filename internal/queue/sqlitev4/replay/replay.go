@@ -35,7 +35,7 @@
 //
 // Exit 0 on a green report, 1 on any projection mismatch, 2 on setup
 // errors. The tool never writes to the source database.
-package replay
+package main
 
 import (
 	"context"
@@ -45,7 +45,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"

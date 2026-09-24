@@ -27,7 +27,7 @@ func main() {
 	ctx := context.Background()
 
 	if !*verifyOnly {
-		stats, err := replay.Migrate(ctx, *from, *to)
+		stats, err := Migrate(ctx, *from, *to)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "replay: migration failed: %v\n", err)
 			os.Exit(2)
@@ -37,7 +37,7 @@ func main() {
 			stats.Tasks, stats.Deps, stats.Facts, stats.Watermarks, stats.PriorityScores, stats.FactsArchive, stats.JournalMeta)
 	}
 
-	report, err := replay.Verify(ctx, *from, *to)
+	report, err := Verify(ctx, *from, *to)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "replay: verification failed: %v\n", err)
 		os.Exit(2)
