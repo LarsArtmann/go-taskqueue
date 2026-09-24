@@ -10,59 +10,62 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
+// timeFromMillis converts a unix-millis column value (the journal's
+// timestamp encoding) back to a time.
+func timeFromMillis(millis int64) time.Time { return time.UnixMilli(millis) }
+
+// jsonText wraps a stored detail string as its JSON value type.
+func jsonText(detail string) jsontext.Value { return jsontext.Value(detail) }
+
 // jsonUnmarshalDeps decodes the stored deps JSON array.
 func jsonUnmarshalDeps(depsJSON string, out *[]task.ID) error {
 	return json.Unmarshal([]byte(depsJSON), out)
 }
-
-// msToTime converts a unix-millis column value (the journal's timestamp
-// encoding) back to a time.
-func msToTime(ms int64) time.Time { return time.UnixMilli(ms) }
-
-func jsontextValue(s string) jsontext.Value { return jsontext.Value(s) }
 
 // scanOldTask mirrors the hand-rolled store's task scan: NULL lease
 // expiry and completed time stay nil pointers, payload is the raw JSON
 // text, deps ride as the stored JSON array.
 func scanOldTask(rows *sql.Rows) (task.Task, error) {
 	var (
-		t                                                                task.Task
-		payload, depsJSON                                                string
-		priority, attempts, maxAttempts, notBefore, createdAt, updatedAt int64
-		leaseExpires, completedAt                                        sql.NullInt64
+		one                                         task.Task
+		payload, depsJSON                           string
+		priority, attempts, maxAttempts             int64
+		notBefore, createdAt, updatedAt             int64
+		leaseExpires, completedAt                   sql.NullInt64
 	)
-	if err := rows.Scan(&t.ID, &t.Project, &t.Type, &payload, &depsJSON, &priority,
-		&attempts, &maxAttempts, &notBefore, &t.Status, &t.LeaseOwner, &leaseExpires,
-		&t.LastError, &createdAt, &updatedAt, &completedAt, &t.DedupKey); err != nil {
+	if err := rows.Scan(&one.ID, &one.Project, &one.Type, &payload, &depsJSON, &priority,
+		&attempts, &maxAttempts, &notBefore, &one.Status, &one.LeaseOwner, &leaseExpires,
+		&one.LastError, &createdAt, &updatedAt, &completedAt, &one.DedupKey); err != nil {
 		return task.Task{}, err
 	}
 
-	t.Payload = jsontext.Value(payload)
-	t.Deps = []task.ID{}
+	one.Payload = jsonText(payload)
+
+	one.Deps = []task.ID{}
 	if depsJSON != "" && depsJSON != "[]" {
-		if err := jsonUnmarshalDeps(depsJSON, &t.Deps); err != nil {
+		if err := jsonUnmarshalDeps(depsJSON, &one.Deps); err != nil {
 			return task.Task{}, err
 		}
 	}
 
-	t.Priority = int(priority)
-	t.Attempts = int(attempts)
-	t.MaxAttempts = int(maxAttempts)
-	t.NotBefore = msToTime(notBefore)
-	t.CreatedAt = msToTime(createdAt)
-	t.UpdatedAt = msToTime(updatedAt)
+	one.Priority = int(priority)
+	one.Attempts = int(attempts)
+	one.MaxAttempts = int(maxAttempts)
+	one.NotBefore = timeFromMillis(notBefore)
+	one.CreatedAt = timeFromMillis(createdAt)
+	one.UpdatedAt = timeFromMillis(updatedAt)
 
 	if leaseExpires.Valid {
-		exp := msToTime(leaseExpires.Int64)
-		t.LeaseExpires = &exp
+		expiry := timeFromMillis(leaseExpires.Int64)
+		one.LeaseExpires = &expiry
 	}
 
 	if completedAt.Valid {
-		done := msToTime(completedAt.Int64)
-		t.CompletedAt = &done
+		done := timeFromMillis(completedAt.Int64)
+		one.CompletedAt = &done
 	}
 
-	return t, nil
+	return one, nil
 }
 
 // equalFacts compares facts field-by-field, detail bytes included.
@@ -77,34 +80,37 @@ func equalFacts(a, b journal.Fact) bool {
 		string(a.Detail) == string(b.Detail)
 }
 
-// equalTasks compares task projections field-by-field.
+// equalTasks compares task projections field-by-field: identity, then
+// scheduling state, then timestamps.
 func equalTasks(a, b task.Task) bool {
-	if a.ID != b.ID ||
-		a.Project != b.Project ||
-		a.Type != b.Type ||
-		string(a.Payload) != string(b.Payload) ||
-		a.Priority != b.Priority ||
-		a.Attempts != b.Attempts ||
-		a.MaxAttempts != b.MaxAttempts ||
-		!a.NotBefore.Equal(b.NotBefore) ||
-		a.Status != b.Status ||
-		a.LeaseOwner != b.LeaseOwner ||
-		a.LastError != b.LastError ||
-		a.DedupKey != b.DedupKey ||
-		!a.CreatedAt.Equal(b.CreatedAt) ||
-		!a.UpdatedAt.Equal(b.UpdatedAt) {
-		return false
-	}
+	return equalTaskIdentity(a, b) &&
+		equalTaskScheduling(a, b) &&
+		equalTaskTimestamps(a, b) &&
+		sameDeps(a.Deps, b.Deps) &&
+		sameTimePtr(a.LeaseExpires, b.LeaseExpires) &&
+		sameTimePtr(a.CompletedAt, b.CompletedAt)
+}
 
-	if !sameDeps(a.Deps, b.Deps) {
-		return false
-	}
+func equalTaskIdentity(a, b task.Task) bool {
+	return a.ID == b.ID &&
+		a.Project == b.Project &&
+		a.Type == b.Type &&
+		string(a.Payload) == string(b.Payload) &&
+		a.DedupKey == b.DedupKey
+}
 
-	if !sameTimePtr(a.LeaseExpires, b.LeaseExpires) || !sameTimePtr(a.CompletedAt, b.CompletedAt) {
-		return false
-	}
+func equalTaskScheduling(a, b task.Task) bool {
+	return a.Priority == b.Priority &&
+		a.Attempts == b.Attempts &&
+		a.MaxAttempts == b.MaxAttempts &&
+		a.Status == b.Status &&
+		a.LeaseOwner == b.LeaseOwner &&
+		a.LastError == b.LastError &&
+		a.NotBefore.Equal(b.NotBefore)
+}
 
-	return true
+func equalTaskTimestamps(a, b task.Task) bool {
+	return a.CreatedAt.Equal(b.CreatedAt) && a.UpdatedAt.Equal(b.UpdatedAt)
 }
 
 func sameDeps(a, b []task.ID) bool {

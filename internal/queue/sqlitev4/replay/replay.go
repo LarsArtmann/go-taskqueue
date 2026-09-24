@@ -1,10 +1,11 @@
 // Package replay implements the ADR-0019 S1 data-migration tool: it
 // replays a tq fact journal — the hand-rolled store's database — into a
-// fresh go-cqrs-lite engine store (this module's adapter over
+// fresh go-cqrs-lite engine store (the sqlitev4 adapter over
 // queue/sqlite/v4) and verifies projection equality (StatusCounts,
-// ProjectCounts, the full fact stream, per-task fact tails, DLQ
-// contents, watermarks, priority scores). It is S1's definition-of-done
-// gate for the dogfood cutover (ADR-0019 §Data migration; C12/M056 in
+// ProjectCounts, the full fact stream, head seq, per-task fact tails,
+// DLQ contents, watermarks, priority scores). It is S1's
+// definition-of-done gate for the dogfood cutover (ADR-0019 §Data
+// migration; C12/M056 in
 // docs/planning/2026-09-22_23-49_go-cqrs-lite-platform-migration.md).
 //
 // C12 replay-design decision (resolving the memo's open question): the
@@ -35,7 +36,7 @@
 //
 // Exit 0 on a green report, 1 on any projection mismatch, 2 on setup
 // errors. The tool never writes to the source database.
-package main
+package replay
 
 import (
 	"context"
@@ -62,18 +63,16 @@ const (
 	// sides; the tails are compared as complete sequences, so any depth
 	// at or above every real tail is equivalent.
 	taskTailLimit = 100000
+
+	sectionStatusCounts  = "status counts"
+	sectionProjectCounts = "project counts"
+	sectionDLQ           = "dlq"
+	sectionWatermarks    = "watermarks"
+	sectionPriority      = "priority scores"
+	sectionFactStream    = "fact stream"
+	sectionHeadSeq       = "head seq"
+	sectionTaskTails     = "task tails"
 )
-
-// copyDSN opens a SQLite file for the migration copy (single writer, WAL).
-func copyDSN(path string) string {
-	return fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)", path)
-}
-
-// readOnlyDSN opens a SQLite file read-only: the migration never writes
-// to the source journal.
-func readOnlyDSN(path string) string {
-	return fmt.Sprintf("file:%s?mode=ro&_pragma=busy_timeout(5000)", path)
-}
 
 // Stats reports how many rows the migration copied per table.
 type Stats struct {
@@ -99,9 +98,9 @@ type Report struct {
 }
 
 // OK reports whether every section passed.
-func (r Report) OK() bool {
-	for _, s := range r.Sections {
-		if !s.OK {
+func (report Report) OK() bool {
+	for _, section := range report.Sections {
+		if !section.OK {
 			return false
 		}
 	}
@@ -110,19 +109,30 @@ func (r Report) OK() bool {
 }
 
 // Summary renders the report for terminal output.
-func (r Report) Summary() string {
-	var b strings.Builder
+func (report Report) Summary() string {
+	var out strings.Builder
 
-	for _, s := range r.Sections {
-		status := "ok"
-		if !s.OK {
-			status = "MISMATCH"
+	for _, section := range report.Sections {
+		verdict := "ok"
+		if !section.OK {
+			verdict = "MISMATCH"
 		}
 
-		fmt.Fprintf(&b, "%-18s %-9s %s\n", s.Name, status, s.Detail)
+		fmt.Fprintf(&out, "%-18s %-9s %s\n", section.Name, verdict, section.Detail)
 	}
 
-	return b.String()
+	return out.String()
+}
+
+// copyDSN opens a SQLite file for the migration copy (single writer, WAL).
+func copyDSN(path string) string {
+	return fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)", path)
+}
+
+// readOnlyDSN opens a SQLite file read-only: the migration never writes
+// to the source journal.
+func readOnlyDSN(path string) string {
+	return fmt.Sprintf("file:%s?mode=ro&_pragma=busy_timeout(5000)", path)
 }
 
 // Migrate replays the source journal into a fresh engine store at
@@ -135,16 +145,18 @@ func Migrate(ctx context.Context, fromPath, toPath string) (Stats, error) {
 	if err != nil {
 		return stats, fmt.Errorf("replay: open source: %w", err)
 	}
+
 	defer func() { _ = src.Close() }()
 
 	// Open+close the target through the real adapter once: it creates the
 	// engine schema AND the companion tables, exactly as a cutover store
 	// would boot.
-	fresh, err := sqlitev4.Open(toPath)
+	boot, err := sqlitev4.Open(toPath) //nolint:contextcheck // the adapter's Open bootstraps its own migration
 	if err != nil {
 		return stats, fmt.Errorf("replay: bootstrap engine store: %w", err)
 	}
-	if err := fresh.Close(); err != nil {
+
+	if err := boot.Close(); err != nil {
 		return stats, fmt.Errorf("replay: close bootstrap store: %w", err)
 	}
 
@@ -152,51 +164,77 @@ func Migrate(ctx context.Context, fromPath, toPath string) (Stats, error) {
 	if err != nil {
 		return stats, fmt.Errorf("replay: open target: %w", err)
 	}
+
 	defer func() { _ = dst.Close() }()
 
-	tx, err := dst.BeginTx(ctx, nil)
+	copyTx, err := dst.BeginTx(ctx, nil)
 	if err != nil {
 		return stats, fmt.Errorf("replay: begin copy tx: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }()
 
-	if stats.Tasks, err = copyTasks(ctx, src, tx); err != nil {
-		return stats, fmt.Errorf("replay: tasks: %w", err)
-	}
-	if stats.Deps, err = copyDeps(ctx, src, tx); err != nil {
-		return stats, fmt.Errorf("replay: deps: %w", err)
-	}
-	if stats.Facts, err = copyRows(ctx, src, tx, "facts",
-		"seq, time, task_id, type, owner, attempt, error, detail", &stats.Facts); err != nil {
-		return stats, fmt.Errorf("replay: facts: %w", err)
-	}
-	if stats.Watermarks, err = copyRows(ctx, src, tx, "watermarks",
-		"consumer, seq, updated_at", &stats.Watermarks); err != nil {
-		return stats, fmt.Errorf("replay: watermarks: %w", err)
-	}
-	if stats.PriorityScores, err = copyRows(ctx, src, tx, "priority_scores",
-		"item_key, score, effort_minutes, source, reasoning, tokens, scored_at", &stats.PriorityScores); err != nil {
-		return stats, fmt.Errorf("replay: priority_scores: %w", err)
-	}
-	if stats.FactsArchive, err = copyLegacyTable(ctx, src, tx, "facts_archive",
-		"seq, time, task_id, type, owner, attempt, error, detail", &stats.FactsArchive); err != nil {
-		return stats, fmt.Errorf("replay: facts_archive: %w", err)
-	}
-	if stats.JournalMeta, err = copyLegacyTable(ctx, src, tx, "journal_meta",
-		"key, value", &stats.JournalMeta); err != nil {
-		return stats, fmt.Errorf("replay: journal_meta: %w", err)
+	defer func() { _ = copyTx.Rollback() }()
+
+	if err := copyAllTables(ctx, src, copyTx, &stats); err != nil {
+		return stats, err
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := copyTx.Commit(); err != nil {
 		return stats, fmt.Errorf("replay: commit copy: %w", err)
 	}
 
 	return stats, nil
 }
 
+// copyAllTables copies every table in FK-safe order inside the caller's
+// transaction: tasks first (deps reference them), then everything else.
+func copyAllTables(ctx context.Context, src *sql.DB, copyTx *sql.Tx, stats *Stats) error {
+	copiers := []struct {
+		name string
+		run  func(context.Context, *sql.DB, *sql.Tx) (int, error)
+	}{
+		{name: "tasks", run: copyTasks},
+		{name: "deps", run: copyDeps},
+		{name: "facts", run: copyFacts},
+		{name: "watermarks", run: copyWatermarks},
+		{name: "priority_scores", run: copyPriorityScores},
+		{name: "facts_archive", run: copyLegacyFactsArchive},
+		{name: "journal_meta", run: copyLegacyJournalMeta},
+	}
+
+	for _, copier := range copiers {
+		copied, err := copier.run(ctx, src, copyTx)
+		if err != nil {
+			return fmt.Errorf("replay: %s: %w", copier.name, err)
+		}
+
+		setStat(stats, copier.name, copied)
+	}
+
+	return nil
+}
+
+func setStat(stats *Stats, table string, copied int) {
+	switch table {
+	case "tasks":
+		stats.Tasks = copied
+	case "deps":
+		stats.Deps = copied
+	case "facts":
+		stats.Facts = copied
+	case "watermarks":
+		stats.Watermarks = copied
+	case "priority_scores":
+		stats.PriorityScores = copied
+	case "facts_archive":
+		stats.FactsArchive = copied
+	case "journal_meta":
+		stats.JournalMeta = copied
+	}
+}
+
 // copyTasks copies task rows with the two schema conversions: payload
 // TEXT→BLOB and lease_token NULL (the old schema has no fencing token).
-func copyTasks(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
+func copyTasks(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 	rows, err := src.QueryContext(ctx, `
 		SELECT id, project, type, payload, deps, priority, attempts, max_attempts,
 		       not_before, status, lease_owner, lease_expires, last_error,
@@ -205,6 +243,7 @@ func copyTasks(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+
 	defer func() { _ = rows.Close() }()
 
 	const insert = `
@@ -227,7 +266,7 @@ func copyTasks(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
 			return 0, err
 		}
 
-		if _, err := tx.ExecContext(ctx, insert,
+		if _, err := copyTx.ExecContext(ctx, insert,
 			id, project, typ, []byte(payload), deps, priority, attempts, maxAttempts,
 			notBefore, status, leaseOwner, leaseExpires, lastError,
 			createdAt, updatedAt, completedAt, dedupKey); err != nil {
@@ -242,11 +281,12 @@ func copyTasks(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
 
 // copyDeps copies dependency edges; the tasks rows already exist, so the
 // foreign keys resolve.
-func copyDeps(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
+func copyDeps(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 	rows, err := src.QueryContext(ctx, `SELECT task_id, dep_id FROM deps ORDER BY task_id, dep_id`)
 	if err != nil {
 		return 0, err
 	}
+
 	defer func() { _ = rows.Close() }()
 
 	copied := 0
@@ -257,7 +297,7 @@ func copyDeps(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
 			return 0, err
 		}
 
-		if _, err := tx.ExecContext(ctx, `INSERT INTO deps (task_id, dep_id) VALUES (?, ?)`, taskID, depID); err != nil {
+		if _, err := copyTx.ExecContext(ctx, `INSERT INTO deps (task_id, dep_id) VALUES (?, ?)`, taskID, depID); err != nil {
 			return 0, err
 		}
 
@@ -267,32 +307,96 @@ func copyDeps(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
 	return copied, rows.Err()
 }
 
-// copyRows copies a same-shape table (facts, watermarks, priority_scores)
-// verbatim; the engine and companion schemas already define them.
-func copyRows(ctx context.Context, src *sql.DB, tx *sql.Tx, table, cols string, _ *int) (int, error) {
-	rows, err := src.QueryContext(ctx, fmt.Sprintf(`SELECT %s FROM %s ORDER BY 1 ASC`, cols, table)) //nolint:gosec // table/cols are compile-time constants
+// copyFacts copies the fact journal verbatim, seq numbers included: the
+// engine's facts table IS the unified journal (S2), so byte-identical
+// history is the whole point.
+func copyFacts(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
+	const query = `SELECT seq, time, task_id, type, owner, attempt, error, detail FROM facts ORDER BY seq ASC`
+	const insert = `INSERT INTO facts (seq, time, task_id, type, owner, attempt, error, detail)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+
+	return copyQueriedRows(ctx, src, copyTx, query, insert)
+}
+
+func copyWatermarks(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
+	const query = `SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`
+	const insert = `INSERT INTO watermarks (consumer, seq, updated_at) VALUES (?, ?, ?)`
+
+	return copyQueriedRows(ctx, src, copyTx, query, insert)
+}
+
+func copyPriorityScores(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
+	const query = `SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`
+	const insert = `INSERT INTO priority_scores (item_key, score, effort_minutes, source, reasoning, tokens, scored_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`
+
+	return copyQueriedRows(ctx, src, copyTx, query, insert)
+}
+
+// copyLegacyFactsArchive recreates the old-only facts_archive table in
+// the target verbatim — the engine never reads it, but cutover must not
+// lose history. Absent in the source means nothing to carry.
+func copyLegacyFactsArchive(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
+	const legacyCols = "seq, time, task_id, type, owner, attempt, error, detail"
+
+	return copyLegacyTable(ctx, src, copyTx, "facts_archive", legacyCols)
+}
+
+// copyLegacyJournalMeta recreates the old-only journal_meta table (same
+// rationale as facts_archive).
+func copyLegacyJournalMeta(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
+	return copyLegacyTable(ctx, src, copyTx, "journal_meta", "key, value")
+}
+
+func copyLegacyTable(ctx context.Context, src *sql.DB, copyTx *sql.Tx, table, cols string) (int, error) {
+	var createSQL sql.NullString
+
+	err := src.QueryRowContext(ctx,
+		`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&createSQL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+
 	if err != nil {
 		return 0, err
 	}
+
+	if _, err := copyTx.ExecContext(ctx, createSQL.String); err != nil {
+		return 0, err
+	}
+
+	query := fmt.Sprintf(`SELECT %s FROM %s ORDER BY 1 ASC`, cols, table)
+	insert := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, cols,
+		strings.TrimSuffix(strings.Repeat("?, ", strings.Count(cols, ",")+1), ", "))
+
+	//nolint:gosec // table and cols are compile-time constant strings, not user input
+	return copyQueriedRows(ctx, src, copyTx, query, insert)
+}
+
+// copyQueriedRows copies every row of a fixed query into a fixed insert,
+// column-for-column, converting nothing.
+func copyQueriedRows(ctx context.Context, src *sql.DB, copyTx *sql.Tx, query, insert string) (int, error) {
+	rows, err := src.QueryContext(ctx, query)
+	if err != nil {
+		return 0, err
+	}
+
 	defer func() { _ = rows.Close() }()
 
-	dest := make([]any, strings.Count(cols, ",")+1)
-	vals := make([]any, len(dest))
-	for i := range vals {
-		vals[i] = &dest[i]
+	dest := make([]any, strings.Count(insert, "?"))
+	pointers := make([]any, len(dest))
+	for i := range pointers {
+		pointers[i] = &dest[i]
 	}
 
 	copied := 0
 
 	for rows.Next() {
-		if err := rows.Scan(vals...); err != nil {
+		if err := rows.Scan(pointers...); err != nil {
 			return 0, err
 		}
 
-		placeholders := strings.TrimSuffix(strings.Repeat("?, ", len(dest)), ", ")
-		if _, err := tx.ExecContext(ctx,
-			fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, cols, placeholders), //nolint:gosec // compile-time constants
-			dest...); err != nil {
+		if _, err := copyTx.ExecContext(ctx, insert, dest...); err != nil {
 			return 0, err
 		}
 
@@ -300,27 +404,6 @@ func copyRows(ctx context.Context, src *sql.DB, tx *sql.Tx, table, cols string, 
 	}
 
 	return copied, rows.Err()
-}
-
-// copyLegacyTable recreates an old-only table (facts_archive,
-// journal_meta) in the target verbatim — the engine never reads it, but
-// cutover must not lose history.
-func copyLegacyTable(ctx context.Context, src *sql.DB, tx *sql.Tx, table, cols string, _ *int) (int, error) {
-	var creates sql.NullString
-	if err := src.QueryRowContext(ctx,
-		`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&creates); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return 0, nil // table does not exist in the source: nothing to carry
-		}
-
-		return 0, err
-	}
-
-	if _, err := tx.ExecContext(ctx, creates.String); err != nil {
-		return 0, err
-	}
-
-	return copyRows(ctx, src, tx, table, cols, nil)
 }
 
 // Verify compares the source journal's projections against the target
@@ -335,12 +418,14 @@ func Verify(ctx context.Context, fromPath, toPath string) (Report, error) {
 	if err != nil {
 		return report, fmt.Errorf("replay: open source: %w", err)
 	}
+
 	defer func() { _ = src.Close() }()
 
-	target, err := sqlitev4.Open(toPath)
+	target, err := sqlitev4.Open(toPath) //nolint:contextcheck // the adapter's Open bootstraps its own migration
 	if err != nil {
 		return report, fmt.Errorf("replay: open engine store: %w", err)
 	}
+
 	defer func() { _ = target.Close() }()
 
 	report.Sections = append(report.Sections,
@@ -350,6 +435,7 @@ func Verify(ctx context.Context, fromPath, toPath string) (Report, error) {
 		verifyWatermarks(ctx, src, target),
 		verifyPriorityScores(ctx, src, target),
 	)
+
 	factSections, err := verifyFacts(ctx, src, target)
 	if err != nil {
 		return report, fmt.Errorf("replay: fact stream: %w", err)
@@ -366,327 +452,351 @@ func oldStatusCounts(ctx context.Context, src *sql.DB) (map[task.Status]int, err
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = rows.Close() }()
 
-	out := map[task.Status]int{}
+	counts := map[task.Status]int{}
 
 	for rows.Next() {
-		var st task.Status
-		var n int
-		if err := rows.Scan(&st, &n); err != nil {
+		var status task.Status
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
 			return nil, err
 		}
 
-		out[st] = n
+		counts[status] = count
 	}
 
-	return out, rows.Err()
+	return counts, rows.Err()
+}
+
+func mismatch(name, detail string) Section {
+	return Section{Name: name, Detail: detail}
+}
+
+func match(name, detail string) Section {
+	return Section{Name: name, OK: true, Detail: detail}
 }
 
 func verifyStatusCounts(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section {
-	oldCounts, err := oldStatusCounts(ctx, src)
+	sourceCounts, err := oldStatusCounts(ctx, src)
 	if err != nil {
-		return Section{Name: "status counts", Detail: fmt.Sprintf("source read failed: %v", err)}
+		return mismatch(sectionStatusCounts, fmt.Sprintf("source read failed: %v", err))
 	}
 
-	newCounts, err := target.StatusCounts(ctx)
+	targetCounts, err := target.StatusCounts(ctx)
 	if err != nil {
-		return Section{Name: "status counts", Detail: fmt.Sprintf("target read failed: %v", err)}
+		return mismatch(sectionStatusCounts, fmt.Sprintf("target read failed: %v", err))
 	}
 
-	if equalMaps(oldCounts, newCounts) {
-		return Section{Name: "status counts", OK: true, Detail: formatCounts(oldCounts)}
+	if equalMaps(sourceCounts, targetCounts) {
+		return match(sectionStatusCounts, formatCounts(sourceCounts))
 	}
 
-	return Section{Name: "status counts", Detail: fmt.Sprintf("source %v vs target %v", formatCounts(oldCounts), formatCounts(newCounts))}
+	return mismatch(sectionStatusCounts,
+		fmt.Sprintf("source %v vs target %v", formatCounts(sourceCounts), formatCounts(targetCounts)))
 }
 
 func verifyProjectCounts(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section {
 	rows, err := src.QueryContext(ctx, `SELECT project, status, COUNT(*) FROM tasks GROUP BY project, status`)
 	if err != nil {
-		return Section{Name: "project counts", Detail: fmt.Sprintf("source read failed: %v", err)}
+		return mismatch(sectionProjectCounts, fmt.Sprintf("source read failed: %v", err))
 	}
+
 	defer func() { _ = rows.Close() }()
 
-	oldCounts := map[string]map[task.Status]int{}
+	sourceCounts := map[string]map[task.Status]int{}
 
 	for rows.Next() {
 		var project string
-		var st task.Status
-		var n int
-		if err := rows.Scan(&project, &st, &n); err != nil {
-			return Section{Name: "project counts", Detail: fmt.Sprintf("source scan failed: %v", err)}
+		var status task.Status
+		var count int
+		if err := rows.Scan(&project, &status, &count); err != nil {
+			return mismatch(sectionProjectCounts, fmt.Sprintf("source scan failed: %v", err))
 		}
 
-		if oldCounts[project] == nil {
-			oldCounts[project] = map[task.Status]int{}
+		if sourceCounts[project] == nil {
+			sourceCounts[project] = map[task.Status]int{}
 		}
 
-		oldCounts[project][st] = n
+		sourceCounts[project][status] = count
 	}
 
 	if err := rows.Err(); err != nil {
-		return Section{Name: "project counts", Detail: fmt.Sprintf("source read failed: %v", err)}
+		return mismatch(sectionProjectCounts, fmt.Sprintf("source read failed: %v", err))
 	}
 
-	newCounts, err := target.ProjectCounts(ctx)
+	targetCounts, err := target.ProjectCounts(ctx)
 	if err != nil {
-		return Section{Name: "project counts", Detail: fmt.Sprintf("target read failed: %v", err)}
+		return mismatch(sectionProjectCounts, fmt.Sprintf("target read failed: %v", err))
 	}
 
-	if len(oldCounts) != len(newCounts) {
-		return Section{Name: "project counts", Detail: fmt.Sprintf("source has %d projects, target %d", len(oldCounts), len(newCounts))}
+	if len(sourceCounts) != len(targetCounts) {
+		return mismatch(sectionProjectCounts, fmt.Sprintf("source has %d projects, target %d", len(sourceCounts), len(targetCounts)))
 	}
 
-	for project, old := range oldCounts {
-		new, ok := newCounts[project]
-		if !ok || !equalMaps(old, new) {
-			return Section{Name: "project counts", Detail: fmt.Sprintf("project %q differs", project)}
+	for project, source := range sourceCounts {
+		if !equalMaps(source, targetCounts[project]) {
+			return mismatch(sectionProjectCounts, fmt.Sprintf("project %q differs", project))
 		}
 	}
 
-	return Section{Name: "project counts", OK: true, Detail: fmt.Sprintf("%d projects", len(oldCounts))}
+	return match(sectionProjectCounts, fmt.Sprintf("%d projects", len(sourceCounts)))
 }
 
 func verifyDLQ(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section {
-	oldTasks, err := oldListStatus(ctx, src, task.Dead)
+	sourceTasks, err := oldListStatus(ctx, src, task.Dead)
 	if err != nil {
-		return Section{Name: "dlq", Detail: fmt.Sprintf("source read failed: %v", err)}
+		return mismatch(sectionDLQ, fmt.Sprintf("source read failed: %v", err))
 	}
 
-	newTasks, err := target.List(ctx, queue.Filter{Status: deadStatus()})
+	dead := task.Dead
+	targetTasks, err := target.List(ctx, queue.Filter{Status: &dead})
 	if err != nil {
-		return Section{Name: "dlq", Detail: fmt.Sprintf("target read failed: %v", err)}
+		return mismatch(sectionDLQ, fmt.Sprintf("target read failed: %v", err))
 	}
 
-	if len(oldTasks) != len(newTasks) {
-		return Section{Name: "dlq", Detail: fmt.Sprintf("source has %d dead tasks, target %d", len(oldTasks), len(newTasks))}
+	if len(sourceTasks) != len(targetTasks) {
+		return mismatch(sectionDLQ, fmt.Sprintf("source has %d dead tasks, target %d", len(sourceTasks), len(targetTasks)))
 	}
 
-	sort.Slice(oldTasks, func(i, j int) bool { return oldTasks[i].ID < oldTasks[j].ID })
-	sort.Slice(newTasks, func(i, j int) bool { return newTasks[i].ID < newTasks[j].ID })
+	sort.Slice(sourceTasks, func(i, j int) bool { return sourceTasks[i].ID < sourceTasks[j].ID })
+	sort.Slice(targetTasks, func(i, j int) bool { return targetTasks[i].ID < targetTasks[j].ID })
 
-	for i := range oldTasks {
-		if !equalTasks(oldTasks[i], newTasks[i]) {
-			return Section{Name: "dlq", Detail: fmt.Sprintf("dead task %s differs", oldTasks[i].ID)}
+	for i := range sourceTasks {
+		if !equalTasks(sourceTasks[i], targetTasks[i]) {
+			return mismatch(sectionDLQ, fmt.Sprintf("dead task %s differs", sourceTasks[i].ID))
 		}
 	}
 
-	return Section{Name: "dlq", OK: true, Detail: fmt.Sprintf("%d dead tasks identical", len(oldTasks))}
+	return match(sectionDLQ, fmt.Sprintf("%d dead tasks identical", len(sourceTasks)))
 }
 
 func verifyWatermarks(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section {
 	rows, err := src.QueryContext(ctx, `SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`)
 	if err != nil {
-		return Section{Name: "watermarks", Detail: fmt.Sprintf("source read failed: %v", err)}
+		return mismatch(sectionWatermarks, fmt.Sprintf("source read failed: %v", err))
 	}
+
 	defer func() { _ = rows.Close() }()
 
-	old := map[string]queue.WatermarkEntry{}
+	source := map[string]queue.WatermarkEntry{}
 
 	for rows.Next() {
-		var e queue.WatermarkEntry
-		if err := rows.Scan(&e.Consumer, &e.Seq, &e.UpdatedAt); err != nil {
-			return Section{Name: "watermarks", Detail: fmt.Sprintf("source scan failed: %v", err)}
+		var entry queue.WatermarkEntry
+		if err := rows.Scan(&entry.Consumer, &entry.Seq, &entry.UpdatedAt); err != nil {
+			return mismatch(sectionWatermarks, fmt.Sprintf("source scan failed: %v", err))
 		}
 
-		old[e.Consumer] = e
+		source[entry.Consumer] = entry
 	}
 
 	if err := rows.Err(); err != nil {
-		return Section{Name: "watermarks", Detail: fmt.Sprintf("source read failed: %v", err)}
+		return mismatch(sectionWatermarks, fmt.Sprintf("source read failed: %v", err))
 	}
 
 	entries, err := target.ListWatermarks(ctx)
 	if err != nil {
-		return Section{Name: "watermarks", Detail: fmt.Sprintf("target read failed: %v", err)}
+		return mismatch(sectionWatermarks, fmt.Sprintf("target read failed: %v", err))
 	}
 
-	new := make(map[string]queue.WatermarkEntry, len(entries))
-	for _, e := range entries {
-		new[e.Consumer] = e
+	targets := make(map[string]queue.WatermarkEntry, len(entries))
+	for _, entry := range entries {
+		targets[entry.Consumer] = entry
 	}
 
-	if len(old) != len(new) {
-		return Section{Name: "watermarks", Detail: fmt.Sprintf("source has %d watermarks, target %d", len(old), len(new))}
+	if len(source) != len(targets) {
+		return mismatch(sectionWatermarks, fmt.Sprintf("source has %d watermarks, target %d", len(source), len(targets)))
 	}
 
-	for consumer, oldEntry := range old {
-		newEntry, ok := new[consumer]
-		if !ok || oldEntry != newEntry {
-			return Section{Name: "watermarks", Detail: fmt.Sprintf("watermark %q differs", consumer)}
+	for consumer, sourceEntry := range source {
+		if targets[consumer] != sourceEntry {
+			return mismatch(sectionWatermarks, fmt.Sprintf("watermark %q differs", consumer))
 		}
 	}
 
-	return Section{Name: "watermarks", OK: true, Detail: fmt.Sprintf("%d watermarks identical", len(old))}
+	return match(sectionWatermarks, fmt.Sprintf("%d watermarks identical", len(source)))
 }
 
 func verifyPriorityScores(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section {
 	rows, err := src.QueryContext(ctx,
 		`SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`)
 	if err != nil {
-		return Section{Name: "priority scores", Detail: fmt.Sprintf("source read failed: %v", err)}
+		return mismatch(sectionPriority, fmt.Sprintf("source read failed: %v", err))
 	}
+
 	defer func() { _ = rows.Close() }()
 
-	var old []queue.PriorityScore
+	var source []queue.PriorityScore
 
 	for rows.Next() {
-		var s queue.PriorityScore
-		if err := rows.Scan(&s.ItemKey, &s.Score, &s.EffortMinutes, &s.Source, &s.Reasoning, &s.Tokens, &s.ScoredAt); err != nil {
-			return Section{Name: "priority scores", Detail: fmt.Sprintf("source scan failed: %v", err)}
+		var score queue.PriorityScore
+		if err := rows.Scan(&score.ItemKey, &score.Score, &score.EffortMinutes,
+			&score.Source, &score.Reasoning, &score.Tokens, &score.ScoredAt); err != nil {
+			return mismatch(sectionPriority, fmt.Sprintf("source scan failed: %v", err))
 		}
 
-		old = append(old, s)
+		source = append(source, score)
 	}
 
 	if err := rows.Err(); err != nil {
-		return Section{Name: "priority scores", Detail: fmt.Sprintf("source read failed: %v", err)}
+		return mismatch(sectionPriority, fmt.Sprintf("source read failed: %v", err))
 	}
 
-	new, err := target.PriorityScores(ctx)
+	targets, err := target.PriorityScores(ctx)
 	if err != nil {
-		return Section{Name: "priority scores", Detail: fmt.Sprintf("target read failed: %v", err)}
+		return mismatch(sectionPriority, fmt.Sprintf("target read failed: %v", err))
 	}
 
-	slices.SortFunc(old, func(a, b queue.PriorityScore) int { return strings.Compare(a.ItemKey, b.ItemKey) })
-	slices.SortFunc(new, func(a, b queue.PriorityScore) int { return strings.Compare(a.ItemKey, b.ItemKey) })
+	slices.SortFunc(source, func(a, b queue.PriorityScore) int { return strings.Compare(a.ItemKey, b.ItemKey) })
+	slices.SortFunc(targets, func(a, b queue.PriorityScore) int { return strings.Compare(a.ItemKey, b.ItemKey) })
 
-	if len(old) != len(new) {
-		return Section{Name: "priority scores", Detail: fmt.Sprintf("source has %d scores, target %d", len(old), len(new))}
+	if len(source) != len(targets) {
+		return mismatch(sectionPriority, fmt.Sprintf("source has %d scores, target %d", len(source), len(targets)))
 	}
 
-	for i := range old {
-		if old[i] != new[i] {
-			return Section{Name: "priority scores", Detail: fmt.Sprintf("score %q differs", old[i].ItemKey)}
+	for i := range source {
+		if source[i] != targets[i] {
+			return mismatch(sectionPriority, fmt.Sprintf("score %q differs", source[i].ItemKey))
 		}
 	}
 
-	return Section{Name: "priority scores", OK: true, Detail: fmt.Sprintf("%d scores identical", len(old))}
+	return match(sectionPriority, fmt.Sprintf("%d scores identical", len(source)))
 }
 
 // verifyFacts compares the complete fact stream (and head seq) plus every
 // task's fact tail.
 func verifyFacts(ctx context.Context, src *sql.DB, target *sqlitev4.Store) ([]Section, error) {
-	oldFacts, err := oldAllFacts(ctx, src)
+	sourceFacts, err := oldAllFacts(ctx, src)
 	if err != nil {
 		return nil, err
 	}
 
-	var newFacts []journal.Fact
-
-	after := int64(0)
-	for {
-		page, err := target.Facts(ctx, after, factPageLimit)
-		if err != nil {
-			return nil, fmt.Errorf("target read: %w", err)
-		}
-
-		newFacts = append(newFacts, page...)
-
-		if len(page) < factPageLimit {
-			break
-		}
-
-		after = page[len(page)-1].Seq
+	targetFacts, targetHead, err := streamTargetFacts(ctx, target)
+	if err != nil {
+		return nil, err
 	}
 
-	stream := Section{Name: "fact stream", Detail: fmt.Sprintf("source %d facts, target %d facts (head seq %d)", len(oldFacts), len(newFacts), after)}
+	stream := Section{
+		Name:   sectionFactStream,
+		Detail: fmt.Sprintf("source %d facts, target %d facts", len(sourceFacts), len(targetFacts)),
+	}
 
-	if len(oldFacts) != len(newFacts) {
+	if len(sourceFacts) != len(targetFacts) {
 		return []Section{stream}, nil
 	}
 
-	for i := range oldFacts {
-		if !equalFacts(oldFacts[i], newFacts[i]) {
-			stream.Detail = fmt.Sprintf("fact seq %d differs", oldFacts[i].Seq)
+	for i := range sourceFacts {
+		if !equalFacts(sourceFacts[i], targetFacts[i]) {
+			stream.Detail = fmt.Sprintf("fact seq %d differs", sourceFacts[i].Seq)
 
 			return []Section{stream}, nil
 		}
 	}
 
 	stream.OK = true
-	stream.Detail = fmt.Sprintf("%d facts identical (head seq %d)", len(oldFacts), after)
+	stream.Detail = fmt.Sprintf("%d facts identical", len(sourceFacts))
 
-	heads, err := oldHeadSeq(ctx, src)
+	headSection, err := verifyHeadSeq(ctx, src, targetHead)
 	if err != nil {
 		return []Section{stream}, err
 	}
 
-	newHead, err := target.HeadSeq(ctx)
+	tailsSection, err := verifyTaskTails(ctx, src, target)
 	if err != nil {
-		return []Section{stream}, fmt.Errorf("target head seq: %w", err)
+		return []Section{stream, headSection}, err
 	}
 
-	head := Section{Name: "head seq", OK: heads == newHead, Detail: fmt.Sprintf("source %d, target %d", heads, newHead)}
+	return []Section{stream, headSection, tailsSection}, nil
+}
 
-	tails, err := verifyTaskTails(ctx, src, target)
-	if err != nil {
-		return []Section{stream, head}, err
+func streamTargetFacts(ctx context.Context, target *sqlitev4.Store) ([]journal.Fact, int64, error) {
+	facts := make([]journal.Fact, 0)
+	after := int64(0)
+
+	for {
+		page, err := target.Facts(ctx, after, factPageLimit)
+		if err != nil {
+			return nil, 0, fmt.Errorf("target read: %w", err)
+		}
+
+		facts = append(facts, page...)
+
+		if len(page) > 0 {
+			after = page[len(page)-1].Seq
+		}
+
+		if len(page) < factPageLimit {
+			break
+		}
 	}
 
-	return []Section{stream, head, tails}, nil
+	return facts, after, nil
+}
+
+func verifyHeadSeq(ctx context.Context, src *sql.DB, targetHead int64) (Section, error) {
+	var sourceHead sql.NullInt64
+	if err := src.QueryRowContext(ctx, `SELECT MAX(seq) FROM facts`).Scan(&sourceHead); err != nil {
+		return Section{Name: sectionHeadSeq}, err
+	}
+
+	return Section{
+		Name:   sectionHeadSeq,
+		OK:     sourceHead.Int64 == targetHead,
+		Detail: fmt.Sprintf("source %d, target %d", sourceHead.Int64, targetHead),
+	}, nil
 }
 
 // verifyTaskTails walks every task (and synthetic fact-only identity,
 // e.g. session:<id>) in the source and compares its per-task fact tail
 // through the target's FactsForTask.
 func verifyTaskTails(ctx context.Context, src *sql.DB, target *sqlitev4.Store) (Section, error) {
-	ids, err := oldTaskIDs(ctx, src)
+	tails, err := oldTailsByTaskID(ctx, src)
 	if err != nil {
-		return Section{Name: "task tails"}, err
+		return Section{Name: sectionTaskTails}, err
 	}
 
-	tails := map[string][]journal.Fact{}
-	for _, id := range ids {
-		old, err := oldFactsForTask(ctx, src, id)
+	for taskID, sourceTail := range tails {
+		targetTail, err := target.FactsForTask(ctx, taskID, taskTailLimit)
 		if err != nil {
-			return Section{Name: "task tails"}, err
+			return Section{Name: sectionTaskTails}, fmt.Errorf("target tail for %s: %w", taskID, err)
 		}
 
-		tails[id] = old
+		slices.SortFunc(sourceTail, func(a, b journal.Fact) int { return int(a.Seq - b.Seq) })
+		slices.SortFunc(targetTail, func(a, b journal.Fact) int { return int(a.Seq - b.Seq) })
+
+		if len(sourceTail) != len(targetTail) {
+			return mismatch(sectionTaskTails,
+				fmt.Sprintf("task %s: source %d facts, target %d", taskID, len(sourceTail), len(targetTail))), nil
+		}
+
+		for i := range sourceTail {
+			if !equalFacts(sourceTail[i], targetTail[i]) {
+				return mismatch(sectionTaskTails,
+					fmt.Sprintf("task %s: fact seq %d differs", taskID, sourceTail[i].Seq)), nil
+			}
+		}
 	}
 
-	// Fact-only identities (session:<id>, never task rows) appear in the
-	// stream but not the tasks table; derive their ids from the stream so
-	// their tails are verified too.
+	return match(sectionTaskTails, fmt.Sprintf("%d task tails identical", len(tails))), nil
+}
+
+// oldTailsByTaskID groups the source's full fact stream by task id — the
+// per-task tails, including fact-only identities (session:<id>, never
+// task rows).
+func oldTailsByTaskID(ctx context.Context, src *sql.DB) (map[string][]journal.Fact, error) {
 	all, err := oldAllFacts(ctx, src)
 	if err != nil {
-		return Section{Name: "task tails"}, err
+		return nil, err
 	}
 
-	for _, f := range all {
-		if _, ok := tails[f.TaskID]; !ok {
-			old, err := oldFactsForTask(ctx, src, f.TaskID)
-			if err != nil {
-				return Section{Name: "task tails"}, err
-			}
+	tails := make(map[string][]journal.Fact)
 
-			tails[f.TaskID] = old
-		}
+	for _, fact := range all {
+		tails[fact.TaskID] = append(tails[fact.TaskID], fact)
 	}
 
-	for id, old := range tails {
-		new, err := target.FactsForTask(ctx, id, taskTailLimit)
-		if err != nil {
-			return Section{Name: "task tails"}, fmt.Errorf("target tail for %s: %w", id, err)
-		}
-
-		slices.SortFunc(old, func(a, b journal.Fact) int { return int(a.Seq - b.Seq) })
-		slices.SortFunc(new, func(a, b journal.Fact) int { return int(a.Seq - b.Seq) })
-
-		if len(old) != len(new) {
-			return Section{Name: "task tails", Detail: fmt.Sprintf("task %s: source %d facts, target %d", id, len(old), len(new))}, nil
-		}
-
-		for i := range old {
-			if !equalFacts(old[i], new[i]) {
-				return Section{Name: "task tails", Detail: fmt.Sprintf("task %s: fact seq %d differs", id, old[i].Seq)}, nil
-			}
-		}
-	}
-
-	return Section{Name: "task tails", OK: true, Detail: fmt.Sprintf("%d task tails identical", len(tails))}, nil
+	return tails, nil
 }
 
 // --- source-side readers (the frozen old schema, read-only) ---
@@ -697,94 +807,42 @@ func oldAllFacts(ctx context.Context, src *sql.DB) ([]journal.Fact, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = rows.Close() }()
 
-	var out []journal.Fact
+	facts := make([]journal.Fact, 0)
 
 	for rows.Next() {
-		f, err := scanOldFact(rows)
+		fact, err := scanOldFact(rows)
 		if err != nil {
 			return nil, err
 		}
 
-		out = append(out, f)
+		facts = append(facts, fact)
 	}
 
-	return out, rows.Err()
-}
-
-func oldFactsForTask(ctx context.Context, src *sql.DB, id string) ([]journal.Fact, error) {
-	rows, err := src.QueryContext(ctx,
-		`SELECT seq, time, task_id, type, owner, attempt, error, detail FROM facts WHERE task_id = ? ORDER BY seq ASC`, id)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []journal.Fact
-
-	for rows.Next() {
-		f, err := scanOldFact(rows)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, f)
-	}
-
-	return out, rows.Err()
+	return facts, rows.Err()
 }
 
 func scanOldFact(rows *sql.Rows) (journal.Fact, error) {
 	var (
-		f      journal.Fact
-		ms     int64
+		fact   journal.Fact
+		millis int64
 		detail string
 	)
-	if err := rows.Scan(&f.Seq, &ms, &f.TaskID, &f.Type, &f.Owner, &f.Attempt, &f.Error, &detail); err != nil {
+	if err := rows.Scan(&fact.Seq, &millis, &fact.TaskID, &fact.Type, &fact.Owner,
+		&fact.Attempt, &fact.Error, &detail); err != nil {
 		return journal.Fact{}, err
 	}
 
-	f.Time = msToTime(ms)
+	fact.Time = timeFromMillis(millis)
 	if detail != "" {
-		f.Detail = jsontextValue(detail)
+		fact.Detail = jsonText(detail)
 	}
 
-	return f, nil
+	return fact, nil
 }
 
-func oldHeadSeq(ctx context.Context, src *sql.DB) (int64, error) {
-	var head sql.NullInt64
-	if err := src.QueryRowContext(ctx, `SELECT MAX(seq) FROM facts`).Scan(&head); err != nil {
-		return 0, err
-	}
-
-	return head.Int64, nil
-}
-
-func oldTaskIDs(ctx context.Context, src *sql.DB) ([]string, error) {
-	rows, err := src.QueryContext(ctx, `SELECT id FROM tasks ORDER BY id`)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []string
-
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-
-		out = append(out, id)
-	}
-
-	return out, rows.Err()
-}
-
-// oldListStatus reads full task rows for one status, mirroring the
-// hand-rolled store's scan (NULL lease expiry/completed time → zero).
 func oldListStatus(ctx context.Context, src *sql.DB, status task.Status) ([]task.Task, error) {
 	rows, err := src.QueryContext(ctx, `
 		SELECT id, project, type, payload, deps, priority, attempts, max_attempts,
@@ -794,31 +852,32 @@ func oldListStatus(ctx context.Context, src *sql.DB, status task.Status) ([]task
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = rows.Close() }()
 
-	var out []task.Task
+	var tasks []task.Task
 
 	for rows.Next() {
-		t, err := scanOldTask(rows)
+		one, err := scanOldTask(rows)
 		if err != nil {
 			return nil, err
 		}
 
-		out = append(out, t)
+		tasks = append(tasks, one)
 	}
 
-	return out, rows.Err()
+	return tasks, rows.Err()
 }
 
 // --- small shared helpers ---
 
-func equalMaps[K comparable, V comparable](a, b map[K]V) bool {
+func equalMaps[Key comparable, Value comparable](a, b map[Key]Value) bool {
 	if len(a) != len(b) {
 		return false
 	}
 
-	for k, v := range a {
-		if other, ok := b[k]; !ok || other != v {
+	for key, value := range a {
+		if other, ok := b[key]; !ok || other != value {
 			return false
 		}
 	}
@@ -830,18 +889,12 @@ func formatCounts(counts map[task.Status]int) string {
 	names := make([]string, 0, len(counts))
 	total := 0
 
-	for st, n := range counts {
-		names = append(names, fmt.Sprintf("%s=%d", st, n))
-		total += n
+	for status, count := range counts {
+		names = append(names, fmt.Sprintf("%s=%d", status, count))
+		total += count
 	}
 
 	sort.Strings(names)
 
 	return fmt.Sprintf("total=%d %s", total, strings.Join(names, " "))
-}
-
-func deadStatus() *task.Status {
-	dead := task.Dead
-
-	return &dead
 }
