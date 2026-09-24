@@ -68,15 +68,27 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("claimed %s, want %s", deadClaimed.ID, dead.ID)
 	}
 
-	if err := store.Fail(ctx, dead.ID, "worker-2", "verify failed", 1, jsontext.Value(`{"stage":"verify"}`), 0); err != nil {
+	if err := store.Fail(ctx, dead.ID, "worker-2", "verify failed", 0, jsontext.Value(`{"stage":"verify"}`)); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
 	pending, err := store.Enqueue(ctx, task.New{
 		Project: "overview", Type: "sh",
-		Payload:   jsontext.Value(`"echo hi"`),
+		Payload: jsontext.Value(`"echo hi"`),
+	})
+	if err != nil {
+		t.Fatalf("enqueue pending: %v", err)
+	}
+
+	parked, err := store.Enqueue(ctx, task.New{
+		Project: "overview", Type: "sh",
+		Payload:   jsontext.Value(`"echo parked"`),
 		NotBefore: time.Now().Add(time.Hour),
 	})
+	if err != nil {
+		t.Fatalf("enqueue parked: %v", err)
+	}
+	_ = parked
 	if err != nil {
 		t.Fatalf("enqueue pending: %v", err)
 	}
@@ -122,7 +134,7 @@ func TestReplayRoundTripProjectionEquality(t *testing.T) {
 		t.Fatalf("migrate: %v", err)
 	}
 
-	if stats.Tasks != 3 || stats.Facts < 6 || stats.Watermarks != 1 || stats.PriorityScores != 1 {
+	if stats.Tasks != 4 || stats.Facts < 6 || stats.Watermarks != 1 || stats.PriorityScores != 1 {
 		t.Fatalf("unexpected stats: %+v", stats)
 	}
 
@@ -273,6 +285,7 @@ func TestVerifyMatchesSQLiteV4Store(t *testing.T) {
 		t.Fatalf("claimed task %s type %q, want the pending sh task", claimed.ID, claimed.Type)
 	}
 
+	// The parked task (future NotBefore) stays unclaimable.
 	if _, err := store.ClaimDue(ctx, "worker-after-cutover", time.Minute); err == nil {
 		t.Fatal("second claim should find nothing due (parked NotBefore)")
 	}

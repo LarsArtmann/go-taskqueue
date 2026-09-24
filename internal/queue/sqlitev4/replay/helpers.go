@@ -26,10 +26,10 @@ func jsontextValue(s string) jsontext.Value { return jsontext.Value(s) }
 // text, deps ride as the stored JSON array.
 func scanOldTask(rows *sql.Rows) (task.Task, error) {
 	var (
-		t                                                                       task.Task
-		payload, depsJSON                                                       string
-		priority, attempts, maxAttempts, notBefore, createdAt, updatedAt        int64
-		leaseExpires, completedAt                                               sql.NullInt64
+		t                                                                task.Task
+		payload, depsJSON                                                string
+		priority, attempts, maxAttempts, notBefore, createdAt, updatedAt int64
+		leaseExpires, completedAt                                        sql.NullInt64
 	)
 	if err := rows.Scan(&t.ID, &t.Project, &t.Type, &payload, &depsJSON, &priority,
 		&attempts, &maxAttempts, &notBefore, &t.Status, &t.LeaseOwner, &leaseExpires,

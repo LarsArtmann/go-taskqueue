@@ -77,13 +77,13 @@ func readOnlyDSN(path string) string {
 
 // Stats reports how many rows the migration copied per table.
 type Stats struct {
-	Tasks         int
-	Deps          int
-	Facts         int
-	Watermarks    int
+	Tasks          int
+	Deps           int
+	Facts          int
+	Watermarks     int
 	PriorityScores int
-	FactsArchive  int
-	JournalMeta   int
+	FactsArchive   int
+	JournalMeta    int
 }
 
 // Section is one projection-equality verdict.
@@ -218,8 +218,8 @@ func copyTasks(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
 	for rows.Next() {
 		var (
 			id, project, typ, payload, deps, status, leaseOwner, lastError, dedupKey string
-			priority, attempts, maxAttempts, notBefore, createdAt, updatedAt          int64
-			leaseExpires, completedAt                                                 sql.NullInt64
+			priority, attempts, maxAttempts, notBefore, createdAt, updatedAt         int64
+			leaseExpires, completedAt                                                sql.NullInt64
 		)
 		if err := rows.Scan(&id, &project, &typ, &payload, &deps, &priority, &attempts,
 			&maxAttempts, &notBefore, &status, &leaseOwner, &leaseExpires, &lastError,
