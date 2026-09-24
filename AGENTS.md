@@ -866,6 +866,13 @@ prose, not the table.
   module birth (17 rows, paralleltest/wrapcheck/varnamelen test-noise
   profile matching the sqlite spike — this time --check had no blindness
   window because the regen ran before any gate did);
+  2026-09-24 tenth regen: 1550 findings, 183 rows — the S1 replay tool
+  package `internal/queue/sqlitev4/replay` (verbatim projection copy +
+  projection-equality gate, the ADR-0019 data-migration tool) grew the
+  existing sqlitev4 rows by its residual wrapcheck/paralleltest noise;
+  everything cheap was fixed in code first (errcheck, goconst, cyclop,
+  forbidigo, makezero, predeclared, mnd, godoclint all driven to zero in
+  the new package);
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
   is the only config — there are no per-module files, and golangci-lint

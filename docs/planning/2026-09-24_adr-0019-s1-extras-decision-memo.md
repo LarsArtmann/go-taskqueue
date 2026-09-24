@@ -132,3 +132,21 @@ post-cutover drift.
 - The final S1 driver drops `LastFacts` SQL in favor of
   `HeadSeq`+`Facts` composition and replaces hand `AppendFact` INSERTs
   with `FactSink`.
+
+## 5. Addendum (2026-09-24): C12 replay decision — verbatim projection copy
+
+§3 left the applier shape open pending the ID-preservation question. C12
+resolves it: the tool (`internal/queue/sqlitev4/replay`) is a VERBATIM
+projection copy with an equality gate, not an operation-by-operation
+transition replay. The blocking discovery: task.enqueued details carry
+project/type/priority/dedup key but NOT the payload, deps, or max
+attempts — the journal alone cannot reconstruct task rows, so a pure
+transition replay would silently drop every prompt. The verbatim copy
+preserves IDs, dedup keys, seq numbers, timestamps, and detail bytes
+exactly, keeping the equality gate meaningful (any old-vs-new projection
+divergence is a real defect, not replay fuzz). A follow-up TODO item
+grows the enqueued fact to a full task snapshot (upstream-grow
+candidate); once it lands, a transition applier can replace the copy.
+Tool home: the sqlitev4 module (its first consumer) instead of
+`scripts/migrate/replay/` — a sibling tool module would have required an
+untagged sqlitev4 version, which the internal-require gate forbids.
