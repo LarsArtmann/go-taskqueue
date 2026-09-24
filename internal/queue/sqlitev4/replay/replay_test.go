@@ -68,7 +68,14 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("claimed %s, want %s", deadClaimed.ID, dead.ID)
 	}
 
-	if err := store.Fail(ctx, dead.ID, "worker-2", "verify failed", 0, jsontext.Value(`{"stage":"verify"}`)); err != nil {
+	if err := store.Fail(
+		ctx,
+		dead.ID,
+		"worker-2",
+		"verify failed",
+		0,
+		jsontext.Value(`{"stage":"verify"}`),
+	); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
@@ -89,6 +96,7 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("enqueue parked: %v", err)
 	}
 	_ = parked
+
 	if err != nil {
 		t.Fatalf("enqueue pending: %v", err)
 	}

@@ -1,7 +1,3 @@
-// Command replay migrates a tq fact journal into a fresh go-cqrs-lite
-// engine store and verifies projection equality — the ADR-0019 S1
-// data-migration gate. See the package documentation in replay.go for
-// the design and the C12 decision record.
 package main
 
 import (
@@ -23,7 +19,11 @@ func main() {
 	var (
 		fromPath   = flag.String("from", "", "source tq journal (hand-rolled store db) — required, opened read-only")
 		toPath     = flag.String("to", "", "target engine-store db — required, must not exist")
-		verifyOnly = flag.Bool("verify-only", false, "skip migration; only run the projection-equality gate against an existing replay")
+		verifyOnly = flag.Bool(
+			"verify-only",
+			false,
+			"skip migration; only run the projection-equality gate against an existing replay",
+		)
 	)
 	flag.Parse()
 
@@ -37,27 +37,38 @@ func main() {
 	if !*verifyOnly {
 		stats, err := Migrate(ctx, *fromPath, *toPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "replay: migration failed: %v\n", err)
+			_, _ = fmt.Fprintf(os.Stderr, "replay: migration failed: %v\n", err)
 			os.Exit(exitSetup)
 		}
 
-		fmt.Fprintf(os.Stdout, "replayed %d tasks, %d deps, %d facts, %d watermarks, %d priority scores, %d archived facts, %d journal-meta rows\n",
-			stats.Tasks, stats.Deps, stats.Facts, stats.Watermarks, stats.PriorityScores, stats.FactsArchive, stats.JournalMeta)
+		_, _ = fmt.Fprintf(
+			os.Stdout,
+			"replayed %d tasks, %d deps, %d facts, %d watermarks, %d priority scores, %d archived facts, %d journal-meta rows\n",
+			stats.Tasks,
+			stats.Deps,
+			stats.Facts,
+			stats.Watermarks,
+			stats.PriorityScores,
+			stats.FactsArchive,
+			stats.JournalMeta,
+		)
 	}
 
 	report, err := Verify(ctx, *fromPath, *toPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "replay: verification failed: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "replay: verification failed: %v\n", err)
 		os.Exit(exitSetup)
 	}
 
-	fmt.Fprint(os.Stdout, report.Summary())
+	_, _ = fmt.Fprint(os.Stdout, report.Summary())
 
 	if !report.OK() {
-		fmt.Fprintln(os.Stdout, "REPLAY: PROJECTION MISMATCH — cutover is NOT safe")
+		_, _ = fmt.Fprintln(os.Stdout, "REPLAY: PROJECTION MISMATCH — cutover is NOT safe")
+
 		os.Exit(exitMismatch)
 	}
 
-	fmt.Fprintln(os.Stdout, "REPLAY: all projections equal — cutover gate green")
+	_, _ = fmt.Fprintln(os.Stdout, "REPLAY: all projections equal — cutover gate green")
+
 	os.Exit(exitOK)
 }

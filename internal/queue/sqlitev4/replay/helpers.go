@@ -27,11 +27,11 @@ func jsonUnmarshalDeps(depsJSON string, out *[]task.ID) error {
 // text, deps ride as the stored JSON array.
 func scanOldTask(rows *sql.Rows) (task.Task, error) {
 	var (
-		one                                         task.Task
-		payload, depsJSON                           string
-		priority, attempts, maxAttempts             int64
-		notBefore, createdAt, updatedAt             int64
-		leaseExpires, completedAt                   sql.NullInt64
+		one                             task.Task
+		payload, depsJSON               string
+		priority, attempts, maxAttempts int64
+		notBefore, createdAt, updatedAt int64
+		leaseExpires, completedAt       sql.NullInt64
 	)
 	if err := rows.Scan(&one.ID, &one.Project, &one.Type, &payload, &depsJSON, &priority,
 		&attempts, &maxAttempts, &notBefore, &one.Status, &one.LeaseOwner, &leaseExpires,

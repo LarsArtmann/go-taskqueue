@@ -36,7 +36,7 @@
 //
 // Exit 0 on a green report, 1 on any projection mismatch, 2 on setup
 // errors. The tool never writes to the source database.
-package replay
+package main
 
 import (
 	"context"
@@ -51,7 +51,6 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4"
 	"github.com/larsartmann/go-taskqueue/internal/task"
-
 	_ "modernc.org/sqlite" // pure-Go SQLite driver (CGo-free)
 )
 
@@ -297,7 +296,12 @@ func copyDeps(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 			return 0, err
 		}
 
-		if _, err := copyTx.ExecContext(ctx, `INSERT INTO deps (task_id, dep_id) VALUES (?, ?)`, taskID, depID); err != nil {
+		if _, err := copyTx.ExecContext(
+			ctx,
+			`INSERT INTO deps (task_id, dep_id) VALUES (?, ?)`,
+			taskID,
+			depID,
+		); err != nil {
 			return 0, err
 		}
 
@@ -369,7 +373,6 @@ func copyLegacyTable(ctx context.Context, src *sql.DB, copyTx *sql.Tx, table, co
 	insert := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, cols,
 		strings.TrimSuffix(strings.Repeat("?, ", strings.Count(cols, ",")+1), ", "))
 
-	//nolint:gosec // table and cols are compile-time constant strings, not user input
 	return copyQueriedRows(ctx, src, copyTx, query, insert)
 }
 
@@ -383,10 +386,17 @@ func copyQueriedRows(ctx context.Context, src *sql.DB, copyTx *sql.Tx, query, in
 
 	defer func() { _ = rows.Close() }()
 
-	dest := make([]any, strings.Count(insert, "?"))
-	pointers := make([]any, len(dest))
-	for i := range pointers {
-		pointers[i] = &dest[i]
+	columns := strings.Count(insert, "?")
+	dest := make([]any, 0, columns)
+
+	for range columns {
+		dest = append(dest, nil)
+	}
+
+	pointers := make([]any, 0, columns)
+
+	for i := range dest {
+		pointers = append(pointers, &dest[i])
 	}
 
 	copied := 0
@@ -460,6 +470,7 @@ func oldStatusCounts(ctx context.Context, src *sql.DB) (map[task.Status]int, err
 	for rows.Next() {
 		var status task.Status
 		var count int
+
 		if err := rows.Scan(&status, &count); err != nil {
 			return nil, err
 		}
@@ -511,6 +522,7 @@ func verifyProjectCounts(ctx context.Context, src *sql.DB, target *sqlitev4.Stor
 		var project string
 		var status task.Status
 		var count int
+
 		if err := rows.Scan(&project, &status, &count); err != nil {
 			return mismatch(sectionProjectCounts, fmt.Sprintf("source scan failed: %v", err))
 		}
@@ -532,7 +544,10 @@ func verifyProjectCounts(ctx context.Context, src *sql.DB, target *sqlitev4.Stor
 	}
 
 	if len(sourceCounts) != len(targetCounts) {
-		return mismatch(sectionProjectCounts, fmt.Sprintf("source has %d projects, target %d", len(sourceCounts), len(targetCounts)))
+		return mismatch(
+			sectionProjectCounts,
+			fmt.Sprintf("source has %d projects, target %d", len(sourceCounts), len(targetCounts)),
+		)
 	}
 
 	for project, source := range sourceCounts {
@@ -551,13 +566,18 @@ func verifyDLQ(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section
 	}
 
 	dead := task.Dead
+
 	targetTasks, err := target.List(ctx, queue.Filter{Status: &dead})
+
 	if err != nil {
 		return mismatch(sectionDLQ, fmt.Sprintf("target read failed: %v", err))
 	}
 
 	if len(sourceTasks) != len(targetTasks) {
-		return mismatch(sectionDLQ, fmt.Sprintf("source has %d dead tasks, target %d", len(sourceTasks), len(targetTasks)))
+		return mismatch(
+			sectionDLQ,
+			fmt.Sprintf("source has %d dead tasks, target %d", len(sourceTasks), len(targetTasks)),
+		)
 	}
 
 	sort.Slice(sourceTasks, func(i, j int) bool { return sourceTasks[i].ID < sourceTasks[j].ID })
@@ -606,7 +626,10 @@ func verifyWatermarks(ctx context.Context, src *sql.DB, target *sqlitev4.Store) 
 	}
 
 	if len(source) != len(targets) {
-		return mismatch(sectionWatermarks, fmt.Sprintf("source has %d watermarks, target %d", len(source), len(targets)))
+		return mismatch(
+			sectionWatermarks,
+			fmt.Sprintf("source has %d watermarks, target %d", len(source), len(targets)),
+		)
 	}
 
 	for consumer, sourceEntry := range source {
@@ -619,8 +642,10 @@ func verifyWatermarks(ctx context.Context, src *sql.DB, target *sqlitev4.Store) 
 }
 
 func verifyPriorityScores(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section {
-	rows, err := src.QueryContext(ctx,
-		`SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`)
+	rows, err := src.QueryContext(
+		ctx,
+		`SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`,
+	)
 	if err != nil {
 		return mismatch(sectionPriority, fmt.Sprintf("source read failed: %v", err))
 	}
