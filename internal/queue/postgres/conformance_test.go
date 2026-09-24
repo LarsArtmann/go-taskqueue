@@ -625,13 +625,23 @@ func TestPostgresConformance(t *testing.T) {
 	})
 
 	// Fact-shape pins (ADR-0007 parity with the sqlite suite): the enqueue
-	// detail contract and the rescue re-enqueue marker are what the
-	// journal-drift audit (tq audit --journal) replays against.
+	// detail contract — identity, priority/dedup key, and the FULL task
+	// snapshot the journal-drift audit (tq audit --journal) and the
+	// ADR-0019 replay consume — plus the rescue re-enqueue marker.
 	t.Run("enqueue fact detail carries identity", func(t *testing.T) {
 		zero := 0
+		notBefore := time.UnixMilli(1758670000000)
+
+		dep, err := s.Enqueue(ctx, task.New{Type: "sh", Project: project, Payload: []byte(`"true"`)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Cleanup(func() { _ = s.Cancel(ctx, dep.ID, "conformance cleanup") })
 
 		pinned, err := s.Enqueue(ctx, task.New{
 			Type: "sh", Project: project, Payload: []byte(`"true"`),
+			Deps: []task.ID{dep.ID}, MaxAttempts: 5, NotBefore: notBefore,
 			Priority: zero, DedupKey: "todo:pgpin",
 		})
 		if err != nil {
@@ -660,6 +670,51 @@ func TestPostgresConformance(t *testing.T) {
 
 		if detail.Priority == nil || *detail.Priority != zero {
 			t.Errorf("enqueue detail priority = %v, want explicit &0 (zero must stay expressible)", detail.Priority)
+		}
+
+		if detail.Payload != `"true"` {
+			t.Errorf("enqueue detail payload = %q, want the raw payload bytes", detail.Payload)
+		}
+
+		if len(detail.Deps) != 1 || detail.Deps[0] != dep.ID {
+			t.Errorf("enqueue detail deps = %v, want [%s]", detail.Deps, dep.ID)
+		}
+
+		if detail.MaxAttempts != 5 {
+			t.Errorf("enqueue detail max_attempts = %d, want 5", detail.MaxAttempts)
+		}
+
+		if detail.NotBefore != notBefore.UnixMilli() {
+			t.Errorf("enqueue detail not_before = %d, want %d", detail.NotBefore, notBefore.UnixMilli())
+		}
+
+		if detail.CreatedAt != pinned.CreatedAt.UnixMilli() {
+			t.Errorf("enqueue detail created_at = %d, want the task row's %d", detail.CreatedAt, pinned.CreatedAt.UnixMilli())
+		}
+
+		// The payload key must be EXPLICIT even when the payload is
+		// empty: the key's presence is what distinguishes a post-growth
+		// snapshot fact from a legacy thin detail.
+		bare, err := s.Enqueue(ctx, task.New{Type: "bare", Project: project})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Cleanup(func() { _ = s.Cancel(ctx, bare.ID, "conformance cleanup") })
+
+		var keys map[string]any
+
+		bareFacts, err := s.FactsForTask(ctx, bare.ID.String(), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := json.Unmarshal(bareFacts[0].Detail, &keys); err != nil {
+			t.Fatalf("unmarshal bare detail %s: %v", bareFacts[0].Detail, err)
+		}
+
+		if _, ok := keys["payload"]; !ok {
+			t.Errorf("bare enqueue detail %s lacks an explicit payload key", bareFacts[0].Detail)
 		}
 	})
 
