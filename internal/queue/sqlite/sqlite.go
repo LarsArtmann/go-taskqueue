@@ -313,10 +313,15 @@ func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 		return s.appendFact(ctx, tx, journal.Fact{
 			TaskID: t.ID.String(), Type: journal.Enqueued, Attempt: 0,
 			Detail: mustJSON(queue.EnqueueDetail{
-				Project:  t.Project,
-				Type:     t.Type,
-				Priority: &t.Priority,
-				DedupKey: n.DedupKey,
+				Project:     t.Project,
+				Type:        t.Type,
+				Priority:    &t.Priority,
+				DedupKey:    n.DedupKey,
+				Payload:     payload,
+				Deps:        t.Deps,
+				MaxAttempts: t.MaxAttempts,
+				NotBefore:   ms(t.NotBefore),
+				CreatedAt:   now.UnixMilli(),
 			}),
 		})
 	})

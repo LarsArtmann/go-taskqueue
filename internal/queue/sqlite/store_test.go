@@ -2968,18 +2968,29 @@ func TestBandFilter(t *testing.T) {
 }
 
 // TestEnqueueFactDetailCarriesIdentity pins the enqueue-fact wire contract
-// the journal-drift audit replays against (tq audit --journal): identity and
-// priority/dedup key ride the fact detail, and a zero priority is an
-// EXPLICIT zero, not an omitted field — a thin detail would silently
-// downgrade the audit's coverage for every modern task.
+// the journal-drift audit replays against (tq audit --journal): identity,
+// priority/dedup key, and the FULL task snapshot (payload, deps,
+// max_attempts, not_before, created_at) ride the fact detail, so the
+// journal alone reconstructs the task row (ADR-0019 S1 replay); a zero
+// priority is an EXPLICIT zero, not an omitted field, and the payload key
+// is marshaled even for an empty payload — a thin detail would silently
+// downgrade the audit's coverage and re-fork the replay side-channel for
+// every modern task.
 func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
 	ctx := context.Background()
 	s := openTestStore(t)
 
 	zero := 0
+	notBefore := time.UnixMilli(1758670000000)
+
+	dep, err := s.Enqueue(ctx, task.New{Type: "sh", Payload: []byte(`"true"`)})
+	if err != nil {
+		t.Fatalf("Enqueue dep: %v", err)
+	}
 
 	tk, err := s.Enqueue(ctx, task.New{
 		Project: "pin", Type: "sh", Payload: []byte(`"true"`),
+		Deps: []task.ID{dep.ID}, MaxAttempts: 5, NotBefore: notBefore,
 		Priority: zero, DedupKey: "todo:pin",
 	})
 	if err != nil {
@@ -3006,6 +3017,49 @@ func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
 
 	if detail.Priority == nil || *detail.Priority != zero {
 		t.Errorf("enqueue detail priority = %v, want explicit &0 (zero must stay expressible)", detail.Priority)
+	}
+
+	if detail.Payload != `"true"` {
+		t.Errorf("enqueue detail payload = %q, want the raw payload bytes", detail.Payload)
+	}
+
+	if len(detail.Deps) != 1 || detail.Deps[0] != dep.ID {
+		t.Errorf("enqueue detail deps = %v, want [%s]", detail.Deps, dep.ID)
+	}
+
+	if detail.MaxAttempts != 5 {
+		t.Errorf("enqueue detail max_attempts = %d, want 5", detail.MaxAttempts)
+	}
+
+	if detail.NotBefore != notBefore.UnixMilli() {
+		t.Errorf("enqueue detail not_before = %d, want %d", detail.NotBefore, notBefore.UnixMilli())
+	}
+
+	if detail.CreatedAt != tk.CreatedAt.UnixMilli() {
+		t.Errorf("enqueue detail created_at = %d, want the task row's %d", detail.CreatedAt, tk.CreatedAt.UnixMilli())
+	}
+
+	// The payload key must be EXPLICIT even when the payload is empty:
+	// the key's presence is what distinguishes a post-growth snapshot
+	// fact from a legacy thin detail.
+	bare, err := s.Enqueue(ctx, task.New{Type: "bare"})
+	if err != nil {
+		t.Fatalf("Enqueue bare: %v", err)
+	}
+
+	var keys map[string]any
+
+	bareFacts, err := s.FactsForTask(ctx, bare.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("FactsForTask bare: %v", err)
+	}
+
+	if err := json.Unmarshal(bareFacts[0].Detail, &keys); err != nil {
+		t.Fatalf("unmarshal bare detail %s: %v", bareFacts[0].Detail, err)
+	}
+
+	if _, ok := keys["payload"]; !ok {
+		t.Errorf("bare enqueue detail %s lacks an explicit payload key", bareFacts[0].Detail)
 	}
 }
 

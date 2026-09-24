@@ -355,18 +355,36 @@ type AnswerRecord struct {
 }
 
 // EnqueueDetail is the structured detail on task.enqueued facts. The plain
-// enqueue records the task's identity plus the two projection fields the
+// enqueue records the task's identity, the two projection fields the
 // journal must be able to re-derive on its own (priority, dedup key — the
-// inputs of the journal-drift audit); Priority is a pointer so the zero
-// priority stays expressible and distinguishable from a legacy thin fact.
-// RescueDead re-emits task.enqueued with only Rescue set: the marker that
-// a dead task was re-queued with a fresh attempt budget.
+// inputs of the journal-drift audit), and since 2026-09-24 the FULL task
+// snapshot (payload, deps, max_attempts, not_before, created_at): with it
+// the journal alone reconstructs the task row, so replay needs no
+// task-row side-channel (ADR-0019 S1 — the sqlitev4/replay verbatim copy
+// exists only because pre-growth facts lack the snapshot). Facts written
+// before the growth carry none of the snapshot keys, and a plain enqueue
+// always marshals the payload key (even for an empty payload), so the
+// key's presence distinguishes post-growth facts from legacy thin ones.
+// Priority is a pointer so the zero priority stays expressible and
+// distinguishable from a legacy thin fact. RescueDead re-emits
+// task.enqueued with only Rescue set: the marker that a dead task was
+// re-queued with a fresh attempt budget — the rescued row already
+// exists, so it carries no snapshot.
 type EnqueueDetail struct {
 	Project  string `json:"project,omitempty"`
 	Type     string `json:"type,omitempty"`
 	Priority *int   `json:"priority,omitempty"`
 	DedupKey string `json:"dedup_key,omitempty"`
-	Rescue   string `json:"rescue,omitempty"`
+	// The task snapshot (plain enqueue only). Payload is the raw payload
+	// bytes; NotBefore/CreatedAt are unix millis — the exact task-row
+	// storage format, so a transition replay reconstructs the row
+	// without precision loss. MaxAttempts is post-Normalize (never 0).
+	Payload     string    `json:"payload"`
+	Deps        []task.ID `json:"deps,omitempty"`
+	MaxAttempts int       `json:"max_attempts,omitempty"`
+	NotBefore   int64     `json:"not_before,omitempty"`
+	CreatedAt   int64     `json:"created_at,omitempty"`
+	Rescue      string    `json:"rescue,omitempty"`
 }
 
 // WatermarkEntry is one consumer cursor row (tq watermarks show). Shared by
