@@ -17,9 +17,13 @@
 // fact seq numbers, timestamps, and detail bytes exactly, which makes
 // the equality gate meaningful: any divergence between the old store's
 // projections and the engine-backed adapter's read paths is a real
-// defect, not replay fuzz. If the enqueued fact later grows a full task
-// snapshot (upstream-grow candidate), a transition applier can replace
-// the row copy without changing the verify half.
+// defect, not replay fuzz. The enqueued fact has since grown the full
+// task snapshot (EnqueueDetail payload/deps/max_attempts/not_before/
+// created_at, 2026-09-24), so post-growth journals could drive a
+// transition applier — but every pre-growth journal (including the
+// production dogfood journal's history) still needs this copy, and the
+// upstream engine's own enqueued detail stays thin until the M4
+// ratification lands. The copy remains until both are true.
 //
 // Known shape conversions (the two schemas differ deliberately):
 //   - tasks.payload: old TEXT → engine BLOB (identity codec, byte-equal)

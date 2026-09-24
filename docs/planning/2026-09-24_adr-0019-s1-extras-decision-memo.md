@@ -150,3 +150,21 @@ candidate); once it lands, a transition applier can replace the copy.
 Tool home: the sqlitev4 module (its first consumer) instead of
 `scripts/migrate/replay/` — a sibling tool module would have required an
 untagged sqlitev4 version, which the internal-require gate forbids.
+
+## 6. Addendum (2026-09-24): the enqueued fact now carries the full task snapshot
+
+§5's follow-up landed: `queue.EnqueueDetail` on the plain enqueue now
+carries `payload` (explicit key, even when empty — key presence marks a
+post-growth fact), `deps`, `max_attempts`, `not_before`, and
+`created_at` (unix millis, the task-row storage format) in BOTH
+hand-rolled backends, pinned by the `enqueue fact detail carries
+identity` conformance pins (sqlite standalone + the postgres battery,
+run live with -race). The rescue re-emission stays marker-only. Two
+gates remain before the replay copy can be replaced by a transition
+applier: (1) the upstream engine's own `task.enqueued` detail is still
+thin `{project, type}` — the snapshot growth is now the third
+upstream-grow candidate for the M4 ratification memo (alongside
+`CountFacts`/`FactsSince`), and (2) every pre-growth journal, including
+the production dogfood journal's history, still needs the verbatim
+copy. Until both resolve, `internal/queue/sqlitev4/replay` stays as
+shipped.
