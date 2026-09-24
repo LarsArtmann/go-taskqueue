@@ -95,6 +95,7 @@ func seedOldJournal(t *testing.T, path string) {
 	if err != nil {
 		t.Fatalf("enqueue parked: %v", err)
 	}
+
 	_ = parked
 
 	if err != nil {

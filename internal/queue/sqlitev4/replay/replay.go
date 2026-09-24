@@ -316,6 +316,7 @@ func copyDeps(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 // history is the whole point.
 func copyFacts(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 	const query = `SELECT seq, time, task_id, type, owner, attempt, error, detail FROM facts ORDER BY seq ASC`
+
 	const insert = `INSERT INTO facts (seq, time, task_id, type, owner, attempt, error, detail)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 
@@ -324,6 +325,7 @@ func copyFacts(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 
 func copyWatermarks(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 	const query = `SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`
+
 	const insert = `INSERT INTO watermarks (consumer, seq, updated_at) VALUES (?, ?, ?)`
 
 	return copyQueriedRows(ctx, src, copyTx, query, insert)
@@ -331,6 +333,7 @@ func copyWatermarks(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, erro
 
 func copyPriorityScores(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 	const query = `SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`
+
 	const insert = `INSERT INTO priority_scores (item_key, score, effort_minutes, source, reasoning, tokens, scored_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`
 
@@ -468,8 +471,10 @@ func oldStatusCounts(ctx context.Context, src *sql.DB) (map[task.Status]int, err
 	counts := map[task.Status]int{}
 
 	for rows.Next() {
-		var status task.Status
-		var count int
+		var (
+			status task.Status
+			count  int
+		)
 
 		if err := rows.Scan(&status, &count); err != nil {
 			return nil, err
@@ -519,9 +524,11 @@ func verifyProjectCounts(ctx context.Context, src *sql.DB, target *sqlitev4.Stor
 	sourceCounts := map[string]map[task.Status]int{}
 
 	for rows.Next() {
-		var project string
-		var status task.Status
-		var count int
+		var (
+			project string
+			status  task.Status
+			count   int
+		)
 
 		if err := rows.Scan(&project, &status, &count); err != nil {
 			return mismatch(sectionProjectCounts, fmt.Sprintf("source scan failed: %v", err))
@@ -568,7 +575,6 @@ func verifyDLQ(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section
 	dead := task.Dead
 
 	targetTasks, err := target.List(ctx, queue.Filter{Status: &dead})
-
 	if err != nil {
 		return mismatch(sectionDLQ, fmt.Sprintf("target read failed: %v", err))
 	}

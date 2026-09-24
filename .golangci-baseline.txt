@@ -82,9 +82,7 @@ internal/queue/postgresv4	cyclop:	1
 internal/queue/postgresv4	err113:	2
 internal/queue/postgresv4	errcheck:	9
 internal/queue/postgresv4	exhaustive:	1
-internal/queue/postgresv4	gci:	1
 internal/queue/postgresv4	gocognit:	5
-internal/queue/postgresv4	golines:	2
 internal/queue/postgresv4	inamedparam:	2
 internal/queue/postgresv4	mnd:	1
 internal/queue/postgresv4	nestif:	1
@@ -120,7 +118,7 @@ internal/queue/sqlitev4	inamedparam:	2
 internal/queue/sqlitev4	nestif:	1
 internal/queue/sqlitev4	nilerr:	1
 internal/queue/sqlitev4	noctx:	2
-internal/queue/sqlitev4	paralleltest:	46
+internal/queue/sqlitev4	paralleltest:	50
 internal/queue/sqlitev4	sqlclosecheck:	2
 internal/queue/sqlitev4	tagliatelle:	4
 internal/queue/sqlitev4	varnamelen:	19

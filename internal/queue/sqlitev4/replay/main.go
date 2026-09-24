@@ -25,6 +25,7 @@ func main() {
 			"skip migration; only run the projection-equality gate against an existing replay",
 		)
 	)
+
 	flag.Parse()
 
 	if *fromPath == "" || *toPath == "" {
@@ -38,6 +39,7 @@ func main() {
 		stats, err := Migrate(ctx, *fromPath, *toPath)
 		if err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "replay: migration failed: %v\n", err)
+
 			os.Exit(exitSetup)
 		}
 
@@ -57,6 +59,7 @@ func main() {
 	report, err := Verify(ctx, *fromPath, *toPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "replay: verification failed: %v\n", err)
+
 		os.Exit(exitSetup)
 	}
 
