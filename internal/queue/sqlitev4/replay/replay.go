@@ -135,7 +135,7 @@ func Migrate(ctx context.Context, fromPath, toPath string) (Stats, error) {
 	if err != nil {
 		return stats, fmt.Errorf("replay: open source: %w", err)
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	// Open+close the target through the real adapter once: it creates the
 	// engine schema AND the companion tables, exactly as a cutover store
@@ -152,7 +152,7 @@ func Migrate(ctx context.Context, fromPath, toPath string) (Stats, error) {
 	if err != nil {
 		return stats, fmt.Errorf("replay: open target: %w", err)
 	}
-	defer dst.Close()
+	defer func() { _ = dst.Close() }()
 
 	tx, err := dst.BeginTx(ctx, nil)
 	if err != nil {
@@ -205,7 +205,7 @@ func copyTasks(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	const insert = `
 		INSERT INTO tasks (id, project, type, payload, deps, priority, attempts, max_attempts,
@@ -247,7 +247,7 @@ func copyDeps(ctx context.Context, src *sql.DB, tx *sql.Tx) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	copied := 0
 
@@ -274,7 +274,7 @@ func copyRows(ctx context.Context, src *sql.DB, tx *sql.Tx, table, cols string, 
 	if err != nil {
 		return 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	dest := make([]any, strings.Count(cols, ",")+1)
 	vals := make([]any, len(dest))
@@ -335,13 +335,13 @@ func Verify(ctx context.Context, fromPath, toPath string) (Report, error) {
 	if err != nil {
 		return report, fmt.Errorf("replay: open source: %w", err)
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	target, err := sqlitev4.Open(toPath)
 	if err != nil {
 		return report, fmt.Errorf("replay: open engine store: %w", err)
 	}
-	defer target.Close()
+	defer func() { _ = target.Close() }()
 
 	report.Sections = append(report.Sections,
 		verifyStatusCounts(ctx, src, target),
@@ -366,7 +366,7 @@ func oldStatusCounts(ctx context.Context, src *sql.DB) (map[task.Status]int, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := map[task.Status]int{}
 
@@ -406,7 +406,7 @@ func verifyProjectCounts(ctx context.Context, src *sql.DB, target *sqlitev4.Stor
 	if err != nil {
 		return Section{Name: "project counts", Detail: fmt.Sprintf("source read failed: %v", err)}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	oldCounts := map[string]map[task.Status]int{}
 
@@ -480,7 +480,7 @@ func verifyWatermarks(ctx context.Context, src *sql.DB, target *sqlitev4.Store) 
 	if err != nil {
 		return Section{Name: "watermarks", Detail: fmt.Sprintf("source read failed: %v", err)}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	old := map[string]queue.WatermarkEntry{}
 
@@ -527,7 +527,7 @@ func verifyPriorityScores(ctx context.Context, src *sql.DB, target *sqlitev4.Sto
 	if err != nil {
 		return Section{Name: "priority scores", Detail: fmt.Sprintf("source read failed: %v", err)}
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var old []queue.PriorityScore
 
@@ -697,7 +697,7 @@ func oldAllFacts(ctx context.Context, src *sql.DB) ([]journal.Fact, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []journal.Fact
 
@@ -719,7 +719,7 @@ func oldFactsForTask(ctx context.Context, src *sql.DB, id string) ([]journal.Fac
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []journal.Fact
 
@@ -767,7 +767,7 @@ func oldTaskIDs(ctx context.Context, src *sql.DB) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []string
 
@@ -794,7 +794,7 @@ func oldListStatus(ctx context.Context, src *sql.DB, status task.Status) ([]task
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []task.Task
 
