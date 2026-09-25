@@ -10,6 +10,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -28,6 +30,10 @@ type Server struct {
 	token   string
 	log     *slog.Logger
 	strikes *lockout.Limiter
+
+	// model is the ADR-0019 S3 read model behind UseReadModel (nil = the
+	// stats read hits the store): the read side of GET /api/v1/stats.
+	model *readmodel.Model
 }
 
 // New builds a Server. token must be non-empty: the API refuses to start
@@ -42,6 +48,22 @@ func New(store queue.Store, token string, log *slog.Logger) (*Server, error) {
 	}
 
 	return &Server{store: store, token: token, log: log, strikes: newAuthRateLimiter()}, nil
+}
+
+// UseReadModel moves the stats read onto the ADR-0019 S3 metaengine read
+// model at path (readmodel.PathFor derives it beside the queue db): the
+// projection folds the journal and GET /api/v1/stats reads its planned
+// table. The enqueue side is untouched — the model is read-only over the
+// store. ListenAndServe owns the model's pump and lifetime.
+func (s *Server) UseReadModel(path string) error {
+	m, err := readmodel.Open(path, s.store)
+	if err != nil {
+		return fmt.Errorf("httpapi: open read model: %w", err)
+	}
+
+	s.model = m
+
+	return nil
 }
 
 // Handler returns the routed, auth-guarded API handler.

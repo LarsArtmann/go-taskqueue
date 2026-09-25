@@ -57,6 +57,82 @@ func (s *Server) journalHead(ctx context.Context) (int64, error) {
 	return s.store.HeadSeq(ctx)
 }
 
+// runReadModel is the ADR-0019 S3 live path: it opens the projection at
+// cfg.ReadModelPath, pumps the journal into it, and replaces the hand
+// tailer→hub fan-out — every folded ledger update wakes the hub
+// (burst-coalesced, exactly the hand tailer's batch semantics) carrying the
+// model's applied journal watermark, so SSE event ids keep their
+// Last-Event-ID meaning. Run owns the model's lifetime.
+func (s *Server) runReadModel(ctx context.Context) error {
+	m, err := readmodel.Open(s.cfg.ReadModelPath, s.store)
+	if err != nil {
+		return fmt.Errorf("open read model: %w", err)
+	}
+
+	s.model = m
+
+	defer func() {
+		s.model = nil
+
+		_ = m.Close()
+	}()
+
+	updates := m.WatchSeq(ctx)
+
+	pumped := make(chan error, 1)
+
+	go func() { pumped <- m.Run(ctx) }()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-pumped:
+			return err
+		case _, ok := <-updates:
+			if !ok {
+				return nil
+			}
+
+		drain:
+			for {
+				select {
+				case _, ok := <-updates:
+					if !ok {
+						break drain
+					}
+				default:
+					break drain
+				}
+			}
+
+			s.hub.Notify(m.JournalCursor())
+		}
+	}
+}
+
+// statusCounts reads the per-status counts from the read model when the
+// server runs on one, from the store otherwise. Callers zero-fill missing
+// statuses themselves.
+func (s *Server) statusCounts(ctx context.Context) (map[task.Status]int, error) {
+	if s.model != nil {
+		counts, err := s.model.StatusCounts(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		out := make(map[task.Status]int, len(counts))
+
+		for st, n := range counts {
+			out[task.Status(st)] = n
+		}
+
+		return out, nil
+	}
+
+	return s.store.StatusCounts(ctx)
+}
+
 // factsForTask returns one task's facts, most recent last, bounded to the
 // detail-page render budget.
 func (s *Server) factsForTask(ctx context.Context, id string) ([]journal.Fact, error) {

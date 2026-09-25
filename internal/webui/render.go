@@ -536,7 +536,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 		AllowWrites: s.cfg.AllowWrites,
 	}
 
-	counts, err := s.store.StatusCounts(ctx)
+	counts, err := s.statusCounts(ctx)
 	if err != nil {
 		return data, err
 	}

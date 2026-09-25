@@ -184,7 +184,7 @@ func (s *Server) handleFacts(w http.ResponseWriter, r *http.Request) {
 // counts directly — a full snapshot projection would be wasted work for a
 // stats poll — and always reports every known status, zeros included.
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
-	counts, err := s.store.StatusCounts(r.Context())
+	counts, err := s.statusCounts(r.Context())
 	if err != nil {
 		http.Error(w, "load stats: "+err.Error(), http.StatusInternalServerError)
 
