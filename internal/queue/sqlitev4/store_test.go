@@ -1242,12 +1242,12 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 	offA, _ := off.Enqueue(ctx, task.New{Project: "x", Type: "a"})
 	offB, _ := off.Enqueue(ctx, task.New{Project: "x", Type: "b"})
 
-	c1, claim_w1, err := off.ClaimDue(ctx, "w1", time.Minute)
+	c1, _, err := off.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil || (c1.ID != offA.ID && c1.ID != offB.ID) {
 		t.Fatalf("default claim1 = %v, %v", c1.ID, err)
 	}
 
-	c2, claim_w1, err := off.ClaimDue(ctx, "w1", time.Minute)
+	c2, _, err := off.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil || c2.ID == c1.ID {
 		t.Fatalf("default store must allow parallel same-project claims: c1=%v c2=%v, %v", c1.ID, c2.ID, err)
 	}
@@ -1260,9 +1260,10 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 	xIDs := map[task.ID]bool{x1.ID: true, x2.ID: true}
 
 	var claimed []task.ID
+	var runnerClaim queue.Claim
 
 	for {
-		got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
+		got, claim, err := s.ClaimDue(ctx, "w1", time.Minute)
 		if errors.Is(err, queue.ErrNoTaskDue) {
 			break
 		}
@@ -1272,6 +1273,9 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 		}
 
 		claimed = append(claimed, got.ID)
+		if xIDs[got.ID] {
+			runnerClaim = claim
+		}
 	}
 
 	if len(claimed) != 3 {
@@ -1309,11 +1313,11 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 	}
 
 	// Completing the runner releases the project.
-	if err := s.Complete(ctx, xClaimed,claim_w1, nil); err != nil {
+	if err := s.Complete(ctx, xClaimed, runnerClaim, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
-	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil || got.ID != blocked {
 		t.Fatalf("after complete claim = %v, %v; want %s", got.ID, err, blocked)
 	}

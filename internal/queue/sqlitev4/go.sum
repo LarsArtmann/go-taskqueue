@@ -42,12 +42,8 @@ github.com/larsartmann/go-cqrs-lite/record/v4 v4.5.1 h1:p2WKc2ELSMv+mR3Of3lpURuE
 github.com/larsartmann/go-cqrs-lite/record/v4 v4.5.1/go.mod h1:9oD9oVY1tu9E2g9D/jMXoiALrv9jI6CJBqj9oWmAKIs=
 github.com/larsartmann/go-error-family v0.10.1 h1:lf1RNjpdK7k+tCzphkg5qRolAY76U8OGEc09ZsZ5S6A=
 github.com/larsartmann/go-error-family v0.10.1/go.mod h1:SYSVwVMTkw2GcqXI4khjMYOg7ey39o8sh7rXC9LfNcY=
-github.com/larsartmann/go-retry v0.6.0 h1:+UTp+2eHCOyYVQ8lBtNwbDjLo+k7RCtLkpGWsRgsdnk=
-github.com/larsartmann/go-retry v0.6.0/go.mod h1:dW9PFhxuiWacfvNgWBws+9xSrcP3ksZ+AP4wNLg6TuA=
 github.com/larsartmann/go-sse v0.6.0 h1:ITsMQi4Cfg+cXE5YYChk3p6wYsn33AxKJPVwd5hsiBY=
 github.com/larsartmann/go-sse v0.6.0/go.mod h1:ndYQ/lEnJVzTWqvF/h4+XMG/hJK/bEn6zSkfpkBAuUg=
-github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0 h1:ZULy6EfcVM16Qz8pNAMJxK5q24MNoST/AEU6ft2+CA4=
-github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0/go.mod h1:32Utx/X1qwwANrVz86EB1wqicOCaByEJSbARsrQA7ww=
 github.com/mattn/go-isatty v0.0.24 h1:tGZZoVgT/KiqK1c8ocVLeDS8BSWMRd47J3Lbz7vsReI=
 github.com/mattn/go-isatty v0.0.24/go.mod h1:nMCL3Zebbrt45jsMDgnfIwz6ydEQApk5oEI3HqDio6A=
 github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOFAw7w=

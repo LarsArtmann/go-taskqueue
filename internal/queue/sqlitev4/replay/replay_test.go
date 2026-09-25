@@ -71,7 +71,7 @@ func seedOldJournal(t *testing.T, path string) {
 	if err := store.Fail(
 		ctx,
 		dead.ID,
-		"worker-2",
+		claim_worker_2,
 		"verify failed",
 		0,
 		jsontext.Value(`{"stage":"verify"}`),
@@ -295,7 +295,7 @@ func TestVerifyMatchesSQLiteV4Store(t *testing.T) {
 	}
 
 	// The parked task (future NotBefore) stays unclaimable.
-	_, _, err := store.ClaimDue(ctx, "worker-after-cutover",
+	_, _, err = store.ClaimDue(ctx, "worker-after-cutover",
 		time.Minute)
 	if err == nil {
 		t.Fatal("second claim should find nothing due (parked NotBefore)")
