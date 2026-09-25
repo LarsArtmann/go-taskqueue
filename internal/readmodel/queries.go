@@ -36,69 +36,69 @@ type TaskList struct {
 // WithColumnarLayout has metaengine.Plan apply the reflection-derived
 // LayoutPlan through the engine's LayoutPlanApplier, so every TaskRow
 // field is a typed SQL column instead of a JSON blob.
-var tasksQuery = metaengine.Query[TaskList, TaskRow](
+var tasksQuery = metaengine.Query[TaskList, TaskRow]( //nolint:gochecknoglobals // declarative fold definition, reused by Plan and every read
 	tasksCollection,
 	metaengine.OnRecordTyped(string(journal.Enqueued), evtEnqueued{},
-		func(_ record.Record, e evtEnqueued) (string, TaskRow) {
-			return e.ID, TaskRow{
-				ID:        e.ID,
-				Project:   e.Project,
-				Type:      e.Type,
+		func(_ record.Record, evt evtEnqueued) (string, TaskRow) {
+			return evt.ID, TaskRow{
+				ID:        evt.ID,
+				Project:   evt.Project,
+				Type:      evt.Type,
 				Status:    statusPending,
-				Priority:  e.Priority,
-				CreatedAt: e.CreatedAt,
-				UpdatedAt: e.CreatedAt,
-				DedupKey:  e.DedupKey,
+				Priority:  evt.Priority,
+				CreatedAt: evt.CreatedAt,
+				UpdatedAt: evt.CreatedAt,
+				DedupKey:  evt.DedupKey,
 			}
 		}),
 	metaengine.OnRecordTyped(string(journal.Claimed), evtClaimed{},
-		func(_ record.Record, e evtClaimed, prev TaskRow) TaskRow {
+		func(_ record.Record, evt evtClaimed, prev TaskRow) TaskRow {
 			prev.Status = statusRunning
-			prev.UpdatedAt = e.At
+			prev.UpdatedAt = evt.At
 
 			return prev
 		}),
 	metaengine.OnRecordTyped(string(journal.Completed), evtCompleted{},
-		func(_ record.Record, e evtCompleted, prev TaskRow) TaskRow {
+		func(_ record.Record, evt evtCompleted, prev TaskRow) TaskRow {
 			prev.Status = statusCompleted
-			prev.UpdatedAt = e.At
+			prev.UpdatedAt = evt.At
 
 			return prev
 		}),
 	metaengine.OnRecordTyped(string(journal.Failed), evtFailed{},
-		func(_ record.Record, e evtFailed, prev TaskRow) TaskRow {
+		func(_ record.Record, evt evtFailed, prev TaskRow) TaskRow {
 			prev.Status = statusPending
 			prev.Attempts++ // the store burns one attempt per failure
-			prev.LastError = string(e.Error)
-			prev.UpdatedAt = e.At
+			prev.LastError = string(evt.Error)
+			prev.UpdatedAt = evt.At
 
 			return prev
 		}),
 	metaengine.OnRecordTyped(string(journal.DeadLettered), evtDeadLettered{},
-		func(_ record.Record, e evtDeadLettered, prev TaskRow) TaskRow {
+		func(_ record.Record, evt evtDeadLettered, prev TaskRow) TaskRow {
 			prev.Status = statusDead
-			prev.UpdatedAt = e.At
+			prev.UpdatedAt = evt.At
 
 			return prev
 		}),
 	metaengine.OnRecordTyped(string(journal.Cancelled), evtCancelled{},
-		func(_ record.Record, e evtCancelled, prev TaskRow) TaskRow {
+		func(_ record.Record, evt evtCancelled, prev TaskRow) TaskRow {
 			prev.Status = statusCancelled
-			prev.UpdatedAt = e.At
+			prev.UpdatedAt = evt.At
 
 			return prev
 		}),
 	metaengine.OnRecordTyped(string(journal.Requeued), evtRequeued{},
-		func(_ record.Record, e evtRequeued, prev TaskRow) TaskRow {
+		func(_ record.Record, evt evtRequeued, prev TaskRow) TaskRow {
 			prev.Status = statusPending
-			prev.UpdatedAt = e.At
+			prev.UpdatedAt = evt.At
 
 			return prev
 		}),
 	metaengine.OnRecordTyped(string(journal.Reprioritized), evtReprioritized{},
-		func(_ record.Record, e evtReprioritized, prev TaskRow) TaskRow {
-			prev.Priority = e.Priority
-			prev.UpdatedAt = e.At
+		func(_ record.Record, evt evtReprioritized, prev TaskRow) TaskRow {
+			prev.Priority = evt.Priority
+			prev.UpdatedAt = evt.At
 
 			return prev
 		}),

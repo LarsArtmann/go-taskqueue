@@ -181,6 +181,7 @@ func (m *Model) CatchUp(ctx context.Context) error {
 // catchUpOnce applies one batch of new facts and reports how many it saw.
 func (m *Model) catchUpOnce(ctx context.Context) (int, error) {
 	after := m.cursor.Load()
+
 	facts, err := m.src.Facts(ctx, after, m.batch)
 	if err != nil {
 		return 0, fmt.Errorf("readmodel: read facts after %d: %w", after, err)
@@ -209,8 +210,8 @@ func (m *Model) JournalCursor() int64 {
 
 // apply maps one fact to its fold input and feeds it through the store.
 // Facts without a fold are skipped — the cursor still advances past them.
-func (m *Model) apply(ctx context.Context, f journal.Fact) error {
-	evt, ok, err := eventFor(ctx, f, m.rows)
+func (m *Model) apply(ctx context.Context, fact journal.Fact) error {
+	evt, ok, err := eventFor(ctx, fact, m.rows)
 	if err != nil {
 		return err
 	}
@@ -219,9 +220,9 @@ func (m *Model) apply(ctx context.Context, f journal.Fact) error {
 		return nil
 	}
 
-	rec := record.Record{Type: string(f.Type)}
+	rec := record.Record{Type: string(fact.Type)}
 	if err := m.store.ApplyRecord(ctx, rec, evt); err != nil {
-		return fmt.Errorf("readmodel: apply %s seq %d: %w", f.Type, f.Seq, err)
+		return fmt.Errorf("readmodel: apply %s seq %d: %w", fact.Type, fact.Seq, err)
 	}
 
 	return nil
@@ -234,18 +235,18 @@ func (m *Model) apply(ctx context.Context, f journal.Fact) error {
 // field binds as a typed-nil interface and lands in SQL as `= NULL`
 // (metaengine v4.14.0, extractValueByName), so every read here goes
 // through the reader.
-func (m *Model) Tasks(ctx context.Context, f TaskFilter) ([]TaskRow, error) {
+func (m *Model) Tasks(ctx context.Context, filter TaskFilter) ([]TaskRow, error) {
 	opts := []metaengine.ScanOption{
 		metaengine.WithSort("created_at", true),
 		metaengine.WithLimit(0), // unbounded: the caller paginates
 	}
 
-	if f.Status != nil {
-		opts = append(opts, metaengine.WithFilter("status", metaengine.FilterEq, *f.Status))
+	if filter.Status != nil {
+		opts = append(opts, metaengine.WithFilter("status", metaengine.FilterEq, *filter.Status))
 	}
 
-	if f.Project != nil {
-		opts = append(opts, metaengine.WithFilter("project", metaengine.FilterEq, *f.Project))
+	if filter.Project != nil {
+		opts = append(opts, metaengine.WithFilter("project", metaengine.FilterEq, *filter.Project))
 	}
 
 	rows, err := metaengine.NewReader[TaskRow](m.store, tasksCollection).Scan(ctx, opts...)

@@ -56,4 +56,4 @@ type TaskFilter struct {
 }
 
 // StringPtr is a small helper for building a TaskFilter inline.
-func StringPtr(s string) *string { return &s }
+func StringPtr(s string) *string { return new(s) }

@@ -258,7 +258,7 @@ func TestParityWithStoreProjection(t *testing.T) {
 
 	// Filters: status — ids must match the store's own list.
 	pending := string(task.Pending)
-	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Status: readmodel.StringPtr(pending)})
+	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Status: new(pending)})
 	f.must("tasks(status=pending)", err)
 
 	pendingStatus := task.Pending
@@ -282,7 +282,7 @@ func TestParityWithStoreProjection(t *testing.T) {
 
 	// Filters: project — cancelled tasks stay in the ledger, so api holds
 	// t3, t4 (cancelled) and t6.
-	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Project: readmodel.StringPtr("api")})
+	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Project: new("api")})
 	f.must("tasks(project=api)", err)
 
 	if len(rows) != 3 {
@@ -291,8 +291,8 @@ func TestParityWithStoreProjection(t *testing.T) {
 
 	// Filters: combined status + project.
 	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{
-		Status:  readmodel.StringPtr(string(task.Dead)),
-		Project: readmodel.StringPtr("api"),
+		Status:  new(string(task.Dead)),
+		Project: new("api"),
 	})
 	f.must("tasks(dead+api)", err)
 
@@ -390,6 +390,7 @@ func TestEventsHandlerStreamsRows(t *testing.T) {
 
 	resp, err := client.Do(req)
 	f.must("connect events stream", err)
+
 	defer func() { _ = resp.Body.Close() }()
 
 	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/event-stream") {

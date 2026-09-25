@@ -137,26 +137,37 @@ type repriDetail struct {
 // fact (no fold consumes it). The returned error covers only malformed
 // DETAIL bytes on fact types whose fold needs them — state transitions
 // never fail the pump on detail noise.
-func eventFor(ctx context.Context, f journal.Fact, src RowSource) (any, bool, error) {
-	at := f.Time.UnixMilli()
+func eventFor(ctx context.Context, fact journal.Fact, src RowSource) (any, bool, error) {
+	atMs := fact.Time.UnixMilli()
 
-	switch f.Type {
+	switch fact.Type {
 	case journal.Enqueued:
-		return enqueuedEvent(ctx, f, src)
+		return enqueuedEvent(ctx, fact, src)
 	case journal.Claimed:
-		return evtClaimed{ID: f.TaskID, At: at}, true, nil
+		return evtClaimed{ID: fact.TaskID, At: atMs}, true, nil
 	case journal.Completed:
-		return evtCompleted{ID: f.TaskID, At: at}, true, nil
+		return evtCompleted{ID: fact.TaskID, At: atMs}, true, nil
 	case journal.Failed:
-		return evtFailed{ID: f.TaskID, Error: FailureText(f.Error), At: at}, true, nil
+		return evtFailed{ID: fact.TaskID, Error: FailureText(fact.Error), At: atMs}, true, nil
 	case journal.DeadLettered:
-		return evtDeadLettered{ID: f.TaskID, At: at}, true, nil
+		return evtDeadLettered{ID: fact.TaskID, At: atMs}, true, nil
 	case journal.Cancelled:
-		return evtCancelled{ID: f.TaskID, At: at}, true, nil
+		return evtCancelled{ID: fact.TaskID, At: atMs}, true, nil
 	case journal.Requeued:
-		return evtRequeued{ID: f.TaskID, At: at}, true, nil
+		return evtRequeued{ID: fact.TaskID, At: atMs}, true, nil
 	case journal.Reprioritized:
-		return repriEvent(f, at)
+		return repriEvent(fact, atMs)
+	case journal.Heartbeat,
+		journal.CancelRequested,
+		journal.Released,
+		journal.Orphaned,
+		journal.SessionOpened,
+		journal.SessionClosed,
+		journal.QuestionAsked,
+		journal.QuestionAnswered:
+		// No ledger state: the doc comment above lists these families as
+		// deliberate skips.
+		return nil, false, nil
 	default:
 		return nil, false, nil
 	}
@@ -164,16 +175,16 @@ func eventFor(ctx context.Context, f journal.Fact, src RowSource) (any, bool, er
 
 // enqueuedEvent builds the seed event, preferring the store row (side
 // channel) and falling back to the fact detail for project/type.
-func enqueuedEvent(ctx context.Context, f journal.Fact, src RowSource) (any, bool, error) {
+func enqueuedEvent(ctx context.Context, fact journal.Fact, src RowSource) (any, bool, error) {
 	evt := evtEnqueued{
-		ID:        f.TaskID,
-		CreatedAt: f.Time.UnixMilli(),
+		ID:        fact.TaskID,
+		CreatedAt: fact.Time.UnixMilli(),
 	}
 
 	if src != nil {
-		snap, ok, err := src.EnqueueRow(ctx, f.TaskID)
+		snap, ok, err := src.EnqueueRow(ctx, fact.TaskID)
 		if err != nil {
-			return nil, false, fmt.Errorf("readmodel: enqueue side channel %s: %w", f.TaskID, err)
+			return nil, false, fmt.Errorf("readmodel: enqueue side channel %s: %w", fact.TaskID, err)
 		}
 
 		if ok {
@@ -185,8 +196,8 @@ func enqueuedEvent(ctx context.Context, f journal.Fact, src RowSource) (any, boo
 
 	if evt.Project == "" || evt.Type == "" {
 		var detail enqueueDetail
-		if err := json.Unmarshal(f.Detail, &detail); err != nil {
-			return nil, false, fmt.Errorf("readmodel: enqueue detail %s: %w", f.TaskID, err)
+		if err := json.Unmarshal(fact.Detail, &detail); err != nil {
+			return nil, false, fmt.Errorf("readmodel: enqueue detail %s: %w", fact.TaskID, err)
 		}
 
 		evt.Project = fallbackString(evt.Project, detail.Project)
@@ -198,13 +209,13 @@ func enqueuedEvent(ctx context.Context, f journal.Fact, src RowSource) (any, boo
 
 // repriEvent decodes the reprioritize evidence; an unparsable detail is a
 // malformed fact, reported as an error so the pump surfaces journal drift.
-func repriEvent(f journal.Fact, at int64) (any, bool, error) {
+func repriEvent(fact journal.Fact, atMs int64) (any, bool, error) {
 	var detail repriDetail
-	if err := json.Unmarshal(f.Detail, &detail); err != nil {
-		return nil, false, fmt.Errorf("readmodel: reprioritized detail %s: %w", f.TaskID, err)
+	if err := json.Unmarshal(fact.Detail, &detail); err != nil {
+		return nil, false, fmt.Errorf("readmodel: reprioritized detail %s: %w", fact.TaskID, err)
 	}
 
-	return evtReprioritized{ID: f.TaskID, Priority: detail.NewPriority, At: at}, true, nil
+	return evtReprioritized{ID: fact.TaskID, Priority: detail.NewPriority, At: atMs}, true, nil
 }
 
 func fallbackString(prefer, fallback string) string {
