@@ -1,6 +1,8 @@
 package harvest
 
 import (
+	"time"
+
 	"context"
 	"encoding/json"
 	"strings"
@@ -114,7 +116,7 @@ func TestPruneStaleReportsRunningAndDead(t *testing.T) {
 
 	mustWrite(t, dir+"/mixed/"+DefaultTodoFile, "# H\n- [x] runs now\n- [x] died trying\n")
 
-	claimed, claim, err := q.ClaimDue(ctx, "worker-1", 0)
+	claimed, claim, err := q.ClaimDue(ctx, "worker-1", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +140,7 @@ func TestPruneStaleReportsRunningAndDead(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dead, dead_claim, err := q.ClaimDue(ctx, "worker-1", 0)
+	dead, dead_claim, err := q.ClaimDue(ctx, "worker-1", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}

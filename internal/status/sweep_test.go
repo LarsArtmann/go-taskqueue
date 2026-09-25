@@ -55,6 +55,11 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 		if claimed.ID == id {
 			break
 		}
+
+		// release the bystander: its token fences everything else
+		if err := s.Requeue(ctx, claimed.ID, c, "test bystander release", 0, false); err != nil {
+			t.Fatalf("complete bystander %s: %v", claimed.ID, err)
+		}
 	}
 
 	if err := s.Complete(ctx, id, claim, detail); err != nil {

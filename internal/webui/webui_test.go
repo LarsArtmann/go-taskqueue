@@ -855,12 +855,12 @@ func TestDLQMirrorsDeadTasks(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")
 
-	_, _, err := s.ClaimDue(context.Background(), "test-owner", time.Minute)
+	_, test_owner_claim, err := s.ClaimDue(context.Background(), "test-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := s.FailPermanent(context.Background(), tk.ID, "test-owner", "boom: permanent failure", nil); err != nil {
+	if err := s.FailPermanent(context.Background(), tk.ID, test_owner_claim, "boom: permanent failure", nil); err != nil {
 		t.Fatalf("FailPermanent: %v", err)
 	}
 
@@ -1020,12 +1020,12 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 	// Park one: claim + rate-limit requeue, then the segment renders.
 	tk := enqueue(t, s, "agent", "demo")
 
-	_, _, err = s.ClaimDue(ctx, "w1", time.Minute)
+	_, w1_claim, err = s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, w1_claim, "rate limited", time.Hour, false); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 
