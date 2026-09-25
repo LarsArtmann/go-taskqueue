@@ -1020,7 +1020,7 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 	// Park one: claim + rate-limit requeue, then the segment renders.
 	tk := enqueue(t, s, "agent", "demo")
 
-	_, w1_claim, err = s.ClaimDue(ctx, "w1", time.Minute)
+	_, w1_claim, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
