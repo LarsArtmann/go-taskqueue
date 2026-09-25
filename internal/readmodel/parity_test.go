@@ -2,7 +2,7 @@ package readmodel_test
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"testing"
 	"time"
@@ -50,12 +50,11 @@ func (f *fixture) enqueue(project, typ string, priority int, dedup string) task.
 	f.t.Helper()
 
 	tk, err := f.store.Enqueue(context.Background(), task.New{
-		Project:   project,
-		Type:      typ,
-		Payload:   `true`,
-		Priority:  priority,
-		DedupKey:  dedup,
-		MaxAttempts: 2,
+		Project:  project,
+		Type:     typ,
+		Payload:  jsontext.Value(`"x"`),
+		Priority: priority,
+		DedupKey: dedup,
 	})
 	if err != nil {
 		f.t.Fatalf("enqueue %s/%s: %v", project, typ, err)
@@ -66,12 +65,12 @@ func (f *fixture) enqueue(project, typ string, priority int, dedup string) task.
 	return tk
 }
 
-func (f *fixture) claim(owner string) (task.Task, queue.Claim) {
+func (f *fixture) claim() (task.Task, queue.Claim) {
 	f.t.Helper()
 
-	tk, claim, err := f.store.ClaimDue(context.Background(), owner, time.Minute)
+	tk, claim, err := f.store.ClaimDue(context.Background(), "w1", time.Minute)
 	if err != nil {
-		f.t.Fatalf("claim as %s: %v", owner, err)
+		f.t.Fatalf("claim: %v", err)
 	}
 
 	return tk, claim
@@ -85,7 +84,15 @@ func (f *fixture) resync() {
 	}
 }
 
-// rowsByID indexes a model read by task id.
+func (f *fixture) must(op string, err error) {
+	f.t.Helper()
+
+	if err != nil {
+		f.t.Fatalf("%s: %v", op, err)
+	}
+}
+
+// rowsByID indexes a model read by task id, failing on duplicates.
 func rowsByID(t *testing.T, rows []readmodel.TaskRow) map[string]readmodel.TaskRow {
 	t.Helper()
 
@@ -101,7 +108,7 @@ func rowsByID(t *testing.T, rows []readmodel.TaskRow) map[string]readmodel.TaskR
 	return byID
 }
 
-// TestParityWithStoreStore runs a lifecycle battery through the real
+// TestParityWithStoreProjection runs a lifecycle battery through the real
 // (v4-backed) sqlite store, folds the journal into the read model, and
 // pins the collection projection against the store's own reads: status
 // counts, per-row state, filters, and the newest-first order.
@@ -109,8 +116,6 @@ func TestParityWithStoreProjection(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 
-	// t1 completes; t2 fails once (retry → pending); t3 dies; t4 is
-	// cancelled; t5 is requeued; t6 is reprioritized.
 	t1 := f.enqueue("web", "sh", 2, "todo:a")
 	t2 := f.enqueue("web", "agent", 5, "todo:b")
 	t3 := f.enqueue("api", "sh", 0, "todo:c")
@@ -118,56 +123,66 @@ func TestParityWithStoreProjection(t *testing.T) {
 	t5 := f.enqueue("web", "sh", 1, "todo:e")
 	t6 := f.enqueue("api", "sh", 7, "todo:f")
 
-	tk, claim := f.claim("w1")
-	if tk.ID != t1.ID && tk.ID != t2.ID {
-		t.Fatalf("claim returned unexpected task %s (priority order)", tk.ID)
+	// t6 is reprioritized while pending; t4 is cancelled while pending —
+	// both before any claim so the claim order stays deterministic
+	// (t2=5, t6=3, t1=2, t5=1, t3=0).
+	f.must("reprioritize t6", f.store.UpdatePendingPriority(ctx, t6.ID, 3, "ai", "rescored"))
+	f.must("cancel t4", f.store.Cancel(ctx, t4.ID, "no longer needed"))
+
+	tk, claim := f.claim()
+	if tk.ID != t2.ID {
+		t.Fatalf("claim 1 = %s, want t2 (priority %d)", tk.ID, t2.Priority)
 	}
 
-	// Drive each task to its target state explicitly.
-	if err := f.store.Complete(ctx, t1.ID, claimFor(t, f, t1.ID), jsonText(`{"ok":true}`)); err != nil {
-		t.Fatalf("complete: %v", err)
+	f.must("fail t2", f.store.Fail(ctx, t2.ID, claim, "boom", time.Hour, nil))
+
+	tk, claim = f.claim()
+	if tk.ID != t6.ID {
+		t.Fatalf("claim 2 = %s, want t6", tk.ID)
 	}
 
-	claim2 := claimFor(t, f, t2.ID)
-	if err := f.store.Fail(ctx, t2.ID, claim2, "boom", 0, nil); err != nil {
-		t.Fatalf("fail t2: %v", err)
+	f.must("requeue t6", f.store.Requeue(ctx, t6.ID, claim, "env not ready", 0, false))
+
+	tk, claim = f.claim()
+	if tk.ID != t1.ID {
+		t.Fatalf("claim 3 = %s, want t1", tk.ID)
 	}
 
-	claim3 := claimFor(t, f, t3.ID)
-	if err := f.store.Fail(ctx, t3.ID, claim3, "fatal", 0, nil); err != nil {
-		t.Fatalf("fail t3: %v", err)
+	f.must("complete t1", f.store.Complete(ctx, t1.ID, claim, jsontext.Value(`{"ok":true}`)))
+
+	tk, claim = f.claim()
+	if tk.ID != t5.ID {
+		t.Fatalf("claim 4 = %s, want t5", tk.ID)
 	}
 
-	if err := f.store.Cancel(ctx, t4.ID, "no longer needed"); err != nil {
-		t.Fatalf("cancel t4: %v", err)
+	f.must("requeue t5", f.store.Requeue(ctx, t5.ID, claim, "env not ready", 0, false))
+
+	tk, claim = f.claim()
+	if tk.ID != t3.ID {
+		t.Fatalf("claim 5 = %s, want t3", tk.ID)
 	}
 
-	claim5 := claimFor(t, f, t5.ID)
-	if err := f.store.Requeue(ctx, t5.ID, claim5, "env not ready", 0, false); err != nil {
-		t.Fatalf("requeue t5: %v", err)
-	}
-
-	if err := f.store.UpdatePendingPriority(ctx, t6.ID, 3, "ai", "rescored"); err != nil {
-		t.Fatalf("reprioritize t6: %v", err)
-	}
+	f.must("fail t3", f.store.FailPermanent(ctx, t3.ID, claim, "fatal", nil))
 
 	f.resync()
 
 	// Status counts: model vs store, exact.
-	want := map[string]int{"completed": 1, "pending": 3, "dead": 1, "cancelled": 1}
-	got, err := f.model.StatusCounts(ctx)
-	if err != nil {
-		t.Fatalf("status counts: %v", err)
+	want := map[string]int{
+		"pending":   3, // t2 (failed retry), t5 + t6 (requeued)
+		"completed": 1, // t1
+		"dead":      1, // t3
+		"cancelled": 1, // t4
 	}
+
+	got, err := f.model.StatusCounts(ctx)
+	f.must("status counts", err)
 
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("status counts = %v, want %v", got, want)
 	}
 
 	storeCounts, err := f.store.StatusCounts(ctx)
-	if err != nil {
-		t.Fatalf("store status counts: %v", err)
-	}
+	f.must("store status counts", err)
 
 	for st, n := range storeCounts {
 		if got[string(st)] != n {
@@ -177,9 +192,7 @@ func TestParityWithStoreProjection(t *testing.T) {
 
 	// Row state vs the store rows, field by field.
 	rows, err := f.model.Tasks(ctx, readmodel.TaskFilter{})
-	if err != nil {
-		t.Fatalf("tasks: %v", err)
-	}
+	f.must("tasks", err)
 
 	if len(rows) != 6 {
 		t.Fatalf("rows = %d, want 6", len(rows))
@@ -187,41 +200,47 @@ func TestParityWithStoreProjection(t *testing.T) {
 
 	byID := rowsByID(t, rows)
 
-	for _, tk := range []task.Task{t1, t2, t3, t4, t5, t6} {
-		st, err := f.store.Get(ctx, tk.ID)
-		if err != nil {
-			t.Fatalf("store get %s: %v", tk.ID, err)
-		}
+	for _, wantTask := range []task.Task{t1, t2, t3, t4, t5, t6} {
+		st, err := f.store.Get(ctx, wantTask.ID)
+		f.must("store get "+wantTask.ID.String(), err)
 
-		row, ok := byID[tk.ID.String()]
+		row, ok := byID[wantTask.ID.String()]
 		if !ok {
-			t.Fatalf("row missing for %s", tk.ID)
+			t.Fatalf("row missing for %s", wantTask.ID)
 		}
 
 		if row.Status != string(st.Status) {
-			t.Errorf("%s status = %s, store %s", tk.ID, row.Status, st.Status)
+			t.Errorf("%s status = %s, store %s", wantTask.ID, row.Status, st.Status)
 		}
 
 		if row.Priority != st.Priority {
-			t.Errorf("%s priority = %d, store %d", tk.ID, row.Priority, st.Priority)
+			t.Errorf("%s priority = %d, store %d", wantTask.ID, row.Priority, st.Priority)
 		}
 
 		if row.Attempts != st.Attempts {
-			t.Errorf("%s attempts = %d, store %d", tk.ID, row.Attempts, st.Attempts)
+			t.Errorf("%s attempts = %d, store %d", wantTask.ID, row.Attempts, st.Attempts)
 		}
 
 		if row.Project != st.Project || row.Type != st.Type || row.DedupKey != st.DedupKey {
 			t.Errorf("%s identity = %s/%s/%s, store %s/%s/%s",
-				tk.ID, row.Project, row.Type, row.DedupKey, st.Project, st.Type, st.DedupKey)
+				wantTask.ID, row.Project, row.Type, row.DedupKey, st.Project, st.Type, st.DedupKey)
 		}
 
 		if row.CreatedAt != st.CreatedAt.UnixMilli() {
-			t.Errorf("%s created_at = %d, store %d", tk.ID, row.CreatedAt, st.CreatedAt.UnixMilli())
+			t.Errorf("%s created_at = %d, store %d", wantTask.ID, row.CreatedAt, st.CreatedAt.UnixMilli())
+		}
+
+		if row.UpdatedAt < row.CreatedAt {
+			t.Errorf("%s updated_at %d before created_at %d", wantTask.ID, row.UpdatedAt, row.CreatedAt)
 		}
 	}
 
 	if got := byID[t2.ID.String()].LastError; got != "boom" {
 		t.Errorf("t2 last_error = %q, want boom", got)
+	}
+
+	if got := byID[t3.ID.String()].LastError; got != "fatal" {
+		t.Errorf("t3 last_error = %q, want fatal", got)
 	}
 
 	if got := byID[t6.ID.String()].Priority; got != 3 {
@@ -233,27 +252,32 @@ func TestParityWithStoreProjection(t *testing.T) {
 		t.Errorf("first row = %s, want newest %s", rows[0].ID, t6.ID)
 	}
 
-	// Filters: status.
+	// Filters: status — ids must match the store's own list.
 	pending := string(task.Pending)
 	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Status: readmodel.StringPtr(pending)})
-	if err != nil {
-		t.Fatalf("tasks(status=pending): %v", err)
-	}
+	f.must("tasks(status=pending)", err)
 
 	storePending, err := f.store.List(ctx, queue.Filter{Status: &task.Pending})
-	if err != nil {
-		t.Fatalf("store list pending: %v", err)
-	}
+	f.must("store list pending", err)
 
 	if len(rows) != len(storePending) {
 		t.Errorf("pending rows = %d, store %d", len(rows), len(storePending))
 	}
 
+	storeIDs := make(map[string]bool, len(storePending))
+	for _, st := range storePending {
+		storeIDs[st.ID.String()] = true
+	}
+
+	for _, r := range rows {
+		if !storeIDs[r.ID] {
+			t.Errorf("pending row %s not in store list", r.ID)
+		}
+	}
+
 	// Filters: project.
 	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Project: readmodel.StringPtr("api")})
-	if err != nil {
-		t.Fatalf("tasks(project=api): %v", err)
-	}
+	f.must("tasks(project=api)", err)
 
 	if len(rows) != 2 {
 		t.Errorf("api rows = %d, want 2 (t3, t6)", len(rows))
@@ -264,9 +288,7 @@ func TestParityWithStoreProjection(t *testing.T) {
 		Status:  readmodel.StringPtr(string(task.Dead)),
 		Project: readmodel.StringPtr("api"),
 	})
-	if err != nil {
-		t.Fatalf("tasks(dead+api): %v", err)
-	}
+	f.must("tasks(dead+api)", err)
 
 	if len(rows) != 1 || rows[0].ID != t3.ID.String() {
 		t.Errorf("dead+api rows = %+v, want only t3", rows)
@@ -282,15 +304,15 @@ func TestTailAppliesNewFacts(t *testing.T) {
 
 	tk := f.enqueue("web", "sh", 1, "todo:later")
 
-	watchCh, watcher := readmodel.WatchTaskRows(f.model)
-	defer watcher.Close()
+	watchCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	watchCh := f.model.Watch(watchCtx)
 
 	f.resync()
 
 	rows, err := f.model.Tasks(ctx, readmodel.TaskFilter{})
-	if err != nil {
-		t.Fatalf("tasks: %v", err)
-	}
+	f.must("tasks", err)
 
 	if len(rows) != 1 || rows[0].ID != tk.ID.String() {
 		t.Fatalf("rows = %+v, want only %s", rows, tk.ID)
@@ -306,5 +328,38 @@ func TestTailAppliesNewFacts(t *testing.T) {
 	}
 }
 
-// jsonText is a tiny helper keeping jsontext imports out of the test faces.
-func jsonText(s string) jsontextValue { return jsontextValue(s) }
+// TestReplayConverges pins the restart story: a fresh model over the same
+// projection file replays the journal from zero and converges on the same
+// projection (every fold is an upsert keyed by task id).
+func TestReplayConverges(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	t1 := f.enqueue("web", "sh", 2, "todo:a")
+
+	tk, claim := f.claim()
+	if tk.ID != t1.ID {
+		t.Fatalf("claim = %s, want t1", tk.ID)
+	}
+
+	f.must("complete t1", f.store.Complete(ctx, t1.ID, claim, jsontext.Value(`{}`)))
+
+	f.resync()
+
+	before, err := f.model.Tasks(ctx, readmodel.TaskFilter{})
+	f.must("tasks before", err)
+
+	replay, err := readmodel.Open(t.TempDir()+"/replay.db", f.store)
+	f.must("open replay model", err)
+
+	defer func() { _ = replay.Close() }()
+
+	f.must("replay catch up", replay.CatchUp(ctx))
+
+	after, err := replay.Tasks(ctx, readmodel.TaskFilter{})
+	f.must("tasks after", err)
+
+	if fmt.Sprint(after) != fmt.Sprint(before) {
+		t.Errorf("replay rows diverged:\nbefore %v\nafter  %v", before, after)
+	}
+}

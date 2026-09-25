@@ -138,15 +138,26 @@ func readOnlyDSN(path string) string {
 	return fmt.Sprintf("file:%s?mode=ro&_pragma=busy_timeout(5000)", path)
 }
 
+// openSource opens the source journal read-only (the one seam both Migrate
+// and Verify read frozen history through).
+func openSource(fromPath string) (*sql.DB, error) {
+	src, err := sql.Open("sqlite", readOnlyDSN(fromPath))
+	if err != nil {
+		return nil, fmt.Errorf("replay: open source: %w", err)
+	}
+
+	return src, nil
+}
+
 // Migrate replays the source journal into a fresh engine store at
 // toPath. toPath must not already exist: a fresh store is part of the
 // definition (no in-place surgery on a live engine DB).
 func Migrate(ctx context.Context, fromPath, toPath string) (Stats, error) {
 	var stats Stats
 
-	src, err := sql.Open("sqlite", readOnlyDSN(fromPath))
+	src, err := openSource(fromPath)
 	if err != nil {
-		return stats, fmt.Errorf("replay: open source: %w", err)
+		return stats, err
 	}
 
 	defer func() { _ = src.Close() }()
@@ -431,9 +442,9 @@ func copyQueriedRows(ctx context.Context, src *sql.DB, copyTx *sql.Tx, query, in
 func Verify(ctx context.Context, fromPath, toPath string) (Report, error) {
 	var report Report
 
-	src, err := sql.Open("sqlite", readOnlyDSN(fromPath))
+	src, err := openSource(fromPath)
 	if err != nil {
-		return report, fmt.Errorf("replay: open source: %w", err)
+		return report, err
 	}
 
 	defer func() { _ = src.Close() }()

@@ -504,7 +504,7 @@ func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
 	}
 
 	tk, _ := q.Get(ctx, res.Enqueued[0].TaskID)
-_, claim, err := q.ClaimDue(ctx, "w", time.Minute)
+	_, claim, err := q.ClaimDue(ctx, "w", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
