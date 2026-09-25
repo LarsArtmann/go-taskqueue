@@ -36,6 +36,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/prioritize"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/review"
 	"github.com/larsartmann/go-taskqueue/internal/runactor"
 	"github.com/larsartmann/go-taskqueue/internal/session"
@@ -62,7 +63,7 @@ Usage:
   tq agent-pool --projects-dir DIR [--repos a,b] [--interval DUR] [--concurrency N]
                [--yolo] [--reresolve-verify] [--max-per-tick N] [--task-timeout DUR]
                [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH]
-  tq stats [--project P] [--status S] [--daily-budget N] [--db PATH] [--json]
+  tq stats [--project P] [--status S] [--daily-budget N] [--read-model] [--db PATH] [--json]
   tq tasks [--project P] [--status S] [--type T] [--since DUR] [--limit N] [--json] [--db PATH]
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
           [--max-attempts N] [--dry-run] [--json] [--db PATH]
@@ -97,8 +98,8 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
                   [--summary TEXT] [--db PATH]   (close every registry
                   session that is quiet and no longer owned by a live crush
                   process; replay-safe via the close dedup keys)
-  tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose]
-  tq api [--addr ADDR] --auth-token TOKEN [--db PATH]   (write API: POST /api/v1/tasks)
+  tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose] [--read-model]
+  tq api [--addr ADDR] --auth-token TOKEN [--db PATH] [--read-model]   (write API: POST /api/v1/tasks)
   tq verdict '<json>'   (agent-facing: record this task's structured result
                   into $TQ_RESULT_FILE; validates JSON, no database access)
   tq ask --task <id> [--type info|approval|confirmation|input]
@@ -1648,13 +1649,19 @@ func cmdStats(args []string) error {
 		"agent pool daily enqueue cap to compare today'store spend against (0 = spend shown without a cap)",
 	)
 	asJSON := fs.Bool("json", false, "JSON output of the stats aggregate (counts, budget, consumer lag)")
+	readModel := fs.Bool(
+		"read-model",
+		false,
+		"read the status tallies from the ADR-0019 S3 metaengine projection beside the db (<db>.readmodel.db) instead of the queue store",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	store := mustOpenDB(resolveDB(*db))
+	dbPath := resolveDB(*db)
+	store := mustOpenDB(dbPath)
 	defer store.Close()
 
 	ctx := context.Background()
@@ -1669,9 +1676,39 @@ func cmdStats(args []string) error {
 		filter.Status = &st
 	}
 
-	tasks, err := store.List(ctx, filter)
-	if err != nil {
-		return err
+	var byStatus map[string]int
+	var byProject map[string]map[string]int
+
+	if *readModel {
+		m, err := readmodel.Open(readmodel.PathFor(dbPath), store)
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = m.Close() }()
+
+		if err := m.CatchUp(ctx); err != nil {
+			return err
+		}
+
+		rfilter := readmodel.TaskFilter{Project: filter.Project}
+		if filter.Status != nil {
+			rfilter.Status = readmodel.StringPtr(string(*filter.Status))
+		}
+
+		rows, err := m.Tasks(ctx, rfilter)
+		if err != nil {
+			return err
+		}
+
+		byStatus, byProject = tallyModelRows(rows)
+	} else {
+		tasks, err := store.List(ctx, filter)
+		if err != nil {
+			return err
+		}
+
+		byStatus, byProject = tallyStats(tasks)
 	}
 
 	// Parked = rate-limit parked (pending with a future not_before) — the
@@ -1688,7 +1725,6 @@ func cmdStats(args []string) error {
 		return err
 	}
 
-	byStatus, byProject := tallyStats(tasks)
 	spent := budget.Guard{DailyCap: *dailyBudget}.SpentToday(ctx, store)
 	usage := (budget.Guard{}).UsageToday(ctx, store)
 
@@ -1870,6 +1906,25 @@ func tallyStats(tasks []task.Task) (map[string]int, map[string]map[string]int) {
 		}
 
 		byProject[t.Project][string(t.Status)]++
+	}
+
+	return byStatus, byProject
+}
+
+// tallyModelRows tallies readmodel ledger rows exactly like tallyStats
+// tallies store rows (--read-model reads the ADR-0019 S3 projection
+// instead of the queue store; the output shape is identical).
+func tallyModelRows(rows []readmodel.TaskRow) (map[string]int, map[string]map[string]int) {
+	byStatus := map[string]int{}
+	byProject := map[string]map[string]int{}
+
+	for _, r := range rows {
+		byStatus[r.Status]++
+		if byProject[r.Project] == nil {
+			byProject[r.Project] = map[string]int{}
+		}
+
+		byProject[r.Project][r.Status]++
 	}
 
 	return byStatus, byProject
@@ -2840,17 +2895,30 @@ func cmdAPI(args []string) error {
 	authToken := fs.String("auth-token", os.Getenv("TQ_API_TOKEN"),
 		"REQUIRED bearer token for every request (env $TQ_API_TOKEN)")
 
+	readModel := fs.Bool(
+		"read-model",
+		false,
+		"serve GET /api/v1/stats from the ADR-0019 S3 metaengine projection (<db>.readmodel.db) instead of the queue store",
+	)
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	s := mustOpenDB(resolveDB(*db))
+	dbPath := resolveDB(*db)
+	s := mustOpenDB(dbPath)
 	defer s.Close()
 
 	server, err := httpapi.New(s, *authToken, nil)
 	if err != nil {
 		return err
+	}
+
+	if *readModel {
+		if err := server.UseReadModel(readmodel.PathFor(dbPath)); err != nil {
+			return err
+		}
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -2915,11 +2983,18 @@ func cmdServe(args []string) error {
 		os.Getenv("TQ_SERVE_WRITES") == "1",
 		"enable admin actions in the dashboard (cancel pending/running, rescue dead; env $TQ_SERVE_WRITES=1); CSRF-guarded, and non-loopback binds still require --auth-token",
 	)
+	readModel := fs.Bool(
+		"read-model",
+		false,
+		"serve the aggregate reads and live notifications from the ADR-0019 S3 metaengine projection (<db>.readmodel.db) instead of the hand journal tailer; row-rich views stay store-backed",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
+	dbPath := resolveDB(*db)
 
 	cfg := webui.Config{
 		Addr:        *addr,
@@ -2929,11 +3004,16 @@ func cmdServe(args []string) error {
 		AuthToken:   *authToken,
 		AllowWrites: *allowWrites,
 	}
+
+	if *readModel {
+		cfg.ReadModelPath = readmodel.PathFor(dbPath)
+	}
+
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
 
-	store := mustOpenDB(resolveDB(*db))
+	store := mustOpenDB(dbPath)
 
 	// One signal story (runactor): the interrupt actor cancels the http
 	// actor, teardown closes the store after the server has fully stopped.
