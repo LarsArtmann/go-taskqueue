@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"io"
 	"log/slog"
@@ -1019,7 +1020,7 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 	// Park one: claim + rate-limit requeue, then the segment renders.
 	tk := enqueue(t, s, "agent", "demo")
 
-	_, w1_claim, err := s.ClaimDue(ctx, "w1", time.Minute)
+	_, _, err = s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -1205,7 +1206,7 @@ func TestTaskDetailSSESnapshot(t *testing.T) {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), claimed.ID, claimed.LeaseOwner, json.RawMessage(`"done"`)); err != nil {
+	if err := s.Complete(context.Background(), claimed.ID, claim, jsontext.Value(`"done"`)); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -1273,7 +1274,7 @@ func TestTaskDetailSSELiveUpdate(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond) // let the SSE connect
 
-	if err := s.Complete(context.Background(), claimed.ID, claimed.LeaseOwner, json.RawMessage(`"done"`)); err != nil {
+	if err := s.Complete(context.Background(), claimed.ID, claim, jsontext.Value(`"done"`)); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 

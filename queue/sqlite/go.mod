@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/queue/sqlite
 
-go 1.27
+go 1.27.1
 
 require (
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
@@ -9,11 +9,19 @@ require (
 )
 
 require (
-	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/larsartmann/go-branded-id v0.6.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/claiming/v4 v4.0.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.2.2 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.14.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/record/v4 v4.5.1 // indirect
 	github.com/larsartmann/go-error-family v0.10.1 // indirect
-	github.com/larsartmann/go-retry v0.6.0 // indirect
+	github.com/larsartmann/go-sse v0.6.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -31,3 +39,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue => ../../internal/que
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../../internal/queue/sqlite
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ../../internal/task
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../../internal/queue/sqlitev4
