@@ -45,7 +45,7 @@ func TestEnqueueAndClaim(t *testing.T) {
 		t.Fatalf("defaults not applied: %+v", got)
 	}
 
-	claimed, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
+	claimed, _, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 	// Another worker can claim once the lease expired.
-	got, claim_w2, err := s.ClaimDue(ctx, "w2", time.Minute)
+	got, _, err := s.ClaimDue(ctx, "w2", time.Minute)
 	if err != nil {
 		t.Fatalf("reclaim: %v", err)
 	}
@@ -307,7 +307,7 @@ func TestPriorityOrdersClaims(t *testing.T) {
 	low, _ := s.Enqueue(ctx, task.New{Type: "low", Priority: 1})
 	high, _ := s.Enqueue(ctx, task.New{Type: "high", Priority: 10})
 
-	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestClaimAgingFlipsOrder(t *testing.T) {
 		t.Fatalf("backdate: %v", err)
 	}
 
-	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -387,7 +387,7 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 		t.Fatalf("backdate: %v", err)
 	}
 
-	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -429,7 +429,7 @@ func TestClaimAgingRespectsNotBefore(t *testing.T) {
 		t.Fatalf("backdate: %v", err)
 	}
 
-	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -475,7 +475,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 	// Old task requeued now (updated_at = now, created_at still far in the
 	// past): effective 50+10 must beat the fresh sibling's 50+0 — the
 	// requeue did not reset aging.
-	got, claim_w2, err := s.ClaimDue(ctx, "w2", time.Minute)
+	got, _, err := s.ClaimDue(ctx, "w2", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
