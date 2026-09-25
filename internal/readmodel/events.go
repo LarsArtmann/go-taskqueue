@@ -71,7 +71,7 @@ type (
 )
 
 // FailureText is a failed attempt's error text — a named string so event
-	// structs carry at most one bare string (the fold key).
+// structs carry at most one bare string (the fold key).
 type FailureText string
 
 // RowSource supplies the enqueue-time fields the current engine's thin

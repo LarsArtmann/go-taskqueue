@@ -287,7 +287,7 @@ func TestLeaseLostMidExecution(t *testing.T) {
 		t.Fatalf("stole wrong task %s, want %s", stolen.ID, enq.ID)
 	}
 
-	if err := store.Complete(ctx, stolen.ID,claim_thief, nil); err != nil {
+	if err := store.Complete(ctx, stolen.ID, claim_thief, nil); err != nil {
 		t.Fatalf("thief complete: %v", err)
 	}
 
