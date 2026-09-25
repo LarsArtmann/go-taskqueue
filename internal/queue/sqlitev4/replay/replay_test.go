@@ -37,7 +37,7 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("enqueue completed: %v", err)
 	}
 
-	claimed, claim_worker-1, err := store.ClaimDue(ctx, "worker-1", time.Minute)
+	claimed, claim_worker_1, err := store.ClaimDue(ctx, "worker-1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim completed: %v", err)
 	}
@@ -46,7 +46,7 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("claimed %s, want %s", claimed.ID, completed.ID)
 	}
 
-	if err := store.Complete(ctx, claimed.ID,claim_worker-1, jsontext.Value(`{"ok":true}`)); err != nil {
+	if err := store.Complete(ctx, claimed.ID,claim_worker_1, jsontext.Value(`{"ok":true}`); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
@@ -59,7 +59,7 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("enqueue dead: %v", err)
 	}
 
-	deadClaimed, claim_worker-2, err := store.ClaimDue(ctx, "worker-2", time.Minute)
+	deadClaimed, claim_worker_2, err := store.ClaimDue(ctx, "worker-2", time.Minute)
 	if err != nil {
 		t.Fatalf("claim dead: %v", err)
 	}
@@ -106,7 +106,7 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("reprioritize: %v", err)
 	}
 
-	if err := store.Heartbeat(ctx, dead.ID,claim_worker-2, time.Minute); err == nil {
+	if err := store.Heartbeat(ctx, dead.ID,claim_worker_2, time.Minute); err == nil {
 		t.Log("heartbeat on dead task correctly refused")
 	}
 
@@ -285,7 +285,7 @@ func TestVerifyMatchesSQLiteV4Store(t *testing.T) {
 
 	// The replayed engine store must be a LIVE queue: the copied pending
 	// task is claimable and terminal tasks stay terminal.
-	claimed, claim_worker-after-cutover, err := store.ClaimDue(ctx, "worker-after-cutover", time.Minute)
+	claimed, _, err := store.ClaimDue(ctx, "worker-after-cutover", time.Minute)
 	if err != nil {
 		t.Fatalf("claim from replayed store: %v", err)
 	}
@@ -295,7 +295,8 @@ func TestVerifyMatchesSQLiteV4Store(t *testing.T) {
 	}
 
 	// The parked task (future NotBefore) stays unclaimable.
-	if _, _, err := store.ClaimDue(ctx, "worker-after-cutover", time.Minute); err == nil {
+	if _, _, err := store.ClaimDue(ctx, "worker-after-cutover",
+		time.Minute); err == nil {
 		t.Fatal("second claim should find nothing due (parked NotBefore)")
 	}
 }
