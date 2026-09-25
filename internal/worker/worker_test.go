@@ -278,7 +278,7 @@ func TestLeaseLostMidExecution(t *testing.T) {
 
 	time.Sleep(150 * time.Millisecond) // lease now expired
 
-	stolen, err := store.ClaimDue(ctx, "thief", time.Minute)
+	stolen, claim_thief, err := store.ClaimDue(ctx, "thief", time.Minute)
 	if err != nil {
 		t.Fatalf("steal claim: %v", err)
 	}
@@ -287,7 +287,7 @@ func TestLeaseLostMidExecution(t *testing.T) {
 		t.Fatalf("stole wrong task %s, want %s", stolen.ID, enq.ID)
 	}
 
-	if err := store.Complete(ctx, stolen.ID, "thief", nil); err != nil {
+	if err := store.Complete(ctx, stolen.ID,claim_thief, nil); err != nil {
 		t.Fatalf("thief complete: %v", err)
 	}
 

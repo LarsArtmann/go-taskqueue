@@ -40,7 +40,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "dep-w", time.Minute)
+		got, claim_dep-w, err := s.ClaimDue(ctx, "dep-w", time.Minute)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -49,11 +49,11 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("claimed dependent %s before its blocker — DAG gating broken", got.ID)
 		}
 
-		if err := s.Complete(ctx, blocker.ID, "dep-w", nil); err != nil {
+		if err := s.Complete(ctx, blocker.ID,claim_dep-w, nil); err != nil {
 			t.Fatal(err)
 		}
 
-		got, err = s.ClaimDue(ctx, "dep-w", time.Minute)
+		got, claim_dep-w, err = s.ClaimDue(ctx, "dep-w", time.Minute)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -85,7 +85,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "sched-w", time.Minute)
+		got, claim_sched-w, err := s.ClaimDue(ctx, "sched-w", time.Minute)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -94,12 +94,12 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("claimed %s, want the highest-priority ready task %s", got.ID, high.ID)
 		}
 
-		if err := s.Complete(ctx, high.ID, "sched-w", nil); err != nil {
+		if err := s.Complete(ctx, high.ID,claim_sched-w, nil); err != nil {
 			t.Fatal(err)
 		}
 
 		// The delayed task is still not claimable a minute out.
-		got, err = s.ClaimDue(ctx, "sched-w", time.Minute)
+		got, claim_sched-w, err = s.ClaimDue(ctx, "sched-w", time.Minute)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -108,7 +108,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("claimed %s, want the low-priority task (future one must stay gated)", got.ID)
 		}
 
-		if err := s.Complete(ctx, low.ID, "sched-w", nil); err != nil {
+		if err := s.Complete(ctx, low.ID,claim_sched-w, nil); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -137,7 +137,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "aging-w", time.Minute)
+		got, claim_aging-w, err := s.ClaimDue(ctx, "aging-w", time.Minute)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -151,7 +151,7 @@ func TestPostgresConformance(t *testing.T) {
 			)
 		}
 
-		if err := s.Complete(ctx, older.ID, "aging-w", nil); err != nil {
+		if err := s.Complete(ctx, older.ID,claim_aging-w, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -177,7 +177,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err = s.ClaimDue(ctx, "aging-w", time.Minute)
+		got, claim_aging-w, err = s.ClaimDue(ctx, "aging-w", time.Minute)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -189,7 +189,7 @@ func TestPostgresConformance(t *testing.T) {
 		// Leave nothing behind: later subtests claim against an empty ready
 		// set. stronger is running (lease held); the other two never claimed —
 		// cancel those.
-		if err := s.Complete(ctx, stronger.ID, "aging-w", nil); err != nil {
+		if err := s.Complete(ctx, stronger.ID,claim_aging-w, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -246,7 +246,7 @@ func TestPostgresConformance(t *testing.T) {
 		}
 
 		// Non-pending: refused and unmutated.
-		if _, err := s.ClaimDue(ctx, "repri-w", time.Minute); err != nil {
+		if _, _, err := s.ClaimDue(ctx, "repri-w", time.Minute); err != nil {
 			t.Fatal(err)
 		}
 
@@ -258,7 +258,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("running task mutated: %d", got.Priority)
 		}
 
-		if err := s.Complete(ctx, tk.ID, "repri-w", nil); err != nil {
+		if err := s.Complete(ctx, tk.ID,queue.Claim("repri-w"), nil); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -328,13 +328,13 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "fail-w", time.Minute)
+		got, claim_fail-w, err := s.ClaimDue(ctx, "fail-w", time.Minute)
 		if err != nil || got.ID != retry.ID {
 			t.Fatalf("claim: %v (%v)", got.ID, err)
 		}
 
 		evidence := jsontext.Value(`{"stage":"verify","exit_code":2,"tail":"boom"}`)
-		if err := s.Fail(ctx, retry.ID, "fail-w", "attempt failed", 90*time.Second, evidence); err != nil {
+		if err := s.Fail(ctx, retry.ID,claim_fail-w, "attempt failed", 90*time.Second, evidence); err != nil {
 			t.Fatal(err)
 		}
 
@@ -379,12 +379,12 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "perm-w", time.Minute)
+		got, claim_perm-w, err := s.ClaimDue(ctx, "perm-w", time.Minute)
 		if err != nil || got.ID != perm.ID {
 			t.Fatalf("claim: %v (%v)", got.ID, err)
 		}
 
-		if err := s.FailPermanent(ctx, perm.ID, "perm-w", "bad payload", nil); err != nil {
+		if err := s.FailPermanent(ctx, perm.ID,claim_perm-w, "bad payload", nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -404,12 +404,12 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "rq-w", time.Minute)
+		got, claim_rq-w, err := s.ClaimDue(ctx, "rq-w", time.Minute)
 		if err != nil || got.ID != rq.ID {
 			t.Fatalf("claim: %v (%v)", got.ID, err)
 		}
 
-		if err := s.Requeue(ctx, rq.ID, "rq-w", "dirty tree", time.Minute, false); err != nil {
+		if err := s.Requeue(ctx, rq.ID,claim_rq-w, "dirty tree", time.Minute, false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -425,12 +425,12 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := s.ClaimDue(ctx, "park-w", time.Minute); err != nil {
+		if _, _, err := s.ClaimDue(ctx, "park-w", time.Minute); err != nil {
 			t.Fatal(err)
 		}
 
 		// Rate-limit park: delay longer than the original lease.
-		if err := s.Requeue(ctx, pk.ID, "park-w", "rate limited (retry after 1h)", time.Hour, false); err != nil {
+		if err := s.Requeue(ctx, pk.ID,queue.Claim("park-w"), "rate limited (retry after 1h)", time.Hour, false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -443,19 +443,19 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("parked task must be pending with a cleared lease, got %+v", parked)
 		}
 
-		if _, err := s.ClaimDue(ctx, "park-w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		if _, _, err := s.ClaimDue(ctx, "park-w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 			t.Fatalf("claim during park err = %v, want ErrNoTaskDue", err)
 		}
 
-		if err := s.Heartbeat(ctx, pk.ID, "park-w", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+		if err := s.Heartbeat(ctx, pk.ID,queue.Claim("park-w"), time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
 			t.Errorf("stale Heartbeat err = %v, want ErrLeaseNotHeld", err)
 		}
 
-		if err := s.Complete(ctx, pk.ID, "park-w", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+		if err := s.Complete(ctx, pk.ID,queue.Claim("park-w"), nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 			t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
 		}
 
-		if err := s.Requeue(ctx, pk.ID, "park-w", "stale", time.Minute, false); !errors.Is(err, task.ErrLeaseNotHeld) {
+		if err := s.Requeue(ctx, pk.ID,queue.Claim("park-w"), "stale", time.Minute, false); !errors.Is(err, task.ErrLeaseNotHeld) {
 			t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
 		}
 
@@ -553,11 +553,11 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := s.ClaimDue(ctx, "dismiss-w", time.Minute); err != nil {
+		if _, _, err := s.ClaimDue(ctx, "dismiss-w", time.Minute); err != nil {
 			t.Fatal(err)
 		}
 
-		if err := s.Fail(ctx, doomed.ID, "dismiss-w", "boom", 0, nil); err != nil {
+		if err := s.Fail(ctx, doomed.ID,queue.Claim("dismiss-w"), "boom", 0, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -726,11 +726,11 @@ func TestPostgresConformance(t *testing.T) {
 
 		t.Cleanup(func() { _ = s.Cancel(ctx, rescued.ID, "conformance cleanup") })
 
-		if _, err := s.ClaimDue(ctx, "rescue-w", time.Minute); err != nil {
+		if _, _, err := s.ClaimDue(ctx, "rescue-w", time.Minute); err != nil {
 			t.Fatal(err)
 		}
 
-		if err := s.Fail(ctx, rescued.ID, "rescue-w", "boom", 0, nil); err != nil {
+		if err := s.Fail(ctx, rescued.ID,queue.Claim("rescue-w"), "boom", 0, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -764,7 +764,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "coop-w", time.Minute)
+		got, claim_coop-w, err := s.ClaimDue(ctx, "coop-w", time.Minute)
 		if err != nil || got.ID != running.ID {
 			t.Fatalf("claim: %v (%v)", got.ID, err)
 		}
@@ -778,7 +778,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := s.CancelOwned(ctx, running.ID, "coop-w"); err != nil {
+		if err := s.CancelOwned(ctx, running.ID,claim_coop-w,); err != nil {
 			t.Fatal(err)
 		}
 
@@ -816,16 +816,16 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "hb-w", time.Minute)
+		got, claim_hb-w, err := s.ClaimDue(ctx, "hb-w", time.Minute)
 		if err != nil || got.ID != hb.ID {
 			t.Fatalf("claim: %v (%v)", got.ID, err)
 		}
 
-		if err := s.Heartbeat(ctx, hb.ID, "hb-w", time.Minute); err != nil {
+		if err := s.Heartbeat(ctx, hb.ID,claim_hb-w, time.Minute); err != nil {
 			t.Fatalf("heartbeat by owner: %v", err)
 		}
 
-		if err := s.Heartbeat(ctx, hb.ID, "stranger", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+		if err := s.Heartbeat(ctx, hb.ID,queue.Claim("stranger"), time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
 			t.Fatalf("foreign heartbeat err = %v, want ErrLeaseNotHeld", err)
 		}
 	})
@@ -885,12 +885,12 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "bnd-w", time.Minute)
+		got, claim_bnd-w, err := s.ClaimDue(ctx, "bnd-w", time.Minute)
 		if err != nil || got.ID != bounded.ID {
 			t.Fatalf("claim: %v (%v)", got.ID, err)
 		}
 
-		if err := s.Complete(ctx, bounded.ID, "bnd-w", nil); err != nil {
+		if err := s.Complete(ctx, bounded.ID,claim_bnd-w, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1106,14 +1106,15 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "crashed-worker", 30*time.Millisecond)
+		got, claim_crashed-worker, err := s.ClaimDue(ctx, "crashed-worker", 30*time.Millisecond)
 		if err != nil || got.ID != tk.ID {
 			t.Fatalf("claim: %v (%v)", got.ID, err)
 		}
 
 		time.Sleep(60 * time.Millisecond)
 
-		got, err = s.ClaimDue(ctx, "reclaimer", time.Minute)
+		claim_reclaimer = ""
+		got, claim_reclaimer, err = s.ClaimDue(ctx, "reclaimer", time.Minute)
 		if err != nil {
 			t.Fatalf("reclaim: %v", err)
 		}
@@ -1122,7 +1123,7 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("reclaimed by wrong task/owner: %s/%s", got.ID, got.LeaseOwner)
 		}
 
-		if err := s.Complete(ctx, tk.ID, "crashed-worker", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+		if err := s.Complete(ctx, tk.ID,claim_crashed-worker, nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 			t.Fatalf("stale owner complete err = %v, want ErrLeaseNotHeld", err)
 		}
 	})
@@ -1297,7 +1298,7 @@ func TestPostgresConformance(t *testing.T) {
 
 		askFact(pq.ID, "pq-1", "Ship as v3 now?")
 
-		if err := s.Requeue(ctx, pq.ID, "pq-w", "question pending: pq-1", time.Hour, false); err != nil {
+		if err := s.Requeue(ctx, pq.ID,queue.Claim("pq-w"), "question pending: pq-1", time.Hour, false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -1369,7 +1370,7 @@ func TestPostgresConformance(t *testing.T) {
 
 		askFact(raw.ID, "pq-2", "Proceed?")
 
-		if err := s.Requeue(ctx, raw.ID, "pq-w", "question pending: pq-2", time.Hour, false); err != nil {
+		if err := s.Requeue(ctx, raw.ID,queue.Claim("pq-w"), "question pending: pq-2", time.Hour, false); err != nil {
 			t.Fatal(err)
 		}
 

@@ -78,7 +78,7 @@ func Open(path string) (*Store, error) {
 
 	db.SetMaxOpenConns(1)
 
-	s := &Store{eng: eng, db: db, claims: map[task.ID]claimRec{}}
+	s := &Store{eng: eng, db: db, claims: map[task.ID]string{}}
 
 	if err := s.migrateCompanion(context.Background()); err != nil {
 		_ = db.Close()

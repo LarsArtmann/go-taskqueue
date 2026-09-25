@@ -45,7 +45,7 @@ func TestEnqueueAndClaim(t *testing.T) {
 		t.Fatalf("defaults not applied: %+v", got)
 	}
 
-	claimed, err := s.ClaimDue(ctx, "w1", time.Minute)
+	claimed, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestEnqueueAndClaim(t *testing.T) {
 		t.Fatalf("claim state wrong: %+v", claimed)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("second claim err = %v, want queue.ErrNoTaskDue", err)
 	}
 }
@@ -68,15 +68,15 @@ func TestCompleteVerifiesLease(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := s.Complete(ctx, tk.ID, "w2", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Complete(ctx, tk.ID,queue.Claim("w2"), nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("Complete by wrong owner err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Complete(ctx, tk.ID, "w1", jsontext.Value(`{"ok":true}`)); err != nil {
+	if err := s.Complete(ctx, tk.ID,queue.Claim("w1"), jsontext.Value(`{"ok":true}`)); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -85,7 +85,7 @@ func TestCompleteVerifiesLease(t *testing.T) {
 		t.Fatalf("post-complete state wrong: %+v", got)
 	}
 	// Idempotent-ish: second complete is a lease error, not corruption.
-	if err := s.Complete(ctx, tk.ID, "w1", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Complete(ctx, tk.ID,queue.Claim("w1"), nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("double complete err = %v, want ErrLeaseNotHeld", err)
 	}
 }
@@ -96,11 +96,11 @@ func TestCompleteResetsLastError(t *testing.T) {
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky"})
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim1: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID, "w1", "boom-1", 250*time.Millisecond, nil); err != nil {
+	if err := s.Fail(ctx, tk.ID,queue.Claim("w1"), "boom-1", 250*time.Millisecond, nil); err != nil {
 		t.Fatalf("fail1: %v", err)
 	}
 
@@ -111,11 +111,11 @@ func TestCompleteResetsLastError(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim2: %v", err)
 	}
 
-	if err := s.Complete(ctx, tk.ID, "w1", jsontext.Value(`{"ok":true}`)); err != nil {
+	if err := s.Complete(ctx, tk.ID,queue.Claim("w1"), jsontext.Value(`{"ok":true}`)); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -135,11 +135,11 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky", MaxAttempts: 2})
 
 	// Attempt 1: fail -> back to pending.
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim1: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID, "w1", "boom-1", 250*time.Millisecond, nil); err != nil {
+	if err := s.Fail(ctx, tk.ID,queue.Claim("w1"), "boom-1", 250*time.Millisecond, nil); err != nil {
 		t.Fatalf("fail1: %v", err)
 	}
 
@@ -150,18 +150,18 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 
 	// Backoff gates the retry until not_before passes. 250ms comfortably
 	// exceeds claim-check latency on a loaded machine (1ms did not).
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during backoff err = %v, want queue.ErrNoTaskDue", err)
 	}
 
 	time.Sleep(300 * time.Millisecond)
 
 	// Attempt 2: fail -> dead (maxAttempts=2).
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim2: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID, "w1", "boom-2", 0, nil); err != nil {
+	if err := s.Fail(ctx, tk.ID,queue.Claim("w1"), "boom-2", 0, nil); err != nil {
 		t.Fatalf("fail2: %v", err)
 	}
 
@@ -204,11 +204,11 @@ func TestDismissDead(t *testing.T) {
 	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky", MaxAttempts: 2})
 
 	for range 2 {
-		if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 			t.Fatalf("claim: %v", err)
 		}
 
-		if err := s.Fail(ctx, tk.ID, "w1", "boom", 0, nil); err != nil {
+		if err := s.Fail(ctx, tk.ID,queue.Claim("w1"), "boom", 0, nil); err != nil {
 			t.Fatalf("fail: %v", err)
 		}
 	}
@@ -283,13 +283,13 @@ func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	if _, err := s.ClaimDue(ctx, "crashed-worker", 30*time.Millisecond); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "crashed-worker", 30*time.Millisecond); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
 	time.Sleep(50 * time.Millisecond)
 	// Another worker can claim once the lease expired.
-	got, err := s.ClaimDue(ctx, "w2", time.Minute)
+	got, claim_w2, err := s.ClaimDue(ctx, "w2", time.Minute)
 	if err != nil {
 		t.Fatalf("reclaim: %v", err)
 	}
@@ -298,7 +298,7 @@ func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 		t.Fatalf("reclaimed by wrong task/owner: %+v", got)
 	}
 	// Old owner cannot complete anymore.
-	if err := s.Complete(ctx, tk.ID, "crashed-worker", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Complete(ctx, tk.ID,queue.Claim("crashed-worker"), nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("stale owner complete err = %v, want ErrLeaseNotHeld", err)
 	}
 }
@@ -311,7 +311,7 @@ func TestDepsBlockUntilCompleted(t *testing.T) {
 
 	// First claim is the parent (claimable); the child must NOT be claimable
 	// while the parent is running.
-	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim parent: %v", err)
 	}
@@ -320,15 +320,15 @@ func TestDepsBlockUntilCompleted(t *testing.T) {
 		t.Fatalf("first claim %s, want parent %s", got.ID, parent.ID)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("child claimable while parent running: err = %v", err)
 	}
 
-	if err := s.Complete(ctx, parent.ID, "w1", nil); err != nil {
+	if err := s.Complete(ctx, parent.ID,claim_w1, nil); err != nil {
 		t.Fatalf("complete parent: %v", err)
 	}
 	// Now the child is claimable.
-	got, err = s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err = s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim child: %v", err)
 	}
@@ -346,7 +346,7 @@ func TestPriorityOrdersClaims(t *testing.T) {
 	low, _ := s.Enqueue(ctx, task.New{Type: "low", Priority: 1})
 	high, _ := s.Enqueue(ctx, task.New{Type: "high", Priority: 10})
 
-	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -388,7 +388,7 @@ func TestClaimAgingFlipsOrder(t *testing.T) {
 		t.Fatalf("backdate: %v", err)
 	}
 
-	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -426,7 +426,7 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 		t.Fatalf("backdate: %v", err)
 	}
 
-	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -468,7 +468,7 @@ func TestClaimAgingRespectsNotBefore(t *testing.T) {
 		t.Fatalf("backdate: %v", err)
 	}
 
-	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -503,18 +503,18 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 		t.Fatalf("backdate: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim old: %v", err)
 	}
 
-	if err := s.Requeue(ctx, old.ID, "w1", "preflight", 0, false); err != nil {
+	if err := s.Requeue(ctx, old.ID,queue.Claim("w1"), "preflight", 0, false); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 
 	// Old task requeued now (updated_at = now, created_at still far in the
 	// past): effective 50+10 must beat the fresh sibling's 50+0 — the
 	// requeue did not reset aging.
-	got, err := s.ClaimDue(ctx, "w2", time.Minute)
+	got, claim_w2, err := s.ClaimDue(ctx, "w2", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -549,7 +549,7 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 		t.Fatalf("backdate low: %v", err)
 	}
 
-	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -558,7 +558,7 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 		t.Fatalf("two aging windows did not flip a 1-point gap: claimed %s, want %s", got.ID, low.ID)
 	}
 
-	if err := s.Complete(ctx, low.ID, "w1", nil); err != nil {
+	if err := s.Complete(ctx, low.ID,claim_w1, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
@@ -572,7 +572,8 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 		t.Fatalf("backdate high: %v", err)
 	}
 
-	got, err = s.ClaimDue(ctx, "w2", time.Minute)
+	claim_w2 = ""
+	got, claim_w2, err = s.ClaimDue(ctx, "w2", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -678,7 +679,7 @@ func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
 	s := openTestStore(t)
 
 	running, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -691,11 +692,11 @@ func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
 	}
 
 	dead, _ := s.Enqueue(ctx, task.New{Type: "b", MaxAttempts: 1})
-	if _, err := s.ClaimDue(ctx, "w2", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w2", time.Minute); err != nil {
 		t.Fatalf("claim dead: %v", err)
 	}
 
-	if err := s.Fail(ctx, dead.ID, "w2", "boom", 0, nil); err != nil {
+	if err := s.Fail(ctx, dead.ID,queue.Claim("w2"), "boom", 0, nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
@@ -722,7 +723,7 @@ func TestUpdatePendingPriorityFlipsClaimOrder(t *testing.T) {
 		t.Fatalf("update: %v", err)
 	}
 
-	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -740,7 +741,7 @@ func TestNotBeforeDelays(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("future task claimable: err = %v", err)
 	}
 }
@@ -754,21 +755,21 @@ func TestHeartbeatExtendsLease(t *testing.T) {
 	// CI runners (Windows once took >40ms and the lease expired before
 	// the first heartbeat), so keep it generous; only the sleep after the
 	// heartbeat has to outlast it.
-	if _, err := s.ClaimDue(ctx, "w1", 500*time.Millisecond); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", 500*time.Millisecond); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Heartbeat(ctx, tk.ID, "w1", time.Minute); err != nil {
+	if err := s.Heartbeat(ctx, tk.ID,queue.Claim("w1"), time.Minute); err != nil {
 		t.Fatalf("heartbeat: %v", err)
 	}
 
 	time.Sleep(600 * time.Millisecond) // original lease would be gone
 
-	if err := s.Heartbeat(ctx, tk.ID, "w1", time.Minute); err != nil {
+	if err := s.Heartbeat(ctx, tk.ID,queue.Claim("w1"), time.Minute); err != nil {
 		t.Fatalf("heartbeat after original expiry (should be extended): %v", err)
 	}
 
-	if err := s.Heartbeat(ctx, tk.ID, "w2", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Heartbeat(ctx, tk.ID,queue.Claim("w2"), time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("wrong-owner heartbeat err = %v", wantLeaseErr())
 	}
 }
@@ -1123,17 +1124,17 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "broken", MaxAttempts: 5})
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
 	// The lease guard holds for permanent failures too: only the owner
 	// that claimed the task may dead-letter it.
-	if err := s.FailPermanent(ctx, tk.ID, "w2", "nope", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.FailPermanent(ctx, tk.ID,queue.Claim("w2"), "nope", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("wrong-owner FailPermanent err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.FailPermanent(ctx, tk.ID, "w1", "agent: payload needs repo", nil); err != nil {
+	if err := s.FailPermanent(ctx, tk.ID,queue.Claim("w1"), "agent: payload needs repo", nil); err != nil {
 		t.Fatalf("FailPermanent: %v", err)
 	}
 
@@ -1170,7 +1171,7 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 	}
 
 	// Dead means dead: nothing claimable afterwards.
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("dead task claimable: err = %v", err)
 	}
 }
@@ -1202,12 +1203,12 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 	offA, _ := off.Enqueue(ctx, task.New{Project: "x", Type: "a"})
 	offB, _ := off.Enqueue(ctx, task.New{Project: "x", Type: "b"})
 
-	c1, err := off.ClaimDue(ctx, "w1", time.Minute)
+	c1, claim_w1, err := off.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil || (c1.ID != offA.ID && c1.ID != offB.ID) {
 		t.Fatalf("default claim1 = %v, %v", c1.ID, err)
 	}
 
-	c2, err := off.ClaimDue(ctx, "w1", time.Minute)
+	c2, claim_w1, err := off.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil || c2.ID == c1.ID {
 		t.Fatalf("default store must allow parallel same-project claims: c1=%v c2=%v, %v", c1.ID, c2.ID, err)
 	}
@@ -1222,7 +1223,7 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 	var claimed []task.ID
 
 	for {
-		got, err := s.ClaimDue(ctx, "w1", time.Minute)
+		got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 		if errors.Is(err, queue.ErrNoTaskDue) {
 			break
 		}
@@ -1262,16 +1263,16 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 		}
 	}
 	// Nothing due while the repo-x runner holds the project.
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("blocked sibling claimable: err = %v", err)
 	}
 
 	// Completing the runner releases the project.
-	if err := s.Complete(ctx, xClaimed, "w1", nil); err != nil {
+	if err := s.Complete(ctx, xClaimed,claim_w1, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
-	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil || got.ID != blocked {
 		t.Fatalf("after complete claim = %v, %v; want %s", got.ID, err, blocked)
 	}
@@ -1301,27 +1302,27 @@ func TestProjectExclusivityAcrossStoreHandles(t *testing.T) {
 	x1, _ := s1.Enqueue(ctx, task.New{Project: "repo-x", Type: "a"})
 	x2, _ := s1.Enqueue(ctx, task.New{Project: "repo-x", Type: "b"})
 
-	first, err := s1.ClaimDue(ctx, "pool-1", time.Minute)
+	first, claim_pool-1, err := s1.ClaimDue(ctx, "pool-1", time.Minute)
 	if err != nil {
 		t.Fatalf("pool-1 claim: %v", err)
 	}
 
-	got, err := s2.ClaimDue(ctx, "pool-2", time.Minute)
+	got, claim_pool-2, err := s2.ClaimDue(ctx, "pool-2", time.Minute)
 	if err == nil && (got.ID == x1.ID || got.ID == x2.ID) {
 		t.Fatal("pool-2 claimed a repo-x task while pool-1 runs one — cross-handle exclusivity broken")
 	}
 
 	if err == nil {
-		if err := s2.Complete(ctx, got.ID, "pool-2", nil); err != nil {
+		if err := s2.Complete(ctx, got.ID,claim_pool-2, nil); err != nil {
 			t.Fatalf("pool-2 complete: %v", err)
 		}
 	}
 	// Releasing pool-1's task lets pool-2 have the sibling.
-	if err := s1.Complete(ctx, first.ID, "pool-1", nil); err != nil {
+	if err := s1.Complete(ctx, first.ID,claim_pool-1, nil); err != nil {
 		t.Fatalf("pool-1 complete: %v", err)
 	}
 
-	got, err = s2.ClaimDue(ctx, "pool-2", time.Minute)
+	got, claim_pool-2, err = s2.ClaimDue(ctx, "pool-2", time.Minute)
 	if err != nil || (got.ID != x1.ID && got.ID != x2.ID) {
 		t.Fatalf("sibling claim after release = %v, %v; want the repo-x sibling", got.ID, err)
 	}
@@ -1337,12 +1338,12 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 3})
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
 	// Rate-limit park: requeue with a delay longer than the original lease.
-	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited (retry after 1h)", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID,queue.Claim("w1"), "rate limited (retry after 1h)", time.Hour, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1358,21 +1359,21 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	// The expired-lease reclaim branch must not see it: a claim while the
 	// park is live returns ErrNoTaskDue (the stale lease is GONE, and the
 	// pending branch is gated on not_before).
-	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during park err = %v, want ErrNoTaskDue", err)
 	}
 
 	// The stale owner cannot resurrect the parked task through any
 	// lease-taking call — the parked task holds no lease to match.
-	if err := s.Heartbeat(ctx, tk.ID, "w1", time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Heartbeat(ctx, tk.ID,queue.Claim("w1"), time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Errorf("stale Heartbeat err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Complete(ctx, tk.ID, "w1", jsontext.Value(`"x"`)); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Complete(ctx, tk.ID,queue.Claim("w1"), jsontext.Value(`"x"`)); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, "w1", "stale", time.Minute, false); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(ctx, tk.ID,queue.Claim("w1"), "stale", time.Minute, false); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
@@ -1431,11 +1432,11 @@ func TestParkedFilter(t *testing.T) {
 		t.Fatalf("fresh task counted as parked (%d)", n)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, "w1", "rate limited (retry after 1h)", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID,queue.Claim("w1"), "rate limited (retry after 1h)", time.Hour, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1459,16 +1460,16 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "env-not-ready", MaxAttempts: 3})
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
 	// Wrong owner cannot requeue.
-	if err := s.Requeue(ctx, tk.ID, "w2", "nope", time.Second, false); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(ctx, tk.ID,queue.Claim("w2"), "nope", time.Second, false); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("wrong-owner Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, "w1", "preflight: repo dirty", 150*time.Millisecond, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID,queue.Claim("w1"), "preflight: repo dirty", 150*time.Millisecond, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1478,13 +1479,13 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 
 	// Delay gates the next claim (not_before semantics, like Fail backoff).
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during requeue delay err = %v, want queue.ErrNoTaskDue", err)
 	}
 
 	time.Sleep(200 * time.Millisecond)
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim after delay: %v", err)
 	}
 
@@ -1533,11 +1534,11 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 			t.Fatalf("enqueue: %v", err)
 		}
 
-		if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 			t.Fatalf("claim: %v", err)
 		}
 
-		if err := s.Requeue(ctx, tk.ID, "w1", "rate limited", time.Minute, resume); err != nil {
+		if err := s.Requeue(ctx, tk.ID,queue.Claim("w1"), "rate limited", time.Minute, resume); err != nil {
 			t.Fatalf("Requeue: %v", err)
 		}
 
@@ -1704,12 +1705,12 @@ func TestFactsForTaskFiltersAndBounds(t *testing.T) {
 		t.Fatalf("enqueue b: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
 	// ClaimDue may pick either task; follow whichever one was claimed.
-	claimed, err := s.ClaimDue(ctx, "w1", time.Minute)
+	claimed, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -1990,7 +1991,7 @@ func TestStatusCountsAndProjectCounts(t *testing.T) {
 	}
 
 	// ClaimDue may pick either task; derive expectations from the winner.
-	claimed, err := s.ClaimDue(ctx, "w1", time.Minute)
+	claimed, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -2051,11 +2052,11 @@ func TestListSeverityOrder(t *testing.T) {
 		}
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim1: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w2", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w2", time.Minute); err != nil {
 		t.Fatalf("claim2: %v", err)
 	}
 
@@ -2303,7 +2304,7 @@ func TestCancelRunningRequestAndHonour(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -2335,11 +2336,11 @@ func TestCancelRunningRequestAndHonour(t *testing.T) {
 	}
 
 	// Only the lease holder finalizes.
-	if err := s.CancelOwned(ctx, tk.ID, "not-the-owner"); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.CancelOwned(ctx, tk.ID,queue.Claim("not-the-owner"),); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("CancelOwned by wrong owner err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.CancelOwned(ctx, tk.ID, "w1"); err != nil {
+	if err := s.CancelOwned(ctx, tk.ID,queue.Claim("w1"),); err != nil {
 		t.Fatalf("CancelOwned: %v", err)
 	}
 
@@ -2361,7 +2362,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "crashed-worker", 30*time.Millisecond); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "crashed-worker", 30*time.Millisecond); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -2371,7 +2372,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("ClaimDue after cancel-requested reclaim err = %v, want queue.ErrNoTaskDue", err)
 	}
 
@@ -2471,7 +2472,7 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -2483,7 +2484,7 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 		t.Fatalf("task.cancel-requested reason = %q, want the stored reason", got)
 	}
 
-	if err := s.CancelOwned(ctx, coop.ID, "w1"); err != nil {
+	if err := s.CancelOwned(ctx, coop.ID,queue.Claim("w1"),); err != nil {
 		t.Fatalf("CancelOwned: %v", err)
 	}
 
@@ -2537,7 +2538,7 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 	// once: marked 0).
 	claimAt := time.Now()
 
-	if _, err := s.ClaimDue(ctx, "victim", time.Second); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "victim", time.Second); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2546,7 +2547,7 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "alive", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "alive", time.Minute); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2642,12 +2643,12 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 
 	const work = 1_000
 	for range work {
-		got, err := s.ClaimDue(ctx, "bench", time.Minute)
+		got, claim_bench, err := s.ClaimDue(ctx, "bench", time.Minute)
 		if err != nil {
 			t.Fatalf("claim: %v", err)
 		}
 
-		if err := s.Complete(ctx, got.ID, "bench", nil); err != nil {
+		if err := s.Complete(ctx, got.ID,claim_bench, nil); err != nil {
 			t.Fatalf("complete: %v", err)
 		}
 	}
@@ -2686,12 +2687,12 @@ func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		got, err := s.ClaimDue(ctx, "w", time.Minute)
+		got, claim_w, err := s.ClaimDue(ctx, "w", time.Minute)
 		if err != nil {
 			t.Fatalf("claim: %v", err)
 		}
 
-		if err := s.Complete(ctx, got.ID, "w", nil); err != nil {
+		if err := s.Complete(ctx, got.ID,claim_w, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -3062,11 +3063,11 @@ func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
 		t.Fatalf("Enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID, "w1", "boom", 0, nil); err != nil {
+	if err := s.Fail(ctx, tk.ID,queue.Claim("w1"), "boom", 0, nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
@@ -3112,7 +3113,7 @@ func parkOnQuestion(t *testing.T, s *Store, payload string, requeueIn time.Durat
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -3130,7 +3131,7 @@ func parkOnQuestion(t *testing.T, s *Store, payload string, requeueIn time.Durat
 		t.Fatalf("append asked fact: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, "w1", "question pending: "+ref, requeueIn, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID,queue.Claim("w1"), "question pending: "+ref, requeueIn, false); err != nil {
 		t.Fatalf("park requeue: %v", err)
 	}
 
@@ -3217,7 +3218,7 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 
 	tk := parkOnQuestion(t, s, `{"repo":"go-taskqueue","prompt":"do the thing"}`, time.Hour)
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
 	}
 
@@ -3242,7 +3243,7 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 	assertAnswerInjected(t, got)
 
 	// The answer must be claimable RIGHT NOW — no residual delay.
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim after answer: %v", err)
 	}
 
@@ -3304,7 +3305,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 
 	// A follow-up question (different ref) on the re-claimed task parks it
 	// again; its answer joins the same answered array.
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("reclaim: %v", err)
 	}
 
@@ -3322,7 +3323,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 		t.Fatalf("append q-2: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, "w1", "question pending: q-2", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID,queue.Claim("w1"), "question pending: q-2", time.Hour, false); err != nil {
 		t.Fatalf("park q-2: %v", err)
 	}
 
@@ -3371,7 +3372,7 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 	// live task.
 	time.Sleep(150 * time.Millisecond)
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -3421,7 +3422,7 @@ func TestRecordAnswerRawPayloadFactOnly(t *testing.T) {
 		t.Fatalf("raw payload mutated: %q", got.Payload)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("raw-payload task unblocked err = %v, want still parked", err)
 	}
 

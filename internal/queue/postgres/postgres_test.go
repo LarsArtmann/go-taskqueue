@@ -86,7 +86,7 @@ func TestPostgresLifecycle(t *testing.T) {
 	}
 
 	// Exclusive claim.
-	got, err := s.ClaimDue(ctx, "w1", time.Minute)
+	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -95,12 +95,12 @@ func TestPostgresLifecycle(t *testing.T) {
 		t.Fatalf("claimed %s, want %s", got.ID, enq.ID)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+	if _, _, err := s.ClaimDue(ctx, "w2", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("second claim of one task: err = %v, want queue.ErrNoTaskDue", err)
 	}
 
 	// Lease guard: a foreign owner cannot complete.
-	if err := s.Complete(ctx, enq.ID, "w2", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Complete(ctx, enq.ID,queue.Claim("w2"), nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("foreign complete: err = %v, want ErrLeaseNotHeld", err)
 	}
 
@@ -114,7 +114,7 @@ func TestPostgresLifecycle(t *testing.T) {
 		t.Fatalf("cancel-requested = %v (%v)", requested, err)
 	}
 
-	if err := s.CancelOwned(ctx, enq.ID, "w1"); err != nil {
+	if err := s.CancelOwned(ctx, enq.ID,claim_w1,); err != nil {
 		t.Fatalf("cancel-owned: %v", err)
 	}
 
@@ -131,7 +131,7 @@ func TestPostgresLifecycle(t *testing.T) {
 
 	claimUntil(t, s, ctx, retry.ID, "w1", time.Minute)
 
-	if err := s.Fail(ctx, retry.ID, "w1", "boom", time.Millisecond, nil); err != nil {
+	if err := s.Fail(ctx, retry.ID,claim_w1, "boom", time.Millisecond, nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
@@ -312,7 +312,7 @@ func TestPostgresOrphanMarking(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "victim", time.Nanosecond); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "victim", time.Nanosecond); err != nil {
 		t.Fatal(err)
 	}
 
@@ -359,12 +359,12 @@ func TestPostgresBaseline1k(t *testing.T) {
 
 	const work = 1_000
 	for range work {
-		got, err := s.ClaimDue(ctx, "bench", time.Minute)
+		got, claim_bench, err := s.ClaimDue(ctx, "bench", time.Minute)
 		if err != nil {
 			t.Fatalf("claim: %v", err)
 		}
 
-		if err := s.Complete(ctx, got.ID, "bench", nil); err != nil {
+		if err := s.Complete(ctx, got.ID,claim_bench, nil); err != nil {
 			t.Fatalf("complete: %v", err)
 		}
 	}
