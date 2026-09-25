@@ -47,10 +47,8 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 	for range 100 {
 		claimed, c, err := s.ClaimDue(ctx, testOwner, testLease)
 		if err != nil {
-			t.Logf("DBG finishTask id=%s: claim broke: %v", id, err)
 			break // nothing due: id already runs under our lease
 		}
-		t.Logf("DBG finishTask id=%s: claimed=%s status=%s", id, claimed.ID, claimed.Status)
 
 		claim = c
 
@@ -58,8 +56,12 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 			break
 		}
 
-		// release the bystander: its token fences everything else
-		if err := s.Requeue(ctx, claimed.ID, c, "test bystander release", 0, false); err != nil {
+		// release the bystander: its token fences everything else. The
+		// delay pushes it past the lease so claim ordering (created_at
+		// ASC) cannot hand it back before the target is claimed — a
+		// zero delay loops forever on an older bystander (ADR-0019 S1
+		// v4 claim ordering).
+		if err := s.Requeue(ctx, claimed.ID, c, "test bystander release", time.Hour, false); err != nil {
 			t.Fatalf("complete bystander %s: %v", claimed.ID, err)
 		}
 	}
