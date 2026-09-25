@@ -50,12 +50,7 @@ type Store struct {
 	db  *sql.DB
 
 	mu     sync.Mutex
-	claims map[task.ID]claimRec
-}
-
-type claimRec struct {
-	token string
-	owner string
+	claims map[task.ID]string
 }
 
 // Store implements the tq queue contract at compile time.
@@ -144,23 +139,26 @@ func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 	return s.fromUTask(ctx, got)
 }
 
-// ClaimDue atomically claims at most one due task for owner.
-func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
+// ClaimDue atomically claims at most one due task for owner. The minted
+// engine claim token IS the returned Claim — finalizes are token-fenced.
+func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, queue.Claim, error) {
 	claim, err := s.eng.ClaimDue(ctx, owner, lease)
 	if err != nil {
-		return task.Task{}, translateErr(err)
+		return task.Task{}, "", translateErr(err)
 	}
 
 	s.mu.Lock()
-	s.claims[task.ID(claim.Task.ID)] = claimRec{token: claim.Token, owner: owner}
+	s.claims[task.ID(claim.Task.ID)] = claim.Token
 	s.mu.Unlock()
 
-	return s.fromUTask(ctx, claim.Task)
+	t, err := s.fromUTask(ctx, claim.Task)
+
+	return t, queue.Claim(claim.Token), err
 }
 
 // Complete marks a Running task Completed (lease must be held).
-func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error {
-	token, err := s.tokenFor(id, owner)
+func (s *Store) Complete(ctx context.Context, id task.ID, claim queue.Claim, result jsontext.Value) error {
+	token, err := s.tokenFor(id, claim)
 	if err != nil {
 		return err
 	}
@@ -172,12 +170,12 @@ func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result j
 func (s *Store) Fail(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	backoff time.Duration,
 	evidence jsontext.Value,
 ) error {
-	token, err := s.tokenFor(id, owner)
+	token, err := s.tokenFor(id, claim)
 	if err != nil {
 		return err
 	}
@@ -186,8 +184,8 @@ func (s *Store) Fail(
 }
 
 // FailPermanent dead-letters a Running task immediately.
-func (s *Store) FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence jsontext.Value) error {
-	token, err := s.tokenFor(id, owner)
+func (s *Store) FailPermanent(ctx context.Context, id task.ID, claim queue.Claim, errText string, evidence jsontext.Value) error {
+	token, err := s.tokenFor(id, claim)
 	if err != nil {
 		return err
 	}
@@ -201,12 +199,12 @@ func (s *Store) FailPermanent(ctx context.Context, id task.ID, owner string, err
 func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	delay time.Duration,
 	resumeCloseout bool,
 ) error {
-	token, err := s.tokenFor(id, owner)
+	token, err := s.tokenFor(id, claim)
 	if err != nil {
 		return err
 	}
@@ -215,8 +213,8 @@ func (s *Store) Requeue(
 }
 
 // Heartbeat extends the lease of a Running task held by owner.
-func (s *Store) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {
-	token, err := s.tokenFor(id, owner)
+func (s *Store) Heartbeat(ctx context.Context, id task.ID, claim queue.Claim, extend time.Duration) error {
+	token, err := s.tokenFor(id, claim)
 	if err != nil {
 		return err
 	}
@@ -242,8 +240,8 @@ func (s *Store) CancelRequested(ctx context.Context, id task.ID) (bool, error) {
 }
 
 // CancelOwned finalizes a cooperative cancel.
-func (s *Store) CancelOwned(ctx context.Context, id task.ID, owner string) error {
-	token, err := s.tokenFor(id, owner)
+func (s *Store) CancelOwned(ctx context.Context, id task.ID, claim queue.Claim) error {
+	token, err := s.tokenFor(id, claim)
 	if err != nil {
 		return err
 	}
@@ -341,19 +339,19 @@ func (s *Store) SaveWatermark(ctx context.Context, consumer string, seq int64) e
 
 // --- translation helpers ---
 
-// tokenFor maps a tq-style (id, owner) finalize onto the engine's claim
-// token. An unknown claim or a foreign owner is task.ErrLeaseNotHeld, the
-// same surface the owner-string stores give.
-func (s *Store) tokenFor(id task.ID, owner string) (string, error) {
+// tokenFor maps a finalize's presented claim onto the engine's claim
+// token recorded at ClaimDue. An unknown or foreign claim is
+// task.ErrLeaseNotHeld — theft detection lives in the store (ADR-0019 S1).
+func (s *Store) tokenFor(id task.ID, claim queue.Claim) (string, error) {
 	s.mu.Lock()
-	rec, ok := s.claims[id]
+	token, ok := s.claims[id]
 	s.mu.Unlock()
 
-	if !ok || rec.owner != owner {
+	if !ok || token != string(claim) {
 		return "", task.ErrLeaseNotHeld
 	}
 
-	return rec.token, nil
+	return token, nil
 }
 
 // fromUTask converts an engine task row into tq's task record, backfilling

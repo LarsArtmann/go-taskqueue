@@ -390,7 +390,7 @@ func (s *Store) getTaskByDedupKey(ctx context.Context, key string) (task.Task, b
 // replacement for SQLite's single serialized writer). Semantics otherwise
 // match sqlite.Store: deps gate, expired-lease reclaim with task.released,
 // pending cooperative cancels finalized at reclaim.
-func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
+func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, queue.Claim, error) {
 	now := time.Now()
 
 	var claimed task.Task
@@ -506,14 +506,14 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 		return err
 	})
 	if err != nil {
-		return task.Task{}, err
+		return task.Task{}, "", err
 	}
 
 	if finalizedCancel {
-		return task.Task{}, queue.ErrNoTaskDue
+		return task.Task{}, "", queue.ErrNoTaskDue
 	}
 
-	return claimed, nil
+	return claimed, queue.Claim(owner), nil
 }
 
 // leaseErr distinguishes not-found from lease-not-held after a guarded
@@ -540,7 +540,8 @@ type queryer interface {
 }
 
 // Complete marks a Running task Completed.
-func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error {
+func (s *Store) Complete(ctx context.Context, id task.ID, claim queue.Claim, result jsontext.Value) error {
+	owner := string(claim)
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx pgx.Tx) error {
@@ -569,11 +570,12 @@ func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result j
 func (s *Store) Fail(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	backoff time.Duration,
 	evidence jsontext.Value,
 ) error {
+	owner := string(claim)
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
 
@@ -643,10 +645,11 @@ func (s *Store) Fail(
 func (s *Store) FailPermanent(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	evidence jsontext.Value,
 ) error {
+	owner := string(claim)
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
 
@@ -695,11 +698,12 @@ func (s *Store) FailPermanent(
 func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	delay time.Duration,
 	resumeCloseout bool,
 ) error {
+	owner := string(claim)
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		now := time.Now()
 
@@ -726,7 +730,8 @@ func (s *Store) Requeue(
 }
 
 // Heartbeat extends the lease of a Running task held by owner.
-func (s *Store) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {
+func (s *Store) Heartbeat(ctx context.Context, id task.ID, claim queue.Claim, extend time.Duration) error {
+	owner := string(claim)
 	now := time.Now()
 
 	tag, err := s.pool.Exec(ctx, `
@@ -832,7 +837,8 @@ func (s *Store) CancelRequested(ctx context.Context, id task.ID) (bool, error) {
 // CancelOwned finalizes a cooperative cancel (lease holder). The
 // operator's reason (from the cancel-requested fact) is carried onto the
 // cancelled fact.
-func (s *Store) CancelOwned(ctx context.Context, id task.ID, owner string) error {
+func (s *Store) CancelOwned(ctx context.Context, id task.ID, claim queue.Claim) error {
+	owner := string(claim)
 	return s.withTx(ctx, func(tx pgx.Tx) error {
 		tag, err := tx.Exec(ctx, `
 			UPDATE tasks SET status = 'cancelled', updated_at = $1, lease_owner = '', lease_expires = NULL

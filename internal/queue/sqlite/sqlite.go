@@ -357,8 +357,11 @@ func (s *Store) getTaskByDedupKey(ctx context.Context, key string) (task.Task, b
 	return t, true, nil
 }
 
-// ClaimDue atomically claims one due task for owner.
-func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
+// ClaimDue atomically claims one due task for owner. The hand-rolled
+// engine has no fence tokens: the returned Claim IS the owner string
+// (finalizes gate on lease_owner — the legacy semantics until S4 deletes
+// this backend; the v4-backed default store is token-fenced).
+func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, queue.Claim, error) {
 	now := time.Now()
 
 	var claimed task.Task
@@ -481,18 +484,19 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 		return err
 	})
 	if err != nil {
-		return task.Task{}, err
+		return task.Task{}, "", err
 	}
 
 	if finalizedCancel {
-		return task.Task{}, queue.ErrNoTaskDue
+		return task.Task{}, "", queue.ErrNoTaskDue
 	}
 
-	return claimed, nil
+	return claimed, queue.Claim(owner), nil
 }
 
 // Complete marks a Running task Completed.
-func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error {
+func (s *Store) Complete(ctx context.Context, id task.ID, claim queue.Claim, result jsontext.Value) error {
+	owner := string(claim)
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx *sql.Tx) error {
@@ -521,11 +525,12 @@ func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result j
 func (s *Store) Fail(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	backoff time.Duration,
 	evidence jsontext.Value,
 ) error {
+	owner := string(claim)
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now() // captured inside the tx: backoff counts from commit, not from call
 
@@ -602,10 +607,11 @@ func (s *Store) Fail(
 func (s *Store) FailPermanent(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	evidence jsontext.Value,
 ) error {
+	owner := string(claim)
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now()
 
@@ -653,7 +659,8 @@ func (s *Store) FailPermanent(
 }
 
 // Heartbeat extends the lease of a Running task held by owner.
-func (s *Store) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {
+func (s *Store) Heartbeat(ctx context.Context, id task.ID, claim queue.Claim, extend time.Duration) error {
+	owner := string(claim)
 	now := time.Now()
 
 	res, err := s.db.ExecContext(ctx, `
@@ -1014,7 +1021,8 @@ func cancelRequestedTx(ctx context.Context, tx *sql.Tx, id string) (bool, error)
 // CancelOwned finalizes a cooperative cancel: Running -> Cancelled, written
 // by the lease-holding worker after it stopped the execution. The operator's
 // reason (from the cancel-requested fact) is carried onto the cancelled fact.
-func (s *Store) CancelOwned(ctx context.Context, id task.ID, owner string) error {
+func (s *Store) CancelOwned(ctx context.Context, id task.ID, claim queue.Claim) error {
+	owner := string(claim)
 	now := time.Now()
 
 	return s.withTx(ctx, func(tx *sql.Tx) error {
@@ -2090,11 +2098,12 @@ func boolInt(b bool) int {
 func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	delay time.Duration,
 	resumeCloseout bool,
 ) error {
+	owner := string(claim)
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now()
 

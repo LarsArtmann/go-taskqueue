@@ -218,23 +218,22 @@ func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 	return s.Get(ctx, task.ID(created.ID.String()))
 }
 
-// tokenFor resolves the current claim token for an owner-fenced finalize
-// and enforces tq's owner-string gate: the caller must hold the live lease.
-// This is the S1 bridge between tq's owner-string finalizes and upstream's
-// token-fenced ones — theft detection stays at this gate (tq semantics),
-// not in the engine (upstream semantics).
-func (s *Store) tokenFor(ctx context.Context, id task.ID, owner string, requireLive bool) (string, error) {
+// tokenFor enforces tq's token gate for a finalize: the caller must
+// present the claim token minted at ClaimDue (theft detection lives in
+// the store — ADR-0019 S1). With requireLive the lease must also be
+// unexpired; CancelOwned deliberately skips liveness (a worker may
+// finish a stop just after lease lapse, before reclaim).
+func (s *Store) tokenFor(ctx context.Context, id task.ID, claim queue.Claim, requireLive bool) (string, error) {
 	row := s.queryRow(ctx, `
-		SELECT status, lease_owner, COALESCE(lease_expires, 0), COALESCE(lease_token, '')
+		SELECT status, COALESCE(lease_expires, 0), COALESCE(lease_token, '')
 		FROM tasks WHERE id = ?`, id.String())
 
 	var (
-		status   string
-		leaseOwn string
-		expires  int64
-		token    string
+		status  string
+		expires int64
+		token   string
 	)
-	if err := row.Scan(&status, &leaseOwn, &expires, &token); err != nil {
+	if err := row.Scan(&status, &expires, &token); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", task.ErrNotFound
 		}
@@ -242,15 +241,11 @@ func (s *Store) tokenFor(ctx context.Context, id task.ID, owner string, requireL
 		return "", err
 	}
 
-	if status != "running" || leaseOwn != owner {
+	if status != "running" || token == "" || token != string(claim) {
 		return "", task.ErrLeaseNotHeld
 	}
 
 	if requireLive && (expires == 0 || expires <= time.Now().UnixMilli()) {
-		return "", task.ErrLeaseNotHeld
-	}
-
-	if token == "" {
 		return "", task.ErrLeaseNotHeld
 	}
 
@@ -263,8 +258,8 @@ func (s *Store) tokenFor(ctx context.Context, id task.ID, owner string, requireL
 // attempt's error on the completed row, so the adapter clears it after
 // the finalize. A completed task can never Fail again, so the follow-up
 // UPDATE cannot race a new error onto the row.
-func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error {
-	token, err := s.tokenFor(ctx, id, owner, true)
+func (s *Store) Complete(ctx context.Context, id task.ID, claim queue.Claim, result jsontext.Value) error {
+	token, err := s.tokenFor(ctx, id, claim, true)
 	if err != nil {
 		return err
 	}
@@ -284,12 +279,12 @@ func (s *Store) Complete(ctx context.Context, id task.ID, owner string, result j
 func (s *Store) Fail(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	backoff time.Duration,
 	evidence jsontext.Value,
 ) error {
-	token, err := s.tokenFor(ctx, id, owner, true)
+	token, err := s.tokenFor(ctx, id, claim, true)
 	if err != nil {
 		return err
 	}
@@ -301,11 +296,11 @@ func (s *Store) Fail(
 func (s *Store) FailPermanent(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	evidence jsontext.Value,
 ) error {
-	token, err := s.tokenFor(ctx, id, owner, true)
+	token, err := s.tokenFor(ctx, id, claim, true)
 	if err != nil {
 		return err
 	}
@@ -314,8 +309,8 @@ func (s *Store) FailPermanent(
 }
 
 // Heartbeat extends the lease of a Running task held by owner.
-func (s *Store) Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error {
-	token, err := s.tokenFor(ctx, id, owner, true)
+func (s *Store) Heartbeat(ctx context.Context, id task.ID, claim queue.Claim, extend time.Duration) error {
+	token, err := s.tokenFor(ctx, id, claim, true)
 	if err != nil {
 		return err
 	}
@@ -343,8 +338,8 @@ func (s *Store) CancelRequested(ctx context.Context, id task.ID) (bool, error) {
 // CancelOwned finalizes a cooperative cancel. tq's gate is status+owner
 // (no live-lease requirement — a worker may legitimately finish the stop
 // just after the lease lapsed but before a reclaim), so requireLive=false.
-func (s *Store) CancelOwned(ctx context.Context, id task.ID, owner string) error {
-	token, err := s.tokenFor(ctx, id, owner, false)
+func (s *Store) CancelOwned(ctx context.Context, id task.ID, claim queue.Claim) error {
+	token, err := s.tokenFor(ctx, id, claim, false)
 	if err != nil {
 		return err
 	}
@@ -379,10 +374,12 @@ func (s *Store) UpdatePendingPriority(ctx context.Context, id task.ID, newPriori
 // no such clause — S1 divergence). The claim mints an upstream-format
 // fencing token and stamps it on the row, so engine-backed finalizes keep
 // working for the claimed task.
-func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error) {
+func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, queue.Claim, error) {
 	now := time.Now()
 
 	var claimed task.Task
+
+	claim := uqueue.NewClaimToken()
 
 	finalizedCancel := false
 
@@ -471,7 +468,7 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 			    OR (status = 'running' AND lease_expires IS NOT NULL AND lease_expires <= ?))`,
 			owner,
 			now.Add(lease).UnixMilli(),
-			uqueue.NewClaimToken(),
+			claim,
 			now.UnixMilli(),
 			id,
 			now.UnixMilli(),
@@ -499,24 +496,26 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 		return err
 	})
 	if err != nil {
-		return task.Task{}, err
+		return task.Task{}, "", err
 	}
 
 	if finalizedCancel {
-		return task.Task{}, queue.ErrNoTaskDue
+		return task.Task{}, "", queue.ErrNoTaskDue
 	}
 
-	return claimed, nil
+	return claimed, queue.Claim(claim), nil
 }
 
 // Requeue returns a claimed task to Pending without counting an attempt.
 // Adapter-side (not the engine's): tq's task.requeued evidence carries the
 // resume_closeout flag, which the upstream RequeueEvidence lacks (S1
-// divergence).
+// divergence). The claim token fences the requeue; the recorded fact's
+// owner is the claim's OWNER (read from the row before the release), so
+// the journal keeps speaking owner vocabulary.
 func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
-	owner string,
+	claim queue.Claim,
 	errText string,
 	delay time.Duration,
 	resumeCloseout bool,
@@ -524,22 +523,34 @@ func (s *Store) Requeue(
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		now := time.Now()
 
+		var prevOwner string
+		if err := queryRowTx(ctx, tx, `
+			SELECT COALESCE(lease_owner, '') FROM tasks
+			WHERE id = ? AND status = 'running' AND lease_token = ?`,
+			id.String(), string(claim)).Scan(&prevOwner); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return leaseErr(ctx, tx, id, "")
+			}
+
+			return err
+		}
+
 		res, err := execTx(ctx, tx, `
 			UPDATE tasks
 			SET status = 'pending', not_before = ?, last_error = ?, updated_at = ?,
-			    lease_owner = '', lease_expires = NULL
-			WHERE id = ? AND status = 'running' AND lease_owner = ?`,
-			now.Add(delay).UnixMilli(), errText, now.UnixMilli(), id.String(), owner)
+			    lease_owner = '', lease_expires = NULL, lease_token = ''
+			WHERE id = ? AND status = 'running' AND lease_token = ?`,
+			now.Add(delay).UnixMilli(), errText, now.UnixMilli(), id.String(), string(claim))
 		if err != nil {
 			return err
 		}
 
 		if n, _ := res.RowsAffected(); n == 0 {
-			return leaseErr(ctx, tx, id, owner)
+			return leaseErr(ctx, tx, id, "")
 		}
 
 		return s.appendFact(ctx, tx, journal.Fact{
-			TaskID: id.String(), Type: journal.Requeued, Owner: owner, Error: errText,
+			TaskID: id.String(), Type: journal.Requeued, Owner: prevOwner, Error: errText,
 			Detail: mustJSON(queue.RequeueEvidence{
 				Reason: errText, RetryIn: delay.Milliseconds(), ResumeCloseout: resumeCloseout,
 			}),
