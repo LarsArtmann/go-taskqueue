@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/internal/journal/cqrs
 
-go 1.27
+go 1.27.1
 
 require (
 	github.com/larsartmann/go-codec v0.2.0

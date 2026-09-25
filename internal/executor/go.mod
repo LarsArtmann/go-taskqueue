@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/internal/executor
 
-go 1.27
+go 1.27.1
 
 require (
 	github.com/LarsArtmann/go-crush-data v0.4.0

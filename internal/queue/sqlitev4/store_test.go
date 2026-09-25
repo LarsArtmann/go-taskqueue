@@ -1444,7 +1444,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	// PENDING twin of an orphaned RUNNING task — leaseless too, but
 	// WAITING, not stranded. The orphan scan must not see it, and the
 	// parked record must survive the pass untouched.
-	if n, err := s.MarkOrphaned(ctx, time.Now(); err != nil || n != 0 {
+	if n, err := s.MarkOrphaned(ctx, time.Now()); err != nil || n != 0 {
 		t.Errorf("MarkOrphaned during park = %d (%v), want 0", n, err)
 	}
 
