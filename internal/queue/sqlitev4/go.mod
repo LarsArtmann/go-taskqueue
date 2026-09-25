@@ -37,5 +37,3 @@ replace github.com/larsartmann/go-taskqueue/internal/task => ../../task
 replace github.com/larsartmann/go-taskqueue/internal/journal => ../../journal
 
 replace github.com/larsartmann/go-taskqueue/internal/queue => ..
-
-replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../sqlite
