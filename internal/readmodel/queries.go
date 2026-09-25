@@ -21,14 +21,10 @@ const (
 // meta_planned_tasks.
 const tasksCollection = "tasks"
 
-// taskRows is the collection-shaped read result — a struct with a slice
-// field is the shape metaengine.ExecuteTyped reconstructs from scans.
-type taskRows struct {
-	Items []TaskRow
-}
-
-// TaskList is the query input: the declarative filter fields. Nil means
-// "no constraint" — the engine binds only the fields the caller set.
+// TaskList is the query's declared input type — a declaration carrier
+// only. Reads MUST NOT dispatch through it (Store.ExecuteCtx binds nil
+// pointer fields as typed-nil interfaces → `= NULL`, and empty strings
+// as real filters): Model.Tasks reads via the TypedReader instead.
 type TaskList struct {
 	Status  *string
 	Project *string

@@ -208,15 +208,32 @@ func (m *Model) apply(ctx context.Context, f journal.Fact) error {
 }
 
 // Tasks reads the ledger under the filter, newest creation first — the
-// planned-table pushdown scan.
+// planned-table pushdown scan. Filters ride the documented TypedReader
+// surface (conditional WithFilter options): the query-input dispatch
+// (Store.ExecuteCtx) cannot express optional filters — a nil *string input
+// field binds as a typed-nil interface and lands in SQL as `= NULL`
+// (metaengine v4.14.0, extractValueByName), so every read here goes
+// through the reader.
 func (m *Model) Tasks(ctx context.Context, f TaskFilter) ([]TaskRow, error) {
-	rows, err := metaengine.ExecuteTyped[TaskList, taskRows](
-		ctx, m.store, TaskList{Status: f.Status, Project: f.Project})
+	opts := []metaengine.ScanOption{
+		metaengine.WithSort("created_at", true),
+		metaengine.WithLimit(0), // unbounded: the caller paginates
+	}
+
+	if f.Status != nil {
+		opts = append(opts, metaengine.WithFilter("status", metaengine.FilterEq, *f.Status))
+	}
+
+	if f.Project != nil {
+		opts = append(opts, metaengine.WithFilter("project", metaengine.FilterEq, *f.Project))
+	}
+
+	rows, err := metaengine.NewReader[TaskRow](m.store, tasksCollection).Scan(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("readmodel: task scan: %w", err)
 	}
 
-	return rows.Items, nil
+	return rows, nil
 }
 
 // StatusCounts counts the ledger rows per status — the stats projection.
