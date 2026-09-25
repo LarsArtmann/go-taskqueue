@@ -246,8 +246,9 @@ func TestPostgresConformance(t *testing.T) {
 		}
 
 		// Non-pending: refused and unmutated.
-		if _, _, err := s.ClaimDue(ctx, "repri-w",
-			time.Minute)); err != nil {
+		_, claim_repri_w, err := s.ClaimDue(ctx, "repri-w",
+			time.Minute)
+		if err != nil {
 			t.Fatal(err)
 		}
 
@@ -426,8 +427,10 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, _, err := s.ClaimDue(ctx, "park-w",
-			time.Minute)); err != nil {
+		_, claim_park_w, err := s.ClaimDue(ctx, "park-w",
+			time.Minute)
+
+		if err != nil {
 			t.Fatal(err)
 		}
 
@@ -445,8 +448,10 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatalf("parked task must be pending with a cleared lease, got %+v", parked)
 		}
 
-		if _, _, err := s.ClaimDue(ctx, "park-w2",
-			time.Minute)); !errors.Is(err, queue.ErrNoTaskDue) {
+		_, claim_park_w2, err := s.ClaimDue(ctx, "park-w2",
+			time.Minute)
+
+		if !errors.Is(err, queue.ErrNoTaskDue) {
 			t.Fatalf("claim during park err = %v, want ErrNoTaskDue", err)
 		}
 
@@ -556,8 +561,10 @@ func TestPostgresConformance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, _, err := s.ClaimDue(ctx, "dismiss-w",
-			time.Minute)); err != nil {
+		_, claim_dismiss_w, err := s.ClaimDue(ctx, "dismiss-w",
+			time.Minute)
+
+		if err != nil {
 			t.Fatal(err)
 		}
 
@@ -730,8 +737,10 @@ func TestPostgresConformance(t *testing.T) {
 
 		t.Cleanup(func() { _ = s.Cancel(ctx, rescued.ID, "conformance cleanup") })
 
-		if _, _, err := s.ClaimDue(ctx, "rescue-w",
-			time.Minute)); err != nil {
+		_, claim_rescue_w, err := s.ClaimDue(ctx, "rescue-w",
+			time.Minute)
+
+		if err != nil {
 			t.Fatal(err)
 		}
 

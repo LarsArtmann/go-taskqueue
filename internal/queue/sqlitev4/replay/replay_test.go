@@ -46,7 +46,7 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("claimed %s, want %s", claimed.ID, completed.ID)
 	}
 
-	if err := store.Complete(ctx, claimed.ID,claim_worker_1, jsontext.Value(`{"ok":true}`); err != nil {
+	if err := store.Complete(ctx, claimed.ID,claim_worker_1, jsontext.Value(`{"ok":true}`)); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
@@ -295,8 +295,9 @@ func TestVerifyMatchesSQLiteV4Store(t *testing.T) {
 	}
 
 	// The parked task (future NotBefore) stays unclaimable.
-	if _, _, err := store.ClaimDue(ctx, "worker-after-cutover",
-		time.Minute); err == nil {
+	_, _, err := store.ClaimDue(ctx, "worker-after-cutover",
+		time.Minute)
+	if err == nil {
 		t.Fatal("second claim should find nothing due (parked NotBefore)")
 	}
 }
