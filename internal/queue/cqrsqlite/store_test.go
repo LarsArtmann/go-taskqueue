@@ -2498,7 +2498,7 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, coopClaim, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
@@ -2513,7 +2513,7 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 		t.Fatalf("task.cancel-requested reason = %q, want the stored reason", got)
 	}
 
-	if err := s.CancelOwned(ctx, coop.ID,claim_w1,); err != nil {
+	if err := s.CancelOwned(ctx, coop.ID,coopClaim,); err != nil {
 		t.Fatalf("CancelOwned: %v", err)
 	}
 
@@ -2567,7 +2567,7 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 	// once: marked 0).
 	claimAt := time.Now()
 
-	_, claim_victim, err := s.ClaimDue(ctx, "victim",
+	_, _, err = s.ClaimDue(ctx, "victim",
 		time.Second)
 
 	if err != nil {
@@ -2579,7 +2579,7 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, claim_alive, err := s.ClaimDue(ctx, "alive",
+	_, _, err = s.ClaimDue(ctx, "alive",
 		time.Minute)
 
 	if err != nil {
@@ -3098,14 +3098,14 @@ func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
 		t.Fatalf("Enqueue: %v", err)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, failClaim, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID,claim_w1, "boom", 0, nil); err != nil {
+	if err := s.Fail(ctx, tk.ID,failClaim, "boom", 0, nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
@@ -3151,7 +3151,7 @@ func parkOnQuestion(t *testing.T, s *Store, payload string, requeueIn time.Durat
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, parkClaim, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
@@ -3172,7 +3172,7 @@ func parkOnQuestion(t *testing.T, s *Store, payload string, requeueIn time.Durat
 		t.Fatalf("append asked fact: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID,claim_w1, "question pending: "+ref, requeueIn, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID,parkClaim, "question pending: "+ref, requeueIn, false); err != nil {
 		t.Fatalf("park requeue: %v", err)
 	}
 
@@ -3259,14 +3259,14 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 
 	tk := parkOnQuestion(t, s, `{"repo":"go-taskqueue","prompt":"do the thing"}`, time.Hour)
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
 	}
 
-	err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
+	err = s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
 	if err != nil {
 		t.Fatalf("RecordAnswer: %v", err)
 	}
@@ -3287,7 +3287,7 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 	assertAnswerInjected(t, got)
 
 	// The answer must be claimable RIGHT NOW — no residual delay.
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, rearmClaim, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim after answer: %v", err)
@@ -3371,7 +3371,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 		t.Fatalf("append q-2: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID,claim_w1, "question pending: q-2", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID,rearmClaim, "question pending: q-2", time.Hour, false); err != nil {
 		t.Fatalf("park q-2: %v", err)
 	}
 
