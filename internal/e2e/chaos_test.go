@@ -96,11 +96,12 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 	}
 
 	// The reclaiming worker finishes the task.
-	if _, err := s.ClaimDue(ctx, "successor", time.Minute); err != nil {
+	_, claim, err := s.ClaimDue(ctx, "successor", time.Minute)
+	if err != nil {
 		t.Fatalf("successor claim: %v", err)
 	}
 
-	if err := s.Complete(ctx, task.ID(taskID), "successor", nil); err != nil {
+	if err := s.Complete(ctx, task.ID(taskID), claim, nil); err != nil {
 		t.Fatalf("successor complete: %v", err)
 	}
 

@@ -42,11 +42,15 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 
 	ctx := context.Background()
 
+	var claim queue.Claim
+
 	for range 100 {
-		claimed, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+		claimed, c, err := s.ClaimDue(ctx, testOwner, testLease)
 		if err != nil {
 			break // nothing due: id already runs under our lease
 		}
+
+		claim = c
 
 		if claimed.ID == id {
 			break

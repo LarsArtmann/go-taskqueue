@@ -56,11 +56,12 @@ func completeHarvestedTask(t *testing.T, h *Harvester, repoName, itemText string
 			Dedup string `json:"dedup"`
 		}
 		if json.Unmarshal(task.Payload, &p) == nil && p.Dedup == key {
-			if _, err := h.q.ClaimDue(ctx, "tester", time.Minute); err != nil {
+			_, claim, err := h.q.ClaimDue(ctx, "tester", time.Minute)
+			if err != nil {
 				t.Fatal(err)
 			}
 
-			if err := h.q.Complete(ctx, task.ID, "tester", nil); err != nil {
+			if err := h.q.Complete(ctx, task.ID, claim, nil); err != nil {
 				t.Fatal(err)
 			}
 
@@ -204,11 +205,12 @@ func TestAuditDryRunEnqueuesNothing(t *testing.T) {
 		t.Fatalf("seed failed: %v %d", err, len(tasks))
 	}
 
-	if _, err := q.ClaimDue(ctx, "tester", time.Minute); err != nil {
+	_, claim, err := q.ClaimDue(ctx, "tester", time.Minute)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := q.Complete(ctx, tasks[0].ID, "tester", nil); err != nil {
+	if err := q.Complete(ctx, tasks[0].ID, claim, nil); err != nil {
 		t.Fatal(err)
 	}
 

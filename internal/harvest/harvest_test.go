@@ -381,7 +381,7 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 
 		id = tasks[0].ID
 
-		claimed, err := q.ClaimDue(ctx, "w", time.Minute)
+		claimed, claim, err := q.ClaimDue(ctx, "w", time.Minute)
 		if err != nil {
 			t.Fatalf("claim: %v", err)
 		}
@@ -390,7 +390,7 @@ func TestRunDLQAndCancelledSkipReasons(t *testing.T) {
 			t.Fatalf("claimed %s want %s", claimed.ID, id)
 		}
 
-		if err := q.Fail(ctx, id, "w", "boom", 0, nil); err != nil {
+		if err := q.Fail(ctx, id, claim, "boom", 0, nil); err != nil {
 			t.Fatalf("fail: %v", err)
 		}
 	}
@@ -429,7 +429,7 @@ func hasSkip(res Result, substr string) bool {
 // fakeRunToCompletion drives a claimed task to Completed so later harvest
 // ticks observe the terminal state.
 func fakeRunToCompletion(ctx context.Context, q *queue.Queue, id task.ID) error {
-	claimed, err := q.ClaimDue(ctx, "w", time.Minute)
+	claimed, claim, err := q.ClaimDue(ctx, "w", time.Minute)
 	if err != nil {
 		return err
 	}
@@ -438,7 +438,7 @@ func fakeRunToCompletion(ctx context.Context, q *queue.Queue, id task.ID) error 
 		return fmt.Errorf("claimed %s, want %s", claimed.ID, id)
 	}
 
-	return q.Complete(ctx, id, "w", nil)
+	return q.Complete(ctx, id, claim, nil)
 }
 
 // TestRunPinsRepoVerifyIntoPayload: a repo that declares .tq-verify gets its
@@ -534,11 +534,12 @@ func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
 	}
 
 	// A completed task lifts the guard even with backoff on.
-	if _, err := q.ClaimDue(ctx, "w", time.Minute); err != nil {
+	_, claim2, err := q.ClaimDue(ctx, "w", time.Minute)
+	if err != nil {
 		t.Fatalf("claim2: %v", err)
 	}
 
-	if err := q.Complete(ctx, res.Enqueued[0].TaskID, "w", nil); err != nil {
+	if err := q.Complete(ctx, res.Enqueued[0].TaskID, claim2, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 

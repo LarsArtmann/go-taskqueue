@@ -375,7 +375,7 @@ func TestWriteFlowCancelAndRescue(t *testing.T) {
 
 	// --- cooperative stop for RUNNING ---
 	owner := "worker-test"
-	if _, err := s.ClaimDue(context.Background(), owner, time.Minute); err != nil {
+	if _, _, err := s.ClaimDue(context.Background(), owner, time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -403,7 +403,7 @@ func TestWriteFlowCancelAndRescue(t *testing.T) {
 
 	// Dead-lettering requires a RUNNING task: claim it with the same
 	// lease owner the failure reports.
-	claimed, err := s.ClaimDue(context.Background(), owner, time.Minute)
+	claimed, claim, err := s.ClaimDue(context.Background(), owner, time.Minute)
 	if err != nil {
 		t.Fatalf("claim for dead-lettering: %v", err)
 	}
@@ -415,7 +415,7 @@ func TestWriteFlowCancelAndRescue(t *testing.T) {
 	if err := s.FailPermanent(
 		context.Background(),
 		dead.ID,
-		owner,
+		claim,
 		"boom: rescue test",
 		json.RawMessage(`{}`),
 	); err != nil {

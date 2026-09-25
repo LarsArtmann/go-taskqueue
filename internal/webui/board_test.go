@@ -3,6 +3,7 @@ package webui
 import (
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-sse/ssetest"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -78,18 +80,18 @@ func moveNextTask(t *testing.T, s store, dest task.Status) task.Task {
 
 	ctx := context.Background()
 
-	tk, err := s.ClaimDue(ctx, "board-test", time.Minute)
+	tk, claim, err := s.ClaimDue(ctx, "board-test", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
 	switch dest {
 	case task.Completed:
-		if err := s.Complete(ctx, tk.ID, "board-test", json.RawMessage(`{}`)); err != nil {
+		if err := s.Complete(ctx, tk.ID, claim, jsontext.Value(`{}`)); err != nil {
 			t.Fatalf("Complete: %v", err)
 		}
 	case task.Dead:
-		if err := s.FailPermanent(ctx, tk.ID, "board-test", "boom: board test", nil); err != nil {
+		if err := s.FailPermanent(ctx, tk.ID, claim, "boom: board test", nil); err != nil {
 			t.Fatalf("FailPermanent: %v", err)
 		}
 	case task.Running:
@@ -104,9 +106,9 @@ func moveNextTask(t *testing.T, s store, dest task.Status) task.Task {
 // store is the slice of queue.Store the board test helpers need.
 type store interface {
 	Enqueue(ctx context.Context, n task.New) (task.Task, error)
-	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error)
-	Complete(ctx context.Context, id task.ID, owner string, result json.RawMessage) error
-	FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence json.RawMessage) error
+	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, queue.Claim, error)
+	Complete(ctx context.Context, id task.ID, claim queue.Claim, result jsontext.Value) error
+	FailPermanent(ctx context.Context, id task.ID, claim queue.Claim, errText string, evidence jsontext.Value) error
 }
 
 func TestBoardViewRendersColumns(t *testing.T) {

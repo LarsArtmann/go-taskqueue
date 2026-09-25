@@ -3,6 +3,7 @@ package webui
 import (
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -44,21 +45,21 @@ func TestStatsSurfacesAgree(t *testing.T) {
 		t.Fatalf("cancel pending: %v", err)
 	}
 
-	claimed, err := s.ClaimDue(ctx, "w1", time.Minute)
+	claimed, claim, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Complete(ctx, claimed.ID, "w1", json.RawMessage(`"ok"`)); err != nil {
+	if err := s.Complete(ctx, claimed.ID, claim, jsontext.Value(`"ok"`)); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
-	doomed, err := s.ClaimDue(ctx, "w1", time.Minute)
+	doomed, claim2, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim 2: %v", err)
 	}
 
-	if err := s.FailPermanent(ctx, doomed.ID, "w1", "boom: contract seed", nil); err != nil {
+	if err := s.FailPermanent(ctx, doomed.ID, claim2, "boom: contract seed", nil); err != nil {
 		t.Fatalf("fail permanent: %v", err)
 	}
 
