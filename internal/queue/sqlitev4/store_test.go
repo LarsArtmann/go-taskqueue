@@ -58,7 +58,7 @@ func TestEnqueueAndClaim(t *testing.T) {
 		t.Fatalf("claim state wrong: %+v", claimed)
 	}
 
-	_, _, err := s.ClaimDue(ctx, "w2",
+	_, _, err = s.ClaimDue(ctx, "w2",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
@@ -705,7 +705,7 @@ func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
 	s := openTestStore(t)
 
 	running, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -771,7 +771,7 @@ func TestNotBeforeDelays(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
@@ -1402,7 +1402,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	// The expired-lease reclaim branch must not see it: a claim while the
 	// park is live returns ErrNoTaskDue (the stale lease is GONE, and the
 	// pending branch is gated on not_before).
-	_, claim_w2, err := s.ClaimDue(ctx, "w2",
+	_, _, err = s.ClaimDue(ctx, "w2",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during park err = %v, want ErrNoTaskDue", err)
@@ -1763,7 +1763,7 @@ func TestFactsForTaskFiltersAndBounds(t *testing.T) {
 		t.Fatalf("enqueue b: %v", err)
 	}
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
@@ -2430,7 +2430,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	_, claim_crashed_worker, err := s.ClaimDue(ctx, "crashed-worker",
+	_, claim_crashed_worker, err = s.ClaimDue(ctx, "crashed-worker",
 		30*time.Millisecond)
 
 	if err != nil {
@@ -2443,7 +2443,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	_, claim_w2, err := s.ClaimDue(ctx, "w2",
+	_, _, err = s.ClaimDue(ctx, "w2",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
@@ -2615,7 +2615,7 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 	// once: marked 0).
 	claimAt := time.Now()
 
-	_, claim_victim, err := s.ClaimDue(ctx, "victim",
+	_, _, err = s.ClaimDue(ctx, "victim",
 		time.Second)
 
 	if err != nil {
@@ -2627,7 +2627,7 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, claim_alive, err := s.ClaimDue(ctx, "alive",
+	_, _, err = s.ClaimDue(ctx, "alive",
 		time.Minute)
 
 	if err != nil {
@@ -3307,14 +3307,14 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 
 	tk := parkOnQuestion(t, s, `{"repo":"go-taskqueue","prompt":"do the thing"}`, time.Hour)
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
 	}
 
-	err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
+	err = s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
 	if err != nil {
 		t.Fatalf("RecordAnswer: %v", err)
 	}
@@ -3335,7 +3335,7 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 	assertAnswerInjected(t, got)
 
 	// The answer must be claimable RIGHT NOW — no residual delay.
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim after answer: %v", err)
@@ -3468,7 +3468,7 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 	// live task.
 	time.Sleep(150 * time.Millisecond)
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
@@ -3521,7 +3521,7 @@ func TestRecordAnswerRawPayloadFactOnly(t *testing.T) {
 		t.Fatalf("raw payload mutated: %q", got.Payload)
 	}
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
