@@ -257,7 +257,8 @@ func TestParityWithStoreProjection(t *testing.T) {
 	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Status: readmodel.StringPtr(pending)})
 	f.must("tasks(status=pending)", err)
 
-	storePending, err := f.store.List(ctx, queue.Filter{Status: &task.Pending})
+	pendingStatus := task.Pending
+	storePending, err := f.store.List(ctx, queue.Filter{Status: &pendingStatus})
 	f.must("store list pending", err)
 
 	if len(rows) != len(storePending) {
