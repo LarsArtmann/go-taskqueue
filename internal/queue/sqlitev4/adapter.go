@@ -229,9 +229,9 @@ func (s *Store) tokenFor(ctx context.Context, id task.ID, claim queue.Claim, req
 		FROM tasks WHERE id = ?`, id.String())
 
 	var (
-		status string
+		status  string
 		expires int64
-		token  string
+		token   string
 	)
 	if err := row.Scan(&status, &expires, &token); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

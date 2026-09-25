@@ -46,7 +46,7 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("claimed %s, want %s", claimed.ID, completed.ID)
 	}
 
-	if err := store.Complete(ctx, claimed.ID,claim_worker_1, jsontext.Value(`{"ok":true}`)); err != nil {
+	if err := store.Complete(ctx, claimed.ID, claim_worker_1, jsontext.Value(`{"ok":true}`)); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
@@ -106,7 +106,7 @@ func seedOldJournal(t *testing.T, path string) {
 		t.Fatalf("reprioritize: %v", err)
 	}
 
-	if err := store.Heartbeat(ctx, dead.ID,claim_worker_2, time.Minute); err == nil {
+	if err := store.Heartbeat(ctx, dead.ID, claim_worker_2, time.Minute); err == nil {
 		t.Log("heartbeat on dead task correctly refused")
 	}
 

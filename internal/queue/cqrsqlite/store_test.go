@@ -81,7 +81,7 @@ func TestCompleteVerifiesLease(t *testing.T) {
 		t.Fatalf("Complete by wrong owner err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Complete(ctx, tk.ID,claim_w1, jsontext.Value(`{"ok":true}`)); err != nil {
+	if err := s.Complete(ctx, tk.ID, claim_w1, jsontext.Value(`{"ok":true}`)); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -90,7 +90,7 @@ func TestCompleteVerifiesLease(t *testing.T) {
 		t.Fatalf("post-complete state wrong: %+v", got)
 	}
 	// Idempotent-ish: second complete is a lease error, not corruption.
-	if err := s.Complete(ctx, tk.ID,claim_w1, nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Complete(ctx, tk.ID, claim_w1, nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("double complete err = %v, want ErrLeaseNotHeld", err)
 	}
 }
@@ -107,7 +107,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 		t.Fatalf("claim1: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID,claim_w1, "boom-1", 250*time.Millisecond, nil); err != nil {
+	if err := s.Fail(ctx, tk.ID, claim_w1, "boom-1", 250*time.Millisecond, nil); err != nil {
 		t.Fatalf("fail1: %v", err)
 	}
 
@@ -118,7 +118,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 
 	// Backoff gates the retry until not_before passes. 250ms comfortably
 	// exceeds claim-check latency on a loaded machine (1ms did not).
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during backoff err = %v, want queue.ErrNoTaskDue", err)
@@ -133,7 +133,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 		t.Fatalf("claim2: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID,claim_w1, "boom-2", 0, nil); err != nil {
+	if err := s.Fail(ctx, tk.ID, claim_w1, "boom-2", 0, nil); err != nil {
 		t.Fatalf("fail2: %v", err)
 	}
 
@@ -182,7 +182,7 @@ func TestDismissDead(t *testing.T) {
 			t.Fatalf("claim: %v", err)
 		}
 
-		if err := s.Fail(ctx, tk.ID,claim_w1, "boom", 0, nil); err != nil {
+		if err := s.Fail(ctx, tk.ID, claim_w1, "boom", 0, nil); err != nil {
 			t.Fatalf("fail: %v", err)
 		}
 	}
@@ -274,7 +274,7 @@ func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 		t.Fatalf("reclaimed by wrong task/owner: %+v", got)
 	}
 	// Old owner cannot complete anymore.
-	if err := s.Complete(ctx, tk.ID,claim_crashed_worker, nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Complete(ctx, tk.ID, claim_crashed_worker, nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("stale owner complete err = %v, want ErrLeaseNotHeld", err)
 	}
 }
@@ -296,14 +296,14 @@ func TestDepsBlockUntilCompleted(t *testing.T) {
 		t.Fatalf("first claim %s, want parent %s", got.ID, parent.ID)
 	}
 
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("child claimable while parent running: err = %v", err)
 	}
 
-	if err := s.Complete(ctx, parent.ID,claim_w1, nil); err != nil {
+	if err := s.Complete(ctx, parent.ID, claim_w1, nil); err != nil {
 		t.Fatalf("complete parent: %v", err)
 	}
 	// Now the child is claimable.
@@ -489,7 +489,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 		t.Fatalf("claim old: %v", err)
 	}
 
-	if err := s.Requeue(ctx, old.ID,claim_w1, "preflight", 0, false); err != nil {
+	if err := s.Requeue(ctx, old.ID, claim_w1, "preflight", 0, false); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 
@@ -540,7 +540,7 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 		t.Fatalf("two aging windows did not flip a 1-point gap: claimed %s, want %s", got.ID, low.ID)
 	}
 
-	if err := s.Complete(ctx, low.ID,claim_w1, nil); err != nil {
+	if err := s.Complete(ctx, low.ID, claim_w1, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
@@ -681,7 +681,7 @@ func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
 		t.Fatalf("claim dead: %v", err)
 	}
 
-	if err := s.Fail(ctx, dead.ID,claim_w2, "boom", 0, nil); err != nil {
+	if err := s.Fail(ctx, dead.ID, claim_w2, "boom", 0, nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
@@ -749,17 +749,17 @@ func TestHeartbeatExtendsLease(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Heartbeat(ctx, tk.ID,claim_w1, time.Minute); err != nil {
+	if err := s.Heartbeat(ctx, tk.ID, claim_w1, time.Minute); err != nil {
 		t.Fatalf("heartbeat: %v", err)
 	}
 
 	time.Sleep(600 * time.Millisecond) // original lease would be gone
 
-	if err := s.Heartbeat(ctx, tk.ID,claim_w1, time.Minute); err != nil {
+	if err := s.Heartbeat(ctx, tk.ID, claim_w1, time.Minute); err != nil {
 		t.Fatalf("heartbeat after original expiry (should be extended): %v", err)
 	}
 
-	if err := s.Heartbeat(ctx, tk.ID,queue.Claim("w2"), time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Heartbeat(ctx, tk.ID, queue.Claim("w2"), time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("wrong-owner heartbeat err = %v", wantLeaseErr())
 	}
 }
@@ -1122,11 +1122,11 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 
 	// The lease guard holds for permanent failures too: only the owner
 	// that claimed the task may dead-letter it.
-	if err := s.FailPermanent(ctx, tk.ID,queue.Claim("w2"), "nope", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.FailPermanent(ctx, tk.ID, queue.Claim("w2"), "nope", nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("wrong-owner FailPermanent err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.FailPermanent(ctx, tk.ID,claim_w1, "agent: payload needs repo", nil); err != nil {
+	if err := s.FailPermanent(ctx, tk.ID, claim_w1, "agent: payload needs repo", nil); err != nil {
 		t.Fatalf("FailPermanent: %v", err)
 	}
 
@@ -1163,7 +1163,7 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 	}
 
 	// Dead means dead: nothing claimable afterwards.
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("dead task claimable: err = %v", err)
@@ -1252,14 +1252,14 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 		}
 	}
 	// Nothing due while the repo-x runner holds the project.
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("blocked sibling claimable: err = %v", err)
 	}
 
 	// Completing the runner releases the project.
-	if err := s.Complete(ctx, xClaimed,claim_w1, nil); err != nil {
+	if err := s.Complete(ctx, xClaimed, claim_w1, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 
@@ -1305,12 +1305,12 @@ func TestProjectExclusivityAcrossStoreHandles(t *testing.T) {
 	}
 
 	if err == nil {
-		if err := s2.Complete(ctx, got.ID,claim_pool_2, nil); err != nil {
+		if err := s2.Complete(ctx, got.ID, claim_pool_2, nil); err != nil {
 			t.Fatalf("pool-2 complete: %v", err)
 		}
 	}
 	// Releasing pool-1's task lets pool-2 have the sibling.
-	if err := s1.Complete(ctx, first.ID,claim_pool_1, nil); err != nil {
+	if err := s1.Complete(ctx, first.ID, claim_pool_1, nil); err != nil {
 		t.Fatalf("pool-1 complete: %v", err)
 	}
 
@@ -1337,7 +1337,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	}
 
 	// Rate-limit park: requeue with a delay longer than the original lease.
-	if err := s.Requeue(ctx, tk.ID,claim_w1, "rate limited (retry after 1h)", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1361,15 +1361,15 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 
 	// The stale owner cannot resurrect the parked task through any
 	// lease-taking call — the parked task holds no lease to match.
-	if err := s.Heartbeat(ctx, tk.ID,claim_w1, time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Heartbeat(ctx, tk.ID, claim_w1, time.Minute); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Errorf("stale Heartbeat err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Complete(ctx, tk.ID,claim_w1, jsontext.Value(`"x"`)); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Complete(ctx, tk.ID, claim_w1, jsontext.Value(`"x"`)); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID,claim_w1, "stale", time.Minute, false); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "stale", time.Minute, false); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
@@ -1435,7 +1435,7 @@ func TestParkedFilter(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID,claim_w1, "rate limited (retry after 1h)", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1466,11 +1466,11 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 
 	// Wrong owner cannot requeue.
-	if err := s.Requeue(ctx, tk.ID,queue.Claim("w2"), "nope", time.Second, false); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(ctx, tk.ID, queue.Claim("w2"), "nope", time.Second, false); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("wrong-owner Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID,claim_w1, "preflight: repo dirty", 150*time.Millisecond, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "preflight: repo dirty", 150*time.Millisecond, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1480,7 +1480,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 
 	// Delay gates the next claim (not_before semantics, like Fail backoff).
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during requeue delay err = %v, want queue.ErrNoTaskDue", err)
@@ -1548,7 +1548,7 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 			t.Fatalf("claim: %v", err)
 		}
 
-		if err := s.Requeue(ctx, tk.ID,claim_w1, "rate limited", time.Minute, resume); err != nil {
+		if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited", time.Minute, resume); err != nil {
 			t.Fatalf("Requeue: %v", err)
 		}
 
@@ -2356,11 +2356,11 @@ func TestCancelRunningRequestAndHonour(t *testing.T) {
 	}
 
 	// Only the lease holder finalizes.
-	if err := s.CancelOwned(ctx, tk.ID,queue.Claim("not-the-owner"),); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.CancelOwned(ctx, tk.ID, queue.Claim("not-the-owner")); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("CancelOwned by wrong owner err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.CancelOwned(ctx, tk.ID,claim_w1,); err != nil {
+	if err := s.CancelOwned(ctx, tk.ID, claim_w1); err != nil {
 		t.Fatalf("CancelOwned: %v", err)
 	}
 
@@ -2513,7 +2513,7 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 		t.Fatalf("task.cancel-requested reason = %q, want the stored reason", got)
 	}
 
-	if err := s.CancelOwned(ctx, coop.ID,coopClaim,); err != nil {
+	if err := s.CancelOwned(ctx, coop.ID, coopClaim); err != nil {
 		t.Fatalf("CancelOwned: %v", err)
 	}
 
@@ -2683,7 +2683,7 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 			t.Fatalf("claim: %v", err)
 		}
 
-		if err := s.Complete(ctx, got.ID,claim_bench, nil); err != nil {
+		if err := s.Complete(ctx, got.ID, claim_bench, nil); err != nil {
 			t.Fatalf("complete: %v", err)
 		}
 	}
@@ -2727,7 +2727,7 @@ func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
 			t.Fatalf("claim: %v", err)
 		}
 
-		if err := s.Complete(ctx, got.ID,claim_w, nil); err != nil {
+		if err := s.Complete(ctx, got.ID, claim_w, nil); err != nil {
 			t.Fatal(err)
 		}
 
@@ -3105,7 +3105,7 @@ func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Fail(ctx, tk.ID,failClaim, "boom", 0, nil); err != nil {
+	if err := s.Fail(ctx, tk.ID, failClaim, "boom", 0, nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
@@ -3172,7 +3172,7 @@ func parkOnQuestion(t *testing.T, s *Store, payload string, requeueIn time.Durat
 		t.Fatalf("append asked fact: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID,parkClaim, "question pending: "+ref, requeueIn, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, parkClaim, "question pending: "+ref, requeueIn, false); err != nil {
 		t.Fatalf("park requeue: %v", err)
 	}
 
@@ -3287,7 +3287,7 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 	assertAnswerInjected(t, got)
 
 	// The answer must be claimable RIGHT NOW — no residual delay.
-	_, rearmClaim, err := s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim after answer: %v", err)
@@ -3351,7 +3351,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 
 	// A follow-up question (different ref) on the re-claimed task parks it
 	// again; its answer joins the same answered array.
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, rearmClaim2, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("reclaim: %v", err)
@@ -3371,7 +3371,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 		t.Fatalf("append q-2: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID,rearmClaim, "question pending: q-2", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, rearmClaim2, "question pending: q-2", time.Hour, false); err != nil {
 		t.Fatalf("park q-2: %v", err)
 	}
 
@@ -3420,7 +3420,7 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 	// live task.
 	time.Sleep(150 * time.Millisecond)
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
@@ -3473,7 +3473,7 @@ func TestRecordAnswerRawPayloadFactOnly(t *testing.T) {
 		t.Fatalf("raw payload mutated: %q", got.Payload)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
