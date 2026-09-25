@@ -163,7 +163,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 
 	// Backoff gates the retry until not_before passes. 250ms comfortably
 	// exceeds claim-check latency on a loaded machine (1ms did not).
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during backoff err = %v, want queue.ErrNoTaskDue", err)
@@ -341,7 +341,7 @@ func TestDepsBlockUntilCompleted(t *testing.T) {
 		t.Fatalf("first claim %s, want parent %s", got.ID, parent.ID)
 	}
 
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
@@ -1208,7 +1208,7 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 	}
 
 	// Dead means dead: nothing claimable afterwards.
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("dead task claimable: err = %v", err)
@@ -1302,7 +1302,7 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 		}
 	}
 	// Nothing due while the repo-x runner holds the project.
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("blocked sibling claimable: err = %v", err)
@@ -1529,7 +1529,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 
 	// Delay gates the next claim (not_before semantics, like Fail backoff).
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during requeue delay err = %v, want queue.ErrNoTaskDue", err)
@@ -2430,7 +2430,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	_, claim_crashed_worker, err = s.ClaimDue(ctx, "crashed-worker",
+	_, _, err = s.ClaimDue(ctx, "crashed-worker",
 		30*time.Millisecond)
 
 	if err != nil {
