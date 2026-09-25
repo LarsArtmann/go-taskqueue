@@ -35,6 +35,7 @@ import (
 
 	usqlite "github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4"
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
+	ufacts "github.com/larsartmann/go-cqrs-lite/queue/v4/facts"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -549,10 +550,30 @@ func (s *Store) Requeue(
 
 // AppendFact records a NON-task journal fact (session.opened /
 // session.closed). Task facts are never written through it.
+//
+// S2 (ADR-0019): the append rides the engine's FactTx sink — the same-tx
+// fact-append capability is engine-enforced, not the adapter's hand
+// INSERT. The tq journal.Fact maps onto facts.Fact verbatim (open string
+// FactType + raw detail bytes).
 func (s *Store) AppendFact(ctx context.Context, f journal.Fact) error {
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		return s.appendFact(ctx, tx, f)
+	return s.engine.WithFacts(ctx, func(sink uqueue.FactSink) error {
+		return sink.Append(ctx, upstreamFact(f))
 	})
+}
+
+// upstreamFact maps a tq journal fact onto the upstream facts.Fact.
+// Type strings and detail bytes carry over verbatim; Seq is reassigned
+// by the journal on append.
+func upstreamFact(f journal.Fact) ufacts.Fact {
+	return ufacts.Fact{
+		Time:    f.Time,
+		TaskID:  f.TaskID,
+		Type:    ufacts.FactType(f.Type),
+		Owner:   f.Owner,
+		Attempt: f.Attempt,
+		Error:   f.Error,
+		Detail:  []byte(f.Detail),
+	}
 }
 
 func (s *Store) appendFact(ctx context.Context, tx *sql.Tx, f journal.Fact) error {
