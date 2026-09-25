@@ -93,7 +93,7 @@ func completeScorer(t *testing.T, s *sqlite.Store, verdicts ...executor.Prioriti
 
 	ctx := context.Background()
 
-	claimed, err := s.ClaimDue(ctx, testOwner, testLease)
+	claimed, claim, err := s.ClaimDue(ctx, testOwner, testLease)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -107,7 +107,7 @@ func completeScorer(t *testing.T, s *sqlite.Store, verdicts ...executor.Prioriti
 		t.Fatalf("marshal result: %v", err)
 	}
 
-	if err := s.Complete(ctx, claimed.ID, testOwner, detail); err != nil {
+	if err := s.Complete(ctx, claimed.ID, claim, detail); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 }

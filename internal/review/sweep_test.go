@@ -38,11 +38,12 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 
 	ctx := context.Background()
 
-	if _, err := s.ClaimDue(ctx, testOwner, testLease); err != nil {
+	_, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+	if err != nil {
 		t.Fatalf("claim %s: %v", id, err)
 	}
 
-	if err := s.Complete(ctx, id, testOwner, detail); err != nil {
+	if err := s.Complete(ctx, id, claim, detail); err != nil {
 		t.Fatalf("complete %s: %v", id, err)
 	}
 }

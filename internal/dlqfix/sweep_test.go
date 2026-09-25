@@ -61,7 +61,8 @@ func seedDeadAgentTask(
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, testOwner, testLease); err != nil {
+	_, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -74,7 +75,7 @@ func seedDeadAgentTask(
 		t.Fatalf("marshal evidence: %v", err)
 	}
 
-	if err := s.Fail(ctx, enq.ID, testOwner, "verify failed", 0, evidence); err != nil {
+	if err := s.Fail(ctx, enq.ID, claim, "verify failed", 0, evidence); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 
@@ -92,7 +93,8 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail executor.DLQFi
 
 	ctx := context.Background()
 
-	if _, err := s.ClaimDue(ctx, testOwner, testLease); err != nil {
+	_, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+	if err != nil {
 		t.Fatalf("claim %s: %v", id, err)
 	}
 
@@ -101,7 +103,7 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail executor.DLQFi
 		t.Fatalf("marshal verdict: %v", err)
 	}
 
-	if err := s.Complete(ctx, id, testOwner, raw); err != nil {
+	if err := s.Complete(ctx, id, claim, raw); err != nil {
 		t.Fatalf("complete %s: %v", id, err)
 	}
 }
@@ -212,7 +214,7 @@ func TestSweeperReplayDoesNotDuplicateAutopsy(t *testing.T) {
 		t.Fatalf("mint sweep: %v", err)
 	}
 
-	if _, err := s.ClaimDue(context.Background(), testOwner, testLease); err != nil {
+	if _, _, err := s.ClaimDue(context.Background(), testOwner, testLease); err != nil {
 		t.Fatalf("claim autopsy: %v", err)
 	}
 
@@ -256,11 +258,12 @@ func TestSweeperNeverAutopsiesNonAgentDeaths(t *testing.T) {
 			t.Fatalf("enqueue %s: %v", taskType, err)
 		}
 
-		if _, err := s.ClaimDue(ctx, testOwner, testLease); err != nil {
+		_, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+		if err != nil {
 			t.Fatalf("claim %s: %v", taskType, err)
 		}
 
-		if err := s.Fail(ctx, enq.ID, testOwner, "boom", 0, nil); err != nil {
+		if err := s.Fail(ctx, enq.ID, claim, "boom", 0, nil); err != nil {
 			t.Fatalf("fail %s: %v", taskType, err)
 		}
 	}
@@ -445,11 +448,12 @@ func TestSweeperIgnoresForeignCompletions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.ClaimDue(ctx, testOwner, testLease); err != nil {
+	_, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Complete(ctx, foreign.ID, testOwner, nil); err != nil {
+	if err := s.Complete(ctx, foreign.ID, claim, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 

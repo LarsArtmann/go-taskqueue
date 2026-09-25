@@ -404,11 +404,12 @@ func TestBatchAuditMemberDrift(t *testing.T) {
 
 	// Scenario A: the batch COMPLETED; every member checkbox stayed open —
 	// per-item stale-open, per-item catch-ups.
-	if _, err := q.ClaimDue(ctx, "tester", time.Minute); err != nil {
+	_, claim, err := q.ClaimDue(ctx, "tester", time.Minute)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := q.Complete(ctx, batch.ID, "tester", nil); err != nil {
+	if err := q.Complete(ctx, batch.ID, claim, nil); err != nil {
 		t.Fatal(err)
 	}
 

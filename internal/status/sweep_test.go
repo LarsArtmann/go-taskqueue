@@ -43,7 +43,7 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 	ctx := context.Background()
 
 	for range 100 {
-		claimed, err := s.ClaimDue(ctx, testOwner, testLease)
+		claimed, claim, err := s.ClaimDue(ctx, testOwner, testLease)
 		if err != nil {
 			break // nothing due: id already runs under our lease
 		}
@@ -53,7 +53,7 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 		}
 	}
 
-	if err := s.Complete(ctx, id, testOwner, detail); err != nil {
+	if err := s.Complete(ctx, id, claim, detail); err != nil {
 		t.Fatalf("complete %s: %v", id, err)
 	}
 }
