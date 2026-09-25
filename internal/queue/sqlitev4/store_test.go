@@ -58,7 +58,7 @@ func TestEnqueueAndClaim(t *testing.T) {
 		t.Fatalf("claim state wrong: %+v", claimed)
 	}
 
-	_, claim_w2, err := s.ClaimDue(ctx, "w2",
+	_, _, err := s.ClaimDue(ctx, "w2",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
