@@ -468,12 +468,12 @@ func TestMaxPendingPerRepo(t *testing.T) {
 	// Complete the pending task: the slot frees and run 3 admits the next
 	// item — small caps do not starve. (A mere CLAIM is not enough: the
 	// one-agent-per-repo rule holds while the task runs.)
-	claimed, err := tq.ClaimDue(ctx, "w1", time.Minute)
+	claimed, claim, err := tq.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := tq.Complete(ctx, claimed.ID, "w1", nil); err != nil {
+	if err := tq.Complete(ctx, claimed.ID, claim, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 

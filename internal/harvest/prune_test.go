@@ -114,7 +114,7 @@ func TestPruneStaleReportsRunningAndDead(t *testing.T) {
 
 	mustWrite(t, dir+"/mixed/"+DefaultTodoFile, "# H\n- [x] runs now\n- [x] died trying\n")
 
-	claimed, err := q.ClaimDue(ctx, "worker-1", 0)
+	claimed, claim, err := q.ClaimDue(ctx, "worker-1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,16 +134,16 @@ func TestPruneStaleReportsRunningAndDead(t *testing.T) {
 	}
 
 	// The second task is dead (budget 1 attempt burned) — reported, not rescued.
-	if err := q.Fail(ctx, claimed.ID, "worker-1", "boom", 0, nil); err != nil {
+	if err := q.Fail(ctx, claimed.ID, claim, "boom", 0, nil); err != nil {
 		t.Fatal(err)
 	}
 
-	dead, err := q.ClaimDue(ctx, "worker-1", 0)
+	dead, dead_claim, err := q.ClaimDue(ctx, "worker-1", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := q.FailPermanent(ctx, dead.ID, "worker-1", "broken", nil); err != nil {
+	if err := q.FailPermanent(ctx, dead.ID, dead_claim, "broken", nil); err != nil {
 		t.Fatal(err)
 	}
 

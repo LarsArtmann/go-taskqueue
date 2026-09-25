@@ -504,11 +504,12 @@ func TestRunDLQBackoffPausesPoisonedRepos(t *testing.T) {
 	}
 
 	tk, _ := q.Get(ctx, res.Enqueued[0].TaskID)
-	if _, err := q.ClaimDue(ctx, "w", time.Minute); err != nil {
+_, claim, err := q.ClaimDue(ctx, "w", time.Minute)
+	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := q.FailPermanent(ctx, tk.ID, "w", "repo is broken", nil); err != nil {
+	if err := q.FailPermanent(ctx, tk.ID, claim, "repo is broken", nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 

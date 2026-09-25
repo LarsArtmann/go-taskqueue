@@ -512,7 +512,8 @@ func TestReviewVerdictBadgeAndFindings(t *testing.T) {
 	srv, s := newTestServer(t)
 
 	review := enqueue(t, s, "review", "demo")
-	if _, err := s.ClaimDue(context.Background(), "review-owner", time.Minute); err != nil {
+	_, review_owner_claim, err := s.ClaimDue(context.Background(), "review-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -528,7 +529,7 @@ func TestReviewVerdictBadgeAndFindings(t *testing.T) {
 		t.Fatalf("marshal review result: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), review.ID, "review-owner", detail); err != nil {
+	if err := s.Complete(context.Background(), review.ID, review_owner_claim, detail); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -577,7 +578,8 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 	srv, s := newTestServer(t)
 
 	st := enqueue(t, s, "status", "demo")
-	if _, err := s.ClaimDue(context.Background(), "status-owner", time.Minute); err != nil {
+	_, status_owner_claim, err := s.ClaimDue(context.Background(), "status-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -589,7 +591,7 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 		t.Fatalf("marshal status result: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), st.ID, "status-owner", detail); err != nil {
+	if err := s.Complete(context.Background(), st.ID, status_owner_claim, detail); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -636,7 +638,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	srv, s := newTestServer(t)
 
 	pz := enqueue(t, s, "prioritize", "demo")
-	if _, err := s.ClaimDue(context.Background(), "score-owner", time.Minute); err != nil {
+	_, score_owner_claim, err := s.ClaimDue(context.Background(), "score-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -654,7 +657,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		t.Fatalf("marshal prioritize result: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), pz.ID, "score-owner", pzDetail); err != nil {
+	if err := s.Complete(context.Background(), pz.ID, score_owner_claim, pzDetail); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -673,7 +676,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	st := enqueue(t, s, "status", "demo")
-	if _, err := s.ClaimDue(context.Background(), "status-owner", time.Minute); err != nil {
+	_, st2_claim, err := s.ClaimDue(context.Background(), "status-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -687,7 +691,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		t.Fatalf("marshal status result: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), st.ID, "status-owner", stDetail); err != nil {
+	if err := s.Complete(context.Background(), st.ID, st2_claim, stDetail); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -703,7 +707,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	msgsOnly := enqueue(t, s, "status", "demo")
-	if _, err := s.ClaimDue(context.Background(), "status-owner", time.Minute); err != nil {
+	_, msgs_claim, err := s.ClaimDue(context.Background(), "status-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -715,7 +720,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		t.Fatalf("marshal msgs-only result: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), msgsOnly.ID, "status-owner", msgsDetail); err != nil {
+	if err := s.Complete(context.Background(), msgsOnly.ID, msgs_claim, msgsDetail); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -728,7 +733,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	quiet := enqueue(t, s, "status", "demo")
-	if _, err := s.ClaimDue(context.Background(), "status-owner", time.Minute); err != nil {
+	_, quiet_claim, err := s.ClaimDue(context.Background(), "status-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -737,7 +743,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		t.Fatalf("marshal quiet result: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), quiet.ID, "status-owner", quietDetail); err != nil {
+	if err := s.Complete(context.Background(), quiet.ID, quiet_claim, quietDetail); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -750,7 +756,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	ag := enqueue(t, s, "agent", "demo")
-	if _, err := s.ClaimDue(context.Background(), "agent-owner", time.Minute); err != nil {
+	_, agent_owner_claim, err := s.ClaimDue(context.Background(), "agent-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -766,7 +773,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		t.Fatalf("marshal agent result: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), ag.ID, "agent-owner", agDetail); err != nil {
+	if err := s.Complete(context.Background(), ag.ID, agent_owner_claim, agDetail); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -785,7 +792,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	rv := enqueue(t, s, "review", "demo")
-	if _, err := s.ClaimDue(context.Background(), "review-owner", time.Minute); err != nil {
+	_, review_owner_claim, err := s.ClaimDue(context.Background(), "review-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -800,7 +808,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		t.Fatalf("marshal review result: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), rv.ID, "review-owner", rvDetail); err != nil {
+	if err := s.Complete(context.Background(), rv.ID, review_owner_claim, rvDetail); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -819,7 +827,8 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	stub := enqueue(t, s, "agent", "demo")
-	if _, err := s.ClaimDue(context.Background(), "agent-owner", time.Minute); err != nil {
+	_, stub_claim, err := s.ClaimDue(context.Background(), "agent-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -828,7 +837,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		t.Fatalf("marshal stub result: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), stub.ID, "agent-owner", stubDetail); err != nil {
+	if err := s.Complete(context.Background(), stub.ID, stub_claim, stubDetail); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -845,7 +854,8 @@ func TestDLQMirrorsDeadTasks(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")
 
-	if _, err := s.ClaimDue(context.Background(), "test-owner", time.Minute); err != nil {
+	_, _, err := s.ClaimDue(context.Background(), "test-owner", time.Minute)
+	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
@@ -1009,7 +1019,8 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 	// Park one: claim + rate-limit requeue, then the segment renders.
 	tk := enqueue(t, s, "agent", "demo")
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	_, w1_claim, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -1189,7 +1200,7 @@ func TestTaskDetailSSESnapshot(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")
 
-	claimed, err := s.ClaimDue(context.Background(), "detail-owner", time.Minute)
+	claimed, claim, err := s.ClaimDue(context.Background(), "detail-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
@@ -1243,7 +1254,7 @@ func TestTaskDetailSSELiveUpdate(t *testing.T) {
 	srv, s := newTestServer(t)
 	tk := enqueue(t, s, "sh", "demo")
 
-	claimed, err := s.ClaimDue(context.Background(), "detail-owner", time.Minute)
+	claimed, claim, err := s.ClaimDue(context.Background(), "detail-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
