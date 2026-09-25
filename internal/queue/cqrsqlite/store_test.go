@@ -101,7 +101,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky", MaxAttempts: 2})
 
 	// Attempt 1: fail -> back to pending.
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim1: %v", err)
@@ -482,7 +482,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 		t.Fatalf("backdate: %v", err)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
@@ -660,7 +660,7 @@ func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
 	s := openTestStore(t)
 
 	running, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -726,7 +726,7 @@ func TestNotBeforeDelays(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
@@ -743,7 +743,7 @@ func TestHeartbeatExtendsLease(t *testing.T) {
 	// CI runners (Windows once took >40ms and the lease expired before
 	// the first heartbeat), so keep it generous; only the sleep after the
 	// heartbeat has to outlast it.
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -1114,7 +1114,7 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "broken", MaxAttempts: 5})
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -1330,7 +1330,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 3})
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -1353,7 +1353,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	// The expired-lease reclaim branch must not see it: a claim while the
 	// park is live returns ErrNoTaskDue (the stale lease is GONE, and the
 	// pending branch is gated on not_before).
-	_, claim_w2, err := s.ClaimDue(ctx, "w2",
+	_, _, err = s.ClaimDue(ctx, "w2",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during park err = %v, want ErrNoTaskDue", err)
@@ -1428,7 +1428,7 @@ func TestParkedFilter(t *testing.T) {
 		t.Fatalf("fresh task counted as parked (%d)", n)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
@@ -1459,7 +1459,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "env-not-ready", MaxAttempts: 3})
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -2321,7 +2321,7 @@ func TestCancelRunningRequestAndHonour(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
@@ -2382,7 +2382,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	_, claim_crashed_worker, err := s.ClaimDue(ctx, "crashed-worker",
+	_, _, err = s.ClaimDue(ctx, "crashed-worker",
 		30*time.Millisecond)
 
 	if err != nil {
@@ -2395,7 +2395,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	_, claim_w2, err := s.ClaimDue(ctx, "w2",
+	_, _, err = s.ClaimDue(ctx, "w2",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
