@@ -266,7 +266,7 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 		default:
 		}
 
-		t, err := p.store.ClaimDue(ctx, p.cfg.Owner, p.cfg.Lease)
+		t, claim, err := p.store.ClaimDue(ctx, p.cfg.Owner, p.cfg.Lease)
 		if err != nil {
 			if ctx.Err() != nil {
 				return // shutdown raced the claim; not an error
@@ -283,7 +283,7 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 			continue
 		}
 
-		p.execute(taskCtx, t)
+		p.execute(taskCtx, t, claim)
 	}
 }
 
@@ -291,7 +291,7 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 // (see Start): execution, heartbeats, and the terminal Complete/Fail write all
 // use it, so a draining task keeps its lease and records its outcome. A worker
 // that dies anyway loses its lease to expiry reclaim — at-least-once.
-func (p *Pool) execute(ctx context.Context, t task.Task) {
+func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	p.mu.Lock()
 	p.inFlight[t.ID] = struct{}{}
 
@@ -319,7 +319,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 			case <-hbCtx.Done():
 				return
 			case <-ticker.C:
-				if err := p.store.Heartbeat(hbCtx, t.ID, p.cfg.Owner, p.cfg.Lease); err != nil {
+				if err := p.store.Heartbeat(hbCtx, t.ID, claim, p.cfg.Lease); err != nil {
 					// Lease lost (expiry/reclaim). Stop heartbeating; the
 					// executor context is cancelled below so we do not
 					// complete a task we no longer own.
@@ -369,7 +369,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	// so a draining task's outcome is never orphaned by the cancelled pool.
 	terminalCtx := ctx
 	if execErr == nil {
-		if err := p.store.Complete(terminalCtx, t.ID, p.cfg.Owner, sink.Detail()); err != nil {
+		if err := p.store.Complete(terminalCtx, t.ID, claim, sink.Detail()); err != nil {
 			p.log.Error("complete failed", "task", t.ID, "err", err)
 		}
 
@@ -388,7 +388,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	// attempt does not burn, the task is withdrawn, not failed.
 	if errors.Is(execErr, context.Canceled) {
 		if requested, err := p.store.CancelRequested(ctx, t.ID); err == nil && requested {
-			if cerr := p.store.CancelOwned(ctx, t.ID, p.cfg.Owner); cerr != nil {
+			if cerr := p.store.CancelOwned(ctx, t.ID, claim); cerr != nil {
 				p.log.Warn("cancel-owned failed; lease lost mid-cancel", "task", t.ID, "err", cerr)
 			} else {
 				p.log.Info("task cancelled by operator request", "task", t.ID)
@@ -406,7 +406,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// refusals escalate (base * 2^n capped, ±20% jitter) so a
 		// sustained-dirty repo does not bounce at the base backoff.
 		delay := p.preflightDelay(t.ID)
-		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, pre.Error(), delay, false); err != nil {
+		if err := p.store.Requeue(terminalCtx, t.ID, claim, pre.Error(), delay, false); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
 		} else if p.preflightShouldLog(t.ID) {
 			p.log.Warn("preflight refused; requeued without attempt burn",
@@ -423,7 +423,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// the parsed reset time (± small jitter so many parked tasks do
 		// not reclaim in lockstep and stampede the freshly reset quota).
 		delay := rateLimitDelay(rl.RetryAfter)
-		if err := p.store.Requeue(terminalCtx, t.ID, p.cfg.Owner, rl.Error(), delay, rl.ResumeCloseout); err != nil {
+		if err := p.store.Requeue(terminalCtx, t.ID, claim, rl.Error(), delay, rl.ResumeCloseout); err != nil {
 			p.log.Error("rate-limit requeue failed", "task", t.ID, "err", err)
 		} else {
 			// resume_closeout on the requeue fact says the re-claim resumes
@@ -454,7 +454,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		if err := p.store.Requeue(
 			terminalCtx,
 			t.ID,
-			p.cfg.Owner,
+			claim,
 			questionErr.Error(),
 			questionErr.RetryAfter,
 			questionErr.ResumeCloseout,
@@ -480,7 +480,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		// The identical retry would fail identically (bad payload, missing
 		// repo). Dead-letter now instead of burning the retry budget — for
 		// agent tasks every retry is real money.
-		if err := p.store.FailPermanent(terminalCtx, t.ID, p.cfg.Owner, perm.Error(), sink.Failure()); err != nil {
+		if err := p.store.FailPermanent(terminalCtx, t.ID, claim, perm.Error(), sink.Failure()); err != nil {
 			p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 		}
 
@@ -495,7 +495,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 		if err := p.store.Fail(
 			terminalCtx,
 			t.ID,
-			p.cfg.Owner,
+			claim,
 			"worker shutdown: "+execErr.Error(),
 			0,
 			sink.Failure(),
@@ -513,7 +513,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task) {
 	if err := p.store.Fail(
 		terminalCtx,
 		t.ID,
-		p.cfg.Owner,
+		claim,
 		execErr.Error(),
 		p.cfg.Backoff(t.Attempts+1),
 		sink.Failure(),

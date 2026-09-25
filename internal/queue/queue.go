@@ -37,6 +37,17 @@ var ErrEmptyAnswerRef = errors.New("queue: record answer needs a question ref")
 // (a ruling that says nothing cannot be rendered into the parked prompt).
 var ErrEmptyAnswer = errors.New("queue: record answer needs a non-empty answer")
 
+// Claim is the handle a claimer presents to finalize a claimed task: the
+// claim token minted at ClaimDue. Finalizes are TOKEN-fenced — the store
+// checks the presented claim against the live lease, so theft detection
+// lives IN the store and a lapsed claim cannot resurrect a task (ADR-0019
+// S1: worker finalizes moved from owner strings to claim tokens). A Claim
+// is opaque; the only producer is a successful ClaimDue.
+type Claim string
+
+// String renders the claim for logs.
+func (c Claim) String() string { return string(c) }
+
 // Priority aging (ADR-0015 §4): ClaimDue orders by an EFFECTIVE priority —
 // stored priority plus a bounded age bonus computed inside the claim query
 // (scheduling, not state; the stored priority never changes). Defined once
@@ -58,12 +69,13 @@ type Store interface {
 	// the task.enqueued fact.
 	Enqueue(ctx context.Context, n task.New) (task.Task, error)
 	// ClaimDue atomically claims at most one due task for owner: pending,
-	// NotBefore passed, all deps completed. Sets Running + lease. Returns
+	// NotBefore passed, all deps completed. Sets Running + lease and mints
+	// the claim token the caller must present on every finalize. Returns
 	// ErrNoTaskDue when nothing is claimable.
-	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, error)
-	// Complete marks a Running task Completed (lease must be held) and records
-	// the task.completed fact.
-	Complete(ctx context.Context, id task.ID, owner string, result jsontext.Value) error
+	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, Claim, error)
+	// Complete marks a Running task Completed (live claim required) and
+	// records the task.completed fact.
+	Complete(ctx context.Context, id task.ID, claim Claim, result jsontext.Value) error
 	// Fail records a failed attempt. When attempts remain the task returns to
 	// Pending with NotBefore = now + backoff(attempt); otherwise it is
 	// Dead-lettered. Facts: task.failed (+ task.dead-lettered). evidence,
@@ -73,7 +85,7 @@ type Store interface {
 	Fail(
 		ctx context.Context,
 		id task.ID,
-		owner string,
+		claim Claim,
 		errText string,
 		backoff time.Duration,
 		evidence jsontext.Value,
@@ -82,7 +94,7 @@ type Store interface {
 	// the attempt budget: the error class makes retrying pointless. The
 	// attempt is still counted. Facts: task.failed (carrying evidence)
 	// + task.dead-lettered (class "permanent").
-	FailPermanent(ctx context.Context, id task.ID, owner string, errText string, evidence jsontext.Value) error
+	FailPermanent(ctx context.Context, id task.ID, claim Claim, errText string, evidence jsontext.Value) error
 	// Requeue returns a claimed task to Pending WITHOUT counting an
 	// attempt; it becomes claimable again after delay. For preflight
 	// refusals: the environment was not ready, not the task. A
@@ -92,7 +104,7 @@ type Store interface {
 	Requeue(
 		ctx context.Context,
 		id task.ID,
-		owner string,
+		claim Claim,
 		errText string,
 		delay time.Duration,
 		resumeCloseout bool,
@@ -117,8 +129,8 @@ type Store interface {
 	// finished task cannot use it. Non-object payloads get the fact only
 	// too: answers cannot be merged into a raw-text payload.
 	RecordAnswer(ctx context.Context, id task.ID, ans AnswerRecord) error
-	// Heartbeat extends the lease of a Running task held by owner.
-	Heartbeat(ctx context.Context, id task.ID, owner string, extend time.Duration) error
+	// Heartbeat extends the lease of a Running task held by the claim.
+	Heartbeat(ctx context.Context, id task.ID, claim Claim, extend time.Duration) error
 	// Cancel withdraws a Pending task. A non-empty reason is stored in the
 	// task.cancelled fact's detail ("reason" key) so the journal records WHY
 	// the task was withdrawn.
@@ -136,7 +148,10 @@ type Store interface {
 	CancelRequested(ctx context.Context, id task.ID) (bool, error)
 	// CancelOwned finalizes a cooperative cancel: Running -> Cancelled,
 	// recorded by the lease-holding worker after it stopped the execution.
-	CancelOwned(ctx context.Context, id task.ID, owner string) error
+	// The claim must still be the task's lease token, but the lease MAY
+	// have lapsed: a worker legitimately finishes the stop just after
+	// expiry but before a reclaim.
+	CancelOwned(ctx context.Context, id task.ID, claim Claim) error
 	// MarkOrphaned appends a task.orphaned fact for every Running task
 	// whose lease expired before the cutoff and that has no orphaned fact
 	// yet (idempotent). It changes no state — orphans stay Running until a
