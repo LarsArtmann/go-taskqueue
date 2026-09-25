@@ -141,7 +141,7 @@ func TestParityWithStoreProjection(t *testing.T) {
 		t.Fatalf("claim 2 = %s, want t6", tk.ID)
 	}
 
-	f.must("requeue t6", f.store.Requeue(ctx, t6.ID, claim, "env not ready", 0, false))
+	f.must("requeue t6", f.store.Requeue(ctx, t6.ID, claim, "env not ready", time.Hour, false))
 
 	tk, claim = f.claim()
 	if tk.ID != t1.ID {
@@ -155,7 +155,7 @@ func TestParityWithStoreProjection(t *testing.T) {
 		t.Fatalf("claim 4 = %s, want t5", tk.ID)
 	}
 
-	f.must("requeue t5", f.store.Requeue(ctx, t5.ID, claim, "env not ready", 0, false))
+	f.must("requeue t5", f.store.Requeue(ctx, t5.ID, claim, "env not ready", time.Hour, false))
 
 	tk, claim = f.claim()
 	if tk.ID != t3.ID {

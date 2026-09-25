@@ -39,10 +39,12 @@ type (
 		ID string
 		At int64
 	}
-	// evtFailed records a failed attempt (retry stays pending).
+	// evtFailed records a failed attempt (retry stays pending). Error is
+	// a named string so the engine's type-based key inference keeps ID
+	// unambiguous (two bare string fields would read as two keys).
 	evtFailed struct {
 		ID    string
-		Error string
+		Error FailureText
 		At    int64
 	}
 	// evtDeadLettered moves the task to the DLQ.
@@ -67,6 +69,10 @@ type (
 		At       int64
 	}
 )
+
+// FailureText is a failed attempt's error text — a named string so event
+	// structs carry at most one bare string (the fold key).
+type FailureText string
 
 // RowSource supplies the enqueue-time fields the current engine's thin
 // task.enqueued fact omits (project/type fall back to the fact detail;
@@ -142,7 +148,7 @@ func eventFor(ctx context.Context, f journal.Fact, src RowSource) (any, bool, er
 	case journal.Completed:
 		return evtCompleted{ID: f.TaskID, At: at}, true, nil
 	case journal.Failed:
-		return evtFailed{ID: f.TaskID, Error: f.Error, At: at}, true, nil
+		return evtFailed{ID: f.TaskID, Error: FailureText(f.Error), At: at}, true, nil
 	case journal.DeadLettered:
 		return evtDeadLettered{ID: f.TaskID, At: at}, true, nil
 	case journal.Cancelled:

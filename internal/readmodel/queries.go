@@ -73,7 +73,7 @@ var tasksQuery = metaengine.Query[TaskList, TaskRow](
 	metaengine.OnRecordTyped(string(journal.Failed), evtFailed{},
 		func(_ record.Record, e evtFailed, prev TaskRow) TaskRow {
 			prev.Status = statusPending
-			prev.LastError = e.Error
+			prev.LastError = string(e.Error)
 			prev.UpdatedAt = e.At
 
 			return prev
