@@ -234,6 +234,14 @@ func (m *Model) StatusCounts(ctx context.Context) (map[string]int, error) {
 	return counts, nil
 }
 
+// Watch subscribes to live ledger changes: every fold update arrives as
+// the folded TaskRow (buffered, drop-oldest on a slow consumer). The
+// subscription ends with ctx. This is the Watcher half of the S3 live
+// fragments; EventsHandler is its SSE transport.
+func (m *Model) Watch(ctx context.Context) <-chan TaskRow {
+	return m.watcher.Watch(ctx, nil)
+}
+
 // EventsHandler serves the live ledger as Server-Sent Events: every fold
 // update streams as one JSON TaskRow, with `id: <seq>` for Last-Event-ID
 // reconnection (metaengine's replay journal). This is the Watcher/ServeSSE

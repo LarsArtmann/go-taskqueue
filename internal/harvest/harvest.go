@@ -269,6 +269,30 @@ func New(q *queue.Queue, cfg Config) *Harvester {
 	return &Harvester{cfg: cfg.withDefaults(), q: q}
 }
 
+// resolveRepos returns the sweep's repo list: the configured Repos, or —
+// when unset — depth-1 discovery over ProjectsDir. The list comes back
+// sorted. Audit and PruneStale share it; Run resolves through the
+// daemon-aware DiscoverReposFor instead (offline vs live-tick divergence).
+func (h *Harvester) resolveRepos() ([]string, error) {
+	repos := h.cfg.Repos
+	if len(repos) == 0 {
+		if h.cfg.ProjectsDir == "" {
+			return nil, ErrNoRepos
+		}
+
+		var err error
+
+		repos, err = DiscoverRepos(h.cfg.ProjectsDir, h.cfg.TodoFile)
+		if err != nil {
+			return nil, fmt.Errorf("harvest: discover repos: %w", err)
+		}
+	}
+
+	sort.Strings(repos)
+
+	return repos, nil
+}
+
 // Run performs one scan-and-enqueue pass. It never fails on individual repos;
 // repo-level errors are reported as Skipped entries with the error as reason.
 func (h *Harvester) Run(ctx context.Context) (Result, error) {

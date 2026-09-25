@@ -518,12 +518,7 @@ func viewToggleHref(filter FilterState, view string) string {
 // renders as an explicit page=1 instead of the bare path the old
 // hand-rolled pager emitted.
 func pagerBaseURL(f FilterState) string {
-	queryString := f.QueryString()
-	if queryString == "" {
-		return "/"
-	}
-
-	return "/?" + queryString
+	return filterHref(f)
 }
 
 // loadSnapshot queries the store for the complete current projection

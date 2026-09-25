@@ -223,13 +223,7 @@ templ taskRows(data DashboardData, rows []task.Task) {
 			}
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
 			<td class={ tdCellClass(true) }>
-				@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: display.BadgeSizeSM})
-				if verdict, ok := data.Reviews[t.ID.String()]; ok {
-					@display.Badge(display.BadgeProps{Text: verdictLabel(verdict.Verdict), Type: verdictBadgeType(verdict.Verdict), Dot: true, Size: display.BadgeSizeSM})
-				}
-				if st, ok := data.Statuses[t.ID.String()]; ok {
-					@display.Badge(display.BadgeProps{Text: statusBadgeText(st), Type: display.BadgeInfo, Dot: true, Size: display.BadgeSizeSM})
-				}
+				@taskBadges(data, t, display.BadgeSizeSM)
 			</td>
 			if data.AllowWrites {
 				<td class={ tdCellClass(false) }>
@@ -608,6 +602,19 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView, prov 
 	</div>
 }
 
+// taskBadges renders the shared per-task badge stack — status, review
+// verdict, status-report — in one place so the queue chip and the detail
+// card can never drift apart. The caller picks the badge size.
+templ taskBadges(data DashboardData, t task.Task, size display.BadgeSize) {
+	@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: size})
+	if verdict, ok := data.Reviews[t.ID.String()]; ok {
+		@display.Badge(display.BadgeProps{Text: verdictLabel(verdict.Verdict), Type: verdictBadgeType(verdict.Verdict), Dot: true, Size: size})
+	}
+	if st, ok := data.Statuses[t.ID.String()]; ok {
+		@display.Badge(display.BadgeProps{Text: statusBadgeText(st), Type: display.BadgeInfo, Dot: true, Size: size})
+	}
+}
+
 // taskDetailCard is the task's live summary: id, status, last error, and
 // the full record definition list (inner content of #frag-detail).
 templ taskDetailCard(data DashboardData, t task.Task) {
@@ -623,13 +630,7 @@ templ taskDetailCard(data DashboardData, t task.Task) {
 			</div>
 			<p class="mt-0.5 break-all font-mono text-xs text-gray-400 dark:text-gray-500" aria-hidden="true">{ t.ID.String() }</p>
 		</div>
-		@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true})
-		if verdict, ok := data.Reviews[t.ID.String()]; ok {
-			@display.Badge(display.BadgeProps{Text: verdictLabel(verdict.Verdict), Type: verdictBadgeType(verdict.Verdict), Dot: true})
-		}
-		if st, ok := data.Statuses[t.ID.String()]; ok {
-			@display.Badge(display.BadgeProps{Text: statusBadgeText(st), Type: display.BadgeInfo, Dot: true})
-		}
+		@taskBadges(data, t, display.BadgeSizeMD)
 	</div>
 	if data.AllowWrites {
 		<div class="tq-actions">

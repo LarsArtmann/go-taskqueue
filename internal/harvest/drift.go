@@ -2,9 +2,7 @@ package harvest
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
-	"sort"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -93,21 +91,10 @@ type DriftResult struct {
 func (h *Harvester) Audit(ctx context.Context) (DriftResult, error) {
 	var res DriftResult
 
-	repos := h.cfg.Repos
-	if len(repos) == 0 {
-		if h.cfg.ProjectsDir == "" {
-			return res, ErrNoRepos
-		}
-
-		var err error
-
-		repos, err = DiscoverRepos(h.cfg.ProjectsDir, h.cfg.TodoFile)
-		if err != nil {
-			return res, fmt.Errorf("harvest: discover repos: %w", err)
-		}
+	repos, err := h.resolveRepos()
+	if err != nil {
+		return res, err
 	}
-
-	sort.Strings(repos)
 
 	for _, repo := range repos {
 		res.Repos++
