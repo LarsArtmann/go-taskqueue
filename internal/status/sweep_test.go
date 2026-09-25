@@ -47,8 +47,10 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 	for range 100 {
 		claimed, c, err := s.ClaimDue(ctx, testOwner, testLease)
 		if err != nil {
+			t.Logf("DBG finishTask id=%s: claim broke: %v", id, err)
 			break // nothing due: id already runs under our lease
 		}
+		t.Logf("DBG finishTask id=%s: claimed=%s status=%s", id, claimed.ID, claimed.Status)
 
 		claim = c
 
