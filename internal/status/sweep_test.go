@@ -44,10 +44,17 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 
 	var claim queue.Claim
 
-	for range 100 {
+	// The v4 store token-fences finalizes: the presented claim must be
+	// the token minted by the ClaimDue that claimed THIS task. Bystanders
+	// are pushed just past the lease window (never delay 0 — claim
+	// ordering is created_at ASC, so an older bystander would win every
+	// re-claim forever) and the loop retries while the target's
+	// not_before settles.
+	for range 250 {
 		claimed, c, err := s.ClaimDue(ctx, testOwner, testLease)
 		if err != nil {
-			break // nothing due: id already runs under our lease
+			time.Sleep(20 * time.Millisecond)
+			continue
 		}
 
 		claim = c
@@ -56,12 +63,8 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 			break
 		}
 
-		// release the bystander: its token fences everything else. The
-		// delay pushes it past the lease so claim ordering (created_at
-		// ASC) cannot hand it back before the target is claimed — a
-		// zero delay loops forever on an older bystander (ADR-0019 S1
-		// v4 claim ordering).
-		if err := s.Requeue(ctx, claimed.ID, c, "test bystander release", time.Hour, false); err != nil {
+		// release the bystander: its token fences everything else
+		if err := s.Requeue(ctx, claimed.ID, c, "test bystander release", 50*time.Millisecond, false); err != nil {
 			t.Fatalf("complete bystander %s: %v", claimed.ID, err)
 		}
 	}
