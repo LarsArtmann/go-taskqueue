@@ -260,6 +260,12 @@ linters:
       - path: cmd/tq/(main|top|journalaudit)\.go
         linters:
           - tagliatelle
+      # readmodel wire rows mirror the task-row storage format (unix-millis
+      # snake_case) and the fact-detail wire keys (ADR-0019 S3 planned table)
+      # — machine surface BY CONTRACT, the keys persist in the projection SQL.
+      - path: internal/readmodel/[a-z_]+\.go
+        linters:
+          - tagliatelle
       - path: ^(task/task|journal/journal|queue/queue|queue/sqlite/sqlite|queue/postgres/postgres|executor/executor|worker/worker)\.go$
         linters:
           - gochecknoglobals
