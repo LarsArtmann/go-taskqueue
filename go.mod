@@ -20,11 +20,12 @@ require (
 	github.com/larsartmann/go-branded-id v0.6.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/claiming/v4 v4.0.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.2.2 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.4.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.14.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/postgres/v4 v4.0.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.0 // indirect
-	github.com/larsartmann/go-cqrs-lite/record/v4 v4.5.1 // indirect
+	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.0 // indirect
 	github.com/larsartmann/go-datastar v0.5.0 // indirect
 	github.com/larsartmann/go-error-family v0.10.1 // indirect
 	github.com/larsartmann/go-retry v0.6.0 // indirect
@@ -62,6 +63,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
 	github.com/larsartmann/templ-components v1.17.0
@@ -91,3 +93,5 @@ replace github.com/larsartmann/go-taskqueue/internal/journal/cqrs => ./internal/
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ./internal/queue/sqlitev4
 
 replace github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 => ./internal/queue/postgresv4
+
+replace github.com/larsartmann/go-taskqueue/internal/readmodel => ./internal/readmodel

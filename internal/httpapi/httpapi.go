@@ -275,9 +275,10 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 // the dashboard's GET /api/stats (internal/webui); the two surfaces are
 // pinned equal by TestStatsSurfacesAgree. Zeros are included (both
 // handlers range task.AllStatuses) so producers see a stable key set
-// regardless of queue state.
+// regardless of queue state. With UseReadModel the counts come from the
+// projection's planned table (ADR-0019 S3), from the store otherwise.
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
-	counts, err := s.store.StatusCounts(r.Context())
+	counts, err := s.statusCounts(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "stats failed: "+err.Error(), "retry")
 
@@ -293,7 +294,7 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	out := make(map[string]int, len(task.AllStatuses())+1)
 
 	for _, st := range task.AllStatuses() {
-		out[string(st)] = counts[st]
+		out[string(st)] = counts[string(st)]
 	}
 
 	out["total"] = total
@@ -301,12 +302,36 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// statusCounts reads the per-status counts from the read model when one
+// is configured, from the store otherwise — the same seam as the
+// dashboard's statusCounts (internal/webui/tailer.go).
+func (s *Server) statusCounts(ctx context.Context) (map[string]int, error) {
+	if s.model != nil {
+		return s.model.StatusCounts(ctx)
+	}
+
+	byStatus, err := s.store.StatusCounts(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	counts := make(map[string]int, len(byStatus))
+
+	for st, n := range byStatus {
+		counts[string(st)] = n
+	}
+
+	return counts, nil
+}
+
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // ListenAndServe starts the API on addr (e.g. "127.0.0.1:8091") until ctx
-// is cancelled.
+// is cancelled. It owns the read model's lifetime when UseReadModel ran:
+// the pump tails the journal for the whole serve window and the projection
+// closes after the HTTP server has fully stopped.
 func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	srv := &http.Server{
 		Addr:              addr,
@@ -322,6 +347,26 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 
 		_ = srv.Shutdown(shutdownCtx)
 	}()
+
+	if s.model != nil {
+		pumpDone := make(chan struct{})
+
+		go func() {
+			defer close(pumpDone)
+
+			if err := s.model.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				s.log.Error("httpapi: read model pump failed", "err", err)
+			}
+		}()
+
+		defer func() {
+			<-pumpDone
+
+			if err := s.model.Close(); err != nil {
+				s.log.Error("httpapi: close read model", "err", err)
+			}
+		}()
+	}
 
 	s.log.Info("httpapi listening", "addr", addr)
 
