@@ -1,9 +1,13 @@
 package readmodel_test
 
 import (
+	"bufio"
 	"context"
 	"encoding/json/jsontext"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -364,4 +368,65 @@ func TestReplayConverges(t *testing.T) {
 	if fmt.Sprint(after) != fmt.Sprint(before) {
 		t.Errorf("replay rows diverged:\nbefore %v\nafter  %v", before, after)
 	}
+}
+
+// TestEventsHandlerStreamsRows pins the ServeSSE surface: the handler
+// streams each folded row as one JSON event carrying the projection write
+// sequence as the SSE id (the Last-Event-ID reconnection watermark).
+func TestEventsHandlerStreamsRows(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	f.enqueue("web", "sh", 1, "todo:sse-1")
+	f.resync()
+
+	server := httptest.NewServer(f.model.EventsHandler())
+	t.Cleanup(server.Close)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+	f.must("build request", err)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	resp, err := client.Do(req)
+	f.must("connect events stream", err)
+	defer func() { _ = resp.Body.Close() }()
+
+	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/event-stream") {
+		t.Errorf("content type = %q, want text/event-stream", ct)
+	}
+
+	tk := f.enqueue("web", "sh", 2, "todo:sse-2")
+	f.resync()
+
+	var (
+		sawID      bool
+		sawRowData bool
+	)
+
+	scanner := bufio.NewScanner(resp.Body)
+
+	deadline := time.Now().Add(4 * time.Second)
+
+	for scanner.Scan() {
+		if time.Now().After(deadline) {
+			t.Fatal("timeout waiting for the streamed row event")
+		}
+
+		line := scanner.Text()
+
+		switch {
+		case strings.HasPrefix(line, "id:"):
+			sawID = true
+		case strings.HasPrefix(line, "data:") && strings.Contains(line, tk.ID.String()):
+			sawRowData = true
+		}
+
+		if sawID && sawRowData {
+			return
+		}
+	}
+
+	f.must("scan stream", scanner.Err())
+	t.Fatalf("stream ended without the row event (id seen: %v, data seen: %v)", sawID, sawRowData)
 }

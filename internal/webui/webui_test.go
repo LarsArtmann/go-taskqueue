@@ -1947,3 +1947,77 @@ func TestSSEHeartbeatStopsBeforeHandlerExit(t *testing.T) {
 	enqueue(t, s, "sh", "hb")
 	ssetest.CollectWithTimeout(t, handler, collectBudget, ssetest.WithPath("/api/events"))
 }
+
+// pollStats fetches /api/stats until want holds or the budget is spent.
+func pollStats(t *testing.T, srv *Server, want func(map[string]int) bool, what string) map[string]int {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+
+	for {
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/stats", nil))
+
+		if rec.Code == http.StatusOK {
+			var stats map[string]int
+			if err := json.Unmarshal(rec.Body.Bytes(), &stats); err == nil && want(stats) {
+				return stats
+			}
+		}
+
+		if time.Now().After(deadline) {
+			t.Fatalf("stats never %s (last body: %s)", what, rec.Body)
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// TestStatsReadFromReadModel pins the ADR-0019 S3 live path end to end:
+// runReadModel folds the journal into the projection and replaces the hand
+// tailer, the stats reads come off the projection, facts appended after
+// startup still converge through the watcher-driven hub wake, and the
+// model's lifetime ends with the run.
+func TestStatsReadFromReadModel(t *testing.T) {
+	s := newTestStore(t)
+	srv := New(s, Config{
+		Addr:          "127.0.0.1:0",
+		Poll:          20 * time.Millisecond,
+		Heartbeat:     100 * time.Millisecond,
+		ReadModelPath: filepath.Join(t.TempDir(), "projection.db"),
+	})
+
+	enqueue(t, s, "sh", "demo")
+	enqueue(t, s, "sh", "demo")
+
+	ctx, stop := context.WithCancel(t.Context())
+
+	tailDone := make(chan struct{})
+
+	go func() {
+		defer close(tailDone)
+
+		_ = srv.runReadModel(ctx)
+	}()
+
+	stats := pollStats(t, srv, func(m map[string]int) bool {
+		return m["pending"] == 2 && m["total"] == 2
+	}, "converged on the two enqueued tasks")
+
+	if stats["completed"] != 0 || stats["dead"] != 0 {
+		t.Errorf("stats = %v, want zero-filled missing statuses", stats)
+	}
+
+	enqueue(t, s, "sh", "demo")
+
+	pollStats(t, srv, func(m map[string]int) bool {
+		return m["pending"] == 3 && m["total"] == 3
+	}, "picked up the post-startup enqueue")
+
+	stop()
+	<-tailDone
+
+	if srv.model != nil {
+		t.Error("read model still installed after runReadModel returned")
+	}
+}

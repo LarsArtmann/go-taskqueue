@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -349,5 +350,164 @@ func TestAuthStrikesResetOnSuccess(t *testing.T) {
 
 	if code := try("secret-token"); code != http.StatusOK {
 		t.Fatalf("valid token after 2+2 strikes = %d, want 200 (a success resets the strikes)", code)
+	}
+}
+
+// enqueueTask seeds one task through the store directly.
+func enqueueTask(t *testing.T, store *sqlite.Store, project string) task.Task {
+	t.Helper()
+
+	tk, err := store.Enqueue(context.Background(), task.New{
+		Type:    "sh",
+		Project: project,
+		Payload: json.RawMessage(`"echo hi"`),
+	})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	return tk
+}
+
+func authorizedStats(t *testing.T, h http.Handler) map[string]int {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/stats", nil)
+	req.Header.Set("Authorization", "Bearer secret-token")
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("stats status = %d, body: %s", rec.Code, rec.Body)
+	}
+
+	var stats map[string]int
+	if err := json.Unmarshal(rec.Body.Bytes(), &stats); err != nil {
+		t.Fatalf("decode stats: %v", err)
+	}
+
+	return stats
+}
+
+// TestStatsReadModelSeam pins the ADR-0019 S3 stats seam: with
+// UseReadModel the /api/v1/stats read comes from the projection's planned
+// table (zero-filled over task.AllStatuses, store-identical), not from the
+// queue store.
+func TestStatsReadModelSeam(t *testing.T) {
+	srv, store := newTestAPI(t)
+
+	if err := srv.UseReadModel(filepath.Join(t.TempDir(), "projection.db")); err != nil {
+		t.Fatalf("use read model: %v", err)
+	}
+
+	if srv.model == nil {
+		t.Fatal("UseReadModel did not install the read model")
+	}
+
+	enqueueTask(t, store, "billing")
+
+	h := srv.Handler()
+
+	if stats := authorizedStats(t, h); stats["total"] != 0 {
+		t.Fatalf("stats before catch-up = %v, want the empty projection", stats)
+	}
+
+	if err := srv.model.CatchUp(context.Background()); err != nil {
+		t.Fatalf("catch up: %v", err)
+	}
+
+	stats := authorizedStats(t, h)
+
+	if stats["pending"] != 1 || stats["total"] != 1 {
+		t.Fatalf("stats = %v, want pending=1 total=1", stats)
+	}
+
+	if _, ok := stats["cancelled"]; !ok {
+		t.Errorf("stats missing the zero-filled cancelled key: %v", stats)
+	}
+
+	storeCounts, err := store.StatusCounts(context.Background())
+	if err != nil {
+		t.Fatalf("store counts: %v", err)
+	}
+
+	if stats[string(task.Pending)] != storeCounts[task.Pending] {
+		t.Errorf("model %v vs store %v diverge", stats, storeCounts)
+	}
+}
+
+// TestListenAndServePumpsReadModel pins pump ownership: the serve window
+// tails the journal into the projection, so a fact appended after startup
+// shows up in the stats without any manual catch-up.
+func TestListenAndServePumpsReadModel(t *testing.T) {
+	srv, store := newTestAPI(t)
+
+	if err := srv.UseReadModel(filepath.Join(t.TempDir(), "projection.db")); err != nil {
+		t.Fatalf("use read model: %v", err)
+	}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("reserve port: %v", err)
+	}
+
+	addr := ln.Addr().String()
+
+	if err := ln.Close(); err != nil {
+		t.Fatalf("close port probe: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	served := make(chan error, 1)
+
+	go func() { served <- srv.ListenAndServe(ctx, addr) }()
+
+	enqueueTask(t, store, "billing")
+
+	url := "http://" + addr + "/api/v1/stats"
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer secret-token")
+
+	deadline := time.Now().Add(5 * time.Second)
+
+	for {
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			var stats map[string]int
+
+			err = json.NewDecoder(resp.Body).Decode(&stats)
+			_ = resp.Body.Close()
+
+			if err == nil && stats["total"] == 1 {
+				break
+			}
+		}
+
+		if time.Now().After(deadline) {
+			cancel()
+			t.Fatalf("stats never reflected the pump (last err: %v)", err)
+		}
+
+		time.Sleep(20 * time.Millisecond)
+
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			t.Fatalf("rebuild request: %v", err)
+		}
+
+		req.Header.Set("Authorization", "Bearer secret-token")
+	}
+
+	cancel()
+
+	if err := <-served; err != nil {
+		t.Errorf("ListenAndServe = %v, want clean shutdown", err)
 	}
 }
