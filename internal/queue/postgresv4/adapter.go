@@ -37,6 +37,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // database/sql driver for the companion handle
+	"github.com/jackc/pgx/v5/pgxpool"
 	upostgres "github.com/larsartmann/go-cqrs-lite/queue/postgres/v4"
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
@@ -90,6 +91,47 @@ func Open(ctx context.Context, dsn string, opts ...StoreOption) (*Store, error) 
 		_ = engine.Close()
 
 		return nil, fmt.Errorf("postgresv4: open companion db: %w", err)
+	}
+
+	db.SetMaxOpenConns(2)
+
+	store := &Store{engine: engine, db: db, projectExclusive: options.projectExclusive}
+
+	if err := store.migrateCompanion(ctx); err != nil {
+		_ = db.Close()
+		_ = engine.Close()
+
+		return nil, err
+	}
+
+	return store, nil
+}
+
+// OpenWithPool wraps a caller-owned pgx pool into a ready store, applying
+// the engine schema plus the tq companion tables. The caller keeps pool
+// ownership: Close tears down the engine handle and the adapter's companion
+// database/sql handle, never the caller's pool (the legacy
+// internal/queue/postgres ownership contract, preserved at the S1 flip).
+func OpenWithPool(ctx context.Context, pool *pgxpool.Pool, opts ...StoreOption) (*Store, error) {
+	if pool == nil {
+		return nil, errors.New("postgresv4: nil pool")
+	}
+
+	var options storeOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	engine, err := upostgres.OpenWithPool[[]byte](ctx, pool, upostgres.WithCodec(identityCodec()))
+	if err != nil {
+		return nil, fmt.Errorf("postgresv4: open engine from pool: %w", err)
+	}
+
+	db, err := sql.Open("pgx", pool.Config().ConnString())
+	if err != nil {
+		_ = engine.Close()
+
+		return nil, fmt.Errorf("postgresv4: open companion db from pool: %w", err)
 	}
 
 	db.SetMaxOpenConns(2)

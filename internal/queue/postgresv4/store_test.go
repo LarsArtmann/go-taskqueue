@@ -100,7 +100,7 @@ func TestEnqueueAndClaim(t *testing.T) {
 		t.Fatalf("claim state wrong: %+v", claimed)
 	}
 
-	_, _, err := s.ClaimDue(ctx, "w2",
+	_, _, err = s.ClaimDue(ctx, "w2",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
@@ -143,7 +143,7 @@ func TestCompleteResetsLastError(t *testing.T) {
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky"})
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if err != nil {
@@ -344,7 +344,7 @@ func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 	s := openTestStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	_, claim_crashed_worker, err := s.ClaimDue(ctx, "crashed-worker",
+	_, _, err = s.ClaimDue(ctx, "crashed-worker",
 		30*time.Millisecond)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -813,7 +813,7 @@ func TestNotBeforeDelays(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
+	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
@@ -1329,7 +1329,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	// The expired-lease reclaim branch must not see it: a claim while the
 	// park is live returns ErrNoTaskDue (the stale lease is GONE, and the
 	// pending branch is gated on not_before).
-	_, claim_w2, err := s.ClaimDue(ctx, "w2",
+	_, _, err = s.ClaimDue(ctx, "w2",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during park err = %v, want ErrNoTaskDue", err)
@@ -2372,7 +2372,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	_, claim_w2, err := s.ClaimDue(ctx, "w2",
+	_, _, err = s.ClaimDue(ctx, "w2",
 		time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
@@ -3247,7 +3247,7 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 		t.Fatalf("claim while parked err = %v, want ErrNoTaskDue", err)
 	}
 
-	err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
+	err = s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
 	if err != nil {
 		t.Fatalf("RecordAnswer: %v", err)
 	}
