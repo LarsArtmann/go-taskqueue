@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	sqliteengine "github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4"
@@ -38,6 +39,13 @@ const (
 // a projection, and without a journal to fold there is nothing to serve.
 var ErrNoSource = errors.New("readmodel: nil journal source")
 
+// PathFor derives the projection database path beside a queue database:
+// one shared projection file per queue db (the sqliteengine opens it WAL
+// + busy_timeout, so serve/api/stats processes can share it).
+func PathFor(dbPath string) string {
+	return dbPath + ".readmodel.db"
+}
+
 // Model is the metaengine-backed read model over one queue's fact journal:
 // the tasks collection (planned table) plus the Watcher/ServeSSE live
 // surface. Create with Open, pump with Run (or CatchUp for one pass), read
@@ -50,7 +58,10 @@ type Model struct {
 	poll  time.Duration
 	batch int
 
-	cursor  int64
+	// cursor is the applied journal watermark: the seq of the last fact
+	// folded into the collections. Atomic so live consumers can read the
+	// pump's progress (JournalCursor) while it advances.
+	cursor  atomic.Int64
 	watcher *metaengine.Watcher[TaskRow]
 }
 
@@ -169,9 +180,10 @@ func (m *Model) CatchUp(ctx context.Context) error {
 
 // catchUpOnce applies one batch of new facts and reports how many it saw.
 func (m *Model) catchUpOnce(ctx context.Context) (int, error) {
-	facts, err := m.src.Facts(ctx, m.cursor, m.batch)
+	after := m.cursor.Load()
+	facts, err := m.src.Facts(ctx, after, m.batch)
 	if err != nil {
-		return 0, fmt.Errorf("readmodel: read facts after %d: %w", m.cursor, err)
+		return 0, fmt.Errorf("readmodel: read facts after %d: %w", after, err)
 	}
 
 	for _, f := range facts {
@@ -181,10 +193,18 @@ func (m *Model) catchUpOnce(ctx context.Context) (int, error) {
 	}
 
 	if len(facts) > 0 {
-		m.cursor = facts[len(facts)-1].Seq
+		m.cursor.Store(facts[len(facts)-1].Seq)
 	}
 
 	return len(facts), nil
+}
+
+// JournalCursor reports the applied journal watermark: the seq of the
+// last fact folded into the collections (0 before the first apply). Live
+// consumers use it as the change-notification sequence, so a notification
+// carries the same journal watermark the hand tailer used to report.
+func (m *Model) JournalCursor() int64 {
+	return m.cursor.Load()
 }
 
 // apply maps one fact to its fold input and feeds it through the store.
@@ -257,6 +277,13 @@ func (m *Model) StatusCounts(ctx context.Context) (map[string]int, error) {
 // fragments; EventsHandler is its SSE transport.
 func (m *Model) Watch(ctx context.Context) <-chan TaskRow {
 	return m.watcher.Watch(ctx, nil)
+}
+
+// WatchSeq is Watch with the projection write sequence attached. The
+// dashboard's notification pump consumes this: each delivery replaces one
+// journal-tailer poll cycle — the change signal, not the payload.
+func (m *Model) WatchSeq(ctx context.Context) <-chan metaengine.SeqValue[TaskRow] {
+	return m.watcher.WatchWithSeq(ctx, nil)
 }
 
 // EventsHandler serves the live ledger as Server-Sent Events: every fold

@@ -276,12 +276,13 @@ func TestParityWithStoreProjection(t *testing.T) {
 		}
 	}
 
-	// Filters: project.
+	// Filters: project — cancelled tasks stay in the ledger, so api holds
+	// t3, t4 (cancelled) and t6.
 	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Project: readmodel.StringPtr("api")})
 	f.must("tasks(project=api)", err)
 
-	if len(rows) != 2 {
-		t.Errorf("api rows = %d, want 2 (t3, t6)", len(rows))
+	if len(rows) != 3 {
+		t.Errorf("api rows = %d, want 3 (t3, t4, t6)", len(rows))
 	}
 
 	// Filters: combined status + project.

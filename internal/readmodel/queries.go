@@ -54,7 +54,6 @@ var tasksQuery = metaengine.Query[TaskList, TaskRow](
 	metaengine.OnRecordTyped(string(journal.Claimed), evtClaimed{},
 		func(_ record.Record, e evtClaimed, prev TaskRow) TaskRow {
 			prev.Status = statusRunning
-			prev.Attempts++
 			prev.UpdatedAt = e.At
 
 			return prev
@@ -69,6 +68,7 @@ var tasksQuery = metaengine.Query[TaskList, TaskRow](
 	metaengine.OnRecordTyped(string(journal.Failed), evtFailed{},
 		func(_ record.Record, e evtFailed, prev TaskRow) TaskRow {
 			prev.Status = statusPending
+			prev.Attempts++ // the store burns one attempt per failure
 			prev.LastError = string(e.Error)
 			prev.UpdatedAt = e.At
 

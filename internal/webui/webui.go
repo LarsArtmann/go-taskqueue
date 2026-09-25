@@ -22,6 +22,7 @@ import (
 
 	dashboard "github.com/larsartmann/go-health-dashboard"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 )
 
 // Default configuration values.
@@ -74,6 +75,16 @@ type Config struct {
 	// guarded by per-form CSRF tokens (withCSRF) and, on non-loopback
 	// binds, by the auth token. Off by default.
 	AllowWrites bool
+	// ReadModelPath, when set, moves the aggregate read side and the live
+	// notifications onto an ADR-0019 S3 metaengine read model: the
+	// projection at this path folds the journal (readmodel.PathFor
+	// derives it beside the queue db) and its Watcher replaces the hand
+	// tailer→hub fan-out. Status counts (nowband, /api/stats) read the
+	// collection; the task table, board, detail pages and fact feeds stay
+	// store-backed — the planned table does not carry lease owner,
+	// NotBefore or payload, which those row-rich views render. Empty =
+	// the store-backed defaults (off).
+	ReadModelPath string
 }
 
 func (c Config) withDefaults() Config {
@@ -97,6 +108,11 @@ type Server struct {
 	store queue.Store
 	hub   *Hub
 	cfg   Config
+
+	// model is the ADR-0019 S3 read model (nil unless cfg.ReadModelPath
+	// is set): the projection the aggregate reads and the live
+	// notifications flow through. Opened by Run.
+	model *readmodel.Model
 
 	// prober derives store-backed health for the go-health-dashboard mount;
 	// dash renders it at /health (+ JSON probes). See health.go.
@@ -328,9 +344,10 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// Run starts the journal tailer and serves until ctx is cancelled or the
-// listener fails. It always shuts the HTTP server down gracefully. It
-// refuses to start on a non-loopback bind without a token (Validate).
+// Run starts the read model (when configured) and the journal tailer, and
+// serves until ctx is cancelled or the listener fails. It always shuts the
+// HTTP server down gracefully. It refuses to start on a non-loopback bind
+// without a token (Validate).
 func (s *Server) Run(ctx context.Context) error {
 	if err := s.cfg.Validate(); err != nil {
 		return err
@@ -347,8 +364,16 @@ func (s *Server) Run(ctx context.Context) error {
 	go func() {
 		defer close(tailerDone)
 
-		if err := s.tail(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			slog.Error("webui: journal tailer failed", "err", err)
+		if s.cfg.ReadModelPath == "" {
+			if err := s.tail(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				slog.Error("webui: journal tailer failed", "err", err)
+			}
+
+			return
+		}
+
+		if err := s.runReadModel(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			slog.Error("webui: read model failed", "err", err)
 		}
 	}()
 
