@@ -13,34 +13,15 @@ import (
 
 // The tq same-DB extension (ADR-0019 S1): everything below reads and
 // writes the engine's tables with tq's exact SQL and adds ONE companion
-// table (priority_scores). Facts appended here are schema-compatible with
-// the engine's facts table, so they read back through the engine's own
-// Facts reads.
+// table (priority_scores) — its DDL and migration live in
+// companion.CompanionSchema/companion.Migrate. Facts appended here are
+// schema-compatible with the engine's facts table, so they read back
+// through the engine's own Facts reads.
 //
 // The implementations themselves live ONCE in internal/queue/companion
 // (dedup ruling 2026-09-26: one home, no cross-backend mirrors) — this
-// file keeps the companion table, the fact-append seam, and one-line
-// delegations behind the SQLite dialect.
-
-const companionSchema = `
-CREATE TABLE IF NOT EXISTS priority_scores (
-	item_key       TEXT PRIMARY KEY, -- the harvest dedup key (repo + item text)
-	score          INTEGER NOT NULL, -- 0-100
-	effort_minutes INTEGER NOT NULL, -- estimated agent effort
-	source         TEXT NOT NULL,    -- scorer identity, e.g. "ai:<model>"
-	reasoning      TEXT NOT NULL,    -- one-line why
-	tokens         INTEGER NOT NULL, -- what the verdict cost
-	scored_at      INTEGER NOT NULL  -- unix millis
-);
-`
-
-func (s *Store) migrateCompanion(ctx context.Context) error {
-	if _, err := s.cr.ExecContext(ctx, companionSchema); err != nil {
-		return errors.New("cqrsqlite: migrate companion: " + err.Error())
-	}
-
-	return nil
-}
+// file keeps the fact-append seam and one-line delegations behind the
+// SQLite dialect.
 
 // AppendFact records a NON-task journal fact (session.opened /
 // session.closed). Task facts are never written through it — every task

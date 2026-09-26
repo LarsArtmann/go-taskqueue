@@ -96,7 +96,7 @@ func Open(ctx context.Context, dsn string, opts ...StoreOption) (*Store, error) 
 		projectExclusive: projectExclusive,
 	}
 
-	if err := store.migrateCompanion(ctx); err != nil {
+	if err := companion.Migrate(ctx, store.cr); err != nil {
 		_ = db.Close()
 		_ = engine.Close()
 
@@ -139,7 +139,7 @@ func OpenWithPool(ctx context.Context, pool *pgxpool.Pool, opts ...StoreOption) 
 		projectExclusive: projectExclusive,
 	}
 
-	if err := store.migrateCompanion(ctx); err != nil {
+	if err := companion.Migrate(ctx, store.cr); err != nil {
 		_ = db.Close()
 		_ = engine.Close()
 
@@ -147,30 +147,6 @@ func OpenWithPool(ctx context.Context, pool *pgxpool.Pool, opts ...StoreOption) 
 	}
 
 	return store, nil
-}
-
-// companionSchema is the tq-side table set the upstream engine does not
-// carry (the tasks/facts/deps/watermarks tables come from the engine's own
-// migrate — same-DB companion surfaces read and extend them but never
-// redefine them).
-const companionSchema = `
-CREATE TABLE IF NOT EXISTS priority_scores (
-	item_key       TEXT PRIMARY KEY, -- the harvest dedup key (repo + item text)
-	score          INTEGER NOT NULL, -- 0-100
-	effort_minutes INTEGER NOT NULL, -- estimated agent effort
-	source         TEXT NOT NULL,    -- scorer identity, e.g. "ai:<model>"
-	reasoning      TEXT NOT NULL,    -- one-line why
-	tokens         INTEGER NOT NULL, -- what the verdict cost
-	scored_at      BIGINT NOT NULL   -- unix millis
-);
-`
-
-func (s *Store) migrateCompanion(ctx context.Context) error {
-	if _, err := s.cr.ExecContext(ctx, companionSchema); err != nil {
-		return fmt.Errorf("postgresv4: migrate companion: %w", err)
-	}
-
-	return nil
 }
 
 // Close releases the engine and the companion handle (never a caller-owned

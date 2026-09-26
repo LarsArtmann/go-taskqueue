@@ -84,7 +84,7 @@ func Open(path string) (*Store, error) {
 
 	s := &Store{eng: eng, db: db, cr: companion.For(companion.SQLite, db), claims: map[task.ID]string{}}
 
-	if err := s.migrateCompanion(context.Background()); err != nil {
+	if err := companion.Migrate(context.Background(), s.cr); err != nil {
 		_ = db.Close()
 		_ = eng.Close()
 
