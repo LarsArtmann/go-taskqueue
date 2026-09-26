@@ -3,6 +3,8 @@ package postgresv4
 import (
 	"context"
 	"errors"
+
+	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
 )
 
 // ArchiveFactsBefore is NOT implemented in the S1 spike: the fact archive
