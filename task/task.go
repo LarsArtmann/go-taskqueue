@@ -35,8 +35,9 @@ var (
 
 // Lifecycle helpers.
 var (
-	AllStatuses     = internaltask.AllStatuses
-	CanTransitionTo = internaltask.CanTransitionTo
-	Terminal        = internaltask.Terminal
-	NewID           = internaltask.NewID
+	AllStatuses      = internaltask.AllStatuses
+	CanTransitionTo  = internaltask.CanTransitionTo
+	Terminal         = internaltask.Terminal
+	NewID            = internaltask.NewID
+	StatusCountsView = internaltask.StatusCountsView
 )

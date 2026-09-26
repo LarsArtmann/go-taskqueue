@@ -38,4 +38,7 @@ type (
 	MemoryJournal = internaljournal.MemoryJournal
 )
 
-var NewMemoryJournal = internaljournal.NewMemoryJournal
+var (
+	NewMemoryJournal = internaljournal.NewMemoryJournal
+	AfterSeq         = internaljournal.AfterSeq
+)

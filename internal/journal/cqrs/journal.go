@@ -60,19 +60,7 @@ func NewSliceSource(facts []journal.Fact) *SliceSource {
 
 // Facts implements FactSource.
 func (s *SliceSource) Facts(_ context.Context, after int64, limit int) ([]journal.Fact, error) {
-	var out []journal.Fact
-
-	for _, f := range s.facts {
-		if f.Seq > after {
-			out = append(out, f)
-		}
-	}
-
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
-
-	return out, nil
+	return journal.AfterSeq(s.facts, after, limit), nil
 }
 
 // ReadAll implements event.Journal: every fact, in Seq order.

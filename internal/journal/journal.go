@@ -128,13 +128,24 @@ func (m *MemoryJournal) Since(_ context.Context, after int64) ([]Fact, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	return AfterSeq(m.facts, after, 0), nil
+}
+
+// AfterSeq filters facts to Seq strictly greater than after, in order,
+// bounded to the most recent limit when > 0 — the cursor semantics shared
+// by slice-backed sources and test fakes.
+func AfterSeq(facts []Fact, after int64, limit int) []Fact {
 	var out []Fact
 
-	for _, f := range m.facts {
+	for _, f := range facts {
 		if f.Seq > after {
 			out = append(out, f)
 		}
 	}
 
-	return out, nil
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+
+	return out
 }

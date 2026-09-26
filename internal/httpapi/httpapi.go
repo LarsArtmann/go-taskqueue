@@ -285,18 +285,7 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	total := 0
-
-	for _, n := range counts {
-		total += n
-	}
-
-	out := make(map[string]int, len(task.AllStatuses())+1)
-
-	for _, st := range task.AllStatuses() {
-		out[string(st)] = counts[string(st)]
-	}
-
+	out, total := task.StatusCountsView(counts)
 	out["total"] = total
 
 	writeJSON(w, http.StatusOK, out)
@@ -305,23 +294,23 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 // statusCounts reads the per-status counts from the read model when one
 // is configured, from the store otherwise — the same seam as the
 // dashboard's statusCounts (internal/webui/tailer.go).
-func (s *Server) statusCounts(ctx context.Context) (map[string]int, error) {
+func (s *Server) statusCounts(ctx context.Context) (map[task.Status]int, error) {
 	if s.model != nil {
-		return s.model.StatusCounts(ctx)
+		counts, err := s.model.StatusCounts(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		byStatus := make(map[task.Status]int, len(counts))
+
+		for st, n := range counts {
+			byStatus[task.Status(st)] = n
+		}
+
+		return byStatus, nil
 	}
 
-	byStatus, err := s.store.StatusCounts(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	counts := make(map[string]int, len(byStatus))
-
-	for st, n := range byStatus {
-		counts[string(st)] = n
-	}
-
-	return counts, nil
+	return s.store.StatusCounts(ctx)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

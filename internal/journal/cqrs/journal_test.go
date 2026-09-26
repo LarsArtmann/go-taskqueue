@@ -23,20 +23,9 @@ type fakeSource struct {
 
 // Stand-in deliberately independent of this package's production
 // SliceSource: the adapter must not be tested against its own source.
+// Only the trivial cursor filter is shared (journal.AfterSeq).
 func (f *fakeSource) Facts(_ context.Context, after int64, limit int) ([]journal.Fact, error) {
-	var out []journal.Fact
-
-	for _, fact := range f.facts {
-		if fact.Seq > after {
-			out = append(out, fact)
-		}
-	}
-
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
-
-	return out, nil
+	return journal.AfterSeq(f.facts, after, limit), nil
 }
 
 func factAt(seq int64, taskID string, factType journal.FactType, at time.Time) journal.Fact {

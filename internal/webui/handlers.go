@@ -191,18 +191,7 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	total := 0
-
-	for _, n := range counts {
-		total += n
-	}
-
-	out := make(map[string]int, len(task.AllStatuses())+1)
-
-	for _, st := range task.AllStatuses() {
-		out[string(st)] = counts[st]
-	}
-
+	out, total := task.StatusCountsView(counts)
 	out[labelTotal] = total
 
 	w.Header().Set("Content-Type", "application/json")

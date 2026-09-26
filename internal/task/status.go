@@ -24,6 +24,24 @@ func AllStatuses() []Status {
 	return []Status{Pending, Running, Completed, Dead, Cancelled}
 }
 
+// StatusCountsView flattens per-status counts into the stats wire shape:
+// a string-keyed map holding every known status (zeros included) plus the
+// total. The HTTP stats surfaces (httpapi, webui) share one contract
+// pinned by TestStatsSurfacesAgree; this is that contract's single source.
+func StatusCountsView(counts map[Status]int) (view map[string]int, total int) {
+	for _, n := range counts {
+		total += n
+	}
+
+	view = make(map[string]int, len(AllStatuses())+1)
+
+	for _, st := range AllStatuses() {
+		view[string(st)] = counts[st]
+	}
+
+	return view, total
+}
+
 // transitions lists every legal from→to pair. Anything else is invalid.
 var transitions = map[Status]map[Status]bool{
 	Pending:   {Running: true, Cancelled: true},

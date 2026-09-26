@@ -24,26 +24,14 @@ type fakeSource struct {
 	tasks map[string]task.Task
 }
 
-// This fake deliberately duplicates the shape rather than sharing code with
-// the cqrs adapter's: it is concurrency-safe (the bridge polls from
-// multiple goroutines) and carries a wider surface than the adapter needs.
+// This fake keeps its own locking (the bridge polls from multiple
+// goroutines) and a wider surface than the adapter needs; the filter
+// itself is the shared journal.AfterSeq cursor semantics.
 func (f *fakeSource) Facts(_ context.Context, after int64, limit int) ([]journal.Fact, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	var out []journal.Fact
-
-	for _, x := range f.facts {
-		if x.Seq > after {
-			out = append(out, x)
-		}
-	}
-
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
-
-	return out, nil
+	return journal.AfterSeq(f.facts, after, limit), nil
 }
 
 func (f *fakeSource) HeadSeq(_ context.Context) (int64, error) {
