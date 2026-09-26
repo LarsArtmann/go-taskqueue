@@ -2,21 +2,23 @@
 # Cross-backend mirror-clone gate (dedup ruling 2026-09-26: accepts ≈ 0).
 #
 # The ADR-0019 spike adapters (internal/queue/{sqlitev4,postgresv4,cqrsqlite})
-# carry near-identical companion surfaces. The ruling: no LIVING acceptances —
-# the shared surface moves to internal/queue/companion (its S4-surviving home),
-# and this gate fails on any clone group whose occurrences span more than one
-# backend directory, so the mirror class can never silently regrow.
+# carried near-identical companion surfaces. The shared production surface
+# lives in internal/queue/companion since the 2026-09-26 extraction window;
+# the gate fails on any clone group spanning more than one backend directory
+# so the mirror class can never silently regrow.
 #
-# Until the companion extraction lands, mirror groups are EXPECTED; the gate
-# runs advisory (default) and prints them. The extraction window flips it to
-# strict via MIRROR_CLONES_STRICT=1 in ci-local.
-#
-# Idiom noise (defer/flag-parse prologs, mutex pairs, shared-seam call pairs)
-# stays WITHIN one package and never spans backends — out of scope by design.
+# Remaining KNOWN mirrors are pinned in scripts/mirror-baseline.txt (the
+# three mirrored conformance suites — their consolidation into
+# companion/conform is tracked in TODO_LIST). Strict mode (default ON for
+# ci-local) fails on any group NOT in the baseline; groups RESOLVED since
+# the baseline are reported and shrink the baseline on the next deliberate
+# regen. Idiom noise (defer/flag-parse prologs, interface asserts,
+# shared-seam call pairs) is handled by art-dupl's own actionability filter
+# and art-dupl:accept directives with recorded reasons.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-strict="${MIRROR_CLONES_STRICT:-0}"
+strict="${MIRROR_CLONES_STRICT:-1}"
 
 tmp="$(mktemp /tmp/mirror-clones.XXXXXX.html)"
 trap 'rm -f "$tmp"' EXIT
@@ -46,6 +48,17 @@ patterns = [
     r"queue/postgres/",
 ]
 backend_res = [re.compile(p) for p in patterns]
+baseline_path = "scripts/mirror-baseline.txt"
+
+baseline = set()
+try:
+    with open(baseline_path) as fh:
+        for line in fh:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                baseline.add(line)
+except FileNotFoundError:
+    pass  # no baseline yet: every mirror group is new
 
 raw = open(path).read()
 groups = re.split(r'<div class="clone-group" id="group-', raw)[1:]
@@ -62,20 +75,40 @@ for g in groups:
         roots.add("/".join(parts[:3]) if h.startswith("internal/") else parts[0])
     if len(roots) > 1:
         cat = re.search(r'data-category="([^"]*)"', g)
-        mirrors.append((cat.group(1) if cat else "?", hits))
+        cat = cat.group(1) if cat else "?"
+        # Identity strips line numbers: groups drift as files are edited,
+        # the mirrored FILE PAIR is the stable fact.
+        paths = [h.split(":")[0] for h in hits]
+        mirrors.append((cat, hits, cat + " " + " ".join(sorted(paths))))
+
+seen = {m[2] for m in mirrors}
+new_groups = [m for m in mirrors if m[2] not in baseline]
+resolved = sorted(baseline - seen)
+
+for cat, files, ident in mirrors:
+    tag = "BASELINED" if ident in baseline else "NEW MIRROR"
+    print(tag + " [" + cat + "]: " + ", ".join(files))
+
+if resolved:
+    for row in resolved:
+        print("RESOLVED (regen baseline to shrink): " + row)
 
 if not mirrors:
     print("mirror-clones: 0 cross-backend clone groups")
     sys.exit(0)
 
-for cat, files in mirrors:
-    print("MIRROR [" + cat + "]: " + ", ".join(files))
-print("mirror-clones: " + str(len(mirrors)) + " cross-backend clone group(s)")
-sys.exit(1 if strict == "1" else 0)
+summary = str(len(mirrors)) + " cross-backend group(s): " + str(len(new_groups)) + " new, " + str(len(mirrors) - len(new_groups)) + " baselined"
+print("mirror-clones: " + summary)
+
+if new_groups and strict == "1":
+    print("FAIL: new cross-backend mirror group(s) — home the surface in internal/queue/companion, or amend scripts/mirror-baseline.txt with a recorded reason", file=sys.stderr)
+    sys.exit(1)
+
+sys.exit(0)
 PYEOF
 
 if [ "$rc" -ne 0 ] && [ "$strict" != "1" ]; then
-	echo "mirror-clones: advisory (MIRROR_CLONES_STRICT unset) — companion extraction tracked in TODO_LIST"
+	echo "mirror-clones: advisory (MIRROR_CLONES_STRICT=0) — new mirror group(s) above"
 	rc=0
 fi
 exit "$rc"
