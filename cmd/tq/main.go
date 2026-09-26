@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"slices"
 	"sort"
@@ -2211,10 +2212,98 @@ type commitHit struct {
 	Subject string `json:"subject"`
 }
 
+// daemonCommitSubject matches the auto-commit daemon's subject line — the
+// only footer-less commits the fold view will claim. Anything else is a
+// human commit and stays silent.
+var daemonCommitSubject = regexp.MustCompile(`^chore: auto-commit \d+ changed file\(s\) \(heuristic\)$`)
+
+// foldedCommit is a footer-less daemon commit attributed to this task by
+// adjacency: it sits directly above or below a footer-bearing work commit,
+// so the daemon folded work files into it (the 147bd17 shape).
+type foldedCommit struct {
+	commitHit
+	Relation string `json:"relation"`
+}
+
+// gitCommitMeta reads one commit's identity fields via `git show -s`;
+// ok is false for missing revs (root-commit parent, detached-HEAD child).
+func gitCommitMeta(repo, rev string) (commitHit, bool) {
+	cmd := exec.Command("git", "-C", repo, "show", "-s",
+		"--pretty=format:%H%x09%an%x09%aI%x09%s", rev)
+
+	out, err := cmd.Output()
+	if err != nil {
+		return commitHit{}, false
+	}
+
+	parts := strings.SplitN(strings.TrimSpace(string(out)), "\t", 4)
+	if len(parts) < 4 || parts[0] == "" {
+		return commitHit{}, false
+	}
+
+	return commitHit{SHA: parts[0], Author: parts[1], Date: parts[2], Subject: parts[3]}, true
+}
+
+// gitChildCommit returns the commit directly after sha on the path to HEAD
+// (oldest first of the remaining rev-list); ok is false when sha is HEAD
+// or not an ancestor of it.
+func gitChildCommit(repo, sha string) (commitHit, bool) {
+	cmd := exec.Command("git", "-C", repo, "rev-list", "--reverse", sha+"..HEAD")
+
+	out, err := cmd.Output()
+	if err != nil {
+		return commitHit{}, false
+	}
+
+	line, _, _ := strings.Cut(strings.TrimSpace(string(out)), "\n")
+	if line == "" {
+		return commitHit{}, false
+	}
+
+	return gitCommitMeta(repo, line)
+}
+
+// foldedDaemonCommits surfaces footer-less auto-commit-daemon commits
+// ADJACENT to the task's footer-bearing commits (parent or child): the
+// daemon folded work files into an unreferenced commit, and the plain
+// footer scan would stay silent about the gap. Deduped by sha — a daemon
+// commit between two footer commits is one fold, not two.
+func foldedDaemonCommits(repo string, hits []commitHit) []foldedCommit {
+	seen := make(map[string]bool, len(hits))
+
+	for _, h := range hits {
+		seen[h.SHA] = true
+	}
+
+	var folded []foldedCommit
+
+	claim := func(meta commitHit, relation string) {
+		if seen[meta.SHA] || !daemonCommitSubject.MatchString(meta.Subject) {
+			return
+		}
+
+		seen[meta.SHA] = true
+		folded = append(folded, foldedCommit{commitHit: meta, Relation: relation})
+	}
+
+	for _, h := range hits {
+		if parent, ok := gitCommitMeta(repo, h.SHA+"^"); ok {
+			claim(parent, "parent")
+		}
+
+		if child, ok := gitChildCommit(repo, h.SHA); ok {
+			claim(child, "child")
+		}
+	}
+
+	return folded
+}
+
 // commitsForTask scans the task's repo git log for footer commits (the
 // queue↔git cross-reference): count 0 means the footer contract was
 // breached (work landed unreferenced), count >1 means an ambiguous
-// cross-reference (the f26 three-ID cluster class).
+// cross-reference (the f26 three-ID cluster class). Footer-less daemon
+// commits adjacent to a footer commit surface as "folded here".
 func commitsForTask(t task.Task) map[string]any {
 	repo := struct {
 		Repo string `json:"repo"`
@@ -2260,7 +2349,13 @@ func commitsForTask(t task.Task) map[string]any {
 		verdict = "AMBIGUOUS: multiple commits reference this task ID"
 	}
 
-	return map[string]any{"task_id": t.ID.String(), "count": len(hits), "verdict": verdict, "commits": hits}
+	view := map[string]any{"task_id": t.ID.String(), "count": len(hits), "verdict": verdict, "commits": hits}
+
+	if folded := foldedDaemonCommits(repo.Repo, hits); len(folded) > 0 {
+		view["folded_here"] = folded
+	}
+
+	return view
 }
 
 // resolveTask looks a task up by its full ID, falling back to a UNIQUE
