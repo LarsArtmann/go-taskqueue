@@ -56,9 +56,15 @@ type Store struct {
 }
 
 // Store implements the tq queue contract at compile time.
+//
+// art-dupl:accept interface-assert boilerplate: every Store backend must
+// restate this check; there is no logic to extract.
 var _ queue.Store = (*Store)(nil)
 
 // StoreOption configures optional Store behavior.
+//
+// art-dupl:accept public-surface alias: the option type must be restated
+// in each backend's package so callers import the backend, not companion.
 type StoreOption = companion.StoreOption
 
 // WithProjectExclusivity mirrors internal/queue/sqlite's option: ClaimDue
@@ -109,6 +115,9 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 }
 
 // Close releases the engine and the companion handle.
+//
+// art-dupl:accept two-handle teardown: each backend owns its engine and
+// companion db handles; companion cannot close them.
 func (s *Store) Close() error {
 	errEngine := s.engine.Close()
 	errDB := s.db.Close()
@@ -316,6 +325,9 @@ func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRe
 }
 
 // Get returns the current task record.
+//
+// art-dupl:accept Store-interface delegator: the method must exist on each
+// backend; its body is already the companion call.
 func (s *Store) Get(ctx context.Context, id task.ID) (task.Task, error) {
 	return companion.Get(ctx, s.cr, id)
 }
