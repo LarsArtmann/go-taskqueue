@@ -82,7 +82,7 @@ func RecordAnswer(ctx context.Context, d Dialect, db Beginner, id task.ID, ans q
 		return appendFact(ctx, r, journal.Fact{
 			TaskID: id.String(),
 			Type:   journal.QuestionAnswered,
-			Detail: mustJSON(detail),
+			Detail: MustJSON(detail),
 		})
 	})
 }

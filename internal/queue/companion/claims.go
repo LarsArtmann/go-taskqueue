@@ -234,7 +234,7 @@ func Requeue(
 
 		return appendFact(ctx, r, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: prevOwner, Error: errText,
-			Detail: mustJSON(queue.RequeueEvidence{
+			Detail: MustJSON(queue.RequeueEvidence{
 				Reason: errText, RetryIn: delay.Milliseconds(), ResumeCloseout: resumeCloseout,
 			}),
 		})
@@ -336,10 +336,10 @@ func cooperativeCancelDetail(reason, after string) jsontext.Value {
 		detail["reason"] = reason
 	}
 
-	return mustJSON(detail)
+	return MustJSON(detail)
 }
 
-func mustJSON(v any) jsontext.Value {
+func MustJSON(v any) jsontext.Value {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return jsontext.Value("{}")
