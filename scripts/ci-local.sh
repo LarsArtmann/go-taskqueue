@@ -63,6 +63,12 @@ step "master CI state (check-ci; CI_CHECK=off to bypass)"
 step "transient-retry self-test (with_transient_retry behavior pin)"
 ./scripts/check-transient-retry.sh
 
+# Pin the Task-Queue-ID commit-msg hook the same way (row 112): the installer
+# heredoc is the shipped artifact; placement/count/format semantics fail here,
+# not at the next real commit.
+step "commit-msg hook self-test (Task-Queue-ID trailer placement pin)"
+./scripts/check-commit-msg-hook.sh
+
 # --- CI test job (exact ci.yml order; lint advisory exactly like CI) -------
 
 step "vet"

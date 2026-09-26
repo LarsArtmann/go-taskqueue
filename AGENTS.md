@@ -678,7 +678,12 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   carrying `Task-Queue-ID:` footers must carry EXACTLY ONE, well-formed
   (hex, 16+ chars) — duplicates/malformed footers corrupt the queue↔git
   cross-reference; multiple COMMITS per task remain the norm (work +
-  close-out), so ID reuse across commits is NOT rejected
+  close-out), so ID reuse across commits is NOT rejected. Since 2026-09-26
+  (TODO row 112, 04-31 §f8) the hook ALSO rejects a well-formed footer
+  placed outside the FINAL trailer block: `git interpret-trailers --parse`
+  must still see it, else the footer sits above an attribution block
+  (Crush/Co-Authored-By) and the queue derives nothing. Behavior-pinned by
+  `scripts/check-commit-msg-hook.sh` (extraction pin, ci-local step)
 - `ci-local.sh` checks master-CI state first (`scripts/check-ci.sh`, gh):
   a local green gate is worthless if master is red (five DONE verdicts
   shipped on a 3h-red master before this). Bypass consciously with
