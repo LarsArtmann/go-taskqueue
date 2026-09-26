@@ -93,3 +93,15 @@ c888be6
 # (old→new mapping) — RESOLVED-class rows.
 68ffbe2
 f681a02
+# Daemon-amend forensics residue (healed 2026-09-26, task
+# 000001a0db839d41103a706b7164e9197520, found by the baseline-regen
+# window's gate run): both citations DELIBERATELY describe the dead side.
+# fd3118d8 (docs daemon fold) — the 02-31 S4 window's §8 amend-forensics
+# record ("c561ae25 code, fd3118d8 docs, both footerless, AMEND MANEUVER");
+# absorbed into the window's docs commit 6a10c7f7.
+# ea9815b3 — cited by the 00-21 README index row as the swallowed-staged-
+# files artifact, repaired by that window via soft-reset + diff-equality
+# proof + fresh commit (bfda11d carries the subject; patch-ids differ, the
+# owning window verified net-diff equality) — RESOLVED-class rows.
+fd3118d8
+ea9815b3

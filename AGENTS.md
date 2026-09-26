@@ -832,7 +832,15 @@ prose, not the table.
   functions you touch. Hard gates: vet + gofmt + tests. Baseline GROWTH is
   now a ci-local GATE (round-13 T5): `scripts/lint-baseline.sh --check`
   (wired after the advisory lint step) fails on any per-module/linter count
-  above `.golangci-baseline.txt` (2026-09-14 fourth regen: 500 findings, 87
+  above `.golangci-baseline.txt`. REGEN POISONING (2026-09-26): a regen run
+  while a module's tree is BROKEN silently NARROWS the baseline — the
+  cmd/tq lint run of the 01:41 readmodel regen recorded only a transient
+  `typecheck: 1` and all 29 of its rows dropped; the next honest run
+  reported them as new-class growth, so the gate sat RED on a poisoned
+  baseline. Regen only on a green tree and grep the fresh baseline for
+  `typecheck:` rows before trusting it (the heal + TODO row for a regen
+  refusal guard are in TODO_LIST). Historic regen ledger: (2026-09-14
+  fourth regen: 500 findings, 87
   module/linter rows — policy change: goconst/mnd/paralleltest
   POLICY-DISABLED (slice-triage round 2, rationale comment in
   .golangci.yml; testpackage already excluded via the _test.go rule);
