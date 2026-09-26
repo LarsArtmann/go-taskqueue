@@ -93,15 +93,24 @@ c888be6
 # (old→new mapping) — RESOLVED-class rows.
 68ffbe2
 f681a02
-# Daemon-amend forensics residue (healed 2026-09-26, task
+# Daemon-amend/rebuild forensics residue (healed 2026-09-26, task
 # 000001a0db839d41103a706b7164e9197520, found by the baseline-regen
-# window's gate run): both citations DELIBERATELY describe the dead side.
-# fd3118d8 (docs daemon fold) — the 02-31 S4 window's §8 amend-forensics
-# record ("c561ae25 code, fd3118d8 docs, both footerless, AMEND MANEUVER");
-# absorbed into the window's docs commit 6a10c7f7.
-# ea9815b3 — cited by the 00-21 README index row as the swallowed-staged-
-# files artifact, repaired by that window via soft-reset + diff-equality
-# proof + fresh commit (bfda11d carries the subject; patch-ids differ, the
-# owning window verified net-diff equality) — RESOLVED-class rows.
+# window's gate run): every citing line DELIBERATELY describes the dead
+# side of a sanctioned amend/repair — forensics prose, not stale cites.
+#   e19259b, 7ba1ef5 — 09-22 01-37/02-01 windows' footer-less daemon folds
+#           named by their own amend narratives
+#   1c13d86 -> 98dd19c — 02-30 window's amend forensics (arrow on cite line 23)
+#   a31f6d0, ea9815b — 00-21 rebuild chain (both replaced by bfda11d, same
+#           subject, on the surviving lineage; the window verified
+#           net-diff equality during the soft-reset repair)
+#   fd3118d8 — 02-31 S4 window §8 ("c561ae25 code, fd3118d8 docs, both
+#           footerless, AMEND MANEUVER"), absorbed into 6a10c7f7
+#   eb91e66e — 01-58 S4 window's first footer-less work commit, re-committed
+#           with the footer last
+e19259b
+7ba1ef5
+1c13d86
+a31f6d0
+ea9815b
+eb91e66e
 fd3118d8
-ea9815b3
