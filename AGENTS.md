@@ -902,6 +902,18 @@ prose, not the table.
   everything cheap was fixed in code first (errcheck, goconst, cyclop,
   forbidigo, makezero, predeclared, mnd, godoclint all driven to zero in
   the new package);
+  2026-09-26 eleventh regen (HEAL): 1360 findings, 174 rows — the 01:41
+  readmodel regen that day ran while cmd/tq failed to compile and recorded
+  only a transient `typecheck: 1`, silently dropping ALL 29 cmd/tq rows
+  (~292 known findings became phantom new-class violations, gate RED); the
+  heal restored cmd/tq at honest counts (gochecknoglobals:2 back; the old
+  cmd/tq contextcheck row gone = further shrink banked;
+  embeddedstructfieldcheck:1 admitted; concurrent drift absorbed: wsl_v5
+  20→24, nestif 2→3), admitted internal/queue/companion godox:1 (accepted
+  TODO_LIST-prose class), and fixed the one genuinely-new cheap finding in
+  CODE (internal/task StatusCountsView named returns dropped); clean-cache
+  --check green 1360/1360; the root gochecknoglobals slide the regen banks:
+  7 at the 09-11 seed → 5 by 09-14 (twin-list retirement aeebe888) → 3;
   shrink is advisory-only — regenerate deliberately when a policy change
   owns it. Config resolution (verified 2026-09-12): the ROOT `.golangci.yml`
   is the only config — there are no per-module files, and golangci-lint
