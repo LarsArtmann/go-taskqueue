@@ -296,7 +296,7 @@ toolchain PATH baked in) — see `deploy/nixos/tq-agent-pool.nix`.
 | `tq stats`      | Counts, per-project table, budget spend, consumer lag (`--json`)                                                                                                                          |
 | `tq tasks`      | Filtered task list: `--project/--status/--type/--since/--limit`, newest first (`--json`)                                                                                                  |
 | `tq top`        | Live per-project view with durations (`--once`, `--json`)                                                                                                                                 |
-| `tq show`       | One task + its complete fact trail (a unique ID prefix works)                                                                                                                             |
+| `tq show`       | One task + its complete fact trail (a unique ID prefix works); `--commits` cross-references the task's git footer commits (+ folded daemon commits)                                        |
 | `tq facts`      | Replay the journal: `--after SEQ`, `--json`, `--detail` for full fact payloads                                                                                                            |
 | `tq tail`       | Follow the journal live (`-f`)                                                                                                                                                            |
 | `tq dlq`        | Inspect dead letters; rescue one (`--rescue ID`) or in bulk (`--rescue-all --older-than 24h`)                                                                                             |

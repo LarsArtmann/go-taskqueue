@@ -437,7 +437,14 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   the task prompt VERBATIM — if a reviewer or a second artifact supplies a
   different ID, use that one and report the discrepancy; never merge or
   silently pick between IDs (the f26 three-ID cluster is the cautionary
-  tale).
+  tale). Audit-side twin: `tq show --commits` renders a `folded_here`
+  section claiming footer-less daemon commits ADJACENT (parent/child) to
+  a footer commit — but ONLY exact `chore: auto-commit N changed
+  file(s) (heuristic)` subjects (`daemonCommitSubject`,
+  cmd/tq/main.go:2218); a daemon subject reword blinds the fold view
+  silently, and the verdict line still calls count>1 "AMBIGUOUS" even
+  though multi-commit tasks are the norm (work + close-out) — both
+  known sharp edges, rows filed.
 - **Fact forensics**: `task.failed` carries `FailureEvidence{stage,
   exit_code, tail}` (tail size: one `EvidenceTailBytes` constant);
   `task.requeued` carries `RequeueEvidence{reason, retry_in_ms}`.

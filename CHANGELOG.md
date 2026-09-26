@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **`tq show --commits` folded-here view**: the git cross-reference now
+  surfaces footer-less auto-commit-daemon commits ADJACENT to (parent or
+  child of) a footer-bearing work commit as a `folded_here` section with
+  their relation, instead of leaving the folded work invisible to the
+  queue↔git attribution — the daemon regularly folds source changes into
+  `chore:` commits beside a task's footer commit. Only exact daemon
+  subject shapes are claimed (`chore: auto-commit N changed file(s)
+  (heuristic)`); human-adjacent commits stay silent, and sha-dedup keeps
+  multi-footer tasks from double-claiming. Pinned by
+  `TestCommitsForTaskFoldsAdjacentDaemonCommits`,
+  `TestCommitsForTaskNoFoldForHumanNeighbors`,
+  `TestDaemonCommitSubjectShape`. (`cmd/tq/main.go`,
+  `cmd/tq/show_commits_test.go`)
 - **Board band grouping**: the web UI board's status lanes now group their
   cards by the ADR-0015 priority band (hot → machine → backlog) as a
   secondary grouping whenever the cards span more than one band, with a
@@ -37,6 +50,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `internal/webui/render.go`, `cmd/tq/main.go`)
 
 ### Fixed
+- **Journal-consumer unsubscribe race**: an in-flight `drain` could
+  deliver facts to a subscriber AFTER `unsubscribe` returned (the
+  subscriber was removed from the dispatcher's map but the drain loop
+  still held the stale pointer), so a fact enqueued after unsubscribing
+  reached a handler that should already be detached — the intermittent
+  `internal/consumer` suite failure under load. A `removed` flag under
+  the subscriber's existing mutex is now checked before every handler
+  invocation in drain; unsubscribe guarantees no further deliveries
+  (at-least-once semantics and cursors unchanged). Stress-gated 30x under
+  `-race`. (`internal/consumer/consumer.go`)
 - **CI toolchain alignment (master red since 2026-09-20)**: the go.mods
   moved to a `go 1.27.1` floor but the seven `setup-go` pins stayed on
   1.26.7 — runners run `GOTOOLCHAIN=local`, so every go step (vet, build,
