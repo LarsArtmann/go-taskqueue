@@ -608,3 +608,11 @@ func escapeLike(s string) string {
 
 	return s
 }
+
+// ArchiveStats mirrors the tq sqlite store's archive summary shape —
+// shared by every companion backend's ArchiveSummary surface.
+type ArchiveStats struct {
+	Hot       int64
+	Archived  int64
+	Watermark int64
+}
