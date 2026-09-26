@@ -332,7 +332,7 @@ func TestJournalDriftNoDriftAfterRescue(t *testing.T) {
 		t.Fatalf("Enqueue: %v", err)
 	}
 
-	claimed, err := store.ClaimDue(ctx, "w1", time.Minute)
+	claimed, claimDead, err := store.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
 	}
@@ -341,7 +341,7 @@ func TestJournalDriftNoDriftAfterRescue(t *testing.T) {
 		t.Fatalf("claimed %s, want %s", claimed.ID, enqueued.ID)
 	}
 
-	if err := store.Fail(ctx, enqueued.ID, "w1", "boom", 0, nil); err != nil {
+	if err := store.Fail(ctx, enqueued.ID, claimDead, "boom", 0, nil); err != nil {
 		t.Fatalf("Fail: %v", err)
 	}
 
