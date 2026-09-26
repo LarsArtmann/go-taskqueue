@@ -292,12 +292,7 @@ func (s *Store) StatusCounts(ctx context.Context) (map[task.Status]int, error) {
 		return nil, translateErr(err)
 	}
 
-	out := make(map[task.Status]int, len(counts))
-	for st, n := range counts {
-		out[task.Status(st)] = n
-	}
-
-	return out, nil
+	return task.StatusCountsMap(counts), nil
 }
 
 // Facts exposes the journal: facts with Seq strictly greater than after.

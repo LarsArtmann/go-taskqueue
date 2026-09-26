@@ -301,13 +301,7 @@ func (s *Server) statusCounts(ctx context.Context) (map[task.Status]int, error) 
 			return nil, err
 		}
 
-		byStatus := make(map[task.Status]int, len(counts))
-
-		for st, n := range counts {
-			byStatus[task.Status(st)] = n
-		}
-
-		return byStatus, nil
+		return task.StatusCountsMap(counts), nil
 	}
 
 	return s.store.StatusCounts(ctx)

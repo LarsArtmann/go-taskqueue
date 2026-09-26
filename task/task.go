@@ -40,4 +40,5 @@ var (
 	Terminal         = internaltask.Terminal
 	NewID            = internaltask.NewID
 	StatusCountsView = internaltask.StatusCountsView
+	StatusCountsMap  = internaltask.StatusCountsMap
 )
