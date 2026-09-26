@@ -32,8 +32,8 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0 // indirect
-	github.com/larsartmann/templ-components/datastar v1.17.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.17.0 // indirect
+	github.com/larsartmann/templ-components/datastar v1.18.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.18.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
@@ -54,10 +54,10 @@ require (
 
 require (
 	github.com/a-h/templ v0.3.1020
-	github.com/larsartmann/go-datastar/static v0.5.0
-	github.com/larsartmann/go-health v0.2.0
-	github.com/larsartmann/go-health-dashboard v0.8.1
-	github.com/larsartmann/go-sse v0.6.0
+	github.com/larsartmann/go-datastar/static v0.6.0
+	github.com/larsartmann/go-health v0.4.0
+	github.com/larsartmann/go-health-dashboard v0.10.1
+	github.com/larsartmann/go-sse v0.6.1
 	github.com/larsartmann/go-sse/ssetest v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
@@ -67,9 +67,9 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
-	github.com/larsartmann/templ-components v1.17.0
-	github.com/larsartmann/templ-components/icons v1.17.0
-	github.com/larsartmann/templ-components/utils v1.17.0
+	github.com/larsartmann/templ-components v1.18.0
+	github.com/larsartmann/templ-components/icons v1.18.0
+	github.com/larsartmann/templ-components/utils v1.18.0
 	golang.org/x/sync v0.23.0
 )
 
