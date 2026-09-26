@@ -109,6 +109,9 @@ step "facade parity (ADR-0016: facades mirror internal exports)"
 step "dead-export audit (advisory report)"
 ./scripts/check-dead-exports.sh
 
+step "mirror-clone gate (advisory until the companion extraction lands; MIRROR_CLONES_STRICT=1 gates)"
+./scripts/check-mirror-clones.sh
+
 step "rename-hygiene scan (advisory; quoted literals shadowing removed identifiers)"
 ./scripts/check-rename-hygiene.sh
 

@@ -13,6 +13,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
@@ -35,3 +36,5 @@ replace github.com/larsartmann/go-taskqueue/internal/journal => ../internal/jour
 replace github.com/larsartmann/go-taskqueue/internal/task => ../internal/task
 
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../internal/queue/sqlite
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../internal/queue/sqlitev4
