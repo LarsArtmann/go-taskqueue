@@ -1,4 +1,4 @@
-package sqlitev4
+package conform
 
 import (
 	"context"
@@ -13,23 +13,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
-	_ "modernc.org/sqlite"
 )
 
-func openTestStore(t *testing.T) *Store {
+// openTestStore hands each conformance test a fresh, isolated store via
+// the harness Suite (sqlite: temp file; postgres: per-test schema).
+func openTestStore(t *testing.T) Store {
 	t.Helper()
 
-	s, err := Open(filepath.Join(t.TempDir(), "q.db"))
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-
-	t.Cleanup(func() { _ = s.Close() })
-
-	return s
+	return openOn(t, freshDSN(t))
 }
 
 func TestEnqueueAndClaim(t *testing.T) {
@@ -947,6 +942,10 @@ func TestEnqueueWithoutDedupKeyIndependent(t *testing.T) {
 }
 
 func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
+	if !active.Caps.LegacyMigration {
+		t.Skip("postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)")
+	}
+
 	ctx := context.Background()
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "old.db")
@@ -1099,6 +1098,10 @@ func TestWatermarkMonotonicGuard(t *testing.T) {
 }
 
 func TestMigrateAddsWatermarksTable(t *testing.T) {
+	if !active.Caps.LegacyMigration {
+		t.Skip("postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)")
+	}
+
 	ctx := context.Background()
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "old.db")
@@ -1215,17 +1218,14 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 	}
 }
 
-func openTestStoreExclusive(t *testing.T) *Store {
+func openTestStoreExclusive(t *testing.T) Store {
 	t.Helper()
 
-	s, err := Open(filepath.Join(t.TempDir(), "q.db"), WithProjectExclusivity())
-	if err != nil {
-		t.Fatalf("Open: %v", err)
+	if !active.Caps.Exclusivity {
+		t.Skip("DIVERGENCE (S1 spike): store-level project exclusivity has no upstream engine equivalent and is not implemented — see docs/status S1 report")
 	}
 
-	t.Cleanup(func() { _ = s.Close() })
-
-	return s
+	return openOn(t, freshDSN(t), companion.WithProjectExclusivity())
 }
 
 // TestProjectExclusivitySerializesPerProject pins the store-level per-repo
@@ -1327,22 +1327,16 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 // not pool-level: two independent Store handles on the same file (the
 // multi-process shape) can never both run one project's tasks.
 func TestProjectExclusivityAcrossStoreHandles(t *testing.T) {
+	if !active.Caps.Exclusivity {
+		t.Skip("DIVERGENCE (S1 spike): store-level project exclusivity has no upstream engine equivalent; see docs/status S1 report")
+	}
+
 	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "shared.db")
+	dsn := freshDSN(t)
 
-	s1, err := Open(path, WithProjectExclusivity())
-	if err != nil {
-		t.Fatalf("open s1: %v", err)
-	}
+	s1 := openOn(t, dsn, companion.WithProjectExclusivity())
 
-	t.Cleanup(func() { _ = s1.Close() })
-
-	s2, err := Open(path, WithProjectExclusivity())
-	if err != nil {
-		t.Fatalf("open s2: %v", err)
-	}
-
-	t.Cleanup(func() { _ = s2.Close() })
+	s2 := openOn(t, dsn, companion.WithProjectExclusivity())
 
 	x1, _ := s1.Enqueue(ctx, task.New{Project: "repo-x", Type: "a"})
 	x2, _ := s1.Enqueue(ctx, task.New{Project: "repo-x", Type: "b"})
@@ -1582,6 +1576,10 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 // the journal distinguishes an owed close-out turn from a parked work
 // turn; a plain preflight requeue omits the key entirely (omitempty).
 func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
+	if !active.Caps.ResumeCloseout {
+		t.Skip("DIVERGENCE (S1 spike): upstream Requeue carries no resume_closeout key — the owed-close-out park is not representable in upstream facts yet; see docs/status S1 report")
+	}
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
@@ -2264,17 +2262,17 @@ func TestLoadSnapshotScaleAt100k(t *testing.T) {
 
 	now := time.Now().UnixMilli()
 
-	taskStmt, err := tx.PrepareContext(ctx, `INSERT INTO tasks
+	taskStmt, err := tx.PrepareContext(ctx, dial(`INSERT INTO tasks
 		(id, project, type, payload, deps, priority, attempts, max_attempts, not_before, status,
 		 lease_owner, lease_expires, last_error, created_at, updated_at, completed_at)
-		VALUES (?, 'scale', 'sh', '"true"', '[]', 0, 0, 3, 0, 'pending', '', NULL, '', ?, ?, NULL)`)
+		VALUES (?, 'scale', 'sh', '"true"', '[]', 0, 0, 3, 0, 'pending', '', NULL, '', ?, ?, NULL)`))
 	if err != nil {
 		t.Fatalf("prepare task: %v", err)
 	}
 
 	factStmt, err := tx.PrepareContext(ctx,
-		`INSERT INTO facts (time, task_id, type, owner, attempt, error, detail)
-		 VALUES (?, ?, 'task.enqueued', '', 0, '', '')`)
+		dial(`INSERT INTO facts (time, task_id, type, owner, attempt, error, detail)
+			 VALUES (?, ?, 'task.enqueued', '', 0, '', '')`))
 	if err != nil {
 		t.Fatalf("prepare fact: %v", err)
 	}
@@ -2760,7 +2758,10 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 // tasks' facts move to facts_archive; active tasks' facts stay hot; the
 // tasks projection and Facts() keep working; the watermark is recorded.
 func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
-	t.Skip("DIVERGENCE (S1 spike): the fact archive (facts_archive/journal_meta) has no upstream counterpart — hot-journal-only for now; see docs/status S1 report")
+	if !active.Caps.Archive {
+		t.Skip("DIVERGENCE (S1 spike): the fact archive (facts_archive/journal_meta) has no upstream counterpart — hot-journal-only for now; see docs/status S1 report")
+	}
+
 	ctx := context.Background()
 
 	s := openTestStore(t)
@@ -3101,7 +3102,10 @@ func TestBandFilter(t *testing.T) {
 // EXPLICIT zero, not an omitted field — a thin detail would silently
 // downgrade the audit's coverage for every modern task.
 func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
-	t.Skip("DIVERGENCE (S1 spike): upstream task.enqueued detail carries only {project, type} — the priority/dedup_key projection fields the journal-drift audit needs are not written; see docs/status S1 report")
+	if !active.Caps.EnqueuedSnapshot {
+		t.Skip("DIVERGENCE (S1 spike): upstream task.enqueued detail carries only {project, type} — the priority/dedup_key projection fields the journal-drift audit needs are not written; see docs/status S1 report")
+	}
+
 	ctx := context.Background()
 	s := openTestStore(t)
 
