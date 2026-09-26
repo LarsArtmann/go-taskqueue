@@ -74,37 +74,26 @@ type priorityProvenanceView struct {
 // identity (item key + marker level rows render).
 func (v priorityProvenanceView) hasItem() bool { return v.ItemKey != "" }
 
-// priorityProvenanceFor reads a task's priority story off the store and its
-// fact trail. Best-effort by design: a score-cache or evidence-parse miss
-// simply omits the row rather than failing the page.
+// priorityProvenanceFor reads a task's priority story through the shared
+// harvest builder and projects it into the detail page's view rows.
 func (s *Server) priorityProvenanceFor(ctx context.Context, t task.Task, facts []journal.Fact) priorityProvenanceView {
-	view := priorityProvenanceView{Current: t.Priority, Band: string(queue.BandOf(t.Priority))}
+	p := harvest.BuildProvenance(ctx, s.store, t, facts)
 
-	if item, ok := harvest.PayloadItemOf(t); ok {
-		view.ItemKey = item.Key
-		view.MarkerLevel = item.MarkerLevel
-
-		if score, cached, err := s.store.PriorityScore(ctx, item.Key); err == nil && cached {
-			view.Score = &score
-		}
+	view := priorityProvenanceView{
+		Current:     p.Current,
+		Band:        p.Band,
+		ItemKey:     p.ItemKey,
+		MarkerLevel: p.MarkerLevel,
+		Score:       p.Score,
 	}
 
-	for _, fact := range facts {
-		if fact.Type != journal.Reprioritized {
-			continue
-		}
-
-		evidence, ok := queue.ParseReprioritizeEvidence(fact.Detail)
-		if !ok {
-			continue
-		}
-
+	for _, ev := range p.History {
 		view.History = append(view.History, repriEventView{
-			At:     fact.Time,
-			Old:    evidence.OldPriority,
-			New:    evidence.NewPriority,
-			Source: evidence.Source,
-			Reason: evidence.Reason,
+			At:     ev.At,
+			Old:    ev.Old,
+			New:    ev.New,
+			Source: ev.Source,
+			Reason: ev.Reason,
 		})
 	}
 

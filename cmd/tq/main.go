@@ -2162,46 +2162,35 @@ type repriEvent struct {
 	Reason string `json:"reason,omitempty"`
 }
 
-// buildPriorityProvenance reads the task's priority story: the payload's
-// item identity (harvest-minted tasks only), the score cache, and the
-// fact trail's reprioritization history.
+// buildPriorityProvenance reads the task's priority story through the
+// shared harvest builder and projects it into the `tq show` JSON section.
 func buildPriorityProvenance(
 	ctx context.Context,
 	store *sqlite.Store,
 	t task.Task,
 	trail []journal.Fact,
 ) priorityProvenance {
-	provenance := priorityProvenance{Current: t.Priority, Band: string(queue.BandOf(t.Priority))}
+	p := harvest.BuildProvenance(ctx, store, t, trail)
 
-	if item, ok := harvest.PayloadItemOf(t); ok {
-		provenance.ItemKey = item.Key
-		provenance.MarkerLevel = item.MarkerLevel
-
-		if score, cached, err := store.PriorityScore(ctx, item.Key); err == nil && cached {
-			provenance.CachedScore = &score
-		}
+	out := priorityProvenance{
+		Current:     p.Current,
+		Band:        p.Band,
+		ItemKey:     p.ItemKey,
+		MarkerLevel: p.MarkerLevel,
+		CachedScore: p.Score,
 	}
 
-	for _, fact := range trail {
-		if fact.Type != journal.Reprioritized {
-			continue
-		}
-
-		evidence, ok := queue.ParseReprioritizeEvidence(fact.Detail)
-		if !ok {
-			continue
-		}
-
-		provenance.RepriHistory = append(provenance.RepriHistory, repriEvent{
-			At:     fact.Time.UTC().Format(time.RFC3339),
-			Old:    evidence.OldPriority,
-			New:    evidence.NewPriority,
-			Source: evidence.Source,
-			Reason: evidence.Reason,
+	for _, ev := range p.History {
+		out.RepriHistory = append(out.RepriHistory, repriEvent{
+			At:     ev.At.UTC().Format(time.RFC3339),
+			Old:    ev.Old,
+			New:    ev.New,
+			Source: ev.Source,
+			Reason: ev.Reason,
 		})
 	}
 
-	return provenance
+	return out
 }
 
 // commitHit is one git commit carrying the task's Task-Queue-ID footer.

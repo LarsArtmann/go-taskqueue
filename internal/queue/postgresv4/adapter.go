@@ -76,23 +76,11 @@ type StoreOption = companion.StoreOption
 // owns ClaimDue entirely, divergence noted in the S1 report).
 var WithProjectExclusivity = companion.WithProjectExclusivity
 
-// Open connects to dsn (e.g. "postgres://user:pass@host:5432/db"),
-// applies the upstream engine schema, and returns a ready store.
-func Open(ctx context.Context, dsn string, opts ...StoreOption) (*Store, error) {
-	projectExclusive := companion.ApplyProjectExclusivity(opts)
-
-	engine, err := upostgres.Open[[]byte](ctx, dsn, 1, upostgres.WithCodec(companion.IdentityCodec()))
-	if err != nil {
-		return nil, fmt.Errorf("postgresv4: open engine: %w", err)
-	}
-
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		_ = engine.Close()
-
-		return nil, fmt.Errorf("postgresv4: open companion db: %w", err)
-	}
-
+// finishOpen is the shared tail of Open and OpenWithPool: wire the
+// companion handle, migrate the companion tables, and tear BOTH handles
+// down again when the migration fails — the two constructors must not
+// drift on cleanup order.
+func finishOpen(ctx context.Context, engine *upostgres.Store[[]byte], db *sql.DB, projectExclusive bool) (*Store, error) {
 	db.SetMaxOpenConns(2)
 
 	store := &Store{
@@ -110,6 +98,26 @@ func Open(ctx context.Context, dsn string, opts ...StoreOption) (*Store, error) 
 	}
 
 	return store, nil
+}
+
+// Open connects to dsn (e.g. "postgres://user:pass@host:5432/db"),
+// applies the upstream engine schema, and returns a ready store.
+func Open(ctx context.Context, dsn string, opts ...StoreOption) (*Store, error) {
+	projectExclusive := companion.ApplyProjectExclusivity(opts)
+
+	engine, err := upostgres.Open[[]byte](ctx, dsn, 1, upostgres.WithCodec(companion.IdentityCodec()))
+	if err != nil {
+		return nil, fmt.Errorf("postgresv4: open engine: %w", err)
+	}
+
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		_ = engine.Close()
+
+		return nil, fmt.Errorf("postgresv4: open companion db: %w", err)
+	}
+
+	return finishOpen(ctx, engine, db, projectExclusive)
 }
 
 // OpenWithPool wraps a caller-owned pgx pool into a ready store, applying
@@ -136,23 +144,7 @@ func OpenWithPool(ctx context.Context, pool *pgxpool.Pool, opts ...StoreOption) 
 		return nil, fmt.Errorf("postgresv4: open companion db from pool: %w", err)
 	}
 
-	db.SetMaxOpenConns(2)
-
-	store := &Store{
-		engine:           engine,
-		db:               db,
-		cr:               companion.For(companion.Postgres, db),
-		projectExclusive: projectExclusive,
-	}
-
-	if err := companion.Migrate(ctx, store.cr); err != nil {
-		_ = db.Close()
-		_ = engine.Close()
-
-		return nil, err
-	}
-
-	return store, nil
+	return finishOpen(ctx, engine, db, projectExclusive)
 }
 
 // Close releases the engine and the companion handle (never a caller-owned

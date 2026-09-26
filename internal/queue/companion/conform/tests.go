@@ -27,9 +27,54 @@ func openTestStore(t *testing.T) Store {
 	return openOn(t, freshDSN(t))
 }
 
+// freshStore is the suite's standard prolog: a background context plus a
+// fresh isolated store.
+func freshStore(t *testing.T) (context.Context, Store) {
+	t.Helper()
+
+	return context.Background(), openTestStore(t)
+}
+
+// claimDue claims the one due task for owner (a 1-minute lease) or fails
+// the test — the suite's most repeated prolog. Sites asserting
+// queue.ErrNoTaskDue or needing another lease call s.ClaimDue directly.
+func claimDue(t *testing.T, ctx context.Context, s Store, owner string) (task.Task, queue.Claim) {
+	t.Helper()
+
+	tk, claim, err := s.ClaimDue(ctx, owner, time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue(%s): %v", owner, err)
+	}
+
+	return tk, claim
+}
+
+// mustEnqueue enqueues n or fails the test; the aging interaction tests
+// use it to stay focused on their assertions.
+func mustEnqueue(t *testing.T, ctx context.Context, s Store, n task.New) task.Task {
+	t.Helper()
+
+	tk, err := s.Enqueue(ctx, n)
+	if err != nil {
+		t.Fatalf("enqueue %s: %v", n.Type, err)
+	}
+
+	return tk
+}
+
+// backdateCreatedAt rewinds a task's created_at (the aging key, ADR-0015)
+// by direct SQL — the suite's only seeding seam for age.
+func backdateCreatedAt(t *testing.T, ctx context.Context, s Store, id task.ID, age time.Duration) {
+	t.Helper()
+
+	backdated := time.Now().Add(-age).UnixMilli()
+	if _, err := dbExec(s, ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, id); err != nil {
+		t.Fatalf("backdate %s by %v: %v", id, age, err)
+	}
+}
+
 func TestEnqueueAndClaim(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	got, err := s.Enqueue(ctx, task.New{Project: "go-cqrs-lite", Type: "lint", Payload: jsontext.Value(`{"x":1}`)})
 	if err != nil {
@@ -40,10 +85,7 @@ func TestEnqueueAndClaim(t *testing.T) {
 		t.Fatalf("defaults not applied: %+v", got)
 	}
 
-	claimed, _, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("ClaimDue: %v", err)
-	}
+	claimed, _ := claimDue(t, ctx, s, "w1")
 
 	if claimed.ID != got.ID {
 		t.Fatalf("claimed %s, want %s", claimed.ID, got.ID)
@@ -53,8 +95,7 @@ func TestEnqueueAndClaim(t *testing.T) {
 		t.Fatalf("claim state wrong: %+v", claimed)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w2",
-		time.Minute)
+	_, _, err = s.ClaimDue(ctx, "w2", time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("second claim err = %v, want queue.ErrNoTaskDue", err)
@@ -62,15 +103,10 @@ func TestEnqueueAndClaim(t *testing.T) {
 }
 
 func TestCompleteVerifiesLease(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("ClaimDue: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if err := s.Complete(ctx, tk.ID, queue.Claim("w2"), nil); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Fatalf("Complete by wrong owner err = %v, want ErrLeaseNotHeld", err)
@@ -91,16 +127,11 @@ func TestCompleteVerifiesLease(t *testing.T) {
 }
 
 func TestCompleteResetsLastError(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky"})
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim1: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if err := s.Fail(ctx, tk.ID, claim_w1, "boom-1", 250*time.Millisecond, nil); err != nil {
 		t.Fatalf("fail1: %v", err)
@@ -113,11 +144,7 @@ func TestCompleteResetsLastError(t *testing.T) {
 
 	time.Sleep(300 * time.Millisecond)
 
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim2: %v", err)
-	}
+	_, claim_w1 = claimDue(t, ctx, s, "w1")
 
 	if err := s.Complete(ctx, tk.ID, claim_w1, jsontext.Value(`{"ok":true}`)); err != nil {
 		t.Fatalf("Complete: %v", err)
@@ -134,16 +161,11 @@ func TestCompleteResetsLastError(t *testing.T) {
 }
 
 func TestFailRetriesThenDeadLetters(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky", MaxAttempts: 2})
 
 	// Attempt 1: fail -> back to pending.
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim1: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if err := s.Fail(ctx, tk.ID, claim_w1, "boom-1", 250*time.Millisecond, nil); err != nil {
 		t.Fatalf("fail1: %v", err)
@@ -156,8 +178,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 
 	// Backoff gates the retry until not_before passes. 250ms comfortably
 	// exceeds claim-check latency on a loaded machine (1ms did not).
-	_, _, err = s.ClaimDue(ctx, "w1",
-		time.Minute)
+	_, _, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during backoff err = %v, want queue.ErrNoTaskDue", err)
 	}
@@ -165,11 +186,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 
 	// Attempt 2: fail -> dead (maxAttempts=2).
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim2: %v", err)
-	}
+	_, claim_w1 = claimDue(t, ctx, s, "w1")
 
 	if err := s.Fail(ctx, tk.ID, claim_w1, "boom-2", 0, nil); err != nil {
 		t.Fatalf("fail2: %v", err)
@@ -209,16 +226,11 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 }
 
 func TestDismissDead(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	tk, _ := s.Enqueue(ctx, task.New{Type: "flaky", MaxAttempts: 2})
 
 	for range 2 {
-		_, claim_w1, err := s.ClaimDue(ctx, "w1",
-			time.Minute)
-		if err != nil {
-			t.Fatalf("claim: %v", err)
-		}
+		_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 		if err := s.Fail(ctx, tk.ID, claim_w1, "boom", 0, nil); err != nil {
 			t.Fatalf("fail: %v", err)
@@ -291,8 +303,7 @@ func TestDismissDead(t *testing.T) {
 }
 
 func TestLeaseExpiryAllowsReclaim(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
 	_, claim_crashed_worker, err := s.ClaimDue(ctx, "crashed-worker",
@@ -303,10 +314,7 @@ func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 	// Another worker can claim once the lease expired.
-	got, _, err := s.ClaimDue(ctx, "w2", time.Minute)
-	if err != nil {
-		t.Fatalf("reclaim: %v", err)
-	}
+	got, _ := claimDue(t, ctx, s, "w2")
 
 	if got.ID != tk.ID || got.LeaseOwner != "w2" {
 		t.Fatalf("reclaimed by wrong task/owner: %+v", got)
@@ -318,24 +326,19 @@ func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 }
 
 func TestDepsBlockUntilCompleted(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	parent, _ := s.Enqueue(ctx, task.New{Type: "build"})
 	child, _ := s.Enqueue(ctx, task.New{Type: "test", Deps: []task.ID{parent.ID}})
 
 	// First claim is the parent (claimable); the child must NOT be claimable
 	// while the parent is running.
-	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim parent: %v", err)
-	}
+	got, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if got.ID != parent.ID {
 		t.Fatalf("first claim %s, want parent %s", got.ID, parent.ID)
 	}
 
-	_, _, err = s.ClaimDue(ctx, "w1",
-		time.Minute)
+	_, _, err := s.ClaimDue(ctx, "w1", time.Minute)
 
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("child claimable while parent running: err = %v", err)
@@ -345,10 +348,7 @@ func TestDepsBlockUntilCompleted(t *testing.T) {
 		t.Fatalf("complete parent: %v", err)
 	}
 	// Now the child is claimable.
-	got, claim_w1, err = s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim child: %v", err)
-	}
+	got, claim_w1 = claimDue(t, ctx, s, "w1")
 
 	if got.ID != child.ID {
 		t.Fatalf("claimed %s, want child %s", got.ID, child.ID)
@@ -358,15 +358,11 @@ func TestDepsBlockUntilCompleted(t *testing.T) {
 func TestPriorityOrdersClaims(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	low, _ := s.Enqueue(ctx, task.New{Type: "low", Priority: 1})
 	high, _ := s.Enqueue(ctx, task.New{Type: "high", Priority: 10})
 
-	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	got, _ := claimDue(t, ctx, s, "w1")
 
 	if got.ID != high.ID {
 		t.Fatalf("claimed %s (%s), want high-priority %s", got.ID, got.Type, high.ID)
@@ -378,37 +374,19 @@ func TestPriorityOrdersClaims(t *testing.T) {
 func TestClaimAgingFlipsOrder(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
-	older, err := s.Enqueue(ctx, task.New{Type: "older", Priority: 55})
-	if err != nil {
-		t.Fatalf("enqueue older: %v", err)
-	}
+	older := mustEnqueue(t, ctx, s, task.New{Type: "older", Priority: 55})
 
-	newer, err := s.Enqueue(ctx, task.New{Type: "newer", Priority: 60})
-	if err != nil {
-		t.Fatalf("enqueue newer: %v", err)
-	}
+	newer := mustEnqueue(t, ctx, s, task.New{Type: "newer", Priority: 60})
 
 	// Without aging the newer task (60) outranks the older (55). Backdate
 	// the older task past the aging saturation point (45 days at
 	// PriorityAgingDaysPerPoint=3 earns the full PriorityAgingMaxBonus=10):
 	// its effective 65 must beat the newer's 60.
-	backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s,
-		ctx,
-		`UPDATE tasks SET created_at = ? WHERE id = ?`,
-		backdated,
-		older.ID,
-	); err != nil {
-		t.Fatalf("backdate: %v", err)
-	}
+	backdateCreatedAt(t, ctx, s, older.ID, 45*24*time.Hour)
 
-	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	got, _ := claimDue(t, ctx, s, "w1")
 
 	if got.ID != older.ID {
 		t.Fatalf("aging did not flip claim order: claimed %s, want older %s over newer %s", got.ID, older.ID, newer.ID)
@@ -418,35 +396,17 @@ func TestClaimAgingFlipsOrder(t *testing.T) {
 func TestClaimAgingBonusCapped(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
-	older, err := s.Enqueue(ctx, task.New{Type: "older", Priority: 50})
-	if err != nil {
-		t.Fatalf("enqueue older: %v", err)
-	}
+	older := mustEnqueue(t, ctx, s, task.New{Type: "older", Priority: 50})
 
-	newer, err := s.Enqueue(ctx, task.New{Type: "newer", Priority: 65})
-	if err != nil {
-		t.Fatalf("enqueue newer: %v", err)
-	}
+	newer := mustEnqueue(t, ctx, s, task.New{Type: "newer", Priority: 65})
 
 	// 300 days of age would be +100 uncapped (50 -> 150, beating 65). The
 	// cap holds the bonus at 10 (60 < 65): the newer task still wins.
-	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s,
-		ctx,
-		`UPDATE tasks SET created_at = ? WHERE id = ?`,
-		backdated,
-		older.ID,
-	); err != nil {
-		t.Fatalf("backdate: %v", err)
-	}
+	backdateCreatedAt(t, ctx, s, older.ID, 300*24*time.Hour)
 
-	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	got, _ := claimDue(t, ctx, s, "w1")
 
 	if got.ID != newer.ID {
 		t.Fatalf("aging bonus not capped: claimed %s, want newer %s", got.ID, newer.ID)
@@ -456,39 +416,21 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 func TestClaimAgingRespectsNotBefore(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	// An ancient, high-priority task gated by NotBefore must stay gated —
 	// aging reorders claimable tasks, it never bypasses the not-before gate.
-	gated, err := s.Enqueue(ctx, task.New{
+	gated := mustEnqueue(t, ctx, s, task.New{
 		Type:      "gated",
 		Priority:  90,
 		NotBefore: time.Now().Add(time.Hour),
 	})
-	if err != nil {
-		t.Fatalf("enqueue gated: %v", err)
-	}
 
-	ready, err := s.Enqueue(ctx, task.New{Type: "ready", Priority: 1})
-	if err != nil {
-		t.Fatalf("enqueue ready: %v", err)
-	}
+	ready := mustEnqueue(t, ctx, s, task.New{Type: "ready", Priority: 1})
 
-	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s,
-		ctx,
-		`UPDATE tasks SET created_at = ? WHERE id = ?`,
-		backdated,
-		gated.ID,
-	); err != nil {
-		t.Fatalf("backdate: %v", err)
-	}
+	backdateCreatedAt(t, ctx, s, gated.ID, 300*24*time.Hour)
 
-	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	got, _ := claimDue(t, ctx, s, "w1")
 
 	if got.ID != ready.ID {
 		t.Fatalf(
@@ -503,28 +445,20 @@ func TestClaimAgingRespectsNotBefore(t *testing.T) {
 func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	// ADR-0015 §4: aging keys on created_at, so a requeue (which touches
 	// updated_at and not_before) never resets or inflates age — the bonus
 	// stays a pure function of enqueue time.
-	old := mustEnqueueZero(t, s, task.New{Type: "old", Priority: 50})
-	fresh := mustEnqueueZero(t, s, task.New{Type: "fresh", Priority: 50})
+	old := mustEnqueue(t, ctx, s, task.New{Type: "old", Priority: 50})
+	fresh := mustEnqueue(t, ctx, s, task.New{Type: "fresh", Priority: 50})
 
 	// Backdate BEFORE the first claim so the older task claims first
 	// deterministically (same-millisecond created_at ties would otherwise
 	// be broken by random ID order).
-	backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s, ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, backdated, old.ID); err != nil {
-		t.Fatalf("backdate: %v", err)
-	}
+	backdateCreatedAt(t, ctx, s, old.ID, 45*24*time.Hour)
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim old: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if err := s.Requeue(ctx, old.ID, claim_w1, "preflight", 0, false); err != nil {
 		t.Fatalf("requeue: %v", err)
@@ -533,10 +467,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 	// Old task requeued now (updated_at = now, created_at still far in the
 	// past): effective 50+10 must beat the fresh sibling's 50+0 — the
 	// requeue did not reset aging.
-	got, _, err := s.ClaimDue(ctx, "w2", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	got, _ := claimDue(t, ctx, s, "w2")
 
 	if got.ID != old.ID {
 		t.Fatalf("requeue reset aging: claimed %s, want %s over fresh %s", got.ID, old.ID, fresh.ID)
@@ -546,32 +477,19 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 func TestClaimAgingAccruesPerWindow(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	// Two tasks, integer priority gap 1. Aging accrues one point per
 	// PriorityAgingDaysPerPoint window, so a 2-window age flips the gap
 	// and a larger age on the other task flips it back — no exact ties
 	// (fresh-task ε never enters the comparison).
-	low, err := s.Enqueue(ctx, task.New{Type: "low", Priority: 40})
-	if err != nil {
-		t.Fatalf("enqueue low: %v", err)
-	}
+	low := mustEnqueue(t, ctx, s, task.New{Type: "low", Priority: 40})
 
-	high, err := s.Enqueue(ctx, task.New{Type: "high", Priority: 41})
-	if err != nil {
-		t.Fatalf("enqueue high: %v", err)
-	}
+	high := mustEnqueue(t, ctx, s, task.New{Type: "high", Priority: 41})
 
-	twoWindows := time.Now().Add(-2 * time.Duration(queue.PriorityAgingDaysPerPoint) * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s, ctx, `UPDATE tasks SET created_at = ? WHERE id = ?`, twoWindows, low.ID); err != nil {
-		t.Fatalf("backdate low: %v", err)
-	}
+	backdateCreatedAt(t, ctx, s, low.ID, 2*time.Duration(queue.PriorityAgingDaysPerPoint)*24*time.Hour)
 
-	got, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	got, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if got.ID != low.ID {
 		t.Fatalf("two aging windows did not flip a 1-point gap: claimed %s, want %s", got.ID, low.ID)
@@ -581,49 +499,21 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 		t.Fatalf("complete: %v", err)
 	}
 
-	threeWindows := time.Now().Add(-3 * time.Duration(queue.PriorityAgingDaysPerPoint) * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s,
-		ctx,
-		`UPDATE tasks SET created_at = ? WHERE id = ?`,
-		threeWindows,
-		high.ID,
-	); err != nil {
-		t.Fatalf("backdate high: %v", err)
-	}
+	backdateCreatedAt(t, ctx, s, high.ID, 3*time.Duration(queue.PriorityAgingDaysPerPoint)*24*time.Hour)
 
-	got, _, err = s.ClaimDue(ctx, "w2", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	got, _ = claimDue(t, ctx, s, "w2")
 
 	if got.ID != high.ID {
 		t.Fatalf("three aging windows did not outrank two: claimed %s, want %s", got.ID, high.ID)
 	}
 }
 
-// mustEnqueueZero enqueues and returns the task; a named helper keeps the
-// aging interaction tests focused on their assertions.
-func mustEnqueueZero(t *testing.T, s Store, n task.New) task.Task {
-	t.Helper()
-
-	tk, err := s.Enqueue(context.Background(), n)
-	if err != nil {
-		t.Fatalf("enqueue %s: %v", n.Type, err)
-	}
-
-	return tk
-}
-
 func TestUpdatePendingPriority(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
-	tk, err := s.Enqueue(ctx, task.New{Type: "a", Priority: 10})
-	if err != nil {
-		t.Fatalf("enqueue: %v", err)
-	}
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "a", Priority: 10})
 
 	if err := s.UpdatePendingPriority(ctx, tk.ID, 70, "marker", "P1 marker added"); err != nil {
 		t.Fatalf("update: %v", err)
@@ -672,8 +562,7 @@ func TestUpdatePendingPriority(t *testing.T) {
 func TestUpdatePendingPriorityIdempotent(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a", Priority: 42})
 
@@ -693,15 +582,10 @@ func TestUpdatePendingPriorityIdempotent(t *testing.T) {
 func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	running, _ := s.Enqueue(ctx, task.New{Type: "a"})
-	_, _, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	claimDue(t, ctx, s, "w1")
 
 	if err := s.UpdatePendingPriority(ctx, running.ID, 90, "marker", "x"); !errors.Is(err, task.ErrInvalidTransition) {
 		t.Fatalf("running update err = %v, want ErrInvalidTransition", err)
@@ -712,11 +596,7 @@ func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
 	}
 
 	dead, _ := s.Enqueue(ctx, task.New{Type: "b", MaxAttempts: 1})
-	_, claim_w2, err := s.ClaimDue(ctx, "w2",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim dead: %v", err)
-	}
+	_, claim_w2 := claimDue(t, ctx, s, "w2")
 
 	if err := s.Fail(ctx, dead.ID, claim_w2, "boom", 0, nil); err != nil {
 		t.Fatalf("fail: %v", err)
@@ -735,8 +615,7 @@ func TestUpdatePendingPriorityRefusesNonPending(t *testing.T) {
 func TestUpdatePendingPriorityFlipsClaimOrder(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	low, _ := s.Enqueue(ctx, task.New{Type: "low", Priority: 10})
 	high, _ := s.Enqueue(ctx, task.New{Type: "high", Priority: 50})
@@ -745,10 +624,7 @@ func TestUpdatePendingPriorityFlipsClaimOrder(t *testing.T) {
 		t.Fatalf("update: %v", err)
 	}
 
-	got, _, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	got, _ := claimDue(t, ctx, s, "w1")
 
 	if got.ID != low.ID {
 		t.Fatalf("reprioritized task did not outrank: claimed %s, want %s over %s", got.ID, low.ID, high.ID)
@@ -756,9 +632,7 @@ func TestUpdatePendingPriorityFlipsClaimOrder(t *testing.T) {
 }
 
 func TestNotBeforeDelays(t *testing.T) {
-	ctx := context.Background()
-
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	if _, err := s.Enqueue(ctx, task.New{Type: "later", NotBefore: time.Now().Add(time.Hour)}); err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
@@ -772,19 +646,14 @@ func TestNotBeforeDelays(t *testing.T) {
 }
 
 func TestHeartbeatExtendsLease(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
 	// The original lease must survive the claim→heartbeat gap on slow
 	// CI runners (Windows once took >40ms and the lease expired before
 	// the first heartbeat), so keep it generous; only the sleep after the
 	// heartbeat has to outlast it.
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if err := s.Heartbeat(ctx, tk.ID, claim_w1, time.Minute); err != nil {
 		t.Fatalf("heartbeat: %v", err)
@@ -802,8 +671,7 @@ func TestHeartbeatExtendsLease(t *testing.T) {
 }
 
 func TestCancelPendingOnly(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
 	if err := s.Cancel(ctx, tk.ID, ""); err != nil {
@@ -821,8 +689,7 @@ func TestCancelPendingOnly(t *testing.T) {
 }
 
 func TestListFilters(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	_, _ = s.Enqueue(ctx, task.New{Project: "p1", Type: "x"})
 	_, _ = s.Enqueue(ctx, task.New{Project: "p2", Type: "x"})
 
@@ -855,18 +722,14 @@ func TestListFilters(t *testing.T) {
 }
 
 func TestGetNotFound(t *testing.T) {
-	ctx := context.Background()
-
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	if _, err := s.Get(ctx, task.ID("nope")); !errors.Is(err, task.ErrNotFound) {
 		t.Fatalf("Get err = %v, want ErrNotFound", err)
 	}
 }
 
 func TestEmptyTypeRejected(t *testing.T) {
-	ctx := context.Background()
-
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	if _, err := s.Enqueue(ctx, task.New{Type: ""}); err == nil {
 		t.Fatal("empty type accepted")
 	}
@@ -875,8 +738,7 @@ func TestEmptyTypeRejected(t *testing.T) {
 func wantLeaseErr() error { return task.ErrLeaseNotHeld }
 
 func TestEnqueueDedupKey(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	first, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
 	if err != nil {
@@ -920,22 +782,69 @@ func TestEnqueueDedupKey(t *testing.T) {
 }
 
 func TestEnqueueWithoutDedupKeyIndependent(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
-	a, err := s.Enqueue(ctx, task.New{Type: "sh"})
-	if err != nil {
-		t.Fatalf("enqueue a: %v", err)
-	}
+	a := mustEnqueue(t, ctx, s, task.New{Type: "sh"})
 
-	b, err := s.Enqueue(ctx, task.New{Type: "sh"})
-	if err != nil {
-		t.Fatalf("enqueue b: %v", err)
-	}
+	b := mustEnqueue(t, ctx, s, task.New{Type: "sh"})
 
 	if a.ID == b.ID {
 		t.Fatal("tasks without dedup key must be independent")
 	}
+}
+
+// legacyTasksSchema renders the pre-migration tasks table; without
+// dedup_key it reproduces the pre-dedup_key era (the column migration's
+// starting point).
+func legacyTasksSchema(withDedupKey bool) string {
+	schema := `CREATE TABLE tasks (
+	id TEXT PRIMARY KEY,
+	project TEXT NOT NULL DEFAULT '',
+	type TEXT NOT NULL,
+	payload TEXT NOT NULL DEFAULT '',
+	deps TEXT NOT NULL DEFAULT '[]',
+	priority INTEGER NOT NULL DEFAULT 0,
+	attempts INTEGER NOT NULL DEFAULT 0,
+	max_attempts INTEGER NOT NULL DEFAULT 3,
+	not_before INTEGER NOT NULL DEFAULT 0,
+	status TEXT NOT NULL DEFAULT 'pending',
+	lease_owner TEXT NOT NULL DEFAULT '',
+	lease_expires INTEGER,
+	last_error TEXT NOT NULL DEFAULT '',
+	created_at INTEGER NOT NULL,
+	updated_at INTEGER NOT NULL,
+	completed_at INTEGER`
+	if withDedupKey {
+		schema += `,
+	dedup_key TEXT NOT NULL DEFAULT ''`
+	}
+	return schema + `
+);`
+}
+
+// openLegacyStore creates a legacy sqlite database carrying schema at a
+// fresh temp path, then reopens it through the adapter under test — the
+// in-place migration path a cutover store boots through.
+func openLegacyStore(t *testing.T, schema string) Store {
+	t.Helper()
+
+	dbPath := filepath.Join(t.TempDir(), "old.db")
+	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
+
+	legacy, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("open legacy: %v", err)
+	}
+
+	if _, err := legacy.Exec(schema); err != nil {
+		t.Fatalf("create legacy schema: %v", err)
+	}
+
+	if err := legacy.Close(); err != nil {
+		t.Fatalf("close legacy: %v", err)
+	}
+
+	return openOn(t, dbPath)
 }
 
 func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
@@ -946,44 +855,9 @@ func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "old.db")
 
-	// Simulate a pre-dedup_key database: create the table without the column.
-	old := `CREATE TABLE tasks (
-		id TEXT PRIMARY KEY,
-		project TEXT NOT NULL DEFAULT '',
-		type TEXT NOT NULL,
-		payload TEXT NOT NULL DEFAULT '',
-		deps TEXT NOT NULL DEFAULT '[]',
-		priority INTEGER NOT NULL DEFAULT 0,
-		attempts INTEGER NOT NULL DEFAULT 0,
-		max_attempts INTEGER NOT NULL DEFAULT 3,
-		not_before INTEGER NOT NULL DEFAULT 0,
-		status TEXT NOT NULL DEFAULT 'pending',
-		lease_owner TEXT NOT NULL DEFAULT '',
-		lease_expires INTEGER,
-		last_error TEXT NOT NULL DEFAULT '',
-		created_at INTEGER NOT NULL,
-		updated_at INTEGER NOT NULL,
-		completed_at INTEGER
-	);`
-	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
-
-	legacy, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		t.Fatalf("open legacy: %v", err)
-	}
-
-	if _, err := legacy.Exec(old); err != nil {
-		t.Fatalf("create legacy schema: %v", err)
-	}
-
-	if err := legacy.Close(); err != nil {
-		t.Fatalf("close legacy: %v", err)
-	}
-
-	s := openOn(t, dbPath)
+	// Simulate a pre-dedup_key database: the table lacks the column.
+	s := openLegacyStore(t, legacyTasksSchema(false))
 
 	if _, err := s.Enqueue(ctx, task.New{Type: "sh", DedupKey: "k1"}); err != nil {
 		t.Fatalf("enqueue after migration: %v", err)
@@ -1004,8 +878,7 @@ func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 }
 
 func TestWatermarkAbsentReturnsZero(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	seq, exists, err := s.Watermark(ctx, "papdashboard:http://stub:1")
 	if err != nil {
@@ -1017,78 +890,55 @@ func TestWatermarkAbsentReturnsZero(t *testing.T) {
 	}
 }
 
-func TestWatermarkSaveAndReadRoundtrip(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+// saveWatermark checkpoints consumer at seq or fails the test.
+func saveWatermark(t *testing.T, ctx context.Context, s Store, consumer string, seq int64) {
+	t.Helper()
 
-	if err := s.SaveWatermark(ctx, "consumer-a", 42); err != nil {
-		t.Fatalf("SaveWatermark: %v", err)
-	}
-
-	seq, exists, err := s.Watermark(ctx, "consumer-a")
-	if err != nil || !exists {
-		t.Fatalf("Watermark: seq=%d exists=%v err=%v", seq, exists, err)
-	}
-
-	if seq != 42 {
-		t.Fatalf("roundtrip seq = %d, want 42", seq)
-	}
-
-	// A checkpointed 0 is a real cursor, distinct from "no row": saving 0
-	// marks the consumer as existing.
-	if err := s.SaveWatermark(ctx, "consumer-zero", 0); err != nil {
-		t.Fatalf("SaveWatermark zero: %v", err)
-	}
-
-	zeroSeq, zeroExists, err := s.Watermark(ctx, "consumer-zero")
-	if err != nil || zeroSeq != 0 || !zeroExists {
-		t.Fatalf("zero cursor = %d/%v (%v), want 0/true", zeroSeq, zeroExists, err)
-	}
-
-	// Distinct consumers hold independent cursors.
-	if err := s.SaveWatermark(ctx, "consumer-b", 7); err != nil {
-		t.Fatalf("SaveWatermark consumer-b: %v", err)
-	}
-
-	if seq, _, _ := s.Watermark(ctx, "consumer-b"); seq != 7 {
-		t.Fatalf("consumer-b seq = %d, want 7", seq)
-	}
-
-	if seq, _, _ := s.Watermark(ctx, "consumer-a"); seq != 42 {
-		t.Fatalf("consumer-a seq after consumer-b write = %d, want 42", seq)
+	if err := s.SaveWatermark(ctx, consumer, seq); err != nil {
+		t.Fatalf("SaveWatermark %s=%d: %v", consumer, seq, err)
 	}
 }
 
-func TestWatermarkMonotonicGuard(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+// wantWatermark asserts consumer's checkpointed cursor: existing and
+// exactly want (the absent-consumer case stays a direct Watermark call).
+func wantWatermark(t *testing.T, ctx context.Context, s Store, consumer string, want int64) {
+	t.Helper()
 
-	if err := s.SaveWatermark(ctx, "consumer-a", 100); err != nil {
-		t.Fatalf("SaveWatermark 100: %v", err)
+	seq, exists, err := s.Watermark(ctx, consumer)
+	if err != nil || !exists || seq != want {
+		t.Fatalf("Watermark %s = %d/%v (%v), want %d/true", consumer, seq, exists, err, want)
 	}
+}
+
+func TestWatermarkSaveAndReadRoundtrip(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	saveWatermark(t, ctx, s, "consumer-a", 42)
+	wantWatermark(t, ctx, s, "consumer-a", 42)
+
+	// A checkpointed 0 is a real cursor, distinct from "no row": saving 0
+	// marks the consumer as existing.
+	saveWatermark(t, ctx, s, "consumer-zero", 0)
+	wantWatermark(t, ctx, s, "consumer-zero", 0)
+
+	// Distinct consumers hold independent cursors.
+	saveWatermark(t, ctx, s, "consumer-b", 7)
+	wantWatermark(t, ctx, s, "consumer-b", 7)
+	wantWatermark(t, ctx, s, "consumer-a", 42)
+}
+
+func TestWatermarkMonotonicGuard(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	saveWatermark(t, ctx, s, "consumer-a", 100)
 
 	// A lagging or rewound writer must not drag the cursor backwards.
-	if err := s.SaveWatermark(ctx, "consumer-a", 30); err != nil {
-		t.Fatalf("SaveWatermark regression: %v", err)
-	}
-
-	seq, exists, err := s.Watermark(ctx, "consumer-a")
-	if err != nil || !exists {
-		t.Fatalf("Watermark: seq=%d exists=%v err=%v", seq, exists, err)
-	}
-
-	if seq != 100 {
-		t.Fatalf("seq after regression attempt = %d, want 100", seq)
-	}
+	saveWatermark(t, ctx, s, "consumer-a", 30)
+	wantWatermark(t, ctx, s, "consumer-a", 100)
 
 	// An equal seq is a no-op, not an error.
-	if err := s.SaveWatermark(ctx, "consumer-a", 100); err != nil {
-		t.Fatalf("SaveWatermark equal seq: %v", err)
-	}
-
-	if seq, _, _ := s.Watermark(ctx, "consumer-a"); seq != 100 {
-		t.Fatalf("seq after equal write = %d, want 100", seq)
-	}
+	saveWatermark(t, ctx, s, "consumer-a", 100)
+	wantWatermark(t, ctx, s, "consumer-a", 100)
 }
 
 func TestMigrateAddsWatermarksTable(t *testing.T) {
@@ -1099,65 +949,19 @@ func TestMigrateAddsWatermarksTable(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "old.db")
 
 	// A pre-watermarks database: full legacy tasks table, nothing else.
-	old := `CREATE TABLE tasks (
-		id TEXT PRIMARY KEY,
-		project TEXT NOT NULL DEFAULT '',
-		type TEXT NOT NULL,
-		payload TEXT NOT NULL DEFAULT '',
-		deps TEXT NOT NULL DEFAULT '[]',
-		priority INTEGER NOT NULL DEFAULT 0,
-		attempts INTEGER NOT NULL DEFAULT 0,
-		max_attempts INTEGER NOT NULL DEFAULT 3,
-		not_before INTEGER NOT NULL DEFAULT 0,
-		status TEXT NOT NULL DEFAULT 'pending',
-		lease_owner TEXT NOT NULL DEFAULT '',
-		lease_expires INTEGER,
-		last_error TEXT NOT NULL DEFAULT '',
-		created_at INTEGER NOT NULL,
-		updated_at INTEGER NOT NULL,
-		completed_at INTEGER,
-		dedup_key TEXT NOT NULL DEFAULT ''
-	);`
-	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
+	s := openLegacyStore(t, legacyTasksSchema(true))
 
-	legacy, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		t.Fatalf("open legacy: %v", err)
-	}
-
-	if _, err := legacy.Exec(old); err != nil {
-		t.Fatalf("create legacy schema: %v", err)
-	}
-
-	if err := legacy.Close(); err != nil {
-		t.Fatalf("close legacy: %v", err)
-	}
-
-	s := openOn(t, dbPath)
-
-	if err := s.SaveWatermark(ctx, "consumer-a", 5); err != nil {
-		t.Fatalf("SaveWatermark after migration: %v", err)
-	}
-
-	if seq, _, _ := s.Watermark(ctx, "consumer-a"); seq != 5 {
-		t.Fatalf("Watermark after migration = %d, want 5", seq)
-	}
+	saveWatermark(t, ctx, s, "consumer-a", 5)
+	wantWatermark(t, ctx, s, "consumer-a", 5)
 }
 
 func TestFailPermanentDeadLettersImmediately(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "broken", MaxAttempts: 5})
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	// The lease guard holds for permanent failures too: only the owner
 	// that claimed the task may dead-letter it.
@@ -1202,8 +1006,7 @@ func TestFailPermanentDeadLettersImmediately(t *testing.T) {
 	}
 
 	// Dead means dead: nothing claimable afterwards.
-	_, _, err = s.ClaimDue(ctx, "w1",
-		time.Minute)
+	_, _, err := s.ClaimDue(ctx, "w1", time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("dead task claimable: err = %v", err)
 	}
@@ -1368,15 +1171,10 @@ func TestProjectExclusivityAcrossStoreHandles(t *testing.T) {
 // back early — not the expired-lease reclaim branch (it only matches
 // status='running'), and not the stale owner's lease-taking calls.
 func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 3})
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	// Rate-limit park: requeue with a delay longer than the original lease.
 	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false); err != nil {
@@ -1395,7 +1193,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	// The expired-lease reclaim branch must not see it: a claim while the
 	// park is live returns ErrNoTaskDue (the stale lease is GONE, and the
 	// pending branch is gated on not_before).
-	_, _, err = s.ClaimDue(ctx, "w2",
+	_, _, err := s.ClaimDue(ctx, "w2",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during park err = %v, want ErrNoTaskDue", err)
@@ -1457,8 +1255,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 // TestParkedFilter pins the --parked contract: only pending tasks with a
 // future not_before match; completed/pending-due tasks never do.
 func TestParkedFilter(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "agent"})
 
@@ -1470,11 +1267,7 @@ func TestParkedFilter(t *testing.T) {
 		t.Fatalf("fresh task counted as parked (%d)", n)
 	}
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false); err != nil {
 		t.Fatalf("Requeue: %v", err)
@@ -1496,15 +1289,10 @@ func TestParkedFilter(t *testing.T) {
 }
 
 func TestRequeueDoesNotBurnAttempts(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "env-not-ready", MaxAttempts: 3})
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	// Wrong owner cannot requeue.
 	if err := s.Requeue(
@@ -1531,7 +1319,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 
 	// Delay gates the next claim (not_before semantics, like Fail backoff).
-	_, _, err = s.ClaimDue(ctx, "w1",
+	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
 	if !errors.Is(err, queue.ErrNoTaskDue) {
 		t.Fatalf("claim during requeue delay err = %v, want queue.ErrNoTaskDue", err)
@@ -1539,11 +1327,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 
 	time.Sleep(200 * time.Millisecond)
 
-	_, claim_w1, err = s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim after delay: %v", err)
-	}
+	_, claim_w1 = claimDue(t, ctx, s, "w1")
 
 	// The fact log records why the task went back, with no failure.
 	facts, _ := s.Facts(ctx, 0, 0)
@@ -1585,22 +1369,14 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 		)
 	}
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	claimAndRequeue := func(resume bool) task.Task {
 		t.Helper()
 
-		tk, err := s.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 2})
-		if err != nil {
-			t.Fatalf("enqueue: %v", err)
-		}
+		tk := mustEnqueue(t, ctx, s, task.New{Type: "agent", MaxAttempts: 2})
 
-		_, claim_w1, err := s.ClaimDue(ctx, "w1",
-			time.Minute)
-		if err != nil {
-			t.Fatalf("claim: %v", err)
-		}
+		_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 		if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited", time.Minute, resume); err != nil {
 			t.Fatalf("Requeue: %v", err)
@@ -1668,8 +1444,7 @@ func seedFacts(ctx context.Context, t *testing.T, s Store, n int) {
 func TestFactsCursorBounded(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	seedFacts(ctx, t, s, 7)
 
 	first, err := s.Facts(ctx, 0, 3)
@@ -1703,8 +1478,7 @@ func TestFactsCursorBounded(t *testing.T) {
 func TestLastFactsReturnsTailInAscendingOrder(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	seedFacts(ctx, t, s, 10)
 
 	tail, err := s.LastFacts(ctx, 3)
@@ -1729,8 +1503,7 @@ func TestLastFactsReturnsTailInAscendingOrder(t *testing.T) {
 func TestHeadSeq(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	head, err := s.HeadSeq(ctx)
 	if err != nil {
@@ -1756,30 +1529,16 @@ func TestHeadSeq(t *testing.T) {
 func TestFactsForTaskFiltersAndBounds(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
-	a, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: jsontext.Value(`"true"`), DedupKey: "a"})
-	if err != nil {
-		t.Fatalf("enqueue a: %v", err)
-	}
+	a := mustEnqueue(t, ctx, s, task.New{Project: "p", Type: "sh", Payload: jsontext.Value(`"true"`), DedupKey: "a"})
 
-	b, err := s.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: jsontext.Value(`"true"`), DedupKey: "b"})
-	if err != nil {
-		t.Fatalf("enqueue b: %v", err)
-	}
+	b := mustEnqueue(t, ctx, s, task.New{Project: "p", Type: "sh", Payload: jsontext.Value(`"true"`), DedupKey: "b"})
 
-	_, _, err = s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	claimDue(t, ctx, s, "w1")
 
 	// ClaimDue may pick either task; follow whichever one was claimed.
-	claimed, _, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	claimed, _ := claimDue(t, ctx, s, "w1")
 
 	claimedFacts, err := s.FactsForTask(ctx, claimed.ID.String(), 0)
 	if err != nil {
@@ -1816,8 +1575,7 @@ func TestFactsForTaskFiltersAndBounds(t *testing.T) {
 func TestCountFactsByTypeSince(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	seedFacts(ctx, t, s, 3)
 
 	n, err := s.CountFacts(ctx, journal.Enqueued, time.Now().Add(-time.Hour))
@@ -1851,8 +1609,7 @@ func TestCountFactsByTypeSince(t *testing.T) {
 func TestFactsSinceByType(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	seedFacts(ctx, t, s, 2)
 
 	now := time.Now()
@@ -1917,11 +1674,21 @@ func TestFactsSinceByType(t *testing.T) {
 	}
 }
 
+// seedTasks enqueues every seed task or fails the test.
+func seedTasks(t *testing.T, ctx context.Context, s Store, seed []task.New) {
+	t.Helper()
+
+	for i := range seed {
+		if _, err := s.Enqueue(ctx, seed[i]); err != nil {
+			t.Fatalf("seed %d: %v", i, err)
+		}
+	}
+}
+
 func TestListQueryPushdown(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	seed := []task.New{
 		{Project: "alpha", Type: "sh", Payload: jsontext.Value(`"echo hello"`)},
@@ -1929,11 +1696,7 @@ func TestListQueryPushdown(t *testing.T) {
 		{Project: "gamma", Type: "http", Payload: jsontext.Value(`{"url":"https://example.com/ping"}`)},
 	}
 
-	for i := range seed {
-		if _, err := s.Enqueue(ctx, seed[i]); err != nil {
-			t.Fatalf("seed %d: %v", i, err)
-		}
-	}
+	seedTasks(t, ctx, s, seed)
 
 	cases := []struct {
 		name  string
@@ -1964,8 +1727,7 @@ func TestListQueryPushdown(t *testing.T) {
 func TestListQueryLikeEscaping(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	seed := []task.New{
 		{Project: "pct", Type: "sh", Payload: jsontext.Value(`"progress 100% done"`)},
@@ -1973,11 +1735,7 @@ func TestListQueryLikeEscaping(t *testing.T) {
 		{Project: "plain", Type: "sh", Payload: jsontext.Value(`"nothing special"`)},
 	}
 
-	for i := range seed {
-		if _, err := s.Enqueue(ctx, seed[i]); err != nil {
-			t.Fatalf("seed %d: %v", i, err)
-		}
-	}
+	seedTasks(t, ctx, s, seed)
 
 	cases := []struct {
 		name  string
@@ -2006,8 +1764,7 @@ func TestListQueryLikeEscaping(t *testing.T) {
 func TestListOffsetPagination(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	seedFacts(ctx, t, s, 5)
 
 	page1, err := s.List(ctx, queue.Filter{Limit: 2})
@@ -2041,26 +1798,14 @@ func TestListOffsetPagination(t *testing.T) {
 func TestStatusCountsAndProjectCounts(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
-	if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: jsontext.Value(`"true"`)}); err != nil {
-		t.Fatalf("seed a: %v", err)
-	}
-
-	if _, err := s.Enqueue(ctx, task.New{Project: "a", Type: "sh", Payload: jsontext.Value(`"true"`)}); err != nil {
-		t.Fatalf("seed a2: %v", err)
-	}
-
-	if _, err := s.Enqueue(ctx, task.New{Project: "b", Type: "sh", Payload: jsontext.Value(`"true"`)}); err != nil {
-		t.Fatalf("seed b: %v", err)
-	}
+	mustEnqueue(t, ctx, s, task.New{Project: "a", Type: "sh", Payload: jsontext.Value(`"true"`)})
+	mustEnqueue(t, ctx, s, task.New{Project: "a", Type: "sh", Payload: jsontext.Value(`"true"`)})
+	mustEnqueue(t, ctx, s, task.New{Project: "b", Type: "sh", Payload: jsontext.Value(`"true"`)})
 
 	// ClaimDue may pick either task; derive expectations from the winner.
-	claimed, _, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	claimed, _ := claimDue(t, ctx, s, "w1")
 
 	counts, err := s.StatusCounts(ctx)
 	if err != nil {
@@ -2106,8 +1851,7 @@ func TestStatusCountsAndProjectCounts(t *testing.T) {
 func TestListSeverityOrder(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	for range 4 {
 		if _, err := s.Enqueue(
@@ -2118,15 +1862,9 @@ func TestListSeverityOrder(t *testing.T) {
 		}
 	}
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if err != nil {
-		t.Fatalf("claim1: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
-	_, claim_w2, err := s.ClaimDue(ctx, "w2", time.Minute)
-	if err != nil {
-		t.Fatalf("claim2: %v", err)
-	}
+	_, claim_w2 := claimDue(t, ctx, s, "w2")
 
 	running, err := s.List(ctx, queue.Filter{Status: new(task.Running)})
 	if err != nil {
@@ -2193,8 +1931,7 @@ func ptrStatus(st task.Status) *task.Status { return new(st) }
 func TestCountTasksMatchesList(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	seedFacts(ctx, t, s, 5)
 
 	full, err := s.CountTasks(ctx, queue.Filter{})
@@ -2248,8 +1985,7 @@ func TestLoadSnapshotScaleAt100k(t *testing.T) {
 		t.Skip("latency ceilings are meaningless under the race detector's ~10x overhead; run without -race")
 	}
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	const (
 		tasks    = 100_000
@@ -2366,19 +2102,11 @@ func TestLoadSnapshotScaleAt100k(t *testing.T) {
 // TestCancelRunningRequestAndHonour pins the cooperative-cancel store
 // contract: request (idempotent fact), observation, owner-guarded finalize.
 func TestCancelRunningRequestAndHonour(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
-	tk, err := s.Enqueue(ctx, task.New{Type: "a"})
-	if err != nil {
-		t.Fatalf("enqueue: %v", err)
-	}
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "a"})
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	// Pending-only Cancel refuses running tasks (that is --force territory).
 	if err := s.Cancel(ctx, tk.ID, ""); !errors.Is(err, task.ErrInvalidTransition) {
@@ -2426,15 +2154,11 @@ func TestCancelRunningRequestAndHonour(t *testing.T) {
 // expired lease on a cancel-requested task finalizes the cancel instead of
 // re-executing the task.
 func TestReclaimFinalizesCancelRequest(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
-	tk, err := s.Enqueue(ctx, task.New{Type: "a"})
-	if err != nil {
-		t.Fatalf("enqueue: %v", err)
-	}
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "a"})
 
-	_, _, err = s.ClaimDue(ctx, "crashed-worker",
+	_, _, err := s.ClaimDue(ctx, "crashed-worker",
 		30*time.Millisecond)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -2479,8 +2203,7 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 // key), an empty reason stores none, and a cooperative cancel carries the
 // operator's reason from the request fact onto the final cancelled fact.
 func TestCancelReasonStoredInFactDetail(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	reasonFor := func(t *testing.T, id task.ID, ftype journal.FactType) string {
 		t.Helper()
@@ -2508,10 +2231,7 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 	}
 
 	// Pending cancel with a reason (the tq cancel --reason path).
-	withReason, err := s.Enqueue(ctx, task.New{Type: "a"})
-	if err != nil {
-		t.Fatalf("enqueue: %v", err)
-	}
+	withReason := mustEnqueue(t, ctx, s, task.New{Type: "a"})
 
 	if err := s.Cancel(ctx, withReason.ID, "stale: superseded by task-42"); err != nil {
 		t.Fatalf("cancel: %v", err)
@@ -2522,10 +2242,7 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 	}
 
 	// Pending cancel WITHOUT a reason keeps the fact detail empty.
-	noReason, err := s.Enqueue(ctx, task.New{Type: "a"})
-	if err != nil {
-		t.Fatalf("enqueue: %v", err)
-	}
+	noReason := mustEnqueue(t, ctx, s, task.New{Type: "a"})
 
 	if err := s.Cancel(ctx, noReason.ID, ""); err != nil {
 		t.Fatalf("cancel: %v", err)
@@ -2544,16 +2261,9 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 
 	// Cooperative cancel: the reason rides the request fact and is carried
 	// onto the final task.cancelled fact by the owner-side finalize.
-	coop, err := s.Enqueue(ctx, task.New{Type: "a"})
-	if err != nil {
-		t.Fatalf("enqueue: %v", err)
-	}
+	coop := mustEnqueue(t, ctx, s, task.New{Type: "a"})
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if err := s.CancelRunning(ctx, coop.ID, "duplicate of task-7"); err != nil {
 		t.Fatalf("CancelRunning: %v", err)
@@ -2597,15 +2307,10 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 // task.orphaned fact (once); live-lease tasks do not; task state is
 // untouched — orphaning is an observation, the reclaim stays authoritative.
 func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
-	ctx := context.Background()
-
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	defer func() { _ = s.Close() }()
 
-	stranded, err := s.Enqueue(ctx, task.New{Type: "sh"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	stranded := mustEnqueue(t, ctx, s, task.New{Type: "sh"})
 
 	// Deterministic despite ClaimDue returning an ARBITRARY due task:
 	// claim A as the only task, then claim B immediately — A must not be
@@ -2617,22 +2322,15 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 	// once: marked 0).
 	claimAt := time.Now()
 
-	_, _, err = s.ClaimDue(ctx, "victim",
+	_, _, err := s.ClaimDue(ctx, "victim",
 		time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	live, err := s.Enqueue(ctx, task.New{Type: "sh"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	live := mustEnqueue(t, ctx, s, task.New{Type: "sh"})
 
-	_, _, err = s.ClaimDue(ctx, "alive",
-		time.Minute)
-	if err != nil {
-		t.Fatal(err)
-	}
+	claimDue(t, ctx, s, "alive")
 
 	// Victim's lease (1s) dies, alive's stays — deadline = claim + 1.3s.
 	if wait := time.Until(claimAt.Add(1300 * time.Millisecond)); wait > 0 {
@@ -2705,9 +2403,7 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 		)
 	}
 
-	ctx := context.Background()
-
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	defer func() { _ = s.Close() }()
 
 	const n = 10_000
@@ -2726,10 +2422,7 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 
 	const work = 1_000
 	for range work {
-		got, claim_bench, err := s.ClaimDue(ctx, "bench", time.Minute)
-		if err != nil {
-			t.Fatalf("claim: %v", err)
-		}
+		got, claim_bench := claimDue(t, ctx, s, "bench")
 
 		if err := s.Complete(ctx, got.ID, claim_bench, nil); err != nil {
 			t.Fatalf("complete: %v", err)
@@ -2762,23 +2455,15 @@ func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
 		)
 	}
 
-	ctx := context.Background()
-
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	defer func() { _ = s.Close() }()
 
 	var done [2]task.Task
 
 	for i := range done {
-		enq, err := s.Enqueue(ctx, task.New{Type: "sh"})
-		if err != nil {
-			t.Fatal(err)
-		}
+		enq := mustEnqueue(t, ctx, s, task.New{Type: "sh"})
 
-		got, claim_w, err := s.ClaimDue(ctx, "w", time.Minute)
-		if err != nil {
-			t.Fatalf("claim: %v", err)
-		}
+		got, claim_w := claimDue(t, ctx, s, "w")
 
 		if err := s.Complete(ctx, got.ID, claim_w, nil); err != nil {
 			t.Fatal(err)
@@ -2787,10 +2472,7 @@ func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
 		done[i] = enq
 	}
 
-	active, err := s.Enqueue(ctx, task.New{Type: "sh"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	active := mustEnqueue(t, ctx, s, task.New{Type: "sh"})
 
 	head, err := s.HeadSeq(ctx)
 	if err != nil {
@@ -2862,9 +2544,7 @@ func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
 // rows as named, and unknown values fall back to the default order instead
 // of reaching SQL.
 func TestListSortAllowlist(t *testing.T) {
-	ctx := context.Background()
-
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 	defer func() { _ = s.Close() }()
 
 	for _, prio := range []int{1, 5, 3} {
@@ -2908,8 +2588,7 @@ func TestListSortAllowlist(t *testing.T) {
 // boundary + 1ms excludes it. Both stores share the contract; the Postgres
 // twin runs via the conformance battery.
 func TestListSinceFilter(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	first, _ := s.Enqueue(ctx, task.New{Type: "a"})
 
@@ -2956,8 +2635,7 @@ func TestListSinceFilter(t *testing.T) {
 }
 
 func TestPriorityScoreRoundtrip(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	if _, ok, err := s.PriorityScore(ctx, "todo:missing"); err != nil || ok {
 		t.Fatalf("missing key = (%v, %v), want (false, nil)", ok, err)
@@ -2995,8 +2673,7 @@ func TestPriorityScoreRoundtrip(t *testing.T) {
 // the full list is ordered by item key, an empty key list deletes
 // nothing, unknown keys are not an error, and only matching rows go.
 func TestPriorityScoresListAndDelete(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	if got, err := s.PriorityScores(ctx); err != nil || len(got) != 0 {
 		t.Fatalf("empty cache = (%d rows, %v), want (0, nil)", len(got), err)
@@ -3049,8 +2726,7 @@ func TestPriorityScoresListAndDelete(t *testing.T) {
 func TestBandFilter(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	if _, err := s.Enqueue(ctx, task.New{Type: "agent", Priority: 50}); err != nil {
 		t.Fatal(err)
@@ -3108,8 +2784,7 @@ func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
 		)
 	}
 
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	zero := 0
 
@@ -3148,19 +2823,11 @@ func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
 // RescueDead re-emits task.enqueued (NOT task.requeued) with the rescue
 // marker, so a replay treats rescue as a budget reset, not an attempt burn.
 func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
-	tk, err := s.Enqueue(ctx, task.New{Type: "flaky", MaxAttempts: 1})
-	if err != nil {
-		t.Fatalf("Enqueue: %v", err)
-	}
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "flaky", MaxAttempts: 1})
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if err := s.Fail(ctx, tk.ID, claim_w1, "boom", 0, nil); err != nil {
 		t.Fatalf("fail: %v", err)
@@ -3203,16 +2870,9 @@ func parkOnQuestion(t *testing.T, s Store, payload string, requeueIn time.Durati
 
 	ctx := context.Background()
 
-	tk, err := s.Enqueue(ctx, task.New{Type: "agent", Payload: jsontext.Value(payload)})
-	if err != nil {
-		t.Fatalf("enqueue: %v", err)
-	}
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "agent", Payload: jsontext.Value(payload)})
 
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	asked := queue.QuestionAskedDetail{
 		Ref:      ref,
@@ -3310,8 +2970,7 @@ func assertAnsweredFact(t *testing.T, ctx context.Context, s Store, id task.ID) 
 }
 
 func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk := parkOnQuestion(t, s, `{"repo":"go-taskqueue","prompt":"do the thing"}`, time.Hour)
 
@@ -3343,18 +3002,13 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 	assertAnswerInjected(t, got)
 
 	// The answer must be claimable RIGHT NOW — no residual delay.
-	_, _, err = s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim after answer: %v", err)
-	}
+	claimDue(t, ctx, s, "w1")
 
 	assertAnsweredFact(t, ctx, s, tk.ID)
 }
 
 func TestRecordAnswerReplayIsNoop(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk := parkOnQuestion(t, s, `{"prompt":"x"}`, time.Hour)
 
@@ -3396,8 +3050,7 @@ func TestRecordAnswerReplayIsNoop(t *testing.T) {
 }
 
 func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk := parkOnQuestion(t, s, `{"prompt":"x"}`, time.Hour)
 
@@ -3407,11 +3060,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 
 	// A follow-up question (different ref) on the re-claimed task parks it
 	// again; its answer joins the same answered array.
-	_, claim_w1, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("reclaim: %v", err)
-	}
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	if err := s.AppendFact(ctx, journal.Fact{
 		TaskID: tk.ID.String(),
@@ -3465,9 +3114,22 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 	}
 }
 
+// wantAnsweredFact asserts the task.question-answered fact exists in the
+// trail — the ruling must survive even when the payload cannot carry it.
+func wantAnsweredFact(t *testing.T, trail []journal.Fact) {
+	t.Helper()
+
+	for _, f := range trail {
+		if f.Type == journal.QuestionAnswered {
+			return
+		}
+	}
+
+	t.Fatal("no task.question-answered fact in the trail")
+}
+
 func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk := parkOnQuestion(t, s, `{"prompt":"x"}`, 50*time.Millisecond)
 
@@ -3476,11 +3138,7 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 	// live task.
 	time.Sleep(150 * time.Millisecond)
 
-	_, _, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if err != nil {
-		t.Fatalf("claim: %v", err)
-	}
+	claimDue(t, ctx, s, "w1")
 
 	if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "too late"}); err != nil {
 		t.Fatalf("RecordAnswer: %v", err)
@@ -3496,23 +3154,11 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 	}
 
 	trail, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
-
-	found := false
-
-	for _, f := range trail {
-		if f.Type == journal.QuestionAnswered {
-			found = true
-		}
-	}
-
-	if !found {
-		t.Fatal("ruling fact lost on a running task")
-	}
+	wantAnsweredFact(t, trail)
 }
 
 func TestRecordAnswerRawPayloadFactOnly(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	// Raw (non-object) payloads cannot carry the injection — the ruling
 	// lives in the journal only, and the parked task stays parked (the
@@ -3536,23 +3182,11 @@ func TestRecordAnswerRawPayloadFactOnly(t *testing.T) {
 	}
 
 	trail, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
-
-	found := false
-
-	for _, f := range trail {
-		if f.Type == journal.QuestionAnswered {
-			found = true
-		}
-	}
-
-	if !found {
-		t.Fatal("ruling fact lost on a raw payload")
-	}
+	wantAnsweredFact(t, trail)
 }
 
 func TestRecordAnswerValidation(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	tk := parkOnQuestion(t, s, `{"prompt":"x"}`, time.Hour)
 
