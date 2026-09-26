@@ -56,8 +56,23 @@ type subscriber struct {
 	name    string
 	handler Handler
 
-	mu     sync.Mutex
-	cursor int64 // last delivered seq (advances only after the handler accepts)
+	mu      sync.Mutex
+	cursor  int64 // last delivered seq (advances only after the handler accepts)
+	removed bool  // set by unsubscribe; drain stops before the next handler invocation
+}
+
+func (s *subscriber) remove() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.removed = true
+}
+
+func (s *subscriber) isRemoved() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.removed
 }
 
 func (s *subscriber) advance(seq int64) {
@@ -103,7 +118,9 @@ func New(src Source, cfg Config) *Dispatcher {
 
 // Subscribe registers an exact consumer delivering facts with Seq >
 // since. It returns the subscriber's unsubscribe function. Subscribing
-// while Run is active is safe.
+// while Run is active is safe; unsubscribing stops delivery before the
+// next handler invocation — a handler already running when unsubscribe is
+// called may still complete.
 func (d *Dispatcher) Subscribe(name string, since int64, handler Handler) (unsubscribe func()) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -124,6 +141,8 @@ func (d *Dispatcher) Subscribe(name string, since int64, handler Handler) (unsub
 
 			break
 		}
+
+		sub.remove()
 	}
 }
 
@@ -182,6 +201,10 @@ func (d *Dispatcher) drain(ctx context.Context, sub *subscriber) {
 		}
 
 		for _, fact := range facts {
+			if sub.isRemoved() {
+				return
+			}
+
 			if err := sub.handler(ctx, fact); err != nil {
 				if ctx.Err() != nil {
 					return
