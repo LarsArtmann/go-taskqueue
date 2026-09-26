@@ -18,6 +18,7 @@ require (
 	github.com/larsartmann/go-sse v0.6.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
@@ -36,3 +37,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue => ..
 replace github.com/larsartmann/go-taskqueue/internal/task => ../../task
 
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../sqlitev4
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ../companion
