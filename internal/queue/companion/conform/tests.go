@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -98,7 +98,6 @@ func TestCompleteResetsLastError(t *testing.T) {
 
 	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim1: %v", err)
 	}
@@ -116,7 +115,6 @@ func TestCompleteResetsLastError(t *testing.T) {
 
 	_, claim_w1, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim2: %v", err)
 	}
@@ -398,7 +396,7 @@ func TestClaimAgingFlipsOrder(t *testing.T) {
 	// PriorityAgingDaysPerPoint=3 earns the full PriorityAgingMaxBonus=10):
 	// its effective 65 must beat the newer's 60.
 	backdated := time.Now().Add(-45 * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s, 
+	if _, err := dbExec(s,
 		ctx,
 		`UPDATE tasks SET created_at = ? WHERE id = ?`,
 		backdated,
@@ -436,7 +434,7 @@ func TestClaimAgingBonusCapped(t *testing.T) {
 	// 300 days of age would be +100 uncapped (50 -> 150, beating 65). The
 	// cap holds the bonus at 10 (60 < 65): the newer task still wins.
 	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s, 
+	if _, err := dbExec(s,
 		ctx,
 		`UPDATE tasks SET created_at = ? WHERE id = ?`,
 		backdated,
@@ -478,7 +476,7 @@ func TestClaimAgingRespectsNotBefore(t *testing.T) {
 	}
 
 	backdated := time.Now().Add(-300 * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s, 
+	if _, err := dbExec(s,
 		ctx,
 		`UPDATE tasks SET created_at = ? WHERE id = ?`,
 		backdated,
@@ -524,7 +522,6 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 
 	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim old: %v", err)
 	}
@@ -585,7 +582,7 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 	}
 
 	threeWindows := time.Now().Add(-3 * time.Duration(queue.PriorityAgingDaysPerPoint) * 24 * time.Hour).UnixMilli()
-	if _, err := dbExec(s, 
+	if _, err := dbExec(s,
 		ctx,
 		`UPDATE tasks SET created_at = ? WHERE id = ?`,
 		threeWindows,
@@ -943,7 +940,9 @@ func TestEnqueueWithoutDedupKeyIndependent(t *testing.T) {
 
 func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 	if !active.Caps.LegacyMigration {
-		t.Skip("postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)")
+		t.Skip(
+			"postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)",
+		)
 	}
 
 	ctx := context.Background()
@@ -1094,7 +1093,9 @@ func TestWatermarkMonotonicGuard(t *testing.T) {
 
 func TestMigrateAddsWatermarksTable(t *testing.T) {
 	if !active.Caps.LegacyMigration {
-		t.Skip("postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)")
+		t.Skip(
+			"postgres spike: legacy-file migration is an upstream-engine/replay-tool concern, not adapter surface (ADR-0019 S1 migration story)",
+		)
 	}
 
 	ctx := context.Background()
@@ -1212,7 +1213,9 @@ func openTestStoreExclusive(t *testing.T) Store {
 	t.Helper()
 
 	if !active.Caps.Exclusivity {
-		t.Skip("DIVERGENCE (S1 spike): store-level project exclusivity has no upstream engine equivalent and is not implemented — see docs/status S1 report")
+		t.Skip(
+			"DIVERGENCE (S1 spike): store-level project exclusivity has no upstream engine equivalent and is not implemented — see docs/status S1 report",
+		)
 	}
 
 	return openOn(t, freshDSN(t), companion.WithProjectExclusivity())
@@ -1318,7 +1321,9 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 // multi-process shape) can never both run one project's tasks.
 func TestProjectExclusivityAcrossStoreHandles(t *testing.T) {
 	if !active.Caps.Exclusivity {
-		t.Skip("DIVERGENCE (S1 spike): store-level project exclusivity has no upstream engine equivalent; see docs/status S1 report")
+		t.Skip(
+			"DIVERGENCE (S1 spike): store-level project exclusivity has no upstream engine equivalent; see docs/status S1 report",
+		)
 	}
 
 	ctx := context.Background()
@@ -1467,7 +1472,6 @@ func TestParkedFilter(t *testing.T) {
 
 	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -1503,7 +1507,17 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 	}
 
 	// Wrong owner cannot requeue.
-	if err := s.Requeue(ctx, tk.ID, queue.Claim("w2"), "nope", time.Second, false); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		queue.Claim("w2"),
+		"nope",
+		time.Second,
+		false,
+	); !errors.Is(
+		err,
+		task.ErrLeaseNotHeld,
+	) {
 		t.Fatalf("wrong-owner Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
@@ -1527,7 +1541,6 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 
 	_, claim_w1, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim after delay: %v", err)
 	}
@@ -1567,7 +1580,9 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 // turn; a plain preflight requeue omits the key entirely (omitempty).
 func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 	if !active.Caps.ResumeCloseout {
-		t.Skip("DIVERGENCE (S1 spike): upstream Requeue carries no resume_closeout key — the owed-close-out park is not representable in upstream facts yet; see docs/status S1 report")
+		t.Skip(
+			"DIVERGENCE (S1 spike): upstream Requeue carries no resume_closeout key — the owed-close-out park is not representable in upstream facts yet; see docs/status S1 report",
+		)
 	}
 
 	ctx := context.Background()
@@ -1583,7 +1598,6 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 
 		_, claim_w1, err := s.ClaimDue(ctx, "w1",
 			time.Minute)
-
 		if err != nil {
 			t.Fatalf("claim: %v", err)
 		}
@@ -1757,7 +1771,6 @@ func TestFactsForTaskFiltersAndBounds(t *testing.T) {
 
 	_, _, err = s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -2363,7 +2376,6 @@ func TestCancelRunningRequestAndHonour(t *testing.T) {
 
 	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -2424,7 +2436,6 @@ func TestReclaimFinalizesCancelRequest(t *testing.T) {
 
 	_, _, err = s.ClaimDue(ctx, "crashed-worker",
 		30*time.Millisecond)
-
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -2540,7 +2551,6 @@ func TestCancelReasonStoredInFactDetail(t *testing.T) {
 
 	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -2609,7 +2619,6 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 
 	_, _, err = s.ClaimDue(ctx, "victim",
 		time.Second)
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2621,7 +2630,6 @@ func TestMarkOrphanedRecordsStrandedTasks(t *testing.T) {
 
 	_, _, err = s.ClaimDue(ctx, "alive",
 		time.Minute)
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2749,7 +2757,9 @@ func TestEnqueueClaimBaseline10k(t *testing.T) {
 // tasks projection and Facts() keep working; the watermark is recorded.
 func TestArchiveFactsBeforeKeepsProjections(t *testing.T) {
 	if !active.Caps.Archive {
-		t.Skip("DIVERGENCE (S1 spike): the fact archive (facts_archive/journal_meta) has no upstream counterpart — hot-journal-only for now; see docs/status S1 report")
+		t.Skip(
+			"DIVERGENCE (S1 spike): the fact archive (facts_archive/journal_meta) has no upstream counterpart — hot-journal-only for now; see docs/status S1 report",
+		)
 	}
 
 	ctx := context.Background()
@@ -3093,7 +3103,9 @@ func TestBandFilter(t *testing.T) {
 // downgrade the audit's coverage for every modern task.
 func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
 	if !active.Caps.EnqueuedSnapshot {
-		t.Skip("DIVERGENCE (S1 spike): upstream task.enqueued detail carries only {project, type} — the priority/dedup_key projection fields the journal-drift audit needs are not written; see docs/status S1 report")
+		t.Skip(
+			"DIVERGENCE (S1 spike): upstream task.enqueued detail carries only {project, type} — the priority/dedup_key projection fields the journal-drift audit needs are not written; see docs/status S1 report",
+		)
 	}
 
 	ctx := context.Background()
@@ -3146,7 +3158,6 @@ func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
 
 	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -3199,7 +3210,6 @@ func parkOnQuestion(t *testing.T, s Store, payload string, requeueIn time.Durati
 
 	_, claim_w1, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
@@ -3468,7 +3478,6 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 
 	_, _, err := s.ClaimDue(ctx, "w1",
 		time.Minute)
-
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
