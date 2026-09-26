@@ -4,16 +4,9 @@
 # (paths relative to the repo root, sorted; line numbers deliberately
 # excluded — the mirrored FILE PAIR is the stable identity).
 #
-# The shared PRODUCTION companion surface lives in internal/queue/companion
-# (2026-09-26 extraction): cross-backend mirrors in adapter code are ZERO.
-# What remains is the three mirrored conformance suites (store_test.go ×3 +
-# the sessionfact pair) — their consolidation into companion/conform is
-# tracked in TODO_LIST ("consolidate mirrored conformance suites"). This
-# baseline is a RATCHET: any NEW cross-backend group fails ci-local; rows
-# disappear only by consolidating the suites, then regenerating this file.
-assignment internal/queue/cqrsqlite/store_test.go internal/queue/sqlitev4/store_test.go
-assignment internal/queue/cqrsqlite/store_test.go internal/queue/postgresv4/store_test.go
-assignment internal/queue/postgresv4/sessionfact_test.go internal/queue/sqlitev4/sessionfact_test.go
-assignment internal/queue/postgresv4/store_test.go internal/queue/sqlitev4/store_test.go
-conditional internal/queue/cqrsqlite/store_test.go internal/queue/sqlitev4/store_test.go
-conditional internal/queue/postgresv4/store_test.go internal/queue/sqlitev4/store_test.go
+# ZERO rows since the 2026-09-26 conformance-suite consolidation: the three
+# mirrored spike suites (store_test.go ×3 + the sessionfact pair) now share
+# ONE suite in internal/queue/companion/conform (StoreSuite harness +
+# capability knobs), and the adapters delegate to internal/queue/companion.
+# Any NEW cross-backend group fails ci-local; rows reappear only by
+# deliberate regen with a recorded reason.
