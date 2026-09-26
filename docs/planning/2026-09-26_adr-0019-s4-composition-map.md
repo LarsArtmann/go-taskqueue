@@ -105,15 +105,28 @@ c. **GracefulClose vs runactor teardown ordering.** Where the S3-flipped
    system-rooted composition, `GracefulClose` should own the close
    ordering; the agent-pool keeps runactor's first-exit + interrupt
    semantics. Adopt per surface, not globally.
+d. **Require/module home for `system/v4`.** The composition wiring lives
+   in cmd/tq (the runactor groups), which is its OWN replace-free module
+   (ADR-0017), while ADR-0011 names the root module the app layer. Either
+   extract a root-module internal composition package (root carries the
+   require) or cmd/tq carries it (hand-pinned indirects convention
+   applies). See §5; decide at execution time.
 
 ## 5. Module/facade impact (bookkeeping for the window)
 
-- `system/v4` require lands in the ROOT module only (composition root =
-  app layer, ADR-0011; facades untouched — ADR-0016's backend-layer-only
-  rule is unaffected).
-- After the go.mod change: `go mod vendor` (root builds resolve
-  internal/* from vendor/, AGENTS.md vendor hazard), then the nix
-  vendorHash fast gate + `scripts/check-go-mods.sh`.
+- OPEN QUESTION where the `system/v4` require lands: the composition
+  wiring lives in cmd/tq (runactor groups, cmd/tq/main.go:586-637,
+  968-996, 1455-1539, 3020), which is its OWN replace-free module
+  (ADR-0017), while ADR-0011 names the root module the app layer. Either
+  the composition is extracted into a root-module internal package (root
+  go.mod carries the require) or cmd/tq carries it (its hand-pinned
+  indirects convention applies). Upstream tag verified 2026-09-26:
+  `system/v4.9.0` is the latest system tag. Facades are unaffected
+  either way (ADR-0016's backend-layer-only rule).
+- After the go.mod change, the gates that bite depend on the module
+  chosen: root → `go mod vendor` (vendor-resolved internal imports,
+  AGENTS.md vendor hazard) + nix vendorHash fast gate; cmd/tq → the
+  devmod shim's FOD. `scripts/check-go-mods.sh` covers both.
 - No new module: `scripts/new-module.sh` is not needed for S4.
 
 ## 6. Execution sketch for the S4 window (after S2 + S3 flip land)
