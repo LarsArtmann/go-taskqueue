@@ -28,12 +28,13 @@ func AllStatuses() []Status {
 // a string-keyed map holding every known status (zeros included) plus the
 // total. The HTTP stats surfaces (httpapi, webui) share one contract
 // pinned by TestStatsSurfacesAgree; this is that contract's single source.
-func StatusCountsView(counts map[Status]int) (view map[string]int, total int) {
+func StatusCountsView(counts map[Status]int) (map[string]int, int) {
+	total := 0
 	for _, n := range counts {
 		total += n
 	}
 
-	view = make(map[string]int, len(AllStatuses())+1)
+	view := make(map[string]int, len(AllStatuses())+1)
 
 	for _, st := range AllStatuses() {
 		view[string(st)] = counts[st]
