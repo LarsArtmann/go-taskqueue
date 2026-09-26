@@ -567,7 +567,15 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   repo+clean-tree preflight via `prepareRepo` and timeout shape via
   `payloadTimeout` (`internal/executor/preflight.go`). Copies collapsed on
   2026-09-23: Excerpt 3, recordRunOutcome 5, decodePayload 4, prepareRepo 4,
-  payloadTimeout 5; art-dupl at `-t 4` catches recurrences.
+  payloadTimeout 5; art-dupl at `-t 4` catches recurrences. Dedup ruling
+  2026-09-26 (owner): acceptances ≈ 0 — cross-BACKEND mirror clones are
+  gated by `scripts/check-mirror-clones.sh` (advisory in ci-local until the
+  companion extraction lands, then `MIRROR_CLONES_STRICT=1`; it counts 31
+  sqlitev4↔postgresv4↔cqrsqlite groups today, extraction designed in
+  docs/planning/2026-09-26_companion-extraction-design.md, TODO row filed).
+  Residual same-file `-t 3` groups (mutex/defer/flag-parse prologs,
+  `deriveUsage`+`recordRunOutcome` pairs, payload-type twins) are shared-
+  seam CALL pairs, not duplication — do not abstract them into existence.
 - Platform honesty: POSIX-only suites carry `//go:build unix`; CI runs the
   rest on windows-latest. Tests must be hermetic (nix checkPhase has no
   host tools — a test once assumed `crush` on PATH and broke the nix build)
@@ -1162,12 +1170,18 @@ finalizes. The upstream v5 direction (ADR-0123) makes `metaengine` Store
   ("go-cqrs-lite platform adoption"): S1 swap the hand-rolled engines for
   thin drivers over `queue/sqlite|postgres/v4` (tq extras — questions/
   RecordAnswer, PriorityScores, CountFacts/FactsSince/LastFacts,
-  ProjectCounts — as same-DB companion tables unless upstream grows them),
+  ProjectCounts — as same-DB companion tables unless upstream grows them;
+  since 2026-09-26 those extras' single home is the scaffolded
+  `internal/queue/companion` module — the mirrored adapters still own the
+  code until the extraction window lands, see
+  docs/planning/2026-09-26_companion-extraction-design.md),
   S2 unify the journal on `facts.Fact` (open FactType; tq-specific fact
   types stay tq constants), S3 read models on metaengine
   (`Watcher`/`ServeSSE` replacing the hand tailer fan-out), S4 composition
   via `system/` DomainConfig + DELETE the mirrored backends (the 12
-  art-dupl mirror clone groups as of 2026-09-23 die there). Facts-first replay is the
+  art-dupl mirror clone groups as of 2026-09-23 — 31 by the 2026-09-26
+  `-t 3` recount, advisory-gated by scripts/check-mirror-clones.sh — die
+  there or into companion). Facts-first replay is the
   migration story (projection-equality verify; dogfood cutover owner-run).
   The historical module-by-module assessment (storage/ = per-stream event
   store; metaengine/ = cost-based read side; system/ = composition root;
