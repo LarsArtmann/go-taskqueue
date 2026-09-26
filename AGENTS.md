@@ -596,6 +596,21 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   Residual same-file `-t 3` groups (mutex/defer/flag-parse prologs,
   `deriveUsage`+`recordRunOutcome` pairs, payload-type twins) are shared-
   seam CALL pairs, not duplication — do not abstract them into existence.
+  2026-09-26 `-t 3` sweep (44→31 actionable groups, 394→222 tokens): the
+  conform suite gained its shared test helpers — `freshStore` (ctx+store
+  prolog), `claimDue` (must-claim, 1-min lease; ErrNoTaskDue/custom-lease
+  sites stay direct), `mustEnqueue`, `backdateCreatedAt`,
+  `legacyTasksSchema`+`openLegacyStore` (migration fixtures),
+  `saveWatermark`/`wantWatermark`, `seedTasks`, `wantAnsweredFact` —
+  new conform tests must USE them, not re-inline the prologs;
+  postgresv4's Open/OpenWithPool share `finishOpen`; the CLI/webui
+  priority-provenance split-brain healed into `harvest.BuildProvenance`
+  (both project to their own view structs). Remaining `-t 3` groups are
+  ACCEPTED classes: SQL rows/defer prologs, sweeper struct+constructor
+  shape (watermark.Cursor is the seam), the status-counts map conversion
+  ×3 modules, `cmd/tq mustMarshalDetail` vs `companion.MustJSON` (would
+  need a new cmd/tq require + cut tag for 7 lines), and one-off
+  assertion idioms.
 - Platform honesty: POSIX-only suites carry `//go:build unix`; CI runs the
   rest on windows-latest. Tests must be hermetic (nix checkPhase has no
   host tools — a test once assumed `crush` on PATH and broke the nix build)

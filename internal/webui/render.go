@@ -77,23 +77,23 @@ func (v priorityProvenanceView) hasItem() bool { return v.ItemKey != "" }
 // priorityProvenanceFor reads a task's priority story through the shared
 // harvest builder and projects it into the detail page's view rows.
 func (s *Server) priorityProvenanceFor(ctx context.Context, t task.Task, facts []journal.Fact) priorityProvenanceView {
-	p := harvest.BuildProvenance(ctx, s.store, t, facts)
+	story := harvest.BuildProvenance(ctx, s.store, t, facts)
 
 	view := priorityProvenanceView{
-		Current:     p.Current,
-		Band:        p.Band,
-		ItemKey:     p.ItemKey,
-		MarkerLevel: p.MarkerLevel,
-		Score:       p.Score,
+		Current:     story.Current,
+		Band:        story.Band,
+		ItemKey:     story.ItemKey,
+		MarkerLevel: story.MarkerLevel,
+		Score:       story.Score,
 	}
 
-	for _, ev := range p.History {
+	for _, event := range story.History {
 		view.History = append(view.History, repriEventView{
-			At:     ev.At,
-			Old:    ev.Old,
-			New:    ev.New,
-			Source: ev.Source,
-			Reason: ev.Reason,
+			At:     event.At,
+			Old:    event.Old,
+			New:    event.New,
+			Source: event.Source,
+			Reason: event.Reason,
 		})
 	}
 

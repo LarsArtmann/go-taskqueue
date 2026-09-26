@@ -2170,23 +2170,23 @@ func buildPriorityProvenance(
 	t task.Task,
 	trail []journal.Fact,
 ) priorityProvenance {
-	p := harvest.BuildProvenance(ctx, store, t, trail)
+	story := harvest.BuildProvenance(ctx, store, t, trail)
 
 	out := priorityProvenance{
-		Current:     p.Current,
-		Band:        p.Band,
-		ItemKey:     p.ItemKey,
-		MarkerLevel: p.MarkerLevel,
-		CachedScore: p.Score,
+		Current:     story.Current,
+		Band:        story.Band,
+		ItemKey:     story.ItemKey,
+		MarkerLevel: story.MarkerLevel,
+		CachedScore: story.Score,
 	}
 
-	for _, ev := range p.History {
+	for _, event := range story.History {
 		out.RepriHistory = append(out.RepriHistory, repriEvent{
-			At:     ev.At.UTC().Format(time.RFC3339),
-			Old:    ev.Old,
-			New:    ev.New,
-			Source: ev.Source,
-			Reason: ev.Reason,
+			At:     event.At.UTC().Format(time.RFC3339),
+			Old:    event.Old,
+			New:    event.New,
+			Source: event.Source,
+			Reason: event.Reason,
 		})
 	}
 
