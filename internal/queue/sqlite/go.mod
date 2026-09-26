@@ -3,7 +3,7 @@ module github.com/larsartmann/go-taskqueue/internal/queue/sqlite
 go 1.27
 
 require (
-	github.com/larsartmann/go-retry v0.6.0
+	github.com/larsartmann/go-retry v0.7.1
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
