@@ -73,10 +73,6 @@ type StoreOption = companion.StoreOption
 // entirely (divergence noted in the S1 report).
 var WithProjectExclusivity = companion.WithProjectExclusivity
 
-// mustJSON aliases the companion helper for the conformance suite's
-// fact-detail literals.
-var mustJSON = companion.MustJSON
-
 // Open opens (creating if needed) the queue database at path.
 func Open(path string, opts ...StoreOption) (*Store, error) {
 	projectExclusive := companion.ApplyProjectExclusivity(opts)

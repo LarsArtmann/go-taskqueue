@@ -470,19 +470,3 @@ func (s *Store) StatusCounts(ctx context.Context) (map[task.Status]int, error) {
 func (s *Store) ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error) {
 	return companion.ProjectCounts(ctx, s.cr)
 }
-
-// pgq rewrites sqlite-style placeholders through the Postgres dialect —
-// kept as a package alias for the conformance suite's seeded-SQL blocks.
-func pgq(query string) string {
-	return companion.Postgres(query)
-}
-
-// exec is the test-facing dialed Exec (the conformance suite seeds rows
-// with direct SQL through the same dialect as production writes).
-func (s *Store) exec(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	return s.cr.ExecContext(ctx, pgq(query), args...)
-}
-
-// mustJSON aliases the companion helper for the conformance suite's
-// fact-detail literals.
-var mustJSON = companion.MustJSON

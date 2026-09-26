@@ -75,7 +75,7 @@ func TestStoreConformance(t *testing.T) {
 			return s
 		},
 		Exec: func(ctx context.Context, s conform.Store, query string, args ...any) (sql.Result, error) {
-			return s.(*Store).exec(ctx, query, args...)
+			return s.(*Store).cr.ExecContext(ctx, companion.Postgres(query), args...)
 		},
 		Begin: func(ctx context.Context, s conform.Store) (*sql.Tx, error) {
 			return s.(*Store).db.BeginTx(ctx, nil)

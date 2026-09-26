@@ -106,10 +106,6 @@ func (s *Store) DeletePriorityScores(ctx context.Context, itemKeys []string) (in
 	return companion.DeletePriorityScores(ctx, s.cr, itemKeys)
 }
 
-// mustJSON aliases the companion helper for the conformance suite's
-// fact-detail literals.
-var mustJSON = companion.MustJSON
-
 // ArchiveFactsBefore is NOT implemented in the S1 spike: the fact archive
 // (facts_archive / journal_meta) has no upstream counterpart.
 func (s *Store) ArchiveFactsBefore(ctx context.Context, cutoff int64) (int64, error) {

@@ -582,11 +582,17 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   `internal/queue/companion` (Dialect/Runner/pgq, ClaimDue with exclusivity,
   Requeue, RecordAnswer, the read/watermark/priority-score surfaces, shared
   schema) — sqlitev4/postgresv4/cqrsqlite adapters are one-line delegators
-  and art-dupl reports ZERO cross-backend adapter groups; the three mirrored
-  conformance suites remain the last 6 mirrors, ratcheted in
-  `scripts/mirror-baseline.txt` (any NEW group fails ci-local; the
-  companion/conform consolidation that shrinks it is designed in
-  docs/planning/2026-09-26_companion-extraction-design.md, TODO row filed).
+  and art-dupl reports ZERO cross-backend groups. Since the 2026-09-26
+  consolidation the three conformance suites are ALSO one shared suite:
+  `internal/queue/companion/conform` (StoreSuite harness — FreshDSN/OpenOn/
+  Exec/Begin/Dialect + Caps{Exclusivity, ResumeCloseout, LegacyMigration,
+  Archive, EnqueuedSnapshot}; 71 tests run once for all three backends via
+  ~50-line harness files; cqr runs the session-fact pair and
+  CompleteResetsLastError for the first time). S1 divergences ride Caps
+  (flip a Cap when upstream grows the surface — the bodies are the pins);
+  `scripts/mirror-baseline.txt` is ZERO rows (any NEW cross-backend group
+  fails ci-local). postgresv4's conform run is env-gated
+  (TQ_TEST_POSTGRES; CI job owns the runtime).
   Residual same-file `-t 3` groups (mutex/defer/flag-parse prologs,
   `deriveUsage`+`recordRunOutcome` pairs, payload-type twins) are shared-
   seam CALL pairs, not duplication — do not abstract them into existence.
