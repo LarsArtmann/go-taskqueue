@@ -14,6 +14,9 @@ import (
 // queue facade's Store interface through shared type aliases (ADR-0016).
 type Store = internalpostgres.Store
 
+// StoreOption configures optional store behavior (WithProjectExclusivity).
+type StoreOption = internalpostgres.StoreOption
+
 var Open = internalpostgres.Open
 
 // OpenWithPool wraps a caller-owned pool into a ready store, applying the

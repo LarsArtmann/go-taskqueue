@@ -24,6 +24,7 @@ type (
 	QuestionAskedDetail    = internalqueue.QuestionAskedDetail
 	QuestionAnsweredDetail = internalqueue.QuestionAnsweredDetail
 	AnswerRecord           = internalqueue.AnswerRecord
+	Claim                  = internalqueue.Claim
 )
 
 // Priority bands (ADR-0015).
