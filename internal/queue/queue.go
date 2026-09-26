@@ -301,6 +301,19 @@ type ReprioritizeEvidence struct {
 	Reason      string `json:"reason,omitempty"`
 }
 
+// ParseReprioritizeEvidence decodes a reprioritized fact's detail JSON.
+// Malformed or foreign details decode as ok=false, so every consumer of
+// the evidence shares one skip-don't-fail decode policy.
+func ParseReprioritizeEvidence(detail jsontext.Value) (ReprioritizeEvidence, bool) {
+	var evidence ReprioritizeEvidence
+
+	if err := json.Unmarshal(detail, &evidence); err != nil {
+		return ReprioritizeEvidence{}, false
+	}
+
+	return evidence, true
+}
+
 // Valid question types, mirroring PapDashboard's question kinds: the ask
 // surface validates against these so a forwarded question can never be
 // rejected by the ingest route for an unknown type.

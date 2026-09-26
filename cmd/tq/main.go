@@ -2187,8 +2187,8 @@ func buildPriorityProvenance(
 			continue
 		}
 
-		var evidence queue.ReprioritizeEvidence
-		if err := json.Unmarshal(fact.Detail, &evidence); err != nil {
+		evidence, ok := queue.ParseReprioritizeEvidence(fact.Detail)
+		if !ok {
 			continue
 		}
 
