@@ -39,6 +39,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	_ "modernc.org/sqlite" // pure-Go SQLite driver (CGo-free)
 )
@@ -48,6 +49,9 @@ import (
 type Store struct {
 	eng *usqlite.Store[[]byte]
 	db  *sql.DB
+
+	// cr is the pre-dialed companion runner over db.
+	cr companion.Runner
 
 	mu     sync.Mutex
 	claims map[task.ID]string
@@ -78,7 +82,7 @@ func Open(path string) (*Store, error) {
 
 	db.SetMaxOpenConns(1)
 
-	s := &Store{eng: eng, db: db, claims: map[task.ID]string{}}
+	s := &Store{eng: eng, db: db, cr: companion.For(companion.SQLite, db), claims: map[task.ID]string{}}
 
 	if err := s.migrateCompanion(context.Background()); err != nil {
 		_ = db.Close()
