@@ -29,6 +29,7 @@ require (
 	github.com/larsartmann/go-datastar v0.5.0 // indirect
 	github.com/larsartmann/go-error-family v0.10.1 // indirect
 	github.com/larsartmann/go-retry v0.6.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0 // indirect
 	github.com/larsartmann/templ-components/datastar v1.17.0 // indirect
@@ -95,3 +96,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ./interna
 replace github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 => ./internal/queue/postgresv4
 
 replace github.com/larsartmann/go-taskqueue/internal/readmodel => ./internal/readmodel
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ./internal/queue/companion
