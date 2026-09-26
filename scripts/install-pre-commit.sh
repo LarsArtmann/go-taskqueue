@@ -5,10 +5,13 @@
 # must not gain unblocked owner-gated items, a staged app.css must be
 # the minified tailwind artifact (2026-09-13 css drift guard), and a
 # commit message carrying a
-# Task-Queue-ID trailer must carry exactly ONE, well-formed — a duplicate or
-# malformed footer silently corrupts the queue↔git cross-reference (the f26
-# three-ID cluster is the cautionary tale). Catches the failure classes of
-# 2026-09-08/09/10 at WRITE time instead of gate time.
+# Task-Queue-ID trailer must carry exactly ONE, well-formed, and sit in
+# the FINAL trailer block — a duplicate or malformed footer silently
+# corrupts the queue↔git cross-reference (the f26 three-ID cluster is the
+# cautionary tale), and a footer placed above an attribution block
+# (Crush/Co-Authored-By) is invisible to git's trailer parser and so to
+# the queue's commit derivation (04-13 §d3; 04-31 §f8). Catches the
+# failure classes of 2026-09-08/09/10 at WRITE time instead of gate time.
 # Idempotent; uninstall with: rm .git/hooks/pre-commit .git/hooks/commit-msg
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -68,6 +71,11 @@ cat >"$commit_msg" <<'EOF'
 # The footer is the queue↔git cross-reference: EXACTLY ONE per commit, and
 # it must be a verbatim queue-assigned task ID (hex, 16+ chars). Multiple
 # or malformed footers make `tq facts`/`tq show` commits-per-ID ambiguous.
+# It must ALSO sit in the FINAL trailer block: git's trailer parser — the
+# queue's `%(trailers)` commit-derivation channel (executor.GitLogScanner)
+# — reads only the last paragraph, so a footer above an attribution block
+# (Crush/Co-Authored-By) never attributes and invites re-dispatch (git
+# >= 2.15, the same floor as the queue's trailer scanning).
 msg="$1"
 
 count=$(grep -ciE '^Task-Queue-ID:' "$msg" || true)
@@ -83,6 +91,21 @@ if [ "$count" -eq 1 ]; then
 	if ! echo "$value" | grep -qE '^[a-f0-9]{16,}$'; then
 		echo "FAIL: Task-Queue-ID trailer value '$value' is not a queue task ID (hex, 16+ chars)" >&2
 		echo "  Copy the ID VERBATIM from the task prompt (never merge or pick between IDs)." >&2
+		exit 1
+	fi
+
+	if ! parsed="$(git interpret-trailers --parse "$msg" 2>&1)"; then
+		echo "FAIL: git interpret-trailers --parse failed (git >= 2.15 required — the same floor as the queue's trailer scanning):" >&2
+		echo "  $parsed" >&2
+		exit 1
+	fi
+	if ! echo "$parsed" | grep -qiE '^Task-Queue-ID:'; then
+		echo "FAIL: the Task-Queue-ID trailer is not in the FINAL trailer block of the message" >&2
+		echo "  git's trailer parser — the queue's commit-attribution channel — reads only" >&2
+		echo "  the last paragraph, so a footer above an attribution block (Crush/" >&2
+		echo "  Co-Authored-By) is invisible and the task will re-dispatch. Move the" >&2
+		echo "  footer so it is the last line of the message, after the attribution." >&2
+		grep -inE '^Task-Queue-ID:' "$msg" >&2
 		exit 1
 	fi
 fi
