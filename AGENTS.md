@@ -576,9 +576,16 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   2026-09-23: Excerpt 3, recordRunOutcome 5, decodePayload 4, prepareRepo 4,
   payloadTimeout 5; art-dupl at `-t 4` catches recurrences. Dedup ruling
   2026-09-26 (owner): acceptances ≈ 0 — cross-BACKEND mirror clones are
-  gated by `scripts/check-mirror-clones.sh` (advisory in ci-local until the
-  companion extraction lands, then `MIRROR_CLONES_STRICT=1`; it counts 31
-  sqlitev4↔postgresv4↔cqrsqlite groups today, extraction designed in
+  gated by `scripts/check-mirror-clones.sh` (STRICT default in ci-local
+  since the 2026-09-26 companion extraction; `MIRROR_CLONES_STRICT=0`
+  downgrades to advisory). The shared companion surface lives in
+  `internal/queue/companion` (Dialect/Runner/pgq, ClaimDue with exclusivity,
+  Requeue, RecordAnswer, the read/watermark/priority-score surfaces, shared
+  schema) — sqlitev4/postgresv4/cqrsqlite adapters are one-line delegators
+  and art-dupl reports ZERO cross-backend adapter groups; the three mirrored
+  conformance suites remain the last 6 mirrors, ratcheted in
+  `scripts/mirror-baseline.txt` (any NEW group fails ci-local; the
+  companion/conform consolidation that shrinks it is designed in
   docs/planning/2026-09-26_companion-extraction-design.md, TODO row filed).
   Residual same-file `-t 3` groups (mutex/defer/flag-parse prologs,
   `deriveUsage`+`recordRunOutcome` pairs, payload-type twins) are shared-
