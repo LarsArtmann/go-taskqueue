@@ -984,12 +984,7 @@ func TestMigrateAddsDedupKeyToOldDatabase(t *testing.T) {
 		t.Fatalf("close legacy: %v", err)
 	}
 
-	s, err := Open(dbPath)
-	if err != nil {
-		t.Fatalf("Open with legacy schema: %v", err)
-	}
-
-	t.Cleanup(func() { _ = s.Close() })
+	s := openOn(t, dbPath)
 
 	if _, err := s.Enqueue(ctx, task.New{Type: "sh", DedupKey: "k1"}); err != nil {
 		t.Fatalf("enqueue after migration: %v", err)
@@ -1141,12 +1136,7 @@ func TestMigrateAddsWatermarksTable(t *testing.T) {
 		t.Fatalf("close legacy: %v", err)
 	}
 
-	s, err := Open(dbPath)
-	if err != nil {
-		t.Fatalf("Open with legacy schema: %v", err)
-	}
-
-	t.Cleanup(func() { _ = s.Close() })
+	s := openOn(t, dbPath)
 
 	if err := s.SaveWatermark(ctx, "consumer-a", 5); err != nil {
 		t.Fatalf("SaveWatermark after migration: %v", err)

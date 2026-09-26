@@ -121,9 +121,6 @@ func (s *Store) ArchiveSummary(ctx context.Context) (ArchiveStats, error) {
 	return ArchiveStats{}, errors.New("cqrsqlite: fact archive not implemented in the S1 spike")
 }
 
-// ArchiveStats mirrors the tq sqlite store's archive summary shape.
-type ArchiveStats struct {
-	Hot       int64
-	Archived  int64
-	Watermark int64
-}
+// ArchiveStats aliases the companion archive-summary shape (conform
+// suite surface; the tq sqlite store's summary shape).
+type ArchiveStats = companion.ArchiveStats
