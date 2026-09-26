@@ -271,7 +271,7 @@ func seedUsageTask(t *testing.T, store *sqlite.Store, seed *usageSeed) task.ID {
 		t.Fatalf("enqueue %s: %v", seed.taskType, err)
 	}
 
-	claimed, err := store.ClaimDue(ctx, "show-usage-e2e", time.Minute)
+	claimed, claimShow, err := store.ClaimDue(ctx, "show-usage-e2e", time.Minute)
 	if err != nil {
 		t.Fatalf("claim %s: %v", seed.taskType, err)
 	}
@@ -285,7 +285,7 @@ func seedUsageTask(t *testing.T, store *sqlite.Store, seed *usageSeed) task.ID {
 		t.Fatalf("marshal %s result: %v", seed.taskType, err)
 	}
 
-	if err := store.Complete(ctx, enq.ID, "show-usage-e2e", detail); err != nil {
+	if err := store.Complete(ctx, enq.ID, claimShow, detail); err != nil {
 		t.Fatalf("complete %s: %v", seed.taskType, err)
 	}
 

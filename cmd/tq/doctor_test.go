@@ -89,7 +89,7 @@ func TestDoctorFlagsDeadWorker(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "dead-worker", time.Millisecond); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "dead-worker", time.Millisecond); err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
@@ -141,11 +141,9 @@ func TestDoctorParkedNamesEarliestRelease(t *testing.T) {
 			t.Fatalf("enqueue: %v", err)
 		}
 
-		if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		if _, claimW1, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 			t.Fatalf("claim: %v", err)
-		}
-
-		if err := s.Requeue(ctx, tk.ID, "w1", "rate limited", delay, false); err != nil {
+		} else if err := s.Requeue(ctx, tk.ID, claimW1, "rate limited", delay, false); err != nil {
 			t.Fatalf("requeue: %v", err)
 		}
 	}
@@ -460,7 +458,7 @@ func TestDoctorMarkOrphans(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "victim", time.Millisecond); err != nil {
+	if _, _, err := s.ClaimDue(ctx, "victim", time.Millisecond); err != nil {
 		t.Fatal(err)
 	}
 

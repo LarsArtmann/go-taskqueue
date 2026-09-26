@@ -59,11 +59,9 @@ func TestCmdDLQDismissDeadTask(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := seed.ClaimDue(ctx, "w", time.Minute); err != nil {
+	if _, claimW, err := seed.ClaimDue(ctx, "w", time.Minute); err != nil {
 		t.Fatalf("claim: %v", err)
-	}
-
-	if err := seed.Fail(ctx, enq.ID, "w", "boom", 0, nil); err != nil {
+	} else if err := seed.Fail(ctx, enq.ID, claimW, "boom", 0, nil); err != nil {
 		t.Fatalf("fail: %v", err)
 	}
 

@@ -75,22 +75,22 @@ func TestJournalDriftNoDriftOverFullLifecycle(t *testing.T) {
 	}
 
 	// First claim: complete whichever task came up (happy path).
-	first, err := store.ClaimDue(ctx, "w1", time.Minute)
+	first, claim1, err := store.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue #1: %v", err)
 	}
 
-	if err := store.Complete(ctx, first.ID, "w1", nil); err != nil {
+	if err := store.Complete(ctx, first.ID, claim1, nil); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
 	// t2: dead-letter immediately (permanent failure: failed + dead-lettered).
-	claimed, err := store.ClaimDue(ctx, "w1", time.Minute)
+	claimed, claim2, err := store.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue t2: %v", err)
 	}
 
-	if err := store.FailPermanent(ctx, claimed.ID, "w1", "boom", nil); err != nil {
+	if err := store.FailPermanent(ctx, claimed.ID, claim2, "boom", nil); err != nil {
 		t.Fatalf("FailPermanent: %v", err)
 	}
 

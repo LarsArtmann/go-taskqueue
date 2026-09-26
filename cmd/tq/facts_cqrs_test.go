@@ -49,12 +49,12 @@ func TestFactsCQRSOverStore(t *testing.T) {
 		t.Fatalf("enqueue second: %v", err)
 	}
 
-	claimed, err := store.ClaimDue(ctx, "worker-a", time.Minute)
+	claimed, claimWorkerA, err := store.ClaimDue(ctx, "worker-a", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := store.Complete(ctx, claimed.ID, "worker-a", nil); err != nil {
+	if err := store.Complete(ctx, claimed.ID, claimWorkerA, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 

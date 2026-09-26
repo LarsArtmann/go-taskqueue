@@ -38,8 +38,10 @@ func completeDep(t *testing.T, q *queue.Queue, id task.ID) {
 
 	// Equal-priority deps created in the same millisecond make ClaimDue's
 	// pick arbitrary: claim until THIS task is held, then complete it.
+	var held queue.Claim
+
 	for {
-		claimed, err := q.ClaimDue(ctx, "unblock-test", 5*time.Minute)
+		claimed, claim, err := q.ClaimDue(ctx, "unblock-test", 5*time.Minute)
 		if errors.Is(err, queue.ErrNoTaskDue) {
 			break // nothing claimable left: we may already hold it from an earlier call
 		}
@@ -49,11 +51,13 @@ func completeDep(t *testing.T, q *queue.Queue, id task.ID) {
 		}
 
 		if claimed.ID == id {
+			held = claim
+
 			break
 		}
 	}
 
-	if err := q.Complete(ctx, id, "unblock-test", nil); err != nil {
+	if err := q.Complete(ctx, id, held, nil); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 }

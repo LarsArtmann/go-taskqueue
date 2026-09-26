@@ -38,11 +38,9 @@ func TestStatsJSONParkedContract(t *testing.T) {
 			t.Fatalf("enqueue: %v", err)
 		}
 
-		if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		if _, claimW1, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 			t.Fatalf("claim: %v", err)
-		}
-
-		if err := s.Requeue(ctx, tk.ID, "w1", "rate limited", delay, false); err != nil {
+		} else if err := s.Requeue(ctx, tk.ID, claimW1, "rate limited", delay, false); err != nil {
 			t.Fatalf("requeue: %v", err)
 		}
 	}
@@ -137,12 +135,13 @@ func TestStatsJSONSessionUsageContract(t *testing.T) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	if _, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+	_, claimW1, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
 
 	result := []byte(`{"session_id":"s1","session_cost_usd":0.42,"session_prompt_tokens":1200,"session_completion_tokens":3400,"session_message_count":9}`)
-	if err := s.Complete(ctx, tk.ID, "w1", result); err != nil {
+	if err := s.Complete(ctx, tk.ID, claimW1, result); err != nil {
 		t.Fatalf("complete: %v", err)
 	}
 

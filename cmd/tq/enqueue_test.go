@@ -127,7 +127,7 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 			t.Fatal("task never appeared")
 		}
 
-		claimed, err := store.ClaimDue(ctx, "test-worker", time.Minute)
+		claimed, claimWorker, err := store.ClaimDue(ctx, "test-worker", time.Minute)
 		if err != nil {
 			t.Fatalf("claim: %v", err)
 		}
@@ -137,9 +137,9 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 		}
 
 		if failTask {
-			err = store.FailPermanent(ctx, tsk.ID, "test-worker", "boom", nil)
+			err = store.FailPermanent(ctx, tsk.ID, claimWorker, "boom", nil)
 		} else {
-			err = store.Complete(ctx, tsk.ID, "test-worker", nil)
+			err = store.Complete(ctx, tsk.ID, claimWorker, nil)
 		}
 
 		if err != nil {

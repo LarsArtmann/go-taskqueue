@@ -37,7 +37,7 @@ func askFixture(t *testing.T, dbPath string) (task.Task, *sqlite.Store) {
 		t.Fatalf("enqueue: %v", err)
 	}
 
-	claimed, err := store.ClaimDue(ctx, "w1", time.Minute)
+	claimed, _, err := store.ClaimDue(ctx, "w1", time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
 	}
