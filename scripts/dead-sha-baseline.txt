@@ -114,3 +114,19 @@ a31f6d0
 ea9815b
 eb91e66e
 fd3118d8
+# Review-fix residue (2026-09-26, task 000001a0dbccd985bf0aa3ec0803c57e05b7,
+# filed against the 05-07 close-out: it left its own dead-SHA cites
+# unbaselined and the gate red): the 05-19/05-47 windows landed the same
+# daemon-amend residue after the block above; every citing line
+# DELIBERATELY describes the dead side of a sanctioned amend/repair —
+# forensics prose, not stale cites. Twins verified before baselining:
+#   fd2176c5 — 05-07 window's footerless daemon fold (AGENTS.md +12),
+#           AMEND MANEUVER'd into 018a6e32 (same AGENTS.md hunk among its
+#           three files; rebuild, not patch-id — verified by diff)
+#   eb48b416 -> c460e758 — 05-19 row-110 window's footerless daemon fold
+#           (TODO_LIST edit), exact patch-id twin verified
+#   a51585e1 -> aab7ee1d — 05-47 row-111 window's footer-above-attribution
+#           work commit, amended in-window; exact patch-id twin verified
+fd2176c5
+eb48b416
+a51585e1
