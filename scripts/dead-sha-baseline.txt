@@ -130,3 +130,12 @@ fd3118d8
 fd2176c5
 eb48b416
 a51585e1
+# 2026-09-27 00-59 fix close-out (task 000001a0dfbfb035d7cd5ce9bf2230cfce29):
+#   c460e758 -> 1205f453 — 05-19 row-110 work commit stranded by the
+#           2026-09-26 22:38 rewrite (reviewer-referenced sha, unreachable
+#           at fix dispatch); exact patch-id twin verified (32abd751)
+#   d5e8558e -> f02904a3 — this window's footerless daemon sweep, amended
+#           in-window; exact patch-id twin verified (9c6def3c), tree
+#           byte-identical between the twins (empty diff)
+c460e758
+d5e8558e
