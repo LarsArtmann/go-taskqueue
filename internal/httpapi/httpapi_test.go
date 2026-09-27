@@ -78,6 +78,70 @@ func TestAuthMatrix(t *testing.T) {
 	}
 }
 
+// TestRouteInventory pins the queue-metadata-only ruling (2026-09-28 00-55
+// report §a): Handler() mounts EXACTLY the enqueue, stats, and health
+// routes — no per-task read route, so derived outcomes (agent results,
+// review/status verdicts, session usage) stay dashboard surfaces. A route
+// landing without a conscious ruling + package-doc/FEATURES update fails
+// here: the mounted paths reject every other method and the per-task read
+// shapes stay unrouted. A brand-new path needs its own probe added to this
+// table in the same change.
+func TestRouteInventory(t *testing.T) {
+	t.Parallel()
+
+	srv, _ := newTestAPI(t)
+	server := httptest.NewServer(srv.Handler())
+	t.Cleanup(server.Close)
+
+	id := "0001a2b3c4d5e6f7"
+
+	cases := []struct {
+		name, method, path, body string
+		want                     int
+	}{
+		{
+			"enqueue route serves",
+			http.MethodPost,
+			"/api/v1/tasks",
+			`{"project":"p","type":"sh","payload":{}}`,
+			http.StatusCreated,
+		},
+		{"stats route serves", http.MethodGet, "/api/v1/stats", "", http.StatusOK},
+		{"healthz route serves", http.MethodGet, "/api/v1/healthz", "", http.StatusOK},
+
+		{"tasks collection is POST-only", http.MethodGet, "/api/v1/tasks", "", http.StatusMethodNotAllowed},
+		{"stats is GET-only", http.MethodPost, "/api/v1/stats", "{}", http.StatusMethodNotAllowed},
+		{"healthz is GET-only", http.MethodPost, "/api/v1/healthz", "{}", http.StatusMethodNotAllowed},
+
+		{"no per-task read", http.MethodGet, "/api/v1/tasks/" + id, "", http.StatusNotFound},
+		{"no per-task write", http.MethodPost, "/api/v1/tasks/" + id, "{}", http.StatusNotFound},
+		{"no per-task delete", http.MethodDelete, "/api/v1/tasks/" + id, "", http.StatusNotFound},
+		{"no per-task result read", http.MethodGet, "/api/v1/tasks/" + id + "/result", "", http.StatusNotFound},
+		{"no singular-task alias", http.MethodGet, "/api/v1/task/" + id, "", http.StatusNotFound},
+		{"no tasks subtree", http.MethodGet, "/api/v1/tasks/", "", http.StatusNotFound},
+	}
+
+	for _, tc := range cases {
+		req, err := http.NewRequestWithContext(t.Context(), tc.method, server.URL+tc.path, strings.NewReader(tc.body))
+		if err != nil {
+			t.Fatalf("%s: build request: %v", tc.name, err)
+		}
+
+		req.Header.Set("Authorization", "Bearer secret-token")
+
+		resp, err := server.Client().Do(req)
+		if err != nil {
+			t.Fatalf("%s: %s %s: %v", tc.name, tc.method, tc.path, err)
+		}
+
+		_ = resp.Body.Close()
+
+		if resp.StatusCode != tc.want {
+			t.Errorf("%s: %s %s = %d, want %d", tc.name, tc.method, tc.path, resp.StatusCode, tc.want)
+		}
+	}
+}
+
 func TestEnqueueContract(t *testing.T) {
 	srv, store := newTestAPI(t)
 	h := srv.Handler()
