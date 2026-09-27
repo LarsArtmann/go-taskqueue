@@ -1604,11 +1604,8 @@ func groupedSkips(skips []harvest.Skipped) map[string]skipClass {
 
 func truncateSkipReason(reason string) string {
 	const maxLen = 200
-	if len(reason) <= maxLen {
-		return reason
-	}
 
-	return reason[:maxLen] + "…"
+	return truncate(reason, maxLen)
 }
 
 func printHarvestResult(res harvest.Result) {

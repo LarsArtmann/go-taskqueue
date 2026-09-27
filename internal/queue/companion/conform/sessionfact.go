@@ -1,7 +1,6 @@
 package conform
 
 import (
-	"context"
 	"encoding/json/v2"
 	"errors"
 	"testing"
@@ -15,8 +14,7 @@ import (
 // fact keyed by a synthetic "session:<id>" identity persists, gets a Seq and
 // a Time, and never touches the tasks table.
 func TestAppendFactRecordsNonTaskFact(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	err := s.AppendFact(ctx, journal.Fact{
 		TaskID: "session:sess-1",
@@ -66,8 +64,7 @@ func TestAppendFactRecordsNonTaskFact(t *testing.T) {
 // out-of-band writer; this pins its doc'd contract on the happy path only:
 // no task row is created even when a task-like id is passed.
 func TestAppendFactDoesNotMaterializeTaskRows(t *testing.T) {
-	ctx := context.Background()
-	s := openTestStore(t)
+	ctx, s := freshStore(t)
 
 	if err := s.AppendFact(ctx, journal.Fact{TaskID: "session:x", Type: journal.SessionClosed}); err != nil {
 		t.Fatalf("AppendFact: %v", err)
