@@ -140,6 +140,7 @@ var (
 	SecretHits            = internalexecutor.SecretHits
 	SetFailureEvidence    = internalexecutor.SetFailureEvidence
 	SetResultDetail       = internalexecutor.SetResultDetail
+	StaleVerifyReasons    = internalexecutor.StaleVerifyReasons
 	SweepSidecars         = internalexecutor.SweepSidecars
 	SweepSidecarsByBytes  = internalexecutor.SweepSidecarsByBytes
 	ParseResult           = internalexecutor.ParseResult

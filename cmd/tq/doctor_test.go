@@ -700,6 +700,60 @@ func TestDoctorVerifyPinsFlagsStalePins(t *testing.T) {
 	}
 }
 
+// TestDoctorVerifyPinsFlagsKnownStalePatterns pins the f46-audit-as-gate
+// dimension (09-39 §e3): a pending agent task whose pin matches a known-
+// stale minted form warns on CONTENT alone — no repo directory required —
+// while the current mint stays clean.
+func TestDoctorVerifyPinsFlagsKnownStalePatterns(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "stale-patterns.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	enqueued := map[string]task.Task{}
+
+	for name, tc := range map[string]struct {
+		typ, payload string
+	}{
+		"rootOnly": {"agent", `{"repo":"no-such-repo","verify":"go build ./... && go test ./... -count=1"}`},
+		"current":  {"agent", `{"repo":"no-such-repo","verify":"export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1 && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*'); do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done"}`},
+	} {
+		tt, err := s.Enqueue(ctx, task.New{Type: tc.typ, Payload: []byte(tc.payload)})
+		if err != nil {
+			t.Fatalf("enqueue %s: %v", name, err)
+		}
+
+		enqueued[name] = tt
+	}
+
+	// projectsDir "" — the repos do not exist, proving the pattern check is
+	// repo-independent.
+	got := resultByName(doctorVerifyPins(ctx, s, ""), "verify-pins")
+
+	if got.Status != checkWarn {
+		t.Fatalf("status = %q (%s), want warn (known-stale pin must surface)", got.Status, got.Detail)
+	}
+
+	if !strings.Contains(got.Detail, string(enqueued["rootOnly"].ID)) {
+		t.Errorf("detail must name the stale-pattern task %s: %s", enqueued["rootOnly"].ID, got.Detail)
+	}
+
+	for _, want := range []string{"known-stale verify pin", "root-module-only gate"} {
+		if !strings.Contains(got.Detail, want) {
+			t.Errorf("detail must carry %q: %s", want, got.Detail)
+		}
+	}
+
+	if strings.Contains(got.Detail, string(enqueued["current"].ID)) {
+		t.Errorf("current-mint pin %s must not be reported: %s", enqueued["current"].ID, got.Detail)
+	}
+}
+
 // TestDoctorOpenSessions pins the stale-open-session visibility check
 // (03-28 §f9): a session that began and never closed surfaces as a WARN
 // naming the session and pointing at the explicit close path, while a
