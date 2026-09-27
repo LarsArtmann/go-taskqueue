@@ -96,6 +96,13 @@ func statusBadgeText(res executor.StatusResult) string {
 	return "status: report"
 }
 
+// agentBadgeText is the human text of an agent-run badge: the derived
+// footer-commit count, the same label the detail card's badge carries so
+// table and card can never drift apart.
+func agentBadgeText(res executor.AgentResult) string {
+	return fmt.Sprintf("%d commits", len(res.Commits))
+}
+
 // sessionUsageEmpty reports whether a result carries no derived session
 // usage (stub or non-crush run): the render-nothing gate for the usage line.
 // A message-count-only run is NOT empty: the message count proves the

@@ -576,11 +576,12 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 
 		data.Tasks = tasks
 
-		// Verdicts/outcomes for the page's finished review and status tasks
-		// (best effort: a failed read renders no badge, never a broken
-		// snapshot).
+		// Verdicts/outcomes for the page's finished review, status, and
+		// agent tasks (best effort: a failed read renders no badge, never
+		// a broken snapshot).
 		data.Reviews = pageResults(ctx, tasks, executor.TaskTypeReview, s.reviewResultFor)
 		data.Statuses = pageResults(ctx, tasks, executor.TaskTypeStatus, s.statusResultFor)
+		data.AgentResults = pageResults(ctx, tasks, executor.TaskTypeAgent, s.agentResultFor)
 
 		matches, err := s.store.CountTasks(ctx, filter.toQueueFilter(0))
 		if err != nil {

@@ -625,6 +625,60 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 	}
 }
 
+// TestAgentResultBadgeAndCard pins the agent-run outcome's table/detail
+// parity: a completed agent task renders its commit-count badge in the
+// table row AND its result card on the detail page — both fed by the same
+// derived outcome loadSnapshot now populates — while a pending one renders
+// neither.
+func TestAgentResultBadgeAndCard(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	ag := enqueue(t, s, "agent", "demo")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if body := rec.Body.String(); strings.Contains(body, " commits") {
+		t.Errorf("pending agent task rendered a commit-count badge")
+	}
+
+	_, agent_owner_claim, err := s.ClaimDue(context.Background(), "agent-owner", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	detail, err := json.Marshal(executor.AgentResult{
+		Commits: []executor.Commit{
+			{SHA: "abc1234", Subject: "work"},
+			{SHA: "def5678", Subject: "close-out"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal agent result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), ag.ID, agent_owner_claim, detail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if body := rec.Body.String(); !strings.Contains(body, "2 commits") {
+		t.Errorf("dashboard table missing the agent-run badge")
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+ag.ID.String(), nil))
+
+	body := rec.Body.String()
+	for _, want := range []string{"agent run", "2 commits"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("detail page missing %q", want)
+		}
+	}
+}
+
 // TestResultUsageRendersOnDetailPage pins the derived session usage on the
 // detail page: a prioritize scorer run renders its card (verdict count +
 // tokens/cost line, message count as suffix), a status run with usage

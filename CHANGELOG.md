@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Agent-run outcome badges in the task table**: completed agent tasks now
+  carry an "N commits" badge in the dashboard table (the run's derived
+  footer-commit count), closing the table/detail parity gap — the "agent
+  run" detail card shipped the number first, and `loadSnapshot` now
+  populates the page's `AgentResults` alongside the review/status maps so
+  table badge and card badge render from the same outcome. Pinned by
+  `TestAgentResultBadgeAndCard` (`internal/webui`).
 - **`tq doctor --hygiene` known-stale verify patterns**: the stale-pin
   audit now matches PENDING agent tasks' verify pins against the KNOWN-
   STALE minted forms (`executor.StaleVerifyReasons`) — the root-module-
