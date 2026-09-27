@@ -324,7 +324,10 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   dirty-capable by DEFAULT (a dead agent's partial work is evidence;
   only explicit `require_clean=true` restores the preflight), budget-gated
   like every mint, and the `{{TASK_ID}}` in the fix-commit footer resolves
-  to the AUTOPSY's id. Cursor `dlqfix-sweeper` (head-bootstrapped,
+  to the AUTOPSY's id. Session usage is DERIVED for autopsy turns too
+  (2026-09-27: DLQFixResult embeds sessionUsage like the sibling paid
+  turns), so autopsy spend joins the budget token projection via the
+  shared parse. Cursor `dlqfix-sweeper` (head-bootstrapped,
   rewindable). Design: docs/planning/archived/2026-09-12_dlq-autopsy-design.md.
 - **`prioritize` (AI batch scorer, `--prioritize`)**: `PrioritizePayload`
   JSON (repo, batch items with dedup keys, model/yolo/clean knobs). A
