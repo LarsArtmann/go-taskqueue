@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **`tq doctor --hygiene` known-stale verify patterns**: the stale-pin
+  audit now matches PENDING agent tasks' verify pins against the KNOWN-
+  STALE minted forms (`executor.StaleVerifyReasons`) — the root-module-
+  only gate (the f46 vacuous-verify class), the `-execdir` find walk that
+  swallows inner exit status, and any Go gate missing the
+  `GOEXPERIMENT=jsonv2` export (the env-self-contained mint). The match
+  is repo-independent content checking, so a stale pin warns even where
+  the repo directory is absent — the f46-style audit is now a gate, not
+  an investigation. Pinned by `TestStaleVerifyReasons` (executor) and
+  `TestDoctorVerifyPinsFlagsKnownStalePatterns` (cmd/tq).
+  (`internal/executor/staleverify.go`, `cmd/tq/doctor.go`)
 - **`tq show --commits` folded-here view**: the git cross-reference now
   surfaces footer-less auto-commit-daemon commits ADJACENT to (parent or
   child of) a footer-bearing work commit as a `folded_here` section with

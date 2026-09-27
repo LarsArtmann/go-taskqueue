@@ -26,11 +26,11 @@ func TestStaleVerifyReasons(t *testing.T) {
 		verify string
 		want   []string
 	}{
-		"empty":           {verify: ""},
-		"npm":             {verify: "npm test --silent"},
-		"make":            {verify: "make test"},
-		"cargo":           {verify: "cargo test --quiet"},
-		"nix":             {verify: "nix build && nix flake check"},
+		"empty": {verify: ""},
+		"npm":   {verify: "npm test --silent"},
+		"make":  {verify: "make test"},
+		"cargo": {verify: "cargo test --quiet"},
+		"nix":   {verify: "nix build && nix flake check"},
 		"rootOnly": {
 			// The original single-module default (pre-2026-09-09).
 			verify: "go build ./... && go test ./... -count=1",
