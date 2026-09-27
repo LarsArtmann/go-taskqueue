@@ -66,6 +66,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   structured scorer result. (`internal/webui/fragments.templ`,
   `internal/webui/components.go`, `internal/webui/handlers.go`,
   `internal/webui/render.go`, `cmd/tq/main.go`)
+- **DLQ autopsy spend joins the budget token projection**: autopsy runs
+  are paid agent turns, but `DLQFixResult` carried no session-usage
+  fields, so their cost never reached `budget.session_usage` /
+  `UsageToday` / the daily-cap refusal reason. The result type now embeds
+  the shared session-usage block (the standalone `SessionID` field is
+  retired; the JSON spelling is unchanged so existing facts unmarshal
+  unchanged) and `Execute` derives usage after the run exactly like the
+  review/status/prioritize turns — the projection picks autopsy spend up
+  via the shared key parse with zero budget-code change. Pinned by
+  `TestUsageTodaySumsDerivedSessionUsage` marshalling the real
+  `DLQFixResult`. (`internal/executor/dlqfix.go`,
+  `internal/budget/budget_test.go`)
 
 ### Fixed
 - **Journal-consumer unsubscribe race**: an in-flight `drain` could
