@@ -212,6 +212,7 @@ var conformanceTests = []struct {
 	{"TestFactsSinceByType", TestFactsSinceByType},
 	{"TestListQueryPushdown", TestListQueryPushdown},
 	{"TestListQueryLikeEscaping", TestListQueryLikeEscaping},
+	{"TestListPayloadContains", TestListPayloadContains},
 	{"TestListOffsetPagination", TestListOffsetPagination},
 	{"TestStatusCountsAndProjectCounts", TestStatusCountsAndProjectCounts},
 	{"TestListSeverityOrder", TestListSeverityOrder},

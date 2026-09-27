@@ -242,7 +242,13 @@ type Filter struct {
 	// payload, lease owner and last error — pushed into SQL LIKE, not a
 	// post-filter.
 	Query string
-	Limit int
+	// PayloadContains is a case-insensitive substring search over the
+	// payload ALONE — pushed into SQL LIKE, so limit/offset semantics
+	// survive the filter. `tq tasks --verify-contains` rides it:
+	// stale-verify hygiene audits correlate the pinned verify string
+	// across the matching set without a `tq show` per task (09-39 §e1).
+	PayloadContains string
+	Limit           int
 	// Offset skips the first Offset matches (pagination); applied after
 	// ordering. Meaningful together with Limit.
 	Offset int

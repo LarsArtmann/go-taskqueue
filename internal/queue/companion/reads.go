@@ -72,6 +72,16 @@ func listWhere(f queue.Filter) (string, []any) {
 		args = append(args, like, like, like, like, like, like)
 	}
 
+	if f.PayloadContains != "" {
+		like := "%" + escapeLike(strings.ToLower(f.PayloadContains)) + "%"
+
+		// Payload-only substring: the `tq tasks --verify-contains`
+		// pushdown. Unlike Query it must NOT match id/project/last_error,
+		// or the hygiene audit it feeds over-matches.
+		where = append(where, `CAST(payload AS TEXT) LIKE ? ESCAPE '\'`)
+		args = append(args, like)
+	}
+
 	return strings.Join(where, " AND "), args
 }
 

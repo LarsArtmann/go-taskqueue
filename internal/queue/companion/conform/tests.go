@@ -1761,6 +1761,61 @@ func TestListQueryLikeEscaping(t *testing.T) {
 	}
 }
 
+// TestListPayloadContains pins the Filter.PayloadContains pushdown: the
+// substring matches the payload ALONE (id/project/type/last_error never
+// over-match), it is case-insensitive with literal LIKE escaping, and
+// Limit counts post-filter rows — the `tq tasks --verify-contains`
+// hygiene audit leans on all three (09-39 §e1).
+func TestListPayloadContains(t *testing.T) {
+	t.Parallel()
+
+	ctx, s := freshStore(t)
+
+	seed := []task.New{
+		{Project: "stale-verify", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","verify":"go test ./... -race"}`)},
+		{Project: "fresh", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","verify":"gofmt -l ."}`)},
+		{Project: "verify", Type: "sh", Payload: jsontext.Value(`"echo hi"`)},
+	}
+
+	seedTasks(t, ctx, s, seed)
+
+	cases := []struct {
+		name     string
+		contains string
+		want     int
+	}{
+		{"payload substring", "go test ./...", 1},
+		{"case-insensitive", "GO TEST", 1},
+		{"second payload only", "gofmt", 1},
+		{"project name must NOT match", "stale-verify", 0},
+		{"type must NOT match", "agent", 0},
+		{"no match", "zebra", 0},
+		{"literal percent", "100%", 0},
+	}
+
+	for _, tc := range cases {
+		got, err := s.List(ctx, queue.Filter{PayloadContains: tc.contains})
+		if err != nil {
+			t.Fatalf("List(contains=%q): %v", tc.contains, err)
+		}
+
+		if len(got) != tc.want {
+			t.Fatalf("contains %q matched %d tasks, want %d", tc.contains, len(got), tc.want)
+		}
+	}
+
+	// Limit applies AFTER the payload filter: a capped list shows the
+	// first N matches, not the first N tasks filtered.
+	matched, err := s.List(ctx, queue.Filter{PayloadContains: "go-taskqueue", Limit: 1})
+	if err != nil {
+		t.Fatalf("List(limit): %v", err)
+	}
+
+	if len(matched) != 1 || matched[0].Type != "agent" {
+		t.Fatalf("limit over payload filter = %+v, want the one agent task", matched)
+	}
+}
+
 func TestListOffsetPagination(t *testing.T) {
 	t.Parallel()
 

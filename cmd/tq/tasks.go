@@ -23,6 +23,7 @@ func cmdTasks(args []string) error {
 	status := fs.String("status", "", "filter by status (pending|running|completed|dead|cancelled)")
 	band := fs.String("band", "", "filter by priority band (hot|machine|backlog)")
 	taskType := fs.String("type", "", "filter by task type (e.g. agent, sh)")
+	verifyContains := fs.String("verify-contains", "", "filter by payload substring (e.g. a verify command; stale-verify audits without a tq show per task)")
 	since := fs.Duration("since", 0, "only tasks created within this window (e.g. 6h, 30m; 0 = all time)")
 	parked := fs.Bool("parked", false, "only rate-limit-parked tasks (pending with a future not_before)")
 	limit := fs.Int("limit", 50, "max tasks to list (0 = all)")
@@ -67,6 +68,10 @@ func cmdTasks(args []string) error {
 
 	if *taskType != "" {
 		filter.Type = taskType
+	}
+
+	if *verifyContains != "" {
+		filter.PayloadContains = *verifyContains
 	}
 
 	// Creation window rides in the store (SQL pushdown, inclusive bound).
