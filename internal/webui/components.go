@@ -103,6 +103,13 @@ func agentBadgeText(res executor.AgentResult) string {
 	return fmt.Sprintf("%d commits", len(res.Commits))
 }
 
+// prioritizeBadgeText is the human text of a prioritize-run badge: the
+// scorer's verdict count, the same label the detail card's badge carries so
+// table and card can never drift apart.
+func prioritizeBadgeText(res executor.PrioritizeResult) string {
+	return fmt.Sprintf("%d verdicts", len(res.Verdicts))
+}
+
 // sessionUsageEmpty reports whether a result carries no derived session
 // usage (stub or non-crush run): the render-nothing gate for the usage line.
 // A message-count-only run is NOT empty: the message count proves the

@@ -603,9 +603,9 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView, prov 
 }
 
 // taskBadges renders the shared per-task badge stack — status, review
-// verdict, status-report, agent-run commits — in one place so the queue
-// chip and the detail card can never drift apart. The caller picks the
-// badge size.
+// verdict, status-report, agent-run commits, prioritize verdicts — in one
+// place so the queue chip and the detail card can never drift apart. The
+// caller picks the badge size.
 templ taskBadges(data DashboardData, t task.Task, size display.BadgeSize) {
 	@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: size})
 	if verdict, ok := data.Reviews[t.ID.String()]; ok {
@@ -616,6 +616,9 @@ templ taskBadges(data DashboardData, t task.Task, size display.BadgeSize) {
 	}
 	if res, ok := data.AgentResults[t.ID.String()]; ok {
 		@display.Badge(display.BadgeProps{Text: agentBadgeText(res), Type: display.BadgeInfo, Dot: true, Size: size})
+	}
+	if res, ok := data.Prioritizes[t.ID.String()]; ok {
+		@display.Badge(display.BadgeProps{Text: prioritizeBadgeText(res), Type: display.BadgeInfo, Dot: true, Size: size})
 	}
 }
 
@@ -758,7 +761,7 @@ templ statusReportCard(res executor.StatusResult) {
 templ prioritizeResultCard(res executor.PrioritizeResult) {
 	@display.Card(display.CardProps{Title: "ai scoring", Padding: display.CardPaddingMD}) {
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-			@display.Badge(display.BadgeProps{Text: fmt.Sprintf("%d verdicts", len(res.Verdicts)), Type: display.BadgeInfo, Size: display.BadgeSizeSM})
+			@display.Badge(display.BadgeProps{Text: prioritizeBadgeText(res), Type: display.BadgeInfo, Size: display.BadgeSizeSM})
 			if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
 				<span class="text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</span>
 			}

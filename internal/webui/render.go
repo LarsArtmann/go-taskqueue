@@ -300,14 +300,16 @@ type DashboardData struct {
 	// status reports.
 	Statuses map[string]executor.StatusResult
 	// Prioritizes holds the parsed outcome of every COMPLETED prioritize
-	// task on the detail page (keyed by task id) — the AI batch scorer's
-	// verdict count + derived session usage made visible. Nil when the
-	// page shows no finished scorer run.
+	// task on the visible page (keyed by task id) — the AI batch scorer
+	// made visible: a verdict-count badge in the table and the verdict
+	// count + derived session usage on the detail page. Nil when the page
+	// shows no finished scorer run.
 	Prioritizes map[string]executor.PrioritizeResult
 	// AgentResults holds the parsed outcome of every COMPLETED agent task
-	// on the detail page (keyed by task id) — the run's derived outcome
-	// (footer commits) + derived session usage made visible. Nil when the
-	// page shows no finished agent run.
+	// on the visible page (keyed by task id) — the run's derived outcome
+	// (footer commits) + derived session usage made visible: a commit-count
+	// badge in the table and the result card on the detail page. Nil when
+	// the page shows no finished agent run.
 	AgentResults map[string]executor.AgentResult
 }
 
@@ -576,12 +578,13 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 
 		data.Tasks = tasks
 
-		// Verdicts/outcomes for the page's finished review, status, and
-		// agent tasks (best effort: a failed read renders no badge, never
-		// a broken snapshot).
+		// Verdicts/outcomes for the page's finished review, status, agent,
+		// and prioritize tasks (best effort: a failed read renders no badge,
+		// never a broken snapshot).
 		data.Reviews = pageResults(ctx, tasks, executor.TaskTypeReview, s.reviewResultFor)
 		data.Statuses = pageResults(ctx, tasks, executor.TaskTypeStatus, s.statusResultFor)
 		data.AgentResults = pageResults(ctx, tasks, executor.TaskTypeAgent, s.agentResultFor)
+		data.Prioritizes = pageResults(ctx, tasks, executor.TaskTypePrioritize, s.prioritizeResultFor)
 
 		matches, err := s.store.CountTasks(ctx, filter.toQueueFilter(0))
 		if err != nil {

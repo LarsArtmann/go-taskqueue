@@ -682,6 +682,63 @@ func TestAgentResultBadgeAndCard(t *testing.T) {
 	}
 }
 
+// TestPrioritizeResultBadgeAndCard pins the prioritize outcome's
+// table/detail parity: a completed prioritize task renders its verdict-count
+// badge in the table row AND its result card on the detail page — both fed
+// by the same outcome loadSnapshot populates — while a pending one renders
+// neither.
+func TestPrioritizeResultBadgeAndCard(t *testing.T) {
+	t.Parallel()
+
+	srv, s := newTestServer(t)
+
+	pz := enqueue(t, s, "prioritize", "demo")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
+
+	if body := rec.Body.String(); strings.Contains(body, " verdicts") {
+		t.Errorf("pending prioritize task rendered a verdict-count badge")
+	}
+
+	_, score_owner_claim, err := s.ClaimDue(context.Background(), "score-owner", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	detail, err := json.Marshal(executor.PrioritizeResult{
+		Verdicts: []executor.PrioritizeVerdict{
+			{ItemKey: "todo:a", Score: 80},
+			{ItemKey: "todo:b", Score: 20},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal prioritize result: %v", err)
+	}
+
+	if err := s.Complete(context.Background(), pz.ID, score_owner_claim, detail); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
+
+	if body := rec.Body.String(); !strings.Contains(body, "2 verdicts") {
+		t.Errorf("dashboard table missing the prioritize badge")
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+pz.ID.String(), nil))
+
+	body := rec.Body.String()
+	for _, want := range []string{"ai scoring", "2 verdicts"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("detail page missing %q", want)
+		}
+	}
+}
+
 // TestResultUsageRendersOnDetailPage pins the derived session usage on the
 // detail page: a prioritize scorer run renders its card (verdict count +
 // tokens/cost line, message count as suffix), a status run with usage
