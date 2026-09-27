@@ -400,3 +400,7 @@ not here.
 ## Row-120 attempt-3 window follow-ups (2026-09-27 08-38; source: docs/status/2026-09-27_08-38_task-000001a0e1779f0f5a572d526f06e832326c.md §d1/§e1; deduped against rows 112/283 — this is the hook-liveness gap, not the hook-content gap)
 
 - [ ] session-start.sh: probe git-hook LIVENESS and print the verdict — host-global `core.hooksPath = .githooks` (user gitconfig, edited 2026-09-14) points at a directory this repo does not have, so the installer's `.git/hooks` pre-commit (status-index/TODO/app.css) and commit-msg (Task-Queue-ID trailer placement, row-112 §f8) never fire here; proved this window: a commit carrying the footer ABOVE the attribution block was accepted ungated, healed only by a chained manual trailer check + amend (08-38 report §d1; scripts/install-pre-commit.sh, scripts/check-commit-msg-hook.sh)
+
+## Row-121 re-dispatch verify window follow-ups (2026-09-27 09-12; source: docs/status/2026-09-27_09-12_task-000001a0e19c3f010013f8ec28d18bacce7c.md §g1; deduped against rows 119/104)
+
+- [ ] Re-verification annotation protocol for DONE rows: when a window re-dispatches an already-[x] row, should it append a dated re-verify line to the row ("— re-verified 2026-09-27 @ 8fe71da7: webui 115/0, root -race 15/15, smoke rc=0") or leave closed rows frozen? Both behaviors are live (row 104 carries "re-verified 3x", rows 120/121 stayed frozen) — pick one convention and record it in AGENTS.md so every re-dispatch stops re-deciding (2026-09-27 09-12 report §g1; TODO_LIST.md conventions)
