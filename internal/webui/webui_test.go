@@ -631,12 +631,14 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 // derived outcome loadSnapshot now populates — while a pending one renders
 // neither.
 func TestAgentResultBadgeAndCard(t *testing.T) {
+	t.Parallel()
+
 	srv, s := newTestServer(t)
 
 	ag := enqueue(t, s, "agent", "demo")
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
 
 	if body := rec.Body.String(); strings.Contains(body, " commits") {
 		t.Errorf("pending agent task rendered a commit-count badge")
@@ -662,14 +664,15 @@ func TestAgentResultBadgeAndCard(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
 
 	if body := rec.Body.String(); !strings.Contains(body, "2 commits") {
 		t.Errorf("dashboard table missing the agent-run badge")
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+ag.ID.String(), nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+ag.ID.String(), nil))
 
 	body := rec.Body.String()
 	for _, want := range []string{"agent run", "2 commits"} {
@@ -914,7 +917,13 @@ func TestDLQMirrorsDeadTasks(t *testing.T) {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := s.FailPermanent(context.Background(), tk.ID, test_owner_claim, "boom: permanent failure", nil); err != nil {
+	if err := s.FailPermanent(
+		context.Background(),
+		tk.ID,
+		test_owner_claim,
+		"boom: permanent failure",
+		nil,
+	); err != nil {
 		t.Fatalf("FailPermanent: %v", err)
 	}
 
