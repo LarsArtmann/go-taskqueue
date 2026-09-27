@@ -3,6 +3,12 @@
 // auth. Unlike the read-only dashboard (`tq serve`), this surface WRITES,
 // so the token is mandatory on every bind (no loopback exemption: API
 // servers are meant to be exposed to other machines).
+//
+// The surface is queue-metadata-only by design (TODO row verified
+// 2026-09-28): enqueue, per-status counts, and health — no per-task
+// reads, so derived outcomes (agent results, review/status verdicts,
+// session usage) remain dashboard surfaces (`tq serve` detail pages,
+// `tq show`).
 package httpapi
 
 import (
