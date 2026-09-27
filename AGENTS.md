@@ -614,8 +614,13 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   2-4 token idioms): extractions — `task.StatusCountsMap[S ~string]`
   (generic over the status key type: read-model `map[string]int` AND
   upstream-engine foreign `~string` Status; map invariance forbids
-  assigning either to `map[string]int`; facade alias same change; the
-  replay tool's twin stays VERBATIM by design), `executor.collectSidecars`
+  assigning either to `map[string]int`; facade alias same change — but
+  GENERIC exports alias as an INSTANTIATED var
+  (`internaltask.StatusCountsMap[string]`: a generic func cannot be
+  assigned to a var un-instantiated, and the parity gate's kind rule is
+  func→var, so a facade wrapper func fails parity; caught by ci-local's
+  windows cross-compile leg — the only gate that compiles the facade
+  modules); the replay tool's twin stays VERBATIM by design), `executor.collectSidecars`
   (shared ReadDir+`*.log`+stat front half of SweepSidecars/
   SweepSidecarsByBytes; age vs byte-budget policies stay separate;
   error-wrap texts unchanged), `cmd/tq truncateSkipReason` now delegates

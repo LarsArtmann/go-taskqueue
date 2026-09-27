@@ -40,5 +40,10 @@ var (
 	Terminal         = internaltask.Terminal
 	NewID            = internaltask.NewID
 	StatusCountsView = internaltask.StatusCountsView
-	StatusCountsMap  = internaltask.StatusCountsMap
 )
+
+// StatusCountsMap lifts string-keyed per-status counts into the typed
+// enum: the internal generic instantiated at the plain string key (a var
+// alias — the parity gate's func→var rule; internal callers use the
+// generic directly for upstream engines' foreign ~string Status types).
+var StatusCountsMap = internaltask.StatusCountsMap[string]
