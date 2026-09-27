@@ -307,9 +307,14 @@ func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir stri
 // at claim time (the f46 incident class). Each pin is compared against the
 // repo's CURRENT gate — the .tq-verify file if present, else today's
 // auto-detection (executor.DetectVerify), the same ladder runVerify
-// resolves at run time. Warn, never fail: a pin that a current .tq-verify
-// overrides is latent, not firing, and cancelling queued work is an
-// operator decision (tq cancel).
+// resolves at run time. Pins are ALSO matched against the KNOWN-STALE
+// minted forms (executor.StaleVerifyReasons: the root-module-only gate,
+// the exit-swallowing -execdir walk, and pre-env-self-contained commands
+// without GOEXPERIMENT=jsonv2) — a repo-independent content check, so a
+// stale pin gates even where the repo directory is absent (the f46-style
+// audit as a repeatable check, not an investigation). Warn, never fail:
+// a pin that a current .tq-verify overrides is latent, not firing, and
+// cancelling queued work is an operator decision (tq cancel).
 func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
 	pending := task.Pending
 	tasks, err := store.List(ctx, queue.Filter{Status: &pending})
@@ -332,11 +337,23 @@ func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string
 			continue
 		}
 
-		if p.Verify == "" || p.Repo == "" {
-			continue // nothing pinned (auto-detect owns the gate) or no repo to resolve it against
+		if p.Verify == "" {
+			continue // nothing pinned (auto-detect owns the gate)
 		}
 
 		pinned++
+
+		if reasons := executor.StaleVerifyReasons(p.Verify); len(reasons) > 0 {
+			stale = append(stale, fmt.Sprintf(
+				"%s: known-stale verify pin — %s: %q",
+				t.ID, strings.Join(reasons, "; "), excerpt(p.Verify)))
+
+			continue // the pin-vs-current-gate verdict adds nothing to this remedy
+		}
+
+		if p.Repo == "" {
+			continue // no repo to resolve the pin against
+		}
 
 		repoDir := p.Repo
 		if !filepath.IsAbs(repoDir) {
@@ -369,7 +386,7 @@ func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string
 
 	if len(stale) == 0 {
 		detail := fmt.Sprintf(
-			"%d pending agent task(s) pin a verify command, all matching the repos' current gates",
+			"%d pending agent task(s) pin a verify command, all matching the repos' current gates and no known-stale pattern",
 			pinned,
 		)
 		if pinned == 0 {
