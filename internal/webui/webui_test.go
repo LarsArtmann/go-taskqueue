@@ -917,13 +917,7 @@ func TestDLQMirrorsDeadTasks(t *testing.T) {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := s.FailPermanent(
-		context.Background(),
-		tk.ID,
-		test_owner_claim,
-		"boom: permanent failure",
-		nil,
-	); err != nil {
+	if err := s.FailPermanent(context.Background(), tk.ID, test_owner_claim, "boom: permanent failure", nil); err != nil {
 		t.Fatalf("FailPermanent: %v", err)
 	}
 
