@@ -607,10 +607,32 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   priority-provenance split-brain healed into `harvest.BuildProvenance`
   (both project to their own view structs). Remaining `-t 3` groups are
   ACCEPTED classes: SQL rows/defer prologs, sweeper struct+constructor
-  shape (watermark.Cursor is the seam), the status-counts map conversion
-  ×3 modules, `cmd/tq mustMarshalDetail` vs `companion.MustJSON` (would
-  need a new cmd/tq require + cut tag for 7 lines), and one-off
-  assertion idioms.
+  shape (watermark.Cursor is the seam), `cmd/tq mustMarshalDetail` vs
+  `companion.MustJSON` (would need a new cmd/tq require + cut companion
+  tag — none exists yet — for 7 lines), and one-off assertion idioms.
+  2026-09-26 `-t 2` sweep (86 actionable groups at threshold 2 — mostly
+  2-4 token idioms): extractions — `task.StatusCountsMap[S ~string]`
+  (generic over the status key type: read-model `map[string]int` AND
+  upstream-engine foreign `~string` Status; map invariance forbids
+  assigning either to `map[string]int`; facade alias same change; the
+  replay tool's twin stays VERBATIM by design), `executor.collectSidecars`
+  (shared ReadDir+`*.log`+stat front half of SweepSidecars/
+  SweepSidecarsByBytes; age vs byte-budget policies stay separate;
+  error-wrap texts unchanged), `cmd/tq truncateSkipReason` now delegates
+  to `truncate`, and `journalaudit.replayStateFor` (4× get-or-create).
+  Conform prolog rule extended: sessionfact tests use `freshStore` too;
+  explicit `t.Parallel()` is a PER-TEST scheduling declaration, NOT
+  duplication — do not fold it into freshStore (would silently
+  re-parallelize 46 serial timing-sensitive tests). Accepted `-t 2`
+  classes: sweeper-skip `stats.Skipped++/return` guards (×21,
+  abstracting needs per-site closures), agent-clone family parallels
+  (WithTimeout/base()/deriveUsage+recordRunOutcome — the closeout-free
+  clone pattern IS the design), flag-parse+`mustOpenDB(resolveDB)`
+  prologs, templ twin views (board vs table vs fragment renders of the
+  same data), `orDefault` literals (the default string IS the domain),
+  ErrNoTaskDue direct claims (message variance documents each pinned
+  invariant), and 2-4 token one-off idioms. Verdict channel for future
+  sweeps: this central ledger, not per-site `art-dupl:accept` comments.
 - Platform honesty: POSIX-only suites carry `//go:build unix`; CI runs the
   rest on windows-latest. Tests must be hermetic (nix checkPhase has no
   host tools — a test once assumed `crush` on PATH and broke the nix build)
