@@ -43,12 +43,14 @@ func StatusCountsView(counts map[Status]int) (map[string]int, int) {
 	return view, total
 }
 
-// StatusCountsMap lifts string-keyed per-status counts into the typed
-// enum: the inverse of StatusCountsView's key direction. Store and
-// read-model surfaces report counts as map[string]int; callers that
-// range over typed statuses convert through this helper instead of
-// hand-rolling the same loop.
-func StatusCountsMap(counts map[string]int) map[Status]int {
+// StatusCountsMap lifts per-status counts keyed by any string-based
+// status type into the typed enum: the inverse of StatusCountsView's
+// key direction. Store and read-model surfaces report counts as
+// map[string]int; upstream-engine adapters hold a foreign ~string
+// Status of their own — map invariance forbids assigning either map to
+// map[string]int, so the key type is generic and both shapes convert
+// through this helper instead of hand-rolling the same loop.
+func StatusCountsMap[S ~string](counts map[S]int) map[Status]int {
 	out := make(map[Status]int, len(counts))
 
 	for st, n := range counts {

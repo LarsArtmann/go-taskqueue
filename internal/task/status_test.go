@@ -121,3 +121,28 @@ func TestNewID(t *testing.T) {
 		seen[id] = struct{}{}
 	}
 }
+
+// foreignStatus mirrors an upstream engine's own string-based Status
+// type: map invariance forbids assigning map[foreignStatus]int to
+// map[string]int, which is exactly why StatusCountsMap is generic.
+type foreignStatus string
+
+func TestStatusCountsMap(t *testing.T) {
+	stringKeyed := map[string]int{string(Pending): 2, string(Dead): 1}
+	got := StatusCountsMap(stringKeyed)
+
+	if got[Pending] != 2 || got[Dead] != 1 || len(got) != 2 {
+		t.Fatalf("StatusCountsMap(string-keyed) = %v, want {pending:2 dead:1}", got)
+	}
+
+	foreignKeyed := map[foreignStatus]int{foreignStatus(Running): 3}
+	got = StatusCountsMap(foreignKeyed)
+
+	if got[Running] != 3 || len(got) != 1 {
+		t.Fatalf("StatusCountsMap(foreign-keyed) = %v, want {running:3}", got)
+	}
+
+	if empty := StatusCountsMap(map[string]int{}); len(empty) != 0 {
+		t.Fatalf("StatusCountsMap(empty) = %v, want empty", empty)
+	}
+}
