@@ -641,6 +641,16 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   ErrNoTaskDue direct claims (message variance documents each pinned
   invariant), and 2-4 token one-off idioms. Verdict channel for future
   sweeps: this central ledger, not per-site `art-dupl:accept` comments.
+  2026-09-27 `-t 5 --type-aware` sweep: 3 actionable groups, zero
+  extraction, zero new accepts — all ledgered classes (dlqfix/review
+  Sweeper shell, replay.go `openSource` call-site prolog pair with
+  divergent target lifecycles, conform ErrNoTaskDue assertion pair).
+  `--show-suppressed` additionally surfaces the engine-backed adapter
+  block (78+38-stmt type-1 pairs, sqlitev4/postgresv4 adapter.go): NOT
+  clone mass by the extraction design ("they stay in the adapters
+  (per-engine types)") and INVISIBLE to the canonical view the mirror
+  gate parses — the ZERO-row baseline is a canonical-view claim; don't
+  re-file the adapter block as a mirror regression.
 - Platform honesty: POSIX-only suites carry `//go:build unix`; CI runs the
   rest on windows-latest. Tests must be hermetic (nix checkPhase has no
   host tools — a test once assumed `crush` on PATH and broke the nix build)
