@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -161,5 +162,65 @@ func TestCmdTasksBandFilter(t *testing.T) {
 	err = cmdTasks([]string{"--db", dbPath, "--band", "bogus"})
 	if err == nil || !strings.Contains(err.Error(), "unknown band") {
 		t.Fatalf("band bogus err = %v, want unknown-band error", err)
+	}
+}
+
+// TestCmdTasksVerifyContains: --verify-contains rides the store-level
+// PayloadContains pushdown (payload ALONE, limit applied post-filter) and
+// --json carries the payload, so stale-verify hygiene audits run without
+// a `tq show` per task (09-39 §e1).
+func TestCmdTasksVerifyContains(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "tasks-cli-verify.db")
+
+	seed, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stale := task.New{Type: "agent", Project: "p", Payload: jsontext.Value(`{"repo":"r","verify":"go vet ./..."}`)}
+	fresh := task.New{Type: "agent", Project: "p", Payload: jsontext.Value(`{"repo":"r","verify":"gofmt -l ."}`)}
+
+	staleT, err := seed.Enqueue(ctx, stale)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := seed.Enqueue(ctx, fresh); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := seed.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if err := cmdTasks([]string{"--db", dbPath, "--type", "agent", "--verify-contains", "go vet ./...", "--json"}); err != nil {
+			t.Errorf("verify-contains: %v", err)
+		}
+	})
+
+	var got []task.Task
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("decode output %q: %v", out, err)
+	}
+
+	if len(got) != 1 || got[0].ID != staleT.ID {
+		t.Fatalf("verify-contains = %+v, want only %s", got, staleT.ID)
+	}
+
+	if !strings.Contains(string(got[0].Payload), "go vet") {
+		t.Fatalf("--json payload field missing/unpopulated: %q", got[0].Payload)
+	}
+
+	// Human listing works too (no tq show needed to read the payload).
+	out = captureStdout(t, func() {
+		if err := cmdTasks([]string{"--db", dbPath, "--verify-contains", "gofmt"}); err != nil {
+			t.Errorf("verify-contains: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "1 task(s)") {
+		t.Fatalf("human listing = %q, want exactly 1 task", out)
 	}
 }
