@@ -1069,7 +1069,14 @@ prose, not the table.
   `$?` directly, counts grepped from the file
   (`cmd >/tmp/x.log 2>&1; rc=$?; grep -c ... /tmp/x.log`). ci-local and CI
   run stock bash where PIPESTATUS works — the hazard is agent-session
-  CLAIMS only.
+  CLAIMS only. Sibling hazard (2026-09-27, task 000001a0e1ca third window):
+  bare `unset VAR` empties the shell variable but the ORIGINAL exported
+  value STILL reaches child processes (`sh -c` still sees it), so an
+  unset-based env scrub silently does nothing — an executor-suite run then
+  fails on the ambient `TQ_QUESTION_FILE` (row 245) even though the agent
+  "cleaned" the var first. The only reliable session-side scrub is a fresh
+  process env: `env -u VAR ... cmd` (verified: `env -u` run of the same
+  suite is green at the same HEAD).
 - ⚠️ **Root-module builds auto-use `vendor/` — stale vendored internals
   poison root builds** (2026-09-17 questions arc, d2): after changing ANY
   internal/ module, root `go build ./...` can fail with misleading
