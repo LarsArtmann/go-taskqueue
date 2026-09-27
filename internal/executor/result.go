@@ -14,8 +14,9 @@ import (
 
 // sessionUsage is the crush-session usage block every paid agent turn's
 // result type embeds (AgentResult, ReviewResult, StatusResult,
-// PrioritizeResult): one field set, one json spelling, one derivation path.
-// The budget token projection parses these keys across all four result
+// PrioritizeResult, DLQFixResult): one field set, one json spelling, one
+// derivation path.
+// The budget token projection parses these keys across all result
 // types (drift-pinned by the budget tests marshalling the real types).
 type sessionUsage struct {
 	// SessionID is the crush session id, best-effort extracted from the

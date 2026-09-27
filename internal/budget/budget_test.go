@@ -150,8 +150,8 @@ func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
 	ctx := context.Background()
 	j := journal.NewMemoryJournal()
 
-	// One agent run, one prioritize batch and one review turn, all
-	// derived, all counted.
+	// One agent run, one prioritize batch, one review turn, one status
+	// report and one autopsy, all derived, all counted.
 	appendCompleted(t, j, "agent-1", time.Now(), executor.AgentResult{
 		SessionID:               "s1",
 		SessionCostUSD:          0.42,
@@ -182,6 +182,15 @@ func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
 		SessionCompletionTokens: 900,
 		SessionMessageCount:     6,
 	})
+	appendCompleted(t, j, "dlqfix-1", time.Now(), executor.DLQFixResult{
+		Verdict:                 executor.VerdictFixed,
+		Summary:                 "root cause was a stale pin; fixed and proven",
+		SessionID:               "s5",
+		SessionCostUSD:          0.05,
+		SessionPromptTokens:     250,
+		SessionCompletionTokens: 550,
+		SessionMessageCount:     3,
+	})
 
 	// sh completion without usage and a detailless one: never counted.
 	appendCompleted(t, j, "sh-1", time.Now(), map[string]int{"exit_code": 0})
@@ -194,7 +203,7 @@ func TestUsageTodaySumsDerivedSessionUsage(t *testing.T) {
 	})
 
 	got := (Guard{}).UsageToday(ctx, factSource{j})
-	want := SessionUsage{Runs: 4, CostUSD: 0.75, PromptTokens: 2700, CompletionTokens: 5200, Messages: 24}
+	want := SessionUsage{Runs: 5, CostUSD: 0.80, PromptTokens: 2950, CompletionTokens: 5750, Messages: 27}
 
 	if got != want {
 		t.Fatalf("usage today = %+v, want %+v (non-usage and yesterday's completions excluded)", got, want)

@@ -89,6 +89,8 @@ const (
 // DLQFixResult is the structured outcome of one autopsy run, stored in the
 // completion fact detail (the sink convention) for the sweeper and `tq show`.
 type DLQFixResult struct {
+	sessionUsage
+
 	Verdict DLQFixVerdict `json:"verdict"`
 	// Summary is the diagnosis: for fixed, the root cause and the change;
 	// for wontfix, the reason the task is unfixable from the repo.
@@ -96,8 +98,6 @@ type DLQFixResult struct {
 	// CommitSHA is the fix commit the autopsy landed ("" for wontfix, or a
 	// fixed diagnosis that needed no repo change).
 	CommitSHA string `json:"commit_sha,omitempty"`
-	// SessionID is the crush session id, same convention as AgentResult.
-	SessionID string `json:"session_id,omitempty"`
 	// LogPath is the sidecar file with the full autopsy output (written
 	// when TQ_LOG_DIR is set), same convention as AgentResult.
 	LogPath string `json:"log_path,omitempty"`
@@ -170,7 +170,7 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 		return fmt.Errorf("dlqfix: %w", err)
 	}
 
-	result.SessionID = ExtractSessionID(output)
+	result.deriveUsage(ctx, repoDir, output, t.ID)
 	recordRunOutcome(ctx, &result, &result.LogPath, output, "", t.ID)
 
 	return nil
