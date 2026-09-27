@@ -35,17 +35,26 @@ type replayState struct {
 // Only facts that CARRY a state change move the projection; heartbeat,
 // orphaned, cancel-requested and session.* facts are observations and are
 // ignored.
+// replayStateFor returns the task's projection entry, creating it on
+// first sight — the get-or-create every fact arm of replayProjection
+// shares.
+func replayStateFor(out map[task.ID]*replayState, id task.ID) *replayState {
+	state := out[id]
+	if state == nil {
+		state = &replayState{}
+		out[id] = state
+	}
+
+	return state
+}
+
 func replayProjection(facts []journal.Fact) map[task.ID]*replayState {
 	out := make(map[task.ID]*replayState)
 
 	// maxAttempt raises the replayed attempt count: failed and
 	// dead-lettered facts carry the post-increment attempt number.
 	maxAttempt := func(id task.ID, attempt int) {
-		state := out[id]
-		if state == nil {
-			state = &replayState{}
-			out[id] = state
-		}
+		state := replayStateFor(out, id)
 
 		if attempt > state.attempts {
 			state.attempts = attempt
@@ -57,11 +66,7 @@ func replayProjection(facts []journal.Fact) map[task.ID]*replayState {
 
 		switch fact.Type {
 		case journal.Enqueued:
-			state := out[id]
-			if state == nil {
-				state = &replayState{}
-				out[id] = state
-			}
+			state := replayStateFor(out, id)
 
 			state.status = task.Pending
 			// Plain enqueue starts the budget at zero; RescueDead's
@@ -81,11 +86,7 @@ func replayProjection(facts []journal.Fact) map[task.ID]*replayState {
 				}
 			}
 		case journal.Claimed:
-			state := out[id]
-			if state == nil {
-				state = &replayState{}
-				out[id] = state
-			}
+			state := replayStateFor(out, id)
 
 			state.status = task.Running
 		case journal.Completed:
@@ -122,11 +123,7 @@ func replayProjection(facts []journal.Fact) map[task.ID]*replayState {
 		case journal.Reprioritized:
 			var evidence queue.ReprioritizeEvidence
 			if err := json.Unmarshal(fact.Detail, &evidence); err == nil {
-				state := out[id]
-				if state == nil {
-					state = &replayState{}
-					out[id] = state
-				}
+				state := replayStateFor(out, id)
 
 				p := evidence.NewPriority
 				state.priority = &p

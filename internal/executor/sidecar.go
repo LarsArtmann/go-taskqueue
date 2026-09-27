@@ -11,6 +11,50 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
+// sidecar is one *.log file directly inside a sidecar dir, stat'd.
+type sidecar struct {
+	path string
+	size int64
+	mod  time.Time
+}
+
+// collectSidecars is the shared front half of the two retention sweeps:
+// list the *.log files directly inside dir (other content left alone),
+// stat them, and total their bytes. Per-file Info errors are skipped
+// (retention is best effort); only the ReadDir failure is returned, for
+// the caller to wrap with its own operation name.
+func collectSidecars(dir string) ([]sidecar, int64, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var (
+		logged []sidecar
+		total  int64
+	)
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".log") {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+
+		total += info.Size()
+		logged = append(logged, sidecar{
+			path: filepath.Join(dir, entry.Name()),
+			size: info.Size(),
+			mod:  info.ModTime(),
+		})
+	}
+
+	return logged, total, nil
+}
+
 // SweepSidecars deletes agent-output sidecar logs older than maxAge from
 // dir and returns how many were removed — the retention hatch behind
 // --log-dir-max-age, so a long-running pool's sidecar directory cannot
@@ -22,7 +66,7 @@ func SweepSidecars(dir string, maxAge time.Duration) (int, error) {
 		return 0, nil
 	}
 
-	entries, err := os.ReadDir(dir)
+	logged, _, err := collectSidecars(dir)
 	if err != nil {
 		return 0, fmt.Errorf("executor: sweep sidecars: %w", err)
 	}
@@ -30,17 +74,12 @@ func SweepSidecars(dir string, maxAge time.Duration) (int, error) {
 	cutoff := time.Now().Add(-maxAge)
 	removed := 0
 
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".log") {
+	for _, sc := range logged {
+		if sc.mod.After(cutoff) {
 			continue
 		}
 
-		info, err := entry.Info()
-		if err != nil || info.ModTime().After(cutoff) {
-			continue
-		}
-
-		if err := os.Remove(filepath.Join(dir, entry.Name())); err != nil {
+		if err := os.Remove(sc.path); err != nil {
 			continue
 		}
 
@@ -63,38 +102,9 @@ func SweepSidecarsByBytes(dir string, maxBytes int64) (int, error) {
 		return 0, nil
 	}
 
-	entries, err := os.ReadDir(dir)
+	logged, total, err := collectSidecars(dir)
 	if err != nil {
 		return 0, fmt.Errorf("executor: sweep sidecars by bytes: %w", err)
-	}
-
-	type sidecar struct {
-		path string
-		size int64
-		mod  time.Time
-	}
-
-	var (
-		total  int64
-		logged []sidecar
-	)
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".log") {
-			continue
-		}
-
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-
-		total += info.Size()
-		logged = append(logged, sidecar{
-			path: filepath.Join(dir, entry.Name()),
-			size: info.Size(),
-			mod:  info.ModTime(),
-		})
 	}
 
 	if total <= maxBytes {
