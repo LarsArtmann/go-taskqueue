@@ -280,6 +280,13 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	// Pre-attempt baseline for verify-failure classification: when the gate
+	// later fails, it is re-run in a throwaway worktree at this rev. A gate
+	// that fails there too is pre-existing/environmental (VerifyGateError,
+	// requeued WITHOUT burning an attempt); only an introduced failure —
+	// baseline green, post-attempt red — counts against the task.
+	baseRev := gitHeadRev(repoDir)
+
 	output, err := e.runAgent(runCtx, repoDir, &p, t.ID)
 	if err != nil {
 		// Forensics for the task.failed fact: exit code + output tail. The
@@ -290,7 +297,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	tail, err := runVerify(runCtx, t.ID, repoDir, &p, e.ReresolveVerify)
+	tail, err := runVerify(runCtx, t.ID, repoDir, &p, e.ReresolveVerify, baseRev)
 	if err != nil {
 		SetFailureEvidence(ctx, "verify", err, tail)
 
@@ -819,7 +826,13 @@ func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
 // truth for how it proves itself), then the payload, then auto-detect —
 // unless reresolve drops the enqueue-time pin (AgentExecutor.ReresolveVerify):
 // then the file, then auto-detect, never a stale pin.
-func runVerify(ctx context.Context, id task.ID, repoDir string, p *AgentPayload, reresolve bool) (string, error) {
+//
+// Failures are classified before they count (classifyVerifyFailure): a gate
+// that also fails at the pre-attempt rev (baseRev) or that was killed by the
+// deadline before a verdict becomes a VerifyGateError — the worker requeues
+// WITHOUT burning an attempt. Only an introduced failure (baseline green,
+// post-attempt red) returns the plain verify-failed error.
+func runVerify(ctx context.Context, id task.ID, repoDir string, p *AgentPayload, reresolve bool, baseRev string) (string, error) {
 	verify := verifyFor(repoDir, p, reresolve)
 	if verify == "" {
 		return "", nil // nothing to verify (unknown stack, no explicit command)
@@ -846,6 +859,10 @@ func runVerify(ctx context.Context, id task.ID, repoDir string, p *AgentPayload,
 
 		if evidence := writeVerifyEvidence(id, buf.Bytes()); evidence != "" {
 			tail = fmt.Sprintf("%s\n(full verify output: %s)", tail, evidence)
+		}
+
+		if gateErr := classifyVerifyFailure(ctx, verify, repoDir, baseRev, err, tail); gateErr != nil {
+			return tail, gateErr
 		}
 
 		if ctx.Err() != nil {

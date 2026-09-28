@@ -59,6 +59,14 @@ type (
 	PreflightError       = internalexecutor.PreflightError
 	QuestionPendingError = internalexecutor.QuestionPendingError
 	RateLimitError       = internalexecutor.RateLimitError
+	VerifyGateError      = internalexecutor.VerifyGateError
+	VerifyGateClass      = internalexecutor.VerifyGateClass
+)
+
+// Verify-gate failure classes (see VerifyGateError).
+const (
+	VerifyGateDead = internalexecutor.VerifyGateDead
+	VerifyGateSlow = internalexecutor.VerifyGateSlow
 )
 
 // Sink carries failure/result detail through the context (error and

@@ -416,6 +416,28 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		return
 	}
 
+	if gate, ok := errors.AsType[*executor.VerifyGateError](execErr); ok {
+		// The verify gate failed WITHOUT judging the task: the gate also
+		// fails at the pre-attempt rev (gate-dead: pre-existing or
+		// environmental — e.g. a boot-fragile host precondition), or the
+		// deadline killed it before a verdict (gate-slow: a retry on a
+		// warm cache may simply pass). Requeue WITHOUT burning an attempt
+		// on the same escalating ladder as preflight — a sustained gate
+		// outage holds its tasks at growing delays instead of DLQ-ing
+		// finished work, and the reason rides the requeue fact for
+		// alerting.
+		delay := p.preflightDelay(t.ID)
+		if err := p.store.Requeue(terminalCtx, t.ID, claim, gate.Error(), delay, false); err != nil {
+			p.log.Error("requeue failed", "task", t.ID, "err", err)
+		} else if p.preflightShouldLog(t.ID) {
+			p.log.Warn("verify gate failed without judging the task; requeued without attempt burn",
+				"task", t.ID, "class", gate.Class, "retry after", delay,
+				"consecutive", p.preflightCount(t.ID), "reason", gate.Cause.Error())
+		}
+
+		return
+	}
+
 	if rl, ok := errors.AsType[*executor.RateLimitError](execErr); ok {
 		// Provider exhaustion (429 / usage limit): not the task's fault,
 		// and the identical retry fails identically until the provider's

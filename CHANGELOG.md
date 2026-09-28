@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Verify-failure classification: gate-dead / gate-slow never burn an
+  attempt**: a failed verify gate is now classified before it counts.
+  A deadline-killed gate (context deadline exceeded — no verdict) is
+  `gate-slow`; any other failure is re-run at the PRE-attempt rev in a
+  throwaway worktree — baseline fails too → `gate-dead` (pre-existing or
+  environmental, e.g. a boot-fragile host precondition). Both classes
+  requeue WITHOUT burning an attempt on the preflight backoff ladder, so a
+  gate outage holds finished work instead of DLQ-ing it (the 2026-09-25
+  incident: a completed task burned attempts 2-3 on gate failures alone,
+  one cycle from DLQ). Only an introduced failure — baseline green,
+  post-attempt red — still fails the attempt. Cooperative cancel keeps
+  the existing cancelled path and never triggers the baseline probe.
+  Pinned by `TestVerifyGateDeadIsNotATaskFailure`,
+  `TestVerifyGateIntroducedStillCounts`, `TestVerifyGateSlowOnDeadline`,
+  `TestVerifyGateCooperativeCancelStaysCancelled` (executor) and
+  `TestVerifyGateRequeuesWithoutAttemptBurn` (worker).
+  (`internal/executor/verifygate.go`, `internal/executor/agent.go`,
+  `internal/executor/status.go`, `internal/worker/worker.go`,
+  `executor/executor.go`)
 - **Agent-run outcome badges in the task table**: completed agent tasks now
   carry an "N commits" badge in the dashboard table (the run's derived
   footer-commit count), closing the table/detail parity gap — the "agent

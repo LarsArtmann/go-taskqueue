@@ -626,6 +626,80 @@ func TestPreflightRequeuesWithoutAttemptBurn(t *testing.T) {
 	cancel()
 }
 
+// TestVerifyGateRequeuesWithoutAttemptBurn pins the gate-failure contract:
+// a *VerifyGateError (gate dead at the pre-attempt rev, or deadline-killed
+// before a verdict) must NOT dead-letter, NOT burn an attempt, and NOT
+// retry immediately — the task holds on the preflight backoff ladder and
+// completes from the SAME attempt budget once the gate is healthy again
+// (MaxAttempts=1: a gate outage must never DLQ finished work).
+func TestVerifyGateRequeuesWithoutAttemptBurn(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var (
+		healthy atomic.Bool
+		ran     atomic.Int32
+	)
+
+	reg.RegisterFunc("gate", func(context.Context, task.Task) error {
+		if !healthy.Load() {
+			return &executor.VerifyGateError{
+				Class: executor.VerifyGateDead,
+				Cause: errors.New(`agent verify failed ("nix flake check --no-build"): exit status 1`),
+			}
+		}
+
+		ran.Add(1)
+
+		return nil
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "gate", MaxAttempts: 1})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		PreflightBackoff: 120 * time.Millisecond,
+		Executors:        reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		got, _ := store.Get(context.Background(), enq.ID)
+		if got.LastError != "" && got.Status == task.Pending && got.Attempts == 0 {
+			break
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	first, _ := store.Get(context.Background(), enq.ID)
+	if first.Status != task.Pending || first.Attempts != 0 {
+		t.Fatalf("after gate-dead refusal: status=%s attempts=%d, want pending/0", first.Status, first.Attempts)
+	}
+
+	if !strings.Contains(first.LastError, "gate dead") {
+		t.Fatalf("LastError should carry the gate classification, got %q", first.LastError)
+	}
+
+	healthy.Store(true)
+
+	got := waitFor(t, ctx, store, enq.ID, task.Completed)
+	if ran.Load() != 1 {
+		t.Fatalf("executor ran %d times after heal, want 1", ran.Load())
+	}
+
+	if got.Status != task.Completed {
+		t.Fatalf("status = %s, want completed", got.Status)
+	}
+
+	cancel()
+}
+
 // parkScenario is the data behind the park→resume pin: a stub executor
 // returns parkErr until flag flips, then succeeds. phase names the blocker
 // in assertion messages; lastErrPrefix is the error-class prefix the
