@@ -217,6 +217,22 @@ jobs:
         # same service in addition to the default sqlite pass.
         run: ./scripts/smoke/fullcore.sh
 
+  consumer:
+    # T5 (09-14 retro §f5 + §f6): the out-of-tree consumer proof — a scratch
+    # module consuming all 7 ADR-0016 facades from the module proxy at the
+    # latest released tags — plus the examples/embed rot guard, which until
+    # now ran only in ci-local (the ci.yml parity gap).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+      - name: Facade adopter on-ramp build (examples/embed)
+        run: cd examples/embed && GOWORK=off go build ./...
+      - name: Out-of-tree consumer install (proxy @latest, all 7 facades)
+        run: ./scripts/smoke/consumer-install.sh
+
   nix:
     runs-on: ubuntu-latest
     steps:

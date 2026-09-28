@@ -127,6 +127,9 @@ step "module-proxy + pkg.go.dev publishability audit (advisory; network-tolerant
 step "clean-room consumer compile (advisory in ci-local; HARD gate in release.sh)"
 ./scripts/check-cleanroom-install.sh
 
+step "out-of-tree consumer install (proxy @latest; HARD gate in CI consumer job)"
+./scripts/smoke/consumer-install.sh
+
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
 

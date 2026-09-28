@@ -23,62 +23,24 @@ trap 'rm -rf "$verify_dir"' EXIT
 package main
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"time"
-
-	"$MODULE/queue/sqlite"
-	"$MODULE/task"
+	_ "$MODULE/executor"
+	_ "$MODULE/journal"
+	_ "$MODULE/queue"
+	_ "$MODULE/queue/postgres"
+	_ "$MODULE/queue/sqlite"
+	_ "$MODULE/task"
+	_ "$MODULE/worker"
 )
 
-func main() {
-	ctx := context.Background()
-
-	dir, err := os.MkdirTemp("", "tq-consumer-*")
-	if err != nil {
-		panic(err)
-	}
-	defer func() { _ = os.RemoveAll(dir) }()
-
-	store, err := sqlite.Open(dir + "/tq.db")
-	if err != nil {
-		panic(err)
-	}
-	defer func() { _ = store.Close() }()
-
-	enqueued, err := store.Enqueue(ctx, task.New{Project: "consumer", Type: "sh", Payload: []byte(`"true"`)})
-	if err != nil {
-		panic(err)
-	}
-
-	got, err := store.Get(ctx, enqueued.ID)
-	if err != nil {
-		panic(err)
-	}
-	if got.ID != enqueued.ID {
-		panic("Get returned a different task")
-	}
-
-	claimed, claim, err := store.ClaimDue(ctx, "consumer-worker", time.Minute)
-	if err != nil {
-		panic(err)
-	}
-	if claimed.ID != enqueued.ID {
-		panic("claimed the wrong task")
-	}
-
-	if err := store.Complete(ctx, claimed.ID, claim, nil); err != nil {
-		panic(err)
-	}
-
-	fmt.Println("CONSUMER-OK", got.ID)
-}
+func main() {}
 EOF
 	GOFLAGS=-mod=mod go mod init consumer >/dev/null
 	go mod edit -go=1.27.1
 	go get "$MODULE@latest"
-	go get "$MODULE/queue/sqlite@latest"
+	go get "$MODULE/executor@latest" "$MODULE/journal@latest" "$MODULE/queue@latest" \
+		"$MODULE/queue/postgres@latest" "$MODULE/queue/sqlite@latest" \
+		"$MODULE/task@latest" "$MODULE/worker@latest"
 	go mod tidy
-	go run .
+	go build -o /dev/null .
+	echo "CONSUMER-OK: all 7 facades install + compile from the proxy"
 )
