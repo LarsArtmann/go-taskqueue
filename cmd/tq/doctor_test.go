@@ -816,3 +816,188 @@ func TestDoctorOpenSessions(t *testing.T) {
 		t.Errorf("post-close open-sessions = %s (%s), want ok", r.Status, r.Detail)
 	}
 }
+
+func TestParseCrushVersion(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		out  string
+		want string
+		ok   bool
+	}{
+		{"crush version v0.96.1", "0.96.1", true},
+		{"crush version 0.94.1", "0.94.1", true},
+		{"v1.2", "1.2", true},
+		{"", "", false},
+		{"crush version dev", "", false},
+		{"no version here", "", false},
+	}
+
+	for _, tc := range cases {
+		got, ok := parseCrushVersion(tc.out)
+		if ok != tc.ok || got != tc.want {
+			t.Errorf("parseCrushVersion(%q) = %q,%v want %q,%v", tc.out, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+func TestCompareCrushVersions(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		a, b string
+		want int
+	}{
+		{"0.96.1", "0.94.1", 1},
+		{"0.94.1", "0.94.1", 0},
+		{"0.94.0", "0.94.1", -1},
+		{"0.95", "0.94.9", 1},
+		{"1", "0.99.99", 1},
+	}
+
+	for _, tc := range cases {
+		if got := compareCrushVersions(tc.a, tc.b); got != tc.want {
+			t.Errorf("compareCrushVersions(%s, %s) = %d want %d", tc.a, tc.b, got, tc.want)
+		}
+	}
+}
+
+func TestDoctorCrushVersionCheck(t *testing.T) {
+	t.Parallel()
+
+	orig := doctorProbeCrushVersion
+
+	t.Cleanup(func() { doctorProbeCrushVersion = orig })
+
+	cases := []struct {
+		name       string
+		out        string
+		err        error
+		wantStatus string
+		wantIn     []string
+	}{
+		{
+			"at floor", "crush version v0.94.1", nil,
+			checkOK, []string{"0.94.1"},
+		},
+		{
+			"above floor", "crush version v0.96.1", nil,
+			checkOK, []string{"0.96.1"},
+		},
+		{
+			"below floor", "crush version v0.92.0", nil,
+			checkWarn, []string{"below the 0.94.1 floor"},
+		},
+		{
+			"unparseable", "something odd", nil,
+			checkWarn, []string{"unparseable"},
+		},
+		{
+			"probe fails", "", context.DeadlineExceeded,
+			checkWarn, []string{"version floor check skipped"},
+		},
+	}
+
+	for _, tc := range cases {
+		doctorProbeCrushVersion = func(context.Context, string) (string, error) {
+			return tc.out, tc.err
+		}
+
+		got := doctorCrushVersionCheck(context.Background(), "crush")
+		if got.Status != tc.wantStatus {
+			t.Errorf("%s: status = %s want %s (detail %q)", tc.name, got.Status, tc.wantStatus, got.Detail)
+		}
+
+		for _, want := range tc.wantIn {
+			if !strings.Contains(got.Detail, want) {
+				t.Errorf("%s: detail %q missing %q", tc.name, got.Detail, want)
+			}
+		}
+	}
+}
+
+func TestDoctorCrushManagedBlockPin(t *testing.T) {
+	t.Parallel()
+
+	writeCrushrc := func(t *testing.T, content string) string {
+		t.Helper()
+
+		path := filepath.Join(t.TempDir(), ".crushrc")
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("write .crushrc: %v", err)
+		}
+
+		return path
+	}
+
+	cases := []struct {
+		name       string
+		content    string
+		wantStatus string
+		wantIn     []string
+	}{
+		{
+			"xhigh pinned",
+			"# >>> tq bootstrap (managed) >>>\nmodel large zai/glm-5.3-flash --reasoning-effort xhigh\n# <<< tq bootstrap (managed) <<<\n",
+			checkOK, []string{"xhigh"},
+		},
+		{
+			"wrong effort",
+			"# >>> tq bootstrap (managed) >>>\nmodel large zai/glm-5.3-flash --reasoning-effort high\n# <<< tq bootstrap (managed) <<<\n",
+			checkWarn, []string{"--reasoning-effort high"},
+		},
+		{
+			"no effort pin",
+			"# >>> tq bootstrap (managed) >>>\npermissions allow view\n# <<< tq bootstrap (managed) <<<\n",
+			checkWarn, []string{"pins no --reasoning-effort"},
+		},
+		{
+			"no managed block",
+			"model large zai/glm-5.3-flash --reasoning-effort xhigh\n",
+			checkWarn, []string{"no tq managed block"},
+		},
+	}
+
+	for _, tc := range cases {
+		got := doctorCrushManagedBlock("demo", writeCrushrc(t, tc.content))
+		if got.Status != tc.wantStatus {
+			t.Errorf("%s: status = %s want %s (detail %q)", tc.name, got.Status, tc.wantStatus, got.Detail)
+		}
+
+		for _, want := range tc.wantIn {
+			if !strings.Contains(got.Detail, want) {
+				t.Errorf("%s: detail %q missing %q", tc.name, got.Detail, want)
+			}
+		}
+	}
+}
+
+// TestDoctorEnvironmentIncludesCrushVersionCheck pins the wiring: the
+// environment sweep reports a crush-version result when the agent binary
+// is found (stubbed probe — the real binary is covered by the live smoke).
+func TestDoctorEnvironmentIncludesCrushVersionCheck(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+
+	self, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		t.Fatalf("abs test binary: %v", err)
+	}
+
+	orig := doctorProbeCrushVersion
+
+	t.Cleanup(func() { doctorProbeCrushVersion = orig })
+
+	doctorProbeCrushVersion = func(_ context.Context, bin string) (string, error) {
+		return "crush version v9.9.9 (" + bin + ")", nil
+	}
+
+	results := doctorEnvironment(context.Background(), doctorOptions{
+		DBPath:   doctorTestStore(t),
+		AgentBin: self,
+	})
+
+	r := resultByName(results, "crush-version")
+	if r.Status != checkOK || !strings.Contains(r.Detail, "9.9.9") {
+		t.Errorf("crush-version check = %+v, want ok naming the stubbed version", r)
+	}
+}

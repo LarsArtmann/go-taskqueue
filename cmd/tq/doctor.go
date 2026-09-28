@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,6 +72,132 @@ type doctorOptions struct {
 // doctorHeartbeatWindow is how long ago a task.heartbeat fact still counts
 // as "a worker is alive" evidence.
 const doctorHeartbeatWindow = 10 * time.Minute
+
+// doctorCrushMinVersion is the agent binary's version floor: v0.94.1 made
+// `--reasoning-effort` accept the flash levels (owner ruling 2026-09-14:
+// glm-5.3-flash is low|high|xhigh and the pool ALWAYS wants xhigh), so an
+// older binary silently cannot honor the managed block's effort pin.
+const doctorCrushMinVersion = "0.94.1"
+
+// crushVersionProbeTimeout bounds one `--version` call: a hung binary must
+// not hang the doctor.
+const crushVersionProbeTimeout = 15 * time.Second
+
+// doctorProbeCrushVersion runs `<bin> --version` and returns its trimmed
+// output. Var so tests stub it hermetically.
+var doctorProbeCrushVersion = func(ctx context.Context, bin string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, crushVersionProbeTimeout)
+	defer func() { cancel() }()
+
+	out, err := exec.CommandContext(ctx, bin, "--version").Output()
+
+	return strings.TrimSpace(string(out)), err
+}
+
+// parseCrushVersion extracts a numeric version ("0.96.1") from a
+// `crush --version` line like "crush version v0.96.1". Returns ok=false
+// when no dotted-number token is present.
+func parseCrushVersion(out string) (string, bool) {
+	for _, field := range strings.Fields(out) {
+		v := strings.TrimPrefix(field, "v")
+		if v == "" || v[0] < '0' || v[0] > '9' {
+			continue
+		}
+
+		numeric := true
+
+		for _, part := range strings.Split(v, ".") {
+			if part == "" {
+				numeric = false
+
+				break
+			}
+
+			for _, r := range part {
+				if r < '0' || r > '9' {
+					numeric = false
+
+					break
+				}
+			}
+
+			if !numeric {
+				break
+			}
+		}
+
+		if numeric {
+			return v, true
+		}
+	}
+
+	return "", false
+}
+
+// compareCrushVersions compares dotted numeric versions component-wise
+// (missing components count as 0): -1 when a < b, 0 when equal, 1 when a > b.
+func compareCrushVersions(a, b string) int {
+	as := strings.Split(a, ".")
+	bs := strings.Split(b, ".")
+
+	for i := 0; i < len(as) || i < len(bs); i++ {
+		av, bv := 0, 0
+
+		if i < len(as) {
+			av, _ = strconv.Atoi(as[i])
+		}
+
+		if i < len(bs) {
+			bv, _ = strconv.Atoi(bs[i])
+		}
+
+		switch {
+		case av < bv:
+			return -1
+		case av > bv:
+			return 1
+		}
+	}
+
+	return 0
+}
+
+// doctorCrushVersionCheck gates the agent binary against
+// doctorCrushMinVersion. WARN (never FAIL): an old binary degrades effort
+// pinning but does not corrupt the queue.
+func doctorCrushVersionCheck(ctx context.Context, bin string) checkResult {
+	const name = "crush-version"
+
+	out, err := doctorProbeCrushVersion(ctx, bin)
+	if err != nil {
+		return checkResult{
+			Name: name, Status: checkWarn,
+			Detail: bin + " --version failed (" + err.Error() + ") — version floor check skipped",
+		}
+	}
+
+	v, ok := parseCrushVersion(out)
+	if !ok {
+		return checkResult{
+			Name: name, Status: checkWarn,
+			Detail: "unparseable " + bin + " --version output " + strconv.Quote(out) +
+				" — version floor check skipped",
+		}
+	}
+
+	if compareCrushVersions(v, doctorCrushMinVersion) < 0 {
+		return checkResult{
+			Name: name, Status: checkWarn,
+			Detail: "crush " + v + " is below the " + doctorCrushMinVersion +
+				" floor — --reasoning-effort xhigh pinning unreliable; upgrade the binary",
+		}
+	}
+
+	return checkResult{
+		Name: name, Status: checkOK,
+		Detail: "crush " + v + " (floor " + doctorCrushMinVersion + ")",
+	}
+}
 
 // runDoctor executes every check against the database and environment,
 // returning results ordered worst-last. The returned error is non-nil only
@@ -615,6 +742,7 @@ func doctorEnvironment(ctx context.Context, opts doctorOptions) []checkResult {
 		})
 	} else {
 		results = append(results, checkResult{Name: "agent-binary", Status: checkOK, Detail: bin + " found"})
+		results = append(results, doctorCrushVersionCheck(ctx, bin))
 	}
 
 	for _, tool := range []struct {
@@ -827,16 +955,78 @@ func doctorRepoAutonomy(repo string) []checkResult {
 		})
 	}
 
-	if _, err := os.Stat(filepath.Join(repo, ".crushrc")); err != nil {
+	crushrc := filepath.Join(repo, ".crushrc")
+	if _, err := os.Stat(crushrc); err != nil {
 		results = append(results, checkResult{
 			Name: "autonomy:" + name, Status: checkWarn,
 			Detail: "no .crushrc (--yolo agent tasks will fail fast in this repo)",
 		})
 	} else {
 		results = append(results, checkResult{Name: "autonomy:" + name, Status: checkOK, Detail: ".crushrc present"})
+		results = append(results, doctorCrushManagedBlock(name, crushrc))
 	}
 
 	return results
+}
+
+// doctorCrushManagedBlock verifies the repo's .crushrc tq-managed block
+// pins the pool's reasoning effort: the owner ruling (2026-09-14) is that
+// the pool ALWAYS wants xhigh, and the managed block is the only
+// effort-carrying mechanism. Warn on drift, never FAIL.
+func doctorCrushManagedBlock(repoName, path string) checkResult {
+	const name = "crush-pin:"
+
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return checkResult{Name: name + repoName, Status: checkWarn, Detail: "read .crushrc: " + err.Error()}
+	}
+
+	inBlock := false
+	effort := ""
+
+	for _, line := range strings.Split(string(b), "\n") {
+		switch strings.TrimSpace(line) {
+		case tqManagedStart:
+			inBlock = true
+		case tqManagedEnd:
+			inBlock = false
+		default:
+			if inBlock {
+				fields := strings.Fields(line)
+
+				for i, f := range fields {
+					if f == "--reasoning-effort" && i+1 < len(fields) {
+						effort = fields[i+1]
+					}
+				}
+			}
+		}
+	}
+
+	switch {
+	case !inBlockSeen(b):
+		return checkResult{
+			Name: name + repoName, Status: checkWarn,
+			Detail: ".crushrc has no tq managed block (run tq bootstrap to enroll autonomy + pins)",
+		}
+	case effort == "":
+		return checkResult{
+			Name: name + repoName, Status: checkWarn,
+			Detail: "managed block pins no --reasoning-effort (the pool wants xhigh; run tq bootstrap --model <provider/model>)",
+		}
+	case effort != "xhigh":
+		return checkResult{
+			Name: name + repoName, Status: checkWarn,
+			Detail: "managed block pins --reasoning-effort " + effort + " (the pool wants xhigh; run tq bootstrap)",
+		}
+	default:
+		return checkResult{Name: name + repoName, Status: checkOK, Detail: "managed block pins --reasoning-effort xhigh"}
+	}
+}
+
+// inBlockSeen reports whether the file contains the managed-block opener.
+func inBlockSeen(b []byte) bool {
+	return strings.Contains(string(b), tqManagedStart)
 }
 
 // doctorWorst summarizes a result set.
