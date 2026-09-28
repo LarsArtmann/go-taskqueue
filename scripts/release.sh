@@ -109,6 +109,12 @@ step "smoke the nix-built binary through the web UI"
 nix_out="$(nix build --print-out-paths)"
 TQ_BIN="$nix_out/bin/tq" ./scripts/smoke/webui.sh
 
+step "clean-room consumer compile (pre-tag installability proof — the v0.3.0 class)"
+# The true proxy `go install` proof stays in --push mode; this catches the
+# graph-level breakage (missing require, broken split, replace violation)
+# BEFORE any tag is immutable.
+./scripts/check-cleanroom-install.sh
+
 if [ -z "$MODE" ]; then
 	echo
 	echo "GATES GREEN for $VERSION — re-run with --tag to cut the annotated tag,"

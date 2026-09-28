@@ -124,6 +124,9 @@ step "rename-hygiene scan (advisory; quoted literals shadowing removed identifie
 step "module-proxy + pkg.go.dev publishability audit (advisory; network-tolerant SKIP)"
 ./scripts/check-pkg-proxy.sh
 
+step "clean-room consumer compile (advisory in ci-local; HARD gate in release.sh)"
+./scripts/check-cleanroom-install.sh
+
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
 

@@ -3,11 +3,11 @@
 # release.sh §d1 of the 09-14 retro — the go-install breakage was caught by
 # the clean-room step AFTER the tags were immutable). Builds the CLI through
 # the module graph exactly the way a consumer resolves it: a scratch module
-# with NO workspace, NO vendor, requiring the root module and cmd/tq with
-# replaces to this checkout, while the INTERNAL pins resolve through the
-# module proxy at their go.mod-pinned versions. Green = every pin in the
-# published graph resolves and compiles today. The full proxy proof
-# (`go install …/cmd/tq@vX.Y.Z` from the proxy alone) stays in release.sh
+# with NO workspace, NO vendor, requiring the root module and cmd/tq, all
+# repo-owned modules replaced to this checkout. Green = the consumer graph
+# CLOSES and COMPILES — a missing require, a broken module split, or a
+# replace-violating module fails here. Proxy listing is check-pkg-proxy.sh's
+# job; the true `go install …/cmd/tq@vX.Y.Z` proxy proof stays in release.sh
 # --push mode — pre-tag, the new version does not exist on the proxy yet.
 #
 #   scripts/check-cleanroom-install.sh   # exit 0 = consumer graph compiles
@@ -22,6 +22,7 @@ trap 'rm -rf "$verify_dir"' EXIT
 (
 	cd "$verify_dir"
 	export GOWORK=off
+	export GOTOOLCHAIN=auto
 	cat > main.go <<EOF
 package main
 
@@ -37,22 +38,19 @@ func main() {
 }
 EOF
 	GOFLAGS=-mod=mod go mod init cleanroom >/dev/null
+	go mod edit -go=1.27.1
 	go mod edit -replace "$MODULE=$repo"
 	# Replace EVERY repo-owned module locally. Mid-cycle the go.mod pins are
 	# stale relative to the tree (the version sweep rides the release), so
 	# mixing proxy-resolved old tags with local modules is guaranteed API
-	# skew, not a defect. The pre-tag proof is therefore: the consumer graph
-	# CLOSES and COMPILES with no workspace, no vendor, and no devmod shim —
-	# a missing require, a broken module split, or a replace-violating
-	# module fails here. Proxy listing is check-pkg-proxy.sh's job; the
-	# true `go install …/cmd/tq@vX.Y.Z` proxy proof stays in --push mode.
+	# skew, not a defect — the pre-tag proof is the all-local graph.
 	while IFS= read -r moddir; do
 		sub="${moddir%/go.mod}"
 		go mod edit -replace "$MODULE/$sub=$repo/$sub"
-	done < <(find internal task journal queue executor worker cmd/tq -name go.mod 2>/dev/null | sort)
+	done < <(cd "$repo" && find internal task journal queue executor worker cmd/tq -name go.mod 2>/dev/null | sort)
 	go mod tidy >/dev/null
 	go mod edit -require "$MODULE/cmd/tq@v0.0.0"
 	go build -o /dev/null .
 	GOFLAGS=-mod=mod go build -o /dev/null "$MODULE/cmd/tq"
 )
-echo "cleanroom: consumer graph compiles (root + cmd/tq local, internal pins via proxy)"
+echo "cleanroom: consumer graph compiles (all repo modules local; no workspace, no vendor)"
