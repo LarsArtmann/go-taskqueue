@@ -169,7 +169,7 @@ func TestJournalDriftSeededDriftAllFields(t *testing.T) {
 		fields[row.Field] = row
 	}
 
-	for _, field := range []string{"status", "attempts", "priority", "dedup_key"} {
+	for _, field := range []string{"status", "attempts"} {
 		row, ok := fields[field]
 		if !ok {
 			t.Errorf("no drift row for field %s (report: %+v)", field, report)
@@ -186,18 +186,22 @@ func TestJournalDriftSeededDriftAllFields(t *testing.T) {
 		t.Errorf("status row = %+v, want stored=completed replayed=pending", fields["status"])
 	}
 
-	if fields["priority"].Replayed != "3" {
-		t.Errorf("priority row = %+v, want replayed=3", fields["priority"])
+	// The engine-backed backends write thin enqueue details (only
+	// project/type — S1 divergence D2, upstream enrichment gated on the
+	// M4 memo), so the replay cannot re-derive priority/dedup_key and the
+	// audit must NOT report drift rows for fields it cannot replay. The
+	// seeded store-side corruption in those columns stays invisible until
+	// upstream grows the snapshot.
+	for _, field := range []string{"priority", "dedup_key"} {
+		if row, ok := fields[field]; ok {
+			t.Errorf("unexpected drift row for unreplayable field %s: %+v", field, row)
+		}
 	}
 
-	if fields["dedup_key"].Replayed != "todo:real" {
-		t.Errorf("dedup row = %+v, want replayed=todo:real", fields["dedup_key"])
-	}
-
-	// The seeded task was enqueued AFTER enrichment, so every field was
-	// diffable despite all four drifting.
-	if report.Coverage != (FieldCoverage{Status: 1, Attempts: 1, Priority: 1, DedupKey: 1}) {
-		t.Errorf("coverage = %+v, want all fields at 1/1", report.Coverage)
+	// Coverage reports the blind spot honestly: only status/attempts were
+	// diffable.
+	if report.Coverage != (FieldCoverage{Status: 1, Attempts: 1, Priority: 0, DedupKey: 0}) {
+		t.Errorf("coverage = %+v, want status/attempts 1, priority/dedup 0", report.Coverage)
 	}
 }
 
@@ -358,15 +362,16 @@ func TestJournalDriftNoDriftAfterRescue(t *testing.T) {
 		t.Fatalf("unexpected drift after rescue: %+v", report.Drift)
 	}
 
-	// Enrichment wrote priority (as an explicit 0) but the empty dedup key
-	// is indistinguishable from a legacy fact — coverage reports that
-	// honestly instead of pretending to have diffed it.
+	// The engine-backed backends write thin enqueue details (only
+	// project/type — S1 divergence D2), so neither priority nor dedup key
+	// is replayable: coverage reports the blind spot honestly instead of
+	// pretending to have diffed either field.
 	if report.TasksCompared != 1 {
 		t.Errorf("TasksCompared = %d, want 1", report.TasksCompared)
 	}
 
-	if report.Coverage != (FieldCoverage{Status: 1, Attempts: 1, Priority: 1, DedupKey: 0}) {
-		t.Errorf("coverage = %+v, want status/attempts/priority 1, dedup 0", report.Coverage)
+	if report.Coverage != (FieldCoverage{Status: 1, Attempts: 1, Priority: 0, DedupKey: 0}) {
+		t.Errorf("coverage = %+v, want status/attempts 1, priority/dedup 0", report.Coverage)
 	}
 }
 
