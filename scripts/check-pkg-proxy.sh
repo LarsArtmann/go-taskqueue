@@ -38,8 +38,10 @@ skipped=0
 
 for mod in "${mods[@]}"; do
 	label="$mod@$version"
-	if ! go list -m -versions "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "${version#v}" \
-		&& ! go list -m -versions "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "$version"; then
+	# -mod=readonly: the root vendor/ dir would otherwise make `go list -m`
+	# refuse to hit the network ("can't determine available versions").
+	if ! go list -m -versions -mod=readonly "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "${version#v}" \
+		&& ! go list -m -versions -mod=readonly "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "$version"; then
 		# go list prints bare versions (0.3.0); some toolchains print v-prefixed.
 		echo "pkg-proxy MISSING proxy listing: $label" >&2
 		missing=1
@@ -65,7 +67,7 @@ for mod in "${mods[@]}"; do
 done
 
 if [ "$missing" = 1 ]; then
-	echo "pkg-proxy FAIL: $missing-class findings above (persistent 404 = investigate crawler vs proxy, 10-27 report §b1)" >&2
+	echo "pkg-proxy FAIL: missing proxy/pkg.go.dev entries above (persistent 404 = investigate crawler vs proxy, 10-27 report §b1)" >&2
 	exit 1
 fi
 [ "$skipped" = 1 ] && echo "pkg-proxy: verified with skips (see above)"

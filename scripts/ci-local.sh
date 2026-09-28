@@ -121,6 +121,9 @@ step "mirror-clone gate (advisory until the companion extraction lands; MIRROR_C
 step "rename-hygiene scan (advisory; quoted literals shadowing removed identifiers)"
 ./scripts/check-rename-hygiene.sh
 
+step "module-proxy + pkg.go.dev publishability audit (advisory; network-tolerant SKIP)"
+./scripts/check-pkg-proxy.sh
+
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
 
