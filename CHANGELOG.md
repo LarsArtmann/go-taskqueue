@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Enqueue done-guard: completed dedup keys refuse re-dispatch**
+  (`queue.ErrTaskDone`): re-enqueuing a `DedupKey` whose task already
+  COMPLETED now returns the stored row PLUS a refusal instead of silently
+  succeeding — a dispatcher that treated the return as admission minted a
+  fresh agent window for already-finished work (the DONE-on-arrival burn
+  class, five same-ID windows wasted by 2026-09-14). The refusal lives on
+  the `queue.Queue` wrapper: cancelled/dead keys keep their
+  suppress-and-return semantics (rescue/re-arm flows), the store layer
+  still suppresses silently (pinned in the conformance suite), and the
+  harvest dispatcher renders the refusal as its own skip class
+  (`done: already completed (edit the item text to re-arm)`). Re-arming a
+  completed item deliberately stays: edit the item text (fresh key).
+  Pinned by `TestEnqueueDoneGuard*` (queue),
+  `TestDoneGuardRefusesCompletedKeyRedispatch` (harvest), and the
+  completed-key leg of the conform `TestEnqueueDedupKey`.
 - **Verify-failure classification: gate-dead / gate-slow never burn an
   attempt**: a failed verify gate is now classified before it counts.
   A deadline-killed gate (context deadline exceeded — no verdict) is

@@ -3,6 +3,8 @@ package harvest
 import (
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"

@@ -779,6 +779,25 @@ func TestEnqueueDedupKey(t *testing.T) {
 	if enqueued != 1 {
 		t.Fatalf("journal has %d task.enqueued facts, want 1 (no duplicate on suppressed enqueue)", enqueued)
 	}
+
+	// Store-level layering pin for the enqueue done-guard: a COMPLETED
+	// key still suppresses at the STORE (row returned unchanged, no new
+	// fact) — the re-dispatch REFUSAL (ErrTaskDone) lives in the Queue
+	// wrapper, so rescue/inspection flows reading the store keep working.
+	claimed, claim := claimDue(t, ctx, s, "doneguard")
+
+	if err := s.Complete(ctx, claimed.ID, claim, jsontext.Value(`{}`)); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	third, err := s.Enqueue(ctx, task.New{Project: "demo", Type: "agent", DedupKey: "todo:demo:abc"})
+	if err != nil {
+		t.Fatalf("Enqueue over completed key: %v", err)
+	}
+
+	if third.ID != second.ID || third.Status != task.Completed {
+		t.Fatalf("completed-key suppress returned %s/%s, want the stored completed row %s", third.ID, third.Status, second.ID)
+	}
 }
 
 func TestEnqueueWithoutDedupKeyIndependent(t *testing.T) {

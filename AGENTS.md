@@ -307,7 +307,12 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **Idempotent enqueue**: `DedupKey` set → re-enqueue returns the stored
   task unchanged. A cancelled/dead task's key still suppresses re-enqueue;
   for harvested items the escape hatch is editing the item text (the key
-  hashes repo + text).
+  hashes repo + text). COMPLETED keys are refused at the `queue.Queue`
+  wrapper with `ErrTaskDone` (the DONE-on-arrival re-dispatch guard,
+  2026-09-28): the store still suppresses silently (rescue/inspection
+  layering, pinned in the conform suite) and the harvest dispatcher renders
+  the refusal as skip reason `done: already completed (edit the item text
+  to re-arm)`.
 - **`dlqfix` (DLQ autopsies, `--dlq-fix`)**: `DLQFixPayload` JSON (repo,
   dead_task, work, FailureEvidence, yolo). Dead AGENT tasks mint ONE
   `dlqfix:<dead-id>`-deduped autopsy task (type scope IS the loop guard: a
