@@ -13,6 +13,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -456,7 +457,7 @@ func (h *Harvester) admitRun(ctx context.Context, run []Item, importance int, re
 	t, err := h.enqueueBatch(ctx, run, importance)
 	if err != nil {
 		for _, item := range run {
-			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "enqueue failed: " + err.Error()})
+			res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: enqueueSkipReason(err)})
 		}
 
 		return false
@@ -796,6 +797,17 @@ func (h *Harvester) stateDenial(state repoState) string {
 	return ""
 }
 
+// enqueueSkipReason renders an enqueue failure as a skip reason. The
+// done-guard sentinel is its own class — a completed dedup key is a
+// dispatcher-dedup refusal, not an enqueue error.
+func enqueueSkipReason(err error) string {
+	if errors.Is(err, queue.ErrTaskDone) {
+		return "done: already completed (edit the item text to re-arm)"
+	}
+
+	return "enqueue failed: " + err.Error()
+}
+
 // trackedItemDenial explains why an item already known to the queue is
 // denied admission, by its stored status.
 func trackedItemDenial(status task.Status) string {
@@ -846,7 +858,7 @@ func (h *Harvester) occupancyDenial(state repoState) string {
 func (h *Harvester) admitItem(ctx context.Context, item Item, importance int, res *Result) bool {
 	t, err := h.enqueue(ctx, item, importance)
 	if err != nil {
-		res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: "enqueue failed: " + err.Error()})
+		res.Skipped = append(res.Skipped, Skipped{Item: item, Reason: enqueueSkipReason(err)})
 
 		return false
 	}

@@ -58,6 +58,7 @@ var (
 	ErrEmptyType      = internalqueue.ErrEmptyType
 	ErrEmptyAnswerRef = internalqueue.ErrEmptyAnswerRef
 	ErrEmptyAnswer    = internalqueue.ErrEmptyAnswer
+	ErrTaskDone       = internalqueue.ErrTaskDone
 )
 
 // Functions.

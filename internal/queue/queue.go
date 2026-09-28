@@ -37,6 +37,16 @@ var ErrEmptyAnswerRef = errors.New("queue: record answer needs a question ref")
 // (a ruling that says nothing cannot be rendered into the parked prompt).
 var ErrEmptyAnswer = errors.New("queue: record answer needs a non-empty answer")
 
+// ErrTaskDone is the enqueue done-guard: the dedup key matched a stored
+// task that already COMPLETED, so a re-dispatch is refused. Without it a
+// dispatcher that treats the returned row as admission would mint a fresh
+// window for already-finished work (the DONE-on-arrival burn class). The
+// guard lives on the Queue wrapper, not the Store: cancelled/dead keys
+// keep their documented suppress-and-return semantics (rescue and re-arm
+// flows read the stored row), and re-arming a completed item deliberately
+// means a fresh key (edit the item text).
+var ErrTaskDone = errors.New("queue: dedup key already completed; re-dispatch refused (edit the item text to re-arm)")
+
 // Claim is the handle a claimer presents to finalize a claimed task: the
 // claim token minted at ClaimDue. Finalizes are TOKEN-fenced — the store
 // checks the presented claim against the live lease, so theft detection
@@ -447,9 +457,16 @@ type PriorityScore struct {
 // New wraps a Store.
 func New(s Store) *Queue { return &Queue{Store: s} }
 
-// Enqueue normalized-and-enqueues a task.
+// Enqueue normalized-and-enqueues a task. A dedup key whose stored task
+// already completed returns the stored row PLUS ErrTaskDone — the
+// done-guard refusing the re-dispatch.
 func (q *Queue) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
-	return q.Store.Enqueue(ctx, n.Normalize())
+	t, err := q.Store.Enqueue(ctx, n.Normalize())
+	if err == nil && t.Status == task.Completed {
+		return t, ErrTaskDone
+	}
+
+	return t, err
 }
 
 // UnblockBumpPriority is the priority bump a task gains when ALL its
