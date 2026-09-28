@@ -699,3 +699,45 @@ func TestRunRepoTimeoutLadder(t *testing.T) {
 		}
 	}
 }
+
+func TestEnqueueSkipReasonMapsDoneGuard(t *testing.T) {
+	if got := enqueueSkipReason(queue.ErrTaskDone); got != "done: already completed (edit the item text to re-arm)" {
+		t.Fatalf("enqueueSkipReason(done) = %q, want the dispatcher-dedup refusal", got)
+	}
+
+	if got := enqueueSkipReason(errors.New("boom")); got != "enqueue failed: boom" {
+		t.Fatalf("enqueueSkipReason(other) = %q, want the generic failure form", got)
+	}
+}
+
+// TestDoneGuardRefusesCompletedKeyRedispatch pins the queue-side done-guard
+// end to end: a dedup key whose task COMPLETED refuses re-dispatch with
+// ErrTaskDone (returning the stored row), while the harvest dispatcher
+// renders it as its own skip class — the DONE-on-arrival burn closed.
+func TestDoneGuardRefusesCompletedKeyRedispatch(t *testing.T) {
+	q := openQueue(t)
+	ctx := context.Background()
+
+	first, err := q.Enqueue(ctx, task.New{Project: "alpha", Type: DefaultType, DedupKey: "todo:alpha:x"})
+	if err != nil {
+		t.Fatalf("first Enqueue: %v", err)
+	}
+
+	claimed, claim, err := q.ClaimDue(ctx, "worker", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	if err := q.Complete(ctx, claimed.ID, claim, jsontext.Value(`{}`)); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	second, err := q.Enqueue(ctx, task.New{Project: "alpha", Type: DefaultType, DedupKey: "todo:alpha:x"})
+	if !errors.Is(err, queue.ErrTaskDone) {
+		t.Fatalf("re-dispatch of completed key: err = %v, want ErrTaskDone", err)
+	}
+
+	if second.ID != first.ID {
+		t.Fatalf("re-dispatch returned task %s, want the stored completed row %s", second.ID, first.ID)
+	}
+}
