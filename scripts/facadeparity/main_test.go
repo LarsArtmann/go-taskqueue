@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -66,11 +65,21 @@ var V int
 func TestCompatibleKindMatrix(t *testing.T) {
 	t.Parallel()
 
-	same := []kind{kindType, kindFunc, kindConst, kindVar}
+	same := []kind{kindType, kindConst, kindVar}
 	for _, k := range same {
 		if !compatible(k, k) {
 			t.Errorf("compatible(%v, %v) = false, want true", k, k)
 		}
+	}
+
+	// The func rule is func→var ONLY (a generic export aliases as an
+	// instantiated var; a facade wrapper FUNC fails parity — AGENTS.md).
+	if !compatible(kindFunc, kindVar) {
+		t.Error("compatible(func, var) = false, want true")
+	}
+
+	if compatible(kindFunc, kindFunc) {
+		t.Error("func-to-func alias accepted; the rule is func→var only")
 	}
 
 	if compatible(kindType, kindFunc) {
@@ -108,9 +117,5 @@ func TestDetectorCatchesMissingAliasFixture(t *testing.T) {
 
 	if !found {
 		t.Error("detector missed the MISSING-ALIAS fixture")
-	}
-
-	if !strings.Contains("MISSING-ALIAS", "MISSING") {
-		t.Fatal("unreachable")
 	}
 }

@@ -119,6 +119,8 @@ github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.0 h1:Pf+D5hWn9odR
 github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.0/go.mod h1:92NaZ7MRBxeNCf/rM4cNWUGd/JcVYHSv/Sh8R6PcIM0=
 github.com/larsartmann/go-taskqueue/internal/queue v0.3.0 h1:Z/bwp498le9WlLfLhrUGw7+5fAo7YZGVDettswrHcJo=
 github.com/larsartmann/go-taskqueue/internal/queue v0.3.0/go.mod h1:YRGBX4wyUWy3Gv3o239g/F8qGCuMFNDPGBbILOLgMbU=
+github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0 h1:1yUq4709lAqjrlqmwDu66iIHh4OmQ0X/bbV+nhUJdD0=
+github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0/go.mod h1:bK3FAm2P+PLxFFMu/wRjkhZsXn2WCniqZMr2GplnJm4=
 github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0 h1:ZULy6EfcVM16Qz8pNAMJxK5q24MNoST/AEU6ft2+CA4=
 github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0/go.mod h1:32Utx/X1qwwANrVz86EB1wqicOCaByEJSbARsrQA7ww=
 github.com/larsartmann/go-taskqueue/internal/task v0.3.0 h1:GlMbxwTAUA5fH06GuR+XliLP2aeEs5cQxAfcqN8YyIA=

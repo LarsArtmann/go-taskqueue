@@ -42,6 +42,7 @@ require (
 	github.com/larsartmann/go-error-family v0.10.1 // indirect
 	github.com/larsartmann/go-retry v0.6.0 // indirect
 	github.com/larsartmann/go-sse v0.6.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0
 	github.com/larsartmann/templ-components v1.17.0 // indirect
 	github.com/larsartmann/templ-components/htmx v1.17.0 // indirect
 	github.com/larsartmann/templ-components/icons v1.17.0 // indirect
