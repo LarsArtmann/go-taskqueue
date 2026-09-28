@@ -41,6 +41,12 @@ but unpushed until the owner presses the button.
 5. Full CI gate: `scripts/ci-local.sh` (the CI replicant — this script and
    CI can never drift apart), then the web UI smoke against the nix-built
    binary.
+6. Clean-room consumer compile (`scripts/check-cleanroom-install.sh`): the
+   pre-tag installability proof — a scratch module with no workspace/vendor
+   requires root + cmd/tq with all repo modules replaced locally, so a
+   missing require, broken split, or replace violation fails BEFORE any tag
+   is immutable (the v0.3.0 class: the install breakage used to surface
+   only in `--push`'s proxy clean-room, post-immutability).
 
 **Phase 2 — `--tag`.** Cuts the annotated root tag `vX.Y.Z` on HEAD
 immediately after the gates: the auto-commit daemon may commit at any
