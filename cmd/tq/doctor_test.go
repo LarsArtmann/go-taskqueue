@@ -56,6 +56,16 @@ func TestDoctorHealthyEmptyDB(t *testing.T) {
 		t.Fatalf("abs test binary: %v", err)
 	}
 
+	// The version probe would run `self --version` and honestly warn;
+	// stub it so worst==ok stays about the database, not the host binary.
+	orig := doctorProbeCrushVersion
+
+	t.Cleanup(func() { doctorProbeCrushVersion = orig })
+
+	doctorProbeCrushVersion = func(context.Context, string) (string, error) {
+		return "crush version v9.9.9", nil
+	}
+
 	results, err := runDoctor(context.Background(), doctorOptions{DBPath: path, AgentBin: self})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
