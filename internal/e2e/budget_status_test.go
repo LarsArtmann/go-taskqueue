@@ -21,6 +21,8 @@ import (
 // the sweepers run. The uncapped twin run proves the mint WOULD have
 // happened, so the refusal (not a broken sweeper) is what suppressed it.
 func TestBudgetCapsStatusMintedEnqueues(t *testing.T) {
+	t.Parallel()
+
 	run := func(t *testing.T, budget string) (string, string) {
 		t.Helper()
 

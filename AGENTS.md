@@ -1228,9 +1228,21 @@ prose, not the table.
   (`gofmt -l $(git ls-files '*.go')`) in BOTH `.tq-verify` and the mint
   template; CI is unaffected (runners have no vendor/). A task.verify
   failure whose tail shows all-ok packages is THIS bug, not a work
-  defect. Separately, internal/e2e under -race is load-marginal vs the
-  180s stage cap (240s kill at 02:45, 181.6s ok at 03:05) — tracked in
-  its own TODO row.
+  defect. Separately, internal/e2e under -race WAS load-marginal vs the
+  180s stage cap (240s kill at 02:45, 181.6s ok at 03:05) — RECONCILED +
+  TRIMMED 2026-09-29 (task 000001a0ea08): "ran too long (4m0s)" is the
+  go-test DRIVER's watchdog, not a second deadline —
+  `testKillTimeout = -timeout + 1m` grace (cmd/go/internal/test/test.go,
+  go1.27.1): the test binary panics at 180s ("panic: test timed out
+  after 3m0s", sitting in the log head the executor evidence tail cut)
+  and the driver SIGQUITs at 240s when the dump wedges, printing the
+  4m0s line and `FAIL … 240.029s`; steady state was ~22s serial (the
+  kill was ~8x spawn-contention inflation under concurrent agents, the
+  181.6s observation matches), and the trim is PARALLELISM — all 11
+  e2e tests run t.Parallel() (each is fully isolated: own TempDir, DB,
+  ephemeral ports, per-test stubs; the only shared state is the
+  read-only tqBin), turning serial-wall-under-contention into
+  overlapped wall (~7s green under the gate's exact flags, 2026-09-29).
 - ⚠️ **Crush client/server mode stays OFF for pool agents until a
   per-repo experiment passes** (`CRUSH_CLIENT_SERVER` unset everywhere,
   verified 2026-09-14): first-wins `--yolo` is a non-issue under the

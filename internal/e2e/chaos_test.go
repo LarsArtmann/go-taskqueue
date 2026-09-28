@@ -23,6 +23,8 @@ import (
 // journal must never show two completions for one task (at-least-once,
 // never double-done).
 func TestChaosKillWorkerMidRun(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	stub := filepath.Join(dir, "slow-stub")
 	// Task runs 30s — the kill lands mid-run.
@@ -125,6 +127,8 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 // the work, and still exit cleanly — and the journal must show exactly one
 // completion (round-5 M15/F77).
 func TestChaosKillAgentPoolOnceMidDrain(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "q.db")
 
@@ -213,6 +217,8 @@ func TestChaosKillAgentPoolOnceMidDrain(t *testing.T) {
 // task exactly once with zero errors — the MaxOpenConns(1)+WAL single-writer
 // contract under real multi-process load (round-5 M16/F86).
 func TestMultiProcessContention(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "q.db")
 

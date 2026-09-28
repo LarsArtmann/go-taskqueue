@@ -27,7 +27,13 @@ import (
 // stub, mirroring scripts/smoke/multi-repo.sh.
 //
 // Build note: cmd/tq must be built before these tests (TestMain does it).
-
+//
+// Every test runs t.Parallel(): each one is fully isolated (own TempDir,
+// own sqlite DB, ephemeral ports, per-test stubs), so the only shared
+// resource is CPU — and overlap is the headroom this package needs under
+// the verify gate's per-binary -timeout cap, where concurrent agents
+// inflate spawn-heavy serial wall time several-fold (the 2026-09-21
+// 240s kill; steady-state the suite is ~20s).
 var tqBin string
 
 func TestMain(m *testing.M) {
@@ -62,6 +68,8 @@ func repoRoot() string {
 // it must harvest the fixture repo, run the stub agent, complete the task,
 // and exit 0 on its own (the --once hang regression).
 func TestAgentPoolOnceSubprocess(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	dir := t.TempDir()
 	writeRepo(t, dir, "demorepo", "- [ ] subprocess item\n")
@@ -96,6 +104,8 @@ func TestAgentPoolOnceSubprocess(t *testing.T) {
 // TestBudgetRefusalSubprocess: with --daily-budget already exhausted, the
 // pool must skip the tick with the budget reason and still exit 0.
 func TestBudgetRefusalSubprocess(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	writeRepo(t, dir, "demorepo", "- [ ] budgeted item\n")
 	stub := filepath.Join(dir, "stub-agent")
@@ -213,6 +223,8 @@ func assertFactCounts(t *testing.T, ctx context.Context, s *sqlite.Store, want m
 // process tree at the worker's next heartbeat and finalizes the task as
 // cancelled — far below the 30s the payload would otherwise run.
 func TestForceCancelSubprocess(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	dir := t.TempDir()
 	db := filepath.Join(dir, "q.db")
@@ -280,6 +292,8 @@ func TestForceCancelSubprocess(t *testing.T) {
 // TestAuditAndTopJSONSubprocess (round-5 M26/F138): the two reporting
 // commands answer machine-readable on a seeded database.
 func TestAuditAndTopJSONSubprocess(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "q.db")
 
@@ -313,6 +327,8 @@ func TestAuditAndTopJSONSubprocess(t *testing.T) {
 // startup zombie sweep — BEFORE the first harvest tick — so the relaunch
 // executes nothing stale.
 func TestAgentPoolStartupPruneSweep(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	dir := t.TempDir()
 	writeRepo(t, dir, "demorepo", "- [ ] stale item done elsewhere\n")

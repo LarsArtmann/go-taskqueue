@@ -33,6 +33,8 @@ import (
 // watermark covers the dead-letter fact it forwarded (a store-closed-first
 // write would have failed and left the cursor behind).
 func TestShutdownOrderingUnderSIGTERM(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	db := filepath.Join(dir, "q.db")
 
@@ -174,6 +176,8 @@ func TestShutdownOrderingUnderSIGTERM(t *testing.T) {
 // SIGTERM closes the event stream (client sees EOF) and the process exits
 // gracefully.
 func TestServeSSEClosesBeforeExit(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	db := filepath.Join(dir, "q.db")
 	runCLI(t, db, "enqueue", "--type", "sh", "--payload", "echo hi")
