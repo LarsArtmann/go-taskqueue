@@ -216,6 +216,12 @@ jobs:
         # runs its postgres variant (drain 4/4 + 50ms deadline) against the
         # same service in addition to the default sqlite pass.
         run: ./scripts/smoke/fullcore.sh
+      - name: Journal-drift postgres parity (tq audit --journal)
+        # journalDrift consumes only queue.Store; this pins that the
+        # sqlite lifecycle findings hold over the postgres backend too
+        # (skips would hide a regression — the job-level env guarantees it
+        # actually runs here).
+        run: ./scripts/test-cmd-tq.sh -run TestJournalDriftNoDriftOverFullLifecyclePostgres -count=1 -v
 
   consumer:
     # T5 (09-14 retro §f5 + §f6): the out-of-tree consumer proof — a scratch
