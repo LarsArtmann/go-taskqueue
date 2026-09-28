@@ -645,6 +645,24 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   extraction, zero new accepts — all ledgered classes (dlqfix/review
   Sweeper shell, replay.go `openSource` call-site prolog pair with
   divergent target lifecycles, conform ErrNoTaskDue assertion pair).
+  2026-09-28 `-t 2 --type-aware` sweep (81 actionable groups, 353
+  suppressed): zero extraction, zero new accepts — all 81 re-verified
+  against this ledger; four previously-unnamed residents NAMED so future
+  sweeps skip re-litigation: the `webui taskBadges` body (the one
+  HIGH-flagged function-category group is two adjacent `display.Badge`
+  calls INSIDE the shared component — shared-seam body, not a clone),
+  the worker preflight get-or-create pair (`preflightDelay`/
+  `preflightShouldLog`: divergent seeds + created-path branch, and state
+  mutations must stay under the caller-held mutex — extraction needs
+  per-site closures or splits lock scope, so it rides the
+  sweeper-skip-guard reasoning), the `statusCounts` model-or-store twin
+  (httpapi `Server` + webui `Server`, both `*readmodel.Model`:
+  deliberately mirrored and PINNED equal by `TestStatsSurfacesAgree` —
+  the mirror IS the tested contract; extraction would add a
+  readmodel→queue require edge for 6 lines), and the postgresv4
+  `Open`/`OpenWithPool` companion-open prolog pair (`finishOpen` is
+  already the seam; the residual is the divergent error-wrap prolog —
+  postgresv4's twin of the replay.go `openSource` class).
   `--show-suppressed` additionally surfaces the engine-backed adapter
   block (78+38-stmt type-1 pairs, sqlitev4/postgresv4 adapter.go): NOT
   clone mass by the extraction design ("they stay in the adapters
