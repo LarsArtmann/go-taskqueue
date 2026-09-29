@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Shared token-auth seam (`internal/httpauth`)**: `tq serve` and
+  `tq api` now extract bearer tokens (case-insensitive `Authorization:
+  Bearer` scheme per RFC 9110 + `?token=` fallback) and compare them
+  through one SHA-256 constant-time helper — healing two httpapi defects
+  in one move: the raw compare leaked the token-length mismatch via
+  timing, and the Bearer prefix match was case-sensitive. Behavior
+  unchanged for valid tokens; invalid-token handling is now identical
+  across both surfaces (BEHAVIOR CHANGE for `tq api` clients sending
+  `bearer`-lowercase prefixes: they authenticate where they previously
+  got 401).
 - **dlqfix auto-dismiss for gate-artifact + shipped-proof deaths** (TODO
   row 145): a dead agent task whose failure evidence names the
   unscoped-gofmt verify artifact (`executor.IsGateArtifactDeath` —
