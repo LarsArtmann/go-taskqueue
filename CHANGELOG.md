@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **`tq tasks`: truncation is no longer silent, plus `--count`**: the
+  default 50-row cap used to read as the whole set (`"50 task(s)"`),
+  hiding terminal tasks from census work — a dead-letter sweep listed
+  50 of 156 with a 2026-09-20 death invisible in the default view.
+  When the listing hits the limit the footer now reports
+  "showing N of M matching task(s) (capped by --limit …)", and the
+  new `--count` flag prints just the total match count for the
+  current filters.
 - **Enqueue done-guard: completed dedup keys refuse re-dispatch**
   (`queue.ErrTaskDone`): re-enqueuing a `DedupKey` whose task already
   COMPLETED now returns the stored row PLUS a refusal instead of silently
