@@ -19,6 +19,18 @@ echo "=== git stash list ==="
 git stash list || true
 
 echo
+echo "=== master CI state (scripts/check-ci.sh) ==="
+# Turn-1 master-CI probe: five consecutive windows confessed the
+# close-out-only skip, leaving every master-RED claim unverified (23-28
+# report b2/f2). Red is signal to record in the close-out, never a stop
+# condition: the ritual always completes.
+ci_rc=0
+bash scripts/check-ci.sh || ci_rc=$?
+if [ "$ci_rc" -ne 0 ]; then
+	echo "  -> carry this into the close-out: master was red at session START (predates this tree)"
+fi
+
+echo
 echo "=== prior reports for current task ID(s) ==="
 # Pass task IDs as arguments: scripts/session-start.sh <id> [<id>...]
 # With no arguments, prints the hint instead of guessing.
