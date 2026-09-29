@@ -40,6 +40,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`internal/executor/verifygate.go`, `internal/executor/agent.go`,
   `internal/executor/status.go`, `internal/worker/worker.go`,
   `executor/executor.go`)
+- **Verify-gate environmental signature: proven-environmental verify
+  deaths dead-letter on the first death instead of re-dispatching**
+  (`VerifyGateEnvironmental`): a verify failure matching the vendor-gofmt
+  signature — the gate carries a `gofmt -l` stage, the output tail shows
+  every package stage passed (ok lines, no FAIL), and a direct gofmt
+  re-measure against the LIVE tree flags files ONLY under the gitignored
+  `vendor/` tree — classifies as `gate-env` and the worker dead-letters
+  immediately carrying the `vendor-gofmt` reason code
+  (`executor.VerifyGateEnvCode`), instead of riding the retry ladder that
+  re-dispatched finished work into an identical death (the row-109 loop:
+  attempt 1 closed its TODO row, attempt 2 re-verified it, both
+  gate-killed). The signature is measured against the live tree because
+  the baseline worktree probe is structurally blind to it (gitignored
+  `vendor/` never enters a fresh worktree, so the gate passes there and
+  the death misclassified as introduced); a gofmt-flagged NON-vendor file
+  (the agent's own formatting) never suppresses — introduced defects
+  still count. Recovery stays: remove `vendor/`, then `tq dlq --rescue`.
+  Classified BEFORE the baseline probe, so the expensive worktree run is
+  skipped when the signature is definitive. Pinned by
+  `TestVendorGofmtSignatureClassifiesEnvironmental`,
+  `TestVendorGofmtSignatureNeverMasksIntroducedWork` and the clause/tail
+  unit pins (executor), and `TestVerifyGateEnvironmentalDeadLettersImmediately`
+  (worker: 1 executor run, 1 attempt, signature code on the dead task).
+  (`internal/executor/verifygate.go`, `internal/worker/worker.go`,
+  `executor/executor.go`)
 - **Agent-run outcome badges in the task table**: completed agent tasks now
   carry an "N commits" badge in the dashboard table (the run's derived
   footer-commit count), closing the table/detail parity gap — the "agent
