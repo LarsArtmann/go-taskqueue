@@ -933,7 +933,11 @@ prose, not the table.
   `nix build`.
 - ⚠️ **templ LSP diagnostics are false positives** (phantom syntax errors
   against a green `go build`; the cache goes stale, not the sources). Trust
-  the CLI, not the LSP, for webui/templ.
+  the CLI, not the LSP, for webui/templ. Same class for cmd/tq: gopls
+  reports `undefined: truncate/dbFlag/mustOpenDB/resolveDB` and stale
+  `Filter` fields on every cmd/tq edit — module-cache resolution against
+  the pinned tag; all false by the shim gate (`./scripts/test-cmd-tq.sh`),
+  never "fix" them (2026-09-27 06-40 §e3).
 - ⚠️ **`tq serve` security model**: loopback-only and read-only by default;
   `--allow-writes` adds exactly two CSRF-guarded admin routes (cancel,
   rescue) with a failed-attempt lockout (3 bad CSRF tokens → 60s 429);
@@ -1131,7 +1135,23 @@ prose, not the table.
   fails on the ambient `TQ_QUESTION_FILE` (row 245) even though the agent
   "cleaned" the var first. The only reliable session-side scrub is a fresh
   process env: `env -u VAR ... cmd` (verified: `env -u` run of the same
-  suite is green at the same HEAD).
+  suite is green at the same HEAD). Two more session-shell quirks: (1)
+  multi-file `tail -N file…` dies with "option used in invalid context" —
+  keep redirecting gate output to files and view them with the file tool
+  instead of piping tails (2026-09-22 03-05 §f). (2) `printf` rejects
+  `%.0s` ("invalid format char: ."), so `printf 'x%.0s' $(seq 1 200)`
+  silently yields an EMPTY string and one-chain probe fixtures built that
+  way test nothing while reporting green — build long fixture strings with
+  `head -c N /dev/zero | tr '\0' 'x'` (first hit: docs/status/2026-09-26_05-19
+  §d2).
+- ⚠️ **mvdan `&`-precedence trap**: compound-chain backgrounding
+  (`A && (sleep 1; …) & script`) backgrounds the WRONG span — the `cd`
+  rides into the background job and the tail runs from the ORIGINAL cwd.
+  It ran a test copy from the LIVE repo's cwd and the daemon committed the
+  stray fixture (23-28 report d1/f5). For scratch-dir background work use
+  the single-string form so the cwd + the background span are unambiguous:
+  `bash -c 'cd <scratch> && (…) & exec <tool>'` — and never let a fixture
+  outlive the command that made it (create + assert + trash in ONE chain).
 - ⚠️ **Root-module builds auto-use `vendor/` — stale vendored internals
   poison root builds** (2026-09-17 questions arc, d2): after changing ANY
   internal/ module, root `go build ./...` can fail with misleading

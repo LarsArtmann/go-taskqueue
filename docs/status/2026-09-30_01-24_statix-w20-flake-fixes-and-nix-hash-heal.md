@@ -34,9 +34,18 @@ no pushes; no commits by hand (auto-commit daemon swept everything — see §d8)
    go 1.27.1 source-tarball hash. Corrected to `sha256-TkCKuu…` — the value proven by the FOD's
    own `got:` error AND identical to the working perSystem formatter copy at flake.nix:150.
    Predates the tree (confirmed via `git show HEAD~1:flake.nix`). Landed in 06c3da66.
-4. **Pre-existing stale `vendorHash` healed** (flake.nix:40): pasted the FOD's `got:`
+4. **`vendorHash` refreshed** (flake.nix:40): pasted the FOD's `got:`
    `sha256-USH5j7+aEgqJPwGRSq0I5nmDVFoLbigGKCshpsS/iI4=` per the repo's documented drift
    runbook (no buildflow here — no `.buildflow.yml`, verified). Landed in 06c3da66.
+   **PROVENANCE CORRECTED IN-WINDOW (§d9)**: initially written up as "pre-existing stale" —
+   that is UNPROVEN and contradicted by the concurrent 01-03 report, whose ~00:50 battery ran
+   `nix build .#checks.x86_64-linux.vendor-hash` rc=0 against the SAME M66RZ literal for tree
+   702ee8b4^. Between that green check and my failing one, only flake.nix text changed (my
+   restructure + goTarballHash fix), yet the modules-FOD output hash is content-derived
+   (go.mod/go.sum unchanged) — so either flake.nix IS a FOD src input, or the sibling check
+   exercised different inputs than its report states. Both hypotheses need one verification
+   pass (§f5). What IS proven: USH5j is the correct specified hash for the final tree —
+   flake check "all checks passed" at 06c3da66 is the citation.
 5. **End-to-end proof the restructured treefmt config still works**: `nix fmt` and
    `nix flake check`'s `treefmt-check` both green — that check runs the exact merged
    excludes + templ/goimports wrappers over the whole tree.
@@ -48,7 +57,10 @@ no pushes; no commits by hand (auto-commit daemon swept everything — see §d8)
 
 ## §b) PARTIALLY DONE
 
-1. **"The hash heals fix the red master nix job"** — hypothesis only. The session-start probe
+1. **"The hash heals fix the red master nix job"** — hypothesis, now NARROWED: only the
+   goTarballHash defect is unconditional (M66RZ ≠ tarball bytes, fails whenever realized);
+   the vendorHash staleness provenance is unresolved (§a4 correction) and may even be
+   tree-relative rather than pre-existing. The session-start probe
    found master RED at 8ab309b66 (cancelled run, predates tree); prior reports date the red
    nix/test/test-windows jobs to 2026-09-29 ~03:26. Both stale hashes are consistent with
    that, but `scripts/check-ci.sh` was **never re-run** after the heals and nothing was
@@ -117,6 +129,11 @@ no pushes; no commits by hand (auto-commit daemon swept everything — see §d8)
 8. **All session work landed in footer-less daemon commits** (702ee8b4 restructures,
    06c3da66 hash heals) — attribution receipts #6/#7 for the known daemon-commit gap census.
    No heal attempted (interactive session, no task ID to footer); the census row grows.
+9. **Encoded an unverified provenance claim into the first draft of this report.** §a4
+   originally said "pre-existing stale vendorHash" — written from the FOD error alone, before
+   reading the concurrent window's counter-evidence (M66RZ green at ~00:50, README.md:772).
+   Citation discipline caught it during indexing, not during writing; the correction above
+   is the in-window heal, but the right order was evidence-first, claim-second.
 
 **Did I lie?** No. Every gate claim above carries its rc and every fix cites its commit.
 The one soft claim (§b1) is explicitly downgraded to hypothesis.
@@ -149,7 +166,7 @@ The one soft claim (§b1) is explicitly downgraded to hypothesis.
 | 2 | Single-source the go 1.27.1 tarball hash (flake.nix:45 vs :150; perSystem reads `config.go-standard.goTarballHash` or a shared let) | Kills the split brain that produced §a3; the manual-sync comment already failed once | S |
 | 3 | File TODO rows: statix unwired (§a6), tarball-hash twin (§b2), vendorHash-masking note (§c4), PIPESTATUS receipt (§d1), footer-less receipts #6/#7 (§d8) | Repo culture: findings without rows rot; this report is entombed otherwise | S |
 | 4 | Wire statix into the gates: `scripts/check-statix.sh` (pinned invocation, fail on findings) + ci-local step + check-guard-wiring registration — or record an explicit manual-only ruling | Today ONLY a human running statix by hand catches W20-class nix rot; the two warnings proved the hole is real | M |
-| 5 | Date the §a3 defect (`git log -S goTarballHash` → be59f26f/17e0139b/741a0849 candidates) and correlate with the 09-29 03:26 red | Answers whether the stale hashes were THE master-red cause or a second independent break | S |
+| 5 | Date the §a3 defect (`git log -S goTarballHash` → be59f26f/17e0139b/741a0849 candidates) and resolve the vendorHash provenance contradiction (§a4/§d9): is flake.nix a go-modules FOD src input, or did the sibling window's 00:50 rc=0 exercise different inputs? | Answers whether the stale hashes were THE master-red cause or a second independent break; also pins the FOD-input model the whole fleet reasons from | S |
 | 6 | AGENTS.md: vendorHash bullet gains the tarball-masks-modules FOD ordering + the `--keep-going` triage step | Encodes this window's two new lessons where the next window reads | S |
 | 7 | Sweep sibling LarsArtmann flakes for the `goTarballHash = <vendorHash>` copy-paste class | Same template, same mistake likely duplicated fleet-wide | M |
 | 8 | Execute `nix run .#test` once at HEAD | The merged `apps.test` is eval-verified only; one real run closes it | M |
@@ -187,4 +204,5 @@ The one soft claim (§b1) is explicitly downgraded to hypothesis.
 *Gates cited: statix rc=0 · nix fmt rc=0 (0 changed) · nix flake show all-systems eval ·
 nix flake check rc=0 "all checks passed" · nix build rc=0 — all at 06c3da66. Commits:
 702ee8b4 (W20 restructures), 06c3da66 (goTarballHash + vendorHash heals). Master status at
-session start: RED (8ab30b66-era cancelled run, predates tree) — §b1 carries.*
+session start: RED (8ab309b66-era cancelled run, predates tree) — §b1 carries. Counter-
+evidence source: docs/status/README.md:772 (sibling 01-03 report's ~00:50 vendor-hash rc=0).*
