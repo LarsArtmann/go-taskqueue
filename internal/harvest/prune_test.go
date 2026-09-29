@@ -1,12 +1,11 @@
 package harvest
 
 import (
-	"time"
-
 	"context"
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"

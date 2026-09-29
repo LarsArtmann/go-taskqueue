@@ -888,23 +888,28 @@ func TestDoctorCrushVersionCheck(t *testing.T) {
 	}{
 		{
 			"at floor", "crush version v0.94.1", nil,
-			checkOK, []string{"0.94.1"},
+			checkOK,
+			[]string{"0.94.1"},
 		},
 		{
 			"above floor", "crush version v0.96.1", nil,
-			checkOK, []string{"0.96.1"},
+			checkOK,
+			[]string{"0.96.1"},
 		},
 		{
 			"below floor", "crush version v0.92.0", nil,
-			checkWarn, []string{"below the 0.94.1 floor"},
+			checkWarn,
+			[]string{"below the 0.94.1 floor"},
 		},
 		{
 			"unparseable", "something odd", nil,
-			checkWarn, []string{"unparseable"},
+			checkWarn,
+			[]string{"unparseable"},
 		},
 		{
 			"probe fails", "", context.DeadlineExceeded,
-			checkWarn, []string{"version floor check skipped"},
+			checkWarn,
+			[]string{"version floor check skipped"},
 		},
 	}
 
@@ -949,22 +954,26 @@ func TestDoctorCrushManagedBlockPin(t *testing.T) {
 		{
 			"xhigh pinned",
 			"# >>> tq bootstrap (managed) >>>\nmodel large zai/glm-5.3-flash --reasoning-effort xhigh\n# <<< tq bootstrap (managed) <<<\n",
-			checkOK, []string{"xhigh"},
+			checkOK,
+			[]string{"xhigh"},
 		},
 		{
 			"wrong effort",
 			"# >>> tq bootstrap (managed) >>>\nmodel large zai/glm-5.3-flash --reasoning-effort high\n# <<< tq bootstrap (managed) <<<\n",
-			checkWarn, []string{"--reasoning-effort high"},
+			checkWarn,
+			[]string{"--reasoning-effort high"},
 		},
 		{
 			"no effort pin",
 			"# >>> tq bootstrap (managed) >>>\npermissions allow view\n# <<< tq bootstrap (managed) <<<\n",
-			checkWarn, []string{"pins no --reasoning-effort"},
+			checkWarn,
+			[]string{"pins no --reasoning-effort"},
 		},
 		{
 			"no managed block",
 			"model large zai/glm-5.3-flash --reasoning-effort xhigh\n",
-			checkWarn, []string{"no tq managed block"},
+			checkWarn,
+			[]string{"no tq managed block"},
 		},
 	}
 

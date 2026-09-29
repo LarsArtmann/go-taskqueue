@@ -2,12 +2,11 @@ package harvest
 
 import (
 	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
-	"encoding/json/v2"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
