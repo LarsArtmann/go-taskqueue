@@ -35,6 +35,8 @@ echo "=== prior reports for current task ID(s) ==="
 # Pass task IDs as arguments: scripts/session-start.sh <id> [<id>...]
 # With no arguments, prints the hint instead of guessing.
 if [ "$#" -gt 0 ]; then
+	windows_total=0
+	done_hits=0
 	for id in "$@"; do
 		echo "--- $id ---"
 		local_reports="$(rg -l "$id" docs/status/ 2>/dev/null || true)"
@@ -58,8 +60,17 @@ if [ "$#" -gt 0 ]; then
 			if [ -n "$done_rows" ]; then
 				echo "DONE-row state:"
 				echo "$done_rows" | sed 's/^/  /'
+				done_hits=$((done_hits + 1))
 			else
 				echo "(no DONE rows mention this ID — repeat dispatch possible)"
+			fi
+			# A repeat delivery of an already-completed ticket is discoverable
+			# from the footer the fix commit carried (03-14 §e3) — surface it
+			# without anchor archaeology.
+			footer_commits="$(git log --grep="Task-Queue-ID: $id" --oneline -5 2>/dev/null || true)"
+			if [ -n "$footer_commits" ]; then
+				echo "footer already carried by:"
+				echo "$footer_commits" | sed 's/^/  /'
 			fi
 		fi
 		# The queue record (status / attempts / lastError tail / facts) — the
@@ -71,9 +82,26 @@ if [ "$#" -gt 0 ]; then
 		else
 			echo "(tq not on PATH — queue record skipped)"
 		fi
+		windows_total=$((windows_total + 1))
 	done
 else
 	echo "(pass task IDs: scripts/session-start.sh <task-id>…; rg docs/status/ skipped)"
+fi
+
+echo
+echo "=== git-hook liveness (core.hooksPath trap) ==="
+# Host-global core.hooksPath pointing at a missing dir silently disables
+# every .git/hooks guard (01-26 report §a5; inert 12+ days). Print the
+# verdict so windows know whether write-time guards are live.
+hooks_dir="$(git config core.hooksPath || true)"
+if [ -z "$hooks_dir" ]; then
+	hooks_dir=".git/hooks"
+fi
+if [ -d "$hooks_dir" ] && [ -e "$hooks_dir/commit-msg" ] && [ -e "$hooks_dir/pre-commit" ]; then
+	echo "hooks LIVE: $hooks_dir (pre-commit + commit-msg present)"
+else
+	echo "hooks INERT: core.hooksPath=${hooks_dir} (resolved dir, commit-msg or pre-commit missing)"
+	echo "  -> every installer-written .git/hooks guard is silently disabled; re-run scripts/install-pre-commit.sh or fix core.hooksPath"
 fi
 
 echo
@@ -96,5 +124,10 @@ if [ -f CLAUDE.md ]; then
 	head -40 CLAUDE.md
 fi
 
+# Tail-truncated invocations (`| tail -20`) still surface duplicates: the
+# counts ride the FINAL completion line (2026-09-22 03-05 §f).
+summary="windows=$windows_total done-row-hits=$done_hits"
+[ "$#" -eq 0 ] && summary="windows=0 (no IDs passed) done-row-hits=0"
 echo
-echo "Session-start ritual complete. Read the output before editing anything."
+echo "Session-start ritual complete (SUMMARY: $summary). Read the output before editing anything."
+echo "REMINDER: after every green gate re-run 'git status' — the auto-commit daemon sweeps unstaged edits footer-less mid-window."
