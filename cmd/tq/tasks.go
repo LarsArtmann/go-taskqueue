@@ -26,6 +26,7 @@ func cmdTasks(args []string) error {
 	verifyContains := fs.String("verify-contains", "", "filter by payload substring (e.g. a verify command; stale-verify audits without a tq show per task)")
 	since := fs.Duration("since", 0, "only tasks created within this window (e.g. 6h, 30m; 0 = all time)")
 	parked := fs.Bool("parked", false, "only rate-limit-parked tasks (pending with a future not_before)")
+	count := fs.Bool("count", false, "print only the total number of matching tasks (ignores --limit)")
 	limit := fs.Int("limit", 50, "max tasks to list (0 = all)")
 	asJSON := fs.Bool("json", false, "JSON output of the matching task list")
 
@@ -88,6 +89,17 @@ func cmdTasks(args []string) error {
 		filter.Limit = *limit
 	}
 
+	if *count {
+		n, err := store.CountTasks(ctx, filter)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%d matching task(s)\n", n)
+
+		return nil
+	}
+
 	tasks, err := store.List(ctx, filter)
 	if err != nil {
 		return err
@@ -100,14 +112,21 @@ func cmdTasks(args []string) error {
 		return enc.Encode(tasks)
 	}
 
-	printTaskList(tasks)
+	printTaskList(tasks, *limit, func() (int, error) {
+		filter.Limit = 0
+
+		return store.CountTasks(ctx, filter)
+	})
 
 	return nil
 }
 
 // printTaskList renders the list view: full IDs (they are the handle into
 // `tq show`/`tq cancel`), status, project, age, and a last-error excerpt.
-func printTaskList(tasks []task.Task) {
+// total resolves the uncapped match count ONLY when the list hit the limit,
+// so a truncated footer never reads as the whole set (dead-letter census
+// missed a 09-20 death behind a silent 50-row cap).
+func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
 	if len(tasks) == 0 {
 		fmt.Println("no matching tasks")
 
@@ -121,6 +140,14 @@ func printTaskList(tasks []task.Task) {
 			t.ID.String(), string(t.Status), t.Project, t.Type, t.Attempts,
 			truncate(oneLine(t.LastError), 60),
 		)
+	}
+
+	if limit > 0 && len(tasks) == limit {
+		if n, err := total(); err == nil {
+			fmt.Printf("showing %d of %d matching task(s) (capped by --limit %d; --limit 0 lists all, --count prints just the total)\n", len(tasks), n, limit)
+
+			return
+		}
 	}
 
 	fmt.Printf("%d task(s)\n", len(tasks))

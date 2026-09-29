@@ -65,7 +65,7 @@ Usage:
                [--yolo] [--reresolve-verify] [--max-per-tick N] [--task-timeout DUR]
                [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH]
   tq stats [--project P] [--status S] [--daily-budget N] [--read-model] [--db PATH] [--json]
-  tq tasks [--project P] [--status S] [--type T] [--since DUR] [--limit N] [--json] [--db PATH]
+  tq tasks [--project P] [--status S] [--type T] [--since DUR] [--limit N] [--count] [--json] [--db PATH]
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
           [--max-attempts N] [--dry-run] [--json] [--db PATH]
   tq doctor [--json] [--hygiene] [--daily-budget N] [--repos a,b] [--db PATH]
