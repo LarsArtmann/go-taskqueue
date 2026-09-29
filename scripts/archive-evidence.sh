@@ -169,12 +169,12 @@ done
 
 # Step 3 — SHA256SUMS regen (documented command shape: non-hidden entries,
 # manifest excluded, sorted; flat dir guaranteed above).
-if ! (cd "$adir" && find . -mindepth 1 -maxdepth 1 ! -name SHA256SUMS ! -name '.*' -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS); then
+if ! (cd "$adir" && find . -mindepth 1 -maxdepth 1 ! -name SHA256SUMS ! -name '.*' -printf '%f\n' | sort | xargs sha256sum >SHA256SUMS); then
 	echo "FAIL: SHA256SUMS regeneration failed in $adir_rel" >&2
 	exit 1
 fi
 
-echo "intended file set under $adir_rel/ ($(( ${#dests_rel[@]} + 1 )) files):"
+echo "intended file set under $adir_rel/ ($((${#dests_rel[@]} + 1)) files):"
 printf '  %s\n' "${dests_rel[@]}" "$adir_rel/SHA256SUMS"
 
 # Step 4 — daemon --stat diff: the newest auto-commit touching the archive
@@ -212,7 +212,7 @@ check_daemon() {
 fail=0
 check_daemon || fail=1
 if [ "$fail" -eq 0 ] && [ "$verified" -eq 0 ]; then
-	deadline=$(( $(date +%s) + wait_secs ))
+	deadline=$(($(date +%s) + wait_secs))
 	while [ "$(date +%s)" -lt "$deadline" ]; do
 		sleep 2
 		check_daemon || {

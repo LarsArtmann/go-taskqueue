@@ -99,7 +99,7 @@ echo x >"$r/ev/a.txt"
 echo stale >"$r/docs/status/assets/arch/a.txt"
 echo stale >"$r/docs/status/assets/arch/SHA256SUMS"
 git -C "$r" add docs/status/assets/arch
-future="@$(( $(date +%s) + 3600 ))"
+future="@$(($(date +%s) + 3600))"
 GIT_AUTHOR_DATE="$future" GIT_COMMITTER_DATE="$future" \
 	git -C "$r" commit -q -m "chore: auto-commit 2 changed file(s) (heuristic)"
 out=$(run_in "$r" "$TARGET" ev/a.txt docs/status/assets/arch) || fail "SUCCESS run exited nonzero: $out"
@@ -113,7 +113,7 @@ mkdir -p "$r/ev" "$r/docs/status/assets/arch"
 echo x >"$r/ev/a.txt"
 echo only-one >"$r/docs/status/assets/arch/a.txt"
 git -C "$r" add docs/status/assets/arch/a.txt
-future="@$(( $(date +%s) + 3600 ))"
+future="@$(($(date +%s) + 3600))"
 GIT_AUTHOR_DATE="$future" GIT_COMMITTER_DATE="$future" \
 	git -C "$r" commit -q -m "chore: auto-commit 1 changed file(s) (heuristic)"
 if out=$(run_in "$r" "$TARGET" ev/a.txt docs/status/assets/arch 2>&1); then
