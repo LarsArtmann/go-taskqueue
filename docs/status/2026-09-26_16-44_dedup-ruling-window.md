@@ -23,38 +23,38 @@ parity skews from other windows fixed. All claims re-derived at HEAD
 
 ## a) FULLY DONE
 
-| # | Item | Evidence |
-|---|------|----------|
+| #  | Item                                                                                                                                                                                                                                                                                                                                                         | Evidence                                                                                                                                                    |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | a1 | Tier-0 dedup helpers with facade aliases: `queue.ParseReprioritizeEvidence` (both repri-history consumers rewired), `journal.AfterSeq` (production `SliceSource.Facts`, `MemoryJournal.Since`, both deliberately-independent test fakes), `task.StatusCountsView` (httpapi + webui stats; httpapi's `statusCounts` normalized Status-keyed to match webui's) | symbols + aliases verified present at HEAD; `internal/{queue,journal,task}` GOWORK=off gates ok; facade suites ok; root `-race` 15 pkgs rc=0 (session tree) |
-| a2 | cmd/tq claim-token-sweep fallout completed: 11 arity fixes + minted claims threaded into Complete/Fail/FailPermanent/Requeue across 8 test files (unblock_test restructured to capture the held claim through the claim-until-match loop) | `scripts/test-cmd-tq.sh` went vet-red → compiles; full suite passes except the 2 pre-existing drift tests (see b5) |
-| a3 | worker FACADE go.mod: missing `internal/queue/sqlitev4` require+replace (S1-flip debris: sqlite thin driver now imports sqlitev4; GOWORK=off tidy died on untagged-module proxy 410) | fix mirrors internal/worker/go.mod:19/48; `check-go-mods.sh` 45 checks ok rc=0 |
-| a4 | `internal/queue/companion` module scaffolded (scripts/new-module.sh pattern; doc.go states status + design pointer); picked up by all disk-derived module loops automatically | module build+vet ok |
-| a5 | `scripts/check-mirror-clones.sh` — the zero-accept gate: parses the canonical art-dupl `-t 3` report, fails on any clone group spanning >1 backend dir; counts 31 today; advisory default, `MIRROR_CLONES_STRICT=1` flips to gating; wired into ci-local (advisory-lint neighborhood) | gate run rc=0 advisory listing 31 groups; guard-wiring 35 wired/0 orphaned; bash -n + shellcheck 56/56 |
-| a6 | Extraction design committed: pre-dialed `Runner` + `Dialect` (pgq relocates from postgresv4 — the two adapters are 85% identical, 251 diff lines), verbatim body moves in 4 batches, per-batch module gates, suite-consolidation knobs, release bookkeeping, pg-runtime disclosure | docs/planning/2026-09-26_companion-extraction-design.md; doc-refs rc=0 |
-| a7 | AGENTS.md updated in two sections (dedup ruling + gate in Conventions; companion home + 31-count + advisory gate in the ADR-0019 S1/S4 text); TODO_LIST extraction row filed (todo gate rc=0) | AGENTS.md diff in daemon commit; gates rc-captured |
-| a8 | 16:40 re-verification battery at HEAD after ~12h of concurrent windows: every artifact re-derived present; root build+vet rc=0; mirror gate still counts 31; my gate wiring + worker fix survived | rc-captured this session |
-| a9 | Concurrent debris repair #3 (today): two facade-parity skews from other windows fixed — `queue.Claim` type alias added to the queue facade, `postgres.StoreOption` alias added to the postgres facade; parity rc=1 → rc=0 | `check-facade-parity.sh` rc=0; queue facade tests ok |
+| a2 | cmd/tq claim-token-sweep fallout completed: 11 arity fixes + minted claims threaded into Complete/Fail/FailPermanent/Requeue across 8 test files (unblock_test restructured to capture the held claim through the claim-until-match loop)                                                                                                                    | `scripts/test-cmd-tq.sh` went vet-red → compiles; full suite passes except the 2 pre-existing drift tests (see b5)                                          |
+| a3 | worker FACADE go.mod: missing `internal/queue/sqlitev4` require+replace (S1-flip debris: sqlite thin driver now imports sqlitev4; GOWORK=off tidy died on untagged-module proxy 410)                                                                                                                                                                         | fix mirrors internal/worker/go.mod:19/48; `check-go-mods.sh` 45 checks ok rc=0                                                                              |
+| a4 | `internal/queue/companion` module scaffolded (scripts/new-module.sh pattern; doc.go states status + design pointer); picked up by all disk-derived module loops automatically                                                                                                                                                                                | module build+vet ok                                                                                                                                         |
+| a5 | `scripts/check-mirror-clones.sh` — the zero-accept gate: parses the canonical art-dupl `-t 3` report, fails on any clone group spanning >1 backend dir; counts 31 today; advisory default, `MIRROR_CLONES_STRICT=1` flips to gating; wired into ci-local (advisory-lint neighborhood)                                                                        | gate run rc=0 advisory listing 31 groups; guard-wiring 35 wired/0 orphaned; bash -n + shellcheck 56/56                                                      |
+| a6 | Extraction design committed: pre-dialed `Runner` + `Dialect` (pgq relocates from postgresv4 — the two adapters are 85% identical, 251 diff lines), verbatim body moves in 4 batches, per-batch module gates, suite-consolidation knobs, release bookkeeping, pg-runtime disclosure                                                                           | docs/planning/2026-09-26_companion-extraction-design.md; doc-refs rc=0                                                                                      |
+| a7 | AGENTS.md updated in two sections (dedup ruling + gate in Conventions; companion home + 31-count + advisory gate in the ADR-0019 S1/S4 text); TODO_LIST extraction row filed (todo gate rc=0)                                                                                                                                                                | AGENTS.md diff in daemon commit; gates rc-captured                                                                                                          |
+| a8 | 16:40 re-verification battery at HEAD after ~12h of concurrent windows: every artifact re-derived present; root build+vet rc=0; mirror gate still counts 31; my gate wiring + worker fix survived                                                                                                                                                            | rc-captured this session                                                                                                                                    |
+| a9 | Concurrent debris repair #3 (today): two facade-parity skews from other windows fixed — `queue.Claim` type alias added to the queue facade, `postgres.StoreOption` alias added to the postgres facade; parity rc=1 → rc=0                                                                                                                                    | `check-facade-parity.sh` rc=0; queue facade tests ok                                                                                                        |
 
 ## b) PARTIALLY DONE
 
-| # | Item | Works | Open | Blocker/effort |
-|---|------|-------|------|----------------|
-| b1 | The companion extraction itself (the ruling's core) | module scaffolded, design complete, gate counting, TODO filed | 31 mirror groups still mirrored; nothing moved yet | full window by design; refusal to half-migrate a three-module spike tree; L |
-| b2 | Conformance-suite consolidation | designed (Suite + capability knobs; per-backend divergence list exists in package docs) | zero code | same window as b1; L |
-| b3 | Strict flip | gate exists and is wired | advisory until b1 lands (flip = one env var in ci-local) | b1; S |
-| b4 | postgresv4 runtime verification | build+vet+test-compile | TQ_TEST_POSTGRES not available locally — runtime is the CI postgres job only, for the extraction window to disclose | environmental; S |
-| b5 | cmd/tq gate | fully compiles; all suites pass except 2 | `TestJournalDriftNoDriftAfterRescue` + `TestJournalDriftSeededDriftAllFields` red — enqueued-fact detail lost the explicit `priority` key in the S1 flip; re-verified STILL red at 16:44 (14h+ old) | S2/flip window's store-vs-test contract call (see §g Q1); deliberately not patched by me |
+| #  | Item                                                | Works                                                                                   | Open                                                                                                                                                                                                | Blocker/effort                                                                           |
+| -- | --------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| b1 | The companion extraction itself (the ruling's core) | module scaffolded, design complete, gate counting, TODO filed                           | 31 mirror groups still mirrored; nothing moved yet                                                                                                                                                  | full window by design; refusal to half-migrate a three-module spike tree; L              |
+| b2 | Conformance-suite consolidation                     | designed (Suite + capability knobs; per-backend divergence list exists in package docs) | zero code                                                                                                                                                                                           | same window as b1; L                                                                     |
+| b3 | Strict flip                                         | gate exists and is wired                                                                | advisory until b1 lands (flip = one env var in ci-local)                                                                                                                                            | b1; S                                                                                    |
+| b4 | postgresv4 runtime verification                     | build+vet+test-compile                                                                  | TQ_TEST_POSTGRES not available locally — runtime is the CI postgres job only, for the extraction window to disclose                                                                                 | environmental; S                                                                         |
+| b5 | cmd/tq gate                                         | fully compiles; all suites pass except 2                                                | `TestJournalDriftNoDriftAfterRescue` + `TestJournalDriftSeededDriftAllFields` red — enqueued-fact detail lost the explicit `priority` key in the S1 flip; re-verified STILL red at 16:44 (14h+ old) | S2/flip window's store-vs-test contract call (see §g Q1); deliberately not patched by me |
 
 ## c) NOT STARTED
 
-| # | Item | Why | Priority |
-|---|------|-----|----------|
-| c1 | docs-health HARVEST of this + the morning report's §f lists into TODO_LIST/ROADMAP | user said report-then-wait both times | High (next step) |
-| c2 | `GOTOOLCHAIN=auto` hardening sweep: check-facade-parity.sh (and likely other go-run gate scripts) die with the env-lie outside the devShell — test-cmd-tq.sh already forces it internally, parity doesn't | discovered today twice (§d3) | High, S |
-| c3 | Noise-class ledger (the ~19 idiom groups ruled non-duplication live only in AGENTS.md prose + reports) | superseded in part by the mirror gate; needs a durable home decision | Low |
-| c4 | art-dupl threshold convention reconciliation (seam note says `-t 4`; mirror gate uses the canonical `-t 3`) | doc-only | Low |
-| c5 | push/master-CI state (check-ci.sh) — third window running without it | process ownership unclear (§g Q3) | High if mine |
-| c6 | `tq session close` for these interactive windows (review/status bridge) | costs AI spend; owner call | Low |
+| #  | Item                                                                                                                                                                                                      | Why                                                                  | Priority         |
+| -- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------- |
+| c1 | docs-health HARVEST of this + the morning report's §f lists into TODO_LIST/ROADMAP                                                                                                                        | user said report-then-wait both times                                | High (next step) |
+| c2 | `GOTOOLCHAIN=auto` hardening sweep: check-facade-parity.sh (and likely other go-run gate scripts) die with the env-lie outside the devShell — test-cmd-tq.sh already forces it internally, parity doesn't | discovered today twice (§d3)                                         | High, S          |
+| c3 | Noise-class ledger (the ~19 idiom groups ruled non-duplication live only in AGENTS.md prose + reports)                                                                                                    | superseded in part by the mirror gate; needs a durable home decision | Low              |
+| c4 | art-dupl threshold convention reconciliation (seam note says `-t 4`; mirror gate uses the canonical `-t 3`)                                                                                               | doc-only                                                             | Low              |
+| c5 | push/master-CI state (check-ci.sh) — third window running without it                                                                                                                                      | process ownership unclear (§g Q3)                                    | High if mine     |
+| c6 | `tq session close` for these interactive windows (review/status bridge)                                                                                                                                   | costs AI spend; owner call                                           | Low              |
 
 ## d) TOTALLY FUCKED UP (this window, no mercy)
 
@@ -112,30 +112,30 @@ parity skews from other windows fixed. All claims re-derived at HEAD
 
 ## f) NEXT TASKS (22 honest items + carried pointers — padding refused)
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 1 | Execute the companion extraction per the design (4 move batches → 3 rewires → flip `MIRROR_CLONES_STRICT=1`; gate must read 0) | Critical | L | Quality |
-| 2 | Suite consolidation into `companion/conform` with capability knobs (same window as #1) | High | L | Quality |
-| 3 | Rule §g Q1 (drift-coverage contract) and un-red the 2 cmd/tq tests — 14h+ old, blocking the cmd/tq gate | Critical | S | Bug |
-| 4 | Rule §g Q2 (cqrsqlite disposition) BEFORE #1 — rewiring a doomed ghost vs deleting it now | High | S | Decision |
-| 5 | docs-health HARVEST of both 09-26 reports' §f into TODO_LIST/ROADMAP | High | S | Docs |
-| 6 | GOTOOLCHAIN=auto hardening sweep over gate scripts (§c2/§e1) | High | S | Quality |
-| 7 | check-ci.sh + push state (§c5/§g Q3) — third carry | High | S | Process |
-| 8 | Cut tags at next release sweep for sqlitev4/postgresv4/cqrsqlite (+companion when it grows code) — release gates reject untagged requires | Medium | S | Release |
-| 9 | Session ritual compliance: run scripts/session-start.sh in interactive windows too | Medium | S | Process |
-| 10 | `tq session close` adoption or interactive-exemption ruling (footerless attribution, 3 windows) | Low | S | Decision |
-| 11 | Noise-class ledger home (AGENTS-only vs docs file) — §c3 | Low | S | Decision |
-| 12 | README index archive sweep (220 live rows > 100 threshold — carried from the index gate warning) | Medium | M | Docs |
-| 13 | lint-baseline clean-cache re-check at next code window (carried) | Low | S | Quality |
-| 14 | StatusCounts normalization single-home beside the read model (§e5) | Low | S | Cleanup |
-| 15 | art-dupl `-t 4` vs `-t 3` convention reconciliation in AGENTS.md (§c4) | Low | S | Docs |
-| 16 | verify-window battery script (§e3) | Medium | S | Quality |
-| 17 | CHANGELOG policy for refactor windows (carried from morning report §f19) | Low | S | Decision |
-| 18 | adoption-table prose line for `taskBadges` (carried) | Low | S | Docs |
-| 19 | vendorHash fast-gate check at the next go.mod-churning window (carried) | Medium | S | Infra |
-| 20 | Carry-by-pointer: S2 landing (row 38), S3 flip decision, vendor/ row 135, harvest-flake mechanism, e2e -race trim — all already filed in TODO_LIST by their windows | High-varies | — | carried |
-| 21 | After #1 lands: delete the advisory echo from ci-local's mirror step and move the gate to strict in ci.yml parity | Medium | S | Quality |
-| 22 | After #1 lands: bump the 31-group count note in AGENTS.md ADR-0019 section to 0 (or update the doc to drop the counter) | Low | S | Docs |
+| #  | Task                                                                                                                                                                | Impact      | Effort | Category |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------ | -------- |
+| 1  | Execute the companion extraction per the design (4 move batches → 3 rewires → flip `MIRROR_CLONES_STRICT=1`; gate must read 0)                                      | Critical    | L      | Quality  |
+| 2  | Suite consolidation into `companion/conform` with capability knobs (same window as #1)                                                                              | High        | L      | Quality  |
+| 3  | Rule §g Q1 (drift-coverage contract) and un-red the 2 cmd/tq tests — 14h+ old, blocking the cmd/tq gate                                                             | Critical    | S      | Bug      |
+| 4  | Rule §g Q2 (cqrsqlite disposition) BEFORE #1 — rewiring a doomed ghost vs deleting it now                                                                           | High        | S      | Decision |
+| 5  | docs-health HARVEST of both 09-26 reports' §f into TODO_LIST/ROADMAP                                                                                                | High        | S      | Docs     |
+| 6  | GOTOOLCHAIN=auto hardening sweep over gate scripts (§c2/§e1)                                                                                                        | High        | S      | Quality  |
+| 7  | check-ci.sh + push state (§c5/§g Q3) — third carry                                                                                                                  | High        | S      | Process  |
+| 8  | Cut tags at next release sweep for sqlitev4/postgresv4/cqrsqlite (+companion when it grows code) — release gates reject untagged requires                           | Medium      | S      | Release  |
+| 9  | Session ritual compliance: run scripts/session-start.sh in interactive windows too                                                                                  | Medium      | S      | Process  |
+| 10 | `tq session close` adoption or interactive-exemption ruling (footerless attribution, 3 windows)                                                                     | Low         | S      | Decision |
+| 11 | Noise-class ledger home (AGENTS-only vs docs file) — §c3                                                                                                            | Low         | S      | Decision |
+| 12 | README index archive sweep (220 live rows > 100 threshold — carried from the index gate warning)                                                                    | Medium      | M      | Docs     |
+| 13 | lint-baseline clean-cache re-check at next code window (carried)                                                                                                    | Low         | S      | Quality  |
+| 14 | StatusCounts normalization single-home beside the read model (§e5)                                                                                                  | Low         | S      | Cleanup  |
+| 15 | art-dupl `-t 4` vs `-t 3` convention reconciliation in AGENTS.md (§c4)                                                                                              | Low         | S      | Docs     |
+| 16 | verify-window battery script (§e3)                                                                                                                                  | Medium      | S      | Quality  |
+| 17 | CHANGELOG policy for refactor windows (carried from morning report §f19)                                                                                            | Low         | S      | Decision |
+| 18 | adoption-table prose line for `taskBadges` (carried)                                                                                                                | Low         | S      | Docs     |
+| 19 | vendorHash fast-gate check at the next go.mod-churning window (carried)                                                                                             | Medium      | S      | Infra    |
+| 20 | Carry-by-pointer: S2 landing (row 38), S3 flip decision, vendor/ row 135, harvest-flake mechanism, e2e -race trim — all already filed in TODO_LIST by their windows | High-varies | —      | carried  |
+| 21 | After #1 lands: delete the advisory echo from ci-local's mirror step and move the gate to strict in ci.yml parity                                                   | Medium      | S      | Quality  |
+| 22 | After #1 lands: bump the 31-group count note in AGENTS.md ADR-0019 section to 0 (or update the doc to drop the counter)                                             | Low         | S      | Docs     |
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
@@ -159,5 +159,5 @@ parity skews from other windows fixed. All claims re-derived at HEAD
 
 ---
 
-*All §a claims re-derived at the 16:40 HEAD battery; §b5 re-confirmed red at
-16:44. No push performed. Awaiting instructions.*
+_All §a claims re-derived at the 16:40 HEAD battery; §b5 re-confirmed red at
+16:44. No push performed. Awaiting instructions._

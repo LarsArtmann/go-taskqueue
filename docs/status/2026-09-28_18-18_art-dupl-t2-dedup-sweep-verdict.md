@@ -57,11 +57,12 @@ GOTOOLCHAIN=auto go build ./...` → BUILD_OK).
    - `scripts/check-mirror-clones.sh` → rc=0, "0 cross-backend clone groups"
    - `scripts/check-doc-refs.sh` → rc=0, "doc refs ok"
    - `scripts/check-status-index.sh` → rc=0 ("status index ok"; INDEX BLOAT
-  WARNING: 296 live rows, threshold 100 — archive sweep or digest row, already
-  §f item 25)
+     WARNING: 296 live rows, threshold 100 — archive sweep or digest row, already
+     §f item 25)
+
 - `scripts/check-todo-list.sh` → rc=0 ("no unblocked owner-gated items")
-   - No art-dupl re-run: zero code changed, so the in-hand report IS the
-     current tree's state; a re-run adds no information.
+  - No art-dupl re-run: zero code changed, so the in-hand report IS the
+    current tree's state; a re-run adds no information.
 
 ## b) PARTIALLY DONE
 
@@ -146,6 +147,7 @@ GOTOOLCHAIN=auto go build ./...` → BUILD_OK).
 6. **Mid-edit git re-check** on hot files, even when the edit is exact-match.
 
 ## f) THINGS WE SHOULD GET DONE NEXT (up to 50; brainstorm for HARVEST routing —
+
 most are ROADMAP fuel, not commitments; items 1-6 are this window's children,
 7-19 are ambient reds/debts noticed in the index tail at HEAD, 20+ carried
 backlog from AGENTS.md context)

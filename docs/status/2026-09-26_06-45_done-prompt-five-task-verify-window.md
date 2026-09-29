@@ -10,13 +10,13 @@ done-prompt turn (task 000001a0dbda953c950bd0547a6cf75e6e76).
 
 ## The window at a glance
 
-| Task | Row | Verdict | Work commit | Closeout |
-| ---- | --- | ------- | ----------- | -------- |
-| 000001a0daf1… (ADR-0019 S4) | 41 | correctly BLOCKED 3rd window; side-shipped the consumer unsubscribe-race fix + vendor/ workaround | 6a10c7f7 (docs) / c561ae25 (code, footerless) | 02-31 |
-| 000001a0db23… (folded-here) | 108 | DONE-on-arrival: feature already shipped (daemon cedcface), verified + row closed | 2046ee95 | 04-14 |
-| 000001a0db83… (baseline regen) | 109 | DONE: poisoned-baseline heal, clean-cache green 1360/1360, ledger entry | b1d6a7d9 (018a6e32 was the verify commit) | 05-07 |
-| 000001a0dbb5… (lint-lll templ) | 110 | VERIFIED already-excluded, zero code, probe with control | 5bca4c0d | 05-19 |
-| 000001a0dbc3… (status oracles) | 111 | VERIFIED DONE-on-arrival (`oracleStatuses` var), in-module -race 5/5 | e11cfdfe | 05-47 |
+| Task                           | Row | Verdict                                                                                           | Work commit                                   | Closeout |
+| ------------------------------ | --- | ------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------- |
+| 000001a0daf1… (ADR-0019 S4)    | 41  | correctly BLOCKED 3rd window; side-shipped the consumer unsubscribe-race fix + vendor/ workaround | 6a10c7f7 (docs) / c561ae25 (code, footerless) | 02-31    |
+| 000001a0db23… (folded-here)    | 108 | DONE-on-arrival: feature already shipped (daemon cedcface), verified + row closed                 | 2046ee95                                      | 04-14    |
+| 000001a0db83… (baseline regen) | 109 | DONE: poisoned-baseline heal, clean-cache green 1360/1360, ledger entry                           | b1d6a7d9 (018a6e32 was the verify commit)     | 05-07    |
+| 000001a0dbb5… (lint-lll templ) | 110 | VERIFIED already-excluded, zero code, probe with control                                          | 5bca4c0d                                      | 05-19    |
+| 000001a0dbc3… (status oracles) | 111 | VERIFIED DONE-on-arrival (`oracleStatuses` var), in-module -race 5/5                              | e11cfdfe                                      | 05-47    |
 
 ## a) FULLY DONE (verified at HEAD this pass)
 

@@ -28,9 +28,9 @@ command -v go >/dev/null || {
 	exit 0
 }
 
-mods=("$MODULE" \
-	"$MODULE/task" "$MODULE/journal" "$MODULE/queue" \
-	"$MODULE/queue/sqlite" "$MODULE/queue/postgres" \
+mods=("$MODULE"
+	"$MODULE/task" "$MODULE/journal" "$MODULE/queue"
+	"$MODULE/queue/sqlite" "$MODULE/queue/postgres"
 	"$MODULE/executor" "$MODULE/worker")
 
 missing=0
@@ -40,8 +40,8 @@ for mod in "${mods[@]}"; do
 	label="$mod@$version"
 	# -mod=readonly: the root vendor/ dir would otherwise make `go list -m`
 	# refuse to hit the network ("can't determine available versions").
-	if ! go list -m -versions -mod=readonly "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "${version#v}" \
-		&& ! go list -m -versions -mod=readonly "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "$version"; then
+	if ! go list -m -versions -mod=readonly "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "${version#v}" &&
+		! go list -m -versions -mod=readonly "$mod" 2>/dev/null | tr ' ' '\n' | grep -qx "$version"; then
 		# go list prints bare versions (0.3.0); some toolchains print v-prefixed.
 		echo "pkg-proxy MISSING proxy listing: $label" >&2
 		missing=1

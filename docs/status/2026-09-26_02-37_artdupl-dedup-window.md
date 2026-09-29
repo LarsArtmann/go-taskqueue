@@ -23,41 +23,41 @@ current HEAD 6a10c7f7 after concurrent S4 windows landed on top.
 
 ## a) FULLY DONE
 
-| # | Item | Evidence |
-|---|------|----------|
-| a1 | Parsed all 61 clone groups (category/priority/occurrences/files/snippets) from the single-line HTML report saved at `.crush/shell-output/output-3227047257.log`; per-group verdict extract/accept for every one | triage table reproduced in session; group list 1–61 all dispositioned |
-| a2 | **#45** harvest: identical 15-line repo-resolution block in `Audit` + `PruneStale` extracted to `(*Harvester).resolveRepos()` (internal/harvest/harvest.go:272); `Run`'s deliberate daemon-aware divergence documented in the comment | commit aaaaa144; `go build/vet/test ./internal/harvest/` rc=0 |
-| a3 | **#43** webui: `pagerBaseURL` was a verbatim body-copy of `filterHref`; now delegates (internal/webui/render.go:520) | commit 41f2a275; webui suite rc=0 |
-| a4 | **#42** webui: 3-badge stack (status + review-verdict + status-report) duplicated between queue chip and detail card extracted into `taskBadges` templ component with size param (internal/webui/fragments.templ:608); `templ generate` run from repo ROOT, canonical `internal/webui/fragments.templ` FileNames verified intact | commit aaaaa144; webui suite incl. adoption guards rc=0 |
-| a5 | **#29** replay: read-only source open duplicated in `Migrate` + `Verify` extracted to `openSource` (internal/queue/sqlitev4/replay/replay.go) | commit 28968d66; sqlitev4 module gate `GOWORK=off build+vet+test` rc=0 (both packages) |
-| a6 | Re-ran art-dupl with the user's EXACT flags: 58 actionable groups remain, **all 8 extracted sites gone**, zero new clone classes (+1 count vs 57 is the fragments.templ line-shift of an already-accepted group) | /tmp/dupl-after.html parse, this session |
-| a7 | Gates on the edited tree: root `go build ./... && go vet ./...` rc=0; root `-race` suite rc=0 (15 pkgs); harvest, webui, sqlitev4+replay package gates rc=0; gofmt clean; **0 lint findings on any touched symbol** (targeted golangci run filtered for `resolveRepos|pagerBaseURL|openSource|taskBadges|harvest_test`) | rc-captured in session transcript |
-| a8 | Fixed a PRE-EXISTING gofmt violation sitting at daemon-committed HEAD (`internal/harvest_test.go:507` dedented `ClaimDue` line — gofmt is a hard gate, master would have failed the next ci-local) | commit 28968d66; `gofmt -l` clean over all touched trees |
-| a9 | Concurrent-work discipline held: internal/readmodel churn and the S4 windows (vendor/ trash, consumer.go unsubscribe-race fix) landed mid-session; **nothing reverted**, my four extractions verified intact at HEAD afterwards | `rg` spot-checks at HEAD 6a10c7f7 all present; fresh root build+vet rc=0 at 6a10c7f7 |
-| a10 | This report written + indexed in docs/status/README.md | index row appended below |
+| #   | Item                                                                                                                                                                                                                                                                                                                             | Evidence                                                                               |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| a1  | Parsed all 61 clone groups (category/priority/occurrences/files/snippets) from the single-line HTML report saved at `.crush/shell-output/output-3227047257.log`; per-group verdict extract/accept for every one                                                                                                                  | triage table reproduced in session; group list 1–61 all dispositioned                  |
+| a2  | **#45** harvest: identical 15-line repo-resolution block in `Audit` + `PruneStale` extracted to `(*Harvester).resolveRepos()` (internal/harvest/harvest.go:272); `Run`'s deliberate daemon-aware divergence documented in the comment                                                                                            | commit aaaaa144; `go build/vet/test ./internal/harvest/` rc=0                          |
+| a3  | **#43** webui: `pagerBaseURL` was a verbatim body-copy of `filterHref`; now delegates (internal/webui/render.go:520)                                                                                                                                                                                                             | commit 41f2a275; webui suite rc=0                                                      |
+| a4  | **#42** webui: 3-badge stack (status + review-verdict + status-report) duplicated between queue chip and detail card extracted into `taskBadges` templ component with size param (internal/webui/fragments.templ:608); `templ generate` run from repo ROOT, canonical `internal/webui/fragments.templ` FileNames verified intact | commit aaaaa144; webui suite incl. adoption guards rc=0                                |
+| a5  | **#29** replay: read-only source open duplicated in `Migrate` + `Verify` extracted to `openSource` (internal/queue/sqlitev4/replay/replay.go)                                                                                                                                                                                    | commit 28968d66; sqlitev4 module gate `GOWORK=off build+vet+test` rc=0 (both packages) |
+| a6  | Re-ran art-dupl with the user's EXACT flags: 58 actionable groups remain, **all 8 extracted sites gone**, zero new clone classes (+1 count vs 57 is the fragments.templ line-shift of an already-accepted group)                                                                                                                 | /tmp/dupl-after.html parse, this session                                               |
+| a7  | Gates on the edited tree: root `go build ./... && go vet ./...` rc=0; root `-race` suite rc=0 (15 pkgs); harvest, webui, sqlitev4+replay package gates rc=0; gofmt clean; **0 lint findings on any touched symbol** (targeted golangci run filtered for `resolveRepos                                                            | pagerBaseURL                                                                           |
+| a8  | Fixed a PRE-EXISTING gofmt violation sitting at daemon-committed HEAD (`internal/harvest_test.go:507` dedented `ClaimDue` line — gofmt is a hard gate, master would have failed the next ci-local)                                                                                                                               | commit 28968d66; `gofmt -l` clean over all touched trees                               |
+| a9  | Concurrent-work discipline held: internal/readmodel churn and the S4 windows (vendor/ trash, consumer.go unsubscribe-race fix) landed mid-session; **nothing reverted**, my four extractions verified intact at HEAD afterwards                                                                                                  | `rg` spot-checks at HEAD 6a10c7f7 all present; fresh root build+vet rc=0 at 6a10c7f7   |
+| a10 | This report written + indexed in docs/status/README.md                                                                                                                                                                                                                                                                           | index row appended below                                                               |
 
 ## b) PARTIALLY DONE
 
-| # | Item | What works | What remains | Blocker / effort |
-|---|------|-----------|--------------|------------------|
-| b1 | "Deduplicate all!" — done in the skill's sense (zero **harmful** duplication), NOT in the literal sense: 4 of 61 groups eliminated, 57 accepted | harmful-clone set empty by triage | literal zero requires either S4 (38 spike mirrors) or an owner overrule of documented acceptances (19 idioms) | owner ruling; S |
-| b2 | Gate verification at current HEAD | root build+vet re-run rc=0 at 6a10c7f7; the 02-31 S4 window's battery (build+vet+race 15 pkgs) green at 67563387 and only docs commits followed | my `-race` run predates the consumer.go fix + vendor/ trash; race at exact HEAD is INHERITED, not re-run | verify-window rule wants a fresh cheap battery per window; S |
-| b3 | Repo-resolution family unification | drift+prune share `resolveRepos` | `Run` (harvest.go) and `reprioritize.go:39` still inline `DiscoverReposFor` — 3 shapes for one concept; divergence documented but not reconciled nor behavior-pinned | owner intent needed (see §g Q1); M |
-| b4 | app.css byte-equality after the templ change | reasoned unchanged (taskBadges renders the identical badge markup/classes; tailwind scan is content-based) | **never ran `./scripts/check-webui-css.sh`** — the claim is an uncited hypothesis | S; owned honestly in §d2 |
-| b5 | Master CI / push state | local gates green | `scripts/check-ci.sh` never run; whether the daemon commits carrying my work (aaaaa144, 28968d66, 41f2a275) are pushed is unverified | S |
+| #  | Item                                                                                                                                            | What works                                                                                                                                      | What remains                                                                                                                                                         | Blocker / effort                                             |
+| -- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| b1 | "Deduplicate all!" — done in the skill's sense (zero **harmful** duplication), NOT in the literal sense: 4 of 61 groups eliminated, 57 accepted | harmful-clone set empty by triage                                                                                                               | literal zero requires either S4 (38 spike mirrors) or an owner overrule of documented acceptances (19 idioms)                                                        | owner ruling; S                                              |
+| b2 | Gate verification at current HEAD                                                                                                               | root build+vet re-run rc=0 at 6a10c7f7; the 02-31 S4 window's battery (build+vet+race 15 pkgs) green at 67563387 and only docs commits followed | my `-race` run predates the consumer.go fix + vendor/ trash; race at exact HEAD is INHERITED, not re-run                                                             | verify-window rule wants a fresh cheap battery per window; S |
+| b3 | Repo-resolution family unification                                                                                                              | drift+prune share `resolveRepos`                                                                                                                | `Run` (harvest.go) and `reprioritize.go:39` still inline `DiscoverReposFor` — 3 shapes for one concept; divergence documented but not reconciled nor behavior-pinned | owner intent needed (see §g Q1); M                           |
+| b4 | app.css byte-equality after the templ change                                                                                                    | reasoned unchanged (taskBadges renders the identical badge markup/classes; tailwind scan is content-based)                                      | **never ran `./scripts/check-webui-css.sh`** — the claim is an uncited hypothesis                                                                                    | S; owned honestly in §d2                                     |
+| b5 | Master CI / push state                                                                                                                          | local gates green                                                                                                                               | `scripts/check-ci.sh` never run; whether the daemon commits carrying my work (aaaaa144, 28968d66, 41f2a275) are pushed is unverified                                 | S                                                            |
 
 ## c) NOT STARTED
 
-| # | Item | Why not started | Priority |
-|---|------|-----------------|----------|
-| c1 | art-dupl as a wired ci-local step (it is convention-only today; recurrences are caught by humans reading reports) | needs a threshold policy + baseline mechanics like lint-baseline | Medium |
-| c2 | Sweeper-family skeleton audit: review/dlqfix/status/prioritize may share more than `watermark.Cursor` (art-dupl flagged only dlqfix↔review at -t 3; cross-package low-token clones are below its radar) | not probed this session | Low |
-| c3 | `ReprioritizeEvidence` parse helper in internal/queue (+ facade alias) to kill the cmd/tq↔webui #41 pair | expands queue's public surface; facade-parity alias required; needs owner ruling | Low |
-| c4 | httpapi↔webui stats-map helper into internal/task (+ facade alias) for #27 | same surface-growth ruling; today pinned by `TestStatsSurfacesAgree` instead | Low |
-| c5 | docs-health HARVEST of this §f into TODO_LIST/ROADMAP | user said report-then-wait; flagged for next step | High (next step) |
-| c6 | CHANGELOG/FEATURES policy for refactor-only windows (append-only file; is a behavior-preserving dedup an entry?) | policy unknown | Low |
-| c7 | adoption-table prose note for the new `taskBadges` custom component (guard tests pass without it; prose is optional) | cosmetic | Low |
-| c8 | Owner rulings carried from today's earlier windows (untouched here, noticed while reading): cqrsqlite zero-importer disposition, vendor/ row 135, harvest-flake mechanism | owned by those windows | carried |
+| #  | Item                                                                                                                                                                                                    | Why not started                                                                  | Priority         |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------- |
+| c1 | art-dupl as a wired ci-local step (it is convention-only today; recurrences are caught by humans reading reports)                                                                                       | needs a threshold policy + baseline mechanics like lint-baseline                 | Medium           |
+| c2 | Sweeper-family skeleton audit: review/dlqfix/status/prioritize may share more than `watermark.Cursor` (art-dupl flagged only dlqfix↔review at -t 3; cross-package low-token clones are below its radar) | not probed this session                                                          | Low              |
+| c3 | `ReprioritizeEvidence` parse helper in internal/queue (+ facade alias) to kill the cmd/tq↔webui #41 pair                                                                                                | expands queue's public surface; facade-parity alias required; needs owner ruling | Low              |
+| c4 | httpapi↔webui stats-map helper into internal/task (+ facade alias) for #27                                                                                                                              | same surface-growth ruling; today pinned by `TestStatsSurfacesAgree` instead     | Low              |
+| c5 | docs-health HARVEST of this §f into TODO_LIST/ROADMAP                                                                                                                                                   | user said report-then-wait; flagged for next step                                | High (next step) |
+| c6 | CHANGELOG/FEATURES policy for refactor-only windows (append-only file; is a behavior-preserving dedup an entry?)                                                                                        | policy unknown                                                                   | Low              |
+| c7 | adoption-table prose note for the new `taskBadges` custom component (guard tests pass without it; prose is optional)                                                                                    | cosmetic                                                                         | Low              |
+| c8 | Owner rulings carried from today's earlier windows (untouched here, noticed while reading): cqrsqlite zero-importer disposition, vendor/ row 135, harvest-flake mechanism                               | owned by those windows                                                           | carried          |
 
 ## d) TOTALLY FUCKED UP (session-scoped, no mercy)
 
@@ -125,33 +125,33 @@ current HEAD 6a10c7f7 after concurrent S4 windows landed on top.
 
 ## f) NEXT TASKS (25 honest items — padding to 50 refused; carried items marked)
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 1 | Rule on §g Q1 (audit/prune discovery divergence) — it decides bug-fix vs test-pin | Critical | S | Decision |
-| 2 | Run `./scripts/check-webui-css.sh` to retire the §b4 CSS hypothesis | High | S | Quality |
-| 3 | Run `scripts/check-ci.sh`; establish master + push state for aaaaa144/28968d66/41f2a275; push if owner approves | High | S | Quality |
-| 4 | docs-health HARVEST: pull this §f + prior same-day §f lists into TODO_LIST/ROADMAP | High | S | Docs |
-| 5 | Fresh full root `-race` at first code HEAD after 6a10c7f7 (retire the §b2 inherited-battery caveat) | Medium | S | Quality |
-| 6 | Owner ruling §g Q2: spike-mirror clones — accept until S4 (my rec) vs shared companion-surface module now | High | S | Decision |
-| 7 | Land ADR-0019 S2 (carried row 38 — blocks S4 and three blocked windows) | Critical | L | Feature |
-| 8 | Unify repo resolution: fold reprioritize.go's inline block into the `resolveRepos` family with an explicit daemon-aware variant + behavior pin test | Medium | M | Quality |
-| 9 | Write the dupl-acceptance ledger (§e4) — 19 non-spike accepts + this window's rationale | Medium | S | Docs |
-| 10 | S3 flip decision: readmodel `--read-model` default-on rollout (carried; code complete + flag-gated) | High | S | Decision |
-| 11 | cqrsqlite zero-importer disposition (carried from 01-58 §g) | Medium | S | Decision |
-| 12 | vendor/ durable marker / owner row 135 (carried from 02-31 — the gofmt-vendor gate re-reds until it lands) | Medium | S | Infra |
-| 13 | Harvest-flake mechanism-or-ticket (carried from 02-31 §e) | Medium | M | Bug |
-| 14 | Wire art-dupl as an advisory ci-local step with a per-package `-t 3` baseline (new-findings check, lint-baseline style) — makes §d7's blind spot mechanical | Medium | M | Quality |
-| 15 | `ReprioritizeEvidence` parser in internal/queue + facade alias (kills #41 across the cmd/tq module boundary) | Low | M | Quality |
-| 16 | Stats-map helper in internal/task + facade alias (kills #27; `TestStatsSurfacesAgree` stays as the contract pin) | Low | M | Quality |
-| 17 | Sweeper-family skeleton audit across review/dlqfix/status/prioritize beyond `watermark.Cursor` (§c2) | Low | M | Quality |
-| 18 | Interactive-window attribution ruling: adopt `tq session begin/close` for AI sessions or codemn footerless-interactive as the norm (§d6, third+ data point) | Low | S | Decision |
-| 19 | CHANGELOG policy for refactor-only windows (§c6) | Low | S | Decision |
-| 20 | adoption-table prose line for `taskBadges` (§c7) | Low | S | Docs |
-| 21 | `scripts/dupl-triage.py`: checked-in parser for art-dupl's single-line HTML output (today's parsing lived in throwaway heredocs; two windows will need it again) | Low | S | Quality |
-| 22 | `lint-baseline.sh --check` clean-cache refresh at next code window (this window only shrank code; confirm no row moved) | Low | S | Quality |
-| 23 | doctor.go `listPending` micro-helper — ONLY if that file is open anyway (refused as a standalone change: saves 3 lines) | Low | S | Cleanup |
-| 24 | sidecar.go sweep-guard helper (#40) — same only-if-touching rule | Low | S | Cleanup |
-| 25 | Queue `session close` for this window if the owner wants the review bridge to see it (minted review + status tasks; costs AI spend) | Low | S | Process |
+| #  | Task                                                                                                                                                             | Impact   | Effort | Category |
+| -- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------ | -------- |
+| 1  | Rule on §g Q1 (audit/prune discovery divergence) — it decides bug-fix vs test-pin                                                                                | Critical | S      | Decision |
+| 2  | Run `./scripts/check-webui-css.sh` to retire the §b4 CSS hypothesis                                                                                              | High     | S      | Quality  |
+| 3  | Run `scripts/check-ci.sh`; establish master + push state for aaaaa144/28968d66/41f2a275; push if owner approves                                                  | High     | S      | Quality  |
+| 4  | docs-health HARVEST: pull this §f + prior same-day §f lists into TODO_LIST/ROADMAP                                                                               | High     | S      | Docs     |
+| 5  | Fresh full root `-race` at first code HEAD after 6a10c7f7 (retire the §b2 inherited-battery caveat)                                                              | Medium   | S      | Quality  |
+| 6  | Owner ruling §g Q2: spike-mirror clones — accept until S4 (my rec) vs shared companion-surface module now                                                        | High     | S      | Decision |
+| 7  | Land ADR-0019 S2 (carried row 38 — blocks S4 and three blocked windows)                                                                                          | Critical | L      | Feature  |
+| 8  | Unify repo resolution: fold reprioritize.go's inline block into the `resolveRepos` family with an explicit daemon-aware variant + behavior pin test              | Medium   | M      | Quality  |
+| 9  | Write the dupl-acceptance ledger (§e4) — 19 non-spike accepts + this window's rationale                                                                          | Medium   | S      | Docs     |
+| 10 | S3 flip decision: readmodel `--read-model` default-on rollout (carried; code complete + flag-gated)                                                              | High     | S      | Decision |
+| 11 | cqrsqlite zero-importer disposition (carried from 01-58 §g)                                                                                                      | Medium   | S      | Decision |
+| 12 | vendor/ durable marker / owner row 135 (carried from 02-31 — the gofmt-vendor gate re-reds until it lands)                                                       | Medium   | S      | Infra    |
+| 13 | Harvest-flake mechanism-or-ticket (carried from 02-31 §e)                                                                                                        | Medium   | M      | Bug      |
+| 14 | Wire art-dupl as an advisory ci-local step with a per-package `-t 3` baseline (new-findings check, lint-baseline style) — makes §d7's blind spot mechanical      | Medium   | M      | Quality  |
+| 15 | `ReprioritizeEvidence` parser in internal/queue + facade alias (kills #41 across the cmd/tq module boundary)                                                     | Low      | M      | Quality  |
+| 16 | Stats-map helper in internal/task + facade alias (kills #27; `TestStatsSurfacesAgree` stays as the contract pin)                                                 | Low      | M      | Quality  |
+| 17 | Sweeper-family skeleton audit across review/dlqfix/status/prioritize beyond `watermark.Cursor` (§c2)                                                             | Low      | M      | Quality  |
+| 18 | Interactive-window attribution ruling: adopt `tq session begin/close` for AI sessions or codemn footerless-interactive as the norm (§d6, third+ data point)      | Low      | S      | Decision |
+| 19 | CHANGELOG policy for refactor-only windows (§c6)                                                                                                                 | Low      | S      | Decision |
+| 20 | adoption-table prose line for `taskBadges` (§c7)                                                                                                                 | Low      | S      | Docs     |
+| 21 | `scripts/dupl-triage.py`: checked-in parser for art-dupl's single-line HTML output (today's parsing lived in throwaway heredocs; two windows will need it again) | Low      | S      | Quality  |
+| 22 | `lint-baseline.sh --check` clean-cache refresh at next code window (this window only shrank code; confirm no row moved)                                          | Low      | S      | Quality  |
+| 23 | doctor.go `listPending` micro-helper — ONLY if that file is open anyway (refused as a standalone change: saves 3 lines)                                          | Low      | S      | Cleanup  |
+| 24 | sidecar.go sweep-guard helper (#40) — same only-if-touching rule                                                                                                 | Low      | S      | Cleanup  |
+| 25 | Queue `session close` for this window if the owner wants the review bridge to see it (minted review + status tasks; costs AI spend)                              | Low      | S      | Process  |
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 
@@ -181,5 +181,5 @@ current HEAD 6a10c7f7 after concurrent S4 windows landed on top.
 
 ---
 
-*Verified claims cite rc-captured gates in the session transcript; inherited
-gates are labeled as such (§b2/§d5). No push performed; awaiting instructions.*
+_Verified claims cite rc-captured gates in the session transcript; inherited
+gates are labeled as such (§b2/§d5). No push performed; awaiting instructions._

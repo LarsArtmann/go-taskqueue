@@ -57,15 +57,15 @@ wiring + lifecycle root, not a supervisor.
 
 ## 2. Component→role map (the verdict table)
 
-| tq runtime component (today)                                    | system/ role candidate                                  | Verdict |
-| --------------------------------------------------------------- | ------------------------------------------------------- | ------- |
-| serve read side: board/table/stats/httpapi reads (S3 flip pending) | Projections + `Watcher`/`ServeSSE` (readmodel already: model.go:53-64,120) | **1:1 — rides S3**, not a separate S4 task |
-| readmodel watcher checkpoint                                    | `DomainConfig.CheckpointStore` / default `system_checkpoints` collection | **1:1** (rebuildable projection ⇒ disposable checkpoint home is correct) |
-| sweeper TICKS (review/dlqfix/status/prioritize/depsweep cadence) | `DomainConfig.Timers` → `ManageTimers` (timers.go:42-46) | **1:1 for the tick machinery**; sweeper STATE stays in the queue `watermarks` table (internal/watermark) — see §4 open question a |
-| worker claim loops (internal/worker `Pool.Start`)               | — (a lease-polling worker is not a decider, command, projection, or timer) | **no-fit** — stays a `runactor` actor |
-| papdashboard bridge + answer poller (watermark consumers, cmd/tq/main.go:597-607,986-996) | `Bus`/`Publisher` consumers — only once tq facts are engine facts | **gated on S2** — until then they stay watermark actors |
-| harvest/prune sweeps, once-drain, discovery-watch (cmd/tq/main.go:619,1455,1506) | — (process-local one-shots) | **no-fit** — `runactor` actors |
-| process supervision: first-exit-cancels-group, LIFO teardown, `InterruptOn` 2nd-signal-exit-130 (internal/runactor/runactor.go:1-9) | — | **no-fit by design** — runactor survives INSIDE the composition root; system/ wraps it, never replaces it (ADR-0019 wording: "adopting the lifecycle/checkpoint machinery where it maps 1:1") |
+| tq runtime component (today)                                                                                                        | system/ role candidate                                                     | Verdict                                                                                                                                                                                       |
+| ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| serve read side: board/table/stats/httpapi reads (S3 flip pending)                                                                  | Projections + `Watcher`/`ServeSSE` (readmodel already: model.go:53-64,120) | **1:1 — rides S3**, not a separate S4 task                                                                                                                                                    |
+| readmodel watcher checkpoint                                                                                                        | `DomainConfig.CheckpointStore` / default `system_checkpoints` collection   | **1:1** (rebuildable projection ⇒ disposable checkpoint home is correct)                                                                                                                      |
+| sweeper TICKS (review/dlqfix/status/prioritize/depsweep cadence)                                                                    | `DomainConfig.Timers` → `ManageTimers` (timers.go:42-46)                   | **1:1 for the tick machinery**; sweeper STATE stays in the queue `watermarks` table (internal/watermark) — see §4 open question a                                                             |
+| worker claim loops (internal/worker `Pool.Start`)                                                                                   | — (a lease-polling worker is not a decider, command, projection, or timer) | **no-fit** — stays a `runactor` actor                                                                                                                                                         |
+| papdashboard bridge + answer poller (watermark consumers, cmd/tq/main.go:597-607,986-996)                                           | `Bus`/`Publisher` consumers — only once tq facts are engine facts          | **gated on S2** — until then they stay watermark actors                                                                                                                                       |
+| harvest/prune sweeps, once-drain, discovery-watch (cmd/tq/main.go:619,1455,1506)                                                    | — (process-local one-shots)                                                | **no-fit** — `runactor` actors                                                                                                                                                                |
+| process supervision: first-exit-cancels-group, LIFO teardown, `InterruptOn` 2nd-signal-exit-130 (internal/runactor/runactor.go:1-9) | —                                                                          | **no-fit by design** — runactor survives INSIDE the composition root; system/ wraps it, never replaces it (ADR-0019 wording: "adopting the lifecycle/checkpoint machinery where it maps 1:1") |
 
 Net: S4 is NOT a big-bang rewrite of the pool into deciders/commands. It
 is (a) the S3 flip carrying the read side, (b) sweeper ticks moved onto
@@ -89,28 +89,28 @@ flip → S4.
 ## 4. Open questions the S4 execution window must settle (defaults included)
 
 a. **TimerStore engine home.** `ManageTimers` needs `sys.TimerEngine()` —
-   a metaengine engine. The projection DB is disposable/rebuildable, so
-   durable sweeper-cadence state must not live there. Default: either the
-   deployment declares a durable engine for timer/checkpoint collections
-   (`DeploymentConfig` engine set), or sweeper ticking stays in runactor
-   and `Timers` is adopted only for genuinely timer-shaped new features.
-   Decide against the post-S2 journal shape; do not pre-build.
+a metaengine engine. The projection DB is disposable/rebuildable, so
+durable sweeper-cadence state must not live there. Default: either the
+deployment declares a durable engine for timer/checkpoint collections
+(`DeploymentConfig` engine set), or sweeper ticking stays in runactor
+and `Timers` is adopted only for genuinely timer-shaped new features.
+Decide against the post-S2 journal shape; do not pre-build.
 b. **Watcher checkpoint home.** `system_checkpoints` collection (default)
-   vs the queue `watermarks` table. Default: `system_checkpoints` — the
-   readmodel projection is rebuildable, checkpoint loss costs a rebuild,
-   and reusing the queue watermarks table would couple a disposable
-   projection to queue-store durability.
+vs the queue `watermarks` table. Default: `system_checkpoints` — the
+readmodel projection is rebuildable, checkpoint loss costs a rebuild,
+and reusing the queue watermarks table would couple a disposable
+projection to queue-store durability.
 c. **GracefulClose vs runactor teardown ordering.** Where the S3-flipped
-   serve process (cmd/tq/main.go:3020 http actor) already runs inside a
-   system-rooted composition, `GracefulClose` should own the close
-   ordering; the agent-pool keeps runactor's first-exit + interrupt
-   semantics. Adopt per surface, not globally.
+serve process (cmd/tq/main.go:3020 http actor) already runs inside a
+system-rooted composition, `GracefulClose` should own the close
+ordering; the agent-pool keeps runactor's first-exit + interrupt
+semantics. Adopt per surface, not globally.
 d. **Require/module home for `system/v4`.** The composition wiring lives
-   in cmd/tq (the runactor groups), which is its OWN replace-free module
-   (ADR-0017), while ADR-0011 names the root module the app layer. Either
-   extract a root-module internal composition package (root carries the
-   require) or cmd/tq carries it (hand-pinned indirects convention
-   applies). See §5; decide at execution time.
+in cmd/tq (the runactor groups), which is its OWN replace-free module
+(ADR-0017), while ADR-0011 names the root module the app layer. Either
+extract a root-module internal composition package (root carries the
+require) or cmd/tq carries it (hand-pinned indirects convention
+applies). See §5; decide at execution time.
 
 ## 5. Module/facade impact (bookkeeping for the window)
 

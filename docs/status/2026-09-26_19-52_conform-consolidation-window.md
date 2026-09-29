@@ -23,7 +23,7 @@ repeated execution instruction read as the answer; the M4 upstream memo —
     `dbExec`, `dbBegin`, `dial`) so test bodies survive verbatim.
   - `tests.go` / `sessionfact.go` — the sqlitev4 suite bodies, byte-copied
     (`cp`, never hand-retyped) then token-sed transformed: 6×
-    `s.db.ExecContext(` → `dbExec(s, `, 1× `s.db.BeginTx` → `dbBegin(s,`,
+    `s.db.ExecContext(` → `dbExec(s,`, 1× `s.db.BeginTx` → `dbBegin(s,`,
     `mustJSON(` → `companion.MustJSON(`, 4 helper signatures `*Store` →
     `Store`, and 8 hand-edit sites: package+imports, the two opener
     helpers, the two-store exclusivity test (freshDSN + openOn ×2),
@@ -87,23 +87,23 @@ repeated execution instruction read as the answer; the M4 upstream memo —
 
 ## c) Verification (all at final tree unless noted)
 
-| Gate | Result |
-| --- | --- |
-| sqlitev4 module (build+vet+test, GOWORK=off) | ok, suite 3.6s |
-| cqrsqlite module (build+vet+test) | ok, suite 3.7s |
-| postgresv4 module (build+vet+test) | ok — suite compile+skip green; RUNTIME needs TQ_TEST_POSTGRES |
-| companion module (build+vet+test) | ok |
-| 19-module loop (find-derived, build+vet+test) | ALL ok, rc=0 |
-| Root `go mod vendor` + build + vet | rc=0 |
-| Root `-race -count=1` suite | 15/15 pkgs ok, rc=0 |
-| `check-go-mods.sh` | rc=0 |
-| `check-mirror-clones.sh` (strict) | `0 cross-backend clone groups`, rc=0; all 6 baseline rows RESOLVED |
-| `art-dupl -t 4` sanity | 0 clone groups in backend dirs |
-| `lint-baseline.sh` clean-cache regen + `--check` | OK — 163 rows / 1164 findings (was 183 / 1550: the mirrored test noise collapsed from 3 copies to 1) |
-| `check-facade-parity.sh` / `check-guard-wiring.sh` | rc=0 / rc=0 |
-| gofmt on touched dirs | clean (golangci-lint fmt for parity) |
-| nix `vendor-hash` fast gate | rc=0 |
-| cmd/tq gate | ONLY the 2 pre-existing upstream-gated drift reds (TestJournalDriftNoDriftAfterRescue, TestJournalDriftSeededDriftAllFields — row 306, M4-gated) |
+| Gate                                               | Result                                                                                                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| sqlitev4 module (build+vet+test, GOWORK=off)       | ok, suite 3.6s                                                                                                                                   |
+| cqrsqlite module (build+vet+test)                  | ok, suite 3.7s                                                                                                                                   |
+| postgresv4 module (build+vet+test)                 | ok — suite compile+skip green; RUNTIME needs TQ_TEST_POSTGRES                                                                                    |
+| companion module (build+vet+test)                  | ok                                                                                                                                               |
+| 19-module loop (find-derived, build+vet+test)      | ALL ok, rc=0                                                                                                                                     |
+| Root `go mod vendor` + build + vet                 | rc=0                                                                                                                                             |
+| Root `-race -count=1` suite                        | 15/15 pkgs ok, rc=0                                                                                                                              |
+| `check-go-mods.sh`                                 | rc=0                                                                                                                                             |
+| `check-mirror-clones.sh` (strict)                  | `0 cross-backend clone groups`, rc=0; all 6 baseline rows RESOLVED                                                                               |
+| `art-dupl -t 4` sanity                             | 0 clone groups in backend dirs                                                                                                                   |
+| `lint-baseline.sh` clean-cache regen + `--check`   | OK — 163 rows / 1164 findings (was 183 / 1550: the mirrored test noise collapsed from 3 copies to 1)                                             |
+| `check-facade-parity.sh` / `check-guard-wiring.sh` | rc=0 / rc=0                                                                                                                                      |
+| gofmt on touched dirs                              | clean (golangci-lint fmt for parity)                                                                                                             |
+| nix `vendor-hash` fast gate                        | rc=0                                                                                                                                             |
+| cmd/tq gate                                        | ONLY the 2 pre-existing upstream-gated drift reds (TestJournalDriftNoDriftAfterRescue, TestJournalDriftSeededDriftAllFields — row 306, M4-gated) |
 
 **postgresv4 runtime disclosure (carried from 07-12):** a postgres IS live
 on 127.0.0.1:5432 but peer auth rejects user `lars` (role absent) and

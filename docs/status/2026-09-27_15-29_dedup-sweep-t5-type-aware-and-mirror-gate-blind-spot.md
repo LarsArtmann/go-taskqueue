@@ -200,64 +200,64 @@ Effort / Category per the harvest contract.
 
 **Dedup / art-dupl domain (this session's home turf)**
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 1 | Turn-1 ritual mechanization (Crush session-start hook running session-start.sh + CONTRIBUTING check) | High | S | Quality |
-| 2 | Widen `check-mirror-clones.sh`: add a `--show-suppressed` pass with the adapter pairs pinned in `mirror-baseline.txt` (baseline 0→2 rows), so NEW hidden cross-backend mass fails | High | M | Quality |
-| 3 | Ask + implement art-dupl: per-group suppression reason in `--json`/`--explain` (this session bisected by hand) | Medium | S | Feature (upstream) |
-| 4 | Adopt art-dupl native `baseline`/`check` subcommands for the mirror gate instead of the hand-rolled HTML parse | Medium | M | Cleanup |
-| 5 | Cut a `companion` tag + add the cmd/tq require, then collapse `cmd/tq mustMarshalDetail` → `companion.MustJSON` (ledger's 7-line accepted clone) | Low | M | Cleanup |
-| 6 | Periodic `--test-threshold 0` dedup sweep: line-by-line triage of the ~24 hidden test-file groups (test-scaffolding ×14, property-parameterizable ×9, control-flow/guard ×2) | Medium | M | Quality |
-| 7 | Triage the 9 property-parameterizable groups specifically: consolidate fuzz-test twins into table-driven/shared harnesses or ledger-accept | Low | M | Quality |
-| 8 | Annotate `companion/doc.go:12` with the canonical-view qualifier (split-brain heal, one line) | Low | S | Documentation |
-| 9 | Split the AGENTS.md dedup ledger into `docs/planning/dedup-ledger.md`, AGENTS.md keeps ruling + pointer | Medium | M | Documentation |
-| 10 | Rule + record whether `-t 5 --type-aware` (+ suppressed-view pass) becomes the canonical dedup cadence in AGENTS.md | Medium | S | Documentation |
-| 11 | Commit the cross-project lesson ("filtered-output gates inherit filter blind spots") to crush-config `references/lessons.md` | Low | S | Documentation |
-| 12 | Push `NotBefore` zero→`UnixMilli(0)` normalization upstream into go-cqrs-lite engine Enqueue so both adapters shrink (the one semantic divergence inside the "not clone mass" block) | Low | M | Cleanup (upstream) |
-| 13 | Move Complete's D1 `last_error`-clear follow-up UPDATE into companion (dialect-parameterized) — it is currently mirrored adapter SQL | Low | M | Cleanup |
-| 14 | Verify `internal/session` is not a ghost after the gitscan move to `executor` (zero-importer substring audit per the dead-export rule) | Medium | S | Quality |
-| 15 | Verify `cqrsqlite`'s divergent ClaimDue/Requeue ledger code is still fully referenced post-companion-extraction | Medium | S | Quality |
-| 16 | Ghost-audit sweep generally: run `scripts/check-dead-exports.sh` and convert advisory output into dispositions | Low | S | Quality |
+| #  | Task                                                                                                                                                                                 | Impact | Effort | Category           |
+| -- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ------ | ------------------ |
+| 1  | Turn-1 ritual mechanization (Crush session-start hook running session-start.sh + CONTRIBUTING check)                                                                                 | High   | S      | Quality            |
+| 2  | Widen `check-mirror-clones.sh`: add a `--show-suppressed` pass with the adapter pairs pinned in `mirror-baseline.txt` (baseline 0→2 rows), so NEW hidden cross-backend mass fails    | High   | M      | Quality            |
+| 3  | Ask + implement art-dupl: per-group suppression reason in `--json`/`--explain` (this session bisected by hand)                                                                       | Medium | S      | Feature (upstream) |
+| 4  | Adopt art-dupl native `baseline`/`check` subcommands for the mirror gate instead of the hand-rolled HTML parse                                                                       | Medium | M      | Cleanup            |
+| 5  | Cut a `companion` tag + add the cmd/tq require, then collapse `cmd/tq mustMarshalDetail` → `companion.MustJSON` (ledger's 7-line accepted clone)                                     | Low    | M      | Cleanup            |
+| 6  | Periodic `--test-threshold 0` dedup sweep: line-by-line triage of the ~24 hidden test-file groups (test-scaffolding ×14, property-parameterizable ×9, control-flow/guard ×2)         | Medium | M      | Quality            |
+| 7  | Triage the 9 property-parameterizable groups specifically: consolidate fuzz-test twins into table-driven/shared harnesses or ledger-accept                                           | Low    | M      | Quality            |
+| 8  | Annotate `companion/doc.go:12` with the canonical-view qualifier (split-brain heal, one line)                                                                                        | Low    | S      | Documentation      |
+| 9  | Split the AGENTS.md dedup ledger into `docs/planning/dedup-ledger.md`, AGENTS.md keeps ruling + pointer                                                                              | Medium | M      | Documentation      |
+| 10 | Rule + record whether `-t 5 --type-aware` (+ suppressed-view pass) becomes the canonical dedup cadence in AGENTS.md                                                                  | Medium | S      | Documentation      |
+| 11 | Commit the cross-project lesson ("filtered-output gates inherit filter blind spots") to crush-config `references/lessons.md`                                                         | Low    | S      | Documentation      |
+| 12 | Push `NotBefore` zero→`UnixMilli(0)` normalization upstream into go-cqrs-lite engine Enqueue so both adapters shrink (the one semantic divergence inside the "not clone mass" block) | Low    | M      | Cleanup (upstream) |
+| 13 | Move Complete's D1 `last_error`-clear follow-up UPDATE into companion (dialect-parameterized) — it is currently mirrored adapter SQL                                                 | Low    | M      | Cleanup            |
+| 14 | Verify `internal/session` is not a ghost after the gitscan move to `executor` (zero-importer substring audit per the dead-export rule)                                               | Medium | S      | Quality            |
+| 15 | Verify `cqrsqlite`'s divergent ClaimDue/Requeue ledger code is still fully referenced post-companion-extraction                                                                      | Medium | S      | Quality            |
+| 16 | Ghost-audit sweep generally: run `scripts/check-dead-exports.sh` and convert advisory output into dispositions                                                                       | Low    | S      | Quality            |
 
 **Carried rows visible in this session's starting context + index**
 (row numbers cited, not re-researched)
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 17 | Mirror-gate blind-spot regression guard: ci-local asserts the gate HTML greps (carries #2) — NEW sub-item of #2 | High | S | Quality |
-| 18 | Owner-only: scope `.tq-verify` gofmt stage to tracked files in both `.tq-verify` and the mint template (5 dead tasks since 09-20; AGENTS.md Known Issues) | High | S | Bug |
-| 19 | lint-baseline regen refusal guard (regen on broken tree silently narrows baseline; AGENTS.md REGEN POISONING + TODO row on file) | High | S | Quality |
-| 20 | `internal/e2e` under `-race` vs the 180s stage cap (own TODO row; 240s kill vs 181.6s ok) | Medium | M | Quality |
-| 21 | verify-battery.sh mechanization (carried row; every window re-rolls the battery by hand) | High | M | Quality |
-| 22 | Hook-liveness probe in session-start.sh (`core.hooksPath` → missing `.githooks` went unnoticed ~13 days; 08-38 §d1) | High | S | Bug |
-| 23 | Footer-last template fix in the tool template (invisible-footer class recurred 2× same day; rows 112/08-38/09-59) | High | S | Bug |
-| 24 | Env-family scrub for executor suites (`env -u TQ_QUESTION_FILE` hermetic fix; row 398-adjacent, false red in every pool session) | Medium | S | Bug |
-| 25 | Hermetic TQ_QUESTION_FILE pin waiver vs gate-priority ruling (09-47 §g2 carried) | Medium | S | Decision |
-| 26 | Budget cap semantics ruling: token-based vs task-count (AGENTS.md budget row, owner-gated) | High | S | Decision |
-| 27 | Ask-policy ruling §g: should prompts teach `tq ask` (AGENTS.md: "DELIBERATELY NOT DONE") | Medium | S | Decision |
-| 28 | Row 119 re-delivery specimen at three instances (09-47/09-59/10-11 carried) — decide suppression policy for DONE-row re-dispatches | Medium | S | Process |
-| 29 | Row 94: exact-set pin for Agent+Prioritize only — extend drift pin to all five paid turns | Low | S | Quality |
-| 30 | Row 398: autopsy spend has no per-run operator surface (tq show rendering) | Low | M | Feature |
-| 31 | Rows 121-124 carries: prioritize badge parity, row-124 BLOCKED-suffix hygiene, LogPath render pin, dlqfix webui card decision | Low | M | Feature |
-| 32 | Rows 386-390 carries: doctor verdict-merge/summarize/stale patterns (closed loop from row 116) — confirm all DONE rows stay [x] with citations | Low | S | Documentation |
-| 33 | Row 330: confirm red-master 4d988440e runner set is exactly the M4 pair | Medium | S | Bug |
-| 34 | Row 168/178/181/185/20/283/370/382/383-adjacent carried battery/convention rows — re-verify each is either [x] or re-dated | Low | S | Documentation |
-| 35 | `tq show --commits` folded_here sharp edges (daemon-subject reword blinds the fold; count>1 "AMBIGUOUS" wording) — rows filed per AGENTS.md | Low | M | Feature |
-| 36 | Legacy stdout `TQ_RESULT:` fallback deletion once the live pool shows derived outcomes (AGENTS.md verdict-channel note) | Low | S | Cleanup |
-| 37 | ADR-0019 S2: unify the journal on `facts.Fact` (open FactType) | Medium | L | Feature |
-| 38 | ADR-0019 S3: read models on metaengine (Watcher/ServeSSE replaces the hand tailer fan-out) | Medium | L | Feature |
-| 39 | ADR-0019 S4: composition via `system/` DomainConfig + DELETE the mirrored backends (the spike modules this session inspected) | High | L | Feature |
-| 40 | ADR-0019 upstream M4 dep-validation ratification (owner-gate at upstream, non-blocking) | Medium | S | Decision |
-| 41 | Session-close bridge opens: trigger automation (crush #3146), daemon-commit attribution gap, budget bypass, postgres parity | Medium | M | Feature |
-| 42 | Crush client/server per-repo experiment (blocked since 2026-09-14; analysis doc exists) | Low | M | Feature |
-| 43 | Release chore: pre-cut sub-tags after any version sweep so release.sh gates stay green | Medium | S | Process |
-| 44 | vendorHash fast gate after go.mod/go.sum changes (standing chore, seconds vs minutes) | Medium | S | Process |
-| 45 | Pool unit env `GOEXPERIMENT=jsonv2` on the NixOS tq-agent-pool module (owner-run; ends the env-lie class) | High | S | Bug |
-| 46 | Upstream-issue candidate: crush v0.94.1 mistyped reasoning-effort level fails with misleading "does not support" message (verify-before-filing first) | Low | S | Bug (upstream) |
-| 47 | Local postgres conform leg: flake check with a postgres service so TQ_TEST_POSTGRES surfaces on this host (design docs keep disclosing the CI-only leg) | Medium | M | Quality |
-| 48 | gosec gate-vs-advisory flip (owner ruling O5 pending) | Low | S | Decision |
-| 49 | Decide spend-facing defaults with the owner: `--batch-items`, `--prioritize`, `--dep-sweep` are all default-OFF in the live pool | Medium | S | Decision |
-| 50 | CHANGELOG line for this session's ledger edit (the repo logs even docs rows; 09-47 §d5 forgot the same thing — pattern, not accident) | Low | S | Documentation |
+| #  | Task                                                                                                                                                      | Impact | Effort | Category       |
+| -- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ | -------------- |
+| 17 | Mirror-gate blind-spot regression guard: ci-local asserts the gate HTML greps (carries #2) — NEW sub-item of #2                                           | High   | S      | Quality        |
+| 18 | Owner-only: scope `.tq-verify` gofmt stage to tracked files in both `.tq-verify` and the mint template (5 dead tasks since 09-20; AGENTS.md Known Issues) | High   | S      | Bug            |
+| 19 | lint-baseline regen refusal guard (regen on broken tree silently narrows baseline; AGENTS.md REGEN POISONING + TODO row on file)                          | High   | S      | Quality        |
+| 20 | `internal/e2e` under `-race` vs the 180s stage cap (own TODO row; 240s kill vs 181.6s ok)                                                                 | Medium | M      | Quality        |
+| 21 | verify-battery.sh mechanization (carried row; every window re-rolls the battery by hand)                                                                  | High   | M      | Quality        |
+| 22 | Hook-liveness probe in session-start.sh (`core.hooksPath` → missing `.githooks` went unnoticed ~13 days; 08-38 §d1)                                       | High   | S      | Bug            |
+| 23 | Footer-last template fix in the tool template (invisible-footer class recurred 2× same day; rows 112/08-38/09-59)                                         | High   | S      | Bug            |
+| 24 | Env-family scrub for executor suites (`env -u TQ_QUESTION_FILE` hermetic fix; row 398-adjacent, false red in every pool session)                          | Medium | S      | Bug            |
+| 25 | Hermetic TQ_QUESTION_FILE pin waiver vs gate-priority ruling (09-47 §g2 carried)                                                                          | Medium | S      | Decision       |
+| 26 | Budget cap semantics ruling: token-based vs task-count (AGENTS.md budget row, owner-gated)                                                                | High   | S      | Decision       |
+| 27 | Ask-policy ruling §g: should prompts teach `tq ask` (AGENTS.md: "DELIBERATELY NOT DONE")                                                                  | Medium | S      | Decision       |
+| 28 | Row 119 re-delivery specimen at three instances (09-47/09-59/10-11 carried) — decide suppression policy for DONE-row re-dispatches                        | Medium | S      | Process        |
+| 29 | Row 94: exact-set pin for Agent+Prioritize only — extend drift pin to all five paid turns                                                                 | Low    | S      | Quality        |
+| 30 | Row 398: autopsy spend has no per-run operator surface (tq show rendering)                                                                                | Low    | M      | Feature        |
+| 31 | Rows 121-124 carries: prioritize badge parity, row-124 BLOCKED-suffix hygiene, LogPath render pin, dlqfix webui card decision                             | Low    | M      | Feature        |
+| 32 | Rows 386-390 carries: doctor verdict-merge/summarize/stale patterns (closed loop from row 116) — confirm all DONE rows stay [x] with citations            | Low    | S      | Documentation  |
+| 33 | Row 330: confirm red-master 4d988440e runner set is exactly the M4 pair                                                                                   | Medium | S      | Bug            |
+| 34 | Row 168/178/181/185/20/283/370/382/383-adjacent carried battery/convention rows — re-verify each is either [x] or re-dated                                | Low    | S      | Documentation  |
+| 35 | `tq show --commits` folded_here sharp edges (daemon-subject reword blinds the fold; count>1 "AMBIGUOUS" wording) — rows filed per AGENTS.md               | Low    | M      | Feature        |
+| 36 | Legacy stdout `TQ_RESULT:` fallback deletion once the live pool shows derived outcomes (AGENTS.md verdict-channel note)                                   | Low    | S      | Cleanup        |
+| 37 | ADR-0019 S2: unify the journal on `facts.Fact` (open FactType)                                                                                            | Medium | L      | Feature        |
+| 38 | ADR-0019 S3: read models on metaengine (Watcher/ServeSSE replaces the hand tailer fan-out)                                                                | Medium | L      | Feature        |
+| 39 | ADR-0019 S4: composition via `system/` DomainConfig + DELETE the mirrored backends (the spike modules this session inspected)                             | High   | L      | Feature        |
+| 40 | ADR-0019 upstream M4 dep-validation ratification (owner-gate at upstream, non-blocking)                                                                   | Medium | S      | Decision       |
+| 41 | Session-close bridge opens: trigger automation (crush #3146), daemon-commit attribution gap, budget bypass, postgres parity                               | Medium | M      | Feature        |
+| 42 | Crush client/server per-repo experiment (blocked since 2026-09-14; analysis doc exists)                                                                   | Low    | M      | Feature        |
+| 43 | Release chore: pre-cut sub-tags after any version sweep so release.sh gates stay green                                                                    | Medium | S      | Process        |
+| 44 | vendorHash fast gate after go.mod/go.sum changes (standing chore, seconds vs minutes)                                                                     | Medium | S      | Process        |
+| 45 | Pool unit env `GOEXPERIMENT=jsonv2` on the NixOS tq-agent-pool module (owner-run; ends the env-lie class)                                                 | High   | S      | Bug            |
+| 46 | Upstream-issue candidate: crush v0.94.1 mistyped reasoning-effort level fails with misleading "does not support" message (verify-before-filing first)     | Low    | S      | Bug (upstream) |
+| 47 | Local postgres conform leg: flake check with a postgres service so TQ_TEST_POSTGRES surfaces on this host (design docs keep disclosing the CI-only leg)   | Medium | M      | Quality        |
+| 48 | gosec gate-vs-advisory flip (owner ruling O5 pending)                                                                                                     | Low    | S      | Decision       |
+| 49 | Decide spend-facing defaults with the owner: `--batch-items`, `--prioritize`, `--dep-sweep` are all default-OFF in the live pool                          | Medium | S      | Decision       |
+| 50 | CHANGELOG line for this session's ledger edit (the repo logs even docs rows; 09-47 §d5 forgot the same thing — pattern, not accident)                     | Low    | S      | Documentation  |
 
 HARVEST note: items 1-16 + 50 are this report's NEW ground; 17-49 are
 carried citations. TODO_LIST must not duplicate carried rows — HARVEST
@@ -288,9 +288,9 @@ should file only NEW items and cross-link the rest.
 
 ---
 
-*Report format: .md per explicit owner instruction, overriding the
+_Report format: .md per explicit owner instruction, overriding the
 status-report skill's HTML default (flagged per skill contract). Gates run
 this session, rc-captured: check-doc-refs.sh 0; root build+vet 0;
 check-mirror-clones.sh 0; art-dupl re-run unchanged. No code was changed;
 AGENTS.md ledger edit committed by daemon as 5a107186 (footerless
-auto-commit, folded by design). Waiting for instructions.*
+auto-commit, folded by design). Waiting for instructions._

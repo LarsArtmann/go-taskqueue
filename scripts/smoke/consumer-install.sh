@@ -19,7 +19,7 @@ trap 'rm -rf "$verify_dir"' EXIT
 	cd "$verify_dir"
 	export GOWORK=off
 	export GOTOOLCHAIN=auto
-	cat > main.go <<EOF
+	cat >main.go <<EOF
 package main
 
 import (

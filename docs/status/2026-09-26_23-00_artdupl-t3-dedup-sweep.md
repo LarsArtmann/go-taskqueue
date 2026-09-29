@@ -18,7 +18,7 @@ commits (auto-commit daemon; attribution via `git log -- <path>`).
    the report's mass — ~15 groups): added the shared helper set
    `freshStore` (64 prolog collapses), `claimDue` (~30 must-claim sites;
    ErrNoTaskDue + custom-lease sites deliberately stay direct),
-   `mustEnqueue` (absorbs `mustEnqueueZero`, ctx-param), 
+   `mustEnqueue` (absorbs `mustEnqueueZero`, ctx-param),
    `backdateCreatedAt` (6 aging-test sites), `legacyTasksSchema` +
    `openLegacyStore` (2 × ~45-line migration fixtures), `saveWatermark` /
    `wantWatermark` (3 watermark tests), `seedTasks` (2 seed loops),
