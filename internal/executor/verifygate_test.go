@@ -305,3 +305,48 @@ func TestAllPackagesPassed(t *testing.T) {
 		}
 	}
 }
+
+// TestVerifyDeathStage pins the row-144 stage table end to end: each death
+// shape maps onto its VerifyStage* class from the FULL output, judged at the
+// tail cut — timeout kills outrank FAIL lines, FAIL means the test stage,
+// the all-ok tail (or bare .go paths) in a gofmt gate is the gofmt witness,
+// and everything else stays run.
+func TestVerifyDeathStage(t *testing.T) {
+	gofmtGate := gofmtStageVerify
+
+	cases := []struct {
+		name string
+		err  error
+		ctx  func() context.Context
+		out  string
+		want string
+	}{
+		{"task deadline", context.DeadlineExceeded, context.Background, "some output", VerifyStageE2ETimeout},
+		{"go-test watchdog panic", nil, context.Background,
+			"panic: test timed out after 3m0s\nrunning tests:", VerifyStageE2ETimeout},
+		{"test failure beats gofmt stage", nil, context.Background,
+			"ok  \tdemo\t0.01s\n--- FAIL: TestX (0.00s)\nFAIL\n", VerifyStageTest},
+		{"package FAIL", nil, context.Background,
+			"FAIL\tdemo\t0.01s\n", VerifyStageTest},
+		{"all-ok tail is the gofmt witness", nil, context.Background,
+			"ok  \tdemo\t0.01s\n", VerifyStageGofmt},
+		{"bare gofmt path lines", nil, context.Background,
+			"main.go\nutil.go\n", VerifyStageGofmt},
+		{"no gate, no marker", nil, context.Background, "sh: 1: nix: not found\n", VerifyStageRun},
+		{"gofmt path only in gofmt gates", nil, context.Background,
+			"main.go\n", VerifyStageGofmt},
+	}
+
+	for _, tc := range cases {
+		ctx := tc.ctx()
+		if got := verifyDeathStage(ctx, tc.err, gofmtGate, []byte(tc.out)); got != tc.want {
+			t.Errorf("%s: verifyDeathStage = %s, want %s", tc.name, got, tc.want)
+		}
+	}
+
+	// A gate WITHOUT a gofmt stage must never stamp gofmt, even on an
+	// all-ok-shaped tail (the stage name would be a lie).
+	if got := verifyDeathStage(context.Background(), nil, "go test ./...", []byte("ok  \tdemo\t0.01s\n")); got != VerifyStageRun {
+		t.Errorf("gofmt stage in a gofmt-free gate = %s, want %s", got, VerifyStageRun)
+	}
+}
