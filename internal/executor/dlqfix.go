@@ -218,7 +218,13 @@ func dlqFixPrompt(p DLQFixPayload) string {
 		b.WriteString("## Failure evidence\n\n")
 
 		if p.Failure.Stage != "" {
-			fmt.Fprintf(&b, "Stage %q exited with code %d. Last output:\n\n", p.Failure.Stage, p.Failure.ExitCode)
+			fmt.Fprintf(&b, "Stage %q exited with code %d", p.Failure.Stage, p.Failure.ExitCode)
+
+			if p.Failure.VerifyStage != "" {
+				fmt.Fprintf(&b, " (verify stage: %s)", p.Failure.VerifyStage)
+			}
+
+			b.WriteString(". Last output:\n\n")
 		} else {
 			b.WriteString("Last output:\n\n")
 		}
