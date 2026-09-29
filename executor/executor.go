@@ -65,8 +65,10 @@ type (
 
 // Verify-gate failure classes (see VerifyGateError).
 const (
-	VerifyGateDead = internalexecutor.VerifyGateDead
-	VerifyGateSlow = internalexecutor.VerifyGateSlow
+	VerifyGateDead          = internalexecutor.VerifyGateDead
+	VerifyGateSlow          = internalexecutor.VerifyGateSlow
+	VerifyGateEnvironmental = internalexecutor.VerifyGateEnvironmental
+	VerifyGateEnvCode       = internalexecutor.VerifyGateEnvCode
 )
 
 // Sink carries failure/result detail through the context (error and

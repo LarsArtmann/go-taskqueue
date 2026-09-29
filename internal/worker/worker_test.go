@@ -700,6 +700,60 @@ func TestVerifyGateRequeuesWithoutAttemptBurn(t *testing.T) {
 	cancel()
 }
 
+// TestVerifyGateEnvironmentalDeadLettersImmediately pins the signature-
+// suppression contract: a *VerifyGateError classified environmental (the
+// vendor-gofmt verify-gate class, a PROVEN-environmental death) must
+// dead-letter on the FIRST failure with the distinct reason code on the
+// dead task, instead of riding the requeue ladder that re-dispatches
+// finished work to an identical death (the row-109 loop: attempt 1 closed
+// the row, attempt 2 re-verified it, both gate-killed).
+func TestVerifyGateEnvironmentalDeadLettersImmediately(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	ran := atomic.Int32{}
+
+	reg.RegisterFunc("gate", func(context.Context, task.Task) error {
+		ran.Add(1)
+
+		return &executor.VerifyGateError{
+			Class:  executor.VerifyGateEnvironmental,
+			Verify: `export GOEXPERIMENT=jsonv2; go build ./... && go vet ./... && go test ./... -count=1 && test -z "$(gofmt -l .)"`,
+			Cause:  errors.New(`agent verify failed: exit status 1`),
+			Tail:   "ok  \tgithub.com/larsartmann/go-taskqueue/scripts/facadeparity\t0.02s\n",
+		}
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "gate", MaxAttempts: 3})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		PreflightBackoff: 120 * time.Millisecond,
+		Executors:        reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	got := waitFor(t, ctx, store, enq.ID, task.Dead)
+
+	cancel()
+
+	if ran.Load() != 1 {
+		t.Fatalf("executor ran %d times, want 1 (no re-dispatch of finished work)", ran.Load())
+	}
+
+	if got.Attempts != 1 {
+		t.Fatalf("attempts = %d, want 1 (dead-lettered on the first death)", got.Attempts)
+	}
+
+	if !strings.Contains(got.LastError, executor.VerifyGateEnvCode) {
+		t.Fatalf("dead reason must carry the %s signature code, got %q", executor.VerifyGateEnvCode, got.LastError)
+	}
+}
+
 // parkScenario is the data behind the park→resume pin: a stub executor
 // returns parkErr until flag flips, then succeeds. phase names the blocker
 // in assertion messages; lastErrPrefix is the error-class prefix the

@@ -152,3 +152,156 @@ func TestVerifyGateCooperativeCancelStaysCancelled(t *testing.T) {
 		t.Fatalf("cooperative cancel must not classify as gate failure, got %v", err)
 	}
 }
+
+// gofmtStageVerify is the mint's gofmt stage shape: the command substitution
+// is what swallows gofmt's own output from the log (the signature's blind
+// tail).
+const gofmtStageVerify = `go test ./... && test -z "$(gofmt -l .)"`
+
+// skipWithoutGoToolchain guards the gofmt-signature fixtures: they run a
+// real go test + gofmt probe, so they skip where the toolchain is absent
+// (same hermeticity practice as the git-dependent tests).
+func skipWithoutGoToolchain(t *testing.T) {
+	t.Helper()
+
+	for _, tool := range []string{"go", "gofmt"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skipf("%s not on PATH", tool)
+		}
+	}
+}
+
+// writeVendorRepo builds a committed Go module repo with one passing test,
+// a gitignored vendor/ tree holding a non-gofmt file, and (with
+// trackedBad) a non-gofmt file at the root: the two halves of the row-135
+// class question (vendor-only death vs the agent's own formatting).
+func writeVendorRepo(t *testing.T, trackedBad bool) string {
+	t.Helper()
+	skipWithoutGoToolchain(t)
+
+	repo := t.TempDir()
+	setupGitRepo(t, repo)
+
+	write := func(name, content string) {
+		t.Helper()
+
+		if err := os.WriteFile(filepath.Join(repo, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	write("go.mod", "module demo\n\ngo 1.25\n")
+	write("main.go", "package main\n\nfunc main() {}\n")
+	write("main_test.go", "package main\n\nimport \"testing\"\n\nfunc TestPass(t *testing.T) {}\n")
+	write(".gitignore", "vendor/\n")
+
+	if err := os.MkdirAll(filepath.Join(repo, "vendor"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	write(filepath.Join("vendor", "bad.go"), "package vendor\n\nfunc  Bad() int {\nreturn 1\n}\n")
+
+	if trackedBad {
+		write("rootbad.go", "package main\n\nfunc  RootBad() int {\nreturn 2\n}\n")
+	}
+
+	commitAll(t, repo, "vendor repo fixture")
+
+	return repo
+}
+
+// TestVendorGofmtSignatureClassifiesEnvironmental pins the row-135
+// signature end to end: the minted gofmt-stage gate dies on gitignored
+// vendor/ files only (every package stage passed), so the executor must
+// classify VerifyGateEnvironmental carrying the vendor-gofmt reason code,
+// instead of the plain verify-failed error that burns the attempt.
+func TestVendorGofmtSignatureClassifiesEnvironmental(t *testing.T) {
+	repo := writeVendorRepo(t, false)
+
+	_, err := runVerify(context.Background(), task.ID("vendor-gofmt-test"), repo, &AgentPayload{Verify: gofmtStageVerify}, false, "")
+	if err == nil {
+		t.Fatal("want a verify failure, got nil")
+	}
+
+	var gateErr *VerifyGateError
+	if !errors.As(err, &gateErr) {
+		t.Fatalf("want *VerifyGateError, got %v", err)
+	}
+
+	if gateErr.Class != VerifyGateEnvironmental {
+		t.Fatalf("class = %s, want %s", gateErr.Class, VerifyGateEnvironmental)
+	}
+
+	if !strings.Contains(err.Error(), VerifyGateEnvCode) {
+		t.Fatalf("error should carry the %s reason code, got %v", VerifyGateEnvCode, err)
+	}
+}
+
+// TestVendorGofmtSignatureNeverMasksIntroducedWork pins the guard: when the
+// gofmt re-measure flags a NON-vendor file (the agent's own formatting),
+// the signature must not match and the death must stay unclassified (the
+// plain verify-failure path), so real work defects still count.
+func TestVendorGofmtSignatureNeverMasksIntroducedWork(t *testing.T) {
+	repo := writeVendorRepo(t, true)
+
+	_, err := runVerify(context.Background(), task.ID("vendor-gofmt-introduced-test"), repo, &AgentPayload{Verify: gofmtStageVerify}, false, "")
+	if err == nil {
+		t.Fatal("want a verify failure, got nil")
+	}
+
+	var gateErr *VerifyGateError
+	if errors.As(err, &gateErr) && gateErr.Class == VerifyGateEnvironmental {
+		t.Fatalf("introduced formatting must not classify environmental, got %v", err)
+	}
+}
+
+// TestVendorGofmtSignatureClauses pins the cheap clauses of the signature
+// matcher individually: no gofmt stage, no vendor dir, a failing or empty
+// tail must each refuse the match.
+func TestVendorGofmtSignatureClauses(t *testing.T) {
+	repo := writeVendorRepo(t, false)
+	ctx := context.Background()
+	okTail := "ok  \tdemo\t0.01s\n"
+
+	if !vendorGofmtSignature(ctx, gofmtStageVerify, repo, okTail) {
+		t.Fatal("vendor-only gofmt death must match the signature")
+	}
+
+	if vendorGofmtSignature(ctx, gofmtStageVerify, repo, "FAIL\tdemo\t0.01s\n") {
+		t.Fatal("a FAIL tail must not match the signature")
+	}
+
+	if vendorGofmtSignature(ctx, "go test ./...", repo, okTail) {
+		t.Fatal("a gate without a gofmt stage must not match the signature")
+	}
+
+	if vendorGofmtSignature(ctx, gofmtStageVerify, repo, "") {
+		t.Fatal("an empty tail (no ok lines) must not match the signature")
+	}
+
+	if vendorGofmtSignature(ctx, gofmtStageVerify, t.TempDir(), okTail) {
+		t.Fatal("a repo without vendor/ must not match the signature")
+	}
+}
+
+// TestAllPackagesPassed pins the tail reading: an ok package line passes,
+// any FAIL anywhere in the window fails, and a window without ok lines
+// (zero tests, foreign output) carries no pass evidence.
+func TestAllPackagesPassed(t *testing.T) {
+	cases := []struct {
+		name string
+		tail string
+		want bool
+	}{
+		{"ok line", "ok  \tdemo\t0.01s\n", true},
+		{"fail anywhere", "ok  \tdemo\t0.01s\n--- FAIL: TestX (0.00s)\nFAIL\n", false},
+		{"no ok lines", "?\t\tdemo\t[no test files]\n", false},
+		{"empty", "", false},
+	}
+
+	for _, tc := range cases {
+		if got := allPackagesPassed(tc.tail); got != tc.want {
+			t.Errorf("%s: allPackagesPassed = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

@@ -417,6 +417,23 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	}
 
 	if gate, ok := errors.AsType[*executor.VerifyGateError](execErr); ok {
+		// Proven-environmental signature (executor.VerifyGateEnvironmental,
+		// the vendor-gofmt verify-gate class): every re-dispatch re-does
+		// finished work and dies identically, so dead-letter NOW instead of
+		// riding the requeue ladder. The reason text carries the distinct
+		// signature code so the rescue sweep can classify the death as
+		// environmental without re-deriving it from evidence tails.
+		if gate.Class == executor.VerifyGateEnvironmental {
+			if err := p.store.FailPermanent(terminalCtx, t.ID, claim, gate.Error(), sink.Failure()); err != nil {
+				p.log.Error("permanent fail failed", "task", t.ID, "err", err)
+			} else {
+				p.log.Warn("verify gate environmental signature; dead-lettered without re-dispatch",
+					"task", t.ID, "signature", executor.VerifyGateEnvCode, "reason", gate.Cause.Error())
+			}
+
+			return
+		}
+
 		// The verify gate failed WITHOUT judging the task: the gate also
 		// fails at the pre-attempt rev (gate-dead: pre-existing or
 		// environmental — e.g. a boot-fragile host precondition), or the

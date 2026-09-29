@@ -1228,7 +1228,17 @@ prose, not the table.
   (`gofmt -l $(git ls-files '*.go')`) in BOTH `.tq-verify` and the mint
   template; CI is unaffected (runners have no vendor/). A task.verify
   failure whose tail shows all-ok packages is THIS bug, not a work
-  defect. Separately, internal/e2e under -race WAS load-marginal vs the
+  defect. Retry-ladder suppression SHIPPED 2026-09-29 (task
+  000001a0ea96): a verify failure matching the signature (all-ok package
+  tail + a `gofmt -l` stage + a gofmt re-measure flagging ONLY vendor/
+  files) classifies `VerifyGateEnvironmental` in
+  internal/executor/verifygate.go and the worker dead-letters on the
+  FIRST death with the `vendor-gofmt` reason code
+  (executor.VerifyGateEnvCode) instead of re-dispatching finished work;
+  the baseline worktree probe is structurally blind to this class
+  (vendor/ is gitignored, so the gate passes in the worktree), which is
+  why the signature is measured against the live tree. Recovery stays:
+  trash vendor/ (or the owner fix), then `tq dlq --rescue`. Separately, internal/e2e under -race WAS load-marginal vs the
   180s stage cap (240s kill at 02:45, 181.6s ok at 03:05) — RECONCILED +
   TRIMMED 2026-09-29 (task 000001a0ea08): "ran too long (4m0s)" is the
   go-test DRIVER's watchdog, not a second deadline —

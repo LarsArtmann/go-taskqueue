@@ -20,17 +20,33 @@ import (
 //   - VerifyGateSlow: the deadline killed the gate before a verdict
 //     (context deadline exceeded, no gate output judgement) — a retry on a
 //     warm cache may simply pass.
+//   - VerifyGateEnvironmental: the failure matches a BASELINED environmental
+//     signature (the vendor-gofmt class: every package stage passed and the
+//     gofmt stage flags only gitignored vendor/ files). The identical retry
+//     dies identically and each re-dispatch re-does finished work, so the
+//     worker DEAD-LETTERS immediately instead of riding the requeue ladder.
 //
-// Both classes requeue WITHOUT burning an attempt (the worker treats them
-// like a PreflightError); only an introduced failure — the gate passing at
-// the pre-attempt rev and failing after the agent's work — counts against
-// the task.
+// The first two classes requeue WITHOUT burning an attempt (the worker
+// treats them like a PreflightError); the environmental class dead-letters
+// on the first death with the VerifyGateEnvCode reason. Only an introduced
+// failure — the gate passing at the pre-attempt rev and failing after the
+// agent's work — counts against the task.
 type VerifyGateClass string
 
 const (
 	VerifyGateDead VerifyGateClass = "gate-dead"
 	VerifyGateSlow VerifyGateClass = "gate-slow"
+
+	// VerifyGateEnvironmental marks a proven-environmental verify death
+	// (the row-135 vendor-gofmt class). See vendorGofmtSignature.
+	VerifyGateEnvironmental VerifyGateClass = "gate-env"
 )
+
+// VerifyGateEnvCode is the machine-greppable reason code carried by every
+// VerifyGateEnvironmental error text, so DLQ triage and rescue sweeps can
+// classify the death as environmental without re-deriving it from evidence
+// tails.
+const VerifyGateEnvCode = "vendor-gofmt"
 
 // VerifyGateError carries a gate-level (not task-level) verify failure.
 type VerifyGateError struct {
@@ -46,6 +62,8 @@ func (e *VerifyGateError) Error() string {
 		return fmt.Sprintf("agent verify gate dead (%q): failure is pre-existing/environmental (gate also fails at the pre-attempt rev): %s", e.Verify, e.Cause)
 	case VerifyGateSlow:
 		return fmt.Sprintf("agent verify gate slow (%q): deadline before a verdict, retry on a warm cache: %s", e.Verify, e.Cause)
+	case VerifyGateEnvironmental:
+		return fmt.Sprintf("agent verify gate environmental signature [%s] (%q): all package stages passed and gofmt flags only gitignored vendor/ files; the identical retry dies identically so the task is dead-lettered without re-dispatch (rescue: classify environmental): %s", VerifyGateEnvCode, e.Verify, e.Cause)
 	default:
 		return fmt.Sprintf("agent verify gate %s (%q): %s", e.Class, e.Verify, e.Cause)
 	}
@@ -68,6 +86,15 @@ func classifyVerifyFailure(ctx context.Context, verify, repoDir, baseRev string,
 
 	if isDeadline(gateErr) || isDeadline(ctx.Err()) {
 		return &VerifyGateError{Class: VerifyGateSlow, Verify: verify, Cause: gateErr, Tail: tail}
+	}
+
+	// Baselined environmental signature (the vendor-gofmt class) BEFORE the
+	// baseline probe: the probe is structurally blind to this failure
+	// (gitignored vendor/ never enters a fresh worktree, so the gate passes
+	// there and the death misclassifies as introduced). The signature is
+	// definitive, so classify first and skip the probe entirely.
+	if vendorGofmtSignature(ctx, verify, repoDir, tail) {
+		return &VerifyGateError{Class: VerifyGateEnvironmental, Verify: verify, Cause: gateErr, Tail: tail}
 	}
 
 	if baseRev == "" {
@@ -135,6 +162,97 @@ func baselineVerify(verify, repoDir, baseRev string) (VerifyGateClass, bool, err
 	}
 
 	return "", false, nil
+}
+
+// vendorGofmtSignature reports whether a failed verify run matches the
+// row-135 environmental signature (the gofmt-vendor dead-letter class): the
+// gate carries a gofmt stage of the minted `test -z "$(gofmt -l .)"` shape,
+// the output tail shows the Go package stages all passed (go-test ok lines,
+// no FAIL anywhere in the window), and a direct gofmt re-measure flags
+// files ONLY under the repo's vendor/ tree. The baseline worktree probe is
+// structurally blind to this failure (vendor/ is gitignored, so it never
+// enters a fresh worktree and the gate passes there), which is exactly why
+// the signature must be measured against the LIVE tree. Any clause that
+// cannot hold (no gofmt stage, no vendor dir, a flagged non-vendor file,
+// probe failure) returns false so the existing classification still runs.
+func vendorGofmtSignature(ctx context.Context, verify, repoDir, tail string) bool {
+	if !strings.Contains(verify, "gofmt -l") {
+		return false
+	}
+
+	if !allPackagesPassed(tail) {
+		return false
+	}
+
+	if info, err := os.Stat(filepath.Join(repoDir, "vendor")); err != nil || !info.IsDir() {
+		return false
+	}
+
+	flagged, err := gofmtFlagged(ctx, repoDir)
+	if err != nil || len(flagged) == 0 {
+		return false
+	}
+
+	for _, f := range flagged {
+		if !strings.HasPrefix(filepath.ToSlash(f), "vendor/") {
+			return false
+		}
+	}
+
+	return true
+}
+
+// allPackagesPassed reports whether the verify output tail shows go-test
+// progress and no failure: at least one `ok` package line and no FAIL
+// anywhere in the window (the mint's command substitution swallows the
+// gofmt stage's own output, so the tail ends on the last passing package).
+func allPackagesPassed(tail string) bool {
+	if strings.Contains(tail, "FAIL") {
+		return false
+	}
+
+	for line := range strings.SplitSeq(tail, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[0] == "ok" {
+			return true
+		}
+	}
+
+	return false
+}
+
+// verifyProbeTimeout bounds the gofmt re-measure: a parse-only walk, seconds
+// even on large trees.
+const verifyProbeTimeout = 2 * time.Minute
+
+// gofmtFlagged runs `gofmt -l .` in repoDir (the same walk the minted gofmt
+// stage performs, vendor/ included, which is the defect this signature
+// classifies) and returns the flagged paths.
+func gofmtFlagged(ctx context.Context, repoDir string) ([]string, error) {
+	probeCtx, cancel := context.WithTimeout(ctx, verifyProbeTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(probeCtx, "gofmt", "-l", ".")
+	cmd.Dir = repoDir
+
+	var buf bytes.Buffer
+
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("gofmt probe: %w", err)
+	}
+
+	var paths []string
+
+	for line := range strings.SplitSeq(buf.String(), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			paths = append(paths, line)
+		}
+	}
+
+	return paths, nil
 }
 
 // gitRun runs git in dir and returns trimmed stdout+stderr.
