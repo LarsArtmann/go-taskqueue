@@ -1,3 +1,9 @@
+// Journal-drift audit pins. S1 divergence D2: the engine-backed stores
+// write thin {project,type} enqueue details, so priority/dedup_key
+// coverage is 0 until upstream enriches the fact detail — the conform
+// cap that gates the pins is Caps.EnqueuedSnapshot
+// (internal/queue/companion/conform/suite.go); flip both the day the
+// upstream enrich lands.
 package main
 
 import (

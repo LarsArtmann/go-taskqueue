@@ -76,7 +76,11 @@ the same invocation, 2026-09-21 00-39: budget ok / sqlite setup-failed; the
 in-module GOWORK=off run is the only canonical gate). Release flow and version surfaces are
 documented in `docs/release/RELEASE.md` (two-phase --tag/--push, sub-tag
 cutting, allowlist gates) and `docs/release/VERSION-SURFACES.md` (the seven
-surfaces and their bump order).
+surfaces and their bump order). Release-adjacent proxy verification recipe
+(one line, stop re-deriving it): in a /tmp module `go get
+<facade>/@vX.Y.Z` + build a sentinel-symbol probe, cite rc + output —
+proxy-consumer claims are rc-captured facts, never local-replace
+inferences.
 
 Smokes (all CI-safe; `TQ_BIN=result/bin/tq` smokes the nix-built binary):
 
@@ -572,7 +576,11 @@ degradation explicitly). RescueDead's re-emission stays
   (what a view, filter, or code path displays/restricts) additionally cite
   file:line or a pinning test name in reports and handoffs — a confident
   wrong scope claim burned the 2026-09-12 01-47 §d3 budget-display answer
-  (source: docs/status/2026-09-12_01-47_per-project-ui-question.md)
+  (source: docs/status/2026-09-12_01-47_per-project-ui-question.md).
+  Citations into CONCURRENTLY-EDITED doc files (CHANGELOG/FEATURES/README/
+  TODO rows) use a section anchor + landing SHA instead of bare file:line —
+  CHANGELOG.md:28-36 sat at :25-34 one hour after it was cited (2026-09-20
+  report §f2).
 - **Verify-window minimum battery**: a verify-only re-dispatch window must
   re-run the CHEAP gates itself at HEAD (check-doc-refs.sh + root build+vet
   under GOEXPERIMENT=jsonv2 — seconds each) and produce at least ONE fresh
@@ -580,7 +588,38 @@ degradation explicitly). RescueDead's re-emission stays
   nix) may be inherited only from a same-HEAD prior report (03-27 §e2 set
   the bar; the 03-39 window regressed by citing inherited gate runs in its
   stop verdict — promotion of the TODO row after a second confirming
-  window, 2026-09-20)
+  window, 2026-09-20). The battery ALSO includes: `check-dead-sha-refs.sh`
+  (+ an own-file flag grep scoped to the files touched), a `date`-measured
+  report filename (the 06-05 window shipped a projected future timestamp),
+  and, when the verified file lives in a nested module, the in-module
+  `GOWORK=off GOEXPERIMENT=jsonv2 go vet ./...` + FULL package test suite
+  (root vet never descends into nested modules; a `-run` filter compiles
+  package-wide but verifies only the selection).
+- **Verify-only re-dispatch checklist** (codified 2026-09-30, the
+  de-facto bar rows 160-163/167 already follow): (a) substance-read the
+  pinned artifact at HEAD (not name-greps); (b) re-cite prior claims at
+  file:line; (c) fresh named battery with every rc captured to a file
+  (never pipe-captured — PIPESTATUS trap) and persisted in the SAME
+  window; (d) explicit no-delta statement when zero code changes; (e)
+  append a dated re-verified annotation to the DONE row ("— re-verified
+  2026-09-27 @ 8fe71da7: <gates>"); (f) note the re-dispatch cause; (g)
+  conform pins are addressed through their registered SUBTEST path — a
+  bare `-run TestX` against a module with the shared suite prints a
+  PASS-shaped `ok … [no tests to run]`, so every targeted `-run` claim
+  mandates `-v` + a PASS COUNT (live catch 2026-09-27, 07-40 §d1).
+- **Report format**: every docs/status report follows the a)-g)
+  close-out skeleton (FULLY DONE / PARTIALLY DONE / NOT STARTED / TOTALLY
+  FUCKED UP / IMPROVE / next / questions), including DONE-on-arrival
+  re-dispatch verify windows (mandated after the 04-50 deviation,
+  2026-09-27 04-54 §d1).
+- **Edit→commit→battery ordering**: commit doc edits immediately after
+  the edit; run long gates (root -race battery) AFTER the commit — an
+  edit sitting uncommitted through a multi-minute battery gets swept
+  footer-less by the daemon (7th AMEND MANEUVER instance, 16fe5199→99776b72).
+- **Row-note accretion**: attempt notes on a DONE TODO row collapse to
+  ONE note + a pointer to the latest report — not append-only accretion
+  (row 171 carried 3 same-day notes on a single ~1.6k-char line;
+  TODO_LIST conventions).
 - Pure-Go deps only (`CGO_ENABLED=0` valid); Go 1.26 idioms are deliberate
   (`errors.AsType[E]`, `strings.SplitSeq`, `for range n`) — do not
   "modernize" them back
@@ -741,7 +780,9 @@ degradation explicitly). RescueDead's re-emission stays
   `scripts/check-todo-list.sh` in ci-local)
 - Status reports are indexed on creation (`check-status-index.sh` +
   pre-commit hook via `scripts/install-pre-commit.sh`); CHANGELOG is
-  append-only; `check-features-roadmap.sh` guards shipped-vs-planned drift.
+  append-only; behavior changes visible to EXTERNAL API consumers (e.g. a
+  new 429 on `tq api` auth) get an explicit behavior-change flag, not a
+  plain Added bullet; `check-features-roadmap.sh` guards shipped-vs-planned drift.
   Daemon-folded reports: the auto-commit daemon bypasses that hook, so a
   report riding into a `chore:` commit unindexed is the KNOWN hole (it
   silently lost reports twice, 2026-09-09) — the rule is the AMEND

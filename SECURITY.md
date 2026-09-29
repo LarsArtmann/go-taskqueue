@@ -165,6 +165,11 @@ through timing.
   key passed via `--alert-api-key`.
 - Completion facts record the agent session id and the verify output tail;
   verify tails can contain repository paths and test output.
+- Questions (`tq ask`) carry AGENT-AUTHORED text toward PapDashboard
+  (`task.question-asked` fact + the bridge forwarding). The redaction pass
+  covers the fact error/detail fields, but the question body itself is
+  model output — treat the PapDashboard endpoint as a disclosure boundary
+  for whatever the agent chose to write, not as owner-authored prose.
 
 ## Hardening checklist for unattended pools
 

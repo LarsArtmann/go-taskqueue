@@ -100,7 +100,11 @@ type Caps struct {
 	Archive bool
 	// EnqueuedSnapshot: task.enqueued facts carry the full task snapshot
 	// (priority/dedup_key). False everywhere today — upstream enrich,
-	// gated on the M4 ratification memo.
+	// gated on the M4 ratification memo (S1 divergence D2; the engine
+	// writes thin {project,type} details). The downstream consumer of
+	// this cap is cmd/tq's journal-drift audit — its coverage tests
+	// (cmd/tq/journalaudit_test.go) assert the 0-coverage degradation and
+	// flip with this Cap.
 	EnqueuedSnapshot bool
 }
 
