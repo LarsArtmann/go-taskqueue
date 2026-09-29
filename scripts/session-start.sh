@@ -78,7 +78,9 @@ if [ "$#" -gt 0 ]; then
 		# read, so it is mechanical now (07-12 report §d2/§f1).
 		if command -v tq >/dev/null 2>&1; then
 			echo "queue record (tq show $id, first 40 lines):"
-			tq show "$id" 2>&1 | head -40 | sed 's/^/  /'
+			# Unknown/typo'd IDs must not abort the ritual (set -e + pipefail
+			# would otherwise die here — seen live with a bogus ID).
+			tq show "$id" 2>&1 | head -40 | sed 's/^/  /' || true
 		else
 			echo "(tq not on PATH — queue record skipped)"
 		fi
