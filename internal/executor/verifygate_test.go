@@ -114,7 +114,7 @@ func TestVerifyGateSlowOnDeadline(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
 	defer cancel()
 
-	_, err := runVerify(ctx, task.ID("verify-gate-slow-test"), dir, &AgentPayload{Verify: "sleep 30"}, false, "")
+	_, _, err := runVerify(ctx, task.ID("verify-gate-slow-test"), dir, &AgentPayload{Verify: "sleep 30"}, false, "")
 	if err == nil {
 		t.Fatal("want gate-slow, got nil")
 	}
@@ -142,7 +142,7 @@ func TestVerifyGateCooperativeCancelStaysCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := runVerify(ctx, task.ID("verify-gate-cancel-test"), dir, &AgentPayload{Verify: "sleep 30"}, false, "")
+	_, _, err := runVerify(ctx, task.ID("verify-gate-cancel-test"), dir, &AgentPayload{Verify: "sleep 30"}, false, "")
 	if err == nil || !strings.Contains(err.Error(), "cancelled") {
 		t.Fatalf("want cancelled error, got %v", err)
 	}
@@ -218,7 +218,7 @@ func writeVendorRepo(t *testing.T, trackedBad bool) string {
 func TestVendorGofmtSignatureClassifiesEnvironmental(t *testing.T) {
 	repo := writeVendorRepo(t, false)
 
-	_, err := runVerify(context.Background(), task.ID("vendor-gofmt-test"), repo, &AgentPayload{Verify: gofmtStageVerify}, false, "")
+	_, _, err := runVerify(context.Background(), task.ID("vendor-gofmt-test"), repo, &AgentPayload{Verify: gofmtStageVerify}, false, "")
 	if err == nil {
 		t.Fatal("want a verify failure, got nil")
 	}
@@ -244,7 +244,7 @@ func TestVendorGofmtSignatureClassifiesEnvironmental(t *testing.T) {
 func TestVendorGofmtSignatureNeverMasksIntroducedWork(t *testing.T) {
 	repo := writeVendorRepo(t, true)
 
-	_, err := runVerify(context.Background(), task.ID("vendor-gofmt-introduced-test"), repo, &AgentPayload{Verify: gofmtStageVerify}, false, "")
+	_, _, err := runVerify(context.Background(), task.ID("vendor-gofmt-introduced-test"), repo, &AgentPayload{Verify: gofmtStageVerify}, false, "")
 	if err == nil {
 		t.Fatal("want a verify failure, got nil")
 	}
