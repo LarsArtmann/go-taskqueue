@@ -398,10 +398,10 @@ type AnswerRecord struct {
 	Question string
 }
 
-// EnqueueDetail is the structured detail on task.enqueued facts. The plain
-// enqueue records the task's identity, the two projection fields the
+// EnqueueDetail is the structured detail on task.enqueued facts. The full
+// shape records the task's identity, the two projection fields the
 // journal must be able to re-derive on its own (priority, dedup key — the
-// inputs of the journal-drift audit), and since 2026-09-24 the FULL task
+// inputs of the journal-drift audit), and the FULL task
 // snapshot (payload, deps, max_attempts, not_before, created_at): with it
 // the journal alone reconstructs the task row, so replay needs no
 // task-row side-channel (ADR-0019 S1 — the sqlitev4/replay verbatim copy
@@ -414,6 +414,13 @@ type AnswerRecord struct {
 // task.enqueued with only Rescue set: the marker that a dead task was
 // re-queued with a fresh attempt budget — the rescued row already
 // exists, so it carries no snapshot.
+//
+// S1 divergence D2 (2026-09-26 companion swap): the engine-backed stores
+// write thin {project,type} details today, so fresh facts do NOT carry
+// the snapshot keys — the conform pins live behind
+// Caps.EnqueuedSnapshot=false (internal/queue/companion/conform) until
+// upstream enriches the detail (M4-gated). cmd/tq's journal-drift audit
+// (cmd/tq/journalaudit_test.go) is the downstream consumer of that cap.
 type EnqueueDetail struct {
 	Project  string `json:"project,omitempty"`
 	Type     string `json:"type,omitempty"`

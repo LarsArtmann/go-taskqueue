@@ -470,19 +470,21 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
 - **Fact forensics**: `task.failed` carries `FailureEvidence{stage,
   exit_code, tail}` (tail size: one `EvidenceTailBytes` constant);
   `task.requeued` carries `RequeueEvidence{reason, retry_in_ms}`.
-- **Enqueued-fact task snapshot (2026-09-24)**: the plain enqueue's
-  `queue.EnqueueDetail` carries the FULL task snapshot — `payload`
-  (key marshaled EXPLICITLY even when empty; key presence distinguishes
-  post-growth facts from legacy thin ones), `deps`, `max_attempts`,
-  `not_before`/`created_at` as unix millis (the task-row storage
-  format) — in BOTH backends, so journal replay needs no task-row
-  side-channel (ADR-0019 S1; pinned by the `enqueue fact detail carries
-  identity` conformance pins in both backend suites). The upstream
-  engine's own enqueued detail stays thin until the M4 ratification
-  memo lands, and pre-growth journals keep the
-  `internal/queue/sqlitev4/replay` verbatim copy (decision memo §6).
-  RescueDead's re-emission stays `{"rescue":"true"}` marker-only — the
-  rescued row already exists.
+- **Enqueued-fact task snapshot (2026-09-24; THIN-DETAIL REALITY since the
+  S1 swap — divergence D2)**: `queue.EnqueueDetail` carries the full
+  snapshot shape — `payload` (key marshaled EXPLICITLY even when empty;
+  key presence distinguishes post-growth facts from legacy thin ones),
+  `deps`, `max_attempts`, `not_before`/`created_at` as unix millis (the
+  task-row storage format) — but the ENGINE-BACKED stores write thin
+  `{project,type}` enqueue details today, so journal replay of
+  priority/dedup_key coverage is NOT provable from fresh facts (the
+  pre-growth `internal/queue/sqlitev4/replay` verbatim copy covers
+  historic journals). The conformance pins are
+  `Caps.EnqueuedSnapshot=false`-skipped in all three harnesses — flip the
+  Cap the day upstream grows the detail (M4 ratification memo owns the
+  fact-schema contract; `tq audit --journal` reports the 0-coverage
+degradation explicitly). RescueDead's re-emission stays
+  `{"rescue":"true"}` marker-only — the rescued row already exists.
 - **Secrets-in-logs redaction (default ON, `--redact=false` /
   `$TQ_REDACT=false` to disable, worker + agent-pool)**: every output tail
   goes through the redaction pass (`internal/executor/redact.go`) BEFORE
