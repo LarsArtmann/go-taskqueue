@@ -250,6 +250,9 @@ step "dogfood-once live smoke (stub agent; TQ_DOGFOOD=1 adds the real-agent proo
 step "bootstrap --install smoke"
 ./scripts/smoke/bootstrap-install.sh
 
+step "archive-evidence smoke (scratch-repo branch pin + check-ignore semantics probe)"
+./scripts/smoke/archive-evidence.sh
+
 step "fullcore embed smoke (sqlite, scratch TQ_DB)"
 ./scripts/smoke/fullcore.sh
 
