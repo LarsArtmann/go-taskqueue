@@ -11,6 +11,8 @@ import (
 // a logged URI — in any position, count, or alongside any other params —
 // while every non-token query parameter does.
 func TestRedactedRequestURITable(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		raw  string
@@ -43,6 +45,8 @@ func TestRedactedRequestURITable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			u, err := url.Parse(tt.raw)
 			if err != nil {
 				t.Fatalf("url.Parse(%q): %v", tt.raw, err)

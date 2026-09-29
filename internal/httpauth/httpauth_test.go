@@ -1,11 +1,14 @@
 package httpauth
 
 import (
-	"net/http/httptest"
+	"context"
+	"net/http"
 	"testing"
 )
 
 func TestAuthorizationToken(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name   string
 		header string
@@ -22,10 +25,9 @@ func TestAuthorizationToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := httptest.NewRequest("GET", "/", nil)
-			if tt.header != "" {
-				r.Header.Set("Authorization", tt.header)
-			}
+			t.Parallel()
+
+			r := tokenRequest(t, tt.header)
 
 			if got := AuthorizationToken(r); got != tt.want {
 				t.Errorf("AuthorizationToken(header=%q) = %q, want %q", tt.header, got, tt.want)
@@ -34,19 +36,48 @@ func TestAuthorizationToken(t *testing.T) {
 	}
 }
 
+func tokenRequest(t *testing.T, header string) *http.Request {
+	t.Helper()
+
+	r, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	if header != "" {
+		r.Header.Set("Authorization", header)
+	}
+
+	return r
+}
+
 func TestQueryToken(t *testing.T) {
-	r := httptest.NewRequest("GET", "/api/stats?project=demo&token=sekrit", nil)
+	t.Parallel()
+
+	r, err := http.NewRequestWithContext(
+		context.Background(), http.MethodGet, "/api/stats?project=demo&token=sekrit", nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
 
 	if got := QueryToken(r); got != "sekrit" {
 		t.Errorf("QueryToken() = %q, want %q", got, "sekrit")
 	}
 
-	if got := QueryToken(httptest.NewRequest("GET", "/api/stats", nil)); got != "" {
+	empty, err := http.NewRequestWithContext(
+		context.Background(), http.MethodGet, "/api/stats", nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+
+	if got := QueryToken(empty); got != "" {
 		t.Errorf("QueryToken(no query) = %q, want empty", got)
 	}
 }
 
 func TestTokenMatches(t *testing.T) {
+	t.Parallel()
+
 	expected := HashToken("sekrit")
 
 	if !TokenMatches(expected, "sekrit") {
