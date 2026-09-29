@@ -9,7 +9,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 )
 
-require github.com/larsartmann/go-error-family v0.10.1 // indirect
+require github.com/larsartmann/go-error-family v0.11.0 // indirect
 
 replace github.com/larsartmann/go-taskqueue/internal/queue => ..
 

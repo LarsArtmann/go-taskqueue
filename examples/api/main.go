@@ -17,13 +17,15 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -45,11 +47,11 @@ func main() {
 
 	http.HandleFunc("POST /enqueue", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Type    string          `json:"type"`
-			Project string          `json:"project"`
-			Payload json.RawMessage `json:"payload"`
+			Type    string         `json:"type"`
+			Project string         `json:"project"`
+			Payload jsontext.Value `json:"payload"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Type == "" {
+		if err := json.UnmarshalRead(r.Body, &req); err != nil || req.Type == "" {
 			http.Error(w, `want {"type","project","payload"}`, http.StatusBadRequest)
 
 			return
@@ -67,7 +69,7 @@ func main() {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]string{"id": t.ID.String()})
+		_ = json.MarshalWrite(w, map[string]string{"id": t.ID.String()})
 	})
 
 	http.HandleFunc("GET /stats", func(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +80,7 @@ func main() {
 			return
 		}
 
-		_ = json.NewEncoder(w).Encode(counts)
+		_ = json.MarshalWrite(w, counts)
 	})
 
 	http.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {

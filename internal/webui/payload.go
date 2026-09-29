@@ -349,7 +349,7 @@ func retryTrail(facts []journalFactView) []retryReason {
 
 	slices.SortStableFunc(trail, func(a, b retryReason) int {
 		if a.Count != b.Count {
-			return b.Count - a.Count
+			return cmp.Compare(b.Count, a.Count)
 		}
 
 		return b.Last.Compare(a.Last)

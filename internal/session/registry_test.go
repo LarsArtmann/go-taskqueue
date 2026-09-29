@@ -2,7 +2,7 @@ package session
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"os"
 	"os/exec"

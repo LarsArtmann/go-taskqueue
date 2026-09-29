@@ -322,19 +322,31 @@ func TestVerifyDeathStage(t *testing.T) {
 		want string
 	}{
 		{"task deadline", context.DeadlineExceeded, context.Background, "some output", VerifyStageE2ETimeout},
-		{"go-test watchdog panic", nil, context.Background,
-			"panic: test timed out after 3m0s\nrunning tests:", VerifyStageE2ETimeout},
-		{"test failure beats gofmt stage", nil, context.Background,
-			"ok  \tdemo\t0.01s\n--- FAIL: TestX (0.00s)\nFAIL\n", VerifyStageTest},
-		{"package FAIL", nil, context.Background,
-			"FAIL\tdemo\t0.01s\n", VerifyStageTest},
-		{"all-ok tail is the gofmt witness", nil, context.Background,
-			"ok  \tdemo\t0.01s\n", VerifyStageGofmt},
-		{"bare gofmt path lines", nil, context.Background,
-			"main.go\nutil.go\n", VerifyStageGofmt},
+		{
+			"go-test watchdog panic", nil, context.Background,
+			"panic: test timed out after 3m0s\nrunning tests:", VerifyStageE2ETimeout,
+		},
+		{
+			"test failure beats gofmt stage", nil, context.Background,
+			"ok  \tdemo\t0.01s\n--- FAIL: TestX (0.00s)\nFAIL\n", VerifyStageTest,
+		},
+		{
+			"package FAIL", nil, context.Background,
+			"FAIL\tdemo\t0.01s\n", VerifyStageTest,
+		},
+		{
+			"all-ok tail is the gofmt witness", nil, context.Background,
+			"ok  \tdemo\t0.01s\n", VerifyStageGofmt,
+		},
+		{
+			"bare gofmt path lines", nil, context.Background,
+			"main.go\nutil.go\n", VerifyStageGofmt,
+		},
 		{"no gate, no marker", nil, context.Background, "sh: 1: nix: not found\n", VerifyStageRun},
-		{"gofmt path only in gofmt gates", nil, context.Background,
-			"main.go\n", VerifyStageGofmt},
+		{
+			"gofmt path only in gofmt gates", nil, context.Background,
+			"main.go\n", VerifyStageGofmt,
+		},
 	}
 
 	for _, tc := range cases {

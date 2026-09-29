@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -93,7 +93,7 @@ func TestShowSyntheticSessionIDRendersForensics(t *testing.T) {
 		Facts []journal.Fact `json:"facts"`
 	}
 
-	if err := json.NewDecoder(strings.NewReader(out)).Decode(&view); err != nil {
+	if err := json.UnmarshalRead(strings.NewReader(out), &view); err != nil {
 		t.Fatalf("show output is not JSON: %v\n%s", err, out)
 	}
 

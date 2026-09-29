@@ -39,7 +39,6 @@ import (
 	upostgres "github.com/larsartmann/go-cqrs-lite/queue/postgres/v4"
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
-
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
@@ -80,7 +79,12 @@ var WithProjectExclusivity = companion.WithProjectExclusivity
 // companion handle, migrate the companion tables, and tear BOTH handles
 // down again when the migration fails — the two constructors must not
 // drift on cleanup order.
-func finishOpen(ctx context.Context, engine *upostgres.Store[[]byte], db *sql.DB, projectExclusive bool) (*Store, error) {
+func finishOpen(
+	ctx context.Context,
+	engine *upostgres.Store[[]byte],
+	db *sql.DB,
+	projectExclusive bool,
+) (*Store, error) {
 	db.SetMaxOpenConns(2)
 
 	store := &Store{
@@ -155,6 +159,7 @@ func OpenWithPool(ctx context.Context, pool *pgxpool.Pool, opts ...StoreOption) 
 func (s *Store) Close() error {
 	errEngine := s.engine.Close()
 	errDB := s.db.Close()
+
 	if errEngine != nil {
 		return errEngine
 	}

@@ -19,7 +19,7 @@ package papdashboard
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -287,7 +287,7 @@ func (p *AnswerPoller) list(ctx context.Context, offset int) ([]papQuestion, err
 			Data []papQuestion `json:"data"`
 		} `json:"body"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
+	if err := json.UnmarshalRead(resp.Body, &doc); err != nil {
 		return nil, fmt.Errorf("decode question list: %w", err)
 	}
 

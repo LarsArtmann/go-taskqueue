@@ -2,13 +2,14 @@ package consumer
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"path/filepath"
 	"slices"
 	"sync"
 	"testing"
 	"time"
+
+	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
@@ -342,6 +343,6 @@ func mkTask(i int) task.New {
 	return task.New{
 		Type:    "sh",
 		Project: "consumer-test",
-		Payload: json.RawMessage(`"echo hi"`),
+		Payload: jsontext.Value(`"echo hi"`),
 	}
 }

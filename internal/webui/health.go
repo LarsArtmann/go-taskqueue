@@ -9,7 +9,7 @@ package webui
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -261,7 +261,7 @@ func writeHealthJSON(w http.ResponseWriter, code int, resp health.Response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
+	if err := json.MarshalWrite(w, resp); err != nil {
 		return
 	}
 }
