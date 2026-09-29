@@ -37,12 +37,12 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.3.1";
-        vendorHash = "sha256-M66RZSzUNOvpNScLrBZrHOEgrQbbQi27SOcsRNBkhLU=";
+        vendorHash = "sha256-USH5j7+aEgqJPwGRSq0I5nmDVFoLbigGKCshpsS/iI4=";
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
         goTarballVersion = "1.27.1";
-        goTarballHash = "sha256-M66RZSzUNOvpNScLrBZrHOEgrQbbQi27SOcsRNBkhLU=";
+        goTarballHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         # ADR-0017: cmd/tq is its own replace-free module (proxy
         # installability). modRoot + subPackages route the hermetic build
@@ -176,22 +176,24 @@
         {
           # Generated templ output never satisfies gofumpt/goimports; the
           # .templ sources carry the formatting contract via templ fmt.
-          treefmt.settings.excludes = [ "*_templ.go" ];
+          treefmt.settings = {
+            excludes = [ "*_templ.go" ];
 
-          # go.mod's 1.27.1 floor vs the sandbox's go_1_26: the formatters
-          # that shell out to `go` (templ fmt resolves imports, goimports
-          # loads the module) try to DOWNLOAD the 1.27.1 toolchain and the
-          # treefmt check dies in the no-network sandbox — master CI red
-          # since 2026-09-17 12:54. treefmt-nix's templ module hardcodes a
-          # command bundling nixpkgs go, so both commands are overridden
-          # with wrappers that carry the SAME tarball-built toolchain
-          # goTarballVersion builds (hash in sync with goTarballHash
-          # above). Drop with the goTarball block when nixpkgs ships
-          # go >= 1.27.1.
-          treefmt.settings.formatter.templ.command = lib.mkForce (formatterWithGo "templ" pkgs.templ);
-          treefmt.settings.formatter.goimports.command = lib.mkForce (
-            formatterWithGo "goimports" pkgs.gotools
-          );
+            # go.mod's 1.27.1 floor vs the sandbox's go_1_26: the formatters
+            # that shell out to `go` (templ fmt resolves imports, goimports
+            # loads the module) try to DOWNLOAD the 1.27.1 toolchain and the
+            # treefmt check dies in the no-network sandbox — master CI red
+            # since 2026-09-17 12:54. treefmt-nix's templ module hardcodes a
+            # command bundling nixpkgs go, so both commands are overridden
+            # with wrappers that carry the SAME tarball-built toolchain
+            # goTarballVersion builds (hash in sync with goTarballHash
+            # above). Drop with the goTarball block when nixpkgs ships
+            # go >= 1.27.1.
+            formatter = {
+              templ.command = lib.mkForce (formatterWithGo "templ" pkgs.templ);
+              goimports.command = lib.mkForce (formatterWithGo "goimports" pkgs.gotools);
+            };
+          };
 
           # Fast vendorHash drift gate: realizes ONLY the go-modules FOD so a
           # go.mod/go.sum change fails in seconds with the hash mismatch.
@@ -404,51 +406,53 @@
           # hermetic checks.test stays root-scope on purpose: the sandbox
           # vendors only the root module's dependency graph (queue/postgres
           # needs pgx, which root no longer carries).
-          apps.test = lib.mkForce {
-            type = "app";
-            meta.description = "Run the full multi-module test suite (root + every internal/* module)";
-            program = lib.getExe (
-              pkgs.writeShellApplication {
-                name = "run-test";
-                runtimeInputs = [
-                  pkgs.go
-                  pkgs.findutils
-                  pkgs.gnused
-                ];
-                text = ''
-                  set -euo pipefail
-                  export GOWORK=off GOEXPERIMENT=jsonv2
-                  go test -race -v -coverprofile=coverage.out ./...
-                  for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
-                    echo "== module $m =="
-                    ( cd "$m" && go test -race ./... )
-                  done
-                '';
-              }
-            );
-          };
+          apps = {
+            test = lib.mkForce {
+              type = "app";
+              meta.description = "Run the full multi-module test suite (root + every internal/* module)";
+              program = lib.getExe (
+                pkgs.writeShellApplication {
+                  name = "run-test";
+                  runtimeInputs = [
+                    pkgs.go
+                    pkgs.findutils
+                    pkgs.gnused
+                  ];
+                  text = ''
+                    set -euo pipefail
+                    export GOWORK=off GOEXPERIMENT=jsonv2
+                    go test -race -v -coverprofile=coverage.out ./...
+                    for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
+                      echo "== module $m =="
+                      ( cd "$m" && go test -race ./... )
+                    done
+                  '';
+                }
+              );
+            };
 
-          apps.default.meta.description = "tq — projects-aware task queue CLI";
-          apps.lint.meta.description = "Run golangci-lint over the root module";
-          apps.fmt.meta.description = "Run the treefmt formatters (gofumpt, goimports, nixfmt, templ fmt)";
+            default.meta.description = "tq — projects-aware task queue CLI";
+            lint.meta.description = "Run golangci-lint over the root module";
+            fmt.meta.description = "Run the treefmt formatters (gofumpt, goimports, nixfmt, templ fmt)";
 
-          # Recompile the web UI stylesheet into the committed, embedded
-          # static asset (dev step — the nix build just embeds the output).
-          apps.webui-css = {
-            type = "app";
-            meta.description = "Recompile internal/webui/static/app.css via tailwindcss --minify";
-            program = pkgs.lib.getExe (
-              pkgs.writeShellApplication {
-                name = "webui-css";
-                runtimeInputs = [
-                  pkgs.tailwindcss_4
-                  pkgs.go
-                ];
-                text = ''
-                  exec bash scripts/build-webui-css.sh
-                '';
-              }
-            );
+            # Recompile the web UI stylesheet into the committed, embedded
+            # static asset (dev step — the nix build just embeds the output).
+            webui-css = {
+              type = "app";
+              meta.description = "Recompile internal/webui/static/app.css via tailwindcss --minify";
+              program = pkgs.lib.getExe (
+                pkgs.writeShellApplication {
+                  name = "webui-css";
+                  runtimeInputs = [
+                    pkgs.tailwindcss_4
+                    pkgs.go
+                  ];
+                  text = ''
+                    exec bash scripts/build-webui-css.sh
+                  '';
+                }
+              );
+            };
           };
         };
     };
