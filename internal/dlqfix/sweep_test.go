@@ -572,8 +572,6 @@ func TestSweeperAutoDismissesGateArtifactShippedDeath(t *testing.T) {
 	t.Parallel()
 
 	s := newTestStore(t)
-	repo, key := writeTodoRepo(t, "- [x] ship the widget")
-	dead := seedDeadGateArtifactTask(t, s, repo, key, gateArtifactEvidence(), gateArtifactLastError)
 
 	sw, err := NewSweeper(context.Background(), s, SweeperConfig{
 		Scanner: commitsScanner(),
@@ -581,6 +579,9 @@ func TestSweeperAutoDismissesGateArtifactShippedDeath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSweeper: %v", err)
 	}
+
+	repo, key := writeTodoRepo(t, "- [x] ship the widget")
+	dead := seedDeadGateArtifactTask(t, s, repo, key, gateArtifactEvidence(), gateArtifactLastError)
 
 	stats, err := sw.Sweep(context.Background())
 	if err != nil {
@@ -639,7 +640,15 @@ func TestSweeperAutoDismissLegacyAllOkFact(t *testing.T) {
 	t.Parallel()
 
 	s := newTestStore(t)
-	repo, key := writeTodoRepo(t, "- [ ] other row")
+	sw, err := NewSweeper(context.Background(), s, SweeperConfig{
+		Scanner: commitsScanner(),
+	})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	repo, _ := writeTodoRepo(t, "- [ ] other row")
+	key := harvest.ItemKey(filepath.Base(repo), "ship the old widget")
 	dead := seedDeadGateArtifactTask(t, s, repo, key,
 		executor.FailureEvidence{
 			Stage:    "verify",
@@ -648,15 +657,6 @@ func TestSweeperAutoDismissLegacyAllOkFact(t *testing.T) {
 		},
 		`agent verify failed ("go test ./... && test -z "$(gofmt -l .)""): exit 1: ok  demo`,
 	)
-
-	sw, err := NewSweeper(context.Background(), s, SweeperConfig{
-		Scanner: executor.GitScannerFunc(func(context.Context, string, string, string) ([]executor.Commit, error) {
-			return []executor.Commit{{SHA: "abc123"}}, nil
-		}),
-	})
-	if err != nil {
-		t.Fatalf("NewSweeper: %v", err)
-	}
 
 	stats, err := sw.Sweep(context.Background())
 	if err != nil {
@@ -696,8 +696,6 @@ func TestSweeperGateArtifactWithoutShippedProofKeepsAutopsy(t *testing.T) {
 			t.Parallel()
 
 			s := newTestStore(t)
-			repo, key := writeTodoRepo(t, tt.todo...)
-			seedDeadGateArtifactTask(t, s, repo, tt.key(repo, key), gateArtifactEvidence(), gateArtifactLastError)
 
 			cfg := SweeperConfig{}
 			if tt.scanner != nil {
@@ -708,6 +706,9 @@ func TestSweeperGateArtifactWithoutShippedProofKeepsAutopsy(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewSweeper: %v", err)
 			}
+
+			repo, key := writeTodoRepo(t, tt.todo...)
+			seedDeadGateArtifactTask(t, s, repo, tt.key(repo, key), gateArtifactEvidence(), gateArtifactLastError)
 
 			stats, err := sw.Sweep(context.Background())
 			if err != nil {
