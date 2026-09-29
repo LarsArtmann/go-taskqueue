@@ -790,7 +790,11 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   archive while the daemon is live: global ignores + the daemon + a
   clean-looking commit form the silent-loss triangle (f9 near-miss: 16
   `*.log` files invisible to git behind an archive README, caught only by
-  reading the daemon commit's stat; 06-41 report §d1/§e1-2)
+  reading the daemon commit's stat; 06-41 report §d1/§e1-2).
+  `scripts/archive-evidence.sh <src…> <archive-dir>` is the one-command
+  form (check-ignore → copy → SHA256SUMS regen → daemon-stat diff;
+  `--wait N` blocks for the daemon sweep, default prints the verify
+  commands — a post-copy daemon commit missing a file FAILs, the f9 shape)
 
 ### templ-components adoption
 
