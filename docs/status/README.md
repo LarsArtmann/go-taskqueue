@@ -51,6 +51,24 @@ row must carry the backticked `archived/…` path (unbackticked rows count
 as live forever). A mechanical `check-archive-eligibility.sh` gate is
 minted as TODO work to replace the judgment version.
 
+**Evidence archives** (`docs/status/assets/<name>/`): while the auto-commit
+daemon is live, a clean `git status` is NOT a complete archive — global
+ignores + the daemon + a clean-looking commit form the silent-loss triangle
+(f9 near-miss: 16 `*.log` files invisible to git behind an archive README,
+06-41 report §d1/§e1-2). Copy evidence with the one-command form, which
+runs the safe order mechanically (check-ignore FIRST, copy second,
+SHA256SUMS regen, daemon-commit diff; `--wait N` blocks for the daemon
+sweep instead of printing the verify commands):
+
+```sh
+scripts/archive-evidence.sh [--wait SECONDS] <src>… <archive-dir>
+```
+
+`scripts/check-ghost-archives.sh` (ci-local) is the catcher for archives
+that skip it: every filename an archive README promises must be
+git-tracked, and every archive ships a git-tracked SHA256SUMS manifest the
+gate re-verifies. Full contract: AGENTS.md (evidence-archive bullets).
+
 Archive counter (update when moving files): 346 reports in `archived/`,
 26 plans in `docs/planning/archived/` (2026-09-21 full-corpus docs-health
 sweep: 209 status reports — 198 verify-only re-dispatch duplicates + 9
