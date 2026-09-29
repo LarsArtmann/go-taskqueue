@@ -37,12 +37,12 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.3.1";
-        vendorHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+        vendorHash = "sha256-7Ju6nuHGF28vRiniZUOVkUZi1IThXcWZZ7t0RizgSfc=";
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
         goTarballVersion = "1.27.1";
-        goTarballHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        goTarballHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         # ADR-0017: cmd/tq is its own replace-free module (proxy
         # installability). modRoot + subPackages route the hermetic build
@@ -85,6 +85,13 @@
             printf '\nreplace github.com/larsartmann/go-taskqueue => ../..\n' >> go.mod
             sed -n 's|^replace \(github.com/larsartmann/go-taskqueue/internal[^ ]*\) => ./\(.*\)$|replace \1 => ../../\2|p' ../../go.mod >> go.mod
             go mod download all
+            # `go mod download all` fetches only BUILD-LIST versions, but the
+            # package preBuild's `go mod tidy` loads the FULL module graph —
+            # including superseded versions reachable under pre-1.17 go
+            # directives (jackc/pgpassfile@v1.0.0 requires testify@v1.3.0) —
+            # from the file:// proxy. Fetch every versioned graph node so the
+            # FOD covers what tidy needs (holey-proxy class, 2026-09-29).
+            go mod graph | tr ' ' '\n' | grep '@' | sort -u | xargs -r go mod download -x
           '';
           preBuild = ''
             export HOME=$TMPDIR
@@ -137,7 +144,7 @@
               version = "1.27.1";
               src = pkgs.fetchurl {
                 url = "https://go.dev/dl/go${finalAttrs.version}.src.tar.gz";
-                hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+                hash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
               };
               patches = builtins.filter (
                 p: builtins.match "go_no_vendor_checks-.*[.]patch" (baseNameOf p) == null
