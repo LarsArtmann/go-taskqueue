@@ -37,7 +37,7 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.3.1";
-        vendorHash = "sha256-7Ju6nuHGF28vRiniZUOVkUZi1IThXcWZZ7t0RizgSfc=";
+        vendorHash = "";
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
@@ -91,7 +91,7 @@
             # directives (jackc/pgpassfile@v1.0.0 requires testify@v1.3.0) —
             # from the file:// proxy. Fetch every versioned graph node so the
             # FOD covers what tidy needs (holey-proxy class, 2026-09-29).
-            go mod graph | tr ' ' '\n' | grep '@' | sort -u | xargs -r go mod download -x
+            go mod graph | tr ' ' '\n' | grep '@' | grep -v '^golang.org/toolchain@' | sort -u | xargs -r go mod download -x
           '';
           preBuild = ''
             export HOME=$TMPDIR
