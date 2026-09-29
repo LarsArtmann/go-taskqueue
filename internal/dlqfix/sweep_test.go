@@ -3,11 +3,14 @@ package dlqfix
 import (
 	"context"
 	"encoding/json/v2"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
@@ -482,5 +485,238 @@ func TestSweeperIgnoresForeignCompletions(t *testing.T) {
 
 	if payload.DeadTask != stillDead.ID.String() {
 		t.Fatalf("autopsy minted for %s, want the still-dead %s", payload.DeadTask, stillDead.ID)
+	}
+}
+
+// seedDeadGateArtifactTask enqueues an agent task for repo (a real temp dir
+// with a TODO_LIST.md), gives it the caller's dedup key, and fails its only
+// attempt with the caller's evidence + last error — the shape the
+// gate-artifact auto-dismissal judges.
+func seedDeadGateArtifactTask(
+	t *testing.T,
+	s *sqlite.Store,
+	repo, dedupKey string,
+	evidence executor.FailureEvidence,
+	lastError string,
+) task.Task {
+	t.Helper()
+
+	raw, err := json.Marshal(executor.AgentPayload{Repo: repo, Prompt: "ship it", Yolo: true})
+	if err != nil {
+		t.Fatalf("marshal agent payload: %v", err)
+	}
+
+	ctx := context.Background()
+
+	enq, err := s.Enqueue(ctx, task.New{
+		Type:        executor.TaskTypeAgent,
+		Project:     "demo",
+		Payload:     raw,
+		MaxAttempts: 1,
+		DedupKey:    dedupKey,
+	})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	_, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	ev, err := json.Marshal(evidence)
+	if err != nil {
+		t.Fatalf("marshal evidence: %v", err)
+	}
+
+	if err := s.Fail(ctx, enq.ID, claim, lastError, 0, ev); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	got, err := s.Get(ctx, enq.ID)
+	if err != nil || got.Status != task.Dead {
+		t.Fatalf("seeded task not dead: %+v (%v)", got, err)
+	}
+
+	return got
+}
+
+// writeTodoRepo makes a real repo dir with a TODO_LIST.md holding the given
+// checkbox lines, and returns the keyed dedup key of the FIRST line's item.
+func writeTodoRepo(t *testing.T, lines ...string) (string, string) {
+	t.Helper()
+
+	repo := t.TempDir()
+	todo := filepath.Join(repo, harvest.DefaultTodoFile)
+
+	if err := os.WriteFile(todo, []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatalf("write TODO_LIST: %v", err)
+	}
+
+	text := strings.TrimPrefix(strings.TrimPrefix(lines[0], "- [x] "), "- [ ] ")
+
+	return repo, harvest.ItemKey(filepath.Base(repo), text)
+}
+
+func gateArtifactEvidence() executor.FailureEvidence {
+	return executor.FailureEvidence{
+		Stage:       "verify",
+		VerifyStage: executor.VerifyStageGofmt,
+		Tail:        "ok  \tdemo\t0.01s\n",
+	}
+}
+
+const gateArtifactLastError = `agent verify gate environmental signature [vendor-gofmt] ("..."): boom`
+
+func TestSweeperAutoDismissesGateArtifactShippedDeath(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	repo, key := writeTodoRepo(t, "- [x] ship the widget")
+	dead := seedDeadGateArtifactTask(t, s, repo, key, gateArtifactEvidence(), gateArtifactLastError)
+
+	sw, err := NewSweeper(context.Background(), s, SweeperConfig{
+		Scanner: commitsScanner(),
+	})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	stats, err := sw.Sweep(context.Background())
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+
+	if stats.AutoDismissed != 1 || stats.FixesEnqueued != 0 {
+		t.Fatalf("stats = %+v, want 1 auto-dismiss, 0 autopsies", stats)
+	}
+
+	if tasks := pendingDLQFixTasks(t, s); len(tasks) != 0 {
+		t.Fatalf("autopsy minted for an auto-dismissed death: %d", len(tasks))
+	}
+
+	got, err := s.Get(context.Background(), dead.ID)
+	if err != nil || got.Status != task.Cancelled {
+		t.Fatalf("dead task not cancelled: %+v (%v)", got, err)
+	}
+
+	trail, err := s.FactsForTask(context.Background(), dead.ID.String(), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var detail map[string]string
+
+	sawFact := false
+
+	for _, f := range trail {
+		if f.Type != journal.Cancelled {
+			continue
+		}
+
+		sawFact = true
+
+		if json.Unmarshal(f.Detail, &detail) != nil {
+			t.Fatalf("dismiss fact detail not JSON: %s", f.Detail)
+		}
+	}
+
+	if !sawFact || !strings.Contains(detail["reason"], "gate-artifact auto-dismiss") ||
+		!strings.Contains(detail["reason"], executor.VerifyGateEnvCode) ||
+		detail["dismissed_by"] != DismissedBySweeper {
+		t.Fatalf("dismiss fact = %v (fact seen: %v)", detail, sawFact)
+	}
+}
+
+// commitsScanner fakes a scanner that always attributes one footer commit.
+func commitsScanner() executor.GitScanner {
+	return executor.GitScannerFunc(func(context.Context, string, string, string) ([]executor.Commit, error) {
+		return []executor.Commit{{SHA: "abc123", Subject: "feat: widget"}}, nil
+	})
+}
+
+func TestSweeperAutoDismissLegacyAllOkFact(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	repo, key := writeTodoRepo(t, "- [ ] other row")
+	dead := seedDeadGateArtifactTask(t, s, repo, key,
+		executor.FailureEvidence{
+			Stage:    "verify",
+			ExitCode: 1,
+			Tail:     "ok  \tdemo\t0.01s\nok  \tinternal/queue\t0.4s\n",
+		},
+		`agent verify failed ("go test ./... && test -z "$(gofmt -l .)""): exit 1: ok  demo`,
+	)
+
+	sw, err := NewSweeper(context.Background(), s, SweeperConfig{
+		Scanner: executor.GitScannerFunc(func(context.Context, string, string, string) ([]executor.Commit, error) {
+			return []executor.Commit{{SHA: "abc123"}}, nil
+		}),
+	})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	stats, err := sw.Sweep(context.Background())
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+
+	if stats.AutoDismissed != 1 {
+		t.Fatalf("stats = %+v, want the legacy all-ok death auto-dismissed", stats)
+	}
+
+	if got, _ := s.Get(context.Background(), dead.ID); got.Status != task.Cancelled {
+		t.Fatalf("dead task not cancelled: %s", got.Status)
+	}
+}
+
+func TestSweeperGateArtifactWithoutShippedProofKeepsAutopsy(t *testing.T) {
+	t.Parallel()
+
+	noCommits := executor.GitScannerFunc(func(context.Context, string, string, string) ([]executor.Commit, error) {
+		return nil, nil
+	})
+
+	tests := []struct {
+		name    string
+		todo    []string
+		key     func(repo, key string) string
+		scanner executor.GitScanner
+	}{
+		{name: "item still open", todo: []string{"- [ ] ship the widget"}, key: func(_, key string) string { return key }, scanner: commitsScanner()},
+		{name: "no footer commits", todo: []string{"- [x] ship the widget"}, key: func(_, key string) string { return key }, scanner: noCommits},
+		{name: "non-harvest task", todo: []string{"- [x] ship the widget"}, key: func(_, _ string) string { return "external:id" }, scanner: commitsScanner()},
+		{name: "no scanner wired", todo: []string{"- [x] ship the widget"}, key: func(_, key string) string { return key }, scanner: nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			s := newTestStore(t)
+			repo, key := writeTodoRepo(t, tt.todo...)
+			seedDeadGateArtifactTask(t, s, repo, tt.key(repo, key), gateArtifactEvidence(), gateArtifactLastError)
+
+			cfg := SweeperConfig{}
+			if tt.scanner != nil {
+				cfg.Scanner = tt.scanner
+			}
+
+			sw, err := NewSweeper(context.Background(), s, cfg)
+			if err != nil {
+				t.Fatalf("NewSweeper: %v", err)
+			}
+
+			stats, err := sw.Sweep(context.Background())
+			if err != nil {
+				t.Fatalf("sweep: %v", err)
+			}
+
+			if stats.AutoDismissed != 0 || stats.FixesEnqueued != 1 {
+				t.Fatalf("stats = %+v, want 0 auto-dismissed, 1 autopsy", stats)
+			}
+		})
 	}
 }
