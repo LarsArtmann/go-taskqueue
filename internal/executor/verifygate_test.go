@@ -381,3 +381,61 @@ func TestVerifyDeathStage(t *testing.T) {
 		t.Errorf("gofmt stage in a gofmt-free gate = %s, want %s", got, VerifyStageRun)
 	}
 }
+
+func TestIsGateArtifactDeath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		evidence  FailureEvidence
+		lastError string
+		want      bool
+	}{
+		{
+			name:      "stamped environmental code in last error",
+			evidence:  FailureEvidence{Stage: "verify", VerifyStage: VerifyStageGofmt, Tail: "ok  \tdemo\t0.01s\n"},
+			lastError: `agent verify gate environmental signature [vendor-gofmt] ("..."): boom`,
+			want:      true,
+		},
+		{
+			name:      "legacy all-ok tail with gofmt stage in error",
+			evidence:  FailureEvidence{Stage: "verify", ExitCode: 1, Tail: "ok  \tdemo\t0.01s\nok  \tinternal/queue\t0.4s\n"},
+			lastError: `agent verify failed ("go test ./... && test -z "$(gofmt -l .)""): exit 1: ok  demo`,
+			want:      true,
+		},
+		{
+			name:      "stamped gofmt without the environmental code is a real defect",
+			evidence:  FailureEvidence{Stage: "verify", VerifyStage: VerifyStageGofmt, Tail: "main.go\n"},
+			lastError: `agent verify failed ("gofmt -l ."): exit 1: main.go`,
+			want:      false,
+		},
+		{
+			name:      "test failure marker disqualifies",
+			evidence:  FailureEvidence{Stage: "verify", Tail: "ok  \tdemo\t0.01s\n--- FAIL: TestX\nFAIL\n"},
+			lastError: `agent verify failed ("go test ./... && gofmt -l ."): exit 1`,
+			want:      false,
+		},
+		{
+			name:      "empty evidence is never the artifact",
+			evidence:  FailureEvidence{},
+			lastError: `agent verify failed ("gofmt -l ."): exit 1`,
+			want:      false,
+		},
+		{
+			name:      "non-verify stage",
+			evidence:  FailureEvidence{Stage: "agent", Tail: "ok  \tdemo\t0.01s\n"},
+			lastError: "gofmt -l .",
+			want:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := IsGateArtifactDeath(tt.evidence, tt.lastError); got != tt.want {
+				t.Errorf("IsGateArtifactDeath(%+v, %q) = %v, want %v", tt.evidence, tt.lastError, got, tt.want)
+			}
+		})
+	}
+}

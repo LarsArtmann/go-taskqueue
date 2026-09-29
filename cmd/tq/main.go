@@ -1175,8 +1175,9 @@ func cmdAgentPool(args []string) error {
 		var err error
 
 		dlqfixSweeper, err = dlqfix.NewSweeper(ctx, store, dlqfix.SweeperConfig{
-			Model: poolOpts.model,
-			Log:   log,
+			Model:   poolOpts.model,
+			Log:     log,
+			Scanner: executor.GitLogScanner{},
 		})
 		if err != nil {
 			return fmt.Errorf("dlqfix sweeper: %w", err)

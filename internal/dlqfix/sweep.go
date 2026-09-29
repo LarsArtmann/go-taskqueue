@@ -253,7 +253,9 @@ func (s *Sweeper) autoDismissGateArtifact(ctx context.Context, t task.Task, repo
 
 	summary := fmt.Sprintf(
 		"gate-artifact auto-dismiss [%s]: verify died on the unscoped gofmt artifact, work shipped (%d footer commit(s), TODO item %s)",
-		executor.VerifyGateEnvCode, len(commits), shipment,
+		executor.VerifyGateEnvCode,
+		len(commits),
+		shipment,
 	)
 
 	if err := s.store.DismissDead(ctx, t.ID, summary, DismissedBySweeper); err != nil {
