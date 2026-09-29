@@ -247,6 +247,35 @@ func allPackagesPassed(tail string) bool {
 	return false
 }
 
+// IsGateArtifactDeath reports whether a DEAD task's stored failure names
+// the unscoped-gofmt verify-gate artifact (the VerifyGateEnvironmental
+// class): either the death was classified at run time (VerifyGateEnvCode in
+// the recorded error text) or it is a LEGACY fact predating both stamps,
+// where the all-ok evidence tail plus a gofmt stage in the recorded verify
+// command is the witness (the minted gofmt stage swallows its own output,
+// row 237). A real regression — any FAIL marker, a stamped non-environmental
+// class, missing evidence — is never the artifact. dlqfix uses this to
+// auto-dismiss shipped gate-artifact deaths instead of minting an autopsy
+// (TODO row 145); the miss direction is always safe (an autopsy runs).
+func IsGateArtifactDeath(ev FailureEvidence, lastError string) bool {
+	if ev.Stage != "verify" {
+		return false
+	}
+
+	if strings.Contains(lastError, VerifyGateEnvCode) {
+		return true
+	}
+
+	if ev.VerifyStage != "" {
+		// Stamped fact WITHOUT the environmental code: the gofmt stage died
+		// over tracked files after real work — a defect to autopsy, not the
+		// artifact.
+		return false
+	}
+
+	return allPackagesPassed(ev.Tail) && strings.Contains(lastError, "gofmt -l")
+}
+
 // verifyTestFailRe matches go-test failure markers at line start: the
 // per-test "--- FAIL: X" line and the per-package/suite "FAIL" lines.
 var verifyTestFailRe = regexp.MustCompile(`(?m)^--- FAIL: |^FAIL\b`)

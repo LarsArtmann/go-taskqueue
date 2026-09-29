@@ -71,6 +71,10 @@ const (
 	VerifyGateEnvCode       = internalexecutor.VerifyGateEnvCode
 )
 
+// IsGateArtifactDeath classifies a stored verify failure as the
+// unscoped-gofmt artifact (the vendor-gofmt death class).
+var IsGateArtifactDeath = internalexecutor.IsGateArtifactDeath
+
 // Verify-gate death classes stamped into FailureEvidence.VerifyStage (see
 // verifyDeathStage).
 const (

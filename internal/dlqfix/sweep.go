@@ -15,10 +15,13 @@ package dlqfix
 import (
 	"context"
 	"encoding/json/v2"
+	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -46,6 +49,11 @@ type SweeperConfig struct {
 	Log *slog.Logger
 	// PageSize bounds one fact-stream page; 0 selects the default.
 	PageSize int
+	// Scanner attributes footer commits for the gate-artifact shipped-proof
+	// check (TODO row 145). nil disables the auto-dismiss path entirely —
+	// every dead agent task gets an autopsy as before. The pool wires
+	// executor.GitLogScanner{}.
+	Scanner executor.GitScanner
 }
 
 // SweepStats summarizes one sweep pass.
@@ -64,6 +72,10 @@ type SweepStats struct {
 	// Skipped counts facts that could not yield work (vanished records,
 	// foreign payload shapes, dispositions already executed elsewhere).
 	Skipped int
+	// AutoDismissed counts dead tasks cancelled by the mechanical
+	// gate-artifact dismissal (TODO row 145) — no autopsy was minted for
+	// them.
+	AutoDismissed int
 }
 
 // Sweeper turns the journal's dead-letter and autopsy-completion facts into
@@ -157,6 +169,10 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 		return
 	}
 
+	if s.autoDismissGateArtifact(ctx, t, agentPayload.Repo, stats) {
+		return
+	}
+
 	payload := executor.DLQFixPayload{
 		Repo:      agentPayload.Repo,
 		DeadTask:  t.ID.String(),
@@ -196,6 +212,92 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 	} else {
 		stats.FixesKnown++
 	}
+}
+
+// autoDismissGateArtifact executes the one mechanical dismissal of TODO row
+// 145: a dead agent task whose death is the unscoped-gofmt verify artifact
+// (executor.IsGateArtifactDeath) AND whose work demonstrably shipped — at
+// least one footer commit carrying the task's Task-Queue-ID plus a TODO_LIST
+// item that is ticked or gone — never needs an autopsy diagnosing a gate
+// that lied. The verdict channel's wontfix-without-summary rule does not
+// apply (no agent verdict is parsed); the sweeper records its own summary.
+// Conservative by construction: every unmet condition — no scanner, artifact
+// mismatch, scan error, zero footer commits, non-harvest task, item still
+// open, unreadable TODO_LIST — falls through and the normal autopsy is
+// minted. Idempotent on cursor rewind: a non-Dead record fails the
+// dismissal and keeps the dedup-keyed mint path intact.
+func (s *Sweeper) autoDismissGateArtifact(ctx context.Context, t task.Task, repo string, stats *SweepStats) bool {
+	if s.cfg.Scanner == nil || t.Status != task.Dead {
+		return false
+	}
+
+	if !executor.IsGateArtifactDeath(s.lastFailureEvidence(ctx, t.ID), t.LastError) {
+		return false
+	}
+
+	commits, err := s.cfg.Scanner.CommitsByTrailer(ctx, repo, executor.TaskTrailer, t.ID.String())
+	if err != nil {
+		s.warn("dlqfix: footer scan failed, autopsy falls through", "dead", t.ID.String(), "repo", repo, "err", err)
+
+		return false
+	}
+
+	if len(commits) == 0 {
+		return false
+	}
+
+	shipment, ok := todoShipment(t, repo)
+	if !ok {
+		return false
+	}
+
+	summary := fmt.Sprintf(
+		"gate-artifact auto-dismiss [%s]: verify died on the unscoped gofmt artifact, work shipped (%d footer commit(s), TODO item %s)",
+		executor.VerifyGateEnvCode, len(commits), shipment,
+	)
+
+	if err := s.store.DismissDead(ctx, t.ID, summary, DismissedBySweeper); err != nil {
+		s.warn("dlqfix: auto-dismiss skipped", "dead", t.ID.String(), "err", err)
+
+		return false
+	}
+
+	stats.AutoDismissed++
+
+	s.log("dlqfix: auto-dismissed gate-artifact death", "dead", t.ID.String(), "repo", repo, "shipment", shipment)
+
+	return true
+}
+
+// todoShipment reports the TODO_LIST shipment state of a harvested dead
+// task: "ticked" when its item is [x], "absent" when the item text is gone
+// (the done-and-deleted convention — the successor consumed the row).
+// ok=false when the task is not a single-item harvest (no todo: dedup key;
+// batches stay a human surface), its repo has no readable TODO_LIST, or the
+// item is STILL OPEN in the file — none of which proves shipment.
+func todoShipment(t task.Task, repo string) (string, bool) {
+	if !strings.HasPrefix(t.DedupKey, "todo:") {
+		return "", false
+	}
+
+	items, err := harvest.ParseRepo(repo, harvest.DefaultTodoFile)
+	if err != nil {
+		return "", false
+	}
+
+	for _, item := range items {
+		if item.Key != t.DedupKey {
+			continue
+		}
+
+		if item.Done {
+			return "ticked", true
+		}
+
+		return "", false
+	}
+
+	return "absent", true
 }
 
 // lastFailureEvidence pulls the FailureEvidence off the dead task's LAST
