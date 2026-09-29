@@ -37,7 +37,7 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.3.1";
-        vendorHash = "";
+        vendorHash = "sha256-x19McGxe5mFgiO1wgMpP+heL+O67TwEAwtt4fgbsVic=";
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
@@ -85,13 +85,16 @@
             printf '\nreplace github.com/larsartmann/go-taskqueue => ../..\n' >> go.mod
             sed -n 's|^replace \(github.com/larsartmann/go-taskqueue/internal[^ ]*\) => ./\(.*\)$|replace \1 => ../../\2|p' ../../go.mod >> go.mod
             go mod download all
-            # `go mod download all` fetches only BUILD-LIST versions, but the
-            # package preBuild's `go mod tidy` loads the FULL module graph —
-            # including superseded versions reachable under pre-1.17 go
-            # directives (jackc/pgpassfile@v1.0.0 requires testify@v1.3.0) —
-            # from the file:// proxy. Fetch every versioned graph node so the
-            # FOD covers what tidy needs (holey-proxy class, 2026-09-29).
-            go mod graph | tr ' ' '\n' | grep '@' | grep -v '^golang.org/toolchain@' | sort -u | xargs -r go mod download -x
+            # The package preBuild runs `go mod tidy` against the file://
+            # proxy, and tidy loads the FULL module graph — including
+            # superseded versions reachable under pre-1.17 go directives
+            # (jackc/pgpassfile@v1.0.0 → testify@v1.3.0) that
+            # `go mod download all` never fetches. This buildPhase fully
+            # replaces the default (which would runHook preBuild), so run
+            # the SAME tidy here — with the real proxy — so the FOD captures
+            # every .mod/.zip tidy will demand later (holey-proxy class,
+            # 2026-09-29).
+            go mod tidy
           '';
           preBuild = ''
             export HOME=$TMPDIR
