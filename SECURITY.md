@@ -126,6 +126,34 @@ cleartext — put the API behind TLS (or a tunnel) when it leaves the host;
 the lockout window is per-IP, so one noisy misconfigured producer can
 briefly lock out its NAT neighbors.
 
+## Response headers, per surface
+
+Every surface ships its headers from one reviewed site each
+(`internal/webui` `securityHeaders`, `internal/httpapi` `guard`); the
+matrix is the operator-visible summary. A new header, route, or surface
+adds a row here AND its pinning test
+(`TestSecurityHeadersOnEveryResponse` / `TestNosniffOnEveryResponse`)
+in the same change.
+
+| Header                    | `tq serve` (dashboard + `/health*`)                                                                                                                                 | `tq api`                                              |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `Content-Security-Policy` | every route: nonce'd `default-src 'none'` (scripts same-origin + per-request nonce, `frame-ancestors 'none'`, `form-action 'none'`); `/health*` overrides to the health library's policy (`unsafe-eval` for the same-origin Datastar SDK, re-hardened with `base-uri 'none'` + `frame-ancestors`/`form-action`) | none — the API returns JSON and renders nothing |
+| `X-Content-Type-Options`  | `nosniff` (every response)                                                                                                                            | `nosniff` (every response, including 401/429)         |
+| `X-Frame-Options`         | `DENY`                                                                                                                                                 | —                                                     |
+| `Referrer-Policy`         | `no-referrer`                                                                                                                                          | —                                                     |
+| `Permissions-Policy`      | camera, microphone, geolocation denied                                                                                                                 | —                                                     |
+| `X-Robots-Tag`            | `noindex` on `/health*` (task pages carry a robots meta instead)                                                                                       | —                                                     |
+| `Cache-Control`           | `public, max-age=86400` on the embedded health SDK bundle only; HTML and SSE unset                                                                      | `no-store` on authenticated responses                 |
+| `WWW-Authenticate`        | `Bearer realm="tq dashboard"` on 401                                                                                                                   | `Bearer realm="tq-api"` on 401                        |
+| `Retry-After`             | 429 from the write-route CSRF lockout                                                                                                                  | 429 from the bearer-auth lockout                      |
+
+Token presentation channels (how auth travels, not a header): both
+surfaces accept `Authorization: Bearer` (scheme case-insensitive) and
+`?token=` via the shared `internal/httpauth` primitives; the dashboard
+adds a browser session-cookie channel on top. Comparison is constant-time
+over SHA-256 digests on both surfaces, so the token's length never leaks
+through timing.
+
 ## Data handling
 
 - The journal (`tasks.db`) stores task payloads and prompts verbatim —

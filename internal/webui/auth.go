@@ -2,8 +2,6 @@ package webui
 
 import (
 	"context"
-	"crypto/sha256"
-	"crypto/subtle"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -13,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/httpauth"
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
 )
 
@@ -68,11 +67,11 @@ func isLoopbackAddr(addr string) bool {
 // parameter (browsers' EventSource cannot set headers). Comparison is
 // constant-time (SHA-256 over both sides, so length never leaks).
 func withTokenAuth(token string, next http.Handler) http.Handler {
-	expected := sha256.Sum256([]byte(token))
+	expected := httpauth.HashToken(token)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		presented, viaCookie := presentedToken(r)
-		if !tokenMatches(expected, presented) {
+		if !httpauth.TokenMatches(expected, presented) {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="tq dashboard"`)
 			http.Error(w,
 				"unauthorized: pass ?token=... or an Authorization: Bearer header",
@@ -113,24 +112,15 @@ const tqTokenCookie = "tq_token"
 // The bool reports whether the token came from the cookie (so the wrapper
 // can skip re-issuing it).
 func presentedToken(r *http.Request) (string, bool) {
-	if auth := r.Header.Get("Authorization"); auth != "" {
-		scheme, value, found := strings.Cut(auth, " ")
-		if found && strings.EqualFold(scheme, "Bearer") && value != "" {
-			return value, false
-		}
+	if auth := httpauth.AuthorizationToken(r); auth != "" {
+		return auth, false
 	}
 
 	if c, err := r.Cookie(tqTokenCookie); err == nil && c.Value != "" {
 		return c.Value, true
 	}
 
-	return r.URL.Query().Get("token"), false
-}
-
-func tokenMatches(expected [sha256.Size]byte, presented string) bool {
-	got := sha256.Sum256([]byte(presented))
-
-	return subtle.ConstantTimeCompare(expected[:], got[:]) == 1
+	return httpauth.QueryToken(r), false
 }
 
 // tqCSRFCookie carries the per-browser write token. It is NOT a secret from
@@ -204,7 +194,7 @@ func withCSRF(next http.Handler) http.Handler {
 			return
 		}
 
-		if !tokenMatches(sha256.Sum256([]byte(cookie.Value)), r.PostFormValue("csrf")) {
+		if !httpauth.TokenMatches(httpauth.HashToken(cookie.Value), r.PostFormValue("csrf")) {
 			http.Error(w, "forbidden: CSRF token mismatch — reload and retry", http.StatusForbidden)
 
 			return

@@ -13,7 +13,6 @@ package httpapi
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -22,9 +21,9 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/httpauth"
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
@@ -89,6 +88,8 @@ func (s *Server) Handler() http.Handler {
 // nosniff; repeated auth failures trip the per-client lockout
 // (internal/lockout).
 func (s *Server) guard(next http.Handler) http.Handler {
+	expected := httpauth.HashToken(s.token)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 
@@ -104,9 +105,12 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			return
 		}
 
-		presented := bearerToken(r)
+		presented := httpauth.AuthorizationToken(r)
+		if presented == "" {
+			presented = httpauth.QueryToken(r)
+		}
 
-		if subtle.ConstantTimeCompare([]byte(presented), []byte(s.token)) != 1 {
+		if !httpauth.TokenMatches(expected, presented) {
 			s.strikes.Add(key)
 
 			w.Header().Set("WWW-Authenticate", `Bearer realm="tq-api"`)
@@ -121,14 +125,6 @@ func (s *Server) guard(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-func bearerToken(r *http.Request) string {
-	if h := r.Header.Get("Authorization"); strings.HasPrefix(h, "Bearer ") {
-		return strings.TrimPrefix(h, "Bearer ")
-	}
-
-	return r.URL.Query().Get("token")
 }
 
 // Auth lockout knobs, mirroring the dashboard's writeRateLimiter defaults

@@ -53,6 +53,7 @@ func TestAuthMatrix(t *testing.T) {
 		{"missing token", "", "", http.StatusUnauthorized},
 		{"wrong token", "Bearer nope", "", http.StatusUnauthorized},
 		{"bearer token", "Bearer secret-token", "", http.StatusOK},
+		{"lowercase scheme", "bearer secret-token", "", http.StatusOK},
 		{"query token", "", "token=secret-token", http.StatusOK},
 	}
 
