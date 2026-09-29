@@ -213,6 +213,7 @@ func TestGitLogScannerTrailerVisibilityEndToEnd(t *testing.T) {
 		t.Helper()
 
 		cmd := exec.Command("git", "-C", repo, "commit", "--allow-empty", "-qm", msg)
+
 		cmd.Env = append(os.Environ(),
 			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
 			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")

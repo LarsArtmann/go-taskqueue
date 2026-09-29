@@ -2,14 +2,13 @@ package consumer
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"path/filepath"
 	"slices"
 	"sync"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"

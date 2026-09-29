@@ -140,7 +140,9 @@ func TestStatsJSONSessionUsageContract(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	result := []byte(`{"session_id":"s1","session_cost_usd":0.42,"session_prompt_tokens":1200,"session_completion_tokens":3400,"session_message_count":9}`)
+	result := []byte(
+		`{"session_id":"s1","session_cost_usd":0.42,"session_prompt_tokens":1200,"session_completion_tokens":3400,"session_message_count":9}`,
+	)
 	if err := s.Complete(ctx, tk.ID, claimW1, result); err != nil {
 		t.Fatalf("complete: %v", err)
 	}

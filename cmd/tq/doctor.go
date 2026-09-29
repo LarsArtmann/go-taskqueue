@@ -1011,7 +1011,8 @@ func doctorCrushManagedBlock(repoName, path string) checkResult {
 		}
 	case effort == "":
 		return checkResult{
-			Name: name + repoName, Status: checkWarn,
+			Name:   name + repoName,
+			Status: checkWarn,
 			Detail: "managed block pins no --reasoning-effort (the pool wants xhigh; run tq bootstrap --model <provider/model>)",
 		}
 	case effort != "xhigh":
@@ -1020,7 +1021,11 @@ func doctorCrushManagedBlock(repoName, path string) checkResult {
 			Detail: "managed block pins --reasoning-effort " + effort + " (the pool wants xhigh; run tq bootstrap)",
 		}
 	default:
-		return checkResult{Name: name + repoName, Status: checkOK, Detail: "managed block pins --reasoning-effort xhigh"}
+		return checkResult{
+			Name:   name + repoName,
+			Status: checkOK,
+			Detail: "managed block pins --reasoning-effort xhigh",
+		}
 	}
 }
 

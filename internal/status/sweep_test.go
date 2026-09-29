@@ -54,6 +54,7 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessag
 		claimed, c, err := s.ClaimDue(ctx, testOwner, testLease)
 		if err != nil {
 			time.Sleep(20 * time.Millisecond)
+
 			continue
 		}
 

@@ -123,6 +123,7 @@ func TestSecretPatternsOverlapCensus(t *testing.T) {
 	}
 
 	var overlapping []string
+
 	for i, sample := range samples {
 		own := secretPatterns[i].FindAllStringIndex(sample, -1)
 		if len(own) != 1 {
@@ -182,6 +183,7 @@ func TestSecretHitsCountsInjectedTokensIndependentOfContext(t *testing.T) {
 				b.WriteString(tokens[i%len(tokens)])
 				b.WriteString("\n")
 			}
+
 			b.WriteString(filler)
 
 			if got := SecretHits(b.String()); got != n {

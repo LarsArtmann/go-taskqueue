@@ -2,14 +2,13 @@ package webui
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/task"

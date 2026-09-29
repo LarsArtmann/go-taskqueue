@@ -306,6 +306,7 @@ func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 	ctx, s := freshStore(t)
 
 	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
+
 	_, claim_crashed_worker, err := s.ClaimDue(ctx, "crashed-worker",
 		30*time.Millisecond)
 	if err != nil {
@@ -796,7 +797,12 @@ func TestEnqueueDedupKey(t *testing.T) {
 	}
 
 	if third.ID != second.ID || third.Status != task.Completed {
-		t.Fatalf("completed-key suppress returned %s/%s, want the stored completed row %s", third.ID, third.Status, second.ID)
+		t.Fatalf(
+			"completed-key suppress returned %s/%s, want the stored completed row %s",
+			third.ID,
+			third.Status,
+			second.ID,
+		)
 	}
 }
 
@@ -837,6 +843,7 @@ func legacyTasksSchema(withDedupKey bool) string {
 		schema += `,
 	dedup_key TEXT NOT NULL DEFAULT ''`
 	}
+
 	return schema + `
 );`
 }
@@ -1074,8 +1081,10 @@ func TestProjectExclusivitySerializesPerProject(t *testing.T) {
 	empty, _ := s.Enqueue(ctx, task.New{Type: "no-project"})
 	xIDs := map[task.ID]bool{x1.ID: true, x2.ID: true}
 
-	var claimed []task.ID
-	var runnerClaim queue.Claim
+	var (
+		claimed     []task.ID
+		runnerClaim queue.Claim
+	)
 
 	for {
 		got, claim, err := s.ClaimDue(ctx, "w1", time.Minute)
@@ -1791,7 +1800,11 @@ func TestListPayloadContains(t *testing.T) {
 	ctx, s := freshStore(t)
 
 	seed := []task.New{
-		{Project: "stale-verify", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","verify":"go test ./... -race"}`)},
+		{
+			Project: "stale-verify",
+			Type:    "agent",
+			Payload: jsontext.Value(`{"repo":"go-taskqueue","verify":"go test ./... -race"}`),
+		},
 		{Project: "fresh", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","verify":"gofmt -l ."}`)},
 		{Project: "verify", Type: "sh", Payload: jsontext.Value(`"echo hi"`)},
 	}

@@ -832,7 +832,14 @@ func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
 // deadline before a verdict becomes a VerifyGateError — the worker requeues
 // WITHOUT burning an attempt. Only an introduced failure (baseline green,
 // post-attempt red) returns the plain verify-failed error.
-func runVerify(ctx context.Context, id task.ID, repoDir string, p *AgentPayload, reresolve bool, baseRev string) (string, string, error) {
+func runVerify(
+	ctx context.Context,
+	id task.ID,
+	repoDir string,
+	p *AgentPayload,
+	reresolve bool,
+	baseRev string,
+) (string, string, error) {
 	verify := verifyFor(repoDir, p, reresolve)
 	if verify == "" {
 		return "", "", nil // nothing to verify (unknown stack, no explicit command)

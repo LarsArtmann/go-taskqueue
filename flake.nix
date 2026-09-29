@@ -37,12 +37,12 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.3.1";
-        vendorHash = "sha256-thGuMpBjVMOICeCMpffbu23+W+BKmYD7lo9SzCfU9GQ=";
+        vendorHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
         goTarballVersion = "1.27.1";
-        goTarballHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+        goTarballHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         # ADR-0017: cmd/tq is its own replace-free module (proxy
         # installability). modRoot + subPackages route the hermetic build
@@ -137,7 +137,7 @@
               version = "1.27.1";
               src = pkgs.fetchurl {
                 url = "https://go.dev/dl/go${finalAttrs.version}.src.tar.gz";
-                hash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+                hash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
               };
               patches = builtins.filter (
                 p: builtins.match "go_no_vendor_checks-.*[.]patch" (baseNameOf p) == null

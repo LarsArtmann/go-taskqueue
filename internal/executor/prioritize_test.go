@@ -143,6 +143,7 @@ func TestPrioritizeResultUsageKeysMatchAgentResult(t *testing.T) {
 			if err != nil {
 				t.Fatalf("marshal: %v", err)
 			}
+
 			var got map[string]any
 			if err := json.Unmarshal(raw, &got); err != nil {
 				t.Fatalf("unmarshal: %v", err)
@@ -152,10 +153,12 @@ func TestPrioritizeResultUsageKeysMatchAgentResult(t *testing.T) {
 			for k := range got {
 				keys = append(keys, k)
 			}
+
 			slices.Sort(keys)
 
 			want := append(slices.Clone(usageKeys), tc.extra...)
 			slices.Sort(want)
+
 			if !slices.Equal(keys, want) {
 				t.Fatalf(
 					"%s marshals %v, want exactly the shared usage keys %v (plus %v) — a rename here breaks the budget projection and tq show",

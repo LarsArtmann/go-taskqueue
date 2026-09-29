@@ -2,13 +2,12 @@ package webui
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )

@@ -33,8 +33,10 @@ func StaleVerifyReasons(verify string) []string {
 	// The nested-module walk is the mint marker: every walked form names
 	// the go.mod glob, the root-only form does not.
 	if !strings.Contains(verify, "-name go.mod") {
-		reasons = append(reasons,
-			"root-module-only gate — the nested-module walk (find -name go.mod) is missing, so a multi-module repo verifies vacuously (f46 class)")
+		reasons = append(
+			reasons,
+			"root-module-only gate — the nested-module walk (find -name go.mod) is missing, so a multi-module repo verifies vacuously (f46 class)",
+		)
 	}
 
 	if strings.Contains(verify, "-execdir") {
@@ -43,8 +45,10 @@ func StaleVerifyReasons(verify string) []string {
 	}
 
 	if !strings.Contains(verify, GoEnvExperiment) {
-		reasons = append(reasons,
-			"missing the "+GoEnvExperiment+" export — predates the env-self-contained mint, dies outside the flake devShell on encoding/json/v2 repos")
+		reasons = append(
+			reasons,
+			"missing the "+GoEnvExperiment+" export — predates the env-self-contained mint, dies outside the flake devShell on encoding/json/v2 repos",
+		)
 	}
 
 	return reasons
@@ -56,7 +60,7 @@ func StaleVerifyReasons(verify string) []string {
 func isGoVerify(verify string) bool {
 	goTool := false
 
-	for _, field := range strings.Fields(verify) {
+	for field := range strings.FieldsSeq(verify) {
 		if field == "go" {
 			goTool = true
 

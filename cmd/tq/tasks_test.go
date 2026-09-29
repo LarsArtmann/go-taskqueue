@@ -195,7 +195,9 @@ func TestCmdTasksVerifyContains(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		if err := cmdTasks([]string{"--db", dbPath, "--type", "agent", "--verify-contains", "go vet ./...", "--json"}); err != nil {
+		if err := cmdTasks(
+			[]string{"--db", dbPath, "--type", "agent", "--verify-contains", "go vet ./...", "--json"},
+		); err != nil {
 			t.Errorf("verify-contains: %v", err)
 		}
 	})

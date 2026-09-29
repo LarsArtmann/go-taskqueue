@@ -10,7 +10,6 @@ import (
 
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	ufacts "github.com/larsartmann/go-cqrs-lite/queue/v4/facts"
-
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -40,9 +39,11 @@ func pgq(query string) string {
 		switch {
 		case r == '\'':
 			inString = !inString
+
 			b.WriteRune(r)
 		case r == '?' && !inString:
 			ordinal++
+
 			b.WriteByte('$')
 			b.WriteString(strconv.Itoa(ordinal))
 		default:

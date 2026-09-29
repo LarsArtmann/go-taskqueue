@@ -3,12 +3,11 @@ package webui
 import (
 	"bytes"
 	"context"
+	"encoding/json/jsontext"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
-
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"

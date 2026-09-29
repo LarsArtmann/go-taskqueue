@@ -22,6 +22,7 @@ func commitAll(t *testing.T, dir, msg string) {
 	t.Helper()
 
 	cmd := exec.Command("git", "add", "-A")
+
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git add: %v: %s", err, out)
@@ -29,6 +30,7 @@ func commitAll(t *testing.T, dir, msg string) {
 
 	cmd = exec.Command("git", "commit", "-qm", msg)
 	cmd.Dir = dir
+
 	cmd.Env = append(os.Environ(),
 		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
 		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
@@ -95,8 +97,7 @@ func TestVerifyGateIntroducedStillCounts(t *testing.T) {
 		t.Fatalf("want plain verify failure, got %v", err)
 	}
 
-	var gateErr *VerifyGateError
-	if errors.As(err, &gateErr) {
+	if _, ok := errors.AsType[*VerifyGateError](err); ok {
 		t.Fatalf("introduced failure must NOT classify as a gate error, got %v", err)
 	}
 }
@@ -147,8 +148,7 @@ func TestVerifyGateCooperativeCancelStaysCancelled(t *testing.T) {
 		t.Fatalf("want cancelled error, got %v", err)
 	}
 
-	var gateErr *VerifyGateError
-	if errors.As(err, &gateErr) {
+	if _, ok := errors.AsType[*VerifyGateError](err); ok {
 		t.Fatalf("cooperative cancel must not classify as gate failure, got %v", err)
 	}
 }
@@ -218,7 +218,14 @@ func writeVendorRepo(t *testing.T, trackedBad bool) string {
 func TestVendorGofmtSignatureClassifiesEnvironmental(t *testing.T) {
 	repo := writeVendorRepo(t, false)
 
-	_, _, err := runVerify(context.Background(), task.ID("vendor-gofmt-test"), repo, &AgentPayload{Verify: gofmtStageVerify}, false, "")
+	_, _, err := runVerify(
+		context.Background(),
+		task.ID("vendor-gofmt-test"),
+		repo,
+		&AgentPayload{Verify: gofmtStageVerify},
+		false,
+		"",
+	)
 	if err == nil {
 		t.Fatal("want a verify failure, got nil")
 	}
@@ -244,7 +251,14 @@ func TestVendorGofmtSignatureClassifiesEnvironmental(t *testing.T) {
 func TestVendorGofmtSignatureNeverMasksIntroducedWork(t *testing.T) {
 	repo := writeVendorRepo(t, true)
 
-	_, _, err := runVerify(context.Background(), task.ID("vendor-gofmt-introduced-test"), repo, &AgentPayload{Verify: gofmtStageVerify}, false, "")
+	_, _, err := runVerify(
+		context.Background(),
+		task.ID("vendor-gofmt-introduced-test"),
+		repo,
+		&AgentPayload{Verify: gofmtStageVerify},
+		false,
+		"",
+	)
 	if err == nil {
 		t.Fatal("want a verify failure, got nil")
 	}
@@ -358,7 +372,12 @@ func TestVerifyDeathStage(t *testing.T) {
 
 	// A gate WITHOUT a gofmt stage must never stamp gofmt, even on an
 	// all-ok-shaped tail (the stage name would be a lie).
-	if got := verifyDeathStage(context.Background(), nil, "go test ./...", []byte("ok  \tdemo\t0.01s\n")); got != VerifyStageRun {
+	if got := verifyDeathStage(
+		context.Background(),
+		nil,
+		"go test ./...",
+		[]byte("ok  \tdemo\t0.01s\n"),
+	); got != VerifyStageRun {
 		t.Errorf("gofmt stage in a gofmt-free gate = %s, want %s", got, VerifyStageRun)
 	}
 }

@@ -1,11 +1,10 @@
 package webui
 
 import (
+	"encoding/json/jsontext"
 	"strings"
 	"testing"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"

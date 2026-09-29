@@ -47,7 +47,14 @@ type Store interface {
 	Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error)
 	FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error)
 	FactsSince(ctx context.Context, ftype journal.FactType, since time.Time, limit int) ([]journal.Fact, error)
-	Fail(ctx context.Context, id task.ID, claim queue.Claim, errText string, backoff time.Duration, evidence jsontext.Value) error
+	Fail(
+		ctx context.Context,
+		id task.ID,
+		claim queue.Claim,
+		errText string,
+		backoff time.Duration,
+		evidence jsontext.Value,
+	) error
 	FailPermanent(ctx context.Context, id task.ID, claim queue.Claim, errText string, evidence jsontext.Value) error
 	Get(ctx context.Context, id task.ID) (task.Task, error)
 	HeadSeq(ctx context.Context) (int64, error)
@@ -59,7 +66,14 @@ type Store interface {
 	PriorityScores(ctx context.Context) ([]queue.PriorityScore, error)
 	ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error)
 	RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRecord) error
-	Requeue(ctx context.Context, id task.ID, claim queue.Claim, errText string, delay time.Duration, resumeCloseout bool) error
+	Requeue(
+		ctx context.Context,
+		id task.ID,
+		claim queue.Claim,
+		errText string,
+		delay time.Duration,
+		resumeCloseout bool,
+	) error
 	RescueDead(ctx context.Context, id task.ID, maxAttempts int) error
 	SavePriorityScore(ctx context.Context, score queue.PriorityScore) error
 	SaveWatermark(ctx context.Context, consumer string, seq int64) error
@@ -132,6 +146,7 @@ func StoreSuite(t *testing.T, s Suite) {
 
 	prev := active
 	active = s
+
 	t.Cleanup(func() { active = prev })
 
 	for _, tt := range conformanceTests {

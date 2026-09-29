@@ -72,11 +72,24 @@ type VerifyGateError struct {
 func (e *VerifyGateError) Error() string {
 	switch e.Class {
 	case VerifyGateDead:
-		return fmt.Sprintf("agent verify gate dead (%q): failure is pre-existing/environmental (gate also fails at the pre-attempt rev): %s", e.Verify, e.Cause)
+		return fmt.Sprintf(
+			"agent verify gate dead (%q): failure is pre-existing/environmental (gate also fails at the pre-attempt rev): %s",
+			e.Verify,
+			e.Cause,
+		)
 	case VerifyGateSlow:
-		return fmt.Sprintf("agent verify gate slow (%q): deadline before a verdict, retry on a warm cache: %s", e.Verify, e.Cause)
+		return fmt.Sprintf(
+			"agent verify gate slow (%q): deadline before a verdict, retry on a warm cache: %s",
+			e.Verify,
+			e.Cause,
+		)
 	case VerifyGateEnvironmental:
-		return fmt.Sprintf("agent verify gate environmental signature [%s] (%q): all package stages passed and gofmt flags only gitignored vendor/ files; the identical retry dies identically so the task is dead-lettered without re-dispatch (rescue: classify environmental): %s", VerifyGateEnvCode, e.Verify, e.Cause)
+		return fmt.Sprintf(
+			"agent verify gate environmental signature [%s] (%q): all package stages passed and gofmt flags only gitignored vendor/ files; the identical retry dies identically so the task is dead-lettered without re-dispatch (rescue: classify environmental): %s",
+			VerifyGateEnvCode,
+			e.Verify,
+			e.Cause,
+		)
 	default:
 		return fmt.Sprintf("agent verify gate %s (%q): %s", e.Class, e.Verify, e.Cause)
 	}

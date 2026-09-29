@@ -35,7 +35,6 @@ import (
 	usqlite "github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4"
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
-
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
@@ -117,6 +116,7 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 func (s *Store) Close() error {
 	errEngine := s.engine.Close()
 	errDB := s.db.Close()
+
 	if errEngine != nil {
 		return errEngine
 	}

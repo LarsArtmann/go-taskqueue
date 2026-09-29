@@ -567,6 +567,7 @@ func scanTaskRow(r scanner) (task.Task, error) {
 	t.Payload = jsontext.Value(payload)
 	t.NotBefore = time.UnixMilli(notBeforeMS)
 	t.CreatedAt = time.UnixMilli(createdAtMS)
+
 	t.UpdatedAt = time.UnixMilli(updatedAtMS)
 	if leaseExpires.Valid {
 		le := time.UnixMilli(leaseExpires.Int64)

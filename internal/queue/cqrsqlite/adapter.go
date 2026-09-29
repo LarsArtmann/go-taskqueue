@@ -36,7 +36,6 @@ import (
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	ufacts "github.com/larsartmann/go-cqrs-lite/queue/v4/facts"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
-
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
@@ -188,7 +187,13 @@ func (s *Store) Fail(
 }
 
 // FailPermanent dead-letters a Running task immediately.
-func (s *Store) FailPermanent(ctx context.Context, id task.ID, claim queue.Claim, errText string, evidence jsontext.Value) error {
+func (s *Store) FailPermanent(
+	ctx context.Context,
+	id task.ID,
+	claim queue.Claim,
+	errText string,
+	evidence jsontext.Value,
+) error {
 	token, err := s.tokenFor(id, claim)
 	if err != nil {
 		return err

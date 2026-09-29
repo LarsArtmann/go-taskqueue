@@ -360,7 +360,10 @@ func (h *Harvester) runRepo(ctx context.Context, repo string, items []Item, res 
 		}
 
 		if h.cfg.DryRun {
-			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")})
+			res.Enqueued = append(
+				res.Enqueued,
+				Enqueued{Item: item, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")},
+			)
 			state.known[item.Key] = task.Pending
 			enqueuedThisRepo = true
 
@@ -448,7 +451,10 @@ func (h *Harvester) skipRun(run []Item, res *Result, reason string) {
 func (h *Harvester) admitRun(ctx context.Context, run []Item, importance int, res *Result) bool {
 	if h.cfg.DryRun {
 		for _, item := range run {
-			res.Enqueued = append(res.Enqueued, Enqueued{Item: item, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")})
+			res.Enqueued = append(
+				res.Enqueued,
+				Enqueued{Item: item, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")},
+			)
 		}
 
 		return true
@@ -1169,7 +1175,11 @@ func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 			// consumers (this parser, check-todo-list.sh) stayed silent —
 			// the row was invisible to the pool until caught by eye. Reject
 			// the file instead of skipping the line.
-			return nil, fmt.Errorf("%s: %s; a checkbox line must start with exactly `- [ ] ` or `- [x] `", todoFile, reason)
+			return nil, fmt.Errorf(
+				"%s: %s; a checkbox line must start with exactly `- [ ] ` or `- [x] `",
+				todoFile,
+				reason,
+			)
 		}
 	}
 

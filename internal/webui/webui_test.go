@@ -513,6 +513,7 @@ func TestReviewVerdictBadgeAndFindings(t *testing.T) {
 	srv, s := newTestServer(t)
 
 	review := enqueue(t, s, "review", "demo")
+
 	_, review_owner_claim, err := s.ClaimDue(context.Background(), "review-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
@@ -579,6 +580,7 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 	srv, s := newTestServer(t)
 
 	st := enqueue(t, s, "status", "demo")
+
 	_, status_owner_claim, err := s.ClaimDue(context.Background(), "status-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
@@ -753,6 +755,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	srv, s := newTestServer(t)
 
 	pz := enqueue(t, s, "prioritize", "demo")
+
 	_, score_owner_claim, err := s.ClaimDue(context.Background(), "score-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
@@ -791,6 +794,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	st := enqueue(t, s, "status", "demo")
+
 	_, st2_claim, err := s.ClaimDue(context.Background(), "status-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
@@ -822,6 +826,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	msgsOnly := enqueue(t, s, "status", "demo")
+
 	_, msgs_claim, err := s.ClaimDue(context.Background(), "status-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
@@ -848,6 +853,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	quiet := enqueue(t, s, "status", "demo")
+
 	_, quiet_claim, err := s.ClaimDue(context.Background(), "status-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
@@ -871,6 +877,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	ag := enqueue(t, s, "agent", "demo")
+
 	_, agent_owner_claim, err := s.ClaimDue(context.Background(), "agent-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
@@ -907,6 +914,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	rv := enqueue(t, s, "review", "demo")
+
 	_, review_owner_claim, err := s.ClaimDue(context.Background(), "review-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
@@ -942,6 +950,7 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 	}
 
 	stub := enqueue(t, s, "agent", "demo")
+
 	_, stub_claim, err := s.ClaimDue(context.Background(), "agent-owner", time.Minute)
 	if err != nil {
 		t.Fatalf("ClaimDue: %v", err)
@@ -974,7 +983,13 @@ func TestDLQMirrorsDeadTasks(t *testing.T) {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := s.FailPermanent(context.Background(), tk.ID, test_owner_claim, "boom: permanent failure", nil); err != nil {
+	if err := s.FailPermanent(
+		context.Background(),
+		tk.ID,
+		test_owner_claim,
+		"boom: permanent failure",
+		nil,
+	); err != nil {
 		t.Fatalf("FailPermanent: %v", err)
 	}
 

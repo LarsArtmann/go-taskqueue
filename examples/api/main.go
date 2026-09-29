@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"flag"
 	"fmt"
@@ -24,8 +25,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"

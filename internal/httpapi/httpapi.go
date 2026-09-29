@@ -14,6 +14,7 @@ package httpapi
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -23,8 +24,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"encoding/json/jsontext"
 
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue"

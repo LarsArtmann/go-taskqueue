@@ -23,7 +23,11 @@ func cmdTasks(args []string) error {
 	status := fs.String("status", "", "filter by status (pending|running|completed|dead|cancelled)")
 	band := fs.String("band", "", "filter by priority band (hot|machine|backlog)")
 	taskType := fs.String("type", "", "filter by task type (e.g. agent, sh)")
-	verifyContains := fs.String("verify-contains", "", "filter by payload substring (e.g. a verify command; stale-verify audits without a tq show per task)")
+	verifyContains := fs.String(
+		"verify-contains",
+		"",
+		"filter by payload substring (e.g. a verify command; stale-verify audits without a tq show per task)",
+	)
 	since := fs.Duration("since", 0, "only tasks created within this window (e.g. 6h, 30m; 0 = all time)")
 	parked := fs.Bool("parked", false, "only rate-limit-parked tasks (pending with a future not_before)")
 	count := fs.Bool("count", false, "print only the total number of matching tasks (ignores --limit)")
@@ -144,7 +148,12 @@ func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
 
 	if limit > 0 && len(tasks) == limit {
 		if n, err := total(); err == nil {
-			fmt.Printf("showing %d of %d matching task(s) (capped by --limit %d; --limit 0 lists all, --count prints just the total)\n", len(tasks), n, limit)
+			fmt.Printf(
+				"showing %d of %d matching task(s) (capped by --limit %d; --limit 0 lists all, --count prints just the total)\n",
+				len(tasks),
+				n,
+				limit,
+			)
 
 			return
 		}

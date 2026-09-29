@@ -10,7 +10,6 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
 	v4 "github.com/larsartmann/go-taskqueue/internal/queue/postgresv4"
 )
 

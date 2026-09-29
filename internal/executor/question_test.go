@@ -96,7 +96,7 @@ func TestQuestionPendingFromMarker(t *testing.T) {
 
 	t.Run("double wrap stays a single class", func(t *testing.T) {
 		inner := QuestionPending(errors.New("asked"), time.Minute)
-		if QuestionPending(inner, time.Minute) != inner {
+		if !errors.Is(QuestionPending(inner, time.Minute), inner) {
 			t.Fatal("re-wrapping a *QuestionPendingError must return it unchanged")
 		}
 
@@ -180,6 +180,7 @@ func TestQuestionChannelScopePinsSecondOpinions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("work run never wrote the probe: %v", err)
 	}
+
 	if probeOut := string(
 		workProbe,
 	); strings.Contains(probeOut, "without-channel") ||
@@ -199,6 +200,7 @@ func TestQuestionChannelScopePinsSecondOpinions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("clone run never wrote the probe: %v", err)
 	}
+
 	if probeOut := string(
 		cloneProbe,
 	); strings.Contains(probeOut, "with-channel") ||
