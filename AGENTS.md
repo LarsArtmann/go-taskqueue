@@ -334,6 +334,19 @@ defined once in `docs/DOMAIN_LANGUAGE.md` — use those terms exactly.
   turns), so autopsy spend joins the budget token projection via the
   shared parse. Cursor `dlqfix-sweeper` (head-bootstrapped,
   rewindable). Design: docs/planning/archived/2026-09-12_dlq-autopsy-design.md.
+  AUTO-DISMISS (2026-09-29, TODO row 145): a dead agent task that is BOTH a
+  gate-artifact death (`executor.IsGateArtifactDeath`: the stamped
+  `vendor-gofmt` environmental code, or a legacy fact whose all-ok evidence
+  tail + a `gofmt -l` stage in the recorded verify command is the witness)
+  AND shipped-proof (≥1 `Task-Queue-ID` footer commit for the task id + its
+  `todo:` item ticked or absent from TODO_LIST.md) never gets an autopsy —
+  the sweeper dismisses it mechanically (`stats.AutoDismissed`, reason
+  carries `gate-artifact auto-dismiss` + the env code). The pool wires the
+  footer scanner (`SweeperConfig.Scanner`); nil disables the path. Every
+  unmet condition falls through to the normal autopsy; the
+  wontfix-without-summary verdict rule does not apply (no agent verdict is
+  parsed). The 103-task 2026-09-29 02-5x verdict list is the spec and first
+  input — an operator rewind replays it through the new path.
 - **`prioritize` (AI batch scorer, `--prioritize`)**: `PrioritizePayload`
   JSON (repo, batch items with dedup keys, model/yolo/clean knobs). A
   repo holding UNSCORED backlog items (pending agent tasks with `todo:`

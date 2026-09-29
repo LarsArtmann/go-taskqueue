@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **dlqfix auto-dismiss for gate-artifact + shipped-proof deaths** (TODO
+  row 145): a dead agent task whose failure evidence names the
+  unscoped-gofmt verify artifact (`executor.IsGateArtifactDeath` —
+  the stamped `vendor-gofmt` environmental code, or a legacy fact whose
+  all-ok tail plus a gofmt stage in the recorded verify command is the
+  witness) AND whose work demonstrably shipped — at least one footer
+  commit carrying the task's `Task-Queue-ID` plus a TODO_LIST item that
+  is ticked or gone — is dismissed MECHANICALLY by the sweeper
+  (`stats.AutoDismissed`, cancelled fact `dismissed_by: dlqfix-sweeper`)
+  instead of minting an autopsy. Every unmet condition falls through to
+  the normal autopsy; the verdict channel's wontfix-without-summary rule
+  does not apply (no agent verdict is parsed). The 2026-09-29 02-5x
+  verdict list (103 gofmt-vendor deaths) is the spec and first input:
+  an operator rewind (`tq watermarks set dlqfix-sweeper <seq>`) replays
+  them through the new path.
 - **`tq tasks`: truncation is no longer silent, plus `--count`**: the
   default 50-row cap used to read as the whole set (`"50 task(s)"`),
   hiding terminal tasks from census work — a dead-letter sweep listed
