@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -47,6 +48,18 @@ const (
 // classify the death as environmental without re-deriving it from evidence
 // tails.
 const VerifyGateEnvCode = "vendor-gofmt"
+
+// Verify-gate death classes stamped into FailureEvidence.VerifyStage, so a
+// verify death's failing stage is queryable data instead of log forensics
+// (row 144: 62 of the 93 gofmt-vendor deaths had their sidecar logs
+// rotated, leaving the all-ok tail as the only witness, and one e2e kill
+// was misread as gofmt until a docs cross-check).
+const (
+	VerifyStageGofmt      = "gofmt"       // the gate's gofmt stage died
+	VerifyStageTest       = "test"        // a go-test stage failed
+	VerifyStageE2ETimeout = "e2e-timeout" // a timeout killed the run (go-test watchdog/panic or the task deadline)
+	VerifyStageRun        = "run"         // the run as a whole: spawn failure, pre-test stage, foreign tooling
+)
 
 // VerifyGateError carries a gate-level (not task-level) verify failure.
 type VerifyGateError struct {
@@ -219,6 +232,57 @@ func allPackagesPassed(tail string) bool {
 	}
 
 	return false
+}
+
+// verifyTestFailRe matches go-test failure markers at line start: the
+// per-test "--- FAIL: X" line and the per-package/suite "FAIL" lines.
+var verifyTestFailRe = regexp.MustCompile(`(?m)^--- FAIL: |^FAIL\b`)
+
+// gofmtFlaggedPathRe matches a bare .go path line — the exact shape
+// `gofmt -l` prints. Every other stage annotates its paths (build/vet use
+// file:line:col, panic frames are tab-indented), so a bare path is gofmt
+// output that survived into the buffer (gates not using $(...) capture).
+var gofmtFlaggedPathRe = regexp.MustCompile(`(?m)^\S+\.go$`)
+
+// verifyDeathStage names the failing verify-gate stage from the run's FULL
+// output and error — judged at the tail cut, where the whole buffer is
+// still in hand, because the 512-byte evidence tail and later sidecar-log
+// rotation are exactly what kept the death class unrecoverable (row 144).
+// Priority mirrors a sequential &&-gate:
+//
+//  1. timeout-kill evidence (the go-test panic/watchdog lines, or the task
+//     deadline) — a kill also prints FAIL lines, so it outranks them;
+//  2. go-test failure markers — a &&-gate stops at its first failing
+//     stage, so FAIL means the test stage died;
+//  3. a gofmt-stage death, recognized either positively (bare .go path
+//     lines in the buffer) or negatively (every package ok and no failure
+//     marker anywhere: the minted `test -z "$(gofmt -l .)"` stage SWALLOWS
+//     its own output, so a death that got past test and left no marker died
+//     in gofmt — the all-ok tail IS the witness);
+//  4. anything else — the run as a whole.
+//
+// Best effort by design: gates with stages after gofmt, or a swallowed
+// gofmt stage in a gate without any passing package line, stamp as run
+// rather than guess.
+func verifyDeathStage(ctx context.Context, err error, verify string, output []byte) string {
+	out := string(output)
+
+	if isDeadline(err) || isDeadline(ctx.Err()) ||
+		strings.Contains(out, "panic: test timed out after") ||
+		strings.Contains(out, "Test killed with quit: ran too long") {
+		return VerifyStageE2ETimeout
+	}
+
+	if verifyTestFailRe.MatchString(out) {
+		return VerifyStageTest
+	}
+
+	if strings.Contains(verify, "gofmt") &&
+		(allPackagesPassed(out) || gofmtFlaggedPathRe.MatchString(out)) {
+		return VerifyStageGofmt
+	}
+
+	return VerifyStageRun
 }
 
 // verifyProbeTimeout bounds the gofmt re-measure: a parse-only walk, seconds

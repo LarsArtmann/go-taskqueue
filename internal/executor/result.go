@@ -79,6 +79,13 @@ type FailureEvidence struct {
 	Stage    string `json:"stage"`               // "agent", "verify" or "command"
 	ExitCode int    `json:"exit_code,omitempty"` // process exit code (0 when the error was not an exit)
 	Tail     string `json:"tail,omitempty"`      // last lines of the failing output
+	// VerifyStage names the failing stage OF THE VERIFY GATE on Stage
+	// "verify" deaths: a VerifyStageGofmt / VerifyStageTest /
+	// VerifyStageE2ETimeout / VerifyStageRun class. Stamped from the FULL
+	// run output at the tail cut (verifyDeathStage), so the class stays
+	// queryable after the evidence tail truncates and the sidecar logs
+	// rotate. Empty for non-verify failures.
+	VerifyStage string `json:"verify_stage,omitempty"`
 }
 
 // EvidenceTailBytes is the ONE output-tail size every executor pins into
@@ -142,8 +149,24 @@ func (s *Sink) Detail() jsontext.Value {
 // it on their failure paths, the worker hands it to Store.Fail so the
 // task.failed fact carries the evidence.
 func SetFailureEvidence(ctx context.Context, stage string, err error, tail string) {
+	setFailureEvidence(ctx, FailureEvidence{Stage: stage, ExitCode: exitCode(err), Tail: tail})
+}
+
+// SetVerifyFailureEvidence attaches verify-gate forensics with the death
+// class stamped: Stage "verify" plus VerifyStage (verifyDeathStage's gofmt
+// / test / e2e-timeout / run), so DLQ triage can query the failing stage
+// from the fact instead of re-deriving it from tails and rotated logs.
+func SetVerifyFailureEvidence(ctx context.Context, verifyStage string, err error, tail string) {
+	setFailureEvidence(ctx, FailureEvidence{
+		Stage:       "verify",
+		VerifyStage: verifyStage,
+		ExitCode:    exitCode(err),
+		Tail:        tail,
+	})
+}
+
+func setFailureEvidence(ctx context.Context, evidence FailureEvidence) {
 	if s, ok := ctx.Value(sinkKey{}).(*Sink); ok {
-		evidence := FailureEvidence{Stage: stage, ExitCode: exitCode(err), Tail: tail}
 		if raw, merr := json.Marshal(evidence); merr == nil {
 			s.mu.Lock()
 			s.failure = raw

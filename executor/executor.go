@@ -71,6 +71,15 @@ const (
 	VerifyGateEnvCode       = internalexecutor.VerifyGateEnvCode
 )
 
+// Verify-gate death classes stamped into FailureEvidence.VerifyStage (see
+// verifyDeathStage).
+const (
+	VerifyStageGofmt      = internalexecutor.VerifyStageGofmt
+	VerifyStageTest       = internalexecutor.VerifyStageTest
+	VerifyStageE2ETimeout = internalexecutor.VerifyStageE2ETimeout
+	VerifyStageRun        = internalexecutor.VerifyStageRun
+)
+
 // Sink carries failure/result detail through the context (error and
 // result sinks).
 type Sink = internalexecutor.Sink

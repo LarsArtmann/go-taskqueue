@@ -297,9 +297,9 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	tail, err := runVerify(runCtx, t.ID, repoDir, &p, e.ReresolveVerify, baseRev)
+	tail, verifyStage, err := runVerify(runCtx, t.ID, repoDir, &p, e.ReresolveVerify, baseRev)
 	if err != nil {
-		SetFailureEvidence(ctx, "verify", err, tail)
+		SetVerifyFailureEvidence(ctx, verifyStage, err, tail)
 
 		return err
 	}
@@ -832,10 +832,10 @@ func execWithTransientRetry[T any](run func() (T, error)) (T, error) {
 // deadline before a verdict becomes a VerifyGateError — the worker requeues
 // WITHOUT burning an attempt. Only an introduced failure (baseline green,
 // post-attempt red) returns the plain verify-failed error.
-func runVerify(ctx context.Context, id task.ID, repoDir string, p *AgentPayload, reresolve bool, baseRev string) (string, error) {
+func runVerify(ctx context.Context, id task.ID, repoDir string, p *AgentPayload, reresolve bool, baseRev string) (string, string, error) {
 	verify := verifyFor(repoDir, p, reresolve)
 	if verify == "" {
-		return "", nil // nothing to verify (unknown stack, no explicit command)
+		return "", "", nil // nothing to verify (unknown stack, no explicit command)
 	}
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", verify)
@@ -856,23 +856,28 @@ func runVerify(ctx context.Context, id task.ID, repoDir string, p *AgentPayload,
 		// fact. The full output goes to the sidecar evidence file; the
 		// fact carries the excerpt plus the path.
 		tail := tailBytes(buf.Bytes(), verifyErrorTailBytes)
+		// Stage stamp from the FULL buffer, at the cut: the tail (and any
+		// sidecar log, once rotated) loses the head-of-output kill markers
+		// and swallows the gofmt stage's own output, so this is the only
+		// point where the death class is still derivable (row 144).
+		stage := verifyDeathStage(ctx, err, verify, buf.Bytes())
 
 		if evidence := writeVerifyEvidence(id, buf.Bytes()); evidence != "" {
 			tail = fmt.Sprintf("%s\n(full verify output: %s)", tail, evidence)
 		}
 
 		if gateErr := classifyVerifyFailure(ctx, verify, repoDir, baseRev, err, tail); gateErr != nil {
-			return tail, gateErr
+			return tail, stage, gateErr
 		}
 
 		if ctx.Err() != nil {
-			return tail, fmt.Errorf("agent verify cancelled (%w): %s", ctx.Err(), tail)
+			return tail, stage, fmt.Errorf("agent verify cancelled (%w): %s", ctx.Err(), tail)
 		}
 
-		return tail, fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
+		return tail, stage, fmt.Errorf("agent verify failed (%q): %w: %s", verify, err, tail)
 	}
 
-	return tailBytes(buf.Bytes(), 2048), nil
+	return tailBytes(buf.Bytes(), 2048), "", nil
 }
 
 // verifyErrorTailBytes bounds the verify-failure excerpt inlined into the
