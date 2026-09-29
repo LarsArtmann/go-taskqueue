@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	github.com/LarsArtmann/go-crush-data v0.4.0
-	github.com/larsartmann/go-retry v0.6.0
+	github.com/larsartmann/go-retry v0.7.1
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 	modernc.org/sqlite v1.59.0
