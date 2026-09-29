@@ -946,7 +946,11 @@ prose, not the table.
   resets, `authRateLimiter` mirrors webui's writeRateLimiter).
 - ⚠️ **golangci-lint is advisory** (`continue-on-error`, ~890-finding
   baseline): never mass-"fix" the baseline; don't add new findings in
-  functions you touch. Hard gates: vet + gofmt + tests. Baseline GROWTH is
+  functions you touch. Hard gates: vet + gofmt + tests. The golangci LSP
+  server's diagnostics LAG edits (stale findings persist after fixes,
+  fresh ones surface late — the 2026-09-29 security-batch window chased
+  phantom `httptest.NewRequest` flags on lines that no longer existed);
+  gate on the CLI, never on editor diagnostics. Baseline GROWTH is
   now a ci-local GATE (round-13 T5): `scripts/lint-baseline.sh --check`
   (wired after the advisory lint step) fails on any per-module/linter count
   above `.golangci-baseline.txt`. REGEN POISONING (2026-09-26): a regen run
