@@ -1422,7 +1422,7 @@ finalizes. The upstream v5 direction (ADR-0123) makes `metaengine` Store
   since 2026-09-26 those extras' single home is the scaffolded
   `internal/queue/companion` module — the mirrored adapters still own the
   code until the extraction window lands, see
-  docs/planning/2026-09-26_companion-extraction-design.md),
+  docs/planning/archived/2026-09-26_companion-extraction-design.md),
   S2 unify the journal on `facts.Fact` (open FactType; tq-specific fact
   types stay tq constants), S3 read models on metaengine
   (`Watcher`/`ServeSSE` replacing the hand tailer fan-out), S4 composition

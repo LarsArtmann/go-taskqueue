@@ -122,7 +122,7 @@ done-prompt turn (task 000001a0dbda953c950bd0547a6cf75e6e76).
    windows forced into the vendor-trash workaround, one DONE row one
    attempt from dead-lettering.
 4. **Companion extraction** (TODO tail) per
-   docs/planning/2026-09-26_companion-extraction-design.md — 31 mirror
+   docs/planning/archived/2026-09-26_companion-extraction-design.md — 31 mirror
    clone groups, gate advisory until MIRROR_CLONES_STRICT=1.
 5. **Row 114: ci-local end-to-end on the current lineage** — ~120
    unpushed commits, no recent window has run the full gate.

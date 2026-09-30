@@ -35,7 +35,7 @@ AGENTS.md edit — 1 file, +10, footerless by design). Tree clean, 0 stashes.
 
 **Did I lie?** No. Every claim in the hand-off cites a command run in this
 session: gate rc=0 output captured, build+vet OK captured, the design-doc
-quote read from `docs/planning/2026-09-26_companion-extraction-design.md`,
+quote read from `docs/planning/archived/2026-09-26_companion-extraction-design.md`,
 the group metadata read from the tool's own JSON. One precision note I
 should have stated in the hand-off: "all 3 actionable groups map 1:1 onto
 ledgered accepted classes" is true, but two of the three map to classes
@@ -88,7 +88,7 @@ Filed §e.
    ("mirror-clones: 0 cross-backend clone groups", rc=0) is a
    canonical-view claim, not a raw-view one.
 3. **The adapter block correctly ruled NOT clone mass — by reading, not
-   assuming.** `docs/planning/2026-09-26_companion-extraction-design.md`
+   assuming.** `docs/planning/archived/2026-09-26_companion-extraction-design.md`
    (owner-ratified): "Engine-backed methods … are thin
    `tokenFor + mapErr(s.engine.X(...))` calls — they stay in the adapters
    (per-engine types), they are not clone mass." The adapters themselves

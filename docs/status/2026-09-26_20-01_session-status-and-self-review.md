@@ -198,7 +198,7 @@ window.
 1. Force Go env in one place: add `scripts/go` wrapper (or per-script
    forcing) so `GOTOOLCHAIN=local` can never hit a go command again —
    High/S/Quality.
-2. Annotate `docs/planning/2026-09-26_companion-extraction-design.md`
+2. Annotate `docs/planning/archived/2026-09-26_companion-extraction-design.md`
    §conformance as LANDED with pointer to `internal/queue/companion/
    conform` — Low/S/Documentation.
 3. CHANGELOG entry: conformance consolidation + mirror-baseline zero —

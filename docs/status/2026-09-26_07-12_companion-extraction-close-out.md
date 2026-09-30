@@ -71,7 +71,7 @@ concrete recommendation (§f3).
    one parameterized runner). The suites are ~93% identical
    (sqlitev4↔postgresv4 diff: 235 lines; ↔cqrsqlite: 94) with a clean seam
    (8 direct-DB pokes, 2 constructors, ~10 helper signatures) — fully
-   designed (docs/planning/2026-09-26_companion-extraction-design.md §
+   designed (docs/planning/archived/2026-09-26_companion-extraction-design.md §
    conformance), but a 3-way 69-test merge cannot land complete and verified
    in one window. Half-transcribing the tree was rejected as the worst
    end state.
