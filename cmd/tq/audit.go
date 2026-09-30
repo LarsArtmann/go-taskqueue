@@ -24,7 +24,7 @@ func cmdAudit(args []string) error {
 		"journal-drift audit: rebuild task state from the fact journal and diff against the tasks table (advisory)",
 	)
 	projectsDir := fs.String("projects-dir", "", "directory of repos to audit (each with a TODO_LIST.md)")
-	repos := fs.String("repos", "", "comma-separated explicit repo paths (overrides --projects-dir)")
+	repos := fs.String("repos", "", "comma-separated explicit repo paths; bare names resolve against --projects-dir (overrides --projects-dir)")
 	todoFile := fs.String("todo-file", harvest.DefaultTodoFile, "backlog file name inside each repo")
 	taskType := fs.String(
 		"type",

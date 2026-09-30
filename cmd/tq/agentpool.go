@@ -84,7 +84,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		defaultProjectsDir(),
 		"dir containing repos (default $TQ_PROJECTS_DIR or ~/projects)",
 	)
-	repos := fs.String("repos", "", "comma-separated repo dirs (overrides --projects-dir)")
+	repos := fs.String("repos", "", "comma-separated repo dirs; bare names resolve against --projects-dir, never the working directory (overrides --projects-dir)")
 	interval := fs.Duration("interval", 5*time.Minute, "harvest cadence")
 	discoveryAddr := fs.String(
 		"discovery-addr",

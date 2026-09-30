@@ -208,14 +208,22 @@ func splitRepos(spec string) []string {
 	return repos
 }
 
-// expandRepoSpecs makes --repos entries cwd-independent for the harvest,
-// audit, and doctor commands: absolute paths and relative paths that exist
-// against the working directory pass through, while anything else joins the
-// projects dir — so a bare repo name ("alpha") resolves there instead of
-// becoming <cwd>/alpha when the sweep Abs()es it (doctor stats the joined
-// path directly). bootstrap.resolveRepos and the agent-pool option parse
-// apply the same policy. Specs that resolve nowhere are left as-is: the
-// sweeps report them per-repo as scan failures.
+// expandRepoSpecs makes --repos entries cwd-independent for the interactive
+// sweep commands (harvest, audit, doctor, reprioritize): absolute paths and
+// relative paths that exist against the working directory pass through,
+// while anything else joins the projects dir — so a bare repo name ("alpha")
+// resolves there instead of becoming <cwd>/alpha when the sweep Abs()es it
+// (doctor stats the joined path directly).
+//
+// Policy ruling (TODO 112, 2026-10-01): this is the INTERACTIVE policy —
+// a human's cwd is meaningful, so an existing cwd-relative path wins.
+// SERVICE contexts resolve differently by design: the agent-pool option
+// parse (agentpool.go) and the executor payload resolution
+// (executor.resolveRepoDir, which backs `tq worker`) join the projects dir
+// UNCONDITIONALLY (never cwd) because the systemd pool's cwd is
+// untrustworthy. bootstrap.resolveRepos applies this interactive policy
+// (cwd-first, hard stat errors). Specs that resolve nowhere are left
+// as-is: the sweeps report them per-repo as scan failures.
 func expandRepoSpecs(projectsDir string, specs []string) []string {
 	expanded := make([]string, len(specs))
 	for i, spec := range specs {
@@ -674,7 +682,7 @@ func cmdHarvest(args []string) error {
 		defaultProjectsDir(),
 		"dir containing repos with TODO_LIST.md (default $TQ_PROJECTS_DIR or ~/projects)",
 	)
-	repos := fs.String("repos", "", "comma-separated repo dirs (overrides --projects-dir)")
+	repos := fs.String("repos", "", "comma-separated repo dirs; bare names resolve against --projects-dir (overrides --projects-dir)")
 	todoFile := fs.String("todo-file", harvest.DefaultTodoFile, "backlog file name inside each repo")
 	taskType := fs.String("type", harvest.DefaultType, "task type to enqueue")
 	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per run (cost throttle)")
