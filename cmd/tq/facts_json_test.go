@@ -13,12 +13,11 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// agentsDocMaxBytes ratchets the AGENTS.md budget: the plan M89 prune
-// budget was 15,000 B (2026-09-09 file measured 14,904 B), but the file
-// has since grown past 100 KB, so the guard pins CURRENT size + 1 KB
-// slack and fails on any further growth until a deliberate prune resets
-// the budget.
-const agentsDocMaxBytes = 120_829
+// agentsDocMaxBytes pins the AGENTS.md budget at the plan M89 value:
+// the 2026-09-09 file measured 14,904 B; the 2026-10 prune restored the
+// file to 14,998 B and this guard now enforces the documented 15,000 B
+// budget — prune in-place instead of growing the file.
+const agentsDocMaxBytes = 15_000
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue).
