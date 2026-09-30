@@ -651,12 +651,7 @@ func (e *DepBumpExecutor) runGo(
 	timeout time.Duration,
 	args ...string,
 ) (string, error) {
-	if _, ok := ctx.Deadline(); !ok {
-		var cancel context.CancelFunc
-
-		ctx, cancel = context.WithTimeout(ctx, timeout)
-		defer cancel()
-	} else if deadline, _ := ctx.Deadline(); time.Until(deadline) > timeout {
+	if deadline, ok := ctx.Deadline(); !ok || time.Until(deadline) > timeout {
 		var cancel context.CancelFunc
 
 		ctx, cancel = context.WithTimeout(ctx, timeout)
