@@ -67,6 +67,11 @@ type doctorOptions struct {
 	// enqueue-time verify pins against each repo's current gate — the
 	// stale-payload audit class (09-39 f2), encoded as a check.
 	Hygiene bool
+	// ServiceUnit, when set (--service-unit NAME), additionally
+	// diagnoses the systemd unit's OWN environment (its PATH and
+	// GOEXPERIMENT) instead of only the invoking shell's — the actual
+	// failure surface of the 20h dead pool (05-38 report §f/e1).
+	ServiceUnit string
 }
 
 // doctorHeartbeatWindow is how long ago a task.heartbeat fact still counts
@@ -224,6 +229,10 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorOpenSessions(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
 	results = append(results, doctorEnvironment(ctx, opts)...)
+
+	if opts.ServiceUnit != "" {
+		results = append(results, doctorServiceContext(ctx, opts)...)
+	}
 
 	if opts.MarkOrphans {
 		results = append(results, doctorMarkOrphans(ctx, store)...)
@@ -784,6 +793,226 @@ func doctorEnvironment(ctx context.Context, opts doctorOptions) []checkResult {
 	return results
 }
 
+// doctorReadServiceUnit returns the unit file content via `systemctl cat`.
+// Var so tests stub it hermetically (no systemd on all hosts).
+var doctorReadServiceUnit = func(ctx context.Context, unit string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, crushVersionProbeTimeout)
+	defer func() { cancel() }()
+
+	out, err := exec.CommandContext(ctx, "systemctl", "cat", unit).Output()
+
+	return string(out), err
+}
+
+// doctorServiceContext diagnoses the systemd unit's OWN environment — its
+// PATH and GOEXPERIMENT — instead of only the invoking shell's. The 20h
+// dead pool died on a unit PATH missing git/go/crush (02:00 f18); a
+// doctor run from a healthy laptop said "ok" the whole time (05-38 §f).
+func doctorServiceContext(ctx context.Context, opts doctorOptions) []checkResult {
+	unit := opts.ServiceUnit
+	if unit != "" && !strings.Contains(unit, ".") {
+		unit += ".service"
+	}
+
+	content, err := doctorReadServiceUnit(ctx, unit)
+	if err != nil {
+		return []checkResult{{
+			Name: "svc-unit", Status: checkWarn,
+			Detail: fmt.Sprintf("cannot read unit %q: %v (systemctl available? unit name right?)", unit, err),
+		}}
+	}
+
+	env, err := parseSystemdUnitEnv(unit, content)
+	if err != nil {
+		return []checkResult{{Name: "svc-unit", Status: checkWarn, Detail: err.Error()}}
+	}
+
+	results := []checkResult{{
+		Name: "svc-unit", Status: checkOK,
+		Detail: fmt.Sprintf("unit %q environment read (%d vars)", unit, len(env)),
+	}}
+
+	path := env["PATH"]
+	if path == "" {
+		results = append(results, checkResult{
+			Name: "svc-path", Status: checkWarn,
+			Detail: "unit sets no PATH (systemd default is minimal — likely missing git/go/crush)",
+		})
+	}
+
+	bin := opts.AgentBin
+	if bin == "" {
+		bin = "crush"
+	}
+
+	for _, tool := range []struct{ name, why string }{
+		{bin, "agent tasks cannot run"},
+		{"git", "harvest scans and verify commands that use it cannot run"},
+		{"go", "task verify commands that build/test cannot run"},
+	} {
+		if p := lookupOnPath(path, tool.name); p == "" {
+			results = append(results, checkResult{
+				Name: "svc:" + tool.name, Status: checkWarn,
+				Detail: fmt.Sprintf("%q not on the unit's PATH (%s; extend agentPath/Environment in the unit)", tool.name, tool.why),
+			})
+		} else {
+			results = append(results, checkResult{
+				Name: "svc:" + tool.name, Status: checkOK,
+				Detail: p + " (unit PATH)",
+			})
+		}
+	}
+
+	switch exp := env["GOEXPERIMENT"]; exp {
+	case "jsonv2":
+		results = append(results, checkResult{
+			Name: "svc:goexp", Status: checkOK,
+			Detail: "GOEXPERIMENT=jsonv2 set (json/v2 verify gates build)",
+		})
+	default:
+		results = append(results, checkResult{
+			Name: "svc:goexp", Status: checkWarn,
+			Detail: fmt.Sprintf("GOEXPERIMENT=%q on the unit (want jsonv2) — verify commands importing encoding/json/v2 die with \"build constraints exclude all Go files\" (the env-lie, 2026-09-11 000001a08ebf)", exp),
+		})
+	}
+
+	return results
+}
+
+// parseSystemdUnitEnv extracts the environment a systemd unit's processes
+// see: every Environment= assignment (quoted values supported, multiple
+// per line, repeated lines merge) plus EnvironmentFile= drops (a leading
+// `-` makes the file optional). Returns an error when a required
+// EnvironmentFile is unreadable.
+func parseSystemdUnitEnv(unit, content string) (map[string]string, error) {
+	env := map[string]string{}
+
+	for line := range strings.SplitSeq(content, "\n") {
+		line = strings.TrimSpace(line)
+
+		switch {
+		case strings.HasPrefix(line, "Environment="):
+			for _, kv := range splitSystemdAssignments(strings.TrimPrefix(line, "Environment=")) {
+				if k, v, ok := strings.Cut(kv, "="); ok {
+					env[k] = v
+				}
+			}
+		case strings.HasPrefix(line, "EnvironmentFile="):
+			ref := strings.TrimPrefix(line, "EnvironmentFile=")
+			optional := strings.HasPrefix(ref, "-")
+			ref = strings.TrimPrefix(ref, "-")
+
+			data, err := os.ReadFile(ref)
+			if err != nil {
+				if optional {
+					continue
+				}
+
+				return nil, fmt.Sprintf("unit %q EnvironmentFile %q: %s", unit, ref, err)
+			}
+
+			for fl := range strings.SplitSeq(string(data), "\n") {
+				fl = strings.TrimSpace(fl)
+				if fl == "" || strings.HasPrefix(fl, "#") || strings.HasPrefix(fl, ";") {
+					continue
+				}
+				if k, v, ok := strings.Cut(fl, "="); ok {
+					env[k] = unquoteSystemdValue(v)
+				}
+			}
+		}
+	}
+
+	return env, nil
+}
+
+// splitSystemdAssignments splits one Environment= value into KEY=VALUE
+// tokens, honoring systemd's double- and single-quote grouping (spaces
+// inside quotes stay part of the value; quotes are stripped).
+func splitSystemdAssignments(s string) []string {
+	var (
+		tokens []string
+		cur    strings.Builder
+		quoted rune
+	)
+
+	flush := func() {
+		if cur.Len() > 0 {
+			tokens = append(tokens, cur.String())
+			cur.Reset()
+		}
+	}
+
+	for _, r := range s {
+		switch {
+		case quoted != 0:
+			if r == quoted {
+				quoted = 0
+			} else {
+				cur.WriteRune(r)
+			}
+		case r == '"' || r == '\'':
+			quoted = r
+		case r == ' ' || r == '\t':
+			flush()
+		default:
+			cur.WriteRune(r)
+		}
+	}
+
+	flush()
+
+	return tokens
+}
+
+// unquoteSystemdValue strips one layer of matching surrounding quotes
+// from an EnvironmentFile value.
+func unquoteSystemdValue(v string) string {
+	if len(v) >= 2 {
+		if (v[0] == '"' && v[len(v)-1] == '"') || (v[0] == '\'' && v[len(v)-1] == '\'') {
+			return v[1 : len(v)-1]
+		}
+	}
+
+	return v
+}
+
+// lookupOnPath resolves name the way exec.LookPath does, but against an
+// explicit PATH string (the unit's, not this process's). Empty on miss.
+func lookupOnPath(path, name string) string {
+	if name == "" {
+		return ""
+	}
+
+	if strings.ContainsRune(name, '/') {
+		if executableFile(name) {
+			return name
+		}
+
+		return ""
+	}
+
+	for dir := range strings.SplitSeq(path, ":") {
+		if dir == "" {
+			continue
+		}
+
+		if p := filepath.Join(dir, name); executableFile(p) {
+			return p
+		}
+	}
+
+	return ""
+}
+
+// executableFile reports whether path exists as a non-directory with at
+// least one execute bit set.
+func executableFile(path string) bool {
+	info, err := os.Stat(path)
+
+	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
+}
+
 // goEnvProbeTimeout bounds one probe build: a cold-cache build of the
 // synthetic jsonv2 module is seconds, not minutes; a hung toolchain must
 // not hang the doctor.
@@ -1077,6 +1306,11 @@ func cmdDoctor(args []string) error {
 		false,
 		"audit PENDING agent tasks' enqueue-time verify pins against each repo's current gate (.tq-verify, else auto-detect) — the stale-payload check",
 	)
+	serviceUnit := fs.String(
+		"service-unit",
+		"",
+		"systemd unit name (e.g. tq-agent-pool): diagnose the unit's OWN PATH and GOEXPERIMENT via systemctl cat, not the caller's",
+	)
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -1090,6 +1324,7 @@ func cmdDoctor(args []string) error {
 		AgentBin:    *agentBin,
 		MarkOrphans: *markOrphans,
 		Hygiene:     *hygiene,
+		ServiceUnit: *serviceUnit,
 	}
 
 	results, err := runDoctor(context.Background(), opts)

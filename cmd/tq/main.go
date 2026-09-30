@@ -68,7 +68,7 @@ Usage:
   tq tasks [--project P] [--status S] [--type T] [--since DUR] [--limit N] [--count] [--json] [--db PATH]
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
           [--max-attempts N] [--dry-run] [--json] [--db PATH]
-  tq doctor [--json] [--hygiene] [--daily-budget N] [--repos a,b] [--db PATH]
+  tq doctor [--json] [--hygiene] [--daily-budget N] [--repos a,b] [--service-unit UNIT] [--db PATH]
   tq top [--interval DUR] [--once] [--json] [--db PATH]
   tq show TASK_ID [--db PATH]   (a unique ID prefix works)
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]] [--dismiss TASK_ID [--reason WHY]]
