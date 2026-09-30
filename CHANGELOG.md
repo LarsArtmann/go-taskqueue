@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **`tq doctor --service-unit UNIT`**: service-context mode diagnoses the
+  systemd unit's OWN environment instead of the invoking shell's —
+  `systemctl cat` reads the unit, its `Environment=`/`EnvironmentFile=`
+  settings are parsed, and the unit's PATH is probed for
+  crush/git/go plus the GOEXPERIMENT=jsonv2 pin (`svc:*` checks). The
+  20h dead pool died on a unit PATH missing git/go/crush while a doctor
+  run from a healthy laptop said ok (05-38 report §f). Default OFF.
 - **Shared token-auth seam (`internal/httpauth`)**: `tq serve` and
   `tq api` now extract bearer tokens (case-insensitive `Authorization:
   Bearer` scheme per RFC 9110 + `?token=` fallback) and compare them
