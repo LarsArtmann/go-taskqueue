@@ -1,6 +1,6 @@
 # Help Centre reply draft (owner sends)
-> **ANNOTATED 2026-09-30 (docs-health sweep)** — the external-adoption blockers this draft answers were healed by the v0.3.0 facade release (ADR-0016); struck items verified at HEAD.
 
+> **ANNOTATED 2026-09-30 (docs-health sweep)** — the external-adoption blockers this draft answers were healed by the v0.3.0 facade release (ADR-0016); struck items verified at HEAD.
 
 _Re: "Can we learn from go-taskqueue? or use it?" — reply via the private
 evaluator channel (no public tracking issue: their identity is confidential)._
@@ -22,18 +22,18 @@ v0.3.0 via `go list -m -versions`).
 Item by item:
 
 ~~1. **Facade per consumer-facing contract** — shipped (ADR-0016). Type~~ done — shipped at HEAD: facades v0.3.0 live on proxy
-   aliases, not wrappers: `queue.Store` IS the store, both backends and
-   the worker interoperate with zero glue. Implementations stay internal
-   and refactor freely.
+aliases, not wrappers: `queue.Store` IS the store, both backends and
+the worker interoperate with zero glue. Implementations stay internal
+and refactor freely.
 ~~2. **Promotion: move, don't rename** — recorded in the ADR as the~~ done — shipped at HEAD: ADR-0016 move-don't-rename
-   stabilization path; facades keep resolving either way.
+stabilization path; facades keep resolving either way.
 ~~3. **References doc for the single-job-type profile** — shipped at~~ done — shipped at HEAD: profile doc at HEAD
-   docs/references/single-job-type-queue-profile.md.
+docs/references/single-job-type-queue-profile.md.
 ~~4. **Constructor taking an existing `*pgxpool.Pool`** — shipped:~~ done — shipped at HEAD: OpenWithPool postgres.go
-   `postgres.OpenWithPool(ctx, pool)`. The pool stays yours — `Close`
-   does not tear it down (we proved that against a live cluster before
-   cutting the release; the first live run caught the opposite behavior
-   and it was fixed pre-tag).
+`postgres.OpenWithPool(ctx, pool)`. The pool stays yours — `Close`
+does not tear it down (we proved that against a live cluster before
+cutting the release; the first live run caught the opposite behavior
+and it was fixed pre-tag).
 ~~5. **README consumer status line** — shipped near the top.~~ done — shipped at HEAD: README consumer line
 
 Verified from a clean room: proxy-only resolution (no replaces), a

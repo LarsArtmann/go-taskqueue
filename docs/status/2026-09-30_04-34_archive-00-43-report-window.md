@@ -18,7 +18,7 @@
    well-formed, last trailer), tree clean after.
 2. **Triage claims spot-verified at HEAD** (the three artifact-class
    assertions in the dispatch + the file's own strikethroughs):
-   `scripts/archive-evidence.sh` exists (§f1/§g1), 
+   `scripts/archive-evidence.sh` exists (§f1/§g1),
    `docs/planning/2026-09-12_worktree-per-agent-design.md` exists (§c3/§f6),
    the README "Evidence archives" block exists with the 01-15 index row
    confirming 676d8337 (§g3/§f2-supersession). The ARCHIVED disposition note
@@ -161,9 +161,9 @@ Not 50 — honest list, no padding. Existing rows are re-ranked, not re-duplicat
 9. Rows 359–362 (commit-msg hook follow-ups) — stand; this window ran the
    manual interpret-trailers self-check that row 362 wants codified.
 10. Rows 155/369 (session-start regression pin + hooks-liveness probe) — stand.
-11–50: refused. The section-level backlog (process rows 246–260, footer
-placement 390, re-dispatch protocol 310) already ranks the remainder; minting
-filler here would be noise.
+    11–50: refused. The section-level backlog (process rows 246–260, footer
+    placement 390, re-dispatch protocol 310) already ranks the remainder; minting
+    filler here would be noise.
 
 ## g) Questions I can NOT figure out myself
 

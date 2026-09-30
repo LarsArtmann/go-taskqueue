@@ -24,8 +24,8 @@ upon; nothing reverted).
      explicitness + adjacent-section probes + batch_test pins);
    - `tq mcp` row (stdio MCP server, ≤6 read-mostly tools, ask parity,
      smoke + devmod gates, bootstrap registration recipe).
-   Wording passed the `check-todo-list.sh` scan by construction (no
-   unblocked-gated markers; gate rc=0 at mint, 257 unchecked rows counted).
+     Wording passed the `check-todo-list.sh` scan by construction (no
+     unblocked-gated markers; gate rc=0 at mint, 257 unchecked rows counted).
 2. **crush#3346 deep review complete** — 49 files, +2388/−91 read in full:
    delivery mechanics (`backend/channels.go` exactly-once router,
    `SubscribeChannelEvents` workspace-scoping, `channelTargetSession`
@@ -146,8 +146,8 @@ Nothing catastrophic; three calibrated misses, all process-class:
 8. Design the tq channel-meta schema (task_id/repo/attempt/dedup_key/
    batch) incl. XML-escaping rules for arbitrary prompt text.
 9. `tq bootstrap`: managed `.crushrc` mcp block gains `channel_enabled`
-   + `channel_reply` emission once crush ≥ 0.97 is the floor (schema
-   known from this review).
+   - `channel_reply` emission once crush ≥ 0.97 is the floor (schema
+     known from this review).
 10. Question-flow channel pivot design (row for it does not exist yet):
     AnswerPoller pushes the answer into the parked session as a
     `<channel>` message instead of NotBefore expiry → full re-claim →
@@ -170,8 +170,8 @@ Nothing catastrophic; three calibrated misses, all process-class:
     sessions) — file only if the owner wants the pattern generalized.
 17. AGENTS.md channels one-liner after live 0.97 verification (per §c3).
 18. Session-behavior items from §e belong to the standing
-   session-start/battery rows (23-28 §f already rows the check-ci skip
-   class; nothing new to mint).
+    session-start/battery rows (23-28 §f already rows the check-ci skip
+    class; nothing new to mint).
 
 ## g) QUESTIONS (cannot self-answer)
 

@@ -111,16 +111,17 @@ Carries observed in the index while writing this report (B, each with source row
 
 ## Battery (rc-captured this window, stock shell, redirect-to-file per the PIPESTATUS hazard)
 
-| Gate | rc | Notes |
-| --- | --- | --- |
-| `scripts/check-status-index.sh` | 0 | ok; INDEX BLOAT WARNING: 333 live rows (threshold 100) — §f50 |
-| `scripts/check-doc-refs.sh` | 0 | ok |
-| `scripts/check-dead-sha-refs.sh` | 1 | **PRE-EXISTING, not this window's row**: all 3 hits cite SHAs unreachable from HEAD via PRIOR index rows (`README.md:764` f04618a8, `:772`/`:773` 702ee8b4 — the 22-05/01-03/01-24 windows); `git merge-base --is-ancestor` rc=1 for both; my appended row 774 cites no SHAs and my report file has zero hits. Left unhealed per no-unrelated-fixes; the fork-record question belongs to those windows/owner (§f addendum below) |
-| `scripts/check-ci.sh` (report-time probe) | 1 | Master RED at `d0f680995` (daemon commit, "auto-commit 3 changed file(s)") — red run predates this tree; consistent with the row-345 zero-coverage-of-suppression-code thread (§f16) |
+| Gate                                      | rc | Notes                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------------------------------- | -- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/check-status-index.sh`           | 0  | ok; INDEX BLOAT WARNING: 333 live rows (threshold 100) — §f50                                                                                                                                                                                                                                                                                                                                                                    |
+| `scripts/check-doc-refs.sh`               | 0  | ok                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `scripts/check-dead-sha-refs.sh`          | 1  | **PRE-EXISTING, not this window's row**: all 3 hits cite SHAs unreachable from HEAD via PRIOR index rows (`README.md:764` f04618a8, `:772`/`:773` 702ee8b4 — the 22-05/01-03/01-24 windows); `git merge-base --is-ancestor` rc=1 for both; my appended row 774 cites no SHAs and my report file has zero hits. Left unhealed per no-unrelated-fixes; the fork-record question belongs to those windows/owner (§f addendum below) |
+| `scripts/check-ci.sh` (report-time probe) | 1  | Master RED at `d0f680995` (daemon commit, "auto-commit 3 changed file(s)") — red run predates this tree; consistent with the row-345 zero-coverage-of-suppression-code thread (§f16)                                                                                                                                                                                                                                             |
 
 No build/vet/test gates: zero code delta by design (question session).
 
 **§f addendum (51st observation, not renumbered)**: heal the dead-sha hits on index rows 764/772/773 — either re-resolve `f04618a8`/`702ee8b4` to their reachable twins or add the fork record the gate asks for; both SHAs became unreachable without a recorded fork.
 
 ---
+
 _Interactive Q&A session report. Wait state: owner instruction pending (per the session contract). Format: .md per explicit owner request (skill default is HTML)._

@@ -1,6 +1,6 @@
 # Status Report — ADR-0019 S1 Spike (sqlite): sqlitev4 Conformance Run + Divergence Report
-> **ARCHIVED 2026-09-30 (docs-health archive sweep)** — per-item triage at HEAD: the S1 sqlite spike + its divergences are recorded in the conform suite (companion/conform) and the decision memo; every numbered item struck below. Re-verify before citing any claim as current.
 
+> **ARCHIVED 2026-09-30 (docs-health archive sweep)** — per-item triage at HEAD: the S1 sqlite spike + its divergences are recorded in the conform suite (companion/conform) and the decision memo; every numbered item struck below. Re-verify before citing any claim as current.
 
 Date: 2026-09-23 16:28 CEST · Task: 000001a0cb25e97b458b379ff9d7aaeb4472
 (TODO_LIST row 31, section "go-cqrs-lite platform adoption") · Contract:
@@ -23,33 +23,34 @@ module; the cqrsqlite/sqlitev4 split brain itself remains owner-gated
 ## What was done
 
 ~~1. **tq's existing sqlite conformance suite copied into the module**~~ done — shipped at HEAD: copied suite row 31 [x]
-   (store_test.go 3,441 lines + sessionfact_test.go + race_on/race_off;
-   package rename only — the suite is self-contained, verified: its only
-   helpers `seedFacts`/`parkOnQuestion` are defined inside the test file
-   itself, internal/queue/sqlite/store_test.go:1551/3062).
+(store_test.go 3,441 lines + sessionfact_test.go + race_on/race_off;
+package rename only — the suite is self-contained, verified: its only
+helpers `seedFacts`/`parkOnQuestion` are defined inside the test file
+itself, internal/queue/sqlite/store_test.go:1551/3062).
 ~~2. **Suite triaged to green against the adapter**: first run 42 failures,~~ done — shipped at HEAD: 72 pass/3 skip
-   root-caused to TWO adapter defects (below), fixed in adapter.go; two
-   genuine divergences skip-pinned with DIVERGENCE comments (cqrsqlite
-   pattern). Final: `go test ./... -count=1` rc=0, **72 pass / 3 skip**;
-   `-race` rc=0; `go build`/`go vet` rc=0; gofmt clean (all captured in
-   /tmp/sqlitev4-suite4.log, /tmp/sqlitev4-race.log this session).
+root-caused to TWO adapter defects (below), fixed in adapter.go; two
+genuine divergences skip-pinned with DIVERGENCE comments (cqrsqlite
+pattern). Final: `go test ./... -count=1` rc=0, **72 pass / 3 skip**;
+`-race` rc=0; `go build`/`go vet` rc=0; gofmt clean (all captured in
+/tmp/sqlitev4-suite4.log, /tmp/sqlitev4-race.log this session).
 ~~3. **Adapter fixes (defects, not divergences)**:~~ done — shipped at HEAD: identityCodec + CAST D5
-   - `identityCodec` nil-payload guard (adapter.go:107): upstream binds
-     `[]byte(nil)` as SQL NULL and its `tasks.payload` is `NOT NULL` —
-     every zero-payload enqueue died with `NOT NULL constraint failed:
+
+- `identityCodec` nil-payload guard (adapter.go:107): upstream binds
+  `[]byte(nil)` as SQL NULL and its `tasks.payload` is `NOT NULL` —
+  every zero-payload enqueue died with `NOT NULL constraint failed:
      tasks.payload` (1299), cascading into 40+ claim failures (tq's suite
-     ignores enqueue errors in several tests, so claims then found
-     nothing). tq's own schema stores the empty string and never fails.
-     Fix: nil encodes as the empty blob.
-   - `listWhere` payload pushdown CAST (adapter.go:774): upstream stores
-     payload as BLOB (its DDL: `payload BLOB`), tq as TEXT — SQLite LIKE
-     never matches a BLOB operand against a TEXT pattern, so
-     `TestListQueryPushdown` matched 0 for "hello". Fix:
-     `CAST(payload AS TEXT) LIKE ?` (read-side only; engine schema
-     untouched).
-~~4. **Archive stub** (archive.go): `ArchiveFactsBefore`/`ArchiveSummary`~~ done — shipped at HEAD: archive.go at HEAD
-   exist only so the copied suite compiles; both return a not-implemented
-   error, matching cqrsqlite's treatment.
+  ignores enqueue errors in several tests, so claims then found
+  nothing). tq's own schema stores the empty string and never fails.
+  Fix: nil encodes as the empty blob.
+- `listWhere` payload pushdown CAST (adapter.go:774): upstream stores
+  payload as BLOB (its DDL: `payload BLOB`), tq as TEXT — SQLite LIKE
+  never matches a BLOB operand against a TEXT pattern, so
+  `TestListQueryPushdown` matched 0 for "hello". Fix:
+  `CAST(payload AS TEXT) LIKE ?` (read-side only; engine schema
+  untouched).
+  ~~4. **Archive stub** (archive.go): `ArchiveFactsBefore`/`ArchiveSummary`~~ done — shipped at HEAD: archive.go at HEAD
+  exist only so the copied suite compiles; both return a not-implemented
+  error, matching cqrsqlite's treatment.
 
 ## THE DIVERGENCE REPORT (the row's core deliverable)
 
@@ -151,17 +152,17 @@ is adapter-owned writing tq's full `RequeueEvidence` incl.
 ## b) PARTIALLY DONE
 
 ~~1. **`last_error` reset divergence (D1) is documented, not fixed** — the~~ done — shipped at HEAD: D1 reset TestCompleteResets
-   adapter could post-clear it, but that means a second UPDATE outside
-   the engine's tx; belongs in the decision memo (or an upstream fix).
-   TODO row appended.
+adapter could post-clear it, but that means a second UPDATE outside
+the engine's tx; belongs in the decision memo (or an upstream fix).
+TODO row appended.
 ~~2. **Parity is suite-pinned, not exhaustively hand-verified** — the 72~~ done — narrative record (no ask)
-   passing tests cover the tq contract surface; unpinned corners (D1's
-   cross-process nuance, completed-fact detail byte-shapes) were verified
-   by code reading and are labeled as such above.
+passing tests cover the tq contract surface; unpinned corners (D1's
+cross-process nuance, completed-fact detail byte-shapes) were verified
+by code reading and are labeled as such above.
 ~~3. **The split brain (cqrsqlite vs sqlitev4) persists** — this row's work~~ done — shipped at HEAD: companion/conform row 323
-   landed on sqlitev4 (the module the TODO row describes: full extras +
-   exclusivity + resume-closeout, all suite-pinned). Deleting the loser
-   stays owner-gated (15-59 §g1).
+landed on sqlitev4 (the module the TODO row describes: full extras +
+exclusivity + resume-closeout, all suite-pinned). Deleting the loser
+stays owner-gated (15-59 §g1).
 
 ## c) NOT STARTED (belongs to later rows)
 
@@ -171,15 +172,15 @@ untouched.
 ## d) TOTALLY FUCKED UP
 
 ~~1. **I misread my own first suite run**: saw one failure in `tail -5`,~~ done — narrative record (no ask)
-   concluded "only one failure", and wrote a fix for it before grepping
-   the full log — the run had 42 failures. The CAST fix was correct but
-   the diagnosis sequence was backwards (fix-first, evidence-later). The
-   count comparison (`grep -c '^--- FAIL'` across both logs) is what
-   exposed it. Claim discipline exists precisely for this.
+concluded "only one failure", and wrote a fix for it before grepping
+the full log — the run had 42 failures. The CAST fix was correct but
+the diagnosis sequence was backwards (fix-first, evidence-later). The
+count comparison (`grep -c '^--- FAIL'` across both logs) is what
+exposed it. Claim discipline exists precisely for this.
 ~~2. **First build of the session ran without the env export** — no, it did~~ done — narrative record (no ask)
-   not: exported `GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto` from the first
-   go command (15-59 §d1's lesson taken). Recorded as a non-event so the
-   next reader does not re-derive it.
+not: exported `GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto` from the first
+go command (15-59 §d1's lesson taken). Recorded as a non-event so the
+next reader does not re-derive it.
 
 ## e) Verification battery (all rc captured this session)
 

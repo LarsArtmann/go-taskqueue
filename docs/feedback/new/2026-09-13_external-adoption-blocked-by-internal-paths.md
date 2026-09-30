@@ -1,6 +1,6 @@
 # Feedback: adoption attempt from an external consumer
-> **ANNOTATED 2026-09-30 (docs-health sweep)** — resolved by the v0.3.0 facade release (ADR-0016); struck items verified at HEAD.
 
+> **ANNOTATED 2026-09-30 (docs-health sweep)** — resolved by the v0.3.0 facade release (ADR-0016); struck items verified at HEAD.
 
 **Date**: 2026-09-13
 **Who**: an external evaluator, private organization (identity redacted
@@ -62,24 +62,24 @@ of your ideas, not your code, and it will now drift.
 ## What I would like to see changed
 
 ~~1. **A public facade module per consumer-facing contract.**~~ done — shipped at HEAD: 7 facades v0.3.0 shipped
-   e.g. `github.com/larsartmann/go-taskqueue/queue` re-exporting
-   `internal/queue` (types, `Store`, `Filter`, sentinels), plus
-   `.../queue/postgres` re-exporting the store. Keep implementations
-   internal as long as you like; the facade pins only names. This is the
-   smallest change that makes the library usable from outside, without a
-   big-bang promotion or freezing the API.
+e.g. `github.com/larsartmann/go-taskqueue/queue` re-exporting
+`internal/queue` (types, `Store`, `Filter`, sentinels), plus
+`.../queue/postgres` re-exporting the store. Keep implementations
+internal as long as you like; the facade pins only names. This is the
+smallest change that makes the library usable from outside, without a
+big-bang promotion or freezing the API.
 ~~2. **If/when promoting**: the ADR-0012 driver-style layout is already the~~ done — shipped at HEAD: ADR-0016 promotion path
-   right public shape — move, don't rename.
+right public shape — move, don't rename.
 ~~3. **A references/ doc for the minimal single-job-type profile**:~~ done — shipped at HEAD: profile doc at HEAD
-   PK-dedup row per job + visibility-timeout claim + version-guarded
-   enqueue/revive + bounded ladder + dead flag. It generalizes beyond this
-   library and it is the part adopters will re-derive anyway.
+PK-dedup row per job + visibility-timeout claim + version-guarded
+enqueue/revive + bounded ladder + dead flag. It generalizes beyond this
+library and it is the part adopters will re-derive anyway.
 ~~4. **Constructor accepting an existing `*pgxpool.Pool`** (if not already~~ done — shipped at HEAD: OpenWithPool shipped
-   planned): consumers with a pool do not want a second connection pool via
-   `database/sql`.
+planned): consumers with a pool do not want a second connection pool via
+`database/sql`.
 ~~5. **README: state consumer status in one line** near the top~~ done — shipped at HEAD: README consumer line
-   ("library is in-repo only until facades land" or similar), so the next
-   evaluator spends minutes, not an afternoon.
+("library is in-repo only until facades land" or similar), so the next
+evaluator spends minutes, not an afternoon.
 
 ## Offer
 

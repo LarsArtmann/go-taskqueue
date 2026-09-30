@@ -1,6 +1,6 @@
 # Companion Extraction — Design (executes the 2026-09-26 dedup ruling)
-> **EXECUTED — ARCHIVED 2026-09-30 (docs-health archive sweep)** — per-item triage at HEAD: internal/queue/companion/{core,reads,claims,questions,schema}.go shipped, all adapters delegate, the conform suite is consolidated (row 323 DONE), and scripts/mirror-baseline.txt is at ZERO rows; the numbered plan items are struck below. Design history preserved here; open residue lives in TODO_LIST rows 41/42 (ADR-0019 S3/S4 + M4 memo).
 
+> **EXECUTED — ARCHIVED 2026-09-30 (docs-health archive sweep)** — per-item triage at HEAD: internal/queue/companion/{core,reads,claims,questions,schema}.go shipped, all adapters delegate, the conform suite is consolidated (row 323 DONE), and scripts/mirror-baseline.txt is at ZERO rows; the numbered plan items are struck below. Design history preserved here; open residue lives in TODO_LIST rows 41/42 (ADR-0019 S3/S4 + M4 memo).
 
 Owner ruling 2026-09-26: dedup acceptances are ≈ 0; the ADR-0019 spike
 adapters (sqlitev4, postgresv4, cqrsqlite) are doomed by S4 (system/ +

@@ -1,6 +1,6 @@
 # 19-52 — Conformance-suite consolidation (companion/conform) — close-out
-> **ARCHIVED 2026-09-30 (docs-health archive sweep)** — per-item triage at HEAD: the conform consolidation shipped (internal/queue/companion/conform StoreSuite; mirror-baseline zero rows, row 323 DONE); the numbered residue items are struck below, §e bullets are unnumbered narrative. Re-verify before citing any claim as current.
 
+> **ARCHIVED 2026-09-30 (docs-health archive sweep)** — per-item triage at HEAD: the conform consolidation shipped (internal/queue/companion/conform StoreSuite; mirror-baseline zero rows, row 323 DONE); the numbered residue items are struck below, §e bullets are unnumbered narrative. Re-verify before citing any claim as current.
 
 Companion-extraction RESIDUE row executed to **zero mirrors**. The three
 mirrored spike suites (~3.5k lines ×3 + the byte-identical sessionfact
@@ -118,21 +118,21 @@ runs the SHARED bodies.
 ## d) Friction log
 
 ~~1. **GOTOOLCHAIN=local env-lie struck again** on the first companion~~ done — narrative record (no ask)
-   `go mod tidy` (go.mod requires 1.27.1) — the documented one-env
-   discipline (`export GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto` on EVERY
-   invocation) is the only fix; re-confirmed yet again.
+`go mod tidy` (go.mod requires 1.27.1) — the documented one-env
+discipline (`export GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto` on EVERY
+invocation) is the only fix; re-confirmed yet again.
 ~~2. **Python string surgery on Go source**: attempted once for the pg shim~~ done — narrative record (no ask)
-   removal, failed harmlessly (substring mismatch before any write) and
-   was abandoned for view+edit — the repo's ban exists because the failure
-   mode is silent wrongness; here the failure was loud, but the tool is
-   simply the wrong one for Go edits.
+removal, failed harmlessly (substring mismatch before any write) and
+was abandoned for view+edit — the repo's ban exists because the failure
+mode is silent wrongness; here the failure was loud, but the tool is
+simply the wrong one for Go edits.
 ~~3. **The extraction window left companion's lint rows unregenerated**~~ done — narrative record (no ask)
-   (its battery skipped lint-baseline; the 01:41 regen predated
-   companion's 07:12 landing). This window's clean-cache regen absorbed
-   BOTH that debt and the new conform classes in one deliberate regen —
-   cited above. Lesson: any window introducing a new PACKAGE owes its own
-   baseline regen before stopping; "new module = new rows" is now written
-   into this report for the next extraction-style window.
+(its battery skipped lint-baseline; the 01:41 regen predated
+companion's 07:12 landing). This window's clean-cache regen absorbed
+BOTH that debt and the new conform classes in one deliberate regen —
+cited above. Lesson: any window introducing a new PACKAGE owes its own
+baseline regen before stopping; "new module = new rows" is now written
+into this report for the next extraction-style window.
 
 ## e) Not done here (deliberate)
 

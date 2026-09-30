@@ -31,14 +31,14 @@
    (commit `92216ac3`); 9 rows closed as verified-shipped at HEAD this
    session (cmd/tq LSP bullet, mvdan `&`-precedence bullet,
    edit→commit→battery codification, re-dispatch checklist, multi-file-tail
-   + printf-`%.0s` hazards, `tq api` README row, `tq tasks --count`
-   FEATURES row, httpauth CHANGELOG/FEATURES rows); the truncated duplicate
-   `tq mcp` row (cut mid-sentence at "(JSON-") and an empty section header
-   removed; 9 curated harvest rows minted with citations (flake tarball
-   hash twin, evidence-stage surfaces, S1 divergence register, cqrsqlite
-   disposition ruling, archive-evidence self-verify, crush twin-shadow
-   WARN, Claude Channels spec research, README log-location section, the
-   103-death rewind runbook). 268→258 open rows.
+   - printf-`%.0s` hazards, `tq api` README row, `tq tasks --count`
+     FEATURES row, httpauth CHANGELOG/FEATURES rows); the truncated duplicate
+     `tq mcp` row (cut mid-sentence at "(JSON-") and an empty section header
+     removed; 9 curated harvest rows minted with citations (flake tarball
+     hash twin, evidence-stage surfaces, S1 divergence register, cqrsqlite
+     disposition ruling, archive-evidence self-verify, crush twin-shadow
+     WARN, Claude Channels spec research, README log-location section, the
+     103-death rewind runbook). 268→258 open rows.
 5. **Living-doc fixes.** FEATURES.md Release-runner cell reconstructed
    (truncated mid-flag since the 09-16 instrument pass, missing the cell
    text AND the closing pipe); ROADMAP's go-1.27 toolchain question struck
