@@ -46,8 +46,23 @@ else
 	exit 1
 fi
 
-findings="$("${sc[@]}" -f gcc -S warning "${files[@]}" 2>&1)"
-if [ -n "$findings" ]; then
+# stderr (nix fetch chatter on a cold cache) is kept OUT of the findings
+# capture: only shellcheck's own stdout may set findings (a first-run
+# "copying path … from cache.nixos.org" line once failed the gate as a
+# phantom finding).
+sc_err="$(mktemp)"
+trap 'rm -f "$sc_err"' EXIT
+findings="$("${sc[@]}" -f gcc -S warning "${files[@]}" 2>"$sc_err")"
+sc_rc=$?
+if [ -s "$sc_err" ]; then
+	echo "shellcheck stderr:" >&2
+	cat "$sc_err" >&2
+fi
+if [ "$sc_rc" -ne 0 ] && [ -z "$findings" ]; then
+	echo "FAIL: shellcheck exited $sc_rc without findings" >&2
+	fail=1
+	checks_failed=$((checks_failed + 1))
+elif [ -n "$findings" ]; then
 	echo "$findings"
 	checks_failed=$((checks_failed + 1))
 	fail=1

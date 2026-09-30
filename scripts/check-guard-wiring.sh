@@ -28,6 +28,18 @@ for f in scripts/check-*.sh scripts/smoke/*.sh; do
 	fi
 done
 
+# session-start.sh is convention-invoked (agent turn-1 ritual, AGENTS.md),
+# never referenced by ci-local/ci.yml/flake — the loop above is blind to it.
+# Assert existence so deletion/renaming fails the gate (08-57 report §f3).
+ritual=scripts/session-start.sh
+if [ ! -f "$ritual" ]; then
+	echo "ORPHANED GUARD: $ritual missing — the AGENTS.md turn-1 ritual script is convention-invoked, not gate-referenced; deletion would be invisible"
+	rc=1
+	wired_failed=$((wired_failed + 1))
+else
+	wired_ok=$((wired_ok + 1))
+fi
+
 if [ "$rc" = 0 ]; then
 	echo "guard wiring ok: every check-*/smoke script is referenced"
 fi
