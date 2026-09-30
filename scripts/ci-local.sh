@@ -69,6 +69,12 @@ step "transient-retry self-test (with_transient_retry behavior pin)"
 step "commit-msg hook self-test (Task-Queue-ID trailer placement pin)"
 ./scripts/check-commit-msg-hook.sh
 
+# Pin the session-start master-CI probe the same way (23-28 b2/f2): a red
+# master must be REPORTED and the ritual must still complete — a bare probe
+# call would abort every session start under set -e.
+step "session-start probe self-test (red-master tolerance pin)"
+./scripts/check-session-start-probe.sh
+
 # --- CI test job (exact ci.yml order; lint advisory exactly like CI) -------
 
 step "vet"

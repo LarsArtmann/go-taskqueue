@@ -34,9 +34,9 @@ echo
 echo "=== prior reports for current task ID(s) ==="
 # Pass task IDs as arguments: scripts/session-start.sh <id> [<id>...]
 # With no arguments, prints the hint instead of guessing.
+windows_total=0
+done_hits=0
 if [ "$#" -gt 0 ]; then
-	windows_total=0
-	done_hits=0
 	for id in "$@"; do
 		echo "--- $id ---"
 		local_reports="$(rg -l "$id" docs/status/ 2>/dev/null || true)"
