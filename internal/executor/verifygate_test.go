@@ -398,8 +398,12 @@ func TestIsGateArtifactDeath(t *testing.T) {
 			want:      true,
 		},
 		{
-			name:      "legacy all-ok tail with gofmt stage in error",
-			evidence:  FailureEvidence{Stage: "verify", ExitCode: 1, Tail: "ok  \tdemo\t0.01s\nok  \tinternal/queue\t0.4s\n"},
+			name: "legacy all-ok tail with gofmt stage in error",
+			evidence: FailureEvidence{
+				Stage:    "verify",
+				ExitCode: 1,
+				Tail:     "ok  \tdemo\t0.01s\nok  \tinternal/queue\t0.4s\n",
+			},
 			lastError: `agent verify failed ("go test ./... && test -z "$(gofmt -l .)""): exit 1: ok  demo`,
 			want:      true,
 		},

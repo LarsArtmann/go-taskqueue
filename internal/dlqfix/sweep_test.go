@@ -640,6 +640,7 @@ func TestSweeperAutoDismissLegacyAllOkFact(t *testing.T) {
 	t.Parallel()
 
 	s := newTestStore(t)
+
 	sw, err := NewSweeper(context.Background(), s, SweeperConfig{
 		Scanner: commitsScanner(),
 	})
@@ -685,10 +686,30 @@ func TestSweeperGateArtifactWithoutShippedProofKeepsAutopsy(t *testing.T) {
 		key     func(repo, key string) string
 		scanner executor.GitScanner
 	}{
-		{name: "item still open", todo: []string{"- [ ] ship the widget"}, key: func(_, key string) string { return key }, scanner: commitsScanner()},
-		{name: "no footer commits", todo: []string{"- [x] ship the widget"}, key: func(_, key string) string { return key }, scanner: noCommits},
-		{name: "non-harvest task", todo: []string{"- [x] ship the widget"}, key: func(_, _ string) string { return "external:id" }, scanner: commitsScanner()},
-		{name: "no scanner wired", todo: []string{"- [x] ship the widget"}, key: func(_, key string) string { return key }, scanner: nil},
+		{
+			name:    "item still open",
+			todo:    []string{"- [ ] ship the widget"},
+			key:     func(_, key string) string { return key },
+			scanner: commitsScanner(),
+		},
+		{
+			name:    "no footer commits",
+			todo:    []string{"- [x] ship the widget"},
+			key:     func(_, key string) string { return key },
+			scanner: noCommits,
+		},
+		{
+			name:    "non-harvest task",
+			todo:    []string{"- [x] ship the widget"},
+			key:     func(_, _ string) string { return "external:id" },
+			scanner: commitsScanner(),
+		},
+		{
+			name:    "no scanner wired",
+			todo:    []string{"- [x] ship the widget"},
+			key:     func(_, key string) string { return key },
+			scanner: nil,
+		},
 	}
 
 	for _, tt := range tests {
