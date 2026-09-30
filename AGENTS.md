@@ -615,7 +615,13 @@ degradation explicitly). RescueDead's re-emission stays
 - **Edit→commit→battery ordering**: commit doc edits immediately after
   the edit; run long gates (root -race battery) AFTER the commit — an
   edit sitting uncommitted through a multi-minute battery gets swept
-  footer-less by the daemon (7th AMEND MANEUVER instance, 16fe5199→99776b72).
+  footer-less by the daemon (7th AMEND MANEUVER instance, 16fe5199→99776b72;
+  receipts #2–#6 — the rule, not the habit: NO unstaged edits survive a
+  gate run longer than ~30s). The mechanical form is
+  `scripts/commit-task.sh <task-id> <subject> <file>…` — stages exactly the
+  named files and commits with the Task-Queue-ID trailer LAST (footer
+  shape hook-validated; ID format + file-existence checked; 23-57 report
+  d1/e1/g3 sanctioned the wrapper + timing rule pair).
 - **Row-note accretion**: attempt notes on a DONE TODO row collapse to
   ONE note + a pointer to the latest report — not append-only accretion
   (row 171 carried 3 same-day notes on a single ~1.6k-char line;
