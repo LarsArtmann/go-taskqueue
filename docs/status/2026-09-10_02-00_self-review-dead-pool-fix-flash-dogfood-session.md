@@ -1,4 +1,6 @@
 # Self-Review + Full Status: Tag Restore, Dead-Pool Fix, Flash Dogfood Proof
+> **ARCHIVED 2026-09-30 (docs-health archive sweep)** — per-item triage at HEAD: every numbered item already carries its 2026-09-14 strikethrough verdict (shipped / routed / narrative); re-confirmed resolved at current HEAD. Re-verify before citing any claim as current.
+
 
 > **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 
