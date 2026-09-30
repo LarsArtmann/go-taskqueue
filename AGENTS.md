@@ -723,6 +723,17 @@ degradation explicitly). RescueDead's re-emission stays
   `Open`/`OpenWithPool` companion-open prolog pair (`finishOpen` is
   already the seam; the residual is the divergent error-wrap prolog —
   postgresv4's twin of the replay.go `openSource` class).
+  2026-09-30 `-t 3 --suggest-generics` sweep (223→222 groups, 31 shown):
+  ONE extraction — depbump `runGo`'s twin deadline-clamp branches
+  collapsed into one condition (`!ok || time.Until(deadline) > timeout`;
+  identical bodies, zero new abstraction); all other shown groups
+  re-verified against this ledger: dlqfix/prioritize
+  `deriveUsage`+`recordRunOutcome` conditional pair, doctor.go's two
+  list-pending check prologs (divergent per-check failure wrapping),
+  lockout/worker mutex prologs, review/dlqfix Sweeper struct pair,
+  payload rp/sp.Model twins, conform `t.Parallel`/`claimDue`/
+  `freshStore` sites, flag-parse prologs, and the cross-module
+  `json.Marshal` pair — zero new accepts needed.
   `--show-suppressed` additionally surfaces the engine-backed adapter
   block (78+38-stmt type-1 pairs, sqlitev4/postgresv4 adapter.go): NOT
   clone mass by the extraction design ("they stay in the adapters

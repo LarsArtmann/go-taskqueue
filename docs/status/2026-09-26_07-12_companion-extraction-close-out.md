@@ -1,4 +1,6 @@
 # Companion Extraction — Close-Out (production half landed; suites ratcheted)
+> **ARCHIVED 2026-09-30 (docs-health archive sweep)** — per-item triage at HEAD: the companion extraction shipped (internal/queue/companion, adapters delegate, mirror gate strict, conform consolidated); every numbered item struck below. Re-verify before citing any claim as current.
+
 
 - **Window:** 2026-09-26 06:00–07:00 (resumed session, executor: GLM-5.3-Flash via tq pool rails)
 - **Mission:** execute the owner's dedup ruling ("accepts ≈ 0") — home the mirrored
@@ -23,7 +25,7 @@ concrete recommendation (§f3).
 
 ## b) What landed (with evidence)
 
-1. **companion module (5 files):** `core.go` (Dialect/SQLite/Postgres, Runner,
+~~1. **companion module (5 files):** `core.go` (Dialect/SQLite/Postgres, Runner,~~ done — shipped at HEAD: companion module shipped
    For, WithTx, pgq moved from postgresv4, MapErr, UpstreamFact,
    IdentityCodec, StoreOption trio), `reads.go` (Get/List/CountTasks,
    Facts/LastFacts/HeadSeq/FactsForTask/CountFacts/FactsSince,
@@ -34,27 +36,27 @@ concrete recommendation (§f3).
    asked-question backfill, payload injection, mergeAnsweredPayload),
    `schema.go` (companion `priority_scores` DDL — BIGINT has INTEGER
    affinity in SQLite, one DDL serves both families — + Migrate).
-2. **Rewired sqlitev4** (1486→~460 lines): engine-backed methods verbatim,
+~~2. **Rewired sqlitev4** (1486→~460 lines): engine-backed methods verbatim,~~ done — shipped at HEAD: sqlitev4 delegation
    companion surfaces delegate; module build+vet+full 3.6s conformance suite
    green.
-3. **Rewired postgresv4** (1585→~470): same, behind `companion.Postgres`;
+~~3. **Rewired postgresv4** (1585→~470): same, behind `companion.Postgres`;~~ done — shipped at HEAD: postgresv4 delegation
    build+vet+test-compile green (runtime = CI TQ_TEST_POSTGRES job — no live
    postgres here; disclosed). Kept `pgq`/`exec`/`mustJSON` package shims so
    the suite's seeded-SQL blocks compile untouched.
-4. **Rewired cqrsqlite** (extras.go 744→~150): same treatment; build+vet+
+~~4. **Rewired cqrsqlite** (extras.go 744→~150): same treatment; build+vet+~~ done — shipped at HEAD: cqrsqlite delegation
    full conformance suite green (3.3s).
-5. **Known-good cross-dialect normalizations** (behavior-preserving, all
+~~5. **Known-good cross-dialect normalizations** (behavior-preserving, all~~ done — shipped at HEAD: normalizations pinned
    suite-pinned): MIN(expr,cap)→CASE WHEN (LEAST is pg-only), LIMIT -1→
    LIMIT max-int64 (offset-only pages; sqlite's -1 is invalid pg),
    INTEGER→BIGINT in the shared DDL, companion.Migrate unifies the three
    migrateCompanion twins.
-6. **Module graph:** companion require+relative-replace added to the 7
+~~6. **Module graph:** companion require+relative-replace added to the 7~~ done — shipped at HEAD: require+replace + vendor
    consumer modules the loop exposed (internal/queue/{sqlite,postgres,worker},
    queue/{sqlite,postgres}, worker, internal/readmodel) — the exact
    untagged-module pattern AGENTS.md's facade lesson predicts (replace in a
    dependency's go.mod is ignored by dependents); root go.mod + `go mod
    vendor` refreshed.
-7. **Gate hardened:** `check-mirror-clones.sh` rewritten —
+~~7. **Gate hardened:** `check-mirror-clones.sh` rewritten —~~ done — shipped at HEAD: mirror gate strict
    `MIRROR_CLONES_STRICT=1` is now the ci-local default, group identities
    (category + sorted backend file pair, line-free) compared against
    `scripts/mirror-baseline.txt`; RESOLVED rows reported; the 3 residual
@@ -65,7 +67,7 @@ concrete recommendation (§f3).
 
 ## c) What did NOT land + why
 
-1. **companion/conform consolidation** (the 3 × ~3.5k-line mirrored suites →
+~~1. **companion/conform consolidation** (the 3 × ~3.5k-line mirrored suites →~~ routed — TODO_LIST: row 323 conform DONE
    one parameterized runner). The suites are ~93% identical
    (sqlitev4↔postgresv4 diff: 235 lines; ↔cqrsqlite: 94) with a clean seam
    (8 direct-DB pokes, 2 constructors, ~10 helper signatures) — fully
@@ -73,25 +75,25 @@ concrete recommendation (§f3).
    conformance), but a 3-way 69-test merge cannot land complete and verified
    in one window. Half-transcribing the tree was rejected as the worst
    end state.
-2. **The ratchet instead:** the repo already treats lint the same way
+~~2. **The ratchet instead:** the repo already treats lint the same way~~ done — shipped at HEAD: mirror-baseline shipped
    (baseline growth = gate, shrink = deliberate regen). The 6 known test
    mirrors are baselined; any NEW cross-backend group anywhere fails ci-local
    immediately. The consolidation stays TODO (row filed) and the baseline
    shrinks to zero when conform lands.
-3. **The 2 red drift tests stay red, owned by S2** — see §f3; Q1 is now
+~~3. **The 2 red drift tests stay red, owned by S2** — see §f3; Q1 is now~~ routed — TODO_LIST: row 324 drift reds
    answered with a root cause and a recommendation rather than a patch.
 
 ## d) What could have gone better
 
-1. The module-graph fallout (7 consumer go.mods + root vendor) was
+~~1. The module-graph fallout (7 consumer go.mods + root vendor) was~~ done — narrative record (no ask)
    predictable from AGENTS.md's facade-require lesson; the loop found them
    one by one instead of me pre-wiring every graph from `go mod graph`
    upfront. Next time: enumerate dependents BEFORE the first consumer build.
-2. Three edit-tool failures from reconstructing old_string from garbled
+~~2. Three edit-tool failures from reconstructing old_string from garbled~~ done — narrative record (no ask)
    transcript views instead of re-viewing the file — the exact-match
    discipline (view immediately before edit) caught up with me twice;
    AGENTS.md already prescribes this for hot files.
-3. The strict-flip design changed mid-window (blanket strict → baseline
+~~3. The strict-flip design changed mid-window (blanket strict → baseline~~ done — narrative record (no ask)
    ratchet) once the boilerplate clusters proved non-extractable; stating
    the ratchet policy in the gate header first would have saved a rewrite.
 
@@ -111,13 +113,13 @@ concrete recommendation (§f3).
 
 ## f) Findings & recommendations
 
-1. **companion is now the S4-surviving extras home** the ADR-0019 memo
+~~1. **companion is now the S4-surviving extras home** the ADR-0019 memo~~ done — narrative record (no ask)
    planned: questions/scores/reads/watermarks survive the spike deletion;
    S4's driver work inherits the Dialect seam instead of re-deriving it.
-2. **Baseline ratchet policy:** mirror-baseline rows may only shrink
+~~2. **Baseline ratchet policy:** mirror-baseline rows may only shrink~~ done — narrative record (no ask)
    (consolidation) or move with a recorded reason; regen is deliberate, like
    lint-baseline.
-3. **Drift reds = upstream gap (Q1 closed):** the engine writes
+~~3. **Drift reds = upstream gap (Q1 closed):** the engine writes~~ routed — TODO_LIST: row 324 upstream
    `task.enqueued` detail `{project,type}` only (verified in
    go-cqrs-lite queue/sqlite/v4@v4.0.0 enqueue.go: appendFact with a
    two-key map), so the journal-drift audit's priority/dedup_key coverage
@@ -127,20 +129,20 @@ concrete recommendation (§f3).
    (the exact shape tq wrote 2026-09-24) behind the M4 ratification memo;
    tq-side hacks (second fact, detail rewrite) rejected — they bake a shape
    M4 hasn't ratified. Recorded as a TODO row.
-4. **Session-forensics note:** cqrsqlite's suite passes unmodified over the
+~~4. **Session-forensics note:** cqrsqlite's suite passes unmodified over the~~ done — narrative record (no ask)
    companion bodies with three micro-divergences absorbed (deps-guard
    scanTask, non-panicking mustJSON, LastFacts(0) path) — all unreachable-
    in-practice behavior deltas, all pinned by the suite.
 
 ## g) Open questions for the owner
 
-1. **Conform timing:** consolidate the suites now (before S2/S4 churn) or
+~~1. **Conform timing:** consolidate the suites now (before S2/S4 churn) or~~ done — shipped at HEAD: conform answered
    fold it into the S4 cutover where the spike suites die anyway? The
    ratchet makes either safe; this window defaulted to "before S4" in the
    design doc.
-2. **Upstream M4:** may I draft the M4 ratification memo (or the upstream
+~~2. **Upstream M4:** may I draft the M4 ratification memo (or the upstream~~ routed — TODO_LIST: row 42 M4 memo
    enrich PR) for go-cqrs-lite's enqueued detail? The drift reds cannot go
    green tq-side without it.
-3. **Push/CI:** unchanged policy question from the morning — this window
+~~3. **Push/CI:** unchanged policy question from the morning — this window~~ routed — TODO_LIST: row 23 push rails
    did not push; master-CI ownership remains with the owner per standing
    rails.
