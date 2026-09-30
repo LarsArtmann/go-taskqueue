@@ -908,7 +908,7 @@ func parseSystemdUnitEnv(unit, content string) (map[string]string, error) {
 					continue
 				}
 
-				return nil, fmt.Sprintf("unit %q EnvironmentFile %q: %s", unit, ref, err)
+				return nil, fmt.Errorf("unit %q EnvironmentFile %q: %w", unit, ref, err)
 			}
 
 			for fl := range strings.SplitSeq(string(data), "\n") {

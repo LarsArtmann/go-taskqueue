@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1018,5 +1019,159 @@ func TestDoctorEnvironmentIncludesCrushVersionCheck(t *testing.T) {
 	r := resultByName(results, "crush-version")
 	if r.Status != checkOK || !strings.Contains(r.Detail, "9.9.9") {
 		t.Errorf("crush-version check = %+v, want ok naming the stubbed version", r)
+	}
+}
+
+// fakeBinDir makes name an executable stub in a fresh temp dir and
+// returns the dir (usable as a PATH entry) — nix checkPhase safe.
+func fakeBinDir(t *testing.T, names ...string) string {
+	t.Helper()
+
+	dir := t.TempDir()
+	for _, name := range names {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte("#!/bin/sh\n"), 0o755); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+
+	return dir
+}
+
+func TestParseSystemdUnitEnv(t *testing.T) {
+	t.Parallel()
+
+	envFile := filepath.Join(t.TempDir(), "pool.env")
+	if err := os.WriteFile(envFile, []byte("# comment\nGOEXPERIMENT=\"jsonv2\"\n; also comment\nTQ_DB=/mnt/pool/tq.db\n"), 0o600); err != nil {
+		t.Fatalf("write env file: %v", err)
+	}
+
+	unit := "[Service]\n" +
+		"Environment=PATH=/run/current-system/sw/bin\n" +
+		"Environment=\"A=B C\" 'D=E' X=Y\n" +
+		"Environment=A2=B2\n" +
+		"EnvironmentFile=" + envFile + "\n" +
+		"EnvironmentFile=-/nonexistent/optional.env\n"
+
+	env, err := parseSystemdUnitEnv("tq-agent-pool.service", unit)
+	if err != nil {
+		t.Fatalf("parseSystemdUnitEnv: %v", err)
+	}
+
+	want := map[string]string{
+		"PATH":         "/run/current-system/sw/bin",
+		"A":            "B C",
+		"D":            "E",
+		"X":            "Y",
+		"A2":           "B2",
+		"GOEXPERIMENT": "jsonv2",
+		"TQ_DB":        "/mnt/pool/tq.db",
+	}
+	for k, v := range want {
+		if env[k] != v {
+			t.Errorf("env[%q] = %q, want %q", k, env[k], v)
+		}
+	}
+}
+
+func TestParseSystemdUnitEnvRequiredFileMissing(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseSystemdUnitEnv("u.service", "EnvironmentFile=/nonexistent/required.env\n")
+	if err == nil || !strings.Contains(err.Error(), "required.env") {
+		t.Errorf("err = %v, want failure naming required.env", err)
+	}
+}
+
+func TestDoctorServiceContext(t *testing.T) {
+	t.Parallel()
+
+	binDir := fakeBinDir(t, "crush", "go")
+
+	orig := doctorReadServiceUnit
+
+	t.Cleanup(func() { doctorReadServiceUnit = orig })
+
+	var gotUnit string
+
+	doctorReadServiceUnit = func(_ context.Context, unit string) (string, error) {
+		gotUnit = unit
+
+		return "Environment=PATH=" + binDir + "\nEnvironment=GOEXPERIMENT=jsonv2\n", nil
+	}
+
+	results := doctorServiceContext(context.Background(), doctorOptions{ServiceUnit: "tq-agent-pool"})
+	if gotUnit != "tq-agent-pool.service" {
+		t.Errorf("unit resolved to %q, want tq-agent-pool.service", gotUnit)
+	}
+
+	if r := resultByName(results, "svc:crush"); r.Status != checkOK {
+		t.Errorf("svc:crush = %+v, want ok (stub on unit PATH)", r)
+	}
+
+	if r := resultByName(results, "svc:go"); r.Status != checkOK {
+		t.Errorf("svc:go = %+v, want ok", r)
+	}
+
+	if r := resultByName(results, "svc:git"); r.Status != checkWarn {
+		t.Errorf("svc:git = %+v, want warn (not on the unit PATH)", r)
+	}
+
+	if r := resultByName(results, "svc:goexp"); r.Status != checkOK {
+		t.Errorf("svc:goexp = %+v, want ok", r)
+	}
+}
+
+func TestDoctorServiceContextEnvLie(t *testing.T) {
+	t.Parallel()
+
+	orig := doctorReadServiceUnit
+
+	t.Cleanup(func() { doctorReadServiceUnit = orig })
+
+	doctorReadServiceUnit = func(_ context.Context, unit string) (string, error) {
+		return "Environment=PATH=/usr/bin:/bin\n", nil
+	}
+
+	results := doctorServiceContext(context.Background(), doctorOptions{ServiceUnit: "u.service"})
+
+	if r := resultByName(results, "svc:goexp"); r.Status != checkWarn || !strings.Contains(r.Detail, "jsonv2") {
+		t.Errorf("svc:goexp = %+v, want warn naming jsonv2", r)
+	}
+
+	if r := resultByName(results, "svc-unit"); r.Status != checkOK {
+		t.Errorf("svc-unit = %+v, want ok", r)
+	}
+}
+
+func TestDoctorServiceContextUnreadableUnit(t *testing.T) {
+	t.Parallel()
+
+	orig := doctorReadServiceUnit
+
+	t.Cleanup(func() { doctorReadServiceUnit = orig })
+
+	doctorReadServiceUnit = func(_ context.Context, unit string) (string, error) {
+		return "", fmt.Errorf("exit status 1")
+	}
+
+	results := doctorServiceContext(context.Background(), doctorOptions{ServiceUnit: "nope"})
+
+	if r := resultByName(results, "svc-unit"); r.Status != checkWarn {
+		t.Errorf("svc-unit = %+v, want warn", r)
+	}
+}
+
+func TestLookupOnPath(t *testing.T) {
+	t.Parallel()
+
+	binDir := fakeBinDir(t, "tool")
+
+	if got := lookupOnPath("/nonexistent:"+binDir+":", "tool"); got == "" {
+		t.Error("lookupOnPath missed an existing executable")
+	}
+
+	if got := lookupOnPath(binDir, "absent"); got != "" {
+		t.Errorf("lookupOnPath(absent) = %q, want empty", got)
 	}
 }
