@@ -1,4 +1,4 @@
-# Archive window: 2026-09-12_00-43 report → docs/status/archived/ (TODO 152)
+# Archive window 2026-09-30: 2026-09-12_00-43 report → docs/status/archived/ (TODO 152)
 
 - **When**: 2026-09-30, ~03:15–04:35 CEST
 - **Branch**: master, unpushed (agents never push)
