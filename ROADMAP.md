@@ -296,10 +296,12 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - Board as the default landing projection, or opt-in per URL?
 - Sibling-collision policy: gap-fill obviously-intended symbols of a
   concurrent session, or strictly hands-off + wait/report?
-- Toolchain policy (16-00 report g1): bump the whole repo to go 1.27
+- ~~Toolchain policy (16-00 report g1): bump the whole repo to go 1.27
   (go.mods + setup-go pin together) in the next release window — json/v2
   stable without the experiment — or stay pinned on 1.26.7 until the
-  rate-limit fix bakes in production?
+  rate-limit fix bakes in production?~~ DONE 2026-09-16..20 (go.mods moved
+  to `go 1.27.1`, setup-go pins bumped to 1.27.1, GOEXPERIMENT=jsonv2 kept
+  as the identical env story; the 09-22 CI heal landed the runner side)
 - Concurrent-writer protocol (16-00 report g3): are parallel agent sessions
   on this repo intentional/budgeted, or should the pool pause during
   owner-directed windows? Two edits were clobbered by whole-file writers on
