@@ -344,6 +344,9 @@ step "module-loop capture check (for-each-module feed)"
 
 step "asset-archive ghost check"
 ./scripts/check-ghost-archives.sh
+# Negative-test fixtures: every failure class fires through the gate and
+# INCOMPLETE/STALE survive precedence (00-10 report §f1).
+./scripts/check-ghost-archives.sh --self-test
 
 step "TODO_LIST honesty check"
 ./scripts/check-todo-list.sh
