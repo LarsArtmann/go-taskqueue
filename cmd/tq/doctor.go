@@ -50,6 +50,11 @@ type checkResult struct {
 	Name   string `json:"name"`
 	Status string `json:"status"`
 	Detail string `json:"detail"`
+	// Items carries the per-subject findings behind Detail (additive, may
+	// be empty): structured rows so tooling can act on stale pins without
+	// parsing prose (id, reasons, will-fire live as separate strings today;
+	// a fuller schema is a versioned --json change, not bundled here).
+	Items []string `json:"items,omitempty"`
 }
 
 // doctorOptions controls which checks run.
@@ -479,44 +484,57 @@ func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string
 
 		pinned++
 
+		var (
+			patternStale string
+			repoVerdict  string
+		)
+
+		// Both verdicts are computed for EVERY pin (a pin can be
+		// pattern-stale AND diverge from the repo's current gate), then
+		// merged with the more actionable repo verdict first.
 		if reasons := executor.StaleVerifyReasons(p.Verify); len(reasons) > 0 {
-			stale = append(stale, fmt.Sprintf(
-				"%s: known-stale verify pin — %s: %q",
-				t.ID, strings.Join(reasons, "; "), excerpt(p.Verify)))
-
-			continue // the pin-vs-current-gate verdict adds nothing to this remedy
+			patternStale = fmt.Sprintf(
+				"known-stale verify pin — %s: %q",
+				strings.Join(reasons, "; "), excerpt(p.Verify))
 		}
 
-		if p.Repo == "" {
-			continue // no repo to resolve the pin against
-		}
+		if p.Repo != "" {
+			repoDir := p.Repo
+			if !filepath.IsAbs(repoDir) {
+				repoDir = filepath.Join(projectsDir, repoDir)
+			}
 
-		repoDir := p.Repo
-		if !filepath.IsAbs(repoDir) {
-			repoDir = filepath.Join(projectsDir, repoDir)
-		}
+			if _, err := os.Stat(repoDir); err == nil {
+				current := executor.ReadTQVerify(repoDir)
 
-		if _, err := os.Stat(repoDir); err != nil {
-			continue // missing repo dir is repo-coverage's finding, not this check's
+				switch {
+				case current == p.Verify:
+					// pin matches the repo's current gate
+				case current != "":
+					repoVerdict = fmt.Sprintf(
+						"stale pin %q — .tq-verify currently overrides it, but it fires again if the file is deleted",
+						excerpt(p.Verify))
+				case executor.DetectVerify(repoDir) != p.Verify:
+					repoVerdict = fmt.Sprintf(
+						"STALE PIN WILL FIRE — no .tq-verify and today's auto-detected gate differs: pin %q vs detect %q",
+						excerpt(p.Verify),
+						excerpt(executor.DetectVerify(repoDir)),
+					)
+				}
+			}
 		}
-
-		current := executor.ReadTQVerify(repoDir)
 
 		switch {
-		case current == p.Verify:
-			continue // pin matches the repo's current gate
-		case current != "":
-			stale = append(stale, fmt.Sprintf(
-				"%s (%s): stale pin %q — .tq-verify currently overrides it, but it fires again if the file is deleted",
-				t.ID, p.Repo, excerpt(p.Verify)))
-		case executor.DetectVerify(repoDir) != p.Verify:
-			stale = append(stale, fmt.Sprintf(
-				"%s (%s): STALE PIN WILL FIRE — no .tq-verify and today's auto-detected gate differs: pin %q vs detect %q",
-				t.ID,
-				p.Repo,
-				excerpt(p.Verify),
-				excerpt(executor.DetectVerify(repoDir)),
-			))
+		case repoVerdict != "":
+			// The will-fire verdict is the most actionable signal; a pin
+			// that is BOTH pattern-stale and will-fire carries both halves.
+			if patternStale != "" {
+				repoVerdict += " (also " + patternStale + ")"
+			}
+
+			stale = append(stale, fmt.Sprintf("%s (%s): %s", t.ID, p.Repo, repoVerdict))
+		case patternStale != "":
+			stale = append(stale, fmt.Sprintf("%s: %s", t.ID, patternStale))
 		}
 	}
 
@@ -532,16 +550,44 @@ func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string
 		return []checkResult{{Name: "verify-pins", Status: checkOK, Detail: detail}}
 	}
 
+	// Small finding sets stay verbatim in Detail (grep-able, test-pinned);
+	// larger ones summarize to the first 3 and point at the companion
+	// surface for the full list. Items always carries the full rows.
+	detail := fmt.Sprintf(
+		"%d of %d pinned task(s) carry stale verify pins — --reresolve-verify (agent-pool / worker --agents) ignores enqueue-time pins entirely",
+		len(stale), pinned,
+	)
+	if len(stale) <= 3 {
+		detail = fmt.Sprintf(
+			"%d of %d pinned task(s) carry stale verify pins: %s — --reresolve-verify (agent-pool / worker --agents) ignores enqueue-time pins entirely",
+			len(stale), pinned, strings.Join(stale, "; "),
+		)
+	}
+
 	return []checkResult{{
 		Name:   "verify-pins",
 		Status: checkWarn,
-		Detail: fmt.Sprintf(
-			"%d of %d pinned task(s) carry stale verify pins: %s — --reresolve-verify (agent-pool / worker --agents) ignores enqueue-time pins entirely",
-			len(stale),
-			pinned,
-			strings.Join(stale, "; "),
-		),
+		Detail: detail,
+		Items:  append([]string{staleSummary(stale, pinned)}, stale...),
 	}}
+}
+
+// staleSummary renders the verify-pin findings for one line: the first 3
+// verbatim, then a count + the companion surface for the full list.
+func staleSummary(stale []string, pinned int) string {
+	const maxVerbatim = 3
+
+	head := stale
+	if len(head) > maxVerbatim {
+		head = head[:maxVerbatim]
+	}
+
+	suffix := ""
+	if len(stale) > maxVerbatim {
+		suffix = fmt.Sprintf(" … (+%d more; full list: tq tasks --status pending --type agent --verify-contains '<pin substring>')", len(stale)-maxVerbatim)
+	}
+
+	return fmt.Sprintf("%d of %d pinned: %s%s", len(stale), pinned, strings.Join(head, "; "), suffix)
 }
 
 // excerpt shortens a verify command for one-line doctor output: the full

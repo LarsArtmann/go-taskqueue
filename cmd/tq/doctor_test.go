@@ -1175,3 +1175,46 @@ func TestLookupOnPath(t *testing.T) {
 		t.Errorf("lookupOnPath(absent) = %q, want empty", got)
 	}
 }
+
+// TestDoctorVerifyPinsMergesVerdicts pins the verdict merge (row: the
+// known-stale pattern verdict must not suppress the repo-ladder check):
+// a pin that is BOTH pattern-stale AND overridden by the repo's current
+// .tq-verify reports the repo verdict FIRST with the pattern reasons
+// folded in, so neither half of the signal is lost.
+func TestDoctorVerifyPinsMergesVerdicts(t *testing.T) {
+	ctx := context.Background()
+
+	repoDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repoDir, ".tq-verify"), []byte("export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1\n"), 0o600); err != nil {
+		t.Fatalf("write .tq-verify: %v", err)
+	}
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "merge-verdicts.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	payload := fmt.Sprintf(`{"repo":%q,"verify":"go build ./... && go test ./... -count=1"}`, repoDir)
+	if _, err := s.Enqueue(ctx, task.New{Type: "agent", Payload: []byte(payload)}); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	got := resultByName(doctorVerifyPins(ctx, s, filepath.Dir(repoDir)), "verify-pins")
+
+	if got.Status != checkWarn {
+		t.Fatalf("status = %q (%s), want warn", got.Status, got.Detail)
+	}
+
+	if !strings.Contains(got.Detail, "currently overrides") {
+		t.Errorf("detail must carry the repo verdict first: %s", got.Detail)
+	}
+
+	if !strings.Contains(got.Detail, "known-stale verify pin") {
+		t.Errorf("detail must fold in the pattern reasons: %s", got.Detail)
+	}
+
+	if len(got.Items) < 2 {
+		t.Errorf("items must carry the summary + the per-task row, got %v", got.Items)
+	}
+}
