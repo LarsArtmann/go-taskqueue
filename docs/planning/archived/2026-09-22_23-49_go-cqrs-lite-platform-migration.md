@@ -1,4 +1,5 @@
 # go-cqrs-lite Platform Migration — Comprehensive Pareto Plan
+> **EXECUTED — ARCHIVED 2026-10-01 (docs-health)** — S1 flip EXECUTED at HEAD (sqlitev4/postgresv4 thin-driver stores); S2-S4 + cutover live in TODO_LIST. Residue lives in TODO_LIST (rows cited inline). Point-in-time plan.
 
 Date: 2026-09-22 23:49 · Status: ACTIVE · Owner ruling: 2026-09-22 (ADR-0019)
 

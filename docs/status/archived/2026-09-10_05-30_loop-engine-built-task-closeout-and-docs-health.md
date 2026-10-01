@@ -1,4 +1,5 @@
 # Loop Engine Built: Task Close-out + Docs-Health Status + Workforce Live
+_(Archived 2026-10-01 docs-health pass: every forward-looking item resolved — inline per-item verdicts re-verified at HEAD (loop-engine asks shipped/routed). Point-in-time snapshot — re-verify before treating any claim as current.)_
 
 > **ANNOTATED 14 Sep 2026 (docs-health strikethrough pass)** — resolved items struck inline (`done`/`routed`/`duplicate` markers, evidence verified against HEAD); unstruck items remain open. Kept in docs/status/ (not fully done); the surviving open items are tracked in TODO_LIST.md.
 

@@ -75,7 +75,7 @@ done-prompt turn (task 000001a0dbda953c950bd0547a6cf75e6e76).
    (consumer re-pointing) is serialized behind the S1 flip, and the S3
    read-model flip is code-complete but default-off. What the window
    added: the composition map
-   (docs/planning/2026-09-26_adr-0019-s4-composition-map.md) plus the
+   (docs/planning/archived/2026-09-26_adr-0019-s4-composition-map.md) plus the
    dispatcher fix above. Row 41 stays correctly BLOCKED.
 2. **The folded-here feature was code-complete but undocumented until
    this pass** (04-14 §b1): no CHANGELOG entry, no AGENTS.md note, no

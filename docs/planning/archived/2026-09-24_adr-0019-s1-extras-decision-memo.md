@@ -1,4 +1,5 @@
 # ADR-0019 S1 decision memo: tq extras, fact-append path, replay design
+> **EXECUTED — ARCHIVED 2026-10-01 (docs-health)** — Decisions shipped (replay tool, FactTx.WithFacts sink); ratification memo routed to its owner row. Residue lives in TODO_LIST (rows cited inline). Point-in-time plan.
 
 Date: 2026-09-24
 Task: 000001a0d09a (C10 in docs/planning/2026-09-22_23-49_go-cqrs-lite-platform-migration.md)
@@ -85,9 +86,9 @@ tq replay --from <old.db> --to <new.db> [--verify-only]
 Pipeline (target: `scripts/migrate/replay/`, its own gate per the
 module rules; C12/M056 own the implementation):
 
-1. **Stream**: read the old journal in seq order (the existing store's
+~~1. **Stream**: read the old journal in seq order (the existing store's~~ done — shipped at HEAD: internal/queue/sqlitev4/replay stream stage
    `Facts` pagination, or the ADR-0014 cqrs adapter — same facts).
-2. **Applier**: walk facts and re-apply transitions on the new engine
+~~2. **Applier**: walk facts and re-apply transitions on the new engine~~ done — shipped at HEAD: internal/queue/sqlitev4/replay applier
    store:
    - `task.enqueued` → `Enqueue` carrying the ORIGINAL task ID, dedup
      key, payload, priority, deps, attempts. ID preservation is the
@@ -104,13 +105,13 @@ module rules; C12/M056 own the implementation):
      via the §2 `FactSink` escape with their Detail bytes verbatim;
      companion tables (`priority_scores`, questions state) rebuilt from
      the same facts.
-3. **Equality gate** (`--verify-only` runs ONLY this against a completed
+~~3. **Equality gate** (`--verify-only` runs ONLY this against a completed~~ done — shipped at HEAD: replay --verify-only equality gate
    replay): StatusCounts, per-task fact tails, DLQ contents, watermark
    positions, ProjectCounts — byte-comparable projections, the
    ADR-0019 definition-of-done bar. Any mismatch fails the replay; the
    cutover (owner-run, systemd TQ_DB swap) is gated on a green report
    from a COPY of the production journal (C23 rehearsal).
-4. **Idempotence**: replaying is restartable — the applier records the
+~~4. **Idempotence**: replaying is restartable — the applier records the~~ done — shipped at HEAD: restartable applier (seq checkpoints)
    consumed seq as a watermark in the new store; a re-run resumes, and
    the engine's dedup-keyed enqueue makes re-applied `enqueued` facts
    convergent.

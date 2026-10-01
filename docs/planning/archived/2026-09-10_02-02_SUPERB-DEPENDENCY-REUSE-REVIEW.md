@@ -1,4 +1,5 @@
 # Dependency, Reuse & Type-Model Review — Execution Plan
+> **EXECUTED — ARCHIVED 2026-10-01 (docs-health)** — A1/A2 shipped (go-retry adopted, AGENTS convention); A3-A5 routed to the dependency-reuse residue row. Residue lives in TODO_LIST (rows cited inline). Point-in-time plan.
 
 **Date:** 2026-09-10 02:02 CEST
 **Trigger:** Operator mandate: stop hand-rolling what our own libs already

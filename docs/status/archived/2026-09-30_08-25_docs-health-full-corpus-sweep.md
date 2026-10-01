@@ -1,4 +1,5 @@
 # Docs-health full-corpus sweep: 352-file triage, 93-file archive, living-doc refresh
+_(Archived 2026-10-01 docs-health pass: every forward-looking item resolved — inline per-item verdicts re-verified at HEAD (sweep follow-ups shipped/routed). Point-in-time snapshot — re-verify before treating any claim as current.)_
 
 > Point-in-time snapshot of the 2026-09-30 ~07:45–08:25 docs-health session.
 > Owner instruction: view ALL `**/2026-0*` files, execute the docs-health skill,

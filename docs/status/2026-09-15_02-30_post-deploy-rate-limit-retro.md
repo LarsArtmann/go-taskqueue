@@ -1,7 +1,7 @@
 # Post-Deploy Rate-Limit Retro (M124, 13:29 report f50) — 2026-09-15 02-30
 
 Interim post-deploy retro requested by the flip runbook
-(`docs/planning/2026-09-11_14-45_FLIP-CHECKLIST-AND-DLQ-TRIAGE-RUNBOOK.md` §5)
+(`docs/planning/archived/2026-09-11_14-45_FLIP-CHECKLIST-AND-DLQ-TRIAGE-RUNBOOK.md` §5)
 and TODO item "Post-deploy retro" (M124 / 13:29 report f50). Method follows the
 runbook: count `task.requeued` facts carrying rate-limit evidence vs 429-class
 dead-letters, pre vs post deploy.

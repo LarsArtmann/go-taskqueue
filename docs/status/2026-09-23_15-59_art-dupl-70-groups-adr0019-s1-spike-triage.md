@@ -67,7 +67,7 @@ is **13**. Owned in §d3.
    see §d1.
 4. **The three prior reports + the migration plan read and reconciled.**
    00-21 (ADR-0019 accepted, CI repair, fork heal), 01-34, 02-35, and
-   `docs/planning/2026-09-22_23-49_go-cqrs-lite-platform-migration.md`
+   `docs/planning/archived/2026-09-22_23-49_go-cqrs-lite-platform-migration.md`
    (C03 = scaffold `cqrsqlite`; M011/M025/M037/M044/M066/M070 chain). This
    is how the "who made these modules and why" question got answered
    without asking anyone.

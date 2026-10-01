@@ -1,4 +1,5 @@
 # Owner rulings package — O1–O7 (round-13 M21, O7 appended 05-5x)
+> **EXECUTED — ARCHIVED 2026-10-01 (docs-health)** — Every ruling routed to a live BLOCKED owner row; O2 mooted by derived outcomes. Residue lives in TODO_LIST (rows cited inline). Point-in-time plan.
 
 - **When**: 2026-09-12 02:48 CEST
 - **Purpose**: one sitting, seven rulings. Each question lists the options,
@@ -24,13 +25,13 @@ is still the true fix.
 
 Invented TQ_RESULT fields re-offended across 3 windows. Proposed contract:
 
-1. **Fields allowlist** — `verdict` ("complete" | "request_changes"), `summary`,
+~~1. **Fields allowlist** — `verdict` ("complete" | "request_changes"), `summary`,~~ routed — TODO_LIST: duplicate-claim policy row (O2 mooted by derived outcomes)
    `commits` (array of full SHAs), `report` (repo-relative path). Anything
    else ⇒ executor gate FAILS the task (parseable but lying).
-2. **SHA semantics** — `commits` must reference commits CREATED BY THE WORK
+~~2. **SHA semantics** — `commits` must reference commits CREATED BY THE WORK~~ routed — TODO_LIST: duplicate-claim policy row (O2 mooted by derived outcomes)
    TURN in THIS repo (record commits are cited in the report file, not in
    TQ_RESULT; one identity per artifact).
-3. **Verification-only attempts** — a re-dispatch that only re-runs the
+~~3. **Verification-only attempts** — a re-dispatch that only re-runs the~~ routed — TODO_LIST: duplicate-claim policy row (O2 mooted by derived outcomes)
    verify gate (work already done) may re-emit the ORIGINAL TQ_RESULT
    verbatim; it must not invent new fields to explain itself.
 
@@ -55,10 +56,10 @@ lost-update generator (the 01-06 correction exists because of it).
 
 ## O4 — Webui per-project rulings (un-blocks: T14)
 
-1. **Unknown `/project/{name}`**: [ ] 404 page [ ] empty dashboard with
+~~1. **Unknown `/project/{name}`**: [ ] 404 page [ ] empty dashboard with~~ routed — TODO_LIST: webui UX rulings row (O4)
    filter chip (current behavior). Recommendation: 404 — a typo'd URL should
    say so, not show a plausible-looking empty board.
-2. **Budget scope**: [ ] keep budget GLOBAL with an explicit "global" marker
+~~2. **Budget scope**: [ ] keep budget GLOBAL with an explicit "global" marker~~ routed — TODO_LIST: webui UX rulings row (O4)
    when a project filter is active [ ] add per-project budget projection.
    Recommendation: global + marker now (the journal has no per-project cap
    concept yet); per-project budgets as a separate feature with real
@@ -68,10 +69,10 @@ lost-update generator (the 01-06 correction exists because of it).
 
 ## O5 — gosec gate-vs-advisory + CI-time budget (un-blocks: T6 final flip, T25)
 
-1. gosec: with the FP triage encoded as config (T6, in flight), the job can
+~~1. gosec: with the FP triage encoded as config (T6, in flight), the job can~~ routed — TODO_LIST: gosec gate-vs-advisory row (O5)
    go hard-gate or stay advisory-with-config. [ ] hard [ ] advisory.
    Recommendation: advisory until one fully-green runner week, then hard.
-2. CI-time budget: full matrix ≈ N minutes per push × pushes/hour under the
+~~2. CI-time budget: full matrix ≈ N minutes per push × pushes/hour under the~~ routed — TODO_LIST: CI-time budget row (O5)
    daemon. What is the acceptable ceiling? ______ (drives T25's retry /
    concurrency-group / scope decisions).
 
@@ -79,13 +80,13 @@ lost-update generator (the 01-06 correction exists because of it).
 
 ## O6 — Policies + credentials (un-blocks: T18, T26, T27)
 
-1. **Backlog append-cap policy** (L136): cap status-appends per task?
+~~1. **Backlog append-cap policy** (L136): cap status-appends per task?~~ routed — TODO_LIST: TODO-append caps row (O6)
    [ ] yes: ____ [ ] no, dedup keys suffice.
-2. **Module-fetch trust** (L139): require `go mod verify` + checksum pin on
+~~2. **Module-fetch trust** (L139): require `go mod verify` + checksum pin on~~ routed — TODO_LIST: module-fetch trust row (O6)
    release builds? [ ] yes [ ] advisory.
-3. **CQA creds** (L99): provide test credentials for the live-verify
+~~3. **CQA creds** (L99): provide test credentials for the live-verify~~ routed — TODO_LIST: CQA bridge verify row (O6, BLOCKED on creds)
    checklist? [ ] attached [ ] skip live-verify.
-4. **AllStatuses release call** (L124): export in next re-tag? [ ] yes
+~~4. **AllStatuses release call** (L124): export in next re-tag? [ ] yes~~ done — shipped at HEAD: task.AllStatuses exported in v0.3.0 (O6)
    [ ] hold.
 
 ## O7 — Daemon-folded commit attribution (un-blocks: L160; T12 residue)

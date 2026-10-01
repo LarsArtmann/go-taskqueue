@@ -6,7 +6,7 @@
 // DLQ contents, watermarks, priority scores). It is S1's
 // definition-of-done gate for the dogfood cutover (ADR-0019 §Data
 // migration; C12/M056 in
-// docs/planning/2026-09-22_23-49_go-cqrs-lite-platform-migration.md).
+// docs/planning/archived/2026-09-22_23-49_go-cqrs-lite-platform-migration.md).
 //
 // C12 replay-design decision (resolving the memo's open question): the
 // applier is a VERBATIM projection copy, not an operation-by-operation
