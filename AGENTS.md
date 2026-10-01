@@ -5,12 +5,10 @@ lease-based claims with crash reclaim, DAG dependencies, retries with a
 dead-letter queue, pluggable executors (incl. headless AI coding agents).
 Zero external services — one Go binary, one file.
 
-**STATUS: v0.3.0 shipped, master CI green; actively developed by MULTIPLE
-concurrent agents.** Re-read files and re-run tests before editing; parallel
-sessions leave uncommitted changes — read them, judge them, build on them,
-never revert them. (Size budget ≤15,000 B enforced by cmd/tq
-TestAgentsDocSizeGuard — prune in-place, never grow. Incidents:
-docs/status/; design: docs/planning/, docs/adr/.)
+**STATUS: v0.3.0 shipped; MULTIPLE concurrent agents.** Re-read files,
+re-run tests; uncommitted parallel changes — read, judge, build on, never
+revert. (≤15,000 B guard: cmd/tq TestAgentsDocSizeGuard — prune in-place.
+Incidents: docs/status/; design: docs/planning+adr.)
 
 ## Commands
 
@@ -28,9 +26,7 @@ nix build                 # nix run .#test = tests; .#webui-css
   descends into nested modules; canonical per-module gate:
 
 ```bash
-for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
-  ( cd "$m" && GOEXPERIMENT=jsonv2 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1 ) || exit 1
-done
+for m in $(find internal task journal queue executor worker -name go.mod -printf '%h\n'|sort); do (cd "$m" && GOEXPERIMENT=jsonv2 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1)||exit 1; done
 ./scripts/test-cmd-tq.sh   # cmd/tq module gate (CMD_TQ_OS=windows cross-compile)
 ```
 
@@ -42,13 +38,12 @@ require (real tag) AND a relative replace; facade tests import internal
 packages, never sibling facades. Parity: `scripts/check-facade-parity.sh`;
 postgres `OpenWithPool` pools are CALLER-OWNED. No go.work — replace-only
 by design (`go test ./internal/foo` from root fails by design — cd in).
-Release flow: docs/release/. Proxy verification is rc-captured: require the
-facade @tag in a /tmp scratch module, run a sentinel symbol, cite rc+output.
+Release flow: docs/release/ (proxy checks rc-captured: facade @tag +
+sentinel probe in /tmp scratch).
 
-Smokes (CI-safe): scripts/smoke/_.sh — full list: webui, status-loop,
-dogfood-once, bootstrap-install, journal-drift, help-text, multi-repo,
-papdashboard-e2e, questions-e2e, ratelimit-e2e, fullcore, reviews,
-session-close. Guards: scripts/check-_.sh + smoke/release-gates.sh + lint-baseline.sh. `scripts/new-module.sh <dir> [deps…]` scaffolds go.mods.
+Smokes (CI-safe): `ls scripts/smoke/`. Guards: scripts/check-*.sh +
+smoke/release-gates.sh + lint-baseline.sh. `scripts/new-module.sh <dir> [deps…]`
+scaffolds go.mods.
 
 ## Architecture
 
@@ -102,9 +97,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   exactly ONE `Task-Queue-ID` footer per commit, LAST trailer line
   (`executor.GitLogScanner`; footer above an attribution block is
   invisible — the commit-msg hook rejects that), files via `git diff-tree`,
-  session usage via go-crush-data. No stdout self-report. Post-commit
-  self-check: `git log -1 --format=%B | git interpret-trailers --parse`
-  must return the footer.
+  session usage via go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record results via `tq verdict '<json>'`
   into `$TQ_RESULT_FILE` (outranks the legacy stdout `TQ_RESULT:` line,
   last-line-wins).
@@ -128,7 +121,9 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT
   burning an attempt (jittered wait, fallback 15min cap 6h); per-repo
   gates fast-refuse siblings; a closeout 429 arms `closeoutPending`
-  resume on re-claim.
+  resume on re-claim. **Env-requeue breaker**: environmental requeue
+  facts carry `requeue_class`; 3 consecutive burn an attempt + escalate
+  (`env-streak`) — never uncap the class (169-claim loop = $36.62/day).
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports
   SECRET EVIDENCE rows.
@@ -145,7 +140,8 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Priority (ADR-0015)**: claim order = STORED priority + aging (3d/pt,
   cap 10); stored value never mutates. Markers `— P[1-4]` stripped before
   the dedup hash. One ladder everywhere: startup/reprioritize/AI cache
-  (marker > AI > keyword).
+  (marker > AI > keyword). Probes enter at `--priority ≥90` (fresh
+  low-priority work starves behind the aging ladder).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   agent-pool sweeps once synchronously at start.
 
@@ -154,22 +150,23 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - Table-driven tests, plain `testing`; sentinels in `internal/task/errors.go`.
 - **Claims carry citations** (gate run or SHA; never a running gate);
   filter-scope claims cite file:line or a pinning test.
-- **Verify-window minimum battery**: cheap gates at HEAD (check-doc-refs.sh,
-  root build+vet, check-dead-sha-refs.sh, date-measured report filename) +
-  one fresh delta; expensive gates inheritable only from a same-HEAD report;
-  nested-module claims need in-module `GOWORK=off` tests. Closeouts touching
-  files parsed by root guard tests (AGENTS/README/TODO_LIST.md, doc pins)
-  cite the ROOT build+vet+test -race rc — module-only green misses guards.
-- **Verify-only re-dispatch checklist**: read the NEWEST prior report for
-  the id + `tq show <id>` FIRST, then substance-read at HEAD, re-cite,
-  fresh battery with rc captured TO A FILE (no PIPESTATUS in agent
-  sessions; persist it as a citable artifact), no-delta statement, dated
-  DONE re-verified annotation, `-v` + PASS COUNT for conform `-run`.
+- **Verify-window battery**: cheap gates at HEAD (check-doc-refs, root
+  build+vet, check-dead-sha-refs, date-named report) + one fresh delta;
+  expensive gates inherit only from a same-HEAD report; nested-module
+  claims need in-module `GOWORK=off` tests; closeouts touching
+  root-guard-parsed files (AGENTS/README/TODO_LIST, doc pins) cite ROOT
+  build+vet+test -race rc. Re-dispatches: newest prior report + `tq show
+  <id>` FIRST; fresh battery rc TO A FILE (no PIPESTATUS; persist it);
+  no-delta statement; dated DONE re-verified annotation; `-v` + PASS
+  COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton — MANDATED, incl.
   DONE-on-arrival re-dispatch windows.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything —
-  the daemon sweeps in <60 s (footer-less), no exceptions for short gates;
+  the daemon sweeps in <60 s (footer-less) and takes STAGED files too;
+  fold ferries only while local-only + contiguous + exactly-mine;
   mechanical form `scripts/commit-task.sh <id> <subject> <file>…`.
+- Tab-bearing insertions go through python-heredoc replace — free-text
+  edit glues code into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
   (`errors.AsType[E]`, `strings.SplitSeq`, `for range n`) — don't undo.
 - Retry loops use `github.com/larsartmann/go-retry` (supervisor loops and
@@ -232,10 +229,12 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   push; scripted history edits via script files.
 - **Kernel ETXTBSY anomaly**: execve of fresh binaries intermittently fails
   — `execWithTransientRetry` covers runAgent; route new exec sites there.
-- **Pool verify gate / vendor gofmt**: grep the FULL verify-failure log
-  (FAIL/panic/ENOSPC) before attributing any gate death; an all-ok tail +
-  `gofmt -l` stage is the gitignored-vendor environmental bug
-  (`vendor-gofmt`); recovery: trash vendor/ + rescue.
+- **gofmt gates are SCOPED to non-gitignored files**
+  (`executor.ScopedGofmtStage`; doctor `gofmt:<repo>`):
+  `gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'`.
+  An unscoped stage re-plants the vendor-gofmt death class (94% of this
+  repo's DLQ landfill); grep the FULL verify log before attributing any
+  gate death; recovery: trash vendor/ + rescue.
 - **Flakes see only git-tracked files** — `git add` before `nix build`.
 
 ## Relation to other projects
