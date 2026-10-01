@@ -8,10 +8,9 @@ Zero external services — one Go binary, one file.
 **STATUS: v0.3.0 shipped, master CI green; actively developed by MULTIPLE
 concurrent agents.** Re-read files and re-run tests before editing; expect
 uncommitted changes from parallel sessions — read them, judge them, build
-on them, never revert them. (2026-09-09 the file measured 14,904 B; the
-2026-10 prune reset it and the size guard enforces the plan M89 ≤15,000 B
-budget — prune in-place instead of growing: incident history lives in
-docs/status/, design docs in docs/planning/, docs/adr/.)
+on them, never revert them. (Size: plan M89 budget ≤15,000 B, enforced by
+cmd/tq TestAgentsDocSizeGuard — prune in-place, never grow; incident
+history: docs/status/, design docs: docs/planning/, docs/adr/.)
 
 ## Commands
 
@@ -186,9 +185,9 @@ docs/DOMAIN_LANGUAGE.md.
   has no host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
   edits run `templ generate` from the REPO ROOT + `nix run .#webui-css`.
-- Web UI uses `templ-components` (adoption pinned by guard tests); REJECTED
-  (don't re-litigate): `display.Eyebrow`, `KanbanBoard`, errorpage,
-  `icons.Render`.
+- Web UI uses `templ-components` (adoption table:
+  `internal/webui/ADOPTION.md`, pinned by in-package guard tests); REJECTED
+  `display.Eyebrow`, `KanbanBoard`, errorpage, `icons.Render`.
 - `TODO_LIST.md` machine-consumed: `- [ ]`, one per line, never tables;
   `— BLOCKED: <reason>`; items must be agent-executable
   (`check-todo-list.sh`).

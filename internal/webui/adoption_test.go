@@ -8,8 +8,9 @@ import (
 	"testing"
 )
 
-// The templ-components adoption table in AGENTS.md is the documentation of
-// WHICH library parts this UI is allowed to lean on. Both directions rot:
+// The templ-components adoption table in ADOPTION.md (this package) is
+// the documentation of WHICH library parts this UI is allowed to lean on.
+// Both directions rot:
 // a component gets dropped from the templates but the table still claims
 // it, or a new component sneaks in undocumented. This guard fails on
 // either drift (round-5 M13/F67; it caught ThemeScript on its first run).
@@ -44,15 +45,15 @@ func templSources(t *testing.T) string {
 	return sb.String()
 }
 
-// adoptedIdentifiers parses the AGENTS.md adoption table and returns every
+// adoptedIdentifiers parses the ADOPTION.md adoption table and returns every
 // component identifier claimed as adopted. `display.Grid/StatCard` shorthand
 // expands to both names.
 func adoptedIdentifiers(t *testing.T) map[string]bool {
 	t.Helper()
 
-	agents, err := os.ReadFile(filepath.Join("..", "..", "AGENTS.md"))
+	agents, err := os.ReadFile("ADOPTION.md")
 	if err != nil {
-		t.Fatalf("read AGENTS.md: %v", err)
+		t.Fatalf("read ADOPTION.md: %v", err)
 	}
 
 	lines := strings.Split(string(agents), "\n")
@@ -132,7 +133,7 @@ func TestAdoptionTableCoversTemplates(t *testing.T) {
 	for name, site := range invoked {
 		if !adopted[name] {
 			t.Errorf(
-				"template invokes %s but the AGENTS.md adoption table does not list it — add it or drop the usage",
+				"template invokes %s but the adoption table (ADOPTION.md) does not list it — add it or drop the usage",
 				site,
 			)
 		}
@@ -141,7 +142,7 @@ func TestAdoptionTableCoversTemplates(t *testing.T) {
 	// Forward: every adopted identifier must still appear in the templates.
 	for name := range adopted {
 		if !strings.Contains(src, name) {
-			t.Errorf("AGENTS.md adoption table claims %q but no .templ source uses it — the table rotted", name)
+			t.Errorf("ADOPTION.md adoption table claims %q but no .templ source uses it — the table rotted", name)
 		}
 	}
 }
@@ -153,9 +154,9 @@ func TestAdoptionTableCoversTemplates(t *testing.T) {
 func TestAdoptionTablePinsCustomRows(t *testing.T) {
 	t.Parallel()
 
-	agents, err := os.ReadFile(filepath.Join("..", "..", "AGENTS.md"))
+	agents, err := os.ReadFile("ADOPTION.md")
 	if err != nil {
-		t.Fatalf("read AGENTS.md: %v", err)
+		t.Fatalf("read ADOPTION.md: %v", err)
 	}
 
 	inSection := false
