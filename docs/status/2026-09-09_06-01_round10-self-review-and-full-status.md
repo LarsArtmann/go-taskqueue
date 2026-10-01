@@ -87,7 +87,7 @@ only; every claim below was grep-verified against the tree at report time.
    my rewritten package table still lacks it (verified: 0 mentions).
 5. ~~**Golden test for `tq facts --json` (plan M63)** — verified by manual~~ resolved — routed TODO 164
    smoke only, no pinned shape test.
-6. **01:48 §f30 (e2e budget test asserts the review-mint path)** — neither
+~~6. **01:48 §f30 (e2e budget test asserts the review-mint path)** — neither~~ routed — TODO_LIST: e2e budget review-mint test
    done nor routed anywhere; DROPPED by my T11 routing sweep. Re-filed in
    f) below. (Same audit's §f21 "cross-session integration review" was
    implicitly satisfied by three full ci-local runs, but I never wrote
@@ -140,7 +140,7 @@ only; every claim below was grep-verified against the tree at report time.
    run is green; it is done when the FIRST post-release master run is
    green on the same tree. Encode into release.sh as a printed reminder,
    or run the watch before announcing.
-3. **CHANGELOG must regain [Unreleased] the moment a version is cut** —
+~~3. **CHANGELOG must regain [Unreleased] the moment a version is cut** —~~ routed — TODO_LIST: release.sh re-add [Unreleased]
    make that a numbered step in release.sh (it prints notes; add "re-add
    the empty [Unreleased] header" to the checklist).
 4. ~~**FEATURES rows are part of shipping a feature**, not docs-debt for~~ resolved — routed/shipped/narrative
@@ -155,22 +155,22 @@ only; every claim below was grep-verified against the tree at report time.
 1. ~~**Cut v0.2.1** carrying the SSE crash fix (+ deflakes + fuzz-SHA fix):~~ resolved — shipped/routed/narrative
    `scripts/release.sh v0.2.1 --push` after the gate — the published tag
    crashing serve is the top standing defect.
-2. **Re-create [Unreleased] + entries** for aabe784/f3088a7/5ee3ca8 in
+~~2. **Re-create [Unreleased] + entries** for aabe784/f3088a7/5ee3ca8 in~~ done — shipped at HEAD: CHANGELOG [Unreleased] re-created, deflakes recorded
    CHANGELOG (5-minute fix, do before anything else).
 3. ~~**FEATURES.md rows** for this session's features (b2 above; ~10 rows).~~ resolved — shipped/routed/narrative
 4. ~~**AGENTS size guard test** pinning ≤15,000 B (M89 residue).~~ resolved — shipped/routed/narrative
 5. ~~**internal/httpapi row** in the AGENTS package table.~~ resolved — shipped/routed/narrative
-6. **Re-file 01:48 §f30**: e2e budget test asserting the review-mint path
+~~6. **Re-file 01:48 §f30**: e2e budget test asserting the review-mint path~~ routed — TODO_LIST: re-file the §f30 harvest row
    (dropped by routing — my miss).
 7. ~~**Rate-limiter global prune** (bound the strikes map; rotating-source~~ resolved — shipped/routed/narrative
    hardening).
 8. ~~**Golden test for `tq facts --json`** shape (M63 residue).~~ resolved — shipped/routed/narrative
 9. ~~**release.sh: add "-count=3 flake pass" + post-release-watch reminder~~ resolved — shipped/routed/narrative
    steps** (e)1/e)2).
-10. **release.sh: auto re-add [Unreleased] header** after the cut (e)3).
+~~10. **release.sh: auto re-add [Unreleased] header** after the cut (e)3).~~ routed — TODO_LIST: release.sh auto re-add [Unreleased]
 11. ~~Item-by-item strikethrough pass on the two 50-item report lists~~ resolved — shipped/routed/narrative
     (17-21, 21-19) if the owner wants the strict docs-health form.
-12. TODO-linter keyword widening ([USER], awaiting-decision, awaiting
+~~12. TODO-linter keyword widening ([USER], awaiting-decision, awaiting~~ routed — TODO_LIST: TODO-linter keyword widening
     owner).
 13. ~~SystemNix evo-x2 cutover (owner sudo; input flip to `?ref=master` is~~ resolved — shipped/routed/narrative
     ready) — the last executable TODO row.

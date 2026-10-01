@@ -95,7 +95,7 @@ accident.
 3. ~~`tq tasks`/`tq show` **liveness affordances** (notBefore countdown,~~ resolved — routed TODO rows
    stale-lease hint) — designed in my head after the stall, not filed as
    TODO until this report.
-4. Reviewer-rides-the-work-session idea (`p.Session` exists in the payload
+~~4. Reviewer-rides-the-work-session idea (`p.Session` exists in the payload~~ done — shipped at HEAD: internal/executor/agent.go p.Session
    contract; a reviewer with the worker's full conversation context is one
    flag away) — noticed, never evaluated.
 
@@ -179,10 +179,10 @@ accident.
 21. ~~Cost telemetry: per-task token spend sidecar (Flash is cheap; the~~ resolved — shipped/routed/narrative
     closeout doubles turns — measure, don't assume).
 22. ~~module-eval assertion for agentPath (TODO exists).~~ resolved — shipped/routed/narrative
-23. cwd-dependence sweep + checkProjectsDir + skip-log dedup + doctor PATH
+~~23. cwd-dependence sweep + checkProjectsDir + skip-log dedup + doctor PATH~~ done — shipped at HEAD: doctor svc:PATH checks + AGENTS two-policy ruling
     warning (TODO items exist).
-24. ETXTBSY retry firing check in pool journal (first live evidence).
-25. Status task window payload: include the window's closeout report paths
+~~24. ETXTBSY retry firing check in pool journal (first live evidence).~~ routed — TODO_LIST: live ETXTBSY first-fire check row
+~~25. Status task window payload: include the window's closeout report paths~~ done — shipped at HEAD: internal/status Report + TestSweepPinsCloseoutReportPaths
     so the docs-health pass reads them (currently only task ids + items).
 
 ## g) Questions I cannot answer myself
