@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **`tq audit --journal` coverage honesty**: when priority and dedup-key
   coverage are both 0 (the engine's thin `{project,type}` enqueue detail,
   S1 divergence D2), the output now says NOT REPLAYABLE with the cause
-  instead of a bare `0/N` that reads as "tasks lack priorities".
+  instead of a bare "0 of N" that reads as "tasks lack priorities".
 - **`tq doctor --service-unit UNIT`**: service-context mode diagnoses the
   systemd unit's OWN environment instead of the invoking shell's —
   `systemctl cat` reads the unit, its `Environment=`/`EnvironmentFile=`
