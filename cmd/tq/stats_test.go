@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -316,5 +317,121 @@ func TestStatsSessionVolume(t *testing.T) {
 
 	if !strings.Contains(human, "opened / 1 closed") {
 		t.Errorf("human stats output lost the sessions volume line:\n%s", human)
+	}
+}
+
+// TestStatsLoopSuspects pins the P4 detection surface (M10): `tq stats`
+// lists tasks whose claim count crossed the anomaly line (worst first) and
+// --json carries them under claim_anomalies with the threshold, while a
+// healthy store shows neither. The cmd/tq threshold/count twins exist only
+// because the module is replace-free (ADR-0017) and resolves internal/*
+// from the last published tag: this devmod-compiled test pins the twins to
+// the canonical queue values so they cannot drift.
+func TestStatsLoopSuspects(t *testing.T) {
+	if claimAnomalyThreshold != queue.ClaimAnomalyThreshold {
+		t.Fatalf(
+			"cmd/tq twin threshold %d drifted from queue.ClaimAnomalyThreshold %d",
+			claimAnomalyThreshold,
+			queue.ClaimAnomalyThreshold,
+		)
+	}
+
+	path := filepath.Join(t.TempDir(), "stats-loops.db")
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	// Healthy store: no suspects section, no JSON key.
+	out := captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path, "--json"}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("stats payload not JSON: %v (%s)", err, out)
+	}
+
+	if _, ok := payload["claim_anomalies"]; ok {
+		t.Errorf("healthy store carried claim_anomalies: %s", out)
+	}
+
+	// One task through 21 claim/requeue cycles: the churn fixture.
+	tk, err := s.Enqueue(ctx, task.New{Type: "agent", Project: "demo"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	for i := range queue.ClaimAnomalyThreshold + 1 {
+		_, claim, err := s.ClaimDue(ctx, "w1", time.Minute)
+		if err != nil {
+			t.Fatalf("claim %d: %v", i+1, err)
+		}
+
+		if err := s.Requeue(ctx, tk.ID, claim, "env refused", 0, false, "preflight"); err != nil {
+			t.Fatalf("requeue %d: %v", i+1, err)
+		}
+	}
+
+	// Twin behavior pin: the local claimCount mirror equals the canonical
+	// queue.ClaimCount on the same fixture.
+	got, err := claimCount(ctx, s, tk.ID.String())
+	if err != nil {
+		t.Fatalf("claimCount: %v", err)
+	}
+
+	if canonical, err := queue.ClaimCount(ctx, s, tk.ID.String()); err != nil || canonical != got {
+		t.Fatalf("claimCount twin = %d, queue.ClaimCount = %d (%v)", got, canonical, err)
+	}
+
+	if got != queue.ClaimAnomalyThreshold+1 {
+		t.Fatalf("claims = %d, want %d", got, queue.ClaimAnomalyThreshold+1)
+	}
+
+	out = captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path, "--json"}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	payload = map[string]any{}
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("stats payload not JSON: %v (%s)", err, out)
+	}
+
+	entries, _ := payload["claim_anomalies"].([]any)
+	if len(entries) != 1 {
+		t.Fatalf("claim_anomalies = %v, want the one churning task (%s)", payload["claim_anomalies"], out)
+	}
+
+	entry, _ := entries[0].(map[string]any)
+	if entry["id"] != tk.ID.String() {
+		t.Errorf("claim_anomalies[0].id = %v, want %s", entry["id"], tk.ID)
+	}
+
+	if entry["claims"] != float64(queue.ClaimAnomalyThreshold+1) {
+		t.Errorf("claim_anomalies[0].claims = %v, want %d", entry["claims"], queue.ClaimAnomalyThreshold+1)
+	}
+
+	if got := payload["claim_anomaly_threshold"]; got != float64(queue.ClaimAnomalyThreshold) {
+		t.Errorf("claim_anomaly_threshold = %v, want %d (%s)", got, queue.ClaimAnomalyThreshold, out)
+	}
+
+	human := captureStdout(t, func() {
+		if err := cmdStats([]string{"--db", path}); err != nil {
+			t.Errorf("cmdStats: %v", err)
+		}
+	})
+
+	for _, want := range []string{"loop suspects", tk.ID.String(), "21 claims"} {
+		if !strings.Contains(human, want) {
+			t.Errorf("human stats output missing %q:\n%s", want, human)
+		}
 	}
 }

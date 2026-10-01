@@ -51,6 +51,9 @@ templ StatusCards(data DashboardData) {
 			if data.Parked > 0 {
 				<span class="card-parked" title="rate-limit requeues waiting out their window">parked { formatInt(data.Parked) }</span>
 			}
+			if data.LoopSuspects > 0 {
+				<span class="card-loopsuspect" title={ fmt.Sprintf("tasks with more than %d claims (churn class); tq stats lists them", queue.ClaimAnomalyThreshold) }>loop suspects { formatInt(data.LoopSuspects) }</span>
+			}
 			if data.SessionsOpened > 0 || data.SessionsOpen > 0 {
 				<span class="card-sessions" title="interactive sessions: opened/closed facts">sessions { formatInt(data.SessionsOpened) }/{ formatInt(data.SessionsClosed) }</span>
 			}

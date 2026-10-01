@@ -23,6 +23,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -2148,5 +2149,67 @@ func TestStatsReadFromReadModel(t *testing.T) {
 
 	if srv.model != nil {
 		t.Error("read model still installed after runReadModel returned")
+	}
+}
+
+// TestLoopSuspectSegmentRendersFromSnapshot pins the M10 churn lamp: the
+// nowband meta counts loop suspects (claim count beyond
+// queue.ClaimAnomalyThreshold) only while such a task exists, and the
+// marker class stays a stable hook for tests and CSS.
+func TestLoopSuspectSegmentRendersFromSnapshot(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	ctx := context.Background()
+
+	// No churn: no segment.
+	fresh := enqueue(t, s, "sh", "demo")
+
+	data, err := srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if data.LoopSuspects != 0 {
+		t.Fatalf("loopSuspects = %d, want 0 with only a fresh task", data.LoopSuspects)
+	}
+
+	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-loopsuspect") {
+		t.Error("stats fragment shows a loop-suspect segment with no churn")
+	}
+
+	// Get the fresh task out of the way so the claims below hit the agent
+	// task (claims are priority/age ordered, no filter).
+	if err := s.Cancel(ctx, fresh.ID, "test: out of the way"); err != nil {
+		t.Fatalf("cancel fresh: %v", err)
+	}
+
+	// Churn: one task through threshold+1 claim/requeue cycles.
+	tk := enqueue(t, s, "agent", "demo")
+
+	for i := range queue.ClaimAnomalyThreshold + 1 {
+		_, claim, err := s.ClaimDue(ctx, "w1", time.Minute)
+		if err != nil {
+			t.Fatalf("claim %d: %v", i+1, err)
+		}
+
+		if err := s.Requeue(ctx, tk.ID, claim, "env refused", 0, false, "preflight"); err != nil {
+			t.Fatalf("requeue %d: %v", i+1, err)
+		}
+	}
+
+	data, err = srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if data.LoopSuspects != 1 {
+		t.Fatalf("loopSuspects = %d, want 1 after %d claims", data.LoopSuspects, queue.ClaimAnomalyThreshold+1)
+	}
+
+	stats := renderComponent(ctx, StatusCards(data))
+	for _, want := range []string{"card-loopsuspect", "loop suspects 1"} {
+		if !strings.Contains(stats, want) {
+			t.Errorf("stats fragment missing %q", want)
+		}
 	}
 }

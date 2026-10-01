@@ -280,6 +280,11 @@ type DashboardData struct {
 	// in the nowband meta (16-00 report f44; the stats payload already
 	// carries the same number).
 	Parked int
+	// LoopSuspects counts tasks whose claim count exceeds
+	// queue.ClaimAnomalyThreshold — the churn lamp in the nowband meta
+	// (the P1 class: one task out-claming its budget for days). tq stats
+	// lists the suspects; the webui only counts them.
+	LoopSuspects int
 	// SessionsOpened / SessionsClosed count the interactive-session
 	// lifecycle facts (session.opened / session.closed) — the session
 	// volume one-glance segment in the nowband meta (03-28 §f20).
@@ -346,6 +351,27 @@ func sessionStats(ctx context.Context, store queue.Store) (int, int, int) {
 	}
 
 	return int(openedFacts), int(closedFacts), len(sessions)
+}
+
+// loopSuspects counts tasks whose claim count exceeds
+// queue.ClaimAnomalyThreshold (the P1 churn class): the nowband's loop
+// lamp. Best effort: a failed read renders nothing.
+func loopSuspects(ctx context.Context, store queue.Store) int {
+	tasks, err := store.List(ctx, queue.Filter{})
+	if err != nil {
+		return 0
+	}
+
+	n := 0
+
+	for _, t := range tasks {
+		claims, err := queue.ClaimCount(ctx, store, t.ID.String())
+		if err == nil && claims > queue.ClaimAnomalyThreshold {
+			n++
+		}
+	}
+
+	return n
 }
 
 // completionDetail reads a task's outcome from its own completion-fact
@@ -538,6 +564,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	data.Parked = parkedCount(ctx, s.store)
+	data.LoopSuspects = loopSuspects(ctx, s.store)
 	data.SessionsOpened, data.SessionsClosed, data.SessionsOpen = sessionStats(ctx, s.store)
 
 	projectCounts, err := s.store.ProjectCounts(ctx)

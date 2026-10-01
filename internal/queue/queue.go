@@ -298,6 +298,31 @@ type Queue struct {
 	Store
 }
 
+// ClaimAnomalyThreshold is the loop-suspect line: a task claimed more
+// often than this is churning (the P1 class — a 164-claim task drained a
+// 30/day budget for two days before anyone looked). tq stats and the
+// webui nowband flag suspects at this count; advisory, never a gate.
+const ClaimAnomalyThreshold = 20
+
+// ClaimCount reads one task's claim count (task.claimed facts) from its
+// journal trail. Census callers should expect one facts walk per task.
+func ClaimCount(ctx context.Context, s Store, id string) (int, error) {
+	facts, err := s.FactsForTask(ctx, id, 0)
+	if err != nil {
+		return 0, err
+	}
+
+	n := 0
+
+	for _, f := range facts {
+		if f.Type == journal.Claimed {
+			n++
+		}
+	}
+
+	return n, nil
+}
+
 // RequeueEvidence is the structured detail on task.requeued facts: why the
 // executor refused to start and how long the task waits before it becomes
 // claimable again (01:48 report f2: the reason was a plain error string).

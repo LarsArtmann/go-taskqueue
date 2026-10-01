@@ -1750,6 +1750,11 @@ func cmdStats(args []string) error {
 		return err
 	}
 
+	// Loop suspects (P4): tasks whose claim count crossed the anomaly
+	// line. The 04-27 diagnosis burned two days of budget on one 164-claim
+	// task before anyone looked; this is the one-glance flag for that class.
+	suspects := claimSuspects(ctx, store, filter.Project)
+
 	budgetJSON := budgetView{SpentToday: spent, Cap: *dailyBudget}
 	if usage.Runs > 0 {
 		budgetJSON.SessionUsage = &budgetUsageView{
@@ -1766,15 +1771,17 @@ func cmdStats(args []string) error {
 		enc.SetIndent("", "  ")
 
 		return enc.Encode(statsPayload{
-			ByStatus:       byStatus,
-			ByProject:      byProject,
-			Budget:         budgetJSON,
-			Lag:            consumerLag(ctx, store),
-			JournalHead:    head,
-			Parked:         parkedCount,
-			OpenSessions:   len(openSessions),
-			SessionsOpened: int(sessionsOpened),
-			SessionsClosed: int(sessionsClosed),
+			ByStatus:              byStatus,
+			ByProject:             byProject,
+			Budget:                budgetJSON,
+			Lag:                   consumerLag(ctx, store),
+			JournalHead:           head,
+			Parked:                parkedCount,
+			OpenSessions:          len(openSessions),
+			SessionsOpened:        int(sessionsOpened),
+			SessionsClosed:        int(sessionsClosed),
+			ClaimAnomalies:        suspects,
+			ClaimAnomalyThreshold: claimAnomalyThreshold,
 		})
 	}
 
@@ -1782,6 +1789,14 @@ func cmdStats(args []string) error {
 
 	if parkedCount > 0 {
 		fmt.Printf("parked       %6d (rate-limit requeues waiting out their window)\n", parkedCount)
+	}
+
+	if len(suspects) > 0 {
+		fmt.Printf("loop suspects %2d (tasks with more than %d claims: churn class)\n", len(suspects), claimAnomalyThreshold)
+
+		for _, suspect := range suspects {
+			fmt.Printf("              %s  %d claims\n", suspect.ID, suspect.Claims)
+		}
 	}
 
 	if len(openSessions) > 0 {
@@ -1799,15 +1814,82 @@ func cmdStats(args []string) error {
 // statsPayload is the --json shape of `tq stats`: the aggregates a script or
 // dashboard consumes, never the raw task list (that is `tq tasks --json`).
 type statsPayload struct {
-	ByStatus       map[string]int            `json:"by_status"`
-	ByProject      map[string]map[string]int `json:"by_project,omitempty"`
-	Budget         budgetView                `json:"budget"`
-	Lag            []consumerLagEntry        `json:"consumer_lag,omitempty"`
-	JournalHead    int64                     `json:"journal_head"`
-	Parked         int                       `json:"parked,omitempty"`
-	OpenSessions   int                       `json:"open_sessions,omitempty"`
-	SessionsOpened int                       `json:"sessions_opened,omitempty"`
-	SessionsClosed int                       `json:"sessions_closed,omitempty"`
+	ByStatus              map[string]int            `json:"by_status"`
+	ByProject             map[string]map[string]int `json:"by_project,omitempty"`
+	Budget                budgetView                `json:"budget"`
+	Lag                   []consumerLagEntry        `json:"consumer_lag,omitempty"`
+	JournalHead           int64                     `json:"journal_head"`
+	Parked                int                       `json:"parked,omitempty"`
+	OpenSessions          int                       `json:"open_sessions,omitempty"`
+	SessionsOpened        int                       `json:"sessions_opened,omitempty"`
+	SessionsClosed        int                       `json:"sessions_closed,omitempty"`
+	ClaimAnomalies        []claimSuspect            `json:"claim_anomalies,omitempty"`
+	ClaimAnomalyThreshold int                       `json:"claim_anomaly_threshold,omitempty"`
+}
+
+// claimAnomalyThreshold mirrors queue.ClaimAnomalyThreshold for the stats
+// surface: cmd/tq is replace-free (ADR-0017) and resolves internal/* from
+// the last published tag, so the canonical const cannot be imported here
+// yet. TestStatsLoopSuspects pins the twins equal under the devmod shim;
+// import the canonical const the day a release re-pins the module.
+const claimAnomalyThreshold = 20
+
+// claimSuspect is one loop-suspect row: a task whose claim count crossed
+// claimAnomalyThreshold (the churn class behind P1).
+type claimSuspect struct {
+	ID     string `json:"id"`
+	Claims int    `json:"claims"`
+}
+
+// claimCount mirrors queue.ClaimCount for the same replace-free reason as
+// claimAnomalyThreshold: count the task's task.claimed facts from its
+// journal trail.
+func claimCount(ctx context.Context, store *sqlite.Store, id string) (int, error) {
+	facts, err := store.FactsForTask(ctx, id, 0)
+	if err != nil {
+		return 0, err
+	}
+
+	n := 0
+
+	for _, f := range facts {
+		if f.Type == journal.Claimed {
+			n++
+		}
+	}
+
+	return n, nil
+}
+
+// claimSuspects lists tasks whose claim count exceeds the anomaly line,
+// worst first, capped at 10 rows: the P4 detection surface in `tq stats`.
+// The status filter is deliberately ignored; a scoped view must not hide
+// churn. Census cost is one facts walk per task (a GROUP BY store method is
+// the documented follow-up).
+func claimSuspects(ctx context.Context, store *sqlite.Store, project *string) []claimSuspect {
+	tasks, err := store.List(ctx, queue.Filter{Project: project})
+	if err != nil {
+		return nil
+	}
+
+	suspects := make([]claimSuspect, 0, 4)
+
+	for _, t := range tasks {
+		claims, err := claimCount(ctx, store, t.ID.String())
+		if err != nil || claims <= claimAnomalyThreshold {
+			continue
+		}
+
+		suspects = append(suspects, claimSuspect{ID: t.ID.String(), Claims: claims})
+	}
+
+	sort.Slice(suspects, func(i, j int) bool { return suspects[i].Claims > suspects[j].Claims })
+
+	if len(suspects) > 10 {
+		suspects = suspects[:10]
+	}
+
+	return suspects
 }
 
 type budgetView struct {

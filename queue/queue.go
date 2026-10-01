@@ -63,6 +63,13 @@ const (
 	RequeueClassUnknown   = internalqueue.RequeueClassUnknown
 )
 
+// Claim-anomaly detection (loop suspects).
+const (
+	ClaimAnomalyThreshold = internalqueue.ClaimAnomalyThreshold
+)
+
+var ClaimCount = internalqueue.ClaimCount
+
 // Sentinel errors.
 var (
 	ErrNoTaskDue      = internalqueue.ErrNoTaskDue
