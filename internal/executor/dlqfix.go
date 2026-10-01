@@ -98,9 +98,6 @@ type DLQFixResult struct {
 	// CommitSHA is the fix commit the autopsy landed ("" for wontfix, or a
 	// fixed diagnosis that needed no repo change).
 	CommitSHA string `json:"commit_sha,omitempty"`
-	// LogPath is the sidecar file with the full autopsy output (written
-	// when TQ_LOG_DIR is set), same convention as AgentResult.
-	LogPath string `json:"log_path,omitempty"`
 }
 
 // defaultDLQFixTaskTimeout bounds one autopsy unless the payload overrides.
@@ -171,7 +168,7 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
-	recordRunOutcome(ctx, &result, &result.LogPath, output, "", t.ID)
+	recordRunOutcome(ctx, &result, output, "", t.ID)
 
 	return nil
 }

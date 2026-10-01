@@ -105,8 +105,6 @@ type ReviewResult struct {
 	Verdict  ReviewVerdict   `json:"verdict"`
 	Summary  string          `json:"summary,omitempty"`
 	Findings []ReviewFinding `json:"findings,omitempty"`
-
-	LogPath string `json:"log_path,omitempty"`
 }
 
 // defaultReviewTaskTimeout bounds one review unless the payload overrides.
@@ -183,7 +181,7 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
-	recordRunOutcome(ctx, &result, &result.LogPath, output, "", t.ID)
+	recordRunOutcome(ctx, &result, output, "", t.ID)
 
 	return nil
 }

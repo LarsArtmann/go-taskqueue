@@ -85,8 +85,6 @@ type PrioritizeResult struct {
 	sessionUsage
 
 	Verdicts []PrioritizeVerdict `json:"verdicts"`
-
-	LogPath string `json:"log_path,omitempty"`
 }
 
 // defaultPrioritizeTaskTimeout bounds one batch unless overridden.
@@ -161,7 +159,7 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
-	recordRunOutcome(ctx, &result, &result.LogPath, output, "", t.ID)
+	recordRunOutcome(ctx, &result, output, "", t.ID)
 
 	return nil
 }

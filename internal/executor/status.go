@@ -77,8 +77,6 @@ type StatusResult struct {
 	// NextItems counts the next-work items the agent appended to
 	// TODO_LIST.md (its own self-report, not re-verified).
 	NextItems int `json:"next_items"`
-
-	LogPath string `json:"log_path,omitempty"`
 }
 
 // defaultStatusTaskTimeout bounds one status run unless the payload overrides.
@@ -175,7 +173,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result.deriveUsage(ctx, repoDir, output, t.ID)
-	recordRunOutcome(ctx, &result, &result.LogPath, output, "", t.ID)
+	recordRunOutcome(ctx, &result, output, "", t.ID)
 
 	return nil
 }

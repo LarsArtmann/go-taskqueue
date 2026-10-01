@@ -330,7 +330,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		}
 	}
 
-	recordRunOutcome(ctx, &result, &result.LogPath, output, tail, t.ID)
+	recordRunOutcome(ctx, &result, output, tail, t.ID)
 
 	return nil
 }

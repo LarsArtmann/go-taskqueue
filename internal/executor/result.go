@@ -29,7 +29,16 @@ type sessionUsage struct {
 	SessionPromptTokens     int64   `json:"session_prompt_tokens,omitempty"`
 	SessionCompletionTokens int64   `json:"session_completion_tokens,omitempty"`
 	SessionMessageCount     int     `json:"session_message_count,omitempty"`
+	// LogPath is the sidecar file holding the FULL agent + verify output,
+	// written when TQ_LOG_DIR is set on the worker/pool. Absent otherwise.
+	// Lives here (not per result type) because every paid turn records it
+	// and the embedded flattening keeps the wire shape identical.
+	LogPath string `json:"log_path,omitempty"`
 }
+
+// setLogPath lets recordRunOutcome stamp the sidecar path through the
+// embedding without a second pointer parameter.
+func (u *sessionUsage) setLogPath(path string) { u.LogPath = path }
 
 // deriveUsage fills the session block from a finished run: the session id
 // comes from the output, the spend from deriveOutcome. Best-effort — a
@@ -66,9 +75,6 @@ type AgentResult struct {
 	Commits      []Commit `json:"commits,omitempty"`
 	FilesChanged []string `json:"files_changed,omitempty"`
 	CommitSHA    string   `json:"commit_sha,omitempty"`
-	// LogPath is the sidecar file holding the FULL agent + verify output,
-	// written when TQ_LOG_DIR is set on the worker/pool. Absent otherwise.
-	LogPath string `json:"log_path,omitempty"`
 }
 
 // FailureEvidence is the structured forensics attached to a task.failed
@@ -125,12 +131,16 @@ func SetResultDetail(ctx context.Context, detail jsontext.Value) {
 
 // recordRunOutcome finishes one paid run's bookkeeping: persist the FULL
 // run output sidecar, then record the result — with its log_path — as the
-// execution's outcome detail for `tq show`. logPath points at the result's
-// LogPath field so the sidecar path lands inside the recorded detail;
-// callers that derive session usage do so BEFORE calling (deriveUsage
-// returns its derivation for executors that also need commits/files).
-func recordRunOutcome[T any](ctx context.Context, result *T, logPath *string, output, tail string, id task.ID) {
-	*logPath = writeOutputSidecar(id, output, tail)
+// execution's outcome detail for `tq show`. The sidecar path is stamped
+// through the result's embedded sessionUsage so it lands inside the
+// recorded detail; callers that derive session usage do so BEFORE calling
+// (deriveUsage returns its derivation for executors that also need
+// commits/files).
+func recordRunOutcome[R any, T interface {
+	*R
+	setLogPath(string)
+}](ctx context.Context, result T, output, tail string, id task.ID) {
+	result.setLogPath(writeOutputSidecar(id, output, tail))
 
 	detail, _ := json.Marshal(result)
 	SetResultDetail(ctx, detail)
