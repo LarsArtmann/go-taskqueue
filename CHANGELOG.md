@@ -218,6 +218,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `internal/budget/budget_test.go`)
 
 ### Fixed
+- **`executor.Excerpt` rune-safe truncation**: the 200-byte cut could split
+  a multi-byte UTF-8 rune mid-sequence, corrupting the last character of
+  truncated prompt/log excerpts (mojibake in evidence tails). The cut now
+  backs off to a whole-rune boundary at the single choke point
+  (`internal/executor/excerpt.go`), pinned by `TestExcerptRuneSafe`.
 - **Journal-consumer unsubscribe race**: an in-flight `drain` could
   deliver facts to a subscriber AFTER `unsubscribe` returned (the
   subscriber was removed from the dispatcher's map but the drain loop
