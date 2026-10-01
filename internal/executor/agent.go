@@ -995,6 +995,19 @@ func withGoEnvPrelude(verify string) string {
 	return goEnvPrelude + verify
 }
 
+// ScopedGofmtStage is the gitignore-aware gofmt stage minted Go verify
+// commands carry: `gofmt -l .` walks the whole tree, gitignored vendor/
+// included (generated code an agent must not reformat), and
+// `git check-ignore --stdin -v --non-matching` prints `::<TAB><path>` for
+// exactly the paths git does NOT ignore, so the gate fails only on
+// formatting defects in files that could be committed. Untracked files
+// stay checked on purpose: agents write new files before committing them,
+// so a tracked-only listing would open the exact hole the gate exists to
+// close. Outside a git work tree the stage degrades to a pass (agent
+// verifies always run in git clones). This kills the vendor-gofmt death
+// class (P2) at the mint instead of classifying it after the fact.
+const ScopedGofmtStage = `test -z "$(gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::')"`
+
 // defaultVerify picks a sensible verification command for a repo.
 func defaultVerify(repo string) string {
 	if _, err := os.Stat(filepath.Join(repo, "go.mod")); err == nil {
@@ -1005,7 +1018,7 @@ func defaultVerify(repo string) string {
 		// an explicit exit. Word-split find output: module paths containing
 		// spaces are rare enough for a heuristic default; a repo can pin its
 		// own .tq-verify when it needs more.
-		return withGoEnvPrelude("go build ./... && go test ./... -count=1" +
+		return withGoEnvPrelude("go build ./... && go test ./... -count=1 && " + ScopedGofmtStage +
 			" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*');" +
 			" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done")
 	}

@@ -731,8 +731,9 @@ func TestDoctorVerifyPinsFlagsKnownStalePatterns(t *testing.T) {
 	for name, tc := range map[string]struct {
 		typ, payload string
 	}{
-		"rootOnly": {"agent", `{"repo":"no-such-repo","verify":"go build ./... && go test ./... -count=1"}`},
-		"current":  {"agent", `{"repo":"no-such-repo","verify":"export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1 && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*'); do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done"}`},
+		"rootOnly":      {"agent", `{"repo":"no-such-repo","verify":"go build ./... && go test ./... -count=1"}`},
+		"unscopedGofmt": {"agent", `{"repo":"no-such-repo","verify":"export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1 && test -z \"$(gofmt -l .)\""}`},
+		"current":       {"agent", `{"repo":"no-such-repo","verify":"export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1 && test -z \"$(gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::')\" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*'); do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done"}`},
 	} {
 		tt, err := s.Enqueue(ctx, task.New{Type: tc.typ, Payload: []byte(tc.payload)})
 		if err != nil {
@@ -754,7 +755,11 @@ func TestDoctorVerifyPinsFlagsKnownStalePatterns(t *testing.T) {
 		t.Errorf("detail must name the stale-pattern task %s: %s", enqueued["rootOnly"].ID, got.Detail)
 	}
 
-	for _, want := range []string{"known-stale verify pin", "root-module-only gate"} {
+	if !strings.Contains(got.Detail, string(enqueued["unscopedGofmt"].ID)) {
+		t.Errorf("detail must name the unscoped-gofmt task %s: %s", enqueued["unscopedGofmt"].ID, got.Detail)
+	}
+
+	for _, want := range []string{"known-stale verify pin", "root-module-only gate", "unscoped gofmt stage"} {
 		if !strings.Contains(got.Detail, want) {
 			t.Errorf("detail must carry %q: %s", want, got.Detail)
 		}

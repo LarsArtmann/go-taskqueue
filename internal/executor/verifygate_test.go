@@ -269,6 +269,52 @@ func TestVendorGofmtSignatureNeverMasksIntroducedWork(t *testing.T) {
 	}
 }
 
+// TestDefaultVerifyScopedGofmtStage pins the P2 fix end to end on the
+// live mint: defaultVerify's gate (now carrying the gitignore-scoped
+// gofmt stage) passes with a gitignored unformatted vendor/ tree present
+// (the class that dead-lettered 167 dispatched tasks doing real work),
+// and fails on an untracked non-ignored unformatted file — agents write
+// files before committing them, so the untracked-but-committable half of
+// the scope must stay checked. That failure is a REAL gate death: the
+// scoped stage only ever fails on files git would let through, so the
+// vendor-gofmt environmental signature must refuse to classify it.
+func TestDefaultVerifyScopedGofmtStage(t *testing.T) {
+	repo := writeVendorRepo(t, false)
+
+	if _, _, err := runVerify(
+		context.Background(),
+		task.ID("scoped-gofmt-vendor-test"),
+		repo,
+		&AgentPayload{Verify: defaultVerify(repo)},
+		false,
+		"",
+	); err != nil {
+		t.Fatalf("minted gate must pass with gitignored vendor/ present, got %v", err)
+	}
+
+	untracked := "package main\n\nfunc  UntrackedBad() int {\nreturn 3\n}\n"
+	if err := os.WriteFile(filepath.Join(repo, "untracked_bad.go"), []byte(untracked), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err := runVerify(
+		context.Background(),
+		task.ID("scoped-gofmt-untracked-test"),
+		repo,
+		&AgentPayload{Verify: defaultVerify(repo)},
+		false,
+		"",
+	)
+	if err == nil {
+		t.Fatal("an untracked non-ignored unformatted file must fail the minted gate")
+	}
+
+	var gateErr *VerifyGateError
+	if errors.As(err, &gateErr) && gateErr.Class == VerifyGateEnvironmental {
+		t.Fatalf("a formatting defect outside gitignore must stay a real death, got %v", err)
+	}
+}
+
 // TestVendorGofmtSignatureClauses pins the cheap clauses of the signature
 // matcher individually: no gofmt stage, no vendor dir, a failing or empty
 // tail must each refuse the match.

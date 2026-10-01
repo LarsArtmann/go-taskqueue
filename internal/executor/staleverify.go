@@ -19,10 +19,16 @@ import "strings"
 //  3. any Go gate without the GOEXPERIMENT=jsonv2 export — predates the
 //     env-self-contained mint and dies outside the flake devShell on
 //     repos importing encoding/json/v2 (the 2026-09-11 env-lie class).
+//  4. any gofmt stage without the gitignore scope — the unscoped
+//     `test -z "$(gofmt -l .)"` shape flags gitignored vendor/ trees and
+//     kills the gate on files the agent cannot even commit (the
+//     2026-10-01 P2 class: 167 dead letters, every dispatched task killed
+//     after doing real work).
 //
 // The current mint (goEnvPrelude + the explicit-exit `for f in $(find …)`
-// walk) matches none of the predicates; non-Go gates (npm/make/cargo/nix)
-// are out of scope for the Go-mint evolution and always come back clean.
+// walk + the gitignore-scoped gofmt stage) matches none of the
+// predicates; non-Go gates (npm/make/cargo/nix) are out of scope for the
+// Go-mint evolution and always come back clean.
 func StaleVerifyReasons(verify string) []string {
 	if !isGoVerify(verify) {
 		return nil
@@ -48,6 +54,12 @@ func StaleVerifyReasons(verify string) []string {
 		reasons = append(
 			reasons,
 			"missing the "+GoEnvExperiment+" export — predates the env-self-contained mint, dies outside the flake devShell on encoding/json/v2 repos",
+		)
+	}
+
+	if strings.Contains(verify, "gofmt -l") && !strings.Contains(verify, "git check-ignore") {
+		reasons = append(reasons,
+			"unscoped gofmt stage: `gofmt -l .` flags gitignored vendor/ trees and kills the gate on files the agent cannot commit (P2 vendor-gofmt class); scope the stage with git check-ignore (executor.ScopedGofmtStage)",
 		)
 	}
 

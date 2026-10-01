@@ -500,7 +500,7 @@ func TestVerifyStrategy(t *testing.T) {
 		{
 			"go module",
 			map[string]string{"go.mod": "module x\n"},
-			"export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1" +
+			"export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1 && " + ScopedGofmtStage +
 				" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*');" +
 				" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done",
 		},

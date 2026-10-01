@@ -1,6 +1,8 @@
 package executor
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -11,14 +13,22 @@ import (
 func TestStaleVerifyReasons(t *testing.T) {
 	t.Parallel()
 
-	currentMint := withGoEnvPrelude("go build ./... && go test ./... -count=1" +
+	// The pre-gofmt mint (env-complete walk, no formatting stage) is not
+	// broken, only less strict: clean.
+	preGofmtMint := withGoEnvPrelude("go build ./... && go test ./... -count=1" +
 		" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*');" +
 		" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done")
-	if got := StaleVerifyReasons(currentMint); got != nil {
-		t.Errorf("current mint must be clean, got %v", got)
+	if got := StaleVerifyReasons(preGofmtMint); got != nil {
+		t.Errorf("pre-gofmt mint must be clean, got %v", got)
 	}
 
-	if got := StaleVerifyReasons(defaultVerify(t.TempDir())); got != nil {
+	// The live mint (now carrying the scoped gofmt stage) stays clean.
+	goDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(goDir, "go.mod"), []byte("module x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := StaleVerifyReasons(defaultVerify(goDir)); got != nil {
 		t.Errorf("defaultVerify output must be clean, got %v", got)
 	}
 
@@ -60,6 +70,15 @@ func TestStaleVerifyReasons(t *testing.T) {
 				" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*');" +
 				" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done",
 			want: []string{GoEnvExperiment + " export"},
+		},
+		"unscopedGofmt": {
+			// The pre-P2-fix .tq-verify shape: env-complete, walk complete,
+			// but the gofmt stage flags gitignored vendor/ trees.
+			verify: "export " + GoEnvExperiment + "; go build ./... && go test ./... -count=1" +
+				" && test -z \"$(gofmt -l .)\"" +
+				" && for f in $(find . -mindepth 2 -name go.mod -not -path '*/vendor/*');" +
+				" do (cd \"${f%/*}\" && go build ./... && go test ./... -count=1) || exit 1; done",
+			want: []string{"unscoped gofmt stage"},
 		},
 	} {
 		got := StaleVerifyReasons(tc.verify)
