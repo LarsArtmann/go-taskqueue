@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **`tq tasks --count --json`** emits `{"count": N}` (machine-parseable
+  total instead of prose), and **`tq tasks --json --json-envelope`** wraps
+  the list as `{tasks, total, truncated}` so paging consumers can see the
+  uncapped total and that a cap bit. The default human listing is
+  unchanged and its truncation footer is now test-pinned end-to-end.
+- **`tq audit --journal` coverage honesty**: when priority and dedup-key
+  coverage are both 0 (the engine's thin `{project,type}` enqueue detail,
+  S1 divergence D2), the output now says NOT REPLAYABLE with the cause
+  instead of a bare `0/N` that reads as "tasks lack priorities".
 - **`tq doctor --service-unit UNIT`**: service-context mode diagnoses the
   systemd unit's OWN environment instead of the invoking shell's —
   `systemctl cat` reads the unit, its `Environment=`/`EnvironmentFile=`
