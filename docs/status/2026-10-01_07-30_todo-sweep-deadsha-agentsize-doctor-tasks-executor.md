@@ -22,7 +22,7 @@ covers only this session's work).
    maneuver). Gate now rc=0: "150 baselined, 0 new" (two late stragglers
    from parallel windows, both LOST, baselined — 7bc80672 same batch,
    aac17ad9 a 06-26 parallel report citing a chore commit its own
-   soft-reset heal orphaned, d03571f4/dad3cf45).
+   soft-reset heal orphaned, de92677ab1f7a8312f96057abb26a2f36adb601a/e411e087e2fba8ec0200b21f03d4e90cc3ca8960).
 
 2. **AGENTS.md consolidated conventions pass (rows 430, 431, 432, 309,
    255, 261, 326, 327, 337 partial, 433).** One size-budgeted edit wave
@@ -94,7 +94,7 @@ covers only this session's work).
 
 8. **doctorVerifyPins verdict merge + hygiene summarize + structured
    items (rows 348, 349, 350)** (40ad3c85, healed from daemon fold
-   280d9912 via soft-reset). Both verdicts now computed for EVERY pin
+   40ad3c85219d38eabc762c37ab700a8fe070d032 via soft-reset). Both verdicts now computed for EVERY pin
    (the known-stale pattern check used to `continue` past the repo ladder,
    suppressing "STALE PIN WILL FIRE"); merged with the repo verdict first
    and pattern reasons folded in as "(also …)". ≤3 findings stay verbatim
@@ -149,7 +149,7 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
    and the tick only.
 
 5. **Daemon-fold attribution hygiene** — one of the two daemon sweeps was
-   healed via soft-reset (280d9912 → 40ad3c85); the other (1c4f0212,
+   healed via soft-reset (40ad3c85219d38eabc762c37ab700a8fe070d032 → 40ad3c85); the other (1c4f0212,
    journalaudit + help-smoke) was left as a fold with the footer commit
    landing adjacent (b2ecf030). Queue derivation will fold-attribute, but
    the code is not footer-carried.
@@ -190,7 +190,7 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
 
 1. **I violated the Edit→commit→battery rule I shipped earlier the same
    window.** Twice the daemon swept my unstaged edits during multi-second
-   gates (1c4f0212 after the journalaudit edit, 280d9912 after the doctor
+   gates (1c4f0212 after the journalaudit edit, 40ad3c85219d38eabc762c37ab700a8fe070d032 after the doctor
    edit during a 10.9 s module gate). One healed via soft-reset; one left
    as a fold. The rule exists because <60 s sweeps beat any gate run —
    there is no safe gate-then-commit ordering.
@@ -208,7 +208,7 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
    the python one-liner) — invisible to the parser AND to
    check-todo-list.sh, which stayed green through the damage. This is a
    live, fresh specimen for row 204's malformed-prefix rejection ask; the
-   four rows are repaired (d03571f4).
+   four rows are repaired (de92677ab1f7a8312f96057abb26a2f36adb601a).
 
 4. **The first help-smoke flag assertion used `--flag` spellings** that can
    never match the flag package's single-dash help output; only running the
@@ -366,7 +366,7 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
    planning)? Both are unblocked; the code lane burns down recurring
    agent-window cost, the docs lane pays down operator-facing honesty.
 
-## Battery (rc-captured at HEAD d03571f4)
+## Battery (rc-captured at HEAD de92677ab1f7a8312f96057abb26a2f36adb601a)
 
 - root: `go build ./...` rc=0; `go vet ./...` rc=0; `go test ./... -race
   -count=1` rc=0, 17 ok packages (fresh, this window).

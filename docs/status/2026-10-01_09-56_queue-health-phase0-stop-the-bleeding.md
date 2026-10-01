@@ -13,11 +13,11 @@ production actions one at a time through the `tq` CLI, each verified
 against the journal before the next. Code changes in-repo with module
 gates; cross-repo edits (CV, SystemNix, go-cqrs-lite) committed via each
 repo's own hooks. Rulings recorded in the plan before first action
-(R1=park, R2=granted, R3=(a) N=3; commit `a5a12de0`).
+(R1=park, R2=granted, R3=(a) N=3; commit `2a63b1dc7ce57818527d89078465a16b4a1fbd42`).
 
 ## a) FULLY DONE
 
-- **F1 rulings recorded** — plan §rulings annotated + committed (`a5a12de0`).
+- **F1 rulings recorded** — plan §rulings annotated + committed (`2a63b1dc7ce57818527d89078465a16b4a1fbd42`).
 - **M1 loop task dispositioned** — `tq ask --task 000001a0eebb…` recorded
   the question (fact 8610) but could NOT park: **P6 (new finding): no
   operator-side park verb** — the `$TQ_QUESTION_FILE` marker channel exists
@@ -28,7 +28,7 @@ repo's own hooks. Rulings recorded in the plan before first action
   claims frozen at 169 (terminal status structurally beats the 30-min
   watch; final re-check rides F70). CV TODO row 82 annotated with the
   disposition + re-arm path (CV `a53eb9c08`); diagnosis §b annotated with
-  P6 (go-taskqueue `d3432c1c`).
+  P6 (go-taskqueue `0be27fd5608aee9afa3d59b7f14a3ce46c295c62`).
 - **M2 vendor-gofmt kill ended** — `trash vendor/` (44 flagged files → 0);
   full `.tq-verify` gate rc=0 green WITHOUT vendor/ (build+vet+`-race`
   tests+gofmt); green-dispatch probe completed end-to-end (enqueued at
@@ -53,7 +53,7 @@ repo's own hooks. Rulings recorded in the plan before first action
   before the batch-end checkpoint is by design; the dashboard dedupes on
   idempotency keys). Assertions relaxed to lower bounds (≥2 / ≥1) with a
   comment citing the death; **20/20 stable** after; root build+vet+bridge
-  tests green; committed `ca849564` (amended the daemon's generic ferry
+  tests green; committed `5d54c1298b39fa122633a207e030c8ef31e434fb` (amended the daemon's generic ferry
   while still local-only).
 - **M6 design legs F18–F19** — citations: `verifyFor`
   `internal/executor/agent.go:944` (`.tq-verify` file → payload pin →

@@ -16,12 +16,12 @@ Read-only assessment first, then owner-gated production actions one at a
 time through the `tq` CLI, each verified against the journal before
 proceeding. In-repo code changes behind module gates; cross-repo edits
 committed through each repo's own hooks. Rulings recorded in the plan
-before the first action (R1=park, R2=granted, R3=(a) N=3; `a5a12de0`).
+before the first action (R1=park, R2=granted, R3=(a) N=3; `2a63b1dc7ce57818527d89078465a16b4a1fbd42`).
 
 ## a) FULLY DONE
 
 - **F1 rulings recorded** in the plan (R1=park default, R2=granted,
-  R3=(a) N=3) — commit `a5a12de0`.
+  R3=(a) N=3) — commit `2a63b1dc7ce57818527d89078465a16b4a1fbd42`.
 - **M1 loop task `000001a0eebb…` dispositioned.** `tq ask` recorded the
   question (fact 8610) but could not park — **P6 (new): no operator-side
   park verb**; the `$TQ_QUESTION_FILE` marker channel exists only inside
@@ -32,7 +32,7 @@ before the first action (R1=park, R2=granted, R3=(a) N=3; `a5a12de0`).
   (terminal status structurally beats the 30-min watch; final re-check
   rides F70). CV TODO row 82 annotated with disposition + re-arm path
   (CV `a53eb9c08`, pre-commit battery green); diagnosis §b annotated
-  with P6 (`d3432c1c`, `check-status-index.sh` green).
+  with P6 (`0be27fd5608aee9afa3d59b7f14a3ce46c295c62`, `check-status-index.sh` green).
 - **M2 vendor-gofmt death class ended.** `trash vendor/` (44 flagged
   files → 0); full `.tq-verify` gate rc=0 green WITHOUT vendor/; green
   dispatch probe completed end-to-end (claim+complete 05:18:36, facts
@@ -53,7 +53,7 @@ before the first action (R1=park, R2=granted, R3=(a) N=3; `a5a12de0`).
   at-least-once bridge (re-send before batch-end checkpoint is by
   design; dashboard dedupes on idempotency keys). Relaxed to lower
   bounds (≥2/≥1) with a comment citing the death; **20/20 stable**;
-  root build+vet+bridge tests green; committed `ca849564` (amended the
+  root build+vet+bridge tests green; committed `5d54c1298b39fa122633a207e030c8ef31e434fb` (amended the
   daemon's generic ferry while still local-only).
 - **M6 design legs F18–F19.** Citations: `verifyFor`
   `internal/executor/agent.go:944` (`.tq-verify` file → payload pin →
@@ -68,7 +68,7 @@ before the first action (R1=park, R2=granted, R3=(a) N=3; `a5a12de0`).
   REJECTED (agents write new files pre-commit and must stay gofmt-
   checked). Learned en route: `--non-matching` requires `-v`.
 - **Session report #1** (09-56) written, indexed, committed (daemon
-  ferry `a6fad80e`); `check-status-index.sh` green.
+  ferry `faba1b8af2080602e801c95dbabc940028d6c669`); `check-status-index.sh` green.
 
 ## b) PARTIALLY DONE
 
@@ -120,7 +120,7 @@ before the first action (R1=park, R2=granted, R3=(a) N=3; `a5a12de0`).
 6. First M1 watcher polled a non-matching regex against `tq show` JSON
    (12 empty samples, ~4 min) — read the output shape before polling.
 7. The 09-56 report commit ALSO raced the daemon (`git add` then
-   "nothing to commit" — ferry `a6fad80e` got both files). Twice in one
+   "nothing to commit" — ferry `faba1b8af2080602e801c95dbabc940028d6c669` got both files). Twice in one
    session: in daemon-swept repos, `add+commit` is one step or the
    daemon owns the message; verify the ferry landed rather than assuming
    loss (both times it did).
