@@ -2015,46 +2015,102 @@ func TestListSeverityOrder(t *testing.T) {
 //go:fix inline
 func ptrStatus(st task.Status) *task.Status { return new(st) }
 
+// TestCountTasksMatchesList pins that CountTasks and List agree under
+// EVERY CLI filter combination (row: tq tasks --count can never drift from
+// the listing it summarizes — the silent-cap census class). The seed spans
+// both projects, both types, one completed, and one rate-limit-parked task
+// so each filter has a known, non-trivial match set.
 func TestCountTasksMatchesList(t *testing.T) {
 	t.Parallel()
 
 	ctx, s := freshStore(t)
-	seedFacts(ctx, t, s, 5)
 
-	full, err := s.CountTasks(ctx, queue.Filter{})
-	if err != nil {
-		t.Fatalf("CountTasks: %v", err)
+	seed := []struct {
+		project string
+		typ     string
+		payload string
+	}{
+		{"alpha", "sh", `"ping one"`},
+		{"alpha", "sh", `"ping two"`},
+		{"alpha", "agent", `"probe alpha verify gofmt"`},
+		{"beta", "agent", `"probe beta one"`},
+		{"beta", "agent", `"probe beta two"`},
 	}
 
-	if full != 5 {
-		t.Fatalf("count = %d, want 5", full)
+	ids := make([]task.ID, 0, len(seed))
+
+	for i, in := range seed {
+		enq, err := s.Enqueue(ctx, task.New{
+			Project: in.project,
+			Type:    in.typ,
+			Payload: jsontext.Value(in.payload),
+		})
+		if err != nil {
+			t.Fatalf("seed %d: %v", i, err)
+		}
+
+		ids = append(ids, enq.ID)
 	}
 
-	listed, err := s.List(ctx, queue.Filter{})
-	if err != nil {
-		t.Fatalf("List: %v", err)
+	// Complete the first alpha/sh task; park the first beta/agent task.
+	_, claim := claimDue(t, ctx, s, "w1")
+	if err := s.Complete(ctx, ids[0], claim, nil); err != nil {
+		t.Fatalf("Complete: %v", err)
 	}
 
-	if len(listed) != full {
-		t.Fatalf("List(%d) and CountTasks(%d) disagree", len(listed), full)
+	_, claimBeta := claimDue(t, ctx, s, "w2")
+	if err := s.Requeue(ctx, ids[3], claimBeta, "rate limited", time.Hour, false); err != nil {
+		t.Fatalf("Requeue(park): %v", err)
 	}
 
-	qcount, err := s.CountTasks(ctx, queue.Filter{Query: "true"})
-	if err != nil {
-		t.Fatalf("CountTasks(query): %v", err)
+	statusCompleted := task.Completed
+	projectAlpha := "alpha"
+	typeAgent := "agent"
+	typeSh := "sh"
+	parked := true
+	hotMin, hotMax := queue.HotMin, queue.HotMax
+	backlogMax := queue.BacklogMax
+	past := time.Now().Add(-time.Hour)
+	future := time.Now().Add(time.Hour)
+
+	filters := []struct {
+		name   string
+		filter queue.Filter
+		want   int
+	}{
+		{"empty", queue.Filter{}, 5},
+		{"project", queue.Filter{Project: &projectAlpha}, 3},
+		{"status-completed", queue.Filter{Status: &statusCompleted}, 1},
+		{"type-agent", queue.Filter{Type: &typeAgent}, 3},
+		{"type-sh", queue.Filter{Type: &typeSh}, 2},
+		{"payload-contains", queue.Filter{PayloadContains: "gofmt"}, 1},
+		{"payload-contains-none", queue.Filter{PayloadContains: "absent-token"}, 0},
+		{"query", queue.Filter{Query: "probe"}, 3},
+		{"band-hot", queue.Filter{PriorityMin: &hotMin, PriorityMax: &hotMax}, 0},
+		{"band-backlog", queue.Filter{PriorityMax: &backlogMax}, 5},
+		{"since-past", queue.Filter{Since: &past}, 5},
+		{"since-future", queue.Filter{Since: &future}, 0},
+		{"parked", queue.Filter{Parked: &parked}, 1},
 	}
 
-	if qcount != 5 {
-		t.Fatalf("query count = %d, want 5 (all payloads contain true)", qcount)
-	}
+	for _, tc := range filters {
+		count, err := s.CountTasks(ctx, tc.filter)
+		if err != nil {
+			t.Fatalf("%s: CountTasks: %v", tc.name, err)
+		}
 
-	zero, err := s.CountTasks(ctx, queue.Filter{Query: "nope"})
-	if err != nil {
-		t.Fatalf("CountTasks(no match): %v", err)
-	}
+		list, err := s.List(ctx, tc.filter)
+		if err != nil {
+			t.Fatalf("%s: List: %v", tc.name, err)
+		}
 
-	if zero != 0 {
-		t.Fatalf("no-match count = %d, want 0", zero)
+		if count != len(list) {
+			t.Fatalf("%s: CountTasks(%d) and List(%d) disagree", tc.name, count, len(list))
+		}
+
+		if count != tc.want {
+			t.Fatalf("%s: count = %d, want %d", tc.name, count, tc.want)
+		}
 	}
 }
 
