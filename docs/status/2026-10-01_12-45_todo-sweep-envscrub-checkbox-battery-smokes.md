@@ -11,10 +11,14 @@ that caught the incident.
 
 1. **Incident: 2026-10-01 history rewrite orphaned 40 cite-sites.** First
    full run of the new verify-battery flagged dead-sha-default-scope rc=1:
-   18 tokens / 40 lines across 7 reports + the README index (a5a12de0,
-   d03571f4, 280d9912, dad3cf45, a6fad80e, d3432c1c, ca849564, 4f436285,
-   ca4d1fef, fb5bc27c, 7cc85f6d, f45a904c, a25227c4, e439d59d, e759634a,
-   ddd675a6, e759634a-class chore commits). Patch-id mapper v2
+   16 tokens / 40 lines across 7 reports + the README index, each healed
+   to its unique reachable patch-id twin (fork records):
+   a5a12de0→2a63b1dc, d03571f4→de92677a, 280d9912→40ad3c85,
+   dad3cf45→e411e087, a6fad80e→faba1b8a, d3432c1c→0be27fd5,
+   ca849564→5d54c129, 4f436285→f1e03759, ca4d1fef→2f56ee19,
+   fb5bc27c→dc43c582, 7cc85f6d→1feff4ab, f45a904c→ef198bd5,
+   a25227c4→9a28605b, e439d59d→7f78e21f, e759634a→4c79b362,
+   ddd675a6→13dcc00b. Patch-id mapper v2
    (single pass over rev-list, 2314 pids hashed once, then join — the v1
    O(n²) shape would have taken an hour): 16/16 real tokens had a UNIQUE
    reachable twin (2 grep artifacts `c`/`e` excluded, 0 LOST, 0 AMBIG) —
