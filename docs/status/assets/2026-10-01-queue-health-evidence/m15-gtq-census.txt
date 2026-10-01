@@ -1,0 +1,11 @@
+go-taskqueue: 177 dead (09-10 .. 10-01)
+   gofmt-class (vendor-gofmt family): 167
+   other: 4
+   rate-limit adjacent: 3
+   verify-failed: 3
+SystemNix: 31 dead (09-11 .. 09-30)
+   verify-failed: 22
+   other: 8
+   rate-limit adjacent: 1
+libx: 1 dead (09-14 .. 09-14)
+   other: 1

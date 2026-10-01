@@ -1,0 +1,39 @@
+CV DEAD CENSUS — 106 tasks (read-only, 2026-10-01T12:01:11)
+
+== verify-failed (real or pinned-gate): 99
+   attempts: min 3 / max 3
+   created 2026-09-11 03:20:22.560000 .. 2026-09-29 01:50:45.064000
+   e.g. 000001a08e0d2a20c5df58894ff6b9063e5d att3: agent closeout cancelled (context deadline exceeded): INFO Running in non-interactive mode
+   e.g. 000001a08e5f906aeb747e7dc4feadf7894f att3: agent verify failed ("go build ./... && go test ./... -count=1"): exit status 1: package g
+
+== other: 3
+   attempts: min 3 / max 3
+   created 2026-09-21 00:01:46.907000 .. 2026-09-22 06:36:47.058000
+   e.g. 000001a0c0d6f0ee9a6c46b0d65b6ebb75b3 att3: agent verify cancelled (context deadline exceeded): s/html/handlers	0.381s
+ok  	github.com
+   e.g. 000001a0c63d6738cd51aa76acaf3ae91557 att3: agent run cancelled (context deadline exceeded): INFO  Running in non-interactive mode
+INF
+
+== rate-limit adjacent: 2
+   attempts: min 3 / max 3
+   created 2026-09-11 08:35:22.607000 .. 2026-09-17 02:55:34.744000
+   e.g. 000001a08f2d8e6f9413ff1664260ec0ee89 att3: agent run failed: exit status 1: INFO Running in non-interactive mode
+INFO Created session
+   e.g. 000001a0acdc9e58c4846fe7672792c6d6d4 att3: agent closeout cancelled (context deadline exceeded): ovider called provider=zai model=glm
+
+== timeout: 1
+   attempts: min 3 / max 3
+   created 2026-09-16 00:00:19.819000 .. 2026-09-16 00:00:19.819000
+   e.g. 000001a0a715d06bb5a613757bab56ad6a96 att3: agent run failed: exit status 1: INFO  Running in non-interactive mode
+INFO  Created sessi
+
+== preflight: 1
+   attempts: min 3 / max 3
+   created 2026-09-26 01:20:30.397000 .. 2026-09-26 01:20:30.397000
+   e.g. 000001a0dadecfbdc1d69c2aac8840f0a6e5 att3: agent closeout failed: exit status 1: INFO  Initializing MCP clients
+INFO  Running in non-
+
+--- REVIEW-TASK AUDIT ---
+review tasks: 157 completed, 1 dead
+review dedup keys reused (same target re-reviewed): 0
+review tasks minted in last 72h: 27

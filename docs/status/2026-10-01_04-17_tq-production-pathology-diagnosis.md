@@ -104,7 +104,7 @@ tell me what is broken with ~/projects/go-taskqueue."
 > shipped proof and would auto-dismiss without paid turns); (2) all three
 > sweepers stopped consuming at 06:38 while facts kept landing to 08:34 —
 > the agent-pool process looks down/hung since ~06:38 (the bridge cursor is
-> also written by `tq serve`, so its currency does NOT prove pool health).
+> also written by `tq worker`, so its currency does NOT prove pool health).
 > Both ride the owner questions.
 
 ## c) NOT STARTED

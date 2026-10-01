@@ -1,0 +1,6 @@
+CV crush sessions in the P1 loop window (09-29 21:54 -> 10-01 05:02 CEST, 31.1h): 99
+  cost: $47.46  prompt tokens: 14,316,111  completion tokens: 34,368
+  -> per 24h: $36.62, 76.4 sessions/day
+  sessions with todo/fix-shaped titles (loop-family proxy): 1, $4.28
+  per day (CEST): 09-30: n=76 $37.78, 10-01: n=23 $9.68
+30d scale (ends 10-01 05:02): 718 sessions, $877.85 -> $29.26/day average

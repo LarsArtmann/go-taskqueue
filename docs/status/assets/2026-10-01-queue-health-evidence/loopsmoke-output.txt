@@ -1,0 +1,6 @@
+== building tq ==
+== phase 1: healthy journal — detector silent ==
+ok: healthy journal silent
+== phase 2: 30-claim churn fixture — detector red ==
+ok: churn fixture flagged (000001a0f6e88714b1ed8d58101100000000, 30 claims)
+PASS: loop detector red on churn, silent on healthy

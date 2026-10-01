@@ -64,7 +64,7 @@ conventions.
   the 315 historical dead agent letters predate its cursor; and all three
   sweepers froze at 8661 between 06:33–06:38 while the journal advanced to
   8696 by 08:34 — the agent-pool looks down/hung since ~06:38 (the bridge
-  cursor also advances from `tq serve`, so its currency does NOT prove pool
+  cursor also advances from `tq worker`, so its currency does NOT prove pool
   health).
 - **M14 loop-detector smoke (F51–F54, `87318e0f`)** —
   `scripts/smoke/loop-detector.sh`: healthy journal silent (no line, no JSON
@@ -212,7 +212,7 @@ conventions.
 1. **Is the agent-pool down/hung since ~06:38, and did you restart it
    ~06:33?** All three sweepers' cursors froze at seq 8661 between
    06:33:25–06:38:25 while the journal advanced to 8696 by 08:34; the
-   bridge cursor kept moving (it also rides `tq serve`), so the pool being
+   bridge cursor kept moving (it also rides `tq worker`), so the pool being
    down is consistent but unprovable from this shell (`systemctl`/`sudo`
    banned). If it IS down: M19/F65 (first harvested dispatch survives the
    gate) stays blocked until it's back.
