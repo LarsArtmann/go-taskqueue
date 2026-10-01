@@ -832,11 +832,136 @@ func doctorEnvironment(ctx context.Context, opts doctorOptions) []checkResult {
 		}
 
 		results = append(results, doctorRepoAutonomy(repo)...)
+		results = append(results, doctorTreeGofmt(ctx, repo))
 	}
 
 	results = append(results, doctorTagAncestry())
 
 	return results
+}
+
+// doctorTreeProbeTimeout bounds one live-tree gofmt walk: big repos take
+// seconds, never minutes, and a hung walk must not hang the doctor.
+const doctorTreeProbeTimeout = 60 * time.Second
+
+// doctorTreeGofmt flags unformatted NON-gitignored Go files on a repo's
+// live tree (M11): exactly the set the scoped verify gate (M6's
+// gitignore-aware gofmt stage) dies on, seen before a dispatch pays for
+// it. Gitignored drift (the vendor-gofmt class) is harmless under the
+// scoped gate and stays doctorVerifyPins' finding when a PINNED verify is
+// still unscoped; the two checks deliberately do not double-report.
+func doctorTreeGofmt(ctx context.Context, repo string) checkResult {
+	name := "gofmt:" + filepath.Base(repo)
+
+	gofmt := resolveGofmt()
+	if gofmt == "" {
+		return checkResult{
+			Name:   name,
+			Status: checkWarn,
+			Detail: "gofmt not on PATH or beside go (cannot probe the live tree)",
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, doctorTreeProbeTimeout)
+	defer func() { cancel() }()
+
+	walk := exec.CommandContext(ctx, gofmt, "-l", ".")
+	walk.Dir = repo
+
+	out, err := walk.Output()
+	if err != nil {
+		return checkResult{Name: name, Status: checkWarn, Detail: "gofmt -l failed: " + err.Error()}
+	}
+
+	unformatted := nonEmptyLines(out)
+	if len(unformatted) == 0 {
+		return checkResult{Name: name, Status: checkOK, Detail: "live tree gofmt-clean"}
+	}
+
+	// Scope to non-gitignored files, the M6 idiom: git check-ignore
+	// answers "::\t<path>" for NOT ignored and
+	// "<src>:<line>:<pattern>\t<path>" for ignored. Outside a git work
+	// tree every unformatted file counts; the scoped mint would degrade
+	// to a pass there, but the drift still deserves eyes.
+	filter := exec.CommandContext(ctx, "git", "-C", repo, "check-ignore", "--stdin", "-v", "--non-matching")
+	filter.Stdin = bytes.NewReader(out)
+
+	filtered, filterErr := filter.Output()
+
+	findings := unformatted
+	caveat := " (git unavailable: unfiltered)"
+
+	if filterErr == nil {
+		findings = findings[:0]
+		caveat = ""
+
+		for _, line := range nonEmptyLines(filtered) {
+			if path, ok := strings.CutPrefix(line, "::\t"); ok {
+				findings = append(findings, path)
+			}
+		}
+	}
+
+	count := len(findings)
+
+	if count == 0 {
+		return checkResult{
+			Name:   name,
+			Status: checkOK,
+			Detail: fmt.Sprintf(
+				"gofmt drift confined to gitignored files (%d; harmless under the scoped gate)",
+				len(unformatted),
+			),
+		}
+	}
+
+	if count > 20 {
+		findings = append(findings[:20], fmt.Sprintf("+%d more", count-20))
+	}
+
+	return checkResult{
+		Name:   name,
+		Status: checkWarn,
+		Detail: fmt.Sprintf(
+			"%d non-gitignored file(s) fail gofmt (the scoped verify gate dies on these: gofmt them, or gitignore deliberately)%s",
+			count,
+			caveat,
+		),
+		Items: findings,
+	}
+}
+
+// resolveGofmt finds the gofmt binary: PATH first, then the toolchain's
+// GOROOT/bin (wrapped toolchains often hide it from PATH).
+func resolveGofmt() string {
+	if p, err := exec.LookPath("gofmt"); err == nil {
+		return p
+	}
+
+	out, err := exec.Command("go", "env", "GOROOT").Output()
+	if err != nil {
+		return ""
+	}
+
+	candidate := filepath.Join(strings.TrimSpace(string(out)), "bin", "gofmt")
+	if executableFile(candidate) {
+		return candidate
+	}
+
+	return ""
+}
+
+// nonEmptyLines splits command output into its non-blank trimmed lines.
+func nonEmptyLines(b []byte) []string {
+	var lines []string
+
+	for _, line := range strings.Split(string(b), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			lines = append(lines, line)
+		}
+	}
+
+	return lines
 }
 
 // doctorReadServiceUnit returns the unit file content via `systemctl cat`.
