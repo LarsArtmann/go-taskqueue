@@ -77,9 +77,9 @@ below fixes escalation as a side effect of moving the reset rule.
    from attempts/not_before in the store, not the counter. M9's
    `requeue_class` fact field makes historical streaks derivable from
    the journal for forensics — observability input, not breaker input.
-6. **Config**: `Config.EnvRequeueBurn` (int, default 3; ≤0 disables the
-   breaker, restoring pure requeue behavior — escape hatch for a
-   deliberate long-hold). Named after the ruling vocabulary
+6. **Config**: `Config.EnvRequeueBurn` (int, default 3 when unset; `< 0`
+   disables the breaker, restoring pure requeue behavior — escape hatch
+   for a deliberate long-hold). Named after the ruling vocabulary
    ("environmental requeue"), not the mechanism.
 
 ## Test plan (M8, F28-F33)

@@ -14,3 +14,7 @@ var (
 	New        = internalworker.New
 	ExpBackoff = internalworker.ExpBackoff
 )
+
+// EnvStreakCode marks breaker-burned attempts in the journal (see the
+// internal package for the full contract).
+const EnvStreakCode = internalworker.EnvStreakCode

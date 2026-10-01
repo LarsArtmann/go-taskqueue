@@ -631,7 +631,9 @@ func TestPreflightRequeuesWithoutAttemptBurn(t *testing.T) {
 // before a verdict) must NOT dead-letter, NOT burn an attempt, and NOT
 // retry immediately — the task holds on the preflight backoff ladder and
 // completes from the SAME attempt budget once the gate is healthy again
-// (MaxAttempts=1: a gate outage must never DLQ finished work).
+// (MaxAttempts=1: a SHORT outage, below the env-requeue breaker streak,
+// must never DLQ finished work; a sustained one burns via the breaker
+// instead — TestEnvRequeueStreakBurnsAttempt).
 func TestVerifyGateRequeuesWithoutAttemptBurn(t *testing.T) {
 	store := testStore(t)
 
@@ -1111,9 +1113,9 @@ func TestHeartbeatDefaultTighterThanHalfLease(t *testing.T) {
 
 // TestPreflightBackoffLadder pins the dirty-tree escalation: consecutive
 // refusals double the base backoff (capped at 15m), every delay stays
-// within the ±20% jitter band, and any non-preflight outcome resets the
-// ladder. A sustained-dirty repo must not bounce at the base backoff
-// forever (23:10 report e7/f7).
+// within the ±20% jitter band, the streak count advances with each
+// refusal, and any judged outcome resets the ladder. A sustained-dirty
+// repo must not bounce at the base backoff forever (23:10 report e7/f7).
 func TestPreflightBackoffLadder(t *testing.T) {
 	base := 30 * time.Second
 	p := New(nil, Config{PreflightBackoff: base}, nil)
@@ -1121,7 +1123,7 @@ func TestPreflightBackoffLadder(t *testing.T) {
 	prev := time.Duration(0)
 
 	for want := 1; want <= 5; want++ {
-		got := p.preflightDelay("t1")
+		got, streak := p.preflightDelay("t1")
 		target := base
 
 		for range want - 1 {
@@ -1130,6 +1132,10 @@ func TestPreflightBackoffLadder(t *testing.T) {
 
 		if got < time.Duration(float64(target)*0.79) || got > time.Duration(float64(target)*1.21) {
 			t.Fatalf("refusal %d: delay %v outside jitter band of %v", want, got, target)
+		}
+
+		if streak != want {
+			t.Fatalf("refusal %d: streak = %d, want %d", want, streak, want)
 		}
 
 		if got <= prev && want > 1 {
@@ -1141,7 +1147,7 @@ func TestPreflightBackoffLadder(t *testing.T) {
 
 	// The ladder caps: 30 consecutive refusals never exceed the cap+jitter.
 	for range 30 {
-		if got := p.preflightDelay("t1"); got > time.Duration(float64(15*time.Minute)*1.21) {
+		if got, _ := p.preflightDelay("t1"); got > time.Duration(float64(15*time.Minute)*1.21) {
 			t.Fatalf("delay %v exceeds the cap band", got)
 		}
 	}
@@ -1149,8 +1155,8 @@ func TestPreflightBackoffLadder(t *testing.T) {
 	// A completed outcome resets: the next refusal is back at the base.
 	p.preflightReset("t1")
 
-	if got := p.preflightDelay("t1"); got > time.Duration(float64(base)*1.21) {
-		t.Fatalf("post-reset delay %v, want base band %v", got, base)
+	if got, streak := p.preflightDelay("t1"); got > time.Duration(float64(base)*1.21) || streak != 1 {
+		t.Fatalf("post-reset delay %v streak %d, want base band %v streak 1", got, streak, base)
 	}
 }
 
@@ -1178,4 +1184,157 @@ func TestPreflightLogRateLimit(t *testing.T) {
 	if !p.preflightShouldLog(id) {
 		t.Fatal("refusal after the interval must log again")
 	}
+}
+
+// TestStaysOnLadder pins the reset rule: the climbing refusals
+// (preflight, undetermined gate failure) and the parked classes (429,
+// owner question) keep the task on the refusal ladder; success, the
+// PROVEN-environmental gate signature, permanent failures, and plain
+// execution failures leave it.
+func TestStaysOnLadder(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"success", nil, false},
+		{"preflight", &executor.PreflightError{Cause: errors.New("dirty")}, true},
+		{"gate dead", &executor.VerifyGateError{Class: executor.VerifyGateDead, Cause: errors.New("red")}, true},
+		{"gate slow", &executor.VerifyGateError{Class: executor.VerifyGateSlow, Cause: errors.New("slow")}, true},
+		{"gate environmental", &executor.VerifyGateError{Class: executor.VerifyGateEnvironmental, Cause: errors.New("vendor")}, false},
+		{"rate limit", &executor.RateLimitError{Cause: errors.New("429"), RetryAfter: time.Minute}, true},
+		{"question", &executor.QuestionPendingError{Cause: errors.New("q"), RetryAfter: time.Minute}, true},
+		{"permanent", executor.Permanent(errors.New("bad payload")), false},
+		{"plain failure", errors.New("exit 1"), false},
+	}
+	for _, tc := range cases {
+		if got := staysOnLadder(tc.err); got != tc.want {
+			t.Errorf("%s: staysOnLadder = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestEnvRequeueStreakBurnsAttempt pins the circuit breaker end to end
+// (R3 option (a), docs/planning/2026-10-01_11-19_env-requeue-circuit-breaker.md):
+// the third consecutive gate refusal burns the attempt (attempts=1,
+// exponential NotBefore via the Fail backoff, EnvStreakCode on the
+// failed fact) instead of requeueing forever, and the ladder then starts
+// fresh — a gate that heals after the burn completes from the remaining
+// budget. This is the pin that the environmental class can never loop
+// more than N requeues per attempt.
+func TestEnvRequeueStreakBurnsAttempt(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var healthy atomic.Bool
+
+	reg.RegisterFunc("gate", func(context.Context, task.Task) error {
+		if !healthy.Load() {
+			return &executor.VerifyGateError{
+				Class: executor.VerifyGateDead,
+				Cause: errors.New(`agent verify failed ("false"): exit status 1`),
+			}
+		}
+
+		return nil
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "gate", MaxAttempts: 3})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		PreflightBackoff: 30 * time.Millisecond,
+		Backoff:          func(int) time.Duration { return 20 * time.Millisecond },
+		Executors:        reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	// The third consecutive refusal burns: attempts=1 with the
+	// EnvStreakCode on the fact, still reclaimable (not dead-lettered —
+	// a 3-attempt task is only at attempt 1).
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		got, _ := store.Get(context.Background(), enq.ID)
+		if got.Attempts == 1 && strings.Contains(got.LastError, EnvStreakCode) {
+			break
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	burned, _ := store.Get(context.Background(), enq.ID)
+	if burned.Attempts != 1 || !strings.Contains(burned.LastError, EnvStreakCode) {
+		t.Fatalf("after 3 gate refusals: attempts=%d lastError=%q, want burned attempt carrying %s",
+			burned.Attempts, burned.LastError, EnvStreakCode)
+	}
+
+	if burned.Status == task.Dead {
+		t.Fatalf("burn dead-lettered a 3-attempt task on attempt 1: %+v", burned)
+	}
+
+	healthy.Store(true)
+
+	got := waitFor(t, ctx, store, enq.ID, task.Completed)
+	if got.Status != task.Completed {
+		t.Fatalf("status = %s, want completed after heal", got.Status)
+	}
+
+	cancel()
+}
+
+// TestEnvRequeueBreakerDisabled pins the escape hatch: EnvRequeueBurn
+// below zero restores pure requeue behavior — sustained gate refusals
+// never burn an attempt (MaxAttempts=1, six-plus refusals, attempts
+// stay 0).
+func TestEnvRequeueBreakerDisabled(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var refusals atomic.Int32
+
+	reg.RegisterFunc("gate", func(context.Context, task.Task) error {
+		refusals.Add(1)
+
+		return &executor.VerifyGateError{
+			Class: executor.VerifyGateDead,
+			Cause: errors.New(`agent verify failed ("false"): exit status 1`),
+		}
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "gate", MaxAttempts: 1})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		PreflightBackoff: 30 * time.Millisecond,
+		EnvRequeueBurn:   -1,
+		Executors:        reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	// Well past the default N=3: refusals keep coming, nothing burns.
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) && refusals.Load() < 6 {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	if refusals.Load() < 6 {
+		t.Fatalf("only %d refusals observed; the pool is not reclaiming", refusals.Load())
+	}
+
+	got, _ := store.Get(context.Background(), enq.ID)
+	if got.Attempts != 0 || got.Status != task.Pending {
+		t.Fatalf("disabled breaker must never burn: attempts=%d status=%s, want 0/pending", got.Attempts, got.Status)
+	}
+
+	cancel()
 }

@@ -114,6 +114,7 @@ const (
 	EvidenceTailBytes     = internalexecutor.EvidenceTailBytes
 	GoEnvExperiment       = internalexecutor.GoEnvExperiment
 	RedactMarker          = internalexecutor.RedactMarker
+	ScopedGofmtStage      = internalexecutor.ScopedGofmtStage
 	TaskTrailer           = internalexecutor.TaskTrailer
 )
 

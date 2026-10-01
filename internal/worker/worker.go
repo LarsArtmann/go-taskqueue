@@ -30,6 +30,14 @@ type Config struct {
 	// (dirty repo, missing autonomy config). Default 2m. No attempt is
 	// burned by preflight refusals.
 	PreflightBackoff time.Duration
+
+	// EnvRequeueBurn bounds the environmental-requeue ladder (R3 option
+	// (a), docs/planning/2026-10-01_11-19_env-requeue-circuit-breaker.md):
+	// after this many consecutive preflight/gate refusals the attempt
+	// burns (store.Fail, exponential NotBefore escalation) instead of
+	// requeueing again, so a sustained-sick gate cannot churn claims
+	// forever. Default 3; negative disables (pure requeue behavior).
+	EnvRequeueBurn int
 }
 
 func (c *Config) setDefaults() {
@@ -63,6 +71,10 @@ func (c *Config) setDefaults() {
 
 	if c.PreflightBackoff <= 0 {
 		c.PreflightBackoff = 2 * time.Minute
+	}
+
+	if c.EnvRequeueBurn == 0 {
+		c.EnvRequeueBurn = 3
 	}
 }
 
@@ -115,14 +127,21 @@ type preflightState struct {
 // preflightMaxBackoff caps the dirty-tree requeue ladder.
 const preflightMaxBackoff = 15 * time.Minute
 
+// EnvStreakCode marks breaker-burned attempts in the journal: a
+// task.failed fact whose reason carries this code was killed by the
+// environmental-requeue circuit breaker (sustained preflight/gate
+// refusals), not by a judged execution failure.
+const EnvStreakCode = "env-streak"
+
 // preflightLogInterval rate-limits the per-task refusal log: the first
 // refusal logs immediately, repeats stay quiet for this long.
 const preflightLogInterval = time.Minute
 
-// preflightDelay advances the task's refusal ladder and returns the next
-// requeue delay: base * 2^(n-1), capped, with ±20% jitter so many refused
-// tasks do not reclaim in lockstep.
-func (p *Pool) preflightDelay(id task.ID) time.Duration {
+// preflightDelay advances the task's refusal ladder and returns the
+// next requeue delay together with the streak count AFTER this refusal
+// (the circuit-breaker input): base * 2^(n-1), capped, with ±20% jitter
+// so many refused tasks do not reclaim in lockstep.
+func (p *Pool) preflightDelay(id task.ID) (time.Duration, int) {
 	p.preflightMu.Lock()
 	defer p.preflightMu.Unlock()
 
@@ -146,7 +165,7 @@ func (p *Pool) preflightDelay(id task.ID) time.Duration {
 
 	jitter := 0.8 + 0.4*rand.Float64()
 
-	return time.Duration(float64(d) * jitter)
+	return time.Duration(float64(d) * jitter), st.count
 }
 
 // preflightShouldLog reports whether the refusal for this task should hit
@@ -178,26 +197,75 @@ func (p *Pool) preflightShouldLog(id task.ID) bool {
 	return false
 }
 
-// preflightCount reports the task's consecutive-refusal count (0 when
-// untracked) — used for the log line after preflightShouldLog.
-func (p *Pool) preflightCount(id task.ID) int {
-	p.preflightMu.Lock()
-	defer p.preflightMu.Unlock()
-
-	if st := p.preflightSeen[id]; st != nil {
-		return st.count
-	}
-
-	return 0
-}
-
-// preflightReset forgets the task's ladder after any non-preflight
-// outcome (it left the refusal loop: completed, failed, was cancelled).
+// preflightReset forgets the task's ladder after any judged outcome
+// (it left the refusal loop: completed, failed, was cancelled).
 func (p *Pool) preflightReset(id task.ID) {
 	p.preflightMu.Lock()
 	defer p.preflightMu.Unlock()
 
 	delete(p.preflightSeen, id)
+}
+
+// staysOnLadder reports whether an execution outcome keeps the task on
+// the refusal ladder: the classes that requeue WITHOUT a verdict —
+// preflight refusal and undetermined gate failure (gate-dead/gate-slow;
+// the PROVEN-environmental gate signature dead-letters instead) — keep
+// climbing it, while the parked classes (429, owner question) neither
+// climb nor reset it. Success and every judged failure leave the ladder.
+func staysOnLadder(execErr error) bool {
+	if _, ok := errors.AsType[*executor.PreflightError](execErr); ok {
+		return true
+	}
+
+	if gate, ok := errors.AsType[*executor.VerifyGateError](execErr); ok {
+		return gate.Class != executor.VerifyGateEnvironmental
+	}
+
+	if _, ok := errors.AsType[*executor.RateLimitError](execErr); ok {
+		return true
+	}
+
+	_, ok := errors.AsType[*executor.QuestionPendingError](execErr)
+
+	return ok
+}
+
+// burnEnvStreak applies the environmental-requeue circuit breaker for a
+// refusal that matured the ladder: instead of requeueing again, the
+// attempt burns via Fail (exponential NotBefore escalation) with the
+// EnvStreakCode reason riding the task.failed fact as the durable alert,
+// and the ladder resets — the streak was consumed into the attempt.
+// Reports whether the burn happened; the caller returns immediately
+// when it did. With the breaker disabled (EnvRequeueBurn < 0) or the
+// streak below N, the requeue stands. A FAILED burn (lease lost) also
+// falls through so the task is never orphaned mid-transition.
+func (p *Pool) burnEnvStreak(
+	ctx context.Context,
+	t task.Task,
+	claim queue.Claim,
+	streak int,
+	cause error,
+	sink *executor.Sink,
+) bool {
+	if !(p.cfg.EnvRequeueBurn > 0 && streak >= p.cfg.EnvRequeueBurn) {
+		return false
+	}
+
+	backoff := p.cfg.Backoff(t.Attempts + 1)
+	reason := fmt.Sprintf("environmental requeue streak burned the attempt [%s]: streak %d: %s",
+		EnvStreakCode, streak, cause.Error())
+
+	if err := p.store.Fail(ctx, t.ID, claim, reason, backoff, sink.Failure()); err != nil {
+		p.log.Error("env-streak burn failed; requeueing instead", "task", t.ID, "streak", streak, "err", err)
+
+		return false
+	}
+
+	p.preflightReset(t.ID)
+	p.log.Warn("environmental requeue streak burned the attempt",
+		"task", t.ID, "streak", streak, "code", EnvStreakCode, "retry after", backoff)
+
+	return true
 }
 
 // New creates a worker pool. Call Start to run it.
@@ -359,9 +427,13 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	hbCancel()
 	<-hbDone
 
-	// Any non-preflight outcome leaves the refusal loop: forget the
-	// task's dirty-tree ladder so a later refusal starts fresh.
-	if _, isPreflight := errors.AsType[*executor.PreflightError](execErr); !isPreflight {
+	// The refusal ladder survives outcomes that neither judge the task
+	// nor leave the loop: the climbing refusals (preflight, undetermined
+	// gate failure) keep escalating it, the parked ones (429, owner
+	// question) hold it. Every judged outcome — completion, burned or
+	// permanent failure, cancellation — forgets it so a later refusal
+	// starts fresh.
+	if !staysOnLadder(execErr) {
 		p.preflightReset(t.ID)
 	}
 
@@ -405,12 +477,16 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// it up when the human has committed their work. Consecutive
 		// refusals escalate (base * 2^n capped, ±20% jitter) so a
 		// sustained-dirty repo does not bounce at the base backoff.
-		delay := p.preflightDelay(t.ID)
+		delay, streak := p.preflightDelay(t.ID)
+		if p.burnEnvStreak(terminalCtx, t, claim, streak, pre, sink) {
+			return
+		}
+
 		if err := p.store.Requeue(terminalCtx, t.ID, claim, pre.Error(), delay, false); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
 		} else if p.preflightShouldLog(t.ID) {
 			p.log.Warn("preflight refused; requeued without attempt burn",
-				"task", t.ID, "retry after", delay, "consecutive", p.preflightCount(t.ID), "reason", pre.Cause.Error())
+				"task", t.ID, "retry after", delay, "consecutive", streak, "reason", pre.Cause.Error())
 		}
 
 		return
@@ -443,13 +519,17 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// outage holds its tasks at growing delays instead of DLQ-ing
 		// finished work, and the reason rides the requeue fact for
 		// alerting.
-		delay := p.preflightDelay(t.ID)
+		delay, streak := p.preflightDelay(t.ID)
+		if p.burnEnvStreak(terminalCtx, t, claim, streak, gate, sink) {
+			return
+		}
+
 		if err := p.store.Requeue(terminalCtx, t.ID, claim, gate.Error(), delay, false); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
 		} else if p.preflightShouldLog(t.ID) {
 			p.log.Warn("verify gate failed without judging the task; requeued without attempt burn",
 				"task", t.ID, "class", gate.Class, "retry after", delay,
-				"consecutive", p.preflightCount(t.ID), "reason", gate.Cause.Error())
+				"consecutive", streak, "reason", gate.Cause.Error())
 		}
 
 		return
