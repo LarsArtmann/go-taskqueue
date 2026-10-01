@@ -48,11 +48,7 @@ facade @tag in a /tmp scratch module, run a sentinel symbol, cite rc+output.
 Smokes (CI-safe): scripts/smoke/*.sh — full list: webui, status-loop,
 dogfood-once, bootstrap-install, journal-drift, help-text, multi-repo,
 papdashboard-e2e, questions-e2e, ratelimit-e2e, fullcore, reviews,
-session-close. Guards: scripts/check-*.sh + smoke/release-gates.sh +
-lint-baseline.sh. `scripts/new-module.sh <dir> [deps…]` scaffolds go.mods.
-Re-dispatched task protocol: read the NEWEST prior report for the id +
-`tq show <id>` FIRST, then a fresh battery with every rc captured to file,
-persisted as a citable artifact in the same window.
+session-close. Guards: scripts/check-*.sh + smoke/release-gates.sh + lint-baseline.sh. `scripts/new-module.sh <dir> [deps…]` scaffolds go.mods.
 
 ## Architecture
 
@@ -156,20 +152,21 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 ## Conventions
 
 - Table-driven tests, plain `testing`; sentinels in `internal/task/errors.go`.
-- **Claims carry citations** (gate run or SHA; never cite a running gate);
+- **Claims carry citations** (gate run or SHA; never a running gate);
   filter-scope claims cite file:line or a pinning test.
 - **Verify-window minimum battery**: cheap gates at HEAD (check-doc-refs.sh,
   root build+vet, check-dead-sha-refs.sh, date-measured report filename) +
-  one fresh delta; expensive gates inheritable only from a same-HEAD prior
-  report; nested-module claims need in-module `GOWORK=off` tests. Closeouts
-  touching files parsed by root guard tests (AGENTS.md, README.md,
-  TODO_LIST.md, docs pins) must cite the ROOT build+vet+test -race rc —
-  module-only green structurally misses root guards.
-- **Verify-only re-dispatch checklist**: substance-read at HEAD, re-cite,
+  one fresh delta; expensive gates inheritable only from a same-HEAD report;
+  nested-module claims need in-module `GOWORK=off` tests. Closeouts touching
+  files parsed by root guard tests (AGENTS/README/TODO_LIST.md, doc pins)
+  cite the ROOT build+vet+test -race rc — module-only green misses guards.
+- **Verify-only re-dispatch checklist**: read the NEWEST prior report for
+  the id + `tq show <id>` FIRST, then substance-read at HEAD, re-cite,
   fresh battery with rc captured TO A FILE (no PIPESTATUS in agent
-  sessions), no-delta statement, dated DONE re-verified annotation,
-  `-v` + PASS COUNT for conform `-run`.
-- docs/status reports follow the a)-g) close-out skeleton.
+  sessions; persist it as a citable artifact), no-delta statement, dated
+  DONE re-verified annotation, `-v` + PASS COUNT for conform `-run`.
+- docs/status reports follow the a)-g) skeleton — MANDATED, incl.
+  DONE-on-arrival re-dispatch windows.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything —
   the daemon sweeps in <60 s (footer-less), no exceptions for short gates;
   mechanical form `scripts/commit-task.sh <id> <subject> <file>…`.
@@ -191,7 +188,8 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `display.Eyebrow`, `KanbanBoard`, errorpage, `icons.Render`.
 - `TODO_LIST.md` machine-consumed: `- [ ]`, one per line, never tables;
   `— BLOCKED: <reason>`; items must be agent-executable
-  (`check-todo-list.sh`).
+  (`check-todo-list.sh`). DONE-row notes collapse to ONE note + a pointer
+  to the latest report — never append-only accretion.
 - Status reports indexed on creation (`check-status-index.sh`; the daemon
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE index-row
   write point: the top chronological cluster. CHANGELOG append-only.
@@ -225,7 +223,7 @@ evidence in.
   a future finding is a NEW class needing fresh triage.
 - **`tq serve`/`tq api` security**: loopback + read-only default; write
   routes CSRF-guarded with lockout; non-loopback binds need `--auth-token`
-  (SECURITY.md). No new write endpoints without the same treatment.
+  (SECURITY.md). No new write endpoints without that treatment.
 - **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
   gates, never "fix" them.
 - **VendorHash drift**: after go.mod changes run
