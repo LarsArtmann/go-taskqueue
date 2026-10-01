@@ -53,7 +53,7 @@ echo "== running the quickstart against a scratch DB =="
 RUN="$WORK/run"
 mkdir -p "$RUN"
 export TQ_DB="$WORK/scratch.db"
-cd "$RUN"
+cd "$RUN" || exit 1
 
 "$TQ" enqueue --type sh --project demo --payload 'echo hello from $(uname -s)' >/dev/null || {
 	echo "FAIL: README enqueue (raw payload) exited non-zero"
