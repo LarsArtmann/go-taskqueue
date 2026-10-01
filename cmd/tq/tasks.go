@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -30,9 +31,10 @@ func cmdTasks(args []string) error {
 	)
 	since := fs.Duration("since", 0, "only tasks created within this window (e.g. 6h, 30m; 0 = all time)")
 	parked := fs.Bool("parked", false, "only rate-limit-parked tasks (pending with a future not_before)")
-	count := fs.Bool("count", false, "print only the total number of matching tasks (ignores --limit)")
+	count := fs.Bool("count", false, "print only the total number of matching tasks (ignores --limit; --json emits {\"count\": N})")
 	limit := fs.Int("limit", 50, "max tasks to list (0 = all)")
 	asJSON := fs.Bool("json", false, "JSON output of the matching task list")
+	jsonEnvelope := fs.Bool("json-envelope", false, "wrap --json output as {tasks, total, truncated} so paging consumers can see the uncapped total")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -99,6 +101,14 @@ func cmdTasks(args []string) error {
 			return err
 		}
 
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+
+			return enc.Encode(struct {
+				Count int `json:"count"`
+			}{n})
+		}
+
 		fmt.Printf("%d matching task(s)\n", n)
 
 		return nil
@@ -112,6 +122,24 @@ func cmdTasks(args []string) error {
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
+
+		if *jsonEnvelope {
+			total, err := store.CountTasks(ctx, func() queue.Filter {
+				f := filter
+				f.Limit = 0
+
+				return f
+			}())
+			if err != nil {
+				return err
+			}
+
+			return enc.Encode(struct {
+				Tasks     []task.Task `json:"tasks"`
+				Total     int         `json:"total"`
+				Truncated bool        `json:"truncated"`
+			}{tasks, total, total > len(tasks)})
+		}
 
 		return enc.Encode(tasks)
 	}
@@ -131,16 +159,20 @@ func cmdTasks(args []string) error {
 // so a truncated footer never reads as the whole set (dead-letter census
 // missed a 09-20 death behind a silent 50-row cap).
 func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
+	printTaskListTo(os.Stdout, tasks, limit, total)
+}
+
+func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (int, error)) {
 	if len(tasks) == 0 {
-		fmt.Println("no matching tasks")
+		fmt.Fprintln(w, "no matching tasks")
 
 		return
 	}
 
-	fmt.Printf("%-36s %-10s %-16s %-7s %5s  %s\n", "ID", "STATUS", "PROJECT", "TYPE", "ATT", "LAST ERROR")
+	fmt.Fprintf(w, "%-36s %-10s %-16s %-7s %5s  %s\n", "ID", "STATUS", "PROJECT", "TYPE", "ATT", "LAST ERROR")
 
 	for _, t := range tasks {
-		fmt.Printf("%-36s %-10s %-16s %-7s %5d  %s\n",
+		fmt.Fprintf(w, "%-36s %-10s %-16s %-7s %5d  %s\n",
 			t.ID.String(), string(t.Status), t.Project, t.Type, t.Attempts,
 			truncate(oneLine(t.LastError), 60),
 		)
@@ -148,7 +180,7 @@ func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
 
 	if limit > 0 && len(tasks) == limit {
 		if n, err := total(); err == nil {
-			fmt.Printf(
+			fmt.Fprintf(w,
 				"showing %d of %d matching task(s) (capped by --limit %d; --limit 0 lists all, --count prints just the total)\n",
 				len(tasks),
 				n,
@@ -159,7 +191,7 @@ func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
 		}
 	}
 
-	fmt.Printf("%d task(s)\n", len(tasks))
+	fmt.Fprintf(w, "%d task(s)\n", len(tasks))
 }
 
 // oneLine flattens a multi-line error to its first line.
