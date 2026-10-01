@@ -6,24 +6,24 @@ dead-letter queue, pluggable executors (incl. headless AI coding agents).
 Zero external services — one Go binary, one file.
 
 **STATUS: v0.3.0 shipped, master CI green; actively developed by MULTIPLE
-concurrent agents.** Re-read files and re-run tests before editing; expect
-uncommitted changes from parallel sessions — read them, judge them, build
-on them, never revert them. (Size budget ≤15,000 B enforced by cmd/tq
+concurrent agents.** Re-read files and re-run tests before editing; parallel
+sessions leave uncommitted changes — read them, judge them, build on them,
+never revert them. (Size budget ≤15,000 B enforced by cmd/tq
 TestAgentsDocSizeGuard — prune in-place, never grow. Incidents:
-docs/status/, design docs: docs/planning/, docs/adr/.)
+docs/status/; design: docs/planning/, docs/adr/.)
 
 ## Commands
 
 ```bash
 ./scripts/ci-local.sh     # pre-push gate: full CI replicant; transient foreign breaks retry (45s ×3)
-export GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto; go build ./... && go vet ./... && go test ./... -race   # ROOT-MODULE verify gate; GOTOOLCHAIN=auto REQUIRED outside the flake devShell (go.mod floor 1.27.1)
-nix build                 # nix run .#test = tests; nix run .#webui-css = stylesheet
-./scripts/fuzz/nightly.sh # FuzzParseRepo campaign
+export GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto; go build ./... && go vet ./... && go test ./... -race   # root-module verify gate; GOTOOLCHAIN=auto outside the flake devShell (go.mod floor 1.27.1)
+nix build                 # nix run .#test = tests; .#webui-css
+./scripts/fuzz/nightly.sh
 ```
 
 - **Multi-module repo (ADR-0011)**: `internal/{task,journal,queue,executor,worker}`
-  are sub-modules + `queue/{sqlite,postgres}` backends + the `journal/cqrs`
-  adapter; root is the app layer. `cmd/tq` is its own replace-free module
+  are sub-modules + `queue/{sqlite,postgres}` backends + `internal/journal/cqrs`;
+  root is the app layer. `cmd/tq` is its own replace-free module
   (ADR-0017) — build via `scripts/build-tq.sh` (devmod shim). `./...` never
   descends into nested modules; canonical per-module gate:
 
@@ -36,9 +36,9 @@ done
 
 **Public facades (ADR-0016):** `task/ journal/ queue/ queue/sqlite/
 queue/postgres/ executor/ worker/` re-export internals via type aliases —
-the only importable surface for external consumers; in-repo code imports
-`internal/…` directly. Every internal module in a facade's graph needs a
-require (real tag) AND a relative replace; facade tests may import internal
+the only external import surface; in-repo code imports `internal/…` directly.
+Every internal module in a facade's graph needs a
+require (real tag) AND a relative replace; facade tests import internal
 packages, never sibling facades. Parity: `scripts/check-facade-parity.sh`;
 postgres `OpenWithPool` pools are CALLER-OWNED. No go.work — replace-only
 by design (`go test ./internal/foo` from root fails by design — cd in).
@@ -66,7 +66,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/journal` | Fact types, append-only Journal, MemoryJournal |
 | `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014, PROPRIETARY dep) |
 | `internal/queue` | Store contract, Filter, Queue facade |
-| `internal/queue/sqlite`, `/postgres` | Backends; shared conformance suite in `internal/queue/companion/conform` |
+| `internal/queue/sqlite`, `/postgres` | Backends; conform suite in `internal/queue/companion/conform` |
 | `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
 | `internal/bridge` | papdashboard alerts, cqa findings → fix tasks |
 | `internal/executor` | sh, HTTP, agent, review, status executors + registry |
@@ -83,7 +83,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/webui` | Live dashboard (`tq serve`): tailer → hub → SSE (ADR-0003) |
 | `internal/httpapi` | Machine API (`tq api`): token-mandatory, nosniff, lockout |
 | `internal/httpauth`/`lockout` | Shared bearer primitives + 3-strikes limiter |
-| `cmd/tq` | CLI (enqueue/worker/harvest/agent-pool/bootstrap/stats/audit/dlq/ask/serve/api/…, see `tq --help`) |
+| `cmd/tq` | CLI (enqueue/worker/harvest/agent-pool/serve/api/…, see `tq --help`) |
 
 ### Store invariants (do not break)
 
@@ -99,23 +99,23 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **`agent`**: `AgentPayload` (repo, prompt, verify, timeout). Verify must
   exit 0 and be ENV-SELF-CONTAINED (minted verifies carry
   `GOEXPERIMENT=jsonv2` — agents never edit their own gate). Model+effort
-  live ONLY in the repo `.crushrc` managed block (`tq bootstrap`; pool
-  always wants xhigh). `--task-closeout` resumes the EXACT session for the
+  live ONLY in the repo `.crushrc` managed block (pool always wants
+  xhigh). `--task-closeout` resumes the EXACT session for the
   a)-g) self-review at `docs/status/<ts>_task-<id>.md`.
 - **Derived outcomes**: the queue derives what a run did — commits via
   exactly ONE `Task-Queue-ID` footer per commit, LAST trailer line
-  (`executor.GitLogScanner`; a footer above an attribution block is
+  (`executor.GitLogScanner`; footer above an attribution block is
   invisible — the commit-msg hook rejects that), files via `git diff-tree`,
   session usage via go-crush-data. No stdout self-report. Post-commit
   self-check: `git log -1 --format=%B | git interpret-trailers --parse`
   must return the footer.
-- **Verdict channel**: paid turns record structured results via
-  `tq verdict '<json>'` into `$TQ_RESULT_FILE` (file outranks the legacy
-  stdout `TQ_RESULT:` line, last-line-wins).
+- **Verdict channel**: paid turns record results via `tq verdict '<json>'`
+  into `$TQ_RESULT_FILE` (outranks the legacy stdout `TQ_RESULT:` line,
+  last-line-wins).
 - **Batched harvest** (`--batch-items`, default OFF): N adjacent
   same-section items → one task; dedup `batch:` + hash of SORTED member
-  keys; gates treat a batch as ONE task. Direct `tq enqueue` stays
-  forbidden; work prompts grant the backlog move.
+  keys; gates treat a batch as ONE task. Direct `tq enqueue` forbidden;
+  work prompts grant the backlog move.
 - **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated or
   deterministic turns on the closeout-free agent clone; session usage
   derived for ALL paid turns. review findings are commit-anchored (verbatim
@@ -127,14 +127,14 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **PapDashboard questions**: `tq ask --task <id>` parks the task WITHOUT
   burning an attempt; the AnswerPoller routes answers home.
 - **Idempotent enqueue**: `DedupKey` re-enqueue returns the stored task;
-  COMPLETED keys are refused with `ErrTaskDone`; a cancelled/dead key still
-  suppresses — the harvested-item escape hatch is editing the item text.
+  COMPLETED keys refused with `ErrTaskDone`; a cancelled/dead key still
+  suppresses — escape hatch is editing the item text.
 - **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT
   burning an attempt (jittered wait, fallback 15min cap 6h); per-repo
   gates fast-refuse siblings; a closeout 429 arms `closeoutPending`
   resume on re-claim.
-- **Secrets redaction** (default ON, `--redact=false` off): every output
-  tail passes `internal/executor/redact.go`; `tq audit --journal` reports
+- **Secrets redaction** (default ON): every output tail passes
+  `internal/executor/redact.go`; `tq audit --journal` reports
   SECRET EVIDENCE rows.
 - **Enqueued-fact snapshots are THIN today** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in the conform suites).
@@ -144,15 +144,14 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **SQLite migrations** in `migrate()`: schema const → pragma-check + ALTER
   for legacy DBs → new-column indexes AFTER the column exists.
 - **Watermarks**: checkpoint AFTER the batch's last accepted fact; a failed
-  checkpoint gates forwarding; `tq watermarks show/set`; replay is
-  idempotent (seq-derived keys).
+  checkpoint gates forwarding; `tq watermarks show/set`; replay idempotent
+  (seq-derived keys).
 - **Priority (ADR-0015)**: claim order = STORED priority + aging (3d/pt,
   cap 10); stored value never mutates. Markers `— P[1-4]` stripped before
-  the dedup hash. One ladder everywhere: startup/`tq reprioritize`/AI
-  cache (marker > AI > keyword).
+  the dedup hash. One ladder everywhere: startup/reprioritize/AI cache
+  (marker > AI > keyword).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
-  agent-pool sweeps once synchronously at start (`--prune-stale=false`
-  skips).
+  agent-pool sweeps once synchronously at start.
 
 ## Conventions
 
@@ -166,10 +165,10 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   touching files parsed by root guard tests (AGENTS.md, README.md,
   TODO_LIST.md, docs pins) must cite the ROOT build+vet+test -race rc —
   module-only green structurally misses root guards.
-- **Verify-only re-dispatch checklist** (a-g): substance-read at HEAD,
-  re-cite, fresh battery with rc captured TO A FILE (no PIPESTATUS in
-  agent sessions), no-delta statement, dated DONE re-verified annotation,
-  cause, `-v` + PASS COUNT for conform `-run`.
+- **Verify-only re-dispatch checklist**: substance-read at HEAD, re-cite,
+  fresh battery with rc captured TO A FILE (no PIPESTATUS in agent
+  sessions), no-delta statement, dated DONE re-verified annotation,
+  `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) close-out skeleton.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything —
   the daemon sweeps in <60 s (footer-less), no exceptions for short gates;
@@ -197,12 +196,11 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE index-row
   write point: the top chronological cluster. CHANGELOG append-only.
 - Stale-verify audit: `tq tasks --status pending --type agent
-  --verify-contains '<pattern>'` (run against the dogfood journal
-  consciously).
-- Docs formatting MANUAL (dprint on-demand only).
-- Evidence archives: `scripts/archive-evidence.sh`; gated by
-  `check-ghost-archives.sh`; run `git check-ignore -v` BEFORE copying
-evidence into the repo.
+  --verify-contains '<pattern>'`.
+- Docs formatting MANUAL (dprint on-demand).
+- Evidence archives: `scripts/archive-evidence.sh` (gated by
+  `check-ghost-archives.sh`); `git check-ignore -v` BEFORE copying
+evidence in.
 
 ## Known Issues
 
@@ -212,22 +210,22 @@ evidence into the repo.
   trees are daemon-food.
 - **Agent shells inherit `TQ_DB`** (the PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
-- **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR` still
-  leaks to children (use `env -u VAR`); multi-file `tail` fails; `printf
-  %.0s` yields empty; compound-chain `&` backgrounds the wrong span.
+- **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR` leaks
+  to children (use `env -u VAR`); multi-file `tail` fails; `printf %.0s`
+  yields empty; compound-chain `&` backgrounds the wrong span.
 - **Root builds auto-use `vendor/`** — after internal/ changes run
   `go mod vendor` before root builds.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2 itself; CI setup-go
   is PINNED to 1.27.1 = the go.mod floor; NEVER lower a module's `go`
-  directive (stdlib-only leaves have no floor; `check-go-mods.sh` gates).
+  directive (`check-go-mods.sh` gates).
 - **golangci-lint is advisory** (~1.4k baseline, growth gated by
   `scripts/lint-baseline.sh --check`); hard gates: vet + gofmt + tests.
   Regen only on a green tree after `golangci-lint cache clean`.
 - **gosec**: all findings triaged/excluded via `scripts/check-gosec.sh`;
   a future finding is a NEW class needing fresh triage.
 - **`tq serve`/`tq api` security**: loopback + read-only default; write
-  routes CSRF-guarded with lockout; non-loopback binds need `--auth-token`.
-  SECURITY.md. No new write endpoints without the same treatment.
+  routes CSRF-guarded with lockout; non-loopback binds need `--auth-token`
+  (SECURITY.md). No new write endpoints without the same treatment.
 - **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
   gates, never "fix" them.
 - **VendorHash drift**: after go.mod changes run
@@ -246,13 +244,12 @@ evidence into the repo.
 
 - **go-cqrs-lite IS the platform (ADR-0019)**: `internal/queue/{sqlitev4,
   postgresv4,cqrsqlite}` + `internal/queue/companion` are the staged
-  adoption (plan: docs/adr/0019). The `journal/cqrs` adapter is a
-  PROPRIETARY read-only dep — never extend or import below root.
+  adoption. `internal/journal/cqrs` is PROPRIETARY, read-only —
+  never extend or import below root.
 - **PapDashboard bridge**: `--alert-url/--alert-api-key` — dead letters
   raise `alert.triggered`, completions resolve; `NotifyDeadPool` is the
   direct dead-pool path.
 - **go-health-dashboard** (MIT): ADOPTED — `tq serve` mounts `/health`
   inside the token gate, tq's own CSS, same-origin Datastar SDK.
 - **httputil**: NOT adopted (proprietary license + scope mismatch).
-- **go-nix-helpers**: flake input only (`flakeModules.go-standard`);
-  consumed from GitHub via flake.lock, never the local checkout.
+- **go-nix-helpers**: flake input only; never the local checkout.
