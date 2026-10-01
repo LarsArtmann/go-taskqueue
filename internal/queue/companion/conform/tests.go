@@ -2026,24 +2026,26 @@ func TestCountTasksMatchesList(t *testing.T) {
 	ctx, s := freshStore(t)
 
 	seed := []struct {
-		project string
-		typ     string
-		payload string
+		project  string
+		typ      string
+		payload  string
+		priority int
 	}{
-		{"alpha", "sh", `"ping one"`},
-		{"alpha", "sh", `"ping two"`},
-		{"alpha", "agent", `"probe alpha verify gofmt"`},
-		{"beta", "agent", `"probe beta one"`},
-		{"beta", "agent", `"probe beta two"`},
+		{"alpha", "sh", `"ping one"`, 10},
+		{"alpha", "sh", `"ping two"`, 10},
+		{"alpha", "agent", `"probe alpha verify gofmt"`, 10},
+		{"beta", "agent", `"probe beta one"`, 20},
+		{"beta", "agent", `"probe beta two"`, 20},
 	}
 
 	ids := make([]task.ID, 0, len(seed))
 
 	for i, in := range seed {
 		enq, err := s.Enqueue(ctx, task.New{
-			Project: in.project,
-			Type:    in.typ,
-			Payload: jsontext.Value(in.payload),
+			Project:  in.project,
+			Type:     in.typ,
+			Payload:  jsontext.Value(in.payload),
+			Priority: in.priority,
 		})
 		if err != nil {
 			t.Fatalf("seed %d: %v", i, err)
@@ -2052,14 +2054,16 @@ func TestCountTasksMatchesList(t *testing.T) {
 		ids = append(ids, enq.ID)
 	}
 
-	// Complete the first alpha/sh task; park the first beta/agent task.
-	_, claim := claimDue(t, ctx, s, "w1")
-	if err := s.Complete(ctx, ids[0], claim, nil); err != nil {
+	// Priority makes claim order deterministic: the betas (20) go before
+	// the alphas (10). First claim takes the oldest beta and completes it;
+	// second claim takes the younger beta and parks it (rate-limit backoff).
+	claimed, claim := claimDue(t, ctx, s, "w1")
+	if err := s.Complete(ctx, claimed.ID, claim, nil); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
-	_, claimBeta := claimDue(t, ctx, s, "w2")
-	if err := s.Requeue(ctx, ids[3], claimBeta, "rate limited", time.Hour, false); err != nil {
+	parkedTask, claimBeta := claimDue(t, ctx, s, "w2")
+	if err := s.Requeue(ctx, parkedTask.ID, claimBeta, "rate limited", time.Hour, false); err != nil {
 		t.Fatalf("Requeue(park): %v", err)
 	}
 
