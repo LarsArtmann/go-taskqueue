@@ -74,6 +74,17 @@ tell me what is broken with ~/projects/go-taskqueue."
   plausible (each loop claim is a paid session) but no paid-turns/day number
   was derived from the journal or budget projections.
 
+> **§b annotation 2026-10-01 05:05 CEST (execution session):** P1 loop task
+> `000001a0eebb…` DISPOSITIONED — `tq ask` recorded the question (fact 8610)
+> but the park verb is **unreachable from operator sessions** (the marker
+> channel `$TQ_QUESTION_FILE` exists only inside dispatched runs; a pending
+> question fact does NOT suppress claims — `internal/queue/companion/
+> questions.go:76` only unblocks on ANSWER). Fell back to the plan's R1(b)
+> alternative: `tq cancel --force` at 05:02 → terminal `cancelled` at the
+> worker's next heartbeat (05:04), claims frozen at 169; CV TODO row
+> annotated with the disposition + re-arm path (CV `a53eb9c08`). New finding
+> **P6: no operator-side park verb** — feeds M20.
+
 ## c) NOT STARTED
 
 - All remediation: park/cancel the CV loop task; `trash vendor/` +
