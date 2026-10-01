@@ -85,6 +85,28 @@ tell me what is broken with ~/projects/go-taskqueue."
 > annotated with the disposition + re-arm path (CV `a53eb9c08`). New finding
 > **P6: no operator-side park verb** — feeds M20.
 
+> **§b annotation 2026-10-01 12:04 CEST (M13 alert-path ruling):** P4 ruled
+> **FIRED, not silent** — the bridge watermark
+> `papdashboard:http://127.0.0.1:8088` sits at seq 8696 = journal head
+> (`tq watermarks show`, updated 08:34), and the bridge advances its cursor
+> only on dashboard ACCEPTANCE (at-least-once; `internal/bridge/papdashboard/
+> papdashboard.go` header), so every `task.dead-lettered` fact through 8696 —
+> the whole 176-dead window included — was accepted by PapDashboard. No
+> defect filed. Caveats: acceptance ≠ acknowledgment (the dashboard DB at
+> /var/lib/papdashboard is root-only, so active-vs-acked state is owner-side);
+> and the real P4 gap was per-task anomaly invisibility, which M10
+> (loop-suspect surfacing) closes. **Adjacent production findings from the
+> same query:** (1) the dlqfix sweeper WAS deployed ~06:33 (its cursor
+> materialized then) but a first run bootstraps at the journal HEAD
+> (`internal/dlqfix/sweep.go:98`), so the 315 historical dead agent letters
+> predate the cursor and will never autopsy unless the owner rewinds
+> (`tq watermarks set dlqfix-sweeper 0`; the gofmt-class subset carries
+> shipped proof and would auto-dismiss without paid turns); (2) all three
+> sweepers stopped consuming at 06:38 while facts kept landing to 08:34 —
+> the agent-pool process looks down/hung since ~06:38 (the bridge cursor is
+> also written by `tq serve`, so its currency does NOT prove pool health).
+> Both ride the owner questions.
+
 ## c) NOT STARTED
 
 - All remediation: park/cancel the CV loop task; `trash vendor/` +
