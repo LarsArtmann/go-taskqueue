@@ -182,3 +182,9 @@ fdc861d5
 feee0c2a
 # late-straggler (2026-10-01): 7bc80672 surfaced post-repair; patch-id verdict LOST (same class as the batch above)
 7bc80672
+
+# late-straggler (2026-10-01 07:2x): aac17ad9 — a parallel window cited a
+# daemon chore commit that its own soft-reset heal orphaned (06-26 report
+# line 100); patch-id verdict LOST, citation deliberately describes the
+# dead side (sweep forensics), same class as the 2026-10-01 batch above.
+aac17ad9
