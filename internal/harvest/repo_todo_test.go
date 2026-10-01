@@ -72,6 +72,59 @@ func TestDamagedCheckboxPrefix(t *testing.T) {
 	}
 }
 
+// TestStrayCheckboxPrefix pins the double-checkbox rejection (TODO row
+// 206): the 2026-10-01 tick batch mangled four rows into `- [ ] [x] …` —
+// checkboxOf ACCEPTS those lines (the prefix is exactly `- [ ] `), so a
+// human-ticked row stayed machine-open and every consumer stayed silent.
+// Only a bracket in the first characters of the item text counts; quoted
+// or mid-sentence mentions never match.
+func TestStrayCheckboxPrefix(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		text string
+		want bool
+	}{
+		{"[x] leftover tick from a mangled batch", true},
+		{"[ ] leftover open from a mangled batch", true},
+		{"[X] uppercase leftover", true},
+		{"[x]", true},
+		{"normal item text", false},
+		{"`[x]` quoted convention mention", false},
+		{"prose mentioning [x] later", false},
+		{"", false},
+		{"[", false},
+		{"[y] not a checkbox", false},
+		{"[] empty brackets are not checkboxes", false},
+	}
+
+	for _, tc := range cases {
+		if got := strayCheckbox(tc.text) != ""; got != tc.want {
+			t.Errorf("strayCheckbox(%q) flagged = %v, want %v", tc.text, got, tc.want)
+		}
+	}
+}
+
+// TestParseRepoAllRejectsDoubleCheckbox pins the runtime half of the
+// double-checkbox guard (TODO row 206): a `- [ ] [x] …` mangled-tick row
+// is an ERROR, not a silently machine-open row.
+func TestParseRepoAllRejectsDoubleCheckbox(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	body := "# Backlog\n\n- [ ] good row one\n- [ ] [x] the mangled tick\n- [ ] good row two\n"
+
+	if err := os.WriteFile(filepath.Join(repo, "TODO_LIST.md"), []byte(body), 0o644); err != nil {
+		t.Fatalf("write todo file: %v", err)
+	}
+
+	if _, err := ParseRepoAll(repo, "TODO_LIST.md"); err == nil {
+		t.Fatal("ParseRepoAll accepted a double-checkbox row, want error")
+	} else if !strings.Contains(err.Error(), "double checkbox") {
+		t.Fatalf("error %v does not name the double-checkbox defect", err)
+	}
+}
+
 // TestParseRepoAllRejectsDamagedCheckbox pins the runtime half: a todo file
 // carrying a malformed-bullet row is an ERROR, not a silently skipped line
 // — the repo's harvest scan fails loudly instead of minting nothing.

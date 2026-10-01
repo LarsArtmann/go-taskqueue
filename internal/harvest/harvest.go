@@ -1301,7 +1301,7 @@ func damagedCheckbox(line string) string {
 // an open row whose text merely starts with a bracket, leaving a
 // human-ticked row machine-open to every consumer (the 2026-10-01 tick
 // batch shipped four such rows). Only a bracket in the first characters
-// counts — prose that quotes `` `[x]` `` or mentions a checkbox
+// counts — prose that quotes a checkbox in backticks or mentions one
 // mid-sentence never matches.
 func strayCheckbox(text string) string {
 	if len(text) < 3 || text[0] != '[' {

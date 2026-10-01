@@ -43,6 +43,19 @@ if [ -n "$damaged" ]; then
 	fail=1
 fi
 
+# Double-checkbox shape must fail the gate (TODO row 206): the 2026-10-01
+# tick batch shipped four rows as `- [ ] [x] …` — the well-formed prefix
+# passes the damaged-bullet grep above and checkboxOf parses the line as
+# an OPEN row, so the human-ticked state stayed invisible to both
+# consumers until hand-caught. Any checkbox line whose text opens with a
+# SECOND bracket is a FAIL.
+doubled="$(grep -nE '^[[:space:]]*[-*][[:space:]]*\[[xX ]\][[:space:]]*\[[xX ]\]' "$todo" || true)"
+if [ -n "$doubled" ]; then
+	echo "DOUBLE-CHECKBOX: checkbox line with a second bracket after the prefix (exactly ONE '- [ ] '/'- [x] ' checkbox per line):"
+	printf '%s\n' "$doubled"
+	fail=1
+fi
+
 if [ "$fail" = 0 ]; then
 	echo "TODO_LIST gate ok (no unblocked owner-gated items)"
 fi
