@@ -123,7 +123,20 @@ fi
 cd "$(dirname "$0")/.." || exit 1
 
 baseline="scripts/dead-sha-baseline.txt"
-files=(AGENTS.md TODO_LIST.md)
-for f in docs/status/*.md; do [ -f "$f" ] && files+=("$f"); done
+
+# Explicit file arguments (repo-root-relative) scope the gate to exactly
+# those files — the verify-battery's own-file leg (TODO row 370) passes the
+# window's touched files so a NEW dead cite outside the default scope
+# (docs/planning/, docs/adr/, scripts docs …) still fails loudly. No args
+# keeps the default living-docs scope.
+if [ "$#" -gt 0 ]; then
+	files=()
+	for f in "$@"; do
+		[ -f "$f" ] && files+=("$f")
+	done
+else
+	files=(AGENTS.md TODO_LIST.md)
+	for f in docs/status/*.md; do [ -f "$f" ] && files+=("$f"); done
+fi
 
 run_gate
