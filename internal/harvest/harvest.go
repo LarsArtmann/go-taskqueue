@@ -1152,6 +1152,20 @@ func ParseRepoAll(repo, todoFile string) ([]Item, error) {
 				continue
 			}
 
+			// A SECOND checkbox bracket right after a well-formed prefix is
+			// a mangled tick (TODO row 206): the 2026-10-01 tick batch
+			// shipped four rows as `- [ ] [x] …` — checkboxOf ACCEPTS the
+			// line (the prefix is exactly `- [ ] `), so the human-ticked
+			// row stayed machine-open and every consumer stayed silent.
+			// Reject the file just like a malformed bullet.
+			if reason := strayCheckbox(text); reason != "" {
+				return nil, fmt.Errorf(
+					"%s: %s; a checkbox line must carry exactly ONE checkbox bracket after the prefix",
+					todoFile,
+					reason,
+				)
+			}
+
 			// Strip the priority marker before the item exists at all: Text,
 			// Key, and the payload all carry the marker-free text, so editing
 			// `— P1` to `— P2` re-derives the SAME dedup key (ADR-0015 §2).
@@ -1275,6 +1289,27 @@ func damagedCheckbox(line string) string {
 
 	if (rest[1] == ' ' || rest[1] == 'x' || rest[1] == 'X') && rest[2] == ']' {
 		return fmt.Sprintf("checkbox line has a malformed bullet: %q", line)
+	}
+
+	return ""
+}
+
+// strayCheckbox reports item text that opens with a SECOND checkbox
+// bracket — the `- [ ] [x] text` mangle class. Unlike damagedCheckbox it
+// fires on lines checkboxOf ACCEPTS (the prefix is exactly `- [ ] `), so
+// the parse loop consults it in the accepted branch: the line parses as
+// an open row whose text merely starts with a bracket, leaving a
+// human-ticked row machine-open to every consumer (the 2026-10-01 tick
+// batch shipped four such rows). Only a bracket in the first characters
+// counts — prose that quotes `` `[x]` `` or mentions a checkbox
+// mid-sentence never matches.
+func strayCheckbox(text string) string {
+	if len(text) < 3 || text[0] != '[' {
+		return ""
+	}
+
+	if (text[1] == ' ' || text[1] == 'x' || text[1] == 'X') && text[2] == ']' {
+		return fmt.Sprintf("double checkbox: %q", text)
 	}
 
 	return ""
