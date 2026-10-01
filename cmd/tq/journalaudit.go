@@ -351,12 +351,21 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 
 	fmt.Printf("journal drift audit: %d task(s) compared against %d fact(s) (status, attempts, priority, dedup key)\n",
 		report.TasksCompared, report.FactsReplayed)
-	fmt.Printf("coverage: status %d/%d, attempts %d/%d, priority %d/%d, dedup key %d/%d"+
-		" (below-total priority/dedup means legacy facts predate enrichment)\n",
+	fmt.Printf("coverage: status %d/%d, attempts %d/%d, priority %d/%d, dedup key %d/%d\n",
 		report.Coverage.Status, report.TasksCompared,
 		report.Coverage.Attempts, report.TasksCompared,
 		report.Coverage.Priority, report.TasksCompared,
 		report.Coverage.DedupKey, report.TasksCompared)
+
+	switch {
+	case report.TasksCompared > 0 && report.Coverage.Priority == 0 && report.Coverage.DedupKey == 0:
+		fmt.Println(
+			"priority/dedup key: NOT REPLAYABLE — engine enqueue details are thin {project,type}" +
+				" (S1 divergence D2, M4-gated); 0/N does NOT mean the tasks lack priorities",
+		)
+	case report.Coverage.Priority < report.TasksCompared || report.Coverage.DedupKey < report.TasksCompared:
+		fmt.Println("(below-total priority/dedup means legacy facts predate enrichment)")
+	}
 
 	if !report.HasDrift() {
 		fmt.Println("no drift: stored projections equal the fact replay (ADR-0001 invariant holds)")

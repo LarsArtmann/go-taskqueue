@@ -74,6 +74,20 @@ out="$("$TQ" dlq -h 2>&1)" || {
 }
 check_help "tq dlq" "$out"
 
+# The per-subcommand help is where agents and humans actually read flags:
+# the silent-cap fixes (--count and --json-envelope) must appear on the
+# tasks surface, not just in the source.
+out="$("$TQ" tasks -h 2>&1)" || {
+	echo "FAIL: tq tasks -h failed"
+	exit 1
+}
+for flag in -count -json-envelope -verify-contains -limit; do
+	grep -q -- "$flag" <<<"$out" || {
+		echo "FAIL: tq tasks -h is missing the $flag flag line"
+		failed=1
+	}
+done
+
 if [ "$failed" -ne 0 ]; then
 	echo "help-text smoke: FAIL"
 	exit 1
