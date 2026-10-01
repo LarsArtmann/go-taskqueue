@@ -13,7 +13,14 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WORK="$(mktemp -d)"
 TQ="$WORK/tq"
 KEEP="${SMOKE_KEEP:-0}"
-cleanup() { [ "$KEEP" = 1 ] && echo "workdir kept: $WORK" || rm -rf "$WORK"; }
+FAILED=0
+cleanup() {
+	if [ "$KEEP" = 1 ] || [ "$FAILED" = 1 ]; then
+		echo "workdir kept for forensics: $WORK"
+	else
+		rm -rf "$WORK"
+	fi
+}
 trap cleanup EXIT
 
 # TQ_BIN points at a prebuilt binary (e.g. the nix-built result/bin/tq);
@@ -58,11 +65,12 @@ for round in 1 2; do
 	wait "$P2"
 	R2=$?
 	if [ "$R1" != 0 ] || [ "$R2" != 0 ]; then
+		FAILED=1
 		echo "FAIL: round $round exit codes: pool-1=$R1 pool-2=$R2"
 		echo "--- pool1-$round.log ---"
-		tail -n 8 "$WORK/pool1-$round.log"
+		tail -n 40 "$WORK/pool1-$round.log"
 		echo "--- pool2-$round.log ---"
-		tail -n 8 "$WORK/pool2-$round.log"
+		tail -n 40 "$WORK/pool2-$round.log"
 		exit 1
 	fi
 done
@@ -74,11 +82,12 @@ ENQ=$(count_facts "task.enqueued")
 DONE=$(count_facts "task.completed")
 CLAIMS=$(count_facts "task.claimed")
 DEADS=$(count_facts "task.dead-lettered")
+REQS=$(count_facts "task.requeued")
 P1C=$("$TQ" facts --db "$DB" | grep -c "task.claimed.*pool-1" || true)
 P2C=$("$TQ" facts --db "$DB" | grep -c "task.claimed.*pool-2" || true)
 
 echo "== assertions (D24) =="
-echo "enqueued=$ENQ completed=$DONE claims=$CLAIMS dead=$DEADS (pool-1 claims=$P1C pool-2 claims=$P2C)"
+echo "enqueued=$ENQ completed=$DONE claims=$CLAIMS dead=$DEADS requeued=$REQS (pool-1 claims=$P1C pool-2 claims=$P2C)"
 
 [ "$ENQ" = 6 ] || {
 	echo "FAIL: want 6 enqueued (one per item), got $ENQ — double-enqueue?"
@@ -97,6 +106,11 @@ echo "enqueued=$ENQ completed=$DONE claims=$CLAIMS dead=$DEADS (pool-1 claims=$P
 	echo "FAIL: want 6 claims (one per task), got $CLAIMS — co-run or retry?"
 	fail=1
 }
+# D24 intent: no retries needed — a silent requeue-then-claim ladder must fail.
+[ "$REQS" = 0 ] || {
+	echo "FAIL: want 0 requeued, got $REQS — retry ladder fired?"
+	fail=1
+}
 [ "$P1C" -ge 1 ] && [ "$P2C" -ge 1 ] || {
 	echo "FAIL: both pools must claim (pool-1=$P1C pool-2=$P2C)"
 	fail=1
@@ -105,6 +119,7 @@ echo "enqueued=$ENQ completed=$DONE claims=$CLAIMS dead=$DEADS (pool-1 claims=$P
 if [ "$fail" = 0 ]; then
 	echo "MULTI-REPO SMOKE OK"
 else
+	FAILED=1
 	echo "MULTI-REPO SMOKE FAILED"
 	exit 1
 fi
