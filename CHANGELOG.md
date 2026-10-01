@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **`scripts/verify-battery.sh`**: the verify-window battery as one
+  command — per-leg rc captured to files, `-v` legs must show a PASS
+  count (bare-ok / "no tests to run" fails the leg with the conform
+  subtest-path hint), `-m` module gates, `-r` date-measured report-name
+  check, own-file dead-SHA leg (check-dead-sha-refs now accepts explicit
+  files), and the a)-g) close-out skeleton with the leg table. Pinned by
+  `--self-test`.
+- **Auth-plane lockout smoke** (`scripts/smoke/api.sh`, wired into
+  ci-local): a live `tq api` socket walks 200 → 3×401 → 429 +
+  Retry-After (still locked WITH the correct token) → expiry → 200.
+- **Secrets-pass smoke** (`scripts/smoke/redaction.sh`, wired into
+  ci-local): a stub agent leaks fake provider tokens on success and
+  failure; the sidecar, the failure evidence surface and
+  `tq audit --journal` must all come back redacted with zero SECRET
+  EVIDENCE (also folded into the journal-drift smoke as phase 4).
+- **Double-checkbox rejection**: TODO rows mangled into `- [ ] [x] …`
+  (a tick that leaves the row machine-open) now fail both consumers —
+  the harvester rejects the file (strayCheckbox) and
+  scripts/check-todo-list.sh reports DOUBLE-CHECKBOX lines.
+- **ci-local pool-env scrub**: the gate script unsets the pool session's
+  TQ_* channel vars up front, so agent-run windows see the same clean
+  environment CI runners do (the executor question-channel pin no longer
+  fails on an inherited `$TQ_QUESTION_FILE`).
 - **`tq tasks` NOTBEFORE column + `tq show` liveness view**: the task
   list now renders the park/backoff countdown for a future not_before
   (rate-limit requeues, deps) instead of a bare "-", and `tq show`
