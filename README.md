@@ -218,8 +218,9 @@ empirically RESETS the reasoning effort to the provider default (crush debug
 telemetry, 2026-09-08). The `.crushrc` `model large <provider/model>
 --reasoning-effort <effort>` slot is the only mechanism that carries effort —
 it applies to both agent runs and interactive crush sessions in that repo.
-(`tq agent-pool --model` exists for the rare case you want payload-level
-pinning, but bootstrap deliberately never composes it.)
+(`tq agent-pool --model` is retired — the pool refuses it, because a
+payload-level model resets the reasoning effort; bootstrap deliberately
+never composes it either.)
 
 ### One command from zero: `tq bootstrap`
 

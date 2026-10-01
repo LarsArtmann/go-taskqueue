@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -118,6 +119,40 @@ func TestParseAgentPoolOptionsBatchItems(t *testing.T) {
 
 	if _, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--batch-items", "11"}); err == nil {
 		t.Fatal("--batch-items 11 must fail fast (context-explosion guard)")
+	}
+}
+
+// TestParseAgentPoolOptionsModelRetired pins the .crushrc ruling (05-29
+// e4/g2): model + effort live ONLY in the repo .crushrc managed block — a
+// payload-level model makes the executor pass `crush run -m`, which RESETS
+// the reasoning effort, so the flag must refuse at options-parse time, via
+// the CLI AND a pool-config `model =` line alike.
+func TestParseAgentPoolOptionsModelRetired(t *testing.T) {
+	t.Parallel()
+
+	opts, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir()})
+	if err != nil || opts.model != "" {
+		t.Fatalf("parse without --model: opts=%+v err=%v, want a clean parse", opts, err)
+	}
+
+	_, err = parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--model", "anthropic/claude-sonnet-4-5"})
+	if err == nil {
+		t.Fatal("--model must refuse (a payload-level model resets the reasoning effort)")
+	}
+
+	for _, want := range []string{"retired", ".crushrc", "tq bootstrap"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("refusal %q must carry the %q remediation", err, want)
+		}
+	}
+
+	conf := filepath.Join(t.TempDir(), "pool.conf")
+	if err := os.WriteFile(conf, []byte("model = anthropic/claude-sonnet-4-5\n"), 0o600); err != nil {
+		t.Fatalf("write pool config: %v", err)
+	}
+
+	if _, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--config", conf}); err == nil {
+		t.Fatal("a pool-config `model =` line must refuse exactly like the CLI flag")
 	}
 }
 

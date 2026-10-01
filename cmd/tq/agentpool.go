@@ -130,7 +130,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	model := fs.String(
 		"model",
 		"",
-		"crush model override (e.g. anthropic/claude-sonnet-4-5) written into every harvested agent payload",
+		"RETIRED: the pool refuses this flag — a payload-level model resets crush's reasoning effort; pin model + effort per repo via tq bootstrap (the .crushrc managed block)",
 	)
 	once := fs.Bool("once", false, "run one harvest tick, drain the queue, then exit (cron/timer-friendly)")
 	pruneStale := fs.Bool(
@@ -299,6 +299,16 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		if err := applyPoolConfigFile(fs, *configPath); err != nil {
 			return agentPoolOptions{}, err
 		}
+	}
+
+	// --model retired per the .crushrc ruling (05-29 e4/g2): model + effort
+	// live ONLY in the repo .crushrc managed block (the pool always wants
+	// xhigh) — a payload-level model makes the executor pass `crush run -m`,
+	// which RESETS the reasoning effort to the provider default. Checked
+	// AFTER the config file so a `model =` line there dies the same death.
+	if *model != "" {
+		return agentPoolOptions{}, fmt.Errorf(
+			"agent-pool: --model is retired: a payload-level model resets crush's reasoning effort to the provider default; pin model + effort per repo via the .crushrc managed block instead (tq bootstrap --model <provider/model> [--reasoning xhigh])")
 	}
 
 	// The sidecar writer reads the env at execution time; a --log-dir (or
