@@ -312,6 +312,50 @@ func doctorQueueMix(ctx context.Context, store queue.Store) []checkResult {
 			Detail: fmt.Sprintf("%d dead-lettered task(s)", counts[task.Dead]),
 		},
 		doctorParked(ctx, store),
+		doctorDLQRepair(ctx, store),
+	}
+}
+
+// doctorDLQRepair guards P3's silence (M12): dead letters accumulating
+// while not ONE autopsy was ever minted means the pool runs without the
+// repair loop (--dlq-fix) and nothing disposes the landfill — 676 tasks,
+// 317 dead, zero autopsies before the 2026-10-01 diagnosis. The default
+// stays opt-in (autopsies are paid second opinions; the ruling lives in
+// docs/planning/2026-10-01_dlqfix-default-decision.md); this check is the
+// cannot-recur-silently half.
+func doctorDLQRepair(ctx context.Context, store queue.Store) checkResult {
+	const name = "dlq-repair"
+
+	counts, err := store.StatusCounts(ctx)
+	if err != nil {
+		return checkResult{Name: name, Status: checkWarn, Detail: "count: " + err.Error()}
+	}
+
+	if counts[task.Dead] == 0 {
+		return checkResult{Name: name, Status: checkOK, Detail: "no dead letters"}
+	}
+
+	autopsyType := executor.TaskTypeDLQFix
+	autopsies, err := store.CountTasks(ctx, queue.Filter{Type: &autopsyType})
+	if err != nil {
+		return checkResult{Name: name, Status: checkWarn, Detail: "count autopsies: " + err.Error()}
+	}
+
+	if autopsies == 0 {
+		return checkResult{
+			Name:   name,
+			Status: checkWarn,
+			Detail: fmt.Sprintf(
+				"%d dead-lettered task(s) and zero autopsies ever minted (the repair loop looks disabled: agent-pool --dlq-fix, or dlq-fix=true in the pool config)",
+				counts[task.Dead],
+			),
+		}
+	}
+
+	return checkResult{
+		Name:   name,
+		Status: checkOK,
+		Detail: fmt.Sprintf("repair loop alive (%d autopsy task(s) minted)", autopsies),
 	}
 }
 

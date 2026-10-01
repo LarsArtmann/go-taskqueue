@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
@@ -1221,5 +1222,58 @@ func TestDoctorVerifyPinsMergesVerdicts(t *testing.T) {
 
 	if len(got.Items) < 2 {
 		t.Errorf("items must carry the summary + the per-task row, got %v", got.Items)
+	}
+}
+
+// TestDoctorDLQRepair pins the M12 guard: dead letters with zero autopsies
+// ever minted warn (the P3 silence class — the repair loop is off), the
+// first autopsy silences it, and a healthy store stays ok. The minting
+// behavior itself (dlq-fix on means autopsies appear, exactly one per dead
+// agent task, never for non-agent deaths) is pinned by the dlqfix sweep
+// suite (TestSweeperMintsOneAutopsyPerDeadAgentTask and siblings).
+func TestDoctorDLQRepair(t *testing.T) {
+	ctx := context.Background()
+
+	path := filepath.Join(t.TempDir(), "dlq-repair.db")
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	if r := doctorDLQRepair(ctx, s); r.Status != checkOK {
+		t.Errorf("healthy store = %s (%s), want ok", r.Status, r.Detail)
+	}
+
+	dead, err := s.Enqueue(ctx, task.New{Type: "agent", Project: "demo", MaxAttempts: 1})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	_, claim, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.Fail(ctx, dead.ID, claim, "verify failed", 0, nil); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	r := doctorDLQRepair(ctx, s)
+	if r.Status != checkWarn {
+		t.Fatalf("landfill without autopsies = %s (%s), want warn", r.Status, r.Detail)
+	}
+
+	if !strings.Contains(r.Detail, "--dlq-fix") {
+		t.Errorf("warn detail should name the flag: %s", r.Detail)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: executor.TaskTypeDLQFix, Project: "demo"}); err != nil {
+		t.Fatalf("enqueue autopsy: %v", err)
+	}
+
+	if r := doctorDLQRepair(ctx, s); r.Status != checkOK {
+		t.Errorf("store with an autopsy = %s (%s), want ok", r.Status, r.Detail)
 	}
 }
