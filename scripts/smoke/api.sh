@@ -76,17 +76,26 @@ wait_up
 echo "== server up (scratch DB: $TQ_DB)"
 
 line="$(probe GET /api/v1/healthz "$TOKEN")"
-[ "${line%% *}" = "200" ] || { echo "FAIL: correct-token baseline wanted 200, got: $line"; exit 1; }
+[ "${line%% *}" = "200" ] || {
+	echo "FAIL: correct-token baseline wanted 200, got: $line"
+	exit 1
+}
 echo "== PASS: correct token -> 200 (baseline)"
 
 for i in 1 2 3; do
 	line="$(probe GET /api/v1/healthz wrong-token-$i)"
-	[ "${line%% *}" = "401" ] || { echo "FAIL: strike $i wanted 401, got: $line"; exit 1; }
+	[ "${line%% *}" = "401" ] || {
+		echo "FAIL: strike $i wanted 401, got: $line"
+		exit 1
+	}
 done
 echo "== PASS: 3x wrong token -> 401 (strikes recorded)"
 
 line="$(probe GET /api/v1/healthz "$TOKEN")"
-[ "${line%% *}" = "429" ] || { echo "FAIL: locked request wanted 429, got: $line"; exit 1; }
+[ "${line%% *}" = "429" ] || {
+	echo "FAIL: locked request wanted 429, got: $line"
+	exit 1
+}
 retry="${line#* }"
 case "$retry" in
 '' | '-' | *[!0-9]*)
@@ -94,14 +103,20 @@ case "$retry" in
 	exit 1
 	;;
 esac
-[ "$retry" -ge 1 ] || { echo "FAIL: Retry-After=$retry, want >= 1"; exit 1; }
+[ "$retry" -ge 1 ] || {
+	echo "FAIL: Retry-After=$retry, want >= 1"
+	exit 1
+}
 echo "== PASS: 429 + Retry-After=$retry (lockout holds even with the correct token)"
 
 echo "== sleeping the lockout window ($retry s + 1 margin)…"
 sleep $((retry + 1))
 
 line="$(probe GET /api/v1/healthz "$TOKEN")"
-[ "${line%% *}" = "200" ] || { echo "FAIL: post-expiry correct-token request wanted 200, got: $line"; exit 1; }
+[ "${line%% *}" = "200" ] || {
+	echo "FAIL: post-expiry correct-token request wanted 200, got: $line"
+	exit 1
+}
 echo "== PASS: lockout expired -> 200"
 
 echo "PASS: tq api lockout smoke (200 / 3x401 / 429+Retry-After=$retry / expiry 200)"

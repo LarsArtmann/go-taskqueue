@@ -58,7 +58,8 @@ func StaleVerifyReasons(verify string) []string {
 	}
 
 	if strings.Contains(verify, "gofmt -l") && !strings.Contains(verify, "git check-ignore") {
-		reasons = append(reasons,
+		reasons = append(
+			reasons,
 			"unscoped gofmt stage: `gofmt -l .` flags gitignored vendor/ trees and kills the gate on files the agent cannot commit (P2 vendor-gofmt class); scope the stage with git check-ignore (executor.ScopedGofmtStage)",
 		)
 	}

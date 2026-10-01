@@ -40,7 +40,7 @@ tell me what is broken with ~/projects/go-taskqueue."
   session does the cheap §3 `blocked_owner` re-emit (commits a status report in
   CV) → verify gate (`go build ./... && go test ./...` in CV) fails → worker's
   own pre-attempt-rev probe says pre-existing → classified
-  *environmental* → requeue **without burning an attempt**, ~100–130 s jittered
+  _environmental_ → requeue **without burning an attempt**, ~100–130 s jittered
   backoff → repeat. 429 rate-limit requeues (15 m fallback) interleave and set
   the effective ~6–10 min cadence.
 - **vendor-gofmt environmental kill confirmed and REPRODUCED locally** (44
@@ -68,7 +68,7 @@ tell me what is broken with ~/projects/go-taskqueue."
   `agent verify failed` whose tail I did NOT pull — vendor-gofmt vs a real
   red gate is **unclassified**. Right direction, unverified mechanism.
 - **Root-cause split asserted, not independently confirmed**: "CV red at HEAD"
-  rests on the worker's own *fails-at-pre-attempt-rev* classification; I never
+  rests on the worker's own _fails-at-pre-attempt-rev_ classification; I never
   ran CV's gate myself to name the failing package/test.
 - **Budget-burn claimed, never measured**: "eating daily-budget 30" is
   plausible (each loop claim is a paid session) but no paid-turns/day number
@@ -171,6 +171,7 @@ tell me what is broken with ~/projects/go-taskqueue."
 ## f) NEXT (grouped, grounded in this session's findings; not all harvested)
 
 **Unblock production (today):**
+
 1. Decide + execute loop-task disposition: `tq ask --task 000001a0eebb…` park, or cancel + strike CV TODO row (§g1).
 2. `trash vendor/` in this repo + `tq dlq --rescue` (documented vendor-gofmt recovery).
 3. Add `dlq-fix = true` to the pool config; restart pool; confirm autopsies start minting.
@@ -223,6 +224,7 @@ tell me what is broken with ~/projects/go-taskqueue."
    (This sets the circuit-breaker implementation in §f8.)
 
 ---
-*No code or production state changed this session; docs-only output (this
+
+_No code or production state changed this session; docs-only output (this
 report + index row). Battery: `scripts/check-status-index.sh` green post-edit;
-root build/vet/test not applicable (no Go changes — docs-only session).*
+root build/vet/test not applicable (no Go changes — docs-only session)._

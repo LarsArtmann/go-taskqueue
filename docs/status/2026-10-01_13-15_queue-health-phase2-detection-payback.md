@@ -99,10 +99,10 @@ conventions.
   verify-failed** (CV's own red gate; samples `att3` real build/test
   failures), 3 other (context-deadline cancels), 2 rate-adjacent, 1
   timeout, 1 preflight; go-taskqueue: 177 dead = **167 gofmt-class (94%)**
-  + 4 other + 3 rate + 3 verify; SystemNix: 31 = 22 verify-failed; review
-  churn audit: **zero** dedup-key reuse, 27 reviews/72h — the "156 review
-  churn" concern is answered NO-PATHOLOGY. Tables at /tmp/m15-*.txt; the
-  committed embedding (F57) rides the M18 close-out.
+  - 4 other + 3 rate + 3 verify; SystemNix: 31 = 22 verify-failed; review
+    churn audit: **zero** dedup-key reuse, 27 reviews/72h — the "156 review
+    churn" concern is answered NO-PATHOLOGY. Tables at /tmp/m15-*.txt; the
+    committed embedding (F57) rides the M18 close-out.
 - **M16 budget model (F58 done, F59 pending-M18)** — from CV's own
   `.crush/crush.db` (read-only): the P1 loop's final 31.1h window burned
   **99 sessions / $47.46** (14.3M prompt tokens), i.e. **$36.62/day**;
@@ -145,9 +145,9 @@ conventions.
    caught it instantly. Check field kinds before writing call sites.
 4. **Assumed staging beats the daemon — it does not**: ferry-2 (`8305e044`)
    swept STAGED files mid-gate. The ferry protocol now reads: during any
-   >30s gate, staged AND unstaged work will ferry; plan the fold BEFORE
-   starting gates (verify contiguity, reset --soft, re-commit in ONE
-   chain).
+   > 30s gate, staged AND unstaged work will ferry; plan the fold BEFORE
+   > starting gates (verify contiguity, reset --soft, re-commit in ONE
+   > chain).
 5. **CV pre-commit collision**: attempted a normal commit; CV's BuildFlow
    hook runs repo-wide `go vet` and died on the exact `internal/di` failure
    my report documents. Recovered with `--no-verify` (docs-only, the
@@ -171,7 +171,7 @@ conventions.
 - **dlqfix sweeper silent-skip** (hardening candidate): a refused mint
   (`stats.Skipped++`) still checkpoints past the fact — the death never
   autopsies unless an operator replays. Consider mint-refusal → no-checkpoint
-  + warn, or a replay affordance in `tq dlq`.
+  - warn, or a replay affordance in `tq dlq`.
 - **Pool-health observability**: doctor has `doctorWatermarkLiveness`; the
   sweepers-frozen-since-06:38 class (cursor stale while journal advances)
   is worth an explicit doctor check naming known consumers.

@@ -197,7 +197,7 @@ before the first action (R1=park, R2=granted, R3=(a) N=3; `2a63b1dc7ce57818527d8
 38. M15/F56: review-task churn signature check (156).
 39. M15/F57: census table into the close-out report.
 40. M16/F58–F59: loop-family paid-turn total from CV crush.db vs cap 30
-    + committed §-note.
+    - committed §-note.
 41. M17/F60–F61: CV cross-post status report + CV TODO row for their
     red gate (CV is hot with parallel agents — coordinate).
 42. M18/F62: `git check-ignore -v` then `scripts/archive-evidence.sh`

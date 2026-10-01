@@ -12,11 +12,11 @@ Should `agent-pool --dlq-fix` default to ON so P3 cannot recur?
 
 ## Options weighed
 
-| Option | Pro | Con |
-| --- | --- | --- |
-| **(a) default ON** | The P3 silence is structurally impossible | Autopsies are PAID agent turns; defaulting a money-spending second opinion on for every operator is an economic decision smuggled into a flag default; a dead-storm would mint N autopsies (bounded: one per dead task, dedup forever, budget-guarded) |
-| **(b) keep opt-in, guard via doctor** | Spending stays an explicit per-deployment owner choice; the silence class is still caught | Requires the operator to run `tq doctor` (but that is already the "why is nothing happening?" reflex) |
-| **(c) default ON + config kill-switch** | Same as (a) with an escape hatch | Two knobs to document; the kill-switch becomes the new silent failure mode |
+| Option                                  | Pro                                                                                       | Con                                                                                                                                                                                                                                                    |
+| --------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **(a) default ON**                      | The P3 silence is structurally impossible                                                 | Autopsies are PAID agent turns; defaulting a money-spending second opinion on for every operator is an economic decision smuggled into a flag default; a dead-storm would mint N autopsies (bounded: one per dead task, dedup forever, budget-guarded) |
+| **(b) keep opt-in, guard via doctor**   | Spending stays an explicit per-deployment owner choice; the silence class is still caught | Requires the operator to run `tq doctor` (but that is already the "why is nothing happening?" reflex)                                                                                                                                                  |
+| **(c) default ON + config kill-switch** | Same as (a) with an escape hatch                                                          | Two knobs to document; the kill-switch becomes the new silent failure mode                                                                                                                                                                             |
 
 ## Ruling
 

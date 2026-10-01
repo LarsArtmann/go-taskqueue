@@ -214,7 +214,7 @@ leg "dead-sha-default-scope" ./scripts/check-dead-sha-refs.sh
 
 # Own-file dead-SHA grep (row 370): the window's touched files, including
 # paths outside the gate's default living-docs scope.
-changed="$( {
+changed="$({
 	git diff --name-only HEAD
 	git diff --cached --name-only
 } | sort -u)"

@@ -19,22 +19,22 @@
 
 **Disposition of the 31 remaining groups (all accepted, ledgered classes):**
 
-| Group (files) | Ledger class |
-| --- | --- |
-| `companion/reads.go` QueryContext rows ×4 + `replay.go` rows pairs | SQL rows/defer prologs |
-| `review/sweep.go` vs `dlqfix/sweep.go` Sweeper struct (7 tok, 42 ln, generics-annotated) | sweeper struct+constructor shape (`watermark.Cursor` is the seam) |
-| `executor/dlqfix.go:168` vs `prioritize.go:158` conditional | `deriveUsage`+`recordRunOutcome` shared-seam call pair (both already use `prepareRepo`/`payloadTimeout`) |
-| `conform/tests.go` `t.Parallel()` ×3 | per-test scheduling declaration, explicitly NOT duplication |
-| `replay.go:158` vs `:445` `openSource` pair | named resident (2026-09-27 sweep): divergent target lifecycles |
-| `fragments.templ:610` Badge stack | `taskBadges` shared component body (named resident, 09-28) |
-| `webui/payload.go:208` vs `:250` `rp.Model`/`sp.Model` | payload-type twins |
-| `executor/review.go:145` vs `status.go:118` `Permanent(payload …)` | payload-type twins / per-executor domain rules |
-| `worker.go:126/:156` `preflightMu.Lock()` | worker preflight pair: mutex-scope reasoning (named resident) |
-| `lockout.go` `mu.Lock()` ×3 | mutex prologs |
-| cmd/tq `fs.Bool/String` flag prologs (×6 groups), `return err` pairs, `var buf/out bytes.Buffer` (×3), `var cancel` (depbump — now fixed), `*exec.Cmd` ×4 (1-token noise) | flag-parse prologs / 2–4 token one-off idioms |
-| `doctor.go:383` vs `:446` list-pending prologs | one-off assertion idioms — deep-read this session, see §e5 |
-| `conform` `claimDue`/`freshStore` sites | already the extracted helpers |
-| `ask.go:254` vs `companion/claims.go:342` `json.Marshal` | cross-module require+tag blocker (mustMarshalDetail class) |
+| Group (files)                                                                                                                                                             | Ledger class                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `companion/reads.go` QueryContext rows ×4 + `replay.go` rows pairs                                                                                                        | SQL rows/defer prologs                                                                                   |
+| `review/sweep.go` vs `dlqfix/sweep.go` Sweeper struct (7 tok, 42 ln, generics-annotated)                                                                                  | sweeper struct+constructor shape (`watermark.Cursor` is the seam)                                        |
+| `executor/dlqfix.go:168` vs `prioritize.go:158` conditional                                                                                                               | `deriveUsage`+`recordRunOutcome` shared-seam call pair (both already use `prepareRepo`/`payloadTimeout`) |
+| `conform/tests.go` `t.Parallel()` ×3                                                                                                                                      | per-test scheduling declaration, explicitly NOT duplication                                              |
+| `replay.go:158` vs `:445` `openSource` pair                                                                                                                               | named resident (2026-09-27 sweep): divergent target lifecycles                                           |
+| `fragments.templ:610` Badge stack                                                                                                                                         | `taskBadges` shared component body (named resident, 09-28)                                               |
+| `webui/payload.go:208` vs `:250` `rp.Model`/`sp.Model`                                                                                                                    | payload-type twins                                                                                       |
+| `executor/review.go:145` vs `status.go:118` `Permanent(payload …)`                                                                                                        | payload-type twins / per-executor domain rules                                                           |
+| `worker.go:126/:156` `preflightMu.Lock()`                                                                                                                                 | worker preflight pair: mutex-scope reasoning (named resident)                                            |
+| `lockout.go` `mu.Lock()` ×3                                                                                                                                               | mutex prologs                                                                                            |
+| cmd/tq `fs.Bool/String` flag prologs (×6 groups), `return err` pairs, `var buf/out bytes.Buffer` (×3), `var cancel` (depbump — now fixed), `*exec.Cmd` ×4 (1-token noise) | flag-parse prologs / 2–4 token one-off idioms                                                            |
+| `doctor.go:383` vs `:446` list-pending prologs                                                                                                                            | one-off assertion idioms — deep-read this session, see §e5                                               |
+| `conform` `claimDue`/`freshStore` sites                                                                                                                                   | already the extracted helpers                                                                            |
+| `ask.go:254` vs `companion/claims.go:342` `json.Marshal`                                                                                                                  | cross-module require+tag blocker (mustMarshalDetail class)                                               |
 
 ## b) PARTIALLY DONE
 
@@ -68,38 +68,38 @@
 
 Ranked by impact; session-grounded only (no unrelated research). Impact/Effort per the harvest convention. **This section is docs-health HARVEST input — route to TODO_LIST.md (actionable) or ROADMAP.md (ideas), do not entomb here.**
 
-| # | Task | Impact | Effort | Category |
-|---|------|--------|--------|----------|
-| 1 | Run `./scripts/ci-local.sh` before the next push (full replicant: lint-baseline, mirror-clones, facade-parity, smokes over this session's change) | High | M | Quality |
-| 2 | Run golangci-lint delta on the depbump.go change (`--new-from-rev`, executor module under devmod-free GOWORK=off) and record the count in the next report | High | S | Quality |
-| 3 | Build `scripts/run-gate.sh` (file+rc capture wrapper) and pin it as the sanctioned agent-session gate form in AGENTS.md | High | S | Quality |
-| 4 | Attribute-or-classify the transient root `-race` FAIL: scoped per-package rerun protocol, documented next to the PIPESTATUS bullet | High | S | Quality |
-| 5 | Read CONTRIBUTING.md (+ CLAUDE.md if present) — outstanding turn-1 ritual debt from this session | High | S | Process |
-| 6 | HARVEST this §f into TODO_LIST.md / ROADMAP.md (docs-health HARVEST mode) | High | M | Documentation |
-| 7 | Verify the daemon commit containing this report + the AGENTS.md ledger entry carries BOTH files (`git log -1 --stat` daemon-stat diff discipline); index row must not strand | High | S | Process |
-| 8 | Add `check-doc-refs.sh` + `check-dead-sha-refs.sh` (own-file scope) over the AGENTS.md ledger edit | Medium | S | Quality |
-| 9 | Add (or confirm existing) unit tests pinning `runGo` clamp semantics: no-deadline → clamp, looser-deadline → clamp, tighter-deadline → untouched | Medium | S | Quality |
-| 10 | Pin `--suggest-generics` as the default art-dupl invocation in the AGENTS.md ledger prose | Medium | S | Documentation |
-| 11 | Ledger the doctor.go extraction trigger (third pending-listing check forces the shared helper) as a named resident line | Medium | S | Documentation |
-| 12 | Ledger the review/status payload-validation extraction trigger (third executor payload validation forces a shared helper) | Medium | S | Documentation |
-| 13 | Ledger the reads.go scan trigger (fifth QueryContext rows site in companion/reads.go forces a `scanInto` helper) | Medium | S | Documentation |
-| 14 | Run `art-dupl --show-suppressed` once to re-verify the engine-backed adapter-block verdict (78+38-stmt pairs) still holds post-companion-extraction | Medium | M | Quality |
-| 15 | Track the `cmd/tq mustMarshalDetail` vs `companion.MustJSON` dedup: when cmd/tq next gains a require+tag on companion, extract (ledgered blocker; tag-cut coordination per release docs) | Medium | M | Cleanup |
-| 16 | Confirm `scripts/check-mirror-clones.sh` strict mode stays zero-rows after this session (covered by #1, listed so it is consciously checked, not assumed) | Medium | S | Quality |
-| 17 | Grep TODO_LIST.md for existing "gate-runner wrapper" / "transient race protocol" rows before minting #3/#4 (split-brain guard) | Medium | S | Process |
-| 18 | Decide session-start ritual scope for user-directed (non-pool) sessions — see §g1 — and write the ruling into AGENTS.md | Medium | S | Process |
-| 19 | After S1→S4 go-cqrs-lite adoption lands, prune dedup-ledger accepted classes that die with the mirrored backends (ledger maintenance) | Medium | M | Cleanup |
-| 20 | Re-run the full `-t 3 --suggest-generics` sweep after the next companion/backend extraction window (structural code will move; ledger must follow) | Medium | M | Quality |
-| 21 | Consider a small `docs/reviews/` brutal-self-review for this window per the brutal-self-review skill (HTML kit) — deferred only because the user requested one .md report; decide if it adds value over §d/e here | Low | S | Process |
-| 22 | Sweep the 89 non-actionable + 102 filtered-suppressed group counts into the ledger entry format (so trend lines 223→222 are comparable across sweeps) | Low | S | Documentation |
-| 23 | Verify the executor 36.9s suite time is stable (re-run once at next session start; concurrent-agent load inflates module suites) | Low | S | Quality |
-| 24 | CHANGELOG: consciously no entry for this session (internal refactor, zero external behavior change) — record the decision so a future docs-health pass doesn't mint one | Low | S | Documentation |
-| 25 | When the next webui payload-section change happens, re-verify the `rp.Model`/`sp.Model` accepted twin still matches (drift-risk accept) | Low | S | Quality |
-| 26 | Re-check the `deriveUsage`+`recordRunOutcome` accept if a third executor grows a sessionUsage-bearing result type (trigger: extraction becomes worth it) | Low | S | Quality |
-| 27 | Add the report filename date-measurement step (this session used it correctly) to the close-out skeleton prose if not already pinned — audit, don't assume | Low | S | Documentation |
-| 28 | Check whether `check-status-index.sh` flagged this report's row placement (top-insert convention per the 08-31 d5 lesson) | Low | S | Process |
-| 29 | Consider naming `-t 2` quarterly cadence in the ledger (last full `-t 2` sweep 09-28) so the cadence is explicit, not folk memory | Low | S | Documentation |
-| 30 | Re-read the AGENTS.md dedup ledger end-to-end once after 3 more sweep entries accrue — prose ledgers rot; consider restructuring per-class sections if the next sweep takes >30 min | Low | M | Documentation |
+| #  | Task                                                                                                                                                                                                              | Impact | Effort | Category      |
+| -- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ | ------------- |
+| 1  | Run `./scripts/ci-local.sh` before the next push (full replicant: lint-baseline, mirror-clones, facade-parity, smokes over this session's change)                                                                 | High   | M      | Quality       |
+| 2  | Run golangci-lint delta on the depbump.go change (`--new-from-rev`, executor module under devmod-free GOWORK=off) and record the count in the next report                                                         | High   | S      | Quality       |
+| 3  | Build `scripts/run-gate.sh` (file+rc capture wrapper) and pin it as the sanctioned agent-session gate form in AGENTS.md                                                                                           | High   | S      | Quality       |
+| 4  | Attribute-or-classify the transient root `-race` FAIL: scoped per-package rerun protocol, documented next to the PIPESTATUS bullet                                                                                | High   | S      | Quality       |
+| 5  | Read CONTRIBUTING.md (+ CLAUDE.md if present) — outstanding turn-1 ritual debt from this session                                                                                                                  | High   | S      | Process       |
+| 6  | HARVEST this §f into TODO_LIST.md / ROADMAP.md (docs-health HARVEST mode)                                                                                                                                         | High   | M      | Documentation |
+| 7  | Verify the daemon commit containing this report + the AGENTS.md ledger entry carries BOTH files (`git log -1 --stat` daemon-stat diff discipline); index row must not strand                                      | High   | S      | Process       |
+| 8  | Add `check-doc-refs.sh` + `check-dead-sha-refs.sh` (own-file scope) over the AGENTS.md ledger edit                                                                                                                | Medium | S      | Quality       |
+| 9  | Add (or confirm existing) unit tests pinning `runGo` clamp semantics: no-deadline → clamp, looser-deadline → clamp, tighter-deadline → untouched                                                                  | Medium | S      | Quality       |
+| 10 | Pin `--suggest-generics` as the default art-dupl invocation in the AGENTS.md ledger prose                                                                                                                         | Medium | S      | Documentation |
+| 11 | Ledger the doctor.go extraction trigger (third pending-listing check forces the shared helper) as a named resident line                                                                                           | Medium | S      | Documentation |
+| 12 | Ledger the review/status payload-validation extraction trigger (third executor payload validation forces a shared helper)                                                                                         | Medium | S      | Documentation |
+| 13 | Ledger the reads.go scan trigger (fifth QueryContext rows site in companion/reads.go forces a `scanInto` helper)                                                                                                  | Medium | S      | Documentation |
+| 14 | Run `art-dupl --show-suppressed` once to re-verify the engine-backed adapter-block verdict (78+38-stmt pairs) still holds post-companion-extraction                                                               | Medium | M      | Quality       |
+| 15 | Track the `cmd/tq mustMarshalDetail` vs `companion.MustJSON` dedup: when cmd/tq next gains a require+tag on companion, extract (ledgered blocker; tag-cut coordination per release docs)                          | Medium | M      | Cleanup       |
+| 16 | Confirm `scripts/check-mirror-clones.sh` strict mode stays zero-rows after this session (covered by #1, listed so it is consciously checked, not assumed)                                                         | Medium | S      | Quality       |
+| 17 | Grep TODO_LIST.md for existing "gate-runner wrapper" / "transient race protocol" rows before minting #3/#4 (split-brain guard)                                                                                    | Medium | S      | Process       |
+| 18 | Decide session-start ritual scope for user-directed (non-pool) sessions — see §g1 — and write the ruling into AGENTS.md                                                                                           | Medium | S      | Process       |
+| 19 | After S1→S4 go-cqrs-lite adoption lands, prune dedup-ledger accepted classes that die with the mirrored backends (ledger maintenance)                                                                             | Medium | M      | Cleanup       |
+| 20 | Re-run the full `-t 3 --suggest-generics` sweep after the next companion/backend extraction window (structural code will move; ledger must follow)                                                                | Medium | M      | Quality       |
+| 21 | Consider a small `docs/reviews/` brutal-self-review for this window per the brutal-self-review skill (HTML kit) — deferred only because the user requested one .md report; decide if it adds value over §d/e here | Low    | S      | Process       |
+| 22 | Sweep the 89 non-actionable + 102 filtered-suppressed group counts into the ledger entry format (so trend lines 223→222 are comparable across sweeps)                                                             | Low    | S      | Documentation |
+| 23 | Verify the executor 36.9s suite time is stable (re-run once at next session start; concurrent-agent load inflates module suites)                                                                                  | Low    | S      | Quality       |
+| 24 | CHANGELOG: consciously no entry for this session (internal refactor, zero external behavior change) — record the decision so a future docs-health pass doesn't mint one                                           | Low    | S      | Documentation |
+| 25 | When the next webui payload-section change happens, re-verify the `rp.Model`/`sp.Model` accepted twin still matches (drift-risk accept)                                                                           | Low    | S      | Quality       |
+| 26 | Re-check the `deriveUsage`+`recordRunOutcome` accept if a third executor grows a sessionUsage-bearing result type (trigger: extraction becomes worth it)                                                          | Low    | S      | Quality       |
+| 27 | Add the report filename date-measurement step (this session used it correctly) to the close-out skeleton prose if not already pinned — audit, don't assume                                                        | Low    | S      | Documentation |
+| 28 | Check whether `check-status-index.sh` flagged this report's row placement (top-insert convention per the 08-31 d5 lesson)                                                                                         | Low    | S      | Process       |
+| 29 | Consider naming `-t 2` quarterly cadence in the ledger (last full `-t 2` sweep 09-28) so the cadence is explicit, not folk memory                                                                                 | Low    | S      | Documentation |
+| 30 | Re-read the AGENTS.md dedup ledger end-to-end once after 3 more sweep entries accrue — prose ledgers rot; consider restructuring per-class sections if the next sweep takes >30 min                               | Low    | M      | Documentation |
 
 (30 items — the remaining 20 slots would be padding; every genuinely session-grounded item is listed.)
 

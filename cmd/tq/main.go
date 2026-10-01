@@ -682,7 +682,11 @@ func cmdHarvest(args []string) error {
 		defaultProjectsDir(),
 		"dir containing repos with TODO_LIST.md (default $TQ_PROJECTS_DIR or ~/projects)",
 	)
-	repos := fs.String("repos", "", "comma-separated repo dirs; bare names resolve against --projects-dir (overrides --projects-dir)")
+	repos := fs.String(
+		"repos",
+		"",
+		"comma-separated repo dirs; bare names resolve against --projects-dir (overrides --projects-dir)",
+	)
 	todoFile := fs.String("todo-file", harvest.DefaultTodoFile, "backlog file name inside each repo")
 	taskType := fs.String("type", harvest.DefaultType, "task type to enqueue")
 	maxPerTick := fs.Int("max-per-tick", harvest.DefaultMaxPerTick, "max new agent tasks per run (cost throttle)")
@@ -1792,7 +1796,11 @@ func cmdStats(args []string) error {
 	}
 
 	if len(suspects) > 0 {
-		fmt.Printf("loop suspects %2d (tasks with more than %d claims: churn class)\n", len(suspects), claimAnomalyThreshold)
+		fmt.Printf(
+			"loop suspects %2d (tasks with more than %d claims: churn class)\n",
+			len(suspects),
+			claimAnomalyThreshold,
+		)
 
 		for _, suspect := range suspects {
 			fmt.Printf("              %s  %d claims\n", suspect.ID, suspect.Claims)

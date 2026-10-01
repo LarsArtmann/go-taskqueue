@@ -4,7 +4,8 @@
 `docs/planning/2026-10-01_04-27_SUPERB-QUEUE-HEALTH-RESTORATION.md`
 (M7; feeds M8/M9) · **Ruling:** R3 = option (a) — burn attempt after
 N=3 consecutive environmental requeues + exponential NotBefore escalation
-+ alert fact. Owner order: execute the whole list.
+
+- alert fact. Owner order: execute the whole list.
 
 ## Problem (P1, from the 04-17 diagnosis)
 
@@ -16,16 +17,16 @@ session per ~8 min, budget cap 30/day drained).
 
 ## Requeue path map (F26 — worker.go @ be28c964)
 
-| Line | Class | Burns attempt? | Delay | Streak? |
-| --- | --- | --- | --- | --- |
-| worker.go:401-417 | `PreflightError` (dirty tree, missing autonomy) | no | `preflightDelay` ladder (base 2m ×2^n, cap 15m, ±20% jitter) | climbs |
-| worker.go:426-435 | `VerifyGateError` **environmental** (vendor-gofmt signature) | no — `FailPermanent` NOW | — (dead-lettered) | n/a |
-| worker.go:437-456 | `VerifyGateError` gate-dead / gate-slow | no | `preflightDelay` ladder (intended) | INTENDED to climb |
-| worker.go:458-484 | `RateLimitError` (429) | no | parsed reset ±5% jitter, cap 6h | no |
-| worker.go:486-516 | `QuestionPendingError` (owner park) | no | question expiry | no |
-| worker.go:518-527 | `PermanentError` | dead-letter now | — | n/a |
-| worker.go:529-546 | pool-shutdown cancel | burns (Fail, 0 delay) | 0 | n/a |
-| worker.go:548-561 | real execution failure | burns (`Fail`, `ExpBackoff(attempts+1)`) | exponential, cap 5m | n/a |
+| Line              | Class                                                        | Burns attempt?                           | Delay                                                        | Streak?           |
+| ----------------- | ------------------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------------ | ----------------- |
+| worker.go:401-417 | `PreflightError` (dirty tree, missing autonomy)              | no                                       | `preflightDelay` ladder (base 2m ×2^n, cap 15m, ±20% jitter) | climbs            |
+| worker.go:426-435 | `VerifyGateError` **environmental** (vendor-gofmt signature) | no — `FailPermanent` NOW                 | — (dead-lettered)                                            | n/a               |
+| worker.go:437-456 | `VerifyGateError` gate-dead / gate-slow                      | no                                       | `preflightDelay` ladder (intended)                           | INTENDED to climb |
+| worker.go:458-484 | `RateLimitError` (429)                                       | no                                       | parsed reset ±5% jitter, cap 6h                              | no                |
+| worker.go:486-516 | `QuestionPendingError` (owner park)                          | no                                       | question expiry                                              | no                |
+| worker.go:518-527 | `PermanentError`                                             | dead-letter now                          | —                                                            | n/a               |
+| worker.go:529-546 | pool-shutdown cancel                                         | burns (Fail, 0 delay)                    | 0                                                            | n/a               |
+| worker.go:548-561 | real execution failure                                       | burns (`Fail`, `ExpBackoff(attempts+1)`) | exponential, cap 5m                                          | n/a               |
 
 Ladder state: `preflightSeen` map (worker.go:102-150), reset at
 worker.go:363-366 for every non-PreflightError outcome.

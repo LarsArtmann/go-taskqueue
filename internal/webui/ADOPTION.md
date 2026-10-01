@@ -11,13 +11,13 @@ AGENTS.md is size-budgeted at ≤15,000 B by cmd/tq's
 
 ### templ-components adoption
 
-| Identifier                                                                                                                                          | Status  | Where                                                                                            |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
-| `layout.Base/ThemeToggle`                                                                                                                           | adopted | `layout.templ`                                                                                   |
-| `display.AreaChart/Badge/Button/Card/CopyButton/DefinitionList/EmptyState/ListNote/Scrollback/Table`                                                | adopted | `fragments.templ`                                                                                |
-| `feedback.Alert`                                                                                                                                    | adopted | `fragments.templ` (task detail, last error)                                                      |
-| `icons.ArchiveBox/CircleStack/Filter/Inbox`                                                                                                         | adopted | `fragments.templ` (empty states + filter)                                                        |
-| status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines, instrument panels (tq-topbar/tq-panel/tq-label/tq-fault) | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband)                  |
+| Identifier                                                                                                                                                 | Status  | Where                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------- |
+| `layout.Base/ThemeToggle`                                                                                                                                  | adopted | `layout.templ`                                                                  |
+| `display.AreaChart/Badge/Button/Card/CopyButton/DefinitionList/EmptyState/ListNote/Scrollback/Table`                                                       | adopted | `fragments.templ`                                                               |
+| `feedback.Alert`                                                                                                                                           | adopted | `fragments.templ` (task detail, last error)                                     |
+| `icons.ArchiveBox/CircleStack/Filter/Inbox`                                                                                                                | adopted | `fragments.templ` (empty states + filter)                                       |
+| status nowband (tq-seg), board columns/cards, filter inputs, page header/lamp, section hairlines, instrument panels (tq-topbar/tq-panel/tq-label/tq-fault) | custom  | `fragments.templ`/`layout.templ`/`theme.css` (StatCard retired for the nowband) |
 
 Go-invoked, OUTSIDE the template-scoped table by decision:
 `display.RelativeTime` renders the detail definition list's

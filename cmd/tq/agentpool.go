@@ -84,7 +84,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		defaultProjectsDir(),
 		"dir containing repos (default $TQ_PROJECTS_DIR or ~/projects)",
 	)
-	repos := fs.String("repos", "", "comma-separated repo dirs; bare names resolve against --projects-dir, never the working directory (overrides --projects-dir)")
+	repos := fs.String(
+		"repos",
+		"",
+		"comma-separated repo dirs; bare names resolve against --projects-dir, never the working directory (overrides --projects-dir)",
+	)
 	interval := fs.Duration("interval", 5*time.Minute, "harvest cadence")
 	discoveryAddr := fs.String(
 		"discovery-addr",
@@ -308,7 +312,8 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	// AFTER the config file so a `model =` line there dies the same death.
 	if *model != "" {
 		return agentPoolOptions{}, fmt.Errorf(
-			"agent-pool: --model is retired: a payload-level model resets crush's reasoning effort to the provider default; pin model + effort per repo via the .crushrc managed block instead (tq bootstrap --model <provider/model> [--reasoning xhigh])")
+			"agent-pool: --model is retired: a payload-level model resets crush's reasoning effort to the provider default; pin model + effort per repo via the .crushrc managed block instead (tq bootstrap --model <provider/model> [--reasoning xhigh])",
+		)
 	}
 
 	// The sidecar writer reads the env at execution time; a --log-dir (or

@@ -24,7 +24,11 @@ func cmdReprioritize(args []string) error {
 		defaultProjectsDir(),
 		"dir containing repos with TODO_LIST.md (default $TQ_PROJECTS_DIR or ~/projects)",
 	)
-	repos := fs.String("repos", "", "comma-separated repo dirs; bare names resolve against --projects-dir (overrides --projects-dir)")
+	repos := fs.String(
+		"repos",
+		"",
+		"comma-separated repo dirs; bare names resolve against --projects-dir (overrides --projects-dir)",
+	)
 	repoSubset := fs.String("repo-subset", "", "comma-separated repo names to narrow --projects-dir discovery")
 	todoFile := fs.String("todo-file", harvest.DefaultTodoFile, "backlog file name inside each repo")
 	taskType := fs.String("type", harvest.DefaultType, "task type the harvested items carry")

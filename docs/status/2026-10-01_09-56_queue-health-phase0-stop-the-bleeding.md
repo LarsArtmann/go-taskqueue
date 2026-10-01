@@ -33,7 +33,7 @@ repo's own hooks. Rulings recorded in the plan before first action
   full `.tq-verify` gate rc=0 green WITHOUT vendor/ (build+vet+`-race`
   tests+gofmt); green-dispatch probe completed end-to-end (enqueued at
   priority 90 after a P0 probe starved behind aging loopers — P7; claimed
-  + completed 05:18:36, facts 8627/8628).
+  - completed 05:18:36, facts 8627/8628).
 - **M3 dlq-fix enabled at source** — pool conf source located (SystemNix
   `modules/nixos/services/tq-agent-pool.nix` poolSettings; running conf is
   the nix-store render), `"dlq-fix" = "true"` added with rationale

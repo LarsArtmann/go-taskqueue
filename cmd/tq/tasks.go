@@ -31,10 +31,18 @@ func cmdTasks(args []string) error {
 	)
 	since := fs.Duration("since", 0, "only tasks created within this window (e.g. 6h, 30m; 0 = all time)")
 	parked := fs.Bool("parked", false, "only rate-limit-parked tasks (pending with a future not_before)")
-	count := fs.Bool("count", false, "print only the total number of matching tasks (ignores --limit; --json emits {\"count\": N})")
+	count := fs.Bool(
+		"count",
+		false,
+		"print only the total number of matching tasks (ignores --limit; --json emits {\"count\": N})",
+	)
 	limit := fs.Int("limit", 50, "max tasks to list (0 = all)")
 	asJSON := fs.Bool("json", false, "JSON output of the matching task list")
-	jsonEnvelope := fs.Bool("json-envelope", false, "wrap --json output as {tasks, total, truncated} so paging consumers can see the uncapped total")
+	jsonEnvelope := fs.Bool(
+		"json-envelope",
+		false,
+		"wrap --json output as {tasks, total, truncated} so paging consumers can see the uncapped total",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -169,7 +177,17 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 		return
 	}
 
-	fmt.Fprintf(w, "%-36s %-10s %-16s %-7s %5s %-9s  %s\n", "ID", "STATUS", "PROJECT", "TYPE", "ATT", "NOTBEFORE", "LAST ERROR")
+	fmt.Fprintf(
+		w,
+		"%-36s %-10s %-16s %-7s %5s %-9s  %s\n",
+		"ID",
+		"STATUS",
+		"PROJECT",
+		"TYPE",
+		"ATT",
+		"NOTBEFORE",
+		"LAST ERROR",
+	)
 
 	now := time.Now()
 	for _, t := range tasks {
@@ -182,7 +200,8 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 
 	if limit > 0 && len(tasks) == limit {
 		if n, err := total(); err == nil {
-			fmt.Fprintf(w,
+			fmt.Fprintf(
+				w,
 				"showing %d of %d matching task(s) (capped by --limit %d; --limit 0 lists all, --count prints just the total)\n",
 				len(tasks),
 				n,

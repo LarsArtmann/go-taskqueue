@@ -71,7 +71,8 @@ PY
 
 OUT="$("$TQ" stats --db "$DB")" || fail "stats (churn) exited non-zero"
 echo "$OUT" | grep -Eq "loop suspects +1 " || fail "churn fixture not flagged: $OUT"
-ID="$(python3 - "$DB" <<'PY'
+ID="$(
+	python3 - "$DB" <<'PY'
 import sqlite3, sys
 db = sqlite3.connect(sys.argv[1])
 print(db.execute("SELECT id FROM tasks WHERE status = 'pending' LIMIT 1").fetchone()[0])

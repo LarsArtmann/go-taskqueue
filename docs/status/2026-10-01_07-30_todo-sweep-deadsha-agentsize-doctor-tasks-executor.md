@@ -158,10 +158,10 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
 
 - Auth/lockout hardening bundle: de-sleep lockout tests via nowFunc (134),
   bound-eviction slog.Warn + clock unification (135), `?token=` strike-path
-  + POST lockout pins (136), Retry-After rounding boundary test (407),
-  lowercase-scheme matrix row (404), SSE header e2e (405),
-  TestSecurityHeadersOnEveryResponse table refactor (406), lockout knob
-  constants (414), SECURITY.md per-IP verify-and-close (413).
+  - POST lockout pins (136), Retry-After rounding boundary test (407),
+    lowercase-scheme matrix row (404), SSE header e2e (405),
+    TestSecurityHeadersOnEveryResponse table refactor (406), lockout knob
+    constants (414), SECURITY.md per-IP verify-and-close (413).
 - Redaction pins: secretPatterns pair-overlap table (166), N-token
   property test (167), one-marker-per-line pin (168), structural
   redaction guard (169).
@@ -283,7 +283,7 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
 14. doctor crushrc shadow WARN (423) + tq doctor TODO-ticked check (247).
 15. Webui: render-pin for result-card LogPath lines (356) +
     fullOutputLine fragment extraction (357) + badge smoke assertion (367)
-    + payload-substring filter (339).
+    - payload-substring filter (339).
 16. tq dlq/show FailureEvidence.Stage surface (419) + evidence-stage
     filter.
 17. S1 divergence register doc (420) + D2 cross-links (375) + postgres
@@ -293,7 +293,7 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
 19. CHANGELOG [Unreleased] cut-planning pass (385) + CHANGELOG audit vs
     tags (row 113 residue: phantom v0.3.1 section audit 321).
 20. check-transient-retry.sh in ci.yml (160) + call-site census pin (159)
-    + check-go-mods retry pin (162) + silent-retry WARN audit (163).
+    - check-go-mods retry pin (162) + silent-retry WARN audit (163).
 21. check-ci.sh single-gh-call + HEAD sha + ancestry wording (164).
 22. flake goTarballHash single-source (418).
 23. tq audit --redispatch surface (325) + release-gate CHANGELOG-tag
@@ -305,7 +305,7 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
 26. session-start.sh FINAL SUMMARY master-CI state (214).
 27. Pre-commit report-filename timestamp gate (190).
 28. Frozen-date fixture sweep (174) + ratelimit-e2e GNU-date note (175)
-    + stub-log assertion (177) + ci.yml parity (176).
+    - stub-log assertion (177) + ci.yml parity (176).
 29. Provider tag in parked surface (178) + doctorParked day-aware pin
     (179) + stats parked-count pin (180).
 30. tq pool-health one-shot summarizer (40/148).
@@ -319,9 +319,9 @@ two ticks belong to re-verify/stale findings). Row 204 got a live specimen
     byte-cuts — same class as 266, same fix (not rowed; fold into a
     follow-up).
 35. AMBIGUOUS verdict soften (294) + daemonCommitSubject regex pin (295)
-    + show --commits folded_here help (296) + changed-file list (343).
+    - show --commits folded_here help (296) + changed-file list (343).
 36. Consumer unsubscribe deterministic pin (298) + caller inventory (299)
-    + TestSelfManagingLoop flake root-cause (297).
+    - TestSelfManagingLoop flake root-cause (297).
 37. TestSweepPinsCloseoutReportPaths flake root-cause (271).
 38. depbump SetFailureEvidence (170) + dep-sweep e2e smoke (227).
 39. GitLogScanner trailer end-to-end pin (198) + tq show review-token

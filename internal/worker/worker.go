@@ -247,7 +247,7 @@ func (p *Pool) burnEnvStreak(
 	cause error,
 	sink *executor.Sink,
 ) bool {
-	if !(p.cfg.EnvRequeueBurn > 0 && streak >= p.cfg.EnvRequeueBurn) {
+	if p.cfg.EnvRequeueBurn <= 0 || streak < p.cfg.EnvRequeueBurn {
 		return false
 	}
 
@@ -482,9 +482,19 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			return
 		}
 
-		if err := p.store.Requeue(terminalCtx, t.ID, claim, pre.Error(), delay, false, queue.RequeueClassPreflight); err != nil {
+		if err := p.store.Requeue(
+			terminalCtx,
+			t.ID,
+			claim,
+			pre.Error(),
+			delay,
+			false,
+			queue.RequeueClassPreflight,
+		); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
-		} else if p.preflightShouldLog(t.ID) {
+		} else if p.preflightShouldLog(
+			t.ID,
+		) {
 			p.log.Warn("preflight refused; requeued without attempt burn",
 				"task", t.ID, "retry after", delay, "consecutive", streak, "reason", pre.Cause.Error())
 		}
@@ -524,9 +534,19 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			return
 		}
 
-		if err := p.store.Requeue(terminalCtx, t.ID, claim, gate.Error(), delay, false, queue.RequeueClassGate); err != nil {
+		if err := p.store.Requeue(
+			terminalCtx,
+			t.ID,
+			claim,
+			gate.Error(),
+			delay,
+			false,
+			queue.RequeueClassGate,
+		); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
-		} else if p.preflightShouldLog(t.ID) {
+		} else if p.preflightShouldLog(
+			t.ID,
+		) {
 			p.log.Warn("verify gate failed without judging the task; requeued without attempt burn",
 				"task", t.ID, "class", gate.Class, "retry after", delay,
 				"consecutive", streak, "reason", gate.Cause.Error())
@@ -542,7 +562,15 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// the parsed reset time (± small jitter so many parked tasks do
 		// not reclaim in lockstep and stampede the freshly reset quota).
 		delay := rateLimitDelay(rl.RetryAfter)
-		if err := p.store.Requeue(terminalCtx, t.ID, claim, rl.Error(), delay, rl.ResumeCloseout, queue.RequeueClassRateLimit); err != nil {
+		if err := p.store.Requeue(
+			terminalCtx,
+			t.ID,
+			claim,
+			rl.Error(),
+			delay,
+			rl.ResumeCloseout,
+			queue.RequeueClassRateLimit,
+		); err != nil {
 			p.log.Error("rate-limit requeue failed", "task", t.ID, "err", err)
 		} else {
 			// resume_closeout on the requeue fact says the re-claim resumes

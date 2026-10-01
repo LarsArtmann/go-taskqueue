@@ -1048,7 +1048,11 @@ func TestParseSystemdUnitEnv(t *testing.T) {
 	t.Parallel()
 
 	envFile := filepath.Join(t.TempDir(), "pool.env")
-	if err := os.WriteFile(envFile, []byte("# comment\nGOEXPERIMENT=\"jsonv2\"\n; also comment\nTQ_DB=/mnt/pool/tq.db\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		envFile,
+		[]byte("# comment\nGOEXPERIMENT=\"jsonv2\"\n; also comment\nTQ_DB=/mnt/pool/tq.db\n"),
+		0o600,
+	); err != nil {
 		t.Fatalf("write env file: %v", err)
 	}
 
@@ -1191,7 +1195,11 @@ func TestDoctorVerifyPinsMergesVerdicts(t *testing.T) {
 	ctx := context.Background()
 
 	repoDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(repoDir, ".tq-verify"), []byte("export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1\n"), 0o600); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repoDir, ".tq-verify"),
+		[]byte("export GOEXPERIMENT=jsonv2; go build ./... && go test ./... -count=1\n"),
+		0o600,
+	); err != nil {
 		t.Fatalf("write .tq-verify: %v", err)
 	}
 

@@ -22,7 +22,12 @@ func TestBuildLivenessView(t *testing.T) {
 		wantStale  bool
 		wantParked bool
 	}{
-		{"healthy-running-lease", task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &future}, false, false},
+		{
+			"healthy-running-lease",
+			task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &future},
+			false,
+			false,
+		},
 		{"stale-lease", task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &past}, true, false},
 		{"parked", task.Task{Status: task.Pending, NotBefore: future}, false, true},
 		{"past-notbefore", task.Task{Status: task.Pending, NotBefore: past}, false, false},

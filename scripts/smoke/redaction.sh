@@ -120,12 +120,21 @@ echo "== ok task: $OK_ID, fail task: $FAIL_ID"
 
 echo "== assert the ok turn completed and the fail turn is dead"
 "$TMP/tq" stats | tee "$TMP/stats.out"
-grep -Eq '^completed\s+1$' "$TMP/stats.out" || { echo "FAIL: ok turn did not complete"; exit 1; }
-grep -Eq '^dead\s+1$' "$TMP/stats.out" || { echo "FAIL: fail turn is not dead"; exit 1; }
+grep -Eq '^completed\s+1$' "$TMP/stats.out" || {
+	echo "FAIL: ok turn did not complete"
+	exit 1
+}
+grep -Eq '^dead\s+1$' "$TMP/stats.out" || {
+	echo "FAIL: fail turn is not dead"
+	exit 1
+}
 
 echo "== assert the sidecar is redacted"
 SIDECAR="$TQ_LOG_DIR/$OK_ID.log"
-[ -f "$SIDECAR" ] || { echo "FAIL: sidecar $SIDECAR missing (TQ_LOG_DIR ignored?)"; exit 1; }
+[ -f "$SIDECAR" ] || {
+	echo "FAIL: sidecar $SIDECAR missing (TQ_LOG_DIR ignored?)"
+	exit 1
+}
 if grep -qE "$FAKE_ANTHROPIC|$FAKE_AWS" "$SIDECAR"; then
 	echo "FAIL: sidecar carries a RAW token"
 	exit 1

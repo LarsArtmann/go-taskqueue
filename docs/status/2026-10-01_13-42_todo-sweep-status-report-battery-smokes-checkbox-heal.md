@@ -36,7 +36,7 @@ recap what landed, §d is the honest defect list.
    (85374682), on top of a parallel window's earlier `--- [ ]` bullet-run
    work (damagedCheckbox + DAMAGED-CHECKBOX gate block, already at HEAD).
    The gap: checkboxOf ACCEPTS `- [ ] [x] …` lines (the prefix is exactly
-   `- [ ] `), so damagedCheckbox (only consulted on rejection) never saw
+   `- [ ]`), so damagedCheckbox (only consulted on rejection) never saw
    them and a mangled tick looked human-done while staying machine-open —
    the live class this session's earlier tick batch shipped four of. New
    `strayCheckbox` rejects the file in the parse loop's accepted branch;
@@ -77,11 +77,11 @@ recap what landed, §d is the honest defect list.
    target:internal/queue/sqlitev4:TestStoreConformance/TestCountTasksMatchesList
    PASS rows 1 — the row-346 recipe proven end-to-end); root
    `go test ./... -race` rc=0; harvest full suite `-race` ok; journal-drift
-   + api + redaction smokes PASS; check-todo-list / check-status-index /
-   check-doc-refs / check-dead-sha all rc=0; CHANGELOG [Unreleased]/Added
-   carries five user-facing entries; close-out indexed at
-   docs/status/README.md line 91 (c3cf8415). Tree clean at 673713f5
-   before the parallel 2d038594 landed.
+   - api + redaction smokes PASS; check-todo-list / check-status-index /
+     check-doc-refs / check-dead-sha all rc=0; CHANGELOG [Unreleased]/Added
+     carries five user-facing entries; close-out indexed at
+     docs/status/README.md line 91 (c3cf8415). Tree clean at 673713f5
+     before the parallel 2d038594 landed.
 
 ## b) PARTIALLY DONE
 
@@ -139,7 +139,7 @@ recap what landed, §d is the honest defect list.
    not exist), so for one full run the smoke's greps proved nothing at
    all (no raw token to redact → both assertions vacuously green on the
    raw-token side). Found via the TQ_SMOKE_KEEP forensics valve in one
-   look: `ok turn authenticated with  / `. Rule going forward:
+   look: `ok turn authenticated with  /`. Rule going forward:
    secrets-shaped fixtures are LITERALS in stub bodies.
 4. **An edit-tool misuse deleted a test header** (replaced
    TestParseRepoAllRejectsDamagedCheckbox's comment+signature instead of
@@ -186,6 +186,7 @@ recap what landed, §d is the honest defect list.
 ## f) Up to 50 things we should get done next
 
 Born this window (1–12):
+
 1. Tick row 346 DONE-on-arrival citing the battery's conform leg
    (TestStoreConformance/TestCountTasksMatchesList, PASS rows 1).
 2. Disposition row ~132 (httpauth extraction, discovered-shipped) — tick
@@ -211,12 +212,12 @@ Born this window (1–12):
 
 Redaction/secrets cluster (13–18):
 13. Pin secretPatterns ≡ SecretHits table identity (audit vs redaction
-    never fork).
+never fork).
 14. Table-driven pin: bearer×auth-header is the ONLY overlapping pair.
 15. Pin RedactSecrets masks an auth-header line to exactly ONE marker.
 16. Property test: N injected non-overlapping tokens → SecretHits == N.
 17. Structural guard: every executor tail helper delegates to
-    redactOutput (no third tail helper can bypass).
+redactOutput (no third tail helper can bypass).
 18. SetFailureEvidence for depbump (structured stage/exit_code/tail).
 
 Lockout/auth cluster (19–23):
@@ -229,28 +230,28 @@ Lockout/auth cluster (19–23):
 Queue/executor cluster (24–28):
 24. Export TQ_TASK_ID to agent runs (retire the sed-the-prompt hack).
 25. Pin closeout-free executors never receive $TQ_QUESTION_FILE (runtime
-    pin beyond the test-level one this window hardened).
+pin beyond the test-level one this window hardened).
 26. Question-expiry re-entry fact (silent re-entry forensics gap).
 27. tq show review-task: render session tokens/cost like agent/prioritize.
 28. tq show --commits AMBIGUOUS softening (multi-commit is the norm).
 
 Process/gates cluster (29–36):
 29. Row 371: enforce leading-phrase row citations (advisory extension of
-    the annotation-cite spot-checker).
+the annotation-cite spot-checker).
 30. Row 209 duty: history-rewrite windows must run check-dead-sha-refs in
-    their OWN battery — make it a written convention or a CI leg (§g3).
+their OWN battery — make it a written convention or a CI leg (§g3).
 31. check-todo-list.sh: also run the DOUBLE-CHECKBOX + DAMAGED greps over
-    docs/status/README.md index rows (checkbox-shaped text lives there).
+docs/status/README.md index rows (checkbox-shaped text lives there).
 32. session-start SUMMARY master-CI carry (row 299 class) — verify the
-    probe result survives tail truncation.
+probe result survives tail truncation.
 33. Mechanical annotation-cite spot-checker (advisory) — quoted-phrase-
-    within-cited-line-range check.
+within-cited-line-range check.
 34. Daemon-fold footer-first enforcement script (flag footer-carrying
-    commits whose diff is docs-only while sources rode a fold).
+commits whose diff is docs-only while sources rode a fold).
 35. Add the battery's cheap legs (doc-refs + dead-sha + own-file) as an
-    advisory ci.yml step (hermetic, seconds).
+advisory ci.yml step (hermetic, seconds).
 36. README.md (repo): document verify-battery.sh as the local verify
-    entry point next to scripts/ci-local.sh.
+entry point next to scripts/ci-local.sh.
 
 Docs/carry-over cluster (37–42, from the 07-30 §f lanes):
 37. Docs bundle rows 425/196/420/218/385.
@@ -262,25 +263,26 @@ Docs/carry-over cluster (37–42, from the 07-30 §f lanes):
 
 Hygiene (43–46):
 43. docs/status/README.md INDEX BLOAT (283 live rows, threshold 100) —
-    archive sweep or monthly digest row (gate warned this window).
+archive sweep or monthly digest row (gate warned this window).
 44. Trash the leftover debug trees /tmp/tq-red-debug, /tmp/tq-red2,
-    /tmp/tq-battery logs when the window's evidence is archived.
+/tmp/tq-battery logs when the window's evidence is archived.
 45. Re-run `check-mirror-clones.sh` + `check-guard-wiring.sh` after the
-    harvest changes ride a push (not run this window).
+harvest changes ride a push (not run this window).
 46. go.mod delta check: confirm zero new requires this window (none
-    intended) before the next nix build pins vendorHash.
+intended) before the next nix build pins vendorHash.
 
 Stretch (47–50):
 47. Battery `--json` output for machine consumption by the pool's own
-    verify rows.
+verify rows.
 48. smoke/api.sh negative variant: lockout survival across a server
-    restart (state is in-process today — document or pin the reset).
+restart (state is in-process today — document or pin the reset).
 49. redaction.sh: cover the `--redact=false` opt-out path explicitly
-    (currently only the default-ON path).
+(currently only the default-ON path).
 50. Sweep the session's heredoc stubs into a shared
-    scripts/smoke/fixtures/ library (third duplication approaching).
+scripts/smoke/fixtures/ library (third duplication approaching).
 
 ## g) Questions (max 3 — the first two carried unanswered; I cannot
+
 decide them alone)
 
 1. **Next lane** (carried from the 07-30 §g3, still unanswered): continue

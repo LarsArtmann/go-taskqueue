@@ -1203,7 +1203,11 @@ func TestStaysOnLadder(t *testing.T) {
 		{"preflight", &executor.PreflightError{Cause: errors.New("dirty")}, true},
 		{"gate dead", &executor.VerifyGateError{Class: executor.VerifyGateDead, Cause: errors.New("red")}, true},
 		{"gate slow", &executor.VerifyGateError{Class: executor.VerifyGateSlow, Cause: errors.New("slow")}, true},
-		{"gate environmental", &executor.VerifyGateError{Class: executor.VerifyGateEnvironmental, Cause: errors.New("vendor")}, false},
+		{
+			"gate environmental",
+			&executor.VerifyGateError{Class: executor.VerifyGateEnvironmental, Cause: errors.New("vendor")},
+			false,
+		},
 		{"rate limit", &executor.RateLimitError{Cause: errors.New("429"), RetryAfter: time.Minute}, true},
 		{"question", &executor.QuestionPendingError{Cause: errors.New("q"), RetryAfter: time.Minute}, true},
 		{"permanent", executor.Permanent(errors.New("bad payload")), false},

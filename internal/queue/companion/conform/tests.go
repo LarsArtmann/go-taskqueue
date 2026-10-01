@@ -1205,7 +1205,15 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	// Rate-limit park: requeue with a delay longer than the original lease.
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false, queue.RequeueClassRateLimit); err != nil {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim_w1,
+		"rate limited (retry after 1h)",
+		time.Hour,
+		false,
+		queue.RequeueClassRateLimit,
+	); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1297,7 +1305,15 @@ func TestParkedFilter(t *testing.T) {
 
 	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false, queue.RequeueClassRateLimit); err != nil {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim_w1,
+		"rate limited (retry after 1h)",
+		time.Hour,
+		false,
+		queue.RequeueClassRateLimit,
+	); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1338,7 +1354,15 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 		t.Fatalf("wrong-owner Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "preflight: repo dirty", 150*time.Millisecond, false, queue.RequeueClassPreflight); err != nil {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim_w1,
+		"preflight: repo dirty",
+		150*time.Millisecond,
+		false,
+		queue.RequeueClassPreflight,
+	); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1407,7 +1431,15 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 
 		_, claim_w1 := claimDue(t, ctx, s, "w1")
 
-		if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited", time.Minute, resume, queue.RequeueClassRateLimit); err != nil {
+		if err := s.Requeue(
+			ctx,
+			tk.ID,
+			claim_w1,
+			"rate limited",
+			time.Minute,
+			resume,
+			queue.RequeueClassRateLimit,
+		); err != nil {
 			t.Fatalf("Requeue: %v", err)
 		}
 
@@ -1454,7 +1486,6 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 			t.Fatal("no task.requeued fact in the trail")
 		})
 	}
-
 }
 
 // TestRequeueFactCarriesClass pins the M9 contract (queue-health
@@ -1476,7 +1507,15 @@ func TestRequeueFactCarriesClass(t *testing.T) {
 
 	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "preflight: repo dirty", time.Minute, false, queue.RequeueClassPreflight); err != nil {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim_w1,
+		"preflight: repo dirty",
+		time.Minute,
+		false,
+		queue.RequeueClassPreflight,
+	); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -2113,7 +2152,15 @@ func TestCountTasksMatchesList(t *testing.T) {
 	}
 
 	parkedTask, claimBeta := claimDue(t, ctx, s, "w2")
-	if err := s.Requeue(ctx, parkedTask.ID, claimBeta, "rate limited", time.Hour, false, queue.RequeueClassRateLimit); err != nil {
+	if err := s.Requeue(
+		ctx,
+		parkedTask.ID,
+		claimBeta,
+		"rate limited",
+		time.Hour,
+		false,
+		queue.RequeueClassRateLimit,
+	); err != nil {
 		t.Fatalf("Requeue(park): %v", err)
 	}
 
@@ -3085,7 +3132,15 @@ func parkOnQuestion(t *testing.T, s Store, payload string, requeueIn time.Durati
 		t.Fatalf("append asked fact: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "question pending: "+ref, requeueIn, false, queue.RequeueClassQuestion); err != nil {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim_w1,
+		"question pending: "+ref,
+		requeueIn,
+		false,
+		queue.RequeueClassQuestion,
+	); err != nil {
 		t.Fatalf("park requeue: %v", err)
 	}
 
@@ -3273,7 +3328,15 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 		t.Fatalf("append q-2: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "question pending: q-2", time.Hour, false, queue.RequeueClassQuestion); err != nil {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim_w1,
+		"question pending: q-2",
+		time.Hour,
+		false,
+		queue.RequeueClassQuestion,
+	); err != nil {
 		t.Fatalf("park q-2: %v", err)
 	}
 

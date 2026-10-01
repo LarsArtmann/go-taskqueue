@@ -599,12 +599,15 @@ func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string
 	// surface for the full list. Items always carries the full rows.
 	detail := fmt.Sprintf(
 		"%d of %d pinned task(s) carry stale verify pins — --reresolve-verify (agent-pool / worker --agents) ignores enqueue-time pins entirely",
-		len(stale), pinned,
+		len(stale),
+		pinned,
 	)
 	if len(stale) <= 3 {
 		detail = fmt.Sprintf(
 			"%d of %d pinned task(s) carry stale verify pins: %s — --reresolve-verify (agent-pool / worker --agents) ignores enqueue-time pins entirely",
-			len(stale), pinned, strings.Join(stale, "; "),
+			len(stale),
+			pinned,
+			strings.Join(stale, "; "),
 		)
 	}
 
@@ -628,7 +631,10 @@ func staleSummary(stale []string, pinned int) string {
 
 	suffix := ""
 	if len(stale) > maxVerbatim {
-		suffix = fmt.Sprintf(" … (+%d more; full list: tq tasks --status pending --type agent --verify-contains '<pin substring>')", len(stale)-maxVerbatim)
+		suffix = fmt.Sprintf(
+			" … (+%d more; full list: tq tasks --status pending --type agent --verify-contains '<pin substring>')",
+			len(stale)-maxVerbatim,
+		)
 	}
 
 	return fmt.Sprintf("%d of %d pinned: %s%s", len(stale), pinned, strings.Join(head, "; "), suffix)
@@ -1067,8 +1073,13 @@ func doctorServiceContext(ctx context.Context, opts doctorOptions) []checkResult
 	} {
 		if p := lookupOnPath(path, tool.name); p == "" {
 			results = append(results, checkResult{
-				Name: "svc:" + tool.name, Status: checkWarn,
-				Detail: fmt.Sprintf("%q not on the unit's PATH (%s; extend agentPath/Environment in the unit)", tool.name, tool.why),
+				Name:   "svc:" + tool.name,
+				Status: checkWarn,
+				Detail: fmt.Sprintf(
+					"%q not on the unit's PATH (%s; extend agentPath/Environment in the unit)",
+					tool.name,
+					tool.why,
+				),
 			})
 		} else {
 			results = append(results, checkResult{
@@ -1086,8 +1097,12 @@ func doctorServiceContext(ctx context.Context, opts doctorOptions) []checkResult
 		})
 	default:
 		results = append(results, checkResult{
-			Name: "svc:goexp", Status: checkWarn,
-			Detail: fmt.Sprintf("GOEXPERIMENT=%q on the unit (want jsonv2) — verify commands importing encoding/json/v2 die with \"build constraints exclude all Go files\" (the env-lie, 2026-09-11 000001a08ebf)", exp),
+			Name:   "svc:goexp",
+			Status: checkWarn,
+			Detail: fmt.Sprintf(
+				"GOEXPERIMENT=%q on the unit (want jsonv2) — verify commands importing encoding/json/v2 die with \"build constraints exclude all Go files\" (the env-lie, 2026-09-11 000001a08ebf)",
+				exp,
+			),
 		})
 	}
 

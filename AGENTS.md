@@ -45,10 +45,10 @@ by design (`go test ./internal/foo` from root fails by design — cd in).
 Release flow: docs/release/. Proxy verification is rc-captured: require the
 facade @tag in a /tmp scratch module, run a sentinel symbol, cite rc+output.
 
-Smokes (CI-safe): scripts/smoke/*.sh — full list: webui, status-loop,
+Smokes (CI-safe): scripts/smoke/_.sh — full list: webui, status-loop,
 dogfood-once, bootstrap-install, journal-drift, help-text, multi-repo,
 papdashboard-e2e, questions-e2e, ratelimit-e2e, fullcore, reviews,
-session-close. Guards: scripts/check-*.sh + smoke/release-gates.sh + lint-baseline.sh. `scripts/new-module.sh <dir> [deps…]` scaffolds go.mods.
+session-close. Guards: scripts/check-_.sh + smoke/release-gates.sh + lint-baseline.sh. `scripts/new-module.sh <dir> [deps…]` scaffolds go.mods.
 
 ## Architecture
 
@@ -56,30 +56,30 @@ Facts-first: every state change is an immutable fact in an append-only
 journal; queue views, retry state, and the DLQ are projections. Claim
 exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
-| Package | Purpose |
-| --- | --- |
-| `internal/task` | Task record, Status enum, sentinel errors |
-| `internal/journal` | Fact types, append-only Journal, MemoryJournal |
-| `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014, PROPRIETARY dep) |
-| `internal/queue` | Store contract, Filter, Queue facade |
-| `internal/queue/sqlite`, `/postgres` | Backends; conform suite in `internal/queue/companion/conform` |
-| `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
-| `internal/bridge` | papdashboard alerts, cqa findings → fix tasks |
-| `internal/executor` | sh, HTTP, agent, review, status executors + registry |
-| `internal/harvest` | TODO_LIST.md → tasks; drift audit; prune-stale |
-| `internal/budget` | Daily-cap + session-usage projections, checked per tick |
-| `internal/dlqfix` | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss |
-| `internal/review` | Review sweeper + `--review-autofix` |
-| `internal/status` | Done-prompt report sweeper (`--status-every`) |
-| `internal/prioritize` | AI batch scorer (`--prioritize`), priority_scores cache |
-| `internal/depsweep` | Dependency-upgrade sweeper (`--dep-sweep`) |
-| `internal/watermark` | Durable journal cursor shared by the sweepers |
-| `internal/consumer` | Journal dispatcher, per-subscriber cursors (ADR-0009) |
-| `internal/runactor` | run.Group actors, LIFO shutdown, InterruptOn |
-| `internal/webui` | Live dashboard (`tq serve`): tailer → hub → SSE (ADR-0003) |
-| `internal/httpapi` | Machine API (`tq api`): token-mandatory, nosniff, lockout |
-| `internal/httpauth`/`lockout` | Shared bearer primitives + 3-strikes limiter |
-| `cmd/tq` | CLI (enqueue/worker/harvest/agent-pool/serve/api/…, see `tq --help`) |
+| Package                              | Purpose                                                              |
+| ------------------------------------ | -------------------------------------------------------------------- |
+| `internal/task`                      | Task record, Status enum, sentinel errors                            |
+| `internal/journal`                   | Fact types, append-only Journal, MemoryJournal                       |
+| `internal/journal/cqrs`              | Read-only go-cqrs-lite adapter (ADR-0014, PROPRIETARY dep)           |
+| `internal/queue`                     | Store contract, Filter, Queue facade                                 |
+| `internal/queue/sqlite`, `/postgres` | Backends; conform suite in `internal/queue/companion/conform`        |
+| `internal/worker`                    | Claim → heartbeat → execute loop; requeue ladder                     |
+| `internal/bridge`                    | papdashboard alerts, cqa findings → fix tasks                        |
+| `internal/executor`                  | sh, HTTP, agent, review, status executors + registry                 |
+| `internal/harvest`                   | TODO_LIST.md → tasks; drift audit; prune-stale                       |
+| `internal/budget`                    | Daily-cap + session-usage projections, checked per tick              |
+| `internal/dlqfix`                    | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss              |
+| `internal/review`                    | Review sweeper + `--review-autofix`                                  |
+| `internal/status`                    | Done-prompt report sweeper (`--status-every`)                        |
+| `internal/prioritize`                | AI batch scorer (`--prioritize`), priority_scores cache              |
+| `internal/depsweep`                  | Dependency-upgrade sweeper (`--dep-sweep`)                           |
+| `internal/watermark`                 | Durable journal cursor shared by the sweepers                        |
+| `internal/consumer`                  | Journal dispatcher, per-subscriber cursors (ADR-0009)                |
+| `internal/runactor`                  | run.Group actors, LIFO shutdown, InterruptOn                         |
+| `internal/webui`                     | Live dashboard (`tq serve`): tailer → hub → SSE (ADR-0003)           |
+| `internal/httpapi`                   | Machine API (`tq api`): token-mandatory, nosniff, lockout            |
+| `internal/httpauth`/`lockout`        | Shared bearer primitives + 3-strikes limiter                         |
+| `cmd/tq`                             | CLI (enqueue/worker/harvest/agent-pool/serve/api/…, see `tq --help`) |
 
 ### Store invariants (do not break)
 
@@ -198,7 +198,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - Docs formatting MANUAL (dprint on-demand).
 - Evidence archives: `scripts/archive-evidence.sh` (gated by
   `check-ghost-archives.sh`); `git check-ignore -v` BEFORE copying
-evidence in.
+  evidence in.
 
 ## Known Issues
 

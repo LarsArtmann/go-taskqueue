@@ -37,7 +37,7 @@ that caught the incident.
 3. **Row 206 — double-checkbox class closed** (85374682, building on a
    parallel window's `--- [ ]` work). The 2026-10-01 tick batch shipped
    four rows as `- [ ] [x] …`; checkboxOf ACCEPTS those lines (exact
-   `- [ ] ` prefix) so damagedCheckbox never saw them and the tick looked
+   `- [ ]` prefix) so damagedCheckbox never saw them and the tick looked
    human-done while staying machine-open. New `strayCheckbox` rejects the
    file in the parser's ACCEPTED branch (TestStrayCheckboxPrefix, 11
    cases + TestParseRepoAllRejectsDoubleCheckbox; harvest module gate
@@ -92,7 +92,7 @@ that caught the incident.
    strings into the stub (tokens expanded at stub-write… no — escaped for
    runtime, where the env does not exist), so the smoke's greps proved
    nothing for a full run. The TQ_SMOKE_KEEP forensics valve found it in
-   one look: `ok turn authenticated with  / `. Rule: secrets-shaped
+   one look: `ok turn authenticated with  /`. Rule: secrets-shaped
    fixtures are LITERALS in stub bodies.
 
 ## e) IMPROVE
