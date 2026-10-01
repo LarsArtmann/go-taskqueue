@@ -203,12 +203,17 @@ func TestRestartMidStreamLosesZeroFacts(t *testing.T) {
 
 	// t-dead-a was accepted by A and re-sent by B with the SAME key; the
 	// dashboard dedupes. t-dead-b failed under A and is delivered by B.
-	if keys[SourceApp+"-dlq-150"] != 2 {
-		t.Errorf("dlq-150 key seen %d times, want 2 (re-send after restart)", keys[SourceApp+"-dlq-150"])
+	// Delivery is at-least-once by design: a drain batch can re-send a
+	// fact before its batch-end checkpoint lands (the idempotency key is
+	// the dedupe boundary), so the counts are LOWER bounds, not exact —
+	// an exact == pin made this test flake under -race scheduling and
+	// dead-lettered real dispatches (04:04 att3/3 death, ruled 2026-10-01).
+	if keys[SourceApp+"-dlq-150"] < 2 {
+		t.Errorf("dlq-150 key seen %d times, want >= 2 (re-send after restart)", keys[SourceApp+"-dlq-150"])
 	}
 
-	if keys[SourceApp+"-dlq-550"] != 1 {
-		t.Errorf("dlq-550 key seen %d times, want 1 (never lost)", keys[SourceApp+"-dlq-550"])
+	if keys[SourceApp+"-dlq-550"] < 1 {
+		t.Errorf("dlq-550 key seen %d times, want >= 1 (never lost)", keys[SourceApp+"-dlq-550"])
 	}
 
 	if got := wm.current("papdashboard:" + pap.server.URL); got != 600 {
