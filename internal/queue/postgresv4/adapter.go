@@ -332,7 +332,8 @@ func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration)
 }
 
 // Requeue returns a claimed task to Pending without counting an attempt
-// (companion-owned; tq's evidence carries the resume_closeout flag).
+// (companion-owned; tq's evidence carries the resume_closeout flag and
+// the requeue class).
 func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
@@ -340,8 +341,9 @@ func (s *Store) Requeue(
 	errText string,
 	delay time.Duration,
 	resumeCloseout bool,
+	class string,
 ) error {
-	return companion.Requeue(ctx, companion.Postgres, s.db, id, claim, errText, delay, resumeCloseout)
+	return companion.Requeue(ctx, companion.Postgres, s.db, id, claim, errText, delay, resumeCloseout, class)
 }
 
 // AppendFact records a NON-task journal fact (session.opened /

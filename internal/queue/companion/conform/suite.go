@@ -73,6 +73,7 @@ type Store interface {
 		errText string,
 		delay time.Duration,
 		resumeCloseout bool,
+		class string,
 	) error
 	RescueDead(ctx context.Context, id task.ID, maxAttempts int) error
 	SavePriorityScore(ctx context.Context, score queue.PriorityScore) error
@@ -92,6 +93,8 @@ type Caps struct {
 	Exclusivity bool
 	// ResumeCloseout: Requeue carries the resume_closeout evidence key.
 	ResumeCloseout bool
+	// RequeueClass: Requeue carries the requeue_class evidence key.
+	RequeueClass bool
 	// LegacyMigration: in-place migration from a pre-column/pre-table
 	// database file (sqlite-flavored legacy fixtures).
 	LegacyMigration bool
@@ -221,6 +224,7 @@ var conformanceTests = []struct {
 	{"TestProjectExclusivityAcrossStoreHandles", TestProjectExclusivityAcrossStoreHandles},
 	{"TestParkedRequeueNotResurrectableByStaleLease", TestParkedRequeueNotResurrectableByStaleLease},
 	{"TestParkedFilter", TestParkedFilter},
+	{"TestRequeueFactCarriesClass", TestRequeueFactCarriesClass},
 	{"TestRequeueDoesNotBurnAttempts", TestRequeueDoesNotBurnAttempts},
 	{"TestRequeueFactCarriesResumeCloseout", TestRequeueFactCarriesResumeCloseout},
 	{"TestFactsCursorBounded", TestFactsCursorBounded},

@@ -154,7 +154,7 @@ func TestDoctorParkedNamesEarliestRelease(t *testing.T) {
 
 		if _, claimW1, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 			t.Fatalf("claim: %v", err)
-		} else if err := s.Requeue(ctx, tk.ID, claimW1, "rate limited", delay, false); err != nil {
+		} else if err := s.Requeue(ctx, tk.ID, claimW1, "rate limited", delay, false, "rate-limit"); err != nil {
 			t.Fatalf("requeue: %v", err)
 		}
 	}

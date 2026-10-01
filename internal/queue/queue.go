@@ -110,7 +110,10 @@ type Store interface {
 	// refusals: the environment was not ready, not the task. A
 	// rate-limited close-out passes resumeCloseout so the journal records
 	// that the re-claim resumes the owed close-out turn instead of
-	// re-running the paid work turn. Facts: task.requeued.
+	// re-running the paid work turn. class names the refusal family
+	// (RequeueClass* constants) and rides the fact detail; empty is
+	// written as absent and read back as RequeueClassUnknown. Facts:
+	// task.requeued.
 	Requeue(
 		ctx context.Context,
 		id task.ID,
@@ -118,6 +121,7 @@ type Store interface {
 		errText string,
 		delay time.Duration,
 		resumeCloseout bool,
+		class string,
 	) error
 	// UpdatePendingPriority changes a PENDING task's priority (ADR-0015
 	// §5) and records the task.reprioritized fact (old/new, source,
@@ -301,10 +305,25 @@ type Queue struct {
 // DONE and its session alive, so the re-claim resumes at close-out (16-00
 // report f31) — without the flag the journal cannot distinguish a parked
 // work turn from an owed close-out.
+// RequeueClass values for RequeueEvidence.Class: WHICH not-the-task's-
+// fault refusal returned the task to Pending, so downstream readers
+// (stats, sweepers, drift audits) can distinguish the environmental
+// classes without re-parsing the reason text. Readers normalize a
+// missing class (legacy facts predate the field) to
+// RequeueClassUnknown; no journal backfill rewrites history.
+const (
+	RequeueClassPreflight = "preflight"  // executor refused to start (dirty tree, missing autonomy)
+	RequeueClassGate      = "gate"       // verify gate failed without judging the task (dead/slow)
+	RequeueClassRateLimit = "rate-limit" // provider 429 / usage window
+	RequeueClassQuestion  = "question"   // owner question parked the run
+	RequeueClassUnknown   = "unknown"    // legacy task.requeued facts predating the field
+)
+
 type RequeueEvidence struct {
 	Reason         string `json:"reason"`
 	RetryIn        int64  `json:"retry_in_ms"`
 	ResumeCloseout bool   `json:"resume_closeout,omitempty"`
+	Class          string `json:"class,omitempty"`
 }
 
 // ReprioritizeEvidence is the structured detail on task.reprioritized

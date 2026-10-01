@@ -188,10 +188,10 @@ func ClaimDue(
 
 // Requeue returns a claimed task to Pending without counting an attempt.
 // Adapter-side (not the engine's): tq's task.requeued evidence carries the
-// resume_closeout flag, which the upstream RequeueEvidence lacks (S1
-// divergence). The claim token fences the requeue; the recorded fact's
-// owner is the claim's OWNER (read from the row before the release), so
-// the journal keeps speaking owner vocabulary.
+// resume_closeout flag and the requeue class, which the upstream
+// RequeueEvidence lacks (S1 divergence). The claim token fences the
+// requeue; the recorded fact's owner is the claim's OWNER (read from the
+// row before the release), so the journal keeps speaking owner vocabulary.
 func Requeue(
 	ctx context.Context,
 	d Dialect,
@@ -201,6 +201,7 @@ func Requeue(
 	errText string,
 	delay time.Duration,
 	resumeCloseout bool,
+	class string,
 ) error {
 	return WithTx(ctx, db, d, func(r Runner) error {
 		now := time.Now()
@@ -234,7 +235,7 @@ func Requeue(
 		return appendFact(ctx, r, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: prevOwner, Error: errText,
 			Detail: MustJSON(queue.RequeueEvidence{
-				Reason: errText, RetryIn: delay.Milliseconds(), ResumeCloseout: resumeCloseout,
+				Reason: errText, RetryIn: delay.Milliseconds(), ResumeCloseout: resumeCloseout, Class: class,
 			}),
 		})
 	})

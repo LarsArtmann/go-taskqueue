@@ -52,6 +52,17 @@ const (
 	QuestionTypeInput        = internalqueue.QuestionTypeInput
 )
 
+// Requeue classes: WHICH not-the-task's-fault refusal returned a task to
+// Pending (rides task.requeued fact details; readers normalize a missing
+// class on legacy facts to RequeueClassUnknown).
+const (
+	RequeueClassPreflight = internalqueue.RequeueClassPreflight
+	RequeueClassGate      = internalqueue.RequeueClassGate
+	RequeueClassRateLimit = internalqueue.RequeueClassRateLimit
+	RequeueClassQuestion  = internalqueue.RequeueClassQuestion
+	RequeueClassUnknown   = internalqueue.RequeueClassUnknown
+)
+
 // Sentinel errors.
 var (
 	ErrNoTaskDue      = internalqueue.ErrNoTaskDue

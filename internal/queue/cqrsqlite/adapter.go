@@ -203,8 +203,9 @@ func (s *Store) FailPermanent(
 }
 
 // Requeue returns a claimed task to Pending WITHOUT counting an attempt.
-// DIVERGENCE: the resumeCloseout flag has no upstream carrier and is not
-// persisted; the task.requeued fact carries reason and retry_in_ms only.
+// DIVERGENCE: the resumeCloseout flag and the requeue class have no
+// upstream carrier and are not persisted; the task.requeued fact carries
+// reason and retry_in_ms only.
 func (s *Store) Requeue(
 	ctx context.Context,
 	id task.ID,
@@ -212,6 +213,7 @@ func (s *Store) Requeue(
 	errText string,
 	delay time.Duration,
 	resumeCloseout bool,
+	_ string,
 ) error {
 	token, err := s.tokenFor(id, claim)
 	if err != nil {

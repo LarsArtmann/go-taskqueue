@@ -1154,7 +1154,7 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, w1_claim, "rate limited", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, w1_claim, "rate limited", time.Hour, false, "rate-limit"); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 

@@ -92,3 +92,14 @@ below fixes escalation as a side effect of moving the reset rule.
 - Disposition: `EnvRequeueBurn: 0` never burns.
 - Module gates: worker + executor + root `-race` + cmd/tq shim
   (F33), commit with footer (F34).
+
+## M9 addendum — requeue_class fact field (implemented)
+
+`queue.RequeueEvidence.Class` (+ `RequeueClass{Preflight,Gate,RateLimit,
+Question,Unknown}` constants) rides every task.requeued fact; the
+worker stamps its refusal family at each call site. **Backfill ruling
+(F37): legacy facts predate the field and are NEVER rewritten — readers
+normalize a missing class to `RequeueClassUnknown`.** The cqrsqlite
+adapter accepts and drops the class (same S1 divergence as
+resume_closeout; conform `Caps.RequeueClass` gates the pin, true for
+sqlitev4/postgresv4).

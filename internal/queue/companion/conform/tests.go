@@ -461,7 +461,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 
 	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
-	if err := s.Requeue(ctx, old.ID, claim_w1, "preflight", 0, false); err != nil {
+	if err := s.Requeue(ctx, old.ID, claim_w1, "preflight", 0, false, queue.RequeueClassPreflight); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 
@@ -1205,7 +1205,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
 	// Rate-limit park: requeue with a delay longer than the original lease.
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false, queue.RequeueClassRateLimit); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1237,7 +1237,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 		t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "stale", time.Minute, false); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "stale", time.Minute, false, ""); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
@@ -1297,7 +1297,7 @@ func TestParkedFilter(t *testing.T) {
 
 	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited (retry after 1h)", time.Hour, false, queue.RequeueClassRateLimit); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1330,6 +1330,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 		"nope",
 		time.Second,
 		false,
+		"",
 	); !errors.Is(
 		err,
 		task.ErrLeaseNotHeld,
@@ -1337,7 +1338,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 		t.Fatalf("wrong-owner Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "preflight: repo dirty", 150*time.Millisecond, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "preflight: repo dirty", 150*time.Millisecond, false, queue.RequeueClassPreflight); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1406,7 +1407,7 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 
 		_, claim_w1 := claimDue(t, ctx, s, "w1")
 
-		if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited", time.Minute, resume); err != nil {
+		if err := s.Requeue(ctx, tk.ID, claim_w1, "rate limited", time.Minute, resume, queue.RequeueClassRateLimit); err != nil {
 			t.Fatalf("Requeue: %v", err)
 		}
 
@@ -1453,6 +1454,55 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 			t.Fatal("no task.requeued fact in the trail")
 		})
 	}
+
+}
+
+// TestRequeueFactCarriesClass pins the M9 contract (queue-health
+// restoration): a requeue stamped with a refusal family (preflight,
+// gate, rate-limit, question) carries it as requeue_class in the fact
+// detail, so downstream readers distinguish the environmental classes
+// without re-parsing reason text; an empty class is omitted entirely
+// (omitempty) and read back as RequeueClassUnknown.
+func TestRequeueFactCarriesClass(t *testing.T) {
+	if !active.Caps.RequeueClass {
+		t.Skip(
+			"DIVERGENCE (S1 spike): upstream Requeue carries no requeue_class key — the refusal family is not representable in upstream facts yet",
+		)
+	}
+
+	ctx, s := freshStore(t)
+
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "agent", MaxAttempts: 2})
+
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
+
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "preflight: repo dirty", time.Minute, false, queue.RequeueClassPreflight); err != nil {
+		t.Fatalf("Requeue: %v", err)
+	}
+
+	trail, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	for _, f := range trail {
+		if f.Type != journal.Requeued {
+			continue
+		}
+
+		var ev queue.RequeueEvidence
+		if err := json.Unmarshal(f.Detail, &ev); err != nil {
+			t.Fatalf("detail not RequeueEvidence: %v (%s)", err, f.Detail)
+		}
+
+		if ev.Class != queue.RequeueClassPreflight {
+			t.Errorf("class = %q, want %q (%s)", ev.Class, queue.RequeueClassPreflight, f.Detail)
+		}
+
+		return
+	}
+
+	t.Fatal("no task.requeued fact in the trail")
 }
 
 // seedFacts appends n enqueued facts (unique task ids) to the journal.
@@ -2063,7 +2113,7 @@ func TestCountTasksMatchesList(t *testing.T) {
 	}
 
 	parkedTask, claimBeta := claimDue(t, ctx, s, "w2")
-	if err := s.Requeue(ctx, parkedTask.ID, claimBeta, "rate limited", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, parkedTask.ID, claimBeta, "rate limited", time.Hour, false, queue.RequeueClassRateLimit); err != nil {
 		t.Fatalf("Requeue(park): %v", err)
 	}
 
@@ -3035,7 +3085,7 @@ func parkOnQuestion(t *testing.T, s Store, payload string, requeueIn time.Durati
 		t.Fatalf("append asked fact: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "question pending: "+ref, requeueIn, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "question pending: "+ref, requeueIn, false, queue.RequeueClassQuestion); err != nil {
 		t.Fatalf("park requeue: %v", err)
 	}
 
@@ -3223,7 +3273,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 		t.Fatalf("append q-2: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "question pending: q-2", time.Hour, false); err != nil {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "question pending: q-2", time.Hour, false, queue.RequeueClassQuestion); err != nil {
 		t.Fatalf("park q-2: %v", err)
 	}
 

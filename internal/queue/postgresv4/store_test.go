@@ -85,6 +85,7 @@ func TestStoreConformance(t *testing.T) {
 		Caps: conform.Caps{
 			Exclusivity:      true,
 			ResumeCloseout:   true,
+			RequeueClass:     true,
 			LegacyMigration:  false,
 			Archive:          false,
 			EnqueuedSnapshot: false,
