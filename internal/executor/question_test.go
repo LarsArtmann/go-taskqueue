@@ -165,6 +165,20 @@ func TestAgentExecutorQuestionParksTask(t *testing.T) {
 // dlqfix / prioritize) never do — a reviewer or scorer must not park a
 // task on an owner question.
 func TestQuestionChannelScopePinsSecondOpinions(t *testing.T) {
+	// Hermeticity (TODO row 215): pool-dispatched sessions run with the
+	// pool's OWN $TQ_QUESTION_FILE (and the sibling $TQ_RESULT_FILE)
+	// exported, and runAgent builds cmd.Env from os.Environ() — the
+	// without-channel clone would inherit the ambient channel and the
+	// probe below would misreport with-channel even though the executor
+	// added nothing. Scrub both channel vars for this test and restore
+	// them on cleanup, so the pin passes in every session shape.
+	for _, channelEnv := range []string{questionFileEnv, verdictFileEnv} {
+		if ambient, had := os.LookupEnv(channelEnv); had {
+			os.Unsetenv(channelEnv)
+			t.Cleanup(func() { os.Setenv(channelEnv, ambient) })
+		}
+	}
+
 	ctx := context.Background()
 	probe := `if [ -n "$TQ_QUESTION_FILE" ]; then echo with-channel >> env-probe.txt; else echo without-channel >> env-probe.txt; fi`
 

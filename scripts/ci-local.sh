@@ -23,6 +23,20 @@ export GOEXPERIMENT=jsonv2
 # is a no-op there and a lifeline in agent sessions.
 export GOTOOLCHAIN=auto
 
+# Pool-session env scrub (TODO row 333): agent-session shells inherit the
+# pool runAgent environment. A gate child that reads $TQ_QUESTION_FILE
+# (the executor's question-channel probe), $TQ_DB (the PRODUCTION journal
+# path) or any other TQ_* channel var sees pool state instead of the clean
+# env CI runners have, and the transient-retry wrapper then mislabels the
+# failure "concurrent edit in flight" — every agent-run window re-paid the
+# diagnosis (2026-09-27 05-34 §c burn). Scrub the known TQ_* channels up
+# front so this replicant sees exactly what CI sees; unsetting inside this
+# process propagates to every child gate, and smokes that need a journal
+# export their own scratch TQ_DB.
+for tq_env in TQ_QUESTION_FILE TQ_RESULT_FILE TQ_DB TQ_REDACT TQ_LOG_DIR TQ_PAP_API_KEY TQ_PAP_URL; do
+	unset "$tq_env"
+done
+
 step() { printf '\n== %s\n' "$*"; }
 
 # 15-39 report f9/e2: a concurrent session's mid-edit state transiently breaks
