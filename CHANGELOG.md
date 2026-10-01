@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **`tq tasks` NOTBEFORE column + `tq show` liveness view**: the task
+  list now renders the park/backoff countdown for a future not_before
+  (rate-limit requeues, deps) instead of a bare "-", and `tq show`
+  reports a `liveness` object — lease owner/expiry, `leaseStale` for an
+  expired lease (crash-reclaim candidate), and `parked`/`notBefore` —
+  so a stalled-looking queue explains itself (05-30 report c3/f6).
+  Pinned by cmd/tq/liveness_test.go.
 - **`tq tasks --count --json`** emits `{"count": N}` (machine-parseable
   total instead of prose), and **`tq tasks --json --json-envelope`** wraps
   the list as `{tasks, total, truncated}` so paging consumers can see the

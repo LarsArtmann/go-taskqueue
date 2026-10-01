@@ -119,6 +119,8 @@ not here.
 - [ ] Smoke forensics batch: keep-logs-on-fail flag for smokes, zero-requeue assertion, multi-repo.sh added to the AGENTS.md smoke list (09-01 report f5/f6/f8; docs/status/2026-09-10_09-01_task-000001a08a1a8b0e7666677dc99c4cd84b16.md)
 - [ ] Worktree design open questions minted: Q1 merge-policy is gating — lift the 9 open questions from docs/planning/2026-09-12_worktree-per-agent-design.md into TODO/ROADMAP rows (01-43 report §f; docs/status/2026-09-12_01-43_task-000001a092d3650a2b85c03583a22d9c2c5e.md)
 - [ ] Status-index re-sweep: live rows re-bloated past 100 after this pass's intake — the 12-39 e5 cadence item (row above) needs its next scheduled sweep (docs/status/2026-09-14_12-39_claiming-arc-brutal-status.md §e5)
+- [ ] Untrack the stale committed binary cmd/tq/tq (git-tracked, last touched 2026-09-15, predates the NOTBEFORE column and the --count flag, no scripts/.github consumer — an agent smoke against it silently tests old behavior, hit live 2026-10-01 05-10 window) — untrack + gitignore like its already-ignored tq.exe twin, unless an outside-repo flow needs the pinned binary (05-10 report §g1; docs/status/2026-10-01_05-10_task-000001a0f539292dda2b76c8a6b100000000.md)
+- [ ] `tq tasks` LEASE affordance for running tasks (lease-expiry countdown / STALE marker in the list view) — the 05-30 c3 stale-lease hint lives only in `tq show` JSON today; a stalled RUNNING row in the list still explains nothing (05-10 report §f2; docs/status/2026-10-01_05-10_task-000001a0f539292dda2b76c8a6b100000000.md)
 
 ## Webui overhaul leftovers (2026-09-14 stunning-overhaul execution; docs/research/2026-09-14_templ-components-deep-dive.html §05)
 
