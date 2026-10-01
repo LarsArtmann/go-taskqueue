@@ -47,6 +47,15 @@ func dbDefault() string {
 }
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// run returns instead of calling log.Fatal directly: os.Exit skips defers,
+// so a fatal path inside main would leave the store unclosed. The deadline
+// contract is "deadline → exit 1 fatal" via the returned error.
+func run() error {
 	backend := flag.String("backend", "sqlite", "queue backend: sqlite or postgres")
 	db := flag.String("db", dbDefault(), "sqlite database path (backend=sqlite; defaults to $TQ_DB when set)")
 	dsn := flag.String("dsn", "postgres://127.0.0.1:5432/taskqueue?sslmode=disable", "postgres DSN (backend=postgres)")
@@ -66,7 +75,7 @@ func main() {
 	case "sqlite":
 		sqliteStore, err := sqlite.Open(*db)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		defer sqliteStore.Close()
@@ -75,14 +84,14 @@ func main() {
 	case "postgres":
 		postgresStore, err := postgres.Open(ctx, *dsn, 0)
 		if err != nil {
-			log.Fatalf("postgres backend: %v", err)
+			return fmt.Errorf("postgres backend: %w", err)
 		}
 
 		defer postgresStore.Close()
 
 		store = postgresStore
 	default:
-		log.Fatalf("unknown --backend %q (want sqlite or postgres)", *backend)
+		return fmt.Errorf("unknown --backend %q (want sqlite or postgres)", *backend)
 	}
 
 	taskQueue := queue.New(store)
@@ -97,7 +106,7 @@ func main() {
 
 	for i, n := range demos {
 		if _, err := taskQueue.Enqueue(ctx, n); err != nil {
-			log.Fatalf("enqueue demo %d: %v", i, err)
+			return fmt.Errorf("enqueue demo %d: %w", i, err)
 		}
 	}
 
@@ -150,14 +159,23 @@ func main() {
 	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()
 
+	// stop shuts the pool down BEFORE the deferred store Close runs (defers
+	// are LIFO), so the fatal path never closes the store under live workers.
+	stop := func(err error) error {
+		cancel()
+		<-done
+
+		return err
+	}
+
 	for drained := false; !drained; {
 		select {
 		case <-ctx.Done():
-			log.Fatal("deadline exceeded before the queue drained")
+			return stop(errors.New("deadline exceeded before the queue drained"))
 		case <-ticker.C:
 			tasks, err := store.List(ctx, queue.Filter{})
 			if err != nil {
-				log.Fatal(err)
+				return stop(err)
 			}
 
 			counts := map[task.Status]int{}
@@ -172,16 +190,16 @@ func main() {
 	cancel()
 	<-done
 
-	report(store)
+	return report(store)
 }
 
-func report(store queue.Store) {
+func report(store queue.Store) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	tasks, err := store.List(ctx, queue.Filter{})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	counts := map[task.Status]int{}
@@ -200,4 +218,6 @@ func report(store queue.Store) {
 			fmt.Printf("  %-9s %d\n", s, counts[s])
 		}
 	}
+
+	return nil
 }
