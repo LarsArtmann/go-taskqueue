@@ -12,11 +12,11 @@ done-prompt turn (task 000001a0dbda953c950bd0547a6cf75e6e76).
 
 | Task                           | Row | Verdict                                                                                           | Work commit                                   | Closeout |
 | ------------------------------ | --- | ------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------- |
-| 000001a0daf1… (ADR-0019 S4)    | 41  | correctly BLOCKED 3rd window; side-shipped the consumer unsubscribe-race fix + vendor/ workaround | 6a10c7f7 (docs) / c561ae25 (code, footerless) | 02-31    |
-| 000001a0db23… (folded-here)    | 108 | DONE-on-arrival: feature already shipped (daemon cedcface), verified + row closed                 | 2046ee95                                      | 04-14    |
-| 000001a0db83… (baseline regen) | 109 | DONE: poisoned-baseline heal, clean-cache green 1360/1360, ledger entry                           | b1d6a7d9 (018a6e32 was the verify commit)     | 05-07    |
-| 000001a0dbb5… (lint-lll templ) | 110 | VERIFIED already-excluded, zero code, probe with control                                          | 5bca4c0d                                      | 05-19    |
-| 000001a0dbc3… (status oracles) | 111 | VERIFIED DONE-on-arrival (`oracleStatuses` var), in-module -race 5/5                              | e11cfdfe                                      | 05-47    |
+| 000001a0daf1… (ADR-0019 S4)    | 41  | correctly BLOCKED 3rd window; side-shipped the consumer unsubscribe-race fix + vendor/ workaround | 66925225 (docs) / 53417f50 (code, footerless) | 02-31    |
+| 000001a0db23… (folded-here)    | 108 | DONE-on-arrival: feature already shipped (daemon c0d2a7c8), verified + row closed                 | c9a47d53                                      | 04-14    |
+| 000001a0db83… (baseline regen) | 109 | DONE: poisoned-baseline heal, clean-cache green 1360/1360, ledger entry                           | a4a0e863 (461289ca was the verify commit)     | 05-07    |
+| 000001a0dbb5… (lint-lll templ) | 110 | VERIFIED already-excluded, zero code, probe with control                                          | d0b01df5                                      | 05-19    |
+| 000001a0dbc3… (status oracles) | 111 | VERIFIED DONE-on-arrival (`oracleStatuses` var), in-module -race 5/5                              | 14a17dc9                                      | 05-47    |
 
 ## a) FULLY DONE (verified at HEAD this pass)
 
@@ -30,7 +30,7 @@ done-prompt turn (task 000001a0dbda953c950bd0547a6cf75e6e76).
    `folded_here` view section. Pinned by 3 tests
    (`show_commits_test.go`), live-rendered on real history (4 daemon
    folds around the S4 task's 5 footer commits). Implementation rode
-   footerless daemon commit cedcface; the verify window (2046ee95) closed
+   footerless daemon commit c0d2a7c8; the verify window (c9a47d53) closed
    the row.
 3. **Lint-baseline poisoning healed** (task 3): the 09-26 01:41 readmodel
    regen had silently dropped all 29 cmd/tq rows (its lint ran while
@@ -49,7 +49,7 @@ done-prompt turn (task 000001a0dbda953c950bd0547a6cf75e6e76).
    invocation in drain, so an in-flight drain no longer delivers facts
    after unsubscribe returns. Stress-gated 30x under -race in-window;
    verified present at HEAD this pass. (Fixed in daemon-absorbed commit
-   c561ae25 — footerless, see §d.)
+   53417f50 — footerless, see §d.)
 5. **lint-lll-changed.sh templ exclusion probe-proven with a control**
    (task 4): the awk guard (`file !~ /_templ\.go$/`, line 35) excludes
    generated files; a 200-char control line in internal/task/task.go
@@ -63,7 +63,7 @@ done-prompt turn (task 000001a0dbda953c950bd0547a6cf75e6e76).
    unchecked — the window re-verified in-module under -race (5/5) and
    closed it.
 7. **All five window commits verified present with the task footer
-   trailer-visible** (6a10c7f7, 2046ee95, b1d6a7d9, 5bca4c0d, e11cfdfe);
+   trailer-visible** (66925225, c9a47d53, a4a0e863, d0b01df5, 14a17dc9);
    the S4 close-out and the three later windows each ended footer-LAST
    after in-window trailer checks. All 13 reports from today carry
    docs/status/README.md index rows (check-status-index clean surface).
@@ -93,7 +93,7 @@ done-prompt turn (task 000001a0dbda953c950bd0547a6cf75e6e76).
    cmd/tq journal-drift tests (`TestJournalDriftNoDriftAfterRescue`,
    `TestJournalDriftSeededDriftAllFields`) were re-run by this pass and
    STILL FAIL at HEAD: the S1 claim-token migration moved the claim
-   call sites (d2dd3cef/9644b749 03:30) but journal replay still covers
+   call sites (885d7d29/49a91d0c 03:30) but journal replay still covers
    only `{Status:1 Attempts:1 Priority:0 DedupKey:0}`. One window proved
    the tests green at pre-migration afbd48c4, i.e. a migration gap, not
    rot. Unowned — filed as the top TODO row.
@@ -148,8 +148,8 @@ done-prompt turn (task 000001a0dbda953c950bd0547a6cf75e6e76).
    01-24, 05-19 §g1, 05-47 §g2) and the 05-47 window itself committed the
    footer-before-attribution defect that row 112 exists to prevent. The
    queue is paying full windows to re-learn documented facts.
-3. **Daemon-fold under-attribution struck three more times** (cedcface
-   carried the fold feature beside an unrelated report; c561ae25 carried
+3. **Daemon-fold under-attribution struck three more times** (c0d2a7c8
+   carried the fold feature beside an unrelated report; 53417f50 carried
    the consumer race fix; the 06-05 window's own amend manufactured a NEW
    uncited dead SHA). Every window in this span used the AMEND MANEUVER
    on unpushed daemon HEAD — seven instances and counting — because

@@ -5,7 +5,7 @@ window is the dedup sweep the user invoked (`art-dupl --sort total-tokens -t 2
 --type-aware --rich-text --explain --html`) plus this report. Docs + ledger
 only; zero Go code changed.
 
-**Session start state:** master @ d4d3a0fd, clean tree, no stashes (verified
+**Session start state:** master @ 03e5d169, clean tree, no stashes (verified
 18:0x, `git log --oneline -5` + `git status --short` + `git stash list`).
 Baseline root build green before any edit (`GOEXPERIMENT=jsonv2
 GOTOOLCHAIN=auto go build ./...` → BUILD_OK).
@@ -251,7 +251,7 @@ backlog from AGENTS.md context)
 
 ## Gate log (rc-captured, this window)
 
-- `git log --oneline -5` / `git status --short` / `git stash list` → clean @ d4d3a0fd
+- `git log --oneline -5` / `git status --short` / `git stash list` → clean @ 03e5d169
 - `go build ./...` (GOEXPERIMENT=jsonv2, GOTOOLCHAIN=auto) → BUILD_OK
 - `scripts/check-mirror-clones.sh` → rc=0, "0 cross-backend clone groups"
 - `scripts/check-doc-refs.sh` → rc=0, "doc refs ok"

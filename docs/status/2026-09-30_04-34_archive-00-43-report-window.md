@@ -2,7 +2,7 @@
 
 - **When**: 2026-09-30, ~03:15–04:35 CEST
 - **Branch**: master, unpushed (agents never push)
-- **Work commit**: `9d4eb43c` (footer `Task-Queue-ID: 000001a0ef7bbc2124c2ce69fe7b00000000`)
+- **Work commit**: `6a1115cd` (footer `Task-Queue-ID: 000001a0ef7bbc2124c2ce69fe7b00000000`)
 - **Scope honored**: exactly TODO row 152 — per-item triage verification, git-mv,
   index repoint + counter. No code touched, no drive-by row closures.
 
@@ -14,7 +14,7 @@
    TODO_LIST.md:148 (§f citation) and the docs/status/README.md index row
    (was :372); archive counter bumped 346→347; TODO row 152 closed `[x]`
    with one DONE note (row-note accretion convention respected). Commit
-   `9d4eb43c`, footer verified via `git interpret-trailers --parse` (count=1,
+   `6a1115cd`, footer verified via `git interpret-trailers --parse` (count=1,
    well-formed, last trailer), tree clean after.
 2. **Triage claims spot-verified at HEAD** (the three artifact-class
    assertions in the dispatch + the file's own strikethroughs):
@@ -37,7 +37,7 @@
    clean at start; CONTRIBUTING.md read at turn 1 (CLAUDE.md absent). One
    documented ritual failure: see §d2.
 6. **Daemon race healed per playbook.** The auto-commit daemon swept my
-   staged 3-file diff footer-less as `d828104e` while the gate battery ran
+   staged 3-file diff footer-less as `6a1115cd` while the gate battery ran
    (receipt #7 for the class, TODO row 154). Healed via the documented
    unpushed soft-reset playbook: `git reset --soft HEAD~1` → recommit with
    the footer; verified content-identical (3 files, 4+/4−, rename 100%) and

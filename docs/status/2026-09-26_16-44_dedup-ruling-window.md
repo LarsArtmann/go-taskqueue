@@ -19,7 +19,7 @@ TODO row — deliberately NOT half-migrated. Plus: Tier-0 helper extractions
 shipped, two concurrent-window debris fields repaired (cmd/tq claim-sweep
 fallout; worker facade go.mod), and — at 16:40 re-verification — two more
 parity skews from other windows fixed. All claims re-derived at HEAD
-5f1dd9d0/working tree today 16:40-16:44.
+b82995ae/working tree today 16:40-16:44.
 
 ## a) FULLY DONE
 

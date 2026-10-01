@@ -139,3 +139,46 @@ a51585e1
 #           byte-identical between the twins (empty diff)
 c460e758
 d5e8558e
+
+# 2026-10-01 mass triage (row: Mass-triage the DEAD-SHA citations stranded by
+# the 2026-09-26 ~22:38 lineage rewrite): every token below was checked by
+# exact patch-id match over HEAD (content identity). Verdict LOST: no
+# patch-id twin and no tree twin on the current lineage (rewritten/squashed
+# intermediates, content absorbed across commits, absorber not derivable).
+# Citation loss ACCEPTED per the standing verdict class; drop these rows
+# when refs/original is dropped.
+154f9d4d
+1a34631a
+1e1209ee
+20e146ce
+31597040
+3a967bf1
+3b6d5889
+500b2f2e
+52759e99
+6831539f
+6a79cdfb
+702ee8b4
+745d41ad
+7b13f4aa
+8c88ad60
+8ca790a3
+8d2987c0
+925f2988
+9da8dc25
+9e33568b
+a8660be2
+b5e1092d
+b929681f
+bebe7172
+bf1b0502
+d5712d8d
+dcaba8f2
+de10ad74
+dfb09adc
+f9b75dd5
+fa68edeb
+fdc861d5
+feee0c2a
+# late-straggler (2026-10-01): 7bc80672 surfaced post-repair; patch-id verdict LOST (same class as the batch above)
+7bc80672

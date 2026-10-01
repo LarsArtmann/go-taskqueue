@@ -24,11 +24,11 @@ no pushes; no commits by hand (auto-commit daemon swept everything — see §d8)
 1. **statix W20 #1 — `treefmt` ×3 dotted paths merged** into one nested
    `treefmt.settings = { excludes = …; formatter = { templ.command/goimports.command } }`
    literal (flake.nix:179–196). Both comment blocks preserved verbatim; `lib.mkForce` kept on
-   the leaf options. Landed in daemon commit 702ee8b4.
+   the leaf options. Landed in daemon commit LOST.
 2. **statix W20 #2 — `apps` ×5 assignments merged** into one `apps = { test/default/lint/fmt/webui-css }`
    literal (flake.nix:407–459). Uniform +2 indent is value-preserving for Nix indented strings
    (common prefix stripped), so both embedded shell scripts are byte-identical — verified by
-   full line-by-line diff read of 702ee8b4 (62+/58−), not by pattern grep (see §d2).
+   full line-by-line diff read of LOST (62+/58−), not by pattern grep (see §d2).
 3. **Pre-existing defect healed on sight — `goTarballHash` was a vendorHash copy-paste**
    (flake.nix:45): held `sha256-M66RZ…` (identical to `vendorHash`) instead of the real
    go 1.27.1 source-tarball hash. Corrected to `sha256-TkCKuu…` — the value proven by the FOD's
@@ -40,7 +40,7 @@ no pushes; no commits by hand (auto-commit daemon swept everything — see §d8)
    **PROVENANCE CORRECTED IN-WINDOW (§d9)**: initially written up as "pre-existing stale" —
    that is UNPROVEN and contradicted by the concurrent 01-03 report, whose ~00:50 battery ran
    `nix build .#checks.x86_64-linux.vendor-hash` rc=0 against the SAME M66RZ literal for tree
-   702ee8b4^. Between that green check and my failing one, only flake.nix text changed (my
+   LOST^. Between that green check and my failing one, only flake.nix text changed (my
    restructure + goTarballHash fix), yet the modules-FOD output hash is content-derived
    (go.mod/go.sum unchanged) — so either flake.nix IS a FOD src input, or the sibling check
    exercised different inputs than its report states. Both hypotheses need one verification
@@ -126,7 +126,7 @@ no pushes; no commits by hand (auto-commit daemon swept everything — see §d8)
    over it.** I had read flake.nix:33–131 in full at discovery time — `goTarballHash` =
    `vendorHash` (two adjacent lines, identical strings) should have been flagged by eye, per
    the "fix issues on sight" doctrine, not by build failure.
-8. **All session work landed in footer-less daemon commits** (702ee8b4 restructures,
+8. **All session work landed in footer-less daemon commits** (LOST restructures,
    06c3da66 hash heals) — attribution receipts #6/#7 for the known daemon-commit gap census.
    No heal attempted (interactive session, no task ID to footer); the census row grows.
 9. **Encoded an unverified provenance claim into the first draft of this report.** §a4
@@ -171,7 +171,7 @@ The one soft claim (§b1) is explicitly downgraded to hypothesis.
 | 7  | Sweep sibling LarsArtmann flakes for the `goTarballHash = <vendorHash>` copy-paste class                                                                                                                                                                           | Same template, same mistake likely duplicated fleet-wide                                                                                             | M    |
 | 8  | Execute `nix run .#test` once at HEAD                                                                                                                                                                                                                              | The merged `apps.test` is eval-verified only; one real run closes it                                                                                 | M    |
 | 9  | `nix flake check --all-systems` once locally                                                                                                                                                                                                                       | aarch64-linux/darwin currently show-evaluated, never checked                                                                                         | S    |
-| 10 | Daemon-attribution decision for 702ee8b4/06c3da66: heal into one footered commit (unpushed soft-reset playbook) or accept as interactive-session receipts                                                                                                          | The two flake commits derive as zero in the queue; census grows either way — ruling wanted (§g3)                                                     | S    |
+| 10 | Daemon-attribution decision for LOST/06c3da66: heal into one footered commit (unpushed soft-reset playbook) or accept as interactive-session receipts                                                                                                          | The two flake commits derive as zero in the queue; census grows either way — ruling wanted (§g3)                                                     | S    |
 | 11 | `pkgs.lib.getExe` → `lib.getExe` at the webui-css app (flake.nix:~446)                                                                                                                                                                                             | Trivial consistency nit, flagged by the nix-review checklist, consciously deferred                                                                   | XS   |
 | 12 | Track the goTarball drop-day (nixpkgs ships go ≥ 1.27.1 → delete goTarball + formatterWithGo blocks) as a row, not just comments                                                                                                                                   | The blocks carry three "drop with…" comments and no tracker                                                                                          | XS   |
 | 13 | If the daemon split report from index row: follow-up indexing commit immediately (check-status-index.sh is the catcher)                                                                                                                                            | Known hole; verify after the next daemon sweep                                                                                                       | XS   |
@@ -195,7 +195,7 @@ The one soft claim (§b1) is explicitly downgraded to hypothesis.
    check-guard-wiring registration), or is nix-lint deliberately manual here pending a
    buildflow adoption decision (this repo has no `.buildflow.yml`, and buildflow owns statix
    fleet-wide)? My recommendation is the check script; the ruling is yours.
-3. **Footer-less heal for this session**: 702ee8b4 (restructures) + 06c3da66 (hash heals) are
+3. **Footer-less heal for this session**: LOST (restructures) + 06c3da66 (hash heals) are
    unpushed daemon commits deriving as zero. Heal into a single footered commit via the
    unpushed soft-reset playbook, or leave as-is and accept two more census receipts since
    this was an interactive no-task window?
@@ -204,6 +204,6 @@ The one soft claim (§b1) is explicitly downgraded to hypothesis.
 
 _Gates cited: statix rc=0 · nix fmt rc=0 (0 changed) · nix flake show all-systems eval ·
 nix flake check rc=0 "all checks passed" · nix build rc=0 — all at 06c3da66. Commits:
-702ee8b4 (W20 restructures), 06c3da66 (goTarballHash + vendorHash heals). Master status at
+LOST (W20 restructures), 06c3da66 (goTarballHash + vendorHash heals). Master status at
 session start: RED (8ab309b66-era cancelled run, predates tree) — §b1 carries. Counter-
 evidence source: docs/status/README.md:772 (sibling 01-03 report's ~00:50 vendor-hash rc=0)._

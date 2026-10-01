@@ -1,7 +1,7 @@
 # 20-01 — Session status + brutal self-review — conform-consolidation window
 
 Scope: THIS session only (resumed window that landed the conformance-suite
-consolidation; re-orientation at `ad464b5b` → this report). Carried items
+consolidation; re-orientation at `7c93b499` → this report). Carried items
 are marked as such and only where I noticed fallout directly. Format note:
 status-report skill's canonical output is a styled HTML dashboard; the
 owner's instruction explicitly names `.md` — the override wins here.
@@ -32,7 +32,7 @@ owner's instruction explicitly names `.md` — the override wins here.
   before stopping" a written rule instead of a lesson that lives in a
   report.
 
-## a) FULLY DONE (verifiable: daemon commits `6c63d30a`..`d6b84870`, 8 commits)
+## a) FULLY DONE (verifiable: daemon commits `da18ee2f`..`19109490`, 8 commits)
 
 1. **`internal/queue/companion/conform` package** — one suite replaces the
    three mirrored spike suites: `StoreSuite` harness (`FreshDSN/OpenOn/
@@ -40,33 +40,33 @@ owner's instruction explicitly names `.md` — the override wins here.
    LegacyMigration, Archive, EnqueuedSnapshot}`), a 37-method `Store`
    interface (the exact exercised surface), 71 name-preserving tests as
    subtests of `TestStoreConformance`, sequential runner, race-detector
-   build-tag pair (`3e79211d`, `6c63d30a`, `05c8ce15`).
+   build-tag pair (`127fa899`, `da18ee2f`, `88383bf9`).
 2. **sqlitev4 rewired onto conform** — store_test.go 3589→~50-line
-   harness; module build+vet+test green, suite 3.6s (`3e79211d`).
+   harness; module build+vet+test green, suite 3.6s (`127fa899`).
 3. **postgresv4 rewired** — 3518→~95-line harness (keeps `testDSN`
    per-test schema management verbatim; `LegacyMigration: false`);
-   build+vet+test-compile green, skip-clean without the env (`85f921a6`).
+   build+vet+test-compile green, skip-clean without the env (`be6254f2`).
 4. **cqrsqlite rewired** — 3537→~60-line harness;
    `Exclusivity: false` + `ResumeCloseout: false` carry its two S1
    divergences with original skip texts; module build+vet+test green,
-   suite 3.7s (`f5e0c8b5`).
+   suite 3.7s (`3bd7f230`).
 5. **Coverage gained by cqrsqlite** (no longer mirrored-file-limited):
    the session-fact pair and `TestCompleteResetsLastError` now run there
    too — green first try.
 6. **`ArchiveStats` unified** — identical ×3 struct moved to
-   `companion.ArchiveStats`; adapters carry type aliases (`3e79211d`,
-   `85f921a6`).
+   `companion.ArchiveStats`; adapters carry type aliases (`127fa899`,
+   `be6254f2`).
 7. **Dead suite-only shims deleted**: `mustJSON` ×3 adapters, pg `pgq` +
    `(*Store).exec` (pg harness inlines `cr.ExecContext(ctx,
    companion.Postgres(q), ...)`), `race_on/race_off` ×3 modules — the
-   `unused` findings are gone, not baselined (`4f859578`).
+   `unused` findings are gone, not baselined (`981029ce`).
 8. **Mirror ratchet at ZERO**: `scripts/mirror-baseline.txt` 6 rows → 0;
    strict gate reports `0 cross-backend clone groups`, all 6 old rows
-   RESOLVED (`f5e0c8b5`, `d6b84870`).
+   RESOLVED (`3bd7f230`, `19109490`).
 9. **Lint baseline clean-cache regen + --check green**: 183 rows/1550
    findings → 163/1164 — the mirrored test-noise collapse is a real
    shrink; the regen also absorbed the extraction window's unregenerated
-   companion classes (`d6b84870`).
+   companion classes (`19109490`).
 10. **Full battery green**: 19-module loop (build+vet+test) rc=0; root
     build+vet rc=0; root `-race -count=1` 15/15 pkgs rc=0;
     check-go-mods rc=0; nix vendor-hash fast gate rc=0; facade-parity
