@@ -20,7 +20,14 @@ all journal writes go through `tq` CLI, never raw SQL; never hand-roll executor
 seams; root builds auto-use `vendor/` (hence P2 fix ordering); concurrent agents
 + auto-commit daemon active — commit doc edits immediately.
 
-## Owner rulings this plan depends on (§g of the diagnosis, UNRESOLVED)
+## Owner rulings this plan depends on (§g of the diagnosis)
+
+> **RESOLVED 2026-10-01 ~05:02 CEST** — owner order: "execute the whole
+> list, do not stop until verified." Recorded rulings: **R1 = park** (default;
+> `tq ask`), **R2 = granted** (this interactive session may apply production
+> remediations via the `tq` CLI with parallel agents mid-flight), **R3 = (a)**
+> burn attempt after N=3 consecutive environmental requeues + exponential
+> NotBefore escalation + alert fact.
 
 - **R1 — loop-task disposition:** park indefinitely (`tq ask --task <id>`, host-return TRIGGER already in item text) vs cancel + strike CV TODO row.
 - **R2 — production-change authority:** may an interactive session apply P0 remediations, or must they ride dispatched tasks / owner hands (parallel agents mid-flight)?
