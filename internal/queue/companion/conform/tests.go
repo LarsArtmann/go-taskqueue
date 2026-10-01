@@ -2127,10 +2127,8 @@ func TestCountTasksMatchesList(t *testing.T) {
 		{"beta", "agent", `"probe beta two"`, 20},
 	}
 
-	ids := make([]task.ID, 0, len(seed))
-
 	for i, in := range seed {
-		enq, err := s.Enqueue(ctx, task.New{
+		_, err := s.Enqueue(ctx, task.New{
 			Project:  in.project,
 			Type:     in.typ,
 			Payload:  jsontext.Value(in.payload),
@@ -2139,8 +2137,6 @@ func TestCountTasksMatchesList(t *testing.T) {
 		if err != nil {
 			t.Fatalf("seed %d: %v", i, err)
 		}
-
-		ids = append(ids, enq.ID)
 	}
 
 	// Priority makes claim order deterministic: the betas (20) go before

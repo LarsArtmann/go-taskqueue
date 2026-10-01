@@ -312,15 +312,15 @@ func ClaimCount(ctx context.Context, s Store, id string) (int, error) {
 		return 0, err
 	}
 
-	n := 0
+	count := 0
 
 	for _, f := range facts {
 		if f.Type == journal.Claimed {
-			n++
+			count++
 		}
 	}
 
-	return n, nil
+	return count, nil
 }
 
 // RequeueEvidence is the structured detail on task.requeued facts: why the
