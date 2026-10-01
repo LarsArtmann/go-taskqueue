@@ -58,4 +58,12 @@ echo "== phase 3: --json drift output =="
 "$TQ" audit --journal --db "$DB" --json | grep -q '"drift"' || fail "json output lacks drift field"
 echo "ok: json drift output"
 
+echo "== phase 4: zero SECRET EVIDENCE over the lifecycle (row 134 fold) =="
+# The sh-payload lifecycle stores no tails carrying token shapes, so the
+# audit must report zero SECRET EVIDENCE rows here; a hit means the
+# redaction pass stopped covering a fact field.
+OUT="$("$TQ" audit --journal --db "$DB")" || fail "audit --journal (secret pass) exited non-zero"
+echo "$OUT" | grep -q "SECRET EVIDENCE" && fail "audit reports SECRET EVIDENCE over a clean lifecycle: $OUT"
+echo "ok: zero SECRET EVIDENCE"
+
 echo "PASS: journal-drift audit smoke"

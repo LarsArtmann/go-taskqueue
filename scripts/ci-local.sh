@@ -294,6 +294,12 @@ step "papdashboard questions e2e smoke (ask -> forward -> answer -> unblock -> r
 step "rate-limit e2e smoke (429 parks the task without burning an attempt)"
 ./scripts/smoke/ratelimit-e2e.sh
 
+step "api lockout smoke (live socket: 3x401 -> 429+Retry-After -> expiry 200)"
+./scripts/smoke/api.sh
+
+step "redaction smoke (stub agent leaks fake tokens; sidecar + evidence + audit)"
+./scripts/smoke/redaction.sh
+
 step "review-loop e2e smoke (stub reviewer; approve + request_changes + autofix)"
 ./scripts/smoke/reviews.sh
 

@@ -15,7 +15,7 @@ REPO_ROOT="$(pwd)"
 
 TMP="$(mktemp -d)"
 cleanup() {
-	for pid in "${API_PID:-}"; do
+	for pid in ${API_PID:-}; do
 		[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
 	done
 	rm -rf "$TMP"
