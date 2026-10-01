@@ -470,6 +470,10 @@ func TestStatsReadModelSeam(t *testing.T) {
 		t.Fatal("UseReadModel did not install the read model")
 	}
 
+	// No ListenAndServe here, so nothing else owns the projection: close
+	// it or TempDir cleanup fails on windows (open-file unlink).
+	t.Cleanup(func() { _ = srv.model.Close() })
+
 	enqueueTask(t, store, "billing")
 
 	h := srv.Handler()

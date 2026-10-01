@@ -27,6 +27,13 @@ func setupGitRepo(t *testing.T, dir string) {
 	}
 	run("init", "-q")
 
+	// Repo-local identity: stub agents commit inside the fixture with the
+	// process env only — on CI runners without a global gitconfig that dies
+	// with "Author identity unknown" (exit 128) and turns gate tests into
+	// run-failures. Local config keeps the fixture hermetic.
+	run("config", "user.name", "t")
+	run("config", "user.email", "t@t")
+
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# demo\n"), 0o644); err != nil {
 		t.Fatalf("write readme: %v", err)
 	}
