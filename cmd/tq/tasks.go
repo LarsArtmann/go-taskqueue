@@ -169,11 +169,13 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 		return
 	}
 
-	fmt.Fprintf(w, "%-36s %-10s %-16s %-7s %5s  %s\n", "ID", "STATUS", "PROJECT", "TYPE", "ATT", "LAST ERROR")
+	fmt.Fprintf(w, "%-36s %-10s %-16s %-7s %5s %-9s  %s\n", "ID", "STATUS", "PROJECT", "TYPE", "ATT", "NOTBEFORE", "LAST ERROR")
 
+	now := time.Now()
 	for _, t := range tasks {
-		fmt.Fprintf(w, "%-36s %-10s %-16s %-7s %5d  %s\n",
+		fmt.Fprintf(w, "%-36s %-10s %-16s %-7s %5d %-9s  %s\n",
 			t.ID.String(), string(t.Status), t.Project, t.Type, t.Attempts,
+			notBeforeCell(t, now),
 			truncate(oneLine(t.LastError), 60),
 		)
 	}
@@ -192,6 +194,17 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 	}
 
 	fmt.Fprintf(w, "%d task(s)\n", len(tasks))
+}
+
+// notBeforeCell renders the park/backoff countdown for a future not_before
+// (rate-limit requeues, deps) so a stalled-looking list explains itself;
+// past or zero not_before renders "-".
+func notBeforeCell(t task.Task, now time.Time) string {
+	if t.NotBefore.IsZero() || !t.NotBefore.After(now) {
+		return "-"
+	}
+
+	return truncate(t.NotBefore.Sub(now).Round(time.Second).String(), 9)
 }
 
 // oneLine flattens a multi-line error to its first line.

@@ -1969,6 +1969,35 @@ func printStats(byStatus map[string]int, byProject map[string]map[string]int, sc
 	}
 }
 
+// livenessView is the `tq show` lease-staleness surface (05-30 report c3):
+// a running task whose lease expired is a crash-reclaim candidate, and a
+// future not_before is a parked task — both look identical to a stalled
+// queue from the outside without this.
+type livenessView struct {
+	LeaseOwner   string `json:"leaseOwner,omitempty"`
+	LeaseExpires string `json:"leaseExpires,omitempty"`
+	LeaseStale   bool   `json:"leaseStale"`
+	NotBefore    string `json:"notBefore,omitempty"`
+	Parked       bool   `json:"parked"`
+}
+
+func buildLivenessView(t task.Task) livenessView {
+	now := time.Now()
+	v := livenessView{LeaseOwner: t.LeaseOwner}
+
+	if t.LeaseExpires != nil {
+		v.LeaseExpires = t.LeaseExpires.UTC().Format(time.RFC3339)
+		v.LeaseStale = now.After(*t.LeaseExpires)
+	}
+
+	if !t.NotBefore.IsZero() && t.NotBefore.After(now) {
+		v.Parked = true
+		v.NotBefore = t.NotBefore.UTC().Format(time.RFC3339)
+	}
+
+	return v
+}
+
 func cmdShow(args []string) error {
 	fs := flag.NewFlagSet("show", flag.ExitOnError)
 	commits := fs.Bool(
@@ -2024,7 +2053,8 @@ func cmdShow(args []string) error {
 		Commits   any                `json:"commits,omitempty"`
 		Questions []questionView     `json:"questions,omitempty"`
 		Priority  priorityProvenance `json:"priority"`
-	}{t, trail, resultDetail(t, trail), commitView, buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail)})
+		Liveness  livenessView       `json:"liveness"`
+	}{t, trail, resultDetail(t, trail), commitView, buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail), buildLivenessView(t)})
 }
 
 // showSessionView renders the journal trail of a session's synthetic
