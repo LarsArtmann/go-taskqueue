@@ -15,8 +15,8 @@
 #   - refuses an empty heal range;
 #   - refuses if any range commit is reachable from a remote-tracking ref
 #     other than the base itself;
-#   - refuses if a range commit ALREADY carries a Task-Queue-ID footer
-#     (footer rewrites are a manual, reviewed operation);
+#   - footer-carrying commits in the range (e.g. a real task commit on top
+#     of sweeps) are preserved verbatim and still footer-verified;
 #   - the backup ref refs/original/heal-daemon-sweep is dropped ONLY after
 #     all five verifications pass; on any failure it is kept and the script
 #     exits non-zero (recovery: read the printed fork records, or
@@ -97,12 +97,10 @@ check_rails() {
 	done < <(git for-each-ref --format='%(refname)' 'refs/remotes/*')
 	[ -z "$pushed" ] || die "refusing: pushed commits are inside the heal range (history policy)"
 
-	local c
-	while IFS= read -r c; do
-		if has_footer "$(git log -1 --format='%B' "$c")"; then
-			die "refusing: commit $c already carries a Task-Queue-ID footer"
-		fi
-	done < <(git rev-list "$base..HEAD")
+	# NOTE: footer-carrying commits inside the range are legitimate (a task
+	# commit can sit on top of daemon sweeps) — run_filter preserves their
+	# messages verbatim and verify_heal still demands a well-formed footer
+	# on them, so they are checked, never rewritten, never refused.
 }
 
 # run_filter footer base: the actual msg-filter rewrite.
@@ -293,9 +291,29 @@ self_test() {
 	expect_refusal "dirty worktree" $?
 	git -C "$repo" checkout -q -- a.txt
 
-	# Rail: pre-existing footer refusal.
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000003) >/dev/null 2>&1
-	expect_refusal "already-footered" $?
+	# Footered commits in the range are preserved verbatim, not refused:
+	# add one and re-heal; its message must survive byte-identical.
+	local footered_before
+	echo d >"$repo/d.txt"
+	git -C "$repo" add d.txt
+	git -C "$repo" commit -qm "work: real task"
+	git -C "$repo" commit -q --amend -m "$(printf 'work: real task\n\nTask-Queue-ID: feedface00000000000000000000000000000009')"
+	footered_before=$(git -C "$repo" log -1 --format='%B' HEAD)
+	if (cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000003) >/dev/null 2>"$tmp/err3"; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: re-heal of a fully-footered range should succeed" >&2
+		cat "$tmp/err3" >&2
+	fi
+	local footered_after
+	footered_after=$(git -C "$repo" log -1 --format='%B' HEAD)
+	if [ "$footered_before" = "$footered_after" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: footered commit message was rewritten" >&2
+	fi
 
 	# Rail: pushed commit inside the heal range.
 	git -C "$repo" update-ref refs/remotes/origin/master HEAD
