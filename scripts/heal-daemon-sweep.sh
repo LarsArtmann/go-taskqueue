@@ -83,9 +83,10 @@ resolve_base() {
 	git rev-list --max-parents=0 HEAD
 }
 
-# check_rails base: every pre-flight refusal. Dies with the reason on hit.
+# check_rails base id: every pre-flight refusal. Dies with the reason on hit;
+# echoes "noop" when every range commit already carries the target footer.
 check_rails() {
-	local base=$1
+	local base=$1 id=$2
 	[ -z "$(git status --porcelain)" ] || die "worktree is dirty; commit or stash first"
 	[ -n "$(git rev-list "$base..HEAD")" ] || die "range $base..HEAD is empty; nothing to heal"
 
@@ -99,8 +100,20 @@ check_rails() {
 
 	# NOTE: footer-carrying commits inside the range are legitimate (a task
 	# commit can sit on top of daemon sweeps) — run_filter preserves their
-	# messages verbatim and verify_heal still demands a well-formed footer
-	# on them, so they are checked, never rewritten, never refused.
+	# messages verbatim and verify_heal demands the TARGET footer on them.
+	# A commit footered with a DIFFERENT id is never rewritten (footer
+	# rewrites are a manual, reviewed operation); a fully footered range is
+	# a no-op.
+	local c msg unfootered=0
+	while IFS= read -r c; do
+		msg=$(git log -1 --format='%B' "$c")
+		if has_footer "$msg"; then
+			footer_well_formed "$msg" "$id" && continue
+			die "refusing: commit $c carries a different Task-Queue-ID footer"
+		fi
+		unfootered=$((unfootered + 1))
+	done < <(git rev-list "$base..HEAD")
+	[ "$unfootered" -gt 0 ] || echo "noop"
 }
 
 # run_filter footer base: the actual msg-filter rewrite.
@@ -207,7 +220,12 @@ main() {
 	base=$(resolve_base "$base_arg")
 
 	git update-ref -d "$BACKUP_REF" 2>/dev/null
-	check_rails "$base"
+	local rail
+	rail=$(check_rails "$base" "$id") || exit 1
+	if [ "$rail" = "noop" ]; then
+		echo "nothing to heal: every commit in $base..HEAD already carries the footer"
+		return 0
+	fi
 	echo "healing $(git rev-list --count "$base..HEAD") commit(s) in $base..HEAD with: $footer"
 
 	run_filter "$footer" "$base" || die "filter-branch failed (backup kept at $BACKUP_REF if it existed)"
@@ -291,28 +309,43 @@ self_test() {
 	expect_refusal "dirty worktree" $?
 	git -C "$repo" checkout -q -- a.txt
 
-	# Footered commits in the range are preserved verbatim, not refused:
-	# add one and re-heal; its message must survive byte-identical.
-	local footered_before
+	# A fully-footered range is a no-op success; a different-id footer is a
+	# refusal; a mixed range heals only the sweeps and preserves the task
+	# commit's message byte-identical.
 	echo d >"$repo/d.txt"
 	git -C "$repo" add d.txt
 	git -C "$repo" commit -qm "work: real task"
-	git -C "$repo" commit -q --amend -m "$(printf 'work: real task\n\nTask-Queue-ID: feedface00000000000000000000000000000009')"
-	footered_before=$(git -C "$repo" log -1 --format='%B' HEAD)
-	if (cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000003) >/dev/null 2>"$tmp/err3"; then
+	git -C "$repo" commit -q --amend -m "$(printf 'work: real task\n\nTask-Queue-ID: deadbeef00000000000000000000000000000001')"
+	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000001) >/dev/null 2>&1
+	local noop_rc=$?
+	if [ "$noop_rc" = "0" ]; then
 		ok=$((ok + 1))
 	else
 		fail=$((fail + 1))
-		echo "SELF-TEST FAIL: re-heal of a fully-footered range should succeed" >&2
-		cat "$tmp/err3" >&2
+		echo "SELF-TEST FAIL: fully-footered range should no-op successfully" >&2
+	fi
+
+	(cd "$repo" && "$0" --from origin/master deadbeef0000000000000000000000000000000f) >/dev/null 2>&1
+	expect_refusal "different-id footer" $?
+
+	local mixed_rc
+	(cd "$repo" && git reset -q --soft HEAD~1)
+	(cd "$repo" && git commit -qm "work: real task")
+	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000001) >/dev/null 2>"$tmp/err4" && mixed_rc=0 || mixed_rc=1
+	if [ "$mixed_rc" = "0" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: mixed-range heal should succeed" >&2
+		cat "$tmp/err4" >&2
 	fi
 	local footered_after
 	footered_after=$(git -C "$repo" log -1 --format='%B' HEAD)
-	if [ "$footered_before" = "$footered_after" ]; then
+	if [ "$footered_after" = "$(printf 'work: real task\n\nTask-Queue-ID: deadbeef00000000000000000000000000000001')" ]; then
 		ok=$((ok + 1))
 	else
 		fail=$((fail + 1))
-		echo "SELF-TEST FAIL: footered commit message was rewritten" >&2
+		echo "SELF-TEST FAIL: task commit message not preserved in mixed heal" >&2
 	fi
 
 	# Rail: pushed commit inside the heal range.
