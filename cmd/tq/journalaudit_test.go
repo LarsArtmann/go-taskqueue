@@ -493,3 +493,44 @@ func TestScanFactSecretsCleanJournalIsEmpty(t *testing.T) {
 		t.Errorf("hits = %+v, want none", hits)
 	}
 }
+
+func TestRequeueSummarySurfacesClasses(t *testing.T) {
+	t.Parallel()
+
+	facts := []journal.Fact{
+		{Seq: 1, TaskID: "t", Type: journal.Claimed},
+		{Seq: 2, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"429","retry_in_ms":900000,"class":"rate-limit"}`)},
+		{Seq: 3, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"429","retry_in_ms":900000,"class":"rate-limit","resume_closeout":true}`)},
+		{Seq: 4, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"dirty tree","retry_in_ms":60000,"class":"preflight"}`)},
+		// Legacy fact predating the class field normalizes to unknown.
+		{Seq: 5, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"old","retry_in_ms":0}`)},
+		// Non-requeue facts never count.
+		{Seq: 6, TaskID: "t", Type: journal.Released, Detail: jsontext.Value(`{"class":"rate-limit"}`)},
+	}
+
+	summary := requeueSummary(facts)
+
+	if summary.Total != 4 {
+		t.Fatalf("total = %d, want 4", summary.Total)
+	}
+
+	if summary.ByClass[queue.RequeueClassRateLimit] != 2 ||
+		summary.ByClass[queue.RequeueClassPreflight] != 1 ||
+		summary.ByClass[queue.RequeueClassUnknown] != 1 {
+		t.Errorf("byClass = %+v, want 2 rate-limit / 1 preflight / 1 unknown", summary.ByClass)
+	}
+
+	if summary.ResumeCloseout != 1 {
+		t.Errorf("resumeCloseout = %d, want 1", summary.ResumeCloseout)
+	}
+}
+
+func TestRequeueSummaryEmptyRangeIsZeroValue(t *testing.T) {
+	t.Parallel()
+
+	facts := []journal.Fact{{Seq: 1, TaskID: "t", Type: journal.Enqueued}}
+
+	if summary := requeueSummary(facts); summary.Total != 0 || summary.ByClass != nil || summary.ResumeCloseout != 0 {
+		t.Errorf("summary = %+v, want zero value", summary)
+	}
+}

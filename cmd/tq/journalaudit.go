@@ -171,6 +171,56 @@ type DriftReport struct {
 	// executor's redaction pass shipped. Advisory; never includes the
 	// matched secret itself.
 	SecretEvidence []SecretHit `json:"secret_evidence,omitempty"`
+	// Requeues summarizes the task.requeued facts in the replayed range
+	// (01-37 ask): which not-the-task's-fault refusal family returned
+	// tasks to Pending, and how many parked an owed close-out. Zero-value
+	// when the range carries no requeues.
+	Requeues RequeueSummary `json:"requeues"`
+}
+
+// RequeueSummary breaks a journal's task.requeued facts down by refusal
+// class (queue.RequeueClass*; legacy facts without a class normalize to
+// unknown) and counts the resume-closeout parks.
+type RequeueSummary struct {
+	Total          int            `json:"total"`
+	ByClass        map[string]int `json:"byClass,omitempty"`
+	ResumeCloseout int            `json:"resumeCloseout,omitempty"`
+}
+
+// requeueSummary scans the fact range for task.requeued facts and
+// aggregates them by class. Pure: no I/O.
+func requeueSummary(facts []journal.Fact) RequeueSummary {
+	var summary RequeueSummary
+
+	for _, fact := range facts {
+		if fact.Type != journal.Requeued {
+			continue
+		}
+
+		summary.Total++
+
+		var evidence queue.RequeueEvidence
+		if err := json.Unmarshal(fact.Detail, &evidence); err != nil {
+			continue
+		}
+
+		class := evidence.Class
+		if class == "" {
+			class = queue.RequeueClassUnknown
+		}
+
+		if summary.ByClass == nil {
+			summary.ByClass = make(map[string]int)
+		}
+
+		summary.ByClass[class]++
+
+		if evidence.ResumeCloseout {
+			summary.ResumeCloseout++
+		}
+	}
+
+	return summary
 }
 
 // SecretHit locates token-shaped strings in one stored fact WITHOUT
@@ -291,6 +341,7 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 	report := diffProjection(tasks, replayProjection(facts))
 	report.FactsReplayed = len(facts)
 	report.SecretEvidence = scanFactSecrets(facts)
+	report.Requeues = requeueSummary(facts)
 
 	return report, nil
 }
@@ -374,6 +425,33 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 
 		for _, row := range report.Drift {
 			fmt.Printf("  %s: %s stored=%s replayed=%s\n", row.TaskID, row.Field, row.Stored, row.Replayed)
+		}
+	}
+
+	switch {
+	case report.Requeues.Total == 0:
+		fmt.Println("requeues: none in the replayed fact range")
+	default:
+		fmt.Printf("requeues: %d not-the-task's-fault return(s) to Pending, by class:\n", report.Requeues.Total)
+
+		classes := make([]string, 0, len(report.Requeues.ByClass))
+		for class := range report.Requeues.ByClass {
+			classes = append(classes, class)
+		}
+
+		sort.Strings(classes)
+
+		for _, class := range classes {
+			fmt.Printf("  %s: %d\n", class, report.Requeues.ByClass[class])
+		}
+
+		if report.Requeues.ResumeCloseout > 0 {
+			fmt.Printf("  (%d parked an owed close-out — re-claim resumes at close-out, not a re-run)\n",
+				report.Requeues.ResumeCloseout)
+		}
+
+		if n := report.Requeues.ByClass[queue.RequeueClassRateLimit]; n > 0 {
+			fmt.Println("  (rate-limit requeues never burn an attempt; 3 consecutive ENVIRONMENTAL ones escalate — see the env-streak breaker)")
 		}
 	}
 
