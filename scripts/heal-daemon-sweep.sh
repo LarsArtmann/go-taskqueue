@@ -134,8 +134,9 @@ run_filter() {
 		git interpret-trailers --if-exists doNothing --trailer "$TQ_HEAL_FOOTER"
 	' -- "$base..HEAD" >/dev/null || return 1
 	local bref
-	bref=$(git for-each-ref --format='%(refname)' 'refs/original/refs/heads/*' | head -n 1)
-	[ -n "$bref" ] || return 1
+	bref=$(git symbolic-ref -q HEAD || return 1)
+	bref="refs/original/$bref"
+	git show-ref --verify --quiet "$bref" || return 1
 	git update-ref "$BACKUP_REF" "$(git rev-parse --verify "$bref")"
 	git update-ref -d "$bref"
 }
