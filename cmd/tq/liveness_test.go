@@ -56,6 +56,32 @@ func TestBuildLivenessView(t *testing.T) {
 	}
 }
 
+// TestStatusCell pins the tq tasks STATUS cell: a running task whose lease
+// expired reads STALE (crash-reclaim candidate), everything else renders
+// the plain status.
+func TestStatusCell(t *testing.T) {
+	now := time.Now()
+	past := now.Add(-10 * time.Minute)
+	future := now.Add(10 * time.Minute)
+
+	cases := []struct {
+		name string
+		task task.Task
+		want string
+	}{
+		{"stale-lease", task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &past}, "STALE"},
+		{"healthy-running-lease", task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &future}, "running"},
+		{"running-no-lease", task.Task{Status: task.Running}, "running"},
+		{"expired-lease-not-running", task.Task{Status: task.Pending, LeaseExpires: &past}, "pending"},
+	}
+
+	for _, tc := range cases {
+		if got := statusCell(tc.task, now); got != tc.want {
+			t.Errorf("%s: statusCell = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
 // TestNotBeforeCell pins the tq tasks NOTBEFORE column: future not_before
 // renders a countdown, past or zero renders "-".
 func TestNotBeforeCell(t *testing.T) {

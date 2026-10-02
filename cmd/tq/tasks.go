@@ -192,7 +192,7 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 	now := time.Now()
 	for _, t := range tasks {
 		fmt.Fprintf(w, "%-36s %-10s %-16s %-7s %5d %-9s  %s\n",
-			t.ID.String(), string(t.Status), t.Project, t.Type, t.Attempts,
+			t.ID.String(), statusCell(t, now), t.Project, t.Type, t.Attempts,
 			notBeforeCell(t, now),
 			truncate(oneLine(t.LastError), 60),
 		)
@@ -213,6 +213,17 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 	}
 
 	fmt.Fprintf(w, "%d task(s)\n", len(tasks))
+}
+
+// statusCell marks a RUNNING task with an EXPIRED lease as STALE (a
+// crash-reclaim candidate) so a stalled list row explains itself, mirroring
+// the `tq show` leaseStale view (05-30 c3); everything else renders plain.
+func statusCell(t task.Task, now time.Time) string {
+	if t.Status == task.Running && t.LeaseExpires != nil && now.After(*t.LeaseExpires) {
+		return "STALE"
+	}
+
+	return string(t.Status)
 }
 
 // notBeforeCell renders the park/backoff countdown for a future not_before
