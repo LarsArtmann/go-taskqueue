@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Requeues summary in `tq audit --journal`** (2026-10-02): the drift
+  report carries a requeues breakdown — total, per-class (legacy facts
+  normalized to `unknown`), resume-closeout parks, and the
+  rate-limit/env-streak hint — in text and `--json`; the fact feed
+  already renders per-line `[class=…]`.
+- **`scripts/heal-daemon-sweep.sh`** (2026-10-02, hardened through three
+  review fixes): scripted heal of daemon-swept footer-less commits on the
+  UNPUSHED range only — footer applied as the LAST trailer via
+  `git interpret-trailers`, five mandatory verifications (subjects,
+  per-commit change sets, one well-formed footer, byte-equal tree vs the
+  backup ref, no tags in range), backup ref resolved from the current
+  branch and kept on failure, fork records printed, ids hex-validated
+  and transported via env (no shell interpolation). `--self-test`
+  covers 10 branches; see AGENTS.md "Concurrent agents" bullet.
 - **README-as-contract rot guard** (`scripts/smoke/readme-install.sh`, wired
   into ci-local): the guarded install + quickstart lines must exist in README
   AND run green on a scratch DB (enqueue raw+JSON, `worker --once`, `stats`,
@@ -231,6 +245,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `internal/budget/budget_test.go`)
 
 ### Fixed
+- **Task IDs are process-monotonic** (2026-10-03): `task.NewID` previously
+  randomized the suffix after the timestamp prefix, so same-millisecond
+  fixtures sorted nondeterministically and the status sweeper's
+  RFC3339+ID window tiebreak could flip; the suffix now carries a
+  process-local sequence (format unchanged, pinned by `TestNewID`),
+  fixing the internal/status window-sort flake.
 - **Fullcore fatal paths run their deferred cleanup** (`examples/fullcore`):
   `run()` returns errors instead of `log.Fatal`-exiting past the deferred
   store `Close()`/`cancel()`; a `stop()` seam fully stops the worker pool
