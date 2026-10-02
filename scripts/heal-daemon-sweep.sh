@@ -93,7 +93,7 @@ check_rails() {
 	local pushed=""
 	while IFS= read -r r; do
 		local hits
-		hits=$(comm -12 <(git rev-list --sort=reverse "$r" | sort) <(git rev-list "$base..HEAD" | sort))
+		hits=$(comm -12 <(git rev-list "$r" | sort) <(git rev-list "$base..HEAD" | sort))
 		pushed="$pushed$hits"
 	done < <(git for-each-ref --format='%(refname)' 'refs/remotes/*')
 	[ -z "$pushed" ] || die "refusing: pushed commits are inside the heal range (history policy)"
@@ -104,7 +104,7 @@ check_rails() {
 	local tagged=""
 	while IFS= read -r t; do
 		local hits
-		hits=$(comm -12 <(git rev-list --sort=reverse "$t" | sort) <(git rev-list "$base..HEAD" | sort))
+		hits=$(comm -12 <(git rev-list "$t" | sort) <(git rev-list "$base..HEAD" | sort))
 		tagged="$tagged$hits"
 	done < <(git tag --format='%(refname)')
 	[ -z "$tagged" ] || die "refusing: tag(s) reference commits inside the heal range ($tagged); re-tag after healing"
