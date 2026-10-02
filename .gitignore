@@ -1,5 +1,6 @@
 # Binaries
 /tq
+cmd/tq/tq
 /tq-linux-*
 dist/
 /examples/embed/embed
