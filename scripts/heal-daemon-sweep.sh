@@ -98,6 +98,17 @@ check_rails() {
 	done < <(git for-each-ref --format='%(refname)' 'refs/remotes/*')
 	[ -z "$pushed" ] || die "refusing: pushed commits are inside the heal range (history policy)"
 
+	# Tag rail: the pushed-commit rail does not catch tags — a tag on an
+	# unpushed range commit would dangle off-branch after the rewrite. Refuse
+	# before run_filter instead of relying on post-rewrite detection.
+	local tagged=""
+	while IFS= read -r t; do
+		local hits
+		hits=$(comm -12 <(git rev-list --sort=reverse "$t" | sort) <(git rev-list "$base..HEAD" | sort))
+		tagged="$tagged$hits"
+	done < <(git tag --format='%(refname)')
+	[ -z "$tagged" ] || die "refusing: tag(s) reference commits inside the heal range ($tagged); re-tag after healing"
+
 	# NOTE: footer-carrying commits inside the range are legitimate (a task
 	# commit can sit on top of daemon sweeps) — run_filter preserves their
 	# messages verbatim and verify_heal demands the TARGET footer on them.
