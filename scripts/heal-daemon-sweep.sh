@@ -263,6 +263,7 @@ self_test() {
 	git init -q "$repo"
 	git -C "$repo" config user.email t@t
 	git -C "$repo" config user.name t
+	git -C "$repo" config tag.gpgSign false
 
 	local ok=0 fail=0
 	# expect_refusal <label> <rc>: a refusal rc must be non-zero.
@@ -371,6 +372,28 @@ self_test() {
 	# Rail: empty heal range.
 	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000005) >/dev/null 2>&1
 	expect_refusal "empty range" $?
+
+	# Rail: tag on a commit inside the heal range (the pushed-commit rail
+	# does not catch tags).
+	echo e >"$repo/e.txt"
+	git -C "$repo" add e.txt
+	git -C "$repo" commit -qm "chore: sweep three"
+	git -C "$repo" tag sweep-tag HEAD
+	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>&1
+	expect_refusal "tag in heal range" $?
+	git -C "$repo" tag -d sweep-tag
+
+	# A tag on the BASE commit is outside the heal range — heal succeeds.
+	git -C "$repo" tag base-tag origin/master
+	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err5"
+	if [ "$?" = "0" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: tag on base should not block the heal" >&2
+		cat "$tmp/err5" >&2
+	fi
+	git -C "$repo" tag -d base-tag
 
 	if [ "$fail" = "0" ]; then
 		echo "SELF-TEST OK ($ok checks)"
