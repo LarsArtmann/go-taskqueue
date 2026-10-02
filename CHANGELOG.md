@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **README-as-contract rot guard** (`scripts/smoke/readme-install.sh`, wired
+  into ci-local): the guarded install + quickstart lines must exist in README
+  AND run green on a scratch DB (enqueue raw+JSON, `worker --once`, `stats`,
+  `tail -f` TERM-clean, hello-task completes); negative-verified against a
+  rotted README line.
+- **Smoke forensics for `multi-repo.sh`**: any failure now keeps the workdir
+  and prints its path (pool-log tail 8 → 40 lines; `SMOKE_KEEP=1` still keeps
+  it on success), and the D24 set asserts zero `task.requeued` facts so a
+  retry ladder can no longer masquerade as a clean 6-claim pass.
+- **`tq agent-pool --model` retirement**: the option (CLI and pool-config
+  `model =` line) is refused at parse with remediation pointing at `tq
+  bootstrap`'s managed `.crushrc` block — model + reasoning effort live only
+  there per the `.crushrc` ruling.
 - **`scripts/verify-battery.sh`**: the verify-window battery as one
   command — per-leg rc captured to files, `-v` legs must show a PASS
   count (bare-ok / "no tests to run" fails the leg with the conform
@@ -218,6 +231,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `internal/budget/budget_test.go`)
 
 ### Fixed
+- **Fullcore fatal paths run their deferred cleanup** (`cmd/tq/fullcore`):
+  `run()` returns errors instead of `log.Fatal`-exiting past the deferred
+  store `Close()`/`cancel()`; a `stop()` seam fully stops the worker pool
+  before the deferred Close fires (LIFO ordering — the naive conversion
+  closed the store under live workers).
 - **`executor.Excerpt` rune-safe truncation**: the 200-byte cut could split
   a multi-byte UTF-8 rune mid-sequence, corrupting the last character of
   truncated prompt/log excerpts (mojibake in evidence tails). The cut now
