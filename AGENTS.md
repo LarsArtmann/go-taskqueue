@@ -199,7 +199,12 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Concurrent agents commit constantly** (auto-commit daemon): re-run
   `go test ./... -race` before declaring success; never generate Go source
   via heredocs; build fixtures under /tmp — scratch fixtures in gated
-  trees are daemon-food.
+  trees are daemon-food. If the daemon still sweeps work into footer-less
+  `chore:` commits, heal with
+  `scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>`
+  (unpushed range only; verifies subjects/stats/tree/tags, prints old→new
+  fork records for the status report, keeps a backup ref on any failure;
+  `--self-test` pins the rails).
 - **Agent shells inherit `TQ_DB`** (the PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR` leaks
