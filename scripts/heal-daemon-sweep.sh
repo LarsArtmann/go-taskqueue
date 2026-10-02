@@ -130,9 +130,9 @@ check_rails() {
 # run_filter footer base: the actual msg-filter rewrite.
 run_filter() {
 	local footer=$1 base=$2
-	FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter "
-		git interpret-trailers --if-exists doNothing --trailer '$footer'
-	" -- "$base..HEAD" >/dev/null || return 1
+	FILTER_BRANCH_SQUELCH_WARNING=1 TQ_HEAL_FOOTER="$footer" git filter-branch -f --msg-filter '
+		git interpret-trailers --if-exists doNothing --trailer "$TQ_HEAL_FOOTER"
+	' -- "$base..HEAD" >/dev/null || return 1
 	local bref
 	bref=$(git for-each-ref --format='%(refname)' 'refs/original/refs/heads/*' | head -n 1)
 	[ -n "$bref" ] || return 1
@@ -215,6 +215,9 @@ main() {
 		-*) usage ;;
 		*)
 			[ -z "$footer" ] || usage
+			case $1 in
+			*[!0-9a-fA-F]* | "") die "invalid Task-Queue-ID '$1': must be non-empty hex" ;;
+			esac
 			id=$1
 			footer="Task-Queue-ID: $1"
 			shift
