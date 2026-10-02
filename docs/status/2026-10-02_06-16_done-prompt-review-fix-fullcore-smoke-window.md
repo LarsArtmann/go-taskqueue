@@ -32,7 +32,7 @@
    documents the retirement. DONE-on-arrival at the dispatch — verified this
    pass by file presence + the report's green smoke run.
 4. **Fullcore fatal-path close-before-exit** (10-01 06-26 report): example
-   `cmd/tq/fullcore` converted to run()-returns-error; deferred
+   `examples/fullcore` converted to run()-returns-error; deferred
    `store.Close()`/`cancel()` run on every fatal path; the LIFO
    close-under-live-workers race found live in the first build was fixed with
    a `stop()` seam; binary-proven deadline (exit 1, exact message) + success

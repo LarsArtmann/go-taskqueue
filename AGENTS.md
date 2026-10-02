@@ -57,7 +57,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/journal`                   | Fact types + append-only Journal                                     |
 | `internal/journal/cqrs`              | Read-only go-cqrs-lite adapter (ADR-0014, PROPRIETARY dep)           |
 | `internal/queue`                     | Store contract, Filter, Queue facade                                 |
-| `internal/queue/sqlite`, `/postgres` | Backends; conform suite in `companion/conform`                       |
+| `internal/queue/sqlite`, `/postgres` | Backends; conform suite in `internal/queue/companion/conform`             |
 | `internal/worker`                    | Claim → heartbeat → execute loop; requeue ladder                     |
 | `internal/bridge`                    | papdashboard + cqa bridges → fix tasks                               |
 | `internal/executor`                  | sh/HTTP/agent/review/status executors + registry                     |

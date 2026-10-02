@@ -231,7 +231,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `internal/budget/budget_test.go`)
 
 ### Fixed
-- **Fullcore fatal paths run their deferred cleanup** (`cmd/tq/fullcore`):
+- **Fullcore fatal paths run their deferred cleanup** (`examples/fullcore`):
   `run()` returns errors instead of `log.Fatal`-exiting past the deferred
   store `Close()`/`cancel()`; a `stop()` seam fully stops the worker pool
   before the deferred Close fires (LIFO ordering — the naive conversion
