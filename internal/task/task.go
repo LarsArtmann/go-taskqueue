@@ -3,23 +3,47 @@ package task
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json/jsontext"
 	"fmt"
+	"sync"
 	"time"
 )
 
-// ID identifies a task. Opaque, unique, roughly time-sortable.
+// ID identifies a task. Opaque, unique, time-sortable: lexicographic ID
+// order is creation order, including tasks minted within the same
+// millisecond (the suffix carries a process-local monotonic sequence).
 type ID string
 
-// NewID returns a new unique task ID (timestamp prefix + random suffix).
+// idSeq serializes NewID so same-millisecond IDs sort by mint order.
+var idSeq struct {
+	sync.Mutex
+	ms     int64
+	seed   [5]byte
+	suffix uint64
+}
+
+// NewID returns a new unique task ID (timestamp prefix + monotonic suffix).
+// IDs minted by this process are strictly increasing in lexicographic
+// order, so sorting by ID is sorting by creation time — sweep windows and
+// other ID-ordered views stay deterministic even when tasks share a
+// millisecond.
 func NewID() ID {
-	var b [10]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		panic(fmt.Sprintf("task: crypto/rand failed: %v", err))
+	idSeq.Lock()
+	defer idSeq.Unlock()
+
+	ms := time.Now().UnixMilli()
+	if ms != idSeq.ms {
+		idSeq.ms = ms
+		if _, err := rand.Read(idSeq.seed[:]); err != nil {
+			panic(fmt.Sprintf("task: crypto/rand failed: %v", err))
+		}
+
+		idSeq.suffix = 0
 	}
 
-	return ID(fmt.Sprintf("%016x", time.Now().UnixMilli()) + hex.EncodeToString(b[:]))
+	idSeq.suffix++
+
+	return ID(fmt.Sprintf("%016x%010x%010x", ms, idSeq.seed, idSeq.suffix))
 }
 
 // String returns the raw ID.

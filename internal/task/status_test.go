@@ -107,10 +107,11 @@ func TestTerminal(t *testing.T) {
 
 func TestNewID(t *testing.T) {
 	seen := make(map[ID]struct{})
+	var prev ID
 
 	for range 1000 {
 		id := NewID()
-		if len(id) != 16+20 {
+		if len(id) != 16+10+10 {
 			t.Fatalf("NewID length = %d, want 36", len(id))
 		}
 
@@ -118,7 +119,14 @@ func TestNewID(t *testing.T) {
 			t.Fatalf("NewID duplicated: %s", id)
 		}
 
+		// Monotonic contract: lexicographic order is mint order, even
+		// within one millisecond — sweep windows sort by ID.
+		if prev != "" && prev >= id {
+			t.Fatalf("NewID not strictly increasing: %s then %s", prev, id)
+		}
+
 		seen[id] = struct{}{}
+		prev = id
 	}
 }
 
