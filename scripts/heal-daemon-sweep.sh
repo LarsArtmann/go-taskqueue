@@ -119,14 +119,9 @@ check_rails() {
 # run_filter footer base: the actual msg-filter rewrite.
 run_filter() {
 	local footer=$1 base=$2
-	export TQ_HEAL_FOOTER="$footer"
-	FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter '
-		msg=$(cat)
-		case "$msg" in
-			*"Task-Queue-ID: "*) printf "%s\n" "$msg" ;;
-			*) printf "%s\n%s\n" "$msg" "$TQ_HEAL_FOOTER" ;;
-		esac
-	' -- "$base..HEAD" >/dev/null || return 1
+	FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter "
+		git interpret-trailers --if-exists doNothing --trailer '$footer'
+	" -- "$base..HEAD" >/dev/null || return 1
 	local bref
 	bref=$(git for-each-ref --format='%(refname)' 'refs/original/refs/heads/*' | head -n 1)
 	[ -n "$bref" ] || return 1
@@ -134,21 +129,22 @@ run_filter() {
 	git update-ref -d "$bref"
 }
 
-# verify_heal base id: the five playbook verifications. rc 0 iff all pass.
+# verify_heal base id subj_old stat_old: the five playbook verifications.
+# subj_old/stat_old are snapshots taken BEFORE the rewrite (over base..HEAD);
+# comparing against base..HEAD AFTER works because the base ref never moves
+# and preserved commits keep their SHAs. rc 0 iff all checks pass.
 verify_heal() {
-	local base=$1 id=$2
-	local fail=0 subj_old subj_new stat_old stat_new c new msg
+	local base=$1 id=$2 subj_old=$3 stat_old=$4
+	local fail=0 subj_new stat_new c new msg
 
 	# 1+2: same subjects, same per-commit change sets (oldest-first lockstep
 	# is guaranteed by equal counts, which the rewrite preserves).
-	subj_old=$(git log --reverse --format='%s' "$base..HEAD")
-	subj_new=$(git log --reverse --format='%s' "$BACKUP_REF..HEAD")
+	subj_new=$(git log --reverse --format='%s' "$base..HEAD")
 	if [ "$subj_old" != "$subj_new" ]; then
 		echo "FAIL: subjects changed across the heal" >&2
 		fail=1
 	fi
-	stat_old=$(git rev-list --reverse "$base..HEAD" | while IFS= read -r c; do git diff-tree --no-commit-id --name-only -r "$c" | sort | md5sum; done)
-	stat_new=$(git rev-list --reverse "$BACKUP_REF..HEAD" | while IFS= read -r c; do git diff-tree --no-commit-id --name-only -r "$c" | sort | md5sum; done)
+	stat_new=$(git rev-list --reverse "$base..HEAD" | while IFS= read -r c; do git diff-tree --no-commit-id --name-only -r "$c" | sort | md5sum; done)
 	if [ "$stat_old" != "$stat_new" ]; then
 		echo "FAIL: per-commit change sets changed across the heal" >&2
 		fail=1
@@ -165,7 +161,7 @@ verify_heal() {
 			echo "FAIL: commit $new carries more than one footer" >&2
 			fail=1
 		fi
-	done < <(git rev-list --reverse "$BACKUP_REF..HEAD")
+	done < <(git rev-list --reverse "$base..HEAD")
 
 	# 4: byte-equal tree (the green battery carries over verbatim).
 	if [ -n "$(git diff "$BACKUP_REF" HEAD)" ]; then
@@ -179,7 +175,7 @@ verify_heal() {
 			echo "FAIL: tag(s) reference rewritten commit $new" >&2
 			fail=1
 		fi
-	done < <(git rev-list "$BACKUP_REF..HEAD")
+	done < <(git rev-list "$base..HEAD")
 
 	return $fail
 }
@@ -228,9 +224,13 @@ main() {
 	fi
 	echo "healing $(git rev-list --count "$base..HEAD") commit(s) in $base..HEAD with: $footer"
 
+	local subj_old stat_old
+	subj_old=$(git log --reverse --format='%s' "$base..HEAD")
+	stat_old=$(git rev-list --reverse "$base..HEAD" | while IFS= read -r c; do git diff-tree --no-commit-id --name-only -r "$c" | sort | md5sum; done)
+
 	run_filter "$footer" "$base" || die "filter-branch failed (backup kept at $BACKUP_REF if it existed)"
 
-	if verify_heal "$base" "$id"; then
+	if verify_heal "$base" "$id" "$subj_old" "$stat_old"; then
 		print_fork_records "$base"
 		git update-ref -d "$BACKUP_REF"
 		echo "HEAL OK — backup ref dropped"
@@ -289,7 +289,7 @@ self_test() {
 	m2=$(git -C "$repo" log -1 --format='%B' "$new2")
 	if footer_well_formed "$m1" "deadbeef00000000000000000000000000000001" &&
 		footer_well_formed "$m2" "deadbeef00000000000000000000000000000001" &&
-		[ "$m1" = "$(printf 'chore: sweep one\nTask-Queue-ID: deadbeef00000000000000000000000000000001')" ] &&
+		[ "$m1" = "$(printf 'chore: sweep one\n\nTask-Queue-ID: deadbeef00000000000000000000000000000001')" ] &&
 		[ -z "$(git -C "$repo" for-each-ref 'refs/original/*')" ]; then
 		ok=$((ok + 1))
 	else
