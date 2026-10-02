@@ -104,7 +104,8 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 - Worktree-per-agent (the intra-repo parallelism path): design written —
   `docs/planning/2026-09-12_worktree-per-agent-design.md` (claim → worktree →
-  verify → merge → reap; the merge-policy owner call gates implementation)
+  verify → merge → reap; the merge-policy owner call gates implementation;
+  the 9 open questions are enumerated under "Open questions (owner decisions)")
 - `tq status` subcommand: loop state per project (window count, last
   report, next mint at N) instead of deriving it from `stats` + facts
 - `tq loop-stats` retrospective projection (reports minted, items appended,
@@ -294,6 +295,26 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   push mechanics; which repos may agents deliver to via real PRs
   (`OPEN_PR=1` policy)?
 - Board as the default landing projection, or opt-in per URL?
+- Worktree-per-agent open questions (docs/planning/2026-09-12_worktree-per-agent-design.md;
+  nothing implements until Q1 is answered):
+  1. ⭐ Merge policy (GATING): tq auto-merge on review approve (a), PR-mode
+     delivery (b), or owner-merged `tq/*` branches (c)?
+  2. Branch base: local HEAD vs `origin/master` (determines rebase churn)?
+  3. Review ordering: review-before-merge (stronger, couples worktree
+     lifetime to verdict) vs merge-then-review (today's shape)?
+  4. Integration verify: re-run `.tq-verify` at the merge point
+     (recommended; serial merges make it cheap) or trust the branch-tip run?
+  5. Gitignored seeding: per-repo allowlist of files copied into fresh
+     worktrees, or fail-fast "verify/prompts must not depend on untracked
+     state" (recommended)?
+  6. Per-repo parallelism cap (`--repo-parallel name=N`): default N, and
+     does the budget guard gain per-repo awareness in the same slice?
+  7. Orphan reaping: pool-tick sweep vs `tq worktrees reap`; forensic
+     retention window for dead tasks' worktrees/branches?
+  8. Status/review tasks: stay serial-on-master (recommended) or get
+     worktrees for symmetry?
+  9. Worktree dir layout: `<projects-dir>/.tq-worktrees/` vs per-pool
+     `TQ_WORKTREE_DIR` (fast local disk for network projects dirs)?
 - Sibling-collision policy: gap-fill obviously-intended symbols of a
   concurrent session, or strictly hands-off + wait/report?
 - ~~Toolchain policy (16-00 report g1): bump the whole repo to go 1.27
