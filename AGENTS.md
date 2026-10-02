@@ -23,7 +23,7 @@ nix build                 # nix run .#test = tests; .#webui-css
   are sub-modules + `queue/{sqlite,postgres}` backends + `internal/journal/cqrs`;
   root is the app layer. `cmd/tq` is its own replace-free module
   (ADR-0017) — build via `scripts/build-tq.sh` (devmod shim). `./...` never
-  descends into nested modules; canonical per-module gate:
+  descends into nested modules; per-module gate:
 
 ```bash
 for m in $(find internal task journal queue executor worker -name go.mod -printf '%h\n'|sort); do (cd "$m" && GOEXPERIMENT=jsonv2 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1)||exit 1; done
@@ -36,10 +36,9 @@ the only external import surface; in-repo code imports `internal/…` directly.
 Facade-graph modules need require (real tag) + relative replace; facade
 tests import internals, never sibling facades; parity via
 `scripts/check-facade-parity.sh`; postgres `OpenWithPool` pools are
-CALLER-OWNED. No go.work — replace-only
-by design (`go test ./internal/foo` from root fails by design — cd in).
-Release flow: docs/release/ (proxy checks rc-captured: facade @tag +
-sentinel probe in /tmp scratch).
+CALLER-OWNED. No go.work — replace-only (`go test ./internal/foo` from
+root fails by design — cd in). Release flow: docs/release/ (proxy checks
+rc-captured: facade @tag + sentinel probe in /tmp scratch).
 
 Smokes (CI-safe): `ls scripts/smoke/`. Guards: scripts/check-*.sh +
 smoke/release-gates.sh + lint-baseline.sh. `scripts/new-module.sh <dir> [deps…]`
@@ -51,30 +50,30 @@ Facts-first: every state change is an immutable fact in an append-only
 journal; queue views, retry state, and the DLQ are projections. Claim
 exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
-| Package                              | Purpose                                                              |
-| ------------------------------------ | -------------------------------------------------------------------- |
-| `internal/task`                      | Task record, Status enum, sentinel errors                            |
-| `internal/journal`                   | Fact types + append-only Journal                                     |
-| `internal/journal/cqrs`              | Read-only go-cqrs-lite adapter (ADR-0014, PROPRIETARY dep)           |
-| `internal/queue`                     | Store contract, Filter, Queue facade                                 |
-| `internal/queue/sqlite`, `/postgres` | Backends; conform suite in `internal/queue/companion/conform`             |
-| `internal/worker`                    | Claim → heartbeat → execute loop; requeue ladder                     |
-| `internal/bridge`                    | papdashboard + cqa bridges → fix tasks                               |
-| `internal/executor`                  | sh/HTTP/agent/review/status executors + registry                     |
-| `internal/harvest`                   | TODO_LIST.md → tasks; drift audit; prune-stale                       |
-| `internal/budget`                    | Daily-cap + session-usage projections per tick                       |
-| `internal/dlqfix`                    | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss              |
-| `internal/review`                    | Review sweeper + `--review-autofix`                                  |
-| `internal/status`                    | Done-prompt report sweeper (`--status-every`)                        |
-| `internal/prioritize`                | AI batch scorer (`--prioritize`), priority_scores cache              |
-| `internal/depsweep`                  | Dependency-upgrade sweeper `--dep-sweep`                              |
-| `internal/watermark`                 | Durable journal cursor shared by the sweepers                        |
-| `internal/consumer`                  | Journal dispatcher, per-subscriber cursors (ADR-0009)                |
-| `internal/runactor`                  | run.Group actors, LIFO shutdown, InterruptOn                         |
-| `internal/webui`                     | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003)               |
-| `internal/httpapi`                   | Machine API (`tq api`): token-mandatory, nosniff, lockout            |
-| `internal/httpauth`/`lockout`        | Shared bearer primitives + 3-strikes limiter                         |
-| `cmd/tq`                             | CLI — see `tq --help`                                                 |
+| Package                              | Purpose |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `internal/task`                      | Task record, Status enum, sentinel errors |
+| `internal/journal`                   | Fact types + append-only Journal |
+| `internal/journal/cqrs`              | Read-only go-cqrs-lite adapter (ADR-0014, PROPRIETARY dep) |
+| `internal/queue`                     | Store contract, Filter, Queue facade |
+| `internal/queue/sqlite`, `/postgres` | Backends; conform suite in `internal/queue/companion/conform` |
+| `internal/worker`                    | Claim → heartbeat → execute loop; requeue ladder |
+| `internal/bridge`                    | papdashboard + cqa bridges → fix tasks |
+| `internal/executor`                  | sh/HTTP/agent/review/status executors + registry |
+| `internal/harvest`                   | TODO_LIST.md → tasks; drift audit; prune-stale |
+| `internal/budget`                    | Daily-cap + session-usage projections per tick |
+| `internal/dlqfix`                    | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss |
+| `internal/review`                    | Review sweeper + `--review-autofix` |
+| `internal/status`                    | Done-prompt report sweeper (`--status-every`) |
+| `internal/prioritize`                | AI batch scorer (`--prioritize`), priority_scores cache |
+| `internal/depsweep`                  | Dependency-upgrade sweeper `--dep-sweep` |
+| `internal/watermark`                 | Durable journal cursor shared by the sweepers |
+| `internal/consumer`                  | Journal dispatcher, per-subscriber cursors (ADR-0009) |
+| `internal/runactor`                  | run.Group actors, LIFO shutdown, InterruptOn |
+| `internal/webui`                     | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003) |
+| `internal/httpapi`                   | Machine API (`tq api`): token-mandatory, nosniff, lockout |
+| `internal/httpauth`/`lockout`        | Shared bearer primitives + 3-strikes limiter |
+| `cmd/tq`                             | CLI — see `tq --help` |
 
 ### Store invariants
 
@@ -95,8 +94,8 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `docs/status/<ts>_task-<id>.md`.
 - **Derived outcomes**: the queue derives what a run did — commits via
   exactly ONE `Task-Queue-ID` footer per commit, LAST trailer line
-  (`executor.GitLogScanner`; footer above an attribution block is
-  invisible — the commit-msg hook rejects that), files via `git diff-tree`,
+  (`executor.GitLogScanner`; a footer above an attribution block is
+  invisible — the hook rejects that), files via `git diff-tree`,
   session usage via go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record results via `tq verdict '<json>'`
   into `$TQ_RESULT_FILE` (file > legacy stdout line, last-wins).
@@ -154,10 +153,10 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   expensive gates inherit only from a same-HEAD report; nested-module
   claims need in-module `GOWORK=off` tests; closeouts touching
   root-guard-parsed files (AGENTS/README/TODO_LIST, doc pins) cite ROOT
-  build+vet+test -race rc. Re-dispatches: newest prior report + `tq show
+  build+vet+test -race rc. Re-dispatch: newest prior report + `tq show
   <id>` FIRST; battery rc TO A FILE (no PIPESTATUS; persist); no-delta
-  statement; dated DONE re-verified annotation; `-v` + PASS
-  COUNT for conform `-run`.
+  statement; dated DONE re-verified note; `-v` + PASS COUNT for conform
+  `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches).
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything —
@@ -165,7 +164,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   fold ferries only while local-only + contiguous + exactly-mine;
   mechanical form `scripts/commit-task.sh <id> <subject> <file>…`.
 - Tab-bearing insertions go through python-heredoc replace — free-text
-  edit glues code into comments as literal `\t`.
+  edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
   (`errors.AsType[E]`, `SplitSeq`, `for range n`) — don't undo.
 - Retry loops use `github.com/larsartmann/go-retry` (supervisor loops and
@@ -174,21 +173,21 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `recordRunOutcome`, `executor.Excerpt`, `prepareRepo`, `payloadTimeout`;
   mirror clones gated STRICT by `check-mirror-clones.sh` (shared surface
   `internal/queue/companion`). Residual art-dupl groups are accepted —
-  don't abstract them into existence.
+  don't abstract new ones.
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   has no host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
   edits run `templ generate` from REPO ROOT + `nix run .#webui-css`.
-- Web UI uses `templ-components` (adoption pinned by guard tests; table
+- Web UI uses `templ-components` (pinned by guard tests; table
   `internal/webui/ADOPTION.md`); REJECTED
   `display.Eyebrow`, `KanbanBoard`, errorpage, `icons.Render`.
 - `TODO_LIST.md` machine-consumed: `- [ ]`, one per line, never tables;
   `— BLOCKED: <reason>`; items must be agent-executable
   (`check-todo-list.sh`). DONE-row notes collapse to ONE note + latest-report
   pointer.
-- Status reports indexed on creation (`check-status-index.sh`; the daemon
+- Status reports indexed on creation (`check-status-index.sh`; daemon
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE index-row
-  write point: the top chronological cluster. CHANGELOG append-only.
+  write point: top chronological cluster. CHANGELOG append-only.
 - Docs formatting MANUAL (dprint on-demand).
 - Evidence archives: `scripts/archive-evidence.sh` (gated by
   `check-ghost-archives.sh`); `git check-ignore -v` BEFORE copying
@@ -200,11 +199,10 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `go test ./... -race` before declaring success; never generate Go source
   via heredocs; build fixtures under /tmp — scratch fixtures in gated
   trees are daemon-food. If the daemon still sweeps work into footer-less
-  `chore:` commits, heal with
-  `scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>`
-  (unpushed range only; verifies subjects/stats/tree/tags, prints old→new
-  fork records for the status report, keeps a backup ref on any failure;
-  `--self-test` pins the rails).
+  `chore:` commits, heal with `scripts/heal-daemon-sweep.sh
+  [--from <ref>] <Task-Queue-ID>` (unpushed range only; verifies
+  subjects/stats/tree/tags, prints old→new fork records, backup ref on
+  failure; `--self-test` pins the rails).
 - **Agent shells inherit `TQ_DB`** (the PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR` leaks
@@ -213,7 +211,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Root builds auto-use `vendor/`** — after internal/ changes run
   `go mod vendor` before root builds.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2 itself; CI setup-go
-  PINNED to 1.27.1 = the go.mod floor; NEVER lower a `go` directive
+  PINNED to 1.27.1 = go.mod floor; NEVER lower a `go` directive
   (`check-go-mods.sh` gates).
 - **golangci-lint is advisory** (~1.4k baseline, growth gated by
   `scripts/lint-baseline.sh --check`); hard gates: vet + gofmt + tests.
@@ -234,8 +232,8 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **gofmt gates are SCOPED to non-gitignored files** (`executor.ScopedGofmtStage`,
   doctor `gofmt:<repo>`):
   `gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'` —
-  an unscoped stage re-plants the vendor-gofmt death class (94% of this
-  repo's DLQ); grep the FULL verify log before attributing a gate death.
+  an unscoped stage re-plants the vendor-gofmt death class (94% of the
+  DLQ); grep the FULL verify log before attributing a gate death.
 - **Flakes see only git-tracked files** — `git add` before `nix build`.
 
 ## Relation to other projects
