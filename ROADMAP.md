@@ -99,6 +99,11 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   (ADR-0009); migrate the papdashboard bridge onto `internal/consumer`
   (ADR-0009 D4 — restart battery green, precondition met)
 - Loud-resync drill: test a consumer restarting past the retention floor
+- Event-wake ingress: token-gated webhook route on `tq api` mapping
+  inbound events (GitHub comment/PR/issue, arbitrary JSON) to dedup-keyed
+  enqueues — Paperclip's "wakes, not waits" pattern on our kernel;
+  natively yields PR-review-bot-style task minting (assessment S1:
+  `docs/research/2026-10-03_paperclip-competitive-analysis.md`)
 
 ### Agent pool / loop
 
@@ -106,6 +111,10 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   `docs/planning/2026-09-12_worktree-per-agent-design.md` (claim → worktree →
   verify → merge → reap; the merge-policy owner call gates implementation;
   the 9 open questions are enumerated under "Open questions (owner decisions)")
+- Bring-your-own-agent executor adapters (`codex`, `claude-code`) on the
+  existing `executor.Registry` seam — same AgentPayload contract + verify
+  gate + derived-outcome rails, removes the crush tie-in (assessment S2:
+  `docs/research/2026-10-03_paperclip-competitive-analysis.md`)
 - `tq status` subcommand: loop state per project (window count, last
   report, next mint at N) instead of deriving it from `stats` + facts
 - `tq loop-stats` retrospective projection (reports minted, items appended,
@@ -228,6 +237,10 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   warn when a sweeper cursor exists but zero tasks completed despite N
   windows (silent-mint failure signal); pool fleet liveness check
 - `tq watermarks show --json`; `tq top`: budget spend + in-flight reviews
+- Cost receipts roll-up: spend per project per time window projected from
+  derived session usage — the actual-usage twin of the enqueue-budget
+  aggregation lines above (assessment S3:
+  `docs/research/2026-10-03_paperclip-competitive-analysis.md`)
 - `tq show --yaml`/`--template` for scripting over result details
 - `doctorWatermarkLiveness` lag-threshold knob (WARN at lag > K)
 - Postgres `Fail` labels its exhausted class `transient` where SQLite says
