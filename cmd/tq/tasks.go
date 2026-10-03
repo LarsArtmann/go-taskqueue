@@ -179,7 +179,7 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 
 	fmt.Fprintf(
 		w,
-		"%-36s %-10s %-16s %-7s %5s %-9s  %s\n",
+		"%-36s %-14s %-16s %-7s %5s %-9s  %s\n",
 		"ID",
 		"STATUS",
 		"PROJECT",
@@ -191,7 +191,7 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 
 	now := time.Now()
 	for _, t := range tasks {
-		fmt.Fprintf(w, "%-36s %-10s %-16s %-7s %5d %-9s  %s\n",
+		fmt.Fprintf(w, "%-36s %-14s %-16s %-7s %5d %-9s  %s\n",
 			t.ID.String(), statusCell(t, now), t.Project, t.Type, t.Attempts,
 			notBeforeCell(t, now),
 			truncate(oneLine(t.LastError), 60),
