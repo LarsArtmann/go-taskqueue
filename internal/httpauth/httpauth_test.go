@@ -81,33 +81,34 @@ func TestPresentationPolicyPresented(t *testing.T) {
 	const cookieName = "tq_token"
 
 	tests := []struct {
-		name        string
-		policy      PresentationPolicy
-		header      string
-		cookie      string
-		queryToken  string
-		wantToken   string
-		wantCookie  bool
+		name       string
+		policy     PresentationPolicy
+		header     string
+		cookie     string
+		cookieName string
+		queryToken string
+		wantToken  string
+		wantCookie bool
 	}{
 		{
-			name:      "api policy: bearer header wins",
-			policy:    APIPolicy(),
-			header:    "Bearer hdr",
+			name:       "api policy: bearer header wins",
+			policy:     APIPolicy(),
+			header:     "Bearer hdr",
 			queryToken: "q",
-			wantToken: "hdr",
+			wantToken:  "hdr",
 		},
 		{
-			name:      "api policy: query fallback",
-			policy:    APIPolicy(),
+			name:       "api policy: query fallback",
+			policy:     APIPolicy(),
 			queryToken: "q",
-			wantToken: "q",
+			wantToken:  "q",
 		},
 		{
-			name:      "api policy: cookie channel never consulted",
-			policy:    APIPolicy(),
-			cookie:    "c",
+			name:       "api policy: cookie channel never consulted",
+			policy:     APIPolicy(),
+			cookie:     "c",
 			queryToken: "q",
-			wantToken: "q",
+			wantToken:  "q",
 		},
 		{
 			name:      "api policy: nothing presented",
@@ -131,9 +132,10 @@ func TestPresentationPolicyPresented(t *testing.T) {
 			wantCookie: true,
 		},
 		{
-			name:       "dashboard policy: empty cookie falls through to query",
+			name:       "dashboard policy: non-matching cookie name falls through to query",
 			policy:     DashboardPolicy(cookieName),
-			cookie:     " ",
+			cookie:     "c",
+			cookieName: "other_cookie",
 			queryToken: "q",
 			wantToken:  "q",
 		},
@@ -150,8 +152,13 @@ func TestPresentationPolicyPresented(t *testing.T) {
 			t.Parallel()
 
 			r := tokenRequest(t, tt.header)
+			name := cookieName
+			if tt.cookieName != "" {
+				name = tt.cookieName
+			}
+
 			if tt.cookie != "" {
-				r.AddCookie(&http.Cookie{Name: cookieName, Value: tt.cookie})
+				r.AddCookie(&http.Cookie{Name: name, Value: tt.cookie})
 			}
 
 			if tt.queryToken != "" {
