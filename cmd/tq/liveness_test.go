@@ -57,8 +57,9 @@ func TestBuildLivenessView(t *testing.T) {
 }
 
 // TestStatusCell pins the tq tasks STATUS cell: a running task whose lease
-// expired reads STALE (crash-reclaim candidate), everything else renders
-// the plain status.
+// expired reads STALE (crash-reclaim candidate), a healthy lease renders a
+// live countdown of the remaining lease time, everything else renders the
+// plain status.
 func TestStatusCell(t *testing.T) {
 	now := time.Now()
 	past := now.Add(-10 * time.Minute)
@@ -70,7 +71,6 @@ func TestStatusCell(t *testing.T) {
 		want string
 	}{
 		{"stale-lease", task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &past}, "STALE"},
-		{"healthy-running-lease", task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &future}, "running"},
 		{"running-no-lease", task.Task{Status: task.Running}, "running"},
 		{"expired-lease-not-running", task.Task{Status: task.Pending, LeaseExpires: &past}, "pending"},
 	}
@@ -79,6 +79,10 @@ func TestStatusCell(t *testing.T) {
 		if got := statusCell(tc.task, now); got != tc.want {
 			t.Errorf("%s: statusCell = %q, want %q", tc.name, got, tc.want)
 		}
+	}
+
+	if got := statusCell(task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &future}, now); got != "running 10m0s" {
+		t.Errorf("healthy-running-lease: statusCell = %q, want a remaining-lease countdown", got)
 	}
 }
 
