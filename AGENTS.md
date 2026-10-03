@@ -124,7 +124,15 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (`env-streak`) — never uncap the class (169-claim loop = $36.62/day).
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports
-  SECRET EVIDENCE rows.
+  SECRET EVIDENCE rows. Token-shape growth policy: every new provider/shape
+  adds ONE `secretPatterns` entry TOGETHER with a fake-shape test sample in
+  `redact_test.go` (the table-length pins fail otherwise) and, if the new
+  pattern trips golangci/gosec noise, a `scripts/lint-baseline.sh` triage
+  note. Audit (`SecretHits`) and redaction (`RedactSecrets`) compile the
+  identical `secretPatterns` table — pinned by
+  `TestSecretHitsAndRedactionCompileIdenticalTable`; never fork them.
+  `redact_test.go` is build-tag-free and gated on windows-latest via the
+  per-module CI loop (verified 2026-10-04, 00-55 §f9).
 - **Enqueued-fact snapshots are THIN today** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in the conform suites).
 

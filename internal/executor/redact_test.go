@@ -156,6 +156,47 @@ func TestSecretPatternsOverlapCensus(t *testing.T) {
 	}
 }
 
+// TestSecretHitsAndRedactionCompileIdenticalTable pins the shared-table
+// contract (00-55 §f8): the audit half (SecretHits) and the redaction half
+// (RedactSecrets) must walk the SAME secretPatterns table — a fork would
+// let a token be counted but never masked (or vice versa). Both functions
+// compile against the single secretPatterns var, so they cannot drift at
+// runtime; this pin makes a future split (a second, diverging table) fail
+// loudly: every pattern's canonical sample is BOTH counted by the audit
+// AND masked by redaction.
+func TestSecretHitsAndRedactionCompileIdenticalTable(t *testing.T) {
+	t.Parallel()
+
+	samples := []string{
+		fakeAnthropic,
+		fakeOpenAI,
+		fakeOpenAICls,
+		fakeGitHub,
+		fakeGitHubPat,
+		fakeAWS,
+		fakeGoogle,
+		fakeSlack,
+		fakeJWT,
+		"Authorization: Bearer " + fakeJWT[len("Bearer "):],
+		fakeAssign,
+	}
+
+	if len(samples) != len(secretPatterns) {
+		t.Fatalf("table pin covers %d of %d secretPatterns — extend samples together with the table",
+			len(samples), len(secretPatterns))
+	}
+
+	for i, sample := range samples {
+		if hits := SecretHits(sample); hits < 1 {
+			t.Errorf("pattern %d: audit half (SecretHits) missed its own sample, hits=%d: %q", i, hits, sample)
+		}
+
+		if got := RedactSecrets(sample); strings.Contains(got, sample) {
+			t.Errorf("pattern %d: redaction half (RedactSecrets) left its own sample intact: %q", i, sample)
+		}
+	}
+}
+
 // TestSecretHitsCountsInjectedTokensIndependentOfContext is the property
 // half of the count contract (02-37 §f2): N non-overlapping injected fake
 // tokens yield exactly N locations no matter what benign text surrounds
