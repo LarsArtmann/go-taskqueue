@@ -1,4 +1,5 @@
 # ADR-0019 S4 composition map — `system/` DomainConfig vs the tq runtime
+
 > **EXECUTED — ARCHIVED 2026-10-01 (docs-health)** — S4 pre-work shipped; execution sketch routed to the ADR-0019 S4 row. Residue lives in TODO_LIST (rows cited inline). Point-in-time plan.
 
 Date: 2026-09-26 · Status: ACTIVE (S4 pre-work; execution serialized behind
@@ -133,18 +134,18 @@ applies). See §5; decide at execution time.
 ## 6. Execution sketch for the S4 window (after S2 + S3 flip land)
 
 ~~1. Re-read this doc against the then-HEAD (S2/S3 will have moved the~~ routed — TODO_LIST: ADR-0019 S4 composition row
-   ground); re-verify every §1/§2 citation.
+ground); re-verify every §1/§2 citation.
 ~~2. Land the serve half exactly as the S3 flip shaped it (§2 row 1-2); no~~ routed — TODO_LIST: ADR-0019 S4 composition row
-   separate composition work if S3 already rooted it.
+separate composition work if S3 already rooted it.
 ~~3. Agent-pool: wrap pool construction in `system.New` with an empty-ish~~ routed — TODO_LIST: ADR-0019 S4 composition row
-   `DomainConfig` (no Commands/Queries), `Timers` per §4a's ruling, and
-   `runactor` actors handed their contexts as today; `GracefulClose`
-   ordering per §4c. The tq `queue.Store` stays injected — S4 does NOT
-   move store selection into DeploymentConfig (that is S1's thin-driver
-   seam and the owner-run cutover's business).
+`DomainConfig` (no Commands/Queries), `Timers` per §4a's ruling, and
+`runactor` actors handed their contexts as today; `GracefulClose`
+ordering per §4c. The tq `queue.Store` stays injected — S4 does NOT
+move store selection into DeploymentConfig (that is S1's thin-driver
+seam and the owner-run cutover's business).
 ~~4. Gates: root build/vet/test -race, all-module loop, webui + httpapi~~ routed — TODO_LIST: ADR-0019 S4 composition row (gates)
-   smokes, `TestRoutesAreReadOnly` + health-CSP pins, check-go-mods +
-   vendorHash fast gate, lint-baseline `--check` (clean cache).
+smokes, `TestRoutesAreReadOnly` + health-CSP pins, check-go-mods +
+vendorHash fast gate, lint-baseline `--check` (clean cache).
 ~~5. Art-dupl `-t 4` recount (the deletion-dividend metric, item 49 of~~ routed — TODO_LIST: ADR-0019 S4 composition row (deletion dividend)
-   report 2026-09-25_12-16) and the ADR-0019/FEATURES/CHANGELOG doc
-   pass; then the row's residue is only the owner-run dogfood cutover.
+report 2026-09-25_12-16) and the ADR-0019/FEATURES/CHANGELOG doc
+pass; then the row's residue is only the owner-run dogfood cutover.

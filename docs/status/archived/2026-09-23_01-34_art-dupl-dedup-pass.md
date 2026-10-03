@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. extractions shipped; items routed TODO art-dupl harvest section
 
-
 **Session scope:** single-purpose dedup window — full triage of the
 `art-dupl --sort total-tokens -t 4 --type-aware --html` report (22 actionable
 groups, 47 clones / 224 tokens), three extractions, re-verification to a

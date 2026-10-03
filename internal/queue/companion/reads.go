@@ -137,6 +137,9 @@ func List(ctx context.Context, r Runner, f queue.Filter) ([]task.Task, error) {
 		args = append(args, f.Offset)
 	}
 
+	// The query/err/defer prolog stays inline at every reader by design:
+	// a queryRows helper would defer Close inside itself, closing rows
+	// before the caller's scan loop runs.
 	rows, err := r.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err

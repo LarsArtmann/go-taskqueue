@@ -2,7 +2,6 @@
 
 > **DUPLICATE — ARCHIVED 2026-10-02** Canonical report: `2026-09-27_05-09_artdupl-t2-sweep.md`. superseded by t2 sweep ledger; drift heal shipped; accept-markers settled by ledger ruling
 
-
 **Scope:** interactive session (no task ID) — user ran
 `art-dupl --sort total-tokens -t 3 --type-aware --rich-text --explain --html`
 (44 actionable groups / 107 clones / 394 tokens) and asked to "properly

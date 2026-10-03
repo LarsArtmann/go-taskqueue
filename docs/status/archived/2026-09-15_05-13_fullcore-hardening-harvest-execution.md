@@ -2,7 +2,6 @@
 
 > **DUPLICATE — ARCHIVED 2026-10-02** Canonical report: `2026-09-15_06-47_smoke-syntax-gates-webui-adoptions-closeout.md`. open sub-items executed by the 06-47 lap
 
-
 **Date:** 2026-09-15 05:13 CEST. **Session type:** interactive (owner-directed, no Task-Queue-ID — the
 pasted 2026-09-14 harvest + webui-leftover list, ordered "break into steps, execute and verify one at a
 time"). **Commits:** daemon heuristic commits `743ca3c` (AGENTS.md) and `6e40681` (fullcore batch:

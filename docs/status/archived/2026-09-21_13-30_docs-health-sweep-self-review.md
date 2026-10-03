@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. defects remediated by later full-corpus sweeps; routed TODO row
 
-
 > Point-in-time snapshot of the 2026-09-21 12:00–13:30 docs-health session,
 > written at 13:30 on explicit owner instruction ("What did you forget? What
 > could you have done better?"). Companion to the work report at

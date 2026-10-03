@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. syntax gates, cmd/tq lint, adoptions shipped+verified; continuation record
 
-
 Interactive continuation lap of the 2026-09-14 evening → 2026-09-15 05:13
 harvest-execution stream (see `docs/status/2026-09-15_05-13_fullcore-hardening-harvest-execution.md`
 for the prior close-out and its 44-item next list). This lap executed the

@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. 61 groups triaged, 4 extractions live; residue rowed in 09-30 harvest
 
-
 - **Date:** 2026-09-26 02:37 CEST
 - **Session:** interactive Crush window (no `Task-Queue-ID` — all code rode footerless
   daemon commits, see §d6)

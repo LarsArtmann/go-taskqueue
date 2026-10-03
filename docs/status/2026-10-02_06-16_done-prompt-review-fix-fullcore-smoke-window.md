@@ -3,13 +3,13 @@
 **Written:** 2026-10-02 06:16 CEST · **Window:** 2026-09-26 06:05 → 2026-10-01 06:39 (five tasks)
 **Tasks closed this window:**
 
-| Task | Work commit(s) | Close-out report |
-| --- | --- | --- |
-| 000001a0dbccd985bf0aa3ec0803c57e05b7 (review fix: dead-SHA baseline) | `fa1c03bd` | docs/status/2026-09-26_06-05_task-000001a0dbccd985bf0aa3ec0803c57e05b7.md |
-| 000001a0dbccd9be35b494256bf3f8ffa87d (review fix: gate misattribution) | `a1bbd1d6` | docs/status/2026-09-26_06-21_task-000001a0dbccd9be35b494256bf3f8ffa87d.md |
+| Task                                                                           | Work commit(s)                     | Close-out report                                                          |
+| ------------------------------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------------- |
+| 000001a0dbccd985bf0aa3ec0803c57e05b7 (review fix: dead-SHA baseline)           | `fa1c03bd`                         | docs/status/2026-09-26_06-05_task-000001a0dbccd985bf0aa3ec0803c57e05b7.md |
+| 000001a0dbccd9be35b494256bf3f8ffa87d (review fix: gate misattribution)         | `a1bbd1d6`                         | docs/status/2026-09-26_06-21_task-000001a0dbccd9be35b494256bf3f8ffa87d.md |
 | 000001a0f58abc7cddceaed8497b00000000 (README rot guard + `--model` retirement) | `7f78e21f`, `dc43c582`, `2f56ee19` | docs/status/2026-10-01_06-12_task-000001a0f58abc7cddceaed8497b00000000.md |
-| 000001a0f5af5d2409a380f2fe9c00000000 (fullcore fatal-path close-before-exit) | `9a28605b` | docs/status/2026-10-01_06-26_task-000001a0f5af5d2409a380f2fe9c00000000.md |
-| 000001a0f5bd17ec1703d395419b00000000 (smoke forensics batch) | `f1e03759` | docs/status/2026-10-01_06-35_task-000001a0f5bd17ec1703d395419b00000000.md |
+| 000001a0f5af5d2409a380f2fe9c00000000 (fullcore fatal-path close-before-exit)   | `9a28605b`                         | docs/status/2026-10-01_06-26_task-000001a0f5af5d2409a380f2fe9c00000000.md |
+| 000001a0f5bd17ec1703d395419b00000000 (smoke forensics batch)                   | `f1e03759`                         | docs/status/2026-10-01_06-35_task-000001a0f5bd17ec1703d395419b00000000.md |
 
 ## a) FULLY DONE (verified this pass)
 

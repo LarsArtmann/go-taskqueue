@@ -2,7 +2,6 @@
 
 > **DUPLICATE — ARCHIVED 2026-10-02** Canonical report: `2026-10-01_13-42_todo-sweep-status-report-battery-smokes-checkbox-heal.md`. same-session full a)-g report explicitly supersedes this tail
 
-
 Task: 000001a0f4b46711933c958a92ef00000000 (TODO sweep continuation). Window:
 2026-10-01 ~11:55–12:50 CEST. Working mode: single agent session on master
 with parallel windows active (a history rewrite landed mid-session and

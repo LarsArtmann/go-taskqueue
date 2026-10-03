@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. all remediation routed to SUPERB plan and executed (M1-M21, 17-05 closeout)
 
-
 **Session type:** owner-commissioned interactive diagnosis (NOT a task dispatch —
 no Task-Queue-ID footer by design). **Scope:** read-only forensics across
 `~/projects/CV/.crush/crush.db`, `/mnt/pool/services/tq/tq.db` (both opened

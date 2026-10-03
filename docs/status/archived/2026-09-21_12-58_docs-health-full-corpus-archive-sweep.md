@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. executed sweep; residue harvested into TODO_LIST 2026-09-21 archive-sweep section
 
-
 > Point-in-time snapshot of the 2026-09-21 ~12:00–13:30 docs-health session.
 > Owner instruction: view ALL 2026-0* files, execute the docs-health skill,
 > archive fully-done-and-updated files. Full AUDIT mode (BUILD + HARVEST +

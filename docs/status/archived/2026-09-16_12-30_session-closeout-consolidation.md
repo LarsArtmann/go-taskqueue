@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. pointer report; CHANGELOG delta executed by 18-12, questions carried by 12-11
 
-
 Third report of the session (after 08-28 health-dashboard adoption and 12-11 instrument-pass
 redesign — read those for the substantive work). This lap's delta since 12:11 is small and
 deliberate: report writing + indexing + tree verification only, per the "report, then wait"

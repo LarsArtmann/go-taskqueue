@@ -28,40 +28,40 @@ close-out (§d5).
 
 ## a) FULLY DONE — milestone ledger
 
-| Milestone | State | Landing |
-| --- | --- | --- |
-| M1 park/cancel loop task | DONE | `tq cancel --force` 05:02, terminal `cancelled` 05:04, claims frozen at 169; P6 (no operator park verb) filed as TODO row + diagnosis §b annotation (`0be27fd5`) |
-| M2 vendor-gofmt death class | DONE | `trash vendor/` (44 flagged → 0); green dispatch probe completed end-to-end 05:18 (facts 8627/8628) |
-| M3 dlq-fix enabled at source | DONE (source) | SystemNix `tq-agent-pool.nix` `"dlq-fix" = "true"`, ferry `c180144e`; runtime deploy owner-gated (§b) |
-| M4 skill-description noise | DONE | go-cqrs-lite SKILL.md 1043 → 1010 chars, all triggers intact, `8ad3967f9` |
-| M5 04:04 prune-death ruled | DONE | over-pinned exact counts on an at-least-once bridge; relaxed to lower bounds, 20/20 stable, `5d54c1298` |
-| M6 scoped gofmt gate | DONE | `executor.ScopedGofmtStage` in the minted default verify + repo `.tq-verify` switched; gitignored drift passes, non-ignored drift still kills (F18–F24, `be28c964`) |
-| M7 breaker design memo | DONE | `docs/planning/2026-10-01_11-19_env-requeue-circuit-breaker.md` (F25–F27, `0b33def0`) |
-| M8 env-requeue circuit breaker | DONE | 3-consecutive env requeues burn an attempt + exponential NotBefore + `env-streak` fact code; disabled via N<0 (F28–F34, `d220897b`) |
-| M9 requeue_class facts | DONE | `queue.RequeueEvidence.Class` on every requeue fact + conform cap (F35–F38, `a0982d99`) |
-| M10 loop-suspect surfacing | DONE | `tq stats` human+JSON (`claim_anomalies`, threshold 20) + webui `card-loopsuspect` chip; canonical const in `internal/queue`, cmd/tq local twins proxy-safe and devmod-pinned (`7addfe95`, both daemon ferries folded) |
-| M11 doctor live-tree gofmt probe | DONE | `gofmt:<repo>` check in `doctorEnvironment`; gitignored-only drift = ok with distinct detail (F43–F45, `30026446`) |
-| M12 dlq-repair doctor guard | DONE | default stays opt-in per memo `docs/planning/2026-10-01_dlqfix-default-decision.md`; `doctorDLQRepair` warns when dead>0 ∧ dlqfix=0 (F46–F48, `d4d28ecb`) |
-| M13 alert-path ruling | DONE | **FIRED**: `papdashboard:` watermark = journal head 8696 (08:34) ⇒ every fact through head accepted; annotation in diagnosis §b (`63f24742`) |
-| M14 loop-detector smoke | DONE | `scripts/smoke/loop-detector.sh` — healthy silent (no chip, no JSON key) / 30-claim churn fixture red; wired into ci-local (F51–F54, `87318e0f`) |
-| M15 dead-letter census | DONE | tables below (§"Payback"), raw `/tmp` copies archived |
-| M16 budget-burn model | DONE | table below; loop family measured vs cap 30 |
-| M17 CV cross-post | DONE | CV `docs/status/2026-10-01_12-08_queue-health-cross-post.md` + P1 TODO lane + index row (CV ferry `2a688e03b`) |
-| M18 archive + this close-out | DONE | evidence archived (`3eb69467`), this report, index row |
-| M20 park→resume e2e | DONE (certified) | no new code needed — `scripts/smoke/questions-e2e.sh` already pins park-without-attempt-burn → answer → resume end-to-end plus the CV-TRIGGER re-dispatch shape (F66/F67); ran green as the certification |
-| M21 AGENTS.md lessons | DONE | this session, §"M21" below |
+| Milestone                        | State            | Landing                                                                                                                                                                                                                |
+| -------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1 park/cancel loop task         | DONE             | `tq cancel --force` 05:02, terminal `cancelled` 05:04, claims frozen at 169; P6 (no operator park verb) filed as TODO row + diagnosis §b annotation (`0be27fd5`)                                                       |
+| M2 vendor-gofmt death class      | DONE             | `trash vendor/` (44 flagged → 0); green dispatch probe completed end-to-end 05:18 (facts 8627/8628)                                                                                                                    |
+| M3 dlq-fix enabled at source     | DONE (source)    | SystemNix `tq-agent-pool.nix` `"dlq-fix" = "true"`, ferry `c180144e`; runtime deploy owner-gated (§b)                                                                                                                  |
+| M4 skill-description noise       | DONE             | go-cqrs-lite SKILL.md 1043 → 1010 chars, all triggers intact, `8ad3967f9`                                                                                                                                              |
+| M5 04:04 prune-death ruled       | DONE             | over-pinned exact counts on an at-least-once bridge; relaxed to lower bounds, 20/20 stable, `5d54c1298`                                                                                                                |
+| M6 scoped gofmt gate             | DONE             | `executor.ScopedGofmtStage` in the minted default verify + repo `.tq-verify` switched; gitignored drift passes, non-ignored drift still kills (F18–F24, `be28c964`)                                                    |
+| M7 breaker design memo           | DONE             | `docs/planning/2026-10-01_11-19_env-requeue-circuit-breaker.md` (F25–F27, `0b33def0`)                                                                                                                                  |
+| M8 env-requeue circuit breaker   | DONE             | 3-consecutive env requeues burn an attempt + exponential NotBefore + `env-streak` fact code; disabled via N<0 (F28–F34, `d220897b`)                                                                                    |
+| M9 requeue_class facts           | DONE             | `queue.RequeueEvidence.Class` on every requeue fact + conform cap (F35–F38, `a0982d99`)                                                                                                                                |
+| M10 loop-suspect surfacing       | DONE             | `tq stats` human+JSON (`claim_anomalies`, threshold 20) + webui `card-loopsuspect` chip; canonical const in `internal/queue`, cmd/tq local twins proxy-safe and devmod-pinned (`7addfe95`, both daemon ferries folded) |
+| M11 doctor live-tree gofmt probe | DONE             | `gofmt:<repo>` check in `doctorEnvironment`; gitignored-only drift = ok with distinct detail (F43–F45, `30026446`)                                                                                                     |
+| M12 dlq-repair doctor guard      | DONE             | default stays opt-in per memo `docs/planning/2026-10-01_dlqfix-default-decision.md`; `doctorDLQRepair` warns when dead>0 ∧ dlqfix=0 (F46–F48, `d4d28ecb`)                                                              |
+| M13 alert-path ruling            | DONE             | **FIRED**: `papdashboard:` watermark = journal head 8696 (08:34) ⇒ every fact through head accepted; annotation in diagnosis §b (`63f24742`)                                                                           |
+| M14 loop-detector smoke          | DONE             | `scripts/smoke/loop-detector.sh` — healthy silent (no chip, no JSON key) / 30-claim churn fixture red; wired into ci-local (F51–F54, `87318e0f`)                                                                       |
+| M15 dead-letter census           | DONE             | tables below (§"Payback"), raw `/tmp` copies archived                                                                                                                                                                  |
+| M16 budget-burn model            | DONE             | table below; loop family measured vs cap 30                                                                                                                                                                            |
+| M17 CV cross-post                | DONE             | CV `docs/status/2026-10-01_12-08_queue-health-cross-post.md` + P1 TODO lane + index row (CV ferry `2a688e03b`)                                                                                                         |
+| M18 archive + this close-out     | DONE             | evidence archived (`3eb69467`), this report, index row                                                                                                                                                                 |
+| M20 park→resume e2e              | DONE (certified) | no new code needed — `scripts/smoke/questions-e2e.sh` already pins park-without-attempt-burn → answer → resume end-to-end plus the CV-TRIGGER re-dispatch shape (F66/F67); ran green as the certification              |
+| M21 AGENTS.md lessons            | DONE             | this session, §"M21" below                                                                                                                                                                                             |
 
 ## Payback tables (M15/M16, measured 12:01, evidence archived)
 
 **CV dead census — 106 tasks** (`m15-cv-census.txt`):
 
-| class | n | window | representative att3 tail |
-| --- | --- | --- | --- |
+| class                        | n  | window        | representative att3 tail                 |
+| ---------------------------- | -- | ------------- | ---------------------------------------- |
 | verify-failed (own red gate) | 99 | 09-11 → 09-29 | `go build ./... && go test ./...` exit 1 |
-| other (context deadline) | 3 | 09-21 → 09-22 | closeout/run cancelled (deadline) |
-| rate-limit adjacent | 2 | 09-11 → 09-17 | provider/exit failures near 429s |
-| timeout | 1 | 09-16 | run failed after session create |
-| preflight | 1 | 09-26 | MCP init closeout failure |
+| other (context deadline)     | 3  | 09-21 → 09-22 | closeout/run cancelled (deadline)        |
+| rate-limit adjacent          | 2  | 09-11 → 09-17 | provider/exit failures near 429s         |
+| timeout                      | 1  | 09-16         | run failed after session create          |
+| preflight                    | 1  | 09-26         | MCP init closeout failure                |
 
 ⇒ CV's dead letters are 94% CV's OWN red build/test gate at HEAD (matches
 M17's two file:line-named gate failures), not queue pathology. Review
@@ -70,11 +70,11 @@ minted/72h — no review-loop class exists.
 
 **go-taskqueue + siblings dead census** (`m15-gtq-census.txt`):
 
-| project | dead | breakdown |
-| --- | --- | --- |
-| go-taskqueue | 177 | **167 gofmt-class (94%)** + 3 verify + 3 rate-adjacent + 4 other |
-| SystemNix | 31 | 22 verify + 1 rate-adjacent + 8 other |
-| libx | 1 | 1 other |
+| project      | dead | breakdown                                                        |
+| ------------ | ---- | ---------------------------------------------------------------- |
+| go-taskqueue | 177  | **167 gofmt-class (94%)** + 3 verify + 3 rate-adjacent + 4 other |
+| SystemNix    | 31   | 22 verify + 1 rate-adjacent + 8 other                            |
+| libx         | 1    | 1 other                                                          |
 
 ⇒ The M6 scoped gate + M2 rescue kill the class that made 94% of this
 repo's landfill; the 167 gofmt-class letters are the auto-dismiss-free

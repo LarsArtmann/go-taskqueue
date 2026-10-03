@@ -1,4 +1,5 @@
 # Pool-flip checklist & DLQ triage runbook (Round 11, T2/T4)
+
 > **EXECUTED — ARCHIVED 2026-10-01 (docs-health)** — All owner-run steps routed to the standing SystemNix flip/deploy rows. Residue lives in TODO_LIST (rows cited inline). Point-in-time plan.
 
 - **When**: 2026-09-11 14:45 CEST
@@ -33,10 +34,10 @@ but re-run `nix build` right before `nix run .#deploy`.
 ## 2. The flip (owner, ~5 min)
 
 ~~1. In SystemNix: bump the go-taskqueue input to the release commit~~ routed — TODO_LIST: SystemNix input flip + deploy row (owner-run)
-   (cut a tag first if you want a pinned version; HEAD works too).
+(cut a tag first if you want a pinned version; HEAD works too).
 ~~2. `nix run .#deploy` (or your SystemNix equivalent).~~ routed — TODO_LIST: SystemNix input flip + deploy row (owner-run)
 ~~3. Same window, if desired: add `--allow-writes` to the `tq-serve` unit~~ routed — TODO_LIST: --allow-writes + DLQ rescue row (owner-run)
-   (WebUI rescue/cancel; CSRF + lockout already enforced).
+(WebUI rescue/cancel; CSRF + lockout already enforced).
 
 ## 3. Post-flip smoke checklist (M7)
 
@@ -138,7 +139,7 @@ systemd.services.tq-agent-pool.environment.GOEXPERIMENT = "jsonv2";
 
 ~~1. Add the line above next to the existing `services.tq-agent-pool.agentPath`.~~ routed — TODO_LIST: GOEXPERIMENT unit env row (owner sudo)
 ~~2. Bump the go-taskqueue input (needs a build with the T2/T3 code — the~~ routed — TODO_LIST: SystemNix input flip row (owner-run)
-   detector ships with `tq doctor`).
+detector ships with `tq doctor`).
 ~~3. `nix run .#deploy`.~~ routed — TODO_LIST: SystemNix input flip + deploy row (owner-run)
 
 **Post-flip verification (new `tq doctor` env check, run ON the host)**:

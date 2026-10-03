@@ -107,6 +107,7 @@ func TestTerminal(t *testing.T) {
 
 func TestNewID(t *testing.T) {
 	seen := make(map[ID]struct{})
+
 	var prev ID
 
 	for range 1000 {

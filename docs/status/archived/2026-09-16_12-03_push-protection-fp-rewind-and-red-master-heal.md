@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. incident resolved: push landed, red master healed and CI-verified
 
-
 **Session**: interactive (user-pasted blocked push), 2026-09-16 ~11:20–12:10 CEST
 **Scope**: unblock the GitHub push-protection-blocked push, then heal the red
 master the batch turned out to carry. No pool task ID (direct user request).

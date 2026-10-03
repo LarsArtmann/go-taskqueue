@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. audit complete, master healed; push owner-routed; audit rows routed
 
-
 **Window:** 2026-09-15, ~05:45–07:00 CEST (continuation of the 05:40
 `journal-drift-audit-landing` session; same feature, second lap)
 **Scope:** the two named gaps of the landing report (coverage counts,

@@ -2,7 +2,6 @@
 
 > **DUPLICATE — ARCHIVED 2026-10-02** Canonical report: `2026-10-01_11-01_queue-health-restoration-full-session-closeout.md`. first-cut report explicitly superseded/absorbed by the 11-01 closeout
 
-
 **Date:** 2026-10-01 09:56 CEST (session window 05:00–05:25 CEST)
 **Commission:** owner order "GET SHIT DONE — the WHOLE TODO LIST" over
 `docs/planning/2026-10-01_04-27_SUPERB-QUEUE-HEALTH-RESTORATION.md`.

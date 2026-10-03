@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. five rows verified ticked; new rows + questions filed as BLOCKED rows
 
-
 Window 2026-09-26 ~02:16–05:51 (report written 06:45). Five tasks
 completed and committed; every one carried a closeout report indexed in
 docs/status/README.md, and this pass re-verified the load-bearing claims

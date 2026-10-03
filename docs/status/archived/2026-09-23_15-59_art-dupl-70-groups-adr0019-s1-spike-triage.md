@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. pure diagnostic record; split-brain disposition routed to ADR-0019 rows + ruling
 
-
 Date: 2026-09-23 15:59 CEST · Scope: THIS session's run only — a single
 owner-prompted diagnostic window ("What the fuck happened!??!?" over an
 `art-dupl --sort total-tokens -t 5 --type-aware` paste showing 70 clone

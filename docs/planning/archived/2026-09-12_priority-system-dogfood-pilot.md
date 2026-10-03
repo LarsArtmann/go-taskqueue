@@ -1,4 +1,5 @@
 # Priority-System Dogfood Pilot — SystemNix Pool Proposal
+
 > **EXECUTED — ARCHIVED 2026-10-01 (docs-health)** — Flags shipped default-off (cmd/tq/agentpool.go); pilot start + spend gate owner-blocked rows. Residue lives in TODO_LIST (rows cited inline). Point-in-time plan.
 
 Status: PROPOSAL (owner-run steps only; every flag below is shipped on
@@ -38,11 +39,11 @@ Before `--prioritize` goes live, run ONE batch scorer task against a
 SCRATCH journal (not the production DB — the TQ_DB env trap, AGENTS.md):
 
 ~~1. Copy 10-20 real open TODO items from one repo into a scratch repo +~~ routed — TODO_LIST: --prioritize pilot row (owner spend go/no-go)
-   scratch journal.
+scratch journal.
 ~~2. Enable `--prioritize` on a one-shot `tq agent-pool --once` against the~~ routed — TODO_LIST: --prioritize pilot row (owner spend go/no-go)
-   scratch DB.
+scratch DB.
 ~~3. Record: wall time, model, tokens (usage parsing lands via the TODO~~ routed — TODO_LIST: --prioritize pilot row (owner spend go/no-go)
-   follow-up; until then read the crush log), verdict quality spot-check.
+follow-up; until then read the crush log), verdict quality spot-check.
 
 Go/no-go rule (owner): if one batch costs more than ~one small agent work
 turn, keep `--prioritize` off and rely on importance + markers; otherwise
@@ -71,16 +72,16 @@ enable on the pool with the same budget cap as every other mint.
 ## Owner steps (in order)
 
 ~~1. Land master on the deployed binary: flip the SystemNix input to the~~ routed — TODO_LIST: SystemNix input flip + deploy row (owner-run)
-   current master rev (needs the `internal/journal/cqrs/v0.2.0` tag pushed
-   first — the module require resolves through the proxy; TODO_LIST item).
+current master rev (needs the `internal/journal/cqrs/v0.2.0` tag pushed
+first — the module require resolves through the proxy; TODO_LIST item).
 ~~2. Add the three flags to `services.tq-agent-pool` config~~ routed — TODO_LIST: pilot flags + SystemNix config row (owner-run)
-   (`--priority-from importance --max-pending-per-repo 4
+(`--priority-from importance --max-pending-per-repo 4
    --starvation-after 24h`).
 ~~3. `nix run .#deploy` (SystemNix repo), then watch `journalctl -u~~ routed — TODO_LIST: SystemNix deploy row (owner-run)
    tq-agent-pool` for the first tick's repri lines.
 ~~4. After 48h: read the band mix + claim order (webui or `tq top`), decide~~ routed — TODO_LIST: post-pilot calibration row (owner pilot start)
-   the T28 spend go/no-go, then calibrate (T34: keyword table + marker
-   ladder from real review verdicts × score sources).
+the T28 spend go/no-go, then calibrate (T34: keyword table + marker
+ladder from real review verdicts × score sources).
 
 ## What the pilot deliberately does NOT do
 

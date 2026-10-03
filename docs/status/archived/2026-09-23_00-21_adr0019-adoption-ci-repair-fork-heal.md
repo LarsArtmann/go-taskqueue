@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. ADR-0019 accepted, CI fix landed, plan staged as TODO rows
 
-
 Date: 2026-09-23 00:21 · Scope: THIS session's run only (no unrelated research)
 
 Session span: 2026-09-22 ~23:15 → 2026-09-23 00:21. Two owner directives:

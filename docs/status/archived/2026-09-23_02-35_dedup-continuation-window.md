@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. closed the 01-34 open items, decodePayload[T] extracted; same-day completion
 
-
 **Session scope:** owner-prompted re-run of the dedup task ("deduplicate?!") against
 the 01-34 pass's post-extraction tree. No queue task ID. Re-adjudicated every group
 in the fresh `-t 5` art-dupl report (the user's exact flags), re-verified the 01-34

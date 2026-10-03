@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. CI root-cause fixed, 12 rows closed; residue harvested into TODO_LIST 09-22 sections
 
-
 **Verdict: WORK window — 12 TODO rows closed, master-CI red root-caused and fixed locally (push pending owner), 9 code/test/script changes + 6 docs changes landed, every touched gate re-run green.**
 
 ## a) What shipped

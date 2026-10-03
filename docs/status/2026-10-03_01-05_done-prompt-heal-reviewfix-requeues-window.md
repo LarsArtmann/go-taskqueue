@@ -56,7 +56,7 @@ text alone.
    - **Backup-ref ambiguity**: the filter-branch backup ref resolves from
      `git symbolic-ref HEAD` with an explicit existence check instead of
      `head -n 1` over all `refs/original/*`.
-   All three: `--self-test` green, root battery rc=0, fix footers exact.
+     All three: `--self-test` green, root battery rc=0, fix footers exact.
 7. **internal/status ULID flake fixed and adjudicated** (immediately after
    this window, same queue arc, commits 93ef8642/de98ed96/2fa5376d):
    `task.NewID` made process-monotonic; TODO row 105 struck; the

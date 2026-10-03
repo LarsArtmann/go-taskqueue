@@ -50,30 +50,30 @@ Facts-first: every state change is an immutable fact in an append-only
 journal; queue views, retry state, and the DLQ are projections. Claim
 exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
-| Package                              | Purpose |
-| ------------------------------------ | --------------------------------------------------------------- |
-| `internal/task`                      | Task record, Status enum, sentinel errors |
-| `internal/journal`                   | Fact types + append-only Journal |
-| `internal/journal/cqrs`              | Read-only go-cqrs-lite adapter (ADR-0014, PROPRIETARY dep) |
-| `internal/queue`                     | Store contract, Filter, Queue facade |
+| Package                              | Purpose                                                       |
+| ------------------------------------ | ------------------------------------------------------------- |
+| `internal/task`                      | Task record, Status enum, sentinel errors                     |
+| `internal/journal`                   | Fact types + append-only Journal                              |
+| `internal/journal/cqrs`              | Read-only go-cqrs-lite adapter (ADR-0014, PROPRIETARY dep)    |
+| `internal/queue`                     | Store contract, Filter, Queue facade                          |
 | `internal/queue/sqlite`, `/postgres` | Backends; conform suite in `internal/queue/companion/conform` |
-| `internal/worker`                    | Claim → heartbeat → execute loop; requeue ladder |
-| `internal/bridge`                    | papdashboard + cqa bridges → fix tasks |
-| `internal/executor`                  | sh/HTTP/agent/review/status executors + registry |
-| `internal/harvest`                   | TODO_LIST.md → tasks; drift audit; prune-stale |
-| `internal/budget`                    | Daily-cap + session-usage projections per tick |
-| `internal/dlqfix`                    | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss |
-| `internal/review`                    | Review sweeper + `--review-autofix` |
-| `internal/status`                    | Done-prompt report sweeper (`--status-every`) |
-| `internal/prioritize`                | AI batch scorer (`--prioritize`), priority_scores cache |
-| `internal/depsweep`                  | Dependency-upgrade sweeper `--dep-sweep` |
-| `internal/watermark`                 | Durable journal cursor shared by the sweepers |
-| `internal/consumer`                  | Journal dispatcher, per-subscriber cursors (ADR-0009) |
-| `internal/runactor`                  | run.Group actors, LIFO shutdown, InterruptOn |
-| `internal/webui`                     | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003) |
-| `internal/httpapi`                   | Machine API (`tq api`): token-mandatory, nosniff, lockout |
-| `internal/httpauth`/`lockout`        | Shared bearer primitives + 3-strikes limiter |
-| `cmd/tq`                             | CLI — see `tq --help` |
+| `internal/worker`                    | Claim → heartbeat → execute loop; requeue ladder              |
+| `internal/bridge`                    | papdashboard + cqa bridges → fix tasks                        |
+| `internal/executor`                  | sh/HTTP/agent/review/status executors + registry              |
+| `internal/harvest`                   | TODO_LIST.md → tasks; drift audit; prune-stale                |
+| `internal/budget`                    | Daily-cap + session-usage projections per tick                |
+| `internal/dlqfix`                    | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss       |
+| `internal/review`                    | Review sweeper + `--review-autofix`                           |
+| `internal/status`                    | Done-prompt report sweeper (`--status-every`)                 |
+| `internal/prioritize`                | AI batch scorer (`--prioritize`), priority_scores cache       |
+| `internal/depsweep`                  | Dependency-upgrade sweeper `--dep-sweep`                      |
+| `internal/watermark`                 | Durable journal cursor shared by the sweepers                 |
+| `internal/consumer`                  | Journal dispatcher, per-subscriber cursors (ADR-0009)         |
+| `internal/runactor`                  | run.Group actors, LIFO shutdown, InterruptOn                  |
+| `internal/webui`                     | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003)        |
+| `internal/httpapi`                   | Machine API (`tq api`): token-mandatory, nosniff, lockout     |
+| `internal/httpauth`/`lockout`        | Shared bearer primitives + 3-strikes limiter                  |
+| `cmd/tq`                             | CLI — see `tq --help`                                         |
 
 ### Store invariants
 
@@ -203,6 +203,10 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   [--from <ref>] <Task-Queue-ID>` (unpushed range only; verifies
   subjects/stats/tree/tags, prints old→new fork records, backup ref on
   failure; `--self-test` pins the rails).
+- **TestExactlyOnceUnderConcurrency is load-flaky** (worker): concurrent
+  builds on this host can storm SQLITE_BUSY and drop it to "19/20
+  completed"; reproduced failing at clean parent commits too — re-run
+  before attributing to a change.
 - **Agent shells inherit `TQ_DB`** (the PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR` leaks

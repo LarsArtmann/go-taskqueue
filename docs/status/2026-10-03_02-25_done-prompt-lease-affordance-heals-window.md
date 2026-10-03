@@ -30,10 +30,10 @@ All claims verified against git and the working tree at HEAD `8af9c70e`.
    daemon-sweep race via the sanctioned script.
 4. **`tq tasks` STALE marker for lease-stale RUNNING rows** (task
    `000001a0fef42f6d…`, landed done-on-arrival via daemon commit `6298e1c3`
-   + closeout `1a1d661b`). `statusCell` (cmd/tq/tasks.go:218-225) renders
-   `STALE` when a RUNNING row's `LeaseExpires` is past — the 05-30 c3
-   stale-lease hint now visible in the list view, pinned by
-   `cmd/tq/liveness_test.go` ("stale-lease" case); cmd/tq module gate green.
+   - closeout `1a1d661b`). `statusCell` (cmd/tq/tasks.go:218-225) renders
+     `STALE` when a RUNNING row's `LeaseExpires` is past — the 05-30 c3
+     stale-lease hint now visible in the list view, pinned by
+     `cmd/tq/liveness_test.go` ("stale-lease" case); cmd/tq module gate green.
 5. **`tq tasks` lease countdown for healthy RUNNING rows** (task
    `000001a0ff18cd…`, commit `c7b3b764`). `statusCell` now renders
    `running 9m59s` (remaining lease, rounded to the second) for RUNNING

@@ -17,6 +17,7 @@ type ID string
 // idSeq serializes NewID so same-millisecond IDs sort by mint order.
 var idSeq struct {
 	sync.Mutex
+
 	ms     int64
 	seed   [5]byte
 	suffix uint64

@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. mirror gate+design shipped, conform landed, drift contract later healed 20-47
 
-
 - **Date:** 2026-09-26 16:44 CEST
 - **Session:** interactive Crush window #2 (no `Task-Queue-ID`; code again rode
   footerless daemon commits)

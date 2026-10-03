@@ -2,7 +2,6 @@
 
 > **DUPLICATE — ARCHIVED 2026-10-02** Canonical report: `2026-09-18_05-45_papdashboard-questions-arc-gates-closeout.md`. lint pass, docs sweep, gates green completed by the 05-45 closeout
 
-
 Session: interactive (no Task-Queue-ID footer; this is the owner-driven
 implementation arc for the PapDashboard questions feature). Design source of
 truth: the 14-37 foundation report + `docs/planning/archived/2026-09-06_decision-question-fanout.md`

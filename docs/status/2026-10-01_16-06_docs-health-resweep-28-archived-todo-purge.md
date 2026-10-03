@@ -34,9 +34,9 @@
    - 7 EXECUTED planning docs (dependency-reuse review, flip-checklist,
      owner-rulings package O1-O6, priority pilot, ADR-0019 migration,
      S1-extras memo, S4 composition map) struck with shipped/routed verdicts
-     + `EXECUTED — ARCHIVED` notes, moved to `docs/planning/archived/`.
-     Spot-verified before striking: replay tool, pilot flags, go-retry,
-     `--read-model` all in-tree.
+     - `EXECUTED — ARCHIVED` notes, moved to `docs/planning/archived/`.
+       Spot-verified before striking: replay tool, pilot flags, go-retry,
+       `--read-model` all in-tree.
    - `check-rows.py` uniformity: 17/17 struck status files complete.
 3. **Citation hygiene.** All 27 moved files' references repointed repo-wide
    in the same change (docs/status/README.md 23 index rows → backticked

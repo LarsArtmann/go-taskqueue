@@ -416,6 +416,7 @@ not here.
 - [ ] Task 000001a0f5af5d2409a380f2fe9c scope ruling: the fix addressed the fullcore EXAMPLE's fatal-exit teardown ("closeout turn skipped" symptom); was queue-side closeout bookkeeping on fatal worker exits ALSO in scope, or is the item fully closed at the example level? — BLOCKED: owner scope call (06-26 report §b2)
 
 ## Requeues-audit follow-up window (2026-10-02 07-53; sources: this window's close-out §f, noticed in passing while verifying the 07-39 requeues ship + pruning AGENTS.md under the doc-size guard; each row scoped against the code seen that window)
+
 - [ ] Add a `--requeues` drill-down flag to `tq audit --journal` listing fact seq + class + reason per requeue — today the report carries only aggregate counts (total, byClass, resumeCloseout) with no per-fact detail (07-53 report §f1; cmd/tq/journalaudit.go requeueSummary)
 - [ ] Pin stats.parked == audit resumeCloseout == webui parked card with a shared-fixture consistency test — three independent derivations of "parked" can drift silently (07-53 report §f2; cmd/tq/main.go stats parked line, internal/webui fragments parked card, cmd/tq/journalaudit.go)
 - [ ] Surface RescueDead re-emissions in `tq audit --journal` as a rescues line: rescue task.enqueued facts are invisible to the requeues view today; add a `rescues` count + class breakdown beside the requeues summary (07-53 report §f3; internal/queue/companion/conform RescueDead trail)
@@ -425,6 +426,7 @@ not here.
 - [ ] Sweep TODO_LIST for rows minted before 2026-10-02 07:39 that assert "unshipped" states the requeues window may have closed — same staleness class as this dispatch's already-done item (07-53 report §f10)
 
 ## Done-prompt window 2026-10-02 06:06–08:06 (heal tool + review-fix triplet + requeues audit; sources: docs/status/2026-10-03_01-05_done-prompt-heal-reviewfix-requeues-window.md §f/§g, deduped against live rows at HEAD)
+
 - [ ] Daemon short-delay/lockfile: the auto-commit daemon must skip (or delay) committing files touched in the last N seconds so in-flight windows stop losing the race — sixth recorded instance in the 2026-10-02 window alone; the heal tool mops, this fixes the class (00-27 §f3, carried; docs/status/2026-10-02_07-20_task-000001a0fafea7edd3605ef62ae6000000000.md §f1)
 - [ ] Wire `scripts/heal-daemon-sweep.sh --self-test` into ci-local as a hard step (check-transient-retry.sh pattern) so the heal refusal rails cannot rot silently — nothing re-runs the 10-check fixture in CI today (docs/status/2026-10-02_07-20_task-000001a0fafea7edd3605ef62ae6000000000.md §f2)
 - [ ] Grow the heal-daemon-sweep self-test: metacharacter + empty-id refusal cases (pin the 3f9f497d hex validation), and a multi-branch backup-ref resolution case (pin the 92c9193c fix) — tagged-range + tag-on-base cases shipped 2026-10-03, which also fixed the rails' invalid `git rev-list --sort=reverse` that made the pushed/tag rail checks silently no-op — remaining refusals ship behavior only manual probes verify today (docs/status/2026-10-02_08-01 §c1, 08-04 §e1, 08-06 §e1)
@@ -440,6 +442,7 @@ not here.
 - [ ] Foreign-red ci-local refusal mode: keep the conscious `CI_CHECK=off` friction per invocation, or document an automatic "latest red run predates this tree → skip the CI check" mode — BLOCKED: owner friction-policy call (docs/status/2026-10-02_08-01_task-000001a0fb27da3d09728921221200000000.md §g2)
 
 ## Done-prompt window 2026-10-03 00:08–02:14 (lease affordances + heal rail fix + flake adjudication; sources: docs/status/2026-10-03_02-25_done-prompt-lease-affordance-heals-window.md)
+
 - [ ] Tighten the heal-daemon-sweep self-test so every refusal case greps stderr for the SPECIFIC "refusing:"/"FAIL:" line instead of asserting bare rc≠0 — the dead `--sort=reverse` rail shipped because the pushed-rail case passed via a different refusal firing first (2026-10-03 01-22 report §d1/§e1)
 - [ ] `tq tasks` webui parity check: does the `tq serve` task table render lease state at all; if not, port the STALE marker + healthy-lease countdown affordance there (2026-10-03 02-14 report §f4)
 - [ ] ci-local step zero: host-env probe (`df -h /; go env GOCACHE GOROOT; ls "$(go env GOROOT)/src/unsafe"`) so a store-symlinked GOCACHE or half-extracted toolchain fails loudly as an environment error instead of masquerading as stdlib breakage (bit three times across the 2026-10-03 00-08/00-25 windows)

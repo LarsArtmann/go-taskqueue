@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. gaps closed by 07-00 successor; residues routed TODO rows
 
-
 **Date:** 2026-09-15 05:40 CEST
 **Scope:** this session's run (one interactive window) + what it observed on master. Other windows' work is credited as observed, not claimed.
 **Task lane:** TODO_LIST "High Impact" row — journal-drift audit (`tq audit --journal`), 2026-09-14 §g2/§g3 rulings (hermetic fixtures only; operator command; advisory smoke, never a hard gate).

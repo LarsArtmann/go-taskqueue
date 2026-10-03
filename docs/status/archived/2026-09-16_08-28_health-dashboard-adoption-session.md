@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. dashboard shipped; open items routed TODO row (ADR, dark-mode, chromedp)
 
-
 Session scope: answered "why don't we use go-health-dashboard?" with an evidence-based
 NOT-adopted assessment; owner overruled ("just add it!"); shipped the full integration
 end-to-end with gates. One session, one feature, ~600 lines of new Go/test/smoke/docs.

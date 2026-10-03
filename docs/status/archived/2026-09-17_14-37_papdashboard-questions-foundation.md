@@ -2,7 +2,6 @@
 
 > **DUPLICATE — ARCHIVED 2026-10-02** Canonical report: `2026-09-17_21-04_papdashboard-questions-feature.md`. foundation design superseded by full 21-04 implementation report
 
-
 **Window:** 2026-09-17 ~13:45–14:37 CEST · **Feature:** decision → question fan-out
 (ROADMAP v0.3.0 remainder arc; design note
 `docs/planning/archived/2026-09-06_decision-question-fanout.md`, still Proposed).

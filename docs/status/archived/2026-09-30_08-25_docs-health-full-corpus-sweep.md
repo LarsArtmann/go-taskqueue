@@ -1,4 +1,5 @@
 # Docs-health full-corpus sweep: 352-file triage, 93-file archive, living-doc refresh
+
 _(Archived 2026-10-01 docs-health pass: every forward-looking item resolved — inline per-item verdicts re-verified at HEAD (sweep follow-ups shipped/routed). Point-in-time snapshot — re-verify before treating any claim as current.)_
 
 > Point-in-time snapshot of the 2026-09-30 ~07:45–08:25 docs-health session.
@@ -73,7 +74,7 @@ _(Archived 2026-10-01 docs-health pass: every forward-looking item resolved — 
    deliberately unenforced — the 79 duplicates carry the ratified
    disposition-note form (12-58 §c1 stands); inline strikethroughs were
    applied exactly to the fully-done class the owner demanded.
-~~2. `scripts/check-archive-eligibility.sh` (row 281) remains unbuilt; this~~ routed — TODO_LIST: check-archive-eligibility row
+   ~~2. `scripts/check-archive-eligibility.sh` (row 281) remains unbuilt; this~~ routed — TODO_LIST: check-archive-eligibility row
    was the second judgment-scale sweep it would have mechanized.
 
 ## d) TOTALLY FUCKED UP (honest defects, all caught in-session)
@@ -100,35 +101,35 @@ _(Archived 2026-10-01 docs-health pass: every forward-looking item resolved — 
 ## e) WHAT WE SHOULD IMPROVE
 
 ~~1. `check-archive-eligibility.sh` would have caught the missed-move class~~ routed — TODO_LIST: check-archive-eligibility row
-   mechanically (d.2).
+mechanically (d.2).
 ~~2. The re-dispatch loop remains the corpus's mass generator: 79 of 93~~ routed — TODO_LIST: mint-time done-check + duplicate-claim rows
-   archives were verify-only duplicates — the mint-time done-check row
-   (200) and duplicate-claim ruling row (231) are the systemic fix.
+archives were verify-only duplicates — the mint-time done-check row
+(200) and duplicate-claim ruling row (231) are the systemic fix.
 3. The strict sub-agent output contract (FILE/CLASS/STRIKE/OPEN blocks)
-   made 352-file triage mechanical and auditable — keep it as the sweep
-   playbook.
+made 352-file triage mechanical and auditable — keep it as the sweep
+playbook.
 ~~4. The dead-SHA repo-wide debt (438 unreachable-cite findings at close,~~ done — shipped at HEAD: 2274df49 mass dead-SHA triage (gate rc=0)
-   grown from ~660-measured baseline by later heals — row 332 owns the
-   mass triage) is starting to drown the gate's signal for NEW dead cites.
+grown from ~660-measured baseline by later heals — row 332 owns the
+mass triage) is starting to drown the gate's signal for NEW dead cites.
 
 ## f) UP NEXT (owned by existing rows, not re-minted)
 
 ~~1. Row 332: mass dead-SHA triage (438 findings).~~ done — shipped at HEAD: row 332 closed DONE (2274df49)
 ~~2. Row 281: the archive-eligibility gate.~~ routed — TODO_LIST: check-archive-eligibility row
 ~~3. Master CI is RED at 470508620 — code legs at a docs-only HEAD, triaged~~ done — shipped at HEAD: master green re-verified via the journal-drift row closure
-   as pre-existing by the 07-56/08-20 windows; needs the owner push of the
-   heal.
+as pre-existing by the 07-56/08-20 windows; needs the owner push of the
+heal.
 ~~4. The 9 rows minted in this sweep's harvest section (flake hash twin,~~ done — harvested: the sweep-minted rows live in TODO_LIST
-   evidence-stage surfaces, divergence register, cqrsqlite ruling, …).
+evidence-stage surfaces, divergence register, cqrsqlite ruling, …).
 
 ## g) OWNER QUESTIONS
 
 ~~1. Digest-vs-sweep cadence (standing README question): 9 days between~~ done — shipped at HEAD: digest rows + bloat cadence in docs/status/README.md
-   sweeps produced a 92-file cleanup; would weekly mini-sweeps be the
-   standing ritual instead?
+sweeps produced a 92-file cleanup; would weekly mini-sweeps be the
+standing ritual instead?
 ~~2. Archive-sweep strikethrough scope: this pass struck ALL numbered items~~ ruled — archive conventions ratified in docs/status/README.md (verdict bar)
-   in fully-done windows (the 00-43 precedent) — ratify, or restrict to
-   forward-looking items only?
+in fully-done windows (the 00-43 precedent) — ratify, or restrict to
+forward-looking items only?
 ~~3. Given 79/93 of this sweep's archives are same-ID verify-only~~ routed — TODO_LIST: mint-time done-check row
-   re-dispatches: pull the mint-time done-check (row 200) forward as the
-   next queue-side work item?
+re-dispatches: pull the mint-time done-check (row 200) forward as the
+next queue-side work item?

@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. v2 shipped; red test/docs fixed by 06-44; live run routed TODO row
 
-
 Recorded 2026-09-15 (the session it documents ran 2026-09-14 12:06 → 2026-09-15 05:20).
 
 Session 2026-09-14 12:06 → 2026-09-15 05:20. Prompt: "How could we automate

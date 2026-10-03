@@ -2,7 +2,6 @@
 
 > **ARCHIVED 2026-10-02** Per-item triage at HEAD: every forward-looking item shipped, routed to TODO_LIST, or narrative-only. extractions live at HEAD (internal/watermark/watermark.go verified); residue rowed
 
-
 **Window:** 2026-09-22 ~21:40–23:13 CEST · **Base:** `16d347f` · **Head:** `ba8e92a` (19 daemon commits, 29 files, +700/−824 — net **−124 lines** while adding two packages and one facade symbol)
 **Task:** `deduplicate-code` on the user-supplied `art-dupl --type-aware -t 5` report (12 clone groups)
 **Method:** read/judge every group → extract/accept per the dedup skill → gates after each step → full battery at the end.

@@ -2,7 +2,6 @@
 
 > **DUPLICATE — ARCHIVED 2026-10-02** Canonical report: `2026-10-01_17-05_queue-health-restoration-plan-closeout.md`. remaining M10-M21 executed by phase 2 and the 17-05 consolidating closeout
 
-
 **Date:** 2026-10-01 11:37 CEST · **Session:** resumed 11:05 at M6/F20 per
 the 11-01 close-out · **Plan:**
 `docs/planning/2026-10-01_04-27_SUPERB-QUEUE-HEALTH-RESTORATION.md`
