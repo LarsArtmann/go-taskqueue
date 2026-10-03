@@ -213,6 +213,10 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2 itself; CI setup-go
   PINNED to 1.27.1 = go.mod floor; NEVER lower a `go` directive
   (`check-go-mods.sh` gates).
+- **Host GOCACHE/GOROOT hazards**: run gates with `GOCACHE=/tmp/go-build-cache`
+  (host symlink → /nix/store ENOSPCs); "package X is not in std" with a
+  `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w +
+  trash, or `GOTOOLCHAIN=local` to nix go).
 - **golangci-lint is advisory** (~1.4k baseline, growth gated by
   `scripts/lint-baseline.sh --check`); hard gates: vet + gofmt + tests.
   Regen only on a green tree after `golangci-lint cache clean`.
