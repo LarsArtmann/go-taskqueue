@@ -48,6 +48,14 @@ func replayStateFor(out map[task.ID]*replayState, id task.ID) *replayState {
 	return state
 }
 
+// replaySetStatus moves an already-known task's status; ids the journal
+// never introduced stay ignored instead of being conjured into existence.
+func replaySetStatus(out map[task.ID]*replayState, id task.ID, status task.Status) {
+	if state := out[id]; state != nil {
+		state.status = status
+	}
+}
+
 func replayProjection(facts []journal.Fact) map[task.ID]*replayState {
 	out := make(map[task.ID]*replayState)
 
@@ -97,29 +105,19 @@ func replayProjection(facts []journal.Fact) map[task.ID]*replayState {
 			// its own fact.
 			maxAttempt(id, fact.Attempt)
 
-			if state := out[id]; state != nil {
-				state.status = task.Pending
-			}
+			replaySetStatus(out, id, task.Pending)
 		case journal.DeadLettered:
 			maxAttempt(id, fact.Attempt)
 
-			if state := out[id]; state != nil {
-				state.status = task.Dead
-			}
+			replaySetStatus(out, id, task.Dead)
 		case journal.Cancelled:
-			if state := out[id]; state != nil {
-				state.status = task.Cancelled
-			}
+			replaySetStatus(out, id, task.Cancelled)
 		case journal.Requeued:
 			// preflight refusal: back to Pending, no attempt burned
-			if state := out[id]; state != nil {
-				state.status = task.Pending
-			}
+			replaySetStatus(out, id, task.Pending)
 		case journal.Released:
 			// lease expiry: back to Pending until reclaimed
-			if state := out[id]; state != nil {
-				state.status = task.Pending
-			}
+			replaySetStatus(out, id, task.Pending)
 		case journal.Reprioritized:
 			var evidence queue.ReprioritizeEvidence
 			if err := json.Unmarshal(fact.Detail, &evidence); err == nil {

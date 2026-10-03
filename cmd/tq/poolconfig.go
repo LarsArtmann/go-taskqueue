@@ -46,7 +46,7 @@ func loadPoolConfigFile(path string) (map[string]string, error) {
 
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
-		value = unquoteConfigValue(value)
+		value = unquoteSurroundingQuotes(value)
 
 		if key == "" {
 			return nil, fmt.Errorf("pool config %s:%d: empty key", path, lineNo)
@@ -62,14 +62,17 @@ func loadPoolConfigFile(path string) (map[string]string, error) {
 	return out, nil
 }
 
-func unquoteConfigValue(value string) string {
-	if len(value) >= 2 {
-		if (value[0] == '"' && value[len(value)-1] == '"') || (value[0] == '\'' && value[len(value)-1] == '\'') {
-			return value[1 : len(value)-1]
+// unquoteSurroundingQuotes strips one layer of matching surrounding
+// double or single quotes, if both ends carry the same one (config-file
+// and systemd EnvironmentFile values).
+func unquoteSurroundingQuotes(v string) string {
+	if len(v) >= 2 {
+		if (v[0] == '"' && v[len(v)-1] == '"') || (v[0] == '\'' && v[len(v)-1] == '\'') {
+			return v[1 : len(v)-1]
 		}
 	}
 
-	return value
+	return v
 }
 
 // applyPoolConfigFile applies config-file values to flags the operator did

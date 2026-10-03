@@ -1147,7 +1147,7 @@ func parseSystemdUnitEnv(unit, content string) (map[string]string, error) {
 					continue
 				}
 				if k, v, ok := strings.Cut(fl, "="); ok {
-					env[k] = unquoteSystemdValue(v)
+					env[k] = unquoteSurroundingQuotes(v)
 				}
 			}
 		}
@@ -1193,18 +1193,6 @@ func splitSystemdAssignments(s string) []string {
 	flush()
 
 	return tokens
-}
-
-// unquoteSystemdValue strips one layer of matching surrounding quotes
-// from an EnvironmentFile value.
-func unquoteSystemdValue(v string) string {
-	if len(v) >= 2 {
-		if (v[0] == '"' && v[len(v)-1] == '"') || (v[0] == '\'' && v[len(v)-1] == '\'') {
-			return v[1 : len(v)-1]
-		}
-	}
-
-	return v
 }
 
 // lookupOnPath resolves name the way exec.LookPath does, but against an

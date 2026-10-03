@@ -145,16 +145,7 @@ func (p *Pool) preflightDelay(id task.ID) (time.Duration, int) {
 	p.preflightMu.Lock()
 	defer p.preflightMu.Unlock()
 
-	st := p.preflightSeen[id]
-	if st == nil {
-		st = &preflightState{}
-
-		if p.preflightSeen == nil {
-			p.preflightSeen = make(map[task.ID]*preflightState)
-		}
-
-		p.preflightSeen[id] = st
-	}
+	st, _ := p.preflightStateFor(id, time.Time{})
 
 	st.count++
 
@@ -168,6 +159,25 @@ func (p *Pool) preflightDelay(id task.ID) (time.Duration, int) {
 	return time.Duration(float64(d) * jitter), st.count
 }
 
+// preflightStateFor returns the task's preflight entry, creating it (and
+// the map) on first contact; lastLog seeds a fresh entry's log clock.
+// Callers hold preflightMu.
+func (p *Pool) preflightStateFor(id task.ID, lastLog time.Time) (*preflightState, bool) {
+	if st := p.preflightSeen[id]; st != nil {
+		return st, false
+	}
+
+	st := &preflightState{lastLog: lastLog}
+
+	if p.preflightSeen == nil {
+		p.preflightSeen = make(map[task.ID]*preflightState)
+	}
+
+	p.preflightSeen[id] = st
+
+	return st, true
+}
+
 // preflightShouldLog reports whether the refusal for this task should hit
 // the log now (first refusal, or the interval elapsed since the last one).
 // Assumes preflightDelay already ran for this refusal.
@@ -175,16 +185,8 @@ func (p *Pool) preflightShouldLog(id task.ID) bool {
 	p.preflightMu.Lock()
 	defer p.preflightMu.Unlock()
 
-	st := p.preflightSeen[id]
-	if st == nil {
-		st = &preflightState{lastLog: time.Now()}
-
-		if p.preflightSeen == nil {
-			p.preflightSeen = make(map[task.ID]*preflightState)
-		}
-
-		p.preflightSeen[id] = st
-
+	st, created := p.preflightStateFor(id, time.Now())
+	if created {
 		return true
 	}
 

@@ -260,17 +260,7 @@ templ taskRows(data DashboardData, rows []task.Task) {
 			}
 			<td class={ tdCellClass(true) } title={ t.CreatedAt.Format(timeFormat) } data-age={ fmt.Sprintf("%d", t.CreatedAt.UnixMilli()) }>{ timeAgo(data.Now, t.CreatedAt) }</td>
 			if t.LastError != "" {
-				<td class={ tdCellClass(false) }>
-					<span
-						class={ tqErrorCellClass }
-						title={ t.LastError }
-						data-error={ t.LastError }
-						data-short={ truncate(t.LastError, errorPreviewLen) }
-						tabindex="0"
-						role="button"
-						aria-expanded="false"
-					>{ truncate(t.LastError, errorPreviewLen) }</span>
-				</td>
+				@errorCell(t)
 			} else {
 				<td class={ tdCellClass(false) }></td>
 			}
@@ -342,6 +332,23 @@ templ DeadLetterTable(data DashboardData) {
 	}
 }
 
+// errorCell is the expandable last-error table cell shared by the queue
+// and dead-letter tables; one copy keeps the data-* contract the row
+// expansion JS listens on from drifting between the tables.
+templ errorCell(t task.Task) {
+	<td class={ tdCellClass(false) }>
+		<span
+			class={ tqErrorCellClass }
+			title={ t.LastError }
+			data-error={ t.LastError }
+			data-short={ truncate(t.LastError, errorPreviewLen) }
+			tabindex="0"
+			role="button"
+			aria-expanded="false"
+		>{ truncate(t.LastError, errorPreviewLen) }</span>
+	</td>
+}
+
 templ deadRows(data DashboardData) {
 	for _, t := range data.Dead {
 		<tr class={ taskRowClass(t) }>
@@ -355,17 +362,7 @@ templ deadRows(data DashboardData) {
 			<td class={ tdCellClass(true) }>{ t.Project }</td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ t.Type }</span></td>
 			<td class={ tdCellClass(false) }><span class="font-mono text-xs">{ formatInt(t.Attempts) }/{ formatInt(t.MaxAttempts) }</span></td>
-			<td class={ tdCellClass(false) }>
-				<span
-					class={ tqErrorCellClass }
-					title={ t.LastError }
-					data-error={ t.LastError }
-					data-short={ truncate(t.LastError, errorPreviewLen) }
-					tabindex="0"
-					role="button"
-					aria-expanded="false"
-				>{ truncate(t.LastError, errorPreviewLen) }</span>
-			</td>
+			@errorCell(t)
 		</tr>
 	}
 }
@@ -826,6 +823,20 @@ templ retryStrip(trail []retryReason) {
 	}
 }
 
+// payloadPreWithCopy is a monospace payload block with its copy button;
+// one copy keeps pre styling, wrap behavior, and the clipboard contract
+// identical across every payload surface.
+templ payloadPreWithCopy(preClass, text string) {
+	<div class="flex items-start gap-2">
+		<pre class={ preClass + " min-w-0 flex-1" }>{ text }</pre>
+		@display.CopyButton(display.CopyButtonProps{
+			Text:      text,
+			Label:     "copy",
+			BaseProps: utils.BaseProps{Nonce: ctxNonce(ctx)},
+		})
+	</div>
+}
+
 // payloadSection is the task's content, type-aware (payloadView): the work
 // item (or command) leads, the executor contract reads as a spec grid, and
 // the prompt plus the raw payload fold away — readable by default, exact on
@@ -835,14 +846,7 @@ templ payloadSection(t task.Task, pv payloadView) {
 	<div class="tq-payload">
 		if pv.Lede != "" {
 			if pv.LedeMono {
-				<div class="flex items-start gap-2">
-					<pre class="tq-payload-cmd min-w-0 flex-1">{ pv.Lede }</pre>
-					@display.CopyButton(display.CopyButtonProps{
-						Text:      pv.Lede,
-						Label:     "copy",
-						BaseProps: utils.BaseProps{Nonce: ctxNonce(ctx)},
-					})
-				</div>
+				@payloadPreWithCopy("tq-payload-cmd", pv.Lede)
 			} else {
 				<p class="tq-payload-item">{ pv.Lede }</p>
 			}
@@ -887,14 +891,7 @@ templ payloadSection(t task.Task, pv payloadView) {
 		if pv.hasRaw() {
 			<details class="tq-fold">
 				<summary>raw payload</summary>
-				<div class="flex items-start gap-2">
-					<pre class="tq-payload-pre min-w-0 flex-1">{ pv.Raw }</pre>
-					@display.CopyButton(display.CopyButtonProps{
-						Text:      pv.Raw,
-						Label:     "copy",
-						BaseProps: utils.BaseProps{Nonce: ctxNonce(ctx)},
-					})
-				</div>
+				@payloadPreWithCopy("tq-payload-pre", pv.Raw)
 			</details>
 		}
 	</div>
