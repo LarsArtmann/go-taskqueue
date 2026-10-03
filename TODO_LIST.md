@@ -117,7 +117,7 @@ not here.
 ## Webui overhaul leftovers (2026-09-14 stunning-overhaul execution; docs/research/2026-09-14_templ-components-deep-dive.html §05)
 
 - [x] Adopt `display` MaxTicks in the two dashboard metric AreaCharts (560x200) once templ-components releases past v1.17.0 — the prop is implemented upstream (templ-components df0d70f4, untagged); the Height-200 stopgap stands until then — DONE 2026-10-03: MaxTicks=5 on both charts (templ-components v1.19.4); docs/status/2026-10-03_02-46_task-000001a0ff268a2e81404f9e529000000000.md + re-dispatch 02-57
-- [ ] Sort state as removable filter chip + sort-header link visual verification against theme duality (G2 polish, deferred)
+- [x] Sort state as removable filter chip + sort-header link visual verification against theme duality (G2 polish, deferred) — DONE 2026-10-04: active `?sort=` renders as a removable `sort` filter chip (theme-dual dark: variants via filterChip); sort-header link verified theme-dual in templ-components v1.16.0 table.templ (text-gray-900/dark:text-white + blue hover both modes)
 - [ ] CSP `form-action 'none'` kills the no-JS filter fallback — allow form-action 'self' or accept JS-only filters — BLOCKED: owner ruling on the security posture (surfaced during G1)
 
 ## Done-prompt window harvest (2026-09-16; sources: the five-task hardening window close-outs 00-11/00-55/01-21/01-46 + 06-43, deduped against rows 89-93/97; all claims verified at HEAD this pass; docs/status/archived/2026-09-16_02-05_done-prompt-five-task-hardening-window.md)

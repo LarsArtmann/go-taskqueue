@@ -254,6 +254,41 @@ func TestVisibleProjectsCap(t *testing.T) {
 	}
 }
 
+// TestSortChip pins the sort-state chip: an active ?sort= renders as a
+// removable filter chip (kind "sort" + value + × link), its clear link
+// strips only the sort param, "clear all" appears, and no sort chip renders
+// without an active sort.
+func TestSortChip(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/?sort=age-desc", nil))
+	page := rec.Body.String()
+
+	if !strings.Contains(page, ">sort<") || !strings.Contains(page, "age-desc") {
+		t.Error("active sort did not render a filter chip")
+	}
+
+	if !strings.Contains(page, `aria-label="clear sort filter"`) {
+		t.Error("sort chip must carry a removable clear link")
+	}
+
+	if !strings.Contains(page, "clear all") {
+		t.Error("active sort must enable the clear-all link")
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if strings.Contains(rec.Body.String(), "clear sort filter") {
+		t.Error("sort chip must not render without an active sort")
+	}
+
+	clearHref := filterURL(FilterState{Sort: "age-desc", Page: 1, View: viewTable}, clearSort)
+	if back := parseFilter(httptest.NewRequest(http.MethodGet, clearHref, nil)); back.Sort != "" {
+		t.Errorf("clearSort left sort = %q, want empty", back.Sort)
+	}
+}
+
 // TestBandFilterRoundTrip pins the ?band= surface: the three ADR-0015
 // bands round-trip through filterHref -> parseFilter, unknown values fall
 // back to no band, and toQueueFilter maps the band onto the stored

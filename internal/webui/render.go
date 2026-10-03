@@ -476,7 +476,8 @@ func pageResults[T any](
 	return out
 }
 
-// clearProject / clearStatus / clearQuery are used by the filter chips.
+// clearProject / clearStatus / clearQuery / clearBand / clearSort are used
+// by the filter chips.
 func clearProject(f FilterState) string {
 	f.Project = ""
 
@@ -497,6 +498,12 @@ func clearQuery(f FilterState) string {
 
 func clearBand(f FilterState) string {
 	f.Band = ""
+
+	return filterHref(f)
+}
+
+func clearSort(f FilterState) string {
+	f.Sort = ""
 
 	return filterHref(f)
 }
