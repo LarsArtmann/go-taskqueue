@@ -297,12 +297,14 @@ func TestNosniffOnEveryResponse(t *testing.T) {
 // auths lock the client out of ALL routes for the window — a valid token
 // during the lockout still gets 429 — and access returns once it expires.
 func TestAuthLockout(t *testing.T) {
+	clock := time.Now()
 	srv, _ := newTestAPI(t)
 	srv.strikes = lockout.New(lockout.Config{
 		MaxHits:  authMaxHits,
 		Lockout:  40 * time.Millisecond,
 		IdleKeep: authIdleKeep,
 		MaxKeys:  authMaxKeys,
+		Now:      func() time.Time { return clock },
 	})
 	h := srv.Handler()
 
@@ -336,7 +338,7 @@ func TestAuthLockout(t *testing.T) {
 		t.Fatal("429 must carry Retry-After")
 	}
 
-	time.Sleep(60 * time.Millisecond)
+	clock = clock.Add(50 * time.Millisecond)
 
 	if code := try("secret-token"); code != http.StatusOK {
 		t.Fatalf("after lockout expiry = %d, want 200", code)
