@@ -98,10 +98,11 @@ func (s *Server) guard(next http.Handler) http.Handler {
 		key := remoteHost(r)
 		if retry, locked := s.strikes.Locked(key); locked {
 			w.Header().Set("Retry-After", strconv.Itoa(int(retry/time.Second)+1))
-			http.Error(
+			writeError(
 				w,
-				"too many failed auth attempts — locked for "+retry.Round(time.Second).String(),
 				http.StatusTooManyRequests,
+				"too many failed auth attempts — locked for "+retry.Round(time.Second).String(),
+				"wait out the lockout window before retrying",
 			)
 
 			return
@@ -113,7 +114,7 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			s.strikes.Add(key)
 
 			w.Header().Set("WWW-Authenticate", `Bearer realm="tq-api"`)
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			writeError(w, http.StatusUnauthorized, "unauthorized", "present a valid bearer token (Authorization: Bearer <token> or ?token=<token>)")
 
 			return
 		}
