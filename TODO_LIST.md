@@ -116,7 +116,7 @@ not here.
 
 ## Webui overhaul leftovers (2026-09-14 stunning-overhaul execution; docs/research/2026-09-14_templ-components-deep-dive.html §05)
 
-- [ ] Adopt `display` MaxTicks in the two dashboard metric AreaCharts (560x200) once templ-components releases past v1.17.0 — the prop is implemented upstream (templ-components df0d70f4, untagged); the Height-200 stopgap stands until then
+- [x] Adopt `display` MaxTicks in the two dashboard metric AreaCharts (560x200) once templ-components releases past v1.17.0 — the prop is implemented upstream (templ-components df0d70f4, untagged); the Height-200 stopgap stands until then
 - [ ] Sort state as removable filter chip + sort-header link visual verification against theme duality (G2 polish, deferred)
 - [ ] CSP `form-action 'none'` kills the no-JS filter fallback — allow form-action 'self' or accept JS-only filters — BLOCKED: owner ruling on the security posture (surfaced during G1)
 

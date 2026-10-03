@@ -4630,6 +4630,7 @@ func MetricsRow(data DashboardData) templ.Component {
 			templ_7745c5c3_Err = display.AreaChart(display.AreaChartProps{
 				Series:      []display.LineChartSeries{{Name: "facts", Values: data.FactBuckets, Color: "text-cyan-600 dark:text-cyan-400"}},
 				Height:      200,
+				MaxTicks:    5,
 				ShowGrid:    false,
 				FillOpacity: 0.25,
 				Width:       560,
@@ -4673,6 +4674,7 @@ func MetricsRow(data DashboardData) templ.Component {
 					Series:      []display.LineChartSeries{{Name: "tasks", Values: completeHistogram(data), Color: "text-emerald-600 dark:text-emerald-400"}},
 					XAxisLabels: completeHistogramLabels(data),
 					Height:      200,
+					MaxTicks:    5,
 					ShowGrid:    false,
 					FillOpacity: 0.25,
 					Width:       560,
