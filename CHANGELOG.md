@@ -252,6 +252,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `internal/budget/budget_test.go`)
 
 ### Changed
+- **`tq api` auth-plane failures now answer `{error, fix}` JSON** (2026-10-04):
+  401 auth failures and lockout 429s on the machine API go through the shared
+  `writeError` seam instead of plain-text `http.Error` (headers
+  `WWW-Authenticate`/`Retry-After` and `nosniff` unchanged); producers that
+  string-matched the old text bodies must parse JSON now.
+  (`internal/httpapi/httpapi.go`, fix commit `6369ea75`)
+- **First strikes-map bound eviction in the lockout limiter now warns once**
+  (2026-10-04): `internal/lockout` fires a one-time `slog.Warn` (per Limiter,
+  gated on an actual least-recently-active eviction — an idle sweep alone
+  stays silent) when the strikes map exceeds `MaxKeys`, surfacing surprise key
+  populations (large NAT pools or abuse) that were previously invisible.
+  (`internal/lockout/lockout.go`, commits `68e568c7`, `6116e23a`)
 - **Active sort renders as a removable filter chip in the dashboard** (2026-10-04):
   an active `?sort=` shows alongside the project/status/query/band chips with its
   own ×-to-clear link (`clearSort` strips only the sort param), and the clear-all

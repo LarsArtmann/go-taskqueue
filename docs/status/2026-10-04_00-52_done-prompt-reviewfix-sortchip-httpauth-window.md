@@ -74,6 +74,10 @@ read-only), and a fresh `heal-daemon-sweep.sh --self-test` run at HEAD.
    (blocked owner rows), status-index archive sweep (live-rows still ~176 vs threshold
    100), 401/429 body-shape ruling, `?token=` strike-path pin (TODO row at line 128,
    untouched, correctly out of the httpauth task's scope).
+   ~~401/429 body-shape ruling, `?token=` strike-path pin~~ — both closed later this
+   night: strike pin + lockout-over-enqueue landed as `d8809930` (row 128 `[x]`),
+   body shape aligned via `6369ea75` (row 129 `[x]`); see the 01-06/01-17/01-12/01-29
+   reports of 2026-10-04.
 3. Nothing the window was asked to do was skipped.
 
 ## d) TOTALLY FUCKED UP
