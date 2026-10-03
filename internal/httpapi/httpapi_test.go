@@ -420,6 +420,94 @@ func TestAuthStrikesResetOnSuccess(t *testing.T) {
 	}
 }
 
+// TestQueryTokenFailureStrikes pins the 01-21 report f8 ruling: the
+// ?token= fallback is a full bearer peer — wrong query tokens count
+// strikes exactly like wrong Authorization headers, and a correct query
+// token still clears them.
+func TestQueryTokenFailureStrikes(t *testing.T) {
+	clock := time.Now()
+	srv, _ := newTestAPI(t)
+	srv.strikes = lockout.New(lockout.Config{
+		MaxHits:  authMaxHits,
+		Lockout:  40 * time.Millisecond,
+		IdleKeep: authIdleKeep,
+		MaxKeys:  authMaxKeys,
+		Now:      func() time.Time { return clock },
+	})
+	h := srv.Handler()
+
+	tryQuery := func(token string) int {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz?token="+token, nil)
+
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		return rec.Code
+	}
+
+	for i := range 3 {
+		if code := tryQuery("wrong"); code != http.StatusUnauthorized {
+			t.Fatalf("wrong query token %d = %d, want 401", i+1, code)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz?token=secret-token", nil)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("correct query token under lockout = %d, want 429", rec.Code)
+	}
+
+	clock = clock.Add(50 * time.Millisecond)
+
+	if code := tryQuery("secret-token"); code != http.StatusOK {
+		t.Fatalf("after lockout expiry = %d, want 200", code)
+	}
+
+	tryQuery("wrong")
+	tryQuery("wrong")
+
+	if code := tryQuery("secret-token"); code != http.StatusOK {
+		t.Fatalf("correct query token with two strikes = %d, want 200 (a success resets the strikes)", code)
+	}
+}
+
+// TestLockoutCoversEnqueue pins the 01-21 report f9 all-routes ruling:
+// the strike guard wraps the whole mux, so a locked client is refused on
+// POST /api/v1/tasks too — not just the GET probes.
+func TestLockoutCoversEnqueue(t *testing.T) {
+	srv, _ := newTestAPI(t)
+	srv.strikes = lockout.New(lockout.Config{
+		MaxHits:  authMaxHits,
+		Lockout:  time.Hour,
+		IdleKeep: authIdleKeep,
+		MaxKeys:  authMaxKeys,
+	})
+	h := srv.Handler()
+
+	try := func(method, path, token string) int {
+		req := httptest.NewRequest(method, path, strings.NewReader(`{"project":"p","type":"sh","payload":{}}`))
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		return rec.Code
+	}
+
+	for i := range 3 {
+		if code := try(http.MethodGet, "/api/v1/healthz", "wrong"); code != http.StatusUnauthorized {
+			t.Fatalf("failed auth %d = %d, want 401", i+1, code)
+		}
+	}
+
+	if code := try(http.MethodPost, "/api/v1/tasks", "secret-token"); code != http.StatusTooManyRequests {
+		t.Fatalf("locked enqueue = %d, want 429", code)
+	}
+}
+
 // enqueueTask seeds one task through the store directly.
 func enqueueTask(t *testing.T, store *sqlite.Store, project string) task.Task {
 	t.Helper()
