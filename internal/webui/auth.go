@@ -70,7 +70,7 @@ func withTokenAuth(token string, next http.Handler) http.Handler {
 	expected := httpauth.HashToken(token)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		presented, viaCookie := presentedToken(r)
+		presented, viaCookie := tokenPolicy.Presented(r)
 		if !httpauth.TokenMatches(expected, presented) {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="tq dashboard"`)
 			http.Error(w,
@@ -107,21 +107,9 @@ func withTokenAuth(token string, next http.Handler) http.Handler {
 // without a cookie every asset 401s on a token-gated LAN bind.
 const tqTokenCookie = "tq_token"
 
-// presentedToken extracts the token a client offered, preferring the
-// Authorization header, then the session cookie, then the query parameter.
-// The bool reports whether the token came from the cookie (so the wrapper
-// can skip re-issuing it).
-func presentedToken(r *http.Request) (string, bool) {
-	if auth := httpauth.AuthorizationToken(r); auth != "" {
-		return auth, false
-	}
-
-	if c, err := r.Cookie(tqTokenCookie); err == nil && c.Value != "" {
-		return c.Value, true
-	}
-
-	return httpauth.QueryToken(r), false
-}
+// tokenPolicy is the dashboard's presentation policy: Authorization
+// header, then the session cookie, then the query parameter.
+var tokenPolicy = httpauth.DashboardPolicy(tqTokenCookie)
 
 // tqCSRFCookie carries the per-browser write token. It is NOT a secret from
 // the user — it is a secret from OTHER SITES: a cross-site form post cannot
@@ -217,10 +205,10 @@ type writeRateLimiter struct {
 
 func newWriteRateLimiter() *writeRateLimiter {
 	return &writeRateLimiter{limiter: lockout.New(lockout.Config{
-		MaxHits:  3,
-		Lockout:  time.Minute,
-		IdleKeep: 10 * time.Minute,
-		MaxKeys:  1024,
+		MaxHits:  lockout.DefaultMaxHits,
+		Lockout:  lockout.DefaultLockout,
+		IdleKeep: lockout.DefaultIdleKeep,
+		MaxKeys:  lockout.DefaultMaxKeys,
 		OnLock: func(key string, lockout time.Duration) {
 			slog.Warn(
 				"webui: write routes locked after repeated CSRF failures",

@@ -75,6 +75,103 @@ func TestQueryToken(t *testing.T) {
 	}
 }
 
+func TestPresentationPolicyPresented(t *testing.T) {
+	t.Parallel()
+
+	const cookieName = "tq_token"
+
+	tests := []struct {
+		name        string
+		policy      PresentationPolicy
+		header      string
+		cookie      string
+		queryToken  string
+		wantToken   string
+		wantCookie  bool
+	}{
+		{
+			name:      "api policy: bearer header wins",
+			policy:    APIPolicy(),
+			header:    "Bearer hdr",
+			queryToken: "q",
+			wantToken: "hdr",
+		},
+		{
+			name:      "api policy: query fallback",
+			policy:    APIPolicy(),
+			queryToken: "q",
+			wantToken: "q",
+		},
+		{
+			name:      "api policy: cookie channel never consulted",
+			policy:    APIPolicy(),
+			cookie:    "c",
+			queryToken: "q",
+			wantToken: "q",
+		},
+		{
+			name:      "api policy: nothing presented",
+			policy:    APIPolicy(),
+			wantToken: "",
+		},
+		{
+			name:       "dashboard policy: bearer header beats cookie and query",
+			policy:     DashboardPolicy(cookieName),
+			header:     "Bearer hdr",
+			cookie:     "c",
+			queryToken: "q",
+			wantToken:  "hdr",
+		},
+		{
+			name:       "dashboard policy: cookie beats query",
+			policy:     DashboardPolicy(cookieName),
+			cookie:     "c",
+			queryToken: "q",
+			wantToken:  "c",
+			wantCookie: true,
+		},
+		{
+			name:       "dashboard policy: empty cookie falls through to query",
+			policy:     DashboardPolicy(cookieName),
+			cookie:     " ",
+			queryToken: "q",
+			wantToken:  "q",
+		},
+		{
+			name:       "dashboard policy: query fallback",
+			policy:     DashboardPolicy(cookieName),
+			queryToken: "q",
+			wantToken:  "q",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			r := tokenRequest(t, tt.header)
+			if tt.cookie != "" {
+				r.AddCookie(&http.Cookie{Name: cookieName, Value: tt.cookie})
+			}
+
+			if tt.queryToken != "" {
+				q := r.URL.Query()
+				q.Set("token", tt.queryToken)
+				r.URL.RawQuery = q.Encode()
+			}
+
+			got, viaCookie := tt.policy.Presented(r)
+			if got != tt.wantToken {
+				t.Errorf("Presented() = %q, want %q", got, tt.wantToken)
+			}
+
+			if viaCookie != tt.wantCookie {
+				t.Errorf("Presented() viaCookie = %v, want %v", viaCookie, tt.wantCookie)
+			}
+		})
+	}
+}
+
 func TestTokenMatches(t *testing.T) {
 	t.Parallel()
 

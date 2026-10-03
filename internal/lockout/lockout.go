@@ -10,6 +10,23 @@ import (
 	"time"
 )
 
+// Operator-parity defaults shared by both HTTP surfaces: same strike
+// trigger, window, and memory bounds, so the dashboard's write-route
+// limiter and the API's bearer-auth limiter behave identically to
+// operators. Surfaces pass these (or stricter values) into Config — there
+// is exactly one source for the numbers, so a tuning change lands on both
+// surfaces at once.
+const (
+	// DefaultMaxHits is the strike count that triggers a lockout.
+	DefaultMaxHits = 3
+	// DefaultLockout is the lockout window.
+	DefaultLockout = time.Minute
+	// DefaultIdleKeep is the unlocked idle lifetime before pruning.
+	DefaultIdleKeep = 10 * time.Minute
+	// DefaultMaxKeys caps the strikes map.
+	DefaultMaxKeys = 1024
+)
+
 // Config builds one Limiter. MaxHits, Lockout, IdleKeep and MaxKeys are
 // required (each surface pins its own documented constants).
 type Config struct {

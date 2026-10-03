@@ -84,11 +84,13 @@ func (s *Server) Handler() http.Handler {
 
 // guard enforces the bearer token on every route (constant-time compare).
 // The token may also ride the query (?token=) for clients that cannot set
-// headers — same contract as the dashboard stream. Every response carries
-// nosniff; repeated auth failures trip the per-client lockout
+// headers — same contract as the dashboard stream (minus the dashboard's
+// cookie channel: the API never issues or accepts cookies). Every response
+// carries nosniff; repeated auth failures trip the per-client lockout
 // (internal/lockout).
 func (s *Server) guard(next http.Handler) http.Handler {
 	expected := httpauth.HashToken(s.token)
+	policy := httpauth.APIPolicy()
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -105,10 +107,7 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			return
 		}
 
-		presented := httpauth.AuthorizationToken(r)
-		if presented == "" {
-			presented = httpauth.QueryToken(r)
-		}
+		presented, _ := policy.Presented(r)
 
 		if !httpauth.TokenMatches(expected, presented) {
 			s.strikes.Add(key)
@@ -128,13 +127,13 @@ func (s *Server) guard(next http.Handler) http.Handler {
 }
 
 // Auth lockout knobs, mirroring the dashboard's writeRateLimiter defaults
-// (same strikes, window, and memory bounds so the two surfaces behave
-// identically to operators).
+// (both derive from the shared lockout defaults — same strikes, window,
+// and memory bounds so the two surfaces behave identically to operators).
 const (
-	authMaxHits  = 3
-	authLockout  = time.Minute
-	authIdleKeep = 10 * time.Minute
-	authMaxKeys  = 1024
+	authMaxHits  = lockout.DefaultMaxHits
+	authLockout  = lockout.DefaultLockout
+	authIdleKeep = lockout.DefaultIdleKeep
+	authMaxKeys  = lockout.DefaultMaxKeys
 )
 
 // newAuthRateLimiter builds the shared strike limiter behind the bearer
