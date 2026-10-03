@@ -6,6 +6,7 @@
 package lockout
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -58,6 +59,8 @@ type Limiter struct {
 
 	mu      sync.Mutex
 	strikes map[string]*strikes
+
+	evictWarn sync.Once
 }
 
 type strikes struct {
@@ -187,7 +190,9 @@ func (l *Limiter) pruneLocked(key string) *strikes {
 // locked) are swept globally — the exact per-contact predicate applied to
 // every key; if the map is still over maxKeys, the least-recently-active
 // entries are evicted oldest-first (a locked entry is evicted only when the
-// whole map is locked — under that pressure the bound wins).
+// whole map is locked — under that pressure the bound wins). The first LRA
+// eviction logs a warning once: hitting the bound under traffic means a
+// surprise key population (big NAT pool or an attack).
 // Caller holds mu.
 func (l *Limiter) boundLocked() {
 	if len(l.strikes) <= l.maxKeys {
@@ -202,6 +207,14 @@ func (l *Limiter) boundLocked() {
 
 		delete(l.strikes, key)
 	}
+
+	l.evictWarn.Do(func() {
+		slog.Warn(
+			"lockout: strikes map over cap — evicting least-recently-active keys",
+			"cap",
+			l.maxKeys,
+		)
+	})
 
 	for len(l.strikes) > l.maxKeys {
 		oldestKey := ""
