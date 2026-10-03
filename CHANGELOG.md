@@ -251,7 +251,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `DLQFixResult`. (`internal/executor/dlqfix.go`,
   `internal/budget/budget_test.go`)
 
+### Changed
+- **Active sort renders as a removable filter chip in the dashboard** (2026-10-04):
+  an active `?sort=` shows alongside the project/status/query/band chips with its
+  own ×-to-clear link (`clearSort` strips only the sort param), and the clear-all
+  link now appears for sort-only filter state; sort-header theme duality
+  (light/dark) verified in the pinned templ-components table component.
+  Pinned by `TestSortChip`. (`internal/webui/fragments.templ`,
+  `internal/webui/render.go`, `internal/webui/filter_test.go`)
+- **Dashboard metric AreaCharts cap y-axis ticks at 5** (2026-10-03): the two
+  560×200 metric charts adopt templ-components' `display.MaxTicks` (v1.19.4),
+  ending the Height-200 stopgap. (`internal/webui/fragments.templ`)
+
 ### Fixed
+- **`tq tasks` STATUS column widened to fit the lease countdown** (2026-10-03):
+  the `running 9m59s` countdown (13 chars) overflowed the fixed `%-10s` column
+  and pushed the trailing columns right on healthy RUNNING rows; header and row
+  formats are now `%-14s`. (`cmd/tq/tasks.go`)
 - **Task IDs are process-monotonic** (2026-10-03): `task.NewID` previously
   randomized the suffix after the timestamp prefix, so same-millisecond
   fixtures sorted nondeterministically and the status sweeper's
