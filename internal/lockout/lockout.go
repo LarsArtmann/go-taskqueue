@@ -208,16 +208,11 @@ func (l *Limiter) boundLocked() {
 		delete(l.strikes, key)
 	}
 
-	l.evictWarn.Do(func() {
-		slog.Warn(
-			"lockout: strikes map over cap — evicting least-recently-active keys",
-			"cap",
-			l.maxKeys,
-		)
-	})
+	evicted := 0
 
 	for len(l.strikes) > l.maxKeys {
 		oldestKey := ""
+		evicted++
 
 		var oldest *strikes
 
@@ -228,5 +223,15 @@ func (l *Limiter) boundLocked() {
 		}
 
 		delete(l.strikes, oldestKey)
+	}
+
+	if evicted > 0 {
+		l.evictWarn.Do(func() {
+			slog.Warn(
+				"lockout: strikes map over cap — evicting least-recently-active keys",
+				"cap",
+				l.maxKeys,
+			)
+		})
 	}
 }
