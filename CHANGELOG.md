@@ -63,6 +63,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   expired lease (crash-reclaim candidate), and `parked`/`notBefore` —
   so a stalled-looking queue explains itself (05-30 report c3/f6).
   Pinned by cmd/tq/liveness_test.go.
+- **`tq tasks` lease liveness in the STATUS column** (2026-10-03): a
+  RUNNING row with an EXPIRED lease renders `STALE` (crash-reclaim
+  candidate, mirroring the `tq show` `leaseStale` view), and a RUNNING
+  row with a valid lease renders its remaining lease time as a live
+  countdown (`running 9m59s`) — a stalled or soon-to-expire claim now
+  explains itself in the list view. Pinned by `TestStatusCell`
+  (cmd/tq/liveness_test.go).
 - **`tq tasks --count --json`** emits `{"count": N}` (machine-parseable
   total instead of prose), and **`tq tasks --json --json-envelope`** wraps
   the list as `{tasks, total, truncated}` so paging consumers can see the
