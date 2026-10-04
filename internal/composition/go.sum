@@ -149,6 +149,10 @@ github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.5.2 h1:izHJ7FyDHjJD4DgH
 github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.5.2/go.mod h1:PifsKKB70K6uFNh/EAUHb7mSt7MRyUqwSyjIqi8PIYw=
 github.com/larsartmann/go-cqrs-lite/query/v4 v4.10.0 h1:607LIXlXbRMOYM+gASou4ZALIc0iO0HBBWK1QqMM5B0=
 github.com/larsartmann/go-cqrs-lite/query/v4 v4.10.0/go.mod h1:aKBoOJfcFBM1xJaqnls1rlgYQoIosRRxHWF0qFI2ET8=
+github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.1 h1:JlePEdcn3m+uG/lVHMPmyCxrsDo/wR8QmRgA1IvHC9c=
+github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.1/go.mod h1:1yA0pAjTkxlPp+SZtY5tQAUITpXn6erbrGmAt9m4TC0=
+github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.1 h1:LSWANeLcg3etC7Ewgk9l4BAwKBpKXPVn4R6z5B6aLrQ=
+github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.1/go.mod h1:3VnuoCOOZ3UrTn9/7i2yQ7/BVvgOJn6v47OV1A9Sk0M=
 github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.1 h1:9zeypoxCVsIHDFCHXEod0K/KwwsQ+4tDHsl0ENtnRH4=
 github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.1/go.mod h1:JFGAWfaNItRWzmUBog4Q3aZOhSGmtWHeP55pBlPE0g0=
 github.com/larsartmann/go-cqrs-lite/scheduling/engine/v4 v4.0.1 h1:ZKsbkjlZ6ZlAN9UM11VQKD98ldtnhF8mq3sR4gxw/Sg=
@@ -183,14 +187,6 @@ github.com/larsartmann/go-sqlitestore v0.1.0 h1:+u9nCNdyHZPjduUXWdfy087b9tSeo8GV
 github.com/larsartmann/go-sqlitestore v0.1.0/go.mod h1:CH198vEnbz2tqlnJGpQCjDykWdmJLnm8K8LdmH2JzU8=
 github.com/larsartmann/go-sse v0.6.2 h1:a1f/EnjhWlsNnxo0U1DygpYMy2XbUfyGBuKMWhwQg0U=
 github.com/larsartmann/go-sse v0.6.2/go.mod h1:PVVDLkzjkTR2MvqcqL3/XmWY8cdSUpEe8YWaouHVVz4=
-github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 h1:MpTn5vlNUvtvPXLNBU2I2IVCrq4hyfJTOmVPZrHSZ8s=
-github.com/larsartmann/go-taskqueue/internal/journal v0.3.0/go.mod h1:S3PjGB1crPJTCjGZobCgs+bT18BQsfsBGqNE8xnmqX4=
-github.com/larsartmann/go-taskqueue/internal/queue v0.3.0 h1:Z/bwp498le9WlLfLhrUGw7+5fAo7YZGVDettswrHcJo=
-github.com/larsartmann/go-taskqueue/internal/queue v0.3.0/go.mod h1:YRGBX4wyUWy3Gv3o239g/F8qGCuMFNDPGBbILOLgMbU=
-github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0 h1:ZULy6EfcVM16Qz8pNAMJxK5q24MNoST/AEU6ft2+CA4=
-github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0/go.mod h1:32Utx/X1qwwANrVz86EB1wqicOCaByEJSbARsrQA7ww=
-github.com/larsartmann/go-taskqueue/internal/task v0.3.0 h1:GlMbxwTAUA5fH06GuR+XliLP2aeEs5cQxAfcqN8YyIA=
-github.com/larsartmann/go-taskqueue/internal/task v0.3.0/go.mod h1:GxSC8wyiYmmGGi4jEB9lckucuy2buNfZ8Zw66GkXzaU=
 github.com/lithammer/shortuuid/v3 v3.0.7 h1:trX0KTHy4Pbwo/6ia8fscyHoGA+mf1jWbPJVuvyJQQ8=
 github.com/lithammer/shortuuid/v3 v3.0.7/go.mod h1:vMk8ke37EmiewwolSO1NLW8vP4ZaKlRuDIi8tWWmAts=
 github.com/lufia/plan9stats v0.0.0-20260802145828-341c2f0c90b5 h1:eveIIGn4BGM3qknO74omf6HYr30/exH+eVUTuAgwjZ0=

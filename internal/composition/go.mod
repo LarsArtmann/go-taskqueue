@@ -81,3 +81,15 @@ require (
 )
 
 replace github.com/larsartmann/go-taskqueue/internal/readmodel => ../readmodel
+
+replace github.com/larsartmann/go-taskqueue/internal/task => ../task
+
+replace github.com/larsartmann/go-taskqueue/internal/journal => ../journal
+
+replace github.com/larsartmann/go-taskqueue/internal/queue => ../queue
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../queue/sqlite
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../queue/sqlitev4
+
+replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ../queue/companion
