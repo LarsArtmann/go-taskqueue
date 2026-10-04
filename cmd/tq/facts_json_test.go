@@ -15,9 +15,12 @@ import (
 
 // agentsDocMaxBytes pins the AGENTS.md budget at the plan M89 value:
 // the 2026-09-09 file measured 14,904 B; the 2026-10 prune restored the
-// file to 14,998 B and this guard now enforces the documented 15,000 B
-// budget — prune in-place instead of growing the file.
-const agentsDocMaxBytes = 15_000
+// file to 14,998 B. 2026-10-04 conscious reset 15,000 → 15,200: the
+// platform-endgame prune cut ~1 kB of phrasing waste yet net-new load-
+// bearing knowledge landed (secrets-redaction growth policy, backward
+// auto-upgrade seam, v4-adapter/readmodel architecture rows) — prune
+// in-place instead of growing the file further.
+const agentsDocMaxBytes = 15_200
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue).
@@ -33,7 +36,7 @@ func TestAgentsDocSizeGuard(t *testing.T) {
 
 	if info.Size() > agentsDocMaxBytes {
 		t.Fatalf(
-			"AGENTS.md grew to %d bytes (budget %d, plan M89 prune budget was 15,000 B) — prune the file or consciously reset agentsDocMaxBytes",
+			"AGENTS.md grew to %d bytes (budget %d) — prune the file or consciously reset agentsDocMaxBytes",
 			info.Size(),
 			agentsDocMaxBytes,
 		)

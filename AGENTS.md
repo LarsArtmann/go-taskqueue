@@ -6,8 +6,7 @@ executors (incl. AI agents). One Go binary, one file, zero services.
 
 **STATUS: v0.3.0 shipped; MULTIPLE concurrent agents** — re-read files,
 re-run tests; uncommitted parallel changes: read, judge, build on, never
-revert. (≤15,000 B guard: cmd/tq TestAgentsDocSizeGuard. Incidents:
-docs/status/; design docs/planning+adr.)
+revert. (≤15,000 B guard: cmd/tq TestAgentsDocSizeGuard.)
 
 ## Commands
 
@@ -39,24 +38,24 @@ CALLER-OWNED. No go.work — replace-only (`go test ./internal/foo` from
 root fails by design — cd in). Release flow: docs/release/ (proxy checks
 rc-captured: facade @tag + sentinel probe in /tmp scratch).
 
-Smokes (CI-safe): `ls scripts/smoke/`. Guards: scripts/check-*.sh +
-smoke/release-gates.sh + lint-baseline.sh. `scripts/new-module.sh <dir> [deps…]`
-scaffolds go.mods.
+Smokes (CI-safe): `ls scripts/smoke/`. Guards: check-*.sh +
+smoke/release-gates.sh + lint-baseline.sh. `scripts/new-module.sh <dir>
+[deps…]` scaffolds go.mods.
 
 ## Architecture
 
 Facts-first: every state change is an immutable fact in an append-only
-journal; queue views, retry state, and the DLQ are projections. Claim
-exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
+journal; queue views, retry state, DLQ are projections. Claim exclusivity =
+lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 | Package | Purpose |
 | --- | --- |
-| `internal/task` | Task record, Status enum, sentinel errors |
+| `internal/task` | Task record, Status, sentinels |
 | `internal/journal` | Fact types + append-only Journal |
 | `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014, PROPRIETARY) |
 | `internal/queue` | Store contract, Filter, Queue facade |
-| `internal/queue/{sqlite,postgres}` | Thin drivers over `{sqlitev4,postgresv4}`; conform suite `companion/conform` |
-| `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` | tq Store over the go-cqrs-lite queue engines + companion surfaces |
+| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform suite `companion/conform` |
+| `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` | tq Store over the go-cqrs-lite queue engines |
 | `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity |
 | `internal/readmodel` | S3 metaengine ledger projection (`<db>.readmodel.db`, `--read-model`) |
 | `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
@@ -73,9 +72,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/consumer` | Journal dispatcher, per-subscriber cursors (ADR-0009) |
 | `internal/runactor` | run.Group actors, LIFO shutdown, InterruptOn |
 | `internal/webui` | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003) |
-| `internal/httpapi` | Machine API (`tq api`): token-mandatory, nosniff, lockout |
-| `internal/httpauth`/`lockout` | Shared bearer primitives + 3-strikes limiter |
-| `cmd/tq` | CLI — see `tq --help` |
+| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout; shared bearer + 3-strikes |
 
 ### Store invariants
 
@@ -94,7 +91,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `.crushrc` managed block. `--task-closeout` resumes the EXACT session
   for the a)-g) report at `docs/status/<ts>_task-<id>.md`.
 - **Derived outcomes**: the queue derives what a run did — commits via
-  exactly ONE `Task-Queue-ID` footer per commit, LAST trailer line
+  exactly ONE `Task-Queue-ID` footer, LAST trailer line
   (`executor.GitLogScanner`; a footer above an attribution block is
   invisible — the hook rejects it), files via `git diff-tree`, session
   usage via go-crush-data. No stdout self-report.
@@ -115,8 +112,8 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **PapDashboard questions**: `tq ask --task <id>` parks the task WITHOUT
   burning an attempt; the AnswerPoller routes answers home.
 - **Idempotent enqueue**: `DedupKey` re-enqueue returns the stored task;
-  COMPLETED keys refused with `ErrTaskDone`; a cancelled/dead key still
-  suppresses (escape hatch: edit the item text).
+  COMPLETED keys refused (`ErrTaskDone`); cancelled/dead keys still
+  suppress (escape hatch: edit the item text).
 - **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT
   burning an attempt (jittered wait, fallback 15min cap 6h); per-repo
   gates fast-refuse siblings; a closeout 429 arms `closeoutPending`
@@ -127,12 +124,11 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `internal/executor/redact.go`; `tq audit --journal` reports
   SECRET EVIDENCE rows. Growth policy: a new provider/shape adds ONE
   `secretPatterns` entry + a fake-shape sample in `redact_test.go`
-  (table-length pins) + a `lint-baseline.sh` triage note if it trips
-  golangci/gosec. Audit (`SecretHits`) and redaction (`RedactSecrets`)
-  share the ONE table (pinned
-  `TestSecretHitsAndRedactionCompileIdenticalTable`; never fork).
-  `redact_test.go`: build-tag-free, windows-gated via the per-module CI
-  loop (2026-10-04, 00-55 §f9).
+  (table-length pins) + a lint-baseline note if it trips golangci/gosec.
+  Audit (`SecretHits`) and redaction (`RedactSecrets`) share the ONE
+  table (pinned `TestSecretHitsAndRedactionCompileIdenticalTable`;
+  never fork); `redact_test.go` build-tag-free, windows-gated via
+  per-module CI (00-55 §f9, 2026-10-04).
 - **Enqueued-fact snapshots are THIN today** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in the conform suites).
 
@@ -162,14 +158,14 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   need in-module `GOWORK=off` tests; closeouts touching root-guard-parsed
   files (AGENTS/README/TODO_LIST, doc pins) cite ROOT build+vet+test
   -race rc. Re-dispatch: newest prior report + `tq show <id>` FIRST;
-  battery rc TO A FILE (persist; no PIPESTATUS); no-delta statement;
-  dated DONE re-verified note; `-v` + PASS COUNT for conform `-run`.
+  battery rc TO A FILE (no PIPESTATUS); no-delta statement; dated DONE
+  re-verified note; `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches).
-- **Edit→commit→battery ordering**: stage+commit BEFORE running anything —
-  the daemon sweeps in <60 s (footer-less) and takes STAGED files too;
-  fold ferries only while local-only + contiguous + exactly-mine;
-  mechanical form `scripts/commit-task.sh <id> <subject> <file>…`.
+- **Edit→commit→battery ordering**: stage+commit BEFORE running anything
+  (daemon sweeps in <60 s, footer-less, takes STAGED files too); fold
+  ferries only while local-only + contiguous + exactly-mine; mechanical
+  form `scripts/commit-task.sh <id> <subject> <file>…`.
 - Tab-bearing insertions go through python-heredoc replace — free-text
   edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
@@ -182,16 +178,15 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `internal/queue/companion`). Residual art-dupl groups accepted — don't
   abstract new ones.
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
-  has no host tools).
+  lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
   edits run `templ generate` from REPO ROOT + `nix run .#webui-css`.
-- Web UI uses `templ-components` (pinned by guard tests; table
-  `internal/webui/ADOPTION.md`); REJECTED
-  `display.Eyebrow`, `KanbanBoard`, errorpage, `icons.Render`.
+- Web UI uses `templ-components` (guard-pinned; table
+  `internal/webui/ADOPTION.md`); REJECTED `display.Eyebrow`,
+  `KanbanBoard`, errorpage, `icons.Render`.
 - `TODO_LIST.md` machine-consumed: `- [ ]`, one per line, never tables;
-  `— BLOCKED: <reason>`; items must be agent-executable
-  (`check-todo-list.sh`). DONE-row notes collapse to ONE note + latest-report
-  pointer.
+  `— BLOCKED: <reason>`; items agent-executable (`check-todo-list.sh`);
+  DONE-row notes collapse to ONE note + latest-report pointer.
 - Status reports indexed on creation (`check-status-index.sh`; daemon
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE index-row
   write point: top chronological cluster. CHANGELOG append-only.
@@ -204,7 +199,7 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 - **Concurrent agents commit constantly** (auto-commit daemon): re-run
   `go test ./... -race` before declaring success; never generate Go source
-  via heredocs; build fixtures under /tmp (gated trees are daemon-food).
+  via heredocs; fixtures under /tmp (gated trees are daemon-food).
   Footer-less daemon `chore:` sweeps heal via
   `scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>` (unpushed
   range only; verifies subjects/stats/tree/tags; backup ref on failure;
@@ -219,18 +214,18 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   yields empty; chained `&` backgrounds the wrong span.
 - **Root builds auto-use `vendor/`** — after internal/ changes run
   `go mod vendor` before root builds.
-- **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2 itself; CI setup-go
+- **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go
   PINNED to 1.27.1 = go.mod floor; NEVER lower a `go` directive
   (`check-go-mods.sh` gates).
-- **Host GOCACHE/GOROOT hazards**: run gates with `GOCACHE=/tmp/go-build-cache`
-  (host symlink → /nix/store ENOSPCs); "package X is not in std" with a
+- **Host GOCACHE/GOROOT hazards**: gates run with `GOCACHE=/tmp/go-build-cache`
+  (host symlink → /nix/store ENOSPCs); "package X is not in std" + a
   `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w +
-  trash, or `GOTOOLCHAIN=local` to nix go).
+  trash, or `GOTOOLCHAIN=local`).
 - **golangci-lint is advisory** (~1.4k baseline, growth gated by
-  `scripts/lint-baseline.sh --check`); hard gates: vet + gofmt + tests.
-  Regen only on a green tree after `golangci-lint cache clean`.
-- **gosec**: all findings triaged/excluded via `scripts/check-gosec.sh`;
-  a future finding is a NEW class needing fresh triage.
+  `scripts/lint-baseline.sh --check`); hard gates: vet+gofmt+tests; regen
+  only on a green tree after `golangci-lint cache clean`.
+- **gosec**: all findings triaged via `scripts/check-gosec.sh`; a future
+  finding is a NEW class needing fresh triage.
 - **`tq serve`/`tq api` security**: loopback + read-only default; write
   routes CSRF-guarded with lockout; non-loopback binds need `--auth-token`
   (SECURITY.md). No new write endpoints without that treatment.
@@ -251,15 +246,15 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 ## Relation to other projects
 
-- **go-cqrs-lite IS the platform (ADR-0019)**: staged adoption in
+- **go-cqrs-lite IS the platform (ADR-0019)**: adoption in
   `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` + `companion`;
   `internal/journal/cqrs` is PROPRIETARY, read-only — never extend or
   import below root. **Backward auto-upgrade (endgame P1)**: the
-  `internal/queue/sqlite` facade Open converges a legacy pre-flip DB in
-  place (snapshot kept `<db>.legacy-*.bak`, verify, auto-restore on
-  mismatch); refuse via `TQ_NO_AUTO_UPGRADE=1`; manual path `go run
+  `internal/queue/sqlite` facade Open converges a legacy pre-flip DB
+  in place (snapshot kept `<db>.legacy-*.bak`, verify, auto-restore on
+  mismatch); refuse via `TQ_NO_AUTO_UPGRADE=1`; manual: `go run
   ./replay` in internal/queue/sqlitev4.
-- **PapDashboard bridge**: `--alert-url/--alert-api-key` — dead letters
+- **PapDashboard bridge**: `--alert-url/--alert-api-key`; dead letters
   raise `alert.triggered`, completions resolve; `NotifyDeadPool` =
   direct dead-pool path.
 - **go-health-dashboard** (MIT): ADOPTED — `/health` inside the token gate,
