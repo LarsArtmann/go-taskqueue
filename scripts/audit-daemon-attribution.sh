@@ -180,6 +180,8 @@ run_self_test() {
 	out=$(cd "$repo" && "$SELF" --json; echo "rc=$?")
 	rc=${out##*rc=}
 	out=${out%rc=*}
+	printf "%s\n" "$out" > /tmp/selftest-json-out.txt
+	printf "att=%s flag=%s heal=%s\n" "$sha_att" "$sha_flag" "$sha_heal" > /tmp/selftest-shas.txt
 	check_eq "json run exit" "1" "$rc"
 	check_eq "json rows" "4" "$(printf '%s\n' "$out" | grep -c '"class":')"
 	check_eq "json attributed rows" "2" "$(printf '%s\n' "$out" | grep -c '"class":"attributed"')"
@@ -231,14 +233,13 @@ declare -A subj_of=()
 declare -A is_daemon=()
 declare -A footer_body_of=()
 
-mapfile -d '' -t meta_records < <(git log --no-merges --format='%x00%H%x02%s%x02%b' "$RANGE")
+mapfile -d '' -t meta_records < <(git log --no-merges --format='%x00%H%x02%B' "$RANGE")
 
 for rec in "${meta_records[@]}"; do
 	sha=${rec%%$'\x02'*}
 	[[ $sha =~ ^[0-9a-f]{40}$ ]] || continue
-	rest=${rec#*$'\x02'}
-	subject=${rest%%$'\x02'*}
-	body=${rest#*$'\x02'}
+	message=${rec#*$'\x02'}
+	subject=${message%%$'\n'*}
 	order+=("$sha")
 	subj_of[$sha]=$subject
 
@@ -253,7 +254,7 @@ for rec in "${meta_records[@]}"; do
 			fi
 			;;
 		esac
-	done <<<"$body"
+	done <<<"$message"
 
 	daemon=0
 	if [[ $subject =~ ^chore:\ auto-commit\ [0-9]+\ changed\ file ]]; then
@@ -264,7 +265,7 @@ for rec in "${meta_records[@]}"; do
 	[ -n "$footer_id" ] && daemon=0
 	is_daemon[$sha]=$daemon
 	if [ -n "$footer_id" ]; then
-		footer_body_of[$sha]=$footer_id$'\x02'$body
+		footer_body_of[$sha]=$footer_id$'\x02'$message
 	fi
 done
 
@@ -311,9 +312,10 @@ declare -A marker_ids=()
 for sha in "${!footer_body_of[@]}"; do
 	entry=${footer_body_of[$sha]}
 	fid=${entry%%$'\x02'*}
-	body=${entry#*$'\x02'}
-	# Tokenize the body in-process: every non-hex run becomes a separator.
-	raw=${body//[^0-9a-f]/ }
+	message=${entry#*$'\x02'}
+	# Tokenize the whole message in-process (subject citations count too):
+	# every non-hex run becomes a separator.
+	raw=${message//[^0-9a-f]/ }
 	read -r -a toks <<<"$raw"
 	for tok in "${toks[@]}"; do
 		[ ${#tok} -ge 7 ] || continue
