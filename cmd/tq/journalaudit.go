@@ -453,6 +453,12 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 				"  (rate-limit requeues never burn an attempt; 3 consecutive ENVIRONMENTAL ones escalate — see the env-streak breaker)",
 			)
 		}
+
+		if n := report.Requeues.ByClass[queue.RequeueClassBudget]; n > 0 {
+			fmt.Println(
+				"  (budget requeues park paid turns until the daily cap or budget-cmd window resets — no attempt burn, outside the env-streak breaker; the pool LOOKS idle on purpose)",
+			)
+		}
 	}
 
 	if len(report.SecretEvidence) == 0 {

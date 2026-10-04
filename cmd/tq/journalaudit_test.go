@@ -517,22 +517,29 @@ func TestRequeueSummarySurfacesClasses(t *testing.T) {
 			Type:   journal.Requeued,
 			Detail: jsontext.Value(`{"reason":"dirty tree","retry_in_ms":60000,"class":"preflight"}`),
 		},
+		{
+			Seq:    5,
+			TaskID: "t",
+			Type:   journal.Requeued,
+			Detail: jsontext.Value(`{"reason":"budget gate: daily cap spent","retry_in_ms":14400000,"class":"budget"}`),
+		},
 		// Legacy fact predating the class field normalizes to unknown.
-		{Seq: 5, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"old","retry_in_ms":0}`)},
+		{Seq: 6, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"old","retry_in_ms":0}`)},
 		// Non-requeue facts never count.
-		{Seq: 6, TaskID: "t", Type: journal.Released, Detail: jsontext.Value(`{"class":"rate-limit"}`)},
+		{Seq: 7, TaskID: "t", Type: journal.Released, Detail: jsontext.Value(`{"class":"rate-limit"}`)},
 	}
 
 	summary := requeueSummary(facts)
 
-	if summary.Total != 4 {
-		t.Fatalf("total = %d, want 4", summary.Total)
+	if summary.Total != 5 {
+		t.Fatalf("total = %d, want 5", summary.Total)
 	}
 
 	if summary.ByClass[queue.RequeueClassRateLimit] != 2 ||
 		summary.ByClass[queue.RequeueClassPreflight] != 1 ||
+		summary.ByClass[queue.RequeueClassBudget] != 1 ||
 		summary.ByClass[queue.RequeueClassUnknown] != 1 {
-		t.Errorf("byClass = %+v, want 2 rate-limit / 1 preflight / 1 unknown", summary.ByClass)
+		t.Errorf("byClass = %+v, want 2 rate-limit / 1 preflight / 1 budget / 1 unknown", summary.ByClass)
 	}
 
 	if summary.ResumeCloseout != 1 {
@@ -547,5 +554,39 @@ func TestRequeueSummaryEmptyRangeIsZeroValue(t *testing.T) {
 
 	if summary := requeueSummary(facts); summary.Total != 0 || summary.ByClass != nil || summary.ResumeCloseout != 0 {
 		t.Errorf("summary = %+v, want zero value", summary)
+	}
+}
+
+func TestJournalAuditBudgetHintRenders(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := journalAuditStore(t)
+
+	if _, err := store.Enqueue(ctx, task.New{Project: "j", Type: "agent", Payload: []byte(`{}`)}); err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	claimed, claim, err := store.ClaimDue(ctx, "w", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue: %v", err)
+	}
+
+	if err := store.Requeue(ctx, claimed.ID, claim, "budget gate: daily cap spent", time.Hour, false, queue.RequeueClassBudget); err != nil {
+		t.Fatalf("Requeue: %v", err)
+	}
+
+	out := captureStdout(t, func() {
+		if err := cmdJournalAudit(ctx, store, false); err != nil {
+			t.Errorf("cmdJournalAudit: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "budget: 1") {
+		t.Errorf("class line missing from audit output:\n%s", out)
+	}
+
+	if !strings.Contains(out, "budget requeues park paid turns") {
+		t.Errorf("budget hint missing from audit output:\n%s", out)
 	}
 }
