@@ -12,7 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   before the cap bit is requeued WITHOUT burning an attempt (journal
   requeue class `budget`), parked until the next local midnight (cap) or
   a 15-minute cooldown (cmd). Previously only enqueues were gated, so
-  work already queued could still burn money after the cap.
+  work already queued could still burn money after the cap. The full
+  paperclip comparison (source-verified 2026-10-05):
+  `docs/research/2026-10-05_paperclip-lessons.md`.
 - **Requeues summary in `tq audit --journal`** (2026-10-02): the drift
   report carries a requeues breakdown — total, per-class (legacy facts
   normalized to `unknown`), resume-closeout parks, and the

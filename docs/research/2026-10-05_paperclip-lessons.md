@@ -1,0 +1,38 @@
+# Paperclip engineering lessons for go-taskqueue
+
+**Date:** 2026-10-05 (source verification window; research window 2026-10-03/04).
+**Provenance:** the 2026-10-04 research window (`docs/status/2026-10-04_03-11_paperclip-lessons-budget-gate-window.md`) trusted an AI fetch subagent for the paperclip-side file:line claims; this note closes that gap — the three load-bearing citations below were opened at source (`gh api repos/paperclipai/paperclip`) before anything was written. The marketing-level competitive assessment lives in `docs/research/2026-10-03_paperclip-competitive-analysis.md`; this note is the engineering comparison.
+**Source of the plan:** `docs/planning/2026-10-04_23-59_paperclip-aftermath-budget-visibility-pareto-plan.md` maps every idea below to an M-task.
+
+## Source-verified citations
+
+| # | Path (paperclipai/paperclip @ master, verified 2026-10-05) | What it actually says |
+| - | ---------------------------------------------------------- | --------------------- |
+| 1 | `doc/plans/2026-03-14-budget-policies-and-enforcement.md`  | Budget enforcement at THREE points: canonical evaluation on cost-event ingestion, **preflight checks at execution entry points** ("scheduler heartbeat dispatch, manual invoke endpoints, assignment-driven wakeups, queued run promotion, issue checkout or pickup"), and **active-run graceful cancellation** on hard-stop. Soft alert (80%, notification only) vs hard stop (100%, pauses scope + creates approval). Scopes: company/agent/project; `billed_cents` as the first enforceable metric (cross-provider, no token normalization); "budgets are policy controls, quotas are usage visibility". |
+| 2 | `packages/db/src/schema/agent_wakeup_requests.ts`          | The wake model is a **durable first-class row**: `agent_wakeup_requests` carries `source`, `trigger_detail`, `reason`, `status` (queued/claimed/finished), `coalesced_count` (default 0), `idempotency_key`, run linkage, and the full requested/claimed/finished timestamp lifecycle — suppressed triggers are merged INTO the surviving row (`coalesced_count++`), never dropped silently. Partial unique indexes key idempotency per recovery path (`issue_review_path_lost:%`, disposition repair). |
+| 3 | `server/src/services/run-failure-diagnostics.ts`           | Run failures are captured as **structured diagnostics**: `execution`/`adapter`/`provider` context maps + typed exceptions (name/message/code/status/requestId), redaction-aware (explicit secret stripping before capture; unknown inherited values treated as potentially credentialed). |
+
+Also confirmed by tree listing: `cli/src/commands/routines.ts` (+ `routine-plugin-parity.test.ts`, `routines.test.ts`) for the routines/cron surface; `packages/db/src/schema/budget_policies.ts` + `budget_incidents.ts` (policy/incident persistence, incident dedup per scope/window); `server/src/__tests__/heartbeat-comment-wake-batching.test.ts` (wake batching at the heartbeat layer).
+
+## Lesson table — what paperclip does, what tq did
+
+| # | Lesson | Paperclip (verified) | tq before | tq now |
+| - | ------ | -------------------- | --------- | ------ |
+| 1 | Wake coalescing is durable evidence, not a log line | wake rows with `coalesced_count`, full lifecycle | one-live-task-per-repo pacing; suppressed triggers leave NO trace | **PARKED → M3/M4** (design memo first; ruling §g-2 gates the fact-type-vs-evidence-key choice). Paperclip's row model is the strongest argument FOR a fact-type (`task.wake`) over an evidence key. |
+| 2 | Budget enforcement at multiple points, cheapest first | preflight checks at FIVE entry points + ingestion + active-run cancel | enqueue-side `budget.Guard.Check` only | **SHIPPED**: claim-time gate (`worker.Config.Budget`, `RequeueClassBudget`, park-until-midnight / 15m cmd) — tq's point 2. Point 3 (cancel live runs) DELIBERATELY REJECTED: tq's store invariant keeps task contexts alive across pool shutdown; cancel-on-cap would burn work the budget already authorized (§g-1 owner question stands). |
+| 3 | A money gate nobody can see reads as a dead pool | budget state on dashboard, `/costs`, scope pages; approval flow on hard stop | gate invisible: no audit hint, no UI, no alert | **SHIPPED (M1)**: journalaudit `budget` hint, webui `budget N` parked lamp (`BudgetParked`), PapDashboard `budget-blocked` alert class (distinct from the enqueue-side exhaustion alert), CLI surfaces in flight (M11). |
+| 4 | Budgets are policy, quotas are visibility; soft 80% / hard 100% | soft alert never blocks; hard stop pauses + approval | one cap, one behavior (block) | **PARKED → M22** (hysteresis = paperclip's soft/hard split, needs §g-1 ruling). tq's derived-usage projection (`SessionUsage`) already plays the quota-visibility role. |
+| 5 | Retry failure classification | structured failure diagnostics (adapter/provider context, typed exceptions) | binary requeue ladder (rate-limit vs env-streak) + error tails | **PARKED → M12** (taxonomy transient/permanent/provider-window/env + provider `retryNotBefore` from body). |
+| 6 | Stranded-work visibility + operator-stance webui ("what is happening / does it need me / what do I do") | budget state, board operator guides (`docs/guides/board-operator/costs-and-budgets.md`) | dead-pool alert + loop-suspect lamp exist; no stranded-state taxonomy | **PARKED → M9/M10/M14** (audit first, then vocabulary sweep, then stranded notices). |
+| 7 | Routines/cron with concurrency + catch-up policies | `routines.ts` + parity tests | harvest polling is the only scheduler | **ROADMAP** (M25 row). |
+| 8 | Secret injection > redaction | diagnostics redact, but run env is minted server-side (secrets never in workspace configs) | output redaction (`internal/executor/redact.go`), env passthrough | **PARKED → M24** (design note + prototype: minted per-run env, forbidden-key strip, managed HOME). |
+
+## Rejected at adjudication (with reasons, so nobody re-litigates blind)
+
+- **Retry-exhaustion journal event** — `task.dead-lettered` already records exhaustion (fact type `journal.DeadLettered`, class "permanent" on `FailPermanent`). Paperclip's separate exhaustion event adds nothing tq lacks.
+- **Cancel-live-runs on cap** — see lesson 2; park-until-midnight is the operator-intent-preserving choice for a queue whose tasks survive shutdown. §g-1 asks only whether OVER-CAP DAYS should escalate to cancel/dead-letter of QUEUED work.
+
+## Verification trail
+
+- 2026-10-05: citations opened via `gh api repos/paperclipai/paperclip/contents/...` (paths above); wake schema, budget plan, and failure diagnostics read in full; no claim in this note rests on the 2026-10-04 subagent's say-so.
+- tq-side claims verified against the working tree the same window (budget gate seams, `journal.DeadLettered`, harvest pacing).

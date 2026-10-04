@@ -577,6 +577,68 @@ func TestVerifyStrategy(t *testing.T) {
 	}
 }
 
+// TestReresolveVerifyClaimsNewGateAfterFlip is the claim-time proof the
+// 06-43 report §f5 item asked for: the flag wiring (agent-pool / worker
+// --agents → AgentExecutor.ReresolveVerify → runVerify) must actually
+// change which gate a claim runs — not just parse. The repo's verify
+// contract flips AFTER the task was enqueued with the old pin; both parts
+// gate the full Execute path, not verifyFor alone.
+func TestReresolveVerifyClaimsNewGateAfterFlip(t *testing.T) {
+	ctx := context.Background()
+
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module demo.example.com/flip\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(filepath.Join(repo, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Enqueue-time contract: the repo's gate and the payload pin agree
+	// (the harvester pins the repo's current gate at harvest time).
+	oldPin := "exit 61"
+	if err := os.WriteFile(filepath.Join(repo, ".tq-verify"), []byte(oldPin+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Flip 1: the .tq-verify content changes before the claim. The claim
+	// with reresolve must run the file's NEW command, never the stale pin
+	// (the file outranks the pin either way — reresolve only matters once
+	// the file is gone, flip 2 below).
+	newGate := "exit 51"
+	if err := os.WriteFile(filepath.Join(repo, ".tq-verify"), []byte(newGate+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	e := &AgentExecutor{Bin: makeStubAgent(t, "true"), ReresolveVerify: true}
+
+	err := e.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: oldPin}))
+	if err == nil || !strings.Contains(err.Error(), `verify failed ("exit 51")`) {
+		t.Fatalf("claim after a .tq-verify flip must gate on the NEW command, got %v", err)
+	}
+
+	// Flip 2: the file goes away entirely (contract rotated into
+	// auto-detection) — the stale-pin-fires class doctor --hygiene warns
+	// about. Same repo state, same payload, ONLY the flag differs:
+	// without it the enqueue-time pin fires; with it the repo's new
+	// auto-detected gate owns the claim and passes on the clean module.
+	if err := os.Remove(filepath.Join(repo, ".tq-verify")); err != nil {
+		t.Fatal(err)
+	}
+
+	stale := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+	err = stale.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: oldPin}))
+	if err == nil || !strings.Contains(err.Error(), `verify failed ("exit 61")`) {
+		t.Fatalf("without reresolve the enqueue-time pin must fire, got %v", err)
+	}
+
+	reresolved := &AgentExecutor{Bin: makeStubAgent(t, "true"), ReresolveVerify: true}
+	if err := reresolved.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: oldPin})); err != nil {
+		t.Fatalf("with reresolve the claim must gate on the repo's new auto-detected gate, got %v", err)
+	}
+}
+
 // TestMintedGoVerifyIsEnvSelfContained pins the env prelude on minted Go
 // verify commands: the pool unit carries no GOEXPERIMENT, so a bare
 // `go build` mint dies on encoding/json/v2 build constraints and judges
