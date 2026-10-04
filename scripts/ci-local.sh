@@ -340,6 +340,9 @@ step "session-close bridge smoke (begin → footer commit → close → replay-s
 step "loop-detector smoke (30-claim churn fixture flagged; healthy journal silent)"
 ./scripts/smoke/loop-detector.sh
 
+step "doctor --hygiene smoke (scratch DB: stale verify pin surfaces as WARN via --json)"
+./scripts/smoke/doctor-hygiene.sh
+
 # Advisory (2026-09-14 O5 ruling): journal-drift audit smoke over a seeded
 # fixture — reported, never a hard gate on task state.
 step "journal-drift audit smoke (advisory)"

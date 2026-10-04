@@ -49,11 +49,11 @@ esac
 echo "== stale task: $TASK_ID"
 
 echo "== run tq doctor --hygiene --json against the scratch DB"
-"$TMP/tq" doctor --hygiene --json --projects-dir "$TMP" >"$TMP/doctor.json" || {
-	echo "FAIL: doctor exited nonzero (a FAIL check masks the expected WARN?)"
-	cat "$TMP/doctor.json"
-	exit 1
-}
+# The exit code is NOT asserted: the seeded PENDING task with no worker
+# alive correctly drives the liveness check (and the overall worst) to FAIL
+# on this fixture — the smoke owns the verify-pins check, not the rest.
+"$TMP/tq" doctor --hygiene --json --projects-dir "$TMP" >"$TMP/doctor.json" ||
+	echo "== doctor exited nonzero (expected: liveness fails on workerless pending work)"
 
 python3 - "$TASK_ID" "$TMP/doctor.json" <<'EOF'
 import json, sys
@@ -62,16 +62,13 @@ task_id, path = sys.argv[1], sys.argv[2]
 with open(path) as f:
     report = json.load(f)
 
-if report.get("status") != "warn":
-    sys.exit("FAIL: doctor status = %r, want warn (the stale pin must surface as WARN)" % report.get("status"))
-
 pins = [c for c in report.get("checks", []) if c.get("name") == "verify-pins"]
 if not pins:
     sys.exit("FAIL: no verify-pins check in the report (was --hygiene honored?)")
 check = pins[0]
 
 if check.get("status") != "warn":
-    sys.exit("FAIL: verify-pins status = %r, want warn" % check.get("status"))
+    sys.exit("FAIL: verify-pins status = %r, want warn (the stale pin must surface as WARN)" % check.get("status"))
 
 detail = check.get("detail", "")
 for needle in (
