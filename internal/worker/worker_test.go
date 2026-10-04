@@ -141,6 +141,134 @@ func TestRetryThenComplete(t *testing.T) {
 	}
 }
 
+func TestBudgetGateBlocksPaidTurn(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var ran atomic.Int32
+
+	reg.RegisterFunc("paid", func(context.Context, task.Task) error {
+		ran.Add(1)
+
+		return nil
+	})
+
+	enq, err := store.Enqueue(ctx, task.New{Project: "go-taskqueue", Type: "paid"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	var allow atomic.Bool
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		Executors: reg,
+		Budget: func(context.Context) (bool, string, time.Duration) {
+			if allow.Load() {
+				return false, "", 0
+			}
+
+			return true, "daily budget exhausted: 3/3 tasks enqueued today", 40 * time.Millisecond
+		},
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	facts, ok := store.(interface {
+		Facts(context.Context, int64, int) ([]journal.Fact, error)
+	})
+	if !ok {
+		t.Fatal("store does not expose journal facts")
+	}
+
+	var ev struct {
+		Reason         string `json:"reason"`
+		RetryIn        int64  `json:"retry_in_ms"`
+		ResumeCloseout bool   `json:"resume_closeout"`
+		Class          string `json:"class"`
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		fs, err := facts.Facts(ctx, 0, 100)
+		if err != nil {
+			t.Fatalf("facts: %v", err)
+		}
+
+		found := false
+
+		for _, f := range fs {
+			if f.Type != journal.Requeued || f.TaskID != string(enq.ID) {
+				continue
+			}
+
+			if err := json.Unmarshal(f.Detail, &ev); err != nil {
+				t.Fatalf("requeue detail: %v", err)
+			}
+
+			found = true
+
+			break
+		}
+
+		if found {
+			break
+		}
+
+		if time.Now().After(deadline) {
+			t.Fatal("no task.requeued fact for the budget-blocked claim")
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if ran.Load() != 0 {
+		t.Fatalf("executor ran %d times while budget-blocked, want 0", ran.Load())
+	}
+
+	if ev.Class != queue.RequeueClassBudget {
+		t.Fatalf("requeue class = %q, want %q", ev.Class, queue.RequeueClassBudget)
+	}
+
+	if ev.ResumeCloseout {
+		t.Fatal("budget requeue must not carry resume_closeout")
+	}
+
+	if ev.RetryIn < 30 || ev.RetryIn > 100 {
+		t.Fatalf("retry_in_ms = %d, want ~40 (jittered)", ev.RetryIn)
+	}
+
+	if !strings.Contains(ev.Reason, "budget gate:") ||
+		!strings.Contains(ev.Reason, "daily budget exhausted") {
+		t.Fatalf("requeue reason = %q, want the gated budget reason", ev.Reason)
+	}
+
+	got, err := store.Get(ctx, enq.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	if got.Status != task.Pending || got.Attempts != 0 {
+		t.Fatalf("status = %s attempts = %d, want pending with no attempt burn", got.Status, got.Attempts)
+	}
+
+	allow.Store(true)
+
+	waitFor(t, ctx, store, enq.ID, task.Completed)
+	cancel()
+
+	if ran.Load() != 1 {
+		t.Fatalf("executor ran %d times after the gate opened, want 1", ran.Load())
+	}
+
+	if got, _ = store.Get(context.Background(), enq.ID); got.Attempts != 1 {
+		t.Fatalf("attempts = %d after completion, want 1 (the block burned nothing)", got.Attempts)
+	}
+}
+
 func TestPanicRecovery(t *testing.T) {
 	store := testStore(t)
 

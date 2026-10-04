@@ -1557,6 +1557,7 @@ func cmdAgentPool(args []string) error {
 		Lease:        poolOpts.lease,
 		TaskTimeout:  poolOpts.timeout,
 		Executors:    reg,
+		Budget:       budgetClaimGate(guard, store, poolOpts.budgetCmd),
 	}, log)
 
 	if poolOpts.once {
