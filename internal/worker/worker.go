@@ -394,7 +394,10 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	// left untouched.
 	if p.cfg.Budget != nil {
 		if blocked, reason, retryIn := p.cfg.Budget(ctx); blocked {
-			delay := rateLimitDelay(max(retryIn, time.Second))
+			delay := retryIn
+			if delay > 0 {
+				delay = rateLimitDelay(delay)
+			}
 			if err := p.store.Requeue(
 				ctx,
 				t.ID,

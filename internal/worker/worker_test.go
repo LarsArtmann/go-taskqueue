@@ -264,8 +264,17 @@ func TestBudgetGateBlocksPaidTurn(t *testing.T) {
 		t.Fatalf("executor ran %d times after the gate opened, want 1", ran.Load())
 	}
 
-	if got, _ = store.Get(context.Background(), enq.ID); got.Attempts != 1 {
-		t.Fatalf("attempts = %d after completion, want 1 (the block burned nothing)", got.Attempts)
+	// The gate never burns an attempt: the completion came from a clean
+	// claim with no task.failed fact along the way.
+	fs, err := facts.Facts(context.Background(), 0, 100)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	for _, f := range fs {
+		if f.TaskID == string(enq.ID) && f.Type == journal.Failed {
+			t.Fatalf("unexpected task.failed fact (attempt burned): %s", f.Detail)
+		}
 	}
 }
 
