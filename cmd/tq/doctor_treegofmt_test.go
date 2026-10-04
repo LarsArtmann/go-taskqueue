@@ -43,6 +43,14 @@ func TestDoctorTreeGofmt(t *testing.T) {
 		t.Skip("gofmt not resolvable on this host")
 	}
 
+	// The fixture drives the real git binary (setupDoctorTreeRepo) — the
+	// hermetic nix checkPhase sandbox ships no git (AGENTS: "tests
+	// hermetic — nix checkPhase lacks host tools"), so skip there like
+	// gofmt above.
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not resolvable on this host (hermetic sandbox)")
+	}
+
 	ctx := context.Background()
 
 	write := func(t *testing.T, dir, name, content string) {
