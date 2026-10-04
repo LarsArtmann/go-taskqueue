@@ -133,21 +133,45 @@ func seedLegacyJournal(t *testing.T, path string) {
 
 	other := []string{
 		`INSERT INTO deps (task_id, dep_id) VALUES ('t-pending', 't-completed')`,
-		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(now-9000) + `, 't-completed', 'task.enqueued', '{"project":"go-taskqueue","type":"agent"}')`,
-		`INSERT INTO facts (time, task_id, type, owner, attempt) VALUES (` + ms(now-8500) + `, 't-completed', 'task.claimed', 'worker-1', 1)`,
-		`INSERT INTO facts (time, task_id, type, owner, attempt, detail) VALUES (` + ms(now-8000) + `, 't-completed', 'task.completed', 'worker-1', 1, '{"ok":true}')`,
-		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(now-7000) + `, 't-dead', 'task.enqueued', '{"project":"go-taskqueue","type":"agent"}')`,
-		`INSERT INTO facts (time, task_id, type, owner, attempt) VALUES (` + ms(now-6500) + `, 't-dead', 'task.claimed', 'worker-2', 1)`,
-		`INSERT INTO facts (time, task_id, type, owner, attempt, error, detail) VALUES (` + ms(now-6200) + `, 't-dead', 'task.failed', 'worker-2', 1, 'verify failed', '{"stage":"verify"}')`,
-		`INSERT INTO facts (time, task_id, type, owner, attempt, detail) VALUES (` + ms(now-6000) + `, 't-dead', 'task.dead-lettered', 'worker-2', 1, '{"class":"exhausted"}')`,
-		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(now-5000) + `, 't-pending', 'task.enqueued', '{"project":"overview","type":"sh"}')`,
-		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(now-4500) + `, 't-pending', 'task.reprioritized', '{"from":0,"to":5,"source":"manual","reason":"test"}')`,
+		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(
+			now-9000,
+		) + `, 't-completed', 'task.enqueued', '{"project":"go-taskqueue","type":"agent"}')`,
+		`INSERT INTO facts (time, task_id, type, owner, attempt) VALUES (` + ms(
+			now-8500,
+		) + `, 't-completed', 'task.claimed', 'worker-1', 1)`,
+		`INSERT INTO facts (time, task_id, type, owner, attempt, detail) VALUES (` + ms(
+			now-8000,
+		) + `, 't-completed', 'task.completed', 'worker-1', 1, '{"ok":true}')`,
+		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(
+			now-7000,
+		) + `, 't-dead', 'task.enqueued', '{"project":"go-taskqueue","type":"agent"}')`,
+		`INSERT INTO facts (time, task_id, type, owner, attempt) VALUES (` + ms(
+			now-6500,
+		) + `, 't-dead', 'task.claimed', 'worker-2', 1)`,
+		`INSERT INTO facts (time, task_id, type, owner, attempt, error, detail) VALUES (` + ms(
+			now-6200,
+		) + `, 't-dead', 'task.failed', 'worker-2', 1, 'verify failed', '{"stage":"verify"}')`,
+		`INSERT INTO facts (time, task_id, type, owner, attempt, detail) VALUES (` + ms(
+			now-6000,
+		) + `, 't-dead', 'task.dead-lettered', 'worker-2', 1, '{"class":"exhausted"}')`,
+		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(
+			now-5000,
+		) + `, 't-pending', 'task.enqueued', '{"project":"overview","type":"sh"}')`,
+		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(
+			now-4500,
+		) + `, 't-pending', 'task.reprioritized', '{"from":0,"to":5,"source":"manual","reason":"test"}')`,
 		`INSERT INTO facts (time, task_id, type) VALUES (` + ms(now-3000) + `, 't-parked', 'task.enqueued')`,
-		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(now-2000) + `, 'session:abc123', 'session.opened', '{"repo":"go-taskqueue"}')`,
-		`INSERT INTO watermarks (consumer, seq, updated_at) VALUES ('papdashboard:http://pap', 3, ` + ms(now-1000) + `)`,
+		`INSERT INTO facts (time, task_id, type, detail) VALUES (` + ms(
+			now-2000,
+		) + `, 'session:abc123', 'session.opened', '{"repo":"go-taskqueue"}')`,
+		`INSERT INTO watermarks (consumer, seq, updated_at) VALUES ('papdashboard:http://pap', 3, ` + ms(
+			now-1000,
+		) + `)`,
 		`INSERT INTO priority_scores (item_key, score, effort_minutes, source, reasoning, tokens, scored_at)
 			VALUES ('go-taskqueue:some item', 80, 30, 'ai:batch-scorer', 'high impact', 500, ` + ms(now-1500) + `)`,
-		`INSERT INTO facts_archive (seq, time, task_id, type) VALUES (1, ` + ms(now-8000) + `, 't-ancient', 'task.enqueued')`,
+		`INSERT INTO facts_archive (seq, time, task_id, type) VALUES (1, ` + ms(
+			now-8000,
+		) + `, 't-ancient', 'task.enqueued')`,
 		`INSERT INTO journal_meta (key, value) VALUES ('schema_version', '4')`,
 	}
 
@@ -336,12 +360,14 @@ func TestProbeClassifiesSchemaGenerations(t *testing.T) {
 	if _, err := sqlitev4.Open(fresh); err != nil {
 		t.Fatalf("open fresh store: %v", err)
 	}
+
 	if kind, err := Probe(fresh); err != nil || kind != KindEngine {
 		t.Fatalf("probe engine file: kind=%v err=%v, want engine/nil", kind, err)
 	}
 
 	legacy := filepath.Join(dir, "legacy.db")
 	seedLegacyJournal(t, legacy)
+
 	if kind, err := Probe(legacy); err != nil || kind != KindLegacy {
 		t.Fatalf("probe legacy file: kind=%v err=%v, want legacy/nil", kind, err)
 	}

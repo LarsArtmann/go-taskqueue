@@ -81,7 +81,10 @@ func TestStatusCell(t *testing.T) {
 		}
 	}
 
-	if got := statusCell(task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &future}, now); got != "running 10m0s" {
+	if got := statusCell(
+		task.Task{Status: task.Running, LeaseOwner: "w1", LeaseExpires: &future},
+		now,
+	); got != "running 10m0s" {
 		t.Errorf("healthy-running-lease: statusCell = %q, want a remaining-lease countdown", got)
 	}
 }

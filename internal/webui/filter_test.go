@@ -279,6 +279,7 @@ func TestSortChip(t *testing.T) {
 
 	rec = httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+
 	if strings.Contains(rec.Body.String(), "clear sort filter") {
 		t.Error("sort chip must not render without an active sort")
 	}

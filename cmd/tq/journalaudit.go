@@ -449,7 +449,9 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 		}
 
 		if n := report.Requeues.ByClass[queue.RequeueClassRateLimit]; n > 0 {
-			fmt.Println("  (rate-limit requeues never burn an attempt; 3 consecutive ENVIRONMENTAL ones escalate — see the env-streak breaker)")
+			fmt.Println(
+				"  (rate-limit requeues never burn an attempt; 3 consecutive ENVIRONMENTAL ones escalate — see the env-streak breaker)",
+			)
 		}
 	}
 

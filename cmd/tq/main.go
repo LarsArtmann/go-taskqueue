@@ -24,6 +24,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/larsartmann/go-cqrs-lite/system/v4"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/cqa"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/budget"
@@ -46,8 +47,6 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/webui"
 	"github.com/larsartmann/go-taskqueue/internal/worker"
-
-	"github.com/larsartmann/go-cqrs-lite/system/v4"
 )
 
 const usage = `tq — projects-aware task work queue
@@ -1709,7 +1708,10 @@ func cmdStats(args []string) error {
 		"agent pool daily enqueue cap to compare today'store spend against (0 = spend shown without a cap)",
 	)
 	asJSON := fs.Bool("json", false, "JSON output of the stats aggregate (counts, budget, consumer lag)")
-	readModel := readModelFlag(fs, "read the status tallies from the ADR-0019 S3 metaengine projection beside the db (<db>.readmodel.db); default ON — pass --read-model=false to read the queue store directly")
+	readModel := readModelFlag(
+		fs,
+		"read the status tallies from the ADR-0019 S3 metaengine projection beside the db (<db>.readmodel.db); default ON — pass --read-model=false to read the queue store directly",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -3150,7 +3152,10 @@ func cmdAPI(args []string) error {
 	authToken := fs.String("auth-token", os.Getenv("TQ_API_TOKEN"),
 		"REQUIRED bearer token for every request (env $TQ_API_TOKEN)")
 
-	readModel := readModelFlag(fs, "serve GET /api/v1/stats from the ADR-0019 S3 metaengine projection (<db>.readmodel.db); default ON — pass --read-model=false for the queue store")
+	readModel := readModelFlag(
+		fs,
+		"serve GET /api/v1/stats from the ADR-0019 S3 metaengine projection (<db>.readmodel.db); default ON — pass --read-model=false for the queue store",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -3234,7 +3239,10 @@ func cmdServe(args []string) error {
 		os.Getenv("TQ_SERVE_WRITES") == "1",
 		"enable admin actions in the dashboard (cancel pending/running, rescue dead; env $TQ_SERVE_WRITES=1); CSRF-guarded, and non-loopback binds still require --auth-token",
 	)
-	readModel := readModelFlag(fs, "serve the aggregate reads and live notifications from the ADR-0019 S3 metaengine projection (<db>.readmodel.db); default ON — --read-model=false falls back to the hand journal tailer (row-rich views stay store-backed either way)")
+	readModel := readModelFlag(
+		fs,
+		"serve the aggregate reads and live notifications from the ADR-0019 S3 metaengine projection (<db>.readmodel.db); default ON — --read-model=false falls back to the hand journal tailer (row-rich views stay store-backed either way)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {

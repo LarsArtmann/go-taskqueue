@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite" // pure-Go SQLite driver (CGo-free)
-
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4"
+	_ "modernc.org/sqlite" // pure-Go SQLite driver (CGo-free)
 )
 
 // The on-open auto-upgrade (ADR-0019 endgame P1): a pre-flip hand-rolled
@@ -210,7 +209,7 @@ func snapshotLegacy(ctx context.Context, path string) (string, error) {
 
 	backupPath := fmt.Sprintf("%s.legacy-%s.bak", path, time.Now().Format("20060102-150405"))
 
-	if _, err := db.ExecContext(ctx, fmt.Sprintf("VACUUM INTO %s", quoteSQLString(backupPath))); err != nil {
+	if _, err := db.ExecContext(ctx, "VACUUM INTO "+quoteSQLString(backupPath)); err != nil {
 		return "", fmt.Errorf("vacuum into %s: %w", backupPath, err)
 	}
 

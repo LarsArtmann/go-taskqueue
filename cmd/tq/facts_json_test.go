@@ -46,7 +46,9 @@ func TestAgentsDocSizeGuard(t *testing.T) {
 
 	t.Fatalf(
 		"AGENTS.md grew to %d bytes (budget %d, over by %d) — prune the file or consciously reset agentsDocMaxBytes. Top sections by size:\n%s",
-		info.Size(), agentsDocMaxBytes, info.Size()-agentsDocMaxBytes,
+		info.Size(),
+		agentsDocMaxBytes,
+		info.Size()-agentsDocMaxBytes,
 		topDocSections(path, 3),
 	)
 }

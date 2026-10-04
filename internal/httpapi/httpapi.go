@@ -114,7 +114,12 @@ func (s *Server) guard(next http.Handler) http.Handler {
 			s.strikes.Add(key)
 
 			w.Header().Set("WWW-Authenticate", `Bearer realm="tq-api"`)
-			writeError(w, http.StatusUnauthorized, "unauthorized", "present a valid bearer token (Authorization: Bearer <token> or ?token=<token>)")
+			writeError(
+				w,
+				http.StatusUnauthorized,
+				"unauthorized",
+				"present a valid bearer token (Authorization: Bearer <token> or ?token=<token>)",
+			)
 
 			return
 		}

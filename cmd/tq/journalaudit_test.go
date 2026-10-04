@@ -499,9 +499,24 @@ func TestRequeueSummarySurfacesClasses(t *testing.T) {
 
 	facts := []journal.Fact{
 		{Seq: 1, TaskID: "t", Type: journal.Claimed},
-		{Seq: 2, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"429","retry_in_ms":900000,"class":"rate-limit"}`)},
-		{Seq: 3, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"429","retry_in_ms":900000,"class":"rate-limit","resume_closeout":true}`)},
-		{Seq: 4, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"dirty tree","retry_in_ms":60000,"class":"preflight"}`)},
+		{
+			Seq:    2,
+			TaskID: "t",
+			Type:   journal.Requeued,
+			Detail: jsontext.Value(`{"reason":"429","retry_in_ms":900000,"class":"rate-limit"}`),
+		},
+		{
+			Seq:    3,
+			TaskID: "t",
+			Type:   journal.Requeued,
+			Detail: jsontext.Value(`{"reason":"429","retry_in_ms":900000,"class":"rate-limit","resume_closeout":true}`),
+		},
+		{
+			Seq:    4,
+			TaskID: "t",
+			Type:   journal.Requeued,
+			Detail: jsontext.Value(`{"reason":"dirty tree","retry_in_ms":60000,"class":"preflight"}`),
+		},
 		// Legacy fact predating the class field normalizes to unknown.
 		{Seq: 5, TaskID: "t", Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"old","retry_in_ms":0}`)},
 		// Non-requeue facts never count.

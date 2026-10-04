@@ -152,6 +152,7 @@ func TestPresentationPolicyPresented(t *testing.T) {
 			t.Parallel()
 
 			r := tokenRequest(t, tt.header)
+
 			name := cookieName
 			if tt.cookieName != "" {
 				name = tt.cookieName
