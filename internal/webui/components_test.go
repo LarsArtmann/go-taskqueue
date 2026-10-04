@@ -1,6 +1,8 @@
 package webui
 
 import (
+	"bytes"
+	"context"
 	"encoding/json/jsontext"
 	"strings"
 	"testing"
@@ -236,5 +238,91 @@ func TestDetailFactsSurfacesCancelReason(t *testing.T) {
 
 	if strings.Count(lines[2].Text, "preflight: repo dirty") != 1 {
 		t.Fatalf("requeue line = %q, want the reason exactly once", lines[2].Text)
+	}
+}
+
+func TestParkedOnBudget(t *testing.T) {
+	t.Parallel()
+
+	budgetRequeue := journal.Fact{
+		Type:   journal.Requeued,
+		Detail: jsontext.Value(`{"reason":"budget gate: daily budget exhausted","retry_in_ms":3600000,"class":"budget"}`),
+	}
+	rateLimitRequeue := journal.Fact{
+		Type:   journal.Requeued,
+		Detail: jsontext.Value(`{"reason":"429","retry_in_ms":900000,"class":"rate-limit"}`),
+	}
+
+	cases := []struct {
+		name  string
+		tk    task.Task
+		facts []journalFactView
+		want  bool
+	}{
+		{"pending + budget requeue", task.Task{Status: task.Pending}, []journalFactView{budgetRequeue}, true},
+		{"latest requeue wins", task.Task{Status: task.Pending}, []journalFactView{rateLimitRequeue, budgetRequeue}, true},
+		{"later rate-limit unparks the badge", task.Task{Status: task.Pending}, []journalFactView{budgetRequeue, rateLimitRequeue}, false},
+		{"running is not parked", task.Task{Status: task.Running}, []journalFactView{budgetRequeue}, false},
+		{"completed is history", task.Task{Status: task.Completed}, []journalFactView{budgetRequeue}, false},
+		{"other class", task.Task{Status: task.Pending}, []journalFactView{rateLimitRequeue}, false},
+		{"legacy fact without class", task.Task{Status: task.Pending}, []journalFactView{{Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"old"}`)}}, false},
+		{"no requeue fact", task.Task{Status: task.Pending}, []journalFactView{{Type: journal.Enqueued}}, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := parkedOnBudget(tc.tk, tc.facts); got != tc.want {
+				t.Errorf("parkedOnBudget(%s, %d facts) = %v, want %v", tc.tk.Status, len(tc.facts), got, tc.want)
+			}
+		})
+	}
+}
+
+// TestParkedBudgetBadgeRenders pins the detail timeline's budget-park badge:
+// a PENDING task whose latest requeue carries the budget class shows the
+// badge INSTEAD of a retry trail (a single park is below retryTrail's
+// two-occurrence floor, and the badge is the operator's "why is this
+// pending" answer); any other class renders neither.
+func TestParkedBudgetBadgeRenders(t *testing.T) {
+	t.Parallel()
+
+	render := func(t *testing.T, tk task.Task, facts []journalFactView) string {
+		t.Helper()
+
+		var buf bytes.Buffer
+
+		if err := taskDetailTimeline(DashboardData{Now: time.Now()}, tk, facts).Render(context.Background(), &buf); err != nil {
+			t.Fatalf("taskDetailTimeline render: %v", err)
+		}
+
+		return buf.String()
+	}
+
+	budgetFacts := []journalFactView{
+		{Seq: 2, Type: journal.Requeued, Error: "budget gate: daily budget exhausted", Detail: jsontext.Value(`{"reason":"budget gate: daily budget exhausted","retry_in_ms":3600000,"class":"budget"}`)},
+	}
+
+	html := render(t, task.Task{Status: task.Pending}, budgetFacts)
+
+	if !strings.Contains(html, "parked: budget") || !strings.Contains(html, "tq-parked-budget") {
+		t.Errorf("budget park must render the badge with its container class:\n%s", html)
+	}
+
+	if strings.Contains(html, "retry trail") {
+		t.Errorf("a single park must not fabricate a retry trail:\n%s", html)
+	}
+
+	otherClass := []journalFactView{
+		{Seq: 2, Type: journal.Requeued, Detail: jsontext.Value(`{"reason":"429","retry_in_ms":900000,"class":"rate-limit"}`)},
+	}
+
+	if other := render(t, task.Task{Status: task.Pending}, otherClass); strings.Contains(other, "parked: budget") {
+		t.Errorf("non-budget park must not render the budget badge:\n%s", other)
+	}
+
+	if moved := render(t, task.Task{Status: task.Completed}, budgetFacts); strings.Contains(moved, "parked: budget") {
+		t.Errorf("the badge is state, not history — a moved-on task must not show it:\n%s", moved)
 	}
 }

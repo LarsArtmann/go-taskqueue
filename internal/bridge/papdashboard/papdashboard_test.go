@@ -652,3 +652,93 @@ func TestStarvationAlertTriggerAndResolve(t *testing.T) {
 		)
 	}
 }
+
+// budgetBlockedFacts builds n budget-class task.requeued facts on the given
+// day (plus one rate-limit requeue to prove other classes never fire the
+// claim-side alert).
+func budgetBlockedFacts(day time.Time, n int, startSeq int64) []journal.Fact {
+	var facts []journal.Fact
+
+	for i := range n {
+		facts = append(facts, journal.Fact{
+			Seq: startSeq + int64(i), TaskID: "t-blocked", Type: journal.Requeued,
+			Time: day.Add(time.Duration(i) * time.Minute),
+			Detail: jsontext.Value(`{"reason":"budget gate: daily budget exhausted: 2/2 tasks enqueued today",` +
+				`"retry_in_ms":3600000,"class":"budget"}`),
+		})
+	}
+
+	return append(facts, journal.Fact{
+		Seq:    startSeq + int64(n),
+		TaskID: "t-rl",
+		Type:   journal.Requeued,
+		Time:   day.Add(time.Duration(n) * time.Minute),
+		Detail: jsontext.Value(`{"reason":"429","retry_in_ms":900000,"class":"rate-limit"}`),
+	})
+}
+
+// TestBudgetBlockedAlertsOncePerDay pins the claim-side money gate's
+// visibility: the first budget-class requeue of a day fires the
+// budget-blocked alert exactly once (not per blocked claim), other requeue
+// classes never fire it, and it works with NO DailyBudget configured — a
+// budget-CMD pool blocks claims without any enqueue cap, so the alert must
+// not depend on that mirror flag.
+func TestBudgetBlockedAlertsOncePerDay(t *testing.T) {
+	pap := newFakePap(t)
+	day := time.Date(2026, 9, 8, 9, 0, 0, 0, time.UTC)
+	src := &fakeSource{facts: budgetBlockedFacts(day, 3, 1)}
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "k", Logger: quietLogger()})
+
+	forwardAll(t, b, src)
+
+	var triggered int
+
+	for _, rec := range pap.calls() {
+		if rec.Event != "alert.triggered" {
+			t.Errorf("unexpected event %s (aggregate %s)", rec.Event, rec.AggregateID)
+		}
+
+		triggered++
+	}
+
+	if triggered != 1 {
+		t.Fatalf("got %d alert.triggered events, want exactly 1 (fires on the first blocked claim of the day)", triggered)
+	}
+
+	call := pap.calls()[0]
+	if call.AggregateID != "agent-pool-budget-blocked-2026-09-08" {
+		t.Errorf("aggregateId = %s, want agent-pool-budget-blocked-2026-09-08", call.AggregateID)
+	}
+}
+
+func TestBudgetBlockedAlertResolvesOnDayRollover(t *testing.T) {
+	pap := newFakePap(t)
+	day1 := time.Date(2026, 9, 8, 9, 0, 0, 0, time.UTC)
+	day2 := time.Date(2026, 9, 9, 8, 0, 0, 0, time.UTC)
+
+	src := &fakeSource{}
+	src.add(budgetBlockedFacts(day1, 1, 1)...)  // blocked claim on day 1
+	src.add(budgetBlockedFacts(day2, 1, 10)...) // first blocked claim of day 2: rollover resolve + re-fire
+
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "k", Logger: quietLogger()})
+
+	forwardAll(t, b, src)
+
+	calls := pap.calls()
+
+	if len(calls) != 3 {
+		t.Fatalf("got %d events, want 3 (trigger, rollover resolve, re-trigger): %+v", len(calls), calls)
+	}
+
+	if calls[0].Event != "alert.triggered" || calls[1].Event != "alert.resolved" || calls[2].Event != "alert.triggered" {
+		t.Fatalf("want trigger/resolve/trigger, got %s, %s, %s", calls[0].Event, calls[1].Event, calls[2].Event)
+	}
+
+	if calls[1].AggregateID != "agent-pool-budget-blocked-2026-09-08" {
+		t.Errorf("resolve aggregate = %s, want the day-1 window", calls[1].AggregateID)
+	}
+
+	if calls[2].AggregateID != "agent-pool-budget-blocked-2026-09-09" {
+		t.Errorf("re-trigger aggregate = %s, want the day-2 window", calls[2].AggregateID)
+	}
+}

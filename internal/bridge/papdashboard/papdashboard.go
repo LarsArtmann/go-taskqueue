@@ -111,6 +111,13 @@ type Bridge struct {
 	budgetDay     string // YYYY-MM-DD the counters below belong to
 	budgetSpent   int
 	budgetAlerted bool // alert fired for budgetDay (fires at most once/day)
+
+	// Claim-side budget telemetry: the first budget-class task.requeued
+	// fact of a day fires the budget-blocked alert once (trackBudgetBlocked)
+	// — independent of Config.DailyBudget, since a budget-CMD pool blocks
+	// claims without any enqueue cap configured.
+	blockedDay     string
+	blockedAlerted bool
 }
 
 // New builds a Bridge. checkpoints persists the journal cursor across
@@ -427,6 +434,9 @@ func (b *Bridge) forward(ctx context.Context, fact journal.Fact) error {
 
 	case journal.QuestionAsked:
 		return b.forwardQuestion(ctx, fact)
+
+	case journal.Requeued:
+		return b.trackBudgetBlocked(ctx, fact)
 	}
 
 	return nil
@@ -607,6 +617,73 @@ func (b *Bridge) trackBudget(ctx context.Context, fact journal.Fact) error {
 
 		b.budgetAlerted = true
 	}
+
+	return nil
+}
+
+// budgetBlockedAggregate is the alert identity for one day's claim-side
+// budget window: a synthetic, stable aggregate id (a blocked claim is a
+// pool incident, not a task-scoped one).
+func budgetBlockedAggregate(day string) string { return "agent-pool-budget-blocked-" + day }
+
+// trackBudgetBlocked raises the CLAIM-side budget alert: the first
+// budget-class task.requeued fact of a day fires "budget-blocked" once.
+// It is deliberately distinct from trackBudget's enqueue-side exhaustion
+// alert — the claim gate makes the pool LOOK idle on purpose, and an
+// invisible money gate reads as a dead pool. The alert resolves on the
+// next day's first blocked claim (mirroring trackBudget's rollover);
+// independent of Config.DailyBudget, since a budget-CMD pool blocks
+// claims while never configuring an enqueue cap.
+func (b *Bridge) trackBudgetBlocked(ctx context.Context, fact journal.Fact) error {
+	var evidence queue.RequeueEvidence
+	if err := json.Unmarshal(fact.Detail, &evidence); err != nil || evidence.Class != queue.RequeueClassBudget {
+		return nil
+	}
+
+	day := fact.Time.Format("2006-01-02")
+	if day != b.blockedDay {
+		if b.blockedAlerted {
+			payload := map[string]any{
+				"title":      "agent-pool budget-blocked claims",
+				"body":       fmt.Sprintf("Budget window %s rolled over; parked claims are claimable again.", b.blockedDay),
+				"sourceApp":  b.cfg.SourceApp,
+				"resolvedBy": b.cfg.SourceApp + "-bridge",
+			}
+			if err := b.post(ctx, "alert.resolved", idempotencyKey("budget-blocked-resolve", fact.Seq),
+				budgetBlockedAggregate(b.blockedDay), fact.Seq, payload); err != nil {
+				return err
+			}
+		}
+
+		b.blockedDay, b.blockedAlerted = day, false
+	}
+
+	if b.blockedAlerted {
+		return nil
+	}
+
+	payload := map[string]any{
+		"severity": b.cfg.BudgetSeverity,
+		"title":    "agent-pool budget-blocked claims",
+		"body": fmt.Sprintf(
+			"The claim-time budget gate parked task %s: %s. No attempt burned — work resumes when the daily cap or budget command resets. The pool is idle on purpose, not dead.",
+			fact.TaskID,
+			firstLine(evidence.Reason),
+		),
+		"sourceApp": b.cfg.SourceApp,
+		"metadata": map[string]string{
+			"task":   fact.TaskID,
+			"reason": firstLine(evidence.Reason),
+			"day":    day,
+			"class":  evidence.Class,
+		},
+	}
+	if err := b.post(ctx, "alert.triggered", idempotencyKey("budget-blocked", fact.Seq),
+		budgetBlockedAggregate(day), fact.Seq, payload); err != nil {
+		return err
+	}
+
+	b.blockedAlerted = true
 
 	return nil
 }

@@ -280,6 +280,12 @@ type DashboardData struct {
 	// in the nowband meta (16-00 report f44; the stats payload already
 	// carries the same number).
 	Parked int
+	// BudgetParked counts tasks parked by the claim-time budget gate:
+	// pending-with-not_before tasks whose latest task.requeued fact in
+	// the last 24h carries the budget class — the "the pool is idle ON
+	// PURPOSE (money)" lamp next to the parked segment. The 24h window
+	// is the badge's honest scope, not a live park state.
+	BudgetParked int
 	// LoopSuspects counts tasks whose claim count exceeds
 	// queue.ClaimAnomalyThreshold — the churn lamp in the nowband meta
 	// (the P1 class: one task out-claming its budget for days). tq stats
@@ -321,11 +327,65 @@ type DashboardData struct {
 // parkedCount counts rate-limit-parked tasks (pending, not_before in the
 // future) for the nowband meta. Best effort: a failed read parks nothing.
 func parkedCount(ctx context.Context, store queue.Store) int {
-	parked := true
-
-	n, err := store.CountTasks(ctx, queue.Filter{Parked: &parked})
+	n, err := store.CountTasks(ctx, queue.Filter{Parked: &parkedTrue})
 	if err != nil {
 		return 0
+	}
+
+	return n
+}
+
+var parkedTrue = true
+
+// budgetParkedWindow bounds the budget-parked derivation: requeue facts
+// older than a day no longer speak for the current park state (the
+// midnight/15m windows reset well inside it).
+const budgetParkedWindow = 24 * time.Hour
+
+// budgetParkedCount counts tasks parked by the claim-time budget gate:
+// pending parked tasks whose latest task.requeued fact inside the window
+// carries the budget class. Two bounded reads (one facts scan, one
+// parked-tasks list); latest fact per task wins. Best effort: a failed
+// read lights nothing.
+func budgetParkedCount(ctx context.Context, store queue.Store, now time.Time) int {
+	pending, err := store.List(ctx, queue.Filter{Parked: &parkedTrue})
+	if err != nil {
+		return 0
+	}
+
+	if len(pending) == 0 {
+		return 0
+	}
+
+	parkedIDs := make(map[string]struct{}, len(pending))
+	for _, t := range pending {
+		parkedIDs[t.ID.String()] = struct{}{}
+	}
+
+	facts, err := store.FactsSince(ctx, journal.Requeued, now.Add(-budgetParkedWindow), 0)
+	if err != nil {
+		return 0
+	}
+
+	latest := make(map[string]string, len(parkedIDs))
+	for _, f := range facts {
+		if _, ok := parkedIDs[f.TaskID]; !ok {
+			continue
+		}
+
+		var evidence queue.RequeueEvidence
+		if err := json.Unmarshal(f.Detail, &evidence); err != nil || evidence.Class == "" {
+			continue
+		}
+
+		latest[f.TaskID] = evidence.Class
+	}
+
+	n := 0
+	for _, class := range latest {
+		if class == queue.RequeueClassBudget {
+			n++
+		}
 	}
 
 	return n
@@ -571,6 +631,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	}
 
 	data.Parked = parkedCount(ctx, s.store)
+	data.BudgetParked = budgetParkedCount(ctx, s.store, now)
 	data.LoopSuspects = loopSuspects(ctx, s.store)
 	data.SessionsOpened, data.SessionsClosed, data.SessionsOpen = sessionStats(ctx, s.store)
 
@@ -963,6 +1024,6 @@ func renderFragments(ctx context.Context, data DashboardData) []fragment {
 func renderTaskFragments(ctx context.Context, data DashboardData, t task.Task, facts []journal.Fact) []fragment {
 	return []fragment{
 		{ID: fragDetail, HTML: renderComponent(ctx, taskDetailCard(data, t))},
-		{ID: fragTimeline, HTML: renderComponent(ctx, taskDetailTimeline(data, facts))},
+		{ID: fragTimeline, HTML: renderComponent(ctx, taskDetailTimeline(data, t, facts))},
 	}
 }

@@ -1176,6 +1176,96 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 	}
 }
 
+// TestBudgetParkedSegmentRendersFromSnapshot pins the paperclip-visibility
+// wiring: a budget-gate requeue lights the nowband "budget N" segment for
+// parked tasks (a rate-limit park never feeds it), and the lamp goes dark
+// the moment a task leaves the parked state — the "is the pool idle on
+// purpose (money)?" answer at a glance.
+func TestBudgetParkedSegmentRendersFromSnapshot(t *testing.T) {
+	srv, s := newTestServer(t)
+
+	ctx := context.Background()
+
+	// Nothing parked: no segment.
+	data, err := srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot: %v", err)
+	}
+
+	if data.BudgetParked != 0 {
+		t.Fatalf("budgetParked = %d, want 0 on a bare store", data.BudgetParked)
+	}
+
+	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-budget-parked") {
+		t.Error("stats fragment shows a budget-parked segment with nothing parked")
+	}
+
+	// Park one by budget: claim + budget requeue, then the segment renders.
+	tk := enqueue(t, s, "agent", "demo")
+
+	_, claim, err := s.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.Requeue(ctx, tk.ID, claim, "budget gate: daily cap spent", time.Hour, false, queue.RequeueClassBudget); err != nil {
+		t.Fatalf("requeue: %v", err)
+	}
+
+	data, err = srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot #2: %v", err)
+	}
+
+	if data.BudgetParked != 1 {
+		t.Fatalf("budgetParked = %d, want 1 after the budget requeue", data.BudgetParked)
+	}
+
+	stats := renderComponent(ctx, StatusCards(data))
+	for _, want := range []string{"card-budget-parked", "budget 1"} {
+		if !strings.Contains(stats, want) {
+			t.Errorf("stats fragment missing %q:\n%s", want, stats)
+		}
+	}
+
+	// Park a second task by rate limit: it must NOT feed the budget lamp
+	// (class decides, not the parked state alone).
+	tk2 := enqueue(t, s, "agent", "demo")
+
+	if _, claim2, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
+		t.Fatalf("claim #2: %v", err)
+	} else if err := s.Requeue(ctx, tk2.ID, claim2, "rate limited", time.Hour, false, "rate-limit"); err != nil {
+		t.Fatalf("requeue #2: %v", err)
+	}
+
+	data, err = srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot #3: %v", err)
+	}
+
+	if data.BudgetParked != 1 || data.Parked != 2 {
+		t.Fatalf("budgetParked = %d parked = %d, want 1/2", data.BudgetParked, data.Parked)
+	}
+
+	// Leave the parked state: the lamp scopes to still-parked tasks.
+	if err := s.Cancel(ctx, tk.ID, "test: out of the park"); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	data, err = srv.loadSnapshot(ctx, FilterState{})
+	if err != nil {
+		t.Fatalf("loadSnapshot #4: %v", err)
+	}
+
+	if data.BudgetParked != 0 {
+		t.Fatalf("budgetParked = %d, want 0 after the cancel", data.BudgetParked)
+	}
+
+	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-budget-parked") {
+		t.Error("budget-parked segment still lit after the task left the park")
+	}
+}
+
 // TestSessionSegmentsRenderFromSnapshot pins the 03-28 §f20 wiring: the
 // nowband meta surfaces the session volume (opened/closed fact counts)
 // once any session fact exists, plus the open-sessions lamp while a
