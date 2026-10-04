@@ -600,7 +600,7 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView, prov 
 			<span class="tq-label">fact timeline</span>
 		</div>
 		<div id="frag-timeline">
-			@taskDetailTimeline(data, facts)
+			@taskDetailTimeline(data, t, facts)
 		</div>
 	</div>
 }
@@ -790,7 +790,7 @@ templ priorityProvenanceSection(v priorityProvenanceView) {
 // content of #frag-timeline). The retry strip above it aggregates repeated
 // refusals/failures into one glance; the Scrollback below stays the full,
 // faithful trail.
-templ taskDetailTimeline(data DashboardData, facts []journalFactView) {
+templ taskDetailTimeline(data DashboardData, t task.Task, facts []journalFactView) {
 	if len(facts) == 0 {
 		@display.EmptyState(display.EmptyStateProps{
 			Title:       "no facts yet",
@@ -798,6 +798,12 @@ templ taskDetailTimeline(data DashboardData, facts []journalFactView) {
 			Icon:        icons.CircleStack,
 		})
 	} else {
+		if parkedOnBudget(t, facts) {
+			<div class="tq-parked-budget flex flex-wrap items-center gap-x-2 gap-y-1" aria-label="parked by the budget gate">
+				@display.Badge(display.BadgeProps{Text: "parked: budget", Type: display.BadgeWarning, Size: display.BadgeSizeSM})
+				<span class="text-xs text-gray-500 dark:text-gray-400">the claim-time budget gate parked this paid turn — it resumes when the daily cap or budget command resets (no attempt burned)</span>
+			</div>
+		}
 		@retryStrip(retryTrail(facts))
 		<div class="journal-scroll rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
 			@display.Scrollback(display.ScrollbackProps{

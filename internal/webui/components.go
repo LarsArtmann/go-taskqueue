@@ -368,6 +368,35 @@ func factReason(fact journalFactView) string {
 	return detail.Reason
 }
 
+// parkedOnBudget reports whether the task's most recent requeue parked it
+// on the claim-time budget gate (the "parked: budget" badge). Only a
+// PENDING task can be parked: the same fact on a task that already moved
+// on is history, not state. The badge exists because the gate makes the
+// pool LOOK idle on purpose — without it an operator reads the parked
+// pending row as a dead pool (the 03-11 paperclip report's exact concern).
+func parkedOnBudget(t task.Task, facts []journalFactView) bool {
+	if t.Status != task.Pending {
+		return false
+	}
+
+	for i := len(facts) - 1; i >= 0; i-- {
+		if facts[i].Type != journal.Requeued {
+			continue
+		}
+
+		var evidence struct {
+			Class string `json:"class"`
+		}
+		if err := json.Unmarshal(facts[i].Detail, &evidence); err != nil {
+			return false
+		}
+
+		return evidence.Class == queue.RequeueClassBudget
+	}
+
+	return false
+}
+
 // dashboardProps builds the shared page shell for both pages. HTMX is
 // suppressed entirely: the dashboard streams over vanilla EventSource.
 // The nonce comes from the security-headers middleware (ctxNonce) and is
