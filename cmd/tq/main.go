@@ -64,7 +64,7 @@ Usage:
   tq agent-pool --projects-dir DIR [--repos a,b] [--interval DUR] [--concurrency N]
                [--yolo] [--reresolve-verify] [--max-per-tick N] [--task-timeout DUR]
                [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH]
-  tq stats [--project P] [--status S] [--daily-budget N] [--read-model] [--db PATH] [--json]
+  tq stats [--project P] [--status S] [--daily-budget N] [--read-model] [--db PATH] [--json]   (--read-model is the default; --read-model=false reads the store)
   tq tasks [--project P] [--status S] [--type T] [--since DUR] [--limit N] [--count] [--json] [--db PATH]
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
           [--max-attempts N] [--dry-run] [--json] [--db PATH]
@@ -99,8 +99,8 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
                   [--summary TEXT] [--db PATH]   (close every registry
                   session that is quiet and no longer owned by a live crush
                   process; replay-safe via the close dedup keys)
-  tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose] [--read-model]
-  tq api [--addr ADDR] --auth-token TOKEN [--db PATH] [--read-model]   (write API: POST /api/v1/tasks)
+  tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose] [--read-model]   (--read-model default; =false uses the hand journal tailer)
+  tq api [--addr ADDR] --auth-token TOKEN [--db PATH] [--read-model]   (write API: POST /api/v1/tasks; --read-model default)
   tq verdict '<json>'   (agent-facing: record this task's structured result
                   into $TQ_RESULT_FILE; validates JSON, no database access)
   tq ask --task <id> [--type info|approval|confirmation|input]
@@ -188,11 +188,13 @@ func dbFlag(fs *flag.FlagSet) *string {
 	return fs.String("db", "", "database path (default $TQ_DB or ./tasks.db)")
 }
 
-// readModelFlag registers the shared --read-model switch; name and default
-// live here so every serving command stays in lockstep, the usage line
-// stays per-command.
+// readModelFlag registers the shared --read-model switch; name and
+// default live here so every serving command stays in lockstep, the
+// usage line stays per-command. Default TRUE since the S3 flip
+// (ADR-0019 endgame P2): the metaengine projection is the read side;
+// --read-model=false falls back to the queue store's own reads.
 func readModelFlag(fs *flag.FlagSet, usage string) *bool {
-	return fs.Bool("read-model", false, usage)
+	return fs.Bool("read-model", true, usage)
 }
 
 func resolveDB(v string) string {
@@ -1667,7 +1669,7 @@ func cmdStats(args []string) error {
 		"agent pool daily enqueue cap to compare today'store spend against (0 = spend shown without a cap)",
 	)
 	asJSON := fs.Bool("json", false, "JSON output of the stats aggregate (counts, budget, consumer lag)")
-	readModel := readModelFlag(fs, "read the status tallies from the ADR-0019 S3 metaengine projection beside the db (<db>.readmodel.db) instead of the queue store")
+	readModel := readModelFlag(fs, "read the status tallies from the ADR-0019 S3 metaengine projection beside the db (<db>.readmodel.db); default ON — pass --read-model=false to read the queue store directly")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -3108,7 +3110,7 @@ func cmdAPI(args []string) error {
 	authToken := fs.String("auth-token", os.Getenv("TQ_API_TOKEN"),
 		"REQUIRED bearer token for every request (env $TQ_API_TOKEN)")
 
-	readModel := readModelFlag(fs, "serve GET /api/v1/stats from the ADR-0019 S3 metaengine projection (<db>.readmodel.db) instead of the queue store")
+	readModel := readModelFlag(fs, "serve GET /api/v1/stats from the ADR-0019 S3 metaengine projection (<db>.readmodel.db); default ON — pass --read-model=false for the queue store")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -3192,7 +3194,7 @@ func cmdServe(args []string) error {
 		os.Getenv("TQ_SERVE_WRITES") == "1",
 		"enable admin actions in the dashboard (cancel pending/running, rescue dead; env $TQ_SERVE_WRITES=1); CSRF-guarded, and non-loopback binds still require --auth-token",
 	)
-	readModel := readModelFlag(fs, "serve the aggregate reads and live notifications from the ADR-0019 S3 metaengine projection (<db>.readmodel.db) instead of the hand journal tailer; row-rich views stay store-backed")
+	readModel := readModelFlag(fs, "serve the aggregate reads and live notifications from the ADR-0019 S3 metaengine projection (<db>.readmodel.db); default ON — --read-model=false falls back to the hand journal tailer (row-rich views stay store-backed either way)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
