@@ -58,19 +58,19 @@ require (
 	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.6.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/system/v4 v4.10.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.6.3 // indirect
-	github.com/larsartmann/go-datastar v0.5.0 // indirect
-	github.com/larsartmann/go-datastar/static v0.5.0 // indirect
+	github.com/larsartmann/go-datastar v0.6.2 // indirect
+	github.com/larsartmann/go-datastar/static v0.6.1 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.0 // indirect
-	github.com/larsartmann/go-health v0.1.3 // indirect
-	github.com/larsartmann/go-health-dashboard v0.8.1 // indirect
+	github.com/larsartmann/go-health v0.4.1 // indirect
+	github.com/larsartmann/go-health-dashboard v0.10.2 // indirect
 	github.com/larsartmann/go-retry v0.7.1 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
-	github.com/larsartmann/templ-components v1.17.0 // indirect
-	github.com/larsartmann/templ-components/datastar v1.17.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.17.0 // indirect
-	github.com/larsartmann/templ-components/icons v1.17.0 // indirect
-	github.com/larsartmann/templ-components/utils v1.17.0 // indirect
+	github.com/larsartmann/templ-components v1.19.4 // indirect
+	github.com/larsartmann/templ-components/datastar v1.19.4 // indirect
+	github.com/larsartmann/templ-components/htmx v1.19.4 // indirect
+	github.com/larsartmann/templ-components/icons v1.19.4 // indirect
+	github.com/larsartmann/templ-components/utils v1.19.4 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/maypok86/otter/v2 v2.3.0 // indirect
