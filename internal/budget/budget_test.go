@@ -3,12 +3,19 @@ package budget
 import (
 	"context"
 	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+
+	_ "time/tzdata" // embedded tzdb keeps the DST table hermetic (nix checkPhase has no zoneinfo)
 )
 
 // seeded returns a journal with n enqueued facts today and m yesterday.
@@ -264,5 +271,235 @@ func TestCheckBudgetCmdAuthority(t *testing.T) {
 	// its refusal holds.
 	if ok, _ := (Guard{BudgetCmd: "exit 1"}).Check(ctx, seeded(0, 0)); ok {
 		t.Fatal("budget command must be the final authority")
+	}
+}
+
+// cmdCacheStub builds a BudgetCmd script that counts its own executions in
+// counterPath and refuses with "spent" until allowPath exists — the
+// observable behavior changes mid-test without rewriting the script.
+func cmdCacheStub(t *testing.T, counterPath, allowPath string) string {
+	t.Helper()
+
+	return fmt.Sprintf(
+		`echo x >> %q; if [ -f %q ]; then exit 0; fi; echo spent; exit 1`,
+		counterPath,
+		allowPath,
+	)
+}
+
+func countStubRuns(t *testing.T, counterPath string) int {
+	t.Helper()
+
+	b, err := os.ReadFile(counterPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return 0
+		}
+
+		t.Fatalf("read counter: %v", err)
+	}
+
+	return strings.Count(string(b), "\n")
+}
+
+func TestCheckCachesBudgetCmdVerdict(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	counter, allow := filepath.Join(dir, "runs"), filepath.Join(dir, "allow")
+
+	base := time.Unix(1_700_000_000, 0)
+
+	var offSec atomic.Int64
+
+	g := Guard{
+		BudgetCmd: cmdCacheStub(t, counter, allow),
+		Now:       func() time.Time { return base.Add(time.Duration(offSec.Load()) * time.Second) },
+	}.WithCmdCache(time.Minute)
+
+	ctx := context.Background()
+
+	offSec.Store(1)
+
+	for i := range 3 {
+		allowed, reason := g.Check(ctx, nil)
+		if allowed || !strings.Contains(reason, "spent") {
+			t.Fatalf("check %d = (%v, %q), want the cached refusal", i, allowed, reason)
+		}
+	}
+
+	if runs := countStubRuns(t, counter); runs != 1 {
+		t.Fatalf("budget command ran %d times inside the TTL window, want 1", runs)
+	}
+
+	// The budget clears mid-window: the cached refusal must hold until the
+	// TTL expires (that staleness bound is the documented cost of not
+	// exec'ing per claim).
+	if err := os.WriteFile(allow, []byte("ok"), 0o644); err != nil {
+		t.Fatalf("write allow: %v", err)
+	}
+
+	offSec.Store(2)
+
+	if allowed, _ := g.Check(ctx, nil); allowed {
+		t.Fatal("check inside the TTL window must return the cached refusal")
+	}
+
+	// Past the TTL the guard re-runs the command and sees the clearance.
+	offSec.Store(120)
+
+	if allowed, reason := g.Check(ctx, nil); !allowed || reason != "" {
+		t.Fatalf("check past the TTL = (%v, %q), want a fresh allow", allowed, reason)
+	}
+
+	if runs := countStubRuns(t, counter); runs != 2 {
+		t.Fatalf("budget command ran %d times after expiry, want 2", runs)
+	}
+
+	// The fresh allow is itself cached: no third exec while it holds.
+	offSec.Store(121)
+
+	if allowed, _ := g.Check(ctx, nil); !allowed {
+		t.Fatal("check inside the cached allow window must be allowed")
+	}
+
+	if runs := countStubRuns(t, counter); runs != 2 {
+		t.Fatalf("budget command ran %d times after caching the allow, want 2", runs)
+	}
+}
+
+func TestCheckCmdCacheSharedAcrossCopies(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	counter, allow := filepath.Join(dir, "runs"), filepath.Join(dir, "allow")
+
+	base := time.Unix(1_700_000_000, 0)
+
+	var tick atomic.Int64
+
+	armed := Guard{
+		BudgetCmd: cmdCacheStub(t, counter, allow),
+		Now:       func() time.Time { return base.Add(time.Duration(tick.Add(1)) * time.Second) },
+	}.WithCmdCache(time.Minute)
+
+	ctx := context.Background()
+
+	// The harvest gate and the claim gate hold DIFFERENT copies of the
+	// armed guard: the verdict (and the exec count) must still be shared —
+	// two caches would double the exec rate the cache exists to bound.
+	harvestGate := armed
+
+	if allowed, reason := harvestGate.Check(ctx, nil); allowed || !strings.Contains(reason, "spent") {
+		t.Fatalf("harvest-side check = (%v, %q), want refusal", allowed, reason)
+	}
+
+	if allowed, reason := armed.Check(ctx, nil); allowed || !strings.Contains(reason, "spent") {
+		t.Fatalf("claim-side check = (%v, %q), want the SAME cached refusal", allowed, reason)
+	}
+
+	if runs := countStubRuns(t, counter); runs != 1 {
+		t.Fatalf("budget command ran %d times across two guard copies, want 1", runs)
+	}
+}
+
+func TestWithCmdCacheZeroTTLIsInert(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	counter, allow := filepath.Join(dir, "runs"), filepath.Join(dir, "allow")
+
+	g := Guard{BudgetCmd: cmdCacheStub(t, counter, allow)}.WithCmdCache(0)
+
+	if g.cmdCache != nil {
+		t.Fatal("zero ttl must not arm the cache")
+	}
+
+	for range 2 {
+		if allowed, _ := g.Check(context.Background(), nil); allowed {
+			t.Fatal("refusing cmd must refuse without the cache")
+		}
+	}
+
+	if runs := countStubRuns(t, counter); runs != 2 {
+		t.Fatalf("uncached guard ran the command %d times, want 2", runs)
+	}
+}
+
+// TestNextMidnightAcrossDSTDays pins the DST-correct midnight the
+// budget park uses (M2.3 of the paperclip-aftermath plan): a 23-hour
+// spring-forward day and a 25-hour fall-back day both end at TRUE local
+// midnight, which midnight+24h wall arithmetic misses by an hour. The
+// contrast assertions keep that regression direction pinned, not just the
+// correct values.
+func TestNextMidnightAcrossDSTDays(t *testing.T) {
+	t.Parallel()
+
+	nyc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatalf("load New_York: %v", err)
+	}
+
+	berlin, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatalf("load Berlin: %v", err)
+	}
+
+	cases := []struct {
+		name string
+		now  time.Time
+		want time.Time
+	}{
+		{
+			name: "plain UTC day",
+			now:  time.Date(2026, 10, 4, 15, 0, 0, 0, time.UTC),
+			want: time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "US spring-forward day ends at true local midnight",
+			now:  time.Date(2026, 3, 8, 23, 0, 0, 0, nyc),
+			want: time.Date(2026, 3, 9, 0, 0, 0, 0, nyc),
+		},
+		{
+			name: "US fall-back day ends at true local midnight",
+			now:  time.Date(2026, 11, 1, 23, 0, 0, 0, nyc),
+			want: time.Date(2026, 11, 2, 0, 0, 0, 0, nyc),
+		},
+		{
+			name: "fall-back transition instant still rolls to next true midnight",
+			now:  time.Date(2026, 11, 1, 0, 30, 0, 0, nyc),
+			want: time.Date(2026, 11, 2, 0, 0, 0, 0, nyc),
+		},
+		{
+			name: "EU spring-forward day ends at true local midnight",
+			now:  time.Date(2026, 3, 29, 23, 0, 0, 0, berlin),
+			want: time.Date(2026, 3, 30, 0, 0, 0, 0, berlin),
+		},
+		{
+			name: "EU fall-back day ends at true local midnight",
+			now:  time.Date(2026, 10, 25, 23, 0, 0, 0, berlin),
+			want: time.Date(2026, 10, 26, 0, 0, 0, 0, berlin),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := NextMidnight(tc.now)
+			if !got.Equal(tc.want) {
+				t.Errorf("NextMidnight(%s) = %s, want %s", tc.now, got, tc.want)
+			}
+
+			if !got.After(tc.now) {
+				t.Errorf("NextMidnight(%s) = %s must be strictly after now", tc.now, got)
+			}
+
+			// The +24h wall arithmetic this replaces is wrong by an hour on
+			// every DST-transition day; keep that failure mode loud.
+			if plus24 := tc.now.Add(24 * time.Hour); plus24.Equal(got) && plus24.Location() != nil {
+				t.Errorf("midnight+24h wall arithmetic coincides with the DST-correct midnight at %s", tc.now)
+			}
+		})
 	}
 }

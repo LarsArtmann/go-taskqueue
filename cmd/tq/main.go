@@ -964,13 +964,7 @@ func budgetClaimGate(
 			return true, reason, budgetCmdRequeueWait
 		}
 
-		now := time.Now()
-
-		nextMidnight := time.Date(
-			now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location(),
-		).Add(24 * time.Hour)
-
-		return true, reason, time.Until(nextMidnight)
+		return true, reason, time.Until(budget.NextMidnight(time.Now()))
 	}
 }
 
@@ -1060,7 +1054,13 @@ func cmdAgentPool(args []string) error {
 
 	log := slog.Default()
 	cfg.Log = log
-	guard := budget.Guard{DailyCap: poolOpts.dailyBudget, BudgetCmd: poolOpts.budgetCmd}
+	// One BudgetCmd exec per DefaultCmdCacheTTL process-wide: the harvest
+	// gate and the claim gate share the armed guard's verdict cache (M7,
+	// paperclip-aftermath plan) instead of shelling out per claim.
+	guard := budget.Guard{
+		DailyCap:  poolOpts.dailyBudget,
+		BudgetCmd: poolOpts.budgetCmd,
+	}.WithCmdCache(budget.DefaultCmdCacheTTL)
 	harvester := harvest.New(taskQueue, cfg)
 
 	// Dead-pool detection (02:00 f6): the skip log makes a blind pool loud

@@ -240,6 +240,17 @@ func startOfDay(t time.Time) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 }
 
+// NextMidnight returns the next local midnight STRICTLY after now,
+// DST-correct: time.Date normalizes the day overflow, so the morning after
+// a 23-hour spring-forward (or 25-hour fall-back) day is TRUE local
+// midnight — midnight+24h wall arithmetic would park claims an hour off on
+// DST days.
+func NextMidnight(now time.Time) time.Time {
+	y, m, d := now.Date()
+
+	return time.Date(y, m, d+1, 0, 0, 0, 0, now.Location())
+}
+
 func firstLine(line string) string {
 	line = strings.TrimSpace(line)
 	if i := strings.IndexByte(line, '\n'); i >= 0 {

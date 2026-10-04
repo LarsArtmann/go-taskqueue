@@ -12,7 +12,7 @@ revert. (≤15,000 B guard: cmd/tq TestAgentsDocSizeGuard.)
 
 ```bash
 ./scripts/ci-local.sh     # pre-push gate; transient foreign breaks retry 45s ×3
-export GOEXPERIMENT=jsonv2 GOTOOLCHAIN=auto; go build ./... && go vet ./... && go test ./... -race   # root-module verify gate
+./scripts/root-gate.sh    # root-module verify gate; ONE retry on known-flaky signatures
 nix build                 # nix run .#test = tests; .#webui-css
 ./scripts/fuzz/nightly.sh
 ```
