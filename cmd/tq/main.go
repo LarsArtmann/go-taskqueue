@@ -27,6 +27,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/bridge/cqa"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/budget"
+	"github.com/larsartmann/go-taskqueue/internal/composition"
 	"github.com/larsartmann/go-taskqueue/internal/depsweep"
 	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -45,6 +46,8 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/webui"
 	"github.com/larsartmann/go-taskqueue/internal/worker"
+
+	"github.com/larsartmann/go-cqrs-lite/system/v4"
 )
 
 const usage = `tq — projects-aware task work queue
@@ -3222,11 +3225,33 @@ func cmdServe(args []string) error {
 
 	store := mustOpenDB(dbPath)
 
+	// ADR-0019 S4 (endgame P4): when the read model serves, the runtime is
+	// composed under the go-cqrs-lite system/ root — it owns the
+	// projection-home engine (<db>.readmodel.db) and, via GracefulClose,
+	// the close ordering AFTER the runactor actors stop (map §4c: adopt
+	// per surface; agent-pool keeps its own first-exit semantics).
+	var sys *system.System
+
+	if *readModel {
+		composed, err := composition.New(context.Background(), dbPath)
+		if err != nil {
+			return err
+		}
+
+		sys = composed
+	}
+
 	// One signal story (runactor): the interrupt actor cancels the http
 	// actor, teardown closes the store after the server has fully stopped.
 	g := runactor.New(context.Background())
 	g.InterruptOn(os.Interrupt, syscall.SIGTERM)
-	g.OnShutdown(func() error { return store.Close() })
+	g.OnShutdown(func() error {
+		if sys != nil {
+			return errors.Join(store.Close(), sys.GracefulClose(context.Background()))
+		}
+
+		return store.Close()
+	})
 
 	server := webui.New(store, cfg)
 
