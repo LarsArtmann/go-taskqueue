@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Claim-time budget gate** (2026-10-04, from the paperclip research
+  window): the agent-pool now blocks paid turns at claim time once
+  `--daily-budget` is spent (or `--budget-cmd` refuses) — a task enqueued
+  before the cap bit is requeued WITHOUT burning an attempt (journal
+  requeue class `budget`), parked until the next local midnight (cap) or
+  a 15-minute cooldown (cmd). Previously only enqueues were gated, so
+  work already queued could still burn money after the cap.
 - **Requeues summary in `tq audit --journal`** (2026-10-02): the drift
   report carries a requeues breakdown — total, per-class (legacy facts
   normalized to `unknown`), resume-closeout parks, and the
