@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **`scripts/audit-daemon-attribution.sh`** (2026-10-05, 00-55 report
+  §f2): doctor-style audit mapping the auto-commit daemon's footer-less
+  `chore: auto-commit …` sweeps to task ids via the two attribution
+  channels — a `docs/status/**/<...>_task-<id>.md` report file inside
+  the sweep, or a later footered marker commit citing the sweep's sha —
+  and flagging every unattributed SHIPPING sweep (any touched file
+  outside `docs/status/`). Doctor semantics: exit 1 when flags exist,
+  every result printed first; `--json` rows for tooling, `--from` range
+  bound, `--all-chore` widening, scratch-repo `--self-test` (13 checks).
+  Read-only — healing stays with `scripts/heal-daemon-sweep.sh` (unpushed)
+  or a footered marker commit (pushed). First live report: 1275 sweeps →
+  125 attributed, 70 report-only, 1080 unattributed shipping (the
+  historical §b2 backlog; gate wiring with a baseline is rowed in
+  TODO_LIST.md).
 - **Claim-time budget gate** (2026-10-04, from the paperclip research
   window): the agent-pool now blocks paid turns at claim time once
   `--daily-budget` is spent (or `--budget-cmd` refuses) — a task enqueued

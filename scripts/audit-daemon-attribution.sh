@@ -171,24 +171,22 @@ run_self_test() {
 		"summary: scanned=4 attributed=2 report-only=1 unattributed-shipping=1" \
 		"$(printf '%s\n' "$out" | grep '^summary:')"
 	check_eq "unhealed shipping sweep flagged" "1" \
-		"$(printf '%s\n' "$out" | grep -c "FAIL ${sha_flag:0:7} ")"
+		"$(printf '%s\n' "$out" | grep -c "FAIL ${sha_flag:0:7}")"
 	check_eq "marker-healed sweep not flagged" "0" \
-		"$(printf '%s\n' "$out" | grep -c "FAIL ${sha_heal:0:7} ")"
+		"$(printf '%s\n' "$out" | grep -c "FAIL ${sha_heal:0:7}")"
 	check_eq "manual chore outside daemon heuristic (not scanned)" "0" \
 		"$(printf '%s\n' "$out" | grep -c "FAIL .* manual tidy")"
 
-	out=$(cd "$repo" && "$SELF" --json; echo "rc=$?")
+	out=$(cd "$repo" && "$SELF" --json 2>/dev/null; echo "rc=$?")
 	rc=${out##*rc=}
 	out=${out%rc=*}
-	printf "%s\n" "$out" > /tmp/selftest-json-out.txt
-	printf "att=%s flag=%s heal=%s\n" "$sha_att" "$sha_flag" "$sha_heal" > /tmp/selftest-shas.txt
 	check_eq "json run exit" "1" "$rc"
 	check_eq "json rows" "4" "$(printf '%s\n' "$out" | grep -c '"class":')"
 	check_eq "json attributed rows" "2" "$(printf '%s\n' "$out" | grep -c '"class":"attributed"')"
 	check_eq "marker channel in json" "1" \
-		"$(printf '%s\n' "$out" | grep "$sha_heal" | grep -c "\"task_ids\":[\"$id_marker\"]")"
+		"$(printf '%s\n' "$out" | grep "$sha_heal" | grep -cF "\"task_ids\":[\"$id_marker\"]")"
 	check_eq "report channel in json" "1" \
-		"$(printf '%s\n' "$out" | grep "$sha_att" | grep -c "\"task_ids\":[\"$id_report\"]")"
+		"$(printf '%s\n' "$out" | grep "$sha_att" | grep -cF "\"task_ids\":[\"$id_report\"]")"
 
 	out=$(cd "$repo" && "$SELF" --from "$(git -C "$repo" rev-parse HEAD~2)"; echo "rc=$?")
 	rc=${out##*rc=}
