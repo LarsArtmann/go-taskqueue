@@ -4,7 +4,7 @@
 immediately-following lockout de-sleep close-out 00-36, read for cross-evidence).
 **Tasks:** 000001a0ff268ac2823ba481f13700000000 (STATUS column widen review fix),
 000001a0ff268a2e81404f9e529000000000 (MaxTicks re-dispatch), 000001a0ff268ad0970e1f0db39600000000
-(report-accuracy fix), 000001a103c819ec836a3128cddc00000000 (sort filter chip), 
+(report-accuracy fix), 000001a103c819ec836a3128cddc00000000 (sort filter chip),
 000001a103d5d6871e9bd7ccf85f00000000 (httpauth extraction).
 **Method:** every claim below verified against `git log`/`git show`, the five close-out
 reports, TODO_LIST.md, CHANGELOG.md, FEATURES.md, the queue journal (9,178 facts, TQ_DB
@@ -136,6 +136,7 @@ read-only), and a fresh `heal-daemon-sweep.sh --self-test` run at HEAD.
    this) instead of carrying the gap forward.
 
 ## f) NEXT THINGS (routed: actionable rows appended to TODO_LIST.md, deduped against
+
 268 existing open rows; blocked rulings listed separately there)
 
 1. Fix `heal-daemon-sweep.sh --self-test` (7/12 red at HEAD, self-path resolution

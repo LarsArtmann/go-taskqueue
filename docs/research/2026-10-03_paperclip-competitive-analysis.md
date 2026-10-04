@@ -19,13 +19,13 @@ the company."
 
 Repo reality (GitHub API, 2026-10-03):
 
-| Signal          | Value                                              |
-| --------------- | -------------------------------------------------- |
-| Created         | 2026-03-02 (7 months old)                          |
-| Stars / forks   | 96,586 / 16,364 (site copy still says "74k+")      |
-| Open issues     | 6,318                                              |
-| Language        | TypeScript                                         |
-| License         | MIT                                                |
+| Signal          | Value                                                                   |
+| --------------- | ----------------------------------------------------------------------- |
+| Created         | 2026-03-02 (7 months old)                                               |
+| Stars / forks   | 96,586 / 16,364 (site copy still says "74k+")                           |
+| Open issues     | 6,318                                                                   |
+| Language        | TypeScript                                                              |
+| License         | MIT                                                                     |
 | Release cadence | weekly-ish (v2026.916.1 → v2026.1001.0, 77 commits from 8 contributors) |
 
 Deployment shape: `git clone` + `docker compose up`, PostgreSQL behind it
@@ -49,27 +49,27 @@ Product pillars (their own four-way split):
 
 ## Side by side
 
-Capability-level, honest. "Ahead/behind" is against *their product
-claims*, not their marketing tone.
+Capability-level, honest. "Ahead/behind" is against _their product
+claims_, not their marketing tone.
 
-| Capability              | Paperclip                                                     | go-taskqueue                                                       | Verdict        |
-| ----------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------ | -------------- |
-| Unit of work            | Issue with owner, thread, blocked-by, definition of done       | Task record: type, project, payload, priority, deps, attempt budget | Different level — they own a ticket app; we are file-native (TODO_LIST.md is the backlog) |
-| Durability model        | Postgres app rows + activity log                              | Append-only fact journal; queue/DLQ/retry/budget are projections; replay (`tq facts`), watermark cursors | **Us** — kernel-grade, replayable, nothing deleted |
-| Claim/concurrency       | Internal leases (changelog: stranded-lease sweeps exist)      | Lease TTL + heartbeat + expiry reclaim, `FOR UPDATE SKIP LOCKED` twin, exactly-once battery | **Us** — ours is documented, conformance-tested product surface |
-| Planning/decomposition  | Plans fan out into blocked task trees; progress rolls up       | DAG deps gate at claim; no plan→tree minting                      | **Them** |
-| "Done is a verdict"     | QA handoffs, evidence (tests/screenshots), review gates, PR review bots | Enforced `.tq-verify` gate ladder; outcomes *derived* from git (footer commits, diff-tree, session usage), never self-reported; review sweeper + autofix | **Philosophical tie** — same slogan, ours is repo-pinned and code-deep, theirs is broader (content, screenshots) |
-| Autonomy/safety defaults | v2026.1001.0 defaults harnesses to FULL AUTO (approve-all, sandbox bypass); governance is top-down policy | Repo-committed `.crushrc` autonomy grant; the pool cannot over-grant what a repo never offered; dashboard read-only by default; API token-mandatory; redaction default ON | **Us, on direction** — their default is loosening; ours is bottom-up and tightening |
-| Cost control            | Per-agent hard caps, per-task receipts, roll-ups by agent/goal/window, burn alerts | Daily enqueue cap, `--budget-cmd` veto, derived per-run session usage (tokens/cost), spend in `stats`/detail cards | **Them** — they enforce; we measure. (Our spend happens inside crush, so caps would be downstream lies) |
-| Event-driven scheduling | Event wakes (assigned/commented/unblocked) + scheduled heartbeats + routine webhooks | Interval harvest, `--once` cron mode, `notBefore` delays; no inbound triggers | **Them** — and cheap for us to steal (see S1) |
-| Watchdogs               | Stall/loop detection, auto-restart, escalate with stop point   | Lease-expiry reclaim, env-requeue circuit breaker, DLQ autopsies with structured failure evidence (stage, exit code, tail) | **Tie by different means** |
-| Agent runtimes          | 21 adapters, BYOA, MCP, cloud sandboxes, execution workspaces | crush only, headless, deep integration (session resume for closeout, effort pinning, telemetry-derived contracts) | **Them on breadth, us on depth-of-one** |
-| Org/multi-user          | Org chart, roles, delegation, SSO/RBAC, approvals inbox        | Single operator by design                                          | **Them** — and out of our scope (Non-goals) |
-| UI                      | Full app: dashboards, chat, command palette, personas          | Read-only SSE dashboard (board/detail/journal browser) + CLI      | **Them** — ours is deliberately a projection |
-| Embeddability           | None — an app; TypeScript; no library surface                 | 7 public Go facade modules over a conformance-tested `Store` contract; embeds in any Go program (`examples/embed`) | **Us, structurally** — nobody can embed Paperclip's queue semantics into their own program |
-| Footprint               | docker compose + Postgres + Node                              | One static binary, one SQLite file, CGO-free, systemd/NixOS units | **Us** |
-| Self-improvement loop   | Skills minted from completed tasks, evals, active learning     | Status loop writes next items back into TODO_LIST.md (pool feeds itself), review-autofix, dlqfix | Same spirit; theirs systematic, ours git-native |
-| Maturity/scale          | Funded Inc., ~97k stars, weekly releases                      | v0.3.0 personal project, dogfooded daily                          | **Them** — not like-for-like |
+| Capability               | Paperclip                                                                                                 | go-taskqueue                                                                                                                                                              | Verdict                                                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Unit of work             | Issue with owner, thread, blocked-by, definition of done                                                  | Task record: type, project, payload, priority, deps, attempt budget                                                                                                       | Different level — they own a ticket app; we are file-native (TODO_LIST.md is the backlog)                        |
+| Durability model         | Postgres app rows + activity log                                                                          | Append-only fact journal; queue/DLQ/retry/budget are projections; replay (`tq facts`), watermark cursors                                                                  | **Us** — kernel-grade, replayable, nothing deleted                                                               |
+| Claim/concurrency        | Internal leases (changelog: stranded-lease sweeps exist)                                                  | Lease TTL + heartbeat + expiry reclaim, `FOR UPDATE SKIP LOCKED` twin, exactly-once battery                                                                               | **Us** — ours is documented, conformance-tested product surface                                                  |
+| Planning/decomposition   | Plans fan out into blocked task trees; progress rolls up                                                  | DAG deps gate at claim; no plan→tree minting                                                                                                                              | **Them**                                                                                                         |
+| "Done is a verdict"      | QA handoffs, evidence (tests/screenshots), review gates, PR review bots                                   | Enforced `.tq-verify` gate ladder; outcomes _derived_ from git (footer commits, diff-tree, session usage), never self-reported; review sweeper + autofix                  | **Philosophical tie** — same slogan, ours is repo-pinned and code-deep, theirs is broader (content, screenshots) |
+| Autonomy/safety defaults | v2026.1001.0 defaults harnesses to FULL AUTO (approve-all, sandbox bypass); governance is top-down policy | Repo-committed `.crushrc` autonomy grant; the pool cannot over-grant what a repo never offered; dashboard read-only by default; API token-mandatory; redaction default ON | **Us, on direction** — their default is loosening; ours is bottom-up and tightening                              |
+| Cost control             | Per-agent hard caps, per-task receipts, roll-ups by agent/goal/window, burn alerts                        | Daily enqueue cap, `--budget-cmd` veto, derived per-run session usage (tokens/cost), spend in `stats`/detail cards                                                        | **Them** — they enforce; we measure. (Our spend happens inside crush, so caps would be downstream lies)          |
+| Event-driven scheduling  | Event wakes (assigned/commented/unblocked) + scheduled heartbeats + routine webhooks                      | Interval harvest, `--once` cron mode, `notBefore` delays; no inbound triggers                                                                                             | **Them** — and cheap for us to steal (see S1)                                                                    |
+| Watchdogs                | Stall/loop detection, auto-restart, escalate with stop point                                              | Lease-expiry reclaim, env-requeue circuit breaker, DLQ autopsies with structured failure evidence (stage, exit code, tail)                                                | **Tie by different means**                                                                                       |
+| Agent runtimes           | 21 adapters, BYOA, MCP, cloud sandboxes, execution workspaces                                             | crush only, headless, deep integration (session resume for closeout, effort pinning, telemetry-derived contracts)                                                         | **Them on breadth, us on depth-of-one**                                                                          |
+| Org/multi-user           | Org chart, roles, delegation, SSO/RBAC, approvals inbox                                                   | Single operator by design                                                                                                                                                 | **Them** — and out of our scope (Non-goals)                                                                      |
+| UI                       | Full app: dashboards, chat, command palette, personas                                                     | Read-only SSE dashboard (board/detail/journal browser) + CLI                                                                                                              | **Them** — ours is deliberately a projection                                                                     |
+| Embeddability            | None — an app; TypeScript; no library surface                                                             | 7 public Go facade modules over a conformance-tested `Store` contract; embeds in any Go program (`examples/embed`)                                                        | **Us, structurally** — nobody can embed Paperclip's queue semantics into their own program                       |
+| Footprint                | docker compose + Postgres + Node                                                                          | One static binary, one SQLite file, CGO-free, systemd/NixOS units                                                                                                         | **Us**                                                                                                           |
+| Self-improvement loop    | Skills minted from completed tasks, evals, active learning                                                | Status loop writes next items back into TODO_LIST.md (pool feeds itself), review-autofix, dlqfix                                                                          | Same spirit; theirs systematic, ours git-native                                                                  |
+| Maturity/scale           | Funded Inc., ~97k stars, weekly releases                                                                  | v0.3.0 personal project, dogfooded daily                                                                                                                                  | **Them** — not like-for-like                                                                                     |
 
 ## Claims vs observed
 
@@ -82,7 +82,7 @@ claims*, not their marketing tone.
 - The v2026.1001.0 reliability section is the most informative read on
   the page: approval/Stop races, session continuity, sandbox
   reconnection, stranded leases. That is the tax of bridging
-  *interactive* agent CLIs (Claude Code, Codex) into an app runtime. Our
+  _interactive_ agent CLIs (Claude Code, Codex) into an app runtime. Our
   headless + verify-gate + derived-outcomes model does not carry that
   class of race by construction.
 - 6,318 open issues + a no-migration retirement of the legacy Composio
@@ -110,7 +110,7 @@ claims*, not their marketing tone.
   surfaced in `tq stats` and the dashboard. Measurement, not enforcement
   — consistent with our "spend lives in crush" stance. Adjacent ROADMAP
   seeds (`tq stats --fleet`, `tq top` budget spend) aggregate the
-  *enqueue budget*; this is the *actual usage* twin.
+  _enqueue budget_; this is the _actual usage_ twin.
 
 ## What NOT to steal (scope discipline)
 

@@ -130,9 +130,11 @@ verification appendix below if it completed in the window).
    are a print-order bug or a no-op rewrite before the next heal is trusted.
 
 ## f) UP TO 50 NEXT THINGS (routed: 5 appended to TODO_LIST this pass, deduped
+
 against 274 pre-existing open rows; the rest carry standing rows)
 
 Appended this pass (docs/status/2026-10-04_01-48_…):
+
 1. Pin the auth-plane 401/429 `{error, fix}` body + `Content-Type: application/json`.
 2. One-sentence body-shape contract in the internal/httpapi package doc.
 3. Diagnose the heal FORK-RECORD identity (old→old) output; pairs with row 456.
@@ -147,21 +149,21 @@ Standing top-of-mind (NOT re-appended; existing rows):
 8. Row 457 — heal `--from` semantics + HEAL VERIFIED contract.
 9. Row 414 — dead-SHA cite heal (still rc=1 at HEAD).
 10. Row 451 + 148/179 — re-dispatch suppression (owner-blocked; three fresh
-    data points from this window).
+data points from this window).
 11. Row 89 — HTTP-date Retry-After fixture (pins the nowFunc-unified clock path).
 12. Route-inventory structural guard for the all-routes auth/lockout matrix
-    (01-06/01-12 §e).
+(01-06/01-12 §e).
 13. Lockout-test helper extraction (limiter + fake-clock boilerplate, ~5 tests).
 14. Row 430 — daemon short-delay/lockfile (six-plus sweep incidents and counting).
 15. Row 433 — pre-existing red master CI blocking ci-local.
 16. Rows 460-462 — sort-chip/FilterBar webui pins (untouched this window).
 17. Row 458 — theme-duality render guard.
 18-50. The remainder of the 00-52 §f list, the 01-17 §f list, and the carried ⛳
-   items in the 00-36 report §f9-24 (screenshot loops, `/health` version feed,
-   upstream CSP parity, SECURITY.md matrix, CHANGELOG wording pass before next
-   release, closeoutPending 429-parking audit, v0.3.0 go install clean-room,
-   postgres parity freshness) — all verified absent from TODO_LIST where noted,
-   pacing gates decide.
+items in the 00-36 report §f9-24 (screenshot loops, `/health` version feed,
+upstream CSP parity, SECURITY.md matrix, CHANGELOG wording pass before next
+release, closeoutPending 429-parking audit, v0.3.0 go install clean-room,
+postgres parity freshness) — all verified absent from TODO_LIST where noted,
+pacing gates decide.
 
 ## g) QUESTIONS I CANNOT ANSWER MYSELF
 

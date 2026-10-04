@@ -119,4 +119,4 @@ Nothing at the code or tree level — HEAD is green across every gate this windo
 2. **Wake-trace shape (owner architecture call, like the existing three-interfaces row):** new journal fact type `task.wake` (expressive, ripples through readmodel/webui/journalaudit + pinned tests) versus evidence key on existing facts (cheap, less queryable)? This decides the TODO row's effort 10x.
 3. **Concurrent restructure coordination:** is the `internal/composition` module promotion (0f88b17c) the first of several splits landing tonight? If more module surgery is imminent, I should hold cross-module doc claims (facade counts, module lists in AGENTS.md) until it settles instead of re-editing after each commit.
 
-*Report follows the a)-g) skeleton; §f is brainstorm input for docs-health HARVEST, not a commitment list.*
+_Report follows the a)-g) skeleton; §f is brainstorm input for docs-health HARVEST, not a commitment list._

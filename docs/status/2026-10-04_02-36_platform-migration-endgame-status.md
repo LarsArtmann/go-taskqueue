@@ -47,9 +47,9 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
    - Gates green: companion, sqlitev4, postgresv4, queue, journal,
      readmodel, worker, journal/cqrs, both facades, cqrsqlite, root, cmd/tq.
 5. **AGENTS.md truth pass** — architecture table now names the thin-driver
-   + v4-adapter + readmodel reality; auto-upgrade seam documented; ~1 kB
-   of phrasing waste pruned; doc budget consciously reset 15,000 → 15,200
-   (dated comment in the guard — net-new load-bearing rows landed).
+   - v4-adapter + readmodel reality; auto-upgrade seam documented; ~1 kB
+     of phrasing waste pruned; doc budget consciously reset 15,000 → 15,200
+     (dated comment in the guard — net-new load-bearing rows landed).
 
 ## b) Partially done (in flight right now)
 
@@ -129,7 +129,7 @@ legacy ASAP", executed as phases P0–P5 of the endgame plan.
    flake.nix (AGENTS vendorHash ritual).
 7. Full `./scripts/ci-local.sh` pass (the real matrix).
 8. WebUI + httpapi smokes (`scripts/smoke/`), incl. `TestRoutesAreReadOnly`
-   + health-CSP pins against the now-default readmodel path.
+   - health-CSP pins against the now-default readmodel path.
 9. `tq serve` dogfood dry-run on a scratch TQ_DB with a legacy fixture:
    auto-upgrade → readmodel default-on → GracefulClose ordering, one script.
 10. P5: delete `internal/queue/cqrsqlite` + its conform-suite wiring
