@@ -192,6 +192,7 @@ func TestBudgetGateBlocksPaidTurn(t *testing.T) {
 	}
 
 	deadline := time.Now().Add(5 * time.Second)
+
 	for {
 		fs, err := facts.Facts(ctx, 0, 100)
 		if err != nil {

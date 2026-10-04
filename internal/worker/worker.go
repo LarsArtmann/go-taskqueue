@@ -398,6 +398,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			if delay > 0 {
 				delay = rateLimitDelay(delay)
 			}
+
 			if err := p.store.Requeue(
 				ctx,
 				t.ID,
