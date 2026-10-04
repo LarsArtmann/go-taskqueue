@@ -171,29 +171,6 @@ func CountTasks(ctx context.Context, r Runner, f queue.Filter) (int, error) {
 	return n, err
 }
 
-// Facts returns journal facts with Seq > after, ascending, bounded to the
-// most recent limit when > 0.
-func Facts(ctx context.Context, r Runner, after int64, limit int) ([]journal.Fact, error) {
-	query := `
-		SELECT seq, time, task_id, type, owner, attempt, error, detail
-		FROM facts WHERE seq > ? ORDER BY seq ASC`
-	args := []any{after}
-
-	if limit > 0 {
-		query += ` LIMIT ?`
-
-		args = append(args, limit)
-	}
-
-	rows, err := r.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return scanFacts(rows)
-}
-
 // LastFacts returns the most recent limit facts in ascending Seq order.
 func LastFacts(ctx context.Context, r Runner, limit int) ([]journal.Fact, error) {
 	query := `
@@ -236,42 +213,6 @@ func HeadSeq(ctx context.Context, r Runner) (int64, error) {
 	err := r.QueryRowContext(ctx, `SELECT COALESCE(MAX(seq), 0) FROM facts`).Scan(&seq)
 
 	return seq, err
-}
-
-// FactsForTask returns one task's facts in Seq order, bounded to the most
-// recent limit when > 0.
-func FactsForTask(ctx context.Context, r Runner, id string, limit int) ([]journal.Fact, error) {
-	query := `
-		SELECT seq, time, task_id, type, owner, attempt, error, detail
-		FROM facts WHERE task_id = ?`
-	args := []any{id}
-
-	if limit > 0 {
-		query += ` ORDER BY seq DESC LIMIT ?`
-
-		args = append(args, limit)
-	} else {
-		query += ` ORDER BY seq ASC`
-	}
-
-	rows, err := r.QueryContext(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	facts, err := scanFacts(rows)
-	if err != nil {
-		return nil, err
-	}
-
-	if limit > 0 {
-		for i, j := 0, len(facts)-1; i < j; i, j = i+1, j-1 {
-			facts[i], facts[j] = facts[j], facts[i]
-		}
-	}
-
-	return facts, nil
 }
 
 // CountFacts counts facts of one type recorded at or after since.

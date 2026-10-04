@@ -1,6 +1,16 @@
 // Package journal defines the append-only fact log that records everything
 // that ever happened to tasks. All derived views (queue, DLQ, stats) are
 // projections over these facts.
+//
+// S2 (ADR-0019): the fact vocabulary RIDES the upstream engine's
+// go-cqrs-lite queue/v4/facts vocabulary — FactType is an OPEN string type
+// whose lifecycle values are byte-identical to the engine's (pinned in
+// internal/queue/companion's vocabulary test; this package stays
+// go-cqrs-lite-free for DAG purity, ADR-0014 D2). Lifecycle facts come
+// from the engine's own same-transaction transitions; tq-only families
+// (heartbeat, session.*, question-*) stay tq-side constants written
+// through the engine's FactTx sink. Fact reads come from the ENGINE's
+// queue.Store contract, mapped at the companion seam — never mirrored SQL.
 package journal
 
 import (

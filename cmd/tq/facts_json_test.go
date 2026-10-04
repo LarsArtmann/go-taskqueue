@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -90,7 +92,7 @@ func TestTopSectionReport(t *testing.T) {
 
 	content := "intro\n## One\nalpha\nbeta\n## Two\ngamma\n## Three\ndelta\n"
 	got := topSectionReport(content, 2)
-	want := "    18 B  ## One\n    15 B  ## Three\n"
+	want := "      18 B  ## One\n      15 B  ## Three\n"
 	if got != want {
 		t.Fatalf("top-2 sections:\ngot:\n%s\nwant:\n%s", got, want)
 	}
