@@ -95,8 +95,8 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Derived outcomes**: the queue derives what a run did — commits via
   exactly ONE `Task-Queue-ID` footer per commit, LAST trailer line
   (`executor.GitLogScanner`; a footer above an attribution block is
-  invisible — the hook rejects that), files via `git diff-tree`,
-  session usage via go-crush-data. No stdout self-report.
+  invisible — the hook rejects it), files via `git diff-tree`, session
+  usage via go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record results via `tq verdict '<json>'`
   into `$TQ_RESULT_FILE` (file > legacy stdout line, last-wins).
 - **Batched harvest** (`--batch-items`, default OFF): N adjacent
@@ -124,15 +124,14 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (`env-streak`) — never uncap the class (169-claim loop = $36.62/day).
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports
-  SECRET EVIDENCE rows. Token-shape growth policy: every new provider/shape
-  adds ONE `secretPatterns` entry TOGETHER with a fake-shape test sample in
-  `redact_test.go` (the table-length pins fail otherwise) and, if the new
-  pattern trips golangci/gosec noise, a `scripts/lint-baseline.sh` triage
-  note. Audit (`SecretHits`) and redaction (`RedactSecrets`) compile the
-  identical `secretPatterns` table — pinned by
-  `TestSecretHitsAndRedactionCompileIdenticalTable`; never fork them.
-  `redact_test.go` is build-tag-free and gated on windows-latest via the
-  per-module CI loop (verified 2026-10-04, 00-55 §f9).
+  SECRET EVIDENCE rows. Growth policy: a new provider/shape adds ONE
+  `secretPatterns` entry + a fake-shape sample in `redact_test.go`
+  (table-length pins) + a `lint-baseline.sh` triage note if it trips
+  golangci/gosec. Audit (`SecretHits`) and redaction (`RedactSecrets`)
+  share the ONE table (pinned
+  `TestSecretHitsAndRedactionCompileIdenticalTable`; never fork).
+  `redact_test.go`: build-tag-free, windows-gated via the per-module CI
+  loop (2026-10-04, 00-55 §f9).
 - **Enqueued-fact snapshots are THIN today** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in the conform suites).
 
@@ -158,13 +157,12 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   filter-scope claims cite file:line or a pinning test.
 - **Verify-window battery**: cheap gates at HEAD (check-doc-refs, root
   build+vet, check-dead-sha-refs, date-named report) + one fresh delta;
-  expensive gates inherit only from a same-HEAD report; nested-module
-  claims need in-module `GOWORK=off` tests; closeouts touching
-  root-guard-parsed files (AGENTS/README/TODO_LIST, doc pins) cite ROOT
-  build+vet+test -race rc. Re-dispatch: newest prior report + `tq show
-  <id>` FIRST; battery rc TO A FILE (no PIPESTATUS; persist); no-delta
-  statement; dated DONE re-verified note; `-v` + PASS COUNT for conform
-  `-run`.
+  expensive gates inherit from a same-HEAD report; nested-module claims
+  need in-module `GOWORK=off` tests; closeouts touching root-guard-parsed
+  files (AGENTS/README/TODO_LIST, doc pins) cite ROOT build+vet+test
+  -race rc. Re-dispatch: newest prior report + `tq show <id>` FIRST;
+  battery rc TO A FILE (persist; no PIPESTATUS); no-delta statement;
+  dated DONE re-verified note; `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches).
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything —
@@ -205,16 +203,14 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 - **Concurrent agents commit constantly** (auto-commit daemon): re-run
   `go test ./... -race` before declaring success; never generate Go source
-  via heredocs; build fixtures under /tmp — scratch fixtures in gated
-  trees are daemon-food. If the daemon still sweeps work into footer-less
-  `chore:` commits, heal with `scripts/heal-daemon-sweep.sh
-  [--from <ref>] <Task-Queue-ID>` (unpushed range only; verifies
-  subjects/stats/tree/tags, prints old→new fork records, backup ref on
-  failure; `--self-test` pins the rails).
-- **TestExactlyOnceUnderConcurrency is load-flaky** (worker): concurrent
-  builds on this host can storm SQLITE_BUSY and drop it to "19/20
-  completed"; reproduced failing at clean parent commits too — re-run
-  before attributing to a change.
+  via heredocs; build fixtures under /tmp (gated trees are daemon-food).
+  Footer-less daemon `chore:` sweeps heal via
+  `scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>` (unpushed
+  range only; verifies subjects/stats/tree/tags; backup ref on failure;
+  `--self-test` pins the rails).
+- **TestExactlyOnceUnderConcurrency is load-flaky** (worker): host build
+  storms can drop it to "19/20 completed"; fails at clean parent commits
+  too — re-run before attributing to a change.
 - **Agent shells inherit `TQ_DB`** (the PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR` leaks
@@ -245,18 +241,23 @@ exclusivity = lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   push; scripted edits via script files.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route
   exec sites through `execWithTransientRetry`.
-- **gofmt gates are SCOPED to non-gitignored files** (`executor.ScopedGofmtStage`,
-  doctor `gofmt:<repo>`):
+- **gofmt gates are SCOPED to non-gitignored files**
+  (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`):
   `gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'` —
-  an unscoped stage re-plants the vendor-gofmt death class (94% of the
-  DLQ); grep the FULL verify log before attributing a gate death.
+  unscoped re-plants the vendor-gofmt death class (94% of the DLQ); grep
+  the FULL verify log before attributing a gate death.
 - **Flakes see only git-tracked files** — `git add` before `nix build`.
 
 ## Relation to other projects
 
 - **go-cqrs-lite IS the platform (ADR-0019)**: staged adoption in
-  `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` + `companion`. `internal/journal/cqrs` is PROPRIETARY, read-only —
-  never extend or import below root.
+  `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` + `companion`;
+  `internal/journal/cqrs` is PROPRIETARY, read-only — never extend or
+  import below root. **Backward auto-upgrade (endgame P1)**: the
+  `internal/queue/sqlite` facade Open converges a legacy pre-flip DB in
+  place (VACUUM INTO snapshot kept `<db>.legacy-*.bak`, projection
+  verify, auto-restore on mismatch); refuse via `TQ_NO_AUTO_UPGRADE=1`;
+  manual path: `go run ./replay` in internal/queue/sqlitev4.
 - **PapDashboard bridge**: `--alert-url/--alert-api-key` — dead letters
   raise `alert.triggered`, completions resolve; `NotifyDeadPool` =
   direct dead-pool path.
