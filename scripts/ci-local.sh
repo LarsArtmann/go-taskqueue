@@ -39,6 +39,24 @@ done
 
 step() { printf '\n== %s\n' "$*"; }
 
+# Step zero (row 448): a store-symlinked GOCACHE or a half-extracted
+# toolchain masquerades as stdlib breakage and burned three windows
+# (2026-10-03 00-08/00-25 §b). Fail HERE as an environment error instead.
+step "host env probe (GOCACHE/GOROOT sanity)"
+echo "disk: $(df -h / | awk 'NR==2{print $4" free on "$6}')"
+echo "GOCACHE=$(go env GOCACHE)"
+echo "GOROOT=$(go env GOROOT)"
+case "$(go env GOCACHE)" in
+/nix/store/*)
+	echo "FAIL: GOCACHE points into /nix/store (host symlink ENOSPCs) — export GOCACHE=/tmp/go-build-cache (AGENTS.md: host GOCACHE/GOROOT hazards)." >&2
+	exit 1
+	;;
+esac
+if [ ! -d "$(go env GOROOT)/src/unsafe" ]; then
+	echo "FAIL: $(go env GOROOT)/src/unsafe missing — half-extracted toolchain (chmod -R u+w + trash the cached toolchain, or GOTOOLCHAIN=local)." >&2
+	exit 1
+fi
+
 # 15-39 report f9/e2: a concurrent session's mid-edit state transiently breaks
 # the tree-reading Go gates (the `undefined: atomic` class) and kills
 # 10-minute runs with a confusing red. On failure, poll (sleep 45s, retry) up
@@ -88,6 +106,19 @@ step "commit-msg hook self-test (Task-Queue-ID trailer placement pin)"
 # call would abort every session start under set -e.
 step "session-start probe self-test (red-master tolerance pin)"
 ./scripts/check-session-start-probe.sh
+
+# AGENTS.md byte budget at gate time (row 425): mirrors the cmd/tq
+# TestAgentsDocSizeGuard budget and prints the top sections to prune, so a
+# red trip is a 2-minute targeted fix instead of a test failure two windows
+# later.
+step "AGENTS.md size budget (agentsDocMaxBytes twin)"
+./scripts/check-agents-size.sh
+
+# Pin the heal-daemon-sweep refusal rails the same way (row 431): the
+# fixture exercises the heal + every refusal, so a rotted rail fails here
+# instead of during a real daemon-sweep recovery.
+step "heal-daemon-sweep self-test (refusal rail pin)"
+./scripts/heal-daemon-sweep.sh --self-test
 
 # --- CI test job (exact ci.yml order; lint advisory exactly like CI) -------
 

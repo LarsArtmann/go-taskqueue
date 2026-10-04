@@ -3,6 +3,7 @@ package companion
 import (
 	"context"
 	"database/sql"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"strconv"
@@ -165,12 +166,40 @@ func UpstreamFact(f journal.Fact) ufacts.Fact {
 	return ufacts.Fact{
 		Time:    f.Time,
 		TaskID:  f.TaskID,
-		Type:    ufacts.FactType(f.Type),
+		Type:   ufacts.FactType(f.Type),
 		Owner:   f.Owner,
 		Attempt: f.Attempt,
 		Error:   f.Error,
 		Detail:  []byte(f.Detail),
 	}
+}
+
+// JournalFacts maps engine-read facts onto the tq journal vocabulary
+// (ADR-0019 S2): the ENGINE owns the journal reads — Facts/FactsForTask
+// come from the upstream store contract, never mirrored companion SQL —
+// and this is the one conversion seam. Type strings and detail bytes
+// carry verbatim; the jsontext.Value conversion is free (both are byte
+// slices).
+func JournalFacts(fs []ufacts.Fact) []journal.Fact {
+	out := make([]journal.Fact, 0, len(fs))
+	for _, f := range fs {
+		jf := journal.Fact{
+			Seq:     f.Seq,
+			Time:    f.Time,
+			TaskID:  f.TaskID,
+			Type:   journal.FactType(f.Type),
+			Owner:   f.Owner,
+			Attempt: f.Attempt,
+			Error:   f.Error,
+		}
+		if len(f.Detail) > 0 {
+			jf.Detail = jsontext.Value(f.Detail)
+		}
+
+		out = append(out, jf)
+	}
+
+	return out
 }
 
 // IdentityCodec passes payloads through byte-for-byte: tq payloads are

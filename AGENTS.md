@@ -95,7 +95,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   invisible — the hook rejects), files via `git diff-tree`, usage via
   go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record results via `tq verdict '<json>'`
-  into `$TQ_RESULT_FILE` (file > legacy stdout line, last-wins).
+  into `$TQ_RESULT_FILE` (file > legacy stdout, last-wins).
 - **Batched harvest** (`--batch-items`, default OFF): N adjacent
   same-section items → one task (dedup `batch:` + SORTED-key hash; gates
   see ONE task); direct `tq enqueue` forbidden — work prompts grant the
@@ -203,8 +203,8 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   only; verifies subjects/stats/tree/tags; backup on failure;
   `--self-test` pins rails).
 - **TestExactlyOnceUnderConcurrency is load-flaky** (worker): host build
-  storms can drop it to "19/20 completed"; fails at clean parent commits
-  too — re-run before attributing to a change.
+  storms can drop it to "19/20 completed"; fails at clean parents too —
+  re-run before attributing.
 - **Agent shells inherit `TQ_DB`** (the PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR` leaks

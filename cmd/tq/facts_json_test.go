@@ -23,7 +23,8 @@ import (
 const agentsDocMaxBytes = 15_200
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
-// byte budget (plan M89 residue).
+// byte budget (plan M89 residue); the failure names the top sections so a
+// prune is a 2-minute targeted fix (row 424).
 func TestAgentsDocSizeGuard(t *testing.T) {
 	t.Parallel()
 
@@ -34,12 +35,77 @@ func TestAgentsDocSizeGuard(t *testing.T) {
 		t.Fatalf("stat AGENTS.md: %v", err)
 	}
 
-	if info.Size() > agentsDocMaxBytes {
-		t.Fatalf(
-			"AGENTS.md grew to %d bytes (budget %d) — prune the file or consciously reset agentsDocMaxBytes",
-			info.Size(),
-			agentsDocMaxBytes,
-		)
+	if info.Size() <= agentsDocMaxBytes {
+		return
+	}
+
+	t.Fatalf(
+		"AGENTS.md grew to %d bytes (budget %d, over by %d) — prune the file or consciously reset agentsDocMaxBytes. Top sections by size:\n%s",
+		info.Size(), agentsDocMaxBytes, info.Size()-agentsDocMaxBytes,
+		topDocSections(path, 3),
+	)
+}
+
+// topDocSections reports the n largest `## ` sections of the file by byte
+// size (header lines counted into their own section, so the sizes sum to
+// the file size — consistent with wc -c).
+func topDocSections(path string, n int) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Sprintf("  (read error: %v)", err)
+	}
+	return topSectionReport(string(data), n)
+}
+
+// topSectionReport is topDocSections over in-memory content (unit-pinned).
+func topSectionReport(content string, n int) string {
+	type section struct {
+		name string
+		size int
+	}
+	var sections []section
+	cur := section{name: "(preamble)"}
+	for line := range strings.SplitAfterSeq(content, "\n") {
+		if strings.HasPrefix(line, "## ") {
+			sections = append(sections, cur)
+			cur = section{name: strings.TrimRight(line, "\n"), size: len(line)}
+			continue
+		}
+		cur.size += len(line)
+	}
+	sections = append(sections, cur)
+	sort.Slice(sections, func(i, j int) bool { return sections[i].size > sections[j].size })
+	if len(sections) > n {
+		sections = sections[:n]
+	}
+	var b strings.Builder
+	for _, s := range sections {
+		fmt.Fprintf(&b, "  %6d B  %s\n", s.size, s.name)
+	}
+	return b.String()
+}
+
+func TestTopSectionReport(t *testing.T) {
+	t.Parallel()
+
+	content := "intro\n## One\nalpha\nbeta\n## Two\ngamma\n## Three\ndelta\n"
+	got := topSectionReport(content, 2)
+	want := "    18 B  ## One\n    15 B  ## Three\n"
+	if got != want {
+		t.Fatalf("top-2 sections:\ngot:\n%s\nwant:\n%s", got, want)
+	}
+
+	all := topSectionReport(content, 10)
+	sum := 0
+	for line := range strings.SplitSeq(strings.TrimSuffix(all, "\n"), "\n") {
+		var size int
+		if _, err := fmt.Sscanf(line, "%6d", &size); err != nil {
+			t.Fatalf("parse %q: %v", line, err)
+		}
+		sum += size
+	}
+	if sum != len(content) {
+		t.Fatalf("section sizes sum to %d, content is %d B", sum, len(content))
 	}
 }
 

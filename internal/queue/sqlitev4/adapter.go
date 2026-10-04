@@ -341,9 +341,15 @@ func (s *Store) CountTasks(ctx context.Context, f queue.Filter) (int, error) {
 }
 
 // Facts returns journal facts with Seq > after, ascending, bounded to the
-// most recent limit when > 0.
+// most recent limit when > 0. S2 (ADR-0019): the ENGINE owns the journal
+// read (queue.Store contract) — no mirrored companion SQL.
 func (s *Store) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
-	return companion.Facts(ctx, s.cr, after, limit)
+	fs, err := s.engine.Facts(ctx, after, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	return companion.JournalFacts(fs), nil
 }
 
 // LastFacts returns the most recent limit facts in ascending Seq order.
@@ -357,9 +363,14 @@ func (s *Store) HeadSeq(ctx context.Context) (int64, error) {
 }
 
 // FactsForTask returns one task's facts in Seq order, bounded to the most
-// recent limit when > 0.
+// recent limit when > 0. S2: engine-owned read (queue.Store contract).
 func (s *Store) FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error) {
-	return companion.FactsForTask(ctx, s.cr, id, limit)
+	fs, err := s.engine.FactsForTask(ctx, utask.ID(id), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	return companion.JournalFacts(fs), nil
 }
 
 // CountFacts counts facts of one type recorded at or after since.
