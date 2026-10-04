@@ -302,3 +302,36 @@ work was read, judged, built on, never reverted.
 -race -count=1` · `scripts/test-cmd-tq.sh` (6.607s).
 **Owed:** root battery + `go mod vendor` (§b2); e2e package gate after
 §f1.
+
+---
+
+## Closure (2026-10-05 ~01:15 CEST, session resumed and finished)
+
+The §b debts are paid; receipts inline.
+
+1. **§b1 M2.1/M2.2 e2e — LANDED.** `internal/e2e/budget_claim_test.go`
+   (`TestBudgetClaimGateParksOverCapSubprocess`, unix-gated) pins the
+   money lesson through the real CLI: two single-item REPOS harvested
+   uncapped (spent=2 enqueued-today), then `agent-pool --once
+   --daily-budget 1` claims both — the stub agent never runs (marker
+   absent), facts land 2 enqueued / 2 claimed / 2 requeued / 0 completed
+   / 0 failed / 0 dead-lettered, every requeue detail decodes with class
+   `budget` (`queue.RequeueEvidence`), and both tasks stay PENDING with
+   `Attempts==0` and `NotBefore` within ±2min of `budget.NextMidnight` —
+   the DST-correct midnight proven end-to-end. **First-run correction,
+   recorded honestly:** the settled §b1 design assumed one repo with two
+   items; the gate test failed 1-enqueue-≠-2 because harvest coalesces
+   ONE live task per repo (the wake-pacing behavior). Two repos is the
+   honest fixture; not a product bug, a wrong test premise.
+2. **§b2 vendor + root battery — DONE.** `go mod vendor` no-op (rc=0);
+   full root battery rc=0 TWICE (before and after the e2e landed; second
+   run 17 ok packages, internal/e2e 12.1s uncached). e2e package gate
+   6.1s green; gofmt clean.
+3. **M3 wake-trace DESIGN — closed by a CONCURRENT agent, not this
+   window:** `docs/planning/2026-10-05_wake-trace-design-memo.md` covers
+   M3.1–M3.4 (option tradeoffs + recommendation A `task.wake` fact,
+   draft fact shape, pinned-test consumer checklist, §g-2 ruling
+   framing); TODO row 473 tracks the owner-blocked implementation (M4).
+
+§g owner questions 1–3 stand UNCHANGED; they gate M6 (tags), M2.4
+(precedence pin), and the parked-count split (M11 fold-in vs now).
