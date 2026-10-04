@@ -1,6 +1,7 @@
 # Paperclip-Aftermath Execution Window — M1 Budget Visibility + M7 Cmd Cache + M2.3 DST Pin
 
-**Session:** 2026-10-04 ~23:35 → 2026-10-05 00:33 CEST (interactive Crush session, no dispatch ID)
+**Written:** 2026-10-05 00:33 CEST (Crush interactive session, no dispatch ID)
+**Session:** 2026-10-04 ~23:35 → 2026-10-05 00:33 CEST
 **Scope executed:** the freshly committed Pareto plan
 `docs/planning/2026-10-04_23-59_paperclip-aftermath-budget-visibility-pareto-plan.md`
 (bbb5daab) — Tier "1%" (M1) complete, M7 complete, M2.3 complete, M2.1/M2.2
