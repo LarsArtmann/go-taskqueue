@@ -53,7 +53,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/journal` | Fact types + append-only Journal |
 | `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014) |
 | `internal/queue` | Store contract, Filter, Queue facade |
-| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform suite `companion/conform` |
+| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform suite `internal/queue/companion/conform` |
 | `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` | tq Store over the go-cqrs-lite queue engines |
 | `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity |
 | `internal/readmodel` | S3 metaengine ledger projection (`<db>.readmodel.db`, `--read-model`) |

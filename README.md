@@ -283,6 +283,25 @@ On NixOS, a module ships with the flake (`nixosModules.default`, declaring
 `services.tq-agent-pool` with the drain invariants and an explicit agent
 toolchain PATH baked in) — see `deploy/nixos/tq-agent-pool.nix`.
 
+### Where do logs live
+
+Full agent output (stdout + the verify run) is written per task as a
+sidecar: `~/.local/state/tq/logs/<task-id>.log` — the XDG state dir on
+purpose: logs are state, deletable without breaking anything. Files are
+created `0600`, provider-token-shaped secrets are redacted on write, but
+repo paths and prompt content remain plaintext, so treat the directory as
+sensitive. Overrides and retention:
+
+```sh
+tq agent-pool --log-dir /var/log/tq            # or TQ_LOG_DIR; --log-dir "" turns sidecars off
+tq agent-pool --log-dir-max-age 168h           # TQ_LOG_DIR_MAX_AGE: sweep sidecars older than 7d (0 = keep forever)
+tq agent-pool --log-dir-max-bytes 5368709120   # TQ_LOG_DIR_MAX_BYTES: cap total size, oldest deleted first (0 = uncapped)
+```
+
+`tq show <id>` still carries the result tail and the sidecar path; the
+webui renders it on the task detail page. `tq audit --journal` reports
+SECRET EVIDENCE if secrets ever reached the stored journal.
+
 ## Every command at a glance
 
 | Command         | What it does                                                                                                                                                                                                                                                            |
