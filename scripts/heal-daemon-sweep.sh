@@ -140,6 +140,13 @@ run_filter() {
 		printf '%s\n' "$err" >&2
 		return 1
 	}
+	# Self-test seam: filter-branch -f wipes unrelated refs/original backups
+	# on modern git, so the stale-sibling hijack state the current-branch
+	# resolution (92c9193c) guards against cannot be built from outside —
+	# the self-test recreates it HERE, after the wipe, before resolution.
+	if [ -n "${TQ_HEAL_TEST_STALE_BACKUP:-}" ]; then
+		git update-ref "refs/original/refs/heads/$TQ_HEAL_TEST_STALE_BACKUP" "$(git rev-parse HEAD~1)"
+	fi
 	local bref
 	bref=$(git symbolic-ref -q HEAD || return 1)
 	bref="refs/original/$bref"
@@ -424,18 +431,14 @@ self_test() {
 	expect_refusal "empty id" $? "must be non-empty hex" "$tmp/err_empty_id"
 
 	# Multi-branch backup-ref resolution (92c9193c): a stale
-	# refs/original/refs/heads/<other> left by an earlier filter-branch on
-	# another branch (sorting before the current branch's backup) must not
-	# hijack the resolution — the heal on master still succeeds.
+	# refs/original/refs/heads/<other> (sorting before the current branch's
+	# backup, pointing at an older tree) must not hijack the resolution —
+	# the TQ_HEAL_TEST_STALE_BACKUP seam recreates the sibling backup after
+	# filter-branch's wipe, and the heal must still succeed.
 	echo f >"$repo/f.txt"
 	git -C "$repo" add f.txt
 	git -C "$repo" commit -qm "chore: sweep four"
-	# The decoy branch sits one commit back and its STALE backup ref points
-	# at that older tree, so the pre-92c9193c resolution (head -n 1) would
-	# hijack the backup and fail the tree-equality verification.
-	git -C "$repo" branch aaa-stale HEAD~1
-	git -C "$repo" update-ref refs/original/refs/heads/aaa-stale "$(git -C "$repo" rev-parse HEAD~1)"
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err6"
+	(cd "$repo" && TQ_HEAL_TEST_STALE_BACKUP=aaa-stale "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err6"
 	if [ "$?" = "0" ]; then
 		ok=$((ok + 1))
 	else
