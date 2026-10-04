@@ -1,3 +1,16 @@
+// Command replay is the ADR-0019 S1 data-migration CLI: it replays a tq
+// fact journal — the hand-rolled store's database — into a fresh
+// go-cqrs-lite engine store and verifies projection equality. The logic
+// lives in the importable sibling package
+// internal/queue/sqlitev4/migration (shared with the on-open
+// auto-upgrade); this main only owns flags and exit codes.
+//
+// Usage:
+//
+//	go run ./replay --from <old.db> --to <new.db> [--verify-only]
+//
+// Exit 0 on a green report, 1 on any projection mismatch, 2 on setup
+// errors. The tool never writes to the source database.
 package main
 
 import (
@@ -5,6 +18,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4/migration"
 )
 
 // Process exit codes: a green gate, a projection mismatch (the cutover
@@ -36,7 +51,7 @@ func main() {
 	ctx := context.Background()
 
 	if !*verifyOnly {
-		stats, err := Migrate(ctx, *fromPath, *toPath)
+		stats, err := migration.Migrate(ctx, *fromPath, *toPath)
 		if err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "replay: migration failed: %v\n", err)
 
@@ -56,7 +71,7 @@ func main() {
 		)
 	}
 
-	report, err := Verify(ctx, *fromPath, *toPath)
+	report, err := migration.Verify(ctx, *fromPath, *toPath)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "replay: verification failed: %v\n", err)
 

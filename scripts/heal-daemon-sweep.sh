@@ -127,12 +127,19 @@ check_rails() {
 	[ "$unfootered" -gt 0 ] || echo "noop"
 }
 
-# run_filter footer base: the actual msg-filter rewrite.
+# run_filter footer base: the actual msg-filter rewrite. On failure the
+# filter's stderr is printed (a bare rc=1 hid the cause once — 08-06 report
+# §e2 polish row).
 run_filter() {
 	local footer=$1 base=$2
-	FILTER_BRANCH_SQUELCH_WARNING=1 TQ_HEAL_FOOTER="$footer" git filter-branch -f --msg-filter '
+	local err
+	err=$(FILTER_BRANCH_SQUELCH_WARNING=1 TQ_HEAL_FOOTER="$footer" git filter-branch -f --msg-filter '
 		git interpret-trailers --if-exists doNothing --trailer "$TQ_HEAL_FOOTER"
-	' -- "$base..HEAD" >/dev/null || return 1
+	' -- "$base..HEAD" 2>&1 >/dev/null) || {
+		echo "filter-branch failed:" >&2
+		printf '%s\n' "$err" >&2
+		return 1
+	}
 	local bref
 	bref=$(git symbolic-ref -q HEAD || return 1)
 	bref="refs/original/$bref"
@@ -181,7 +188,10 @@ verify_heal() {
 		fail=1
 	fi
 
-	# 5: no tags reference any rewritten commit.
+	# 5: no tags reference any rewritten commit — belt-and-suspenders behind
+	# the pre-flight tag rail in check_rails (row 434: the comment names the
+	# promise and the mechanism as one story): reaching here with a tag hit
+	# means the tag appeared between the rail check and the rewrite.
 	while IFS= read -r new; do
 		if [ -n "$(git tag --points-at "$new")" ] || [ -n "$(git tag --contains "$new")" ]; then
 			echo "FAIL: tag(s) reference rewritten commit $new" >&2
@@ -260,21 +270,32 @@ self_test() {
 	tmp=$(mktemp -d) || die "mktemp failed"
 	trap 'rm -rf "$tmp"' EXIT
 	local repo="$tmp/repo"
-	git init -q "$repo"
+	git init -q -b master "$repo"
 	git -C "$repo" config user.email t@t
 	git -C "$repo" config user.name t
 	git -C "$repo" config tag.gpgSign false
 
 	local ok=0 fail=0
-	# expect_refusal <label> <rc>: a refusal rc must be non-zero.
+	# expect_refusal <label> <rc> [want-substring] [errfile]: a refusal rc
+	# must be non-zero; when want+errfile are given the captured stderr must
+	# ALSO contain want, so a different refusal firing first cannot mask a
+	# rotted rail (the dead --sort=reverse class, 2026-10-03 01-22 report
+	# §d1). Cases left bare stay bare pending the row-452 owner test-norm
+	# call (retroactive tightening is BLOCKED there).
 	expect_refusal() {
-		local label=$1 rc=$2
+		local label=$1 rc=$2 want=${3:-} errfile=${4:-}
 		if [ "$rc" = "0" ]; then
 			fail=$((fail + 1))
 			echo "SELF-TEST FAIL (expected refusal): $label" >&2
-		else
-			ok=$((ok + 1))
+			return
 		fi
+		if [ -n "$want" ] && ! grep -qF -- "$want" "$errfile"; then
+			fail=$((fail + 1))
+			echo "SELF-TEST FAIL ($label): wrong refusal reason — stderr missing: $want; got:" >&2
+			cat "$errfile" >&2
+			return
+		fi
+		ok=$((ok + 1))
 	}
 
 	echo a >"$repo/a.txt"
@@ -341,8 +362,8 @@ self_test() {
 		echo "SELF-TEST FAIL: fully-footered range should no-op successfully" >&2
 	fi
 
-	(cd "$repo" && "$0" --from origin/master deadbeef0000000000000000000000000000000f) >/dev/null 2>&1
-	expect_refusal "different-id footer" $?
+	(cd "$repo" && "$0" --from origin/master deadbeef0000000000000000000000000000000f) >/dev/null 2>"$tmp/err3"
+	expect_refusal "different-id footer" $? "carries a different Task-Queue-ID footer" "$tmp/err3"
 
 	local mixed_rc
 	(cd "$repo" && git reset -q --soft HEAD~1)
@@ -379,8 +400,8 @@ self_test() {
 	git -C "$repo" add e.txt
 	git -C "$repo" commit -qm "chore: sweep three"
 	git -C "$repo" tag sweep-tag HEAD
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>&1
-	expect_refusal "tag in heal range" $?
+	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err_tag"
+	expect_refusal "tag in heal range" $? "tag(s) reference commits inside the heal range" "$tmp/err_tag"
 	git -C "$repo" tag -d sweep-tag
 
 	# A tag on the BASE commit is outside the heal range — heal succeeds.
@@ -394,6 +415,34 @@ self_test() {
 		cat "$tmp/err5" >&2
 	fi
 	git -C "$repo" tag -d base-tag
+
+	# Rail: metacharacter + empty Task-Queue-ID — the hex validation
+	# (3f9f497d) must refuse both with the same reason line.
+	(cd "$repo" && "$0" --from origin/master 'dead;beef00000000000000000000000000') >/dev/null 2>"$tmp/err_meta"
+	expect_refusal "metacharacter id" $? "must be non-empty hex" "$tmp/err_meta"
+	(cd "$repo" && "$0" --from origin/master "") >/dev/null 2>"$tmp/err_empty_id"
+	expect_refusal "empty id" $? "must be non-empty hex" "$tmp/err_empty_id"
+
+	# Multi-branch backup-ref resolution (92c9193c): a stale
+	# refs/original/refs/heads/<other> left by an earlier filter-branch on
+	# another branch (sorting before the current branch's backup) must not
+	# hijack the resolution — the heal on master still succeeds.
+	echo f >"$repo/f.txt"
+	git -C "$repo" add f.txt
+	git -C "$repo" commit -qm "chore: sweep four"
+	# The decoy branch sits one commit back and its STALE backup ref points
+	# at that older tree, so the pre-92c9193c resolution (head -n 1) would
+	# hijack the backup and fail the tree-equality verification.
+	git -C "$repo" branch aaa-stale HEAD~1
+	git -C "$repo" update-ref refs/original/refs/heads/aaa-stale "$(git -C "$repo" rev-parse HEAD~1)"
+	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000007) >/dev/null 2>"$tmp/err6"
+	if [ "$?" = "0" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: multi-branch backup-ref resolution hijacked the heal" >&2
+		cat "$tmp/err6" >&2
+	fi
 
 	if [ "$fail" = "0" ]; then
 		echo "SELF-TEST OK ($ok checks)"

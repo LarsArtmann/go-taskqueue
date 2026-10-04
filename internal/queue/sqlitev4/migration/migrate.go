@@ -40,7 +40,7 @@
 //
 // Exit 0 on a green report, 1 on any projection mismatch, 2 on setup
 // errors. The tool never writes to the source database.
-package main
+package migration
 
 import (
 	"context"
