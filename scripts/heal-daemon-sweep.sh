@@ -435,7 +435,7 @@ self_test() {
 	# hijack the backup and fail the tree-equality verification.
 	git -C "$repo" branch aaa-stale HEAD~1
 	git -C "$repo" update-ref refs/original/refs/heads/aaa-stale "$(git -C "$repo" rev-parse HEAD~1)"
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000007) >/dev/null 2>"$tmp/err6"
+	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err6"
 	if [ "$?" = "0" ]; then
 		ok=$((ok + 1))
 	else

@@ -1,12 +1,12 @@
-// Package replay implements the ADR-0019 S1 data-migration tool: it
-// replays a tq fact journal — the hand-rolled store's database — into a
-// fresh go-cqrs-lite engine store (the sqlitev4 adapter over
-// queue/sqlite/v4) and verifies projection equality (StatusCounts,
+// Package migration implements the ADR-0019 S1 data migration and the
+// endgame P1 on-open auto-upgrade: it replays or converges a tq fact
+// journal — the hand-rolled store's database — onto the go-cqrs-lite
+// engine store and verifies projection equality (StatusCounts,
 // ProjectCounts, the full fact stream, head seq, per-task fact tails,
-// DLQ contents, watermarks, priority scores). It is S1's
-// definition-of-done gate for the dogfood cutover (ADR-0019 §Data
-// migration; C12/M056 in
-// docs/planning/archived/2026-09-22_23-49_go-cqrs-lite-platform-migration.md).
+// DLQ contents, watermarks, priority scores). It is the dogfood
+// cutover's definition-of-done gate (ADR-0019 §Data migration; C12/M056
+// in docs/planning/archived/2026-09-22_23-49_go-cqrs-lite-platform-
+// migration.md) and the safety net under UpgradeIfNeeded.
 //
 // C12 replay-design decision (resolving the memo's open question): the
 // applier is a VERBATIM projection copy, not an operation-by-operation
@@ -34,7 +34,7 @@
 //   - facts_archive and journal_meta (old-only tables) are recreated
 //     verbatim so no history is lost; the engine does not read them.
 //
-// Usage:
+// Usage (the CLI front-end lives in the sibling replay/ directory):
 //
 //	go run ./replay --from <old.db> --to <new.db> [--verify-only]
 //

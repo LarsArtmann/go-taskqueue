@@ -4,10 +4,20 @@
 // upstream go-cqrs-lite queue engine owns the task/fact semantics, with
 // token-fenced finalizes (upstream ADR-0134) replacing the legacy
 // owner-string fence. The tq Store contract is unchanged for callers.
+//
+// Open is also the BACKWARD AUTO-UPGRADE seam (ADR-0019 endgame P1): a
+// pre-flip hand-rolled database is probed, snapshotted, converged in
+// place, and projection-verified before the store serves — the deployed
+// binary upgrades the production journal transparently on first open.
+// Refuse with TQ_NO_AUTO_UPGRADE=1 (the replay CLI remains the manual
+// path). Direct sqlitev4.Open callers bypass the shim deliberately.
 package sqlite
 
 import (
+	"context"
+
 	v4 "github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4/migration"
 )
 
 type (
@@ -20,8 +30,13 @@ type (
 	ArchiveStats = v4.ArchiveStats
 )
 
-// Open opens (creating if needed) the queue database at path.
+// Open opens (creating if needed) the queue database at path. A legacy
+// pre-flip database at path is auto-upgraded first (see the package doc).
 func Open(path string, opts ...StoreOption) (*Store, error) {
+	if _, err := migration.UpgradeIfNeeded(context.Background(), path); err != nil {
+		return nil, err
+	}
+
 	return v4.Open(path, opts...)
 }
 
