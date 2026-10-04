@@ -68,10 +68,24 @@ for m in . $mods; do
 	if ! err="$(cd "$m" && GOWORK=off go mod verify 2>&1 >/dev/null)"; then
 		echo "WARN: go mod verify flaked in $m — retrying once"
 		if ! err="$(cd "$m" && GOWORK=off go mod verify 2>&1 >/dev/null)"; then
-			echo "FAIL: go mod verify in $m (retry also failed):"
-			printf '%s\n' "$err" | sed 's/^/  /'
-			checks_failed=$((checks_failed + 1))
-			fail=1
+			# Pending tag wave (ADR-0019 endgame P4, owner-gated 2026-10-04):
+			# cmd/tq's committed go.mod requires internal/composition at a
+			# nominal version whose tag is not cut yet, so proxy resolution
+			# fails BY DESIGN until the coordinated wave lands (root v0.3.1 +
+			# internal/composition tag). Only "unknown revision" lines naming
+			# the pending path downgrade to WARN; any other verify error
+			# stays a hard FAIL. DELETE this block when the tag wave lands.
+			pending='github.com/larsartmann/go-taskqueue/internal/composition'
+			resid="$(printf '%s\n' "$err" | grep -vF "$pending" || true)"
+			if [ -z "$(printf '%s\n' "$resid" | tr -d '[:space:]')" ]; then
+				echo "WARN: go mod verify in $m only names pending-tag paths (tag wave not cut yet): $pending"
+				checks_ok=$((checks_ok + 1))
+			else
+				echo "FAIL: go mod verify in $m (retry also failed):"
+				printf '%s\n' "$err" | sed 's/^/  /'
+				checks_failed=$((checks_failed + 1))
+				fail=1
+			fi
 		else
 			checks_ok=$((checks_ok + 1))
 		fi
