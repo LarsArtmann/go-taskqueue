@@ -357,8 +357,16 @@ func TestProbeClassifiesSchemaGenerations(t *testing.T) {
 	}
 
 	fresh := filepath.Join(dir, "fresh.db")
-	if _, err := sqlitev4.Open(fresh); err != nil {
+	freshStore, err := sqlitev4.Open(fresh)
+	if err != nil {
 		t.Fatalf("open fresh store: %v", err)
+	}
+
+	// Close BEFORE the probes and TempDir cleanup: an open handle keeps
+	// the file locked on Windows and RemoveAll cleanup fails the test
+	// (the 10-04 CI red on master).
+	if err := freshStore.Close(); err != nil {
+		t.Fatalf("close fresh store: %v", err)
 	}
 
 	if kind, err := Probe(fresh); err != nil || kind != KindEngine {
