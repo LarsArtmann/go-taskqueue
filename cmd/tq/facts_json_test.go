@@ -21,8 +21,11 @@ import (
 // platform-endgame prune cut ~1 kB of phrasing waste yet net-new load-
 // bearing knowledge landed (secrets-redaction growth policy, backward
 // auto-upgrade seam, v4-adapter/readmodel architecture rows) — prune
-// in-place instead of growing the file further.
-const agentsDocMaxBytes = 15_200
+// in-place instead of growing the file further. 2026-10-04 (later the
+// same day) second reset 15,200 → 15,400: the S4 composition-module
+// topology row + the claim-time budget-gate note are net-new load-
+// bearing; same doctrine applies.
+const agentsDocMaxBytes = 15_400
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a

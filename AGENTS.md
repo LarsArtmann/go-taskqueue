@@ -19,9 +19,8 @@ nix build                 # nix run .#test = tests; .#webui-css
 
 - **Multi-module repo (ADR-0011)**: `internal/{task,journal,queue,executor,worker}`
   sub-modules + `queue/{sqlite,postgres}` backends + `internal/journal/cqrs`
-  + `internal/readmodel` + `internal/composition` (S4 system/ root; own
-  module so replace-free cmd/tq imports it — nominal v0.3.0 + pending-tag
-  WARN in check-go-mods.sh until the tag wave);
+  + `internal/readmodel` + `internal/composition` (own module, S4 root;
+  cmd/tq pins nominal v0.3.0);
   root = app layer. `cmd/tq` is its own replace-free module (ADR-0017),
   built via `scripts/build-tq.sh` (devmod shim). `./...` never descends
   into nested modules; per-module gate:
@@ -59,8 +58,8 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform suite `internal/queue/companion/conform` |
 | `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` | tq Store over the go-cqrs-lite queue engines |
 | `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity |
-| `internal/readmodel` | S3 metaengine ledger projection (`<db>.readmodel.db`, `--read-model` default ON) |
-| `internal/composition` | S4 root: `system.New` over projection home; `tq serve` composes (ADR-0019) |
+| `internal/readmodel` | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON) |
+| `internal/composition` | S4 root: `system.New` over the projection home (`tq serve`) |
 | `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
 | `internal/bridge` | papdashboard + cqa bridges → fix tasks |
 | `internal/executor` | sh/HTTP/agent/review/status executors + registry |
@@ -148,9 +147,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   low-priority work starves behind aging).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   agent-pool sweeps once at start.
-- **Claim-time budget gate**: paid turns block once the daily
-  cap/budget-cmd is spent — requeue class `budget`, no burn, parked to
-  midnight (cap) / 15m (cmd), outside env-streak.
+- **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd is spent — requeue class `budget`, no burn, parked to midnight (cap) / 15m (cmd), outside env-streak.
 
 ## Conventions
 
