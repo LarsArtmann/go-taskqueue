@@ -3,6 +3,7 @@ package papdashboard
 import (
 	"context"
 	"encoding/json"
+	"encoding/json/jsontext"
 	"io"
 	"log/slog"
 	"net/http"

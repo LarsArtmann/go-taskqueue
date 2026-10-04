@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -36,6 +37,63 @@ type Guard struct {
 	BudgetCmd string
 	// Now is overridable in tests.
 	Now func() time.Time
+
+	// cmdCache is the shared BudgetCmd verdict cache armed by WithCmdCache;
+	// nil runs the command on every Check (historical behavior).
+	cmdCache *cmdVerdictCache
+}
+
+// DefaultCmdCacheTTL bounds how long a BudgetCmd verdict stays cached once
+// WithCmdCache arms the guard: short next to the 15-minute budget-command
+// requeue wait and the midnight park, so a stale verdict can delay a
+// budget's release (or a spend's refusal) by at most this window.
+const DefaultCmdCacheTTL = 30 * time.Second
+
+// WithCmdCache returns a copy of the guard whose BudgetCmd executes at most
+// once per ttl — one `sh -c` per claim on a busy pool is real money-path
+// overhead (M7 of the paperclip-aftermath plan). Verdicts (allow AND
+// refuse) are shared across all copies of the returned guard, so the
+// harvest gate and the claim gate agree within the window. Zero or negative
+// ttl returns the guard unchanged.
+func (g Guard) WithCmdCache(ttl time.Duration) Guard {
+	if ttl <= 0 {
+		return g
+	}
+
+	g.cmdCache = &cmdVerdictCache{ttl: ttl}
+
+	return g
+}
+
+// cmdVerdictCache memoizes one BudgetCmd verdict for the TTL window. The
+// guard copies by value everywhere, so the pointer is the shared state;
+// claims run concurrently, so it locks.
+type cmdVerdictCache struct {
+	ttl time.Duration
+
+	mu      sync.Mutex
+	allowed bool
+	reason  string
+	at      time.Time
+	ok      bool
+}
+
+func (c *cmdVerdictCache) get(now time.Time) (allowed bool, reason string, cached bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.ok && now.Sub(c.at) < c.ttl {
+		return c.allowed, c.reason, true
+	}
+
+	return false, "", false
+}
+
+func (c *cmdVerdictCache) put(now time.Time, allowed bool, reason string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.allowed, c.reason, c.at, c.ok = allowed, reason, now, true
 }
 
 func (g Guard) now() time.Time {
@@ -50,14 +108,19 @@ func (g Guard) now() time.Time {
 // human-readable reason for the log.
 func (g Guard) Check(ctx context.Context, src FactSource) (bool, string) {
 	if g.BudgetCmd != "" {
-		cmd := exec.CommandContext(ctx, "sh", "-c", g.BudgetCmd)
+		if g.cmdCache != nil {
+			now := g.now()
+			if allowed, reason, cached := g.cmdCache.get(now); cached {
+				return allowed, reason
+			}
 
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return false, "budget command refused: " + firstLine(string(out))
+			allowed, reason := g.runBudgetCmd(ctx)
+			g.cmdCache.put(now, allowed, reason)
+
+			return allowed, reason
 		}
 
-		return true, ""
+		return g.runBudgetCmd(ctx)
 	}
 
 	if g.DailyCap > 0 {
@@ -69,6 +132,17 @@ func (g Guard) Check(ctx context.Context, src FactSource) (bool, string) {
 
 			return false, reason
 		}
+	}
+
+	return true, ""
+}
+
+func (g Guard) runBudgetCmd(ctx context.Context) (bool, string) {
+	cmd := exec.CommandContext(ctx, "sh", "-c", g.BudgetCmd)
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, "budget command refused: " + firstLine(string(out))
 	}
 
 	return true, ""
