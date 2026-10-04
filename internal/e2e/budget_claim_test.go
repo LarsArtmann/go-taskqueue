@@ -18,20 +18,22 @@ import (
 
 // TestBudgetClaimGateParksOverCapSubprocess pins the claim-time money gate
 // end-to-end: work enqueued BEFORE the cap bit must never run AFTER it. Two
-// items are harvested while uncapped (spent=2 enqueued-today); a --once pool
-// with --daily-budget 1 then claims both — and must park each one until the
-// next local midnight (requeue class "budget", no attempt burned) without
-// the stub agent ever running, and still exit 0. The NotBefore-vs-midnight
-// assertion rides budget.NextMidnight, so the DST-correct computation is
-// proven through the real CLI, not just unit tables.
+// single-item repos are harvested while uncapped (spent=2 enqueued-today; two
+// repos because harvest coalesces one live task per repo); a --once pool with
+// --daily-budget 1 then claims both — and must park each one until the next
+// local midnight (requeue class "budget", no attempt burned) without the stub
+// agent ever running, and still exit 0. The NotBefore-vs-midnight assertion
+// rides budget.NextMidnight, so the DST-correct computation is proven through
+// the real CLI, not just unit tables.
 func TestBudgetClaimGateParksOverCapSubprocess(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	dir := t.TempDir()
 
-	repo := writeRepo(t, dir, "demorepo",
-		"- [ ] budget claim item one\n- [ ] budget claim item two\n")
+	repoOne := writeRepo(t, dir, "repo-one", "- [ ] budget claim item one\n")
+	repoTwo := writeRepo(t, dir, "repo-two", "- [ ] budget claim item two\n")
+	repos := repoOne + "," + repoTwo
 
 	marker := filepath.Join(dir, "agent-ran")
 	stub := filepath.Join(dir, "stub-agent")
@@ -41,7 +43,7 @@ func TestBudgetClaimGateParksOverCapSubprocess(t *testing.T) {
 	env := append(os.Environ(), "TQ_AGENT_BIN="+stub)
 
 	// Seed uncapped: both items enqueue (spent=2), nothing executes.
-	seed := exec.Command(tqBin, "harvest", "--repos", repo, "--db", db)
+	seed := exec.Command(tqBin, "harvest", "--repos", repos, "--db", db)
 	seed.Env = env
 	if out, err := runWithTimeout(seed, 30*time.Second); err != nil {
 		t.Fatalf("seed harvest: %v\n%s", err, out)
@@ -49,7 +51,7 @@ func TestBudgetClaimGateParksOverCapSubprocess(t *testing.T) {
 
 	// Capped pool: cap 1 < spent 2 → every claim parks, none runs.
 	pool := exec.Command(tqBin, "agent-pool",
-		"--repos", repo, "--db", db, "--poll", "50ms", "--once",
+		"--repos", repos, "--db", db, "--poll", "50ms", "--once",
 		"--daily-budget", "1")
 	pool.Env = env
 	if out, err := runWithTimeout(pool, 60*time.Second); err != nil {
