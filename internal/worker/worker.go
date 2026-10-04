@@ -38,6 +38,18 @@ type Config struct {
 	// requeueing again, so a sustained-sick gate cannot churn claims
 	// forever. Default 3; negative disables (pure requeue behavior).
 	EnvRequeueBurn int
+
+	// Budget is the claim-time spend gate: before a claimed task's
+	// executor runs, the hook decides whether the pool may start another
+	// paid turn at all. A blocked task is requeued WITHOUT burning an
+	// attempt, parked until the returned delay passes (a daily cap
+	// resolves at local midnight), so work enqueued before the cap bit
+	// cannot burn money after it. The reason rides the task.requeued
+	// fact with requeue class "budget". Nil = ungated (historical
+	// behavior); budget refusals never ride the environmental
+	// streak/burn ladder — an exhausted budget is policy, not a sick
+	// environment.
+	Budget func(ctx context.Context) (blocked bool, reason string, retryIn time.Duration)
 }
 
 func (c *Config) setDefaults() {
@@ -371,6 +383,36 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		delete(p.inFlight, t.ID)
 		p.mu.Unlock()
 	}()
+
+	// Claim-time spend gate: the budget hook decides BEFORE the executor
+	// runs (and before any heartbeat machinery starts) whether this pool
+	// may spend another paid turn. A blocked claim is requeued without an
+	// attempt burn, parked until the hook's delay (midnight for a daily
+	// cap), so work enqueued before the cap bit stays queued instead of
+	// costing money after it. No ladder interaction: the block judges
+	// neither the task nor the environment, so preflight streak state is
+	// left untouched.
+	if p.cfg.Budget != nil {
+		if blocked, reason, retryIn := p.cfg.Budget(ctx); blocked {
+			delay := rateLimitDelay(max(retryIn, time.Second))
+			if err := p.store.Requeue(
+				ctx,
+				t.ID,
+				claim,
+				"budget gate: "+reason,
+				delay,
+				false,
+				queue.RequeueClassBudget,
+			); err != nil {
+				p.log.Error("budget requeue failed", "task", t.ID, "err", err)
+			} else {
+				p.log.Warn("budget gate blocked paid turn; requeued without attempt burn",
+					"task", t.ID, "retry after", delay.Round(time.Second), "reason", reason)
+			}
+
+			return
+		}
+	}
 
 	// Heartbeat ticker: extends the lease while execution runs. Parented on the
 	// shutdown-surviving task context so draining tasks keep their lease.

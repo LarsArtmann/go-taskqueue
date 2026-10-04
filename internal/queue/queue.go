@@ -341,6 +341,7 @@ const (
 	RequeueClassGate      = "gate"       // verify gate failed without judging the task (dead/slow)
 	RequeueClassRateLimit = "rate-limit" // provider 429 / usage window
 	RequeueClassQuestion  = "question"   // owner question parked the run
+	RequeueClassBudget    = "budget"     // claim-time spend gate blocked the paid turn
 	RequeueClassUnknown   = "unknown"    // legacy task.requeued facts predating the field
 )
 

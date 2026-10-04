@@ -939,6 +939,42 @@ func pruneItemText(it harvest.Item, why harvest.PruneWhy) string {
 // tasks, and runs a worker pool whose "agent" executor drives headless crush
 // agents that do the work, verify it, and close the loop in the todo file.
 // Ctrl-C drains gracefully, like tq worker.
+// budgetCmdRequeueWait re-parks budget-command-blocked claims: the command
+// is the spend authority and its reset time is unknowable, so blocked tasks
+// poll back on a fixed cooldown instead of waiting for midnight.
+const budgetCmdRequeueWait = 15 * time.Minute
+
+// budgetClaimGate adapts the enqueue-side budget guard into the pool's
+// claim-time gate (a paid turn must not start on a spent budget, even when
+// the task was enqueued before the cap bit): a spent daily cap parks
+// blocked tasks until the next local midnight, when the enqueued-today
+// projection resets; a refusing budget command re-polls on a fixed
+// cooldown.
+func budgetClaimGate(
+	guard budget.Guard,
+	src budget.FactSource,
+	budgetCmd string,
+) func(context.Context) (bool, string, time.Duration) {
+	return func(ctx context.Context) (bool, string, time.Duration) {
+		ok, reason := guard.Check(ctx, src)
+		if ok {
+			return false, "", 0
+		}
+
+		if budgetCmd != "" {
+			return true, reason, budgetCmdRequeueWait
+		}
+
+		now := time.Now()
+
+		nextMidnight := time.Date(
+			now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location(),
+		).Add(24 * time.Hour)
+
+		return true, reason, time.Until(nextMidnight)
+	}
+}
+
 func cmdAgentPool(args []string) error {
 	poolOpts, err := parseAgentPoolOptions(args)
 	if err != nil {
