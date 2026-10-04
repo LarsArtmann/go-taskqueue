@@ -273,6 +273,11 @@ main() {
 
 # --- self-test: fixture repo exercising the heal + every refusal rail ---
 self_test() {
+	local self=$0
+	case $self in
+	/*) ;;
+	*) self="$PWD/${self#./}" ;;
+	esac
 	local repo
 	tmp=$(mktemp -d) || die "mktemp failed"
 	trap 'rm -rf "$tmp"' EXIT
@@ -319,8 +324,10 @@ self_test() {
 	git -C "$repo" commit -qm "chore: sweep two"
 	old2=$(git -C "$repo" rev-parse HEAD)
 
-	# Happy path: heal both sweeps.
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000001) >/dev/null 2>"$tmp/err1" &&
+	# Happy path: heal both sweeps. "$self" (NOT "$0"): the fixture subshell
+	# cds away, so a relative $0 resolves into the temp repo and dies with
+	# "No such file or directory" — the 2026-10-04 00-52 red (row 456).
+	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000001) >/dev/null 2>"$tmp/err1" &&
 		ok=$((ok + 1)) || {
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: happy path exited non-zero" >&2
@@ -349,7 +356,7 @@ self_test() {
 
 	# Rail: dirty worktree refusal.
 	echo dirt >>"$repo/a.txt"
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000002) >/dev/null 2>&1
+	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000002) >/dev/null 2>&1
 	expect_refusal "dirty worktree" $?
 	git -C "$repo" checkout -q -- a.txt
 
@@ -360,7 +367,7 @@ self_test() {
 	git -C "$repo" add d.txt
 	git -C "$repo" commit -qm "work: real task"
 	git -C "$repo" commit -q --amend -m "$(printf 'work: real task\n\nTask-Queue-ID: deadbeef00000000000000000000000000000001')"
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000001) >/dev/null 2>&1
+	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000001) >/dev/null 2>&1
 	local noop_rc=$?
 	if [ "$noop_rc" = "0" ]; then
 		ok=$((ok + 1))
@@ -369,13 +376,13 @@ self_test() {
 		echo "SELF-TEST FAIL: fully-footered range should no-op successfully" >&2
 	fi
 
-	(cd "$repo" && "$0" --from origin/master deadbeef0000000000000000000000000000000f) >/dev/null 2>"$tmp/err3"
+	(cd "$repo" && "$self" --from origin/master deadbeef0000000000000000000000000000000f) >/dev/null 2>"$tmp/err3"
 	expect_refusal "different-id footer" $? "carries a different Task-Queue-ID footer" "$tmp/err3"
 
 	local mixed_rc
 	(cd "$repo" && git reset -q --soft HEAD~1)
 	(cd "$repo" && git commit -qm "work: real task")
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000001) >/dev/null 2>"$tmp/err4" && mixed_rc=0 || mixed_rc=1
+	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000001) >/dev/null 2>"$tmp/err4" && mixed_rc=0 || mixed_rc=1
 	if [ "$mixed_rc" = "0" ]; then
 		ok=$((ok + 1))
 	else
@@ -394,11 +401,11 @@ self_test() {
 
 	# Rail: pushed commit inside the heal range.
 	git -C "$repo" update-ref refs/remotes/origin/master HEAD
-	(cd "$repo" && "$0" --from refs/remotes/origin/master~1 deadbeef00000000000000000000000000000004) >/dev/null 2>&1
+	(cd "$repo" && "$self" --from refs/remotes/origin/master~1 deadbeef00000000000000000000000000000004) >/dev/null 2>&1
 	expect_refusal "pushed commit in range" $?
 
 	# Rail: empty heal range.
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000005) >/dev/null 2>&1
+	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000005) >/dev/null 2>&1
 	expect_refusal "empty range" $?
 
 	# Rail: tag on a commit inside the heal range (the pushed-commit rail
@@ -407,13 +414,13 @@ self_test() {
 	git -C "$repo" add e.txt
 	git -C "$repo" commit -qm "chore: sweep three"
 	git -C "$repo" tag sweep-tag HEAD
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err_tag"
+	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err_tag"
 	expect_refusal "tag in heal range" $? "tag(s) reference commits inside the heal range" "$tmp/err_tag"
 	git -C "$repo" tag -d sweep-tag
 
 	# A tag on the BASE commit is outside the heal range — heal succeeds.
 	git -C "$repo" tag base-tag origin/master
-	(cd "$repo" && "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err5"
+	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err5"
 	if [ "$?" = "0" ]; then
 		ok=$((ok + 1))
 	else
@@ -425,9 +432,9 @@ self_test() {
 
 	# Rail: metacharacter + empty Task-Queue-ID — the hex validation
 	# (3f9f497d) must refuse both with the same reason line.
-	(cd "$repo" && "$0" --from origin/master 'dead;beef00000000000000000000000000') >/dev/null 2>"$tmp/err_meta"
+	(cd "$repo" && "$self" --from origin/master 'dead;beef00000000000000000000000000') >/dev/null 2>"$tmp/err_meta"
 	expect_refusal "metacharacter id" $? "must be non-empty hex" "$tmp/err_meta"
-	(cd "$repo" && "$0" --from origin/master "") >/dev/null 2>"$tmp/err_empty_id"
+	(cd "$repo" && "$self" --from origin/master "") >/dev/null 2>"$tmp/err_empty_id"
 	expect_refusal "empty id" $? "must be non-empty hex" "$tmp/err_empty_id"
 
 	# Multi-branch backup-ref resolution (92c9193c): a stale
@@ -438,7 +445,7 @@ self_test() {
 	echo f >"$repo/f.txt"
 	git -C "$repo" add f.txt
 	git -C "$repo" commit -qm "chore: sweep four"
-	(cd "$repo" && TQ_HEAL_TEST_STALE_BACKUP=aaa-stale "$0" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err6"
+	(cd "$repo" && TQ_HEAL_TEST_STALE_BACKUP=aaa-stale "$self" --from origin/master deadbeef00000000000000000000000000000006) >/dev/null 2>"$tmp/err6"
 	if [ "$?" = "0" ]; then
 		ok=$((ok + 1))
 	else
