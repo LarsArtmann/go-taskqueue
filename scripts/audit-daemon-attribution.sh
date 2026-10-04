@@ -98,12 +98,11 @@ done
 
 # ---- self-test: scratch-repo fixture; the real repo is never touched -----
 run_self_test() {
-	local tmp
 	tmp=$(mktemp -d) || die "mktemp failed"
 	trap 'rm -rf "$tmp"' EXIT
 
 	local repo="$tmp/repo"
-	mkdir -p "$repo" || die "mkdir failed"
+	mkdir -p "$repo/docs/status" || die "mkdir failed"
 	git -C "$repo" init -q
 	git -C "$repo" config user.email audit-selftest@example.invalid
 	git -C "$repo" config user.name "audit self-test"
@@ -116,7 +115,7 @@ run_self_test() {
 
 	git_commit() {
 		git -C "$repo" add -A
-		git -C "$repo" commit -q "$@"
+		git -C "$repo" commit -q "$@" || die "fixture commit failed"
 	}
 
 	printf 'index\n' >"$repo/README.md"
@@ -232,11 +231,11 @@ declare -A subj_of=()
 declare -A is_daemon=()
 declare -A footer_body_of=()
 
-mapfile -d '' -t meta_records < <(git log --no-merges --format='%H%x02%s%x02%b%x00' "$RANGE")
+mapfile -d '' -t meta_records < <(git log --no-merges --format='%x00%H%x02%s%x02%b' "$RANGE")
 
 for rec in "${meta_records[@]}"; do
-	[ -n "$rec" ] || continue
 	sha=${rec%%$'\x02'*}
+	[[ $sha =~ ^[0-9a-f]{40}$ ]] || continue
 	rest=${rec#*$'\x02'}
 	subject=${rest%%$'\x02'*}
 	body=${rest#*$'\x02'}
