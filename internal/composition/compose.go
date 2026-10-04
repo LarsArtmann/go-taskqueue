@@ -27,8 +27,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/larsartmann/go-cqrs-lite/system/v4"
 	_ "github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4" // registers the "sqlite" driver (deployment choice)
+	"github.com/larsartmann/go-cqrs-lite/system/v4"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 )
 

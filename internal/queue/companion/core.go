@@ -166,7 +166,7 @@ func UpstreamFact(f journal.Fact) ufacts.Fact {
 	return ufacts.Fact{
 		Time:    f.Time,
 		TaskID:  f.TaskID,
-		Type:   ufacts.FactType(f.Type),
+		Type:    ufacts.FactType(f.Type),
 		Owner:   f.Owner,
 		Attempt: f.Attempt,
 		Error:   f.Error,
@@ -187,7 +187,7 @@ func JournalFacts(fs []ufacts.Fact) []journal.Fact {
 			Seq:     f.Seq,
 			Time:    f.Time,
 			TaskID:  f.TaskID,
-			Type:   journal.FactType(f.Type),
+			Type:    journal.FactType(f.Type),
 			Owner:   f.Owner,
 			Attempt: f.Attempt,
 			Error:   f.Error,
