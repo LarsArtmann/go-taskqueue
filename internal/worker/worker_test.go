@@ -341,8 +341,14 @@ func TestExactlyOnceUnderConcurrency(t *testing.T) {
 	}, quietLog())
 	go func() { _ = pool.Start(ctx) }()
 
-	// Wait until all n are terminal.
-	deadline := time.Now().Add(10 * time.Second)
+	// Wait until all n are terminal. The deadline is generous on purpose:
+	// under host build storms (concurrent agents, -race) the 20-task drain
+	// has been observed to exceed 10s wall time and fail 19/20 at clean
+	// parents — the exactly-once property under test is correctness, not
+	// speed, so the wait scales instead of attributing load to the pool.
+	// A genuinely wedged pool still fails here, just later (the binary
+	// -timeout remains the hard backstop).
+	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
 		tasks, _ := store.List(context.Background(), queue.Filter{})
 		done := 0
@@ -365,14 +371,18 @@ func TestExactlyOnceUnderConcurrency(t *testing.T) {
 	got, _ := store.List(context.Background(), queue.Filter{})
 	done := 0
 
+	statuses := map[task.Status]int{}
+
 	for _, tk := range got {
+		statuses[tk.Status]++
+
 		if tk.Status == task.Completed {
 			done++
 		}
 	}
 
 	if done != n {
-		t.Fatalf("%d/%d completed", done, n)
+		t.Fatalf("%d/%d completed (statuses: %v)", done, n, statuses)
 	}
 
 	if len(runs) != n {
