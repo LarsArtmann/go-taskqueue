@@ -378,6 +378,20 @@ step "dead-sha citation check"
 step "dead-sha citation self-test (gate semantics pin)"
 ./scripts/check-dead-sha-refs.sh --self-test
 
+# Daemon-commit attribution gate (task 000001a109757cf3d260a0de4e2700000000,
+# 00-55 report f2): a footer-less auto-commit sweep that touched files
+# outside docs/status/ fails the gate unless its sha is baselined in
+# scripts/daemon-sweep-baseline.txt. Heal a fresh sweep (heal-daemon-sweep.sh
+# when unpushed, a footered marker commit when pushed) or grandfather the sha
+# deliberately; never blanket-ignore. History-deterministic, so deliberately
+# NOT wrapped in with_transient_retry: a landed sweep does not heal on a 45s
+# poll.
+step "daemon-sweep attribution gate (new unattributed shipping sweeps fail)"
+./scripts/check-daemon-attribution.sh
+
+step "daemon-sweep attribution self-test (gate semantics pin)"
+./scripts/check-daemon-attribution.sh --self-test
+
 # Round-13 T16: RELEASE.md's cited modes/gates/mechanisms pinned to
 # scripts/release.sh reality (06-55 f3/e1 drift class).
 step "release-doc drift check"
