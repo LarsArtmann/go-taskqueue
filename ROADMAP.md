@@ -65,6 +65,18 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ### Queue core / scale
 
+- Routines/cron scheduling with concurrency + catch-up policies (the
+  paperclip gap): interval-driven synthetic enqueues with an explicit
+  missed-run policy (skip / coalesce / capped catch-up) — the wake-trace
+  design memo (2026-10-05) is the fact-shape groundwork (2026-10-05 M25)
+- Org-scale attribution: per-project daily caps + hysteresis +
+  working-set accounting (M22's §g-1-held design), and a
+  responsible-user field on facts for multi-operator pools — who asked
+  for this run (2026-10-05 M25)
+- Secret-injection endgame: minted per-run allowlist environments,
+  `--strict-env`, managed HOME — design + first rung shipped
+  (2026-10-05), widening is owner-ruled (2026-10-05 M24)
+
 - Data-model review of `task.Task`/`Status` (branded IDs? split lifecycle
   stages into distinct types?) — data-model territory, revisit before any
   public API promotion (2026-09-09 23:47 f18)
