@@ -86,12 +86,18 @@ var rateLimitRe = regexp.MustCompile(
 	`(?i)status[ _-]?code[=: ]+["']?429|https? 429|too many requests|rate limit|usage limit|insufficient_quota|quota exceeded|subscription limit`,
 )
 
+// resetTimestamp is the shared timestamp capture for both reset shapes:
+// wall-clock with optional zone (Z.ai) and RFC3339.
+const resetTimestamp = `(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)`
+
 // resetAtRe extracts WHEN the limit resets. Known shapes: Z.ai's
 // "Your limit will reset at 2026-09-11 19:40:34" (wall-clock, no zone —
 // parsed as the agent host's local time, matching what the operator's
-// provider dashboard shows) and RFC3339 timestamps.
+// provider dashboard shows), RFC3339 timestamps, and the JSON body shape
+// OpenAI-convention providers relay ("reset_at": "2026-09-11T19:40:34Z",
+// M12: the body, not just the header, is honored).
 var resetAtRe = regexp.MustCompile(
-	`(?i)(?:reset|renew)[a-z]*\s+at\s+(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)`,
+	`(?i)(?:(?:reset|renew)[a-z]*\s+at\s+|(?:reset|renew)[a-z_]*["']?\s*:\s*"?)` + resetTimestamp,
 )
 
 var resetAtLayouts = []string{
@@ -101,10 +107,12 @@ var resetAtLayouts = []string{
 }
 
 // retryAfterRe extracts a numeric retry hint ("retry_after=120",
-// "Retry-After: 30"). Deliberately does NOT match crush's retry_delay=
-// (its 5s/10s/20s ladder is the agent's own short game, not the provider's
-// quota window).
-var retryAfterRe = regexp.MustCompile(`(?i)retry[ _-]after(?:[ _-]seconds)?[=: ]+["']?(\d{1,6})["']?`)
+// "Retry-After: 30", the JSON body shape "retry_after": 120 — M12). The
+// separator accepts a colon, an equals sign, or bare whitespace, quoted or
+// not, so prose log lines and JSON bodies match alike. Deliberately does
+// NOT match crush's retry_delay= (its 5s/10s/20s ladder is the agent's own
+// short game, not the provider's quota window).
+var retryAfterRe = regexp.MustCompile(`(?i)retry[ _-]after(?:[ _-]seconds)?["']?(?:\s*[:=]\s*|\s+)["']?(\d{1,6})["']?`)
 
 // providerRe extracts the provider tag crush stamps on model calls
 // ("provider=synthetic") so the armed-gate log names the provider that
