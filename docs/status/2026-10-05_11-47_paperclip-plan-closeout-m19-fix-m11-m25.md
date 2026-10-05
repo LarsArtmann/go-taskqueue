@@ -256,7 +256,7 @@ investigated-and-rejected with the reasoning on disk.
     owner-blocked threshold breach).
 20. Re-run `TestExactlyOnceUnderConcurrency -count=20 -race` on a quiet
     host as the final M19 seal.
-21–50. The standing owner-gated queue and the 09-15/10-15 §f carry-overs
+    21–50. The standing owner-gated queue and the 09-15/10-15 §f carry-overs
     (P5 deletion cadence, dogfood cutover, lint-baseline backstop,
     task-less heal, .gates/ evidence dir) — all previously itemized and
     unchanged by this window.
