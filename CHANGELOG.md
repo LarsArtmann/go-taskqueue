@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
+- **Metaengine pushdown stats counters** (2026-10-05): `readmodel.Model.Stats`
+  serves by-status and per-project-per-status counts as SQL GROUP BY
+  pushdowns over the planned tasks table (O(groups), zero rows loaded) —
+  exact by construction because they derive from the same folded rows
+  the board renders; a stateless event-counter projection was rejected
+  because rescues re-enqueue from dead and dismissals cancel from dead,
+  so no statically knowable from-status exists. `tq stats` (read-model
+  and store paths), `/api/v1/stats` and the dashboard ride it; both
+  hand tallies are gone and the store escape hatch reads the store's own
+  GROUP BY surfaces.
+- **Durable readmodel journal cursor** (2026-10-05):
+  `readmodel.WithDurableCursor` checkpoints the projection cursor into
+  the queue db's watermarks table after every applied batch and resumes
+  from it on open — restarted serve/api/stats models fold only new
+  facts instead of replaying the whole journal (the 9.5k-fact restart
+  replay the adoption review measured). An empty projection under a
+  nonzero checkpoint replays from zero once, keeping the
+  delete-the-file rebuild escape hatch working.
+- **Internal tag wave completed** (2026-10-05):
+  `internal/{composition,queue/companion,queue/postgresv4,queue/sqlitev4,readmodel}/v0.3.0`
+  tagged and proxy-published; the pending-tag verify bridge in
+  `check-go-mods.sh` is gone; dogfood cutover runbook landed
+  (`docs/release/2026-10-05_CUTOVER-RUNBOOK.md`).
 - **Backward auto-upgrade on facade Open** (S1 flip residue, landed
   2026-10-04/05): the `queue/sqlite` facade `Open` converges a legacy pre-flip journal
   in place via `migration.UpgradeIfNeeded` — schema probe, `VACUUM INTO`
@@ -380,6 +403,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `gh run rerun <id>` hint instead of refusing every local battery;
   classification pinned by `CHECK_CI_SELF_TEST=1` (wired into ci-local
   beside the live probe). (`scripts/check-ci.sh`, `scripts/ci-local.sh`)
+
+### Removed
+- **`internal/queue/cqrsqlite` module deleted** (2026-10-05, O12): the
+  third ADR-0019 spike backend is gone — module, conform wiring,
+  mirror-clone allowlist entry and AGENTS references; the platform runs
+  100% on the two engine-backed backends (`sqlitev4`, `postgresv4`) +
+  the shared `companion` surfaces.
 
 ### Fixed
 - **`archive-evidence.sh` no longer refuses negated gitignore matches**

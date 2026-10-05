@@ -112,3 +112,43 @@ Cutover is owner-run.
 
 Execution is tracked in `TODO_LIST.md` (section "go-cqrs-lite platform
 adoption"); stages serialize S1→S4.
+
+## Endgame addendum (2026-10-05, P0–P4 + P5-first-slice landed)
+
+Status of every stage, verified against the tree at the v0.3.1 tag wave:
+
+- **S1 (engine flip): DONE.** Both spike drivers ride the go-cqrs-lite
+  queue engines; facts-in-same-tx is engine-enforced via the
+  `FactTx.WithFacts` sink; the backward auto-upgrade on facade `Open`
+  (snapshot `<db>.legacy-*.bak` → verify → auto-restore on mismatch,
+  `TQ_NO_AUTO_UPGRADE=1` refusal, absent feature-era tables tolerated)
+  landed and is pinned by `scripts/smoke/legacy-serve-upgrade.sh`. The
+  dogfood cut over 2026-10-05 19:41 (runbook:
+  `docs/release/2026-10-05_CUTOVER-RUNBOOK.md`).
+- **S2 (one vocabulary): PENDING — the single remaining S-stage.**
+  `journal.Fact` still shadows upstream `facts.Fact` (M13: alias +
+  `Detail []byte` sweep + companion scanFacts direct + memory journal +
+  `journal/cqrs` re-point). The adapter-side mapping already exists
+  (sqlitev4/adapter.go); nothing else serializes behind it.
+- **S3 (readmodel): DONE and load-bearing.** `--read-model` default ON;
+  stats counters are SQL GROUP BY pushdowns over the planned table
+  (`Model.Stats` — a stateless event-counter projection was rejected as
+  provably divergent on rescues/dismissals); the projection cursor is
+  durable via the watermarks table (`WithDurableCursor`, wired into
+  serve/api/stats) with the empty-projection-under-checkpoint replay
+  guard. F1-full (projectionhost + DLQ) remains the next adoption rung,
+  not a gap in S3's contract.
+- **S4 (composition root): DONE.** `internal/composition` wraps
+  `system.New` over the projection home (`tq serve`); the empty
+  `DomainConfig` is a JUSTIFIED deviation (declaring tq collections as
+  system projections would mirror the queue journal — a second source
+  of truth, forbidden by this ADR's facts-first rule).
+- **P5 (legacy removal): STARTED.** `internal/queue/cqrsqlite` deleted
+  (module + conform wiring + mirror-clone residue); the dual
+  CLI stats tallies collapsed onto the pushdown counters. Remaining:
+  the S2 vocabulary flip unblocks the final `internal/queue/sqlite`
+  legacy thinning and the webui tailer retirement.
+- **Tag wave: COMPLETE.** All internal modules carry real tags
+  (`internal/{composition,queue/companion,queue/postgresv4,queue/sqlitev4,readmodel}/v0.3.0`
+  joined the eight previously tagged); `check-go-mods.sh`'s
+  pending-tag bridge is deleted; facade parity green against real tags.
