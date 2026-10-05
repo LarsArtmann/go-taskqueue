@@ -4,8 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
 ### Added
+- **Backward auto-upgrade on facade Open** (S1 flip residue, landed
+  2026-10-04/05): the `queue/sqlite` facade `Open` converges a legacy pre-flip journal
+  in place via `migration.UpgradeIfNeeded` — schema probe, `VACUUM INTO`
+  snapshot kept as `<db>.legacy-*.bak`, verify, auto-restore on mismatch;
+  absent feature-era tables are tolerated; refuse with
+  `TQ_NO_AUTO_UPGRADE=1`; manual replay lives in
+  `internal/queue/sqlitev4` (`go run ./replay`). Pinned by
+  `scripts/smoke/legacy-serve-upgrade.sh` (legacy fixture → one .bak →
+  readmodel default-ON → graceful close → journal intact).
 - **Terminal-write retry in the worker pool** (2026-10-05): every store
   transition write (complete/fail/requeue/cancel) now retries in-process
   on busy-class errors (3 attempts, 50–400 ms) — a lost terminal write
