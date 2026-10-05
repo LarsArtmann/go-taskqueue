@@ -295,6 +295,9 @@ with_transient_retry "harvest-parse guard" go test ./internal/harvest/ -run Test
 step "web UI live smoke"
 ./scripts/smoke/webui.sh
 
+step "legacy-serve-upgrade live smoke (auto-upgrade -> readmodel default -> GracefulClose)"
+./scripts/smoke/legacy-serve-upgrade.sh
+
 step "web UI css drift (committed app.css must equal the tailwind rebuild)"
 ./scripts/check-webui-css.sh
 
