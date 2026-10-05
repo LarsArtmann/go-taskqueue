@@ -2,8 +2,11 @@ package readmodel
 
 import (
 	"encoding/json"
+	"encoding/json/jsontext"
 	"testing"
+	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 )
 
@@ -103,4 +106,48 @@ func TestEnqueueDetailMirrorsQueueDetail(t *testing.T) {
 	if got != want {
 		t.Errorf("enqueueDetail = %+v, want %+v (a queue-side tag renamed or drifted)", got, want)
 	}
+}
+
+// TestRepriEventDetailPolicy pins repriEvent's decode policy: unlike
+// requeuedEvent (empty/malformed detail degrades to the legacy shape) and
+// unlike queue.ParseReprioritizeEvidence (skip-don't-fail), an unparsable
+// reprioritized detail is a MALFORMED FACT — the pump must surface it as
+// an error so journal drift is visible instead of folding a priority-0
+// row.
+func TestRepriEventDetailPolicy(t *testing.T) {
+	base := journal.Fact{
+		Seq:    1,
+		Time:   time.UnixMilli(1_000),
+		TaskID: "t1",
+		Type:   journal.Reprioritized,
+	}
+
+	t.Run("malformed detail surfaces journal drift", func(t *testing.T) {
+		fact := base
+		fact.Detail = jsontext.Value(`{"new_priority":`)
+
+		evt, ok, err := repriEvent(fact, fact.Time.UnixMilli())
+		if err == nil {
+			t.Fatalf("repriEvent malformed detail: want error, got nil (evt=%v ok=%v)", evt, ok)
+		}
+
+		if ok {
+			t.Errorf("repriEvent malformed detail: ok=true, want false")
+		}
+	})
+
+	t.Run("valid detail folds the new priority", func(t *testing.T) {
+		fact := base
+		fact.Detail = jsontext.Value(`{"old_priority":3,"new_priority":7,"source":"ai","reason":"rescored"}`)
+
+		evt, ok, err := repriEvent(fact, fact.Time.UnixMilli())
+		if err != nil || !ok {
+			t.Fatalf("repriEvent valid detail: err=%v ok=%v, want nil/true", err, ok)
+		}
+
+		want := evtReprioritized{ID: "t1", Priority: 7, At: 1_000}
+		if evt != any(want) {
+			t.Errorf("repriEvent = %+v, want %+v", evt, want)
+		}
+	})
 }
