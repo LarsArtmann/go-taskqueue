@@ -15,7 +15,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   matches a known load-flaky signature, so an agent
   verify gate death on a flake the repo already cures stops burning an
   attempt plus a re-dispatch cycle. `scripts/check-verify.sh` pins the
-  parity and the retry semantics as a ci-local step. `.tq-verify` itself
+  parity and the retry semantics as a ci-local step and runs
+  `verify.sh` itself in situ through a scripted flake-heal under a
+  PATH-shimmed toolchain — the wrapper file's own retry path executes
+  in the self-test (03-47 §b2). `.tq-verify` itself
   is untouched — switching it to the wrapper stays an owner ruling
   (02-11 §g2).
 - **`scripts/audit-daemon-attribution.sh`** (2026-10-05, 00-55 report
