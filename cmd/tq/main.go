@@ -2038,11 +2038,6 @@ func printConsumerLag(store *sqlite.Store) {
 	}
 }
 
-// storeStats reads the store's GROUP BY count surfaces and narrows them
-// to the filter in Go — the pushdowns are O(groups), so narrowing the
-// grouped maps beats any filtered re-query. This is the
-// --read-model=false escape hatch; the default path reads the projection
-// counters (readmodel.Model.Stats).
 // narrowCounts narrows a grouped count map to the filter's status: a
 // nil status keeps every group, otherwise only the named one survives.
 func narrowCounts[K ~string](counts map[K]int, status *task.Status) map[string]int {
@@ -2059,6 +2054,11 @@ func narrowCounts[K ~string](counts map[K]int, status *task.Status) map[string]i
 	return out
 }
 
+// storeStats reads the store's GROUP BY count surfaces and narrows them
+// to the filter in Go — the pushdowns are O(groups), so narrowing the
+// grouped maps beats any filtered re-query. This is the
+// --read-model=false escape hatch; the default path reads the projection
+// counters (readmodel.Model.Stats).
 func storeStats(
 	ctx context.Context,
 	store *sqlite.Store,
