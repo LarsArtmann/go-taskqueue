@@ -1,0 +1,22 @@
+?   	github.com/larsartmann/go-taskqueue/examples/api	[no test files]
+?   	github.com/larsartmann/go-taskqueue/examples/fullcore	[no test files]
+?   	github.com/larsartmann/go-taskqueue/examples/sse	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/bridge/cqa	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/budget	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/consumer	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/depsweep	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/dlqfix	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/e2e	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/harvest	2.476s
+ok  	github.com/larsartmann/go-taskqueue/internal/httpapi	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/httpauth	(cached)
+?   	github.com/larsartmann/go-taskqueue/internal/lockout	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/prioritize	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/review	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/runactor	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/session	(cached)
+ok  	github.com/larsartmann/go-taskqueue/internal/status	(cached)
+?   	github.com/larsartmann/go-taskqueue/internal/watermark	[no test files]
+ok  	github.com/larsartmann/go-taskqueue/internal/webui	(cached)
+ok  	github.com/larsartmann/go-taskqueue/scripts/facadeparity	(cached)
