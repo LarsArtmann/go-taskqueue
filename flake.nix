@@ -16,6 +16,12 @@
   };
 
   outputs =
+    # Tarball-built Go toolchain constants (single source — the go-standard
+    # option AND the perSystem formatter wrapper below must never drift).
+    let
+      goTarballVersion = "1.27.1";
+      goTarballHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+    in
     inputs@{
       flake-parts,
       ...
@@ -41,8 +47,8 @@
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
-        goTarballVersion = "1.27.1";
-        goTarballHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+        goTarballVersion = goTarballVersion;
+        goTarballHash = goTarballHash;
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         # ADR-0017: cmd/tq is its own replace-free module (proxy
         # installability). modRoot + subPackages route the hermetic build
@@ -146,12 +152,13 @@
           # builds for the package (that goPkg is not exposed to consumers,
           # so the formatters below rebuild it — keep the hash in sync with
           # goTarballHash above).
+          inherit goTarballVersion;
           goTarballPkg = pkgs.go_1_26.overrideAttrs (
             finalAttrs: _prev: {
-              version = "1.27.1";
+              version = goTarballVersion;
               src = pkgs.fetchurl {
                 url = "https://go.dev/dl/go${finalAttrs.version}.src.tar.gz";
-                hash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+                inherit goTarballHash;
               };
               patches = builtins.filter (
                 p: builtins.match "go_no_vendor_checks-.*[.]patch" (baseNameOf p) == null
@@ -418,13 +425,13 @@
                 pkgs.writeShellApplication {
                   name = "run-test";
                   runtimeInputs = [
-                    pkgs.go
+                    goTarballPkg
                     pkgs.findutils
                     pkgs.gnused
                   ];
                   text = ''
                     set -euo pipefail
-                    export GOWORK=off GOEXPERIMENT=jsonv2
+                    export GOWORK=off GOEXPERIMENT=jsonv2 GOTOOLCHAIN=local
                     go test -race -v -coverprofile=coverage.out ./...
                     for m in $(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort); do
                       echo "== module $m =="
@@ -476,14 +483,15 @@
             webui-css = {
               type = "app";
               meta.description = "Recompile internal/webui/static/app.css via tailwindcss --minify";
-              program = pkgs.lib.getExe (
+              program = lib.getExe (
                 pkgs.writeShellApplication {
                   name = "webui-css";
                   runtimeInputs = [
+                    goTarballPkg
                     pkgs.tailwindcss_4
-                    pkgs.go
                   ];
                   text = ''
+                    export GOTOOLCHAIN=local
                     exec bash scripts/build-webui-css.sh
                   '';
                 }
