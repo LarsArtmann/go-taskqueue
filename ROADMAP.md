@@ -284,7 +284,8 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 - Per-pool sidecar subdirectory namespacing (concurrent pools share the
   default log dir; orphan-ID files observed)
 - Budget surface via a public facade: `cmd/tq`'s `budgetUsageView` is the
-  forced-local wire shape of `internal/budget.SessionUsage` (ADR-0016
+  forced-local wire shape of `internal/budget/budget.go`
+  `SessionUsage` (ADR-0016
   facades + ADR-0017 replace-free cmd/tq); if budget ever grows
   operator-facing surface beyond the one view, promote a `budget/` facade
   and let cmd/tq delete the twin (type-dupe review 2026-10-05, group 5)
