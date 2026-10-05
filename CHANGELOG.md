@@ -10,8 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   born from the 02-11 report §d4): root-gate.sh's known-flaky-signature
   retry is extracted into `scripts/lib/verify-retry.sh` (ONE signature
   list, ONE retry mechanism) and reused by a new `scripts/verify.sh` —
-  the exact `.tq-verify` battery (byte-parity pinned) under ONE retry
-  when a failure matches a known load-flaky signature, so an agent
+  the exact `.tq-verify` battery line (byte-parity pinned; the wrapper
+  adds the sibling-gate env exports) under ONE retry when a failure
+  matches a known load-flaky signature, so an agent
   verify gate death on a flake the repo already cures stops burning an
   attempt plus a re-dispatch cycle. `scripts/check-verify.sh` pins the
   parity and the retry semantics as a ci-local step. `.tq-verify` itself
