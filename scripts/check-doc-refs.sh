@@ -19,6 +19,7 @@ allow=(
 	'^refs/original'          # git backup-ref namespace written by filter-branch — a ref, not a path (AGENTS.md, 2026-09-16)
 	'^queue/v4'               # go-cqrs-lite module path@version, not a repo path (AGENTS.md ADR-0019 bullet; tags verified pushed on origin 2026-09-22)
 	'^claiming/v4'            # go-cqrs-lite module path@version, not a repo path (AGENTS.md ADR-0019 bullet; tags verified pushed on origin 2026-09-22)
+	'^internal/queue/cqrsqlite$' # CHANGELOG O12 deletion entry cites the deleted module historically (added 2026-10-06)
 )
 
 fail=0
