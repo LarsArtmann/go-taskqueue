@@ -1,0 +1,1437 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>go-cqrs-lite metaengine + system — Adoption Deep Dive</title>
+    <style>
+      /* =========================================================================
+         BAUHAUS LIGHT — Editorial template
+         Design language: form follows function. Primary colors on warm paper.
+         Zero external dependencies: system fonts, no CDN, no build step.
+         Token architecture: see references/bauhaus-tokens.md
+         ========================================================================= */
+
+      :root {
+        /* --- Primitive palette (Bauhaus Light) --- */
+        --color-paper: #f4f4f0;
+        --color-paper-2: #ffffff;
+        --color-paper-3: #e8e8e2;
+        --color-ink: #111111;
+        --color-red: #e63946;
+        --color-blue: #1d3557;
+        --color-yellow: #f4d35e;
+        --color-hairline: rgba(17, 17, 17, 0.14);
+        --color-hairline-strong: rgba(17, 17, 17, 0.3);
+
+        /* --- Semantic layer (shared vocabulary with dark template) --- */
+        --surface: var(--color-paper);
+        --surface-raised: var(--color-paper-2);
+        --surface-sunken: var(--color-paper-3);
+        --text: var(--color-ink);
+        --text-muted: rgba(17, 17, 17, 0.72);
+        --text-faint: rgba(17, 17, 17, 0.5);
+        --border: var(--color-hairline);
+        --border-strong: var(--color-hairline-strong);
+        --accent: var(--color-red);
+        --problem: var(--color-red);
+        --solution: var(--color-blue);
+        --warning: var(--color-yellow);
+
+        /* --- Backward-compatible aliases (do not break consumer skills) --- */
+        --bg: var(--surface);
+        --bg-elevated: var(--surface-raised);
+        --bg-sunken: var(--surface-sunken);
+        --bg-card: var(--surface-raised);
+        --bg-code: var(--surface-sunken);
+        --ink: var(--text);
+        --ink-secondary: var(--text-muted);
+        --ink-muted: var(--text-faint);
+        --rose: var(--problem);
+        --rose-glow: color-mix(in srgb, var(--problem) 15%, transparent);
+        --emerald: var(--solution);
+        --emerald-glow: color-mix(in srgb, var(--solution) 15%, transparent);
+        --amber: var(--warning);
+        --amber-glow: color-mix(in srgb, var(--warning) 15%, transparent);
+        --amber-light: color-mix(in srgb, var(--warning) 22%, transparent);
+        --coral: var(--problem);
+        --coral-light: color-mix(in srgb, var(--problem) 12%, transparent);
+        --teal: var(--solution);
+        --teal-light: color-mix(in srgb, var(--solution) 12%, transparent);
+
+        /* --- Shape --- */
+        --radius: 0px;
+        --radius-sm: 0px;
+
+        /* --- Type stacks (system only — zero external fonts) --- */
+        --font-heading:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-body:
+          ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono:
+          ui-monospace, "Cascadia Code", "Source Code Pro", "JetBrains Mono",
+          Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      section[id],
+      [id] {
+        scroll-margin-top: 60px;
+      }
+
+      body {
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--font-body);
+        font-size: 16px;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* --- Accessibility: keyboard focus --- */
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      a:focus-visible {
+        outline-offset: -1px;
+      }
+
+      /* --- Full-bleed top bar --- */
+      .top-bar {
+        background: var(--text);
+        color: var(--surface);
+        padding: 0.6rem 2rem;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* --- Layout: optional sticky sidebar TOC --- */
+      .layout {
+        display: flex;
+        gap: 2.5rem;
+        padding: 2rem;
+      }
+      .sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 1rem;
+        align-self: flex-start;
+        height: calc(100vh - 2rem);
+        overflow-y: auto;
+        display: none;
+      }
+      .sidebar nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+      .sidebar .label {
+        font-family: var(--font-mono);
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--accent);
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid var(--text);
+      }
+      .sidebar a {
+        font-size: 0.86rem;
+        color: var(--text);
+        text-decoration: none;
+        padding: 0.5rem 0.75rem;
+        border-left: 4px solid transparent;
+        font-weight: 600;
+        transition: all 0.15s ease;
+        line-height: 1.4;
+      }
+      .sidebar a:hover,
+      .sidebar a.active {
+        border-left-color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--accent);
+      }
+      .main {
+        flex: 1;
+        min-width: 0;
+      }
+
+      /* --- Headings --- */
+      h1,
+      h2,
+      h3,
+      h4 {
+        font-family: var(--font-heading);
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        color: var(--text);
+      }
+      h1 {
+        font-size: clamp(1.9rem, 4.5vw, 2.8rem);
+        line-height: 1.05;
+        margin: 0 0 0.6rem;
+      }
+      h2 {
+        font-size: 1.5rem;
+        margin: 2.5rem 0 1rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 3px solid var(--text);
+        display: flex;
+        align-items: baseline;
+        gap: 0.7rem;
+      }
+      h2 .num {
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        color: var(--accent);
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      h3 {
+        font-size: 1.15rem;
+        margin: 0 0 0.4rem;
+        font-weight: 700;
+      }
+      h4 {
+        font-size: 1rem;
+        margin: 0 0 0.3rem;
+        font-weight: 700;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+
+      /* --- Hero --- */
+      .hero {
+        padding: 1.5rem 0 2rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 3px solid var(--text);
+      }
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--accent);
+        margin-bottom: 0.9rem;
+      }
+      .subtitle {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        max-width: 70ch;
+        margin: 0 0 1rem;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .tag {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 0.25rem 0.6rem;
+        background: var(--surface-sunken);
+        color: var(--text);
+        border: 1px solid var(--border-strong);
+      }
+      .tag.amber {
+        background: var(--warning);
+        border-color: var(--warning);
+        color: var(--text);
+      }
+      .tag.teal {
+        background: var(--solution);
+        border-color: var(--solution);
+        color: var(--surface);
+      }
+
+      /* Bauhaus signature: geometric shape cluster (optional) */
+      .hero-shapes {
+        position: relative;
+        height: 90px;
+        margin-bottom: 1.2rem;
+      }
+      .hero-shapes .circle {
+        position: absolute;
+        top: 0;
+        right: 180px;
+        width: 64px;
+        height: 64px;
+        background: var(--problem);
+        border-radius: 50%;
+      }
+      .hero-shapes .square {
+        position: absolute;
+        top: 26px;
+        right: 90px;
+        width: 56px;
+        height: 56px;
+        background: var(--solution);
+      }
+      .hero-shapes .tri {
+        position: absolute;
+        top: 8px;
+        right: 0;
+        width: 0;
+        height: 0;
+        border-left: 32px solid transparent;
+        border-right: 32px solid transparent;
+        border-bottom: 56px solid var(--warning);
+      }
+      .hero-shapes .bar {
+        position: absolute;
+        bottom: 0;
+        right: 230px;
+        width: 100px;
+        height: 14px;
+        background: var(--text);
+      }
+
+      /* --- Scorecard / stat cards --- */
+      .scorecard,
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0;
+        margin: 1.5rem 0 2rem;
+        border: 3px solid var(--text);
+      }
+      .score-card,
+      .stat-card {
+        padding: 1.3rem 1rem;
+        text-align: center;
+        border-right: 3px solid var(--text);
+        background: var(--surface-raised);
+      }
+      .score-card:last-child,
+      .stat-card:last-child {
+        border-right: none;
+      }
+
+      .score,
+      .stat-value {
+        font-family: var(--font-heading);
+        font-size: 2.6rem;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: -0.04em;
+      }
+      .score-card .label,
+      .stat-label {
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-top: 0.5rem;
+      }
+      /* Semantic state classes — no nth-child decoration, no !important */
+      .score-good,
+      .stat-good {
+        background: var(--solution);
+        color: var(--surface);
+      }
+      .score-warn,
+      .stat-warn {
+        background: var(--warning);
+        color: var(--text);
+      }
+      .score-bad,
+      .stat-bad {
+        background: var(--problem);
+        color: var(--surface);
+      }
+
+      /* --- General cards --- */
+      .card {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        border-left: 8px solid var(--border-strong);
+      }
+      .card-problem {
+        border-left-color: var(--problem);
+      }
+      .card-solution {
+        border-left-color: var(--solution);
+      }
+      .card-warning {
+        border-left-color: var(--warning);
+      }
+
+      /* --- Issue cards --- */
+      .issue {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        padding: 1.2rem 1.4rem;
+        margin-bottom: 1rem;
+        border-left: 8px solid var(--border-strong);
+      }
+      .issue-critical {
+        border-left-color: var(--problem);
+      }
+      .issue-important {
+        border-left-color: var(--warning);
+      }
+      .issue-nice {
+        border-left-color: var(--solution);
+      }
+      .issue h3 {
+        margin-bottom: 0.3rem;
+      }
+      .issue .where {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--text-faint);
+        margin: 0.2rem 0 0.6rem;
+      }
+      .issue p:last-child {
+        margin-bottom: 0;
+      }
+
+      /* --- Severity badges --- */
+      .severity {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.22rem 0.6rem;
+        margin-bottom: 0.6rem;
+        color: var(--surface);
+      }
+      .severity-critical {
+        background: var(--problem);
+      }
+      .severity-important {
+        background: var(--warning);
+        color: var(--text);
+      }
+      .severity-nice {
+        background: var(--solution);
+      }
+
+      /* --- Inline badges --- */
+      .badge {
+        display: inline-block;
+        font-family: var(--font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 0.2rem 0.55rem;
+        border: 1px solid var(--text);
+        color: var(--text);
+      }
+      .badge-critical {
+        background: var(--problem);
+        color: var(--surface);
+      }
+      .badge-high {
+        background: var(--warning);
+      }
+      .badge-medium {
+        background: var(--surface-sunken);
+      }
+      .badge-low {
+        background: var(--surface-raised);
+        color: var(--text-muted);
+      }
+      .badge-fixed {
+        background: var(--solution);
+        color: var(--surface);
+      }
+
+      /* --- Callouts --- */
+      .callout {
+        margin: 0.8rem 0 0;
+        padding: 0.8rem 1rem;
+        border: 1px solid var(--border-strong);
+        border-left: 4px solid var(--border-strong);
+        background: var(--surface-sunken);
+        font-size: 0.92rem;
+      }
+      .callout strong {
+        display: inline-block;
+        margin-right: 0.4rem;
+      }
+      .callout-teal,
+      .callout-solution {
+        border-left-color: var(--solution);
+        background: color-mix(
+          in srgb,
+          var(--solution) 10%,
+          var(--surface-raised)
+        );
+      }
+      .callout-amber,
+      .callout-warning {
+        border-left-color: var(--warning);
+        background: color-mix(
+          in srgb,
+          var(--warning) 18%,
+          var(--surface-raised)
+        );
+      }
+
+      /* --- Strengths --- */
+      .strengths {
+        display: grid;
+        gap: 0.5rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .strength {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.9rem;
+        padding: 0.75rem 0;
+        border-bottom: 2px solid var(--border);
+      }
+      .strength .check {
+        font-family: var(--font-mono);
+        font-weight: 900;
+        color: var(--solution);
+        font-size: 1.3rem;
+        line-height: 1.3;
+      }
+      .strength .text strong {
+        display: block;
+        margin-bottom: 0.15rem;
+      }
+      .strength .text span {
+        color: var(--text-muted);
+        font-size: 0.92rem;
+      }
+
+      /* --- Tables --- */
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0 1.5rem;
+        font-size: 0.92rem;
+        border: 2px solid var(--text);
+      }
+      th {
+        text-align: left;
+        padding: 0.6rem 0.9rem;
+        background: var(--text);
+        color: var(--surface);
+        font-family: var(--font-mono);
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-right: 1px solid var(--border-strong);
+      }
+      th:last-child {
+        border-right: none;
+      }
+      td {
+        padding: 0.6rem 0.9rem;
+        border-top: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+      td:last-child {
+        border-right: none;
+      }
+      tr:nth-child(even) td {
+        background: var(--surface-sunken);
+      }
+      table.compare td.yes {
+        color: var(--solution);
+        font-weight: 700;
+      }
+      table.compare td.no {
+        color: var(--problem);
+        font-weight: 700;
+      }
+
+      /* --- Code blocks + syntax highlighting --- */
+      pre {
+        background: var(--text);
+        color: var(--surface);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.65;
+        overflow-x: auto;
+        border: 2px solid var(--text);
+      }
+      code {
+        font-family: var(--font-mono);
+      }
+      p code,
+      li code,
+      td code {
+        font-size: 0.88em;
+        background: var(--surface-sunken);
+        padding: 0.1rem 0.35rem;
+      }
+      .tok-keyword {
+        color: var(--warning);
+      }
+      .tok-type {
+        color: var(--warning);
+      }
+      .tok-string {
+        color: #95e1d3;
+      }
+      .tok-comment {
+        color: rgba(244, 244, 240, 0.45);
+        font-style: italic;
+      }
+      .tok-func {
+        color: #6eb5ff;
+      }
+      .tok-number {
+        color: var(--warning);
+      }
+      .tok-generic {
+        color: var(--problem);
+      }
+      .tok-builtin {
+        color: #6eb5ff;
+      }
+      .tok-punct {
+        color: rgba(244, 244, 240, 0.7);
+      }
+      .tok-attr {
+        color: var(--warning);
+      }
+
+      /* --- Dependency tree / ASCII diagrams --- */
+      .dep-tree {
+        background: var(--surface-sunken);
+        border: 2px solid var(--text);
+        padding: 1rem 1.2rem;
+        margin: 1rem 0;
+        font-family: var(--font-mono);
+        font-size: 0.82rem;
+        line-height: 1.7;
+        white-space: pre;
+        overflow-x: auto;
+      }
+      .dep-tree .root {
+        color: var(--accent);
+        font-weight: 700;
+      }
+      .dep-tree .ok {
+        color: var(--solution);
+      }
+      .dep-tree .unwanted {
+        color: var(--problem);
+      }
+
+      /* --- Inline node-and-arrow diagrams --- */
+      .diagram {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+      }
+      .node {
+        display: inline-block;
+        padding: 0.4rem 0.75rem;
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        font-weight: 700;
+        background: var(--surface-sunken);
+        border: 1px solid var(--text);
+      }
+      .node-core {
+        background: var(--accent);
+        color: var(--surface);
+      }
+      .node-problem {
+        background: var(--problem);
+        color: var(--surface);
+      }
+      .node-good {
+        background: var(--solution);
+        color: var(--surface);
+      }
+      .arrow {
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Grids --- */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+
+      /* --- Inline TOC --- */
+      .toc {
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        border-left: 6px solid var(--accent);
+        padding: 1rem 1.3rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .toc h3 {
+        margin-bottom: 0.5rem;
+      }
+      .toc ul {
+        list-style: none;
+        padding: 0;
+      }
+      .toc li {
+        margin: 0.25rem 0;
+      }
+      .toc a {
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.92rem;
+        font-weight: 600;
+      }
+      .toc a:hover {
+        color: var(--accent);
+      }
+
+      /* --- Migration / numbered steps --- */
+      .migration-step {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 1rem;
+        margin: 1rem 0;
+        padding: 1.1rem;
+        background: var(--surface-raised);
+        border: 2px solid var(--text);
+        border-left: 6px solid var(--accent);
+      }
+      .migration-num {
+        font-family: var(--font-mono);
+        font-weight: 900;
+        font-size: 1.8rem;
+        color: var(--accent);
+        line-height: 1;
+      }
+      .migration-content h4 {
+        margin-bottom: 0.2rem;
+      }
+      .migration-content p {
+        margin-bottom: 0;
+        color: var(--text-muted);
+        font-size: 0.94rem;
+      }
+
+      /* --- Before/After comparison --- */
+      .compare-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin: 1rem 0 0.5rem;
+      }
+      .compare-before,
+      .compare-after {
+        font-family: var(--font-mono);
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 0.4rem 0.7rem;
+        color: var(--surface);
+      }
+      .compare-before {
+        background: var(--problem);
+      }
+      .compare-after {
+        background: var(--solution);
+      }
+      .compare-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .compare-row pre {
+        margin: 0;
+      }
+
+      /* --- Footer --- */
+      .footer {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 3px solid var(--text);
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        font-family: var(--font-mono);
+      }
+
+      /* --- Responsive --- */
+      @media (min-width: 1024px) {
+        .sidebar {
+          display: block;
+        }
+      }
+      @media (max-width: 768px) {
+        .layout {
+          flex-direction: column;
+          padding: 1rem;
+        }
+        .top-bar {
+          padding: 0.6rem 1rem;
+          flex-wrap: wrap;
+          gap: 0.3rem;
+        }
+        .grid-2,
+        .grid-3 {
+          grid-template-columns: 1fr;
+        }
+        .compare-header,
+        .compare-row {
+          grid-template-columns: 1fr;
+        }
+        .scorecard,
+        .stat-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .score-card:nth-child(2),
+        .stat-card:nth-child(2) {
+          border-right: none;
+        }
+        .score-card:nth-child(1),
+        .stat-card:nth-child(1),
+        .score-card:nth-child(2),
+        .stat-card:nth-child(2) {
+          border-bottom: 3px solid var(--text);
+        }
+        .migration-step {
+          grid-template-columns: 1fr;
+        }
+        .hero-shapes {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-bar">
+      <span>Library Deep Dive</span>
+      <span>2026-10-05</span>
+      <span>go-taskqueue / ADR-0019 endgame</span>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar" data-nav>
+        <nav>
+          <div class="label">Contents</div>
+          <a href="#summary">Summary</a>
+          <a href="#scorecard">Scorecard</a>
+          <a href="#usage">Current usage</a>
+          <a href="#strengths">Strengths</a>
+          <a href="#findings">Findings</a>
+          <a href="#versions">Version currency</a>
+          <a href="#opportunities">Top opportunities</a>
+          <a href="#conclusion">Conclusion</a>
+          <a href="#appendix">Appendix</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="hero">
+          <div class="hero-shapes">
+            <div class="bar"></div>
+            <div class="circle"></div>
+            <div class="square"></div>
+            <div class="tri"></div>
+          </div>
+          <div class="eyebrow">Library Deep Dive &middot; 2026-10-05</div>
+          <h1>go-cqrs-lite <code>metaengine/</code> + <code>system/</code> — Adoption &amp; Utilization Audit</h1>
+          <p class="subtitle">
+            Owner re-directive: &ldquo;I want to use metaengine/ and system/.&rdquo; This audit
+            measures how deep go-taskqueue actually rides the two target modules after the
+            ADR-0019 endgame landed P0&ndash;P4 &mdash; and what the remaining adoption gap is.
+            Every claim is cited to file:line in this repo or to the upstream checkout at
+            /home/lars/projects/go-cqrs-lite.
+          </p>
+          <div class="meta">
+            <span class="tag amber">metaengine v4.16.0 (latest tag)</span>
+            <span class="tag amber">system v4.10.1 (latest tag)</span>
+            <span class="tag teal">Adoption Score: 58/100</span>
+            <span class="tag">queue family at latest tags</span>
+          </div>
+        </header>
+
+        <section id="scorecard" class="scorecard">
+          <div class="score-card score-warn">
+            <div class="score">58</div>
+            <div class="label">Adoption score / 100</div>
+          </div>
+          <div class="score-card score-good">
+            <div class="score">6/15</div>
+            <div class="label">Capabilities fully leveraged</div>
+          </div>
+          <div class="score-card score-bad">
+            <div class="score">5</div>
+            <div class="label">Missed opportunities (2 high)</div>
+          </div>
+          <div class="score-card">
+            <div class="score">0</div>
+            <div class="label">Anti-patterns</div>
+          </div>
+          <div class="score-card score-good">
+            <div class="score">0</div>
+            <div class="label">Versions behind latest tags</div>
+          </div>
+        </section>
+
+        <section id="summary">
+          <h2><span class="num">00</span>Summary</h2>
+          <p>
+            The migration is real and the read side is adopted the <em>right</em> way &mdash;
+            planned tables with columnar layout and declarative pushdown, not the naive
+            JSON-blob path &mdash; and every go-cqrs-lite module is pinned at its latest tag.
+            But the owner&rsquo;s directive is only about 60% realized. The projection&rsquo;s
+            <strong>delivery machinery</strong> (cursor durability, catch-up, poison handling)
+            is hand-rolled where the library ships <code>projectionhost</code> with durable
+            checkpoints and a dead-letter queue; and the product&rsquo;s hottest read
+            (status tallies) bypasses metaengine&rsquo;s O(1) <code>Delta</code> aggregates
+            in favor of a full-table scan plus a Go loop. <code>system.New</code> runs with an
+            empty <code>DomainConfig</code> &mdash; a justified deviation (no second journal),
+            but it means system contributes only engine lifetime and close ordering today.
+          </p>
+          <div class="callout callout-amber">
+            <strong>The bottom line</strong>
+            Two findings carry most of the value: (1) the readmodel&rsquo;s in-process cursor
+            forces a full-journal replay on every process start &mdash; measured 9,523 facts on
+            the production dogfood journal &mdash; and a single malformed fact detail can wedge
+            the projection forever with no DLQ; the library&rsquo;s projectionhost exists
+            precisely for this and the in-repo <code>FactJournal</code> adapter already
+            implements its required interface. (2) P5&rsquo;s planned &ldquo;dual tally
+            collapse&rdquo; should collapse ONTO metaengine Delta counter queries &mdash;
+            the upstream cookbook&rsquo;s first pattern is literally a status-count dashboard.
+          </div>
+        </section>
+
+        <section id="usage">
+          <h2><span class="num">01</span>Current usage</h2>
+          <p>
+            go-taskqueue imports eleven go-cqrs-lite module paths across five internal
+            packages. The queue stores ride the upstream <code>queue/</code> engine family
+            (S1 thin drivers); the read model is a metaengine Store over a dedicated SQLite
+            projection file; the composition root wraps a system.System around that same
+            file&rsquo;s engine lifetime.
+          </p>
+          <div class="dep-tree"><span class="root">tq runtime</span>
+internal/queue/{sqlite,postgres}   ── thin drivers over queue/{sqlite,postgres}/v4  <span class="ok">(S1)</span>
+internal/queue/{sqlitev4,postgresv4} ── queue/v4 Store contract, facts bridge       <span class="ok">(S1)</span>
+internal/readmodel                 ── metaengine/v4 + sqliteengine/v4 Store, Plan   <span class="ok">(S3)</span>
+internal/composition               ── system/v4 New(DomainConfig{}, Deployment)     <span class="ok">(S4 shell)</span>
+internal/journal/cqrs              ── event.Journal + event.SeekableJournal adapter <span class="ok">(ADR-0014)</span>
+cmd/tq                             ── readmodel.Open + CatchUp per invocation</div>
+          <p>
+            Consumption sites: <code>internal/readmodel</code> (metaengine Store, Plan,
+            TypedReader, Watcher, ServeSSE &mdash; model.go, queries.go), one system import
+            (<code>internal/composition/compose.go</code>), the queue engine adapters
+            (<code>internal/queue/sqlitev4/adapter.go</code>, <code>postgresv4/adapter.go</code>
+            over <code>queue/v4</code>), and the read-only journal bridge
+            (<code>internal/journal/cqrs/journal.go</code>). CLI surfaces opt into the
+            projection via <code>--read-model</code> (default ON since P2):
+            <code>tq stats</code>, <code>tq api</code>, <code>tq serve</code>
+            (cmd/tq/main.go:1711, 3165, 3252).
+          </p>
+        </section>
+
+        <section id="strengths">
+          <h2><span class="num">&#9670;</span>What&rsquo;s already excellent</h2>
+          <div class="strengths">
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Planned tables via the advanced path</strong>
+                <span>tasksQuery = Query[TaskList, TaskRow] with OnRecordTyped folds, FilterOnField/SortOnField declarative pushdown, WithColumnarLayout &mdash; every TaskRow field is a typed SQL column (internal/readmodel/queries.go:38&ndash;112). This is the v5-recommended surface, not the deprecated tiers.</span>
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Watcher + ServeSSE as the live mechanism</strong>
+                <span>metaengine.NewWatcher with replay ring (1024), heartbeat, timeout; EventsHandler wraps ServeSSE with Last-Event-ID reconnection (internal/readmodel/model.go:120&ndash;123, 289&ndash;303). This is the sanctioned replacement for the ADR-0003 hand tailer that P5 deletes.</span>
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>TypedReader with the documented typed-nil avoidance</strong>
+                <span>Reads go through NewReader[TaskRow].Scan with conditional WithFilter options; the query-input dispatch pitfall (nil *string binds as = NULL) is documented and dodged (queries.go:23&ndash;30, model.go:230&ndash;257).</span>
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Durable projection file, planner-satisfying</strong>
+                <span>sqliteengine at &lt;db&gt;.readmodel.db with WAL + busy_timeout; the projection is disposable and rebuildable by design (model.go:41&ndash;46, 86&ndash;105).</span>
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>The bridge already exists</strong>
+                <span>journal/cqrs.FactJournal implements event.Journal AND event.SeekableJournal over any queue store, with the dangling-cursor contract handled (journal.go:31&ndash;34, 76&ndash;94) &mdash; the exact interface projectionhost consumes. Adoption finding #1 needs no new adapter.</span>
+              </div>
+            </div>
+            <div class="strength">
+              <div class="check">+</div>
+              <div class="text">
+                <strong>Version discipline</strong>
+                <span>Every pinned go-cqrs-lite module equals its latest tag, verified today against the upstream checkout (metaengine v4.16.0, sqliteengine v4.5.0, system v4.10.1, queue family v4.0.1, record v4.6.1, dedup v4.2.3, claiming v4.0.1).</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="findings">
+          <h2><span class="num">02</span>Findings</h2>
+          <p>Ordered by impact. Statuses: Missed Opportunity / Partially Used / Fully Leveraged.</p>
+
+          <div class="issue issue-critical" id="f1">
+            <span class="severity severity-critical">Missed Opportunity &middot; High impact</span>
+            <h3>1. Projection delivery machinery hand-rolled &mdash; projectionhost + durable checkpoints unused</h3>
+            <div class="where">
+              internal/readmodel/model.go:63,142&ndash;200 (atomic cursor, Run/CatchUp pump) &middot;
+              internal/readmodel/events.go:213&ndash;215, 247&ndash;249 (poison paths) &middot;
+              vs upstream projectionhost (crash-restart, checkpoints, DLQ, lag)
+            </div>
+            <p>
+              What the library offers: <code>projectionhost.New(journal, checkpointStore)</code>
+              wraps journal reads, projection handlers, checkpoint persistence
+              (&ldquo;survives restarts, no event loss&rdquo;), a dead-letter queue for poison
+              records (&ldquo;captured, checkpoint advances&rdquo;), crash auto-restart with
+              backoff, and <code>Status()</code>/<code>LagPerProjection()</code> for operators
+              (projectionhost/README.md:13&ndash;22). system persists checkpoints as a metaengine
+              Map collection on the declared engine (system/checkpoint_engine.go, ADR-0142).
+            </p>
+            <p>
+              What the project does instead: the Model keeps its cursor in an
+              <code>atomic.Int64</code> &mdash; &ldquo;a restarted model replays the journal from
+              the beginning&rdquo; (model.go:139&ndash;141). The production dogfood journal holds
+              <strong>9,523 facts / 805 tasks</strong> (measured read-only today), so every
+              readmodel-enabled process start &mdash; each <code>tq stats</code>, each
+              <code>tq api</code> boot, each serve restart &mdash; re-reads and re-applies the
+              entire journal, upserting 9.5k rows into the projection file; the projection WAL
+              (4.2&nbsp;MB) is already larger than its main DB (3.66&nbsp;MB). Worse: a malformed
+              <code>task.enqueued</code> detail (once the store row is compacted away) or a
+              malformed <code>reprioritized</code> detail returns an error that freezes the
+              cursor &mdash; the CLI fails and the serve pump retries the same fact every 500ms
+              forever, with no DLQ and no restart budget. The plan&rsquo;s own P4 text said
+              &ldquo;readmodel&rsquo;s projector cursor moves onto the system checkpoint
+              store&rdquo; &mdash; that half never landed.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Two-step adoption. Minimal (a day): persist the cursor through the queue&rsquo;s
+              existing watermarks table (internal/watermark already provides durable
+              checkpoint-after-batch semantics for the sweepers). Full (the library shape):
+              run the projection under projectionhost, feeding it the already-implemented
+              FactJournal; checkpoints, DLQ, backoff and lag come from the library and the
+              hand pump shrinks to a projection Handle.
+            </div>
+            <pre><code>// Today: hand pump, in-process cursor (model.go)
+cursor atomic.Int64            // lost on restart -&gt; full replay
+for { facts := src.Facts(ctx, cursor, batch); apply each; cursor.Store(last.Seq) }
+
+// Target: the library owns delivery (projectionadapter is its canonical bridge)
+journal := cqrs.NewFactJournal(store)          // already event.SeekableJournal
+host, _ := projectionhost.New(journal, cpStore,
+    projectionhost.WithDeadLetterStore(dlq, 3),
+    projectionhost.WithCheckpointEvery(500))
+// projection Handle: eventFor(fact) -&gt; store.ApplyRecord  (existing code)</code></pre>
+          </div>
+
+          <div class="issue issue-critical" id="f2">
+            <span class="severity severity-critical">Missed Opportunity &middot; High impact</span>
+            <h3>2. Status tallies bypass metaengine Delta aggregates &mdash; full scan + Go loop</h3>
+            <div class="where">
+              internal/readmodel/model.go:259&ndash;272 (StatusCounts &rarr; unbounded Tasks scan) &middot;
+              cmd/tq/main.go:2043&ndash;2075 (tallyStats / tallyModelRows dual paths) &middot;
+              vs metaengine COOKBOOK &sect;Counter Patterns / &ldquo;Status Count Dashboard&rdquo;
+            </div>
+            <p>
+              What the library offers: counter queries fold <code>metaengine.Delta</code>
+              maps &mdash; O(1) point reads, O(groups) for per-key groups. The cookbook&rsquo;s
+              FIRST pattern is a status-count dashboard; the second is a per-key counter
+              (rate limiter). This is precisely tq&rsquo;s by_status / by_project read.
+            </p>
+            <p>
+              What the project does instead: <code>StatusCounts</code> calls
+              <code>Tasks(ctx, TaskFilter{})</code> &mdash; a <code>WithLimit(0)</code> unbounded
+              planned-table scan materializing every TaskRow into Go &mdash; then counts with
+              <code>counts[r.Status]++</code>. The CLI keeps two parallel tally implementations
+              (<code>tallyStats</code> over store rows, <code>tallyModelRows</code> over
+              projection rows) &mdash; the exact split brain P5&rsquo;s &ldquo;dual tally
+              collapse&rdquo; item exists to remove. Every dashboard load and every
+              <code>/api/stats</code> request pays O(n) for an O(1)-capable read, compounding
+              finding #1 (replay, then full scan).
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Declare one Delta counter collection keyed &ldquo;status&rdquo; and one keyed
+              &ldquo;project|status&rdquo;, folded from the same facts (OnRecordTyped handlers
+              already exist as evtClaimed/evtCompleted/&hellip;); read via
+              metaengine.ExecuteTyped. Collapse BOTH CLI tallies onto it &mdash; P5&rsquo;s
+              dual-tally deletion then lands on the library&rsquo;s aggregate surface instead of
+              a third hand-rolled path.
+            </div>
+            <pre><code>// Today (model.go:260) - O(n) scan + Go tally
+rows, _ := m.Tasks(ctx, TaskFilter{})       // unbounded, all rows to Go
+counts := map[string]int{}
+for _, r := range rows { counts[r.Status]++ }
+
+// Target - the cookbook's first pattern, O(1) (absolute deltas, same typed fold inputs)
+statusCounts := metaengine.Query[countInput, map[string]int64](&quot;status_counts&quot;,
+    metaengine.On(evtEnqueued{}, func(e evtEnqueued) metaengine.Delta {
+        return metaengine.Delta{&quot;pending&quot;: +1}
+    }),
+    metaengine.On(evtClaimed{}, func(e evtClaimed) metaengine.Delta {
+        return metaengine.Delta{&quot;pending&quot;: -1, &quot;running&quot;: +1}
+    }),
+    // ... one On per lifecycle fact, same evt structs events.go already defines
+)
+counts, _ := metaengine.ExecuteTyped[countInput, map[string]int64](ctx, m.store, countInput{})</code></pre>
+          </div>
+
+          <div class="issue issue-important" id="f3">
+            <span class="severity severity-important">Missed Opportunity &middot; Medium impact</span>
+            <h3>3. Platform health invisible: system.Health / metaengine Doctor unused by tq doctor and /health</h3>
+            <div class="where">
+              internal/composition/compose.go (System built, health never queried) &middot;
+              zero HealthCheck references in internal/ (rg) &middot;
+              vs system README &sect;Health Check (Detailed), metaengine store.Doctor, projectionhost Status()
+            </div>
+            <p>
+              The System exposes <code>HealthCheckDetailed</code> (per-engine status including
+              failed projection workers), metaengine exposes <code>Doctor(ctx)</code> and
+              engine stats, projectionhost exposes per-worker status and lag. None of it is
+              surfaced: <code>tq doctor</code> inspects repos and gates but never asks the
+              platform whether the projection engine is alive or how far behind the journal
+              cursor is (HeadSeq &minus; JournalCursor). A wedged projection (finding #1)
+              would be operationally silent &mdash; the same &ldquo;nothing noticed flake check
+              was never green&rdquo; failure class, but in production tooling.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Add a projection section to tq doctor (engine stats, cursor lag, checkpoint
+              state) and fold HealthCheckDetailed into the existing token-gated /health
+              surface. Cheap, and it turns findings #1/#2 regressions into visible signals.
+            </div>
+          </div>
+
+          <div class="issue issue-important" id="f4">
+            <span class="severity severity-important">Partially Used &middot; Architectural (justified &mdash; read the nuance)</span>
+            <h3>4. system.New runs with an empty DomainConfig &mdash; a lifecycle shell</h3>
+            <div class="where">
+              internal/composition/compose.go:57 &middot; plan doc P4 (&ldquo;collections declared as system projections where the feed maps 1:1; cursor onto system checkpoint store&rdquo;)
+            </div>
+            <p>
+              The landed S4 root declares RoleProjections over the projection-home engine but
+              registers zero projections, zero deciders, zero queries &mdash; system contributes
+              engine lifetime and GracefulClose ordering only. The honest nuance: this is a
+              <em>justified</em> deviation, not an oversight. system&rsquo;s projection feed
+              sources from its EventAdapter, which reads a metaengine backend journal
+              (system/adapter_event_journal.go) &mdash; declaring the tq collections as system
+              projections would require mirroring the queue journal into that engine journal:
+              a second source of truth, which the archived composition map &sect;3 and the
+              endgame plan explicitly forbid. The queue engine journal IS the journal (P3).
+            </p>
+            <p>
+              What is genuinely unfinished is the plan&rsquo;s other half &mdash; the durable
+              cursor (finding #1) &mdash; plus the health surface (finding #3). The strategic
+              question for the platform relationship: ask upstream whether system&rsquo;s event
+              adapter can accept an external <code>event.SeekableJournal</code> as its source.
+              If yes, tq could declare its collections as true system projections
+              (<code>system.RawQuery(tasksQuery)</code>) with no journal duplication, and the
+              composition root stops being a shell. Until then, projectionhost (finding #1)
+              is the sanctioned library shape for exactly this topology.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Keep the shell, finish its obligations (checkpoints via #1, health via #3), and
+              file the upstream conversation (external SeekableJournal as system projection
+              source). Revisit declaring DomainConfig projections only if upstream adopts the
+              adapter seam.
+            </div>
+          </div>
+
+          <div class="issue issue-important" id="f5">
+            <span class="severity severity-important">Missed Opportunity &middot; Medium impact</span>
+            <h3>5. Unbounded reads &mdash; cursor pagination unused</h3>
+            <div class="where">internal/readmodel/model.go:240 (<code>WithLimit(0) // unbounded: the caller paginates</code>)</div>
+            <p>
+              metaengine ships serialized cursor pagination (README &sect;Pagination + Cursor
+              Serialization; COOKBOOK &sect;Cursor Pagination). The Model deliberately reads
+              everything and lets callers page in memory. At 805 tasks that is fine; the
+              journal grows monotonically and every board/table render pays full materialization.
+              With #2 landing, only the row-rich views need this &mdash; adopt cursors there.
+            </p>
+            <div class="callout callout-teal">
+              <strong>Recommendation</strong>
+              Expose the TypedReader cursor (WithLimit + cursor round-trip) through the
+              dashboard&rsquo;s table fragment; keep unbounded reads only for export paths
+              that genuinely want everything.
+            </div>
+          </div>
+
+          <div class="issue issue-nice" id="f6">
+            <span class="severity severity-nice">Missed Opportunity &middot; Low impact</span>
+            <h3>6. Observability seams idle: hooks, MetricsRecorder, ApplyEncoded</h3>
+            <div class="where">
+              internal/readmodel/model.go:160 (slog only) &middot;
+              metaengine README &sect;Observability, &sect;ApplyEncoded &middot;
+              projectionhost WithMetrics
+            </div>
+            <p>
+              The pump logs errors via slog; metaengine&rsquo;s MetricsRecorder hooks,
+              projectionhost&rsquo;s WithMetrics, and the ApplyEncoded zero-copy hot path
+              (its canonical consumer is projectionadapter &mdash; which finding #1 adopts
+              anyway) are unused. Small wins that mostly arrive for free with #1.
+            </p>
+          </div>
+
+          <div class="issue issue-nice" id="f7">
+            <span class="severity severity-nice">Partially Used &middot; Low impact</span>
+            <h3>7. Engine-swap claim unexercised; postgres facade consumers have no readmodel story</h3>
+            <div class="where">internal/composition/compose.go:41&ndash;55 (hardcoded sqlite DSN) &middot; metaengine pgengine exists</div>
+            <p>
+              The compose.go why-comment sells &ldquo;swap sqlite &rarr; postgres by editing
+              Engines&rdquo; &mdash; true by construction, never exercised by any test. And the
+              public facades (ADR-0016) re-export the queue stores only: external postgres
+              consumers get no projection surface at all (readmodel is internal + root).
+              Not urgent &mdash; tq&rsquo;s CLI is sqlite-only &mdash; but P5&rsquo;s docs
+              truth pass should say it out loud instead of implying platform parity.
+            </p>
+          </div>
+
+          <div class="issue issue-nice" id="f8">
+            <span class="severity severity-nice">Observation &middot; feeds an open owner decision</span>
+            <h3>8. Three journal-tailing implementations until P5 &mdash; converge on one</h3>
+            <div class="where">
+              internal/webui tailer (ADR-0003, P5 deletes it) &middot; internal/consumer (ADR-0009, ghost &mdash; existing BLOCKED owner row) &middot; internal/readmodel pump
+            </div>
+            <p>
+              Until P5 lands, three independent mechanisms page the same fact journal.
+              P5 removes the hand tailer; the endgame should then leave exactly one:
+              the projectionhost-based pump from finding #1. That also answers the existing
+              owner-blocked TODO row about internal/consumer&rsquo;s fate &mdash; if the
+              readmodel ride projectionhost, the consumer dispatcher&rsquo;s remaining
+              justification evaporates unless a push-notify seam (ADR-0009 D4 v2) is wanted
+              for it. Worth deciding in the same breath as P5 cadence.
+            </p>
+          </div>
+        </section>
+
+        <section id="versions">
+          <h2><span class="num">03</span>Version currency</h2>
+          <p>
+            Every go-cqrs-lite module pinned in go.mod equals its latest tag in the upstream
+            checkout (verified 2026-10-05). No version gap at tag level.
+          </p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>Pinned</th>
+                <th>Latest tag</th>
+                <th>State</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>metaengine/v4</td><td>v4.16.0</td><td>v4.16.0</td><td class="yes">current</td></tr>
+              <tr><td>metaengine/sqliteengine/v4</td><td>v4.5.0</td><td>v4.5.0</td><td class="yes">current</td></tr>
+              <tr><td>system/v4</td><td>v4.10.1</td><td>v4.10.1</td><td class="yes">current</td></tr>
+              <tr><td>queue/v4 (+sqlite, +postgres)</td><td>v4.0.1</td><td>v4.0.1</td><td class="yes">current</td></tr>
+              <tr><td>record/v4</td><td>v4.6.1</td><td>v4.6.1</td><td class="yes">current</td></tr>
+              <tr><td>dedup/v4, claiming/v4</td><td>v4.2.3 / v4.0.1</td><td>same</td><td class="yes">current</td></tr>
+            </tbody>
+          </table>
+          <div class="callout callout-amber">
+            <strong>Two caveats</strong>
+            (1) Upstream HEAD is mid-storm with large untagged waves (600+ file auto-commit
+            sweeps &mdash; the v5 push); pin-at-tag is the correct discipline, but re-audit this
+            table after the next tag wave, especially system (experimental per upstream
+            FEATURES.md; the v5 cut renames some constructors). (2) The dogfood production
+            journal remains pre-cutover (owner-gated); the readmodel file beside it shows
+            recent activity, so some process is already projecting against that journal
+            &mdash; worth confirming which one during the dogfood cutover decision.
+          </div>
+        </section>
+
+        <section id="opportunities">
+          <h2><span class="num">04</span>Top opportunities</h2>
+          <p>Ranked by impact &times; ease (each 1&ndash;5). Items 1&ndash;3 fit inside P5&rsquo;s existing scope.</p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Opportunity</th>
+                <th>Impact</th>
+                <th>Ease</th>
+                <th>Priority</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>Delta counter queries for by_status / by_project; collapse BOTH CLI tallies onto them (F2 &mdash; the P5 dual-tally deletion done right)</td><td class="yes">5</td><td class="yes">4</td><td><span class="badge badge-fixed">20</span></td></tr>
+              <tr><td>2</td><td>Persist the readmodel cursor via the existing watermarks table (F1 minimal &mdash; ends the 9.5k-fact replay per process start)</td><td class="yes">5</td><td class="yes">4</td><td><span class="badge badge-fixed">20</span></td></tr>
+              <tr><td>3</td><td>Run the projection under projectionhost: durable checkpoints, DLQ for poison facts, restart budget, lag gauge (F1 full)</td><td class="yes">5</td><td>3</td><td><span class="badge badge-fixed">15</span></td></tr>
+              <tr><td>4</td><td>tq doctor projection section + HealthCheckDetailed in /health (F3)</td><td>3</td><td class="yes">5</td><td><span class="badge badge-high">15</span></td></tr>
+              <tr><td>5</td><td>Cursor pagination for row-rich views (F5)</td><td>3</td><td>4</td><td><span class="badge badge-high">12</span></td></tr>
+              <tr><td>6</td><td>MetricsRecorder / WithMetrics / ApplyEncoded via the projectionhost wiring (F6, rides #3)</td><td>2</td><td>3</td><td><span class="badge badge-medium">6</span></td></tr>
+              <tr><td>7</td><td>One-time pgengine swap smoke test of the DeploymentConfig claim (F7)</td><td>2</td><td>3</td><td><span class="badge badge-medium">6</span></td></tr>
+              <tr><td>8</td><td>Upstream conversation: system event adapter over an external SeekableJournal (F4 strategic)</td><td>4</td><td>1</td><td><span class="badge badge-medium">4</span></td></tr>
+              <tr><td>9</td><td>Decide consumer-dispatcher fate together with P5 cadence (F8 &mdash; existing BLOCKED row)</td><td>3</td><td>1</td><td><span class="badge badge-low">3</span></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="conclusion">
+          <h2><span class="num">05</span>Conclusion</h2>
+          <p>
+            Adoption is genuine on the read side and exactly where it is hardest to fake
+            (planned tables, typed pushdown, watcher/SSE), version discipline is perfect,
+            and there are no anti-patterns &mdash; the engineering that exists is sound. The
+            gap is concentrated and structural: the projection&rsquo;s <em>operational</em>
+            machinery (durability, poison handling, health) was rebuilt by hand inside
+            readmodel instead of taken from projectionhost/system, and the aggregate read
+            path ignores the module&rsquo;s flagship counter pattern. Both top fixes deepen
+            usage of the two modules the owner named, both are small relative to P5&rsquo;s
+            already-planned deletions, and landing them <em>before</em> the P5 docs truth
+            pass means the endgame ADR gets to describe the finished shape rather than the
+            interim one.
+          </p>
+          <div class="callout callout-teal">
+            <strong>Single next action</strong>
+            Land opportunities 1+2 together as the P5 dual-tally collapse: Delta counters
+            replace both tallies, and the cursor gains a durable home. Everything else on
+            the list composes on top of that seam.
+          </div>
+        </section>
+
+        <section id="appendix">
+          <h2><span class="num">06</span>Appendix</h2>
+          <p>
+            Method: full import survey (rg over internal/, cmd/), line-level reading of
+            readmodel/composition/journal-cqrs and their cmd/tq consumption sites, upstream
+            surface mapping from READMEs/COOKBOOK/source of metaengine, system,
+            projectionhost, queue in /home/lars/projects/go-cqrs-lite, tag comparison
+            against go.mod pins, and one read-only measurement of the production dogfood
+            journal (9,523 facts / 805 tasks / 12.3&nbsp;MB). Related:
+            docs/planning/2026-10-03_platform-migration-endgame.md (P5 items),
+            docs/status/2026-10-05_09-15_* and _10-15_* (session context).
+          </p>
+          <table class="compare">
+            <thead>
+              <tr>
+                <th>Capability</th>
+                <th>Status</th>
+                <th>Finding</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Planned tables + columnar layout</td><td class="yes">Fully leveraged</td><td>&mdash;</td></tr>
+              <tr><td>Declarative filter/sort pushdown</td><td class="yes">Fully leveraged</td><td>&mdash;</td></tr>
+              <tr><td>TypedReader / QueryBuilder</td><td class="yes">Fully leveraged</td><td>&mdash;</td></tr>
+              <tr><td>Watcher + ServeSSE</td><td class="yes">Fully leveraged</td><td>&mdash;</td></tr>
+              <tr><td>Persistence / durability profile</td><td class="yes">Fully leveraged</td><td>&mdash;</td></tr>
+              <tr><td>system lifecycle (GracefulClose)</td><td class="yes">Fully leveraged</td><td>&mdash;</td></tr>
+              <tr><td>Delta aggregates (counters)</td><td class="no">Missed</td><td>F2</td></tr>
+              <tr><td>Durable checkpoints / projectionhost</td><td class="no">Missed</td><td>F1</td></tr>
+              <tr><td>Health / Doctor / engine stats</td><td class="no">Missed</td><td>F3</td></tr>
+              <tr><td>Cursor pagination</td><td class="no">Missed</td><td>F5</td></tr>
+              <tr><td>Observability hooks / ApplyEncoded</td><td class="no">Missed</td><td>F6</td></tr>
+              <tr><td>system projections (DomainConfig)</td><td>Partial &mdash; justified</td><td>F4</td></tr>
+              <tr><td>Engine-swap surface</td><td>Partial</td><td>F7</td></tr>
+              <tr><td>TieredStore / SwapEngine / graph / vector / AsOf</td><td>N/A today</td><td>&mdash;</td></tr>
+              <tr><td>system timers / cqrs.yaml / multi-bus</td><td>N/A (runactor ruling)</td><td>&mdash;</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <footer class="footer">
+          <p>
+            Generated 2026-10-05 &middot; Reviewed against metaengine v4.16.0, system v4.10.1,
+            queue family v4.0.1 (all latest tags) &middot; Every claim verified against source
+            where cited &middot; Adoption score 58/100 (impact-weighted)
+          </p>
+        </footer>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        if (!("IntersectionObserver" in window)) return;
+        var nav = document.querySelector("[data-nav]");
+        if (!nav) return;
+        var links = nav.querySelectorAll('a[href^="#"]');
+        var ids = Array.from(links).map(function (l) {
+          return l.getAttribute("href").slice(1);
+        });
+        var sections = ids
+          .map(function (id) {
+            return document.getElementById(id);
+          })
+          .filter(Boolean);
+        if (!sections.length) return;
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                links.forEach(function (link) {
+                  link.classList.toggle(
+                    "active",
+                    link.getAttribute("href") === "#" + entry.target.id,
+                  );
+                });
+              }
+            });
+          },
+          { rootMargin: "-80px 0px -60% 0px", threshold: 0 },
+        );
+        sections.forEach(function (s) {
+          observer.observe(s);
+        });
+      })();
+    </script>
+  </body>
+</html>
