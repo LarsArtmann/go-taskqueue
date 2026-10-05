@@ -176,7 +176,7 @@ func (m *Model) loadCursor(ctx context.Context) error {
 
 	rows, err := metaengine.NewReader[TaskRow](m.store, tasksCollection).Count(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("readmodel: probe projection rows: %w", err)
 	}
 
 	if rows == 0 {

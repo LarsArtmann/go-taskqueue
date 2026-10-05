@@ -3,6 +3,7 @@ package readmodel
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	metaengine "github.com/larsartmann/go-cqrs-lite/metaengine/v4"
 )
@@ -50,12 +51,15 @@ func (m *Model) Stats(
 
 	byProject := map[string]map[string]int{}
 
-	for _, st := range statuses {
-		stOpts := append(opts, metaengine.WithFilter("status", metaengine.FilterEq, st))
+	for _, status := range statuses {
+		stOpts := slices.Concat(
+			opts,
+			[]metaengine.ScanOption{metaengine.WithFilter("status", metaengine.FilterEq, status)},
+		)
 
 		groups, err := groupedInts(ctx, reader, "project", stOpts)
 		if err != nil {
-			return nil, nil, fmt.Errorf("readmodel: project counts %s: %w", st, err)
+			return nil, nil, fmt.Errorf("readmodel: project counts %s: %w", status, err)
 		}
 
 		for p, n := range groups {
@@ -63,7 +67,7 @@ func (m *Model) Stats(
 				byProject[p] = map[string]int{}
 			}
 
-			byProject[p][st] = n
+			byProject[p][status] = n
 		}
 	}
 

@@ -497,6 +497,7 @@ func TestStatsParityLifecycle(t *testing.T) {
 // unchanged journal.
 type countingStore struct {
 	queue.Store
+
 	factsSeen int64
 }
 
@@ -508,7 +509,7 @@ func (c *countingStore) Facts(
 	facts, err := c.Store.Facts(ctx, after, limit)
 	c.factsSeen += int64(len(facts))
 
-	return facts, err //nolint:wrapcheck // transparent counting wrapper
+	return facts, err
 }
 
 // TestDurableCursorSkipsReplay pins the WithDurableCursor contract: the
