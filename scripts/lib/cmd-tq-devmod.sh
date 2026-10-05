@@ -12,6 +12,16 @@ cmdtq_devmod() {
 	local root dir
 	root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 	dir="$root/cmd/tq"
+	# Preflight (M17.2): the committed go.mod losing its module declaration
+	# (a bad merge, a sed accident) otherwise surfaces as a confusing
+	# downstream tidy/build failure. Fail HERE, naming the file and the fix.
+	if ! grep -q '^module github.com/larsartmann/go-taskqueue/cmd/tq$' "$dir/go.mod"; then
+		echo "build-tq: cmd/tq/go.mod lost its module declaration" >&2
+		echo "  expected the line: module github.com/larsartmann/go-taskqueue/cmd/tq" >&2
+		echo "  restore it (git restore cmd/tq/go.mod) and retry" >&2
+
+		return 1
+	fi
 	# The tidy below must not inherit a pinned GOTOOLCHAIN=local on a binary
 	# older than the go.mod floor: the failure is swallowed (|| true) and the
 	# gate then dies at build with "updates to go.mod needed". Same env-lie
