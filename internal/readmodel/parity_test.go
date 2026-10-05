@@ -327,6 +327,170 @@ func TestParityWithStoreProjection(t *testing.T) {
 	}
 }
 
+// TestStatsParityLifecycle pins the GROUP-BY-pushdown stats surface
+// (Model.Stats/StatusCounts/ProjectCounts) against the store's own count
+// reads over the full lifecycle — including the transitions with no
+// statically knowable from-status (rescue re-enqueues from dead, dismiss
+// cancels from dead), which are exactly why the counts derive from the
+// folded rows instead of a stateless event-counter projection.
+func TestStatsParityLifecycle(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	f := newFixture(t)
+
+	t1 := f.enqueue("web", "sh", 6, "todo:s1") // → completed
+	t2 := f.enqueue("web", "agent", 5, "todo:s2") // → pending (failed retry)
+	t3 := f.enqueue("api", "sh", 4, "todo:s3") // → dead
+	t4 := f.enqueue("api", "sh", 3, "todo:s4") // → cancelled while pending
+	t5 := f.enqueue("web", "sh", 2, "todo:s5") // → pending (requeued, parked)
+	t6 := f.enqueue("api", "sh", 1, "todo:s6") // → dead → rescued → pending
+	t7 := f.enqueue("api", "sh", 0, "todo:s7") // → dead → dismissed → cancelled
+
+	f.must("cancel t4", f.store.Cancel(ctx, t4.ID, "not needed"))
+
+	tk, claim := f.claim()
+	if tk.ID != t1.ID {
+		t.Fatalf("claim 1 = %s, want t1", tk.ID)
+	}
+
+	f.must("complete t1", f.store.Complete(ctx, t1.ID, claim, jsontext.Value(`{}`)))
+
+	tk, claim = f.claim()
+	if tk.ID != t2.ID {
+		t.Fatalf("claim 2 = %s, want t2", tk.ID)
+	}
+
+	f.must("fail t2", f.store.Fail(ctx, t2.ID, claim, "boom", time.Hour, nil))
+
+	tk, claim = f.claim()
+	if tk.ID != t3.ID {
+		t.Fatalf("claim 3 = %s, want t3", tk.ID)
+	}
+
+	f.must("dead t3", f.store.FailPermanent(ctx, t3.ID, claim, "fatal", nil))
+
+	tk, claim = f.claim()
+	if tk.ID != t5.ID {
+		t.Fatalf("claim 4 = %s, want t5", tk.ID)
+	}
+
+	f.must(
+		"requeue t5",
+		f.store.Requeue(ctx, t5.ID, claim, "env not ready", time.Hour, false, queue.RequeueClassPreflight),
+	)
+
+	tk, claim = f.claim()
+	if tk.ID != t6.ID {
+		t.Fatalf("claim 5 = %s, want t6", tk.ID)
+	}
+
+	f.must("dead t6", f.store.FailPermanent(ctx, t6.ID, claim, "fatal", nil))
+
+	tk, claim = f.claim()
+	if tk.ID != t7.ID {
+		t.Fatalf("claim 6 = %s, want t7", tk.ID)
+	}
+
+	f.must("dead t7", f.store.FailPermanent(ctx, t7.ID, claim, "fatal", nil))
+
+	// The from-status-ambiguous transitions: rescue re-enqueues the dead
+	// t6 (fresh attempt budget), dismiss cancels the dead t7.
+	f.must("rescue t6", f.store.RescueDead(ctx, t6.ID, 3))
+	f.must("dismiss t7", f.store.DismissDead(ctx, t7.ID, "superseded", "test"))
+
+	f.resync()
+
+	wantStatus := map[string]int{
+		"pending":   3, // t2 (failed retry), t5 (requeued), t6 (rescued)
+		"completed": 1, // t1
+		"dead":      1, // t3
+		"cancelled": 2, // t4, t7 (dismissed)
+	}
+
+	wantProject := map[string]map[string]int{
+		"web": {"pending": 2, "completed": 1},       // t2, t5 / t1
+		"api": {"pending": 1, "dead": 1, "cancelled": 2}, // t6 / t3 / t4, t7
+	}
+
+	byStatus, byProject, err := f.model.Stats(ctx, readmodel.TaskFilter{})
+	f.must("stats", err)
+
+	if fmt.Sprint(byStatus) != fmt.Sprint(wantStatus) {
+		t.Errorf("stats byStatus = %v, want %v", byStatus, wantStatus)
+	}
+
+	if fmt.Sprint(byProject) != fmt.Sprint(wantProject) {
+		t.Errorf("stats byProject = %v, want %v", byProject, wantProject)
+	}
+
+	// Store parity: the projection counters equal the store's own GROUP
+	// BY surfaces exactly.
+	storeStatus, err := f.store.StatusCounts(ctx)
+	f.must("store status counts", err)
+
+	for st, n := range storeStatus {
+		if byStatus[string(st)] != n {
+			t.Errorf("status %s: model %d, store %d", st, byStatus[string(st)], n)
+		}
+	}
+
+	storeProject, err := f.store.ProjectCounts(ctx)
+	f.must("store project counts", err)
+
+	for p, m := range storeProject {
+		for st, n := range m {
+			if byProject[p][string(st)] != n {
+				t.Errorf("project %s status %s: model %d, store %d",
+					p, st, byProject[p][string(st)], n)
+			}
+		}
+	}
+
+	// Filtered stats: a project filter narrows both matrices.
+	byStatus, byProject, err = f.model.Stats(ctx, readmodel.TaskFilter{Project: new("api")})
+	f.must("stats(api)", err)
+
+	wantAPI := map[string]int{"pending": 1, "dead": 1, "cancelled": 2}
+	if fmt.Sprint(byStatus) != fmt.Sprint(wantAPI) {
+		t.Errorf("stats(api) byStatus = %v, want %v", byStatus, wantAPI)
+	}
+
+	if len(byProject) != 1 || fmt.Sprint(byProject["api"]) != fmt.Sprint(wantAPI) {
+		t.Errorf("stats(api) byProject = %v, want only api %v", byProject, wantAPI)
+	}
+
+	// A status filter leaves only that status's counts.
+	byStatus, byProject, err = f.model.Stats(
+		ctx,
+		readmodel.TaskFilter{Status: new(string(task.Dead))},
+	)
+	f.must("stats(dead)", err)
+
+	if fmt.Sprint(byStatus) != fmt.Sprint(map[string]int{"dead": 1}) {
+		t.Errorf("stats(dead) byStatus = %v, want dead:1", byStatus)
+	}
+
+	if len(byProject) != 1 || byProject["api"]["dead"] != 1 {
+		t.Errorf("stats(dead) byProject = %v, want api dead:1", byProject)
+	}
+
+	// The single-matrix APIs stay consistent with Stats.
+	sc, err := f.model.StatusCounts(ctx)
+	f.must("status counts", err)
+
+	if fmt.Sprint(sc) != fmt.Sprint(wantStatus) {
+		t.Errorf("status counts = %v, want %v", sc, wantStatus)
+	}
+
+	pc, err := f.model.ProjectCounts(ctx)
+	f.must("project counts", err)
+
+	if fmt.Sprint(pc) != fmt.Sprint(wantProject) {
+		t.Errorf("project counts = %v, want %v", pc, wantProject)
+	}
+}
+
 // TestParkedByProjection pins the class-park surface: the requeue
 // evidence's class + window land on the row, the next claim clears them,
 // and a later park replaces the class — the exactness `tq top`,

@@ -1759,6 +1759,8 @@ func cmdStats(args []string) error {
 			return err
 		}
 	} else {
+		var err error
+
 		byStatus, byProject, err = storeStats(ctx, store, filter)
 		if err != nil {
 			return err

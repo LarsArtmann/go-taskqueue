@@ -75,7 +75,7 @@ func (m *Model) Stats(
 func (m *Model) StatusCounts(ctx context.Context) (map[string]int, error) {
 	counts, _, err := m.Stats(ctx, TaskFilter{})
 
-	return counts, err //nolint:wrapcheck // Stats already wraps the engine error
+	return counts, err
 }
 
 // ProjectCounts counts the ledger rows per project per status — the same
@@ -84,7 +84,7 @@ func (m *Model) StatusCounts(ctx context.Context) (map[string]int, error) {
 func (m *Model) ProjectCounts(ctx context.Context) (map[string]map[string]int, error) {
 	_, counts, err := m.Stats(ctx, TaskFilter{})
 
-	return counts, err //nolint:wrapcheck // Stats already wraps the engine error
+	return counts, err
 }
 
 // groupedInts runs one GROUP BY COUNT pushdown and converts the engine's
