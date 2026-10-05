@@ -2043,6 +2043,22 @@ func printConsumerLag(store *sqlite.Store) {
 // grouped maps beats any filtered re-query. This is the
 // --read-model=false escape hatch; the default path reads the projection
 // counters (readmodel.Model.Stats).
+// narrowCounts narrows a grouped count map to the filter's status: a
+// nil status keeps every group, otherwise only the named one survives.
+func narrowCounts[K ~string](counts map[K]int, status *string) map[string]int {
+	out := make(map[string]int, len(counts))
+
+	for key, n := range counts {
+		if status != nil && string(key) != *status {
+			continue
+		}
+
+		out[string(key)] = n
+	}
+
+	return out
+}
+
 func storeStats(
 	ctx context.Context,
 	store *sqlite.Store,
@@ -2058,32 +2074,17 @@ func storeStats(
 		return nil, nil, err
 	}
 
-	byStatus := map[string]int{}
-	for st, n := range statusCounts {
-		if filter.Status != nil && st != *filter.Status {
-			continue
-		}
-
-		byStatus[string(st)] = n
-	}
+	byStatus := narrowCounts(statusCounts, filter.Status)
 
 	byProject := map[string]map[string]int{}
-	for p, m := range projectCounts {
-		if filter.Project != nil && p != *filter.Project {
+
+	for project, counts := range projectCounts {
+		if filter.Project != nil && project != *filter.Project {
 			continue
 		}
 
-		row := map[string]int{}
-		for st, n := range m {
-			if filter.Status != nil && st != *filter.Status {
-				continue
-			}
-
-			row[string(st)] = n
-		}
-
-		if len(row) > 0 {
-			byProject[p] = row
+		if row := narrowCounts(counts, filter.Status); len(row) > 0 {
+			byProject[project] = row
 		}
 	}
 
