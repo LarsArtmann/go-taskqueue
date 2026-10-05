@@ -89,6 +89,10 @@ func New(cfg Config) *Limiter {
 
 // Locked reports the remaining lockout for key (false when none), pruning
 // the entry on contact when it went idle past IdleKeep unlocked.
+//
+// art-dupl:accept mutex prolog: Lock/defer-Unlock/pruneLocked opens every
+// locked section; the lock must be held by the public method, so the prolog
+// cannot move into a helper.
 func (l *Limiter) Locked(key string) (time.Duration, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -108,6 +112,10 @@ func (l *Limiter) Locked(key string) (time.Duration, bool) {
 
 // Add records one failed attempt for key; at MaxHits the key is locked out
 // and OnLock (when set) fires once.
+//
+// art-dupl:accept mutex prolog: Lock/defer-Unlock/pruneLocked opens every
+// locked section; the lock must be held by the public method, so the prolog
+// cannot move into a helper.
 func (l *Limiter) Add(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -134,6 +142,10 @@ func (l *Limiter) Add(key string) {
 }
 
 // Reset clears key's strikes after a success.
+//
+// art-dupl:accept mutex prolog: Lock/defer-Unlock/pruneLocked opens every
+// locked section; the lock must be held by the public method, so the prolog
+// cannot move into a helper.
 func (l *Limiter) Reset(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

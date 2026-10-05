@@ -37,6 +37,9 @@ func NewCommandExecutor(template string) *CommandExecutor {
 }
 
 // Execute renders the template (or unwraps the payload) and runs it.
+//
+// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr
+// is the os/exec idiom; a seam would outlive the three lines it saves.
 func (e *CommandExecutor) Execute(ctx context.Context, t task.Task) error {
 	line, err := e.render(t)
 	if err != nil {

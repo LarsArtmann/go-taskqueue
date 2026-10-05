@@ -124,6 +124,10 @@ type ReviewExecutor struct {
 // request_changes both succeed; malformed output fails the attempt
 // (retryable — the model may comply on a retry), input-contract misses are
 // permanent, dirty trees are preflight requeues.
+//
+// art-dupl:accept executor entry seam: payload validation + agentRepo entry
+// over the shared decode/requireClean seams; the payload types (and their
+// required fields) differ by design.
 func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 	p, err := decodePayload[ReviewPayload](t, "review", "{repo, reviewed_task, item}")
 	if err != nil {

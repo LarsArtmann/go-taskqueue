@@ -2606,6 +2606,10 @@ func resultDetail(t task.Task, trail []journal.Fact) any {
 	return nil
 }
 
+// cmdDLQ inspects and rescues the dead-letter queue.
+//
+// art-dupl:accept subcommand prolog: dbFlag + Parse-and-return is the
+// uniform command-flag opening; the flags above differ per command.
 func cmdDLQ(args []string) error {
 	fs := flag.NewFlagSet("dlq", flag.ExitOnError)
 	rescue := fs.String("rescue", "", "re-queue this dead task ID")
@@ -2802,6 +2806,10 @@ func cmdCancel(args []string) error {
 	}
 }
 
+// cmdFacts prints journal facts with seq/type filters.
+//
+// art-dupl:accept subcommand prolog: dbFlag + Parse-and-return is the
+// uniform command-flag opening; the flags above differ per command.
 func cmdFacts(args []string) error {
 	fs := flag.NewFlagSet("facts", flag.ExitOnError)
 	after := fs.Int64("after", 0, "only facts with seq > this")
@@ -3005,6 +3013,10 @@ func formatFact(fact journal.Fact) string {
 // `set` rewrites one cursor — a rewind forces replay, and the seq-derived
 // idempotency keys downstream make replay safe (the bridge re-sends
 // bit-identical requests).
+//
+// art-dupl:accept subcommand wiring: each branch owns its FlagSet, db flag,
+// parse, open and defer-Close — the no-framework CLI idiom; the branches
+// differ in everything after the prolog.
 func cmdWatermarks(args []string) error {
 	if len(args) == 0 {
 		return errors.New("usage: tq watermarks show | set CONSUMER SEQ")

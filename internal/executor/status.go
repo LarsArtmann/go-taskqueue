@@ -98,6 +98,10 @@ type StatusExecutor struct {
 // reporter commits, so it can break the tree it reports on). Malformed
 // output, a missing file or a failed verify is a retryable failure; payload
 // misses are permanent; dirty trees are preflight requeues.
+//
+// art-dupl:accept executor entry seam: payload validation + agentRepo entry
+// over the shared decode/requireClean seams; the payload types (and their
+// required fields) differ by design.
 func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	payload, err := decodePayload[StatusPayload](t, "status", "{repo, project, completed}")
 	if err != nil {

@@ -517,6 +517,10 @@ func verifyAgainst(ctx context.Context, src *sql.DB, toPath string, report *Repo
 }
 
 // oldStatusCounts mirrors the hand-rolled StatusCounts query.
+//
+// art-dupl:accept legacy-schema reader: the frozen pre-flip schema is read
+// with the database/sql idiom (query prolog, scan-loop tail); the source DB
+// is the migration source, so companion reads cannot replace it.
 func oldStatusCounts(ctx context.Context, src *sql.DB) (map[task.Status]int, error) {
 	rows, err := src.QueryContext(ctx, `SELECT status, COUNT(*) FROM tasks GROUP BY status`)
 	if err != nil {
@@ -903,6 +907,11 @@ func oldTailsByTaskID(ctx context.Context, src *sql.DB) (map[string][]journal.Fa
 
 // --- source-side readers (the frozen old schema, read-only) ---
 
+// oldAllFacts reads the full frozen pre-flip facts table in seq order.
+//
+// art-dupl:accept legacy-schema reader: the frozen pre-flip schema is read
+// with the database/sql idiom (query prolog, scan-loop tail); the source DB
+// is the migration source, so companion reads cannot replace it.
 func oldAllFacts(ctx context.Context, src *sql.DB) ([]journal.Fact, error) {
 	rows, err := src.QueryContext(ctx,
 		`SELECT seq, time, task_id, type, owner, attempt, error, detail FROM facts ORDER BY seq ASC`)

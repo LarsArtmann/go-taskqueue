@@ -285,6 +285,10 @@ func SaveWatermark(ctx context.Context, r Runner, consumer string, seq int64) er
 }
 
 // ListWatermarks returns every consumer cursor, by consumer name.
+//
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// the scan-loop tail are the database/sql idiom; the defer must live in the
+// consuming frame, so no seam can shorten this.
 func ListWatermarks(ctx context.Context, r Runner) ([]queue.WatermarkEntry, error) {
 	rows, err := r.QueryContext(ctx,
 		`SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`)
@@ -358,6 +362,10 @@ func PriorityScore(ctx context.Context, r Runner, itemKey string) (queue.Priorit
 }
 
 // PriorityScores returns every cached verdict, ordered by item key.
+//
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// the scan-loop tail are the database/sql idiom; the defer must live in the
+// consuming frame, so no seam can shorten this.
 func PriorityScores(ctx context.Context, r Runner) ([]queue.PriorityScore, error) {
 	rows, err := r.QueryContext(ctx, `
 		SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at
@@ -407,6 +415,10 @@ func DeletePriorityScores(ctx context.Context, r Runner, itemKeys []string) (int
 }
 
 // StatusCounts counts tasks per status in one GROUP BY.
+//
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// the scan-loop tail are the database/sql idiom; the defer must live in the
+// consuming frame, so no seam can shorten this.
 func StatusCounts(ctx context.Context, r Runner) (map[task.Status]int, error) {
 	rows, err := r.QueryContext(ctx, `SELECT status, COUNT(*) FROM tasks GROUP BY status`)
 	if err != nil {
@@ -432,6 +444,10 @@ func StatusCounts(ctx context.Context, r Runner) (map[task.Status]int, error) {
 }
 
 // ProjectCounts counts tasks per project per status in one GROUP BY.
+//
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// the scan-loop tail are the database/sql idiom; the defer must live in the
+// consuming frame, so no seam can shorten this.
 func ProjectCounts(ctx context.Context, r Runner) (map[string]map[task.Status]int, error) {
 	rows, err := r.QueryContext(ctx,
 		`SELECT project, status, COUNT(*) FROM tasks GROUP BY project, status`)

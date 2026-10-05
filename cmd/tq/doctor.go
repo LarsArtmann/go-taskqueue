@@ -433,6 +433,10 @@ func doctorMarkOrphans(ctx context.Context, store queue.Store) []checkResult {
 // durable signal is directory existence: a PENDING task for a project whose
 // directory is gone (moved/renamed/deleted) can never be claimed by a
 // harvest-driven pool — the tasks sit until an operator cancels them.
+//
+// art-dupl:accept check prolog: every doctor check lists pending tasks and
+// maps the failure onto its own checkResult name; a helper trades the check
+// name for the one saved line.
 func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
 	if projectsDir == "" {
 		return nil
@@ -500,6 +504,10 @@ func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir stri
 // audit as a repeatable check, not an investigation). Warn, never fail:
 // a pin that a current .tq-verify overrides is latent, not firing, and
 // cancelling queued work is an operator decision (tq cancel).
+//
+// art-dupl:accept check prolog: every doctor check lists pending tasks and
+// maps the failure onto its own checkResult name; a helper trades the check
+// name for the one saved line.
 func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
 	pending := task.Pending
 	tasks, err := store.List(ctx, queue.Filter{Status: &pending})

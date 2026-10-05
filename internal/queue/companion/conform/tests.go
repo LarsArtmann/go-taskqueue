@@ -503,6 +503,11 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 	}
 }
 
+// TestUpdatePendingPriority stores a new pending priority, a marker and a
+// reason on a pending task.
+//
+// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get — the
+// assertion shape this suite repeats by design.
 func TestUpdatePendingPriority(t *testing.T) {
 	t.Parallel()
 
@@ -1490,6 +1495,9 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 // detail, so downstream readers distinguish the environmental classes
 // without re-parsing reason text; an empty class is omitted entirely
 // (omitempty) and read back as RequeueClassUnknown.
+//
+// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask
+// fetch — the assertion shape this suite repeats by design.
 func TestRequeueFactCarriesClass(t *testing.T) {
 	if !active.Caps.RequeueClass {
 		t.Skip(
@@ -3063,6 +3071,9 @@ func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
 // TestRescueDeadEmitsRescueEnqueue pins the rescue-fact wire contract:
 // RescueDead re-emits task.enqueued (NOT task.requeued) with the rescue
 // marker, so a replay treats rescue as a budget reset, not an attempt burn.
+//
+// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask
+// fetch — the assertion shape this suite repeats by design.
 func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
 	ctx, s := freshStore(t)
 
@@ -3218,6 +3229,11 @@ func assertAnsweredFact(t *testing.T, ctx context.Context, s Store, id task.ID) 
 	}
 }
 
+// TestRecordAnswerUnblocksParkedTask answers a parked question and asserts
+// the task re-enters pending with the answered fact recorded.
+//
+// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get — the
+// assertion shape this suite repeats by design.
 func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 	ctx, s := freshStore(t)
 
@@ -3298,6 +3314,11 @@ func TestRecordAnswerReplayIsNoop(t *testing.T) {
 	}
 }
 
+// TestRecordAnswerSecondQuestionAppends joins a second question's answer
+// onto the same answered array after the re-claim parks the task again.
+//
+// art-dupl:accept conformance scenario prolog: freshStore + parkOnQuestion +
+// RecordAnswer is the parked-question setup, repeated per scenario.
 func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 	ctx, s := freshStore(t)
 
@@ -3414,6 +3435,11 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 	wantAnsweredFact(t, trail)
 }
 
+// TestRecordAnswerRawPayloadFactOnly pins fact-only routing for raw
+// (non-object) payloads.
+//
+// art-dupl:accept conformance scenario prolog: freshStore + parkOnQuestion +
+// RecordAnswer is the parked-question setup, repeated per scenario.
 func TestRecordAnswerRawPayloadFactOnly(t *testing.T) {
 	ctx, s := freshStore(t)
 

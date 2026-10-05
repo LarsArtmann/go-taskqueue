@@ -362,6 +362,9 @@ func gofmtFlagged(ctx context.Context, repoDir string) ([]string, error) {
 }
 
 // gitRun runs git in dir and returns trimmed stdout+stderr.
+//
+// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr
+// is the os/exec idiom; a seam would outlive the three lines it saves.
 func gitRun(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir

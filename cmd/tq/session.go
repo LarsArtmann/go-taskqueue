@@ -141,6 +141,10 @@ func sessionSweep(args []string) error {
 	return nil
 }
 
+// sessionList prints begun/closed session pairs from the journal.
+//
+// art-dupl:accept subcommand wiring: db flag + parse + open + defer-Close is
+// the uniform store-command opening.
 func sessionList(args []string) error {
 	fs := flag.NewFlagSet("session list", flag.ExitOnError)
 	db := dbFlag(fs)
