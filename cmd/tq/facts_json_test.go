@@ -24,8 +24,14 @@ import (
 // in-place instead of growing the file further. 2026-10-04 (later the
 // same day) second reset 15,200 → 15,400: the S4 composition-module
 // topology row + the claim-time budget-gate note are net-new load-
-// bearing; same doctrine applies.
-const agentsDocMaxBytes = 15_400
+// bearing; same doctrine applies. 2026-10-05 third reset 15,400 →
+// 15,700: the guard-protocol clauses (facade-parity pre-commit ordering,
+// claim-path cheap-first) — and the size-guard reset RULES this comment
+// now pins: a reset is for net-new LOAD-BEARING knowledge only; formatter
+// padding is PRUNED (byte-identical content restored), never budgeted —
+// the 2026-10-05 table re-alignment incident grew the file +1,706 B of
+// pure alignment and was reverted to the compact form.
+const agentsDocMaxBytes = 15_700
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a

@@ -35,7 +35,8 @@ queue/postgres/ executor/ worker/` re-export internals via type aliases —
 the only external import surface; in-repo code imports `internal/…`
 directly. Facade-graph modules: require (real tag) + relative replace;
 facade tests import internals, never sibling facades; parity via
-`scripts/check-facade-parity.sh`; postgres `OpenWithPool` pools are
+`scripts/check-facade-parity.sh` — run it BEFORE staging (the pre-commit
+hook gates staged files only); postgres `OpenWithPool` pools are
 CALLER-OWNED. No go.work — replace-only (`go test ./internal/foo` from
 root fails by design — cd in). Release flow: docs/release/ (rc-captured
 proxy checks: facade @tag + /tmp sentinel probe).
@@ -147,7 +148,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   low-priority work starves behind aging).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   agent-pool sweeps once at start.
-- **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd is spent — requeue class `budget`, no burn, parked to midnight (cap) / 15m (cmd), outside env-streak.
+- **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd is spent — requeue class `budget`, no burn, parked to midnight (cap) / 15m (cmd), outside env-streak. Claim-path checks run CHEAP-FIRST (budget hook → preflight → executor) so a gated pool never pays process-spawn cost for a verdict the hook already knows.
 
 ## Conventions
 
