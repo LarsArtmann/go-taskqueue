@@ -687,6 +687,7 @@ func (e *DepBumpExecutor) run(
 		cmd.Dir = dir
 	}
 
+	// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr is the os/exec idiom.
 	var out bytes.Buffer
 
 	cmd.Stdout = &out

@@ -49,6 +49,7 @@ func (e *CommandExecutor) Execute(ctx context.Context, t task.Task) error {
 	cmd := exec.CommandContext(ctx, "sh", "-c", e.limited(line))
 	prepareProcessGroup(cmd) // cooperative cancel must kill the whole tree
 
+	// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr is the os/exec idiom.
 	var buf bytes.Buffer
 
 	cmd.Stdout = &buf
