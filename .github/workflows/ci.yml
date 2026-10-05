@@ -326,10 +326,12 @@ jobs:
             exit 1
           fi
           go install "github.com/securego/gosec/v2/cmd/gosec@$GOSEC_VERSION"
+          # shellcheck disable=SC2086 # GOSEC_EXCLUDES word-splits into the exclude-flag list by design
           "$(go env GOPATH)/bin/gosec" -quiet $GOSEC_EXCLUDES ./...
           mods="$(./scripts/for-each-module.sh)"
           for m in $mods; do
             echo "== $m"
+            # shellcheck disable=SC2086 # GOSEC_EXCLUDES word-splits into the exclude-flag list by design
             ( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/gosec" -quiet $GOSEC_EXCLUDES ./... ) || exit 1
           done
           {
