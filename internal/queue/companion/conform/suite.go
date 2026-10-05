@@ -1,5 +1,5 @@
-// Package conform holds the shared conformance suite for the three S1
-// spike queue backends (sqlitev4, postgresv4, cqrsqlite). Every backend
+// Package conform holds the shared conformance suite for the S1
+// spike queue backends (sqlitev4, postgresv4). Every backend
 // runs the SAME tests through a thin harness: the backend owns how a
 // fresh isolated database is created (FreshDSN), how a Store attaches to
 // a dsn (OpenOn), and how raw seeding SQL reaches the engine (Exec/Begin,

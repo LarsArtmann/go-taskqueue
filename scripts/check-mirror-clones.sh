@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cross-backend mirror-clone gate (dedup ruling 2026-09-26: accepts ≈ 0).
 #
-# The ADR-0019 spike adapters (internal/queue/{sqlitev4,postgresv4,cqrsqlite})
+# The ADR-0019 spike adapters (internal/queue/{sqlitev4,postgresv4})
 # carried near-identical companion surfaces. The shared production surface
 # lives in internal/queue/companion since the 2026-09-26 extraction window;
 # the gate fails on any clone group spanning more than one backend directory
@@ -43,7 +43,6 @@ patterns = [
     r"internal/queue/postgres$",
     r"internal/queue/postgres/",
     r"internal/queue/postgresv4",
-    r"internal/queue/cqrsqlite",
     r"queue/sqlite/",
     r"queue/postgres/",
 ]

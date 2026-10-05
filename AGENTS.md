@@ -55,7 +55,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014) |
 | `internal/queue` | Store contract, Filter, Queue facade |
 | `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform` |
-| `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` | tq Store over the go-cqrs-lite queue engines |
+| `internal/queue/{sqlitev4,postgresv4}` | tq Store over the go-cqrs-lite queue engines |
 | `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity |
 | `internal/readmodel` | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON) |
 | `internal/composition` | S4 root: `system.New` over the projection home (`tq serve`) |
@@ -251,7 +251,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 ## Relation to other projects
 
 - **go-cqrs-lite IS the platform (ADR-0019)**: adoption in the
-  `{sqlitev4,postgresv4,cqrsqlite}` + `companion` modules;
+  `{sqlitev4,postgresv4}` + `companion` modules;
   `internal/journal/cqrs` PROPRIETARY, read-only — never extend or import
   below root. **Backward auto-upgrade (endgame P1)**: facade Open converges
   a legacy pre-flip DB in place (snapshot `<db>.legacy-*.bak`, verify,

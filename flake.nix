@@ -19,8 +19,8 @@
     # Tarball-built Go toolchain constants (single source — the go-standard
     # option AND the perSystem formatter wrapper below must never drift).
     let
-      goTarballVersion = "1.27.1";
-      goTarballHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+      goToolchainVersion = "1.27.1";
+      goToolchainHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
     in
     inputs@{
       flake-parts,
@@ -47,8 +47,8 @@
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
-        goTarballVersion = goTarballVersion;
-        goTarballHash = goTarballHash;
+        goTarballVersion = goToolchainVersion;
+        goTarballHash = goToolchainHash;
         description = "Projects-aware task work queue: embedded SQLite journal, lease-based claims, DAG deps, DLQ, pluggable executors";
         # ADR-0017: cmd/tq is its own replace-free module (proxy
         # installability). modRoot + subPackages route the hermetic build
@@ -152,13 +152,13 @@
           # builds for the package (that goPkg is not exposed to consumers,
           # so the formatters below rebuild it — keep the hash in sync with
           # goTarballHash above).
-          inherit goTarballVersion;
+          inherit goToolchainVersion;
           goTarballPkg = pkgs.go_1_26.overrideAttrs (
             finalAttrs: _prev: {
-              version = goTarballVersion;
+              version = goToolchainVersion;
               src = pkgs.fetchurl {
                 url = "https://go.dev/dl/go${finalAttrs.version}.src.tar.gz";
-                inherit goTarballHash;
+                hash = goToolchainHash;
               };
               patches = builtins.filter (
                 p: builtins.match "go_no_vendor_checks-.*[.]patch" (baseNameOf p) == null
