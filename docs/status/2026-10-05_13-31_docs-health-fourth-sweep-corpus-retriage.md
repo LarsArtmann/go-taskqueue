@@ -15,8 +15,7 @@
    triage in date buckets (09-14 ×18, 09-15..17 ×14, 09-20 ×15, 09-21..27
    ×11, 09-28 ×11, 09-29..30 ×15, planning/feedback ×8 — every item verdict
    verified at HEAD with file:line evidence, line numbers grep-derived per
-   the 10-01 §e2 contract). The remaining 41 older files (09-08..09-13,
-   09-18..09-19) got a mechanical delta-triage: item inventory extracted via
+   the 10-01 §e2 contract). The remaining 29 older files (09-08..09-13) got a mechanical delta-triage: item inventory extracted via
    `grep -nE`, fully-struck anomaly scan (one candidate deep-read, ruled
    KEEP-OPEN below), October-ship cross-check — none became fully-resolved;
    they remain the documented KEEP-OPEN floor (absence of a marker IS the
@@ -38,7 +37,7 @@
    All 3 canonicals verified to exist in `archived/` before the move; 4
    index rows repointed to backticked `archived/…`; counter 572→576.
 3. **Harvest: 32 `[x]` rows purged** (DONE-DELETED standing ruling — the
-   10-01 precedent), **18 new rows minted** in a dated docs-health harvest
+   10-01 precedent), **22 new rows minted** in a dated docs-health harvest
    section (budget-meter reachability, forensics filters, lapsed 429 retro
    checkpoint, session-close polish bundle, stale doc-comment sweep, LogPath
    render-pin + templ dedup, prioritize badge parity, dead-sha gate
@@ -79,20 +78,23 @@
    evidence archive. No numbered open items; nothing moved.
 8. **Gates at close**: check-todo-list ok (0 unblocked owner-gated),
    check-status-index ok, check-doc-refs ok, check-agents-size ok
-   (15,694/15,700), plus the root battery cited in §f below.
+   (15,694/15,700), harvest module gate ok (GOWORK=off), root build+vet
+   rc=0, root `go test ./... -race -count=1` rc=0 (17 ok; log
+   /tmp/tq-root-battery-2026-10-05.log, captured to file per convention,
+   at HEAD with all docs edits in tree).
 
 ## b) PARTIALLY DONE
 
 1. **~117 live 2026-0* reports remain KEEP-OPEN by convention** — the
    standing floor. Their unstruck residue stayed visible; the highest-value
-   unrowed items were harvested this pass (18 rows), the long tail remains
+   unrowed items were harvested this pass (22 rows), the long tail remains
    in-file per the ratified bar (routed = visible in TODO_LIST; the rest is
    report-resident).
-2. **Sub-agent coverage was 89/125 files, not 125/125**: sustained 429 waves
+2. **Sub-agent coverage was 106/125 files, not 125/125**: sustained 429 waves
    (three serial relaunch attempts) forced the local delta-triage fallback
    for 09-08..09-13 + 09-18..09-19. That fallback proves class-level
    verdicts (KEEP-OPEN floor) but not per-item line-verified verdicts for
-   those 41 files — they inherit the 10-02 sweep's per-item triage.
+   those 29 files — they inherit the 10-02 sweep's per-item triage.
 3. **The 2026-09-11_23-16 sweep report** (the one fully-struck anomaly):
    its 50-row §f pointer table is unstruck by design (pointer layer over
    that era's TODO section); most rows have since shipped (secrets pass,
