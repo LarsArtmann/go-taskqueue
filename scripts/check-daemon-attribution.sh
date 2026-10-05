@@ -70,7 +70,7 @@ run_gate() {
 				fi
 			else
 				subject=${row#*'"subject":"'}
-				subject=${subject%%'",\"class":'*}
+				subject=${subject%%'","class":'*}
 				fail=1
 				new_hits=$((new_hits + 1))
 				echo "NEW UNATTRIBUTED SWEEP: $sha \"$subject\""
