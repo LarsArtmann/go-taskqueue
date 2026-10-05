@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 ### Added
+- **Terminal-write retry in the worker pool** (2026-10-05): every store
+  transition write (complete/fail/requeue/cancel) now retries in-process
+  on busy-class errors (3 attempts, 50–400 ms) — a lost terminal write
+  used to orphan the task in Running until lease-expiry reclaim re-ran
+  it, for a completed agent task a paid turn executed twice (the
+  root cause of the exactly-once concurrency flake). SQLITE_BUSY fires
+  before a statement runs, so retries cannot double-apply; lease reclaim
+  remains the backstop.
+- **Retry failure-classification** (2026-10-05): `executor.FailureClass`
+  (transient / permanent / provider-window / environment) produced by
+  `ClassifyFailure` from the final error wrapper chain and stamped by
+  the worker onto failure evidence, so DLQ autopsy prompts lead with
+  the classification instead of re-deriving it from the output tail;
+  rate-limit detection now also reads the JSON body shapes
+  OpenAI-convention providers relay (`reset_at`, `retry_after` with
+  quoted keys).
+- **Same-session first retry** (2026-10-05): a retrying agent task
+  resumes the previous attempt's session (paperclip's same_session
+  rung, read from the deterministic run-output sidecar); from the
+  second retry on the ladder goes back to fresh. Payload-pinned
+  sessions win; every miss degrades to the previous fresh-run behavior.
+- **Class-park surfaces** (2026-10-05): `tq top` gains a bpark column
+  (+ `budget_parked` JSON), `tq tasks` gains `--parked-class`, and the
+  readmodel projection gains `not_before` + `parked_by` columns folded
+  from the requeue evidence — the exactness the budget lamp and future
+  filters are specified to read instead of re-deriving parks from the
+  fact tail.
+- **Stranded-work lamp** (2026-10-05): the webui nowband counts pending
+  tasks whose dependency is dead or cancelled — tasks the claim gate
+  skips forever, invisible until now; derived from existing reads, no
+  new fact type.
+- **Repo-purpose ancestry in work prompts** (2026-10-05): harvested
+  prompts (single + batch) carry `Repo purpose:` from
+  `.config/metadata.yaml`'s `purpose:` scalar; repos without one get an
+  honest README pointer, never an invented purpose.
+- **Agent env denylist** (2026-10-05): the agent process no longer
+  inherits `TQ_DB` (the queue's own journal path) — an autonomous shell
+  shelling out to `tq` cannot read or mutate the live journal; the
+  successor design (minted per-run allowlist, strict mode, managed
+  HOME) is specified in
+  `docs/planning/2026-10-05_secret-injection-seam-design.md` and
+  widens only by owner ruling. SECURITY.md names the
+  injection-vs-redaction posture.
 - **Shared verify wrapper with flake-retry** (2026-10-05, TODO row 132,
   born from the 02-11 report §d4): root-gate.sh's known-flaky-signature
   retry is extracted into `scripts/lib/verify-retry.sh` (ONE signature
