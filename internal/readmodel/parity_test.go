@@ -339,13 +339,13 @@ func TestStatsParityLifecycle(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)
 
-	t1 := f.enqueue("web", "sh", 6, "todo:s1") // → completed
+	t1 := f.enqueue("web", "sh", 6, "todo:s1")    // → completed
 	t2 := f.enqueue("web", "agent", 5, "todo:s2") // → pending (failed retry)
-	t3 := f.enqueue("api", "sh", 4, "todo:s3") // → dead
-	t4 := f.enqueue("api", "sh", 3, "todo:s4") // → cancelled while pending
-	t5 := f.enqueue("web", "sh", 2, "todo:s5") // → pending (requeued, parked)
-	t6 := f.enqueue("api", "sh", 1, "todo:s6") // → dead → rescued → pending
-	t7 := f.enqueue("api", "sh", 0, "todo:s7") // → dead → dismissed → cancelled
+	t3 := f.enqueue("api", "sh", 4, "todo:s3")    // → dead
+	t4 := f.enqueue("api", "sh", 3, "todo:s4")    // → cancelled while pending
+	t5 := f.enqueue("web", "sh", 2, "todo:s5")    // → pending (requeued, parked)
+	t6 := f.enqueue("api", "sh", 1, "todo:s6")    // → dead → rescued → pending
+	t7 := f.enqueue("api", "sh", 0, "todo:s7")    // → dead → dismissed → cancelled
 
 	f.must("cancel t4", f.store.Cancel(ctx, t4.ID, "not needed"))
 
@@ -409,7 +409,7 @@ func TestStatsParityLifecycle(t *testing.T) {
 	}
 
 	wantProject := map[string]map[string]int{
-		"web": {"pending": 2, "completed": 1},       // t2, t5 / t1
+		"web": {"pending": 2, "completed": 1},            // t2, t5 / t1
 		"api": {"pending": 1, "dead": 1, "cancelled": 2}, // t6 / t3 / t4, t7
 	}
 
