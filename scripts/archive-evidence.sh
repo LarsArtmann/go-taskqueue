@@ -122,8 +122,11 @@ cd "$root" || exit 1
 # Step 1 — check-ignore FIRST: a destination matching an ignore rule is an
 # untracked ghost-to-be (the daemon's add-everything sweep skips it and the
 # tree looks clean). check-ignore reports only untracked paths (tracked
-# files are carried by git regardless of rules), so every hit fails BEFORE
-# any copy.
+# files are carried by git regardless of rules). A NEGATION (`!`) hit is
+# the opposite of ghost-risk: the repo explicitly un-ignores the path
+# (.gitignore:94, evidence logs under docs/status/assets), so the daemon
+# sweep carries it — only positive-rule hits fail BEFORE any copy
+# (03-47 report §b5/§e5).
 rc=0
 ignored=$(git check-ignore -v -- "${dests_rel[@]}") || rc=$?
 if [ "$rc" -gt 1 ]; then
@@ -134,7 +137,15 @@ fail=0
 if [ -n "$ignored" ]; then
 	while IFS= read -r hit; do
 		[ -n "$hit" ] || continue
+		meta=${hit%%$'\t'*}
+		rule=${meta#*:*:}
 		ipath=${hit##*$'\t'}
+		case $rule in
+		'!'*)
+			echo "ok: $ipath matches the negation rule $rule (deliberately un-ignored content) — proceeding"
+			continue
+			;;
+		esac
 		echo "FAIL: $ipath matches a gitignore rule and would be silently dropped by the auto-commit daemon (ghost-to-be)"
 		echo "  rule: $hit"
 		echo "  fix: un-ignore it, or copy consciously and git add -f it (the ghost-archive gate demands it tracked)"

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Regression pin for scripts/archive-evidence.sh (23-28 report f1/f4):
 # scratch-repo smoke exercising every branch — ignored-dest refusal,
-# f9-shape FAIL, PENDING, SUCCESS, dir-source/outside-repo/dup-basename
-# refusals, --help, ignored-but-tracked re-run — plus the
+# negation-rule acceptance, f9-shape FAIL, PENDING, SUCCESS,
+# dir-source/outside-repo/dup-basename refusals, --help,
+# ignored-but-tracked re-run — plus the
 # git-check-ignore untracked-only semantics probe the ghost refusal
 # relies on (a git upgrade that starts reporting tracked paths would
 # hard-FAIL every legitimate archive re-run).
@@ -51,6 +52,17 @@ fi
 grep -q "gitignore rule" <<<"$out" || fail "ignored-dest refusal lacks the ghost explanation: $out"
 [ ! -e "$r/docs/status/assets/arch" ] || fail "refused run created the archive dir"
 pass "ignored-dest refusal, nothing copied"
+
+# --- negation-rule dest proceeds (deliberate content, not ghost-risk) ------
+r=$(new_repo negation-dest)
+printf '*.log\n!docs/status/assets/**/*.log\n' >"$r/.gitignore"
+mkdir -p "$r/ev"
+echo x >"$r/ev/run.log"
+out=$(run_in "$r" "$TARGET" ev/run.log docs/status/assets/arch) || fail "negation-rule dest was refused: $out"
+grep -q "negation rule" <<<"$out" || fail "negation acceptance missing the ok line: $out"
+grep -q "^PENDING:" <<<"$out" || fail "negation-rule run should proceed to PENDING: $out"
+[ -f "$r/docs/status/assets/arch/run.log" ] || fail "copy missing after negation-rule run"
+pass "negation-rule dest proceeds (! match is deliberate content, 03-47 b5)"
 
 # --- dir-source refusal ----------------------------------------------------
 r=$(new_repo dir-src)
@@ -164,4 +176,4 @@ elif [ "$rc" -ne 1 ]; then
 fi
 pass "git check-ignore untracked-only semantics hold (tracked-ignored invisible)"
 
-echo "archive-evidence smoke: PASS (10 checks)"
+echo "archive-evidence smoke: PASS (11 checks)"

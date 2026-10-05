@@ -311,6 +311,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ending the Height-200 stopgap. (`internal/webui/fragments.templ`)
 
 ### Fixed
+- **`archive-evidence.sh` no longer refuses negated gitignore matches**
+  (2026-10-05, 03-47 report §b5/§e5): `git check-ignore -v` reports a
+  negation (`!`) rule hit and exits 0 even though the path is NOT ignored,
+  so archiving a `.log` into `docs/status/assets/` (un-ignored at
+  `.gitignore:94`) was refused as ghost-risk and worked around with a
+  `.txt` rename. The tripwire now skips negation hits (deliberate content
+  by the repo's own convention) and refuses only positive-rule matches;
+  pinned in `scripts/smoke/archive-evidence.sh`.
 - **`tq tasks` STATUS column widened to fit the lease countdown** (2026-10-03):
   the `running 9m59s` countdown (13 chars) overflowed the fixed `%-10s` column
   and pushed the trailing columns right on healthy RUNNING rows; header and row
