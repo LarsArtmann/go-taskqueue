@@ -152,8 +152,17 @@ TQ_AGENT_BIN="$TMP/stub-agent" timeout 90 "$TMP/tq" worker --agents \
 WORKER_PID=$!
 
 echo "== enqueue the asking task (prompt carries its own id via the executor placeholder)"
-TASK_ID="$("$TMP/tq" enqueue --type agent --project ask-e2e \
-	--payload "{\"repo\":\"$REPO\",\"prompt\":\"decide TASK:{{TASK_ID}}\",\"require_clean\":false,\"timeout_minutes\":2}")"
+# The worker above is still inside its own open/migrate on the fresh DB;
+# a same-instant enqueue can exhaust busy_timeout (row 99 class). Retry
+# the enqueue on the busy signature instead of racing it.
+TASK_ID=""
+for _ in $(seq 1 10); do
+	TASK_ID="$("$TMP/tq" enqueue --type agent --project ask-e2e \
+		--payload "{\"repo\":\"$REPO\",\"prompt\":\"decide TASK:{{TASK_ID}}\",\"require_clean\":false,\"timeout_minutes\":2}" 2>"$TMP/enqueue.err")" && break
+	grep -q "database is locked" "$TMP/enqueue.err" || { cat "$TMP/enqueue.err" >&2; exit 1; }
+	sleep 1
+done
+[ -n "$TASK_ID" ] || { echo "FAIL: enqueue never got past open contention" >&2; cat "$TMP/enqueue.err" >&2; exit 1; }
 echo "   task $TASK_ID"
 
 echo "== wait for the park (worker requeued the ask without burning an attempt)"
