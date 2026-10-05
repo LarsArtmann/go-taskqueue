@@ -34,8 +34,8 @@
      self-review; canonical `archived/2026-09-30_14-49_task-…6143b0.md`.
    - `2026-09-28_20-03_task-…59871d.md` → DUPLICATE: verify-only repeat
      dispatch ("No new code"); canonical `archived/2026-09-28_20-07_task-…59871d.md`.
-   All 3 canonicals verified to exist in `archived/` before the move; 4
-   index rows repointed to backticked `archived/…`; counter 572→576.
+     All 3 canonicals verified to exist in `archived/` before the move; 4
+     index rows repointed to backticked `archived/…`; counter 572→576.
 3. **Harvest: 32 `[x]` rows purged** (DONE-DELETED standing ruling — the
    10-01 precedent), **22 new rows minted** in a dated docs-health harvest
    section (budget-meter reachability, forensics filters, lapsed 429 retro
@@ -85,7 +85,7 @@
 
 ## b) PARTIALLY DONE
 
-1. **~117 live 2026-0* reports remain KEEP-OPEN by convention** — the
+1. __~117 live 2026-0_ reports remain KEEP-OPEN by convention_* — the
    standing floor. Their unstruck residue stayed visible; the highest-value
    unrowed items were harvested this pass (22 rows), the long tail remains
    in-file per the ratified bar (routed = visible in TODO_LIST; the rest is

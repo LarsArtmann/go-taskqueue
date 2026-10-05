@@ -56,7 +56,7 @@ require (
 require (
 	github.com/a-h/templ v0.3.1070
 	github.com/larsartmann/go-datastar/static v0.6.1
-	github.com/larsartmann/go-health v0.4.1
+	github.com/larsartmann/go-health v0.5.0
 	github.com/larsartmann/go-health-dashboard v0.10.2
 	github.com/larsartmann/go-sse v0.6.2
 	github.com/larsartmann/go-sse/ssetest v0.4.0

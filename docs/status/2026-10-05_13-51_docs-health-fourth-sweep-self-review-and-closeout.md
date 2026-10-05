@@ -207,6 +207,7 @@
 ## f) Up to 50 things we should get done next (honest; carried rows named, not re-minted)
 
 **Owner rulings (blocking, carried):**
+
 1. Strike scope ratification — forward-only vs strike-all (10-01 §g1; gates the eligibility-gate spec).
 2. KEEP-OPEN terminal state — in-file visibility vs funded per-item pass (10-01 §g2; owns the 09-11_23-16 pointer table too).
 3. `scripts/check-archive-eligibility.sh` — mechanical archive bar (rows 281/441; three+ sweeps have demanded it).

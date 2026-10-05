@@ -468,7 +468,6 @@ not here.
 - [ ] Same-ID close-out policy + TODO closure form: one task ID this window minted THREE report files, another FOUR; one row closed removed-and-replaced, the rest `[x]`+note — which per-ID report policy (dated files vs append-to-existing) and which closure form are sanctioned? Costs: index bloat (207 live rows), re-derivation per re-dispatch, queue-diff opacity (01-09 §g3, 02-11 §g1) — BLOCKED: owner process ruling
 - [ ] Dead-sha remedy policy: fork-record minting mechanical at rewrite time (inside heal-daemon-sweep) + `--emit-baseline`/scoped-leg escape for TODO-touching batteries vs hand-curation as deliberate shrink pressure — red grew 13→92 cites in three days and every heal mints more; red-by-default trains ignore-red (01-09 §g1, 03-13 §g1, 04-10 §g1) — BLOCKED: owner gate-policy ruling
 
-
 ## Docs-health harvest (2026-10-05 fourth sweep; sources: per-item triage of the live 2026-09 corpus by date-bucket sub-agents, every claim re-verified at HEAD this pass; deduped against open rows by live-text grep)
 
 - [ ] Webui budget meter reachability: `tq serve --daily-budget` flag (+ SystemNix wiring) so the meter is live, and `role="meter"`/`aria-valuenow` a11y on it (docs/status/2026-09-21_13-31_webui-design-pass.md:74,:86; cmd/tq/main.go serve flags, internal/webui)
