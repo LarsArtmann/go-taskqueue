@@ -33,8 +33,8 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0 // indirect
-	github.com/larsartmann/templ-components/datastar v1.20.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.20.0 // indirect
+	github.com/larsartmann/templ-components/datastar v1.20.1 // indirect
+	github.com/larsartmann/templ-components/htmx v1.20.1 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
@@ -68,9 +68,9 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
-	github.com/larsartmann/templ-components v1.20.0
-	github.com/larsartmann/templ-components/icons v1.20.0
-	github.com/larsartmann/templ-components/utils v1.20.0
+	github.com/larsartmann/templ-components v1.20.1
+	github.com/larsartmann/templ-components/icons v1.20.1
+	github.com/larsartmann/templ-components/utils v1.20.1
 	golang.org/x/sync v0.23.0
 )
 
