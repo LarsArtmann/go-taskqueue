@@ -152,8 +152,9 @@ func openSource(fromPath string) (*sql.DB, error) {
 // Migrate replays the source journal into a fresh engine store at
 // toPath. toPath must not already exist: a fresh store is part of the
 // definition (no in-place surgery on a live engine DB).
-func Migrate(ctx context.Context, fromPath, toPath string) (stats Stats, err error) {
-	err = withSource(fromPath, func(src *sql.DB) error {
+func Migrate(ctx context.Context, fromPath, toPath string) (Stats, error) {
+	var stats Stats
+	err := withSource(fromPath, func(src *sql.DB) error {
 		return migrateInto(ctx, src, toPath, &stats)
 	})
 
