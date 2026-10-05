@@ -167,7 +167,8 @@ func freshDSN(t *testing.T) string {
 	return active.FreshDSN(t)
 }
 
-func openOn(t *testing.T, dsn string, opts ...companion.StoreOption) Store { //nolint:ireturn // conformance opens the backend-agnostic Store interface by design
+//nolint:ireturn // conformance opens the backend-agnostic Store interface
+func openOn(t *testing.T, dsn string, opts ...companion.StoreOption) Store {
 	t.Helper()
 
 	return active.OpenOn(t, dsn, opts...)
