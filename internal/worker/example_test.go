@@ -78,6 +78,7 @@ func ExampleConfig_budget() {
 	}
 
 	_ = guard // hand to worker.Config.Budget
+
 	fmt.Println("paid turns stop at the cap; attempts never burn")
 	// Output: paid turns stop at the cap; attempts never burn
 }

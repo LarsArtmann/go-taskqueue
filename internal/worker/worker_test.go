@@ -1608,7 +1608,12 @@ func TestStampedFailureEvidence(t *testing.T) {
 		{
 			name:     "keeps the executor's fields and adds the class",
 			evidence: `{"stage":"agent","exit_code":1,"tail":"boom"}`,
-			wantKeys: map[string]any{"stage": "agent", "exit_code": float64(1), "tail": "boom", "class": "provider-window"},
+			wantKeys: map[string]any{
+				"stage":     "agent",
+				"exit_code": float64(1),
+				"tail":      "boom",
+				"class":     "provider-window",
+			},
 		},
 		{
 			name:     "empty evidence becomes a class-only document",

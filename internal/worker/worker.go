@@ -629,7 +629,13 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// environmental without re-deriving it from evidence tails.
 		if gate.Class == executor.VerifyGateEnvironmental {
 			if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-				return p.store.FailPermanent(c, t.ID, claim, gate.Error(), stampedFailureEvidence(sink.Failure(), execErr))
+				return p.store.FailPermanent(
+					c,
+					t.ID,
+					claim,
+					gate.Error(),
+					stampedFailureEvidence(sink.Failure(), execErr),
+				)
 			}); err != nil {
 				p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 			} else {
@@ -754,7 +760,14 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// attempt (crash-safe equivalent) with zero backoff so it is immediately
 		// reclaimable.
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.Fail(c, t.ID, claim, "worker shutdown: "+execErr.Error(), 0, stampedFailureEvidence(sink.Failure(), execErr))
+			return p.store.Fail(
+				c,
+				t.ID,
+				claim,
+				"worker shutdown: "+execErr.Error(),
+				0,
+				stampedFailureEvidence(sink.Failure(), execErr),
+			)
 		}); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)
 		}
@@ -767,7 +780,14 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	// from the journal alone (21:40 report §d4: both retry-path failures
 	// left empty {} detail).
 	if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-		return p.store.Fail(c, t.ID, claim, execErr.Error(), p.cfg.Backoff(t.Attempts+1), stampedFailureEvidence(sink.Failure(), execErr))
+		return p.store.Fail(
+			c,
+			t.ID,
+			claim,
+			execErr.Error(),
+			p.cfg.Backoff(t.Attempts+1),
+			stampedFailureEvidence(sink.Failure(), execErr),
+		)
 	}); err != nil {
 		p.log.Error("fail failed", "task", t.ID, "err", err)
 	}
