@@ -113,8 +113,10 @@ func WithDurableCursor() Option {
 // Open creates the Model over its own sqlite database file (the projection
 // is disposable; delete the file to force a full journal replay on next
 // open). src is the journal source — the same queue.Store the dashboards
-// read; it is used read-only (Facts, HeadSeq, Get).
-func Open(path string, src queue.Store, opts ...Option) (*Model, error) {
+// read; it is used read-only (Facts, HeadSeq, Get). ctx covers the
+// durable-cursor load (watermark read + replay guard), not the pump
+// (Run carries its own).
+func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*Model, error) {
 	if src == nil {
 		return nil, ErrNoSource
 	}
@@ -145,7 +147,7 @@ func Open(path string, src queue.Store, opts ...Option) (*Model, error) {
 	}
 
 	if m.durable {
-		if err := m.loadCursor(context.Background()); err != nil {
+		if err := m.loadCursor(ctx); err != nil {
 			_ = m.store.Close()
 
 			return nil, fmt.Errorf("readmodel: load cursor: %w", err)

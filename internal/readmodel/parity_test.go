@@ -37,7 +37,7 @@ func newFixture(t *testing.T) *fixture {
 
 	t.Cleanup(func() { _ = store.Close() })
 
-	model, err := readmodel.Open(t.TempDir()+"/projection.db", store)
+	model, err := readmodel.Open(ctx, t.TempDir()+"/projection.db", store)
 	if err != nil {
 		t.Fatalf("open read model: %v", err)
 	}
@@ -560,7 +560,7 @@ func TestDurableCursorSkipsReplay(t *testing.T) {
 
 	proj := t.TempDir() + "/projection.db"
 
-	first, err := readmodel.Open(proj, store, readmodel.WithDurableCursor())
+	first, err := readmodel.Open(ctx, proj, store, readmodel.WithDurableCursor())
 	if err != nil {
 		t.Fatalf("open first model: %v", err)
 	}
@@ -589,7 +589,7 @@ func TestDurableCursorSkipsReplay(t *testing.T) {
 	// journal, and the cursor resumes at the checkpoint.
 	counted := &countingStore{Store: store}
 
-	second, err := readmodel.Open(proj, counted, readmodel.WithDurableCursor())
+	second, err := readmodel.Open(ctx, proj, counted, readmodel.WithDurableCursor())
 	if err != nil {
 		t.Fatalf("open second model: %v", err)
 	}
@@ -666,7 +666,7 @@ func TestDurableCursorFreshProjectionReplays(t *testing.T) {
 	// then abandon that projection file entirely.
 	proj := t.TempDir() + "/projection.db"
 
-	first, err := readmodel.Open(proj, store, readmodel.WithDurableCursor())
+	first, err := readmodel.Open(ctx, proj, store, readmodel.WithDurableCursor())
 	if err != nil {
 		t.Fatalf("open first model: %v", err)
 	}
@@ -686,7 +686,7 @@ func TestDurableCursorFreshProjectionReplays(t *testing.T) {
 	// from zero and converges.
 	counted := &countingStore{Store: store}
 
-	fresh, err := readmodel.Open(t.TempDir()+"/fresh.db", counted, readmodel.WithDurableCursor())
+	fresh, err := readmodel.Open(ctx, t.TempDir()+"/fresh.db", counted, readmodel.WithDurableCursor())
 	if err != nil {
 		t.Fatalf("open fresh model: %v", err)
 	}
@@ -845,7 +845,7 @@ func TestReplayConverges(t *testing.T) {
 	before, err := f.model.Tasks(ctx, readmodel.TaskFilter{})
 	f.must("tasks before", err)
 
-	replay, err := readmodel.Open(t.TempDir()+"/replay.db", f.store)
+	replay, err := readmodel.Open(ctx, t.TempDir()+"/replay.db", f.store)
 	f.must("open replay model", err)
 
 	defer func() { _ = replay.Close() }()

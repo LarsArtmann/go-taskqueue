@@ -60,9 +60,10 @@ func New(store queue.Store, token string, log *slog.Logger) (*Server, error) {
 // model at path (readmodel.PathFor derives it beside the queue db): the
 // projection folds the journal and GET /api/v1/stats reads its planned
 // table. The enqueue side is untouched — the model is read-only over the
-// store. ListenAndServe owns the model's pump and lifetime.
-func (s *Server) UseReadModel(path string) error {
-	m, err := readmodel.Open(path, s.store, readmodel.WithDurableCursor())
+// store. ListenAndServe owns the model's pump and lifetime; ctx covers
+// the durable-cursor load at setup.
+func (s *Server) UseReadModel(ctx context.Context, path string) error {
+	m, err := readmodel.Open(ctx, path, s.store, readmodel.WithDurableCursor())
 	if err != nil {
 		return fmt.Errorf("httpapi: open read model: %w", err)
 	}

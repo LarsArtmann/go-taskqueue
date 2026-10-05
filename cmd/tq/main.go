@@ -1738,7 +1738,7 @@ func cmdStats(args []string) error {
 	var byProject map[string]map[string]int
 
 	if *readModel {
-		m, err := readmodel.Open(readmodel.PathFor(dbPath), store, readmodel.WithDurableCursor())
+		m, err := readmodel.Open(ctx, readmodel.PathFor(dbPath), store, readmodel.WithDurableCursor())
 		if err != nil {
 			return err
 		}
@@ -3196,7 +3196,7 @@ func cmdAPI(args []string) error {
 	}
 
 	if *readModel {
-		if err := server.UseReadModel(readmodel.PathFor(dbPath)); err != nil {
+		if err := server.UseReadModel(context.Background(), readmodel.PathFor(dbPath)); err != nil {
 			return err
 		}
 	}
