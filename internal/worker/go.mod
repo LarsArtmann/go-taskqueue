@@ -14,7 +14,6 @@ require (
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.1 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
-	github.com/larsartmann/go-retry v0.7.1 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0 // indirect
@@ -39,6 +38,7 @@ replace github.com/larsartmann/go-taskqueue/internal/task => ../task
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../queue/sqlite
 
 require (
+	github.com/larsartmann/go-retry v0.7.1
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0

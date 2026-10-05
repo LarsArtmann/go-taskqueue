@@ -8,9 +8,11 @@ import (
 	"log/slog"
 	"math"
 	"math/rand/v2"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/larsartmann/go-retry"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -269,7 +271,9 @@ func (p *Pool) burnEnvStreak(
 	reason := fmt.Sprintf("environmental requeue streak burned the attempt [%s]: streak %d: %s",
 		EnvStreakCode, streak, cause.Error())
 
-	if err := p.store.Fail(ctx, t.ID, claim, reason, backoff, sink.Failure()); err != nil {
+	if err := p.persistOutcome(ctx, t.ID, func(c context.Context) error {
+		return p.store.Fail(c, t.ID, claim, reason, backoff, sink.Failure())
+	}); err != nil {
 		p.log.Error("env-streak burn failed; requeueing instead", "task", t.ID, "streak", streak, "err", err)
 
 		return false
@@ -280,6 +284,50 @@ func (p *Pool) burnEnvStreak(
 		"task", t.ID, "streak", streak, "code", EnvStreakCode, "retry after", backoff)
 
 	return true
+}
+
+// persistOutcome retries a store transition write (complete, fail,
+// requeue, cancel) that failed with a transient store-busy error. A
+// lost transition write orphans the task in Running until lease-expiry
+// reclaim — for a completed agent task that is a paid turn executed
+// twice — so the write is retried in-process before the reclaim
+// backstop absorbs it. SQLITE_BUSY means the statement never ran (the
+// lock was refused before execution), so a retry cannot double-apply;
+// every write stays guarded by the store's RowsAffected re-checks.
+// Non-busy errors pass through untouched: a lost claim or a moved task
+// belongs to the reclaim/re-own path, not to this loop.
+func (p *Pool) persistOutcome(ctx context.Context, id task.ID, write func(context.Context) error) error {
+	return retry.Do(ctx, retry.Config{ //nolint:exhaustruct // optional hooks unset
+		MaxAttempts:  3,
+		InitialDelay: 50 * time.Millisecond,
+		MaxDelay:     400 * time.Millisecond,
+		Multiplier:   2.0,
+		IsRetryable:  isTransientStoreBusy,
+		OnRetry: func(attempt int, delay time.Duration, err error) {
+			p.log.Warn("outcome write hit a transient store busy; retrying",
+				"task", id, "attempt", attempt, "retry after", delay, "err", err)
+		},
+	}, func(ctx context.Context, _ int) error {
+		return write(ctx)
+	})
+}
+
+// isTransientStoreBusy reports whether err is a store lock-contention
+// failure worth retrying in-process. The sqlite driver surfaces the
+// SQLITE_BUSY family (base 5 and extended 517 BUSY_SNAPSHOT et al) with
+// the token in the message, and its English form is "database is
+// locked"; matching strings keeps the worker driver-agnostic. A false
+// positive is harmless — the retried write is guarded by the store's
+// RowsAffected re-checks; a false negative merely falls back to the
+// lease-reclaim backstop.
+func isTransientStoreBusy(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := err.Error()
+
+	return strings.Contains(msg, "SQLITE_BUSY") || strings.Contains(msg, "database is locked")
 }
 
 // New creates a worker pool. Call Start to run it.
@@ -399,15 +447,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 				delay = rateLimitDelay(delay)
 			}
 
-			if err := p.store.Requeue(
-				ctx,
-				t.ID,
-				claim,
-				"budget gate: "+reason,
-				delay,
-				false,
-				queue.RequeueClassBudget,
-			); err != nil {
+			if err := p.persistOutcome(ctx, t.ID, func(c context.Context) error {
+				return p.store.Requeue(c, t.ID, claim, "budget gate: "+reason, delay, false, queue.RequeueClassBudget)
+			}); err != nil {
 				p.log.Error("budget requeue failed", "task", t.ID, "err", err)
 			} else {
 				p.log.Warn("budget gate blocked paid turn; requeued without attempt burn",
@@ -489,7 +531,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	// so a draining task's outcome is never orphaned by the cancelled pool.
 	terminalCtx := ctx
 	if execErr == nil {
-		if err := p.store.Complete(terminalCtx, t.ID, claim, sink.Detail()); err != nil {
+		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+			return p.store.Complete(c, t.ID, claim, sink.Detail())
+		}); err != nil {
 			p.log.Error("complete failed", "task", t.ID, "err", err)
 		}
 
@@ -508,7 +552,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	// attempt does not burn, the task is withdrawn, not failed.
 	if errors.Is(execErr, context.Canceled) {
 		if requested, err := p.store.CancelRequested(ctx, t.ID); err == nil && requested {
-			if cerr := p.store.CancelOwned(ctx, t.ID, claim); cerr != nil {
+			if cerr := p.persistOutcome(ctx, t.ID, func(c context.Context) error {
+				return p.store.CancelOwned(c, t.ID, claim)
+			}); cerr != nil {
 				p.log.Warn("cancel-owned failed; lease lost mid-cancel", "task", t.ID, "err", cerr)
 			} else {
 				p.log.Info("task cancelled by operator request", "task", t.ID)
@@ -530,15 +576,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			return
 		}
 
-		if err := p.store.Requeue(
-			terminalCtx,
-			t.ID,
-			claim,
-			pre.Error(),
-			delay,
-			false,
-			queue.RequeueClassPreflight,
-		); err != nil {
+		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+			return p.store.Requeue(c, t.ID, claim, pre.Error(), delay, false, queue.RequeueClassPreflight)
+		}); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
 		} else if p.preflightShouldLog(
 			t.ID,
@@ -558,7 +598,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// signature code so the rescue sweep can classify the death as
 		// environmental without re-deriving it from evidence tails.
 		if gate.Class == executor.VerifyGateEnvironmental {
-			if err := p.store.FailPermanent(terminalCtx, t.ID, claim, gate.Error(), sink.Failure()); err != nil {
+			if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+				return p.store.FailPermanent(c, t.ID, claim, gate.Error(), sink.Failure())
+			}); err != nil {
 				p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 			} else {
 				p.log.Warn("verify gate environmental signature; dead-lettered without re-dispatch",
@@ -582,15 +624,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			return
 		}
 
-		if err := p.store.Requeue(
-			terminalCtx,
-			t.ID,
-			claim,
-			gate.Error(),
-			delay,
-			false,
-			queue.RequeueClassGate,
-		); err != nil {
+		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+			return p.store.Requeue(c, t.ID, claim, gate.Error(), delay, false, queue.RequeueClassGate)
+		}); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
 		} else if p.preflightShouldLog(
 			t.ID,
@@ -610,15 +646,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// the parsed reset time (± small jitter so many parked tasks do
 		// not reclaim in lockstep and stampede the freshly reset quota).
 		delay := rateLimitDelay(rl.RetryAfter)
-		if err := p.store.Requeue(
-			terminalCtx,
-			t.ID,
-			claim,
-			rl.Error(),
-			delay,
-			rl.ResumeCloseout,
-			queue.RequeueClassRateLimit,
-		); err != nil {
+		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+			return p.store.Requeue(c, t.ID, claim, rl.Error(), delay, rl.ResumeCloseout, queue.RequeueClassRateLimit)
+		}); err != nil {
 			p.log.Error("rate-limit requeue failed", "task", t.ID, "err", err)
 		} else {
 			// resume_closeout on the requeue fact says the re-claim resumes
@@ -646,15 +676,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// the question expires (the safety valve re-enters the task when
 		// the answer never comes). No jitter: the expiry is the answer
 		// deadline, not a quota window.
-		if err := p.store.Requeue(
-			terminalCtx,
-			t.ID,
-			claim,
-			questionErr.Error(),
-			questionErr.RetryAfter,
-			questionErr.ResumeCloseout,
-			queue.RequeueClassQuestion,
-		); err != nil {
+		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+			return p.store.Requeue(c, t.ID, claim, questionErr.Error(), questionErr.RetryAfter, questionErr.ResumeCloseout, queue.RequeueClassQuestion)
+		}); err != nil {
 			p.log.Error("question requeue failed", "task", t.ID, "err", err)
 		} else {
 			attrs := []any{
@@ -676,7 +700,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// The identical retry would fail identically (bad payload, missing
 		// repo). Dead-letter now instead of burning the retry budget — for
 		// agent tasks every retry is real money.
-		if err := p.store.FailPermanent(terminalCtx, t.ID, claim, perm.Error(), sink.Failure()); err != nil {
+		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+			return p.store.FailPermanent(c, t.ID, claim, perm.Error(), sink.Failure())
+		}); err != nil {
 			p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 		}
 
@@ -688,14 +714,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// pool shutdown; only internal cancellation lands here). Burn the
 		// attempt (crash-safe equivalent) with zero backoff so it is immediately
 		// reclaimable.
-		if err := p.store.Fail(
-			terminalCtx,
-			t.ID,
-			claim,
-			"worker shutdown: "+execErr.Error(),
-			0,
-			sink.Failure(),
-		); err != nil {
+		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+			return p.store.Fail(c, t.ID, claim, "worker shutdown: "+execErr.Error(), 0, sink.Failure())
+		}); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)
 		}
 
@@ -706,14 +727,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	// rides the task.failed fact's detail so a failed attempt is debuggable
 	// from the journal alone (21:40 report §d4: both retry-path failures
 	// left empty {} detail).
-	if err := p.store.Fail(
-		terminalCtx,
-		t.ID,
-		claim,
-		execErr.Error(),
-		p.cfg.Backoff(t.Attempts+1),
-		sink.Failure(),
-	); err != nil {
+	if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
+		return p.store.Fail(c, t.ID, claim, execErr.Error(), p.cfg.Backoff(t.Attempts+1), sink.Failure())
+	}); err != nil {
 		p.log.Error("fail failed", "task", t.ID, "err", err)
 	}
 }
