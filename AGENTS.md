@@ -6,25 +6,23 @@ executors (incl. AI agents). One Go binary, one file, zero services.
 
 **STATUS: v0.3.0 shipped; MULTIPLE concurrent agents** — re-read files,
 re-run tests; uncommitted parallel changes: read, judge, build on, never
-revert. (Size-guarded: cmd/tq TestAgentsDocSizeGuard, twin
-scripts/check-agents-size.sh.)
+revert. (Size guard: TestAgentsDocSizeGuard; twin check-agents-size.sh)
 
 ## Commands
 
 ```bash
-./scripts/ci-local.sh     # pre-push gate; transient foreign breaks retry 45s ×3
-./scripts/root-gate.sh    # root-module verify gate; ONE retry on known-flaky signatures
-nix build                 # nix run .#test = tests; .#webui-css
+./scripts/ci-local.sh # pre-push gate; transient foreign breaks retry 45s ×3
+./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
+nix build # nix run .#test; .#webui-css
 ./scripts/fuzz/nightly.sh
 ```
 
 - **Multi-module repo (ADR-0011)**: `internal/{task,journal,queue,executor,worker}`
   sub-modules + `queue/{sqlite,postgres}` backends + `internal/journal/cqrs`
-  - `internal/readmodel` + `internal/composition` (own module, S4 root;
-    cmd/tq pins nominal v0.3.0);
-    root = app layer. `cmd/tq` is its own replace-free module (ADR-0017),
-    built via `scripts/build-tq.sh` (devmod shim). `./...` never descends
-    into nested modules; per-module gate:
+  - `internal/readmodel` + `internal/composition` (own modules, S4 root;
+    cmd/tq pins nominal v0.3.0); root = app layer. `cmd/tq` is replace-free
+    (ADR-0017), built via `scripts/build-tq.sh` (devmod shim). `./...`
+    never descends into nested modules; per-module gate:
 
 ```bash
 for m in $(find internal task journal queue executor worker -name go.mod -printf '%h\n'|sort); do (cd "$m" && GOEXPERIMENT=jsonv2 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1)||exit 1; done
@@ -36,11 +34,10 @@ queue/postgres/ executor/ worker/` re-export internals via type aliases —
 the only external import surface; in-repo code imports `internal/…`
 directly. Facade-graph modules: require (real tag) + relative replace;
 facade tests import internals, never sibling facades; parity via
-`scripts/check-facade-parity.sh` — run it BEFORE staging (the pre-commit
-hook gates staged files only); postgres `OpenWithPool` pools are
+`scripts/check-facade-parity.sh` — run BEFORE staging (pre-commit gates
+staged files only); postgres `OpenWithPool` pools are
 CALLER-OWNED. No go.work — replace-only (`go test ./internal/foo` from
-root fails by design — cd in). Release flow: docs/release/ (rc-captured
-proxy checks: facade @tag + /tmp sentinel probe).
+root fails by design — cd in). Release flow: docs/release/ (rc-captured proxy checks).
 
 Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh + release-gates +
 lint-baseline. `scripts/new-module.sh <dir> [deps…]` scaffolds go.mods.
@@ -57,7 +54,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/journal` | Fact types + append-only Journal |
 | `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014) |
 | `internal/queue` | Store contract, Filter, Queue facade |
-| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform suite `internal/queue/companion/conform` |
+| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform` |
 | `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` | tq Store over the go-cqrs-lite queue engines |
 | `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity |
 | `internal/readmodel` | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON) |
@@ -93,18 +90,17 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   0, ENV-SELF-CONTAINED (minted verifies carry `GOEXPERIMENT=jsonv2` —
   agents never edit their own gate). Model+effort ONLY in the repo
   `.crushrc` managed block. `--task-closeout` resumes the EXACT session
-  for the a)-g) report (`docs/status/<ts>_task-<id>.md`).
+  for its a)-g) report (`docs/status/<ts>_task-<id>.md`).
 - **Derived outcomes**: the queue derives what a run did — commits via
   exactly ONE `Task-Queue-ID` footer as LAST trailer line
   (`executor.GitLogScanner`; a footer above the attribution block is
-  invisible — the hook rejects), files via `git diff-tree`, usage via
+  invisible, hook rejects), files via `git diff-tree`, usage via
   go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record results via `tq verdict '<json>'`
   into `$TQ_RESULT_FILE` (file > legacy stdout, last-wins).
 - **Batched harvest** (`--batch-items`, default OFF): N adjacent
   same-section items → one task (dedup `batch:` + SORTED-key hash; gates
-  see ONE task); direct `tq enqueue` forbidden — work prompts grant the
-  backlog move.
+  see ONE task); direct `tq enqueue` forbidden — work prompts grant the move.
 - **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated or
   deterministic turns on the closeout-free agent clone; usage derived for
   ALL paid turns. review findings are commit-anchored (verbatim
@@ -130,8 +126,8 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   `secretPatterns` entry + a fake-shape sample in `redact_test.go`
   (table-length pins) + a lint-baseline note if it trips golangci/gosec.
   Audit (`SecretHits`) and redaction (`RedactSecrets`) share the ONE
-  table (pinned `TestSecretHitsAndRedactionCompileIdenticalTable`); `redact_test.go` build-tag-free, windows-gated via
-  per-module CI (00-55 §f9, 2026-10-04).
+  table (pinned `TestSecretHitsAndRedactionCompileIdenticalTable`); `redact_test.go` build-tag-free, windows-gated
+  via per-module CI (00-55 §f9).
 - **Enqueued-fact snapshots are THIN today** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in the conform suites).
 
@@ -148,8 +144,8 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   (marker > AI > keyword). Probes enter `--priority ≥90` (fresh
   low-priority work starves behind aging).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
-  agent-pool sweeps once at start.
-- **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd is spent — requeue class `budget`, no burn, parked to midnight (cap) / 15m (cmd), outside env-streak. Claim-path checks run CHEAP-FIRST (budget hook → preflight → executor) so a gated pool never pays process-spawn cost for a verdict the hook already knows.
+  pools sweep once at start.
+- **Claim-time budget gate**: paid turns block once the daily cap/budget-cmd is spent — requeue class `budget`, no burn, parked to midnight (cap) / 15m (cmd), outside env-streak. Claim-path checks run CHEAP-FIRST (budget hook → preflight → executor) — a gated pool never spawns a process for a verdict the hook already knows.
 
 ## Conventions
 
@@ -162,7 +158,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   need in-module `GOWORK=off` tests; closeouts touching root-guard-parsed
   files (AGENTS/README/TODO_LIST, doc pins) cite ROOT build+vet+test
   -race rc. Re-dispatch: newest prior report + `tq show <id>` FIRST;
-  battery rc TO A FILE (no PIPESTATUS); no-delta statement; dated DONE
+  battery rc TO A FILE (no PIPESTATUS); no-delta claim; dated DONE
   re-verified note; `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches).
@@ -206,8 +202,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   via heredocs; fixtures under /tmp (gated trees are daemon-food).
   Footer-less daemon `chore:` sweeps heal via
   `scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>` (unpushed
-  only; verifies subjects/stats/tree/tags; backup on failure;
-  `--self-test` pins rails).
+  only; backup on failure; `--self-test` pins rails).
 - **TestExactlyOnceUnderConcurrency is load-flaky** (worker): host build
   storms can drop it to "19/20 completed"; fails at clean parents too —
   re-run before attributing.
