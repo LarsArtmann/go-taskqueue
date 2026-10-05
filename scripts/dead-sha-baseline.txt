@@ -188,3 +188,14 @@ feee0c2a
 # line 100); patch-id verdict LOST, citation deliberately describes the
 # dead side (sweep forensics), same class as the 2026-10-01 batch above.
 aac17ad9
+# 2026-10-05 (08-4x verification-tail window): rebased-away citations in
+# the paperclip m2 report + README index rows. Patch-id mappings recovered
+# for future healers: 058dbbe0->f5d773b9, 2da0bad6->92932f2f,
+# e0f65d93->d76c6437, e3fcd3c7->503d553e; 0b72db95 + 26723259 have no
+# reachable twin (marker/merged commits).
+058dbbe0
+2da0bad6
+e0f65d93
+0b72db95
+e3fcd3c7
+26723259
