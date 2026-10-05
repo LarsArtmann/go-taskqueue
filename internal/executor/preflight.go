@@ -28,6 +28,17 @@ func prepareRepo(ctx context.Context, a *AgentExecutor, repo string, requireClea
 	return repoDir, nil
 }
 
+// agentRepo is the shared prelude of agent-backed executors: default the
+// lazy agent handle and prepare the payload repo under the clean-tree
+// policy (missing repo permanent, dirty tree a preflight requeue).
+func agentRepo(ctx context.Context, agent *AgentExecutor, repo string, cleanTree bool) (string, error) {
+	if agent == nil {
+		agent = &AgentExecutor{}
+	}
+
+	return prepareRepo(ctx, agent, repo, cleanTree)
+}
+
 // payloadTimeout resolves the effective run timeout: the payload override
 // in whole minutes when positive, the executor's default otherwise.
 func payloadTimeout(defaultTimeout time.Duration, minutes int) time.Duration {

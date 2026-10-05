@@ -113,14 +113,6 @@ type DLQFixExecutor struct {
 	Agent *AgentExecutor
 }
 
-func (e *DLQFixExecutor) base() *AgentExecutor {
-	if e.Agent == nil {
-		return &AgentExecutor{}
-	}
-
-	return e.Agent
-}
-
 // Execute runs the autopsy and enforces the verdict contract. fixed and
 // wontfix both succeed; malformed output (or a wontfix without a reason)
 // fails the attempt — retryable, the model may comply on a retry.
@@ -135,14 +127,12 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 		return Permanent(errors.New("dlqfix: payload needs non-empty repo, dead_task and work"))
 	}
 
-	agent := e.base()
-
 	// Autopsies run dirty-capable by default: a dead agent's uncommitted
 	// partial work IS evidence, and a clean-tree preflight would requeue
 	// the autopsy forever on exactly the cases the feature exists for.
 	// Only an explicit true restores the guard (repos without .git skip
 	// it as usual).
-	repoDir, err := prepareRepo(ctx, agent, p.Repo, p.RequireClean != nil && *p.RequireClean)
+	repoDir, err := agentRepo(ctx, e.Agent, p.Repo, p.RequireClean != nil && *p.RequireClean)
 	if err != nil {
 		return err
 	}
@@ -163,14 +153,8 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result, err := ParseDLQFixResult(output)
-	if err != nil {
-		return fmt.Errorf("dlqfix: %w", err)
-	}
 
-	result.deriveUsage(ctx, repoDir, output, t.ID)
-	recordRunOutcome(ctx, &result, output, "", t.ID)
-
-	return nil
+	return finishParsedRun(ctx, &result, err, "dlqfix", output, repoDir, t.ID)
 }
 
 // dlqFixPrompt builds the autopsy instruction: the dead task's original

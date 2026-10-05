@@ -152,51 +152,66 @@ func openSource(fromPath string) (*sql.DB, error) {
 // Migrate replays the source journal into a fresh engine store at
 // toPath. toPath must not already exist: a fresh store is part of the
 // definition (no in-place surgery on a live engine DB).
-func Migrate(ctx context.Context, fromPath, toPath string) (Stats, error) {
-	var stats Stats
+func Migrate(ctx context.Context, fromPath, toPath string) (stats Stats, err error) {
+	err = withSource(fromPath, func(src *sql.DB) error {
+		return migrateInto(ctx, src, toPath, &stats)
+	})
 
+	return stats, err
+}
+
+// withSource opens the frozen legacy source database and runs fn against
+// it, closing the handle afterwards — the shared open/close bracket of
+// the replay entry points.
+func withSource(fromPath string, fn func(src *sql.DB) error) error {
 	src, err := openSource(fromPath)
 	if err != nil {
-		return stats, err
+		return err
 	}
 
 	defer func() { _ = src.Close() }()
 
+	return fn(src)
+}
+
+// migrateInto is the copy half of Migrate: bootstrap the engine schema at
+// toPath, then copy every legacy table in one transaction.
+func migrateInto(ctx context.Context, src *sql.DB, toPath string, stats *Stats) error {
 	// Open+close the target through the real adapter once: it creates the
 	// engine schema AND the companion tables, exactly as a cutover store
 	// would boot.
 	boot, err := sqlitev4.Open(toPath) //nolint:contextcheck // the adapter's Open bootstraps its own migration
 	if err != nil {
-		return stats, fmt.Errorf("replay: bootstrap engine store: %w", err)
+		return fmt.Errorf("replay: bootstrap engine store: %w", err)
 	}
 
 	if err := boot.Close(); err != nil {
-		return stats, fmt.Errorf("replay: close bootstrap store: %w", err)
+		return fmt.Errorf("replay: close bootstrap store: %w", err)
 	}
 
 	dst, err := sql.Open("sqlite", copyDSN(toPath))
 	if err != nil {
-		return stats, fmt.Errorf("replay: open target: %w", err)
+		return fmt.Errorf("replay: open target: %w", err)
 	}
 
 	defer func() { _ = dst.Close() }()
 
 	copyTx, err := dst.BeginTx(ctx, nil)
 	if err != nil {
-		return stats, fmt.Errorf("replay: begin copy tx: %w", err)
+		return fmt.Errorf("replay: begin copy tx: %w", err)
 	}
 
 	defer func() { _ = copyTx.Rollback() }()
 
-	if err := copyAllTables(ctx, src, copyTx, &stats); err != nil {
-		return stats, err
+	if err := copyAllTables(ctx, src, copyTx, stats); err != nil {
+		return err
 	}
 
 	if err := copyTx.Commit(); err != nil {
-		return stats, fmt.Errorf("replay: commit copy: %w", err)
+		return fmt.Errorf("replay: commit copy: %w", err)
 	}
 
-	return stats, nil
+	return nil
 }
 
 // copyAllTables copies every table in FK-safe order inside the caller's
@@ -463,19 +478,21 @@ func copyQueriedRows(ctx context.Context, src *sql.DB, copyTx *sql.Tx, query, in
 // the hand-rolled store runs (that store is frozen history at cutover);
 // the target side goes through the real queue.Store API — the gate
 // proves what consumers see after the flip.
-func Verify(ctx context.Context, fromPath, toPath string) (Report, error) {
-	var report Report
+func Verify(ctx context.Context, fromPath, toPath string) (report Report, err error) {
+	err = withSource(fromPath, func(src *sql.DB) error {
+		return verifyAgainst(ctx, src, toPath, &report)
+	})
 
-	src, err := openSource(fromPath)
-	if err != nil {
-		return report, err
-	}
+	return report, err
+}
 
-	defer func() { _ = src.Close() }()
-
+// verifyAgainst is the compare half of Verify: run every projection
+// section check of the source against the target engine store's read
+// paths.
+func verifyAgainst(ctx context.Context, src *sql.DB, toPath string, report *Report) error {
 	target, err := sqlitev4.Open(toPath) //nolint:contextcheck // the adapter's Open bootstraps its own migration
 	if err != nil {
-		return report, fmt.Errorf("replay: open engine store: %w", err)
+		return fmt.Errorf("replay: open engine store: %w", err)
 	}
 
 	defer func() { _ = target.Close() }()
@@ -490,12 +507,12 @@ func Verify(ctx context.Context, fromPath, toPath string) (Report, error) {
 
 	factSections, err := verifyFacts(ctx, src, target)
 	if err != nil {
-		return report, fmt.Errorf("replay: fact stream: %w", err)
+		return fmt.Errorf("replay: fact stream: %w", err)
 	}
 
 	report.Sections = append(report.Sections, factSections...)
 
-	return report, nil
+	return nil
 }
 
 // oldStatusCounts mirrors the hand-rolled StatusCounts query.

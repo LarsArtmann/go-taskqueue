@@ -92,14 +92,6 @@ type StatusExecutor struct {
 	Agent *AgentExecutor
 }
 
-func (e *StatusExecutor) base() *AgentExecutor {
-	if e.Agent == nil {
-		return &AgentExecutor{}
-	}
-
-	return e.Agent
-}
-
 // Execute runs the reporting agent and enforces two gates: the output must
 // end with TQ_RESULT: {"report":"docs/status/...","next_items":N} naming an
 // existing, repo-relative file, and the repo verify command must exit 0 (the
@@ -116,11 +108,9 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 		return Permanent(errors.New("status: payload needs non-empty repo, project and completed"))
 	}
 
-	agent := e.base()
-
-	repoDir, err := prepareRepo(
+	repoDir, err := agentRepo(
 		ctx,
-		agent,
+		e.Agent,
 		payload.Repo,
 		requireClean(AgentPayload{RequireClean: payload.RequireClean}),
 	)

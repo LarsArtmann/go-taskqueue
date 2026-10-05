@@ -120,15 +120,6 @@ type ReviewExecutor struct {
 	Agent *AgentExecutor
 }
 
-// base returns the underlying agent executor, lazily defaulting.
-func (e *ReviewExecutor) base() *AgentExecutor {
-	if e.Agent == nil {
-		return &AgentExecutor{}
-	}
-
-	return e.Agent
-}
-
 // Execute runs the reviewer and enforces the verdict contract. Approve and
 // request_changes both succeed; malformed output fails the attempt
 // (retryable — the model may comply on a retry), input-contract misses are
@@ -143,9 +134,7 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 		return Permanent(errors.New("review: payload needs non-empty repo, reviewed_task and item"))
 	}
 
-	agent := e.base()
-
-	repoDir, err := prepareRepo(ctx, agent, p.Repo, requireClean(AgentPayload{RequireClean: p.RequireClean}))
+	repoDir, err := agentRepo(ctx, e.Agent, p.Repo, requireClean(AgentPayload{RequireClean: p.RequireClean}))
 	if err != nil {
 		return err
 	}

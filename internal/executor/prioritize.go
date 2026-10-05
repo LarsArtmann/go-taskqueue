@@ -99,14 +99,6 @@ type PrioritizeExecutor struct {
 	Agent *AgentExecutor
 }
 
-func (e *PrioritizeExecutor) base() *AgentExecutor {
-	if e.Agent == nil {
-		return &AgentExecutor{}
-	}
-
-	return e.Agent
-}
-
 // Execute runs the scorer and enforces the verdict contract: every input
 // item must come back exactly once with a 0-100 score; anything else is a
 // failed attempt (retryable — the model may comply on a retry), input
@@ -126,11 +118,9 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 		return Permanent(ErrPrioritizeSparsePayload)
 	}
 
-	agent := e.base()
-
-	repoDir, err := prepareRepo(
+	repoDir, err := agentRepo(
 		ctx,
-		agent,
+		e.Agent,
 		payload.Repo,
 		requireClean(AgentPayload{RequireClean: payload.RequireClean}),
 	)
@@ -154,14 +144,8 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	result, err := ParsePrioritizeResult(output, payload.Items)
-	if err != nil {
-		return fmt.Errorf("prioritize: %w", err)
-	}
 
-	result.deriveUsage(ctx, repoDir, output, t.ID)
-	recordRunOutcome(ctx, &result, output, "", t.ID)
-
-	return nil
+	return finishParsedRun(ctx, &result, err, "prioritize", output, repoDir, t.ID)
 }
 
 // prioritizePrompt builds the scorer instruction: the batch, the scoring

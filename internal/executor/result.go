@@ -151,6 +151,24 @@ func recordRunOutcome[R any, T interface {
 	SetResultDetail(ctx, detail)
 }
 
+// finishParsedRun is the shared tail of every closeout-free agent turn:
+// a parse miss wraps as the executor-named error (retryable — the model
+// may comply on a retry), a parsed result derives its session usage from
+// the finished output and records the run outcome for `tq show`.
+func finishParsedRun[T interface {
+	setLogPath(string)
+	deriveUsage(ctx context.Context, repoDir, output string, id task.ID) derivedOutcome
+}](ctx context.Context, result T, parseErr error, kind, output, repoDir string, id task.ID) error {
+	if parseErr != nil {
+		return fmt.Errorf("%s: %w", kind, parseErr)
+	}
+
+	result.deriveUsage(ctx, repoDir, output, id)
+	recordRunOutcome(ctx, result, output, "", id)
+
+	return nil
+}
+
 // Detail returns the recorded outcome detail, or nil.
 func (s *Sink) Detail() jsontext.Value {
 	s.mu.Lock()
