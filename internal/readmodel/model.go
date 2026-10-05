@@ -256,21 +256,6 @@ func (m *Model) Tasks(ctx context.Context, filter TaskFilter) ([]TaskRow, error)
 	return rows, nil
 }
 
-// StatusCounts counts the ledger rows per status — the stats projection.
-func (m *Model) StatusCounts(ctx context.Context) (map[string]int, error) {
-	rows, err := m.Tasks(ctx, TaskFilter{})
-	if err != nil {
-		return nil, err
-	}
-
-	counts := make(map[string]int, len(rows))
-	for _, r := range rows {
-		counts[r.Status]++
-	}
-
-	return counts, nil
-}
-
 // Watch subscribes to live ledger changes: every fold update arrives as
 // the folded TaskRow (buffered, drop-oldest on a slow consumer). The
 // subscription ends with ctx. This is the Watcher half of the S3 live

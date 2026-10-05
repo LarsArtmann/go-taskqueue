@@ -151,6 +151,17 @@ TQ_AGENT_BIN="$TMP/stub-agent" timeout 90 "$TMP/tq" worker --agents \
 	>"$TMP/worker.log" 2>&1 &
 WORKER_PID=$!
 
+# Wait for the worker to finish its open/migrate on the fresh DB before
+# enqueueing: a same-instant second opener can exhaust busy_timeout
+# (row 99 class, seen live 2026-10-05 killing BOTH sides alternately).
+worker_up=1
+for _ in $(seq 1 40); do
+	[ -s "$TMP/worker.log" ] && ! grep -q "database is locked" "$TMP/worker.log" && { worker_up=0; break; }
+	grep -q "database is locked" "$TMP/worker.log" 2>/dev/null && break
+	kill -0 "$WORKER_PID" 2>/dev/null || break
+	sleep 0.25
+done
+
 echo "== enqueue the asking task (prompt carries its own id via the executor placeholder)"
 # The worker above is still inside its own open/migrate on the fresh DB;
 # a same-instant enqueue can exhaust busy_timeout (row 99 class). Retry
