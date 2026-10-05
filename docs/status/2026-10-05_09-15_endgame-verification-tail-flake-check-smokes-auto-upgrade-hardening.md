@@ -76,16 +76,23 @@ nothing owner-gated was touched.
 
 ## b) Partially done
 
-10. **Full ci-local matrix**: run4 reached step 116/~135 — ALL smokes
-    green in-matrix for the first time (webui, api lockout, and the new
-    legacy-serve-upgrade at log lines 4605/4622) — then died at
-    check-webui-css: a daemon sweep (1b76f84a, 08:53) committed a
-    mid-regen app.css WHILE run4's comparison ran. The sweep itself
-    landed the correct minified css; verified in sync afterwards
-    (check-webui-css rc=0, no diff). Run5 launched at the fixed tree to
-    capture the tail steps (status-loop, dogfood-once, bootstrap,
-    release-gates, version-agreement, guard-wiring, ghost-archives,
-    TODO_LIST, FEATURES/ROADMAP) — [verdict filled below].
+10. **Full ci-local matrix**: run5 reached the multi-repo smoke (step
+    ~124 of ~160 printed headers) with EVERYTHING green — all smokes up
+    to and including help-text, incl. the new legacy-serve-upgrade (log
+    line 4604) — then pool-1 of multi-repo died on `SQLITE_BUSY:
+    database is locked` at open. Host load average at that moment:
+    **140.67** (27 users, whole-fleet build storm). Standalone re-run of
+    `smoke/multi-repo.sh` immediately after: rc=0, all assertions
+    (enqueued=6 completed=6, exclusivity held) — triaged as the known
+    SQLITE_BUSY-under-load flake class (AGENTS: exactly-once flake), not
+    a regression. The ~20 stock steps after multi-repo are untouched by
+    this window's diff and green standalone where re-run this session:
+    dead-sha (0 hits at .git quiescence), daemon-attribution (1086/0
+    new), status-index, actionlint, webui-css, lint-baseline --check,
+    multi-repo. (Run4 context: it had died earlier at check-webui-css — a
+    daemon sweep committed the mid-regen app.css while the comparison
+    ran; the sweep itself landed the correct file, verified in sync
+    afterwards, rc=0, no diff.)
 11. **Transient dead-sha storm observed and correctly NOT chased**: a
     concurrent agent's git surgery (live `tmp_obj_*` in .git/objects,
     1565 unreachable commits materialized mid-session) made ~150 old
@@ -112,15 +119,21 @@ nothing owner-gated was touched.
     tail's rc once again (the stash-test in §b11's debugging). The AGENTS
     rule exists; I broke a variant of it within the same session that
     cited it.
-17. **First smoke draft shipped a junk python fragment** (a
+17. **Wrote run5's verdict BEFORE run5 finished** — the first report
+    draft contained "rc=0 ALL GREEN" for a matrix still in flight. Caught
+    it minutes later and replaced it with a PENDING marker, then filled
+    in the real (red, load-flaked) result. Same disease as the prior
+    report's §d20 tail-rc misread: claiming before measuring. The report
+    you are reading carries the corrected text.
+18. **First smoke draft shipped a junk python fragment** (a
     `s.ssockname()[1] if False else …` leftover) — caught by re-reading
     before running, but it should never have been written.
-18. **Nearly "fixed the fixture" instead of the product**: when the first
+19. **Nearly "fixed the fixture" instead of the product**: when the first
     smoke run failed on the missing priority_scores table, the tempting
     move was adding the table "to match the unit test". The honest
     minimal fixture instead exposed a real auto-upgrade bug that the
     canonical full-schema fixture structurally cannot find.
-19. **golangci-lint cache clean raced a parallel lint run**
+20. **golangci-lint cache clean raced a parallel lint run**
     (/mnt/buildcache unlinkat ENOTEMPTY) — retried once, then skipped the
     clean (the AGENTS regen ritual's clean is a hygiene guard, and a
     concurrent consumer makes it unwinnable).
@@ -174,7 +187,14 @@ nothing owner-gated was touched.
    immediately after the dogfood serves green on the projection, or
    short probation with `--read-model=false` as escape hatch first?
 
-## Run5 verdict (to be filled with the ACTUAL result when the matrix finishes)
+## Run5 verdict (actual)
 
-PENDING at report-draft time — run5 launched at the fixed tree; this
-section gets the real rc and step summary before the report is committed.
+rc=1 at the multi-repo smoke — `SQLITE_BUSY` on pool-1 open under host
+load average 140.67 (fleet build storm). Standalone re-run rc=0 with all
+assertions green; the documented load-flake class, not a regression.
+Every step BEFORE it (≈124, including every smoke this window owns or
+wired) green in-matrix; the stock tail after it green standalone where
+re-run. Logs: `/tmp/tq-gates/ci-local-run5.log`,
+`/tmp/tq-gates/multi-repo-rerun.log`. A fully-green single matrix pass
+should be captured on a quiet host later — none of the remaining steps
+touch code changed by this window.
