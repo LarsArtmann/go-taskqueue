@@ -124,26 +124,26 @@ Nothing broke in the tree; every gate ends green. Honest missteps, in order:
 
 ## f) NEXT (grounded in this session's observations; impact-first)
 
-| # | Item | Why / cite |
-|---|------|-----------|
-~~| 1 | Fix ROADMAP.md:287 citation to a real path (`internal/budget/budget.go`) | check-doc-refs rc=1, foreign break, one line |~~ done at 4be4a8ef
-~~| 2 | Drop unused `internal/queue/sqlite` require from sqlitev4/go.mod; then vendor-hash check | standing gopls warning all session |~~ done at 4be4a8ef; nix vendor-hash re-check rc=0, no drift
-~~| 3 | `root-gate.sh` certification at this HEAD | sweep changed 15 Go files + AGENTS.md |~~ verified: root-gate.sh rc=0 at this HEAD (composite tree incl. concurrent-agent WIP)
-~~| 4 | `-race` re-run across the 6 touched modules | concurrent-agent noise rule (AGENTS Known Issues) |~~ verified: 5 modules green under -race (executor 12.5s, companion, cqrsqlite, sqlitev4, cmd/tq via devmod); cmd/tq -race impossible at the gate CGO_ENABLED=0 pin (race requires cgo)
-~~| 5 | CHANGELOG row for the -t 3 tail zero (links 14-02 report) | append-only policy; pending g3 ruling |~~ Won't implement; policy ruling 2026-10-05: internal-only sweeps get no row; dated status reports are the record
-~~| 6 | Prune redundant round-1 doc directives (cmd/tq, review, status) | comment weight, byte-neutral |~~ done at de63fe08; art-dupl re-run still 1 group / 2 clones
-~~| 7 | HARVEST this report's (f) into TODO_LIST (docs-health) | skill: (f) belongs in TODO_LIST, not entombed |~~ docs-health pass 2026-10-05: 5 open rows routed to TODO_LIST
-| 8 | File upstream art-dupl issue: directives inside templ markup | would let the last group carry an accept too |
-~~| 9 | Decide config-exclusion vs documented residual for fragments.templ pair | canonical-zero reports vs explicit visibility |~~ Won't implement; Q2 ruling 2026-10-05: documented residual stays (visibility over canonical zero)
-| 10 | Commit an art-dupl config (-c) pinning the canonical invocation | ad-hoc runs then match the gate flags by default |
-| 11 | Cross-check 14-02 report's open items (mutation-verify pins, evidence filing) | my sweep complements, did not execute them |
-| 12 | Re-read 12-27 verdicts ledger; align my 14 accept reasons | provenance pass (e4) |
-~~| 13 | Symbol-style citation audit across docs (`.pkg.Symbol` vs path) | same failure class as item 1, silently broken refs |~~ verified: audit across the 6 guarded docs; single instance was item 1, fixed in the same commit
-| 14 | Index-bloat check: live status rows vs 100-row warning threshold | 12-27 report cited 206 files vs threshold |
-~~| 15 | Proofread directive texts for house style (terse, no em dash) | I wrote them fast under batch pressure |~~ verified: zero em dashes across directive lines; the one offender died in the item-6 prune
-~~| 16 | `nix build .#checks.x86_64-linux.vendor-hash` after item 2 | VendorHash drift rule |~~ verified: rc=0, no drift, flake.nix untouched
-~~| 17 | Consider an AGENTS.md tightening: replace "residual groups accepted" with the single named residual + directive-semantics pointer | AGENTS.md now carries both the old blanket line and my new line |~~ done at 748f75f3
-| 18 | Optional: nightly fuzz unaffected — verify ci-local stays green once at this HEAD | routine post-sweep certification |
+| #  | Item                                                                              | Why / cite                                                                                                                        |
+| -- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| ~~ | 1                                                                                 | Fix ROADMAP.md:287 citation to a real path (`internal/budget/budget.go`)                                                          |
+| ~~ | 2                                                                                 | Drop unused `internal/queue/sqlite` require from sqlitev4/go.mod; then vendor-hash check                                          |
+| ~~ | 3                                                                                 | `root-gate.sh` certification at this HEAD                                                                                         |
+| ~~ | 4                                                                                 | `-race` re-run across the 6 touched modules                                                                                       |
+| ~~ | 5                                                                                 | CHANGELOG row for the -t 3 tail zero (links 14-02 report)                                                                         |
+| ~~ | 6                                                                                 | Prune redundant round-1 doc directives (cmd/tq, review, status)                                                                   |
+| ~~ | 7                                                                                 | HARVEST this report's (f) into TODO_LIST (docs-health)                                                                            |
+| 8  | File upstream art-dupl issue: directives inside templ markup                      | would let the last group carry an accept too                                                                                      |
+| ~~ | 9                                                                                 | Decide config-exclusion vs documented residual for fragments.templ pair                                                           |
+| 10 | Commit an art-dupl config (-c) pinning the canonical invocation                   | ad-hoc runs then match the gate flags by default                                                                                  |
+| 11 | Cross-check 14-02 report's open items (mutation-verify pins, evidence filing)     | my sweep complements, did not execute them                                                                                        |
+| 12 | Re-read 12-27 verdicts ledger; align my 14 accept reasons                         | provenance pass (e4)                                                                                                              |
+| ~~ | 13                                                                                | Symbol-style citation audit across docs (`.pkg.Symbol` vs path)                                                                   |
+| 14 | Index-bloat check: live status rows vs 100-row warning threshold                  | 12-27 report cited 206 files vs threshold                                                                                         |
+| ~~ | 15                                                                                | Proofread directive texts for house style (terse, no em dash)                                                                     |
+| ~~ | 16                                                                                | `nix build .#checks.x86_64-linux.vendor-hash` after item 2                                                                        |
+| ~~ | 17                                                                                | Consider an AGENTS.md tightening: replace "residual groups accepted" with the single named residual + directive-semantics pointer |
+| 18 | Optional: nightly fuzz unaffected — verify ci-local stays green once at this HEAD | routine post-sweep certification                                                                                                  |
 
 Deliberately NOT invented: items requiring research outside this session's
 scope (worker internals, release engineering, platform work) — those belong
@@ -152,16 +152,16 @@ to their own sweeps, not to a dedup closeout's backlog.
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
 ~~1. **Foreign break ownership:** ROADMAP.md:287's dead citation predates my~~ answered 2026-10-05: fixed on sight at 4be4a8ef (one-line citation-format fix under the fix-on-sight owner grant)
-   window (neither file touched by me). Fix it myself now (fix-on-sight),
-   or leave it for whichever agent owns the roadmap rows (never-touch-what
-   -you-didn't-author)?
+window (neither file touched by me). Fix it myself now (fix-on-sight),
+or leave it for whichever agent owns the roadmap rows (never-touch-what
+-you-didn't-author)?
 ~~2. **Templ residual endgame:** is "accepted residual, documented in~~ answered 2026-10-05: documented residual is the durable answer; config exclusion declined (see item 9)
-   AGENTS.md" the durable answer for the fragments.templ pair, or do you
-   want canonical art-dupl runs to show literally zero groups (config
-   exclusion, or upstream templ-directive support)?
+AGENTS.md" the durable answer for the fragments.templ pair, or do you
+want canonical art-dupl runs to show literally zero groups (config
+exclusion, or upstream templ-directive support)?
 ~~3. **CHANGELOG policy:** does an internal-only dedup sweep (zero API or~~ answered 2026-10-05: no row for internal-only sweeps; dated status reports are the record (see item 5)
-   behavior change) earn a CHANGELOG row in this repo, or is CHANGELOG
-   reserved for user-facing deltas?
+behavior change) earn a CHANGELOG row in this repo, or is CHANGELOG
+reserved for user-facing deltas?
 
 ## Verification receipts
 

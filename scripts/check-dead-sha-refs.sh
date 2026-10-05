@@ -158,7 +158,10 @@ EOF
 	# dead token merely SHARING the line with an unrelated arrow still fails.
 	files=(docs/status/paired.md)
 	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
-	[ "$rc" = 0 ] || { echo "dead-sha self-test FAIL: proper arrow pair whitewashed: $out"; exit 1; }
+	[ "$rc" = 0 ] || {
+		echo "dead-sha self-test FAIL: proper arrow pair whitewashed: $out"
+		exit 1
+	}
 	files=(docs/status/mixed.md)
 	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
 	if [ "$rc" != 1 ] || ! grep -q "DEAD SHA: docs/status/mixed.md:1 cites '${old}'" <<<"$out"; then
@@ -171,15 +174,33 @@ EOF
 	files=(docs/status/report.md docs/status/mixed.md docs/status/paired.md)
 	MODE=emit
 	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
-	[ "$rc" = 0 ] || { echo "dead-sha self-test FAIL: emit mode rc=$rc"; exit 1; }
-	[ "$(grep -c '^[0-9a-f]\{7,40\}$' <<<"$out")" = 1 ] || { echo "dead-sha self-test FAIL: emit expected exactly 1 token (pair member excluded): $out"; exit 1; }
-	grep -q "^${old}$" <<<"$out" || { echo "dead-sha self-test FAIL: emit missed the dangling token: $out"; exit 1; }
-	grep -q "^${other}$" <<<"$out" && { echo "dead-sha self-test FAIL: emit included an arrow-pair member: $out"; exit 1; }
-	{ echo "# emitted"; cat <<<"$out"; } >"$tmp/base.txt"
+	[ "$rc" = 0 ] || {
+		echo "dead-sha self-test FAIL: emit mode rc=$rc"
+		exit 1
+	}
+	[ "$(grep -c '^[0-9a-f]\{7,40\}$' <<<"$out")" = 1 ] || {
+		echo "dead-sha self-test FAIL: emit expected exactly 1 token (pair member excluded): $out"
+		exit 1
+	}
+	grep -q "^${old}$" <<<"$out" || {
+		echo "dead-sha self-test FAIL: emit missed the dangling token: $out"
+		exit 1
+	}
+	grep -q "^${other}$" <<<"$out" && {
+		echo "dead-sha self-test FAIL: emit included an arrow-pair member: $out"
+		exit 1
+	}
+	{
+		echo "# emitted"
+		cat <<<"$out"
+	} >"$tmp/base.txt"
 	files=(docs/status/mixed.md)
 	MODE=gate
 	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
-	[ "$rc" = 0 ] || { echo "dead-sha self-test FAIL: emitted baseline did not green the gate: $out"; exit 1; }
+	[ "$rc" = 0 ] || {
+		echo "dead-sha self-test FAIL: emitted baseline did not green the gate: $out"
+		exit 1
+	}
 
 	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, emit-baseline sorted+pair-excluded, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
 	exit 0

@@ -16,7 +16,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.11.0 // indirect
-	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jackc/puddle/v2 v2.2.3 // indirect
 	github.com/larsartmann/go-branded-id v0.7.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/claiming/v4 v4.0.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.2.3 // indirect
@@ -33,8 +33,8 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0 // indirect
-	github.com/larsartmann/templ-components/datastar v1.19.4 // indirect
-	github.com/larsartmann/templ-components/htmx v1.19.4 // indirect
+	github.com/larsartmann/templ-components/datastar v1.20.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.20.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
@@ -68,9 +68,9 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
-	github.com/larsartmann/templ-components v1.19.4
-	github.com/larsartmann/templ-components/icons v1.19.4
-	github.com/larsartmann/templ-components/utils v1.19.4
+	github.com/larsartmann/templ-components v1.20.0
+	github.com/larsartmann/templ-components/icons v1.20.0
+	github.com/larsartmann/templ-components/utils v1.20.0
 	golang.org/x/sync v0.23.0
 )
 

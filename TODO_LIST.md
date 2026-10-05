@@ -42,7 +42,6 @@ not here.
 
 ## Window f20–f24 follow-ups (harvested from docs/status/2026-09-10_04-09, verified 2026-09-10)
 
-
 ## Fullcore-window follow-ups (harvested from docs/status/2026-09-10_06-25, verified 2026-09-10)
 
 - [ ] Move closeout-report writes to `docs/status/tasks/` (root stays for window reports; update the closeout executor path + README index routing) and enforce it in the mint path (O7 2026-10-05)
@@ -489,6 +488,7 @@ not here.
 - [ ] Cross-check the 14-02 -t 4 window's open items (mutation-verify pins, evidence filing) — the -t 3 tail sweep complemented but did not execute them (docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md §f11; docs/status/2026-10-05_14-02_art-dupl-t4-zero-dedup-sweep.md)
 - [ ] Re-read the 12-27 dupe-type verdicts ledger and align the 14 accept reasons minted this window so the directives carry durable provenance instead of only local rationale (docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md §f12, §e4)
 - [ ] Status-index bloat check: count live docs/status rows vs the 100-row warning threshold (12-27 cited 206 files) and prune stale rows or raise the threshold per the outcome (docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md §f14)
+
 ## Metaengine/system adoption deep-dive follow-ups (2026-10-05; source: docs/research/2026-10-05_go-cqrs-lite-metaengine-system-deep-dive.html findings F1-F5; deduped against rows 32/33/371 — the S3/S4 rows own the flip/composition residue, 371 owns the sweeper-watermark half of doctor liveness)
 
 - [ ] metaengine Delta counter queries for by_status/by_project (one collection keyed status, one keyed project|status; metaengine.On over the existing evt* structs, ExecuteTyped reads) replacing BOTH hand tallies (readmodel.StatusCounts full-scan at internal/readmodel/model.go:259-272, tallyStats/tallyModelRows at cmd/tq/main.go:2043-2075) — this IS the P5 dual-tally collapse landed onto the library surface (upstream metaengine/COOKBOOK.md §Status Count Dashboard)

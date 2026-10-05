@@ -12,8 +12,8 @@ no new dedup triage, no foreign work touched.
 1. **All three §g rulings executed and recorded.**
    - **Q1 foreign break**: `ROADMAP.md:287`'s symbol-style citation
      (`internal/budget.SessionUsage`) reworded to a checker-visible path span
-     + bare-symbol span; `check-doc-refs.sh` rc=0 ("doc refs ok"). Commit
-     `4be4a8ef`.
+     - bare-symbol span; `check-doc-refs.sh` rc=0 ("doc refs ok"). Commit
+       `4be4a8ef`.
    - **Q2 templ residual**: the documented-accepted answer stands; config
      exclusion declined (visibility over canonical zero). AGENTS.md's
      contradictory blanket line ("Residual art-dupl groups accepted")
@@ -149,24 +149,24 @@ held. Honest missteps, in order:
 
 ## f) NEXT (grounded in this window; impact-first)
 
-| # | Item | Why / cite |
-|---|------|-----------|
-| 1 | Index-bloat ANNOTATE/archived sweep: 217 live rows vs 100 threshold; warning fires on every status-index check | this report b2; TODO_LIST f14 row |
-| 2 | File the upstream art-dupl templ-suppression issue (directives cannot live inside templ markup) | TODO_LIST f8 row (16-02 §f8) |
-| 3 | Commit an art-dupl `-c` config pinning the canonical invocation | TODO_LIST f10 row (16-02 §f10) |
-| 4 | Cross-check 14-02's open items (mutation-verify pins, evidence filing) | TODO_LIST f11 row (16-02 §f11) |
-| 5 | Align the 14 directive reasons with the 12-27 verdicts ledger | TODO_LIST f12 row (16-02 §f12) |
-| 6 | cmd/tq `-race` posture: record "no cmd/tq -race, by CGO policy" beside the gate OR fund a CGO_ENABLED=1 dev.mod-race variant | this report b1/d1; question g1 |
-| 7 | Harden `scripts/lib/cmd-tq-devmod.sh` root resolution (BASH_SOURCE over `$0`) so direct sourcing cannot resolve `$HOME` | this report d1(ii) |
-| 8 | `test-cmd-tq.sh` -race hint in forwarded args | this report e7 |
-| 9 | `ci-local.sh` once at this HEAD before the next push | 16-02 §f18 |
-| 10 | readmodel module gate cert for the concurrent agent's new test pins (`06974658`) | this report b3 |
-| 11 | Living-docs tightening audit: grep for other blanket-acceptance lines like the old "Residual art-dupl groups accepted" | 16-02 §f17 pattern, AGENTS.md fix `748f75f3` |
-| 12 | Plan an AGENTS.md offsetting cut: 89 B headroom left before the next addition | check-agents-size 15,611/15,700 |
-| 13 | Durable home for the CHANGELOG-policy ruling (see g2) | this report a1/Q3 |
-| 14 | Owner ruling on the two TRAILER WARNINGs (f26 cluster class) firing on every status-index check | check-status-index output, pre-existing |
-| 15 | docs-health SKILL.md: add the TSV spec example for annotate-status-items (crush-config repo, owner's own) | this report d4 |
-| 16 | art-dupl upstream nit: keep `--json` output free of stderr interleave (info line poisoned a captured file) | this report d2 |
+| #  | Item                                                                                                                         | Why / cite                                   |
+| -- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| 1  | Index-bloat ANNOTATE/archived sweep: 217 live rows vs 100 threshold; warning fires on every status-index check               | this report b2; TODO_LIST f14 row            |
+| 2  | File the upstream art-dupl templ-suppression issue (directives cannot live inside templ markup)                              | TODO_LIST f8 row (16-02 §f8)                 |
+| 3  | Commit an art-dupl `-c` config pinning the canonical invocation                                                              | TODO_LIST f10 row (16-02 §f10)               |
+| 4  | Cross-check 14-02's open items (mutation-verify pins, evidence filing)                                                       | TODO_LIST f11 row (16-02 §f11)               |
+| 5  | Align the 14 directive reasons with the 12-27 verdicts ledger                                                                | TODO_LIST f12 row (16-02 §f12)               |
+| 6  | cmd/tq `-race` posture: record "no cmd/tq -race, by CGO policy" beside the gate OR fund a CGO_ENABLED=1 dev.mod-race variant | this report b1/d1; question g1               |
+| 7  | Harden `scripts/lib/cmd-tq-devmod.sh` root resolution (BASH_SOURCE over `$0`) so direct sourcing cannot resolve `$HOME`      | this report d1(ii)                           |
+| 8  | `test-cmd-tq.sh` -race hint in forwarded args                                                                                | this report e7                               |
+| 9  | `ci-local.sh` once at this HEAD before the next push                                                                         | 16-02 §f18                                   |
+| 10 | readmodel module gate cert for the concurrent agent's new test pins (`06974658`)                                             | this report b3                               |
+| 11 | Living-docs tightening audit: grep for other blanket-acceptance lines like the old "Residual art-dupl groups accepted"       | 16-02 §f17 pattern, AGENTS.md fix `748f75f3` |
+| 12 | Plan an AGENTS.md offsetting cut: 89 B headroom left before the next addition                                                | check-agents-size 15,611/15,700              |
+| 13 | Durable home for the CHANGELOG-policy ruling (see g2)                                                                        | this report a1/Q3                            |
+| 14 | Owner ruling on the two TRAILER WARNINGs (f26 cluster class) firing on every status-index check                              | check-status-index output, pre-existing      |
+| 15 | docs-health SKILL.md: add the TSV spec example for annotate-status-items (crush-config repo, owner's own)                    | this report d4                               |
+| 16 | art-dupl upstream nit: keep `--json` output free of stderr interleave (info line poisoned a captured file)                   | this report d2                               |
 
 Deliberately NOT invented: worker/release/platform work — own sweeps, own
 windows; this closeout certifies, it does not expand scope.

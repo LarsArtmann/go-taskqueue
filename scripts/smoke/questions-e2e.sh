@@ -169,10 +169,17 @@ TASK_ID=""
 for _ in $(seq 1 10); do
 	TASK_ID="$("$TMP/tq" enqueue --type agent --project ask-e2e \
 		--payload "{\"repo\":\"$REPO\",\"prompt\":\"decide TASK:{{TASK_ID}}\",\"require_clean\":false,\"timeout_minutes\":2}" 2>"$TMP/enqueue.err")" && break
-	grep -q "database is locked" "$TMP/enqueue.err" || { cat "$TMP/enqueue.err" >&2; exit 1; }
+	grep -q "database is locked" "$TMP/enqueue.err" || {
+		cat "$TMP/enqueue.err" >&2
+		exit 1
+	}
 	sleep 1
 done
-[ -n "$TASK_ID" ] || { echo "FAIL: enqueue never got past open contention" >&2; cat "$TMP/enqueue.err" >&2; exit 1; }
+[ -n "$TASK_ID" ] || {
+	echo "FAIL: enqueue never got past open contention" >&2
+	cat "$TMP/enqueue.err" >&2
+	exit 1
+}
 echo "   task $TASK_ID"
 
 echo "== wait for the park (worker requeued the ask without burning an attempt)"

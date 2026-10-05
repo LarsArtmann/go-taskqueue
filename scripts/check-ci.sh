@@ -35,12 +35,30 @@ classify_conclusion() {
 # Hermetic negative test: CHECK_CI_SELF_TEST=1 pins the classification
 # without network or gh (wired as a ci-local step next to the live probe).
 if [ "${CHECK_CI_SELF_TEST:-}" = "1" ]; then
-	[ "$(classify_conclusion success)" = "ok" ] || { echo "check-ci self-test: success must classify ok"; exit 1; }
-	[ "$(classify_conclusion cancelled)" = "cancelled" ] || { echo "check-ci self-test: cancelled must be its own neutral class, not red"; exit 1; }
-	[ "$(classify_conclusion failure)" = "red" ] || { echo "check-ci self-test: failure must stay red"; exit 1; }
-	[ "$(classify_conclusion timed_out)" = "red" ] || { echo "check-ci self-test: timed_out must stay red"; exit 1; }
-	[ "$(classify_conclusion startup_failure)" = "red" ] || { echo "check-ci self-test: startup_failure must stay red"; exit 1; }
-	[ "$(classify_conclusion '')" = "red" ] || { echo "check-ci self-test: empty conclusion must stay red"; exit 1; }
+	[ "$(classify_conclusion success)" = "ok" ] || {
+		echo "check-ci self-test: success must classify ok"
+		exit 1
+	}
+	[ "$(classify_conclusion cancelled)" = "cancelled" ] || {
+		echo "check-ci self-test: cancelled must be its own neutral class, not red"
+		exit 1
+	}
+	[ "$(classify_conclusion failure)" = "red" ] || {
+		echo "check-ci self-test: failure must stay red"
+		exit 1
+	}
+	[ "$(classify_conclusion timed_out)" = "red" ] || {
+		echo "check-ci self-test: timed_out must stay red"
+		exit 1
+	}
+	[ "$(classify_conclusion startup_failure)" = "red" ] || {
+		echo "check-ci self-test: startup_failure must stay red"
+		exit 1
+	}
+	[ "$(classify_conclusion '')" = "red" ] || {
+		echo "check-ci self-test: empty conclusion must stay red"
+		exit 1
+	}
 	echo "check-ci: self-test ok (success=ok, cancelled=neutral, else=red)"
 	exit 0
 fi

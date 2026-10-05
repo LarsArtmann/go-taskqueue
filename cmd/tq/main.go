@@ -1754,19 +1754,15 @@ func cmdStats(args []string) error {
 			rfilter.Status = readmodel.StringPtr(string(*filter.Status))
 		}
 
-		rows, err := m.Tasks(ctx, rfilter)
+		byStatus, byProject, err = m.Stats(ctx, rfilter)
 		if err != nil {
 			return err
 		}
-
-		byStatus, byProject = tallyModelRows(rows)
 	} else {
-		tasks, err := store.List(ctx, filter)
+		byStatus, byProject, err = storeStats(ctx, store, filter)
 		if err != nil {
 			return err
 		}
-
-		byStatus, byProject = tallyStats(tasks)
 	}
 
 	// Parked = rate-limit parked (pending with a future not_before) — the
@@ -2040,41 +2036,56 @@ func printConsumerLag(store *sqlite.Store) {
 	}
 }
 
-// tallyStats aggregates the task list into status counts and
-// per-project-per-status counts.
-func tallyStats(tasks []task.Task) (map[string]int, map[string]map[string]int) {
-	byStatus := map[string]int{}
-	byProject := map[string]map[string]int{}
-
-	for _, t := range tasks {
-		byStatus[string(t.Status)]++
-		if byProject[t.Project] == nil {
-			byProject[t.Project] = map[string]int{}
-		}
-
-		byProject[t.Project][string(t.Status)]++
+// storeStats reads the store's GROUP BY count surfaces and narrows them
+// to the filter in Go — the pushdowns are O(groups), so narrowing the
+// grouped maps beats any filtered re-query. This is the
+// --read-model=false escape hatch; the default path reads the projection
+// counters (readmodel.Model.Stats).
+func storeStats(
+	ctx context.Context,
+	store *sqlite.Store,
+	filter queue.Filter,
+) (map[string]int, map[string]map[string]int, error) {
+	statusCounts, err := store.StatusCounts(ctx)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return byStatus, byProject
-}
-
-// tallyModelRows tallies readmodel ledger rows exactly like tallyStats
-// tallies store rows (--read-model reads the ADR-0019 S3 projection
-// instead of the queue store; the output shape is identical).
-func tallyModelRows(rows []readmodel.TaskRow) (map[string]int, map[string]map[string]int) {
-	byStatus := map[string]int{}
-	byProject := map[string]map[string]int{}
-
-	for _, r := range rows {
-		byStatus[r.Status]++
-		if byProject[r.Project] == nil {
-			byProject[r.Project] = map[string]int{}
-		}
-
-		byProject[r.Project][r.Status]++
+	projectCounts, err := store.ProjectCounts(ctx)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return byStatus, byProject
+	byStatus := map[string]int{}
+	for st, n := range statusCounts {
+		if filter.Status != nil && st != *filter.Status {
+			continue
+		}
+
+		byStatus[string(st)] = n
+	}
+
+	byProject := map[string]map[string]int{}
+	for p, m := range projectCounts {
+		if filter.Project != nil && p != *filter.Project {
+			continue
+		}
+
+		row := map[string]int{}
+		for st, n := range m {
+			if filter.Status != nil && st != *filter.Status {
+				continue
+			}
+
+			row[string(st)] = n
+		}
+
+		if len(row) > 0 {
+			byProject[p] = row
+		}
+	}
+
+	return byStatus, byProject, nil
 }
 
 // printStats renders the status table and, when scoped (project filter
