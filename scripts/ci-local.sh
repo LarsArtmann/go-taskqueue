@@ -95,6 +95,12 @@ step "master CI state (check-ci; CI_CHECK=off to bypass)"
 step "transient-retry self-test (with_transient_retry behavior pin)"
 ./scripts/check-transient-retry.sh
 
+# Pin the shared verify wrapper the same way (row 132): the root-gate lib
+# extraction and the byte-parity between scripts/verify.sh's battery and the
+# shipped `.tq-verify` fail here, not at the next agent gate death.
+step "verify-wrapper self-test (flake-retry semantics + .tq-verify parity pin)"
+./scripts/check-verify.sh
+
 # Pin the Task-Queue-ID commit-msg hook the same way (row 112): the installer
 # heredoc is the shipped artifact; placement/count/format semantics fail here,
 # not at the next real commit.

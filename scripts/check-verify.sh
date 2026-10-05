@@ -81,10 +81,14 @@ if [ "$fail" -ne 0 ]; then
 	exit 1
 fi
 
+# shellcheck source=lib/verify-retry.sh
+. "$lib"
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# Behavior pins: run the SHIPPED lib bytes through the four contract cases.
+# Behavior pins: run the SHIPPED lib bytes through the four contract cases
+# (the lib is sourced once above; each case calls it in a fresh subshell).
 # run_case <name> <want_rc> <want_runs> <wrapper invocation...>: run the
 # invocation in a subshell that first sources the shipped lib, then count
 # GATE-RUN lines. Full output is kept in last_out for follow-up
@@ -95,7 +99,6 @@ run_case() {
 	shift 3
 	local rc=0 runs
 	last_out="$(
-		. "$lib"
 		run_with_flake_retry "PIN" "$@"
 	)" || rc=$?
 	runs="$(grep -c '^GATE-RUN$' <<<"$last_out" || true)"
