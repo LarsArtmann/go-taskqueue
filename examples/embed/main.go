@@ -14,6 +14,9 @@
 // runs a two-slot worker pool until the queue drains, and prints final
 // status counts. Postgres mode demonstrates postgres.OpenWithPool: the
 // example owns the pool, and store.Close leaves it running.
+//
+// The example runs NO budget gate: worker.Config.Budget is where an embedder
+// caps paid agent turns per day (see internal/worker's ExampleConfig_budget).
 package main
 
 import (

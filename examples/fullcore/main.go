@@ -14,6 +14,9 @@
 // task, runs the pool until the queue drains, and prints the final status
 // counts. Keep --backend postgres pointed at a local/test database; the
 // example applies the store schema to it.
+//
+// The example runs NO budget gate: worker.Config.Budget is where an embedder
+// caps paid agent turns per day (see internal/worker's ExampleConfig_budget).
 package main
 
 import (
