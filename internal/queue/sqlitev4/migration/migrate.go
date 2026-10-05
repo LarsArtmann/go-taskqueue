@@ -154,6 +154,7 @@ func openSource(fromPath string) (*sql.DB, error) {
 // definition (no in-place surgery on a live engine DB).
 func Migrate(ctx context.Context, fromPath, toPath string) (Stats, error) {
 	var stats Stats
+
 	err := withSource(fromPath, func(src *sql.DB) error {
 		return migrateInto(ctx, src, toPath, &stats)
 	})
@@ -479,8 +480,10 @@ func copyQueriedRows(ctx context.Context, src *sql.DB, copyTx *sql.Tx, query, in
 // the hand-rolled store runs (that store is frozen history at cutover);
 // the target side goes through the real queue.Store API — the gate
 // proves what consumers see after the flip.
-func Verify(ctx context.Context, fromPath, toPath string) (report Report, err error) {
-	err = withSource(fromPath, func(src *sql.DB) error {
+func Verify(ctx context.Context, fromPath, toPath string) (Report, error) {
+	var report Report
+
+	err := withSource(fromPath, func(src *sql.DB) error {
 		return verifyAgainst(ctx, src, toPath, &report)
 	})
 
