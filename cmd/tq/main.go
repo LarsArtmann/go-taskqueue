@@ -2045,11 +2045,11 @@ func printConsumerLag(store *sqlite.Store) {
 // counters (readmodel.Model.Stats).
 // narrowCounts narrows a grouped count map to the filter's status: a
 // nil status keeps every group, otherwise only the named one survives.
-func narrowCounts[K ~string](counts map[K]int, status *string) map[string]int {
+func narrowCounts[K ~string](counts map[K]int, status *task.Status) map[string]int {
 	out := make(map[string]int, len(counts))
 
 	for key, n := range counts {
-		if status != nil && string(key) != *status {
+		if status != nil && string(key) != string(*status) {
 			continue
 		}
 
