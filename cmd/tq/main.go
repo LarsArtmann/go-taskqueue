@@ -3024,10 +3024,12 @@ func cmdWatermarks(args []string) error {
 
 	switch args[0] {
 	case "show":
+		// art-dupl:accept subcommand wiring: per-branch FlagSet + dbFlag + Parse is the no-framework CLI idiom.
 		fs := flag.NewFlagSet("watermarks show", flag.ExitOnError)
 
 		db := dbFlag(fs)
 		if err := fs.Parse(args[1:]); err != nil {
+			// art-dupl:accept subcommand wiring: parse-err + open + defer-Close is the uniform store-command opening.
 			return err
 		}
 
@@ -3070,6 +3072,7 @@ func cmdWatermarks(args []string) error {
 		return nil
 
 	case "set":
+		// art-dupl:accept subcommand wiring: per-branch FlagSet + dbFlag + Parse is the no-framework CLI idiom.
 		fs := flag.NewFlagSet("watermarks set", flag.ExitOnError)
 
 		db := dbFlag(fs)

@@ -926,6 +926,7 @@ func oldAllFacts(ctx context.Context, src *sql.DB) ([]journal.Fact, error) {
 	for rows.Next() {
 		fact, err := scanOldFact(rows)
 		if err != nil {
+			// art-dupl:accept scan-loop tail: append + rows.Err is the database/sql read idiom; the loop and its defer live in this frame.
 			return nil, err
 		}
 

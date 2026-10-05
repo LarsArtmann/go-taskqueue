@@ -109,6 +109,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	if payload.Repo == "" || payload.Project == "" || len(payload.Completed) == 0 {
+		// art-dupl:accept executor entry seam: payload validation + agentRepo over the shared decode/requireClean seams; payload types differ by design.
 		return Permanent(errors.New("status: payload needs non-empty repo, project and completed"))
 	}
 

@@ -149,6 +149,7 @@ func sessionList(args []string) error {
 	fs := flag.NewFlagSet("session list", flag.ExitOnError)
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
+		// art-dupl:accept subcommand wiring: parse-err + open + defer-Close is the uniform store-command opening.
 		return err
 	}
 

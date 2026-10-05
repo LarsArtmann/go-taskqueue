@@ -303,6 +303,7 @@ func ListWatermarks(ctx context.Context, r Runner) ([]queue.WatermarkEntry, erro
 		var e queue.WatermarkEntry
 
 		if err := rows.Scan(&e.Consumer, &e.Seq, &e.UpdatedAt); err != nil {
+			// art-dupl:accept scan-loop tail: append + rows.Err is the database/sql read idiom; the loop and its defer live in this frame.
 			return nil, err
 		}
 
@@ -382,6 +383,7 @@ func PriorityScores(ctx context.Context, r Runner) ([]queue.PriorityScore, error
 		var score queue.PriorityScore
 		if err := rows.Scan(&score.ItemKey, &score.Score, &score.EffortMinutes,
 			&score.Source, &score.Reasoning, &score.Tokens, &score.ScoredAt); err != nil {
+			// art-dupl:accept scan-loop tail: append + rows.Err is the database/sql read idiom; the loop and its defer live in this frame.
 			return nil, err
 		}
 

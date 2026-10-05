@@ -135,6 +135,7 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	if p.Repo == "" || p.ReviewedTask == "" || p.Item == "" {
+		// art-dupl:accept executor entry seam: payload validation + agentRepo over the shared decode/requireClean seams; payload types differ by design.
 		return Permanent(errors.New("review: payload needs non-empty repo, reviewed_task and item"))
 	}
 
