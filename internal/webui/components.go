@@ -129,25 +129,70 @@ type metaChip struct {
 // conditional diagnostics only when non-zero. The sessions and budget
 // chips render inline (two-count and metered forms).
 func nowbandMetaChips(data DashboardData) []metaChip {
-	chips := []metaChip{{class: "card-total", title: "all tasks ever", label: "total", count: data.Total}}
+	chips := []metaChip{
+		{class: "card-total", title: "all tasks ever", label: "total", count: data.Total},
+	}
 
 	if data.Parked > 0 {
-		chips = append(chips, metaChip{class: "card-parked", title: "rate-limit requeues waiting out their window", label: "parked", count: data.Parked})
+		chips = append(
+			chips,
+			metaChip{
+				class: "card-parked",
+				title: "rate-limit requeues waiting out their window",
+				label: "parked",
+				count: data.Parked,
+			},
+		)
 	}
 
 	if data.BudgetParked > 0 {
-		chips = append(chips, metaChip{class: "card-budget-parked", title: "paid turns parked by the budget gate (latest requeue in the last 24h) — the pool is idle on purpose, no attempt burn", label: "budget", count: data.BudgetParked})
+		chips = append(
+			chips,
+			metaChip{
+				class: "card-budget-parked",
+				title: "paid turns parked by the budget gate (latest requeue in the last 24h) — the pool is idle on purpose, no attempt burn",
+				label: "budget",
+				count: data.BudgetParked,
+			},
+		)
 	}
 
 	if data.Stranded > 0 {
-		chips = append(chips, metaChip{class: "card-stranded", title: "pending tasks waiting on a dependency that is dead or cancelled — they can never run; rescue the dependency or cancel the task", label: "stranded", count: data.Stranded})
+		chips = append(
+			chips,
+			metaChip{
+				class: "card-stranded",
+				title: "pending tasks waiting on a dependency that is dead or cancelled — they can never run; rescue the dependency or cancel the task",
+				label: "stranded",
+				count: data.Stranded,
+			},
+		)
 	}
 
 	if data.LoopSuspects > 0 {
-		chips = append(chips, metaChip{class: "card-loopsuspect", title: fmt.Sprintf("tasks with more than %d claims (churn class); tq stats lists them", queue.ClaimAnomalyThreshold), label: "loop suspects", count: data.LoopSuspects})
+		chips = append(
+			chips,
+			metaChip{
+				class: "card-loopsuspect",
+				title: fmt.Sprintf(
+					"tasks with more than %d claims (churn class); tq stats lists them",
+					queue.ClaimAnomalyThreshold,
+				),
+				label: "loop suspects",
+				count: data.LoopSuspects,
+			},
+		)
 	}
 
-	chips = append(chips, metaChip{class: "card-journal", title: "journal watermark — highest fact seq", label: "journal", count: int(data.JournalSeq)})
+	chips = append(
+		chips,
+		metaChip{
+			class: "card-journal",
+			title: "journal watermark — highest fact seq",
+			label: "journal",
+			count: int(data.JournalSeq),
+		},
+	)
 
 	return chips
 }
@@ -159,7 +204,13 @@ func taskBadgeExtras(data DashboardData, t task.Task) []badgeInfo {
 	extras := []badgeInfo{}
 
 	if verdict, ok := data.Reviews[t.ID.String()]; ok {
-		extras = append(extras, badgeInfo{text: verdictLabel(verdict.Verdict), badgeType: verdictBadgeType(verdict.Verdict)})
+		extras = append(
+			extras,
+			badgeInfo{
+				text:      verdictLabel(verdict.Verdict),
+				badgeType: verdictBadgeType(verdict.Verdict),
+			},
+		)
 	}
 
 	if st, ok := data.Statuses[t.ID.String()]; ok {
@@ -171,7 +222,10 @@ func taskBadgeExtras(data DashboardData, t task.Task) []badgeInfo {
 	}
 
 	if res, ok := data.Prioritizes[t.ID.String()]; ok {
-		extras = append(extras, badgeInfo{text: prioritizeBadgeText(res), badgeType: display.BadgeInfo})
+		extras = append(
+			extras,
+			badgeInfo{text: prioritizeBadgeText(res), badgeType: display.BadgeInfo},
+		)
 	}
 
 	return extras
@@ -271,7 +325,10 @@ func detailItems(t task.Task, now time.Time, nonce string) []display.DefinitionI
 	items := []display.DefinitionItem{
 		{Term: labelProject, Detail: t.Project},
 		{Term: labelType, Detail: t.Type},
-		{Term: labelStatus, DetailComponent: statusBadge(string(t.Status), statusBadgeType(t.Status))},
+		{
+			Term:            labelStatus,
+			DetailComponent: statusBadge(string(t.Status), statusBadgeType(t.Status)),
+		},
 		{Term: labelAttempts, Detail: formatInt(t.Attempts) + "/" + formatInt(t.MaxAttempts)},
 		{Term: "priority", Detail: formatInt(t.Priority)},
 		{Term: "created", DetailComponent: relativeTimeComponent(t.CreatedAt, nonce)},
@@ -320,7 +377,10 @@ func provenanceItems(v priorityProvenanceView) []display.DefinitionItem {
 	}
 
 	if len(v.History) == 0 {
-		items = append(items, display.DefinitionItem{Term: "repri history", Detail: "none recorded"})
+		items = append(
+			items,
+			display.DefinitionItem{Term: "repri history", Detail: "none recorded"},
+		)
 
 		return items
 	}

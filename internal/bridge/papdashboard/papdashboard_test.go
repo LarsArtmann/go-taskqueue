@@ -171,11 +171,28 @@ func (f *fakePap) failAfter(n int) {
 }
 
 func deadLetterFacts() ([]journal.Fact, map[string]task.Task) {
-	dead := task.Task{ID: task.ID("t-dead"), Project: "infra", Type: "deploy", Attempts: 3, Status: task.Dead}
-	done := task.Task{ID: task.ID("t-done"), Project: "infra", Type: "scrape", Attempts: 1, Status: task.Completed}
+	dead := task.Task{
+		ID:       task.ID("t-dead"),
+		Project:  "infra",
+		Type:     "deploy",
+		Attempts: 3,
+		Status:   task.Dead,
+	}
+	done := task.Task{
+		ID:       task.ID("t-done"),
+		Project:  "infra",
+		Type:     "scrape",
+		Attempts: 1,
+		Status:   task.Completed,
+	}
 	facts := []journal.Fact{
 		{Seq: 1, TaskID: "t-done", Type: journal.Completed},
-		{Seq: 2, TaskID: "t-dead", Type: journal.DeadLettered, Error: "exit status 1:\nmore detail"},
+		{
+			Seq:    2,
+			TaskID: "t-dead",
+			Type:   journal.DeadLettered,
+			Error:  "exit status 1:\nmore detail",
+		},
 	}
 
 	return facts, map[string]task.Task{"t-dead": dead, "t-done": done}
@@ -310,7 +327,11 @@ func Test429IsTransientNotDropped(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	facts, tasks := deadLetterFacts()
-	b := New(&fakeSource{facts: facts, tasks: tasks}, nil, Config{Endpoint: server.URL, Logger: quietLogger()})
+	b := New(
+		&fakeSource{facts: facts, tasks: tasks},
+		nil,
+		Config{Endpoint: server.URL, Logger: quietLogger()},
+	)
 
 	if err := b.forward(context.Background(), facts[1]); err == nil {
 		t.Fatal("429 must surface as a retryable error, not a silent drop")
@@ -386,7 +407,11 @@ func TestRunForwardsNewFactsAndStops(t *testing.T) {
 	pap := newFakePap(t)
 	facts, tasks := deadLetterFacts()
 	src := &fakeSource{facts: facts[:1], tasks: tasks}
-	b := New(src, nil, Config{Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 2 * time.Millisecond})
+	b := New(
+		src,
+		nil,
+		Config{Endpoint: pap.server.URL, Logger: quietLogger(), PollInterval: 2 * time.Millisecond},
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -427,7 +452,11 @@ type ctxAwareSource struct {
 	fakeSource
 }
 
-func (s *ctxAwareSource) Facts(ctx context.Context, after int64, limit int) ([]journal.Fact, error) {
+func (s *ctxAwareSource) Facts(
+	ctx context.Context,
+	after int64,
+	limit int,
+) ([]journal.Fact, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -471,7 +500,11 @@ func TestBudgetExhaustionAlertsOncePerDay(t *testing.T) {
 	pap := newFakePap(t)
 	day := time.Date(2026, 9, 8, 9, 0, 0, 0, time.UTC)
 	src := &fakeSource{facts: budgetFacts(day, 3, 1)} // cap fires at 2, third is over-cap
-	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()})
+	b := New(
+		src,
+		nil,
+		Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()},
+	)
 
 	forwardAll(t, b, src)
 
@@ -486,7 +519,10 @@ func TestBudgetExhaustionAlertsOncePerDay(t *testing.T) {
 	}
 
 	if triggered != 1 {
-		t.Fatalf("got %d alert.triggered events, want exactly 1 (fires at cap, not per over-cap enqueue)", triggered)
+		t.Fatalf(
+			"got %d alert.triggered events, want exactly 1 (fires at cap, not per over-cap enqueue)",
+			triggered,
+		)
 	}
 
 	call := pap.calls()[0]
@@ -504,7 +540,11 @@ func TestBudgetAlertResolvesOnDayRollover(t *testing.T) {
 	src.add(budgetFacts(day1, 2, 1)...)  // cap 2 reached on day 1
 	src.add(budgetFacts(day2, 1, 10)...) // one enqueue on day 2: rollover, no new alert
 
-	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()})
+	b := New(
+		src,
+		nil,
+		Config{Endpoint: pap.server.URL, APIKey: "k", DailyBudget: 2, Logger: quietLogger()},
+	)
 
 	forwardAll(t, b, src)
 
@@ -538,8 +578,13 @@ func TestDeadPoolAlertTriggerAndResolve(t *testing.T) {
 	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "secret", Logger: quietLogger()})
 
 	ctx := context.Background()
-	if err := b.NotifyDeadPool(ctx, true, 3,
-		"scan failed: open /srv/CV/TODO_LIST.md: no such file or directory\nline two", 3); err != nil {
+	if err := b.NotifyDeadPool(
+		ctx,
+		true,
+		3,
+		"scan failed: open /srv/CV/TODO_LIST.md: no such file or directory\nline two",
+		3,
+	); err != nil {
 		t.Fatalf("trigger: %v", err)
 	}
 
@@ -592,14 +637,20 @@ func TestDeadPoolAlertTriggerAndResolve(t *testing.T) {
 
 	if triggered.Severity != "critical" || triggered.Title != "agent-pool dead pool" ||
 		triggered.SourceApp != SourceApp {
-		t.Errorf("severity/title/sourceApp = %q/%q/%q", triggered.Severity, triggered.Title, triggered.SourceApp)
+		t.Errorf(
+			"severity/title/sourceApp = %q/%q/%q",
+			triggered.Severity,
+			triggered.Title,
+			triggered.SourceApp,
+		)
 	}
 
 	if triggered.Metadata["repos"] != "3" || triggered.Metadata["streak"] != "3" {
 		t.Errorf("metadata = %+v", triggered.Metadata)
 	}
 
-	if !strings.Contains(triggered.Body, "3 consecutive ticks") || strings.Contains(triggered.Body, "line two") {
+	if !strings.Contains(triggered.Body, "3 consecutive ticks") ||
+		strings.Contains(triggered.Body, "line two") {
 		t.Errorf("body = %q, want the streak count and a first-line-only example", triggered.Body)
 	}
 
@@ -662,10 +713,14 @@ func budgetBlockedFacts(day time.Time, n int, startSeq int64) []journal.Fact {
 
 	for i := range n {
 		facts = append(facts, journal.Fact{
-			Seq: startSeq + int64(i), TaskID: "t-blocked", Type: journal.Requeued,
-			Time: day.Add(time.Duration(i) * time.Minute),
-			Detail: jsontext.Value(`{"reason":"budget gate: daily budget exhausted: 2/2 tasks enqueued today",` +
-				`"retry_in_ms":3600000,"class":"budget"}`),
+			Seq:    startSeq + int64(i),
+			TaskID: "t-blocked",
+			Type:   journal.Requeued,
+			Time:   day.Add(time.Duration(i) * time.Minute),
+			Detail: jsontext.Value(
+				`{"reason":"budget gate: daily budget exhausted: 2/2 tasks enqueued today",` +
+					`"retry_in_ms":3600000,"class":"budget"}`,
+			),
 		})
 	}
 
@@ -703,7 +758,10 @@ func TestBudgetBlockedAlertsOncePerDay(t *testing.T) {
 	}
 
 	if triggered != 1 {
-		t.Fatalf("got %d alert.triggered events, want exactly 1 (fires on the first blocked claim of the day)", triggered)
+		t.Fatalf(
+			"got %d alert.triggered events, want exactly 1 (fires on the first blocked claim of the day)",
+			triggered,
+		)
 	}
 
 	call := pap.calls()[0]
@@ -718,8 +776,13 @@ func TestBudgetBlockedAlertResolvesOnDayRollover(t *testing.T) {
 	day2 := time.Date(2026, 9, 9, 8, 0, 0, 0, time.UTC)
 
 	src := &fakeSource{}
-	src.add(budgetBlockedFacts(day1, 1, 1)...)  // blocked claim on day 1
-	src.add(budgetBlockedFacts(day2, 1, 10)...) // first blocked claim of day 2: rollover resolve + re-fire
+	src.add(budgetBlockedFacts(day1, 1, 1)...) // blocked claim on day 1
+	src.add(
+		budgetBlockedFacts(
+			day2,
+			1,
+			10,
+		)...) // first blocked claim of day 2: rollover resolve + re-fire
 
 	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "k", Logger: quietLogger()})
 
@@ -728,11 +791,21 @@ func TestBudgetBlockedAlertResolvesOnDayRollover(t *testing.T) {
 	calls := pap.calls()
 
 	if len(calls) != 3 {
-		t.Fatalf("got %d events, want 3 (trigger, rollover resolve, re-trigger): %+v", len(calls), calls)
+		t.Fatalf(
+			"got %d events, want 3 (trigger, rollover resolve, re-trigger): %+v",
+			len(calls),
+			calls,
+		)
 	}
 
-	if calls[0].Event != "alert.triggered" || calls[1].Event != "alert.resolved" || calls[2].Event != "alert.triggered" {
-		t.Fatalf("want trigger/resolve/trigger, got %s, %s, %s", calls[0].Event, calls[1].Event, calls[2].Event)
+	if calls[0].Event != "alert.triggered" || calls[1].Event != "alert.resolved" ||
+		calls[2].Event != "alert.triggered" {
+		t.Fatalf(
+			"want trigger/resolve/trigger, got %s, %s, %s",
+			calls[0].Event,
+			calls[1].Event,
+			calls[2].Event,
+		)
 	}
 
 	if calls[1].AggregateID != "agent-pool-budget-blocked-2026-09-08" {

@@ -48,7 +48,10 @@ func newTestServer(t *testing.T) (*Server, *sqlite.Store) {
 	t.Helper()
 
 	s := newTestStore(t)
-	srv := New(s, Config{Addr: "127.0.0.1:0", Poll: 20 * time.Millisecond, Heartbeat: 100 * time.Millisecond})
+	srv := New(
+		s,
+		Config{Addr: "127.0.0.1:0", Poll: 20 * time.Millisecond, Heartbeat: 100 * time.Millisecond},
+	)
 
 	return srv, s
 }
@@ -363,7 +366,9 @@ func TestReconnectLagLogged(t *testing.T) {
 
 	old := slog.Default()
 
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	slog.SetDefault(
+		slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+	)
 	t.Cleanup(func() { slog.SetDefault(old) })
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
@@ -380,7 +385,8 @@ func TestReconnectLagLogged(t *testing.T) {
 		t.Error("reconnect did not receive a full snapshot")
 	}
 
-	if log := buf.String(); !strings.Contains(log, "reconnect lag") || !strings.Contains(log, "head=2") {
+	if log := buf.String(); !strings.Contains(log, "reconnect lag") ||
+		!strings.Contains(log, "head=2") {
 		t.Errorf("reconnect log missing lag signal: %q", log)
 	}
 }
@@ -494,7 +500,12 @@ func TestConcurrentClientsRace(t *testing.T) {
 			// 500ms, not 100ms: the window also covers the dial, and
 			// under -race on loaded CI runners 100ms deadlined out
 			// repeatedly (the test's point is the race, not the speed).
-			_ = ssetest.CollectWithTimeout(t, handler, 500*time.Millisecond, ssetest.WithPath("/api/events"))
+			_ = ssetest.CollectWithTimeout(
+				t,
+				handler,
+				500*time.Millisecond,
+				ssetest.WithPath("/api/events"),
+			)
 		})
 	}
 
@@ -544,7 +555,8 @@ func TestReviewVerdictBadgeAndFindings(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+review.ID.String(), nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+review.ID.String(), nil))
 
 	body := rec.Body.String()
 	for _, want := range []string{
@@ -621,7 +633,8 @@ func TestStatusResultBadgeAndCard(t *testing.T) {
 
 	pending := enqueue(t, s, "status", "demo")
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+pending.ID.String(), nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/"+pending.ID.String(), nil))
 
 	if body := rec.Body.String(); strings.Contains(body, "status report") {
 		t.Errorf("pending status task rendered the report card")
@@ -641,7 +654,8 @@ func TestAgentResultBadgeAndCard(t *testing.T) {
 	ag := enqueue(t, s, "agent", "demo")
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
 
 	if body := rec.Body.String(); strings.Contains(body, " commits") {
 		t.Errorf("pending agent task rendered a commit-count badge")
@@ -671,7 +685,8 @@ func TestAgentResultBadgeAndCard(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
 
 	if body := rec.Body.String(); !strings.Contains(body, "2 commits") {
 		t.Errorf("dashboard table missing the agent-run badge")
@@ -702,7 +717,8 @@ func TestPrioritizeResultBadgeAndCard(t *testing.T) {
 	pz := enqueue(t, s, "prioritize", "demo")
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
 
 	if body := rec.Body.String(); strings.Contains(body, " verdicts") {
 		t.Errorf("pending prioritize task rendered a verdict-count badge")
@@ -728,7 +744,8 @@ func TestPrioritizeResultBadgeAndCard(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
 
 	if body := rec.Body.String(); !strings.Contains(body, "2 verdicts") {
 		t.Errorf("dashboard table missing the prioritize badge")
@@ -864,7 +881,9 @@ func TestResultUsageRendersOnDetailPage(t *testing.T) {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	quietDetail, err := json.Marshal(executor.StatusResult{Report: "docs/status/2026-09-21_quiet_demo.md"})
+	quietDetail, err := json.Marshal(
+		executor.StatusResult{Report: "docs/status/2026-09-21_quiet_demo.md"},
+	)
 	if err != nil {
 		t.Fatalf("marshal quiet result: %v", err)
 	}
@@ -1048,7 +1067,12 @@ func TestBudgetCardRendersFromSnapshot(t *testing.T) {
 	s := newTestStore(t)
 	srv := New(
 		s,
-		Config{Addr: "127.0.0.1:0", Poll: 20 * time.Millisecond, Heartbeat: 100 * time.Millisecond, DailyBudget: 5},
+		Config{
+			Addr:        "127.0.0.1:0",
+			Poll:        20 * time.Millisecond,
+			Heartbeat:   100 * time.Millisecond,
+			DailyBudget: 5,
+		},
 	)
 	enqueue(t, s, "sh", "demo")
 	enqueue(t, s, "sh", "demo")
@@ -1159,7 +1183,15 @@ func TestParkedSegmentRendersFromSnapshot(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, w1_claim, "rate limited", time.Hour, false, "rate-limit"); err != nil {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		w1_claim,
+		"rate limited",
+		time.Hour,
+		false,
+		"rate-limit",
+	); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 
@@ -1200,7 +1232,13 @@ func TestBudgetParkedSegmentRendersFromSnapshot(t *testing.T) {
 		t.Fatalf("budgetParked = %d, want 0 on a bare store", data.BudgetParked)
 	}
 
-	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-budget-parked") {
+	if stats := renderComponent(
+		ctx,
+		StatusCards(data),
+	); strings.Contains(
+		stats,
+		"card-budget-parked",
+	) {
 		t.Error("stats fragment shows a budget-parked segment with nothing parked")
 	}
 
@@ -1212,7 +1250,15 @@ func TestBudgetParkedSegmentRendersFromSnapshot(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim, "budget gate: daily cap spent", time.Hour, false, queue.RequeueClassBudget); err != nil {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim,
+		"budget gate: daily cap spent",
+		time.Hour,
+		false,
+		queue.RequeueClassBudget,
+	); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 
@@ -1265,7 +1311,13 @@ func TestBudgetParkedSegmentRendersFromSnapshot(t *testing.T) {
 		t.Fatalf("budgetParked = %d, want 0 after the cancel", data.BudgetParked)
 	}
 
-	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-budget-parked") {
+	if stats := renderComponent(
+		ctx,
+		StatusCards(data),
+	); strings.Contains(
+		stats,
+		"card-budget-parked",
+	) {
 		t.Error("budget-parked segment still lit after the task left the park")
 	}
 }
@@ -1330,7 +1382,13 @@ func TestSessionSegmentsRenderFromSnapshot(t *testing.T) {
 		t.Fatalf("open = %d, want 0 after close", data.SessionsOpen)
 	}
 
-	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-sessions-lamp") {
+	if stats := renderComponent(
+		ctx,
+		StatusCards(data),
+	); strings.Contains(
+		stats,
+		"card-sessions-lamp",
+	) {
 		t.Error("stats fragment shows the open lamp after the session closed")
 	}
 }
@@ -1349,7 +1407,13 @@ func TestBudgetCardAbsentWithoutCap(t *testing.T) {
 		t.Fatalf("budget = %+v, want nil without a configured cap", data.Budget)
 	}
 
-	if stats := renderComponent(context.Background(), StatusCards(data)); strings.Contains(stats, "card-budget") {
+	if stats := renderComponent(
+		context.Background(),
+		StatusCards(data),
+	); strings.Contains(
+		stats,
+		"card-budget",
+	) {
 		t.Error("stats fragment shows budget card without a configured cap")
 	}
 }
@@ -1381,13 +1445,21 @@ func TestReadiness(t *testing.T) {
 		want string
 	}{
 		{"no notBefore", task.Task{ID: task.NewID(), Status: task.Pending}, ""},
-		{"not pending", task.Task{ID: task.NewID(), Status: task.Running, NotBefore: now.Add(time.Hour)}, ""},
+		{
+			"not pending",
+			task.Task{ID: task.NewID(), Status: task.Running, NotBefore: now.Add(time.Hour)},
+			"",
+		},
 		{
 			"future wait",
 			task.Task{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(12 * time.Minute)},
 			"in 12m",
 		},
-		{"claimable", task.Task{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(-time.Minute)}, "ready"},
+		{
+			"claimable",
+			task.Task{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(-time.Minute)},
+			"ready",
+		},
 	}
 	for _, tc := range cases {
 		if got := readiness(now, tc.task); got != tc.want {
@@ -1404,8 +1476,20 @@ func TestReadinessColumnRenders(t *testing.T) {
 		Counts: map[task.Status]int{task.Pending: 3},
 		Now:    now,
 		Tasks: []task.Task{
-			{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(2 * time.Hour), CreatedAt: now, UpdatedAt: now},
-			{ID: task.NewID(), Status: task.Pending, NotBefore: now.Add(-time.Minute), CreatedAt: now, UpdatedAt: now},
+			{
+				ID:        task.NewID(),
+				Status:    task.Pending,
+				NotBefore: now.Add(2 * time.Hour),
+				CreatedAt: now,
+				UpdatedAt: now,
+			},
+			{
+				ID:        task.NewID(),
+				Status:    task.Pending,
+				NotBefore: now.Add(-time.Minute),
+				CreatedAt: now,
+				UpdatedAt: now,
+			},
 			{ID: task.NewID(), Status: task.Pending, CreatedAt: now, UpdatedAt: now},
 		},
 	}
@@ -1430,11 +1514,21 @@ func TestTaskDetailSSESnapshot(t *testing.T) {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := s.Complete(context.Background(), claimed.ID, claim, jsontext.Value(`"done"`)); err != nil {
+	if err := s.Complete(
+		context.Background(),
+		claimed.ID,
+		claim,
+		jsontext.Value(`"done"`),
+	); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
-	events := ssetest.CollectN(t, srv.Handler(), 3, ssetest.WithPath("/task/"+tk.ID.String()+"/events"))
+	events := ssetest.CollectN(
+		t,
+		srv.Handler(),
+		3,
+		ssetest.WithPath("/task/"+tk.ID.String()+"/events"),
+	)
 
 	var fragIDs []string
 
@@ -1498,7 +1592,12 @@ func TestTaskDetailSSELiveUpdate(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond) // let the SSE connect
 
-	if err := s.Complete(context.Background(), claimed.ID, claim, jsontext.Value(`"done"`)); err != nil {
+	if err := s.Complete(
+		context.Background(),
+		claimed.ID,
+		claim,
+		jsontext.Value(`"done"`),
+	); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 
@@ -1519,7 +1618,8 @@ func TestTaskDetailSSE404(t *testing.T) {
 	srv, _ := newTestServer(t)
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/does-not-exist/events", nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/task/does-not-exist/events", nil))
 
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("unknown task stream status = %d, want 404", rec.Code)
@@ -1599,7 +1699,8 @@ func TestRequestLoggingOffByDefault(t *testing.T) {
 	logs := captureDefaultLogger(t)
 
 	srv, _ := newTestServer(t)
-	srv.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/stats", nil))
+	srv.Handler().
+		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/stats", nil))
 
 	if out := logs.String(); out != "" {
 		t.Errorf("requests logged with RequestLog disabled:\n%s", out)
@@ -1709,7 +1810,8 @@ func TestFactsCursorEndpoint(t *testing.T) {
 	second := enqueue(t, s, "sh", "demo")
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after=0&limit=1", nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after=0&limit=1", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
@@ -1820,7 +1922,8 @@ func TestFactsTailWindow(t *testing.T) {
 	newer := enqueue(t, s, "sh", "demo")
 
 	rec := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after=-1&limit=1", nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after=-1&limit=1", nil))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
@@ -1840,7 +1943,8 @@ func TestFactsTailWindow(t *testing.T) {
 
 	// A tail window wider than the journal returns everything from seq 0.
 	rec = httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after=-50&limit=50", nil))
+	srv.Handler().
+		ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/facts?after=-50&limit=50", nil))
 
 	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
 		t.Fatal(err)
@@ -1906,7 +2010,14 @@ func TestFmtAgeParityWithServer(t *testing.T) {
 	for i, w := range wantPairs {
 		div, _ := strconv.Atoi(got[i][1])
 		if div != w.divisor || got[i][2] != w.suffix {
-			t.Errorf("app.js fmtAge branch %d = (/%d %q), want (/%d %q)", i, div, got[i][2], w.divisor, w.suffix)
+			t.Errorf(
+				"app.js fmtAge branch %d = (/%d %q), want (/%d %q)",
+				i,
+				div,
+				got[i][2],
+				w.divisor,
+				w.suffix,
+			)
 		}
 	}
 
@@ -1964,7 +2075,11 @@ func TestWriteRateLimitLockout(t *testing.T) {
 		})
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/task/x/cancel", strings.NewReader("csrf="+csrf))
+		req := httptest.NewRequest(
+			http.MethodPost,
+			"/task/x/cancel",
+			strings.NewReader("csrf="+csrf),
+		)
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.AddCookie(&http.Cookie{Name: tqCSRFCookie, Value: "real-token"})
 		req.RemoteAddr = "127.0.0.1:55555"
@@ -2127,7 +2242,10 @@ func TestWriteRateLimitBoundedAgainstRotatingIPs(t *testing.T) {
 	}
 
 	if l.limiter.Len() != 2 {
-		t.Fatalf("after idle sweep the map holds %d entries, want 2 (locked + new)", l.limiter.Len())
+		t.Fatalf(
+			"after idle sweep the map holds %d entries, want 2 (locked + new)",
+			l.limiter.Len(),
+		)
 	}
 
 	if !l.limiter.Has("10.0.0.2") {
@@ -2173,7 +2291,12 @@ func TestSSEHeartbeatStopsBeforeHandlerExit(t *testing.T) {
 }
 
 // pollStats fetches /api/stats until want holds or the budget is spent.
-func pollStats(t *testing.T, srv *Server, want func(map[string]int) bool, what string) map[string]int {
+func pollStats(
+	t *testing.T,
+	srv *Server,
+	want func(map[string]int) bool,
+	what string,
+) map[string]int {
 	t.Helper()
 
 	deadline := time.Now().Add(5 * time.Second)
@@ -2267,7 +2390,13 @@ func TestLoopSuspectSegmentRendersFromSnapshot(t *testing.T) {
 		t.Fatalf("loopSuspects = %d, want 0 with only a fresh task", data.LoopSuspects)
 	}
 
-	if stats := renderComponent(ctx, StatusCards(data)); strings.Contains(stats, "card-loopsuspect") {
+	if stats := renderComponent(
+		ctx,
+		StatusCards(data),
+	); strings.Contains(
+		stats,
+		"card-loopsuspect",
+	) {
 		t.Error("stats fragment shows a loop-suspect segment with no churn")
 	}
 
@@ -2297,7 +2426,11 @@ func TestLoopSuspectSegmentRendersFromSnapshot(t *testing.T) {
 	}
 
 	if data.LoopSuspects != 1 {
-		t.Fatalf("loopSuspects = %d, want 1 after %d claims", data.LoopSuspects, queue.ClaimAnomalyThreshold+1)
+		t.Fatalf(
+			"loopSuspects = %d, want 1 after %d claims",
+			data.LoopSuspects,
+			queue.ClaimAnomalyThreshold+1,
+		)
 	}
 
 	stats := renderComponent(ctx, StatusCards(data))

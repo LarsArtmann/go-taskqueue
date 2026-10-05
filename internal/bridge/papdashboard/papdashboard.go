@@ -198,7 +198,13 @@ func (b *Bridge) Run(ctx context.Context) error {
 				return nil
 			}
 
-			b.log.Error("papdashboard bridge cannot persist bootstrap watermark", "seq", start.start, "err", err)
+			b.log.Error(
+				"papdashboard bridge cannot persist bootstrap watermark",
+				"seq",
+				start.start,
+				"err",
+				err,
+			)
 
 			return errors.New("papdashboard: cannot persist bootstrap watermark")
 		}
@@ -537,7 +543,11 @@ func (b *Bridge) post(
 		// dashboard must not silently drop the alert (the permanent
 		// branch advances the checkpoint past the fact — the 2026-09-11
 		// bridge audit's finding). Retry on the next poll instead.
-		return fmt.Errorf("ingest %s: PapDashboard returned %d (transient)", eventType, resp.StatusCode)
+		return fmt.Errorf(
+			"ingest %s: PapDashboard returned %d (transient)",
+			eventType,
+			resp.StatusCode,
+		)
 	}
 
 	if resp.StatusCode >= 400 {
@@ -574,8 +584,11 @@ func (b *Bridge) trackBudget(ctx context.Context, fact journal.Fact) error {
 			// The window rolled over: yesterday's cap no longer applies, so
 			// the exhaustion alert closes itself.
 			payload := map[string]any{
-				"title":      "agent-pool daily budget exhausted",
-				"body":       fmt.Sprintf("Budget window %s rolled over; the daily cap reset.", b.budgetDay),
+				"title": "agent-pool daily budget exhausted",
+				"body": fmt.Sprintf(
+					"Budget window %s rolled over; the daily cap reset.",
+					b.budgetDay,
+				),
 				"sourceApp":  b.cfg.SourceApp,
 				"resolvedBy": b.cfg.SourceApp + "-bridge",
 			}
@@ -636,7 +649,11 @@ func budgetBlockedAggregate(day string) string { return "agent-pool-budget-block
 // claims while never configuring an enqueue cap.
 func (b *Bridge) trackBudgetBlocked(ctx context.Context, fact journal.Fact) error {
 	var evidence queue.RequeueEvidence
-	if err := json.Unmarshal(fact.Detail, &evidence); err != nil || evidence.Class != queue.RequeueClassBudget {
+	if err := json.Unmarshal(
+		fact.Detail,
+		&evidence,
+	); err != nil ||
+		evidence.Class != queue.RequeueClassBudget {
 		return nil
 	}
 
@@ -644,13 +661,22 @@ func (b *Bridge) trackBudgetBlocked(ctx context.Context, fact journal.Fact) erro
 	if day != b.blockedDay {
 		if b.blockedAlerted {
 			payload := map[string]any{
-				"title":      "agent-pool budget-blocked claims",
-				"body":       fmt.Sprintf("Budget window %s rolled over; parked claims are claimable again.", b.blockedDay),
+				"title": "agent-pool budget-blocked claims",
+				"body": fmt.Sprintf(
+					"Budget window %s rolled over; parked claims are claimable again.",
+					b.blockedDay,
+				),
 				"sourceApp":  b.cfg.SourceApp,
 				"resolvedBy": b.cfg.SourceApp + "-bridge",
 			}
-			if err := b.post(ctx, "alert.resolved", idempotencyKey("budget-blocked-resolve", fact.Seq),
-				budgetBlockedAggregate(b.blockedDay), fact.Seq, payload); err != nil {
+			if err := b.post(
+				ctx,
+				"alert.resolved",
+				idempotencyKey("budget-blocked-resolve", fact.Seq),
+				budgetBlockedAggregate(b.blockedDay),
+				fact.Seq,
+				payload,
+			); err != nil {
 				return err
 			}
 		}
@@ -702,7 +728,13 @@ const deadPoolAggregate = "agent-pool-dead-pool"
 // calls this directly instead of through the journal: harvest skips are
 // process-local observations, not facts, so delivery is best-effort (a
 // failed post is logged by post and the next verdict re-sends).
-func (b *Bridge) NotifyDeadPool(ctx context.Context, triggered bool, repos int, example string, streak int) error {
+func (b *Bridge) NotifyDeadPool(
+	ctx context.Context,
+	triggered bool,
+	repos int,
+	example string,
+	streak int,
+) error {
 	if !triggered {
 		payload := map[string]any{
 			"title":      "agent-pool dead pool",
@@ -762,8 +794,17 @@ func (b *Bridge) NotifyStarvation(
 			"resolvedBy": b.cfg.SourceApp + "-agent-pool",
 		}
 
-		return b.post(ctx, "alert.resolved",
-			idempotencyKey("starvation-resolve", time.Now().Unix()), starvationAggregate, 0, payload)
+		return b.post(
+			ctx,
+			"alert.resolved",
+			idempotencyKey(
+				"starvation-resolve",
+				time.Now().Unix(),
+			),
+			starvationAggregate,
+			0,
+			payload,
+		)
 	}
 
 	payload := map[string]any{
@@ -815,7 +856,10 @@ const (
 // pathologically long question gets truncated from the tail, and a
 // correlation-proof body is what routes the answer home — the human reads
 // two short machine lines first, the agent task gets its answer.
-func questionIngestPayload(sourceApp, taskID string, asked queue.QuestionAskedDetail) map[string]any {
+func questionIngestPayload(
+	sourceApp, taskID string,
+	asked queue.QuestionAskedDetail,
+) map[string]any {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "task:%s\nqref:%s\n\n%s", taskID, asked.Ref, asked.Question)

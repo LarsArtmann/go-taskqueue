@@ -90,7 +90,14 @@ Docs contain examples that must never be harvested:
 	}
 	for i, w := range want {
 		if items[i].Heading != w.heading || items[i].Text != w.text {
-			t.Fatalf("item[%d] = (%q, %q), want (%q, %q)", i, items[i].Heading, items[i].Text, w.heading, w.text)
+			t.Fatalf(
+				"item[%d] = (%q, %q), want (%q, %q)",
+				i,
+				items[i].Heading,
+				items[i].Text,
+				w.heading,
+				w.text,
+			)
 		}
 
 		if items[i].RepoName == "" || items[i].Key == "" {
@@ -218,7 +225,12 @@ func TestRunEnqueuesOneItemPerRepoPerTick(t *testing.T) {
 func TestRunSameSessionPriority(t *testing.T) {
 	q := openQueue(t)
 	dir := t.TempDir()
-	writeRepo(t, dir, "delta", "## Work\n\n- [ ] archive the evidence before /tmp reboots\n- [ ] plain item\n")
+	writeRepo(
+		t,
+		dir,
+		"delta",
+		"## Work\n\n- [ ] archive the evidence before /tmp reboots\n- [ ] plain item\n",
+	)
 
 	h := New(q, Config{ProjectsDir: dir, SameSessionPriority: 7})
 
@@ -324,7 +336,11 @@ func TestRunDedupAcrossTicksAndStatuses(t *testing.T) {
 
 	// Tick 3: human edits the item text — new key — new task.
 	newTodo := "## Work\n\n- [ ] only item, now with more detail\n"
-	if err := os.WriteFile(filepath.Join(repo, DefaultTodoFile), []byte(newTodo), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repo, DefaultTodoFile),
+		[]byte(newTodo),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -563,7 +579,10 @@ func TestRunPerRepoInterval(t *testing.T) {
 	dir := t.TempDir()
 	writeRepo(t, dir, "zeta", "## Work\n\n- [ ] one\n")
 
-	h := New(q, Config{ProjectsDir: dir, RepoIntervals: map[string]time.Duration{"zeta": time.Hour}})
+	h := New(
+		q,
+		Config{ProjectsDir: dir, RepoIntervals: map[string]time.Duration{"zeta": time.Hour}},
+	)
 
 	res, err := h.Run(ctx)
 	if err != nil || len(res.Enqueued) != 1 {
@@ -668,7 +687,10 @@ func TestRunRepoTimeoutLadder(t *testing.T) {
 	writeRepo(t, dir, "big", "## Work\n\n- [ ] heavy item\n")
 	writeRepo(t, dir, "small", "## Work\n\n- [ ] tiny item\n")
 
-	h := New(q, Config{ProjectsDir: dir, RepoTimeouts: map[string]time.Duration{"big": 45 * time.Minute}})
+	h := New(
+		q,
+		Config{ProjectsDir: dir, RepoTimeouts: map[string]time.Duration{"big": 45 * time.Minute}},
+	)
 
 	res, err := h.Run(ctx)
 	if err != nil || len(res.Enqueued) != 2 {
@@ -697,14 +719,19 @@ func TestRunRepoTimeoutLadder(t *testing.T) {
 			}
 		case "small":
 			if p.TimeoutMinutes != 0 {
-				t.Errorf("small repo timeout_minutes = %d, want 0 (default, omitted)", p.TimeoutMinutes)
+				t.Errorf(
+					"small repo timeout_minutes = %d, want 0 (default, omitted)",
+					p.TimeoutMinutes,
+				)
 			}
 		}
 	}
 }
 
 func TestEnqueueSkipReasonMapsDoneGuard(t *testing.T) {
-	if got := enqueueSkipReason(queue.ErrTaskDone); got != "done: already completed (edit the item text to re-arm)" {
+	if got := enqueueSkipReason(
+		queue.ErrTaskDone,
+	); got != "done: already completed (edit the item text to re-arm)" {
 		t.Fatalf("enqueueSkipReason(done) = %q, want the dispatcher-dedup refusal", got)
 	}
 
@@ -721,7 +748,10 @@ func TestDoneGuardRefusesCompletedKeyRedispatch(t *testing.T) {
 	q := openQueue(t)
 	ctx := context.Background()
 
-	first, err := q.Enqueue(ctx, task.New{Project: "alpha", Type: DefaultType, DedupKey: "todo:alpha:x"})
+	first, err := q.Enqueue(
+		ctx,
+		task.New{Project: "alpha", Type: DefaultType, DedupKey: "todo:alpha:x"},
+	)
 	if err != nil {
 		t.Fatalf("first Enqueue: %v", err)
 	}
@@ -735,13 +765,20 @@ func TestDoneGuardRefusesCompletedKeyRedispatch(t *testing.T) {
 		t.Fatalf("Complete: %v", err)
 	}
 
-	second, err := q.Enqueue(ctx, task.New{Project: "alpha", Type: DefaultType, DedupKey: "todo:alpha:x"})
+	second, err := q.Enqueue(
+		ctx,
+		task.New{Project: "alpha", Type: DefaultType, DedupKey: "todo:alpha:x"},
+	)
 	if !errors.Is(err, queue.ErrTaskDone) {
 		t.Fatalf("re-dispatch of completed key: err = %v, want ErrTaskDone", err)
 	}
 
 	if second.ID != first.ID {
-		t.Fatalf("re-dispatch returned task %s, want the stored completed row %s", second.ID, first.ID)
+		t.Fatalf(
+			"re-dispatch returned task %s, want the stored completed row %s",
+			second.ID,
+			first.ID,
+		)
 	}
 }
 
@@ -752,7 +789,11 @@ func TestRepoPurposeAncestryInPrompt(t *testing.T) {
 	}
 
 	meta := "importance: 60\npurpose: keep the fleet's paperclip lessons durable\n"
-	if err := os.WriteFile(filepath.Join(repo, ".config", "metadata.yaml"), []byte(meta), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repo, ".config", "metadata.yaml"),
+		[]byte(meta),
+		0o644,
+	); err != nil {
 		t.Fatalf("write metadata: %v", err)
 	}
 
@@ -775,7 +816,11 @@ func TestRepoPurposeAncestryInPrompt(t *testing.T) {
 	}
 
 	// Quoted scalar.
-	if err := os.WriteFile(filepath.Join(repo, ".config", "metadata.yaml"), []byte("purpose: \"quoted purpose\"\n"), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repo, ".config", "metadata.yaml"),
+		[]byte("purpose: \"quoted purpose\"\n"),
+		0o644,
+	); err != nil {
 		t.Fatalf("rewrite metadata: %v", err)
 	}
 

@@ -144,7 +144,7 @@ func SetResultDetail(ctx context.Context, detail jsontext.Value) {
 // commits/files).
 func recordRunOutcome[R any, T interface {
 	*R
-	setLogPath(string)
+	setLogPath(path string)
 }](ctx context.Context, result T, output, tail string, id task.ID) {
 	result.setLogPath(writeOutputSidecar(id, output, tail))
 
@@ -158,7 +158,7 @@ func recordRunOutcome[R any, T interface {
 // the finished output and records the run outcome for `tq show`.
 func finishParsedRun[R any, T interface {
 	*R
-	setLogPath(string)
+	setLogPath(path string)
 	deriveUsage(ctx context.Context, repoDir, output string, id task.ID) derivedOutcome
 }](ctx context.Context, result T, parseErr error, kind, output, repoDir string, id task.ID) error {
 	if parseErr != nil {
@@ -288,7 +288,7 @@ func ResultLine(output string) (jsontext.Value, error) {
 // ({files_changed, commit_sha}) from its output — the legacy fallback for
 // in-flight tasks; derivation is the primary source. Best-effort: no line,
 // no problem — the fields simply stay empty in the result detail.
-func ExtractResultPayload(output string) (files []string, sha string, ok bool) {
+func ExtractResultPayload(output string) ([]string, string, bool) {
 	m := lastResultLine(output)
 	if m == nil {
 		return nil, "", false
