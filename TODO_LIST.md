@@ -472,3 +472,8 @@ not here.
 ## Paperclip research window follow-ups (2026-10-04; source: paperclip wake-coalescing comparison; verified against code this pass — budget claim gate + exhaustion facts SHIPPED, not re-listed)
 
 - [ ] Implement the wake-trace per `docs/planning/2026-10-05_wake-trace-design-memo.md` (recommends a `task.wake` fact type over an evidence key; consumer-ripple + pinned-test checklist inside; wire the harvest skip to append it and surface the count in `tq audit --journal` + webui) — BLOCKED: owner ruling §g-2 (fact type vs evidence key + `task.` vs `harvest.` namespace)
+
+## Daemon-attribution gate follow-ups (2026-10-05; source: docs/status/2026-10-05_02-53_task-000001a109757cf3d260a0de4e2700000000.md §f; deduped — dead-sha shrink is row 414, row-132 reshape stands)
+
+- [ ] Fix heal-daemon-sweep.sh fork-record capture: printed old→new fork records carry POST-rewrite shas on BOTH sides (02-53 window heal #1), so reports paste a false old side — capture the TRUE pre-rewrite sha before the msg-filter and pin both sides in --self-test (§f1)
+- [ ] Add a malformed-row fixture to check-daemon-attribution.sh --self-test: the sha-parse fail-closed branch (audit row with a non-hex commit field must rc=1 naming `malformed audit row`) is the only unpinned gate decision branch (§f4)
