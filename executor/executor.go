@@ -84,6 +84,21 @@ const (
 	VerifyStageRun        = internalexecutor.VerifyStageRun
 )
 
+// Retry-failure taxonomy (see FailureEvidence.Class): why a run failed,
+// stamped by the worker so autopsies and forensics never re-derive it
+// from output tails.
+type FailureClass = internalexecutor.FailureClass
+
+const (
+	FailureClassTransient      = internalexecutor.FailureClassTransient
+	FailureClassPermanent      = internalexecutor.FailureClassPermanent
+	FailureClassProviderWindow = internalexecutor.FailureClassProviderWindow
+	FailureClassEnvironment    = internalexecutor.FailureClassEnvironment
+)
+
+// ClassifyFailure maps a failed run's error onto the retry taxonomy.
+var ClassifyFailure = internalexecutor.ClassifyFailure
+
 // Sink carries failure/result detail through the context (error and
 // result sinks).
 type Sink = internalexecutor.Sink
