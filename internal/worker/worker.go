@@ -3,6 +3,8 @@ package worker
 
 import (
 	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -272,7 +274,7 @@ func (p *Pool) burnEnvStreak(
 		EnvStreakCode, streak, cause.Error())
 
 	if err := p.persistOutcome(ctx, t.ID, func(c context.Context) error {
-		return p.store.Fail(c, t.ID, claim, reason, backoff, sink.Failure())
+		return p.store.Fail(c, t.ID, claim, reason, backoff, stampedFailureEvidence(sink.Failure(), cause))
 	}); err != nil {
 		p.log.Error("env-streak burn failed; requeueing instead", "task", t.ID, "streak", streak, "err", err)
 
@@ -284,6 +286,34 @@ func (p *Pool) burnEnvStreak(
 		"task", t.ID, "streak", streak, "code", EnvStreakCode, "retry after", backoff)
 
 	return true
+}
+
+// stampedFailureEvidence rewrites the executor's failure evidence to
+// carry the retry-taxonomy class of execErr, so DLQ autopsies and
+// forensics read the class instead of re-deriving it from the output
+// tail. Decode-remarshal keeps every field the executor set (stage, exit
+// code, tail, verify stage); an unparsable or empty evidence degrades to
+// a class-only document — the 21:40 §d4 empty-detail deaths at least
+// gain the class. Only the worker calls this: the wrapper chain that
+// decides the class is complete only here.
+func stampedFailureEvidence(evidence jsontext.Value, execErr error) jsontext.Value {
+	var fields map[string]any
+	if len(evidence) > 0 {
+		_ = json.Unmarshal(evidence, &fields) // unparsable → nil map, rebuilt below
+	}
+
+	if fields == nil {
+		fields = map[string]any{}
+	}
+
+	fields["class"] = string(executor.ClassifyFailure(execErr))
+
+	out, err := json.Marshal(fields)
+	if err != nil {
+		return evidence // keep the executor's evidence over losing it
+	}
+
+	return jsontext.Value(out)
 }
 
 // persistOutcome retries a store transition write (complete, fail,
@@ -599,7 +629,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// environmental without re-deriving it from evidence tails.
 		if gate.Class == executor.VerifyGateEnvironmental {
 			if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-				return p.store.FailPermanent(c, t.ID, claim, gate.Error(), sink.Failure())
+				return p.store.FailPermanent(c, t.ID, claim, gate.Error(), stampedFailureEvidence(sink.Failure(), execErr))
 			}); err != nil {
 				p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 			} else {
@@ -710,7 +740,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// repo). Dead-letter now instead of burning the retry budget — for
 		// agent tasks every retry is real money.
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.FailPermanent(c, t.ID, claim, perm.Error(), sink.Failure())
+			return p.store.FailPermanent(c, t.ID, claim, perm.Error(), stampedFailureEvidence(sink.Failure(), execErr))
 		}); err != nil {
 			p.log.Error("permanent fail failed", "task", t.ID, "err", err)
 		}
@@ -724,7 +754,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// attempt (crash-safe equivalent) with zero backoff so it is immediately
 		// reclaimable.
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.Fail(c, t.ID, claim, "worker shutdown: "+execErr.Error(), 0, sink.Failure())
+			return p.store.Fail(c, t.ID, claim, "worker shutdown: "+execErr.Error(), 0, stampedFailureEvidence(sink.Failure(), execErr))
 		}); err != nil {
 			p.log.Error("fail-on-shutdown failed", "task", t.ID, "err", err)
 		}
@@ -737,7 +767,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	// from the journal alone (21:40 report §d4: both retry-path failures
 	// left empty {} detail).
 	if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-		return p.store.Fail(c, t.ID, claim, execErr.Error(), p.cfg.Backoff(t.Attempts+1), sink.Failure())
+		return p.store.Fail(c, t.ID, claim, execErr.Error(), p.cfg.Backoff(t.Attempts+1), stampedFailureEvidence(sink.Failure(), execErr))
 	}); err != nil {
 		p.log.Error("fail failed", "task", t.ID, "err", err)
 	}

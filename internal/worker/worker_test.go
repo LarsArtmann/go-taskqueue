@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -1591,5 +1592,59 @@ func TestPersistOutcomeRespectsCancelledContext(t *testing.T) {
 
 	if attempts != 1 {
 		t.Fatalf("attempts = %d, want 1 (cancelled context must not retry)", attempts)
+	}
+}
+
+func TestStampedFailureEvidence(t *testing.T) {
+	t.Parallel()
+
+	execErr := &executor.RateLimitError{Cause: errors.New("429"), RetryAfter: time.Minute}
+
+	tests := []struct {
+		name     string
+		evidence string
+		wantKeys map[string]any
+	}{
+		{
+			name:     "keeps the executor's fields and adds the class",
+			evidence: `{"stage":"agent","exit_code":1,"tail":"boom"}`,
+			wantKeys: map[string]any{"stage": "agent", "exit_code": float64(1), "tail": "boom", "class": "provider-window"},
+		},
+		{
+			name:     "empty evidence becomes a class-only document",
+			evidence: "",
+			wantKeys: map[string]any{"class": "provider-window"},
+		},
+		{
+			name:     "unparsable evidence degrades to class-only",
+			evidence: `{not json`,
+			wantKeys: map[string]any{"class": "provider-window"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := stampedFailureEvidence(jsontext.Value(tt.evidence), execErr)
+
+			var fields map[string]any
+			if err := json.Unmarshal(got, &fields); err != nil {
+				t.Fatalf("stamped evidence unparsable: %v (%s)", err, got)
+			}
+
+			for k, want := range tt.wantKeys {
+				if fields[k] != want {
+					t.Errorf("stamped[%q] = %v, want %v", k, fields[k], want)
+				}
+			}
+		})
+	}
+
+	// A permanent error classifies permanent, not the rate-limit default.
+	perm := stampedFailureEvidence(jsontext.Value(`{"stage":"verify"}`), executor.Permanent(errors.New("bad payload")))
+
+	if !strings.Contains(string(perm), `"class":"permanent"`) {
+		t.Errorf("permanent evidence = %s, want the permanent class", perm)
 	}
 }

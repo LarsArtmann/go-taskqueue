@@ -193,6 +193,7 @@ var conformanceTests = []struct {
 	{"TestCompleteVerifiesLease", TestCompleteVerifiesLease},
 	{"TestCompleteResetsLastError", TestCompleteResetsLastError},
 	{"TestFailRetriesThenDeadLetters", TestFailRetriesThenDeadLetters},
+	{"TestFailureEvidenceDetailRoundTrips", TestFailureEvidenceDetailRoundTrips},
 	{"TestDismissDead", TestDismissDead},
 	{"TestLeaseExpiryAllowsReclaim", TestLeaseExpiryAllowsReclaim},
 	{"TestDepsBlockUntilCompleted", TestDepsBlockUntilCompleted},

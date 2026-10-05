@@ -3480,3 +3480,46 @@ func TestRecordAnswerValidation(t *testing.T) {
 		}
 	}
 }
+
+// TestFailureEvidenceDetailRoundTrips pins the M12 contract the class
+// stamping rides on: the failure evidence detail the worker hands to
+// Fail survives the backend's fact persistence byte-for-byte enough for
+// the class key to read back — autopsies and forensics depend on it.
+func TestFailureEvidenceDetailRoundTrips(t *testing.T) {
+	ctx, s := freshStore(t)
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "flaky"})
+
+	_, claim := claimDue(t, ctx, s, "w1")
+
+	evidence := jsontext.Value(`{"stage":"agent","exit_code":1,"tail":"boom","class":"permanent"}`)
+	if err := s.Fail(ctx, tk.ID, claim, "boom", time.Millisecond, evidence); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	facts, err := s.Facts(ctx, 0, 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	for _, fact := range facts {
+		if fact.Type != journal.Failed {
+			continue
+		}
+
+		var got struct {
+			Stage string `json:"stage"`
+			Class string `json:"class"`
+		}
+		if err := json.Unmarshal(fact.Detail, &got); err != nil {
+			t.Fatalf("failed-fact detail unparsable: %v (%s)", err, fact.Detail)
+		}
+
+		if got.Stage != "agent" || got.Class != "permanent" {
+			t.Fatalf("failed-fact detail = %s, want stage+class preserved", fact.Detail)
+		}
+
+		return
+	}
+
+	t.Fatal("no task.failed fact found")
+}

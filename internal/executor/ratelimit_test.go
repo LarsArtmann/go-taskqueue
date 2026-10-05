@@ -120,6 +120,25 @@ func TestDetectRateLimit(t *testing.T) {
 			wantFrom: defaultRateLimitBackoff,
 			wantTo:   defaultRateLimitBackoff,
 		},
+		{
+			// M12: the JSON BODY shape an OpenAI-convention provider
+			// relays — quoted keys, colon separator. The header path was
+			// always honored; the body prose shapes were; the body JSON
+			// shapes were not.
+			name: "json body reset_at timestamp",
+			output: `status_code=429 rate limit exceeded {"error":{"reset_at":"` +
+				now.Add(90*time.Minute).Format(time.RFC3339) + `","code":"rate_limit_exceeded"}}`,
+			want:     true,
+			wantFrom: 90*time.Minute + rateLimitGrace,
+			wantTo:   90*time.Minute + rateLimitGrace + time.Minute,
+		},
+		{
+			name:     "json body retry_after seconds",
+			output:   `429 too many requests {"error":{"retry_after": 300}}`,
+			want:     true,
+			wantFrom: 5*time.Minute + rateLimitGrace,
+			wantTo:   5*time.Minute + rateLimitGrace,
+		},
 	}
 
 	for _, tt := range tests {

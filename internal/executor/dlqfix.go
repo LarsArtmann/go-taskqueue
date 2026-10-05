@@ -214,6 +214,17 @@ func dlqFixPrompt(p DLQFixPayload) string {
 	if p.Failure.Stage != "" || p.Failure.Tail != "" {
 		b.WriteString("## Failure evidence\n\n")
 
+		// The retry-taxonomy class stamped by the worker at death time
+		// leads the evidence: the diagnosis starts from WHY the ladder
+		// gave up instead of re-deriving it from the tail (M12).
+		if p.Failure.Class != "" {
+			fmt.Fprintf(
+				&b,
+				"Retry classification: %s (transient = a retry may help; permanent = the identical retry fails identically; provider-window = the model provider's quota/rate window; environment = the task's environment refused).\n\n",
+				p.Failure.Class,
+			)
+		}
+
 		if p.Failure.Stage != "" {
 			fmt.Fprintf(&b, "Stage %q exited with code %d", p.Failure.Stage, p.Failure.ExitCode)
 
