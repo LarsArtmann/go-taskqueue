@@ -11,6 +11,10 @@
 #      failures that do NOT retry — plus the KNOWN_FLAKY list.
 #   3. scripts/root-gate.sh consumes the shared lib instead of a private
 #      signature copy (the extraction must not silently re-duplicate).
+#   4. scripts/verify.sh itself, executed in situ under a PATH-shimmed
+#      toolchain, heals a scripted flake-signature first-run failure on
+#      its ONE retry (03-47 report §b2): the wrapper file's own retry
+#      path runs, not just the lib's behind it.
 # Pattern: scripts/check-transient-retry.sh (marker-guarded, sub-second).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -150,4 +154,38 @@ run_case "non-signature failure does not retry" 1 1 \
 must_not_mention "non-signature case" 'retrying ONCE'
 must_not_mention "non-signature case" 'FLAKE-RETRY'
 
-echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics verified)"
+# Pin 5: run the SHIPPED scripts/verify.sh itself through a scripted
+# flake-heal. The battery is hardcoded, so the sandbox is PATH: a shimmed
+# go fails the FIRST invocation with a known-flaky signature and passes
+# every later one; a shimmed gofmt keeps the green retry hermetic and
+# sub-second (no repo-wide gofmt walk, no real toolchain). This executes
+# the actual wrapper file's ONE-retry path: rc=0 plus the first-run
+# signature, the label-prefixed retry notice, and the FLAKE-RETRY line
+# must all appear in verify.sh's own output.
+shim_bin="$tmp/shim-bin"
+mkdir -p "$shim_bin"
+cat >"$shim_bin/go" <<'EOF'
+#!/usr/bin/env bash
+stamp="${GO_SHIM_STAMP:-}"
+if [ -n "$stamp" ] && [ -e "$stamp" ]; then
+	exit 0
+fi
+printf 'FAIL: TestSelfManagingLoop 19/20\n' >&2
+if [ -n "$stamp" ]; then : >"$stamp"; fi
+exit 1
+EOF
+printf '#!/usr/bin/env bash\nexit 0\n' >"$shim_bin/gofmt"
+chmod +x "$shim_bin/go" "$shim_bin/gofmt"
+
+last_out="$(GO_SHIM_STAMP="$tmp/verify-shim-stamp" PATH="$shim_bin:$PATH" bash "$verify" 2>&1)" && heal_rc=0 || heal_rc=$?
+if [ "$heal_rc" -ne 0 ]; then
+	echo "FAIL: in-situ verify.sh flake-heal (want rc=0, got rc=$heal_rc)"
+	printf '%s\n' "$last_out"
+	exit 1
+fi
+echo "ok: in-situ verify.sh flake-heal (rc=0)"
+must_mention "in-situ heal case" 'FAIL: TestSelfManagingLoop 19/20'
+must_mention "in-situ heal case" 'VERIFY: known-flaky signature in the failure output; retrying ONCE'
+must_mention "in-situ heal case" 'VERIFY: FLAKE-RETRY — green on the second run (known-flaky signature)'
+
+echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified)"
