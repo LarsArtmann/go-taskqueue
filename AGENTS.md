@@ -17,12 +17,12 @@ nix build # nix run .#test; .#webui-css
 ./scripts/fuzz/nightly.sh
 ```
 
-- **Multi-module repo (ADR-0011)**: `internal/{task,journal,queue,executor,worker}`
-  sub-modules + `queue/{sqlite,postgres}` backends + `internal/journal/cqrs`
-  - `internal/readmodel` + `internal/composition` (own modules, S4 root;
-    cmd/tq pins nominal v0.3.0); root = app layer. `cmd/tq` is replace-free
-    (ADR-0017), built via `scripts/build-tq.sh` (devmod shim). `./...`
-    never descends into nested modules; per-module gate:
+- **Multi-module repo (ADR-0011)**: `internal/{task,journal,queue,executor,worker}` +
+  `queue/{sqlite,postgres}` + `internal/journal/cqrs` sub-modules;
+  `internal/{readmodel,composition}` own modules (S4 root; cmd/tq pins
+  nominal v0.3.0); root = app layer. `cmd/tq` replace-free (ADR-0017),
+  built via `scripts/build-tq.sh` (devmod shim). `./...` skips nested
+  modules; per-module gate:
 
 ```bash
 for m in $(find internal task journal queue executor worker -name go.mod -printf '%h\n'|sort); do (cd "$m" && GOEXPERIMENT=jsonv2 GOWORK=off go build ./... && GOWORK=off go vet ./... && GOWORK=off go test ./... -count=1)||exit 1; done
@@ -31,13 +31,13 @@ for m in $(find internal task journal queue executor worker -name go.mod -printf
 
 **Public facades (ADR-0016):** `task/ journal/ queue/ queue/sqlite/
 queue/postgres/ executor/ worker/` re-export internals via type aliases —
-the only external import surface; in-repo code imports `internal/…`
-directly. Facade-graph modules: require (real tag) + relative replace;
-facade tests import internals, never sibling facades; parity via
-`scripts/check-facade-parity.sh` — run BEFORE staging (pre-commit gates
-staged files only); postgres `OpenWithPool` pools are
-CALLER-OWNED. No go.work — replace-only (`go test ./internal/foo` from
-root fails by design — cd in). Release flow: docs/release/ (rc-captured proxy checks).
+the only external import surface; in-repo code imports `internal/…`. Facade
+modules: require (real tag) + relative replace; facade tests import
+internals, never sibling facades; parity via `scripts/check-facade-parity.sh`
+BEFORE staging (pre-commit gates staged files only); postgres `OpenWithPool`
+pools CALLER-OWNED. No go.work — replace-only (`go test ./internal/foo` from
+root fails by design — cd in). Release flow: docs/release/ (rc-captured
+proxy checks).
 
 Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh + release-gates +
 lint-baseline. `scripts/new-module.sh <dir> [deps…]` scaffolds go.mods.
@@ -48,32 +48,32 @@ Facts-first: every state change is an immutable fact in an append-only
 journal; queue views, retry state, DLQ are projections. Claim exclusivity =
 lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
-| Package                                          | Purpose                                                                              |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `internal/task`                                  | Task record, Status, sentinels                                                       |
-| `internal/journal`                               | Fact types + append-only Journal                                                     |
-| `internal/journal/cqrs`                          | Read-only go-cqrs-lite adapter (ADR-0014)                                            |
-| `internal/queue`                                 | Store contract, Filter, Queue facade                                                 |
-| `internal/queue/{sqlite,postgres}`               | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform`       |
-| `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` | tq Store over the go-cqrs-lite queue engines                                         |
-| `internal/queue/companion`                       | Shared tq surfaces: reads, watermarks, scores, exclusivity                           |
-| `internal/readmodel`                             | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON)            |
-| `internal/composition`                           | S4 root: `system.New` over the projection home (`tq serve`)                          |
-| `internal/worker`                                | Claim → heartbeat → execute loop; requeue ladder                                     |
-| `internal/bridge`                                | papdashboard + cqa bridges → fix tasks                                               |
-| `internal/executor`                              | sh/HTTP/agent/review/status executors + registry                                     |
-| `internal/harvest`                               | TODO_LIST.md → tasks; drift audit; prune-stale                                       |
-| `internal/budget`                                | Daily-cap + session-usage projections per tick                                       |
-| `internal/dlqfix`                                | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss                              |
-| `internal/review`                                | Review sweeper + `--review-autofix`                                                  |
-| `internal/status`                                | Done-prompt report sweeper (`--status-every`)                                        |
-| `internal/prioritize`                            | AI batch scorer (`--prioritize`), priority_scores cache                              |
-| `internal/depsweep`                              | Dependency-upgrade sweeper `--dep-sweep`                                             |
-| `internal/watermark`                             | Durable journal cursor shared by the sweepers                                        |
-| `internal/consumer`                              | Journal dispatcher, per-subscriber cursors (ADR-0009)                                |
-| `internal/runactor`                              | run.Group actors, LIFO shutdown, InterruptOn                                         |
-| `internal/webui`                                 | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003)                               |
-| `internal/httpapi`+`httpauth`/`lockout`          | Machine API (`tq api`): token-mandatory, nosniff, lockout; shared bearer + 3-strikes |
+| Package | Purpose |
+| --- | --- |
+| `internal/task` | Task record, Status, sentinels |
+| `internal/journal` | Fact types + append-only Journal |
+| `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014) |
+| `internal/queue` | Store contract, Filter, Queue facade |
+| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform` |
+| `internal/queue/{sqlitev4,postgresv4,cqrsqlite}` | tq Store over the go-cqrs-lite queue engines |
+| `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity |
+| `internal/readmodel` | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON) |
+| `internal/composition` | S4 root: `system.New` over the projection home (`tq serve`) |
+| `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
+| `internal/bridge` | papdashboard + cqa bridges → fix tasks |
+| `internal/executor` | sh/HTTP/agent/review/status executors + registry |
+| `internal/harvest` | TODO_LIST.md → tasks; drift audit; prune-stale |
+| `internal/budget` | Daily-cap + session-usage projections per tick |
+| `internal/dlqfix` | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss |
+| `internal/review` | Review sweeper + `--review-autofix` |
+| `internal/status` | Done-prompt report sweeper (`--status-every`) |
+| `internal/prioritize` | AI batch scorer (`--prioritize`), priority_scores cache |
+| `internal/depsweep` | Dependency-upgrade sweeper `--dep-sweep` |
+| `internal/watermark` | Durable journal cursor shared by the sweepers |
+| `internal/consumer` | Journal dispatcher, per-subscriber cursors (ADR-0009) |
+| `internal/runactor` | run.Group actors, LIFO shutdown, InterruptOn |
+| `internal/webui` | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003) |
+| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout; shared bearer + 3-strikes |
 
 ### Store invariants
 
@@ -114,20 +114,20 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Idempotent enqueue**: `DedupKey` re-enqueue returns the stored task;
   COMPLETED keys refused (`ErrTaskDone`); cancelled/dead keys still
   suppress (escape hatch: edit the item).
-- **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT
-  burning an attempt (jittered wait, fallback 15min cap 6h); per-repo
-  gates fast-refuse siblings; a closeout 429 arms `closeoutPending`
-  resume on re-claim. **Env-requeue breaker**: env requeue facts carry
-  `requeue_class`; 3 consecutive burn an attempt + escalate
-  (`env-streak`) — never uncap (169-loop = $36.62/d).
+- **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT burn
+  (jittered wait, fallback 15min cap 6h); per-repo gates fast-refuse
+  siblings; closeout 429 arms `closeoutPending` resume on re-claim.
+  **Env-requeue breaker**: env requeues carry `requeue_class`; 3 consecutive
+  burn an attempt + escalate (`env-streak`) — never uncap
+  (169-loop = $36.62/d).
 - **Secrets redaction** (default ON): every output tail passes
-  `internal/executor/redact.go`; `tq audit --journal` reports
-  SECRET EVIDENCE rows. Growth policy: a new provider/shape adds ONE
-  `secretPatterns` entry + a fake-shape sample in `redact_test.go`
-  (table-length pins) + a lint-baseline note if it trips golangci/gosec.
-  Audit (`SecretHits`) and redaction (`RedactSecrets`) share the ONE
-  table (pinned `TestSecretHitsAndRedactionCompileIdenticalTable`); `redact_test.go` build-tag-free, windows-gated
-  via per-module CI (00-55 §f9).
+  `internal/executor/redact.go`; `tq audit --journal` reports SECRET
+  EVIDENCE rows. Growth: a new provider/shape adds ONE `secretPatterns`
+  entry + a fake-shape sample in `redact_test.go` (table-length pins) + a
+  lint-baseline note if it trips golangci/gosec. `SecretHits` and
+  `RedactSecrets` share the ONE table (pinned
+  `TestSecretHitsAndRedactionCompileIdenticalTable`); redact_test.go
+  build-tag-free, windows-gated per-module CI (00-55 §f9).
 - **Enqueued-fact snapshots are THIN today** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in the conform suites).
 
@@ -247,13 +247,12 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 - **go-cqrs-lite IS the platform (ADR-0019)**: adoption in the
   `{sqlitev4,postgresv4,cqrsqlite}` + `companion` modules;
-  `internal/journal/cqrs` is PROPRIETARY, read-only — never extend or
-  import below root. **Backward auto-upgrade (endgame P1)**: the
-  `internal/queue/sqlite` facade Open converges a legacy pre-flip DB
-  in place (snapshot kept `<db>.legacy-*.bak`, verify, auto-restore on
-  mismatch; absent feature-era tables tolerated); refuse via
-  `TQ_NO_AUTO_UPGRADE=1`; manual: `go run
-  ./replay` in internal/queue/sqlitev4.
+  `internal/journal/cqrs` PROPRIETARY, read-only — never extend or import
+  below root. **Backward auto-upgrade (endgame P1)**: facade Open converges
+  a legacy pre-flip DB in place (snapshot `<db>.legacy-*.bak`, verify,
+  auto-restore on mismatch; absent feature-era tables tolerated); refuse
+  via `TQ_NO_AUTO_UPGRADE=1`; manual: `go run ./replay` in
+  internal/queue/sqlitev4.
 - **PapDashboard bridge**: `--alert-url/--alert-api-key`; dead letters
   raise `alert.triggered`, completions resolve; `NotifyDeadPool` =
   direct dead-pool path.
