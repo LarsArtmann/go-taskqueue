@@ -287,6 +287,17 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	// baseline green, post-attempt red — counts against the task.
 	baseRev := gitHeadRev(repoDir)
 
+	// Session-retry ladder (paperclip's same_session → fresh_session): the
+	// FIRST retry resumes the previous attempt's session so the
+	// conversation carries its context — a re-ask is cheaper than a
+	// re-explanation, and a retry usually follows a transient provider
+	// failure. From the second retry on, back to fresh: a session that
+	// failed twice is itself the prime suspect. A payload-pinned session
+	// always wins.
+	if p.Session == "" {
+		p.Session = retrySession(t)
+	}
+
 	output, err := e.runAgent(runCtx, repoDir, &p, t.ID)
 	if err != nil {
 		// Forensics for the task.failed fact: exit code + output tail. The
@@ -435,6 +446,33 @@ func assertCleanTree(ctx context.Context, repo string) error {
 // TQ_RESULT line — the file is the authoritative channel, a stdout
 // TQ_RESULT line is the legacy fallback for in-flight tasks.
 const verdictFileEnv = "TQ_RESULT_FILE"
+
+// retrySession is the retry ladder's session rung: the FIRST retry
+// resumes the previous attempt's session (paperclip's same_session), later
+// retries go fresh (the session itself may be what's sick). The previous
+// attempt's session id comes from the run-output sidecar
+// ($TQ_LOG_DIR/<task-id>.log): deterministic per task id, and at retry
+// time it still holds the previous attempt's output — the current attempt
+// has not overwritten it yet (writeOutputSidecar runs at outcome time).
+// No sidecar, no directory, no id in the output: all degrade to fresh,
+// which is today's behavior.
+func retrySession(t task.Task) string {
+	if t.Attempts != 1 {
+		return "" // fresh: the first run, or the session had its chance
+	}
+
+	dir := os.Getenv("TQ_LOG_DIR")
+	if dir == "" {
+		return ""
+	}
+
+	body, err := os.ReadFile(filepath.Join(dir, t.ID.String()+".log"))
+	if err != nil {
+		return ""
+	}
+
+	return ExtractSessionID(string(body))
+}
 
 // runAgent spawns the headless agent in the repo and waits for it.
 func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPayload, id task.ID) (string, error) {
