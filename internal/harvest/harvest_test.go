@@ -744,3 +744,47 @@ func TestDoneGuardRefusesCompletedKeyRedispatch(t *testing.T) {
 		t.Fatalf("re-dispatch returned task %s, want the stored completed row %s", second.ID, first.ID)
 	}
 }
+
+func TestRepoPurposeAncestryInPrompt(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, ".config"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	meta := "importance: 60\npurpose: keep the fleet's paperclip lessons durable\n"
+	if err := os.WriteFile(filepath.Join(repo, ".config", "metadata.yaml"), []byte(meta), 0o644); err != nil {
+		t.Fatalf("write metadata: %v", err)
+	}
+
+	if got, want := repoPurpose(repo), "keep the fleet's paperclip lessons durable"; got != want {
+		t.Errorf("repoPurpose = %q, want %q", got, want)
+	}
+
+	// The rendered prompt carries the full ancestry: item → section → purpose.
+	item := Item{Repo: repo, RepoName: "demo", Heading: "backlog", Text: "- [ ] do a thing"}
+	prompt := strings.ReplaceAll(DefaultPromptTemplate, "{{REPO_ABS}}", item.Repo)
+	prompt = strings.ReplaceAll(prompt, "{{REPO}}", item.RepoName)
+	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", item.Heading)
+	prompt = strings.ReplaceAll(prompt, "{{ITEM}}", item.Text)
+	prompt = strings.ReplaceAll(prompt, "{{REPO_PURPOSE}}", repoPurpose(item.Repo))
+
+	for _, want := range []string{"Repo purpose: keep the fleet's paperclip lessons durable", `section "backlog"`, "do a thing"} {
+		if !strings.Contains(prompt, want) {
+			t.Errorf("prompt missing ancestry %q", want)
+		}
+	}
+
+	// Quoted scalar.
+	if err := os.WriteFile(filepath.Join(repo, ".config", "metadata.yaml"), []byte("purpose: \"quoted purpose\"\n"), 0o644); err != nil {
+		t.Fatalf("rewrite metadata: %v", err)
+	}
+
+	if got := repoPurpose(repo); got != "quoted purpose" {
+		t.Errorf("quoted purpose = %q", got)
+	}
+
+	// Absent metadata falls back to the honest pointer, never an invention.
+	if got := repoPurpose(t.TempDir()); got != "(unstated — see the repo's README)" {
+		t.Errorf("absent metadata purpose = %q", got)
+	}
+}

@@ -173,6 +173,43 @@ func isNestedOrIgnorable(line string) bool {
 	return line == "" || line[0] == ' ' || line[0] == '\t' || line[0] == '#'
 }
 
+// repoPurpose reads a repo's one-line purpose from .config/metadata.yaml's
+// top-level `purpose:` scalar — the goal-ancestry rung above the item and
+// its section heading: an agent that knows WHY the repo exists stops
+// asking whether its work item even matters (M23). Absent file, absent
+// key, or parse trouble: the honest fallback names the README, never an
+// invented purpose.
+func repoPurpose(repo string) string {
+	data, err := os.ReadFile(filepath.Join(repo, ".config", "metadata.yaml"))
+	if err != nil {
+		return "(unstated — see the repo's README)"
+	}
+
+	for line := range strings.SplitSeq(string(data), "\n") {
+		if isNestedOrIgnorable(line) {
+			continue
+		}
+
+		name, value, found := strings.Cut(line, ":")
+		if !found || strings.TrimSpace(name) != "purpose" {
+			continue
+		}
+
+		purpose := strings.TrimSpace(value)
+		if len(purpose) >= 2 && (purpose[0] == '"' || purpose[0] == '\'') && purpose[len(purpose)-1] == purpose[0] {
+			purpose = purpose[1 : len(purpose)-1]
+		}
+
+		if purpose == "" {
+			break
+		}
+
+		return purpose
+	}
+
+	return "(unstated — see the repo's README)"
+}
+
 // parseImportanceValue parses the scalar after `importance:`, tolerating
 // quoted scalars, and enforces the 0–100 range.
 func parseImportanceValue(value string) (int, error) {

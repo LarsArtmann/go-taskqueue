@@ -40,7 +40,7 @@ const DefaultTodoFile = "TODO_LIST.md"
 const DefaultMaxPerTick = 10
 
 // DefaultPromptTemplate is the agent contract handed to Crush for each item.
-// Placeholders: {{REPO_ABS}}, {{REPO}}, {{HEADING}}, {{ITEM}}, and
+// Placeholders: {{REPO_ABS}}, {{REPO}}, {{REPO_PURPOSE}}, {{HEADING}}, {{ITEM}}, and
 // {{TASK_ID}} (substituted at EXECUTION time by the agent executor — the
 // queue task ID does not exist when the harvester renders this template;
 // it exists so commits can carry a Task-Queue-ID footer for git log ↔
@@ -49,6 +49,7 @@ const DefaultPromptTemplate = `You are an autonomous agent working from a shared
 Your repo's AGENTS.md is already in your context — follow it.
 
 Repository: {{REPO_ABS}}
+Repo purpose: {{REPO_PURPOSE}}
 Work item from TODO_LIST.md, section "{{HEADING}}":
 "{{ITEM}}"
 
@@ -75,13 +76,14 @@ report files or commit SHAs yourself.`
 // DefaultBatchPromptTemplate is the agent contract for BATCHED work items
 // (harvest --batch-items > 1): one task carries a run of adjacent items from
 // the same TODO_LIST.md section, worked in order by ONE session. Placeholders:
-// {{REPO_ABS}}, {{REPO}}, {{HEADING}}, {{COUNT}}, {{ITEMS}} (numbered list)
+// {{REPO_ABS}}, {{REPO}}, {{REPO_PURPOSE}}, {{HEADING}}, {{COUNT}}, {{ITEMS}} (numbered list)
 // and {{TASK_ID}} (resolved at EXECUTION time, one footer for every commit
 // of the batch — derived outcomes attribute them all to this task).
 const DefaultBatchPromptTemplate = `You are an autonomous agent working from a shared task queue, unsupervised.
 Your repo's AGENTS.md is already in your context — follow it.
 
 Repository: {{REPO_ABS}}
+Repo purpose: {{REPO_PURPOSE}}
 Work batch from TODO_LIST.md, section "{{HEADING}}" — {{COUNT}} related items, ONE session:
 
 {{ITEMS}}
@@ -584,6 +586,7 @@ func (h *Harvester) buildBatchPayload(ctx context.Context, run []Item) ([]byte, 
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", first.Heading)
 	prompt = strings.ReplaceAll(prompt, "{{COUNT}}", strconv.Itoa(len(run)))
 	prompt = strings.ReplaceAll(prompt, "{{ITEMS}}", strings.TrimRight(list.String(), "\n"))
+	prompt = strings.ReplaceAll(prompt, "{{REPO_PURPOSE}}", repoPurpose(first.Repo))
 
 	if dangles := danglingSHAs(ctx, first.Repo, strings.Join(texts, "\n")); len(dangles) > 0 {
 		prompt += "\n\n" + citationBlock(dangles)
@@ -959,6 +962,7 @@ func (h *Harvester) buildPayload(ctx context.Context, item Item, prompt, dedupKe
 	prompt = strings.ReplaceAll(prompt, "{{REPO}}", item.RepoName)
 	prompt = strings.ReplaceAll(prompt, "{{HEADING}}", item.Heading)
 	prompt = strings.ReplaceAll(prompt, "{{ITEM}}", item.Text)
+	prompt = strings.ReplaceAll(prompt, "{{REPO_PURPOSE}}", repoPurpose(item.Repo))
 
 	if dangles := danglingSHAs(ctx, item.Repo, item.Text); len(dangles) > 0 {
 		prompt += "\n\n" + citationBlock(dangles)
