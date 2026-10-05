@@ -87,6 +87,7 @@ func TestRequeueDetailMirrorsQueueEvidence(t *testing.T) {
 
 func TestEnqueueDetailMirrorsQueueDetail(t *testing.T) {
 	priority := 2
+
 	src, err := json.Marshal(queue.EnqueueDetail{
 		Project:  "web",
 		Type:     "sh",

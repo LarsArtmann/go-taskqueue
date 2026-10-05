@@ -1362,7 +1362,14 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 
 	// LastError stays the requeue reason: a preflight requeue explains
 	// itself in the projection, never burned an attempt.
-	assertTaskState(t, ctx, s, tk.ID, task.Task{Status: task.Pending, LastError: "preflight: repo dirty"}, "after requeue (attempt must NOT be burned)")
+	assertTaskState(
+		t,
+		ctx,
+		s,
+		tk.ID,
+		task.Task{Status: task.Pending, LastError: "preflight: repo dirty"},
+		"after requeue (attempt must NOT be burned)",
+	)
 
 	// Delay gates the next claim (not_before semantics, like Fail backoff).
 	assertNoTaskDue(t, ctx, s, "w1", "requeue delay")
@@ -1834,8 +1841,17 @@ func assertTaskState(t *testing.T, ctx context.Context, s Store, id task.ID, wan
 	t.Helper()
 
 	got, _ := s.Get(ctx, id)
-	if got.Status != want.Status || got.Attempts != want.Attempts || got.LastError != want.LastError || got.LeaseOwner != want.LeaseOwner {
-		t.Fatalf("%s: %+v, want status=%s attempts=%d lastError=%q leaseOwner=%q", msg, got, want.Status, want.Attempts, want.LastError, want.LeaseOwner)
+	if got.Status != want.Status || got.Attempts != want.Attempts || got.LastError != want.LastError ||
+		got.LeaseOwner != want.LeaseOwner {
+		t.Fatalf(
+			"%s: %+v, want status=%s attempts=%d lastError=%q leaseOwner=%q",
+			msg,
+			got,
+			want.Status,
+			want.Attempts,
+			want.LastError,
+			want.LeaseOwner,
+		)
 	}
 }
 
