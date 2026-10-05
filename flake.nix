@@ -447,23 +447,27 @@
             };
             lint = {
               type = "app";
-              program = lib.getExe (pkgs.writeShellApplication {
-                name = "run-lint";
-                runtimeInputs = [
-                  goTarballPkg
-                  pkgs.golangci-lint
-                ];
-                text = "golangci-lint run ./...";
-              });
+              program = lib.getExe (
+                pkgs.writeShellApplication {
+                  name = "run-lint";
+                  runtimeInputs = [
+                    goTarballPkg
+                    pkgs.golangci-lint
+                  ];
+                  text = "golangci-lint run ./...";
+                }
+              );
               meta.description = "Run golangci-lint over the root module";
             };
             fmt = {
               type = "app";
-              program = lib.getExe (pkgs.writeShellApplication {
-                name = "run-fmt";
-                runtimeInputs = [ config.treefmt.build.wrapper ];
-                text = "treefmt";
-              });
+              program = lib.getExe (
+                pkgs.writeShellApplication {
+                  name = "run-fmt";
+                  runtimeInputs = [ config.treefmt.build.wrapper ];
+                  text = "treefmt";
+                }
+              );
               meta.description = "Run the treefmt formatters (gofumpt, goimports, nixfmt, templ fmt)";
             };
 
