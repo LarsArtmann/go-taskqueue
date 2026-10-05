@@ -16,16 +16,19 @@
   };
 
   outputs =
-    # Tarball-built Go toolchain constants (single source — the go-standard
-    # option AND the perSystem formatter wrapper below must never drift).
-    let
-      goToolchainVersion = "1.27.1";
-      goToolchainHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
-    in
     inputs@{
       flake-parts,
       ...
     }:
+    # Tarball-built Go toolchain constants (single source — the go-standard
+    # option AND the perSystem formatter wrapper below must never drift).
+    # NOTE: the let must live INSIDE the lambda — `outputs = let … in <lambda>`
+    # makes Nix 2.34's flake loader treat outputs as a thunk ("expected a
+    # function but got a thunk").
+    let
+      goToolchainVersion = "1.27.1";
+      goToolchainHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+    in
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ inputs.go-nix-helpers.flakeModules.go-standard ];
 
