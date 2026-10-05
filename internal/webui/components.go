@@ -110,6 +110,73 @@ func prioritizeBadgeText(res executor.PrioritizeResult) string {
 	return fmt.Sprintf("%d verdicts", len(res.Verdicts))
 }
 
+// badgeInfo is one entry of a task's badge stack: label text and tone.
+type badgeInfo struct {
+	text      string
+	badgeType display.BadgeType
+}
+
+// metaChip is one nowband meta chip: class marker, hover explainer,
+// label, count.
+type metaChip struct {
+	class string
+	title string
+	label string
+	count int
+}
+
+// nowbandMetaChips assembles the overview meta band: total always, the
+// conditional diagnostics only when non-zero. The sessions and budget
+// chips render inline (two-count and metered forms).
+func nowbandMetaChips(data DashboardData) []metaChip {
+	chips := []metaChip{{class: "card-total", title: "all tasks ever", label: "total", count: data.Total}}
+
+	if data.Parked > 0 {
+		chips = append(chips, metaChip{class: "card-parked", title: "rate-limit requeues waiting out their window", label: "parked", count: data.Parked})
+	}
+
+	if data.BudgetParked > 0 {
+		chips = append(chips, metaChip{class: "card-budget-parked", title: "paid turns parked by the budget gate (latest requeue in the last 24h) — the pool is idle on purpose, no attempt burn", label: "budget", count: data.BudgetParked})
+	}
+
+	if data.Stranded > 0 {
+		chips = append(chips, metaChip{class: "card-stranded", title: "pending tasks waiting on a dependency that is dead or cancelled — they can never run; rescue the dependency or cancel the task", label: "stranded", count: data.Stranded})
+	}
+
+	if data.LoopSuspects > 0 {
+		chips = append(chips, metaChip{class: "card-loopsuspect", title: fmt.Sprintf("tasks with more than %d claims (churn class); tq stats lists them", queue.ClaimAnomalyThreshold), label: "loop suspects", count: data.LoopSuspects})
+	}
+
+	chips = append(chips, metaChip{class: "card-journal", title: "journal watermark — highest fact seq", label: "journal", count: int(data.JournalSeq)})
+
+	return chips
+}
+
+// taskBadgeExtras assembles a task's conditional badges — review verdict,
+// status report, agent run, prioritize verdict — so taskBadges renders one
+// loop over the stack (the status badge leads, always present).
+func taskBadgeExtras(data DashboardData, t task.Task) []badgeInfo {
+	extras := []badgeInfo{}
+
+	if verdict, ok := data.Reviews[t.ID.String()]; ok {
+		extras = append(extras, badgeInfo{text: verdictLabel(verdict.Verdict), badgeType: verdictBadgeType(verdict.Verdict)})
+	}
+
+	if st, ok := data.Statuses[t.ID.String()]; ok {
+		extras = append(extras, badgeInfo{text: statusBadgeText(st), badgeType: display.BadgeInfo})
+	}
+
+	if res, ok := data.AgentResults[t.ID.String()]; ok {
+		extras = append(extras, badgeInfo{text: agentBadgeText(res), badgeType: display.BadgeInfo})
+	}
+
+	if res, ok := data.Prioritizes[t.ID.String()]; ok {
+		extras = append(extras, badgeInfo{text: prioritizeBadgeText(res), badgeType: display.BadgeInfo})
+	}
+
+	return extras
+}
+
 // sessionUsageEmpty reports whether a result carries no derived session
 // usage (stub or non-crush run): the render-nothing gate for the usage line.
 // A message-count-only run is NOT empty: the message count proves the

@@ -53,18 +53,8 @@ templ StatusCards(data DashboardData) {
 			</a>
 		</div>
 		<div class="tq-nowband-meta">
-			@metaCount("card-total", "all tasks ever", "total", data.Total)
-			if data.Parked > 0 {
-				@metaCount("card-parked", "rate-limit requeues waiting out their window", "parked", data.Parked)
-			}
-			if data.BudgetParked > 0 {
-				@metaCount("card-budget-parked", "paid turns parked by the budget gate (latest requeue in the last 24h) — the pool is idle on purpose, no attempt burn", "budget", data.BudgetParked)
-			}
-			if data.Stranded > 0 {
-				@metaCount("card-stranded", "pending tasks waiting on a dependency that is dead or cancelled — they can never run; rescue the dependency or cancel the task", "stranded", data.Stranded)
-			}
-			if data.LoopSuspects > 0 {
-				@metaCount("card-loopsuspect", fmt.Sprintf("tasks with more than %d claims (churn class); tq stats lists them", queue.ClaimAnomalyThreshold), "loop suspects", data.LoopSuspects)
+			for _, chip := range nowbandMetaChips(data) {
+				@metaCount(chip.class, chip.title, chip.label, chip.count)
 			}
 			if data.SessionsOpened > 0 || data.SessionsOpen > 0 {
 				<span class="card-sessions" title="interactive sessions: opened/closed facts">sessions { formatInt(data.SessionsOpened) }/{ formatInt(data.SessionsClosed) }</span>
@@ -72,7 +62,6 @@ templ StatusCards(data DashboardData) {
 			if data.SessionsOpen > 0 {
 				<span class="card-sessions-lamp" title="begun, never closed — tq session list">{ formatInt(data.SessionsOpen) } open</span>
 			}
-			@metaCount("card-journal", "journal watermark — highest fact seq", "journal", int(data.JournalSeq))
 			if data.Budget != nil {
 				<span class="card-budget inline-flex items-center gap-2" title="agent tasks enqueued today vs the daily cap">
 					budget today { formatInt(data.Budget.Spent) }/{ formatInt(data.Budget.Cap) }
@@ -629,17 +618,8 @@ templ badge(text string, badgeType display.BadgeType, size display.BadgeSize) {
 
 templ taskBadges(data DashboardData, t task.Task, size display.BadgeSize) {
 	@badge(string(t.Status), statusBadgeType(t.Status), size)
-	if verdict, ok := data.Reviews[t.ID.String()]; ok {
-		@badge(verdictLabel(verdict.Verdict), verdictBadgeType(verdict.Verdict), size)
-	}
-	if st, ok := data.Statuses[t.ID.String()]; ok {
-		@badge(statusBadgeText(st), display.BadgeInfo, size)
-	}
-	if res, ok := data.AgentResults[t.ID.String()]; ok {
-		@badge(agentBadgeText(res), display.BadgeInfo, size)
-	}
-	if res, ok := data.Prioritizes[t.ID.String()]; ok {
-		@badge(prioritizeBadgeText(res), display.BadgeInfo, size)
+	for _, b := range taskBadgeExtras(data, t) {
+		@badge(b.text, b.badgeType, size)
 	}
 }
 
