@@ -83,7 +83,10 @@ func TestSelfManagingLoop(t *testing.T) {
 	}
 
 	if len(res.Enqueued) != 1 || res.Enqueued[0].Item.Text != "first item" {
-		t.Fatalf("tick 1 enqueued = %+v", res.Enqueued)
+		// The full Result (not just Enqueued) so a CI-only recurrence is
+		// diagnosable from the log: Repos/Items say whether discovery and
+		// parsing saw the fixture, Skipped carries the per-repo refusal.
+		t.Fatalf("tick 1 result = %+v (want exactly 'first item' enqueued)", res)
 	}
 
 	waitFor(t, ctx, func() bool { return taskStatus(t, ctx, q, res.Enqueued[0].TaskID) == task.Completed })
