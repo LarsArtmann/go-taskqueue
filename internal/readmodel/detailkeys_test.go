@@ -19,6 +19,8 @@ import (
 // same key-parity discipline budget_test applies to the executor result
 // shapes (internal/budget/budget.go, sessionUsageDetail).
 func TestRepriDetailMirrorsQueueEvidence(t *testing.T) {
+	t.Parallel()
+
 	src, err := json.Marshal(queue.ReprioritizeEvidence{
 		OldPriority: 3,
 		NewPriority: 7,
@@ -41,6 +43,8 @@ func TestRepriDetailMirrorsQueueEvidence(t *testing.T) {
 }
 
 func TestRequeueDetailMirrorsQueueEvidence(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		src  queue.RequeueEvidence
@@ -68,6 +72,8 @@ func TestRequeueDetailMirrorsQueueEvidence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			src, err := json.Marshal(tt.src)
 			if err != nil {
 				t.Fatalf("marshal queue.RequeueEvidence: %v", err)
@@ -86,6 +92,8 @@ func TestRequeueDetailMirrorsQueueEvidence(t *testing.T) {
 }
 
 func TestEnqueueDetailMirrorsQueueDetail(t *testing.T) {
+	t.Parallel()
+
 	priority := 2
 
 	src, err := json.Marshal(queue.EnqueueDetail{
@@ -116,6 +124,8 @@ func TestEnqueueDetailMirrorsQueueDetail(t *testing.T) {
 // an error so journal drift is visible instead of folding a priority-0
 // row.
 func TestRepriEventDetailPolicy(t *testing.T) {
+	t.Parallel()
+
 	base := journal.Fact{
 		Seq:    1,
 		Time:   time.UnixMilli(1_000),
@@ -124,6 +134,8 @@ func TestRepriEventDetailPolicy(t *testing.T) {
 	}
 
 	t.Run("malformed detail surfaces journal drift", func(t *testing.T) {
+		t.Parallel()
+
 		fact := base
 		fact.Detail = jsontext.Value(`{"new_priority":`)
 
@@ -138,6 +150,8 @@ func TestRepriEventDetailPolicy(t *testing.T) {
 	})
 
 	t.Run("valid detail folds the new priority", func(t *testing.T) {
+		t.Parallel()
+
 		fact := base
 		fact.Detail = jsontext.Value(`{"old_priority":3,"new_priority":7,"source":"ai","reason":"rescored"}`)
 

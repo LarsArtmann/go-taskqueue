@@ -21,7 +21,7 @@ import (
 
 // openTestStore hands each conformance test a fresh, isolated store via
 // the harness Suite (sqlite: temp file; postgres: per-test schema).
-func openTestStore(t *testing.T) Store {
+func openTestStore(t *testing.T) Store { //nolint:ireturn // conformance hands out the backend-agnostic Store interface by design
 	t.Helper()
 
 	return openOn(t, freshDSN(t))

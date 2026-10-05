@@ -333,6 +333,8 @@ func TestParityWithStoreProjection(t *testing.T) {
 // `tq tasks --parked-class` and the webui budget lamp are specified to
 // read instead of re-deriving it from the fact tail.
 func TestParkedByProjection(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	f := newFixture(t)
 
@@ -402,6 +404,8 @@ func TestParkedByProjection(t *testing.T) {
 // initial catch-up land in the collection on the next pass, and the
 // watcher notifies with the folded row.
 func TestTailAppliesNewFacts(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	f := newFixture(t)
 
@@ -435,6 +439,8 @@ func TestTailAppliesNewFacts(t *testing.T) {
 // projection file replays the journal from zero and converges on the same
 // projection (every fold is an upsert keyed by task id).
 func TestReplayConverges(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	f := newFixture(t)
 
@@ -471,6 +477,8 @@ func TestReplayConverges(t *testing.T) {
 // streams each folded row as one JSON event carrying the projection write
 // sequence as the SSE id (the Last-Event-ID reconnection watermark).
 func TestEventsHandlerStreamsRows(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	f := newFixture(t)
 
