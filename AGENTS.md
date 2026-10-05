@@ -241,6 +241,15 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   push; scripted edits via script files.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route
   exec sites through `execWithTransientRetry`.
+- **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` makes the flake
+  loader see outputs as a thunk — every eval dies with "expected a
+  function but got a thunk at flake.nix:<outputs line>". Keep the `let`
+  INSIDE the lambda (`outputs = inputs@{…}: let … in mkFlake …`).
+- **templ-components sibling pins**: a release whose root go.mod carries
+  zero pseudo-versions (`v…-00010101000000-000000000000`) passes local
+  builds (replaces) but kills every consumer full-graph load
+  (`go mod tidy`/`download all` → the Nix go-modules FOD). Check
+  `grep -r 00010101` in the dep repo before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
   (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`):
   `gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'` —
