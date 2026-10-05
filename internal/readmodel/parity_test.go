@@ -448,8 +448,23 @@ func TestStatsParityLifecycle(t *testing.T) {
 		}
 	}
 
+	assertStatsFiltersAndAPIs(t, ctx, f, wantStatus, wantProject)
+}
+
+// assertStatsFiltersAndAPIs pins the filtered Stats surfaces (project
+// and status filters) plus the single-matrix convenience APIs against
+// the lifecycle's unfiltered matrices.
+func assertStatsFiltersAndAPIs(
+	t *testing.T,
+	ctx context.Context,
+	f *fixture,
+	wantStatus map[string]int,
+	wantProject map[string]map[string]int,
+) {
+	t.Helper()
+
 	// Filtered stats: a project filter narrows both matrices.
-	byStatus, byProject, err = f.model.Stats(ctx, readmodel.TaskFilter{Project: new("api")})
+	byStatus, byProject, err := f.model.Stats(ctx, readmodel.TaskFilter{Project: new("api")})
 	f.must("stats(api)", err)
 
 	wantAPI := map[string]int{"pending": 1, "dead": 1, "cancelled": 2}
@@ -516,8 +531,8 @@ func (c *countingStore) Facts(
 // first model checkpoints its cursor into the watermarks table after
 // every applied batch; a reopened model resumes from the checkpoint
 // (zero facts folded on an unchanged journal), tail folds only the new
-// facts, and an empty projection under a stale checkpoint replays from
-// zero — the documented delete-the-file escape hatch.
+// facts. The empty-projection escape hatch is pinned by
+// TestDurableCursorFreshProjectionReplays.
 func TestDurableCursorSkipsReplay(t *testing.T) {
 	t.Parallel()
 
@@ -617,11 +632,60 @@ func TestDurableCursorSkipsReplay(t *testing.T) {
 	if len(rows) != 4 {
 		t.Fatalf("rows after tail = %d, want 4", len(rows))
 	}
+}
 
-	_ = second.Close()
+// TestDurableCursorFreshProjectionReplays pins the documented
+// delete-the-file escape hatch: an empty projection under a stale
+// durable checkpoint replays the journal from zero instead of wedging,
+// then re-checkpoints past the abandoned cursor.
+func TestDurableCursorFreshProjectionReplays(t *testing.T) {
+	t.Parallel()
 
-	// Empty projection under a stale checkpoint (the deleted-file escape
-	// hatch): a fresh file replays from zero and converges.
+	ctx := context.Background()
+
+	store, err := sqlite.Open(t.TempDir() + "/queue.db")
+	if err != nil {
+		t.Fatalf("open queue store: %v", err)
+	}
+
+	t.Cleanup(func() { _ = store.Close() })
+
+	f := &fixture{t: t, store: store}
+
+	t1 := f.enqueue("web", "sh", 2, "todo:f1")
+	f.enqueue("api", "sh", 1, "todo:f2")
+
+	tk, claim := f.claim()
+	if tk.ID != t1.ID {
+		t.Fatalf("claim = %s, want t1", tk.ID)
+	}
+
+	f.must("complete t1", f.store.Complete(ctx, t1.ID, claim, jsontext.Value(`{}`)))
+
+	// Establish the stale checkpoint: fold once with a durable cursor,
+	// then abandon that projection file entirely.
+	proj := t.TempDir() + "/projection.db"
+
+	first, err := readmodel.Open(proj, store, readmodel.WithDurableCursor())
+	if err != nil {
+		t.Fatalf("open first model: %v", err)
+	}
+
+	if err := first.CatchUp(ctx); err != nil {
+		t.Fatalf("first catch up: %v", err)
+	}
+
+	head, err := store.HeadSeq(ctx)
+	if err != nil {
+		t.Fatalf("head seq: %v", err)
+	}
+
+	_ = first.Close()
+
+	// A brand-new projection file under the stale checkpoint: replays
+	// from zero and converges.
+	counted := &countingStore{Store: store}
+
 	fresh, err := readmodel.Open(t.TempDir()+"/fresh.db", counted, readmodel.WithDurableCursor())
 	if err != nil {
 		t.Fatalf("open fresh model: %v", err)
@@ -633,20 +697,20 @@ func TestDurableCursorSkipsReplay(t *testing.T) {
 		t.Fatalf("fresh catch up: %v", err)
 	}
 
-	if counted.factsSeen == 1 {
-		t.Fatal("fresh model folded nothing — stale checkpoint wedged the empty projection")
+	if counted.factsSeen == 0 {
+		t.Fatal("fresh model folded nothing, stale checkpoint wedged the empty projection")
 	}
 
-	rows, err = fresh.Tasks(ctx, readmodel.TaskFilter{})
+	rows, err := fresh.Tasks(ctx, readmodel.TaskFilter{})
 	f.must("tasks after replay", err)
 
-	if len(rows) != 4 {
-		t.Fatalf("rows after replay = %d, want 4", len(rows))
+	if len(rows) != 2 {
+		t.Fatalf("rows after replay = %d, want 2", len(rows))
 	}
 
-	wm, _, err = store.Watermark(ctx, readmodel.CursorConsumer)
-	if err != nil || wm != head+1 {
-		t.Fatalf("watermark after replay = %d err=%v, want %d", wm, err, head+1)
+	wm, exists, err := store.Watermark(ctx, readmodel.CursorConsumer)
+	if err != nil || !exists || wm != head {
+		t.Fatalf("watermark after replay = %d exists=%v err=%v, want %d", wm, exists, err, head)
 	}
 }
 
