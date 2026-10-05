@@ -85,7 +85,10 @@ func run() error {
 
 		store = sqliteStore
 	case "postgres":
-		postgresStore, err := postgres.Open(ctx, *dsn, 0)
+		// Open outside the drain deadline: the --timeout budget governs the
+		// DRAIN, not backend setup (a loaded runner can otherwise fail open
+		// with a bare context error instead of the drain-deadline message).
+		postgresStore, err := postgres.Open(context.Background(), *dsn, 0)
 		if err != nil {
 			return fmt.Errorf("postgres backend: %w", err)
 		}
@@ -108,7 +111,7 @@ func run() error {
 	}
 
 	for i, n := range demos {
-		if _, err := taskQueue.Enqueue(ctx, n); err != nil {
+		if _, err := taskQueue.Enqueue(context.Background(), n); err != nil {
 			return fmt.Errorf("enqueue demo %d: %w", i, err)
 		}
 	}
@@ -176,7 +179,11 @@ func run() error {
 		case <-ctx.Done():
 			return stop(errors.New("deadline exceeded before the queue drained"))
 		case <-ticker.C:
-			tasks, err := store.List(ctx, queue.Filter{})
+			// Observe outside the drain ctx: after the deadline both select
+			// arms are ready, and select picks randomly — a ctx-killed List
+			// would surface a bare context error instead of the contracted
+			// drain-deadline message (CI wrong-reason flake, 2026-10-05).
+			tasks, err := store.List(context.Background(), queue.Filter{})
 			if err != nil {
 				return stop(err)
 			}
