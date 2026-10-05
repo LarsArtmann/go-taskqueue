@@ -306,6 +306,9 @@ const ClaimAnomalyThreshold = 20
 
 // ClaimCount reads one task's claim count (task.claimed facts) from its
 // journal trail. Census callers should expect one facts walk per task.
+//
+// art-dupl:accept replace-free module boundary: cmd/tq cannot import this
+// package (ADR-0017) and restates the 12-line census helper.
 func ClaimCount(ctx context.Context, s Store, id string) (int, error) {
 	facts, err := s.FactsForTask(ctx, id, 0)
 	if err != nil {

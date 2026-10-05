@@ -139,6 +139,8 @@ func TestBudgetRefusalSubprocess(t *testing.T) {
 
 // --- helpers ---------------------------------------------------------------
 
+// art-dupl:accept stdlib type plumbing: *exec.Cmd parameter types across
+// unrelated process-spawning packages cannot share a definition.
 func runWithTimeout(cmd *exec.Cmd, d time.Duration) (string, error) {
 	var buf strings.Builder
 

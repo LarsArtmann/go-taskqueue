@@ -18,6 +18,12 @@ import (
 // journal burst. Visual language: templ-components components themed by
 // internal/webui/theme.css.
 
+// metaCount is one nowband meta chip: class marker, hover explainer,
+// label, count.
+templ metaCount(class, title, label string, n int) {
+	<span class={ class } title={ title }>{ label } { formatInt(n) }</span>
+}
+
 // StatusCards renders the overview stat band (inner content of #frag-stats).
 // The four active states carry tone icons and link to their filtered view;
 // cancelled and total stay quiet (no icon). Marker classes (card-pending, …)
@@ -47,18 +53,18 @@ templ StatusCards(data DashboardData) {
 			</a>
 		</div>
 		<div class="tq-nowband-meta">
-			<span class="card-total" title="all tasks ever">total { formatInt(data.Total) }</span>
+			@metaCount("card-total", "all tasks ever", "total", data.Total)
 			if data.Parked > 0 {
-				<span class="card-parked" title="rate-limit requeues waiting out their window">parked { formatInt(data.Parked) }</span>
+				@metaCount("card-parked", "rate-limit requeues waiting out their window", "parked", data.Parked)
 			}
 			if data.BudgetParked > 0 {
-				<span class="card-budget-parked" title="paid turns parked by the budget gate (latest requeue in the last 24h) — the pool is idle on purpose, no attempt burn">budget { formatInt(data.BudgetParked) }</span>
+				@metaCount("card-budget-parked", "paid turns parked by the budget gate (latest requeue in the last 24h) — the pool is idle on purpose, no attempt burn", "budget", data.BudgetParked)
 			}
 			if data.Stranded > 0 {
-				<span class="card-stranded" title="pending tasks waiting on a dependency that is dead or cancelled — they can never run; rescue the dependency or cancel the task">stranded { formatInt(data.Stranded) }</span>
+				@metaCount("card-stranded", "pending tasks waiting on a dependency that is dead or cancelled — they can never run; rescue the dependency or cancel the task", "stranded", data.Stranded)
 			}
 			if data.LoopSuspects > 0 {
-				<span class="card-loopsuspect" title={ fmt.Sprintf("tasks with more than %d claims (churn class); tq stats lists them", queue.ClaimAnomalyThreshold) }>loop suspects { formatInt(data.LoopSuspects) }</span>
+				@metaCount("card-loopsuspect", fmt.Sprintf("tasks with more than %d claims (churn class); tq stats lists them", queue.ClaimAnomalyThreshold), "loop suspects", data.LoopSuspects)
 			}
 			if data.SessionsOpened > 0 || data.SessionsOpen > 0 {
 				<span class="card-sessions" title="interactive sessions: opened/closed facts">sessions { formatInt(data.SessionsOpened) }/{ formatInt(data.SessionsClosed) }</span>
@@ -66,7 +72,7 @@ templ StatusCards(data DashboardData) {
 			if data.SessionsOpen > 0 {
 				<span class="card-sessions-lamp" title="begun, never closed — tq session list">{ formatInt(data.SessionsOpen) } open</span>
 			}
-			<span class="card-journal" title="journal watermark — highest fact seq">journal { formatInt(int(data.JournalSeq)) }</span>
+			@metaCount("card-journal", "journal watermark — highest fact seq", "journal", int(data.JournalSeq))
 			if data.Budget != nil {
 				<span class="card-budget inline-flex items-center gap-2" title="agent tasks enqueued today vs the daily cap">
 					budget today { formatInt(data.Budget.Spent) }/{ formatInt(data.Budget.Cap) }
@@ -615,19 +621,25 @@ templ TaskDetail(data DashboardData, t task.Task, facts []journalFactView, prov 
 // verdict, status-report, agent-run commits, prioritize verdicts — in one
 // place so the queue chip and the detail card can never drift apart. The
 // caller picks the badge size.
+// badge is the shared task-badge call: the display.Badge props block is
+// stated once so every badge in the stack stays tone-dot sized alike.
+templ badge(text string, badgeType display.BadgeType, size display.BadgeSize) {
+	@display.Badge(display.BadgeProps{Text: text, Type: badgeType, Dot: true, Size: size})
+}
+
 templ taskBadges(data DashboardData, t task.Task, size display.BadgeSize) {
-	@display.Badge(display.BadgeProps{Text: string(t.Status), Type: statusBadgeType(t.Status), Dot: true, Size: size})
+	@badge(string(t.Status), statusBadgeType(t.Status), size)
 	if verdict, ok := data.Reviews[t.ID.String()]; ok {
-		@display.Badge(display.BadgeProps{Text: verdictLabel(verdict.Verdict), Type: verdictBadgeType(verdict.Verdict), Dot: true, Size: size})
+		@badge(verdictLabel(verdict.Verdict), verdictBadgeType(verdict.Verdict), size)
 	}
 	if st, ok := data.Statuses[t.ID.String()]; ok {
-		@display.Badge(display.BadgeProps{Text: statusBadgeText(st), Type: display.BadgeInfo, Dot: true, Size: size})
+		@badge(statusBadgeText(st), display.BadgeInfo, size)
 	}
 	if res, ok := data.AgentResults[t.ID.String()]; ok {
-		@display.Badge(display.BadgeProps{Text: agentBadgeText(res), Type: display.BadgeInfo, Dot: true, Size: size})
+		@badge(agentBadgeText(res), display.BadgeInfo, size)
 	}
 	if res, ok := data.Prioritizes[t.ID.String()]; ok {
-		@display.Badge(display.BadgeProps{Text: prioritizeBadgeText(res), Type: display.BadgeInfo, Dot: true, Size: size})
+		@badge(prioritizeBadgeText(res), display.BadgeInfo, size)
 	}
 }
 

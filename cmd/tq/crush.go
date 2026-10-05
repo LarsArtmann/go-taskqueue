@@ -120,6 +120,9 @@ func crushRun(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, er
 
 // forwardSignals relays interrupt/terminate to the child so a Ctrl-C aimed at
 // the wrapper still lets crush shut down; the close flow then runs on wait.
+//
+// art-dupl:accept stdlib type plumbing: *exec.Cmd parameter types across
+// unrelated process-spawning packages cannot share a definition.
 func forwardSignals(child *exec.Cmd, done <-chan struct{}) {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)

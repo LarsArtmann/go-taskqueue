@@ -70,6 +70,9 @@ type SweepStats struct {
 // The struct shell deliberately stays per-sweeper (config fields and fact
 // validation differ across the four sweepers); the shared pump is
 // watermark.Cursor.Sweep.
+//
+// art-dupl:accept mirrored sweeper shell: config fields and fact validation
+// differ per sweeper; the shared pump already lives in watermark.Cursor.
 type Sweeper struct {
 	store queue.Store
 	cfg   SweeperConfig

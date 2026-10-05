@@ -10,6 +10,9 @@ import (
 
 // prepareProcessGroup puts the command in its own process group so a context
 // cancellation can kill the whole tree (agents routinely spawn children).
+//
+// art-dupl:accept stdlib type plumbing: the unix/windows pair must each
+// restate the *exec.Cmd parameter to provide the platform split.
 func prepareProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {

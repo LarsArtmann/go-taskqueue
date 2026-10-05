@@ -1899,6 +1899,9 @@ type claimSuspect struct {
 // claimCount mirrors queue.ClaimCount for the same replace-free reason as
 // claimAnomalyThreshold: count the task's task.claimed facts from its
 // journal trail.
+//
+// art-dupl:accept replace-free module boundary: cmd/tq cannot import
+// internal/queue (ADR-0017), so the 12-line census helper is restated.
 func claimCount(ctx context.Context, store *sqlite.Store, id string) (int, error) {
 	facts, err := store.FactsForTask(ctx, id, 0)
 	if err != nil {
