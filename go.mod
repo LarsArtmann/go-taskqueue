@@ -29,7 +29,7 @@ require (
 	github.com/larsartmann/go-datastar v0.6.2 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-retry v0.7.1 // indirect
-	github.com/larsartmann/go-sse/sseparse v0.1.0 // indirect
+	github.com/larsartmann/go-sse/sseparse v0.2.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0 // indirect
