@@ -254,7 +254,8 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   import below root. **Backward auto-upgrade (endgame P1)**: the
   `internal/queue/sqlite` facade Open converges a legacy pre-flip DB
   in place (snapshot kept `<db>.legacy-*.bak`, verify, auto-restore on
-  mismatch); refuse via `TQ_NO_AUTO_UPGRADE=1`; manual: `go run
+  mismatch; absent feature-era tables tolerated); refuse via
+  `TQ_NO_AUTO_UPGRADE=1`; manual: `go run
   ./replay` in internal/queue/sqlitev4.
 - **PapDashboard bridge**: `--alert-url/--alert-api-key`; dead letters
   raise `alert.triggered`, completions resolve; `NotifyDeadPool` =
