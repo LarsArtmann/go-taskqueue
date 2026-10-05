@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
@@ -488,6 +489,163 @@ func TestStatsParityLifecycle(t *testing.T) {
 
 	if fmt.Sprint(pc) != fmt.Sprint(wantProject) {
 		t.Errorf("project counts = %v, want %v", pc, wantProject)
+	}
+}
+
+// countingStore counts the facts the model pulls out of Facts — the
+// restart-skip probe: a cursor-resumed model must fold nothing on an
+// unchanged journal.
+type countingStore struct {
+	queue.Store
+	factsSeen int64
+}
+
+func (c *countingStore) Facts(
+	ctx context.Context,
+	after int64,
+	limit int,
+) ([]journal.Fact, error) {
+	facts, err := c.Store.Facts(ctx, after, limit)
+	c.factsSeen += int64(len(facts))
+
+	return facts, err //nolint:wrapcheck // transparent counting wrapper
+}
+
+// TestDurableCursorSkipsReplay pins the WithDurableCursor contract: the
+// first model checkpoints its cursor into the watermarks table after
+// every applied batch; a reopened model resumes from the checkpoint
+// (zero facts folded on an unchanged journal), tail folds only the new
+// facts, and an empty projection under a stale checkpoint replays from
+// zero — the documented delete-the-file escape hatch.
+func TestDurableCursorSkipsReplay(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	store, err := sqlite.Open(t.TempDir() + "/queue.db")
+	if err != nil {
+		t.Fatalf("open queue store: %v", err)
+	}
+
+	t.Cleanup(func() { _ = store.Close() })
+
+	f := &fixture{t: t, store: store}
+
+	t1 := f.enqueue("web", "sh", 2, "todo:c1")
+	f.enqueue("web", "sh", 1, "todo:c2")
+	f.enqueue("api", "sh", 0, "todo:c3")
+
+	tk, claim := f.claim()
+	if tk.ID != t1.ID {
+		t.Fatalf("claim = %s, want t1", tk.ID)
+	}
+
+	f.must("complete t1", f.store.Complete(ctx, t1.ID, claim, jsontext.Value(`{}`)))
+
+	proj := t.TempDir() + "/projection.db"
+
+	first, err := readmodel.Open(proj, store, readmodel.WithDurableCursor())
+	if err != nil {
+		t.Fatalf("open first model: %v", err)
+	}
+
+	if err := first.CatchUp(ctx); err != nil {
+		t.Fatalf("first catch up: %v", err)
+	}
+
+	head, err := store.HeadSeq(ctx)
+	if err != nil {
+		t.Fatalf("head seq: %v", err)
+	}
+
+	if got := first.JournalCursor(); got != head {
+		t.Fatalf("first cursor = %d, want head %d", got, head)
+	}
+
+	wm, exists, err := store.Watermark(ctx, readmodel.CursorConsumer)
+	if err != nil || !exists || wm != head {
+		t.Fatalf("watermark = %d exists=%v err=%v, want %d", wm, exists, err, head)
+	}
+
+	_ = first.Close()
+
+	// Reopen over the SAME projection: nothing refolds on the unchanged
+	// journal, and the cursor resumes at the checkpoint.
+	counted := &countingStore{Store: store}
+
+	second, err := readmodel.Open(proj, counted, readmodel.WithDurableCursor())
+	if err != nil {
+		t.Fatalf("open second model: %v", err)
+	}
+
+	defer func() { _ = second.Close() }()
+
+	if got := second.JournalCursor(); got != head {
+		t.Fatalf("resumed cursor = %d, want checkpoint %d", got, head)
+	}
+
+	if err := second.CatchUp(ctx); err != nil {
+		t.Fatalf("second catch up: %v", err)
+	}
+
+	if counted.factsSeen != 0 {
+		t.Fatalf("resume folded %d facts, want 0", counted.factsSeen)
+	}
+
+	rows, err := second.Tasks(ctx, readmodel.TaskFilter{})
+	f.must("tasks after resume", err)
+
+	if len(rows) != 3 {
+		t.Fatalf("rows after resume = %d, want 3", len(rows))
+	}
+
+	// Tail: one new fact folds exactly one fact's worth of work.
+	f.enqueue("api", "sh", 0, "todo:c4")
+
+	if err := second.CatchUp(ctx); err != nil {
+		t.Fatalf("tail catch up: %v", err)
+	}
+
+	if counted.factsSeen != 1 {
+		t.Fatalf("tail folded %d facts, want 1", counted.factsSeen)
+	}
+
+	rows, err = second.Tasks(ctx, readmodel.TaskFilter{})
+	f.must("tasks after tail", err)
+
+	if len(rows) != 4 {
+		t.Fatalf("rows after tail = %d, want 4", len(rows))
+	}
+
+	_ = second.Close()
+
+	// Empty projection under a stale checkpoint (the deleted-file escape
+	// hatch): a fresh file replays from zero and converges.
+	fresh, err := readmodel.Open(t.TempDir()+"/fresh.db", counted, readmodel.WithDurableCursor())
+	if err != nil {
+		t.Fatalf("open fresh model: %v", err)
+	}
+
+	defer func() { _ = fresh.Close() }()
+
+	if err := fresh.CatchUp(ctx); err != nil {
+		t.Fatalf("fresh catch up: %v", err)
+	}
+
+	if counted.factsSeen == 1 {
+		t.Fatal("fresh model folded nothing — stale checkpoint wedged the empty projection")
+	}
+
+	rows, err = fresh.Tasks(ctx, readmodel.TaskFilter{})
+	f.must("tasks after replay", err)
+
+	if len(rows) != 4 {
+		t.Fatalf("rows after replay = %d, want 4", len(rows))
+	}
+
+	wm, _, err = store.Watermark(ctx, readmodel.CursorConsumer)
+	if err != nil || wm != head+1 {
+		t.Fatalf("watermark after replay = %d err=%v, want %d", wm, err, head+1)
 	}
 }
 

@@ -73,8 +73,8 @@ type Model struct {
 	// the journal from zero. Off (default) the cursor is in-process only
 	// — the safe shape for tests and short-lived models over a store
 	// whose watermark other models may own.
-	durable  bool
-	watcher  *metaengine.Watcher[TaskRow]
+	durable bool
+	watcher *metaengine.Watcher[TaskRow]
 }
 
 // Option configures the Model.
