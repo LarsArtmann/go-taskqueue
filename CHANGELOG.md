@@ -31,7 +31,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   or a footered marker commit (pushed). First live report: 1275 sweeps →
   125 attributed, 70 report-only, 1080 unattributed shipping (the
   historical §b2 backlog; gate wiring with a baseline is rowed in
-  TODO_LIST.md).
+  TODO_LIST.md). Gate landed the same day (TODO row 131):
+  `scripts/daemon-sweep-baseline.txt` freezes the 1076 shipping shas and
+  `scripts/check-daemon-attribution.sh` (NEW-shipping-only fail, shrink
+  advisory, missing-baseline fail-closed) runs as two ci-local steps.
 - **Claim-time budget gate** (2026-10-04, from the paperclip research
   window): the agent-pool now blocks paid turns at claim time once
   `--daily-budget` is spent (or `--budget-cmd` refuses) — a task enqueued

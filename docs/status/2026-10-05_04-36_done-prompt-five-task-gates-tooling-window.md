@@ -1,7 +1,7 @@
-# Done-Prompt Status Report — Five-Task Gates/Tooling Window (2026-10-04 → 2026-10-05)
+# Done-Prompt Status Report — Five-Task Gates/Tooling Window
 
 **When:** 2026-10-05 04:36 CEST · **Task:** 000001a109c3c819ebc561da2fc100000000 (this done-prompt)
-**Window covered:** five completed agent tasks, 2026-10-04 ~01:30 → 2026-10-05 03:47, all receipts re-verified at HEAD 8182-tree before writing (artifact existence, test symbols, CHANGELOG state, TODO closure bytes — not trusted from the close-outs alone). An ADJACENT sixth window (task 000001a109c3c7f31f0fef578c7100000000, close-out 04-10) landed at 04:10 while this prompt was in flight and is treated as noticed-in-passing context, not as window scope.
+**Window covered:** 2026-10-04 ~01:30 → 2026-10-05 03:47, five completed agent tasks, all receipts re-verified at HEAD before writing (artifact existence, test symbols, CHANGELOG state, TODO closure bytes — not trusted from the close-outs alone). An ADJACENT sixth window (task 000001a109c3c7f31f0fef578c7100000000, close-out 04-10) landed at 04:10 while this prompt was in flight and is treated as noticed-in-passing context, not as window scope.
 
 The five tasks:
 
@@ -116,3 +116,4 @@ All five window tasks closed their TODO rows, carry the exact `Task-Queue-ID` fo
 - Window commits: `d5c77115`, `187b5877`, `b48fb5ef`, `97c13831`, `6006fcc3` (+ healed work lineage `26723259`, `3eaf44e9`, `0b72db95`, `3aeb96b9`, verify-lib commits).
 - Live gate state at report time: check-dead-sha-refs rc=1 (92 cites, foreign, row 418); check-status-index ok with TRAILER WARNINGs (f26 cluster, owner ruling pending) + INDEX BLOAT WARNING (207 vs 100); AGENTS.md 15,358 B (guard 15,400); 48 unpushed commits (push stays owner-gated).
 - Band-drift query: `tq facts --type task.reprioritized` → 0 facts (types enumerated in §h).
+- Daemon-race heal (this prompt, §d1 live again): the auto-commit daemon swept this report's own file footer-less (`afe706ca`) 90 s before my close-out commit landed; healed via `heal-daemon-sweep.sh --from f8120c2c` (HEAL OK, tree byte-equal, backup ref dropped). True fork records from session git log: `afe706ca→25631367` (the swept report commit), `d66ecd10→379241b5` (the close-out commit); the heal's printed FORK-RECORD lines again showed old==new SHA — row 482's known-broken diagnostic, consumed live.
