@@ -86,6 +86,7 @@ with_transient_retry() {
 }
 
 step "master CI state (check-ci; CI_CHECK=off to bypass)"
+CHECK_CI_SELF_TEST=1 ./scripts/check-ci.sh
 ./scripts/check-ci.sh
 
 # Pin the retry helper BEFORE any gate rides on it (01-46 report f2): the
