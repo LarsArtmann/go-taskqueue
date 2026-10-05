@@ -348,24 +348,26 @@ func copyFacts(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 }
 
 func copyWatermarks(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
-	exists, err := sourceTableExists(ctx, src, "watermarks")
-	if err != nil {
-		return 0, err
-	}
-
-	if !exists {
-		return 0, nil
-	}
-
 	const query = `SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`
 
 	const insert = `INSERT INTO watermarks (consumer, seq, updated_at) VALUES (?, ?, ?)`
 
-	return copyQueriedRows(ctx, src, copyTx, query, insert)
+	return copyOptionalTable(ctx, src, copyTx, "watermarks", query, insert)
 }
 
 func copyPriorityScores(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
-	exists, err := sourceTableExists(ctx, src, "priority_scores")
+	const query = `SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`
+
+	const insert = `INSERT INTO priority_scores (item_key, score, effort_minutes, source, reasoning, tokens, scored_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`
+
+	return copyOptionalTable(ctx, src, copyTx, "priority_scores", query, insert)
+}
+
+// copyOptionalTable copies an optional legacy table when the source
+// database carries it; an absent table contributes nothing.
+func copyOptionalTable(ctx context.Context, src *sql.DB, copyTx *sql.Tx, table, query, insert string) (int, error) {
+	exists, err := sourceTableExists(ctx, src, table)
 	if err != nil {
 		return 0, err
 	}
@@ -373,11 +375,6 @@ func copyPriorityScores(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, 
 	if !exists {
 		return 0, nil
 	}
-
-	const query = `SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`
-
-	const insert = `INSERT INTO priority_scores (item_key, score, effort_minutes, source, reasoning, tokens, scored_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
 
 	return copyQueriedRows(ctx, src, copyTx, query, insert)
 }

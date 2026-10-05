@@ -150,16 +150,7 @@ func ReadImportance(repo string) (int, error) {
 		return 0, fmt.Errorf("read metadata: %w", err)
 	}
 
-	for line := range strings.SplitSeq(string(data), "\n") {
-		if isNestedOrIgnorable(line) {
-			continue
-		}
-
-		name, value, found := strings.Cut(line, ":")
-		if !found || strings.TrimSpace(name) != "importance" {
-			continue
-		}
-
+	if value, ok := topLevelScalar(string(data), "importance"); ok {
 		return parseImportanceValue(value)
 	}
 
@@ -171,6 +162,26 @@ func ReadImportance(repo string) (int, error) {
 // top-level key: blank, indented (nested mapping member), or a comment.
 func isNestedOrIgnorable(line string) bool {
 	return line == "" || line[0] == ' ' || line[0] == '\t' || line[0] == '#'
+}
+
+// topLevelScalar returns the raw value of the named top-level key in the
+// flat metadata file (the project-meta strict subset), if present. Nested
+// and comment lines never carry a top-level key and are skipped.
+func topLevelScalar(data, key string) (string, bool) {
+	for line := range strings.SplitSeq(data, "\n") {
+		if isNestedOrIgnorable(line) {
+			continue
+		}
+
+		name, value, found := strings.Cut(line, ":")
+		if !found || strings.TrimSpace(name) != key {
+			continue
+		}
+
+		return value, true
+	}
+
+	return "", false
 }
 
 // repoPurpose reads a repo's one-line purpose from .config/metadata.yaml's
@@ -185,29 +196,21 @@ func repoPurpose(repo string) string {
 		return "(unstated — see the repo's README)"
 	}
 
-	for line := range strings.SplitSeq(string(data), "\n") {
-		if isNestedOrIgnorable(line) {
-			continue
-		}
-
-		name, value, found := strings.Cut(line, ":")
-		if !found || strings.TrimSpace(name) != "purpose" {
-			continue
-		}
-
-		purpose := strings.TrimSpace(value)
-		if len(purpose) >= 2 && (purpose[0] == '"' || purpose[0] == '\'') && purpose[len(purpose)-1] == purpose[0] {
-			purpose = purpose[1 : len(purpose)-1]
-		}
-
-		if purpose == "" {
-			break
-		}
-
-		return purpose
+	value, ok := topLevelScalar(string(data), "purpose")
+	if !ok {
+		return "(unstated — see the repo's README)"
 	}
 
-	return "(unstated — see the repo's README)"
+	purpose := strings.TrimSpace(value)
+	if len(purpose) >= 2 && (purpose[0] == '"' || purpose[0] == '\'') && purpose[len(purpose)-1] == purpose[0] {
+		purpose = purpose[1 : len(purpose)-1]
+	}
+
+	if purpose == "" {
+		return "(unstated — see the repo's README)"
+	}
+
+	return purpose
 }
 
 // parseImportanceValue parses the scalar after `importance:`, tolerating
