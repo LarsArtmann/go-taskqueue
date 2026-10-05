@@ -61,6 +61,7 @@ Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 | **Claim gate**    | The claim-time budget hook (`worker.Config.Budget`): runs CHEAP-FIRST, before any process spawns; a blocked claim is a **park**, never an attempt burn, outside the env-streak breaker.                                                                               |
 | **Parked**        | Held by the queue with a future `not_before` (rate-limit window, budget cap, owner question) — WILL resume when the window opens. Contrast **refused**: an enqueue-time veto (over-cap enqueues, dedup-key conflicts) — never entered the queue at all.               |
 | **Drift**         | File-vs-queue disagreement found by `tq audit`: _stale-open_ (task completed, checkbox unticked — repaired by a **catch-up task**) or _stale-done_ (checkbox ticked, task unfinished — report-only).                                                                  |
+| **Scan failure**  | One repo an audit pass could not scan (repo + reason), surfaced in the drift audit's stats (`harvest.ScanFailure`). Per-repo skip/failure records are per-sweeper vocabulary — each sweep names its own (`harvest.ScanFailure`, `depsweep.Skip`); the shape coincidence is deliberate, not a shared type. |
 | **Catch-up task** | A dedup-keyed (`catchup:` prefix) agent task whose only job is to close the loop in the file for work already done and verified. Armed at most once.                                                                                                                  |
 
 ## Prioritization
