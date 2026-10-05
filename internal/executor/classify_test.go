@@ -22,7 +22,11 @@ func TestClassifyFailure(t *testing.T) {
 		{"nil", nil, FailureClassTransient},
 		{"plain error", errors.New("exit status 1"), FailureClassTransient},
 		{"rate limit", &RateLimitError{Cause: errors.New("429"), RetryAfter: 1}, FailureClassProviderWindow},
-		{"wrapped rate limit", &VerifyGateError{Cause: &RateLimitError{Cause: errors.New("429"), RetryAfter: 1}}, FailureClassProviderWindow},
+		{
+			"wrapped rate limit",
+			&VerifyGateError{Cause: &RateLimitError{Cause: errors.New("429"), RetryAfter: 1}},
+			FailureClassProviderWindow,
+		},
 		{"permanent", Permanent(errors.New("bad payload")), FailureClassPermanent},
 		{"preflight", &PreflightError{Cause: errors.New("dirty tree")}, FailureClassEnvironment},
 		{"verify gate", &VerifyGateError{Cause: errors.New("gate dead")}, FailureClassEnvironment},
@@ -59,7 +63,9 @@ func TestDLQFixPromptCarriesFailureClass(t *testing.T) {
 	}
 
 	// A classless (legacy) evidence must not render a classification line.
-	plain := dlqFixPrompt(DLQFixPayload{DeadTask: "t1", Work: "w", Failure: FailureEvidence{Stage: "agent", Tail: "boom"}})
+	plain := dlqFixPrompt(
+		DLQFixPayload{DeadTask: "t1", Work: "w", Failure: FailureEvidence{Stage: "agent", Tail: "boom"}},
+	)
 	if strings.Contains(plain, "Retry classification") {
 		t.Error("classless evidence rendered a retry-classification line")
 	}
@@ -67,6 +73,7 @@ func TestDLQFixPromptCarriesFailureClass(t *testing.T) {
 
 func TestRetrySessionLadder(t *testing.T) {
 	t.Setenv("TQ_LOG_DIR", t.TempDir())
+
 	dir := os.Getenv("TQ_LOG_DIR")
 
 	tk := task.Task{ID: task.ID("t-ladder"), Attempts: 1}
