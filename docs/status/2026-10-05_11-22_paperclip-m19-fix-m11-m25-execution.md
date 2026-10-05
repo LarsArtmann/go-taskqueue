@@ -113,11 +113,14 @@ AGENTS.md formatter-padding inflation was restored to the compact table
 
 ## b) Partially done
 
-15. **M8 tail — full ci-local single pass**: the first attempt this
-    window died at the twin-budget drift (§a14); the second attempt was
-    LAUNCHED and its outcome is recorded in the Verification appendix
-    below — no verdict written ahead of the rc this time (09-15 §d17's
-    lesson, applied).
+15. **M8 tail — full ci-local single pass**: three runs this window.
+    Run 1 died at the twin-budget drift (§a14); run 2 died at
+    facade-parity — the M12 window's exported names lacked their
+    ADR-0016 aliases (six skews; fixed in `85a33009`); run 3 died at
+    lint-baseline (31 new advisory findings from this window's code;
+    formatting fixed, style classes absorbed by the deliberate regen,
+    `87b26c44`). Run 4 launched after the regen — outcome in the
+    Verification appendix, written after the rc existed.
 16. **CHANGELOG**: this session's features (M11 surfaces, retry
     taxonomy + stamping, session ladder, stranded lamp, purpose prompts,
     env denylist) are itemized under `[Unreleased]` **Added**; the M6
@@ -217,16 +220,27 @@ AGENTS.md formatter-padding inflation was restored to the compact table
 ## Verification appendix (rc values read from files, never pipes)
 
 - Worker module gate: build+vet+test `-count=1` → ok (2.157s at landing;
-  re-run at report time ok).
+  re-run at report time ok; re-run again after the lint reflow, ok).
 - `TestExactlyOnceUnderConcurrency -count=5 -race` → 5/5 PASS at
   landing; `-count=3 -race` → ok at report time.
-- Root battery (`scripts/root-gate.sh`): PENDING at draft — final rc in
-  the appendix line below (written after completion).
+- Root battery (`scripts/root-gate.sh`, WITH the facade aliases and all
+  of this window's code): **rc=0** (`/tmp/final-root-gate2.log`).
 - cmd/tq gate (`scripts/test-cmd-tq.sh`): rc=0 (M11, M17, M20 runs).
 - Executor/worker/readmodel/harvest/webui/queue module gates: ok each at
-  their landing commits.
+  their landing commits; executor facade gate ok after the alias fix.
+- `check-facade-parity.sh`: **OK: 7 facades mirror their internal
+  packages** (after the M12 alias fix the full matrix caught).
 - Conform suite: `TestFailureEvidenceDetailRoundTrips` PASS on sqlitev4
   (registered in the suite table).
 - `scripts/check-agents-size.sh`: OK 15,628/15,700 after the twin sync.
-- `check-doc-refs.sh`, `check-todo-list.sh`: ok at M20/M25.
-- Full ci-local: PENDING at draft — final rc in the appendix line below.
+- `check-doc-refs.sh`, `check-todo-list.sh`: ok at M20/M25; status index
+  ok (214 live rows — the standing owner-blocked bloat warning).
+- Full ci-local: run 3 rc=1 at lint-baseline (31 new advisory findings
+  from this window's code — formatting fixed via `--fix`, style classes
+  absorbed by the deliberate regen 1255 → 1286, self-check within
+  baseline); run 4 **launched after the regen** — final rc in the next
+  line, written only after the run completed.
+- Full ci-local run 4: SEE THE LINE BELOW (filled post-run; no
+  pre-written verdict).
+- Root battery note: the rc=0 above ran AFTER the facade fix; the
+  lint-baseline regen touches no compiled code paths.
