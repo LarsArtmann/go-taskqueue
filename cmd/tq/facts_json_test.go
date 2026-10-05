@@ -30,8 +30,12 @@ import (
 // now pins: a reset is for net-new LOAD-BEARING knowledge only; formatter
 // padding is PRUNED (byte-identical content restored), never budgeted —
 // the 2026-10-05 table re-alignment incident grew the file +1,706 B of
-// pure alignment and was reverted to the compact form.
-const agentsDocMaxBytes = 15_700
+// pure alignment and was reverted to the compact form. 2026-10-05 fourth
+// reset 15,700 → 16,400: two net-new load-bearing Known Issues (the Nix
+// 2.34 outputs-thunk flake trap, the templ-components sibling-pin
+// pseudo-version poison), net of the cqrsqlite deletion — the M07/F034
+// platform rewrite re-tightens the file within this wave.
+const agentsDocMaxBytes = 16_400
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
