@@ -2307,3 +2307,44 @@ func TestLoopSuspectSegmentRendersFromSnapshot(t *testing.T) {
 		}
 	}
 }
+
+// TestStrandedLampRendersFromDepState pins the stranded lamp (M14): a
+// pending task whose dependency is dead lights it; a completed dependency
+// does not (that task is merely waiting for a normal claim).
+func TestStrandedLampRendersFromDepState(t *testing.T) {
+	t.Parallel()
+
+	srv, s := newTestServer(t)
+	ctx := context.Background()
+
+	deadChild := enqueue(t, s, "sh", "demo")
+	if err := s.Cancel(ctx, deadChild.ID, "no longer needed"); err != nil {
+		t.Fatalf("cancel dep: %v", err)
+	}
+
+	stranded := task.New{Type: "sh", Payload: jsontext.Value(`"x"`), Deps: []task.ID{deadChild.ID}}
+	if _, err := s.Enqueue(ctx, stranded); err != nil {
+		t.Fatalf("enqueue stranded: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil))
+
+	if body := rec.Body.String(); !strings.Contains(body, "stranded 1") {
+		t.Errorf("dashboard missing the stranded lamp (want `stranded 1`)")
+	}
+
+	// A completed dependency is a normal wait, not a stranding.
+	healthy := enqueue(t, s, "sh", "demo")
+	waiter := task.New{Type: "sh", Payload: jsontext.Value(`"x"`), Deps: []task.ID{healthy.ID}}
+	if _, err := s.Enqueue(ctx, waiter); err != nil {
+		t.Fatalf("enqueue waiter: %v", err)
+	}
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil))
+
+	if body := rec.Body.String(); strings.Contains(body, "stranded 2") {
+		t.Errorf("completed dependency counted as stranding")
+	}
+}

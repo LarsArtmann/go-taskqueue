@@ -286,6 +286,13 @@ type DashboardData struct {
 	// PURPOSE (money)" lamp next to the parked segment. The 24h window
 	// is the badge's honest scope, not a live park state.
 	BudgetParked int
+	// Stranded counts tasks that can never run: pending with a dependency
+	// that is terminally not-completed (dead or cancelled). The claim
+	// gate skips them silently forever — the one stuck-middle state the
+	// operator can otherwise only find by reading dep graphs. Derived
+	// from existing reads (no stranded fact type; that contract addition
+	// awaits a demonstrated need), M14.
+	Stranded int
 	// LoopSuspects counts tasks whose claim count exceeds
 	// queue.ClaimAnomalyThreshold — the churn lamp in the nowband meta
 	// (the P1 class: one task out-claming its budget for days). tq stats
@@ -389,6 +396,55 @@ func budgetParkedCount(ctx context.Context, store queue.Store, now time.Time) in
 	}
 
 	return n
+}
+
+// strandedCount counts tasks that can never run: pending with a
+// dependency that is terminally not-completed (dead or cancelled). The
+// claim gate skips them silently forever — the one stuck-middle state the
+// operator can otherwise only find by reading dep graphs. Derived from
+// existing reads (no stranded fact type: that contract addition awaits a
+// demonstrated need). Best effort: a failed read lights nothing.
+// Dep-carrying tasks are rare, so the per-dep Gets stay cheap; verdicts
+// cache per pass.
+func strandedCount(ctx context.Context, store queue.Store) int {
+	pending, err := store.List(ctx, queue.Filter{})
+	if err != nil {
+		return 0
+	}
+
+	neverCompletes := make(map[string]bool)
+	stranded := 0
+
+	for _, t := range pending {
+		if len(t.Deps) == 0 {
+			continue
+		}
+
+		for _, dep := range t.Deps {
+			key := dep.String()
+
+			verdict, seen := neverCompletes[key]
+			if !seen {
+				depTask, err := store.Get(ctx, dep)
+				if err != nil {
+					neverCompletes[key] = false
+
+					continue
+				}
+
+				verdict = depTask.Status == task.Dead || depTask.Status == task.Cancelled
+				neverCompletes[key] = verdict
+			}
+
+			if verdict {
+				stranded++
+
+				break
+			}
+		}
+	}
+
+	return stranded
 }
 
 // sessionStats reads the session volume for the nowband meta: lifecycle
@@ -633,6 +689,7 @@ func (s *Server) loadSnapshot(ctx context.Context, filter FilterState) (Dashboar
 	data.Parked = parkedCount(ctx, s.store)
 	data.BudgetParked = budgetParkedCount(ctx, s.store, now)
 	data.LoopSuspects = loopSuspects(ctx, s.store)
+	data.Stranded = strandedCount(ctx, s.store)
 	data.SessionsOpened, data.SessionsClosed, data.SessionsOpen = sessionStats(ctx, s.store)
 
 	projectCounts, err := s.store.ProjectCounts(ctx)
