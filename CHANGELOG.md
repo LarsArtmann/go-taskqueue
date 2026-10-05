@@ -342,6 +342,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `TestUsageTodaySumsDerivedSessionUsage` marshalling the real
   `DLQFixResult`. (`internal/executor/dlqfix.go`,
   `internal/budget/budget_test.go`)
+- **`check-dead-sha-refs.sh --emit-baseline` generator** (2026-10-05, owner
+  ruling O16): one command converts a gate run's dead-SHA findings into a
+  sorted, deduplicated baseline addendum (arrow-pair members excluded);
+  the arrow escape tightened to per-token pair matching, so a dead sha
+  sharing a line with an unrelated `old→new` record still fails; the
+  2026-10-01..05 heal mass (71 tokens) baselined under a dated provenance
+  block. (`scripts/check-dead-sha-refs.sh`,
+  `scripts/dead-sha-baseline.txt`)
 
 ### Changed
 - **`tq api` auth-plane failures now answer `{error, fix}` JSON** (2026-10-04):
@@ -366,6 +374,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Dashboard metric AreaCharts cap y-axis ticks at 5** (2026-10-03): the two
   560×200 metric charts adopt templ-components' `display.MaxTicks` (v1.19.4),
   ending the Height-200 stopgap. (`internal/webui/fragments.templ`)
+- **check-ci classifies a CANCELLED master run as NEUTRAL, not red**
+  (2026-10-05, owner ruling O17): a cancelled run carries no pass/fail
+  signal (usually a newer push superseded it), so the gate exits 0 with a
+  `gh run rerun <id>` hint instead of refusing every local battery;
+  classification pinned by `CHECK_CI_SELF_TEST=1` (wired into ci-local
+  beside the live probe). (`scripts/check-ci.sh`, `scripts/ci-local.sh`)
 
 ### Fixed
 - **`archive-evidence.sh` no longer refuses negated gitignore matches**
@@ -479,6 +493,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   up on the shipped session-bridge surface (`session list/ping/sweep`,
   `--dry-run`, Postgres `AppendFact`) and dropped the stale "parity
   remain open" claim (2026-09-17 03-26 §f2).
+- **fullcore smoke deadline no longer covers setup and observation**
+  (2026-10-05): the `--timeout` drain deadline also capped postgres Open,
+  the demo enqueues and the drain polls, so a loaded CI runner's 50ms
+  deadline arm failed with `enqueue demo 2: context deadline exceeded`
+  instead of the contracted drain-deadline message (CI wrong-reason
+  smoke death). Open/enqueue/List now run outside the drain context;
+  the deadline fires only in the drain wait, making the smoke's
+  fail-reason deterministic. (`examples/fullcore/main.go`)
 
 ## [v0.3.1] - 2026-09-18
 ### Fixed

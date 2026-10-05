@@ -199,3 +199,84 @@ e0f65d93
 0b72db95
 e3fcd3c7
 26723259
+
+# 2026-10-05 mass heal (O16 mechanical path, docs/planning/2026-10-05_15-00_OWNER-RULINGS-SHEET.md;
+# row: Heal the dead-SHA cites so check-dead-sha-refs.sh returns rc=0): tokens emitted by
+# `scripts/check-dead-sha-refs.sh --emit-baseline` at HEAD, NEW vs the blocks above (71 tokens).
+# Spot-verified class: rewrite-orphaned closeout/report commits + footer-less daemon `chore:`
+# sweeps orphaned by heal-daemon-sweep rewrites (2026-10-01..05 windows), cited by the
+# 10-01..10-05 status reports + TODO_LIST + README index — the same RESOLVED/LOST forensics
+# classes as the 2026-10-01 mass triage above (healers: run patch-id twin checks before
+# repointing; shrink by dropping rows whose cites leave the living docs).
+# 6c6325d7 appears in 8/12/40-hex forms — baseline matching is exact-token, all forms kept.
+058986fc
+0727a2e2
+0e4519f9
+14e594a4
+187aa8f2
+187b5877
+2bd4315a
+30d5f0ab
+3aeb96b9
+3b136c41
+3eaf44e9
+3f9f497d
+3faaf0b
+3ff0877e
+409fa071
+41cb177e
+4f43596e
+56bd235f
+5ac12ba7
+6006fcc3
+634b4914
+657a2148
+65db3553
+691a9da7
+69621553
+6c11dbea
+6c6325d7
+6c6325d78666
+6c6325d78666f2c9e401d9f20a9a022d069b4051
+6e142726
+72c7a643
+76ef8874
+78c0b5a0
+8305e044
+8f84352f
+93bcc6d6
+97c13831
+98ef988f
+a317efb
+b2e4696d
+b2fd9f99
+b3c8bc76
+b48fb5ef
+b5b91419
+ba115833
+c158ffe1
+c2323857
+c4e5a7d8
+c7cd5655
+c931413f
+cfef2cd0
+d13ffc29
+d258bef5
+d26ed9e5
+d8ecffa7
+dcf2ba20
+dd8a1812
+dda374c6
+df6915f4
+e3135b23
+e487c5ff
+e7953539
+eaf971c5
+eb4dd8c7
+edc228ff
+f055fec0
+f0643178
+f10e8464
+f8120c2c
+fd170b41
+ffe031ad
