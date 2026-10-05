@@ -1,14 +1,36 @@
 package migration
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
+
+// sourceTableExists reports whether the legacy source database carries a
+// table. Feature-era tables (priority_scores) and other optional surfaces
+// (deps, watermarks) may be absent from older or minimal journals: absent
+// means "nothing to carry", never a copy or verification failure.
+func sourceTableExists(ctx context.Context, src *sql.DB, table string) (bool, error) {
+	var name string
+
+	err := src.QueryRowContext(ctx,
+		`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
 
 // timeFromMillis converts a unix-millis column value (the journal's
 // timestamp encoding) back to a time.

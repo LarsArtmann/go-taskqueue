@@ -438,6 +438,79 @@ func TestUpgradeIfNeededConvergesLegacyInPlace(t *testing.T) {
 	}
 }
 
+// TestUpgradeIfNeededToleratesAbsentFeatureTables pins the OLDER-schema
+// legacy shape: journals from before the feature-era tables (deps,
+// watermarks, priority_scores) carry no such tables, and an absent table
+// means "nothing to carry" — auto-upgrade converges and verifies instead
+// of refusing with a confusing "no such table" SQL mismatch (found by the
+// legacy-serve-upgrade smoke, 2026-10-05).
+func TestUpgradeIfNeededToleratesAbsentFeatureTables(t *testing.T) {
+	ctx := context.Background()
+
+	path := filepath.Join(t.TempDir(), "old.db")
+
+	db, err := sql.Open("sqlite", copyDSN(path))
+	if err != nil {
+		t.Fatalf("open old fixture: %v", err)
+	}
+
+	if _, err := db.Exec(legacySchema); err != nil {
+		t.Fatalf("legacy ddl: %v", err)
+	}
+
+	if _, err := db.Exec(
+		`DROP TABLE priority_scores; DROP TABLE watermarks; DROP TABLE deps;`); err != nil {
+		t.Fatalf("drop feature tables: %v", err)
+	}
+
+	now := time.Now().UnixMilli()
+
+	_, err = db.Exec(
+		`INSERT INTO tasks (id, project, type, payload, status, created_at, updated_at)
+		 VALUES ('t-old', 'p', 'sh', '"echo hi"', 'pending', ?, ?)`, now, now)
+	if err != nil {
+		t.Fatalf("seed task: %v", err)
+	}
+
+	if _, err = db.Exec(
+		`INSERT INTO facts (time, task_id, type, detail) VALUES (?, 't-old', 'task.enqueued', '{}')`, now,
+	); err != nil {
+		t.Fatalf("seed fact: %v", err)
+	}
+
+	if err = db.Close(); err != nil {
+		t.Fatalf("close old fixture: %v", err)
+	}
+
+	result, err := UpgradeIfNeeded(ctx, path)
+	if err != nil {
+		t.Fatalf("auto-upgrade old-schema journal: %v", err)
+	}
+
+	if result == nil || result.Kind != KindLegacy {
+		t.Fatalf("result %+v, want a legacy-kind upgrade", result)
+	}
+
+	if !result.Report.OK() {
+		t.Fatalf("converged old-schema db failed verification:\n%s", result.Report.Summary())
+	}
+
+	store, err := sqlitev4.Open(path)
+	if err != nil {
+		t.Fatalf("open converged store: %v", err)
+	}
+	defer store.Close()
+
+	claimed, _, err := store.ClaimDue(ctx, "worker-old-schema", time.Minute)
+	if err != nil {
+		t.Fatalf("claim from converged old-schema store: %v", err)
+	}
+
+	if claimed.ID != "t-old" {
+		t.Fatalf("claimed %s, want t-old", claimed.ID)
+	}
+}
+
 func TestUpgradeIfNeededRefusesKillSwitch(t *testing.T) {
 	ctx := context.Background()
 

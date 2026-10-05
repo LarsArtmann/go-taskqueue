@@ -296,6 +296,15 @@ func copyTasks(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 // copyDeps copies dependency edges; the tasks rows already exist, so the
 // foreign keys resolve.
 func copyDeps(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
+	exists, err := sourceTableExists(ctx, src, "deps")
+	if err != nil {
+		return 0, err
+	}
+
+	if !exists {
+		return 0, nil
+	}
+
 	rows, err := src.QueryContext(ctx, `SELECT task_id, dep_id FROM deps ORDER BY task_id, dep_id`)
 	if err != nil {
 		return 0, err
@@ -339,6 +348,15 @@ func copyFacts(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
 }
 
 func copyWatermarks(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
+	exists, err := sourceTableExists(ctx, src, "watermarks")
+	if err != nil {
+		return 0, err
+	}
+
+	if !exists {
+		return 0, nil
+	}
+
 	const query = `SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`
 
 	const insert = `INSERT INTO watermarks (consumer, seq, updated_at) VALUES (?, ?, ?)`
@@ -347,6 +365,15 @@ func copyWatermarks(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, erro
 }
 
 func copyPriorityScores(ctx context.Context, src *sql.DB, copyTx *sql.Tx) (int, error) {
+	exists, err := sourceTableExists(ctx, src, "priority_scores")
+	if err != nil {
+		return 0, err
+	}
+
+	if !exists {
+		return 0, nil
+	}
+
 	const query = `SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`
 
 	const insert = `INSERT INTO priority_scores (item_key, score, effort_minutes, source, reasoning, tokens, scored_at)
@@ -614,26 +641,33 @@ func verifyDLQ(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section
 }
 
 func verifyWatermarks(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section {
-	rows, err := src.QueryContext(ctx, `SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`)
+	source := map[string]queue.WatermarkEntry{}
+
+	exists, err := sourceTableExists(ctx, src, "watermarks")
 	if err != nil {
 		return mismatch(sectionWatermarks, fmt.Sprintf("source read failed: %v", err))
 	}
 
-	defer func() { _ = rows.Close() }()
-
-	source := map[string]queue.WatermarkEntry{}
-
-	for rows.Next() {
-		var entry queue.WatermarkEntry
-		if err := rows.Scan(&entry.Consumer, &entry.Seq, &entry.UpdatedAt); err != nil {
-			return mismatch(sectionWatermarks, fmt.Sprintf("source scan failed: %v", err))
+	if exists {
+		rows, err := src.QueryContext(ctx, `SELECT consumer, seq, updated_at FROM watermarks ORDER BY consumer`)
+		if err != nil {
+			return mismatch(sectionWatermarks, fmt.Sprintf("source read failed: %v", err))
 		}
 
-		source[entry.Consumer] = entry
-	}
+		defer func() { _ = rows.Close() }()
 
-	if err := rows.Err(); err != nil {
-		return mismatch(sectionWatermarks, fmt.Sprintf("source read failed: %v", err))
+		for rows.Next() {
+			var entry queue.WatermarkEntry
+			if err := rows.Scan(&entry.Consumer, &entry.Seq, &entry.UpdatedAt); err != nil {
+				return mismatch(sectionWatermarks, fmt.Sprintf("source scan failed: %v", err))
+			}
+
+			source[entry.Consumer] = entry
+		}
+
+		if err := rows.Err(); err != nil {
+			return mismatch(sectionWatermarks, fmt.Sprintf("source read failed: %v", err))
+		}
 	}
 
 	entries, err := target.ListWatermarks(ctx)
@@ -663,30 +697,37 @@ func verifyWatermarks(ctx context.Context, src *sql.DB, target *sqlitev4.Store) 
 }
 
 func verifyPriorityScores(ctx context.Context, src *sql.DB, target *sqlitev4.Store) Section {
-	rows, err := src.QueryContext(
-		ctx,
-		`SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`,
-	)
+	var source []queue.PriorityScore
+
+	exists, err := sourceTableExists(ctx, src, "priority_scores")
 	if err != nil {
 		return mismatch(sectionPriority, fmt.Sprintf("source read failed: %v", err))
 	}
 
-	defer func() { _ = rows.Close() }()
-
-	var source []queue.PriorityScore
-
-	for rows.Next() {
-		var score queue.PriorityScore
-		if err := rows.Scan(&score.ItemKey, &score.Score, &score.EffortMinutes,
-			&score.Source, &score.Reasoning, &score.Tokens, &score.ScoredAt); err != nil {
-			return mismatch(sectionPriority, fmt.Sprintf("source scan failed: %v", err))
+	if exists {
+		rows, err := src.QueryContext(
+			ctx,
+			`SELECT item_key, score, effort_minutes, source, reasoning, tokens, scored_at FROM priority_scores ORDER BY item_key`,
+		)
+		if err != nil {
+			return mismatch(sectionPriority, fmt.Sprintf("source read failed: %v", err))
 		}
 
-		source = append(source, score)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if err := rows.Err(); err != nil {
-		return mismatch(sectionPriority, fmt.Sprintf("source read failed: %v", err))
+		for rows.Next() {
+			var score queue.PriorityScore
+			if err := rows.Scan(&score.ItemKey, &score.Score, &score.EffortMinutes,
+				&score.Source, &score.Reasoning, &score.Tokens, &score.ScoredAt); err != nil {
+				return mismatch(sectionPriority, fmt.Sprintf("source scan failed: %v", err))
+			}
+
+			source = append(source, score)
+		}
+
+		if err := rows.Err(); err != nil {
+			return mismatch(sectionPriority, fmt.Sprintf("source read failed: %v", err))
+		}
 	}
 
 	targets, err := target.PriorityScores(ctx)
