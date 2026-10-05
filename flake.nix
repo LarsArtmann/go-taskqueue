@@ -435,9 +435,37 @@
               );
             };
 
-            default.meta.description = "tq — projects-aware task queue CLI";
-            lint.meta.description = "Run golangci-lint over the root module";
-            fmt.meta.description = "Run the treefmt formatters (gofumpt, goimports, nixfmt, templ fmt)";
+            # go-nix-helpers wraps its generic runners (default/lint/fmt) in
+            # mkDefault so a consumer's whole-app definition wins. A leaf-only
+            # augmentation (default.meta.description = …) loses program: the
+            # priority filter drops the upstream attrset WHOLESALE before the
+            # leaf merge. Define the apps fully; mirror the upstream programs.
+            default = {
+              type = "app";
+              program = lib.getExe config.packages.default;
+              meta.description = "tq — projects-aware task queue CLI";
+            };
+            lint = {
+              type = "app";
+              program = lib.getExe (pkgs.writeShellApplication {
+                name = "run-lint";
+                runtimeInputs = [
+                  goTarballPkg
+                  pkgs.golangci-lint
+                ];
+                text = "golangci-lint run ./...";
+              });
+              meta.description = "Run golangci-lint over the root module";
+            };
+            fmt = {
+              type = "app";
+              program = lib.getExe (pkgs.writeShellApplication {
+                name = "run-fmt";
+                runtimeInputs = [ config.treefmt.build.wrapper ];
+                text = "treefmt";
+              });
+              meta.description = "Run the treefmt formatters (gofumpt, goimports, nixfmt, templ fmt)";
+            };
 
             # Recompile the web UI stylesheet into the committed, embedded
             # static asset (dev step — the nix build just embeds the output).
