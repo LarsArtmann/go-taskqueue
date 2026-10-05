@@ -175,12 +175,13 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Executor shared seams — never hand-roll**: `decodePayload[T]`,
   `recordRunOutcome`, `executor.Excerpt`, `prepareRepo`, `payloadTimeout`;
   mirror clones gated STRICT by `check-mirror-clones.sh` (shared surface
-  `internal/queue/companion`). Residual art-dupl groups accepted; don't
-  add new ones. `art-dupl:accept` directives only suppress when they sit
+  `internal/queue/companion`). Art-dupl residuals are accepted ONLY where
+  named here: the `fragments.templ` conditional-span pair (Go comments
+  cannot live inside templ markup); don't add new ones.
+  `art-dupl:accept` directives only suppress when they sit
   within a few lines ABOVE the clone's first line: doc-position works for
   func-top clones, deeper ones need an inline comment adjacent to the
-  start; the `fragments.templ` conditional-span pair is the ONE accepted
-  residual (Go comments cannot live inside templ markup).
+  start.
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
