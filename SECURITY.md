@@ -171,6 +171,21 @@ through timing.
   model output — treat the PapDashboard endpoint as a disclosure boundary
   for whatever the agent chose to write, not as owner-authored prose.
 
+## Agent environment: injection vs redaction
+
+Security at the agent boundary runs in BOTH directions. REDACTION
+(default ON) scrubs secrets out of what agents EMIT — every output tail
+passes the redaction table before it lands in a fact, a log, or a
+dashboard. INJECTION bounds what agents RECEIVE: the agent process
+inherits the pool environment minus an exact-key denylist (`TQ_DB` — the
+queue's own journal path — today), so an autonomous shell cannot read or
+mutate the live journal by shelling out to `tq`. The denylist is
+deliberately narrow; the successor design (minted per-run allowlist
+environments, flag-gated strict mode, managed HOME) is specified in
+`docs/planning/2026-10-05_secret-injection-seam-design.md` and widens
+only by owner ruling — pattern-matched key stripping would break the
+provider access agents legitimately need.
+
 ## Hardening checklist for unattended pools
 
 - [ ] `--daily-budget` (or `--budget-cmd`) and `--max-per-tick` set (this is

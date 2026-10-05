@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -95,5 +96,28 @@ func TestRetrySessionLadder(t *testing.T) {
 	tk.Attempts = 0
 	if got := retrySession(tk); got != "" {
 		t.Errorf("first run: retrySession = %q, want empty (fresh)", got)
+	}
+}
+
+func TestAgentEnvStripsDenylist(t *testing.T) {
+	base := []string{
+		"PATH=/usr/bin",
+		"TQ_DB=/home/lars/production/tasks.db",
+		"TQ_PAP_API_KEY=secret", // not (yet) denied: provider-adjacent keys need an owner ruling
+		"MALFORMED_NO_EQUALS",
+		"TQ_DB_ALIGNED=/tmp/fine.db", // exact-key match only
+	}
+
+	got := agentEnv(base)
+
+	joined := strings.Join(got, "\n")
+	if strings.Contains(joined, "TQ_DB=") {
+		t.Errorf("agent env still carries TQ_DB: %v", got)
+	}
+
+	for _, want := range []string{"PATH=/usr/bin", "TQ_PAP_API_KEY=secret", "MALFORMED_NO_EQUALS", "TQ_DB_ALIGNED=/tmp/fine.db"} {
+		if !slices.Contains(got, want) {
+			t.Errorf("agent env lost %q: %v", want, got)
+		}
 	}
 }

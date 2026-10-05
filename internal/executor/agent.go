@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -447,6 +448,44 @@ func assertCleanTree(ctx context.Context, repo string) error {
 // TQ_RESULT line is the legacy fallback for in-flight tasks.
 const verdictFileEnv = "TQ_RESULT_FILE"
 
+// envDenylistForAgents is the operational environment the agent process
+// must NOT inherit (secret-injection seam, M24 — first rung):
+//   - TQ_DB: the queue's own journal path (in the pool process, the
+//     PRODUCTION journal). An agent that shells out to `tq` in its repo
+//     would otherwise read or mutate the live journal; a scratch `tq`
+//     needs its own db anyway (AGENTS known-issues: the inherited-TQ_DB
+//     smoke hazard). The executor passes the verdict/question channels
+//     explicitly, so the agent needs nothing else from the TQ_ namespace.
+//
+// This is a DENYLIST — deliberately narrow. The successor design (minted
+// per-run allowlist) lives in
+// docs/planning/2026-10-05_secret-injection-seam-design.md; a wider list
+// needs the owner ruling it names, because provider keys the agent
+// legitimately consumes (crush reads them from the environment) must
+// never land here by pattern-matching enthusiasm.
+var envDenylistForAgents = []string{"TQ_DB"}
+
+// agentEnv strips the agent-process denylist from an inherited
+// environment. Match is exact-key (KEY=VALUE split on the first '='); a
+// malformed entry (no '=') passes through untouched.
+func agentEnv(base []string) []string {
+	out := base[:0:0]
+	for _, kv := range base {
+		key, _, found := strings.Cut(kv, "=")
+		if !found {
+			out = append(out, kv)
+
+			continue
+		}
+
+		if !slices.Contains(envDenylistForAgents, key) {
+			out = append(out, kv)
+		}
+	}
+
+	return out
+}
+
 // retrySession is the retry ladder's session rung: the FIRST retry
 // resumes the previous attempt's session (paperclip's same_session), later
 // retries go fresh (the session itself may be what's sick). The previous
@@ -560,8 +599,14 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 		cmd := exec.CommandContext(ctx, e.binary(), args...)
 		cmd.Dir = repoDir
 
+		// Agents get the pool environment MINUS the operational denylist
+		// (agentEnv): the queue's own handles are not an agent's business.
+		// The full secret-injection successor (minted per-run env) is
+		// designed in docs/planning/2026-10-05_secret-injection-seam-design.md.
+		env := agentEnv(os.Environ())
+
 		if verdictPath != "" {
-			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
+			cmd.Env = append(env, verdictFileEnv+"="+verdictPath)
 		}
 
 		// The question channel is a WORK-turn capability (21-04 §f42):
@@ -765,7 +810,7 @@ func (e *AgentExecutor) runCloseoutTurn(
 		cmd.Dir = repoDir
 
 		if verdictPath != "" {
-			cmd.Env = append(os.Environ(), verdictFileEnv+"="+verdictPath)
+			cmd.Env = append(agentEnv(os.Environ()), verdictFileEnv+"="+verdictPath)
 		}
 
 		// Second-opinion clones never get the question channel (same gate
