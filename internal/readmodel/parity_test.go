@@ -240,6 +240,15 @@ func TestParityWithStoreProjection(t *testing.T) {
 			t.Errorf("%s created_at = %d, store %d", wantTask.ID, row.CreatedAt, st.CreatedAt.UnixMilli())
 		}
 
+		// Class parks mirror the store's not_before within a few ms: the
+		// store timestamps the task update and the fact with two clock
+		// readings of the same transaction.
+		if row.ParkedBy != "" {
+			if delta := row.NotBefore - st.NotBefore.UnixMilli(); delta < -5 || delta > 5 {
+				t.Errorf("%s not_before = %d, store %d", wantTask.ID, row.NotBefore, st.NotBefore.UnixMilli())
+			}
+		}
+
 		if row.UpdatedAt < row.CreatedAt {
 			t.Errorf("%s updated_at %d before created_at %d", wantTask.ID, row.UpdatedAt, row.CreatedAt)
 		}
@@ -255,6 +264,17 @@ func TestParityWithStoreProjection(t *testing.T) {
 
 	if got := byID[t6.ID.String()].Priority; got != 3 {
 		t.Errorf("t6 priority = %d, want 3 (reprioritized)", got)
+	}
+
+	// Parked-by: the two preflight requeues carry their class; the failed
+	// t2 is a retry, not a park.
+	for _, tc := range []struct {
+		id   task.ID
+		want string
+	}{{t5.ID, queue.RequeueClassPreflight}, {t6.ID, queue.RequeueClassPreflight}, {t2.ID, ""}} {
+		if got := byID[tc.id.String()].ParkedBy; got != tc.want {
+			t.Errorf("%s parked_by = %q, want %q", tc.id, got, tc.want)
+		}
 	}
 
 	// Newest-first ordering: t6 was enqueued last.
@@ -304,6 +324,71 @@ func TestParityWithStoreProjection(t *testing.T) {
 
 	if len(rows) != 1 || rows[0].ID != t3.ID.String() {
 		t.Errorf("dead+api rows = %+v, want only t3", rows)
+	}
+}
+
+// TestParkedByProjection pins the class-park surface: the requeue
+// evidence's class + window land on the row, the next claim clears them,
+// and a later park replaces the class — the exactness `tq top`,
+// `tq tasks --parked-class` and the webui budget lamp are specified to
+// read instead of re-deriving it from the fact tail.
+func TestParkedByProjection(t *testing.T) {
+	ctx := context.Background()
+	f := newFixture(t)
+
+	tk := f.enqueue("web", "agent", 5, "todo:park")
+	_, claim := f.claim()
+
+	// Parked with a tiny window: the claim gate honors not_before, so the
+	// test sleeps past it before re-claiming.
+	f.must("budget requeue", f.store.Requeue(ctx, tk.ID, claim, "daily cap spent", time.Millisecond, false, queue.RequeueClassBudget))
+	f.resync()
+
+	pending := string(task.Pending)
+	rows, err := f.model.Tasks(ctx, readmodel.TaskFilter{Status: new(pending)})
+	f.must("tasks", err)
+
+	if len(rows) != 1 {
+		t.Fatalf("pending rows = %d, want 1", len(rows))
+	}
+
+	if rows[0].ParkedBy != queue.RequeueClassBudget {
+		t.Errorf("parked_by = %q, want %q", rows[0].ParkedBy, queue.RequeueClassBudget)
+	}
+
+	if rows[0].NotBefore == 0 {
+		t.Error("not_before = 0, want the requeue window")
+	}
+
+	time.Sleep(5 * time.Millisecond)
+
+	_, claim = f.claim()
+	f.must("rate-limit requeue", f.store.Requeue(ctx, tk.ID, claim, "provider 429", time.Millisecond, false, queue.RequeueClassRateLimit))
+	f.resync()
+
+	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Status: new(pending)})
+	f.must("tasks 2", err)
+
+	if len(rows) != 1 || rows[0].ParkedBy != queue.RequeueClassRateLimit {
+		t.Fatalf("rows = %+v, parked_by want %q", rows, queue.RequeueClassRateLimit)
+	}
+
+	time.Sleep(5 * time.Millisecond)
+
+	tk2, claim := f.claim()
+	if tk2.ID != tk.ID {
+		t.Fatalf("claim = %s, want %s", tk2.ID, tk.ID)
+	}
+
+	f.must("complete", f.store.Complete(ctx, tk.ID, claim, jsontext.Value(`"x"`)))
+	f.resync()
+
+	completed := string(task.Completed)
+	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Status: new(completed)})
+	f.must("tasks 3", err)
+
+	if len(rows) != 1 || rows[0].ParkedBy != "" || rows[0].NotBefore != 0 {
+		t.Fatalf("completed rows = %+v, want the park cleared", rows)
 	}
 }
 

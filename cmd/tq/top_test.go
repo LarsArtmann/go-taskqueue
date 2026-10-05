@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json/jsontext"
 	"testing"
 	"time"
 
@@ -104,5 +105,38 @@ func TestAggregateTopEmpty(t *testing.T) {
 	got := aggregateTop(nil, nil, time.Now())
 	if len(got) != 0 {
 		t.Errorf("expected no rows, got %+v", got)
+	}
+}
+
+func TestAggregateTopBudgetParkedChip(t *testing.T) {
+	base := time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)
+
+	// t1 budget-parked (window open), t2 budget class but window due
+	// (claimable work, not parked), t3 a different class.
+	parked := topTask("t1", "alpha", task.Pending)
+	parked.NotBefore = base.Add(time.Hour)
+
+	due := topTask("t2", "alpha", task.Pending)
+
+	other := topTask("t3", "beta", task.Pending)
+	other.NotBefore = base.Add(time.Hour)
+
+	facts := []journal.Fact{
+		{Seq: 1, TaskID: "t1", Type: journal.Requeued, Time: base, Detail: jsontext.Value(`{"reason":"cap","retry_in_ms":3600000,"class":"budget"}`)},
+		{Seq: 2, TaskID: "t2", Type: journal.Requeued, Time: base, Detail: jsontext.Value(`{"reason":"cap","retry_in_ms":0,"class":"budget"}`)},
+		{Seq: 3, TaskID: "t3", Type: journal.Requeued, Time: base, Detail: jsontext.Value(`{"reason":"429","retry_in_ms":3600000,"class":"rate-limit"}`)},
+	}
+
+	got := aggregateTop([]task.Task{parked, due, other}, facts, base)
+	if len(got) != 2 {
+		t.Fatalf("got %d projects, want 2", len(got))
+	}
+
+	if got[0].Project != "alpha" || got[0].BudgetParked != 1 {
+		t.Errorf("alpha = %+v, want BudgetParked 1", got[0])
+	}
+
+	if got[1].Project != "beta" || got[1].BudgetParked != 0 {
+		t.Errorf("beta = %+v, want BudgetParked 0 (rate-limit park is not budget)", got[1])
 	}
 }

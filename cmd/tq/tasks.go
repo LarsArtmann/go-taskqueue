@@ -31,6 +31,11 @@ func cmdTasks(args []string) error {
 	)
 	since := fs.Duration("since", 0, "only tasks created within this window (e.g. 6h, 30m; 0 = all time)")
 	parked := fs.Bool("parked", false, "only rate-limit-parked tasks (pending with a future not_before)")
+	parkedClass := fs.String(
+		"parked-class",
+		"",
+		"only tasks parked by this requeue class (budget|rate-limit|question|preflight|gate|unknown); the class joins CLI-side from the requeue evidence",
+	)
 	count := fs.Bool(
 		"count",
 		false,
@@ -103,8 +108,49 @@ func cmdTasks(args []string) error {
 		filter.Limit = *limit
 	}
 
+	// Class parks join CLI-side (the class is requeue-evidence, not a
+	// pushdown column): list the filter's matches uncapped, narrow to the
+	// class's open parks, and let the limit apply afterwards.
+	classTotal := -1
+	tasks := []task.Task{}
+
+	if *parkedClass != "" {
+		uncapped := filter
+		uncapped.Limit = 0
+
+		candidates, err := store.List(ctx, uncapped)
+		if err != nil {
+			return err
+		}
+
+		facts, err := store.LastFacts(ctx, factTailLimit)
+		if err != nil {
+			return err
+		}
+
+		tasks = parkedByClass(candidates, latestRequeueClass(facts), *parkedClass, time.Now())
+		classTotal = len(tasks)
+
+		if *limit > 0 && len(tasks) > *limit {
+			tasks = tasks[:*limit]
+		}
+	}
+
+	// uncappedTotal resolves the match count behind --limit: the class
+	// join's size when --parked-class is active, the store count otherwise.
+	uncappedTotal := func() (int, error) {
+		if classTotal >= 0 {
+			return classTotal, nil
+		}
+
+		f := filter
+		f.Limit = 0
+
+		return store.CountTasks(ctx, f)
+	}
+
 	if *count {
-		n, err := store.CountTasks(ctx, filter)
+		n, err := uncappedTotal()
 		if err != nil {
 			return err
 		}
@@ -122,9 +168,13 @@ func cmdTasks(args []string) error {
 		return nil
 	}
 
-	tasks, err := store.List(ctx, filter)
-	if err != nil {
-		return err
+	if *parkedClass == "" {
+		var err error
+
+		tasks, err = store.List(ctx, filter)
+		if err != nil {
+			return err
+		}
 	}
 
 	if *asJSON {
@@ -132,12 +182,7 @@ func cmdTasks(args []string) error {
 		enc.SetIndent("", "  ")
 
 		if *jsonEnvelope {
-			total, err := store.CountTasks(ctx, func() queue.Filter {
-				f := filter
-				f.Limit = 0
-
-				return f
-			}())
+			total, err := uncappedTotal()
 			if err != nil {
 				return err
 			}
@@ -152,11 +197,7 @@ func cmdTasks(args []string) error {
 		return enc.Encode(tasks)
 	}
 
-	printTaskList(tasks, *limit, func() (int, error) {
-		filter.Limit = 0
-
-		return store.CountTasks(ctx, filter)
-	})
+	printTaskList(tasks, *limit, uncappedTotal)
 
 	return nil
 }

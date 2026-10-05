@@ -17,11 +17,6 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// topFactLimit bounds the journal read per `tq top` frame to the most
-// recent facts: durations come from recent claim/complete pairs, and a
-// bounded tail keeps the refresh O(1) as the journal grows.
-const topFactLimit = 5000
-
 // isTerminal reports whether w is an interactive terminal, so the live view
 // may repaint with ANSI cursor control; pipes and files get plain frames.
 func isTerminal(w io.Writer) bool {
@@ -39,16 +34,17 @@ func isTerminal(w io.Writer) bool {
 // operators actually ask about — how long the last finished run took, and how
 // long the currently running one has been going.
 type projectView struct {
-	Project   string        `json:"project"`
-	Pending   int           `json:"pending"`
-	Running   int           `json:"running"`
-	Completed int           `json:"completed"`
-	Dead      int           `json:"dead"`
-	Cancelled int           `json:"cancelled"`
-	LastDur   time.Duration `json:"last_dur"`   // run duration of the most recent completion
-	ActiveDur time.Duration `json:"active_dur"` // elapsed of the current running task
-	HasLast   bool          `json:"has_last"`
-	HasActive bool          `json:"has_active"`
+	Project      string        `json:"project"`
+	Pending      int           `json:"pending"`
+	Running      int           `json:"running"`
+	Completed    int           `json:"completed"`
+	Dead         int           `json:"dead"`
+	Cancelled    int           `json:"cancelled"`
+	LastDur      time.Duration `json:"last_dur"`   // run duration of the most recent completion
+	ActiveDur    time.Duration `json:"active_dur"` // elapsed of the current running task
+	HasLast      bool          `json:"has_last"`
+	HasActive    bool          `json:"has_active"`
+	BudgetParked int           `json:"budget_parked"` // inside a claim-time budget park (the pool looks idle on purpose)
 }
 
 // bumpProjectCount adds one task status occurrence to the view.
@@ -138,6 +134,23 @@ func sortedProjectViews(byProject map[string]*projectView) []projectView {
 	return out
 }
 
+// applyBudgetParked stamps per-project budget-parked counts onto the view:
+// pending tasks whose latest requeue evidence is the budget class and
+// whose park window is still open — the “the pool LOOKS idle on purpose”
+// state the webui nowband renders as its budget lamp.
+func applyBudgetParked(tasks []task.Task, latest map[string]string, now time.Time, view func(string) *projectView) {
+	for i := range tasks {
+		t := tasks[i]
+		if t.Status != task.Pending || latest[t.ID.String()] != queue.RequeueClassBudget {
+			continue
+		}
+
+		if t.NotBefore.After(now) {
+			view(t.Project).BudgetParked++
+		}
+	}
+}
+
 // aggregateTop builds the per-project view from the task table (counts,
 // project names) and the journal (run durations). now stamps the active
 // duration.
@@ -156,6 +169,7 @@ func aggregateTop(tasks []task.Task, facts []journal.Fact, now time.Time) []proj
 	// Facts arrive in seq order, so the last Completed fact per project is
 	// the most recent completion.
 	claimedAt := applyRunDurations(facts, taskProject, view)
+	applyBudgetParked(tasks, latestRequeueClass(facts), now, view)
 	applyActiveDurations(tasks, claimedAt, now, view)
 
 	return sortedProjectViews(byProject)
@@ -184,7 +198,7 @@ func cmdTop(args []string) error {
 			return err
 		}
 
-		facts, err := store.LastFacts(ctx, topFactLimit)
+		facts, err := store.LastFacts(ctx, factTailLimit)
 		if err != nil {
 			return err
 		}
@@ -220,9 +234,9 @@ func cmdTop(args []string) error {
 
 func renderTop(views []projectView, now time.Time) {
 	fmt.Printf("tq top — %s\n", now.Format("15:04:05"))
-	fmt.Printf("%-28s %6s %6s %6s %6s %8s %9s\n", "PROJECT", "pend", "run", "done", "dead", "last", "active")
+	fmt.Printf("%-28s %6s %6s %6s %6s %6s %8s %9s\n", "PROJECT", "pend", "run", "done", "dead", "bpark", "last", "active")
 
-	var pending, running, completed, dead int
+	var pending, running, completed, dead, budgetParked int
 
 	for _, v := range views {
 		last, active := "-", "-"
@@ -234,15 +248,16 @@ func renderTop(views []projectView, now time.Time) {
 			active = shortDur(v.ActiveDur)
 		}
 
-		fmt.Printf("%-28s %6d %6d %6d %6d %8s %9s\n",
-			truncate(v.Project, 28), v.Pending, v.Running, v.Completed, v.Dead, last, active)
+		fmt.Printf("%-28s %6d %6d %6d %6d %6d %8s %9s\n",
+			truncate(v.Project, 28), v.Pending, v.Running, v.Completed, v.Dead, v.BudgetParked, last, active)
 		pending += v.Pending
 		running += v.Running
 		completed += v.Completed
 		dead += v.Dead
+		budgetParked += v.BudgetParked
 	}
 
-	fmt.Printf("%-28s %6d %6d %6d %6d %8s %9s\n", "TOTAL", pending, running, completed, dead, "", "")
+	fmt.Printf("%-28s %6d %6d %6d %6d %6d %8s %9s\n", "TOTAL", pending, running, completed, dead, budgetParked, "", "")
 }
 
 func shortDur(d time.Duration) string {

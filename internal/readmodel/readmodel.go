@@ -46,6 +46,18 @@ type TaskRow struct {
 	DedupKey string `json:"dedup_key"`
 	// LastError is the most recent failure text (empty when none).
 	LastError string `json:"last_error"`
+	// NotBefore is the earliest claim time (unix millis) of the latest
+	// CLASS park (from the requeue evidence), zero when none is in
+	// force. The store's backoff-after-failure parks are deliberately
+	// NOT mirrored: task.failed facts carry no class or window, so the
+	// projection records only what the journal proves.
+	NotBefore int64 `json:"not_before"`
+	// ParkedBy is the latest requeue class (queue.RequeueClass*;
+	// "unknown" for legacy facts, empty until the first requeue). A
+	// budget-parked task is Status==pending with ParkedBy=="budget" and
+	// a future NotBefore. Cleared on claim and on failure (a burned
+	// attempt is a retry, not a park).
+	ParkedBy string `json:"parked_by"`
 }
 
 // TaskFilter selects the Tasks read. Nil fields mean "no filter"; the

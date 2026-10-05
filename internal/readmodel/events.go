@@ -57,10 +57,14 @@ type (
 		ID string
 		At int64
 	}
-	// evtRequeued returns a claim to pending (no attempt burned).
+	// evtRequeued returns a claim to pending (no attempt burned). Class
+	// and RetryInMs ride the RequeueEvidence detail; missing or malformed
+	// detail normalizes like every reader (class "unknown", no window).
 	evtRequeued struct {
-		ID string
-		At int64
+		ID        string
+		At        int64
+		RetryInMs int64
+		Class     RequeueClass
 	}
 	// evtReprioritized rewrites the stored priority.
 	evtReprioritized struct {
@@ -73,6 +77,10 @@ type (
 // FailureText is a failed attempt's error text — a named string so event
 // structs carry at most one bare string (the fold key).
 type FailureText string
+
+// RequeueClass is a requeue evidence class — a named string so the engine's
+// type-based key inference keeps ID unambiguous (same rule as FailureText).
+type RequeueClass string
 
 // RowSource supplies the enqueue-time fields the current engine's thin
 // task.enqueued fact omits (project/type fall back to the fact detail;
@@ -133,6 +141,12 @@ type repriDetail struct {
 	Reason      string `json:"reason"`
 }
 
+// requeueDetail mirrors queue.RequeueEvidence's wire keys.
+type requeueDetail struct {
+	RetryIn int64  `json:"retry_in_ms"`
+	Class   string `json:"class"`
+}
+
 // eventFor maps one journal fact to its fold input. ok=false skips the
 // fact (no fold consumes it). The returned error covers only malformed
 // DETAIL bytes on fact types whose fold needs them — state transitions
@@ -154,7 +168,7 @@ func eventFor(ctx context.Context, fact journal.Fact, src RowSource) (any, bool,
 	case journal.Cancelled:
 		return evtCancelled{ID: fact.TaskID, At: atMs}, true, nil
 	case journal.Requeued:
-		return evtRequeued{ID: fact.TaskID, At: atMs}, true, nil
+		return requeuedEvent(fact, atMs), true, nil
 	case journal.Reprioritized:
 		return repriEvent(fact, atMs)
 	case journal.Heartbeat,
@@ -205,6 +219,25 @@ func enqueuedEvent(ctx context.Context, fact journal.Fact, src RowSource) (any, 
 	}
 
 	return evt, true, nil
+}
+
+// requeuedEvent builds the requeue fold input, decoding the evidence
+// detail (retry_in_ms, class). Empty or malformed detail decodes as the
+// legacy shape (no window, class "unknown"): legacy requeue facts predate
+// the detail entirely, and the pump never fails on detail noise here —
+// a lost park window degrades observability, never the ledger.
+func requeuedEvent(fact journal.Fact, atMs int64) evtRequeued {
+	evt := evtRequeued{ID: fact.TaskID, At: atMs, Class: RequeueClass(queue.RequeueClassUnknown)}
+
+	var detail requeueDetail
+	if err := json.Unmarshal(fact.Detail, &detail); err == nil {
+		evt.RetryInMs = detail.RetryIn
+		if detail.Class != "" {
+			evt.Class = RequeueClass(detail.Class)
+		}
+	}
+
+	return evt
 }
 
 // repriEvent decodes the reprioritize evidence; an unparsable detail is a

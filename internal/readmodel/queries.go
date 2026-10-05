@@ -53,6 +53,7 @@ var tasksQuery = metaengine.Query[TaskList, TaskRow]( //nolint:gochecknoglobals 
 	metaengine.OnRecordTyped(string(journal.Claimed), evtClaimed{},
 		func(_ record.Record, evt evtClaimed, prev TaskRow) TaskRow {
 			prev.Status = statusRunning
+			prev.NotBefore, prev.ParkedBy = 0, "" // a claim ends the park
 			prev.UpdatedAt = evt.At
 
 			return prev
@@ -69,6 +70,7 @@ var tasksQuery = metaengine.Query[TaskList, TaskRow]( //nolint:gochecknoglobals 
 			prev.Status = statusPending
 			prev.Attempts++ // the store burns one attempt per failure
 			prev.LastError = string(evt.Error)
+			prev.NotBefore, prev.ParkedBy = 0, "" // a burned attempt is a retry, not a park
 			prev.UpdatedAt = evt.At
 
 			return prev
@@ -90,6 +92,8 @@ var tasksQuery = metaengine.Query[TaskList, TaskRow]( //nolint:gochecknoglobals 
 	metaengine.OnRecordTyped(string(journal.Requeued), evtRequeued{},
 		func(_ record.Record, evt evtRequeued, prev TaskRow) TaskRow {
 			prev.Status = statusPending
+			prev.NotBefore = evt.At + evt.RetryInMs
+			prev.ParkedBy = string(evt.Class)
 			prev.UpdatedAt = evt.At
 
 			return prev
