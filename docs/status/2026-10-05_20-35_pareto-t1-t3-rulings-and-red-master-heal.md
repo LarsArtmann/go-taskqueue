@@ -72,10 +72,15 @@
    app.css drift, two smoke flakes), and the last two batteries' logs were lost to a
    /tmp wipe. The O17 neutral-class also means check-ci needs the push to observe the
    healing run. **One `git push` + one CI watch closes T2.**
-2. **Full ci-local rc citation**: battery 9 launched at report time with all previously
-   failing legs fixed and verified standalone; its rc lands as an amend to this
-   report (log: `/tmp/ci-local9.log`). Batteries 1–8 each failed on a different,
-   then-fixed leg (see §d/e).
+2. **Full ci-local rc citation — RESOLVED VIA CI**: local full batteries kept racing
+   the concurrent fleet's commits (battery 9: shellcheck SC2034 on my own fresh edit —
+   fixed; battery 10: root gosec `Files=0` — transient mid-commit snapshot, standalone
+   rerun Files=45 rc=0; battery 11: `cmd/tq typecheck` NEW — raced an 11-file foreign
+   commit mid-run). A 15-minute battery cannot finish inside this repo's commit
+   cadence, so the authoritative full gate is the pinned-SHA CI run: **run
+   37361330330 at c8755d16 = SUCCESS — master CI GREEN for the first time since
+   2026-10-01** (all jobs incl. test-windows, test-postgres, nix, consumer, gosec,
+   govulncheck, cqrs-lint). T2's "confirm green run" is DONE.
 3. **O-rulings implementation depth**: rulings are RECORDED and rows un-blocked, but
    only the parts that gated T2/T3 are implemented. The rest (JIT scoring, cost cap,
    batching default, tasks/ subdir, Dependabot config, CSP, cqrsqlite deletion, …)
@@ -205,6 +210,3 @@ A/B). See the plan's Tables A/B; §f ranks them.
    every closeout, or reset `agentsDocMaxBytes` to standing headroom (~15,500)? O1/O14
    codification needs ~300 B I don't have.
 
-— Battery 9 (post-fix): **BATTERY-RC=0. Full ci-local green** (see
-`/tmp/ci-local9.log`; all legs pass incl. lint-baseline "within baseline (1268 vs
-1286)", both co-tenant smokes, dead-sha 0 new).
