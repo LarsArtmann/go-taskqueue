@@ -34,7 +34,6 @@ import (
 
 	usqlite "github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4"
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
-	ufacts "github.com/larsartmann/go-cqrs-lite/queue/v4/facts"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -309,7 +308,7 @@ func (s *Store) Facts(ctx context.Context, after int64, limit int) ([]journal.Fa
 		return nil, translateErr(err)
 	}
 
-	return fromUFacts(facts), nil
+	return companion.JournalFacts(facts), nil
 }
 
 // FactsForTask returns one task's facts in Seq order, bounded to the most
@@ -320,7 +319,7 @@ func (s *Store) FactsForTask(ctx context.Context, id string, limit int) ([]journ
 		return nil, translateErr(err)
 	}
 
-	return fromUFacts(facts), nil
+	return companion.JournalFacts(facts), nil
 }
 
 // HeadSeq returns the current highest fact Seq (0 when the journal is
@@ -408,28 +407,6 @@ func fromUIDs(deps []utask.ID) []task.ID {
 	out := make([]task.ID, 0, len(deps))
 	for _, d := range deps {
 		out = append(out, task.ID(d))
-	}
-
-	return out
-}
-
-func fromUFacts(facts []ufacts.Fact) []journal.Fact {
-	out := make([]journal.Fact, 0, len(facts))
-	for _, f := range facts {
-		jf := journal.Fact{
-			Seq:     f.Seq,
-			Time:    f.Time,
-			TaskID:  f.TaskID,
-			Type:    journal.FactType(f.Type),
-			Owner:   f.Owner,
-			Attempt: f.Attempt,
-			Error:   f.Error,
-		}
-		if len(f.Detail) > 0 {
-			jf.Detail = jsontext.Value(f.Detail)
-		}
-
-		out = append(out, jf)
 	}
 
 	return out
