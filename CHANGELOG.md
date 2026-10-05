@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
+- **Dependabot covers the full 23-module Go tree** (2026-10-06): the
+  weekly gomod config (added 2026-09-29) missed the three post-S2
+  modules (internal/composition, internal/readmodel,
+  internal/queue/companion) and still listed the deleted
+  internal/queue/cqrsqlite directory; every go.mod directory now has
+  exactly one entry, unblocking the O15 ruling — `--dep-sweep` retires
+  after Dependabot's first week (queued row, earliest 2026-10-13).
 - **Metaengine pushdown stats counters** (2026-10-05): `readmodel.Model.Stats`
   serves by-status and per-project-per-status counts as SQL GROUP BY
   pushdowns over the planned tasks table (O(groups), zero rows loaded) —

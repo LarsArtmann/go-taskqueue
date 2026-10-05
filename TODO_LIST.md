@@ -23,7 +23,7 @@ not here.
 - [ ] `internal/consumer`: wire into `tq serve` journal tailing or delete the ghost package (ADR-0009 dispatcher, zero production importers; write the ADR outcome either way) (23:47 f2/g1) — BLOCKED: owner intent call
 - [ ] Decide the three near-identical interfaces (`consumer.Source`, `budget.FactSource`, `papdashboard.FactSource`) — one interface or documented duplication (23:47 f4) — BLOCKED: owner architecture decision
 - [ ] Postgres CLI store wiring (`--store postgres://…` on worker/serve/agent-pool): gives queue/postgres its consumer; root re-adds pgx; sequence BEFORE any public-API promotion (23:47 f5/g3) — BLOCKED: owner release-timing call (v0.3?)
-- [ ] Add Dependabot config covering the 8-module tree (O15 2026-10-05: ON); after the first Dependabot week retire `--dep-sweep` (flag + sweeper + docs)
+- [ ] Retire `--dep-sweep` (flag + sweeper + docs) once Dependabot's first week has passed (full-tree coverage config shipped 2026-10-06, CHANGELOG) — BLOCKED: O15 time gate, earliest 2026-10-13
 
 ## go-cqrs-lite platform adoption (ADR-0019, owner ruling 2026-09-22 — serialize S1→S4)
 
