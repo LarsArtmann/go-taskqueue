@@ -657,6 +657,10 @@ func TestAgentResultBadgeAndCard(t *testing.T) {
 			{SHA: "abc1234", Subject: "work"},
 			{SHA: "def5678", Subject: "close-out"},
 		},
+		SessionCostUSD:          0.42,
+		SessionPromptTokens:     12000,
+		SessionCompletionTokens: 3400,
+		SessionMessageCount:     6,
 	})
 	if err != nil {
 		t.Fatalf("marshal agent result: %v", err)
@@ -678,7 +682,7 @@ func TestAgentResultBadgeAndCard(t *testing.T) {
 		ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/task/"+ag.ID.String(), nil))
 
 	body := rec.Body.String()
-	for _, want := range []string{"agent run", "2 commits"} {
+	for _, want := range []string{"agent run", "2 commits", "derived session cost", `class="mt-2 font-mono text-xs`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("detail page missing %q", want)
 		}

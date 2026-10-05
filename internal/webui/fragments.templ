@@ -724,14 +724,22 @@ templ agentResultCard(res executor.AgentResult) {
 	@display.Card(display.CardProps{Title: "agent run", Padding: display.CardPaddingMD}) {
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 			@display.Badge(display.BadgeProps{Text: agentBadgeText(res), Type: display.BadgeInfo, Size: display.BadgeSizeSM})
-			if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
-				<span class="text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</span>
-			}
 		</div>
+		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
+			@sessionUsageLine(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount)
+		}
 		if res.LogPath != "" {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
 		}
 	}
+}
+
+// sessionUsageLine renders the derived session usage (cost, tokens,
+// messages) once for all three result cards: machine values read in the
+// mono vocabulary (operator-stance audit F3), not a proportional-font
+// afterthought per card.
+templ sessionUsageLine(costUSD float64, promptTokens, completionTokens int64, messages int) {
+	<p class="mt-2 font-mono text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(costUSD, promptTokens, completionTokens, messages) }</p>
 }
 
 // statusReportCard renders the status loop's outcome: where the report
@@ -753,7 +761,7 @@ templ statusReportCard(res executor.StatusResult) {
 			}
 		</div>
 		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
-			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</p>
+			@sessionUsageLine(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount)
 		}
 		if res.LogPath != "" {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
@@ -768,10 +776,10 @@ templ prioritizeResultCard(res executor.PrioritizeResult) {
 	@display.Card(display.CardProps{Title: "ai scoring", Padding: display.CardPaddingMD}) {
 		<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 			@display.Badge(display.BadgeProps{Text: prioritizeBadgeText(res), Type: display.BadgeInfo, Size: display.BadgeSizeSM})
-			if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
-				<span class="text-xs text-gray-500 dark:text-gray-400">{ sessionUsageText(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) }</span>
-			}
 		</div>
+		if !sessionUsageEmpty(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount) {
+			@sessionUsageLine(res.SessionCostUSD, res.SessionPromptTokens, res.SessionCompletionTokens, res.SessionMessageCount)
+		}
 		if res.LogPath != "" {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
 		}
