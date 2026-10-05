@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.1] - 2026-10-05
+
 ### Added
 - **Dependabot covers the full 23-module Go tree** (2026-10-06): the
   weekly gomod config (added 2026-09-29) missed the three post-S2

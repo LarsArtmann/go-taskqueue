@@ -65,7 +65,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
 	github.com/larsartmann/templ-components v1.20.1
