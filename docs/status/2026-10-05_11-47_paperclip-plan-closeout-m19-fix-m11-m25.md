@@ -118,11 +118,17 @@ investigated-and-rejected with the reasoning on disk.
 17. **M8 tail — the full single matrix pass**: FOUR runs this window.
     Run 1 died at the twin-budget drift; run 2 at facade parity (six
     ADR-0016 skews); run 3 at lint-baseline (the 31 findings); run 4
-    was IN FLIGHT at report time (past facade-parity OK, lint-baseline
-    green, and the advisory dead-export report — zero FAIL lines on
-    the log at 11:47) — final rc will be appended to
-    `/tmp/final-ci-local4.log` and this section is honest about it:
-    the green-until-here observation is NOT a verdict.
+    got FURTHER THAN ANY PRIOR RUN — facade parity OK, lint-baseline
+    green, the advisory dead-export report passed — and died at the
+    gosec post-config gate: the ROOT `./...` scan reported 0 files
+    scanned and the anti-silent-skip guard failed it, immediately after
+    a WARN that the host gosec binary is UNSTAMPED (`Version: dev`,
+    pinned v2.29.0 provenance ruling pending per the 02-52 report §g
+    q2). All 21 per-module gosec scans ok. Read: environment-shaped
+    (unverified binary or a root-module gosec quirk), NOT this window's
+    diff — every per-module scan over the same code is green. Needs the
+    02-52 provenance ruling or an in-module gosec triage; not chased
+    further this window.
 18. **Contract-doc sync for the new surfaces**: AGENTS.md's payload
     contracts do not yet carry one-clause entries for the session
     ladder, the env denylist, and the failure-class evidence key; the
@@ -218,8 +224,9 @@ investigated-and-rejected with the reasoning on disk.
 
 ## f) Up to 50 next things (roughly execution order)
 
-1. Read run 4's final rc from the log (in flight at 11:47); append the
-   verdict to §b17 of the 11-22 report.
+1. The gosec post-config gate's root-scan 0-files failure (run 4's
+   stopper): triage the UNSTAMPED host gosec binary against the pinned
+   v2.29.0 (02-52 §g q2) or the in-module path, then re-run the matrix.
 2. Owner: push authorization for the 16-commit local tail.
 3. Owner: M6 tag wave scope (one wave or split endgame/paperclip).
 4. Owner: §g-2 wake fact-type ruling → M4 implementation.
@@ -292,7 +299,12 @@ investigated-and-rejected with the reasoning on disk.
   after the deliberate regen.
 - Full ci-local: run 1 rc=1 (twin drift), run 2 rc=1 (facade parity),
   run 3 rc=1 (lint-baseline) — all fixed at their failure point;
-  run 4 IN FLIGHT at report time, zero FAIL lines at 11:47, past
-  facade-parity OK / lint-baseline green / advisory dead-export report.
-  Final rc lands in `/tmp/final-ci-local4.log` and §b17 after
-  completion.
+  run 4 **rc=1 at the gosec post-config gate**: the root `./...` scan
+  reported 0 files (anti-silent-skip guard tripped) right after the
+  UNSTAMPED-gosec-binary WARN (`Version: dev`; v2.29.0 pin unverified,
+  02-52 §g q2); all 21 per-module gosec scans ok. Everything BEFORE the
+  gosec gate — facade parity, lint-baseline, every smoke up to that
+  point — green in-matrix for the first time this window
+  (`/tmp/final-ci-local4.log`, 434 lines). The remaining distance to a
+  fully-green pass is the gosec environment triage, not this window's
+  diff.
