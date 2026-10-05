@@ -32,6 +32,12 @@ const (
 	// SSETimeout caps one stream's lifetime so server shutdowns and
 	// stuck clients reclaim their goroutines.
 	SSETimeout = 30 * time.Minute
+	// CursorConsumer is the watermarks-table key the durable cursor
+	// checkpoints under (queue.Store.SaveWatermark): the projection
+	// resumes from it instead of replaying the whole journal on every
+	// open. One key per queue db — the projection file is PathFor-derived,
+	// so one store has exactly one durable projection.
+	CursorConsumer = "readmodel"
 )
 
 // ErrNoSource reports an Open call without a journal source: the model is
@@ -60,8 +66,15 @@ type Model struct {
 	// cursor is the applied journal watermark: the seq of the last fact
 	// folded into the collections. Atomic so live consumers can read the
 	// pump's progress (JournalCursor) while it advances.
-	cursor  atomic.Int64
-	watcher *metaengine.Watcher[TaskRow]
+	cursor atomic.Int64
+	// durable reports whether the cursor checkpoints to the queue db's
+	// watermarks table after every applied batch (WithDurableCursor): a
+	// restarted model resumes from the checkpoint instead of replaying
+	// the journal from zero. Off (default) the cursor is in-process only
+	// — the safe shape for tests and short-lived models over a store
+	// whose watermark other models may own.
+	durable  bool
+	watcher  *metaengine.Watcher[TaskRow]
 }
 
 // Option configures the Model.
@@ -81,6 +94,20 @@ func WithBatch(n int) Option {
 // The default adapts the journal source's Get.
 func WithRowSource(rs RowSource) Option {
 	return func(m *Model) { m.rows = rs }
+}
+
+// WithDurableCursor checkpoints the projection cursor into the queue
+// db's watermarks table after every applied batch and resumes from it on
+// open: a restarted model folds only the facts appended since its last
+// checkpoint instead of replaying the whole journal (the 9.5k-fact
+// restart replay the adoption review measured). An empty projection
+// under a nonzero checkpoint replays from zero once, so the documented
+// "delete the file to force a replay" escape hatch keeps working.
+// Checkpoint writes are monotonic upserts; a failed write is logged and
+// retried on the next batch — a missed checkpoint only costs replay on
+// the next restart, never a skipped fact.
+func WithDurableCursor() Option {
+	return func(m *Model) { m.durable = true }
 }
 
 // Open creates the Model over its own sqlite database file (the projection
@@ -117,10 +144,50 @@ func Open(path string, src queue.Store, opts ...Option) (*Model, error) {
 		opt(m)
 	}
 
+	if m.durable {
+		if err := m.loadCursor(context.Background()); err != nil {
+			_ = m.store.Close()
+
+			return nil, fmt.Errorf("readmodel: load cursor: %w", err)
+		}
+	}
+
 	m.watcher = metaengine.NewWatcher[TaskRow](m.store, tasksCollection)
 	m.watcher.WithReplay(DefaultReplayCapacity)
 
 	return m, nil
+}
+
+// loadCursor resumes from the persisted checkpoint (WithDurableCursor).
+// A nonzero checkpoint over an EMPTY projection means the projection
+// file was deleted (or predates any task fact): replay from zero once so
+// the delete-to-replay escape hatch keeps working — the folds are
+// idempotent upserts, so the replay converges and the next checkpoint
+// re-seals the cursor.
+func (m *Model) loadCursor(ctx context.Context) error {
+	seq, exists, err := m.src.Watermark(ctx, CursorConsumer)
+	if err != nil {
+		return err
+	}
+
+	if !exists || seq == 0 {
+		return nil
+	}
+
+	rows, err := metaengine.NewReader[TaskRow](m.store, tasksCollection).Count(ctx)
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		slog.Info("readmodel: empty projection under a nonzero cursor — replaying from zero", "checkpoint", seq)
+
+		return nil
+	}
+
+	m.cursor.Store(seq)
+
+	return nil
 }
 
 // Close releases the watcher and the projection database. The journal
@@ -136,9 +203,10 @@ func (m *Model) Close() error {
 }
 
 // Run pumps the journal until ctx is cancelled: catch up to the head, then
-// tail for new facts. The cursor is in-process — a restarted model replays
-// the journal from the beginning, which the folds converge on (every fold
-// is an upsert keyed by task id).
+// tail for new facts. Without WithDurableCursor the cursor is in-process —
+// a restarted model replays the journal from the beginning, which the
+// folds converge on (every fold is an upsert keyed by task id); with it,
+// the model resumes from the persisted checkpoint instead.
 func (m *Model) Run(ctx context.Context) error {
 	if err := m.CatchUp(ctx); err != nil {
 		return err
@@ -193,7 +261,18 @@ func (m *Model) catchUpOnce(ctx context.Context) (int, error) {
 	}
 
 	if len(facts) > 0 {
-		m.cursor.Store(facts[len(facts)-1].Seq)
+		last := facts[len(facts)-1].Seq
+		m.cursor.Store(last)
+
+		// Checkpoint after the batch's last applied fact. Unlike the
+		// sweeper watermarks (where a missed fact is a missed dispatch),
+		// a failed checkpoint here only costs replay on the next restart:
+		// log and let the next batch retry the monotonic upsert.
+		if m.durable {
+			if err := m.src.SaveWatermark(ctx, CursorConsumer, last); err != nil {
+				slog.Warn("readmodel: checkpoint cursor failed", "seq", last, "err", err)
+			}
+		}
 	}
 
 	return len(facts), nil

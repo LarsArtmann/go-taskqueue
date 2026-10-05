@@ -64,7 +64,7 @@ func (s *Server) journalHead(ctx context.Context) (int64, error) {
 // model's applied journal watermark, so SSE event ids keep their
 // Last-Event-ID meaning. Run owns the model's lifetime.
 func (s *Server) runReadModel(ctx context.Context) error {
-	m, err := readmodel.Open(s.cfg.ReadModelPath, s.store)
+	m, err := readmodel.Open(s.cfg.ReadModelPath, s.store, readmodel.WithDurableCursor())
 	if err != nil {
 		return fmt.Errorf("open read model: %w", err)
 	}

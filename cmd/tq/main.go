@@ -1738,7 +1738,7 @@ func cmdStats(args []string) error {
 	var byProject map[string]map[string]int
 
 	if *readModel {
-		m, err := readmodel.Open(readmodel.PathFor(dbPath), store)
+		m, err := readmodel.Open(readmodel.PathFor(dbPath), store, readmodel.WithDurableCursor())
 		if err != nil {
 			return err
 		}

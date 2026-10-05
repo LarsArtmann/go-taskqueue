@@ -62,7 +62,7 @@ func New(store queue.Store, token string, log *slog.Logger) (*Server, error) {
 // table. The enqueue side is untouched — the model is read-only over the
 // store. ListenAndServe owns the model's pump and lifetime.
 func (s *Server) UseReadModel(path string) error {
-	m, err := readmodel.Open(path, s.store)
+	m, err := readmodel.Open(path, s.store, readmodel.WithDurableCursor())
 	if err != nil {
 		return fmt.Errorf("httpapi: open read model: %w", err)
 	}
