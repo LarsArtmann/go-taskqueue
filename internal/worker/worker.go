@@ -646,6 +646,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// the parsed reset time (± small jitter so many parked tasks do
 		// not reclaim in lockstep and stampede the freshly reset quota).
 		delay := rateLimitDelay(rl.RetryAfter)
+
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
 			return p.store.Requeue(c, t.ID, claim, rl.Error(), delay, rl.ResumeCloseout, queue.RequeueClassRateLimit)
 		}); err != nil {
@@ -677,7 +678,15 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// the answer never comes). No jitter: the expiry is the answer
 		// deadline, not a quota window.
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.Requeue(c, t.ID, claim, questionErr.Error(), questionErr.RetryAfter, questionErr.ResumeCloseout, queue.RequeueClassQuestion)
+			return p.store.Requeue(
+				c,
+				t.ID,
+				claim,
+				questionErr.Error(),
+				questionErr.RetryAfter,
+				questionErr.ResumeCloseout,
+				queue.RequeueClassQuestion,
+			)
 		}); err != nil {
 			p.log.Error("question requeue failed", "task", t.ID, "err", err)
 		} else {

@@ -137,8 +137,8 @@ Session commits: 6 attributed (e62581a0, c306269a, cd451220, 145cf459,
    have buried a REAL auto-upgrade bug. Caught by choosing fixture
    honesty, not by process.
 9. **golangci-lint cache clean raced a parallel lint run twice**
-    (/mnt/buildcache unlinkat ENOTEMPTY) — second attempt was skipped
-    rather than solved (a per-user cache dir would end the class).
+   (/mnt/buildcache unlinkat ENOTEMPTY) — second attempt was skipped
+   rather than solved (a per-user cache dir would end the class).
 
 ## e) What we should improve (proposals, not yet done)
 

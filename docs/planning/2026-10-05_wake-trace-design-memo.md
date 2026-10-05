@@ -6,13 +6,13 @@
 
 ## 1. The two options
 
-| | **A: new fact type `task.wake`** | **B: evidence key on the paced skip** |
-| - | --- | --- |
-| Meaning | "a trigger fired and was merged/suppressed" is a DOMAIN EVENT in its own right | the skip is EVIDENCE attached to some other fact — but no other fact exists on the skip path |
-| Write path | `store.AppendFact` (the session-fact seam, `internal/session/session.go:125` — synthetic task id, no Store-surface change) | NONE available: the skip produces no store call today; inventing a carrier fact for its evidence is option A with extra steps |
-| Consumer cost | each consumer's fact switch gains a case (or ignores it, as the bridge's deliberate subset does) | consumers must parse `task.requeued` details they currently classify — risk of misclassifying skips as retries |
-| Audit query | `tq facts -type task.wake` / CountFacts pushdown, symmetric with every other question | hidden inside free-text evidence; no pushdown |
-| Cost | one const + one case per consuming surface | looks cheaper, buys a lies-in-its-channel fact |
+|               | **A: new fact type `task.wake`**                                                                                           | **B: evidence key on the paced skip**                                                                                         |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Meaning       | "a trigger fired and was merged/suppressed" is a DOMAIN EVENT in its own right                                             | the skip is EVIDENCE attached to some other fact — but no other fact exists on the skip path                                  |
+| Write path    | `store.AppendFact` (the session-fact seam, `internal/session/session.go:125` — synthetic task id, no Store-surface change) | NONE available: the skip produces no store call today; inventing a carrier fact for its evidence is option A with extra steps |
+| Consumer cost | each consumer's fact switch gains a case (or ignores it, as the bridge's deliberate subset does)                           | consumers must parse `task.requeued` details they currently classify — risk of misclassifying skips as retries                |
+| Audit query   | `tq facts -type task.wake` / CountFacts pushdown, symmetric with every other question                                      | hidden inside free-text evidence; no pushdown                                                                                 |
+| Cost          | one const + one case per consuming surface                                                                                 | looks cheaper, buys a lies-in-its-channel fact                                                                                |
 
 **Recommendation: A.** The journal IS tq's domain-event log (ADR-0001 facts-first); a suppressed trigger is a fact about the world, not a footnote. Paperclip's `coalesced_count` is the same shape rendered as a row. Option B has no honest carrier.
 
@@ -41,17 +41,17 @@ Semantics: ONE `task.wake` fact per repo per tick (deduped, seq-derived idempote
 
 ## 3. Consumer ripple inventory (pinned-test checklist, M3.3)
 
-| Surface | File | What M4 must add | Pinned tests to update |
-| - | ---- | ---------------- | ---------------------- |
-| journal consts | `internal/journal/journal.go` | `Wake` const + doc comment | fact-count tables in `internal/journal` tests |
-| harvest write | `internal/harvest/harvest.go` (occupied-skip path in `runRepo`) | AppendFact on skip | `TestSelfManagingLoop` family (known-flaky — re-run) |
-| journalaudit | `cmd/tq/journalaudit.go` (10-case switch) | wake count line in the requeues block | `journalaudit_test.go` fixtures |
-| webui | `internal/webui/payload.go` retryTrail switch EXCLUDES wake deliberately (a wake is not a retry); badge = CountFacts-based lamp in `StatusCards` | wake lamp + test | `webui_test.go` segment pins |
-| readmodel | `internal/readmodel/events.go` (9-case projection) | `nWake` counter + column + parity | readmodel parity suite (both engines) |
-| papdashboard | `internal/bridge/papdashboard/papdashboard.go` forward switch — DELIBERATE subset (nolint:exhaustive) | NO case needed (not owner-actionable) | none |
-| conform | `internal/queue/companion/conform` | ONLY if Store surface changes — it does not (AppendFact exists) | none |
-| webui facts feed | `internal/webui` journal browser | renders unknown types generically (verify) | snapshot if generic rendering changes |
-| DOMAIN_LANGUAGE | `docs/DOMAIN_LANGUAGE.md` | "wake" entry (M4.7) | `check-doc-refs` |
+| Surface          | File                                                                                                                                             | What M4 must add                                                | Pinned tests to update                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- | ---------------------------------------------------- |
+| journal consts   | `internal/journal/journal.go`                                                                                                                    | `Wake` const + doc comment                                      | fact-count tables in `internal/journal` tests        |
+| harvest write    | `internal/harvest/harvest.go` (occupied-skip path in `runRepo`)                                                                                  | AppendFact on skip                                              | `TestSelfManagingLoop` family (known-flaky — re-run) |
+| journalaudit     | `cmd/tq/journalaudit.go` (10-case switch)                                                                                                        | wake count line in the requeues block                           | `journalaudit_test.go` fixtures                      |
+| webui            | `internal/webui/payload.go` retryTrail switch EXCLUDES wake deliberately (a wake is not a retry); badge = CountFacts-based lamp in `StatusCards` | wake lamp + test                                                | `webui_test.go` segment pins                         |
+| readmodel        | `internal/readmodel/events.go` (9-case projection)                                                                                               | `nWake` counter + column + parity                               | readmodel parity suite (both engines)                |
+| papdashboard     | `internal/bridge/papdashboard/papdashboard.go` forward switch — DELIBERATE subset (nolint:exhaustive)                                            | NO case needed (not owner-actionable)                           | none                                                 |
+| conform          | `internal/queue/companion/conform`                                                                                                               | ONLY if Store surface changes — it does not (AppendFact exists) | none                                                 |
+| webui facts feed | `internal/webui` journal browser                                                                                                                 | renders unknown types generically (verify)                      | snapshot if generic rendering changes                |
+| DOMAIN_LANGUAGE  | `docs/DOMAIN_LANGUAGE.md`                                                                                                                        | "wake" entry (M4.7)                                             | `check-doc-refs`                                     |
 
 ## 4. What the ruling decides (§g-2)
 

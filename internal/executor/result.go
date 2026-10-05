@@ -92,6 +92,11 @@ type FailureEvidence struct {
 	// queryable after the evidence tail truncates and the sidecar logs
 	// rotate. Empty for non-verify failures.
 	VerifyStage string `json:"verify_stage,omitempty"`
+	// Class is the retry taxonomy (FailureClass) stamped by the WORKER
+	// after the run: only the worker sees the final error wrapper chain
+	// (a verify gate wraps a plain failure and changes its class). Empty
+	// on legacy facts; readers treat empty as "unclassified".
+	Class string `json:"class,omitempty"`
 }
 
 // EvidenceTailBytes is the ONE output-tail size every executor pins into

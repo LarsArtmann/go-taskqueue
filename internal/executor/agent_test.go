@@ -587,11 +587,19 @@ func TestReresolveVerifyClaimsNewGateAfterFlip(t *testing.T) {
 	ctx := context.Background()
 
 	repo := t.TempDir()
-	if err := os.WriteFile(filepath.Join(repo, "go.mod"), []byte("module demo.example.com/flip\n\ngo 1.26\n"), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repo, "go.mod"),
+		[]byte("module demo.example.com/flip\n\ngo 1.26\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := os.WriteFile(filepath.Join(repo, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644); err != nil {
+	if err := os.WriteFile(
+		filepath.Join(repo, "main.go"),
+		[]byte("package main\n\nfunc main() {}\n"),
+		0o644,
+	); err != nil {
 		t.Fatal(err)
 	}
 
@@ -628,13 +636,17 @@ func TestReresolveVerifyClaimsNewGateAfterFlip(t *testing.T) {
 	}
 
 	stale := &AgentExecutor{Bin: makeStubAgent(t, "true")}
+
 	err = stale.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: oldPin}))
 	if err == nil || !strings.Contains(err.Error(), `verify failed ("exit 61")`) {
 		t.Fatalf("without reresolve the enqueue-time pin must fire, got %v", err)
 	}
 
 	reresolved := &AgentExecutor{Bin: makeStubAgent(t, "true"), ReresolveVerify: true}
-	if err := reresolved.Execute(ctx, agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: oldPin})); err != nil {
+	if err := reresolved.Execute(
+		ctx,
+		agentTaskT(t, AgentPayload{Repo: repo, Prompt: "hi", Verify: oldPin}),
+	); err != nil {
 		t.Fatalf("with reresolve the claim must gate on the repo's new auto-detected gate, got %v", err)
 	}
 }

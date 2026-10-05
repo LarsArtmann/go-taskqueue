@@ -10,39 +10,50 @@
 ## a) FULLY DONE
 
 ### 1. M1.1 + M1.2 — journalaudit budget hint + fixture (this session's hands)
+
 `cmdJournalAudit` gained the `budget` hint block beside the rate-limit hint (text path): "budget requeues park paid turns until the daily cap or budget-cmd window resets — no attempt burn, outside the env-streak breaker; the pool LOOKS idle on purpose". JSON path already carried class counts via `Requeues.ByClass`. `TestRequeueSummarySurfacesClasses` grew a `class:budget` fixture row (total 4→5) and `TestJournalAuditBudgetHintRenders` pins class line + hint text through the real render path (`captureStdout` + scratch store + `store.Requeue(..., RequeueClassBudget)`). Gate: `scripts/test-cmd-tq.sh` green. Daemon-swept into 3ff0877e.
 
 ### 2. M1.3 + M1.4 — webui nowband `budget N` lamp (this session's hands)
+
 - `DashboardData.BudgetParked` + `budgetParkedCount(ctx, store, now)` in `internal/webui/render.go`: pending-parked set ∩ latest `task.requeued` class inside a 24h window (`FactsSince` + one `List`, latest-fact-per-task wins). `budgetParkedWindow` const documents the honest scope (badge says "latest requeue in the last 24h").
 - `fragments.templ` StatusCards: `card-budget-parked` segment, rendered only when > 0, title explains "idle on purpose, no attempt burn"; templ regenerated from repo root. No CSS rebuild needed (marker-class pattern, parity with `card-parked`; the reserved `.tq-nowband-meta .card-budget` rule is the enqueue meter, untouched).
 - `TestBudgetParkedSegmentRendersFromSnapshot`: budget requeue lights the lamp ("budget 1"), a rate-limit-parked second task does NOT feed it (1/2 split), cancelling the budget-parked task darkens it. Webui module gates green; daemon-swept into 0e4519f9.
 - Division note: the 00-33 window shipped the DETAIL-page badge (`parkedOnBudget`); this lamp is the one-glance nowband surface — complementary, both green in today's battery.
 
 ### 3. M8.2 + M8.3 — `scripts/root-gate.sh` + AGENTS.md wiring
+
 Root-module gate (build+vet+test -race) with ONE retry keyed on known-flaky signatures (`TestExactlyOnceUnderConcurrency`, `TestSelfManagingLoop`) and a `FLAKE-RETRY` marker on second-run greens; replaced the inline export line in AGENTS.md's Commands block (net bytes NEGATIVE — size-guard friendly). `bash -n` clean; referenced-path gates green.
 
 ### 4. M8.1 TRIAGE — red master root-caused and the real one FIXED
+
 First `ci-local.sh` attempt correctly refused at check-ci: the plan-doc push (bbb5daab) went out with a red CI run. `gh run view 37238393185`:
+
 - `TestSelfManagingLoop` (harvest) — known-flaky class (AGENTS.md Known Issues), not attributed.
 - `TestProbeClassifiesSchemaGenerations` (sqlitev4/migration) **Windows-only**: `TempDir RemoveAll cleanup: unlinkat fresh.db — file in use`. Root cause: the test DISCARDED the `sqlitev4.Open(fresh)` handle; the open file lock defeats Windows cleanup. Fixed: capture + explicit `Close()` before the probes (comment names the CI red). Module tests + `GOOS=windows go vet` green. Landed via daemon sweep; the red's true confirmation is the next remote CI run (still owed — see §b2).
 
 ### 5. M5.1–M5.3 — `docs/research/2026-10-05_paperclip-lessons.md`, source-verified
+
 Three citations opened at source (`gh api repos/paperclipai/paperclip/contents/…`) BEFORE writing — closing the 03-11 report's §c1 self-critique (subagent-trusted claims):
+
 1. `doc/plans/2026-03-14-budget-policies-and-enforcement.md` — verified 3-point enforcement (ingestion evaluation + preflight at FIVE entry points + active-run graceful cancel), soft-80/hard-100, company/agent/project scopes, billed_cents-first.
 2. `packages/db/src/schema/agent_wakeup_requests.ts` — verified wake model as durable rows (`coalesced_count`, source/trigger/status lifecycle, partial-unique idempotency keys).
 3. `server/src/services/run-failure-diagnostics.ts` — verified structured redaction-aware failure context.
-Note carries the lesson table (8 rows: adopted/parked/rejected with reasons), the two adjudicated rejections (retry-exhaustion event = `task.dead-lettered` exists; cancel-live-runs = park-until-midnight contract), and the verification trail. CHANGELOG budget entry cross-links the note (M5.3 + M25.3 in one edit). `check-doc-refs` green.
+   Note carries the lesson table (8 rows: adopted/parked/rejected with reasons), the two adjudicated rejections (retry-exhaustion event = `task.dead-lettered` exists; cancel-live-runs = park-until-midnight contract), and the verification trail. CHANGELOG budget entry cross-links the note (M5.3 + M25.3 in one edit). `check-doc-refs` green.
 
 ### 6. M3.1–M3.4 — `docs/planning/2026-10-05_wake-trace-design-memo.md` (ruling input)
+
 Fact-type vs evidence-key tradeoff table (option A wins: the skip has NO honest carrier fact; `store.AppendFact` session-seam precedent at `internal/session/session.go:125` means NO Store-surface change → no conform ripple); draft `task.wake` const + `WakeDetail` struct (seq-derived idempotency, append-only coalescing); 7-surface consumer-ripple inventory with the pinned-test checklist (readmodel 9-case switch, journalaudit 10-case, webui retryTrail deliberately EXCLUDES wake, papdashboard deliberate-subset needs nothing); §g-2 framing including the `task.` vs `harvest.` namespace question (session facts use `session.opened`, not `task.*` — precedent cuts toward `harvest.wake`). TODO_LIST row converted to gate-legal BLOCKED syntax pointing at the memo. `check-todo-list` + `check-doc-refs` green. (Independently verified-not-duplicated by the 07-24 window.)
 
 ### 7. M19.1 DIAGNOSIS — the 19/20 flake root-caused (beyond "load-flaky")
+
 Robustified `TestExactlyOnceUnderConcurrency` (10s→60s drain wait + status-map in the failure message), then RAN it: failed at 60.1s with `19/20 completed (statuses: map[completed:19 running:1])` after `complete failed … SQLITE_BUSY (5)` / `claim failed … database is locked (517)`. Root cause: `worker.go:492-494` logs a failed terminal `Complete` and returns — the paid turn's outcome is ORPHANED (task stays Running until lease expiry reclaim → re-run → double spend in production). The 10s deadline was never the disease; it was the symptom's timer. Fix designed (bounded transient retry on terminal writes, `retry.Do` with busy/locked `IsRetryable`, precedent `execWithTransientRetry` at `internal/executor/agent.go:807`, go-retry already an indirect dep of the worker module) — NOT yet landed (§b1).
 
 ### 8. Ground-truth budget-gate probes (no code changed)
+
 `/tmp` fixture runs against the real binary: cap=2 → one enqueue, claim allowed, completes. cap=1 → the task whose OWN enqueue spent the cap is parked until midnight (`spent >= cap` at claim time). So `--daily-budget N` completes N−1 and parks the Nth authorized item — shipped-conservative semantics, documented here, NOT changed (owner policy, §g1).
 
 ### 9. Concurrent-agent coordination (work NOT duplicated)
+
 Verified-in-tree and built on: M1.5/M1.6 papdashboard `trackBudgetBlocked` (their fields + dispatch case appeared mid-edit; I waited, reviewed the landed function, ran their test — green), M7 `WithCmdCache`, M2.3 `budget.NextMidnight` wiring, and the overnight 07-24 M2-closure window (their e2e cites my memo + root-gate.sh as foreign landed work — cross-acknowledged both ways).
 
 ## b) PARTIALLY DONE

@@ -6,7 +6,7 @@ require (
 	github.com/LarsArtmann/go-crush-data v0.4.0 // indirect
 	github.com/Oudwins/tailwind-merge-go v0.2.3 // indirect
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
-	github.com/andybalholm/brotli v1.2.5 // indirect
+	github.com/andybalholm/brotli v1.2.6 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cli/browser v1.3.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
@@ -46,7 +46,7 @@ require (
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	golang.org/x/tools v0.50.0 // indirect
+	golang.org/x/tools v0.51.0 // indirect
 	modernc.org/libc v1.77.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
@@ -54,7 +54,7 @@ require (
 )
 
 require (
-	github.com/a-h/templ v0.3.1020
+	github.com/a-h/templ v0.3.1070
 	github.com/larsartmann/go-datastar/static v0.6.1
 	github.com/larsartmann/go-health v0.4.1
 	github.com/larsartmann/go-health-dashboard v0.10.2

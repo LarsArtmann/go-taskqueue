@@ -341,7 +341,10 @@ func TestParkedByProjection(t *testing.T) {
 
 	// Parked with a tiny window: the claim gate honors not_before, so the
 	// test sleeps past it before re-claiming.
-	f.must("budget requeue", f.store.Requeue(ctx, tk.ID, claim, "daily cap spent", time.Millisecond, false, queue.RequeueClassBudget))
+	f.must(
+		"budget requeue",
+		f.store.Requeue(ctx, tk.ID, claim, "daily cap spent", time.Millisecond, false, queue.RequeueClassBudget),
+	)
 	f.resync()
 
 	pending := string(task.Pending)
@@ -363,7 +366,10 @@ func TestParkedByProjection(t *testing.T) {
 	time.Sleep(5 * time.Millisecond)
 
 	_, claim = f.claim()
-	f.must("rate-limit requeue", f.store.Requeue(ctx, tk.ID, claim, "provider 429", time.Millisecond, false, queue.RequeueClassRateLimit))
+	f.must(
+		"rate-limit requeue",
+		f.store.Requeue(ctx, tk.ID, claim, "provider 429", time.Millisecond, false, queue.RequeueClassRateLimit),
+	)
 	f.resync()
 
 	rows, err = f.model.Tasks(ctx, readmodel.TaskFilter{Status: new(pending)})

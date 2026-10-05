@@ -41,7 +41,8 @@ fi
 export TQ_DB="$TMP/tasks.db"
 SERVE_LOG="$TMP/serve.log"
 
-PORT="$(python3 - <<'PY'
+PORT="$(
+	python3 - <<'PY'
 import socket
 with socket.socket() as s:
     s.bind(("127.0.0.1", 0))

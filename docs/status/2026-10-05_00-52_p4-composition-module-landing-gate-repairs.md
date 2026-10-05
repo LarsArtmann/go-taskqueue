@@ -111,12 +111,12 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
       (daemon-rebase orphans).
     - `check-ci`: master's latest completed CI run is the pre-window red
       one (causes fixed locally, see a12).
-    All other ~90 steps green including cleanroom, consumer-install,
-    gosec, gofmt, facade parity, smokes-up-to-that-point, module loop,
-    cmd/tq gate.
+      All other ~90 steps green including cleanroom, consumer-install,
+      gosec, gofmt, facade parity, smokes-up-to-that-point, module loop,
+      cmd/tq gate.
 14. **`nix flake check`** not run this session (nix build + vendor-hash
-    + version-sync derivation all green; flake check adds the remaining
-    checks incl. webui-css and treefmt — deferred with the matrix).
+    - version-sync derivation all green; flake check adds the remaining
+      checks incl. webui-css and treefmt — deferred with the matrix).
 
 ## c) Not started
 
@@ -195,22 +195,22 @@ nix-buildable tree. P0–P3 were already landed and green at resume.
     fact reads, composition root) with citations.
 11. **P5**: CHANGELOG `[Unreleased]` entry for the whole endgame wave.
 12. **P5**: TODO_LIST: close ADR-0019 S1/S2/S3 rows (stale), S4 row;
-     keep dogfood-cutover row owner-blocked.
+    keep dogfood-cutover row owner-blocked.
 13. **P5**: LOC delta (tokei) + art-dupl `-t 4` recount vs the
-     2026-09-23 baseline — the deletion dividend.
+    2026-09-23 baseline — the deletion dividend.
 14. **Tag wave** (owner-gated, see §g): root v0.3.1 + internal/
-     {queue/sqlite,queue/sqlitev4,queue/postgresv4,queue/companion,
-     readmodel,composition} tags; proxy checks per docs/release/.
+    {queue/sqlite,queue/sqlitev4,queue/postgresv4,queue/companion,
+    readmodel,composition} tags; proxy checks per docs/release/.
 15. After the wave: delete the check-go-mods.sh pending-tag block
-     (self-deleting by design).
+    (self-deleting by design).
 16. After the wave: `check-facade-parity.sh` re-pin to real tags.
 17. Dogfood deploy runbook note (P1 makes the restart transparent;
-     manual replay = documented fallback; `<db>.legacy-*.bak` hygiene:
-     prune after a green week).
+    manual replay = documented fallback; `<db>.legacy-*.bak` hygiene:
+    prune after a green week).
 18. Post-deploy `tq doctor` verification (auto-upgrade log line +
-     backup present + head seq unchanged).
+    backup present + head seq unchanged).
 19. Upstream ratification memo M4 (owner-gated TODO row): enqueued-fact
-     snapshot detail + CountFacts/FactsSince pushdown.
+    snapshot detail + CountFacts/FactsSince pushdown.
 20. readmodel thin-enqueue side channel (RowSource) dies when upstream
     grows the enqueued detail — track via M4.
 21. system.Lookup/metaengine query declarations for readmodel

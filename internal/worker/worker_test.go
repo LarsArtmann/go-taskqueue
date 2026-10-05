@@ -1503,7 +1503,11 @@ func TestIsTransientStoreBusy(t *testing.T) {
 		{"base busy", errors.New("database is locked (5) (SQLITE_BUSY)"), true},
 		{"busy snapshot", errors.New("(SQLITE_BUSY_SNAPSHOT): database is locked (517)"), true},
 		{"english only", errors.New("database is locked"), true},
-		{"wrapped busy", fmt.Errorf("complete task: %w", errors.New("The database file is locked (SQLITE_BUSY)")), true},
+		{
+			"wrapped busy",
+			fmt.Errorf("complete task: %w", errors.New("The database file is locked (SQLITE_BUSY)")),
+			true,
+		},
 		{"constraint", errors.New("constraint failed: UNIQUE constraint failed: tasks.id (2067)"), false},
 		{"connection closed", errors.New("sql: database is closed"), false},
 		{"context cancelled", context.Canceled, false},
@@ -1527,6 +1531,7 @@ func TestPersistOutcomeRetriesTransientBusy(t *testing.T) {
 	pool := New(nil, Config{}, quietLog())
 
 	attempts := 0
+
 	err := pool.persistOutcome(context.Background(), task.ID("t1"), func(context.Context) error {
 		attempts++
 		if attempts == 1 {
@@ -1535,7 +1540,6 @@ func TestPersistOutcomeRetriesTransientBusy(t *testing.T) {
 
 		return nil
 	})
-
 	if err != nil {
 		t.Fatalf("persistOutcome: %v", err)
 	}
@@ -1551,12 +1555,12 @@ func TestPersistOutcomeDoesNotRetryPermanentErrors(t *testing.T) {
 	pool := New(nil, Config{}, quietLog())
 
 	attempts := 0
+
 	err := pool.persistOutcome(context.Background(), task.ID("t1"), func(context.Context) error {
 		attempts++
 
 		return errors.New("constraint failed: UNIQUE constraint failed: tasks.id (2067)")
 	})
-
 	if err == nil {
 		t.Fatal("persistOutcome: want the non-busy error passed through")
 	}
@@ -1575,12 +1579,12 @@ func TestPersistOutcomeRespectsCancelledContext(t *testing.T) {
 	cancel()
 
 	attempts := 0
+
 	err := pool.persistOutcome(ctx, task.ID("t1"), func(context.Context) error {
 		attempts++
 
 		return errors.New("database is locked (5) (SQLITE_BUSY)")
 	})
-
 	if err == nil {
 		t.Fatal("persistOutcome: want an error on a cancelled context")
 	}

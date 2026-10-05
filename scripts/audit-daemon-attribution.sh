@@ -163,7 +163,10 @@ run_self_test() {
 	}
 
 	local out rc
-	out=$(cd "$repo" && "$SELF"; echo "rc=$?")
+	out=$(
+		cd "$repo" && "$SELF"
+		echo "rc=$?"
+	)
 	rc=${out##*rc=}
 	out=${out%rc=*}
 	check_eq "default run exit (one unattributed shipping sweep)" "1" "$rc"
@@ -177,7 +180,10 @@ run_self_test() {
 	check_eq "manual chore outside daemon heuristic (not scanned)" "0" \
 		"$(printf '%s\n' "$out" | grep -c "FAIL .* manual tidy")"
 
-	out=$(cd "$repo" && "$SELF" --json 2>/dev/null; echo "rc=$?")
+	out=$(
+		cd "$repo" && "$SELF" --json 2>/dev/null
+		echo "rc=$?"
+	)
 	rc=${out##*rc=}
 	out=${out%rc=*}
 	check_eq "json run exit" "1" "$rc"
@@ -188,7 +194,10 @@ run_self_test() {
 	check_eq "report channel in json" "1" \
 		"$(printf '%s\n' "$out" | grep "$sha_att" | grep -cF "\"task_ids\":[\"$id_report\"]")"
 
-	out=$(cd "$repo" && "$SELF" --from "$(git -C "$repo" rev-parse HEAD~2)"; echo "rc=$?")
+	out=$(
+		cd "$repo" && "$SELF" --from "$(git -C "$repo" rev-parse HEAD~2)"
+		echo "rc=$?"
+	)
 	rc=${out##*rc=}
 	out=${out%rc=*}
 	check_eq "range --from exit (no daemon sweeps in range)" "0" "$rc"
@@ -196,7 +205,10 @@ run_self_test() {
 		"summary: scanned=0 attributed=0 report-only=0 unattributed-shipping=0" \
 		"$(printf '%s\n' "$out" | grep '^summary:')"
 
-	out=$(cd "$repo" && "$SELF" --all-chore; echo "rc=$?")
+	out=$(
+		cd "$repo" && "$SELF" --all-chore
+		echo "rc=$?"
+	)
 	rc=${out##*rc=}
 	out=${out%rc=*}
 	check_eq "all-chore summary (manual chore joins the audit)" \

@@ -185,16 +185,16 @@ work was read, judged, built on, never reverted.
    task (M11-adjacent).
 2. **The badge is detail-page-only** — the dashboard TABLE row cannot
    show it without per-row fact reads (N+1). Either accept (detail page
-   + audit + alert cover the operator) or design a parked-class column
-   fed by the same projection M11 builds.
+   - audit + alert cover the operator) or design a parked-class column
+     fed by the same projection M11 builds.
 3. **papdashboard blocked-alert resolution is day-rollover-only** — if a
    budget-cmd pool unblocks mid-day, the alert stays open until midnight.
    Resolving on the first COMPLETED fact after a blocked day would be
    tighter; left out to keep the shape identical to `trackBudget`'s.
 4. **Append-then-edit sequencing**: my own `cat >>` changed mtime under
    my subsequent `edit` calls. Use the python-heredoc replace for append
-   + import-update in ONE pass next time (the repo's documented hazard,
-   re-learned the hard way).
+   - import-update in ONE pass next time (the repo's documented hazard,
+     re-learned the hard way).
 5. **Plan-vs-fleet coordination**: another agent is executing the SAME
    plan (root-gate.sh landed mid-session). TODO_LIST/plan-file row
    claiming before starting a task would save duplicated research; the

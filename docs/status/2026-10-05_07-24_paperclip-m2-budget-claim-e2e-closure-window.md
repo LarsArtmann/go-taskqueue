@@ -15,6 +15,7 @@ never pushes without owner authorization.
 ## a) FULLY DONE
 
 ### 1. Status-index debt paid (00-33 report + a foreign orphan)
+
 - My `2026-10-05_00-33_…` report was still UNINDEXED — inserted at the top
   of the data rows with a full scope row.
 - The gate then flagged a SECOND orphan: `2026-10-04_02-36_platform-
@@ -28,14 +29,17 @@ never pushes without owner authorization.
   rc=0.
 
 ### 2. §b2 — vendor + FULL root battery, twice
+
 - `go mod vendor` no-op (rc=0; no new external deps).
 - Root battery (`GOEXPERIMENT=jsonv2`, build + vet + test -race) rc=0
   **twice**: once before the e2e landed, once after (second run: 17 ok
   packages, `internal/e2e` 12.123s uncached, zero FAIL/panic).
 
 ### 3. M2.1 + M2.2 — claim-gate budget e2e LANDED
+
 `internal/e2e/budget_claim_test.go` (`TestBudgetClaimGateParksOverCapSubprocess`,
 unix-gated, t.Parallel) pins the money lesson through the REAL CLI:
+
 - two single-item REPOS harvested uncapped → spent=2 enqueued-today
   (`Guard.SpentToday` counts `journal.Enqueued` facts since local
   midnight — verified in source before typing the assertions);
@@ -48,15 +52,17 @@ unix-gated, t.Parallel) pins the money lesson through the REAL CLI:
   `NotBefore` is within ±2min of `budget.NextMidnight(time.Now())` — the
   DST-correct midnight (M2.3) proven END-TO-END through the real binary,
   not just unit tables.
-Gates: targeted run PASS, full e2e package 6.146s green, gofmt clean,
-root battery green (above). Daemon swept the file into git.
+  Gates: targeted run PASS, full e2e package 6.146s green, gofmt clean,
+  root battery green (above). Daemon swept the file into git.
 
 ### 4. Report closure + honest bookkeeping
+
 - Closure section appended to the 00-33 report (§b items → CLOSED with
   receipts, including the two-repo lesson below); index row re-annotated
   from "OWES" to "CLOSED same day"; doc gates re-run green.
 
 ### 5. M3 wake-trace DESIGN — verified DONE by a concurrent agent
+
 The resume context claimed M3 was next-work-if-instructed; a TODO_LIST
 grep showed `docs/planning/2026-10-05_wake-trace-design-memo.md` already
 landed covering M3.1–M3.4 (option A `task.wake` recommended, draft fact

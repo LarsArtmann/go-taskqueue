@@ -357,6 +357,7 @@ func TestProbeClassifiesSchemaGenerations(t *testing.T) {
 	}
 
 	fresh := filepath.Join(dir, "fresh.db")
+
 	freshStore, err := sqlitev4.Open(fresh)
 	if err != nil {
 		t.Fatalf("open fresh store: %v", err)

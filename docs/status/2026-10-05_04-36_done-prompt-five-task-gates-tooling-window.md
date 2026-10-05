@@ -5,13 +5,13 @@
 
 The five tasks:
 
-| Task | Deliverable | Close-out |
-| --- | --- | --- |
+| Task              | Deliverable                                                                | Close-out                                                                 |
+| ----------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | 000001a10423a76d… | Secrets-pass polish bundle (identity pin + growth policy + windows gating) | docs/status/2026-10-04_01-44_task-000001a10423a76db4a0aa0bea7e00000000.md |
-| 000001a108f0f46a… | `tq doctor --hygiene` smoke + `--reresolve-verify` claim-time proof | docs/status/2026-10-05_01-09_task-000001a108f0f46a8914c8a6d35d00000000.md |
-| 000001a1093141c7… | Daemon-commit attribution audit script + 4-report self-review thread | docs/status/2026-10-05_02-11_task-000001a1093141c714732bc7478d00000000.md |
-| 000001a109757cf3… | Attribution baseline gate (frozen 1076-sha baseline + ci-local wiring) | docs/status/2026-10-05_03-13_task-000001a109757cf3d260a0de4e2700000000.md |
-| 000001a109ace427… | Verify-retry wrapper (lib + verify.sh + check-verify.sh) | docs/status/2026-10-05_03-47_task-000001a109ace42721f150b2f1d800000000.md |
+| 000001a108f0f46a… | `tq doctor --hygiene` smoke + `--reresolve-verify` claim-time proof        | docs/status/2026-10-05_01-09_task-000001a108f0f46a8914c8a6d35d00000000.md |
+| 000001a1093141c7… | Daemon-commit attribution audit script + 4-report self-review thread       | docs/status/2026-10-05_02-11_task-000001a1093141c714732bc7478d00000000.md |
+| 000001a109757cf3… | Attribution baseline gate (frozen 1076-sha baseline + ci-local wiring)     | docs/status/2026-10-05_03-13_task-000001a109757cf3d260a0de4e2700000000.md |
+| 000001a109ace427… | Verify-retry wrapper (lib + verify.sh + check-verify.sh)                   | docs/status/2026-10-05_03-47_task-000001a109ace42721f150b2f1d800000000.md |
 
 ## a) FULLY DONE (verified at HEAD this pass)
 
