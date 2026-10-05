@@ -52,8 +52,12 @@ run_gate() {
 		[ -n "$row" ] || continue
 		case $row in
 		*'"class":"unattributed-shipping"'*)
-			sha=${row#\"commit\":\"}
-			sha=${sha%%\"*}
+			row_prefix='{"commit":"'
+			sha=""
+			if [[ $row == "$row_prefix"* ]]; then
+				sha=${row#"$row_prefix"}
+				sha=${sha%%\"*}
+			fi
 			if [[ ! $sha =~ ^[0-9a-f]{40}$ ]]; then
 				echo "daemon-sweep attribution: malformed audit row (sha parse rot): $row"
 				fail=1
@@ -65,8 +69,8 @@ run_gate() {
 					echo "BASELINED sweep: ${sha:0:7} (grandfathered; shrink is advisory-only)"
 				fi
 			else
-				subject=${row#*\"subject\":\"}
-				subject=${subject%%\",\"class\":*}
+				subject=${row#*'"subject":"'}
+				subject=${subject%%'",\"class":'*}
 				fail=1
 				new_hits=$((new_hits + 1))
 				echo "NEW UNATTRIBUTED SWEEP: $sha \"$subject\""
@@ -114,8 +118,8 @@ if [ "${1:-}" = "--self-test" ]; then
 	printf '# baseline fixture\n%s\n' "$old_sweep" >"$tmp/base.txt"
 	baseline="$tmp/base.txt"
 
-	local pass=0
-	local fail=0
+	pass=0
+	fail=0
 	check_eq() {
 		local label=$1 want=$2 got=$3
 		if [ "$want" = "$got" ]; then
