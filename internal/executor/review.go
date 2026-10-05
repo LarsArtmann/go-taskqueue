@@ -134,7 +134,7 @@ func (e *ReviewExecutor) Execute(ctx context.Context, t task.Task) error {
 		return Permanent(errors.New("review: payload needs non-empty repo, reviewed_task and item"))
 	}
 
-	repoDir, err := agentRepo(ctx, e.Agent, p.Repo, requireClean(AgentPayload{RequireClean: p.RequireClean}))
+	agent, repoDir, err := agentRepo(ctx, e.Agent, p.Repo, requireClean(AgentPayload{RequireClean: p.RequireClean}))
 	if err != nil {
 		return err
 	}

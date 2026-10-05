@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"os/exec"
 	"regexp"
 	"sync"
@@ -155,7 +156,8 @@ func recordRunOutcome[R any, T interface {
 // a parse miss wraps as the executor-named error (retryable — the model
 // may comply on a retry), a parsed result derives its session usage from
 // the finished output and records the run outcome for `tq show`.
-func finishParsedRun[T interface {
+func finishParsedRun[R any, T interface {
+	*R
 	setLogPath(string)
 	deriveUsage(ctx context.Context, repoDir, output string, id task.ID) derivedOutcome
 }](ctx context.Context, result T, parseErr error, kind, output, repoDir string, id task.ID) error {

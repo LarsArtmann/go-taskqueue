@@ -132,7 +132,7 @@ func (e *DLQFixExecutor) Execute(ctx context.Context, t task.Task) error {
 	// the autopsy forever on exactly the cases the feature exists for.
 	// Only an explicit true restores the guard (repos without .git skip
 	// it as usual).
-	repoDir, err := agentRepo(ctx, e.Agent, p.Repo, p.RequireClean != nil && *p.RequireClean)
+	agent, repoDir, err := agentRepo(ctx, e.Agent, p.Repo, p.RequireClean != nil && *p.RequireClean)
 	if err != nil {
 		return err
 	}

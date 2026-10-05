@@ -108,7 +108,7 @@ func (e *StatusExecutor) Execute(ctx context.Context, t task.Task) error {
 		return Permanent(errors.New("status: payload needs non-empty repo, project and completed"))
 	}
 
-	repoDir, err := agentRepo(
+	agent, repoDir, err := agentRepo(
 		ctx,
 		e.Agent,
 		payload.Repo,

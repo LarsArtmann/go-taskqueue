@@ -118,7 +118,7 @@ func (e *PrioritizeExecutor) Execute(ctx context.Context, t task.Task) error {
 		return Permanent(ErrPrioritizeSparsePayload)
 	}
 
-	repoDir, err := agentRepo(
+	agent, repoDir, err := agentRepo(
 		ctx,
 		e.Agent,
 		payload.Repo,
