@@ -62,6 +62,10 @@ type TaskRow struct {
 
 // TaskFilter selects the Tasks read. Nil fields mean "no filter"; the
 // values are the raw queue vocabulary (task.Status string, project name).
+// Deliberately a separate type from TaskList (queries.go): TaskList is the
+// metaengine query-input declaration carrier and MUST NOT dispatch reads
+// through it (typed-nil binding hazard), while TaskFilter is the
+// caller-facing filter the Model reads satisfy.
 type TaskFilter struct {
 	Status  *string
 	Project *string

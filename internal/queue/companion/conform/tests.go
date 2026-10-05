@@ -171,17 +171,11 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 		t.Fatalf("fail1: %v", err)
 	}
 
-	got, _ := s.Get(ctx, tk.ID)
-	if got.Status != task.Pending || got.Attempts != 1 || got.LastError != "boom-1" {
-		t.Fatalf("after fail1: %+v", got)
-	}
+	assertTaskState(t, ctx, s, tk.ID, task.Task{Status: task.Pending, Attempts: 1, LastError: "boom-1"}, "after fail1")
 
 	// Backoff gates the retry until not_before passes. 250ms comfortably
 	// exceeds claim-check latency on a loaded machine (1ms did not).
-	_, _, err := s.ClaimDue(ctx, "w1", time.Minute)
-	if !errors.Is(err, queue.ErrNoTaskDue) {
-		t.Fatalf("claim during backoff err = %v, want queue.ErrNoTaskDue", err)
-	}
+	assertNoTaskDue(t, ctx, s, "w1", "backoff")
 
 	time.Sleep(300 * time.Millisecond)
 
@@ -192,7 +186,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 		t.Fatalf("fail2: %v", err)
 	}
 
-	got, _ = s.Get(ctx, tk.ID)
+	got, _ := s.Get(ctx, tk.ID)
 	if got.Status != task.Dead || got.Attempts != 2 {
 		t.Fatalf("after fail2: %+v", got)
 	}
@@ -1366,17 +1360,12 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 		t.Fatalf("Requeue: %v", err)
 	}
 
-	got, _ := s.Get(ctx, tk.ID)
-	if got.Status != task.Pending || got.Attempts != 0 || got.LeaseOwner != "" {
-		t.Fatalf("after requeue: %+v (attempt must NOT be burned)", got)
-	}
+	// LastError stays the requeue reason: a preflight requeue explains
+	// itself in the projection, never burned an attempt.
+	assertTaskState(t, ctx, s, tk.ID, task.Task{Status: task.Pending, LastError: "preflight: repo dirty"}, "after requeue (attempt must NOT be burned)")
 
 	// Delay gates the next claim (not_before semantics, like Fail backoff).
-	_, _, err := s.ClaimDue(ctx, "w1",
-		time.Minute)
-	if !errors.Is(err, queue.ErrNoTaskDue) {
-		t.Fatalf("claim during requeue delay err = %v, want queue.ErrNoTaskDue", err)
-	}
+	assertNoTaskDue(t, ctx, s, "w1", "requeue delay")
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -1802,80 +1791,97 @@ func seedTasks(t *testing.T, ctx context.Context, s Store, seed []task.New) {
 	}
 }
 
-func TestListQueryPushdown(t *testing.T) {
+// startSeededStore is the shared prologue of the list-pushdown tests: a
+// fresh parallel store seeded with the given tasks.
+func startSeededStore(t *testing.T, seed []task.New) (context.Context, Store) {
+	t.Helper()
+
 	t.Parallel()
 
 	ctx, s := freshStore(t)
-
-	seed := []task.New{
-		{Project: "alpha", Type: "sh", Payload: jsontext.Value(`"echo hello"`)},
-		{Project: "beta", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","prompt":"fix the bug"}`)},
-		{Project: "gamma", Type: "http", Payload: jsontext.Value(`{"url":"https://example.com/ping"}`)},
-	}
-
 	seedTasks(t, ctx, s, seed)
 
-	cases := []struct {
-		name  string
-		query string
-		want  int
-	}{
-		{"payload substring", "hello", 1},
-		{"payload json field", "go-taskqueue", 1},
-		{"type match", "agent", 1},
-		{"project match", "gamma", 1},
-		{"case-insensitive", "ECHO HELLO", 1},
-		{"no match", "zebra", 0},
-		{"matches several", "e", 3},
-	}
+	return ctx, s
+}
+
+// filterCase pins one store query and the task count it must match.
+type filterCase struct {
+	name   string
+	filter queue.Filter
+	want   int
+}
+
+// assertFilterCounts runs each filter against the store and pins the
+// matched task count.
+func assertFilterCounts(t *testing.T, ctx context.Context, s Store, cases []filterCase) {
+	t.Helper()
 
 	for _, tc := range cases {
-		got, err := s.List(ctx, queue.Filter{Query: tc.query})
+		got, err := s.List(ctx, tc.filter)
 		if err != nil {
-			t.Fatalf("List(q=%q): %v", tc.query, err)
+			t.Fatalf("%s: List: %v", tc.name, err)
 		}
 
 		if len(got) != tc.want {
-			t.Fatalf("query %q matched %d tasks, want %d", tc.query, len(got), tc.want)
+			t.Fatalf("%s: matched %d tasks, want %d", tc.name, len(got), tc.want)
 		}
 	}
 }
 
+// assertTaskState pins the projected fields after a store transition;
+// unset fields in want must come back zero (e.g. a cleared LastError).
+func assertTaskState(t *testing.T, ctx context.Context, s Store, id task.ID, want task.Task, msg string) {
+	t.Helper()
+
+	got, _ := s.Get(ctx, id)
+	if got.Status != want.Status || got.Attempts != want.Attempts || got.LastError != want.LastError || got.LeaseOwner != want.LeaseOwner {
+		t.Fatalf("%s: %+v, want status=%s attempts=%d lastError=%q leaseOwner=%q", msg, got, want.Status, want.Attempts, want.LastError, want.LeaseOwner)
+	}
+}
+
+// assertNoTaskDue pins that a claim inside a delay window (Fail backoff,
+// requeue delay) finds nothing due.
+func assertNoTaskDue(t *testing.T, ctx context.Context, s Store, owner, why string) {
+	t.Helper()
+
+	_, _, err := s.ClaimDue(ctx, owner, time.Minute)
+	if !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("claim during %s err = %v, want queue.ErrNoTaskDue", why, err)
+	}
+}
+
+func TestListQueryPushdown(t *testing.T) {
+	ctx, s := startSeededStore(t, []task.New{
+		{Project: "alpha", Type: "sh", Payload: jsontext.Value(`"echo hello"`)},
+		{Project: "beta", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","prompt":"fix the bug"}`)},
+		{Project: "gamma", Type: "http", Payload: jsontext.Value(`{"url":"https://example.com/ping"}`)},
+	})
+
+	assertFilterCounts(t, ctx, s, []filterCase{
+		{"payload substring", queue.Filter{Query: "hello"}, 1},
+		{"payload json field", queue.Filter{Query: "go-taskqueue"}, 1},
+		{"type match", queue.Filter{Query: "agent"}, 1},
+		{"project match", queue.Filter{Query: "gamma"}, 1},
+		{"case-insensitive", queue.Filter{Query: "ECHO HELLO"}, 1},
+		{"no match", queue.Filter{Query: "zebra"}, 0},
+		{"matches several", queue.Filter{Query: "e"}, 3},
+	})
+}
+
 func TestListQueryLikeEscaping(t *testing.T) {
-	t.Parallel()
-
-	ctx, s := freshStore(t)
-
-	seed := []task.New{
+	ctx, s := startSeededStore(t, []task.New{
 		{Project: "pct", Type: "sh", Payload: jsontext.Value(`"progress 100% done"`)},
 		{Project: "under", Type: "sh", Payload: jsontext.Value(`"snake_case_name"`)},
 		{Project: "plain", Type: "sh", Payload: jsontext.Value(`"nothing special"`)},
-	}
+	})
 
-	seedTasks(t, ctx, s, seed)
-
-	cases := []struct {
-		name  string
-		query string
-		want  int
-	}{
-		{"literal percent", "100%", 1},
-		{"literal underscore", "snake_case", 1},
-		{"percent is not a wildcard", "1% done", 0},
-		{"underscore is not a wildcard", "snakeXcase", 0},
-		{"backslash literal", "100%\\", 0},
-	}
-
-	for _, tc := range cases {
-		got, err := s.List(ctx, queue.Filter{Query: tc.query})
-		if err != nil {
-			t.Fatalf("List(q=%q): %v", tc.query, err)
-		}
-
-		if len(got) != tc.want {
-			t.Fatalf("query %q matched %d tasks, want %d", tc.query, len(got), tc.want)
-		}
-	}
+	assertFilterCounts(t, ctx, s, []filterCase{
+		{"literal percent", queue.Filter{Query: "100%"}, 1},
+		{"literal underscore", queue.Filter{Query: "snake_case"}, 1},
+		{"percent is not a wildcard", queue.Filter{Query: "1% done"}, 0},
+		{"underscore is not a wildcard", queue.Filter{Query: "snakeXcase"}, 0},
+		{"backslash literal", queue.Filter{Query: "100%\\"}, 0},
+	})
 }
 
 // TestListPayloadContains pins the Filter.PayloadContains pushdown: the
@@ -1884,11 +1890,7 @@ func TestListQueryLikeEscaping(t *testing.T) {
 // Limit counts post-filter rows — the `tq tasks --verify-contains`
 // hygiene audit leans on all three (09-39 §e1).
 func TestListPayloadContains(t *testing.T) {
-	t.Parallel()
-
-	ctx, s := freshStore(t)
-
-	seed := []task.New{
+	ctx, s := startSeededStore(t, []task.New{
 		{
 			Project: "stale-verify",
 			Type:    "agent",
@@ -1896,34 +1898,17 @@ func TestListPayloadContains(t *testing.T) {
 		},
 		{Project: "fresh", Type: "agent", Payload: jsontext.Value(`{"repo":"go-taskqueue","verify":"gofmt -l ."}`)},
 		{Project: "verify", Type: "sh", Payload: jsontext.Value(`"echo hi"`)},
-	}
+	})
 
-	seedTasks(t, ctx, s, seed)
-
-	cases := []struct {
-		name     string
-		contains string
-		want     int
-	}{
-		{"payload substring", "go test ./...", 1},
-		{"case-insensitive", "GO TEST", 1},
-		{"second payload only", "gofmt", 1},
-		{"project name must NOT match", "stale-verify", 0},
-		{"type must NOT match", "agent", 0},
-		{"no match", "zebra", 0},
-		{"literal percent", "100%", 0},
-	}
-
-	for _, tc := range cases {
-		got, err := s.List(ctx, queue.Filter{PayloadContains: tc.contains})
-		if err != nil {
-			t.Fatalf("List(contains=%q): %v", tc.contains, err)
-		}
-
-		if len(got) != tc.want {
-			t.Fatalf("contains %q matched %d tasks, want %d", tc.contains, len(got), tc.want)
-		}
-	}
+	assertFilterCounts(t, ctx, s, []filterCase{
+		{"payload substring", queue.Filter{PayloadContains: "go test ./..."}, 1},
+		{"case-insensitive", queue.Filter{PayloadContains: "GO TEST"}, 1},
+		{"second payload only", queue.Filter{PayloadContains: "gofmt"}, 1},
+		{"project name must NOT match", queue.Filter{PayloadContains: "stale-verify"}, 0},
+		{"type must NOT match", queue.Filter{PayloadContains: "agent"}, 0},
+		{"no match", queue.Filter{PayloadContains: "zebra"}, 0},
+		{"literal percent", queue.Filter{PayloadContains: "100%"}, 0},
+	})
 
 	// Limit applies AFTER the payload filter: a capped list shows the
 	// first N matches, not the first N tasks filtered.
