@@ -58,6 +58,13 @@ DB="$WORK/shared.db"
 for round in 1 2; do
 	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" --db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-1 >"$WORK/pool1-$round.log" 2>&1) &
 	P1=$!
+	# Stagger pool-2's start: the S1-facade auto-upgrade (VACUUM INTO
+	# snapshot + verify inside Open) lengthened the open/migrate write
+	# window past the 5s busy_timeout when both pools open the shared DB
+	# on the same instant (SQLITE_BUSY death, row 99 class). The PRODUCTION
+	# open-path retry stays owner-gated (row 99); the smoke just removes
+	# the same-instant race.
+	sleep 2
 	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" --db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-2 >"$WORK/pool2-$round.log" 2>&1) &
 	P2=$!
 	wait "$P1"
