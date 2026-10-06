@@ -472,19 +472,18 @@ func (h *Harvester) admitRun(ctx context.Context, run []Item, importance int, re
 	}
 
 	fresh := t.Status == task.Pending && t.Attempts == 0
+	if !fresh {
+		// The scan cleared the run's batch key before the mint, so a
+		// claimed return is this run's own task picked up inside the
+		// enqueue window — report it as minted work, not a tracked race.
+		slog.Warn("harvest: dedup returned a claimed batch for a scan-cleared key",
+			"batch", t.ID, "status", t.Status)
+	}
+
 	for _, item := range run {
-		if fresh {
-			res.Enqueued = append(
-				res.Enqueued,
-				Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")},
-			)
-
-			continue
-		}
-
-		res.Skipped = append(
-			res.Skipped,
-			Skipped{Item: item, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"},
+		res.Enqueued = append(
+			res.Enqueued,
+			Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")},
 		)
 	}
 
@@ -860,10 +859,17 @@ func (h *Harvester) occupancyDenial(state repoState) string {
 	return ""
 }
 
-// admitItem enqueues one item and records the outcome: a fresh task under
-// res.Enqueued, a store-dedup return (another pool won the race) under
-// res.Skipped. ok is false only when the enqueue FAILED — a dedup return
-// still counts against pacing exactly like the original inline code.
+// admitItem enqueues one item and records the outcome: the minted task
+// under res.Enqueued, a store failure under res.Skipped. ok is false only
+// when the enqueue FAILED.
+//
+// Admission implies the scan cleared the dedup key (itemDenial denies
+// known keys first), so a non-pending return is this run's own mint that
+// a worker claimed inside the enqueue window — still work this tick
+// minted, hence Enqueued. Reporting it as a tracked-race skip hides real
+// minted work (the CI-only TestSelfManagingLoop flip). A true exterior
+// mint inside the window is logged; a second harvester per repo is not a
+// supported topology.
 func (h *Harvester) admitItem(ctx context.Context, item Item, importance int, res *Result) bool {
 	t, err := h.enqueue(ctx, item, importance)
 	if err != nil {
@@ -872,21 +878,14 @@ func (h *Harvester) admitItem(ctx context.Context, item Item, importance int, re
 		return false
 	}
 
-	if t.Status == task.Pending && t.Attempts == 0 {
-		res.Enqueued = append(
-			res.Enqueued,
-			Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")},
-		)
-
-		return true
+	if t.Status != task.Pending || t.Attempts != 0 {
+		slog.Warn("harvest: dedup returned a claimed task for a scan-cleared key",
+			"key", item.Key, "task", t.ID, "status", t.Status)
 	}
 
-	// Store dedup returned a pre-existing row (another pool won the race).
-	// Count item as known, not fresh — but still consumed this run's
-	// one-new-item slot, matching the pre-refactor pacing behavior.
-	res.Skipped = append(
-		res.Skipped,
-		Skipped{Item: item, Reason: "tracked: " + string(t.Status) + " (enqueued concurrently)"},
+	res.Enqueued = append(
+		res.Enqueued,
+		Enqueued{Item: item, TaskID: t.ID, Fresh: true, Hot: strings.Contains(item.Text, "/tmp")},
 	)
 
 	return true
