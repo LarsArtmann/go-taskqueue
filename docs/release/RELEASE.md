@@ -219,3 +219,38 @@ included) BEFORE running the gates, so the require-tag checks see them.
   `internal/<mod>/vX.Y.Z` tag already exists in git — checked BEFORE the
   release tag is cut, so `go install` of the published tree can never
   resolve nothing.
+
+## Release log
+
+### v0.3.2 (2026-10-06) — the three-segment sweep class
+
+The v0.3.1 tag wave shipped a broken module graph: the version sweep's
+regex capped at two path segments, so every three-segment internal
+require (`internal/queue/sqlite`, `internal/journal/cqrs`,
+`internal/queue/companion`, and the v4 drivers) stayed at v0.3.0 while
+its consumers' sources had moved. Proxy resolution left the graph
+uncloseable — caught by a scratch-module probe build (root + CLI
+replaced locally, internals resolved through the proxy), NOT by the
+in-repo gates, which all pass over local replaces.
+
+Recovery followed the immutability rule: v0.3.1 is proxy-indexed, so it
+was retracted (`retract v0.3.1` in the root and CLI modules) and the
+fixed tree shipped as v0.3.2 with the full 22-tag wave re-cut at the
+fixed commit. Two structural lessons are now procedure:
+
+1. **Probe before pre-cut.** The cleanroom probe (scratch module, ONLY
+   root + cmd/tq replaced, everything else through the proxy) must pass
+   BEFORE any tag is cut or pushed — in-repo gates cannot see this
+   class.
+2. **Pre-cut locks the resume path.** `--push`'s resume branch requires
+   the tag to point at HEAD; any commit after the pre-cut (fixes, daemon
+   sweeps) permanently disables it, and the remaining steps complete
+   manually (proxy verify, cleanroom install, `gh release create` from
+   the CHANGELOG section). Cut sub-tags early, but cut the BARE tag only
+   when the tree is final and the gates are about to run.
+
+The same window also fixed the Web UI CSS canonical check failing on
+cold module caches: `go list -m` reports an empty Dir for a module whose
+source was never extracted, so `scripts/build-webui-css.sh` now warms
+the cache (`go mod download`) before resolving the two out-of-repo
+`@source` dirs.
