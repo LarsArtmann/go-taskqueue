@@ -3,6 +3,7 @@ package readmodel
 import (
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"encoding/json/jsontext"
 	"fmt"
 	"time"
@@ -37,6 +38,17 @@ const (
 )
 
 func seqToEventID(seq int64) (id.EventID, error) {
+	return SeqToEventID(seq)
+}
+
+func eventIDToSeq(eventID id.EventID) (int64, bool) {
+	return EventIDToSeq(eventID)
+}
+
+// SeqToEventID encodes a journal sequence as the synthetic event ID the
+// cqrs journal stamps on every fact event. Exported for the checkpoint
+// adapter's consumers (doctor/health surfaces, composition root).
+func SeqToEventID(seq int64) (id.EventID, error) {
 	if seq <= 0 {
 		return id.EventID{}, fmt.Errorf("readmodel: sequence %d is not positive", seq)
 	}
@@ -52,7 +64,10 @@ func seqToEventID(seq int64) (id.EventID, error) {
 	return eventID, nil
 }
 
-func eventIDToSeq(eventID id.EventID) (int64, bool) {
+// EventIDToSeq decodes a sequence-derived event ID back to its journal
+// sequence; ok is false for any ID not minted by this layout (a random
+// or foreign cursor), which callers must treat as "no position".
+func EventIDToSeq(eventID id.EventID) (int64, bool) {
 	raw := eventID.Get()
 
 	for _, b := range raw[:seqEpochLen] {
@@ -68,6 +83,12 @@ func eventIDToSeq(eventID id.EventID) (int64, bool) {
 	}
 
 	return int64(binary.BigEndian.Uint64(raw[seqEpochLen : seqEpochLen+seqBytesLen])), true
+}
+
+// WatermarkCheckpoints adapts the queue store's watermarks table to the
+// platform CheckpointStore, under the projection's own consumer name.
+func WatermarkCheckpoints(src queue.Store) event.CheckpointStore {
+	return watermarkCheckpoints{src: src}
 }
 
 // watermarkCheckpoints adapts the queue's watermarks table (one monotonic
@@ -126,7 +147,7 @@ type foldPayload struct {
 	Owner   string           `json:"owner,omitempty"`
 	Attempt int              `json:"attempt,omitempty"`
 	Error   string           `json:"error,omitempty"`
-	Detail  []byte           `json:"detail,omitempty"`
+	Detail  json.RawMessage  `json:"detail,omitempty"`
 }
 
 // FoldProjection feeds platform-delivered fact events through the same
