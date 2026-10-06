@@ -281,8 +281,11 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 		t.Fatalf("build host: %v", err)
 	}
 
-	// The poison: the projection under test refuses the seed fact.
-	host.Register(boomProjection{})
+	// The poison: a second projection under its own name refuses every
+	// event (the fold projection folds the same stream cleanly beside it).
+	if err := host.Register(boomProjection{}); err != nil {
+		t.Fatalf("register poison projection: %v", err)
+	}
 
 	runCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
@@ -291,6 +294,16 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 
 	waitFor(t, ctx, func() bool {
 		n, err := dlq.Count(ctx)
+		if err != nil {
+			t.Logf("dlq count err: %v", err)
+		}
+
+		for _, st := range host.Status() {
+			t.Logf("worker %s: %s processed=%d errors=%d cp=%s lastErr=%q", st.Name, st.Status, st.Processed, st.Errors, st.Checkpoint, st.LastError)
+		}
+
+		t.Logf("dlq=%d", n)
+
 		return err == nil && n > 0
 	})
 
@@ -298,14 +311,14 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 		t.Fatalf("stop: %v", err)
 	}
 
-	// The checkpoint moved past the poison: the watermark is nonzero and
-	// the tail after it is empty (nothing wedged, nothing re-fetched).
-	wm, exists, err := store.Watermark(ctx, readmodel.CursorConsumer)
+	// The checkpoint moved past the poison: the poison projection's own
+	// watermark is nonzero (nothing wedged, nothing re-fetched forever).
+	wm, exists, err := store.Watermark(ctx, "poison-boom")
 	if err != nil || !exists || wm == 0 {
 		t.Fatalf("watermark after poison = %d exists=%v err=%v, want advanced", wm, exists, err)
 	}
 
-	entries, err := dlq.List(ctx, readmodel.CursorConsumer)
+	entries, err := dlq.List(ctx, "poison-boom")
 	if err != nil || len(entries) == 0 {
 		t.Fatalf("dlq entries = %v %v, want the poison captured", entries, err)
 	}
@@ -321,7 +334,7 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 // stream.
 type boomProjection struct{}
 
-func (boomProjection) Name() string { return readmodel.CursorConsumer }
+func (boomProjection) Name() string { return "poison-boom" }
 
 func (boomProjection) EventTypes() []event.Type {
 	return []event.Type{event.Type("task.enqueued")}
