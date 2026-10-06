@@ -12,8 +12,8 @@ import (
 	"github.com/larsartmann/go-cqrs-lite/id/v4"
 	"github.com/larsartmann/go-cqrs-lite/projection/v4"
 	"github.com/larsartmann/go-cqrs-lite/projectionhost/v4"
-	cqrs "github.com/larsartmann/go-taskqueue/internal/journal/cqrs"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	cqrs "github.com/larsartmann/go-taskqueue/internal/journal/cqrs"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/oklog/ulid/v2"
 )

@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	errorfamily "github.com/larsartmann/go-error-family"
 	"github.com/larsartmann/go-cqrs-lite/event/v4"
 	"github.com/larsartmann/go-cqrs-lite/id/v4"
 	"github.com/larsartmann/go-cqrs-lite/projectionhost/v4"
+	errorfamily "github.com/larsartmann/go-error-family"
 	"github.com/larsartmann/go-taskqueue/internal/journal/cqrs"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
@@ -296,15 +296,6 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 
 	waitFor(t, ctx, func() bool {
 		n, err := dlq.Count(ctx)
-		if err != nil {
-			t.Logf("dlq count err: %v", err)
-		}
-
-		for _, st := range host.Status() {
-			t.Logf("worker %s: %s processed=%d errors=%d cp=%s lastErr=%q", st.Name, st.Status, st.Processed, st.Errors, st.Checkpoint, st.LastError)
-		}
-
-		t.Logf("dlq=%d", n)
 
 		return err == nil && n > 0
 	})
@@ -365,13 +356,11 @@ func TestFoldHandleClassifiesMalformedDetail(t *testing.T) {
 	f := &fixture{t: t, store: store}
 	tk := f.enqueue("web", "sh", 1, "repri-poison")
 
+	// Reprioritize while PENDING so the journal carries a
+	// reprioritized fact, then fold it: the real detail is valid, so
+	// this exercises the happy classification.
+	f.must("reprioritize", f.store.UpdatePendingPriority(ctx, tk.ID, 9, "test", "spike"))
 	f.claim()
-
-	// Reprioritize twice so the journal carries a reprioritized fact,
-	// then fold it: the real detail is valid, so this exercises the
-	// happy classification (no error, no retryable noise).
-	f.must("reprioritize", f.store.Reprioritize(ctx, tk.ID, 9, "spike"))
-	f.resync()
 
 	jr := cqrs.NewFactJournal(store)
 	events, err := jr.ReadAll(ctx)
