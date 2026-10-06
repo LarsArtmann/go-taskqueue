@@ -159,6 +159,15 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.F
 
 	_ = json.Unmarshal(fact.Detail, &agentResult) // absent/legacy detail is fine
 
+	// Preflight-done completions never ran a session: there is nothing to
+	// review, and minting a review would re-create the exact no-op agent
+	// burn the done-preflight exists to kill.
+	if agentResult.PreflightDone != "" {
+		stats.Skipped++
+
+		return
+	}
+
 	payload, err := json.Marshal(executor.ReviewPayload{
 		Repo:         agentPayload.Repo,
 		ReviewedTask: t.ID.String(),
@@ -213,11 +222,23 @@ func (s *Sweeper) mintFixes(ctx context.Context, t task.Task, fact journal.Fact,
 	}
 
 	for _, finding := range result.Findings {
+		// The finding's own cited commit wins; the reviewed run's commit is
+		// the fallback (same precedence fixPrompt renders as prose).
+		sha := strings.TrimSpace(finding.CommitSHA)
+		if sha == "" {
+			sha = strings.TrimSpace(reviewPayload.CommitSHA)
+		}
+
 		payload, err := json.Marshal(executor.AgentPayload{
 			Repo:   reviewPayload.Repo,
 			Model:  reviewPayload.Model,
 			Yolo:   reviewPayload.Yolo,
 			Prompt: fixPrompt(reviewPayload, finding),
+			// Structured fix-ticket identity for the claim-time done-preflight
+			// (rejected-SHA disposition) — the same data fixPrompt renders as
+			// prose, machine-readable.
+			RejectedSHA: sha,
+			Anchor:      strings.TrimSpace(finding.Anchor),
 		})
 		if err != nil {
 			stats.Skipped++
@@ -309,8 +330,10 @@ func fixPrompt(payload executor.ReviewPayload, finding executor.ReviewFinding) s
 
 	b.WriteString(
 		"Address the finding minimally, keep the repository's contracts (AGENTS.md / docs), and make the repo's own gates " +
-			"(build, vet, tests, format) pass before finishing. Commit the fix with a message ending in this exact footer " +
-			"line (you have explicit permission to commit for this task):\n\nTask-Queue-ID: {{TASK_ID}}\n\n" +
+			"(build, vet, tests, format) pass before finishing. FIRST grep git log for your own footer below — existing " +
+			"commits under this fix ticket's ID mean an earlier run already addressed the finding: verify the anchor " +
+			"state, then close out as a no-op stating the evidence instead of redoing. Commit the fix with a message " +
+			"ending in this exact footer line (you have explicit permission to commit for this task):\n\nTask-Queue-ID: {{TASK_ID}}\n\n" +
 			"Footer convention: exactly ONE Task-Queue-ID footer per commit — the FIX ticket's id above. Do not add a second " +
 			"footer for the original task; that lineage lives in the queue (this fix task descends from its review), and " +
 			"duplicate footers corrupt the queue↔git cross-reference.\n\nNever push.",

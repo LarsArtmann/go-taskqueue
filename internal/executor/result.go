@@ -76,6 +76,12 @@ type AgentResult struct {
 	Commits      []Commit `json:"commits,omitempty"`
 	FilesChanged []string `json:"files_changed,omitempty"`
 	CommitSHA    string   `json:"commit_sha,omitempty"`
+	// PreflightDone carries the done-preflight reason when the worker
+	// completed the task WITHOUT an agent run because the work was provably
+	// already done (footer commits exist, item ticked, fix cured…). A
+	// non-empty value means no session ran and no review may be minted for
+	// this completion (review.enqueueReview skips it).
+	PreflightDone string `json:"preflight_done,omitempty"`
 }
 
 // FailureEvidence is the structured forensics attached to a task.failed

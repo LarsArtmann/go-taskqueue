@@ -574,3 +574,40 @@ func TestFixDedupKeyIsStableAndDistinct(t *testing.T) {
 		t.Fatal("different title or review must produce a different key")
 	}
 }
+
+// TestSweepSkipsPreflightDoneCompletions pins the no-review contract of
+// done-preflight completions: a completion whose AgentResult carries
+// PreflightDone never ran a session, so minting its review would re-create
+// the exact no-op agent burn the gate exists to kill.
+func TestSweepSkipsPreflightDoneCompletions(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	sw, err := NewSweeper(ctx, s, SweeperConfig{})
+	if err != nil {
+		t.Fatalf("sweeper: %v", err)
+	}
+
+	runAgentTask(t, s, executor.AgentPayload{
+		Repo: "demo", Prompt: "already landed elsewhere", Yolo: true,
+	}, executor.AgentResult{PreflightDone: "done preflight: commit(s) already carry this task's Task-Queue-ID footer"})
+
+	stats, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+
+	if stats.ReviewsEnqueued != 0 {
+		t.Fatalf("reviews enqueued = %d, want 0 (stats %+v)", stats.ReviewsEnqueued, stats)
+	}
+
+	if reviews := listByType(t, s, executor.TaskTypeReview); len(reviews) != 0 {
+		t.Fatalf("review tasks in store = %d, want 0", len(reviews))
+	}
+
+	if stats.Skipped != 1 {
+		t.Fatalf("skipped = %d, want 1 (the preflight-done completion)", stats.Skipped)
+	}
+}

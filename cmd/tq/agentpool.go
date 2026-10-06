@@ -52,6 +52,7 @@ type agentPoolOptions struct {
 	cqaToken        string
 	doReview        bool
 	dlqFix          bool
+	donePreflight   bool
 	prioritize      bool
 	depSweep        bool
 	depSweepBin     string
@@ -188,6 +189,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"dlq-fix",
 		false,
 		"DLQ autopsies: each dead-lettered AGENT task gets ONE autopsy task by a second agent; a fixed verdict rescues the original, a wontfix verdict dismisses it with the recorded reason (autopsies are never autopsied)",
+	)
+	donePreflight := fs.Bool(
+		"done-preflight",
+		false,
+		"claim-time done gate: before an agent runs, check the repo for proof the task's work already landed (Task-Queue-ID footer commits, todo item now [x]/gone, fix-ticket rejected-SHA cured, closeout report exists); a done task completes with zero agent spend — kills the re-fire class (one 2026-10-02 task: enqueued once, claimed 15×, every claim a paid no-op)",
 	)
 	prioritize := fs.Bool(
 		"prioritize",
@@ -388,6 +394,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		cqaToken:        *cqaToken,
 		doReview:        *doReview,
 		dlqFix:          *dlqFix,
+		donePreflight:   *donePreflight,
 		prioritize:      *prioritize,
 		depSweep:        *depSweep,
 		depSweepBin:     *depSweepBin,

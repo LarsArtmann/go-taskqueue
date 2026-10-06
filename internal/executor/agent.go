@@ -79,6 +79,16 @@ type AgentPayload struct {
 	// unblocks the parked task, and the executor renders them into the
 	// prompt so the resumed run honors the decisions instead of re-asking.
 	Answered []queue.QuestionAnsweredDetail `json:"answered,omitempty"`
+	// RejectedSHA is the commit a review-fix task was minted against (the
+	// finding's cited commit, falling back to the reviewed run's commit).
+	// Structured so the claim-time done-preflight can run the
+	// rejected-SHA disposition (exists? superseded? anchor gone?) without
+	// parsing prompt prose. Empty on non-fix tasks.
+	RejectedSHA string `json:"rejected_sha,omitempty"`
+	// Anchor is the verbatim text a review-fix finding attaches to (same
+	// provenance as RejectedSHA): the disposition's no-anchor-left signal.
+	// Empty when the finding carried no anchor.
+	Anchor string `json:"anchor,omitempty"`
 }
 
 // DefaultAgentBinary is used when Bin, $TQ_AGENT_BIN and $TQ_CRUSH_BIN are

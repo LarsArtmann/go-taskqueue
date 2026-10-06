@@ -1549,14 +1549,28 @@ func cmdAgentPool(args []string) error {
 		}
 	})
 
+	// Claim-time done gate (docs/planning/2026-10-06_18-50 dispatch-done-
+	// preflight-gate): the harvester's repo-aware signals decide whether a
+	// claimed task is provably already done; nil keeps historical dispatch.
+	var donePreflight func(context.Context, task.Task) (bool, string)
+	if poolOpts.donePreflight {
+		donePreflight = harvester.DonePreflight
+
+		fmt.Fprintln(
+			os.Stderr,
+			"tq: agent-pool: done-preflight armed (re-fires of landed work complete without an agent run)",
+		)
+	}
+
 	pool := worker.New(store, worker.Config{
-		Owner:        poolOpts.owner,
-		Concurrency:  poolOpts.conc,
-		PollInterval: poolOpts.poll,
-		Lease:        poolOpts.lease,
-		TaskTimeout:  poolOpts.timeout,
-		Executors:    reg,
-		Budget:       budgetClaimGate(guard, store, poolOpts.budgetCmd),
+		Owner:         poolOpts.owner,
+		Concurrency:   poolOpts.conc,
+		PollInterval:  poolOpts.poll,
+		Lease:         poolOpts.lease,
+		TaskTimeout:   poolOpts.timeout,
+		Executors:     reg,
+		Budget:        budgetClaimGate(guard, store, poolOpts.budgetCmd),
+		DonePreflight: donePreflight,
 	}, log)
 
 	if poolOpts.once {

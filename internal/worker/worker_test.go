@@ -1653,3 +1653,88 @@ func TestStampedFailureEvidence(t *testing.T) {
 		t.Errorf("permanent evidence = %s, want the permanent class", perm)
 	}
 }
+
+// TestDonePreflightCompletesWithoutAgentRun pins the claim-time done gate:
+// a task whose preflight reports the work already done completes with ZERO
+// executor invocations and zero attempt burns — the re-fire class (one
+// 2026-10-02 task: enqueued once, claimed 15×, every claim a paid no-op)
+// ends at the first gated claim instead.
+func TestDonePreflightCompletesWithoutAgentRun(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var ran atomic.Int32
+
+	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
+		ran.Add(1)
+
+		return nil
+	})
+
+	enq, err := store.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 3})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		Executors: reg,
+		DonePreflight: func(context.Context, task.Task) (bool, string) {
+			return true, "done preflight: commit(s) already carry this task's Task-Queue-ID footer"
+		},
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	waitFor(t, ctx, store, enq.ID, task.Completed)
+	cancel()
+
+	if ran.Load() != 0 {
+		t.Fatalf("executor ran %d times, want 0 (done gate must precede the run)", ran.Load())
+	}
+
+	got, _ := store.Get(context.Background(), enq.ID)
+	if got.Attempts != 0 {
+		t.Fatalf("attempts = %d, want 0 (a preflight completion is not an attempt)", got.Attempts)
+	}
+}
+
+// TestDonePreflightNotDoneRunsExecutor is the negative control: a
+// not-done verdict (or a nil hook) keeps historical dispatch untouched.
+func TestDonePreflightNotDoneRunsExecutor(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var ran atomic.Int32
+
+	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
+		ran.Add(1)
+
+		return nil
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "agent"})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		Executors: reg,
+		DonePreflight: func(context.Context, task.Task) (bool, string) {
+			return false, ""
+		},
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	waitFor(t, ctx, store, enq.ID, task.Completed)
+	cancel()
+
+	if ran.Load() != 1 {
+		t.Fatalf("executor ran %d times, want 1", ran.Load())
+	}
+}

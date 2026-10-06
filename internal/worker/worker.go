@@ -54,6 +54,16 @@ type Config struct {
 	// streak/burn ladder — an exhausted budget is policy, not a sick
 	// environment.
 	Budget func(ctx context.Context) (blocked bool, reason string, retryIn time.Duration)
+
+	// DonePreflight is the claim-time done gate: before a claimed task's
+	// executor runs, the hook decides whether the task's work is provably
+	// already done (footer commits exist, todo item ticked, fix cured…). A
+	// done task completes immediately — no agent session, no attempt burn,
+	// no review minted — with an AgentResult carrying PreflightDone=reason
+	// as the completion detail. The hook must fail open (return false) on
+	// its own errors: it augments dispatch, never blocks it. Nil =
+	// ungated (historical behavior).
+	DonePreflight func(ctx context.Context, t task.Task) (done bool, reason string)
 }
 
 func (c *Config) setDefaults() {
@@ -484,6 +494,35 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			} else {
 				p.log.Warn("budget gate blocked paid turn; requeued without attempt burn",
 					"task", t.ID, "retry after", delay.Round(time.Second), "reason", reason)
+			}
+
+			return
+		}
+	}
+
+	// Claim-time done gate: the hook judges whether this dispatch is a
+	// re-fire of already-landed work (the 2026-10-02 class: one task,
+	// enqueued once, claimed 15× — every claim a paid no-op over its own
+	// footer commits). A done verdict completes the task WITHOUT running
+	// the executor: zero spend, zero attempt burn, and the completion
+	// detail's preflight_done reason keeps the review sweeper from minting
+	// a review of a session that never ran.
+	if p.cfg.DonePreflight != nil {
+		if done, reason := p.cfg.DonePreflight(ctx, t); done {
+			// AgentResult marshals structurally; the fallback keeps the
+			// gate completing even if a future field stops round-tripping.
+			detail, derr := json.Marshal(executor.AgentResult{PreflightDone: reason})
+			if derr != nil {
+				detail = jsontext.Value(`{"preflight_done":"done preflight"}`)
+			}
+
+			if err := p.persistOutcome(ctx, t.ID, func(c context.Context) error {
+				return p.store.Complete(c, t.ID, claim, detail)
+			}); err != nil {
+				p.log.Error("done-preflight complete failed", "task", t.ID, "err", err)
+			} else {
+				p.log.Warn("done preflight: completed without agent run",
+					"task", t.ID, "reason", reason)
 			}
 
 			return

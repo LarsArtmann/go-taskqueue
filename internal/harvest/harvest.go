@@ -56,6 +56,10 @@ Work item from TODO_LIST.md, section "{{HEADING}}":
 Contract:
 1. Do exactly this work item. The smallest correct change wins: no scope creep, no drive-by
    refactors. Verify your work: run the project's build and tests. Never leave the repo broken.
+   FIRST, before doing any work: run git log --format=%B --grep 'Task-Queue-ID: {{TASK_ID}}' and
+   check this item's checkbox in TODO_LIST.md — if either proves the work already landed (this
+   task may be a re-dispatch), close it out as a no-op: state the evidence, tick the item if
+   unticked, and commit nothing else. Never redo landed work.
 2. Never edit .crushrc, crush.json, or .tq-verify: they define your autonomy and your verify gate;
    changing them is self-dealing.
 3. Close the loop in TODO_LIST.md: mark this item done ([x]) or remove it, following the file's own
@@ -92,6 +96,9 @@ Contract:
 1. Work the items IN ORDER as one batch: you already hold the repo context from earlier items —
    use it. The smallest correct change per item wins: no scope creep, no drive-by refactors.
    An item already ticked [x] is done (an earlier attempt may have finished it) — skip it.
+   Before the first item: run git log --format=%B --grep 'Task-Queue-ID: {{TASK_ID}}' — existing
+   footer commits mean this batch is a re-dispatch of landed work; finish only what is genuinely
+   open and say so.
    Verify as you go: run the project's build and tests. Never leave the repo broken.
 2. Never edit .crushrc, crush.json, or .tq-verify: they define your autonomy and your verify gate;
    changing them is self-dealing.
