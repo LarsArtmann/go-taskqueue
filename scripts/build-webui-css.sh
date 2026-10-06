@@ -22,12 +22,16 @@ cd "$(dirname "$0")/.."
 # an explicit override, otherwise let go pick the module's toolchain.
 export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
 
-# Module dir resolution: plain `go list -m` resolves Dir as EMPTY when a
-# (git-ignored) vendor/ directory flips go into vendor mode — pin -mod=mod
-# for the cache copy, and fall back to the vendored source when the cache
-# is unavailable (offline sandbox).
+# Module dir resolution: `go list -m` resolves Dir as EMPTY for a module
+# whose source is not extracted yet (cold module cache — the CI runner has
+# none), and as EMPTY when a (git-ignored) vendor/ directory flips go into
+# vendor mode — hence -mod=mod throughout, plus a download warm-up for the
+# two out-of-repo sources before the list, and a vendored-source fallback
+# when the network is unavailable (offline sandbox).
 module_dir() {
 	local dir
+	GOFLAGS=-mod=mod go mod download "$1" >/dev/null 2>&1 || true
+
 	dir="$(go list -m -mod=mod -f '{{.Dir}}' "$1" 2>/dev/null || true)"
 
 	if [ -z "$dir" ] && [ -d "vendor/$1" ]; then
