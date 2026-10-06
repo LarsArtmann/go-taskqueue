@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	health "github.com/larsartmann/go-health"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -279,7 +280,6 @@ func (h *headStore) HeadSeq(context.Context) (int64, error) { return h.head, nil
 func TestHealthProjectionCheck(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
 	store := newTestStore(t)
 
 	// Not mounted: the check is absent, the prober's other checks run.
@@ -310,8 +310,4 @@ func TestHealthProjectionCheck(t *testing.T) {
 		t.Errorf("wedged projection = %+v, want warn", proj)
 	}
 
-	// Mounted but folded nothing yet (cursor 0 under a live head is the
-	// fresh-serve shape): still within tolerance semantics — warn, the
-	// fold has not caught up.
-	_ = ctx
 }
