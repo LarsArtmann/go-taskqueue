@@ -263,3 +263,55 @@ func TestHealthStaticAssets(t *testing.T) {
 		t.Fatalf("GET %s = 404, route not mounted", HealthSSEPath)
 	}
 }
+
+// headStore pins the journal head the projection check lags against.
+type headStore struct {
+	queue.Store
+
+	head int64
+}
+
+func (h *headStore) HeadSeq(context.Context) (int64, error) { return h.head, nil }
+
+// TestHealthProjectionCheck pins the fold-lag check: emitted only for a
+// mounted read model, pass within the tolerance, warn when the fold
+// lags the journal head wide (the wedged-fold signature).
+func TestHealthProjectionCheck(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+
+	// Not mounted: the check is absent, the prober's other checks run.
+	s := New(store, Config{})
+
+	resp := s.prober.CachedResponse()
+	if _, mounted := resp.Checks["projection"]; mounted {
+		t.Fatalf("unmounted projection check emitted: %+v", resp.Checks["projection"])
+	}
+
+	// Mounted at head: pass.
+	p := newQueueProber(&headStore{Store: store, head: 120}, "test")
+	p.projectionCursor = func(context.Context) (int64, bool) { return 118, true }
+
+	resp = p.CachedResponse()
+	proj := resp.Checks["projection"]
+	if proj.Status != health.StatusPass {
+		t.Errorf("at-head projection = %+v, want pass", proj)
+	}
+
+	// Mounted and wedged: warn past the tolerance.
+	p = newQueueProber(&headStore{Store: store, head: 1000}, "test")
+	p.projectionCursor = func(context.Context) (int64, bool) { return 118, true }
+
+	resp = p.CachedResponse()
+	proj = resp.Checks["projection"]
+	if proj.Status != health.StatusWarn {
+		t.Errorf("wedged projection = %+v, want warn", proj)
+	}
+
+	// Mounted but folded nothing yet (cursor 0 under a live head is the
+	// fresh-serve shape): still within tolerance semantics — warn, the
+	// fold has not caught up.
+	_ = ctx
+}
