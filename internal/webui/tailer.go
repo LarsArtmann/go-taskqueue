@@ -3,6 +3,7 @@ package webui
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -79,7 +80,23 @@ func (s *Server) runReadModel(ctx context.Context) error {
 		_ = m.Close()
 	}()
 
-	host, err := readmodel.NewProjectionHost(s.store, m, readmodel.ProjectionHostOptions{})
+	// The DLQ sidecar catches poison facts beside the projection db; a
+	// sidecar failure is warn-and-continue — the fold runs without a
+	// DLQ rather than refusing to serve. The close defer registers
+	// before the host's, so Stop runs first (LIFO).
+	dlq, err := readmodel.OpenDeadLetters(ctx, s.cfg.ReadModelPath)
+	if err != nil {
+		slog.Warn("readmodel: dlq sidecar unavailable; poison facts restart the fold", "err", err)
+	}
+
+	hostOpts := readmodel.ProjectionHostOptions{}
+	if dlq != nil {
+		hostOpts.DeadLetterStore = dlq.Store()
+
+		defer func() { _ = dlq.Close() }()
+	}
+
+	host, err := readmodel.NewProjectionHost(s.store, m, hostOpts)
 	if err != nil {
 		return fmt.Errorf("build projection host: %w", err)
 	}
