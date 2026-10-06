@@ -12,6 +12,16 @@ Every `docs/status/*.md` file must have a row here — `scripts/check-status-ind
 every forward-looking item is resolved (inline strikethroughs) move to
 `archived/` — the row above points at the archived path.
 
+**Closeout routing** (O7 2026-10-05): per-task closeout reports
+(`<ts>_task-<id>.md`) are written to `tasks/` — the root is for WINDOW
+reports only (status-sweeper/done-prompt windows and other named
+narratives). `tasks/` files are exempt from the index requirement by
+routing (the index gate scans `-maxdepth 1` on purpose: closeout reports
+are queue-derivable from the task id, not discovery surfaces). The
+closeout prompt (`executor.DefaultCloseoutPrompt`) owns the write path;
+the done-preflight gate and the status sweeper read BOTH locations, so
+legacy root-level closeout reports stay resolvable.
+
 **Scannability cadence** (08-25 f20): the live index grows ~10 rows/day. When
 the unarchived row count exceeds 100, the index check emits an
 `INDEX BLOAT WARNING` — run an archive sweep (docs-health ANNOTATE mode) or

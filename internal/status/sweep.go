@@ -329,7 +329,9 @@ func (s *Sweeper) completionDetail(ctx context.Context, id task.ID) (commit stri
 
 // closeoutReportPath resolves one completed task's closeout report under
 // the repo's docs/status/ (the DefaultCloseoutPrompt names it
-// <YYYY-MM-DD_HH-MM>_task-<id>.md; only the task id is stable). Best-effort:
+// docs/status/tasks/<YYYY-MM-DD_HH-MM>_task-<id>.md since the O7
+// report-placement ruling; pre-tasks/ reports live at docs/status/ root
+// and stay resolvable — only the task id is stable). Best-effort:
 // no match, no repo on disk or a bad pattern returns "" and the window
 // entry carries no report. Returns the repo-relative path of the NEWEST
 // match (several matches only when a task somehow reported twice).
@@ -338,8 +340,19 @@ func closeoutReportPath(repo string, id task.ID) string {
 		return ""
 	}
 
-	matches, err := filepath.Glob(filepath.Join(repo, "docs", "status", "*_task-"+id.String()+".md"))
-	if err != nil || len(matches) == 0 {
+	var matches []string
+	for _, dir := range []string{"tasks", "."} {
+		globMatches, err := filepath.Glob(
+			filepath.Join(repo, "docs", "status", dir, "*_task-"+id.String()+".md"),
+		)
+		if err != nil {
+			return ""
+		}
+
+		matches = append(matches, globMatches...)
+	}
+
+	if len(matches) == 0 {
 		return ""
 	}
 

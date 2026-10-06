@@ -887,7 +887,7 @@ const DefaultCloseoutPrompt = `What did you forget? What could you have done bet
 FULL COMPREHENSIVE & DETAILED STATUS UPDATE!
 INCLUDE WORK: a) FULLY DONE; b) PARTIALLY DONE; c) NOT STARTED; d) TOTALLY FUCKED UP! e) WHAT WE SHOULD IMPROVE! f) Up to 50 things we should get done next! g) Ask up to 3 questions that you can NOT figure out yourself!
 
-Run "date" (CLI) to get the current date-time, then write the full report at docs/status/<YYYY-MM-DD_HH-MM>_task-{{TASK_ID}}.md. Commit it with the same Task-Queue-ID footer as your work commit. Never push.
+Run "date" (CLI) to get the current date-time, then write the full report at docs/status/tasks/<YYYY-MM-DD_HH-MM>_task-{{TASK_ID}}.md. Commit it with the same Task-Queue-ID footer as your work commit. Never push.
 
 DO NOT RESEARCH UNRELATED STUFF. Report based on THIS task's work and what you noticed in passing.`
 

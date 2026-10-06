@@ -45,7 +45,8 @@ const (
 //     hits in the working tree (finding cured by the rebase).
 //  3. Harvest item state (the prune-stale rules applied per claim): the
 //     item's dedup key is now `[x]`, or gone from the file entirely.
-//  4. Closeout report: docs/status/*_task-<id>* exists in the repo.
+//  4. Closeout report: docs/status/tasks/*_task-<id>* exists in the repo
+//     (legacy docs/status/*_task-<id>* reports count too).
 //
 // Foreign payload shapes (no Repo/Prompt), unresolvable repos, git/file
 // errors and timeouts all evaluate to NOT done: the gate never guesses and
@@ -241,16 +242,20 @@ func firstKeyText(keys []string, payload harvestPayload) string {
 }
 
 // reportExists is signal 4: the closeout-report convention both dogfood
-// repos teach their agents (docs/status/<date>_task-<id>.md).
+// repos teach their agents (docs/status/tasks/<date>_task-<id>.md since
+// the O7 report-placement ruling; legacy reports at docs/status/ root
+// still count — landed work must never turn invisible).
 func reportExists(dir string, t task.Task) (bool, string) {
-	matches, err := filepath.Glob(
-		filepath.Join(dir, "docs", "status", "*_task-"+t.ID.String()+"*"),
-	)
-	if err != nil || len(matches) == 0 {
-		return false, ""
+	for _, sub := range []string{"tasks", "."} {
+		matches, err := filepath.Glob(
+			filepath.Join(dir, "docs", "status", sub, "*_task-"+t.ID.String()+"*"),
+		)
+		if err == nil && len(matches) > 0 {
+			return true, doneReasonReport
+		}
 	}
 
-	return true, doneReasonReport
+	return false, ""
 }
 
 // gitSucceeds runs one git command in dir; true iff it exited 0.

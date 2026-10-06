@@ -30,9 +30,10 @@ type StatusCompletion struct {
 	Files       []string `json:"files,omitempty"`
 	CompletedAt string   `json:"completed_at,omitempty"`
 	// Report is the repo-relative path of the task's closeout report
-	// (docs/status/<ts>_task-<id>.md), resolved by the sweeper when it
-	// could find one — the done prompt reads it directly instead of
-	// re-deriving it from the task id. Empty when none was found.
+	// (docs/status/tasks/<ts>_task-<id>.md; legacy root paths resolvable
+	// too), resolved by the sweeper when it could find one — the done
+	// prompt reads it directly instead of re-deriving it from the task
+	// id. Empty when none was found.
 	Report string `json:"report,omitempty"`
 }
 
