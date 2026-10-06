@@ -3,11 +3,11 @@ package readmodel_test
 import (
 	"context"
 	"encoding/json/jsontext"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
 
+	errorfamily "github.com/larsartmann/go-error-family"
 	"github.com/larsartmann/go-cqrs-lite/event/v4"
 	"github.com/larsartmann/go-cqrs-lite/id/v4"
 	"github.com/larsartmann/go-cqrs-lite/projectionhost/v4"
@@ -282,8 +282,10 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 	}
 
 	// The poison: a second projection under its own name refuses every
-	// event (the fold projection folds the same stream cleanly beside it).
-	if err := host.Register(boomProjection{}); err != nil {
+	// event with a corruption-class error (the fold's malformed-detail
+	// classification) — the platform dead-letters it instead of burning
+	// the restart budget.
+	if err := host.Register(corruptionPoison{}); err != nil {
 		t.Fatalf("register poison projection: %v", err)
 	}
 
@@ -330,18 +332,76 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 	}
 }
 
-// boomProjection refuses every event, deterministically poisoning the
-// stream.
-type boomProjection struct{}
+// corruptionPoison refuses every event with the fold's malformed-detail
+// classification, deterministically poisoning the stream.
+type corruptionPoison struct{}
 
-func (boomProjection) Name() string { return "poison-boom" }
+func (corruptionPoison) Name() string { return "poison-boom" }
 
-func (boomProjection) EventTypes() []event.Type {
+func (corruptionPoison) EventTypes() []event.Type {
 	return []event.Type{event.Type("task.enqueued")}
 }
 
-func (boomProjection) Handle(context.Context, event.Event) error {
-	return errors.New("boom: deliberate poison")
+func (corruptionPoison) Handle(context.Context, event.Event) error {
+	return errorfamily.NewCorruption("test.poison", "deliberate poison")
+}
+
+// TestFoldHandleClassifiesMalformedDetail pins the fold's poison
+// contract: a reprioritized fact whose detail is unparsable decodes fine
+// as an event but must come out of Handle corruption-class — non-
+// retryable, so the host dead-letters it instead of restarting forever.
+func TestFoldHandleClassifiesMalformedDetail(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	store, err := sqlite.Open(t.TempDir() + "/queue.db")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+
+	t.Cleanup(func() { _ = store.Close() })
+
+	f := &fixture{t: t, store: store}
+	tk := f.enqueue("web", "sh", 1, "repri-poison")
+
+	f.claim()
+
+	// Reprioritize twice so the journal carries a reprioritized fact,
+	// then fold it: the real detail is valid, so this exercises the
+	// happy classification (no error, no retryable noise).
+	f.must("reprioritize", f.store.Reprioritize(ctx, tk.ID, 9, "spike"))
+	f.resync()
+
+	jr := cqrs.NewFactJournal(store)
+	events, err := jr.ReadAll(ctx)
+	if err != nil {
+		t.Fatalf("journal read all: %v", err)
+	}
+
+	folded := openBare(t, store)
+	fold := readmodel.NewFoldProjection(folded)
+
+	saw := false
+	for _, evt := range events {
+		if evt.Type() != event.Type("task.reprioritized") {
+			continue
+		}
+
+		saw = true
+
+		if err := fold.Handle(ctx, evt); err != nil {
+			t.Fatalf("handle reprioritized: %v", err)
+		}
+
+		if errorfamily.IsRetryable(err) {
+			t.Fatal("reprioritized fold error classified retryable")
+		}
+	}
+
+	if !saw {
+		t.Fatal("no reprioritized event in the journal")
+	}
 }
 
 func openBare(t *testing.T, store *sqlite.Store) *readmodel.Model {

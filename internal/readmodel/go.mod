@@ -10,6 +10,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/projection/v4 v4.4.1
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.5.2
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.1
+	github.com/larsartmann/go-error-family v0.11.0
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.2
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.2
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.2
@@ -34,7 +35,6 @@ require (
 	github.com/larsartmann/go-cqrs-lite/otel/v4 v4.5.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.1 // indirect
-	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.2 // indirect

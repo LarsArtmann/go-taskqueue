@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/larsartmann/go-error-family"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -211,7 +212,13 @@ func enqueuedEvent(ctx context.Context, fact journal.Fact, src RowSource) (any, 
 	if evt.Project == "" || evt.Type == "" {
 		var detail enqueueDetail
 		if err := json.Unmarshal(fact.Detail, &detail); err != nil {
-			return nil, false, fmt.Errorf("readmodel: enqueue detail %s: %w", fact.TaskID, err)
+			// Malformed journal data never succeeds on retry: corruption
+			// class so the projectionhost dead-letters it instead of
+			// burning the restart budget.
+			return nil, false, errorfamily.WrapCorruption(
+				err, "readmodel.enqueue_detail",
+				fmt.Sprintf("enqueue detail for task %s is malformed", fact.TaskID),
+			)
 		}
 
 		evt.Project = fallbackString(evt.Project, detail.Project)
@@ -245,7 +252,13 @@ func requeuedEvent(fact journal.Fact, atMs int64) evtRequeued {
 func repriEvent(fact journal.Fact, atMs int64) (any, bool, error) {
 	var detail repriDetail
 	if err := json.Unmarshal(fact.Detail, &detail); err != nil {
-		return nil, false, fmt.Errorf("readmodel: reprioritized detail %s: %w", fact.TaskID, err)
+		// Malformed journal data never succeeds on retry: corruption
+		// class so the projectionhost dead-letters it instead of
+		// burning the restart budget.
+		return nil, false, errorfamily.WrapCorruption(
+			err, "readmodel.repri_detail",
+			fmt.Sprintf("reprioritized detail for task %s is malformed", fact.TaskID),
+		)
 	}
 
 	return evtReprioritized{ID: fact.TaskID, Priority: detail.NewPriority, At: atMs}, true, nil
