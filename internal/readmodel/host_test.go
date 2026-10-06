@@ -425,3 +425,59 @@ func waitFor(t *testing.T, cond func() bool) {
 
 	t.Fatal("condition never held within 10s")
 }
+
+// TestProjectionHostTailsLiveFacts pins the live phase: facts appended
+// after Start fold within the poll window. A drain-only host wedges the
+// dashboard on its first snapshot (the webui smoke's completed=2 dead=1
+// assertion).
+func TestProjectionHostTailsLiveFacts(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	store, err := sqlite.Open(t.TempDir() + "/queue.db")
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+
+	t.Cleanup(func() { _ = store.Close() })
+
+	f := &fixture{t: t, store: store}
+	tk := f.enqueue("web", "sh", 1, "tail")
+
+	m, err := readmodel.Open(ctx, t.TempDir()+"/projection.db", store, readmodel.WithDurableCursor())
+	if err != nil {
+		t.Fatalf("open model: %v", err)
+	}
+
+	t.Cleanup(func() { _ = m.Close() })
+
+	host, err := readmodel.NewProjectionHost(store, m, readmodel.ProjectionHostOptions{})
+	if err != nil {
+		t.Fatalf("build host: %v", err)
+	}
+
+	runCtx, cancel := context.WithCancel(ctx)
+	t.Cleanup(cancel)
+
+	if err := host.Start(runCtx); err != nil {
+		t.Fatalf("start host: %v", err)
+	}
+
+	// The fact stream moves AFTER the drain: the seed task completes
+	// while the host is live.
+	if tk2, claim := f.claim(); tk2.ID != tk.ID {
+		t.Fatalf("claim = %s, want the seed", tk2.ID)
+	} else {
+		f.must("complete", f.store.Complete(ctx, tk.ID, claim, jsontext.Value(`{}`)))
+	}
+
+	waitFor(t, func() bool {
+		counts, err := m.StatusCounts(ctx)
+		if err != nil {
+			return false
+		}
+
+		return counts[string(task.Completed)] == 1
+	})
+}

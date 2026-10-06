@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json/jsontext"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/larsartmann/go-cqrs-lite/event/v4"
@@ -242,13 +243,19 @@ type ProjectionHostOptions struct {
 // NewProjectionHost builds the managed host over the fact journal with
 // the model's fold registered as its projection. Start/Stop stay with
 // the caller (the composition root owns the lifetime); the journal is
-// the queue store itself, read-only (Facts).
+// the queue store itself, read-only (Facts). The live tail after the
+// initial drain polls the journal at DefaultPoll — the queue journal
+// has no bus, and the webui contract is a tail, not a one-shot drain.
 func NewProjectionHost(src queue.Store, m *Model, opts ProjectionHostOptions) (*projectionhost.Host, error) {
 	if src == nil {
 		return nil, ErrNoSource
 	}
 
-	hostOpts := []projectionhost.HostOption{}
+	journal := cqrs.NewFactJournal(src)
+
+	hostOpts := []projectionhost.HostOption{
+		projectionhost.WithSubscriber(tailSubscriber{jr: journal, src: src, poll: DefaultPoll}),
+	}
 
 	if opts.CheckpointEvery > 0 {
 		hostOpts = append(hostOpts, projectionhost.WithCheckpointEvery(opts.CheckpointEvery))
@@ -271,7 +278,7 @@ func NewProjectionHost(src queue.Store, m *Model, opts ProjectionHostOptions) (*
 		hostOpts = append(hostOpts, projectionhost.WithDeadLetterStore(opts.DeadLetterStore, threshold))
 	}
 
-	host, err := projectionhost.New(cqrs.NewFactJournal(src), WatermarkCheckpoints{Src: src}, hostOpts...)
+	host, err := projectionhost.New(journal, WatermarkCheckpoints{Src: src}, hostOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("readmodel: build projection host: %w", err)
 	}
@@ -295,3 +302,66 @@ var (
 	_ cqrs.FactSource       = queue.Store(nil)
 	_ projection.Projection = FoldProjection{}
 )
+
+// tailSubscriber adapts the queue journal's poll-tail into the
+// platform's live event.Subscriber. The projectionhost drains to the
+// head and exits unless a subscriber carries the live phase; the queue
+// journal has no bus, so the tail is a DefaultPoll ReadFrom loop
+// (webui parity with the hand pump's interval). The loop anchors at the
+// consumer's durable watermark — the drain checkpointed it moments
+// before — and the worker's live handler dedups any checkpoint-batch
+// overlap.
+type tailSubscriber struct {
+	jr   event.SeekableJournal
+	src  queue.Store
+	poll time.Duration
+}
+
+// Subscribe is unused: the projection subscribes to everything.
+func (s tailSubscriber) Subscribe(event.Type, event.Handler) error { return nil }
+
+// SubscribeAll runs the poll tail for the worker's lifetime: the loop
+// ends when the handler reports the worker ctx done (stop) or a
+// delivered event fails; journal read errors log and retry on the next
+// tick — a transient store hiccup must not crash-restart the worker.
+func (s tailSubscriber) SubscribeAll(handler event.Handler) error {
+	go s.tail(handler)
+
+	return nil
+}
+
+func (s tailSubscriber) tail(handler event.Handler) {
+	ctx := context.Background()
+	ticker := time.NewTicker(s.poll)
+	defer ticker.Stop()
+
+	after := int64(0)
+
+	if seq, exists, err := s.src.Watermark(ctx, CursorConsumer); err == nil && exists {
+		after = seq
+	}
+
+	for range ticker.C {
+		eid, err := SeqToEventID(after + 1)
+		if err != nil {
+			return
+		}
+
+		events, err := s.jr.ReadFrom(ctx, eid, DefaultBatch)
+		if err != nil {
+			slog.Warn("readmodel: tail read failed", "after", after, "err", err)
+
+			continue
+		}
+
+		for _, evt := range events {
+			if err := handler(ctx, evt); err != nil {
+				return
+			}
+
+			if seq, ok := EventIDToSeq(evt.ID()); ok {
+				after = seq
+			}
+		}
+	}
+}
