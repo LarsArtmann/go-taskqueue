@@ -38,10 +38,10 @@ func OpenDeadLetters(ctx context.Context, modelPath string) (*DeadLetters, error
 	openCtx, cancel := context.WithTimeout(ctx, dlqOpenTimeout)
 	defer cancel()
 
-	db, err := sql.Open(
-		"sqlite",
-		fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)", DLQPathFor(modelPath)),
-	)
+	dsn := "file:" + DLQPathFor(modelPath) +
+		"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("readmodel: open dlq sidecar: %w", err)
 	}
@@ -58,9 +58,9 @@ func OpenDeadLetters(ctx context.Context, modelPath string) (*DeadLetters, error
 	return &DeadLetters{store: store, db: db}, nil
 }
 
-// Store returns the platform DeadLetterStore for the projection host's
-// DeadLetterStore option.
-func (d *DeadLetters) Store() projectionhost.DeadLetterStore { return d.store }
+// Store returns the platform DLQ for the projection host's
+// DeadLetterStore option; the concrete store satisfies the interface.
+func (d *DeadLetters) Store() *projectionhost.SQLiteDeadLetterStore { return d.store }
 
 // Count reports the stored poison facts across every projection.
 func (d *DeadLetters) Count(ctx context.Context) (int64, error) {
