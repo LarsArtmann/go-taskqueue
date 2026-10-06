@@ -42,8 +42,13 @@ func TestDoctorProjectionSection(t *testing.T) {
 		t.Errorf("fresh db check = %s (%s), want ok", r.Status, r.Detail)
 	}
 
-	// A nonzero cursor under a missing projection db is the documented
-	// delete-to-replay escape hatch, not a malfunction.
+	// One folded task, cursor at head, no projection db yet: the missing
+	// file under a nonzero cursor is the documented delete-to-replay
+	// escape hatch, not a malfunction.
+	if _, err := store.Enqueue(ctx, task.New{Project: "web", Type: "sh", Payload: jsontext.Value(`"x"`)}); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
 	if err := store.SaveWatermark(ctx, readmodel.CursorConsumer, 1); err != nil {
 		t.Fatalf("save cursor: %v", err)
 	}
@@ -58,8 +63,8 @@ func TestDoctorProjectionSection(t *testing.T) {
 	}
 
 	// Lag: the cursor sits behind the head while serve is down.
-	if _, err := store.Enqueue(ctx, task.New{Project: "web", Type: "sh", Payload: jsontext.Value(`"x"`)}); err != nil {
-		t.Fatalf("enqueue: %v", err)
+	if _, err := store.Enqueue(ctx, task.New{Project: "web", Type: "sh", Payload: jsontext.Value(`"y"`)}); err != nil {
+		t.Fatalf("enqueue 2: %v", err)
 	}
 
 	results, err = runDoctor(ctx, doctorOptions{DBPath: path})
