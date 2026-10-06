@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Changed
+- **Closeout reports move to `docs/status/tasks/`** (2026-10-07, O7
+  report-placement ruling): the `--task-closeout` prompt now names
+  `docs/status/tasks/<ts>_task-<id>.md`, keeping the `docs/status/`
+  root for window reports; the done-preflight gate and the status
+  sweeper read both locations, so legacy root-level closeout reports
+  stay resolvable, and `tasks/` files are exempt from the status-index
+  gate by routing.
+
 ## [0.3.2] - 2026-10-06
 
 ### Fixed

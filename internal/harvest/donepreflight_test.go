@@ -274,6 +274,35 @@ func TestDonePreflightReportExists(t *testing.T) {
 	}
 }
 
+// TestDonePreflightReportExistsInTasksDir is signal 4 at the O7
+// report-placement location: docs/status/tasks/*_task-<id>*.
+func TestDonePreflightReportExistsInTasksDir(t *testing.T) {
+	f := newDonePreflightFixture(t, "- [ ] still open item\n")
+	id := task.NewID()
+
+	if err := os.MkdirAll(filepath.Join(f.repo, "docs", "status", "tasks"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(f.repo, "docs", "status", "tasks", "2026-10-07_10-00_task-"+id.String()+".md"),
+		[]byte("report"), 0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	done, reason := f.h.DonePreflight(
+		context.Background(), taskWith(t, id, ItemKey("preflight", "still open item"), "still open item", "", ""),
+	)
+	if !done {
+		t.Fatal("closeout report in tasks/: want done, got not done")
+	}
+
+	if !strings.Contains(reason, "closeout report") {
+		t.Errorf("reason = %q, want the report signal named", reason)
+	}
+}
+
 // TestDonePreflightForeignPayloadNotDone pins the fail-open contract:
 // payloads without the minimum identity (Repo/Prompt) are invisible to the
 // gate, as are tasks whose repo cannot be resolved.

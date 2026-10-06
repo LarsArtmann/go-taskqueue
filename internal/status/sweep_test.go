@@ -282,6 +282,57 @@ func TestSweepPinsCloseoutReportPaths(t *testing.T) {
 	}
 }
 
+// TestSweepPinsTasksDirCloseoutReports pins the O7 report-placement
+// routing: a closeout report under docs/status/tasks/ (the
+// DefaultCloseoutPrompt location) resolves to the repo-relative tasks/
+// path, while a window entry without a report stays empty.
+func TestSweepPinsTasksDirCloseoutReports(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	sw := newSweeperOrDie(t, s, 2)
+
+	repo := t.TempDir()
+
+	tasksDir := filepath.Join(repo, "docs", "status", "tasks")
+	if err := os.MkdirAll(tasksDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	first := runAgentTaskRepo(t, s, 0, repo, executor.AgentResult{CommitSHA: "aaaa"})
+	if err := os.WriteFile(
+		filepath.Join(tasksDir, "2026-10-07_10-00_task-"+first.ID.String()+".md"),
+		[]byte("# self-review\n"), 0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	runAgentTaskRepo(t, s, 1, repo, executor.AgentResult{CommitSHA: "bbbb"})
+
+	if _, err := sw.Sweep(context.Background()); err != nil {
+		t.Fatalf("Sweep: %v", err)
+	}
+
+	reports := listByType(t, s, executor.TaskTypeStatus)
+	if len(reports) != 1 {
+		t.Fatalf("status tasks = %d, want 1", len(reports))
+	}
+
+	window := payloadPayload(t, reports[0]).Completed
+	if len(window) != 2 {
+		t.Fatalf("window = %d entries, want 2", len(window))
+	}
+
+	wantReport := "docs/status/tasks/2026-10-07_10-00_task-" + first.ID.String() + ".md"
+	if window[0].Report != wantReport {
+		t.Fatalf("first entry report = %q, want %q", window[0].Report, wantReport)
+	}
+
+	if window[1].Report != "" {
+		t.Fatalf("second entry report = %q, want empty (no file on disk)", window[1].Report)
+	}
+}
+
 func TestSweepReplayNeverDuplicates(t *testing.T) {
 	t.Parallel()
 

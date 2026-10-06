@@ -299,7 +299,7 @@ for line in "${file_lines[@]}"; do
 	fi
 	if [ -n "$cur" ] && [ "$seen_blank" -eq 1 ]; then
 		files_of[$cur]=${files_of[$cur]:-}$'\n'$line
-		if [[ $line == docs/status/*_task-*.md ]]; then
+		if [[ $line == docs/status/*_task-*.md || $line == docs/status/tasks/*_task-*.md ]]; then
 			rid=${line##*_task-}
 			rid=${rid%.md}
 			if [[ $rid =~ ^[0-9a-f]+$ ]]; then

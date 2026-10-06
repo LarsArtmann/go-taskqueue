@@ -90,7 +90,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   0, ENV-SELF-CONTAINED (minted verifies carry `GOEXPERIMENT=jsonv2` —
   agents never edit their own gate). Model+effort ONLY in the repo
   `.crushrc` managed block. `--task-closeout` resumes the EXACT session
-  for its a)-g) report (`docs/status/<ts>_task-<id>.md`).
+  for its a)-g) report (`docs/status/tasks/<ts>_task-<id>.md`).
 - **Derived outcomes**: the queue derives what a run did — commits via
   exactly ONE `Task-Queue-ID` footer as LAST trailer line
   (`executor.GitLogScanner`; a footer above the attribution block is
