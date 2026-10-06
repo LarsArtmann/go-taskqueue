@@ -142,7 +142,7 @@ not here.
 ## Done-prompt harvest (2026-09-17; sources: the lint-baseline row-104 re-dispatch close-outs 01-17/01-22/01-23, first harvested this pass; row 104 itself is DONE + re-verified 3x)
 
 - [ ] Spot-check round-13's noctx "fix for real" claim against code: the row-104 close-outs confirmed absence-of-growth but never verified the noctx findings (executor 1→5, root 22→29) got REAL context-carrier fixes, not a baseline regen (01-17 §f14, 01-23 §b1)
-- [ ] Queue-side dedup-key→COMPLETED short-circuit: when a dispatch's task ID already has a COMPLETED task, mint a zero-cost verify stub or skip — now argued from 3+ sibling re-dispatch windows in as many days (01-17 §f1, 01-22 §e2, 01-23 §e2(O4 2026-10-05)
+- [x] Queue-side dedup-key→COMPLETED short-circuit: when a dispatch's task ID already has a COMPLETED task, mint a zero-cost verify stub or skip — now argued from 3+ sibling re-dispatch windows in as many days (01-17 §f1, 01-22 §e2, 01-23 §e2(O4 2026-10-05)
 - [ ] Owner ruling: adopt or policy-disable `modernize` (per-gate whack-a-mole burns a window per drift class) (01-17 §g1)
 - [ ] Pin golangci-lint version in the flake to stop analyzer-drift gate-killers (01-17 §g2)
 - [ ] Pre-commit hook (or gate) validating report filename timestamps against `date` — the 01-22 report shipped a fabricated `04-52` timestamp (01-23 §d1/§e1)
@@ -523,4 +523,4 @@ not here.
 - [ ] docs/release/VERSION-SURFACES.md: one line documenting the v0.2.0 tag divergence itself — root v0.2.0 points at pre-split 845f5f38 while internal/* v0.2.0 tags point at post-split 0637d633 (same version number, two different trees; documented NOWHERE today) regardless of the pure-graph row's outcome (00-23 report §c2)
 - [ ] check-pkg-proxy.sh: add a per-module/per-tag mode (today it pins the LATEST root tag only) so one-off verifications like the v0.2.0 backend-tag check reuse the gate instead of hand-rolled go list -m -versions chains (00-23 report §f4)
 - [ ] Cross-module walk-away gate: run scripts/test-cmd-tq.sh before walking away from a Filter/cross-module retype — root ./... reaches cmd/tq only via internal/e2e, which is how the 1a403842 sweep sat ~26h red; AGENTS.md bullet is size-guarded, fold into the next AGENTS edit with headroom (00-23 report §f6)
-- [ ] Land the mint-time done-check for repeat dispatches (O4 2026-10-05 ratified: refuse at mint, --force-redispatch escape): the mixed-graph finding was re-verified THREE consecutive times as no-op (01-48, 01-55, 02-21 reports) — the loop's loudest recurrence, and neither this nor the row-339 report-exists guard has landed (02-35 report §e8)
+- [x] Land the mint-time done-check for repeat dispatches (O4 2026-10-05 ratified: refuse at mint, --force-redispatch escape): the mixed-graph finding was re-verified THREE consecutive times as no-op (01-48, 01-55, 02-21 reports) — the loop's loudest recurrence, and neither this nor the row-339 report-exists guard has landed (02-35 report §e8)
