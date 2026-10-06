@@ -20,11 +20,11 @@ require (
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.1 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.1 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 )

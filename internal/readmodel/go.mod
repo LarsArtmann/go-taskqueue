@@ -6,10 +6,10 @@ require (
 	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.0
 	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.16.0
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.1
-	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.1
 )
 
 require (

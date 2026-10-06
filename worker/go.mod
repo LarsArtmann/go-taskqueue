@@ -2,7 +2,7 @@ module github.com/larsartmann/go-taskqueue/worker
 
 go 1.27.1
 
-require github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
+require github.com/larsartmann/go-taskqueue/internal/worker v0.3.1
 
 require (
 	github.com/LarsArtmann/go-crush-data v0.4.0 // indirect
@@ -10,10 +10,10 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-retry v0.7.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/executor v0.3.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.1 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

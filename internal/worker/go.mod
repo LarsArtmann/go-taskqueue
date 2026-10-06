@@ -39,11 +39,11 @@ replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../queue/sq
 
 require (
 	github.com/larsartmann/go-retry v0.7.1
-	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/executor v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.1
 )
 
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../queue/sqlitev4

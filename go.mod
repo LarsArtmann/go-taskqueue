@@ -60,14 +60,14 @@ require (
 	github.com/larsartmann/go-health-dashboard v0.10.2
 	github.com/larsartmann/go-sse v0.6.2
 	github.com/larsartmann/go-sse/ssetest v0.4.0
-	github.com/larsartmann/go-taskqueue/internal/executor v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/journal v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/executor v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/worker v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/worker v0.3.1
 	github.com/larsartmann/templ-components v1.20.1
 	github.com/larsartmann/templ-components/icons v1.20.1
 	github.com/larsartmann/templ-components/utils v1.20.1
