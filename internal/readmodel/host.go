@@ -3,7 +3,6 @@ package readmodel
 import (
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"encoding/json/jsontext"
 	"fmt"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/larsartmann/go-cqrs-lite/id/v4"
 	"github.com/larsartmann/go-cqrs-lite/projection/v4"
 	"github.com/larsartmann/go-cqrs-lite/projectionhost/v4"
+	errorfamily "github.com/larsartmann/go-error-family"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	cqrs "github.com/larsartmann/go-taskqueue/internal/journal/cqrs"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -50,7 +50,10 @@ func eventIDToSeq(eventID id.EventID) (int64, bool) {
 // adapter's consumers (doctor/health surfaces, composition root).
 func SeqToEventID(seq int64) (id.EventID, error) {
 	if seq <= 0 {
-		return id.EventID{}, fmt.Errorf("readmodel: sequence %d is not positive", seq)
+		return id.EventID{}, errorfamily.NewRejection(
+			"readmodel.sequence_not_positive",
+			fmt.Sprintf("readmodel: sequence %d is not positive", seq),
+		)
 	}
 
 	var raw ulid.ULID
@@ -85,26 +88,20 @@ func EventIDToSeq(eventID id.EventID) (int64, bool) {
 	return int64(binary.BigEndian.Uint64(raw[seqEpochLen : seqEpochLen+seqBytesLen])), true
 }
 
-// WatermarkCheckpoints adapts the queue store's watermarks table to the
-// platform CheckpointStore, under the projection's own consumer name.
-func WatermarkCheckpoints(src queue.Store) event.CheckpointStore {
-	return watermarkCheckpoints{src: src}
-}
-
-// watermarkCheckpoints adapts the queue's watermarks table (one monotonic
-// integer cursor per consumer) to the platform's event.CheckpointStore.
-// The projection's Name IS the watermarks consumer, so the host-managed
-// pump and the in-model durable cursor (WithDurableCursor) share one
-// checkpoint slot by construction.
-type watermarkCheckpoints struct {
-	src queue.Store
+// WatermarkCheckpoints adapts the queue's watermarks table (one
+// monotonic integer cursor per consumer) to the platform's
+// event.CheckpointStore. The projection's Name IS the watermarks
+// consumer, so the host-managed pump and the in-model durable cursor
+// (WithDurableCursor) share one checkpoint slot by construction.
+type WatermarkCheckpoints struct {
+	Src queue.Store
 }
 
 // Load returns the stored checkpoint; no row (or a zero seq) is the zero
 // Checkpoint — the platform's "no prior progress" shape, replaying from
 // the journal start.
-func (w watermarkCheckpoints) Load(ctx context.Context, name string) (event.Checkpoint, error) {
-	seq, exists, err := w.src.Watermark(ctx, name)
+func (w WatermarkCheckpoints) Load(ctx context.Context, name string) (event.Checkpoint, error) {
+	seq, exists, err := w.Src.Watermark(ctx, name)
 	if err != nil {
 		return event.Checkpoint{}, fmt.Errorf("readmodel: load watermark %s: %w", name, err)
 	}
@@ -124,13 +121,16 @@ func (w watermarkCheckpoints) Load(ctx context.Context, name string) (event.Chec
 // Save stores the checkpoint's event ID as the consumer's seq. A
 // non-sequence-derived ID cannot come from this journal's events and is
 // refused instead of silently wedging the cursor.
-func (w watermarkCheckpoints) Save(ctx context.Context, name string, cp event.Checkpoint) error {
+func (w WatermarkCheckpoints) Save(ctx context.Context, name string, cp event.Checkpoint) error {
 	seq, ok := eventIDToSeq(cp.EventID)
 	if !ok {
-		return fmt.Errorf("readmodel: checkpoint %s: event id %s is not sequence-derived", name, cp.EventID)
+		return errorfamily.NewRejection(
+			"readmodel.checkpoint_not_sequence_derived",
+			fmt.Sprintf("readmodel: checkpoint %s: event id %s is not sequence-derived", name, cp.EventID),
+		)
 	}
 
-	if err := w.src.SaveWatermark(ctx, name, seq); err != nil {
+	if err := w.Src.SaveWatermark(ctx, name, seq); err != nil {
 		return fmt.Errorf("readmodel: save watermark %s: %w", name, err)
 	}
 
@@ -147,7 +147,7 @@ type foldPayload struct {
 	Owner   string           `json:"owner,omitempty"`
 	Attempt int              `json:"attempt,omitempty"`
 	Error   string           `json:"error,omitempty"`
-	Detail  json.RawMessage  `json:"detail,omitempty"`
+	Detail  jsontext.Value   `json:"detail,omitempty"`
 }
 
 // FoldProjection feeds platform-delivered fact events through the same
@@ -200,7 +200,10 @@ func (p FoldProjection) Handle(ctx context.Context, evt event.Event) error {
 
 	seq, ok := eventIDToSeq(evt.ID())
 	if !ok {
-		return fmt.Errorf("readmodel: event %s is not sequence-derived", evt.ID())
+		return errorfamily.NewCorruption(
+			"readmodel.event_not_sequence_derived",
+			fmt.Sprintf("readmodel: event %s is not sequence-derived", evt.ID()),
+		)
 	}
 
 	return p.m.apply(ctx, journal.Fact{
@@ -210,7 +213,7 @@ func (p FoldProjection) Handle(ctx context.Context, evt event.Event) error {
 		Owner:   payload.Owner,
 		Attempt: payload.Attempt,
 		Error:   payload.Error,
-		Detail:  jsontext.Value(payload.Detail),
+		Detail:  payload.Detail,
 		Time:    evt.OccurredAt(),
 	})
 }
@@ -268,7 +271,7 @@ func NewProjectionHost(src queue.Store, m *Model, opts ProjectionHostOptions) (*
 		hostOpts = append(hostOpts, projectionhost.WithDeadLetterStore(opts.DeadLetterStore, threshold))
 	}
 
-	host, err := projectionhost.New(cqrs.NewFactJournal(src), watermarkCheckpoints{src: src}, hostOpts...)
+	host, err := projectionhost.New(cqrs.NewFactJournal(src), WatermarkCheckpoints{Src: src}, hostOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("readmodel: build projection host: %w", err)
 	}

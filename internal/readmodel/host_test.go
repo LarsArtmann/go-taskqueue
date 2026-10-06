@@ -117,7 +117,7 @@ func TestWatermarkCheckpointsRoundtrip(t *testing.T) {
 	f := &fixture{t: t, store: store}
 	_ = f.enqueue("web", "sh", 1, "wm")
 
-	cp := readmodel.WatermarkCheckpoints(store)
+	cp := readmodel.WatermarkCheckpoints{Src: store}
 
 	got, err := cp.Load(ctx, readmodel.CursorConsumer)
 	if err != nil {
@@ -271,6 +271,7 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 	t.Cleanup(func() { _ = m.Close() })
 
 	dlq := projectionhost.NewMemoryDeadLetterStore()
+
 	host, err := readmodel.NewProjectionHost(store, m, readmodel.ProjectionHostOptions{
 		BatchSize:           10,
 		MaxRestarts:         2,
@@ -294,7 +295,7 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 
 	go func() { _ = host.Start(runCtx) }()
 
-	waitFor(t, ctx, func() bool {
+	waitFor(t, func() bool {
 		n, err := dlq.Count(ctx)
 
 		return err == nil && n > 0
@@ -372,6 +373,7 @@ func TestFoldHandleClassifiesMalformedDetail(t *testing.T) {
 	fold := readmodel.NewFoldProjection(folded)
 
 	saw := false
+
 	for _, evt := range events {
 		if evt.Type() != event.Type("task.reprioritized") {
 			continue
@@ -406,7 +408,7 @@ func openBare(t *testing.T, store *sqlite.Store) *readmodel.Model {
 	return m
 }
 
-func waitFor(t *testing.T, ctx context.Context, cond func() bool) {
+func waitFor(t *testing.T, cond func() bool) {
 	t.Helper()
 
 	deadline := time.Now().Add(10 * time.Second)
