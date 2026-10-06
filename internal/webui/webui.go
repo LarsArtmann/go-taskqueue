@@ -132,7 +132,7 @@ func New(store queue.Store, cfg Config) *Server {
 
 	prober := newQueueProber(store, cfg.Version)
 
-	return &Server{
+	s := &Server{
 		store:  store,
 		hub:    NewHub(),
 		cfg:    cfg,
@@ -140,6 +140,16 @@ func New(store queue.Store, cfg Config) *Server {
 		dash:   newHealthDashboard(prober),
 		writes: newWriteRateLimiter(),
 	}
+
+	prober.projectionCursor = func(_ context.Context) (int64, bool) {
+		if s.model == nil {
+			return 0, false
+		}
+
+		return s.model.JournalCursor(), true
+	}
+
+	return s
 }
 
 // routeBindings is the complete route table as data, so the read-only

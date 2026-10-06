@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +22,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/review"
 	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/status"
@@ -231,6 +233,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
+	results = append(results, doctorProjection(ctx, store, opts.DBPath)...)
 	results = append(results, doctorOpenSessions(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
 	results = append(results, doctorEnvironment(ctx, opts)...)
@@ -722,6 +725,110 @@ func doctorWatermarkLiveness(ctx context.Context, store queue.Store) []checkResu
 	}
 
 	return results
+}
+
+// doctorProjection reads the ADR-0019 S3/M08 projection surfaces: the
+// fold's durable cursor against the journal head, the projection file's
+// presence, and the folded status mix against the queue's own counts.
+// Every API here is a released internal/readmodel surface — cmd/tq is
+// replace-free (ADR-0017) and builds against the proxy tags.
+func doctorProjection(ctx context.Context, store queue.Store, dbPath string) []checkResult {
+	cursor, exists, err := store.Watermark(ctx, readmodel.CursorConsumer)
+	if err != nil {
+		return []checkResult{{Name: "projection-cursor", Status: checkFail, Detail: "read cursor: " + err.Error()}}
+	}
+
+	head, err := store.HeadSeq(ctx)
+	if err != nil {
+		return []checkResult{{Name: "projection-cursor", Status: checkFail, Detail: "read journal head: " + err.Error()}}
+	}
+
+	var results []checkResult
+
+	switch {
+	case !exists || cursor == 0:
+		results = append(
+			results,
+			checkResult{Name: "projection-cursor", Status: checkOK, Detail: "no cursor (serve never folded here)"},
+		)
+	case head > cursor:
+		results = append(results, checkResult{
+			Name:   "projection-cursor",
+			Status: checkWarn,
+			Detail: fmt.Sprintf(
+				"%d fact(s) behind the journal head — the fold advances only while `tq serve` runs",
+				head-cursor,
+			),
+		})
+	default:
+		results = append(
+			results,
+			checkResult{Name: "projection-cursor", Status: checkOK, Detail: fmt.Sprintf("at head (#%d)", cursor)},
+		)
+	}
+
+	projectionPath := readmodel.PathFor(dbPath)
+
+	if _, err := os.Stat(projectionPath); errors.Is(err, fs.ErrNotExist) {
+		detail := "no projection db yet (created on the first serve)"
+		if exists && cursor > 0 {
+			detail = "projection db missing under a nonzero cursor — the next serve replays the journal from zero"
+		}
+
+		return append(results, checkResult{Name: "projection-db", Status: checkOK, Detail: detail})
+	}
+
+	m, err := readmodel.Open(ctx, projectionPath, store, readmodel.WithDurableCursor())
+	if err != nil {
+		return append(results, checkResult{Name: "projection-db", Status: checkFail, Detail: "open: " + err.Error()})
+	}
+
+	defer func() { _ = m.Close() }()
+
+	folded, err := m.StatusCounts(ctx)
+	if err != nil {
+		return append(results, checkResult{Name: "projection-db", Status: checkFail, Detail: "folded counts: " + err.Error()})
+	}
+
+	live, err := store.StatusCounts(ctx)
+	if err != nil {
+		return append(results, checkResult{Name: "projection-db", Status: checkFail, Detail: "queue counts: " + err.Error()})
+	}
+
+	if drift := statusDrift(folded, live); len(drift) > 0 {
+		return append(results, checkResult{
+			Name:   "projection-db",
+			Status: checkWarn,
+			Detail: "folded counts drift from the queue: " + strings.Join(drift, "; ") + " (the fold converges on the next serve)",
+		})
+	}
+
+	return append(
+		results,
+		checkResult{Name: "projection-db", Status: checkOK, Detail: fmt.Sprintf("counts match the queue at cursor #%d", cursor)},
+	)
+}
+
+// statusDrift lists the per-status count differences between the folded
+// projection and the queue, sorted by status name.
+func statusDrift(folded map[string]int, live map[task.Status]int) []string {
+	var drift []string
+
+	for st, n := range live {
+		if folded[string(st)] != n {
+			drift = append(drift, fmt.Sprintf("%s folded=%d queue=%d", st, folded[string(st)], n))
+		}
+	}
+
+	for st, n := range folded {
+		if _, ok := live[task.Status(st)]; !ok && n != 0 {
+			drift = append(drift, fmt.Sprintf("%s folded=%d queue=absent", st, n))
+		}
+	}
+
+	sort.Strings(drift)
+
+	return drift
 }
 
 // doctorWorkerLiveness looks for recent heartbeats as worker-alive

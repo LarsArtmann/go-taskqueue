@@ -44,6 +44,10 @@ const (
 	// healthEvalTimeout bounds one evaluation batch; a slow store must not
 	// stall the SSE pusher goroutine beyond the refresh cadence.
 	healthEvalTimeout = 5 * time.Second
+	// healthProjectionLagTolerance is the fold-lag head gap the projection
+	// check tolerates before warning: the tail polls at DefaultPoll and
+	// the fold applies within a batch, so only a wedged fold lags wide.
+	healthProjectionLagTolerance = 100
 )
 
 // queueProber adapts the task queue's store-derived health onto
@@ -56,6 +60,12 @@ type queueProber struct {
 	store     queue.Store
 	startedAt time.Time
 	version   string
+
+	// projectionCursor reports the read model's applied journal watermark
+	// when the server folds on one (mounted), and ok=false otherwise —
+	// the projection check is emitted only for mounted folds. Nil means
+	// the server runs store-backed reads (no check).
+	projectionCursor func(ctx context.Context) (cursor int64, mounted bool)
 
 	mu        sync.Mutex
 	resp      health.Response
@@ -182,6 +192,24 @@ func (p *queueProber) evaluate(now time.Time) {
 	checks["dlq"] = mkCheck(
 		statusOr(dead == 0, health.StatusPass, health.StatusWarn),
 		dlqNote(dead))
+
+	if p.projectionCursor != nil {
+		cursor, mounted := p.projectionCursor(ctx)
+		if mounted {
+			head, headErr := p.store.HeadSeq(ctx)
+
+			switch {
+			case headErr != nil:
+				checks["projection"] = mkCheck(health.StatusFail, errText(headErr))
+			case head-cursor > healthProjectionLagTolerance:
+				checks["projection"] = mkCheck(health.StatusWarn, fmt.Sprintf(
+					"fold %d fact(s) behind the journal head (#%d of #%d) — the fold is wedged or restarting",
+					head-cursor, cursor, head))
+			default:
+				checks["projection"] = mkCheck(health.StatusPass, fmt.Sprintf("at #%d (head #%d)", cursor, head))
+			}
+		}
+	}
 
 	p.finishEval(now, checks)
 }
