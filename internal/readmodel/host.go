@@ -308,9 +308,11 @@ var (
 // head and exits unless a subscriber carries the live phase; the queue
 // journal has no bus, so the tail is a DefaultPoll ReadFrom loop
 // (webui parity with the hand pump's interval). The loop anchors at the
-// consumer's durable watermark — the drain checkpointed it moments
-// before — and the worker's live handler dedups any checkpoint-batch
-// overlap.
+// consumer's durable watermark (the drain checkpointed it moments
+// before) and advances the anchor per delivered event; ReadFrom is
+// exclusive of the cursor, so the anchor is always the LAST delivered
+// seq via tailAnchor, never after+1. The worker's live handler dedups
+// any checkpoint-batch overlap.
 type tailSubscriber struct {
 	jr   event.SeekableJournal
 	src  queue.Store
@@ -342,7 +344,7 @@ func (s tailSubscriber) tail(handler event.Handler) {
 	}
 
 	for range ticker.C {
-		eid, err := SeqToEventID(after + 1)
+		eid, err := tailAnchor(after)
 		if err != nil {
 			return
 		}
@@ -364,4 +366,20 @@ func (s tailSubscriber) tail(handler event.Handler) {
 			}
 		}
 	}
+}
+
+// tailAnchor encodes the tail's resume position as the ReadFrom cursor.
+// ReadFrom is exclusive of the given event ID (the journal's AfterSeq
+// contract), so the cursor must be the LAST delivered seq's ID: an
+// after+1 cursor skips the fact at seq after+1 at every poll boundary,
+// and a skipped terminal fact (Completed, DeadLettered) wedges the
+// ledger permanently. A zero position (fresh journal, no watermark row
+// yet) reads from the journal start through the zero event ID, which
+// decodes as seq 0.
+func tailAnchor(after int64) (id.EventID, error) {
+	if after <= 0 {
+		return id.EventID{}, nil
+	}
+
+	return SeqToEventID(after)
 }
