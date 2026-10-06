@@ -5,7 +5,7 @@ go 1.27.1
 require (
 	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.0
 	github.com/larsartmann/go-cqrs-lite/system/v4 v4.10.1
-	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.2
 )
 
 require (
@@ -48,9 +48,9 @@ require (
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.2 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/maypok86/otter/v2 v2.3.0 // indirect

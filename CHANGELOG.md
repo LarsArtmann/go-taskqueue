@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.2] - 2026-10-06
+
+### Fixed
+- **Module graph** (2026-10-06): the v0.3.1 require sweep missed the
+  three-segment internal requires (queue/sqlite, queue/postgres,
+  journal/cqrs, companion, and the v4 drivers), leaving the proxy graph
+  uncloseable; every repo require now pins v0.3.2 and v0.3.1 is
+  retracted in the root and CLI modules.
+
 ## [0.3.1] - 2026-10-05
 
 ### Added

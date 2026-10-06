@@ -45,7 +45,7 @@
         # bump this; `tq version` reports it. The ldflags line below derives
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
-        version = "0.3.1";
+        version = "0.3.2";
         vendorHash = "sha256-/pRdmKaCNsowC6Gz85wHmbo6VH1Lsnfl1iYpBr33G8k=";
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships

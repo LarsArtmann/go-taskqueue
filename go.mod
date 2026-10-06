@@ -30,9 +30,9 @@ require (
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-retry v0.7.1 // indirect
 	github.com/larsartmann/go-sse/sseparse v0.2.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.2 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.2 // indirect
 	github.com/larsartmann/templ-components/datastar v1.20.1 // indirect
 	github.com/larsartmann/templ-components/htmx v1.20.1 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
@@ -60,19 +60,21 @@ require (
 	github.com/larsartmann/go-health-dashboard v0.10.2
 	github.com/larsartmann/go-sse v0.6.2
 	github.com/larsartmann/go-sse/ssetest v0.4.0
-	github.com/larsartmann/go-taskqueue/internal/executor v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/worker v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/executor v0.3.2
+	github.com/larsartmann/go-taskqueue/internal/journal v0.3.2
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.2
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.2
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.2
+	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.2
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.2
+	github.com/larsartmann/go-taskqueue/internal/worker v0.3.2
 	github.com/larsartmann/templ-components v1.20.1
 	github.com/larsartmann/templ-components/icons v1.20.1
 	github.com/larsartmann/templ-components/utils v1.20.1
 	golang.org/x/sync v0.23.0
 )
+
+retract v0.3.1 // broken module graph: the v0.3.1 sweep left three-segment internal requires (queue/sqlite, journal/cqrs, companion, v4 drivers) at v0.3.0, so the proxy graph cannot close
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ./internal/task
 
