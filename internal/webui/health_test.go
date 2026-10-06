@@ -309,5 +309,4 @@ func TestHealthProjectionCheck(t *testing.T) {
 	if proj.Status != health.StatusWarn {
 		t.Errorf("wedged projection = %+v, want warn", proj)
 	}
-
 }
