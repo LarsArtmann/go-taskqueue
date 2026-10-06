@@ -334,6 +334,7 @@ func (s tailSubscriber) SubscribeAll(handler event.Handler) error {
 
 func (s tailSubscriber) tail(handler event.Handler) {
 	ctx := context.Background()
+
 	ticker := time.NewTicker(s.poll)
 	defer ticker.Stop()
 

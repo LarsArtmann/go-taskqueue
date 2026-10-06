@@ -70,6 +70,7 @@ func TestTailSubscriberDeliversEveryFactAcrossPollBoundaries(t *testing.T) {
 		}
 
 		mu.Lock()
+
 		delim = append(delim, seq)
 		complete := len(delim) == 3
 		mu.Unlock()
