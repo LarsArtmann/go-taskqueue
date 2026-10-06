@@ -65,17 +65,6 @@ func TestSelfManagingLoop(t *testing.T) {
 	noClean := false
 	h := New(q, Config{ProjectsDir: projects, RequireClean: &noClean})
 
-	pool := worker.New(s, worker.Config{
-		Owner:        "e2e-pool",
-		Concurrency:  1,
-		PollInterval: 20 * time.Millisecond,
-		Lease:        time.Minute,
-		Executors:    reg,
-	}, nil)
-	go func() { _ = pool.Start(ctx) }()
-
-	defer pool.Stop()
-
 	// Tick 1: first item enqueued and worked to completion by the pool.
 	res, err := h.Run(ctx)
 	if err != nil {
@@ -88,6 +77,21 @@ func TestSelfManagingLoop(t *testing.T) {
 		// parsing saw the fixture, Skipped carries the per-repo refusal.
 		t.Fatalf("tick 1 result = %+v (want exactly 'first item' enqueued)", res)
 	}
+
+	// The pool starts only after tick 1's assertion: a 20ms-poll worker
+	// running DURING the harvest tick completes the task mid-scan, and the
+	// tick then classifies its own enqueue as tracked-racing (production
+	// dedup doing its job) instead of reporting it in Enqueued.
+	pool := worker.New(s, worker.Config{
+		Owner:        "e2e-pool",
+		Concurrency:  1,
+		PollInterval: 20 * time.Millisecond,
+		Lease:        time.Minute,
+		Executors:    reg,
+	}, nil)
+	go func() { _ = pool.Start(ctx) }()
+
+	defer pool.Stop()
 
 	waitFor(t, ctx, func() bool { return taskStatus(t, ctx, q, res.Enqueued[0].TaskID) == task.Completed })
 
