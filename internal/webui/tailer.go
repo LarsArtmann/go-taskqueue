@@ -105,6 +105,7 @@ func (s *Server) runReadModel(ctx context.Context) error {
 		return fmt.Errorf("start projection host: %w", err)
 	}
 
+	defer func() { _ = host.Close() }()
 	defer func() { _ = host.Stop() }()
 
 	updates := m.WatchSeq(ctx)

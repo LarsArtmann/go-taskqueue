@@ -6,6 +6,7 @@ import (
 	"encoding/json/jsontext"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/larsartmann/go-cqrs-lite/event/v4"
@@ -246,15 +247,17 @@ type ProjectionHostOptions struct {
 // the queue store itself, read-only (Facts). The live tail after the
 // initial drain polls the journal at DefaultPoll — the queue journal
 // has no bus, and the webui contract is a tail, not a one-shot drain.
-func NewProjectionHost(src queue.Store, m *Model, opts ProjectionHostOptions) (*projectionhost.Host, error) {
+func NewProjectionHost(src queue.Store, m *Model, opts ProjectionHostOptions) (*ProjectionHost, error) {
 	if src == nil {
 		return nil, ErrNoSource
 	}
 
 	journal := cqrs.NewFactJournal(src)
 
+	tails := newTailSubscriber(journal, src, DefaultPoll)
+
 	hostOpts := []projectionhost.HostOption{
-		projectionhost.WithSubscriber(tailSubscriber{jr: journal, src: src, poll: DefaultPoll}),
+		projectionhost.WithSubscriber(tails),
 	}
 
 	if opts.CheckpointEvery > 0 {
@@ -287,7 +290,27 @@ func NewProjectionHost(src queue.Store, m *Model, opts ProjectionHostOptions) (*
 		return nil, fmt.Errorf("readmodel: register fold projection: %w", err)
 	}
 
-	return host, nil
+	return &ProjectionHost{Host: host, tails: tails}, nil
+}
+
+// ProjectionHost pairs the platform host with the live tails' lifecycle:
+// the platform never closes its subscriber (the Bus doc leaves cleanup
+// to the owner via io.Closer), so Close here is the tail-ownership
+// half and Stop stays the platform half. Embedding keeps Start, Stop,
+// and Register on the wrapper.
+type ProjectionHost struct {
+	*projectionhost.Host
+
+	tails *tailSubscriber
+}
+
+// Close stops every tail goroutine the subscriber spawned (one per
+// worker generation: a worker restart re-subscribes) and waits for
+// their exit, so a closed journal never sees a late poll.
+func (h *ProjectionHost) Close() error {
+	h.tails.close()
+
+	return nil
 }
 
 // Lag reports the host's aggregate fold lag — the doctor/health surface
@@ -313,26 +336,58 @@ var (
 // exclusive of the cursor, so the anchor is always the LAST delivered
 // seq via tailAnchor, never after+1. The worker's live handler dedups
 // any checkpoint-batch overlap.
+//
+// Lifecycle: every worker generation calls SubscribeAll, and each call
+// spawns one goroutine; ProjectionHost.Close is the single stop point
+// (close + WaitGroup), because the platform never closes subscribers
+// and the worker offers no shutdown signal of its own.
 type tailSubscriber struct {
 	jr   event.SeekableJournal
 	src  queue.Store
 	poll time.Duration
+
+	stopOnce sync.Once
+	stop     chan struct{}
+	wg       sync.WaitGroup
+}
+
+// newTailSubscriber builds the subscriber with its stop channel; the
+// pointer implements event.Subscriber so every worker generation shares
+// one stop point.
+func newTailSubscriber(jr event.SeekableJournal, src queue.Store, poll time.Duration) *tailSubscriber {
+	return &tailSubscriber{
+		jr:   jr,
+		src:  src,
+		poll: poll,
+		stop: make(chan struct{}),
+	}
 }
 
 // Subscribe is unused: the projection subscribes to everything.
-func (s tailSubscriber) Subscribe(event.Type, event.Handler) error { return nil }
+func (s *tailSubscriber) Subscribe(event.Type, event.Handler) error { return nil }
 
 // SubscribeAll runs the poll tail for the worker's lifetime: the loop
 // ends when the handler reports the worker ctx done (stop) or a
 // delivered event fails; journal read errors log and retry on the next
 // tick — a transient store hiccup must not crash-restart the worker.
-func (s tailSubscriber) SubscribeAll(handler event.Handler) error {
+func (s *tailSubscriber) SubscribeAll(handler event.Handler) error {
+	s.wg.Add(1)
+
 	go s.tail(handler)
 
 	return nil
 }
 
-func (s tailSubscriber) tail(handler event.Handler) {
+// close stops every tail and waits for exit.
+func (s *tailSubscriber) close() {
+	s.stopOnce.Do(func() { close(s.stop) })
+
+	s.wg.Wait()
+}
+
+func (s *tailSubscriber) tail(handler event.Handler) {
+	defer s.wg.Done()
+
 	ctx := context.Background()
 
 	ticker := time.NewTicker(s.poll)
@@ -344,7 +399,13 @@ func (s tailSubscriber) tail(handler event.Handler) {
 		after = seq
 	}
 
-	for range ticker.C {
+	for {
+		select {
+		case <-s.stop:
+			return
+		case <-ticker.C:
+		}
+
 		eid, err := tailAnchor(after)
 		if err != nil {
 			return

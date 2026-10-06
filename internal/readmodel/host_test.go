@@ -294,6 +294,7 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 
 	runCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
+	t.Cleanup(func() { _ = host.Close() })
 
 	go func() { _ = host.Start(runCtx) }()
 
@@ -301,6 +302,17 @@ func TestProjectionHostAdvancesPastPoison(t *testing.T) {
 		n, err := dlq.Count(ctx)
 
 		return err == nil && n > 0
+	})
+
+	// The checkpoint moved past the poison while the host is live: the
+	// poison projection's own watermark is nonzero (nothing wedged,
+	// nothing re-fetched forever). Waiting here, not asserting after
+	// Stop, keeps a slow worker's in-flight save from racing the
+	// cancellation (the Windows CI signature).
+	waitFor(t, func() bool {
+		wm, exists, wmErr := store.Watermark(ctx, "poison-boom")
+
+		return wmErr == nil && exists && wm > 0
 	})
 
 	if err := host.Stop(); err != nil {
@@ -459,6 +471,7 @@ func TestProjectionHostTailsLiveFacts(t *testing.T) {
 
 	runCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
+	t.Cleanup(func() { _ = host.Close() })
 
 	if err := host.Start(runCtx); err != nil {
 		t.Fatalf("start host: %v", err)
