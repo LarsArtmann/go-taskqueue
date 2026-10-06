@@ -82,6 +82,7 @@ func TestSeqIDCodecParity(t *testing.T) {
 	}
 
 	jr := cqrs.NewFactJournal(store)
+
 	events, err := jr.ReadAll(ctx)
 	if err != nil {
 		t.Fatalf("journal read all: %v", err)
@@ -184,6 +185,7 @@ func TestFoldProjectionParity(t *testing.T) {
 	f.must("complete", f.store.Complete(ctx, t1.ID, claim, jsontext.Value(`{}`)))
 
 	jr := cqrs.NewFactJournal(store)
+
 	events, err := jr.ReadAll(ctx)
 	if err != nil {
 		t.Fatalf("journal read all: %v", err)
@@ -364,6 +366,7 @@ func TestFoldHandleClassifiesMalformedDetail(t *testing.T) {
 	f.claim()
 
 	jr := cqrs.NewFactJournal(store)
+
 	events, err := jr.ReadAll(ctx)
 	if err != nil {
 		t.Fatalf("journal read all: %v", err)
