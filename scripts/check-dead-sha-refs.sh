@@ -4,7 +4,8 @@
 # left a stale citation behind (the dd543ec class: it survived in TODO_LIST
 # for a window after the msg-filter heal before 131ea17 fixed it).
 #
-# Scope: docs/status/*.md (top level) + TODO_LIST.md + AGENTS.md.
+# Scope: docs/status/*.md (top level + tasks/ closeout reports) +
+# TODO_LIST.md + AGENTS.md.
 # Hex tokens that are NOT commit objects (queue task IDs, CI run numbers,
 # line counts) are ignored — only commits that exist but dangle fail.
 #
@@ -227,7 +228,7 @@ if [ "$#" -gt 0 ]; then
 	done
 else
 	files=(AGENTS.md TODO_LIST.md)
-	for f in docs/status/*.md; do [ -f "$f" ] && files+=("$f"); done
+	for f in docs/status/*.md docs/status/tasks/*.md; do [ -f "$f" ] && files+=("$f"); done
 fi
 
 run_gate
