@@ -2,7 +2,7 @@ module github.com/larsartmann/go-taskqueue/internal/queue/sqlite
 
 go 1.27.1
 
-require github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0
+require github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.1
 
 require (
 	github.com/dustin/go-humanize v1.1.0 // indirect
@@ -18,7 +18,7 @@ require (
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.1 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect

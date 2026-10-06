@@ -30,9 +30,9 @@ require (
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-retry v0.7.1 // indirect
 	github.com/larsartmann/go-sse/sseparse v0.2.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.1 // indirect
 	github.com/larsartmann/templ-components/datastar v1.20.1 // indirect
 	github.com/larsartmann/templ-components/htmx v1.20.1 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
@@ -63,8 +63,8 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.1

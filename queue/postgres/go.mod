@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.1
 )
 
 require (
@@ -22,8 +22,8 @@ require (
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.0 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.1 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.1 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/text v0.42.0 // indirect

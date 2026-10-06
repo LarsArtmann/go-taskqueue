@@ -7,7 +7,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.1
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.1
 	modernc.org/sqlite v1.60.1
 )

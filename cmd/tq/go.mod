@@ -10,10 +10,10 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/composition v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.1
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.0
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.0
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.1
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.1
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.1
 	modernc.org/sqlite v1.60.1
