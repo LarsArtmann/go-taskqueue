@@ -58,11 +58,13 @@ func (s *Server) journalHead(ctx context.Context) (int64, error) {
 }
 
 // runReadModel is the ADR-0019 S3 live path: it opens the projection at
-// cfg.ReadModelPath, pumps the journal into it, and replaces the hand
-// tailer→hub fan-out — every folded ledger update wakes the hub
-// (burst-coalesced, exactly the hand tailer's batch semantics) carrying the
-// model's applied journal watermark, so SSE event ids keep their
-// Last-Event-ID meaning. Run owns the model's lifetime.
+// cfg.ReadModelPath, folds the journal into it through the managed
+// projection host (ADR-0019 M08: restart budget, poison-fact DLQ,
+// checkpoint batching), and replaces the hand tailer→hub fan-out — every
+// folded ledger update wakes the hub (burst-coalesced, exactly the hand
+// tailer's batch semantics) carrying the model's applied journal
+// watermark, so SSE event ids keep their Last-Event-ID meaning. Run owns
+// the model's and the host's lifetime.
 func (s *Server) runReadModel(ctx context.Context) error {
 	m, err := readmodel.Open(ctx, s.cfg.ReadModelPath, s.store, readmodel.WithDurableCursor())
 	if err != nil {
@@ -77,18 +79,23 @@ func (s *Server) runReadModel(ctx context.Context) error {
 		_ = m.Close()
 	}()
 
+	host, err := readmodel.NewProjectionHost(s.store, m, readmodel.ProjectionHostOptions{})
+	if err != nil {
+		return fmt.Errorf("build projection host: %w", err)
+	}
+
+	if err := host.Start(ctx); err != nil {
+		return fmt.Errorf("start projection host: %w", err)
+	}
+
+	defer func() { _ = host.Stop() }()
+
 	updates := m.WatchSeq(ctx)
-
-	pumped := make(chan error, 1)
-
-	go func() { pumped <- m.Run(ctx) }()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case err := <-pumped:
-			return err
 		case _, ok := <-updates:
 			if !ok {
 				return nil
