@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # AGENTS.md byte-budget gate (row 425): trips at gate time with a readable
 # message instead of as a cmd/tq TestAgentsDocSizeGuard failure two windows
-# later. Mirrors agentsDocMaxBytes in cmd/tq/facts_json_test.go (16,400 B
-# since the 2026-10-05 fourth conscious reset; the reset protocol lives in
+# later. Mirrors agentsDocMaxBytes in cmd/tq/facts_json_test.go (16,900 B
+# since the 2026-10-07 fifth conscious reset; the reset protocol lives in
 # that test's comment — CHANGE BOTH TWINS TOGETHER: the 2026-10-05 ci-local
 # red was exactly this drift) and prints the top sections by size
 # so a prune is a 2-minute targeted fix (byte semantics via LC_ALL=C).
@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 file="${1:-AGENTS.md}"
-budget="${AGENTS_BUDGET_BYTES:-16400}"
+budget="${AGENTS_BUDGET_BYTES:-16900}"
 
 if [ ! -f "$file" ]; then
 	echo "FAIL: $file not found (cwd: $(pwd))" >&2

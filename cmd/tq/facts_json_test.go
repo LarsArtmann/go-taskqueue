@@ -34,8 +34,13 @@ import (
 // reset 15,700 → 16,400: two net-new load-bearing Known Issues (the Nix
 // 2.34 outputs-thunk flake trap, the templ-components sibling-pin
 // pseudo-version poison), net of the cqrsqlite deletion — the M07/F034
-// platform rewrite re-tightens the file within this wave.
-const agentsDocMaxBytes = 16_400
+// platform rewrite re-tightens the file within this wave. 2026-10-07
+// fifth reset 16,400 → 16,900: the IO-efficiency pass's store
+// invariants (ONE shared serialized *sql.DB for engine+companion, the
+// synchronous=NORMAL pragma policy with TQ_SQLITE_SYNC escape, partial
+// RUNNING-only claim indexes, worker idle backoff) are net-new
+// load-bearing, compacted to two bullets before budgeting.
+const agentsDocMaxBytes = 16_900
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
