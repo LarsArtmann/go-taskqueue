@@ -53,11 +53,11 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/task` | Task record, Status, sentinels |
 | `internal/journal` | Fact types + append-only Journal |
 | `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014) |
-| `internal/queue` | Store contract, Filter, Queue facade |
+| `internal/queue` | Store contract, Filter, Queue facade, Waker |
 | `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform` |
 | `internal/queue/{sqlitev4,postgresv4}` | tq Store over the go-cqrs-lite queue engines |
-| `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity, claim-token finalize gate (`WithToken`; `readmodel.StatusCounts` = the one status-counts seam) |
-| `internal/readmodel` | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON) |
+| `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity, token finalize (`WithToken`) |
+| `internal/readmodel` | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON; `StatusCounts` seam) |
 | `internal/composition` | S4 root: `system.New` over the projection home (`tq serve`) |
 | `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
 | `internal/bridge` | papdashboard + cqa bridges → fix tasks |
@@ -87,7 +87,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   escape: `TQ_SQLITE_SYNC`; migration DSNs stay FULL. Claim probes use
   partial RUNNING-only indexes (companion.Migrate) — never project
   history. Idle worker loops back off exponentially (cap `IdlePollMax`
-  2s, reset on claim) — no fixed-interval idle polling.
+  2s, reset on claim/wake) — no fixed-interval idle polling.
 - **Task contexts survive pool shutdown** (bounded only by
   `--task-timeout`) — never add a shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.
@@ -255,11 +255,10 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   loader see outputs as a thunk — every eval dies with "expected a
   function but got a thunk at flake.nix:<outputs line>". Keep the `let`
   INSIDE the lambda (`outputs = inputs@{…}: let … in mkFlake …`).
-- **templ-components sibling pins**: a release whose root go.mod carries
-  zero pseudo-versions (`v…-00010101000000-000000000000`) passes local
-  builds (replaces) but kills every consumer full-graph load
-  (`go mod tidy`/`download all` → the Nix go-modules FOD). Check
-  `grep -r 00010101` in the dep repo before blaming the flake/vendorHash.
+- **templ-components sibling pins**: a release with zero pseudo-versions
+  (`v…00001010100000-…`) in its root go.mod passes local builds (replaces)
+  but kills consumer graph loads (Nix go-modules FOD); `grep -r 00010101`
+  the dep repo before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
   (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`):
   `gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'` —

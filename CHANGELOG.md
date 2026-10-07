@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Claim-wake seam wired end to end** (2026-10-07, M7 / ADR-0020):
+  both v4 stores (sqlite via the facade alias, postgres) expose
+  `queue.Waker.Notify()` — a buffered-1, non-blocking signal fired after
+  commits that re-land work in PENDING (enqueue, retry, requeue, rescue,
+  answered question). Worker idle loops select wake against the poll
+  ladder and re-claim in milliseconds (pinned <250ms CI-stable, observed
+  ~10ms against a parked 10s gap) with the ladder reset on wake; both tq
+  pools arm the seam (`tq agent-pool` prints an armed stderr line); the
+  consumer dispatcher drains on wake with the ticker as fallback; the
+  postgres backend reaches wake parity with sqlite, verified live under
+  TQ_TEST_POSTGRES. Polls stay the degraded, cross-process fallback —
+  the signal is process-local by design.
 - **Mint-time re-dispatch gate + `--force-redispatch`** (2026-10-07, M5 /
   O4): every mint surface (harvest single/batch/catch-up, `tq enqueue`)
   now checks the candidate against repo-side done signals BEFORE any
