@@ -33,9 +33,24 @@ fi
 
 echo "== seed tasks"
 export TQ_DB="$TMP/tasks.db"
-"$TMP/tq" enqueue --type sh --project smoke --payload 'echo one'
-"$TMP/tq" enqueue --type sh --project smoke --payload 'sleep 1 && echo two'
-"$TMP/tq" enqueue --type sh --project smoke --payload 'exit 3' --max-attempts 1
+# Seed enqueues are the smoke's first DB touches; under gate load (parallel
+# builds, the production pool's WAL churn) the previous process's exit-time
+# WAL checkpoint can outwait the 5s busy_timeout (M25 class, isolated runs
+# never see it) — bounded retry keeps the gate load-robust without
+# weakening its assertions.
+enqueue_retry() {
+	local attempt
+	for attempt in 1 2 3 4 5; do
+		if "$TMP/tq" enqueue "$@"; then return 0; fi
+		echo "WARN: transient enqueue failure (attempt $attempt/5) — retrying" >&2
+		sleep 2
+	done
+	echo "FAIL: enqueue kept failing after 5 attempts: $*" >&2
+	return 1
+}
+enqueue_retry --type sh --project smoke --payload 'echo one'
+enqueue_retry --type sh --project smoke --payload 'sleep 1 && echo two'
+enqueue_retry --type sh --project smoke --payload 'exit 3' --max-attempts 1
 
 echo "== start worker + serve"
 # Pick the port here, not at the top: the closer to the bind, the smaller the
