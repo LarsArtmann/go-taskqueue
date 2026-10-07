@@ -133,6 +133,7 @@ func sessionSweep(args []string) error {
 		if out.Closed {
 			closed++
 		}
+
 		fmt.Printf("session %s (%s): %s\n", out.Entry.ID, out.Entry.CWD, out.Reason)
 	}
 
@@ -144,6 +145,7 @@ func sessionSweep(args []string) error {
 // sessionList prints begun/closed session pairs from the journal.
 func sessionList(args []string) error {
 	fs := flag.NewFlagSet("session list", flag.ExitOnError)
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		// art-dupl:accept subcommand wiring: parse-err + open + defer-Close is the uniform store-command opening.

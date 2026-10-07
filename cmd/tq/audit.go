@@ -56,6 +56,7 @@ func cmdAudit(args []string) error {
 	if *journalFlag {
 		s := mustOpenDB(resolveDB(*db))
 		defer s.Close()
+
 		return cmdJournalAudit(context.Background(), s, *asJSON)
 	}
 
@@ -87,6 +88,7 @@ func cmdAudit(args []string) error {
 		if *asJSON {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
+
 			if err := enc.Encode(res); err != nil {
 				return fmt.Errorf("encode redispatch audit: %w", err)
 			}
@@ -179,6 +181,7 @@ func printRedispatchReport(res harvest.RedispatchResult) {
 	}
 
 	live, churn := 0, 0
+
 	for _, f := range res.Findings {
 		switch f.Class {
 		case harvest.RedispatchClassLive:

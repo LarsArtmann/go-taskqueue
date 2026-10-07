@@ -160,6 +160,7 @@ func TestStatsJSONSessionUsageContract(t *testing.T) {
 	}
 
 	budget, _ = payload["budget"].(map[string]any)
+
 	usage, _ := budget["session_usage"].(map[string]any)
 	if usage == nil {
 		t.Fatalf("completed usage lost the budget.session_usage key: %s", out)

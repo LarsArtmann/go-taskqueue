@@ -75,6 +75,7 @@ func crushRun(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, er
 	child.Stdin = stdin
 
 	var tee bytes.Buffer
+
 	child.Stdout = io.MultiWriter(stdout, &tee)
 	child.Stderr = io.MultiWriter(stderr, &tee)
 
@@ -86,6 +87,7 @@ func crushRun(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, er
 	go forwardSignals(child, done)
 
 	code := 0
+
 	if err := child.Wait(); err != nil {
 		var exitErr *exec.ExitError
 		if !errors.As(err, &exitErr) {
@@ -125,6 +127,7 @@ func crushRun(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, er
 // unrelated process-spawning packages cannot share a definition.
 func forwardSignals(child *exec.Cmd, done <-chan struct{}) {
 	sigs := make(chan os.Signal, 1)
+
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(sigs)
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -191,6 +192,7 @@ func TestDoctorParkedNamesEarliestRelease(t *testing.T) {
 	// format to "Jan 2 15:04" (the 23:xx flake). In(time.Now().Location())
 	// equals Local() but keeps gosmopolitan quiet about time.Local.
 	localNow := time.Now()
+
 	layout := "15:04"
 	if earliest.In(localNow.Location()).Day() != localNow.Day() {
 		layout = "Jan 2 15:04"
@@ -1111,6 +1113,7 @@ func TestDoctorServiceContext(t *testing.T) {
 	}
 
 	results := doctorServiceContext(context.Background(), doctorOptions{ServiceUnit: "tq-agent-pool"})
+
 	if gotUnit != "tq-agent-pool.service" {
 		t.Errorf("unit resolved to %q, want tq-agent-pool.service", gotUnit)
 	}
@@ -1162,7 +1165,7 @@ func TestDoctorServiceContextUnreadableUnit(t *testing.T) {
 	t.Cleanup(func() { doctorReadServiceUnit = orig })
 
 	doctorReadServiceUnit = func(_ context.Context, unit string) (string, error) {
-		return "", fmt.Errorf("exit status 1")
+		return "", errors.New("exit status 1")
 	}
 
 	results := doctorServiceContext(context.Background(), doctorOptions{ServiceUnit: "nope"})

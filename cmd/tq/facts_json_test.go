@@ -80,6 +80,7 @@ func topDocSections(path string, n int) string {
 	if err != nil {
 		return fmt.Sprintf("  (read error: %v)", err)
 	}
+
 	return topSectionReport(string(data), n)
 }
 
@@ -89,25 +90,34 @@ func topSectionReport(content string, n int) string {
 		name string
 		size int
 	}
+
 	var sections []section
+
 	cur := section{name: "(preamble)"}
+
 	for line := range strings.SplitAfterSeq(content, "\n") {
 		if strings.HasPrefix(line, "## ") {
 			sections = append(sections, cur)
 			cur = section{name: strings.TrimRight(line, "\n"), size: len(line)}
+
 			continue
 		}
+
 		cur.size += len(line)
 	}
+
 	sections = append(sections, cur)
 	sort.Slice(sections, func(i, j int) bool { return sections[i].size > sections[j].size })
+
 	if len(sections) > n {
 		sections = sections[:n]
 	}
+
 	var b strings.Builder
 	for _, s := range sections {
 		fmt.Fprintf(&b, "  %6d B  %s\n", s.size, s.name)
 	}
+
 	return b.String()
 }
 
@@ -116,6 +126,7 @@ func TestTopSectionReport(t *testing.T) {
 
 	content := "intro\n## One\nalpha\nbeta\n## Two\ngamma\n## Three\ndelta\n"
 	got := topSectionReport(content, 2)
+
 	want := "      18 B  ## One\n      15 B  ## Three\n"
 	if got != want {
 		t.Fatalf("top-2 sections:\ngot:\n%s\nwant:\n%s", got, want)
@@ -123,13 +134,16 @@ func TestTopSectionReport(t *testing.T) {
 
 	all := topSectionReport(content, 10)
 	sum := 0
+
 	for line := range strings.SplitSeq(strings.TrimSuffix(all, "\n"), "\n") {
 		var size int
 		if _, err := fmt.Sscanf(line, "%6d", &size); err != nil {
 			t.Fatalf("parse %q: %v", line, err)
 		}
+
 		sum += size
 	}
+
 	if sum != len(content) {
 		t.Fatalf("section sizes sum to %d, content is %d B", sum, len(content))
 	}

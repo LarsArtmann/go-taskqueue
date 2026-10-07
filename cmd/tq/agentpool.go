@@ -317,7 +317,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	// which RESETS the reasoning effort to the provider default. Checked
 	// AFTER the config file so a `model =` line there dies the same death.
 	if *model != "" {
-		return agentPoolOptions{}, fmt.Errorf(
+		return agentPoolOptions{}, errors.New(
 			"agent-pool: --model is retired: a payload-level model resets crush's reasoning effort to the provider default; pin model + effort per repo via the .crushrc managed block instead (tq bootstrap --model <provider/model> [--reasoning xhigh])",
 		)
 	}

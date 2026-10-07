@@ -43,6 +43,7 @@ func postgresDriftStore(t *testing.T) *postgres.Store {
 
 	if _, err := admin.ExecContext(context.Background(), "CREATE SCHEMA "+schema); err != nil {
 		_ = admin.Close()
+
 		t.Fatalf("create schema %s: %v", schema, err)
 	}
 

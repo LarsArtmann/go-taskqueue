@@ -80,6 +80,7 @@ func replayProjection(facts []journal.Fact) map[task.ID]*replayState {
 			// Plain enqueue starts the budget at zero; RescueDead's
 			// re-emitted enqueue resets it (the store does attempts = 0).
 			state.attempts = 0
+
 			var detail queue.EnqueueDetail
 			if err := json.Unmarshal(fact.Detail, &detail); err == nil {
 				if detail.Priority != nil {
@@ -426,8 +427,8 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 		}
 	}
 
-	switch {
-	case report.Requeues.Total == 0:
+	switch report.Requeues.Total {
+	case 0:
 		fmt.Println("requeues: none in the replayed fact range")
 	default:
 		fmt.Printf("requeues: %d not-the-task's-fault return(s) to Pending, by class:\n", report.Requeues.Total)

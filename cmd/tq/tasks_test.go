@@ -270,6 +270,7 @@ func TestPrintTaskListFooterShapes(t *testing.T) {
 		}
 
 		printTaskListTo(&buf, list, tc.limit, tc.total)
+
 		if !strings.HasSuffix(buf.String(), tc.want) {
 			t.Fatalf("%s: footer = %q, want suffix %q", tc.name, buf.String(), tc.want)
 		}

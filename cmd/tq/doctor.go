@@ -115,7 +115,7 @@ var doctorProbeCrushVersion = func(ctx context.Context, bin string) (string, err
 // `crush --version` line like "crush version v0.96.1". Returns ok=false
 // when no dotted-number token is present.
 func parseCrushVersion(out string) (string, bool) {
-	for _, field := range strings.Fields(out) {
+	for field := range strings.FieldsSeq(out) {
 		v := strings.TrimPrefix(field, "v")
 		if v == "" || v[0] < '0' || v[0] > '9' {
 			continue
@@ -123,7 +123,7 @@ func parseCrushVersion(out string) (string, bool) {
 
 		numeric := true
 
-		for _, part := range strings.Split(v, ".") {
+		for part := range strings.SplitSeq(v, ".") {
 			if part == "" {
 				numeric = false
 
@@ -238,10 +238,12 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
+
 	results = append(results, doctorProjection(ctx, store, opts.DBPath)...)
 	if opts.DLQ {
 		results = append(results, doctorProjectionDLQ(ctx, opts.DBPath)...)
 	}
+
 	results = append(results, doctorOpenSessions(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
 	results = append(results, doctorEnvironment(ctx, opts)...)
@@ -347,6 +349,7 @@ func doctorDLQRepair(ctx context.Context, store queue.Store) checkResult {
 	}
 
 	autopsyType := executor.TaskTypeDLQFix
+
 	autopsies, err := store.CountTasks(ctx, queue.Filter{Type: &autopsyType})
 	if err != nil {
 		return checkResult{Name: name, Status: checkWarn, Detail: "count autopsies: " + err.Error()}
@@ -411,7 +414,7 @@ func doctorParked(ctx context.Context, store queue.Store) checkResult {
 				layout = "Jan 2 15:04"
 			}
 
-			detail += fmt.Sprintf("; earliest release %s", earliest.Local().Format(layout))
+			detail += "; earliest release " + earliest.Local().Format(layout)
 		}
 	}
 
@@ -454,12 +457,14 @@ func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir stri
 	}
 
 	pending := task.Pending
+
 	tasks, err := store.List(ctx, queue.Filter{Status: &pending})
 	if err != nil {
 		return []checkResult{{Name: "repo-coverage", Status: checkFail, Detail: "list pending: " + err.Error()}}
 	}
 
 	counts := map[string]int{}
+
 	for _, t := range tasks {
 		if t.Project != "" {
 			counts[t.Project]++
@@ -467,6 +472,7 @@ func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir stri
 	}
 
 	var missing []string
+
 	for p, n := range counts {
 		dir := p
 		if !filepath.IsAbs(dir) {
@@ -484,7 +490,7 @@ func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir stri
 		return []checkResult{{
 			Name:   "repo-coverage",
 			Status: checkOK,
-			Detail: fmt.Sprintf("every project with PENDING tasks resolves under %s", projectsDir),
+			Detail: "every project with PENDING tasks resolves under " + projectsDir,
 		}}
 	}
 
@@ -521,12 +527,14 @@ func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir stri
 // name for the one saved line.
 func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
 	pending := task.Pending
+
 	tasks, err := store.List(ctx, queue.Filter{Status: &pending})
 	if err != nil {
 		return []checkResult{{Name: "verify-pins", Status: checkFail, Detail: "list pending: " + err.Error()}}
 	}
 
 	var stale []string
+
 	pinned := 0
 
 	for _, t := range tasks {
@@ -863,7 +871,10 @@ func doctorProjectionDLQ(ctx context.Context, dbPath string) []checkResult {
 	result := checkResult{
 		Name:   name,
 		Status: checkWarn,
-		Detail: fmt.Sprintf("%d poison fact(s) awaiting replay — `tq serve` skipped them after repeated fold errors; fix the handler, then replay from the sidecar", count),
+		Detail: fmt.Sprintf(
+			"%d poison fact(s) awaiting replay — `tq serve` skipped them after repeated fold errors; fix the handler, then replay from the sidecar",
+			count,
+		),
 	}
 
 	entries, err := dlq.Recent(ctx, 3)
@@ -1194,7 +1205,7 @@ func resolveGofmt() string {
 func nonEmptyLines(b []byte) []string {
 	var lines []string
 
-	for _, line := range strings.Split(string(b), "\n") {
+	for line := range strings.SplitSeq(string(b), "\n") {
 		if line = strings.TrimSpace(line); line != "" {
 			lines = append(lines, line)
 		}
@@ -1335,6 +1346,7 @@ func parseSystemdUnitEnv(unit, content string) (map[string]string, error) {
 				if fl == "" || strings.HasPrefix(fl, "#") || strings.HasPrefix(fl, ";") {
 					continue
 				}
+
 				if k, v, ok := strings.Cut(fl, "="); ok {
 					env[k] = unquoteSurroundingQuotes(v)
 				}
@@ -1620,7 +1632,7 @@ func doctorCrushManagedBlock(repoName, path string) checkResult {
 	inBlock := false
 	effort := ""
 
-	for _, line := range strings.Split(string(b), "\n") {
+	for line := range strings.SplitSeq(string(b), "\n") {
 		switch strings.TrimSpace(line) {
 		case tqManagedStart:
 			inBlock = true

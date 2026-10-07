@@ -322,17 +322,20 @@ func TestDeadPoolDetectorRetriesFailedDelivery(t *testing.T) {
 	d.observe(blind) // streak 1 — quiet
 	d.observe(blind) // streak 2 — fires, delivery fails
 	d.observe(blind) // streak 3 — retries the raise, delivered
+
 	if calls != 2 {
 		t.Fatalf("raise attempts = %d, want 2 (failed delivery must retry next tick)", calls)
 	}
 
 	d.observe(blind)
+
 	if calls != 2 {
 		t.Fatalf("raise attempts = %d, want 2 (the delivered alert must arm the streak)", calls)
 	}
 
 	d.notify = func(bool, int, string, int) bool { return true }
 	d.observe(harvest.Result{Repos: 1, Skipped: []harvest.Skipped{{Reason: "harvested"}}})
+
 	if d.alerted {
 		t.Error("healthy tick must clear the standing alert")
 	}

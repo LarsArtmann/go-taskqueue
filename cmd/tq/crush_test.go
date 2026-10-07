@@ -50,6 +50,7 @@ func TestCrushWrapperClosesOnExit(t *testing.T) {
 
 		cmd := exec.Command("git", args...)
 		cmd.Dir = repo
+
 		cmd.Env = append(os.Environ(),
 			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t",
 			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
@@ -109,6 +110,7 @@ func TestCrushWrapperClosesOnCrash(t *testing.T) {
 	repo := t.TempDir()
 
 	cmd := exec.Command("git", "init", "-q", "-b", "main")
+
 	cmd.Dir = repo
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
@@ -209,6 +211,7 @@ func assertClosedFact(t *testing.T, ctx context.Context, store *sqlite.Store, id
 	}
 
 	closed := 0
+
 	for _, f := range facts {
 		if f.Type == journal.SessionClosed {
 			closed++

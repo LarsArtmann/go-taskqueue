@@ -423,6 +423,7 @@ func cmdEnqueue(args []string) error {
 func waitForTask(ctx context.Context, s *sqlite.Store, id task.ID, timeout time.Duration) error {
 	if timeout > 0 {
 		var cancel context.CancelFunc
+
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
@@ -1594,7 +1595,7 @@ func cmdAgentPool(args []string) error {
 		"tq: agent-pool: claim-wake armed (store commits re-claim immediately; polls stay the fallback)",
 	)
 
-	var wake <-chan struct{} = store.Notify()
+	wake := store.Notify()
 
 	pool := worker.New(store, worker.Config{
 		Owner:         poolOpts.owner,
@@ -1768,6 +1769,7 @@ func cmdStats(args []string) error {
 	}
 
 	dbPath := resolveDB(*db)
+
 	store := mustOpenDB(dbPath)
 	defer store.Close()
 
@@ -1783,8 +1785,10 @@ func cmdStats(args []string) error {
 		filter.Status = &st
 	}
 
-	var byStatus map[string]int
-	var byProject map[string]map[string]int
+	var (
+		byStatus  map[string]int
+		byProject map[string]map[string]int
+	)
 
 	if *readModel {
 		m, err := readmodel.Open(ctx, readmodel.PathFor(dbPath), store, readmodel.WithDurableCursor())
@@ -2450,6 +2454,7 @@ var daemonCommitSubject = regexp.MustCompile(`^chore: auto-commit \d+ changed fi
 // so the daemon folded work files into it (the 147bd17 shape).
 type foldedCommit struct {
 	commitHit
+
 	Relation string   `json:"relation"`
 	Files    []string `json:"files,omitempty"`
 }
@@ -3065,6 +3070,7 @@ func printFactCommitViews(s *sqlite.Store, facts []journal.Fact) {
 		}
 
 		view := commitsForTask(t)
+
 		verdict, _ := view["verdict"].(string)
 		if verdict == "" {
 			verdict, _ = view["note"].(string)
@@ -3308,6 +3314,7 @@ func cmdAPI(args []string) error {
 	}
 
 	dbPath := resolveDB(*db)
+
 	s := mustOpenDB(dbPath)
 	defer s.Close()
 

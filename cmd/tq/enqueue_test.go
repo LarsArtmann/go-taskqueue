@@ -153,6 +153,7 @@ func TestCmdEnqueueWaitStreamsFacts(t *testing.T) {
 			return string(tsk.ID), err
 		case <-time.After(15 * time.Second):
 			t.Fatal("enqueue --wait never returned")
+
 			return "", nil
 		}
 	}
@@ -357,6 +358,7 @@ func TestCmdEnqueueRedispatchRefused(t *testing.T) {
 	key := harvest.ItemKey("gatecheck", itemText)
 
 	projects := filepath.Join(dir, "projects")
+
 	repo := filepath.Join(projects, "gatecheck")
 	if err := os.MkdirAll(repo, 0o755); err != nil {
 		t.Fatal(err)

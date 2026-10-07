@@ -67,8 +67,10 @@ func TestDoctorTreeGofmt(t *testing.T) {
 		}
 	}
 
-	const formatted = "package demo\n\nfunc Ok() {}\n"
-	const ugly = "package demo\n\nfunc  Bad() int {\nreturn 1\n}\n"
+	const (
+		formatted = "package demo\n\nfunc Ok() {}\n"
+		ugly      = "package demo\n\nfunc  Bad() int {\nreturn 1\n}\n"
+	)
 
 	// Clean tree: ok.
 	clean := setupDoctorTreeRepo(t)
