@@ -5,6 +5,8 @@ go 1.27.1
 require (
 	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.1
 	github.com/larsartmann/go-cqrs-lite/system/v4 v4.10.2
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.3
 )
 
@@ -42,6 +44,8 @@ require (
 	github.com/larsartmann/go-cqrs-lite/projection/v4 v4.4.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.5.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/query/v4 v4.10.1 // indirect
+	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.2 // indirect
+	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.6.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.6.4 // indirect
@@ -50,7 +54,8 @@ require (
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.3 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.3 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

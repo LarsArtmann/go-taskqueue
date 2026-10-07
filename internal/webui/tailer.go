@@ -3,10 +3,10 @@ package webui
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/composition"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -67,48 +67,26 @@ func (s *Server) journalHead(ctx context.Context) (int64, error) {
 // watermark, so SSE event ids keep their Last-Event-ID meaning. Run owns
 // the model's and the host's lifetime.
 func (s *Server) runReadModel(ctx context.Context) error {
-	m, err := readmodel.Open(ctx, s.cfg.ReadModelPath, s.store, readmodel.WithDurableCursor())
+	rt, err := composition.NewProjectionRuntime(ctx, s.store, s.cfg.ReadModelPath)
 	if err != nil {
-		return fmt.Errorf("open read model: %w", err)
+		return fmt.Errorf("compose projection runtime: %w", err)
 	}
 
-	s.model = m
+	s.model = rt.Model
 
 	defer func() {
 		s.model = nil
 
-		_ = m.Close()
+		_ = rt.Close()
 	}()
 
-	// The DLQ sidecar catches poison facts beside the projection db; a
-	// sidecar failure is warn-and-continue — the fold runs without a
-	// DLQ rather than refusing to serve. The close defer registers
-	// before the host's, so Stop runs first (LIFO).
-	dlq, err := readmodel.OpenDeadLetters(ctx, s.cfg.ReadModelPath)
-	if err != nil {
-		slog.Warn("readmodel: dlq sidecar unavailable; poison facts restart the fold", "err", err)
-	}
-
-	hostOpts := readmodel.ProjectionHostOptions{}
-	if dlq != nil {
-		hostOpts.DeadLetterStore = dlq.Store()
-
-		defer func() { _ = dlq.Close() }()
-	}
-
-	host, err := readmodel.NewProjectionHost(s.store, m, hostOpts)
-	if err != nil {
-		return fmt.Errorf("build projection host: %w", err)
-	}
+	host := rt.Host
 
 	if err := host.Start(ctx); err != nil {
 		return fmt.Errorf("start projection host: %w", err)
 	}
 
-	defer func() { _ = host.Close() }()
-	defer func() { _ = host.Stop() }()
-
-	updates := m.WatchSeq(ctx)
+	updates := rt.Model.WatchSeq(ctx)
 
 	for {
 		select {
