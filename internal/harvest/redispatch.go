@@ -25,7 +25,9 @@ type RedispatchRefusalError struct {
 	Reason string
 }
 
-func (r *RedispatchRefusalError) Error() string { return ErrRedispatchRefused.Error() + ": " + r.Reason }
+func (r *RedispatchRefusalError) Error() string {
+	return ErrRedispatchRefused.Error() + ": " + r.Reason
+}
 
 func (r *RedispatchRefusalError) Unwrap() error { return ErrRedispatchRefused }
 
