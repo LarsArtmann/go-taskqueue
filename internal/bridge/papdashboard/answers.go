@@ -29,6 +29,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/bridge/httpx"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -100,7 +101,7 @@ func NewAnswerPoller(store AnswerStore, checkpoints WatermarkStore, cfg AnswerCo
 	}
 
 	if cfg.Client == nil {
-		cfg.Client = &http.Client{Timeout: defaultHTTPTimeout}
+		cfg.Client = httpx.TunedClient(defaultHTTPTimeout)
 	}
 
 	return &AnswerPoller{

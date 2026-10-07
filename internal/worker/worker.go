@@ -29,8 +29,8 @@ type Config struct {
 	// claims (ErrNoTaskDue) double the gap up to this cap, and any claim
 	// resets it to PollInterval — an idle pool stops paying the full
 	// candidate-scan cost at every tick while a fresh task is still
-	# claimed within the cap. Default 2s; negative disables the ladder
-	# (fixed PollInterval, the historical behavior).
+	// claimed within the cap. Default 2s; negative disables the ladder
+	// (fixed PollInterval, the historical behavior).
 	IdlePollMax time.Duration
 	Lease        time.Duration // claim lease length (default 2m)
 	Heartbeat    time.Duration // heartbeat cadence, < Lease (default 30s)

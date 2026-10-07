@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/bridge/httpx"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -94,7 +95,7 @@ func New(cfg Config) *Bridge {
 		cfg.TimeoutMinutes = 45
 	}
 
-	return &Bridge{cfg: cfg, http: &http.Client{Timeout: 30 * time.Second}}
+	return &Bridge{cfg: cfg, http: httpx.TunedClient(30 * time.Second)}
 }
 
 // FixTask is one generated agent task plus its provenance.

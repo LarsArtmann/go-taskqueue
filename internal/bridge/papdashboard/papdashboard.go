@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/bridge/httpx"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -141,7 +142,7 @@ func New(store FactSource, checkpoints WatermarkStore, cfg Config) *Bridge {
 	}
 
 	if cfg.Client == nil {
-		cfg.Client = &http.Client{Timeout: 15 * time.Second}
+		cfg.Client = httpx.TunedClient(15 * time.Second)
 	}
 
 	log := cfg.Logger
