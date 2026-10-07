@@ -29,7 +29,10 @@ subject=$3
 shift 3
 
 case "$task_id" in
-*[!a-f0-9]* | '') echo "FAIL: task id '$task_id' is not a queue task ID (hex, 16+ chars)" >&2; exit 1 ;;
+*[!a-f0-9]* | '')
+	echo "FAIL: task id '$task_id' is not a queue task ID (hex, 16+ chars)" >&2
+	exit 1
+	;;
 esac
 if [ ${#task_id} -lt 16 ]; then
 	echo "FAIL: task id '$task_id' is shorter than 16 chars" >&2

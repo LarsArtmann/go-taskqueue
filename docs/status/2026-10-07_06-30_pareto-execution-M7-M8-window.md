@@ -181,6 +181,6 @@ commit contract and leaves 283 historical commits needing a heal-or-accept
 decision). This gates M8.50–51 and the e2e fixture pin. Fresh inputs for the
 ruling: the characterization pin + `scripts/census-derivation-blind.sh`.
 
-*(Owner-facing facts, not questions: 325 pre-flip dead tasks in the
+_(Owner-facing facts, not questions: 325 pre-flip dead tasks in the
 production DLQ per the read-only query; 24 unpushed commits; origin advanced
-through 0e20b3e2 by an external actor.)*
+through 0e20b3e2 by an external actor.)_

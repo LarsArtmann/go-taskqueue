@@ -159,9 +159,16 @@ detect_drift "root go.mod/go.sum (go mod vendor)" go.mod go.sum || fail=1
 # Per-module: go.mod/go.sum must be tidy (b886a677 class: 15 files across
 # modules needed tidy after the bump). cmd/tq sits outside
 # for-each-module's set (ADR-0017) — include it explicitly.
-mods="$(scripts/for-each-module.sh; echo cmd/tq)"
+mods="$(
+	scripts/for-each-module.sh
+	echo cmd/tq
+)"
 for m in $mods; do
-	[ -f "$m/go.mod" ] || { echo "FAIL: $m/go.mod vanished mid-gate" >&2; fail=1; continue; }
+	[ -f "$m/go.mod" ] || {
+		echo "FAIL: $m/go.mod vanished mid-gate" >&2
+		fail=1
+		continue
+	}
 	(cd "$m" && GOWORK=off go mod tidy)
 	detect_drift "$m tidy" "$m/go.mod" "$m/go.sum" || fail=1
 done

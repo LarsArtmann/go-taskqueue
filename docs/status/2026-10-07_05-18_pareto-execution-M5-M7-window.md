@@ -52,7 +52,7 @@ session only.
    alias) implements it: buffered-1 chan, non-blocking send, fired after
    Enqueue/Requeue/Fail/RescueDead/RecordAnswer commits; 3 tests (fire,
    coalesce + never-block, requeue-fire) green; sqlitev4 + queue modules
-   + root build/vet green, vendor regenerated.
+   - root build/vet green, vendor regenerated.
 5. **Full battery this window:** harvest, worker, queue, sqlitev4 module
    gates; `test-cmd-tq.sh` ×2; root build+vet; root `-race` suite
    (RC=0); check-todo-list, check-doc-refs, check-agents-size,

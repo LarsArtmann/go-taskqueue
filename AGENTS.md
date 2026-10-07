@@ -48,32 +48,32 @@ Facts-first: every state change is an immutable fact in an append-only
 journal; queue views, retry state, DLQ are projections. Claim exclusivity =
 lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
-| Package | Purpose |
-| --- | --- |
-| `internal/task` | Task record, Status, sentinels |
-| `internal/journal` | Fact types + append-only Journal |
-| `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014) |
-| `internal/queue` | Store contract, Filter, Queue facade, Waker |
-| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform` |
-| `internal/queue/{sqlitev4,postgresv4}` | tq Store over the go-cqrs-lite queue engines |
-| `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity, token finalize (`WithToken`) |
-| `internal/readmodel` | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON) |
-| `internal/composition` | S4 root: `system.New` over the projection home (`tq serve`) |
-| `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
-| `internal/bridge` | papdashboard + cqa bridges → fix tasks |
-| `internal/executor` | sh/HTTP/agent/review/status executors + registry |
-| `internal/harvest` | TODO_LIST.md → tasks; drift audit; prune-stale |
-| `internal/budget` | Daily-cap + session-usage projections per tick |
-| `internal/dlqfix` | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss |
-| `internal/review` | Review sweeper + `--review-autofix` |
-| `internal/status` | Done-prompt report sweeper (`--status-every`) |
-| `internal/prioritize` | AI batch scorer (`--prioritize`), priority_scores cache |
-| `internal/depsweep` | Dependency-upgrade sweeper `--dep-sweep` |
-| `internal/watermark` | Durable journal cursor shared by the sweepers |
-| `internal/consumer` | Journal dispatcher, per-subscriber cursors (ADR-0009) |
-| `internal/runactor` | run.Group actors, LIFO shutdown, InterruptOn |
-| `internal/webui` | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003) |
-| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout; shared bearer + 3-strikes |
+| Package                                 | Purpose                                                                                  |
+| --------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `internal/task`                         | Task record, Status, sentinels                                                           |
+| `internal/journal`                      | Fact types + append-only Journal                                                         |
+| `internal/journal/cqrs`                 | Read-only go-cqrs-lite adapter (ADR-0014)                                                |
+| `internal/queue`                        | Store contract, Filter, Queue facade, Waker                                              |
+| `internal/queue/{sqlite,postgres}`      | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform`           |
+| `internal/queue/{sqlitev4,postgresv4}`  | tq Store over the go-cqrs-lite queue engines                                             |
+| `internal/queue/companion`              | Shared tq surfaces: reads, watermarks, scores, exclusivity, token finalize (`WithToken`) |
+| `internal/readmodel`                    | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON)                |
+| `internal/composition`                  | S4 root: `system.New` over the projection home (`tq serve`)                              |
+| `internal/worker`                       | Claim → heartbeat → execute loop; requeue ladder                                         |
+| `internal/bridge`                       | papdashboard + cqa bridges → fix tasks                                                   |
+| `internal/executor`                     | sh/HTTP/agent/review/status executors + registry                                         |
+| `internal/harvest`                      | TODO_LIST.md → tasks; drift audit; prune-stale                                           |
+| `internal/budget`                       | Daily-cap + session-usage projections per tick                                           |
+| `internal/dlqfix`                       | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss                                  |
+| `internal/review`                       | Review sweeper + `--review-autofix`                                                      |
+| `internal/status`                       | Done-prompt report sweeper (`--status-every`)                                            |
+| `internal/prioritize`                   | AI batch scorer (`--prioritize`), priority_scores cache                                  |
+| `internal/depsweep`                     | Dependency-upgrade sweeper `--dep-sweep`                                                 |
+| `internal/watermark`                    | Durable journal cursor shared by the sweepers                                            |
+| `internal/consumer`                     | Journal dispatcher, per-subscriber cursors (ADR-0009)                                    |
+| `internal/runactor`                     | run.Group actors, LIFO shutdown, InterruptOn                                             |
+| `internal/webui`                        | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003)                                   |
+| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout; shared bearer + 3-strikes     |
 
 ### Store invariants
 

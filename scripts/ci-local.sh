@@ -261,8 +261,11 @@ lint() {
 		(
 			trap 'rm -rf "$lint_d"' EXIT
 			(
-				{ echo "== root"; "$LINT_BIN" run ./...; } > "$lint_d/root.out" 2>&1
-				echo "$?" > "$lint_d/root.rc"
+				{
+					echo "== root"
+					"$LINT_BIN" run ./...
+				} >"$lint_d/root.out" 2>&1
+				echo "$?" >"$lint_d/root.rc"
 			) &
 			printf '%s\n' "$mods" | xargs -P "$lint_jobs" -n1 bash -c '
 				d="$1"; m="$2"

@@ -7,12 +7,12 @@ every hook)?
 
 ## Options considered
 
-| Wiring | Catches sweep… | Verdict |
-| --- | --- | --- |
-| Git `post-commit` hook (.githooks) | instantly | **Unusable**: the daemon commits with hooks bypassed by design (AGENTS: "daemon bypasses hooks"); it would gate only human/agent commits, which already run the gates |
-| ci-local start-of-run | before a push | **Shipped** (below): every pre-push run now pays ~1s when clean, runs the cheap doc gates when a gated sweep is in `origin/master..HEAD` |
+| Wiring                             | Catches sweep…         | Verdict                                                                                                                                                                                                                      |
+| ---------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Git `post-commit` hook (.githooks) | instantly              | **Unusable**: the daemon commits with hooks bypassed by design (AGENTS: "daemon bypasses hooks"); it would gate only human/agent commits, which already run the gates                                                        |
+| ci-local start-of-run              | before a push          | **Shipped** (below): every pre-push run now pays ~1s when clean, runs the cheap doc gates when a gated sweep is in `origin/master..HEAD`                                                                                     |
 | Host cron / systemd timer (evo-x2) | within minutes, always | **Proposed to owner** (see request): `*/5` systemd timer or cron over the go-taskqueue checkout running `scripts/check-daemon-sweep-docs.sh --since origin/master`; needs the host-side unit the agent cannot install (sudo) |
-| CI job on master | at push time | Covered by the ci-local wiring once pushed (CI runs the same gates); adds nothing for the mid-window red |
+| CI job on master                   | at push time           | Covered by the ci-local wiring once pushed (CI runs the same gates); adds nothing for the mid-window red                                                                                                                     |
 
 ## Shipped in this change
 

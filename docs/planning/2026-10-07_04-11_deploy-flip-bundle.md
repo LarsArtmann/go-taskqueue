@@ -54,34 +54,34 @@ block the flip on it, but re-run `nix build` on the flip commit.
 
 ## 2. Flags matrix — deployed v0.3.0-era vs master HEAD
 
-| Surface | Flag / default | Deployed (28a8ae4) | Master HEAD | Action |
-| --- | --- | --- | --- | --- |
-| worker | `--redact` | absent | present, **default ON** (env `TQ_REDACT`) | none — activates on flip |
-| worker | `--reresolve-verify` | absent | present (agent verify re-resolution) | optional: add to unit if wanted |
-| worker | `--daily-budget N` | absent | present (claim-time budget gate) | optional: set a cap |
-| worker | `--batch-items N` | absent | present, default OFF | leave OFF until calibrated |
-| worker IO | sqlite pragmas | FULL sync, two pools | **NORMAL sync, ONE shared conn**, partial claim indexes, idle backoff 2s cap | none — activates on flip; escape `TQ_SQLITE_SYNC=full` |
-| serve | `--allow-writes` | absent | present (WebUI rescue/cancel) | optional: add to unit (row 56) |
-| serve | `--read-model` | absent | present, **default ON** (S3 metaengine projection) | none |
-| serve | `--auth-token` | — | required for non-loopback binds | keep loopback OR set token (SECURITY.md) |
-| api | `tq api` | absent | present, token-mandatory, lockout | only if used |
-| doctor | `--hygiene` | absent (errors on live binary) | present (verify-pin staleness report) | run once post-deploy (§3) |
-| stats | `--read-model` | absent | default ON | none |
+| Surface   | Flag / default       | Deployed (28a8ae4)             | Master HEAD                                                                  | Action                                                 |
+| --------- | -------------------- | ------------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
+| worker    | `--redact`           | absent                         | present, **default ON** (env `TQ_REDACT`)                                    | none — activates on flip                               |
+| worker    | `--reresolve-verify` | absent                         | present (agent verify re-resolution)                                         | optional: add to unit if wanted                        |
+| worker    | `--daily-budget N`   | absent                         | present (claim-time budget gate)                                             | optional: set a cap                                    |
+| worker    | `--batch-items N`    | absent                         | present, default OFF                                                         | leave OFF until calibrated                             |
+| worker IO | sqlite pragmas       | FULL sync, two pools           | **NORMAL sync, ONE shared conn**, partial claim indexes, idle backoff 2s cap | none — activates on flip; escape `TQ_SQLITE_SYNC=full` |
+| serve     | `--allow-writes`     | absent                         | present (WebUI rescue/cancel)                                                | optional: add to unit (row 56)                         |
+| serve     | `--read-model`       | absent                         | present, **default ON** (S3 metaengine projection)                           | none                                                   |
+| serve     | `--auth-token`       | —                              | required for non-loopback binds                                              | keep loopback OR set token (SECURITY.md)               |
+| api       | `tq api`             | absent                         | present, token-mandatory, lockout                                            | only if used                                           |
+| doctor    | `--hygiene`          | absent (errors on live binary) | present (verify-pin staleness report)                                        | run once post-deploy (§3)                              |
+| stats     | `--read-model`       | absent                         | default ON                                                                   | none                                                   |
 
 ## 3. Post-deploy smoke checklist (in order, ~15 min)
 
-| # | Check | Command | Expect |
-| - | --- | --- | --- |
-| 1 | Units up | `systemctl status tq-agent-pool tq-serve` | active (running), fresh log lines |
-| 2 | First harvest | `journalctl -u tq-agent-pool -n 50` | `harvest: enqueued` per repo, NO `scan failed` |
-| 3 | PATH fix live | pool log `tq doctor` line or run `tq doctor` | `tool:git/go/crush found` |
-| 4 | GOEXPERIMENT fix live | first verify result in journal | NOT `build constraints exclude all Go files` |
-| 5 | 429 armor live | next provider 429 | log: requeued WITHOUT attempt burn; task pending, attempts unchanged |
-| 6 | Redaction live | any completed agent task | output tails masked; `tq audit --journal` shows no SECRET EVIDENCE |
-| 7 | Read-model live | `tq stats` | answers from `<db>.readmodel.db` (file exists beside journal) |
-| 8 | Dashboard | open `127.0.0.1:8100` (or tq.home.lan) | fresh facts streaming; writes banner if `--allow-writes` |
-| 9 | Hygiene pass | `tq doctor --hygiene --json` | report renders (no flag error like deployed v0.3.0) |
-| 10 | DLQ state | `tq dlq` | triage per the 2026-09-11 runbook classes (rescue 429-class AFTER flip) |
+| #  | Check                 | Command                                      | Expect                                                                  |
+| -- | --------------------- | -------------------------------------------- | ----------------------------------------------------------------------- |
+| 1  | Units up              | `systemctl status tq-agent-pool tq-serve`    | active (running), fresh log lines                                       |
+| 2  | First harvest         | `journalctl -u tq-agent-pool -n 50`          | `harvest: enqueued` per repo, NO `scan failed`                          |
+| 3  | PATH fix live         | pool log `tq doctor` line or run `tq doctor` | `tool:git/go/crush found`                                               |
+| 4  | GOEXPERIMENT fix live | first verify result in journal               | NOT `build constraints exclude all Go files`                            |
+| 5  | 429 armor live        | next provider 429                            | log: requeued WITHOUT attempt burn; task pending, attempts unchanged    |
+| 6  | Redaction live        | any completed agent task                     | output tails masked; `tq audit --journal` shows no SECRET EVIDENCE      |
+| 7  | Read-model live       | `tq stats`                                   | answers from `<db>.readmodel.db` (file exists beside journal)           |
+| 8  | Dashboard             | open `127.0.0.1:8100` (or tq.home.lan)       | fresh facts streaming; writes banner if `--allow-writes`                |
+| 9  | Hygiene pass          | `tq doctor --hygiene --json`                 | report renders (no flag error like deployed v0.3.0)                     |
+| 10 | DLQ state             | `tq dlq`                                     | triage per the 2026-09-11 runbook classes (rescue 429-class AFTER flip) |
 
 ## 4. Gatus journal-head liveness probe (row 89)
 

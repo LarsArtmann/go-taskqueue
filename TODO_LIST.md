@@ -520,7 +520,9 @@ not here.
 
 - [ ] Document the pool verify-gate deadline hazard for the root `-race` battery in AGENTS.md Known Issues, respecting the TestAgentsDocSizeGuard budget (2026-10-07 re-dispatch evidence: the gate killed one attempt with "deadline before a verdict, retry on a warm cache" on work that was already correct; the identical signature passed rc=0 in ~6 min on a warm cache)
 - [ ] Notify-after-commit journal wake (ADR-0009 v2 path): fire a post-commit notification outside the mutation tx so worker claim loops and journal consumers react in milliseconds instead of poll cadences (the 2026-10-07 IO pass shipped idle backoff + pragmas + partial indexes; this removes polling entirely — keep the polls as the degraded fallback)
+
 ## 2026-10-07 archive-sweep routes (batch 1; source: docs-health ANNOTATE over four near-resolved September reports — every routed item struck inline at its origin, cookie question routed to ROADMAP §Open questions)
+
 - [ ] Header asserts as a table: `TestSecurityHeadersOnEveryResponse` (internal/webui/security_test.go) asserts headers one `if` at a time — a header→want map makes the next header a one-line addition (routed from 2026-09-10_03-05 §f3)
 - [ ] Mechanical history-rewrite guard: refuse rebase/filter-branch/amend that touches origin/master-reachable commits (shell wrapper or pre-command hook, with a TQ_ALLOW_REWRITE=1 escape printed in the refusal) — the never-rewrite-policy is prose today and the 07-49 incident happened under documented-good-intention (routed from 2026-09-14_02-38 §b1)
 - [ ] §d-citation convention check: incident-citing policy bullets must cite the report file AND the section anchor, grep-verifiable — a check-doc-refs rule (routed from 2026-09-14_02-38 §b5)
@@ -528,4 +530,5 @@ not here.
 - [ ] M8 follow-ups: CHANGELOG entries for the trailer-gap pin + census script + tq-show verdict split (committed f87e4c80/148f0255 without ledger entries), full executor module gate after the gitscan characterization append (only the single test ran), and CHANGELOG-coverage check for the archive-batch pins (docs/status/2026-10-07_06-30…window.md §f5)
 
 ## Lint-budget re-dispatch follow-ups (2026-10-07 06-01; source: docs/status/tasks/2026-10-07_06-01_task-000001a113fcda34986217541cd000000000.md §f; deduped against live rows — the vendor-pin instance stays row 506's territory, the footer census row 323's, M7 wake section 531's)
+
 - [ ] Gate-aware auto-commit daemon sweeps: before sweeping, run the scoped gofmt check and `scripts/check-gomod-vendor-sync.sh` over the files about to be staged (or refuse the sweep and leave them for the author session) — sweeps committed gate-red states twice in the 2026-10-07 06-01 window (mid-format internal/worker/worker_test.go + internal/harvest/redispatch_test.go killed the gofmt leg; stale vendor/readmodel killed attempt 2's build leg), and every red gate at claim time burns one of the task's 3 attempts (06-01 report §d/§f1)
