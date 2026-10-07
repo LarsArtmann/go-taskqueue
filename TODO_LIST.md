@@ -532,3 +532,16 @@ not here.
 ## Lint-budget re-dispatch follow-ups (2026-10-07 06-01; source: docs/status/tasks/2026-10-07_06-01_task-000001a113fcda34986217541cd000000000.md §f; deduped against live rows — the vendor-pin instance stays row 506's territory, the footer census row 323's, M7 wake section 531's)
 
 - [ ] Gate-aware auto-commit daemon sweeps: before sweeping, run the scoped gofmt check and `scripts/check-gomod-vendor-sync.sh` over the files about to be staged (or refuse the sweep and leave them for the author session) — sweeps committed gate-red states twice in the 2026-10-07 06-01 window (mid-format internal/worker/worker_test.go + internal/harvest/redispatch_test.go killed the gofmt leg; stale vendor/readmodel killed attempt 2's build leg), and every red gate at claim time burns one of the task's 3 attempts (06-01 report §d/§f1)
+
+## cqrs-lint A014/D013 branch follow-ups (2026-10-08; source: docs/status/tasks/2026-10-08_00-23_task-000001a11493e81a577bde2bfdfa00000000.md §f; deduped by live-text grep — the parent row is [x] DONE, V006 was already fixed upstream 2026-10-03, not re-listed)
+
+- [ ] After cqrs-lint/a014-d013-review merges in ~/projects/go-cqrs-lite: tag the release, then point the tq ci-local cqrs-lint advisory step + flake devShell pin at the real tag instead of the local checkout (08-21 §g8/§g9; scripts/ci-local.sh:506) — BLOCKED: branch merge
+- [ ] Flip the tq cqrs-lint advisory gate to HARD after a green soak window, per the recorded flip criteria (08-21 §g8; scripts/ci-local.sh:513) — BLOCKED: tagged hermetic tool source from the row above
+- [ ] Annotate the O10 rulings sheet follow-up (docs/planning/2026-10-05_15-00_OWNER-RULINGS-SHEET.md) with a non-destructive appendix recording the actual branch ref cqrs-lint/a014-d013-review @ b4f29e517 and the V006-already-fixed fact — the sheet is the durable citation
+- [ ] Sweep stale "three scoped cqrs-lint fixes" phrasing across docs/planning (Pareto rows 121/254/F117 say A014/D013/V006) — annotate each with DONE + the V006-already-fixed correction (docs-health ANNOTATE, never rewrite)
+- [ ] go-cqrs-lite: audit remaining catalog descriptions for "Deprecated" claims without Deprecated markers (the A014 class; dispatcher.Register/command.Register verified marker-free this window but deliberately untouched) and report findings for a ruling
+- [ ] go-cqrs-lite: confirm cmd/cqrs-lint/RULES.md descriptions are hand-maintained vs generated — if a generator exists, my hand-edited A014/D013 text on the review branch must survive regeneration (rg found no generator; one probe left)
+- [ ] go-cqrs-lite: add the branch-provenance note to ITS TODO_LIST.md so its agents discover cqrs-lint/a014-d013-review without reading this repo
+- [ ] go-cqrs-lite: fix taskmanager golden absolute-path brittleness (integration_taskmanager_test.go pins /home/lars/... paths; any worktree/clone fails — experienced live 2026-10-08; normalize to repo-relative before compare)
+- [ ] go-cqrs-lite: fix IsInsideUpcasterClosure doc comment still claiming "consulted for EVERY A014/C005 candidate" (pkg/analyzer/upcaster.go:9) — it is C005-only since the A014 NewEvent entry dropped
+- [ ] D013 disposition ruling: rule reworded default-aware this window (kept firing at info/low), but the 09-13 triage called it an outright false positive — BLOCKED: maintainer ruling keep-vs-disable-vs-delete
