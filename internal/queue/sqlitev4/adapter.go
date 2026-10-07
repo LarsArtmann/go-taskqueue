@@ -287,6 +287,8 @@ func (s *Store) FailPermanent(
 	errText string,
 	evidence jsontext.Value,
 ) error {
+	// art-dupl:accept Store-interface delegator: one WithToken seam; the
+	// per-backend engine types stop any deeper hoist.
 	return companion.WithToken(ctx, s.cr, id, claim, true, func(token string) error {
 		return companion.MapErr(s.engine.FailPermanent(ctx, utask.ID(id.String()), token, errText, []byte(evidence)))
 	})
