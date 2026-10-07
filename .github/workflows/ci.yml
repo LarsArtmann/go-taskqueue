@@ -93,18 +93,47 @@ jobs:
         run: |
           echo "::remove-matcher owner=go::"
           go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
-          lint_out="$("$(go env GOPATH)/bin/golangci-lint" run ./... 2>&1 || true)"
-          printf '%s\n' "$lint_out"
-          lint_total="$(printf '%s\n' "$lint_out" | grep -c '\.go:[0-9]*:[0-9]*:' || true)"
+          lint_bin="$(go env GOPATH)/bin/golangci-lint"
           # ./... from the root never descends into nested sub-modules
           # (ADR-0011) — mirror ci-local.sh's disk-derived loop so every
-          # sub-module gets the same advisory run.
+          # sub-module gets the same advisory run. O9 (2026-10-05) caps the
+          # lint loop at ≤10 minutes; the sequential fan-out was the step's
+          # dominant cost (runners restore no golangci-lint cache), so the
+          # root + module runs go out in parallel. Same runs, same order
+          # (root, for-each-module order, cmd/tq), same advisory semantics.
           mods="$(./scripts/for-each-module.sh)"
+          lint_jobs="${TQ_LINT_JOBS:-$(nproc)}"
+          lint_d="$(mktemp -d)"
+          trap 'rm -rf "$lint_d"' EXIT
+          export LINT_BIN="$lint_bin"
+          (
+            { echo "== root"; "$LINT_BIN" run ./...; } > "$lint_d/root.out" 2>&1
+            echo "$?" > "$lint_d/root.rc"
+          ) &
+          printf '%s\n' "$mods" | xargs -P "$lint_jobs" -n1 bash -c '
+            d="$1"; m="$2"
+            key="$(printf %s "$m" | tr / _)"
+            { echo "== $m"; cd "$m" && GOWORK=off "$LINT_BIN" run ./...; } > "$d/$key.out" 2>&1
+            echo "$?" > "$d/$key.rc"
+          ' _ "$lint_d" || true
+          wait || true
+          lint_out="$(cat "$lint_d/root.out")"
+          printf '%s\n' "$lint_out"
+          lint_total="$(printf '%s\n' "$lint_out" | grep -c '\.go:[0-9]*:[0-9]*:' || true)"
           for m in $mods; do
-            echo "== $m"
-            mod_out="$( cd "$m" && GOWORK=off "$(go env GOPATH)/bin/golangci-lint" run ./... 2>&1 || true )"
+            key="$(printf %s "$m" | tr / _)"
+            if [ ! -f "$lint_d/$key.rc" ]; then
+              echo "== $m"
+              echo "WARN: lint worker for $m produced no output (advisory — continuing)"
+              continue
+            fi
+            mod_out="$(cat "$lint_d/$key.out")"
             printf '%s\n' "$mod_out"
             lint_total=$(( lint_total + $(printf '%s\n' "$mod_out" | grep -c '\.go:[0-9]*:[0-9]*:' || true) ))
+            lint_rc="$(cat "$lint_d/$key.rc")"
+            if [ "$lint_rc" -ge 2 ]; then
+              echo "WARN: lint in $m exited rc=$lint_rc (advisory — findings exit 1; continuing)"
+            fi
           done
           # cmd/tq (ADR-0017): golangci-lint rejects the devmod -modfile in its
           # env probes, so the tooling run goes through the lib's derived go.work.
