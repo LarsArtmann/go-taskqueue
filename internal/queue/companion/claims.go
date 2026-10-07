@@ -48,6 +48,20 @@ func TokenFor(ctx context.Context, r Runner, id task.ID, claim queue.Claim, requ
 	return token, nil
 }
 
+// WithToken runs use with the claim token TokenFor validates: the token
+// gate and the engine finalize it guards collapse onto one seam, so a
+// backend adapter cannot order the finalize ahead of the gate. The
+// TokenFor error is returned as-is (already tq vocabulary); everything
+// use returns passes through untouched.
+func WithToken(ctx context.Context, r Runner, id task.ID, claim queue.Claim, requireLive bool, use func(token string) error) error {
+	token, err := TokenFor(ctx, r, id, claim, requireLive)
+	if err != nil {
+		return err
+	}
+
+	return use(token)
+}
+
 // ClaimDue atomically claims at most one due task for owner, with tq's
 // project-exclusivity predicate (the upstream engine's candidate query has
 // no such clause — S1 divergence). The claim mints an upstream-format

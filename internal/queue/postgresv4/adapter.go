@@ -202,12 +202,6 @@ func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 	return s.Get(ctx, task.ID(created.ID.String()))
 }
 
-// tokenFor enforces tq's claim-token gate for a finalize (the gate itself
-// lives in companion; the adapter supplies its dialed runner).
-func (s *Store) tokenFor(ctx context.Context, id task.ID, claim queue.Claim, requireLive bool) (string, error) {
-	return companion.TokenFor(ctx, s.cr, id, claim, requireLive)
-}
-
 // Complete marks a Running task Completed (owner gate, engine finalize).
 // tq parity (divergence D1): tq's postgres clears last_error in the same
 // UPDATE that completes the task; the upstream engine leaves a failed
@@ -215,20 +209,17 @@ func (s *Store) tokenFor(ctx context.Context, id task.ID, claim queue.Claim, req
 // the finalize. A completed task can never Fail again, so the follow-up
 // UPDATE cannot race a new error onto the row.
 func (s *Store) Complete(ctx context.Context, id task.ID, claim queue.Claim, result jsontext.Value) error {
-	token, err := s.tokenFor(ctx, id, claim, true)
-	if err != nil {
+	return companion.WithToken(ctx, s.cr, id, claim, true, func(token string) error {
+		if err := s.engine.Complete(ctx, utask.ID(id.String()), token, []byte(result)); err != nil {
+			return companion.MapErr(err)
+		}
+
+		_, err := s.cr.ExecContext(ctx,
+			`UPDATE tasks SET last_error = '' WHERE id = ? AND status = 'completed'`,
+			id.String())
+
 		return err
-	}
-
-	if err := s.engine.Complete(ctx, utask.ID(id.String()), token, []byte(result)); err != nil {
-		return companion.MapErr(err)
-	}
-
-	_, err = s.cr.ExecContext(ctx,
-		`UPDATE tasks SET last_error = '' WHERE id = ? AND status = 'completed'`,
-		id.String())
-
-	return err
+	})
 }
 
 // Fail records a failed attempt: retry with backoff or dead-letter.
@@ -240,12 +231,9 @@ func (s *Store) Fail(
 	backoff time.Duration,
 	evidence jsontext.Value,
 ) error {
-	token, err := s.tokenFor(ctx, id, claim, true)
-	if err != nil {
-		return err
-	}
-
-	return companion.MapErr(s.engine.Fail(ctx, utask.ID(id.String()), token, errText, backoff, []byte(evidence)))
+	return companion.WithToken(ctx, s.cr, id, claim, true, func(token string) error {
+		return companion.MapErr(s.engine.Fail(ctx, utask.ID(id.String()), token, errText, backoff, []byte(evidence)))
+	})
 }
 
 // FailPermanent dead-letters immediately (permanent error class).
@@ -256,22 +244,16 @@ func (s *Store) FailPermanent(
 	errText string,
 	evidence jsontext.Value,
 ) error {
-	token, err := s.tokenFor(ctx, id, claim, true)
-	if err != nil {
-		return err
-	}
-
-	return companion.MapErr(s.engine.FailPermanent(ctx, utask.ID(id.String()), token, errText, []byte(evidence)))
+	return companion.WithToken(ctx, s.cr, id, claim, true, func(token string) error {
+		return companion.MapErr(s.engine.FailPermanent(ctx, utask.ID(id.String()), token, errText, []byte(evidence)))
+	})
 }
 
 // Heartbeat extends the lease of a Running task held by owner.
 func (s *Store) Heartbeat(ctx context.Context, id task.ID, claim queue.Claim, extend time.Duration) error {
-	token, err := s.tokenFor(ctx, id, claim, true)
-	if err != nil {
-		return err
-	}
-
-	return companion.MapErr(s.engine.Heartbeat(ctx, utask.ID(id.String()), token, extend))
+	return companion.WithToken(ctx, s.cr, id, claim, true, func(token string) error {
+		return companion.MapErr(s.engine.Heartbeat(ctx, utask.ID(id.String()), token, extend))
+	})
 }
 
 // Cancel withdraws a Pending task (engine; error vocabulary mapped).
@@ -295,12 +277,9 @@ func (s *Store) CancelRequested(ctx context.Context, id task.ID) (bool, error) {
 // (no live-lease requirement — a worker may legitimately finish the stop
 // just after the lease lapsed but before a reclaim), so requireLive=false.
 func (s *Store) CancelOwned(ctx context.Context, id task.ID, claim queue.Claim) error {
-	token, err := s.tokenFor(ctx, id, claim, false)
-	if err != nil {
-		return err
-	}
-
-	return companion.MapErr(s.engine.CancelOwned(ctx, utask.ID(id.String()), token))
+	return companion.WithToken(ctx, s.cr, id, claim, false, func(token string) error {
+		return companion.MapErr(s.engine.CancelOwned(ctx, utask.ID(id.String()), token))
+	})
 }
 
 // MarkOrphaned appends task.orphaned facts for expired-lease Running tasks.
