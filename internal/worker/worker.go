@@ -32,6 +32,17 @@ type Config struct {
 	// claimed within the cap. Default 2s; negative disables the ladder
 	// (fixed PollInterval, the historical behavior).
 	IdlePollMax time.Duration
+
+	// Wake is the optional claim-wake channel (queue.Waker.Notify from a
+	// Waker store): a commit that may have landed a task in PENDING
+	// fires it, so an idle loop re-claims in milliseconds instead of
+	// waiting out the idle ladder, and the wake resets the ladder to
+	// full cadence. The ladder stays the degraded fallback — a nil Wake
+	// (or a store without the seam) keeps the pure poll behavior, and
+	// the signal is process-local, so same-DB pools in other processes
+	// still poll.
+	Wake <-chan struct{}
+
 	Lease       time.Duration // claim lease length (default 2m)
 	Heartbeat   time.Duration // heartbeat cadence, < Lease (default 30s)
 	TaskTimeout time.Duration // per-task execution cap (default 10m)
@@ -502,9 +513,12 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 				idle = 0
 			}
 
-			if !sleepCtx(ctx, p.cfg.idleGap(idle)) {
+			next, awake := p.idleWait(ctx, idle)
+			if !awake {
 				return
 			}
+
+			idle = next
 
 			continue
 		}
@@ -512,6 +526,30 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 		idle = 0
 
 		p.execute(taskCtx, t, claim)
+	}
+}
+
+// idleWait parks an idle loop until the earliest of: the idle-gap tick
+// (the poll fallback), a claim-wake signal (Config.Wake — the store just
+// committed a PENDING landing), or shutdown. A wake resets the idle
+// ladder so the pool returns to full cadence instead of grinding against
+// the cap; the tick keeps the streak so the ladder keeps backing off. A
+// nil Wake never fires (Go's nil-channel rule), which is exactly the
+// poll-only fallback. Returns the next idle streak and false when the
+// loop must stop (ctx cancelled or pool stopped).
+func (p *Pool) idleWait(ctx context.Context, idle int) (int, bool) {
+	timer := time.NewTimer(p.cfg.idleGap(idle))
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return idle, false
+	case <-p.stopCh:
+		return idle, false
+	case <-p.cfg.Wake:
+		return 0, true
+	case <-timer.C:
+		return idle, true
 	}
 }
 
@@ -935,14 +973,5 @@ func (p *Pool) runExecutor(ctx context.Context, t task.Task) error {
 		}
 
 		return fmt.Errorf("task timeout after %s", p.cfg.TaskTimeout)
-	}
-}
-
-func sleepCtx(ctx context.Context, d time.Duration) bool {
-	select {
-	case <-ctx.Done():
-		return false
-	case <-time.After(d):
-		return true
 	}
 }
