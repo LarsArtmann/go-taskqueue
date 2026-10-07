@@ -159,7 +159,7 @@ Items 5–10 are already rowed and listed here for ranking only.
 2. **dead-sha baseline cadence**: 300 baselined hits and growing; is a
    periodic `--emit-baseline` re-curation scheduled anywhere (O16 keeps
    curation human), or does the baseline only ever grow?
-3. **Foreign dead-sha sites**: the four foreign `99458a91` sites (00-44
+3. **Foreign dead-sha sites**: the four foreign `99458a91→22e8c50f` sites (00-44
    report ×3 + README's archived row) — arrow-escape them to green the
    remaining warnings, or baseline them per O16's human-curation rule?
 

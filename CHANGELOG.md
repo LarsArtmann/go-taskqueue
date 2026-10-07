@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **`check-dead-sha-refs` covers `docs/status/tasks/*.md`** (2026-10-07,
+  O7 routing follow-up): closeout reports moved to `tasks/` had been
+  escaping the dead-SHA gate — the widened scan caught the O7 closeout's
+  two healed-sweep citations on its first run (converted to sanctioned
+  fork records).
+- **Closeout TODO-appends capped at 10** (2026-10-07, O7): the
+  `--task-closeout` prompt now carries a HARD CAP 10 on new unchecked
+  TODO_LIST items plus the status prompt's mandatory dedup-check wording;
+  pinned by `TestDefaultCloseoutPromptTodoAppendCap`.
 - **`composition.NewProjectionRuntime`** (S4 factory): the model + DLQ
   sidecar + managed projection host assembled at the composition root
   with LIFO close ordering; `tq serve`'s webui wiring now consumes it
