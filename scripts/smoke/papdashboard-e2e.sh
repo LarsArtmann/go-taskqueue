@@ -89,8 +89,19 @@ echo "== start worker with alert bridge -> $PAP_URL"
 WORKER_PID=$!
 
 echo "== enqueue a task that fails once, succeeds after rescue"
-TASK_ID="$("$TMP/tq" enqueue --type sh --project pap-e2e \
-	--payload "test -f '$FLAG' || { touch '$FLAG'; exit 1; }")"
+# The worker was started first; under gate load its migrate can hold the
+# write lock past the 5s busy_timeout (M25 class — isolated runs never
+# reproduce). Bounded retry keeps the gate load-robust.
+TASK_ID=""
+for _ in 1 2 3 4 5; do
+	if TASK_ID="$("$TMP/tq" enqueue --type sh --project pap-e2e \
+		--payload "test -f '$FLAG' || { touch '$FLAG'; exit 1; }")"; then
+		break
+	fi
+	echo "WARN: transient enqueue failure — retrying" >&2
+	sleep 2
+done
+[ -n "$TASK_ID" ] || { echo "FAIL: enqueue kept failing after retries" >&2; exit 1; }
 echo "   task $TASK_ID"
 
 # Real mode has no stub log; the bridge logs each accepted ingest POST
@@ -102,7 +113,12 @@ else
 fi
 
 wait_for() { # wait_for <grep-pattern>
-	for _ in $(seq 1 15); do
+	# 60s, not 15s: the claim → sh fail → dead-letter → bridge POST chain
+	# runs a freshly built worker; under release-gate load (parallel
+	# builds, the production pool's WAL churn) 15s was lost twice while
+	# the isolated run passed in ~3s. The assertion stays strict; the
+	# window absorbs host load.
+	for _ in $(seq 1 60); do
 		[ -f "$ALERT_LOG" ] && grep -q "$1" "$ALERT_LOG" && return 0
 		sleep 1
 	done
