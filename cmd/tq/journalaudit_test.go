@@ -138,6 +138,65 @@ func TestJournalDriftNoDriftOverFullLifecycle(t *testing.T) {
 	}
 }
 
+// TestJournalDriftNoDriftAfterFailThenComplete pins the attempts semantics
+// the 2026-09-15 00-12 §b2 gap left code-read-only: a task that burned ONE
+// failure and later completed carries attempts=1 in BOTH the stored row and
+// the fact replay — attempts count burned failures, not claims (the
+// DOMAIN_LANGUAGE Attempts entry). Fail (transient, backoff) re-lands the
+// task PENDING; the reclaim then completes it.
+func TestJournalDriftNoDriftAfterFailThenComplete(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := journalAuditStore(t)
+
+	enq, err := store.Enqueue(ctx, task.New{Project: "j", Type: "sh", Payload: []byte(`"false"`)})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	first, claim1, err := store.ClaimDue(ctx, "w1", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue #1: %v", err)
+	}
+
+	if err := store.Fail(ctx, first.ID, claim1, "transient boom", time.Nanosecond, nil); err != nil {
+		t.Fatalf("Fail: %v", err)
+	}
+
+	// The nanosecond backoff is due immediately; reclaim and complete.
+	second, claim2, err := store.ClaimDue(ctx, "w2", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue #2: %v", err)
+	}
+
+	if first.ID != second.ID {
+		t.Fatalf("claim #2 raced a different task (%s vs %s)", first.ID, second.ID)
+	}
+
+	if err := store.Complete(ctx, second.ID, claim2, nil); err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+
+	stored, err := store.Get(ctx, enq.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	if stored.Attempts != 1 {
+		t.Errorf("stored Attempts = %d, want 1 (burned failures only)", stored.Attempts)
+	}
+
+	report, err := journalDrift(ctx, store)
+	if err != nil {
+		t.Fatalf("journalDrift: %v", err)
+	}
+
+	if report.HasDrift() {
+		t.Fatalf("unexpected drift after fail→complete: %+v", report.Drift)
+	}
+}
+
 func TestJournalDriftSeededDriftAllFields(t *testing.T) {
 	t.Parallel()
 
