@@ -2,6 +2,6 @@ module github.com/larsartmann/go-taskqueue/journal
 
 go 1.27.1
 
-require github.com/larsartmann/go-taskqueue/internal/journal v0.3.2
+require github.com/larsartmann/go-taskqueue/internal/journal v0.3.3
 
 replace github.com/larsartmann/go-taskqueue/internal/journal => ../internal/journal

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [v0.3.3] - 2026-10-07
 
 ### Added
 - **Claim-wake seam wired end to end** (2026-10-07, M7 / ADR-0020):
@@ -70,8 +70,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   with a self-test pinning drift detection (bump-without-vendor and
   missing-go.sum cases); `VENDOR_SYNC_OFF=1` is the network-tolerant
   escape.
+- **Fold-poison DLQ sidecar + projection surfaces in /health and `tq
+  doctor`** (2026-10-06, M09 slice 1): poison facts land in a SQLite
+  sidecar beside the projection db (`readmodel.DLQPathFor`,
+  `OpenDeadLetters` — Store/Count/Recent; queue-sqlite posture: WAL,
+  busy_timeout, single conn); serve wires it as the fold's
+  `DeadLetterStore` (threshold 1; a sidecar failure is
+  warn-and-continue — the fold runs without a DLQ rather than
+  refusing to serve). The health prober emits a `projection` check
+  only when a read model is mounted (pass within a 100-fact head
+  tolerance, warn past it: "the fold is wedged or restarting"), and
+  the doctor grew a projection section — cursor lag vs journal head
+  (serve-aware wording), projection-file presence with the
+  delete-to-replay escape hatch, folded-count drift vs the queue's
+  own counts — built strictly on released readmodel APIs (cmd/tq is
+  replace-free, ADR-0017).
 
 ### Fixed
+- **Projectionhost live tail: skipped facts + unowned shutdown**
+  (2026-10-07): the fold's journal tail anchored one past the last
+  delivered fact, but `ReadFrom` is exclusive of its cursor — every
+  poll boundary permanently skipped exactly one fact, and a skipped
+  terminal fact (Completed, DeadLettered) wedged the fold ledger with
+  a running residual (the webui smoke's stats assertion caught it).
+  The tail now anchors AT the last delivered seq, pinned by a
+  regression test that fails under the old cursor. Same window, a
+  REAL goroutine leak: the tail subscriber spawned
+  `context.Background()` ticker goroutines with no stop path (one per
+  worker and one more per restart, outliving store close, racing
+  checkpoint saves) — `ProjectionHost` now owns shutdown (`Close`
+  stops every tail and waits), the subscriber is pointer-receiver and
+  shared across worker generations, and every host test plus serve's
+  `runReadModel` is close-guarded.
 - **journal/cqrs tests track the upstream `StreamID` display format**
   (2026-10-07): the go-cqrs-lite dep bump gave branded `StreamID` a
   `StreamMarker:` display prefix on `String()` (the underlying value and
