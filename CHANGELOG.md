@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **`composition.NewProjectionRuntime`** (S4 factory): the model + DLQ
+  sidecar + managed projection host assembled at the composition root
+  with LIFO close ordering; `tq serve`'s webui wiring now consumes it
+  (internal/composition v0.3.4).
 - **`tq doctor --dlq`**: opt-in inspection of the projection fold's
   poison-fact sidecar — absent/empty sidecar reports ok, stored poison
   facts report WARN with the count and the 3 most recent failures

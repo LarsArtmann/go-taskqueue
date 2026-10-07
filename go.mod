@@ -110,7 +110,7 @@ require (
 	github.com/larsartmann/go-health-dashboard v0.10.2
 	github.com/larsartmann/go-sse v0.6.2
 	github.com/larsartmann/go-sse/ssetest v0.4.0
-	github.com/larsartmann/go-taskqueue/internal/composition v0.0.0-00010101000000-000000000000
+	github.com/larsartmann/go-taskqueue/internal/composition v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
