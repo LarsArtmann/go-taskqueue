@@ -167,6 +167,16 @@ with_transient_retry "embed example (facade paths)" bash -c 'cd examples/embed &
 step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
 ./scripts/check-go-mods.sh
 
+# Dep-bump drift (b886a677 class): vendor/ and per-module tidies must
+# match the committed graph — the 2026-10-07 03:12 bump without vendor/tidy
+# cost a multi-hour red window. Self-test first (drift-detection pin), then
+# the real gate; VENDOR_SYNC_OFF=1 is the network-tolerant escape.
+step "dep-bump drift self-test (vendor/tidy sync detection pin)"
+VENDOR_SYNC_SELF_TEST=1 ./scripts/check-gomod-vendor-sync.sh
+
+step "dep-bump drift (go mod vendor + per-module tidy vs committed tree)"
+./scripts/check-gomod-vendor-sync.sh
+
 step "facade parity (ADR-0016: facades mirror internal exports)"
 ./scripts/check-facade-parity.sh
 

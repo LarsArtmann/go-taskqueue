@@ -73,6 +73,10 @@ jobs:
       - name: go.mod health (replaces, pins, toolchain alignment, mod verify)
         # Parity with scripts/ci-local.sh — the shared script owns the rules.
         run: ./scripts/check-go-mods.sh
+      - name: Dep-bump drift (vendor + per-module tidy vs committed tree)
+        # Parity with scripts/ci-local.sh — catches the bump-without-vendor
+        # class (2026-10-07 03:12) at CI time instead of the next consumer.
+        run: ./scripts/check-gomod-vendor-sync.sh
       - name: Facade parity (ADR-0016)
         # Parity with scripts/ci-local.sh — the checker owns the rules.
         run: ./scripts/check-facade-parity.sh
