@@ -47,4 +47,25 @@ for f in "$@"; do
 done
 
 git add -- "$@"
-git commit -m "$subject" -m "Task-Queue-ID: $task_id"
+
+# Heal-on-sweep: the daemon may have committed the same files between the
+# caller's edit and now (sweeps land <60s). A bare "nothing to commit"
+# here strands the work unattributed — detect the same-path daemon commit
+# and heal it onto the task instead of failing blind (02-35 §f row;
+# heal-daemon-sweep.sh owns the actual rewrite, with all its rails).
+if ! commit_out=$(git commit -m "$subject" -m "Task-Queue-ID: $task_id" 2>&1); then
+	if printf '%s' "$commit_out" | grep -q 'nothing to commit'; then
+		head_subj=$(git log -1 --format='%s')
+		if printf '%s' "$head_subj" | grep -Eq '^chore: auto-commit [0-9]+ changed file\(s\) \(heuristic\)$'; then
+			echo "FAIL: the daemon already committed these files as:" >&2
+			echo "  $(git log -1 --oneline)" >&2
+			echo "Heal it onto the task (unpushed only; rails + verification built in):" >&2
+			echo "  scripts/heal-daemon-sweep.sh <task-id>   # from the sweep's base" >&2
+			echo "or, if the sweep is exactly yours and local-only, claim it with:" >&2
+			echo "  scripts/fold-marker.sh $task_id $(git rev-parse --short=8 HEAD) \"$subject\"" >&2
+			exit 1
+		fi
+	fi
+	printf '%s\n' "$commit_out" >&2
+	exit 1
+fi

@@ -187,6 +187,18 @@ verify_heal() {
 			echo "FAIL: commit $new carries more than one footer" >&2
 			fail=1
 		fi
+		# 3b — post-heal citation check: the footer must be MACHINE-visible
+		# to the queue's cross-reference (CommitsByTrailer runs
+		# interpret-trailers --parse), not merely last-line-shaped. A footer
+		# glued above an attribution block parses as nothing (row 276 class);
+		# the msg-filter builds it parseable, this pins that it stayed so.
+		if ! parsed=$(git log -1 --format='%B' "$new" | git interpret-trailers --parse 2>/dev/null); then
+			echo "FAIL: interpret-trailers failed on healed commit $new" >&2
+			fail=1
+		elif ! printf '%s\n' "$parsed" | grep -qi "^task-queue-id: $id\$"; then
+			echo "FAIL: healed footer in $new is not trailer-parseable (invisible to the queue)" >&2
+			fail=1
+		fi
 	done < <(git rev-list --reverse "$base..HEAD")
 
 	# 4: byte-equal tree (the green battery carries over verbatim).

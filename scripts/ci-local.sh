@@ -127,6 +127,17 @@ step "AGENTS.md size budget (agentsDocMaxBytes twin)"
 step "heal-daemon-sweep self-test (refusal rail pin)"
 ./scripts/heal-daemon-sweep.sh --self-test
 
+# Daemon doc gate (02-02 §g3): if a footer-less daemon sweep touched a
+# doc-gated surface since origin/master, the cheap doc gates run NOW —
+# a mid-window sweep is caught before the expensive steps pay for a red
+# tree (~18h doc-refs red was the cost class). Self-test pins the sweep
+# selection first.
+step "daemon-sweep doc gate self-test (selection pin)"
+DAEMON_DOC_GATE_SELF_TEST=1 ./scripts/check-daemon-sweep-docs.sh
+
+step "daemon-sweep doc gate (footer-less doc-gated sweeps)"
+./scripts/check-daemon-sweep-docs.sh
+
 # --- CI test job (exact ci.yml order; lint advisory exactly like CI) -------
 
 step "vet"

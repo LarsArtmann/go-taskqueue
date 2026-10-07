@@ -16,7 +16,7 @@
 #
 # Exit: 0 gates ran green or no gated sweep found; 1 a gate failed.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 # Doc-gated surfaces (the files the three cheap gates reason about).
 gated() {
