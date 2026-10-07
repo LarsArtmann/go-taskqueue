@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **journal/cqrs tests track the upstream `StreamID` display format**
+  (2026-10-07): the go-cqrs-lite dep bump gave branded `StreamID` a
+  `StreamMarker:` display prefix on `String()` (the underlying value and
+  parse path stay bare); the adapter tests now assert the identity value
+  via `Get()`, so the module is green again on the new id/v4 lineage.
+
 ### Changed
 - **IO efficiency pass across the store, worker, and bridges**
   (2026-10-07): every steady-state SQLite handle (queue store,

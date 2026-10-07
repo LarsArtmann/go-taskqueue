@@ -88,7 +88,7 @@ func TestReadAllMapsFactsInSeqOrder(t *testing.T) {
 	}
 
 	first := events[0]
-	if first.StreamID().String() != "000001a0deadbeef" {
+	if first.StreamID().Get() != "000001a0deadbeef" {
 		t.Fatalf("first event stream id = %s", first.StreamID())
 	}
 
@@ -296,7 +296,7 @@ func TestSessionFactsUseSessionStreamType(t *testing.T) {
 		t.Fatalf("session fact stream type = %s, want %s", last.StreamType(), StreamTypeSession)
 	}
 
-	if last.StreamID().String() != "session:abc123" {
+	if last.StreamID().Get() != "session:abc123" {
 		t.Fatalf("session fact stream id = %s", last.StreamID())
 	}
 
