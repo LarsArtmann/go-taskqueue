@@ -47,11 +47,6 @@ func (h *Hub) Unsubscribe(ch <-chan sse.Event) {
 	h.bc.Unsubscribe(ch)
 }
 
-// ClientCount returns the number of connected subscribers.
-func (h *Hub) ClientCount() int {
-	return h.bc.SubscriberCount()
-}
-
 // Shutdown drains the broadcaster.
 func (h *Hub) Shutdown(ctx context.Context) error {
 	if err := h.bc.Shutdown(ctx); err != nil {

@@ -7,6 +7,10 @@ dist/
 
 # Stray session artifacts (bare task IDs piped to a file by test sessions)
 taskid.txt
+# Depgraph tool output (swept into master by the auto-commit daemon, 2026-10-07)
+/output.json
+# examples/api build artifact (same daemon-sweep class as /examples/embed/embed)
+/examples/api/api
 
 # Databases
 *.db
