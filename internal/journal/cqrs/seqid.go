@@ -25,7 +25,9 @@ const (
 	seqBytesLen = 8
 )
 
-func seqEventID(seq int64) (id.EventID, error) {
+// SeqEventID encodes a journal sequence as a synthetic, sequence-derived
+// event ID; seq must be positive. See the layout const block below.
+func SeqEventID(seq int64) (id.EventID, error) {
 	if seq <= 0 {
 		//cqrs-lint:ignore(C025) validation error built from seq data; no wrapped cause exists
 		return id.EventID{}, fmt.Errorf("cqrs: sequence %d is not positive", seq)
@@ -42,7 +44,10 @@ func seqEventID(seq int64) (id.EventID, error) {
 	return eventID, nil
 }
 
-func seqFromEventID(eventID id.EventID) (int64, bool) {
+// EventIDSeq decodes a sequence-derived event ID back to its journal
+// sequence; ok is false for any ID not minted by this layout, which
+// callers must treat as "drain nothing" (never as "replay everything").
+func EventIDSeq(eventID id.EventID) (int64, bool) {
 	raw := eventID.Get()
 
 	for _, b := range raw[:seqEpochLen] {
