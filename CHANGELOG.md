@@ -7,6 +7,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Mint-time re-dispatch gate + `--force-redispatch`** (2026-10-07, M5 /
+  O4): every mint surface (harvest single/batch/catch-up, `tq enqueue`)
+  now checks the candidate against repo-side done signals BEFORE any
+  queue write — a review-fix whose rejected SHA lives but its anchor text
+  is gone from HEAD (the four-paid-lap re-verification class), a TODO row
+  ticked/removed between scan and mint (the check-off race), and a prompt
+  citing a task ID with an indexed closeout report are refused with
+  `ErrRedispatchRefused`; `tq enqueue --force-redispatch` (and
+  `harvest.Config.ForceRedispatch`) is the sanctioned escape hatch for
+  deliberate verify-only windows. The claim-time fix-ticket cure gains
+  the same unreferenced-SHA branch, so a re-claimed cured ticket
+  completes without an agent run.
+- **Gate-slow done guard** (2026-10-07, M5): when a verify-gate death that
+  never judged the task happens AFTER the run already landed its work
+  (footer commits, closeout report), the done-preflight hook completes
+  the task mechanically at the failure site instead of requeueing into a
+  second full agent window — the receipt class where the work was visible
+  and only the verify leg had died.
+- **`tq audit --redispatch`** (2026-10-07, M5): re-dispatch storms are a
+  queried fact instead of close-out prose — live tasks sitting on
+  already-closed TODO rows (money about to burn proving done work) and
+  terminal tasks that burned multiple attempts on closed work, listed
+  per repo with class, status, and attempts.
+- **`scripts/redispatch-brief.sh <id>`** (2026-10-07, M5): the
+  re-dispatch first batch (tq show, newest prior report, git log -5) as
+  one command — the three-window class of agents skipping `tq show`
+  while citing the convention ends by mechanism.
 - **Daemon-sweep doc gate + footer-fold tooling** (2026-10-07, M4):
   `scripts/check-daemon-sweep-docs.sh` scans `<ref>..HEAD` for
   footer-less daemon-subject commits touching doc-gated files and runs

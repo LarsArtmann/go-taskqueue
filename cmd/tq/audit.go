@@ -23,6 +23,11 @@ func cmdAudit(args []string) error {
 		false,
 		"journal-drift audit: rebuild task state from the fact journal and diff against the tasks table (advisory)",
 	)
+	redispatchFlag := fs.Bool(
+		"redispatch",
+		false,
+		"re-dispatch exposure audit: report tasks on already-closed TODO rows (live waste) and terminal tasks that burned multiple attempts on closed work",
+	)
 	projectsDir := fs.String("projects-dir", "", "directory of repos to audit (each with a TODO_LIST.md)")
 	repos := fs.String(
 		"repos",
@@ -72,6 +77,27 @@ func cmdAudit(args []string) error {
 
 	s := mustOpenDB(resolveDB(*db))
 	defer s.Close()
+
+	if *redispatchFlag {
+		res, err := harvest.New(queue.New(s), cfg).RedispatchAudit(context.Background())
+		if err != nil {
+			return err
+		}
+
+		if *asJSON {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(res); err != nil {
+				return fmt.Errorf("encode redispatch audit: %w", err)
+			}
+
+			return nil
+		}
+
+		printRedispatchReport(res)
+
+		return nil
+	}
 
 	res, err := harvest.New(queue.New(s), cfg).Audit(context.Background())
 	if err != nil {
@@ -132,4 +158,36 @@ func printDriftReport(res harvest.DriftResult, dryRun bool) {
 
 	fmt.Printf("audit: %d repos, %d stale-open (%d catch-ups enqueued), %d stale-done, %d scan failures\n",
 		res.Repos, len(res.StaleOpen), len(res.Enqueued), len(res.StaleDone), len(res.ScanFailures))
+}
+
+// printRedispatchReport writes the re-dispatch exposure surface: live tasks
+// on closed rows (money about to burn proving done work) and terminal
+// tasks that burned multiple attempts on closed work (the paid churn
+// census) — the queried fact close-out prose used to carry.
+func printRedispatchReport(res harvest.RedispatchResult) {
+	for _, f := range res.Findings {
+		fmt.Printf("REDISPATCH  %-24s %-22s task %s %s attempts=%d: %s\n",
+			f.Repo, f.Class, f.TaskID, f.Status, f.Attempts, truncate(f.ItemText, 70))
+	}
+
+	for _, f := range res.ScanFailures {
+		fmt.Printf("ERROR  %-24s scan failed: %s\n", filepath.Base(f.Repo), f.Reason)
+	}
+
+	if len(res.Findings) == 0 && len(res.ScanFailures) == 0 {
+		fmt.Println("(no re-dispatch exposure)")
+	}
+
+	live, churn := 0, 0
+	for _, f := range res.Findings {
+		switch f.Class {
+		case harvest.RedispatchClassLive:
+			live++
+		case harvest.RedispatchClassChurn:
+			churn++
+		}
+	}
+
+	fmt.Printf("audit: %d repos, %d live-task-on-closed-row, %d spend-after-close, %d scan failures\n",
+		res.Repos, live, churn, len(res.ScanFailures))
 }

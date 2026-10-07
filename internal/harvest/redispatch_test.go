@@ -248,26 +248,29 @@ func TestRedispatchAuditSurfacesClosedRowResidue(t *testing.T) {
 	_ = mint(openKey, "open row")                      // control: open row stays invisible
 	mint(CatchupKeyPrefix+openKey, "open row")         // control: catch-up on an open row
 
-	// Churn: claim → fail (attempt 1 burned) → claim → complete (attempt 2).
-	first, claim, err := q.ClaimDue(ctx, "w", time.Minute)
+	// Churn: two burned laps (claim → fail ×2) then a completing claim —
+	// attempts counts burned failures, so the census wants more than one.
+	for range 2 {
+		claimed, claim, err := q.ClaimDue(ctx, "w", time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if claimed.ID != churn.ID {
+			t.Fatalf("claim order: got %s, want the churn task %s", claimed.ID, churn.ID)
+		}
+
+		if err := q.Fail(ctx, churn.ID, claim, "gate slow", 0, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	done, claim2, err := q.ClaimDue(ctx, "w", time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if first.ID != churn.ID {
-		t.Fatalf("claim order: got %s, want the churn task %s", first.ID, churn.ID)
-	}
-
-	if err := q.Fail(ctx, churn.ID, claim, "gate slow", 0, nil); err != nil {
-		t.Fatal(err)
-	}
-
-	second, claim2, err := q.ClaimDue(ctx, "w", time.Minute)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := q.Complete(ctx, second.ID, claim2, nil); err != nil {
+	if err := q.Complete(ctx, done.ID, claim2, nil); err != nil {
 		t.Fatal(err)
 	}
 
