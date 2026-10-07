@@ -52,7 +52,7 @@ not here.
 
 ## Review-window follow-ups (harvested from the 07:49/08:32/08:39/08:42/08:47 close-outs, verified 2026-09-10 09:13)
 
-- [ ] Tune the disk-derived module lint loop toward the ruled 10-minute budget (O9 2026-10-05): measure the current lint step, then trim scope or parallelize until it fits (08:47 g3)
+- [x] Tune the disk-derived module lint loop toward the ruled 10-minute budget (O9 2026-10-05): measure the current lint step, then trim scope or parallelize until it fits (08:47 g3) — DONE 2026-10-07: parallelized the fan-out over nproc workers (root + every disk-derived module, `TQ_LINT_JOBS` override, same runs/order/advisory semantics, mirrored in ci.yml); measured at HEAD warm-cache on the 4-core host: fan-out 195s + cmd/tq 16s = 211s total lint step, inside the 10-minute budget (sequential baseline 595s); re-ran the shipped ci-local lint() verbatim, all module rcs advisory (0/1); module-loop-capture guard green
 - [ ] Enable `--allow-writes` on the deployed `tq-serve` (SystemNix module flag) so DLQ rescue/cancel work from the WebUI — the live 127.0.0.1:8100 instance runs read-only (no writes-ENABLED banner, no dead-task buttons), so the 21 dead tasks incl. `000001a08edf` need CLI `tq dlq --rescue` today; rescue AFTER the rate-limit-fix input flip so a rescued task doesn't re-burn attempts on 429s (13:29 report §b2/f1/f2) — BLOCKED: SystemNix service config + deploy are owner-run
 
 ## Docs-health harvest (2026-09-11 evening; sources: 16-00/15-39/15-10/13-29 reports + task-closeout residue; deduped against existing rows)
