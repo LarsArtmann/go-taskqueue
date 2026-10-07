@@ -13,3 +13,7 @@ implement — <reason>`.
 - 2026-09-11_23-16_docs-health-full-sweep-annotate-archive-harvest.md → ARCHIVE: zero bare items at sweep time (9 strikethroughs from its own pass)
 - 2026-09-14_02-38_task-000001a09d5933c12b269647d86935d688c1.md → ARCHIVE: §b1/§b5 routed (TODO_LIST rewrite-guard + §d-citation rows), rest struck earlier
 - 2026-09-14_17-16_batched-harvest-agent-power.md → ARCHIVE: §f1 Won't implement (rejected alternative), §f2 subsumed (batch-default row), §f3 routed (status batch members row)
+
+## 2026-10-07 archive sweep batch 2 (2026-09-15 set, file 1 of 4)
+
+- 2026-09-15_00-12_task-000001a0a1f149ed96eb7fa452a984dd257c.md → ARCHIVE: all 53 forward items resolved (§f1 done at c9a31765 — the fail→complete attempts pin minted BY this sweep; §f22 routed to the forensics-filters row; §f12/§f46 subsumed by the upstream-enrich and fold-marker rows; §g1-3 answered: Attempts vocab entry + green status test + M4 fold machinery)
