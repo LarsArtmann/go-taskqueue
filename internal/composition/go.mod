@@ -95,3 +95,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../queue/sq
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 => ../queue/sqlitev4
 
 replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ../queue/companion
+
+replace github.com/larsartmann/go-taskqueue/internal/journal/cqrs => ../journal/cqrs
