@@ -39,6 +39,9 @@ not here.
 - [ ] Archive the v0.3.3 release-push evidence log (/tmp/tq-release-push-v033c.log, cited by the DONE demand-fill row) via scripts/archive-evidence.sh before /tmp prunes it (closeout 2026-10-08 §e5)
 - [ ] Annotate check-release-docs.sh's line-pinned `need_in_both` strings with the doc-reflow false-fail hazard (the `go list -m -versions` pin survives only while line-contained; closeout 2026-10-08 §e2)
 - [ ] RELEASE.md timeout fallback paragraph: rewrite the "verify … .info manually" text to reference the automated attempt-1 poke + its log line instead of implying operator discovery (closeout 2026-10-08 §e4)
+- [ ] release.sh: extract the proxy-wait loop into a testable function + offline bash test driving both die branches (network-dead vs proxy lag) — bash -n covers syntax only (closeout 2026-10-08 00-55 §e1)
+- [ ] release.sh: split the .info poke's curl failure modes via `-w '%{http_code}'` (404 = proxy lag, DNS/TLS/5xx = network-dead) so the 5/5 die classifies on HTTP semantics, not bare connectivity (closeout 2026-10-08 00-55 §e3)
+- [ ] release.sh: add `--publish-steps-only` (resume at proxy verification) so a network-dead 5/5 death doesn't force a full-script re-run (closeout 2026-10-08 00-55 §e2; echo of 2026-10-07 16-50 §e)
 
 - [ ] Verify the CQA bridge against a live CQA API instance and fix contract drift (`internal/bridge/cqa` response shapes are httptest-informed guesses today); upgrade its FEATURES.md status after (plan C25) — BLOCKED: needs a live CQA instance URL + owner ID + token from the owner
 
