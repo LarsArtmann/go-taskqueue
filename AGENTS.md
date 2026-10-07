@@ -166,7 +166,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
   expensive gates inherit from a same-HEAD report; nested-module claims
   need in-module `GOWORK=off` tests; closeouts touching root-guard-parsed
   files (AGENTS/README/TODO_LIST, doc pins) cite ROOT build+vet+test
-  -race rc. Re-dispatch: newest prior report + `tq show <id>` FIRST;
+  -race rc. Re-dispatch: `scripts/redispatch-brief.sh <id>` FIRST;
   battery rc TO A FILE (no PIPESTATUS); no-delta claim; dated DONE
   re-verified note; `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
