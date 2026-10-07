@@ -79,6 +79,11 @@ type doctorOptions struct {
 	// GOEXPERIMENT) instead of only the invoking shell's — the actual
 	// failure surface of the 20h dead pool (05-38 report §f/e1).
 	ServiceUnit string
+	// DLQ, when set (--dlq), additionally inspects the projection fold's
+	// poison-fact sidecar. Opt-in because opening an existing sidecar
+	// touches the journal directory (sqlite WAL files) — the doctor stays
+	// read-only on the tree it diagnoses unless asked.
+	DLQ bool
 }
 
 // doctorHeartbeatWindow is how long ago a task.heartbeat fact still counts
@@ -234,6 +239,9 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
 	results = append(results, doctorProjection(ctx, store, opts.DBPath)...)
+	if opts.DLQ {
+		results = append(results, doctorProjectionDLQ(ctx, opts.DBPath)...)
+	}
 	results = append(results, doctorOpenSessions(ctx, store)...)
 	results = append(results, doctorBudget(ctx, store, opts.DailyBudget)...)
 	results = append(results, doctorEnvironment(ctx, opts)...)
@@ -822,6 +830,57 @@ func doctorProjection(ctx context.Context, store queue.Store, dbPath string) []c
 			Detail: fmt.Sprintf("counts match the queue at cursor #%d", cursor),
 		},
 	)
+}
+
+// doctorProjectionDLQ surfaces the fold's poison-fact sidecar (the M09
+// fold-poison DLQ): absent or empty is ok, stored entries are a WARN with
+// the most recent failures as Items. Opt-in via --dlq (see doctorOptions).
+func doctorProjectionDLQ(ctx context.Context, dbPath string) []checkResult {
+	const name = "projection-dlq"
+
+	modelPath := readmodel.PathFor(dbPath)
+
+	if _, err := os.Stat(readmodel.DLQPathFor(modelPath)); errors.Is(err, fs.ErrNotExist) {
+		return []checkResult{{Name: name, Status: checkOK, Detail: "no poison sidecar (nothing has failed to fold)"}}
+	}
+
+	dlq, err := readmodel.OpenDeadLetters(ctx, modelPath)
+	if err != nil {
+		return []checkResult{{Name: name, Status: checkFail, Detail: "open: " + err.Error()}}
+	}
+
+	defer func() { _ = dlq.Close() }()
+
+	count, err := dlq.Count(ctx)
+	if err != nil {
+		return []checkResult{{Name: name, Status: checkFail, Detail: "count: " + err.Error()}}
+	}
+
+	if count == 0 {
+		return []checkResult{{Name: name, Status: checkOK, Detail: "sidecar present, no poison facts"}}
+	}
+
+	result := checkResult{
+		Name:   name,
+		Status: checkWarn,
+		Detail: fmt.Sprintf("%d poison fact(s) awaiting replay — `tq serve` skipped them after repeated fold errors; fix the handler, then replay from the sidecar", count),
+	}
+
+	entries, err := dlq.Recent(ctx, 3)
+	if err != nil {
+		result.Detail += "; recent entries unreadable: " + err.Error()
+
+		return []checkResult{result}
+	}
+
+	for _, e := range entries {
+		result.Items = append(result.Items, fmt.Sprintf(
+			"%s: %s failed at %s: %s",
+			e.ProjectionName, e.EventType, e.FailedAt.Format(time.RFC3339), e.Error,
+		))
+	}
+
+	return []checkResult{result}
 }
 
 // statusDrift lists the per-status count differences between the folded
@@ -1659,6 +1718,11 @@ func cmdDoctor(args []string) error {
 		"",
 		"systemd unit name (e.g. tq-agent-pool): diagnose the unit's OWN PATH and GOEXPERIMENT via systemctl cat, not the caller's",
 	)
+	dlq := fs.Bool(
+		"dlq",
+		false,
+		"inspect the projection fold's poison-fact sidecar (count + the 3 most recent failures)",
+	)
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -1673,6 +1737,7 @@ func cmdDoctor(args []string) error {
 		MarkOrphans: *markOrphans,
 		Hygiene:     *hygiene,
 		ServiceUnit: *serviceUnit,
+		DLQ:         *dlq,
 	}
 
 	results, err := runDoctor(context.Background(), opts)

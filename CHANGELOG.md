@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Added
+- **`tq doctor --dlq`**: opt-in inspection of the projection fold's
+  poison-fact sidecar — absent/empty sidecar reports ok, stored poison
+  facts report WARN with the count and the 3 most recent failures
+  (projection, event type, error) as structured Items.
+
 ## [v0.3.3] - 2026-10-07
 
 ### Added
