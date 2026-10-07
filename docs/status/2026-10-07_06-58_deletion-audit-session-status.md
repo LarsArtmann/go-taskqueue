@@ -288,6 +288,7 @@ HARVEST rigor applies, not all belong in TODO_LIST)
    it?
 
 ---
+
 Report convention note: status-report skill canonical format is a styled
 HTML dashboard; this report is .md because the operator prompt explicitly
 named the .md path (skill: user instruction wins; divergence recorded, not

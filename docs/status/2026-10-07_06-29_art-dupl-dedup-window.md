@@ -122,8 +122,8 @@ shared seams landed and every harmful clone from the report extracted.
 4. **Module tag dance:** `WithToken` landed in companion after its
    v0.3.2 require. internal/ modules are not externally importable, so
    no consumer risk today, but the release flow (facade require real-tag
-   + relative replace, check-facade-parity before staging) needs the
-   bump at the next release.
+   - relative replace, check-facade-parity before staging) needs the
+     bump at the next release.
 
 ## d) TOTALLY FUCKED UP
 
@@ -187,6 +187,7 @@ shared seams landed and every harmful clone from the report extracted.
 ## f) UP TO 50 THINGS TO GET DONE NEXT (brainstorm; routing-tagged)
 
 **Gate repair (top priority, owner calls flagged):**
+
 1. Resolve the lint-baseline red: either fix-then-regen (rename
    `RedispatchRefusal` → `RedispatchRefusalError` kills the errname
    class) or regen deliberately on a green tree — unblocks ci-local for
@@ -200,89 +201,89 @@ shared seams landed and every harmful clone from the report extracted.
 
 **Session-derived, small and concrete:**
 5. Live-postgres conform smoke for the WithToken pg path (needs a DSN;
-   see g2).
+see g2).
 6. Make postgresv4's DB-skip loud (printed reason or gate-level guard).
 7. Pin the accepted art-dupl shown-set in a baseline file (like
-   mirror-baseline.txt) with a growth gate, so ~110 accepted groups stop
-   re-appearing every run. [depends on the e5 ruling]
+mirror-baseline.txt) with a growth gate, so ~110 accepted groups stop
+re-appearing every run. [depends on the e5 ruling]
 8. CHANGELOG entry for this window (WithToken, StatusCounts, todoState,
-   mirror gate 2→0).
+mirror gate 2→0).
 9. Re-run the user-exact `art-dupl --timing --rich-text` invocation and
-   capture the timing delta formally into evidence.
+capture the timing delta formally into evidence.
 10. Add a stale/foreign-token negative conform case pinning WithToken's
-    ordering (gate fires before any engine call) if the suites don't
-    already cover it — verify before writing.
+ordering (gate fires before any engine call) if the suites don't
+already cover it — verify before writing.
 11. Record the three seams in AGENTS.md when the budget resets (WithToken,
-    StatusCounts, todoState; 42 B headroom today). [g3]
+StatusCounts, todoState; 42 B headroom today). [g3]
 12. One-line note in scripts/mirror-baseline.txt's header that the
-    accepts-with-recorded-reasons mechanism was used again 2026-10-07
-    (Store-interface delegator, WithToken era).
+accepts-with-recorded-reasons mechanism was used again 2026-10-07
+(Store-interface delegator, WithToken era).
 13. Harvest this f) list into TODO_LIST.md (docs-health HARVEST).
 14. Archive this session's art-dupl evidence properly
-    (scripts/archive-evidence.sh; the after-report currently lives in
-    /tmp and will vanish) — the 04-28 report's own lesson, repeated.
+(scripts/archive-evidence.sh; the after-report currently lives in
+/tmp and will vanish) — the 04-28 report's own lesson, repeated.
 15. Confirm the concurrent agent's templ regen diffs
-    (fragments_templ.go, layout_templ.go) committed cleanly mid-session.
+(fragments_templ.go, layout_templ.go) committed cleanly mid-session.
 16. docs/DOMAIN_LANGUAGE.md: add "claim-token finalize gate" if the term
-    isn't already defined.
+isn't already defined.
 17. Pre-existing redispatch.go lint (mnd 36, godox, wsl_v5 at lines
-    24/90/177/315) — sweep in the harvest pass. [owner-adjacent]
+24/90/177/315) — sweep in the harvest pass. [owner-adjacent]
 18. webui tail.go `runReadModel` cyclop 14>12 (pre-existing, surfaced by
-    the LSP this session) — split or baseline.
+the LSP this session) — split or baseline.
 19. Document the golangci_ls LSP vendor-timeout false positive
-    (readmodel stats.go) next to the existing templ/cmd-tq LSP
-    false-positive AGENTS.md row — when budget allows. [g3]
+(readmodel stats.go) next to the existing templ/cmd-tq LSP
+false-positive AGENTS.md row — when budget allows. [g3]
 20. Convention note: new finalize surfaces must call companion.WithToken,
-    never re-hand-roll the token gate (AGENTS.md candidate, budget-bound). [g3]
+never re-hand-roll the token gate (AGENTS.md candidate, budget-bound). [g3]
 
 **Follow-through on adjacent work observed this session:**
 21. Postgres claim-wake parity (`63c9748b`): read its tests, fill any gap
-    vs sqlite's 3 wake tests (e.g. pg-side fireWake assertions).
+vs sqlite's 3 wake tests (e.g. pg-side fireWake assertions).
 22. Consumer wake drain (`06607444`): confirm its test battery ran green
-    post-merge (it landed during this session's window).
+post-merge (it landed during this session's window).
 23. Release prep: companion/readmodel module tag dance at next release
-    (facade require real-tag + relative replace;
-    check-facade-parity.sh BEFORE staging). [c4]
+(facade require real-tag + relative replace;
+check-facade-parity.sh BEFORE staging). [c4]
 24. Consider the `runContext(ctx, defaultTimeout, minutes)` fold if a 6th
-    executor `runCtx` site appears (rejected this session at 5 sites ×2
-    lines; documented trigger).
+executor `runCtx` site appears (rejected this session at 5 sites ×2
+lines; documented trigger).
 25. "Mirrored sweeper shell" class (dlqfix/status/prioritize/review
-    log/warn + stats shells): map all five and decide ONE
-    shared-sweeperutil extraction or a blanket accept ruling — current
-    state is accept-by-precedent in review only.
+log/warn + stats shells): map all five and decide ONE
+shared-sweeperutil extraction or a blanket accept ruling — current
+state is accept-by-precedent in review only.
 26. Status-index bloat: live row count is near the 100-row warning zone
-    (rows at 114-118 are October 07 alone) — schedule an archive sweep
-    (docs-health ANNOTATE) or a monthly digest row.
+(rows at 114-118 are October 07 alone) — schedule an archive sweep
+(docs-health ANNOTATE) or a monthly digest row.
 27. Annotate this window's predecessor reports (05-18, 05-38, 06-01) to
-    strike forward items their work resolved (docs-health ANNOTATE).
+strike forward items their work resolved (docs-health ANNOTATE).
 28. AGENTS.md budget decision: consciously reset (+~200 B) or prune the
-    Architecture section (7.2 KB, the biggest block). [g3]
+Architecture section (7.2 KB, the biggest block). [g3]
 29. e2e `TestBudgetCapsStatusMintedEnqueues` singleton load-flake
-    (flagged in the 06-01 report) — re-run before anyone attributes; a
-    deflake candidate is already queued there.
+(flagged in the 06-01 report) — re-run before anyone attributes; a
+deflake candidate is already queued there.
 30. Upstream art-dupl request candidate: actionability filter for 1-2
-    token templ/test groups (roughly 40 of the 119 shown) — run
-    verify-before-filing first, this is a maybe.
+token templ/test groups (roughly 40 of the 119 shown) — run
+verify-before-filing first, this is a maybe.
 
 **Lower-priority / exploratory (ROADMAP-fuel):**
 31. Extend the mirror gate's backend regex to the legacy
-    internal/queue/{sqlite,postgres} drivers if they ever grow surfaces
-    (currently thin drivers over v4; gate only covers v4 + companion).
+internal/queue/{sqlite,postgres} drivers if they ever grow surfaces
+(currently thin drivers over v4; gate only covers v4 + companion).
 32. Consider exporting a tq-level `Executor.RunContext` helper as part of
-    the executor public facade IF external consumers ever need the
-    timeout seam (facade-parity implications first).
+the executor public facade IF external consumers ever need the
+timeout seam (facade-parity implications first).
 33. Explore replacing the accepted ULID mirror with a tiny
-    internal/journal export IF ADR-0014's unexported-codec stance is
-    ever revisited (the parity test already pins correctness; this is
-    pure line-count win, ~30 lines).
+internal/journal export IF ADR-0014's unexported-codec stance is
+ever revisited (the parity test already pins correctness; this is
+pure line-count win, ~30 lines).
 34. Sweeper stats structs (dlqfix/status/prioritize/review) share
-    field shapes (Skipped/Processed/…) — a generic stats counter was
-    rejected this session (abstraction ≈ param count); revisit only if a
-    cross-sweeper report surface ever needs uniformity.
+field shapes (Skipped/Processed/…) — a generic stats counter was
+rejected this session (abstraction ≈ param count); revisit only if a
+cross-sweeper report surface ever needs uniformity.
 35. templ noise: if fragments.templ grows more conditional-span pairs,
-    consider a components.go helper per pair (the ADOPTION.md table
-    governs; REJECTED list includes display primitives that would
-    tempt this).
+consider a components.go helper per pair (the ADOPTION.md table
+governs; REJECTED list includes display primitives that would
+tempt this).
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
