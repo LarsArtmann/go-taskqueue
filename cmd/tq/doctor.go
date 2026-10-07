@@ -872,7 +872,8 @@ func doctorProjectionDLQ(ctx context.Context, dbPath string) []checkResult {
 		Name:   name,
 		Status: checkWarn,
 		Detail: fmt.Sprintf(
-			"%d poison fact(s) awaiting replay — `tq serve` skipped them after repeated fold errors; fix the handler, then replay from the sidecar",
+			"%d poison fact(s) awaiting replay — `tq serve` skipped them after repeated fold "+
+				"errors; fix the handler, then replay from the sidecar",
 			count,
 		),
 	}

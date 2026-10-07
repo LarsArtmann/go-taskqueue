@@ -33,7 +33,7 @@ func NewProjectionRuntime(ctx context.Context, src queue.Store, modelPath string
 		return nil, fmt.Errorf("composition: open read model: %w", err)
 	}
 
-	rt := &ProjectionRuntime{Model: m}
+	runtime := &ProjectionRuntime{Model: m}
 
 	cleanup := func() { _ = m.Close() }
 	defer func() {
@@ -46,27 +46,27 @@ func NewProjectionRuntime(ctx context.Context, src queue.Store, modelPath string
 	if err != nil {
 		slog.Warn("readmodel: dlq sidecar unavailable; poison facts restart the fold", "err", err)
 	} else {
-		rt.dlq = dlq
+		runtime.dlq = dlq
 	}
 
 	hostOpts := readmodel.ProjectionHostOptions{}
-	if rt.dlq != nil {
-		hostOpts.DeadLetterStore = rt.dlq.Store()
+	if runtime.dlq != nil {
+		hostOpts.DeadLetterStore = runtime.dlq.Store()
 	}
 
 	host, err := readmodel.NewProjectionHost(src, m, hostOpts)
 	if err != nil {
-		if rt.dlq != nil {
-			_ = rt.dlq.Close()
+		if runtime.dlq != nil {
+			_ = runtime.dlq.Close()
 		}
 
 		return nil, fmt.Errorf("composition: build projection host: %w", err)
 	}
 
-	rt.Host = host
+	runtime.Host = host
 	cleanup = nil
 
-	return rt, nil
+	return runtime, nil
 }
 
 // Close releases the runtime in reverse construction order: host stop and

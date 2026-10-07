@@ -67,26 +67,26 @@ func (s *Server) journalHead(ctx context.Context) (int64, error) {
 // watermark, so SSE event ids keep their Last-Event-ID meaning. Run owns
 // the model's and the host's lifetime.
 func (s *Server) runReadModel(ctx context.Context) error {
-	rt, err := composition.NewProjectionRuntime(ctx, s.store, s.cfg.ReadModelPath)
+	runtime, err := composition.NewProjectionRuntime(ctx, s.store, s.cfg.ReadModelPath)
 	if err != nil {
 		return fmt.Errorf("compose projection runtime: %w", err)
 	}
 
-	s.model = rt.Model
+	s.model = runtime.Model
 
 	defer func() {
 		s.model = nil
 
-		_ = rt.Close()
+		_ = runtime.Close()
 	}()
 
-	host := rt.Host
+	host := runtime.Host
 
 	if err := host.Start(ctx); err != nil {
 		return fmt.Errorf("start projection host: %w", err)
 	}
 
-	updates := rt.Model.WatchSeq(ctx)
+	updates := runtime.Model.WatchSeq(ctx)
 
 	for {
 		select {
@@ -109,7 +109,7 @@ func (s *Server) runReadModel(ctx context.Context) error {
 				}
 			}
 
-			s.hub.Notify(rt.Model.JournalCursor())
+			s.hub.Notify(runtime.Model.JournalCursor())
 		}
 	}
 }
