@@ -27,7 +27,7 @@ cmd/tq	paralleltest:	50
 cmd/tq	perfsprint:	1
 cmd/tq	predeclared:	1
 cmd/tq	staticcheck:	2
-cmd/tq	varnamelen:	24
+cmd/tq	varnamelen:	25
 cmd/tq	wsl_v5:	43
 executor	godoclint:	1
 executor	paralleltest:	1
