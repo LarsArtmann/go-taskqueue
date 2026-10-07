@@ -6,9 +6,13 @@
 # time instead of at the next consumer build.
 #
 # Method (content-based, mtime-free — git checkout rewrites mtimes so
-# timestamps lie): regenerate (go mod vendor / go mod tidy) and require an
-# empty `git diff`. An out-of-sync tree is BOTH detected and healed by the
-# same run: the files on disk are correct afterwards and only need staging.
+# timestamps lie): regenerate (go mod vendor / go mod tidy) and require
+# zero change. Tracked files (go.mod/go.sum): empty scoped git status.
+# vendor/ is GITIGNORED (.gitignore:64) — git status is structurally
+# blind to it — so its anchor is a content hash of the tree compared
+# across the regeneration boundary. An out-of-sync tree is BOTH detected
+# and healed by the same run: the files on disk are correct afterwards
+# and only need staging.
 #
 # Modes:
 #   ./scripts/check-gomod-vendor-sync.sh            gate the real repo
@@ -45,8 +49,20 @@ detect_drift() {
 	return 1
 }
 
+# Deterministic content hash over the vendor tree. vendor/ is gitignored,
+# so git status can never report it (verified 2026-10-07: a mutated
+# vendor/modules.txt yields an EMPTY scoped status) — the gate compares
+# this hash across the regeneration boundary instead.
+vendor_tree_hash() {
+	if [ ! -d vendor ]; then
+		printf 'absent\n'
+		return 0
+	fi
+	find vendor -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1
+}
+
 self_test() {
-	local tmp rc
+	local tmp rc h1 h2 blind
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' RETURN
 	git init -q "$tmp/repo"
@@ -54,25 +70,28 @@ self_test() {
 	printf 'module test\n\ngo 1.27\n' >"$tmp/repo/go.mod"
 	printf '# vendor/modules.txt\n# test test\n' >"$tmp/repo/vendor/modules.txt"
 	printf 'module sub\n\ngo 1.27\n' >"$tmp/repo/sub/go.mod"
+	# Mirror the real repo: vendor/ is gitignored — git never sees it.
+	printf 'vendor/\n' >"$tmp/repo/.gitignore"
 	git -C "$tmp/repo" add -A
 	# A committed HEAD makes "in sync" mean clean-vs-HEAD, exactly like the
 	# real repo at gate time (edit → commit → battery convention).
 	git -C "$tmp/repo" -c user.email=t@t -c user.name=t commit -qm init
 
-	# Case 1: untouched tree → detect_drift must pass for both scopes.
-	if ! (cd "$tmp/repo" && detect_drift "root vendor" go.mod go.sum vendor/); then
+	# Case 1: untouched tree → tracked scopes pass; vendor hash captured.
+	if ! (cd "$tmp/repo" && detect_drift "root go.mod/go.sum" go.mod go.sum); then
 		echo "SELF-TEST FAIL: in-sync tree reported as drifted" >&2
 		return 1
 	fi
+	h1="$(cd "$tmp/repo" && vendor_tree_hash)"
 	if ! (cd "$tmp/repo" && detect_drift "sub tidy" sub/go.mod sub/go.sum); then
 		echo "SELF-TEST FAIL: in-sync sub-module reported as drifted" >&2
 		return 1
 	fi
 
-	# Case 2: bump go.mod without vendor/modules.txt (today's incident).
+	# Case 2: bump go.mod without re-vendoring (today's incident).
 	printf 'module test\n\ngo 1.27\n\nrequire x/y v1.2.3\n' >"$tmp/repo/go.mod"
 	rc=0
-	(cd "$tmp/repo" && detect_drift "root vendor" go.mod go.sum vendor/) || rc=1
+	(cd "$tmp/repo" && detect_drift "root go.mod/go.sum" go.mod go.sum) || rc=1
 	if [ "$rc" -ne 1 ]; then
 		echo "SELF-TEST FAIL: drifted go.mod NOT detected" >&2
 		return 1
@@ -87,7 +106,22 @@ self_test() {
 		return 1
 	fi
 
-	echo "self-test ok: sync/drift detection pinned (root + sub-module scopes)"
+	# Case 4: the blindness pin — a drifted gitignored vendor tree is
+	# INVISIBLE to git status (empty scoped status) yet MOVES the content
+	# hash; git-status anchoring would have waved it through.
+	printf '# drifted\n' >>"$tmp/repo/vendor/modules.txt"
+	blind="$(cd "$tmp/repo" && git status --porcelain -- vendor/)"
+	if [ -n "$blind" ]; then
+		echo "SELF-TEST FAIL: fixture no longer gitignores vendor/ (git status saw it)" >&2
+		return 1
+	fi
+	h2="$(cd "$tmp/repo" && vendor_tree_hash)"
+	if [ "$h1" = "$h2" ]; then
+		echo "SELF-TEST FAIL: drifted vendor tree did not move the content hash" >&2
+		return 1
+	fi
+
+	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor)"
 	return 0
 }
 
@@ -105,9 +139,22 @@ fail=0
 
 # Root: vendor/ must match the module graph (root auto-uses vendor/ for
 # builds — AGENTS.md known issue: stale vendor is invisible until a
-# consumer build dies).
+# consumer build dies). vendor/ is gitignored, so the anchor is the
+# content hash across the regeneration, NOT git status.
+before="$(vendor_tree_hash)"
 GOWORK=off go mod vendor
-detect_drift "root vendor/ (go mod vendor)" go.mod go.sum vendor/ || fail=1
+after="$(vendor_tree_hash)"
+if [ "$before" != "$after" ]; then
+	echo "FAIL: root vendor/ DRIFTED — on-disk tree differed from go mod vendor output:" >&2
+	echo "  before=$before after=$after" >&2
+	echo "  vendor/ is gitignored; git status cannot see this class, the content hash" >&2
+	echo "  is the anchor. The regeneration above already healed the tree: re-run to" >&2
+	echo "  confirm, then exercise a root build." >&2
+	fail=1
+else
+	echo "ok: root vendor/ in sync (content hash $after)"
+fi
+detect_drift "root go.mod/go.sum (go mod vendor)" go.mod go.sum || fail=1
 
 # Per-module: go.mod/go.sum must be tidy (b886a677 class: 15 files across
 # modules needed tidy after the bump). cmd/tq sits outside
