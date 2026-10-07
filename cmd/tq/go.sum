@@ -221,8 +221,8 @@ github.com/larsartmann/go-sse/sseparse v0.2.1 h1:GHn8SFFZkMJRhLkmusJwtchgSPJV0/b
 github.com/larsartmann/go-sse/sseparse v0.2.1/go.mod h1:1Nql3y1hf9v/IVd4/26AfRilz0/OiDyF7YA2mvwwtHw=
 github.com/larsartmann/go-sse/ssetest v0.4.0 h1:MxkTgUnDhun2/UQURq4iAOENr8mvB6XmPHFowYRU4xE=
 github.com/larsartmann/go-sse/ssetest v0.4.0/go.mod h1:XNwAlmELNm154O4QoNvktGH1DpyxafvMQDOJbLfVFIc=
-github.com/larsartmann/go-taskqueue v0.3.1 h1:k8yPEUieolnmG7/x0+WRLFW5/laszp9y4JVKBsY3kLc=
-github.com/larsartmann/go-taskqueue v0.3.1/go.mod h1:wTJLbkSDsz++8pvbm7EPv1iwxSoGjDzU4gDZhWHQp1g=
+github.com/larsartmann/go-taskqueue v0.3.3 h1:3kgxnYueMqtx0HQ0WcRO+vOVj/sQZwB7NLT9FWrH0Qo=
+github.com/larsartmann/go-taskqueue v0.3.3/go.mod h1:9PjUEKtOYVuuBtTE09uLfwycxsitGEj6rIQcje4WSSw=
 github.com/larsartmann/go-taskqueue/internal/composition v0.3.3 h1:UL4BgqrO0tWjhbBXF8xLk4VE3SE56KcSfGO7dYPaKPM=
 github.com/larsartmann/go-taskqueue/internal/composition v0.3.3/go.mod h1:xTuXS8eFNOeAL9OAIKL2lXQbfuPCTQL0iW3nVEvtMEc=
 github.com/larsartmann/go-taskqueue/internal/executor v0.3.3 h1:zf0EZx/6jkkRlH39qn/wmkDzOdrjdvJhGiSM7jd2LFU=
