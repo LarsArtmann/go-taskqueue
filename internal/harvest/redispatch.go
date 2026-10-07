@@ -97,19 +97,9 @@ func (h *Harvester) mintItemClosed(dir string, payload harvestPayload) (bool, st
 		return false, ""
 	}
 
-	todoFile := h.cfg.TodoFile
-	if todoFile == "" {
-		todoFile = DefaultTodoFile
-	}
-
-	items, err := ParseRepoAll(dir, todoFile)
+	state, err := h.todoState(dir)
 	if err != nil {
 		return false, "" // unreadable file: not a refusal signal
-	}
-
-	state := make(map[string]bool, len(items)) // key -> ticked
-	for _, item := range items {
-		state[item.Key] = item.Done
 	}
 
 	allTicked, allAbsent := true, true
@@ -137,6 +127,28 @@ func (h *Harvester) mintItemClosed(dir string, payload harvestPayload) (bool, st
 	default:
 		return false, ""
 	}
+}
+
+// todoState folds the todo file under base (repo or dir) into an item
+// key to ticked map: the open/closed view the redispatch gates judge
+// task item keys against.
+func (h *Harvester) todoState(base string) (map[string]bool, error) {
+	todoFile := h.cfg.TodoFile
+	if todoFile == "" {
+		todoFile = DefaultTodoFile
+	}
+
+	items, err := ParseRepoAll(base, todoFile)
+	if err != nil {
+		return nil, err
+	}
+
+	state := make(map[string]bool, len(items)) // key -> ticked
+	for _, item := range items {
+		state[item.Key] = item.Done
+	}
+
+	return state, nil
 }
 
 // candidateItemKeys resolves a mint candidate's item keys: batch member
@@ -272,19 +284,9 @@ func (h *Harvester) RedispatchAudit(ctx context.Context) (RedispatchResult, erro
 func (h *Harvester) redispatchAuditRepo(ctx context.Context, repo string, res *RedispatchResult) error {
 	// itemKeysFor needs the payload, so fold the open/ticked state by key
 	// once and judge each task's keys against it.
-	todoFile := h.cfg.TodoFile
-	if todoFile == "" {
-		todoFile = DefaultTodoFile
-	}
-
-	items, err := ParseRepoAll(repo, todoFile)
+	state, err := h.todoState(repo)
 	if err != nil {
 		return err
-	}
-
-	state := make(map[string]bool, len(items))
-	for _, item := range items {
-		state[item.Key] = item.Done
 	}
 
 	repoName := filepath.Base(repo)
