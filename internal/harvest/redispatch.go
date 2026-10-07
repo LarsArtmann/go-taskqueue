@@ -28,11 +28,11 @@ func (r *RedispatchRefusal) Error() string { return ErrRedispatchRefused.Error()
 
 func (r *RedispatchRefusal) Unwrap() error { return ErrRedispatchRefused }
 
-// redispatchTaskIDRe matches full 36-hex task IDs cited in prompt text (the
-// NewID shape: 16 hex millis + 10 hex seed + 10 hex sequence). Boundary
-// guards keep a 40-hex git SHA from matching as a substring; short hex
-// fragments (8-char display SHAs) are below length and never match.
-var redispatchTaskIDRe = regexp.MustCompile(`(?:^|[^0-9a-f])([0-9a-f]{36})(?![0-9a-f])`)
+// redispatchHexRunRe matches every maximal hex run in prompt text; runs
+// of exactly the NewID length (36 hex: 16 millis + 10 seed + 10 sequence)
+// are task ID citations. Length filtering after a maximal-run match keeps
+// git SHAs (40) and display SHAs (8) out without RE2 lookaround.
+var redispatchHexRunRe = regexp.MustCompile(`[0-9a-f]+`)
 
 // RedispatchCheck is the mint-time done gate (row 115, O4): it judges a
 // MINT CANDIDATE — before the task exists, before any spend — against the
@@ -160,9 +160,13 @@ func candidateItemKeys(payload harvestPayload) []string {
 // since O7, legacy docs/status/ root still counts) marks the candidate a
 // re-verification dispatch of closed work.
 func closeoutCited(dir, prompt string) (bool, string) {
-	for _, id := range redispatchTaskIDRe.FindAllStringSubmatch(prompt, -1) {
-		if closeoutReportExists(dir, id[1]) {
-			return true, doneReasonReport + " for cited task " + id[1][:8] + ")"
+	for _, run := range redispatchHexRunRe.FindAllString(prompt, -1) {
+		if len(run) != 36 {
+			continue
+		}
+
+		if closeoutReportExists(dir, run) {
+			return true, doneReasonReport + " for cited task " + run[:8] + ")"
 		}
 	}
 

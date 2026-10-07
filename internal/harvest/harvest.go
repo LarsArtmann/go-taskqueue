@@ -554,14 +554,22 @@ func (h *Harvester) enqueueBatch(ctx context.Context, run []Item, importance int
 		priority = max(priority, itemPriority)
 	}
 
-	return h.q.Enqueue(ctx, task.New{
+	candidate := task.New{
 		Project:     run[0].RepoName,
 		Type:        h.cfg.Type,
 		Payload:     payload,
 		Priority:    priority,
 		MaxAttempts: h.cfg.MaxAttempts,
 		DedupKey:    batchKeyOf(run),
-	})
+	}
+
+	// Mint-time done gate over the run's members: a batch minted after its
+	// rows closed buys N verify-only laps in one task — refuse first.
+	if err := h.refuseUnlessForced(ctx, candidate); err != nil {
+		return task.Task{}, err
+	}
+
+	return h.q.Enqueue(ctx, candidate)
 }
 
 // defaultBatchTimeoutMinutes is the per-item ceiling a batch scales from

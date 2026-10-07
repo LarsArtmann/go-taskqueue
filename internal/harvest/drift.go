@@ -216,14 +216,22 @@ func (h *Harvester) enqueueCatchup(ctx context.Context, item Item, catchupKey st
 		maxAttempts = 2
 	}
 
-	t, err := h.q.Enqueue(ctx, task.New{
+	candidate := task.New{
 		Project:     item.RepoName,
 		Type:        h.cfg.Type,
 		Payload:     payload,
 		Priority:    h.cfg.Priority,
 		MaxAttempts: maxAttempts,
 		DedupKey:    catchupKey,
-	})
+	}
+
+	// Mint-time done gate: the row may have been ticked between the audit
+	// scan and this mint — the drift is already healed, nothing to close.
+	if err := h.refuseUnlessForced(ctx, candidate); err != nil {
+		return "", err
+	}
+
+	t, err := h.q.Enqueue(ctx, candidate)
 	if err != nil {
 		return "", err
 	}
