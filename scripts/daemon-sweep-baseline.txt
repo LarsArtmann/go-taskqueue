@@ -1236,3 +1236,15 @@ b6b59916b7d8f5e6c297421b44e9266f5bf960f5
 2ad7819ba39480940501d6528c32e08a8e84d4b6
 06ca532b8a09e20cb9b542d9b364da3085d1096f
 7804bf17f91925101dc8304dab4770ede3604441
+
+# 2026-10-07 v0.3.3-post window (doctor --dlq, ProjectionRuntime factory, docs,
+# M26 draft, root-pin + go.sum sweeps, one golangci --fix): 8 footer-less sweeps,
+# content audited via git show --stat; grandfathered by the window agent.
+f84da013f2c6bb39de2b828fa91067abbf3ceaa3
+aa44ab111f11081af7b01bdf6da36d7ad346daa5
+775683a199c20b3ca6bbd8a404b32161fac4b24c
+a387338914526db92090f6cea3c78a29a331d548
+1169b1eddd0def5e6c73b2ec5cdd4f2c4d0bcd7f
+fe1871b020ebb01afa8b823b43212be36f6f4adc
+55b40d7731731f014b86d01325e9ac89f363d78e
+1bd1c98480917dfe10a6ffd20066c42c85df62b5
