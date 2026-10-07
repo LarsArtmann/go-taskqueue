@@ -561,3 +561,6 @@ not here.
 - [ ] Extend the HARD CAP 10 to the harvest work/batch prompt contracts (internal/harvest DefaultPromptTemplate/DefaultBatchPromptTemplate) — 2026-10-08 00-45 report §g1 — BLOCKED: owner cap-scope ruling (work-turn follow-up appends)
 - [ ] Periodic dead-sha --emit-baseline re-curation cadence: the baselined count grows invisibly (263 → 300 between passes) and O16 keeps curation human — 2026-10-08 00-45 report §g2 — BLOCKED: owner scheduling ruling
 - [ ] Foreign dead-sha sites (00-44 report ×3 + README's archived 00-44 row, 99458a91→22e8c50f fork record): arrow-escape them to green the remaining warnings, or baseline them per O16 — 2026-10-08 00-45 report §g3 — BLOCKED: owner curation call
+- [ ] ci-local: hoist a bash -n-only fast pass to the TOP of the battery (e.g. SYNTAX_BASH_N_ONLY=1 mode in check-script-syntax.sh) so a script slip fails in seconds, not after the Go gates (2026-10-08 01-02 report §f1)
+- [ ] Root-gate bash -n guard self-test: run the guard against a corrupted lib-script COPY under /tmp and pin the nonzero exit so the failure branch cannot rot (2026-10-08 01-02 report §f2)
+- [ ] Name the release-path script set explicitly in root-gate's syntax guard (comment or scripts/lib list) so "un-push-gated scripts" stops being tribal knowledge (2026-10-08 01-02 report §f3)
