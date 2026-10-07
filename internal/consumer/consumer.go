@@ -47,6 +47,7 @@ type Dispatcher struct {
 	poll     time.Duration
 	pageSize int
 	log      *slog.Logger
+	wake     <-chan struct{}
 
 	mu   sync.Mutex
 	subs []*subscriber
@@ -97,6 +98,13 @@ type Config struct {
 	PageSize int
 	// Logger receives drain diagnostics. Default slog.Default().
 	Logger *slog.Logger
+	// Wake is the optional drain-wake channel (a Waker store's Notify):
+	// a fact-landing commit fires it and Run drains immediately instead
+	// of waiting out PollInterval. The ticker stays the degraded fallback
+	// — a nil Wake keeps the pure poll cadence, and journal appends the
+	// wake does not cover (a non-Waker writer, another process) still
+	// land on the next tick.
+	Wake <-chan struct{}
 }
 
 // New builds a Dispatcher over src. Call Subscribe before Run.
@@ -113,7 +121,13 @@ func New(src Source, cfg Config) *Dispatcher {
 		cfg.Logger = slog.Default()
 	}
 
-	return &Dispatcher{src: src, poll: cfg.PollInterval, pageSize: cfg.PageSize, log: cfg.Logger}
+	return &Dispatcher{
+		src:      src,
+		poll:     cfg.PollInterval,
+		pageSize: cfg.PageSize,
+		log:      cfg.Logger,
+		wake:     cfg.Wake,
+	}
 }
 
 // Subscribe registers an exact consumer delivering facts with Seq >
@@ -161,6 +175,10 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-d.wake:
+			// Drain-wake (M7): the store just committed a fact landing; drain
+			// now, ahead of the ticker. Lag logging stays on tick cadence.
+			d.tick(ctx)
 		case <-ticker.C:
 			d.tick(ctx)
 
