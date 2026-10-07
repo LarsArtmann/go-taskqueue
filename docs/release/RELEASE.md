@@ -102,10 +102,13 @@ outside world; its steps and their failure modes:
 1. `git push origin master` + root tag + sub-tags — a rejected push (remote
    moved) is a HARD stop: re-run the gates (the tree changed under you).
    Never `--force`.
-2. Module proxy wait: attempt 1 pokes
+2. Module proxy wait: every attempt pokes
    `https://proxy.golang.org/<module>/@v/vX.Y.Z.info` (on-demand fill — a
    passive @v/list poll never triggers a fetch), then `go list -m -versions`,
-   5 attempts x 30s. Timeout is
+   5 attempts x 30s. On exhaustion the die message distinguishes the two
+   failure modes: ALL .info pokes failed = network outage (fix connectivity,
+   then re-run); pokes succeeded but @v/list never listed = proxy lag (wait
+   and re-check manually). Timeout is
    NOT a failure of the release — verify
    `https://proxy.golang.org/<module>/@v/vX.Y.Z.info` manually; NEVER re-tag
    (the proxy caches forever; a re-tag poisons every future consumer).
