@@ -889,6 +889,8 @@ INCLUDE WORK: a) FULLY DONE; b) PARTIALLY DONE; c) NOT STARTED; d) TOTALLY FUCKE
 
 Run "date" (CLI) to get the current date-time, then write the full report at docs/status/tasks/<YYYY-MM-DD_HH-MM>_task-{{TASK_ID}}.md. Commit it with the same Task-Queue-ID footer as your work commit. Never push.
 
+TODO_LIST.md appends from THIS closeout are HARD CAP 10 new unchecked items (the status prompt's cap): pick the highest-value follow-ups from (e)/(f)/(g); the full (f) list stays in the report only. Dedup-check existing unchecked items first — a reworded duplicate mints a fresh paid dispatch.
+
 DO NOT RESEARCH UNRELATED STUFF. Report based on THIS task's work and what you noticed in passing.`
 
 // execWithTransientRetry retries exec attempts that failed with ETXTBSY

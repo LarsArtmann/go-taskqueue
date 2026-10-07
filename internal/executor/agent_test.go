@@ -884,6 +884,23 @@ printf 'TQ_RESULT: {"files_changed":["x.go"]}\n'
 	}
 }
 
+// TestDefaultCloseoutPromptTodoAppendCap pins the O7 2026-10-05 cap: the
+// close-out prompt bounds TODO_LIST.md appends at 10 per closeout (mirroring
+// the status prompt's HARD CAP 10), so a batched window cannot re-inflate the
+// backlog it just drained, and re-worded duplicates are dedup-checked away.
+func TestDefaultCloseoutPromptTodoAppendCap(t *testing.T) {
+	t.Parallel()
+
+	for _, want := range []string{
+		"HARD CAP 10 new unchecked items",
+		"Dedup-check existing unchecked items first",
+	} {
+		if !strings.Contains(DefaultCloseoutPrompt, want) {
+			t.Errorf("DefaultCloseoutPrompt lacks TODO-append cap pin %q", want)
+		}
+	}
+}
+
 // runIn runs a shell line inside dir. The caller's cwd must never leak in:
 // from this package's dir the verify line would re-run this very suite,
 // recursing until the test timeout.
