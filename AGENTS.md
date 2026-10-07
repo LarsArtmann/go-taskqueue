@@ -56,7 +56,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/queue` | Store contract, Filter, Queue facade |
 | `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform` |
 | `internal/queue/{sqlitev4,postgresv4}` | tq Store over the go-cqrs-lite queue engines |
-| `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity |
+| `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity, claim-token finalize gate (`WithToken`; `readmodel.StatusCounts` = the one status-counts seam) |
 | `internal/readmodel` | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON) |
 | `internal/composition` | S4 root: `system.New` over the projection home (`tq serve`) |
 | `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |

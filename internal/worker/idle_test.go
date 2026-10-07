@@ -132,4 +132,10 @@ func TestPoolIdleBackoff(t *testing.T) {
 	if maxGap > 160*time.Millisecond {
 		t.Fatalf("max poll gap %s exceeded the 80ms cap beyond scheduling slack", maxGap)
 	}
+
+	// Idle-IO evidence line (ADR-0020): the observed probe count and worst
+	// gap at a 10ms/80ms ladder — the same shape a production pool shows at
+	// 250ms/2s, where fixed polling would issue ~4 probes/s and the ladder
+	// holds ~1 per cap interval.
+	t.Logf("idle probes: %d in 500ms (fixed cadence would be ~50), max gap %s", len(calls), maxGap)
 }
