@@ -607,6 +607,14 @@ func cmdWorker(args []string) error {
 		)
 	}
 
+	// Claim-wake seam (M7): silent wiring — a Waker store's Notify
+	// channel makes idle loops re-claim immediately after PENDING-landing
+	// commits; polls stay the degraded (and cross-process) fallback.
+	var claimWake <-chan struct{}
+	if w, ok := store.(queue.Waker); ok {
+		claimWake = w.Notify()
+	}
+
 	pool := worker.New(store, worker.Config{
 		Owner:        *owner,
 		Concurrency:  *conc,
@@ -614,6 +622,7 @@ func cmdWorker(args []string) error {
 		Lease:        *lease,
 		TaskTimeout:  *timeout,
 		Executors:    reg,
+		Wake:         claimWake,
 	}, nil)
 
 	// One signal story (runactor): interrupt cancels the pool loop and the
@@ -1579,6 +1588,20 @@ func cmdAgentPool(args []string) error {
 		)
 	}
 
+	// Claim-wake seam (M7): a Waker store fires after PENDING-landing
+	// commits, so idle loops re-claim in milliseconds instead of waiting
+	// out the poll ladder; polls stay the degraded (and cross-process)
+	// fallback.
+	var wake <-chan struct{}
+	if w, ok := store.(queue.Waker); ok {
+		wake = w.Notify()
+
+		fmt.Fprintln(
+			os.Stderr,
+			"tq: agent-pool: claim-wake armed (store commits re-claim immediately; polls stay the fallback)",
+		)
+	}
+
 	pool := worker.New(store, worker.Config{
 		Owner:         poolOpts.owner,
 		Concurrency:   poolOpts.conc,
@@ -1588,6 +1611,7 @@ func cmdAgentPool(args []string) error {
 		Executors:     reg,
 		Budget:        budgetClaimGate(guard, store, poolOpts.budgetCmd),
 		DonePreflight: donePreflight,
+		Wake:          wake,
 	}, log)
 
 	if poolOpts.once {
