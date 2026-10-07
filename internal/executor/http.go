@@ -21,13 +21,35 @@ type HTTPExecutor struct {
 	Client *http.Client
 }
 
-// NewHTTPExecutor builds an HTTP executor with a sane default client.
+const (
+	// httpTimeout bounds one task POST.
+	httpTimeout = 30 * time.Second
+	// httpMaxIdleConns / httpMaxIdlePerHost / httpIdleConnTimeout pool
+	// connections for burst execution: the zero-configuration transport
+	// keeps only two idle connections per host, so a pool running several
+	// HTTP tasks against one endpoint churns TCP handshakes instead of
+	// reusing keep-alive connections.
+	httpMaxIdleConns    = 64
+	httpMaxIdlePerHost  = 16
+	httpIdleConnTimeout = 90 * time.Second
+)
+
+// NewHTTPExecutor builds an HTTP executor with a connection-pooled
+// default client (see the http* constants).
 func NewHTTPExecutor(url string) *HTTPExecutor {
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return &HTTPExecutor{URL: url, Client: &http.Client{Timeout: httpTimeout}}
+	}
+
+	pooled := transport.Clone()
+	pooled.MaxIdleConns = httpMaxIdleConns
+	pooled.MaxIdleConnsPerHost = httpMaxIdlePerHost
+	pooled.IdleConnTimeout = httpIdleConnTimeout
+
 	return &HTTPExecutor{
-		URL: url,
-		Client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		URL:    url,
+		Client: &http.Client{Timeout: httpTimeout, Transport: pooled},
 	}
 }
 

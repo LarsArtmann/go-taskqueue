@@ -77,8 +77,25 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 ### Store invariants
 
-- **Single serialized writer**: `sqlite.Open` sets `MaxOpenConns(1)` + WAL +
-  `busy_timeout`. Never drop the `RowsAffected()` re-checks.
+- **Single serialized writer**: `sqlitev4.Open` opens ONE shared
+  `*sql.DB` (`MaxOpenConns(1)` + WAL + `busy_timeout`) that the engine
+  (via `usqlite.OpenDB`) and every companion surface ride — never open a
+  second write pool to the same file. Never drop the `RowsAffected()`
+  re-checks.
+- **SQLite IO policy** (2026-10-07): steady-state handles run
+  `synchronous=NORMAL` + `temp_store(MEMORY)` + `cache_size(-32768)` +
+  `journal_size_limit(8MB)` — fsync at checkpoints only (36× fewer
+  fsyncs, strace-measured); the recovery model (lease reclaim,
+  at-least-once sweepers, dedup) tolerates lost tail commits by design.
+  Escape hatch: `TQ_SQLITE_SYNC=full|normal|off`. Migration/upgrade
+  DSNs deliberately keep FULL. Claim-path partial indexes
+  (`idx_tasks_project_running`, `idx_tasks_lease_running`) live in
+  `companion.Migrate` (one DDL, both dialects) — keep the
+  exclusivity probe answering from the RUNNING set, never the
+  project's history.
+- **Worker idle backoff**: consecutive empty claims double the poll gap
+  (cap `IdlePollMax`, default 2s; reset on claim/hard error) — don't
+  regress to fixed-interval idle polling.
 - **Task contexts survive pool shutdown** (bounded only by
   `--task-timeout`) — never add a shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.

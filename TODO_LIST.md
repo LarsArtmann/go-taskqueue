@@ -527,3 +527,4 @@ not here.
 
 ## Re-dispatch closeout follow-ups (2026-10-07 01-16; source: docs/status/tasks/2026-10-07_01-13_task-000001a10e9ba6313abc0d9a3d1200000000.md §d/§e; deduped against live rows — the dead-sha tasks/ widening and the ~10-append cap already exist)
 - [ ] Document the pool verify-gate deadline hazard for the root `-race` battery in AGENTS.md Known Issues, respecting the TestAgentsDocSizeGuard budget (2026-10-07 re-dispatch evidence: the gate killed one attempt with "deadline before a verdict, retry on a warm cache" on work that was already correct; the identical signature passed rc=0 in ~6 min on a warm cache)
+- [ ] Notify-after-commit journal wake (ADR-0009 v2 path): fire a post-commit notification outside the mutation tx so worker claim loops and journal consumers react in milliseconds instead of poll cadences (the 2026-10-07 IO pass shipped idle backoff + pragmas + partial indexes; this removes polling entirely — keep the polls as the degraded fallback)

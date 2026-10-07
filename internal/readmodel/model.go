@@ -121,7 +121,14 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 		return nil, ErrNoSource
 	}
 
-	eng, err := sqliteengine.NewSQLiteEngineFromDSN(path)
+	// The projection db is DISPOSABLE by contract (delete the file to
+	// force a full replay; the durable cursor lives in the queue's
+	// watermarks table, not here), so it runs the same relaxed-fsync
+	// policy as the queue store: WAL + synchronous=NORMAL trades a tail
+	// replay after OS/power failure for checkpoint-only fsyncs, and the
+	// page cache rides the fold's locality instead of re-reading pages.
+	eng, err := sqliteengine.NewSQLiteEngineFromDSN(path,
+		"synchronous=NORMAL", "cache_size=-32768")
 	if err != nil {
 		return nil, fmt.Errorf("readmodel: open projection db: %w", err)
 	}

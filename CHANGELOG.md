@@ -7,6 +7,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Changed
+- **IO efficiency pass across the store, worker, and bridges**
+  (2026-10-07): every steady-state SQLite handle (queue store,
+  read-model projection, DLQ sidecar) runs WAL + `synchronous=NORMAL`
+  with a 32MB page cache, memory temp store, and a bounded WAL —
+  checkpoint-only fsyncs instead of one per commit (36× fewer fsync
+  syscalls for the same work, measured via strace), with `TQ_SQLITE_SYNC`
+  restoring the strict tier; the sqlite store's engine and companion
+  surfaces now share ONE serialized connection (no more WAL writer-lock
+  handoff between two single-conn pools); companion migrate adds partial
+  `running`-only indexes (`idx_tasks_project_running`,
+  `idx_tasks_lease_running`) so ClaimDue's project-exclusivity probe
+  answers from the running set instead of the project's whole history
+  (claim with 20k-row history: 8.8ms → 0.25ms); idle worker loops back
+  off their poll gap exponentially (default cap 2s, reset on claim,
+  `IdlePollMax`); and the HTTP executor plus both bridges use
+  connection-pooled transports (16 idle conns/host) instead of the
+  two-connection default.
 - **Closeout reports move to `docs/status/tasks/`** (2026-10-07, O7
   report-placement ruling): the `--task-closeout` prompt now names
   `docs/status/tasks/<ts>_task-<id>.md`, keeping the `docs/status/`

@@ -38,8 +38,12 @@ func OpenDeadLetters(ctx context.Context, modelPath string) (*DeadLetters, error
 	openCtx, cancel := context.WithTimeout(ctx, dlqOpenTimeout)
 	defer cancel()
 
+	// Same relaxed-fsync posture as the projection home: the sidecar is
+	// diagnostic (poison-fact forensics), never authoritative — losing a
+	// tail entry to a power cut costs one replay, not data.
 	dsn := "file:" + DLQPathFor(modelPath) +
-		"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
+		"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)" +
+		"&_pragma=synchronous(NORMAL)"
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
