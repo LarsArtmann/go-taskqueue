@@ -113,12 +113,12 @@ else
 fi
 
 wait_for() { # wait_for <grep-pattern>
-	# 60s, not 15s: the claim → sh fail → dead-letter → bridge POST chain
-	# runs a freshly built worker; under release-gate load (parallel
-	# builds, the production pool's WAL churn) 15s was lost twice while
-	# the isolated run passed in ~3s. The assertion stays strict; the
-	# window absorbs host load.
-	for _ in $(seq 1 60); do
+	# 120s, not 60s: inside the full ci-local battery the host is busier
+	# than during the release gates alone — the 60s window itself was lost
+	# once (2026-10-07 final battery, "no alert.triggered" at wait 61)
+	# while the isolated run passed in ~3s. The assertion stays strict;
+	# the window absorbs battery load.
+	for _ in $(seq 1 120); do
 		[ -f "$ALERT_LOG" ] && grep -q "$1" "$ALERT_LOG" && return 0
 		sleep 1
 	done
