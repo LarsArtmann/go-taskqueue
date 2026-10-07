@@ -264,6 +264,12 @@ func cmdEnqueue(args []string) error {
 		"",
 		"idempotency key: re-enqueueing with the same key returns the stored task unchanged (harvest/sweeper semantics)",
 	)
+	forceRedispatch := fs.Bool(
+		"force-redispatch",
+		false,
+		"mint even when the done-check proves this dispatch re-verifies landed work "+
+			"(deliberate verify-only re-dispatch windows; O4 escape hatch)",
+	)
 	repoFlag := fs.String(
 		"repo",
 		"",
@@ -379,6 +385,17 @@ func cmdEnqueue(args []string) error {
 					"not ./tasks.db (pass --db to override)\n",
 				p,
 			)
+		}
+	}
+
+	// Mint-time done gate (O4): the candidate is checked against repo-side
+	// done signals (cured fix tickets, closed TODO rows, cited closeout
+	// reports) BEFORE any store write, so a re-dispatch of landed work is
+	// refused at mint instead of burning a paid verify-only lap.
+	if !*forceRedispatch {
+		gate := harvest.New(nil, harvest.Config{ProjectsDir: defaultProjectsDir()})
+		if err := gate.RedispatchCheck(context.Background(), newTask); err != nil {
+			return fmt.Errorf("%w\n(pass --force-redispatch to mint a verify-only re-dispatch anyway)", err)
 		}
 	}
 

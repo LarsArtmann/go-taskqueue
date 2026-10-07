@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -207,5 +208,95 @@ func removeLine(t *testing.T, repo, file string) {
 
 	if err := os.Remove(filepath.Join(repo, file)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestRedispatchAuditSurfacesClosedRowResidue pins the queried-fact surface
+// (row 272): a LIVE task on a closed row is reported, a closed-row task
+// that burned a second attempt is the churn census, and open rows plus
+// catch-up mints stay invisible.
+func TestRedispatchAuditSurfacesClosedRowResidue(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "auditrepo", "# H\n- [x] closed row\n- [ ] open row\n")
+
+	q := openQueue(t)
+	h := New(q, Config{ProjectsDir: dir})
+	ctx := context.Background()
+
+	mint := func(key, item string) task.Task {
+		t.Helper()
+
+		tk, err := q.Enqueue(ctx, task.New{
+			Project:  "auditrepo",
+			Type:     "agent",
+			Payload: []byte(`{"repo":"auditrepo","prompt":"work","dedup":` +
+				jsonString(key) + `,"item":` + jsonString(item) + `}`),
+			DedupKey: key,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return tk
+	}
+
+	closedKey := ItemKey("auditrepo", "closed row")
+	openKey := ItemKey("auditrepo", "open row")
+
+	churn := mint("catchup:"+closedKey, "closed row") // becomes the churn census below
+	live := mint(closedKey, "closed row")              // pending on a closed row
+	_ = mint(openKey, "open row")                      // control: open row stays invisible
+	mint(CatchupKeyPrefix+openKey, "open row")         // control: catch-up on an open row
+
+	// Churn: claim → fail (attempt 1 burned) → claim → complete (attempt 2).
+	first, claim, err := q.ClaimDue(ctx, "w", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if first.ID != churn.ID {
+		t.Fatalf("claim order: got %s, want the churn task %s", first.ID, churn.ID)
+	}
+
+	if err := q.Fail(ctx, churn.ID, claim, "gate slow", 0, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	second, claim2, err := q.ClaimDue(ctx, "w", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := q.Complete(ctx, second.ID, claim2, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := h.RedispatchAudit(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(res.ScanFailures) != 0 {
+		t.Fatalf("scan failures: %v", res.ScanFailures)
+	}
+
+	byClass := map[string]task.ID{}
+	for _, f := range res.Findings {
+		byClass[f.Class] = f.TaskID
+	}
+
+	if byClass[RedispatchClassLive] != live.ID {
+		t.Fatalf("live finding = %v, want the pending task on the closed row %s",
+			byClass[RedispatchClassLive], live.ID)
+	}
+
+	if byClass[RedispatchClassChurn] != churn.ID {
+		t.Fatalf("churn finding = %v, want the two-attempt completed task %s",
+			byClass[RedispatchClassChurn], churn.ID)
+	}
+
+	if len(res.Findings) != 2 {
+		t.Fatalf("findings = %d (open row and catch-up must stay invisible), got %+v",
+			len(res.Findings), res.Findings)
 	}
 }

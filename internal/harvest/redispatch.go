@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -210,13 +211,152 @@ func redispatchReasonFor(err error) string {
 	return "redispatch refused: " + refusal.Reason + " (force-redispatch to verify anyway)"
 }
 
-// redispatchCheckSummary is the one-line mint-gate explanation the enqueue
-// CLI prints with the refusal so the operator sees both the signal and the
-// escape hatch without reading source.
-func redispatchCheckSummary(err error) string {
-	if reason := redispatchReasonFor(err); reason != "" {
-		return reason
+// Redispatch finding classes: what the row-vs-queue join means for the
+// operator reading `tq audit --redispatch`.
+const (
+	// RedispatchClassLive: a PENDING or RUNNING task whose row is already
+	// closed — it will burn a window (or die) proving done work. The mint
+	// gate refuses NEW mints of this shape; this is the residue already
+	// inside the queue (tq cancel / prune-stale territory).
+	RedispatchClassLive = "live-task-on-closed-row"
+	// RedispatchClassChurn: a TERMINAL task on a closed row that burned
+	// more than one attempt — the paid verify-churn census (the row-110
+	// class: five close-out doc commits for an already-[x] row).
+	RedispatchClassChurn = "spend-after-close"
+)
+
+// RedispatchFinding is one row-vs-queue disagreement the re-dispatch
+// surface reports: a task whose TODO row is closed (ticked or gone) while
+// the task is still live, or burned multiple attempts on closed work.
+type RedispatchFinding struct {
+	Repo     string
+	TaskID   task.ID
+	Status   task.Status
+	Attempts int
+	ItemKey  string
+	ItemText string
+	Class    string
+}
+
+// RedispatchResult summarizes one re-dispatch audit pass over all repos.
+type RedispatchResult struct {
+	Repos        int
+	Findings     []RedispatchFinding
+	ScanFailures []ScanFailure
+}
+
+// RedispatchAudit surfaces re-dispatch exposure as a queried fact (row
+// 272): every task whose TODO row is already closed — live tasks that
+// will spend a window proving done work, and terminal tasks that burned
+// attempts on closed work. Report-only: cancelling live residue is an
+// operator decision (prune-stale owns pending withdrawals at pool start).
+func (h *Harvester) RedispatchAudit(ctx context.Context) (RedispatchResult, error) {
+	var res RedispatchResult
+
+	repos, err := h.resolveRepos()
+	if err != nil {
+		return res, err
 	}
 
-	return err.Error()
+	for _, repo := range repos {
+		res.Repos++
+
+		if err := h.redispatchAuditRepo(ctx, repo, &res); err != nil {
+			res.ScanFailures = append(res.ScanFailures, ScanFailure{Repo: repo, Reason: err.Error()})
+		}
+	}
+
+	return res, nil
+}
+
+func (h *Harvester) redispatchAuditRepo(ctx context.Context, repo string, res *RedispatchResult) error {
+	// itemKeysFor needs the payload, so fold the open/ticked state by key
+	// once and judge each task's keys against it.
+	todoFile := h.cfg.TodoFile
+	if todoFile == "" {
+		todoFile = DefaultTodoFile
+	}
+
+	items, err := ParseRepoAll(repo, todoFile)
+	if err != nil {
+		return err
+	}
+
+	state := make(map[string]bool, len(items))
+	for _, item := range items {
+		state[item.Key] = item.Done
+	}
+
+	repoName := filepath.Base(repo)
+
+	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
+	if err != nil {
+		return err
+	}
+
+	for _, t := range tasks {
+		payload, ok := decodeHarvestPayload(t.Payload)
+		if !ok {
+			continue
+		}
+
+		keys := itemKeysFor(t, payload)
+		if len(keys) == 0 {
+			continue // foreign shapes are invisible to the join
+		}
+
+		if !rowClosed(state, keys) {
+			continue
+		}
+
+		class := ""
+		switch t.Status {
+		case task.Pending, task.Running:
+			class = RedispatchClassLive
+		case task.Completed, task.Dead, task.Cancelled:
+			if t.Attempts > 1 {
+				class = RedispatchClassChurn
+			}
+		}
+
+		if class == "" {
+			continue
+		}
+
+		res.Findings = append(res.Findings, RedispatchFinding{
+			Repo:     repoName,
+			TaskID:   t.ID,
+			Status:   t.Status,
+			Attempts: t.Attempts,
+			ItemKey:  keys[0],
+			ItemText: truncateItem(payload.Item),
+			Class:    class,
+		})
+	}
+
+	return nil
+}
+
+// rowClosed applies prune's all-closed semantics to one task's item keys:
+// every member ticked, or every member gone. A partial closure is open
+// work (the batch still owes the open member).
+func rowClosed(state map[string]bool, keys []string) bool {
+	allTicked, allAbsent := true, true
+
+	for _, key := range keys {
+		ticked, present := state[key]
+		if !present {
+			allTicked = false
+
+			continue
+		}
+
+		allAbsent = false
+
+		if !ticked {
+			allTicked = false
+		}
+	}
+
+	return allTicked || allAbsent
 }

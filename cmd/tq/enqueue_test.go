@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -340,5 +342,72 @@ func TestCmdEnqueueAgentConvenienceErrors(t *testing.T) {
 				t.Fatalf("error = %q, want containing %q", err.Error(), tc.want)
 			}
 		})
+	}
+}
+
+// TestCmdEnqueueRedispatchRefused pins the O4 mint gate at the CLI: an
+// agent candidate whose TODO row is already closed is refused BEFORE any
+// store write, the error names the escape hatch, and --force-redispatch
+// mints the deliberate verify-only window anyway.
+func TestCmdEnqueueRedispatchRefused(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "gate.db")
+
+	itemText := "ship the status-append loop"
+	key := harvest.ItemKey("gatecheck", itemText)
+
+	projects := filepath.Join(dir, "projects")
+	repo := filepath.Join(projects, "gatecheck")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	todo := filepath.Join(repo, "TODO_LIST.md")
+	if err := os.WriteFile(todo, []byte("- [x] "+itemText+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("TQ_PROJECTS_DIR", projects)
+
+	payload := `{"repo":"gatecheck","prompt":"re-verify the closed row","dedup":` +
+		`"` + key + `"}`
+
+	base := []string{
+		"--project", "gatecheck",
+		"--type", "agent",
+		"--payload", payload,
+		"--db", dbPath,
+	}
+
+	err := cmdEnqueue(base)
+	if err == nil {
+		t.Fatal("expected a re-dispatch refusal, got nil")
+	}
+
+	for _, want := range []string{"re-dispatch refused", "--force-redispatch", "now [x]"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %q, want containing %q", err.Error(), want)
+		}
+	}
+
+	if err := cmdEnqueue(append(slices.Clone(base), "--force-redispatch")); err != nil {
+		t.Fatalf("forced re-dispatch must mint: %v", err)
+	}
+
+	ctx := context.Background()
+
+	store, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer store.Close()
+
+	tasks, err := store.List(ctx, queue.Filter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tasks) != 1 {
+		t.Fatalf("tasks = %d, want exactly the forced mint (the refusal wrote nothing)", len(tasks))
 	}
 }
