@@ -280,3 +280,8 @@ f10e8464
 f8120c2c
 fd170b41
 ffe031ad
+
+# 2026-10-07 probe: cited by docs/status/tasks/2026-10-07_06-01_task-000001a113… as the
+# sibling agent's vendor-sync sweep; daemon commit with no amend successor
+# (dangles via the morning session's amend maneuvers).
+9d6b3ddd
