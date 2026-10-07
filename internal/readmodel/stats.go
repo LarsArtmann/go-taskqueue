@@ -6,6 +6,8 @@ import (
 	"slices"
 
 	metaengine "github.com/larsartmann/go-cqrs-lite/metaengine/v4"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // statuses is the closed status vocabulary the per-project rollup walks:
@@ -80,6 +82,23 @@ func (m *Model) StatusCounts(ctx context.Context) (map[string]int, error) {
 	counts, _, err := m.Stats(ctx, TaskFilter{})
 
 	return counts, err
+}
+
+// StatusCounts is the one seam both servers read status counts through:
+// from the model when one is supplied, from the queue store otherwise.
+// The dashboard server (internal/webui) and the machine API
+// (internal/httpapi) shared this exact branch pair before it landed here.
+func StatusCounts(ctx context.Context, model *Model, store queue.Store) (map[task.Status]int, error) {
+	if model != nil {
+		counts, err := model.StatusCounts(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return task.StatusCountsMap(counts), nil
+	}
+
+	return store.StatusCounts(ctx)
 }
 
 // ProjectCounts counts the ledger rows per project per status — the same

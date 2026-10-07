@@ -136,20 +136,11 @@ func (s *Server) runReadModel(ctx context.Context) error {
 	}
 }
 
-// statusCounts reads the per-status counts from the read model when the
-// server runs on one, from the store otherwise. Callers zero-fill missing
-// statuses themselves.
+// statusCounts reads the per-status counts through the shared
+// readmodel.StatusCounts seam (model when the server runs on one, store
+// otherwise). Callers zero-fill missing statuses themselves.
 func (s *Server) statusCounts(ctx context.Context) (map[task.Status]int, error) {
-	if s.model != nil {
-		counts, err := s.model.StatusCounts(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return task.StatusCountsMap(counts), nil
-	}
-
-	return s.store.StatusCounts(ctx)
+	return readmodel.StatusCounts(ctx, s.model, s.store)
 }
 
 // factsForTask returns one task's facts, most recent last, bounded to the

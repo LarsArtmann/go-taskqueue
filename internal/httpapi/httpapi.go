@@ -300,20 +300,10 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// statusCounts reads the per-status counts from the read model when one
-// is configured, from the store otherwise — the same seam as the
-// dashboard's statusCounts (internal/webui/tailer.go).
+// statusCounts reads the per-status counts through the shared
+// readmodel.StatusCounts seam (model when configured, store otherwise).
 func (s *Server) statusCounts(ctx context.Context) (map[task.Status]int, error) {
-	if s.model != nil {
-		counts, err := s.model.StatusCounts(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return task.StatusCountsMap(counts), nil
-	}
-
-	return s.store.StatusCounts(ctx)
+	return readmodel.StatusCounts(ctx, s.model, s.store)
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
