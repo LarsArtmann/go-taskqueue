@@ -36,7 +36,7 @@ not here.
 - [ ] `tq pool-health`: one-shot summarizing per-repo skip streaks + last harvest activity from the journal (liveness ≠ process up) (02:00 f27)
 - [x] release.sh 5/5 die message: distinguish "all .info pokes failed" (network-dead) from "@v/list never listed the version" (proxy lag) so a network outage doesn't burn 4×30s of doomed polling + a misattributed postmortem (closeout 2026-10-08 §e1)
 - [x] Gates: add a cheap `bash -n` syntax guard over scripts/release.sh + other un-push-gated scripts (today nothing catches a syntax slip; closeout 2026-10-08 §e3)
-- [ ] Archive the v0.3.3 release-push evidence log (/tmp/tq-release-push-v033c.log, cited by the DONE demand-fill row) via scripts/archive-evidence.sh before /tmp prunes it (closeout 2026-10-08 §e5)
+- [ ] Archive the v0.3.3 release-push evidence log (/tmp/tq-release-push-v033c.log, cited by the DONE demand-fill row) via scripts/archive-evidence.sh before /tmp prunes it (closeout 2026-10-08 §e5) — BLOCKED: source log already pruned from /tmp before this run; only prose summaries survive in docs/status/2026-10-07_* reports
 - [ ] Annotate check-release-docs.sh's line-pinned `need_in_both` strings with the doc-reflow false-fail hazard (the `go list -m -versions` pin survives only while line-contained; closeout 2026-10-08 §e2)
 - [ ] RELEASE.md timeout fallback paragraph: rewrite the "verify … .info manually" text to reference the automated attempt-1 poke + its log line instead of implying operator discovery (closeout 2026-10-08 §e4)
 - [ ] release.sh: extract the proxy-wait loop into a testable function + offline bash test driving both die branches (network-dead vs proxy lag) — bash -n covers syntax only (closeout 2026-10-08 00-55 §e1)
