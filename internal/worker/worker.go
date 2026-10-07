@@ -547,21 +547,9 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 	// a review of a session that never ran.
 	if p.cfg.DonePreflight != nil {
 		if done, reason := p.cfg.DonePreflight(ctx, t); done {
-			// AgentResult marshals structurally; the fallback keeps the
-			// gate completing even if a future field stops round-tripping.
-			detail, derr := json.Marshal(executor.AgentResult{PreflightDone: reason})
-			if derr != nil {
-				detail = jsontext.Value(`{"preflight_done":"done preflight"}`)
-			}
-
-			if err := p.persistOutcome(ctx, t.ID, func(c context.Context) error {
-				return p.store.Complete(c, t.ID, claim, detail)
-			}); err != nil {
-				p.log.Error("done-preflight complete failed", "task", t.ID, "err", err)
-			} else {
-				p.log.Warn("done preflight: completed without agent run",
-					"task", t.ID, "reason", reason)
-			}
+			p.completeAsPreflightDone(ctx, t, claim, reason)
+			p.log.Warn("done preflight: completed without agent run",
+				"task", t.ID, "reason", reason)
 
 			return
 		}
@@ -721,6 +709,21 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			}
 
 			return
+		}
+
+		// Gate-slow done guard (row 340): the verify leg died without judging
+		// the task, but the run may have LANDED its work first (footer commits,
+		// closeout report). A requeue would re-spawn a full agent window over
+		// done work — the second-burn receipt class. The done hook decides;
+		// done completes mechanically, not-done requeues on the ladder below.
+		if p.cfg.DonePreflight != nil {
+			if done, reason := p.cfg.DonePreflight(terminalCtx, t); done {
+				p.completeAsPreflightDone(terminalCtx, t, claim, reason)
+				p.log.Warn("gate-slow guard: verify leg died after the work landed; completed without re-dispatch",
+					"task", t.ID, "class", gate.Class, "reason", reason)
+
+				return
+			}
 		}
 
 		// The verify gate failed WITHOUT judging the task: the gate also
