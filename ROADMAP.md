@@ -298,6 +298,11 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ## Open questions (owner decisions)
 
+- Webui auth session cookie: it carries the raw token value (HttpOnly,
+  SameSite=Lax, Secure-on-TLS; constant-time compare) — deliberate
+  simplicity tradeoff or accepted-risk oversight worth a hashed-value
+  redesign? (routed from the 2026-09-10 httputil assessment §g3,
+  2026-10-07 archive sweep)
 - ~~Should the pool be allowed to work on go-taskqueue itself?~~ ANSWERED
   2026-09-07 (owner): the pool runs on this repo — `.crushrc` (minimum
   autonomy) + `.tq-verify` (CI hard gates) are the rails; see

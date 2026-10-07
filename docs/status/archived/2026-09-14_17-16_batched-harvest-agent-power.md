@@ -98,7 +98,7 @@ things, at least when it actually is supposed to get shit done")._
 
 ## e) Improve next
 
-1. Session-chaining experiment (rejected alternative in the plan doc) if
+~~1. Session-chaining experiment (rejected alternative in the plan doc) if~~ Won't implement — rejected alternative in the plan doc
    batching alone leaves provider windows idle.
-2. `--batch-items` per-repo ladder (big repos batch, tiny don't).
-3. Status windows should summarize batch Items (currently first member).
+~~2. `--batch-items` per-repo ladder (big repos batch, tiny don't).~~ subsumed — TODO row "Make batching the DEFAULT work shape" (2026-09-29 batch directive)
+~~3. Status windows should summarize batch Items (currently first member).~~ routed — TODO_LIST row (2026-10-07 archive sweep): status windows render batch members
