@@ -81,7 +81,10 @@ jobs:
         # Parity with scripts/ci-local.sh — the checker owns the rules.
         run: ./scripts/check-facade-parity.sh
       - name: Gofmt
-        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+        # Scope to non-vendor files exactly like ci-local.sh: the
+        # dep-bump drift gate generates vendor/ earlier in this job, and
+        # vendored upstream code predates the current gofmt.
+        run: test -z "$(gofmt -l . | grep -v '^vendor/')" || (gofmt -l . | grep -v '^vendor/' && exit 1)
       - name: Lint (golangci-lint, config in .golangci.yml)
         # Advisory, not a gate: the ~400-finding repo baseline (wrapcheck,
         # varnamelen, paralleltest, ...) is documented in AGENTS.md; a red
