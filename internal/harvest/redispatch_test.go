@@ -41,7 +41,7 @@ func TestRedispatchCheckFixCuredByReword(t *testing.T) {
 		context.Background(), candidateWith("", "", "re-verify the finding", bad, "the rejected commit"),
 	)
 
-	refusal, ok := errors.AsType[*RedispatchRefusal](err)
+	refusal, ok := errors.AsType[*RedispatchRefusalError](err)
 	if !ok {
 		t.Fatalf("expected a redispatch refusal, got %v", err)
 	}
@@ -74,7 +74,7 @@ func TestRedispatchCheckItemClosedAtMint(t *testing.T) {
 				context.Background(), candidateWith(key, itemText, "do the thing", "", ""),
 			)
 
-			refusal, ok := errors.AsType[*RedispatchRefusal](err)
+			refusal, ok := errors.AsType[*RedispatchRefusalError](err)
 			if !ok {
 				t.Fatalf("expected a redispatch refusal, got %v", err)
 			}
@@ -127,7 +127,7 @@ func TestRedispatchCheckCloseoutCited(t *testing.T) {
 		candidateWith("", "", "re-verify task "+cited+" against HEAD", "", ""),
 	)
 
-	refusal, ok := errors.AsType[*RedispatchRefusal](err)
+	refusal, ok := errors.AsType[*RedispatchRefusalError](err)
 	if !ok {
 		t.Fatalf("expected a redispatch refusal, got %v", err)
 	}

@@ -19,15 +19,15 @@ var ErrRedispatchRefused = errors.New(
 	"harvest: re-dispatch refused (work already done; force the re-dispatch to verify anyway)",
 )
 
-// RedispatchRefusal is one refusal with its named signal, so callers can
+// RedispatchRefusalError is one refusal with its named signal, so callers can
 // render the reason without parsing the sentinel out of the error string.
-type RedispatchRefusal struct {
+type RedispatchRefusalError struct {
 	Reason string
 }
 
-func (r *RedispatchRefusal) Error() string { return ErrRedispatchRefused.Error() + ": " + r.Reason }
+func (r *RedispatchRefusalError) Error() string { return ErrRedispatchRefused.Error() + ": " + r.Reason }
 
-func (r *RedispatchRefusal) Unwrap() error { return ErrRedispatchRefused }
+func (r *RedispatchRefusalError) Unwrap() error { return ErrRedispatchRefused }
 
 // redispatchHexRunRe matches every maximal hex run in prompt text; runs
 // of exactly the NewID length (36 hex: 16 millis + 10 seed + 10 sequence)
@@ -72,15 +72,15 @@ func (h *Harvester) RedispatchCheck(ctx context.Context, n task.New) error {
 	}
 
 	if cured, reason := fixTicketCured(ctx, dir, payload); cured {
-		return &RedispatchRefusal{Reason: reason}
+		return &RedispatchRefusalError{Reason: reason}
 	}
 
 	if closed, reason := h.mintItemClosed(dir, payload); closed {
-		return &RedispatchRefusal{Reason: reason}
+		return &RedispatchRefusalError{Reason: reason}
 	}
 
 	if cited, reason := closeoutCited(dir, payload.Prompt); cited {
-		return &RedispatchRefusal{Reason: reason}
+		return &RedispatchRefusalError{Reason: reason}
 	}
 
 	return nil
@@ -215,7 +215,7 @@ func (h *Harvester) refuseUnlessForced(ctx context.Context, n task.New) error {
 // redispatchReasonFor renders a refusal error as a skip reason with the
 // signal's own voice, mirroring the ErrTaskDone class split.
 func redispatchReasonFor(err error) string {
-	refusal, ok := errors.AsType[*RedispatchRefusal](err)
+	refusal, ok := errors.AsType[*RedispatchRefusalError](err)
 	if !ok {
 		return ""
 	}

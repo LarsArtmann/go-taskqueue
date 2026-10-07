@@ -131,7 +131,7 @@ func (c *Config) setDefaults() {
 // IdlePollMax. The ladder is disabled (IdlePollMax < 0) or exhausted
 // (idle <= 0) at the base interval. A cap below PollInterval never
 // shortens a configured interval — the operator's floor wins.
-func (c Config) idleGap(idle int) time.Duration {
+func (c *Config) idleGap(idle int) time.Duration {
 	if c.IdlePollMax < 0 || idle <= 0 {
 		return c.PollInterval
 	}
