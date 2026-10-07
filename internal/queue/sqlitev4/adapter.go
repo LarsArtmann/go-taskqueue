@@ -30,6 +30,8 @@ import (
 	"database/sql"
 	"encoding/json/jsontext"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	usqlite "github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4"
@@ -72,25 +74,73 @@ type StoreOption = companion.StoreOption
 // entirely (divergence noted in the S1 report).
 var WithProjectExclusivity = companion.WithProjectExclusivity
 
+// synchronousPolicy is the durability tier every steady-state store
+// connection runs: WAL + synchronous=NORMAL fsyncs only at checkpoints
+// instead of on every commit, which removes the per-commit fsync from
+// heartbeats, fact appends, and watermark checkpoints. NORMAL never
+// corrupts a WAL database — the worst case is losing the tail commits on
+// OS/power failure, and the queue's recovery model already tolerates that
+// by construction (expired leases reclaim, at-least-once sweepers,
+// idempotent replay, dedup keys). Operators who want the strict tier back
+// set TQ_SQLITE_SYNC=full; the value is validated at open.
+func synchronousPolicy() (string, error) {
+	v := strings.ToUpper(strings.TrimSpace(os.Getenv("TQ_SQLITE_SYNC")))
+	if v == "" {
+		return "NORMAL", nil
+	}
+
+	switch v {
+	case "FULL", "NORMAL", "OFF":
+		return v, nil
+	default:
+		return "", fmt.Errorf(
+			"sqlitev4: TQ_SQLITE_SYNC must be one of full, normal, off (got %q)", v)
+	}
+}
+
+// openSharedDB opens the store's ONE serialized connection carrying tq's
+// IO pragma policy. The engine and every companion surface share this
+// pool: with MaxOpenConns(1) all engine transactions and companion
+// transactions serialize at the pool level, eliminating the WAL
+// writer-lock handoff (and SQLITE_BUSY churn) two single-conn pools
+// caused when they interleaved commits on the same file.
+func openSharedDB(path string) (*sql.DB, error) {
+	sync, err := synchronousPolicy()
+	if err != nil {
+		return nil, err
+	}
+
+	dsn := fmt.Sprintf(
+		"file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"+
+			"&_pragma=synchronous(%s)&_pragma=temp_store(MEMORY)&_pragma=cache_size(-32768)"+
+			"&_pragma=journal_size_limit(8388608)",
+		path, sync)
+
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("sqlitev4: open db: %w", err)
+	}
+
+	db.SetMaxOpenConns(1)
+
+	return db, nil
+}
+
 // Open opens (creating if needed) the queue database at path.
 func Open(path string, opts ...StoreOption) (*Store, error) {
 	projectExclusive := companion.ApplyProjectExclusivity(opts)
 
-	engine, err := usqlite.Open[[]byte](path, usqlite.WithCodec(companion.IdentityCodec()))
+	db, err := openSharedDB(path)
 	if err != nil {
+		return nil, err
+	}
+
+	engine, err := usqlite.OpenDB[[]byte](db, usqlite.WithCodec(companion.IdentityCodec()))
+	if err != nil {
+		_ = db.Close()
+
 		return nil, fmt.Errorf("sqlitev4: open engine: %w", err)
 	}
-
-	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)", path)
-
-	db, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		_ = engine.Close()
-
-		return nil, fmt.Errorf("sqlitev4: open companion db: %w", err)
-	}
-
-	db.SetMaxOpenConns(1)
 
 	store := &Store{
 		engine:           engine,
@@ -100,8 +150,7 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 	}
 
 	if err := companion.Migrate(context.Background(), store.cr); err != nil {
-		_ = db.Close()
-		_ = engine.Close()
+		_ = store.Close()
 
 		return nil, err
 	}
@@ -109,7 +158,10 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 	return store, nil
 }
 
-// Close releases the engine and the companion handle.
+// Close releases the shared pool. The engine and the companion runner
+// ride ONE database pool (openSharedDB): the engine's Close already
+// closes it, and the second Close on a *sql.DB is a documented idempotent
+// no-op — the double call keeps this robust against either handle shape.
 //
 // art-dupl:accept two-handle teardown: each backend owns its engine and
 // companion db handles; companion cannot close them.
