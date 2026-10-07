@@ -25,6 +25,13 @@ type Config struct {
 	Owner        string        // lease owner identity (default: auto)
 	Concurrency  int           // parallel task executions (default 2)
 	PollInterval time.Duration // idle poll gap (default 250ms)
+	// IdlePollMax caps the adaptive idle poll gap: consecutive empty
+	// claims (ErrNoTaskDue) double the gap up to this cap, and any claim
+	// resets it to PollInterval — an idle pool stops paying the full
+	// candidate-scan cost at every tick while a fresh task is still
+	# claimed within the cap. Default 2s; negative disables the ladder
+	# (fixed PollInterval, the historical behavior).
+	IdlePollMax time.Duration
 	Lease        time.Duration // claim lease length (default 2m)
 	Heartbeat    time.Duration // heartbeat cadence, < Lease (default 30s)
 	TaskTimeout  time.Duration // per-task execution cap (default 10m)
@@ -79,6 +86,10 @@ func (c *Config) setDefaults() {
 		c.PollInterval = 250 * time.Millisecond
 	}
 
+	if c.IdlePollMax == 0 {
+		c.IdlePollMax = 2 * time.Second
+	}
+
 	if c.Lease <= 0 {
 		c.Lease = 2 * time.Minute
 	}
@@ -102,6 +113,24 @@ func (c *Config) setDefaults() {
 	if c.EnvRequeueBurn == 0 {
 		c.EnvRequeueBurn = 3
 	}
+}
+
+// idleGap returns the poll gap after idle consecutive empty claims:
+// PollInterval shifted left by the streak (bounded), capped at
+// IdlePollMax. The ladder is disabled (IdlePollMax < 0) or exhausted
+// (idle <= 0) at the base interval. A cap below PollInterval never
+// shortens a configured interval — the operator's floor wins.
+func (c Config) idleGap(idle int) time.Duration {
+	if c.IdlePollMax < 0 || idle <= 0 {
+		return c.PollInterval
+	}
+
+	gap := c.PollInterval << min(idle, 8)
+	if gap <= 0 { // shift overflow: saturate at the cap
+		gap = c.IdlePollMax
+	}
+
+	return min(max(gap, c.PollInterval), max(c.IdlePollMax, c.PollInterval))
 }
 
 // ExpBackoff returns an exponential retry delay for the given attempt number.
@@ -427,6 +456,10 @@ func (p *Pool) Owner() string { return p.cfg.Owner }
 func (p *Pool) loop(ctx, taskCtx context.Context) {
 	defer p.wg.Done()
 
+	// idle counts consecutive empty claims; any claim (or a hard claim
+	// error) resets it so a recovering pool returns to full cadence.
+	idle := 0
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -442,16 +475,21 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 				return // shutdown raced the claim; not an error
 			}
 
-			if !errors.Is(err, queue.ErrNoTaskDue) {
+			if errors.Is(err, queue.ErrNoTaskDue) {
+				idle++
+			} else {
 				p.log.Error("claim failed", "err", err)
+				idle = 0
 			}
 
-			if !sleepCtx(ctx, p.cfg.PollInterval) {
+			if !sleepCtx(ctx, p.cfg.idleGap(idle)) {
 				return
 			}
 
 			continue
 		}
+
+		idle = 0
 
 		p.execute(taskCtx, t, claim)
 	}
