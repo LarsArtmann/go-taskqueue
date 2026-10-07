@@ -71,7 +71,7 @@ func TestFactsCQRSOverStore(t *testing.T) {
 
 	assertEventsEncodingStamped(t, events)
 
-	if string(events[3].StreamID().String()) != claimed.ID.String() {
+	if events[3].StreamID().Get() != claimed.ID.String() {
 		t.Fatalf("completed event stream = %s, want task %s", events[3].StreamID(), claimed.ID)
 	}
 
