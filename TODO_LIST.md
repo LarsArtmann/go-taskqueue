@@ -32,6 +32,7 @@ not here.
 
 ## Dogfood round (harvested from docs/status/2026-09-10_02-00 self-review §f)
 
+- [ ] release.sh proxy verification pokes demand-fill: after the tag push, fetch `https://proxy.golang.org/<module>/@v/<ver>.info` (on-demand fill) instead of only polling `go list -m -versions` (passive @v/list never triggers a fetch); v0.3.3's publish died at attempt 5/5 on 2026-10-07 — the proxy listed the version only after a manual .info request (evidence: /tmp/tq-release-push-v033c.log, docs/status/2026-10-07_10-30 window); keep the 5-attempt loop, make attempt 1 the .info poke
 - [ ] `tq pool-health`: one-shot summarizing per-repo skip streaks + last harvest activity from the journal (liveness ≠ process up) (02:00 f27)
 
 - [ ] Verify the CQA bridge against a live CQA API instance and fix contract drift (`internal/bridge/cqa` response shapes are httptest-informed guesses today); upgrade its FEATURES.md status after (plan C25) — BLOCKED: needs a live CQA instance URL + owner ID + token from the owner
@@ -481,7 +482,6 @@ not here.
 
 - [ ] metaengine Delta counter queries for by_status/by_project (one collection keyed status, one keyed project|status; metaengine.On over the existing evt* structs, ExecuteTyped reads) replacing BOTH hand tallies (readmodel.StatusCounts full-scan at internal/readmodel/model.go:259-272, tallyStats/tallyModelRows at cmd/tq/main.go:2043-2075) — this IS the P5 dual-tally collapse landed onto the library surface (upstream metaengine/COOKBOOK.md §Status Count Dashboard)
 - [ ] Durable readmodel cursor: persist the pump watermark through the queue watermarks table (internal/watermark semantics: checkpoint AFTER each consumed batch) so process starts stop replaying the whole journal (in-process atomic.Int64 at internal/readmodel/model.go:63; production journal measured 9,523 facts = full replay per tq stats/api/serve start)
-- [ ] Run the readmodel projection under projectionhost.New(cqrs.NewFactJournal(store), cpStore) — durable checkpoints, DLQ for poison facts (malformed enqueue/repri detail currently wedges the cursor forever: internal/readmodel/events.go:213-215/247-249), restart budget, LagPerProjection; the hand pump (Run/CatchUp) shrinks to a projection Handle
 - [ ] tq doctor projection section + system.HealthCheckDetailed into the token-gated /health: engine stats, cursor lag (HeadSeq - JournalCursor), checkpoint state (zero HealthCheck references in internal/ today; compose.go builds the System but never asks it)
 - [ ] Cursor pagination for row-rich views via the TypedReader cursor round-trip (model.go:240 WithLimit(0) unbounded today) — board/table fragments page; export paths keep unbounded
 - [ ] Upstream go-cqrs-lite conversation: system event adapter sourcing an external event.SeekableJournal so tq collections can be declared as system projections without journal duplication — BLOCKED: owner design call (the empty-DomainConfig shell at internal/composition/compose.go:57 is justified until this seam exists)
