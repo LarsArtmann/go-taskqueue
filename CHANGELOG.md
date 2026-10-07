@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Dep-bump drift gate** (2026-10-07): `scripts/check-gomod-vendor-sync.sh`
+  regenerates `vendor/` (root) and runs `go mod tidy` in every module,
+  then requires an empty scoped git status — the bump-without-vendor /
+  without-tidy class (2026-10-07 03:12, multi-hour red window) now fails
+  at ci-local and CI gate time while the same run heals the tree. Ships
+  with a self-test pinning drift detection (bump-without-vendor and
+  missing-go.sum cases); `VENDOR_SYNC_OFF=1` is the network-tolerant
+  escape.
+
 ### Fixed
 - **journal/cqrs tests track the upstream `StreamID` display format**
   (2026-10-07): the go-cqrs-lite dep bump gave branded `StreamID` a

@@ -6,6 +6,12 @@
 # that test's comment — CHANGE BOTH TWINS TOGETHER: the 2026-10-05 ci-local
 # red was exactly this drift) and prints the top sections by size
 # so a prune is a 2-minute targeted fix (byte semantics via LC_ALL=C).
+#
+# DOCTRINE (hit twice on 2026-10-07): formatter table padding (dprint-style
+# column alignment adding ~1.4KB of spaces) is PRUNED via
+# `git restore --source=<pre-padding-commit> AGENTS.md` after confirming
+# with a whitespace-normalized diff that no real content changed — padding
+# is NEVER a reason to reset the budget.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

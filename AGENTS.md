@@ -225,8 +225,9 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR` leaks
   to children (use `env -u VAR`); multi-file `tail` fails; `printf %.0s`
   yields empty; chained `&` backgrounds the wrong span.
-- **Root builds auto-use `vendor/`** — after internal/ changes run
-  `go mod vendor` first.
+- **Root builds auto-use `vendor/`** — internal/ changes need
+  `go mod vendor` first; dep bumps also per-module `go mod tidy`
+  (`check-gomod-vendor-sync.sh` gates both).
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go
   PINNED to 1.27.1 = go.mod floor; NEVER lower a `go` directive
   (`check-go-mods.sh` gates).
