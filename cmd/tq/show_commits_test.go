@@ -64,13 +64,17 @@ func gitRepo(t *testing.T, commits ...[2]string) string {
 
 // commitsTask is the minimal task record the footer scan needs: an ID and
 // a payload naming the repo.
-func commitsTask(id, repo string) task.Task {
+// commitsTestTaskID is the task id every commits-view test cites; the
+// tests' git footers and the folded view share it.
+const commitsTestTaskID = "000001a0db237aa8"
+
+func commitsTask(repo string) task.Task {
 	payload, err := json.Marshal(map[string]string{"repo": repo})
 	if err != nil {
 		panic(err)
 	}
 
-	return task.Task{ID: task.ID(id), Type: "agent", Payload: payload}
+	return task.Task{ID: task.ID(commitsTestTaskID), Type: "agent", Payload: payload}
 }
 
 // TestCommitsForTaskFoldsAdjacentDaemonCommits pins the 147bd17 shape:
@@ -80,7 +84,7 @@ func commitsTask(id, repo string) task.Task {
 func TestCommitsForTaskFoldsAdjacentDaemonCommits(t *testing.T) {
 	t.Parallel()
 
-	const id = "000001a0db237aa8"
+	const id = commitsTestTaskID
 
 	repo := gitRepo(t,
 		[2]string{"chore: auto-commit 1 changed file(s) (heuristic)", ""},
@@ -89,7 +93,7 @@ func TestCommitsForTaskFoldsAdjacentDaemonCommits(t *testing.T) {
 		[2]string{"unrelated human commit", ""},
 	)
 
-	view := commitsForTask(commitsTask(id, repo))
+	view := commitsForTask(commitsTask(repo))
 
 	if view["count"] != 1 {
 		t.Fatalf("count = %v, want 1", view["count"])
@@ -130,14 +134,14 @@ func TestCommitsForTaskFoldsAdjacentDaemonCommits(t *testing.T) {
 func TestCommitsForTaskMultiCommitIsNorm(t *testing.T) {
 	t.Parallel()
 
-	const id = "000001a0db237aa8"
+	const id = commitsTestTaskID
 
 	repo := gitRepo(t,
 		[2]string{"agent work", "Task-Queue-ID: " + id},
 		[2]string{"close-out report", "Task-Queue-ID: " + id},
 	)
 
-	view := commitsForTask(commitsTask(id, repo))
+	view := commitsForTask(commitsTask(repo))
 
 	if view["count"] != 2 {
 		t.Fatalf("count = %v, want 2", view["count"])
@@ -164,7 +168,7 @@ func TestCommitsForTaskForeignRefIsAmbiguous(t *testing.T) {
 		[2]string{"cluster commit", "Task-Queue-ID: " + id + "\nTask-Queue-ID: " + foreign},
 	)
 
-	view := commitsForTask(commitsTask(id, repo))
+	view := commitsForTask(commitsTask(repo))
 
 	verdict, _ := view["verdict"].(string)
 	if !strings.Contains(verdict, "AMBIGUOUS") || !strings.Contains(verdict, foreign) {
@@ -178,7 +182,7 @@ func TestCommitsForTaskForeignRefIsAmbiguous(t *testing.T) {
 func TestCommitsForTaskNoFoldForHumanNeighbors(t *testing.T) {
 	t.Parallel()
 
-	const id = "000001a0db237aa8"
+	const id = commitsTestTaskID
 
 	repo := gitRepo(t,
 		[2]string{"human docs commit", ""},
@@ -186,7 +190,7 @@ func TestCommitsForTaskNoFoldForHumanNeighbors(t *testing.T) {
 		[2]string{"another human commit", ""},
 	)
 
-	view := commitsForTask(commitsTask(id, repo))
+	view := commitsForTask(commitsTask(repo))
 
 	if _, ok := view["folded_here"]; ok {
 		t.Fatalf("folded_here present for human neighbors: %v", view["folded_here"])
