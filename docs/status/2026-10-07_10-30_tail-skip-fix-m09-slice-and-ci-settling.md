@@ -9,15 +9,15 @@ until done).
 
 1. **The webui smoke red is ROOT-CAUSED and FIXED (M08 slice 2
    unblocked).** The projectionhost live tail passed `SeqToEventID(after
-   + 1)` to `ReadFrom`, but `ReadFrom` is EXCLUSIVE of the ID it is
+   - 1)`to`ReadFrom`, but`ReadFrom`is EXCLUSIVE of the ID it is
    given (`journal.AfterSeq`): every poll boundary permanently skipped
    the fact at anchor+1, and a skipped terminal fact (Completed,
    DeadLettered) wedged the fold's ledger — the smoke's persistent
    running=1. This was a GAP, not a lag; no amount of waiting would
-   converge it. Fix: `tailAnchor(after)` anchors at the LAST delivered
-   seq; the zero event ID reads from the journal start. Committed as
-   the session's own fix, then rebased overnight to b6b1fd11 by a
-   concurrent agent — content intact.
+   converge it. Fix:`tailAnchor(after)` anchors at the LAST delivered
+     seq; the zero event ID reads from the journal start. Committed as
+     the session's own fix, then rebased overnight to b6b1fd11 by a
+     concurrent agent — content intact.
 2. **Regression pin proven to catch the bug**: fast internal-package
    test (10ms poll, one fact per poll window, asserts exactly
    [3 4 5]). Sensitivity proven empirically in a /tmp copy: under the
@@ -52,9 +52,9 @@ until done).
 6. **M09 slice 1 landed (F041 + F042 + the serve half of the DLQ
    item)** — platform health visibility:
    - `internal/readmodel/dlq.go`: `DLQPathFor` (`<db>.readmodel.db`
-     + `.dlq.db`) and the `DeadLetters` sidecar (`OpenDeadLetters`,
-     `Store`, `Count`, `Recent`, `Close`; queue sqlite posture: WAL,
-     busy_timeout, MaxOpenConns(1)).
+     - `.dlq.db`) and the `DeadLetters` sidecar (`OpenDeadLetters`,
+       `Store`, `Count`, `Recent`, `Close`; queue sqlite posture: WAL,
+       busy_timeout, MaxOpenConns(1)).
    - serve wiring: `runReadModel` opens the sidecar and passes it as
      the host's `DeadLetterStore` (threshold 1); a sidecar failure is
      warn-and-continue — the fold runs without a DLQ rather than
