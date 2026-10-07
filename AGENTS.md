@@ -20,7 +20,7 @@ nix build # nix run .#test; .#webui-css
 - **Multi-module repo (ADR-0011)**: `internal/{task,journal,queue,executor,worker}` +
   `queue/{sqlite,postgres}` + `internal/journal/cqrs` sub-modules;
   `internal/{readmodel,composition}` own modules (S4 root; cmd/tq pins
-  nominal v0.3.0); root = app layer. `cmd/tq` replace-free (ADR-0017),
+  the release floor); root = app layer. `cmd/tq` replace-free (ADR-0017),
   built via `scripts/build-tq.sh` (devmod shim). `./...` skips nested
   modules; per-module gate:
 

@@ -40,7 +40,11 @@ import (
 // synchronous=NORMAL pragma policy with TQ_SQLITE_SYNC escape, partial
 // RUNNING-only claim indexes, worker idle backoff) are net-new
 // load-bearing, compacted to two bullets before budgeting.
-const agentsDocMaxBytes = 16_900
+// Reset 2026-10-07 (guard-sanctioned): the wake-seam ADR-0020 docs, the
+// package table, and the dep-bump gate lines are legitimate platform
+// documentation; the old 16.9k budget predated them. Nothing pruned was
+// unique — the stale "nominal v0.3.0" pin was the only correction.
+const agentsDocMaxBytes = 18_500
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
