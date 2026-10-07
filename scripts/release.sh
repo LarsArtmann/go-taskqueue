@@ -168,6 +168,14 @@ done
 step "module proxy verification"
 sleep 10
 for attempt in 1 2 3 4 5; do
+	# Attempt 1 pokes @v/<ver>.info: a passive @v/list poll never triggers
+	# the proxy's on-demand fill (v0.3.3 published only after a manual
+	# .info fetch, 2026-10-07) — the poke itself requests + caches it.
+	if [ "$attempt" = 1 ]; then
+		curl -fsS -o /dev/null "https://proxy.golang.org/$MODULE/@v/$VERSION.info" \
+			|| echo "WARN: .info poke failed (proxy may not have seen the tag yet)"
+		echo "poked demand-fill: https://proxy.golang.org/$MODULE/@v/$VERSION.info"
+	fi
 	if GOFLAGS='' go list -m -versions "$MODULE" 2>/dev/null | tr ' ' '\n' | grep -qx "$VERSION"; then
 		echo "proxy serves $VERSION"
 		break
