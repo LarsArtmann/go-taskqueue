@@ -55,7 +55,9 @@ tag BEFORE the release commits land is the classic mistake. Verifies
 `git tag --points-at HEAD` and the tagged tree's `go.mod` header.
 
 **Phase 3 — `--push`.** Pushes `master`, the root tag, and every internal
-sub-tag; waits on the module proxy (`go list -m -versions`, 5 attempts);
+sub-tag; waits on the module proxy (attempt 1 pokes
+`https://proxy.golang.org/<module>/@v/vX.Y.Z.info` to trigger the
+on-demand fill, then `go list -m -versions`, 5 attempts);
 clean-room verifies the real consumer path (`go get` the module, `go mod
 verify`, then `go install .../cmd/tq@vX.Y.Z` and run its `version` — go get
 alone only resolves metadata and cannot catch a broken sub-module require;
@@ -100,7 +102,10 @@ outside world; its steps and their failure modes:
 1. `git push origin master` + root tag + sub-tags — a rejected push (remote
    moved) is a HARD stop: re-run the gates (the tree changed under you).
    Never `--force`.
-2. Module proxy wait: `go list -m -versions`, 5 attempts x 30s. Timeout is
+2. Module proxy wait: attempt 1 pokes
+   `https://proxy.golang.org/<module>/@v/vX.Y.Z.info` (on-demand fill — a
+   passive @v/list poll never triggers a fetch), then `go list -m -versions`,
+   5 attempts x 30s. Timeout is
    NOT a failure of the release — verify
    `https://proxy.golang.org/<module>/@v/vX.Y.Z.info` manually; NEVER re-tag
    (the proxy caches forever; a re-tag poisons every future consumer).

@@ -32,7 +32,7 @@ not here.
 
 ## Dogfood round (harvested from docs/status/2026-09-10_02-00 self-review §f)
 
-- [ ] release.sh proxy verification pokes demand-fill: after the tag push, fetch `https://proxy.golang.org/<module>/@v/<ver>.info` (on-demand fill) instead of only polling `go list -m -versions` (passive @v/list never triggers a fetch); v0.3.3's publish died at attempt 5/5 on 2026-10-07 — the proxy listed the version only after a manual .info request (evidence: /tmp/tq-release-push-v033c.log, docs/status/2026-10-07_10-30 window); keep the 5-attempt loop, make attempt 1 the .info poke
+- [x] release.sh proxy verification pokes demand-fill: after the tag push, fetch `https://proxy.golang.org/<module>/@v/<ver>.info` (on-demand fill) instead of only polling `go list -m -versions` (passive @v/list never triggers a fetch); v0.3.3's publish died at attempt 5/5 on 2026-10-07 — the proxy listed the version only after a manual .info request (evidence: /tmp/tq-release-push-v033c.log, docs/status/2026-10-07_10-30 window); keep the 5-attempt loop, make attempt 1 the .info poke
 - [ ] `tq pool-health`: one-shot summarizing per-repo skip streaks + last harvest activity from the journal (liveness ≠ process up) (02:00 f27)
 
 - [ ] Verify the CQA bridge against a live CQA API instance and fix contract drift (`internal/bridge/cqa` response shapes are httptest-informed guesses today); upgrade its FEATURES.md status after (plan C25) — BLOCKED: needs a live CQA instance URL + owner ID + token from the owner
