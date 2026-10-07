@@ -146,10 +146,10 @@ func TestRedispatchCheckOpenWorkAllowed(t *testing.T) {
 	gitCommit(t, fixture.repo, "unrelated history")
 
 	cases := map[string]task.New{
-		"open item": candidateWith(ItemKey("preflight", itemText), itemText, "do the thing", "", ""),
-		"git sha in prompt": candidateWith("", "", "rebase onto "+strings.Repeat("a", 40), "", ""),
+		"open item":           candidateWith(ItemKey("preflight", itemText), itemText, "do the thing", "", ""),
+		"git sha in prompt":   candidateWith("", "", "rebase onto "+strings.Repeat("a", 40), "", ""),
 		"short sha in prompt": candidateWith("", "", "cured by abcdef01", "", ""),
-		"foreign payload": {Type: "agent", Payload: []byte(`{"repo":"","prompt":""}`)},
+		"foreign payload":     {Type: "agent", Payload: []byte(`{"repo":"","prompt":""}`)},
 	}
 
 	for name, candidate := range cases {
@@ -227,8 +227,8 @@ func TestRedispatchAuditSurfacesClosedRowResidue(t *testing.T) {
 		t.Helper()
 
 		tk, err := q.Enqueue(ctx, task.New{
-			Project:  "auditrepo",
-			Type:     "agent",
+			Project: "auditrepo",
+			Type:    "agent",
 			Payload: []byte(`{"repo":"auditrepo","prompt":"work","dedup":` +
 				jsonString(key) + `,"item":` + jsonString(item) + `}`),
 			DedupKey: key,
@@ -244,9 +244,9 @@ func TestRedispatchAuditSurfacesClosedRowResidue(t *testing.T) {
 	openKey := ItemKey("auditrepo", "open row")
 
 	churn := mint("catchup:"+closedKey, "closed row") // becomes the churn census below
-	live := mint(closedKey, "closed row")              // pending on a closed row
-	_ = mint(openKey, "open row")                      // control: open row stays invisible
-	mint(CatchupKeyPrefix+openKey, "open row")         // control: catch-up on an open row
+	live := mint(closedKey, "closed row")             // pending on a closed row
+	_ = mint(openKey, "open row")                     // control: open row stays invisible
+	mint(CatchupKeyPrefix+openKey, "open row")        // control: catch-up on an open row
 
 	// Churn: two burned laps (claim → fail ×2) then a completing claim —
 	// attempts counts burned failures, so the census wants more than one.

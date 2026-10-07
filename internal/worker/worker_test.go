@@ -1737,111 +1737,111 @@ func TestDonePreflightNotDoneRunsExecutor(t *testing.T) {
 	if ran.Load() != 1 {
 		t.Fatalf("executor ran %d times, want 1", ran.Load())
 	}
-	}
+}
 
-	// TestGateSlowGuardCompletesLandedWork pins the gate-slow done guard
-	// (row 340): when the verify gate dies without judging the task AND the
-	// run already landed its work (the done hook fires at the failure site),
-	// the task completes mechanically instead of requeueing into a second
-	// full agent window over done work — the receipt class where the work
-	// was visible, only the verify leg had died.
-	func TestGateSlowGuardCompletesLandedWork(t *testing.T) {
-		store := testStore(t)
+// TestGateSlowGuardCompletesLandedWork pins the gate-slow done guard
+// (row 340): when the verify gate dies without judging the task AND the
+// run already landed its work (the done hook fires at the failure site),
+// the task completes mechanically instead of requeueing into a second
+// full agent window over done work — the receipt class where the work
+// was visible, only the verify leg had died.
+func TestGateSlowGuardCompletesLandedWork(t *testing.T) {
+	store := testStore(t)
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-		reg := executor.NewRegistry()
+	reg := executor.NewRegistry()
 
-		var ran atomic.Int32
+	var ran atomic.Int32
 
-		reg.RegisterFunc("gate", func(context.Context, task.Task) error {
-			ran.Add(1)
+	reg.RegisterFunc("gate", func(context.Context, task.Task) error {
+		ran.Add(1)
 
-			return &executor.VerifyGateError{
-				Class: executor.VerifyGateDead,
-				Cause: errors.New("agent verify failed: deadline killed the gate"),
-			}
-		})
-
-		enq, _ := store.Enqueue(ctx, task.New{Type: "gate", MaxAttempts: 3})
-
-		pool := New(store, Config{
-			Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
-			PreflightBackoff: 120 * time.Millisecond,
-			Executors:        reg,
-			DonePreflight: func(context.Context, task.Task) (bool, string) {
-				// Claim-time: not done. After the run (work landed): done.
-				if ran.Load() == 0 {
-					return false, ""
-				}
-
-				return true, "done preflight: commit(s) already carry this task's Task-Queue-ID footer"
-			},
-		}, quietLog())
-		go func() { _ = pool.Start(ctx) }()
-
-		got := waitFor(t, ctx, store, enq.ID, task.Completed)
-		cancel()
-
-		if ran.Load() != 1 {
-			t.Fatalf("executor ran %d times, want 1 (no second window over landed work)", ran.Load())
+		return &executor.VerifyGateError{
+			Class: executor.VerifyGateDead,
+			Cause: errors.New("agent verify failed: deadline killed the gate"),
 		}
+	})
 
-		if got.Status != task.Completed {
-			t.Fatalf("status = %s, want completed (mechanical close, not a requeue ladder)", got.Status)
-		}
-	}
+	enq, _ := store.Enqueue(ctx, task.New{Type: "gate", MaxAttempts: 3})
 
-	// TestGateSlowGuardNotDoneStillRequeues is the negative control: the same
-	// gate death with NO landed-work evidence keeps the historical requeue
-	// ladder — the guard completes only on positive proof.
-	func TestGateSlowGuardNotDoneStillRequeues(t *testing.T) {
-		store := testStore(t)
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		reg := executor.NewRegistry()
-
-		var ran atomic.Int32
-
-		reg.RegisterFunc("gate", func(context.Context, task.Task) error {
-			ran.Add(1)
-
-			return &executor.VerifyGateError{
-				Class: executor.VerifyGateDead,
-				Cause: errors.New("agent verify failed: exit status 1"),
-			}
-		})
-
-		enq, _ := store.Enqueue(ctx, task.New{Type: "gate", MaxAttempts: 1})
-
-		pool := New(store, Config{
-			Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
-			PreflightBackoff: 120 * time.Millisecond,
-			Executors:        reg,
-			DonePreflight: func(context.Context, task.Task) (bool, string) {
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		PreflightBackoff: 120 * time.Millisecond,
+		Executors:        reg,
+		DonePreflight: func(context.Context, task.Task) (bool, string) {
+			// Claim-time: not done. After the run (work landed): done.
+			if ran.Load() == 0 {
 				return false, ""
-			},
-		}, quietLog())
-		go func() { _ = pool.Start(ctx) }()
-
-		deadline := time.Now().Add(3 * time.Second)
-		for time.Now().Before(deadline) {
-			got, _ := store.Get(context.Background(), enq.ID)
-			if got.LastError != "" && got.Status == task.Pending && got.Attempts == 0 {
-				break
 			}
 
-			time.Sleep(5 * time.Millisecond)
-		}
+			return true, "done preflight: commit(s) already carry this task's Task-Queue-ID footer"
+		},
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
 
-		cancel()
+	got := waitFor(t, ctx, store, enq.ID, task.Completed)
+	cancel()
 
-		first, _ := store.Get(context.Background(), enq.ID)
-		if first.Status != task.Pending || first.Attempts != 0 {
-			t.Fatalf("no-evidence gate death must requeue: status=%s attempts=%d, want pending/0",
-				first.Status, first.Attempts)
-		}
+	if ran.Load() != 1 {
+		t.Fatalf("executor ran %d times, want 1 (no second window over landed work)", ran.Load())
 	}
+
+	if got.Status != task.Completed {
+		t.Fatalf("status = %s, want completed (mechanical close, not a requeue ladder)", got.Status)
+	}
+}
+
+// TestGateSlowGuardNotDoneStillRequeues is the negative control: the same
+// gate death with NO landed-work evidence keeps the historical requeue
+// ladder — the guard completes only on positive proof.
+func TestGateSlowGuardNotDoneStillRequeues(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var ran atomic.Int32
+
+	reg.RegisterFunc("gate", func(context.Context, task.Task) error {
+		ran.Add(1)
+
+		return &executor.VerifyGateError{
+			Class: executor.VerifyGateDead,
+			Cause: errors.New("agent verify failed: exit status 1"),
+		}
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "gate", MaxAttempts: 1})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		PreflightBackoff: 120 * time.Millisecond,
+		Executors:        reg,
+		DonePreflight: func(context.Context, task.Task) (bool, string) {
+			return false, ""
+		},
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		got, _ := store.Get(context.Background(), enq.ID)
+		if got.LastError != "" && got.Status == task.Pending && got.Attempts == 0 {
+			break
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	cancel()
+
+	first, _ := store.Get(context.Background(), enq.ID)
+	if first.Status != task.Pending || first.Attempts != 0 {
+		t.Fatalf("no-evidence gate death must requeue: status=%s attempts=%d, want pending/0",
+			first.Status, first.Attempts)
+	}
+}
