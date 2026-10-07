@@ -285,3 +285,22 @@ ffe031ad
 # sibling agent's vendor-sync sweep; daemon commit with no amend successor
 # (dangles via the morning session's amend maneuvers).
 9d6b3ddd
+
+# 2026-10-07 release-probe heal mass: the pre-dawn window's amend maneuvers
+# (ea102014->437879a0, 871b1585->03113f96, f87c5c95->36f9d64b lineage) dangled the
+# window reports' snapshot citations; emitted via check-dead-sha-refs --emit-baseline,
+# curated per O16 (fork records impractical for anonymous daemon sweeps).
+06607444
+0bb76f54
+135c7c1d
+148f0255
+264b4113
+53420f83
+63c9748b
+77b46cb1
+98f51cbe
+9a63ca69
+c9a31765
+e7b5fefe
+f87e4c80
+ff10a323
