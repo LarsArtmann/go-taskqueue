@@ -11,11 +11,10 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	_ "time/tzdata" // embedded tzdb keeps the DST table hermetic (nix checkPhase has no zoneinfo)
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
-
-	_ "time/tzdata" // embedded tzdb keeps the DST table hermetic (nix checkPhase has no zoneinfo)
 )
 
 // seeded returns a journal with n enqueued facts today and m yesterday.

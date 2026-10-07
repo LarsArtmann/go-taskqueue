@@ -111,6 +111,7 @@ func TestRedispatchCheckCloseoutCited(t *testing.T) {
 	fixture := newDonePreflightFixture(t, "- [ ] open work\n")
 
 	cited := strings.Repeat("1", 36)
+
 	reportDir := filepath.Join(fixture.repo, "docs", "status", "tasks")
 	if err := os.MkdirAll(reportDir, 0o755); err != nil {
 		t.Fatal(err)

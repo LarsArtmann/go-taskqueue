@@ -40,10 +40,12 @@ func TestBudgetClaimGateParksOverCapSubprocess(t *testing.T) {
 	writeFile(t, stub, "#!/bin/sh\ntouch "+marker+"\nexit 0\n", 0o755)
 
 	db := filepath.Join(dir, "q.db")
+
 	env := append(os.Environ(), "TQ_AGENT_BIN="+stub)
 
 	// Seed uncapped: both items enqueue (spent=2), nothing executes.
 	seed := exec.Command(tqBin, "harvest", "--repos", repos, "--db", db)
+
 	seed.Env = env
 	if out, err := runWithTimeout(seed, 30*time.Second); err != nil {
 		t.Fatalf("seed harvest: %v\n%s", err, out)
@@ -53,6 +55,7 @@ func TestBudgetClaimGateParksOverCapSubprocess(t *testing.T) {
 	pool := exec.Command(tqBin, "agent-pool",
 		"--repos", repos, "--db", db, "--poll", "50ms", "--once",
 		"--daily-budget", "1")
+
 	pool.Env = env
 	if out, err := runWithTimeout(pool, 60*time.Second); err != nil {
 		t.Fatalf("agent-pool (capped): %v\n%s", err, out)
@@ -82,6 +85,7 @@ func TestBudgetClaimGateParksOverCapSubprocess(t *testing.T) {
 	}
 
 	requeues := 0
+
 	for _, f := range facts {
 		if f.Type != "task.requeued" {
 			continue

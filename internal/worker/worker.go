@@ -510,6 +510,7 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 				idle++
 			} else {
 				p.log.Error("claim failed", "err", err)
+
 				idle = 0
 			}
 

@@ -174,6 +174,7 @@ func TestDonePreflightFixSuperseded(t *testing.T) {
 	f := newDonePreflightFixture(t, "- [ ] host item\n")
 	rejected := gitCommit(t, f.repo, "the rejected change")
 	id := task.NewID()
+
 	gitCommit(t, f.repo, "supersede: rework of "+rejected)
 
 	done, reason := f.h.DonePreflight(

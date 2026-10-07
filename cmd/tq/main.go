@@ -2458,7 +2458,8 @@ type foldedCommit struct {
 // diff-tree view); a read failure yields nil — the fold stays listed,
 // just without files.
 func gitChangedFiles(repo, sha string) []string {
-	out, err := exec.Command("git", "-C", repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha).Output()
+	out, err := exec.Command("git", "-C", repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha).
+		Output()
 	if err != nil {
 		return nil
 	}

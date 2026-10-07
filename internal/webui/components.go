@@ -3,6 +3,7 @@ package webui
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -506,15 +507,15 @@ func parkedOnBudget(t task.Task, facts []journalFactView) bool {
 		return false
 	}
 
-	for i := len(facts) - 1; i >= 0; i-- {
-		if facts[i].Type != journal.Requeued {
+	for _, fact := range slices.Backward(facts) {
+		if fact.Type != journal.Requeued {
 			continue
 		}
 
 		var evidence struct {
 			Class string `json:"class"`
 		}
-		if err := json.Unmarshal(facts[i].Detail, &evidence); err != nil {
+		if err := json.Unmarshal(fact.Detail, &evidence); err != nil {
 			return false
 		}
 

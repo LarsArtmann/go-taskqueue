@@ -389,6 +389,7 @@ func budgetParkedCount(ctx context.Context, store queue.Store, now time.Time) in
 	}
 
 	n := 0
+
 	for _, class := range latest {
 		if class == queue.RequeueClassBudget {
 			n++

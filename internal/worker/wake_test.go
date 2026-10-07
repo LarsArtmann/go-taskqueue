@@ -45,8 +45,10 @@ func TestPoolWakePreemptsIdleLadder(t *testing.T) {
 	defer cancel()
 
 	done := make(chan struct{})
+
 	go func() {
 		_ = pool.Start(ctx)
+
 		close(done)
 	}()
 
@@ -61,6 +63,7 @@ func TestPoolWakePreemptsIdleLadder(t *testing.T) {
 
 	// Fire the wake; the parked loop must come back for a second claim.
 	sent := time.Now()
+
 	wake <- struct{}{}
 
 	for store.claimCount() < 2 {
@@ -104,8 +107,10 @@ func TestPoolWakeResetsLadder(t *testing.T) {
 	defer cancel()
 
 	done := make(chan struct{})
+
 	go func() {
 		_ = pool.Start(ctx)
+
 		close(done)
 	}()
 

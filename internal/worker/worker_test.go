@@ -1782,6 +1782,7 @@ func TestGateSlowGuardCompletesLandedWork(t *testing.T) {
 	go func() { _ = pool.Start(ctx) }()
 
 	got := waitFor(t, ctx, store, enq.ID, task.Completed)
+
 	cancel()
 
 	if ran.Load() != 1 {

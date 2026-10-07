@@ -312,6 +312,7 @@ func (h *Harvester) redispatchAuditRepo(ctx context.Context, repo string, res *R
 		}
 
 		class := ""
+
 		switch t.Status {
 		case task.Pending, task.Running:
 			class = RedispatchClassLive

@@ -34,7 +34,15 @@ func TestParkedByClassJoinsFacts(t *testing.T) {
 		t.Fatalf("claim = %s, want %s", tk.ID, budgetParked.ID)
 	}
 
-	if err := store.Requeue(ctx, tk.ID, claim, "daily cap spent", time.Hour, false, queue.RequeueClassBudget); err != nil {
+	if err := store.Requeue(
+		ctx,
+		tk.ID,
+		claim,
+		"daily cap spent",
+		time.Hour,
+		false,
+		queue.RequeueClassBudget,
+	); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 

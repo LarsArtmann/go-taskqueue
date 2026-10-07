@@ -53,7 +53,14 @@ func TokenFor(ctx context.Context, r Runner, id task.ID, claim queue.Claim, requ
 // backend adapter cannot order the finalize ahead of the gate. The
 // TokenFor error is returned as-is (already tq vocabulary); everything
 // use returns passes through untouched.
-func WithToken(ctx context.Context, r Runner, id task.ID, claim queue.Claim, requireLive bool, use func(token string) error) error {
+func WithToken(
+	ctx context.Context,
+	r Runner,
+	id task.ID,
+	claim queue.Claim,
+	requireLive bool,
+	use func(token string) error,
+) error {
 	token, err := TokenFor(ctx, r, id, claim, requireLive)
 	if err != nil {
 		return err

@@ -122,9 +122,27 @@ func TestAggregateTopBudgetParkedChip(t *testing.T) {
 	other.NotBefore = base.Add(time.Hour)
 
 	facts := []journal.Fact{
-		{Seq: 1, TaskID: "t1", Type: journal.Requeued, Time: base, Detail: jsontext.Value(`{"reason":"cap","retry_in_ms":3600000,"class":"budget"}`)},
-		{Seq: 2, TaskID: "t2", Type: journal.Requeued, Time: base, Detail: jsontext.Value(`{"reason":"cap","retry_in_ms":0,"class":"budget"}`)},
-		{Seq: 3, TaskID: "t3", Type: journal.Requeued, Time: base, Detail: jsontext.Value(`{"reason":"429","retry_in_ms":3600000,"class":"rate-limit"}`)},
+		{
+			Seq:    1,
+			TaskID: "t1",
+			Type:   journal.Requeued,
+			Time:   base,
+			Detail: jsontext.Value(`{"reason":"cap","retry_in_ms":3600000,"class":"budget"}`),
+		},
+		{
+			Seq:    2,
+			TaskID: "t2",
+			Type:   journal.Requeued,
+			Time:   base,
+			Detail: jsontext.Value(`{"reason":"cap","retry_in_ms":0,"class":"budget"}`),
+		},
+		{
+			Seq:    3,
+			TaskID: "t3",
+			Type:   journal.Requeued,
+			Time:   base,
+			Detail: jsontext.Value(`{"reason":"429","retry_in_ms":3600000,"class":"rate-limit"}`),
+		},
 	}
 
 	got := aggregateTop([]task.Task{parked, due, other}, facts, base)

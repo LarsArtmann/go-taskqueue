@@ -269,7 +269,9 @@ func (s *Store) Fail(
 	// or dead-letters it; the wake is harmless on the dead path (one
 	// no-op claim) and the retry path is exactly the claimable case.
 	return companion.WithToken(ctx, s.cr, id, claim, true, func(token string) error {
-		if err := companion.MapErr(s.engine.Fail(ctx, utask.ID(id.String()), token, errText, backoff, []byte(evidence))); err != nil {
+		if err := companion.MapErr(
+			s.engine.Fail(ctx, utask.ID(id.String()), token, errText, backoff, []byte(evidence)),
+		); err != nil {
 			return err
 		}
 
@@ -373,7 +375,17 @@ func (s *Store) Requeue(
 	resumeCloseout bool,
 	class string,
 ) error {
-	if err := companion.Requeue(ctx, companion.SQLite, s.db, id, claim, errText, delay, resumeCloseout, class); err != nil {
+	if err := companion.Requeue(
+		ctx,
+		companion.SQLite,
+		s.db,
+		id,
+		claim,
+		errText,
+		delay,
+		resumeCloseout,
+		class,
+	); err != nil {
 		return err
 	}
 

@@ -73,6 +73,7 @@ func TestNotifyCoalesces(t *testing.T) {
 	}
 
 	signals := 0
+
 	for {
 		select {
 		case <-s.Notify():

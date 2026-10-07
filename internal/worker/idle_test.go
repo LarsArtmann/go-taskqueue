@@ -99,8 +99,10 @@ func TestPoolIdleBackoff(t *testing.T) {
 	defer cancel()
 
 	done := make(chan struct{})
+
 	go func() {
 		_ = pool.Start(ctx)
+
 		close(done)
 	}()
 

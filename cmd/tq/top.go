@@ -234,7 +234,17 @@ func cmdTop(args []string) error {
 
 func renderTop(views []projectView, now time.Time) {
 	fmt.Printf("tq top — %s\n", now.Format("15:04:05"))
-	fmt.Printf("%-28s %6s %6s %6s %6s %6s %8s %9s\n", "PROJECT", "pend", "run", "done", "dead", "bpark", "last", "active")
+	fmt.Printf(
+		"%-28s %6s %6s %6s %6s %6s %8s %9s\n",
+		"PROJECT",
+		"pend",
+		"run",
+		"done",
+		"dead",
+		"bpark",
+		"last",
+		"active",
+	)
 
 	var pending, running, completed, dead, budgetParked int
 

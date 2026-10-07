@@ -295,6 +295,7 @@ func TestHealthProjectionCheck(t *testing.T) {
 	p.projectionCursor = func(context.Context) (int64, bool) { return 118, true }
 
 	resp = p.CachedResponse()
+
 	proj := resp.Checks["projection"]
 	if proj.Status != health.StatusPass {
 		t.Errorf("at-head projection = %+v, want pass", proj)
@@ -305,6 +306,7 @@ func TestHealthProjectionCheck(t *testing.T) {
 	p.projectionCursor = func(context.Context) (int64, bool) { return 118, true }
 
 	resp = p.CachedResponse()
+
 	proj = resp.Checks["projection"]
 	if proj.Status != health.StatusWarn {
 		t.Errorf("wedged projection = %+v, want warn", proj)

@@ -2469,6 +2469,7 @@ func TestStrandedLampRendersFromDepState(t *testing.T) {
 
 	// A completed dependency is a normal wait, not a stranding.
 	healthy := enqueue(t, s, "sh", "demo")
+
 	waiter := task.New{Type: "sh", Payload: jsontext.Value(`"x"`), Deps: []task.ID{healthy.ID}}
 	if _, err := s.Enqueue(ctx, waiter); err != nil {
 		t.Fatalf("enqueue waiter: %v", err)

@@ -631,7 +631,15 @@ func TestJournalAuditBudgetHintRenders(t *testing.T) {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := store.Requeue(ctx, claimed.ID, claim, "budget gate: daily cap spent", time.Hour, false, queue.RequeueClassBudget); err != nil {
+	if err := store.Requeue(
+		ctx,
+		claimed.ID,
+		claim,
+		"budget gate: daily cap spent",
+		time.Hour,
+		false,
+		queue.RequeueClassBudget,
+	); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 

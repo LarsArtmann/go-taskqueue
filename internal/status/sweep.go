@@ -341,6 +341,7 @@ func closeoutReportPath(repo string, id task.ID) string {
 	}
 
 	var matches []string
+
 	for _, dir := range []string{"tasks", "."} {
 		globMatches, err := filepath.Glob(
 			filepath.Join(repo, "docs", "status", dir, "*_task-"+id.String()+".md"),

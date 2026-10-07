@@ -740,7 +740,9 @@ func doctorProjection(ctx context.Context, store queue.Store, dbPath string) []c
 
 	head, err := store.HeadSeq(ctx)
 	if err != nil {
-		return []checkResult{{Name: "projection-cursor", Status: checkFail, Detail: "read journal head: " + err.Error()}}
+		return []checkResult{
+			{Name: "projection-cursor", Status: checkFail, Detail: "read journal head: " + err.Error()},
+		}
 	}
 
 	var results []checkResult
@@ -787,25 +789,38 @@ func doctorProjection(ctx context.Context, store queue.Store, dbPath string) []c
 
 	folded, err := m.StatusCounts(ctx)
 	if err != nil {
-		return append(results, checkResult{Name: "projection-db", Status: checkFail, Detail: "folded counts: " + err.Error()})
+		return append(
+			results,
+			checkResult{Name: "projection-db", Status: checkFail, Detail: "folded counts: " + err.Error()},
+		)
 	}
 
 	live, err := store.StatusCounts(ctx)
 	if err != nil {
-		return append(results, checkResult{Name: "projection-db", Status: checkFail, Detail: "queue counts: " + err.Error()})
+		return append(
+			results,
+			checkResult{Name: "projection-db", Status: checkFail, Detail: "queue counts: " + err.Error()},
+		)
 	}
 
 	if drift := statusDrift(folded, live); len(drift) > 0 {
 		return append(results, checkResult{
 			Name:   "projection-db",
 			Status: checkWarn,
-			Detail: "folded counts drift from the queue: " + strings.Join(drift, "; ") + " (the fold converges on the next serve)",
+			Detail: "folded counts drift from the queue: " + strings.Join(
+				drift,
+				"; ",
+			) + " (the fold converges on the next serve)",
 		})
 	}
 
 	return append(
 		results,
-		checkResult{Name: "projection-db", Status: checkOK, Detail: fmt.Sprintf("counts match the queue at cursor #%d", cursor)},
+		checkResult{
+			Name:   "projection-db",
+			Status: checkOK,
+			Detail: fmt.Sprintf("counts match the queue at cursor #%d", cursor),
+		},
 	)
 }
 

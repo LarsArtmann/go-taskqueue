@@ -365,7 +365,17 @@ func (s *Store) Requeue(
 	resumeCloseout bool,
 	class string,
 ) error {
-	if err := companion.Requeue(ctx, companion.Postgres, s.db, id, claim, errText, delay, resumeCloseout, class); err != nil {
+	if err := companion.Requeue(
+		ctx,
+		companion.Postgres,
+		s.db,
+		id,
+		claim,
+		errText,
+		delay,
+		resumeCloseout,
+		class,
+	); err != nil {
 		return err
 	}
 
