@@ -32,11 +32,11 @@ type Config struct {
 	// claimed within the cap. Default 2s; negative disables the ladder
 	// (fixed PollInterval, the historical behavior).
 	IdlePollMax time.Duration
-	Lease        time.Duration // claim lease length (default 2m)
-	Heartbeat    time.Duration // heartbeat cadence, < Lease (default 30s)
-	TaskTimeout  time.Duration // per-task execution cap (default 10m)
-	Executors    *executor.Registry
-	Backoff      func(attempt int) time.Duration // retry backoff (default exp)
+	Lease       time.Duration // claim lease length (default 2m)
+	Heartbeat   time.Duration // heartbeat cadence, < Lease (default 30s)
+	TaskTimeout time.Duration // per-task execution cap (default 10m)
+	Executors   *executor.Registry
+	Backoff     func(attempt int) time.Duration // retry backoff (default exp)
 	// PreflightBackoff delays re-claiming after a preflight refusal
 	// (dirty repo, missing autonomy config). Default 2m. No attempt is
 	// burned by preflight refusals.
