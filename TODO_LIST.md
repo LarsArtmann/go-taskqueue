@@ -42,6 +42,8 @@ not here.
 - [ ] release.sh: extract the proxy-wait loop into a testable function + offline bash test driving both die branches (network-dead vs proxy lag) — bash -n covers syntax only (closeout 2026-10-08 00-55 §e1)
 - [ ] release.sh: split the .info poke's curl failure modes via `-w '%{http_code}'` (404 = proxy lag, DNS/TLS/5xx = network-dead) so the 5/5 die classifies on HTTP semantics, not bare connectivity (closeout 2026-10-08 00-55 §e3)
 - [ ] release.sh: add `--publish-steps-only` (resume at proxy verification) so a network-dead 5/5 death doesn't force a full-script re-run (closeout 2026-10-08 00-55 §e2; echo of 2026-10-07 16-50 §e)
+- [ ] check-release-docs.sh: make the `need_in_both` doc pins reflow-tolerant (grep a whitespace-normalized copy of RELEASE.md, e.g. `tr '\n' ' '`) so a doc reflow can't false-fail the drift smoke; the hazard comment at the call site shrinks to a why-normalized one-liner (closeout 2026-10-08 §e1)
+- [ ] check-release-docs.sh: add a `--self-test` pin (sibling pattern: check-transient-retry.sh) proving drift detection fires — mutate a doc copy, expect drift=1 — so the smoke can't rot into always-green (closeout 2026-10-08 §e2)
 
 - [ ] Verify the CQA bridge against a live CQA API instance and fix contract drift (`internal/bridge/cqa` response shapes are httptest-informed guesses today); upgrade its FEATURES.md status after (plan C25) — BLOCKED: needs a live CQA instance URL + owner ID + token from the owner
 
