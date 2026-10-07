@@ -47,6 +47,27 @@ var ErrEmptyAnswer = errors.New("queue: record answer needs a non-empty answer")
 // means a fresh key (edit the item text).
 var ErrTaskDone = errors.New("queue: dedup key already completed; re-dispatch refused (edit the item text to re-arm)")
 
+// Waker is the optional claim-wake seam (M7): a store whose commits can
+// make work claimable implements it so pools claim in microseconds
+// instead of waiting out the idle poll gap. Deliberately a SIDE seam over
+// Store, not a Store method — the ADR-0009 D4 precedent (the dispatcher
+// stayed off Store for the same reason): optional runtime capability must
+// not break every Store implementation, fake, and conform pin.
+//
+// Contract: the channel is buffered-1 and sends are non-blocking — an
+// already-pending signal coalesces (a burst of enqueues wakes once), a
+// slow consumer never stalls a writer, and a missed signal only costs the
+// poll fallback. The signal is best-effort and process-local: pools in
+// OTHER processes sharing the same database keep their poll loops (the
+// wake is latency polish, not a correctness mechanism — claims stay
+// lease-fenced either way).
+type Waker interface {
+	// Notify yields the claim-wake channel. It fires after any commit
+	// that may have landed a task in PENDING (enqueue, requeue, fail with
+	// retries remaining, rescue, a parked question answered).
+	Notify() <-chan struct{}
+}
+
 // Claim is the handle a claimer presents to finalize a claimed task: the
 // claim token minted at ClaimDue. Finalizes are TOKEN-fenced — the store
 // checks the presented claim against the live lease, so theft detection

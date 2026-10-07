@@ -54,6 +54,10 @@ type Store struct {
 	cr companion.Runner
 
 	projectExclusive bool
+
+	// wake is the queue.Waker channel (M7): buffered 1, non-blocking
+	// sends, fired after commits that may have landed work in PENDING.
+	wake chan struct{}
 }
 
 // Store implements the tq queue contract at compile time.
@@ -61,6 +65,9 @@ type Store struct {
 // art-dupl:accept interface-assert boilerplate: every Store backend must
 // restate this check; there is no logic to extract.
 var _ queue.Store = (*Store)(nil)
+
+// Store implements the optional claim-wake seam at compile time (M7).
+var _ queue.Waker = (*Store)(nil)
 
 // StoreOption configures optional Store behavior.
 //
@@ -147,6 +154,7 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 		db:               db,
 		cr:               companion.For(companion.SQLite, db),
 		projectExclusive: projectExclusive,
+		wake:             make(chan struct{}, 1),
 	}
 
 	if err := companion.Migrate(context.Background(), store.cr); err != nil {
@@ -208,7 +216,24 @@ func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
 		return task.Task{}, companion.MapErr(err)
 	}
 
+	s.fireWake()
+
 	return s.Get(ctx, task.ID(created.ID.String()))
+}
+
+// Notify implements queue.Waker (M7): the claim-wake channel. See the
+// Waker contract in internal/queue — buffered 1, non-blocking, fires
+// after commits that may have landed a task in PENDING.
+func (s *Store) Notify() <-chan struct{} { return s.wake }
+
+// fireWake signals claim-waiting pools: a non-blocking send on the
+// buffered-1 channel — an already-pending signal coalesces (a burst of
+// enqueues wakes once), and a writer never blocks on a slow consumer.
+func (s *Store) fireWake() {
+	select {
+	case s.wake <- struct{}{}:
+	default:
+	}
 }
 
 // tokenFor enforces tq's claim-token gate for a finalize (the gate itself
@@ -254,7 +279,16 @@ func (s *Store) Fail(
 		return err
 	}
 
-	return companion.MapErr(s.engine.Fail(ctx, utask.ID(id.String()), token, errText, backoff, []byte(evidence)))
+	if err := companion.MapErr(s.engine.Fail(ctx, utask.ID(id.String()), token, errText, backoff, []byte(evidence))); err != nil {
+		return err
+	}
+
+	// A failed attempt either returns the task to PENDING (retries left)
+	// or dead-letters it; the wake is harmless on the dead path — one
+	// no-op claim — and the retry path is exactly the claimable case.
+	s.fireWake()
+
+	return nil
 }
 
 // FailPermanent dead-letters immediately (permanent error class).
@@ -321,7 +355,13 @@ func (s *Store) MarkOrphaned(ctx context.Context, cutoff time.Time) (int, error)
 
 // RescueDead re-queues a Dead task with a fresh attempt budget.
 func (s *Store) RescueDead(ctx context.Context, id task.ID, maxAttempts int) error {
-	return companion.MapErr(s.engine.RescueDead(ctx, utask.ID(id.String()), maxAttempts))
+	if err := companion.MapErr(s.engine.RescueDead(ctx, utask.ID(id.String()), maxAttempts)); err != nil {
+		return err
+	}
+
+	s.fireWake()
+
+	return nil
 }
 
 // DismissDead cancels a Dead task with a recorded reason.
@@ -352,7 +392,13 @@ func (s *Store) Requeue(
 	resumeCloseout bool,
 	class string,
 ) error {
-	return companion.Requeue(ctx, companion.SQLite, s.db, id, claim, errText, delay, resumeCloseout, class)
+	if err := companion.Requeue(ctx, companion.SQLite, s.db, id, claim, errText, delay, resumeCloseout, class); err != nil {
+		return err
+	}
+
+	s.fireWake()
+
+	return nil
 }
 
 // AppendFact records a NON-task journal fact (session.opened /
@@ -371,7 +417,13 @@ func (s *Store) AppendFact(ctx context.Context, f journal.Fact) error {
 // RecordAnswer records an owner's decision for a parked task's question
 // (companion-owned; same-tx payload injection + NotBefore clear + fact).
 func (s *Store) RecordAnswer(ctx context.Context, id task.ID, ans queue.AnswerRecord) error {
-	return companion.RecordAnswer(ctx, companion.SQLite, s.db, id, ans)
+	if err := companion.RecordAnswer(ctx, companion.SQLite, s.db, id, ans); err != nil {
+		return err
+	}
+
+	s.fireWake()
+
+	return nil
 }
 
 // Get returns the current task record.
