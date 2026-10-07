@@ -52,9 +52,10 @@
 
 ## f) TOP 50 THINGS WE SHOULD GET DONE NEXT
 
-*Brainstorm, not commitment — most are ROADMAP fuel; HARVEST should triage.*
+_Brainstorm, not commitment — most are ROADMAP fuel; HARVEST should triage._
 
 **Direct fallout from this session (highest impact first):**
+
 1. Run root `test -race` battery at composite HEAD and file the rc (closes b1, the AGENTS-touch convention).
 2. Watch templ-components CI green on `be333c36`; file link in next report.
 3. Verify v1.20.1 renders on pkg.go.dev; run the post-propagation go.sum sweep certification (done for local tidy — certify CI-clean).

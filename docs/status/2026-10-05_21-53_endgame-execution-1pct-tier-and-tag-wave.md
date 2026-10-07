@@ -18,8 +18,8 @@ Task-Queue-ID: none (owner-directed session, 2026-10-05 ~20:35–21:53 CEST)
   `tallyModelRows` deleted; store escape hatch reads the store's own
   GROUP BY surfaces and narrows in Go. Pinned by
   `TestStatsParityLifecycle` (lifecycle incl. rescue + dismiss + filters
-  + store parity). Gates: readmodel module (build/vet/test/-race), root
-  build/vet/test -race, cmd/tq gate — all green.
+  - store parity). Gates: readmodel module (build/vet/test/-race), root
+    build/vet/test -race, cmd/tq gate — all green.
 - **M03 — durable readmodel cursor** (573cff3f + sweeps 5bf66469/56d10d4f):
   `WithDurableCursor` checkpoints into the `watermarks` table after
   every applied batch (consumer `readmodel`), resumes on open, and an

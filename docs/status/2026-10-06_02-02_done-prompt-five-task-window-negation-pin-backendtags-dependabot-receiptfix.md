@@ -5,13 +5,13 @@
 
 **Tasks in the window:**
 
-| Task | Deliverable | Work commit(s) | Closeout |
-| --- | --- | --- | --- |
-| 000001a109c3… | archive-evidence gitignore-negation carve-out | `82f1415c` | 2026-10-05_04-10 |
+| Task          | Deliverable                                    | Work commit(s)                  | Closeout         |
+| ------------- | ---------------------------------------------- | ------------------------------- | ---------------- |
+| 000001a109c3… | archive-evidence gitignore-negation carve-out  | `82f1415c`                      | 2026-10-05_04-10 |
 | 000001a109e0… | check-verify.sh in-situ flake-heal pin (pin 5) | `d76c6437` (+healed `3b136c41`) | 2026-10-05_04-55 |
-| 000001a10e16… | Backend-tag v0.2.0 release verification | `dde3ae78` (+healed `22e8c50f`) | 2026-10-06_00-23 |
-| 000001a10e32… | Dependabot full-tree coverage | `9badd3bd` + `f34c63ac` | 2026-10-06_00-44 |
-| 000001a10e36… | Review-fix: gate receipt 17 → 16 | `cfd09fe4` | 2026-10-06_00-59 |
+| 000001a10e16… | Backend-tag v0.2.0 release verification        | `dde3ae78` (+healed `22e8c50f`) | 2026-10-06_00-23 |
+| 000001a10e32… | Dependabot full-tree coverage                  | `9badd3bd` + `f34c63ac`         | 2026-10-06_00-44 |
+| 000001a10e36… | Review-fix: gate receipt 17 → 16               | `cfd09fe4`                      | 2026-10-06_00-59 |
 
 ## a) FULLY DONE (verified at HEAD this pass)
 

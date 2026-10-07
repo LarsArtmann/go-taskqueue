@@ -209,4 +209,3 @@ A/B). See the plan's Tables A/B; §f ranks them.
 3. **Row 416 — AGENTS.md budget**: hard-cap 15,000 B with a mandatory prune ritual
    every closeout, or reset `agentsDocMaxBytes` to standing headroom (~15,500)? O1/O14
    codification needs ~300 B I don't have.
-

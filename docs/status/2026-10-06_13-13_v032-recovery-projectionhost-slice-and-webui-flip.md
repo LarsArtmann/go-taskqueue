@@ -294,4 +294,4 @@ re-issued the blanket execution directive over the Pareto master plan)
 
 ---
 
-*Report ends. Waiting for instructions.*
+_Report ends. Waiting for instructions._

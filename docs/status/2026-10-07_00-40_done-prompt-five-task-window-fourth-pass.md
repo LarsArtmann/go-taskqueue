@@ -43,6 +43,7 @@
 ## f) NEXT THINGS + TODO writes
 
 **Two evidence-backed ticks (the only TODO_LIST edits this pass):**
+
 - Row 145 (queue-side dedup-key→COMPLETED short-circuit): landed in claim-time form by `f716c68b` (DonePreflight completes landed-work dispatches zero-cost at claim — broader than dedup-key alone).
 - Row 526 (mint-time done-check for repeat dispatches): landed as claim-time done-preflight by `f716c68b` (refuse-at-mint realized as zero-spend claim-time completion with no burn; the row's intent — stop repeat paid dispatches — is mechanized).
 

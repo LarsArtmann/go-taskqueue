@@ -11,7 +11,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.2.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.16.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.1 // indirect
-	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.1 // indirect
+	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.1 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect

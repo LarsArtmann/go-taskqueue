@@ -40,6 +40,7 @@ github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.1 h1:JlePEdcn3m+uG/lVHM
 github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.1/go.mod h1:1yA0pAjTkxlPp+SZtY5tQAUITpXn6erbrGmAt9m4TC0=
 github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.1 h1:LSWANeLcg3etC7Ewgk9l4BAwKBpKXPVn4R6z5B6aLrQ=
 github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.1/go.mod h1:3VnuoCOOZ3UrTn9/7i2yQ7/BVvgOJn6v47OV1A9Sk0M=
+github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.2/go.mod h1:3VnuoCOOZ3UrTn9/7i2yQ7/BVvgOJn6v47OV1A9Sk0M=
 github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.1 h1:9zeypoxCVsIHDFCHXEod0K/KwwsQ+4tDHsl0ENtnRH4=
 github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.1/go.mod h1:JFGAWfaNItRWzmUBog4Q3aZOhSGmtWHeP55pBlPE0g0=
 github.com/larsartmann/go-error-family v0.11.0 h1:xqXLKrTMznStmHUapxd/6Fj5/878sb4SIZiy4JvCItQ=
