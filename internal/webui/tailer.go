@@ -109,7 +109,7 @@ func (s *Server) runReadModel(ctx context.Context) error {
 				}
 			}
 
-			s.hub.Notify(m.JournalCursor())
+			s.hub.Notify(rt.Model.JournalCursor())
 		}
 	}
 }
