@@ -196,6 +196,11 @@ type Config struct {
 	// DryRun reports what a real run would enqueue, without writing to the
 	// queue. Result.Enqueued entries then carry an empty TaskID.
 	DryRun bool
+	// ForceRedispatch disables the mint-time done-check (the O4 escape
+	// hatch): candidates whose work repo signals prove already landed are
+	// minted anyway — a forced window is then expected to produce the stop
+	// artifact (re-verify annotation + footer commit), not redo work.
+	ForceRedispatch bool
 }
 
 func (c Config) withDefaults() Config {
@@ -820,6 +825,10 @@ func enqueueSkipReason(err error) string {
 		return "done: already completed (edit the item text to re-arm)"
 	}
 
+	if reason := redispatchReasonFor(err); reason != "" {
+		return reason
+	}
+
 	return "enqueue failed: " + err.Error()
 }
 
@@ -948,14 +957,22 @@ func (h *Harvester) enqueue(ctx context.Context, item Item, importance int) (tas
 		AIScore:           aiScore,
 	})
 
-	return h.q.Enqueue(ctx, task.New{
+	candidate := task.New{
 		Project:     item.RepoName,
 		Type:        h.cfg.Type,
 		Payload:     payload,
 		Priority:    priority,
 		MaxAttempts: h.cfg.MaxAttempts,
 		DedupKey:    item.Key,
-	})
+	}
+
+	// Mint-time done gate: the row may have closed between the scan and
+	// this mint (the check-off race) — refuse before any queue write.
+	if err := h.refuseUnlessForced(ctx, candidate); err != nil {
+		return task.Task{}, err
+	}
+
+	return h.q.Enqueue(ctx, candidate)
 }
 
 // buildPayload renders prompt for item and encodes item as the task payload with

@@ -88,17 +88,23 @@ func (h *Harvester) DonePreflight(ctx context.Context, t task.Task) (bool, strin
 // Repo and Prompt are the minimum identity. Tasks minted outside the
 // harvester/review loop (external shapes) are invisible to the gate.
 func donePreflightPayload(t task.Task) (harvestPayload, bool) {
-	if len(t.Payload) == 0 {
+	return decodeHarvestPayload(t.Payload)
+}
+
+// decodeHarvestPayload is the payload shape shared by the claim-time and
+// mint-time gates: an agent payload with Repo and Prompt resolved.
+func decodeHarvestPayload(payload []byte) (harvestPayload, bool) {
+	if len(payload) == 0 {
 		return harvestPayload{}, false
 	}
 
-	var payload harvestPayload
-	if err := json.Unmarshal(t.Payload, &payload); err != nil ||
-		payload.Repo == "" || payload.Prompt == "" {
+	var decoded harvestPayload
+	if err := json.Unmarshal(payload, &decoded); err != nil ||
+		decoded.Repo == "" || decoded.Prompt == "" {
 		return harvestPayload{}, false
 	}
 
-	return payload, true
+	return decoded, true
 }
 
 // donePreflightRepoDir resolves the payload's Repo (absolute path or
@@ -137,10 +143,13 @@ func footerCommitExists(ctx context.Context, dir string, t task.Task) (bool, str
 
 // fixTicketCured is signal 2: the rejected-SHA disposition for review-fix
 // tasks (payload.RejectedSHA, structured by the review sweeper). The
-// finding is cured when a superseding commit cites the rejected SHA, or
-// when the SHA was rebased away AND its anchor text no longer exists in
-// the working tree. A still-present SHA with no supersede and a live
-// anchor leaves the finding open — not done.
+// finding is cured when a superseding commit cites the rejected SHA, when
+// the SHA was rebased away AND its anchor text no longer exists in the
+// working tree, or — the 2026-10-07 four-paid-lap class — when the SHA
+// still exists but no commit cites it and the anchor text has zero hits
+// at HEAD (the finding was reworded away while history kept the SHA). A
+// still-present SHA with no supersede and a live anchor leaves the
+// finding open — not done.
 func fixTicketCured(ctx context.Context, dir string, payload harvestPayload) (bool, string) {
 	sha := strings.TrimSpace(payload.RejectedSHA)
 	if sha == "" {
@@ -148,14 +157,21 @@ func fixTicketCured(ctx context.Context, dir string, payload harvestPayload) (bo
 	}
 
 	exists := gitSucceeds(ctx, dir, "cat-file", "-e", sha)
+	cited := gitOutputs(ctx, dir, "log", "--all", "--format=%H", "--grep", sha)
 
-	if exists && gitOutputs(ctx, dir, "log", "--all", "--format=%H", "--grep", sha) {
+	if exists && cited {
 		return true, doneReasonFixCure + "superseding commit cites " + shortSHA(sha) + ")"
 	}
 
-	if !exists && strings.TrimSpace(payload.Anchor) != "" &&
-		!gitOutputs(ctx, dir, "grep", "-F", "--", payload.Anchor) {
+	anchor := strings.TrimSpace(payload.Anchor)
+	anchorGone := anchor != "" && !gitOutputs(ctx, dir, "grep", "-F", "--", payload.Anchor)
+
+	if !exists && anchorGone {
 		return true, doneReasonFixCure + "rejected SHA gone and anchor text absent)"
+	}
+
+	if exists && !cited && anchorGone {
+		return true, doneReasonFixCure + "SHA " + shortSHA(sha) + " unreferenced and anchor text absent at HEAD)"
 	}
 
 	return false, ""
@@ -246,13 +262,8 @@ func firstKeyText(keys []string, payload harvestPayload) string {
 // the O7 report-placement ruling; legacy reports at docs/status/ root
 // still count — landed work must never turn invisible).
 func reportExists(dir string, t task.Task) (bool, string) {
-	for _, sub := range []string{"tasks", "."} {
-		matches, err := filepath.Glob(
-			filepath.Join(dir, "docs", "status", sub, "*_task-"+t.ID.String()+"*"),
-		)
-		if err == nil && len(matches) > 0 {
-			return true, doneReasonReport
-		}
+	if closeoutReportExists(dir, t.ID.String()) {
+		return true, doneReasonReport
 	}
 
 	return false, ""
