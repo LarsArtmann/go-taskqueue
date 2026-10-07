@@ -7,6 +7,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Daemon-sweep doc gate + footer-fold tooling** (2026-10-07, M4):
+  `scripts/check-daemon-sweep-docs.sh` scans `<ref>..HEAD` for
+  footer-less daemon-subject commits touching doc-gated files and runs
+  the cheap doc gates (agents-size, doc-refs, todo-list) over the
+  swept result — the "daemon commits a broken TODO_LIST between hook
+  runs" class is now caught at ci-local and CI time instead of
+  surfacing on the next agent's verify. `scripts/fold-marker.sh`
+  discloses a footer-less daemon sweep that folded exactly-mine local
+  work (empty-claim commit with fold disclosure; rails: unpushed-only,
+  footer-less-only, exactly-mine file set). `commit-task.sh` now
+  detects the "nothing to commit because the daemon already swept it"
+  case and prints the heal/fold guidance, and
+  `heal-daemon-sweep.sh` verify step 3b pins that the healed footer
+  survives `git interpret-trailers --parse`. Owner-side systemd timer
+  spec for a host cron of the doc gate is recorded in
+  `docs/planning/2026-10-07_04-25_daemon-doc-gate-wiring-ruling.md`.
 - **Dep-bump drift gate** (2026-10-07): `scripts/check-gomod-vendor-sync.sh`
   regenerates `vendor/` (root) and runs `go mod tidy` in every module,
   then requires an empty scoped git status — the bump-without-vendor /
