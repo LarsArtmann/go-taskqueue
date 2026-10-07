@@ -10,9 +10,11 @@
 # zero change. Tracked files (go.mod/go.sum): empty scoped git status.
 # vendor/ is GITIGNORED (.gitignore:64) — git status is structurally
 # blind to it — so its anchor is a content hash of the tree compared
-# across the regeneration boundary. An out-of-sync tree is BOTH detected
-# and healed by the same run: the files on disk are correct afterwards
-# and only need staging.
+# across the regeneration boundary. An ABSENT tree (fresh CI checkout —
+# vendor/ never lands in git) is not drift: nothing stale exists to
+# detect, the regeneration IS the heal. An out-of-sync tree is BOTH
+# detected and healed by the same run: the files on disk are correct
+# afterwards and only need staging.
 #
 # Modes:
 #   ./scripts/check-gomod-vendor-sync.sh            gate the real repo
@@ -121,8 +123,66 @@ self_test() {
 		return 1
 	fi
 
-	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor)"
+	# Case 5: absent vendor tree at gate start (fresh CI checkout) must
+	# PASS — the regeneration creates the tree, there is nothing stale to
+	# detect (CI run 37593760430: before=absent failed every fresh run).
+	rm -rf "$tmp/repo/vendor"
+	printf 'module test\n\ngo 1.27\n' >"$tmp/repo/go.mod"
+	case5="$(cd "$tmp/repo" && root_vendor_in_sync)" || {
+		echo "SELF-TEST FAIL: absent vendor tree at start reported as drift" >&2
+		return 1
+	}
+	case "$case5" in
+	*"absent at start"*) ;;
+	*)
+		echo "SELF-TEST FAIL: absent-start run did not take the absent branch: $case5" >&2
+		return 1
+		;;
+	esac
+	# Case 6: the tree Case 5 generated must re-run in sync (idempotent
+	# regeneration — before is now a real hash, stable across the boundary).
+	case6="$(cd "$tmp/repo" && root_vendor_in_sync)" || {
+		echo "SELF-TEST FAIL: freshly generated vendor tree reported as drift on re-run" >&2
+		return 1
+	}
+	case "$case6" in
+	*"in sync (content hash"*) ;;
+	*)
+		echo "SELF-TEST FAIL: re-run did not report the generated tree in sync: $case6" >&2
+		return 1
+		;;
+	esac
+
+	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor + absent-start)"
 	return 0
+}
+
+# Root: vendor/ must match the module graph (root auto-uses vendor/ for
+# builds — AGENTS.md known issue: stale vendor is invisible until a
+# consumer build dies). vendor/ is gitignored, so the anchor is the
+# content hash across the regeneration, NOT git status. before=absent is
+# a fresh checkout (CI) or a wiped tree: there is no stale tree to
+# detect, the regeneration IS the heal, so it passes — only an existing
+# tree that MOVES under regeneration is drift (CI 37593760430: the
+# absent-start branch failed every fresh checkout).
+root_vendor_in_sync() {
+	local before after
+	before="$(vendor_tree_hash)"
+	GOWORK=off go mod vendor
+	after="$(vendor_tree_hash)"
+	if [ "$before" = "absent" ]; then
+		echo "ok: root vendor/ absent at start — generated fresh, in sync (content hash $after)"
+		return 0
+	fi
+	if [ "$before" != "$after" ]; then
+		echo "FAIL: root vendor/ DRIFTED — on-disk tree differed from go mod vendor output:" >&2
+		echo "  before=$before after=$after" >&2
+		echo "  vendor/ is gitignored; git status cannot see this class, the content hash" >&2
+		echo "  is the anchor. The regeneration above already healed the tree: re-run to" >&2
+		echo "  confirm, then exercise a root build." >&2
+		return 1
+	fi
+	echo "ok: root vendor/ in sync (content hash $after)"
 }
 
 if [ "${VENDOR_SYNC_SELF_TEST:-0}" = 1 ]; then
@@ -137,23 +197,7 @@ fi
 
 fail=0
 
-# Root: vendor/ must match the module graph (root auto-uses vendor/ for
-# builds — AGENTS.md known issue: stale vendor is invisible until a
-# consumer build dies). vendor/ is gitignored, so the anchor is the
-# content hash across the regeneration, NOT git status.
-before="$(vendor_tree_hash)"
-GOWORK=off go mod vendor
-after="$(vendor_tree_hash)"
-if [ "$before" != "$after" ]; then
-	echo "FAIL: root vendor/ DRIFTED — on-disk tree differed from go mod vendor output:" >&2
-	echo "  before=$before after=$after" >&2
-	echo "  vendor/ is gitignored; git status cannot see this class, the content hash" >&2
-	echo "  is the anchor. The regeneration above already healed the tree: re-run to" >&2
-	echo "  confirm, then exercise a root build." >&2
-	fail=1
-else
-	echo "ok: root vendor/ in sync (content hash $after)"
-fi
+root_vendor_in_sync || fail=1
 detect_drift "root go.mod/go.sum (go mod vendor)" go.mod go.sum || fail=1
 
 # Per-module: go.mod/go.sum must be tidy (b886a677 class: 15 files across
