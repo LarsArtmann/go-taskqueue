@@ -2206,7 +2206,7 @@ func cmdShow(args []string) error {
 	commits := fs.Bool(
 		"commits",
 		false,
-		"also scan the task's repo git log for Task-Queue-ID footer commits (0 = missing footer, >1 = ambiguous cross-reference)",
+		"also scan the task's repo git log for Task-Queue-ID footer commits: 0 = missing footer, >1 = normal (work + close-out), AMBIGUOUS only when a commit also references a FOREIGN task ID; folded_here lists footer-less daemon commits claimed by adjacency, with their changed files (flag order: tq show ID --commits)",
 	)
 
 	db := dbFlag(fs)
@@ -2450,7 +2450,28 @@ var daemonCommitSubject = regexp.MustCompile(`^chore: auto-commit \d+ changed fi
 // so the daemon folded work files into it (the 147bd17 shape).
 type foldedCommit struct {
 	commitHit
-	Relation string `json:"relation"`
+	Relation string   `json:"relation"`
+	Files    []string `json:"files,omitempty"`
+}
+
+// gitChangedFiles lists one commit's changed paths (the derived-outcome
+// diff-tree view); a read failure yields nil — the fold stays listed,
+// just without files.
+func gitChangedFiles(repo, sha string) []string {
+	out, err := exec.Command("git", "-C", repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha).Output()
+	if err != nil {
+		return nil
+	}
+
+	var files []string
+
+	for line := range strings.SplitSeq(string(out), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			files = append(files, line)
+		}
+	}
+
+	return files
 }
 
 // gitCommitMeta reads one commit's identity fields via `git show -s`;
@@ -2511,7 +2532,14 @@ func foldedDaemonCommits(repo string, hits []commitHit) []foldedCommit {
 		}
 
 		seen[meta.SHA] = true
-		folded = append(folded, foldedCommit{commitHit: meta, Relation: relation})
+		folded = append(folded, foldedCommit{
+			commitHit: meta,
+			Relation:  relation,
+			// Changed files make the adjacency claim checkable: a fold that
+			// carried unrelated files (a concurrent window's daemon commit, the
+			// 552a1383 false positive) is visible at a glance.
+			Files: gitChangedFiles(repo, meta.SHA),
+		})
 	}
 
 	for _, h := range hits {
@@ -2529,9 +2557,44 @@ func foldedDaemonCommits(repo string, hits []commitHit) []foldedCommit {
 
 // commitsForTask scans the task's repo git log for footer commits (the
 // queue↔git cross-reference): count 0 means the footer contract was
-// breached (work landed unreferenced), count >1 means an ambiguous
-// cross-reference (the f26 three-ID cluster class). Footer-less daemon
-// commits adjacent to a footer commit surface as "folded here".
+// breached (work landed unreferenced); count >1 is the normal work +
+// close-out shape, and AMBIGUOUS is reserved for commits that also
+// reference a FOREIGN task ID (the f26 three-ID cluster class).
+// Footer-less daemon commits adjacent to a footer commit surface as
+// "folded here" with their changed files.
+// foreignTaskRefs collects the OTHER task IDs named in the hit commits'
+// footer blocks: a commit referencing two task IDs is a genuine
+// cross-reference conflict; several commits each referencing only this
+// task are the normal multi-commit shape.
+func foreignTaskRefs(repo string, hits []commitHit, own string) []string {
+	seen := map[string]bool{}
+
+	for _, h := range hits {
+		out, err := exec.Command("git", "-C", repo, "log", "-1", "--format=%B", h.SHA).Output()
+		if err != nil {
+			continue
+		}
+
+		for line := range strings.SplitSeq(string(out), "\n") {
+			id, ok := strings.CutPrefix(strings.TrimSpace(line), "Task-Queue-ID: ")
+			if !ok || id == own || seen[id] {
+				continue
+			}
+
+			seen[id] = true
+		}
+	}
+
+	ids := make([]string, 0, len(seen))
+	for id := range seen {
+		ids = append(ids, id)
+	}
+
+	slices.Sort(ids)
+
+	return ids
+}
+
 func commitsForTask(t task.Task) map[string]any {
 	repo := struct {
 		Repo string `json:"repo"`
@@ -2570,11 +2633,19 @@ func commitsForTask(t task.Task) map[string]any {
 
 	verdict := "ok: exactly one footer commit"
 
+	// Foreign references are the genuine conflict class: a commit whose
+	// footer block names THIS task and a DIFFERENT one (the f26 three-ID
+	// cluster). Plain count>1 is the work + close-out norm and must not
+	// cry wolf over it.
+	foreign := foreignTaskRefs(repo.Repo, hits, t.ID.String())
+
 	switch {
+	case len(foreign) > 0:
+		verdict = "AMBIGUOUS: commits also reference foreign task IDs (" + strings.Join(foreign, ", ") + ")"
 	case len(hits) == 0:
 		verdict = "MISSING FOOTER: no commit references this task ID"
 	case len(hits) > 1:
-		verdict = "AMBIGUOUS: multiple commits reference this task ID"
+		verdict = fmt.Sprintf("ok: %d footer commits (work + close-out is the norm)", len(hits))
 	}
 
 	view := map[string]any{"task_id": t.ID.String(), "count": len(hits), "verdict": verdict, "commits": hits}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -116,6 +117,58 @@ func TestCommitsForTaskFoldsAdjacentDaemonCommits(t *testing.T) {
 		if f.SHA == "" || f.Subject == "" {
 			t.Fatalf("folded commit missing identity: %+v", f.commitHit)
 		}
+
+		if len(f.Files) != 1 || f.Files[0] != "f.txt" {
+			t.Fatalf("folded commit files = %v, want the daemon-swept f.txt", f.Files)
+		}
+	}
+}
+
+// TestCommitsForTaskMultiCommitIsNorm pins the softened verdict: work +
+// close-out both carrying the SAME footer is the policy norm, so count 2
+// reads ok — AMBIGUOUS is reserved for foreign-ID cross-references.
+func TestCommitsForTaskMultiCommitIsNorm(t *testing.T) {
+	t.Parallel()
+
+	const id = "000001a0db237aa8"
+
+	repo := gitRepo(t,
+		[2]string{"agent work", "Task-Queue-ID: " + id},
+		[2]string{"close-out report", "Task-Queue-ID: " + id},
+	)
+
+	view := commitsForTask(commitsTask(id, repo))
+
+	if view["count"] != 2 {
+		t.Fatalf("count = %v, want 2", view["count"])
+	}
+
+	verdict, _ := view["verdict"].(string)
+	if verdict != "ok: 2 footer commits (work + close-out is the norm)" {
+		t.Fatalf("verdict = %q, want the softened multi-commit norm", verdict)
+	}
+}
+
+// TestCommitsForTaskForeignRefIsAmbiguous pins the reserved conflict
+// class (the f26 three-ID cluster): a commit whose footer block names
+// this task AND a foreign one stays AMBIGUOUS and names the foreign ID.
+func TestCommitsForTaskForeignRefIsAmbiguous(t *testing.T) {
+	t.Parallel()
+
+	const (
+		id      = "000001a0db237aa8"
+		foreign = "000001a0ffffffff"
+	)
+
+	repo := gitRepo(t,
+		[2]string{"cluster commit", "Task-Queue-ID: " + id + "\nTask-Queue-ID: " + foreign},
+	)
+
+	view := commitsForTask(commitsTask(id, repo))
+
+	verdict, _ := view["verdict"].(string)
+	if !strings.Contains(verdict, "AMBIGUOUS") || !strings.Contains(verdict, foreign) {
+		t.Fatalf("verdict = %q, want AMBIGUOUS naming foreign ID %s", verdict, foreign)
 	}
 }
 
