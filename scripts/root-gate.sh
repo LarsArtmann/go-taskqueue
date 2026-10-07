@@ -18,6 +18,17 @@ cd "$(dirname "$0")/.."
 export GOEXPERIMENT=jsonv2
 export GOTOOLCHAIN=auto
 
+# Cheap script-syntax guard (closeout 2026-10-08 §e3): bash -n over the
+# release path's scripts, which the push-gate battery only syntax-checks at
+# its very END (check-script-syntax.sh sits late in ci-local) — a slip in
+# release.sh/lib otherwise costs a full battery run before it is caught.
+for f in scripts/release.sh scripts/lib/*.sh "$0"; do
+	bash -n "$f" || {
+		echo "FAIL: bash -n $f" >&2
+		exit 1
+	}
+done
+
 . scripts/lib/verify-retry.sh
 
 run_gate() {
