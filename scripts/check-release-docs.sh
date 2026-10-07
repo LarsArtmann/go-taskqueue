@@ -40,6 +40,11 @@ grep -qF -- 'gate_gomod "$mod_go"' "$script" || miss "release.sh no longer runs 
 grep -qF -- 'gate_gomod' "$doc" || miss "RELEASE.md allowlist section lost the gate_gomod name"
 
 # Mechanisms the doc cites in its phase descriptions.
+# FALSE-FAIL HAZARD (closeout 2026-10-08 §e2): grep -qF is line-contained —
+# if RELEASE.md is reflowed so a pin below (especially 'go list -m -versions')
+# wraps across lines, the check reports drift although the doc still documents
+# the mechanism. On a failure here, first re-check the doc for a reflow before
+# concluding real drift.
 need_in_both 'go list -m -versions' 'module-proxy wait'
 need_in_both 'find internal task journal queue executor worker cmd/tq -name go.mod' 'disk-derived sub-tag list'
 need_in_both --prerelease 'GitHub Release prerelease flag'
