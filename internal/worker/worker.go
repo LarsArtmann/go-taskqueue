@@ -381,6 +381,26 @@ func (p *Pool) persistOutcome(ctx context.Context, id task.ID, write func(contex
 	})
 }
 
+// completeAsPreflightDone is the shared done-gate completion write: the
+// task completes with a preflight_done detail naming the signal, so the
+// review sweeper skips minting a review of a session that never ran and
+// audits see WHY the gate fired. Shared by the claim-time gate and the
+// gate-slow guard (verify leg died after the work landed).
+func (p *Pool) completeAsPreflightDone(ctx context.Context, t task.Task, claim queue.Claim, reason string) {
+	// AgentResult marshals structurally; the fallback keeps the gate
+	// completing even if a future field stops round-tripping.
+	detail, derr := json.Marshal(executor.AgentResult{PreflightDone: reason})
+	if derr != nil {
+		detail = jsontext.Value(`{"preflight_done":"done preflight"}`)
+	}
+
+	if err := p.persistOutcome(ctx, t.ID, func(c context.Context) error {
+		return p.store.Complete(c, t.ID, claim, detail)
+	}); err != nil {
+		p.log.Error("done-gate complete failed", "task", t.ID, "err", err)
+	}
+}
+
 // isTransientStoreBusy reports whether err is a store lock-contention
 // failure worth retrying in-process. The sqlite driver surfaces the
 // SQLITE_BUSY family (base 5 and extended 517 BUSY_SNAPSHOT et al) with
