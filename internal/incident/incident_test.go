@@ -288,7 +288,7 @@ func TestPolicyReplayNoDuplicate(t *testing.T) {
 	s := newTestStore(t)
 	rec := NewRecorder(s)
 
-	rep := Report{Project: "webapp", Message: "nil pointer dereference in order service"}
+	rep := Report{Project: "webapp", Kind: KindServer, Message: "nil pointer dereference in order service"}
 
 	pol, err := NewPolicy(ctx, s, s, PolicyConfig{})
 	if err != nil {
@@ -323,7 +323,7 @@ func TestPolicyRegression(t *testing.T) {
 	s := newTestStore(t)
 	rec := NewRecorder(s)
 
-	rep := Report{Project: "webapp", Message: "failed to load config from env"}
+	rep := Report{Project: "webapp", Kind: KindServer, Message: "failed to load config from env"}
 
 	pol, err := NewPolicy(ctx, s, s, PolicyConfig{})
 	if err != nil {
@@ -343,6 +343,8 @@ func TestPolicyRegression(t *testing.T) {
 	if len(tasks) != 1 {
 		t.Fatalf("first mint: %d tasks", len(tasks))
 	}
+
+	firstDedup := tasks[0].DedupKey
 
 	_, claim, err := s.ClaimDue(ctx, "test-owner", 5*time.Minute)
 	if err != nil {
@@ -385,7 +387,7 @@ func TestPolicyRegression(t *testing.T) {
 	var regression task.Task
 
 	for _, tt := range tasks {
-		if tt.DedupKey != tasks[0].DedupKey {
+		if tt.DedupKey != firstDedup {
 			regression = tt
 		}
 	}
@@ -395,10 +397,24 @@ func TestPolicyRegression(t *testing.T) {
 			DefaultRegressionPriority, regression.Priority)
 	}
 
+	// The mint fact folds back on the next tick (short-page delivery);
+	// settle the fold before asserting on it.
+	if _, err := pol.Sweep(ctx); err != nil {
+		t.Fatalf("settling sweep: %v", err)
+	}
+
 	inc, _ = pol.State().Get(Fingerprint(rep))
 
 	if inc.Regressions != 1 || inc.Status != StatusFixDispatched {
 		t.Fatalf("fold after regression: %+v", inc)
+	}
+
+	if len(inc.Mints) != 2 {
+		t.Fatalf("fold must record both mints: %+v", inc.Mints)
+	}
+
+	if !inc.Mints[1].Regression || inc.Mints[1].Priority != DefaultRegressionPriority {
+		t.Fatalf("second mint must be the regression: %+v", inc.Mints[1])
 	}
 }
 
@@ -409,7 +425,7 @@ func TestPolicyDeadLetterFixFailed(t *testing.T) {
 	s := newTestStore(t)
 	rec := NewRecorder(s)
 
-	rep := Report{Project: "webapp", Message: "boom"}
+	rep := Report{Project: "webapp", Kind: KindServer, Message: "boom"}
 
 	pol, err := NewPolicy(ctx, s, s, PolicyConfig{})
 	if err != nil {
@@ -457,7 +473,7 @@ func TestPolicyRestartResumes(t *testing.T) {
 	s := newTestStore(t)
 	rec := NewRecorder(s)
 
-	rep := Report{Project: "webapp", Message: "transient upstream 503"}
+	rep := Report{Project: "webapp", Kind: KindServer, Message: "transient upstream 503"}
 
 	first, err := NewPolicy(ctx, s, s, PolicyConfig{})
 	if err != nil {

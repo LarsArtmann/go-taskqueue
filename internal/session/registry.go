@@ -222,6 +222,8 @@ type SweepOutcome struct {
 // not owned by a live crush process, minting the ordinary close (replay-safe
 // via the dedup keys) and rewriting the registry without the closed ids.
 // Entries that are fresh, still owned, or whose close failed stay in the file.
+//
+//nolint:gohumanize // sweep reasons report exact rounded Durations ("last seen 5m ago"); humanize has no Duration formatter and RelTime would blur the operational detail
 func Sweep(ctx context.Context, store Store, scanner GitScanner, input SweepInput) ([]SweepOutcome, error) {
 	if input.Owner == nil {
 		input.Owner = PgrepOwner{}

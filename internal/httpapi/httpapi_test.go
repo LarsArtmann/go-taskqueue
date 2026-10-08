@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/incident"
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
@@ -668,5 +669,83 @@ func TestListenAndServePumpsReadModel(t *testing.T) {
 
 	if err := <-served; err != nil {
 		t.Errorf("ListenAndServe = %v, want clean shutdown", err)
+	}
+}
+
+func TestReportErrorContract(t *testing.T) {
+	srv, store := newTestAPI(t)
+
+	// Not armed: the route must answer 503, not silently drop reports.
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/errors",
+		strings.NewReader(`{"project":"webapp","message":"boom"}`))
+	req.Header.Set("Authorization", "Bearer secret-token")
+
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unarmed status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Armed: a valid report journals one error.observed fact.
+	srv.UseErrorRecorder(incident.NewRecorder(store))
+
+	body := `{
+		"project": "webapp",
+		"kind": "client",
+		"message": "TypeError: cannot read properties of undefined (reading 'map')",
+		"stack": "at OrdersTable (main.a1b2c3.js:4:18771)",
+		"release": "a1b2c3d",
+		"route": "/orders",
+		"traceUrl": "http://signoz.local/trace/abc",
+		"breadcrumbs": ["navigate /orders", "click export"]
+	}`
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/errors", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer secret-token")
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var res incident.RecordResult
+	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if !strings.HasPrefix(res.Incident, "incident:") {
+		t.Fatalf("incident id: %q", res.Incident)
+	}
+
+	facts, err := store.Facts(context.Background(), 0, 10)
+	if err != nil || len(facts) != 1 {
+		t.Fatalf("facts: %v %d", err, len(facts))
+	}
+
+	if facts[0].Type != "error.observed" || facts[0].TaskID != res.Incident {
+		t.Fatalf("fact: %s %s", facts[0].Type, facts[0].TaskID)
+	}
+
+	// Invalid reports answer 400 with a fix hint and journal nothing.
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/errors",
+		strings.NewReader(`{"project":"webapp"}`))
+	req.Header.Set("Authorization", "Bearer secret-token")
+
+	rec = httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	if !strings.Contains(rec.Body.String(), "fix") {
+		t.Fatalf("error response must carry a fix hint: %s", rec.Body.String())
+	}
+
+	if facts, _ = store.Facts(context.Background(), 0, 10); len(facts) != 1 {
+		t.Fatalf("invalid report journaled a fact: %d", len(facts))
 	}
 }

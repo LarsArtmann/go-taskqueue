@@ -804,6 +804,8 @@ func (state *repoState) observe(t task.Task) {
 // stateDenial reports the repo-lifecycle admission stops: paused
 // (importance 0 in importance mode), poisoned (recent dead-letters inside
 // the backoff window), or paced (per-repo enqueue interval not elapsed).
+//
+//nolint:gohumanize // denial reasons report exact rounded Durations ("last enqueue 47m ago"); humanize has no Duration formatter and RelTime would blur the operational detail
 func (h *Harvester) stateDenial(state repoState) string {
 	if h.cfg.UseImportance && state.importance == 0 {
 		return "paused: importance 0 (repo paused from auto-admission; raise importance to resume)"

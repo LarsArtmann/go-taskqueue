@@ -1,14 +1,15 @@
 // Package httpapi is the v0.2 production API for non-Go producers
-// (ADR-0008): enqueue tasks and read queue stats over HTTP with token
-// auth. Unlike the read-only dashboard (`tq serve`), this surface WRITES,
-// so the token is mandatory on every bind (no loopback exemption: API
-// servers are meant to be exposed to other machines).
+// (ADR-0008): enqueue tasks, report production errors (ADR-0021), and
+// read queue stats over HTTP with token auth. Unlike the read-only
+// dashboard (`tq serve`), this surface WRITES, so the token is mandatory
+// on every bind (no loopback exemption: API servers are meant to be
+// exposed to other machines).
 //
-// The surface is queue-metadata-only by design (TODO row verified
-// 2026-09-28): enqueue, per-status counts, and health — no per-task
-// reads, so derived outcomes (agent results, review/status verdicts,
-// session usage) remain dashboard surfaces (`tq serve` detail pages,
-// `tq show`).
+// The surface is queue-metadata plus the error-report command by design:
+// enqueue, error.observed facts, per-status counts, and health — no
+// per-task reads, so derived outcomes (agent results, review/status
+// verdicts, session usage) remain dashboard surfaces (`tq serve` detail
+// pages, `tq show`).
 package httpapi
 
 import (
@@ -24,6 +25,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/httpauth"
+	"github.com/larsartmann/go-taskqueue/internal/incident"
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
@@ -40,6 +42,12 @@ type Server struct {
 	// model is the ADR-0019 S3 read model behind UseReadModel (nil = the
 	// stats read hits the store): the read side of GET /api/v1/stats.
 	model *readmodel.Model
+
+	// errors is the ReportError command handler behind UseErrorRecorder
+	// (nil = the errors route answers 503): the write side of
+	// POST /api/v1/errors, which appends error.observed facts for the
+	// incident policy to react to (ADR-0021).
+	errors *incident.Recorder
 }
 
 // New builds a Server. token must be non-empty: the API refuses to start
@@ -73,10 +81,20 @@ func (s *Server) UseReadModel(ctx context.Context, path string) error {
 	return nil
 }
 
+// UseErrorRecorder arms POST /api/v1/errors with the ReportError command
+// handler (ADR-0021). Without it the route answers 503, so a producer
+// learns the surface is disabled instead of silently dropping reports.
+// The recorder appends error.observed facts only — reactions (fix-task
+// minting) belong to the incident policy running in the pool.
+func (s *Server) UseErrorRecorder(rec *incident.Recorder) {
+	s.errors = rec
+}
+
 // Handler returns the routed, auth-guarded API handler.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/tasks", s.handleEnqueue)
+	mux.HandleFunc("POST /api/v1/errors", s.handleReportError)
 	mux.HandleFunc("GET /api/v1/stats", s.handleStats)
 	mux.HandleFunc("GET /api/v1/healthz", s.handleHealth)
 
@@ -278,6 +296,50 @@ func (s *Server) handleEnqueue(w http.ResponseWriter, r *http.Request) {
 		Status:    string(t.Status),
 		CreatedAt: t.CreatedAt.UTC().Format(time.RFC3339),
 	})
+}
+
+// handleReportError executes the ReportError command (ADR-0021): clip,
+// validate, fingerprint, and append ONE error.observed fact to the
+// journal. It reacts to nothing — the incident policy in the pool mints
+// fix tasks. The wire body is incident.Report (JSON); the response names
+// the incident stream identity so producers can correlate.
+func (s *Server) handleReportError(w http.ResponseWriter, r *http.Request) {
+	if s.errors == nil {
+		writeError(
+			w,
+			http.StatusServiceUnavailable,
+			"error reporting is not enabled on this API",
+			"start the API with the error recorder wired (tq api enables it by default)",
+		)
+
+		return
+	}
+
+	var rep incident.Report
+	if err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 1<<20), &rep); err != nil {
+		writeError(
+			w,
+			http.StatusBadRequest,
+			"body is not a valid error report: "+err.Error(),
+			"send an incident.Report JSON document (project, kind, message, …)",
+		)
+
+		return
+	}
+
+	res, err := s.errors.Record(r.Context(), rep)
+	if err != nil {
+		writeError(
+			w,
+			http.StatusBadRequest,
+			err.Error(),
+			"fix the report fields named above and retry (nothing was journaled)",
+		)
+
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, res)
 }
 
 // handleStats reports the per-status counts + total — the same payload as
