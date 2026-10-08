@@ -30,6 +30,8 @@ const (
 	SessionClosed    = internaljournal.SessionClosed
 	QuestionAsked    = internaljournal.QuestionAsked
 	QuestionAnswered = internaljournal.QuestionAnswered
+	ErrorObserved    = internaljournal.ErrorObserved
+	IncidentTaskMinted = internaljournal.IncidentTaskMinted
 )
 
 // Journal boundary and the in-memory implementation.

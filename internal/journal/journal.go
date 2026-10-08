@@ -71,6 +71,23 @@ const (
 	// its NotBefore, so "answered but still parked" is unrepresentable.
 	// Idempotent per question ref: a replayed pickup appends nothing.
 	QuestionAnswered FactType = "task.question-answered"
+	// ErrorObserved records one error report from a production surface
+	// (web-client beacon or server panic/5xx middleware): an observation,
+	// not task state — the session:* precedent. TaskID carries the
+	// synthetic "incident:<fingerprint>" identity, never a real task row,
+	// so no enqueue/claim machinery can ever pick it up. Detail carries
+	// the full redacted Report (message, stack, release, route, trace
+	// link); the incident policy (internal/incident) folds these facts
+	// into incidents and mints agent fix tasks as reactions (ADR-0021).
+	ErrorObserved FactType = "error.observed"
+	// IncidentTaskMinted records that the incident policy enqueued a fix
+	// task for one incident: TaskID is the incident identity, detail names
+	// the minted task (taskID, sourceSeq, regression, priority). Written
+	// after Enqueue succeeds; replayed deliveries converge on the task's
+	// dedup key instead of minting duplicates. The task's own lifecycle
+	// facts (task.completed, task.dead-lettered) close or fail the
+	// incident in the fold — never a mirrored column.
+	IncidentTaskMinted FactType = "incident.task-minted"
 )
 
 // Fact is one immutable observation about one task.
