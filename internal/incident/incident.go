@@ -110,7 +110,7 @@ func (r Report) Validate() error {
 // bloat the append-only fact log.
 func (r Report) Clip() Report {
 	r.Project = clipStr(r.Project, MaxShort)
-	r.Kind = clipStr(string(r.Kind), MaxShort)
+	r.Kind = Kind(clipStr(string(r.Kind), MaxShort))
 
 	if r.Kind == "" {
 		r.Kind = KindServer
