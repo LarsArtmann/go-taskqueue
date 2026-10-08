@@ -109,8 +109,10 @@ outside world; its steps and their failure modes:
    failure modes: ALL .info pokes failed = network outage (fix connectivity,
    then re-run); pokes succeeded but @v/list never listed = proxy lag (wait
    and re-check manually). Timeout is
-   NOT a failure of the release — verify
-   `https://proxy.golang.org/<module>/@v/vX.Y.Z.info` manually; NEVER re-tag
+   NOT a failure of the release — the automated attempt-1 poke has already
+   triggered the on-demand fill (log line
+   `poked demand-fill: https://proxy.golang.org/<module>/@v/vX.Y.Z.info`
+   confirms it); wait for the proxy to catch up and re-run; NEVER re-tag
    (the proxy caches forever; a re-tag poisons every future consumer).
 3. Clean-room `go get` + `go install` of `cmd/tq@vX.Y.Z` — this is the proof
    the published tree is installable; a failure here means a sub-module
