@@ -180,16 +180,23 @@ func (p *Policy) Sweep(ctx context.Context) (PolicyStats, error) {
 	return stats, err
 }
 
+// handleFact folds EVERY delivered fact into the state first (seq-guarded:
+// a fact already folded by the bootstrap or a replayed page is a no-op),
+// then reacts: error observations may mint, mint facts clear the pending
+// guard. Task lifecycle facts (completed, dead-lettered) need no reaction —
+// the fold alone moves the incident to resolved / fix-failed.
 func (p *Policy) handleFact(ctx context.Context, f journal.Fact, stats *PolicyStats) {
+	p.state.Apply(f)
+
 	switch f.Type {
 	case journal.ErrorObserved:
-		p.handleObserved(ctx, f, stats)
+		p.reactObserved(ctx, f, stats)
 	case journal.IncidentTaskMinted:
 		p.clearPending(f)
 	}
 }
 
-func (p *Policy) handleObserved(ctx context.Context, f journal.Fact, stats *PolicyStats) {
+func (p *Policy) reactObserved(ctx context.Context, f journal.Fact, stats *PolicyStats) {
 	if !strings.HasPrefix(f.TaskID, IDPrefix) {
 		stats.Skipped++
 
@@ -197,12 +204,6 @@ func (p *Policy) handleObserved(ctx context.Context, f journal.Fact, stats *Poli
 	}
 
 	fp := FingerprintOfID(f.TaskID)
-
-	before, _ := p.state.Get(fp)
-
-	// Fold the fact if the bootstrap had not covered it (facts appended
-	// after construction); a replayed fact is a no-op in the fold.
-	p.state.Apply(f)
 
 	inc, ok := p.state.Get(fp)
 	if !ok {
@@ -212,9 +213,8 @@ func (p *Policy) handleObserved(ctx context.Context, f journal.Fact, stats *Poli
 	}
 
 	stats.Occurrences++
-	stats.Regressions += inc.Regressions - before.Regressions
 
-	needs, regression, known := p.needsFix(fp, inc, f.Seq)
+	needs, known := p.needsFix(fp, inc, f.Seq)
 	if known {
 		stats.Known++
 
@@ -223,6 +223,14 @@ func (p *Policy) handleObserved(ctx context.Context, f journal.Fact, stats *Poli
 
 	if !needs {
 		return
+	}
+
+	// A mint on an incident whose latest fix task is terminal is a
+	// regression: the fold has already reopened it.
+	regression := len(inc.Mints) > 0 && inc.Mints[len(inc.Mints)-1].Terminal()
+
+	if regression {
+		stats.Regressions++
 	}
 
 	if err := p.mint(ctx, inc, f, regression); err != nil {
@@ -244,26 +252,26 @@ func (p *Policy) handleObserved(ctx context.Context, f journal.Fact, stats *Poli
 // never-minted → first fix; latest mint terminal → regression; anything
 // else (fix in flight, in-page pending, already minted from this very
 // fact) → occurrence only.
-func (p *Policy) needsFix(fp string, inc Incident, seq int64) (needs, regression, known bool) {
+func (p *Policy) needsFix(fp string, inc Incident, seq int64) (needs, known bool) {
 	if pend, ok := p.pending[fp]; ok {
-		return false, false, pend == seq
+		return false, pend == seq
 	}
 
 	if len(inc.Mints) == 0 {
-		return true, false, false
+		return true, false
 	}
 
 	last := inc.Mints[len(inc.Mints)-1]
 
 	if last.SourceSeq == seq {
-		return false, false, true
+		return false, true
 	}
-
+	
 	if !last.Terminal() {
-		return false, false, false
+		return false, false
 	}
 
-	return true, true, false
+	return true, false
 }
 
 // mint enqueues the fix task and journals the link. After it returns, the
