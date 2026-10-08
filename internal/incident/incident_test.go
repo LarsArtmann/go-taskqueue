@@ -511,3 +511,36 @@ func TestPolicyRestartResumes(t *testing.T) {
 		t.Fatalf("restart duplicated tasks: %d", len(tasks))
 	}
 }
+
+// TestPolicyFirstRunReplaysHistory: errors recorded while no policy ever
+// ran (the API records standalone) mint on the pool's first start — the
+// incident family is new, so the whole journal is in scope.
+func TestPolicyFirstRunReplaysHistory(t *testing.T) {
+	ctx := context.Background()
+	s := newTestStore(t)
+	rec := NewRecorder(s)
+
+	rep := Report{Project: "webapp", Kind: KindServer, Message: "panic in nightly window"}
+
+	if _, err := rec.Record(ctx, rep); err != nil {
+		t.Fatalf("record: %v", err)
+	}
+
+	pol, err := NewPolicy(ctx, s, s, PolicyConfig{})
+	if err != nil {
+		t.Fatalf("new policy: %v", err)
+	}
+
+	stats, err := pol.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+
+	if stats.TasksMinted != 1 {
+		t.Fatalf("first run must replay history, minted=%d", stats.TasksMinted)
+	}
+
+	if tasks := allTasks(t, s); len(tasks) != 1 {
+		t.Fatalf("tasks: %d", len(tasks))
+	}
+}

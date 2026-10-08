@@ -94,8 +94,8 @@ type Policy struct {
 // sink (non-task fact appends; the same object satisfies both in
 // production). The cursor resumes from the persisted checkpoint — error
 // facts observed while no policy was running mint on the next start. A
-// first run bootstraps at the journal head (same semantics as every
-// sweeper; rewind with `tq watermarks set incident-policy SEQ` to replay).
+// FIRST run deliberately replays the whole journal (see the checkpoint
+// note in the constructor): the family is new, so nothing predates it.
 //
 // The full journal is folded into the state so the projection is current;
 // only facts after the persisted cursor are REACTED to — the seq guard
@@ -111,6 +111,20 @@ func NewPolicy(ctx context.Context, store queue.Store, sink FactSink, cfg Policy
 
 	if cfg.MaxAttempts <= 0 {
 		cfg.MaxAttempts = DefaultMaxAttempts
+	}
+
+	// First-run replay: unlike the review/status sweepers (which bootstrap
+	// at head so pre-feature completions do not mint a stale-task flood),
+	// the incident family is brand-new — nothing in an existing journal
+	// predates it — and the API records error facts while no pool runs,
+	// so a first start MUST mint for everything already observed. Safe
+	// because reactions are idempotent (task dedup keys + fold seq
+	// guards) and storm dedup bounds the mint count to one task per
+	// incident lifecycle stage.
+	if _, found, err := store.Watermark(ctx, ConsumerKey); err == nil && !found {
+		if err := store.SaveWatermark(ctx, ConsumerKey, 0); err != nil {
+			return nil, fmt.Errorf("incident: first-run replay checkpoint: %w", err)
+		}
 	}
 
 	cur, err := watermark.New(ctx, watermark.Config{
