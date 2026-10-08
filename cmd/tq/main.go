@@ -27,6 +27,7 @@ import (
 	"github.com/larsartmann/go-cqrs-lite/system/v4"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/cqa"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
+	"github.com/larsartmann/go-taskqueue/internal/incident"
 	"github.com/larsartmann/go-taskqueue/internal/budget"
 	"github.com/larsartmann/go-taskqueue/internal/composition"
 	"github.com/larsartmann/go-taskqueue/internal/depsweep"
@@ -79,6 +80,7 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
   tq tail [-f] [--db PATH] [--after SEQ]
   tq watermarks show [--db PATH]   (journal consumer cursors)
   tq watermarks set CONSUMER SEQ [--db PATH]   (rewind = safe replay)
+  tq incidents [--json] [--db PATH]   (folded error incidents: occurrences, status, fix tasks)
   tq crush [--bin BIN] [--repo DIR] [--project P] [--summary TEXT]
            [--allow-dirty] [--db PATH] [--id ID] -- <crush args...>
                   (wrap a crush session: on exit — clean or crashed — runs
@@ -145,6 +147,7 @@ func main() {
 		"serve":        cmdServe,
 		"version":      cmdVersion,
 		"api":          cmdAPI,
+		"incidents":    cmdIncidents,
 	}
 
 	switch name := os.Args[1]; name {
@@ -1267,6 +1270,20 @@ func cmdAgentPool(args []string) error {
 		}
 	}
 
+	var incidentPolicy *incident.Policy
+
+	{
+		var err error
+
+		// Unconditional (ADR-0021): recording observations is journal-only
+		// cost; the minted fix tasks still ride every autonomy gate
+		// (agent pool flags, per-repo .tq-agents, budgets, exclusivity).
+		incidentPolicy, err = incident.NewPolicy(ctx, store, store, incident.PolicyConfig{Log: log})
+		if err != nil {
+			return fmt.Errorf("incident policy: %w", err)
+		}
+	}
+
 	var prioritizeSweeper *prioritize.Sweeper
 
 	if poolOpts.prioritize {
@@ -1412,6 +1429,17 @@ func cmdAgentPool(args []string) error {
 				}
 			})
 		}
+
+		mintPass("incident sweep", func() {
+			stats, err := incidentPolicy.Sweep(ctx)
+			if err != nil {
+				log.Error("incident sweep failed", "err", err)
+			} else if stats.TasksMinted > 0 || stats.Regressions > 0 || stats.Skipped > 0 {
+				log.Info("incident sweep done", "facts", stats.Facts,
+					"minted", stats.TasksMinted, "occurrences", stats.Occurrences,
+					"regressions", stats.Regressions, "known", stats.Known, "skipped", stats.Skipped)
+			}
+		})
 
 		if statusSweeper != nil {
 			mintPass("status sweep", func() {
@@ -3323,6 +3351,11 @@ func cmdAPI(args []string) error {
 		return err
 	}
 
+	// Arm the ReportError command (ADR-0021): POST /api/v1/errors clips,
+	// validates, fingerprints, and appends error.observed facts; the
+	// incident policy in the agent pool reacts to them.
+	server.UseErrorRecorder(incident.NewRecorder(s))
+
 	if *readModel {
 		if err := server.UseReadModel(context.Background(), readmodel.PathFor(dbPath)); err != nil {
 			return err
@@ -3335,6 +3368,72 @@ func cmdAPI(args []string) error {
 	fmt.Fprintf(os.Stderr, "tq: write API on http://%s (token required)\n", *addr)
 
 	return server.ListenAndServe(ctx, *addr)
+}
+
+// cmdIncidents lists the folded incident read model (ADR-0021): every
+// error fingerprint with occurrences, status, and minted fix tasks.
+// Read-only — it folds the journal and touches no watermarks.
+func cmdIncidents(args []string) error {
+	fs := flag.NewFlagSet("incidents", flag.ExitOnError)
+	asJSON := fs.Bool("json", false, "JSON output of the incident list")
+	db := dbFlag(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	s := mustOpenDB(resolveDB(*db))
+	defer s.Close()
+
+	state, err := incident.FoldAll(context.Background(), s)
+	if err != nil {
+		return err
+	}
+
+	incidents := state.Incidents()
+
+	if *asJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(incidents)
+	}
+
+	if len(incidents) == 0 {
+		fmt.Println("(no incidents)")
+
+		return nil
+	}
+
+	fmt.Printf("%-18s %-14s %5s %4s  %-14s %s\n",
+		"FINGERPRINT", "STATUS", "OCC", "REG", "PROJECT", "MESSAGE")
+
+	for _, inc := range incidents {
+		msg := inc.Message
+		if i := strings.IndexByte(msg, '\n'); i >= 0 {
+			msg = msg[:i]
+		}
+
+		if len(msg) > 60 {
+			msg = msg[:60]
+		}
+
+		fmt.Printf("%-18s %-14s %5d %4d  %-14s %s\n",
+			inc.Fingerprint, inc.Status, inc.Occurrences, inc.Regressions, inc.Project, msg)
+
+		for _, m := range inc.Mints {
+			fmt.Printf("  task %s prio=%d regression=%v outcome=%s\n",
+				m.TaskID, m.Priority, m.Regression, firstNonEmpty(m.Outcome, "running"))
+		}
+	}
+
+	return nil
+}
+
+func firstNonEmpty(s, fallback string) string {
+	if s == "" {
+		return fallback
+	}
+
+	return s
 }
 
 // version is overridden at build time (-ldflags "-X main.version=...");
