@@ -44,6 +44,7 @@ not here.
 - [ ] release.sh: add `--publish-steps-only` (resume at proxy verification) so a network-dead 5/5 death doesn't force a full-script re-run (closeout 2026-10-08 00-55 §e2; echo of 2026-10-07 16-50 §e)
 - [ ] check-release-docs.sh: make the `need_in_both` doc pins reflow-tolerant (grep a whitespace-normalized copy of RELEASE.md, e.g. `tr '\n' ' '`) so a doc reflow can't false-fail the drift smoke; the hazard comment at the call site shrinks to a why-normalized one-liner (closeout 2026-10-08 §e1)
 - [ ] check-release-docs.sh: add a `--self-test` pin (sibling pattern: check-transient-retry.sh) proving drift detection fires — mutate a doc copy, expect drift=1 — so the smoke can't rot into always-green (closeout 2026-10-08 §e2)
+- [ ] check-release-docs.sh: `need_in_both`-pin the `poked demand-fill` log line so RELEASE.md's new timeout-fallback citation (2026-10-09 task closeout) can't silently rot when scripts/release.sh rewords its echo (closeout 2026-10-09 §b/§e1)
 
 - [ ] Verify the CQA bridge against a live CQA API instance and fix contract drift (`internal/bridge/cqa` response shapes are httptest-informed guesses today); upgrade its FEATURES.md status after (plan C25) — BLOCKED: needs a live CQA instance URL + owner ID + token from the owner
 
