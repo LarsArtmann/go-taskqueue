@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **release.sh proxy verification demand-fill + die diagnosis** (2026-10-08):
+  the 5-attempt proxy wait now pokes `proxy.golang.org/<module>/@v/<ver>.info`
+  (on-demand fill) on every attempt before the passive `go list -m -versions`
+  poll — passive @v/list never triggers a fetch, which is what killed the
+  v0.3.3 publish at attempt 5/5 — and the exhaustion message distinguishes
+  "all .info pokes failed" (network outage) from "@v/list never listed"
+  (proxy lag), ending doomed polling + misattributed postmortems
+  (4e6d7f88, 8fed04f3; RELEASE.md synced).
+- **check-release-docs.sh reflow hazard documented** (2026-10-08): the
+  line-pinned `need_in_both` grep pins (most reflow-fragile:
+  `go list -m -versions`) carry a call-site comment naming the
+  false-fail hazard and the first diagnostic step (1075248c;
+  reflow-tolerance itself is a rowed follow-up).
+
+### Added
+- **Root-gate cheap bash -n syntax guard** (2026-10-08): root-gate.sh
+  syntax-checks scripts/release.sh + scripts/lib/*.sh + itself (~10 ms)
+  before the Go gates, so a slip in the un-push-gated release path fails
+  in milliseconds instead of after a full ci-local battery
+  (bb280c05; ci-local fast-pass hoist rowed).
+
 ### Added
 - **`check-dead-sha-refs` covers `docs/status/tasks/*.md`** (2026-10-07,
   O7 routing follow-up): closeout reports moved to `tasks/` had been
