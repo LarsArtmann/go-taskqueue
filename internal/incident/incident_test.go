@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
-	"github.com/lars/projects/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/queue"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -26,11 +27,21 @@ func newTestStore(t *testing.T) *sqlite.Store {
 	return s
 }
 
+func allTasks(t *testing.T, s *sqlite.Store) []task.Task {
+	t.Helper()
+
+	tasks, err := s.List(context.Background(), queue.Filter{})
+	if err != nil {
+		t.Fatalf("list tasks: %v", err)
+	}
+
+	return tasks
+}
+
 func TestFingerprintStability(t *testing.T) {
 	base := Report{Project: "webapp", Kind: KindServer, Message: "connection refused after 3 retries"}
 	fp := Fingerprint(base)
 
-	// Digit noise groups.
 	noisy := base
 	noisy.Message = "connection refused after 7 retries"
 
@@ -38,15 +49,15 @@ func TestFingerprintStability(t *testing.T) {
 		t.Fatalf("digit noise changed fingerprint: %s != %s", Fingerprint(noisy), fp)
 	}
 
-	// Quoted-string noise groups.
 	quoted := base
-	quoted.Message = `connection refused after 3 retries on "tcp://10.0.0.7:5432"`
+	quoted.Message = `cannot open 'config.json': no such file`
+	quotedPeer := base
+	quotedPeer.Message = `cannot open 'secrets.yaml': no such file`
 
-	if Fingerprint(quoted) != fp {
-		t.Fatalf("quoted noise changed fingerprint: %s != %s", Fingerprint(quoted), fp)
+	if Fingerprint(quoted) != Fingerprint(quotedPeer) {
+		t.Fatalf("quoted noise changed fingerprint: %s != %s", Fingerprint(quoted), Fingerprint(quotedPeer))
 	}
 
-	// Whitespace noise groups.
 	ws := base
 	ws.Message = "connection   refused\nafter 3 retries"
 
@@ -54,7 +65,6 @@ func TestFingerprintStability(t *testing.T) {
 		t.Fatalf("whitespace noise changed fingerprint: %s != %s", Fingerprint(ws), fp)
 	}
 
-	// Different top frame is a different bug.
 	frame := base
 	frame.Stack = "at handler (/app/orders.go:42)\nat serve (/app/server.go:9)"
 	other := base
@@ -64,7 +74,6 @@ func TestFingerprintStability(t *testing.T) {
 		t.Fatal("different top frames must fingerprint differently")
 	}
 
-	// Different project is a different bug.
 	foreign := base
 	foreign.Project = "otherapp"
 
@@ -86,11 +95,16 @@ func TestClipAndValidate(t *testing.T) {
 		t.Fatal("unknown kind must be invalid")
 	}
 
+	crumbs := make([]string, MaxBreadcrumbs+10)
+	for i := range crumbs {
+		crumbs[i] = strings.Repeat("c", MaxCrumb+50)
+	}
+
 	rep := Report{
 		Project:     "webapp",
 		Message:     strings.Repeat("x", MaxMessage+100),
 		Stack:       strings.Repeat("s", MaxStack+100),
-		Breadcrumbs: make([]string, MaxBreadcrumbs+10),
+		Breadcrumbs: crumbs,
 	}.Clip()
 
 	if len(rep.Message) > MaxMessage {
@@ -103,6 +117,12 @@ func TestClipAndValidate(t *testing.T) {
 
 	if len(rep.Breadcrumbs) != MaxBreadcrumbs {
 		t.Fatalf("breadcrumbs not capped: %d", len(rep.Breadcrumbs))
+	}
+
+	for _, c := range rep.Breadcrumbs {
+		if len(c) > MaxCrumb {
+			t.Fatalf("crumb not capped: %d", len(c))
+		}
 	}
 
 	if rep.Kind != KindServer {
@@ -159,14 +179,11 @@ func TestRecorderAppendsObservedFact(t *testing.T) {
 		t.Fatalf("detail roundtrip mismatch: %+v", rep)
 	}
 
-	// Invalid reports append nothing.
 	if _, err := rec.Record(ctx, Report{Project: "webapp"}); err == nil {
 		t.Fatal("missing message must fail")
 	}
 
-	facts, _ = s.Facts(ctx, 0, 10)
-
-	if len(facts) != 1 {
+	if facts, _ = s.Facts(ctx, 0, 10); len(facts) != 1 {
 		t.Fatalf("invalid report appended a fact: %d", len(facts))
 	}
 }
@@ -178,17 +195,21 @@ func TestPolicyStormOneTask(t *testing.T) {
 	s := newTestStore(t)
 	rec := NewRecorder(s)
 
+	// The policy starts FIRST (production flow: pool running, then errors
+	// arrive). A first run bootstraps at the journal head — facts that
+	// predate the policy are folded but not reacted to; `tq watermarks set
+	// incident-policy SEQ` rewinds to replay them.
+	pol, err := NewPolicy(ctx, s, s, PolicyConfig{})
+	if err != nil {
+		t.Fatalf("new policy: %v", err)
+	}
+
 	rep := Report{Project: "webapp", Kind: KindServer, Message: "panic: runtime error: index out of range [7]"}
 
 	for i := 0; i < 1000; i++ {
 		if _, err := rec.Record(ctx, rep); err != nil {
 			t.Fatalf("record %d: %v", i, err)
 		}
-	}
-
-	pol, err := NewPolicy(ctx, s, s, PolicyConfig{})
-	if err != nil {
-		t.Fatalf("new policy: %v", err)
 	}
 
 	stats, err := pol.Sweep(ctx)
@@ -204,10 +225,7 @@ func TestPolicyStormOneTask(t *testing.T) {
 		t.Fatalf("occurrences: %d", stats.Occurrences)
 	}
 
-	tasks, err := s.List(ctx, listFilter())
-	if err != nil {
-		t.Fatalf("list: %v", err)
-	}
+	tasks := allTasks(t, s)
 
 	if len(tasks) != 1 {
 		t.Fatalf("want exactly 1 task in store, got %d", len(tasks))
@@ -231,10 +249,6 @@ func TestPolicyStormOneTask(t *testing.T) {
 		t.Fatalf("max attempts: %d", got.MaxAttempts)
 	}
 
-	if want := TaskDedupKey(Fingerprint(rep), got.DedupKey); false {
-		_ = want // dedup key shape asserted via prefix below
-	}
-
 	if !strings.HasPrefix(got.DedupKey, TaskDedupPrefix+Fingerprint(rep)+":") {
 		t.Fatalf("dedup key shape: %s", got.DedupKey)
 	}
@@ -252,7 +266,6 @@ func TestPolicyStormOneTask(t *testing.T) {
 		t.Fatal("prompt must carry the error message")
 	}
 
-	// The fold sees occurrences and the dispatched state.
 	inc, ok := pol.State().Get(Fingerprint(rep))
 	if !ok {
 		t.Fatal("incident missing from fold")
@@ -277,20 +290,19 @@ func TestPolicyReplayNoDuplicate(t *testing.T) {
 
 	rep := Report{Project: "webapp", Message: "nil pointer dereference in order service"}
 
-	if _, err := rec.Record(ctx, rep); err != nil {
-		t.Fatalf("record: %v", err)
-	}
-
 	pol, err := NewPolicy(ctx, s, s, PolicyConfig{})
 	if err != nil {
 		t.Fatalf("new policy: %v", err)
+	}
+
+	if _, err := rec.Record(ctx, rep); err != nil {
+		t.Fatalf("record: %v", err)
 	}
 
 	if _, err := pol.Sweep(ctx); err != nil {
 		t.Fatalf("sweep: %v", err)
 	}
 
-	// Rewind the cursor before the observed fact: the next sweep replays.
 	if err := s.SaveWatermark(ctx, ConsumerKey, 0); err != nil {
 		t.Fatalf("rewind: %v", err)
 	}
@@ -299,12 +311,7 @@ func TestPolicyReplayNoDuplicate(t *testing.T) {
 		t.Fatalf("replay sweep: %v", err)
 	}
 
-	tasks, err := s.List(ctx, listFilter())
-	if err != nil {
-		t.Fatalf("list: %v", err)
-	}
-
-	if len(tasks) != 1 {
+	if tasks := allTasks(t, s); len(tasks) != 1 {
 		t.Fatalf("replay must not duplicate tasks, got %d", len(tasks))
 	}
 }
@@ -318,25 +325,25 @@ func TestPolicyRegression(t *testing.T) {
 
 	rep := Report{Project: "webapp", Message: "failed to load config from env"}
 
-	if _, err := rec.Record(ctx, rep); err != nil {
-		t.Fatalf("record: %v", err)
-	}
-
 	pol, err := NewPolicy(ctx, s, s, PolicyConfig{})
 	if err != nil {
 		t.Fatalf("new policy: %v", err)
+	}
+
+	if _, err := rec.Record(ctx, rep); err != nil {
+		t.Fatalf("record: %v", err)
 	}
 
 	if _, err := pol.Sweep(ctx); err != nil {
 		t.Fatalf("sweep: %v", err)
 	}
 
-	tasks, err := s.List(ctx, listFilter())
-	if err != nil || len(tasks) != 1 {
-		t.Fatalf("first mint: %v %d", err, len(tasks))
+	tasks := allTasks(t, s)
+
+	if len(tasks) != 1 {
+		t.Fatalf("first mint: %d tasks", len(tasks))
 	}
 
-	// Complete the fix task like a worker would.
 	_, claim, err := s.ClaimDue(ctx, "test-owner", 5*time.Minute)
 	if err != nil {
 		t.Fatalf("claim: %v", err)
@@ -351,11 +358,11 @@ func TestPolicyRegression(t *testing.T) {
 	}
 
 	inc, _ := pol.State().Get(Fingerprint(rep))
+
 	if inc.Status != StatusResolved {
 		t.Fatalf("status after completion: %s", inc.Status)
 	}
 
-	// Recurrence: same fingerprint, new fact.
 	if _, err := rec.Record(ctx, rep); err != nil {
 		t.Fatalf("record recurrence: %v", err)
 	}
@@ -369,22 +376,23 @@ func TestPolicyRegression(t *testing.T) {
 		t.Fatalf("regression mint: minted=%d regressions=%d", stats.TasksMinted, stats.Regressions)
 	}
 
-	tasks, err = s.List(ctx, listFilter())
-	if err != nil || len(tasks) != 2 {
-		t.Fatalf("want 2 tasks after regression, got %d (%v)", len(tasks), err)
+	tasks = allTasks(t, s)
+
+	if len(tasks) != 2 {
+		t.Fatalf("want 2 tasks after regression, got %d", len(tasks))
 	}
 
-	// The newest task is the regression mint.
-	var newest task.Task
+	var regression task.Task
 
 	for _, tt := range tasks {
 		if tt.DedupKey != tasks[0].DedupKey {
-			newest = tt
+			regression = tt
 		}
 	}
 
-	if newest.Priority != DefaultRegressionPriority {
-		t.Fatalf("regression must mint machine band %d, got %d", DefaultRegressionPriority, newest.Priority)
+	if regression.Priority != DefaultRegressionPriority {
+		t.Fatalf("regression must mint machine band %d, got %d",
+			DefaultRegressionPriority, regression.Priority)
 	}
 
 	inc, _ = pol.State().Get(Fingerprint(rep))
@@ -394,7 +402,8 @@ func TestPolicyRegression(t *testing.T) {
 	}
 }
 
-// TestPolicyDeadLetterFixFailed: an exhausted fix task fails the incident.
+// TestPolicyDeadLetterFixFailed: a permanently failed fix task fails the
+// incident in the fold.
 func TestPolicyDeadLetterFixFailed(t *testing.T) {
 	ctx := context.Background()
 	s := newTestStore(t)
@@ -402,40 +411,33 @@ func TestPolicyDeadLetterFixFailed(t *testing.T) {
 
 	rep := Report{Project: "webapp", Message: "boom"}
 
+	pol, err := NewPolicy(ctx, s, s, PolicyConfig{})
+	if err != nil {
+		t.Fatalf("new policy: %v", err)
+	}
+
 	if _, err := rec.Record(ctx, rep); err != nil {
 		t.Fatalf("record: %v", err)
 	}
-
-	pol, _ := NewPolicy(ctx, s, s, PolicyConfig{})
 
 	if _, err := pol.Sweep(ctx); err != nil {
 		t.Fatalf("sweep: %v", err)
 	}
 
-	tasks, _ := s.List(ctx, listFilter())
+	tasks := allTasks(t, s)
 
-	// Burn the attempts: claim + fail until dead-lettered.
-	for i := 0; ; i++ {
-		tk, claim, err := s.ClaimDue(ctx, "test-owner", 5*time.Minute)
-		if err != nil {
-			t.Fatalf("claim: %v", err)
-		}
-
-		dead, err := s.Fail(ctx, tk.ID, claim, "simulated permanent failure", false)
-		if err != nil {
-			t.Fatalf("fail: %v", err)
-		}
-
-		if dead {
-			break
-		}
-
-		if i > 10 {
-			t.Fatal("task never dead-lettered")
-		}
+	if len(tasks) != 1 {
+		t.Fatalf("mint: %d tasks", len(tasks))
 	}
 
-	_ = tasks
+	tk, claim, err := s.ClaimDue(ctx, "test-owner", 5*time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if err := s.FailPermanent(ctx, tk.ID, claim, "simulated permanent failure", nil); err != nil {
+		t.Fatalf("fail permanent: %v", err)
+	}
 
 	if _, err := pol.Sweep(ctx); err != nil {
 		t.Fatalf("sweep: %v", err)
@@ -457,20 +459,19 @@ func TestPolicyRestartResumes(t *testing.T) {
 
 	rep := Report{Project: "webapp", Message: "transient upstream 503"}
 
-	if _, err := rec.Record(ctx, rep); err != nil {
-		t.Fatalf("record: %v", err)
-	}
-
 	first, err := NewPolicy(ctx, s, s, PolicyConfig{})
 	if err != nil {
 		t.Fatalf("first policy: %v", err)
+	}
+
+	if _, err := rec.Record(ctx, rep); err != nil {
+		t.Fatalf("record: %v", err)
 	}
 
 	if _, err := first.Sweep(ctx); err != nil {
 		t.Fatalf("first sweep: %v", err)
 	}
 
-	// "Restart": new instance, same database.
 	second, err := NewPolicy(ctx, s, s, PolicyConfig{})
 	if err != nil {
 		t.Fatalf("second policy: %v", err)
@@ -490,11 +491,7 @@ func TestPolicyRestartResumes(t *testing.T) {
 		t.Fatalf("restart fold: %+v ok=%v", inc, ok)
 	}
 
-	tasks, _ := s.List(ctx, listFilter())
-
-	if len(tasks) != 1 {
+	if tasks := allTasks(t, s); len(tasks) != 1 {
 		t.Fatalf("restart duplicated tasks: %d", len(tasks))
 	}
 }
-
-func listFilter() (f any) { return nil } // replaced below by the real filter
