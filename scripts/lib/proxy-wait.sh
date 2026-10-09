@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Proxy-wait loop extracted from release.sh (proxy verification after tag
 # push) so an offline test can drive both die branches — network-dead vs
 # proxy lag — without touching proxy.golang.org.
