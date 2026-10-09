@@ -74,7 +74,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/runactor`                     | run.Group actors, LIFO shutdown, InterruptOn                                             |
 | `internal/webui`                        | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003)                                   |
 | `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout; shared bearer + 3-strikes     |
-| `internal/incident`                     | Error reports → fix tasks (ADR-0021)                                                     |
+| `internal/incident`                     | Error reports → fix tasks (ADR-0021) |
 
 ### Store invariants
 

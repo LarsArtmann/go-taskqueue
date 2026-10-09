@@ -104,6 +104,12 @@ Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 | **Session bridge**       | `tq session begin/close`: gives INTERACTIVE crush sessions the pool's close-out. Close attributes the session's footer commits, then directly enqueues one review + one status task; the pool does the rest (facts-first: `session.opened`/`session.closed` observations, never task state).               |
 | **Attributed commit**    | A commit carrying the `Crush-Session: <id>` git footer — the session it belongs to. Exact trailer matching; quoting someone else's footer never attributes.                                                                                                                                                |
 | **Synthetic session ID** | The `session:<id>` lineage key standing in for a session wherever a task ID shape is expected (facts' TaskID, dedup keys, payload lineage). Never a real task row.                                                                                                                                         |
+| **Error report**         | The clipped `Report` command behind `POST /api/v1/errors`. One accepted report appends exactly ONE `error.observed` fact; secrets are unrepresentable (no header/cookie/body fields exist to populate). |
+| **Fingerprint**          | sha256 over project + kind + normalized message + top stack frame (digits, quotes, whitespace collapsed; release EXCLUDED) → 16 hex. Stable across log noise so one failure is one incident and a redeploy never forks it. |
+| **Incident**             | The `incident:<fingerprint>` synthetic stream (same precedent as session IDs): occurrence counts and fix outcomes folded from facts by a pure projection. Never a task row — until a fix is minted. |
+| **Mint**                 | The incident policy's only side effect: a fix-needed incident becomes ONE agent task (`incident.task-minted`, dedup `err:<fp>:<seq>`), riding the pool's autonomy gates. Reports already covered by the same source fact never mint twice. |
+| **Regression**           | An occurrence on a resolved incident: re-opens it and mints again at regression priority, because the previous fix did not hold. |
+| **Incident status**      | open → fix-dispatched (mint in flight) → resolved (task completed) or fix-failed (task dead-lettered). |
 
 ## Bounded contexts
 
