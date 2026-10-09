@@ -395,7 +395,7 @@ func (s *Server) Run(ctx context.Context) error {
 	go func() {
 		defer close(tailerDone)
 
-		if s.cfg.ReadModelPath == "" {
+		if s.cfg.Pump == nil {
 			if err := s.tail(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				slog.Error("webui: journal tailer failed", "err", err)
 			}

@@ -32,6 +32,10 @@ var ErrTokenRequiredOnLAN = errors.New(
 func (c Config) Validate() error {
 	c = c.withDefaults()
 
+	if c.ReadModelPath != "" && c.Pump == nil {
+		return errors.New("webui: ReadModelPath requires Pump — the projection runtime is composed by the caller, webui never opens it")
+	}
+
 	if c.AuthToken != "" || isLoopbackAddr(c.Addr) {
 		return nil
 	}

@@ -3485,6 +3485,50 @@ func cmdVersion(args []string) error {
 	return nil
 }
 
+// projectionPump adapts the composition root's ProjectionRuntime (fields,
+// not methods) to the narrow webui.ProjectionPump seam: webui consumes the
+// folded model and a Run lifecycle without importing composition.
+type projectionPump struct {
+	rt *composition.ProjectionRuntime
+}
+
+func (p *projectionPump) Model() *readmodel.Model { return p.rt.Model }
+
+func (p *projectionPump) Run(ctx context.Context, notify func(cursor int64)) error {
+	defer func() { _ = p.rt.Close() }()
+
+	if err := p.rt.Host.Start(ctx); err != nil {
+		return fmt.Errorf("start projection host: %w", err)
+	}
+
+	updates := p.rt.Model.WatchSeq(ctx)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case _, ok := <-updates:
+			if !ok {
+				return nil
+			}
+
+		drain:
+			for {
+				select {
+				case _, ok := <-updates:
+					if !ok {
+						break drain
+					}
+				default:
+					break drain
+				}
+			}
+
+			notify(p.rt.Model.JournalCursor())
+		}
+	}
+}
+
 func cmdServe(args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	addr := fs.String("addr", webui.DefaultAddr, "listen address (default: localhost only)")
@@ -3512,6 +3556,8 @@ func cmdServe(args []string) error {
 
 	dbPath := resolveDB(*db)
 
+	store := mustOpenDB(dbPath)
+
 	cfg := webui.Config{
 		Addr:        *addr,
 		Poll:        *poll,
@@ -3522,14 +3568,22 @@ func cmdServe(args []string) error {
 	}
 
 	if *readModel {
+		rt, rtErr := composition.NewProjectionRuntime(context.Background(), store, readmodel.PathFor(dbPath))
+		if rtErr != nil {
+			_ = store.Close()
+
+			return rtErr
+		}
+
 		cfg.ReadModelPath = readmodel.PathFor(dbPath)
+		cfg.Pump = &projectionPump{rt: rt}
 	}
 
 	if err := cfg.Validate(); err != nil {
+		_ = store.Close()
+
 		return err
 	}
-
-	store := mustOpenDB(dbPath)
 
 	// ADR-0019 S4 (endgame P4): when the read model serves, the runtime is
 	// composed under the go-cqrs-lite system/ root — it owns the
