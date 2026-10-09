@@ -83,8 +83,29 @@ type Config struct {
 	// collection; the task table, board, detail pages and fact feeds stay
 	// store-backed — the planned table does not carry lease owner,
 	// NotBefore or payload, which those row-rich views render. Empty =
-	// the store-backed defaults (off).
+	// the store-backed defaults (off). Setting it requires Pump: this
+	// package never opens the projection itself (the composition root
+	// owns that engine — the single-opener seam).
 	ReadModelPath string
+	// Pump is the injected live-projection runtime consumed when
+	// ReadModelPath is set: the folded model plus its managed lifecycle
+	// (host start, teardown on Run's return). cmd/tq's serve wiring
+	// composes it so webui stays a leaf of the composition root rather
+	// than its peer. Nil with ReadModelPath set fails Validate; with
+	// ReadModelPath empty the hand tailer runs regardless.
+	Pump ProjectionPump
+}
+
+// ProjectionPump is the live-projection surface the server consumes on
+// the read-model path: the folded model backing the aggregate reads,
+// driven by Run until the context is done. Run owns the pump's full
+// lifecycle — start the managed host, fold the journal, notify with the
+// applied journal cursor on every wake (the server's hub burst-coalesces
+// exactly like the hand tailer's batch), and tear the runtime down
+// before returning, so callers can drop their model references on defer.
+type ProjectionPump interface {
+	Model() *readmodel.Model
+	Run(ctx context.Context, notify func(cursor int64)) error
 }
 
 func (c Config) withDefaults() Config {

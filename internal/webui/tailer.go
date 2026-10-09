@@ -2,11 +2,9 @@ package webui
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/larsartmann/go-taskqueue/internal/composition"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -58,60 +56,22 @@ func (s *Server) journalHead(ctx context.Context) (int64, error) {
 	return s.store.HeadSeq(ctx)
 }
 
-// runReadModel is the ADR-0019 S3 live path: it opens the projection at
-// cfg.ReadModelPath, folds the journal into it through the managed
+// runReadModel is the ADR-0019 S3 live path: the injected pump (composed
+// by the caller — webui never opens the projection) starts the managed
 // projection host (ADR-0019 M08: restart budget, poison-fact DLQ,
-// checkpoint batching), and replaces the hand tailer→hub fan-out — every
+// checkpoint batching) and replaces the hand tailer→hub fan-out — every
 // folded ledger update wakes the hub (burst-coalesced, exactly the hand
 // tailer's batch semantics) carrying the model's applied journal
-// watermark, so SSE event ids keep their Last-Event-ID meaning. Run owns
-// the model's and the host's lifetime.
+// watermark, so SSE event ids keep their Last-Event-ID meaning. The pump
+// owns the model's and the host's lifetime.
 func (s *Server) runReadModel(ctx context.Context) error {
-	runtime, err := composition.NewProjectionRuntime(ctx, s.store, s.cfg.ReadModelPath)
-	if err != nil {
-		return fmt.Errorf("compose projection runtime: %w", err)
-	}
-
-	s.model = runtime.Model
+	s.model = s.cfg.Pump.Model()
 
 	defer func() {
 		s.model = nil
-
-		_ = runtime.Close()
 	}()
 
-	host := runtime.Host
-
-	if err := host.Start(ctx); err != nil {
-		return fmt.Errorf("start projection host: %w", err)
-	}
-
-	updates := runtime.Model.WatchSeq(ctx)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case _, ok := <-updates:
-			if !ok {
-				return nil
-			}
-
-		drain:
-			for {
-				select {
-				case _, ok := <-updates:
-					if !ok {
-						break drain
-					}
-				default:
-					break drain
-				}
-			}
-
-			s.hub.Notify(runtime.Model.JournalCursor())
-		}
-	}
+	return s.cfg.Pump.Run(ctx, s.hub.Notify)
 }
 
 // statusCounts reads the per-status counts through the shared
