@@ -186,6 +186,33 @@ environments, flag-gated strict mode, managed HOME) is specified in
 only by owner ruling — pattern-matched key stripping would break the
 provider access agents legitimately need.
 
+## Learned checks may only narrow (harness rule)
+
+The queue's automated judgements are of two kinds, and their authority
+is not symmetric. A DETERMINISTIC check owns its verdict outright: the
+verify gate's exit code, the redaction table (`internal/executor/redact.go`),
+and the gate-artifact classifier (`executor.IsGateArtifactDeath`) decide by
+code that does the same thing every run. A LEARNED check — an LLM
+reviewer/autofixer, the AI priority scorer, a future risk tier — may only
+TIGHTEN the deterministic admissible set, never widen it:
+
+- A learned verdict may veto or reorder; it may not grant a capability,
+  approve spend, or auto-dismiss a deterministic gate failure. If it did,
+  a tricked judge would be a tricked lock — the exact failure class a
+  deterministic gate exists to prevent.
+- When deterministic and learned verdicts are combined, merge as
+  `max(deterministic, learned)` with a union of flags: a learned finding
+  may RAISE the alarm but must never LOWER or erase a deterministic one
+  (defeating the judge cannot erase the tripwire), and the model is never
+  told a deterministic finding was cleared.
+- `IsGateArtifactDeath` auto-dismiss must stay deterministic for this
+  reason; keep the classifier's inputs code-derivable.
+
+This rule is adopted from the agent-harness invariant "a learned check may
+narrow the deterministic admissible set; it must never widen it"
+(`turnstonelabs/turnstone` `HYPOTHESIS.md`, gate-placement appendix;
+comparison and citations in `docs/research/2026-10-09_turnstone-lessons.md`).
+
 ## Hardening checklist for unattended pools
 
 - [ ] `--daily-budget` (or `--budget-cmd`) and `--max-per-tick` set (this is
