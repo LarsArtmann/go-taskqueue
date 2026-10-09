@@ -103,8 +103,8 @@ started (A1 in research, zero code written); C/E/F tracks NOT STARTED.
   - The companion mapper (`companion.UpstreamFact`) and `scanFacts`
     (A2) exist at `internal/queue/companion`; adapter call site seen at
     sqlitev4/adapter.go:406.
-  NOT DONE: the alias edit itself, Detail-type change ripple, journal
-  gate, commit.
+    NOT DONE: the alias edit itself, Detail-type change ripple, journal
+    gate, commit.
 - **A-track overall**: A2–A7 untouched. One
   TestStatsReadFromReadModel-adjacent risk logged: aliasing Fact may
   change SSE wire shape IF any surface marshals Fact directly (jsontext
