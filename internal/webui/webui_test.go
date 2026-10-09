@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"encoding/json/jsontext"
 	"fmt"
+	"github.com/larsartmann/go-taskqueue/internal/composition"
 	"io"
 	"log/slog"
 	"net/http"
@@ -25,6 +26,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/templ-components/display"
@@ -2325,13 +2327,66 @@ func pollStats(
 // tailer, the stats reads come off the projection, facts appended after
 // startup still converge through the watcher-driven hub wake, and the
 // model's lifetime ends with the run.
+// testPump adapts the composition root's ProjectionRuntime to the
+// webui.ProjectionPump seam exactly like cmd/tq's serve wiring does
+// (test-only twin of the production adapter).
+type testPump struct {
+	rt *composition.ProjectionRuntime
+}
+
+func (p *testPump) Model() *readmodel.Model { return p.rt.Model }
+
+func (p *testPump) Run(ctx context.Context, notify func(cursor int64)) error {
+	defer func() { _ = p.rt.Close() }()
+
+	if err := p.rt.Host.Start(ctx); err != nil {
+		return err
+	}
+
+	updates := p.rt.Model.WatchSeq(ctx)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case _, ok := <-updates:
+			if !ok {
+				return nil
+			}
+
+		drain:
+			for {
+				select {
+				case _, ok := <-updates:
+					if !ok {
+						break drain
+					}
+				default:
+					break drain
+				}
+			}
+
+			notify(p.rt.Model.JournalCursor())
+		}
+	}
+}
+
 func TestStatsReadFromReadModel(t *testing.T) {
 	s := newTestStore(t)
+
+	modelPath := filepath.Join(t.TempDir(), "projection.db")
+
+	rt, err := composition.NewProjectionRuntime(context.Background(), s, modelPath)
+	if err != nil {
+		t.Fatalf("NewProjectionRuntime: %v", err)
+	}
+
 	srv := New(s, Config{
 		Addr:          "127.0.0.1:0",
 		Poll:          20 * time.Millisecond,
 		Heartbeat:     100 * time.Millisecond,
-		ReadModelPath: filepath.Join(t.TempDir(), "projection.db"),
+		ReadModelPath: modelPath,
+		Pump:          &testPump{rt: rt},
 	})
 
 	enqueue(t, s, "sh", "demo")
