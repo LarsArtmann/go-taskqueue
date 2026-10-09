@@ -476,6 +476,16 @@ step "status-index check"
 step "status-index self-test (live-row counter pin)"
 ./scripts/check-status-index.sh --self-test
 
+# Security-invariant drift gate: the "learned checks may only narrow" promise
+# must hold in BOTH SECURITY.md prose and executor.MergeFindings code — a
+# rename or wording drift degrades the promise to stale prose (turnstone
+# gate-placement rule; 2026-10-09 task).
+step "security-invariant drift check (learned-checks-narrow, prose + code)"
+./scripts/check-security-invariants.sh
+
+step "security-invariant self-test (both drift mutations caught)"
+./scripts/check-security-invariants.sh --self-test
+
 # Orphaned-guard audit (15-39 report c7/f5, e1): every check-*/smoke script
 # must be wired (this file, ci.yml, or flake.nix) — the check-webui-css
 # lesson generalized into a gate.

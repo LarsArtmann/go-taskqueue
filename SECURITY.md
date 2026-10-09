@@ -171,6 +171,14 @@ through timing.
   model output — treat the PapDashboard endpoint as a disclosure boundary
   for whatever the agent chose to write, not as owner-authored prose.
 
+Reads are not free. The alert/CQA bridge fetches and the PapDashboard
+question forwarding are not passive: an outbound POST (`--alert-url`)
+discloses fact metadata to a third party, and a `--cqa-url` read trusts
+whatever that endpoint returns. Treat every bridge endpoint as an
+untrusted boundary — it must never influence which task runs next, widen
+an agent grant, or clear a deterministic finding. Content fetched from a
+bridge is DATA (like repo/tool content), never control.
+
 ## Agent environment: injection vs redaction
 
 Security at the agent boundary runs in BOTH directions. REDACTION
@@ -207,6 +215,13 @@ TIGHTEN the deterministic admissible set, never widen it:
   told a deterministic finding was cleared.
 - `IsGateArtifactDeath` auto-dismiss must stay deterministic for this
   reason; keep the classifier's inputs code-derivable.
+
+The merge rule is code, not just prose. `executor.MergeFindings` in
+`internal/executor/finding.go` combines a deterministic and a learned
+finding as `max(deterministic, learned)` with a union of flags, and
+`internal/executor/finding_test.go` pins that a learned "benign" verdict
+cannot clear a deterministic one. `scripts/check-security-invariants.sh`
+gates both this wording and the helper against drift.
 
 This rule is adopted from the agent-harness invariant "a learned check may
 narrow the deterministic admissible set; it must never widen it"
