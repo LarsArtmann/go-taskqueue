@@ -728,6 +728,77 @@ func TestBootMintScoresStandingBacklog(t *testing.T) {
 	}
 }
 
+// TestModelChangeRejoinsTheBatch pins turnstone lesson 14: a cached verdict
+// is only valid for the model that produced it. When the configured scorer
+// model changes, the old model's verdict must NOT be reused — the item
+// re-joins a fresh batch (the cache source no longer matches).
+func TestModelChangeRejoinsTheBatch(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	// First scorer runs on the unqualified (default) source.
+	first := newTestSweeper(t, s, SweeperConfig{})
+	seedBacklogTask(t, s, "demo", "Model-tagged item", "todo:model", 0, 50)
+
+	if _, err := first.Sweep(ctx); err != nil {
+		t.Fatalf("mint sweep: %v", err)
+	}
+
+	completeScorer(t, s, executor.PrioritizeVerdict{ItemKey: "todo:model", Score: 70})
+
+	if _, err := first.Sweep(ctx); err != nil {
+		t.Fatalf("apply sweep: %v", err)
+	}
+
+	cached, ok, err := s.PriorityScore(ctx, "todo:model")
+	if err != nil || !ok {
+		t.Fatalf("cached verdict: ok=%v err=%v", ok, err)
+	}
+
+	if cached.Source != SourceScorer {
+		t.Fatalf("cache source = %q, want %q", cached.Source, SourceScorer)
+	}
+
+	// A NEW sweeper with a configured model must not reuse the old model's
+	// verdict: the source mismatch re-joins the item to a fresh batch.
+	second := newTestSweeper(t, s, SweeperConfig{Model: "modelB"})
+	seedBacklogTask(t, s, "demo", "Newer item", "todo:newer", 0, 50)
+
+	stats, err := second.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("model-change sweep: %v", err)
+	}
+
+	if stats.BatchesEnqueued != 1 {
+		t.Fatalf("batches enqueued = %d, want 1 (model change re-batches)", stats.BatchesEnqueued)
+	}
+
+	batches := scorerTasks(t, s)
+
+	var payload executor.PrioritizePayload
+	if err := json.Unmarshal(batches[len(batches)-1].Payload, &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+
+	if payload.Model != "modelB" {
+		t.Fatalf("batch model = %q, want modelB", payload.Model)
+	}
+
+	found := false
+
+	for _, item := range payload.Items {
+		if item.Key == "todo:model" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatalf("model-changed batch %v missing the re-scored todo:model", payload.Items)
+	}
+}
+
 func TestForeignEnqueuesNeverMint(t *testing.T) {
 	t.Parallel()
 

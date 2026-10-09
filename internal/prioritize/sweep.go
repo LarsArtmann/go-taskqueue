@@ -52,8 +52,11 @@ const (
 	ConsumerKey = "prioritize-sweeper"
 
 	// SourceScorer stamps cached verdicts (queue.PriorityScore.Source):
-	// the batch scorer's identity. The model itself lives in each repo's
-	// crush config and is deliberately not claimed here.
+	// the batch scorer's identity. When SweeperConfig.Model is set the
+	// source gains a ":<model>" suffix (see scorerSource), so a verdict
+	// scored by a different model is treated as stale and re-scored — a
+	// provider retraining behind a fixed name, or a model swap, must not
+	// rank fresh work against a stale model's verdict (turnstone lesson 14).
 	SourceScorer = "ai:batch-scorer"
 
 	// batchPriority places scorer tasks in the machine band: they are
@@ -257,7 +260,7 @@ func (s *Sweeper) onCompleted(ctx context.Context, fact journal.Fact, stats *Swe
 			ItemKey:       verdict.ItemKey,
 			Score:         verdict.Score,
 			EffortMinutes: verdict.EffortMinutes,
-			Source:        SourceScorer,
+			Source:        s.scorerSource(),
 			Reasoning:     verdict.Reasoning,
 			ScoredAt:      fact.Time.UnixMilli(),
 		}); err != nil {
@@ -397,7 +400,7 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 
 	for _, entry := range pending {
 		score, cached, err := s.store.PriorityScore(ctx, entry.item.Key)
-		stale := err == nil && cached && s.verdictStale(score)
+		stale := err == nil && cached && s.verdictUnusable(score)
 
 		// A stale verdict re-joins the batch even though an old batch
 		// covered the item — the refresh pass is the point. Fresh or
@@ -490,6 +493,26 @@ func (s *Sweeper) mintWorkingSet(ctx context.Context, stats *SweepStats) {
 	for _, project := range sortedKeys(seen) {
 		s.mintRepo(ctx, seen[project], project, stats)
 	}
+}
+
+// scorerSource is the identity a verdict is stamped with AND matched
+// against: the batch scorer, model-qualified when SweeperConfig.Model is
+// set. A cached verdict whose Source differs (a different model) is stale,
+// so it re-joins the batch instead of ranking fresh work against an old
+// model's scores.
+func (s *Sweeper) scorerSource() string {
+	if s.cfg.Model != "" {
+		return SourceScorer + ":" + s.cfg.Model
+	}
+
+	return SourceScorer
+}
+
+// verdictUnusable reports whether a cached verdict must re-join the batch:
+// it outlived the score TTL, or it was scored by a different model
+// (Source mismatch), so ranking fresh work against it would mix models.
+func (s *Sweeper) verdictUnusable(score queue.PriorityScore) bool {
+	return s.verdictStale(score) || score.Source != s.scorerSource()
 }
 
 // verdictStale reports whether a cached verdict has outlived the score
