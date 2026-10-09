@@ -22,6 +22,11 @@ fi
 # shellcheck source=scripts/lib/proxy-wait.sh
 source scripts/lib/proxy-wait.sh
 
+# Expected die messages come from the lib's constants (single source of
+# truth) — no substring greps.
+die_lag="$(printf "$TQ_PROXY_DIE_LAG" vX.Y.Z example.com/module vX.Y.Z)"
+die_dead="$TQ_PROXY_DIE_DEAD"
+
 fails=0
 
 # drive <poke-prog> <list-prog> — runs the loop in a subshell with faked
@@ -65,20 +70,20 @@ expect_ok() { # <name> <poke-prog> <list-prog>
 	fi
 }
 
-expect_die "network-dead: transport failure (code 0)" "network is dead" \
+expect_die "network-dead: transport failure (code 0)" "$die_dead" \
 	'PROXY_POKE_HTTP_CODE=0; return 1' 'return 1'
-expect_die "network-dead: 5xx pokes" "network is dead" \
+expect_die "network-dead: 5xx pokes" "$die_dead" \
 	'PROXY_POKE_HTTP_CODE=503; return 1' 'return 1'
-expect_die "proxy lag: 404 pokes (reachable, not ingested)" "proxy lag" \
+expect_die "proxy lag: 404 pokes (reachable, not ingested)" "$die_lag" \
 	'PROXY_POKE_HTTP_CODE=404; return 1' 'return 1'
-expect_die "proxy lag: pokes ok, never listed" "proxy lag" \
+expect_die "proxy lag: pokes ok, never listed" "$die_lag" \
 	'PROXY_POKE_HTTP_CODE=200; return 0' 'return 1'
 expect_die "lag wins when the LAST poke ok: 404,404,200" \
-	'proxy lag' \
+	"$die_lag" \
 	'poke_n=$(( ${poke_n:-0} + 1 )); if [ "$poke_n" -ge 2 ]; then PROXY_POKE_HTTP_CODE=200; return 0; else PROXY_POKE_HTTP_CODE=404; return 1; fi' 'return 1'
-expect_die "network-dead wins on LAST attempt: 404 then transport-dead" "network is dead" \
+expect_die "network-dead wins on LAST attempt: 404 then transport-dead" "$die_dead" \
 	'poke_n=$(( ${poke_n:-0} + 1 )); if [ "$poke_n" -eq 1 ]; then PROXY_POKE_HTTP_CODE=404; return 1; else PROXY_POKE_HTTP_CODE=0; return 1; fi' 'return 1'
-expect_die "proxy lag wins on LAST attempt: transport-dead then 404" "proxy lag" \
+expect_die "proxy lag wins on LAST attempt: transport-dead then 404" "$die_lag" \
 	'poke_n=$(( ${poke_n:-0} + 1 )); if [ "$poke_n" -eq 1 ]; then PROXY_POKE_HTTP_CODE=0; return 1; else PROXY_POKE_HTTP_CODE=404; return 1; fi' 'return 1'
 expect_ok "recovery: poke fails then fills, lists" \
 	'poke_n=$(( ${poke_n:-0} + 1 )); if [ "$poke_n" -ge 2 ]; then PROXY_POKE_HTTP_CODE=200; return 0; else PROXY_POKE_HTTP_CODE=404; return 1; fi' \

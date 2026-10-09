@@ -5,6 +5,14 @@
 #
 # Seams: tq_proxy_poke / tq_proxy_lists are overridable functions (the
 # smoke test fakes them); die() is caller-supplied (release.sh's FAIL+exit).
+#
+# Die messages: single source of truth for the two terminal outcomes so
+# scripts/smoke/proxy-wait.sh asserts against these constants instead of
+# grepping substrings. TQ_PROXY_DIE_LAG is a format string (%s = version,
+# module, version).
+readonly TQ_PROXY_DIE_LAG='every .info poke succeeded but @v/list never listed %s — proxy lag, not an outage; wait and re-check https://proxy.golang.org/%s/@v/%s.info before retrying anything (never re-tag)'
+readonly TQ_PROXY_DIE_DEAD='all .info pokes failed — network is dead (or the proxy is unreachable); fix connectivity and re-run (never re-tag); the tag is pushed and safe'
+
 tq_proxy_poke() {
 	PROXY_POKE_HTTP_CODE=0
 	PROXY_POKE_HTTP_CODE="$(curl -fsS -o /dev/null -w '%{http_code}' "https://proxy.golang.org/$1/@v/$2.info")" || return 1
@@ -44,9 +52,9 @@ wait_for_proxy_version() {
 		echo "proxy does not list $version yet (attempt $attempt/$attempts) — propagation takes minutes"
 		if [ "$attempt" = "$attempts" ]; then
 			if [ "$poke_ok" = true ]; then
-				die "every .info poke succeeded but @v/list never listed $version — proxy lag, not an outage; wait and re-check https://proxy.golang.org/$module/@v/$version.info before retrying anything (never re-tag)"
+				die "$(printf "$TQ_PROXY_DIE_LAG" "$version" "$module" "$version")"
 			fi
-			die "all .info pokes failed — network is dead (or the proxy is unreachable); fix connectivity and re-run (never re-tag); the tag is pushed and safe"
+			die "$TQ_PROXY_DIE_DEAD"
 		fi
 		sleep "$sleep_secs"
 	done
