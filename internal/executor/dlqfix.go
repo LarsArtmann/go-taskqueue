@@ -55,6 +55,11 @@ type DLQFixPayload struct {
 	LastError string `json:"last_error,omitempty"`
 	// Attempts is how many attempts the dead task burned.
 	Attempts int `json:"attempts,omitempty"`
+	// ReclaimsWithUnknownEffect counts the dead task's prior task.released
+	// facts whose effect disposition is unknown — a crash mid-effect. When
+	// > 0 the autopsy is warned that an earlier attempt may have landed
+	// partial work, so the repo's git state is not a clean slate.
+	ReclaimsWithUnknownEffect int `json:"reclaims_with_unknown_effect,omitempty"`
 	// Model optionally overrides the crush model for the autopsy.
 	Model string `json:"model,omitempty"`
 	// Yolo marks the autopsy as autonomous (same contract as
@@ -225,7 +230,6 @@ func dlqFixPrompt(p DLQFixPayload) string {
 	}
 
 	b.WriteString(`## Decide
-
 1. The working tree may contain the dead run's uncommitted partial changes:
    inspect git status first. They are evidence — salvage what helps the
    diagnosis, revert what would corrupt a fix.
