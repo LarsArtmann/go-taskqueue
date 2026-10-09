@@ -6,7 +6,7 @@ executors (incl. AI agents). One Go binary, one file, zero services.
 
 **STATUS: v0.3.2 shipped; MULTIPLE concurrent agents** — re-read files,
 re-run tests; uncommitted parallel changes: read, judge, build on, never
-revert. (Size guard: TestAgentsDocSizeGuard; twin check-agents-size.sh)
+revert. (Size guard: TestAgentsDocSizeGuard)
 
 ## Commands
 
@@ -74,6 +74,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/runactor`                     | run.Group actors, LIFO shutdown, InterruptOn                                             |
 | `internal/webui`                        | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003)                                   |
 | `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout; shared bearer + 3-strikes     |
+| `internal/incident`                     | Error reports → fix tasks (ADR-0021)                                                     |
 
 ### Store invariants
 

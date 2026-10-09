@@ -131,13 +131,14 @@ func TestClipAndValidate(t *testing.T) {
 	}
 
 	// A cut landing mid-rune must back off to the rune boundary instead
-	// of halving a multibyte character into U+FFFD.
-	msg := strings.Repeat("é", 100) // 200 bytes, 2-byte runes
+	// of halving a multibyte character into U+FFFD. "€" is 3 bytes, so
+	// the 4096-byte cut lands 1 byte into a rune and backs off to 4095.
+	msg := strings.Repeat("€", 2000) // 6000 bytes
 	clipped := Report{Project: "webapp", Message: msg}.Clip().Message
 	if !utf8.ValidString(clipped) {
 		t.Fatalf("clipped message split a rune: %q", clipped)
 	}
-	if want := (MaxMessage / 2) * 2; len(clipped) != want {
+	if want := MaxMessage - (MaxMessage % 3); len(clipped) != want {
 		t.Fatalf("rune-boundary cap = %d bytes, want %d", len(clipped), want)
 	}
 }
