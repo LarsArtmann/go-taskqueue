@@ -61,7 +61,7 @@ expect_die "proxy lag: 404 pokes (reachable, not ingested)" "proxy lag" \
 	'PROXY_POKE_HTTP_CODE=404; return 1' 'return 1'
 expect_die "proxy lag: pokes ok, never listed" "proxy lag" \
 	'PROXY_POKE_HTTP_CODE=200; return 0' 'return 1'
-expect_die "lag wins over poke-flicker: any poke ok" \
+expect_die "lag wins when the LAST poke ok: 404,404,200" \
 	'proxy lag' \
 	'poke_n=$(( ${poke_n:-0} + 1 )); if [ "$poke_n" -ge 2 ]; then PROXY_POKE_HTTP_CODE=200; return 0; else PROXY_POKE_HTTP_CODE=404; return 1; fi' 'return 1'
 expect_die "network-dead wins on LAST attempt: 404 then transport-dead" "network is dead" \
