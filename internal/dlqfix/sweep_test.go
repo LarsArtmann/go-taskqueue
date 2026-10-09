@@ -2,6 +2,7 @@ package dlqfix
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"os"
 	"path/filepath"
@@ -191,6 +192,48 @@ func TestSweeperMintsOneAutopsyPerDeadAgentTask(t *testing.T) {
 
 	if DedupKey(dead.ID) != "dlqfix:"+dead.ID.String() {
 		t.Fatalf("DedupKey = %q", DedupKey(dead.ID))
+	}
+}
+
+// TestSweeperAutopsyCarriesReclaimDisposition pins that an autopsy minted for
+// a task with a prior crash reclaim (task.released, effect unknown) carries
+// the count, so the autopsy prompt warns that the repo state may be partial.
+func TestSweeperAutopsyCarriesReclaimDisposition(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	sw := newTestSweeper(t, s)
+
+	dead := seedDeadAgentTask(t, s, executor.AgentPayload{
+		Repo:   "demo",
+		Prompt: "ship the frobnicator",
+		Yolo:   true,
+	})
+
+	if err := s.AppendFact(context.Background(), journal.Fact{
+		TaskID: dead.ID.String(),
+		Type:   journal.Released,
+		Detail: jsontext.Value(`{"effect":"unknown","reason":"lease-expiry"}`),
+	}); err != nil {
+		t.Fatalf("append released fact: %v", err)
+	}
+
+	if _, err := sw.Sweep(context.Background()); err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+
+	tasks := pendingDLQFixTasks(t, s)
+	if len(tasks) != 1 {
+		t.Fatalf("dlqfix tasks = %d, want 1", len(tasks))
+	}
+
+	var payload executor.DLQFixPayload
+	if err := json.Unmarshal(tasks[0].Payload, &payload); err != nil {
+		t.Fatalf("autopsy payload: %v (%s)", err, tasks[0].Payload)
+	}
+
+	if payload.ReclaimsWithUnknownEffect != 1 {
+		t.Fatalf("ReclaimsWithUnknownEffect = %d, want 1", payload.ReclaimsWithUnknownEffect)
 	}
 }
 

@@ -229,7 +229,20 @@ func dlqFixPrompt(p DLQFixPayload) string {
 		b.WriteString("```\n" + strings.TrimSpace(p.Failure.Tail) + "\n```\n\n")
 	}
 
+	if p.ReclaimsWithUnknownEffect > 0 {
+		fmt.Fprintf(
+			&b,
+			"## Prior attempt may have partially landed\n\n"+
+				"This task was reclaimed after a crash %d time(s) with its effect left UNKNOWN: "+
+				"an earlier attempt started work but never recorded an outcome, so the "+
+				"repository's git state is NOT a clean slate. Inspect `git status` and `git log` "+
+				"for changes a crashed attempt may have made before you diagnose.\n\n",
+			p.ReclaimsWithUnknownEffect,
+		)
+	}
+
 	b.WriteString(`## Decide
+
 1. The working tree may contain the dead run's uncommitted partial changes:
    inspect git status first. They are evidence — salvage what helps the
    diagnosis, revert what would corrupt a fix.

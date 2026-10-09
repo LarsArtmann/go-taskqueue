@@ -246,6 +246,32 @@ func TestDLQFixExecutorPromptCarriesEvidence(t *testing.T) {
 	}
 }
 
+// TestDLQFixPromptWarnsOnUnresolvedEffect pins that a payload carrying a
+// prior crash-reclaim count renders the "may have partially landed" warning,
+// and that a clean payload does not.
+func TestDLQFixPromptWarnsOnUnresolvedEffect(t *testing.T) {
+	t.Parallel()
+
+	crashed := dlqFixPrompt(DLQFixPayload{
+		Repo:                      "demo",
+		DeadTask:                  "t1",
+		Work:                      "do the thing",
+		ReclaimsWithUnknownEffect: 2,
+	})
+	if !strings.Contains(crashed, "partially landed") {
+		t.Fatalf("prompt missing the unresolved-effect warning:\n%s", crashed)
+	}
+
+	if !strings.Contains(crashed, "2 time(s)") {
+		t.Fatalf("prompt missing the reclaim count:\n%s", crashed)
+	}
+
+	clean := dlqFixPrompt(DLQFixPayload{Repo: "demo", DeadTask: "t1", Work: "do the thing"})
+	if strings.Contains(clean, "partially landed") {
+		t.Fatalf("clean prompt must not warn about partial effects:\n%s", clean)
+	}
+}
+
 // TestDLQFixExecutorRunsDirtyTree pins the evidence-over-cleanliness rule:
 // an autopsy with the default (nil) RequireClean starts in a DIRTY repo —
 // a dead agent's partial work is evidence, and a clean-tree preflight would

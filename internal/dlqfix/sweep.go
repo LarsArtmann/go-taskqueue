@@ -177,15 +177,16 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 	}
 
 	payload := executor.DLQFixPayload{
-		Repo:      agentPayload.Repo,
-		DeadTask:  t.ID.String(),
-		DeadType:  t.Type,
-		Work:      agentPayload.Prompt,
-		Failure:   s.lastFailureEvidence(ctx, t.ID),
-		LastError: t.LastError,
-		Attempts:  t.Attempts,
-		Model:     s.cfg.Model,
-		Yolo:      agentPayload.Yolo,
+		Repo:                      agentPayload.Repo,
+		DeadTask:                  t.ID.String(),
+		DeadType:                  t.Type,
+		Work:                      agentPayload.Prompt,
+		Failure:                   s.lastFailureEvidence(ctx, t.ID),
+		LastError:                 t.LastError,
+		Attempts:                  t.Attempts,
+		ReclaimsWithUnknownEffect: s.reclaimsWithUnknownEffect(ctx, t.ID),
+		Model:                     s.cfg.Model,
+		Yolo:                      agentPayload.Yolo,
 	}
 
 	raw, err := json.Marshal(payload)
@@ -330,6 +331,32 @@ func (s *Sweeper) lastFailureEvidence(ctx context.Context, id task.ID) executor.
 	}
 
 	return executor.FailureEvidence{}
+}
+
+// reclaimsWithUnknownEffect counts the dead task's task.released facts whose
+// effect disposition is unknown — a crash mid-effect. The autopsy is warned
+// when > 0 so it treats the repo's git state as possibly partial rather than
+// a clean slate (turnstone: "crashes aren't finishes").
+func (s *Sweeper) reclaimsWithUnknownEffect(ctx context.Context, id task.ID) int {
+	trail, err := s.store.FactsForTask(ctx, id.String(), 0)
+	if err != nil {
+		return 0
+	}
+
+	count := 0
+
+	for _, f := range trail {
+		if f.Type != journal.Released || len(f.Detail) == 0 {
+			continue
+		}
+
+		var detail journal.ReleasedDetail
+		if json.Unmarshal(f.Detail, &detail) == nil && detail.Effect == journal.EffectUnknown {
+			count++
+		}
+	}
+
+	return count
 }
 
 // dispose executes the mechanical disposition of one completed autopsy:
