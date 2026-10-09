@@ -47,8 +47,9 @@ scaffolds go.mods.
 ## Architecture
 
 Facts-first: every state change is an immutable fact in an append-only
-journal; queue views, retry state, DLQ are projections. Claim exclusivity =
-lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
+journal; queue views, retry state, DLQ are projections. Claim
+exclusivity = lease TTL + expiry reclaim. Vocabulary:
+docs/DOMAIN_LANGUAGE.md.
 
 | Package                                 | Purpose                                                                                                    |
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -75,7 +76,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 | `internal/consumer`                     | Journal dispatcher, per-subscriber cursors (ADR-0009)                                                      |
 | `internal/runactor`                     | run.Group actors, LIFO shutdown, InterruptOn                                                               |
 | `internal/webui`                        | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003)                                                     |
-| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout; shared bearer + 3-strikes                       |
+| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout, shared bearer + 3-strikes                     |
 | `internal/incident`                     | Error reports → fix tasks (ADR-0021)                                                                       |
 
 ### Store invariants
@@ -130,8 +131,8 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT
   burn (jittered wait, fallback 15min cap 6h); per-repo gates
   fast-refuse siblings; closeout 429 arms `closeoutPending` resume.
-  **Env-requeue breaker**: env requeues carry `requeue_class`; 3 consecutive
-  burn an attempt + escalate (`env-streak`) — never uncap
+  **Env-requeue breaker**: env requeues carry `requeue_class`; 3
+  consecutive burn an attempt + escalate (`env-streak`) — never uncap
   (169-loop = $36.62/d).
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
@@ -148,14 +149,14 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 
 - **SQLite migrations** in `migrate()`: schema const → pragma + ALTER
   for legacy DBs → indexes AFTER the column exists.
-- **Watermarks**: checkpoint AFTER the batch's last accepted fact; failed
-  checkpoint gates forwarding; `tq watermarks show/set`; replay idempotent
-  (seq-derived keys).
+- **Watermarks**: checkpoint AFTER the batch's last accepted fact;
+  failed checkpoint gates forwarding; `tq watermarks show/set`; replay
+  idempotent (seq-derived keys).
 - **Priority (ADR-0015)**: claim order = STORED priority + aging (3d/pt,
-  cap 10); stored value never mutates. Markers `— P[1-4]` stripped before
-  the dedup hash. ONE ladder everywhere: startup/reprioritize/AI cache
-  (marker > AI > keyword). Probes enter `--priority ≥90` (fresh
-  low-priority work starves behind aging).
+  cap 10); stored value never mutates. Markers `— P[1-4]` stripped
+  before the dedup hash. ONE ladder everywhere (marker > AI > keyword).
+  Probes enter `--priority ≥90` (fresh low-priority work starves behind
+  aging).
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   pools sweep once at start.
 - **Claim-time budget gate**: paid turns block once the daily
@@ -172,9 +173,8 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **Verify-window battery**: cheap gates at HEAD (check-doc-refs, root
   build+vet, check-dead-sha-refs, date-named report) + one fresh delta;
   expensive gates inherit from a same-HEAD report; nested-module claims
-  need in-module `GOWORK=off` tests; closeouts touching root-guard-parsed
-  files (AGENTS/README/TODO_LIST, doc pins) cite ROOT build+vet+test
-  -race rc. Re-dispatch: `scripts/redispatch-brief.sh <id>` FIRST;
+  need in-module `GOWORK=off` tests; closeouts touching root-parsed
+  files cite ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh <id>` FIRST;
   battery rc TO A FILE (no PIPESTATUS); no-delta claim; dated DONE
   re-verified note; `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
@@ -228,7 +228,7 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **TestExactlyOnceUnderConcurrency is load-flaky** (worker): host build
   storms can drop it to "19/20 completed"; fails at clean parents too —
   re-run before attributing.
-- **Agent shells inherit `TQ_DB`** (the PRODUCTION journal) — scratch
+- **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`
   leaks to children (`env -u VAR`); multi-file `tail` fails; `printf
@@ -239,13 +239,13 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go
   PINNED to 1.27.1 = go.mod floor; NEVER lower a `go` directive
   (`check-go-mods.sh` gates).
-- **Host GOCACHE/GOROOT hazards**: gates run with `GOCACHE=/tmp/go-build-cache`
-  (host symlink → /nix/store ENOSPCs); "package X is not in std" + a
-  `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w +
-  trash, or `GOTOOLCHAIN=local`).
+- **Host GOCACHE/GOROOT hazards**: gates run with
+  `GOCACHE=/tmp/go-build-cache` (host symlink → /nix/store ENOSPCs);
+  "package X is not in std" + a `$GOMODCACHE/toolchain@…` GOROOT =
+  corrupt extraction (chmod -R u+w + trash, or `GOTOOLCHAIN=local`).
 - **golangci-lint is advisory** (~1.4k baseline, growth gated by
-  `scripts/lint-baseline.sh --check`); hard gates: vet+gofmt+tests; regen
-  only on a green tree after `golangci-lint cache clean`.
+  `scripts/lint-baseline.sh --check`); hard gates: vet+gofmt+tests;
+  regen only green after `golangci-lint cache clean`.
 - **gosec**: all findings triaged via `scripts/check-gosec.sh`; a new
   finding is a new class needing fresh triage.
 - **`tq serve`/`tq api` security**: loopback + read-only default;
@@ -254,24 +254,25 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
   gates, never "fix" them.
 - **VendorHash drift**: after go.mod changes run
-  `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to flake.nix.
-- **History policy**: NEVER reword/amend/rebase PUSHED commits; no force
-  push; scripted edits via script files.
+  `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to
+  flake.nix.
+- **History policy**: NEVER reword/amend/rebase PUSHED commits; no
+  force push; scripted edits via script files.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route
   exec sites through `execWithTransientRetry`.
-- **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` makes the flake
+- **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` makes the
   loader see outputs as a thunk — every eval dies with "expected a
   function but got a thunk at flake.nix:<outputs line>". Keep the `let`
   INSIDE the lambda (`outputs = inputs@{…}: let … in mkFlake …`).
 - **templ-components sibling pins**: a release with zero pseudo-versions
-  (`v…00001010100000-…`) in its root go.mod passes local builds (replaces)
-  but kills consumer graph loads (Nix go-modules FOD); `grep -r 00010101`
+  (`v…00001010100000-…`) in its root go.mod passes local builds but
+  kills consumer graph loads (Nix go-modules FOD); `grep -r 00010101`
   the dep repo before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
-  (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`):
-  `gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'` —
-  unscoped re-plants the vendor-gofmt death class (94% of the DLQ); grep
-  the FULL verify log before attributing a gate death.
+  (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`): `gofmt -l . |
+  git check-ignore --stdin -v --non-matching | grep '^::'` — unscoped
+  re-plants the vendor-gofmt death class (94% of the DLQ); grep the FULL
+  verify log before attributing a gate death.
 - **Flakes see only git-tracked files** — `git add` before `nix build`.
 
 ## Relation to other projects
@@ -287,7 +288,6 @@ lease TTL + expiry reclaim. Vocabulary: docs/DOMAIN_LANGUAGE.md.
 - **PapDashboard bridge**: `--alert-url/--alert-api-key`; dead letters
   raise `alert.triggered`, completions resolve; `NotifyDeadPool` =
   direct dead-pool path.
-- **go-health-dashboard** (MIT): ADOPTED — `/health` inside the token gate,
-  tq CSS, same-origin Datastar.
-- **httputil** NOT adopted (proprietary); **go-nix-helpers** flake-input
-  only, never the local checkout.
+- **go-health-dashboard** (MIT): ADOPTED — `/health` inside the token
+  gate, tq CSS, same-origin Datastar. **httputil** NOT adopted
+  (proprietary); **go-nix-helpers** flake-input only, never local.

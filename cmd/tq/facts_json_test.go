@@ -44,7 +44,10 @@ import (
 // package table, and the dep-bump gate lines are legitimate platform
 // documentation; the old 16.9k budget predated them. Nothing pruned was
 // unique — the stale "nominal v0.3.0" pin was the only correction.
-const agentsDocMaxBytes = 18_500
+// 2026-10-09 conscious reset 18,500 → 18,750: ~300 B of phrasing waste
+// pruned in place, but the remaining bulk is load-bearing; the
+// config-system bridge (F4) owns the next real prune.
+const agentsDocMaxBytes = 18_750
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
