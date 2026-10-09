@@ -146,11 +146,16 @@ func clipStr(s string, max int) string {
 	}
 
 	if max > 0 && len(s) > max {
+		cut := s[:max]
 		if utf8.ValidString(s) {
-			s = strings.TrimSpace(s[:max])
-		} else {
-			s = strings.TrimSpace(s[:max])
+			// A cut of a valid string can only be invalid by splitting
+			// the final rune; back off to its start so no character is
+			// halved into U+FFFD garbage.
+			for !utf8.ValidString(cut) {
+				cut = cut[:len(cut)-1]
+			}
 		}
+		s = strings.TrimSpace(cut)
 	}
 
 	return s

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -127,6 +128,17 @@ func TestClipAndValidate(t *testing.T) {
 
 	if rep.Kind != KindServer {
 		t.Fatalf("empty kind must default to server, got %q", rep.Kind)
+	}
+
+	// A cut landing mid-rune must back off to the rune boundary instead
+	// of halving a multibyte character into U+FFFD.
+	msg := strings.Repeat("é", 100) // 200 bytes, 2-byte runes
+	clipped := Report{Project: "webapp", Message: msg}.Clip().Message
+	if !utf8.ValidString(clipped) {
+		t.Fatalf("clipped message split a rune: %q", clipped)
+	}
+	if want := (MaxMessage / 2) * 2; len(clipped) != want {
+		t.Fatalf("rune-boundary cap = %d bytes, want %d", len(clipped), want)
 	}
 }
 
