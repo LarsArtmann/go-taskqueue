@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"encoding/json/jsontext"
 	"fmt"
-	"github.com/larsartmann/go-taskqueue/internal/composition"
 	"io"
 	"log/slog"
 	"net/http"
@@ -19,6 +18,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/larsartmann/go-taskqueue/internal/composition"
 
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/executor"

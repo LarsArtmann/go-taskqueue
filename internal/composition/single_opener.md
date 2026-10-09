@@ -24,13 +24,13 @@ serve") cannot be met by exporting an engine from the root.
 
 ## The pragma union (effective, per connection)
 
-| Pragma               | system-declared connection   | readmodel connection        |
-| -------------------- | ---------------------------- | --------------------------- |
-| journal_mode=WAL     | yes (explicit)               | yes (upstream default)      |
-| busy_timeout         | 5000 (explicit)              | 5000 (upstream default)     |
-| synchronous          | SQLite default (FULL) — GAP  | NORMAL (explicit)           |
-| cache_size           | SQLite default — GAP         | -32768 (explicit)           |
-| MaxOpenConns         | 1 (system policy)            | 1 (upstream policy)         |
+| Pragma           | system-declared connection  | readmodel connection    |
+| ---------------- | --------------------------- | ----------------------- |
+| journal_mode=WAL | yes (explicit)              | yes (upstream default)  |
+| busy_timeout     | 5000 (explicit)             | 5000 (upstream default) |
+| synchronous      | SQLite default (FULL) — GAP | NORMAL (explicit)       |
+| cache_size       | SQLite default — GAP        | -32768 (explicit)       |
+| MaxOpenConns     | 1 (system policy)           | 1 (upstream policy)     |
 
 Upstream fact (verified against the PINNED vendor source
 vendor/github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4@v4.5.2

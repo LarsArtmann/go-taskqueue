@@ -175,11 +175,11 @@ D2 remains **BLOCKED: owner go** (upstream filing), tracked not executed.
    DeploymentConfig — which degrades the S4 root to the in-memory
    event-store fallback — or (b) waiting on the upstream seam. My
    recommendation: adopt the review P1a inversion NOW (ONE tq-owned opener
-   + ONE shared pragma literal; the system-declared connection keeps
-   running the identical union until the seam lands), and tighten the gate
-   to literally-one-connection post-v5. Accept?
+   - ONE shared pragma literal; the system-declared connection keeps
+     running the identical union until the seam lands), and tighten the gate
+     to literally-one-connection post-v5. Accept?
 2. **A7 tag push:** the tag wave creates annotated tags for internal/journal
-   + companion. Push them to origin when reached, or keep them local for
-   your review first? (No push without an explicit yes.)
+   - companion. Push them to origin when reached, or keep them local for
+     your review first? (No push without an explicit yes.)
 
 — Reported 2026-10-09 22:31; execution paused per instruction ("WAIT HERE").
