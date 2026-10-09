@@ -132,6 +132,9 @@ func WithDurableCursor() Option {
 // adoption on the model owns the engine exactly as for a self-opened
 // one — the FromDSN constructors mark their engine as the DB owner, so
 // Close tears the connection down with the model.
+func WithEngine(eng metaengine.Engine) Option {
+	return func(m *Model) { m.eng = eng }
+}
 
 // Open creates the Model over its own sqlite database file (the projection
 // is disposable; delete the file to force a full journal replay on next
@@ -145,9 +148,9 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 	}
 
 	m := &Model{
-		src:  src,
-		rows: StoreRows{Store: src},
-		poll: DefaultPoll,
+		src:   src,
+		rows:  StoreRows{Store: src},
+		poll:  DefaultPoll,
 		batch: DefaultBatch,
 	}
 
