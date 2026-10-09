@@ -197,6 +197,7 @@ var conformanceTests = []struct {
 	{"TestFailureEvidenceDetailRoundTrips", TestFailureEvidenceDetailRoundTrips},
 	{"TestDismissDead", TestDismissDead},
 	{"TestLeaseExpiryAllowsReclaim", TestLeaseExpiryAllowsReclaim},
+	{"TestReclaimRecordsUnknownEffectDisposition", TestReclaimRecordsUnknownEffectDisposition},
 	{"TestDepsBlockUntilCompleted", TestDepsBlockUntilCompleted},
 	{"TestPriorityOrdersClaims", TestPriorityOrdersClaims},
 	{"TestClaimAgingFlipsOrder", TestClaimAgingFlipsOrder},
