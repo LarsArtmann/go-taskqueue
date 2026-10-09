@@ -1,0 +1,104 @@
+# Turnstone engineering lessons for go-taskqueue
+
+**Date:** 2026-10-09 (source-verification window).
+**Source:** [`turnstonelabs/turnstone`](https://github.com/turnstonelabs/turnstone) @ `main`
+(Python, Apache-2.0). Docs-only assessment: the load-bearing claims below were read at
+source (the six files in the citations table), not from a summary.
+**Companion notes:** this is the engineering comparison; the sibling paperclip pair
+(`docs/research/2026-10-03_paperclip-competitive-analysis.md`,
+`docs/research/2026-10-05_paperclip-lessons.md`) is the format precedent. Turnstone is
+not a competitor — it is the layer *below* tq (see "tq is the loop").
+
+## Why turnstone is worth reading
+
+Turnstone is a self-hosted **agent harness**: it drives the model/tool loop (prompt build →
+sample → gate an action → execute → fold back → repeat) with approvals, an intent judge, a
+governance layer, and a cluster of parallel "workstreams". Two things make it unusually
+valuable as a source:
+
+1. It ships a **written formal theory of what a harness *is*** (`HYPOTHESIS.md`, with a
+   plain-language `PRIMER.md`). The theory's own claim is that using the invariants as a
+   checklist "has caught real bugs in a real harness — because most bugs are a violated
+   invariant nobody had written down." That is a checklist tq can run against its own
+   agent path for free.
+2. Its **code follows the theory** rather than decorating it (effect records, cooperative
+   cancel, journal-before-dispatch, learned-checks-only-narrow). Several of its hardest
+   rules are actionable against tq's executor today.
+
+The single most important framing: **turnstone's harness is the thing tq's `agent`
+executor delegates *to* (`crush`). tq is the layer turnstone calls "the loop"** — the
+system that decides which task is next, dispatches a run, checks the result, and fires
+again. Turnstone's `HYPOTHESIS.md` "The loop" section explicitly names that layer and
+warns that it inherits every harness rule, one level up. So the lessons below are
+**loop-level**, and they land on seams tq already owns.
+
+## Source-verified citations
+
+| # | Path (`turnstonelabs/turnstone@main`, verified 2026-10-09) | What it actually says |
+| - | ---------------------------------------------------------- | --------------------- |
+| 1 | `PRIMER.md` | The plain-language invariants: "the model proposes; the gate disposes"; one door into the model (the lowering π never lowers a secret), one door out (the gate γ is the only path from model text to a side effect); **"journal before dispatch"**; **"crashes aren't finishes"**; `unknown` is not `none`; reads are not free; a learned check may only *tighten*; a daemon's per-cycle safety leaks over N cycles, so it needs scheduled resets. |
+| 2 | `HYPOTHESIS.md` | The formal model ℋ = (S,C,Y,A,E,π,M_W,γ,Q_E,ρ,H,…). Load-bearing appendices: **Cancellation** (cooperative not preemptive; `H_cancel,unresolved` counted as possibly-bad; the gate block for pending actions; compensation is the owner's job), **Resume** (re-entry sound *iff* durable state was the whole state), **Gate placement** (γ pure/effect-free; reads gated too; per-action capability so a tool holds no standing authority; learned judge is **veto-only**), **Parallel proposals** (authorize the *set*: individually admissible actions can be jointly inadmissible), **Effect records** (`status ∈ {committed, rolled_back, partial, unknown, none}`). |
+| 3 | `docs/architecture.md` | Code that implements the theory: the 4-phase tool pipeline PREPARE→APPROVE→EXECUTE→GUARD+FOLD; TOOL Turns carry a typed `EffectStatus` in `meta` (`committed`/`none`/`unknown`/`partial`/`rolled_back`); TOOL results are folded once, `journal-before-dispatch` ordering in the resume path; `ModelRegistry` immutable lanes with fallback + per-alias admission; the one `model_turn()` lower/sample/re-ingest boundary. |
+| 4 | `docs/security.md` | Hierarchical scopes (`read` ⊂ `write` ⊂ `approve`) + granular RBAC; short-lived JWTs; per-action service tokens; "a gate in front of an omnipotent tool is a suggestion" made concrete as capability scoping. |
+| 5 | `docs/judge.md` | Two-tier intent validation: **heuristic** tier (deterministic rule table, instant) + **LLM** tier (async, advisory). Merge semantic: `risk_level = max(heuristic, llm)`, `flags = union` — **"a positive from either detector surfaces; a negative or failed LLM never lowers a heuristic positive."** Smart Approvals is batch-atomic and fail-closed. An `intent_verdicts` table records every verdict with `user_decision` **for v2 calibration**. Output guard "annotates but does not gate"; the model is never told the judge cleared a finding. |
+| 6 | `docs/governance.md` | Tool policies (glob → allow/deny/ask, first-match), an append-only audit log, and a **skill security scanner** across four risk axes (content, supply-chain, vulnerability, declared-capability from `allowed-tools`) as a ~2ms pure function with a system-managed, non-editable `risk_level`. |
+
+## Lesson table — what turnstone does, where tq stands
+
+| # | Lesson | Turnstone (verified) | tq before | tq now / action |
+| - | ------ | -------------------- | --------- | --------------- |
+| 1 | **Journal before dispatch; "didn't confirm" is not "didn't happen"** | Resume appendix: shell journals an open `(action_id, pending)` row *before* the tool acts, so a crash resumes to `none` (retriable) or `unknown` (go ask), never silent re-send | facts written in the same tx as state (`appendFact` + `UPDATE` in one tx, `internal/queue/companion/claims.go`) — write-ahead intent exists | **ALIGNED.** tq's invariants already are turnstone's; cite as corroboration. |
+| 2 | **Effect disposition on crash reclaim** | TOOL Turns carry `EffectStatus`; an expired/unknown in-flight effect must be recorded `unknown`, never `none` | a leased running task with no cancel request is `Released` and re-claimed as if nothing happened (`claims.go:158-175`); no effect-disposition concept | **ADOPT.** Reclaim should stamp the released fact detail with the prior attempt's effect status (`unknown` for a mid-run crash), so a re-run is distinguishable from a clean one. See TODO. |
+| 3 | **Cooperative cancel; preemption manufactures `unknown`** | Cancellation appendix: cancel is a signal in state, observed at the next γ; pending actions bounce off the gate; the child drains; only the owner compensates | ADR-0005 cooperative cancel (request fact → heartbeat observes → context cancel → `CancelOwned`) | **ALIGNED (independent convergence).** tq's SIGKILL-to-group for the process is the "opaque Q_E" branch — record `unknown` when it kills an effect mid-flight (ties to #2). |
+| 4 | **Two doors: π lowers (never lowers a secret), γ gates (only path to a side effect)** | PRIMER/HYPOTHESIS: one chokepoint out of state, one into the world | agent payload is fixed (`repo`+`prompt`+`verify`); repo content is untrusted *data*; redaction is a deterministic single table (`internal/executor/redact.go`, `SecretHits`≡`RedactSecrets`) | **ALIGNED in spirit.** Rule to keep explicit: untrusted repo/tool content is data, never control (never decides the next task or widens a grant). |
+| 5 | **A learned check may only narrow, never widen** | Gate-placement appendix: "a learned check may narrow the deterministic admissible set; it must never widen it"; judge-as-veto only | `IsGateArtifactDeath` auto-dismiss (`internal/executor/verifygate.go:260`), `--review-autofix`, `--prioritize` scoring | **ALIGNED — but pin it.** Auto-dismiss must stay *deterministic*; the AI scorer may reorder claims (scheduling) but must never grant authority. Pin as a convention. |
+| 6 | **Merge: a learned detector may raise but never lower a deterministic finding** | judge.md: `risk_level = max(heuristic, llm)`, `flags = union`; defeating the judge can't erase the tripwire | redaction is deterministic and un-overridable; no LLM risk tier yet | **PIN the promise now** so a future LLM risk tier cannot lower a `SecretHits`/gate finding. |
+| 7 | **Output guard annotates; the model is never told a finding was cleared** | judge.md output guard: annotate, don't gate; the judge's "benign" is operator-facing only | redaction gates (must, for secrets); `tq audit --journal` shows SECRET EVIDENCE | **ALIGNED.** |
+| 8 | **Verdict → outcome calibration dataset** | `intent_verdicts` (+ `output_assessments`, skill `scan_report`) persist every verdict with `user_decision` for v2 policy tuning | the verdict channel records a run's *result*; there is no stored verdict-vs-outcome table for calibration | **ADOPT (small).** Persist agent/judge verdicts against the derived outcome so auto-dismiss/review rules can be tuned from data. See TODO. |
+| 9 | **Self-consistency ≈ multi-agent debate, far cheaper** | judge.md judge-model default: the session model judges its own calls | review/autofix run the closeout-free agent clone (same model) | **ALIGNED (validates tq's single-model reviewers).** |
+| 10 | **Sub-agents: budgets subdivide, authority only narrows** | HYPOTHESIS: a child holds at most a subset of the parent's grants; a child's out-of-grant request routes up | DAG deps, `tq ask`, incident/child tasks | **ADOPT the rule** for child-task budget/permission ceilings. See TODO. |
+| 11 | **Authorize the *set*: individually admissible ⇒ jointly inadmissible** | Parallel-proposals appendix: read-the-secret + post-to-web each pass, the pair is exfil; two calls each fit a budget, jointly overdraw | batched harvest makes N items ONE task (gates see one task); budget facts are serialized by the single writer | **ALIGNED / verify.** Cross-pool shared-authority state (budget, exclusive-claim) rides one serialized writer — keep it that way; a per-pool read-then-write would reopen the overdraw. |
+| 12 | **Ambient authority is a bypass; prefer per-action capability** | Gate-placement: a tool with standing authority doesn't need the proposal; scoped per-action credential is the fix | `envDenylistForAgents = ["TQ_DB"]` strips the production journal from agent env (`internal/executor/agent.go:479`); M24 minted-per-run allowlist design exists (`docs/planning/2026-10-05_secret-injection-seam-design.md`) | **ALIGNED (partial) — corroborates M24.** Turnstone independently reaches the minted-capability conclusion; use it as external support when M24 is ruled. |
+| 13 | **Crash-resume sound iff durable state was the whole state (state-ablation test)** | HYPOTHESIS falsifiers: drop a variable from state; if behavior shifts, the abstraction wasn't Markov | crash-reclaim + lease + `TestExactlyOnceUnderConcurrency` is exactly the crash-resume test | **ALIGNED.** Name the falsifier in the test doc so it is a checklist item, not a lucky invariant. |
+| 14 | **Model version is part of state; a dashboard is keyed to the kernel it measured** | HYPOTHESIS nonstationarity note: a provider retraining behind a fixed name is a nonstationary kernel; the surrogate "dies with the bump" | AI priority scores are cached; derived usage is keyed to the run's model+effort | **ADOPT (small).** Cache/compare scores only within one model version; annotate or invalidate on model change. See TODO. |
+| 15 | **A daemon's per-cycle safety leaks over N cycles → scheduled resets** | PRIMER: `(1-q)^N`; the antidote is scheduled owner re-confirmation, credential rotation, memory audit | perpetual sweepers (review/status/prioritize/depsweep/budget) run unattended | **ROADMAP.** A periodic self-audit of the DLQ/incident/memory state is the tq analogue; no code yet. |
+
+## The framing: tq is turnstone's "the loop"
+
+`HYPOTHESIS.md` "The loop" says the assigner (which task is next) is "not a new kind of
+thing — it is the harness construction applied one level out", with its own state (the
+backlog), its own gate (**who authorized the loop to refactor auth at 3 a.m.?**), and its
+own absent certificate. It further warns the field's origin pattern — "the same prompt in
+a `while` loop until the tests pass" — is "the empty gate, the always-open lock, one level
+up … It works beautifully right up until the tests weren't checking the thing that
+mattered."
+
+That is a precise description of the failure tq's own history already fought (gate-artifact
+deaths, the 94%-of-DLQ vendor-gofmt class, gate-artifact auto-dismiss). The lesson is not
+new machinery; it is that **tq's "gate" is the verify command and tq's "outer judge" is the
+verdict/review pipeline**, and both must obey the two turnstone rules tq can already state:
+the gate is deterministic (a shell command, not a model), and a learned verdict may only
+narrow.
+
+## Rejected / not applicable (so nobody re-litigates blind)
+
+- **The Markov formalism as a spec.** tq is a queue, not a harness; the value is the
+  invariants-as-checklist, not ℋ. Do not import the tuple.
+- **Cluster/node orchestration, workstream UI, SSE, RBAC/OIDC/MCP, provider lanes,
+  truncation policy.** Turnstone is a multi-node platform; tq is one binary + one file.
+  These seams are out of scope by construction (ADR-0008 token-gated API already covers the
+  auth floor tq needs).
+- **Smart Approvals (auto-approve a tool batch).** tq has no human tool-approval gate; its
+  gate is post-hoc verify. Auto-approve has no tq analogue.
+- **A second (LLM) risk tier on output today.** Only the *promise* (#6) is pinned now; the
+  tier itself is not proposed.
+
+## Verification trail
+
+- 2026-10-09: the six citations were fetched from `raw.githubusercontent.com/turnstonelabs/turnstone/main/…`
+  and read directly (PRIMER, HYPOTHESIS, architecture, security, judge, governance); no
+  claim here rests on a subagent summary.
+- tq-side claims verified against the working tree the same window: `claims.go:130-175`
+  (reclaim), `internal/executor/agent.go:466-490` (`envDenylistForAgents`),
+  `internal/executor/verifygate.go:260` (`IsGateArtifactDeath`), `docs/adr/0005-cooperative-cancel.md`,
+  and the FEATURES.md rows for cancellation / reclaim / dedup.
