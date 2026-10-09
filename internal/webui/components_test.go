@@ -252,7 +252,27 @@ func TestDetailFactsSurfacesCancelReason(t *testing.T) {
 	}
 }
 
+// TestDetailFactsSurfacesEffectDisposition pins that a reclaimed task's
+// task.released fact renders its effect disposition in the trail line, so a
+// crash-reclaim ("unknown") is distinguishable from a clean re-run.
+func TestDetailFactsSurfacesEffectDisposition(t *testing.T) {
+	now := time.Now()
+	lines := detailFacts(now, []journalFactView{
+		{
+			Seq:    2,
+			Type:   journal.Released,
+			Owner:  "w2",
+			Detail: jsontext.Value(`{"effect":"unknown","reason":"lease-expiry"}`),
+		},
+	})
+
+	if !strings.Contains(lines[0].Text, "unknown") {
+		t.Fatalf("released line = %q, want the effect disposition surfaced", lines[0].Text)
+	}
+}
+
 func TestParkedOnBudget(t *testing.T) {
+	t.Parallel()
 
 	budgetRequeue := journal.Fact{
 		Type: journal.Requeued,

@@ -231,3 +231,22 @@ func TestFactsJSONGolden(t *testing.T) {
 		}
 	}
 }
+
+// TestFormatFactSurfacesEffectDisposition pins that `tq facts` renders a
+// task.released fact's effect disposition in the human line, so a
+// crash-reclaim is visible without --json/--detail.
+func TestFormatFactSurfacesEffectDisposition(t *testing.T) {
+	t.Parallel()
+
+	line := formatFact(journal.Fact{
+		Seq:    7,
+		TaskID: "t1",
+		Type:   journal.Released,
+		Owner:  "w2",
+		Detail: jsontext.Value(`{"effect":"unknown","reason":"lease-expiry"}`),
+	})
+
+	if !strings.Contains(line, "[effect=unknown]") {
+		t.Fatalf("formatFact = %q, want [effect=unknown]", line)
+	}
+}
