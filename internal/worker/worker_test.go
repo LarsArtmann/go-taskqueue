@@ -436,6 +436,28 @@ func TestLeaseLostMidExecution(t *testing.T) {
 		t.Fatalf("stole wrong task %s, want %s", stolen.ID, enq.ID)
 	}
 
+	// The reclaim records the crashed attempt's effect as unknown, so a
+	// re-run is distinguishable from a clean first run (turnstone:
+	// "crashes aren't finishes").
+	facts, _ := store.FactsForTask(ctx, enq.ID.String(), 0)
+
+	var released journal.Fact
+
+	for _, f := range facts {
+		if f.Type == journal.Released {
+			released = f
+		}
+	}
+
+	var detail journal.ReleasedDetail
+	if err := json.Unmarshal(released.Detail, &detail); err != nil {
+		t.Fatalf("released detail: %v (%s)", err, released.Detail)
+	}
+
+	if detail.Effect != journal.EffectUnknown {
+		t.Fatalf("reclaim effect = %q, want %q", detail.Effect, journal.EffectUnknown)
+	}
+
 	if err := store.Complete(ctx, stolen.ID, claim_thief, nil); err != nil {
 		t.Fatalf("thief complete: %v", err)
 	}
