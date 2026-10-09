@@ -253,7 +253,6 @@ func TestDetailFactsSurfacesCancelReason(t *testing.T) {
 }
 
 func TestParkedOnBudget(t *testing.T) {
-	t.Parallel()
 
 	budgetRequeue := journal.Fact{
 		Type: journal.Requeued,

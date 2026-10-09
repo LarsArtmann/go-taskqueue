@@ -3164,10 +3164,20 @@ func formatFact(fact journal.Fact) string {
 		fact.Seq, fact.Time.Format(time.RFC3339), fact.TaskID, fact.Type, fact.Owner, fact.Error)
 
 	var d struct {
-		Class string `json:"class"`
+		Class  string `json:"class"`
+		Effect string `json:"effect"`
 	}
-	if len(fact.Detail) > 0 && json.Unmarshal(fact.Detail, &d) == nil && d.Class != "" {
-		line += " [class=" + d.Class + "]"
+	if len(fact.Detail) > 0 && json.Unmarshal(fact.Detail, &d) == nil {
+		if d.Class != "" {
+			line += " [class=" + d.Class + "]"
+		}
+
+		// task.released carries the prior attempt's effect disposition
+		// (journal.ReleasedDetail): surface it so a crash-reclaim is
+		// distinguishable from a clean re-run at a glance.
+		if d.Effect != "" {
+			line += " [effect=" + d.Effect + "]"
+		}
 	}
 
 	return line

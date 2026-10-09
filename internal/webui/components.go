@@ -464,6 +464,17 @@ func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLin
 func factLineText(fact journalFactView) string {
 	reason := factReason(fact)
 
+	// task.released carries the prior attempt's effect disposition: surface
+	// it in the trail line so a crash-reclaim ("unknown") is distinguishable
+	// from a clean re-run at a glance.
+	if effect := factEffect(fact); effect != "" {
+		if reason == "" {
+			reason = "effect " + effect
+		} else {
+			reason = "effect " + effect + " (" + reason + ")"
+		}
+	}
+
 	switch {
 	case reason == "":
 		return fact.Error
@@ -494,6 +505,23 @@ func factReason(fact journalFactView) string {
 	}
 
 	return detail.Reason
+}
+
+// factEffect extracts the effect disposition from a task.released fact's
+// detail (journal.ReleasedDetail.Effect). Empty when the fact carries none.
+func factEffect(fact journalFactView) string {
+	if len(fact.Detail) == 0 {
+		return ""
+	}
+
+	var detail struct {
+		Effect string `json:"effect"`
+	}
+	if err := json.Unmarshal(fact.Detail, &detail); err != nil {
+		return ""
+	}
+
+	return detail.Effect
 }
 
 // parkedOnBudget reports whether the task's most recent requeue parked it
