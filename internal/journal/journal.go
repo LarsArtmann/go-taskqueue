@@ -90,6 +90,37 @@ const (
 	IncidentTaskMinted FactType = "incident.task-minted"
 )
 
+// EffectStatus is the disposition of a run's side effect, recorded on the
+// task.released detail when a leased Running task is reclaimed. It exists so
+// a crash mid-effect is distinguishable from a clean re-run: turnstone's rule
+// is "crashes aren't finishes" and "unknown is not none". The observer that
+// reclaims cannot prove the effect never ran, so it records unknown, never a
+// false none (a learned/derived label may not lower a certainty).
+type EffectStatus string
+
+const (
+	// EffectCommitted: the effect is observed to have landed.
+	EffectCommitted EffectStatus = "committed"
+	// EffectNone: the effect provably never executed. Reserved: no tq
+	// path can prove this today (the reclaiming observer sees no
+	// dispatch-started marker), so nothing stamps it yet.
+	EffectNone EffectStatus = "none"
+	// EffectUnknown: the run crashed mid-effect; it may or may not have
+	// landed. What the reclaim path records.
+	EffectUnknown EffectStatus = "unknown"
+	// EffectPartial: some steps of a multi-step effect landed.
+	EffectPartial EffectStatus = "partial"
+	// EffectRolledBack: the effect was compensated.
+	EffectRolledBack EffectStatus = "rolled_back"
+)
+
+// ReleasedDetail is the task.released fact detail: the prior attempt's effect
+// disposition, so a reclaim is distinguishable from a clean first run.
+type ReleasedDetail struct {
+	Effect EffectStatus `json:"effect"`
+	Reason string       `json:"reason,omitempty"` // lease-expiry | cancelled-mid-run
+}
+
 // Fact is one immutable observation about one task.
 type Fact struct {
 	Seq     int64          `json:"seq"`

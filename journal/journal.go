@@ -34,6 +34,21 @@ const (
 	IncidentTaskMinted = internaljournal.IncidentTaskMinted
 )
 
+// Effect disposition vocabulary and the task.released detail.
+type (
+	EffectStatus   = internaljournal.EffectStatus
+	ReleasedDetail = internaljournal.ReleasedDetail
+)
+
+// Effect dispositions.
+const (
+	EffectCommitted  = internaljournal.EffectCommitted
+	EffectNone       = internaljournal.EffectNone
+	EffectUnknown    = internaljournal.EffectUnknown
+	EffectPartial    = internaljournal.EffectPartial
+	EffectRolledBack = internaljournal.EffectRolledBack
+)
+
 // Journal boundary and the in-memory implementation.
 type (
 	Journal       = internaljournal.Journal

@@ -323,6 +323,55 @@ func TestLeaseExpiryAllowsReclaim(t *testing.T) {
 	}
 }
 
+// TestReclaimRecordsUnknownEffectDisposition pins turnstone's "crashes
+// aren't finishes": reclaiming a lease-expired Running task must record the
+// prior attempt's effect as unknown on the task.released fact, so a re-run
+// is distinguishable from a clean first run. The reclaim observer cannot
+// prove the effect never ran, so it must never stamp the false none.
+func TestReclaimRecordsUnknownEffectDisposition(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	tk, _ := s.Enqueue(ctx, task.New{Type: "a"})
+
+	if _, _, err := s.ClaimDue(ctx, "crashed-worker", 30*time.Millisecond); err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	// A second worker reclaims the expired lease.
+	if _, _, err := s.ClaimDue(ctx, "w2", time.Minute); err != nil {
+		t.Fatalf("reclaim: %v", err)
+	}
+
+	facts, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
+
+	var released journal.Fact
+
+	for _, f := range facts {
+		if f.Type == journal.Released {
+			released = f
+		}
+	}
+
+	if released.Type != journal.Released {
+		t.Fatalf("no released fact on reclaim: %+v", facts)
+	}
+
+	var detail journal.ReleasedDetail
+	if err := json.Unmarshal(released.Detail, &detail); err != nil {
+		t.Fatalf("released detail not JSON: %v (%s)", err, released.Detail)
+	}
+
+	if detail.Effect != journal.EffectUnknown {
+		t.Fatalf("reclaim effect = %q, want %q", detail.Effect, journal.EffectUnknown)
+	}
+
+	if detail.Effect == journal.EffectNone {
+		t.Fatalf("reclaim must never stamp a false none: a crash may have run")
+	}
+}
+
 func TestDepsBlockUntilCompleted(t *testing.T) {
 	ctx, s := freshStore(t)
 	parent, _ := s.Enqueue(ctx, task.New{Type: "build"})

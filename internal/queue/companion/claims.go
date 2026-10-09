@@ -134,6 +134,7 @@ func ClaimDue(
 
 				if err := appendFact(ctx, r, journal.Fact{
 					TaskID: id, Type: journal.Released, Owner: prevOwner,
+					Detail: releasedDetail(journal.EffectUnknown, "cancelled-mid-run"),
 				}); err != nil {
 					return err
 				}
@@ -163,6 +164,7 @@ func ClaimDue(
 
 			if err := appendFact(ctx, r, journal.Fact{
 				TaskID: id, Type: journal.Released, Owner: prevOwner,
+				Detail: releasedDetail(journal.EffectUnknown, "lease-expiry"),
 			}); err != nil {
 				return err
 			}
@@ -345,6 +347,14 @@ func leaseErr(ctx context.Context, r Runner, id task.ID) error {
 	}
 
 	return task.ErrLeaseNotHeld
+}
+
+// releasedDetail records the prior attempt's effect disposition on the
+// task.released fact, so a reclaimed crash is distinguishable from a clean
+// re-run. The reclaiming observer cannot prove the effect never ran, so the
+// only sound label is EffectUnknown (never a false none).
+func releasedDetail(effect journal.EffectStatus, reason string) jsontext.Value {
+	return MustJSON(journal.ReleasedDetail{Effect: effect, Reason: reason})
 }
 
 func cooperativeCancelDetail(reason, after string) jsontext.Value {
