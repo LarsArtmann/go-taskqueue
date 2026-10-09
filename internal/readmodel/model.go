@@ -40,6 +40,22 @@ const (
 	CursorConsumer = "readmodel"
 )
 
+// ProjectionHomeCallerPragmas is the ONE pragma literal for the
+// projection-home file, passed on top of the sqliteengine's own
+// production defaults (NewSQLiteEngineFromDSNWith always prepends
+// journal_mode=WAL + busy_timeout=5000 and pins MaxOpenConns(1)):
+// synchronous=NORMAL trades tail-replay for checkpoint-only fsyncs, the
+// same relaxed-fsync policy the queue store runs; cache_size rides the
+// fold's page locality. The composition root references this list in
+// its DeploymentConfig so BOTH connections to the projection home (the
+// tq-owned model engine and system's declared engine) run the identical
+// union — the single pragma source of the single-opener design
+// (internal/composition/single_opener.md).
+var ProjectionHomeCallerPragmas = []string{
+	"synchronous=NORMAL",
+	"cache_size=-32768",
+}
+
 // ErrNoSource reports an Open call without a journal source: the model is
 // a projection, and without a journal to fold there is nothing to serve.
 var ErrNoSource = errors.New("readmodel: nil journal source")
@@ -110,6 +126,13 @@ func WithDurableCursor() Option {
 	return func(m *Model) { m.durable = true }
 }
 
+// WithEngine adopts a caller-built engine instead of constructing one:
+// the composition root opens the projection-home engine ONCE and hands
+// it over (the single tq-owned constructor call per serve run). From
+// adoption on the model owns the engine exactly as for a self-opened
+// one — the FromDSN constructors mark their engine as the DB owner, so
+// Close tears the connection down with the model.
+
 // Open creates the Model over its own sqlite database file (the projection
 // is disposable; delete the file to force a full journal replay on next
 // open). src is the journal source — the same queue.Store the dashboards
@@ -121,37 +144,40 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 		return nil, ErrNoSource
 	}
 
-	// The projection db is DISPOSABLE by contract (delete the file to
-	// force a full replay; the durable cursor lives in the queue's
-	// watermarks table, not here), so it runs the same relaxed-fsync
-	// policy as the queue store: WAL + synchronous=NORMAL trades a tail
-	// replay after OS/power failure for checkpoint-only fsyncs, and the
-	// page cache rides the fold's locality instead of re-reading pages.
-	eng, err := sqliteengine.NewSQLiteEngineFromDSN(path,
-		"synchronous=NORMAL", "cache_size=-32768")
-	if err != nil {
-		return nil, fmt.Errorf("readmodel: open projection db: %w", err)
-	}
-
-	store, err := metaengine.Plan([]metaengine.Engine{eng}, tasksQuery)
-	if err != nil {
-		_ = eng.Close()
-
-		return nil, fmt.Errorf("readmodel: plan collections: %w", err)
-	}
-
 	m := &Model{
-		eng:   eng,
-		store: store,
-		src:   src,
-		rows:  StoreRows{Store: src},
-		poll:  DefaultPoll,
+		src:  src,
+		rows: StoreRows{Store: src},
+		poll: DefaultPoll,
 		batch: DefaultBatch,
 	}
 
 	for _, opt := range opts {
 		opt(m)
 	}
+
+	// The projection db is DISPOSABLE by contract (delete the file to
+	// force a full replay; the durable cursor lives in the queue's
+	// watermarks table, not here), so it runs the shared relaxed-fsync
+	// pragma union (ProjectionHomeCallerPragmas on top of the engine's
+	// WAL + busy_timeout defaults) — one literal, referenced by the
+	// composition root for its declared engine too.
+	if m.eng == nil {
+		eng, err := sqliteengine.NewSQLiteEngineFromDSN(path, ProjectionHomeCallerPragmas...)
+		if err != nil {
+			return nil, fmt.Errorf("readmodel: open projection db: %w", err)
+		}
+
+		m.eng = eng
+	}
+
+	store, err := metaengine.Plan([]metaengine.Engine{m.eng}, tasksQuery)
+	if err != nil {
+		_ = m.eng.Close()
+
+		return nil, fmt.Errorf("readmodel: plan collections: %w", err)
+	}
+
+	m.store = store
 
 	if m.durable {
 		if err := m.loadCursor(ctx); err != nil {

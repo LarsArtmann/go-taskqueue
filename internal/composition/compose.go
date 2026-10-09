@@ -43,10 +43,12 @@ func New(ctx context.Context, dbPath string) (*system.System, error) {
 			DefaultEngineName: {
 				Driver: "sqlite",
 				DSN:    readmodel.PathFor(dbPath),
-				Pragmas: []string{
-					"journal_mode=WAL",
-					"busy_timeout(5000)",
-				},
+				// The caller-pragmas readmodel's own engine runs, by
+				// reference — ONE pragma source for the projection
+				// home (single_opener.md): the sqliteengine factory
+				// prepends journal_mode=WAL + busy_timeout=5000 to
+				// these on every connection it builds.
+				Pragmas: readmodel.ProjectionHomeCallerPragmas,
 			},
 		},
 		Instances: []system.InstanceConfig{

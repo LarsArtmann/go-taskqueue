@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	sqliteengine "github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 )
@@ -22,14 +23,25 @@ type ProjectionRuntime struct {
 }
 
 // NewProjectionRuntime composes the projection runtime for the projection
-// home at modelPath over the queue journal (src): open the model with a
-// durable cursor, best-effort the DLQ sidecar beside it, and build the
-// managed host wired with the sidecar. Starting stays the caller's job
-// (Host.Start) so the runactor actor keeps its own lifecycle; on a build
-// error nothing is left open.
+// home at modelPath over the queue journal (src): open the ONE tq-owned
+// engine for the projection home (the shared pragma union from
+// readmodel.ProjectionHomeCallerPragmas — the single-opener seam, the
+// composition root is the only tq constructor call site), open the model
+// over it with a durable cursor, best-effort the DLQ sidecar beside it,
+// and build the managed host wired with the sidecar. Starting stays the
+// caller's job (Host.Start) so the runactor actor keeps its own
+// lifecycle; on a build error nothing is left open.
 func NewProjectionRuntime(ctx context.Context, src queue.Store, modelPath string) (*ProjectionRuntime, error) {
-	m, err := readmodel.Open(ctx, modelPath, src, readmodel.WithDurableCursor())
+	eng, err := sqliteengine.NewSQLiteEngineFromDSN(modelPath, readmodel.ProjectionHomeCallerPragmas...)
 	if err != nil {
+		return nil, fmt.Errorf("composition: open projection-home engine: %w", err)
+	}
+
+	m, err := readmodel.Open(ctx, modelPath, src,
+		readmodel.WithDurableCursor(), readmodel.WithEngine(eng))
+	if err != nil {
+		_ = eng.Close()
+
 		return nil, fmt.Errorf("composition: open read model: %w", err)
 	}
 
