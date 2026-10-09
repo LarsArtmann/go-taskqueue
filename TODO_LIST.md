@@ -51,6 +51,10 @@ not here.
 - [ ] check-release-docs.sh: add a `--self-test` pin (sibling pattern: check-transient-retry.sh) proving drift detection fires — mutate a doc copy, expect drift=1 — so the smoke can't rot into always-green (closeout 2026-10-08 §e2)
 - [ ] check-release-docs.sh: `need_in_both`-pin the `poked demand-fill` log line so RELEASE.md's new timeout-fallback citation (2026-10-09 task closeout) can't silently rot when scripts/release.sh rewords its echo (closeout 2026-10-09 §b/§e1)
 
+- [ ] scripts/smoke/proxy-wait.sh: hoist the `example.com/module vX.Y.Z` literals into one pair of vars shared by drive() and the die_lag derivation so the expected-message printf can never drift from the driven task (closeout 2026-10-09 04-14 die-constants task)
+- [ ] scripts/smoke/proxy-wait.sh: derive the success-path assertion from the lib too (constant for the `proxy serves` line, same pattern as the die constants) so all lib-owned prose has one source (closeout 2026-10-09 04-14 die-constants task)
+- [ ] scripts/heal-daemon-sweep.sh: --self-test pin that a rewritten (footer-baked) commit prints DISTINCT old→new fork-record SHAs — the 2026-10-09 04-14 run printed identity records for a commit whose message changed, which reads as a display bug (closeout 2026-10-09 04-14 die-constants task)
+
 - [ ] Verify the CQA bridge against a live CQA API instance and fix contract drift (`internal/bridge/cqa` response shapes are httptest-informed guesses today); upgrade its FEATURES.md status after (plan C25) — BLOCKED: needs a live CQA instance URL + owner ID + token from the owner
 
 ## Window f20–f24 follow-ups (harvested from docs/status/2026-09-10_04-09, verified 2026-09-10)
