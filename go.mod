@@ -28,44 +28,44 @@ require (
 	github.com/knadh/koanf/parsers/yaml v1.1.1 // indirect
 	github.com/knadh/koanf/providers/env v1.1.0 // indirect
 	github.com/knadh/koanf/providers/file v1.2.1 // indirect
-	github.com/knadh/koanf/v2 v2.3.7 // indirect
+	github.com/knadh/koanf/v2 v2.3.8 // indirect
 	github.com/larsartmann/go-branded-id v0.7.0 // indirect
 	github.com/larsartmann/go-codec v0.3.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/claiming/v4 v4.0.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/command/v4 v4.13.1 // indirect
-	github.com/larsartmann/go-cqrs-lite/commandlifecycle/projections/v4 v4.2.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/commandlifecycle/v4 v4.2.2 // indirect
+	github.com/larsartmann/go-cqrs-lite/commandlifecycle/projections/v4 v4.2.3 // indirect
+	github.com/larsartmann/go-cqrs-lite/commandlifecycle/v4 v4.2.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/decider/v4 v4.7.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.2.4 // indirect
 	github.com/larsartmann/go-cqrs-lite/dispatcher/v4 v4.5.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.13.1 // indirect
-	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.1 // indirect
+	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/metadata/v4 v4.7.3 // indirect
-	github.com/larsartmann/go-cqrs-lite/metaengine/projectionadapter/v4 v4.5.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.1 // indirect
-	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.16.1 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/projectionadapter/v4 v4.5.3 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.2 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.17.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/otel/v4 v4.5.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/projection/v4 v4.4.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.5.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/query/v4 v4.10.1 // indirect
-	github.com/larsartmann/go-cqrs-lite/queue/postgres/v4 v4.0.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.2 // indirect
+	github.com/larsartmann/go-cqrs-lite/queue/postgres/v4 v4.0.3 // indirect
+	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.3 // indirect
+	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.6.1 // indirect
-	github.com/larsartmann/go-cqrs-lite/system/v4 v4.10.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.6.4 // indirect
+	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.6.2 // indirect
+	github.com/larsartmann/go-cqrs-lite/system/v4 v4.11.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.6.5 // indirect
 	github.com/larsartmann/go-datastar v0.6.2 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
-	github.com/larsartmann/go-retry v0.7.1 // indirect
+	github.com/larsartmann/go-retry v0.8.0 // indirect
 	github.com/larsartmann/go-sse/sseparse v0.2.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.3 // indirect
-	github.com/larsartmann/templ-components/datastar v1.20.1 // indirect
-	github.com/larsartmann/templ-components/htmx v1.20.1 // indirect
+	github.com/larsartmann/templ-components/datastar v1.21.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.21.0 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
@@ -94,8 +94,8 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/tools v0.51.0 // indirect
 	modernc.org/libc v1.77.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
@@ -119,10 +119,10 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.3
-	github.com/larsartmann/templ-components v1.20.1
-	github.com/larsartmann/templ-components/icons v1.20.1
-	github.com/larsartmann/templ-components/utils v1.20.1
-	golang.org/x/sync v0.23.0
+	github.com/larsartmann/templ-components v1.21.0
+	github.com/larsartmann/templ-components/icons v1.21.0
+	github.com/larsartmann/templ-components/utils v1.21.0
+	golang.org/x/sync v0.24.0
 )
 
 retract v0.3.1 // broken module graph: the v0.3.1 sweep left three-segment internal requires (queue/sqlite, journal/cqrs, companion, v4 drivers) at v0.3.0, so the proxy graph cannot close
