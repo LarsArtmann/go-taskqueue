@@ -31,7 +31,7 @@ Encoding the rule honestly needs, at minimum:
 
 Each is a distinct owner decision with real behavioral blast radius (e.g. the
 incident regression band deliberately raises priority above the first mint's
-120 → 150 on purpose, which is a *reaction*, not a child grant — confirming
+120 → 150 on purpose, which is a _reaction_, not a child grant — confirming
 "authority" and "priority" are not the same axis and the rule must say which
 it governs).
 
@@ -40,16 +40,16 @@ it governs).
 - **DAG deps**: a dependent task cannot run before its dependency completes
   (`ClaimDue` dependency predicate) — a coarse ordering guard, not a grant.
 - **Incident minting**: inherits `Project`/`Repo`; the mint rule (not the
-  child) chooses the band. It does not *widen* the child's capability — the
+  child) chooses the band. It does not _widen_ the child's capability — the
   child is an ordinary agent task.
 - **Env denylist** (`envDenylistForAgents`) + the M24 minted-per-run
   allowlist design bound what ANY agent child receives, independent of parent.
 - **Sweeper-minted children** (review/status/dlqfix) run on the closeout-free
   clone with verdict-gated output — bounded authority by construction.
 
-So the *substance* of lesson #10 is largely already enforced by the ambient
+So the _substance_ of lesson #10 is largely already enforced by the ambient
 boundary (M24/env denylist). What is missing is the **explicit parent-scoped
-ceiling** — a child cannot exceed a *specific* parent rather than the global
+ceiling** — a child cannot exceed a _specific_ parent rather than the global
 floor.
 
 ## Recommendation

@@ -17,10 +17,10 @@ appends a bare `task.released` fact (`internal/queue/companion/claims.go:165`)
 and the task is re-claimed and re-run **as if it had never executed**.
 
 The executed side effect — the agent's commit, the shell command's write — may
-already have landed. A clean re-run is then a *double run*, and the journal
+already have landed. A clean re-run is then a _double run_, and the journal
 cannot tell it apart from a first attempt. Turnstone's `HYPOTHESIS.md` names
 this exactly: **"crashes aren't finishes"; `unknown` is not `none`.** A crash
-mid-effect must be recorded as an *effect disposition*, not silently retried.
+mid-effect must be recorded as an _effect disposition_, not silently retried.
 
 ## 2. What the reclaiming observer actually knows
 
@@ -28,7 +28,7 @@ At reclaim the transaction sees only: the task row (`status='running'`, expired
 `lease_expires`), and the task's fact history. It does **not** see whether the
 executor's process ran, what it wrote, or whether it finished. The only
 write-ahead marker is the `task.claimed` fact (journal-before-dispatch, lesson
-#1) — which says *the loop intended to dispatch*, not that it did. There is no
+#1) — which says _the loop intended to dispatch_, not that it did. There is no
 "dispatch started" fact, and `task.heartbeat` is written only at cadence
 (`lease/4`), so its absence does **not** prove the effect never happened.
 
@@ -41,7 +41,8 @@ certainty) fixes the answer: **stamp `unknown`.**
 ## 3. Options
 
 ### Option A — `EffectStatus` on the existing `task.released` detail (CHOSEN)
-- `Released` already *is* the event; today its `Detail` is empty. Populate it
+
+- `Released` already _is_ the event; today its `Detail` is empty. Populate it
   with `{"effect":"unknown","reason":"lease-expiry"}` (a small additive struct).
 - Add `EffectStatus` to `internal/journal` with the full turnstone vocabulary:
   `committed | none | unknown | partial | rolled_back`.
@@ -52,6 +53,7 @@ certainty) fixes the answer: **stamp `unknown`.**
 - **Cons:** consumers that switch on `Released` must tolerate a detail.
 
 ### Option B — a new `task.effect-unresolved` fact type
+
 - Append a second fact alongside `Released` whenever an effect is unresolved.
 - **Pros:** a dedicated event a projection can subscribe to.
 - **Cons:** a new vocabulary constant must be mirrored upstream
@@ -84,11 +86,12 @@ type ReleasedDetail struct {
 ```
 
 Writers (T3):
+
 - Reclaim branch `claims.go:165` → `Effect: EffectUnknown, Reason: "lease-expiry"`.
 - Cancel branch `claims.go:136` (cancel requested, worker unreachable) →
   `Effect: EffectUnknown, Reason: "cancelled-mid-run"`.
 
-`EffectNone` is **defined but unproduced** today: tq has no path that *proves* an
+`EffectNone` is **defined but unproduced** today: tq has no path that _proves_ an
 effect never ran. That is honest — turnstone reserves the value for a journaled
 `pending` with a confirmed no-execute; tq's observer lacks that proof. A future
 explicit never-dispatched release path may stamp it; tests assert we never
@@ -97,7 +100,7 @@ mislabel a reclaim as `none`.
 ## 5. Invariants preserved
 
 - **Additive only.** No change to claim ordering, lease math, or the release
-  trigger. The fact *detail* is written; the state transition is untouched.
+  trigger. The fact _detail_ is written; the state transition is untouched.
 - **Facts in the same tx as state.** The detail rides the existing `Released`
   append, still inside `ClaimDue`'s transaction.
 - **No authority granted.** A disposition is an observation, never a gate.

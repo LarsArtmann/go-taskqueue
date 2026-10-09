@@ -16,7 +16,7 @@ ADR-0017 (cmd/tq floor), TODO_LIST "go-cqrs-lite platform adoption" section.
 ## Verdict
 
 **All-in is the destination, not the next step.** Going all-in on
-`system.New(DomainConfig, DeploymentConfig)` as *the* configuration model is
+`system.New(DomainConfig, DeploymentConfig)` as _the_ configuration model is
 the correct endgame — it is literally the founding intent (ADR-0019 owner
 ruling 2026-09-22: "the whole idea of this project was that it uses
 go-cqrs-lite system/ + metaengine/") and it is where upstream v5 is going
@@ -26,11 +26,11 @@ Meanwhile, "these configs" are 90% domain policy that `system` has no slot
 for — and should not. The right move is a three-lane config model plus a
 short, serialized bridge (roadmap below).
 
-| Config lane | Owner | Fate |
-| --- | --- | --- |
-| Engine/deployment axes (driver, DSN, pragmas, sync policy, pool policy) | `system.DeploymentConfig` | **Consolidate here** — today smeared across 5 places |
-| Domain/operational policy (lease, backoff, budget, sweeper cadence, agent runtime) | tq's Config structs | **Keep** — `system` must never grow slots for these |
-| CLI/UX surface (253 flag registrations, ~126 distinct) | cmd/tq flags | **Keep as skin** — becomes a thin mapper onto the two lanes |
+| Config lane                                                                        | Owner                     | Fate                                                        |
+| ---------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------- |
+| Engine/deployment axes (driver, DSN, pragmas, sync policy, pool policy)            | `system.DeploymentConfig` | **Consolidate here** — today smeared across 5 places        |
+| Domain/operational policy (lease, backoff, budget, sweeper cadence, agent runtime) | tq's Config structs       | **Keep** — `system` must never grow slots for these         |
+| CLI/UX surface (253 flag registrations, ~126 distinct)                             | cmd/tq flags              | **Keep as skin** — becomes a thin mapper onto the two lanes |
 
 ---
 
@@ -54,7 +54,7 @@ short, serialized bridge (roadmap below).
 
 Key observation: **only a sliver of this is deployment-shaped.** Roughly 10 of
 126 distinct flags (db path, read-model toggle, addrs, auth tokens,
-`TQ_SQLITE_SYNC`) select *where/how things run*. Everything else is domain
+`TQ_SQLITE_SYNC`) select _where/how things run_. Everything else is domain
 policy: lease TTL, requeue ladders, budget caps, harvest cadence, model
 selection for AI turns. `system.DeploymentConfig` models exactly the first
 sliver (Engines: driver+DSN+pragmas+priority+materialized views; Buses;
@@ -76,7 +76,7 @@ But traced through the wiring, the root is currently a **lifecycle shell**:
 
 - `tq serve` opens it only for close ordering: `sys.GracefulClose` joined
   after the store close in the shutdown hook (cmd/tq/main.go:3542, :3560).
-- The **load-bearing** projection engine on the *same file* is opened
+- The **load-bearing** projection engine on the _same file_ is opened
   elsewhere: `readmodel.Open` builds its own `sqliteengine` with hardcoded
   `synchronous=NORMAL`, `cache_size=-32768` (internal/readmodel/model.go:130),
   reached via `webui` → `composition.NewProjectionRuntime`
@@ -120,15 +120,15 @@ server, not built by it.
 
 ## 4. Scores (rubric, evidence-cited)
 
-| Dimension | Score | Evidence |
-| --- | --- | --- |
-| Coupling | 4 | `queue.Store` boundary + companion shared surface + facades; system reached only through `internal/composition`; −1: webui→composition reach-in (tailer.go:70) |
-| Cohesion | 4 | Packages single-purpose (per ADR-0019 table); −1: cmd/tq agent-pool's 53 flags concentrate pool+executor+sweeper policy in the app layer |
-| Modularity | 4 | Multi-module enforced (ADR-0011), facade parity gated, conformance shared; boundaries mostly clean |
-| **Composability** | **3** | Deployment axes smeared over 5 places (§5); system root decorative (§2); queue store injectable but not declarable; the one place this review targets |
-| Scalability | 4 | Engine-adopted store; new backend (mysql) free via conformance suite; read pushdowns on planned tables |
-| Service orientation | 3 | Single binary **by design** — monolith with clean module boundaries, extraction-ready; not a defect |
-| Dependency direction | 5 | `internal/task`/`internal/journal` stay pure (ADR-0014 D2); adapters point inward; `journal/cqrs` read-only |
+| Dimension            | Score | Evidence                                                                                                                                                       |
+| -------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Coupling             | 4     | `queue.Store` boundary + companion shared surface + facades; system reached only through `internal/composition`; −1: webui→composition reach-in (tailer.go:70) |
+| Cohesion             | 4     | Packages single-purpose (per ADR-0019 table); −1: cmd/tq agent-pool's 53 flags concentrate pool+executor+sweeper policy in the app layer                       |
+| Modularity           | 4     | Multi-module enforced (ADR-0011), facade parity gated, conformance shared; boundaries mostly clean                                                             |
+| **Composability**    | **3** | Deployment axes smeared over 5 places (§5); system root decorative (§2); queue store injectable but not declarable; the one place this review targets          |
+| Scalability          | 4     | Engine-adopted store; new backend (mysql) free via conformance suite; read pushdowns on planned tables                                                         |
+| Service orientation  | 3     | Single binary **by design** — monolith with clean module boundaries, extraction-ready; not a defect                                                            |
+| Dependency direction | 5     | `internal/task`/`internal/journal` stay pure (ADR-0014 D2); adapters point inward; `journal/cqrs` read-only                                                    |
 
 **Average 3.86 — "Good":** address the lowest dimension (Composability); no
 urgent restructuring. This matches the prior module-structure reviews' read
@@ -139,13 +139,13 @@ of the repo; the friction is concentrated, not systemic.
 Today one conceptual axis — "which engines, which files, what durability" —
 lives in five places:
 
-| Where | What it decides | file:line |
-| --- | --- | --- |
-| sqlitev4 `openSharedDB` | queue DSN pragma chain, MaxOpenConns(1) | internal/queue/sqlitev4/adapter.go:120–131 |
-| `TQ_SQLITE_SYNC` env | sync policy escape hatch | adapter.go:93–106 |
-| composition `DeploymentConfig` | projection-home engine + pragmas | internal/composition/compose.go:41–55 |
-| readmodel `Open` | the *real* projection-home engine + pragmas | internal/readmodel/model.go:130–131 |
-| postgresv4 `Open`/`OpenWithPool` | DSN + fixed pools / caller-owned pool | internal/queue/postgresv4/adapter.go:117–140 |
+| Where                            | What it decides                             | file:line                                    |
+| -------------------------------- | ------------------------------------------- | -------------------------------------------- |
+| sqlitev4 `openSharedDB`          | queue DSN pragma chain, MaxOpenConns(1)     | internal/queue/sqlitev4/adapter.go:120–131   |
+| `TQ_SQLITE_SYNC` env             | sync policy escape hatch                    | adapter.go:93–106                            |
+| composition `DeploymentConfig`   | projection-home engine + pragmas            | internal/composition/compose.go:41–55        |
+| readmodel `Open`                 | the _real_ projection-home engine + pragmas | internal/readmodel/model.go:130–131          |
+| postgresv4 `Open`/`OpenWithPool` | DSN + fixed pools / caller-owned pool       | internal/queue/postgresv4/adapter.go:117–140 |
 
 `system.DeploymentConfig` is the natural single home for this lane — it is
 koanf-loadable (flags/env/YAML today, file later), validated at construction,
@@ -156,14 +156,14 @@ Engines, never domain code" (compose.go:11–12).
 
 Serialized; P0 first (it is also just ADR-0019's own remaining stage).
 
-| # | Action | Where | Effort | Depends on |
-| --- | --- | --- | --- | --- |
-| **P0** | Ship **S2**: unify journal on upstream `facts.Fact`, re-point `journal/cqrs`, tailer, sweepers, bridges | tq | M | — (already unblocked; prerequisite for any deeper system adoption) |
-| **P1a** | **Kill the projection-home double-open**: exactly one engine owner for `<db>.readmodel.db` — hand the composition root's declared engine to `ProjectionRuntime`/`readmodel` (or, if the engine accessor is awkward, invert: readmodel owns it and the root references it) and delete the divergent pragma copy | tq | S | P0 not strictly required; do now — it is today's split-brain (§2) |
-| **P1b** | **File the upstream seam ask** (sibling of the pending ratification memo): (i) injectable projection event source — fold from a foreign `SeekableJournal` (the queue journal) without mirroring; (ii) queue-family instances in `DeploymentConfig` (or a documented queue-store escape hatch); (iii) engine pool-policy knob sufficient for the single-serialized-writer invariant | go-cqrs-lite | S (filing) / M–L (upstream landing) | owner go (mirrors existing memo row) |
-| **P2a** | **One tq deployment struct**: single source for db path/driver/DSN/pragmas/sync policy that feeds sqlitev4 (or postgresv4), the composition root, and readmodel; `TQ_SQLITE_SYNC` folds in as a pragma override; `--store postgres://…` becomes a data change, killing the owner-blocked CLI-wiring TODO | tq | M | P1a |
-| **P2b** | When P1b lands + system v5 stabilizes: swap the seams — tq's folds move into `DomainConfig.Projections` (fed from the queue journal), queue engine declared as an instance; flags become a thin mapper onto Domain(deploy) lanes; delete the S1 thin-driver hand-wiring it replaces | tq + upstream | L | P0, P1b, v5 cut |
-| **P3** | Flag diet for the worst surface: grow `TQ_POOL_CONFIG` (already read, agentpool.go:293) into the documented pool-config file; keep flags as the interactive skin | tq | S–M | P2a (rides the same config lane) |
+| #       | Action                                                                                                                                                                                                                                                                                                                                                                             | Where         | Effort                              | Depends on                                                         |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ----------------------------------- | ------------------------------------------------------------------ |
+| **P0**  | Ship **S2**: unify journal on upstream `facts.Fact`, re-point `journal/cqrs`, tailer, sweepers, bridges                                                                                                                                                                                                                                                                            | tq            | M                                   | — (already unblocked; prerequisite for any deeper system adoption) |
+| **P1a** | **Kill the projection-home double-open**: exactly one engine owner for `<db>.readmodel.db` — hand the composition root's declared engine to `ProjectionRuntime`/`readmodel` (or, if the engine accessor is awkward, invert: readmodel owns it and the root references it) and delete the divergent pragma copy                                                                     | tq            | S                                   | P0 not strictly required; do now — it is today's split-brain (§2)  |
+| **P1b** | **File the upstream seam ask** (sibling of the pending ratification memo): (i) injectable projection event source — fold from a foreign `SeekableJournal` (the queue journal) without mirroring; (ii) queue-family instances in `DeploymentConfig` (or a documented queue-store escape hatch); (iii) engine pool-policy knob sufficient for the single-serialized-writer invariant | go-cqrs-lite  | S (filing) / M–L (upstream landing) | owner go (mirrors existing memo row)                               |
+| **P2a** | **One tq deployment struct**: single source for db path/driver/DSN/pragmas/sync policy that feeds sqlitev4 (or postgresv4), the composition root, and readmodel; `TQ_SQLITE_SYNC` folds in as a pragma override; `--store postgres://…` becomes a data change, killing the owner-blocked CLI-wiring TODO                                                                           | tq            | M                                   | P1a                                                                |
+| **P2b** | When P1b lands + system v5 stabilizes: swap the seams — tq's folds move into `DomainConfig.Projections` (fed from the queue journal), queue engine declared as an instance; flags become a thin mapper onto Domain(deploy) lanes; delete the S1 thin-driver hand-wiring it replaces                                                                                                | tq + upstream | L                                   | P0, P1b, v5 cut                                                    |
+| **P3**  | Flag diet for the worst surface: grow `TQ_POOL_CONFIG` (already read, agentpool.go:293) into the documented pool-config file; keep flags as the interactive skin                                                                                                                                                                                                                   | tq            | S–M                                 | P2a (rides the same config lane)                                   |
 
 **Explicitly rejected:** deleting tq's Config structs in favor of
 `DomainConfig` (category error — it is registration closures, not policy), and
@@ -174,7 +174,7 @@ ADR-0019's own ruling).
 ## 7. Answer, one paragraph
 
 Keep the configs — most of them are tq's domain, and `system` deliberately
-has no vocabulary for them. Go all-in on the *deployment lane*: that is what
+has no vocabulary for them. Go all-in on the _deployment lane_: that is what
 `system.DeploymentConfig` is for, and today that lane is smeared across five
 places including a live double-open on the projection home. The full
 `system.New`-owns-everything picture is the right next-major destination and
