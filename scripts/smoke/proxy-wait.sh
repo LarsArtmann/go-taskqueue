@@ -53,14 +53,19 @@ expect_ok() { # <name> <poke-prog> <list-prog>
 	fi
 }
 
-expect_die "network-dead: all pokes fail" "network is dead" \
-	'return 1' 'return 1'
+expect_die "network-dead: transport failure (code 0)" "network is dead" \
+	'PROXY_POKE_HTTP_CODE=0; return 1' 'return 1'
+expect_die "network-dead: 5xx pokes" "network is dead" \
+	'PROXY_POKE_HTTP_CODE=503; return 1' 'return 1'
+expect_die "proxy lag: 404 pokes (reachable, not ingested)" "proxy lag" \
+	'PROXY_POKE_HTTP_CODE=404; return 1' 'return 1'
 expect_die "proxy lag: pokes ok, never listed" "proxy lag" \
-	'return 0' 'return 1'
-expect_die "lag wins over poke-flicker: any poke ok" "proxy lag" \
-	'poke_n=$(( ${poke_n:-0} + 1 )); [ "$poke_n" -ge 2 ]' 'return 1'
+	'PROXY_POKE_HTTP_CODE=200; return 0' 'return 1'
+expect_die "lag wins over poke-flicker: any poke ok" \
+	'proxy lag' \
+	'poke_n=$(( ${poke_n:-0} + 1 )); if [ "$poke_n" -ge 2 ]; then PROXY_POKE_HTTP_CODE=200; return 0; else PROXY_POKE_HTTP_CODE=404; return 1; fi' 'return 1'
 expect_ok "recovery: poke fails then fills, lists" \
-	'poke_n=$(( ${poke_n:-0} + 1 )); [ "$poke_n" -ge 2 ]' \
+	'poke_n=$(( ${poke_n:-0} + 1 )); if [ "$poke_n" -ge 2 ]; then PROXY_POKE_HTTP_CODE=200; return 0; else PROXY_POKE_HTTP_CODE=404; return 1; fi' \
 	'poke_n2=$(( ${poke_n2:-0} + 1 )); [ "$poke_n2" -ge 2 ]'
 
 if [ "$fails" -eq 0 ]; then

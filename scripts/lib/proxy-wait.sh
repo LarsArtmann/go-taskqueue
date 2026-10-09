@@ -6,7 +6,8 @@
 # Seams: tq_proxy_poke / tq_proxy_lists are overridable functions (the
 # smoke test fakes them); die() is caller-supplied (release.sh's FAIL+exit).
 tq_proxy_poke() {
-	curl -fsS -o /dev/null "https://proxy.golang.org/$1/@v/$2.info"
+	PROXY_POKE_HTTP_CODE=0
+	PROXY_POKE_HTTP_CODE="$(curl -fsS -o /dev/null -w '%{http_code}' "https://proxy.golang.org/$1/@v/$2.info")" || return 1
 }
 
 tq_proxy_lists() {
@@ -16,17 +17,22 @@ tq_proxy_lists() {
 wait_for_proxy_version() {
 	local module="$1" version="$2"
 	local attempts="${3:-5}" sleep_secs="${4:-30}"
-	local poke_ok=false attempt
+	local poke_ok=false attempt code
 	for attempt in $(seq 1 "$attempts"); do
 		# Every attempt pokes @v/<ver>.info: a passive @v/list poll never
 		# triggers the proxy's on-demand fill (v0.3.3 published only after a
 		# manual .info fetch, 2026-10-07) — the poke itself requests + caches
-		# it. Whether ANY poke succeeds separates network-dead from lag.
+		# it. HTTP semantics classify the 5/5 die: 2xx or 404 = the proxy is
+		# reachable (lag); DNS/TLS failure or 5xx = network-dead.
+		code="${PROXY_POKE_HTTP_CODE:-0}"
 		if tq_proxy_poke "$module" "$version"; then
 			poke_ok=true
-			echo "poked demand-fill: https://proxy.golang.org/$module/@v/$version.info"
+			echo "poked demand-fill: https://proxy.golang.org/$module/@v/$version.info (HTTP $code)"
+		elif [ "$code" = "404" ]; then
+			poke_ok=true
+			echo "WARN: .info poke returned 404 — proxy reachable, tag not ingested yet (proxy lag)"
 		else
-			echo "WARN: .info poke failed (network down, or the proxy has not seen the tag yet)"
+			echo "WARN: .info poke failed (HTTP ${code} — 0 = DNS/TLS/transport; network down, or the proxy is unreachable)"
 		fi
 		if tq_proxy_lists "$module" "$version"; then
 			echo "proxy serves $version"
