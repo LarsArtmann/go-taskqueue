@@ -106,12 +106,14 @@ outside world; its steps and their failure modes:
    `https://proxy.golang.org/<module>/@v/vX.Y.Z.info` (on-demand fill — a
    passive @v/list poll never triggers a fetch), then `go list -m -versions`,
    5 attempts x 30s. On exhaustion the die message distinguishes the two
-   failure modes: ALL .info pokes failed = network outage (fix connectivity,
-   then re-run); pokes succeeded but @v/list never listed = proxy lag (wait
+   failure modes by HTTP status: every .info poke transport-failed or 5xx'd
+   = network outage (fix connectivity,
+   then re-run); pokes answered 2xx or 404 (proxy reachable, tag not yet
+   ingested) but @v/list never listed = proxy lag (wait
    and re-check manually). Timeout is
    NOT a failure of the release — the automated attempt-1 poke has already
    triggered the on-demand fill (log line
-   `poked demand-fill: https://proxy.golang.org/<module>/@v/vX.Y.Z.info`
+   `poked demand-fill: https://proxy.golang.org/<module>/@v/vX.Y.Z.info (HTTP 200)`
    confirms it); wait for the proxy to catch up and re-run; NEVER re-tag
    (the proxy caches forever; a re-tag poisons every future consumer).
 3. Clean-room `go get` + `go install` of `cmd/tq@vX.Y.Z` — this is the proof
