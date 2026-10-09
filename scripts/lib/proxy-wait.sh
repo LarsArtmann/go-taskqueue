@@ -26,11 +26,12 @@ wait_for_proxy_version() {
 		# reachable (lag); DNS/TLS failure or 5xx = network-dead.
 		code="${PROXY_POKE_HTTP_CODE:-0}"
 		if tq_proxy_poke "$module" "$version"; then
+			code="${PROXY_POKE_HTTP_CODE:-0}"
 			poke_ok=true
 			echo "poked demand-fill: https://proxy.golang.org/$module/@v/$version.info (HTTP $code)"
 		elif [ "$code" = "404" ]; then
 			poke_ok=true
-			echo "WARN: .info poke returned 404 — proxy reachable, tag not ingested yet (proxy lag)"
+				echo "WARN: .info poke returned 404 — proxy reachable, tag not ingested yet (proxy lag)"
 		else
 			echo "WARN: .info poke failed (HTTP ${code} — 0 = DNS/TLS/transport; network down, or the proxy is unreachable)"
 		fi
