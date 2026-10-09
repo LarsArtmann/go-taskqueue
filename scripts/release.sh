@@ -39,6 +39,8 @@ esac
 
 MODULE="$(head -1 go.mod | cut -d' ' -f2)"
 
+. "$(dirname "$0")/lib/proxy-wait.sh"
+
 step "preconditions"
 [ -d .git ] || die "not a git repo"
 command -v git >/dev/null || die "git missing"
@@ -166,32 +168,7 @@ for sub_tag in $internal_tags; do
 done
 
 step "module proxy verification"
-sleep 10
-info_poke_ok=false
-for attempt in 1 2 3 4 5; do
-	# Every attempt pokes @v/<ver>.info: a passive @v/list poll never
-	# triggers the proxy's on-demand fill (v0.3.3 published only after a
-	# manual .info fetch, 2026-10-07) — the poke itself requests + caches
-	# it. Whether ANY poke succeeds separates network-dead from lag.
-	if curl -fsS -o /dev/null "https://proxy.golang.org/$MODULE/@v/$VERSION.info"; then
-		info_poke_ok=true
-		echo "poked demand-fill: https://proxy.golang.org/$MODULE/@v/$VERSION.info"
-	else
-		echo "WARN: .info poke failed (network down, or the proxy has not seen the tag yet)"
-	fi
-	if GOFLAGS='' go list -m -versions "$MODULE" 2>/dev/null | tr ' ' '\n' | grep -qx "$VERSION"; then
-		echo "proxy serves $VERSION"
-		break
-	fi
-	echo "proxy does not list $VERSION yet (attempt $attempt/5) — propagation takes minutes"
-	if [ "$attempt" = 5 ]; then
-		if [ "$info_poke_ok" = true ]; then
-			die "every .info poke succeeded but @v/list never listed $VERSION — proxy lag, not an outage; wait and re-check https://proxy.golang.org/$MODULE/@v/$VERSION.info before retrying anything (never re-tag)"
-		fi
-		die "all .info pokes failed — network is dead (or the proxy is unreachable); fix connectivity and re-run (never re-tag); the tag is pushed and safe"
-	fi
-	sleep 30
-done
+wait_for_proxy_version "$MODULE" "$VERSION"
 
 step "clean-room go get + go install (build the real consumer path)"
 verify_dir="$(mktemp -d)"
