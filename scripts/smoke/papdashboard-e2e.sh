@@ -101,7 +101,10 @@ for _ in 1 2 3 4 5; do
 	echo "WARN: transient enqueue failure — retrying" >&2
 	sleep 2
 done
-[ -n "$TASK_ID" ] || { echo "FAIL: enqueue kept failing after retries" >&2; exit 1; }
+[ -n "$TASK_ID" ] || {
+	echo "FAIL: enqueue kept failing after retries" >&2
+	exit 1
+}
 echo "   task $TASK_ID"
 
 # Real mode has no stub log; the bridge logs each accepted ingest POST

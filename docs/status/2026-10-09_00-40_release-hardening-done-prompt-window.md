@@ -6,13 +6,13 @@
 
 ## a) FULLY DONE (verified against commits, not just claimed)
 
-| Task | Landed as | Verified by this pass |
-|---|---|---|
-| 000001a1188221472e (demand-fill poke) | commit `4e6d7f88` (+ closeout 820e9dd8) | `git log` shows the work commit; TODO row 35 `[x]` in TODO_LIST.md; closeout cites bash -n + check-release-docs + build/vet green |
-| 000001a1188fdb517f (5/5 die split: network-dead vs proxy lag) | commit `8fed04f3` (+ closeout 9cea2d33) | closeout documents every-attempt poke + `info_poke_ok` flag; both die branches simulation-verified; TODO row 37 `[x]` |
-| 000001a11899031c (root-gate bash -n syntax guard) | commit `bb280c05` (+ closeout d34d1fb7) | guard covers scripts/release.sh + scripts/lib/*.sh + itself, ~10 ms, before the Go gates; TODO row 38 `[x]`; full root build/vet/test -race claimed green in closeout |
-| 000001a118a6bebc (archive /tmp evidence log) | commit `a27edabe` | honest outcome: the log was ALREADY pruned from /tmp (5-way source search); row turned `— BLOCKED:` instead of fabricating evidence; TODO row 39 marked BLOCKED |
-| 000001a118c6ca4411c (reflow-hazard annotation) | commit `1075248c` (+ closeout cce14bf9) | annotation at scripts/check-release-docs.sh call site; TODO row 40 `[x]`; live gate run green |
+| Task                                                          | Landed as                               | Verified by this pass                                                                                                                                                 |
+| ------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 000001a1188221472e (demand-fill poke)                         | commit `4e6d7f88` (+ closeout 820e9dd8) | `git log` shows the work commit; TODO row 35 `[x]` in TODO_LIST.md; closeout cites bash -n + check-release-docs + build/vet green                                     |
+| 000001a1188fdb517f (5/5 die split: network-dead vs proxy lag) | commit `8fed04f3` (+ closeout 9cea2d33) | closeout documents every-attempt poke + `info_poke_ok` flag; both die branches simulation-verified; TODO row 37 `[x]`                                                 |
+| 000001a11899031c (root-gate bash -n syntax guard)             | commit `bb280c05` (+ closeout d34d1fb7) | guard covers scripts/release.sh + scripts/lib/*.sh + itself, ~10 ms, before the Go gates; TODO row 38 `[x]`; full root build/vet/test -race claimed green in closeout |
+| 000001a118a6bebc (archive /tmp evidence log)                  | commit `a27edabe`                       | honest outcome: the log was ALREADY pruned from /tmp (5-way source search); row turned `— BLOCKED:` instead of fabricating evidence; TODO row 39 marked BLOCKED       |
+| 000001a118c6ca4411c (reflow-hazard annotation)                | commit `1075248c` (+ closeout cce14bf9) | annotation at scripts/check-release-docs.sh call site; TODO row 40 `[x]`; live gate run green                                                                         |
 
 Additionally in-window (adjacent task 000001a11d8b7eae, not in this window's dispatch set but landed between the fifth closeouts): RELEASE.md timeout-fallback paragraph rewritten (`ca5e80f7`, tick `d8d261c4`), then re-dispatched twice producing two verified NO-OP closeouts (`8f5a7e69`, `a909d57f`).
 
@@ -63,4 +63,5 @@ Nothing owed by the five items. Open follow-up rows promoted by this window's cl
 **None recorded.** The only journal reachable from this session (`./tasks.db`) holds 189 facts ending 2026-09-09 with zero `task.reprioritized` facts of any date; the production pool journal is not visible from a done-prompt shell ($TQ_DB unset in this session), so pool-era priority moves cannot be enumerated here. Consistent with the fifth-pass report (00-45), which likewise recorded zero reprioritized facts journal-wide. No priority change in this window is therefore unexplained — but the vantage gap itself is filed as (e)5/(f)-adjacent work.
 
 ---
-*Point-in-time snapshot 2026-10-09 00:40. 10 TODO appends (7 new tasks + 3 blocked questions). Nothing pushed.*
+
+_Point-in-time snapshot 2026-10-09 00:40. 10 TODO appends (7 new tasks + 3 blocked questions). Nothing pushed._

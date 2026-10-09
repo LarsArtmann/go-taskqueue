@@ -44,4 +44,4 @@ Carried, unchanged: (1) cmd/tq release + pool redeploy ends this burn class; (2)
 
 ---
 
-*Point-in-time snapshot 2026-10-09 01:45. Seventh re-dispatch of `000001a11d8b7eeb8f33667e4ed600000000`; canonical report: `2026-10-09_00-40_release-hardening-done-prompt-window.md`. 0 TODO appends. Nothing pushed.*
+_Point-in-time snapshot 2026-10-09 01:45. Seventh re-dispatch of `000001a11d8b7eeb8f33667e4ed600000000`; canonical report: `2026-10-09_00-40_release-hardening-done-prompt-window.md`. 0 TODO appends. Nothing pushed._

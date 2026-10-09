@@ -6,13 +6,13 @@ tasks (2026-10-06 01-18 → 2026-10-08 00-32) · Verified against HEAD
 
 ## The window's tasks (all five verified closed)
 
-| Task | Subject | Work commit | Closeout report |
-| ---- | ------- | ----------- | --------------- |
-| 000001a10e4940564abd8369113400000000 | Review-fix: install-proof misattribution corrected in the 00-23 report | `f82f9b61` | docs/status/2026-10-06_01-18_task-….md |
-| 000001a10e9ba6313abc0d9a3d1200000000 | O7: closeout reports move to `docs/status/tasks/` | `578a16c7`/`664f2340` (re-verified DONE-on-arrival) | docs/status/tasks/2026-10-07_01-37_task-….md |
-| 000001a113973f383d2f30ec2b9500000000 | Widen `check-dead-sha-refs` to `docs/status/tasks/*.md` | `f78f2966` | docs/status/2026-10-07_01-47_task-….md |
-| 000001a113e5f4f4cd460540688600000000 | HARD CAP 10 TODO-appends per closeout | `a48b25d3` | docs/status/tasks/2026-10-07_03-27_task-….md |
-| 000001a11493e81a577bde2bfdfa00000000 | cqrs-lint A014/D013/V006 branch in go-cqrs-lite | `c1fcca41` (re-dispatch; work `d543c4c3`+`3ed2949e`, branch `b4f29e517`) | docs/status/tasks/2026-10-08_00-32_task-….md |
+| Task                                 | Subject                                                                | Work commit                                                              | Closeout report                              |
+| ------------------------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
+| 000001a10e4940564abd8369113400000000 | Review-fix: install-proof misattribution corrected in the 00-23 report | `f82f9b61`                                                               | docs/status/2026-10-06_01-18_task-….md       |
+| 000001a10e9ba6313abc0d9a3d1200000000 | O7: closeout reports move to `docs/status/tasks/`                      | `578a16c7`/`664f2340` (re-verified DONE-on-arrival)                      | docs/status/tasks/2026-10-07_01-37_task-….md |
+| 000001a113973f383d2f30ec2b9500000000 | Widen `check-dead-sha-refs` to `docs/status/tasks/*.md`                | `f78f2966`                                                               | docs/status/2026-10-07_01-47_task-….md       |
+| 000001a113e5f4f4cd460540688600000000 | HARD CAP 10 TODO-appends per closeout                                  | `a48b25d3`                                                               | docs/status/tasks/2026-10-07_03-27_task-….md |
+| 000001a11493e81a577bde2bfdfa00000000 | cqrs-lint A014/D013/V006 branch in go-cqrs-lite                        | `c1fcca41` (re-dispatch; work `d543c4c3`+`3ed2949e`, branch `b4f29e517`) | docs/status/tasks/2026-10-08_00-32_task-….md |
 
 ## a) FULLY DONE
 
@@ -129,8 +129,8 @@ tasks (2026-10-06 01-18 → 2026-10-08 00-32) · Verified against HEAD
 ## f) UP TO 50 NEXT THINGS (top picks; rowed ones not repeated)
 
 1. Cut the next cmd/tq release so the tasks/ closeout path + HARD CAP 10
-   + mint-time re-dispatch gate reach the live pool (b1/e1) — highest
-   leverage, unblocks three fix classes at once.
+   - mint-time re-dispatch gate reach the live pool (b1/e1) — highest
+     leverage, unblocks three fix classes at once.
 2. One-shot audit: scan ALL `docs/status/tasks/*.md` for dead commit-SHA
    cites that are neither arrow-escaped nor baselined (01-47 f1; confirm
    the O7 report was the only escape instance).

@@ -57,4 +57,4 @@ Dedup-checked against the 352 unchecked rows; most candidates are already rowed 
 
 ---
 
-*Point-in-time snapshot 2026-10-09 03:55. Window of five completed tasks, all verified at HEAD. 7 TODO appends (3 blocked questions). Nothing pushed.*
+_Point-in-time snapshot 2026-10-09 03:55. Window of five completed tasks, all verified at HEAD. 7 TODO appends (3 blocked questions). Nothing pushed._

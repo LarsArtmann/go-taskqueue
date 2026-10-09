@@ -44,4 +44,5 @@ Nothing owed by the re-dispatch. Open follow-ups are already rowed: 42 (testable
 **None recorded.** The reachable journal (`./tasks.db`, TQ_DB inherited) holds 189 facts ending 2026-09-09 with zero `task.reprioritized` facts of any date; the production pool journal is not reachable from this shell. Identical vantage to the sixth-pass §h — the pool-era visibility gap stands as filed.
 
 ---
-*Point-in-time snapshot 2026-10-09 00:52. Re-dispatch of `000001a11d8b7eeb8f33667e4ed600000000`; canonical report: `2026-10-09_00-40_release-hardening-done-prompt-window.md`. 0 TODO appends. Nothing pushed.*
+
+_Point-in-time snapshot 2026-10-09 00:52. Re-dispatch of `000001a11d8b7eeb8f33667e4ed600000000`; canonical report: `2026-10-09_00-40_release-hardening-done-prompt-window.md`. 0 TODO appends. Nothing pushed._

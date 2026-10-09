@@ -4,9 +4,9 @@ go 1.27.1
 
 require (
 	github.com/larsartmann/go-cqrs-lite/event/v4 v4.13.1
-	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.1
-	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.1
-	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.16.1
+	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.2
+	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.2
+	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.17.0
 	github.com/larsartmann/go-cqrs-lite/projection/v4 v4.4.2
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.5.3
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2
@@ -51,7 +51,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	modernc.org/libc v1.77.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect

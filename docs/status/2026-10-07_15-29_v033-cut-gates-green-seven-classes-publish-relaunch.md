@@ -46,7 +46,7 @@ re-launching after two smoke load-flake fixes — the tag is not yet cut.
    74cab8e0); daemon-sweep attribution (48 unattributed shipping sweeps
    from the day's concurrent window grandfathered with a dated comment —
    424441da); **probe 7 = GATES GREEN, rc=0** (full ci-local + webui smoke
-   + cleanroom install check).
+   - cleanroom install check).
 7. **Publish phase hardened mid-flight**: the first --push attempt died in
    the papdashboard bridge smoke — "no alert.triggered" (15s window vs a
    freshly built worker's claim → sh fail → dead-letter → bridge POST chain
@@ -90,7 +90,7 @@ re-launching after two smoke load-flake fixes — the tag is not yet cut.
 - NewProjectionHost factory (S4; webui serve + httpapi consumers).
 - AGENTS.md/FEATURES.md size-guarded M09 fold-in (18.5k budget);
   TODO_LIST reconciliation (tail fix, composition go.sum, M09 slice 1)
-  + the 10-30 index-row annotation.
+  - the 10-30 index-row annotation.
 - M11-M27 in the standing order; M26 remainder items; dogfood restart
   prep; §g.3 (owner-run).
 

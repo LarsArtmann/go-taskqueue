@@ -1,4 +1,6 @@
 github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.2 h1:ruJTa1lCQQko+lMHPUqntPPBsUfLmeSBC55moMUpnzo=
 github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.2/go.mod h1:3VnuoCOOZ3UrTn9/7i2yQ7/BVvgOJn6v47OV1A9Sk0M=
+github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 h1:aJWE1hBwt2JYnU0m+TEnlrkZLvdIbX9dXFeWpi8FsX8=
+github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3/go.mod h1:3VnuoCOOZ3UrTn9/7i2yQ7/BVvgOJn6v47OV1A9Sk0M=
 github.com/larsartmann/go-error-family v0.11.0 h1:xqXLKrTMznStmHUapxd/6Fj5/878sb4SIZiy4JvCItQ=
 github.com/larsartmann/go-error-family v0.11.0/go.mod h1:CAzjAVWjAFDUXEaaRqIgjW28i/NrQ07OsE9Dffhx29c=

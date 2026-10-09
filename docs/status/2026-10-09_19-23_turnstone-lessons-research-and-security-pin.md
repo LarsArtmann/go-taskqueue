@@ -17,7 +17,7 @@ lessons section, 5 rows).
   captured a source-verified citations table (6 rows) + a 15-row lesson table in
   `docs/research/2026-10-09_turnstone-lessons.md`. Each lesson names what
   turnstone does (verified), where tq stood, and the disposition.
-- **Framing landed.** The note's central claim — turnstone's *harness* is what
+- **Framing landed.** The note's central claim — turnstone's _harness_ is what
   tq's `agent` executor delegates to (`crush`); **tq IS turnstone's "the loop"**
   one level up — is stated with the HYPOTHESIS "The loop" quotes that make it
   act on tq's own gate/auto-dismiss class.
@@ -64,7 +64,7 @@ lessons section, 5 rows).
   window; the pool harvests them).
 - A regression guard that mechanically fails if a learned/merged verdict can
   lower a deterministic finding (the SECURITY.md pin is prose only).
-- No verification of the *other* turnstone claims (Provider/ModelRegistry lanes,
+- No verification of the _other_ turnstone claims (Provider/ModelRegistry lanes,
   truncation policy, MCP circuit breakers, skill scanner) beyond reading — they
   were classed out-of-scope, not tested.
 - No cross-check of the turnstone claims against a second source / a pinned
@@ -96,7 +96,7 @@ lessons section, 5 rows).
    `check-todo-list.sh` up front would have avoided the owner-mark trip.
 2. **Grep line numbers before citing them.** Cite by `grep -n` output, never by
    eyeballed ranges; the note's verification trail should have been produced
-   *before* the first write, not after.
+   _before_ the first write, not after.
 3. **Decide "research vs implement" explicitly at the top of such a window** and
    state it in the note (I chose research; it should be a stated decision, not an
    implicit one).
@@ -167,7 +167,7 @@ lessons section, 5 rows).
    fact-type-vs-evidence-key fork the paperclip wake note left open (§g-2 there);
    I did not want to pre-empt it.
 3. **Do you want research notes indexed/first-classed** (a `docs/research/README.md`
-   + maybe an AGENTS.md pointer), or is grep-discoverable + TODO-cited enough?
+   - maybe an AGENTS.md pointer), or is grep-discoverable + TODO-cited enough?
 
 ## h) BAND DRIFT
 
