@@ -209,6 +209,9 @@ step "clean-room consumer compile (advisory in ci-local; HARD gate in release.sh
 step "out-of-tree consumer install (proxy @latest; HARD gate in CI consumer job)"
 ./scripts/smoke/consumer-install.sh
 
+step "release proxy-wait loop offline test (both die branches)"
+./scripts/smoke/proxy-wait.sh
+
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
 
