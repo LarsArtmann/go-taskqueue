@@ -7,6 +7,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json/v2"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -111,14 +113,31 @@ func TestChaosKillWorkerMidRun(t *testing.T) {
 	facts, _ := s.Facts(ctx, 0, 0)
 	completions := 0
 
+	var released journal.Fact
+
 	for _, f := range facts {
 		if f.TaskID == taskID && f.Type == "task.completed" {
 			completions++
+		}
+
+		if f.TaskID == taskID && f.Type == journal.Released {
+			released = f
 		}
 	}
 
 	if completions != 1 {
 		t.Fatalf("task %s completed %d times, want exactly 1", taskID, completions)
+	}
+
+	// The SIGKILL reclaim records the crashed attempt's effect as unknown:
+	// a re-run is distinguishable from a clean first run.
+	var detail journal.ReleasedDetail
+	if err := json.Unmarshal(released.Detail, &detail); err != nil {
+		t.Fatalf("released detail: %v (%s)", err, released.Detail)
+	}
+
+	if detail.Effect != journal.EffectUnknown {
+		t.Fatalf("chaos reclaim effect = %q, want %q", detail.Effect, journal.EffectUnknown)
 	}
 }
 
