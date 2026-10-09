@@ -7,6 +7,18 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
+# Structural offline claim: re-exec the whole smoke inside an empty network
+# namespace (unshare -n) where available, so "zero network access" holds
+# even if a fake regresses into real curl/go-list. Skip with a loud line
+# where unshare is unavailable (fakes still keep the smoke offline).
+if [ "${TQ_SMOKE_NETNS:-}" != "1" ]; then
+	if command -v unshare >/dev/null 2>&1 && unshare -n true 2>/dev/null; then
+		echo "== re-exec under unshare -n (structural offline) =="
+		exec env TQ_SMOKE_NETNS=1 unshare -n "$0" "$@"
+	fi
+	echo "SKIP: unshare -n unavailable (or no permission) — offline claim is NOT structural; proceeding with faked seams only"
+fi
+
 # shellcheck source=scripts/lib/proxy-wait.sh
 source scripts/lib/proxy-wait.sh
 
