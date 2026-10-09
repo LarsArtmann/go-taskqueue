@@ -270,6 +270,11 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   committed broken intermediates repeatedly; consider skipping files an
   agent just committed so `TQ_RESULT.commit_sha` attribution lands on
   feature commits
+- Scheduled self-audit of unattended state (turnstone lesson 15): a
+  perpetual daemon's per-cycle safety leaks over N cycles, so schedule an
+  owner re-confirmation / audit of the DLQ, the incident fold, and the
+  memory sweepers — a periodic "reset" that re-checks what unattended
+  automation has drifted toward instead of trusting it forever
 - Concurrent-agent file-ownership/lock convention (per-file claims in
   TODO_LIST, a `/.wip/` lock dir, or daemon-tagged in-flight files) —
   four collisions in one package in one session is pure luck, not design

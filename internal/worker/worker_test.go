@@ -308,6 +308,13 @@ func TestPanicRecovery(t *testing.T) {
 	}
 }
 
+// TestExactlyOnceUnderConcurrency is tq's state-ablation falsifier: it drops
+// the lease/claim-exclusivity variable and asserts behavior does NOT shift
+// (exactly-once completion under a racing pool), which is precisely the
+// crash-resume soundness claim — re-entry is sound iff durable state was the
+// whole state. If this ever flakes, the abstraction stopped being Markov, not
+// the test. Also: host build storms drop it to "19/20 completed"; re-run
+// before attributing (AGENTS.md Known Issues).
 func TestExactlyOnceUnderConcurrency(t *testing.T) {
 	store := testStore(t)
 
