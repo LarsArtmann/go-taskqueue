@@ -15,6 +15,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   "all .info pokes failed" (network outage) from "@v/list never listed"
   (proxy lag), ending doomed polling + misattributed postmortems
   (4e6d7f88, 8fed04f3; RELEASE.md synced).
+- **proxy-wait extraction + testable offline smoke** (2026-10-09): the
+  release.sh proxy-verification loop moved verbatim into
+  `scripts/lib/proxy-wait.sh` (`wait_for_proxy_version`) with overridable
+  probe seams (`tq_proxy_poke`, `tq_proxy_lists`); new offline smoke
+  `scripts/smoke/proxy-wait.sh` drives both die branches plus poke-flicker
+  and recovery with zero network, wired into ci-local (058a4b37).
+- **proxy-wait die classification is HTTP-semantic + LAST-attempt** (2026-10-09):
+  the `.info` poke captures `%{http_code}` — 2xx/404 count as
+  proxy-reachable (lag), DNS/TLS/5xx as network-dead — and the code is read
+  AFTER each poke with `poke_ok` reset on failure, so the 5/5 die reflects
+  the LAST attempt's class, not a stale earlier code
+  (b1999bb9 fixed in bf424139; smoke 8/8).
+- **check-release-docs.sh drift scope follows the lib extraction** (2026-10-09):
+  `need_in_both` code-side pins now grep `scripts/release.sh` AND
+  `scripts/lib/*.sh` with per-target miss messages, fixing the false-fail
+  the proxy-wait extraction minted (67dfcc7e, 612148d9).
 - **check-release-docs.sh reflow hazard documented** (2026-10-08): the
   line-pinned `need_in_both` grep pins (most reflow-fragile:
   `go list -m -versions`) carry a call-site comment naming the
