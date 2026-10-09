@@ -22,10 +22,9 @@ miss() {
 need_in_both() {
 	local needle="$1" what="$2"
 	grep -qF -- "$needle" "$doc" || miss "$what cited in RELEASE.md but the doc no longer mentions it: $needle"
-	# Needle scope covers release.sh AND scripts/lib/ — the proxy-wait loop
-	# (and its `go list -m -versions` line) moved to scripts/lib/proxy-wait.sh
-	# in extraction 058a4b37.
-	grep -qF -- "$needle" "$script" scripts/lib/*.sh || miss "$what documented in RELEASE.md but gone from $script or scripts/lib/: $needle"
+	# Per-target misses: a future drift failure names WHERE the needle died.
+	grep -qF -- "$needle" "$script" || miss "$what documented in RELEASE.md but gone from $script: $needle"
+	grep -qF -- "$needle" scripts/lib/*.sh || miss "$what documented in RELEASE.md but gone from scripts/lib/: $needle"
 }
 
 [ -f "$doc" ] || miss "missing $doc"
