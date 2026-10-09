@@ -22,6 +22,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   reflow-tolerance itself is a rowed follow-up).
 
 ### Added
+- **Incident pipeline: error reports as commands** (2026-10-08):
+  `POST /api/v1/errors` (armed by `tq api`) accepts clipped,
+  secrets-unrepresentable error reports and appends exactly one
+  `error.observed` fact on the synthetic `incident:<fingerprint>` stream;
+  a pure fold projects occurrences/status; the agent-pool tick runs a
+  watermark-cursor incident policy that mints ONE agent fix task per
+  incident (priority 120 first / 150 regression, dedup `err:<fp>:<seq>`)
+  riding all autonomy gates; task lifecycle facts fold back to
+  resolved/fix-failed. `tq incidents` renders the projection
+  (ADR-0021; internal/incident, 9 tests + httpapi contract test + E2E
+  dead-letter path).
 - **Root-gate cheap bash -n syntax guard** (2026-10-08): root-gate.sh
   syntax-checks scripts/release.sh + scripts/lib/*.sh + itself (~10 ms)
   before the Go gates, so a slip in the un-push-gated release path fails

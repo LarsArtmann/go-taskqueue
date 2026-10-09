@@ -280,7 +280,7 @@ func (p *Policy) needsFix(fp string, inc Incident, seq int64) (needs, known bool
 	if last.SourceSeq == seq {
 		return false, true
 	}
-	
+
 	if !last.Terminal() {
 		return false, false
 	}
