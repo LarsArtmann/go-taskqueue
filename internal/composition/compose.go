@@ -29,26 +29,38 @@ import (
 
 	_ "github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4" // registers the "sqlite" driver (deployment choice)
 	"github.com/larsartmann/go-cqrs-lite/system/v4"
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 )
 
 // DefaultEngineName is the projection-home engine's deployment name.
 const DefaultEngineName = "projections"
 
-// New composes the system root for one queue database. dbPath is the
-// QUEUE database path (the projection home is derived beside it).
-func New(ctx context.Context, dbPath string) (*system.System, error) {
+// New composes the system root for one deployment. The sqlite queue
+// database path decides the projection home (derived beside it) and the
+// deployment's resolved sync tier drives the engine's pragmas — the
+// config.Deployment is the ONE deployment description (ADR-0022
+// deployment lane); the projection home itself stays sqlite-embedded.
+func New(ctx context.Context, cfg config.Deployment) (*system.System, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("composition: deployment: %w", err)
+	}
+
+	if cfg.Driver != config.DriverSQLite {
+		return nil, fmt.Errorf("composition: projection home is sqlite-embedded; driver %q not supported (postgres projection homes are future metaengine work)", cfg.Driver)
+	}
+
 	deployment := system.DeploymentConfig{
 		Engines: map[string]system.EngineConfig{
 			DefaultEngineName: {
 				Driver: "sqlite",
-				DSN:    readmodel.PathFor(dbPath),
-				// The caller-pragmas readmodel's own engine runs, by
-				// reference — ONE pragma source for the projection
-				// home (single_opener.md): the sqliteengine factory
+				DSN:    readmodel.PathFor(cfg.DBPath),
+				// The caller-pragmas the projection-home engine runs,
+				// straight from the deployment — ONE pragma source
+				// (single_opener.md): the sqliteengine factory
 				// prepends journal_mode=WAL + busy_timeout=5000 to
 				// these on every connection it builds.
-				Pragmas: readmodel.ProjectionHomeCallerPragmas,
+				Pragmas: cfg.ProjectionPragmas(),
 			},
 		},
 		Instances: []system.InstanceConfig{

@@ -12,6 +12,7 @@ import (
 	sqliteengine "github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4"
 	metaengine "github.com/larsartmann/go-cqrs-lite/metaengine/v4"
 	"github.com/larsartmann/go-cqrs-lite/record/v4"
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 )
@@ -40,21 +41,17 @@ const (
 	CursorConsumer = "readmodel"
 )
 
-// ProjectionHomeCallerPragmas is the ONE pragma literal for the
-// projection-home file, passed on top of the sqliteengine's own
-// production defaults (NewSQLiteEngineFromDSNWith always prepends
-// journal_mode=WAL + busy_timeout=5000 and pins MaxOpenConns(1)):
-// synchronous=NORMAL trades tail-replay for checkpoint-only fsyncs, the
-// same relaxed-fsync policy the queue store runs; cache_size rides the
-// fold's page locality. The composition root references this list in
-// its DeploymentConfig so BOTH connections to the projection home (the
-// tq-owned model engine and system's declared engine) run the identical
-// union — the single pragma source of the single-opener design
-// (internal/composition/single_opener.md).
-var ProjectionHomeCallerPragmas = []string{
-	"synchronous=NORMAL",
-	"cache_size=-32768",
-}
+// ProjectionHomeCallerPragmas is the caller-pragma union the
+// projection-home file runs, DELEGATED to internal/config — the repo's
+// ONE pragma source (the Deployment.ProjectionPragmas builder, derived
+// at the default sync tier here; a serve run resolves the tier through
+// its config.Deployment and the composition root hands BOTH
+// projection-home engines the same resolved list — the single-opener
+// design of internal/composition/single_opener.md). This name stays for
+// the model's self-opened engine path (Open without WithEngine), on top
+// of the sqliteengine's own production defaults (journal_mode=WAL +
+// busy_timeout=5000, MaxOpenConns(1)).
+var ProjectionHomeCallerPragmas = config.SQLite("").ProjectionPragmas()
 
 // ErrNoSource reports an Open call without a journal source: the model is
 // a projection, and without a journal to fold there is nothing to serve.
