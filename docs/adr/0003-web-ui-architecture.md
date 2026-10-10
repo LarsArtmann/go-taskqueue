@@ -153,3 +153,37 @@ explicit `--allow-writes`-style flag + CSRF story", shipped.
 - Every mutation lands as a fact (`task.cancelled` / requeue) in the same
   transaction as the state change — the facts-first invariant is untouched;
   the dashboard gained hands but the journal remains the only truth.
+
+## Addendum (2026-10-10, F1 of the config-system plan): tailer retirement evaluated — kept as fallback
+
+The S3 read-model pump (above) is the live path on every default serve:
+the composition root injects a ProjectionPump, the projection host folds
+the journal, and every applied cursor wakes the hub — the hand
+tailer→hub fan-out no longer runs when a model is configured. The
+question this addendum settles: does the metaengine's Watcher/ServeSSE
+stack (go-cqrs-lite v4 dx.go/sse.go) let us delete the hand `tail`
+entirely? Evaluated: **no — keep it as the `--read-model=false`
+fallback**, for three reasons:
+
+1. **Wrong watch surface.** `metaengine.NewWatcher` streams per-key
+   changes of a collection INSIDE one metaengine engine. tq's journal is
+   not a metaengine collection — the queue home is the tq Store
+   (sqlitev4 over the companion, ADR-0019), and the projection home's
+   engine is already covered end-to-end by the pump. Wiring a Watcher to
+   the journal would first require the queue store to BE a metaengine
+   engine: v5 territory (the D-track seam memo), not a local refactor.
+2. **Cursor semantics mismatch.** The hub's notifications carry the
+   journal sequence and SSE event ids are journal watermarks
+   (Last-Event-ID resume). The Watcher's SSEReplay is collection-valued;
+   adopting it would break resume semantics or force a translation
+   layer that reimplements the tailer's watermark logic anyway.
+3. **The fallback is a contract, not cruft.** `--read-model=false` is
+   the operator escape hatch (S3 flip's own rollback path); a webui
+   without a live path on that flag would be a silent regression. The
+   tailer is ~50 lines against the Store contract alone, fully
+   exercised by tests that also pin the pump path's parity.
+
+Exit criterion: when the v5 all-in makes the projection non-optional
+(ADR-0022's convergence), the `ReadModelPath empty` branch and `tail`
+are deleted together — retirement is then a one-commit deletion, not a
+migration.
