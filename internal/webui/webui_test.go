@@ -2420,7 +2420,7 @@ func TestStatsReadFromReadModel(t *testing.T) {
 	stop()
 	<-tailDone
 
-	if srv.model != nil {
+	if srv.model.Load() != nil {
 		t.Error("read model still installed after runReadModel returned")
 	}
 }

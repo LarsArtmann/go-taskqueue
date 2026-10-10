@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	dashboard "github.com/larsartmann/go-health-dashboard"
@@ -132,8 +133,10 @@ type Server struct {
 
 	// model is the ADR-0019 S3 read model (nil unless cfg.ReadModelPath
 	// is set): the projection the aggregate reads and the live
-	// notifications flow through. Opened by Run.
-	model *readmodel.Model
+	// notifications flow through. Opened by Run. Access is atomic: the
+	// pump goroutine installs (and tears down) the model while HTTP
+	// handlers and the health prober read it concurrently.
+	model atomic.Pointer[readmodel.Model]
 
 	// prober derives store-backed health for the go-health-dashboard mount;
 	// dash renders it at /health (+ JSON probes). See health.go.
@@ -163,11 +166,12 @@ func New(store queue.Store, cfg Config) *Server {
 	}
 
 	prober.projectionCursor = func(_ context.Context) (int64, bool) {
-		if s.model == nil {
+		m := s.model.Load()
+		if m == nil {
 			return 0, false
 		}
 
-		return s.model.JournalCursor(), true
+		return m.JournalCursor(), true
 	}
 
 	return s

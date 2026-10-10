@@ -65,10 +65,10 @@ func (s *Server) journalHead(ctx context.Context) (int64, error) {
 // watermark, so SSE event ids keep their Last-Event-ID meaning. The pump
 // owns the model's and the host's lifetime.
 func (s *Server) runReadModel(ctx context.Context) error {
-	s.model = s.cfg.Pump.Model()
+	s.model.Store(s.cfg.Pump.Model())
 
 	defer func() {
-		s.model = nil
+		s.model.Store(nil)
 	}()
 
 	return s.cfg.Pump.Run(ctx, s.hub.Notify)
@@ -78,7 +78,7 @@ func (s *Server) runReadModel(ctx context.Context) error {
 // readmodel.StatusCounts seam (model when the server runs on one, store
 // otherwise). Callers zero-fill missing statuses themselves.
 func (s *Server) statusCounts(ctx context.Context) (map[task.Status]int, error) {
-	return readmodel.StatusCounts(ctx, s.model, s.store)
+	return readmodel.StatusCounts(ctx, s.model.Load(), s.store)
 }
 
 // factsForTask returns one task's facts, most recent last, bounded to the
