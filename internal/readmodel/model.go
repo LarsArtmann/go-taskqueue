@@ -162,6 +162,10 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 	// WAL + busy_timeout defaults) — one literal, referenced by the
 	// composition root for its declared engine too.
 	if m.eng == nil {
+		if err := ConvergeProjectionHome(path); err != nil {
+			return nil, err
+		}
+
 		eng, err := sqliteengine.NewSQLiteEngineFromDSN(path, ProjectionHomeCallerPragmas...)
 		if err != nil {
 			return nil, fmt.Errorf("readmodel: open projection db: %w", err)
