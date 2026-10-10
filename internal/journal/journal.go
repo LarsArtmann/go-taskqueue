@@ -33,6 +33,24 @@ type FactType = facts.FactType
 // bytes.
 type Fact = facts.Fact
 
+// Lifecycle vocabulary (task.enqueued … task.reprioritized) IS the engine's
+// facts.FactType (ADR-0019 S2): these re-exports are IDENTITY aliases of the
+// upstream constants, so consumers keep the journal import surface while the
+// spellings cannot drift by construction.
+const (
+	Enqueued        = facts.Enqueued
+	Claimed         = facts.Claimed
+	Completed       = facts.Completed
+	Failed          = facts.Failed
+	DeadLettered    = facts.DeadLettered
+	Cancelled       = facts.Cancelled
+	CancelRequested = facts.CancelRequested
+	Released        = facts.Released
+	Requeued        = facts.Requeued
+	Orphaned        = facts.Orphaned
+	Reprioritized   = facts.Reprioritized
+)
+
 const (
 	Heartbeat FactType = "task.heartbeat"
 	// SessionOpened / SessionClosed record the lifecycle of an INTERACTIVE
