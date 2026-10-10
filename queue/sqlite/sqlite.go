@@ -15,5 +15,6 @@ type (
 
 var (
 	Open                   = internalsqlite.Open
+	OpenWithDeployment     = internalsqlite.OpenWithDeployment
 	WithProjectExclusivity = internalsqlite.WithProjectExclusivity
 )

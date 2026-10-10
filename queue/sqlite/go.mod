@@ -3,6 +3,7 @@ module github.com/larsartmann/go-taskqueue/queue/sqlite
 go 1.27.1
 
 require (
+	github.com/larsartmann/go-taskqueue/internal/config v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.3
@@ -38,6 +39,8 @@ replace github.com/larsartmann/go-taskqueue/internal/journal => ../../internal/j
 replace github.com/larsartmann/go-taskqueue/internal/queue => ../../internal/queue
 
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../../internal/queue/sqlite
+
+replace github.com/larsartmann/go-taskqueue/internal/config => ../../internal/config
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ../../internal/task
 

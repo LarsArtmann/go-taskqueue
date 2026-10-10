@@ -16,6 +16,7 @@ package sqlite
 import (
 	"context"
 
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	v4 "github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4/migration"
 )
@@ -38,6 +39,18 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 	}
 
 	return v4.Open(path, opts...)
+}
+
+// OpenWithDeployment opens the store from the resolved deployment struct
+// (ADR-0022): the sync tier arrives resolved (no env read here —
+// config.FromFlags is the ONE reader), and the legacy auto-upgrade still
+// applies exactly as for Open.
+func OpenWithDeployment(d config.Deployment, opts ...StoreOption) (*Store, error) {
+	if err := migration.UpgradeIfNeeded(context.Background(), d.DBPath); err != nil {
+		return nil, err
+	}
+
+	return v4.OpenWithDeployment(d, opts...)
 }
 
 // WithProjectExclusivity turns on store-level per-project serialization:
