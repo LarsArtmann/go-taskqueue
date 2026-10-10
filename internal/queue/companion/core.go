@@ -171,10 +171,23 @@ func UpstreamFact(f journal.Fact) ufacts.Fact {
 // JournalFacts maps engine-read facts onto the tq journal vocabulary
 // (ADR-0019 S2): the ENGINE owns the journal reads — Facts/FactsForTask
 // come from the upstream store contract, never mirrored companion SQL.
-// The alias flip made the vocabularies one type, so this is the slice
-// identity, kept as the named seam for the adapter call sites.
+// The alias flip made the vocabularies one type, so the copy is the
+// identity — except Detail: the engine hands back empty non-nil blobs
+// for detail-less facts, and an empty jsontext.Value fails payload
+// marshaling with "unexpected EOF", so empty normalizes to nil. This
+// empty-to-nil rule is the genuinely-needed residue of the pre-alias
+// conversion (regression: TestProjectionHostTailsLiveFacts wedged on
+// task.claimed when the identity briefly shipped).
 func JournalFacts(fs []ufacts.Fact) []journal.Fact {
-	return fs
+	out := make([]journal.Fact, len(fs))
+	copy(out, fs)
+	for i := range out {
+		if len(out[i].Detail) == 0 {
+			out[i].Detail = nil
+		}
+	}
+
+	return out
 }
 
 // IdentityCodec passes payloads through byte-for-byte: tq payloads are

@@ -74,3 +74,30 @@ func TestFactMappingRoundTrip(t *testing.T) {
 		t.Fatalf("round trip drifted: in %+v out %+v", in, out)
 	}
 }
+
+// TestJournalFactsNormalizesEmptyDetail pins the one non-identity rule
+// left in the S2 seam: the engine records detail-less facts as empty
+// non-nil blobs, and an empty jsontext.Value would fail payload
+// marshaling downstream ("unexpected EOF within /detail"), so the seam
+// must hand tq a nil Detail instead.
+func TestJournalFactsNormalizesEmptyDetail(t *testing.T) {
+	t.Parallel()
+
+	fs := JournalFacts([]ufacts.Fact{
+		{Seq: 1, TaskID: "t-1", Type: ufacts.Enqueued, Detail: []byte(`{"k":"v"}`)},
+		{Seq: 2, TaskID: "t-1", Type: ufacts.Claimed, Detail: []byte{}},
+		{Seq: 3, TaskID: "t-1", Type: ufacts.Completed},
+	})
+
+	if string(fs[0].Detail) != `{"k":"v"}` {
+		t.Fatalf("set detail drifted: %s", fs[0].Detail)
+	}
+
+	if fs[1].Detail != nil {
+		t.Fatalf("empty non-nil detail leaked: %#v", fs[1].Detail)
+	}
+
+	if fs[2].Detail != nil {
+		t.Fatalf("nil detail drifted: %#v", fs[2].Detail)
+	}
+}
