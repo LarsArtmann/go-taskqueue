@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
-	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 )
 
 // TestNewProjectionRuntime pins the composition-root factory for the S3
@@ -26,7 +26,7 @@ func TestNewProjectionRuntime(t *testing.T) {
 
 	t.Cleanup(func() { _ = store.Close() })
 
-	rt, err := NewProjectionRuntime(ctx, store, readmodel.PathFor(dbPath))
+	rt, err := NewProjectionRuntime(ctx, store, config.SQLite(dbPath))
 	if err != nil {
 		t.Fatalf("NewProjectionRuntime: %v", err)
 	}

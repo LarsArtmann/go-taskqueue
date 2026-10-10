@@ -10,6 +10,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/system/v4 v4.10.2
 	github.com/larsartmann/go-taskqueue v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/composition v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/config v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/journal v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3

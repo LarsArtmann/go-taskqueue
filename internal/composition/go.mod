@@ -7,6 +7,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/system/v4 v4.11.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/config v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.3
 )
 
@@ -86,6 +87,8 @@ require (
 	modernc.org/memory v1.12.1 // indirect
 	modernc.org/sqlite v1.60.1 // indirect
 )
+
+replace github.com/larsartmann/go-taskqueue/internal/config => ../config
 
 replace github.com/larsartmann/go-taskqueue/internal/readmodel => ../readmodel
 

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/larsartmann/go-taskqueue/internal/config"
 )
 
 // TestNewBuildsSystemRootOverProjectionHome pins the S4 composition:
@@ -19,7 +21,7 @@ func TestNewBuildsSystemRootOverProjectionHome(t *testing.T) {
 
 	dbPath := filepath.Join(t.TempDir(), "tq.db")
 
-	sys, err := New(ctx, dbPath)
+	sys, err := New(ctx, config.SQLite(dbPath))
 	if err != nil {
 		t.Fatalf("compose: %v", err)
 	}
@@ -34,7 +36,7 @@ func TestNewBuildsSystemRootOverProjectionHome(t *testing.T) {
 	}
 
 	// Reopen the same home (serve/api/stats processes share it).
-	again, err := New(ctx, dbPath)
+	again, err := New(ctx, config.SQLite(dbPath))
 	if err != nil {
 		t.Fatalf("reopen: %v", err)
 	}

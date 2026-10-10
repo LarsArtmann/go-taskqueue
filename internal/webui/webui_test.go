@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/composition"
+	"github.com/larsartmann/go-taskqueue/internal/config"
 
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -2375,9 +2376,10 @@ func (p *testPump) Run(ctx context.Context, notify func(cursor int64)) error {
 func TestStatsReadFromReadModel(t *testing.T) {
 	s := newTestStore(t)
 
-	modelPath := filepath.Join(t.TempDir(), "projection.db")
+	deployment := config.SQLite(filepath.Join(t.TempDir(), "q.db"))
+	modelPath := readmodel.PathFor(deployment.DBPath)
 
-	rt, err := composition.NewProjectionRuntime(context.Background(), s, modelPath)
+	rt, err := composition.NewProjectionRuntime(context.Background(), s, deployment)
 	if err != nil {
 		t.Fatalf("NewProjectionRuntime: %v", err)
 	}

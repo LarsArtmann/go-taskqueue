@@ -11,6 +11,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.5.3
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2
 	github.com/larsartmann/go-error-family v0.11.0
+	github.com/larsartmann/go-taskqueue/internal/config v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
@@ -57,6 +58,8 @@ require (
 	modernc.org/memory v1.12.1 // indirect
 	modernc.org/sqlite v1.60.1 // indirect
 )
+
+replace github.com/larsartmann/go-taskqueue/internal/config => ../config
 
 replace github.com/larsartmann/go-taskqueue/internal/task => ../task
 

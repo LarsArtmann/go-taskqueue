@@ -29,6 +29,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/bridge/papdashboard"
 	"github.com/larsartmann/go-taskqueue/internal/budget"
 	"github.com/larsartmann/go-taskqueue/internal/composition"
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/depsweep"
 	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -3601,7 +3602,7 @@ func cmdServe(args []string) error {
 	}
 
 	if *readModel {
-		rt, rtErr := composition.NewProjectionRuntime(context.Background(), store, readmodel.PathFor(dbPath))
+		rt, rtErr := composition.NewProjectionRuntime(context.Background(), store, config.SQLite(dbPath))
 		if rtErr != nil {
 			_ = store.Close()
 
@@ -3626,7 +3627,7 @@ func cmdServe(args []string) error {
 	var sys *system.System
 
 	if *readModel {
-		composed, err := composition.New(context.Background(), dbPath)
+		composed, err := composition.New(context.Background(), config.SQLite(dbPath))
 		if err != nil {
 			return err
 		}
