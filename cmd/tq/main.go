@@ -254,6 +254,26 @@ func mustOpenStore(d config.Deployment, opts ...sqlite.StoreOption) *sqlite.Stor
 	return store
 }
 
+// mustDeploymentFromDB builds the ONE deployment for a --db-only
+// command (doctor, audit): the legacy path chain through the ONE
+// constructor (FromFlags merges TQ_SQLITE_SYNC). Postgres DSNs refuse
+// up front — these surfaces inspect the embedded sqlite journal and
+// have no remote-store path yet (owner question pending).
+func mustDeploymentFromDB(dbVal string) config.Deployment {
+	d, err := resolveDeployment("", dbVal, true)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tq: %v\n", err)
+		os.Exit(1)
+	}
+
+	if d.Driver == config.DriverPostgres {
+		fmt.Fprintln(os.Stderr, "tq: this command inspects the embedded sqlite journal; postgres stores are not yet verified (owner question pending, see docs/status/2026-10-10_03-06_*.md §g)")
+		os.Exit(1)
+	}
+
+	return d
+}
+
 func splitRepos(spec string) []string {
 	var repos []string
 

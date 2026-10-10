@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-cqrs-lite/projectionhost/v4"
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 )
 
@@ -19,7 +20,7 @@ func TestDoctorProjectionDLQ(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "q.db")
 
-	results, err := runDoctor(ctx, doctorOptions{DBPath: path, DLQ: true})
+	results, err := runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path), DLQ: true})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -42,7 +43,7 @@ func TestDoctorProjectionDLQ(t *testing.T) {
 		t.Fatalf("close sidecar: %v", err)
 	}
 
-	results, err = runDoctor(ctx, doctorOptions{DBPath: path, DLQ: true})
+	results, err = runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path), DLQ: true})
 	if err != nil {
 		t.Fatalf("runDoctor 2: %v", err)
 	}
@@ -70,7 +71,7 @@ func TestDoctorProjectionDLQ(t *testing.T) {
 		t.Fatalf("store poison: %v", err)
 	}
 
-	results, err = runDoctor(ctx, doctorOptions{DBPath: path, DLQ: true})
+	results, err = runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path), DLQ: true})
 	if err != nil {
 		t.Fatalf("runDoctor 3: %v", err)
 	}

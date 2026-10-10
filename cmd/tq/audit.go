@@ -54,7 +54,7 @@ func cmdAudit(args []string) error {
 	}
 
 	if *journalFlag {
-		s := mustOpenDB(resolveDB(*db))
+		s := mustOpenStore(mustDeploymentFromDB(*db))
 		defer s.Close()
 
 		return cmdJournalAudit(context.Background(), s, *asJSON)
@@ -76,7 +76,7 @@ func cmdAudit(args []string) error {
 		cfg.Repos = expandRepoSpecs(*projectsDir, splitRepos(*repos))
 	}
 
-	s := mustOpenDB(resolveDB(*db))
+	s := mustOpenStore(mustDeploymentFromDB(*db))
 	defer s.Close()
 
 	if *redispatchFlag {

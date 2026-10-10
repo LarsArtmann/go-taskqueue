@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -29,7 +30,7 @@ func TestDoctorProjectionSection(t *testing.T) {
 
 	t.Cleanup(func() { _ = store.Close() })
 
-	results, err := runDoctor(ctx, doctorOptions{DBPath: path})
+	results, err := runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path)})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -53,7 +54,7 @@ func TestDoctorProjectionSection(t *testing.T) {
 		t.Fatalf("save cursor: %v", err)
 	}
 
-	results, err = runDoctor(ctx, doctorOptions{DBPath: path})
+	results, err = runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path)})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -67,7 +68,7 @@ func TestDoctorProjectionSection(t *testing.T) {
 		t.Fatalf("enqueue 2: %v", err)
 	}
 
-	results, err = runDoctor(ctx, doctorOptions{DBPath: path})
+	results, err = runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path)})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -99,7 +100,7 @@ func TestDoctorProjectionSection(t *testing.T) {
 		t.Fatalf("enqueue 2: %v", err)
 	}
 
-	results, err = runDoctor(ctx, doctorOptions{DBPath: path})
+	results, err = runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path)})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}

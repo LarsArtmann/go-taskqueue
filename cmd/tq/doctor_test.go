@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -69,7 +70,7 @@ func TestDoctorHealthyEmptyDB(t *testing.T) {
 		return "crush version v9.9.9", nil
 	}
 
-	results, err := runDoctor(context.Background(), doctorOptions{DBPath: path, AgentBin: self})
+	results, err := runDoctor(context.Background(), doctorOptions{Deployment: config.SQLite(path), AgentBin: self})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -113,7 +114,7 @@ func TestDoctorFlagsDeadWorker(t *testing.T) {
 		t.Fatalf("enqueue second: %v", err)
 	}
 
-	results, err := runDoctor(ctx, doctorOptions{DBPath: path})
+	results, err := runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path)})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -220,7 +221,7 @@ func TestDoctorBudgetAtCap(t *testing.T) {
 		}
 	}
 
-	results, err := runDoctor(ctx, doctorOptions{DBPath: path, DailyBudget: 2})
+	results, err := runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path), DailyBudget: 2})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -238,7 +239,7 @@ func TestDoctorCorruptDB(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := runDoctor(context.Background(), doctorOptions{DBPath: path})
+	_, err := runDoctor(context.Background(), doctorOptions{Deployment: config.SQLite(path)})
 	if err == nil {
 		t.Fatal("runDoctor on a corrupt file must fail")
 	}
@@ -271,7 +272,7 @@ func TestDoctorRepoAutonomy(t *testing.T) {
 
 	path := doctorTestStore(t)
 
-	results, err := runDoctor(context.Background(), doctorOptions{DBPath: path, Repos: healthy + "," + bare})
+	results, err := runDoctor(context.Background(), doctorOptions{Deployment: config.SQLite(path), Repos: healthy + "," + bare})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -313,7 +314,7 @@ func TestDoctorToolPathChecks(t *testing.T) {
 	empty := t.TempDir()
 	t.Setenv("PATH", empty)
 
-	opts := doctorOptions{DBPath: doctorTestStore(t)}
+	opts := doctorOptions{Deployment: config.SQLite(doctorTestStore(t))}
 
 	self, err := filepath.Abs(os.Args[0])
 	if err != nil {
@@ -402,7 +403,7 @@ func TestDoctorEnvironmentIncludesGoEnvCheck(t *testing.T) {
 		return checkResult{Name: "go-env", Status: checkFail, Detail: "ENV-LIE (stub)"}
 	}
 
-	results := doctorEnvironment(context.Background(), doctorOptions{DBPath: doctorTestStore(t)})
+	results := doctorEnvironment(context.Background(), doctorOptions{Deployment: config.SQLite(doctorTestStore(t))})
 
 	r := resultByName(results, "go-env")
 	if r.Status != checkFail || !strings.Contains(r.Detail, "ENV-LIE") {
@@ -441,7 +442,7 @@ func TestDoctorGoEnvProbeReal(t *testing.T) {
 func TestDoctorJSONShape(t *testing.T) {
 	path := doctorTestStore(t)
 
-	results, err := runDoctor(context.Background(), doctorOptions{DBPath: path})
+	results, err := runDoctor(context.Background(), doctorOptions{Deployment: config.SQLite(path)})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -478,7 +479,7 @@ func TestDoctorMarkOrphans(t *testing.T) {
 
 	time.Sleep(5 * time.Millisecond) // lease dies
 
-	results, err := runDoctor(ctx, doctorOptions{DBPath: path, MarkOrphans: true})
+	results, err := runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path), MarkOrphans: true})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -790,7 +791,7 @@ func TestDoctorOpenSessions(t *testing.T) {
 	ctx := context.Background()
 
 	// Bare store: no open sessions, check is ok.
-	results, err := runDoctor(ctx, doctorOptions{DBPath: path})
+	results, err := runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path)})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -803,7 +804,7 @@ func TestDoctorOpenSessions(t *testing.T) {
 		t.Fatalf("session begin: %v", err)
 	}
 
-	results, err = runDoctor(ctx, doctorOptions{DBPath: path})
+	results, err = runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path)})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -826,7 +827,7 @@ func TestDoctorOpenSessions(t *testing.T) {
 		t.Fatalf("append closed fact: %v", err)
 	}
 
-	results, err = runDoctor(ctx, doctorOptions{DBPath: path})
+	results, err = runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path)})
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
@@ -1020,8 +1021,8 @@ func TestDoctorEnvironmentIncludesCrushVersionCheck(t *testing.T) {
 	}
 
 	results := doctorEnvironment(context.Background(), doctorOptions{
-		DBPath:   doctorTestStore(t),
-		AgentBin: self,
+		Deployment: config.SQLite(doctorTestStore(t)),
+		AgentBin:   self,
 	})
 
 	r := resultByName(results, "crush-version")

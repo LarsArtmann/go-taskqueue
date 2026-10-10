@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
@@ -61,7 +62,9 @@ type checkResult struct {
 
 // doctorOptions controls which checks run.
 type doctorOptions struct {
-	DBPath      string
+	// Deployment is the ONE store description (ADR-0022 lane): the
+	// sqlite journal doctor inspects, built through config.FromFlags.
+	Deployment  config.Deployment
 	DailyBudget int    // 0: skip the budget check
 	Repos       string // comma-separated repo paths: enables autonomy checks
 	ProjectsDir string // root for bare names in Repos (mirrors harvest/audit)
@@ -222,13 +225,17 @@ func doctorCrushVersionCheck(ctx context.Context, bin string) checkResult {
 func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	var results []checkResult
 
-	store, err := sqlite.Open(opts.DBPath)
+	if opts.Deployment.Driver != config.DriverSQLite {
+		return nil, fmt.Errorf("doctor inspects the embedded sqlite journal; a %s store is not doctor-inspectable", opts.Deployment.Driver)
+	}
+
+	store, err := sqlite.OpenWithDeployment(opts.Deployment)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 	defer func() { _ = store.Close() }()
 
-	results = append(results, doctorSQLiteChecks(ctx, opts.DBPath)...)
+	results = append(results, doctorSQLiteChecks(ctx, opts.Deployment.DBPath)...)
 	results = append(results, doctorQueueMix(ctx, store)...)
 	results = append(results, doctorRepoCoverage(ctx, store, opts.ProjectsDir)...)
 
@@ -239,9 +246,9 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
 
-	results = append(results, doctorProjection(ctx, store, opts.DBPath)...)
+	results = append(results, doctorProjection(ctx, store, opts.Deployment.DBPath)...)
 	if opts.DLQ {
-		results = append(results, doctorProjectionDLQ(ctx, opts.DBPath)...)
+		results = append(results, doctorProjectionDLQ(ctx, opts.Deployment.DBPath)...)
 	}
 
 	results = append(results, doctorOpenSessions(ctx, store)...)
@@ -1742,7 +1749,7 @@ func cmdDoctor(args []string) error {
 	}
 
 	opts := doctorOptions{
-		DBPath:      resolveDB(*db),
+		Deployment:  mustDeploymentFromDB(*db),
 		DailyBudget: *dailyBudget,
 		Repos:       *repos,
 		ProjectsDir: *projectsDir,
