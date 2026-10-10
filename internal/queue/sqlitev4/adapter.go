@@ -30,13 +30,13 @@ import (
 	"database/sql"
 	"encoding/json/jsontext"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	usqlite "github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4"
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
 	utask "github.com/larsartmann/go-cqrs-lite/queue/v4/task"
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/companion"
@@ -90,40 +90,20 @@ var WithProjectExclusivity = companion.WithProjectExclusivity
 // by construction (expired leases reclaim, at-least-once sweepers,
 // idempotent replay, dedup keys). Operators who want the strict tier back
 // set TQ_SQLITE_SYNC=full; the value is validated at open.
-func synchronousPolicy() (string, error) {
-	v := strings.ToUpper(strings.TrimSpace(os.Getenv("TQ_SQLITE_SYNC")))
-	if v == "" {
-		return "NORMAL", nil
-	}
-
-	switch v {
-	case "FULL", "NORMAL", "OFF":
-		return v, nil
-	default:
-		return "", fmt.Errorf(
-			"sqlitev4: TQ_SQLITE_SYNC must be one of full, normal, off (got %q)", v)
-	}
-}
-
 // openSharedDB opens the store's ONE serialized connection carrying tq's
 // IO pragma policy. The engine and every companion surface share this
 // pool: with MaxOpenConns(1) all engine transactions and companion
 // transactions serialize at the pool level, eliminating the WAL
 // writer-lock handoff (and SQLITE_BUSY churn) two single-conn pools
 // caused when they interleaved commits on the same file.
-func openSharedDB(path string) (*sql.DB, error) {
-	sync, err := synchronousPolicy()
-	if err != nil {
-		return nil, err
+func openSharedDB(d config.Deployment) (*sql.DB, error) {
+	pragmas := d.QueuePragmas()
+	parts := make([]string, len(pragmas))
+	for i, pragma := range pragmas {
+		parts[i] = "_pragma=" + pragma
 	}
 
-	dsn := fmt.Sprintf(
-		"file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"+
-			"&_pragma=synchronous(%s)&_pragma=temp_store(MEMORY)&_pragma=cache_size(-32768)"+
-			"&_pragma=journal_size_limit(8388608)",
-		path, sync)
-
-	db, err := sql.Open("sqlite", dsn)
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s?%s", d.DBPath, strings.Join(parts, "&")))
 	if err != nil {
 		return nil, fmt.Errorf("sqlitev4: open db: %w", err)
 	}
@@ -133,11 +113,37 @@ func openSharedDB(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-// Open opens (creating if needed) the queue database at path.
+// Open opens (creating if needed) the queue database at path. The sync
+// tier comes from the TQ_SQLITE_SYNC environment, exactly as before this
+// signature existed — the deployment-struct entry point is
+// OpenWithDeployment, which takes the tier resolved.
 func Open(path string, opts ...StoreOption) (*Store, error) {
+	cfg := config.SQLite(path)
+
+	policy, err := config.SyncPolicyFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.SyncPolicy = policy
+
+	return OpenWithDeployment(cfg, opts...)
+}
+
+// OpenWithDeployment opens the store from a deployment struct
+// (ADR-0022's deployment lane): the struct's pragma builder renders the
+// connection DSN — the ONE pragma literal lives in internal/config —
+// and the sync tier arrives resolved, never read from the environment.
+func OpenWithDeployment(d config.Deployment, opts ...StoreOption) (*Store, error) {
+	if d.Driver != config.DriverSQLite || d.DBPath == "" {
+		return nil, fmt.Errorf(
+			"sqlitev4: deployment must be sqlite with a DBPath (driver %q, path %q)",
+			d.Driver, d.DBPath)
+	}
+
 	projectExclusive := companion.ApplyProjectExclusivity(opts)
 
-	db, err := openSharedDB(path)
+	db, err := openSharedDB(d)
 	if err != nil {
 		return nil, err
 	}

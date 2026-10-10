@@ -5,6 +5,7 @@ go 1.27.1
 require (
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.3
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3
+	github.com/larsartmann/go-taskqueue/internal/config v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0
@@ -40,3 +41,5 @@ replace github.com/larsartmann/go-taskqueue/internal/queue => ..
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ../sqlite
 
 replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ../companion
+
+replace github.com/larsartmann/go-taskqueue/internal/config => ../../config
