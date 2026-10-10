@@ -12,10 +12,10 @@ import (
 // tq's fact vocabulary RIDES the upstream engine's facts vocabulary —
 // every lifecycle constant the engine records must be the SAME string as
 // tq's journal constant, so engine-written facts surface unchanged
-// through the tq vocabulary (and vice versa). internal/journal itself
-// stays go-cqrs-lite-free (DAG purity, ADR-0014 D2); THIS package is the
-// seam where both vocabularies are importable, so the equality gate
-// lives here. Heartbeat is deliberately absent: the engines record no
+// through the tq vocabulary (and vice versa). Since the S2 alias flip
+// the vocabularies ARE one type (journal.Fact = facts.Fact), so this
+// equality gate is belt-and-braces against a silent upstream constant
+// rename. Heartbeat is deliberately absent: the engines record no
 // heartbeat facts (S1 divergence D3) — tq-only, still written through
 // the same journal.
 func TestJournalVocabularyRidesUpstreamFacts(t *testing.T) {

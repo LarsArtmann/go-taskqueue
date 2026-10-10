@@ -3,7 +3,6 @@ package companion
 import (
 	"context"
 	"database/sql"
-	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"strconv"
@@ -160,46 +159,22 @@ func MapErr(err error) error {
 }
 
 // UpstreamFact maps a tq journal fact onto the upstream facts.Fact.
-// Type strings and detail bytes carry over verbatim; Seq is reassigned
-// by the journal on append.
+// Type strings and detail bytes carry over verbatim; Seq is zeroed
+// because the journal reassigns it on append. Since the S2 alias flip
+// (ADR-0019) the two fact types ARE one type — the mapper is the
+// identity modulo Seq, kept as the named seam for the engine adapters.
 func UpstreamFact(f journal.Fact) ufacts.Fact {
-	return ufacts.Fact{
-		Time:    f.Time,
-		TaskID:  f.TaskID,
-		Type:    ufacts.FactType(f.Type),
-		Owner:   f.Owner,
-		Attempt: f.Attempt,
-		Error:   f.Error,
-		Detail:  []byte(f.Detail),
-	}
+	f.Seq = 0
+	return f
 }
 
 // JournalFacts maps engine-read facts onto the tq journal vocabulary
 // (ADR-0019 S2): the ENGINE owns the journal reads — Facts/FactsForTask
-// come from the upstream store contract, never mirrored companion SQL —
-// and this is the one conversion seam. Type strings and detail bytes
-// carry verbatim; the jsontext.Value conversion is free (both are byte
-// slices).
+// come from the upstream store contract, never mirrored companion SQL.
+// The alias flip made the vocabularies one type, so this is the slice
+// identity, kept as the named seam for the adapter call sites.
 func JournalFacts(fs []ufacts.Fact) []journal.Fact {
-	out := make([]journal.Fact, 0, len(fs))
-	for _, f := range fs {
-		jf := journal.Fact{
-			Seq:     f.Seq,
-			Time:    f.Time,
-			TaskID:  f.TaskID,
-			Type:    journal.FactType(f.Type),
-			Owner:   f.Owner,
-			Attempt: f.Attempt,
-			Error:   f.Error,
-		}
-		if len(f.Detail) > 0 {
-			jf.Detail = jsontext.Value(f.Detail)
-		}
-
-		out = append(out, jf)
-	}
-
-	return out
+	return fs
 }
 
 // IdentityCodec passes payloads through byte-for-byte: tq payloads are
