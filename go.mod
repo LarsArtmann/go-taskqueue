@@ -111,6 +111,7 @@ require (
 	github.com/larsartmann/go-sse v0.6.2
 	github.com/larsartmann/go-sse/ssetest v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/composition v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/config v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
@@ -154,3 +155,4 @@ replace github.com/larsartmann/go-taskqueue/internal/readmodel => ./internal/rea
 replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ./internal/queue/companion
 
 replace github.com/larsartmann/go-taskqueue/internal/composition => ./internal/composition
+replace github.com/larsartmann/go-taskqueue/internal/config => ./internal/config
