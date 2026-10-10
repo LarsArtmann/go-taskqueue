@@ -70,6 +70,14 @@ func New(store queue.Store, token string, log *slog.Logger) (*Server, error) {
 // table. The enqueue side is untouched — the model is read-only over the
 // store. ListenAndServe owns the model's pump and lifetime; ctx covers
 // the durable-cursor load at setup.
+//
+// The self-open here is the sanctioned per-surface exception to the
+// composition single-opener seam: this surface needs only the model (no
+// projection host, no DLQ sidecar — both are NewProjectionRuntime
+// bundles the api cannot use), each process opens the projection home
+// exactly once, and the self-open derives its pragmas from the same ONE
+// config source. Decision record:
+// docs/memos/2026-10-10_readmodel-open-seams.md.
 func (s *Server) UseReadModel(ctx context.Context, path string) error {
 	m, err := readmodel.Open(ctx, path, s.store, readmodel.WithDurableCursor())
 	if err != nil {
