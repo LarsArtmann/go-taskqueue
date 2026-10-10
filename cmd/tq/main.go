@@ -56,7 +56,7 @@ const usage = `tq — projects-aware task work queue
 Usage:
   tq enqueue --type TYPE [--project P] [--payload JSON] [--deps id,...] [--priority N]
             [--max-attempts N] [--delay DUR] [--db PATH]
-  tq worker [--concurrency N] [--agents [--yolo] [--reresolve-verify]] [--db PATH] [--poll DUR] [--lease DUR]
+  tq worker [--concurrency N] [--agents [--yolo] [--reresolve-verify]] [--db PATH] [--store PATH|DSN] [--poll DUR] [--lease DUR]
            [--task-timeout DUR] [--alert-url URL [--alert-api-key K]]
   tq harvest --projects-dir DIR [--repos a,b] [--max-per-tick N] [--allow-dirty]
             [--prune-stale] [--dry-run] [--db PATH]
@@ -67,7 +67,7 @@ Usage:
               then runs agent-pool — or installs the systemd unit)
   tq agent-pool --projects-dir DIR [--repos a,b] [--interval DUR] [--concurrency N]
                [--yolo] [--reresolve-verify] [--max-per-tick N] [--task-timeout DUR]
-               [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH]
+               [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH] [--store PATH|DSN]
   tq stats [--project P] [--status S] [--daily-budget N] [--read-model] [--db PATH] [--json]   (--read-model is the default; --read-model=false reads the store)
   tq tasks [--project P] [--status S] [--type T] [--since DUR] [--limit N] [--count] [--json] [--db PATH]
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
@@ -104,8 +104,8 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
                   [--summary TEXT] [--db PATH]   (close every registry
                   session that is quiet and no longer owned by a live crush
                   process; replay-safe via the close dedup keys)
-  tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--poll DUR] [--verbose] [--read-model]   (--read-model default; =false uses the hand journal tailer)
-  tq api [--addr ADDR] --auth-token TOKEN [--db PATH] [--read-model]   (write API: POST /api/v1/tasks; --read-model default)
+  tq serve [--addr ADDR] [--auth-token TOKEN] [--db PATH] [--store PATH|DSN] [--poll DUR] [--verbose] [--read-model]   (--read-model default; =false uses the hand journal tailer)
+  tq api [--addr ADDR] --auth-token TOKEN [--db PATH] [--store PATH|DSN] [--read-model]   (write API: POST /api/v1/tasks; --read-model default)
   tq verdict '<json>'   (agent-facing: record this task's structured result
                   into $TQ_RESULT_FILE; validates JSON, no database access)
   tq ask --task <id> [--type info|approval|confirmation|input]
@@ -114,7 +114,7 @@ tq cancel TASK_ID [--force] [--reason WHY] [--db PATH]   (--force: cooperative c
                   the task via $TQ_QUESTION_FILE until the answer arrives)
   tq version
 
-Default database: $TQ_DB or ./tasks.db
+Default database: $TQ_DB or ./tasks.db (--store on worker/serve/api/agent-pool also takes postgres:// DSNs; postgres is wired but not yet gate-verified)
 `
 
 func main() {
