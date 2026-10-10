@@ -2,6 +2,7 @@ package readmodel
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -74,13 +75,15 @@ func probeMissingColumns(path string) ([]string, error) {
 	defer db.Close()
 
 	var table string
+
 	err = db.QueryRow(
 		`SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
 		tasksPlannedTable,
 	).Scan(&table)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("readmodel: probe %s: %w", tasksPlannedTable, err)
 	}
@@ -92,23 +95,28 @@ func probeMissingColumns(path string) ([]string, error) {
 	defer rows.Close()
 
 	actual := map[string]bool{}
+
 	for rows.Next() {
-		var cid int
-		var name, colType string
-		var notNull int
-		var dflt sql.NullString
-		var pk int
+		var (
+			cid           int
+			name, colType string
+			notNull       int
+			dflt          sql.NullString
+			pk            int
+		)
 		if err := rows.Scan(&cid, &name, &colType, &notNull, &dflt, &pk); err != nil {
 			return nil, fmt.Errorf("readmodel: scan %s columns: %w", tasksPlannedTable, err)
 		}
 
 		actual[name] = true
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("readmodel: scan %s columns: %w", tasksPlannedTable, err)
 	}
 
 	var missing []string
+
 	for _, col := range taskRowColumns() {
 		if !actual[col] {
 			missing = append(missing, col)
@@ -122,10 +130,11 @@ func probeMissingColumns(path string) ([]string, error) {
 // json tags — one source of truth, so model evolution cannot drift the
 // convergence probe.
 func taskRowColumns() []string {
-	t := reflect.TypeOf(TaskRow{})
+	t := reflect.TypeFor[TaskRow]()
+
 	cols := make([]string, 0, t.NumField())
-	for i := range t.NumField() {
-		name, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ",")
+	for field := range t.Fields() {
+		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if name != "" {
 			cols = append(cols, name)
 		}

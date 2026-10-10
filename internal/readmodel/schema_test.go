@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -15,6 +16,7 @@ func openProbe(t *testing.T, path string) *sql.DB {
 	if err != nil {
 		t.Fatalf("open probe db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = db.Close() })
 
 	return db
@@ -25,12 +27,16 @@ func createPlannedTable(t *testing.T, path string, cols []string) {
 
 	db := openProbe(t, path)
 	decl := "id TEXT PRIMARY KEY"
+
+	var declSb28 strings.Builder
 	for _, col := range cols {
 		if col == "id" {
 			continue
 		}
-		decl += ", " + col + " TEXT"
+
+		declSb28.WriteString(", " + col + " TEXT")
 	}
+	decl += declSb28.String()
 
 	if _, err := db.Exec("CREATE TABLE " + tasksPlannedTable + " (" + decl + ")"); err != nil {
 		t.Fatalf("create planned table: %v", err)
@@ -47,9 +53,12 @@ func TestConvergeProjectionHome(t *testing.T) {
 		createPlannedTable(t, path, []string{"id", "project", "status"})
 
 		db := openProbe(t, path)
-		if _, err := db.Exec(`INSERT INTO ` + tasksPlannedTable + ` (id, project, status) VALUES ('legacy', 'p', 'pending')`); err != nil {
+		if _, err := db.Exec(
+			`INSERT INTO ` + tasksPlannedTable + ` (id, project, status) VALUES ('legacy', 'p', 'pending')`,
+		); err != nil {
 			t.Fatalf("seed legacy row: %v", err)
 		}
+
 		db.Close()
 
 		if err := ConvergeProjectionHome(path); err != nil {
@@ -69,7 +78,9 @@ func TestConvergeProjectionHome(t *testing.T) {
 		defer snap.Close()
 
 		var project string
-		if err := snap.QueryRow(`SELECT project FROM ` + tasksPlannedTable + ` WHERE id='legacy'`).Scan(&project); err != nil || project != "p" {
+		if err := snap.QueryRow(`SELECT project FROM ` + tasksPlannedTable + ` WHERE id='legacy'`).
+			Scan(&project); err != nil ||
+			project != "p" {
 			t.Fatalf("snapshot lost the row: project=%q err=%v", project, err)
 		}
 	})
@@ -111,10 +122,12 @@ func TestConvergeProjectionHome(t *testing.T) {
 		t.Parallel()
 
 		path := filepath.Join(t.TempDir(), "tq.db.readmodel.db")
+
 		other := openProbe(t, path)
 		if _, err := other.Exec(`CREATE TABLE unrelated (x TEXT)`); err != nil {
 			t.Fatalf("create unrelated table: %v", err)
 		}
+
 		other.Close()
 
 		if err := ConvergeProjectionHome(path); err != nil {

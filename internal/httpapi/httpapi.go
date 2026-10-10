@@ -108,7 +108,11 @@ func (s *Server) UseReadModel(ctx context.Context, d config.Deployment) error {
 	// CatchUp re-folds the journal through the same fold, converges the
 	// home, and re-seals the checkpoint the host then resumes from (the
 	// folds are idempotent upserts).
-	if wm, exists, wmErr := s.store.Watermark(ctx, readmodel.CursorConsumer); wmErr == nil && exists && wm > 0 && m.JournalCursor() == 0 {
+	if wm, exists, wmErr := s.store.Watermark(
+		ctx,
+		readmodel.CursorConsumer,
+	); wmErr == nil && exists && wm > 0 &&
+		m.JournalCursor() == 0 {
 		if err := m.CatchUp(ctx); err != nil {
 			_ = m.Close()
 
