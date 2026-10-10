@@ -4,10 +4,10 @@ go 1.27.1
 
 require (
 	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.2
-	github.com/larsartmann/go-cqrs-lite/system/v4 v4.11.0
+	github.com/larsartmann/go-cqrs-lite/system/v4 v4.12.0
+	github.com/larsartmann/go-taskqueue/internal/config v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/config v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.3
 )
 
@@ -48,6 +48,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2 // indirect
+	github.com/larsartmann/go-cqrs-lite/schema/v4 v4.6.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.6.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.6.5 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect

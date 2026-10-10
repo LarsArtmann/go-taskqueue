@@ -226,7 +226,10 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	var results []checkResult
 
 	if opts.Deployment.Driver != config.DriverSQLite {
-		return nil, fmt.Errorf("doctor inspects the embedded sqlite journal; a %s store is not doctor-inspectable", opts.Deployment.Driver)
+		return nil, fmt.Errorf(
+			"doctor inspects the embedded sqlite journal; a %s store is not doctor-inspectable",
+			opts.Deployment.Driver,
+		)
 	}
 
 	store, err := sqlite.OpenWithDeployment(opts.Deployment)

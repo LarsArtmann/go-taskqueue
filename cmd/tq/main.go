@@ -218,7 +218,11 @@ func resolveDB(v string) string {
 // --store wins when set; --db keeps its exact legacy meaning (sqlite
 // file path) for every other command and as the fallback.
 func storeFlag(fs *flag.FlagSet) *string {
-	return fs.String("store", "", "where state lives: sqlite path or postgres:// DSN (default: --db, $TQ_DB, ./tasks.db)")
+	return fs.String(
+		"store",
+		"",
+		"where state lives: sqlite path or postgres:// DSN (default: --db, $TQ_DB, ./tasks.db)",
+	)
 }
 
 // resolveDeployment builds the ONE deployment description for a
@@ -241,7 +245,10 @@ func resolveDeployment(storeVal, dbVal string, readModel bool) (config.Deploymen
 // so it refuses with the pointer instead of half-serving.
 func mustOpenStore(d config.Deployment, opts ...sqlite.StoreOption) *sqlite.Store {
 	if d.Driver == config.DriverPostgres {
-		fmt.Fprintln(os.Stderr, "tq: postgres --store is wired but not yet gate-verified against a live instance (owner question pending, see docs/status/2026-10-10_03-06_*.md §g); a sqlite path is the supported store today")
+		fmt.Fprintln(
+			os.Stderr,
+			"tq: postgres --store is wired but not yet gate-verified against a live instance (owner question pending, see docs/status/2026-10-10_03-06_*.md §g); a sqlite path is the supported store today",
+		)
 		os.Exit(1)
 	}
 
@@ -267,7 +274,10 @@ func mustDeploymentFromDB(dbVal string) config.Deployment {
 	}
 
 	if d.Driver == config.DriverPostgres {
-		fmt.Fprintln(os.Stderr, "tq: this command inspects the embedded sqlite journal; postgres stores are not yet verified (owner question pending, see docs/status/2026-10-10_03-06_*.md §g)")
+		fmt.Fprintln(
+			os.Stderr,
+			"tq: this command inspects the embedded sqlite journal; postgres stores are not yet verified (owner question pending, see docs/status/2026-10-10_03-06_*.md §g)",
+		)
 		os.Exit(1)
 	}
 

@@ -47,7 +47,10 @@ func New(ctx context.Context, cfg config.Deployment) (*system.System, error) {
 	}
 
 	if cfg.Driver != config.DriverSQLite {
-		return nil, fmt.Errorf("composition: projection home is sqlite-embedded; driver %q not supported (postgres projection homes are future metaengine work)", cfg.Driver)
+		return nil, fmt.Errorf(
+			"composition: projection home is sqlite-embedded; driver %q not supported (postgres projection homes are future metaengine work)",
+			cfg.Driver,
+		)
 	}
 
 	deployment := system.DeploymentConfig{

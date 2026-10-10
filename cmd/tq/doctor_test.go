@@ -272,7 +272,10 @@ func TestDoctorRepoAutonomy(t *testing.T) {
 
 	path := doctorTestStore(t)
 
-	results, err := runDoctor(context.Background(), doctorOptions{Deployment: config.SQLite(path), Repos: healthy + "," + bare})
+	results, err := runDoctor(
+		context.Background(),
+		doctorOptions{Deployment: config.SQLite(path), Repos: healthy + "," + bare},
+	)
 	if err != nil {
 		t.Fatalf("runDoctor: %v", err)
 	}
