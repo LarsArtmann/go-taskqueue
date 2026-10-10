@@ -153,7 +153,10 @@ func TestTopSectionReport(t *testing.T) {
 }
 
 // TestFactsJSONGolden pins the `tq facts --json` output shape: the fact
-// key set, field types, and ordering over a real store.
+// key set, field types, and ordering over a real store. The decode
+// target is factJSONView, not journal.Fact, so a Detail wire
+// regression (embedded JSON silently becoming base64) fails here
+// instead of round-tripping undetected.
 func TestFactsJSONGolden(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "golden.db")
 
@@ -181,7 +184,7 @@ func TestFactsJSONGolden(t *testing.T) {
 		}
 	})
 
-	var facts []journal.Fact
+	var facts []factJSONView
 	if err := json.Unmarshal([]byte(out), &facts); err != nil {
 		t.Fatalf("unmarshal facts JSON: %v\noutput:\n%s", err, out)
 	}
@@ -232,6 +235,16 @@ func TestFactsJSONGolden(t *testing.T) {
 		if _, ok := first[key]; !ok {
 			t.Fatalf("missing required fact key %q", key)
 		}
+	}
+
+	detailRaw, ok := first["detail"]
+	if !ok {
+		t.Fatal("first fact missing detail key")
+	}
+
+	var detailObj map[string]jsontext.Value
+	if err := json.Unmarshal(detailRaw, &detailObj); err != nil {
+		t.Fatalf("detail is not an embedded JSON object (base64 regression?): %v", err)
 	}
 }
 
