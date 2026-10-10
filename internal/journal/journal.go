@@ -3,54 +3,38 @@
 // projections over these facts.
 //
 // S2 (ADR-0019): the fact vocabulary RIDES the upstream engine's
-// go-cqrs-lite queue/v4/facts vocabulary — FactType is an OPEN string type
-// whose lifecycle values are byte-identical to the engine's (pinned in
-// internal/queue/companion's vocabulary test; this package stays
-// go-cqrs-lite-free for DAG purity, ADR-0014 D2). Lifecycle facts come
-// from the engine's own same-transaction transitions; tq-only families
-// (heartbeat, session.*, question-*) stay tq-side constants written
-// through the engine's FactTx sink. Fact reads come from the ENGINE's
+// go-cqrs-lite queue/v4/facts vocabulary — FactType and Fact are TYPE
+// ALIASES of facts.FactType/facts.Fact (the lifecycle spellings are
+// byte-identical, pinned in internal/queue/companion's vocabulary test),
+// and lifecycle facts come from the engine's own same-transaction
+// transitions. Tq-only families (heartbeat, session.*, question-*,
+// error/incident) stay tq-side constants of the aliased type, written
+// through the engine's FactTx sink; tq invariants on lifecycle facts
+// (which transitions may emit them, e.g. ADR-0015 §5 on Reprioritized)
+// live at their construction sites. Fact reads come from the ENGINE's
 // queue.Store contract, mapped at the companion seam — never mirrored SQL.
 package journal
 
 import (
 	"context"
-	"encoding/json/jsontext"
 	"sync"
 	"time"
+
+	"github.com/larsartmann/go-cqrs-lite/queue/v4/facts"
 )
 
-// FactType enumerates the kinds of facts that can be recorded.
-type FactType string
+// FactType enumerates the kinds of facts that can be recorded; it IS the
+// engine's facts.FactType (ADR-0019 S2), so tq constants and upstream
+// constants are interchangeable by construction.
+type FactType = facts.FactType
+
+// Fact is one immutable observation about one task; it IS the engine's
+// facts.Fact (ADR-0019 S2). Tq-only detail shapes ride the same Detail
+// bytes.
+type Fact = facts.Fact
 
 const (
-	Enqueued     FactType = "task.enqueued"
-	Claimed      FactType = "task.claimed"
-	Heartbeat    FactType = "task.heartbeat"
-	Completed    FactType = "task.completed"
-	Failed       FactType = "task.failed"        // attempt failed, will retry
-	DeadLettered FactType = "task.dead-lettered" // attempts exhausted
-	Cancelled    FactType = "task.cancelled"
-	// CancelRequested records an operator's request to stop a Running
-	// task. The fact IS the flag: the executing worker observes it at its
-	// next heartbeat, cancels the execution context, and records
-	// task.cancelled; a crashed worker's expired lease finalizes the same
-	// cancel at reclaim. No task-row column mirrors it.
-	CancelRequested FactType = "task.cancel-requested"
-	Released        FactType = "task.released" // lease expired, back to pending
-	Requeued        FactType = "task.requeued" // preflight refusal, no attempt burned
-	// Orphaned records that a Running task's lease expired and NO worker
-	// reclaimed it (the worker died with the pool down). It is an
-	// observation, not a state change: the task stays Running until a
-	// ClaimDue reclaim (or a human) picks it up. Appended idempotently by
-	// Store.MarkOrphaned, so `tq show` can explain a stranded task.
-	Orphaned FactType = "task.orphaned"
-	// Reprioritized records that a PENDING task's priority changed
-	// (ADR-0015 §5): the mutation is UpdatePendingPriority's in-tx fact,
-	// carrying old/new priority, the source (marker|importance|ai|keyword|
-	// manual|unblock|migration) and why. Priority never mutates
-	// running/terminal tasks — those facts do not exist by construction.
-	Reprioritized FactType = "task.reprioritized"
+	Heartbeat FactType = "task.heartbeat"
 	// SessionOpened / SessionClosed record the lifecycle of an INTERACTIVE
 	// crush session (the session-close bridge, internal/session). They are
 	// observations, not task state: TaskID carries the synthetic
@@ -119,18 +103,6 @@ const (
 type ReleasedDetail struct {
 	Effect EffectStatus `json:"effect"`
 	Reason string       `json:"reason,omitempty"` // lease-expiry | cancelled-mid-run
-}
-
-// Fact is one immutable observation about one task.
-type Fact struct {
-	Seq     int64          `json:"seq"`
-	Time    time.Time      `json:"time"`
-	TaskID  string         `json:"taskId"`
-	Type    FactType       `json:"type"`
-	Owner   string         `json:"owner,omitempty"`
-	Attempt int            `json:"attempt,omitempty"`
-	Error   string         `json:"error,omitempty"`
-	Detail  jsontext.Value `json:"detail,omitempty"`
 }
 
 // Journal is the persistence boundary for facts.

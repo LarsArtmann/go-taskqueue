@@ -10,7 +10,7 @@ func TestMemoryJournalAppendAll(t *testing.T) {
 
 	ctx := context.Background()
 	for i := range 5 {
-		if _, err := j.Append(ctx, Fact{TaskID: "t1", Type: Enqueued, Attempt: i}); err != nil {
+		if _, err := j.Append(ctx, Fact{TaskID: "t1", Type: Heartbeat, Attempt: i}); err != nil {
 			t.Fatalf("Append: %v", err)
 		}
 	}
