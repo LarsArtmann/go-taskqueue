@@ -10,6 +10,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -70,19 +71,19 @@ func (d Deployment) Validate() error {
 	switch d.Driver {
 	case DriverSQLite:
 		if d.DBPath == "" {
-			return fmt.Errorf("config: sqlite deployment needs a DBPath")
+			return errors.New("config: sqlite deployment needs a DBPath")
 		}
 
 		if d.DSN != "" {
-			return fmt.Errorf("config: sqlite deployment must not carry a DSN")
+			return errors.New("config: sqlite deployment must not carry a DSN")
 		}
 	case DriverPostgres:
 		if d.DSN == "" {
-			return fmt.Errorf("config: postgres deployment needs a DSN")
+			return errors.New("config: postgres deployment needs a DSN")
 		}
 
 		if d.DBPath != "" {
-			return fmt.Errorf("config: postgres deployment must not carry a DBPath")
+			return errors.New("config: postgres deployment must not carry a DBPath")
 		}
 	default:
 		return fmt.Errorf("config: unknown driver %q (want sqlite or postgres)", d.Driver)

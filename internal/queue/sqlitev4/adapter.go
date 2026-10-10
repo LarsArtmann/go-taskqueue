@@ -98,6 +98,7 @@ var WithProjectExclusivity = companion.WithProjectExclusivity
 // caused when they interleaved commits on the same file.
 func openSharedDB(d config.Deployment) (*sql.DB, error) {
 	pragmas := d.QueuePragmas()
+
 	parts := make([]string, len(pragmas))
 	for i, pragma := range pragmas {
 		parts[i] = "_pragma=" + pragma

@@ -165,6 +165,7 @@ func MapErr(err error) error {
 // identity modulo Seq, kept as the named seam for the engine adapters.
 func UpstreamFact(f journal.Fact) ufacts.Fact {
 	f.Seq = 0
+
 	return f
 }
 
@@ -181,6 +182,7 @@ func UpstreamFact(f journal.Fact) ufacts.Fact {
 func JournalFacts(fs []ufacts.Fact) []journal.Fact {
 	out := make([]journal.Fact, len(fs))
 	copy(out, fs)
+
 	for i := range out {
 		if len(out[i].Detail) == 0 {
 			out[i].Detail = nil

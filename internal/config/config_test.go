@@ -124,12 +124,24 @@ func TestValidateShapeInvariants(t *testing.T) {
 	}{
 		{name: "sqlite ok", d: SQLite("q.db"), wantErr: false},
 		{name: "sqlite without path", d: Deployment{Driver: DriverSQLite, SyncPolicy: SyncNormal}, wantErr: true},
-		{name: "sqlite with a DSN", d: Deployment{Driver: DriverSQLite, DBPath: "q.db", DSN: "postgres://x", SyncPolicy: SyncNormal}, wantErr: true},
+		{
+			name:    "sqlite with a DSN",
+			d:       Deployment{Driver: DriverSQLite, DBPath: "q.db", DSN: "postgres://x", SyncPolicy: SyncNormal},
+			wantErr: true,
+		},
 		{name: "postgres ok", d: Postgres("postgres://x"), wantErr: false},
 		{name: "postgres without DSN", d: Deployment{Driver: DriverPostgres, SyncPolicy: SyncNormal}, wantErr: true},
-		{name: "postgres with a path", d: Deployment{Driver: DriverPostgres, DSN: "postgres://x", DBPath: "q.db"}, wantErr: true},
+		{
+			name:    "postgres with a path",
+			d:       Deployment{Driver: DriverPostgres, DSN: "postgres://x", DBPath: "q.db"},
+			wantErr: true,
+		},
 		{name: "unknown driver", d: Deployment{Driver: "oracle", DBPath: "x"}, wantErr: true},
-		{name: "unknown sync policy", d: Deployment{Driver: DriverSQLite, DBPath: "q.db", SyncPolicy: "sometimes"}, wantErr: true},
+		{
+			name:    "unknown sync policy",
+			d:       Deployment{Driver: DriverSQLite, DBPath: "q.db", SyncPolicy: "sometimes"},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
