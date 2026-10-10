@@ -1,8 +1,11 @@
 package sqlitev4
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/larsartmann/go-taskqueue/internal/config"
 )
 
 // pragmaInt reads one integer pragma off the store's shared pool.
@@ -99,4 +102,60 @@ func TestOpenPragmaPolicyInvalid(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "TQ_SQLITE_SYNC") {
 		t.Fatalf("err = %v, want TQ_SQLITE_SYNC validation error", err)
 	}
+}
+
+// TestOpenWithDeploymentPragmaParity pins the F2 contract for the
+// deployment constructor (ADR-0022): it opens the EXACT policy Open
+// opens — same NORMAL tier, WAL, single shared connection — with the
+// tier arriving resolved in the struct (SyncFull sticks), and the env
+// NOT consulted here (config.FromFlags is the ONE TQ_SQLITE_SYNC
+// reader; a stale env must not leak past a resolved struct).
+func TestOpenWithDeploymentPragmaParity(t *testing.T) {
+	t.Run("parity with Open", func(t *testing.T) {
+		s, err := OpenWithDeployment(config.SQLite(filepath.Join(t.TempDir(), "q.db")))
+		if err != nil {
+			t.Fatalf("OpenWithDeployment: %v", err)
+		}
+
+		t.Cleanup(func() { _ = s.Close() })
+
+		if got := pragmaInt(t, s, "synchronous"); got != 1 {
+			t.Fatalf("synchronous = %d, want 1 (NORMAL)", got)
+		}
+
+		if n := s.db.Stats().MaxOpenConnections; n != 1 {
+			t.Fatalf("MaxOpenConnections = %d, want 1 (shared single connection)", n)
+		}
+	})
+
+	t.Run("struct tier wins", func(t *testing.T) {
+		d := config.SQLite(filepath.Join(t.TempDir(), "q.db"))
+		d.SyncPolicy = config.SyncFull
+
+		s, err := OpenWithDeployment(d)
+		if err != nil {
+			t.Fatalf("OpenWithDeployment: %v", err)
+		}
+
+		t.Cleanup(func() { _ = s.Close() })
+
+		if got := pragmaInt(t, s, "synchronous"); got != 2 {
+			t.Fatalf("synchronous = %d, want 2 (FULL from the struct)", got)
+		}
+	})
+
+	t.Run("env is not read here", func(t *testing.T) {
+		t.Setenv("TQ_SQLITE_SYNC", "full")
+
+		s, err := OpenWithDeployment(config.SQLite(filepath.Join(t.TempDir(), "q.db")))
+		if err != nil {
+			t.Fatalf("OpenWithDeployment: %v", err)
+		}
+
+		t.Cleanup(func() { _ = s.Close() })
+
+		if got := pragmaInt(t, s, "synchronous"); got != 1 {
+			t.Fatalf("synchronous = %d, want 1 (struct NORMAL; the env must not leak past a resolved deployment)", got)
+		}
+	})
 }
