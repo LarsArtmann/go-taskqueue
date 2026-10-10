@@ -30,7 +30,7 @@ func TestDoctorProjectionDLQ(t *testing.T) {
 	}
 
 	// An empty sidecar (created by any serve run) is still ok.
-	dlq, err := readmodel.OpenDeadLetters(ctx, readmodel.PathFor(path))
+	dlq, err := readmodel.OpenDeadLetters(ctx, config.SQLite(path))
 	if err != nil {
 		t.Fatalf("open sidecar: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestDoctorProjectionDLQ(t *testing.T) {
 	}
 
 	// A poison fact flips the check to WARN with the failure in Items.
-	dlq, err = readmodel.OpenDeadLetters(ctx, readmodel.PathFor(path))
+	dlq, err = readmodel.OpenDeadLetters(ctx, config.SQLite(path))
 	if err != nil {
 		t.Fatalf("reopen sidecar: %v", err)
 	}

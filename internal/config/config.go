@@ -177,6 +177,20 @@ func (d Deployment) ProjectionPragmas() []string {
 	}
 }
 
+// DLQPragmas renders the DSN pragma list for the projection home's
+// dead-letter sidecar: a plain sql.Open (not the engine, which would
+// prepend WAL and busy_timeout itself), so the list is complete. Same
+// sync-tier knob as both homes — the sidecar is diagnostic, but the
+// operator's tier decision is the ONE tier decision.
+func (d Deployment) DLQPragmas() []string {
+	return []string{
+		"journal_mode(WAL)",
+		"busy_timeout(5000)",
+		"foreign_keys(1)",
+		"synchronous(" + d.syncTier() + ")",
+	}
+}
+
 func (d Deployment) syncTier() string {
 	return strings.ToUpper(string(d.SyncPolicy))
 }

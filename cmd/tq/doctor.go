@@ -248,7 +248,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 
 	results = append(results, doctorProjection(ctx, store, opts.Deployment.DBPath)...)
 	if opts.DLQ {
-		results = append(results, doctorProjectionDLQ(ctx, opts.Deployment.DBPath)...)
+		results = append(results, doctorProjectionDLQ(ctx, opts.Deployment)...)
 	}
 
 	results = append(results, doctorOpenSessions(ctx, store)...)
@@ -850,16 +850,16 @@ func doctorProjection(ctx context.Context, store queue.Store, dbPath string) []c
 // doctorProjectionDLQ surfaces the fold's poison-fact sidecar (the M09
 // fold-poison DLQ): absent or empty is ok, stored entries are a WARN with
 // the most recent failures as Items. Opt-in via --dlq (see doctorOptions).
-func doctorProjectionDLQ(ctx context.Context, dbPath string) []checkResult {
+func doctorProjectionDLQ(ctx context.Context, d config.Deployment) []checkResult {
 	const name = "projection-dlq"
 
-	modelPath := readmodel.PathFor(dbPath)
+	modelPath := readmodel.PathFor(d.DBPath)
 
 	if _, err := os.Stat(readmodel.DLQPathFor(modelPath)); errors.Is(err, fs.ErrNotExist) {
 		return []checkResult{{Name: name, Status: checkOK, Detail: "no poison sidecar (nothing has failed to fold)"}}
 	}
 
-	dlq, err := readmodel.OpenDeadLetters(ctx, modelPath)
+	dlq, err := readmodel.OpenDeadLetters(ctx, d)
 	if err != nil {
 		return []checkResult{{Name: name, Status: checkFail, Detail: "open: " + err.Error()}}
 	}

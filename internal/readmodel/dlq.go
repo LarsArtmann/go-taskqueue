@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/larsartmann/go-cqrs-lite/projectionhost/v4"
+	"github.com/larsartmann/go-taskqueue/internal/config"
 )
 
 // DLQPathFor derives the poison-fact sidecar path beside a projection
@@ -32,18 +34,24 @@ type DeadLetters struct {
 }
 
 // OpenDeadLetters opens (creating if needed) the DLQ sidecar for the
-// projection home at modelPath. The handle follows the queue's sqlite
-// posture: WAL, busy timeout, MaxOpenConns(1).
-func OpenDeadLetters(ctx context.Context, modelPath string) (*DeadLetters, error) {
+// projection home described by d (ADR-0022: the deployment is the ONE
+// pragma source — the sidecar follows the same sync tier as both
+// homes). The handle follows the queue's sqlite posture: WAL, busy
+// timeout, MaxOpenConns(1).
+func OpenDeadLetters(ctx context.Context, d config.Deployment) (*DeadLetters, error) {
 	openCtx, cancel := context.WithTimeout(ctx, dlqOpenTimeout)
 	defer cancel()
 
-	// Same relaxed-fsync posture as the projection home: the sidecar is
-	// diagnostic (poison-fact forensics), never authoritative — losing a
-	// tail entry to a power cut costs one replay, not data.
-	dsn := "file:" + DLQPathFor(modelPath) +
-		"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)" +
-		"&_pragma=synchronous(NORMAL)"
+	// Relaxed-fsync posture like both homes: the sidecar is diagnostic
+	// (poison-fact forensics), never authoritative — losing a tail entry
+	// to a power cut costs one replay, not data. The tier is the
+	// deployment's, not a local literal.
+	parts := make([]string, 0, len(d.DLQPragmas()))
+	for _, pragma := range d.DLQPragmas() {
+		parts = append(parts, "_pragma="+pragma)
+	}
+
+	dsn := "file:" + DLQPathFor(d.DBPath) + "?" + strings.Join(parts, "&")
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {

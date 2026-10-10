@@ -58,7 +58,7 @@ func NewProjectionRuntime(ctx context.Context, src queue.Store, cfg config.Deplo
 		}
 	}()
 
-	dlq, err := readmodel.OpenDeadLetters(ctx, modelPath)
+	dlq, err := readmodel.OpenDeadLetters(ctx, cfg)
 	if err != nil {
 		slog.Warn("readmodel: dlq sidecar unavailable; poison facts restart the fold", "err", err)
 	} else {
