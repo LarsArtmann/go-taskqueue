@@ -261,6 +261,14 @@ docs/DOMAIN_LANGUAGE.md.
 - **VendorHash drift**: after go.mod changes run
   `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to
   flake.nix.
+- **readmodel projection-home schema drift crash-loops the fold**
+  (2026-10-10 outage: a `meta_planned_tasks` predating `not_before` /
+  `parked_by` made the worker exhaust its restart budget at seq 1 on
+  every boot, Oct 7→10): planned tables get NO column migration
+  (CREATE TABLE IF NOT EXISTS only) — `readmodel.ConvergeProjectionHome`
+  now snapshots a divergent home aside (`.legacy-schema-*.bak`) before
+  engine open (self-open + composition paths); deployed-crash remedy:
+  quarantine `<db>.readmodel.db*` + restart the unit.
 - **History policy**: NEVER reword/amend/rebase PUSHED commits; no
   force push; scripted edits via script files.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route
