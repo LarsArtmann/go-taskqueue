@@ -125,11 +125,19 @@ Status of every stage, verified against the tree at the v0.3.1 tag wave:
   landed and is pinned by `scripts/smoke/legacy-serve-upgrade.sh`. The
   dogfood cut over 2026-10-05 19:41 (runbook:
   `docs/release/2026-10-05_CUTOVER-RUNBOOK.md`).
-- **S2 (one vocabulary): PENDING — the single remaining S-stage.**
-  `journal.Fact` still shadows upstream `facts.Fact` (M13: alias +
-  `Detail []byte` sweep + companion scanFacts direct + memory journal +
-  `journal/cqrs` re-point). The adapter-side mapping already exists
-  (sqlitev4/adapter.go); nothing else serializes behind it.
+- **S2 (one vocabulary): DONE (2026-10-10).** `journal.FactType` and
+  `journal.Fact` are type aliases of upstream `queue/v4/facts` (pinned
+  v4.0.3); the 11 lifecycle constants are identity re-exports, so the tq
+  import surface is unchanged while one spelling rules by construction
+  (tq-only facts — Heartbeat, sessions, questions, incidents — stay
+  constants of the aliased type). The companion mappers collapsed to the
+  identity (UpstreamFact keeps Seq-zeroing; JournalFacts keeps exactly
+  one rule — engine empty non-nil detail normalizes to nil, since an
+  empty jsontext.Value fails payload marshal). `tq facts --json` pins
+  its embedded-JSON Detail wire via an explicit view
+  (TestFactsJSONGolden). Battery: 15/15 module gates (GOWORK=off
+  build/vet/test/gofmt), root build+vet, root `test -race` 18/18,
+  legacy-upgrade + webui smokes green on a scratch TQ_DB.
 - **S3 (readmodel): DONE and load-bearing.** `--read-model` default ON;
   stats counters are SQL GROUP BY pushdowns over the planned table
   (`Model.Stats` — a stateless event-counter projection was rejected as
