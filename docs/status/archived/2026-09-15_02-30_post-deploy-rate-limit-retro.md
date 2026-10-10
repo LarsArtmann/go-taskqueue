@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-10-10 (docs-health sweep 5)** — both 'Left open' items routed to live TODO rows (7-day checkpoint run-or-lapse-close; owner --allow-writes DLQ rescue, BLOCKED owner).
+
 # Post-Deploy Rate-Limit Retro (M124, 13:29 report f50) — 2026-09-15 02-30
 
 Interim post-deploy retro requested by the flip runbook

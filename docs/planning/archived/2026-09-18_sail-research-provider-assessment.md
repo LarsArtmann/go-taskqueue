@@ -1,3 +1,5 @@
+> **EXECUTED — ARCHIVED 2026-10-10 (docs-health sweep 5)** — dispositioned NOT ADOPTED; owner decision parked at ROADMAP (second-provider row + the one-repo .crushrc experiment); pricing re-verify stays conditional on take-up. ROADMAP cite repointed to this archived path.
+
 # Sail Research — provider + sandbox assessment
 
 **Date:** 2026-09-18

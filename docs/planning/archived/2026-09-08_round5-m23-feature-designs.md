@@ -1,3 +1,5 @@
+> **EXECUTED — ARCHIVED 2026-10-10 (docs-health sweep 5)** — sketches-only by design; all five F121-F125 sketches are routed to ROADMAP seeds (routines/cron D83, session chains D94, DAG templates D97, per-project concurrency, token-gated webhooks + /metrics); nothing was ever feature-rowed and zero unrouted actions remain. CHANGELOG cite repointed to this archived path.
+
 # Round-5 M23 — Feature Design Pack (F121–F125)
 
 **Date:** 2026-09-08. Designs for the v0.3 feature set; each names the

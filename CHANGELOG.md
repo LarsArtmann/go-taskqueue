@@ -2069,7 +2069,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (`CommandExecutor.MemoryLimitMB` via ulimit, `Nice` for scheduling
   priority - POSIX-wrapped before exec so limits bind the payload's
   whole tree); an e2e pins `tq audit --json` and `tq top --json` against
-  a seeded database; and docs/planning/2026-09-08_round5-m23-feature-designs.md
+  a seeded database; and docs/planning/archived/2026-09-08_round5-m23-feature-designs.md
   records the v0.3 design sketches (cron via time-bucketed dedup keys,
   per-repo budgets as a grouped fact projection, retry-policy payloads,
   DAG templates as enqueue sugar, session chains as a payload convention,

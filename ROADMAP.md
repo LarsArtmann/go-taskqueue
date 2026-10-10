@@ -183,7 +183,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   GLM-5.3-Flash models at 27-64% below Z.ai list price, with idempotent
   submissions and per-repo credential/egress sandboxes; candidate for
   429-storm failover and spend-aware budgeting. Assessment + verified
-  price tables: `docs/planning/2026-09-18_sail-research-provider-assessment.md`
+  price tables: `docs/planning/archived/2026-09-18_sail-research-provider-assessment.md`
   (not adopted; owner decision pending, cheapest experiment is a Crush
   provider entry in one repo's `.crushrc`)
 - Fleet onboarding runbook + smoke script (rails, triage, staleness
@@ -380,7 +380,7 @@ fencing-token design note (D100), and DB rotation/backup guidance (D96).
 D80 (Postgres store), D90 (per-repo timeouts, shipped as `--repo-timeout`)
 and D91 (agent-binary version probe) shipped 2026-09-08 — the seeds file
 carries their ✅ stamps. The v0.3 design pack lives in
-`docs/planning/2026-09-08_round5-m23-feature-designs.md`.
+`docs/planning/archived/2026-09-08_round5-m23-feature-designs.md`.
 
 ## go-cqrs-lite deferred tiers (ADR-0014)
 
