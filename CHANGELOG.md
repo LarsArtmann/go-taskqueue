@@ -38,6 +38,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   reflow-tolerance itself is a rowed follow-up).
 
 ### Added
+- **One deployment description: `--store` + `config.Deployment`**
+  (2026-10-10, C-track of the config-system plan): the queue, projection,
+  and CLI open paths now consume ONE struct — `config.Deployment` (in `internal/config`)
+  — so exactly one pragma builder and one `TQ_SQLITE_SYNC` reader exist
+  (composition root + readmodel delegate to it; `sqlite.OpenWithDeployment`
+  + facade re-export; `--store PATH|postgres://DSN` on
+  serve/api/worker/agent-pool, `--db` keeps its exact legacy meaning
+  everywhere else; doctor/audit consume the struct and refuse postgres
+  with a pointer until live-instance verification lands).
 - **Incident pipeline: error reports as commands** (2026-10-08):
   `POST /api/v1/errors` (armed by `tq api`) accepts clipped,
   secrets-unrepresentable error reports and appends exactly one

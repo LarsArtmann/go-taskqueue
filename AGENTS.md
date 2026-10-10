@@ -85,10 +85,14 @@ docs/DOMAIN_LANGUAGE.md.
   (MaxOpenConns(1), WAL, busy_timeout) ridden by engine
   (`usqlite.OpenDB`) AND companion — never a second write pool. Never
   drop the `RowsAffected()` re-checks.
-- **SQLite IO policy (2026-10-07)**: steady-state handles run
-  synchronous(NORMAL) + temp_store(MEMORY) + cache_size(-32768) — fsync
-  at checkpoints only (lost-tail-tolerant recovery); escape:
-  `TQ_SQLITE_SYNC`; migration DSNs stay FULL. Claim probes use partial
+- **One deployment description (ADR-0022)**: `config.Deployment` (in `internal/config`)
+  is the only store-opening input — flags resolve through
+  `config.FromFlags` (ONE `TQ_SQLITE_SYNC` reader), openers take the
+  struct (`sqlite.OpenWithDeployment`, composition root), pragma
+  literals live ONLY in config (`QueuePragmas`/`ProjectionPragmas`).
+- **SQLite IO policy (2026-10-07)**: steady-state handles run at the
+  configured sync tier (NORMAL = fsync at checkpoints only,
+  lost-tail-tolerant recovery); migration DSNs stay FULL. Claim probes use partial
   RUNNING-only indexes (companion.Migrate) — never project history.
   Idle worker loops back off exponentially (cap `IdlePollMax` 2s, reset
   on claim/wake).

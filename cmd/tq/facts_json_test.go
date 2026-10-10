@@ -46,8 +46,12 @@ import (
 // unique — the stale "nominal v0.3.0" pin was the only correction.
 // 2026-10-09 conscious reset 18,500 → 18,750: ~300 B of phrasing waste
 // pruned in place, but the remaining bulk is load-bearing; the
-// config-system bridge (F4) owns the next real prune.
-const agentsDocMaxBytes = 18_750
+// config-system bridge (F4) owns the next real prune. 2026-10-10
+// conscious reset 18,750 → 19,000: the ADR-0022 deployment-lane
+// invariant (one config.Deployment store-opening input, pragma literals
+// config-owned) is net-new load-bearing, paid for by pruning the IO
+// policy's now-config-owned pragma enumeration in place.
+const agentsDocMaxBytes = 19_000
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a

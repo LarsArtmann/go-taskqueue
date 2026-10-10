@@ -244,6 +244,20 @@ set). Full agent output sidecars default ON
 daemon you cannot watch needs its logs. Re-running is safe: the managed block
 is replaced in place, existing user config untouched.
 
+## Where the state lives
+
+One embedded sqlite journal holds everything (facts, queue, read-model
+projection). Point tq at it with `--db <path>` (or `$TQ_DB`, default
+`./tasks.db`). The four long-running surfaces (`serve`, `api`, `worker`,
+`agent-pool`) also accept `--store`, the unified frontend: a bare path is
+a sqlite file, a `postgres://` DSN selects the shared-server driver
+(wired but not yet gate-verified — refused with a pointer until then).
+
+Every sqlite home reads its IO durability tier from `TQ_SQLITE_SYNC`
+(`full` | `normal` | `off`, default `normal`: fsync at WAL checkpoints
+only — the queue tolerates a lost tail commit). The projection home
+sits next to the journal as `<db>.readmodel.db`.
+
 ## Running unattended
 
 The pool is meant to outlive your terminal. A hardened user-level systemd
