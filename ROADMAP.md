@@ -63,6 +63,15 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 
 ## Raw ideas (unrefined)
 
+### Operator ergonomics (from the 2026-10-11 fifth docs-health sweep; unjudged since 09-08)
+
+- `tq enqueue --payload-file <path>`: eliminates 500-char shell-quoted JSON
+  payloads on the CLI (docs/status/archived/2026-09-08_04-19 f2).
+- Env-file convention for agent keys (one source of truth shared by the pool
+  and crush sessions instead of per-session env exports) (same report e4/f9).
+- `tq tail -f` → chat-channel bridge (e.g. Discord webhook per repo) for
+  queue observability outside the webui (same report f23).
+
 ### Queue core / scale
 
 - Routines/cron scheduling with concurrency + catch-up policies (the

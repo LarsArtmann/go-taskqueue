@@ -5,7 +5,7 @@ journal, lease claims + crash reclaim, DAG deps, retries + DLQ,
 pluggable executors (incl. AI agents). One binary, one file, zero
 services.
 
-**STATUS: v0.3.2 shipped; MULTIPLE concurrent agents** — re-read
+**STATUS: v0.3.3 shipped; MULTIPLE concurrent agents** — re-read
 files, re-run tests; uncommitted parallel changes: read, judge, build
 on, never revert. (Size guard: TestAgentsDocSizeGuard)
 
