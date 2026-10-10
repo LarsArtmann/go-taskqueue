@@ -22,6 +22,7 @@ import (
 // after parsing, the --config file merge, and environment fallbacks.
 type agentPoolOptions struct {
 	db              string
+	store           string
 	projectsDir     string
 	repos           string
 	interval        time.Duration
@@ -295,6 +296,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	)
 
 	db := dbFlag(fs)
+	storeVal := storeFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return agentPoolOptions{}, err
 	}
@@ -364,6 +366,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 
 	return agentPoolOptions{
 		db:              *db,
+		store:           *storeVal,
 		projectsDir:     *projectsDir,
 		repos:           *repos,
 		interval:        *interval,

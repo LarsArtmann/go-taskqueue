@@ -46,7 +46,7 @@ func Open(path string, opts ...StoreOption) (*Store, error) {
 // config.FromFlags is the ONE reader), and the legacy auto-upgrade still
 // applies exactly as for Open.
 func OpenWithDeployment(d config.Deployment, opts ...StoreOption) (*Store, error) {
-	if err := migration.UpgradeIfNeeded(context.Background(), d.DBPath); err != nil {
+	if _, err := migration.UpgradeIfNeeded(context.Background(), d.DBPath); err != nil {
 		return nil, err
 	}
 
