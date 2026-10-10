@@ -88,8 +88,12 @@
 2. **cmd/tq `TestAgentsDocSizeGuard` twin unrun in-situ**: cmd/tq module
    setup fails at HEAD — `internal/config@v0.3.3` is tagged locally but
    unpushed, so the replace-free module cannot resolve it (documented
-   foreign state, push authorization is owner Q). The script twin is
-   green; the drift risk is nil while the constant is untouched.
+   foreign state, push authorization is owner Q). The script twin was
+   green at my twin-sync, then went RED again (18,998 → 19,539 B) from a
+   CONCURRENT window's fresh Known Issue (readmodel projection-home
+   schema-drift outage note, +541 B, daemon-swept cec6e4cd) — foreign,
+   load-bearing, left unpruned per the M20 doctrine (the adding window
+   owns its budget accounting); the next window owes the prune/reset.
 3. **Agent line-number drift**: sub-agent TODO_LIST cites drifted against
    the tree (rows moved); caught by the orchestrator spot-verify and
    re-verified by content grep — receipts are content-anchored, not
