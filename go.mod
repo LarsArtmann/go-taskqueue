@@ -52,8 +52,9 @@ require (
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2 // indirect
+	github.com/larsartmann/go-cqrs-lite/schema/v4 v4.6.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.6.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/system/v4 v4.11.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/system/v4 v4.12.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.6.5 // indirect
 	github.com/larsartmann/go-datastar v0.6.2 // indirect
 	github.com/larsartmann/go-error-family v0.11.0 // indirect
@@ -155,4 +156,5 @@ replace github.com/larsartmann/go-taskqueue/internal/readmodel => ./internal/rea
 replace github.com/larsartmann/go-taskqueue/internal/queue/companion => ./internal/queue/companion
 
 replace github.com/larsartmann/go-taskqueue/internal/composition => ./internal/composition
+
 replace github.com/larsartmann/go-taskqueue/internal/config => ./internal/config

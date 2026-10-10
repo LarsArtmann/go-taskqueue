@@ -111,7 +111,11 @@ func TestConvergeProjectionHome(t *testing.T) {
 		t.Parallel()
 
 		path := filepath.Join(t.TempDir(), "tq.db.readmodel.db")
-		createPlannedTable(t, path, nil)
+		other := openProbe(t, path)
+		if _, err := other.Exec(`CREATE TABLE unrelated (x TEXT)`); err != nil {
+			t.Fatalf("create unrelated table: %v", err)
+		}
+		other.Close()
 
 		if err := ConvergeProjectionHome(path); err != nil {
 			t.Fatalf("converge: %v", err)
