@@ -45,10 +45,33 @@ pending their own row's ruling.
    policy-clean. The only caution is rationale 3: prefer the cmd/tq
    adapter pattern over surface-package imports.
 
-## Residual (backlog, not this decision)
+## Residual resolved (2026-10-11): the api pump adopts the managed host
 
-The api's raw `Model.Run` pump lacks the projectionhost restart budget
-and poison-fact DLQ that serve's composed host provides: a poison fact
-wedges the cursor at repeated error logs (never skipped, never
-quarantined). Queued as its own TODO row; it is a lifecycle gap, not an
-open-seam one.
+TODO row "Give `tq api`'s long-running readmodel pump the managed host's
+protection" — DECIDED: ADOPT. `httpapi.UseReadModel` now builds the pump
+protection directly from internal/readmodel (the same platform seams the
+composition root bundles for serve), and `ListenAndServe` drives
+`Host.Start`/`Stop`/`Close` instead of the raw `Model.Run` loop:
+
+- best-effort DLQ sidecar (`readmodel.OpenDeadLetters` over the
+  deployment, warn-and-continue): a non-retryable poison fact
+  dead-letters, the checkpoint advances past it, the fold keeps
+  converging;
+- platform restart budget (default 5, backoff 1s–30s): a retryable
+  failure restarts under backoff, then fails LOUDLY (`WorkerFailed`)
+  instead of the old silent forever-loop of "tail poll failed" at a
+  wedged cursor.
+
+The decision above STANDS: no `NewProjectionRuntime` adoption, no
+composition import, no double-close — the model stays self-opened and
+the api takes only the two host seams it needs. The delete-the-file
+replay escape hatch keeps working: when the model's durable-cursor load
+decides replay-from-zero (empty projection under a surviving
+checkpoint), `UseReadModel` runs one serial `CatchUp` to converge the
+home and re-seal the checkpoint before the host's own checkpoint load
+would resume past the missing rows.
+
+Follow-up found while landing this (not fixed here): the doctor's
+projection-dlq check and `OpenDeadLetters` derive DIFFERENT sidecar
+paths (`DLQPathFor(PathFor(db))` vs `DLQPathFor(db)`) — queued as its
+own TODO row.
