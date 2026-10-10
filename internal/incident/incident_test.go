@@ -134,10 +134,12 @@ func TestClipAndValidate(t *testing.T) {
 	// of halving a multibyte character into U+FFFD. "€" is 3 bytes, so
 	// the 4096-byte cut lands 1 byte into a rune and backs off to 4095.
 	msg := strings.Repeat("€", 2000) // 6000 bytes
+
 	clipped := Report{Project: "webapp", Message: msg}.Clip().Message
 	if !utf8.ValidString(clipped) {
 		t.Fatalf("clipped message split a rune: %q", clipped)
 	}
+
 	if want := MaxMessage - (MaxMessage % 3); len(clipped) != want {
 		t.Fatalf("rune-boundary cap = %d bytes, want %d", len(clipped), want)
 	}
@@ -219,7 +221,7 @@ func TestPolicyStormOneTask(t *testing.T) {
 
 	rep := Report{Project: "webapp", Kind: KindServer, Message: "panic: runtime error: index out of range [7]"}
 
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		if _, err := rec.Record(ctx, rep); err != nil {
 			t.Fatalf("record %d: %v", i, err)
 		}

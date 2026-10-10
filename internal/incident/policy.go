@@ -471,7 +471,7 @@ build + go test for Go repos) — the fix must pass it.`)
 func topFrames(stack string, n int) []string {
 	var out []string
 
-	for _, line := range strings.Split(stack, "\n") {
+	for line := range strings.SplitSeq(stack, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -490,8 +490,8 @@ func topFrames(stack string, n int) []string {
 }
 
 func firstLine(s string) string {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		return s[:i]
+	if before, _, ok := strings.Cut(s, "\n"); ok {
+		return before
 	}
 
 	return s

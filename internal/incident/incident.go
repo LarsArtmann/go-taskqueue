@@ -155,6 +155,7 @@ func clipStr(s string, max int) string {
 				cut = cut[:len(cut)-1]
 			}
 		}
+
 		s = strings.TrimSpace(cut)
 	}
 

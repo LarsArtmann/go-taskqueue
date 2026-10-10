@@ -147,6 +147,7 @@ func (s *State) applyObserved(f journal.Fact) {
 	}
 
 	fp := FingerprintOfID(f.TaskID)
+
 	inc, existed := s.byFP[fp]
 	if !existed {
 		inc = s.incident(fp)

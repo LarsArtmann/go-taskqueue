@@ -19,10 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/composition"
 	"github.com/larsartmann/go-taskqueue/internal/config"
-
-	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/lockout"

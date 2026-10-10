@@ -38,6 +38,15 @@ drive() { # <poke-prog> <list-prog>
 		source scripts/lib/proxy-wait.sh
 		tq_proxy_poke() { eval "$FAKE_POKE"; }
 		tq_proxy_lists() { eval "$FAKE_LIST"; }
+		# Structural seam-ordering pin: the overrides must sit AFTER the lib
+		# source. If a reorder or a stray re-source ever restores the real
+		# proxy seams, fail loudly instead of silently hitting the network.
+		for seam_body in "$(declare -f tq_proxy_poke)" "$(declare -f tq_proxy_lists)"; do
+			case "$seam_body" in
+			*FAKE_*) ;;
+			*) echo "SEAM ORDERING VIOLATION: fake override lost — a (re)source after the overrides would hit the real proxy" >&2; exit 43 ;;
+			esac
+		done
 		die() {
 			echo "DIE: $*"
 			exit 42
