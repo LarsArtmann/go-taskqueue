@@ -62,7 +62,7 @@ func SQLite(path string) Deployment {
 
 // Postgres returns a postgres Deployment over dsn.
 func Postgres(dsn string) Deployment {
-	return Deployment{Driver: DriverPostgres, DSN: dsn}
+	return Deployment{Driver: DriverPostgres, DSN: dsn, SyncPolicy: SyncNormal}
 }
 
 // Validate enforces the deployment's shape invariants.
@@ -112,9 +112,9 @@ func parseSyncPolicy(v string) (SyncPolicy, error) {
 		return SyncNormal, nil
 	}
 
-	switch SyncPolicy(v) {
-	case SyncFull, SyncNormal, SyncOff:
-		return SyncPolicy(v), nil
+	switch v {
+	case "FULL", "NORMAL", "OFF":
+		return SyncPolicy(strings.ToLower(v)), nil
 	default:
 		return "", fmt.Errorf("TQ_SQLITE_SYNC must be one of full, normal, off (got %q)",
 			strings.TrimSpace(os.Getenv(EnvSyncPolicy)))
