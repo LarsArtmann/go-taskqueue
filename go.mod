@@ -61,7 +61,7 @@ require (
 	github.com/larsartmann/go-retry v0.8.0 // indirect
 	github.com/larsartmann/go-sse/sseparse v0.2.1 // indirect
 	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.3 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.3 // indirect
 	github.com/larsartmann/templ-components/datastar v1.21.0 // indirect
@@ -112,7 +112,7 @@ require (
 	github.com/larsartmann/go-sse/ssetest v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/composition v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/journal v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3

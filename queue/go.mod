@@ -6,7 +6,7 @@ require github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
 
 require (
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
-	github.com/larsartmann/go-taskqueue/internal/journal v0.3.3 // indirect
+	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.3 // indirect
 )
 
