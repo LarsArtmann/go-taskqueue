@@ -68,7 +68,7 @@
 28. Spot-run `internal/queue/sqlitev4` migration replay smoke (journal round-trip through aliased Fact).
 29. Verify `internal/queue/companion/conform` vocabulary test still compiles/passes (it pins identity — now via aliases).
 30. Consider de-duplicating factJSONView with readmodel's host view if shape-identical (judgment call, art-dupl policy).
-31-50. Reserved: C/E/F sub-steps expand here as their rows are pulled (see plan file rows 10-23).
+    31-50. Reserved: C/E/F sub-steps expand here as their rows are pulled (see plan file rows 10-23).
 
 ## g) QUESTIONS FOR THE OWNER (max 3)
 
