@@ -2973,6 +2973,39 @@ func cmdCancel(args []string) error {
 }
 
 // cmdFacts prints journal facts with seq/type filters.
+// factJSONView is the `tq facts --json` wire shape: identical fields to
+// journal.Fact, but Detail stays embedded JSON (jsontext.Value) — the
+// domain fact's Detail is plain bytes since the S2 alias flip, and the
+// command's pre-existing base64-free wire format is preserved here.
+type factJSONView struct {
+	Seq     int64            `json:"seq"`
+	Time    time.Time        `json:"time"`
+	TaskID  string           `json:"taskId"`
+	Type    journal.FactType `json:"type"`
+	Owner   string           `json:"owner,omitempty"`
+	Attempt int              `json:"attempt,omitempty"`
+	Error   string           `json:"error,omitempty"`
+	Detail  jsontext.Value   `json:"detail,omitempty"`
+}
+
+func factJSONViews(facts []journal.Fact) []factJSONView {
+	views := make([]factJSONView, len(facts))
+	for i, f := range facts {
+		views[i] = factJSONView{
+			Seq:     f.Seq,
+			Time:    f.Time,
+			TaskID:  f.TaskID,
+			Type:    f.Type,
+			Owner:   f.Owner,
+			Attempt: f.Attempt,
+			Error:   f.Error,
+			Detail:  jsontext.Value(f.Detail),
+		}
+	}
+
+	return views
+}
+
 func cmdFacts(args []string) error {
 	fs := flag.NewFlagSet("facts", flag.ExitOnError)
 	after := fs.Int64("after", 0, "only facts with seq > this")
@@ -3026,7 +3059,7 @@ func cmdFacts(args []string) error {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 
-		return enc.Encode(facts)
+		return enc.Encode(factJSONViews(facts))
 	}
 
 	for _, f := range facts {
