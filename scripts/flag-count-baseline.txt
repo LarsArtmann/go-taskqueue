@@ -1,0 +1,27 @@
+# Per-command registered-flag counts, pinned by scripts/check-flag-count.sh
+# (E3, config-system plan 2026-10-09). Regenerate with --update; growth
+# needs the flag named in the commit. Format: <cmd> <count>.
+enqueue 18
+worker 17
+harvest 18
+bootstrap 25
+agent-pool 55
+stats 6
+tasks 13
+audit 10
+doctor 10
+top 4
+show 2
+dlq 7
+cancel 3
+facts 7
+tail 3
+serve 8
+api 5
+version 0
+ask 0
+crush 7
+incidents 2
+session 0
+verdict 0
+watermarks 0

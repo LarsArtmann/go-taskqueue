@@ -215,6 +215,9 @@ step "release proxy-wait loop offline test (both die branches)"
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
 
+step "flag-count guard (per-command registration pin; growth is conscious)"
+./scripts/check-flag-count.sh
+
 step "gosec self-test (version branches + Files:0 parse pin, canned stubs)"
 ./scripts/check-gosec.sh --self-test
 

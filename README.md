@@ -287,7 +287,11 @@ journalctl --user -u tq-agent-pool -f
 `key=value` settings — same names as the flags — applied to every flag you
 did not pass explicitly. Precedence: **flag > environment > config file >
 built-in default**. Unknown keys are an error, so a typo in the file fails
-the pool loudly instead of silently running with defaults.
+the pool loudly instead of silently running with defaults. A few flags
+read their default from the environment at startup (`cqa-url`,
+`cqa-owner`, `cqa-token`, `log-dir`, `redact`); for those the precedence
+is flag > env > file, so a live `TQ_LOG_DIR` beats a pool.conf line —
+the full key list lives in `docs/planning/2026-10-10_agent-pool-flag-manifest.md`.
 
 Prefer cron or a systemd timer? `tq agent-pool --once` runs exactly one
 harvest tick, drains the queue, and exits — tasks owned by other pools or
