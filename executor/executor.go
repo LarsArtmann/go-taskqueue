@@ -190,3 +190,15 @@ var (
 	NewDepBumpExecutor       = internalexecutor.NewDepBumpExecutor
 	IsStableSemver           = internalexecutor.IsStableSemver
 )
+
+// Review-finding vocabulary (internal finding.go): review/dlqfix results
+// carry findings, so the facade mirrors the scale and the merge seam.
+const (
+	RiskLow    = internalexecutor.RiskLow
+	RiskMedium = internalexecutor.RiskMedium
+	RiskHigh   = internalexecutor.RiskHigh
+)
+
+var MergeFindings = internalexecutor.MergeFindings
+
+type Finding = internalexecutor.Finding
