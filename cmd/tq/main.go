@@ -3475,8 +3475,6 @@ func cmdAPI(args []string) error {
 		return err
 	}
 
-	dbPath := deployment.DBPath
-
 	s := mustOpenStore(deployment)
 	defer s.Close()
 

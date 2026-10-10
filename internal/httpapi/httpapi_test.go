@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -670,6 +672,87 @@ func TestListenAndServePumpsReadModel(t *testing.T) {
 
 	if err := <-served; err != nil {
 		t.Errorf("ListenAndServe = %v, want clean shutdown", err)
+	}
+}
+
+// TestUseReadModelArmsManagedHost pins the pump decision (ADR-0019
+// residual, docs/memos/2026-10-10_readmodel-open-seams.md): UseReadModel
+// installs the managed projection host plus the best-effort DLQ sidecar
+// at the deployment-derived path, and ListenAndServe starts/stops it
+// cleanly. The raw Model.Run loop it replaces had neither protection —
+// a poison fact wedged the cursor at repeated error logs forever.
+func TestUseReadModelArmsManagedHost(t *testing.T) {
+	srv, _ := newTestAPI(t)
+
+	d := config.SQLite(filepath.Join(t.TempDir(), "queue.db"))
+
+	if err := srv.UseReadModel(context.Background(), d); err != nil {
+		t.Fatalf("use read model: %v", err)
+	}
+
+	if srv.host == nil {
+		t.Fatal("UseReadModel did not arm the managed projection host")
+	}
+
+	if srv.dlq == nil {
+		t.Fatal("UseReadModel did not open the DLQ sidecar")
+	}
+
+	if _, err := os.Stat(readmodel.DLQPathFor(d.DBPath)); err != nil {
+		t.Fatalf("dlq sidecar file: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	served := make(chan error, 1)
+
+	go func() { served <- srv.ListenAndServe(ctx, "127.0.0.1:0") }()
+
+	cancel()
+
+	if err := <-served; err != nil {
+		t.Fatalf("ListenAndServe = %v, want clean shutdown", err)
+	}
+}
+
+// TestUseReadModelReplaysDeletedProjectionHome pins the replay escape
+// hatch under the managed host: deleting the projection file leaves the
+// surviving checkpoint pointing past an empty home, so UseReadModel
+// converges the home with one serial CatchUp before the host's own
+// checkpoint load would resume PAST the missing rows.
+func TestUseReadModelReplaysDeletedProjectionHome(t *testing.T) {
+	srv, store := newTestAPI(t)
+
+	enqueueTask(t, store, "billing")
+
+	d := config.SQLite(filepath.Join(t.TempDir(), "queue.db"))
+
+	// A previous fold: converge the projection home, seal the durable
+	// cursor, then delete the file (the documented escape hatch).
+	prev, err := readmodel.Open(context.Background(), readmodel.PathFor(d.DBPath), store, readmodel.WithDurableCursor())
+	if err != nil {
+		t.Fatalf("open previous model: %v", err)
+	}
+
+	if err := prev.CatchUp(context.Background()); err != nil {
+		t.Fatalf("previous catch up: %v", err)
+	}
+
+	if err := prev.Close(); err != nil {
+		t.Fatalf("close previous model: %v", err)
+	}
+
+	if err := os.Remove(readmodel.PathFor(d.DBPath)); err != nil {
+		t.Fatalf("delete projection home: %v", err)
+	}
+
+	if err := srv.UseReadModel(context.Background(), d); err != nil {
+		t.Fatalf("use read model: %v", err)
+	}
+
+	stats := authorizedStats(t, srv.Handler())
+	if stats["pending"] != 1 || stats["total"] != 1 {
+		t.Fatalf("stats after replay = %v, want the deleted home's rows re-folded", stats)
 	}
 }
 
