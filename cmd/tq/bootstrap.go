@@ -100,6 +100,7 @@ type bootstrapOptions struct {
 	logDirMaxAge   time.Duration // retention: sweep sidecars older than this (0 = keep forever)
 	logDirMaxBytes int64         // retention: cap total sidecar bytes, oldest first (0 = uncapped)
 	db             string
+	store          string
 	binPath        string // resolved executable, for the systemd unit
 }
 
@@ -272,6 +273,7 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 		"cap the total size of sidecar logs in --log-dir, oldest deleted first (e.g. 5368709120 = 5GiB; 0 = uncapped)",
 	)
 	fs.StringVar(&opts.db, "db", "", "task DB (default $TQ_DB or ./tasks.db)")
+	fs.StringVar(&opts.store, "store", "", "where state lives: sqlite path or postgres:// DSN (default: --db, $TQ_DB, ./tasks.db)")
 	noYolo := fs.Bool("no-yolo", false, "disable autonomy (agents will stall on permission prompts)")
 	noReview := fs.Bool("no-review", false, "disable the second-agent review pass")
 	noReviewAutofix := fs.Bool(

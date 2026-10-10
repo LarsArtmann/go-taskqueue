@@ -211,6 +211,49 @@ func resolveDB(v string) string {
 	return defaultDB()
 }
 
+// storeFlag registers the shared --store switch for the long-running
+// surfaces (serve/api/worker/agent-pool): the value is a sqlite file
+// path (bare) or a postgres:// DSN — config.FromFlags parses it into
+// the ONE deployment description. Precedence over --db is explicit:
+// --store wins when set; --db keeps its exact legacy meaning (sqlite
+// file path) for every other command and as the fallback.
+func storeFlag(fs *flag.FlagSet) *string {
+	return fs.String("store", "", "where state lives: sqlite path or postgres:// DSN (default: --db, $TQ_DB, ./tasks.db)")
+}
+
+// resolveDeployment builds the ONE deployment description for a
+// long-running command: --store value first, else the legacy --db /
+// $TQ_DB / ./tasks.db chain (a bare path stays a sqlite deployment).
+// The TQ_SQLITE_SYNC merge happens inside FromFlags — the ONE env
+// reader — so the returned struct is fully resolved.
+func resolveDeployment(storeVal, dbVal string, readModel bool) (config.Deployment, error) {
+	v := storeVal
+	if v == "" {
+		v = resolveDB(dbVal)
+	}
+
+	return config.FromFlags(v, readModel)
+}
+
+// mustOpenStore opens the queue store for the deployment (the ONE
+// store-opening input). Postgres is wired but documented-gated: no live
+// instance verifies the driver end-to-end yet (owner question pending),
+// so it refuses with the pointer instead of half-serving.
+func mustOpenStore(d config.Deployment, opts ...sqlite.StoreOption) *sqlite.Store {
+	if d.Driver == config.DriverPostgres {
+		fmt.Fprintln(os.Stderr, "tq: postgres --store is wired but not yet gate-verified against a live instance (owner question pending, see docs/status/2026-10-10_03-06_*.md §g); a sqlite path is the supported store today")
+		os.Exit(1)
+	}
+
+	store, err := sqlite.OpenWithDeployment(d, opts...)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "tq: open db: %v\n", err)
+		os.Exit(1)
+	}
+
+	return store
+}
+
 func splitRepos(spec string) []string {
 	var repos []string
 
@@ -579,6 +622,7 @@ func cmdWorker(args []string) error {
 	)
 
 	db := dbFlag(fs)
+	storeVal := storeFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -587,12 +631,17 @@ func cmdWorker(args []string) error {
 	// flag must reach it regardless of how it was set (parity with TQ_LOG_DIR).
 	_ = os.Setenv("TQ_REDACT", strconv.FormatBool(*redact))
 
+	deployment, err := resolveDeployment(*storeVal, *db, false)
+	if err != nil {
+		return err
+	}
+
 	var opts []sqlite.StoreOption
 	if *exclusive {
 		opts = append(opts, sqlite.WithProjectExclusivity())
 	}
 
-	store := mustOpenDBOpts(resolveDB(*db), opts...)
+	store := mustOpenStore(deployment, opts...)
 
 	// The "sh" executor with empty template runs the payload itself as the
 	// shell line ({"cmd":...} JSON is unwrapped). This keeps the CLI path
@@ -1012,7 +1061,12 @@ func cmdAgentPool(args []string) error {
 		storeOpts = append(storeOpts, sqlite.WithProjectExclusivity())
 	}
 
-	store := mustOpenDBOpts(resolveDB(poolOpts.db), storeOpts...)
+	deployment, err := resolveDeployment(poolOpts.store, poolOpts.db, false)
+	if err != nil {
+		return err
+	}
+
+	store := mustOpenStore(deployment, storeOpts...)
 	defer store.Close()
 
 	taskQueue := queue.New(store)
@@ -3381,13 +3435,19 @@ func cmdAPI(args []string) error {
 	)
 
 	db := dbFlag(fs)
+	storeVal := storeFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	dbPath := resolveDB(*db)
+	deployment, err := resolveDeployment(*storeVal, *db, *readModel)
+	if err != nil {
+		return err
+	}
 
-	s := mustOpenDB(dbPath)
+	dbPath := deployment.DBPath
+
+	s := mustOpenStore(deployment)
 	defer s.Close()
 
 	server, err := httpapi.New(s, *authToken, nil)
@@ -3584,13 +3644,19 @@ func cmdServe(args []string) error {
 	)
 
 	db := dbFlag(fs)
+	storeVal := storeFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	dbPath := resolveDB(*db)
+	deployment, err := resolveDeployment(*storeVal, *db, *readModel)
+	if err != nil {
+		return err
+	}
 
-	store := mustOpenDB(dbPath)
+	dbPath := deployment.DBPath
+
+	store := mustOpenStore(deployment)
 
 	cfg := webui.Config{
 		Addr:        *addr,
@@ -3602,7 +3668,7 @@ func cmdServe(args []string) error {
 	}
 
 	if *readModel {
-		rt, rtErr := composition.NewProjectionRuntime(context.Background(), store, config.SQLite(dbPath))
+		rt, rtErr := composition.NewProjectionRuntime(context.Background(), store, deployment)
 		if rtErr != nil {
 			_ = store.Close()
 
@@ -3627,7 +3693,7 @@ func cmdServe(args []string) error {
 	var sys *system.System
 
 	if *readModel {
-		composed, err := composition.New(context.Background(), config.SQLite(dbPath))
+		composed, err := composition.New(context.Background(), deployment)
 		if err != nil {
 			return err
 		}
