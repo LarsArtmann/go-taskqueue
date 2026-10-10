@@ -25,11 +25,11 @@ systemd units, journal `/mnt/pool/services/tq/tq.db`), then fix-what's-fixable, 
    `internal/readmodel/schema.go` — `ConvergeProjectionHome(path)`: read-only probe of
    `meta_planned_tasks` vs `taskRowColumns()` (reflected from TaskRow json tags — one source of
    truth, zero drift); divergent home is RENAMED aside (`<db>.readmodel.db.legacy-schema-*.bak`
-   + `-wal`/`-shm`), never deleted; next open rebuilds from the current model and
-   `WithDurableCursor` replays from zero exactly once (existing guard, model.go:217).
-   Wired into BOTH open surfaces: `readmodel.Open` self-open path (model.go:164, covers
-   stats/doctor/api) and `composition.NewProjectionRuntime` (projection_runtime.go:39, covers
-   serve).
+   - `-wal`/`-shm`), never deleted; next open rebuilds from the current model and
+     `WithDurableCursor` replays from zero exactly once (existing guard, model.go:217).
+     Wired into BOTH open surfaces: `readmodel.Open` self-open path (model.go:164, covers
+     stats/doctor/api) and `composition.NewProjectionRuntime` (projection_runtime.go:39, covers
+     serve).
 4. **Tests + gates green**: `schema_test.go` (legacy-home snapshot w/ row preservation,
    converged-home untouched, absent-file no-op, no-planned-table no-op, column pin) —
    readmodel + composition module gates (GOEXPERIMENT=jsonv2 GOWORK=off build/vet/test) then
@@ -44,14 +44,14 @@ systemd units, journal `/mnt/pool/services/tq/tq.db`), then fix-what's-fixable, 
    `*.stale-schema.bak-2026-10-10` — the deployed v0.3.3 binary itself will heal on next
    restart (fresh home gets the CURRENT model's columns).
 7. **SystemNix TODO_LIST blocker fixed**: `- **[ ] [ready] Watchdog runbook additions**` at
-   line 1000 → `- [ ] [ready] **Watchdog...` (parser requires exact `- [ ] ` prefix; pool
+   line 1000 → `- [ ] [ready] **Watchdog...` (parser requires exact `- [ ]` prefix; pool
    skipped the WHOLE repo for startup prune + reprioritize). Verified via
    `tq harvest --dry-run --repos SystemNix` — items parse, SKIP only on normal runtime gates.
 8. **Root module hygiene unblocked**: root `go mod tidy` (cleaned PRE-EXISTING go.sum drift,
    −83 lines) + `go mod vendor` (internal modules ARE vendored at root — discovered via vendor/
    listing) + root build+vet green with GOEXPERIMENT=jsonv2.
 9. **Lesson recorded** in AGENTS.md Known Issues (schema-drift class + `ConvergeProjectionHome`
-   + deployed-crash remedy).
+   - deployed-crash remedy).
 10. **Diagnosis delivered** — four production problems with evidence (§c1-4 below).
 
 ## b) PARTIALLY DONE
@@ -147,58 +147,58 @@ systemd units, journal `/mnt/pool/services/tq/tq.db`), then fix-what's-fixable, 
 
 ## f) NEXT (≤50, session-scoped, sorted by impact)
 
-| #  | Item                                                                                                        | Owner? |
-|----|-------------------------------------------------------------------------------------------------------------|--------|
-| 1  | `sudo systemctl restart tq-serve`; confirm journal shows NO "exhausted restart budget" and a fresh readmodel home | owner |
-| 2  | Post-restart verification: `meta_planned_tasks` has not_before+parked_by; `tq stats` matches `--read-model=false`     | agent |
-| 3  | TODO row: budget-cap semantics decision (30 count vs agent-class vs --budget-cmd $)                                   | agent |
-| 4  | TODO row: CV trunk gate red at base (missing data/ dir write + dead lever.co portal URL) blocks ALL CV agent tasks     | agent |
-| 5  | TODO row: SystemNix two-writers policy (park vs require_clean=false vs session-close bridge)                          | agent |
-| 6  | TODO row: DLQ hygiene — 326 dead, dismiss pre-env-streak loop suspects, audit autopsy yield (7 today → how many fixes?) | agent |
-| 7  | TODO row: upstream go-cqrs-lite planned-table migration story (check capability_audit ADD COLUMN seam first)           | agent |
-| 8  | Release v0.3.4 with ConvergeProjectionHome (CHANGELOG row + tag + nix bump lands the fix on the deployment)            | owner |
-| 9  | Complete the cited battery: root `go test ./... -race` rc-to-file                                                     | agent |
-| 10 | Run `scripts/check-gomod-vendor-sync.sh` + `scripts/lint-baseline.sh --check` (gosec watch on schema.go's Sprintf PRAGMA) | agent |
-| 11 | Guard test: convergence fires through `readmodel.Open` against a legacy-shaped home (integration, not just the function) | agent |
-| 12 | Guard test: composition WithEngine path converges (wiring is proven only by code read today)                          | agent |
-| 13 | Decide .bak retention: keep `tq.db.readmodel.db.stale-schema.bak-2026-10-10*` or delete after §f2 verifies            | owner |
-| 14 | Clean `/tmp/tq-fix-check/` (contains a production tq.db copy — data hygiene)                                          | agent |
-| 15 | Alerting: projection-worker death should reach papdashboard bridge (3-day silent outage is the proof it doesn't)       | agent |
-| 16 | `tq doctor` projection check: surface "worker dead / snapshot stale" state (didn't exist as a triage surface today)     | agent |
-| 17 | Investigate gopls "schema/v4 not in go.mod" (stale LSP vs real drift)                                                 | agent |
-| 18 | Backfill outage start: earliest "exhausted restart budget" across ALL journal boots (grep hit Oct 07 12:08 first)      | agent |
-| 19 | Verify webui board/table views against store-direct after replay (only `stats` was verified)                          | agent |
-| 20 | Commit the SystemNix TODO_LIST fix with attribution (or confirm another writer swept it)                              | agent |
-| 21 | CV: green the trunk gate (test fixture for the portal URL instead of live; create data/ dir in verify path) then dispatch  | owner |
-| 22 | Autopsy-yield audit: did ANY of today's dlqfix runs produce a fix vs wontfix? Zero-yield autopsies are pure cost        | agent |
-| 23 | Budget-projection split-brain check: "2 derived runs" vs 7+ completed dlqfix — usage derivation may under-count         | agent |
-| 24 | Regression pin: committed fixture of the REAL legacy shape (both missing columns) so the probe can't regress silently   | agent |
-| 25 | Convergence concurrency: two processes racing (serve restart + stats) — timestamp collision window (add nanos)          | agent |
-| 26 | Probe resilience: mode=ro on busy WAL systems (readonly_shm edge) — decide fallback behavior                           | agent |
-| 27 | Schema stamp: write a model-version row (meta_map) so future drift is stamp-mismatch, not column reflection             | agent |
-| 28 | Probe cost: runs on EVERY open (stats/doctor/api) — measure; consider caching after first healthy check                 | agent |
-| 29 | postgresv4 projection homes: same drift class on postgres DSNs? (ConvergeProjectionHome is sqlite-only) — scope or note   | agent |
-| 30 | Document EXTRA-column tolerance (downgrade case passes today — deliberate? note it)                                    | agent |
-| 31 | Sweep ALL repos' TODO_LIST via harvest --dry-run for other malformed bullets; wire check-todo-list into the pool skip path | agent |
-| 32 | Runbook: expand the AGENTS Known-Issues remedy into operator docs (quarantine + restart procedure)                      | agent |
-| 33 | `scripts/ci-local.sh` once before any push (pre-push gate; not run this session)                                      | agent |
-| 34 | Confirm daemon commits d77ecc41/db5744f4/88560cf9 contain exactly this session's files (footer-less sweeps, no heal needed) | agent |
-| 35 | Confirm the AGENTS.md memory row survives the daemon sweep (uncommitted at report time)                                | agent |
-| 36 | `tq api` smoke after restart: self-open pump benefits from convergence (same Open path — verify, don't assume)          | agent |
-| 37 | doctor --hygiene across the pool repos (cheap surface for §f31's class of parse failures)                              | agent |
-| 38 | Consider surfacing convergence events in webui (the WARN is server-log-only today)                                     | agent |
-| 39 | Review whether loadCursor's replay-from-zero guard should ALSO log at WARN when the projection died vs fresh (it logs INFO) | agent |
-| 40 | Store-direct `tq tasks --status pending` follow-up: the 3 parked tasks — dispatch order once budget allows              | owner |
-| 41 | Investigate the 169-claim task (000001a0eebb785f…) — third-worst churner, era unexamined                                | agent |
-| 42 | Rate-limit parked pair from the 24h list (CV agent 429) — confirm the window resolved at next claim                     | agent |
-| 43 | Add per-repo gate-failure dedup: CV gate-dead tasks keep dying on the SAME trunk break — suppress until trunk greens     | agent |
-| 44 | Consider `tq incidents` wiring for verify-gate-dead class (incidents showed EMPTY despite hundreds of deads — blind spot) | agent |
-| 45 | e2e scratch harness: make the /tmp/tq-fix-check flow a script (scripts/) for future upgrade rehearsals                   | agent |
-| 46 | Confirm TaskRow reflection covers future json-tag options (`,omitempty` would break Cut — it handles it, but pin it)     | agent |
-| 47 | Read internal/readmodel/host.go pump restart budget — is 6-restarts-then-die right for a DISPOSABLE projection?          | agent |
-| 48 | Check whether `tq bootstrap`-created deployments can even HIT the drift (fresh homes can't — document upgrade-only risk)  | agent |
-| 49 | Post-incident: fold this report's §c rows into TODO_LIST via docs-health HARVEST (this file is the input, §d1's debt)    | agent |
-| 50 | Re-read AGENTS.md §SQLite IO policy: does NORMAL-tier projection replay of 10.8k facts need a checkpoint note post-restart? | agent |
+| #  | Item                                                                                                                        | Owner? |
+| -- | --------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1  | `sudo systemctl restart tq-serve`; confirm journal shows NO "exhausted restart budget" and a fresh readmodel home           | owner  |
+| 2  | Post-restart verification: `meta_planned_tasks` has not_before+parked_by; `tq stats` matches `--read-model=false`           | agent  |
+| 3  | TODO row: budget-cap semantics decision (30 count vs agent-class vs --budget-cmd $)                                         | agent  |
+| 4  | TODO row: CV trunk gate red at base (missing data/ dir write + dead lever.co portal URL) blocks ALL CV agent tasks          | agent  |
+| 5  | TODO row: SystemNix two-writers policy (park vs require_clean=false vs session-close bridge)                                | agent  |
+| 6  | TODO row: DLQ hygiene — 326 dead, dismiss pre-env-streak loop suspects, audit autopsy yield (7 today → how many fixes?)     | agent  |
+| 7  | TODO row: upstream go-cqrs-lite planned-table migration story (check capability_audit ADD COLUMN seam first)                | agent  |
+| 8  | Release v0.3.4 with ConvergeProjectionHome (CHANGELOG row + tag + nix bump lands the fix on the deployment)                 | owner  |
+| 9  | Complete the cited battery: root `go test ./... -race` rc-to-file                                                           | agent  |
+| 10 | Run `scripts/check-gomod-vendor-sync.sh` + `scripts/lint-baseline.sh --check` (gosec watch on schema.go's Sprintf PRAGMA)   | agent  |
+| 11 | Guard test: convergence fires through `readmodel.Open` against a legacy-shaped home (integration, not just the function)    | agent  |
+| 12 | Guard test: composition WithEngine path converges (wiring is proven only by code read today)                                | agent  |
+| 13 | Decide .bak retention: keep `tq.db.readmodel.db.stale-schema.bak-2026-10-10*` or delete after §f2 verifies                  | owner  |
+| 14 | Clean `/tmp/tq-fix-check/` (contains a production tq.db copy — data hygiene)                                                | agent  |
+| 15 | Alerting: projection-worker death should reach papdashboard bridge (3-day silent outage is the proof it doesn't)            | agent  |
+| 16 | `tq doctor` projection check: surface "worker dead / snapshot stale" state (didn't exist as a triage surface today)         | agent  |
+| 17 | Investigate gopls "schema/v4 not in go.mod" (stale LSP vs real drift)                                                       | agent  |
+| 18 | Backfill outage start: earliest "exhausted restart budget" across ALL journal boots (grep hit Oct 07 12:08 first)           | agent  |
+| 19 | Verify webui board/table views against store-direct after replay (only `stats` was verified)                                | agent  |
+| 20 | Commit the SystemNix TODO_LIST fix with attribution (or confirm another writer swept it)                                    | agent  |
+| 21 | CV: green the trunk gate (test fixture for the portal URL instead of live; create data/ dir in verify path) then dispatch   | owner  |
+| 22 | Autopsy-yield audit: did ANY of today's dlqfix runs produce a fix vs wontfix? Zero-yield autopsies are pure cost            | agent  |
+| 23 | Budget-projection split-brain check: "2 derived runs" vs 7+ completed dlqfix — usage derivation may under-count             | agent  |
+| 24 | Regression pin: committed fixture of the REAL legacy shape (both missing columns) so the probe can't regress silently       | agent  |
+| 25 | Convergence concurrency: two processes racing (serve restart + stats) — timestamp collision window (add nanos)              | agent  |
+| 26 | Probe resilience: mode=ro on busy WAL systems (readonly_shm edge) — decide fallback behavior                                | agent  |
+| 27 | Schema stamp: write a model-version row (meta_map) so future drift is stamp-mismatch, not column reflection                 | agent  |
+| 28 | Probe cost: runs on EVERY open (stats/doctor/api) — measure; consider caching after first healthy check                     | agent  |
+| 29 | postgresv4 projection homes: same drift class on postgres DSNs? (ConvergeProjectionHome is sqlite-only) — scope or note     | agent  |
+| 30 | Document EXTRA-column tolerance (downgrade case passes today — deliberate? note it)                                         | agent  |
+| 31 | Sweep ALL repos' TODO_LIST via harvest --dry-run for other malformed bullets; wire check-todo-list into the pool skip path  | agent  |
+| 32 | Runbook: expand the AGENTS Known-Issues remedy into operator docs (quarantine + restart procedure)                          | agent  |
+| 33 | `scripts/ci-local.sh` once before any push (pre-push gate; not run this session)                                            | agent  |
+| 34 | Confirm daemon commits d77ecc41/db5744f4/88560cf9 contain exactly this session's files (footer-less sweeps, no heal needed) | agent  |
+| 35 | Confirm the AGENTS.md memory row survives the daemon sweep (uncommitted at report time)                                     | agent  |
+| 36 | `tq api` smoke after restart: self-open pump benefits from convergence (same Open path — verify, don't assume)              | agent  |
+| 37 | doctor --hygiene across the pool repos (cheap surface for §f31's class of parse failures)                                   | agent  |
+| 38 | Consider surfacing convergence events in webui (the WARN is server-log-only today)                                          | agent  |
+| 39 | Review whether loadCursor's replay-from-zero guard should ALSO log at WARN when the projection died vs fresh (it logs INFO) | agent  |
+| 40 | Store-direct `tq tasks --status pending` follow-up: the 3 parked tasks — dispatch order once budget allows                  | owner  |
+| 41 | Investigate the 169-claim task (000001a0eebb785f…) — third-worst churner, era unexamined                                    | agent  |
+| 42 | Rate-limit parked pair from the 24h list (CV agent 429) — confirm the window resolved at next claim                         | agent  |
+| 43 | Add per-repo gate-failure dedup: CV gate-dead tasks keep dying on the SAME trunk break — suppress until trunk greens        | agent  |
+| 44 | Consider `tq incidents` wiring for verify-gate-dead class (incidents showed EMPTY despite hundreds of deads — blind spot)   | agent  |
+| 45 | e2e scratch harness: make the /tmp/tq-fix-check flow a script (scripts/) for future upgrade rehearsals                      | agent  |
+| 46 | Confirm TaskRow reflection covers future json-tag options (`,omitempty` would break Cut — it handles it, but pin it)        | agent  |
+| 47 | Read internal/readmodel/host.go pump restart budget — is 6-restarts-then-die right for a DISPOSABLE projection?             | agent  |
+| 48 | Check whether `tq bootstrap`-created deployments can even HIT the drift (fresh homes can't — document upgrade-only risk)    | agent  |
+| 49 | Post-incident: fold this report's §c rows into TODO_LIST via docs-health HARVEST (this file is the input, §d1's debt)       | agent  |
+| 50 | Re-read AGENTS.md §SQLite IO policy: does NORMAL-tier projection replay of 10.8k facts need a checkpoint note post-restart? | agent  |
 
 ## g) QUESTIONS I CANNOT FIGURE OUT MYSELF
 
@@ -215,6 +215,6 @@ systemd units, journal `/mnt/pool/services/tq/tq.db`), then fix-what's-fixable, 
 
 ---
 
-*Daemon note: report intentionally uncommitted (harness forbids manual commits without explicit
+_Daemon note: report intentionally uncommitted (harness forbids manual commits without explicit
 instruction); the auto-commit daemon sweeps `docs/status/` within seconds. Index row added in the
-same change per `check-status-index.sh`.*
+same change per `check-status-index.sh`._

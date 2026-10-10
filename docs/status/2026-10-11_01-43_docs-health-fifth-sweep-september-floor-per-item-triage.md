@@ -43,11 +43,11 @@
      (sketches-only; all five F121–F125 routed to ROADMAP seeds).
    - `docs/planning/2026-09-18_sail-research-provider-assessment.md` →
      EXECUTED (NOT ADOPTED dispositioned; parked at ROADMAP:182-188).
-   Spot-verify exceeded the ≥2 quota: 2+ items per file re-verified
-   first-hand at HEAD (deadline contract, dogfood archive, retro row,
-   #3146 row, AppendFact, dead-sha self-test, capture gate, task.requeued,
-   ScopedGofmtStage, smoke/archive-evidence, AGENTS bullet, README
-   pointer, proxy fetch, ROADMAP seeds/disposition).
+     Spot-verify exceeded the ≥2 quota: 2+ items per file re-verified
+     first-hand at HEAD (deadline contract, dogfood archive, retro row,
+     #3146 row, AppendFact, dead-sha self-test, capture gate, task.requeued,
+     ScopedGofmtStage, smoke/archive-evidence, AGENTS bullet, README
+     pointer, proxy fetch, ROADMAP seeds/disposition).
 3. **Citations repointed in the same change** (check-doc-refs is the
    catcher): TODO row 475 (02-30 path + line), live reports
    2026-09-15_02-28 + 2026-10-01_06-26, ROADMAP ×2 (sail + round5-m23),
