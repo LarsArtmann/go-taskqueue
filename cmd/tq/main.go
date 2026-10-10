@@ -3491,7 +3491,7 @@ func cmdAPI(args []string) error {
 	server.UseErrorRecorder(incident.NewRecorder(s))
 
 	if *readModel {
-		if err := server.UseReadModel(context.Background(), readmodel.PathFor(dbPath)); err != nil {
+		if err := server.UseReadModel(context.Background(), deployment); err != nil {
 			return err
 		}
 	}
