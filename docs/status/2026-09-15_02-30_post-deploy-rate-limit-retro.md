@@ -60,8 +60,8 @@ status matches), not a contradiction.
 
 ## Left open
 
-1. 7-day checkpoint 2026-09-18: re-run this classification; expect zero
+~~1. 7-day checkpoint 2026-09-18: re-run this classification; expect zero~~ routed to TODO row (429-retro 7-day checkpoint: run or lapse-close)
    additional 429 events; first genuine 429 window still owed as the
    mechanism's production proof.
-2. Owner: DLQ triage of the 8 pre-flip 429-class dead tasks (rescue or
+~~2. Owner: DLQ triage of the 8 pre-flip 429-class dead tasks (rescue or~~ routed to TODO row (--allow-writes DLQ rescue, BLOCKED owner)
    cancel per runbook §4).
