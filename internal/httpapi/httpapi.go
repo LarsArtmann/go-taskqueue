@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/httpauth"
 	"github.com/larsartmann/go-taskqueue/internal/incident"
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
@@ -42,6 +43,17 @@ type Server struct {
 	// model is the ADR-0019 S3 read model behind UseReadModel (nil = the
 	// stats read hits the store): the read side of GET /api/v1/stats.
 	model *readmodel.Model
+
+	// host is the managed projection pump behind UseReadModel (nil = no
+	// pump): the platform fold host whose restart budget and poison-fact
+	// DLQ ListenAndServe starts and owns instead of the raw Model.Run
+	// loop a poison fact wedged forever.
+	host *readmodel.ProjectionHost
+
+	// dlq is the poison-fact sidecar wired into host (nil when the
+	// sidecar could not be opened — warn-and-continue, the composition
+	// root's posture): dead letters the doctor surface reads.
+	dlq *readmodel.DeadLetters
 
 	// errors is the ReportError command handler behind UseErrorRecorder
 	// (nil = the errors route answers 503): the write side of
@@ -65,26 +77,68 @@ func New(store queue.Store, token string, log *slog.Logger) (*Server, error) {
 }
 
 // UseReadModel moves the stats read onto the ADR-0019 S3 metaengine read
-// model at path (readmodel.PathFor derives it beside the queue db): the
-// projection folds the journal and GET /api/v1/stats reads its planned
-// table. The enqueue side is untouched — the model is read-only over the
-// store. ListenAndServe owns the model's pump and lifetime; ctx covers
-// the durable-cursor load at setup.
+// model beside the deployment's queue db (readmodel.PathFor derives the
+// projection home): the projection folds the journal and GET /api/v1/stats
+// reads its planned table. The enqueue side is untouched — the model is
+// read-only over the store.
 //
-// The self-open here is the sanctioned per-surface exception to the
-// composition single-opener seam: this surface needs only the model (no
-// projection host, no DLQ sidecar — both are NewProjectionRuntime
-// bundles the api cannot use), each process opens the projection home
-// exactly once, and the self-open derives its pragmas from the same ONE
-// config source. Decision record:
-// docs/memos/2026-10-10_readmodel-open-seams.md.
-func (s *Server) UseReadModel(ctx context.Context, path string) error {
-	m, err := readmodel.Open(ctx, path, s.store, readmodel.WithDurableCursor())
+// The pump is the MANAGED projection host (readmodel.NewProjectionHost)
+// built from the same readmodel seams the composition root bundles for
+// serve: ListenAndServe starts it and owns its lifetime, a poison fact
+// dead-letters into the best-effort DLQ sidecar (OpenDeadLetters,
+// warn-and-continue) and the fold keeps converging, and a retryable
+// failure restarts under the platform budget instead of wedging the
+// cursor at repeated error logs. The model itself stays self-opened —
+// the sanctioned per-surface exception to the composition single-opener
+// seam (no NewProjectionRuntime adoption, no composition import, no
+// double-close; this surface never needed the never-started runtime
+// host, only the pump protection). Decision record:
+// docs/memos/2026-10-10_readmodel-open-seams.md ("Residual resolved").
+func (s *Server) UseReadModel(ctx context.Context, d config.Deployment) error {
+	m, err := readmodel.Open(ctx, readmodel.PathFor(d.DBPath), s.store, readmodel.WithDurableCursor())
 	if err != nil {
 		return fmt.Errorf("httpapi: open read model: %w", err)
 	}
 
+	// The replay escape hatch (delete the projection file) leaves the
+	// surviving checkpoint pointing past an empty home: the model's
+	// durable-cursor load logs the replay decision and holds the cursor
+	// at zero, but the host loads its own checkpoint from the same
+	// watermarks slot and would resume PAST the missing rows. One serial
+	// CatchUp re-folds the journal through the same fold, converges the
+	// home, and re-seals the checkpoint the host then resumes from (the
+	// folds are idempotent upserts).
+	if wm, exists, wmErr := s.store.Watermark(ctx, readmodel.CursorConsumer); wmErr == nil && exists && wm > 0 && m.JournalCursor() == 0 {
+		if err := m.CatchUp(ctx); err != nil {
+			_ = m.Close()
+
+			return fmt.Errorf("httpapi: replay read model: %w", err)
+		}
+	}
+
+	opts := readmodel.ProjectionHostOptions{}
+
+	dlq, err := readmodel.OpenDeadLetters(ctx, d)
+	if err != nil {
+		s.log.Warn("httpapi: dlq sidecar unavailable; poison facts exhaust the restart budget", "err", err)
+	} else {
+		opts.DeadLetterStore = dlq.Store()
+	}
+
+	host, err := readmodel.NewProjectionHost(s.store, m, opts)
+	if err != nil {
+		if dlq != nil {
+			_ = dlq.Close()
+		}
+
+		_ = m.Close()
+
+		return fmt.Errorf("httpapi: build projection host: %w", err)
+	}
+
 	s.model = m
+	s.dlq = dlq
+	s.host = host
 
 	return nil
 }
@@ -382,7 +436,8 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 // ListenAndServe starts the API on addr (e.g. "127.0.0.1:8091") until ctx
 // is cancelled. It owns the read model's lifetime when UseReadModel ran:
-// the pump tails the journal for the whole serve window and the projection
+// the managed projection host tails the journal (platform restart budget
+// and poison-fact DLQ) for the whole serve window, and the projection
 // closes after the HTTP server has fully stopped.
 func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	srv := &http.Server{
@@ -400,19 +455,20 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 		_ = srv.Shutdown(shutdownCtx)
 	}()
 
-	if s.model != nil {
-		pumpDone := make(chan struct{})
-
-		go func() {
-			defer close(pumpDone)
-
-			if err := s.model.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-				s.log.Error("httpapi: read model pump failed", "err", err)
-			}
-		}()
+	if s.host != nil {
+		if err := s.host.Start(ctx); err != nil {
+			return fmt.Errorf("httpapi: start projection pump: %w", err)
+		}
 
 		defer func() {
-			<-pumpDone
+			_ = s.host.Stop()
+			_ = s.host.Close()
+
+			if s.dlq != nil {
+				if err := s.dlq.Close(); err != nil {
+					s.log.Error("httpapi: close dlq sidecar", "err", err)
+				}
+			}
 
 			if err := s.model.Close(); err != nil {
 				s.log.Error("httpapi: close read model", "err", err)

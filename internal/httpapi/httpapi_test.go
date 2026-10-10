@@ -553,7 +553,7 @@ func authorizedStats(t *testing.T, h http.Handler) map[string]int {
 func TestStatsReadModelSeam(t *testing.T) {
 	srv, store := newTestAPI(t)
 
-	if err := srv.UseReadModel(context.Background(), filepath.Join(t.TempDir(), "projection.db")); err != nil {
+	if err := srv.UseReadModel(context.Background(), config.SQLite(filepath.Join(t.TempDir(), "projection.db"))); err != nil {
 		t.Fatalf("use read model: %v", err)
 	}
 
@@ -603,7 +603,7 @@ func TestStatsReadModelSeam(t *testing.T) {
 func TestListenAndServePumpsReadModel(t *testing.T) {
 	srv, store := newTestAPI(t)
 
-	if err := srv.UseReadModel(context.Background(), filepath.Join(t.TempDir(), "projection.db")); err != nil {
+	if err := srv.UseReadModel(context.Background(), config.SQLite(filepath.Join(t.TempDir(), "projection.db"))); err != nil {
 		t.Fatalf("use read model: %v", err)
 	}
 
