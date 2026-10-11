@@ -83,6 +83,7 @@ type Model struct {
 	eng   metaengine.Engine
 	store *metaengine.Store
 	src   queue.Store
+	path  string
 	rows  RowSource
 	poll  time.Duration
 	batch int
@@ -157,6 +158,7 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 
 	m := &Model{
 		src:   src,
+		path:  path,
 		rows:  StoreRows{Store: src},
 		poll:  DefaultPoll,
 		batch: DefaultBatch,

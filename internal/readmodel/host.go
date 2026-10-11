@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json/jsontext"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 
@@ -258,6 +261,19 @@ func NewProjectionHost(src queue.Store, m *Model, opts ProjectionHostOptions) (*
 
 	hostOpts := []projectionhost.HostOption{
 		projectionhost.WithSubscriber(tails),
+	}
+
+	// Worker-death surface (B9.3): a failed worker reads lag 0, so the
+	// cursor-vs-head doctor checks cannot see a restart-budget
+	// exhaustion. Construction clears any standing marker (a fresh host
+	// carries a fresh budget) and the recorder stamps the sidecar when a
+	// worker terminally fails — doctor reads what stands between hosts.
+	if m.path != "" {
+		if err := os.Remove(m.path + workerFailedMarkerSuffix); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			slog.Warn("readmodel: clear stale worker-death marker", "path", m.path+workerFailedMarkerSuffix, "err", err)
+		}
+
+		hostOpts = append(hostOpts, projectionhost.WithMetrics(newWorkerFailureMarker(m.path)))
 	}
 
 	if opts.CheckpointEvery > 0 {
