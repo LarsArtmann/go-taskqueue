@@ -18,6 +18,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/session"
+	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -520,9 +521,14 @@ func TestDoctorWatermarkLiveness(t *testing.T) {
 
 	ctx := context.Background()
 
-	// No cursors: the sweepers never ran here — idle, not sick.
+	// No cursors: the consumers never ran here — idle, not sick. Every
+	// known journal consumer must appear (13-15 §e: the frozen sweepers
+	// were invisible until the table named them).
 	results := doctorWatermarkLiveness(ctx, s)
-	for _, name := range []string{"review-sweeper", "status-sweeper"} {
+	for _, name := range []string{
+		"review-sweeper", "status-sweeper", "dlqfix-sweeper",
+		"prioritize-sweeper", "incident-policy",
+	} {
 		if r := resultByName(results, name); r.Status != checkOK {
 			t.Errorf("%s = %s (%s), want ok", name, r.Status, r.Detail)
 		}
@@ -542,6 +548,10 @@ func TestDoctorWatermarkLiveness(t *testing.T) {
 		t.Fatalf("save watermark: %v", err)
 	}
 
+	if err := s.SaveWatermark(ctx, dlqfix.ConsumerKey, 1); err != nil {
+		t.Fatalf("save dlqfix watermark: %v", err)
+	}
+
 	if _, err := s.Enqueue(ctx, task.New{Type: "sh", Project: "demo", Payload: payload}); err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
@@ -550,6 +560,10 @@ func TestDoctorWatermarkLiveness(t *testing.T) {
 
 	if r := resultByName(results, "status-sweeper"); r.Status != checkWarn {
 		t.Errorf("status-sweeper = %s (%s), want warn (cursor lags the head)", r.Status, r.Detail)
+	}
+
+	if r := resultByName(results, "dlqfix-sweeper"); r.Status != checkWarn {
+		t.Errorf("dlqfix-sweeper = %s (%s), want warn (cursor lags the head)", r.Status, r.Detail)
 	}
 
 	if r := resultByName(results, "review-sweeper"); r.Status != checkOK {

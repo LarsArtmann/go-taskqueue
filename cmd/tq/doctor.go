@@ -24,6 +24,9 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
+	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
+	"github.com/larsartmann/go-taskqueue/internal/incident"
+	"github.com/larsartmann/go-taskqueue/internal/prioritize"
 	"github.com/larsartmann/go-taskqueue/internal/review"
 	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/status"
@@ -698,10 +701,13 @@ func doctorCountStatus(dead int) string {
 	return checkOK
 }
 
-// doctorWatermarkLiveness checks the journal-consumer cursors (the review
-// and status sweepers): a cursor lagging the journal head means its sweeper
-// is not running — agent completions pile up unreviewed / unreported. A
-// missing cursor just means that sweeper never ran here (idle, not sick).
+// doctorWatermarkLiveness checks every known journal-consumer cursor
+// (the dlqfix/review/status/prioritize sweepers and the incident
+// policy): a cursor lagging the journal head means its consumer is not
+// running — the sweepers-frozen class stays invisible without this diff
+// (13-15 §e). A missing cursor just means that consumer never ran here
+// (idle, not sick). The papdashboard bridge keeps no journal cursor, so
+// it has no row; the readmodel fold's cursor is doctorProjection's.
 func doctorWatermarkLiveness(ctx context.Context, store queue.Store) []checkResult {
 	head, err := store.HeadSeq(ctx)
 	if err != nil {
@@ -716,6 +722,9 @@ func doctorWatermarkLiveness(ctx context.Context, store queue.Store) []checkResu
 	}{
 		{"review-sweeper", review.ConsumerKey},
 		{"status-sweeper", status.ConsumerKey},
+		{"dlqfix-sweeper", dlqfix.ConsumerKey},
+		{"prioritize-sweeper", prioritize.ConsumerKey},
+		{"incident-policy", incident.ConsumerKey},
 	} {
 		seq, exists, err := store.Watermark(ctx, chk.consumer)
 		if err != nil {
