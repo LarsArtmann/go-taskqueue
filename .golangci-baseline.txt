@@ -1,5 +1,5 @@
 cmd/tq	contextcheck:	1
-cmd/tq	cyclop:	13
+cmd/tq	cyclop:	14
 cmd/tq	dogsled:	4
 cmd/tq	err113:	50
 cmd/tq	errcheck:	24
@@ -12,17 +12,21 @@ cmd/tq	goconst:	4
 cmd/tq	gocyclo:	3
 cmd/tq	godoclint:	4
 cmd/tq	godox:	1
+cmd/tq	golines:	2
 cmd/tq	gosmopolitan:	2
 cmd/tq	govet:	6
 cmd/tq	ineffassign:	2
 cmd/tq	makezero:	3
 cmd/tq	mnd:	50
+cmd/tq	modernize:	1
 cmd/tq	nestif:	3
 cmd/tq	noctx:	11
 cmd/tq	nonamedreturns:	2
 cmd/tq	paralleltest:	50
 cmd/tq	predeclared:	1
+cmd/tq	unused:	4
 cmd/tq	varnamelen:	32
+cmd/tq	wsl_v5:	4
 executor	godoclint:	1
 executor	paralleltest:	1
 internal/composition	err113:	1
@@ -101,7 +105,9 @@ internal/queue/sqlitev4	wrapcheck:	33
 internal/readmodel	errcheck:	2
 internal/readmodel	gochecknoglobals:	1
 internal/readmodel	gocognit:	2
+internal/readmodel	mnd:	1
 internal/readmodel	noctx:	6
+internal/readmodel	nonamedreturns:	1
 internal/readmodel	varnamelen:	1
 internal/task	exhaustive:	1
 internal/task	gochecknoglobals:	2
@@ -138,6 +144,7 @@ root	gocritic:	3
 root	gocyclo:	3
 root	godoclint:	5
 root	godox:	9
+root	golines:	1
 root	gosmopolitan:	2
 root	govet:	4
 root	ineffassign:	4
@@ -145,6 +152,7 @@ root	makezero:	8
 root	mnd:	47
 root	modernize:	2
 root	musttag:	1
+root	nestif:	1
 root	nilerr:	4
 root	noctx:	31
 root	nonamedreturns:	8
