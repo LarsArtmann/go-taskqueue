@@ -121,11 +121,11 @@ docs/DOMAIN_LANGUAGE.md.
   self-report.
 - **Verdict channel**: paid turns record via `tq verdict '<json>'` into
   `$TQ_RESULT_FILE` (file > legacy stdout, last-wins).
-- **Batched harvest** (`--batch-items`, default 3 since 2026-10-11): N adjacent
+- **Batched harvest** (`--batch-items`, default 3): N adjacent
   same-section items → one task (dedup `batch:` + SORTED-key hash;
   gates see ONE task); direct `tq enqueue` forbidden — work prompts
-  grant the move. Dispatch prompts are OUTCOME contracts (2026-10-11
-  redesign): mechanical rails only, AGENTS.md owns the rules.
+  grant the move. Prompts are OUTCOME contracts: rails only, AGENTS.md
+  owns the rules.
 - **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated
   or deterministic turns on the closeout-free agent clone; usage derived
   for ALL paid turns. review findings are commit-anchored (verbatim
