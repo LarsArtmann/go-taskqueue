@@ -772,7 +772,14 @@ func TestSweeperGateArtifactWithoutShippedProofNeverAutopsies(t *testing.T) {
 			}
 
 			repo, key := writeTodoRepo(t, tt.todo...)
-			dead := seedDeadGateArtifactTask(t, s, repo, tt.key(repo, key), gateArtifactEvidence(), gateArtifactLastError)
+			dead := seedDeadGateArtifactTask(
+				t,
+				s,
+				repo,
+				tt.key(repo, key),
+				gateArtifactEvidence(),
+				gateArtifactLastError,
+			)
 
 			stats, err := sw.Sweep(context.Background())
 			if err != nil {
@@ -890,7 +897,9 @@ func seedDeadAgentTaskWithReason(
 		t.Fatalf("claim: %v", err)
 	}
 
-	evidence, err := json.Marshal(executor.FailureEvidence{Stage: "verify", ExitCode: 2, Tail: "FAIL: TestShipTheThing"})
+	evidence, err := json.Marshal(
+		executor.FailureEvidence{Stage: "verify", ExitCode: 2, Tail: "FAIL: TestShipTheThing"},
+	)
 	if err != nil {
 		t.Fatalf("marshal evidence: %v", err)
 	}

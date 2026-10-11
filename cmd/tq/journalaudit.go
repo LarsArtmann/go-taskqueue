@@ -310,10 +310,9 @@ func diffProjection(tasks []task.Task, replay map[task.ID]*replayState) DriftRep
 	return report
 }
 
-// journalDrift rebuilds task state from the journal and diffs it against
-// the stored tasks table (status, attempts, priority, dedup key). Advisory
-// by contract: the caller decides whether divergence fails anything.
-func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
+// drainAllFacts pages through the whole journal in Seq order (the shared
+// bulk read behind every fact-folding audit).
+func drainAllFacts(ctx context.Context, store queue.Store) ([]journal.Fact, error) {
 	var facts []journal.Fact
 
 	after := int64(0)
@@ -321,15 +320,25 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 	for {
 		batch, err := store.Facts(ctx, after, factsPageSize)
 		if err != nil {
-			return DriftReport{}, fmt.Errorf("read facts after %d: %w", after, err)
+			return nil, fmt.Errorf("read facts after %d: %w", after, err)
 		}
 
 		facts = append(facts, batch...)
 		if len(batch) < factsPageSize {
-			break
+			return facts, nil
 		}
 
 		after = batch[len(batch)-1].Seq
+	}
+}
+
+// journalDrift rebuilds task state from the journal and diffs it against
+// the stored tasks table (status, attempts, priority, dedup key). Advisory
+// by contract: the caller decides whether divergence fails anything.
+func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
+	facts, err := drainAllFacts(ctx, store)
+	if err != nil {
+		return DriftReport{}, err
 	}
 
 	tasks, err := store.List(ctx, queue.Filter{})

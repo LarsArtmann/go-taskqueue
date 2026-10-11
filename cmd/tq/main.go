@@ -73,6 +73,7 @@ Usage:
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
           [--max-attempts N] [--dry-run] [--json] [--db PATH]
   tq doctor [--json] [--hygiene] [--daily-budget N] [--repos a,b] [--service-unit UNIT] [--db PATH]
+  tq pool-health [--since DUR] [--json] [--db PATH]   (per-repo liveness from the journal: outcome counts, skip streaks, harvest recency; advisory, exit 0)
   tq top [--interval DUR] [--once] [--json] [--db PATH]
   tq show TASK_ID [--db PATH]   (a unique ID prefix works)
   tq dlq [--db PATH] [--rescue TASK_ID [--max-attempts N]] [--dismiss TASK_ID [--reason WHY]]
@@ -135,6 +136,7 @@ func main() {
 		"stats":        cmdStats,
 		"tasks":        cmdTasks,
 		"audit":        cmdAudit,
+		"pool-health":  cmdPoolHealth,
 		"doctor":       cmdDoctor,
 		"top":          cmdTop,
 		"show":         cmdShow,

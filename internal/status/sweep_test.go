@@ -594,7 +594,9 @@ func TestSweepMinIntervalGatesMint(t *testing.T) {
 	}
 
 	runAgentTask(t, s, 0, executor.AgentResult{})
+
 	_, _ = sw.Sweep(ctx)
+
 	runAgentTask(t, s, 1, executor.AgentResult{})
 
 	if stats, err := sw.Sweep(ctx); err != nil || stats.ReportsEnqueued != 1 {
