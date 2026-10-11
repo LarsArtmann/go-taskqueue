@@ -96,6 +96,16 @@ const (
 	FailureClassEnvironment    = internalexecutor.FailureClassEnvironment
 )
 
+// EnvStreakCode marks breaker-burned attempts in the journal: a
+// consecutive environmental-death streak escalating into attempt burn.
+const EnvStreakCode = internalexecutor.EnvStreakCode
+
+// IsEnvironmentalDeath reports whether a terminal failure is an
+// environmental death (rate limits, provider windows, breaker burns,
+// red-at-base, gate-slow deadline-before-verdict) — unfixable from
+// inside the repository, so autopsies can only rule wontfix.
+var IsEnvironmentalDeath = internalexecutor.IsEnvironmentalDeath
+
 // ClassifyFailure maps a failed run's error onto the retry taxonomy.
 var ClassifyFailure = internalexecutor.ClassifyFailure
 

@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [v0.3.4] - 2026-10-11
+
 ### Changed
 - **Throughput-engine redesign (2026-10-11)**: dispatch prompts are now
   outcome contracts and batching is on by default, per the measured
@@ -20,6 +22,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   flips 0→3 (micro-batch waste fix; 0/1 = off still honored).
 
 ### Added
+- **Deployment-consuming API wave** (floors for the replace-free CLI
+  module, ADR-0017): `queue/sqlite` and `sqlitev4` gain
+  `OpenWithDeployment(config.Deployment, ...)`; `composition` gains
+  `NewProjectionRuntime` and its `New` consumes the deployment, as does
+  `readmodel.OpenDeadLetters(ctx, Deployment)` — both breaking, hence
+  v0.4.0; additive v0.3.4 floors carry `config.Deployment.DLQPragmas`,
+  the executor's env-death/finding-merge helpers, and the root module's
+  `internal/incident` package. cmd/tq floors move to this wave.
 - **`tq pool-health`** (2026-10-11): one-shot per-repo liveness from the
   fact journal — outcome counts, requeue classes, skip streaks (trailing
   environment-class requeues since the repo's last terminal fact; WARN at

@@ -1,0 +1,11 @@
+# Link-check policy (lychee autodetects this file).
+#
+# EXCLUDE over GITHUB_TOKEN: unauthenticated checks 404 on private
+# LarsArtmann repos (e.g. PapDashboard), and baking a token into CI-local
+# runs is not the repo's call — the fleet authenticate-vs-exclude policy
+# is undecided, so the repo side stays self-contained.
+
+exclude = ['(?i)https://github\.com/larsartmann/.*']
+
+# Point-in-time archive dirs quote the links they fixed as-is.
+exclude_path = ['docs/release/archived']

@@ -10,7 +10,7 @@ and `docs/research/2026-10-09_turnstone-lessons.md`.
 # <Source> lessons for go-taskqueue
 
 **Date:** <YYYY-MM-DD> (source-verification window).
-**Source:** [`<org>/<repo>`](url) @ `<pinned-sha-or-tag>` (<language>,
+**Source:** `<org>/<repo>` (<URL>) @ `<pinned-sha-or-tag>` (<language>,
 <license>). _State whether docs-only or code-read; name the exact files read._
 **Companion notes:** <sibling research notes, or "none">.
 
