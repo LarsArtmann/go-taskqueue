@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/config"
+	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/session"
-	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
