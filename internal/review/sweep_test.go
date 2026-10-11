@@ -280,7 +280,7 @@ func TestSweepAutofixMintsFixTasksPerFinding(t *testing.T) {
 		if strings.Contains(p.Prompt, "nil map write") {
 			nilMapFix = fix
 
-			for _, want := range []string{"original item", "high", "def5678", "no unrelated changes"} {
+			for _, want := range []string{"original item", "high", "def5678", "Fix this finding"} {
 				if !strings.Contains(p.Prompt, want) {
 					t.Errorf("fix prompt missing %q", want)
 				}
