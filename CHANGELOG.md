@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Projection worker-death surface**: a fold worker that exhausts its
+  restart budget stops consuming while the platform reports it at
+  lag 0 — invisible to the cursor-vs-head doctor checks. Every
+  projection host (serve's composition root and the api pump) now
+  wires the platform's WorkerFailed metrics hook to a durable marker
+  beside the projection db (`readmodel.WorkerFailedMarkerPath`;
+  fresh hosts clear it, so a standing marker means the fold died and
+  nobody restarted it), and `tq doctor` reports it as a WARN naming
+  the restart remedy (`doctorProjectionWorkerDeath`).
+
 ## [v0.3.4] - 2026-10-11
 
 ### Changed
