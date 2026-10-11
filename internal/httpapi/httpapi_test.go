@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-cqrs-lite/event/v4"
+	errorfamily "github.com/larsartmann/go-error-family"
 	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/incident"
 	"github.com/larsartmann/go-taskqueue/internal/lockout"
@@ -718,6 +720,133 @@ func TestUseReadModelArmsManagedHost(t *testing.T) {
 
 	if err := <-served; err != nil {
 		t.Fatalf("ListenAndServe = %v, want clean shutdown", err)
+	}
+}
+
+// apiPoison refuses every event with the fold's corruption
+// classification (non-retryable): a deterministic poison fact for the
+// api surface's DLQ wire pin.
+type apiPoison struct{}
+
+func (apiPoison) Name() string { return "api-poison" }
+
+func (apiPoison) EventTypes() []event.Type {
+	return []event.Type{event.Type("task.enqueued")}
+}
+
+func (apiPoison) Handle(context.Context, event.Event) error {
+	return errorfamily.NewCorruption("test.api-poison", "deliberate poison")
+}
+
+// TestUseReadModelDeadLettersPoisonThroughWiredStore pins the api
+// surface's poison-DLQ WIRE end-to-end: UseReadModel must actually pass
+// the sidecar into ProjectionHostOptions.DeadLetterStore. Dropping that
+// one line silently downgrades a poison fact from dead-letter-and-
+// converge to restart-budget-exhausted WorkerFailed while the arming
+// test (non-nil host/dlq, clean start/stop) stays green. The pin folds a
+// poison fact through the api-armed host, asserts a row lands in the
+// sidecar at readmodel.DLQPathFor(readmodel.PathFor(d.DBPath)), and
+// that GET /api/v1/stats keeps being served across the poison.
+func TestUseReadModelDeadLettersPoisonThroughWiredStore(t *testing.T) {
+	srv, store := newTestAPI(t)
+	enqueueTask(t, store, "billing")
+
+	d := config.SQLite(filepath.Join(t.TempDir(), "queue.db"))
+
+	if err := srv.UseReadModel(context.Background(), d); err != nil {
+		t.Fatalf("use read model: %v", err)
+	}
+
+	if err := srv.host.Register(apiPoison{}); err != nil {
+		t.Fatalf("register poison projection: %v", err)
+	}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("reserve port: %v", err)
+	}
+
+	addr := ln.Addr().String()
+
+	if err := ln.Close(); err != nil {
+		t.Fatalf("close port probe: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	served := make(chan error, 1)
+
+	go func() { served <- srv.ListenAndServe(ctx, addr) }()
+
+	deadline := time.Now().Add(10 * time.Second)
+
+	for {
+		n, err := srv.dlq.Count(ctx)
+		if err == nil && n > 0 {
+			break
+		}
+
+		if time.Now().After(deadline) {
+			cancel()
+			_ = <-served
+			t.Fatalf("poison fact never dead-lettered (last count %d err %v); the DeadLetterStore wire is dropped or the restart budget ate the fact", n, err)
+		}
+
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	// The stats read stays served across the poison: the fold keeps
+	// converging past the dead-lettered fact.
+	url := "http://" + addr + "/api/v1/stats"
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("build stats request: %v", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer secret-token")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		cancel()
+		_ = <-served
+		t.Fatalf("stats after poison: %v", err)
+	}
+
+	var stats map[string]int
+
+	err = json.NewDecoder(resp.Body).Decode(&stats)
+	_ = resp.Body.Close()
+
+	if err != nil || resp.StatusCode != http.StatusOK {
+		cancel()
+		_ = <-served
+		t.Fatalf("stats after poison = %d %v, want 200 with a body", resp.StatusCode, err)
+	}
+
+	cancel()
+
+	if err := <-served; err != nil {
+		t.Fatalf("ListenAndServe = %v, want clean shutdown", err)
+	}
+
+	// Independent file check: the row lives in the sidecar derived from
+	// the deployment, not just in the in-memory handle.
+	side, err := readmodel.OpenDeadLetters(context.Background(), d)
+	if err != nil {
+		t.Fatalf("reopen dlq sidecar: %v", err)
+	}
+
+	n, err := side.Count(context.Background())
+
+	closeErr := side.Close()
+
+	if err != nil || n == 0 {
+		t.Fatalf("dlq file rows = %d err %v, want the poison fact persisted", n, err)
+	}
+
+	if closeErr != nil {
+		t.Fatalf("close reopened sidecar: %v", closeErr)
 	}
 }
 
