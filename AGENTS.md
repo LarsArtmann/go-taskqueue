@@ -235,7 +235,12 @@ docs/DOMAIN_LANGUAGE.md.
   source via heredocs; fixtures under /tmp (gated trees are daemon-food).
   Footer-less daemon `chore:` sweeps heal via
   `scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>`
-  (unpushed only; backup on failure; `--self-test` pins rails).
+  (unpushed only; backup on failure; `--self-test` pins rails). The
+  script REFUSES a non-contiguous footer-less span (same-ID/foreign-ID
+  commits interleaved) — manual fallback: `git show --stat` each commit
+  to verify exactly-mine, then a direct `git commit --amend` on the
+  unpushed HEAD (proven 2026-10-11 task 000001a1288ceb2f; source: its
+  closeout §d4).
 - **TestExactlyOnceUnderConcurrency is load-flaky** (worker): host build
   storms can drop it to "19/20 completed"; fails at clean parents too —
   re-run before attributing.
