@@ -231,12 +231,14 @@ github.com/larsartmann/go-taskqueue/internal/executor v0.3.3 h1:zf0EZx/6jkkRlH39
 github.com/larsartmann/go-taskqueue/internal/executor v0.3.3/go.mod h1:jpi8ojCasmnzdCJO7dshiRMMTUVMUJ8n60K0yLnlZMA=
 github.com/larsartmann/go-taskqueue/internal/journal v0.3.3 h1:Ea/YYdS1i6NOznVVKkVV7dJANalApvJJgs7hmfefkFc=
 github.com/larsartmann/go-taskqueue/internal/journal v0.3.3/go.mod h1:Ktr10CCSj7AC2UMnzqColm8nHtr9vteJrmUdoKxQJzU=
+github.com/larsartmann/go-taskqueue/internal/journal v0.4.0/go.mod h1:8VMbiJbplYXnjU+gOUyOhn+s96P3/Sw4186+d1LDldE=
 github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3 h1:NNq74e7Ohg6VL2aMwGsdPr8ukODI9nZdXCyL5E6go8o=
 github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3/go.mod h1:gh6LYpEVRi9JZwr6rCQwIPULncnVLLPDu5/FD4QvOW8=
 github.com/larsartmann/go-taskqueue/internal/queue v0.3.3 h1:xt86KZgewKZtDHPP1OBmoL7r4Tul9pxahPmrvpUvzg0=
 github.com/larsartmann/go-taskqueue/internal/queue v0.3.3/go.mod h1:AmoUQ3Wx1izERr5cUFWbN4+4chmYX6CZw87FBL867lo=
 github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.3 h1:8GJeL+b0NpM2wGcXi5zLw53h8ZT3IBTT7jvi3nNAlxk=
 github.com/larsartmann/go-taskqueue/internal/queue/companion v0.3.3/go.mod h1:NJ5BlQy9oC2myyALSrKcF/5CqYx+7FsiL00vRdiOlzo=
+github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0/go.mod h1:RYsBlnuc9z70XaAksymglEXLFmraL/jbf0aicx7is7Q=
 github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.3 h1:gh8mTy0tPZICha6N5/fOKnTugKp/7foz5MxdxvXgByY=
 github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.3/go.mod h1:oxfizf4cm9mn6Vq6ttKzXZhAbv0w9SYFy2kd+PaXpU0=
 github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.3 h1:PtZXmal/ASN1I0d9+PZfyVX2Qx5eTALb5QC34u44eJA=
