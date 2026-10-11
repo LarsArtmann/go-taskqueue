@@ -50,8 +50,12 @@ import (
 // conscious reset 18,750 → 19,000: the ADR-0022 deployment-lane
 // invariant (one config.Deployment store-opening input, pragma literals
 // config-owned) is net-new load-bearing, paid for by pruning the IO
-// policy's now-config-owned pragma enumeration in place.
-const agentsDocMaxBytes = 19_000
+// policy's now-config-owned pragma enumeration in place. 2026-10-11
+// conscious reset 19,000 → 19,600: the MAJOR-problems pointer
+// (docs/problems/major-prompting-and-batching.md, owner-mandated) and
+// the readmodel schema-drift outage lesson are net-new load-bearing,
+// paid for by compacting both blocks in place (19,595 → 19,518 B).
+const agentsDocMaxBytes = 19_600
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
