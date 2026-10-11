@@ -5,8 +5,8 @@
 [`docs/status/2026-10-11_00-04_deployment-log-triage-readmodel-outage-fixed.md`] and
 [`docs/status/2026-10-11_02-23_prompting-batch-size-comparison-owner-claim-measured.md`])
 
-Owner's hypothesis, confirmed by measurement: *"we split work in WAY too small batches and
-treat the AI agents like we do not trust them at all... our prompting is pathetic."*
+Owner's hypothesis, confirmed by measurement: _"we split work in WAY too small batches and
+treat the AI agents like we do not trust them at all... our prompting is pathetic."_
 
 ---
 
@@ -18,12 +18,12 @@ and buys no safety.
 **Measured** (CV `.crush/crush.db`, 600-message window, 572 non-empty user messages; the pool
 runs crush with cwd=repo, so the DB holds both populations):
 
-| Population | n | median | words | framing |
-|---|---|---|---|---|
-| Pool dispatch contracts (agent/review/reviewfix/autopsy) | 168 | **2,675 chars** | 393 | ~12 distrust markers each |
-| Machine status dispatch ("FULL COMPREHENSIVE STATUS UPDATE!") | 213 | 661 chars | 109 | ceremony |
-| Owner template ("READ, UNDERSTAND... keep going until everything works... great job!") | 137 | 242 chars | 40 | 100% autonomy-positive |
-| Owner freeform | 54 | 121 chars | 18 | "done?" |
+| Population                                                                             | n   | median          | words | framing                   |
+| -------------------------------------------------------------------------------------- | --- | --------------- | ----- | ------------------------- |
+| Pool dispatch contracts (agent/review/reviewfix/autopsy)                               | 168 | **2,675 chars** | 393   | ~12 distrust markers each |
+| Machine status dispatch ("FULL COMPREHENSIVE STATUS UPDATE!")                          | 213 | 661 chars       | 109   | ceremony                  |
+| Owner template ("READ, UNDERSTAND... keep going until everything works... great job!") | 137 | 242 chars       | 40    | 100% autonomy-positive    |
+| Owner freeform                                                                         | 54  | 121 chars       | 18    | "done?"                   |
 
 - Distrust density per pool prompt: **6.2× "never"**, plus per-prompt "no scope creep",
   "smallest correct change", "self-dealing", "EXACTLY", "do NOT" (caveat: "never" includes
@@ -52,7 +52,7 @@ count.
   Exemplar: a reviewer finding "swap two duration numbers in TODO_LIST.md" became a full paid
   agent run — 2.7 KB contract, verify gate, review cycle.
 - Status cadence `--status-every 5` produced **213 status-report agent runs in CV alone**;
-  session titles self-document the pathology: *"Fix eleventh no-op report contract violation"*.
+  session titles self-document the pathology: _"Fix eleventh no-op report contract violation"_.
 - Autopsy churn: environmental deaths (env-streak, dirty repo) mint paid dlqfix autopsies that
   cannot fix anything — ~7 futile cycles on 2026-10-10.
 - Throughput ceiling: `daily-budget=30` enqueued, `max-per-tick=3`, 5 m ticks ≈ **~10 real

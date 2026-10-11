@@ -9,8 +9,7 @@ services.
 files, re-run tests; uncommitted parallel changes: read, judge, build
 on, never revert. (Size guard: TestAgentsDocSizeGuard)
 
-**MAJOR OPEN PROBLEMS**: [dispatch prompting +
-batch granularity](docs/problems/major-prompting-and-batching.md) —
+**MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) —
 distrust-bloated contracts, one-TODO-line micro-batches, 52% derived
 ceremony (measured 2026-10-11); redesign pending owner go/no-go.
 

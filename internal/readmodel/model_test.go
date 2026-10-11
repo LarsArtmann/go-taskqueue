@@ -21,6 +21,7 @@ func TestProjectionHomeCallerPragmasHonorSyncEnv(t *testing.T) {
 	for _, tt := range tests {
 		t.Run("TQ_SQLITE_SYNC="+tt.env, func(t *testing.T) {
 			t.Setenv(config.EnvSyncPolicy, tt.env)
+
 			got := projectionHomeCallerPragmas()
 			if !slices.Equal(got, tt.want) {
 				t.Fatalf("pragmas = %v, want %v", got, tt.want)

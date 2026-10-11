@@ -106,37 +106,37 @@ its own report at `2026-10-11_00-04_...md`).
 ## f) NEXT (session-scoped; ≤50 real items, no filler)
 
 | #  | Item                                                                                                  | Owner? |
-|----|-------------------------------------------------------------------------------------------------------|--------|
-| 1  | GO/NO-GO on the redesign: rewrite pool prompt templates + section-level batching + ceremony cuts      | owner |
-| 2  | If go: one focused change — new prompt builder (goal + AGENTS.md pointer + verify + footer, ≤5 lines) | agent |
-| 3  | If go: batch semantics — harvest section/day goals, one claim per batch, per-commit gate verify       | agent |
-| 4  | If go: status cadence per-session-or-per-day (kills the 213-report class)                             | agent |
-| 5  | If go: review gating to risky task types (code vs docs) — review-on-everything is 258 runs            | agent |
-| 6  | If go: autopsy only for non-environmental death classes (env-streak autopsy churn: 7 futile runs/day) | agent |
-| 7  | TODO_LIST row for the proposal NOW (survives regardless of go/no-go) — repairs §d1                     | agent |
-| 8  | Outcome join: task status × prompt class (do 400-word contracts actually fail less?)                  | agent |
-| 9  | Classifier spot-check: sample 20 "freeform" messages, hand-verify, correct the 9% share               | agent |
-| 10 | Recount "never" excluding boilerplate footers (honest distrust density)                               | agent |
-| 11 | Cross-check go-taskqueue's own .crush/crush.db prompt population (completes §b5)                      | agent |
-| 12 | Commit the extraction script as scripts/analysis/prompt-compare.py (rerunnable)                       | agent |
-| 13 | Measure token cost of contract bloat: 393 words × 627 agent tasks ≈ paid overhead estimate            | agent |
-| 14 | Batch simulation: replay last 30 days as section-batches — how many agent runs would it have been?    | agent |
-| 15 | A/B template: dispatch N section-batch tasks with the 5-line prompt, compare outcome rate             | agent |
-| 16 | Status-report value audit: of 213 CV status runs, how many produced an actionable item?              | agent |
-| 17 | Review yield audit: of 258 reviews, findings-per-review and fix-task conversion                      | agent |
-| 18 | Prompt-template versioning: stamp template id in task facts so future comparisons are joinable       | agent |
-| 19 | De-noise dispatch headers: agent contract restates AGENTS.md — diff against repo AGENTS.md            | agent |
-| 20 | Budget shape under batching: per-item cap vs per-batch (question §g3 feeds this)                      | owner |
-| 21 | max-per-tick=3 + interval=5m review under batching (one batch = N items changes pacing math)          | agent |
-| 22 | Closeout contract: is the a)-g) closeout itself right-sized for a section-batch world?                | owner |
-| 23 | dlqfix template trim (autopsy prompts carry the same 400-word contract boilerplate)                    | agent |
-| 24 | Review executor template trim (21+ strict-reviewer dispatches in window)                              | agent |
-| 25 | Item-granularity guard at harvest: refuse/merge ≤10-word items (3% today) into parents                | agent |
-| 26 | Measure pool-prompt READ cost per task (393 words × ~168 CV runs in window = context tax)             | agent |
-| 27 | Fold this + the 00-04 report's §c1-4 into ONE TODO_LIST harvest session (docs-health HARVEST)         | agent |
-| 28 | Re-check the owner's RUR template itself: does "break into steps + verify each" still fit batching?   | owner |
-| 29 | Note in AGENTS.md: prompt-contract policy pointer once redesign lands (conventions section)           | agent |
-| 30 | Retire or re-scope the "status-every=5" flag default in pool conf after cadence decision              | agent |
+| -- | ----------------------------------------------------------------------------------------------------- | ------ |
+| 1  | GO/NO-GO on the redesign: rewrite pool prompt templates + section-level batching + ceremony cuts      | owner  |
+| 2  | If go: one focused change — new prompt builder (goal + AGENTS.md pointer + verify + footer, ≤5 lines) | agent  |
+| 3  | If go: batch semantics — harvest section/day goals, one claim per batch, per-commit gate verify       | agent  |
+| 4  | If go: status cadence per-session-or-per-day (kills the 213-report class)                             | agent  |
+| 5  | If go: review gating to risky task types (code vs docs) — review-on-everything is 258 runs            | agent  |
+| 6  | If go: autopsy only for non-environmental death classes (env-streak autopsy churn: 7 futile runs/day) | agent  |
+| 7  | TODO_LIST row for the proposal NOW (survives regardless of go/no-go) — repairs §d1                    | agent  |
+| 8  | Outcome join: task status × prompt class (do 400-word contracts actually fail less?)                  | agent  |
+| 9  | Classifier spot-check: sample 20 "freeform" messages, hand-verify, correct the 9% share               | agent  |
+| 10 | Recount "never" excluding boilerplate footers (honest distrust density)                               | agent  |
+| 11 | Cross-check go-taskqueue's own .crush/crush.db prompt population (completes §b5)                      | agent  |
+| 12 | Commit the extraction script as scripts/analysis/prompt-compare.py (rerunnable)                       | agent  |
+| 13 | Measure token cost of contract bloat: 393 words × 627 agent tasks ≈ paid overhead estimate            | agent  |
+| 14 | Batch simulation: replay last 30 days as section-batches — how many agent runs would it have been?    | agent  |
+| 15 | A/B template: dispatch N section-batch tasks with the 5-line prompt, compare outcome rate             | agent  |
+| 16 | Status-report value audit: of 213 CV status runs, how many produced an actionable item?               | agent  |
+| 17 | Review yield audit: of 258 reviews, findings-per-review and fix-task conversion                       | agent  |
+| 18 | Prompt-template versioning: stamp template id in task facts so future comparisons are joinable        | agent  |
+| 19 | De-noise dispatch headers: agent contract restates AGENTS.md — diff against repo AGENTS.md            | agent  |
+| 20 | Budget shape under batching: per-item cap vs per-batch (question §g3 feeds this)                      | owner  |
+| 21 | max-per-tick=3 + interval=5m review under batching (one batch = N items changes pacing math)          | agent  |
+| 22 | Closeout contract: is the a)-g) closeout itself right-sized for a section-batch world?                | owner  |
+| 23 | dlqfix template trim (autopsy prompts carry the same 400-word contract boilerplate)                   | agent  |
+| 24 | Review executor template trim (21+ strict-reviewer dispatches in window)                              | agent  |
+| 25 | Item-granularity guard at harvest: refuse/merge ≤10-word items (3% today) into parents                | agent  |
+| 26 | Measure pool-prompt READ cost per task (393 words × ~168 CV runs in window = context tax)             | agent  |
+| 27 | Fold this + the 00-04 report's §c1-4 into ONE TODO_LIST harvest session (docs-health HARVEST)         | agent  |
+| 28 | Re-check the owner's RUR template itself: does "break into steps + verify each" still fit batching?   | owner  |
+| 29 | Note in AGENTS.md: prompt-contract policy pointer once redesign lands (conventions section)           | agent  |
+| 30 | Retire or re-scope the "status-every=5" flag default in pool conf after cadence decision              | agent  |
 
 (Carry-overs from the 00-04 report — restart, release, budget decision — remain listed THERE;
 not re-researched per this report's scope rule.)
@@ -156,5 +156,5 @@ not re-researched per this report's scope rule.)
 
 ---
 
-*Daemon note: intentionally uncommitted (harness forbids manual commits); daemon sweeps
-docs/status/. Index row added in the same change per `check-status-index.sh`.*
+_Daemon note: intentionally uncommitted (harness forbids manual commits); daemon sweeps
+docs/status/. Index row added in the same change per `check-status-index.sh`._

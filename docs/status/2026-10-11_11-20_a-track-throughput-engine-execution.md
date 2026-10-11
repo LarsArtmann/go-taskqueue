@@ -202,5 +202,5 @@ prompt/batching behavior on master-built binaries?
 
 ---
 
-*Report written by the A-track execution session; work resumes at §f.1.
-Index row added to README.md (one write point, top cluster).*
+_Report written by the A-track execution session; work resumes at §f.1.
+Index row added to README.md (one write point, top cluster)._

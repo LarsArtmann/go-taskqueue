@@ -29,6 +29,7 @@ func createPlannedTable(t *testing.T, path string, cols []string) {
 	decl := "id TEXT PRIMARY KEY"
 
 	var declSb28 strings.Builder
+
 	for _, col := range cols {
 		if col == "id" {
 			continue
@@ -36,6 +37,7 @@ func createPlannedTable(t *testing.T, path string, cols []string) {
 
 		declSb28.WriteString(", " + col + " TEXT")
 	}
+
 	decl += declSb28.String()
 
 	if _, err := db.Exec("CREATE TABLE " + tasksPlannedTable + " (" + decl + ")"); err != nil {
