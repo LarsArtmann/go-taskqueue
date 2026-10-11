@@ -184,14 +184,20 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since t
 		}
 	}
 
-	report := PoolHealthReport{Since: since.Format(time.RFC3339), FactsFolded: len(facts), Repos: make([]RepoHealth, 0, len(repos))}
+	report := PoolHealthReport{
+		Since:       since.Format(time.RFC3339),
+		FactsFolded: len(facts),
+		Repos:       make([]RepoHealth, 0, len(repos)),
+	}
 
 	for _, r := range repos {
 		if r.SkipStreak >= poolWarnStreak {
 			r.Verdict = poolVerdictWarn
 			r.Warnings = append(r.Warnings, fmt.Sprintf(
 				"skip streak %d: consecutive environment requeues with no outcome; the env-streak breaker escalates at %d",
-				r.SkipStreak, poolWarnStreak))
+				r.SkipStreak,
+				poolWarnStreak,
+			))
 		}
 
 		if r.Enqueued > 0 && r.Completed+r.Failed+r.Dead == 0 {
@@ -286,9 +292,19 @@ func printPoolHealth(report PoolHealthReport) {
 			requeues += n
 		}
 
-		fmt.Printf("%-4s %-24s enq=%-4d done=%-4d fail=%-3d dead=%-3d requeues=%-3d streak=%-3d harvest=%s activity=%s\n",
-			r.Verdict, r.Repo, r.Enqueued, r.Completed, r.Failed, r.Dead, requeues,
-			r.SkipStreak, ageOrNever(r.LastHarvest), ageOrNever(r.LastActivity))
+		fmt.Printf(
+			"%-4s %-24s enq=%-4d done=%-4d fail=%-3d dead=%-3d requeues=%-3d streak=%-3d harvest=%s activity=%s\n",
+			r.Verdict,
+			r.Repo,
+			r.Enqueued,
+			r.Completed,
+			r.Failed,
+			r.Dead,
+			requeues,
+			r.SkipStreak,
+			ageOrNever(r.LastHarvest),
+			ageOrNever(r.LastActivity),
+		)
 
 		for _, w := range r.Warnings {
 			fmt.Printf("       ↳ %s\n", w)
