@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -83,5 +84,34 @@ func TestDoctorProjectionDLQ(t *testing.T) {
 
 	if len(r.Items) != 1 || r.Items[0] == "" {
 		t.Errorf("Items = %v, want the poison entry row", r.Items)
+	}
+}
+
+// TestDoctorProjectionDLQLegacySidecar pins the stale-legacy-sidecar WARN:
+// a pre-fix sidecar at DLQPathFor(d.DBPath) (<db>.dlq.db) with no corrected
+// sidecar beside the projection database must warn, not read as ok.
+func TestDoctorProjectionDLQLegacySidecar(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "q.db")
+
+	legacyPath := readmodel.DLQPathFor(path)
+	if err := os.WriteFile(legacyPath, []byte{}, 0o600); err != nil {
+		t.Fatalf("create legacy sidecar: %v", err)
+	}
+
+	results, err := runDoctor(ctx, doctorOptions{Deployment: config.SQLite(path), DLQ: true})
+	if err != nil {
+		t.Fatalf("runDoctor: %v", err)
+	}
+
+	r := resultByName(results, "projection-dlq")
+	if r.Status != checkWarn {
+		t.Errorf("legacy-only sidecar = %s (%s), want warn", r.Status, r.Detail)
+	}
+
+	if r.Detail != "stale legacy sidecar — inspect then remove/migrate" {
+		t.Errorf("Detail = %q, want the stale-legacy message", r.Detail)
 	}
 }
