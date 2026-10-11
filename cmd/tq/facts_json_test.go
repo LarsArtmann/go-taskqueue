@@ -55,7 +55,13 @@ import (
 // (docs/problems/major-prompting-and-batching.md, owner-mandated) and
 // the readmodel schema-drift outage lesson are net-new load-bearing,
 // paid for by compacting both blocks in place (19,595 → 19,518 B).
-const agentsDocMaxBytes = 19_600
+// 2026-10-12 conscious reset 19,600 → 20,000: the daemon-sweep manual
+// fallback (heal-daemon-sweep refuses non-contiguous footer-less spans;
+// verify exactly-mine + direct amend on the unpushed HEAD) is net-new
+// load-bearing Known Issue; a full-file scan found no phrasing waste
+// left to pay with (the file was repeat-compacted to within 2 B of the
+// budget in the two prior windows).
+const agentsDocMaxBytes = 20_000
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
