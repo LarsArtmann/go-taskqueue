@@ -790,21 +790,22 @@ func TestBudgetBlockedAlertResolvesOnDayRollover(t *testing.T) {
 
 	calls := pap.calls()
 
-	if len(calls) != 3 {
+	if len(calls) != 4 {
 		t.Fatalf(
-			"got %d events, want 3 (trigger, rollover resolve, re-trigger): %+v",
+			"got %d events, want 4 (trigger, rollover resolve, all-day escalation, re-trigger): %+v",
 			len(calls),
 			calls,
 		)
 	}
 
 	if calls[0].Event != "alert.triggered" || calls[1].Event != "alert.resolved" ||
-		calls[2].Event != "alert.triggered" {
+		calls[2].Event != "alert.triggered" || calls[3].Event != "alert.triggered" {
 		t.Fatalf(
-			"want trigger/resolve/trigger, got %s, %s, %s",
+			"want trigger/resolve/trigger/trigger, got %s, %s, %s, %s",
 			calls[0].Event,
 			calls[1].Event,
 			calls[2].Event,
+			calls[3].Event,
 		)
 	}
 
@@ -812,7 +813,44 @@ func TestBudgetBlockedAlertResolvesOnDayRollover(t *testing.T) {
 		t.Errorf("resolve aggregate = %s, want the day-1 window", calls[1].AggregateID)
 	}
 
-	if calls[2].AggregateID != "agent-pool-budget-blocked-2026-09-09" {
-		t.Errorf("re-trigger aggregate = %s, want the day-2 window", calls[2].AggregateID)
+	// The 23h parked window (09:00 day 1 to 08:00 day 2) is the all-day
+	// class: the escalation fires between the rollover resolve and the
+	// day-2 re-trigger, on its own day-scoped aggregate.
+	if calls[2].AggregateID != "agent-pool-budget-all-day-2026-09-08" {
+		t.Errorf("escalation aggregate = %s, want the all-day class", calls[2].AggregateID)
+	}
+
+	if calls[3].AggregateID != "agent-pool-budget-blocked-2026-09-09" {
+		t.Errorf("re-trigger aggregate = %s, want the day-2 window", calls[3].AggregateID)
+	}
+}
+
+// TestBudgetBlockedShortParkSkipsAllDayEscalation pins the escalation's
+// threshold: a parked window that bridged midnight but spanned only two
+// hours is ordinary daily-cap behavior — rollover resolve and re-trigger,
+// never the all-day class.
+func TestBudgetBlockedShortParkSkipsAllDayEscalation(t *testing.T) {
+	pap := newFakePap(t)
+	evening := time.Date(2026, 9, 8, 23, 0, 0, 0, time.UTC)
+	morning := time.Date(2026, 9, 9, 1, 0, 0, 0, time.UTC)
+
+	src := &fakeSource{}
+	src.add(budgetBlockedFacts(evening, 1, 1)...)
+	src.add(budgetBlockedFacts(morning, 1, 10)...)
+
+	b := New(src, nil, Config{Endpoint: pap.server.URL, APIKey: "k", Logger: quietLogger()})
+
+	forwardAll(t, b, src)
+
+	calls := pap.calls()
+
+	if len(calls) != 3 {
+		t.Fatalf("got %d events, want 3 (trigger, resolve, re-trigger): %+v", len(calls), calls)
+	}
+
+	for _, call := range calls {
+		if strings.Contains(call.AggregateID, "budget-all-day") {
+			t.Errorf("2h parked window escalated: %+v", call)
+		}
 	}
 }

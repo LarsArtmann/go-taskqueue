@@ -116,10 +116,21 @@ type Bridge struct {
 	// Claim-side budget telemetry: the first budget-class task.requeued
 	// fact of a day fires the budget-blocked alert once (trackBudgetBlocked)
 	// — independent of Config.DailyBudget, since a budget-CMD pool blocks
-	// claims without any enqueue cap configured.
+	// claims without any enqueue cap configured. blockedFirstAt anchors the
+	// all-day escalation: a parked window that spanned most of the day is
+	// a spend-posture incident, not a quiet rollover.
 	blockedDay     string
 	blockedAlerted bool
+	blockedFirstAt time.Time
 }
+
+// budgetAllDayThreshold is the parked span that escalates to the
+// budget-parked-all-day class at rollover: below it a park-and-rollover
+// is ordinary daily-cap behavior; at or above it the money gate idled
+// the pool for effectively the whole day.
+const budgetAllDayThreshold = 8 * time.Hour
+
+func budgetAllDayAggregate(day string) string { return "agent-pool-budget-all-day-" + day }
 
 // New builds a Bridge. checkpoints persists the journal cursor across
 // restarts (queue.Store satisfies WatermarkStore); nil keeps the legacy
@@ -680,6 +691,30 @@ func (b *Bridge) trackBudgetBlocked(ctx context.Context, fact journal.Fact) erro
 			); err != nil {
 				return err
 			}
+
+			// The all-day class (B10.2): a parked window that spanned most
+			// of the day is a spend-posture incident, not a quiet rollover —
+			// escalate once so the day the money gate idled the pool stays
+			// visible after the resolve closes the window.
+			if parked := fact.Time.Sub(b.blockedFirstAt); parked >= budgetAllDayThreshold {
+				allDay := map[string]any{
+					"severity": b.cfg.Severity,
+					"title":    "agent-pool budget-parked all day",
+					"body": fmt.Sprintf(
+						"Budget-blocked claims spanned %s of %s: the pool idled on the money gate from the first parked claim to the rollover.",
+						parked.Round(time.Hour), b.blockedDay,
+					),
+					"sourceApp": b.cfg.SourceApp,
+					"metadata": map[string]string{
+						"day":          b.blockedDay,
+						"parked_hours": strconv.Itoa(int(parked.Hours())),
+					},
+				}
+				if err := b.post(ctx, "alert.triggered", idempotencyKey("budget-all-day", fact.Seq),
+					budgetAllDayAggregate(b.blockedDay), fact.Seq, allDay); err != nil {
+					return err
+				}
+			}
 		}
 
 		b.blockedDay, b.blockedAlerted = day, false
@@ -711,6 +746,7 @@ func (b *Bridge) trackBudgetBlocked(ctx context.Context, fact journal.Fact) erro
 	}
 
 	b.blockedAlerted = true
+	b.blockedFirstAt = fact.Time
 
 	return nil
 }
@@ -826,6 +862,103 @@ func (b *Bridge) NotifyStarvation(
 
 	return b.post(ctx, "alert.triggered",
 		idempotencyKey("starvation", time.Now().Unix()), starvationAggregate, 0, payload)
+}
+
+// workerExhaustedAggregate is the alert identity for the projection
+// worker-death incident (B9.3's durable sidecar): pool-scoped and
+// synthetic so a death's trigger/resolve pair keeps one alert.
+const workerExhaustedAggregate = "agent-pool-projection-worker"
+
+// NotifyWorkerExhausted reports the worker-death marker's verdict:
+// triggered=true raises alert.triggered when the fold worker exhausted
+// its restart budget and stopped consuming (the lag-0 death the
+// cursor-vs-head checks cannot see); triggered=false resolves when a
+// fresh host cleared the marker. Direct-notify like NotifyDeadPool: a
+// file observation, not a fact, best-effort delivery.
+func (b *Bridge) NotifyWorkerExhausted(
+	ctx context.Context,
+	triggered bool,
+	projection string,
+	failedAt time.Time,
+) error {
+	if !triggered {
+		payload := map[string]any{
+			"title":      "agent-pool projection worker exhausted",
+			"body":       "A fresh host cleared the worker-death marker; the fold consumes again.",
+			"sourceApp":  b.cfg.SourceApp,
+			"resolvedBy": b.cfg.SourceApp + "-agent-pool",
+		}
+
+		return b.post(ctx, "alert.resolved",
+			idempotencyKey("worker-exhausted-resolve", time.Now().Unix()), workerExhaustedAggregate, 0, payload)
+	}
+
+	payload := map[string]any{
+		"severity": b.cfg.Severity,
+		"title":    "agent-pool projection worker exhausted",
+		"body": fmt.Sprintf(
+			"The %q fold worker exhausted its restart budget %s ago and stopped consuming while reading at-head: the dashboard is frozen and nobody restarted the host. Restart the serve/api process.",
+			projection,
+			time.Since(failedAt).Round(time.Minute),
+		),
+		"sourceApp": b.cfg.SourceApp,
+		"metadata": map[string]string{
+			"projection": projection,
+			"failed_at":  failedAt.UTC().Format(time.RFC3339),
+		},
+	}
+
+	return b.post(ctx, "alert.triggered",
+		idempotencyKey("worker-exhausted", time.Now().Unix()), workerExhaustedAggregate, 0, payload)
+}
+
+// sweepersFrozenAggregate is the alert identity for the frozen-sweeper
+// incident: pool-scoped and synthetic so the trigger/resolve pair keeps
+// one alert no matter which consumers froze.
+const sweepersFrozenAggregate = "agent-pool-sweepers-frozen"
+
+// NotifySweepersFrozen reports the frozen-sweeper detector's verdict:
+// triggered=true raises alert.triggered when armed journal consumers'
+// cursors stood still across consecutive pool ticks while the journal
+// head advanced (the sweeps review/status/dlqfix/prioritize/incident
+// silently stopped — the class the doctor liveness check catches only
+// when someone runs it); triggered=false resolves when any watched
+// cursor advances again. Direct-notify: queue observations, not facts.
+func (b *Bridge) NotifySweepersFrozen(
+	ctx context.Context,
+	triggered bool,
+	frozen []string,
+	streak int,
+) error {
+	if !triggered {
+		payload := map[string]any{
+			"title":      "agent-pool sweepers frozen",
+			"body":       "A watched consumer's cursor advanced again; the frozen-sweeper alert resolves.",
+			"sourceApp":  b.cfg.SourceApp,
+			"resolvedBy": b.cfg.SourceApp + "-agent-pool",
+		}
+
+		return b.post(ctx, "alert.resolved",
+			idempotencyKey("sweepers-frozen-resolve", time.Now().Unix()), sweepersFrozenAggregate, 0, payload)
+	}
+
+	payload := map[string]any{
+		"severity": b.cfg.Severity,
+		"title":    "agent-pool sweepers frozen",
+		"body": fmt.Sprintf(
+			"Journal consumers %s stood still for %d pool ticks while the journal head advanced: their sweeps silently stopped. Check the pool log for the failing sweep.",
+			strings.Join(frozen, ", "),
+			streak,
+		),
+		"sourceApp": b.cfg.SourceApp,
+		"metadata": map[string]string{
+			"frozen": strings.Join(frozen, ","),
+			"streak": strconv.Itoa(streak),
+		},
+	}
+
+	return b.post(ctx, "alert.triggered",
+		idempotencyKey("sweepers-frozen", time.Now().Unix()), sweepersFrozenAggregate, 0, payload)
 }
 
 func firstLine(line string) string {
