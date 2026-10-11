@@ -51,22 +51,22 @@ var poolSkipClasses = map[string]bool{
 // cannot be read from fresh facts alone).
 type poolTaskMeta struct {
 	project string
-	dedup    string
+	dedup   string
 }
 
 // RepoHealth is one project's folded liveness over the journal.
 type RepoHealth struct {
-	Repo             string         `json:"repo"`
-	Enqueued         int            `json:"enqueued"`
-	Completed        int            `json:"completed"`
-	Failed           int            `json:"failed"`
-	Dead             int            `json:"dead"`
-	RequeuesByClass  map[string]int `json:"requeuesByClass,omitempty"`
-	SkipStreak       int            `json:"skipStreak"`
-	LastHarvest      *time.Time     `json:"lastHarvest,omitempty"`
-	LastActivity     *time.Time     `json:"lastActivity,omitempty"`
-	Verdict          string         `json:"verdict"`
-	Warnings         []string       `json:"warnings,omitempty"`
+	Repo            string         `json:"repo"`
+	Enqueued        int            `json:"enqueued"`
+	Completed       int            `json:"completed"`
+	Failed          int            `json:"failed"`
+	Dead            int            `json:"dead"`
+	RequeuesByClass map[string]int `json:"requeuesByClass,omitempty"`
+	SkipStreak      int            `json:"skipStreak"`
+	LastHarvest     *time.Time     `json:"lastHarvest,omitempty"`
+	LastActivity    *time.Time     `json:"lastActivity,omitempty"`
+	Verdict         string         `json:"verdict"`
+	Warnings        []string       `json:"warnings,omitempty"`
 }
 
 // PoolHealthReport is the whole pool-health result.
