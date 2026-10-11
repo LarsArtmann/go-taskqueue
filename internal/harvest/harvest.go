@@ -164,9 +164,11 @@ type Config struct {
 	// BatchItems groups up to this many ADJACENT open items from the same
 	// TODO_LIST.md section into ONE agent task (one session works the run
 	// in order): fewer cold sessions, more done per provider window.
-	// 0/1 = off (one item per task, the fleet default). A batch is ONE task
-	// against every gate (--max-per-tick, daily budget, repo pacing) — the
-	// per-item cost is amortized, so raise the gates consciously.
+	// 0/1 = off (one item per task). The pool CLI default is 3 since
+	// 2026-10-11 (docs/problems/major-prompting-and-batching.md). A batch
+	// is ONE task against every gate (--max-per-tick, daily budget, repo
+	// pacing) — the per-item cost is amortized, so raise the gates
+	// consciously.
 	BatchItems int
 	// Model overrides the crush model ("provider/model") in every harvested
 	// agent payload. Empty = the agent binary's default model.

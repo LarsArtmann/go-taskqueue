@@ -119,8 +119,8 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	)
 	batchItems := fs.Int(
 		"batch-items",
-		0,
-		"group up to this many adjacent open TODO_LIST items of one section into ONE agent task (one session works them in order): fewer cold sessions, more done per provider window; a batch counts as ONE task against --max-per-tick and the daily budget (per-item cost is amortized — raise the gates consciously, and raise --task-timeout: batch timeouts scale per item; 0/1 = off)",
+		3,
+		"group up to this many adjacent open TODO_LIST items of one section into ONE agent task (one session works them in order): fewer cold sessions, more done per provider window; a batch counts as ONE task against --max-per-tick and the daily budget (per-item cost is amortized — raise the gates consciously, and raise --task-timeout: batch timeouts scale per item; default 3 since 2026-10-11, the micro-batch waste fix; 0/1 = off)",
 	)
 	priorityFrom := fs.String(
 		"priority-from",
