@@ -654,6 +654,7 @@ func cmdWorker(args []string) error {
 	)
 
 	db := dbFlag(fs)
+
 	storeVal := storeFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -3469,6 +3470,7 @@ func cmdAPI(args []string) error {
 	)
 
 	db := dbFlag(fs)
+
 	storeVal := storeFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -3512,6 +3514,7 @@ func cmdAPI(args []string) error {
 func cmdIncidents(args []string) error {
 	fs := flag.NewFlagSet("incidents", flag.ExitOnError)
 	asJSON := fs.Bool("json", false, "JSON output of the incident list")
+
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -3530,6 +3533,7 @@ func cmdIncidents(args []string) error {
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
+
 		return enc.Encode(incidents)
 	}
 
@@ -3676,6 +3680,7 @@ func cmdServe(args []string) error {
 	)
 
 	db := dbFlag(fs)
+
 	storeVal := storeFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err

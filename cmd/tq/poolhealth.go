@@ -151,9 +151,10 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since t
 			r.SkipStreak = 0
 
 			if inWindow {
-				if fact.Type == journal.Failed {
+				switch fact.Type {
+				case journal.Failed:
 					r.Failed++
-				} else if fact.Type == journal.DeadLettered {
+				case journal.DeadLettered:
 					r.Dead++
 				}
 			}

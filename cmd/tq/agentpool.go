@@ -308,6 +308,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	)
 
 	db := dbFlag(fs)
+
 	storeVal := storeFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return agentPoolOptions{}, err
