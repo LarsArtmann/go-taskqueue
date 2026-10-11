@@ -253,6 +253,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
 
 	results = append(results, doctorProjection(ctx, store, opts.Deployment.DBPath)...)
+	results = append(results, doctorProjectionWorkerDeath(opts.Deployment.DBPath)...)
 	if opts.DLQ {
 		results = append(results, doctorProjectionDLQ(ctx, opts.Deployment)...)
 	}
@@ -857,6 +858,36 @@ func doctorProjection(ctx context.Context, store queue.Store, dbPath string) []c
 			Detail: fmt.Sprintf("counts match the queue at cursor #%d", cursor),
 		},
 	)
+}
+
+// doctorProjectionWorkerDeath surfaces the projection host's terminal
+// worker state (B9.3): a fold worker that exhausted its restart budget
+// stops consuming while the platform reports it at lag 0, so the
+// cursor-vs-head checks above cannot see the death — the multi-day
+// silent-outage class. Serve/api stamp a durable marker beside the
+// projection db when a worker terminally fails, and every new host
+// clears it (a fresh host carries a fresh restart budget); a standing
+// marker therefore means the fold is dead and nobody restarted it.
+func doctorProjectionWorkerDeath(dbPath string) []checkResult {
+	const name = "projection-worker"
+
+	marker, exists, err := readmodel.ReadWorkerFailedMarker(dbPath)
+	if err != nil {
+		return []checkResult{{Name: name, Status: checkWarn, Detail: "read worker-death marker: " + err.Error()}}
+	}
+
+	if !exists {
+		return []checkResult{{Name: name, Status: checkOK, Detail: "no worker-death marker"}}
+	}
+
+	return []checkResult{{
+		Name:   name,
+		Status: checkWarn,
+		Detail: fmt.Sprintf(
+			"projection %q's worker exhausted its restart budget and stopped consuming %s ago — the fold is frozen at its cursor while reading at-head; restart the serve/api host (the marker clears on the next host start)",
+			marker.Projection, time.Since(marker.FailedAt).Round(time.Minute),
+		),
+	}}
 }
 
 // doctorProjectionDLQ surfaces the fold's poison-fact sidecar (the M09

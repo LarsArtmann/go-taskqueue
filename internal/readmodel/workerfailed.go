@@ -102,10 +102,10 @@ func newWorkerFailureMarker(modelPath string) *workerFailureMarker {
 }
 
 func (w *workerFailureMarker) EventProcessed(string, string, time.Duration) {}
-func (w *workerFailureMarker) EventErrored(string, string)                   {}
-func (w *workerFailureMarker) EventDeadLettered(string, string)              {}
-func (w *workerFailureMarker) WorkerRestarted(string)                        {}
-func (w *workerFailureMarker) CheckpointAdvanced(string, time.Duration)      {}
+func (w *workerFailureMarker) EventErrored(string, string)                  {}
+func (w *workerFailureMarker) EventDeadLettered(string, string)             {}
+func (w *workerFailureMarker) WorkerRestarted(string)                       {}
+func (w *workerFailureMarker) CheckpointAdvanced(string, time.Duration)     {}
 
 // WorkerFailed is terminal: the worker will not restart without a new
 // host. Log loud (serve's console carries it) and stamp the sidecar

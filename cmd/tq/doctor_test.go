@@ -18,6 +18,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/session"
 	"github.com/larsartmann/go-taskqueue/internal/status"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -568,6 +569,41 @@ func TestDoctorWatermarkLiveness(t *testing.T) {
 
 	if r := resultByName(results, "review-sweeper"); r.Status != checkOK {
 		t.Errorf("review-sweeper = %s (%s), want ok (never ran)", r.Status, r.Detail)
+	}
+}
+
+// TestDoctorProjectionWorkerDeath pins the B9.3 surface: no marker is
+// ok, a standing marker (a fold worker exhausted its restart budget;
+// the death reads as lag 0 so the cursor checks cannot see it) is a
+// WARN naming the restart remedy.
+func TestDoctorProjectionWorkerDeath(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "q.db")
+
+	results := doctorProjectionWorkerDeath(dbPath)
+	if r := resultByName(results, "projection-worker"); r.Status != checkOK {
+		t.Errorf("absent marker = %s (%s), want ok", r.Status, r.Detail)
+	}
+
+	stamp := readmodel.WorkerFailedMarker{
+		Projection: readmodel.CursorConsumer,
+		FailedAt:   time.Now().UTC().Add(-2 * time.Hour),
+	}
+	if err := readmodel.WriteWorkerFailedMarker(dbPath, stamp); err != nil {
+		t.Fatalf("stage marker: %v", err)
+	}
+
+	results = doctorProjectionWorkerDeath(dbPath)
+	r := resultByName(results, "projection-worker")
+	if r.Status != checkWarn {
+		t.Fatalf("standing marker = %s (%s), want warn", r.Status, r.Detail)
+	}
+
+	for _, want := range []string{"restart budget", "restart the serve/api host"} {
+		if !strings.Contains(r.Detail, want) {
+			t.Errorf("detail %q misses %q", r.Detail, want)
+		}
 	}
 }
 
