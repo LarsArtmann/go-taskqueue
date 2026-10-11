@@ -19,6 +19,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   regression by `TestAgentPromptsOutcomeShaped`. `--batch-items` default
   flips 0→3 (micro-batch waste fix; 0/1 = off still honored).
 
+### Added
+- **`tq pool-health`** (2026-10-11): one-shot per-repo liveness from the
+  fact journal — outcome counts, requeue classes, skip streaks (trailing
+  environment-class requeues since the repo's last terminal fact; WARN at
+  3, mirroring the env-streak breaker), starvation (enqueued work with
+  zero outcomes in the window), and harvest recency via todo:/batch:
+  dedup rows; advisory exit 0, `--since DUR` (default 168h) + `--json`.
+
 ### Fixed
 - **Projection home opened through ONE tq-owned engine** (2026-10-10): serve
   used to open `<db>.readmodel.db` twice (readmodel internally + the system
