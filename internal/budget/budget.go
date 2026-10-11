@@ -30,6 +30,15 @@ type Guard struct {
 	// DailyCap is the maximum number of enqueued agent tasks per calendar
 	// day (local midnight). 0 = unlimited.
 	DailyCap int
+	// DailyCostCapUSD caps today's derived session spend in US dollars
+	// (summed from completion facts carrying session usage — the real-money
+	// axis beside the count cap; 2026-10-11: the count cap alone starved
+	// pools at $0.07 measured spend). 0 = off. Checked AFTER the count cap
+	// (cheap-first: count is a SQL pushdown, cost scans completions).
+	// Measured spend lags enqueues by design: cost is only derivable from
+	// completed runs, so the cap stops FURTHER spend once observed spend
+	// crosses it. Fails open on journal errors like every projection here.
+	DailyCostCapUSD float64
 	// BudgetCmd, when set, is the final authority: it runs before every
 	// harvest tick; exit 0 means within budget, any non-zero exit skips
 	// the tick (its output becomes the log reason). Allows operators to
@@ -131,6 +140,16 @@ func (g Guard) Check(ctx context.Context, src FactSource) (bool, string) {
 			}
 
 			return false, reason
+		}
+	}
+
+	if g.DailyCostCapUSD > 0 {
+		usage := g.UsageToday(ctx, src)
+		if usage.CostUSD >= g.DailyCostCapUSD {
+			return false, fmt.Sprintf(
+				"daily cost cap reached: $%.4f of $%.4f spent across %d derived runs",
+				usage.CostUSD, g.DailyCostCapUSD, usage.Runs,
+			)
 		}
 	}
 

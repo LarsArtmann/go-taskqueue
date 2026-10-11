@@ -45,6 +45,7 @@ type agentPoolOptions struct {
 	reprioritize    bool
 	exclusive       bool
 	dailyBudget     int
+	dailyCostCap    float64
 	budgetCmd       string
 	repoInterval    string
 	dlqBackoff      time.Duration
@@ -158,6 +159,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"daily-budget",
 		0,
 		"max agent tasks enqueued per calendar day across all repos (0 = unlimited)",
+	)
+	dailyCostCap := fs.Float64(
+		"daily-cost-cap",
+		0,
+		"cap today's derived agent spend in USD beside the count cap (0 = off): summed from completed runs' session usage, so it stops FURTHER spend once observed spend crosses it; pairs with --daily-budget so cheap days are not starved by a count ceiling (docs/adr/ADR-0023-cost-budget.md)",
 	)
 	budgetCmd := fs.String(
 		"budget-cmd",
@@ -389,6 +395,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		reprioritize:    *reprioritize,
 		exclusive:       *exclusive,
 		dailyBudget:     *dailyBudget,
+		dailyCostCap:    *dailyCostCap,
 		budgetCmd:       *budgetCmd,
 		repoInterval:    *repoInterval,
 		dlqBackoff:      *dlqBackoff,

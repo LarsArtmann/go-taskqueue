@@ -1170,8 +1170,9 @@ func cmdAgentPool(args []string) error {
 	// gate and the claim gate share the armed guard's verdict cache (M7,
 	// paperclip-aftermath plan) instead of shelling out per claim.
 	guard := budget.Guard{
-		DailyCap:  poolOpts.dailyBudget,
-		BudgetCmd: poolOpts.budgetCmd,
+		DailyCap:        poolOpts.dailyBudget,
+		DailyCostCapUSD: poolOpts.dailyCostCap,
+		BudgetCmd:       poolOpts.budgetCmd,
 	}.WithCmdCache(budget.DefaultCmdCacheTTL)
 	harvester := harvest.New(taskQueue, cfg)
 

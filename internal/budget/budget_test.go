@@ -502,3 +502,83 @@ func TestNextMidnightAcrossDSTDays(t *testing.T) {
 		})
 	}
 }
+
+// errSource fails every fact read: the guard must fail OPEN (a journal
+// error reads as zero spend, the pool keeps working).
+type errSource struct{}
+
+func (errSource) Facts(context.Context, int64, int) ([]journal.Fact, error) {
+	return nil, errors.New("journal unavailable")
+}
+
+func (errSource) CountFacts(context.Context, journal.FactType, time.Time) (int64, error) {
+	return 0, errors.New("journal unavailable")
+}
+
+func (errSource) FactsSince(context.Context, journal.FactType, time.Time, int) ([]journal.Fact, error) {
+	return nil, errors.New("journal unavailable")
+}
+
+// TestCheckCostCap pins the cost-denominated budget (2026-10-11: the count
+// cap alone parked ALL real work at $0.07 measured spend): today's derived
+// session cost at or over the cap refuses with a cost-denominated reason;
+// under it allows; zero cap is off.
+func TestCheckCostCap(t *testing.T) {
+	ctx := context.Background()
+
+	j := journal.NewMemoryJournal()
+	appendCompleted(t, j, "agent-1", time.Now(), executor.AgentResult{
+		SessionCostUSD:      0.60,
+		SessionPromptTokens: 1000,
+	})
+	appendCompleted(t, j, "agent-2", time.Now(), executor.AgentResult{
+		SessionCostUSD:      0.20,
+		SessionPromptTokens: 500,
+	})
+
+	for _, tc := range []struct {
+		name    string
+		capUSD  float64
+		allowed bool
+		wantIn  string
+	}{
+		{"under cap allows", 5.00, true, ""},
+		{"just under allows", 0.81, true, ""},
+		{"at cap refuses", 0.80, false, "daily cost cap reached: $0.8000 of $0.8000"},
+		{"over cap refuses", 0.75, false, "daily cost cap reached: $0.8000 of $0.7500"},
+		{"zero cap off", 0, true, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ok, reason := Guard{DailyCostCapUSD: tc.capUSD}.Check(ctx, factSource{j})
+			if ok != tc.allowed {
+				t.Fatalf("Check = %t (%q), want %t", ok, reason, tc.allowed)
+			}
+
+			if !tc.allowed && !strings.Contains(reason, tc.wantIn) {
+				t.Fatalf("reason %q missing %q", reason, tc.wantIn)
+			}
+		})
+	}
+}
+
+// TestCheckCostCapFailsOpen: a journal error reads as zero spend, so the
+// cost cap never wedges the pool on infrastructure failure (same settle as
+// the count projection).
+func TestCheckCostCapFailsOpen(t *testing.T) {
+	ok, reason := Guard{DailyCostCapUSD: 0.01}.Check(context.Background(), errSource{})
+	if !ok || reason != "" {
+		t.Fatalf("cost cap must fail open on journal errors, got %t %q", ok, reason)
+	}
+}
+
+// TestCheckCountCapStillIndependent: the count cap refuses even when the
+// cost cap would allow (cheap-first ordering, both axes live).
+func TestCheckCountCapStillIndependent(t *testing.T) {
+	ctx := context.Background()
+	j := seeded(3, 0)
+
+	ok, reason := Guard{DailyCap: 2, DailyCostCapUSD: 100}.Check(ctx, j)
+	if ok || !strings.Contains(reason, "daily budget exhausted") {
+		t.Fatalf("count cap must refuse independent of the cost cap, got %t %q", ok, reason)
+	}
+}
