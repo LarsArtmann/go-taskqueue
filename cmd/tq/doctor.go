@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -244,6 +245,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorSQLiteChecks(ctx, opts.Deployment.DBPath)...)
 	results = append(results, doctorQueueMix(ctx, store)...)
 	results = append(results, doctorRepoCoverage(ctx, store, opts.ProjectsDir)...)
+	results = append(results, doctorStaleItems(ctx, store, opts.ProjectsDir)...)
 
 	if opts.Hygiene {
 		results = append(results, doctorVerifyPins(ctx, store, opts.ProjectsDir)...)
@@ -519,6 +521,74 @@ func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir stri
 			strings.Join(missing, "; "),
 		),
 	}}
+}
+
+// doctorStaleItems surfaces the prune-stale zombie class read-only
+// (B9.4): pending tasks whose TODO_LIST item is already `[x]` or gone
+// — the dedup-already-ticked class a pool relaunch would otherwise
+// execute as done work. Runs the SAME harvest derivation `tq harvest
+// --prune-stale` withdraws with, under DryRun, so doctor observes
+// without writing; the remedy stays the sweep's. Skipped without
+// --projects-dir (nothing to join against, mirroring
+// doctorRepoCoverage).
+func doctorStaleItems(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
+	const name = "stale-items"
+
+	if projectsDir == "" {
+		return nil
+	}
+
+	cfg := harvest.Config{ProjectsDir: projectsDir, DryRun: true, Log: slog.Default()}
+
+	res, err := harvest.New(queue.New(store), cfg).PruneStale(ctx)
+	if err != nil {
+		return []checkResult{{Name: name, Status: checkWarn, Detail: "scan: " + err.Error()}}
+	}
+
+	if len(res.Cancelled) == 0 && len(res.ScanFailures) == 0 {
+		detail := fmt.Sprintf("no stale-item zombies (%d repo(s) scanned)", res.Repos)
+		if res.Repos == 0 {
+			detail = "no repos under the projects dir"
+		}
+
+		return []checkResult{{Name: name, Status: checkOK, Detail: detail}}
+	}
+
+	items := make([]string, 0, len(res.Cancelled))
+
+	for _, pruned := range res.Cancelled {
+		row := fmt.Sprintf("%s %s: %s", pruned.Item.RepoName, pruned.TaskID, pruned.Why)
+		if pruned.Why == harvest.PruneTicked {
+			row += " — " + pruned.Item.Text
+		} else {
+			row += " (key " + pruned.Item.Key + ")"
+		}
+
+		items = append(items, row)
+
+		if len(items) == 5 {
+			if extra := len(res.Cancelled) - 5; extra > 0 {
+				items = append(items, fmt.Sprintf("+%d more", extra))
+			}
+
+			break
+		}
+	}
+
+	detail := fmt.Sprintf(
+		"%d pending task(s) whose TODO_LIST item is already ticked or gone — the pool would execute done work; `tq harvest --prune-stale` withdraws them",
+		len(res.Cancelled),
+	)
+
+	if len(res.Running) > 0 || len(res.Dead) > 0 {
+		detail += fmt.Sprintf(" (%d running, %d dead stale-item tasks)", len(res.Running), len(res.Dead))
+	}
+
+	for _, failure := range res.ScanFailures {
+		detail += "; scan " + failure.Repo + ": " + failure.Reason
+	}
+
+	return []checkResult{{Name: name, Status: checkWarn, Detail: detail, Items: items}}
 }
 
 // doctorVerifyPins is the stale-payload hygiene check (09-39 report f2/§e3):

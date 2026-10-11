@@ -15,6 +15,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
@@ -604,6 +605,66 @@ func TestDoctorProjectionWorkerDeath(t *testing.T) {
 		if !strings.Contains(r.Detail, want) {
 			t.Errorf("detail %q misses %q", r.Detail, want)
 		}
+	}
+}
+
+// TestDoctorStaleItems pins the B9.4 check: a pending task joined to an
+// already-ticked TODO_LIST item is the zombie a pool would execute as
+// done work; an open item alone stays ok; no projects dir skips the
+// check entirely.
+func TestDoctorStaleItems(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	if err := os.MkdirAll(filepath.Join(root, "demo"), 0o755); err != nil {
+		t.Fatalf("mkdir demo: %v", err)
+	}
+
+	todo := filepath.Join(root, "demo", "TODO_LIST.md")
+	if err := os.WriteFile(todo, []byte("# Backlog\n\n- [x] Ship the widget\n- [ ] Polish the widget\n"), 0o644); err != nil {
+		t.Fatalf("write todo: %v", err)
+	}
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	if got := doctorStaleItems(ctx, s, ""); got != nil {
+		t.Fatalf("empty projects dir = %v, want no rows", got)
+	}
+
+	if r := resultByName(doctorStaleItems(ctx, s, root), "stale-items"); r.Status != checkOK {
+		t.Errorf("open items only = %s (%s), want ok", r.Status, r.Detail)
+	}
+
+	key := harvest.ItemKey("demo", "Ship the widget")
+	payload, err := json.Marshal(map[string]string{"dedup": key})
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "agent", Project: "demo", Payload: payload}); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	results := doctorStaleItems(ctx, s, root)
+	r := resultByName(results, "stale-items")
+	if r.Status != checkWarn {
+		t.Fatalf("ticked zombie = %s (%s), want warn", r.Status, r.Detail)
+	}
+
+	if !strings.Contains(r.Detail, "prune-stale") {
+		t.Errorf("detail %q misses the prune-stale remedy", r.Detail)
+	}
+
+	if len(r.Items) != 1 || !strings.Contains(r.Items[0], "ticked — Ship the widget") {
+		t.Errorf("items = %v, want the ticked widget row", r.Items)
 	}
 }
 
