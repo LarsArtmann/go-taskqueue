@@ -1331,6 +1331,7 @@ func cmdAgentPool(args []string) error {
 
 		statusSweeper, err = status.NewSweeper(ctx, store, status.SweeperConfig{
 			Every:       poolOpts.statusEvery,
+			MinInterval: poolOpts.statusMinGap,
 			Model:       poolOpts.model,
 			Log:         log,
 			AllowDirty:  poolOpts.allowDirty,

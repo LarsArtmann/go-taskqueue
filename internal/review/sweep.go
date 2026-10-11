@@ -61,6 +61,11 @@ type SweepStats struct {
 	// Skipped counts completions that could not yield a review (foreign
 	// payload shape, vanished task record).
 	Skipped int
+	// DocsSkipped counts completions whose derived diff is docs-only
+	// (2026-10-11 ceremony cut: a reviewer of prose cannot catch what the
+	// verify gate does not already prove; measured 52% derived-task
+	// overhead). No derivation available (empty file list) still reviews.
+	DocsSkipped int
 }
 
 // Sweeper turns the journal's completion facts into review work. It is safe
@@ -164,6 +169,19 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.F
 	// burn the done-preflight exists to kill.
 	if agentResult.PreflightDone != "" {
 		stats.Skipped++
+
+		return
+	}
+
+	// Risky-types-only reviewing (2026-10-11 ceremony cut): a derived
+	// docs-only diff carries no mechanical risk the verify gate has not
+	// already proven away — skip the paid review turn. Unknown diff (no
+	// derivation) still reviews: absence of evidence is not evidence of
+	// docs.
+	if docsOnlyChange(agentResult.FilesChanged) {
+		stats.DocsSkipped++
+
+		s.log("review: skipped docs-only change", "reviews", t.ID.String(), "repo", agentPayload.Repo)
 
 		return
 	}
@@ -287,6 +305,52 @@ func FixDedupKey(review task.ID, findingTitle string) string {
 	sum := sha256.Sum256([]byte(findingTitle))
 
 	return "reviewfix:" + review.String() + ":" + hex.EncodeToString(sum[:8])
+}
+
+// docsOnlyChange reports whether a derived file list is documentation and
+// nothing else (prose formats, docs trees, licenses). An empty list is NOT
+// docs-only: no derivation means no evidence, and the conservative answer
+// keeps the review. One code-bearing file flips the whole change to
+// reviewable.
+func docsOnlyChange(files []string) bool {
+	if len(files) == 0 {
+		return false
+	}
+
+	for _, file := range files {
+		if !docsLikePath(file) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// docsLikePath classifies one changed path as documentation.
+func docsLikePath(file string) bool {
+	lower := strings.ToLower(strings.TrimSpace(file))
+	if lower == "" {
+		return false
+	}
+
+	base := lower
+	if i := strings.LastIndexByte(base, '/'); i >= 0 {
+		base = base[i+1:]
+	}
+
+	switch {
+	case strings.HasPrefix(lower, "docs/"), strings.HasPrefix(lower, "doc/"):
+		return true
+	case base == "license", base == "licence", base == "copyright", base == "notice",
+		base == "authors", base == "contributors":
+		return true
+	case strings.HasSuffix(base, ".md"), strings.HasSuffix(base, ".mdx"),
+		strings.HasSuffix(base, ".txt"), strings.HasSuffix(base, ".rst"),
+		strings.HasSuffix(base, ".adoc"):
+		return true
+	default:
+		return false
+	}
 }
 
 // fixPrompt builds the instruction for a fix task minted from one finding.

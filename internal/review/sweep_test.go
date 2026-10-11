@@ -611,3 +611,75 @@ func TestSweepSkipsPreflightDoneCompletions(t *testing.T) {
 		t.Fatalf("skipped = %d, want 1 (the preflight-done completion)", stats.Skipped)
 	}
 }
+
+// TestSweepSkipsDocsOnlyChanges pins the 2026-10-11 ceremony cut: a
+// completed agent run whose derived diff is documentation only (prose
+// formats, docs trees, licenses) does not mint a paid review — one
+// code-bearing file or no derivation at all still reviews.
+func TestSweepSkipsDocsOnlyChanges(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	for _, tc := range []struct {
+		name       string
+		files      []string
+		wantSkip   bool
+		wantReview bool
+	}{
+		{"docs-only skipped", []string{"README.md", "docs/arch.md", "LICENSE"}, true, false},
+		{"mixed reviews", []string{"README.md", "main.go"}, false, true},
+		{"code reviews", []string{"internal/foo.go"}, false, true},
+		{"no derivation reviews", nil, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			s := newTestStore(t)
+			runAgentTask(t, s,
+				executor.AgentPayload{Repo: "demo", Prompt: "docs item " + tc.name},
+				executor.AgentResult{CommitSHA: "abc123", FilesChanged: tc.files},
+			)
+
+			sw, err := NewSweeper(ctx, s, SweeperConfig{})
+			if err != nil {
+				t.Fatalf("NewSweeper: %v", err)
+			}
+
+			stats, err := sw.Sweep(ctx)
+			if err != nil {
+				t.Fatalf("sweep: %v", err)
+			}
+
+			reviews := listByType(t, s, executor.TaskTypeReview)
+			if tc.wantSkip && stats.DocsSkipped != 1 {
+				t.Fatalf("DocsSkipped = %d, want 1 (stats %+v)", stats.DocsSkipped, stats)
+			}
+
+			if tc.wantSkip && len(reviews) != 0 {
+				t.Fatalf("docs-only change minted a review: %+v", reviews)
+			}
+
+			if tc.wantReview && len(reviews) != 1 {
+				t.Fatalf("review tasks = %d, want 1", len(reviews))
+			}
+		})
+	}
+}
+
+// TestDocsLikePath pins the file classifier the docs-only cut rides on.
+func TestDocsLikePath(t *testing.T) {
+	t.Parallel()
+
+	for _, docs := range []string{"README.md", "docs/x/y.md", "CHANGELOG.md", "LICENSE", "NOTICE", "notes.txt", "spec.adoc"} {
+		if !docsLikePath(docs) {
+			t.Errorf("%q must classify as docs", docs)
+		}
+	}
+
+	for _, code := range []string{"main.go", "app.css", "flake.nix", ".github/workflows/ci.yml", "go.mod", "run.sh"} {
+		if docsLikePath(code) {
+			t.Errorf("%q must classify as code", code)
+		}
+	}
+}

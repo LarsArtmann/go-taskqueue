@@ -488,6 +488,17 @@ func (s *Sweeper) warn(msg string, args ...any) {
 	}
 }
 
+// firstLine keeps the env-refusal log line single-line: LastError can be
+// a multi-line evidence dump.
+func firstLine(s string) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		s = s[:i]
+	}
+
+	return s
+}
+
 // DedupKey is the dedup identity of the autopsy of one dead task: exactly
 // one autopsy per dead task, forever. A rescued task that dies again does
 // NOT get a second autopsy — the second death is deliberately a human

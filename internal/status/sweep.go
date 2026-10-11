@@ -47,6 +47,12 @@ type SweeperConfig struct {
 	// Every is the number of completed agent tasks per project that mint
 	// one status report. Required, >= 1.
 	Every int
+	// MinInterval is the per-project floor between two status reports:
+	// a mint is skipped while the project's last status task is younger
+	// (2026-10-11 ceremony cut — --status-every 5 produced 213 reports in
+	// one repo; the window still accumulates, so the next report after the
+	// floor covers everything). 0 = no floor.
+	MinInterval time.Duration
 	// Model, when set, is written into every status payload.
 	Model string
 	// Log receives one summary line per mint. nil logs nothing.
@@ -194,6 +200,12 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		if statusTask.CreatedAt.After(lastReport) {
 			lastReport = statusTask.CreatedAt
 		}
+	}
+
+	if s.cfg.MinInterval > 0 && !lastReport.IsZero() && time.Since(lastReport) < s.cfg.MinInterval {
+		stats.Skipped++
+
+		return
 	}
 
 	agentTasks, err := s.store.List(ctx, queue.Filter{Project: &t.Project, Type: ptr(executor.TaskTypeAgent)})

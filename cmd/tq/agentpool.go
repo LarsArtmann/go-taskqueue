@@ -71,6 +71,7 @@ type agentPoolOptions struct {
 	maxAgents       int
 	reviewAutofix   bool
 	statusEvery     int
+	statusMinGap    time.Duration
 	closeout        bool
 	logDir          string
 	logDirMaxAge    time.Duration
@@ -270,6 +271,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		0,
 		"automated done-prompt: every N completed agent tasks per project mint one status task that writes a docs/status report and appends next items to TODO_LIST.md (0 = off)",
 	)
+	statusMinInterval := fs.Duration(
+		"status-min-interval",
+		24*time.Hour,
+		"per-project floor between two automated status reports (2026-10-11 ceremony cut: --status-every alone minted 213 reports in one repo; the completion window still accumulates, so the next report after the floor covers everything; 0 = no floor)",
+	)
 	closeout := fs.Bool(
 		"task-closeout",
 		false,
@@ -421,6 +427,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		maxAgents:       *maxAgents,
 		reviewAutofix:   *reviewAutofix,
 		statusEvery:     *statusEvery,
+		statusMinGap:    *statusMinInterval,
 		closeout:        *closeout,
 		logDir:          *logDir,
 		logDirMaxAge:    *logDirMaxAge,

@@ -785,3 +785,112 @@ func TestSweeperGateArtifactWithoutShippedProofKeepsAutopsy(t *testing.T) {
 		})
 	}
 }
+
+// TestSweeperRefusesEnvironmentalAutopsy pins the 2026-10-11 ceremony cut:
+// a dead agent task whose LastError carries a machine-proven environmental
+// marker (env-streak breaker, verify-gate env/dead/slow classes) gets NO
+// autopsy — the paid turn could only rule wontfix. The task stays dead and
+// operator-visible; a judged failure still autopsies.
+func TestSweeperRefusesEnvironmentalAutopsy(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name      string
+		lastError string
+		refused   bool
+	}{
+		{"env-streak refused", "environmental requeue streak burned the attempt [env-streak]: streak 3: dirty tree", true},
+		{"gate-env refused", "agent verify gate environmental signature [vendor-gofmt] (\".tq-verify\"): all package stages passed", true},
+		{"gate-dead refused", "agent verify gate dead (\".tq-verify\"): failure is pre-existing/environmental", true},
+		{"gate-slow refused", "agent verify gate slow (\".tq-verify\"): deadline before a verdict", true},
+		{"judged failure autopsies", "verify failed: TestShipTheThing", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			s := newTestStore(t)
+			sw := newTestSweeper(t, s)
+
+			dead := seedDeadAgentTaskWithReason(t, s, executor.AgentPayload{
+				Repo:   "demo",
+				Prompt: "ship the frobnicator",
+				Yolo:   true,
+			}, tc.lastError)
+
+			stats, err := sw.Sweep(context.Background())
+			if err != nil {
+				t.Fatalf("sweep: %v", err)
+			}
+
+			tasks := pendingDLQFixTasks(t, s)
+
+			if tc.refused {
+				if stats.EnvSkipped != 1 || len(tasks) != 0 {
+					t.Fatalf("env death must refuse the autopsy: stats %+v, dlqfix tasks %d", stats, len(tasks))
+				}
+
+				got, err := s.Get(context.Background(), dead.ID)
+				if err != nil || got.Status != task.Dead {
+					t.Fatalf("refused autopsy must leave the task dead for the operator: %+v (%v)", got, err)
+				}
+
+				return
+			}
+
+			if stats.FixesEnqueued != 1 || len(tasks) != 1 {
+				t.Fatalf("judged failure must still autopsy: stats %+v, dlqfix tasks %d", stats, len(tasks))
+			}
+		})
+	}
+}
+
+// seedDeadAgentTaskWithReason is seedDeadAgentTask with a parameterized
+// failure reason (the environmental markers live in the reason text).
+func seedDeadAgentTaskWithReason(
+	t *testing.T,
+	s *sqlite.Store,
+	payload executor.AgentPayload,
+	reason string,
+) task.Task {
+	t.Helper()
+
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal agent payload: %v", err)
+	}
+
+	ctx := context.Background()
+
+	enq, err := s.Enqueue(ctx, task.New{
+		Type:        executor.TaskTypeAgent,
+		Project:     "demo",
+		Priority:    7,
+		Payload:     raw,
+		MaxAttempts: 1,
+		DedupKey:    "seed:" + payload.Prompt,
+	})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	_, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	evidence, err := json.Marshal(executor.FailureEvidence{Stage: "verify", ExitCode: 2, Tail: "FAIL: TestShipTheThing"})
+	if err != nil {
+		t.Fatalf("marshal evidence: %v", err)
+	}
+
+	if err := s.Fail(ctx, enq.ID, claim, reason, 0, evidence); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	got, err := s.Get(ctx, enq.ID)
+	if err != nil || got.Status != task.Dead {
+		t.Fatalf("seeded task not dead: %+v (%v)", got, err)
+	}
+
+	return got
+}
