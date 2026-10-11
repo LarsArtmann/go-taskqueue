@@ -38,7 +38,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.3 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.4 // indirect
 	github.com/larsartmann/go-taskqueue/internal/task v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/worker v0.3.3 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
