@@ -24,6 +24,7 @@ not here.
 - [ ] Decide the three near-identical interfaces (`consumer.Source`, `budget.FactSource`, `papdashboard.FactSource`) — one interface or documented duplication (23:47 f4) — BLOCKED: owner architecture decision
 - [ ] Postgres CLI store wiring (`--store postgres://…` on worker/serve/agent-pool): gives queue/postgres its consumer; root re-adds pgx; sequence BEFORE any public-API promotion (23:47 f5/g3) — BLOCKED: owner release-timing call (v0.3?)
 - [ ] Retire `--dep-sweep` (flag + sweeper + docs) once Dependabot's first week has passed (full-tree coverage config shipped 2026-10-06, CHANGELOG) — BLOCKED: O15 time gate, earliest 2026-10-13
+- [ ] Redesign dispatch prompting + batch granularity per docs/problems/major-prompting-and-batching.md: section-level batches (one claim works a whole TODO section, gate verifies per commit), ≤5-line dispatch contracts (goal + AGENTS.md pointer + verify + footer; delete the ~400-word distrust rulebook), ceremony cuts (status per-session not per-5 — 213 machine report runs in CV alone; review on risky types only; autopsy on non-environmental deaths only) — BLOCKED: owner go/no-go + scope (one combined change vs staged) + budget shape under batches (per-item vs per-batch cap) (sources: docs/status/2026-10-11_00-04 + _02-23 reports; AGENTS.md MAJOR OPEN PROBLEMS pointer)
 
 ## go-cqrs-lite platform adoption (ADR-0019, owner ruling 2026-09-22 — serialize S1→S4)
 
