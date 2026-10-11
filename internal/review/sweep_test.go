@@ -350,7 +350,7 @@ func TestFixPromptAnchorsAndDanglingDisposition(t *testing.T) {
 		"`m[k] = v`",
 		"git cat-file -e findingsha2",
 		"re-anchor via the verbatim anchor text",
-		"exactly ONE Task-Queue-ID footer",
+		"ONE Task-Queue-ID footer per commit",
 	} {
 		if !strings.Contains(prompt, want) {
 			t.Errorf("fix prompt missing %q:\n%s", want, prompt)
