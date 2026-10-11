@@ -40,6 +40,11 @@ const DefaultTodoFile = "TODO_LIST.md"
 const DefaultMaxPerTick = 10
 
 // DefaultPromptTemplate is the agent contract handed to Crush for each item.
+// Outcome-shaped since 2026-10-11 (docs/problems/major-prompting-and-batching.md):
+// the trust budget goes to verification, not prose — AGENTS.md and the verify
+// gate own the rules; this template carries only goal, context pointer, the
+// mechanical rails (re-dispatch no-op, footer, verify, safety lines, TODO
+// loop-closing, backlog routing) and nothing else.
 // Placeholders: {{REPO_ABS}}, {{REPO}}, {{REPO_PURPOSE}}, {{HEADING}}, {{ITEM}}, and
 // {{TASK_ID}} (substituted at EXECUTION time by the agent executor — the
 // queue task ID does not exist when the harvester renders this template;
@@ -53,33 +58,30 @@ Repo purpose: {{REPO_PURPOSE}}
 Work item from TODO_LIST.md, section "{{HEADING}}":
 "{{ITEM}}"
 
-Contract:
-1. Do exactly this work item. The smallest correct change wins: no scope creep, no drive-by
-   refactors. Verify your work: run the project's build and tests. Never leave the repo broken.
-   FIRST, before doing any work: run git log --format=%B --grep 'Task-Queue-ID: {{TASK_ID}}' and
-   check this item's checkbox in TODO_LIST.md — if either proves the work already landed (this
-   task may be a re-dispatch), close it out as a no-op: state the evidence, tick the item if
-   unticked, and commit nothing else. Never redo landed work.
-2. Never edit .crushrc, crush.json, or .tq-verify: they define your autonomy and your verify gate;
-   changing them is self-dealing.
-3. Close the loop in TODO_LIST.md: mark this item done ([x]) or remove it, following the file's own
-   conventions. If you could NOT finish it, leave it unchecked and append " — BLOCKED: <one-line reason>".
-4. Commit your changes with a clear message ending in this exact footer line (you have explicit
-   permission to commit for this task):
+Outcome: the item landed, verified, committed.
+1. Re-dispatch check first: run
+   git log --format=%B --grep 'Task-Queue-ID: {{TASK_ID}}'
+   and read the item's checkbox in TODO_LIST.md — if either proves the work
+   already landed, close out as a no-op (state the evidence, tick the item if
+   unticked, commit nothing else).
+2. Land the item. Run the project's build and tests; leave the repo green.
+3. Close the loop in TODO_LIST.md: tick the item [x] when done; if you could
+   NOT finish, leave it unchecked and append " — BLOCKED: <one-line reason>".
+4. Commit with a clear message ending in this exact footer line:
 
    Task-Queue-ID: {{TASK_ID}}
 
-   (so git log and the queue cross-reference). Never push.
-5. Follow-up work you discover belongs in the backlog, not this run: you MAY append NEW unchecked
-   items to TODO_LIST.md (one per line, agent-executable, correct section) — the queue's pacing,
-   budget and priority gates decide when they run. Never append an item describing THIS task's work.
+   Never push. Never edit .crushrc, crush.json, or .tq-verify.
+5. Follow-ups you discover go to the backlog: append NEW unchecked TODO_LIST
+   items (one per line, agent-executable) — no item describing THIS task's work.
 
-The queue derives what you did — commits via the footer above, changed files via git — so do NOT
-report files or commit SHAs yourself.`
+The queue derives what you did — commits via the footer, files via git.`
 
 // DefaultBatchPromptTemplate is the agent contract for BATCHED work items
 // (harvest --batch-items > 1): one task carries a run of adjacent items from
-// the same TODO_LIST.md section, worked in order by ONE session. Placeholders:
+// the same TODO_LIST.md section, worked in order by ONE session. Outcome-shaped
+// like DefaultPromptTemplate (2026-10-11 redesign; mechanical rails only).
+// Placeholders:
 // {{REPO_ABS}}, {{REPO}}, {{REPO_PURPOSE}}, {{HEADING}}, {{COUNT}}, {{ITEMS}} (numbered list)
 // and {{TASK_ID}} (resolved at EXECUTION time, one footer for every commit
 // of the batch — derived outcomes attribute them all to this task).
@@ -92,32 +94,27 @@ Work batch from TODO_LIST.md, section "{{HEADING}}" — {{COUNT}} related items,
 
 {{ITEMS}}
 
-Contract:
-1. Work the items IN ORDER as one batch: you already hold the repo context from earlier items —
-   use it. The smallest correct change per item wins: no scope creep, no drive-by refactors.
-   An item already ticked [x] is done (an earlier attempt may have finished it) — skip it.
-   Before the first item: run git log --format=%B --grep 'Task-Queue-ID: {{TASK_ID}}' — existing
-   footer commits mean this batch is a re-dispatch of landed work; finish only what is genuinely
-   open and say so.
-   Verify as you go: run the project's build and tests. Never leave the repo broken.
-2. Never edit .crushrc, crush.json, or .tq-verify: they define your autonomy and your verify gate;
-   changing them is self-dealing.
-3. Close the loop per item in TODO_LIST.md: mark each finished item done ([x]) or remove it,
-   following the file's own conventions. An item you could NOT finish stays unchecked with
-   " — BLOCKED: <one-line reason>" appended; finish the remaining items anyway — partial
-   completion with a green verify gate is a SUCCESS for this task.
-4. Commit each item separately with a clear message ending in this exact footer line (you have
-   explicit permission to commit for this task):
+Outcome: every item landed, verified, committed — one commit per item.
+1. Re-dispatch check first: run
+   git log --format=%B --grep 'Task-Queue-ID: {{TASK_ID}}'
+   Footer commits already present → finish only what is genuinely open; an
+   already-ticked item is done — skip it.
+2. Work the items in order, one commit each, carrying the session's context
+   forward. Verify as you go: run the project's build and tests; leave the
+   repo green. Partial completion with a green verify gate is a SUCCESS.
+3. Close the loop per item in TODO_LIST.md: tick each finished item [x]; an
+   item you could NOT finish stays unchecked with " — BLOCKED: <one-line
+   reason>" appended — finish the rest anyway.
+4. Commit each item separately with a clear message ending in this exact
+   footer line:
 
    Task-Queue-ID: {{TASK_ID}}
 
-   (so git log and the queue cross-reference). Never push.
-5. Follow-up work you discover belongs in the backlog, not this run: you MAY append NEW unchecked
-   items to TODO_LIST.md (one per line, agent-executable, correct section) — the queue's pacing,
-   budget and priority gates decide when they run. Never append an item describing THIS batch's work.
+   Never push. Never edit .crushrc, crush.json, or .tq-verify.
+5. Follow-ups you discover go to the backlog: append NEW unchecked TODO_LIST
+   items (one per line, agent-executable) — no item describing THIS batch's work.
 
-The queue derives what you did — commits via the footer above, changed files via git — so do NOT
-report files or commit SHAs yourself.`
+The queue derives what you did — commits via the footer, files via git.`
 
 // Config controls one harvester.
 type Config struct {

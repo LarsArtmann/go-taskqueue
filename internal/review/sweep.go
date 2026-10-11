@@ -301,7 +301,7 @@ func fixPrompt(payload executor.ReviewPayload, finding executor.ReviewFinding) s
 	original := strings.ReplaceAll(strings.TrimSpace(payload.Item), "{{TASK_ID}}", payload.ReviewedTask)
 
 	b.WriteString(
-		"A code reviewer rejected your earlier work on this task and filed one finding. Fix EXACTLY this finding — no unrelated changes.\n\n",
+		"A code reviewer rejected your earlier work on this task and filed one finding. Fix this finding.\n\n",
 	)
 	b.WriteString("## Original task\n\n" + original + "\n\n")
 	b.WriteString("## Reviewer finding (" + finding.Severity + ")\n\n" + strings.TrimSpace(finding.Title) + "\n\n")
@@ -329,14 +329,13 @@ func fixPrompt(payload executor.ReviewPayload, finding executor.ReviewFinding) s
 	}
 
 	b.WriteString(
-		"Address the finding minimally, keep the repository's contracts (AGENTS.md / docs), and make the repo's own gates " +
+		"Address the finding, keep the repository's contracts (AGENTS.md / docs), and make the repo's own gates " +
 			"(build, vet, tests, format) pass before finishing. FIRST grep git log for your own footer below — existing " +
 			"commits under this fix ticket's ID mean an earlier run already addressed the finding: verify the anchor " +
 			"state, then close out as a no-op stating the evidence instead of redoing. Commit the fix with a message " +
 			"ending in this exact footer line (you have explicit permission to commit for this task):\n\nTask-Queue-ID: {{TASK_ID}}\n\n" +
-			"Footer convention: exactly ONE Task-Queue-ID footer per commit — the FIX ticket's id above. Do not add a second " +
-			"footer for the original task; that lineage lives in the queue (this fix task descends from its review), and " +
-			"duplicate footers corrupt the queue↔git cross-reference.\n\nNever push.",
+			"Footer convention: ONE Task-Queue-ID footer per commit — the FIX ticket's id above, never a second " +
+			"footer for the original task; duplicate footers corrupt the queue↔git cross-reference.\n\nNever push.",
 	)
 
 	return b.String()

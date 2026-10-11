@@ -196,7 +196,7 @@ Issues in %s:
 %s
 
 Rules:
-1. Fix exactly these issues in %s. The smallest correct change wins; no scope creep.
+1. Fix these issues in %s.
 2. The project must build and its tests must pass before you finish.
 3. Do not game the scanner: never weaken tests, never blanket-suppress a finding; a justified
    suppression follows the project's own suppression convention and says why in the commit message.
@@ -206,8 +206,7 @@ Rules:
 6. If an issue is a false positive, fix the code so the scanner no longer flags it (or note why
    it cannot be fixed in the commit message).
 
-The queue derives what you did (commit + changed files) from git — you do not report anything
-yourself.
+The queue derives what you did (commit + changed files) from git.
 `, project.RepoName, scan.ID, fixTask.File, strings.Join(lines, "\n"), fixTask.File)
 
 	payload, _ := executor.RenderAgentPayload(executor.AgentPayload{

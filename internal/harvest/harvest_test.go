@@ -677,6 +677,33 @@ func TestAgentPromptsGuardrails(t *testing.T) {
 	}
 }
 
+// TestAgentPromptsOutcomeShaped pins the 2026-10-11 prompt redesign
+// (docs/problems/major-prompting-and-batching.md): dispatch prompts are
+// outcome contracts carrying only mechanical rails — the distrust prose
+// ("smallest correct change", "no scope creep", "self-dealing") restated
+// AGENTS.md without buying safety and must not come back.
+func TestAgentPromptsOutcomeShaped(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name   string
+		prompt string
+	}{
+		{"work item", DefaultPromptTemplate},
+		{"work batch", DefaultBatchPromptTemplate},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			for _, banned := range []string{"smallest correct change", "scope creep", "self-dealing", "drive-by"} {
+				if strings.Contains(tc.prompt, banned) {
+					t.Fatalf("prompt regressed to distrust prose %q (AGENTS.md owns the rules):\n%s", banned, tc.prompt)
+				}
+			}
+		})
+	}
+}
+
 // TestRunRepoTimeoutLadder: Config.RepoTimeouts pins the ladder value into
 // each harvested payload's TimeoutMinutes; repos without an entry keep the
 // executor default (field omitted).
