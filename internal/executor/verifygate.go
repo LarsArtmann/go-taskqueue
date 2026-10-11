@@ -97,6 +97,38 @@ func (e *VerifyGateError) Error() string {
 
 func (e *VerifyGateError) Unwrap() error { return e.Cause }
 
+// EnvStreakCode marks breaker-burned attempts in the journal: a
+// task.failed fact whose reason carries this code was killed by the
+// environmental-requeue circuit breaker (sustained preflight/gate
+// refusals), not by a judged execution failure. Owned here (not in the
+// worker) so every consumer — the dlqfix sweeper's autopsy refusal
+// included — classifies the marker identically; the worker aliases it.
+const EnvStreakCode = "env-streak"
+
+// IsEnvironmentalDeath reports whether a dead task's last error carries a
+// machine-PROVEN environmental death marker: the env-streak breaker
+// (sustained preflight/gate refusals: dirty tree, missing toolchain) or a
+// verify-gate environmental class (gate-env vendor-gofmt, gate-dead
+// red-at-base, gate-slow deadline-before-verdict). These deaths cannot be
+// fixed from inside the repository — an autopsy can only ever rule
+// wontfix — so the dlqfix sweeper refuses to mint one for them (2026-10-11
+// ceremony cut: ~7 futile autopsy cycles/day measured on production).
+func IsEnvironmentalDeath(lastError string) bool {
+	for _, marker := range []string{
+		"[" + EnvStreakCode + "]",
+		"[" + string(VerifyGateEnvCode) + "]",
+		"agent verify gate environmental",
+		"agent verify gate dead",
+		"agent verify gate slow",
+	} {
+		if strings.Contains(lastError, marker) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // classifyVerifyFailure maps a failed verify run onto a VerifyGateError when
 // the failure belongs to the gate or the environment rather than the task.
 // It returns nil when the failure is introduced (counts against the task)

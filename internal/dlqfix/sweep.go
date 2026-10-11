@@ -76,6 +76,12 @@ type SweepStats struct {
 	// gate-artifact dismissal (TODO row 145) — no autopsy was minted for
 	// them.
 	AutoDismissed int
+	// EnvSkipped counts dead tasks whose death is machine-proven
+	// environmental (env-streak breaker, verify-gate env/dead/slow classes):
+	// no autopsy is minted because no in-repo fix exists — the task stays
+	// DEAD for the operator (tq dlq) instead of burning a paid autopsy
+	// turn that can only rule wontfix (2026-10-11 ceremony cut).
+	EnvSkipped int
 }
 
 // Sweeper turns the journal's dead-letter and autopsy-completion facts into
@@ -173,6 +179,21 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 	}
 
 	if s.autoDismissGateArtifact(ctx, t, agentPayload.Repo, stats) {
+		return
+	}
+
+	// Environmental deaths never get an autopsy: the env-streak breaker
+	// and the verify-gate environmental classes are machine-PROVEN
+	// unfixable from inside the repo, so the paid turn could only ever
+	// return wontfix (2026-10-10 production: ~7 futile cycles/day). The
+	// task stays dead and operator-visible in `tq dlq`.
+	if evidence := s.lastFailureEvidence(ctx, t.ID); executor.IsEnvironmentalDeath(t.LastError) ||
+		executor.IsEnvironmentalDeath(evidence.Tail) {
+		stats.EnvSkipped++
+
+		s.log("dlqfix: autopsy refused — environmental death",
+			"dead", t.ID.String(), "repo", agentPayload.Repo, "last_error", firstLine(t.LastError))
+
 		return
 	}
 

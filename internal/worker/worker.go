@@ -196,8 +196,10 @@ const preflightMaxBackoff = 15 * time.Minute
 // EnvStreakCode marks breaker-burned attempts in the journal: a
 // task.failed fact whose reason carries this code was killed by the
 // environmental-requeue circuit breaker (sustained preflight/gate
-// refusals), not by a judged execution failure.
-const EnvStreakCode = "env-streak"
+// refusals), not by a judged execution failure. The constant is owned by
+// the executor package (shared classification surface); aliased here for
+// callers that historically reached for worker.EnvStreakCode.
+const EnvStreakCode = executor.EnvStreakCode
 
 // preflightLogInterval rate-limits the per-task refusal log: the first
 // refusal logs immediately, repeats stay quiet for this long.
