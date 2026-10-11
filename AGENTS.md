@@ -5,15 +5,14 @@ journal, lease claims + crash reclaim, DAG deps, retries + DLQ,
 pluggable executors (incl. AI agents). One binary, one file, zero
 services.
 
-**STATUS: v0.3.4 wave TAGGED, unpushed (owner: `scripts/release.sh v0.3.4
---push`; cmd/tq floors consume it — proxy steps stay red until push);
+**STATUS: v0.3.4 tagged, unpushed (push: `release.sh v0.3.4 --push`);
 MULTIPLE concurrent agents** — re-read
 files, re-run tests; uncommitted parallel changes: read, judge, build
 on, never revert. (Size guard: TestAgentsDocSizeGuard)
 
 **MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) —
-distrust-bloated contracts, one-TODO-line micro-batches, 52% derived
-ceremony (measured 2026-10-11); redesign pending owner go/no-go.
+ceremony bloat (52% derived, 2026-10-11); redesign SHIPPED in
+v0.3.4, follow-ups tracked in the doc.
 
 ## Commands
 
