@@ -28,6 +28,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   invisible (inspect, then remove or migrate; no auto-move).
 
 ### Fixed
+- **Readmodel schema probe honors ctx and reports close errors** (2026-10-12):
+  the projection-home convergence probe (the legacy-schema crash-loop
+  guard) ran context-less SQL and ignored `db.Close`/`rows.Close`
+  errors; the probe now threads the caller's ctx into
+  `QueryRowContext`/`QueryContext` and promotes close failures to the
+  returned error (resolves the noctx ×2 + errcheck ×2 debt accepted
+  into the v0.3.4 lint baseline).
 - **Doctor projection-DLQ path split-brain** (2026-10-11; code shipped in
   the v0.3.4 tree, entry backfilled 2026-10-12): the doctor's sidecar stat
   and the store's count read went to two different files
