@@ -8,7 +8,7 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/config v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/readmodel v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.0
 )
 
 require (
