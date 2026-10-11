@@ -716,7 +716,7 @@ func TestSweeperAutoDismissLegacyAllOkFact(t *testing.T) {
 	}
 }
 
-func TestSweeperGateArtifactWithoutShippedProofKeepsAutopsy(t *testing.T) {
+func TestSweeperGateArtifactWithoutShippedProofNeverAutopsies(t *testing.T) {
 	t.Parallel()
 
 	noCommits := executor.GitScannerFunc(func(context.Context, string, string, string) ([]executor.Commit, error) {
@@ -772,15 +772,27 @@ func TestSweeperGateArtifactWithoutShippedProofKeepsAutopsy(t *testing.T) {
 			}
 
 			repo, key := writeTodoRepo(t, tt.todo...)
-			seedDeadGateArtifactTask(t, s, repo, tt.key(repo, key), gateArtifactEvidence(), gateArtifactLastError)
+			dead := seedDeadGateArtifactTask(t, s, repo, tt.key(repo, key), gateArtifactEvidence(), gateArtifactLastError)
 
 			stats, err := sw.Sweep(context.Background())
 			if err != nil {
 				t.Fatalf("sweep: %v", err)
 			}
 
-			if stats.AutoDismissed != 0 || stats.FixesEnqueued != 1 {
-				t.Fatalf("stats = %+v, want 0 auto-dismissed, 1 autopsy", stats)
+			// No shipped proof → no auto-dismiss; the gate-artifact error
+			// marker is machine-proven environmental → autopsy refused. The
+			// scanner-run auto-dismiss remains the rescue path once proof
+			// lands (see TestSweeperAutoDismissesGateArtifactShippedDeath).
+			if stats.EnvSkipped != 1 {
+				t.Fatalf("stats = %+v, want 1 env-skipped refusal", stats)
+			}
+
+			if tasks := pendingDLQFixTasks(t, s); len(tasks) != 0 {
+				t.Fatalf("autopsy minted for environmental gate-artifact death: %+v", tasks)
+			}
+
+			if got, err := s.Get(context.Background(), dead.ID); err != nil || got.Status != task.Dead {
+				t.Fatalf("dead task left the DLQ: %s (%v)", got.Status, err)
 			}
 		})
 	}
