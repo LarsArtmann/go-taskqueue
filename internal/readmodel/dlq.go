@@ -51,7 +51,7 @@ func OpenDeadLetters(ctx context.Context, d config.Deployment) (*DeadLetters, er
 		parts = append(parts, "_pragma="+pragma)
 	}
 
-	dsn := "file:" + DLQPathFor(d.DBPath) + "?" + strings.Join(parts, "&")
+	dsn := "file:" + DLQPathFor(PathFor(d.DBPath)) + "?" + strings.Join(parts, "&")
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {

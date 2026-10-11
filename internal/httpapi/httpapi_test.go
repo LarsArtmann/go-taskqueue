@@ -704,7 +704,7 @@ func TestUseReadModelArmsManagedHost(t *testing.T) {
 		t.Fatal("UseReadModel did not open the DLQ sidecar")
 	}
 
-	if _, err := os.Stat(readmodel.DLQPathFor(d.DBPath)); err != nil {
+	if _, err := os.Stat(readmodel.DLQPathFor(readmodel.PathFor(d.DBPath))); err != nil {
 		t.Fatalf("dlq sidecar file: %v", err)
 	}
 
