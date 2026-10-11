@@ -44,14 +44,25 @@ const (
 // ProjectionHomeCallerPragmas is the caller-pragma union the
 // projection-home file runs, DELEGATED to internal/config — the repo's
 // ONE pragma source (the Deployment.ProjectionPragmas builder, derived
-// at the default sync tier here; a serve run resolves the tier through
-// its config.Deployment and the composition root hands BOTH
-// projection-home engines the same resolved list — the single-opener
-// design of internal/composition/single_opener.md). This name stays for
+// at the ENV-RESOLVED sync tier here (the self-open fallback —
+// stats/doctor/api — has no composed Deployment, so it reads
+// TQ_SQLITE_SYNC through the config package's reader directly, honoring
+// the override exactly like the serve path; a broken env value falls
+// back to the default tier there while the composed path still
+// surfaces the parse error via config.FromFlags). This name stays for
 // the model's self-opened engine path (Open without WithEngine), on top
 // of the sqliteengine's own production defaults (journal_mode=WAL +
 // busy_timeout=5000, MaxOpenConns(1)).
-var ProjectionHomeCallerPragmas = config.SQLite("").ProjectionPragmas()
+func projectionHomeCallerPragmas() []string {
+	d := config.SQLite("")
+	if policy, err := config.SyncPolicyFromEnv(); err == nil {
+		d.SyncPolicy = policy
+	}
+
+	return d.ProjectionPragmas()
+}
+
+var ProjectionHomeCallerPragmas = projectionHomeCallerPragmas()
 
 // ErrNoSource reports an Open call without a journal source: the model is
 // a projection, and without a journal to fold there is nothing to serve.
