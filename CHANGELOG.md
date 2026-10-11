@@ -21,6 +21,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   tasks join TODO_LIST items already `[x]` or gone — the
   dedup-already-ticked zombie class a pool relaunch would execute as
   done work (`doctorStaleItems`; the sweep itself stays the remedy).
+- **Doctor legacy-DLQ-sidecar WARN** (2026-10-12): `tq doctor --dlq` warns
+  when a pre-fix legacy poison sidecar (`<db>.dlq.db`) exists while the
+  corrected projection-beside sidecar (`<db>.readmodel.db.dlq.db`) is
+  absent — poison facts stranded by the pre-fix derivation stop being
+  invisible (inspect, then remove or migrate; no auto-move).
+
+### Fixed
+- **Doctor projection-DLQ path split-brain** (2026-10-11; code shipped in
+  the v0.3.4 tree, entry backfilled 2026-10-12): the doctor's sidecar stat
+  and the store's count read went to two different files
+  (`<db>.readmodel.db.dlq.db` vs `<db>.dlq.db`), so a serve-created
+  sidecar holding poison entries could report "no poison facts";
+  `OpenDeadLetters` now derives the ONE projection-beside path
+  (`DLQPathFor(PathFor(d.DBPath))`), `TestDoctorProjectionDLQ` is
+  un-papered, and the legacy-sidecar WARN above covers pre-fix databases.
 
 ## [v0.3.4] - 2026-10-11
 
