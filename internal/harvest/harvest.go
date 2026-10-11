@@ -103,8 +103,8 @@ Outcome: every item landed, verified, committed — one commit per item.
    forward. Verify as you go: run the project's build and tests; leave the
    repo green. Partial completion with a green verify gate is a SUCCESS.
 3. Close the loop per item in TODO_LIST.md: tick each finished item [x]; an
-   item you could NOT finish stays unchecked with " — BLOCKED: <one-line
-   reason>" appended — finish the rest anyway.
+   item you could NOT finish stays unchecked with
+   " — BLOCKED: <one-line reason>" appended — finish the rest anyway.
 4. Commit each item separately with a clear message ending in this exact
    footer line:
 
