@@ -42,16 +42,7 @@ func OpenDeadLetters(ctx context.Context, d config.Deployment) (*DeadLetters, er
 	openCtx, cancel := context.WithTimeout(ctx, dlqOpenTimeout)
 	defer cancel()
 
-	// Relaxed-fsync posture like both homes: the sidecar is diagnostic
-	// (poison-fact forensics), never authoritative — losing a tail entry
-	// to a power cut costs one replay, not data. The tier is the
-	// deployment's, not a local literal.
-	parts := make([]string, 0, len(d.DLQPragmas()))
-	for _, pragma := range d.DLQPragmas() {
-		parts = append(parts, "_pragma="+pragma)
-	}
-
-	dsn := "file:" + DLQPathFor(PathFor(d.DBPath)) + "?" + strings.Join(parts, "&")
+	dsn := dlqDSN(d)
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -68,6 +59,23 @@ func OpenDeadLetters(ctx context.Context, d config.Deployment) (*DeadLetters, er
 	}
 
 	return &DeadLetters{store: store, db: db}, nil
+}
+
+// dlqDSN is the ONE sidecar-address derivation: the projection-beside
+// path (DLQPathFor over PathFor — a queue-home deployment describes the
+// QUEUE db, the sidecar lives beside the PROJECTION db) opened at the
+// deployment's DLQ pragma tier (ADR-0022: no local pragma literals).
+func dlqDSN(d config.Deployment) string {
+	// Relaxed-fsync posture like both homes: the sidecar is diagnostic
+	// (poison-fact forensics), never authoritative — losing a tail entry
+	// to a power cut costs one replay, not data. The tier is the
+	// deployment's, not a local literal.
+	parts := make([]string, 0, len(d.DLQPragmas()))
+	for _, pragma := range d.DLQPragmas() {
+		parts = append(parts, "_pragma="+pragma)
+	}
+
+	return "file:" + DLQPathFor(PathFor(d.DBPath)) + "?" + strings.Join(parts, "&")
 }
 
 // Store returns the platform DLQ for the projection host's
