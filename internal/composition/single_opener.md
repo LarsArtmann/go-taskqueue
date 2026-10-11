@@ -1,6 +1,7 @@
 # B1: Single Projection-Home Opener — Design Note
 
-Status: DESIGN (implementation: plan task B2, 2026-10-09)
+Status: LANDED — B2 shipped in f6492a00 ("fix: open the projection home
+through ONE tq-owned engine with a shared pragma source", 2026-10-10)
 Plan: docs/planning/2026-10-09_20-23_CONFIG-SYSTEM-ALL-IN-BRIDGE.md (B1→B2→B3→B4)
 Review source: docs/architecture-understanding/2026-10-09_20-10_config-vs-system-composition-root.md (P1a)
 
