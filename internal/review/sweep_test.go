@@ -636,15 +636,18 @@ func TestSweepSkipsDocsOnlyChanges(t *testing.T) {
 			t.Parallel()
 
 			s := newTestStore(t)
-			runAgentTask(t, s,
-				executor.AgentPayload{Repo: "demo", Prompt: "docs item " + tc.name},
-				executor.AgentResult{CommitSHA: "abc123", FilesChanged: tc.files},
-			)
 
+			// Sweeper FIRST: NewSweeper bootstraps at the journal head, so
+			// completions recorded before it exist are not trigger facts.
 			sw, err := NewSweeper(ctx, s, SweeperConfig{})
 			if err != nil {
 				t.Fatalf("NewSweeper: %v", err)
 			}
+
+			runAgentTask(t, s,
+				executor.AgentPayload{Repo: "demo", Prompt: "docs item " + tc.name},
+				executor.AgentResult{CommitSHA: "abc123", FilesChanged: tc.files},
+			)
 
 			stats, err := sw.Sweep(ctx)
 			if err != nil {
