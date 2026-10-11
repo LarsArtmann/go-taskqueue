@@ -968,7 +968,22 @@ func doctorProjectionDLQ(ctx context.Context, d config.Deployment) []checkResult
 
 	modelPath := readmodel.PathFor(d.DBPath)
 
-	if _, err := os.Stat(readmodel.DLQPathFor(modelPath)); errors.Is(err, fs.ErrNotExist) {
+	legacyPath := readmodel.DLQPathFor(d.DBPath)
+	dlqPath := readmodel.DLQPathFor(modelPath)
+
+	_, legacyErr := os.Stat(legacyPath)
+	_, dlqErr := os.Stat(dlqPath)
+
+	if !errors.Is(legacyErr, fs.ErrNotExist) && errors.Is(dlqErr, fs.ErrNotExist) {
+		return []checkResult{{
+			Name:   name,
+			Status: checkWarn,
+			Detail: "stale legacy sidecar — inspect then remove/migrate",
+			Items:  []string{legacyPath},
+		}}
+	}
+
+	if errors.Is(dlqErr, fs.ErrNotExist) {
 		return []checkResult{{Name: name, Status: checkOK, Detail: "no poison sidecar (nothing has failed to fold)"}}
 	}
 
