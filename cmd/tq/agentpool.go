@@ -163,7 +163,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	dailyCostCap := fs.Float64(
 		"daily-cost-cap",
 		0,
-		"cap today's derived agent spend in USD beside the count cap (0 = off): summed from completed runs' session usage, so it stops FURTHER spend once observed spend crosses it; pairs with --daily-budget so cheap days are not starved by a count ceiling (docs/adr/ADR-0023-cost-budget.md)",
+		"cap today's derived agent spend in USD beside the count cap (0 = off): summed from completed runs' session usage, so it stops FURTHER spend once observed spend crosses it; pairs with --daily-budget so cheap days are not starved by a count ceiling (docs/adr/0023-cost-budget-beside-count-cap.md)",
 	)
 	budgetCmd := fs.String(
 		"budget-cmd",
