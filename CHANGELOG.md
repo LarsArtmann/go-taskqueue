@@ -7,6 +7,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Projection home opened through ONE tq-owned engine** (2026-10-10): serve
+  used to open `<db>.readmodel.db` twice (readmodel internally + the system
+  root's declared engine) with two diverging pragma copies; `readmodel`
+  gained `WithEngine`, `composition.NewProjectionRuntime` opens the single
+  engine, and both paths derive pragmas from the one `config.Deployment`
+  source (f6492a00).
+- **`tq api` projection pump is crash-safe** (2026-10-11): the api's
+  readmodel fold ran as a raw `Model.Run` loop, so a poison fact wedged the
+  cursor at repeated error logs forever; the pump now runs under the managed
+  projection host — non-retryable poison facts dead-letter to the DLQ
+  sidecar and the fold keeps converging, retryables ride the platform
+  restart budget (07995bf8; decision record
+  docs/memos/2026-10-10_readmodel-open-seams.md).
+- **release-gate hardening trio** (2026-10-09): the proxy-wait smoke's
+  offline claim is now structural where `unshare -n` is permitted (loud SKIP
+  otherwise, a3f6264); the two die messages live as lib constants asserted
+  verbatim by the smoke instead of substring greps (dfd3e6c); and
+  check-release-docs.sh's `need_in_both` emits per-target miss messages so a
+  drift failure names where the needle died (9080294).
 - **release.sh proxy verification demand-fill + die diagnosis** (2026-10-08):
   the 5-attempt proxy wait now pokes `proxy.golang.org/<module>/@v/<ver>.info`
   (on-demand fill) on every attempt before the passive `go list -m -versions`
