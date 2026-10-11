@@ -576,3 +576,68 @@ func TestSweeperPinsTaskTimeoutIntoPayload(t *testing.T) {
 		t.Fatalf("timeout_minutes = %d, want 90", payload.TimeoutMinutes)
 	}
 }
+
+// TestSweepMinIntervalGatesMint pins the 2026-10-11 ceremony cut: a
+// per-project floor between two reports. The first report mints (no
+// prior report); a full window inside the floor is SKIPPED; the same
+// window with no floor mints — proving the floor (not the window query)
+// is the refusing axis.
+func TestSweepMinIntervalGatesMint(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s := newTestStore(t)
+
+	sw, err := NewSweeper(ctx, s, SweeperConfig{Every: 2, MinInterval: time.Hour})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	runAgentTask(t, s, 0, executor.AgentResult{})
+	_, _ = sw.Sweep(ctx)
+	runAgentTask(t, s, 1, executor.AgentResult{})
+
+	if stats, err := sw.Sweep(ctx); err != nil || stats.ReportsEnqueued != 1 {
+		t.Fatalf("first report must mint (no prior report): %+v %v", stats, err)
+	}
+
+	reports := listByType(t, s, executor.TaskTypeStatus)
+	if len(reports) != 1 {
+		t.Fatalf("status tasks = %d, want 1", len(reports))
+	}
+
+	detail, err := json.Marshal(executor.StatusResult{Report: "docs/status/x.md"})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	finishTask(t, s, reports[0].ID, detail)
+
+	runAgentTask(t, s, 2, executor.AgentResult{})
+	runAgentTask(t, s, 3, executor.AgentResult{})
+
+	stats, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("Sweep (floored): %v", err)
+	}
+
+	if stats.ReportsEnqueued != 0 || len(listByType(t, s, executor.TaskTypeStatus)) != 1 {
+		t.Fatalf("full window inside the floor must not mint: %+v", stats)
+	}
+
+	swNoFloor, err := NewSweeper(ctx, s, SweeperConfig{Every: 2, MinInterval: 0})
+	if err != nil {
+		t.Fatalf("NewSweeper (no floor): %v", err)
+	}
+
+	runAgentTask(t, s, 4, executor.AgentResult{})
+	runAgentTask(t, s, 5, executor.AgentResult{})
+
+	if stats, err := swNoFloor.Sweep(ctx); err != nil || stats.ReportsEnqueued != 1 {
+		t.Fatalf("no-floor sweeper must mint the full window: %+v %v", stats, err)
+	}
+
+	if got := len(listByType(t, s, executor.TaskTypeStatus)); got != 2 {
+		t.Fatalf("status tasks = %d, want 2", got)
+	}
+}
