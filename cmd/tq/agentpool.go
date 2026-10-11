@@ -15,6 +15,7 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -669,6 +670,113 @@ func observeStarvation(ctx context.Context, store *sqlite.Store, detector *starv
 	}
 
 	detector.observe(time.Now(), oldestTask, pending)
+}
+
+// workerDeathDetector watches the projection worker-death marker (the
+// B9.3 durable sidecar) once per pool tick: a standing marker means the
+// fold worker exhausted its restart budget and nobody restarted the
+// host — the lag-0 death the cursor checks cannot see. A cleared marker
+// (a fresh host carries a fresh restart budget) resolves the episode.
+// Delivery-armed like deadPoolDetector: a failed notify retries next
+// tick.
+type workerDeathDetector struct {
+	dbPath  string
+	alerted bool
+	notify  func(triggered bool, projection string, failedAt time.Time) bool
+}
+
+func (d *workerDeathDetector) observe() {
+	marker, exists, err := readmodel.ReadWorkerFailedMarker(d.dbPath)
+	if err != nil {
+		return // unreadable marker: not a death signal
+	}
+
+	switch {
+	case exists && !d.alerted:
+		if d.notify != nil && !d.notify(true, marker.Projection, marker.FailedAt) {
+			return
+		}
+
+		d.alerted = true
+	case !exists && d.alerted:
+		if d.notify != nil {
+			d.notify(false, "", time.Time{})
+		}
+
+		d.alerted = false
+	}
+}
+
+// frozenSweepersDetector flags journal consumers whose watermark stood
+// still across consecutive pool ticks while the journal head advanced
+// (B10.2): a sweeper armed in this pool whose cursor never moves is
+// frozen — its sweep silently stopped while the pool keeps ticking. Only
+// ARMED consumers are watched (a disabled sweeper never advances by
+// design); a consumer at the head is idle, not frozen. Delivery-armed
+// like deadPoolDetector.
+type frozenSweepersDetector struct {
+	ticks   int // unchanged-cursor streak that fires (<= 0 disables)
+	watch   []string
+	last    map[string]int64
+	streak  map[string]int
+	alerted bool
+	notify  func(triggered bool, frozen []string, streak int) bool
+}
+
+// observe applies one tick's watermark snapshot.
+func (d *frozenSweepersDetector) observe(ctx context.Context, store queue.Store) {
+	if d.ticks <= 0 || len(d.watch) == 0 {
+		return
+	}
+
+	head, err := store.HeadSeq(ctx)
+	if err != nil {
+		return
+	}
+
+	var frozen []string
+
+	maxStreak := 0
+
+	for _, consumer := range d.watch {
+		seq, exists, err := store.Watermark(ctx, consumer)
+		if err != nil || !exists {
+			continue // never ran: idle, not sick
+		}
+
+		prev, seen := d.last[consumer]
+		d.last[consumer] = seq
+
+		switch {
+		case !seen:
+			// first observation only baselines the cursor
+		case seq == prev && seq < head:
+			d.streak[consumer]++
+		default:
+			d.streak[consumer] = 0
+		}
+
+		if d.streak[consumer] >= d.ticks {
+			frozen = append(frozen, consumer)
+
+			maxStreak = max(maxStreak, d.streak[consumer])
+		}
+	}
+
+	switch {
+	case len(frozen) > 0 && !d.alerted:
+		if d.notify != nil && !d.notify(true, frozen, maxStreak) {
+			return
+		}
+
+		d.alerted = true
+	case len(frozen) == 0 && d.alerted:
+		if d.notify != nil {
+			d.notify(false, nil, 0)
+		}
+
+		d.alerted = false
+	}
 }
 
 // registerAgentExecutors wires the agent-family executors around one

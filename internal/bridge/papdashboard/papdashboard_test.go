@@ -854,3 +854,80 @@ func TestBudgetBlockedShortParkSkipsAllDayEscalation(t *testing.T) {
 		}
 	}
 }
+
+// TestNotifyWorkerExhaustedLifecycle pins the B10.1 routing: the
+// worker-death marker verdict raises on the projection-worker aggregate
+// (with the restart remedy in the body) and resolves when a fresh host
+// cleared the marker.
+func TestNotifyWorkerExhaustedLifecycle(t *testing.T) {
+	pap := newFakePap(t)
+	b := New(&fakeSource{}, nil, Config{Endpoint: pap.server.URL, APIKey: "k", Logger: quietLogger()})
+
+	ctx := context.Background()
+
+	if err := b.NotifyWorkerExhausted(ctx, true, "readmodel", time.Now().UTC().Add(-3*time.Hour)); err != nil {
+		t.Fatalf("raise: %v", err)
+	}
+
+	if err := b.NotifyWorkerExhausted(ctx, false, "", time.Time{}); err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+
+	calls := pap.calls()
+	if len(calls) != 2 {
+		t.Fatalf("got %d events, want raise+resolve: %+v", len(calls), calls)
+	}
+
+	if calls[0].Event != "alert.triggered" || calls[0].AggregateID != "agent-pool-projection-worker" {
+		t.Errorf("raise = %s/%s, want alert.triggered on the projection-worker aggregate",
+			calls[0].Event, calls[0].AggregateID)
+	}
+
+	if !strings.Contains(string(calls[0].Payload), "Restart the serve/api process") {
+		t.Errorf("raise body misses the restart remedy: %s", calls[0].Payload)
+	}
+
+	if calls[1].Event != "alert.resolved" || calls[1].AggregateID != "agent-pool-projection-worker" {
+		t.Errorf("resolve = %s/%s, want alert.resolved on the projection-worker aggregate",
+			calls[1].Event, calls[1].AggregateID)
+	}
+}
+
+// TestNotifySweepersFrozenLifecycle pins the B10.2 routing: the
+// frozen-sweeper verdict raises naming the stuck consumers and resolves
+// when a cursor advances again.
+func TestNotifySweepersFrozenLifecycle(t *testing.T) {
+	pap := newFakePap(t)
+	b := New(&fakeSource{}, nil, Config{Endpoint: pap.server.URL, APIKey: "k", Logger: quietLogger()})
+
+	ctx := context.Background()
+
+	if err := b.NotifySweepersFrozen(ctx, true, []string{"review-sweeper", "status-sweeper"}, 4); err != nil {
+		t.Fatalf("raise: %v", err)
+	}
+
+	if err := b.NotifySweepersFrozen(ctx, false, nil, 0); err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+
+	calls := pap.calls()
+	if len(calls) != 2 {
+		t.Fatalf("got %d events, want raise+resolve: %+v", len(calls), calls)
+	}
+
+	if calls[0].Event != "alert.triggered" || calls[0].AggregateID != "agent-pool-sweepers-frozen" {
+		t.Errorf("raise = %s/%s, want alert.triggered on the sweepers-frozen aggregate",
+			calls[0].Event, calls[0].AggregateID)
+	}
+
+	for _, consumer := range []string{"review-sweeper", "status-sweeper"} {
+		if !strings.Contains(string(calls[0].Payload), consumer) {
+			t.Errorf("raise body misses frozen consumer %s: %s", consumer, calls[0].Payload)
+		}
+	}
+
+	if calls[1].Event != "alert.resolved" || calls[1].AggregateID != "agent-pool-sweepers-frozen" {
+		t.Errorf("resolve = %s/%s, want alert.resolved on the sweepers-frozen aggregate",
+			calls[1].Event, calls[1].AggregateID)
+	}
+}
