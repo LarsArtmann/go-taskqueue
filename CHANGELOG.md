@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   fresh hosts clear it, so a standing marker means the fold died and
   nobody restarted it), and `tq doctor` reports it as a WARN naming
   the restart remedy (`doctorProjectionWorkerDeath`).
+- **Doctor stale-items check**: `tq doctor --projects-dir` now runs the
+  prune-stale derivation read-only (DryRun) and warns when PENDING
+  tasks join TODO_LIST items already `[x]` or gone — the
+  dedup-already-ticked zombie class a pool relaunch would execute as
+  done work (`doctorStaleItems`; the sweep itself stays the remedy).
 
 ## [v0.3.4] - 2026-10-11
 
