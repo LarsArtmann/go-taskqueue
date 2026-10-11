@@ -225,6 +225,8 @@ github.com/larsartmann/go-taskqueue v0.3.3 h1:3kgxnYueMqtx0HQ0WcRO+vOVj/sQZwB7NL
 github.com/larsartmann/go-taskqueue v0.3.3/go.mod h1:9PjUEKtOYVuuBtTE09uLfwycxsitGEj6rIQcje4WSSw=
 github.com/larsartmann/go-taskqueue/internal/composition v0.3.3 h1:UL4BgqrO0tWjhbBXF8xLk4VE3SE56KcSfGO7dYPaKPM=
 github.com/larsartmann/go-taskqueue/internal/composition v0.3.3/go.mod h1:xTuXS8eFNOeAL9OAIKL2lXQbfuPCTQL0iW3nVEvtMEc=
+github.com/larsartmann/go-taskqueue/internal/config v0.3.3 h1:9Si7TWsU9WuXblLA/0lKDq+0ia/Wu/e3iXsqSE/62AU=
+github.com/larsartmann/go-taskqueue/internal/config v0.3.3/go.mod h1:nlZaCCm07iALUV5Y9fCjuKAfZUtscz4hFayZ4COGV8I=
 github.com/larsartmann/go-taskqueue/internal/executor v0.3.3 h1:zf0EZx/6jkkRlH39qn/wmkDzOdrjdvJhGiSM7jd2LFU=
 github.com/larsartmann/go-taskqueue/internal/executor v0.3.3/go.mod h1:jpi8ojCasmnzdCJO7dshiRMMTUVMUJ8n60K0yLnlZMA=
 github.com/larsartmann/go-taskqueue/internal/journal v0.3.3 h1:Ea/YYdS1i6NOznVVKkVV7dJANalApvJJgs7hmfefkFc=
