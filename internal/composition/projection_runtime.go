@@ -36,7 +36,7 @@ type ProjectionRuntime struct {
 func NewProjectionRuntime(ctx context.Context, src queue.Store, cfg config.Deployment) (*ProjectionRuntime, error) {
 	modelPath := readmodel.PathFor(cfg.DBPath)
 
-	if err := readmodel.ConvergeProjectionHome(modelPath); err != nil {
+	if err := readmodel.ConvergeProjectionHome(ctx, modelPath); err != nil {
 		return nil, fmt.Errorf("composition: converge projection home: %w", err)
 	}
 

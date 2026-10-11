@@ -175,7 +175,7 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 	// WAL + busy_timeout defaults) — one literal, referenced by the
 	// composition root for its declared engine too.
 	if m.eng == nil {
-		if err := ConvergeProjectionHome(path); err != nil {
+		if err := ConvergeProjectionHome(ctx, path); err != nil {
 			return nil, err
 		}
 

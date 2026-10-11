@@ -1,6 +1,7 @@
 package readmodel
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -32,7 +33,7 @@ const tasksPlannedTable = "meta_planned_" + tasksCollection
 // current model; WithDurableCursor already replays from zero exactly
 // once when the surviving watermark points past an empty projection.
 // A healthy or absent home is left untouched.
-func ConvergeProjectionHome(path string) error {
+func ConvergeProjectionHome(ctx context.Context, path string) error {
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -41,7 +42,7 @@ func ConvergeProjectionHome(path string) error {
 		return fmt.Errorf("readmodel: probe projection home: %w", err)
 	}
 
-	missing, err := probeMissingColumns(path)
+	missing, err := probeMissingColumns(ctx, path)
 	if err != nil {
 		return err
 	}
@@ -67,16 +68,20 @@ func ConvergeProjectionHome(path string) error {
 // probeMissingColumns opens the projection read-only and reports which
 // TaskRow columns the planned table lacks (empty = converged). A missing
 // table means the engine will create it fresh.
-func probeMissingColumns(path string) ([]string, error) {
+func probeMissingColumns(ctx context.Context, path string) (missing []string, err error) {
 	db, err := sql.Open("sqlite", "file:"+path+"?mode=ro&_pragma=busy_timeout(5000)")
 	if err != nil {
 		return nil, fmt.Errorf("readmodel: probe projection home: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if cerr := db.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("readmodel: close projection home probe: %w", cerr)
+		}
+	}()
 
 	var table string
 
-	err = db.QueryRow(
+	err = db.QueryRowContext(ctx,
 		`SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
 		tasksPlannedTable,
 	).Scan(&table)
@@ -88,11 +93,15 @@ func probeMissingColumns(path string) ([]string, error) {
 		return nil, fmt.Errorf("readmodel: probe %s: %w", tasksPlannedTable, err)
 	}
 
-	rows, err := db.Query(fmt.Sprintf(`PRAGMA table_info(%s)`, tasksPlannedTable))
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(`PRAGMA table_info(%s)`, tasksPlannedTable))
 	if err != nil {
 		return nil, fmt.Errorf("readmodel: probe %s columns: %w", tasksPlannedTable, err)
 	}
-	defer rows.Close()
+	defer func() {
+		if cerr := rows.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("readmodel: close %s column cursor: %w", tasksPlannedTable, cerr)
+		}
+	}()
 
 	actual := map[string]bool{}
 
@@ -114,8 +123,6 @@ func probeMissingColumns(path string) ([]string, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("readmodel: scan %s columns: %w", tasksPlannedTable, err)
 	}
-
-	var missing []string
 
 	for _, col := range taskRowColumns() {
 		if !actual[col] {

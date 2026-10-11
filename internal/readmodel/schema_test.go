@@ -63,7 +63,7 @@ func TestConvergeProjectionHome(t *testing.T) {
 
 		db.Close()
 
-		if err := ConvergeProjectionHome(path); err != nil {
+		if err := ConvergeProjectionHome(t.Context(), path); err != nil {
 			t.Fatalf("converge: %v", err)
 		}
 
@@ -93,7 +93,7 @@ func TestConvergeProjectionHome(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "tq.db.readmodel.db")
 		createPlannedTable(t, path, taskRowColumns())
 
-		if err := ConvergeProjectionHome(path); err != nil {
+		if err := ConvergeProjectionHome(t.Context(), path); err != nil {
 			t.Fatalf("converge: %v", err)
 		}
 
@@ -111,7 +111,7 @@ func TestConvergeProjectionHome(t *testing.T) {
 
 		path := filepath.Join(t.TempDir(), "tq.db.readmodel.db")
 
-		if err := ConvergeProjectionHome(path); err != nil {
+		if err := ConvergeProjectionHome(t.Context(), path); err != nil {
 			t.Fatalf("converge: %v", err)
 		}
 
@@ -132,7 +132,7 @@ func TestConvergeProjectionHome(t *testing.T) {
 
 		other.Close()
 
-		if err := ConvergeProjectionHome(path); err != nil {
+		if err := ConvergeProjectionHome(t.Context(), path); err != nil {
 			t.Fatalf("converge: %v", err)
 		}
 
