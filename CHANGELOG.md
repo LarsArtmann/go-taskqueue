@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Throughput-engine redesign (2026-10-11)**: dispatch prompts are now
+  outcome contracts and batching is on by default, per the measured
+  problems in docs/problems/major-prompting-and-batching.md (owner GO via
+  the SUPERB pareto plan): work/batch/cqa/reviewfix prompts drop the
+  distrust prose that restated AGENTS.md (10x bloat; work prompt
+  1,802→1,206 chars, 282→184 words, distrust markers 5→2 hard safety
+  rails) and keep only mechanical rails — re-dispatch no-op protocol,
+  `Task-Queue-ID` footer, build+tests verify, push/self-dealing-file
+  safety lines, TODO loop-closing, backlog routing; pinned against
+  regression by `TestAgentPromptsOutcomeShaped`. `--batch-items` default
+  flips 0→3 (micro-batch waste fix; 0/1 = off still honored).
+
 ### Fixed
 - **Projection home opened through ONE tq-owned engine** (2026-10-10): serve
   used to open `<db>.readmodel.db` twice (readmodel internally + the system

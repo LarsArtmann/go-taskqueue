@@ -93,9 +93,10 @@ func TestHarvestConfigFromOptionsKeepsProjectsDirForDiscovery(t *testing.T) {
 	}
 }
 
-// TestParseAgentPoolOptionsBatchItems pins the batching flag: values within
-// 0..10 plumb into the harvest config, values above fail fast (one session
-// working more than ~10 items drowns in its own history).
+// TestParseAgentPoolOptionsBatchItems pins the batching flag: the DEFAULT is
+// 3 (2026-10-11 micro-batch waste fix — docs/problems/major-prompting-and-batching.md),
+// explicit values within 0..10 plumb into the harvest config, values above
+// fail fast (one session working more than ~10 items drowns in its own history).
 func TestParseAgentPoolOptionsBatchItems(t *testing.T) {
 	t.Parallel()
 
@@ -115,6 +116,15 @@ func TestParseAgentPoolOptionsBatchItems(t *testing.T) {
 
 	if cfg.BatchItems != 3 {
 		t.Fatalf("harvest cfg BatchItems = %d, want the flag plumbed through", cfg.BatchItems)
+	}
+
+	def, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir()})
+	if err != nil {
+		t.Fatalf("parse defaults: %v", err)
+	}
+
+	if def.batchItems != 3 {
+		t.Fatalf("default batchItems = %d, want 3 (batching on by default)", def.batchItems)
 	}
 
 	if _, err := parseAgentPoolOptions([]string{"--projects-dir", t.TempDir(), "--batch-items", "11"}); err == nil {
