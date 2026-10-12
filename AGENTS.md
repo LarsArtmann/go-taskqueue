@@ -244,7 +244,9 @@ docs/DOMAIN_LANGUAGE.md.
   closeout §d4).
 - **TestExactlyOnceUnderConcurrency is load-flaky** (worker): host build
   storms can drop it to "19/20 completed"; fails at clean parents too —
-  re-run before attributing.
+  re-run before attributing. **TestSelfManagingLoop** (harvest) rides the
+  same `KNOWN_FLAKY` list in `scripts/lib/verify-retry.sh` (both names are
+  pinned to this Known Issues section by `scripts/check-verify.sh`).
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`

@@ -71,6 +71,22 @@ for marker in \
 	fi
 done
 
+# Pin 6 (03-47 report §e4): the KNOWN_FLAKY list stays pinned to the
+# AGENTS.md Known Issues flake mentions — any test named "<Test> is
+# load-flaky" there must appear in the lib's list (one grep gate; the
+# Known Issues list owns which signatures get the ONE retry).
+while IFS= read -r known_flake; do
+	[ -n "$known_flake" ] || continue
+	if ! grep -qF -- "$known_flake" "$lib"; then
+		echo "FAIL: AGENTS.md Known Issues flake '$known_flake' is missing from $lib KNOWN_FLAKY"
+		fail=1
+	fi
+done < <(grep -oE '`?Test[A-Za-z0-9_]+`? is load-flaky' AGENTS.md | grep -oE 'Test[A-Za-z0-9_]+')
+if ! grep -qE 'is load-flaky' AGENTS.md; then
+	echo "FAIL: no '<Test> is load-flaky' bullet found in AGENTS.md — the KNOWN_FLAKY pin has nothing to bind to"
+	fail=1
+fi
+
 # Pin 4: root-gate.sh consumes the lib, no private signature copy.
 if grep -qE '^(known_flaky|KNOWN_FLAKY)=' "$root_gate"; then
 	echo "FAIL: $root_gate still defines a private flaky-signature list — the extraction regressed"
