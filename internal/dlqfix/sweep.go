@@ -504,6 +504,10 @@ func firstLine(s string) string {
 // NOT get a second autopsy — the second death is deliberately a human
 // surface (the first verdict and the fresh failure evidence are both in the
 // journal).
+// DedupPrefix is the dedup-identity namespace of autopsy tasks; audit
+// surfaces key off it to find them without stringly coupling.
+const DedupPrefix = "dlqfix:"
+
 func DedupKey(dead task.ID) string {
-	return "dlqfix:" + dead.String()
+	return DedupPrefix + dead.String()
 }

@@ -657,3 +657,33 @@ func TestJournalAuditBudgetHintRenders(t *testing.T) {
 		t.Errorf("budget hint missing from audit output:\n%s", out)
 	}
 }
+
+// TestAutopsyYieldClassification pins the B11.2 audit query: autopsy tasks
+// (dlqfix:<dead-id> dedup identity) are classified by their dead target's
+// current outcome, non-autopsy dedup namespaces are ignored, and a missing
+// target counts only as a minted autopsy.
+func TestAutopsyYieldClassification(t *testing.T) {
+	t.Parallel()
+
+	tasks := []task.Task{
+		{ID: "dead-fix", Status: task.Completed},
+		{ID: "dead-wontfix", Status: task.Cancelled},
+		{ID: "dead-inflight", Status: task.Running},
+		{ID: "dead-again", Status: task.Dead},
+		{ID: "a1", Status: task.Completed, DedupKey: "dlqfix:dead-fix"},
+		{ID: "a2", Status: task.Completed, DedupKey: "dlqfix:dead-wontfix"},
+		{ID: "a3", Status: task.Completed, DedupKey: "dlqfix:dead-inflight"},
+		{ID: "a4", Status: task.Completed, DedupKey: "dlqfix:dead-again"},
+		{ID: "a5", Status: task.Pending, DedupKey: "dlqfix:dead-gone"},
+		{ID: "plain", Status: task.Completed, DedupKey: "todo:unrelated"},
+	}
+
+	want := AutopsyYield{Autopsies: 5, Fixes: 1, Wontfix: 1, InFlight: 1, FailedAgain: 1, Unrun: 1}
+	if got := autopsyYield(tasks); got != want {
+		t.Errorf("autopsyYield = %+v, want %+v", got, want)
+	}
+
+	if got := autopsyYield(nil); got != (AutopsyYield{}) {
+		t.Errorf("autopsyYield(nil) = %+v, want zero value", got)
+	}
+}

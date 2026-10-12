@@ -7,7 +7,9 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 
+	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -175,6 +177,12 @@ type DriftReport struct {
 	// tasks to Pending, and how many parked an owed close-out. Zero-value
 	// when the range carries no requeues.
 	Requeues RequeueSummary `json:"requeues"`
+	// Autopsies answers the DLQ-autopsy value question (B11.2): of the
+	// autopsies the sweeper minted, how many produced a fix that landed
+	// versus closed wontfix. Yield visibility only — env-futility was
+	// already cut at mint time (the ceremony cut refuses autopsies for
+	// environmental deaths).
+	Autopsies AutopsyYield `json:"autopsyYield"`
 }
 
 // RequeueSummary breaks a journal's task.requeued facts down by refusal
@@ -220,6 +228,59 @@ func requeueSummary(facts []journal.Fact) RequeueSummary {
 	}
 
 	return summary
+}
+
+// AutopsyYield classifies the DLQ autopsies (dlqfix-sweeper minted tasks,
+// identified by their dlqfix:<dead-id> dedup identity) by what their
+// verdict did to the dead target: a fix that landed, a wontfix dismissal,
+// a rescue still in flight, or a rescue that died again. Unrun counts
+// minted autopsies that have not completed yet.
+type AutopsyYield struct {
+	Autopsies   int `json:"autopsies"`
+	Fixes       int `json:"fixes"`
+	Wontfix     int `json:"wontfix"`
+	InFlight    int `json:"inFlight"`
+	FailedAgain int `json:"failedAgain"`
+	Unrun       int `json:"unrun"`
+}
+
+// autopsyYield classifies autopsy tasks by their dead target's current
+// outcome. Pure: no I/O, directly testable without a store.
+func autopsyYield(tasks []task.Task) AutopsyYield {
+	byID := make(map[task.ID]task.Task, len(tasks))
+	for _, t := range tasks {
+		byID[t.ID] = t
+	}
+
+	var yield AutopsyYield
+	for _, t := range tasks {
+		if !strings.HasPrefix(t.DedupKey, dlqfix.DedupPrefix) {
+			continue
+		}
+
+		yield.Autopsies++
+		if t.Status != task.Completed {
+			yield.Unrun++
+		}
+
+		dead, ok := byID[task.ID(strings.TrimPrefix(t.DedupKey, dlqfix.DedupPrefix))]
+		if !ok {
+			continue
+		}
+
+		switch dead.Status {
+		case task.Completed:
+			yield.Fixes++
+		case task.Cancelled:
+			yield.Wontfix++
+		case task.Pending, task.Running:
+			yield.InFlight++
+		default: // dead again: the verdict executed but the work re-died
+			yield.FailedAgain++
+		}
+	}
+
+	return yield
 }
 
 // SecretHit locates token-shaped strings in one stored fact WITHOUT
@@ -350,6 +411,7 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 	report.FactsReplayed = len(facts)
 	report.SecretEvidence = scanFactSecrets(facts)
 	report.Requeues = requeueSummary(facts)
+	report.Autopsies = autopsyYield(tasks)
 
 	return report, nil
 }
@@ -469,6 +531,15 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 				"  (budget requeues park paid turns until the daily cap or budget-cmd window resets — no attempt burn, outside the env-streak breaker; the pool LOOKS idle on purpose)",
 			)
 		}
+	}
+
+	switch y := report.Autopsies; y.Autopsies {
+	case 0:
+		fmt.Println("autopsy yield: no dlqfix autopsies in the journal")
+	default:
+		fmt.Printf("autopsy yield: %d minted — %d fix(es) landed, %d wontfix, %d rescue(s) in flight, %d dead again, %d unrun\n",
+			y.Autopsies, y.Fixes, y.Wontfix, y.InFlight, y.FailedAgain, y.Unrun)
+		fmt.Println("  (environmental deaths no longer mint autopsies — the ceremony cut refuses them at sweep time)")
 	}
 
 	if len(report.SecretEvidence) == 0 {
