@@ -142,6 +142,7 @@ func main() {
 		"show":         cmdShow,
 		"dlq":          cmdDLQ,
 		"cancel":       cmdCancel,
+		"park":         cmdPark,
 		"facts":        cmdFacts,
 		"tail":         cmdTail,
 		"watermarks":   cmdWatermarks,
