@@ -60,6 +60,10 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 			t.Errorf("%s: CSP must be script-src 'self' without unsafe-inline, got %q", path, csp)
 		}
 
+		if !strings.Contains(csp, "form-action 'self'") || strings.Contains(csp, "form-action 'none'") {
+			t.Errorf("%s: CSP must pin form-action 'self' (no-JS filter fallback), got %q", path, csp)
+		}
+
 		if got := resp.Header.Get("X-Content-Type-Options"); got != "nosniff" {
 			t.Errorf("%s: X-Content-Type-Options = %q, want nosniff", path, got)
 		}

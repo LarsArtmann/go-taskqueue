@@ -116,6 +116,11 @@ legitimate same-origin form posts too and must then be narrowed per-route.
 Until all three exist, the dashboard stays read-only by construction — the
 route-table test is the enforcement mechanism, not documentation.
 
+**Amendment (2026-10-13, O11 owner ruling):** `form-action` relaxes from
+`'none'` to `'self'` (same-origin only) so the no-JS filter fallback form
+actually submits; every other directive above is unchanged, and `/health*`
+still pins `form-action 'none'` via its re-hardened override.
+
 **Amendment (2026-09-08, f40 resume-mapping spike):** decision 2's original
 "SSE `Last-Event-ID` maps back to the journal watermark for resume (proven in
 `examples/sse`)" conflated two shapes. The wire mapping is real — every

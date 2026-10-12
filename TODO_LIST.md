@@ -147,7 +147,7 @@ not here.
 
 ## Webui overhaul leftovers (2026-09-14 stunning-overhaul execution; docs/research/2026-09-14_templ-components-deep-dive.html §05)
 
-- [ ] Relax webui CSP to `form-action 'self'` so the no-JS filter fallback survives, update SECURITY.md + the header pins to match (O11 2026-10-05; surfaced during G1)
+- [x] Relax webui CSP to `form-action 'self'` so the no-JS filter fallback survives, update SECURITY.md + the header pins to match (O11 2026-10-05; surfaced during G1)
 
 ## Done-prompt window harvest (2026-09-16; sources: the five-task hardening window close-outs 00-11/00-55/01-21/01-46 + 06-43, deduped against rows 89-93/97; all claims verified at HEAD this pass; docs/status/archived/2026-09-16_02-05_done-prompt-five-task-hardening-window.md)
 

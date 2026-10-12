@@ -325,7 +325,7 @@ func securityHeaders(w http.ResponseWriter, nonce string) {
 	header := w.Header()
 	header.Set("Content-Security-Policy",
 		"default-src 'none'; style-src 'self'; script-src 'self' 'nonce-"+nonce+"'; img-src 'self' data:; "+
-			"font-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'")
+			"font-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
 	// The dashboard never needs device capabilities; deny them outright so
 	// any future embed/iframe drift cannot grant a rendered payload access.
 	header.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")

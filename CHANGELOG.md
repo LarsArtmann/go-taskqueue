@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Webui CSP `form-action 'self'` (O11)**: the dashboard CSP relaxes
+  `form-action` from `'none'` to same-origin `'self'` so the no-JS filter
+  fallback form submits again; every other directive unchanged, `/health*`
+  still pins `'none'`, and the route-table security test + SECURITY.md +
+  ADR-0003 document the ruling (2026-10-05, surfaced during G1).
+
 ### Added
 - **Pool liveness alerts (B10)**: the agent pool now surfaces dead
   projection fold workers (the B9.3 marker watched every harvest tick;
