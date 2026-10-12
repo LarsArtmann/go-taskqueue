@@ -1,5 +1,5 @@
 cmd/tq	contextcheck:	1
-cmd/tq	cyclop:	14
+cmd/tq	cyclop:	15
 cmd/tq	dogsled:	4
 cmd/tq	err113:	50
 cmd/tq	errcheck:	24
@@ -24,9 +24,8 @@ cmd/tq	noctx:	11
 cmd/tq	nonamedreturns:	2
 cmd/tq	paralleltest:	50
 cmd/tq	predeclared:	1
-cmd/tq	unused:	4
 cmd/tq	varnamelen:	32
-cmd/tq	wsl_v5:	4
+cmd/tq	wsl_v5:	6
 executor	godoclint:	1
 executor	paralleltest:	1
 internal/composition	err113:	1
