@@ -644,7 +644,7 @@ func TestJournalAuditBudgetHintRenders(t *testing.T) {
 	}
 
 	out := captureStdout(t, func() {
-		if err := cmdJournalAudit(ctx, store, false); err != nil {
+		if err := cmdJournalAudit(ctx, store, false, ""); err != nil {
 			t.Errorf("cmdJournalAudit: %v", err)
 		}
 	})
