@@ -708,9 +708,6 @@ templ reviewFindings(res executor.ReviewResult) {
 		if res.LogPath != "" {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
 		}
-		if res.Branch != "" {
-			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">worktree delivery: <code class="break-all font-mono text-xs">{ res.Branch }</code> at <code class="break-all font-mono text-xs">{ res.WorktreeDir }</code></p>
-		}
 	}
 }
 
@@ -728,6 +725,9 @@ templ agentResultCard(res executor.AgentResult) {
 		}
 		if res.LogPath != "" {
 			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">full agent output: <code class="break-all font-mono text-xs">{ res.LogPath }</code></p>
+		}
+		if res.Branch != "" {
+			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">worktree delivery: <code class="break-all font-mono text-xs">{ res.Branch }</code> at <code class="break-all font-mono text-xs">{ res.WorktreeDir }</code></p>
 		}
 	}
 }
