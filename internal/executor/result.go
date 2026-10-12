@@ -89,6 +89,10 @@ type AgentResult struct {
 	// docs/planning/archived/2026-09-12_worktree-per-agent-design.md).
 	WorktreeDir string `json:"worktree_dir,omitempty"`
 	Branch      string `json:"branch,omitempty"`
+	// BaseBranch is the branch the delivery branch was forked from (the
+	// repo's HEAD branch at worktree-create time). The merge machinery
+	// merges Branch into BaseBranch on review approve.
+	BaseBranch string `json:"base_branch,omitempty"`
 }
 
 // FailureEvidence is the structured forensics attached to a task.failed

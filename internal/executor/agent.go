@@ -301,9 +301,13 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	// HEAD regardless of WIP). Non-git repos fall back to the in-place run.
 	runDir := repoDir
 
-	var wtBranch string
+	var wtBranch, wtBase string
 
 	if e.Worktrees {
+		// Resolve the base BEFORE the fork: the branch the repo sat on at
+		// worktree-create time is the merge target once the review approves.
+		wtBase = currentBranch(repoDir, gitRun)
+
 		wtDir, branch, ok, err := createWorktree(repoDir, t.ID.String(), e.ProjectsDir, gitRun)
 		if err != nil {
 			return err
@@ -316,8 +320,11 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 				// A parked close-out resumes in THIS checkout (the registry
 				// stores the worktree path), so the removal waits until the
 				// close-out turn is no longer owed. The tq/<id> branch always
-				// survives — it is the delivery until merge/reap lands.
-				if _, parked := e.closeoutPending.Load(t.ID.String()); parked {
+				// survives — it is the delivery until the review verdict
+				// gates the merge. The worktree stays too: the merge (or,
+				// past the verdict window, the reaper) owns the checkout —
+				// the run itself never destroys evidence mid-review.
+				if wtBranch != "" {
 					return
 				}
 

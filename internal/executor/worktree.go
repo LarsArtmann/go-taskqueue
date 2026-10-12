@@ -73,6 +73,96 @@ func createWorktree(repoDir, id, projectsDir string, run gitRunner) (dir, branch
 	return dir, branch, true, nil
 }
 
+// currentBranch returns the checked-out branch name of the repo at dir,
+// or "" (detached HEAD, unborn branch, non-repo).
+func currentBranch(dir string, run gitRunner) string {
+	out, err := run(dir, "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil || out == "" || out == "HEAD" {
+		return ""
+	}
+
+	return out
+}
+
+// MergeWorktreeBranch merges a worktree delivery branch into its base
+// branch via git plumbing (merge-tree --write-tree → commit-tree →
+// update-ref): a real merge commit, but NO checkout — the human's dirty
+// main checkout is never touched and base drift (the auto-commit daemon
+// moving master mid-task) is tolerated by construction. A conflicting
+// branch is refused without touching anything (the branch stays the
+// delivery for a human). Worktree-per-agent design pipeline step 5.
+func MergeWorktreeBranch(repoDir, branch, base, message string) error {
+	return mergeWorktreeBranch(repoDir, branch, base, message, gitRun)
+}
+
+func mergeWorktreeBranch(repoDir, branch, base, message string, run gitRunner) error {
+	if branch == "" || base == "" || base == branch {
+		return fmt.Errorf("agent: worktree merge needs a branch and a distinct base (got %q → %q)", branch, base)
+	}
+
+	for _, ref := range []string{branch, base} {
+		if _, err := run(repoDir, "rev-parse", "--verify", "--quiet", "refs/heads/"+ref); err != nil {
+			return fmt.Errorf("agent: worktree merge: branch %s does not exist in %s", ref, repoDir)
+		}
+	}
+
+	baseTip, err := run(repoDir, "rev-parse", "refs/heads/"+base)
+	if err != nil {
+		return fmt.Errorf("agent: worktree merge base tip: %w", err)
+	}
+
+	branchTip, err := run(repoDir, "rev-parse", "refs/heads/"+branch)
+	if err != nil {
+		return fmt.Errorf("agent: worktree merge branch tip: %w", err)
+	}
+
+	if baseTip == branchTip {
+		return nil // already merged (fast-forwarded elsewhere): nothing to do
+	}
+
+	tree, err := run(repoDir, "merge-tree", "--write-tree", base, branch)
+	if err != nil {
+		return fmt.Errorf("agent: worktree merge %s → %s conflicts — the branch stays the delivery for a human: %s",
+			branch, base, tailOutput(tree))
+	}
+
+	treeOID, _, _ := strings.Cut(tree, "\n")
+
+	commit, err := run(repoDir, "commit-tree", treeOID, "-p", baseTip, "-p", branchTip, "-m", message)
+	if err != nil {
+		return fmt.Errorf("agent: worktree merge commit: %w: %s", err, tailOutput(commit))
+	}
+
+	if out, err := run(repoDir, "update-ref", "refs/heads/"+base, commit); err != nil {
+		return fmt.Errorf("agent: worktree merge update-ref %s: %w: %s", base, err, tailOutput(out))
+	}
+
+	return nil
+}
+
+// DeleteWorktreeBranch removes a merged delivery branch (the post-merge
+// half of reap). Best-effort: an already-gone branch is not an error.
+func DeleteWorktreeBranch(repoDir, branch string) error {
+	if _, err := gitRun(repoDir, "branch", "-D", branch); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil
+		}
+
+		return fmt.Errorf("agent: delete branch %s: %w", branch, err)
+	}
+
+	return nil
+}
+
+// RemoveWorktree removes the linked checkout directory (the delivery
+// branch survives unless the caller deletes it separately). Exported for
+// the review sweeper's post-merge cleanup and the reaper.
+func RemoveWorktree(repoDir, dir string) error {
+	_, err := removeWorktree(repoDir, dir, gitRun)
+
+	return err
+}
+
 // worktreeRoot resolves the worktree home: a sibling of the repo's parent
 // when the repo lives under the pool's projects dir, else beside the repo
 // itself.
