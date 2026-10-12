@@ -77,6 +77,7 @@ grep -qF -- 'gate_gomod' "$doc" || miss "RELEASE.md allowlist section lost the g
 # Mechanisms the doc cites in its phase descriptions.
 # Doc pins are reflow-tolerant: the doc-side grep runs on a newline-normalized copy, so a RELEASE.md reflow can't false-fail.
 need_in_both 'go list -m -versions' 'module-proxy wait'
+need_in_both 'poked demand-fill: https://proxy.golang.org/' 'proxy demand-fill log line'
 need_in_both 'find internal task journal queue executor worker cmd/tq -name go.mod' 'disk-derived sub-tag list'
 need_in_both --prerelease 'GitHub Release prerelease flag'
 need_in_both 'gh run list --commit' 'tag CI poll'
