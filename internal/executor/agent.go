@@ -128,6 +128,15 @@ type AgentExecutor struct {
 	// the change (09-39 f3). Default false keeps the payload contract:
 	// file > pin > detect.
 	ReresolveVerify bool
+	// Worktrees opts the executor into worktree-per-agent delivery: every
+	// agent task runs in a linked checkout on branch tq/<task-id> forked
+	// from HEAD, so the human's WIP never parks the pool and N tasks of one
+	// repo can coexist. The branch is the delivery until the merge
+	// machinery lands (worktree-per-agent design,
+	// docs/planning/archived/2026-09-12_worktree-per-agent-design.md).
+	// Second-opinion clones (review/status/dlqfix/prioritize) never inherit
+	// it: they read the repo at HEAD and run close-out-free.
+	Worktrees bool
 
 	// rateLimitUntil is the UnixNano instant the provider is next expected
 	// to accept requests (0 = clear). Set when a run's output reports
@@ -276,13 +285,44 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 
 	defer releaseSlot()
 
-	if requireClean(p) {
+	if requireClean(p) && !e.Worktrees {
 		if _, err := os.Stat(filepath.Join(repoDir, ".git")); err == nil {
 			if err := assertCleanTree(ctx, repoDir); err != nil {
 				// Preflight, not permanent: the human will commit eventually;
 				// the worker requeues without burning an attempt.
 				return &PreflightError{Cause: err}
 			}
+		}
+	}
+
+	// Worktree-per-agent delivery: fork the task into a linked checkout on
+	// branch tq/<task-id> so the human's WIP is untouchable by construction
+	// (the dirty-tree preflight above is skipped — a worktree branches from
+	// HEAD regardless of WIP). Non-git repos fall back to the in-place run.
+	runDir := repoDir
+
+	var wtBranch string
+
+	if e.Worktrees {
+		wtDir, branch, ok, err := createWorktree(ctx, repoDir, t.ID.String(), e.ProjectsDir, runGit)
+		if err != nil {
+			return err
+		}
+
+		if ok {
+			runDir, wtBranch = wtDir, branch
+
+			defer func() {
+				// A parked close-out resumes in THIS checkout (the registry
+				// stores the worktree path), so the removal waits until the
+				// close-out turn is no longer owed. The tq/<id> branch always
+				// survives — it is the delivery until merge/reap lands.
+				if _, parked := e.closeoutPending.Load(t.ID.String()); parked {
+					return
+				}
+
+				_, _ = removeWorktree(repoDir, wtDir, runGit)
+			}()
 		}
 	}
 
@@ -309,7 +349,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		p.Session = retrySession(t)
 	}
 
-	output, err := e.runAgent(runCtx, repoDir, &p, t.ID)
+	output, err := e.runAgent(runCtx, runDir, &p, t.ID)
 	if err != nil {
 		// Forensics for the task.failed fact: exit code + output tail. The
 		// full output survives in the sidecar only when TQ_LOG_DIR is set,
@@ -319,7 +359,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		return err
 	}
 
-	tail, verifyStage, err := runVerify(runCtx, t.ID, repoDir, &p, e.ReresolveVerify, baseRev)
+	tail, verifyStage, err := runVerify(runCtx, t.ID, runDir, &p, e.ReresolveVerify, baseRev)
 	if err != nil {
 		SetVerifyFailureEvidence(ctx, verifyStage, err, tail)
 
@@ -334,7 +374,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 		VerifyTail: tail,
 	}
 
-	derived := result.deriveUsage(ctx, repoDir, output, t.ID)
+	derived := result.deriveUsage(ctx, runDir, output, t.ID)
 	result.Commits = derived.Commits
 	result.FilesChanged = derived.Files
 
@@ -351,6 +391,11 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 			result.CommitSHA = sha
 		}
 	}
+
+	// Worktree forensics: where the run actually happened and which branch
+	// carries the commits (the merge/reap machinery keys off the prefix).
+	result.WorktreeDir = runDir
+	result.Branch = wtBranch
 
 	recordRunOutcome(ctx, &result, output, tail, t.ID)
 
