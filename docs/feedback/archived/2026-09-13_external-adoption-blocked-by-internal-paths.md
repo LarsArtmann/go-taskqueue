@@ -1,3 +1,4 @@
+> **ARCHIVED 2026-10-12 (docs-health sweep 6)** — all five asks struck with shipped-at-HEAD receipts (2026-09-30 sweep); Offer section is external-side prose.
 # Feedback: adoption attempt from an external consumer
 
 > **ANNOTATED 2026-09-30 (docs-health sweep)** — resolved by the v0.3.0 facade release (ADR-0016); struck items verified at HEAD.

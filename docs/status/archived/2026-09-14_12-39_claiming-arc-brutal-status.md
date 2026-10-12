@@ -1,3 +1,4 @@
+> **ARCHIVED 2026-10-12 (docs-health sweep 6)** — the whole queue/ arc was ruled and executed (ADR-0019 S1→S4, O4/O12); tq-side asks shipped or routed; zero open.
 # Claiming-arc status — extraction kept honest, queue/ still gated
 
 **Session:** 2026-09-14, ~08:30–12:40 CEST (interactive; spans go-taskqueue +
@@ -93,67 +94,67 @@ closed every ruling this side of the queue/ green-light.
 
 ## e) WHAT WE SHOULD IMPROVE!
 
-1. **Foreign-repo pre-design ritual**: module map + ADR index + planning
+~~1. **Foreign-repo pre-design ritual**: module map + ADR index + planning~~ narrative — no forward ask
    dir + TODO_LIST sweep BEFORE designing anything in a repo I don't own
    day-to-day. Twice-burned now (CONTRIBUTING last session, max-sweep this
    one). The owner should not have to ask "did you research to the MAX?".
-2. **Rejection propagation rule**: an owner-rejected direction must kill
+~~2. **Rejection propagation rule**: an owner-rejected direction must kill~~ ruled — O4 rejection-propagation rule (mint refusal + stop artifacts)
    its TODO row / proposal phasing in the SAME session — the pool executes
    stale rows within hours. Encode in tq AGENTS.md (dogfood-loop lesson;
    this incident is the evidence).
-3. **Grep scope = blast radius**: removing an API symbol ⇒ repo-wide grep,
+~~3. **Grep scope = blast radius**: removing an API symbol ⇒ repo-wide grep,~~ narrative — no forward ask
    not my directory (d3).
-4. **No stdlib reinvention in tests; derive equality edges from the
+~~4. **No stdlib reinvention in tests; derive equality edges from the~~ narrative — no forward ask
    predicate (`<=`) before writing steps** (d2).
-5. **Standing issues I only reported**: cqrs repo-wide lint red
+~~5. **Standing issues I only reported**: cqrs repo-wide lint red~~ done — shipped: index-bloat cadence named in README counter; cqrs-lint escalated into O10 branch flow
    (gci-vs-treefmt split-brain, continuation session escalated — owner
    ruling pending) and tq status-index bloat (157 rows > 100 threshold).
    Both predate me; both still open.
 
 ## f) Next things (session-scoped; padding to 50 rejected)
 
-1. Owner ruling: **queue/ P1 green-light** (thin shape, §c1) — everything
+~~1. Owner ruling: **queue/ P1 green-light** (thin shape, §c1) — everything~~ ruled — ADR-0019 owner ruling 2026-09-22 (serialize S1→S4)
    else in the queue track queues behind this.
-2. **Tag wave**: cut `claiming` v4.0.0 + bump dependent pins (sqlstore,
+~~2. **Tag wave**: cut `claiming` v4.0.0 + bump dependent pins (sqlstore,~~ done — shipped: internal tag wave completed (CHANGELOG 2026-10-05) + v0.3.4 tags pushed
    example) + replace-strip sweep (release process, owner-run).
-3. Fix the **proposal doc P0 phasing** (b2; XS).
-4. Fix **cqrs AGENTS.md go.work use-block drift** (b3; XS).
-5. Encode the **rejection-propagation rule** in tq AGENTS.md (e2; XS).
-6. **gci-vs-treefmt lint ruling** (e5; escalated, owner).
-7. **status-index archive sweep** (157→<100; docs-health ANNOTATE; S).
-8. **Drift-audit build** (live pool food — the row carries scope+tests).
-9. queue/ P1 first artifact: **conformance suite** mirroring tq ADR-0007.
-10. queue/ **contract slimming** decision: which of tq's 25+ Store methods
+~~3. Fix the **proposal doc P0 phasing** (b2; XS).~~ closed — referenced row completed+deleted
+~~4. Fix **cqrs AGENTS.md go.work use-block drift** (b3; XS).~~ closed — referenced row completed+deleted
+~~5. Encode the **rejection-propagation rule** in tq AGENTS.md (e2; XS).~~ ruled — O4
+~~6. **gci-vs-treefmt lint ruling** (e5; escalated, owner).~~ routed — TODO_LIST row 590/591 (cqrs-lint branch → tag → advisory flip)
+~~7. **status-index archive sweep** (157→<100; docs-health ANNOTATE; S).~~ done — shipped: 14-17 sweep + O13 weekly cadence
+~~8. **Drift-audit build** (live pool food — the row carries scope+tests).~~ done — shipped: tq audit --journal shipped (CHANGELOG:1143)
+~~9. queue/ P1 first artifact: **conformance suite** mirroring tq ADR-0007.~~ done — shipped: conformance suites consolidated (companion/conform, row 273)
+~~10. queue/ **contract slimming** decision: which of tq's 25+ Store methods~~ done — shipped: companion contract consolidation (row 273)
     form the lean core (design note, S).
-11. Confirm **ADR-0134 tokens day one** as queue/ design input (vs
+~~11. Confirm **ADR-0134 tokens day one** as queue/ design input (vs~~ done — shipped: companion carries token finalize WithToken
     tq's owner-string).
-12. **go-idempotency seam** for dedup'd enqueue in queue/ (design note).
-13. **projectionhost-as-queue-consumer** evaluation note (P1 input).
-14. Run cqrs **`#verify-ci` full matrix** over the trim (pre-tag
+~~12. **go-idempotency seam** for dedup'd enqueue in queue/ (design note).~~ closed — referenced row completed+deleted
+~~13. **projectionhost-as-queue-consumer** evaluation note (P1 input).~~ done — shipped: consumer dispatcher drains on wake
+~~14. Run cqrs **`#verify-ci` full matrix** over the trim (pre-tag~~ closed — referenced row completed+deleted
     insurance; S).
-15. 08-01 §f6: **facts-emission machine check** (shared conformance
+~~15. 08-01 §f6: **facts-emission machine check** (shared conformance~~ closed — referenced row completed+deleted
     invariant; pairs with queue/ conformance).
-16. 08-01 §f7: **postgres facts_archive parity** verification vs
+~~16. 08-01 §f7: **postgres facts_archive parity** verification vs~~ closed — referenced row completed+deleted
     sqlite.go:793 (S).
-17. 08-01 §f10: **mechanical checklist script** (turn-1 ls/stash/grep
+~~17. 08-01 §f10: **mechanical checklist script** (turn-1 ls/stash/grep~~ done — shipped: scripts/session-start.sh
     ritual; this session added d4/d5 data points).
-18. Annotate 08-01 §f1–3 as superseded-by-addendum during the next
+~~18. Annotate 08-01 §f1–3 as superseded-by-addendum during the next~~ done — shipped: 09-13 floor archived by the 10-02/10-11 sweeps
     docs-health pass.
-19. cqrs CHANGELOG: verified the Unreleased claiming entry cites no
+~~19. cqrs CHANGELOG: verified the Unreleased claiming entry cites no~~ narrative — no forward ask
     removed symbol (no action) — re-check only if the entry is edited
     again before tagging.
-20. ROADMAP fuel: **PapDashboard as second queue consumer** evaluation
+~~20. ROADMAP fuel: **PapDashboard as second queue consumer** evaluation~~ routed — ROADMAP PapDashboard integration entries
     once P1 lands.
 
 ## g) Questions I cannot answer myself
 
-1. **queue/ P1 sequencing**: green-light NOW (queue-first, thin shape),
+~~1. **queue/ P1 sequencing**: green-light NOW (queue-first, thin shape),~~ ruled — ADR-0019 serialization ruling
    or after the claiming tag wave settles? Building first means the
    conformance suite and the tag ride the same release train.
-2. **The knob line**: I kept `Spec.OrderBy` (parameterizes the ORDER BY
+~~2. **The knob line**: I kept `Spec.OrderBy` (parameterizes the ORDER BY~~ ruled — owner faithful-extraction ruling in-report + Spec.And trim
    the original SQL already had) and trimmed `Spec.And` (no original
    counterpart). Right line — or zero knobs until queue/ proves each one?
-3. **Rejection-override policy**: when owner-rejected work has already
+~~3. **Rejection-override policy**: when owner-rejected work has already~~ ruled — O4 keep-landed-and-re-rule codified
    landed via the pool (this incident), default = keep-landed-and-re-rule
    (what happened) or auto-revert on propagation? This is a dogfood-loop
    policy only you can set.

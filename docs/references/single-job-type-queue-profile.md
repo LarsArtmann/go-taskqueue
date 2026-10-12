@@ -3,7 +3,7 @@
 Derived from the go-taskqueue semantics (facts-first journal, SKIP LOCKED
 claims, retries + DLQ) as applied by the first external adoption attempt
 (external evaluator, 2026-09-13 — see
-`docs/feedback/new/2026-09-13_external-adoption-blocked-by-internal-paths.md`).
+`docs/feedback/archived/2026-09-13_external-adoption-blocked-by-internal-paths.md`).
 It is the right-sized pattern when you need ONE durable background job type
 and a full queue library is too much. It generalizes beyond this repo.
 

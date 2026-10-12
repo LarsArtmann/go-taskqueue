@@ -12,7 +12,7 @@ text alone.
 1. **Worktree open questions lifted into ROADMAP + owner Q1 row minted**
    (task …f97e, commit c931413f + the routing commit 80427fc4). All 9
    open questions from
-   `docs/planning/2026-09-12_worktree-per-agent-design.md` are enumerated
+   `docs/planning/archived/2026-09-12_worktree-per-agent-design.md` are enumerated
    under ROADMAP "Open questions (owner decisions)"; the gating Q1
    merge-policy decision is a BLOCKED TODO row (TODO_LIST.md:111).
    The window also confessed a false-routing discovery: the 01-43

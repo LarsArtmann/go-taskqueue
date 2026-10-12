@@ -1,3 +1,4 @@
+> **EXECUTED — ARCHIVED 2026-10-12 (docs-health sweep 6)** — design doc: all 9 open questions mirrored verbatim in the ROADMAP live list, gating question ruled by O11, implementation routed to TODO rows 143/437.
 # Worktree-per-agent — the intra-repo parallelism path
 
 **Date:** 2026-09-12. Provenance: TODO_LIST "Dogfood round" item from the
@@ -165,47 +166,47 @@ forensics actually demand it — same bar that produced
 
 ## Rollout (smallest correct change)
 
-1. `--worktrees` flag on `tq agent-pool` / `tq worker --agents`, OFF by
+~~1. `--worktrees` flag on `tq agent-pool` / `tq worker --agents`, OFF by~~ routed — TODO_LIST row 143/437 (worktree implementation rows)
    default; executor-level option (the AgentPayload v1 contract stays
    untouched — worktree-ness is an operator deployment choice, not task
    input).
-2. Executor preflight branch: create worktree (or fail permanent with
+~~2. Executor preflight branch: create worktree (or fail permanent with~~ routed — TODO_LIST row 437 (worktree-create preflight)
    the rails-not-committed guidance), execute, verify, then merge/reap
    per the decided policy; result detail carries WorktreeDir/Branch.
-3. Stub-agent smoke (`scripts/smoke/worktree.sh`): scratch repo, two
+~~3. Stub-agent smoke (`scripts/smoke/worktree.sh`): scratch repo, two~~ routed — TODO_LIST row 437 (smoke)
    concurrent same-repo tasks, assert both complete, branches merged
    per policy, main checkout untouched, no orphan `tq/*` branches.
-4. Dogfood on this repo first (rails are committed; daemon interaction
+~~4. Dogfood on this repo first (rails are committed; daemon interaction~~ routed — TODO_LIST row 143 (O11 dogfood-first)
    is live), then fleet opt-in per repo — a repo opts in by committing
    its rails, which `tq doctor` already screens for.
 
 ## Open questions (explicit; ⭐ = owner decision)
 
-1. ⭐ **Merge policy (the gating question):** tq auto-merge on review
+~~1. ⭐ **Merge policy (the gating question):** tq auto-merge on review~~ ruled — O11 auto-merge ruling
    approve (a), PR-mode delivery (b), or leave `tq/*` branches for the
    owner (c)? §f15 flagged this first; nothing implements until it is
    answered.
-2. **Branch base:** local HEAD or `origin/master`? Fleet repos accept
+~~2. **Branch base:** local HEAD or `origin/master`? Fleet repos accept~~ routed — ROADMAP worktree open-questions list (branch base)
    agent pushes to master today, so HEAD can be ahead of or behind the
    remote; base choice determines how often merges rebase.
-3. **Review ordering:** review-before-merge (stronger, couples worktree
+~~3. **Review ordering:** review-before-merge (stronger, couples worktree~~ routed — ROADMAP worktree open-questions list (review ordering)
    lifetime to review verdict, review payload gains branch/range) vs
    merge-then-review (today's shape, zero payload change)?
-4. **Integration verify:** re-run `.tq-verify` at the merge point on the
+~~4. **Integration verify:** re-run `.tq-verify` at the merge point on the~~ routed — ROADMAP worktree open-questions list (integration verify)
    merged result, or trust the branch-tip run? (Serializing merges makes
    the re-run cheap; skipping it accepts the verify-proves-branch gap.)
-5. **Gitignored seeding:** is a per-repo allowlist of files copied into
+~~5. **Gitignored seeding:** is a per-repo allowlist of files copied into~~ routed — ROADMAP worktree open-questions list (gitignored seeding)
    fresh worktrees ever justified, or is the rule simply "verify and
    prompts must not depend on untracked state" (fail fast instead)?
-6. **Per-repo parallelism cap:** default N worktrees per repo
+~~6. **Per-repo parallelism cap:** default N worktrees per repo~~ routed — ROADMAP worktree open-questions list (parallelism cap)
    (`--repo-parallel name=N` ladder, mirroring `--repo-timeout`), and
    does the budget guard need per-repo awareness at the same time?
-7. **Orphan reaping:** pool-tick sweep vs a standalone `tq worktrees
+~~7. **Orphan reaping:** pool-tick sweep vs a standalone `tq worktrees~~ routed — ROADMAP worktree open-questions list (orphan reaping)
    reap`; how long do dead tasks' worktrees/branches survive for
    forensics before the reaper takes them?
-8. **Status-task exemption:** confirm status/review tasks stay on master
+~~8. **Status-task exemption:** confirm status/review tasks stay on master~~ routed — ROADMAP worktree open-questions list (status-task exemption)
    serially (recommended above) or get worktrees for symmetry?
-9. **WORKTREE_DIR layout:** under `<projects-dir>/.tq-worktrees/`
+~~9. **WORKTREE_DIR layout:** under `<projects-dir>/.tq-worktrees/`~~ routed — ROADMAP worktree open-questions list (dir layout)
    (sibling of the repos it forks, one scan root) vs a per-pool
    `TQ_WORKTREE_DIR` (fast local disk for fleet nodes with network
    projects dirs)?

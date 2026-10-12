@@ -78,6 +78,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   retired with the C16.4 flip (2026-10-12).
 
 ### Fixed
+- **Backfill (coverage gap, closed 2026-10-12)**: minted verify gates'
+  gofmt stage is scoped to non-gitignored files (`executor.ScopedGofmtStage`,
+  shipped 2026-10-01) — the structural vendor-gofmt red class that killed
+  ~103 tasks is gone at the gate source; the tracking TODO row was deleted
+  2026-10-12 (docs-health sweep 6).
 - `GitLogScanner` now attributes commits whose footer git refuses to parse as a trailer (a footer stranded above the attribution block — 59% of footer commits were invisible), via an exact column-0 body-line fallback that still never attributes quoted or indented footers.
 
 - `scripts/heal-daemon-sweep.sh` fork records now carry the true pre-rewrite SHA on the left (previously post-rewrite SHAs on both sides, i.e. identity pairs), and the heal id accepts session-scope slugs like `20261011-b10-alert-routing-pack` alongside hex task ids.
@@ -1417,7 +1422,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   (ci-local, ci.yml, flake test loop, check-go-mods, lint-baseline,
   release.sh) now covers the facade dirs. Motivated by the first external
   adoption attempt, which was blocked by the internal-path rule
-  (docs/feedback/new/2026-09-13_external-adoption-blocked-by-internal-paths.md).
+  (docs/feedback/archived/2026-09-13_external-adoption-blocked-by-internal-paths.md).
 - `postgres.OpenWithPool(ctx, pool)` wraps a caller-owned `*pgxpool.Pool`
   into a ready store (schema applied, pool ownership stays with the
   caller) — consumers with an existing pool no longer inherit a second one.
@@ -1556,7 +1561,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   timeout exceeded" in dead task tails). Existing repos pick the upgrade up
   on the next `tq bootstrap` run.
 - **Worktree-per-agent design doc**
-  (`docs/planning/2026-09-12_worktree-per-agent-design.md`): the
+  (`docs/planning/archived/2026-09-12_worktree-per-agent-design.md`): the
   intra-repo parallelism path (claim → dedicated git worktree → verify →
   merge → reap) with the three-layer serial lock named, executor/review/
   rate-limit/daemon contract interactions, a tradeoffs table, and an

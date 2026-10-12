@@ -122,7 +122,7 @@ claims_, not their marketing tone.
   a connector catalog is a support surface, and their 6.3k open issues
   show the bill.
 - Cloud sandbox providers. Worktree-per-agent
-  (`docs/planning/2026-09-12_worktree-per-agent-design.md`) is our
+  (`docs/planning/archived/2026-09-12_worktree-per-agent-design.md`) is our
   isolation path — local, git-native, already designed.
 - Chat-first interactive agent bridging. Their reliability changelog is
   the price list for that architecture; headless + verify avoids the

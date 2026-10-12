@@ -11,7 +11,7 @@ research beyond verifying my own remediation coverage.
 1. **GitHub issue #3 deleted** (created 09:0x by this session, deleted on
    owner alarm ~09:20; deletion verified — view no longer resolves).
 2. **Public master scrubbed to zero references**: 4 files redacted
-   (docs/feedback/new/2026-09-13_external-adoption-blocked-by-internal-paths.md,
+   (docs/feedback/archived/2026-09-13_external-adoption-blocked-by-internal-paths.md,
    docs/status/archived/2026-09-13_06-31_public-facade-modules-execution.md,
    docs/references/single-job-type-queue-profile.md, docs/feedback/README.md)
    to "external evaluator (identity redacted at owner request)"; dangling

@@ -129,7 +129,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
 ### Agent pool / loop
 
 - Worktree-per-agent (the intra-repo parallelism path): design written —
-  `docs/planning/2026-09-12_worktree-per-agent-design.md` (claim → worktree →
+  `docs/planning/archived/2026-09-12_worktree-per-agent-design.md` (claim → worktree →
   verify → merge → reap; the merge-policy owner call gates implementation;
   the 9 open questions are enumerated under "Open questions (owner decisions)")
 - Bring-your-own-agent executor adapters (`codex`, `claude-code`) on the
@@ -345,7 +345,7 @@ TODO_LIST.md; shipped work is recorded in CHANGELOG.md and FEATURES.md.
   push mechanics; which repos may agents deliver to via real PRs
   (`OPEN_PR=1` policy)?
 - Board as the default landing projection, or opt-in per URL?
-- Worktree-per-agent open questions (docs/planning/2026-09-12_worktree-per-agent-design.md;
+- Worktree-per-agent open questions (docs/planning/archived/2026-09-12_worktree-per-agent-design.md;
   nothing implements until Q1 is answered):
   1. ⭐ Merge policy (GATING): tq auto-merge on review approve (a), PR-mode
      delivery (b), or owner-merged `tq/*` branches (c)?

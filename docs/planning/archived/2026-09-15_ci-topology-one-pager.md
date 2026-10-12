@@ -1,3 +1,4 @@
+> **ARCHIVED 2026-10-12 (docs-health sweep 6)** — reference doc: forward-tinged notes routed (rows 590/591) or ruled (AGENTS toolchain entry); parent TODO row completed+deleted per O9.
 # CI Topology One-Pager
 
 Every job and step across `.github/workflows/ci.yml` and `fuzz.yml` — what it
@@ -14,7 +15,7 @@ run uses `GOWORK=off` (there is no go.work — replace-only by decision).
 `cmd/tq` is its own replace-free module (ADR-0017) outside the loop's find
 roots, gated separately via the devmod shim (`scripts/test-cmd-tq.sh`).
 
-Workflow-level: both workflows pin `GOEXPERIMENT=jsonv2` workflow-wide
+~~Workflow-level: both workflows pin `GOEXPERIMENT=jsonv2` workflow-wide~~ ruled — AGENTS.md:255 GOEXPERIMENT/GOTOOLCHAIN entry
 and pin setup-go (never `stable` — see AGENTS.md known issue; the pins sit
 at `1.26.7` while the go.mod tree migrates to `go 1.27.1` — `GOTOOLCHAIN`
 defaults resolve each module up via its own `toolchain` directive). ci.yml
@@ -47,7 +48,7 @@ longer silently narrow a loop.
 | `nix`                           | HARD                                                    | `nix build`, `nix flake check`, `check-webui-css.sh` (byte-canonical stylesheet pin, added 2026-09-15)                   | whole flake         | Hermetic reproducible build; NOT `--all-systems` (no aarch64/darwin runners); the css pin needs nix, so it lives in this job                |
 | `govulncheck`                   | HARD (since round-13 T7)                                | root + loop                                                                                                              | **YES**             | Needs network (vuln DB live), so it can never be hermetic/ci-local; loop because root misses sub-modules                                    |
 | `gosec`                         | advisory (job-level continue-on-error, owner ruling O5) | root + loop with triage-encoded excludes                                                                                 | **YES**             | Post-excludes = 0 findings; any finding is a NEW class needing triage                                                                       |
-| `cqrs-lint`                     | advisory                                                | builds tool from go-cqrs-lite checkout, lints `internal/journal/cqrs`                                                    | one pkg             | ADR-0014 seam lint; non-blocking pending clean soak + hermetic tool source                                                                  |
+~~| `cqrs-lint`                     | advisory                                                | builds tool from go-cqrs-lite checkout, lints `internal/journal/cqrs`                                                    | one pkg             | ADR-0014 seam lint; non-blocking pending clean soak + hermetic tool source                                                                  |~~ routed — TODO_LIST rows 590/591 (tag re-point + hard-flip)
 
 ## fuzz.yml (nightly, 03:17 UTC + workflow_dispatch)
 
@@ -58,7 +59,7 @@ longer silently narrow a loop.
 
 ## Parity rule
 
-`scripts/ci-local.sh` mirrors every HARD gate above (plus the nix build and
+~~`scripts/ci-local.sh` mirrors every HARD gate above (plus the nix build and~~ narrative — standing parity rule, the deliverable itself
 lint-baseline growth check) locally; the advisory steps (golangci-lint,
 gosec, cqrs-lint) run as loops there too. When adding a CI step: add it to
 ci-local.sh in the same change, and if it is a Go gate over the whole repo,

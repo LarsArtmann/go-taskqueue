@@ -1,3 +1,4 @@
+> **ARCHIVED 2026-10-12 (docs-health sweep 6)** — pure policy/guidance deliverable (rule statements + cautionary tale); no forward-looking items.
 # Verification-Claims Guidance: DONE Notes Must State Gate SCOPE
 
 _Status: guidance (policy); created 2026-09-13 (task 000001a0987864f3)._

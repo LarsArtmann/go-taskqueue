@@ -23,7 +23,7 @@ for this window's changes (the earlier grant covered the plan doc + doc flips).
    API discovery done via `go doc` on the facade + internal modules; two
    compile-fix rounds (Enqueue returns Task, not ID).
 3. **Help Centre draft** (TODO row 283): verified already complete at
-   `docs/feedback/2026-09-13_helpcentre-reply-draft.md` — replies item-by-item
+   `docs/feedback/archived/2026-09-13_helpcentre-reply-draft.md` — replies item-by-item
    to the consumer, discloses the `go install` limitation, accepts the
    conformance-review offer. Sending stays owner-run.
 4. **M4 — FEATURES CI-freshness gate**: `scripts/check-features-ci.sh` gh-
