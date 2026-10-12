@@ -1363,3 +1363,8 @@ fbd2c1adbf929f1d45fd5216d7f5eea64b6678eb
 fd614e43fc87e3cf2105e0b659a3337399c717c0
 fe0dc100014e02788e72c67180519a8725b1b2c1
 ffef803a0a0b25684dd8961ca2a1373fb670ebad
+# 2026-10-12 accretion (seal round 18): f860ff4f is the vendorHash refresh
+# itself, daemon-folded ~60 s after commit (race the commit-task flow
+# exists to prevent); content reviewed in-session, unpushed, left
+# footer-less rather than mis-attributed to an unrelated pending task.
+f860ff4fdd2cff8c7b37a9755aabfbba1d6ed517
