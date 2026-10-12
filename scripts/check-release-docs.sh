@@ -6,10 +6,11 @@
 # means someone changed the release flow or the doc without the other.
 #
 #   scripts/check-release-docs.sh        # exit 0 = no drift, 1 = drift
+#   scripts/check-release-docs.sh --self-test   # pin: a mutated doc copy must trip the alarm
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-doc="docs/release/RELEASE.md"
+doc="${RELEASE_DOCS_DOC:-docs/release/RELEASE.md}"
 script="scripts/release.sh"
 lib="scripts/lib/release-gates.sh"
 drift=0
@@ -32,6 +33,32 @@ need_in_both() {
 		fi
 	fi
 }
+
+# --self-test (closeout 2026-10-08 §e2): a drift smoke that only ever runs
+# green can rot — a reshaped needle, a lost `drift=1` or a neutered grep
+# would pass silently. So re-run THIS script against a mutated COPY of the
+# doc (newline-flattened so a doc reflow can't defeat the mutation, needle
+# deleted) and require the exact doc-side miss. The real doc is never
+# touched; RELEASE_DOCS_DOC points the checks at the copy.
+if [ "${1:-}" = "--self-test" ]; then
+	tmp="$(mktemp -d)"
+	trap 'rm -rf "$tmp"' EXIT
+	tr '\n' ' ' <"$doc" | sed 's/go list -m -versions/removed-by-self-test/g' >"$tmp/RELEASE.md"
+	selftest_rc=0
+	selftest_out="$(RELEASE_DOCS_DOC="$tmp/RELEASE.md" bash scripts/check-release-docs.sh 2>&1)" || selftest_rc=$?
+	if [ "$selftest_rc" -eq 0 ]; then
+		echo "release-docs self-test FAIL: mutated doc copy stayed green — drift detection can no longer fire" >&2
+		printf '%s\n' "$selftest_out" >&2
+		exit 1
+	fi
+	if grep -qF -- 'the doc no longer mentions it: go list -m -versions' <<<"$selftest_out"; then
+		echo "release-docs self-test ok: mutated doc copy trips the expected doc-side drift miss"
+		exit 0
+	fi
+	echo "release-docs self-test FAIL: mutated run went red for the wrong reason (expected the deleted-needle miss)" >&2
+	printf '%s\n' "$selftest_out" >&2
+	exit 1
+fi
 
 [ -f "$doc" ] || miss "missing $doc"
 [ -f "$script" ] || miss "missing $script"

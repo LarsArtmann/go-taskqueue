@@ -473,6 +473,12 @@ step "daemon-sweep attribution self-test (gate semantics pin)"
 step "release-doc drift check"
 ./scripts/check-release-docs.sh
 
+# Pin the drift smoke's alarm the same way (2026-10-08 §e2): a mutated doc
+# copy must trip it, so a reshaped needle or lost `drift=1` fails here
+# instead of rotting the smoke into always-green.
+step "release-doc drift self-test (mutated-copy alarm pin)"
+./scripts/check-release-docs.sh --self-test
+
 step "status-index check"
 ./scripts/check-status-index.sh
 
