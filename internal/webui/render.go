@@ -554,7 +554,8 @@ func (s *Server) prioritizeResultFor(ctx context.Context, id string) (executor.P
 func (s *Server) agentResultFor(ctx context.Context, id string) (executor.AgentResult, bool) {
 	return completionDetail(ctx, s.store, id, func(res executor.AgentResult) bool {
 		return res.SessionID != "" || res.VerifyTail != "" || res.CommitSHA != "" ||
-			res.LogPath != "" || len(res.Commits) > 0 || len(res.FilesChanged) > 0 ||
+			res.LogPath != "" || res.WorktreeDir != "" || res.Branch != "" ||
+			len(res.Commits) > 0 || len(res.FilesChanged) > 0 ||
 			!sessionUsageEmpty(
 				res.SessionCostUSD,
 				res.SessionPromptTokens,
