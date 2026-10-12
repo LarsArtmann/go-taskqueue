@@ -8,6 +8,11 @@
 #   scripts/release.sh v0.2.0            # pre-tag gates only (safe default)
 #   scripts/release.sh v0.2.0 --tag      # gates, then cut the annotated tag
 #   scripts/release.sh v0.2.0 --push     # tag + push + verify + GitHub Release
+#   scripts/release.sh v0.2.0 --publish-steps-only
+#                                        # resume AFTER tag+push (e.g. a
+#                                        # network-dead proxy 5/5 death):
+#                                        # proxy verify + install proof +
+#                                        # GitHub Release + CI confirm
 #
 # The gates delegate to scripts/ci-local.sh (the CI replicant) so this
 # script and CI can never drift apart. --push performs owner-gated actions
@@ -29,8 +34,13 @@ die() {
 
 VERSION="${1:-}"
 MODE="${2:-}"
-[ -n "$VERSION" ] || die "usage: scripts/release.sh vX.Y.Z [--tag|--push]"
+[ -n "$VERSION" ] || die "usage: scripts/release.sh vX.Y.Z [--tag|--push|--publish-steps-only]"
 [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "version '$VERSION' is not vX.Y.Z"
+PUBLISH_STEPS_ONLY=false
+if [ "$MODE" = "--publish-steps-only" ]; then
+	PUBLISH_STEPS_ONLY=true
+	MODE="--push"
+fi
 case "$MODE" in
 "") ;;
 --tag | --push) ;;
@@ -40,6 +50,79 @@ esac
 MODULE="$(head -1 go.mod | cut -d' ' -f2)"
 
 . "$(dirname "$0")/lib/proxy-wait.sh"
+
+release_notes() {
+	grep -q "^## \[$VERSION\] - [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}$" CHANGELOG.md ||
+		die "CHANGELOG.md has no '## [$VERSION] - YYYY-MM-DD' section — cut [Unreleased] into it first"
+	awk -v v="## [$VERSION]" '
+		index($0, v) == 1 {in_section=1; next}
+		in_section && /^## \[/ {exit}
+		in_section {print}
+	' CHANGELOG.md >/tmp/tq-release-notes.md
+	[ -s /tmp/tq-release-notes.md ] || die "CHANGELOG section for $VERSION is empty"
+}
+
+publish_steps() {
+	step "module proxy verification"
+	wait_for_proxy_version "$MODULE" "$VERSION"
+
+	step "clean-room go get + go install (build the real consumer path)"
+	verify_dir="$(mktemp -d)"
+	trap 'rm -rf "$verify_dir"' EXIT
+	(
+		cd "$verify_dir"
+		go mod init release-verify
+		go get "$MODULE@$VERSION" >/dev/null
+		go mod verify
+		# go get alone only resolves metadata; it cannot catch a broken
+		# sub-module require (v0.0.0-style pins resolve nothing on the proxy).
+		# Building the binary is the proof the published tree is installable.
+		GOBIN="$verify_dir/bin" go install "$MODULE/cmd/tq@$VERSION"
+		"$verify_dir/bin/tq" version >/dev/null
+	)
+
+	step "GitHub Release (pre-release: v0.x policy)"
+	command -v gh >/dev/null || die "gh CLI missing — create the release manually from /tmp/tq-release-notes.md"
+	gh release create "$VERSION" --title "$VERSION" --notes-file /tmp/tq-release-notes.md --prerelease
+
+	step "CI green on $VERSION (blocking confirm — was the manual final step)"
+	# The tag is immutable and already published, so a red run cannot un-publish
+	# it — but the next release must not be cut until this one is triaged.
+	command -v gh >/dev/null || die "gh CLI missing — verify the CI run on refs/tags/$VERSION manually (gh run list --limit 3)"
+	tag_sha="$(git rev-list -n1 "$VERSION")"
+	ci_green=false
+	for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
+		run_state="$(gh run list --commit "$tag_sha" --workflow CI --limit 1 --json status,conclusion --jq '.[0] | "\(.status) \(.conclusion // "-")"' 2>/dev/null || true)"
+		status="${run_state%% *}"
+		case "$status" in
+		completed)
+			conclusion="${run_state#* }"
+			if [ "$conclusion" = "success" ]; then
+				ci_green=true
+				break
+			fi
+			die "CI run on $VERSION ($tag_sha) completed '$conclusion' — triage before the next release (the tag itself is immutable)"
+			;;
+		*)
+			echo "CI on $VERSION: ${run_state:-no run visible yet} (attempt $attempt/30)"
+			sleep 60
+			;;
+		esac
+	done
+	[ "$ci_green" = "true" ] || die "CI on $VERSION did not complete within 30 minutes — check: gh run list --commit $tag_sha"
+	
+	echo
+	echo "RELEASE $VERSION PUBLISHED — CI green on refs/tags/$VERSION."
+}
+
+if [ "$PUBLISH_STEPS_ONLY" = "true" ]; then
+	step "resume at publish steps for $VERSION (--publish-steps-only: tag+push already landed)"
+	git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null ||
+		die "tag $VERSION does not exist — --publish-steps-only resumes AFTER tag+push (e.g. a network-dead proxy 5/5); run the gates + --push first"
+	release_notes
+	publish_steps
+	exit 0
+fi
 
 step "preconditions"
 [ -d .git ] || die "not a git repo"
