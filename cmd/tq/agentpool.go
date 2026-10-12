@@ -866,8 +866,15 @@ func printAgentPoolBanner(poolOpts agentPoolOptions) {
 	if poolOpts.worktrees {
 		fmt.Fprintln(
 			os.Stderr,
-			"tq: agent-pool: worktree-per-agent delivery on — each task runs in a linked checkout on branch tq/<task-id>; the branch is the delivery until auto-merge lands (no dirty-tree parking, per-repo parallelism)",
+			"tq: agent-pool: worktree-per-agent delivery on — each task runs in a linked checkout on branch tq/<task-id>; review-approve auto-merges the branch into its base (no dirty-tree parking, per-repo parallelism)",
 		)
+
+		if poolOpts.exclusive {
+			fmt.Fprintln(
+				os.Stderr,
+				"tq: agent-pool: warning: --worktrees with --project-exclusive — claim exclusivity blocks a second same-repo task while one is in flight, so worktrees' parallelism gain is neutered (exclusivity stays the conservative default; drop the flag to unlock intra-repo parallelism)",
+			)
+		}
 	}
 
 	if poolOpts.cqaURL != "" {
