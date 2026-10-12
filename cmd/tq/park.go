@@ -66,7 +66,7 @@ func cmdPark(args []string) error {
 	if !*release {
 		ttl, err := time.ParseDuration(*until)
 		if err != nil || ttl <= 0 {
-			return fmt.Errorf("tq park: --until %q is not a positive duration (e.g. 24h)", *until)
+			return fmt.Errorf("tq park: --until %q is not a positive duration (e.g. 24h — units are h/m/s, days are not one)", *until)
 		}
 
 		if ttl > maxParkTTL {
