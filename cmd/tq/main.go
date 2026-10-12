@@ -1519,6 +1519,12 @@ func cmdAgentPool(args []string) error {
 	skipLogExamples := map[string]string{}
 
 	runTick := func() {
+		// Two-writer policy first: park pending tasks behind live owner
+		// sessions BEFORE anything claims (the churn loop never starts).
+		if poolOpts.ownerSessPark {
+			parkBehindOwnerSessions(ctx, store, poolOpts.projectsDir, poolOpts.ownerSessHold, log)
+		}
+
 		// Sidecar retention: sweep aged logs before new work so a
 		// long-running pool'store output directory cannot grow forever.
 		if poolOpts.logDir != "" && poolOpts.logDirMaxAge > 0 {
@@ -1779,6 +1785,17 @@ func cmdAgentPool(args []string) error {
 		fmt.Fprintln(
 			os.Stderr,
 			"tq: agent-pool: done-preflight armed (re-fires of landed work complete without an agent run)",
+		)
+	}
+
+	// Two-writer policy (C15.3): each tick, before harvest, park the
+	// pending tasks of repos with a live owner session — claims never
+	// race the owner's live worktree.
+	if poolOpts.ownerSessPark {
+		fmt.Fprintf(
+			os.Stderr,
+			"tq: agent-pool: owner-session park armed — repos with a live owner session hold pending tasks in %s parks\n",
+			poolOpts.ownerSessHold,
 		)
 	}
 

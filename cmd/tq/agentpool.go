@@ -77,6 +77,8 @@ type agentPoolOptions struct {
 	logDir          string
 	logDirMaxAge    time.Duration
 	logDirMaxBytes  int64
+	ownerSessPark   bool
+	ownerSessHold   time.Duration
 }
 
 // parseAgentPoolOptions owns the agent-pool flag block: define, parse,
@@ -203,6 +205,16 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"done-preflight",
 		true,
 		"claim-time done gate (default ON): before an agent runs, check the repo for proof the task's work already landed (Task-Queue-ID footer commits, todo item now [x]/gone, fix-ticket rejected-SHA cured, closeout report exists); a done task completes with zero agent spend — kills the re-fire and minted-pre-landing classes (row 34: minted pre-commit, executed 20m after the landing; disable only with a reason)",
+	)
+	ownerSessPark := fs.Bool(
+		"owner-session-park",
+		true,
+		"two-writer policy (default ON): while an owner crush session is live inside a harvested repo (the session registry pinged within the freshness window), that repo's PENDING tasks park for --owner-session-hold instead of claiming into the owner's live worktree — claim/conflict/requeue churn becomes a visible, expiring park that burns no attempt",
+	)
+	ownerSessHold := fs.Duration(
+		"owner-session-hold",
+		15*time.Minute,
+		"owner-session-park: park horizon per tick; parks lapse on their own once the session goes quiet (no unpark sweep)",
 	)
 	prioritize := fs.Bool(
 		"prioritize",
@@ -434,6 +446,8 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		logDir:          *logDir,
 		logDirMaxAge:    *logDirMaxAge,
 		logDirMaxBytes:  *logDirMaxBytes,
+		ownerSessPark:   *ownerSessPark,
+		ownerSessHold:   *ownerSessHold,
 	}, nil
 }
 
