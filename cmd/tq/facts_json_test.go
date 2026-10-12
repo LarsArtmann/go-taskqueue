@@ -61,7 +61,12 @@ import (
 // load-bearing Known Issue; a full-file scan found no phrasing waste
 // left to pay with (the file was repeat-compacted to within 2 B of the
 // budget in the two prior windows).
-const agentsDocMaxBytes = 20_000
+// 2026-10-13 conscious reset 20,000 → 20,100: the worktree-per-agent
+// delivery contract (branch tq/<task-id>, review-approve auto-merge,
+// reaper) is net-new load-bearing payload-contract knowledge; the
+// addition was compacted in place and the art-dupl doc-position rule
+// tightened to pay part of the cost.
+const agentsDocMaxBytes = 20_100
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a

@@ -109,10 +109,8 @@ docs/DOMAIN_LANGUAGE.md.
 ### Payload contracts (code owns detail)
 
 - **`sh`**: payload is the shell line (raw / JSON string / `{"cmd":"…"}`).
-- **`agent` worktree mode** (`--worktrees`, OFF): tasks run on branch
-  `tq/<task-id>` in linked checkouts; review-approve auto-merges the
-  branch into its fork base (git plumbing) + reaps; a pool-tick reaper
-  clears remnants (merged-only branch deletes).
+- **`agent` worktrees** (`--worktrees`, OFF): branch `tq/<task-id>` per
+  task; review-approve auto-merges + reaps; reaper clears remnants.
 - **`agent`**: `AgentPayload` (repo, prompt, verify, timeout). Verify: exit
   0, ENV-SELF-CONTAINED (minted verifies carry `GOEXPERIMENT=jsonv2` —
   agents never edit their own gate). Model+effort ONLY in the repo
@@ -210,10 +208,9 @@ docs/DOMAIN_LANGUAGE.md.
   `internal/queue/companion`). Art-dupl residuals are accepted ONLY where
   named here: the `fragments.templ` conditional-span pair (Go comments
   cannot live inside templ markup); don't add new ones.
-  `art-dupl:accept` directives only suppress when they sit
-  within a few lines ABOVE the clone's first line: doc-position works for
-  func-top clones, deeper ones need an inline comment adjacent to the
-  start.
+  `art-dupl:accept` directives suppress only within a few
+  lines ABOVE the clone's first line (deeper clones need an adjacent
+  inline comment).
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
