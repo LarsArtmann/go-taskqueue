@@ -1211,8 +1211,6 @@ func TestParseSystemdUnitEnvRequiredFileMissing(t *testing.T) {
 }
 
 func TestDoctorServiceContext(t *testing.T) {
-	t.Parallel()
-
 	binDir := fakeBinDir(t, "crush", "go")
 
 	orig := doctorReadServiceUnit
@@ -1251,8 +1249,6 @@ func TestDoctorServiceContext(t *testing.T) {
 }
 
 func TestDoctorServiceContextEnvLie(t *testing.T) {
-	t.Parallel()
-
 	orig := doctorReadServiceUnit
 
 	t.Cleanup(func() { doctorReadServiceUnit = orig })
@@ -1273,8 +1269,6 @@ func TestDoctorServiceContextEnvLie(t *testing.T) {
 }
 
 func TestDoctorServiceContextUnreadableUnit(t *testing.T) {
-	t.Parallel()
-
 	orig := doctorReadServiceUnit
 
 	t.Cleanup(func() { doctorReadServiceUnit = orig })
