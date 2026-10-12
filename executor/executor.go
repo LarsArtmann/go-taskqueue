@@ -141,6 +141,7 @@ const (
 	RedactMarker          = internalexecutor.RedactMarker
 	ScopedGofmtStage      = internalexecutor.ScopedGofmtStage
 	TaskTrailer           = internalexecutor.TaskTrailer
+	WorktreeBranchPrefix  = internalexecutor.WorktreeBranchPrefix
 )
 
 // Verdicts.

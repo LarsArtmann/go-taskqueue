@@ -1110,6 +1110,7 @@ func cmdAgentPool(args []string) error {
 		Yolo:            poolOpts.yolo,
 		MaxConcurrent:   poolOpts.maxAgents,
 		ReresolveVerify: poolOpts.reresolveVerify,
+		Worktrees:       poolOpts.worktrees,
 	}
 	if poolOpts.closeout {
 		agentExec.CloseoutPrompt = executor.DefaultCloseoutPrompt

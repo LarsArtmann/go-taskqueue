@@ -863,6 +863,13 @@ func printAgentPoolBanner(poolOpts agentPoolOptions) {
 		)
 	}
 
+	if poolOpts.worktrees {
+		fmt.Fprintln(
+			os.Stderr,
+			"tq: agent-pool: worktree-per-agent delivery on — each task runs in a linked checkout on branch tq/<task-id>; the branch is the delivery until auto-merge lands (no dirty-tree parking, per-repo parallelism)",
+		)
+	}
+
 	if poolOpts.cqaURL != "" {
 		fmt.Fprintf(os.Stderr, "tq: agent-pool: ingesting CQA findings from %s each tick\n", poolOpts.cqaURL)
 	}
