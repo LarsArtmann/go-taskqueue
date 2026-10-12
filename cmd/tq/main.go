@@ -1418,6 +1418,81 @@ func cmdAgentPool(args []string) error {
 			poolOpts.depSweepEvery, poolOpts.depSweepBin, depSweepDir, poolOpts.depSweepPush)
 	}
 
+	// Pool-liveness pack (B10): the pool is the one process that ticks
+	// forever, so it surfaces what only a long-running observer can see —
+	// the durable projection worker-death marker (B9.3; postgres pools
+	// carry no sqlite sidecar, the detector no-ops there) and armed
+	// sweepers whose cursors stand still while the journal head advances.
+	workerDeath := &workerDeathDetector{dbPath: deployment.DBPath}
+	workerDeath.notify = func(triggered bool, projection string, failedAt time.Time) bool {
+		if triggered {
+			log.Warn("projection worker died: restart budget exhausted",
+				"projection", projection, "failed_at", failedAt)
+		} else {
+			log.Info("projection worker death cleared")
+		}
+
+		if alertBridge == nil {
+			return true
+		}
+
+		if err := alertBridge.NotifyWorkerExhausted(ctx, triggered, projection, failedAt); err != nil {
+			log.Error("worker-death alert failed", "triggered", triggered, "err", err)
+
+			return false
+		}
+
+		return true
+	}
+
+	// Only ARMED consumers are watched: a nil sweeper never runs by
+	// design, and the incident policy sweeps unconditionally (ADR-0021).
+	// The streak knob reuses --dead-pool-ticks: both alarms are "N
+	// consecutive bad liveness ticks" (0 disables both).
+	armedSweepers := []string{incident.ConsumerKey}
+	if sweeper != nil {
+		armedSweepers = append(armedSweepers, review.ConsumerKey)
+	}
+
+	if statusSweeper != nil {
+		armedSweepers = append(armedSweepers, status.ConsumerKey)
+	}
+
+	if dlqfixSweeper != nil {
+		armedSweepers = append(armedSweepers, dlqfix.ConsumerKey)
+	}
+
+	if prioritizeSweeper != nil {
+		armedSweepers = append(armedSweepers, prioritize.ConsumerKey)
+	}
+
+	frozenSweepers := &frozenSweepersDetector{
+		ticks:  poolOpts.deadPoolTicks,
+		watch:  armedSweepers,
+		last:   map[string]int64{},
+		streak: map[string]int{},
+	}
+	frozenSweepers.notify = func(triggered bool, frozen []string, streak int) bool {
+		if triggered {
+			log.Warn("sweepers frozen: cursors stood still while the journal advanced",
+				"consumers", strings.Join(frozen, ","), "ticks", streak)
+		} else {
+			log.Info("sweepers resumed")
+		}
+
+		if alertBridge == nil {
+			return true
+		}
+
+		if err := alertBridge.NotifySweepersFrozen(ctx, triggered, frozen, streak); err != nil {
+			log.Error("frozen-sweepers alert failed", "triggered", triggered, "err", err)
+
+			return false
+		}
+
+		return true
+	}
+
 	lastDepSweep := time.Time{} // zero: the first tick sweeps immediately
 
 	// mintPass gates one budget-consuming pass: EVERY enqueue (harvested,
@@ -1502,6 +1577,8 @@ func cmdAgentPool(args []string) error {
 
 				deadPool.observe(res)
 				observeStarvation(ctx, store, starvation)
+				workerDeath.observe()
+				frozenSweepers.observe(ctx, store)
 			}
 		}) {
 			return

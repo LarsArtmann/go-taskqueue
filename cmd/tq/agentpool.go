@@ -686,6 +686,12 @@ type workerDeathDetector struct {
 }
 
 func (d *workerDeathDetector) observe() {
+	// A postgres deployment carries no sqlite readmodel sidecar: no
+	// marker exists (and an empty path would probe the working dir).
+	if d.dbPath == "" {
+		return
+	}
+
 	marker, exists, err := readmodel.ReadWorkerFailedMarker(d.dbPath)
 	if err != nil {
 		return // unreadable marker: not a death signal
