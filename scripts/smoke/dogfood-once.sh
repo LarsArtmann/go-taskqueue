@@ -35,7 +35,7 @@ git -C "$REPO" init -q
 git -C "$REPO" config user.email smoke@tq.local
 git -C "$REPO" config user.name "tq smoke"
 printf '%s\n' '- [ ] stub dogfood work item. Commit with footer: Task-Queue-ID: {{TASK_ID}}' >"$REPO/TODO_LIST.md"
-printf 'test -f work.txt\n' >"$REPO/.tq-verify"
+printf 'test -f work.go\n' >"$REPO/.tq-verify"
 git -C "$REPO" add -A
 git -C "$REPO" commit -qm "seed"
 
@@ -56,7 +56,7 @@ case "$prompt" in
 		;;
 	*)
 		qid="$(printf '%s\n' "$prompt" | grep -o 'Task-Queue-ID: [0-9a-f]*' | head -1 | cut -d' ' -f2)"
-		echo done >work.txt
+		echo 'package main' >work.go
 		sed -i 's/^- \[ \] stub dogfood work item.*$/- [x] stub dogfood work item/' TODO_LIST.md
 		git add -A
 		git commit -qm "stub dogfood work" -m "Task-Queue-ID: $qid"
