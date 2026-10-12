@@ -148,6 +148,8 @@ not here.
 ## Webui overhaul leftovers (2026-09-14 stunning-overhaul execution; docs/research/2026-09-14_templ-components-deep-dive.html §05)
 
 - [x] Relax webui CSP to `form-action 'self'` so the no-JS filter fallback survives, update SECURITY.md + the header pins to match (O11 2026-10-05; surfaced during G1)
+- [ ] Add `form-action 'self'` assert to the webui smoke main-page CSP check and a `/health` assert for `form-action 'none'` + `frame-ancestors 'none'` so both CSP postures stay pinned at the running-server level (closeout 2026-10-13 task 000001a13271c97ce9da18bb532d00000000 §b1/§e4)
+- [ ] Make `scripts/heal-daemon-sweep.sh` tolerate a dirty tree when the footer-less span itself is clean, instead of refusing outright (closeout 2026-10-13 task 000001a13271c97ce9da18bb532d00000000 §e3)
 
 ## Done-prompt window harvest (2026-09-16; sources: the five-task hardening window close-outs 00-11/00-55/01-21/01-46 + 06-43, deduped against rows 89-93/97; all claims verified at HEAD this pass; docs/status/archived/2026-09-16_02-05_done-prompt-five-task-hardening-window.md)
 
