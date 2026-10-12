@@ -29,6 +29,10 @@
 #   --from <ref>  base of the heal range (default: origin/master, then
 #                 @{upstream}, then the root commit). Everything in
 #                 <ref>..HEAD is treated as unpushed-local and verified.
+#   <Task-Queue-ID> may be a hex task id OR a session-scope slug
+#                 (e.g. 20261011-b10-alert-routing-pack): a session's own
+#                 footered commits interleave with daemon sweeps, so the
+#                 sweeps must heal onto the session footer.
 set -uo pipefail
 
 BACKUP_REF="refs/original/heal-daemon-sweep"
@@ -221,13 +225,17 @@ verify_heal() {
 	return $fail
 }
 
-# print_fork_records base: old→new lines via positional map (equal counts and
-# identical ordering make index alignment exact).
+# print_fork_records base shas_old: old→new lines via positional map (equal
+# counts and identical ordering make index alignment exact). shas_old is the
+# pre-rewrite rev-list captured BEFORE the msg-filter: after it, base..HEAD
+# lists the NEW shas and the backup chain is disjoint from HEAD, so deriving
+# the "old" side post-hoc prints identity pairs (the 2026-10-09 04-14 and
+# 02-53 §f1 false-record class, rows 69/455). Preserved footer-carrying
+# commits keep their shas, so their old==new pairs are legitimate.
 print_fork_records() {
-	local base=$1
-	local olds news
-	olds=$(git rev-list --reverse "$base..HEAD")
-	news=$(git rev-list --reverse "$BACKUP_REF..HEAD")
+	local base=$1 olds=$2
+	local news
+	news=$(git rev-list --reverse "$base..HEAD")
 	while IFS= read -r old && IFS= read -r new <&3; do
 		echo "FORK-RECORD: $old→$new"
 	done <<<"$olds" 3<<<"$news"
@@ -246,7 +254,7 @@ main() {
 		*)
 			[ -z "$footer" ] || usage
 			case $1 in
-			*[!0-9a-fA-F]* | "") die "invalid Task-Queue-ID '$1': must be non-empty hex" ;;
+			"" | *[!0-9A-Za-z._-]*) die "invalid Task-Queue-ID '$1': must be a hex task id or session-scope slug (letters, digits, '.', '_', '-')" ;;
 			esac
 			id=$1
 			footer="Task-Queue-ID: $1"
@@ -268,14 +276,15 @@ main() {
 	fi
 	echo "healing $(git rev-list --count "$base..HEAD") commit(s) in $base..HEAD with: $footer"
 
-	local subj_old stat_old
+	local subj_old stat_old shas_old
 	subj_old=$(git log --reverse --format='%s' "$base..HEAD")
 	stat_old=$(git rev-list --reverse "$base..HEAD" | while IFS= read -r c; do git diff-tree --no-commit-id --name-only -r "$c" | sort | md5sum; done)
+	shas_old=$(git rev-list --reverse "$base..HEAD")
 
 	run_filter "$footer" "$base" || die "filter-branch failed (backup kept at $BACKUP_REF if it existed)"
 
 	if verify_heal "$base" "$id" "$subj_old" "$stat_old"; then
-		print_fork_records "$base"
+		print_fork_records "$base" "$shas_old"
 		git update-ref -d "$BACKUP_REF"
 		echo "HEAL OK — backup ref dropped"
 		return 0
@@ -339,7 +348,7 @@ self_test() {
 	# Happy path: heal both sweeps. "$self" (NOT "$0"): the fixture subshell
 	# cds away, so a relative $0 resolves into the temp repo and dies with
 	# "No such file or directory" — the 2026-10-04 00-52 red (row 456).
-	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000001) >/dev/null 2>"$tmp/err1" &&
+	(cd "$repo" && "$self" --from origin/master deadbeef00000000000000000000000000000001) >"$tmp/out1" 2>"$tmp/err1" &&
 		ok=$((ok + 1)) || {
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: happy path exited non-zero" >&2
@@ -364,6 +373,19 @@ self_test() {
 	else
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: shas did not move" >&2
+	fi
+
+	# Fork-record honesty pin (rows 69/455): the left side must be the TRUE
+	# pre-rewrite sha. Deriving "old" after the msg-filter lists post-rewrite
+	# shas on BOTH sides (identity pairs), so reports paste a false old side.
+	if grep -qF "FORK-RECORD: $old1→$new1" "$tmp/out1" &&
+		grep -qF "FORK-RECORD: $old2→$new2" "$tmp/out1" &&
+		! grep -qF "FORK-RECORD: $new1→$new1" "$tmp/out1"; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: fork records must carry the true pre-rewrite sha on the left" >&2
+		cat "$tmp/out1" >&2
 	fi
 
 	# Rail: dirty worktree refusal.
@@ -445,9 +467,9 @@ self_test() {
 	# Rail: metacharacter + empty Task-Queue-ID — the hex validation
 	# (3f9f497d) must refuse both with the same reason line.
 	(cd "$repo" && "$self" --from origin/master 'dead;beef00000000000000000000000000') >/dev/null 2>"$tmp/err_meta"
-	expect_refusal "metacharacter id" $? "must be non-empty hex" "$tmp/err_meta"
+	expect_refusal "metacharacter id" $? "invalid Task-Queue-ID" "$tmp/err_meta"
 	(cd "$repo" && "$self" --from origin/master "") >/dev/null 2>"$tmp/err_empty_id"
-	expect_refusal "empty id" $? "must be non-empty hex" "$tmp/err_empty_id"
+	expect_refusal "empty id" $? "invalid Task-Queue-ID" "$tmp/err_empty_id"
 
 	# Multi-branch backup-ref resolution (92c9193c): a stale
 	# refs/original/refs/heads/<other> (sorting before the current branch's
@@ -464,6 +486,33 @@ self_test() {
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: multi-branch backup-ref resolution hijacked the heal" >&2
 		cat "$tmp/err6" >&2
+	fi
+
+	# Session-scope footer ids (C12.4): heal must accept slug-shaped ids like
+	# 20261011-b10-alert-routing-pack, not just hex task ids — a session's own
+	# footered commits interleave with daemon sweeps, so the sweeps must heal
+	# onto the session footer. Base at HEAD~1 keeps the hex-footered earlier
+	# commits out of the range (a different-id footer stays a hard refusal).
+	echo g >"$repo/g.txt"
+	git -C "$repo" add g.txt
+	git -C "$repo" commit -qm "chore: sweep five"
+	local slug_old slug_new
+	slug_old=$(git -C "$repo" rev-parse HEAD)
+	(cd "$repo" && "$self" --from HEAD~1 20261011-b10-alert-routing-pack) >"$tmp/out_slug" 2>"$tmp/err_slug"
+	if [ "$?" = "0" ] && footer_well_formed "$(git -C "$repo" log -1 --format='%B' HEAD)" "20261011-b10-alert-routing-pack"; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: session-scope id must be accepted and baked" >&2
+		cat "$tmp/err_slug" >&2
+	fi
+	slug_new=$(git -C "$repo" rev-parse HEAD)
+	if [ "$slug_old" != "$slug_new" ] && grep -qF "FORK-RECORD: $slug_old→$slug_new" "$tmp/out_slug"; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: session-scope heal fork record wrong" >&2
+		cat "$tmp/out_slug" >&2
 	fi
 
 	if [ "$fail" = "0" ]; then
