@@ -9,24 +9,66 @@
 # Task-Queue-ID trailer as the LAST line (git interpret-trailers must see
 # it — the commit-msg hook enforces the same shape).
 #
-# Usage: scripts/commit-task.sh <task-id> <subject> <file>…
+# Usage: scripts/commit-task.sh <task-id> <subject> <file>… [--body <text>]
 #
 #   <task-id>   queue-assigned ID, verbatim (hex, 16+ chars)
 #   <subject>   commit subject (first line)
 #   <file>…     files to stage — each must exist; nothing else is staged
+#   --body <text>   optional commit body paragraph, placed between the
+#                   subject and the footer so the Task-Queue-ID trailer
+#                   stays the LAST line (closeout commits with a real
+#                   message no longer need a hand-rolled heredoc)
 #
 # Exit codes: 0 committed; 1 bad args / missing file / staging or commit
 # failure (nothing is left staged on failure paths before commit).
 set -euo pipefail
 
+self_dir=$(cd "$(dirname "$0")" && pwd)
+
+# --self-test (2026-10-12 03-19 §e1): pins the footer-as-LAST-line shape
+# in a scratch repo — with and without a body, the Task-Queue-ID trailer
+# must be the final non-empty line of the commit message, or a closeout
+# commit can silently end up footer-last-broken (heal-daemon-sweep then
+# rejects it).
+if [ "${1:-}" = "--self-test" ]; then
+	tmp=$(mktemp -d)
+	trap 'rm -rf "$tmp"' EXIT
+	git init -q "$tmp/repo"
+	cd "$tmp/repo"
+	git config user.email self@test
+	git config user.name selftest
+	fail() {
+		echo "commit-task self-test FAIL: $1" >&2
+		exit 1
+	}
+	echo one >f.txt
+	"$self_dir/commit-task.sh" 0000000000000000abcd subject-only f.txt
+	last=$(git log -1 --format=%B | grep -v '^$' | tail -n 1)
+	[ "$last" = "Task-Queue-ID: 0000000000000000abcd" ] || fail "subject-only footer is not the last line: '$last'"
+	echo two >>f.txt
+	"$self_dir/commit-task.sh" 0000000000000000abcd with-body f.txt --body "Closeout report: what changed and why."
+	full=$(git log -1 --format=%B)
+	printf '%s' "$full" | grep -qF 'Closeout report: what changed and why.' || fail "body paragraph missing from commit message"
+	last=$(printf '%s' "$full" | grep -v '^$' | tail -n 1)
+	[ "$last" = "Task-Queue-ID: 0000000000000000abcd" ] || fail "with-body footer is not the last line: '$last'"
+	echo "commit-task self-test ok: footer is the last line with and without a body"
+	exit 0
+fi
+
 if [ $# -lt 3 ]; then
-	echo "usage: $0 <task-id> <subject> <file>…" >&2
+	echo "usage: $0 <task-id> <subject> <file>… [--body <text>]" >&2
 	exit 1
 fi
 
 task_id=$1
 subject=$2
 shift 2
+
+body=''
+while [ "${1:-}" = "--body" ]; do
+	body=$2
+	shift 2
+done
 
 case $task_id in
 *[!a-f0-9]* | '')
@@ -53,7 +95,9 @@ git add -- "$@"
 # here strands the work unattributed — detect the same-path daemon commit
 # and heal it onto the task instead of failing blind (02-35 §f row;
 # heal-daemon-sweep.sh owns the actual rewrite, with all its rails).
-if ! commit_out=$(git commit -m "$subject" -m "Task-Queue-ID: $task_id" 2>&1); then
+body_args=()
+[ -z "$body" ] || body_args=(-m "$body")
+if ! commit_out=$(git commit -m "$subject" "${body_args[@]}" -m "Task-Queue-ID: $task_id" 2>&1); then
 	if printf '%s' "$commit_out" | grep -q 'nothing to commit'; then
 		head_subj=$(git log -1 --format='%s')
 		if printf '%s' "$head_subj" | grep -Eq '^chore: auto-commit [0-9]+ changed file\(s\) \(heuristic\)$'; then
