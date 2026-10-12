@@ -328,3 +328,63 @@ func TestDonePreflightForeignPayloadNotDone(t *testing.T) {
 		t.Fatal("unresolvable repo: want not done (gate never guesses)")
 	}
 }
+
+// TestDonePreflightCatchesLandingAfterMint pins the row-34 timeline
+// (C13.1/C13.3): a task legitimately minted while its item was OPEN is
+// caught at claim time when the landing happens between mint and claim —
+// the re-dispatch completes with zero agent spend instead of a paid no-op.
+// Both landing shapes count: the ticked row, and the footer commit alone
+// (the tick raced in a later commit).
+func TestDonePreflightCatchesLandingAfterMint(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		land func(t *testing.T, f donePreflightFixture, id task.ID)
+	}{
+		{
+			name: "ticked row",
+			land: func(t *testing.T, f donePreflightFixture, _ task.ID) {
+				t.Helper()
+				if err := os.WriteFile(
+					filepath.Join(f.repo, DefaultTodoFile), []byte("- [x] timeline item\n"), 0o644,
+				); err != nil {
+					t.Fatal(err)
+				}
+				gitCommit(t, f.repo, "work: land and tick")
+			},
+		},
+		{
+			name: "footer commit only",
+			land: func(t *testing.T, f donePreflightFixture, id task.ID) {
+				t.Helper()
+				gitCommit(t, f.repo, "work: landed\n\nTask-Queue-ID: "+id.String())
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Mint phase: the item is open, the task is legitimately enqueued.
+			f := newDonePreflightFixture(t, "- [ ] timeline item\n")
+			id := task.NewID()
+
+			if done, reason := f.h.DonePreflight(
+				context.Background(), taskWith(t, id, ItemKey("preflight", "timeline item"), "timeline item", "", ""),
+			); done {
+				t.Fatalf("pre-landing claim reported done (%q): the mint was legitimate", reason)
+			}
+
+			// Landing phase: the work lands between mint and claim.
+			tc.land(t, f, id)
+
+			// Claim phase: the gate short-circuits the paid re-run.
+			done, reason := f.h.DonePreflight(
+				context.Background(), taskWith(t, id, ItemKey("preflight", "timeline item"), "timeline item", "", ""),
+			)
+			if !done {
+				t.Fatal("post-landing claim not caught: the re-dispatch would burn a paid window")
+			}
+
+			if !strings.Contains(reason, "done preflight:") {
+				t.Errorf("reason = %q, want a named preflight signal", reason)
+			}
+		})
+	}
+}

@@ -788,3 +788,28 @@ func TestParseRepoDurations(t *testing.T) {
 		})
 	}
 }
+
+// TestAgentPoolDonePreflightDefaultOn pins the C13.3 flip: the claim-time
+// done gate defaults ON — a pool started with no flags must short-circuit
+// paid re-runs of landed work (the row-34 class: minted pre-commit,
+// executed 20 minutes after the landing). --done-preflight=false stays the
+// documented escape.
+func TestAgentPoolDonePreflightDefaultOn(t *testing.T) {
+	t.Parallel()
+
+	opts, err := parseAgentPoolOptions(nil)
+	if err != nil {
+		t.Fatalf("parse bare: %v", err)
+	}
+	if !opts.donePreflight {
+		t.Fatal("done-preflight default flipped back off — the phantom re-dispatch class returns")
+	}
+
+	opts, err = parseAgentPoolOptions([]string{"--done-preflight=false"})
+	if err != nil {
+		t.Fatalf("parse disabled: %v", err)
+	}
+	if opts.donePreflight {
+		t.Fatal("--done-preflight=false must still disable the gate")
+	}
+}

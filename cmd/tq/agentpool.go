@@ -201,8 +201,8 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 	)
 	donePreflight := fs.Bool(
 		"done-preflight",
-		false,
-		"claim-time done gate: before an agent runs, check the repo for proof the task's work already landed (Task-Queue-ID footer commits, todo item now [x]/gone, fix-ticket rejected-SHA cured, closeout report exists); a done task completes with zero agent spend — kills the re-fire class (one 2026-10-02 task: enqueued once, claimed 15×, every claim a paid no-op)",
+		true,
+		"claim-time done gate (default ON): before an agent runs, check the repo for proof the task's work already landed (Task-Queue-ID footer commits, todo item now [x]/gone, fix-ticket rejected-SHA cured, closeout report exists); a done task completes with zero agent spend — kills the re-fire and minted-pre-landing classes (row 34: minted pre-commit, executed 20m after the landing; disable only with a reason)",
 	)
 	prioritize := fs.Bool(
 		"prioritize",
