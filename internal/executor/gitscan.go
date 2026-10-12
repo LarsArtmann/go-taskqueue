@@ -136,13 +136,16 @@ func (s GitLogScanner) CommitsByTrailer(ctx context.Context, repo, key, value st
 
 	bin := s.bin()
 
-	// One invocation, fields NUL-free: SHA, subject and the trailer values
-	// (one per line) separated by \x1f. The trailer machinery matches the
-	// footer exactly (value-only, key-scoped), so a message merely quoting
-	// someone else's footer is never attributed.
+	// One invocation, fields NUL-free: SHA, subject, the trailer values
+	// (one per line) and the raw body, separated by \x1f. The trailer
+	// machinery matches the footer exactly (value-only, key-scoped), so a
+	// message merely quoting someone else's footer is never attributed;
+	// the %B fallback in the parser only ever matches a column-0 line that
+	// IS the footer, so quoted (prefixed or indented) footers stay
+	// invisible even when the trailer machinery finds nothing.
 	cmd := exec.CommandContext(
 		ctx, bin, "-C", repo, "log",
-		"--format=%H%x1f%s%x1f%(trailers:key="+key+",valueonly)",
+		"--format=%H%x1f%s%x1f%(trailers:key="+key+",valueonly)%x1f%B",
 	)
 
 	out, err := cmd.Output()
@@ -155,18 +158,25 @@ func (s GitLogScanner) CommitsByTrailer(ctx context.Context, repo, key, value st
 		return nil, fmt.Errorf("gitscan: git log %s: %w", repo, err)
 	}
 
-	return parseTrailerCommits(string(out), value), nil
+	return parseTrailerCommits(string(out), key, value), nil
 }
 
 // parseTrailerCommits splits git-log output into commit records (a record
 // starts at a hex SHA field; every line after it that is not a new record is
-// one of that commit's trailer values) and keeps those whose trailer block
-// contains a line equal to the session id. Records arrive newest first; the
+// a trailer continuation or body line of that commit) and keeps those
+// attributed to the value. Attribution is two-tier: the trailer machinery
+// match (the footer parsed as a real trailer) wins; otherwise — the row-276
+// glue class, a footer stranded above a non-trailer paragraph git refuses
+// to parse — the raw body's column-0 line exactly equal to "key: value"
+// attributes the commit. Exact-line matching keeps the quoted-footer
+// guarantee: a prefixed ("&gt; ") or indented quote of someone else's footer
+// is never equal to the footer line. Records arrive newest first; the
 // result is oldest first.
-func parseTrailerCommits(out, sessionID string) []Commit {
+func parseTrailerCommits(out, key, value string) []Commit {
 	type record struct {
 		commit   Commit
 		trailers []string
+		body     []string
 	}
 
 	var (
@@ -175,10 +185,15 @@ func parseTrailerCommits(out, sessionID string) []Commit {
 	)
 
 	for line := range strings.SplitSeq(out, "\n") {
-		parts := strings.SplitN(line, "\x1f", 3)
-		if len(parts) == 3 && isHexSHA(parts[0]) {
-			records = append(records, record{commit: Commit{SHA: parts[0], Subject: parts[1]}})
+		parts := strings.SplitN(line, "\x1f", 4)
+		if len(parts) == 4 && isHexSHA(parts[0]) {
+			rec := record{commit: Commit{SHA: parts[0], Subject: parts[1]}, body: []string{parts[3]}}
+			if trailer := strings.TrimSpace(parts[2]); trailer != "" {
+				rec.trailers = append(rec.trailers, trailer)
+			}
+			records = append(records, rec)
 			current = &records[len(records)-1]
+			continue
 		}
 
 		if current == nil {
@@ -187,15 +202,19 @@ func parseTrailerCommits(out, sessionID string) []Commit {
 
 		// The record line's own trailer field, or a continuation line of a
 		// multi-value trailer block.
-		if trailer := strings.TrimSpace(parts[len(parts)-1]); trailer != "" {
+		if trailer := strings.TrimSpace(line); trailer != "" {
 			current.trailers = append(current.trailers, trailer)
 		}
+
+		current.body = append(current.body, line)
 	}
+
+	footer := key + ": " + value
 
 	var commits []Commit
 
 	for _, r := range records {
-		if slices.Contains(r.trailers, sessionID) {
+		if slices.Contains(r.trailers, value) || slices.Contains(r.body, footer) {
 			commits = append(commits, r.commit)
 		}
 	}

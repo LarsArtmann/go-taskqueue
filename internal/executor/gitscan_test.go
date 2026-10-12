@@ -14,10 +14,19 @@ const (
 	shaC = "cccccc0123456789abcdef0123456789abcdef01"
 )
 
-// rec renders one git-log record the way --format=%H%x1f%s%x1f%(trailers)
-// prints it: SHA, subject and the trailer values separated by \x1f.
+// rec renders one git-log record the way
+// --format=%H%x1f%s%x1f%(trailers:...)%%x1f%B prints it: SHA, subject and
+// the trailer values separated by \x1f, then the raw body (whose first
+// line is the subject again).
 func rec(sha, subject string, trailers ...string) string {
-	return sha + "\x1f" + subject + "\x1f" + strings.Join(trailers, "\n")
+	return sha + "\x1f" + subject + "\x1f" + strings.Join(trailers, "\n") + "\x1f" + subject
+}
+
+// recBody renders a record whose trailer field is EMPTY and whose body is
+// the given lines (git's trailer parser found nothing — the row-276 glue
+// class where the %B fallback must decide).
+func recBody(sha string, body ...string) string {
+	return sha + "\x1f" + body[0] + "\x1f\x1f" + strings.Join(body, "\n")
 }
 
 func TestParseTrailerCommitsKeepsOnlyMatchingFooter(t *testing.T) {
@@ -28,7 +37,7 @@ func TestParseTrailerCommitsKeepsOnlyMatchingFooter(t *testing.T) {
 		"",
 	}, "\n")
 
-	got := parseTrailerCommits(out, "sess-abc")
+	got := parseTrailerCommits(out, "Task-Queue-ID", "sess-abc")
 	if len(got) != 1 || got[0].SHA != shaA || got[0].Subject != "the session's commit" {
 		t.Fatalf("parsed = %+v, want only %s…", got, shaA[:6])
 	}
@@ -42,7 +51,7 @@ func TestParseTrailerCommitsOrdersOldestFirst(t *testing.T) {
 		"",
 	}, "\n")
 
-	got := parseTrailerCommits(out, "sess-abc")
+	got := parseTrailerCommits(out, "Task-Queue-ID", "sess-abc")
 	if len(got) != 3 {
 		t.Fatalf("parsed %d commits, want 3", len(got))
 	}
@@ -61,7 +70,7 @@ func TestParseTrailerCommitsMultiValueTrailers(t *testing.T) {
 		"",
 	}, "\n")
 
-	got := parseTrailerCommits(out, "sess-abc")
+	got := parseTrailerCommits(out, "Task-Queue-ID", "sess-abc")
 	if len(got) != 2 || got[0].SHA != shaA || got[1].SHA != shaB {
 		t.Fatalf("parsed = %+v, want both commits, oldest first", got)
 	}
@@ -74,7 +83,7 @@ func TestParseTrailerCommitsExactValueOnly(t *testing.T) {
 		"",
 	}, "\n")
 
-	got := parseTrailerCommits(out, "sess-abc")
+	got := parseTrailerCommits(out, "Task-Queue-ID", "sess-abc")
 	if len(got) != 1 || got[0].SHA != shaA {
 		t.Fatalf("parsed = %+v, want only the exact footer match", got)
 	}
@@ -83,14 +92,14 @@ func TestParseTrailerCommitsExactValueOnly(t *testing.T) {
 func TestParseTrailerCommitsSHA256Records(t *testing.T) {
 	out := rec(strings.Repeat("d", 64), "sha256 repo", "sess-abc") + "\n"
 
-	got := parseTrailerCommits(out, "sess-abc")
+	got := parseTrailerCommits(out, "Task-Queue-ID", "sess-abc")
 	if len(got) != 1 || got[0].SHA != strings.Repeat("d", 64) {
 		t.Fatalf("parsed = %+v, want the sha256 record", got)
 	}
 }
 
 func TestParseTrailerCommitsEmptyOutput(t *testing.T) {
-	if got := parseTrailerCommits("", "sess-abc"); got != nil {
+	if got := parseTrailerCommits("", "Task-Queue-ID", "sess-abc"); got != nil {
 		t.Fatalf("empty output parsed to %+v", got)
 	}
 }
@@ -107,11 +116,11 @@ func TestParseTrailerCommitsIgnoresBlankAndWhitespaceFooters(t *testing.T) {
 		"",
 	}, "\n")
 
-	if got := parseTrailerCommits(out, "sess-abc"); len(got) != 1 || got[0].SHA != shaA {
+	if got := parseTrailerCommits(out, "Task-Queue-ID", "sess-abc"); len(got) != 1 || got[0].SHA != shaA {
 		t.Fatalf("parsed = %+v, want only the real footer's commit", got)
 	}
 
-	if got := parseTrailerCommits(out, ""); got != nil {
+	if got := parseTrailerCommits(out, "Task-Queue-ID", ""); got != nil {
 		t.Fatalf("empty session id attributed %+v, want nothing", got)
 	}
 }
@@ -122,7 +131,7 @@ func TestParseTrailerCommitsIgnoresBlankAndWhitespaceFooters(t *testing.T) {
 func TestParseTrailerCommitsRepeatedFooterAttributesOnce(t *testing.T) {
 	out := rec(shaA, "amended twice", "sess-abc", "sess-abc") + "\n"
 
-	got := parseTrailerCommits(out, "sess-abc")
+	got := parseTrailerCommits(out, "Task-Queue-ID", "sess-abc")
 	if len(got) != 1 || got[0].SHA != shaA {
 		t.Fatalf("parsed = %+v, want the commit once", got)
 	}
@@ -198,9 +207,43 @@ func TestCheckGitVersionRefusesPre215(t *testing.T) {
 // line + attribution block after it) is INVISIBLE to %(trailers), so the
 // commit goes unattributed — the queue↔git cross-reference silently loses
 // it. The contrast commit keeps the footer last and IS attributed.
-// FLIP THE DEMOTED ASSERTION when the attribution fix lands (a %B
-// fallback or a footer-last shape rule): this test is the tripwire that
-// makes that flip loud.
+// The %B fallback landed (C12.2): the demoted footer is attributed via
+// its column-0 body line, while a quoted footer stays invisible — the
+// tripwire comment that used to demand a flip is retired.
+// TestParseTrailerCommitsBodyFallbackAttributesGluedFooter pins the
+// row-276 glue class: git's trailer machinery refuses a footer stranded
+// above a non-trailer paragraph, so the raw-body fallback must attribute
+// the commit from its column-0 footer line.
+func TestParseTrailerCommitsBodyFallbackAttributesGluedFooter(t *testing.T) {
+	out := strings.Join([]string{
+		recBody(shaB, "work: demoted footer", "", "Task-Queue-ID: sess-abc", "", "Generated with Crush"),
+		recBody(shaA, "work: no footer at all", "", "just prose"),
+		"",
+	}, "\n")
+
+	got := parseTrailerCommits(out, "Task-Queue-ID", "sess-abc")
+	if len(got) != 1 || got[0].SHA != shaB {
+		t.Fatalf("parsed = %+v, want only the glued-footer commit", got)
+	}
+}
+
+// TestParseTrailerCommitsBodyFallbackKeepsQuotedFooterGuarantee pins the
+// guarantee the %B fallback must not break: a quoted ("> " prefixed) or
+// indented footer line is NOT the footer line, so a message quoting
+// someone else's — or even this session's — footer stays unattributed.
+func TestParseTrailerCommitsBodyFallbackKeepsQuotedFooterGuarantee(t *testing.T) {
+	out := strings.Join([]string{
+		recBody(shaC, "reply quotes the contract", "> Task-Queue-ID: sess-abc"),
+		recBody(shaB, "indented paste", "    Task-Queue-ID: sess-abc"),
+		recBody(shaA, "same line, longer", "see Task-Queue-ID: sess-abc above"),
+		"",
+	}, "\n")
+
+	if got := parseTrailerCommits(out, "Task-Queue-ID", "sess-abc"); got != nil {
+		t.Fatalf("quoted footers attributed %+v, want nothing", got)
+	}
+}
+
 func TestGitLogScannerTrailerVisibilityEndToEnd(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not on PATH")
@@ -233,14 +276,20 @@ func TestGitLogScannerTrailerVisibilityEndToEnd(t *testing.T) {
 	// Well-formed shape: the footer is the LAST line.
 	commit("work: footer last\n\nAssisted-By: Crush:glm-5.3-flash\n\nTask-Queue-ID: " + session + "\n")
 
+	// Quoted shape: the footer appears only inside a quoted reply line —
+	// never attributed, even though the value matches.
+	commit("work: quotes the contract\n\n> Task-Queue-ID: " + session + "\n")
+
 	got, err := (GitLogScanner{}).CommitsByTrailer(context.Background(), repo, "Task-Queue-ID", session)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
 
-	if len(got) != 1 || got[0].Subject != "work: footer last" {
+	if len(got) != 2 ||
+		got[0].Subject != "work: demoted footer" ||
+		got[1].Subject != "work: footer last" {
 		t.Fatalf(
-			"attributed %+v, want only \"work: footer last\" — the demoted footer became VISIBLE; flip this assertion per the doc comment",
+			"attributed %+v, want the demoted-footer and footer-last commits, oldest first (the quoted reply must stay invisible)",
 			got,
 		)
 	}
