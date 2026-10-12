@@ -1,12 +1,21 @@
 # MAJOR OPEN PROBLEMS — Dispatch prompting & batch granularity
 
-**Severity: MAJOR** · **Status: OPEN — awaiting owner go/no-go on the proposed direction**
+**Severity: MAJOR** · **Status: EXECUTED 2026-10-11/12 (owner GO via the SUPERB pareto plan) — follow-ups noted below remain open**
 · Discovered + measured 2026-10-11 (session reports
 [`docs/status/2026-10-11_00-04_deployment-log-triage-readmodel-outage-fixed.md`] and
 [`docs/status/2026-10-11_02-23_prompting-batch-size-comparison-owner-claim-measured.md`])
 
 Owner's hypothesis, confirmed by measurement: _"we split work in WAY too small batches and
 treat the AI agents like we do not trust them at all... our prompting is pathetic."_
+
+**Executed (2026-10-11/12, SUPERB pareto plan)**: proposal 2 shipped as the v0.3.4
+throughput-engine redesign — work prompt 1,802→1,206 chars, 282→184 words, distrust
+markers 5→2 hard safety rails (pinned by `TestAgentPromptsOutcomeShaped`); proposal 3
+shipped as the ceremony cuts (`1d921835`: env-death autopsy refusal via
+`executor.IsEnvironmentalDeath`, docs-only review skip, status `--status-min-interval`
+floor defaulting to 24h); proposal 1 landed its adjacent-items form (`--batch-items`
+default 3, cap 10). Still open: the full section/day-level goal batching and the
+outcome-join / batch-simulation / A-B audits from §Sources & method.
 
 ---
 
@@ -64,7 +73,7 @@ cheap derived tasks — 2026-10-10 the queue parked ALL real work at "30/30 enqu
 actual model spend was **$0.07**. Small batches don't just underuse agents; they starve the
 queue behind its own overhead.
 
-## Proposed direction (pending owner decision)
+## Proposed direction (ratified + executed 2026-10-11/12 — remainder noted above)
 
 1. **Batch = section/day-level goal**, not a line: "work §storage until every item lands or is
    BLOCKED — one commit per item, footer per commit". One claim, one agent; the verify gate
