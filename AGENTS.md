@@ -109,13 +109,10 @@ docs/DOMAIN_LANGUAGE.md.
 ### Payload contracts (code owns detail)
 
 - **`sh`**: payload is the shell line (raw / JSON string / `{"cmd":"…"}`).
-- **`agent` worktree mode** (`--worktrees`, OFF): every task runs in a
-  linked checkout on branch `tq/<task-id>` forked from HEAD (rails must be
-  committed; the human's WIP never parks the pool). The review payload
-  names branch/base, and a review-approve verdict auto-merges the branch
-  into its base via git plumbing (no checkout; base drift tolerated) then
-  reaps checkout + branch; the pool tick reaper removes dead remnants
-  (merged-only branch deletion; parked-closeout checkouts are in-flight).
+- **`agent` worktree mode** (`--worktrees`, OFF): tasks run on branch
+  `tq/<task-id>` in linked checkouts; review-approve auto-merges the
+  branch into its fork base (git plumbing) + reaps; a pool-tick reaper
+  clears remnants (merged-only branch deletes).
 - **`agent`**: `AgentPayload` (repo, prompt, verify, timeout). Verify: exit
   0, ENV-SELF-CONTAINED (minted verifies carry `GOEXPERIMENT=jsonv2` —
   agents never edit their own gate). Model+effort ONLY in the repo

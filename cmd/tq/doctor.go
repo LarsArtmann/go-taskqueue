@@ -249,6 +249,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 
 	if opts.Hygiene {
 		results = append(results, doctorVerifyPins(ctx, store, opts.ProjectsDir)...)
+		results = append(results, doctorWorktreeOrphans(ctx, store, opts.ProjectsDir)...)
 	}
 
 	results = append(results, doctorWorkerLiveness(ctx, store)...)
@@ -589,6 +590,66 @@ func doctorStaleItems(ctx context.Context, store queue.Store, projectsDir string
 	}
 
 	return []checkResult{{Name: name, Status: checkWarn, Detail: detail, Items: items}}
+}
+
+// doctorWorktreeOrphans is the pre-reaper visibility check (the 00-46 f7
+// scan): tq/* delivery remnants — linked checkouts under
+// <projects-dir>/.tq-worktrees and branches — whose task is neither
+// PENDING/RUNNING nor mergeable debt. Warn-level: the pool's reaper owns
+// removal; the doctor only makes the orphans countable without one.
+//
+// art-dupl:accept check prolog: every doctor check maps its failure onto
+// its own checkResult name; a helper trades the name for one line.
+func doctorWorktreeOrphans(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
+	pending, running := task.Pending, task.Running
+
+	tasks, err := store.List(ctx, queue.Filter{Status: &pending})
+	if err != nil {
+		return []checkResult{{Name: "worktree-orphans", Status: checkFail, Detail: "list pending: " + err.Error()}}
+	}
+
+	inFlight := map[string]bool{}
+	for _, t := range tasks {
+		inFlight[t.ID.String()] = true
+	}
+
+	runningTasks, err := store.List(ctx, queue.Filter{Status: &running})
+	if err != nil {
+		return []checkResult{{Name: "worktree-orphans", Status: checkFail, Detail: "list running: " + err.Error()}}
+	}
+
+	for _, t := range runningTasks {
+		inFlight[t.ID.String()] = true
+	}
+
+	orphans := executor.ScanWorktreeOrphans(projectsDir, func(id string) bool { return inFlight[id] })
+	if len(orphans) == 0 {
+		return nil
+	}
+
+	items := make([]string, 0, len(orphans))
+
+	merged := 0
+
+	for _, o := range orphans {
+		if o.Merged {
+			merged++
+		}
+
+		state := " (unmerged — delivery, kept)"
+		if o.Merged {
+			state = " (merged — reaper will delete)"
+		}
+
+		items = append(items, o.Repo+" "+o.Branch+state)
+	}
+
+	return []checkResult{{
+		Name:   "worktree-orphans",
+		Status: checkWarn,
+		Detail: fmt.Sprintf("%d orphan tq/* remnant(s), %d merged (branch delete is safe; unmerged branches stay the delivery)", len(orphans), merged),
+		Items:  items,
+	}}
 }
 
 // doctorVerifyPins is the stale-payload hygiene check (09-39 report f2/§e3):

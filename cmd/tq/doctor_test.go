@@ -1397,3 +1397,35 @@ func TestDoctorDLQRepair(t *testing.T) {
 		t.Errorf("store with an autopsy = %s (%s), want ok", r.Status, r.Detail)
 	}
 }
+
+func TestDoctorWorktreeOrphans(t *testing.T) {
+	t.Parallel()
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	if got := doctorWorktreeOrphans(ctx, s, ""); got != nil {
+		t.Fatalf("empty projects dir = %v, want no rows", got)
+	}
+
+	root := t.TempDir()
+	dead := filepath.Join(root, ".tq-worktrees", "demo", "dead")
+	if err := os.MkdirAll(dead, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	r := resultByName(doctorWorktreeOrphans(ctx, s, root), "worktree-orphans")
+	if r.Status != checkWarn {
+		t.Fatalf("orphan remnant = %s (%s), want warn", r.Status, r.Detail)
+	}
+
+	if len(r.Items) != 1 || !strings.Contains(r.Items[0], "tq/dead") {
+		t.Fatalf("items = %v, want the tq/dead branch named", r.Items)
+	}
+}
