@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -268,5 +269,112 @@ func TestCreateWorktreeIntegrationRealGit(t *testing.T) {
 	// The branch is the delivery: removal keeps it.
 	if out, err := gitRun(repo, "branch", "--list", branch); err != nil || !strings.Contains(out, branch) {
 		t.Fatalf("branch %s must survive worktree removal (out=%q err=%v)", branch, out, err)
+	}
+}
+
+// scriptedGit answers calls in order (per-subcommand output, err); an
+// exhausted script fails the call loudly.
+func scriptedGit(steps []struct {
+	out string
+	err error
+}) gitRunner {
+	i := 0
+
+	return func(dir string, args ...string) (string, error) {
+		if i >= len(steps) {
+			return "", errors.New("scriptedGit: unexpected extra call: " + strings.Join(args, " "))
+		}
+
+		s := steps[i]
+		i++
+
+		return s.out, s.err
+	}
+}
+
+func TestMergeWorktreeBranchPlumbingMerge(t *testing.T) {
+	t.Parallel()
+
+	var dirs []string
+
+	run := func(dir string, args ...string) (string, error) {
+		dirs = append(dirs, dir)
+
+		return scriptedGit([]struct {
+			out string
+			err error
+		}{
+			{out: "", err: nil}, // rev-parse --verify branch
+			{out: "", err: nil}, // rev-parse --verify base
+			{out: "basesha", err: nil},
+			{out: "branchsha", err: nil},
+			{out: "treeoid\nconflict-info", err: nil}, // merge-tree --write-tree
+			{out: "mergesha", err: nil},               // commit-tree
+			{out: "", err: nil},                       // update-ref
+		})(dir, args...)
+	}
+
+	if err := mergeWorktreeBranch("/repo", "tq/0001", "master", "merge it", run); err != nil {
+		t.Fatalf("plumbing merge must succeed: %v", err)
+	}
+
+	for _, d := range dirs {
+		if d != "/repo" {
+			t.Fatalf("every git call must run in the repo dir, got %s", d)
+		}
+	}
+}
+
+func TestMergeWorktreeBranchRefusals(t *testing.T) {
+	t.Parallel()
+
+	if err := mergeWorktreeBranch("/repo", "master", "master", "m", scriptedGit(nil)); err == nil {
+		t.Fatal("branch == base must refuse")
+	}
+
+	// Conflict: merge-tree exits non-zero — nothing after it may run.
+	var calls int
+
+	run := func(dir string, args ...string) (string, error) {
+		calls++
+
+		if args[0] == "merge-tree" {
+			return "CONFLICT", errors.New("exit 1")
+		}
+
+		if args[0] == "rev-parse" && len(args) == 2 {
+			return "sha" + strconv.Itoa(calls), nil // distinct tips
+		}
+
+		return "sha", nil
+	}
+
+	err := mergeWorktreeBranch("/repo", "tq/0001", "master", "m", run)
+	if err == nil {
+		t.Fatal("merge conflict must refuse")
+	}
+
+	if calls != 5 {
+		t.Fatalf("conflict must stop before commit-tree/update-ref, got %d calls", calls)
+	}
+
+	if !strings.Contains(err.Error(), "conflicts") {
+		t.Fatalf("conflict error must say conflicts, got %v", err)
+	}
+}
+
+func TestMergeWorktreeBranchAlreadyMerged(t *testing.T) {
+	t.Parallel()
+
+	run := func(dir string, args ...string) (string, error) {
+		if args[0] == "rev-parse" && len(args) == 2 {
+			return "samesha", nil // base tip == branch tip
+		}
+
+		return "", nil
+	}
+
+	if err := mergeWorktreeBranch("/repo", "tq/0001", "master", "m", run); err != nil {
+		t.Fatalf("already-merged must be a no-op success, got %v", err)
 	}
 }

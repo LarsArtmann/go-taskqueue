@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -684,5 +685,64 @@ func TestDocsLikePath(t *testing.T) {
 		if docsLikePath(code) {
 			t.Errorf("%q must classify as code", code)
 		}
+	}
+}
+
+func TestMergeOnApprove(t *testing.T) {
+	t.Parallel()
+
+	payload, err := json.Marshal(executor.ReviewPayload{
+		Repo:        "/repo",
+		Branch:      "tq/0001",
+		BaseBranch:  "master",
+		WorktreeDir: "/wt/0001",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	approve, err := json.Marshal(executor.ReviewResult{Verdict: executor.VerdictApprove})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requestChanges, err := json.Marshal(executor.ReviewResult{Verdict: executor.VerdictRequestChanges})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tk := task.Task{Type: executor.TaskTypeReview, Payload: payload}
+
+	tests := []struct {
+		name  string
+		detail []byte
+		want  int
+	}{
+		{"approve merges", approve, 1},
+		{"request_changes keeps the branch", requestChanges, 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				merges []string
+				s      = &Sweeper{cfg: SweeperConfig{Merge: record}}
+				stats  SweepStats
+			)
+
+			s.cfg.Merge = func(repoDir, branch, base, message string) error {
+				merges = append(merges, branch+"→"+base)
+
+				return nil
+			}
+
+			s.mergeOnApprove(context.Background(), tk, journal.Fact{Detail: tt.detail}, &stats)
+
+			if len(merges) != tt.want {
+				t.Fatalf("merges = %v, want %d", merges, tt.want)
+			}
+		})
 	}
 }
