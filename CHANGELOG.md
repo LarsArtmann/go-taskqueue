@@ -50,6 +50,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   2026-10-09 §b/§e1).
 
 ### Fixed
+- `scripts/heal-daemon-sweep.sh` fork records now carry the true pre-rewrite SHA on the left (previously post-rewrite SHAs on both sides, i.e. identity pairs), and the heal id accepts session-scope slugs like `20261011-b10-alert-routing-pack` alongside hex task ids.
+
 - **check-release-docs.sh doc pins are reflow-tolerant** (2026-10-12):
   `need_in_both`'s doc-side grep runs on a newline-normalized RELEASE.md
   copy (`tr '\n' ' '`), so a doc reflow that wraps a pinned phrase
