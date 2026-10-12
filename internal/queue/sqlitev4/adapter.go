@@ -367,7 +367,31 @@ func (s *Store) UpdatePendingPriority(ctx context.Context, id task.ID, newPriori
 // ClaimDue atomically claims at most one due task for owner, with tq's
 // project-exclusivity predicate (companion-owned; S1 divergence).
 func (s *Store) ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, queue.Claim, error) {
-	return companion.ClaimDue(ctx, companion.SQLite, s.db, s.projectExclusive, owner, lease)
+	return companion.ClaimDue(ctx, companion.SQLite, s.db, s.projectExclusive, owner, lease, nil)
+}
+
+// ClaimDueTypes claims with an executor-type filter (the bare-worker
+// refusal): a sh-only pool never claims an agent task — it stays PENDING
+// for a pool that can run it. nil/empty types claims any type.
+func (s *Store) ClaimDueTypes(
+	ctx context.Context,
+	owner string,
+	lease time.Duration,
+	types []string,
+) (task.Task, queue.Claim, error) {
+	return companion.ClaimDue(ctx, companion.SQLite, s.db, s.projectExclusive, owner, lease, types)
+}
+
+// Park suppresses claims on a PENDING task until the given instant (tq
+// park): NotBefore moves and the task.parked fact lands in the same
+// transaction (companion-owned). A past until is the release.
+func (s *Store) Park(ctx context.Context, id task.ID, reason string, until time.Time, by string) error {
+	return companion.Park(ctx, companion.SQLite, s.db, id, reason, until, by)
+}
+
+// ClaimCounts counts task.claimed facts per task id in one GROUP BY.
+func (s *Store) ClaimCounts(ctx context.Context) (map[string]int, error) {
+	return companion.ClaimCounts(ctx, s.cr)
 }
 
 // Requeue returns a claimed task to Pending without counting an attempt

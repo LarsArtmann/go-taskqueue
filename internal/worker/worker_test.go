@@ -1875,3 +1875,56 @@ func TestGateSlowGuardNotDoneStillRequeues(t *testing.T) {
 			first.Status, first.Attempts)
 	}
 }
+
+// TestBareWorkerNeverClaimsUnregisteredTypes pins the claim-time executor
+// filter: a pool whose registry holds only sh must leave a pending agent
+// task untouched — no claim, no task.claimed fact, no dead-letter — so a
+// bare `tq worker` against the production journal cannot destroy agent
+// work it cannot run (the 11-01 near-miss).
+func TestBareWorkerNeverClaimsUnregisteredTypes(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+	reg.RegisterFunc("sh", func(context.Context, task.Task) error { return nil })
+
+	shTask, err := store.Enqueue(ctx, task.New{Type: "sh"})
+	if err != nil {
+		t.Fatalf("enqueue sh: %v", err)
+	}
+
+	agentTask, err := store.Enqueue(ctx, task.New{Type: "agent"})
+	if err != nil {
+		t.Fatalf("enqueue agent: %v", err)
+	}
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second, Executors: reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	waitFor(t, ctx, store, shTask.ID, task.Completed)
+	cancel()
+
+	got, err := store.Get(context.Background(), agentTask.ID)
+	if err != nil {
+		t.Fatalf("get agent: %v", err)
+	}
+
+	if got.Status != task.Pending {
+		t.Fatalf("agent status = %s, want pending (a bare worker must not touch it)", got.Status)
+	}
+
+	facts, err := store.FactsForTask(context.Background(), agentTask.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("agent facts: %v", err)
+	}
+
+	for _, f := range facts {
+		if f.Type == journal.Claimed {
+			t.Fatalf("agent task was claimed by the bare worker — the executor-type filter is not filtering")
+		}
+	}
+}

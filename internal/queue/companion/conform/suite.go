@@ -36,7 +36,9 @@ type Store interface {
 	CancelOwned(ctx context.Context, id task.ID, claim queue.Claim) error
 	CancelRequested(ctx context.Context, id task.ID) (bool, error)
 	CancelRunning(ctx context.Context, id task.ID, reason string) error
+	ClaimCounts(ctx context.Context) (map[string]int, error)
 	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, queue.Claim, error)
+	ClaimDueTypes(ctx context.Context, owner string, lease time.Duration, types []string) (task.Task, queue.Claim, error)
 	Close() error
 	Complete(ctx context.Context, id task.ID, claim queue.Claim, result jsontext.Value) error
 	CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error)
@@ -62,6 +64,7 @@ type Store interface {
 	LastFacts(ctx context.Context, limit int) ([]journal.Fact, error)
 	List(ctx context.Context, f queue.Filter) ([]task.Task, error)
 	MarkOrphaned(ctx context.Context, cutoff time.Time) (int, error)
+	Park(ctx context.Context, id task.ID, reason string, until time.Time, by string) error
 	PriorityScore(ctx context.Context, itemKey string) (queue.PriorityScore, bool, error)
 	PriorityScores(ctx context.Context) ([]queue.PriorityScore, error)
 	ProjectCounts(ctx context.Context) (map[string]map[task.Status]int, error)

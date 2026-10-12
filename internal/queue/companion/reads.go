@@ -40,6 +40,11 @@ func listWhere(f queue.Filter) (string, []any) {
 		args = append(args, *f.Type)
 	}
 
+	if f.DedupKey != "" {
+		where = append(where, "dedup_key = ?")
+		args = append(args, f.DedupKey)
+	}
+
 	if f.Since != nil {
 		where = append(where, "created_at >= ?")
 		args = append(args, f.Since.UnixMilli())
@@ -440,6 +445,39 @@ func StatusCounts(ctx context.Context, r Runner) (map[task.Status]int, error) {
 		}
 
 		out[st] = n
+	}
+
+	return out, rows.Err()
+}
+
+// ClaimCounts counts task.claimed facts per task id in one GROUP BY —
+// the census pushdown behind loop-suspect detection: one grouped read
+// over the journal instead of a per-task facts walk.
+//
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// the scan-loop tail are the database/sql idiom; the defer must live in the
+// consuming frame, so no seam can shorten this.
+func ClaimCounts(ctx context.Context, r Runner) (map[string]int, error) {
+	rows, err := r.QueryContext(ctx,
+		`SELECT task_id, COUNT(*) FROM facts WHERE type = ? GROUP BY task_id`,
+		string(journal.Claimed))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string]int{}
+
+	for rows.Next() {
+		var (
+			id string
+			n  int
+		)
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+
+		out[id] = n
 	}
 
 	return out, rows.Err()

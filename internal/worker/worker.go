@@ -502,7 +502,19 @@ func (p *Pool) loop(ctx, taskCtx context.Context) {
 		default:
 		}
 
-		t, claim, err := p.store.ClaimDue(ctx, p.cfg.Owner, p.cfg.Lease)
+		// Claim-time executor filter: this pool only claims task types
+		// its registry can run. A bare `tq worker` (registry holding
+		// only sh) over a journal with pending agent tasks must leave
+		// them PENDING for a pool that can run them — not dead-letter
+		// them on a permanent unknown-type lookup error. No claim, no
+		// task.claimed fact, so the loop-suspect census stays clean. A
+		// nil or empty registry claims any type (legacy behavior).
+		var claimTypes []string
+		if p.cfg.Executors != nil {
+			claimTypes = p.cfg.Executors.Types()
+		}
+
+		t, claim, err := p.store.ClaimDueTypes(ctx, p.cfg.Owner, p.cfg.Lease, claimTypes)
 		if err != nil {
 			if ctx.Err() != nil {
 				return // shutdown raced the claim; not an error

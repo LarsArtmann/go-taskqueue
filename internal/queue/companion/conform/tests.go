@@ -3605,3 +3605,134 @@ func TestFailureEvidenceDetailRoundTrips(t *testing.T) {
 
 	t.Fatal("no task.failed fact found")
 }
+
+func TestParkSuppressesClaimsUntilRelease(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "a"})
+
+	if err := s.Park(ctx, tk.ID, "owner session active", time.Now().Add(time.Hour), "lars"); err != nil {
+		t.Fatalf("Park: %v", err)
+	}
+
+	if _, _, err := s.ClaimDue(ctx, "w1", time.Minute); !errors.Is(err, queue.ErrNoTaskDue) {
+		t.Fatalf("claim while parked err = %v, want queue.ErrNoTaskDue", err)
+	}
+
+	facts, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	parked := 0
+	for _, f := range facts {
+		if f.Type == journal.Parked {
+			parked++
+		}
+	}
+
+	if parked != 1 {
+		t.Fatalf("task.parked facts = %d, want 1", parked)
+	}
+
+	// The release: parking with a past until re-arms claims immediately.
+	if err := s.Park(ctx, tk.ID, "released", time.Now().Add(-time.Minute), "lars"); err != nil {
+		t.Fatalf("Park(release): %v", err)
+	}
+
+	got, _ := claimDue(t, ctx, s, "w1")
+	if got.ID != tk.ID {
+		t.Fatalf("claimed %s, want the released task %s", got.ID, tk.ID)
+	}
+}
+
+func TestParkRefusesNonPendingAndUnknown(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "a"})
+	claimDue(t, ctx, s, "w1")
+
+	if err := s.Park(ctx, tk.ID, "r", time.Now().Add(time.Hour), "lars"); !errors.Is(err, task.ErrInvalidTransition) {
+		t.Fatalf("park running err = %v, want task.ErrInvalidTransition", err)
+	}
+
+	if err := s.Park(ctx, task.ID("000001a0doesnotexist00"), "r", time.Now().Add(time.Hour), "lars"); !errors.Is(err, task.ErrNotFound) {
+		t.Fatalf("park unknown err = %v, want task.ErrNotFound", err)
+	}
+}
+
+func TestClaimDueTypesFiltersExecutorTypes(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	sh := mustEnqueue(t, ctx, s, task.New{Type: "sh"})
+	agent := mustEnqueue(t, ctx, s, task.New{Type: "agent"})
+
+	got, _, err := s.ClaimDueTypes(ctx, "bare-worker", time.Minute, []string{"sh"})
+	if err != nil {
+		t.Fatalf("ClaimDueTypes: %v", err)
+	}
+
+	if got.ID != sh.ID {
+		t.Fatalf("claimed %s (%s), want the sh task", got.ID, got.Type)
+	}
+
+	// The agent task was never touched: still pending, zero claim facts.
+	st, err := s.Get(ctx, agent.ID)
+	if err != nil {
+		t.Fatalf("get agent: %v", err)
+	}
+
+	if st.Status != task.Pending {
+		t.Fatalf("agent status = %s, want pending (never claimed by the bare worker)", st.Status)
+	}
+
+	agentFacts, err := s.FactsForTask(ctx, agent.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("agent facts: %v", err)
+	}
+
+	for _, f := range agentFacts {
+		if f.Type == journal.Claimed {
+			t.Fatalf("agent task has a task.claimed fact — the type filter must claim nothing it cannot run")
+		}
+	}
+
+	// An unfiltered claim still takes it: the task waits for a full pool.
+	got2, _, err := s.ClaimDue(ctx, "agent-pool", time.Minute)
+	if err != nil {
+		t.Fatalf("ClaimDue after filtered pass: %v", err)
+	}
+
+	if got2.ID != agent.ID {
+		t.Fatalf("unfiltered claim got %s (%s), want the waiting agent task", got2.ID, got2.Type)
+	}
+}
+
+func TestClaimCountsGroupsPerTask(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	a := mustEnqueue(t, ctx, s, task.New{Type: "a"})
+	b := mustEnqueue(t, ctx, s, task.New{Type: "b"})
+
+	// Two claim cycles on a (claim + no-burn requeue + claim), one on b.
+	_, claimA := claimDue(t, ctx, s, "w1")
+	if err := s.Requeue(ctx, a.ID, claimA, "cycle", 0, false, ""); err != nil {
+		t.Fatalf("requeue a: %v", err)
+	}
+
+	claimDue(t, ctx, s, "w1")
+	claimDue(t, ctx, s, "w2")
+
+	counts, err := s.ClaimCounts(ctx)
+	if err != nil {
+		t.Fatalf("ClaimCounts: %v", err)
+	}
+
+	if counts[a.ID.String()] != 2 {
+		t.Fatalf("claims[a] = %d, want 2", counts[a.ID.String()])
+	}
+
+	if counts[b.ID.String()] != 1 {
+		t.Fatalf("claims[b] = %d, want 1", counts[b.ID.String()])
+	}
+}

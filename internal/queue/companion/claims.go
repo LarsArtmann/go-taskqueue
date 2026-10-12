@@ -6,6 +6,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"strings"
 	"time"
 
 	uqueue "github.com/larsartmann/go-cqrs-lite/queue/v4"
@@ -67,6 +68,25 @@ func WithToken(
 	}
 
 	return use(token)
+}
+
+// claimTypeFilter builds ClaimDue's executor-type IN-list. No filter for
+// a nil/empty list: an empty registry keeps the legacy claim-any-type
+// behavior (the unknown-type dead-letter path) instead of starving every
+// claim on a technicality.
+func claimTypeFilter(types []string) (string, []any) {
+	if len(types) == 0 {
+		return "", nil
+	}
+
+	placeholders := make([]string, len(types))
+	args := make([]any, len(types))
+	for i, t := range types {
+		placeholders[i] = "?"
+		args[i] = t
+	}
+
+	return " AND t.type IN (" + strings.Join(placeholders, ",") + ")", args
 }
 
 // ClaimDue atomically claims at most one due task for owner, with tq's
