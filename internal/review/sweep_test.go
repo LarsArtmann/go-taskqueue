@@ -691,8 +691,10 @@ func TestDocsLikePath(t *testing.T) {
 func TestMergeOnApprove(t *testing.T) {
 	t.Parallel()
 
+	repo := t.TempDir()
+
 	payload, err := json.Marshal(executor.ReviewPayload{
-		Repo:        "/repo",
+		Repo:        repo,
 		Branch:      "tq/0001",
 		BaseBranch:  "master",
 		WorktreeDir: "/wt/0001",
@@ -714,9 +716,9 @@ func TestMergeOnApprove(t *testing.T) {
 	tk := task.Task{Type: executor.TaskTypeReview, Payload: payload}
 
 	tests := []struct {
-		name  string
+		name   string
 		detail []byte
-		want  int
+		want   int
 	}{
 		{"approve merges", approve, 1},
 		{"request_changes keeps the branch", requestChanges, 0},
@@ -728,7 +730,7 @@ func TestMergeOnApprove(t *testing.T) {
 
 			var (
 				merges []string
-				s      = &Sweeper{cfg: SweeperConfig{Merge: record}}
+				s      = &Sweeper{}
 				stats  SweepStats
 			)
 
