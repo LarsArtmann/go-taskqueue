@@ -26,6 +26,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   corrected projection-beside sidecar (`<db>.readmodel.db.dlq.db`) is
   absent — poison facts stranded by the pre-fix derivation stop being
   invisible (inspect, then remove or migrate; no auto-move).
+- **check-release-docs.sh `--self-test` alarm pin** (2026-10-12): the drift
+  smoke re-runs itself against a mutated copy of RELEASE.md (newline-
+  flattened so a doc reflow can't defeat the mutation, `go list -m
+  -versions` deleted) and requires the exact doc-side miss — wired as a
+  ci-local step — so a reshaped needle, a lost `drift=1` or a neutered
+  grep fails the gate instead of rotting the smoke into always-green
+  (sibling pattern: check-transient-retry.sh).
 
 ### Fixed
 - **check-release-docs.sh doc pins are reflow-tolerant** (2026-10-12):
