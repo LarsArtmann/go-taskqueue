@@ -1368,3 +1368,8 @@ ffef803a0a0b25684dd8961ca2a1373fb670ebad
 # exists to prevent); content reviewed in-session, unpushed, left
 # footer-less rather than mis-attributed to an unrelated pending task.
 f860ff4fdd2cff8c7b37a9755aabfbba1d6ed517
+# 2026-10-12 accretion (seal round 19 tail): 8d005ab8 is the doctor-stub
+# serialization fix (three doctor-service tests lost t.Parallel),
+# daemon-folded during the 17 s cmd/tq gate run; content reviewed
+# in-session, unpushed, grandfathered per the documented escape.
+8d005ab8180ae667c22527273a3042aed3e58c56
