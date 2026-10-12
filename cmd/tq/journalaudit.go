@@ -162,6 +162,9 @@ type FieldCoverage struct {
 
 // DriftReport is the journal-vs-store divergence result.
 type DriftReport struct {
+	// TaskID is set when the audit was scoped to one task (tq audit
+	// --journal --task-id): every count below covers that task alone.
+	TaskID        string        `json:"taskId,omitempty"`
 	TasksCompared int           `json:"tasksCompared"`
 	FactsReplayed int           `json:"factsReplayed"`
 	Coverage      FieldCoverage `json:"coverage"`
@@ -416,6 +419,45 @@ func journalDrift(ctx context.Context, store queue.Store) (DriftReport, error) {
 	return report, nil
 }
 
+// journalDriftScoped is the one-task forensics cut of journalDrift (tq
+// audit --journal --task-id): exact id or unique prefix resolves via the
+// task list, the fact replay reads only that task's trail, and the diff
+// covers that task alone.
+func journalDriftScoped(ctx context.Context, store queue.Store, idOrPrefix string) (DriftReport, error) {
+	tasks, err := store.List(ctx, queue.Filter{})
+	if err != nil {
+		return DriftReport{}, fmt.Errorf("list tasks: %w", err)
+	}
+
+	matched := make([]task.Task, 0, 1)
+	for _, t := range tasks {
+		if t.ID.String() == idOrPrefix || strings.HasPrefix(t.ID.String(), idOrPrefix) {
+			matched = append(matched, t)
+		}
+	}
+
+	switch len(matched) {
+	case 0:
+		return DriftReport{}, fmt.Errorf("no task with id or prefix %q", idOrPrefix)
+	case 1:
+	default:
+		return DriftReport{}, fmt.Errorf("prefix %q matches %d tasks — be more specific", idOrPrefix, len(matched))
+	}
+
+	facts, err := store.FactsForTask(ctx, matched[0].ID.String(), 0)
+	if err != nil {
+		return DriftReport{}, err
+	}
+
+	report := diffProjection(matched, replayProjection(facts))
+	report.TaskID = matched[0].ID.String()
+	report.FactsReplayed = len(facts)
+	report.SecretEvidence = scanFactSecrets(facts)
+	report.Requeues = requeueSummary(facts)
+
+	return report, nil
+}
+
 // scanFactSecrets runs the secrets-in-logs detector over the evidence-bearing
 // fields (error text + detail JSON) of the OUTPUT-derived fact types and
 // returns one row per fact/field with hits. Payloads are NOT scanned:
@@ -459,9 +501,19 @@ func scanFactSecrets(facts []journal.Fact) []SecretHit {
 
 // cmdJournalAudit runs the drift audit and renders it (text or JSON).
 // Advisory-first (TODO row, 08-01 §f5): divergence prints loudly but never
-// fails the command.
-func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error {
-	report, err := journalDrift(ctx, store)
+// fails the command. A non-empty taskID scopes the replay to one task.
+func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID string) error {
+	var (
+		report DriftReport
+		err    error
+	)
+
+	if taskID == "" {
+		report, err = journalDrift(ctx, store)
+	} else {
+		report, err = journalDriftScoped(ctx, store, taskID)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -470,8 +522,13 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool) error 
 		return json.NewEncoder(os.Stdout).Encode(report)
 	}
 
-	fmt.Printf("journal drift audit: %d task(s) compared against %d fact(s) (status, attempts, priority, dedup key)\n",
-		report.TasksCompared, report.FactsReplayed)
+	if report.TaskID != "" {
+		fmt.Printf("journal drift audit (task %s): 1 task compared against %d fact(s) (status, attempts, priority, dedup key)\n",
+			report.TaskID, report.FactsReplayed)
+	} else {
+		fmt.Printf("journal drift audit: %d task(s) compared against %d fact(s) (status, attempts, priority, dedup key)\n",
+			report.TasksCompared, report.FactsReplayed)
+	}
 	fmt.Printf("coverage: status %d/%d, attempts %d/%d, priority %d/%d, dedup key %d/%d\n",
 		report.Coverage.Status, report.TasksCompared,
 		report.Coverage.Attempts, report.TasksCompared,

@@ -43,10 +43,19 @@ func cmdAudit(args []string) error {
 	maxAttempts := fs.Int("max-attempts", 0, "attempt budget for catch-up tasks (0 = audit default 2)")
 	dryRun := fs.Bool("dry-run", false, "report drift without enqueueing catch-ups")
 	asJSON := fs.Bool("json", false, "JSON output of the audit result")
+	taskID := fs.String(
+		"task-id",
+			"",
+			"with --journal: scope the fact replay to one task (exact id or unique prefix) — task forensics without grep",
+		)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	if *taskID != "" && !*journalFlag {
+		return fmt.Errorf("tq audit: --task-id only applies to the --journal audit (drop it, or add --journal)")
 	}
 
 	if *projectsDir == "" && *repos == "" {
@@ -57,7 +66,7 @@ func cmdAudit(args []string) error {
 		s := mustOpenStore(mustDeploymentFromDB(*db))
 		defer s.Close()
 
-		return cmdJournalAudit(context.Background(), s, *asJSON)
+		return cmdJournalAudit(context.Background(), s, *asJSON, *taskID)
 	}
 
 	if err := checkProjectsDir(*projectsDir); err != nil {

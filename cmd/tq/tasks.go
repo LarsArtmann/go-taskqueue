@@ -29,6 +29,11 @@ func cmdTasks(args []string) error {
 		"",
 		"filter by payload substring (e.g. a verify command; stale-verify audits without a tq show per task)",
 	)
+	dedup := fs.String(
+		"dedup",
+		"",
+		"exact-match dedup key (store pushdown): the task(s) a harvest/batch derivation enqueued under this key",
+	)
 	since := fs.Duration("since", 0, "only tasks created within this window (e.g. 6h, 30m; 0 = all time)")
 	parked := fs.Bool("parked", false, "only rate-limit-parked tasks (pending with a future not_before)")
 	parkedClass := fs.String(
@@ -92,6 +97,10 @@ func cmdTasks(args []string) error {
 
 	if *verifyContains != "" {
 		filter.PayloadContains = *verifyContains
+	}
+
+	if *dedup != "" {
+		filter.DedupKey = *dedup
 	}
 
 	// Creation window rides in the store (SQL pushdown, inclusive bound).
