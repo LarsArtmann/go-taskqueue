@@ -307,7 +307,8 @@ docs/DOMAIN_LANGUAGE.md.
   internal/queue/sqlitev4.
 - **PapDashboard bridge**: `--alert-url/--alert-api-key`; dead letters
   raise `alert.triggered`, completions resolve; `NotifyDeadPool` =
-  direct dead-pool path.
+  direct dead-pool path; pool detectors add worker-death,
+  frozen-sweepers, budget-all-day.
 - **go-health-dashboard** (MIT): ADOPTED — `/health` inside the token
   gate, tq CSS, same-origin Datastar. **httputil** NOT adopted
   (proprietary); **go-nix-helpers** flake-input only, never local.
