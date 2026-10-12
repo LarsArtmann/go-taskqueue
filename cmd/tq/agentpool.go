@@ -79,6 +79,7 @@ type agentPoolOptions struct {
 	logDirMaxBytes  int64
 	ownerSessPark   bool
 	ownerSessHold   time.Duration
+	worktrees       bool
 }
 
 // parseAgentPoolOptions owns the agent-pool flag block: define, parse,
@@ -215,6 +216,11 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		"owner-session-hold",
 		15*time.Minute,
 		"owner-session-park: park horizon per tick; parks lapse on their own once the session goes quiet (no unpark sweep)",
+	)
+	worktrees := fs.Bool(
+		"worktrees",
+		false,
+		"worktree-per-agent delivery (default OFF): every agent task runs in a linked checkout on branch tq/<task-id> forked from HEAD — the human's WIP never parks the pool and N tasks of one repo can coexist; committed rails required (.crushrc/.tq-verify uncommitted = permanent refusal); the branch is the delivery until auto-merge lands (worktree-per-agent design, docs/planning/archived/2026-09-12_worktree-per-agent-design.md)",
 	)
 	prioritize := fs.Bool(
 		"prioritize",
@@ -448,6 +454,7 @@ func parseAgentPoolOptions(args []string) (agentPoolOptions, error) {
 		logDirMaxBytes:  *logDirMaxBytes,
 		ownerSessPark:   *ownerSessPark,
 		ownerSessHold:   *ownerSessHold,
+		worktrees:       *worktrees,
 	}, nil
 }
 

@@ -82,6 +82,13 @@ type AgentResult struct {
 	// non-empty value means no session ran and no review may be minted for
 	// this completion (review.enqueueReview skips it).
 	PreflightDone string `json:"preflight_done,omitempty"`
+	// WorktreeDir is the linked checkout the run happened in (worktree
+	// mode only; empty = in-place run). Branch is the tq/<task-id>
+	// delivery branch forked from HEAD — the commits live there until the
+	// merge machinery lands (worktree-per-agent design,
+	// docs/planning/archived/2026-09-12_worktree-per-agent-design.md).
+	WorktreeDir string `json:"worktree_dir,omitempty"`
+	Branch      string `json:"branch,omitempty"`
 }
 
 // FailureEvidence is the structured forensics attached to a task.failed

@@ -304,7 +304,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	var wtBranch string
 
 	if e.Worktrees {
-		wtDir, branch, ok, err := createWorktree(ctx, repoDir, t.ID.String(), e.ProjectsDir, runGit)
+		wtDir, branch, ok, err := createWorktree(repoDir, t.ID.String(), e.ProjectsDir, gitRun)
 		if err != nil {
 			return err
 		}
@@ -321,7 +321,7 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 					return
 				}
 
-				_, _ = removeWorktree(repoDir, wtDir, runGit)
+				_, _ = removeWorktree(repoDir, wtDir, gitRun)
 			}()
 		}
 	}

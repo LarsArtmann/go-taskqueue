@@ -109,15 +109,15 @@ func checkWorktreeRails(repoDir string, run gitRunner) error {
 // removeWorktree deletes the linked checkout but KEEPS the tq/<id> branch:
 // until the merge machinery lands, the branch is the delivery (policy (c)
 // in the design — branches for the owner); removing it would destroy the
-// agent's commits. Best-effort: a leftover directory is reaper food, not a
-// task failure.
+// agent's commits. Best-effort, never a task failure: when git refuses
+// (modified files, races), the directory is cleared and stale admin files
+// pruned; removed=false tells the caller the git-level removal skipped.
 func removeWorktree(repoDir, dir string, run gitRunner) (removed bool, err error) {
-	out, err := run(repoDir, "worktree", "remove", "--force", dir)
-	if err != nil {
+	if out, err := run(repoDir, "worktree", "remove", "--force", dir); err != nil {
 		_ = os.RemoveAll(dir)
 		_, _ = run(repoDir, "worktree", "prune")
 
-		return false, fmt.Errorf("agent: worktree remove %s: %w: %s", dir, err, tailOutput(out))
+		return false, fmt.Errorf("agent: worktree remove %s degraded to clear+prune: %w: %s", dir, err, tailOutput(out))
 	}
 
 	return true, nil
