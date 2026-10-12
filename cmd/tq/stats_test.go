@@ -380,15 +380,18 @@ func TestStatsLoopSuspects(t *testing.T) {
 		}
 	}
 
-	// Twin behavior pin: the local claimCount mirror equals the canonical
-	// queue.ClaimCount on the same fixture.
-	got, err := claimCount(ctx, s, tk.ID.String())
+	// Census parity pin: the store's grouped ClaimCounts map equals the
+	// canonical queue.ClaimCount on the same fixture (the local per-task
+	// twin retired with the C16.4 GROUP BY flip).
+	counts, err := s.ClaimCounts(ctx)
 	if err != nil {
-		t.Fatalf("claimCount: %v", err)
+		t.Fatalf("ClaimCounts: %v", err)
 	}
 
+	got := counts[tk.ID.String()]
+
 	if canonical, err := queue.ClaimCount(ctx, s, tk.ID.String()); err != nil || canonical != got {
-		t.Fatalf("claimCount twin = %d, queue.ClaimCount = %d (%v)", got, canonical, err)
+		t.Fatalf("ClaimCounts = %d, queue.ClaimCount = %d (%v)", got, canonical, err)
 	}
 
 	if got != queue.ClaimAnomalyThreshold+1 {

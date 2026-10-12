@@ -350,10 +350,9 @@ type Queue struct {
 const ClaimAnomalyThreshold = 20
 
 // ClaimCount reads one task's claim count (task.claimed facts) from its
-// journal trail. Census callers should expect one facts walk per task.
-//
-// art-dupl:accept replace-free module boundary: cmd/tq cannot import this
-// package (ADR-0017) and restates the 12-line census helper.
+// journal trail — the webui detail page's per-task read. Census callers
+// (stats loop-suspects, dead-letter churn) should use Store.ClaimCounts:
+// one grouped query instead of a facts walk per task.
 func ClaimCount(ctx context.Context, s Store, id string) (int, error) {
 	facts, err := s.FactsForTask(ctx, id, 0)
 	if err != nil {

@@ -2143,35 +2143,17 @@ type claimSuspect struct {
 	Claims int    `json:"claims"`
 }
 
-// claimCount mirrors queue.ClaimCount for the same replace-free reason as
-// claimAnomalyThreshold: count the task's task.claimed facts from its
-// journal trail.
-//
-// art-dupl:accept replace-free module boundary: cmd/tq cannot import
-// internal/queue (ADR-0017), so the 12-line census helper is restated.
-func claimCount(ctx context.Context, store *sqlite.Store, id string) (int, error) {
-	facts, err := store.FactsForTask(ctx, id, 0)
-	if err != nil {
-		return 0, err
-	}
-
-	n := 0
-
-	for _, f := range facts {
-		if f.Type == journal.Claimed {
-			n++
-		}
-	}
-
-	return n, nil
-}
-
 // claimSuspects lists tasks whose claim count exceeds the anomaly line,
 // worst first, capped at 10 rows: the P4 detection surface in `tq stats`.
 // The status filter is deliberately ignored; a scoped view must not hide
-// churn. Census cost is one facts walk per task (a GROUP BY store method is
-// the documented follow-up).
+// churn. Census cost is ONE grouped query (Store.ClaimCounts) — the
+// per-task facts walk retired with the C16.4 flip.
 func claimSuspects(ctx context.Context, store *sqlite.Store, project *string) []claimSuspect {
+	counts, err := store.ClaimCounts(ctx)
+	if err != nil {
+		return nil
+	}
+
 	tasks, err := store.List(ctx, queue.Filter{Project: project})
 	if err != nil {
 		return nil
@@ -2180,8 +2162,8 @@ func claimSuspects(ctx context.Context, store *sqlite.Store, project *string) []
 	suspects := make([]claimSuspect, 0, 4)
 
 	for _, t := range tasks {
-		claims, err := claimCount(ctx, store, t.ID.String())
-		if err != nil || claims <= claimAnomalyThreshold {
+		claims := counts[t.ID.String()]
+		if claims <= claimAnomalyThreshold {
 			continue
 		}
 
