@@ -48,6 +48,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   release script's log line can no longer drift apart silently — rewording
   either side fails the drift smoke naming where the needle died (closeout
   2026-10-09 §b/§e1).
+- **`tq park` verb** (2026-10-12): `tq park <id> --until DUR [--reason R]`
+  parks a PENDING task — claims suppressed until the instant, no attempt
+  burn, one `task.parked` fact (Owner + reason) in the same tx as the
+  NotBefore move; 7-day ceiling (re-park to extend, mirroring `tq ask`);
+  `--release` re-arms the task immediately (mutually exclusive with
+  `--until`); running tasks refused with a pointer at `tq cancel --force`.
+- **Forensics filters** (2026-10-12): `tq tasks --dedup KEY` (exact
+  dedup-key match) and `tq audit --journal --task-id <id>` (task-scoped
+  drift replay over exact-or-unique-prefix branded ids) replace
+  scan-and-grep journal forensics.
+- **Owner-session park policy** (2026-10-12): `tq agent-pool
+  --owner-session-park` (default ON; `--owner-session-hold`, default
+  15m) — a tick-time PRE-claim sweep parks claimable pending tasks in
+  repos with a live owner session (session-registry ping ≤10m, cwd
+  anywhere under the repo) so a pooled agent never rewrites files under
+  the owner's cursor; already-future NotBefore rows are skipped (no fact
+  spam) and the hold lapses on its own — no `task.claimed` churn, ≤1
+  park fact per task per hold window.
 
 ### Changed
 
@@ -55,6 +73,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `Store.ClaimDueTypes`: claim-time executor-type filter — a pool whose registry lacks a type never claims it (bare workers can no longer dead-letter agent tasks).
 - `Store.ClaimCounts` GROUP BY pushdown and `Filter.DedupKey` exact-match list filter.
 - The agent pool's claim-time done gate (`--done-preflight`) now defaults ON: a task minted before its work landed completes with zero agent spend at claim time instead of burning a paid re-dispatch window.
+- `tq stats` loop-suspect census now reads ONE `Store.ClaimCounts` grouped
+  query — the per-task `task.claimed` facts walk and its cmd/tq twin
+  retired with the C16.4 flip (2026-10-12).
 
 ### Fixed
 - `GitLogScanner` now attributes commits whose footer git refuses to parse as a trailer (a footer stranded above the attribution block — 59% of footer commits were invisible), via an exact column-0 body-line fallback that still never attributes quoted or indented footers.
