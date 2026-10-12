@@ -1320,9 +1320,10 @@ func cmdAgentPool(args []string) error {
 		var err error
 
 		sweeper, err = review.NewSweeper(ctx, store, review.SweeperConfig{
-			Model:   poolOpts.model,
-			Autofix: poolOpts.reviewAutofix,
-			Log:     log,
+			Model:       poolOpts.model,
+			Autofix:     poolOpts.reviewAutofix,
+			ProjectsDir: poolOpts.projectsDir,
+			Log:         log,
 		})
 		if err != nil {
 			return fmt.Errorf("review sweeper: %w", err)

@@ -43,6 +43,18 @@ type ReviewPayload struct {
 	CommitSHA string `json:"commit_sha,omitempty"`
 	// FilesChanged lists the files the reviewed agent reported touching.
 	FilesChanged []string `json:"files_changed,omitempty"`
+	// Branch, when set, names the tq/<task-id> delivery branch the work
+	// lives on (worktree mode): the change is NOT on the base branch yet —
+	// the reviewer inspects the branch range read-only, and an approve
+	// verdict is what triggers the merge into BaseBranch (O11 ruling:
+	// auto-merge on review-approve + verify green at the tip).
+	Branch string `json:"branch,omitempty"`
+	// BaseBranch is the fork point / merge target for Branch. Required when
+	// Branch is set.
+	BaseBranch string `json:"base_branch,omitempty"`
+	// WorktreeDir is the linked checkout holding the branch. The sweeper
+	// reaps it after the merge; empty = no worktree to manage.
+	WorktreeDir string `json:"worktree_dir,omitempty"`
 	// Extra carries operator focus instructions appended to the prompt.
 	Extra string `json:"extra,omitempty"`
 	// Model optionally overrides the crush model for the reviewer.
@@ -197,11 +209,19 @@ func reviewPrompt(p ReviewPayload) string {
 	)
 	b.WriteString("## The task the agent was given\n\n" + item + "\n\n")
 
-	if p.CommitSHA != "" {
+	switch {
+	case p.Branch != "" && p.BaseBranch != "":
+		b.WriteString(
+			"## The change\n\nThe work lives on branch `" + p.Branch + "` (forked from `" + p.BaseBranch +
+				"`; not yet merged). Inspect it READ-ONLY: `git log " + p.BaseBranch + ".." + p.Branch + " --stat`, " +
+				"`git diff " + p.BaseBranch + "..." + p.Branch + "`, `git show " + p.Branch + ":<file>`; " +
+				"do NOT check out, merge, or modify anything.\n\n",
+		)
+	case p.CommitSHA != "":
 		b.WriteString(
 			"## The change\n\nThe agent reported commit " + p.CommitSHA + ". Inspect it with `git show " + p.CommitSHA + "` (plus surrounding context as needed).\n\n",
 		)
-	} else {
+	default:
 		b.WriteString(
 			"## The change\n\nThe agent reported no commit; inspect the repository's current state and recent history.\n\n",
 		)

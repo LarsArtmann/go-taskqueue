@@ -400,9 +400,11 @@ func (e *AgentExecutor) Execute(ctx context.Context, t task.Task) error {
 	}
 
 	// Worktree forensics: where the run actually happened and which branch
-	// carries the commits (the merge/reap machinery keys off the prefix).
+	// carries the commits (the merge/reap machinery keys off the prefix);
+	// BaseBranch names the merge target for the post-approve merge.
 	result.WorktreeDir = runDir
 	result.Branch = wtBranch
+	result.BaseBranch = wtBase
 
 	recordRunOutcome(ctx, &result, output, tail, t.ID)
 
@@ -442,6 +444,12 @@ func writeOutputSidecar(id task.ID, agentOutput, verifyOutput string) string {
 // relative names resolve against ProjectsDir.
 func (e *AgentExecutor) repoDir(repo string) (string, error) {
 	return resolveRepoDir("agent", e.ProjectsDir, repo)
+}
+
+// ResolveRepoDir is the exported seam behind resolveRepoDir (the review
+// sweeper resolves payload repos for the post-approve worktree merge).
+func ResolveRepoDir(domain, projectsDir, repo string) (string, error) {
+	return resolveRepoDir(domain, projectsDir, repo)
 }
 
 // resolveRepoDir is the shared repo resolution behind the executors that

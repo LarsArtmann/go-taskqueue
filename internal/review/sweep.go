@@ -45,6 +45,13 @@ type SweeperConfig struct {
 	Log *slog.Logger
 	// PageSize bounds one fact-stream page; 0 selects the default.
 	PageSize int
+	// ProjectsDir resolves relative repo names in review payloads for the
+	// default merge (absolute paths bypass it). "" disables merging of
+	// relative-repo payloads.
+	ProjectsDir string
+	// Merge overrides the branch-merge primitive (test seam). nil selects
+	// executor.MergeWorktreeBranch.
+	Merge func(repoDir, branch, base, message string) error
 }
 
 // SweepStats summarizes one sweep pass.
@@ -61,6 +68,8 @@ type SweepStats struct {
 	// Skipped counts completions that could not yield a review (foreign
 	// payload shape, vanished task record).
 	Skipped int
+	// Merged counts approve-verdict worktree merges (branch → base + reap).
+	Merged int
 	// DocsSkipped counts completions whose derived diff is docs-only
 	// (2026-10-11 ceremony cut: a reviewer of prose cannot catch what the
 	// verify gate does not already prove; measured 52% derived-task
@@ -140,10 +149,68 @@ func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *Swee
 	case executor.TaskTypeAgent:
 		s.enqueueReview(ctx, t, fact, stats)
 	case executor.TaskTypeReview:
+		s.mergeOnApprove(ctx, t, fact, stats)
+
 		if s.cfg.Autofix {
 			s.mintFixes(ctx, t, fact, stats)
 		}
 	}
+}
+
+// mergeOnApprove delivers worktree-per-agent work: an approve verdict on a
+// review whose payload names a tq/ delivery branch merges the branch into
+// its base (git plumbing — no checkout, base drift tolerated) and reaps
+// the linked checkout plus the now-merged branch. The verify gate already
+// proved the branch tip (the agent task completed; a red gate never
+// completes), so approve is the last unmet condition of the O11 ruling.
+// A conflicting merge refuses without touching anything — the branch stays
+// the delivery for a human.
+func (s *Sweeper) mergeOnApprove(ctx context.Context, t task.Task, fact journal.Fact, stats *SweepStats) {
+	var payload executor.ReviewPayload
+
+	if err := json.Unmarshal(t.Payload, &payload); err != nil || payload.Branch == "" || payload.BaseBranch == "" {
+		return // not a worktree-mode review: nothing to merge
+	}
+
+	var result executor.ReviewResult
+
+	if err := json.Unmarshal(fact.Detail, &result); err != nil || result.Verdict != executor.VerdictApprove {
+		return // request_changes (or detail lost): the branch stays the delivery
+	}
+
+	repoDir, err := executor.ResolveRepoDir("review merge", s.cfg.ProjectsDir, payload.Repo)
+	if err != nil {
+		stats.Skipped++
+
+		return
+	}
+
+	merge := s.cfg.Merge
+	if merge == nil {
+		merge = executor.MergeWorktreeBranch
+	}
+
+	if err := merge(repoDir, payload.Branch, payload.BaseBranch,
+		"Merge "+payload.Branch+" (task "+payload.ReviewedTask+") — review-approved auto-merge"); err != nil {
+		s.log("review: merge refused, branch stays the delivery", "task", payload.ReviewedTask,
+			"branch", payload.Branch, "repo", payload.Repo, "err", err.Error())
+
+		return
+	}
+
+	stats.Merged++
+
+	if payload.WorktreeDir != "" {
+		if err := executor.RemoveWorktree(repoDir, payload.WorktreeDir); err != nil {
+			s.log("review: worktree cleanup degraded", "dir", payload.WorktreeDir, "err", err.Error())
+		}
+	}
+
+	if err := executor.DeleteWorktreeBranch(repoDir, payload.Branch); err != nil {
+		s.log("review: merged branch delete failed", "branch", payload.Branch, "err", err.Error())
+	}
+
+	s.log("review: merged", "task", payload.ReviewedTask, "branch", payload.Branch, "into", payload.BaseBranch, "repo", payload.Repo)
 }
 
 // enqueueReview mints the one review task for a completed agent task.
@@ -192,6 +259,9 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.F
 		Item:         agentPayload.Prompt,
 		CommitSHA:    agentResult.CommitSHA,
 		FilesChanged: agentResult.FilesChanged,
+		Branch:       agentResult.Branch,
+		BaseBranch:   agentResult.BaseBranch,
+		WorktreeDir:  agentResult.WorktreeDir,
 		Model:        s.cfg.Model,
 		Yolo:         agentPayload.Yolo,
 	})

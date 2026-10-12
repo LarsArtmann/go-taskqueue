@@ -144,6 +144,14 @@ const (
 	WorktreeBranchPrefix  = internalexecutor.WorktreeBranchPrefix
 )
 
+// Worktree merge/reap seams (worktree-per-agent delivery).
+var (
+	MergeWorktreeBranch  = internalexecutor.MergeWorktreeBranch
+	DeleteWorktreeBranch = internalexecutor.DeleteWorktreeBranch
+	RemoveWorktree       = internalexecutor.RemoveWorktree
+	ResolveRepoDir       = internalexecutor.ResolveRepoDir
+)
+
 // Verdicts.
 const (
 	VerdictApprove        = internalexecutor.VerdictApprove
