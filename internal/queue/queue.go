@@ -307,7 +307,7 @@ type Filter struct {
 	// forensics pushdown behind `tq tasks --dedup`: which task (if any)
 	// a dedup key resolved to, without a payload LIKE guess.
 	DedupKey string
-	Limit           int
+	Limit    int
 	// Offset skips the first Offset matches (pagination); applied after
 	// ordering. Meaningful together with Limit.
 	Offset int
