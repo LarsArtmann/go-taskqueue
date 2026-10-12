@@ -93,7 +93,7 @@ cd "$TMP"
 echo "== four --once drains: complete the ok turn, exhaust the doomed one"
 for i in 1 2 3 4; do
 	timeout 120 "$TMP/tq" agent-pool --projects-dir "$TMP" --repos repo \
-		--once --max-per-tick 1 --poll 50ms --task-timeout 30s \
+		--batch-items 1 --once --max-per-tick 1 --poll 50ms --task-timeout 30s \
 		>"$TMP/pool-$i.log" 2>&1 || {
 		cat "$TMP/pool-$i.log"
 		exit 1
