@@ -201,7 +201,7 @@ if [ -n "$REAL_MODE" ]; then
 		exit 1
 	}
 else
-	wait_for 'alert\.triggered.*agent-pool-projection-worker' "$POOL_LOG" || {
+	wait_for 'agent-pool-projection-worker.*alert\.triggered' "$POOL_LOG" || {
 		echo "FAIL: no worker-death alert.triggered"
 		cat "$TMP/pool.log"
 		exit 1
@@ -218,7 +218,7 @@ if [ -n "$REAL_MODE" ]; then
 		exit 1
 	}
 else
-	wait_for 'alert\.resolved.*agent-pool-projection-worker' "$POOL_LOG" || {
+	wait_for 'agent-pool-projection-worker.*alert\.resolved' "$POOL_LOG" || {
 		echo "FAIL: no worker-death alert.resolved"
 		cat "$TMP/pool.log"
 		exit 1
