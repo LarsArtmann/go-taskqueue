@@ -49,12 +49,31 @@ func createWorktree(repoDir, id, projectsDir string, run gitRunner) (dir, branch
 
 	branch = WorktreeBranchPrefix + id
 
-	if _, err := run(repoDir, "rev-parse", "--verify", "--quiet", "refs/heads/"+branch); err == nil {
-		return "", "", false, Permanent(fmt.Errorf("agent: branch %s already exists — a previous worktree run for this task never merged or reaped; delete it (git branch -D %s) or run the reaper before retrying", branch, branch))
-	}
-
 	base := filepath.Base(repoDir)
 	dir = filepath.Join(worktreeRoot(repoDir, projectsDir), base, id)
+
+	_, branchExists := run(repoDir, "rev-parse", "--verify", "--quiet", "refs/heads/"+branch)
+
+	if branchExists == nil {
+		// Retry-ladder adoption (the 00-46 §g1 collision bug): attempt 2
+		// re-enters createWorktree and the delivery branch of attempt 1
+		// still exists. A RETRYABLE failure must never turn permanent —
+		// ADOPT the branch: reuse the checkout when git still knows it,
+		// otherwise re-checkout the branch at the expected path (the
+		// failed attempt's commits survive on the branch).
+		registered, _ := run(repoDir, "worktree", "list", "--porcelain")
+		if strings.Contains(registered, dir+"\n") {
+			return dir, branch, true, nil
+		}
+
+		_ = os.RemoveAll(dir) // stale/unregistered path: a worktree add needs it gone
+
+		if out, err := run(repoDir, "worktree", "add", dir, branch); err != nil {
+			return "", "", false, fmt.Errorf("agent: worktree adopt %s at %s: %w: %s", branch, dir, err, tailOutput(out))
+		}
+
+		return dir, branch, true, nil
+	}
 
 	if out, err := run(repoDir, "worktree", "add", "-b", branch, dir, "HEAD"); err != nil {
 		return "", "", false, fmt.Errorf("agent: worktree add %s: %w: %s", dir, err, tailOutput(out))

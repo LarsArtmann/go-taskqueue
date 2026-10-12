@@ -89,34 +89,69 @@ func TestCreateWorktreeRefusesUncommittedRails(t *testing.T) {
 	}
 }
 
-func TestCreateWorktreeRefusesExistingBranch(t *testing.T) {
+func TestCreateWorktreeAdoptsExistingBranch(t *testing.T) {
 	t.Parallel()
 
 	repo := t.TempDir()
+	projects := filepath.Dir(repo)
 
-	runner := func(dir string, args ...string) (string, error) {
-		if len(args) >= 3 && args[0] == "rev-parse" && args[1] == "--verify" {
+	id := "0001"
+	dir := filepath.Join(projects, worktreeDirName, filepath.Base(repo), id)
+
+	runner := func(rdir string, args ...string) (string, error) {
+		switch {
+		case len(args) >= 3 && args[0] == "rev-parse" && args[1] == "--verify":
 			return "", nil // branch exists
-		}
-
-		if args[0] == "rev-parse" {
+		case args[0] == "rev-parse", args[0] == "status":
 			return "", nil
+		case args[0] == "worktree" && args[1] == "list":
+			return "other-worktree\n", nil // registered worktrees do NOT include dir
+		case args[0] == "worktree" && args[1] == "add":
+			return "", nil // re-checkout of the existing branch
+		default:
+			return "", errors.New("unexpected: " + strings.Join(args, " "))
 		}
-
-		if args[0] == "status" {
-			return "", nil
-		}
-
-		return "", errors.New("unexpected: " + strings.Join(args, " "))
 	}
 
-	_, _, _, err := createWorktree(repo, "0001", "", runner)
-	if err == nil {
-		t.Fatal("existing tq branch must fail the run")
+	gotDir, gotBranch, ok, err := createWorktree(repo, id, projects, runner)
+	if err != nil || !ok {
+		t.Fatalf("existing branch must be adopted, got ok=%v err=%v", ok, err)
 	}
 
-	if !isPermanent(t, err) {
-		t.Fatalf("stale-branch miss is permanent, got %v", err)
+	if gotDir != dir || gotBranch != WorktreeBranchPrefix+id {
+		t.Fatalf("adopted dir/branch = %s/%s, want %s/%s", gotDir, gotBranch, dir, WorktreeBranchPrefix+id)
+	}
+}
+
+func TestCreateWorktreeReusesRegisteredWorktree(t *testing.T) {
+	t.Parallel()
+
+	repo := t.TempDir()
+	projects := filepath.Dir(repo)
+
+	id := "0001"
+	dir := filepath.Join(projects, worktreeDirName, filepath.Base(repo), id)
+
+	runner := func(rdir string, args ...string) (string, error) {
+		switch {
+		case len(args) >= 3 && args[0] == "rev-parse" && args[1] == "--verify":
+			return "", nil // branch exists
+		case args[0] == "rev-parse", args[0] == "status":
+			return "", nil
+		case args[0] == "worktree" && args[1] == "list":
+			return "worktree " + dir + "\n", nil // already registered: plain reuse
+		default:
+			return "", errors.New("unexpected: " + strings.Join(args, " "))
+		}
+	}
+
+	gotDir, _, ok, err := createWorktree(repo, id, projects, runner)
+	if err != nil || !ok {
+		t.Fatalf("registered worktree must be reused, got ok=%v err=%v", ok, err)
+	}
+
+	if gotDir != dir {
+		t.Fatalf("dir = %s, want %s", gotDir, dir)
 	}
 }
 

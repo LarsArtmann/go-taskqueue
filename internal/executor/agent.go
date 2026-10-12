@@ -440,7 +440,6 @@ func writeOutputSidecar(id task.ID, agentOutput, verifyOutput string) string {
 	return path
 }
 
-
 // WorktreeInUse reports whether the task still owes its close-out turn:
 // the reaper must treat such worktrees as in-flight (the parked close-out
 // resumes in that exact checkout).
