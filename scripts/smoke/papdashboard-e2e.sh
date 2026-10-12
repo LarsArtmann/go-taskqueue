@@ -15,7 +15,7 @@ REAL_MODE=""
 [ -n "$PAP_URL" ] && REAL_MODE=1
 TMP="$(mktemp -d)"
 cleanup() {
-	for pid in "${WORKER_PID:-}" "${STUB_PID:-}"; do
+	for pid in "${WORKER_PID:-}" "${STUB_PID:-}" "${POOL_PID:-}"; do
 		[ -n "$pid" ] && kill "$pid" 2>/dev/null
 	done
 	rm -rf "$TMP"
@@ -115,14 +115,15 @@ else
 	ALERT_LOG="$INGEST_LOG"
 fi
 
-wait_for() { # wait_for <grep-pattern>
+wait_for() { # wait_for <grep-pattern> [log-file]
 	# 120s, not 60s: inside the full ci-local battery the host is busier
 	# than during the release gates alone — the 60s window itself was lost
 	# once (2026-10-07 final battery, "no alert.triggered" at wait 61)
 	# while the isolated run passed in ~3s. The assertion stays strict;
 	# the window absorbs battery load.
+	local log="${2:-$ALERT_LOG}"
 	for _ in $(seq 1 120); do
-		[ -f "$ALERT_LOG" ] && grep -q "$1" "$ALERT_LOG" && return 0
+		[ -f "$log" ] && grep -q "$1" "$log" && return 0
 		sleep 1
 	done
 	return 1
@@ -165,4 +166,62 @@ echo "   resolved OK"
 echo "== task state"
 "$TMP/tq" show "$TASK_ID" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("   status:", d["task"]["status"])'
 
-echo "PASS: dead letter raised an alert and the rescue resolved it"
+echo "== agent-pool liveness alerts: stage the B9.3 worker-death marker"
+# The durable sidecar the serve/api fold host stamps when its projection
+# worker exhausts the restart budget (WorkerFailedMarkerPath =
+# <db>.readmodel.db.worker-failed): the pool's workerDeathDetector reads
+# it every harvest tick, raises once, and a cleared marker (a fresh host)
+# resolves the standing alert.
+MARKER="$TQ_DB.readmodel.db.worker-failed"
+printf '%s\n' '{"projection":"tasks","failedAt":"2026-10-11T22:00:00Z"}' >"$MARKER"
+
+echo "== start agent pool with alert bridge -> $PAP_URL"
+"$TMP/tq" agent-pool --interval 2s --alert-url "$PAP_URL" --alert-api-key smoke-key \
+	--alert-poll 1s >"$TMP/pool.log" 2>&1 &
+POOL_PID=$!
+
+# Real mode has no stub log; the pool's own bridge logs each accepted
+# ingest POST, so assert on the pool log there.
+if [ -n "$REAL_MODE" ]; then
+	POOL_LOG="$TMP/pool.log"
+else
+	POOL_LOG="$INGEST_LOG"
+fi
+
+echo "== wait for the worker-exhausted alert.triggered"
+if [ -n "$REAL_MODE" ]; then
+	wait_for 'ingest accepted.*worker-exhausted' "$POOL_LOG" || {
+		echo "FAIL: no worker-exhausted alert accepted by dashboard"
+		cat "$POOL_LOG"
+		exit 1
+	}
+else
+	wait_for 'alert\.triggered.*agent-pool-projection-worker' "$POOL_LOG" || {
+		echo "FAIL: no worker-death alert.triggered"
+		cat "$TMP/pool.log"
+		exit 1
+	}
+fi
+echo "   worker-death triggered OK"
+
+echo "== clear the marker (a fresh host) and expect alert.resolved"
+rm "$MARKER"
+if [ -n "$REAL_MODE" ]; then
+	wait_for 'ingest accepted.*worker-exhausted-resolve' "$POOL_LOG" || {
+		echo "FAIL: no worker-exhausted resolve accepted by dashboard"
+		cat "$POOL_LOG"
+		exit 1
+	}
+else
+	wait_for 'alert\.resolved.*agent-pool-projection-worker' "$POOL_LOG" || {
+		echo "FAIL: no worker-death alert.resolved"
+		cat "$TMP/pool.log"
+		exit 1
+	}
+fi
+echo "   worker-death resolved OK"
+
+kill "$POOL_PID" 2>/dev/null
+POOL_PID=""
+
+echo "PASS: dead letter raised an alert, the rescue resolved it, and the agent pool surfaced + cleared a dead projection worker"
