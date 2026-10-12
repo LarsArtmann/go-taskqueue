@@ -21,16 +21,20 @@ miss() {
 }
 
 need_in_both() {
-	local needle="$1" what="$2"
-	grep -qF -- "$needle" <(tr '\n' ' ' <"$doc") || miss "$what cited in RELEASE.md but the doc no longer mentions it: $needle"
+	local needle="$1" what="$2" rc_script=0 rc_lib=0
+	grep -qF -- "$needle" <<<"$doc_flat" || miss "$what cited in RELEASE.md but the doc no longer mentions it: $needle"
 	# Per-target misses (needle may live in release.sh OR scripts/lib/ — the
 	# proxy-wait loop moved to scripts/lib/proxy-wait.sh in 058a4b37): a
 	# union failure names WHERE the needle died, not one combined target.
-	if ! grep -qF -- "$needle" "$script"; then
-		if ! grep -qF -- "$needle" scripts/lib/*.sh; then
-			miss "$what documented in RELEASE.md but gone from $script: $needle"
-			miss "$what documented in RELEASE.md but gone from scripts/lib/: $needle"
-		fi
+	grep -qF -- "$needle" "$script" || rc_script=1
+	if [ "$rc_script" -eq 1 ]; then
+		grep -qF -- "$needle" scripts/lib/*.sh || rc_lib=1
+	fi
+	# Union: the needle surviving in either target keeps the smoke green;
+	# both captured rcs set = it died in both, name WHERE.
+	if [ "$rc_script" -eq 1 ] && [ "$rc_lib" -eq 1 ]; then
+		miss "$what documented in RELEASE.md but gone from $script: $needle"
+		miss "$what documented in RELEASE.md but gone from scripts/lib/: $needle"
 	fi
 }
 
@@ -63,6 +67,10 @@ fi
 [ -f "$doc" ] || miss "missing $doc"
 [ -f "$script" ] || miss "missing $script"
 [ -f "$lib" ] || miss "missing $lib"
+
+# One tr-normalized doc snapshot, built once before the pins: every
+# need_in_both doc-side grep reads this copy instead of re-running tr.
+doc_flat="$(tr '\n' ' ' <"$doc")"
 
 # Modes the doc's usage block promises vs the script's parser.
 grep -qF -- '--tag | --push)' "$script" || miss "release.sh no longer parses --tag/--push as documented"
