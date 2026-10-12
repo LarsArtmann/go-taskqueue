@@ -21,7 +21,7 @@ miss() {
 
 need_in_both() {
 	local needle="$1" what="$2"
-	grep -qF -- "$needle" "$doc" || miss "$what cited in RELEASE.md but the doc no longer mentions it: $needle"
+	grep -qF -- "$needle" <(tr '\n' ' ' <"$doc") || miss "$what cited in RELEASE.md but the doc no longer mentions it: $needle"
 	# Per-target misses (needle may live in release.sh OR scripts/lib/ — the
 	# proxy-wait loop moved to scripts/lib/proxy-wait.sh in 058a4b37): a
 	# union failure names WHERE the needle died, not one combined target.
@@ -48,11 +48,7 @@ grep -qF -- 'gate_gomod "$mod_go"' "$script" || miss "release.sh no longer runs 
 grep -qF -- 'gate_gomod' "$doc" || miss "RELEASE.md allowlist section lost the gate_gomod name"
 
 # Mechanisms the doc cites in its phase descriptions.
-# FALSE-FAIL HAZARD (closeout 2026-10-08 §e2): grep -qF is line-contained —
-# if RELEASE.md is reflowed so a pin below (especially 'go list -m -versions')
-# wraps across lines, the check reports drift although the doc still documents
-# the mechanism. On a failure here, first re-check the doc for a reflow before
-# concluding real drift.
+# Doc pins are reflow-tolerant: the doc-side grep runs on a newline-normalized copy, so a RELEASE.md reflow can't false-fail.
 need_in_both 'go list -m -versions' 'module-proxy wait'
 need_in_both 'find internal task journal queue executor worker cmd/tq -name go.mod' 'disk-derived sub-tag list'
 need_in_both --prerelease 'GitHub Release prerelease flag'

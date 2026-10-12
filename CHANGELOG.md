@@ -28,6 +28,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   invisible (inspect, then remove or migrate; no auto-move).
 
 ### Fixed
+- **check-release-docs.sh doc pins are reflow-tolerant** (2026-10-12):
+  `need_in_both`'s doc-side grep runs on a newline-normalized RELEASE.md
+  copy (`tr '\n' ' '`), so a doc reflow that wraps a pinned phrase
+  across lines no longer false-fails the drift smoke; the call-site
+  FALSE-FAIL HAZARD comment shrinks to the why-normalized one-liner
+  (the fix for the hazard the 1075248c annotation documented).
 - **Readmodel schema probe honors ctx and reports close errors** (2026-10-12):
   the projection-home convergence probe (the legacy-schema crash-loop
   guard) ran context-less SQL and ignored `db.Close`/`rows.Close`
