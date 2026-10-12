@@ -1588,6 +1588,10 @@ func cmdAgentPool(args []string) error {
 				observeStarvation(ctx, store, starvation)
 				workerDeath.observe()
 				frozenSweepers.observe(ctx, store)
+
+				for _, line := range executor.ReapWorktreeOrphans(poolOpts.projectsDir, worktreeInFlight(ctx, store, agentExec)) {
+					log.Info("worktree reaper: removed orphan", "target", line)
+				}
 			}
 		}) {
 			return

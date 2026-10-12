@@ -916,3 +916,18 @@ func printAgentPoolBanner(poolOpts agentPoolOptions) {
 		)
 	}
 }
+
+// worktreeInFlight is the reaper's liveness probe: a worktree/branch is
+// in-flight while its task is PENDING or RUNNING in the store, or while a
+// close-out turn is still parked on the executor (that turn resumes in the
+// exact checkout — reaping it would orphan the resume).
+func worktreeInFlight(ctx context.Context, store *sqlite.Store, agentExec *executor.AgentExecutor) func(string) bool {
+	return func(id string) bool {
+		t, err := store.Get(ctx, task.ID(id))
+		if err == nil && (t.Status == task.Pending || t.Status == task.Running) {
+			return true
+		}
+
+		return agentExec != nil && agentExec.WorktreeInUse(id)
+	}
+}

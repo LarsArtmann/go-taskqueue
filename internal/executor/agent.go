@@ -440,6 +440,16 @@ func writeOutputSidecar(id task.ID, agentOutput, verifyOutput string) string {
 	return path
 }
 
+
+// WorktreeInUse reports whether the task still owes its close-out turn:
+// the reaper must treat such worktrees as in-flight (the parked close-out
+// resumes in that exact checkout).
+func (e *AgentExecutor) WorktreeInUse(id string) bool {
+	_, parked := e.closeoutPending.Load(id)
+
+	return parked
+}
+
 // repoDir resolves a payload repo name: absolute paths pass through,
 // relative names resolve against ProjectsDir.
 func (e *AgentExecutor) repoDir(repo string) (string, error) {

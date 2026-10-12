@@ -147,6 +147,8 @@ const (
 // Worktree merge/reap seams (worktree-per-agent delivery).
 var (
 	MergeWorktreeBranch  = internalexecutor.MergeWorktreeBranch
+	ScanWorktreeOrphans  = internalexecutor.ScanWorktreeOrphans
+	ReapWorktreeOrphans  = internalexecutor.ReapWorktreeOrphans
 	DeleteWorktreeBranch = internalexecutor.DeleteWorktreeBranch
 	RemoveWorktree       = internalexecutor.RemoveWorktree
 	ResolveRepoDir       = internalexecutor.ResolveRepoDir
