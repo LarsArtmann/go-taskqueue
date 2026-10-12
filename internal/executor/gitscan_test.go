@@ -19,7 +19,12 @@ const (
 // the trailer values separated by \x1f, then the raw body (whose first
 // line is the subject again).
 func rec(sha, subject string, trailers ...string) string {
-	return sha + "\x1f" + subject + "\x1f" + strings.Join(trailers, "\n") + "\x1f" + subject
+	joined := strings.Join(trailers, "\n")
+	sep := "\x1f"
+	if joined != "" {
+		sep = "\n\x1f" // git's %(trailers) ends a non-empty value block with a newline
+	}
+	return sha + "\x1f" + subject + "\x1f" + joined + sep + subject
 }
 
 // recBody renders a record whose trailer field is EMPTY and whose body is

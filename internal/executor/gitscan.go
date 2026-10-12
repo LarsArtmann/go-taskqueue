@@ -180,16 +180,36 @@ func parseTrailerCommits(out, key, value string) []Commit {
 	}
 
 	var (
-		records []record
-		current *record
+		records   []record
+		current   *record
+		bodyStart bool
 	)
 
 	for line := range strings.SplitSeq(out, "\n") {
+		// A non-empty trailer field makes %(trailers) end with a newline,
+		// so that record's %B begins on the NEXT line, prefixed by the
+		// \x1f separator (a control character no real body line starts
+		// with). Consume it as the body's first line.
+		if bodyStart && strings.HasPrefix(line, "\x1f") {
+			if current != nil {
+				current.body = append(current.body, strings.TrimPrefix(line, "\x1f"))
+			}
+			bodyStart = false
+			continue
+		}
+
 		parts := strings.SplitN(line, "\x1f", 4)
-		if len(parts) == 4 && isHexSHA(parts[0]) {
-			rec := record{commit: Commit{SHA: parts[0], Subject: parts[1]}, body: []string{parts[3]}}
-			if trailer := strings.TrimSpace(parts[2]); trailer != "" {
-				rec.trailers = append(rec.trailers, trailer)
+		if len(parts) >= 3 && isHexSHA(parts[0]) {
+			rec := record{commit: Commit{SHA: parts[0], Subject: parts[1]}}
+			for trailer := range strings.SplitSeq(parts[2], "\n") {
+				if trailer = strings.TrimSpace(trailer); trailer != "" {
+					rec.trailers = append(rec.trailers, trailer)
+				}
+			}
+			if len(parts) == 4 {
+				rec.body = append(rec.body, parts[3])
+			} else {
+				bodyStart = true
 			}
 			records = append(records, rec)
 			current = &records[len(records)-1]

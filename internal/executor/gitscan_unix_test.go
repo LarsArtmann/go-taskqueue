@@ -188,8 +188,8 @@ func TestGitLogScannerFinalParagraphGapCharacterized(t *testing.T) {
 		t.Fatalf("scan: %v", err)
 	}
 
-	if len(got) != 1 || got[0].Subject != "footer-last work" {
-		t.Fatalf("attribution %+v: today ONLY the footer-last commit is visible; "+
-			"the harness-shaped commit is the characterized 59%%-invisible gap (owner-gated fix)", got)
+	if len(got) != 2 || got[0].Subject != "harness-shaped work" || got[1].Subject != "footer-last work" {
+		t.Fatalf("attribution %+v: want BOTH commits oldest-first — the %%B fallback "+
+			"(C12.2) made the harness-shaped footer visible", got)
 	}
 }
