@@ -746,7 +746,12 @@ func (apiPoison) Handle(context.Context, event.Event) error {
 // test (non-nil host/dlq, clean start/stop) stays green. The pin folds a
 // poison fact through the api-armed host, asserts a row lands in the
 // sidecar at readmodel.DLQPathFor(readmodel.PathFor(d.DBPath)), and
-// that GET /api/v1/stats keeps being served across the poison.
+// that GET /api/v1/stats keeps being served across the poison. The
+// Count poll also watches the worker-death marker: on a dropped wire
+// the poison cannot quarantine, the worker rides the restart budget
+// (5 restarts, jittered 1s-16s backoffs) into WorkerFailed, and the
+// marker names that exact failure long before the deadline — a bare
+// timeout would only say "never dead-lettered".
 func TestUseReadModelDeadLettersPoisonThroughWiredStore(t *testing.T) {
 	srv, store := newTestAPI(t)
 	enqueueTask(t, store, "billing")
@@ -778,12 +783,24 @@ func TestUseReadModelDeadLettersPoisonThroughWiredStore(t *testing.T) {
 
 	go func() { served <- srv.ListenAndServe(ctx, addr) }()
 
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(45 * time.Second)
 
 	for {
 		n, err := srv.dlq.Count(ctx)
 		if err == nil && n > 0 {
 			break
+		}
+
+		// Dropped-wire fast-fail: without the DeadLetterStore the poison
+		// fact rides the restart budget into WorkerFailed, which stamps
+		// the death marker beside the projection home. Failing on the
+		// marker names the exact degradation; the 45s deadline merely
+		// covers worst-case budget exhaustion (~31s of jittered backoffs).
+		if marker, exists, _ := readmodel.ReadWorkerFailedMarker(d.DBPath); exists {
+			cancel()
+			_ = <-served
+			t.Fatalf("poison fact hit the restart budget instead of the sidecar (worker %q failed at %s): the opts.DeadLetterStore wire is dropped",
+				marker.Projection, marker.FailedAt.Format(time.RFC3339))
 		}
 
 		if time.Now().After(deadline) {
