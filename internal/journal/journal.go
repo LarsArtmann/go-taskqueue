@@ -73,6 +73,13 @@ const (
 	// its NotBefore, so "answered but still parked" is unrepresentable.
 	// Idempotent per question ref: a replayed pickup appends nothing.
 	QuestionAnswered FactType = "task.question-answered"
+	// Parked records an operator park of a PENDING task (tq park):
+	// claims are suppressed until the recorded instant without burning
+	// attempts — the reversible sibling of cancel, whose only disposition
+	// today is destructive. An UntilMS in the past reads as the release
+	// (tq park --release). Detail carries queue.ParkedDetail (reason,
+	// until_ms, by).
+	Parked FactType = "task.parked"
 	// ErrorObserved records one error report from a production surface
 	// (web-client beacon or server panic/5xx middleware): an observation,
 	// not task state — the session:* precedent. TaskID carries the

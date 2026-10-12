@@ -104,6 +104,13 @@ type Store interface {
 	// the claim token the caller must present on every finalize. Returns
 	// ErrNoTaskDue when nothing is claimable.
 	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, Claim, error)
+	// ClaimDueTypes is ClaimDue with an executor-type filter: only tasks
+	// whose type is in types are candidates (nil or empty = any type). The
+	// bare-worker refusal: a pool whose registry holds only sh never claims
+	// an agent task — it stays PENDING for a pool that can run it, instead
+	// of dead-lettering on a permanent unknown-type lookup error. No claim,
+	// no task.claimed fact: the loop-suspect census stays clean.
+	ClaimDueTypes(ctx context.Context, owner string, lease time.Duration, types []string) (task.Task, Claim, error)
 	// Complete marks a Running task Completed (live claim required) and
 	// records the task.completed fact.
 	Complete(ctx context.Context, id task.ID, claim Claim, result jsontext.Value) error
@@ -152,6 +159,14 @@ type Store interface {
 	// no-op: no error, no fact (idempotency: reruns and racing sweepers
 	// never spam the journal).
 	UpdatePendingPriority(ctx context.Context, id task.ID, newPriority int, source, reason string) error
+	// Park suppresses claims on a PENDING task until the given instant
+	// (tq park): NotBefore moves to until (clamped to now) and the
+	// task.parked fact records reason and by, in the SAME transaction. No
+	// attempt burns; expiry — or parking with a past until, the release —
+	// re-arms claims. Running/terminal tasks are refused with
+	// task.ErrInvalidTransition, unknown ids with task.ErrNotFound.
+	// Operator rulings are history: every call appends its fact.
+	Park(ctx context.Context, id task.ID, reason string, until time.Time, by string) error
 	// RecordAnswer records an owner's decision for a parked task's
 	// question (PapDashboard questions): appends task.question-answered
 	// and — when the task is PENDING — injects the answer into the task's
@@ -246,6 +261,11 @@ type Store interface {
 	// FactsForTask returns one task's facts in Seq order, bounded to the
 	// most recent limit when > 0 (0 = unbounded).
 	FactsForTask(ctx context.Context, id string, limit int) ([]journal.Fact, error)
+	// ClaimCounts counts task.claimed facts per task id in one GROUP BY —
+	// the census pushdown behind loop-suspect detection
+	// (ClaimAnomalyThreshold): one grouped read instead of a facts walk
+	// per task.
+	ClaimCounts(ctx context.Context) (map[string]int, error)
 	// CountFacts counts facts of one type recorded at or after since —
 	// the SQL pushdown behind spend projections and stats.
 	CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error)
@@ -283,6 +303,10 @@ type Filter struct {
 	// stale-verify hygiene audits correlate the pinned verify string
 	// across the matching set without a `tq show` per task (09-39 §e1).
 	PayloadContains string
+	// DedupKey is an exact-match filter over the dedup key — the
+	// forensics pushdown behind `tq tasks --dedup`: which task (if any)
+	// a dedup key resolved to, without a payload LIKE guess.
+	DedupKey string
 	Limit           int
 	// Offset skips the first Offset matches (pagination); applied after
 	// ordering. Meaningful together with Limit.
@@ -397,6 +421,15 @@ func ParseReprioritizeEvidence(detail jsontext.Value) (ReprioritizeEvidence, boo
 	}
 
 	return evidence, true
+}
+
+// ParkedDetail is the structured detail on task.parked facts: an
+// operator's park ruling (tq park). UntilMS is the instant claims
+// resume — a value in the past reads as the release (tq park --release).
+type ParkedDetail struct {
+	Reason  string `json:"reason,omitempty"`
+	UntilMS int64  `json:"until_ms"`
+	By      string `json:"by,omitempty"`
 }
 
 // Valid question types, mirroring PapDashboard's question kinds: the ask

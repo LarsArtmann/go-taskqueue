@@ -73,7 +73,10 @@ func WithToken(
 // project-exclusivity predicate (the upstream engine's candidate query has
 // no such clause — S1 divergence). The claim mints an upstream-format
 // fencing token and stamps it on the row, so engine-backed finalizes keep
-// working for the claimed task.
+// working for the claimed task. A non-empty types list restricts
+// candidates to those executor types (the bare-worker refusal: a sh-only
+// pool never claims an agent task, so it stays PENDING for a pool that
+// can run it — no claim, no task.claimed fact, no loop-suspect noise).
 func ClaimDue(
 	ctx context.Context,
 	d Dialect,
@@ -81,6 +84,7 @@ func ClaimDue(
 	projectExclusive bool,
 	owner string,
 	lease time.Duration,
+	types []string,
 ) (task.Task, queue.Claim, error) {
 	now := time.Now()
 
@@ -89,6 +93,8 @@ func ClaimDue(
 	claim := uqueue.NewClaimToken()
 
 	finalizedCancel := false
+
+	typeFilter, typeArgs := claimTypeFilter(types)
 
 	err := WithTx(ctx, db, d, func(r Runner) error {
 		row := r.QueryRowContext(ctx, `
@@ -102,14 +108,15 @@ func ClaimDue(
 			  AND (? = 0 OR t.project = '' OR NOT EXISTS (
 			    SELECT 1 FROM tasks r
 			    WHERE r.project = t.project AND r.status = 'running' AND r.id != t.id
-			  ))
+			  ))`+typeFilter+`
 			ORDER BY t.priority + CASE WHEN (? - t.created_at) / 86400000.0 / ? < ?
 			    THEN (? - t.created_at) / 86400000.0 / ? ELSE ? END DESC,
 			  t.created_at ASC, t.id ASC
 			LIMIT 1`,
-			now.UnixMilli(), now.UnixMilli(), boolInt(projectExclusive),
-			now.UnixMilli(), float64(queue.PriorityAgingDaysPerPoint), float64(queue.PriorityAgingMaxBonus),
-			now.UnixMilli(), float64(queue.PriorityAgingDaysPerPoint), float64(queue.PriorityAgingMaxBonus))
+			append([]any{now.UnixMilli(), now.UnixMilli(), boolInt(projectExclusive)},
+				append(typeArgs,
+					now.UnixMilli(), float64(queue.PriorityAgingDaysPerPoint), float64(queue.PriorityAgingMaxBonus),
+					now.UnixMilli(), float64(queue.PriorityAgingDaysPerPoint), float64(queue.PriorityAgingMaxBonus))...)...)
 
 		var id, st, prevOwner string
 		if err := row.Scan(&id, &st, &prevOwner); err != nil {
