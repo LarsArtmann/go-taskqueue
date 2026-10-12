@@ -1373,3 +1373,8 @@ f860ff4fdd2cff8c7b37a9755aabfbba1d6ed517
 # daemon-folded during the 17 s cmd/tq gate run; content reviewed
 # in-session, unpushed, grandfathered per the documented escape.
 8d005ab8180ae667c22527273a3042aed3e58c56
+# 2026-10-12 accretion (seal round 19): cbd413e8 is the concurrent
+# session's AGENTS.md fold (content of its reviewed B10 closeout
+# 2f1b0274), landed mid-round and footer-less; grandfathered per the
+# documented escape.
+cbd413e892370cd721744486d30a5867aaf5c413
