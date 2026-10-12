@@ -65,10 +65,7 @@ subject=$2
 shift 2
 
 body=''
-while [ "${1:-}" = "--body" ]; do
-	body=$2
-	shift 2
-done
+files=()
 
 case $task_id in
 *[!a-f0-9]* | '')
@@ -81,14 +78,29 @@ if [ ${#task_id} -lt 16 ]; then
 	exit 1
 fi
 
-for f in "$@"; do
+files=()
+while [ $# -gt 0 ]; do
+	if [ "$1" = "--body" ]; then
+		[ $# -ge 2 ] || {
+			echo "FAIL: --body requires a value" >&2
+			exit 1
+		}
+		body=$2
+		shift 2
+	else
+		files+=("$1")
+		shift
+	fi
+done
+
+for f in "${files[@]}"; do
 	if [ ! -e "$f" ]; then
 		echo "FAIL: file does not exist: $f" >&2
 		exit 1
 	fi
 done
 
-git add -- "$@"
+git add -- "${files[@]}"
 
 # Heal-on-sweep: the daemon may have committed the same files between the
 # caller's edit and now (sweeps land <60s). A bare "nothing to commit"
