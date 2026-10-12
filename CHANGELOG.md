@@ -33,6 +33,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ci-local step — so a reshaped needle, a lost `drift=1` or a neutered
   grep fails the gate instead of rotting the smoke into always-green
   (sibling pattern: check-transient-retry.sh).
+- **check-release-docs.sh `poked demand-fill` log-line pin** (2026-10-12):
+  the proxy on-demand-fill echo (scripts/lib/proxy-wait.sh) is
+  `need_in_both`-pinned, so RELEASE.md's timeout-fallback citation and the
+  release script's log line can no longer drift apart silently — rewording
+  either side fails the drift smoke naming where the needle died (closeout
+  2026-10-09 §b/§e1).
 
 ### Fixed
 - **check-release-docs.sh doc pins are reflow-tolerant** (2026-10-12):
