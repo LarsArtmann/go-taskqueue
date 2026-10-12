@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -10,6 +12,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
@@ -348,6 +352,291 @@ func TestDeadPoolDetectorRetriesFailedDelivery(t *testing.T) {
 
 	if d.alerted {
 		t.Error("healthy tick must clear the standing alert")
+	}
+}
+
+// TestWorkerDeathDetectorLifecycle pins the B9.3 marker watch: a standing
+// marker raises once, repeats stay quiet, and a cleared marker (a fresh
+// host) resolves. An empty db path (postgres deployment: no sqlite
+// readmodel sidecar) never notifies.
+func TestWorkerDeathDetectorLifecycle(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "q.db")
+
+	var got []string
+
+	d := &workerDeathDetector{dbPath: dbPath}
+	d.notify = func(triggered bool, _ string, _ time.Time) bool {
+		if triggered {
+			got = append(got, "triggered")
+		} else {
+			got = append(got, "resolved")
+		}
+
+		return true
+	}
+
+	d.observe() // healthy: no marker
+	if len(got) != 0 {
+		t.Fatalf("healthy observe notified %v, want none", got)
+	}
+
+	failedAt := time.Now().Add(-10 * time.Minute)
+	if err := readmodel.WriteWorkerFailedMarker(dbPath, readmodel.WorkerFailedMarker{
+		Projection: "tasks",
+		FailedAt:   failedAt,
+	}); err != nil {
+		t.Fatalf("write marker: %v", err)
+	}
+
+	d.observe() // standing marker raises
+	d.observe() // repeats stay quiet
+
+	if len(got) != 1 || got[0] != "triggered" {
+		t.Fatalf("notifications = %v, want [triggered]", got)
+	}
+
+	if err := os.Remove(readmodel.WorkerFailedMarkerPath(dbPath)); err != nil {
+		t.Fatalf("remove marker: %v", err)
+	}
+
+	d.observe() // fresh host resolves
+
+	if len(got) != 2 || got[1] != "resolved" {
+		t.Fatalf("notifications = %v, want [triggered resolved]", got)
+	}
+
+	empty := &workerDeathDetector{dbPath: ""}
+	empty.notify = func(bool, string, time.Time) bool {
+		t.Error("empty db path (postgres deployment) must never notify")
+
+		return true
+	}
+
+	empty.observe()
+}
+
+// TestWorkerDeathDetectorRetriesFailedDelivery mirrors the 06-06 §b1 rule
+// for the marker watch: a failed raise delivery must retry the next tick
+// instead of arming silently.
+func TestWorkerDeathDetectorRetriesFailedDelivery(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "q.db")
+
+	if err := readmodel.WriteWorkerFailedMarker(dbPath, readmodel.WorkerFailedMarker{
+		Projection: "tasks",
+		FailedAt:   time.Now(),
+	}); err != nil {
+		t.Fatalf("write marker: %v", err)
+	}
+
+	var calls int
+
+	d := &workerDeathDetector{dbPath: dbPath}
+	d.notify = func(bool, string, time.Time) bool {
+		calls++
+
+		return calls > 1
+	}
+
+	d.observe() // raise attempt 1 — delivery fails
+	d.observe() // raise attempt 2 — delivered
+
+	if calls != 2 {
+		t.Fatalf("raise attempts = %d, want 2", calls)
+	}
+
+	d.observe() // armed: no third call
+
+	if calls != 2 {
+		t.Fatalf("raise attempts = %d, want 2 (the delivered alert must arm)", calls)
+	}
+}
+
+// TestFrozenSweepersDetectorLifecycle pins the B10.2 freeze contract over
+// a real store: a watched consumer whose cursor stands still while the
+// journal head advances accumulates a streak and fires once, a consumer
+// that never ran is skipped, and a cursor advancing again resolves the
+// standing alert.
+func TestFrozenSweepersDetectorLifecycle(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+
+	defer func() { _ = s.Close() }()
+
+	const frozenConsumer = "review-sweeper"
+	const neverRan = "status-sweeper"
+
+	var got []string
+
+	d := &frozenSweepersDetector{
+		ticks:  2,
+		watch:  []string{frozenConsumer, neverRan},
+		last:   map[string]int64{},
+		streak: map[string]int{},
+	}
+	d.notify = func(triggered bool, frozen []string, streak int) bool {
+		if triggered {
+			got = append(got, fmt.Sprintf("triggered:%s:%d", strings.Join(frozen, ","), streak))
+		} else {
+			got = append(got, "resolved")
+		}
+
+		return true
+	}
+
+	// The consumer ran once and checkpointed; the journal advanced past it.
+	if err := s.SaveWatermark(ctx, frozenConsumer, 0); err != nil {
+		t.Fatalf("save watermark: %v", err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "sh"}); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	d.observe(ctx, s) // first observation only baselines
+	d.observe(ctx, s) // streak 1 — below threshold
+	d.observe(ctx, s) // streak 2 — fires once, naming only the frozen consumer
+
+	if len(got) != 1 || got[0] != "triggered:"+frozenConsumer+":2" {
+		t.Fatalf("notifications = %v, want [triggered:%s:2]", got, frozenConsumer)
+	}
+
+	d.observe(ctx, s) // still frozen, still quiet
+
+	if len(got) != 1 {
+		t.Fatalf("repeat frozen tick re-fired: %v", got)
+	}
+
+	// The sweep catches up: the cursor advances to the journal head.
+	head, err := s.HeadSeq(ctx)
+	if err != nil {
+		t.Fatalf("head seq: %v", err)
+	}
+
+	if err := s.SaveWatermark(ctx, frozenConsumer, head); err != nil {
+		t.Fatalf("save watermark: %v", err)
+	}
+
+	d.observe(ctx, s) // recovered — resolves
+
+	if len(got) != 2 || got[1] != "resolved" {
+		t.Fatalf("notifications = %v, want raise+resolve", got)
+	}
+}
+
+// TestFrozenSweepersDetectorIdleAtHeadNoFire pins the idle rule: a
+// consumer parked AT the journal head is caught up, not frozen — repeated
+// ticks with no journal movement must never raise.
+func TestFrozenSweepersDetectorIdleAtHeadNoFire(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+
+	defer func() { _ = s.Close() }()
+
+	const consumer = "incident-policy"
+
+	var calls int
+
+	d := &frozenSweepersDetector{
+		ticks:  1,
+		watch:  []string{consumer},
+		last:   map[string]int64{},
+		streak: map[string]int{},
+	}
+	d.notify = func(bool, []string, int) bool {
+		calls++
+
+		return true
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "sh"}); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	head, err := s.HeadSeq(ctx)
+	if err != nil {
+		t.Fatalf("head seq: %v", err)
+	}
+
+	if err := s.SaveWatermark(ctx, consumer, head); err != nil {
+		t.Fatalf("save watermark: %v", err)
+	}
+
+	for range 3 {
+		d.observe(ctx, s) // cursor at head: idle, not frozen
+	}
+
+	if calls != 0 {
+		t.Fatalf("idle-at-head fired %d times, want 0", calls)
+	}
+}
+
+// TestFrozenSweepersDetectorRetriesFailedDelivery mirrors the 06-06 §b1
+// rule: a failed raise delivery must retry on the next frozen tick, and
+// the delivered alert must arm so recovered ticks stop notifying.
+func TestFrozenSweepersDetectorRetriesFailedDelivery(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+
+	defer func() { _ = s.Close() }()
+
+	const consumer = "dlqfix-sweeper"
+
+	var calls int
+
+	d := &frozenSweepersDetector{
+		ticks:  1,
+		watch:  []string{consumer},
+		last:   map[string]int64{},
+		streak: map[string]int{},
+	}
+	d.notify = func(bool, []string, int) bool {
+		calls++
+
+		return calls > 1
+	}
+
+	if err := s.SaveWatermark(ctx, consumer, 0); err != nil {
+		t.Fatalf("save watermark: %v", err)
+	}
+
+	if _, err := s.Enqueue(ctx, task.New{Type: "sh"}); err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	d.observe(ctx, s) // baseline
+	d.observe(ctx, s) // frozen — raise attempt 1, delivery fails
+	d.observe(ctx, s) // frozen — retries the raise, delivered
+
+	if calls != 2 {
+		t.Fatalf("raise attempts = %d, want 2", calls)
+	}
+
+	d.observe(ctx, s) // armed: no third attempt
+
+	if calls != 2 {
+		t.Fatalf("raise attempts = %d, want 2 (the delivered alert must arm)", calls)
 	}
 }
 
