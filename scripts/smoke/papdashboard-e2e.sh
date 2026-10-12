@@ -176,7 +176,12 @@ MARKER="$TQ_DB.readmodel.db.worker-failed"
 printf '%s\n' '{"projection":"tasks","failedAt":"2026-10-11T22:00:00Z"}' >"$MARKER"
 
 echo "== start agent pool with alert bridge -> $PAP_URL"
-"$TMP/tq" agent-pool --interval 2s --alert-url "$PAP_URL" --alert-api-key smoke-key \
+# Hermetic: an empty projects dir means the harvest scan finds no repos
+# (the default would scan the operator's REAL projects dir and enqueue
+# real TODO items into the smoke's scratch journal).
+mkdir -p "$TMP/pool-projects"
+"$TMP/tq" agent-pool --interval 2s --projects-dir "$TMP/pool-projects" \
+	--alert-url "$PAP_URL" --alert-api-key smoke-key \
 	--alert-poll 1s >"$TMP/pool.log" 2>&1 &
 POOL_PID=$!
 
