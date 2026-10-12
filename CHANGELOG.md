@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Pool liveness alerts (B10)**: the agent pool now surfaces dead
+  projection fold workers (the B9.3 marker watched every harvest tick;
+  WARN + `NotifyWorkerExhausted` PapDashboard alert, resolved when a
+  fresh host clears the marker) and frozen sweepers (armed consumers
+  whose watermarks stand still while the journal head advances — the
+  silent sweep-stop class; streak reuses `--dead-pool-ticks`); a
+  budget-parked pool escalates an all-day alert after 8h at day
+  rollover. The stub-mode e2e smoke gained an agent-pool phase that
+  stages the worker-death marker and asserts raise + resolve.
 - **Projection worker-death surface**: a fold worker that exhausts its
   restart budget stops consuming while the platform reports it at
   lag 0 — invisible to the cursor-vs-head doctor checks. Every
