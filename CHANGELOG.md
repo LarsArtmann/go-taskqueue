@@ -49,6 +49,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   either side fails the drift smoke naming where the needle died (closeout
   2026-10-09 §b/§e1).
 
+### Changed
+- The agent pool's claim-time done gate (`--done-preflight`) now defaults ON: a task minted before its work landed completes with zero agent spend at claim time instead of burning a paid re-dispatch window.
+
 ### Fixed
 - `GitLogScanner` now attributes commits whose footer git refuses to parse as a trailer (a footer stranded above the attribution block — 59% of footer commits were invisible), via an exact column-0 body-line fallback that still never attributes quoted or indented footers.
 
