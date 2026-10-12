@@ -56,7 +56,7 @@ echo "== two pools over the same DB, two rounds (D23) =="
 # per repo need two rounds of --once.
 DB="$WORK/shared.db"
 for round in 1 2; do
-	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" --db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-1 >"$WORK/pool1-$round.log" 2>&1) &
+	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" --db "$DB" --project-exclusive --batch-items 1 --concurrency 1 --poll 20ms --once --owner pool-1 >"$WORK/pool1-$round.log" 2>&1) &
 	P1=$!
 	# Stagger pool-2's start: the S1-facade auto-upgrade (VACUUM INTO
 	# snapshot + verify inside Open) lengthened the open/migrate write
@@ -65,7 +65,7 @@ for round in 1 2; do
 	# open-path retry stays owner-gated (row 99); the smoke just removes
 	# the same-instant race.
 	sleep 2
-	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" --db "$DB" --project-exclusive --concurrency 1 --poll 20ms --once --owner pool-2 >"$WORK/pool2-$round.log" 2>&1) &
+	(cd "$WORK" && timeout 60 "$TQ" agent-pool --repos "$WORK/alpha,$WORK/beta,$WORK/gamma" --db "$DB" --project-exclusive --batch-items 1 --concurrency 1 --poll 20ms --once --owner pool-2 >"$WORK/pool2-$round.log" 2>&1) &
 	P2=$!
 	wait "$P1"
 	R1=$?
