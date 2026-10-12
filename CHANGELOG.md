@@ -50,6 +50,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   2026-10-09 §b/§e1).
 
 ### Fixed
+- `GitLogScanner` now attributes commits whose footer git refuses to parse as a trailer (a footer stranded above the attribution block — 59% of footer commits were invisible), via an exact column-0 body-line fallback that still never attributes quoted or indented footers.
+
 - `scripts/heal-daemon-sweep.sh` fork records now carry the true pre-rewrite SHA on the left (previously post-rewrite SHAs on both sides, i.e. identity pairs), and the heal id accepts session-scope slugs like `20261011-b10-alert-routing-pack` alongside hex task ids.
 
 - **check-release-docs.sh doc pins are reflow-tolerant** (2026-10-12):
