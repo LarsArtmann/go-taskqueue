@@ -23,6 +23,7 @@ type (
 	WatermarkEntry         = internalqueue.WatermarkEntry
 	QuestionAskedDetail    = internalqueue.QuestionAskedDetail
 	QuestionAnsweredDetail = internalqueue.QuestionAnsweredDetail
+	ParkedDetail           = internalqueue.ParkedDetail
 	AnswerRecord           = internalqueue.AnswerRecord
 	Claim                  = internalqueue.Claim
 	Waker                  = internalqueue.Waker

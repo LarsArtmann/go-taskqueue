@@ -30,6 +30,7 @@ const (
 	SessionClosed      = internaljournal.SessionClosed
 	QuestionAsked      = internaljournal.QuestionAsked
 	QuestionAnswered   = internaljournal.QuestionAnswered
+	Parked             = internaljournal.Parked
 	ErrorObserved      = internaljournal.ErrorObserved
 	IncidentTaskMinted = internaljournal.IncidentTaskMinted
 )
