@@ -50,6 +50,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   2026-10-09 §b/§e1).
 
 ### Changed
+
+- `Store.Park` (tq park store surface): operator parks suppress claims on PENDING tasks until an instant without burning attempts — same-transaction NotBefore move + `task.parked` fact; a past until is the release.
+- `Store.ClaimDueTypes`: claim-time executor-type filter — a pool whose registry lacks a type never claims it (bare workers can no longer dead-letter agent tasks).
+- `Store.ClaimCounts` GROUP BY pushdown and `Filter.DedupKey` exact-match list filter.
 - The agent pool's claim-time done gate (`--done-preflight`) now defaults ON: a task minted before its work landed completes with zero agent spend at claim time instead of burning a paid re-dispatch window.
 
 ### Fixed
