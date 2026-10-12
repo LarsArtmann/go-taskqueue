@@ -65,7 +65,7 @@ happened to this task?" always has an answer.
 # The tq BINARY is its own replace-free module (ADR-0017): `go install` the tag
 # (proxy-verified at publish; check-cleanroom-install.sh gates every release),
 # build from a clone, or use nix:
-go install github.com/larsartmann/go-taskqueue/cmd/tq@v0.3.3
+go install github.com/larsartmann/go-taskqueue/cmd/tq@v0.3.4
 git clone https://github.com/LarsArtmann/go-taskqueue && cd go-taskqueue
 ./scripts/build-tq.sh ~/.local/bin/tq    # or: nix run github:LarsArtmann/go-taskqueue
 
@@ -341,6 +341,8 @@ SECRET EVIDENCE if secrets ever reached the stored journal.
 | `tq dlq`        | Inspect dead letters; rescue one (`--rescue ID`) or in bulk (`--rescue-all --older-than 24h`)                                                                                                                                                                           |
 | `tq incidents`  | Folded error incidents from `POST /api/v1/errors`: occurrences, status (open/fix-dispatched/resolved/fix-failed), minted fix tasks (`--json`)                                                                                                                           |
 | `tq cancel`     | Cancel a pending task; `--force` cooperatively stops a running one                                                                                                                                                                                                      |
+| `tq park`       | Operator disposition: park a PENDING task until an instant (`--until DUR`, no attempt burn, 7d ceiling) or release it (`--release`)                                                                                                                                      |
+| `tq pool-health`| One-shot per-repo pool liveness from the journal: skip streaks, starvation verdicts, last harvest activity (`--since`, `--json`)                                                                                                                                         |
 | `tq doctor`     | Health checks: DB integrity, expired leases, worker heartbeats, budget, agent binary, per-repo autonomy files; `--hygiene` audits PENDING agent tasks' enqueue-time verify pins against the repo's CURRENT gate ladder (three-way match / latent / STALE-PIN-WILL-FIRE) |
 | `tq audit`      | TODO-vs-queue drift: stale-open items repaired by catch-up tasks, stale-done reported                                                                                                                                                                                   |
 | `tq watermarks` | Journal consumer cursors + lag (`show`); `set CONSUMER SEQ` rewinds for safe replay                                                                                                                                                                                     |
