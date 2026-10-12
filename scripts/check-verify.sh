@@ -204,4 +204,37 @@ must_mention "in-situ heal case" 'FAIL: TestSelfManagingLoop 19/20'
 must_mention "in-situ heal case" 'VERIFY: known-flaky signature in the failure output; retrying ONCE'
 must_mention "in-situ heal case" 'VERIFY: FLAKE-RETRY — green on the second run (known-flaky signature)'
 
+# Pin 7 (04-55 report §b2): the wrapper's GENUINE-red path in situ —
+# verify.sh under an always-failing NON-signature go shim must propagate
+# rc=1 with exactly ONE go invocation (build fails, no retry, no second
+# run) and zero retry lines. The lib-level non-signature case above pins
+# the lib; this executes the actual wrapper's rc=1 propagation.
+red_bin="$tmp/red-bin"
+mkdir -p "$red_bin"
+red_count="$tmp/go-invocations"
+: >"$red_count"
+cat >"$red_bin/go" <<EOF
+#!/usr/bin/env bash
+printf '%s\n' 'FAIL: undefined: atomic.Lane' >&2
+echo go >>"$red_count"
+exit 1
+EOF
+printf '#!/usr/bin/env bash\nexit 0\n' >"$red_bin/gofmt"
+chmod +x "$red_bin/go" "$red_bin/gofmt"
+
+last_out="$(PATH="$red_bin:$PATH" bash "$verify" 2>&1)" && red_rc=0 || red_rc=$?
+if [ "$red_rc" -ne 1 ]; then
+	echo "FAIL: in-situ verify.sh genuine-red (want rc=1, got rc=$red_rc)"
+	printf '%s\n' "$last_out"
+	exit 1
+fi
+red_invocations="$(wc -l <"$red_count")"
+if [ "$red_invocations" -ne 1 ]; then
+	echo "FAIL: in-situ genuine-red go invocations (want 1, got $red_invocations)"
+	exit 1
+fi
+must_not_mention "in-situ genuine-red case" 'retrying ONCE'
+must_not_mention "in-situ genuine-red case" 'FLAKE-RETRY'
+echo "ok: in-situ verify.sh genuine-red (rc=1, one go invocation, zero retry lines)"
+
 echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified)"
