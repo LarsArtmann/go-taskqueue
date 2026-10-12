@@ -1,3 +1,4 @@
+> **ARCHIVED 2026-10-12 (docs-health sweep 6)** — per-item triage at HEAD found every forward item resolved: ordering/ritual asks shipped (AGENTS.md:193-196 rule + commit-task.sh + session-start.sh:135), residue routed to live rows (220/239/299/312/383/438), owner asks ruled (O1/O5/O15); 18 inline strikes carry the receipts.
 # Archive window 2026-09-30: 2026-09-12_00-43 report → docs/status/archived/ (TODO 152)
 
 - **When**: 2026-09-30, ~03:15–04:35 CEST
@@ -115,24 +116,24 @@ Nothing on the task itself. Two scope declarations (not partials):
 
 ## e) WHAT WE SHOULD IMPROVE
 
-1. **Make the ordering convention mechanical, not memoized.** Docs edits →
+~~1. **Make the ordering convention mechanical, not memoized.** Docs edits →~~ done — shipped: AGENTS.md edit→commit→battery rule + scripts/commit-task.sh (08-43 window)
    commit (footer on) → gates. Row 154's wrapper-or-rule decision is
    receipt #7 old; this window endorses the cheap variant (an AGENTS.md rule
    hardening the existing ordering clause into a checklist item: "no gate
    starts while a related doc edit is unstaged").
-2. **Survival-complete the SUMMARY line**: carry master-CI state in the
+~~2. **Survival-complete the SUMMARY line**: carry master-CI state in the~~ routed — TODO_LIST row 220 (SUMMARY master-CI line)
    final completion line (`SUMMARY: windows=N done-row-hits=N
    master-CI=red@<sha>`) — row 299 solved exactly this problem for the
    duplicate count; the probe result is the other truncation-fragile fact.
    Minted as a TODO row this close-out.
-3. **`git status` as a named step between battery and commit** — it is the
+~~3. **`git status` as a named step between battery and commit** — it is the~~ done — shipped: scripts/session-start.sh:135 git-status REMINDER
    cheapest possible early-sweep detector and currently lives only in a
    session-start reminder, not in any checklist.
-4. **Stop piping session-start.sh through tail/head** — the script is long;
+~~4. **Stop piping session-start.sh through tail/head** — the script is long;~~ routed — TODO_LIST row 220 (same fix family)
    either cap its verbose sections or write full output to a temp file the
    window can View. Two windows in two days have re-hit the truncation class
    with the SUMMARY mitigation already in place.
-5. **Codify the archive-closer's re-verification bar** (minimum evidence
+~~5. **Codify the archive-closer's re-verification bar** (minimum evidence~~ routed — TODO_LIST rows 239/438 (check-archive-eligibility mechanical bar)
    set when inheriting pre-striked reports) — as input to row 280's
    check-archive-eligibility.sh rather than a new gate; my window's
    artifact-class spot-check is a candidate floor (§g1 asks the owner to set it).
@@ -141,40 +142,40 @@ Nothing on the task itself. Two scope declarations (not partials):
 
 Not 50 — honest list, no padding. Existing rows are re-ranked, not re-duplicated.
 
-1. **(NEW, minted this close-out)** session-start.sh: carry master-CI state
+~~1. **(NEW, minted this close-out)** session-start.sh: carry master-CI state~~ routed — TODO_LIST row 220
    in the FINAL SUMMARY line so `| tail` invocations cannot lose the probe
    result (§d2; row 299 is the precedent for the windows/done-row-hits half).
-2. Row 154 daemon-race prevention — this window is receipt #7; the highest-
+~~2. Row 154 daemon-race prevention — this window is receipt #7; the highest-~~ done — shipped: commit-task.sh wrapper (O5 footer-first; receipts in heal playbook)
    leverage process row open (§d1/§e1).
-3. Row 280 check-archive-eligibility.sh — this window is another
+~~3. Row 280 check-archive-eligibility.sh — this window is another~~ routed — TODO_LIST rows 239/438
    manual-judgment archive; the mechanical bar would also settle §g1.
-4. Row 153 (mvdan &-precedence bullet) appears CLOSED by AGENTS.md:1190 —
+~~4. Row 153 (mvdan &-precedence bullet) appears CLOSED by AGENTS.md:1190 —~~ done — shipped: AGENTS.md mvdan bullet, verified by the 08-25 sweep §a4
    verify and close with a DONE note (§c2).
-5. Row 346 (S1 journal-drift replay coverage) — it owns the probable chronic
+~~5. Row 346 (S1 journal-drift replay coverage) — it owns the probable chronic~~ routed — TODO_LIST row 273 (journal-drift M4) + row 44 (S2)
    master-CI red; until it lands every window carries a red master (§c1).
-6. Row 355 (check-ci battery-bar ruling) — stands, BLOCKED on owner.
-7. Row 194 (daemon-race footer policy, BLOCKED on owner) — this window adds
+~~6. Row 355 (check-ci battery-bar ruling) — stands, BLOCKED on owner.~~ routed — TODO_LIST row 299 (BLOCKED owner)
+~~7. Row 194 (daemon-race footer policy, BLOCKED on owner) — this window adds~~ ruled — O5 footer-first policy
    a clean datapoint: the soft-reset playbook handled a 100%-rename + 2-file
    docs diff without loss.
-8. Row 474 (daemon footer-attach heal script) — my manual soft-reset is
+~~8. Row 474 (daemon footer-attach heal script) — my manual soft-reset is~~ routed — TODO_LIST row 383 (heal script, O5-ratified)
    exactly the case it would automate.
-9. Rows 359–362 (commit-msg hook follow-ups) — stand; this window ran the
+~~9. Rows 359–362 (commit-msg hook follow-ups) — stand; this window ran the~~ routed — TODO_LIST rows 303-305 (commit-msg hook follow-ups)
    manual interpret-trailers self-check that row 362 wants codified.
-10. Rows 155/369 (session-start regression pin + hooks-liveness probe) — stand.
+~~10. Rows 155/369 (session-start regression pin + hooks-liveness probe) — stand.~~ done — pin shipped 08-57 (check-session-start-probe.sh); probe half routed TODO_LIST row 312
     11–50: refused. The section-level backlog (process rows 246–260, footer
     placement 390, re-dispatch protocol 310) already ranks the remainder; minting
     filler here would be noise.
 
 ## g) Questions I can NOT figure out myself
 
-1. **Inherited-triage bar for archive closers**: when a report arrives
+~~1. **Inherited-triage bar for archive closers**: when a report arrives~~ routed — TODO_LIST rows 239/438 set the floor
    pre-striked (strikethroughs + disposition note authored by a sweep-prep
    window), must the closer re-derive EVERY struck item at HEAD, or is
    artifact-class spot-verification of the resolvable claims (my 3 checks)
    the accepted bar? The README conventions say "per-item triage at CURRENT
    HEAD" but not who owes the derivation or how fresh inherited strikes may
    be. Answer sets the floor for row 280's mechanical gate.
-2. **Where does the unpushed-pile push-cadence ruling live?** The archived
+~~2. **Where does the unpushed-pile push-cadence ruling live?** The archived~~ ruled — O1 push authorization is the durable home
    00-43 report's §g2 strikethrough routes it "resolved — via §g2 ruling"
    and its §c5/§e5 point back at the same ruling, but I found NO durable
    home: no TODO row names a push-cadence ruling (the cadence rows are
@@ -182,7 +183,7 @@ Not 50 — honest list, no padding. Existing rows are re-ranked, not re-duplicat
    cadence line. If the ruling exists only in a chat/nowhere, the strike is
    circular and the item needs a home (row or AGENTS.md line) — or the
    strikethroughs need correcting.
-3. **Chronic red-master policy**: if the d0f68099 failure is the row-346
+~~3. **Chronic red-master policy**: if the d0f68099 failure is the row-346~~ ruled — O15 red-master is disclose-only
    journal-drift class (per rows 114/346 it fails at HEAD by owner ruling
    until S1 replay coverage lands), master CI is structurally red for every
    window until then — every ritual probe reports red, and "predates your
