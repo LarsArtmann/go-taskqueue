@@ -55,11 +55,18 @@ if [ "${1:-}" = "--self-test" ]; then
 		printf '%s\n' "$selftest_out" >&2
 		exit 1
 	fi
-	if grep -qF -- 'the doc no longer mentions it: go list -m -versions' <<<"$selftest_out"; then
+	# Exact-miss assertion (2026-10-12 03-19 §b1): substring presence lets a
+	# neutered smoke pass by firing the right message for the wrong reason.
+	# Require the FULL doc-side miss line AND no unrelated drift lines (the
+	# generic summary line excluded).
+	expected='release-docs drift: module-proxy wait cited in RELEASE.md but the doc no longer mentions it: go list -m -versions'
+	summary='release-docs drift: fix the doc or the script — whichever moved'
+	miss_lines=$(printf '%s\n' "$selftest_out" | grep '^release-docs drift: ' | grep -vxF -- "$summary" || true)
+	if [ "$miss_lines" = "$expected" ]; then
 		echo "release-docs self-test ok: mutated doc copy trips the expected doc-side drift miss"
 		exit 0
 	fi
-	echo "release-docs self-test FAIL: mutated run went red for the wrong reason (expected the deleted-needle miss)" >&2
+	echo "release-docs self-test FAIL: mutated run went red for the wrong reason (expected exactly: $expected)" >&2
 	printf '%s\n' "$selftest_out" >&2
 	exit 1
 fi
