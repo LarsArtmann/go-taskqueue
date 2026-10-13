@@ -460,6 +460,48 @@ func TestWorkerDeathDetectorRetriesFailedDelivery(t *testing.T) {
 // journal head advances accumulates a streak and fires once, a consumer
 // that never ran is skipped, and a cursor advancing again resolves the
 // standing alert.
+// TestWorktreeInFlightTerminalStatusWins pins the reaper's liveness probe
+// (00-11 report e5 closeoutPending lifetime audit): a PENDING task is
+// in-flight, a CANCELLED task is NOT — the store's terminal status must
+// outrank any parked executor entry, because a cancelled task never
+// re-claims and a stale closeoutPending record would otherwise pin its
+// worktree/branch until process restart.
+func TestWorktreeInFlightTerminalStatusWins(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+
+	defer func() { _ = s.Close() }()
+
+	probe := worktreeInFlight(ctx, s, nil)
+
+	tk, err := s.Enqueue(ctx, task.New{Type: "sh"})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	if !probe(tk.ID.String()) {
+		t.Fatalf("PENDING task reported not in-flight")
+	}
+
+	if err := s.Cancel(ctx, tk.ID, "test: prune-stale"); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	if probe(tk.ID.String()) {
+		t.Fatalf("CANCELLED task still reported in-flight — stale closeoutPending entries would pin the worktree forever")
+	}
+
+	if probe("00000000000000000000000000000000") {
+		t.Fatalf("unknown task id reported in-flight")
+	}
+}
+
 func TestFrozenSweepersDetectorLifecycle(t *testing.T) {
 	t.Parallel()
 
