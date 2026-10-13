@@ -71,6 +71,14 @@ func (s *emptyStore) ClaimDue(
 	return task.Task{}, "", queue.ErrNoTaskDue
 }
 
+// ClaimDueTypes keeps the fixture honest after the Store interface gained
+// the type-filtered claim (the pool loop calls it unconditionally).
+func (s *emptyStore) ClaimDueTypes(
+	ctx context.Context, owner string, lease time.Duration, _ []string,
+) (task.Task, queue.Claim, error) {
+	return s.ClaimDue(ctx, owner, lease)
+}
+
 func (s *emptyStore) claimCount() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
