@@ -19,7 +19,7 @@ not here.
 - [x] Journal fast-refuse parks — DONE: `FastRefused` RateLimitError requeues under the new `rate-limit-gate` class; pool-health + journal audit count it, worker test pins the fact class (93acad87)
 - [x] Codify the clock-first naming ritual in AGENTS.md — DONE: pinned next to the status-report conventions (97ba6b2e)
 - [x] Scope check-status-index.sh to owned files — DONE: `--mine` mode scopes the loop to staged/modified/untracked reports; default sweep unchanged, probe pins the fail path (0177a0ad)
-- [ ] After the next internal/queue facade release, replace the `"rate-limit-gate"` string literals in cmd/tq (poolhealth.go poolSkipClasses, journalaudit.go) with the `queue.RequeueClassRateLimitGate` constant and bump the queue floor — cmd/tq pins the facade's released tag, so the const was unreachable at landing time (93acad87)
+- [ ] After the next internal/queue facade release, replace the `"rate-limit-gate"` string literals in cmd/tq (poolhealth.go poolSkipClasses, journalaudit.go) with the `queue.RequeueClassRateLimitGate` constant and bump the queue floor — cmd/tq pins the facade's released tag, so the const was unreachable at landing time (93acad87) — BLOCKED: the const landed after internal/queue/v0.3.4 was tagged+pushed and no newer pushed queue release carries it; publishing one needs the owner-gated release --push, which agent batches must never run
 
 ## 02-54 closeout appends (2026-10-13; source: docs/status/tasks/2026-10-13_02-54_task-000001a132b67b097d0c8f731c7700000000.md §c2/§d1/§e4; deduped vs rows 244/452/182)
 
