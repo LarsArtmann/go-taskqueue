@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Changed
+- `executor` facade: `WorktreeOrphan` type alias joins `ScanWorktreeOrphans` — the
+  worktree-orphan reaper surface is fully consumer-importable (ADR-0016 parity
+  restored after a daemon-swept skew).
 - **Webui CSP `form-action 'self'` (O11)** (BEHAVIOR CHANGE for dashboard
   users: the no-JS filter fallback form submits again where it was
   blocked): the dashboard CSP relaxes
