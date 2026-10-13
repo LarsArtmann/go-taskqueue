@@ -15,6 +15,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ADR-0003 document the ruling (2026-10-05, surfaced during G1).
 
 ### Added
+- **Fast-refuse requeue class**: `queue.RequeueClassRateLimitGate`
+  (`rate-limit-gate`) names the sibling fast-refuse park in the journal —
+  per-repo 429 gates requeue siblings under this class WITHOUT burning an
+  attempt, and pool-health skips + journal-audit counts read it; shipped
+  after the v0.3.4 tag wave, so consumers see it from the next internal/queue
+  release (2026-10-13 03-38 window, 93acad87).
 - **Pool liveness alerts (B10)**: the agent pool now surfaces dead
   projection fold workers (the B9.3 marker watched every harvest tick;
   WARN + `NotifyWorkerExhausted` PapDashboard alert, resolved when a
