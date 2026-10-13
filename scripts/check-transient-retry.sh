@@ -94,6 +94,7 @@ heal_stamp="$tmp/heal-stamp"
 run_case "compound gate heals on first retry (real module-loop shape)" 0 1 2 \
 	with_transient_retry "pin heal" bash -c 'printf "GATE-RUN\n"; if [ -e "$1" ]; then exit 0; fi; touch "$1"; exit 1' _ "$heal_stamp"
 must_mention "heal case" 'possible concurrent edit in flight'
+must_mention "heal case success line" 'healed on retry poll 1'
 
 run_case "always-red gate exhausts 3 polls then fails" 1 3 4 \
 	with_transient_retry "pin exhaust" bash -c 'printf "GATE-RUN\n"; exit 1'

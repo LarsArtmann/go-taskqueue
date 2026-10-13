@@ -18,6 +18,9 @@ v0.3.4, follow-ups tracked in the doc.
 
 ```bash
 ./scripts/ci-local.sh # pre-push gate; transient foreign breaks retry 45s ×3
+  # TRANSIENT_MAX_POLLS=0 = escape hatch: NO retry, fail on the first
+  # failure (pre-wrapper behavior; check-transient-retry.sh pins it).
+  # nix/check-ci/daemon-attribution steps are deliberately unwrapped.
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
 nix build # nix run .#test; .#webui-css
 ./scripts/fuzz/nightly.sh

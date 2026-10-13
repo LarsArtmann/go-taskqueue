@@ -83,8 +83,13 @@ with_transient_retry() {
 		echo "WARN: $label failed — possible concurrent edit in flight; retry poll $polls/$TRANSIENT_MAX_POLLS in ${TRANSIENT_POLL_SECS}s"
 		sleep "$TRANSIENT_POLL_SECS"
 	done
+	if [ "$polls" -gt 0 ]; then
+		echo "OK: $label healed on retry poll $polls."
+	fi
 }
 
+# Deliberately NOT wrapped: check-ci measures LANDED GitHub Actions state via
+# gh — a red remote run does not heal on a 45s poll (01-46 report f6).
 step "master CI state (check-ci; CI_CHECK=off to bypass)"
 CHECK_CI_SELF_TEST=1 ./scripts/check-ci.sh
 ./scripts/check-ci.sh
