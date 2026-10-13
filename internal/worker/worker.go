@@ -836,8 +836,16 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// not reclaim in lockstep and stampede the freshly reset quota).
 		delay := rateLimitDelay(rl.RetryAfter)
 
+		// A sibling gate refusal (the executor's in-process gate refused
+		// before any run) rides its own class so the journal counts
+		// gate-parked siblings separately from genuine 429s (02-28 §e2).
+		class := queue.RequeueClassRateLimit
+		if rl.FastRefused {
+			class = queue.RequeueClassRateLimitGate
+		}
+
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.Requeue(c, t.ID, claim, rl.Error(), delay, rl.ResumeCloseout, queue.RequeueClassRateLimit)
+			return p.store.Requeue(c, t.ID, claim, rl.Error(), delay, rl.ResumeCloseout, class)
 		}); err != nil {
 			p.log.Error("rate-limit requeue failed", "task", t.ID, "err", err)
 		} else {

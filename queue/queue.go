@@ -60,7 +60,8 @@ const (
 const (
 	RequeueClassPreflight = internalqueue.RequeueClassPreflight
 	RequeueClassGate      = internalqueue.RequeueClassGate
-	RequeueClassRateLimit = internalqueue.RequeueClassRateLimit
+	RequeueClassRateLimit     = internalqueue.RequeueClassRateLimit
+	RequeueClassRateLimitGate = internalqueue.RequeueClassRateLimitGate
 	RequeueClassQuestion  = internalqueue.RequeueClassQuestion
 	RequeueClassBudget    = internalqueue.RequeueClassBudget
 	RequeueClassUnknown   = internalqueue.RequeueClassUnknown

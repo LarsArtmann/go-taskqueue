@@ -637,10 +637,13 @@ func (e *AgentExecutor) runAgent(ctx context.Context, repoDir string, p *AgentPa
 	// carries the wait, so the worker requeues until the reset without
 	// burning an attempt.
 	if wait, limited := e.rateLimitWaitRepo(repoDir); limited {
-		return "", RateLimited(
-			errors.New("agent: provider rate limit in effect (observed by a sibling run); deferring until reset"),
-			wait,
-		)
+		return "", &RateLimitError{
+			Cause: errors.New(
+				"agent: provider rate limit in effect (observed by a sibling run); deferring until reset",
+			),
+			RetryAfter:  wait,
+			FastRefused: true,
+		}
 	}
 
 	// The queue task ID is only known at execution time (the harvester

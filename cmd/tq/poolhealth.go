@@ -39,7 +39,8 @@ const poolWarnStreak = 3
 // pool-health exists to surface. Question parks (the owner was asked)
 // and legacy unknown facts do not count.
 var poolSkipClasses = map[string]bool{
-	queue.RequeueClassRateLimit: true,
+	queue.RequeueClassRateLimit:     true,
+	queue.RequeueClassRateLimitGate: true,
 	queue.RequeueClassGate:      true,
 	queue.RequeueClassBudget:    true,
 	queue.RequeueClassPreflight: true,

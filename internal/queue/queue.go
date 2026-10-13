@@ -387,6 +387,13 @@ const (
 	RequeueClassPreflight = "preflight"  // executor refused to start (dirty tree, missing autonomy)
 	RequeueClassGate      = "gate"       // verify gate failed without judging the task (dead/slow)
 	RequeueClassRateLimit = "rate-limit" // provider 429 / usage window
+	// RequeueClassRateLimitGate marks the SIBLING fast-refuse: the pool's
+	// in-process gate (armed by a sibling's observed 429) refused the task
+	// BEFORE spawning the agent binary, so no run happened at all (02-28
+	// report §e2/§f4). Distinct from RequeueClassRateLimit, where THIS
+	// task's own turn hit the provider refusal — retro classifications
+	// count gate-parked siblings separately.
+	RequeueClassRateLimitGate = "rate-limit-gate"
 	RequeueClassQuestion  = "question"   // owner question parked the run
 	RequeueClassBudget    = "budget"     // claim-time spend gate blocked the paid turn
 	RequeueClassUnknown   = "unknown"    // legacy task.requeued facts predating the field

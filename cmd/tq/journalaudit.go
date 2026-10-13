@@ -577,7 +577,8 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 				report.Requeues.ResumeCloseout)
 		}
 
-		if n := report.Requeues.ByClass[queue.RequeueClassRateLimit]; n > 0 {
+		if n := report.Requeues.ByClass[queue.RequeueClassRateLimit] +
+			report.Requeues.ByClass[queue.RequeueClassRateLimitGate]; n > 0 {
 			fmt.Println(
 				"  (rate-limit requeues never burn an attempt; 3 consecutive ENVIRONMENTAL ones escalate — see the env-streak breaker)",
 			)

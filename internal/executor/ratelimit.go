@@ -33,6 +33,12 @@ type RateLimitError struct {
 	// closeout instead of re-running the paid work turn. The worker
 	// mirrors the flag into the requeue fact's evidence (16-00 f31).
 	ResumeCloseout bool
+	// FastRefused marks a refusal from the executor's OWN in-process gate
+	// (a sibling's observed 429 armed it): the agent binary never spawned
+	// and no run happened. The worker stamps the requeue as
+	// RequeueClassRateLimitGate so the journal distinguishes gate-parked
+	// siblings from genuine provider refusals (02-28 report §e2/§f4).
+	FastRefused bool
 }
 
 func (e *RateLimitError) Error() string {

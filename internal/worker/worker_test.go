@@ -1121,7 +1121,67 @@ func TestCloseoutResumeFlagReachesRequeueFact(t *testing.T) {
 	t.Fatal("no task.requeued fact recorded")
 }
 
-// TestCooperativeCancelMidRun drives the full cooperative-cancel loop: an
+// TestFastRefusedGateRequeueClass pins the 02-28 §e2 wiring: a *RateLimitError
+// from the executor's in-process sibling gate (FastRefused — the agent binary
+// never spawned) requeues under its own class, so the journal counts
+// gate-parked siblings separately from genuine provider 429s; a plain
+// rate-limit error keeps the original class.
+func TestFastRefusedGateRequeueClass(t *testing.T) {
+	store := testStore(t)
+
+	ctx := t.Context()
+
+	reg := executor.NewRegistry()
+	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
+		return &executor.RateLimitError{
+			Cause:       errors.New("agent: provider rate limit in effect (observed by a sibling run); deferring until reset"),
+			RetryAfter:  time.Minute,
+			FastRefused: true,
+		}
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 1})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		Executors: reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		got, _ := store.Get(context.Background(), enq.ID)
+		if got.Status == task.Pending && got.LastError != "" {
+			break
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	trail, err := store.FactsForTask(context.Background(), enq.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	for _, f := range trail {
+		if f.Type != journal.Requeued {
+			continue
+		}
+
+		var ev queue.RequeueEvidence
+		if err := json.Unmarshal(f.Detail, &ev); err != nil {
+			t.Fatalf("detail not RequeueEvidence: %v (%s)", err, f.Detail)
+		}
+
+		if ev.Class != queue.RequeueClassRateLimitGate {
+			t.Fatalf("fast-refused requeue class = %q, want %q (%s)", ev.Class, queue.RequeueClassRateLimitGate, f.Detail)
+		}
+
+		return
+	}
+
+	t.Fatal("no task.requeued fact recorded")
+}
 // operator requests the cancel while the executor is mid-run, the heartbeat
 // observes the fact, the execution context is cancelled, and the task
 // finalizes as Cancelled (no attempt burned, no retry).
