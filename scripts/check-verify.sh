@@ -21,7 +21,9 @@
 #      Issues mention.
 #   6. scripts/verify.sh's genuine-red path in situ (04-55 report §b2):
 #      under an always-failing NON-signature go shim it propagates rc=1
-#      with exactly one go invocation and zero retry lines.
+#      with exactly one go invocation and zero retry lines — at the BUILD
+#      stage and (01-54 closeout §f7) with build+vet passing and the
+#      failure at the TEST stage.
 # Pattern: scripts/check-transient-retry.sh (marker-guarded, sub-second).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -258,4 +260,41 @@ must_not_mention "in-situ genuine-red case" 'retrying ONCE'
 must_not_mention "in-situ genuine-red case" 'FLAKE-RETRY'
 echo "ok: in-situ verify.sh genuine-red (rc=1, one go invocation, zero retry lines)"
 
-echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified, KNOWN_FLAKY↔AGENTS.md bidirectional cross-check, in-situ genuine-red rc=1 no-retry verified)"
+# Pin 7 variant (2026-10-13 01-54 closeout §f7): the same genuine-red path
+# with the failure at the TEST stage — the shim lets build+vet pass (exit 0
+# for every non-test invocation) and fails `go test` with a NON-signature
+# line. rc=1 must propagate with exactly one go-test invocation and zero
+# retry lines, so the battery's later legs are covered by the pin too.
+test_bin="$tmp/test-bin"
+mkdir -p "$test_bin"
+test_count="$tmp/go-test-invocations"
+: >"$test_count"
+cat >"$test_bin/go" <<EOF
+#!/usr/bin/env bash
+if [ "\$1" = "test" ]; then
+	printf '%s\n' 'FAIL: TestSomethingReal 3/17' >&2
+	echo test >>"$test_count"
+	exit 1
+fi
+exit 0
+EOF
+printf '#!/usr/bin/env bash\nexit 0\n' >"$test_bin/gofmt"
+chmod +x "$test_bin/go" "$test_bin/gofmt"
+
+last_out="$(PATH="$test_bin:$PATH" bash "$verify" 2>&1)" && test_rc=0 || test_rc=$?
+if [ "$test_rc" -ne 1 ]; then
+	echo "FAIL: in-situ verify.sh test-stage genuine-red (want rc=1, got rc=$test_rc)"
+	printf '%s\n' "$last_out"
+	exit 1
+fi
+test_invocations="$(wc -l <"$test_count")"
+if [ "$test_invocations" -ne 1 ]; then
+	echo "FAIL: in-situ test-stage genuine-red go test invocations (want 1, got $test_invocations)"
+	exit 1
+fi
+must_mention "in-situ test-stage case" 'FAIL: TestSomethingReal 3/17'
+must_not_mention "in-situ test-stage case" 'retrying ONCE'
+must_not_mention "in-situ test-stage case" 'FLAKE-RETRY'
+echo "ok: in-situ verify.sh genuine-red at the TEST stage (rc=1, one go test invocation, zero retry lines)"
+
+echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified, KNOWN_FLAKY↔AGENTS.md bidirectional cross-check, in-situ genuine-red rc=1 no-retry verified (build-stage + test-stage))"
