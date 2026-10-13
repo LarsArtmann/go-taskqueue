@@ -128,3 +128,9 @@
 ---
 
 **TODO_LIST writes this pass:** 3 new task items (§f1–3) + 3 BLOCKED question items (§g1–3), dedup-checked against 432 open rows; zero ticks (all window-completed rows were already ticked by their own tasks). **Archives:** none moved — the 2026-10-12 sixth sweep already archived 23 files; every remaining live report still carries open items or is a window-adjacent closeout under `tasks/` (index-exempt). Living docs verified current: CHANGELOG (`[Unreleased]` covers the CSP relax, both release-docs pins, worktree docs via FEATURES/AGENTS), FEATURES agent-executor row (2026-10-13), AGENTS.md Known Issues (both flaky tests named, O14 policy present).
+
+---
+
+## Re-dispatch addendum (2026-10-13 02:40 CEST)
+
+This task (…d445e) was re-dispatched because the 02:13 run committed its report (daemon sweep `4e0f8066` + index row `7f6be4fe`) but never recorded its verdict. This pass re-verified the report's load-bearing claims at current HEAD (`e33b2081`) instead of duplicating it: single_opener.md reads LANDED citing f6492a00; RELEASE.md still carries ZERO `--publish-steps-only` citations (§b1 open, rows 79/80); the CSP `[Unreleased]` CHANGELOG entry is present; both flaky-test pins live in `scripts/check-verify.sh:73-74`. Commits landed after the original report (`221e432e`, `93721c2c`, `ce0967e1`, `d4bc9d86`, `e33b2081`) are the O14 CHANGELOG/AGENTS batch from task …a424a0 — outside this window, no impact on §a–§h. Band drift re-read at HEAD: still zero `task.reprioritized` facts (same `TQ_DB`-unset caveat, §g3). TODO_LIST: dedup re-checked — all §f candidates already rowed by the 02:13 pass; zero items appended, zero ticks this pass.
