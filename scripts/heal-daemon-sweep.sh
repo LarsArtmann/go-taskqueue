@@ -24,6 +24,18 @@
 #   - prints old→new fork-record lines (sanctioned by check-dead-sha-refs)
 #     for pasting into the window's status report.
 #
+#   - a commit footered with a DIFFERENT Task-Queue-ID inside the range is
+#     refused BY DESIGN (2026-10-13 01-54 §d2): even when that commit sits
+#     ABOVE the footer-less daemon commit the caller wants healed (the
+#     `--from <oldest-exactly-mine>` shape), the rewrite cascades — the
+#     foreign commit's SHA changes too (filter-branch rewrites every
+#     descendant), which silently rewrites another task's history. Healing
+#     below a foreign-ID commit is therefore structurally impossible for
+#     this tool. Escape hatches: `--from <foreign-commit>` heals only the
+#     span ABOVE it (the below-daemon commit stays footer-less; manual
+#     `git commit --amend` territory per the AGENTS.md Known Issues
+#     fallback), or the sanctioned soft-reset fold.
+#
 # Usage: scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>
 #        scripts/heal-daemon-sweep.sh --self-test
 #   --from <ref>  base of the heal range (default: origin/master, then
@@ -513,6 +525,31 @@ self_test() {
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: session-scope heal fork record wrong" >&2
 		cat "$tmp/out_slug" >&2
+	fi
+
+	# Rail: a footer-less daemon commit BELOW a foreign-ID commit (the
+	# 2026-10-13 01-54 shape) must refuse with the different-footer reason
+	# — healing it would cascade the rewrite into the foreign commit's SHA.
+	echo h >"$repo/h.txt"
+	git -C "$repo" add h.txt
+	git -C "$repo" commit -qm "chore: sweep below foreign"
+	git -C "$repo" commit -q --allow-empty -m "$(printf 'work: foreign on top\n\nTask-Queue-ID: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')"
+	echo i >"$repo/i.txt"
+	git -C "$repo" add i.txt
+	git -C "$repo" commit -qm "chore: sweep above foreign"
+	local below_foreign_base
+	below_foreign_base=$(git -C "$repo" rev-parse HEAD~2)
+	(cd "$repo" && "$self" --from "$below_foreign_base" deadbeef00000000000000000000000000000007) >/dev/null 2>"$tmp/err_below"
+	expect_refusal "daemon commit below foreign-ID" $? "carries a different Task-Queue-ID footer" "$tmp/err_below"
+	# Escape hatch: --from AT the foreign commit heals only the span above
+	# it, preserving the foreign commit byte-identical.
+	(cd "$repo" && "$self" --from HEAD~1 deadbeef00000000000000000000000000000007) >/dev/null 2>"$tmp/err_above"
+	if [ "$?" = "0" ] && [ "$(git -C "$repo" log -1 --format='%B' HEAD~1)" = "$(printf 'work: foreign on top\n\nTask-Queue-ID: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: --from at foreign commit should heal only the span above" >&2
+		cat "$tmp/err_above" >&2
 	fi
 
 	if [ "$fail" = "0" ]; then
