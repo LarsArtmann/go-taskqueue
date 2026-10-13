@@ -1182,6 +1182,7 @@ func TestFastRefusedGateRequeueClass(t *testing.T) {
 
 	t.Fatal("no task.requeued fact recorded")
 }
+
 // operator requests the cancel while the executor is mid-run, the heartbeat
 // observes the fact, the execution context is cancelled, and the task
 // finalizes as Cancelled (no attempt burned, no retry).

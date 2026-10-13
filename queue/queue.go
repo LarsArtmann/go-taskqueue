@@ -58,13 +58,13 @@ const (
 // Pending (rides task.requeued fact details; readers normalize a missing
 // class on legacy facts to RequeueClassUnknown).
 const (
-	RequeueClassPreflight = internalqueue.RequeueClassPreflight
-	RequeueClassGate      = internalqueue.RequeueClassGate
+	RequeueClassPreflight     = internalqueue.RequeueClassPreflight
+	RequeueClassGate          = internalqueue.RequeueClassGate
 	RequeueClassRateLimit     = internalqueue.RequeueClassRateLimit
 	RequeueClassRateLimitGate = internalqueue.RequeueClassRateLimitGate
-	RequeueClassQuestion  = internalqueue.RequeueClassQuestion
-	RequeueClassBudget    = internalqueue.RequeueClassBudget
-	RequeueClassUnknown   = internalqueue.RequeueClassUnknown
+	RequeueClassQuestion      = internalqueue.RequeueClassQuestion
+	RequeueClassBudget        = internalqueue.RequeueClassBudget
+	RequeueClassUnknown       = internalqueue.RequeueClassUnknown
 )
 
 // Claim-anomaly detection (loop suspects).

@@ -394,9 +394,9 @@ const (
 	// task's own turn hit the provider refusal — retro classifications
 	// count gate-parked siblings separately.
 	RequeueClassRateLimitGate = "rate-limit-gate"
-	RequeueClassQuestion  = "question"   // owner question parked the run
-	RequeueClassBudget    = "budget"     // claim-time spend gate blocked the paid turn
-	RequeueClassUnknown   = "unknown"    // legacy task.requeued facts predating the field
+	RequeueClassQuestion      = "question" // owner question parked the run
+	RequeueClassBudget        = "budget"   // claim-time spend gate blocked the paid turn
+	RequeueClassUnknown       = "unknown"  // legacy task.requeued facts predating the field
 )
 
 type RequeueEvidence struct {

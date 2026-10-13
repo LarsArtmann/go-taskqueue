@@ -223,3 +223,7 @@ const (
 var MergeFindings = internalexecutor.MergeFindings
 
 type Finding = internalexecutor.Finding
+
+// Worktree delivery remnant scanning (worktreereap.go): the orphan reaper
+// surfaces tq/* checkouts and branches whose task is no longer in-flight.
+type WorktreeOrphan = internalexecutor.WorktreeOrphan
