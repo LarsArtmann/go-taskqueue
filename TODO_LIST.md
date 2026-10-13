@@ -16,9 +16,9 @@ not here.
 
 ## 02-28 retro close-out harvest (2026-10-13 archive sweep; source: docs/status/archived/2026-09-15_02-28_task-000001a0a27176572e0bcf9c305950d445a5.md §b2/§e)
 
-- [ ] Journal fast-refuse parks: `rateLimitUntil` refusals never spawn the binary and leave no journal trace, so retro classifications are blind to gate-parked siblings — emit a fact (or metric) when the pool fast-refuses during an active rate-limit window (02-28 report §e2/§f4; internal/executor/ratelimit.go)
-- [ ] Codify the clock-first naming ritual in AGENTS.md: run `date` BEFORE writing any `<ts>_<slug>` filename — the 02-30 retro report's filename lies about its own timestamp (guessed clock, actual write 02:28) (02-28 report §d1/§e1)
-- [ ] Scope check-status-index.sh to owned files (a `--mine`/staged-only mode) so a concurrent agent's unindexed daemon fold fails only that agent's gate, not unrelated commits' local confidence (02-28 report §e4; scripts/check-status-index.sh)
+- [x] Journal fast-refuse parks — DONE: `FastRefused` RateLimitError requeues under the new `rate-limit-gate` class; pool-health + journal audit count it, worker test pins the fact class (93acad87)
+- [x] Codify the clock-first naming ritual in AGENTS.md — DONE: pinned next to the status-report conventions (97ba6b2e)
+- [x] Scope check-status-index.sh to owned files — DONE: `--mine` mode scopes the loop to staged/modified/untracked reports; default sweep unchanged, probe pins the fail path (0177a0ad)
 
 ## 02-54 closeout appends (2026-10-13; source: docs/status/tasks/2026-10-13_02-54_task-000001a132b67b097d0c8f731c7700000000.md §c2/§d1/§e4; deduped vs rows 244/452/182)
 
