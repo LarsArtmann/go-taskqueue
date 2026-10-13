@@ -18,9 +18,8 @@ v0.3.4, follow-ups tracked in the doc.
 
 ```bash
 ./scripts/ci-local.sh # pre-push gate; transient foreign breaks retry 45s ×3
-  # TRANSIENT_MAX_POLLS=0 = escape hatch: NO retry, fail on the first
-  # failure (pre-wrapper behavior; check-transient-retry.sh pins it).
-  # nix/check-ci/daemon-attribution steps are deliberately unwrapped.
+  # TRANSIENT_MAX_POLLS=0: NO retry, fail first (check-transient-retry pins);
+  # nix/check-ci/daemon-attribution deliberately unwrapped.
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
 nix build # nix run .#test; .#webui-css
 ./scripts/fuzz/nightly.sh
@@ -45,8 +44,7 @@ Facades: require (real tag) + relative replace; facade tests import
 internals, never sibling facades; parity via
 `scripts/check-facade-parity.sh` BEFORE staging (pre-commit gates
 staged files); postgres `OpenWithPool` pools CALLER-OWNED. No go.work —
-replace-only (`go test ./internal/foo` from root fails by design — cd
-in). Release flow: docs/release/ (rc-captured proxy checks).
+replace-only. Release flow: docs/release/ (rc-captured proxy checks).
 
 Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh +
 release-gates + lint-baseline. `scripts/new-module.sh <dir> [deps…]`
@@ -154,10 +152,10 @@ docs/DOMAIN_LANGUAGE.md.
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
   EVIDENCE rows. Growth: a new shape adds ONE `secretPatterns` entry +
   a fake-shape sample in `redact_test.go` (table-length pins) + a
-  lint-baseline note if it trips gosec. `SecretHits` and `RedactSecrets`
+  lint-baseline note if it trips gosec. `SecretHits`/`RedactSecrets`
   share the ONE table (pinned
   `TestSecretHitsAndRedactionCompileIdenticalTable`); redact_test.go
-  build-tag-free, windows-gated per-module CI (00-55 §f9).
+  build-tag-free, windows-gated (00-55 §f9).
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
 
@@ -178,8 +176,8 @@ docs/DOMAIN_LANGUAGE.md.
 - **Claim-time budget gate**: paid turns block once the daily
   cap/budget-cmd is spent — requeue class `budget`, no burn, parked to
   midnight (cap) / 15m (cmd), outside env-streak. Claim checks run
-  CHEAP-FIRST (budget hook → preflight → executor) — a gated pool never
-  spawns a process for a verdict the hook knows.
+  CHEAP-FIRST (budget → preflight → executor — a gated pool never
+  spawns a process the hook can refuse).
 
 ## Conventions
 
@@ -196,20 +194,16 @@ docs/DOMAIN_LANGUAGE.md.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches).
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE composing
-  any `<ts>_<slug>` filename (reports, evidence archives) and paste the
-  output — never guess the clock. A guessed `<ts>` makes the filename
-  lie about its own timestamp (the 02-30 retro report was actually
-  written 02:28; 02-28 report §d1/§e1).
+  any `<ts>_<slug>` filename and paste the output — a guessed `<ts>`
+  lies about its own timestamp (02-28 report §d1/§e1).
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
-  (daemon sweeps in <60 s, footer-less, takes STAGED files too); fold
-  ferries only while local-only + contiguous + exactly-mine; mechanical
-  form `scripts/commit-task.sh <id> <subject> <file>…`. The "anything"
-  is literal during MULTI-STEP git surgery (heals, amends, filter
-  operations): uncommitted tree changes — modified-unstaged AND untracked
-  files — are daemon-food just like staged ones (2026-10-13 01-54 §e: a
-  half-done surgery plus a daemon sweep interleaving mid-sequence leaves
-  the span non-contiguous and the heal refused). Between surgery steps
-  the tree must be CLEAN, not merely "nothing left to stage".
+  (daemon sweeps <60 s, footer-less, take STAGED files too); fold only
+  while local-only + contiguous + exactly-mine (`scripts/commit-task.sh
+  <id> <subject> <file>…`). "Anything" is literal during MULTI-STEP git
+  surgery (heals/amends/filter ops): modified-unstaged AND untracked
+  files are daemon-food too — a mid-sequence sweep makes the span
+  non-contiguous and the heal refuses; between steps the tree must be
+  CLEAN, not merely "nothing left to stage" (2026-10-13 01-54 §e).
 - Tab-bearing insertions go through python-heredoc replace — free-text
   edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
@@ -222,9 +216,9 @@ docs/DOMAIN_LANGUAGE.md.
   `internal/queue/companion`). Art-dupl residuals are accepted ONLY where
   named here: the `fragments.templ` conditional-span pair (Go comments
   cannot live inside templ markup); don't add new ones.
-  `art-dupl:accept` directives suppress only within a few
-  lines ABOVE the clone's first line (deeper clones need an adjacent
-  inline comment).
+  `art-dupl:accept` suppresses only within a few lines ABOVE the clone's
+  first line (doc position for func-top clones; inline comment adjacent
+  for deeper ones).
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
@@ -250,18 +244,15 @@ docs/DOMAIN_LANGUAGE.md.
   source via heredocs; fixtures under /tmp (gated trees are daemon-food).
   Footer-less daemon `chore:` sweeps heal via
   `scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>`
-  (unpushed only; backup on failure; `--self-test` pins rails). The
-  script REFUSES a non-contiguous footer-less span (same-ID/foreign-ID
-  commits interleaved) — manual fallback: `git show --stat` each commit
-  to verify exactly-mine, then a direct `git commit --amend` on the
-  unpushed HEAD (proven 2026-10-11 task 000001a1288ceb2f; source: its
-  closeout §d4).
-- **TestExactlyOnceUnderConcurrency is load-flaky** (worker): host build
-  storms can drop it to "19/20 completed"; fails at clean parents too —
-  re-run before attributing. **TestSelfManagingLoop is load-flaky**
-  (harvest) and rides the same `KNOWN_FLAKY` list in
-  `scripts/lib/verify-retry.sh` (both names are
-  pinned to this Known Issues section by `scripts/check-verify.sh`).
+  (unpushed only; backup on failure; `--self-test` pins rails). REFUSES
+  non-contiguous footer-less spans (interleaved same/foreign-ID commits)
+  — manual fallback: verify exactly-mine via `git show --stat`, then
+  `git commit --amend` the unpushed HEAD (proven 2026-10-11 task
+  000001a1288ceb2f closeout §d4).
+- **TestExactlyOnceUnderConcurrency + TestSelfManagingLoop are
+  load-flaky** (worker/harvest): build storms drop them even at clean
+  parents — re-run before attributing; both ride `KNOWN_FLAKY` in
+  `scripts/lib/verify-retry.sh` (check-verify.sh pins the names here).
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`
@@ -273,44 +264,43 @@ docs/DOMAIN_LANGUAGE.md.
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go
   PINNED to 1.27.1 = go.mod floor; NEVER lower a `go` directive
   (`check-go-mods.sh` gates).
-- **Host GOCACHE/GOROOT hazards**: gates run with
-  `GOCACHE=/tmp/go-build-cache` (host symlink → /nix/store ENOSPCs);
-  "package X is not in std" + a `$GOMODCACHE/toolchain@…` GOROOT =
-  corrupt extraction (chmod -R u+w + trash, or `GOTOOLCHAIN=local`).
+- **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
+  (host symlink → /nix/store ENOSPCs); "package X is not in std" +
+  `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w +
+  trash, or `GOTOOLCHAIN=local`).
 - **golangci-lint is advisory** (~1.4k baseline, growth gated by
   `scripts/lint-baseline.sh --check`); hard gates: vet+gofmt+tests;
   regen only green after `golangci-lint cache clean`.
 - **gosec**: all findings triaged via `scripts/check-gosec.sh`; a new
   finding is a new class needing fresh triage.
 - **`tq serve`/`tq api` security**: loopback + read-only default;
-  writes CSRF-guarded with lockout; non-loopback binds need
-  `--auth-token` (SECURITY.md). No new write endpoints without it.
+  writes CSRF+lockout-guarded; non-loopback needs `--auth-token`
+  (SECURITY.md); no new write endpoints without it.
 - **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
   gates, never "fix" them.
 - **VendorHash drift**: after go.mod changes run
   `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to
   flake.nix.
-- **readmodel schema drift crash-loops the fold**: planned tables get
-  no column migration — `ConvergeProjectionHome` snapshots divergent
-  homes aside (`.legacy-schema-*.bak`) before engine open; crash
-  remedy: quarantine `<db>.readmodel.db*` + restart the unit.
+- **readmodel schema drift crash-loops the fold** (planned tables get
+  no column migration): `ConvergeProjectionHome` snapshots divergent
+  homes aside (`.legacy-schema-*.bak`); crash remedy: quarantine
+  `<db>.readmodel.db*` + restart.
 - **History policy**: NEVER reword/amend/rebase PUSHED commits; no
   force push; scripted edits via script files.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route
   exec sites through `execWithTransientRetry`.
-- **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` makes the
-  loader see outputs as a thunk — every eval dies with "expected a
-  function but got a thunk at flake.nix:<outputs line>". Keep the `let`
-  INSIDE the lambda (`outputs = inputs@{…}: let … in mkFlake …`).
-- **templ-components sibling pins**: a release with zero pseudo-versions
-  (`v…00001010100000-…`) in its root go.mod passes local builds but
-  kills consumer graph loads (Nix go-modules FOD); `grep -r 00010101`
-  the dep repo before blaming the flake/vendorHash.
+- **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` reads as a
+  thunk — eval dies "expected a function but got a thunk at
+  flake.nix:<line>"; keep the `let` INSIDE the lambda.
+- **templ-components sibling pins**: zero pseudo-versions
+  (`v…00001010100000-…`) in a dep's root go.mod pass local builds but
+  kill consumer graph loads (Nix FOD) — `grep -r 00010101` the dep repo
+  before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
-  (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`): `gofmt -l . |
-  git check-ignore --stdin -v --non-matching | grep '^::'` — unscoped
-  re-plants the vendor-gofmt death class (94% of the DLQ); grep the FULL
-  verify log before attributing a gate death.
+  (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`):
+  `gofmt -l . | git check-ignore --stdin -v --non-matching | grep '^::'`;
+  unscoped re-plants the vendor-gofmt death class (94% of the DLQ) —
+  grep the FULL verify log before attributing.
 - **Flakes see only git-tracked files** — `git add` before `nix build`.
 
 ## Relation to other projects
