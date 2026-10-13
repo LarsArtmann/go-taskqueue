@@ -21,6 +21,10 @@ not here.
 - [x] Scope check-status-index.sh to owned files — DONE: `--mine` mode scopes the loop to staged/modified/untracked reports; default sweep unchanged, probe pins the fail path (0177a0ad)
 - [ ] After the next internal/queue facade release, replace the `"rate-limit-gate"` string literals in cmd/tq (poolhealth.go poolSkipClasses, journalaudit.go) with the `queue.RequeueClassRateLimitGate` constant and bump the queue floor — cmd/tq pins the facade's released tag, so the const was unreachable at landing time (93acad87) — BLOCKED: the const landed after internal/queue/v0.3.4 was tagged+pushed and no newer pushed queue release carries it; publishing one needs the owner-gated release --push, which agent batches must never run
 
+## 03-51 closeout append (2026-10-13; source: docs/status/tasks/2026-10-13_03-51_task-000001a132f1f61405688822571200000000.md §f2; deduped vs row 356)
+
+- [ ] Tag-symbol check helper: a small script (or `tq doctor` check) answering "is symbol X present in pushed tag Y of facade module Z" (the `git show <tag>:<file> | grep` pattern proven in the 03-51 report §a2) so facade-floor precondition audits — e.g. row 22's rate-limit-gate const sweep — become a one-liner instead of tag archaeology (03-51 §e3/§f2)
+
 ## 02-54 closeout appends (2026-10-13; source: docs/status/tasks/2026-10-13_02-54_task-000001a132b67b097d0c8f731c7700000000.md §c2/§d1/§e4; deduped vs rows 244/452/182)
 
 - [ ] Heal the 2026-10-12 rebase-era dead-SHA red: `check-dead-sha-refs.sh` reports 108 dangling cites at HEAD (9177f28a, 88e93daf, 97a8f4e0, 8005938e, bf498abc, c4f03193, cbd413e8, ab0d9334, …) across TODO_LIST.md:438/440/533 + the 2026-10-12_07-10/07-55 root reports — re-resolve each dangling SHA to its reachable counterpart and rewrite the cite as a fork record (old→new); any SHA with no reachable counterpart gets a baseline entry with a dated reason in the heal commit message; zero of the 108 cite files touched by the 02-54 window (closeout §c2 + §g1 policy question; scripts/check-dead-sha-refs.sh)
