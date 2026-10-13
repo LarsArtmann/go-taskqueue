@@ -11,8 +11,7 @@ files, re-run tests; uncommitted parallel changes: read, judge, build
 on, never revert. (Size guard: TestAgentsDocSizeGuard)
 
 **MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) —
-ceremony bloat (52% derived, 2026-10-11); redesign SHIPPED in
-v0.3.4, follow-ups tracked in the doc.
+redesign SHIPPED v0.3.4; follow-ups tracked in the doc.
 
 ## Commands
 
@@ -66,16 +65,13 @@ docs/DOMAIN_LANGUAGE.md.
 | `internal/queue/{sqlite,postgres}`      | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform`                             |
 | `internal/queue/{sqlitev4,postgresv4}`  | tq Store over the go-cqrs-lite queue engines                                                               |
 | `internal/queue/companion`              | Shared tq surfaces: reads, watermarks, scores, exclusivity, token finalize (`WithToken`)                   |
-| `internal/readmodel`                    | S3 metaengine projection (`<db>.readmodel.db`; `--read-model` default ON)                                  |
-| `internal/composition`                  | S4 root: `system.New` + `ProjectionRuntime` factory (model+DLQ+host) over the projection home (`tq serve`) |
+| `internal/{readmodel,composition}`      | S3 projection `<db>.readmodel.db` (`--read-model` ON) + S4 root: `system.New`, `ProjectionRuntime` (model+DLQ+host, `tq serve`) |
 | `internal/worker`                       | Claim → heartbeat → execute loop; requeue ladder                                                           |
 | `internal/bridge`                       | papdashboard + cqa bridges → fix tasks                                                                     |
 | `internal/executor`                     | sh/HTTP/agent/review/status executors + registry                                                           |
 | `internal/harvest`                      | TODO_LIST.md → tasks; drift audit; prune-stale                                                             |
 | `internal/budget`                       | Daily-cap + session-usage projections per tick                                                             |
-| `internal/dlqfix`                       | DLQ autopsies (`--dlq-fix`); gate-artifact auto-dismiss                                                    |
-| `internal/review`                       | Review sweeper + `--review-autofix`                                                                        |
-| `internal/status`                       | Done-prompt report sweeper (`--status-every`)                                                              |
+| `internal/{dlqfix,review,status}`       | DLQ autopsies (`--dlq-fix`, auto-dismiss); review sweeper (`--review-autofix`); done-prompt sweeper (`--status-every`) |
 | `internal/prioritize`                   | AI batch scorer (`--prioritize`), priority_scores cache                                                    |
 | `internal/depsweep`                     | Dependency-upgrade sweeper `--dep-sweep`                                                                   |
 | `internal/watermark`                    | Durable journal cursor shared by the sweepers                                                              |
@@ -91,18 +87,16 @@ docs/DOMAIN_LANGUAGE.md.
   (MaxOpenConns(1), WAL, busy_timeout) ridden by engine
   (`usqlite.OpenDB`) AND companion — never a second write pool. Never
   drop the `RowsAffected()` re-checks.
-- **One deployment description (ADR-0022)**: `config.Deployment` is
-  the only store-opening input — flags resolve through
-  `config.FromFlags` (ONE TQ_SQLITE_SYNC reader), openers take the
-  struct, pragma literals live ONLY in config; ONE engine per sqlite
-  home — no second write pool or pragma copy (lanes: deployment /
-  domain / CLI skin).
+- **One deployment description (ADR-0022)**: `config.Deployment` is the
+  only store-opening input — flags resolve via `config.FromFlags` (ONE
+  TQ_SQLITE_SYNC reader), openers take the struct, pragma literals live
+  ONLY in config; ONE engine per sqlite home — no second write pool or
+  pragma copy.
 - **SQLite IO policy (2026-10-07)**: steady-state handles run at the
-  configured sync tier (NORMAL = fsync at checkpoints only,
-  lost-tail-tolerant recovery); migration DSNs stay FULL. Claim probes use partial
-  RUNNING-only indexes (companion.Migrate) — never project history.
-  Idle worker loops back off exponentially (cap `IdlePollMax` 2s, reset
-  on claim/wake).
+  configured sync tier (NORMAL = checkpoint fsync, lost-tail-tolerant);
+  migrations stay FULL. Claim probes use partial RUNNING-only indexes
+  (companion.Migrate), never project history. Idle worker loops back
+  off (cap `IdlePollMax` 2s, reset on claim/wake).
 - **Task contexts survive pool shutdown** (bounded only by
   `--task-timeout`) — no shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.
@@ -119,7 +113,7 @@ docs/DOMAIN_LANGUAGE.md.
   for its a)-g) report (`docs/status/tasks/<ts>_task-<id>.md`).
 - **Derived outcomes**: the queue derives what a run did — commits via
   ONE `Task-Queue-ID` footer as LAST trailer (`executor.GitLogScanner`;
-  a footer above the attribution block is invisible, hook rejects),
+  footer above attribution = invisible, hook rejects),
   files via `git diff-tree`, usage via go-crush-data. No stdout
   self-report.
 - **Verdict channel**: paid turns record via `tq verdict '<json>'` into
@@ -131,10 +125,10 @@ docs/DOMAIN_LANGUAGE.md.
   owns the rules.
 - **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated
   or deterministic turns on the closeout-free agent clone; usage derived
-  for ALL paid turns. review findings are commit-anchored (verbatim
-  `anchor` or REJECTED). Dead agent tasks mint ONE autopsy (`dlqfix:<id>`);
-  gate-artifact death (`executor.IsGateArtifactDeath`) WITH shipped-proof
-  auto-dismisses.
+  for ALL paid turns; review findings commit-anchored (verbatim `anchor`
+  or REJECTED); dead agent tasks mint ONE autopsy (`dlqfix:<id>`);
+  gate-artifact death WITH shipped-proof auto-dismisses
+  (`executor.IsGateArtifactDeath`).
 - **Session-close bridge**: `tq session begin/close` + `tq crush`;
   close scans `Crush-Session:` trailers → ONE review + ONE status task.
 - **PapDashboard questions**: `tq ask --task <id>` parks WITHOUT burning
@@ -150,11 +144,10 @@ docs/DOMAIN_LANGUAGE.md.
   (169-loop = $36.62/d).
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
-  EVIDENCE rows. Growth: a new shape adds ONE `secretPatterns` entry +
-  a fake-shape sample in `redact_test.go` (table-length pins) + a
-  lint-baseline note if it trips gosec. `SecretHits`/`RedactSecrets`
-  share the ONE table (pinned
-  `TestSecretHitsAndRedactionCompileIdenticalTable`); redact_test.go
+  EVIDENCE rows. Growth: ONE `secretPatterns` entry + a fake-shape
+  sample in `redact_test.go` (table-length pins; lint-baseline note if
+  gosec trips). `SecretHits`/`RedactSecrets` share the ONE table
+  (pinned `TestSecretHitsAndRedactionCompileIdenticalTable`);
   build-tag-free, windows-gated (00-55 §f9).
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
@@ -192,7 +185,10 @@ docs/DOMAIN_LANGUAGE.md.
   battery rc TO A FILE (no PIPESTATUS); no-delta claim; dated DONE
   re-verified note; `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
-  re-dispatches).
+  re-dispatches); indexed on creation (`check-status-index.sh`; daemon
+  bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE
+  index-row write point: top chronological cluster; CHANGELOG
+  append-only.
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE composing
   any `<ts>_<slug>` filename and paste the output — a guessed `<ts>`
   lies about its own timestamp (02-28 report §d1/§e1).
@@ -229,9 +225,6 @@ docs/DOMAIN_LANGUAGE.md.
 - `TODO_LIST.md` machine-consumed: `- [ ]`, one per line, never tables;
   `— BLOCKED: <reason>`; items agent-executable (`check-todo-list.sh`);
   DONE-row notes collapse to ONE note + latest-report pointer.
-- Status reports indexed on creation (`check-status-index.sh`; daemon
-  bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE index-row
-  write point: top chronological cluster. CHANGELOG append-only.
 - Docs formatting MANUAL (dprint on-demand).
 - Evidence archives: `scripts/archive-evidence.sh` (gated by
   `check-ghost-archives.sh`); `git check-ignore -v` BEFORE copying
@@ -249,21 +242,22 @@ docs/DOMAIN_LANGUAGE.md.
   — manual fallback: verify exactly-mine via `git show --stat`, then
   `git commit --amend` the unpushed HEAD (proven 2026-10-11 task
   000001a1288ceb2f closeout §d4).
-- **TestExactlyOnceUnderConcurrency + TestSelfManagingLoop are
-  load-flaky** (worker/harvest): build storms drop them even at clean
-  parents — re-run before attributing; both ride `KNOWN_FLAKY` in
-  `scripts/lib/verify-retry.sh` (check-verify.sh pins the names here).
+- **TestExactlyOnceUnderConcurrency is load-flaky** (worker) and
+  **TestSelfManagingLoop is load-flaky** (harvest): build storms drop
+  them even at clean parents — re-run before attributing; both ride
+  `KNOWN_FLAKY` in `scripts/lib/verify-retry.sh` (check-verify.sh pins
+  the names here).
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`
   leaks to children (`env -u VAR`); multi-file `tail` fails; `printf
   %.0s` yields empty; chained `&` backgrounds the wrong span.
-- **Root builds auto-use `vendor/`** — internal/ changes need
-  `go mod vendor` first; dep bumps also per-module `go mod tidy`
+- **Root builds auto-use `vendor/`** — internal/ changes need `go mod
+  vendor` first; dep bumps also per-module tidy
   (`check-gomod-vendor-sync.sh` gates both).
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go
   PINNED to 1.27.1 = go.mod floor; NEVER lower a `go` directive
-  (`check-go-mods.sh` gates).
+  (`check-go-mods.sh`).
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
   `$GOMODCACHE/toolchain@…` GOROOT = corrupt extraction (chmod -R u+w +
@@ -308,11 +302,10 @@ docs/DOMAIN_LANGUAGE.md.
 - **go-cqrs-lite IS the platform (ADR-0019)**: adopted in
   `{sqlitev4,postgresv4}` + `companion`; `internal/journal/cqrs`
   PROPRIETARY, read-only — never extend or import below root.
-  **Backward auto-upgrade (endgame P1)**: facade Open converges a legacy
-  pre-flip DB in place (snapshot `<db>.legacy-*.bak`, verify, restore on
-  mismatch; absent feature-era tables tolerated); refuse via
-  `TQ_NO_AUTO_UPGRADE=1`; manual: `go run ./replay` in
-  internal/queue/sqlitev4.
+  Facade Open backward-auto-upgrades legacy pre-flip DBs in place
+  (snapshot `<db>.legacy-*.bak`, verify, restore on mismatch; absent
+  feature-era tables tolerated); refuse via `TQ_NO_AUTO_UPGRADE=1`;
+  manual: `go run ./replay` in internal/queue/sqlitev4.
 - **PapDashboard bridge**: `--alert-url/--alert-api-key`; dead letters
   raise `alert.triggered`, completions resolve; `NotifyDeadPool` =
   direct dead-pool path; pool detectors add worker-death,
