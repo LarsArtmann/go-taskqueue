@@ -110,6 +110,7 @@ if ! sed -n '/^KNOWN_FLAKY=(/,/^)/p' "$lib" | grep -qE '"Test[A-Za-z0-9_]+"'; th
 	fail=1
 fi
 
+
 # Pin 4: root-gate.sh consumes the lib, no private signature copy.
 if grep -qE '^(known_flaky|KNOWN_FLAKY)=' "$root_gate"; then
 	echo "FAIL: $root_gate still defines a private flaky-signature list — the extraction regressed"
@@ -129,6 +130,34 @@ fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+
+# Pin 6 self-test (2026-10-13 01-54 closeout §f9): the extraction regex's
+# empty result must NOT pass silently — a Known Issues bullet reworded away
+# from "is load-flaky" must trip the "nothing to bind to" FAIL. Re-run this
+# script from a temp tree whose AGENTS.md copy has every "is load-flaky"
+# mention reworded; the gate must exit 1 printing the empty-extraction
+# failure message.
+st_tree="$tmp/st-tree"
+mkdir -p "$st_tree/scripts/lib"
+cp "$0" "$st_tree/scripts/check-verify.sh"
+cp "$lib" "$st_tree/scripts/lib/verify-retry.sh"
+cp "$verify" "$st_tree/scripts/verify.sh"
+cp "$root_gate" "$st_tree/scripts/root-gate.sh"
+cp "$tq_verify" "$st_tree/.tq-verify"
+sed 's/is load-flaky/was load-flaky (reworded)/g' AGENTS.md >"$st_tree/AGENTS.md"
+st_out="$(bash "$st_tree/scripts/check-verify.sh" 2>&1)" && st_rc=0 || st_rc=$?
+if [ "$st_rc" -ne 1 ]; then
+	echo "FAIL: empty-extraction self-test (want rc=1, got rc=$st_rc) — a reworded Known Issues bullet would silently unbind the KNOWN_FLAKY pin"
+	printf '%s\n' "$st_out"
+	exit 1
+fi
+st_msg="no '<Test> is load-flaky' bullet found in AGENTS.md — the KNOWN_FLAKY pin has nothing to bind to"
+if ! grep -qF -- "$st_msg" <<<"$st_out"; then
+	echo "FAIL: empty-extraction self-test — gate exited 1 but without the expected message: $st_msg"
+	printf '%s\n' "$st_out"
+	exit 1
+fi
+echo "ok: pin 6 empty-extraction failure message fires on a reworded Known Issues bullet"
 
 # Behavior pins: run the SHIPPED lib bytes through the four contract cases
 # (the lib is sourced once above; each case calls it in a fresh subshell).
