@@ -101,7 +101,7 @@ fi
 # Issues list stays the single owner of the retry ladder in both directions.
 while IFS= read -r listed; do
 	[ -n "$listed" ] || continue
-	if ! grep -qE "[\`']?$listed[\`']? is load-flaky" AGENTS.md; then
+	if ! grep -qE "[\`']?${listed}[\`']? is load-flaky" AGENTS.md; then
 		echo "FAIL: $lib KNOWN_FLAKY entry '$listed' has no '<Test> is load-flaky' mention in AGENTS.md"
 		fail=1
 	fi

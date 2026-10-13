@@ -44,8 +44,12 @@ elif command -v nix >/dev/null 2>&1; then
 	# phantom exit-1 red (01-46 report f15). By the time shellcheck runs, the
 	# store path exists and nix is out of the picture entirely.
 	echo "shellcheck via nix shell (prefetching, quiet on a cold cache)"
-	prefetched="$(nix build nixpkgs#shellcheck --no-link --print-out-paths 2>/dev/null)" || {
+	prefetched="$(nix build nixpkgs#shellcheck --no-link --print-out-paths 2>/dev/null | { grep -m1 -- '-bin$' || true; })" || {
 		echo "FAIL: nix prefetch of shellcheck failed (run 'nix build nixpkgs#shellcheck' for stderr)" >&2
+		exit 1
+	}
+	[ -n "$prefetched" ] || {
+		echo "FAIL: nix prefetch of shellcheck returned no bin output" >&2
 		exit 1
 	}
 	sc=("$prefetched/bin/shellcheck")
