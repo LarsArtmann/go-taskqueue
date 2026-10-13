@@ -195,7 +195,13 @@ docs/DOMAIN_LANGUAGE.md.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
   (daemon sweeps in <60 s, footer-less, takes STAGED files too); fold
   ferries only while local-only + contiguous + exactly-mine; mechanical
-  form `scripts/commit-task.sh <id> <subject> <file>…`.
+  form `scripts/commit-task.sh <id> <subject> <file>…`. The "anything"
+  is literal during MULTI-STEP git surgery (heals, amends, filter
+  operations): uncommitted tree changes — modified-unstaged AND untracked
+  files — are daemon-food just like staged ones (2026-10-13 01-54 §e: a
+  half-done surgery plus a daemon sweep interleaving mid-sequence leaves
+  the span non-contiguous and the heal refused). Between surgery steps
+  the tree must be CLEAN, not merely "nothing left to stage".
 - Tab-bearing insertions go through python-heredoc replace — free-text
   edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
