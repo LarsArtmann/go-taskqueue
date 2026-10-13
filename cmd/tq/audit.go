@@ -45,9 +45,9 @@ func cmdAudit(args []string) error {
 	asJSON := fs.Bool("json", false, "JSON output of the audit result")
 	taskID := fs.String(
 		"task-id",
-			"",
-			"with --journal: scope the fact replay to one task (exact id or unique prefix) — task forensics without grep",
-		)
+		"",
+		"with --journal: scope the fact replay to one task (exact id or unique prefix) — task forensics without grep",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
