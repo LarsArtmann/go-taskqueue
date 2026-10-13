@@ -15,6 +15,13 @@
 #      toolchain, heals a scripted flake-signature first-run failure on
 #      its ONE retry (03-47 report §b2): the wrapper file's own retry
 #      path runs, not just the lib's behind it.
+#   5. KNOWN_FLAKY ↔ AGENTS.md cross-check (03-47 §e4 + 2026-10-13 01-54
+#      closeout §e, bidirectional): every "is load-flaky" Known Issues
+#      mention appears in the lib's list AND every list entry has a Known
+#      Issues mention.
+#   6. scripts/verify.sh's genuine-red path in situ (04-55 report §b2):
+#      under an always-failing NON-signature go shim it propagates rc=1
+#      with exactly one go invocation and zero retry lines.
 # Pattern: scripts/check-transient-retry.sh (marker-guarded, sub-second).
 set -euo pipefail
 cd "$(dirname "$0")/.."
