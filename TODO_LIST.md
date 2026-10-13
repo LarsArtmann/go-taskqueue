@@ -176,6 +176,17 @@ not here.
 - [ ] Lint-baseline growth ownership: when concurrent feature sessions grow the baseline (gate RED at HEAD right now), must each feature session regenerate with triage notes, or is a dedicated periodic sweep the ritual? — BLOCKED: owner process call (01-21 report g2)
 - [ ] Deploy cadence: flip the SystemNix input + `nix run .#deploy` so the window's shipped features reach the live pool — until then every hardening window ships code production cannot exercise (deployed binary lacks hygiene/redact/reresolve, verified) — BLOCKED: owner-run (sudo on evo-x2; rows 21/97)
 
+- [ ] Fix check-verify.sh pin-numbering drift: header comment says pins 5/6 but the inline comments say Pin 6/Pin 7 (and the 01-54 closeout + TODO text say 6/7) — pick ONE scheme and align header + echo (02-08 report §b/§d3)
+- [ ] Run the full gate (./scripts/ci-local.sh or scripts/root-gate.sh) once before the next push — the 02-08 pin bundle session only exercised scripts/check-verify.sh (02-08 report §b)
+- [ ] Index the 01-54 closeout (docs/status/tasks/2026-10-13_01-54_task-000001a1328418c06257187cb89200000000.md) into docs/status/README.md — it was never indexed (02-08 report §e)
+- [ ] Add a --self-test mode to check-verify.sh that injects the three red-path shapes (dropped KNOWN_FLAKY entry, undocumented entry, signature-shaped genuine red) into a temp copy so the spot-checks become permanent regression coverage (02-08 report §e)
+- [ ] Audit pin 3's literal-name markers for redundancy against pin 6's bidirectional extraction — decide keep/drop with a rationale comment (02-08 report §f5)
+- [ ] Extract the duplicated shim boilerplate (heal-shim and genuine-red go/gofmt pairs) into one parameterized helper inside check-verify.sh (02-08 report §f6)
+- [ ] Add shellcheck -S warning for scripts/lib/verify-retry.sh + scripts/check-verify.sh to the guard suite (new code uses process substitution + heredocs; only execution-tested) (02-08 report §f7)
+- [ ] Add a --list debug mode to check-verify.sh printing the extracted KNOWN_FLAKY names in both directions (02-08 report §f8)
+- [ ] Assert check-verify.sh stays sub-second (it now spawns extra shims) — timing-budget pin in the self-test (02-08 report §f9)
+- [ ] Confirm check-verify.sh is invoked by ci-local.sh (not only root-gate) — CI wiring check (02-08 report §f10)
+
 ## Done-prompt harvest (2026-09-17; sources: the six-task CI-resilience/observability window close-outs 01-46/02-26/02-37/03-04/04-03/04-21, deduped against open rows; claims verified at HEAD this pass; docs/status/archived/2026-09-17_00-25_done-prompt-six-task-hardening-window.md)
 
 - [ ] Calibrate the transient-retry 45s×3 budget from git-history/report evidence of past mid-edit breaks (still zero datapoints; the wrapper has never healed a real break) (01-46 §f4; docs/status/2026-09-16_01-46_task-000001a0a7682e60d5308538ec1aff235005.md)
