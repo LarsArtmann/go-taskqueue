@@ -15,6 +15,13 @@
 #      toolchain, heals a scripted flake-signature first-run failure on
 #      its ONE retry (03-47 report §b2): the wrapper file's own retry
 #      path runs, not just the lib's behind it.
+#   5. KNOWN_FLAKY ↔ AGENTS.md cross-check (03-47 §e4 + 2026-10-13 01-54
+#      closeout §e, bidirectional): every "is load-flaky" Known Issues
+#      mention appears in the lib's list AND every list entry has a Known
+#      Issues mention.
+#   6. scripts/verify.sh's genuine-red path in situ (04-55 report §b2):
+#      under an always-failing NON-signature go shim it propagates rc=1
+#      with exactly one go invocation and zero retry lines.
 # Pattern: scripts/check-transient-retry.sh (marker-guarded, sub-second).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -84,6 +91,20 @@ while IFS= read -r known_flake; do
 done < <(grep -oE '`?Test[A-Za-z0-9_]+`? is load-flaky' AGENTS.md | grep -oE 'Test[A-Za-z0-9_]+')
 if ! grep -qE 'is load-flaky' AGENTS.md; then
 	echo "FAIL: no '<Test> is load-flaky' bullet found in AGENTS.md — the KNOWN_FLAKY pin has nothing to bind to"
+	fail=1
+fi
+# Bidirectional (2026-10-13 01-54 closeout §e): every lib KNOWN_FLAKY entry
+# must also have an AGENTS.md "<Test> is load-flaky" mention — the Known
+# Issues list stays the single owner of the retry ladder in both directions.
+while IFS= read -r listed; do
+	[ -n "$listed" ] || continue
+	if ! grep -qE "[\`']?$listed[\`']? is load-flaky" AGENTS.md; then
+		echo "FAIL: $lib KNOWN_FLAKY entry '$listed' has no '<Test> is load-flaky' mention in AGENTS.md"
+		fail=1
+	fi
+done < <(sed -n '/^KNOWN_FLAKY=(/,/^)/p' "$lib" | grep -oE '"Test[A-Za-z0-9_]+"' | tr -d '"')
+if ! sed -n '/^KNOWN_FLAKY=(/,/^)/p' "$lib" | grep -qE '"Test[A-Za-z0-9_]+"'; then
+	echo "FAIL: $lib KNOWN_FLAKY list is empty — the bidirectional pin has nothing to bind to"
 	fail=1
 fi
 
@@ -237,4 +258,4 @@ must_not_mention "in-situ genuine-red case" 'retrying ONCE'
 must_not_mention "in-situ genuine-red case" 'FLAKE-RETRY'
 echo "ok: in-situ verify.sh genuine-red (rc=1, one go invocation, zero retry lines)"
 
-echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified)"
+echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified, KNOWN_FLAKY↔AGENTS.md bidirectional cross-check, in-situ genuine-red rc=1 no-retry verified)"
