@@ -192,6 +192,11 @@ docs/DOMAIN_LANGUAGE.md.
   re-verified note; `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches).
+- **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE composing
+  any `<ts>_<slug>` filename (reports, evidence archives) and paste the
+  output — never guess the clock. A guessed `<ts>` makes the filename
+  lie about its own timestamp (the 02-30 retro report was actually
+  written 02:28; 02-28 report §d1/§e1).
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
   (daemon sweeps in <60 s, footer-less, takes STAGED files too); fold
   ferries only while local-only + contiguous + exactly-mine; mechanical
