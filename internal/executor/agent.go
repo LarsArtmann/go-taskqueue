@@ -863,6 +863,13 @@ func appendVerdictLine(output, path string) string {
 // closeoutPending records a finished WORK turn whose close-out is owed: a
 // rate-limited close-out requeues the task WITHOUT burning an attempt, and
 // the re-claim must resume here instead of re-running the paid work turn.
+//
+// Lifetime audit (00-11 report e5): entries are removed on resume or
+// process restart only — a task that dies CANCELLED while parked never
+// re-claims, so its entry lingers (two strings, bounded, in-memory).
+// Harmless here; the observable leak was the worktree reaper consulting
+// WorktreeInUse without consulting the store's terminal status — fixed by
+// worktreeInFlight in cmd/tq (terminal status wins).
 type closeoutPending struct {
 	repoDir string
 	session string
