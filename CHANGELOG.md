@@ -7,9 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Changed
-- **Webui CSP `form-action 'self'` (O11)**: the dashboard CSP relaxes
-  `form-action` from `'none'` to same-origin `'self'` so the no-JS filter
-  fallback form submits again; every other directive unchanged, `/health*`
+- **Webui CSP `form-action 'self'` (O11)** (BEHAVIOR CHANGE for dashboard
+  users: the no-JS filter fallback form submits again where it was
+  blocked): the dashboard CSP relaxes
+  `form-action` from `'none'` to same-origin `'self'`; every other directive unchanged, `/health*`
   still pins `'none'`, and the route-table security test + SECURITY.md +
   ADR-0003 document the ruling (2026-10-05, surfaced during G1).
 
@@ -42,19 +43,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   corrected projection-beside sidecar (`<db>.readmodel.db.dlq.db`) is
   absent — poison facts stranded by the pre-fix derivation stop being
   invisible (inspect, then remove or migrate; no auto-move).
-- **check-release-docs.sh `--self-test` alarm pin** (2026-10-12): the drift
-  smoke re-runs itself against a mutated copy of RELEASE.md (newline-
-  flattened so a doc reflow can't defeat the mutation, `go list -m
-  -versions` deleted) and requires the exact doc-side miss — wired as a
-  ci-local step — so a reshaped needle, a lost `drift=1` or a neutered
-  grep fails the gate instead of rotting the smoke into always-green
-  (sibling pattern: check-transient-retry.sh).
-- **check-release-docs.sh `poked demand-fill` log-line pin** (2026-10-12):
-  the proxy on-demand-fill echo (scripts/lib/proxy-wait.sh) is
-  `need_in_both`-pinned, so RELEASE.md's timeout-fallback citation and the
-  release script's log line can no longer drift apart silently — rewording
-  either side fails the drift smoke naming where the needle died (closeout
-  2026-10-09 §b/§e1).
 - **`tq park` verb** (2026-10-12): `tq park <id> --until DUR [--reason R]`
   parks a PENDING task — claims suppressed until the instant, no attempt
   burn, one `task.parked` fact (Owner + reason) in the same tx as the
@@ -65,7 +53,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   dedup-key match) and `tq audit --journal --task-id <id>` (task-scoped
   drift replay over exact-or-unique-prefix branded ids) replace
   scan-and-grep journal forensics.
-- **Owner-session park policy** (2026-10-12): `tq agent-pool
+- **Owner-session park policy** (2026-10-12) (BEHAVIOR CHANGE for pooled
+  agents: claimable work in a live-owner repo parks for 15m by default
+  instead of being claimed): `tq agent-pool
   --owner-session-park` (default ON; `--owner-session-hold`, default
   15m) — a tick-time PRE-claim sweep parks claimable pending tasks in
   repos with a live owner session (session-registry ping ≤10m, cwd
@@ -79,34 +69,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `Store.Park` (tq park store surface): operator parks suppress claims on PENDING tasks until an instant without burning attempts — same-transaction NotBefore move + `task.parked` fact; a past until is the release.
 - `Store.ClaimDueTypes`: claim-time executor-type filter — a pool whose registry lacks a type never claims it (bare workers can no longer dead-letter agent tasks).
 - `Store.ClaimCounts` GROUP BY pushdown and `Filter.DedupKey` exact-match list filter.
-- The agent pool's claim-time done gate (`--done-preflight`) now defaults ON: a task minted before its work landed completes with zero agent spend at claim time instead of burning a paid re-dispatch window.
-- `tq stats` loop-suspect census now reads ONE `Store.ClaimCounts` grouped
-  query — the per-task `task.claimed` facts walk and its cmd/tq twin
-  retired with the C16.4 flip (2026-10-12).
+- The agent pool's claim-time done gate (`--done-preflight`) now defaults
+  ON (BEHAVIOR CHANGE for pool operators: tasks minted before their work
+  landed complete at claim time with zero agent spend instead of burning a
+  paid re-dispatch window).
 
 ### Fixed
-- **Backfill (coverage gap, closed 2026-10-12)**: minted verify gates'
-  gofmt stage is scoped to non-gitignored files (`executor.ScopedGofmtStage`,
-  shipped 2026-10-01) — the structural vendor-gofmt red class that killed
-  ~103 tasks is gone at the gate source; the tracking TODO row was deleted
-  2026-10-12 (docs-health sweep 6).
-- `GitLogScanner` now attributes commits whose footer git refuses to parse as a trailer (a footer stranded above the attribution block — 59% of footer commits were invisible), via an exact column-0 body-line fallback that still never attributes quoted or indented footers.
-
-- `scripts/heal-daemon-sweep.sh` fork records now carry the true pre-rewrite SHA on the left (previously post-rewrite SHAs on both sides, i.e. identity pairs), and the heal id accepts session-scope slugs like `20261011-b10-alert-routing-pack` alongside hex task ids.
-
-- **check-release-docs.sh doc pins are reflow-tolerant** (2026-10-12):
-  `need_in_both`'s doc-side grep runs on a newline-normalized RELEASE.md
-  copy (`tr '\n' ' '`), so a doc reflow that wraps a pinned phrase
-  across lines no longer false-fails the drift smoke; the call-site
-  FALSE-FAIL HAZARD comment shrinks to the why-normalized one-liner
-  (the fix for the hazard the 1075248c annotation documented).
-- **Readmodel schema probe honors ctx and reports close errors** (2026-10-12):
-  the projection-home convergence probe (the legacy-schema crash-loop
-  guard) ran context-less SQL and ignored `db.Close`/`rows.Close`
-  errors; the probe now threads the caller's ctx into
-  `QueryRowContext`/`QueryContext` and promotes close failures to the
-  returned error (resolves the noctx ×2 + errcheck ×2 debt accepted
-  into the v0.3.4 lint baseline).
+- `GitLogScanner` now attributes commits whose footer git refuses to parse as a trailer (a footer stranded above the attribution block — 59% of footer commits were invisible) via an exact column-0 body-line fallback that still never attributes quoted or indented footers (BEHAVIOR CHANGE for attribution consumers: stranded-footer commits now attribute where they previously went unattributed).
 - **Doctor projection-DLQ path split-brain** (2026-10-11; code shipped in
   the v0.3.4 tree, entry backfilled 2026-10-12): the doctor's sidecar stat
   and the store's count read went to two different files
@@ -115,6 +84,47 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `OpenDeadLetters` now derives the ONE projection-beside path
   (`DLQPathFor(PathFor(d.DBPath))`), `TestDoctorProjectionDLQ` is
   un-papered, and the legacy-sidecar WARN above covers pre-fix databases.
+
+### Internal
+
+Repo-internal tooling and non-operator-facing changes (O14 audit
+2026-10-13: kept for the record, excluded from operator release notes).
+
+- **check-release-docs.sh `--self-test` alarm pin** (2026-10-12): the drift
+  smoke re-runs itself against a mutated copy of RELEASE.md (newline-
+  flattened so a doc reflow can't defeat the mutation, `go list -m
+  -versions` deleted) and requires the exact doc-side miss — wired as a
+  ci-local step — so a reshaped needle, a lost `drift=1` or a neutered
+  grep fails the gate instead of rotting the smoke into always-green
+  (sibling pattern: check-transient-retry.sh).
+- **check-release-docs.sh `poked demand-fill` log-line pin** (2026-10-12):
+  the proxy on-demand-fill echo (scripts/lib/proxy-wait.sh) is
+  `need_in_both`-pinned, so RELEASE.md's timeout-fallback citation and the
+  release script's log line can no longer drift apart silently — rewording
+  either side fails the drift smoke naming where the needle died (closeout
+  2026-10-09 §b/§e1).
+- **check-release-docs.sh doc pins are reflow-tolerant** (2026-10-12):
+  `need_in_both`'s doc-side grep runs on a newline-normalized RELEASE.md
+  copy (`tr '\n' ' '`), so a doc reflow that wraps a pinned phrase
+  across lines no longer false-fails the drift smoke; the call-site
+  FALSE-FAIL HAZARD comment shrinks to the why-normalized one-liner
+  (the fix for the hazard the 1075248c annotation documented).
+- `tq stats` loop-suspect census now reads ONE `Store.ClaimCounts` grouped
+  query — the per-task `task.claimed` facts walk and its cmd/tq twin
+  retired with the C16.4 flip (2026-10-12).
+- `scripts/heal-daemon-sweep.sh` fork records now carry the true pre-rewrite SHA on the left (previously post-rewrite SHAs on both sides, i.e. identity pairs), and the heal id accepts session-scope slugs like `20261011-b10-alert-routing-pack` alongside hex task ids.
+- **Readmodel schema probe honors ctx and reports close errors** (2026-10-12):
+  the projection-home convergence probe (the legacy-schema crash-loop
+  guard) ran context-less SQL and ignored `db.Close`/`rows.Close`
+  errors; the probe now threads the caller's ctx into
+  `QueryRowContext`/`QueryContext` and promotes close failures to the
+  returned error (resolves the noctx ×2 + errcheck ×2 debt accepted
+  into the v0.3.4 lint baseline).
+- **Backfill (coverage gap, closed 2026-10-12)**: minted verify gates'
+  gofmt stage is scoped to non-gitignored files (`executor.ScopedGofmtStage`,
+  shipped 2026-10-01) — the structural vendor-gofmt red class that killed
+  ~103 tasks is gone at the gate source; the tracking TODO row was deleted
+  2026-10-12 (docs-health sweep 6).
 
 ## [v0.3.4] - 2026-10-11
 
