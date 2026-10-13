@@ -39,8 +39,16 @@ fi
 if command -v shellcheck >/dev/null 2>&1; then
 	sc=(shellcheck)
 elif command -v nix >/dev/null 2>&1; then
-	sc=(nix shell nixpkgs#shellcheck -c shellcheck)
-	echo "shellcheck via nix shell"
+	# Prefetch on a QUIET, SEPARATE path before the findings capture: a cold
+	# nix fetch once raced its own output into the capture and produced a
+	# phantom exit-1 red (01-46 report f15). By the time shellcheck runs, the
+	# store path exists and nix is out of the picture entirely.
+	echo "shellcheck via nix shell (prefetching, quiet on a cold cache)"
+	prefetched="$(nix build nixpkgs#shellcheck --no-link --print-out-paths 2>/dev/null)" || {
+		echo "FAIL: nix prefetch of shellcheck failed (run 'nix build nixpkgs#shellcheck' for stderr)" >&2
+		exit 1
+	}
+	sc=("$prefetched/bin/shellcheck")
 else
 	echo "FAIL: shellcheck unavailable (preinstalled on GitHub runners; locally: nix shell nixpkgs#shellcheck -c shellcheck)" >&2
 	exit 1
