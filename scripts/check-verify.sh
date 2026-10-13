@@ -18,7 +18,8 @@
 #   5. KNOWN_FLAKY ↔ AGENTS.md cross-check (03-47 §e4 + 2026-10-13 01-54
 #      closeout §e, bidirectional): every "is load-flaky" Known Issues
 #      mention appears in the lib's list AND every list entry has a Known
-#      Issues mention.
+#      Issues mention — plus (§f9) a self-test that a bullet reworded
+#      away from "is load-flaky" trips the empty-extraction FAIL.
 #   6. scripts/verify.sh's genuine-red path in situ (04-55 report §b2):
 #      under an always-failing NON-signature go shim it propagates rc=1
 #      with exactly one go invocation and zero retry lines — at the BUILD
@@ -326,4 +327,4 @@ must_not_mention "in-situ test-stage case" 'retrying ONCE'
 must_not_mention "in-situ test-stage case" 'FLAKE-RETRY'
 echo "ok: in-situ verify.sh genuine-red at the TEST stage (rc=1, one go test invocation, zero retry lines)"
 
-echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified, KNOWN_FLAKY↔AGENTS.md bidirectional cross-check, in-situ genuine-red rc=1 no-retry verified (build-stage + test-stage))"
+echo "verify self-test ok (battery parity with .tq-verify, wrapper + lib markers, root-gate extraction, green/heal/exhaust/non-signature semantics, in-situ verify.sh flake-heal verified, KNOWN_FLAKY↔AGENTS.md bidirectional cross-check (+ reworded-bullet empty-extraction self-test), in-situ genuine-red rc=1 no-retry verified (build-stage + test-stage))"
