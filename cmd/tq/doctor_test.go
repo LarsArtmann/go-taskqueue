@@ -622,7 +622,11 @@ func TestDoctorStaleItems(t *testing.T) {
 	}
 
 	todo := filepath.Join(root, "demo", "TODO_LIST.md")
-	if err := os.WriteFile(todo, []byte("# Backlog\n\n- [x] Ship the widget\n- [ ] Polish the widget\n"), 0o644); err != nil {
+	if err := os.WriteFile(
+		todo,
+		[]byte("# Backlog\n\n- [x] Ship the widget\n- [ ] Polish the widget\n"),
+		0o644,
+	); err != nil {
 		t.Fatalf("write todo: %v", err)
 	}
 

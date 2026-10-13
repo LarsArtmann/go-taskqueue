@@ -523,11 +523,17 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 	}
 
 	if report.TaskID != "" {
-		fmt.Printf("journal drift audit (task %s): 1 task compared against %d fact(s) (status, attempts, priority, dedup key)\n",
-			report.TaskID, report.FactsReplayed)
+		fmt.Printf(
+			"journal drift audit (task %s): 1 task compared against %d fact(s) (status, attempts, priority, dedup key)\n",
+			report.TaskID,
+			report.FactsReplayed,
+		)
 	} else {
-		fmt.Printf("journal drift audit: %d task(s) compared against %d fact(s) (status, attempts, priority, dedup key)\n",
-			report.TasksCompared, report.FactsReplayed)
+		fmt.Printf(
+			"journal drift audit: %d task(s) compared against %d fact(s) (status, attempts, priority, dedup key)\n",
+			report.TasksCompared,
+			report.FactsReplayed,
+		)
 	}
 	fmt.Printf("coverage: status %d/%d, attempts %d/%d, priority %d/%d, dedup key %d/%d\n",
 		report.Coverage.Status, report.TasksCompared,
@@ -597,8 +603,15 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 	case 0:
 		fmt.Println("autopsy yield: no dlqfix autopsies in the journal")
 	default:
-		fmt.Printf("autopsy yield: %d minted — %d fix(es) landed, %d wontfix, %d rescue(s) in flight, %d dead again, %d unrun\n",
-			y.Autopsies, y.Fixes, y.Wontfix, y.InFlight, y.FailedAgain, y.Unrun)
+		fmt.Printf(
+			"autopsy yield: %d minted — %d fix(es) landed, %d wontfix, %d rescue(s) in flight, %d dead again, %d unrun\n",
+			y.Autopsies,
+			y.Fixes,
+			y.Wontfix,
+			y.InFlight,
+			y.FailedAgain,
+			y.Unrun,
+		)
 		fmt.Println("  (environmental deaths no longer mint autopsies — the ceremony cut refuses them at sweep time)")
 	}
 

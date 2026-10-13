@@ -494,7 +494,9 @@ func TestWorktreeInFlightTerminalStatusWins(t *testing.T) {
 	}
 
 	if probe(tk.ID.String()) {
-		t.Fatalf("CANCELLED task still reported in-flight — stale closeoutPending entries would pin the worktree forever")
+		t.Fatalf(
+			"CANCELLED task still reported in-flight — stale closeoutPending entries would pin the worktree forever",
+		)
 	}
 
 	if probe("00000000000000000000000000000000") {

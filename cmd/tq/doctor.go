@@ -644,12 +644,18 @@ func doctorWorktreeOrphans(ctx context.Context, store queue.Store, projectsDir s
 		items = append(items, o.Repo+" "+o.Branch+state)
 	}
 
-	return []checkResult{{
-		Name:   "worktree-orphans",
-		Status: checkWarn,
-		Detail: fmt.Sprintf("%d orphan tq/* remnant(s), %d merged (branch delete is safe; unmerged branches stay the delivery)", len(orphans), merged),
-		Items:  items,
-	}}
+	return []checkResult{
+		{
+			Name:   "worktree-orphans",
+			Status: checkWarn,
+			Detail: fmt.Sprintf(
+				"%d orphan tq/* remnant(s), %d merged (branch delete is safe; unmerged branches stay the delivery)",
+				len(orphans),
+				merged,
+			),
+			Items: items,
+		},
+	}
 }
 
 // doctorVerifyPins is the stale-payload hygiene check (09-39 report f2/§e3):
@@ -1016,7 +1022,8 @@ func doctorProjectionWorkerDeath(dbPath string) []checkResult {
 		Status: checkWarn,
 		Detail: fmt.Sprintf(
 			"projection %q's worker exhausted its restart budget and stopped consuming %s ago — the fold is frozen at its cursor while reading at-head; restart the serve/api host (the marker clears on the next host start)",
-			marker.Projection, time.Since(marker.FailedAt).Round(time.Minute),
+			marker.Projection,
+			time.Since(marker.FailedAt).Round(time.Minute),
 		),
 	}}
 }

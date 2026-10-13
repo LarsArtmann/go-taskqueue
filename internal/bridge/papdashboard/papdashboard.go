@@ -702,7 +702,8 @@ func (b *Bridge) trackBudgetBlocked(ctx context.Context, fact journal.Fact) erro
 					"title":    "agent-pool budget-parked all day",
 					"body": fmt.Sprintf(
 						"Budget-blocked claims spanned %s of %s: the pool idled on the money gate from the first parked claim to the rollover.",
-						parked.Round(time.Hour), b.blockedDay,
+						parked.Round(time.Hour),
+						b.blockedDay,
 					),
 					"sourceApp": b.cfg.SourceApp,
 					"metadata": map[string]string{
