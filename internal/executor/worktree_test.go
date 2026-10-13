@@ -15,7 +15,8 @@ import (
 func fakeGit(responses map[string]struct {
 	out string
 	err error
-}) gitRunner {
+},
+) gitRunner {
 	return func(dir string, args ...string) (string, error) {
 		r, ok := responses[args[0]]
 		if !ok {
@@ -312,7 +313,8 @@ func TestCreateWorktreeIntegrationRealGit(t *testing.T) {
 func scriptedGit(steps []struct {
 	out string
 	err error
-}) gitRunner {
+},
+) gitRunner {
 	i := 0
 
 	return func(dir string, args ...string) (string, error) {
