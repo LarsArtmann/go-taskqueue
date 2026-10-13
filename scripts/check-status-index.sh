@@ -13,6 +13,14 @@ cd "$(dirname "$0")/.." || exit 1
 # re-derive only with a measured rows/day cliff.
 readonly INDEX_BLOAT_THRESHOLD=100
 
+# --mine: scope the report loop to reports this session OWNS — staged,
+# modified-unstaged, or untracked under docs/status/ (02-28 report §e4).
+# A concurrent agent's unindexed daemon fold then fails only that agent's
+# gate, not unrelated commits' local confidence. Default (no --mine)
+# stays the full sweep.
+mine=0
+[ "${1:-}" = "--mine" ] && mine=1
+
 # Row classification contract (pinned by --self-test):
 #   live     = row starts `| 20` (a report row) that is neither archived nor a digest
 #   archived = row carries a BACKTICKED `archived/…` path — the backticks are
@@ -108,7 +116,16 @@ while IFS= read -r report; do
 			echo "TRAILER WARNING: $report names task ${task_id:0:16}… but no commit carries its Task-Queue-ID trailer (f26 cluster class; owner ruling pending)"
 		fi
 	fi
-done < <(find docs/status -maxdepth 1 -name '*.md' ! -name 'README.md' | sort)
+done < <(
+	if [ "$mine" = 1 ]; then
+		{
+			git diff --name-only HEAD -- docs/status
+			git ls-files --others --exclude-standard docs/status
+		} | sort -u | grep -E '^docs/status/[^/]+\.md$' | grep -v 'README\.md$'
+	else
+		find docs/status -maxdepth 1 -name '*.md' ! -name 'README.md' | sort
+	fi
+)
 
 # Index-scannability cadence (see INDEX_BLOAT_THRESHOLD above for the
 # contract): when unarchived rows exceed the threshold, nudge a monthly
@@ -117,6 +134,10 @@ done < <(find docs/status -maxdepth 1 -name '*.md' ! -name 'README.md' | sort)
 live=$(count_live_rows "$index")
 if [ "$live" -gt "$INDEX_BLOAT_THRESHOLD" ]; then
 	echo "INDEX BLOAT WARNING: $live live rows in $index (threshold $INDEX_BLOAT_THRESHOLD) — run an archive sweep (docs-health ANNOTATE) or add a monthly digest row (08-25 f20)"
+fi
+
+if [ "$mine" = 1 ] && [ "$fail" = 0 ]; then
+	echo "status index ok (--mine: owned reports only)"
 fi
 
 if [ "$fail" = 0 ]; then
