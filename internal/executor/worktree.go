@@ -53,7 +53,6 @@ func createWorktree(repoDir, id, projectsDir string, run gitRunner) (dir, branch
 	dir = filepath.Join(worktreeRoot(repoDir, projectsDir), base, id)
 
 	_, branchExists := run(repoDir, "rev-parse", "--verify", "--quiet", "refs/heads/"+branch)
-
 	if branchExists == nil {
 		// Retry-ladder adoption (the 00-46 §g1 collision bug): attempt 2
 		// re-enters createWorktree and the delivery branch of attempt 1
@@ -69,7 +68,13 @@ func createWorktree(repoDir, id, projectsDir string, run gitRunner) (dir, branch
 		_ = os.RemoveAll(dir) // stale/unregistered path: a worktree add needs it gone
 
 		if out, err := run(repoDir, "worktree", "add", dir, branch); err != nil {
-			return "", "", false, fmt.Errorf("agent: worktree adopt %s at %s: %w: %s", branch, dir, err, tailOutput(out))
+			return "", "", false, fmt.Errorf(
+				"agent: worktree adopt %s at %s: %w: %s",
+				branch,
+				dir,
+				err,
+				tailOutput(out),
+			)
 		}
 
 		return dir, branch, true, nil
@@ -208,7 +213,13 @@ func checkWorktreeRails(repoDir string, run gitRunner) error {
 		}
 
 		if strings.TrimSpace(out) != "" {
-			return Permanent(fmt.Errorf("agent: %s is uncommitted in %s — a worktree checkout would run WITHOUT it; commit the rail first (worktree mode makes tq doctor's untracked-rails warning a hard failure)", rail, repoDir))
+			return Permanent(
+				fmt.Errorf(
+					"agent: %s is uncommitted in %s — a worktree checkout would run WITHOUT it; commit the rail first (worktree mode makes tq doctor's untracked-rails warning a hard failure)",
+					rail,
+					repoDir,
+				),
+			)
 		}
 	}
 

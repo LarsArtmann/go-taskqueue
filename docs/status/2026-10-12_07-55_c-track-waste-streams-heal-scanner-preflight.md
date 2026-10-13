@@ -53,7 +53,7 @@ would previously have destroyed attribution was recovered in minutes.
    values AND raw body; a commit whose footer git refuses to parse as a
    trailer (row-276 glue class: footer stranded above the attribution
    block — the 59%-invisible gap) is attributed from its column-0 body
-   line. Exact-line matching keeps the guarantee: `> `-prefixed or indented
+   line. Exact-line matching keeps the guarantee: `>`-prefixed or indented
    quotes never attribute (unit-pinned + e2e-pinned). Real-git quirk
    handled: a non-empty trailer field makes %(trailers) end with a newline,
    so the record's body begins on the next `\x1f`-prefixed line

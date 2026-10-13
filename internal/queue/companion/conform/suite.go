@@ -38,7 +38,12 @@ type Store interface {
 	CancelRunning(ctx context.Context, id task.ID, reason string) error
 	ClaimCounts(ctx context.Context) (map[string]int, error)
 	ClaimDue(ctx context.Context, owner string, lease time.Duration) (task.Task, queue.Claim, error)
-	ClaimDueTypes(ctx context.Context, owner string, lease time.Duration, types []string) (task.Task, queue.Claim, error)
+	ClaimDueTypes(
+		ctx context.Context,
+		owner string,
+		lease time.Duration,
+		types []string,
+	) (task.Task, queue.Claim, error)
 	Close() error
 	Complete(ctx context.Context, id task.ID, claim queue.Claim, result jsontext.Value) error
 	CountFacts(ctx context.Context, ftype journal.FactType, since time.Time) (int64, error)

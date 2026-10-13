@@ -138,7 +138,7 @@ func listWorktreeBranches(repoDir string) map[string]bool {
 
 	branches := map[string]bool{}
 
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, WorktreeBranchPrefix) {
 			continue

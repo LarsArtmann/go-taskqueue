@@ -32,9 +32,9 @@
      29-23-40/23-57 probe windows, 30-04-34 archive window,
      30-08-43/08-57 tail windows).
    - 3 planning docs: worktree-per-agent-design (EXECUTED — O11 ruling
-     + 9 ROADMAP-mirrored questions + rows 143/437),
-     verification-claims-guidance (narrative-only), ci-topology-one-pager
-     (rows 590/591 + AGENTS:255 entry).
+     - 9 ROADMAP-mirrored questions + rows 143/437),
+       verification-claims-guidance (narrative-only), ci-topology-one-pager
+       (rows 590/591 + AGENTS:255 entry).
    - 2 feedback drafts → new `docs/feedback/archived/` home (all asks
      struck shipped by the 09-30 sweep; ADR-0017 cured the go-install
      limitation the drafts were blocked on).
@@ -47,11 +47,11 @@
    green proves no straggler.
 4. **Two stale TODO rows closed against the tree**: row 141
    (vendor-gofmt structural red) DELETED — `executor.ScopedGofmtStage`
-   + the scoped `.tq-verify` landed 2026-10-01 (verified
-   agent.go:1107/.tq-verify:1); row 392 narrowed to its open
-   vendorHash-provenance half — the hash twin itself is single-sourced
-   at `flake.nix:54`. CHANGELOG gained the missing scoped-gofmt entry
-   as an [Unreleased]/Fixed backfill.
+   - the scoped `.tq-verify` landed 2026-10-01 (verified
+     agent.go:1107/.tq-verify:1); row 392 narrowed to its open
+     vendorHash-provenance half — the hash twin itself is single-sourced
+     at `flake.nix:54`. CHANGELOG gained the missing scoped-gofmt entry
+     as an [Unreleased]/Fixed backfill.
 5. **Living-docs VERIFY pass**: README quickstart `@v0.3.3`→`@v0.3.4`
    (latest tag verified) + `tq park`/`tq pool-health` added to the
    at-a-glance table; FEATURES/ROADMAP/AGENTS/TODO/CHANGELOG verified
@@ -90,9 +90,9 @@
 
 ## c) NOT STARTED (noticed, deliberately not touched)
 
-1. **The 2026-10-* corpus** (~150 live files) — outside the ordered
+1. __The 2026-10-_ corpus_* (~150 live files) — outside the ordered
    glob; the fifth sweep already named it the next corpus.
-2. **The 13 non-md 2026-0* artifacts** (architecture-understanding
+2. __The 13 non-md 2026-0_ artifacts_* (architecture-understanding
    d2/svg/html ×7, modularization html ×3, research html ×1, reviews
    html ×2): inventoried and classified LEAVE-carried, but NOT viewed
    — the "view ALL" order was honored for all 114 .md files only.

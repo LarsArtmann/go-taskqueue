@@ -1134,7 +1134,9 @@ func TestFastRefusedGateRequeueClass(t *testing.T) {
 	reg := executor.NewRegistry()
 	reg.RegisterFunc("agent", func(context.Context, task.Task) error {
 		return &executor.RateLimitError{
-			Cause:       errors.New("agent: provider rate limit in effect (observed by a sibling run); deferring until reset"),
+			Cause: errors.New(
+				"agent: provider rate limit in effect (observed by a sibling run); deferring until reset",
+			),
 			RetryAfter:  time.Minute,
 			FastRefused: true,
 		}
@@ -1174,7 +1176,12 @@ func TestFastRefusedGateRequeueClass(t *testing.T) {
 		}
 
 		if ev.Class != queue.RequeueClassRateLimitGate {
-			t.Fatalf("fast-refused requeue class = %q, want %q (%s)", ev.Class, queue.RequeueClassRateLimitGate, f.Detail)
+			t.Fatalf(
+				"fast-refused requeue class = %q, want %q (%s)",
+				ev.Class,
+				queue.RequeueClassRateLimitGate,
+				f.Detail,
+			)
 		}
 
 		return

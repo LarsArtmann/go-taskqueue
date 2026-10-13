@@ -111,7 +111,6 @@ if ! sed -n '/^KNOWN_FLAKY=(/,/^)/p' "$lib" | grep -qE '"Test[A-Za-z0-9_]+"'; th
 	fail=1
 fi
 
-
 # Pin 4: root-gate.sh consumes the lib, no private signature copy.
 if grep -qE '^(known_flaky|KNOWN_FLAKY)=' "$root_gate"; then
 	echo "FAIL: $root_gate still defines a private flaky-signature list — the extraction regressed"

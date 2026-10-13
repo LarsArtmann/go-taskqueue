@@ -4,13 +4,13 @@
 
 Window tasks (all five `completed` in the live journal `/mnt/pool/services/tq/tq.db`, facts seq 10901–11070, verified this pass):
 
-| Task | Dispatch | TODO row | Verdict |
-| --- | --- | --- | --- |
-| `…7f145912…` | api pump managed-host adoption (row-35 re-dispatch) | row 48 `[x]` | no-op closeout — landed pre-dispatch |
-| `…815e4486…` | review-fix: index the unindexed 00-00 closeout report | (review-fix) | fixed: one README index row |
-| `…5a8e4586…` | verify readmodel self-open honors `TQ_SQLITE_SYNC` | row 49 `[x]` | bug confirmed + fixed + pinned |
-| `…76062b53…` | doctor projection-DLQ path split-brain | row 50 `[x]` | fixed, test un-papered |
-| `…88ceb2f8…` | stale `DLQPathFor(d.DBPath)` citation sweep (row 20) | row 20 `[x]` | verified no-op |
+| Task         | Dispatch                                              | TODO row     | Verdict                              |
+| ------------ | ----------------------------------------------------- | ------------ | ------------------------------------ |
+| `…7f145912…` | api pump managed-host adoption (row-35 re-dispatch)   | row 48 `[x]` | no-op closeout — landed pre-dispatch |
+| `…815e4486…` | review-fix: index the unindexed 00-00 closeout report | (review-fix) | fixed: one README index row          |
+| `…5a8e4586…` | verify readmodel self-open honors `TQ_SQLITE_SYNC`    | row 49 `[x]` | bug confirmed + fixed + pinned       |
+| `…76062b53…` | doctor projection-DLQ path split-brain                | row 50 `[x]` | fixed, test un-papered               |
+| `…88ceb2f8…` | stale `DLQPathFor(d.DBPath)` citation sweep (row 20)  | row 20 `[x]` | verified no-op                       |
 
 SHA note: the dispatch prompts cite pre-rewrite commit SHAs (all three unreachable at HEAD after the heal — see §d2), so this report cites only SHAs verified reachable at HEAD (`git merge-base --is-ancestor`). The dangling-dispatch-payload class is §d2/§g1.
 

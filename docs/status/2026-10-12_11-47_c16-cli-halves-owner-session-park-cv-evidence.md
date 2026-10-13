@@ -15,8 +15,8 @@ go-taskqueue commits carry footer `Task-Queue-ID: 20261012-c16-park-forensics`.
    `parkBy()` = `$USER` fallback "operator". e2e pin
    `TestParkVerbSuppressesClaimsAndReleaseReArms` (park → ClaimDue ErrNoTaskDue → 1
    task.parked fact w/ reason+by → attempts/status untouched → release → claim+complete)
-   + `TestParkVerbRefusals` (running-task, bad duration, 170h over-cap, exclusive
-   flags).
+   - `TestParkVerbRefusals` (running-task, bad duration, 170h over-cap, exclusive
+     flags).
 2. **C16.3 CLI (row 494)** — `tq tasks --dedup <key>` rides `Filter.DedupKey`
    (store pushdown, pinned by `TestTasksDedupFilterPushdown`); `tq audit --journal
    --task-id <id>` scopes the fact replay to one task (exact id or unique prefix,

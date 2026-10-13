@@ -80,6 +80,7 @@ func claimTypeFilter(types []string) (string, []any) {
 	}
 
 	placeholders := make([]string, len(types))
+
 	args := make([]any, len(types))
 	for i, t := range types {
 		placeholders[i] = "?"
@@ -134,9 +135,15 @@ func ClaimDue(
 			  t.created_at ASC, t.id ASC
 			LIMIT 1`,
 			append([]any{now.UnixMilli(), now.UnixMilli(), boolInt(projectExclusive)},
-				append(typeArgs,
-					now.UnixMilli(), float64(queue.PriorityAgingDaysPerPoint), float64(queue.PriorityAgingMaxBonus),
-					now.UnixMilli(), float64(queue.PriorityAgingDaysPerPoint), float64(queue.PriorityAgingMaxBonus))...)...)
+				append(
+					typeArgs,
+					now.UnixMilli(),
+					float64(queue.PriorityAgingDaysPerPoint),
+					float64(queue.PriorityAgingMaxBonus),
+					now.UnixMilli(),
+					float64(queue.PriorityAgingDaysPerPoint),
+					float64(queue.PriorityAgingMaxBonus),
+				)...)...)
 
 		var id, st, prevOwner string
 		if err := row.Scan(&id, &st, &prevOwner); err != nil {

@@ -20,10 +20,12 @@ const (
 // line is the subject again).
 func rec(sha, subject string, trailers ...string) string {
 	joined := strings.Join(trailers, "\n")
+
 	sep := "\x1f"
 	if joined != "" {
 		sep = "\n\x1f" // git's %(trailers) ends a non-empty value block with a newline
 	}
+
 	return sha + "\x1f" + subject + "\x1f" + joined + sep + subject
 }
 

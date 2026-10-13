@@ -110,7 +110,7 @@ publish_steps() {
 		esac
 	done
 	[ "$ci_green" = "true" ] || die "CI on $VERSION did not complete within 30 minutes — check: gh run list --commit $tag_sha"
-	
+
 	echo
 	echo "RELEASE $VERSION PUBLISHED — CI green on refs/tags/$VERSION."
 }

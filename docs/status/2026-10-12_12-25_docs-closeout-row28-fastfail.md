@@ -19,9 +19,9 @@ then row-28), then deliver a full status report and STOP before row-29.
      §g-ratification flag), **409** (`Store.ClaimDueTypes`, store-surface
      report citation), **410** (ClaimCounts pushdown + `b61db8d0` flip),
      **494** (forensics, `278fbc12`).
-   - FEATURES rows for BOTH windows: Queue core gains *Operator parks*,
-     *Claim-time executor-type filter*, *Census pushdowns*; Agent pool
-     gains *Owner-session park policy*; CLI gains the `tq park` row plus
+   - FEATURES rows for BOTH windows: Queue core gains _Operator parks_,
+     _Claim-time executor-type filter_, _Census pushdowns_; Agent pool
+     gains _Owner-session park policy_; CLI gains the `tq park` row plus
      `--dedup KEY` in the tasks row and `--task-id` in the audit row.
    - `docs/problems/major-prompting-and-batching.md`: status
      OPEN→**EXECUTED 2026-10-11/12** with the shipped numbers (work

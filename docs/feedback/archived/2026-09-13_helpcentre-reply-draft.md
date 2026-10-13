@@ -1,4 +1,5 @@
 > **ARCHIVED 2026-10-12 (docs-health sweep 6)** — all five asks carry 2026-09-30 strikes verified shipped (facades v0.3.0+); the CLI go-install limitation was cured by ADR-0017 (go install verified v0.3.3+).
+
 # Help Centre reply draft (owner sends)
 
 > **ANNOTATED 2026-09-30 (docs-health sweep)** — the external-adoption blockers this draft answers were healed by the v0.3.0 facade release (ADR-0016); struck items verified at HEAD.

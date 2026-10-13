@@ -194,7 +194,9 @@ func parseTrailerCommits(out, key, value string) []Commit {
 			if current != nil {
 				current.body = append(current.body, strings.TrimPrefix(line, "\x1f"))
 			}
+
 			bodyStart = false
+
 			continue
 		}
 
@@ -206,13 +208,16 @@ func parseTrailerCommits(out, key, value string) []Commit {
 					rec.trailers = append(rec.trailers, trailer)
 				}
 			}
+
 			if len(parts) == 4 {
 				rec.body = append(rec.body, parts[3])
 			} else {
 				bodyStart = true
 			}
+
 			records = append(records, rec)
 			current = &records[len(records)-1]
+
 			continue
 		}
 

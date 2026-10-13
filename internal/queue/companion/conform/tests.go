@@ -3625,6 +3625,7 @@ func TestParkSuppressesClaimsUntilRelease(t *testing.T) {
 	}
 
 	parked := 0
+
 	for _, f := range facts {
 		if f.Type == journal.Parked {
 			parked++
@@ -3656,7 +3657,16 @@ func TestParkRefusesNonPendingAndUnknown(t *testing.T) {
 		t.Fatalf("park running err = %v, want task.ErrInvalidTransition", err)
 	}
 
-	if err := s.Park(ctx, task.ID("000001a0doesnotexist00"), "r", time.Now().Add(time.Hour), "lars"); !errors.Is(err, task.ErrNotFound) {
+	if err := s.Park(
+		ctx,
+		task.ID("000001a0doesnotexist00"),
+		"r",
+		time.Now().Add(time.Hour),
+		"lars",
+	); !errors.Is(
+		err,
+		task.ErrNotFound,
+	) {
 		t.Fatalf("park unknown err = %v, want task.ErrNotFound", err)
 	}
 }

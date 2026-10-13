@@ -68,6 +68,7 @@ B11.1 dismissal-tier extension.
 
 Nothing un-healed or broken this session. Honest near-misses, all
 caught and corrected in-flight:
+
 - The row-28 "~100ms" estimate was fabricated by a prior session
   without reading the vendor restart loop — the fix shipped with the
   measured truth (18.677s) and the tick records the correction.
