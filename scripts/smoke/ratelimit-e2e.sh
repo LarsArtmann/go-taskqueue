@@ -109,6 +109,18 @@ grep -Eq '"retry_in_ms": ?"?[1-9]' "$TMP/facts.json" || {
 	exit 1
 }
 
+echo "== assert the worker log named the armed gate AND its provider (04-03 §f12)"
+grep -q 'provider rate limited; requeued without attempt burn' "$TMP/worker.log" || {
+	echo "FAIL: worker log lost the rate-limit requeue line (f35 observability)"
+	cat "$TMP/worker.log"
+	exit 1
+}
+grep -Eq 'provider=zai' "$TMP/worker.log" || {
+	echo "FAIL: worker log did not name WHICH provider armed the gate (want provider=zai)"
+	cat "$TMP/worker.log"
+	exit 1
+}
+
 echo "== second claim INSIDE the park window must not reach the agent (16-00 f37)"
 timeout 60 "$TMP/tq" worker --agents --once --poll 50ms --lease 5s --task-timeout 30s >"$TMP/worker2.log" 2>&1 || {
 	cat "$TMP/worker2.log"
