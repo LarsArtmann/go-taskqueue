@@ -5,10 +5,9 @@ journal, lease claims + crash reclaim, DAG deps, retries + DLQ,
 pluggable executors (incl. AI agents). One binary, one file, zero
 services.
 
-**STATUS: v0.3.4 shipped (tags pushed, proxy + pkg.go.dev verified);
-MULTIPLE concurrent agents** — re-read
-files, re-run tests; uncommitted parallel changes: read, judge, build
-on, never revert. (Size guard: TestAgentsDocSizeGuard)
+**STATUS: v0.3.4 shipped (tags pushed, proxy verified); MULTIPLE
+concurrent agents** — re-read files, re-run tests; uncommitted parallel
+changes: read, judge, build on, never revert. (Size guard: TestAgentsDocSizeGuard)
 
 **MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) —
 redesign SHIPPED v0.3.4; follow-ups tracked in the doc.
@@ -17,8 +16,8 @@ redesign SHIPPED v0.3.4; follow-ups tracked in the doc.
 
 ```bash
 ./scripts/ci-local.sh # pre-push gate; transient foreign breaks retry 45s ×3
-  # TRANSIENT_MAX_POLLS=0: NO retry, fail first (check-transient-retry pins);
-  # nix/check-ci/daemon-attribution deliberately unwrapped.
+  # TRANSIENT_MAX_POLLS=0: NO retry (check-transient-retry pins);
+  # nix/check-ci/daemon-attribution unwrapped.
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
 nix build # nix run .#test; .#webui-css
 ./scripts/fuzz/nightly.sh
@@ -39,11 +38,11 @@ for m in $(find internal task journal queue executor worker -name go.mod -printf
 **Public facades (ADR-0016):** `task/ journal/ queue/ queue/sqlite/
 queue/postgres/ executor/ worker/` re-export internals via type aliases
 — the only external import surface; in-repo code imports `internal/…`.
-Facades: require (real tag) + relative replace; facade tests import
+Facades: require (real tag) + relative replace; tests import
 internals, never sibling facades; parity via
-`scripts/check-facade-parity.sh` BEFORE staging (pre-commit gates
-staged files); postgres `OpenWithPool` pools CALLER-OWNED. No go.work —
-replace-only. Release flow: docs/release/ (rc-captured proxy checks).
+`scripts/check-facade-parity.sh` BEFORE staging; postgres
+`OpenWithPool` pools CALLER-OWNED. No go.work — replace-only.
+Release flow: docs/release/.
 
 Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh +
 release-gates + lint-baseline. `scripts/new-module.sh <dir> [deps…]`
@@ -112,9 +111,9 @@ docs/DOMAIN_LANGUAGE.md.
   managed block. `--task-closeout` resumes the EXACT session for its
   a)-g) report (`docs/status/tasks/<ts>_task-<id>.md`).
 - **Derived outcomes**: the queue derives what a run did — commits via
-  ONE `Task-Queue-ID` footer as LAST trailer (`executor.GitLogScanner`;
-  above attribution = invisible, hook rejects), files via
-  `git diff-tree`, usage via go-crush-data. No stdout self-report.
+  ONE `Task-Queue-ID` footer as LAST trailer (attribution above it is
+  invisible; hook rejects), files via `git diff-tree`, usage via
+  go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record via `tq verdict '<json>'` into
   `$TQ_RESULT_FILE` (file > legacy stdout, last-wins).
 - **Batched harvest** (`--batch-items`, default 3): N adjacent
@@ -139,15 +138,14 @@ docs/DOMAIN_LANGUAGE.md.
   burn (jittered wait, fallback 15min cap 6h); per-repo gates
   fast-refuse siblings; closeout 429 arms `closeoutPending` resume.
   **Env-requeue breaker**: env requeues carry `requeue_class`; 3
-  consecutive burn an attempt + escalate (`env-streak`) — never uncap
-  (169-loop = $36.62/d).
+  consecutive burn an attempt + escalate (`env-streak`) — never uncap.
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
   EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample
   in `redact_test.go` (gosec note if tripped). One shared table
   (`TestSecretHitsAndRedactionCompileIdenticalTable`), windows-gated
   (00-55 §f9). Counts are distinct secret LOCATIONS (span-merge
-  `4ba81d8`); pre-`4ba81d8` counts counted raw pattern matches.
+  `4ba81d8`); pre-`4ba81d8` counts were raw pattern matches.
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
 
@@ -190,7 +188,7 @@ docs/DOMAIN_LANGUAGE.md.
   append-only.
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE composing
   a `<ts>_<slug>` filename and paste the output — a guessed `<ts>` lies
-  about its own timestamp (02-28 §d1/§e1).
+  about its own timestamp.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
   (daemon sweeps <60 s, footer-less, take STAGED files too); fold only
   while local-only + contiguous + exactly-mine (`scripts/commit-task.sh
@@ -243,7 +241,7 @@ docs/DOMAIN_LANGUAGE.md.
 - **TestExactlyOnceUnderConcurrency (worker) + TestSelfManagingLoop
   (harvest) are load-flaky**: build storms drop them at clean parents —
   re-run before attributing; both ride `KNOWN_FLAKY` in
-  `scripts/lib/verify-retry.sh` (check-verify.sh pins the names).
+  `scripts/lib/verify-retry.sh`.
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`
