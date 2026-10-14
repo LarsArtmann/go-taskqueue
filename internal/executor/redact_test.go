@@ -92,6 +92,24 @@ func TestSecretHitsCountsMatches(t *testing.T) {
 	}
 }
 
+// secretPatternSamples is the ONE ordered fixture of canonical samples,
+// index-aligned with secretPatterns (03-39 §b1/§f1): a new pattern edit
+// touches this table only — the overlap census and the identical-table pin
+// both derive their samples from here.
+var secretPatternSamples = []string{
+	fakeAnthropic,
+	fakeOpenAI,
+	fakeOpenAICls,
+	fakeGitHub,
+	fakeGitHubPat,
+	fakeAWS,
+	fakeGoogle,
+	fakeSlack,
+	fakeJWT,
+	"Authorization: Bearer " + fakeJWT[len("Bearer "):],
+	fakeAssign,
+}
+
 // TestSecretPatternsOverlapCensus pins the span-merge contract from the
 // other side (02-37 §b4/§f1): on each pattern's canonical sample, exactly
 // ONE unordered pair of patterns overlaps — bearer × authorization-header
@@ -103,19 +121,7 @@ func TestSecretHitsCountsMatches(t *testing.T) {
 func TestSecretPatternsOverlapCensus(t *testing.T) {
 	t.Parallel()
 
-	samples := map[int]string{
-		0:  fakeAnthropic,
-		1:  fakeOpenAI,
-		2:  fakeOpenAICls,
-		3:  fakeGitHub,
-		4:  fakeGitHubPat,
-		5:  fakeAWS,
-		6:  fakeGoogle,
-		7:  fakeSlack,
-		8:  fakeJWT,
-		9:  "Authorization: Bearer " + fakeJWT[len("Bearer "):],
-		10: fakeAssign,
-	}
+	samples := secretPatternSamples
 
 	if len(samples) != len(secretPatterns) {
 		t.Fatalf("overlap census covers %d of %d secretPatterns — extend samples together with the table",
@@ -124,7 +130,7 @@ func TestSecretPatternsOverlapCensus(t *testing.T) {
 
 	var overlapping []string
 
-	for i, sample := range samples {
+	for i, sample := range secretPatternSamples {
 		own := secretPatterns[i].FindAllStringIndex(sample, -1)
 		if len(own) != 1 {
 			t.Fatalf("sample %d matches its own pattern %d times, want 1: %q", i, len(own), sample)
@@ -167,19 +173,7 @@ func TestSecretPatternsOverlapCensus(t *testing.T) {
 func TestSecretHitsAndRedactionCompileIdenticalTable(t *testing.T) {
 	t.Parallel()
 
-	samples := []string{
-		fakeAnthropic,
-		fakeOpenAI,
-		fakeOpenAICls,
-		fakeGitHub,
-		fakeGitHubPat,
-		fakeAWS,
-		fakeGoogle,
-		fakeSlack,
-		fakeJWT,
-		"Authorization: Bearer " + fakeJWT[len("Bearer "):],
-		fakeAssign,
-	}
+	samples := secretPatternSamples
 
 	if len(samples) != len(secretPatterns) {
 		t.Fatalf("table pin covers %d of %d secretPatterns — extend samples together with the table",
