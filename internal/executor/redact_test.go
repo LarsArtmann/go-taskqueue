@@ -200,7 +200,7 @@ func TestSecretHitsCountsInjectedTokensIndependentOfContext(t *testing.T) {
 
 	tokens := []string{
 		fakeAnthropic, fakeOpenAI, fakeOpenAICls, fakeGitHub, fakeGitHubPat,
-		fakeAWS, fakeGoogle, fakeSlack, fakeAssign,
+		fakeAWS, fakeGoogle, fakeSlack, fakeJWT, fakeAssign,
 	}
 	fillers := []string{
 		"",
