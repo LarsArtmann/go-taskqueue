@@ -65,20 +65,21 @@ fi
 
 # The workflow name matches .github/workflows/ci.yml. Use the branch's
 # latest run, EXCLUDING runs still in progress (a red conclusion on an old
-# commit is the signal; a running head says nothing yet).
+# commit is the signal; a running head says nothing yet). ONE gh call
+# extracts all four fields via --jq (04-21 e4: three python3 subprocesses
+# per invocation was pure overhead).
 RUN="$(gh run list --workflow CI --branch "$BRANCH" --status completed --limit 1 \
-	--json databaseId,conclusion,headSha,displayTitle,createdAt 2>/dev/null || true)"
+	--json databaseId,conclusion,headSha,displayTitle \
+	--jq '.[0] | [(.conclusion // ""), (.databaseId | tostring), .headSha, .displayTitle] | @tsv' 2>/dev/null || true)"
 
 if [ -z "$RUN" ] || [ "$RUN" = "[]" ]; then
 	echo "check-ci: SKIP (no completed CI run found for branch $BRANCH)"
 	exit 0
 fi
 
-CONCLUSION="$(echo "$RUN" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["conclusion"])')"
-RUN_ID="$(echo "$RUN" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["databaseId"])')"
-RUN_SHA="$(echo "$RUN" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["headSha"])')"
+IFS=$'\t' read -r CONCLUSION RUN_ID RUN_SHA TITLE <<<"$RUN"
 SHA="${RUN_SHA:0:9}"
-TITLE="$(echo "$RUN" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0]["displayTitle"])')"
+LOCAL_SHA="$(git rev-parse HEAD)"
 
 CLASS="$(classify_conclusion "$CONCLUSION")"
 case "$CLASS" in
@@ -94,15 +95,21 @@ cancelled)
 esac
 
 if [ "$CONCLUSION" != "success" ]; then
-	echo "check-ci: FAIL — latest CI run on $BRANCH ($SHA, \"$TITLE\") is $CONCLUSION"
-	if [ "$RUN_SHA" != "$(git rev-parse HEAD)" ]; then
-		# The red run tested an older commit than the local tree: a fix
-		# may already be in flight (push pending or CI still running).
-		echo "  The red run predates your tree — pushing a fix?"
+	echo "check-ci: FAIL — latest CI run on $BRANCH ($SHA, \"$TITLE\") is $CONCLUSION (local HEAD: ${LOCAL_SHA:0:9})"
+	if [ "$RUN_SHA" = "$LOCAL_SHA" ]; then
+		echo "  The red run IS your tree — fix master first (gh run view --log-failed $RUN_ID)"
+		echo "  or bypass consciously with CI_CHECK=off."
+	elif git merge-base --is-ancestor "$RUN_SHA" "$LOCAL_SHA" 2>/dev/null; then
+		# The red run tested an older commit that is an ancestor of the
+		# local tree: a fix may already be in flight (push pending or CI
+		# still running) — right instinct to distrust it, precise word.
+		echo "  The red run predates your tree (its sha is an ancestor of local HEAD) — pushing a fix?"
 		echo "  Bypass consciously with CI_CHECK=off."
 	else
-		echo "  Fix master first (gh run list --branch $BRANCH; gh run view --log-failed <id>)"
-		echo "  or bypass consciously with CI_CHECK=off."
+		# Not an ancestor: the branch history forked (force-push or
+		# rebase) — the stale red is noise, but "predates" would be a lie.
+		echo "  The red run's sha is NOT an ancestor of local HEAD — branch history diverged; judge that run on its own merits."
+		echo "  Bypass consciously with CI_CHECK=off."
 	fi
 	exit 1
 fi
