@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -244,6 +245,24 @@ func TestRedactSecretsMasksAuthHeaderToExactlyOneMarker(t *testing.T) {
 
 	if strings.Contains(got, fakeJWT) {
 		t.Error("header token survived redaction")
+	}
+}
+
+// TestRedactBytesMasksAuthHeaderToExactlyOneMarker mirrors the string-side
+// one-marker pin to the byte-side tail path (03-39 §f3): redactBytes must
+// mask one "Authorization: Bearer …" line to a SINGLE marker, never two.
+func TestRedactBytesMasksAuthHeaderToExactlyOneMarker(t *testing.T) {
+	t.Parallel()
+
+	header := []byte("request rejected: Authorization: Bearer " + fakeJWT[len("Bearer "):])
+	got := redactBytes(header)
+
+	if count := bytes.Count(got, []byte(RedactMarker)); count != 1 {
+		t.Errorf("redactBytes emitted %d markers for one header, want 1: %s", count, got)
+	}
+
+	if bytes.Contains(got, []byte(fakeJWT)) {
+		t.Error("header token survived byte-side redaction")
 	}
 }
 
