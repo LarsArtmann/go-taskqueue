@@ -171,6 +171,12 @@ jobs:
         # Parity with ci-local.sh: this smoke was ci-local-only until
         # 2026-09-15 (fullcore hardening batch).
         run: ./scripts/smoke/fullcore.sh
+      - name: Rate-limit e2e smoke (429 parks the task without burning an attempt)
+        # Parity with ci-local.sh (04-03 §f11): the rate-limit park/reclaim
+        # path was ci-local-only, but pushes never run ci-local — a regression
+        # here reached master undetected before. Ubuntu runners ship GNU date,
+        # which the smoke's timestamp math requires.
+        run: ./scripts/smoke/ratelimit-e2e.sh
       - name: Release-gates smoke (fixture go.mods, positive + negative)
         # Identity sanitizer mirrored from ci-local.sh: the smoke's dropped
         # `-c user.*` fixtures must fail the same way with and without a
