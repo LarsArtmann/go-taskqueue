@@ -206,7 +206,17 @@ func cmdTasks(args []string) error {
 		return enc.Encode(tasks)
 	}
 
-	printTaskList(tasks, *limit, uncappedTotal)
+	var providers map[string]string
+	if *parked {
+		facts, err := store.LastFacts(ctx, factTailLimit)
+		if err != nil {
+			return err
+		}
+
+		providers = latestRequeueProvider(facts)
+	}
+
+	printTaskListTo(os.Stdout, tasks, *limit, uncappedTotal, providers)
 
 	return nil
 }
@@ -217,10 +227,13 @@ func cmdTasks(args []string) error {
 // so a truncated footer never reads as the whole set (dead-letter census
 // missed a 09-20 death behind a silent 50-row cap).
 func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
-	printTaskListTo(os.Stdout, tasks, limit, total)
+	printTaskListTo(os.Stdout, tasks, limit, total, nil)
 }
 
-func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (int, error)) {
+// providers (nil outside --parked) joins each task's latest requeue
+// evidence provider onto the row: "[zai] reason…" names the exhausted
+// provider in one glance (04-03 §f8).
+func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (int, error), providers map[string]string) {
 	if len(tasks) == 0 {
 		fmt.Fprintln(w, "no matching tasks")
 
@@ -244,7 +257,7 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 		fmt.Fprintf(w, "%-36s %-14s %-16s %-7s %5d %-9s  %s\n",
 			t.ID.String(), statusCell(t, now), t.Project, t.Type, t.Attempts,
 			notBeforeCell(t, now),
-			truncate(oneLine(t.LastError), 60),
+			truncate(parkedCell(t, providers), 60),
 		)
 	}
 
@@ -263,6 +276,19 @@ func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (in
 	}
 
 	fmt.Fprintf(w, "%d task(s)\n", len(tasks))
+}
+
+// parkedCell prefixes the last-error excerpt with the parked task's
+// exhausted provider tag when the requeue evidence carries one.
+func parkedCell(t task.Task, providers map[string]string) string {
+	lastErr := oneLine(t.LastError)
+	if providers != nil {
+		if p := providers[t.ID.String()]; p != "" {
+			lastErr = "[" + p + "] " + lastErr
+		}
+	}
+
+	return lastErr
 }
 
 // statusCell marks a RUNNING task with an EXPIRED lease as STALE (a

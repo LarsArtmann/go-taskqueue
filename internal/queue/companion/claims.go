@@ -259,6 +259,7 @@ func Requeue(
 	delay time.Duration,
 	resumeCloseout bool,
 	class string,
+	provider string,
 ) error {
 	return WithTx(ctx, db, d, func(r Runner) error {
 		now := time.Now()
@@ -292,7 +293,7 @@ func Requeue(
 		return appendFact(ctx, r, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: prevOwner, Error: errText,
 			Detail: MustJSON(queue.RequeueEvidence{
-				Reason: errText, RetryIn: delay.Milliseconds(), ResumeCloseout: resumeCloseout, Class: class,
+				Reason: errText, RetryIn: delay.Milliseconds(), ResumeCloseout: resumeCloseout, Class: class, Provider: provider,
 			}),
 		})
 	})

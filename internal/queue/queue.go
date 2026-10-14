@@ -140,7 +140,10 @@ type Store interface {
 	// that the re-claim resumes the owed close-out turn instead of
 	// re-running the paid work turn. class names the refusal family
 	// (RequeueClass* constants) and rides the fact detail; empty is
-	// written as absent and read back as RequeueClassUnknown. Facts:
+	// written as absent and read back as RequeueClassUnknown. provider
+	// (empty when the failing output named none) records WHICH provider
+	// exhausted so the parked surface answers "which provider is
+	// limited?" in one glance (04-03 §f8). Facts:
 	// task.requeued.
 	Requeue(
 		ctx context.Context,
@@ -150,6 +153,7 @@ type Store interface {
 		delay time.Duration,
 		resumeCloseout bool,
 		class string,
+		provider string,
 	) error
 	// UpdatePendingPriority changes a PENDING task's priority (ADR-0015
 	// §5) and records the task.reprioritized fact (old/new, source,
@@ -404,6 +408,7 @@ type RequeueEvidence struct {
 	RetryIn        int64  `json:"retry_in_ms"`
 	ResumeCloseout bool   `json:"resume_closeout,omitempty"`
 	Class          string `json:"class,omitempty"`
+	Provider       string `json:"provider,omitempty"`
 }
 
 // ReprioritizeEvidence is the structured detail on task.reprioritized

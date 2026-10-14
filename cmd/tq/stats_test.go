@@ -41,7 +41,7 @@ func TestStatsJSONParkedContract(t *testing.T) {
 
 		if _, claimW1, err := s.ClaimDue(ctx, "w1", time.Minute); err != nil {
 			t.Fatalf("claim: %v", err)
-		} else if err := s.Requeue(ctx, tk.ID, claimW1, "rate limited", delay, false, "rate-limit"); err != nil {
+		} else if err := s.Requeue(ctx, tk.ID, claimW1, "rate limited", delay, false, "rate-limit", ""); err != nil {
 			t.Fatalf("requeue: %v", err)
 		}
 	}
@@ -375,7 +375,7 @@ func TestStatsLoopSuspects(t *testing.T) {
 			t.Fatalf("claim %d: %v", i+1, err)
 		}
 
-		if err := s.Requeue(ctx, tk.ID, claim, "env refused", 0, false, "preflight"); err != nil {
+		if err := s.Requeue(ctx, tk.ID, claim, "env refused", 0, false, "preflight", ""); err != nil {
 			t.Fatalf("requeue %d: %v", i+1, err)
 		}
 	}

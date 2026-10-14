@@ -507,7 +507,7 @@ func TestClaimAgingKeyedOnCreatedAtAcrossRequeue(t *testing.T) {
 
 	_, claim_w1 := claimDue(t, ctx, s, "w1")
 
-	if err := s.Requeue(ctx, old.ID, claim_w1, "preflight", 0, false, queue.RequeueClassPreflight); err != nil {
+	if err := s.Requeue(ctx, old.ID, claim_w1, "preflight", 0, false, queue.RequeueClassPreflight, ""); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 
@@ -1265,6 +1265,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 		time.Hour,
 		false,
 		queue.RequeueClassRateLimit,
+		"",
 	); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
@@ -1297,7 +1298,7 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 		t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "stale", time.Minute, false, ""); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(ctx, tk.ID, claim_w1, "stale", time.Minute, false, "", ""); !errors.Is(err, task.ErrLeaseNotHeld) {
 		t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
@@ -1365,6 +1366,7 @@ func TestParkedFilter(t *testing.T) {
 		time.Hour,
 		false,
 		queue.RequeueClassRateLimit,
+		"",
 	); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
@@ -1399,6 +1401,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 		time.Second,
 		false,
 		"",
+		"",
 	); !errors.Is(
 		err,
 		task.ErrLeaseNotHeld,
@@ -1414,6 +1417,7 @@ func TestRequeueDoesNotBurnAttempts(t *testing.T) {
 		150*time.Millisecond,
 		false,
 		queue.RequeueClassPreflight,
+		"",
 	); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
@@ -1493,6 +1497,7 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 			time.Minute,
 			resume,
 			queue.RequeueClassRateLimit,
+			"",
 		); err != nil {
 			t.Fatalf("Requeue: %v", err)
 		}
@@ -1572,6 +1577,7 @@ func TestRequeueFactCarriesClass(t *testing.T) {
 		time.Minute,
 		false,
 		queue.RequeueClassPreflight,
+		"",
 	); err != nil {
 		// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask fetch; assertion shape repeated by design.
 		t.Fatalf("Requeue: %v", err)
@@ -1594,6 +1600,60 @@ func TestRequeueFactCarriesClass(t *testing.T) {
 
 		if ev.Class != queue.RequeueClassPreflight {
 			t.Errorf("class = %q, want %q (%s)", ev.Class, queue.RequeueClassPreflight, f.Detail)
+		}
+
+		return
+	}
+
+	t.Fatal("no task.requeued fact in the trail")
+}
+
+// TestRequeueFactCarriesProvider pins the provider-tag contract (04-03
+// §f8): a rate-limit requeue whose output named the exhausted provider
+// carries it as provider in the fact detail, so the parked surface
+// answers "which provider is limited?" from the journal alone; an empty
+// provider is omitted entirely (omitempty) and reads back as "".
+//
+// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask
+// fetch; the assertion shape this suite repeats by design.
+func TestRequeueFactCarriesProvider(t *testing.T) {
+	ctx, s := freshStore(t)
+
+	tk := mustEnqueue(t, ctx, s, task.New{Type: "agent", MaxAttempts: 2})
+
+	_, claim_w1 := claimDue(t, ctx, s, "w1")
+
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim_w1,
+		"rate limited (retry after 1h)",
+		time.Hour,
+		false,
+		queue.RequeueClassRateLimit,
+		"zai",
+	); err != nil {
+		// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask fetch; assertion shape repeated by design.
+		t.Fatalf("Requeue: %v", err)
+	}
+
+	trail, err := s.FactsForTask(ctx, tk.ID.String(), 0)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	for _, f := range trail {
+		if f.Type != journal.Requeued {
+			continue
+		}
+
+		var ev queue.RequeueEvidence
+		if err := json.Unmarshal(f.Detail, &ev); err != nil {
+			t.Fatalf("detail not RequeueEvidence: %v (%s)", err, f.Detail)
+		}
+
+		if ev.Provider != "zai" {
+			t.Errorf("provider = %q, want %q (%s)", ev.Provider, "zai", f.Detail)
 		}
 
 		return
@@ -2219,6 +2279,7 @@ func TestCountTasksMatchesList(t *testing.T) {
 		time.Hour,
 		false,
 		queue.RequeueClassRateLimit,
+		"",
 	); err != nil {
 		t.Fatalf("Requeue(park): %v", err)
 	}
@@ -3202,6 +3263,7 @@ func parkOnQuestion(t *testing.T, s Store, payload string, requeueIn time.Durati
 		requeueIn,
 		false,
 		queue.RequeueClassQuestion,
+		"",
 	); err != nil {
 		t.Fatalf("park requeue: %v", err)
 	}
@@ -3409,6 +3471,7 @@ func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 		time.Hour,
 		false,
 		queue.RequeueClassQuestion,
+		"",
 	); err != nil {
 		t.Fatalf("park q-2: %v", err)
 	}
@@ -3726,7 +3789,7 @@ func TestClaimCountsGroupsPerTask(t *testing.T) {
 
 	// Two claim cycles on a (claim + no-burn requeue + claim), one on b.
 	_, claimA := claimDue(t, ctx, s, "w1")
-	if err := s.Requeue(ctx, a.ID, claimA, "cycle", 0, false, ""); err != nil {
+	if err := s.Requeue(ctx, a.ID, claimA, "cycle", 0, false, "", ""); err != nil {
 		t.Fatalf("requeue a: %v", err)
 	}
 

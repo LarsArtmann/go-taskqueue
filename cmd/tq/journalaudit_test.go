@@ -639,7 +639,7 @@ func TestJournalAuditBudgetHintRenders(t *testing.T) {
 		time.Hour,
 		false,
 		queue.RequeueClassBudget,
-	); err != nil {
+		""); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 

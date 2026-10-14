@@ -40,6 +40,32 @@ func latestRequeueClass(facts []journal.Fact) map[string]string {
 	return latest
 }
 
+// latestRequeueProvider walks facts in seq order and returns, per task
+// id, the provider tag of its most recent task.requeued fact (last-wins):
+// WHICH provider exhausted, so the parked surface answers "which provider
+// is limited?" in one glance (04-03 §f8). Legacy or malformed details
+// normalize to "" (no tag), matching the skip-don't-fail decode policy.
+func latestRequeueProvider(facts []journal.Fact) map[string]string {
+	latest := make(map[string]string)
+
+	for _, fact := range facts {
+		if fact.Type != journal.Requeued {
+			continue
+		}
+
+		var evidence queue.RequeueEvidence
+		if err := json.Unmarshal(fact.Detail, &evidence); err != nil {
+			latest[fact.TaskID] = ""
+
+			continue
+		}
+
+		latest[fact.TaskID] = evidence.Provider
+	}
+
+	return latest
+}
+
 // parkedByClass filters tasks down to the ones currently inside a park of
 // the given requeue class: pending, latest requeue evidence of the class,
 // and the not_before window still open (a due park is claimable work, not

@@ -233,9 +233,9 @@ not here.
 - [x] Frozen-date fixture sweep: rg scripts/smoke + testdata for hardcoded calendar-date literals, convert to run-time computation; a small check-* gate if the convention is ratified (04-03 §f3/§g3; docs/status/2026-09-16_04-03_task-000001a0a7c3b5f42d9e2ab428f1024d6622.md)
 - [x] ratelimit-e2e GNU-date dependency: header note or loud portability guard (requires `date -d`; silent breakage on BSD/macOS) (04-03 §f7)
 - [x] ratelimit-e2e into ci.yml: the smoke gates ci-local only; ubuntu CI runs webui/fullcore/release-gates — parity call (04-03 §f11)
-- [ ] ratelimit-e2e stub-log assertion: grep the worker log for the armed-gate/provider line, pinning the f35 observability half end-to-end (currently only Go-tested) (04-03 §f12)
-- [ ] Provider tag in the parked surface: `tq tasks --parked` shows only the reason string; surface `RateLimitError.Provider` so "which provider is exhausted" is one glance (04-03 §f8)
-- [ ] doctor earliest-release branch pin: verify a test covers doctorParked's not-today day-aware layout case; pin if not (04-03 §f9)
+- [x] ratelimit-e2e stub-log assertion: grep the worker log for the armed-gate/provider line, pinning the f35 observability half end-to-end (currently only Go-tested) (04-03 §f12)
+- [x] Provider tag in the parked surface: `tq tasks --parked` shows only the reason string; surface `RateLimitError.Provider` so "which provider is exhausted" is one glance (04-03 §f8)
+- [ ] doctor earliest-release branch pin: verify a test covers — TestDoctorParkedNamesEarliestRelease mirrors doctorParked's day-aware layout branch (both layouts, whichever day runs) (04-03 §f9)
 - [ ] Pin `tq stats --project X` parked-count × project-filter interaction (04-03 §f10)
 - [ ] Smoke-retry budget for ci-local smokes (row 89's blocked half, third ask): two-phase tree-quiet probe (recommended — milliseconds vs multiplying minutes-long smokes ×3), whole re-run ×3, or wrap-only-cheap-smokes (01-46 §g3, 03-04 §g1) — BLOCKED: owner runtime-budget ruling
 

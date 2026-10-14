@@ -148,7 +148,7 @@ func TestParityWithStoreProjection(t *testing.T) {
 
 	f.must(
 		"requeue t6",
-		f.store.Requeue(ctx, t6.ID, claim, "env not ready", time.Hour, false, queue.RequeueClassPreflight),
+		f.store.Requeue(ctx, t6.ID, claim, "env not ready", time.Hour, false, queue.RequeueClassPreflight, ""),
 	)
 
 	tk, claim = f.claim()
@@ -165,7 +165,7 @@ func TestParityWithStoreProjection(t *testing.T) {
 
 	f.must(
 		"requeue t5",
-		f.store.Requeue(ctx, t5.ID, claim, "env not ready", time.Hour, false, queue.RequeueClassPreflight),
+		f.store.Requeue(ctx, t5.ID, claim, "env not ready", time.Hour, false, queue.RequeueClassPreflight, ""),
 	)
 
 	tk, claim = f.claim()
@@ -378,7 +378,7 @@ func TestStatsParityLifecycle(t *testing.T) {
 
 	f.must(
 		"requeue t5",
-		f.store.Requeue(ctx, t5.ID, claim, "env not ready", time.Hour, false, queue.RequeueClassPreflight),
+		f.store.Requeue(ctx, t5.ID, claim, "env not ready", time.Hour, false, queue.RequeueClassPreflight, ""),
 	)
 
 	tk, claim = f.claim()
@@ -732,7 +732,7 @@ func TestParkedByProjection(t *testing.T) {
 	// test sleeps past it before re-claiming.
 	f.must(
 		"budget requeue",
-		f.store.Requeue(ctx, tk.ID, claim, "daily cap spent", time.Millisecond, false, queue.RequeueClassBudget),
+		f.store.Requeue(ctx, tk.ID, claim, "daily cap spent", time.Millisecond, false, queue.RequeueClassBudget, ""),
 	)
 	f.resync()
 
@@ -757,7 +757,7 @@ func TestParkedByProjection(t *testing.T) {
 	_, claim = f.claim()
 	f.must(
 		"rate-limit requeue",
-		f.store.Requeue(ctx, tk.ID, claim, "provider 429", time.Millisecond, false, queue.RequeueClassRateLimit),
+		f.store.Requeue(ctx, tk.ID, claim, "provider 429", time.Millisecond, false, queue.RequeueClassRateLimit, ""),
 	)
 	f.resync()
 

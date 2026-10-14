@@ -52,7 +52,7 @@ func TestPoolHealthSkipStreakWarns(t *testing.T) {
 			t.Fatalf("claimed %s, want the seeded task %s", claimed.ID, enq.ID)
 		}
 
-		if err := store.Requeue(ctx, claimed.ID, claim, "429", 0, false, queue.RequeueClassRateLimit); err != nil {
+		if err := store.Requeue(ctx, claimed.ID, claim, "429", 0, false, queue.RequeueClassRateLimit, ""); err != nil {
 			t.Fatalf("Requeue: %v", err)
 		}
 	}
@@ -99,7 +99,7 @@ func TestPoolHealthTerminalResetsStreak(t *testing.T) {
 			t.Fatalf("ClaimDue: %v", err)
 		}
 
-		if err := store.Requeue(ctx, claimed.ID, claim, "gate dead", 0, false, queue.RequeueClassGate); err != nil {
+		if err := store.Requeue(ctx, claimed.ID, claim, "gate dead", 0, false, queue.RequeueClassGate, ""); err != nil {
 			t.Fatalf("Requeue: %v", err)
 		}
 	}
@@ -219,7 +219,7 @@ func TestPoolHealthJSONShape(t *testing.T) {
 		t.Fatalf("ClaimDue: %v", err)
 	}
 
-	if err := store.Requeue(ctx, claimed.ID, claim, "429", 0, false, queue.RequeueClassRateLimit); err != nil {
+	if err := store.Requeue(ctx, claimed.ID, claim, "429", 0, false, queue.RequeueClassRateLimit, ""); err != nil {
 		t.Fatalf("Requeue: %v", err)
 	}
 

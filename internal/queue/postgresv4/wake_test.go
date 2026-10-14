@@ -127,7 +127,7 @@ func TestNotifyFiresAfterRequeue(t *testing.T) {
 
 	drain() // the enqueue's own signal
 
-	if err := s.Requeue(ctx, claimed.ID, claim, "gate slow", 0, false, queue.RequeueClassGate); err != nil {
+	if err := s.Requeue(ctx, claimed.ID, claim, "gate slow", 0, false, queue.RequeueClassGate, ""); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 

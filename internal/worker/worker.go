@@ -599,7 +599,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			}
 
 			if err := p.persistOutcome(ctx, t.ID, func(c context.Context) error {
-				return p.store.Requeue(c, t.ID, claim, "budget gate: "+reason, delay, false, queue.RequeueClassBudget)
+				return p.store.Requeue(c, t.ID, claim, "budget gate: "+reason, delay, false, queue.RequeueClassBudget, "")
 			}); err != nil {
 				p.log.Error("budget requeue failed", "task", t.ID, "err", err)
 			} else {
@@ -745,7 +745,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		}
 
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.Requeue(c, t.ID, claim, pre.Error(), delay, false, queue.RequeueClassPreflight)
+			return p.store.Requeue(c, t.ID, claim, pre.Error(), delay, false, queue.RequeueClassPreflight, "")
 		}); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
 		} else if p.preflightShouldLog(
@@ -814,7 +814,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		}
 
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.Requeue(c, t.ID, claim, gate.Error(), delay, false, queue.RequeueClassGate)
+			return p.store.Requeue(c, t.ID, claim, gate.Error(), delay, false, queue.RequeueClassGate, "")
 		}); err != nil {
 			p.log.Error("requeue failed", "task", t.ID, "err", err)
 		} else if p.preflightShouldLog(
@@ -845,7 +845,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		}
 
 		if err := p.persistOutcome(terminalCtx, t.ID, func(c context.Context) error {
-			return p.store.Requeue(c, t.ID, claim, rl.Error(), delay, rl.ResumeCloseout, class)
+			return p.store.Requeue(c, t.ID, claim, rl.Error(), delay, rl.ResumeCloseout, class, rl.Provider)
 		}); err != nil {
 			p.log.Error("rate-limit requeue failed", "task", t.ID, "err", err)
 		} else {
@@ -883,6 +883,7 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 				questionErr.RetryAfter,
 				questionErr.ResumeCloseout,
 				queue.RequeueClassQuestion,
+				"",
 			)
 		}); err != nil {
 			p.log.Error("question requeue failed", "task", t.ID, "err", err)

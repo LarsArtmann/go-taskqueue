@@ -405,6 +405,7 @@ func (s *Store) Requeue(
 	delay time.Duration,
 	resumeCloseout bool,
 	class string,
+	provider string,
 ) error {
 	if err := companion.Requeue(
 		ctx,
@@ -416,6 +417,7 @@ func (s *Store) Requeue(
 		delay,
 		resumeCloseout,
 		class,
+		provider,
 	); err != nil {
 		return err
 	}

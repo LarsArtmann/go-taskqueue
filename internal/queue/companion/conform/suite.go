@@ -82,6 +82,7 @@ type Store interface {
 		delay time.Duration,
 		resumeCloseout bool,
 		class string,
+		provider string,
 	) error
 	RescueDead(ctx context.Context, id task.ID, maxAttempts int) error
 	SavePriorityScore(ctx context.Context, score queue.PriorityScore) error
@@ -242,6 +243,7 @@ var conformanceTests = []struct {
 	{"TestRequeueFactCarriesClass", TestRequeueFactCarriesClass},
 	{"TestRequeueDoesNotBurnAttempts", TestRequeueDoesNotBurnAttempts},
 	{"TestRequeueFactCarriesResumeCloseout", TestRequeueFactCarriesResumeCloseout},
+	{"TestRequeueFactCarriesProvider", TestRequeueFactCarriesProvider},
 	{"TestFactsCursorBounded", TestFactsCursorBounded},
 	{"TestLastFactsReturnsTailInAscendingOrder", TestLastFactsReturnsTailInAscendingOrder},
 	{"TestHeadSeq", TestHeadSeq},
