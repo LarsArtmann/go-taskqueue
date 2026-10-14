@@ -210,7 +210,17 @@ func (s *Sweeper) mergeOnApprove(ctx context.Context, t task.Task, fact journal.
 		s.log("review: merged branch delete failed", "branch", payload.Branch, "err", err.Error())
 	}
 
-	s.log("review: merged", "task", payload.ReviewedTask, "branch", payload.Branch, "into", payload.BaseBranch, "repo", payload.Repo)
+	s.log(
+		"review: merged",
+		"task",
+		payload.ReviewedTask,
+		"branch",
+		payload.Branch,
+		"into",
+		payload.BaseBranch,
+		"repo",
+		payload.Repo,
+	)
 }
 
 // enqueueReview mints the one review task for a completed agent task.

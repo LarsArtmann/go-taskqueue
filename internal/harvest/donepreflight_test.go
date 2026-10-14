@@ -344,11 +344,13 @@ func TestDonePreflightCatchesLandingAfterMint(t *testing.T) {
 			name: "ticked row",
 			land: func(t *testing.T, f donePreflightFixture, _ task.ID) {
 				t.Helper()
+
 				if err := os.WriteFile(
 					filepath.Join(f.repo, DefaultTodoFile), []byte("- [x] timeline item\n"), 0o644,
 				); err != nil {
 					t.Fatal(err)
 				}
+
 				gitCommit(t, f.repo, "work: land and tick")
 			},
 		},

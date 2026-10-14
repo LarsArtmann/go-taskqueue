@@ -798,15 +798,26 @@ func TestUseReadModelDeadLettersPoisonThroughWiredStore(t *testing.T) {
 		// covers worst-case budget exhaustion (~31s of jittered backoffs).
 		if marker, exists, _ := readmodel.ReadWorkerFailedMarker(d.DBPath); exists {
 			cancel()
-			_ = <-served
-			t.Fatalf("poison fact hit the restart budget instead of the sidecar (worker %q failed at %s): the opts.DeadLetterStore wire is dropped",
-				marker.Projection, marker.FailedAt.Format(time.RFC3339))
+
+			<-served
+
+			t.Fatalf(
+				"poison fact hit the restart budget instead of the sidecar (worker %q failed at %s): the opts.DeadLetterStore wire is dropped",
+				marker.Projection,
+				marker.FailedAt.Format(time.RFC3339),
+			)
 		}
 
 		if time.Now().After(deadline) {
 			cancel()
-			_ = <-served
-			t.Fatalf("poison fact never dead-lettered (last count %d err %v); the DeadLetterStore wire is dropped or the restart budget ate the fact", n, err)
+
+			<-served
+
+			t.Fatalf(
+				"poison fact never dead-lettered (last count %d err %v); the DeadLetterStore wire is dropped or the restart budget ate the fact",
+				n,
+				err,
+			)
 		}
 
 		time.Sleep(20 * time.Millisecond)
@@ -826,7 +837,9 @@ func TestUseReadModelDeadLettersPoisonThroughWiredStore(t *testing.T) {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		cancel()
-		_ = <-served
+
+		<-served
+
 		t.Fatalf("stats after poison: %v", err)
 	}
 
@@ -837,7 +850,9 @@ func TestUseReadModelDeadLettersPoisonThroughWiredStore(t *testing.T) {
 
 	if err != nil || resp.StatusCode != http.StatusOK {
 		cancel()
-		_ = <-served
+
+		<-served
+
 		t.Fatalf("stats after poison = %d %v, want 200 with a body", resp.StatusCode, err)
 	}
 
