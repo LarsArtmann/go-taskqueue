@@ -109,6 +109,10 @@ PYEOF
 		python3 -c "import socket; socket.create_connection((\"127.0.0.1\", $STUB_PORT), 0.2)" 2>/dev/null && break
 		sleep 0.25
 	done
+	if ! python3 -c "import socket; socket.create_connection((\"127.0.0.1\", $STUB_PORT), 0.2)" 2>/dev/null; then
+		echo "FAIL: stub dashboard never accepted connections on 127.0.0.1:$STUB_PORT (port taken? override with PAP_SMOKE_PORT)"
+		exit 1
+	fi
 	PAP_URL="http://127.0.0.1:$STUB_PORT"
 fi
 
@@ -160,6 +164,9 @@ for _ in $(seq 1 40); do
 	kill -0 "$WORKER_PID" 2>/dev/null || break
 	sleep 0.25
 done
+if ! kill -0 "$WORKER_PID" 2>/dev/null; then
+	echo "WARN: worker died during the open/migrate wait — the enqueue below will surface the real error" >&2
+fi
 
 echo "== enqueue the asking task (prompt carries its own id via the executor placeholder)"
 # The worker above is still inside its own open/migrate on the fresh DB;

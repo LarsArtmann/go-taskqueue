@@ -37,6 +37,9 @@ for _ in $(seq 1 30); do
 	curl -sf http://127.0.0.1:8097/ >/dev/null 2>&1 && break
 	sleep 0.2
 done 2>/dev/null || true
+if ! curl -sf http://127.0.0.1:8097/ >/dev/null 2>&1; then
+	echo "WARN: tq serve never came up on 127.0.0.1:8097 after the poll window — continuing; screenshots will fail with the underlying curl/browser error"
+fi
 
 shoot() {
 	local name="$1" scheme="$2"

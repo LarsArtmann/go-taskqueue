@@ -77,6 +77,10 @@ PYEOF
 		python3 -c "import socket; socket.create_connection((\"127.0.0.1\", $STUB_PORT), 0.2)" 2>/dev/null && break
 		sleep 0.25
 	done
+	if ! python3 -c "import socket; socket.create_connection((\"127.0.0.1\", $STUB_PORT), 0.2)" 2>/dev/null; then
+		echo "FAIL: stub dashboard never accepted connections on 127.0.0.1:$STUB_PORT (port taken? override with PAP_SMOKE_PORT)"
+		exit 1
+	fi
 	PAP_URL="http://127.0.0.1:$STUB_PORT"
 fi
 
