@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Changed
+- `tq audit --journal` SECRET EVIDENCE row label renamed `hits` → `locations` (operator-facing honesty: a location is a distinct secret site after span-merge `4ba81d8`; pre-`4ba81d8` "hit-count"s counted raw pattern matches and are not comparable). JSON shape unchanged (`count`).
 - `executor` facade: `WorktreeOrphan` type alias joins `ScanWorktreeOrphans` — the
   worktree-orphan reaper surface is fully consumer-importable (ADR-0016 parity
   restored after a daemon-swept skew).
@@ -1138,10 +1139,10 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   (`--redact=false` / `$TQ_REDACT=false`) for raw-output debugging; a
   redaction false positive only mangles a debug tail, a miss persists a
   live credential. The audit half: `tq audit --journal` additionally
-  reports `SECRET EVIDENCE` rows (fact seq/task/type/field/hit-count,
-  never the secret itself; a hit is a distinct secret location —
+  reports `SECRET EVIDENCE` rows (fact seq/task/type/field/locations,
+  never the secret itself; a location is a distinct secret site —
   overlapping pattern spans merge, so one `Authorization: Bearer …` line
-  is one hit) for stored facts whose error/detail still
+  counts once) for stored facts whose error/detail still
   carries a token-shaped string — facts written before the pass shipped
   are findable via `tq show <id>`. Executor facade gained `RedactSecrets`,
   `SecretHits`, `RedactMarker` (parity-gated).

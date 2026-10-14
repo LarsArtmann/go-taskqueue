@@ -460,7 +460,7 @@ func journalDriftScoped(ctx context.Context, store queue.Store, idOrPrefix strin
 
 // scanFactSecrets runs the secrets-in-logs detector over the evidence-bearing
 // fields (error text + detail JSON) of the OUTPUT-derived fact types and
-// returns one row per fact/field with hits. Payloads are NOT scanned:
+// returns one row per fact/field with locations. Payloads are NOT scanned:
 // whatever an enqueuer stored there was provided intentionally, not leaked
 // through an output tail.
 func scanFactSecrets(facts []journal.Fact) []SecretHit {
@@ -624,7 +624,7 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 		)
 
 		for _, hit := range report.SecretEvidence {
-			fmt.Printf("  seq=%d %s %s field=%s hits=%d\n", hit.Seq, hit.Type, hit.TaskID, hit.Field, hit.Count)
+			fmt.Printf("  seq=%d %s %s field=%s locations=%d\n", hit.Seq, hit.Type, hit.TaskID, hit.Field, hit.Count)
 		}
 
 		fmt.Println(
