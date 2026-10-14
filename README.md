@@ -319,7 +319,11 @@ tq agent-pool --log-dir-max-bytes 5368709120   # TQ_LOG_DIR_MAX_BYTES: cap total
 
 `tq show <id>` still carries the result tail and the sidecar path; the
 webui renders it on the task detail page. `tq audit --journal` reports
-SECRET EVIDENCE if secrets ever reached the stored journal.
+SECRET EVIDENCE if secrets ever reached the stored journal. Note: a
+count is distinct secret LOCATIONS (overlapping pattern spans merge);
+SECRET EVIDENCE counts quoted in status reports dated before the
+2026-09-16 span-merge fix (`4ba81d8`) counted raw pattern matches and
+are NOT comparable with fresh `tq audit --journal` output.
 
 ## Every command at a glance
 

@@ -148,7 +148,9 @@ docs/DOMAIN_LANGUAGE.md.
   sample in `redact_test.go` (table-length pins; lint-baseline note if
   gosec trips). `SecretHits`/`RedactSecrets` share the ONE table
   (pinned `TestSecretHitsAndRedactionCompileIdenticalTable`);
-  build-tag-free, windows-gated (00-55 §f9).
+  build-tag-free, windows-gated (00-55 §f9). Counts are distinct secret
+  LOCATIONS (span-merge `4ba81d8`); pre-`4ba81d8` report counts counted
+  raw pattern matches — never compare across that boundary.
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
 
