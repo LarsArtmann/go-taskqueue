@@ -281,6 +281,23 @@ func TestSecretHitsMergesOverlappingPatternSpans(t *testing.T) {
 	}
 }
 
+// TestPostRedactionSilence is the audit-side pin (03-39 §f4): the
+// secrets-in-logs pass must leave NOTHING for SecretHits to find —
+// `tq audit --journal` scans stored facts with SecretHits, so a sample
+// that survives RedactSecrets would re-appear as SECRET EVIDENCE in
+// redacted output. Every canonical sample must go fully silent.
+func TestPostRedactionSilence(t *testing.T) {
+	t.Parallel()
+
+	for i, sample := range secretPatternSamples {
+		redacted := RedactSecrets(sample)
+
+		if hits := SecretHits(redacted); hits != 0 {
+			t.Errorf("pattern %d: redacted sample still shows %d secret location(s): %q", i, hits, redacted)
+		}
+	}
+}
+
 func TestTailBytesRedactsSecrets(t *testing.T) {
 	t.Parallel()
 
