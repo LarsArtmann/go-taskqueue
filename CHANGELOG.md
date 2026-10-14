@@ -17,6 +17,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   still pins `'none'`, and the route-table security test + SECURITY.md +
   ADR-0003 document the ruling (2026-10-05, surfaced during G1).
 
+### Fixed
+- **Worktree reaper no longer pins cancelled tasks' worktrees** (BEHAVIOR
+  CHANGE for pool operators): a task that died CANCELLED while its
+  closeout was parked kept its `tq/<id>` worktree and branch until
+  process restart, because the reaper consulted the executor's
+  `WorktreeInUse` probe over a terminal store verdict. `worktreeInFlight`
+  now lets the store's terminal status win outright (the executor probe
+  is consulted only for unknown ids); pinned by
+  `TestWorktreeInFlightTerminalStatusWins` (2026-10-13 04-11 window,
+  27c21de2/e7587106).
+
 ### Added
 - **Fast-refuse requeue class**: `queue.RequeueClassRateLimitGate`
   (`rate-limit-gate`) names the sibling fast-refuse park in the journal —
