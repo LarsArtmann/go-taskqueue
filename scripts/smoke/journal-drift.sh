@@ -10,6 +10,10 @@
 #   2. seeded drift (status/attempts/priority/dedup_key corrupted) → exit 0
 #      + drift lines naming the seeded mismatch
 #   3. `--json` reports the seeded drift machine-readably
+#   4. positive-path SECRET EVIDENCE: a fake token-shaped string seeded
+#      into a task.failed fact's error field → the audit prints a SECRET
+#      EVIDENCE row labelled `locations=N` (pins the renamed row label
+#      end-to-end)
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -65,5 +69,26 @@ echo "== phase 4: zero SECRET EVIDENCE over the lifecycle (row 134 fold) =="
 OUT="$("$TQ" audit --journal --db "$DB")" || fail "audit --journal (secret pass) exited non-zero"
 echo "$OUT" | grep -q "SECRET EVIDENCE" && fail "audit reports SECRET EVIDENCE over a clean lifecycle: $OUT"
 echo "ok: zero SECRET EVIDENCE"
+
+echo "== phase 5: positive-path SECRET EVIDENCE (locations row label) =="
+# Seed a clearly-fake token shape (matches the redaction patterns, never
+# a real credential) into a task.failed fact's error field, then the
+# audit MUST surface it as a SECRET EVIDENCE row with `locations=1` —
+# the end-to-end pin of the renamed `hits=`→`locations=` CLI surface.
+python3 - "$DB" <<'PY' || fail "python secret seeding"
+import sqlite3, sys
+db = sqlite3.connect(sys.argv[1])
+row = db.execute("SELECT id FROM tasks LIMIT 1").fetchone()
+assert row, "no tasks seeded"
+db.execute(
+    "INSERT INTO facts (time, task_id, type, error) VALUES (strftime('%s','now'), ?, 'task.failed', ?)",
+    (row[0], "boom: sk-ant-SMOKETEST-0000000000000000"),
+)
+db.commit()
+PY
+OUT="$("$TQ" audit --journal --db "$DB")" || fail "audit --journal (secret positive) exited non-zero"
+echo "$OUT" | grep -q "SECRET EVIDENCE" || fail "seeded secret not reported: $OUT"
+echo "$OUT" | grep -Eq 'task\.failed .*locations=1' || fail "SECRET EVIDENCE row lacks 'locations=1': $OUT"
+echo "ok: SECRET EVIDENCE locations=1 row printed"
 
 echo "PASS: journal-drift audit smoke"
