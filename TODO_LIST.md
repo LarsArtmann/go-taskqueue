@@ -235,7 +235,7 @@ not here.
 - [x] ratelimit-e2e into ci.yml: the smoke gates ci-local only; ubuntu CI runs webui/fullcore/release-gates — parity call (04-03 §f11)
 - [x] ratelimit-e2e stub-log assertion: grep the worker log for the armed-gate/provider line, pinning the f35 observability half end-to-end (currently only Go-tested) (04-03 §f12)
 - [x] Provider tag in the parked surface: `tq tasks --parked` shows only the reason string; surface `RateLimitError.Provider` so "which provider is exhausted" is one glance (04-03 §f8)
-- [ ] doctor earliest-release branch pin: verify a test covers — TestDoctorParkedNamesEarliestRelease mirrors doctorParked's day-aware layout branch (both layouts, whichever day runs) (04-03 §f9)
+- [x] doctor earliest-release branch pin: verified covered — TestDoctorParkedNamesEarliestRelease mirrors doctorParked's day-aware layout branch (both layouts, whichever day runs) (04-03 §f9)
 - [ ] Pin `tq stats --project X` parked-count × project-filter interaction (04-03 §f10)
 - [ ] Smoke-retry budget for ci-local smokes (row 89's blocked half, third ask): two-phase tree-quiet probe (recommended — milliseconds vs multiplying minutes-long smokes ×3), whole re-run ×3, or wrap-only-cheap-smokes (01-46 §g3, 03-04 §g1) — BLOCKED: owner runtime-budget ruling
 
