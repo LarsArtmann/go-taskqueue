@@ -11,9 +11,18 @@
 # issued inside the window reaches no agent, and the re-claim fires only
 # after the window expires. A past reset would fall back to the 15min
 # default backoff — unpinnable in a smoke.
+#
+# Portability: timestamps are parsed/formatted with GNU date extensions
+# (`date -d`). BSD/macOS date lacks them (04-03 §f7) — the guard below
+# refuses loudly instead of dying mid-run on a bare "illegal option".
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
+
+if ! date -d '+0 seconds' '+%s' >/dev/null 2>&1; then
+	echo "FAIL: GNU date required — this smoke parses timestamps with 'date -d', which BSD/macOS date does not support (use Linux/GNU coreutils)"
+	exit 1
+fi
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
