@@ -1,4 +1,4 @@
-# Done-Prompt Window Status Report — 7-task harvest window (2026-10-13 02:08 → 2026-10-14 03:30)
+# Done-Prompt Window Status Report 2026-10-14 — 7-task harvest window (2026-10-13 02:08 → 03:30)
 
 - **Written:** 2026-10-14 03:46 CEST (clock verified via `date` before naming this file)
 - **Task:** 000001a1380e9c4330c1dcba6e6400000000
