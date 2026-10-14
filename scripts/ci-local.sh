@@ -205,6 +205,13 @@ step "mirror-clone gate (advisory until the companion extraction lands; MIRROR_C
 step "rename-hygiene scan (advisory; quoted literals shadowing removed identifiers)"
 ./scripts/check-rename-hygiene.sh
 
+# Frozen-date fixture gate (04-03 §f3/§g3 sweep): smoke + testdata must
+# compute calendar dates at run time — a frozen literal rots silently
+# (the ratelimit-e2e 4-day fallback degradation).
+step "frozen-date fixture gate (smoke + testdata compute dates at run time)"
+./scripts/check-frozen-dates.sh
+./scripts/check-frozen-dates.sh --self-test
+
 step "module-proxy + pkg.go.dev publishability audit (advisory; network-tolerant SKIP)"
 ./scripts/check-pkg-proxy.sh
 
