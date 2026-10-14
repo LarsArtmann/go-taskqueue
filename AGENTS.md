@@ -103,19 +103,18 @@ docs/DOMAIN_LANGUAGE.md.
 
 ### Payload contracts (code owns detail)
 
-- **`sh`**: payload is the shell line (raw / JSON string / `{"cmd":"…"}`).
-- **`agent` worktrees** (`--worktrees`, OFF): branch `tq/<task-id>` per
-  task; review-approve auto-merges + reaps; reaper clears remnants.
+- **`sh`**: payload is the shell line (raw / JSON string / `{"cmd":…}`).
+- **`agent` worktrees** (`--worktrees`, OFF): branch `tq/<task-id>`;
+  review-approve auto-merges + reaps remnants.
 - **`agent`**: `AgentPayload` (repo, prompt, verify, timeout). Verify: exit
-  0, ENV-SELF-CONTAINED (minted verifies carry `GOEXPERIMENT=jsonv2` —
-  agents never edit their own gate). Model+effort ONLY in the repo
-  `.crushrc` managed block. `--task-closeout` resumes the EXACT session
-  for its a)-g) report (`docs/status/tasks/<ts>_task-<id>.md`).
+  0, ENV-SELF-CONTAINED (verifies carry `GOEXPERIMENT=jsonv2` — agents
+  never edit their own gate). Model+effort ONLY in the repo `.crushrc`
+  managed block. `--task-closeout` resumes the EXACT session for its
+  a)-g) report (`docs/status/tasks/<ts>_task-<id>.md`).
 - **Derived outcomes**: the queue derives what a run did — commits via
   ONE `Task-Queue-ID` footer as LAST trailer (`executor.GitLogScanner`;
-  footer above attribution = invisible, hook rejects),
-  files via `git diff-tree`, usage via go-crush-data. No stdout
-  self-report.
+  above attribution = invisible, hook rejects), files via
+  `git diff-tree`, usage via go-crush-data. No stdout self-report.
 - **Verdict channel**: paid turns record via `tq verdict '<json>'` into
   `$TQ_RESULT_FILE` (file > legacy stdout, last-wins).
 - **Batched harvest** (`--batch-items`, default 3): N adjacent
@@ -125,13 +124,13 @@ docs/DOMAIN_LANGUAGE.md.
   owns the rules.
 - **`review`/`dlqfix`/`status`/`prioritize`/`depbump`**: verdict-gated
   or deterministic turns on the closeout-free agent clone; usage derived
-  for ALL paid turns; review findings commit-anchored (verbatim `anchor`
-  or REJECTED); dead agent tasks mint ONE autopsy (`dlqfix:<id>`);
+  for ALL paid turns; findings commit-anchored (verbatim `anchor` or
+  REJECTED); dead agent tasks mint ONE autopsy (`dlqfix:<id>`);
   gate-artifact death WITH shipped-proof auto-dismisses
   (`executor.IsGateArtifactDeath`).
 - **Session-close bridge**: `tq session begin/close` + `tq crush`;
   close scans `Crush-Session:` trailers → ONE review + ONE status task.
-- **PapDashboard questions**: `tq ask --task <id>` parks WITHOUT burning
+- **PapDashboard questions**: `tq ask --task <id>` parks without burning
   an attempt; the AnswerPoller routes answers home.
 - **Idempotent enqueue**: `DedupKey` re-enqueue returns the stored
   task; COMPLETED keys refused (`ErrTaskDone`); cancelled/dead keys
@@ -144,13 +143,11 @@ docs/DOMAIN_LANGUAGE.md.
   (169-loop = $36.62/d).
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
-  EVIDENCE rows. Growth: ONE `secretPatterns` entry + a fake-shape
-  sample in `redact_test.go` (table-length pins; lint-baseline note if
-  gosec trips). `SecretHits`/`RedactSecrets` share the ONE table
-  (pinned `TestSecretHitsAndRedactionCompileIdenticalTable`);
-  build-tag-free, windows-gated (00-55 §f9). Counts are distinct secret
-  LOCATIONS (span-merge `4ba81d8`); pre-`4ba81d8` report counts counted
-  raw pattern matches — never compare across that boundary.
+  EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample
+  in `redact_test.go` (gosec note if tripped). One shared table
+  (`TestSecretHitsAndRedactionCompileIdenticalTable`), windows-gated
+  (00-55 §f9). Counts are distinct secret LOCATIONS (span-merge
+  `4ba81d8`); pre-`4ba81d8` counts counted raw pattern matches.
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
 
@@ -171,8 +168,8 @@ docs/DOMAIN_LANGUAGE.md.
 - **Claim-time budget gate**: paid turns block once the daily
   cap/budget-cmd is spent — requeue class `budget`, no burn, parked to
   midnight (cap) / 15m (cmd), outside env-streak. Claim checks run
-  CHEAP-FIRST (budget → preflight → executor — a gated pool never
-  spawns a process the hook can refuse).
+  CHEAP-FIRST (budget → preflight → executor — gated pools never spawn
+  a process the hook can refuse).
 
 ## Conventions
 
@@ -182,18 +179,18 @@ docs/DOMAIN_LANGUAGE.md.
 - **Verify-window battery**: cheap gates at HEAD (check-doc-refs, root
   build+vet, check-dead-sha-refs, date-named report) + one fresh delta;
   expensive gates inherit from a same-HEAD report; nested-module claims
-  need in-module `GOWORK=off` tests; closeouts touching root-parsed
-  files cite ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh <id>` FIRST;
-  battery rc TO A FILE (no PIPESTATUS); no-delta claim; dated DONE
-  re-verified note; `-v` + PASS COUNT for conform `-run`.
+  need in-module `GOWORK=off` tests; root-parsed-file closeouts cite
+  ROOT build+vet+test -race rc. Re-dispatch via `scripts/redispatch-brief.sh <id>`;
+  battery rc TO A FILE (no PIPESTATUS); dated DONE re-verified note;
+  `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches); indexed on creation (`check-status-index.sh`; daemon
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE
-  index-row write point: top chronological cluster; CHANGELOG
+  index-row write point (top chronological cluster); CHANGELOG
   append-only.
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE composing
-  any `<ts>_<slug>` filename and paste the output — a guessed `<ts>`
-  lies about its own timestamp (02-28 report §d1/§e1).
+  a `<ts>_<slug>` filename and paste the output — a guessed `<ts>` lies
+  about its own timestamp (02-28 §d1/§e1).
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
   (daemon sweeps <60 s, footer-less, take STAGED files too); fold only
   while local-only + contiguous + exactly-mine (`scripts/commit-task.sh
@@ -240,15 +237,13 @@ docs/DOMAIN_LANGUAGE.md.
   Footer-less daemon `chore:` sweeps heal via
   `scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>`
   (unpushed only; backup on failure; `--self-test` pins rails). REFUSES
-  non-contiguous footer-less spans (interleaved same/foreign-ID commits)
-  — manual fallback: verify exactly-mine via `git show --stat`, then
-  `git commit --amend` the unpushed HEAD (proven 2026-10-11 task
-  000001a1288ceb2f closeout §d4).
-- **TestExactlyOnceUnderConcurrency is load-flaky** (worker) and
-  **TestSelfManagingLoop is load-flaky** (harvest): build storms drop
-  them even at clean parents — re-run before attributing; both ride
-  `KNOWN_FLAKY` in `scripts/lib/verify-retry.sh` (check-verify.sh pins
-  the names here).
+  non-contiguous spans — fallback: verify exactly-mine via
+  `git show --stat`, then `git commit --amend` the unpushed HEAD
+  (2026-10-11 closeout §d4).
+- **TestExactlyOnceUnderConcurrency (worker) + TestSelfManagingLoop
+  (harvest) are load-flaky**: build storms drop them at clean parents —
+  re-run before attributing; both ride `KNOWN_FLAKY` in
+  `scripts/lib/verify-retry.sh` (check-verify.sh pins the names).
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`
