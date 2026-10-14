@@ -44,6 +44,7 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 		}
 
 		fset := token.NewFileSet()
+
 		node, err := parser.ParseFile(fset, file, src, 0)
 		if err != nil {
 			t.Fatalf("parse %s: %v", file, err)
@@ -81,7 +82,11 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 			})
 
 			if !delegates {
-				t.Errorf("%s: tail helper %s does not call redactOutput/redactBytes (nor a tail helper that does) — output tails must pass the secrets-in-logs pass before reaching journal facts", file, fn.Name.Name)
+				t.Errorf(
+					"%s: tail helper %s does not call redactOutput/redactBytes (nor a tail helper that does) — output tails must pass the secrets-in-logs pass before reaching journal facts",
+					file,
+					fn.Name.Name,
+				)
 			}
 		}
 	}
@@ -92,9 +97,14 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 	for name := range census {
 		got = append(got, name)
 	}
+
 	slices.Sort(got)
 
 	if !slices.Equal(got, want) {
-		t.Errorf("tail-helper census = %v, want %v — a new tail helper must delegate to redactOutput/redactBytes and join this pin (or justify its absence here)", got, want)
+		t.Errorf(
+			"tail-helper census = %v, want %v — a new tail helper must delegate to redactOutput/redactBytes and join this pin (or justify its absence here)",
+			got,
+			want,
+		)
 	}
 }
