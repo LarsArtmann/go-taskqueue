@@ -177,7 +177,9 @@ echo "== agent-pool liveness alerts: stage the B9.3 worker-death marker"
 # it every harvest tick, raises once, and a cleared marker (a fresh host)
 # resolves the standing alert.
 MARKER="$TQ_DB.readmodel.db.worker-failed"
-printf '%s\n' '{"projection":"tasks","failedAt":"2026-10-11T22:00:00Z"}' >"$MARKER"
+# failedAt computed at run time — a frozen literal rots silently (the
+# ratelimit-e2e frozen-date class; check-frozen-dates.sh enforces).
+printf '%s\n' "{\"projection\":\"tasks\",\"failedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >"$MARKER"
 
 echo "== start agent pool with alert bridge -> $PAP_URL"
 # Hermetic: an empty projects dir means the harvest scan finds no repos

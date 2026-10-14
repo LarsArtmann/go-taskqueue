@@ -36,6 +36,10 @@ git -C "$REPO" add -A
 git -C "$REPO" commit -qm "seed"
 
 echo "== stub agent binary (status runs keyed off the done prompt)"
+# Report path computed at run time — a frozen date literal rots silently
+# (ratelimit-e2e frozen-date class; check-frozen-dates.sh enforces).
+REPORT_PATH="docs/status/$(date +%Y-%m-%d_%H-%M)_smoke.md"
+export REPORT_PATH
 STUB="$TMP/stub-agent"
 cat >"$STUB" <<'EOF'
 #!/bin/sh
@@ -48,11 +52,11 @@ done
 case "$prompt" in
 	*"status reporter"*)
 		mkdir -p docs/status
-		printf '# smoke status report\n' > docs/status/2026-09-08_00-00_smoke.md
+		printf '# smoke status report\n' > "$REPORT_PATH"
 		printf -- '- [ ] freshly minted status-loop item\n' >> TODO_LIST.md
 		git add -A
 		git commit -qm "docs: smoke status report"
-		printf '%s\n' 'TQ_RESULT: {"report":"docs/status/2026-09-08_00-00_smoke.md","next_items":1}'
+		printf '%s\n' "TQ_RESULT: {\"report\":\"$REPORT_PATH\",\"next_items\":1}"
 		;;
 	*)
 		printf 'did the work\n'
@@ -86,7 +90,7 @@ timeout 120 "$TMP/tq" agent-pool --repos "$REPO" --status-every 2 --once --poll 
 	}
 
 echo "== assert the report landed and TODO_LIST.md grew"
-test -f "$REPO/docs/status/2026-09-08_00-00_smoke.md"
+test -f "$REPO/$REPORT_PATH"
 grep -q 'freshly minted status-loop item' "$REPO/TODO_LIST.md"
 
 echo "== assert counts: 2 agent + 1 status completed, plus the pool harvest's"
