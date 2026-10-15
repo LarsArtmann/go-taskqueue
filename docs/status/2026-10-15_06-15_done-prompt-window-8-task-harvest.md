@@ -310,3 +310,12 @@ marker/AI/unblock/importance moves to account for under ADR-0015. The
 window's requeues were class-fact requeues (budget gate on …f7c at
 enqueue, one 15m rate-limit wait, three preflight dirty-tree requeues on
 …5f90) — claim-timing mechanics, not priority moves.
+
+## Heal provenance (this report's own landing)
+
+The auto-commit daemon swept this report + the CHANGELOG entry into
+footer-less `cd0c482a` two minutes before the footed commit — the same
+race this window's §d2 documents, now with a same-day receipt. Healed
+via `scripts/heal-daemon-sweep.sh --from 9b51694e`; fork-records:
+`cd0c482a→4d5ee9ae` (report + CHANGELOG entry, footer stamped) and
+`c2700f78→ca7dd324` (index row + TODO tick + 4 mints).
