@@ -41,6 +41,7 @@ import (
 	"maps"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -520,10 +521,15 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 	covered := s.coveredKeys(ctx, project)
 
 	var batch []executor.PrioritizeItem
+	generation := int64(0)
 
 	for _, entry := range pending {
 		score, cached, err := s.store.PriorityScore(ctx, entry.item.Key)
 		stale := err == nil && cached && s.verdictUnusable(score)
+
+		if stale && score.ScoredAt > generation {
+			generation = score.ScoredAt
+		}
 
 		// A stale verdict (requeue supersede, model change) re-joins the
 		// batch even though an old batch covered the item — the refresh is
@@ -572,7 +578,7 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 		Project:  project,
 		Priority: batchPriority,
 		Payload:  payload,
-		DedupKey: DedupKey(project, keys),
+		DedupKey: DedupKey(project, keys, generation),
 	})
 	if err != nil {
 		stats.Skipped++
