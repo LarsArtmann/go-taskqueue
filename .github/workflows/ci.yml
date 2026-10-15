@@ -151,6 +151,14 @@ jobs:
           printf '%s\n' "$cmdtq_out"
           lint_total=$(( lint_total + $(printf '%s\n' "$cmdtq_out" | grep -c '\.go:[0-9]*:[0-9]*:' || true) ))
           echo "lint summary: $lint_total findings (advisory baseline ~400, AGENTS.md)"
+      - name: Lint config verify (schema-invalid keys are silent)
+        # Parity with ci-local.sh (2026-09-15 03-55 §f2): a config edit that
+        # disables linter settings emits no findings and no error — only
+        # `config verify` catches it. Hard gate locally; hard gate here.
+        # The binary may already exist from the advisory lint step above.
+        run: |
+          [ -x "$(go env GOPATH)/bin/golangci-lint" ] || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+          "$(go env GOPATH)/bin/golangci-lint" config verify
       - name: Lint annotations (new findings on changed lines)
         # golangci-lint v2 has no github-actions output format and its text
         # output emits no ::warning commands, so nothing from the advisory run
@@ -187,6 +195,20 @@ jobs:
           GIT_CONFIG_KEY_0: user.useConfigOnly
           GIT_CONFIG_VALUE_0: "true"
         run: ./scripts/smoke/release-gates.sh
+      - name: Review-loop e2e smoke (sweeper mints review tasks, autofix loop terminates)
+        # Parity with ci-local.sh: the review/autofix loop was ci-local-only;
+        # hermetic (stub agent, scratch TQ_DB, no network).
+        run: ./scripts/smoke/reviews.sh
+      - name: Journal-drift audit smoke (advisory)
+        # Parity with ci-local.sh: ADVISORY by O5 ruling (2026-09-14) — never
+        # a hard gate on task state, so continue-on-error mirrors the local
+        # warning-only wrapper.
+        continue-on-error: true
+        run: ./scripts/smoke/journal-drift.sh
+      - name: Module-loop capture check (for-each-module feed)
+        # Parity with ci-local.sh: pins the per-module loops in THIS file and
+        # ci-local.sh to the disk-derived enumeration.
+        run: ./scripts/check-module-loop-capture.sh
       - name: Ghost-reference check (doc-cited paths exist)
         run: ./scripts/check-doc-refs.sh
       - name: Ghost-archive check (asset README promises are git-tracked)
