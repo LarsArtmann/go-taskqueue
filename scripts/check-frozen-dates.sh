@@ -79,7 +79,10 @@ self_test() {
 }
 
 case "${1:-}" in
---self-test) self_test; exit 0 ;;
+--self-test)
+	self_test
+	exit 0
+	;;
 esac
 
 if hits="$(scan .)"; then
