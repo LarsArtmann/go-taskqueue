@@ -2,8 +2,10 @@ package depsweep
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -241,6 +243,49 @@ func TestSweepMintsDedupedTasksWithDeps(t *testing.T) {
 
 	if releaseID == "" || appID == "" {
 		t.Fatalf("both tasks must exist, got release=%s app=%s", releaseID, appID)
+	}
+}
+
+// TestSweepTreatsCompletedDedupKeysAsKnown pins the convergence rule: once
+// every spec's task completed, an unchanged plan re-sweeps CLEAN (known
+// hits, no error) — the Enqueue done-guard (ErrTaskDone) is the dedup
+// system telling the sweeper the work is done, never a sweep failure.
+func TestSweepTreatsCompletedDedupKeysAsKnown(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+
+	libA := consumerOf(staleModule("liba", "/p/liba", "v1.0.0", "v1.1.0"), "app", "/p/app", "v1.0.0", "v1.1.0")
+	sweeper := NewSweeper(s, SweeperConfig{Source: stubSource{modules: []PlanModule{libA}}})
+
+	if _, err := sweeper.Sweep(context.Background()); err != nil {
+		t.Fatalf("first sweep: %v", err)
+	}
+
+	q := queue.New(s)
+
+	for {
+		tk, claim, err := q.ClaimDue(context.Background(), "test-owner", time.Minute)
+		if errors.Is(err, queue.ErrNoTaskDue) {
+			break
+		}
+
+		if err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := q.Complete(context.Background(), tk.ID, claim, nil); err != nil {
+			t.Fatalf("complete %s: %v", tk.ID, err)
+		}
+	}
+
+	stats, err := sweeper.Sweep(context.Background())
+	if err != nil {
+		t.Fatalf("sweep over completed specs must converge, got: %v", err)
+	}
+
+	if stats.Minted != 0 || stats.Known != 2 {
+		t.Fatalf("completed specs are known hits, got minted=%d known=%d", stats.Minted, stats.Known)
 	}
 }
 
