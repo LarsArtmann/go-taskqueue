@@ -1,17 +1,27 @@
-// Package prioritize keeps the score cache warm: when unscored backlog
-// items sit in a repo's working set, ONE batch-scorer task (executor type
-// "prioritize") is minted per repo; when that task completes, its verdicts
-// are cached (priority_scores) and applied to the matching PENDING tasks as
-// task.reprioritized facts. The agent only contributes scores; everything
-// downstream (batching, dedup, precedence, protection) is mechanical.
+// Package prioritize scores the frontier, just in time: only the next-K
+// claimable backlog items of a repo — the scoring frontier (O3
+// 2026-10-05) — are worth scorer spend, so ONE batch-scorer task
+// (executor type "prioritize") covers that window; when the task
+// completes, its verdicts are cached (priority_scores) and applied to the
+// matching PENDING tasks as task.reprioritized facts. The agent only
+// contributes scores; everything downstream (batching, dedup, precedence,
+// protection) is mechanical.
+//
+// The frontier ROLLS: a claim drains the head, so the claim fact itself
+// mints the refill batch; a requeue SUPERSEDES the item's cached verdict
+// (a durable Source stamp) because the claim attempt may have moved the
+// repo under the score; an edited item re-keys (harvest.ItemKey hashes
+// the text) and re-enters unscored. Time-based verdict aging is RETIRED —
+// spend scales with work claimed, not with backlog size or score age.
 //
 // Triggers are journal-driven (cursor "prioritize-sweeper",
 // head-bootstrapped like every sweeper): a harvest enqueue means new
 // unscored work; a scorer completion means verdicts to apply — and, right
-// after applying, a re-check for items that entered the working set while
+// after applying, a re-check for items that entered the frontier while
 // the batch was in flight. The first sweep (BootMint) also mints for
 // pre-cursor pending items, so enabling the sweeper on a pool with a
-// standing backlog scores it without waiting for a fresh enqueue.
+// standing backlog scores its frontier without waiting for a fresh
+// enqueue.
 //
 // Loop safety is structural: batch tasks are type "prioritize", never
 // "agent", so they never trigger mints themselves; a batch's dedup key is
@@ -59,6 +69,15 @@ const (
 	// rank fresh work against a stale model's verdict (turnstone lesson 14).
 	SourceScorer = "ai:batch-scorer"
 
+	// SourceSuperseded is the durable invalidation stamp a REQUEUE writes
+	// over a cached verdict (O3 2026-10-05): the item was claimed and put
+	// back, so the repo may have moved under the score and it must be
+	// re-issued before ranking again. The stamp trips the same
+	// Source-mismatch gate as a model change, so the item re-joins the
+	// next frontier batch even though an old batch covered it; the
+	// re-score's upsert overwrites the stamp with the real scorer source.
+	SourceSuperseded = SourceScorer + ":superseded"
+
 	// batchPriority places scorer tasks in the machine band: they are
 	// queue plumbing, not user work (same ruling as the cqa bridge).
 	batchPriority = queue.MachineMin
@@ -72,11 +91,11 @@ const (
 	// verdicts (ADR-0015 §3 ladder: ai).
 	PrioritySourceAI = "ai"
 
-	// DefaultScoreTTL is the default age at which a cached verdict goes
-	// stale (SweeperConfig.ScoreTTL): a month-old score of an unchanged
-	// item may no longer describe the repo, so the item re-joins the next
-	// batch instead of the verdict living forever.
-	DefaultScoreTTL = 30 * 24 * time.Hour
+	// DefaultFrontierK is the default scoring-frontier size
+	// (SweeperConfig.FrontierK): how many next-claimable backlog items per
+	// repo form the JIT scoring surface. Small by design — scorer spend
+	// scales with the claims the window serves, not with backlog size.
+	DefaultFrontierK = 8
 )
 
 // SweeperConfig controls one Sweeper.
@@ -98,12 +117,13 @@ type SweeperConfig struct {
 	Log *slog.Logger
 	// PageSize bounds one fact-stream page; 0 selects the default.
 	PageSize int
-	// ScoreTTL ages cached verdicts: an item whose verdict is older than
-	// this re-joins the next batch and is re-scored (the cache upsert
-	// overwrites in place). Zero selects DefaultScoreTTL; a negative
-	// value disables aging — verdicts never go stale and only the prune
-	// pass evicts entries.
-	ScoreTTL time.Duration
+	// FrontierK is the JIT scoring-frontier size (O3 2026-10-05): minting
+	// considers only the next-K claimable backlog items of a repo, in
+	// claim order (ADR-0015 §4 effective priority). The cache rolls with
+	// the window: verdicts enter as items enter the frontier, leave as it
+	// drains (claims) or as facts invalidate them (requeue supersedes,
+	// item edits re-key). Zero selects DefaultFrontierK.
+	FrontierK int
 }
 
 // SweepStats summarizes one sweep pass.
@@ -147,10 +167,6 @@ type Sweeper struct {
 // persisted checkpoint; a first run bootstraps at the journal head (same
 // semantics as the review and dlqfix sweepers).
 func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Sweeper, error) {
-	if cfg.ScoreTTL == 0 {
-		cfg.ScoreTTL = DefaultScoreTTL
-	}
-
 	cur, err := watermark.New(ctx, watermark.Config{
 		Store:  store,
 		Key:    ConsumerKey,
@@ -194,38 +210,88 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 }
 
 // handleFact reacts to one fact: harvest enqueues gain a batch mint check,
-// completed scorer tasks gain verdict application (and a follow-up mint
-// check for items that arrived in flight).
+// claims drain the frontier (the refill mint fires at claim time — a
+// completion can lag an agent run by hours), completed scorer tasks gain
+// verdict application (and a follow-up mint check for items that arrived
+// in flight), requeues supersede the item's verdict.
 func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *SweepStats) {
-	if fact.Type == journal.Enqueued {
+	switch fact.Type {
+	case journal.Enqueued:
 		s.onEnqueued(ctx, fact, stats)
-	}
-
-	if fact.Type == journal.Completed {
+	case journal.Claimed:
+		s.onClaimed(ctx, fact, stats)
+	case journal.Completed:
 		s.onCompleted(ctx, fact, stats)
+	case journal.Requeued:
+		s.onRequeued(ctx, fact, stats)
 	}
 }
 
-// onEnqueued mints a batch when a freshly harvested backlog item leaves
-// its repo with unscored, uncovered work.
-func (s *Sweeper) onEnqueued(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+// backlogItemOf resolves a fact's task to a harvested backlog item, or
+// reports not-ours (someone else's enqueue/claim/completion — not a
+// skip, just not ours).
+func (s *Sweeper) backlogItemOf(ctx context.Context, fact journal.Fact, stats *SweepStats) (workingItem, bool) {
 	t, err := s.store.Get(ctx, task.ID(fact.TaskID))
 	if err != nil {
 		stats.Skipped++
 
-		return
-	}
-
-	if t.Type != executor.TaskTypeAgent {
-		return // someone else's enqueue — not a skip, just not ours
+		return workingItem{}, false
 	}
 
 	item, ok := harvest.PayloadItemOf(t)
-	if !ok || !strings.HasPrefix(item.Key, itemKeyPrefix) {
-		return // agent task, but not a harvested backlog item
+	if !ok || !strings.HasPrefix(item.Key, itemKeyPrefix) || t.Type != executor.TaskTypeAgent {
+		return workingItem{}, false
 	}
 
-	s.mintRepo(ctx, item.Repo, t.Project, stats)
+	return workingItem{task: t, item: item}, true
+}
+
+// onClaimed mints the frontier refill: the claimed item left the PENDING
+// working set, so the next-K window slid and its newest member may be
+// unscored (O3 2026-10-05: spend follows claims).
+func (s *Sweeper) onClaimed(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+	entry, ok := s.backlogItemOf(ctx, fact, stats)
+	if !ok {
+		return
+	}
+
+	s.mintRepo(ctx, entry.item.Repo, entry.task.Project, stats)
+}
+
+// onRequeued supersedes the item's cached verdict (a claim attempt may
+// have moved the repo under the score — it must be re-issued) and mints
+// the re-score batch right away: the superseded stamp makes the item
+// re-join the frontier batch even though an old batch covered it.
+func (s *Sweeper) onRequeued(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+	entry, ok := s.backlogItemOf(ctx, fact, stats)
+	if !ok {
+		return
+	}
+
+	score, cached, err := s.store.PriorityScore(ctx, entry.item.Key)
+	switch {
+	case err != nil:
+		s.warn("prioritize: requeue cache read failed", "item", entry.item.Key, "err", err)
+	case cached && score.Source == s.scorerSource():
+		score.Source = SourceSuperseded
+
+		if err := s.store.SavePriorityScore(ctx, score); err != nil {
+			s.warn("prioritize: requeue supersede failed", "item", entry.item.Key, "err", err)
+		}
+	}
+
+	s.mintRepo(ctx, entry.item.Repo, entry.task.Project, stats)
+}
+
+// onEnqueued mints a batch when a freshly harvested backlog item leaves
+// its repo with unscored, uncovered frontier work.
+func (s *Sweeper) onEnqueued(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+	entry, ok := s.backlogItemOf(ctx, fact, stats)
+	if !ok {
+		return
+	}
+
+	s.mintRepo(ctx, entry.item.Repo, entry.task.Project, stats)
 }
 
 // onCompleted caches a finished batch's verdicts and applies them to the
@@ -332,6 +398,62 @@ type workingItem struct {
 	item harvest.PayloadItem
 }
 
+// frontierK is the configured frontier size; zero selects
+// DefaultFrontierK.
+func (s *Sweeper) frontierK() int {
+	if s.cfg.FrontierK > 0 {
+		return s.cfg.FrontierK
+	}
+
+	return DefaultFrontierK
+}
+
+// frontier keeps the next-K claimable items of the repo, in claim order —
+// the JIT scoring surface (O3 2026-10-05): the scorer only ever sees the
+// head of the queue workers are about to claim, so spend scales with
+// claims, not backlog. Claim order mirrors the ClaimDue query (ADR-0015
+// §4): effective priority (stored + bounded age bonus) DESC, then
+// created_at ASC, id ASC — the queue's constants are referenced, never
+// re-declared, so the two orderings cannot drift.
+func (s *Sweeper) frontier(items []workingItem) []workingItem {
+	k := s.frontierK()
+	if len(items) <= k {
+		return items
+	}
+
+	now := time.Now()
+
+	sorted := append([]workingItem(nil), items...)
+
+	sort.Slice(sorted, func(i, j int) bool {
+		ei, ej := effectivePriority(now, sorted[i].task), effectivePriority(now, sorted[j].task)
+		if ei != ej {
+			return ei > ej
+		}
+
+		if !sorted[i].task.CreatedAt.Equal(sorted[j].task.CreatedAt) {
+			return sorted[i].task.CreatedAt.Before(sorted[j].task.CreatedAt)
+		}
+
+		return sorted[i].task.ID < sorted[j].task.ID
+	})
+
+	return sorted[:k]
+}
+
+// effectivePriority mirrors the claim query's ordering key: stored
+// priority plus the age bonus ((now-created)/PriorityAgingDaysPerPoint
+// days, capped at PriorityAgingMaxBonus), float math matching the SQL
+// expression in companion/claims.go.
+func effectivePriority(now time.Time, t task.Task) float64 {
+	bonus := now.Sub(t.CreatedAt).Hours() / 24 / float64(queue.PriorityAgingDaysPerPoint)
+	if bonus > queue.PriorityAgingMaxBonus {
+		bonus = queue.PriorityAgingMaxBonus
+	}
+
+	return float64(t.Priority) + bonus
+}
+
 // pendingItems lists the repo's PENDING harvested backlog tasks.
 func (s *Sweeper) pendingItems(ctx context.Context, project string) []workingItem {
 	agentType := executor.TaskTypeAgent
@@ -389,11 +511,12 @@ func (s *Sweeper) coveredKeys(ctx context.Context, project string) map[string]bo
 	return covered
 }
 
-// mintRepo mints ONE batch covering the repo's unscored, uncovered backlog
-// items — but only when that set is non-empty. The dedup key hashes the
-// exact key set, so an unchanged set never mints twice.
+// mintRepo mints ONE batch covering the repo's unscored, uncovered
+// FRONTIER items (the next-K claimable, O3 2026-10-05) — but only when
+// that set is non-empty. The dedup key hashes the exact key set, so an
+// unchanged set never mints twice.
 func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *SweepStats) {
-	pending := s.pendingItems(ctx, project)
+	pending := s.frontier(s.pendingItems(ctx, project))
 	covered := s.coveredKeys(ctx, project)
 
 	var batch []executor.PrioritizeItem
@@ -402,10 +525,11 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 		score, cached, err := s.store.PriorityScore(ctx, entry.item.Key)
 		stale := err == nil && cached && s.verdictUnusable(score)
 
-		// A stale verdict re-joins the batch even though an old batch
-		// covered the item — the refresh pass is the point. Fresh or
-		// absent verdicts keep the original gates: never re-mint an item
-		// any batch already covers, never re-score a fresh verdict.
+		// A stale verdict (requeue supersede, model change) re-joins the
+		// batch even though an old batch covered the item — the refresh is
+		// the point. Fresh or absent verdicts keep the original gates:
+		// never re-mint an item any batch already covers, never re-score a
+		// fresh verdict.
 		if !stale && (covered[entry.item.Key] || cached) {
 			continue
 		}
@@ -508,21 +632,14 @@ func (s *Sweeper) scorerSource() string {
 	return SourceScorer
 }
 
-// verdictUnusable reports whether a cached verdict must re-join the batch:
-// it outlived the score TTL, or it was scored by a different model
-// (Source mismatch), so ranking fresh work against it would mix models.
+// verdictUnusable reports whether a cached verdict must re-join the
+// batch: its Source no longer matches the configured scorer (a different
+// model, or the requeue supersede stamp — the verdict was invalidated and
+// must be re-issued), so ranking fresh work against it would mix models
+// or reuse a score the repo outgrew. Time-based aging is RETIRED (O3
+// 2026-10-05): only facts invalidate verdicts now.
 func (s *Sweeper) verdictUnusable(score queue.PriorityScore) bool {
-	return s.verdictStale(score) || score.Source != s.scorerSource()
-}
-
-// verdictStale reports whether a cached verdict has outlived the score
-// TTL. cfg.ScoreTTL < 0 disables aging: a verdict never goes stale.
-func (s *Sweeper) verdictStale(score queue.PriorityScore) bool {
-	if s.cfg.ScoreTTL < 0 {
-		return false
-	}
-
-	return time.Since(time.UnixMilli(score.ScoredAt)) >= s.cfg.ScoreTTL
+	return score.Source != s.scorerSource()
 }
 
 // pruneCache evicts cached verdicts whose item key no longer belongs to
