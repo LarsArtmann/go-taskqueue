@@ -256,19 +256,19 @@ func TestCachedItemsLeaveTheBatch(t *testing.T) {
 	}
 }
 
-// TestStaleVerdictsRejoinTheBatch pins the TTL half of the score-cache
-// maintenance: a verdict older than ScoreTTL re-joins the next mint even
-// though an old batch covered the item (the refresh is the point), while
-// a fresh verdict stays out. Aging rides the existing triggers — a fresh
-// enqueue or a batch completion re-checks the repo's working set.
-func TestStaleVerdictsRejoinTheBatch(t *testing.T) {
+// TestRequeueForcesARescore pins the O3 re-score trigger: a requeue
+// SUPERSEDES the item's cached verdict (the claim attempt may have moved
+// the repo under the score), so the item re-joins the next frontier
+// batch even though its old batch covered it, and the re-score overwrites
+// the stamp with the real scorer source. Time-based aging is retired —
+// facts, not TTLs, invalidate verdicts now.
+func TestRequeueForcesARescore(t *testing.T) {
 	t.Parallel()
 
 	s := newTestStore(t)
-	sw := newTestSweeper(t, s, SweeperConfig{ScoreTTL: time.Hour})
+	sw := newTestSweeper(t, s, SweeperConfig{})
 
-	seedBacklogTask(t, s, "demo", "Aged verdict", "todo:old", 0, 50)
-	seedBacklogTask(t, s, "demo", "Fresh verdict", "todo:new", 0, 50)
+	seedBacklogTask(t, s, "demo", "Requeued work", "todo:rq", 0, 50)
 
 	ctx := context.Background()
 
@@ -276,100 +276,161 @@ func TestStaleVerdictsRejoinTheBatch(t *testing.T) {
 		t.Fatalf("mint sweep: %v", err)
 	}
 
-	completeScorer(t, s,
-		executor.PrioritizeVerdict{ItemKey: "todo:old", Score: 40},
-		executor.PrioritizeVerdict{ItemKey: "todo:new", Score: 60},
-	)
+	completeScorer(t, s, executor.PrioritizeVerdict{ItemKey: "todo:rq", Score: 80})
 
 	if _, err := sw.Sweep(ctx); err != nil {
 		t.Fatalf("apply sweep: %v", err)
 	}
 
-	// Backdate one verdict past the TTL: stale, its item's old batch
-	// coverage must not protect it from re-scoring.
-	if err := s.SavePriorityScore(ctx, queue.PriorityScore{
-		ItemKey:  "todo:old",
-		Score:    40,
-		Source:   SourceScorer,
-		ScoredAt: time.Now().Add(-2 * time.Hour).UnixMilli(),
-	}); err != nil {
-		t.Fatalf("backdate cache: %v", err)
+	// Claim the scored item and requeue it (the real env-requeue path:
+	// claim-fenced, no attempt burn, task.requeued fact).
+	claimed, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
 	}
 
-	// A new enqueue re-checks the repo's working set and drags the stale
-	// item into the fresh batch alongside the unscored newcomer.
-	seedBacklogTask(t, s, "demo", "Later item", "todo:later", 0, 50)
+	if claimed.Type != executor.TaskTypeAgent {
+		t.Fatalf("claimed %s task, want the backlog item", claimed.Type)
+	}
+
+	if err := s.Requeue(ctx, claimed.ID, claim, "env boom", time.Minute, false, queue.RequeueClassRateLimit, ""); err != nil {
+		t.Fatalf("requeue: %v", err)
+	}
 
 	stats, err := sw.Sweep(ctx)
 	if err != nil {
-		t.Fatalf("refresh sweep: %v", err)
+		t.Fatalf("requeue sweep: %v", err)
 	}
 
 	if stats.BatchesEnqueued != 1 {
-		t.Fatalf("batches enqueued = %d, want 1 for the stale + new items", stats.BatchesEnqueued)
+		t.Fatalf("batches enqueued = %d, want 1 (requeue re-batches despite coverage)", stats.BatchesEnqueued)
 	}
 
-	batches := scorerTasks(t, s)
-	if len(batches) != 2 {
-		t.Fatalf("scorer tasks = %d, want 2", len(batches))
+	cached, ok, err := s.PriorityScore(ctx, "todo:rq")
+	if err != nil || !ok {
+		t.Fatalf("cached verdict: ok=%v err=%v", ok, err)
 	}
 
-	var payload executor.PrioritizePayload
-	if err := json.Unmarshal(batches[1].Payload, &payload); err != nil {
-		t.Fatalf("decode payload: %v", err)
+	if cached.Source != SourceSuperseded {
+		t.Fatalf("cache source = %q, want the supersede stamp %q", cached.Source, SourceSuperseded)
 	}
 
-	if len(payload.Items) != 2 || payload.Items[0].Key != "todo:later" || payload.Items[1].Key != "todo:old" {
-		t.Fatalf("refresh batch covers %v, want the stale todo:old plus the new todo:later", payload.Items)
+	// The re-score rewrites the stamp: the verdict is trustworthy again.
+	completeScorer(t, s, executor.PrioritizeVerdict{ItemKey: "todo:rq", Score: 30})
+
+	if _, err := sw.Sweep(ctx); err != nil {
+		t.Fatalf("re-score sweep: %v", err)
+	}
+
+	cached, ok, err = s.PriorityScore(ctx, "todo:rq")
+	if err != nil || !ok {
+		t.Fatalf("re-scored verdict: ok=%v err=%v", ok, err)
+	}
+
+	if cached.Source != SourceScorer {
+		t.Fatalf("re-scored source = %q, want %q", cached.Source, SourceScorer)
 	}
 }
 
-// TestAgingDisabledKeepsCoveredItemsOut pins the ScoreTTL < 0 opt-out:
-// verdicts never go stale, so an old batch's coverage keeps its items out
-// of every future batch even when their cached verdict is ancient.
-func TestAgingDisabledKeepsCoveredItemsOut(t *testing.T) {
+// TestFrontierCapsTheBatch pins the JIT window: only the next-K claimable
+// items (claim order: effective priority, ADR-0015 §4) form the batch —
+// a deep backlog scores its head, not its whole body (O3 2026-10-05:
+// spend scales with claims, not backlog).
+func TestFrontierCapsTheBatch(t *testing.T) {
 	t.Parallel()
 
 	s := newTestStore(t)
-	sw := newTestSweeper(t, s, SweeperConfig{ScoreTTL: -1})
 
-	seedBacklogTask(t, s, "demo", "Ancient verdict", "todo:old", 0, 50)
+	seedBacklogTask(t, s, "demo", "Low work", "todo:low", 0, 50)
+	seedBacklogTask(t, s, "demo", "High work", "todo:high", 0, 70)
+	seedBacklogTask(t, s, "demo", "Mid work", "todo:mid", 0, 60)
+
+	// Constructed AFTER the backlog exists: the cursor head-bootstraps
+	// past the enqueue facts, so only BootMint reaches the standing
+	// items — ONE mint pass over the full backlog, where the K cap bites.
+	sw := newTestSweeper(t, s, SweeperConfig{BootMint: true, FrontierK: 2})
+
+	stats, err := sw.Sweep(context.Background())
+	if err != nil {
+		t.Fatalf("boot sweep: %v", err)
+	}
+
+	if stats.BatchesEnqueued != 1 {
+		t.Fatalf("batches enqueued = %d, want 1", stats.BatchesEnqueued)
+	}
+
+	batches := scorerTasks(t, s)
+
+	var payload executor.PrioritizePayload
+	if err := json.Unmarshal(batches[0].Payload, &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+
+	keys := make([]string, 0, len(payload.Items))
+	for _, item := range payload.Items {
+		keys = append(keys, item.Key)
+	}
+
+	if len(keys) != 2 || keys[0] != "todo:high" || keys[1] != "todo:mid" {
+		t.Fatalf("frontier batch = %v, want the top-2 claimable [high mid] (todo:low waits)", keys)
+	}
+}
+
+// TestFrontierRefillsAfterTheDrain pins the rolling cache: a claim drains
+// the frontier head and the CLAIM fact itself mints the refill batch —
+// the next window member is scored without waiting for the claim's
+// completion (an agent run can lag by hours).
+func TestFrontierRefillsAfterTheDrain(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+
+	seedBacklogTask(t, s, "demo", "Head work", "todo:head", 0, 50)
+	seedBacklogTask(t, s, "demo", "Next work", "todo:next", 0, 50)
+
+	sw := newTestSweeper(t, s, SweeperConfig{BootMint: true, FrontierK: 1})
 
 	ctx := context.Background()
 
 	if _, err := sw.Sweep(ctx); err != nil {
-		t.Fatalf("mint sweep: %v", err)
+		t.Fatalf("boot sweep: %v", err)
 	}
 
-	completeScorer(t, s, executor.PrioritizeVerdict{ItemKey: "todo:old", Score: 40})
+	completeScorer(t, s, executor.PrioritizeVerdict{ItemKey: "todo:head", Score: 80})
 
 	if _, err := sw.Sweep(ctx); err != nil {
 		t.Fatalf("apply sweep: %v", err)
 	}
 
-	seedBacklogTask(t, s, "demo", "Newcomer", "todo:new", 0, 50)
+	// The applied score keeps the head on top; claiming it slides the K=1
+	// window onto the unscored next item.
+	claimed, _, err := s.ClaimDue(ctx, testOwner, testLease)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	if claimed.Type != executor.TaskTypeAgent {
+		t.Fatalf("claimed %s task, want the backlog head", claimed.Type)
+	}
 
 	stats, err := sw.Sweep(ctx)
 	if err != nil {
-		t.Fatalf("refresh sweep: %v", err)
+		t.Fatalf("refill sweep: %v", err)
 	}
 
 	if stats.BatchesEnqueued != 1 {
-		t.Fatalf("batches enqueued = %d, want 1 for the newcomer only", stats.BatchesEnqueued)
+		t.Fatalf("batches enqueued = %d, want 1 (the refill batch)", stats.BatchesEnqueued)
 	}
 
 	batches := scorerTasks(t, s)
-	if len(batches) != 2 {
-		t.Fatalf("scorer tasks = %d, want 2", len(batches))
-	}
 
 	var payload executor.PrioritizePayload
-	if err := json.Unmarshal(batches[1].Payload, &payload); err != nil {
+	if err := json.Unmarshal(batches[len(batches)-1].Payload, &payload); err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
 
-	if len(payload.Items) != 1 || payload.Items[0].Key != "todo:new" {
-		t.Fatalf("batch covers %v, want only todo:new (aging disabled)", payload.Items)
+	if len(payload.Items) != 1 || payload.Items[0].Key != "todo:next" {
+		t.Fatalf("refill batch covers %v, want the window's newest member todo:next", payload.Items)
 	}
 }
 
