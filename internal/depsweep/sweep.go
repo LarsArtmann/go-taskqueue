@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -460,6 +461,16 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 			Priority: taskPriority,
 			DedupKey: spec.DedupKey,
 		})
+		if errors.Is(err, queue.ErrTaskDone) {
+			// The exact work spec already ran to completion: for a
+			// converging sweep that IS the dedup hit, not a failure —
+			// re-planning an unchanged ecosystem must stay free forever.
+			stats.Known++
+			taskIDs[spec.Repo] = created.ID
+
+			continue
+		}
+
 		if err != nil {
 			return stats, fmt.Errorf("depsweep: enqueue %s: %w", spec.Repo, err)
 		}
