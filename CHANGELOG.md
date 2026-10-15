@@ -84,6 +84,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the owner's cursor; already-future NotBefore rows are skipped (no fact
   spam) and the hold lapses on its own — no `task.claimed` churn, ≤1
   park fact per task per hold window.
+- **Parked-surface provider tag** (2026-10-15): `tq tasks --parked` rows
+  prefix the exhausted provider on the last-error cell (`[zai] rate
+  limited …`) so "which provider armed the gate" is one glance — the
+  provider now rides the persisted requeue evidence
+  (`RequeueEvidence.provider`, sqlite + postgres adapters) instead of
+  living only in the worker log; the ratelimit-e2e smoke greps the slog
+  text shape `provider=zai`, so a log-handler change breaks it loudly
+  (2026-10-15 01-15 batch, `9e23e1c5`).
 
 ### Changed
 
