@@ -269,7 +269,7 @@ not here.
 
 ## Docs-window follow-ups (2026-09-21 usage-rendering docs window; sources: this window's close-out report §b2/§d4; docs-only)
 
-- [ ] FEATURES.md placement check for the 2026-09-21 usage-rendering cards: the statusReportCard/prioritizeResultCard rendering facts live only on the sweeper rows (done-prompt loop + AI batch scorer); decide whether the webui detail-page section should carry them as first-class surface rows and move/extend if yes (2026-09-21 08-56 report §b2; docs-only)
+- [x] FEATURES.md placement check for the 2026-09-21 usage-rendering cards: the statusReportCard/prioritizeResultCard rendering facts live only on the sweeper rows (done-prompt loop + AI batch scorer); decide whether the webui detail-page section should carry them as first-class surface rows and move/extend if yes (2026-09-21 08-56 report §b2; docs-only)
 
 ## Docs-health harvest (2026-09-21 archive sweep; sources: full-corpus per-item triage of every live report 09-08..09-21 + planning docs, deduped against open rows; claims tree-verified at mint time)
 
