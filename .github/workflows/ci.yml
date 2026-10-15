@@ -209,6 +209,15 @@ jobs:
         # Parity with ci-local.sh: pins the per-module loops in THIS file and
         # ci-local.sh to the disk-derived enumeration.
         run: ./scripts/check-module-loop-capture.sh
+      # Deliberate ci-local-only asymmetries (2026-10-15 parity sweep), NOT
+      # wired here because both gates are red at HEAD for reasons outside
+      # CI's control — wire each once its cure lands:
+      #   - check-dead-sha-refs.sh: red on dangling heal-era citations
+      #     (TODO_LIST cure rows: rebase-era 108-cite heal + emit-baseline
+      #     decision pack). Full history is present (fetch-depth: 0).
+      #   - check-guard-wiring.sh: red on an orphaned scripts/smoke fixture
+      #     from concurrent work; the gate's own wiring list includes this
+      #     file, so any step added here keeps it satisfiable.
       - name: Ghost-reference check (doc-cited paths exist)
         run: ./scripts/check-doc-refs.sh
       - name: Ghost-archive check (asset README promises are git-tracked)
