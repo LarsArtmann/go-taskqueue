@@ -293,7 +293,11 @@ func Requeue(
 		return appendFact(ctx, r, journal.Fact{
 			TaskID: id.String(), Type: journal.Requeued, Owner: prevOwner, Error: errText,
 			Detail: MustJSON(queue.RequeueEvidence{
-				Reason: errText, RetryIn: delay.Milliseconds(), ResumeCloseout: resumeCloseout, Class: class, Provider: provider,
+				Reason:         errText,
+				RetryIn:        delay.Milliseconds(),
+				ResumeCloseout: resumeCloseout,
+				Class:          class,
+				Provider:       provider,
 			}),
 		})
 	})

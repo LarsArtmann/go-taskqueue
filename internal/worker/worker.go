@@ -599,7 +599,16 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 			}
 
 			if err := p.persistOutcome(ctx, t.ID, func(c context.Context) error {
-				return p.store.Requeue(c, t.ID, claim, "budget gate: "+reason, delay, false, queue.RequeueClassBudget, "")
+				return p.store.Requeue(
+					c,
+					t.ID,
+					claim,
+					"budget gate: "+reason,
+					delay,
+					false,
+					queue.RequeueClassBudget,
+					"",
+				)
 			}); err != nil {
 				p.log.Error("budget requeue failed", "task", t.ID, "err", err)
 			} else {

@@ -1298,7 +1298,19 @@ func TestParkedRequeueNotResurrectableByStaleLease(t *testing.T) {
 		t.Errorf("stale Complete err = %v, want ErrLeaseNotHeld", err)
 	}
 
-	if err := s.Requeue(ctx, tk.ID, claim_w1, "stale", time.Minute, false, "", ""); !errors.Is(err, task.ErrLeaseNotHeld) {
+	if err := s.Requeue(
+		ctx,
+		tk.ID,
+		claim_w1,
+		"stale",
+		time.Minute,
+		false,
+		"",
+		"",
+	); !errors.Is(
+		err,
+		task.ErrLeaseNotHeld,
+	) {
 		t.Errorf("stale Requeue err = %v, want ErrLeaseNotHeld", err)
 	}
 
