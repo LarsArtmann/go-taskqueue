@@ -44,6 +44,14 @@ type AnswerConfig struct {
 	SourceApp string
 	// Interval polls this often. Default 10s.
 	Interval time.Duration
+	// MaxAnswersPerPoll bounds how many answers one poll applies — the
+	// stampede guard for "the owner just answered 50 questions at once":
+	// each application requeues and wakes a parked task, and an unbounded
+	// burst turns one happy answering session into a same-second thundering
+	// herd of claims. The remainder is not lost: the cursor only advances
+	// over APPLIED answers, so the next tick picks up exactly where this
+	// one stopped. ≤0 selects defaultMaxAnswersPerPoll.
+	MaxAnswersPerPoll int
 	// Client overrides the HTTP client.
 	Client *http.Client
 	// Logger receives poller diagnostics. Default slog.Default().
@@ -67,6 +75,10 @@ const answerPageLimit = 50
 const (
 	// defaultPollInterval is the AnswerConfig.Interval fallback.
 	defaultPollInterval = 10 * time.Second
+	// defaultMaxAnswersPerPoll is the AnswerConfig.MaxAnswersPerPoll
+	// fallback: enough to drain a normal backlog in one tick, small enough
+	// that a mass-answer stays a paced trickle of claims.
+	defaultMaxAnswersPerPoll = 10
 	// defaultHTTPTimeout bounds one list call.
 	defaultHTTPTimeout = 30 * time.Second
 	// errorBodyCap limits how much of an error response body is kept for
@@ -94,6 +106,10 @@ func NewAnswerPoller(store AnswerStore, checkpoints WatermarkStore, cfg AnswerCo
 
 	if cfg.Interval <= 0 {
 		cfg.Interval = defaultPollInterval
+	}
+
+	if cfg.MaxAnswersPerPoll <= 0 {
+		cfg.MaxAnswersPerPoll = defaultMaxAnswersPerPoll
 	}
 
 	if cfg.Logger == nil {
@@ -169,11 +185,15 @@ func (p *AnswerPoller) Run(ctx context.Context) error {
 	}
 }
 
-// pollOnce applies every answered question newer than cursor and returns
-// the new cursor. The checkpoint is saved ONLY after the whole batch's
-// applications succeeded (a failed RecordAnswer retries the batch).
+// pollOnce applies up to MaxAnswersPerPoll answered questions newer than
+// cursor and returns the new cursor. The cursor advances ONLY over
+// applied answers, so a bound-truncated poll re-reads the remainder next
+// tick instead of skipping it. The checkpoint is saved ONLY after the
+// batch's applications succeeded (a failed RecordAnswer retries the
+// batch).
 func (p *AnswerPoller) pollOnce(ctx context.Context, cursor time.Time) (time.Time, error) {
 	maxSeen := cursor
+	applied := 0
 
 	for offset := 0; ; offset += answerPageLimit {
 		questions, err := p.list(ctx, offset)
@@ -185,16 +205,19 @@ func (p *AnswerPoller) pollOnce(ctx context.Context, cursor time.Time) (time.Tim
 			break
 		}
 
-		var pageHasNew bool
+		var pageApplied int
 
-		maxSeen, pageHasNew, err = p.applyPage(ctx, questions, cursor, maxSeen)
+		maxSeen, pageApplied, err = p.applyPage(ctx, questions, cursor, maxSeen, p.cfg.MaxAnswersPerPoll-applied)
 		if err != nil {
 			return cursor, err
 		}
 
+		applied += pageApplied
+
 		// Pages are newest-first: a page with nothing newer means
-		// everything deeper is older — stop paging.
-		if len(questions) < answerPageLimit || !pageHasNew {
+		// everything deeper is older — stop paging. A filled bound means
+		// everything deeper (older) must stay for the next tick.
+		if len(questions) < answerPageLimit || pageApplied == 0 || applied >= p.cfg.MaxAnswersPerPoll {
 			break
 		}
 	}
@@ -208,17 +231,23 @@ func (p *AnswerPoller) pollOnce(ctx context.Context, cursor time.Time) (time.Tim
 	return maxSeen, nil
 }
 
-// applyPage routes one list page's new answers home. Returns the advanced
-// maxSeen and whether the page held anything newer than cursor (newest-first
-// paging stops when a page holds nothing new).
+// applyPage routes one list page's new answers home, honoring the
+// remaining per-poll bound. Returns the advanced maxSeen, how many
+// answers this page applied, and any routing error (newest-first paging
+// stops when a page holds nothing new or the bound is spent).
 func (p *AnswerPoller) applyPage(
 	ctx context.Context,
 	questions []papQuestion,
 	cursor, maxSeen time.Time,
-) (time.Time, bool, error) {
-	sawNew := false
+	remaining int,
+) (time.Time, int, error) {
+	applied := 0
 
 	for _, question := range questions {
+		if applied >= remaining {
+			break
+		}
+
 		if !question.IsAnswered || question.Answer == "" {
 			continue
 		}
@@ -227,18 +256,18 @@ func (p *AnswerPoller) applyPage(
 			continue
 		}
 
-		sawNew = true
+		if err := p.apply(ctx, question); err != nil {
+			return maxSeen, applied, err
+		}
+
+		applied++
 
 		if question.AnsweredAt.After(maxSeen) {
 			maxSeen = question.AnsweredAt
 		}
-
-		if err := p.apply(ctx, question); err != nil {
-			return maxSeen, sawNew, err
-		}
 	}
 
-	return maxSeen, sawNew, nil
+	return maxSeen, applied, nil
 }
 
 // papQuestion is the list-endpoint slice of PapDashboard's Question the
