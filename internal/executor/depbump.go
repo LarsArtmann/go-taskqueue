@@ -428,7 +428,16 @@ func (e *DepBumpExecutor) regenerateTempl(ctx context.Context, repoDir string) e
 // so this is a success, not a failure (two tasks racing to the same pin
 // must not dead-letter the second one).
 func (e *DepBumpExecutor) commit(ctx context.Context, repoDir string, bumps []DepBump) error {
-	args := []string{"-C", repoDir, "add", "--", "go.mod", "go.sum"}
+	args := []string{"-C", repoDir, "add", "--"}
+
+	// Core paths stage only when they exist: git fatal-errors on a
+	// pathspec that matches nothing (the templGlobs lesson), and a repo
+	// whose graph is all local replaces can genuinely have no go.sum.
+	for _, p := range []string{"go.mod", "go.sum"} {
+		if _, err := os.Stat(filepath.Join(repoDir, p)); err == nil {
+			args = append(args, p)
+		}
+	}
 
 	if _, err := os.Stat(filepath.Join(repoDir, "vendor")); err == nil {
 		args = append(args, "vendor")
