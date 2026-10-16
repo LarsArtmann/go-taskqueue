@@ -32,6 +32,15 @@ clean, 3 commits ahead of origin at report time). Task
    derived from the shared fixture; row 224 ticked inside work commit
    `2db9dde7`. Items 2-3 of this batch never ran — see b1, the window's
    biggest honesty finding.
+   > [2026-10-16 ANNOTATION, docs-health — corrected by the re-dispatch
+   > verdict report
+   > (docs/status/2026-10-16_06-43_done-prompt-window-8-redispatch-verdict.md):
+   > item 2 DID land — `internal/executor/redaction_guard_test.go`
+   > (row 225's structural guard) arrived via footer-less daemon sweep
+   > `9b4d2bc9` at 10-14 04:14, inside the …3dc4 lease, and is green at
+   > HEAD after the word-boundary fix `2d6b3993`. Item 3 (row 226) is
+   > genuinely unlanded. "Never ran" was wrong for item 2; the row was
+   > ticked with this evidence on 2026-10-16.]
 4. **Audit-honesty batch (task …2be, closeout 04-30).** 3/3:
    `journal-drift.sh` (4 phases) + `redaction.sh` re-PASS at HEAD;
    the pre-`4ba81d8` comparability operator note landed
@@ -98,6 +107,11 @@ ci.yml (`7e45d620`).
    depbump `SetFailureEvidence`) were never attempted, verified still
    unchecked at HEAD, and **no closeout report exists** for this task.
    Only the TODO rows keep the skipped work visible. See g1.
+   > [2026-10-16 ANNOTATION, docs-health — see the correction at §a3:
+   > item 2/row 225 landed via daemon sweep `9b4d2bc9` mid-lease (the
+   > agent lost it to the daemon before any closeout); item 3/row 226
+   > remains genuinely unlanded. The reclaim-laundering finding stands,
+   > sharpened: the batch was 2/3-landed at reclaim, invisibly.]
 2. **Provider contract is sqlite-proven only** (…72ba §b1): the postgresv4
    conform pin took the `TQ_TEST_POSTGRES` skip path ("ok" in 0.010s).
    Filed as row 839.
@@ -128,6 +142,9 @@ ci.yml (`7e45d620`).
 1. **Rows 225/226** — the …3dc4 batch's own skipped items (structural
    redaction guard for tail helpers; depbump `SetFailureEvidence`). The
    highest-priority residue of this window.
+   > [2026-10-16 ANNOTATION, docs-health — row 225 landed (daemon sweep
+   > `9b4d2bc9` + fix `2d6b3993`) and was ticked 2026-10-16; row 226
+   > verified still open.]
 2. **Row 239** (`tq stats --project X` parked-count × filter pin) — the
    only other open row of the 09-17 CI-resilience cluster this window
    worked from.
