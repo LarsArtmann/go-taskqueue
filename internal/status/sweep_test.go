@@ -333,6 +333,18 @@ func TestSweepPinsTasksDirCloseoutReports(t *testing.T) {
 	}
 }
 
+// TestCloseoutReportPathRepoAbsent is the negative pin on the resolver's
+// best-effort contract: a repo directory that does not exist AT ALL (not
+// merely one without a matching report) resolves to "" — no error, no
+// panic, an entry that simply carries no report.
+func TestCloseoutReportPathRepoAbsent(t *testing.T) {
+	t.Parallel()
+
+	if got := closeoutReportPath(filepath.Join(t.TempDir(), "no-such-repo"), task.ID("000001a0c2452641")); got != "" {
+		t.Fatalf("closeoutReportPath = %q, want empty for an absent repo dir", got)
+	}
+}
+
 func TestSweepReplayNeverDuplicates(t *testing.T) {
 	t.Parallel()
 

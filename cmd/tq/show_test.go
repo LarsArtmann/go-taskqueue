@@ -352,3 +352,79 @@ func assertShowUsageWire(t *testing.T, dbPath string, seed *usageSeed) {
 		}
 	}
 }
+
+// TestShowJSONCarriesStatusWindowReports pins the status-window section on
+// the raw show wire: a completed status task's payload Completed entries
+// surface as a typed window array carrying each run's item, commit and the
+// sweeper-pinned closeout report path — no payload JSON spelunking needed.
+func TestShowJSONCarriesStatusWindowReports(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "window.db")
+
+	store, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+
+	seed := usageSeed{
+		taskType: executor.TaskTypeStatus,
+		payload: executor.StatusPayload{
+			Repo:    "demo",
+			Project: "demo",
+			Completed: []executor.StatusCompletion{
+				{
+					TaskID:      "000001a0c2452641",
+					Item:        "Fix the frobnicator",
+					Commit:      "aaaa1111",
+					Files:       []string{"frob.go"},
+					CompletedAt: "2026-09-14T10:00:00Z",
+					Report:      "docs/status/tasks/2026-09-14_10-00_task-000001a0c2452641.md",
+				},
+				{TaskID: "000001a0c2452642", Item: "Polish the wobble"},
+			},
+		},
+		detail: executor.StatusResult{Report: "docs/status/2026-09-14_10-05_demo.md", NextItems: 1},
+	}
+
+	id := seedUsageTask(t, store, &seed)
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if err := cmdShow([]string{"--db", dbPath, id.String()}); err != nil {
+			t.Errorf("cmdShow: %v", err)
+		}
+	})
+
+	var doc struct {
+		Window []struct {
+			TaskID string   `json:"task_id"`
+			Item   string   `json:"item"`
+			Commit string   `json:"commit"`
+			Files  []string `json:"files"`
+			Report string   `json:"report"`
+		} `json:"window"`
+	}
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Fatalf("decode show output: %v\n%s", err, out)
+	}
+
+	if len(doc.Window) != 2 {
+		t.Fatalf("window = %d entries, want 2\n%s", len(doc.Window), out)
+	}
+
+	first := doc.Window[0]
+	if first.TaskID != "000001a0c2452641" || first.Commit != "aaaa1111" || len(first.Files) != 1 {
+		t.Errorf("first window entry = %+v, want commit + files carried", first)
+	}
+
+	wantReport := "docs/status/tasks/2026-09-14_10-00_task-000001a0c2452641.md"
+	if first.Report != wantReport {
+		t.Errorf("first window report = %q, want %q", first.Report, wantReport)
+	}
+
+	if doc.Window[1].Report != "" {
+		t.Errorf("second window report = %q, want empty (no report on disk)", doc.Window[1].Report)
+	}
+}
