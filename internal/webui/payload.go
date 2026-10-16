@@ -48,6 +48,14 @@ type payloadField struct {
 	Href string
 }
 
+// statusWindowEntry is one completed task in a status report's window
+// strip: the detail-link target plus the closeout report path the sweeper
+// resolved (empty when the repo has no report file for the task).
+type statusWindowEntry struct {
+	TaskID string
+	Report string
+}
+
 // payloadView is the typed projection of one task payload: the task's actual
 // content first (work item, or shell command), the executor contract as a
 // spec grid, and the raw text always available. Built once per render; the
@@ -72,8 +80,10 @@ type payloadView struct {
 	// collapsed — it is boilerplate contract wrapped around the item above.
 	Prompt string
 
-	// Window lists the completed task ids a status report covers.
-	Window []string
+	// Window lists the completed tasks a status report covers, each with
+	// the closeout report path the sweeper pinned (empty when none was
+	// found).
+	Window []statusWindowEntry
 
 	// Raw is the full payload text, pretty-printed when the payload parses
 	// as JSON. Always populated: a structured view that silently drops
@@ -239,7 +249,7 @@ func (v *payloadView) fromStatus(raw string) bool {
 		)
 
 		for _, c := range sp.Completed {
-			v.Window = append(v.Window, c.TaskID)
+			v.Window = append(v.Window, statusWindowEntry{TaskID: c.TaskID, Report: c.Report})
 		}
 	}
 

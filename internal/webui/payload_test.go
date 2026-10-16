@@ -182,7 +182,8 @@ func TestPayloadViewStatus(t *testing.T) {
 	t.Parallel()
 
 	payload := `{"repo":"/repos/demo","project":"demo","verify":"go test ./...",` +
-		`"completed":[{"task_id":"task-a","item":"one"},{"task_id":"task-b","item":"two"}]}`
+		`"completed":[{"task_id":"task-a","item":"one","report":"docs/status/tasks/2026-09-14_10-00_task-a.md"},` +
+		`{"task_id":"task-b","item":"two"}]}`
 	pv := payloadViewFor(task.Task{Type: executor.TaskTypeStatus, Payload: jsontext.Value(payload)})
 
 	if pv.Kind != payloadStatus {
@@ -193,8 +194,12 @@ func TestPayloadViewStatus(t *testing.T) {
 		t.Errorf("lede = %q, want the window summary", pv.Lede)
 	}
 
-	if !reflect.DeepEqual(pv.Window, []string{"task-a", "task-b"}) {
-		t.Errorf("window = %v, want the completed task ids", pv.Window)
+	wantWindow := []statusWindowEntry{
+		{TaskID: "task-a", Report: "docs/status/tasks/2026-09-14_10-00_task-a.md"},
+		{TaskID: "task-b"},
+	}
+	if !reflect.DeepEqual(pv.Window, wantWindow) {
+		t.Errorf("window = %v, want task id + pinned report per entry", pv.Window)
 	}
 }
 

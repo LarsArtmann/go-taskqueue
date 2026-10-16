@@ -876,12 +876,18 @@ templ payloadSection(t task.Task, pv payloadView) {
 			<div class="tq-payload-window">
 				<span class="tq-payload-label">window</span>
 				<span class="tq-payload-window-links">
-					for _, id := range pv.Window {
+					for _, entry := range pv.Window {
 						<a
 							class="font-mono text-xs text-blue-600 hover:underline dark:text-blue-400"
-							href={ templ.URL("/task/" + id) }
-							title={ id }
-						>{ shortIDTail(id) }</a>
+							href={ templ.URL("/task/" + entry.TaskID) }
+							title={ entry.TaskID }
+						>{ shortIDTail(entry.TaskID) }</a>
+						if entry.Report != "" {
+							<code
+								class="break-all font-mono text-xs text-gray-700 dark:text-gray-300"
+								title="closeout report"
+							>{ entry.Report }</code>
+						}
 					}
 				</span>
 			</div>
