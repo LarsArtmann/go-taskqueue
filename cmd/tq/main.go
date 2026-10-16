@@ -2479,8 +2479,10 @@ func cmdShow(args []string) error {
 		Questions []questionView     `json:"questions,omitempty"`
 		Priority  priorityProvenance `json:"priority"`
 		Liveness  livenessView       `json:"liveness"`
-	}{t, trail, resultDetail(t, trail), commitView, statusWindowFor(t),
-		buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail), buildLivenessView(t)})
+	}{
+		t, trail, resultDetail(t, trail), commitView, statusWindowFor(t),
+		buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail), buildLivenessView(t),
+	})
 }
 
 // statusWindowView is one entry of tq show's status-window section: a
