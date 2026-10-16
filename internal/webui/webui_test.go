@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-sse"
 	"github.com/larsartmann/go-sse/ssetest"
 	"github.com/larsartmann/go-taskqueue/internal/composition"
 	"github.com/larsartmann/go-taskqueue/internal/config"
@@ -450,7 +451,7 @@ func TestResumeAfterFactsBacklog(t *testing.T) {
 	for _, lastID := range []string{"", "1", "999999"} {
 		opts := []ssetest.RequestOption{ssetest.WithPath("/api/events")}
 		if lastID != "" {
-			opts = append(opts, ssetest.WithLastEventID(lastID))
+			opts = append(opts, ssetest.WithLastEventID(sse.NewEventID(lastID)))
 		}
 
 		events := ssetest.CollectN(t, srv.Handler(), 6, opts...)

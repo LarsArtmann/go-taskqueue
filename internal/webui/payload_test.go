@@ -415,3 +415,62 @@ func TestPayloadSectionGoldenRender(t *testing.T) {
 		}
 	})
 }
+
+// TestPayloadSectionStatusWindowReports pins the closeout-report surfacing
+// in the status window strip: an entry with a sweeper-resolved report
+// renders the path as copyable code NEXT to its task link, an entry
+// without one renders only the link, and the path is never an anchor —
+// tq serve is a read-only queue projection and never serves repo files
+// (ADR-0003, the statusReportCard convention).
+func TestPayloadSectionStatusWindowReports(t *testing.T) {
+	t.Parallel()
+
+	payload := `{"repo":"/repos/demo","project":"demo",` +
+		`"completed":[{"task_id":"task-aaaa","item":"one","report":"docs/status/tasks/2026-09-14_10-00_task-aaaa.md"},` +
+		`{"task_id":"task-bbbb","item":"two"}]}`
+
+	var buf bytes.Buffer
+
+	tk := task.Task{Type: executor.TaskTypeStatus, Payload: jsontext.Value(payload)}
+	if err := payloadSection(tk, payloadViewFor(tk)).Render(context.Background(), &buf); err != nil {
+		t.Fatalf("payloadSection render: %v", err)
+	}
+
+	html := buf.String()
+
+	if !strings.Contains(html, "docs/status/tasks/2026-09-14_10-00_task-aaaa.md") {
+		t.Errorf("window strip missing the pinned report path: %s", html)
+	}
+
+	linkIdx := strings.Index(html, `href="/task/task-aaaa"`)
+	reportIdx := strings.Index(html, "docs/status/tasks/2026-09-14_10-00_task-aaaa.md")
+	if linkIdx < 0 || reportIdx < linkIdx {
+		t.Fatalf("report path (at %d) must render next to its task link (at %d)", reportIdx, linkIdx)
+	}
+
+	anchorClose := strings.Index(html[linkIdx:], "</a>")
+	if anchorClose < 0 {
+		t.Fatal("task link never closed")
+	}
+
+	if strings.Contains(html[linkIdx+anchorClose:reportIdx], `href=`) {
+		t.Error("report path must render as copyable code, never inside an anchor (ADR-0003: no repo files served)")
+	}
+
+	stripStart := strings.Index(html, "tq-payload-window-links")
+	stripEnd := strings.Index(html, "tq-payload-spec")
+	if stripStart < 0 || stripEnd < stripStart {
+		t.Fatalf("window strip markers missing (start %d, end %d)", stripStart, stripEnd)
+	}
+
+	strip := html[stripStart:stripEnd]
+
+	noReport := strings.Index(strip, `href="/task/task-bbbb"`)
+	if noReport < 0 {
+		t.Fatal("second window entry missing its task link")
+	}
+
+	if strings.Contains(strip[noReport:], "docs/status/") {
+		t.Error("entry without a report must render no report path in the strip")
+	}
+}

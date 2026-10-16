@@ -2475,10 +2475,53 @@ func cmdShow(args []string) error {
 		Facts     []journal.Fact     `json:"facts,omitempty"`
 		Result    any                `json:"result,omitempty"`
 		Commits   any                `json:"commits,omitempty"`
+		Window    []statusWindowView `json:"window,omitempty"`
 		Questions []questionView     `json:"questions,omitempty"`
 		Priority  priorityProvenance `json:"priority"`
 		Liveness  livenessView       `json:"liveness"`
-	}{t, trail, resultDetail(t, trail), commitView, buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail), buildLivenessView(t)})
+	}{t, trail, resultDetail(t, trail), commitView, statusWindowFor(t),
+		buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail), buildLivenessView(t)})
+}
+
+// statusWindowView is one entry of tq show's status-window section: a
+// completed agent task the status report covers, with the per-entry
+// outcome (item, commit, files) and the closeout report path the sweeper
+// pinned — the JSON answer to "where did this run's report land?".
+type statusWindowView struct {
+	TaskID      string   `json:"task_id"`
+	Item        string   `json:"item,omitempty"`
+	Commit      string   `json:"commit,omitempty"`
+	Files       []string `json:"files,omitempty"`
+	CompletedAt string   `json:"completed_at,omitempty"`
+	Report      string   `json:"report,omitempty"`
+}
+
+// statusWindowFor decodes a status task's payload into the show view;
+// non-status tasks (or a payload that no longer parses) show no window —
+// the raw task payload remains the exact record.
+func statusWindowFor(t task.Task) []statusWindowView {
+	if t.Type != executor.TaskTypeStatus {
+		return nil
+	}
+
+	var sp executor.StatusPayload
+	if err := json.Unmarshal(t.Payload, &sp); err != nil {
+		return nil
+	}
+
+	window := make([]statusWindowView, 0, len(sp.Completed))
+	for _, c := range sp.Completed {
+		window = append(window, statusWindowView{
+			TaskID:      c.TaskID,
+			Item:        c.Item,
+			Commit:      c.Commit,
+			Files:       c.Files,
+			CompletedAt: c.CompletedAt,
+			Report:      c.Report,
+		})
+	}
+
+	return window
 }
 
 // showSessionView renders the journal trail of a session's synthetic
