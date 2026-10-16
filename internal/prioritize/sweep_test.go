@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -175,7 +176,7 @@ func TestSweeperMintsOneBatchForUnscoredItems(t *testing.T) {
 
 	// Dedup identity is proven through the idempotent-enqueue contract:
 	// re-enqueueing the same key set returns the SAME task.
-	wantDedup := DedupKey("demo", []string{"todo:abc", "todo:def"})
+	wantDedup := DedupKey("demo", []string{"todo:abc", "todo:def"}, 0)
 
 	again, err := s.Enqueue(context.Background(), task.New{
 		Type:     executor.TaskTypePrioritize,
@@ -216,6 +217,40 @@ func TestSweeperDedupSuppressesRemint(t *testing.T) {
 
 	if got := len(scorerTasks(t, s)); got != 1 {
 		t.Fatalf("scorer tasks after re-sweep = %d, want 1", got)
+	}
+}
+
+// TestDedupKeyGenerationStamp pins the stale-refresh key rule: a zero
+// generation keeps the legacy key shape byte-identical (stored dedup keys
+// keep resolving), a nonzero generation stamps a ":g<millis>" suffix so a
+// superseded verdict's refresh mints a NEW batch, and the same generation
+// stays stable (idempotent re-mint protection still holds within one
+// generation).
+func TestDedupKeyGenerationStamp(t *testing.T) {
+	t.Parallel()
+
+	legacy := DedupKey("demo", []string{"todo:abc", "todo:def"}, 0)
+	wantLegacy := DedupKey("demo", []string{"todo:abc", "todo:def"}, 0)
+
+	if legacy != wantLegacy {
+		t.Fatalf("zero generation unstable: %q vs %q", legacy, wantLegacy)
+	}
+
+	if strings.Contains(legacy, ":g") {
+		t.Fatalf("zero generation must keep the legacy shape, got %q", legacy)
+	}
+
+	stale := DedupKey("demo", []string{"todo:abc", "todo:def"}, 1728999999999)
+	if !strings.HasSuffix(stale, ":g1728999999999") {
+		t.Fatalf("nonzero generation must stamp :g<millis>, got %q", stale)
+	}
+
+	if stale == legacy {
+		t.Fatal("a stale-refresh batch must not collide with the legacy key")
+	}
+
+	if DedupKey("demo", []string{"todo:abc", "todo:def"}, 1728999999999) != stale {
+		t.Fatal("same generation must stay stable")
 	}
 }
 

@@ -753,13 +753,24 @@ func (s *Sweeper) warn(msg string, args ...any) {
 // reworded and re-keyed) mints a fresh batch; an unchanged set never mints
 // twice — even after the first batch died, whose recovery then rides the
 // next set change (the DLQ is the human surface until then).
-func DedupKey(repo string, keys []string) string {
+//
+// generation is the newest ScoredAt among the batch's stale-verdict
+// re-joins (0 when the batch has none): a superseded verdict's refresh
+// must mint a NEW batch instead of colliding with the old key, so nonzero
+// generations stamp a ":g<generation>" suffix. Zero keeps the legacy key
+// shape byte-identical, so stored dedup keys keep resolving.
+func DedupKey(repo string, keys []string, generation int64) string {
 	sorted := append([]string(nil), keys...)
 	sort.Strings(sorted)
 
 	sum := sha256.Sum256([]byte(repo + "\x00" + strings.Join(sorted, "\x00")))
 
-	return "prioritize:" + repo + ":" + hex.EncodeToString(sum[:])[:16]
+	key := "prioritize:" + repo + ":" + hex.EncodeToString(sum[:])[:16]
+	if generation != 0 {
+		key += ":g" + strconv.FormatInt(generation, 10)
+	}
+
+	return key
 }
 
 func sortedKeys(m map[string]string) []string {
