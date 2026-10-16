@@ -1755,8 +1755,16 @@ func cmdAgentPool(args []string) error {
 		)
 	}
 
+	// firstTickDone closes once the startup tick's sweeps (harvest,
+	// incident, prioritize, dep) have returned: the once-drain must not
+	// decide "nothing to do" while that tick is still minting the very
+	// work the drain exists to run (a mid-sweep stop killed the planner
+	// subprocess and lost the batch).
+	firstTickDone := make(chan struct{})
+
 	g.Go("tick", func(ctx context.Context) error {
 		runTick()
+		close(firstTickDone)
 
 		if poolOpts.once {
 			// The once-drain actor decides when the group ends; this actor
@@ -1835,6 +1843,14 @@ func cmdAgentPool(args []string) error {
 		// until the next signal. Work claimed by OTHER pools, or gated by a
 		// future NotBefore, is left for them / for the next --once run.
 		g.Go("once-drain", func(ctx context.Context) error {
+			// The startup tick mints this drain's work; deciding before it
+			// returned can stop the pool mid-sweep (the once-drain race).
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-firstTickDone:
+			}
+
 			for {
 				select {
 				case <-ctx.Done():
