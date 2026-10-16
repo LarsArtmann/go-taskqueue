@@ -52,7 +52,7 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 
 		for _, decl := range node.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Body == nil || !strings.Contains(strings.ToLower(fn.Name.Name), "tail") {
+			if !ok || fn.Body == nil || !namesTailWord(fn.Name.Name) {
 				continue
 			}
 
@@ -78,7 +78,7 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 					return true
 				}
 
-				return strings.Contains(strings.ToLower(name), "tail")
+				return namesTailWord(name)
 			})
 
 			if !delegates {
@@ -92,7 +92,6 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 	}
 
 	want := []string{"tailBytes", "tailOutput"}
-
 	got := make([]string, 0, len(census))
 	for name := range census {
 		got = append(got, name)
@@ -107,4 +106,36 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 			want,
 		)
 	}
+}
+
+// namesTailWord reports whether a function name uses "tail" as a whole
+// camelCase word. Substring matching false-positived on the "tail" inside
+// "Detail" (SetResultDetail/Sink.Detail are structured outcome accessors,
+// not output tails) and dragged them into the census; word matching keeps
+// the pin on real tail helpers only.
+func namesTailWord(name string) bool {
+	for _, w := range splitCamelWords(name) {
+		if strings.EqualFold(w, "tail") {
+			return true
+		}
+	}
+
+	return false
+}
+
+// splitCamelWords splits an identifier at lower→upper boundaries:
+// "SetResultDetail" → [Set Result Detail], "tailBytes" → [tail Bytes].
+func splitCamelWords(name string) []string {
+	var words []string
+
+	start := 0
+
+	for i := 1; i < len(name); i++ {
+		if name[i-1] >= 'a' && name[i-1] <= 'z' && name[i] >= 'A' && name[i] <= 'Z' {
+			words = append(words, name[start:i])
+			start = i
+		}
+	}
+
+	return append(words, name[start:])
 }
