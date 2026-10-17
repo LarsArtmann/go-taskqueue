@@ -66,8 +66,8 @@ reports/
 *.so
 *.dylib
 vendor/
-go.work
-go.work.sum
+/go.work
+/go.work.sum
 /go-taskqueue
 
 ## Nix
