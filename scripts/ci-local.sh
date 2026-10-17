@@ -506,6 +506,13 @@ step "status-index check"
 step "status-index self-test (live-row counter pin)"
 ./scripts/check-status-index.sh --self-test
 
+# Advisory phrase-drift guard (row-110 batch, TODO row 313): index-row quoted
+# spans must exist in the cited report body (03-37 drift class). WARN-only;
+# hard-gate flip is a separate follow-up row.
+step "index-row phrase drift (advisory WARN; annotate-never-rewrite)"
+./scripts/check-index-phrase-drift.sh --self-test
+./scripts/check-index-phrase-drift.sh
+
 # Security-invariant drift gate: the "learned checks may only narrow" promise
 # must hold in BOTH SECURITY.md prose and executor.MergeFindings code — a
 # rename or wording drift degrades the promise to stale prose (turnstone
