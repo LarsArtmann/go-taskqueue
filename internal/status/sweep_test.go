@@ -223,20 +223,33 @@ func TestSweepNthCompletionMintsOneReport(t *testing.T) {
 		t.Fatalf("window = %d entries, want 2", len(payload.Completed))
 	}
 
-	if payload.Completed[0].TaskID != first.ID.String() || payload.Completed[1].TaskID != second.ID.String() {
-		t.Fatalf("window order = [%s, %s], want oldest first", payload.Completed[0].TaskID, payload.Completed[1].TaskID)
+	// Same-milli completions make window ORDER non-deterministic (unix
+	// millis updated_at + TaskID tiebreak) — assert per task ID.
+	byTask := map[string]executor.StatusCompletion{}
+	for _, entry := range payload.Completed {
+		byTask[entry.TaskID] = entry
 	}
 
-	if payload.Completed[0].Commit != "aaaa" {
-		t.Fatalf("per-completion detail missing for first entry: %+v", payload.Completed[0])
+	firstEntry, ok := byTask[first.ID.String()]
+	if !ok {
+		t.Fatalf("window missing task %s: %+v", first.ID, payload.Completed)
+	}
+	if firstEntry.Commit != "aaaa" {
+		t.Fatalf("per-completion detail missing for %s: %+v", first.ID, firstEntry)
+	}
+	if firstEntry.Item != "todo item 0" {
+		t.Fatalf("label for %s = %q, want the pinned work item", first.ID, firstEntry.Item)
 	}
 
-	if payload.Completed[1].Commit != "bbbb" || len(payload.Completed[1].Files) != 1 {
-		t.Fatalf("per-completion detail missing for second entry: %+v", payload.Completed[1])
+	secondEntry, ok := byTask[second.ID.String()]
+	if !ok {
+		t.Fatalf("window missing task %s: %+v", second.ID, payload.Completed)
 	}
-
-	if payload.Completed[0].Item != "todo item 0" || payload.Completed[1].Item != "todo item 1" {
-		t.Fatalf("window labels must be the pinned work items, not prompt boilerplate: %+v", payload.Completed)
+	if secondEntry.Commit != "bbbb" || len(secondEntry.Files) != 1 {
+		t.Fatalf("per-completion detail missing for %s: %+v", second.ID, secondEntry)
+	}
+	if secondEntry.Item != "todo item 1" {
+		t.Fatalf("label for %s = %q, want the pinned work item", second.ID, secondEntry.Item)
 	}
 }
 
@@ -282,12 +295,26 @@ func TestSweepPinsCloseoutReportPaths(t *testing.T) {
 	}
 
 	wantReport := "docs/status/2026-09-14_10-00_task-" + first.ID.String() + ".md"
-	if window[0].Report != wantReport {
-		t.Fatalf("first entry report = %q, want %q", window[0].Report, wantReport)
-	}
 
-	if window[1].Report != "" {
-		t.Fatalf("second entry report = %q, want empty (no file on disk)", window[1].Report)
+	// The upstream engine persists updated_at as unix MILLIS, so both
+	// completions can share one CompletedAt under load — true completion
+	// order is not recoverable from the store and the window sort then
+	// falls to the random TaskID tiebreak. Pin the report SET, not its
+	// index (one-off window[0] flake, 2026-09-23 02-35 §c1; nanosecond
+	// formatting narrowed but cannot erase the milli tie).
+	var withReport, without int
+	for _, entry := range window {
+		switch entry.Report {
+		case wantReport:
+			withReport++
+		case "":
+			without++
+		default:
+			t.Fatalf("unexpected report path %q", entry.Report)
+		}
+	}
+	if withReport != 1 || without != 1 {
+		t.Fatalf("window reports: %d carrying %q, %d empty, want exactly one each", withReport, wantReport, without)
 	}
 }
 
@@ -333,12 +360,22 @@ func TestSweepPinsTasksDirCloseoutReports(t *testing.T) {
 	}
 
 	wantReport := "docs/status/tasks/2026-10-07_10-00_task-" + first.ID.String() + ".md"
-	if window[0].Report != wantReport {
-		t.Fatalf("first entry report = %q, want %q", window[0].Report, wantReport)
-	}
 
-	if window[1].Report != "" {
-		t.Fatalf("second entry report = %q, want empty (no file on disk)", window[1].Report)
+	// Order-agnostic: same-milli completions sort by the random TaskID
+	// tiebreak (see TestSweepPinsCloseoutReportPaths).
+	var withReport, without int
+	for _, entry := range window {
+		switch entry.Report {
+		case wantReport:
+			withReport++
+		case "":
+			without++
+		default:
+			t.Fatalf("unexpected report path %q", entry.Report)
+		}
+	}
+	if withReport != 1 || without != 1 {
+		t.Fatalf("window reports: %d carrying %q, %d empty, want exactly one each", withReport, wantReport, without)
 	}
 }
 

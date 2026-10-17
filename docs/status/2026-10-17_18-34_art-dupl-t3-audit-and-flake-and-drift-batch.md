@@ -19,15 +19,17 @@ agents expected; daemon sweeps healed via `scripts/heal-daemon-sweep.sh`.
    categories) under art-dupl's actionability filter — nothing actionable.
    Commit 3990c6e9 (post-heal SHA) + TODO row 319 ticked.
 2. **Item 2 — `TestSweepPinsCloseoutReportPaths` flake ROOT-CAUSED and fixed
-   (02-35 §c1).** Not the report-dir scan, not completion-window ordering in
-   the suspicious sense: window entries sort by an RFC3339
-   (SECOND-granularity) `CompletedAt` string; two completions inside the same
-   second tie and fall through to the lexicographic TaskID tiebreak, which is
-   random — under full-suite parallel load one run flipped the window so the
-   report-less task sorted first (`window[0].Report = ""`). Fix:
-   `time.RFC3339Nano` in `internal/status/sweep.go` (true completion order
-   preserved; residual exact-nanosecond ties are genuinely simultaneous).
-   Package tests green at `-count=10`. Commit bf328e28, row 320 ticked.
+   (02-35 §c1).** NOT the report-dir scan. True root cause, found in two
+   steps: (i) window entries sorted by a second-granularity RFC3339
+   `CompletedAt` string — fixed with RFC3339Nano; (ii) the `-race` full
+   suite STILL reproduced it: the upstream engine persists `updated_at` as
+   unix MILLIS, so two completions inside one millisecond are
+   order-indistinguishable at the source and the sort falls to the random
+   TaskID tiebreak. The window tests (Report paths ×2, labels/detail) now
+   pin the report SET and per-task detail by task ID instead of array
+   index — the store cannot express true sub-milli order, so index
+   assertions were pinning noise. Package tests green 5× at `-race`.
+   Commits bf328e28 + fd72e247, row 320 ticked.
 3. **Item 3 — journal-drift audit re-verified, upstream gate confirmed absent.**
    Both cmd/tq drift tests PASS at HEAD (via `scripts/test-cmd-tq.sh`, 11.5 s
    — the plain `cd cmd/tq && go test` build breaks on the pinned papdashboard,
