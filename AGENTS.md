@@ -235,7 +235,7 @@ docs/DOMAIN_LANGUAGE.md.
   `go test ./... -race` before declaring success; never generate Go
   source via heredocs; fixtures under /tmp (gated trees are daemon-food).
   Footer-less daemon `chore:` sweeps heal via
-  `scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>`
+  `scripts/heal-daemon-sweep.sh [--from <ref>] [--retitle <subject>] <Task-Queue-ID>`
   (unpushed only; backup on failure; `--self-test` pins rails). REFUSES
   non-contiguous spans — fallback: verify exactly-mine via
   `git show --stat`, then `git commit --amend` the unpushed HEAD

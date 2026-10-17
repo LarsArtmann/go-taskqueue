@@ -36,11 +36,17 @@
 #     `git commit --amend` territory per the AGENTS.md Known Issues
 #     fallback), or the sanctioned soft-reset fold.
 #
-# Usage: scripts/heal-daemon-sweep.sh [--from <ref>] <Task-Queue-ID>
+# Usage: scripts/heal-daemon-sweep.sh [--from <ref>] [--retitle <subject>] <Task-Queue-ID>
 #        scripts/heal-daemon-sweep.sh --self-test
 #   --from <ref>  base of the heal range (default: origin/master, then
 #                 @{upstream}, then the root commit). Everything in
 #                 <ref>..HEAD is treated as unpushed-local and verified.
+#   --retitle <subject>
+#                 set this subject on every HEALED (footer-less) commit in
+#                 the range — healed sweeps keep the daemon's lying
+#                 `chore: auto-commit` subject even when they carry real
+#                 work (2026-10-17 batch: 8ee9930a, aadfed9d); footer-
+#                 carrying commits in the range keep their subjects.
 #   <Task-Queue-ID> may be a hex task id OR a session-scope slug
 #                 (e.g. 20261011-b10-alert-routing-pack): a session's own
 #                 footered commits interleave with daemon sweeps, so the
@@ -56,7 +62,7 @@ die() {
 }
 
 usage() {
-	echo "usage: $0 [--from <ref>] <Task-Queue-ID>" >&2
+	echo "usage: $0 [--from <ref>] [--retitle <subject>] <Task-Queue-ID>" >&2
 	echo "       $0 --self-test" >&2
 	exit 2
 }
@@ -143,14 +149,47 @@ check_rails() {
 	[ "$unfootered" -gt 0 ] || echo "noop"
 }
 
-# run_filter footer base: the actual msg-filter rewrite. On failure the
+# snapshot_subjects base id retitle: the EXPECTED subjects of base..HEAD
+# oldest-first, one per line (subjects cannot contain newlines). Footer-
+# carrying commits are preserved verbatim -> their subject stands; healed
+# sweeps get <retitle> when given, else their own subject. verify_heal
+# compares the rewrite against this list, so --retitle turns the
+# subjects-must-not-move rail into subjects-match-intent.
+snapshot_subjects() {
+	local base=$1 id=$2 retitle=$3
+	local c msg
+	while IFS= read -r c; do
+		msg=$(git log -1 --format='%B' "$c")
+		if has_footer "$msg"; then
+			git log -1 --format='%s' "$c"
+		elif [ -n "$retitle" ]; then
+			printf '%s\n' "$retitle"
+		else
+			git log -1 --format='%s' "$c"
+		fi
+	done < <(git rev-list --reverse "$base..HEAD")
+}
+
+# run_filter footer base subject: the actual msg-filter rewrite. On failure the
 # filter's stderr is printed (a bare rc=1 hid the cause once — 08-06 report
 # §e2 polish row).
 run_filter() {
-	local footer=$1 base=$2
+	local footer=$1 base=$2 subject=$3
 	local err
-	err=$(FILTER_BRANCH_SQUELCH_WARNING=1 TQ_HEAL_FOOTER="$footer" git filter-branch -f --msg-filter '
-		git interpret-trailers --if-exists doNothing --trailer "$TQ_HEAL_FOOTER"
+	err=$(FILTER_BRANCH_SQUELCH_WARNING=1 TQ_HEAL_FOOTER="$footer" TQ_HEAL_SUBJECT="$subject" git filter-branch -f --msg-filter '
+		msg=$(cat)
+		case $msg in
+		*"Task-Queue-ID: "*)
+			printf "%s\n" "$msg"
+			exit 0
+			;;
+		esac
+		if [ -n "$TQ_HEAL_SUBJECT" ]; then
+			printf "%s\n\n" "$TQ_HEAL_SUBJECT"
+		else
+			printf "%s\n" "$msg"
+		fi |
+			git interpret-trailers --if-exists doNothing --trailer "$TQ_HEAL_FOOTER"
 	' -- "$base..HEAD" 2>&1 >/dev/null) || {
 		echo "filter-branch failed:" >&2
 		printf '%s\n' "$err" >&2
@@ -183,7 +222,7 @@ verify_heal() {
 	# is guaranteed by equal counts, which the rewrite preserves).
 	subj_new=$(git log --reverse --format='%s' "$base..HEAD")
 	if [ "$subj_old" != "$subj_new" ]; then
-		echo "FAIL: subjects changed across the heal" >&2
+		echo "FAIL: subjects do not match the expected (post-heal) list" >&2
 		fail=1
 	fi
 	stat_new=$(git rev-list --reverse "$base..HEAD" | while IFS= read -r c; do git diff-tree --no-commit-id --name-only -r "$c" | sort | md5sum; done)
@@ -254,12 +293,20 @@ print_fork_records() {
 }
 
 main() {
-	local base_arg="" footer="" base id
+	local base_arg="" footer="" retitle="" base id
 	while [ $# -gt 0 ]; do
 		case $1 in
 		--from)
 			[ $# -ge 2 ] || usage
 			base_arg=$2
+			shift 2
+			;;
+		--retitle)
+			[ $# -ge 2 ] || usage
+			case $2 in
+			"" | *$'\n'*) die "invalid --retitle subject: must be a single non-empty line" ;;
+			esac
+			retitle=$2
 			shift 2
 			;;
 		-*) usage ;;
@@ -286,14 +333,14 @@ main() {
 		echo "nothing to heal: every commit in $base..HEAD already carries the footer"
 		return 0
 	fi
-	echo "healing $(git rev-list --count "$base..HEAD") commit(s) in $base..HEAD with: $footer"
+	echo "healing $(git rev-list --count "$base..HEAD") commit(s) in $base..HEAD with: $footer${retitle:+ (retitle: $retitle)}"
 
 	local subj_old stat_old shas_old
-	subj_old=$(git log --reverse --format='%s' "$base..HEAD")
+	subj_old=$(snapshot_subjects "$base" "$id" "$retitle")
 	stat_old=$(git rev-list --reverse "$base..HEAD" | while IFS= read -r c; do git diff-tree --no-commit-id --name-only -r "$c" | sort | md5sum; done)
 	shas_old=$(git rev-list --reverse "$base..HEAD")
 
-	run_filter "$footer" "$base" || die "filter-branch failed (backup kept at $BACKUP_REF if it existed)"
+	run_filter "$footer" "$base" "$retitle" || die "filter-branch failed (backup kept at $BACKUP_REF if it existed)"
 
 	if verify_heal "$base" "$id" "$subj_old" "$stat_old"; then
 		print_fork_records "$base" "$shas_old"
@@ -550,6 +597,33 @@ self_test() {
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: --from at foreign commit should heal only the span above" >&2
 		cat "$tmp/err_above" >&2
+	fi
+
+	# --retitle (2026-10-17 8ee9930a class): healed sweeps take the
+	# caller's true subject; footer-carrying commits in the range keep
+	# theirs byte-identical.
+	echo j >"$repo/j.txt"
+	git -C "$repo" add j.txt
+	git -C "$repo" commit -qm "chore: auto-commit"
+	echo k >"$repo/k.txt"
+	git -C "$repo" add k.txt
+	git -C "$repo" commit -qm "work: footered stays"
+	git -C "$repo" commit -q --amend -m "$(printf 'work: footered stays\n\nTask-Queue-ID: deadbeef00000000000000000000000000000001')"
+	echo l >"$repo/l.txt"
+	git -C "$repo" add l.txt
+	git -C "$repo" commit -qm "chore: auto-commit two"
+	local rbase
+	rbase=$(git -C "$repo" rev-parse HEAD~3)
+	(cd "$repo" && "$self" --from "$rbase" --retitle "feat: real work, retitled" deadbeef00000000000000000000000000000001) >"$tmp/out_retitle" 2>"$tmp/err_retitle"
+	if [ "$?" = "0" ] &&
+		[ "$(git -C "$repo" log --reverse --format='%s' "$rbase..HEAD" | sed -n 1p)" = "feat: real work, retitled" ] &&
+		[ "$(git -C "$repo" log --reverse --format='%s' "$rbase..HEAD" | sed -n 2p)" = "work: footered stays" ] &&
+		[ "$(git -C "$repo" log --reverse --format='%s' "$rbase..HEAD" | sed -n 3p)" = "feat: real work, retitled" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: --retitle subjects wrong" >&2
+		cat "$tmp/err_retitle" >&2
 	fi
 
 	if [ "$fail" = "0" ]; then
