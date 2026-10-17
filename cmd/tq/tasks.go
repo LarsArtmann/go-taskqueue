@@ -233,7 +233,13 @@ func printTaskList(tasks []task.Task, limit int, total func() (int, error)) {
 // providers (nil outside --parked) joins each task's latest requeue
 // evidence provider onto the row: "[zai] reason…" names the exhausted
 // provider in one glance (04-03 §f8).
-func printTaskListTo(w io.Writer, tasks []task.Task, limit int, total func() (int, error), providers map[string]string) {
+func printTaskListTo(
+	w io.Writer,
+	tasks []task.Task,
+	limit int,
+	total func() (int, error),
+	providers map[string]string,
+) {
 	if len(tasks) == 0 {
 		fmt.Fprintln(w, "no matching tasks")
 

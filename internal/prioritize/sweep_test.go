@@ -328,7 +328,16 @@ func TestRequeueForcesARescore(t *testing.T) {
 		t.Fatalf("claimed %s task, want the backlog item", claimed.Type)
 	}
 
-	if err := s.Requeue(ctx, claimed.ID, claim, "env boom", time.Minute, false, queue.RequeueClassRateLimit, ""); err != nil {
+	if err := s.Requeue(
+		ctx,
+		claimed.ID,
+		claim,
+		"env boom",
+		time.Minute,
+		false,
+		queue.RequeueClassRateLimit,
+		"",
+	); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 

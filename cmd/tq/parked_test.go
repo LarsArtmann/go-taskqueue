@@ -89,7 +89,16 @@ func TestParkedProviderJoinsOntoRows(t *testing.T) {
 		t.Fatalf("claim: %v", err)
 	}
 
-	if err := store.Requeue(ctx, tk.ID, claim, "rate limited", time.Hour, false, queue.RequeueClassRateLimit, "zai"); err != nil {
+	if err := store.Requeue(
+		ctx,
+		tk.ID,
+		claim,
+		"rate limited",
+		time.Hour,
+		false,
+		queue.RequeueClassRateLimit,
+		"zai",
+	); err != nil {
 		t.Fatalf("requeue: %v", err)
 	}
 

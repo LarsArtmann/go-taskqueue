@@ -443,6 +443,7 @@ func TestPayloadSectionStatusWindowReports(t *testing.T) {
 	}
 
 	linkIdx := strings.Index(html, `href="/task/task-aaaa"`)
+
 	reportIdx := strings.Index(html, "docs/status/tasks/2026-09-14_10-00_task-aaaa.md")
 	if linkIdx < 0 || reportIdx < linkIdx {
 		t.Fatalf("report path (at %d) must render next to its task link (at %d)", reportIdx, linkIdx)
@@ -458,6 +459,7 @@ func TestPayloadSectionStatusWindowReports(t *testing.T) {
 	}
 
 	stripStart := strings.Index(html, "tq-payload-window-links")
+
 	stripEnd := strings.Index(html, "tq-payload-spec")
 	if stripStart < 0 || stripEnd < stripStart {
 		t.Fatalf("window strip markers missing (start %d, end %d)", stripStart, stripEnd)

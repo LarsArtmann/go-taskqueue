@@ -521,6 +521,7 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 	covered := s.coveredKeys(ctx, project)
 
 	var batch []executor.PrioritizeItem
+
 	generation := int64(0)
 
 	for _, entry := range pending {

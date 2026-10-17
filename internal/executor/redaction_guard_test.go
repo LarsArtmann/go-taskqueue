@@ -92,6 +92,7 @@ func TestTailHelpersDelegateRedaction(t *testing.T) {
 	}
 
 	want := []string{"tailBytes", "tailOutput"}
+
 	got := make([]string, 0, len(census))
 	for name := range census {
 		got = append(got, name)
