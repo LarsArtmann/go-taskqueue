@@ -229,8 +229,14 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		}
 
 		completion := executor.StatusCompletion{
-			TaskID:      agentTask.ID.String(),
-			CompletedAt: agentTask.UpdatedAt.UTC().Format(time.RFC3339),
+			TaskID: agentTask.ID.String(),
+			// Nanosecond precision: entries completed within the same
+			// second (parallel load) must still sort by true completion
+			// order — second-granularity strings tie and fall through to
+			// the random TaskID tiebreak, which once flipped a window so
+			// its first entry was the report-less task (one-off flake in
+			// TestSweepPinsCloseoutReportPaths, 2026-09-23 02-35 §c1).
+			CompletedAt: agentTask.UpdatedAt.UTC().Format(time.RFC3339Nano),
 		}
 
 		var ap executor.AgentPayload
