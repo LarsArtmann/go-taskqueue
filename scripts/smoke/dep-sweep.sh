@@ -136,7 +136,7 @@ git -C "$LIB" tag --list 'v0.1.1' | grep -qx 'v0.1.1' || {
 	echo "FAIL: release tag v0.1.1 missing"
 	exit 1
 }
-[ "$(git -C "$LIB" rev-parse v0.1.1^{commit})" = "$(git -C "$LIB" rev-parse HEAD)" ] || {
+[ "$(git -C "$LIB" rev-parse 'v0.1.1^{commit}')" = "$(git -C "$LIB" rev-parse HEAD)" ] || {
 	echo "FAIL: v0.1.1 must tag the lib HEAD (the unreleased commit)"
 	exit 1
 }
