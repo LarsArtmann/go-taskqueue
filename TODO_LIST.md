@@ -330,6 +330,17 @@ not here.
 - [x] Resolve the commit-template vs footer-gate conflict: the harness commit template places attribution lines AFTER `Task-Queue-ID:`, but check-verify/heal require the footer as the LAST trailer — propose the fix (template reorder or trailer-aware gate) in crush-config, don't self-merge (cost: one refused heal + amend in the 2026-10-17 batch, third sighting of the class) — DONE 2026-10-17: proposal landed in crush-config docs/planning/2026-10-17_19-38_SUPERB-commit-template-vs-footer-gate.md (recommends hook-side footer relocation over gate relaxation or upstream reorder; AWAITING OWNER RULING, not self-merged)
 - [x] docs-health ANNOTATE: point 01-34 report §f34 and 02-35 §c1 at the 2026-10-17 closeout (t3 rerun DONE via the mirror gate, not a full-repo accept-list; flake root cause = unix-milli updated_at + TaskID tiebreak, tests now set-wise) — annotate-never-rewrite convention — DONE 2026-10-17: ANNOTATION sections appended to both archived reports (docs/status/archived/2026-09-23_01-34_art-dupl-dedup-pass.md + 2026-09-23_02-35_dedup-continuation-window.md), original text preserved
 
+## Footer-gate conflict fix-ups (2026-10-17 19-40; source: docs/status/tasks/2026-10-17_19-40_task-000001a14af0697cc80ec6e1c16300000000.md §b/§e/§f; deduped against open rows — the proposal itself and row 318 are already listed, not re-minted)
+
+- [ ] Implement the commit-msg hook footer-relocation path in go-taskqueue, gated on the crush-config ruling: if the ruling is NOT ratified, close this row with the verdict cited — a well-formed unique footer followed only by the attribution block gets rewritten to footer-last instead of refused
+- [ ] Add a `template-order.txt` pin case (footer above attribution → relocated, rc 0) to scripts/check-commit-msg-hook.sh alongside the relocation path
+- [ ] Accept relocated-footer shapes in scripts/heal-daemon-sweep.sh's last-trailer assert and the census/audit-daemon-attribution.sh parsers (all queue parsers must agree BEFORE the hook lands to avoid a second shape class)
+- [ ] File the upstream Crush-core template reorder issue (attribution block above the agent's last trailer) after a verify-before-filing pass on the template behavior
+- [ ] Update AGENTS.md "Derived outcomes" bullet with the ratified footer-placement rule once the ruling lands
+- [ ] Close crush-config docs/planning/2026-10-17_19-38_SUPERB-commit-template-vs-footer-gate.md with the ruling + landing record, and add a pointer to pending rulings from crush-config's TODO_LIST
+- [ ] Make heal-daemon-sweep.sh print a per-commit disposition line (retitled vs kept) when a range mixes footer-carrying and footer-less commits — the current "healing N commit(s)" line reads as if all get retitled
+- [ ] Document the annotation-anchor convention in AGENTS.md conventions (numbered table rows are cited as "row N", headed sections as "§x" — 19-40 closeout §d3 inferred this the hard way)
+
 ## cmd/tq go.work surface follow-ups (2026-10-17 19-29; source: docs/status/tasks/2026-10-17_19-29_task-000001a14ade18eb3cd0720b410600000000.md §e/§f; deduped against open rows — none existed)
 
 - [ ] Add check-cmd-tq-gowork.sh: cmd/tq/go.work use-set must equal the root go.mod replace set (drift between the three replace/use surfaces — committed go.work, cmdtq_devmod derivation, flake.nix preBuild — currently caught by nothing; a root go.mod sub-module gain silently breaks the plain cmd/tq build) (source: 19-29 closeout §e1/§f1)
