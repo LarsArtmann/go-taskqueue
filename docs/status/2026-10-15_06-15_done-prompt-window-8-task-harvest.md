@@ -14,7 +14,7 @@ clean, 3 commits ahead of origin at report time). Task
    All three pin tests were already at HEAD (landed by the 02-37 span-merge
    work without the batch footer); the session verified each and ticked its
    row. Verified present today: `TestSecretPatternsOverlapCensus` (all-11
-   overlap census, `want = ["8×9"]` pair pin), 
+   overlap census, `want = ["8×9"]` pair pin),
    `TestSecretHitsCountsInjectedTokensIndependentOfContext` (N×filler
    property), `TestRedactSecretsMasksAuthHeaderToExactlyOneMarker`.
    Footer commits `b829f600`/`20cc3fbc`/`c08af02a` + closeout `a911cd94`.
@@ -198,10 +198,10 @@ ci.yml (`7e45d620`).
 ## e) WHAT WE SHOULD IMPROVE
 
 1. **Reclaim must re-derive batch completeness.** On lease-expiry
-   reclaim, a worker that finds *some* landed work for a multi-item
+   reclaim, a worker that finds _some_ landed work for a multi-item
    batch should verify the remaining item keys (footed commits / landed
    tests) before derived completion — or re-enqueue the unlanded keys.
-   Today a fast reclaim launders a 1/3 batch into COMPLETED (d1). 
+   Today a fast reclaim launders a 1/3 batch into COMPLETED (d1).
    Mechanics row minted; policy ruling in g1.
 2. **Same-breath committing is still not muscle memory.** Two
    consecutive windows, same §d root cause. The working rule from the

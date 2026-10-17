@@ -1,7 +1,7 @@
 version: "2"
 run:
   timeout: 5m
-  go: 1.26.7
+  go: "1.27"
   build-tags:
     - goexperiment.arenas
     - goexperiment.goroutineleakprofile
@@ -254,15 +254,9 @@ linters:
       - path: cmd/tq/session_forensics_test\.go
         linters:
           - tagliatelle
-      # tq CLI wire payloads (`tq stats --json`, `tq top`, `tq audit --journal`)
-      # use snake_case keys BY CONTRACT — the whole statsPayload family predates
-      # the linter and tests pin the exact keys (stats_test.go).
       - path: cmd/tq/(main|top|journalaudit)\.go
         linters:
           - tagliatelle
-      # readmodel wire rows mirror the task-row storage format (unix-millis
-      # snake_case) and the fact-detail wire keys (ADR-0019 S3 planned table)
-      # — machine surface BY CONTRACT, the keys persist in the projection SQL.
       - path: internal/readmodel/[a-z_]+\.go
         linters:
           - tagliatelle
@@ -274,7 +268,7 @@ linters:
           - errcheck
           - wrapcheck
           - varnamelen
-          - exhaustruct
+          - exhaustruct_v5
           - testpackage
           - gochecknoglobals
           - funlen
@@ -308,5 +302,5 @@ formatters:
     paths:
       - _templ\.go$
 issues:
-  max-issues-per-linter: 50
-  max-same-issues: 10
+  max-issues-per-linter: 0
+  max-same-issues: 0

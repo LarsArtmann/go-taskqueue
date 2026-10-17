@@ -50,7 +50,7 @@ socket_classify,endpoints,docs}.go`, `internal/backend/{backend,agent,channels}.
   agent` returns 202; "the run survives client disconnects and is only ended
   by the explicit cancel endpoint"). Client crash ≠ run death; server death
   kills the live run, but sessions persist in the DB and a replacement server
-  + retry/resume-by-session-id is the documented recovery (`errors.go`).
+  - retry/resume-by-session-id is the documented recovery (`errors.go`).
 - **Channels routing is server-owned in server mode** (`backend/channels.go`):
   each push injected into EXACTLY ONE session per opted-in workspace, arrival
   order preserved, delivery concurrent across workspaces, coder agent

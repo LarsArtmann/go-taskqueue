@@ -37,18 +37,18 @@ owner-blocked in September are now technically unblocked.
 
 tq plays the **channel server** role; crush is the client:
 
-| Element | Value |
-| --- | --- |
-| Capability | `initialize` result: `capabilities.experimental["claude/channel"] = {}` — presence alone turns on the client's notification listener |
-| Push | Server emits JSON-RPC notification `notifications/claude/channel`, params `{content: string, meta: map[string]string}` |
-| Content limits | non-empty, ≤ 64 KiB; oversized → notification dropped (never truncated) |
-| Meta limits | ≤ 32 entries; values ≤ 1024 bytes; keys MUST match `^[A-Za-z_][A-Za-z0-9_]*$`; reserved keys dropped: `source`, `xmlns`, `xml` |
-| Validation | fail-closed, `DisallowUnknownFields`; any structural problem drops the whole notification |
-| Render | client wraps as `<channel source="<server-name>" k="v" …>content</channel>` (keys sorted, values XML-escaped) and injects into the session's next turn |
-| Negotiation gate | notifications arriving between Connect and gate resolution are buffered, then drained (open) or discarded (closed) — a server may push immediately after initialize |
-| Opt-in | `channel_enabled: true` per-server in crush.json mcp block (persisted) OR hidden `--channels server:<name>` flag (per-launch); "listed is not enabled" — both sources ORed at every gate site (`ChannelOptIn`) |
-| Reply routing | `channel_reply: {user: {tool, target_param}, group: {tool, target_param}, message_param, suppress_tools}` — replies to channel-originating turns are routed back through ONE of the server's tools; `message_param` names the arg receiving the reply text (default `"message"`) |
-| Exactly-once | server-mode crush (`backend/channels.go`) routes per workspace with must-deliver semantics; busy sessions queue pushes instead of interleaving |
+| Element          | Value                                                                                                                                                                                                                                                                            |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Capability       | `initialize` result: `capabilities.experimental["claude/channel"] = {}` — presence alone turns on the client's notification listener                                                                                                                                             |
+| Push             | Server emits JSON-RPC notification `notifications/claude/channel`, params `{content: string, meta: map[string]string}`                                                                                                                                                           |
+| Content limits   | non-empty, ≤ 64 KiB; oversized → notification dropped (never truncated)                                                                                                                                                                                                          |
+| Meta limits      | ≤ 32 entries; values ≤ 1024 bytes; keys MUST match `^[A-Za-z_][A-Za-z0-9_]*$`; reserved keys dropped: `source`, `xmlns`, `xml`                                                                                                                                                   |
+| Validation       | fail-closed, `DisallowUnknownFields`; any structural problem drops the whole notification                                                                                                                                                                                        |
+| Render           | client wraps as `<channel source="<server-name>" k="v" …>content</channel>` (keys sorted, values XML-escaped) and injects into the session's next turn                                                                                                                           |
+| Negotiation gate | notifications arriving between Connect and gate resolution are buffered, then drained (open) or discarded (closed) — a server may push immediately after initialize                                                                                                              |
+| Opt-in           | `channel_enabled: true` per-server in crush.json mcp block (persisted) OR hidden `--channels server:<name>` flag (per-launch); "listed is not enabled" — both sources ORed at every gate site (`ChannelOptIn`)                                                                   |
+| Reply routing    | `channel_reply: {user: {tool, target_param}, group: {tool, target_param}, message_param, suppress_tools}` — replies to channel-originating turns are routed back through ONE of the server's tools; `message_param` names the arg receiving the reply text (default `"message"`) |
+| Exactly-once     | server-mode crush (`backend/channels.go`) routes per workspace with must-deliver semantics; busy sessions queue pushes instead of interleaving                                                                                                                                   |
 
 Part 3/3 of the series (the reference channel-server implementation the
 23-37 review could not locate) resolved as: there is no separate reference

@@ -4,7 +4,6 @@
 
 > **[2026-10-14 ANNOTATION, docs-health]** SECRET EVIDENCE counts quoted in this report predate the span-merge fix (`4ba81d8`, 2026-09-16): they count raw pattern matches, not distinct secret locations, and are NOT comparable with fresh `tq audit --journal` output (rows now labelled `locations`).
 
-
 **Task:** 000001a0a768395fee5feed5b73f5ebec067 (done-prompt status report + docs-health pass)
 **Window:** the five completed queue tasks below — landed between 2026-09-12 04:08 and
 2026-09-16 01:16 CEST (bulk: 09-15 06:42 → 09-16 01:16)
