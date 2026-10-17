@@ -1,5 +1,14 @@
 # Status Report — art-dupl -t 3 Audit + Closeout-Flake Root Cause + Journal-Drift Re-check (2026-10-17 18:34 CEST)
 
+> **ARCHIVED 2026-10-17** Per-item triage at HEAD `a6dbf658`: every item
+> shipped and re-verified (a1 `companion.Enqueue` homing `3990c6e9`; a2
+> RFC3339Nano + set-wise window pins `bf328e28`/`2ed7c221`; a3 drift
+> re-verification `18a337e1`), the one forward-looking item routed to its
+> open row (b1 → row 321, BLOCKED on the M4 memo), §d/§f/§g narrative.
+> Batch 4/4 (the follow-up session) closed in
+> docs/status/tasks/2026-10-17_19-29_task-000001a14ade18eb3cd0720b410600000000.md;
+> window verification: docs/status/2026-10-17_19-54_done-prompt-five-task-window-ci-parity-depsweep-artdupl.md §a3-§a6.
+
 **Session scope:** autonomous queue batch `000001a1478bb7c81e2c09da2abe00000000`
 (TODO_LIST "art-dupl dedup pass follow-ups", 3 items, one session). No
 re-dispatch history found (footer grep clean before work started). Concurrent

@@ -19,6 +19,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ADR-0003 document the ruling (2026-10-05, surfaced during G1).
 
 ### Fixed
+- **Plain `cd cmd/tq && go build/vet/test` works again without the devmod
+  shim** (2026-10-17): the replace-free committed go.mod pins released
+  internal-module tags that lag HEAD symbols, so the obvious in-module
+  commands failed while the shim gate passed; a committed
+  `cmd/tq/go.work` now carries the shim's local use-set (replace-free
+  discipline intact — workspace detection never affects `go install
+  pkg@version`; nix build + all gates pin `GOWORK=off`). ADR-0017
+  amended; `scripts/test-cmd-tq.sh` stays the release-authoritative gate
+  (`0f0e8167`).
 - **Worktree reaper no longer pins cancelled tasks' worktrees** (BEHAVIOR
   CHANGE for pool operators): a task that died CANCELLED while its
   closeout was parked kept its `tq/<id>` worktree and branch until
@@ -118,6 +127,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
+
+- **ci.yml parity sweep wiring** (2026-10-15): `golangci-lint config
+  verify` joins CI as a HARD step (kills the silent-disabled-linter
+  class), `scripts/smoke/reviews.sh` hard (hermetic), `scripts/smoke/journal-drift.sh`
+  advisory (`continue-on-error`, mirroring the ci-local ruling),
+  `check-module-loop-capture.sh` hard (`7e45d620`).
+- **dep-sweep e2e smoke** (2026-10-16): `scripts/smoke/dep-sweep.sh` —
+  stub planner mints a two-module release plan, a `--once` pool drains it
+  through the deterministic executor, scratch repos prove the
+  go get→commit→tag happy path, and the second pool run pins the
+  convergence rule (completed dedup keys = known hits, never sweep
+  failures); wired into ci-local; env-gated live-calibration entry
+  `internal/depsweep/calibration_live_test.go` (`TQ_DEPSWEEP_LIVE_CALIB=1`)
+  reports what a first real `--dep-sweep` pool run would mint
+  (`a2e30bef`, `058923db`).
+- **`heal-daemon-sweep.sh --retitle <subject>`** (2026-10-17): healed
+  footer-less sweeps can take their true subject (footer-carrying commits
+  pass through byte-identical); self-test 21 checks (`c3cf5191`).
+- **`companion.Enqueue` homing** (2026-10-17): the byte-identical
+  cross-backend `Enqueue` mirror the strict `-t 3` rerun surfaced is homed
+  once in `internal/queue/companion` (engine-driven routing); sqlitev4 +
+  postgresv4 adapters are one-line delegates, mirror gate strict-green
+  (`3990c6e9`).
 
 - **check-release-docs.sh `--self-test` alarm pin** (2026-10-12): the drift
   smoke re-runs itself against a mutated copy of RELEASE.md (newline-
