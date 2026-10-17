@@ -330,6 +330,14 @@ not here.
 - [ ] Resolve the commit-template vs footer-gate conflict: the harness commit template places attribution lines AFTER `Task-Queue-ID:`, but check-verify/heal require the footer as the LAST trailer — propose the fix (template reorder or trailer-aware gate) in crush-config, don't self-merge (cost: one refused heal + amend in the 2026-10-17 batch, third sighting of the class)
 - [ ] docs-health ANNOTATE: point 01-34 report §f34 and 02-35 §c1 at the 2026-10-17 closeout (t3 rerun DONE via the mirror gate, not a full-repo accept-list; flake root cause = unix-milli updated_at + TaskID tiebreak, tests now set-wise) — annotate-never-rewrite convention
 
+## cmd/tq go.work surface follow-ups (2026-10-17 19-29; source: docs/status/tasks/2026-10-17_19-29_task-000001a14ade18eb3cd0720b410600000000.md §e/§f; deduped against open rows — none existed)
+
+- [ ] Add check-cmd-tq-gowork.sh: cmd/tq/go.work use-set must equal the root go.mod replace set (drift between the three replace/use surfaces — committed go.work, cmdtq_devmod derivation, flake.nix preBuild — currently caught by nothing; a root go.mod sub-module gain silently breaks the plain cmd/tq build) (source: 19-29 closeout §e1/§f1)
+- [ ] Audit every cmd/tq build entry point for an explicit GOWORK=off pin (release.sh clean-room step, scripts/build-tq.sh, screenshot/e2e scripts, doc recipes) — post-go.work a missed entry point silently builds workspace-mode local replaces instead of the pinned release tags (source: 19-29 closeout §b2/§f2)
+- [ ] Gate the plain workspace path: test-cmd-tq.sh (or ci-local) must also run `cd cmd/tq && GOEXPERIMENT=jsonv2 go test` with GOWORK unset so the newly supported obvious-command surface cannot rot unguarded (source: 19-29 closeout §b1/§f3)
+- [ ] Decide cmd/tq/go.work.sum policy (commit vs explicit ignore): the file is generated on every workspace run, sits ignored via the global user gitignore, and is outside the !cmd/tq/go.work re-include — pin the decision in check-cmd-tq-gowork.sh (source: 19-29 closeout §b3/§f4)
+- [ ] AGENTS.md budget decision: 23 B headroom left (20077/20100) — schedule a fact-preserving compaction pass or take a conscious agentsDocMaxBytes reset before the next rule lands (source: 19-29 closeout §e3/§f5)
+
 ## Row-110 verify-window follow-ups (2026-09-26 05-19; source: docs/status/2026-09-26_05-19_task-000001a0dbb5f5eec2e3f7021239fd38e0e9.md §e/§f; deduped against open rows)
 
 - [ ] Pin the lint-lll-changed.sh `*_templ.go` exclusion with a `--self-test` mode (check-transient-retry.sh pattern): marker-guard a sed-extraction of the awk filter, feed it a fixture diff where a >120-char added line in a plain .go file must FAIL and the identical line in a `*_templ.go` file must PASS — two windows have now manually verified this one property (11-30 self-review, row-110 window), which is the signature of a missing mechanical pin
