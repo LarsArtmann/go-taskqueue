@@ -1,9 +1,6 @@
 # go-taskqueue — Agent Guide
 
-Projects-aware task work queue / worker pool for Go: embedded SQLite
-journal, lease claims + crash reclaim, DAG deps, retries + DLQ,
-pluggable executors (incl. AI agents). One binary, one file, zero
-services.
+Projects-aware task queue / worker pool for Go — see README.md.
 
 **STATUS: v0.3.4 shipped (tags pushed, proxy verified); MULTIPLE
 concurrent agents** — re-read files, re-run tests; uncommitted parallel
@@ -99,6 +96,10 @@ docs/DOMAIN_LANGUAGE.md.
 - **Task contexts survive pool shutdown** (bounded only by
   `--task-timeout`) — no shared drain deadline.
 - **Facts in the same tx as state**, or it didn't happen.
+- **Unix-milli timestamps**: stored timestamps (upstream engine) are
+  MILLISECOND-granular — ordering-sensitive code must not assume
+  sub-millisecond completion order; sorts need deterministic non-time
+  tiebreaks or set-wise assertions (status-window flake, 2026-10-17).
 
 ### Payload contracts (code owns detail)
 
@@ -174,11 +175,11 @@ docs/DOMAIN_LANGUAGE.md.
 - Table-driven tests, plain `testing`; sentinels in `internal/task/errors.go`.
 - **Claims carry citations** (gate run or SHA; never a running gate);
   filter-scope claims cite file:line or a pin.
-- **Verify-window battery**: cheap gates at HEAD (check-doc-refs, root
+- **Verify-window battery**: cheap HEAD gates (check-doc-refs, root
   build+vet, check-dead-sha-refs, date-named report) + one fresh delta;
-  expensive gates inherit from a same-HEAD report; nested-module claims
+  expensive gates inherit a same-HEAD report; nested-module claims
   need in-module `GOWORK=off` tests; root-parsed-file closeouts cite
-  ROOT build+vet+test -race rc. Re-dispatch via `scripts/redispatch-brief.sh <id>`;
+  ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh <id>`;
   battery rc TO A FILE (no PIPESTATUS); dated DONE re-verified note;
   `-v` + PASS COUNT for conform `-run`.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
@@ -186,15 +187,15 @@ docs/DOMAIN_LANGUAGE.md.
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE
   index-row write point (top chronological cluster); CHANGELOG
   append-only.
-- **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE composing
-  a `<ts>_<slug>` filename and paste the output — a guessed `<ts>` lies
-  about its own timestamp.
+- **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
+  composing a `<ts>_<slug>` filename — a guessed `<ts>` lies about its
+  own timestamp.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
   (daemon sweeps <60 s, footer-less, take STAGED files too); fold only
   while local-only + contiguous + exactly-mine (`scripts/commit-task.sh
   <id> <subject> <file>…`). "Anything" is literal during MULTI-STEP git
-  surgery (heals/amends/filter ops): modified-unstaged AND untracked
-  files are daemon-food too — a mid-sequence sweep makes the span
+  surgery: modified-unstaged AND untracked files are daemon-food — a
+  mid-sequence sweep makes the span
   non-contiguous and the heal refuses; between steps the tree must be
   CLEAN, not merely "nothing left to stage" (2026-10-13 01-54 §e).
 - Tab-bearing insertions go through python-heredoc replace — free-text
