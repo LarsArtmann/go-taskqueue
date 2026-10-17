@@ -1,0 +1,33 @@
+// Dev-mode workspace for the cmd/tq module (ADR-0017): makes the plain
+// in-module commands (`go test`, `go build`, `go vet` run INSIDE cmd/tq)
+// resolve the root module and every internal sub-module against the LOCAL
+// tree — the same replace set the generated dev.mod shim carries. The
+// committed go.mod stays replace-free and proxy-installable: go.work files
+// are never consulted for `go install pkg@version` (workspace detection
+// walks up from the caller's cwd, not the module cache) and every repo
+// gate/hermetic build pins GOWORK=off explicitly.
+//
+// Keep this file in sync with the root go.mod replace set — the devmod
+// shim (scripts/lib/cmd-tq-devmod.sh cmdtq_devwork) derives the same set.
+go 1.27.1
+
+use (
+	.
+
+	../..
+
+	../../internal/composition
+	../../internal/config
+	../../internal/executor
+	../../internal/journal
+	../../internal/journal/cqrs
+	../../internal/queue
+	../../internal/queue/companion
+	../../internal/queue/postgres
+	../../internal/queue/postgresv4
+	../../internal/queue/sqlite
+	../../internal/queue/sqlitev4
+	../../internal/readmodel
+	../../internal/task
+	../../internal/worker
+)

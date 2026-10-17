@@ -68,6 +68,7 @@ reports/
 vendor/
 /go.work
 /go.work.sum
+!cmd/tq/go.work
 /go-taskqueue
 
 ## Nix

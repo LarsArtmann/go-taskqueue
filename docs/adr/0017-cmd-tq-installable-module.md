@@ -64,3 +64,20 @@ this post-tag on v0.3.0.
   replace-free builds of cmd/tq fail with "ambiguous import" against old
   root tags. The shim gates stay green; the clean-room install proves the
   fix at the next release.
+
+## Amendment (2026-10-17): tracked cmd/tq/go.work dev workspace
+
+The devmod shim alone leaves the obvious in-module commands broken
+between releases: `cd cmd/tq && go build` fails on the pinned tags the
+moment HEAD sources use post-release symbols. A tracked
+`cmd/tq/go.work` carries the same local use-set the shim derives, so
+plain `go build`/`go vet`/`go test` inside cmd/tq resolve the local
+tree. The replace-free discipline is untouched:
+
+- `go install pkg@version` never consults the file (workspace detection
+  walks up from the caller's cwd; the module cache is never an anchor).
+- The nix hermetic build and every repo gate pin `GOWORK=off`
+  explicitly; the root module keeps vendor mode (no root go.work —
+  the global gitignore bans it, with one repo-level re-include).
+- Keep the use-set in sync with the root go.mod replace set (the
+  devmod shim's cmdtq_devwork derives the same set).

@@ -38,7 +38,8 @@ queue/postgres/ executor/ worker/` re-export internals via type aliases
 Facades: require (real tag) + relative replace; tests import
 internals, never sibling facades; parity via
 `scripts/check-facade-parity.sh` BEFORE staging; postgres
-`OpenWithPool` pools CALLER-OWNED. No go.work — replace-only.
+`OpenWithPool` pools CALLER-OWNED. No go.work at root — replace-only
+  (exception: tracked `cmd/tq/go.work` dev workspace, ADR-0017).
 Release flow: docs/release/.
 
 Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh +
