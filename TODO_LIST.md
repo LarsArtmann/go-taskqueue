@@ -359,7 +359,7 @@ not here.
 
 ## Row-111 verify-window follow-ups (2026-09-26 05-47; source: docs/status/2026-09-26_05-47_task-000001a0dbc3b197566f3b13272fd654e9e0.md §e/§f; deduped against open rows — hook placement is row 112's territory, not re-listed)
 
-- [ ] Extend the verify-window minimum battery when the verified file lives in a nested module: add the in-module `GOWORK=off GOEXPERIMENT=jsonv2 go vet ./...` + FULL package test suite (not `-run`-filtered) alongside the root build+vet — root vet never descends into nested modules (the documented root `./...` blindness) and a `-run` filter verifies only the selected tests even though compilation is package-wide; extends the row-95 battery-extension family (first hit: docs/status/2026-09-26_05-47_task-000001a0dbc3b197566f3b13272fd654e9e0.md §b2)
+- [x] Extend the verify-window minimum battery when the verified file lives in a nested module: add the in-module `GOWORK=off GOEXPERIMENT=jsonv2 go vet ./...` + FULL package test suite (not `-run`-filtered) alongside the root build+vet — root vet never descends into nested modules (the documented root `./...` blindness) and a `-run` filter verifies only the selected tests even though compilation is package-wide; extends the row-95 battery-extension family (first hit: docs/status/2026-09-26_05-47_task-000001a0dbc3b197566f3b13272fd654e9e0.md §b2)
 
 ## Review-fix window follow-ups (2026-09-26 dead-SHA gate-misattribution correction; source: docs/status/2026-09-26_06-21_task-000001a0dbccd9be35b494256bf3f8ffa87d.md §c/§e; verified at HEAD this pass)
 
