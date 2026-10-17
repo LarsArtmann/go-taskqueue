@@ -191,41 +191,11 @@ func (s *Store) Close() error {
 	return errDB
 }
 
-// Enqueue persists a new task via the upstream engine and re-reads it so
-// the returned record carries every tq field (DedupKey included — the
-// upstream task struct does not surface it).
+// Enqueue persists a new task via the upstream engine; the shared
+// routing surface (validation, deps/notBefore mapping, wake, tq-field
+// re-read) lives ONCE in companion (dedup ruling 2026-09-26).
 func (s *Store) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
-	if n.Type == "" {
-		return task.Task{}, queue.ErrEmptyType
-	}
-
-	deps := make([]utask.ID, 0, len(n.Deps))
-	for _, d := range n.Deps {
-		deps = append(deps, utask.ID(d.String()))
-	}
-
-	notBefore := n.NotBefore
-	if notBefore.IsZero() {
-		notBefore = time.UnixMilli(0)
-	}
-
-	created, err := s.engine.Enqueue(ctx, utask.New[[]byte]{
-		Project:     n.Project,
-		Type:        n.Type,
-		Payload:     []byte(n.Payload),
-		Deps:        deps,
-		Priority:    n.Priority,
-		MaxAttempts: n.MaxAttempts,
-		NotBefore:   notBefore,
-		DedupKey:    n.DedupKey,
-	})
-	if err != nil {
-		return task.Task{}, companion.MapErr(err)
-	}
-
-	s.fireWake()
-
-	return s.Get(ctx, task.ID(created.ID.String()))
+	return companion.Enqueue(ctx, s.engine, s.cr, s.fireWake, n)
 }
 
 // Notify implements queue.Waker (M7): the claim-wake channel. See the
