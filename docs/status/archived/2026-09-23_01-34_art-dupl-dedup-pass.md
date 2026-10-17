@@ -314,3 +314,16 @@ original text.
 _Report by the dedup session (01-34) with a same-day continuation addendum;
 gates cited are reproducible from the commands listed. Point-in-time
 snapshot — re-verify before treating claims as current._
+
+---
+
+## ANNOTATION 2026-10-17 — §f table row 34 (the `-t 3` re-run)
+
+Row 34 is DONE, resolved differently than the row's premise assumed: the
+stricter-threshold gate arrived as the check-mirror-clones strict run inside
+ci-local (not a full-repo accept-list file), and the 2026-10-17 `-t 3` rerun
+under it surfaced 10 groups — one NEW cross-backend `Enqueue` mirror
+(sqlitev4/postgresv4 adapters), homed once in `companion.Enqueue`; the other
+9 are same-file micro-clones under art-dupl's actionability filter.
+Details: docs/status/2026-10-17_18-34_art-dupl-t3-audit-and-flake-and-drift-batch.md.
+Original row text preserved as written (annotate-never-rewrite).
