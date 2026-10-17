@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Cost-denominated daily budget cap** (2026-10-11, ADR-0023): the agent
+  pool's claim-time budget gate can now cap on real derived spend instead
+  of run count — `--daily-cost-cap USD` (budget `Guard.DailyCostCapUSD`)
+  blocks paid claims once today's settled session cost reaches the cap
+  (parked until local midnight, requeue class `budget`, no attempt burn,
+  same as the count cap); `UsageToday` settle is FAIL-OPEN (a usage read
+  failure never blocks claims). Rides beside `--daily-budget`, not instead
+  of it.
+
 ### Changed
 - `tq audit --journal` SECRET EVIDENCE row label renamed `hits` → `locations` (operator-facing honesty: a location is a distinct secret site after span-merge `4ba81d8`; pre-`4ba81d8` "hit-count"s counted raw pattern matches and are not comparable). JSON shape unchanged (`count`).
 - `executor` facade: `WorktreeOrphan` type alias joins `ScanWorktreeOrphans` — the
