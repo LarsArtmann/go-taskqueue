@@ -128,3 +128,29 @@ dead-export audit trio + `tq doctor` already-ticked check · `tq pool-health` ·
 1. **Push**: may the 30+ local commits be pushed now so the CI fix gets proven on real runners (and if not yet — is there anything you want folded in first)?
 2. **Disk policy**: is `/mnt/buildcache` yours to restructure (and may I relocate the Go caches to `~/.cache` system-wide), or should agents just keep working around it per-session? Same for deleting the renamed `CORRUPT-partial-extraction-diskfull` toolchain dir.
 3. **The index ordering ruling**: keep the presence-only prose (my fix) with late appends at the file tail, or do you want a scheduled ordering sweep cadence (docs-health) so the newest rows always sit at the top?
+
+---
+
+## ANNOTATION 2026-10-17 — §a6/§a7 (the row-110/111 closure gap, root-caused)
+
+This window's §a6 ("row closed as verified, zero code") and §a7 (the
+`oracleStatuses` consolidation) are the two data points later re-dispatch
+windows paid for: TODO rows 110 (lint-lll templ exclusion) and 111 (status
+oracles) were both verified HERE and both left unchecked — pickaxe on the
+row text shows only the 2026-09-12 mint (1c615cf8) and the 2026-09-26
+closures (1205f453 / aab7ee1d) ever touched it, so no tick was lost to a
+write race; it was never made. Root cause: verify-only closes recorded the
+verdict in THIS report's prose and treated the verdict as the closure act —
+work rows got ticked by their code-change bookkeeping (§a17: "~25 rows
+closed"), but "already done, zero code" items had no commit to anchor a
+TODO_LIST edit and no mechanical step required the flip. The divergence was
+then invisible and compounded: the same-day 03-37 report cited the prose
+record ("closed as verified twice") as if the checkboxes had flipped, which
+is the index-row drift the 2026-09-26 05-19 window later corrected. The
+mechanical residue guard now lives in `scripts/check-todo-list.sh` (advisory
+DONE-ANNOTATION-UNCHECKED WARN: an unchecked row whose text carries a
+trailing " — DONE/VERIFIED" annotation goes loud at every gate run — the
+shape a late or interrupted closure leaves behind); the report-vs-row
+divergence shape itself is the mechanical index-row phrase-drift guard
+direction (filed row, not bundled). Original §a6/§a7 text preserved as
+written (annotate-never-rewrite).

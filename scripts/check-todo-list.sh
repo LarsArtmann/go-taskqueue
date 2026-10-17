@@ -56,6 +56,26 @@ if [ -n "$doubled" ]; then
 	fail=1
 fi
 
+# Advisory WARN (row-110/111 closure-gap class, 05-19 §e4): an UNCHECKED row
+# whose text already carries a trailing " — DONE/VERIFIED" annotation means
+# the verdict was recorded but the checkbox never flipped (the 2026-09-22
+# sweep windows verified rows 110 and 111 in prose and left both unchecked,
+# each buying a full re-dispatch battery four days later), or the annotation
+# is stale. Both are cheaper to resolve at dispatch than after a battery.
+# BLOCKED rows are exempt (the harvester never dispatches them, same as the
+# owner-marker loop above; their embedded dated sub-notes are legitimate
+# accretion, e.g. the SystemNix cutover row). Anchored on the em-dash
+# annotation shape so prose DONE mentions ("close as DONE",
+# "ARCHIVE-DONE verdicts") do not trip it. WARN only: the
+# re-verification-policy ruling is rows 425/711's territory; a hard-gate
+# flip is a separate follow-up row, not bundled here.
+annotated="$(awk '/^[[:space:]]*- \[ \]/ && ! /— BLOCKED:/ && /— *(DONE|VERIFIED)([^A-Za-z]|$)/ { print NR ":" $0 }' "$todo")"
+if [ -n "$annotated" ]; then
+	echo "DONE-ANNOTATION-UNCHECKED (advisory WARN): unchecked rows whose text already carries a DONE/VERIFIED annotation:"
+	printf '%s\n' "$annotated"
+	echo "  -> tick with the citation (work genuinely done) or strip the annotation (row genuinely open)"
+fi
+
 if [ "$fail" = 0 ]; then
 	echo "TODO_LIST gate ok (no unblocked owner-gated items)"
 fi
