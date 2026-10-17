@@ -365,6 +365,12 @@ else
 	nix shell nixpkgs#actionlint -c actionlint .github/workflows/*.yml
 fi
 
+# Pin the *_templ.go exclusion BEFORE the gate rides on it (row 110): two
+# windows verified the one property by hand (11-30 self-review, row-110) —
+# an edit that breaks the templ exclusion or the 120 cap fails here.
+step "line-length gate self-test (templ exclusion pin)"
+./scripts/lint-lll-changed.sh --self-test
+
 step "line-length gate (changed lines only, 120 cols)"
 ./scripts/lint-lll-changed.sh
 
