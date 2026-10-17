@@ -287,3 +287,18 @@ _Report by the dedup continuation window (02:35). Gates cited in §a10 are
 reproducible from the listed commands; rcs were captured to file or echo in the
 same session. Point-in-time snapshot — re-verify before treating claims as
 current._
+
+---
+
+## ANNOTATION 2026-10-17 — §c1 (`TestSweepPinsCloseoutReportPaths` flake)
+
+§c1 is DONE — ROOT CAUSED 2026-10-17, with a correction to this section's
+suspects: the failure is the window SORT, not the report-dir scan or
+completion-window ordering. Entries sorted by second-granularity RFC3339
+CompletedAt (backed by unix-milli `updated_at` storage) let same-second
+completions tie into the random TaskID tiebreak, flipping the report-less
+task into window[0]. Fixed with RFC3339Nano ordering (internal/status
+sweep.go); package tests green at `-count=10`; window assertions are now
+set-wise. Details:
+docs/status/2026-10-17_18-34_art-dupl-t3-audit-and-flake-and-drift-batch.md.
+Original §c1 text preserved as written (annotate-never-rewrite).
