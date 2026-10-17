@@ -98,6 +98,26 @@ report_name_ok() {
 	[ "${base:0:10}" = "$today" ]
 }
 
+# module_of FILE — the nested module dir owning FILE (nearest go.mod above
+# it), or nothing when FILE lives in the root module. Root `./...` never
+# descends into nested modules, so a touched file there is invisible to the
+# root vet (row 111).
+module_of() {
+	local f="$1" dir
+	case "$f" in
+	*.go) ;;
+	*) return 0 ;;
+	esac
+	dir=$(dirname "$f")
+	while [ "$dir" != "." ]; do
+		if [ -f "$dir/go.mod" ]; then
+			printf '%s\n' "$dir"
+			return 0
+		fi
+		dir=$(dirname "$dir")
+	done
+}
+
 if [ "$SELFTEST" = 1 ]; then
 	set -e
 	tmp=$(mktemp -d)
@@ -140,7 +160,24 @@ if [ "$SELFTEST" = 1 ]; then
 		exit 1
 	}
 
-	echo "verify-battery self-test ok (pass_count, zero-green trap incl. [no tests to run], date-measured filename)"
+	[ "$(module_of "internal/task/status.go")" = "internal/task" ] || {
+		echo "self-test FAIL: module_of missed internal/task"
+		exit 1
+	}
+	[ "$(module_of "internal/task/status.go")" = "internal/task" ] || {
+		echo "self-test FAIL: module_of wrong module for internal/task"
+		exit 1
+	}
+	[ -z "$(module_of "cmd/main.go")" ] || {
+		echo "self-test FAIL: module_of claimed a root-module file"
+		exit 1
+	}
+	[ -z "$(module_of "docs/report.md")" ] || {
+		echo "self-test FAIL: module_of claimed a non-Go file"
+		exit 1
+	}
+
+	echo "verify-battery self-test ok (pass_count, zero-green trap incl. [no tests to run], date-measured filename, module_of)"
 	exit 0
 fi
 
@@ -224,6 +261,28 @@ if [ -n "$changed" ]; then
 else
 	echo "SKIP: dead-sha-own-files (clean tree — no touched files)"
 fi
+
+# Scope-aware battery (row 111; 05-47 report §b2/§e3): when a touched Go
+# file lives in a nested module, add the in-module `GOWORK=off` vet + FULL
+# test suite — root build+vet never descends into nested modules (the
+# documented root `./...` blindness), and a `-run`-filtered targeted leg
+# verifies only the selected tests even though compilation is package-wide.
+nested_mods=""
+if [ -n "$changed" ]; then
+	# shellcheck disable=SC2086
+	nested_mods=$(
+		for f in $changed; do
+			module_of "$f"
+		done | sort -u
+	)
+fi
+for m in $nested_mods; do
+	case " $MODULES " in
+	*" $m "*) continue ;;
+	esac
+	echo "nested module touched: $m — adding in-module vet + FULL suite leg (row 111)"
+	MODULES="$MODULES $m"
+done
 
 if [ -n "$REPORT" ]; then
 	if report_name_ok "$REPORT"; then
