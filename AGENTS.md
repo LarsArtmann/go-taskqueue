@@ -238,9 +238,9 @@ docs/DOMAIN_LANGUAGE.md.
   non-contiguous spans — fallback: verify exactly-mine via
   `git show --stat`, then `git commit --amend` the unpushed HEAD
   (2026-10-11 closeout §d4).
-- **TestExactlyOnceUnderConcurrency (worker) + TestSelfManagingLoop
-  (harvest) are load-flaky**: build storms drop them at clean parents —
-  re-run before attributing; both ride `KNOWN_FLAKY` in
+- **`TestExactlyOnceUnderConcurrency` is load-flaky (worker);
+  `TestSelfManagingLoop` is load-flaky (harvest)**: build storms drop them
+  at clean parents — re-run before attributing; both ride `KNOWN_FLAKY` in
   `scripts/lib/verify-retry.sh`.
 - **Agent shells inherit `TQ_DB`** (PRODUCTION journal) — scratch
   smokes MUST export `TQ_DB=<scratch>`.
