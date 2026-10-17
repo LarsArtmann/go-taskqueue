@@ -361,6 +361,10 @@ not here.
 
 - [x] Extend the verify-window minimum battery when the verified file lives in a nested module: add the in-module `GOWORK=off GOEXPERIMENT=jsonv2 go vet ./...` + FULL package test suite (not `-run`-filtered) alongside the root build+vet — root vet never descends into nested modules (the documented root `./...` blindness) and a `-run` filter verifies only the selected tests even though compilation is package-wide; extends the row-95 battery-extension family (first hit: docs/status/2026-09-26_05-47_task-000001a0dbc3b197566f3b13272fd654e9e0.md §b2)
 
+## Dead-SHA follow-ups (2026-10-17 21-03; source: row-111 battery run at HEAD — dead-sha-default-scope red pre-dates the session, verified unreachable at 7c37e6db)
+
+- [ ] Re-resolve or baseline the DEAD SHA cites in TODO_LIST.md lines 19-30 (93acad87, 97ba6b2e, 0177a0ad, 8005938e + siblings): commits exist but are unreachable from HEAD (concurrent-agent lineage), so check-dead-sha-refs.sh default scope fails at HEAD and every verify-window battery carries a red leg; per cite either re-resolve to a reachable SHA, add a fork record (old SHA to new SHA), or baseline the range
+
 ## Review-fix window follow-ups (2026-09-26 dead-SHA gate-misattribution correction; source: docs/status/2026-09-26_06-21_task-000001a0dbccd9be35b494256bf3f8ffa87d.md §c/§e; verified at HEAD this pass)
 
 - [ ] Gate-attribution guard for docs/status batteries: fail any report battery line that names check-doc-refs.sh as or next to a dead-SHA-gate claim (the 05-02 misattribution class — an rc from a script that never scans SHAs was cited for a gate-identity claim), or pin the convention in AGENTS.md that battery items cite gates by wired identity (script path + ci-local step name); wire as an advisory ci-local step (a hard-gate flip is a separate follow-up row, not bundled here)
