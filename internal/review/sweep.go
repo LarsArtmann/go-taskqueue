@@ -15,6 +15,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -65,8 +67,11 @@ type SweepStats struct {
 	ReviewsKnown int
 	// FixesEnqueued counts fresh fix tasks minted from findings.
 	FixesEnqueued int
-	// Skipped counts completions that could not yield a review (foreign
-	// payload shape, vanished task record).
+	// Skipped counts completions that could not yield a review and are
+	// checkpointed past (foreign payload shape, vanished task record, a
+	// completed fix-task dedup key). A refused MINT is not counted here:
+	// it aborts the sweep before the checkpoint so the completion
+	// redelivers.
 	Skipped int
 	// Merged counts approve-verdict worktree merges (branch → base + reap).
 	Merged int
@@ -117,43 +122,72 @@ func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Swe
 // with Autofix, fix) tasks. Idempotent by dedup: calling it twice never
 // duplicates work, so a replayed page (crash between consumption and
 // checkpoint) re-hits dedup keys instead of minting duplicates.
+//
+// A mint refusal — a store failure while reading a completion or enqueueing
+// the review/fix task — aborts the sweep BEFORE the checkpoint: the fact
+// redelivers on the next pass instead of silently dropping the mint forever
+// (dlqfix 13-15 §e pattern). Deterministic skips (foreign shapes, vanished
+// records, done-guard dedup hits) stay checkpointed past: retrying them
+// can never succeed and would wedge the cursor on one bad record.
 func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	var stats SweepStats
 
 	err := s.cur.Sweep(ctx, func(ctx context.Context, f journal.Fact) error {
 		stats.Facts++
 
-		s.handleFact(ctx, f, &stats)
-
-		return nil
+		return s.handleFact(ctx, f, &stats)
 	})
 
 	return stats, err
 }
 
 // handleFact reacts to one completion fact: agent completions gain a review
-// task, review completions may gain fix tasks (Autofix).
-func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+// task, review completions may gain fix tasks (Autofix). A mint refusal
+// propagates (checkpoint held); deterministic skips never abort the sweep.
+func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
 	if fact.Type != journal.Completed {
-		return
+		return nil
 	}
 
 	t, err := s.store.Get(ctx, task.ID(fact.TaskID))
 	if err != nil {
-		stats.Skipped++
+		if watermark.PermanentOutcome(err) {
+			stats.Skipped++
 
-		return
+			return nil
+		}
+
+		return s.refuse(fact.TaskID, "read completed record", err)
 	}
 
 	switch t.Type {
 	case executor.TaskTypeAgent:
-		s.enqueueReview(ctx, t, fact, stats)
+		return s.enqueueReview(ctx, t, fact, stats)
 	case executor.TaskTypeReview:
 		s.mergeOnApprove(ctx, t, fact, stats)
 
 		if s.cfg.Autofix {
-			s.mintFixes(ctx, t, fact, stats)
+			return s.mintFixes(ctx, t, fact, stats)
 		}
+	}
+
+	return nil
+}
+
+// refuse reports a mint refusal and returns the error that holds the
+// sweep's checkpoint: a refused mint must not advance past the completion,
+// or the review (or fix task) never happens without an operator watermark
+// rewind (mirror of the dlqfix refuseMint pattern).
+func (s *Sweeper) refuse(completed, why string, err error) error {
+	s.warn("review: mint refused — checkpoint held",
+		"completed", completed, "why", why, "err", err)
+
+	return fmt.Errorf("review: mint refused for completion %s (%s): %w", completed, why, err)
+}
+
+func (s *Sweeper) warn(msg string, args ...any) {
+	if s.cfg.Log != nil {
+		s.cfg.Log.Warn(msg, args...)
 	}
 }
 
@@ -223,8 +257,10 @@ func (s *Sweeper) mergeOnApprove(ctx context.Context, t task.Task, fact journal.
 	)
 }
 
-// enqueueReview mints the one review task for a completed agent task.
-func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.Fact, stats *SweepStats) {
+// enqueueReview mints the one review task for a completed agent task. A
+// store failure under the mint refuses (checkpoint held); the done-guard
+// (a dedup key whose review already completed) counts known.
+func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.Fact, stats *SweepStats) error {
 	var agentPayload executor.AgentPayload
 
 	if err := json.Unmarshal(
@@ -247,7 +283,7 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.F
 	if agentResult.PreflightDone != "" {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	// Risky-types-only reviewing (2026-10-11 ceremony cut): a derived
@@ -260,7 +296,7 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.F
 
 		s.log("review: skipped docs-only change", "reviews", t.ID.String(), "repo", agentPayload.Repo)
 
-		return
+		return nil
 	}
 
 	payload, err := json.Marshal(executor.ReviewPayload{
@@ -278,7 +314,7 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.F
 	if err != nil {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	got, err := s.store.Enqueue(ctx, task.New{
@@ -288,10 +324,17 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.F
 		Payload:  payload,
 		DedupKey: ReviewDedupKey(t.ID),
 	})
-	if err != nil {
-		stats.Skipped++
+	if errors.Is(err, queue.ErrTaskDone) {
+		// The done-guard (Queue wrapper): the dedup key matched a
+		// COMPLETED review — the one review for this task already ran.
+		// Known, not refused: the checkpoint moves past.
+		stats.ReviewsKnown++
 
-		return
+		return nil
+	}
+
+	if err != nil {
+		return s.refuse(t.ID.String(), "enqueue review", err)
 	}
 
 	if got.Attempts == 0 && got.Status == task.Pending {
@@ -301,22 +344,27 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.F
 	} else {
 		stats.ReviewsKnown++
 	}
+
+	return nil
 }
 
 // mintFixes turns a request_changes review's findings into agent fix tasks.
-func (s *Sweeper) mintFixes(ctx context.Context, t task.Task, fact journal.Fact, stats *SweepStats) {
+// A store failure under one finding's mint refuses (checkpoint held) — the
+// already-minted findings of the same review re-hit their dedup keys on
+// redelivery; a completed fix-task dedup key skips past.
+func (s *Sweeper) mintFixes(ctx context.Context, t task.Task, fact journal.Fact, stats *SweepStats) error {
 	var reviewPayload executor.ReviewPayload
 
 	if err := json.Unmarshal(t.Payload, &reviewPayload); err != nil || reviewPayload.Repo == "" {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	var result executor.ReviewResult
 
 	if err := json.Unmarshal(fact.Detail, &result); err != nil || result.Verdict != executor.VerdictRequestChanges {
-		return // approve, or detail lost — nothing to fix
+		return nil // approve, or detail lost — nothing to fix
 	}
 
 	for _, finding := range result.Findings {
@@ -351,10 +399,16 @@ func (s *Sweeper) mintFixes(ctx context.Context, t task.Task, fact journal.Fact,
 			Payload:  payload,
 			DedupKey: FixDedupKey(t.ID, finding.Title),
 		})
-		if err != nil {
+		if errors.Is(err, queue.ErrTaskDone) {
+			// The fix task for this finding already ran: dedup-safe skip,
+			// the checkpoint moves past.
 			stats.Skipped++
 
 			continue
+		}
+
+		if err != nil {
+			return s.refuse(t.ID.String(), "enqueue fix for finding "+finding.Title, err)
 		}
 
 		if got.Attempts == 0 && got.Status == task.Pending {
@@ -364,6 +418,8 @@ func (s *Sweeper) mintFixes(ctx context.Context, t task.Task, fact journal.Fact,
 				"finding", finding.Title, "repo", reviewPayload.Repo)
 		}
 	}
+
+	return nil
 }
 
 func (s *Sweeper) log(msg string, args ...any) {

@@ -9,10 +9,12 @@ package watermark
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/larsartmann/go-taskqueue/internal/journal"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // DefaultPageSize bounds one Facts page per sweep iteration.
@@ -103,6 +105,16 @@ func newCursor(cfg Config, watermark, persisted int64) *Cursor {
 		watermark: watermark,
 		persisted: persisted,
 	}
+}
+
+// PermanentOutcome reports that a store failure can never succeed on
+// retry: the record is gone (task.ErrNotFound) or the transition already
+// happened elsewhere (task.ErrInvalidTransition, the idempotent-replay
+// class). Sweeper refusal gates checkpoint past permanent outcomes — one
+// bad record must not wedge the cursor — and treat everything else as
+// transient and refuse.
+func PermanentOutcome(err error) bool {
+	return errors.Is(err, task.ErrNotFound) || errors.Is(err, task.ErrInvalidTransition)
 }
 
 // Sweep consumes new facts since the last pass, handing each to handle in

@@ -287,15 +287,6 @@ func (s *Sweeper) refuseDisposition(autopsy, why string, err error) error {
 	return fmt.Errorf("dlqfix: disposition refused for autopsy %s (%s): %w", autopsy, why, err)
 }
 
-// isPermanentStoreOutcome reports that a store failure can never succeed on
-// retry — the record is gone (ErrNotFound) or the transition already
-// happened elsewhere (ErrInvalidTransition, the idempotent-replay class).
-// Such outcomes checkpoint past; everything else is treated as transient and
-// refuses.
-func isPermanentStoreOutcome(err error) bool {
-	return errors.Is(err, task.ErrNotFound) || errors.Is(err, task.ErrInvalidTransition)
-}
-
 // autoDismissGateArtifact executes the one mechanical dismissal of TODO row
 // 145: a dead agent task whose death is the unscoped-gofmt verify artifact
 // (executor.IsGateArtifactDeath) AND whose work demonstrably shipped — at
@@ -450,7 +441,7 @@ func (s *Sweeper) reclaimsWithUnknownEffect(ctx context.Context, id task.ID) int
 func (s *Sweeper) dispose(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
 	t, err := s.store.Get(ctx, task.ID(fact.TaskID))
 	if err != nil {
-		if isPermanentStoreOutcome(err) {
+		if watermark.PermanentOutcome(err) {
 			stats.Skipped++
 
 			return nil
@@ -513,7 +504,7 @@ func (s *Sweeper) autopsyOutcome(
 func (s *Sweeper) rescue(ctx context.Context, dead, autopsy task.ID, result executor.DLQFixResult, stats *SweepStats) error {
 	deadRec, err := s.store.Get(ctx, dead)
 	if err != nil {
-		if isPermanentStoreOutcome(err) {
+		if watermark.PermanentOutcome(err) {
 			stats.Skipped++
 
 			return nil
@@ -523,7 +514,7 @@ func (s *Sweeper) rescue(ctx context.Context, dead, autopsy task.ID, result exec
 	}
 
 	if err := s.store.RescueDead(ctx, dead, deadRec.MaxAttempts); err != nil {
-		if isPermanentStoreOutcome(err) {
+		if watermark.PermanentOutcome(err) {
 			// Already rescued (or otherwise moved) is fine — dedup and
 			// transition guards make the disposition idempotent.
 			s.warn("dlqfix: rescue skipped", "dead", dead.String(), "autopsy", autopsy.String(), "err", err)
@@ -548,7 +539,7 @@ func (s *Sweeper) rescue(ctx context.Context, dead, autopsy task.ID, result exec
 // outcome (already dismissed or moved elsewhere) skips past.
 func (s *Sweeper) dismiss(ctx context.Context, dead, autopsy task.ID, result executor.DLQFixResult, stats *SweepStats) error {
 	if err := s.store.DismissDead(ctx, dead, result.Summary, DismissedBySweeper); err != nil {
-		if isPermanentStoreOutcome(err) {
+		if watermark.PermanentOutcome(err) {
 			s.warn("dlqfix: dismiss skipped", "dead", dead.String(), "autopsy", autopsy.String(), "err", err)
 
 			stats.Skipped++
