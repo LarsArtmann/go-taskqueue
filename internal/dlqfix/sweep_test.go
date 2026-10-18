@@ -172,18 +172,25 @@ func (h *captureHandler) WithGroup(string) slog.Handler { return h }
 func deadLetterSeq(t *testing.T, s *sqlite.Store, id task.ID) int64 {
 	t.Helper()
 
+	return factSeqFor(t, s, journal.DeadLettered, id)
+}
+
+// factSeqFor returns the journal seq of the task's fact of the given type.
+func factSeqFor(t *testing.T, s *sqlite.Store, typ journal.FactType, id task.ID) int64 {
+	t.Helper()
+
 	facts, err := s.Facts(context.Background(), 0, 10_000)
 	if err != nil {
 		t.Fatalf("facts: %v", err)
 	}
 
 	for _, f := range facts {
-		if f.Type == journal.DeadLettered && f.TaskID == id.String() {
+		if f.Type == typ && f.TaskID == id.String() {
 			return f.Seq
 		}
 	}
 
-	t.Fatalf("no dead-lettered fact for %s", id)
+	t.Fatalf("no %s fact for %s", typ, id)
 
 	return 0
 }
@@ -1133,5 +1140,265 @@ func TestSweeperDeterministicSkipsDoNotGate(t *testing.T) {
 
 	if stats.Skipped != 1 || stats.FixesEnqueued != 1 {
 		t.Fatalf("stats = %+v, want 1 skipped + 1 minted", stats)
+	}
+}
+
+// flakyDisposeStore fails Gets for one task ID and DismissDead calls with a
+// store-shaped error — the transient failure class a disposition refusal
+// represents. Everything else rides the real store.
+type flakyDisposeStore struct {
+	queue.Store
+
+	failID      task.ID
+	failGets    atomic.Int32
+	failDismiss atomic.Int32
+}
+
+func (f *flakyDisposeStore) Get(ctx context.Context, id task.ID) (task.Task, error) {
+	if id == f.failID && f.failGets.Load() > 0 {
+		f.failGets.Add(-1)
+
+		return task.Task{}, errors.New("sqlite: database is locked (simulated)")
+	}
+
+	return f.Store.Get(ctx, id)
+}
+
+func (f *flakyDisposeStore) DismissDead(ctx context.Context, id task.ID, reason, by string) error {
+	if f.failDismiss.Load() > 0 {
+		f.failDismiss.Add(-1)
+
+		return errors.New("sqlite: database is locked (simulated)")
+	}
+
+	return f.Store.DismissDead(ctx, id, reason, by)
+}
+
+// disposeRefusalSweep seeds a dead agent task, mints and completes its
+// autopsy with the given verdict, and returns the pieces the refusal tests
+// pin against.
+func disposeRefusalSweep(
+	t *testing.T,
+	s *sqlite.Store,
+	sw *Sweeper,
+	verdict executor.DLQFixVerdict,
+) (dead, autopsy task.ID) {
+	t.Helper()
+
+	seeded := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "ship it"})
+
+	if _, err := sw.Sweep(context.Background()); err != nil {
+		t.Fatalf("mint sweep: %v", err)
+	}
+
+	autopsyTask := pendingDLQFixTasks(t, s)[0]
+
+	finishTask(t, s, autopsyTask.ID, executor.DLQFixResult{Verdict: verdict, Summary: "s"})
+
+	return seeded.ID, autopsyTask.ID
+}
+
+// pinRefusalHoldsCheckpoint asserts the refusal shape shared by the dispose
+// hardening tests: the sweep errored, the watermark is held behind the
+// autopsy's Completed fact, and the refusal was warned.
+func pinRefusalHoldsCheckpoint(t *testing.T, s *sqlite.Store, capture *captureHandler, autopsy task.ID, stats SweepStats, err error) {
+	t.Helper()
+
+	if err == nil || !strings.Contains(err.Error(), "disposition refused") {
+		t.Fatalf("sweep err = %v, want disposition refusal", err)
+	}
+
+	if stats.Rescued != 0 || stats.Dismissed != 0 {
+		t.Fatalf("stats = %+v, want no executed disposition (stats)", stats)
+	}
+
+	completedSeq := factSeqFor(t, s, journal.Completed, autopsy)
+
+	wm, ok, err := s.Watermark(context.Background(), ConsumerKey)
+	if err != nil || !ok {
+		t.Fatalf("watermark: %v (ok %v)", err, ok)
+	}
+
+	if wm >= completedSeq {
+		t.Fatalf("watermark = %d, want held behind the Completed fact at %d", wm, completedSeq)
+	}
+
+	warned := false
+
+	for _, r := range capture.records {
+		if r.Level == slog.LevelWarn && strings.Contains(r.Message, "disposition refused") {
+			warned = true
+		}
+	}
+
+	if !warned {
+		t.Fatalf("disposition-refusal warn missing from %+v", capture.records)
+	}
+}
+
+// TestSweeperDisposeRefusalHoldsCheckpoint pins the dispose-path hardening
+// (sibling of the 2026-10-18 mint-refusal gate): a transient store failure
+// reading the completed autopsy aborts the sweep BEFORE the checkpoint —
+// warned, watermark held behind the Completed fact — so the retry sweep of
+// the SAME cursor redelivers the fact and executes the verdict instead of
+// silently dropping a completed autopsy's disposition forever.
+func TestSweeperDisposeRefusalHoldsCheckpoint(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	flaky := &flakyDisposeStore{Store: s}
+	capture := &captureHandler{}
+
+	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	_, autopsy := disposeRefusalSweep(t, s, sw, executor.VerdictFixed)
+
+	flaky.failID = autopsy
+	flaky.failGets.Store(1)
+
+	stats, err := sw.Sweep(ctx)
+	pinRefusalHoldsCheckpoint(t, s, capture, autopsy, stats, err)
+
+	flaky.failGets.Store(0)
+
+	retry, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("retry sweep: %v", err)
+	}
+
+	if retry.Rescued != 1 {
+		t.Fatalf("retry Rescued = %d, want 1 (stats %+v)", retry.Rescued, retry)
+	}
+}
+
+// TestSweeperRescueReadRefusalHoldsCheckpoint pins the rescue leg of the
+// gate: a transient failure reading the DEAD record during a "fixed"
+// disposition refuses and holds the checkpoint; the retry rescues.
+func TestSweeperRescueReadRefusalHoldsCheckpoint(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	flaky := &flakyDisposeStore{Store: s}
+	capture := &captureHandler{}
+
+	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	dead, autopsy := disposeRefusalSweep(t, s, sw, executor.VerdictFixed)
+
+	flaky.failID = dead
+	flaky.failGets.Store(1)
+
+	stats, err := sw.Sweep(ctx)
+	pinRefusalHoldsCheckpoint(t, s, capture, autopsy, stats, err)
+
+	flaky.failGets.Store(0)
+
+	retry, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("retry sweep: %v", err)
+	}
+
+	if retry.Rescued != 1 {
+		t.Fatalf("retry Rescued = %d, want 1 (stats %+v)", retry.Rescued, retry)
+	}
+}
+
+// TestSweeperDismissRefusalHoldsCheckpoint pins the dismiss leg of the gate:
+// a transient DismissDead failure on a "wontfix" verdict refuses and holds
+// the checkpoint; the retry dismisses.
+func TestSweeperDismissRefusalHoldsCheckpoint(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	flaky := &flakyDisposeStore{Store: s}
+	capture := &captureHandler{}
+
+	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	_, autopsy := disposeRefusalSweep(t, s, sw, executor.VerdictWontFix)
+
+	flaky.failDismiss.Store(1)
+
+	stats, err := sw.Sweep(ctx)
+	pinRefusalHoldsCheckpoint(t, s, capture, autopsy, stats, err)
+
+	flaky.failDismiss.Store(0)
+
+	retry, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("retry sweep: %v", err)
+	}
+
+	if retry.Dismissed != 1 {
+		t.Fatalf("retry Dismissed = %d, want 1 (stats %+v)", retry.Dismissed, retry)
+	}
+}
+
+// missingAutopsyStore hides one task record — the permanent (deterministic)
+// store outcome: a Completed fact whose record is gone can never yield a
+// disposition, so it must skip past instead of wedging the cursor.
+type missingAutopsyStore struct {
+	queue.Store
+
+	missing task.ID
+}
+
+func (m *missingAutopsyStore) Get(ctx context.Context, id task.ID) (task.Task, error) {
+	if id == m.missing {
+		return task.Task{}, task.ErrNotFound
+	}
+
+	return m.Store.Get(ctx, id)
+}
+
+// TestSweeperPermanentStoreOutcomeSkipsPast pins the flip side of the
+// disposition gate: a permanent outcome (record not found) checkpoints past
+// — the watermark ADVANCES behind the Completed fact, no error, no wedge.
+func TestSweeperPermanentStoreOutcomeSkipsPast(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	sw := newTestSweeper(t, s)
+
+	_, autopsy := disposeRefusalSweep(t, s, sw, executor.VerdictFixed)
+
+	masked := &missingAutopsyStore{Store: s, missing: autopsy}
+	retry := newTestSweeper(t, masked)
+
+	stats, err := retry.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+
+	if stats.Skipped != 1 || stats.Rescued != 0 {
+		t.Fatalf("stats = %+v, want 1 skipped, no rescue", stats)
+	}
+
+	completedSeq := factSeqFor(t, s, journal.Completed, autopsy)
+
+	wm, ok, err := s.Watermark(ctx, ConsumerKey)
+	if err != nil || !ok {
+		t.Fatalf("watermark: %v (ok %v)", err, ok)
+	}
+
+	if wm < completedSeq {
+		t.Fatalf("watermark = %d, want advanced past the Completed fact at %d", wm, completedSeq)
 	}
 }

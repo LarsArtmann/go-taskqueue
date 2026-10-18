@@ -72,8 +72,9 @@ type SweepStats struct {
 	Dismissed int
 	// Skipped counts facts that could not yield work and are checkpointed
 	// past (foreign payload shapes, dispositions already executed
-	// elsewhere). A refused autopsy MINT is not counted here: it aborts the
-	// sweep before the checkpoint so the death redelivers.
+	// elsewhere). A refused autopsy MINT or DISPOSITION is not counted
+	// here: it aborts the sweep before the checkpoint so the death (or the
+	// autopsy's Completed fact) redelivers.
 	Skipped int
 	// AutoDismissed counts dead tasks cancelled by the mechanical
 	// gate-artifact dismissal (TODO row 145) — no autopsy was minted for
@@ -131,11 +132,12 @@ func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Swe
 // transitions instead of minting duplicates or double-disposing.
 //
 // A mint refusal — a store failure while minting an autopsy for a dead
-// agent task — aborts the sweep BEFORE the checkpoint: the death
-// redelivers on the next pass instead of being silently skipped forever
-// (13-15 §e). Deterministic skips (foreign types, unusable payloads) stay
-// checkpointed past: retrying them can never succeed and would wedge the
-// cursor on one bad record.
+// agent task — and a disposition refusal — a store failure while executing a
+// completed autopsy's verdict — abort the sweep BEFORE the checkpoint: the
+// fact redelivers on the next pass instead of being silently skipped forever
+// (13-15 §e). Deterministic skips (foreign types, unusable payloads, missing
+// records, already-executed transitions) stay checkpointed past: retrying
+// them can never succeed and would wedge the cursor on one bad record.
 func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	var stats SweepStats
 
@@ -149,16 +151,16 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 }
 
 // handleFact reacts to one fact: dead-lettered agent tasks gain an autopsy,
-// completed autopsy tasks gain their disposition. The autopsy's mint
-// refusal propagates (checkpoint held); dispositions are idempotent and
-// never abort the sweep.
+// completed autopsy tasks gain their disposition. A mint or disposition
+// refusal propagates (checkpoint held); deterministic skips never abort the
+// sweep.
 func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
 	if fact.Type == journal.DeadLettered {
 		return s.mintAutopsy(ctx, fact, stats)
 	}
 
 	if fact.Type == journal.Completed {
-		s.dispose(ctx, fact, stats)
+		return s.dispose(ctx, fact, stats)
 	}
 
 	return nil
@@ -272,6 +274,26 @@ func (s *Sweeper) refuseMint(dead, why string, err error) error {
 		"dead", dead, "why", why, "err", err)
 
 	return fmt.Errorf("dlqfix: autopsy mint refused for dead %s (%s): %w", dead, why, err)
+}
+
+// refuseDisposition reports a disposition refusal and returns the error that
+// holds the sweep's checkpoint: a refused disposition must not advance past
+// the autopsy's Completed fact, or the verdict's rescue/dismissal never
+// happens without an operator watermark rewind (sibling of refuseMint).
+func (s *Sweeper) refuseDisposition(autopsy, why string, err error) error {
+	s.warn("dlqfix: disposition refused — checkpoint held",
+		"autopsy", autopsy, "why", why, "err", err)
+
+	return fmt.Errorf("dlqfix: disposition refused for autopsy %s (%s): %w", autopsy, why, err)
+}
+
+// isPermanentStoreOutcome reports that a store failure can never succeed on
+// retry — the record is gone (ErrNotFound) or the transition already
+// happened elsewhere (ErrInvalidTransition, the idempotent-replay class).
+// Such outcomes checkpoint past; everything else is treated as transient and
+// refuses.
+func isPermanentStoreOutcome(err error) bool {
+	return errors.Is(err, task.ErrNotFound) || errors.Is(err, task.ErrInvalidTransition)
 }
 
 // autoDismissGateArtifact executes the one mechanical dismissal of TODO row
@@ -418,31 +440,44 @@ func (s *Sweeper) reclaimsWithUnknownEffect(ctx context.Context, id task.ID) int
 // dispose executes the mechanical disposition of one completed autopsy:
 // "fixed" rescues the dead task with its original attempt budget, "wontfix"
 // dismisses it with the autopsy's summary as the recorded reason.
-func (s *Sweeper) dispose(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+//
+// A store failure under the disposition (autopsy read, dead-record read,
+// rescue, dismissal) is a REFUSAL: it returns an error so the sweep holds
+// its checkpoint and the Completed fact redelivers, warned once per pass.
+// Permanent store outcomes (missing record, already-executed transition —
+// the idempotent replay class) and unparsable payloads stay checkpointed
+// past: they cannot succeed on retry.
+func (s *Sweeper) dispose(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
 	t, err := s.store.Get(ctx, task.ID(fact.TaskID))
 	if err != nil {
-		stats.Skipped++
+		if isPermanentStoreOutcome(err) {
+			stats.Skipped++
 
-		return
+			return nil
+		}
+
+		return s.refuseDisposition(fact.TaskID, "read autopsy record", err)
 	}
 
 	if t.Type != executor.TaskTypeDLQFix {
-		return // someone else's completion — not a skip, just not ours
+		return nil // someone else's completion — not a skip, just not ours
 	}
 
 	deadID, result, ok := s.autopsyOutcome(t, fact, stats)
 	if !ok {
-		return
+		return nil
 	}
 
 	switch result.Verdict {
 	case executor.VerdictFixed:
-		s.rescue(ctx, deadID, t.ID, result, stats)
+		return s.rescue(ctx, deadID, t.ID, result, stats)
 	case executor.VerdictWontFix:
-		s.dismiss(ctx, deadID, t.ID, result, stats)
+		return s.dismiss(ctx, deadID, t.ID, result, stats)
 	default:
 		stats.Skipped++
 	}
+
+	return nil
 }
 
 // autopsyOutcome decodes the verdict and the disposition target from a
@@ -472,43 +507,63 @@ func (s *Sweeper) autopsyOutcome(
 	return task.ID(payload.DeadTask), result, true
 }
 
-// rescue re-queues the dead task with its original attempt budget.
-func (s *Sweeper) rescue(ctx context.Context, dead, autopsy task.ID, result executor.DLQFixResult, stats *SweepStats) {
+// rescue re-queues the dead task with its original attempt budget. A
+// transient store failure refuses (checkpoint held); a permanently decided
+// outcome (record gone, already moved elsewhere) skips past.
+func (s *Sweeper) rescue(ctx context.Context, dead, autopsy task.ID, result executor.DLQFixResult, stats *SweepStats) error {
 	deadRec, err := s.store.Get(ctx, dead)
 	if err != nil {
-		stats.Skipped++
+		if isPermanentStoreOutcome(err) {
+			stats.Skipped++
 
-		return
+			return nil
+		}
+
+		return s.refuseDisposition(autopsy.String(), "read dead record", err)
 	}
 
 	if err := s.store.RescueDead(ctx, dead, deadRec.MaxAttempts); err != nil {
-		// Already rescued (or otherwise moved) is fine — dedup and
-		// transition guards make the disposition idempotent.
-		s.warn("dlqfix: rescue skipped", "dead", dead.String(), "autopsy", autopsy.String(), "err", err)
+		if isPermanentStoreOutcome(err) {
+			// Already rescued (or otherwise moved) is fine — dedup and
+			// transition guards make the disposition idempotent.
+			s.warn("dlqfix: rescue skipped", "dead", dead.String(), "autopsy", autopsy.String(), "err", err)
 
-		stats.Skipped++
+			stats.Skipped++
 
-		return
+			return nil
+		}
+
+		return s.refuseDisposition(autopsy.String(), "rescue dead task", err)
 	}
 
 	stats.Rescued++
 
 	s.log("dlqfix: rescued", "dead", dead.String(), "autopsy", autopsy.String(), "summary", result.Summary)
+
+	return nil
 }
 
 // dismiss cancels the dead task, recording the autopsy's summary as reason.
-func (s *Sweeper) dismiss(ctx context.Context, dead, autopsy task.ID, result executor.DLQFixResult, stats *SweepStats) {
+// A transient store failure refuses (checkpoint held); a permanently decided
+// outcome (already dismissed or moved elsewhere) skips past.
+func (s *Sweeper) dismiss(ctx context.Context, dead, autopsy task.ID, result executor.DLQFixResult, stats *SweepStats) error {
 	if err := s.store.DismissDead(ctx, dead, result.Summary, DismissedBySweeper); err != nil {
-		s.warn("dlqfix: dismiss skipped", "dead", dead.String(), "autopsy", autopsy.String(), "err", err)
+		if isPermanentStoreOutcome(err) {
+			s.warn("dlqfix: dismiss skipped", "dead", dead.String(), "autopsy", autopsy.String(), "err", err)
 
-		stats.Skipped++
+			stats.Skipped++
 
-		return
+			return nil
+		}
+
+		return s.refuseDisposition(autopsy.String(), "dismiss dead task", err)
 	}
 
 	stats.Dismissed++
 
 	s.log("dlqfix: dismissed", "dead", dead.String(), "autopsy", autopsy.String(), "reason", result.Summary)
+
+	return nil
 }
 
 func (s *Sweeper) log(msg string, args ...any) {
