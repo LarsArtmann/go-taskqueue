@@ -6,12 +6,12 @@
 
 The five window tasks, each read from its own closeout report first:
 
-| Task | Batch | Closeout |
-| --- | --- | --- |
-| `000001a13db76386…` | ci.yml parity sweep (wire ci-local-only gates or record asymmetry) | docs/status/tasks/2026-10-15_06-10_task-000001a13db763865bf27194cde800000000.md |
-| `000001a13dc9b39f…` | token/cost daily cap (O2) | none written — closed via commit `63e56c34` (DONE-on-arrival) |
-| `000001a141d63a4b…` | depbump/depsweep e2e + questions-loop surfaces + anchor residue (3-item batch) | **none written** — see §d1 |
-| `000001a1478bb7c8…` | art-dupl follow-ups batch 3/3 (`-t 3` rerun, status-window flake, journal-drift) | docs/status/tasks/2026-10-17_19-08_task-000001a1478bb7c81e2c09da2abe00000000.md |
+| Task                | Batch                                                                                  | Closeout                                                                        |
+| ------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `000001a13db76386…` | ci.yml parity sweep (wire ci-local-only gates or record asymmetry)                     | docs/status/tasks/2026-10-15_06-10_task-000001a13db763865bf27194cde800000000.md |
+| `000001a13dc9b39f…` | token/cost daily cap (O2)                                                              | none written — closed via commit `63e56c34` (DONE-on-arrival)                   |
+| `000001a141d63a4b…` | depbump/depsweep e2e + questions-loop surfaces + anchor residue (3-item batch)         | **none written** — see §d1                                                      |
+| `000001a1478bb7c8…` | art-dupl follow-ups batch 3/3 (`-t 3` rerun, status-window flake, journal-drift)       | docs/status/tasks/2026-10-17_19-08_task-000001a1478bb7c81e2c09da2abe00000000.md |
 | `000001a14ade18eb…` | art-dupl follow-ups batch 4/4 (unix-milli invariant, cmd/tq go.work, heal `--retitle`) | docs/status/tasks/2026-10-17_19-29_task-000001a14ade18eb3cd0720b410600000000.md |
 
 ---

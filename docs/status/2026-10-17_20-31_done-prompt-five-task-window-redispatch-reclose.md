@@ -9,13 +9,13 @@ Per the re-dispatch resume path (window-8 verdict report §b2, TODO rows since m
 
 ## The window's five tasks (all re-confirmed via closeout reports / commits)
 
-| Task | Batch | Evidence |
-| --- | --- | --- |
-| `000001a13db76386…` | ci.yml parity sweep | closeout 2026-10-15_06-10; commit `7e45d620` |
-| `000001a13dc9b39f…` | O2 token/cost daily cap | DONE-on-arrival close `63e56c34`; ADR-0023; `internal/budget/budget.go:146` |
-| `000001a141d63a4b…` | dep-sweep e2e + questions + anchors | NO closeout (window's worst finding); work in 7 pushed daemon sweeps; item 1 landed (`scripts/smoke/dep-sweep.sh` at `scripts/ci-local.sh:434`, `internal/depsweep/calibration_live_test.go`), CHANGELOG §Added documents both (line 136+) |
-| `000001a1478bb7c8…` | art-dupl batch 3/3 (`-t 3` rerun) | closeout 2026-10-17_19-08; `companion.Enqueue` homing `3990c6e9`; flake root cause `bf328e28`+`2ed7c221`; drift re-verify `18a337e1` |
-| `000001a14ade18eb…` | art-dupl batch 4/4 (unix-milli invariant, cmd/tq go.work, heal `--retitle`) | closeout 2026-10-17_19-29; `30e86aba`, `0f0e8167`, `c3cf5191`; ADR-0017 amended |
+| Task                | Batch                                                                       | Evidence                                                                                                                                                                                                                                   |
+| ------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `000001a13db76386…` | ci.yml parity sweep                                                         | closeout 2026-10-15_06-10; commit `7e45d620`                                                                                                                                                                                               |
+| `000001a13dc9b39f…` | O2 token/cost daily cap                                                     | DONE-on-arrival close `63e56c34`; ADR-0023; `internal/budget/budget.go:146`                                                                                                                                                                |
+| `000001a141d63a4b…` | dep-sweep e2e + questions + anchors                                         | NO closeout (window's worst finding); work in 7 pushed daemon sweeps; item 1 landed (`scripts/smoke/dep-sweep.sh` at `scripts/ci-local.sh:434`, `internal/depsweep/calibration_live_test.go`), CHANGELOG §Added documents both (line 136+) |
+| `000001a1478bb7c8…` | art-dupl batch 3/3 (`-t 3` rerun)                                           | closeout 2026-10-17_19-08; `companion.Enqueue` homing `3990c6e9`; flake root cause `bf328e28`+`2ed7c221`; drift re-verify `18a337e1`                                                                                                       |
+| `000001a14ade18eb…` | art-dupl batch 4/4 (unix-milli invariant, cmd/tq go.work, heal `--retitle`) | closeout 2026-10-17_19-29; `30e86aba`, `0f0e8167`, `c3cf5191`; ADR-0017 amended                                                                                                                                                            |
 
 ## a) FULLY DONE (re-verified this dispatch)
 

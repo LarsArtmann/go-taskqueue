@@ -7,13 +7,13 @@
 
 ## The window's five tasks (all re-confirmed via closeout reports / commits)
 
-| Task | Batch | Evidence |
-| --- | --- | --- |
-| `000001a13db76386…` | ci.yml parity sweep | closeout 2026-10-15_06-10; commit `7e45d620`; asymmetry rows correctly still open on standing preconditions |
-| `000001a13dc9b39f…` | O2 token/cost daily cap | DONE-on-arrival close `63e56c34`; ADR-0023; CHANGELOG `--daily-cost-cap` entry (added by the 20-31 pass) |
-| `000001a141d63a4b…` | dep-sweep e2e + live calibration | NO closeout (window's worst finding); item 1 landed (`scripts/smoke/dep-sweep.sh`, `internal/depsweep/calibration_live_test.go`); live calib still never executed |
-| `000001a1478bb7c8…` | art-dupl batch 3/3 (`-t 3` rerun) | closeout 2026-10-17_19-08; `companion.Enqueue` homing `3990c6e9` |
-| `000001a14ade18eb…` | art-dupl batch 4/4 (unix-milli invariant, cmd/tq go.work, heal `--retitle`) | closeout 2026-10-17_19-29; `30e86aba`, `0f0e8167`, `c3cf5191`; AGENTS.md bullet verified present at HEAD |
+| Task                | Batch                                                                       | Evidence                                                                                                                                                          |
+| ------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `000001a13db76386…` | ci.yml parity sweep                                                         | closeout 2026-10-15_06-10; commit `7e45d620`; asymmetry rows correctly still open on standing preconditions                                                       |
+| `000001a13dc9b39f…` | O2 token/cost daily cap                                                     | DONE-on-arrival close `63e56c34`; ADR-0023; CHANGELOG `--daily-cost-cap` entry (added by the 20-31 pass)                                                          |
+| `000001a141d63a4b…` | dep-sweep e2e + live calibration                                            | NO closeout (window's worst finding); item 1 landed (`scripts/smoke/dep-sweep.sh`, `internal/depsweep/calibration_live_test.go`); live calib still never executed |
+| `000001a1478bb7c8…` | art-dupl batch 3/3 (`-t 3` rerun)                                           | closeout 2026-10-17_19-08; `companion.Enqueue` homing `3990c6e9`                                                                                                  |
+| `000001a14ade18eb…` | art-dupl batch 4/4 (unix-milli invariant, cmd/tq go.work, heal `--retitle`) | closeout 2026-10-17_19-29; `30e86aba`, `0f0e8167`, `c3cf5191`; AGENTS.md bullet verified present at HEAD                                                          |
 
 ## a) FULLY DONE (re-verified at `2eba816f`)
 

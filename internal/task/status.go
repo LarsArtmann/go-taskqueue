@@ -93,5 +93,3 @@ func (s Status) Valid() bool {
 
 	return false
 }
-
-

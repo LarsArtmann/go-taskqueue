@@ -14,7 +14,10 @@ min_len=12
 
 run_check() {
 	local readme="$1" base="$2"
-	[ -f "$readme" ] || { echo "MISSING: $readme"; return 1; }
+	[ -f "$readme" ] || {
+		echo "MISSING: $readme"
+		return 1
+	}
 	local warn=0 rows=0 spans=0 missing=0
 	local line report path text span
 	while IFS= read -r line; do
@@ -26,7 +29,10 @@ run_check() {
 		esac
 		path="$base/$report"
 		[ -f "$path" ] || path="$(find "docs/status" -name "$(basename "$report")" -print -quit)"
-		[ -f "$path" ] || { missing=$((missing + 1)); continue; }
+		[ -f "$path" ] || {
+			missing=$((missing + 1))
+			continue
+		}
 		# Annotated spans inside a bracketed [YYYY-MM-DD ANNOTATION: ...] are
 		# the annotate-never-rewrite carriers: they quote the drifted text ON
 		# PURPOSE, so strip the brackets before extracting quotes.
@@ -65,8 +71,8 @@ self_test() {
 	} >"$idx"
 	local out
 	out="$(run_check "$idx" "$tmp" 2>&1)"
-	if grep -q "frobnicator settle ritual" <<<"$out" \
-		|| ! grep -q "quantum flux capacitor recalibrated" <<<"$out"; then
+	if grep -q "frobnicator settle ritual" <<<"$out" ||
+		! grep -q "quantum flux capacitor recalibrated" <<<"$out"; then
 		echo "SELF-TEST FAIL: matching span flagged or drift span not WARNed"
 		echo "$out"
 		exit 1
