@@ -270,7 +270,7 @@ func (s *Sweeper) enqueueReview(ctx context.Context, t task.Task, fact journal.F
 		agentPayload.Prompt == "" {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	var agentResult executor.AgentResult

@@ -15,6 +15,7 @@ package status
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"path/filepath"
@@ -82,7 +83,9 @@ type SweepStats struct {
 	ReportsKnown int
 	// Skipped counts completions that could not yield a status task
 	// (foreign payload shape, vanished task record, window not yet full,
-	// or a report already in flight).
+	// or a report already in flight). A refused MINT is not counted here:
+	// it aborts the sweep before the checkpoint so the completion
+	// redelivers.
 	Skipped int
 }
 
@@ -127,15 +130,20 @@ func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Swe
 // full windows. Idempotent by dedup: calling it twice never duplicates work,
 // so a replayed page (crash between consumption and checkpoint) re-hits
 // dedup keys instead of minting duplicates.
+//
+// A mint refusal — a store failure while reading a completion, listing the
+// window, or enqueueing the report — aborts the sweep BEFORE the checkpoint:
+// the fact redelivers on the next pass instead of silently dropping the
+// window's report forever (dlqfix 13-15 §e pattern). Deterministic skips
+// (foreign shapes, vanished records, done-guard dedup hits) stay
+// checkpointed past: retrying them can never succeed.
 func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	var stats SweepStats
 
 	err := s.cur.Sweep(ctx, func(ctx context.Context, f journal.Fact) error {
 		stats.Facts++
 
-		s.handleFact(ctx, f, &stats)
-
-		return nil
+		return s.handleFact(ctx, f, &stats)
 	})
 
 	return stats, err
@@ -143,30 +151,54 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 
 // handleFact reacts to one completion fact: only agent completions can fill
 // a window; every other type (status included — the loop guard) is consumed
-// without effect.
-func (s *Sweeper) handleFact(ctx context.Context, f journal.Fact, stats *SweepStats) {
+// without effect. A mint refusal propagates (checkpoint held); deterministic
+// skips never abort the sweep.
+func (s *Sweeper) handleFact(ctx context.Context, f journal.Fact, stats *SweepStats) error {
 	if f.Type != journal.Completed {
-		return
+		return nil
 	}
 
 	t, err := s.store.Get(ctx, task.ID(f.TaskID))
 	if err != nil {
-		stats.Skipped++
+		if watermark.PermanentOutcome(err) {
+			stats.Skipped++
 
-		return
+			return nil
+		}
+
+		return s.refuse(f.TaskID, "read completed record", err)
 	}
 
 	if t.Type != executor.TaskTypeAgent {
-		return
+		return nil
 	}
 
-	s.maybeMint(ctx, t, stats)
+	return s.maybeMint(ctx, t, stats)
+}
+
+// refuse reports a mint refusal and returns the error that holds the
+// sweep's checkpoint: a refused mint must not advance past the completion,
+// or the window's report never happens without an operator watermark
+// rewind (mirror of the dlqfix refuseMint pattern).
+func (s *Sweeper) refuse(completed, why string, err error) error {
+	s.warn("status: report mint refused — checkpoint held",
+		"completed", completed, "why", why, "err", err)
+
+	return fmt.Errorf("status: report mint refused for completion %s (%s): %w", completed, why, err)
+}
+
+func (s *Sweeper) warn(msg string, args ...any) {
+	if s.cfg.Log != nil {
+		s.cfg.Log.Warn(msg, args...)
+	}
 }
 
 // maybeMint mints the status task when this completion fills the project's
 // window: >= Every completed agent tasks since the last status task (or
-// ever), and no status task pending/running for the project.
-func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats) {
+// ever), and no status task pending/running for the project. A store
+// failure under the mint refuses (checkpoint held); the done-guard (a dedup
+// key whose report already completed) counts known.
+func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats) error {
 	var agentPayload executor.AgentPayload
 
 	if err := json.Unmarshal(
@@ -176,14 +208,12 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		agentPayload.Prompt == "" {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	statusTasks, err := s.store.List(ctx, queue.Filter{Project: &t.Project, Type: ptr(executor.TaskTypeStatus)})
 	if err != nil {
-		stats.Skipped++
-
-		return
+		return s.refuse(t.ID.String(), "list project status tasks", err)
 	}
 
 	var lastReport time.Time
@@ -194,7 +224,7 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 			// before minting the next window's.
 			stats.Skipped++
 
-			return
+			return nil
 		}
 
 		if statusTask.CreatedAt.After(lastReport) {
@@ -205,14 +235,12 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 	if s.cfg.MinInterval > 0 && !lastReport.IsZero() && time.Since(lastReport) < s.cfg.MinInterval {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	agentTasks, err := s.store.List(ctx, queue.Filter{Project: &t.Project, Type: ptr(executor.TaskTypeAgent)})
 	if err != nil {
-		stats.Skipped++
-
-		return
+		return s.refuse(t.ID.String(), "list project agent tasks", err)
 	}
 
 	window := make([]executor.StatusCompletion, 0, s.cfg.Every)
@@ -254,7 +282,7 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 	}
 
 	if len(window) < s.cfg.Every {
-		return // window not full yet; nothing to mint
+		return nil // window not full yet; nothing to mint
 	}
 
 	sort.Slice(window, func(i, j int) bool {
@@ -287,7 +315,7 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 	if err != nil {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	got, err := s.store.Enqueue(ctx, task.New{
@@ -297,10 +325,17 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		Payload:  blob,
 		DedupKey: StatusDedupKey(t.Project, t.ID),
 	})
-	if err != nil {
-		stats.Skipped++
+	if errors.Is(err, queue.ErrTaskDone) {
+		// The done-guard (Queue wrapper): the dedup key matched a
+		// COMPLETED report — this window's report already ran. Known,
+		// not refused: the checkpoint moves past.
+		stats.ReportsKnown++
 
-		return
+		return nil
+	}
+
+	if err != nil {
+		return s.refuse(t.ID.String(), "enqueue status report", err)
 	}
 
 	if got.Attempts == 0 && got.Status == task.Pending {
@@ -311,6 +346,8 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 	} else {
 		stats.ReportsKnown++
 	}
+
+	return nil
 }
 
 func (s *Sweeper) log(msg string, args ...any) {

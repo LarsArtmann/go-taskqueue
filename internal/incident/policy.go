@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -63,8 +64,10 @@ type PolicyStats struct {
 	// Known counts deliveries whose fix task was already minted (replay or
 	// in-flight mint).
 	Known int
-	// Skipped counts facts that could not yield a mint (bad detail, enqueue
-	// failure) — the incident stays open and the next occurrence re-arms.
+	// Skipped counts facts that could not yield a mint (bad detail, foreign
+	// shape) — the incident stays open and the next occurrence re-arms. A
+	// refused MINT is not counted here: it aborts the sweep before the
+	// checkpoint so the observation redelivers.
 	Skipped int
 }
 
@@ -181,14 +184,21 @@ func (p *Policy) bootstrap(ctx context.Context) error {
 // Sweep consumes new facts since the last pass and mints fix tasks for
 // incidents that need one. Idempotent: a replayed page converges on task
 // dedup keys and the fold's seq guard instead of duplicating work.
+//
+// A mint refusal — a store failure while enqueueing the fix task or
+// appending its mint fact — aborts the sweep BEFORE the checkpoint: the
+// observation redelivers on the next pass instead of silently dropping the
+// mint forever (dlqfix 13-15 §e pattern). Redelivery is dedup-safe: the
+// enqueued task converges on its stored record, and the pending guard is
+// re-established. A completed fix-task dedup key (ErrTaskDone) counts
+// known instead of refusing.
 func (p *Policy) Sweep(ctx context.Context) (PolicyStats, error) {
 	var stats PolicyStats
 
 	err := p.cur.Sweep(ctx, func(ctx context.Context, f journal.Fact) error {
 		stats.Facts++
-		p.handleFact(ctx, f, &stats)
 
-		return nil
+		return p.handleFact(ctx, f, &stats)
 	})
 
 	return stats, err
@@ -198,23 +208,40 @@ func (p *Policy) Sweep(ctx context.Context) (PolicyStats, error) {
 // a fact already folded by the bootstrap or a replayed page is a no-op),
 // then reacts: error observations may mint, mint facts clear the pending
 // guard. Task lifecycle facts (completed, dead-lettered) need no reaction —
-// the fold alone moves the incident to resolved / fix-failed.
-func (p *Policy) handleFact(ctx context.Context, f journal.Fact, stats *PolicyStats) {
+// the fold alone moves the incident to resolved / fix-failed. A mint
+// refusal propagates (checkpoint held); deterministic skips never abort
+// the sweep.
+func (p *Policy) handleFact(ctx context.Context, f journal.Fact, stats *PolicyStats) error {
 	p.state.Apply(f)
 
 	switch f.Type {
 	case journal.ErrorObserved:
-		p.reactObserved(ctx, f, stats)
+		return p.reactObserved(ctx, f, stats)
 	case journal.IncidentTaskMinted:
 		p.clearPending(f)
 	}
+
+	return nil
 }
 
-func (p *Policy) reactObserved(ctx context.Context, f journal.Fact, stats *PolicyStats) {
+// refuse reports a mint refusal and returns the error that holds the
+// sweep's checkpoint: a refused mint must not advance past the observation,
+// or the fix task never happens without an operator watermark rewind
+// (mirror of the dlqfix refuseMint pattern).
+func (p *Policy) refuse(incident, why string, err error) error {
+	if p.cfg.Log != nil {
+		p.cfg.Log.Warn("incident: mint refused — checkpoint held",
+			"incident", incident, "why", why, "err", err)
+	}
+
+	return fmt.Errorf("incident: mint refused for %s (%s): %w", incident, why, err)
+}
+
+func (p *Policy) reactObserved(ctx context.Context, f journal.Fact, stats *PolicyStats) error {
 	if !strings.HasPrefix(f.TaskID, IDPrefix) {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	fp := FingerprintOfID(f.TaskID)
@@ -223,7 +250,7 @@ func (p *Policy) reactObserved(ctx context.Context, f journal.Fact, stats *Polic
 	if !ok {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	stats.Occurrences++
@@ -232,11 +259,11 @@ func (p *Policy) reactObserved(ctx context.Context, f journal.Fact, stats *Polic
 	if known {
 		stats.Known++
 
-		return
+		return nil
 	}
 
 	if !needs {
-		return
+		return nil
 	}
 
 	// A mint on an incident whose latest fix task is terminal is a
@@ -248,18 +275,24 @@ func (p *Policy) reactObserved(ctx context.Context, f journal.Fact, stats *Polic
 	}
 
 	if err := p.mint(ctx, inc, f, regression); err != nil {
-		// The incident stays open with no mint: the next occurrence (or a
-		// watermark rewind) re-arms it. Storms make loss improbable.
-		stats.Skipped++
+		if errors.Is(err, queue.ErrTaskDone) {
+			// The done-guard (Queue wrapper): the fix task for this exact
+			// observation already ran (a crash between the enqueue and the
+			// mint-fact append). Known, not refused: the checkpoint moves
+			// past — the fold heals the incident bookkeeping.
+			stats.Known++
 
-		if p.cfg.Log != nil {
-			p.cfg.Log.Error("incident mint failed", "incident", f.TaskID, "err", err)
+			return nil
 		}
 
-		return
+		// The incident stays open with no mint: the refusal holds the
+		// checkpoint so the observation redelivers.
+		return p.refuse(f.TaskID, "mint fix task", err)
 	}
 
 	stats.TasksMinted++
+
+	return nil
 }
 
 // needsFix decides whether an observation mints a fix task:

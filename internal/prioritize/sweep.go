@@ -36,6 +36,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -142,7 +143,9 @@ type SweepStats struct {
 	// applied verdict.
 	TasksReprioritized int
 	// Skipped counts facts that could not yield work (vanished records,
-	// foreign payload shapes, unparsable results).
+	// foreign payload shapes, unparsable results). A refused store
+	// operation is not counted here: it aborts the sweep before the
+	// checkpoint so the fact redelivers.
 	Skipped int
 	// CachePruned counts stale cache entries the prune pass evicted:
 	// verdicts whose item key no longer belongs to any PENDING backlog
@@ -185,6 +188,13 @@ func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Swe
 // Idempotent by dedup keys, cache upserts and same-value transition guards
 // — a replayed page (crash between consumption and checkpoint) re-hits
 // dedup instead of duplicating work.
+//
+// A store refusal — a transient failure while reading a trigger record,
+// caching/applying verdicts, or minting a batch — aborts the sweep BEFORE
+// the checkpoint: the fact redelivers on the next pass instead of silently
+// dropping the work forever (dlqfix 13-15 §e pattern). Deterministic skips
+// (vanished records, foreign shapes, done-guard dedup hits) stay
+// checkpointed past: retrying them can never succeed.
 func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -195,16 +205,16 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 		s.bootMinted = true
 
 		if s.cfg.BootMint {
-			s.mintWorkingSet(ctx, &stats)
+			if err := s.mintWorkingSet(ctx, &stats); err != nil {
+				return stats, err
+			}
 		}
 	}
 
 	err := s.cur.Sweep(ctx, func(ctx context.Context, f journal.Fact) error {
 		stats.Facts++
 
-		s.handleFact(ctx, f, &stats)
-
-		return nil
+		return s.handleFact(ctx, f, &stats)
 	})
 
 	return stats, err
@@ -214,100 +224,137 @@ func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 // claims drain the frontier (the refill mint fires at claim time — a
 // completion can lag an agent run by hours), completed scorer tasks gain
 // verdict application (and a follow-up mint check for items that arrived
-// in flight), requeues supersede the item's verdict.
-func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+// in flight), requeues supersede the item's verdict. A store refusal
+// propagates (checkpoint held); deterministic skips never abort the sweep.
+func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
 	switch fact.Type {
 	case journal.Enqueued:
-		s.onEnqueued(ctx, fact, stats)
+		return s.onEnqueued(ctx, fact, stats)
 	case journal.Claimed:
-		s.onClaimed(ctx, fact, stats)
+		return s.onClaimed(ctx, fact, stats)
 	case journal.Completed:
-		s.onCompleted(ctx, fact, stats)
+		return s.onCompleted(ctx, fact, stats)
 	case journal.Requeued:
-		s.onRequeued(ctx, fact, stats)
+		return s.onRequeued(ctx, fact, stats)
 	}
+
+	return nil
+}
+
+// refuse reports a store refusal and returns the error that holds the
+// sweep's checkpoint: a refused operation must not advance past the fact,
+// or the verdict/mint it carries never happens without an operator
+// watermark rewind (mirror of the dlqfix refuseMint pattern).
+func (s *Sweeper) refuse(what, id string, err error) error {
+	s.warn("prioritize: store refusal — checkpoint held",
+		"what", what, "id", id, "err", err)
+
+	return fmt.Errorf("prioritize: %s refused for %s: %w", what, id, err)
 }
 
 // backlogItemOf resolves a fact's task to a harvested backlog item, or
 // reports not-ours (someone else's enqueue/claim/completion — not a
-// skip, just not ours).
-func (s *Sweeper) backlogItemOf(ctx context.Context, fact journal.Fact, stats *SweepStats) (workingItem, bool) {
+// skip, just not ours). A transient read failure refuses (checkpoint
+// held); a vanished record skips past.
+func (s *Sweeper) backlogItemOf(ctx context.Context, fact journal.Fact, stats *SweepStats) (workingItem, bool, error) {
 	t, err := s.store.Get(ctx, task.ID(fact.TaskID))
 	if err != nil {
-		stats.Skipped++
+		if watermark.PermanentOutcome(err) {
+			stats.Skipped++
 
-		return workingItem{}, false
+			return workingItem{}, false, nil
+		}
+
+		return workingItem{}, false, s.refuse("read task record", fact.TaskID, err)
 	}
 
 	item, ok := harvest.PayloadItemOf(t)
 	if !ok || !strings.HasPrefix(item.Key, itemKeyPrefix) || t.Type != executor.TaskTypeAgent {
-		return workingItem{}, false
+		return workingItem{}, false, nil
 	}
 
-	return workingItem{task: t, item: item}, true
+	return workingItem{task: t, item: item}, true, nil
 }
 
 // onClaimed mints the frontier refill: the claimed item left the PENDING
 // working set, so the next-K window slid and its newest member may be
 // unscored (O3 2026-10-05: spend follows claims).
-func (s *Sweeper) onClaimed(ctx context.Context, fact journal.Fact, stats *SweepStats) {
-	entry, ok := s.backlogItemOf(ctx, fact, stats)
-	if !ok {
-		return
+func (s *Sweeper) onClaimed(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
+	entry, ok, err := s.backlogItemOf(ctx, fact, stats)
+	if err != nil {
+		return err
 	}
 
-	s.mintRepo(ctx, entry.item.Repo, entry.task.Project, stats)
+	if !ok {
+		return nil
+	}
+
+	return s.mintRepo(ctx, entry.item.Repo, entry.task.Project, stats)
 }
 
 // onRequeued supersedes the item's cached verdict (a claim attempt may
 // have moved the repo under the score — it must be re-issued) and mints
 // the re-score batch right away: the superseded stamp makes the item
 // re-join the frontier batch even though an old batch covered it.
-func (s *Sweeper) onRequeued(ctx context.Context, fact journal.Fact, stats *SweepStats) {
-	entry, ok := s.backlogItemOf(ctx, fact, stats)
+func (s *Sweeper) onRequeued(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
+	entry, ok, err := s.backlogItemOf(ctx, fact, stats)
+	if err != nil {
+		return err
+	}
+
 	if !ok {
-		return
+		return nil
 	}
 
 	score, cached, err := s.store.PriorityScore(ctx, entry.item.Key)
 	switch {
 	case err != nil:
-		s.warn("prioritize: requeue cache read failed", "item", entry.item.Key, "err", err)
+		// The supersede stamp is the invalidation — losing it silently
+		// would rank fresh work against a stale verdict, so it refuses.
+		return s.refuse("read cached verdict", entry.item.Key, err)
 	case cached && score.Source == s.scorerSource():
 		score.Source = SourceSuperseded
 
 		if err := s.store.SavePriorityScore(ctx, score); err != nil {
-			s.warn("prioritize: requeue supersede failed", "item", entry.item.Key, "err", err)
+			return s.refuse("supersede cached verdict", entry.item.Key, err)
 		}
 	}
 
-	s.mintRepo(ctx, entry.item.Repo, entry.task.Project, stats)
+	return s.mintRepo(ctx, entry.item.Repo, entry.task.Project, stats)
 }
 
 // onEnqueued mints a batch when a freshly harvested backlog item leaves
 // its repo with unscored, uncovered frontier work.
-func (s *Sweeper) onEnqueued(ctx context.Context, fact journal.Fact, stats *SweepStats) {
-	entry, ok := s.backlogItemOf(ctx, fact, stats)
-	if !ok {
-		return
+func (s *Sweeper) onEnqueued(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
+	entry, ok, err := s.backlogItemOf(ctx, fact, stats)
+	if err != nil {
+		return err
 	}
 
-	s.mintRepo(ctx, entry.item.Repo, entry.task.Project, stats)
+	if !ok {
+		return nil
+	}
+
+	return s.mintRepo(ctx, entry.item.Repo, entry.task.Project, stats)
 }
 
 // onCompleted caches a finished batch's verdicts and applies them to the
 // repo's PENDING tasks, then re-checks the working set: items enqueued
 // while the batch was in flight still need their own batch.
-func (s *Sweeper) onCompleted(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+func (s *Sweeper) onCompleted(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
 	t, err := s.store.Get(ctx, task.ID(fact.TaskID))
 	if err != nil {
-		stats.Skipped++
+		if watermark.PermanentOutcome(err) {
+			stats.Skipped++
 
-		return
+			return nil
+		}
+
+		return s.refuse("read completed record", fact.TaskID, err)
 	}
 
 	if t.Type != executor.TaskTypePrioritize {
-		return // someone else's completion — not a skip, just not ours
+		return nil // someone else's completion — not a skip, just not ours
 	}
 
 	var result executor.PrioritizeResult
@@ -317,7 +364,7 @@ func (s *Sweeper) onCompleted(ctx context.Context, fact journal.Fact, stats *Swe
 
 		s.warn("prioritize: unparsable scorer result", "task", t.ID.String(), "err", err)
 
-		return
+		return nil
 	}
 
 	byKey := make(map[string]executor.PrioritizeVerdict, len(result.Verdicts))
@@ -331,9 +378,9 @@ func (s *Sweeper) onCompleted(ctx context.Context, fact journal.Fact, stats *Swe
 			Reasoning:     verdict.Reasoning,
 			ScoredAt:      fact.Time.UnixMilli(),
 		}); err != nil {
-			s.warn("prioritize: cache verdict failed", "item", verdict.ItemKey, "err", err)
-
-			continue
+			// A lost verdict cache write would silently drop the scorer's
+			// spend, so it refuses; the redelivery re-applies idempotently.
+			return s.refuse("cache verdict", verdict.ItemKey, err)
 		}
 
 		stats.VerdictsCached++
@@ -341,12 +388,14 @@ func (s *Sweeper) onCompleted(ctx context.Context, fact journal.Fact, stats *Swe
 	}
 
 	if len(byKey) > 0 {
-		s.applyVerdicts(ctx, t.Project, byKey, stats)
+		if err := s.applyVerdicts(ctx, t.Project, byKey, stats); err != nil {
+			return err
+		}
 	}
 
 	s.pruneCache(ctx, stats)
 
-	s.mintRepo(ctx, s.repoRef(ctx, t), t.Project, stats)
+	return s.mintRepo(ctx, s.repoRef(ctx, t), t.Project, stats)
 }
 
 // applyVerdicts updates the repo's PENDING backlog tasks to their cached
@@ -359,8 +408,13 @@ func (s *Sweeper) applyVerdicts(
 	project string,
 	byKey map[string]executor.PrioritizeVerdict,
 	stats *SweepStats,
-) {
-	for _, entry := range s.pendingItems(ctx, project) {
+) error {
+	items, err := s.pendingItems(ctx, project)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range items {
 		verdict, scored := byKey[entry.item.Key]
 		if !scored || entry.item.MarkerLevel > 0 || !harvest.RepriMutable(entry.task.Priority) {
 			continue
@@ -377,10 +431,15 @@ func (s *Sweeper) applyVerdicts(
 		}
 
 		if err := s.store.UpdatePendingPriority(ctx, entry.task.ID, priority, PrioritySourceAI, reason); err != nil {
-			s.warn("prioritize: reprioritize failed",
-				"task", entry.task.ID.String(), "item", entry.item.Key, "err", err)
+			if watermark.PermanentOutcome(err) {
+				// Claimed (or moved) between the listing and the update:
+				// the next verdict cycle re-scores it — skip past.
+				s.warn("prioritize: reprioritize skipped", "task", entry.task.ID.String(), "err", err)
 
-			continue
+				continue
+			}
+
+			return s.refuse("reprioritize task", entry.task.ID.String(), err)
 		}
 
 		stats.TasksReprioritized++
@@ -391,6 +450,8 @@ func (s *Sweeper) applyVerdicts(
 			"old", entry.task.Priority,
 			"new", priority)
 	}
+
+	return nil
 }
 
 // workingItem pairs a PENDING task with its harvested item identity.
@@ -455,13 +516,15 @@ func effectivePriority(now time.Time, t task.Task) float64 {
 	return float64(t.Priority) + bonus
 }
 
-// pendingItems lists the repo's PENDING harvested backlog tasks.
-func (s *Sweeper) pendingItems(ctx context.Context, project string) []workingItem {
+// pendingItems lists the repo's PENDING harvested backlog tasks. A listing
+// failure refuses: minting (or applying) against a silently-empty working
+// set would drop work or mass-evict the cache.
+func (s *Sweeper) pendingItems(ctx context.Context, project string) ([]workingItem, error) {
 	agentType := executor.TaskTypeAgent
 
 	tasks, err := s.store.List(ctx, queue.Filter{Project: &project, Type: &agentType})
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("list pending items: %w", err)
 	}
 
 	var items []workingItem
@@ -479,7 +542,7 @@ func (s *Sweeper) pendingItems(ctx context.Context, project string) []workingIte
 		items = append(items, workingItem{task: t, item: item})
 	}
 
-	return items
+	return items, nil
 }
 
 // coveredKeys returns the item keys already claimed by a batch of this
@@ -488,12 +551,12 @@ func (s *Sweeper) pendingItems(ctx context.Context, project string) []workingIte
 // in the stream) still claims its items; a dead batch claims them too,
 // mirroring the store's dedup-forever semantics (recovery rides the next
 // key-set change, never a re-mint of the same set).
-func (s *Sweeper) coveredKeys(ctx context.Context, project string) map[string]bool {
+func (s *Sweeper) coveredKeys(ctx context.Context, project string) (map[string]bool, error) {
 	scorerType := executor.TaskTypePrioritize
 
 	tasks, err := s.store.List(ctx, queue.Filter{Project: &project, Type: &scorerType})
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("list covered batches: %w", err)
 	}
 
 	covered := map[string]bool{}
@@ -509,24 +572,39 @@ func (s *Sweeper) coveredKeys(ctx context.Context, project string) map[string]bo
 		}
 	}
 
-	return covered
+	return covered, nil
 }
 
 // mintRepo mints ONE batch covering the repo's unscored, uncovered
 // FRONTIER items (the next-K claimable, O3 2026-10-05) — but only when
 // that set is non-empty. The dedup key hashes the exact key set, so an
-// unchanged set never mints twice.
-func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *SweepStats) {
-	pending := s.frontier(s.pendingItems(ctx, project))
-	covered := s.coveredKeys(ctx, project)
+// unchanged set never mints twice. A store failure under the mint refuses
+// (checkpoint held); the done-guard (a dedup key whose batch already
+// completed) counts known.
+func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *SweepStats) error {
+	pending, err := s.pendingItems(ctx, project)
+	if err != nil {
+		return s.refuse("list working set", project, err)
+	}
+
+	covered, err := s.coveredKeys(ctx, project)
+	if err != nil {
+		return s.refuse("list covered batches", project, err)
+	}
 
 	var batch []executor.PrioritizeItem
 
 	generation := int64(0)
 
-	for _, entry := range pending {
+	for _, entry := range s.frontier(pending) {
 		score, cached, err := s.store.PriorityScore(ctx, entry.item.Key)
-		stale := err == nil && cached && s.verdictUnusable(score)
+		if err != nil {
+			// A failed cache read must not decide the batch's key set: the
+			// item would silently join (or drop from) the dedup hash.
+			return s.refuse("read cached verdict", entry.item.Key, err)
+		}
+
+		stale := cached && s.verdictUnusable(score)
 
 		if stale && score.ScoredAt > generation {
 			generation = score.ScoredAt
@@ -548,7 +626,7 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 	}
 
 	if len(batch) == 0 {
-		return
+		return nil
 	}
 
 	sort.Slice(batch, func(i, j int) bool { return batch[i].Key < batch[j].Key })
@@ -571,7 +649,7 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 	if err != nil {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	got, err := s.store.Enqueue(ctx, task.New{
@@ -581,10 +659,17 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 		Payload:  payload,
 		DedupKey: DedupKey(project, keys, generation),
 	})
-	if err != nil {
-		stats.Skipped++
+	if errors.Is(err, queue.ErrTaskDone) {
+		// The done-guard (Queue wrapper): the dedup key matched a
+		// COMPLETED batch — this key set was already scored. Known,
+		// not refused: the checkpoint moves past.
+		stats.BatchesKnown++
 
-		return
+		return nil
+	}
+
+	if err != nil {
+		return s.refuse("enqueue batch", project, err)
 	}
 
 	if got.Attempts == 0 && got.Status == task.Pending {
@@ -595,17 +680,19 @@ func (s *Sweeper) mintRepo(ctx context.Context, repoRef, project string, stats *
 	} else {
 		stats.BatchesKnown++
 	}
+
+	return nil
 }
 
 // mintWorkingSet boot-mints every repo that currently holds unscored
 // backlog work (the BootMint pass over the pre-cursor standing backlog).
-func (s *Sweeper) mintWorkingSet(ctx context.Context, stats *SweepStats) {
+func (s *Sweeper) mintWorkingSet(ctx context.Context, stats *SweepStats) error {
 	agentType := executor.TaskTypeAgent
 	pendingStatus := task.Pending
 
 	tasks, err := s.store.List(ctx, queue.Filter{Type: &agentType, Status: &pendingStatus})
 	if err != nil {
-		return
+		return s.refuse("list boot working set", "", err)
 	}
 
 	seen := map[string]string{} // project -> repoRef
@@ -622,8 +709,12 @@ func (s *Sweeper) mintWorkingSet(ctx context.Context, stats *SweepStats) {
 	}
 
 	for _, project := range sortedKeys(seen) {
-		s.mintRepo(ctx, seen[project], project, stats)
+		if err := s.mintRepo(ctx, seen[project], project, stats); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // scorerSource is the identity a verdict is stamped with AND matched
@@ -655,8 +746,10 @@ func (s *Sweeper) verdictUnusable(score queue.PriorityScore) bool {
 // would otherwise sit in the cache forever. It runs on every scorer
 // completion — the moment the cache can grow — so the pass costs one
 // cache scan plus one live-set listing per scoring cycle, never per
-// sweep. A store read failure is logged and skipped: the orphans are
-// evicted on the next completion.
+// sweep. Best-effort by design: a store failure is logged and skipped
+// (the orphans are evicted on the next completion) EXCEPT the live-set
+// read, which refuses — deleting against a silently-empty live set would
+// evict the WHOLE cache.
 func (s *Sweeper) pruneCache(ctx context.Context, stats *SweepStats) {
 	scores, err := s.store.PriorityScores(ctx)
 	if err != nil {
@@ -669,7 +762,12 @@ func (s *Sweeper) pruneCache(ctx context.Context, stats *SweepStats) {
 		return
 	}
 
-	live := s.liveItemKeys(ctx)
+	live, err := s.liveItemKeys(ctx)
+	if err != nil {
+		s.warn("prioritize: cache prune live-set read failed", "err", err)
+
+		return
+	}
 
 	var orphans []string
 
@@ -699,13 +797,15 @@ func (s *Sweeper) pruneCache(ctx context.Context, stats *SweepStats) {
 
 // liveItemKeys collects the item keys of every PENDING harvested backlog
 // task across all projects — the working set the cache serves (mint and
-// apply both read PENDING items only).
-func (s *Sweeper) liveItemKeys(ctx context.Context) map[string]bool {
+// apply both read PENDING items only). A listing failure is an error, not
+// an empty set: the prune pass must never treat "read failed" as "nothing
+// is live".
+func (s *Sweeper) liveItemKeys(ctx context.Context) (map[string]bool, error) {
 	agentType := executor.TaskTypeAgent
 
 	tasks, err := s.store.List(ctx, queue.Filter{Type: &agentType})
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("list live items: %w", err)
 	}
 
 	live := map[string]bool{}
@@ -723,7 +823,7 @@ func (s *Sweeper) liveItemKeys(ctx context.Context) map[string]bool {
 		live[item.Key] = true
 	}
 
-	return live
+	return live, nil
 }
 
 // repoRef reads the batch's own repo reference back from its payload (the
