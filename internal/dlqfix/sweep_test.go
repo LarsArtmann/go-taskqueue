@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -112,7 +116,7 @@ func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail executor.DLQFi
 	}
 }
 
-func newTestSweeper(t *testing.T, s *sqlite.Store) *Sweeper {
+func newTestSweeper(t *testing.T, s queue.Store) *Sweeper {
 	t.Helper()
 
 	sw, err := NewSweeper(context.Background(), s, SweeperConfig{Model: "", Log: nil})
@@ -121,6 +125,67 @@ func newTestSweeper(t *testing.T, s *sqlite.Store) *Sweeper {
 	}
 
 	return sw
+}
+
+// flakyEnqueueStore fails the next N enqueues with a store-shaped error —
+// the transient failure class a mint refusal represents. Everything else
+// rides the real store.
+type flakyEnqueueStore struct {
+	queue.Store
+
+	failures atomic.Int32
+}
+
+func (f *flakyEnqueueStore) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
+	if f.failures.Load() > 0 {
+		f.failures.Add(-1)
+
+		return task.Task{}, errors.New("sqlite: database is locked (simulated)")
+	}
+
+	return f.Store.Enqueue(ctx, n)
+}
+
+// captureHandler records slog records so tests can pin the warn that
+// accompanies a mint refusal.
+type captureHandler struct {
+	mu      sync.Mutex
+	records []slog.Record
+}
+
+func (h *captureHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.records = append(h.records, r)
+
+	return nil
+}
+
+func (h *captureHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+
+func (h *captureHandler) WithGroup(string) slog.Handler { return h }
+
+// deadLetterSeq returns the journal seq of the task's dead-lettered fact.
+func deadLetterSeq(t *testing.T, s *sqlite.Store, id task.ID) int64 {
+	t.Helper()
+
+	facts, err := s.Facts(context.Background(), 0, 10_000)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	for _, f := range facts {
+		if f.Type == journal.DeadLettered && f.TaskID == id.String() {
+			return f.Seq
+		}
+	}
+
+	t.Fatalf("no dead-lettered fact for %s", id)
+
+	return 0
 }
 
 // pendingDLQFixTasks lists the dlqfix tasks in the store.
@@ -914,4 +979,159 @@ func seedDeadAgentTaskWithReason(
 	}
 
 	return got
+}
+
+// TestSweeperMintRefusalHoldsCheckpoint pins the hardening (13-15 §e): a
+// refused autopsy mint (transient store failure) aborts the sweep BEFORE
+// the checkpoint — warned, watermark held behind the death — so the retry
+// sweep of the SAME cursor redelivers the death and mints the autopsy.
+func TestSweeperMintRefusalHoldsCheckpoint(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	flaky := &flakyEnqueueStore{Store: s}
+	flaky.failures.Store(1)
+
+	capture := &captureHandler{}
+
+	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	dead := seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "ship it"})
+
+	stats, err := sw.Sweep(ctx)
+	if err == nil || !strings.Contains(err.Error(), "mint refused") {
+		t.Fatalf("sweep err = %v, want mint refusal", err)
+	}
+
+	if stats.FixesEnqueued != 0 {
+		t.Fatalf("FixesEnqueued = %d, want 0 (stats %+v)", stats.FixesEnqueued, stats)
+	}
+
+	deadSeq := deadLetterSeq(t, s, dead.ID)
+
+	wm, ok, err := s.Watermark(ctx, ConsumerKey)
+	if err != nil || !ok {
+		t.Fatalf("watermark: %v (ok %v)", err, ok)
+	}
+
+	if wm >= deadSeq {
+		t.Fatalf("watermark = %d, want held behind the dead-letter fact at %d", wm, deadSeq)
+	}
+
+	warned := false
+
+	for _, r := range capture.records {
+		if r.Level == slog.LevelWarn && strings.Contains(r.Message, "mint refused") {
+			warned = true
+		}
+	}
+
+	if !warned {
+		t.Fatalf("mint-refusal warn missing from %+v", capture.records)
+	}
+
+	flaky.failures.Store(0)
+
+	retry, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("retry sweep: %v", err)
+	}
+
+	if retry.FixesEnqueued != 1 {
+		t.Fatalf("retry FixesEnqueued = %d, want 1 (stats %+v)", retry.FixesEnqueued, retry)
+	}
+
+	if tasks := pendingDLQFixTasks(t, s); len(tasks) != 1 {
+		t.Fatalf("dlqfix tasks = %d, want 1", len(tasks))
+	}
+}
+
+// TestSweeperDoneGuardIsKnownNotRefusal pins that the Queue wrapper's
+// done-guard (the dedup key matched a COMPLETED autopsy after an operator
+// watermark rewind) counts known and checkpoints past — it must not wedge
+// the cursor the way a store failure does.
+func TestSweeperDoneGuardIsKnownNotRefusal(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	sw := newTestSweeper(t, queue.New(s))
+
+	seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
+
+	if _, err := sw.Sweep(ctx); err != nil {
+		t.Fatalf("mint sweep: %v", err)
+	}
+
+	autopsy := pendingDLQFixTasks(t, s)[0]
+
+	finishTask(t, s, autopsy.ID, executor.DLQFixResult{
+		Verdict: executor.VerdictWontFix,
+		Summary: "needs credentials only the operator holds",
+	})
+
+	if err := s.SetWatermark(ctx, ConsumerKey, 0); err != nil {
+		t.Fatalf("rewind: %v", err)
+	}
+
+	replay := newTestSweeper(t, queue.New(s))
+
+	stats, err := replay.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("replay sweep: %v", err)
+	}
+
+	if stats.FixesKnown != 1 {
+		t.Fatalf("stats = %+v, want the done-guard counted known", stats)
+	}
+
+	if tasks := pendingDLQFixTasks(t, s); len(tasks) != 1 {
+		t.Fatalf("dlqfix tasks = %d, want 1 (no re-mint)", len(tasks))
+	}
+}
+
+// TestSweeperDeterministicSkipsDoNotGate pins the flip side of the
+// hardening: by-design skips (a dead non-agent task) checkpoint past — a
+// later dead agent task in the same page still mints.
+func TestSweeperDeterministicSkipsDoNotGate(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	sw := newTestSweeper(t, s)
+
+	sh, err := s.Enqueue(ctx, task.New{
+		Type: "sh", Project: "demo", MaxAttempts: 1,
+		Payload: []byte(`{}`), DedupKey: "guard:sh",
+	})
+	if err != nil {
+		t.Fatalf("enqueue sh: %v", err)
+	}
+
+	_, claim, err := s.ClaimDue(ctx, testOwner, testLease)
+	if err != nil {
+		t.Fatalf("claim sh: %v", err)
+	}
+
+	if err := s.Fail(ctx, sh.ID, claim, "boom", 0, nil); err != nil {
+		t.Fatalf("fail sh: %v", err)
+	}
+
+	seedDeadAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"})
+
+	stats, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+
+	if stats.Skipped != 1 || stats.FixesEnqueued != 1 {
+		t.Fatalf("stats = %+v, want 1 skipped + 1 minted", stats)
+	}
 }

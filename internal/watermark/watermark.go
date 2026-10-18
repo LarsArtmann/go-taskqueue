@@ -110,7 +110,10 @@ func newCursor(cfg Config, watermark, persisted int64) *Cursor {
 // replayed page (crash between consumption and checkpoint) re-hits dedup
 // keys instead of duplicating work. The cursor checkpoints after each
 // page; a failed checkpoint (or handler) stops the sweep — facts are never
-// consumed past an unpersisted cursor.
+// consumed past an unpersisted cursor. A handler rejection pulls the
+// cursor back behind the rejected fact, so a retry sweep in the SAME
+// process redelivers it too: pending checkpoints cover accepted facts
+// only.
 func (c *Cursor) Sweep(ctx context.Context, handle Handler) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -132,9 +135,12 @@ func (c *Cursor) Sweep(ctx context.Context, handle Handler) error {
 		}
 
 		for _, f := range facts {
+			lastAccepted := c.watermark
 			c.watermark = f.Seq
 
 			if err := handle(ctx, f); err != nil {
+				c.watermark = lastAccepted
+
 				return err
 			}
 		}

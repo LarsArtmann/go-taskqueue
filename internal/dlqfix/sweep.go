@@ -15,6 +15,7 @@ package dlqfix
 import (
 	"context"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -69,8 +70,10 @@ type SweepStats struct {
 	Rescued int
 	// Dismissed counts dead tasks cancelled by a "wontfix" verdict.
 	Dismissed int
-	// Skipped counts facts that could not yield work (vanished records,
-	// foreign payload shapes, dispositions already executed elsewhere).
+	// Skipped counts facts that could not yield work and are checkpointed
+	// past (foreign payload shapes, dispositions already executed
+	// elsewhere). A refused autopsy MINT is not counted here: it aborts the
+	// sweep before the checkpoint so the death redelivers.
 	Skipped int
 	// AutoDismissed counts dead tasks cancelled by the mechanical
 	// gate-artifact dismissal (TODO row 145) — no autopsy was minted for
@@ -126,47 +129,60 @@ func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Swe
 // calling it twice never duplicates work — a replayed page (crash between
 // consumption and checkpoint) re-hits dedup keys and idempotent store
 // transitions instead of minting duplicates or double-disposing.
+//
+// A mint refusal — a store failure while minting an autopsy for a dead
+// agent task — aborts the sweep BEFORE the checkpoint: the death
+// redelivers on the next pass instead of being silently skipped forever
+// (13-15 §e). Deterministic skips (foreign types, unusable payloads) stay
+// checkpointed past: retrying them can never succeed and would wedge the
+// cursor on one bad record.
 func (s *Sweeper) Sweep(ctx context.Context) (SweepStats, error) {
 	var stats SweepStats
 
 	err := s.cur.Sweep(ctx, func(ctx context.Context, f journal.Fact) error {
 		stats.Facts++
 
-		s.handleFact(ctx, f, &stats)
-
-		return nil
+		return s.handleFact(ctx, f, &stats)
 	})
 
 	return stats, err
 }
 
 // handleFact reacts to one fact: dead-lettered agent tasks gain an autopsy,
-// completed autopsy tasks gain their disposition.
-func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+// completed autopsy tasks gain their disposition. The autopsy's mint
+// refusal propagates (checkpoint held); dispositions are idempotent and
+// never abort the sweep.
+func (s *Sweeper) handleFact(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
 	if fact.Type == journal.DeadLettered {
-		s.mintAutopsy(ctx, fact, stats)
+		return s.mintAutopsy(ctx, fact, stats)
 	}
 
 	if fact.Type == journal.Completed {
 		s.dispose(ctx, fact, stats)
 	}
+
+	return nil
 }
 
 // mintAutopsy mints the one autopsy task for a dead AGENT task. The type
 // scope IS the loop guard: dlqfix, sh, review and status dead tasks are
 // never autopsied, so an autopsy can never spawn another autopsy.
-func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *SweepStats) {
+//
+// A store failure under the mint (record read, autopsy enqueue) is a
+// REFUSAL: it returns an error so the sweep holds its checkpoint and the
+// death redelivers, warned once per pass. The done-guard refusal (a dedup
+// key whose autopsy already completed) is NOT a failure — it counts
+// known, like every dedup hit.
+func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *SweepStats) error {
 	t, err := s.store.Get(ctx, task.ID(fact.TaskID))
 	if err != nil {
-		stats.Skipped++
-
-		return
+		return s.refuseMint(fact.TaskID, "read dead record", err)
 	}
 
 	if t.Type != executor.TaskTypeAgent {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	var agentPayload executor.AgentPayload
@@ -175,11 +191,11 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 		agentPayload.Prompt == "" {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	if s.autoDismissGateArtifact(ctx, t, agentPayload.Repo, stats) {
-		return
+		return nil
 	}
 
 	// Environmental deaths never get an autopsy: the env-streak breaker
@@ -194,7 +210,7 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 		s.log("dlqfix: autopsy refused — environmental death",
 			"dead", t.ID.String(), "repo", agentPayload.Repo, "last_error", firstLine(t.LastError))
 
-		return
+		return nil
 	}
 
 	payload := executor.DLQFixPayload{
@@ -214,7 +230,7 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 	if err != nil {
 		stats.Skipped++
 
-		return
+		return nil
 	}
 
 	got, err := s.store.Enqueue(ctx, task.New{
@@ -224,10 +240,17 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 		Payload:  raw,
 		DedupKey: DedupKey(t.ID),
 	})
-	if err != nil {
-		stats.Skipped++
+	if errors.Is(err, queue.ErrTaskDone) {
+		// The done-guard (Queue wrapper): the dedup key matched a
+		// COMPLETED autopsy — the one autopsy for this death already ran.
+		// Known, not refused: the checkpoint moves past.
+		stats.FixesKnown++
 
-		return
+		return nil
+	}
+
+	if err != nil {
+		return s.refuseMint(t.ID.String(), "enqueue autopsy", err)
 	}
 
 	if got.Attempts == 0 && got.Status == task.Pending {
@@ -237,6 +260,18 @@ func (s *Sweeper) mintAutopsy(ctx context.Context, fact journal.Fact, stats *Swe
 	} else {
 		stats.FixesKnown++
 	}
+
+	return nil
+}
+
+// refuseMint reports a mint refusal and returns the error that holds the
+// sweep's checkpoint: a refused mint must not advance past the death, or
+// the autopsy never happens without an operator watermark rewind.
+func (s *Sweeper) refuseMint(dead, why string, err error) error {
+	s.warn("dlqfix: autopsy mint refused — checkpoint held",
+		"dead", dead, "why", why, "err", err)
+
+	return fmt.Errorf("dlqfix: autopsy mint refused for dead %s (%s): %w", dead, why, err)
 }
 
 // autoDismissGateArtifact executes the one mechanical dismissal of TODO row
