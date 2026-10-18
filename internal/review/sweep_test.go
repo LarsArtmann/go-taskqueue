@@ -3,8 +3,12 @@ package review
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -746,5 +750,303 @@ func TestMergeOnApprove(t *testing.T) {
 				t.Fatalf("merges = %v, want %d", merges, tt.want)
 			}
 		})
+	}
+}
+
+// captureHandler records slog records so tests can pin the warn that
+// accompanies a mint refusal.
+type captureHandler struct {
+	mu      sync.Mutex
+	records []slog.Record
+}
+
+func (h *captureHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *captureHandler) Handle(_ context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.records = append(h.records, r)
+
+	return nil
+}
+
+func (h *captureHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+
+func (h *captureHandler) WithGroup(string) slog.Handler { return h }
+
+// flakyReviewStore fails Gets for one task ID and review enqueues with a
+// store-shaped error — the transient failure class a mint refusal
+// represents. Everything else rides the real store.
+type flakyReviewStore struct {
+	queue.Store
+
+	failGetID    task.ID
+	failGets     atomic.Int32
+	failEnqueues atomic.Int32
+}
+
+func (f *flakyReviewStore) Get(ctx context.Context, id task.ID) (task.Task, error) {
+	if id == f.failGetID && f.failGets.Load() > 0 {
+		f.failGets.Add(-1)
+
+		return task.Task{}, errors.New("sqlite: database is locked (simulated)")
+	}
+
+	return f.Store.Get(ctx, id)
+}
+
+func (f *flakyReviewStore) Enqueue(ctx context.Context, n task.New) (task.Task, error) {
+	if f.failEnqueues.Load() > 0 {
+		f.failEnqueues.Add(-1)
+
+		return task.Task{}, errors.New("sqlite: database is locked (simulated)")
+	}
+
+	return f.Store.Enqueue(ctx, n)
+}
+
+// completedFactSeq returns the journal seq of the task's completed fact.
+func completedFactSeq(t *testing.T, s *sqlite.Store, id task.ID) int64 {
+	t.Helper()
+
+	facts, err := s.Facts(context.Background(), 0, 10_000)
+	if err != nil {
+		t.Fatalf("facts: %v", err)
+	}
+
+	for _, f := range facts {
+		if f.Type == journal.Completed && f.TaskID == id.String() {
+			return f.Seq
+		}
+	}
+
+	t.Fatalf("no completed fact for %s", id)
+
+	return 0
+}
+
+func watermarkOf(t *testing.T, s queue.Store) int64 {
+	t.Helper()
+
+	wm, ok, err := s.Watermark(context.Background(), ConsumerKey)
+	if err != nil || !ok {
+		t.Fatalf("watermark: %v (ok %v)", err, ok)
+	}
+
+	return wm
+}
+
+// pinRefusalHoldsCheckpoint asserts the refusal shape: the sweep errored,
+// the watermark is held behind the triggering fact, and the refusal was
+// warned.
+func pinRefusalHoldsCheckpoint(
+	t *testing.T,
+	s *sqlite.Store,
+	capture *captureHandler,
+	triggerSeq int64,
+	stats SweepStats,
+	err error,
+) {
+	t.Helper()
+
+	if err == nil || !strings.Contains(err.Error(), "mint refused") {
+		t.Fatalf("sweep err = %v, want mint refusal", err)
+	}
+
+	if stats.ReviewsEnqueued != 0 || stats.FixesEnqueued != 0 {
+		t.Fatalf("stats = %+v, want no executed mint", stats)
+	}
+
+	if wm := watermarkOf(t, s); wm >= triggerSeq {
+		t.Fatalf("watermark = %d, want held behind the triggering fact at %d", wm, triggerSeq)
+	}
+
+	warned := false
+
+	for _, r := range capture.records {
+		if r.Level == slog.LevelWarn && strings.Contains(r.Message, "mint refused") {
+			warned = true
+		}
+	}
+
+	if !warned {
+		t.Fatalf("mint-refusal warn missing from %+v", capture.records)
+	}
+}
+
+// TestSweepGetRefusalHoldsCheckpoint pins the mint-refusal gate (dlqfix
+// 13-15 §e pattern): a transient store failure reading the completed task
+// aborts the sweep BEFORE the checkpoint — warned, watermark held behind
+// the Completed fact — so the retry sweep of the SAME cursor redelivers the
+// completion and mints the review instead of silently dropping it forever.
+func TestSweepGetRefusalHoldsCheckpoint(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	flaky := &flakyReviewStore{Store: s}
+	capture := &captureHandler{}
+
+	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	completed := runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "ship it"}, executor.AgentResult{})
+
+	flaky.failGetID = completed.ID
+	flaky.failGets.Store(1)
+
+	stats, err := sw.Sweep(ctx)
+	pinRefusalHoldsCheckpoint(t, s, capture, completedFactSeq(t, s, completed.ID), stats, err)
+
+	flaky.failGets.Store(0)
+
+	retry, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("retry sweep: %v", err)
+	}
+
+	if retry.ReviewsEnqueued != 1 {
+		t.Fatalf("retry ReviewsEnqueued = %d, want 1 (stats %+v)", retry.ReviewsEnqueued, retry)
+	}
+}
+
+// TestSweepEnqueueRefusalHoldsCheckpoint pins the enqueue leg of the gate:
+// a transient failure minting the review task refuses and holds the
+// checkpoint; the retry mints.
+func TestSweepEnqueueRefusalHoldsCheckpoint(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	flaky := &flakyReviewStore{Store: s}
+	capture := &captureHandler{}
+
+	sw, err := NewSweeper(ctx, flaky, SweeperConfig{Log: slog.New(capture)})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	completed := runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "ship it"}, executor.AgentResult{})
+
+	flaky.failEnqueues.Store(1)
+
+	stats, err := sw.Sweep(ctx)
+	pinRefusalHoldsCheckpoint(t, s, capture, completedFactSeq(t, s, completed.ID), stats, err)
+
+	flaky.failEnqueues.Store(0)
+
+	retry, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("retry sweep: %v", err)
+	}
+
+	if retry.ReviewsEnqueued != 1 {
+		t.Fatalf("retry ReviewsEnqueued = %d, want 1 (stats %+v)", retry.ReviewsEnqueued, retry)
+	}
+}
+
+// TestSweepDoneGuardIsKnownNotRefusal pins that the Queue wrapper's
+// done-guard (the dedup key matched a COMPLETED review after an operator
+// watermark rewind) counts known and checkpoints past — it must not wedge
+// the cursor the way a store failure does.
+func TestSweepDoneGuardIsKnownNotRefusal(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	sw, err := NewSweeper(ctx, s, SweeperConfig{})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"}, executor.AgentResult{})
+
+	if _, err := sw.Sweep(ctx); err != nil {
+		t.Fatalf("mint sweep: %v", err)
+	}
+
+	review := listByType(t, s, executor.TaskTypeReview)[0]
+
+	finishTask(t, s, review.ID, []byte(`{"verdict":"approve"}`))
+
+	if err := s.SetWatermark(ctx, ConsumerKey, 0); err != nil {
+		t.Fatalf("rewind: %v", err)
+	}
+
+	replay, err := NewSweeper(ctx, queue.New(s), SweeperConfig{})
+	if err != nil {
+		t.Fatalf("replay sweeper: %v", err)
+	}
+
+	stats, err := replay.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("replay sweep: %v", err)
+	}
+
+	if stats.ReviewsKnown != 1 {
+		t.Fatalf("stats = %+v, want the done-guard counted known", stats)
+	}
+
+	if reviews := listByType(t, s, executor.TaskTypeReview); len(reviews) != 1 {
+		t.Fatalf("reviews = %d, want 1 (no re-mint)", len(reviews))
+	}
+}
+
+// vanishedRecordStore hides one task record — the permanent (deterministic)
+// store outcome: a Completed fact whose record is gone can never yield a
+// review, so it must skip past instead of wedging the cursor.
+type vanishedRecordStore struct {
+	queue.Store
+
+	missing task.ID
+}
+
+func (m *vanishedRecordStore) Get(ctx context.Context, id task.ID) (task.Task, error) {
+	if id == m.missing {
+		return task.Task{}, task.ErrNotFound
+	}
+
+	return m.Store.Get(ctx, id)
+}
+
+// TestSweepVanishedRecordSkipsPast pins the flip side of the gate: a
+// permanent outcome (record not found) checkpoints past — the watermark
+// ADVANCES behind the Completed fact, no error, no wedge.
+func TestSweepVanishedRecordSkipsPast(t *testing.T) {
+	t.Parallel()
+
+	s := newTestStore(t)
+	ctx := context.Background()
+
+	masked := &vanishedRecordStore{Store: s}
+
+	sw, err := NewSweeper(ctx, masked, SweeperConfig{})
+	if err != nil {
+		t.Fatalf("NewSweeper: %v", err)
+	}
+
+	completed := runAgentTask(t, s, executor.AgentPayload{Repo: "demo", Prompt: "p"}, executor.AgentResult{})
+
+	masked.missing = completed.ID
+
+	triggerSeq := completedFactSeq(t, s, completed.ID)
+
+	stats, err := sw.Sweep(ctx)
+	if err != nil {
+		t.Fatalf("sweep: %v", err)
+	}
+
+	if stats.Skipped != 1 || stats.ReviewsEnqueued != 0 {
+		t.Fatalf("stats = %+v, want 1 skipped, no review", stats)
+	}
+
+	if wm := watermarkOf(t, s); wm < triggerSeq {
+		t.Fatalf("watermark = %d, want advanced past the Completed fact at %d", wm, triggerSeq)
 	}
 }
