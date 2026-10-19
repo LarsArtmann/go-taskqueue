@@ -240,9 +240,11 @@ func TestSweepNthCompletionMintsOneReport(t *testing.T) {
 	if !ok {
 		t.Fatalf("window missing task %s: %+v", first.ID, payload.Completed)
 	}
+
 	if firstEntry.Commit != "aaaa" {
 		t.Fatalf("per-completion detail missing for %s: %+v", first.ID, firstEntry)
 	}
+
 	if firstEntry.Item != "todo item 0" {
 		t.Fatalf("label for %s = %q, want the pinned work item", first.ID, firstEntry.Item)
 	}
@@ -251,9 +253,11 @@ func TestSweepNthCompletionMintsOneReport(t *testing.T) {
 	if !ok {
 		t.Fatalf("window missing task %s: %+v", second.ID, payload.Completed)
 	}
+
 	if secondEntry.Commit != "bbbb" || len(secondEntry.Files) != 1 {
 		t.Fatalf("per-completion detail missing for %s: %+v", second.ID, secondEntry)
 	}
+
 	if secondEntry.Item != "todo item 1" {
 		t.Fatalf("label for %s = %q, want the pinned work item", second.ID, secondEntry.Item)
 	}
@@ -309,6 +313,7 @@ func TestSweepPinsCloseoutReportPaths(t *testing.T) {
 	// index (one-off window[0] flake, 2026-09-23 02-35 §c1; nanosecond
 	// formatting narrowed but cannot erase the milli tie).
 	var withReport, without int
+
 	for _, entry := range window {
 		switch entry.Report {
 		case wantReport:
@@ -319,6 +324,7 @@ func TestSweepPinsCloseoutReportPaths(t *testing.T) {
 			t.Fatalf("unexpected report path %q", entry.Report)
 		}
 	}
+
 	if withReport != 1 || without != 1 {
 		t.Fatalf("window reports: %d carrying %q, %d empty, want exactly one each", withReport, wantReport, without)
 	}
@@ -370,6 +376,7 @@ func TestSweepPinsTasksDirCloseoutReports(t *testing.T) {
 	// Order-agnostic: same-milli completions sort by the random TaskID
 	// tiebreak (see TestSweepPinsCloseoutReportPaths).
 	var withReport, without int
+
 	for _, entry := range window {
 		switch entry.Report {
 		case wantReport:
@@ -380,6 +387,7 @@ func TestSweepPinsTasksDirCloseoutReports(t *testing.T) {
 			t.Fatalf("unexpected report path %q", entry.Report)
 		}
 	}
+
 	if withReport != 1 || without != 1 {
 		t.Fatalf("window reports: %d carrying %q, %d empty, want exactly one each", withReport, wantReport, without)
 	}

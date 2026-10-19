@@ -501,7 +501,12 @@ func (s *Sweeper) autopsyOutcome(
 // rescue re-queues the dead task with its original attempt budget. A
 // transient store failure refuses (checkpoint held); a permanently decided
 // outcome (record gone, already moved elsewhere) skips past.
-func (s *Sweeper) rescue(ctx context.Context, dead, autopsy task.ID, result executor.DLQFixResult, stats *SweepStats) error {
+func (s *Sweeper) rescue(
+	ctx context.Context,
+	dead, autopsy task.ID,
+	result executor.DLQFixResult,
+	stats *SweepStats,
+) error {
 	deadRec, err := s.store.Get(ctx, dead)
 	if err != nil {
 		if watermark.PermanentOutcome(err) {
@@ -537,7 +542,12 @@ func (s *Sweeper) rescue(ctx context.Context, dead, autopsy task.ID, result exec
 // dismiss cancels the dead task, recording the autopsy's summary as reason.
 // A transient store failure refuses (checkpoint held); a permanently decided
 // outcome (already dismissed or moved elsewhere) skips past.
-func (s *Sweeper) dismiss(ctx context.Context, dead, autopsy task.ID, result executor.DLQFixResult, stats *SweepStats) error {
+func (s *Sweeper) dismiss(
+	ctx context.Context,
+	dead, autopsy task.ID,
+	result executor.DLQFixResult,
+	stats *SweepStats,
+) error {
 	if err := s.store.DismissDead(ctx, dead, result.Summary, DismissedBySweeper); err != nil {
 		if watermark.PermanentOutcome(err) {
 			s.warn("dlqfix: dismiss skipped", "dead", dead.String(), "autopsy", autopsy.String(), "err", err)

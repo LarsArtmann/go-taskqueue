@@ -1201,7 +1201,14 @@ func disposeRefusalSweep(
 // pinRefusalHoldsCheckpoint asserts the refusal shape shared by the dispose
 // hardening tests: the sweep errored, the watermark is held behind the
 // autopsy's Completed fact, and the refusal was warned.
-func pinRefusalHoldsCheckpoint(t *testing.T, s *sqlite.Store, capture *captureHandler, autopsy task.ID, stats SweepStats, err error) {
+func pinRefusalHoldsCheckpoint(
+	t *testing.T,
+	s *sqlite.Store,
+	capture *captureHandler,
+	autopsy task.ID,
+	stats SweepStats,
+	err error,
+) {
 	t.Helper()
 
 	if err == nil || !strings.Contains(err.Error(), "disposition refused") {

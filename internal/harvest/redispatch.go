@@ -55,6 +55,11 @@ var redispatchHexRunRe = regexp.MustCompile(`[0-9a-f]+`)
 //     already exists under docs/status — a re-verification dispatch of
 //     closed work (the row-110 class: five close-out doc commits for an
 //     already-[x] row).
+//  4. Coordination markers: a prior dispatch of the same work left a
+//     .tq/verdicts/<id> already_done marker (terminal state, fam.12.2)
+//     or a live .tq/claimed/<id> claim (another session holds it, the
+//     Config.RedispatchCooldown window, fam.12.3) — found by prompt
+//     citation or by the item-key join through the queue (markerBlocked).
 //
 // Foreign payload shapes, unresolvable repos, git/file errors and timeouts
 // all pass: the gate refuses only on positive proof, never on its own
@@ -82,6 +87,10 @@ func (h *Harvester) RedispatchCheck(ctx context.Context, n task.New) error {
 	}
 
 	if cited, reason := closeoutCited(dir, payload.Prompt); cited {
+		return &RedispatchRefusalError{Reason: reason}
+	}
+
+	if blocked, reason := h.markerBlocked(ctx, dir, payload); blocked {
 		return &RedispatchRefusalError{Reason: reason}
 	}
 

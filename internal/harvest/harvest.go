@@ -200,6 +200,19 @@ type Config struct {
 	// minted anyway — a forced window is then expected to produce the stop
 	// artifact (re-verify annotation + footer commit), not redo work.
 	ForceRedispatch bool
+	// RedispatchCooldown is the window a live repo-side claim marker
+	// (.tq/claimed/<id>, tq-claim.sh) machine-blocks re-dispatch of the
+	// same work at mint time (owner ruling fam.12.3, 2026-10-17): a
+	// marker younger than the window means another dispatched session
+	// holds the item. Zero = 6h (the tq-claim.sh TQ_STALE_AFTER default);
+	// the claim sweep releasing stale/footer-committed markers is what
+	// ends the block, never this gate alone. The sibling verdict marker
+	// (.tq/verdicts/<id>, already_done terminal state) blocks while
+	// PRESENT regardless of this window — it expires only via the marker
+	// TTL sweep (TQ_VERDICT_TTL). Both markers are read by the mint-time
+	// RedispatchCheck; ForceRedispatch bypasses them with the rest of the
+	// gate.
+	RedispatchCooldown time.Duration
 }
 
 func (c Config) withDefaults() Config {
