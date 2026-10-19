@@ -7,6 +7,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Mint-time coordination-marker gate** (2026-10-20, CV owner rulings
+  fam.12.2/12.3): `harvest.Config.RedispatchCooldown` (default 6h, the
+  tq-claim.sh `TQ_STALE_AFTER`) and two new `RedispatchCheck` signals —
+  a prior dispatch's `.tq/verdicts/<id>` already_done marker blocks the
+  re-mint while present (terminal state, expires via the marker TTL
+  sweep), and a live `.tq/claimed/<id>` claim marker blocks within the
+  cooldown window. The prior task's id is found by prompt citation or by
+  the item-key join through the queue, closing the re-harvest shape (an
+  open TODO row re-minted after its dispatch already recorded a no-op
+  verdict — the CV df4c314 class: eleven paid re-dispatches for a row
+  closed at dispatch one). `--force-redispatch` bypasses with the rest
+  of the mint gate.
 - **Cost-denominated daily budget cap** (2026-10-11, ADR-0023): the agent
   pool's claim-time budget gate can now cap on real derived spend instead
   of run count — `--daily-cost-cap USD` (budget `Guard.DailyCostCapUSD`)
