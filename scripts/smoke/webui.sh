@@ -52,6 +52,9 @@ enqueue_retry --type sh --project smoke --payload 'echo one'
 enqueue_retry --type sh --project smoke --payload 'sleep 1 && echo two'
 enqueue_retry --type sh --project smoke --payload 'exit 3' --max-attempts 1
 
+echo "== open a session (lights the lamp: card-sessions-lamp renders only when SessionsOpen > 0)"
+"$TMP/tq" session begin --id webui-smoke-session --repo "$REPO_ROOT" >"$TMP/begin.log" 2>&1
+
 echo "== start worker + serve"
 # Pick the port here, not at the top: the closer to the bind, the smaller the
 # chance another process grabs the ephemeral port in between.
@@ -101,6 +104,9 @@ with urllib.request.urlopen(f"{base}/", timeout=2) as r:
 csp = page_headers.get("Content-Security-Policy", "")
 for frag in ("frag-stats", "frag-table", "frag-dlq", "frag-feed"):
     assert frag in page, f"page missing {frag}"
+assert "card-sessions-lamp" in page and "1 open" in page, (
+    "open session did not light the sessions lamp on the board"
+)
 assert "default-src 'none'" in csp and "script-src 'self'" in csp and "unsafe-inline" not in csp, (
     f"page CSP wrong: {csp}"
 )

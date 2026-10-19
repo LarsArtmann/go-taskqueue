@@ -453,6 +453,14 @@ kbd {
   color: var(--color-blue-300);
 }
 
+/* Open-sessions lamp: the class only renders when SessionsOpen > 0, so it
+   is always "hot" — alarm amber, standing out from the quiet meta tail
+   (2026-09-18 01-12 report f1). */
+.tq-nowband-meta .card-sessions-lamp {
+  color: var(--color-amber-400);
+  font-weight: 600;
+}
+
 /* Budget spend meter: a hairline track with a quantized fill (the CSP is
    style-src 'self' — no inline widths, so the server emits one of twenty
    5%-step classes). Tone rides the operator thresholds: green under 75%,

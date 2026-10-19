@@ -68,7 +68,7 @@ Usage:
   tq agent-pool --projects-dir DIR [--repos a,b] [--interval DUR] [--concurrency N]
                [--yolo] [--reresolve-verify] [--max-per-tick N] [--task-timeout DUR]
                [--cqa-url URL [--cqa-owner ID] [--cqa-token T]] [--db PATH] [--store PATH|DSN]
-  tq stats [--project P] [--status S] [--daily-budget N] [--read-model] [--db PATH] [--json]   (--read-model is the default; --read-model=false reads the store)
+  tq stats [--project P] [--status S] [--daily-budget N] [--read-model] [--since DUR] [--db PATH] [--json]   (--read-model is the default; --read-model=false reads the store; --since adds the windowed session-volume band)
   tq tasks [--project P] [--status S] [--type T] [--since DUR] [--limit N] [--count] [--json] [--db PATH]
   tq audit --projects-dir DIR [--repos a,b] [--todo-file F] [--type T]
           [--max-attempts N] [--dry-run] [--json] [--db PATH]
@@ -1960,14 +1960,15 @@ func printHarvestResult(res harvest.Result) {
 }
 
 // sessionVolume reads the interactive-session lifecycle totals (03-28 §f20):
-// opened vs closed session facts over the whole journal.
-func sessionVolume(ctx context.Context, store queue.Store) (int64, int64, error) {
-	opened, err := store.CountFacts(ctx, journal.SessionOpened, time.Time{})
+// opened vs closed session facts, all-time or within the window starting at
+// since (zero time = the whole journal).
+func sessionVolume(ctx context.Context, store queue.Store, since time.Time) (int64, int64, error) {
+	opened, err := store.CountFacts(ctx, journal.SessionOpened, since)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	closed, err := store.CountFacts(ctx, journal.SessionClosed, time.Time{})
+	closed, err := store.CountFacts(ctx, journal.SessionClosed, since)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -1976,10 +1977,14 @@ func sessionVolume(ctx context.Context, store queue.Store) (int64, int64, error)
 }
 
 // printSessionVolume renders the lifecycle totals; silent while no session
-// was ever opened (bare stores stay uncluttered).
-func printSessionVolume(opened, closed int64) {
+// was ever opened (bare stores stay uncluttered). A non-zero window prints
+// the band line beside the all-time totals.
+func printSessionVolume(opened, closed int64, windowedOpened, windowedClosed int64, window time.Duration) {
 	if opened > 0 {
 		fmt.Printf("sessions     %6d opened / %d closed\n", opened, closed)
+	}
+	if window > 0 && (windowedOpened > 0 || windowedClosed > 0) {
+		fmt.Printf("sessions(%s) %d opened / %d closed\n", window, windowedOpened, windowedClosed)
 	}
 }
 
@@ -1999,6 +2004,11 @@ func cmdStats(args []string) error {
 	)
 
 	db := dbFlag(fs)
+	since := fs.Duration(
+		"since",
+		0,
+		"window for the session volume band (e.g. 168h for 7d; 0 = all-time totals only)",
+	)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -2082,9 +2092,17 @@ func cmdStats(args []string) error {
 
 	// Session volume (03-28 §f20): totals over the interactive-session
 	// lifecycle facts, alongside the open-session lamp above.
-	sessionsOpened, sessionsClosed, err := sessionVolume(ctx, store)
+	sessionsOpened, sessionsClosed, err := sessionVolume(ctx, store, time.Time{})
 	if err != nil {
 		return err
+	}
+
+	var windowedOpened, windowedClosed int64
+	if *since > 0 {
+		windowedOpened, windowedClosed, err = sessionVolume(ctx, store, time.Now().Add(-*since))
+		if err != nil {
+			return err
+		}
 	}
 
 	// Loop suspects (P4): tasks whose claim count crossed the anomaly
@@ -2144,7 +2162,7 @@ func cmdStats(args []string) error {
 		fmt.Printf("open sessions %5d (began, never closed — tq session list)\n", len(openSessions))
 	}
 
-	printSessionVolume(sessionsOpened, sessionsClosed)
+	printSessionVolume(sessionsOpened, sessionsClosed, windowedOpened, windowedClosed, *since)
 
 	printBudgetSpend(spent, *dailyBudget, usage, *project != "")
 	printConsumerLag(store)

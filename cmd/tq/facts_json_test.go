@@ -66,7 +66,10 @@ import (
 // reaper) is net-new load-bearing payload-contract knowledge; the
 // addition was compacted in place and the art-dupl doc-position rule
 // tightened to pay part of the cost.
-const agentsDocMaxBytes = 20_100
+// 2026-10-20 conscious reset 20,100 → 20,600: the formatterWithGo/goTarball
+// drop-day pairing Known Issue (flake formatter fix documented per the
+// 2026-09-18 05-45 report f9) is net-new load-bearing nix knowledge.
+const agentsDocMaxBytes = 20_600
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
