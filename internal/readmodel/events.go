@@ -18,6 +18,15 @@ import (
 // released markers and the tq-only fact families (session.*, question-*,
 // budget) carry no ledger state and are skipped — the projector advances
 // its cursor past them without an Apply.
+//
+// Upstream contract (metaengine/v4 v4.17.0, citable beyond this comment):
+// folds bind to an EXPLICIT event-type string — OnRecordTyped[E](eventType,
+// sample, handler) at metaengine/record_fold.go:43-46 — and Apply routes a
+// record to the fold keyed by that wire string, never the payload struct's
+// Go name (proof: metaengine/ontyped_test.go:64-66, "fold is keyed to the
+// wire string, not the Go type name"). That is why each evt* struct below
+// is a DISTINCT Go type per consumed fact: one wire type, one sample type,
+// one typed handler — renaming a struct cannot silently re-route records.
 
 type (
 	// evtEnqueued seeds a row; the thin-enqueue side channel fills what
