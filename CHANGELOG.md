@@ -29,6 +29,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   of it.
 
 ### Changed
+- **2026-09-14 webui overhaul coverage entry**: the 22-workstream `tq serve`
+  overhaul (swap-guard with focus/details grace, per-fragment state re-apply
+  via `data-state-key`, server-side per-stream change detection, GET-filter
+  auto-submit with pushState + SSE re-scope, board full-bleed + scroll
+  affordance, error-signal row system, mobile filter row + nowband wrap,
+  a11y/motion pass, `CopyButton` + `RelativeTime` adoption) shipped with
+  v0.3.1 but only its visual-identity half had a changelog row (the
+  "instrument pass" entry); this entry closes the coverage gap
+  (self-review: `docs/status/2026-09-14_18-14_ui-overhaul-self-review.md` §a).
 - `tq audit --journal` SECRET EVIDENCE row label renamed `hits` → `locations` (operator-facing honesty: a location is a distinct secret site after span-merge `4ba81d8`; pre-`4ba81d8` "hit-count"s counted raw pattern matches and are not comparable). JSON shape unchanged (`count`).
 - `executor` facade: `WorktreeOrphan` type alias joins `ScanWorktreeOrphans` — the
   worktree-orphan reaper surface is fully consumer-importable (ADR-0016 parity
