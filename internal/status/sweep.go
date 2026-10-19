@@ -102,6 +102,10 @@ type SweepStats struct {
 // sqlite/postgres backend dirs), so these intra-internal/ sweeper shells are
 // intentionally OUTSIDE the gate — they are covered by art-dupl + the
 // docs/dupe-type-accepted-ledger.md accepted groups, not by mirror-baseline.
+// errEveryMin is the static sentinel wrapped by NewSweeper's config
+// validation (err113: no dynamic error construction at the site).
+var errEveryMin = errors.New("status sweep: Every must be >= 1")
+
 type Sweeper struct {
 	store queue.Store
 	cfg   SweeperConfig
@@ -117,7 +121,7 @@ type Sweeper struct {
 // `tq watermarks set status-sweeper SEQ`.
 func NewSweeper(ctx context.Context, store queue.Store, cfg SweeperConfig) (*Sweeper, error) {
 	if cfg.Every < 1 {
-		return nil, fmt.Errorf("status sweep: Every must be >= 1, got %d", cfg.Every)
+		return nil, fmt.Errorf("%w, got %d", errEveryMin, cfg.Every)
 	}
 
 	cur, err := watermark.New(ctx, watermark.Config{
@@ -199,27 +203,70 @@ func (s *Sweeper) warn(msg string, args ...any) {
 	}
 }
 
+// errInFlight signals a deterministic skip (report already in flight) out of
+// lastReportTime — internal control flow, never surfaced to callers.
+var errInFlight = errors.New("status sweep: report already in flight")
+
+// decodeAgentPayload extracts the agent payload; a foreign shape (not an
+// agent task) is a deterministic skip, not a refusal.
+func decodeAgentPayload(t task.Task) (executor.AgentPayload, bool) {
+	var agentPayload executor.AgentPayload
+
+	if err := json.Unmarshal(t.Payload, &agentPayload); err != nil ||
+		agentPayload.Repo == "" || agentPayload.Prompt == "" {
+		return executor.AgentPayload{}, false
+	}
+
+	return agentPayload, true
+}
+
 // maybeMint mints the status task when this completion fills the project's
 // window: >= Every completed agent tasks since the last status task (or
 // ever), and no status task pending/running for the project. A store
 // failure under the mint refuses (checkpoint held); the done-guard (a dedup
 // key whose report already completed) counts known.
 func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats) error {
-	var agentPayload executor.AgentPayload
-
-	if err := json.Unmarshal(
-		t.Payload,
-		&agentPayload,
-	); err != nil || agentPayload.Repo == "" ||
-		agentPayload.Prompt == "" {
+	agentPayload, ok := decodeAgentPayload(t)
+	if !ok {
 		stats.Skipped++
 
 		return nil
 	}
 
+	lastReport, err := s.lastReportTime(ctx, t, stats)
+	if err != nil {
+		if errors.Is(err, errInFlight) {
+			return nil
+		}
+
+		return err
+	}
+
+	if s.cfg.MinInterval > 0 && !lastReport.IsZero() && time.Since(lastReport) < s.cfg.MinInterval {
+		stats.Skipped++
+
+		return nil
+	}
+
+	window, err := s.buildWindow(ctx, t, agentPayload, lastReport)
+	if err != nil {
+		return err
+	}
+
+	if len(window) < s.cfg.Every {
+		return nil // window not full yet; nothing to mint
+	}
+
+	return s.enqueueReport(ctx, t, agentPayload, window, stats)
+}
+
+// lastReportTime lists the project's status tasks: a pending/running report
+// means one is already in flight (errInFlight — deterministic skip), and the
+// newest task's creation time starts this mint's window.
+func (s *Sweeper) lastReportTime(ctx context.Context, t task.Task, stats *SweepStats) (time.Time, error) {
 	statusTasks, err := s.store.List(ctx, queue.Filter{Project: &t.Project, Type: ptr(executor.TaskTypeStatus)})
 	if err != nil {
-		return s.refuse(t.ID.String(), "list project status tasks", err)
+		return time.Time{}, s.refuse(t.ID.String(), "list project status tasks", err)
 	}
 
 	var lastReport time.Time
@@ -230,7 +277,7 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 			// before minting the next window's.
 			stats.Skipped++
 
-			return nil
+			return time.Time{}, errInFlight
 		}
 
 		if statusTask.CreatedAt.After(lastReport) {
@@ -238,15 +285,15 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		}
 	}
 
-	if s.cfg.MinInterval > 0 && !lastReport.IsZero() && time.Since(lastReport) < s.cfg.MinInterval {
-		stats.Skipped++
+	return lastReport, nil
+}
 
-		return nil
-	}
-
+// buildWindow assembles the report's Completed entries: completed agent
+// tasks finished after the last report, sorted by completion time.
+func (s *Sweeper) buildWindow(ctx context.Context, t task.Task, agentPayload executor.AgentPayload, lastReport time.Time) ([]executor.StatusCompletion, error) {
 	agentTasks, err := s.store.List(ctx, queue.Filter{Project: &t.Project, Type: ptr(executor.TaskTypeAgent)})
 	if err != nil {
-		return s.refuse(t.ID.String(), "list project agent tasks", err)
+		return nil, s.refuse(t.ID.String(), "list project agent tasks", err)
 	}
 
 	window := make([]executor.StatusCompletion, 0, s.cfg.Every)
@@ -262,33 +309,7 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 			continue
 		}
 
-		completion := executor.StatusCompletion{
-			TaskID: agentTask.ID.String(),
-			// Nanosecond precision: entries completed within the same
-			// second (parallel load) must still sort by true completion
-			// order — second-granularity strings tie and fall through to
-			// the random TaskID tiebreak, which once flipped a window so
-			// its first entry was the report-less task (one-off flake in
-			// TestSweepPinsCloseoutReportPaths, 2026-09-23 02-35 §c1).
-			CompletedAt: agentTask.UpdatedAt.UTC().Format(time.RFC3339Nano),
-		}
-
-		var ap executor.AgentPayload
-		if json.Unmarshal(agentTask.Payload, &ap) == nil {
-			completion.Item = workItemLabel(ap)
-		}
-
-		// Every entry carries its own mechanical outcome (commit + files),
-		// pulled from the task's completion fact — richer reports without
-		// git-log guesswork.
-		completion.Commit, completion.Files, _ = s.completionDetail(ctx, agentTask.ID)
-		completion.Report = closeoutReportPath(agentPayload.Repo, agentTask.ID)
-
-		window = append(window, completion)
-	}
-
-	if len(window) < s.cfg.Every {
-		return nil // window not full yet; nothing to mint
+		window = append(window, s.completion(ctx, agentTask, agentPayload))
 	}
 
 	sort.Slice(window, func(i, j int) bool {
@@ -303,6 +324,41 @@ func (s *Sweeper) maybeMint(ctx context.Context, t task.Task, stats *SweepStats)
 		window = window[len(window)-maxWindowItems:]
 	}
 
+	return window, nil
+}
+
+// completion builds one window entry with its mechanical outcome (commit +
+// files) pulled from the task's completion fact.
+func (s *Sweeper) completion(ctx context.Context, agentTask task.Task, agentPayload executor.AgentPayload) executor.StatusCompletion {
+	completion := executor.StatusCompletion{
+		TaskID: agentTask.ID.String(),
+		// Nanosecond precision: entries completed within the same
+		// second (parallel load) must still sort by true completion
+		// order — second-granularity strings tie and fall through to
+		// the random TaskID tiebreak, which once flipped a window so
+		// its first entry was the report-less task (one-off flake in
+		// TestSweepPinsCloseoutReportPaths, 2026-09-23 02-35 §c1).
+		CompletedAt: agentTask.UpdatedAt.UTC().Format(time.RFC3339Nano),
+	}
+
+	var ap executor.AgentPayload
+	if json.Unmarshal(agentTask.Payload, &ap) == nil {
+		completion.Item = workItemLabel(ap)
+	}
+
+	// Every entry carries its own mechanical outcome (commit + files),
+	// pulled from the task's completion fact — richer reports without
+	// git-log guesswork.
+	completion.Commit, completion.Files, _ = s.completionDetail(ctx, agentTask.ID)
+	completion.Report = closeoutReportPath(agentPayload.Repo, agentTask.ID)
+
+	return completion
+}
+
+// enqueueReport mints the status task for a full window. A store failure
+// under the mint refuses (checkpoint held); the done-guard (a dedup key
+// whose report already completed) counts known.
+func (s *Sweeper) enqueueReport(ctx context.Context, t task.Task, agentPayload executor.AgentPayload, window []executor.StatusCompletion, stats *SweepStats) error {
 	payload := executor.StatusPayload{
 		Repo:      agentPayload.Repo,
 		Project:   t.Project,

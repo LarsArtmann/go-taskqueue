@@ -43,6 +43,10 @@ const (
 // claim loop skips past other pending tasks (the sweeper's minted reports can
 // outrank the target in claim order); a task already Running under this
 // owner's lease is completed directly.
+// errSimulatedLock is the shared static error for transient-store-failure
+// simulations (err113: no dynamic error construction at the site).
+var errSimulatedLock = errors.New("sqlite: database is locked (simulated)")
+
 func finishTask(t *testing.T, s *sqlite.Store, id task.ID, detail json.RawMessage) {
 	t.Helper()
 
@@ -753,7 +757,7 @@ func (f *flakyStatusStore) Get(ctx context.Context, id task.ID) (task.Task, erro
 	if id == f.failGetID && f.failGets.Load() > 0 {
 		f.failGets.Add(-1)
 
-		return task.Task{}, errors.New("sqlite: database is locked (simulated)")
+		return task.Task{}, errSimulatedLock
 	}
 
 	return f.Store.Get(ctx, id)
@@ -763,7 +767,7 @@ func (f *flakyStatusStore) Enqueue(ctx context.Context, n task.New) (task.Task, 
 	if f.failEnqueues.Load() > 0 {
 		f.failEnqueues.Add(-1)
 
-		return task.Task{}, errors.New("sqlite: database is locked (simulated)")
+		return task.Task{}, errSimulatedLock
 	}
 
 	return f.Store.Enqueue(ctx, n)
