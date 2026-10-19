@@ -96,6 +96,12 @@ type SweepStats struct {
 // The struct shell deliberately stays per-sweeper (config fields and fact
 // validation differ across the four sweepers); the shared pump is
 // watermark.Cursor.Sweep.
+//
+// Gate coverage ruling (2026-10-20, f13): scripts/check-mirror-clones.sh is
+// scoped to CROSS-BACKEND clone groups (its patterns match only the
+// sqlite/postgres backend dirs), so these intra-internal/ sweeper shells are
+// intentionally OUTSIDE the gate — they are covered by art-dupl + the
+// docs/dupe-type-accepted-ledger.md accepted groups, not by mirror-baseline.
 type Sweeper struct {
 	store queue.Store
 	cfg   SweeperConfig
