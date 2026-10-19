@@ -9,6 +9,11 @@
 #   scripts/lint-baseline.sh --check    gate: exit 1 on baseline GROWTH
 #                                       (new finding classes included); shrink
 #                                       is reported advisory-only, never fails
+#   scripts/lint-baseline.sh --check --clean-cache
+#                                       wipe golangci-lint's cache first (use
+#                                       after toolchain/experiment bumps when a
+#                                       warm cache can pin stale findings; two
+#                                       2026-09 incidents). Regen always cleans.
 #
 # Takes ~3 minutes (full root + sub-module loop; golangci-lint's cache makes
 # a post-lint --check pass cheap).
@@ -16,10 +21,21 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export GOEXPERIMENT=jsonv2
 
-mode="${1:---regen}"
-if [[ "$mode" != "--check" && "$mode" != "--regen" ]]; then
-	echo "usage: $0 [--check|--regen]" >&2
-	exit 2
+mode=""
+clean_cache=0
+for arg in "$@"; do
+	case "$arg" in
+	--check | --regen) mode="$arg" ;;
+	--clean-cache) clean_cache=1 ;;
+	*) echo "usage: $0 [--check|--regen] [--clean-cache]" >&2; exit 2 ;;
+	esac
+done
+[[ -n "$mode" ]] || { echo "usage: $0 [--check|--regen] [--clean-cache]" >&2; exit 2; }
+
+if [[ "$mode" == "--regen" || "$clean_cache" == 1 ]]; then
+	# Stale caches served phantom counts twice in 2026-09: regen must never
+	# run warm; --check opts in explicitly (warm --check stays cheap).
+	golangci-lint cache clean
 fi
 
 out="$(mktemp "${TMPDIR:-/tmp}/tq-baseline.XXXXXX")"

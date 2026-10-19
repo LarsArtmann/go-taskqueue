@@ -165,7 +165,7 @@ EOF
 	must_mention "0 scans ok," "Files:0 run's summary counts every scan as failed"
 
 	gate_run "Issues parse: findings hard-fail the gate" 1 "$findings"
-	must_mention "finding(s)" "Issues>0 reports the new-class failure"
+	must_mention "2 findings" "Issues>0 reports the new-class failure (pluralized)"
 
 	gate_run "empty enumeration: 0 module targets hard-fail" 1 "$ok" "$emptyenum"
 	must_mention "0 module targets" "empty enumeration reports the silent-narrow failure"
@@ -324,7 +324,9 @@ scan() {
 		return 1
 	elif [ "${issues:-0}" -gt 0 ]; then
 		printf '%s\n' "$plain"
-		echo "FAIL: $target has $issues finding(s) — a NEW gosec class: triage it and extend the AGENTS.md baseline note, never silently re-exclude"
+		local plural="findings"
+		[ "$issues" -eq 1 ] && plural="finding"
+		echo "FAIL: $target has $issues $plural — a NEW gosec class: triage it and extend the AGENTS.md baseline note, never silently re-exclude"
 		return 1
 	fi
 	echo "ok: Files=$files Issues=0"
@@ -381,5 +383,7 @@ while IFS= read -r m; do
 	fi
 done <<<"$modules"
 
-echo "gosec summary: $scans_ok scans ok, $scans_failed failed"
+summary="$scans_ok scans ok, $scans_failed failed"
+[ "$scans_ok" -eq 1 ] && summary="1 scan ok, $scans_failed failed"
+echo "gosec summary: $summary"
 exit "$fail"
