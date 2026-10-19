@@ -941,3 +941,9 @@ not here.
 - [ ] gosec self-test: pin the N==1 singular branch explicitly with a 1-issue stub (today only the N==2 plural path is asserted after the pluralization fix)
 - [ ] Webui nowband session line should offer the same windowed band `tq stats --since` shows (render.go sessionStats is all-time-only) — decide lamp/line windowing once, one surface
 - [ ] Smoke/webui.sh: while the session fixture is alive, also assert `tq stats` prints the windowed `sessions(…)` band (free coverage of the 2026-10-20 band on a live store)
+
+## CHANGELOG coverage-audit follow-ups (2026-10-20 01-10; source: docs/status/tasks/2026-10-20_01-10_task-000001a1566c389d7316edc2efbb00000000.md §f; deduped against open rows)
+- [ ] Generalize the CHANGELOG coverage audit into a script: map each docs/status report's §a fully-done items to CHANGELOG paragraphs, flag uncovered workstreams (2026-10-20 01-10 §f1)
+- [ ] Identify the 23rd workstream behind the "23 workstreams" TODO phrasing vs self-review §a's 22 and reconcile the count (2026-10-20 01-10 §f2/§g1)
+- [ ] Read-level (not keyword-level) CHANGELOG audit of v0.3.0–v0.3.4 for prose-only coverage gaps (2026-10-20 01-10 §f3)
+- [ ] Add a one-line cross-reference from the v0.3.1 instrument-pass entry to the [Unreleased] 2026-09-14 overhaul coverage entry (2026-10-20 01-10 §f4)
