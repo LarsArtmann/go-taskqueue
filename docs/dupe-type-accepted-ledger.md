@@ -64,3 +64,6 @@ types). Any OTHER actionable group = new finding.
 
 - New dupe runs: ledger-accepted groups and machine `intentional` /
   `false_positive` verdicts are noise; anything else is a finding.
+- Growth beyond this set is gated by `scripts/dupe-baseline.sh --check`
+  (wired into ci-local): a NEW actionable GroupKey fails the gate; accepted
+  groups are recorded in `.dupe-baseline.txt` (regen after a fresh review).

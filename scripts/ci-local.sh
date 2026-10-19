@@ -358,6 +358,16 @@ else
 	echo "golangci-lint unavailable — baseline gate skipped (CI installs the pinned version)"
 fi
 
+# Branching-flow dupe accepted-baseline gate (2026-10-05 review f12): fails on
+# a duplicate-type group nobody has adjudicated; the accepted groups live in
+# docs/dupe-type-accepted-ledger.md + .dupe-baseline.txt. Shrink is advisory.
+step "dupe baseline gate (new actionable groups fail, shrink advisory)"
+if command -v branching-flow >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+	./scripts/dupe-baseline.sh --check
+else
+	echo "branching-flow or jq unavailable — dupe baseline gate skipped"
+fi
+
 step "actionlint (GitHub Actions workflows)"
 if command -v actionlint >/dev/null 2>&1; then
 	actionlint .github/workflows/*.yml

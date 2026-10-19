@@ -16,6 +16,7 @@
 # (with a note) where the tool is unavailable, mirroring the golangci-lint
 # guard.
 set -euo pipefail
+export LC_ALL=C
 cd "$(dirname "$0")/.."
 
 mode=""
@@ -28,9 +29,9 @@ done
 
 baseline=".dupe-baseline.txt"
 
-current="$(branching-flow dupe --format json . 2>/dev/null || true |
+current="$({ branching-flow dupe --format json . 2>/dev/null || true; } |
 	jq -r '.[] | select(.Verdict == "actionable") | .GroupKey' |
-	sort -u)"
+	LC_ALL=C sort -u)"
 
 if [[ -z "$mode" ]]; then
 	printf '%s\n' "$current" >"$baseline"
@@ -43,8 +44,8 @@ if [[ ! -f "$baseline" ]]; then
 	exit 1
 fi
 
-new="$(comm -13 "$baseline" <(printf '%s\n' "$current"))"
-gone="$(comm -23 "$baseline" <(printf '%s\n' "$current"))"
+new="$(LC_ALL=C comm -13 "$baseline" <(printf '%s\n' "$current"))"
+gone="$(LC_ALL=C comm -23 "$baseline" <(printf '%s\n' "$current"))"
 
 if [[ -n "$gone" ]]; then
 	echo "dupe-baseline: shrink (advisory only) — regen when convenient:" >&2
