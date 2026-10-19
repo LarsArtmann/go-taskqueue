@@ -947,3 +947,10 @@ not here.
 - [ ] Identify the 23rd workstream behind the "23 workstreams" TODO phrasing vs self-review §a's 22 and reconcile the count (2026-10-20 01-10 §f2/§g1)
 - [ ] Read-level (not keyword-level) CHANGELOG audit of v0.3.0–v0.3.4 for prose-only coverage gaps (2026-10-20 01-10 §f3)
 - [ ] Add a one-line cross-reference from the v0.3.1 instrument-pass entry to the [Unreleased] 2026-09-14 overhaul coverage entry (2026-10-20 01-10 §f4)
+
+## Dupe-baseline gate follow-ups (2026-10-20 01-28; source: docs/status/tasks/2026-10-20_01-28_task-000001a15679fc8447506e0272aa00000000.md §f; deduped — f13/f14/f19/f21 rows already open elsewhere)
+- [ ] Add --self-test to scripts/dupe-baseline.sh (inject a fake GroupKey into a temp baseline copy → must exit 1; zero actionable groups → must exit 0) and wire the self-test into ci-local beside the gate — a silent-success gate must never be editable into always-green (closeout 2026-10-20 01-28 §e1/§f1)
+- [ ] Record the seeding branching-flow version/hash in a .dupe-baseline.txt header comment at regen and note in docs/dupe-type-accepted-ledger.md that a tool upgrade (JSON schema rename reads as silent shrink) requires re-seed + diff review (closeout 2026-10-20 01-28 §f2)
+- [ ] Run one full ./scripts/ci-local.sh to exercise the wired dupe-baseline step in situ and re-confirm lint-baseline + actionlint + line-length steps at current HEAD (closeout 2026-10-20 01-28 §b1/§f3)
+- [ ] Rule on baseline-file vs //nolint:branching-flow directives for the 9 accepted dupe groups (pure-growth gate vs docs-centralized ledger) and collapse to ONE mechanism, documented in docs/dupe-type-accepted-ledger.md (closeout 2026-10-20 01-28 §g1/§f4)
+- [ ] dupe-baseline growth failure should print the offending type/file rows from the same JSON (lint-baseline's violations attribution pattern), not bare GroupKey hashes (closeout 2026-10-20 01-28 §f7)
