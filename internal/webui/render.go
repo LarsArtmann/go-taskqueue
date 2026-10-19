@@ -58,8 +58,9 @@ type repriEventView struct {
 }
 
 // priorityProvenanceView is the web projection of a task's priority story
-// (ADR-0015), mirroring `tq show`'s buildPriorityProvenance: current value
-// and band, the harvested item identity plus its cached AI verdict, and the
+// (ADR-0015). The build path is shared: both this view and `tq show` read the
+// story through harvest.BuildProvenance — current value and band, the
+// harvested item identity plus its cached AI verdict, and the
 // reprioritization history from the fact trail.
 type priorityProvenanceView struct {
 	Current     int
