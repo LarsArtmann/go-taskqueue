@@ -22,6 +22,15 @@ const pruneReasonPrefix = pruneReasonHead + "is now [x]: "
 // pruneAbsentReasonPrefix heads cancellations of tasks whose item text is
 // gone from the file entirely (completed-and-deleted per the docs
 // convention, or reworded — which armed a new key and a new task).
+//
+// Prune ruling (2026-09-18 01-29 report c2, pinned by
+// TestPruneStaleNeverTouchesDlqfixAutopsies): dlqfix autopsies
+// (`dlqfix:<dead-id>` dedup keys) are NEVER prune-cancellable, not even
+// PENDING ones. The dead-letter forensic trail is minted by the dlqfix
+// sweeper, not harvest; its lifecycle is owned by dlqfix disposition
+// (auto-dismiss or a manual ruling), never by TODO_LIST edits. The absent
+// rule is also structurally blind to it: the sweep lists only cfg.Type
+// tasks ("agent") and autopsy payloads carry no harvest "dedup" field.
 const pruneAbsentReasonPrefix = pruneReasonHead + "no longer present (key %s): item withdrawn or reworded"
 
 // PruneWhy records which stale rule withdrew (or reported) a task.

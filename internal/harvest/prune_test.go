@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
@@ -423,6 +424,56 @@ func TestPruneStaleRewordedToBlockedIsWithdrawn(t *testing.T) {
 
 	if len(run.Enqueued) != 0 {
 		t.Fatalf("blocked item enqueued %+v, want none", run.Enqueued)
+	}
+}
+
+// TestPruneStaleNeverTouchesDlqfixAutopsies pins the 2026-09-18 01-29
+// prune-semantics ruling: a PENDING dlqfix autopsy (dlqfix:<dead-id>) is
+// NEVER prune-cancellable. The dead-letter forensic trail is minted by the
+// dlqfix sweeper and disposed by dlqfix, not harvest — even with its repo's
+// TODO item gone, the autopsy survives the sweep untouched.
+func TestPruneStaleNeverTouchesDlqfixAutopsies(t *testing.T) {
+	dir := t.TempDir()
+	writeRepo(t, dir, "gone", "# H\n- [ ] done and deleted\n")
+	q := openQueue(t)
+	h := New(q, Config{ProjectsDir: dir})
+	ctx := context.Background()
+
+	if _, err := h.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	deadID := task.NewID()
+	autopsy, err := q.Enqueue(ctx, task.New{
+		Project:  "gone",
+		Type:     executor.TaskTypeDLQFix,
+		Payload:  []byte(`{"repo":"gone","dead_task":"` + deadID.String() + `","work":"autopsy"}`),
+		DedupKey: "dlqfix:" + deadID.String(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mustWrite(t, dir+"/gone/"+DefaultTodoFile, "# H\n")
+
+	res, err := h.PruneStale(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, pruned := range append(append(res.Cancelled, res.Running...), res.Dead...) {
+		if pruned.TaskID == autopsy.ID {
+			t.Fatalf("prune touched the dlqfix autopsy: %+v", pruned)
+		}
+	}
+
+	got, err := q.Get(ctx, autopsy.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Status != task.Pending {
+		t.Fatalf("autopsy status = %s, want still pending (never prune-cancellable)", got.Status)
 	}
 }
 
