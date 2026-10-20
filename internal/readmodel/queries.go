@@ -195,7 +195,9 @@ var projectStatusCountsQuery = metaengine.Query[projectStatusCountsInput, map[st
 // counterFold is OnRecordTyped narrowed to the Delta handler shape — the
 // record context is unused by the counters but the wire-typed binding
 // matches the tasks map folds.
-func counterFold[E any](eventType string, sample E, handler func(E) metaengine.Delta) metaengine.Fold {
+func counterFold[E any]( //nolint:ireturn // Fold is the library's declarative fold surface
+	eventType string, sample E, handler func(E) metaengine.Delta,
+) metaengine.Fold {
 	return metaengine.OnRecordTyped(eventType, sample, func(_ record.Record, e E) metaengine.Delta {
 		return handler(e)
 	})

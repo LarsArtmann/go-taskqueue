@@ -257,7 +257,10 @@ func (m *Model) loadCursor(ctx context.Context) error {
 	}
 
 	if total == 0 {
-		slog.Info("readmodel: counters empty under a nonzero cursor — replaying from zero (pre-counter projection)", "checkpoint", seq)
+		slog.Info(
+			"readmodel: counters empty under a nonzero cursor — replaying from zero (pre-counter projection)",
+			"checkpoint", seq,
+		)
 
 		return nil
 	}
@@ -377,28 +380,28 @@ func (m *Model) apply(ctx context.Context, fact journal.Fact) error {
 
 	// Fill the counter folds' From context BEFORE the apply: the keyed
 	// prev read must see the row the same apply is about to update.
-	switch e := evt.(type) {
+	switch transition := evt.(type) {
 	case evtEnqueued:
-		e.From, _ = m.transitionContext(ctx, fact.TaskID)
-		evt = e
+		transition.From, _ = m.transitionContext(ctx, fact.TaskID)
+		evt = transition
 	case evtClaimed:
-		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
-		evt = e
+		transition.From, transition.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = transition
 	case evtCompleted:
-		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
-		evt = e
+		transition.From, transition.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = transition
 	case evtFailed:
-		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
-		evt = e
+		transition.From, transition.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = transition
 	case evtDeadLettered:
-		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
-		evt = e
+		transition.From, transition.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = transition
 	case evtCancelled:
-		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
-		evt = e
+		transition.From, transition.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = transition
 	case evtRequeued:
-		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
-		evt = e
+		transition.From, transition.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = transition
 	}
 
 	rec := record.Record{Type: string(fact.Type)}

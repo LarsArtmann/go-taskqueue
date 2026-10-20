@@ -1056,11 +1056,11 @@ func TestHealthzCarriesProjectionSection(t *testing.T) {
 		var body struct {
 			Status     string `json:"status"`
 			Projection struct {
-				Cursor       int64  `json:"cursor"`
-				Head         int64  `json:"head"`
-				Lag          int64  `json:"lag"`
-				Checkpointed bool   `json:"checkpointed"`
-				Engines      []any  `json:"engines"`
+				Cursor       int64 `json:"cursor"`
+				Head         int64 `json:"head"`
+				Lag          int64 `json:"lag"`
+				Checkpointed bool  `json:"checkpointed"`
+				Engines      []any `json:"engines"`
 			} `json:"projection"`
 		}
 		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {

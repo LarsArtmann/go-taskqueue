@@ -38,42 +38,43 @@ type ProjectionHealth struct {
 // ProjectionHealth reads the live projection surfaces. Head errors surface
 // as lag -1 with the error — a health endpoint must answer, not fail.
 func (m *Model) ProjectionHealth(ctx context.Context) ProjectionHealth {
-	ph := ProjectionHealth{Cursor: m.JournalCursor()}
+	report := ProjectionHealth{Cursor: m.JournalCursor()}
 
 	head, err := m.src.HeadSeq(ctx)
 	if err != nil {
-		ph.Lag = -1
+		report.Lag = -1
 	} else {
-		ph.Head = head
-		ph.Lag = head - ph.Cursor
+		report.Head = head
+		report.Lag = head - report.Cursor
 	}
 
 	if seq, exists, err := m.src.Watermark(ctx, CursorConsumer); err == nil && exists {
-		ph.Checkpointed = true
-		ph.Checkpoint = seq
+		report.Checkpointed = true
+		report.Checkpoint = seq
 	}
 
 	// Health records are lazy (created on first classified failure), so
 	// the engine list comes from the stats snapshot — one row per planned
 	// engine — with the health record overlaid when one exists.
-	health := m.store.HealthSnapshot()
+	engineHealth := m.store.HealthSnapshot()
 
-	stats := m.store.GetEngineStats(ctx)
-	ph.Engines = make([]EngineHealthRow, 0, len(stats))
-	for _, st := range stats {
+	engineStats := m.store.GetEngineStats(ctx)
+	report.Engines = make([]EngineHealthRow, 0, len(engineStats))
+
+	for _, engine := range engineStats {
 		row := EngineHealthRow{
-			Name:  st.Name,
+			Name:  engine.Name,
 			State: string(metaengine.EngineActive),
 		}
 
-		if h, ok := health[st.Name]; ok {
-			row.State = string(h.State)
-			row.ConsecutiveFailures = h.ConsecutiveFailures
-			row.LastError = h.LastError
+		if health, ok := engineHealth[engine.Name]; ok {
+			row.State = string(health.State)
+			row.ConsecutiveFailures = health.ConsecutiveFailures
+			row.LastError = health.LastError
 		}
 
-		ph.Engines = append(ph.Engines, row)
+		report.Engines = append(report.Engines, row)
 	}
 
-	return ph
+	return report
 }

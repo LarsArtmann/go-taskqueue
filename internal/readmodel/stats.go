@@ -52,9 +52,9 @@ func (m *Model) Stats(
 func projectMatrix(projectRaw map[string]int64, filter TaskFilter) map[string]map[string]int {
 	byProject := map[string]map[string]int{}
 
-	for key, n := range projectRaw {
+	for key, count := range projectRaw {
 		project, status, ok := strings.Cut(key, projectStatusKeySep)
-		if !ok || n == 0 || !matchesFilter(filter, project, status) {
+		if !ok || count == 0 || !matchesFilter(filter, project, status) {
 			continue
 		}
 
@@ -62,7 +62,7 @@ func projectMatrix(projectRaw map[string]int64, filter TaskFilter) map[string]ma
 			byProject[project] = map[string]int{}
 		}
 
-		byProject[project][status] = int(n)
+		byProject[project][status] = int(count)
 	}
 
 	return byProject
@@ -75,9 +75,9 @@ func statusCounts(statusRaw, projectRaw map[string]int64, filter TaskFilter) map
 	byStatus := map[string]int{}
 
 	if filter.Project != nil {
-		for key, n := range projectRaw {
+		for key, count := range projectRaw {
 			project, status, ok := strings.Cut(key, projectStatusKeySep)
-			if !ok || n == 0 || project != *filter.Project {
+			if !ok || count == 0 || project != *filter.Project {
 				continue
 			}
 
@@ -85,18 +85,18 @@ func statusCounts(statusRaw, projectRaw map[string]int64, filter TaskFilter) map
 				continue
 			}
 
-			byStatus[status] = int(n)
+			byStatus[status] = int(count)
 		}
 
 		return byStatus
 	}
 
-	for status, n := range statusRaw {
-		if n == 0 || filter.Status != nil && status != *filter.Status {
+	for status, count := range statusRaw {
+		if count == 0 || filter.Status != nil && status != *filter.Status {
 			continue
 		}
 
-		byStatus[status] = int(n)
+		byStatus[status] = int(count)
 	}
 
 	return byStatus
