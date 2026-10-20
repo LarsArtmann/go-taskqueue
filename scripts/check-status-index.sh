@@ -6,12 +6,15 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
-# Index-scannability cadence (TODO row 166, 08-25 f20 / 07-49 f39): the live
-# index grows ~10 rows/day; past 100 rows it no longer fits one screen, so
-# the nudge is an archive sweep (docs-health ANNOTATE) or a monthly digest
-# row. 100 is the owner-ratified default (02-24 f41), not data-derived —
-# re-derive only with a measured rows/day cliff.
-readonly INDEX_BLOAT_THRESHOLD=100
+# Index-scannability cadence (TODO row 166, 08-25 f20 / 07-49 f39): the
+# nudge is an archive sweep (docs-health ANNOTATE) or a monthly digest row.
+# 100 was the owner-ratified default (02-24 f41), not data-derived. It
+# re-fires permanently (alert fatigue) because the standing monthly sweep
+# leaves a ~265-row floor (2026-10-01 full-corpus sweep: 285->265) and the
+# measured accrual between sweeps is 59 rows / 14 days = 4.2 rows/day
+# (2026-10-06 -> 2026-10-20), so a month of accrual peaks near
+# 265 + 31 x 4.2 = ~395. 400 fires only when the MONTHLY sweep is overdue.
+readonly INDEX_BLOAT_THRESHOLD=400
 
 # --mine: scope the report loop to reports this session OWNS — staged,
 # modified-unstaged, or untracked under docs/status/ (02-28 report §e4).
