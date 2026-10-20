@@ -304,8 +304,14 @@ func (s *Sweeper) buildWindow(ctx context.Context, t task.Task, agentPayload exe
 		}
 
 		// Completion time, not creation: a task created before the last
-		// report but finished after it belongs to THIS window.
-		if !lastReport.IsZero() && !agentTask.UpdatedAt.After(lastReport) {
+		// report but finished after it belongs to THIS window. The trigger
+		// itself is exempt — on a watermark-rewind replay its completion
+		// predates its own report, and the recency cutoff would silently
+		// empty the window before the dedup key is ever probed (the
+		// done-guard at enqueueReport would become unreachable). In normal
+		// operation the trigger always completes after the last report, so
+		// the exemption changes nothing there.
+		if agentTask.ID != t.ID && !lastReport.IsZero() && !agentTask.UpdatedAt.After(lastReport) {
 			continue
 		}
 
