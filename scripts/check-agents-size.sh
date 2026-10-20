@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # AGENTS.md byte-budget gate (row 425): trips at gate time with a readable
 # message instead of as a cmd/tq TestAgentsDocSizeGuard failure two windows
-# later. Mirrors agentsDocMaxBytes in cmd/tq/facts_json_test.go (20,000 B
-# since the 2026-10-12 conscious reset 19,600 → 20,000 for the daemon-sweep
-# manual-fallback Known Issue, no prune-able waste left; prior reset
-# 19,000 → 19,600 on 2026-10-11 for the MAJOR-problems pointer +
-# readmodel schema-drift lesson; the reset protocol lives in that test's
-# comment — CHANGE BOTH TWINS TOGETHER: the 2026-10-05 ci-local red was
-# exactly this drift) and prints the top sections by size
+# later. Mirrors agentsDocMaxBytes in cmd/tq/facts_json_test.go (21,100 B
+# since the 2026-10-20 conscious reset 20,900 → 21,100 for the canonical
+# gate-receipt rule; that reset also re-synced THIS twin, which had lagged
+# at the 2026-10-12 20,000 budget and sat 839 B red at HEAD — CHANGE BOTH
+# TWINS TOGETHER, the 2026-10-05 ci-local red was exactly this drift; the
+# full reset protocol and earlier history live in that test's comment)
+# and prints the top sections by size
 # so a prune is a 2-minute targeted fix (byte semantics via LC_ALL=C).
 #
 # DOCTRINE (hit twice on 2026-10-07): formatter table padding (dprint-style
@@ -19,7 +19,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 file="${1:-AGENTS.md}"
-budget="${AGENTS_BUDGET_BYTES:-20000}"
+budget="${AGENTS_BUDGET_BYTES:-21100}"
 
 if [ ! -f "$file" ]; then
 	echo "FAIL: $file not found (cwd: $(pwd))" >&2

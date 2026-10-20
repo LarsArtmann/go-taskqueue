@@ -669,7 +669,7 @@ not here.
 
 ## Done-prompt harvest (2026-10-06 02-02 five-task window; source: docs/status/2026-10-06_02-02_done-prompt-five-task-window-negation-pin-backendtags-dependabot-receiptfix.md §f/§g; deduped against live rows — genuine-red pin, KNOWN_FLAKY gate, dep-sweep retirement, and the pure-graph row already exist)
 
-- [ ] Canonical receipt rule in AGENTS.md Conventions: every "N ok / M fail" receipt quoted in a report must be produced by `grep -c '^ok:'` over a captured gate-output file — never counted in context, never taken from a summary line (twice-fired class: 02-11 and 04-55 "17 ok" vs actual 16) (02-02 report §e1)
+- [x] Canonical receipt rule in AGENTS.md Conventions: every "N ok / M fail" receipt quoted in a report must be produced by `grep -c '^ok:'` over a captured gate-output file — never counted in context, never taken from a summary line (twice-fired class: 02-11 and 04-55 "17 ok" vs actual 16) (02-02 report §e1)
 - [ ] Re-prefix check-verify.sh's final summary line (`summary: verify self-test …`) so no ok-grep can count it as a receipt; audit root-gate.sh's extraction of that line first and land both in one commit (02-02 report §e2; 00-59 §f2)
 - [ ] Add scripts/check-dependabot-coverage.sh: 1:1 assertion of .github/dependabot.yml gomod entries vs `git ls-files *go.mod` module dirs; wire into ci-local cheap gates (the config drifted within one week of creation: three missing modules + one phantom entry, fixed 2026-10-06) (02-02 report §e4a; 00-44 report §f4)
 - [ ] Extend scripts/new-module.sh to emit the dependabot.yml entry at module-creation time — parity at the source, pairs with the coverage guard (02-02 report §e4b; 00-44 report §f5)
