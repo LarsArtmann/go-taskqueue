@@ -30,7 +30,9 @@ import (
 
 type (
 	// evtEnqueued seeds a row; the thin-enqueue side channel fills what
-	// the current fact detail omits.
+	// the current fact detail omits. From is empty on a first enqueue and
+	// carries the dead status on a DLQ rescue (the upstream RescueDead
+	// re-emits task.enqueued for the same id).
 	evtEnqueued struct {
 		ID        string
 		Project   string
@@ -38,34 +40,45 @@ type (
 		Priority  int
 		DedupKey  string
 		CreatedAt int64
+		From      FromStatus
 	}
 	// evtClaimed marks an attempt start (status → running).
 	evtClaimed struct {
-		ID string
-		At int64
+		ID      string
+		At      int64
+		From    FromStatus
+		Project FromProject
 	}
 	// evtCompleted finishes the task.
 	evtCompleted struct {
-		ID string
-		At int64
+		ID      string
+		At      int64
+		From    FromStatus
+		Project FromProject
 	}
 	// evtFailed records a failed attempt (retry stays pending). Error is
 	// a named string so the engine's type-based key inference keeps ID
 	// unambiguous (two bare string fields would read as two keys).
 	evtFailed struct {
-		ID    string
-		Error FailureText
-		At    int64
+		ID      string
+		Error   FailureText
+		At      int64
+		From    FromStatus
+		Project FromProject
 	}
 	// evtDeadLettered moves the task to the DLQ.
 	evtDeadLettered struct {
-		ID string
-		At int64
+		ID      string
+		At      int64
+		From    FromStatus
+		Project FromProject
 	}
 	// evtCancelled withdraws the task.
 	evtCancelled struct {
-		ID string
-		At int64
+		ID      string
+		At      int64
+		From    FromStatus
+		Project FromProject
 	}
 	// evtRequeued returns a claim to pending (no attempt burned). Class
 	// and RetryInMs ride the RequeueEvidence detail; missing or malformed
@@ -75,6 +88,8 @@ type (
 		At        int64
 		RetryInMs int64
 		Class     RequeueClass
+		From      FromStatus
+		Project   FromProject
 	}
 	// evtReprioritized rewrites the stored priority.
 	evtReprioritized struct {
@@ -91,6 +106,19 @@ type FailureText string
 // RequeueClass is a requeue evidence class — a named string so the engine's
 // type-based key inference keeps ID unambiguous (same rule as FailureText).
 type RequeueClass string
+
+// FromStatus is a transition's previous folded status and FromProject its
+// previous folded project — named strings so the engine's key inference
+// never reads them as fold keys. The map folds ignore both; the Delta
+// counter folds (status_counts, project_status_counts) consume them to
+// decrement the from-side exactly. The model fills them at apply time
+// with an O(1) keyed read of the row the map fold is about to update —
+// the from-status-ambiguous transitions (lease reclaims, dead rescues,
+// dismissals) carry no statically knowable from-status.
+type (
+	FromStatus  string
+	FromProject string
+)
 
 // RowSource supplies the enqueue-time fields the current engine's thin
 // task.enqueued fact omits (project/type fall back to the fact detail;

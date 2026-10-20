@@ -2,8 +2,9 @@ package readmodel
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"slices"
+	"strings"
 
 	metaengine "github.com/larsartmann/go-cqrs-lite/metaengine/v4"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -21,63 +22,113 @@ var statuses = []string{ //nolint:gochecknoglobals // closed vocabulary mirror o
 	statusCancelled,
 }
 
-// Stats reads the status counts and the per-project-per-status counts as
-// SQL GROUP BY pushdowns over the planned tasks table — O(statuses +
-// statuses×groups) engine work, zero rows loaded. The counts derive from
-// the same folded rows every Tasks read serves, so they are exact by
-// construction (no separate counter state to drift on reclaims, rescues
-// or dismissals, which have no statically knowable from-status).
+// Stats reads the status counts and the per-project-per-status counts
+// from the Delta counter collections (upstream metaengine COOKBOOK §
+// Status Count Dashboard) — O(1) counter reads, zero rows loaded. The
+// counters fold the same fact stream the tasks map folds, with the
+// from-side resolved by the apply-time prev read, so they stay exact
+// across the from-status-ambiguous transitions (lease reclaims, dead
+// rescues, dismissals).
 //
 // filter narrows both matrices exactly like a Tasks read would: a Status
 // filter leaves only that status's counts, a Project filter only that
-// project's.
+// project's. A project-scoped byStatus derives from the project|status
+// counters — the global status counter cannot narrow by project.
 func (m *Model) Stats(
 	ctx context.Context,
 	filter TaskFilter,
 ) (map[string]int, map[string]map[string]int, error) {
-	reader := metaengine.NewReader[TaskRow](m.store, tasksCollection)
-
-	opts := []metaengine.ScanOption{}
-	if filter.Project != nil {
-		opts = append(opts, metaengine.WithFilter("project", metaengine.FilterEq, *filter.Project))
+	statusRaw, err := metaengine.ExecuteTyped[statusCountsInput, map[string]int64](
+		ctx, m.store, statusCountsInput{},
+	)
+	if err != nil && !errors.Is(err, metaengine.ErrNotFound) {
+		return nil, nil, fmt.Errorf("readmodel: status counters: %w", err)
 	}
 
-	if filter.Status != nil {
-		opts = append(opts, metaengine.WithFilter("status", metaengine.FilterEq, *filter.Status))
+	projectRaw, err := metaengine.ExecuteTyped[projectStatusCountsInput, map[string]int64](
+		ctx, m.store, projectStatusCountsInput{},
+	)
+	if err != nil && !errors.Is(err, metaengine.ErrNotFound) {
+		return nil, nil, fmt.Errorf("readmodel: project counters: %w", err)
 	}
 
-	byStatus, err := groupedInts(ctx, reader, "status", opts)
-	if err != nil {
-		return nil, nil, fmt.Errorf("readmodel: status counts: %w", err)
-	}
-
-	byProject := map[string]map[string]int{}
-
-	for _, status := range statuses {
-		stOpts := slices.Concat(
-			opts,
-			[]metaengine.ScanOption{metaengine.WithFilter("status", metaengine.FilterEq, status)},
-		)
-
-		groups, err := groupedInts(ctx, reader, "project", stOpts)
-		if err != nil {
-			return nil, nil, fmt.Errorf("readmodel: project counts %s: %w", status, err)
-		}
-
-		for p, n := range groups {
-			if byProject[p] == nil {
-				byProject[p] = map[string]int{}
-			}
-
-			byProject[p][status] = n
-		}
-	}
+	byProject := projectMatrix(projectRaw, filter)
+	byStatus := statusCounts(statusRaw, projectRaw, filter)
 
 	return byStatus, byProject, nil
 }
 
-// StatusCounts counts the ledger rows per status — the GROUP BY pushdown
-// behind the stats surfaces (dashboard chips, /api/stats, tq stats).
+// projectMatrix splits the project|status counter keys into the
+// per-project matrix under the filter.
+func projectMatrix(projectRaw map[string]int64, filter TaskFilter) map[string]map[string]int {
+	byProject := map[string]map[string]int{}
+
+	for key, n := range projectRaw {
+		project, status, ok := strings.Cut(key, projectStatusKeySep)
+		if !ok || n == 0 || !matchesFilter(filter, project, status) {
+			continue
+		}
+
+		if byProject[project] == nil {
+			byProject[project] = map[string]int{}
+		}
+
+		byProject[project][status] = int(n)
+	}
+
+	return byProject
+}
+
+// statusCounts narrows the global status counter; a project filter
+// derives it from the project|status counters instead — the global
+// counter cannot narrow by project.
+func statusCounts(statusRaw, projectRaw map[string]int64, filter TaskFilter) map[string]int {
+	byStatus := map[string]int{}
+
+	if filter.Project != nil {
+		for key, n := range projectRaw {
+			project, status, ok := strings.Cut(key, projectStatusKeySep)
+			if !ok || n == 0 || project != *filter.Project {
+				continue
+			}
+
+			if filter.Status != nil && status != *filter.Status {
+				continue
+			}
+
+			byStatus[status] = int(n)
+		}
+
+		return byStatus
+	}
+
+	for status, n := range statusRaw {
+		if n == 0 || filter.Status != nil && status != *filter.Status {
+			continue
+		}
+
+		byStatus[status] = int(n)
+	}
+
+	return byStatus
+}
+
+// matchesFilter reports whether one project|status count survives the
+// filter.
+func matchesFilter(filter TaskFilter, project, status string) bool {
+	if filter.Project != nil && project != *filter.Project {
+		return false
+	}
+
+	if filter.Status != nil && status != *filter.Status {
+		return false
+	}
+
+	return true
+}
+
+// StatusCounts counts the ledger rows per status — the Delta counter
+// read behind the stats surfaces (dashboard chips, /api/stats, tq stats).
 func (m *Model) StatusCounts(ctx context.Context) (map[string]int, error) {
 	counts, _, err := m.Stats(ctx, TaskFilter{})
 

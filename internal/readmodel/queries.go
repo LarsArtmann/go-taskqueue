@@ -20,6 +20,28 @@ const (
 // meta_planned_tasks.
 const tasksCollection = "tasks"
 
+// The Delta counter collections behind Stats (upstream metaengine
+// COOKBOOK §Status Count Dashboard): one counter keyed by status, one
+// keyed project|status. Both fold the SAME fact stream the tasks map
+// folds — Plan routes one ApplyRecord to every query whose folds bind
+// the event's wire type — so they stay exact without a second read.
+const (
+	statusCountsCollection        = "status_counts"
+	projectStatusCountsCollection = "project_status_counts"
+)
+
+// projectStatusKeySep joins the project|status counter key. Projects are
+// store-validated slugs (no pipe), statuses are the closed enum.
+const projectStatusKeySep = "_"
+
+// statusCountsInput and projectStatusCountsInput are the counter queries'
+// declared input types — ExecuteTyped dispatch carriers, one distinct
+// type per counter so type dispatch never shadows.
+type (
+	statusCountsInput        struct{}
+	projectStatusCountsInput struct{}
+)
+
 // TaskList is the query's declared input type — a declaration carrier
 // only. Reads MUST NOT dispatch through it (Store.ExecuteCtx binds nil
 // pointer fields as typed-nil interfaces → `= NULL`, and empty strings
@@ -110,3 +132,103 @@ var tasksQuery = metaengine.Query[TaskList, TaskRow]( //nolint:gochecknoglobals 
 	metaengine.SortOnField[TaskRow]("created_at", true),
 	metaengine.WithColumnarLayout(),
 )
+
+// statusCountsQuery folds the global per-status counters. Every
+// transition handler decrements the folded from-status and increments
+// the new one; the from-status rides the event (filled by the model's
+// apply-time prev read), so stateless handlers stay exact across the
+// from-status-ambiguous transitions (lease reclaims, dead rescues,
+// dismissals).
+var statusCountsQuery = metaengine.Query[statusCountsInput, map[string]int64]( //nolint:gochecknoglobals // declarative fold definition, reused by Plan and every read
+	statusCountsCollection,
+	counterFold(string(journal.Enqueued), evtEnqueued{}, func(e evtEnqueued) metaengine.Delta {
+		return transitionDelta(statusPending, string(e.From))
+	}),
+	counterFold(string(journal.Claimed), evtClaimed{}, func(e evtClaimed) metaengine.Delta {
+		return transitionDelta(statusRunning, string(e.From))
+	}),
+	counterFold(string(journal.Completed), evtCompleted{}, func(e evtCompleted) metaengine.Delta {
+		return transitionDelta(statusCompleted, string(e.From))
+	}),
+	counterFold(string(journal.Failed), evtFailed{}, func(e evtFailed) metaengine.Delta {
+		return transitionDelta(statusPending, string(e.From))
+	}),
+	counterFold(string(journal.DeadLettered), evtDeadLettered{}, func(e evtDeadLettered) metaengine.Delta {
+		return transitionDelta(statusDead, string(e.From))
+	}),
+	counterFold(string(journal.Cancelled), evtCancelled{}, func(e evtCancelled) metaengine.Delta {
+		return transitionDelta(statusCancelled, string(e.From))
+	}),
+	counterFold(string(journal.Requeued), evtRequeued{}, func(e evtRequeued) metaengine.Delta {
+		return transitionDelta(statusPending, string(e.From))
+	}),
+)
+
+// projectStatusCountsQuery folds the project|status counters — the same
+// transitions keyed by the folded project (constant per task; enqueued
+// facts and the apply-time prev read both carry it).
+var projectStatusCountsQuery = metaengine.Query[projectStatusCountsInput, map[string]int64]( //nolint:gochecknoglobals // declarative fold definition, reused by Plan and every read
+	projectStatusCountsCollection,
+	counterFold(string(journal.Enqueued), evtEnqueued{}, func(e evtEnqueued) metaengine.Delta {
+		return projectTransitionDelta(e.Project, statusPending, string(e.From))
+	}),
+	counterFold(string(journal.Claimed), evtClaimed{}, func(e evtClaimed) metaengine.Delta {
+		return projectTransitionDelta(string(e.Project), statusRunning, string(e.From))
+	}),
+	counterFold(string(journal.Completed), evtCompleted{}, func(e evtCompleted) metaengine.Delta {
+		return projectTransitionDelta(string(e.Project), statusCompleted, string(e.From))
+	}),
+	counterFold(string(journal.Failed), evtFailed{}, func(e evtFailed) metaengine.Delta {
+		return projectTransitionDelta(string(e.Project), statusPending, string(e.From))
+	}),
+	counterFold(string(journal.DeadLettered), evtDeadLettered{}, func(e evtDeadLettered) metaengine.Delta {
+		return projectTransitionDelta(string(e.Project), statusDead, string(e.From))
+	}),
+	counterFold(string(journal.Cancelled), evtCancelled{}, func(e evtCancelled) metaengine.Delta {
+		return projectTransitionDelta(string(e.Project), statusCancelled, string(e.From))
+	}),
+	counterFold(string(journal.Requeued), evtRequeued{}, func(e evtRequeued) metaengine.Delta {
+		return projectTransitionDelta(string(e.Project), statusPending, string(e.From))
+	}),
+)
+
+// counterFold is OnRecordTyped narrowed to the Delta handler shape — the
+// record context is unused by the counters but the wire-typed binding
+// matches the tasks map folds.
+func counterFold[E any](eventType string, sample E, handler func(E) metaengine.Delta) metaengine.Fold {
+	return metaengine.OnRecordTyped(eventType, sample, func(_ record.Record, e E) metaengine.Delta {
+		return handler(e)
+	})
+}
+
+// transitionDelta emits the +1 on the new key and the -1 on the
+// from-key; an empty from (seed fact, or a prev row the projection has
+// not folded) emits only the increment — the counter then converges on
+// the next full replay, same degradation story as the map folds.
+func transitionDelta(next, from string) metaengine.Delta {
+	delta := metaengine.Delta{next: 1}
+	if from != "" {
+		delta[from] = -1
+	}
+
+	return delta
+}
+
+// projectTransitionDelta emits the +1 on the new project|status key and
+// the -1 on the from-status key under the SAME project; an empty
+// from-status (seed fact, or a prev row the projection has not folded)
+// emits only the increment — the counter then converges on the next full
+// replay, same degradation story as the map folds.
+func projectTransitionDelta(project, nextStatus, fromStatus string) metaengine.Delta {
+	delta := metaengine.Delta{projectStatusKey(project, nextStatus): 1}
+	if fromStatus != "" {
+		delta[projectStatusKey(project, fromStatus)] = -1
+	}
+
+	return delta
+}
+
+// projectStatusKey builds the project|status counter key.
+func projectStatusKey(project, status string) string {
+	return project + projectStatusKeySep + status
+}

@@ -82,11 +82,14 @@ func PathFor(dbPath string) string {
 type Model struct {
 	eng   metaengine.Engine
 	store *metaengine.Store
-	src   queue.Store
-	path  string
-	rows  RowSource
-	poll  time.Duration
-	batch int
+	// rowReader is the keyed point-lookup over the tasks collection: the
+	// apply-time prev read that fills the counter folds' From context.
+	rowReader *metaengine.TypedReader[TaskRow]
+	src       queue.Store
+	path      string
+	rows      RowSource
+	poll      time.Duration
+	batch     int
 
 	// cursor is the applied journal watermark: the seq of the last fact
 	// folded into the collections. Atomic so live consumers can read the
@@ -187,7 +190,7 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 		m.eng = eng
 	}
 
-	store, err := metaengine.Plan([]metaengine.Engine{m.eng}, tasksQuery)
+	store, err := metaengine.Plan([]metaengine.Engine{m.eng}, tasksQuery, statusCountsQuery, projectStatusCountsQuery)
 	if err != nil {
 		_ = m.eng.Close()
 
@@ -195,6 +198,7 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 	}
 
 	m.store = store
+	m.rowReader = metaengine.NewReader[TaskRow](m.store, tasksCollection)
 
 	if m.durable {
 		if err := m.loadCursor(ctx); err != nil {
@@ -233,6 +237,27 @@ func (m *Model) loadCursor(ctx context.Context) error {
 
 	if rows == 0 {
 		slog.Info("readmodel: empty projection under a nonzero cursor — replaying from zero", "checkpoint", seq)
+
+		return nil
+	}
+
+	// Counter-version guard: a projection folded before the Delta counter
+	// collections existed has rows but zero counters — replay from zero
+	// once so Stats reads exact counts instead of an all-zero matrix. An
+	// exact counter set always sums to the row count (every task holds
+	// exactly one status), so zero-under-rows is unambiguous.
+	counts, err := metaengine.ExecuteTyped[statusCountsInput, map[string]int64](ctx, m.store, statusCountsInput{})
+	if err != nil && !errors.Is(err, metaengine.ErrNotFound) {
+		return fmt.Errorf("readmodel: probe status counters: %w", err)
+	}
+
+	total := 0
+	for _, n := range counts {
+		total += int(n)
+	}
+
+	if total == 0 {
+		slog.Info("readmodel: counters empty under a nonzero cursor — replaying from zero (pre-counter projection)", "checkpoint", seq)
 
 		return nil
 	}
@@ -350,12 +375,51 @@ func (m *Model) apply(ctx context.Context, fact journal.Fact) error {
 		return nil
 	}
 
+	// Fill the counter folds' From context BEFORE the apply: the keyed
+	// prev read must see the row the same apply is about to update.
+	switch e := evt.(type) {
+	case evtEnqueued:
+		e.From, _ = m.transitionContext(ctx, fact.TaskID)
+		evt = e
+	case evtClaimed:
+		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = e
+	case evtCompleted:
+		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = e
+	case evtFailed:
+		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = e
+	case evtDeadLettered:
+		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = e
+	case evtCancelled:
+		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = e
+	case evtRequeued:
+		e.From, e.Project = m.transitionContext(ctx, fact.TaskID)
+		evt = e
+	}
+
 	rec := record.Record{Type: string(fact.Type)}
 	if err := m.store.ApplyRecord(ctx, rec, evt); err != nil {
 		return fmt.Errorf("readmodel: apply %s seq %d: %w", fact.Type, fact.Seq, err)
 	}
 
 	return nil
+}
+
+// transitionContext reads the previous status/project the counter folds
+// decrement from. A missing row (no seed folded yet) or a failed read
+// returns empty context: the counter then emits only the increment and
+// converges on the next full replay — never a skipped fact.
+func (m *Model) transitionContext(ctx context.Context, id string) (FromStatus, FromProject) {
+	row, found, err := m.rowReader.Get(ctx, id)
+	if err != nil || !found {
+		return "", ""
+	}
+
+	return FromStatus(row.Status), FromProject(row.Project)
 }
 
 // Tasks reads the ledger under the filter, newest creation first — the
