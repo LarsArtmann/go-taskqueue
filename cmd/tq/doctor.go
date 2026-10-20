@@ -953,11 +953,7 @@ func doctorProjection(ctx context.Context, store queue.Store, dbPath string) []c
 		return append(results, checkResult{Name: "projection-db", Status: checkOK, Detail: detail})
 	}
 
-	// The explicit reader's open (WithReadOnly): doctor never folds —
-	// the durable-cursor open only made it contend for the fold lock a
-	// running serve holds (and log replay-guard decisions it cannot act
-	// on). Counts read the projection store as-is either way.
-	m, err := readmodel.Open(ctx, projectionPath, store, readmodel.WithReadOnly())
+	m, err := readmodel.Open(ctx, projectionPath, store, readmodel.WithDurableCursor())
 	if err != nil {
 		return append(results, checkResult{Name: "projection-db", Status: checkFail, Detail: "open: " + err.Error()})
 	}
