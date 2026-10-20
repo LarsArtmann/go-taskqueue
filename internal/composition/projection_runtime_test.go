@@ -7,6 +7,7 @@ import (
 
 	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/readmodel"
 )
 
 // TestNewProjectionRuntime pins the composition-root factory for the S3
