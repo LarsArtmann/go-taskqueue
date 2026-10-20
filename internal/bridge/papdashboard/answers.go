@@ -48,9 +48,10 @@ type AnswerConfig struct {
 	// stampede guard for "the owner just answered 50 questions at once":
 	// each application requeues and wakes a parked task, and an unbounded
 	// burst turns one happy answering session into a same-second thundering
-	// herd of claims. The remainder is not lost: the cursor only advances
-	// over APPLIED answers, so the next tick picks up exactly where this
-	// one stopped. ≤0 selects defaultMaxAnswersPerPoll.
+	// herd of claims. Pages apply OLDEST-first, so everything applied sits
+	// at-or-below the returned cursor and the remainder stays strictly
+	// ahead of it — the next tick drains exactly that remainder, no answer
+	// lost, none applied twice. ≤0 selects defaultMaxAnswersPerPoll.
 	MaxAnswersPerPoll int
 	// Client overrides the HTTP client.
 	Client *http.Client
@@ -232,9 +233,13 @@ func (p *AnswerPoller) pollOnce(ctx context.Context, cursor time.Time) (time.Tim
 }
 
 // applyPage routes one list page's new answers home, honoring the
-// remaining per-poll bound. Returns the advanced maxSeen, how many
-// answers this page applied, and any routing error (newest-first paging
-// stops when a page holds nothing new or the bound is spent).
+// remaining per-poll bound. The page arrives newest-first but applies
+// OLDEST-first: everything applied then sits at-or-below the returned
+// take-max cursor, so a bound-truncated remainder stays strictly ahead
+// of it and the next tick drains exactly that remainder with no
+// re-application. Returns the advanced maxSeen, how many answers this
+// page applied, and any routing error (newest-first paging stops when a
+// page holds nothing new or the bound is spent).
 func (p *AnswerPoller) applyPage(
 	ctx context.Context,
 	questions []papQuestion,
@@ -243,10 +248,12 @@ func (p *AnswerPoller) applyPage(
 ) (time.Time, int, error) {
 	applied := 0
 
-	for _, question := range questions {
+	for i := len(questions) - 1; i >= 0; i-- {
 		if applied >= remaining {
 			break
 		}
+
+		question := questions[i]
 
 		if !question.IsAnswered || question.Answer == "" {
 			continue

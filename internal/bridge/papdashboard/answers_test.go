@@ -400,8 +400,9 @@ func TestAnswerPollerStopsPagingWhenPageIsOld(t *testing.T) {
 
 // TestAnswerPollerBoundsAnswersPerPoll pins the stampede guard: a poll
 // with MaxAnswersPerPoll=2 over four fresh answers applies exactly the two
-// NEWEST, advances the cursor only over APPLIED answers (so the older two
-// are NOT skipped), and the next poll drains the remainder in order.
+// OLDEST, the take-max cursor lands on the newest APPLIED answer (the
+// applied/remainder boundary), and the next poll drains the newer
+// remainder in order — none lost, none applied twice.
 func TestAnswerPollerBoundsAnswersPerPoll(t *testing.T) {
 	t.Parallel()
 
@@ -440,15 +441,15 @@ func TestAnswerPollerBoundsAnswersPerPoll(t *testing.T) {
 		t.Fatalf("first poll applied %d answers, want the bound 2", len(store.recorded))
 	}
 
-	if store.recorded[0].Ref != "q-3" || store.recorded[1].Ref != "q-2" {
-		t.Fatalf("first poll applied %s then %s, want the two newest (q-3, q-2)",
+	if store.recorded[0].Ref != "q-0" || store.recorded[1].Ref != "q-1" {
+		t.Fatalf("first poll applied %s then %s, want the two oldest (q-0, q-1)",
 			store.recorded[0].Ref, store.recorded[1].Ref)
 	}
 
-	// The cursor stops at the LAST APPLIED answer, never past the
-	// unapplied remainder.
-	if !next.Equal(base.Add(2 * time.Minute)) {
-		t.Fatalf("cursor = %v, want the second applied answer's time %v", next, base.Add(2*time.Minute))
+	// The cursor stops at the newest APPLIED answer — the applied
+	// remainder boundary — never past the unapplied newer tail.
+	if !next.Equal(base.Add(1 * time.Minute)) {
+		t.Fatalf("cursor = %v, want the newest applied answer's time %v", next, base.Add(1*time.Minute))
 	}
 
 	if seq := wm.current(p.consumerKey()); seq != next.UnixNano() {
@@ -464,13 +465,13 @@ func TestAnswerPollerBoundsAnswersPerPoll(t *testing.T) {
 		t.Fatalf("second poll total = %d, want the full backlog 4", len(store.recorded))
 	}
 
-	if store.recorded[2].Ref != "q-1" || store.recorded[3].Ref != "q-0" {
-		t.Fatalf("second poll applied %s then %s, want the remainder in order (q-1, q-0)",
+	if store.recorded[2].Ref != "q-2" || store.recorded[3].Ref != "q-3" {
+		t.Fatalf("second poll applied %s then %s, want the remainder in order (q-2, q-3)",
 			store.recorded[2].Ref, store.recorded[3].Ref)
 	}
 
-	if !next2.Equal(base) {
-		t.Fatalf("final cursor = %v, want %v", next2, base)
+	if !next2.Equal(base.Add(3 * time.Minute)) {
+		t.Fatalf("final cursor = %v, want %v", next2, base.Add(3*time.Minute))
 	}
 }
 
