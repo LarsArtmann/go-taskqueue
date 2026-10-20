@@ -23,9 +23,11 @@ strict="${MIRROR_CLONES_STRICT:-1}"
 tmp="$(mktemp /tmp/mirror-clones.XXXXXX.html)"
 trap 'rm -f "$tmp"' EXIT
 
-# The exact canonical invocation (dedup skill): type-aware, threshold 3,
-# total-tokens sort. STDOUT is a single-line HTML document.
-if ! art-dupl --sort total-tokens -t 3 --type-aware --rich-text --explain --html >"$tmp" 2>/dev/null; then
+# The canonical invocation lives in scripts/art-dupl.json (-c config,
+# 2026-10-05 §f10: threshold 3, total-tokens sort, type-aware, rich-text,
+# explain) so ad-hoc runs match the gate flags by default. STDOUT is a
+# single-line HTML document.
+if ! art-dupl -c scripts/art-dupl.json --html >"$tmp" 2>/dev/null; then
 	echo "FAIL: art-dupl could not produce a report" >&2
 	exit 1
 fi

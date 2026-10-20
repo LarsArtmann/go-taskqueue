@@ -1,0 +1,7 @@
+{
+  "threshold": 3,
+  "sortBy": "total-tokens",
+  "typeAware": true,
+  "richText": true,
+  "explain": true
+}
