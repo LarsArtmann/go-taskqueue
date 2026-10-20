@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/cmd/tq
 
-go 1.27.1
+go 1.27.2
 
 require (
 	github.com/larsartmann/go-codec v0.3.1
