@@ -116,7 +116,7 @@ type Model struct {
 	// the one writer and the non-idempotent counter folds never
 	// double-count.
 	readOnly bool
-	watcher *metaengine.Watcher[TaskRow]
+	watcher  *metaengine.Watcher[TaskRow]
 }
 
 // Option configures the Model.
@@ -187,6 +187,15 @@ func WithFoldLock(lock *FoldLock) Option {
 // read; it is used read-only (Facts, HeadSeq, Get). ctx covers the
 // durable-cursor load (watermark read + replay guard), not the pump
 // (Run carries its own).
+//
+// Every Open participates in the projection home's single-writer
+// election: a plain Open acquires the fold lock without blocking, and a
+// lost election mounts the model read-only (store-backed reads, no fold,
+// no checkpoint) so the holder stays the one folder — the Delta counter
+// folds are not idempotent, and a second folder would double-count every
+// transition. WithFoldLock callers elected earlier (their lease must
+// cover the converge + engine open too); WithReadOnly callers never
+// contend.
 func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*Model, error) {
 	if src == nil {
 		return nil, ErrNoSource
@@ -202,6 +211,27 @@ func Open(ctx context.Context, path string, src queue.Store, opts ...Option) (*M
 
 	for _, opt := range opts {
 		opt(m)
+	}
+
+	if m.readOnly {
+		m.lock = nil
+	} else if m.lock == nil {
+		lock, err := AcquireFoldLock(path, 0)
+		if err != nil {
+			if !errors.Is(err, ErrFoldLocked) {
+				return nil, err
+			}
+
+			m.readOnly = true
+
+			slog.Warn(
+				"readmodel: fold lock held by another folder — mounting read-only (no fold, no checkpoint)",
+				"home", path,
+				"lock", FoldLockPath(path),
+			)
+		} else {
+			m.lock = lock
+		}
 	}
 
 	// The projection db is DISPOSABLE by contract (delete the file to
@@ -303,24 +333,48 @@ func (m *Model) loadCursor(ctx context.Context) error {
 	return nil
 }
 
-// Close releases the watcher and the projection database. The journal
-// source is owned by the caller.
+// Close releases the watcher, the projection database, and the fold
+// lease (a folder mount). The journal source is owned by the caller.
 func (m *Model) Close() error {
 	m.watcher.Close()
 
 	if err := m.store.Close(); err != nil {
+		_ = m.lock.Release()
+
+		return fmt.Errorf("readmodel: close projection: %w", err)
+	}
+
+	if err := m.lock.Release(); err != nil {
 		return fmt.Errorf("readmodel: close projection: %w", err)
 	}
 
 	return nil
 }
 
+// ReadOnly reports the model mounted without the fold role: the fold-lock
+// election was lost (another folder owns the projection home) or the
+// caller forced WithReadOnly. Reads are store-backed as-is; folding calls
+// are no-ops; a pump host should NOT be built over it (the lock holder
+// does the folding — a read-only host would only re-checkpoint the
+// shared watermark without moving any row).
+func (m *Model) ReadOnly() bool {
+	return m.readOnly
+}
+
 // Run pumps the journal until ctx is cancelled: catch up to the head, then
 // tail for new facts. Without WithDurableCursor the cursor is in-process —
 // a restarted model replays the journal from the beginning, which the
 // folds converge on (every fold is an upsert keyed by task id); with it,
-// the model resumes from the persisted checkpoint instead.
+// the model resumes from the persisted checkpoint instead. A read-only
+// mount has no fold to pump: it parks until ctx is done, so a pump owner
+// sees a healthy long-running Run instead of an exit to restart-loop on.
 func (m *Model) Run(ctx context.Context) error {
+	if m.readOnly {
+		<-ctx.Done()
+
+		return ctx.Err()
+	}
+
 	if err := m.CatchUp(ctx); err != nil {
 		return err
 	}
@@ -359,7 +413,14 @@ func (m *Model) CatchUp(ctx context.Context) error {
 }
 
 // catchUpOnce applies one batch of new facts and reports how many it saw.
+// A read-only mount never folds: the lock holder owns the home's
+// non-idempotent counter folds, and a reader checkpointing past unfolder
+// facts would lie about the projection's convergence.
 func (m *Model) catchUpOnce(ctx context.Context) (int, error) {
+	if m.readOnly {
+		return 0, nil
+	}
+
 	after := m.cursor.Load()
 
 	facts, err := m.src.Facts(ctx, after, m.batch)
@@ -401,7 +462,14 @@ func (m *Model) JournalCursor() int64 {
 
 // apply maps one fact to its fold input and feeds it through the store.
 // Facts without a fold are skipped — the cursor still advances past them.
+// A read-only mount refuses the fold outright: this is the managed host's
+// funnel too (FoldProjection.Handle), so the guard holds no matter which
+// driver calls.
 func (m *Model) apply(ctx context.Context, fact journal.Fact) error {
+	if m.readOnly {
+		return nil
+	}
+
 	evt, ok, err := eventFor(ctx, fact, m.rows)
 	if err != nil {
 		return err
