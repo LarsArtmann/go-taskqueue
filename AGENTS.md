@@ -84,7 +84,10 @@ docs/DOMAIN_LANGUAGE.md.
 - **Single serialized writer**: `sqlitev4.Open` = ONE shared `*sql.DB`
   (MaxOpenConns(1), WAL, busy_timeout) ridden by engine
   (`usqlite.OpenDB`) AND companion — never a second write pool. Never
-  drop the `RowsAffected()` re-checks.
+  drop the `RowsAffected()` re-checks. The projection home has its own
+  single-writer election: the `.fold-lock` flock every folding readmodel
+  Open must win — a loser mounts read-only (no fold, no checkpoint),
+  and the stale zero-byte sidecar is steady state (never unlinked).
 - **One deployment description (ADR-0022)**: `config.Deployment` is the
   only store-opening input — flags resolve via `config.FromFlags` (ONE
   TQ_SQLITE_SYNC reader), openers take the struct, pragma literals live

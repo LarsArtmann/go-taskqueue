@@ -7,6 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Projection-home single-writer fold lock** (2026-10-20): every
+  folding readmodel Open elects via a non-blocking flock on
+  `<projection-home>.fold-lock`; a lost election mounts the model
+  read-only (no fold, no checkpoint — store-backed reads) so the
+  non-idempotent Delta counters can never double-count under a
+  concurrent `tq serve` + `tq stats`/`tq api`/doctor overlap. The
+  composition runtime hands its pre-elected lease (5 s bounded wait) to
+  the model; the api pump skips host+DLQ on a read-only mount; doctor
+  reads via `WithReadOnly` (never contends). The sidecar is never
+  unlinked (unlinking under a held lock would let a third folder lock a
+  fresh inode).
+- **`Model.TasksPage` cursor pagination** (2026-10-20): the row-rich
+  readmodel read rides metaengine's TypedReader keyset cursor
+  round-trip (HTTP-safe continuation cursor; a malformed cursor FAILS
+  the read instead of silently restarting at page one; default page
+  200; the compound sort-key cursor keeps unix-milli created_at ties
+  drop/duplicate-free across pages). `Model.Tasks` stays the documented
+  unbounded export path.
 - **Mint-time coordination-marker gate** (2026-10-20, CV owner rulings
   fam.12.2/12.3): `harvest.Config.RedispatchCooldown` (default 6h, the
   tq-claim.sh `TQ_STALE_AFTER`) and two new `RedispatchCheck` signals —
