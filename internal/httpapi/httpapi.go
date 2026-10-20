@@ -100,6 +100,22 @@ func (s *Server) UseReadModel(ctx context.Context, d config.Deployment) error {
 		return fmt.Errorf("httpapi: open read model: %w", err)
 	}
 
+	if m.ReadOnly() {
+		// The fold lock is held elsewhere (serve runs): this surface
+		// mounts as a pure reader — GET /api/v1/stats reads the
+		// projection the owner keeps converged, with no pump (a
+		// read-only model cannot fold) and no DLQ sidecar (poison
+		// routing belongs to the folder).
+		s.log.Warn(
+			"httpapi: projection fold owned by another process — stats read the projection read-only",
+			"home", readmodel.PathFor(d.DBPath),
+		)
+
+		s.model = m
+
+		return nil
+	}
+
 	// The replay escape hatch (delete the projection file) leaves the
 	// surviving checkpoint pointing past an empty home: the model's
 	// durable-cursor load logs the replay decision and holds the cursor
@@ -470,25 +486,29 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 		_ = srv.Shutdown(shutdownCtx)
 	}()
 
+	defer func() {
+		if s.host != nil {
+			_ = s.host.Stop()
+			_ = s.host.Close()
+		}
+
+		if s.dlq != nil {
+			if err := s.dlq.Close(); err != nil {
+				s.log.Error("httpapi: close dlq sidecar", "err", err)
+			}
+		}
+
+		if s.model != nil {
+			if err := s.model.Close(); err != nil {
+				s.log.Error("httpapi: close read model", "err", err)
+			}
+		}
+	}()
+
 	if s.host != nil {
 		if err := s.host.Start(ctx); err != nil {
 			return fmt.Errorf("httpapi: start projection pump: %w", err)
 		}
-
-		defer func() {
-			_ = s.host.Stop()
-			_ = s.host.Close()
-
-			if s.dlq != nil {
-				if err := s.dlq.Close(); err != nil {
-					s.log.Error("httpapi: close dlq sidecar", "err", err)
-				}
-			}
-
-			if err := s.model.Close(); err != nil {
-				s.log.Error("httpapi: close read model", "err", err)
-			}
-		}()
 	}
 
 	s.log.Info("httpapi listening", "addr", addr)
