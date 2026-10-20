@@ -18,6 +18,12 @@ import (
 // These tests marshal the REAL queue types and pin the local decode, the
 // same key-parity discipline budget_test applies to the executor result
 // shapes (internal/budget/budget.go, sessionUsageDetail).
+//
+// Failure mode demonstrated 2026-10-20 (mutation-verify, 14-09 §f1):
+// renaming `old_priority` to `old_priority_renamed` on
+// queue.ReprioritizeEvidence (internal/queue/queue.go) failed
+// TestRepriDetailMirrorsQueueEvidence exactly as designed — OldPriority
+// decoded 0 against want 3; the compilation-silent drift class is caught.
 func TestRepriDetailMirrorsQueueEvidence(t *testing.T) {
 	t.Parallel()
 
