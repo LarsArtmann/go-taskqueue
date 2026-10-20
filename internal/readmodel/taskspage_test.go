@@ -2,11 +2,12 @@ package readmodel_test
 
 import (
 	"context"
-	"fmt"
+	"encoding/json/jsontext"
 	"testing"
 
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // TestTasksPageCursorRoundTrip pins the row-rich read's keyset pagination:
@@ -27,8 +28,6 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 
 	t.Cleanup(func() { _ = store.Close() })
 
-	f := &fixture{t: t, store: store}
-
 	const total = 9
 	ids := make([]string, 0, total)
 
@@ -37,17 +36,22 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 	var lastCreated int64
 
 	for range total {
-		tk, err := store.Enqueue(ctx, newEnqueue("web", "sh"))
+		tk, err := store.Enqueue(ctx, task.New{
+			Project: "web",
+			Type:    "sh",
+			Payload: jsontext.Value(`"x"`),
+		})
 		if err != nil {
 			t.Fatalf("enqueue: %v", err)
 		}
 
-		if tk.CreatedAt == lastCreated {
+		created := tk.CreatedAt.UnixMilli()
+		if created == lastCreated {
 			ties++
 		}
 
-		lastCreated = tk.CreatedAt
-		ids = append(ids, tk.ID)
+		lastCreated = created
+		ids = append(ids, string(tk.ID))
 	}
 
 	if ties == 0 {
@@ -70,7 +74,7 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 	// Walk the ledger in pages of 4: exactly 4+4+1 rows, newest first,
 	// no duplicates, empty cursor at the end.
 	var (
-		paged []readmodel.TaskRow
+		paged  []readmodel.TaskRow
 		cursor string
 		pages  int
 	)
@@ -81,6 +85,7 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 			t.Fatalf("page %d: %v", pages+1, err)
 		}
 
+		t.Logf("page %d: %d rows, has-next=%v", pages+1, len(rows), next != "")
 		pages++
 		paged = append(paged, rows...)
 
@@ -145,7 +150,7 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 	}
 
 	// The filter composes with pagination: one project-scoped page.
-	pagedProject := fmt.Sprintf("web")
+	pagedProject := "web"
 	prows, _, err := m.TasksPage(
 		ctx,
 		readmodel.TaskFilter{Project: &pagedProject},
