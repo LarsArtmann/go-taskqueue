@@ -684,7 +684,7 @@ func (e *DepBumpExecutor) runGit(ctx context.Context, args ...string) (string, e
 // run shells out to a git binary with the executor's extra env, returning
 // combined output.
 //
-// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr
+// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // is the os/exec idiom; a seam would outlive the three lines it saves.
 func (e *DepBumpExecutor) run(
 	ctx context.Context,
@@ -696,7 +696,7 @@ func (e *DepBumpExecutor) run(
 		cmd.Dir = dir
 	}
 
-	// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr is the os/exec idiom.
+	// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr is the os/exec idiom.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 	var out bytes.Buffer
 
 	cmd.Stdout = &out

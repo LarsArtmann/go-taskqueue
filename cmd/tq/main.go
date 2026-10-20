@@ -3038,7 +3038,7 @@ func cmdDLQ(args []string) error {
 		"",
 		"cancel this dead task ID with a recorded reason (the same disposition the DLQ-autopsy sweeper makes on a wontfix verdict)",
 	)
-	// art-dupl:accept subcommand prolog: flag registrations tail + dbFlag + Parse is the uniform command opening.
+	// art-dupl:accept subcommand prolog: flag registrations tail + dbFlag + Parse is the uniform command opening.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 	reason := fs.String("reason", "", "why the task is dismissed; stored in the cancelled fact detail")
 
 	db := dbFlag(fs)
@@ -3277,7 +3277,7 @@ func cmdFacts(args []string) error {
 		false,
 		"after the fact lines, scan every mentioned task's repo git log for Task-Queue-ID footer commits (the tq show --commits cross-reference, journal-wide)",
 	)
-	// art-dupl:accept subcommand prolog: flag registrations tail + dbFlag + Parse is the uniform command opening.
+	// art-dupl:accept subcommand prolog: flag registrations tail + dbFlag + Parse is the uniform command opening.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 	typeFilter := fs.String(
 		"type",
 		"",
@@ -3480,12 +3480,12 @@ func cmdWatermarks(args []string) error {
 
 	switch args[0] {
 	case "show":
-		// art-dupl:accept subcommand wiring: per-branch FlagSet + dbFlag + Parse is the no-framework CLI idiom.
+		// art-dupl:accept subcommand wiring: per-branch FlagSet + dbFlag + Parse is the no-framework CLI idiom.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 		fs := flag.NewFlagSet("watermarks show", flag.ExitOnError)
 
 		db := dbFlag(fs)
 		if err := fs.Parse(args[1:]); err != nil {
-			// art-dupl:accept subcommand wiring: parse-err + open + defer-Close is the uniform store-command opening.
+			// art-dupl:accept subcommand wiring: parse-err + open + defer-Close is the uniform store-command opening.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 			return err
 		}
 
@@ -3528,7 +3528,7 @@ func cmdWatermarks(args []string) error {
 		return nil
 
 	case "set":
-		// art-dupl:accept subcommand wiring: per-branch FlagSet + dbFlag + Parse is the no-framework CLI idiom.
+		// art-dupl:accept subcommand wiring: per-branch FlagSet + dbFlag + Parse is the no-framework CLI idiom.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 		fs := flag.NewFlagSet("watermarks set", flag.ExitOnError)
 
 		db := dbFlag(fs)

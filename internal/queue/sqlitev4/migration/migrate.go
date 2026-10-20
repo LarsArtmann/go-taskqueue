@@ -521,7 +521,7 @@ func verifyAgainst(ctx context.Context, src *sql.DB, toPath string, report *Repo
 
 // oldStatusCounts mirrors the hand-rolled StatusCounts query.
 //
-// art-dupl:accept legacy-schema reader: the frozen pre-flip schema is read
+// art-dupl:accept legacy-schema reader: the frozen pre-flip schema is read; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // with the database/sql idiom (query prolog, scan-loop tail); the source DB
 // is the migration source, so companion reads cannot replace it.
 func oldStatusCounts(ctx context.Context, src *sql.DB) (map[task.Status]int, error) {
@@ -912,7 +912,7 @@ func oldTailsByTaskID(ctx context.Context, src *sql.DB) (map[string][]journal.Fa
 
 // oldAllFacts reads the full frozen pre-flip facts table in seq order.
 //
-// art-dupl:accept legacy-schema reader: the frozen pre-flip schema is read
+// art-dupl:accept legacy-schema reader: the frozen pre-flip schema is read; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // with the database/sql idiom (query prolog, scan-loop tail); the source DB
 // is the migration source, so companion reads cannot replace it.
 func oldAllFacts(ctx context.Context, src *sql.DB) ([]journal.Fact, error) {
@@ -929,7 +929,7 @@ func oldAllFacts(ctx context.Context, src *sql.DB) ([]journal.Fact, error) {
 	for rows.Next() {
 		fact, err := scanOldFact(rows)
 		if err != nil {
-			// art-dupl:accept scan-loop tail: append + rows.Err is the database/sql read idiom; the loop and its defer live in this frame.
+			// art-dupl:accept scan-loop tail: append + rows.Err is the database/sql read idiom; the loop and its defer live in this frame.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 			return nil, err
 		}
 

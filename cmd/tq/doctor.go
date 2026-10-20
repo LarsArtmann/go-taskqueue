@@ -465,7 +465,7 @@ func doctorMarkOrphans(ctx context.Context, store queue.Store) []checkResult {
 // directory is gone (moved/renamed/deleted) can never be claimed by a
 // harvest-driven pool — the tasks sit until an operator cancels them.
 //
-// art-dupl:accept check prolog: every doctor check lists pending tasks and
+// art-dupl:accept check prolog: every doctor check lists pending tasks and; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // maps the failure onto its own checkResult name; a helper trades the check
 // name for the one saved line.
 func doctorRepoCoverage(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
@@ -598,7 +598,7 @@ func doctorStaleItems(ctx context.Context, store queue.Store, projectsDir string
 // PENDING/RUNNING nor mergeable debt. Warn-level: the pool's reaper owns
 // removal; the doctor only makes the orphans countable without one.
 //
-// art-dupl:accept check prolog: every doctor check maps its failure onto
+// art-dupl:accept check prolog: every doctor check maps its failure onto; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // its own checkResult name; a helper trades the name for one line.
 func doctorWorktreeOrphans(ctx context.Context, store queue.Store, projectsDir string) []checkResult {
 	pending, running := task.Pending, task.Running
@@ -673,7 +673,7 @@ func doctorWorktreeOrphans(ctx context.Context, store queue.Store, projectsDir s
 // a pin that a current .tq-verify overrides is latent, not firing, and
 // cancelling queued work is an operator decision (tq cancel).
 //
-// art-dupl:accept check prolog: every doctor check lists pending tasks and
+// art-dupl:accept check prolog: every doctor check lists pending tasks and; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // maps the failure onto its own checkResult name; a helper trades the check
 // name for the one saved line.
 func doctorVerifyPins(ctx context.Context, store queue.Store, projectsDir string) []checkResult {

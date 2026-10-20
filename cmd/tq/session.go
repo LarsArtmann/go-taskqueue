@@ -148,7 +148,7 @@ func sessionList(args []string) error {
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
-		// art-dupl:accept subcommand wiring: parse-err + open + defer-Close is the uniform store-command opening.
+		// art-dupl:accept subcommand wiring: parse-err + open + defer-Close is the uniform store-command opening.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 		return err
 	}
 

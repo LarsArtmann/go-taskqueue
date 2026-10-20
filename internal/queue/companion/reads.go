@@ -291,7 +291,7 @@ func SaveWatermark(ctx context.Context, r Runner, consumer string, seq int64) er
 
 // ListWatermarks returns every consumer cursor, by consumer name.
 //
-// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // the scan-loop tail are the database/sql idiom; the defer must live in the
 // consuming frame, so no seam can shorten this.
 func ListWatermarks(ctx context.Context, r Runner) ([]queue.WatermarkEntry, error) {
@@ -308,7 +308,7 @@ func ListWatermarks(ctx context.Context, r Runner) ([]queue.WatermarkEntry, erro
 		var e queue.WatermarkEntry
 
 		if err := rows.Scan(&e.Consumer, &e.Seq, &e.UpdatedAt); err != nil {
-			// art-dupl:accept scan-loop tail: append + rows.Err is the database/sql read idiom; the loop and its defer live in this frame.
+			// art-dupl:accept scan-loop tail: append + rows.Err is the database/sql read idiom; the loop and its defer live in this frame.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 			return nil, err
 		}
 
@@ -369,7 +369,7 @@ func PriorityScore(ctx context.Context, r Runner, itemKey string) (queue.Priorit
 
 // PriorityScores returns every cached verdict, ordered by item key.
 //
-// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // the scan-loop tail are the database/sql idiom; the defer must live in the
 // consuming frame, so no seam can shorten this.
 func PriorityScores(ctx context.Context, r Runner) ([]queue.PriorityScore, error) {
@@ -388,7 +388,7 @@ func PriorityScores(ctx context.Context, r Runner) ([]queue.PriorityScore, error
 		var score queue.PriorityScore
 		if err := rows.Scan(&score.ItemKey, &score.Score, &score.EffortMinutes,
 			&score.Source, &score.Reasoning, &score.Tokens, &score.ScoredAt); err != nil {
-			// art-dupl:accept scan-loop tail: append + rows.Err is the database/sql read idiom; the loop and its defer live in this frame.
+			// art-dupl:accept scan-loop tail: append + rows.Err is the database/sql read idiom; the loop and its defer live in this frame.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 			return nil, err
 		}
 
@@ -423,7 +423,7 @@ func DeletePriorityScores(ctx context.Context, r Runner, itemKeys []string) (int
 
 // StatusCounts counts tasks per status in one GROUP BY.
 //
-// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // the scan-loop tail are the database/sql idiom; the defer must live in the
 // consuming frame, so no seam can shorten this.
 func StatusCounts(ctx context.Context, r Runner) (map[task.Status]int, error) {
@@ -454,7 +454,7 @@ func StatusCounts(ctx context.Context, r Runner) (map[task.Status]int, error) {
 // the census pushdown behind loop-suspect detection: one grouped read
 // over the journal instead of a per-task facts walk.
 //
-// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // the scan-loop tail are the database/sql idiom; the defer must live in the
 // consuming frame, so no seam can shorten this.
 func ClaimCounts(ctx context.Context, r Runner) (map[string]int, error) {
@@ -485,7 +485,7 @@ func ClaimCounts(ctx context.Context, r Runner) (map[string]int, error) {
 
 // ProjectCounts counts tasks per project per status in one GROUP BY.
 //
-// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and
+// art-dupl:accept idiomatic SQL read: the rows/err/defer-Close prolog and; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // the scan-loop tail are the database/sql idiom; the defer must live in the
 // consuming frame, so no seam can shorten this.
 func ProjectCounts(ctx context.Context, r Runner) (map[string]map[task.Status]int, error) {

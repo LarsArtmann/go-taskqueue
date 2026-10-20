@@ -90,7 +90,7 @@ func New(cfg Config) *Limiter {
 // Locked reports the remaining lockout for key (false when none), pruning
 // the entry on contact when it went idle past IdleKeep unlocked.
 //
-// art-dupl:accept mutex prolog: Lock/defer-Unlock/pruneLocked opens every
+// art-dupl:accept mutex prolog: Lock/defer-Unlock/pruneLocked opens every; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // locked section; the lock must be held by the public method, so the prolog
 // cannot move into a helper.
 func (l *Limiter) Locked(key string) (time.Duration, bool) {
@@ -113,7 +113,7 @@ func (l *Limiter) Locked(key string) (time.Duration, bool) {
 // Add records one failed attempt for key; at MaxHits the key is locked out
 // and OnLock (when set) fires once.
 //
-// art-dupl:accept mutex prolog: Lock/defer-Unlock/pruneLocked opens every
+// art-dupl:accept mutex prolog: Lock/defer-Unlock/pruneLocked opens every; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // locked section; the lock must be held by the public method, so the prolog
 // cannot move into a helper.
 func (l *Limiter) Add(key string) {
@@ -143,7 +143,7 @@ func (l *Limiter) Add(key string) {
 
 // Reset clears key's strikes after a success.
 //
-// art-dupl:accept mutex prolog: Lock/defer-Unlock/pruneLocked opens every
+// art-dupl:accept mutex prolog: Lock/defer-Unlock/pruneLocked opens every; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // locked section; the lock must be held by the public method, so the prolog
 // cannot move into a helper.
 func (l *Limiter) Reset(key string) {

@@ -38,7 +38,7 @@ func NewCommandExecutor(template string) *CommandExecutor {
 
 // Execute renders the template (or unwraps the payload) and runs it.
 //
-// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr
+// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // is the os/exec idiom; a seam would outlive the three lines it saves.
 func (e *CommandExecutor) Execute(ctx context.Context, t task.Task) error {
 	line, err := e.render(t)
@@ -49,7 +49,7 @@ func (e *CommandExecutor) Execute(ctx context.Context, t task.Task) error {
 	cmd := exec.CommandContext(ctx, "sh", "-c", e.limited(line))
 	prepareProcessGroup(cmd) // cooperative cancel must kill the whole tree
 
-	// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr is the os/exec idiom.
+	// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr is the os/exec idiom.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 	var buf bytes.Buffer
 
 	cmd.Stdout = &buf

@@ -212,7 +212,7 @@ func TestFailRetriesThenDeadLetters(t *testing.T) {
 
 	// Rescue: dead -> pending with fresh budget.
 	if err := s.RescueDead(ctx, tk.ID, 3); err != nil {
-		// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask fetch; assertion shape repeated by design.
+		// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask fetch; assertion shape repeated by design.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 		t.Fatalf("RescueDead: %v", err)
 	}
 
@@ -558,7 +558,7 @@ func TestClaimAgingAccruesPerWindow(t *testing.T) {
 // TestUpdatePendingPriority stores a new pending priority, a marker and a
 // reason on a pending task.
 //
-// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get; the
+// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get; the; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // assertion shape this suite repeats by design.
 func TestUpdatePendingPriority(t *testing.T) {
 	t.Parallel()
@@ -568,7 +568,7 @@ func TestUpdatePendingPriority(t *testing.T) {
 	tk := mustEnqueue(t, ctx, s, task.New{Type: "a", Priority: 10})
 
 	if err := s.UpdatePendingPriority(ctx, tk.ID, 70, "marker", "P1 marker added"); err != nil {
-		// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get; assertion shape repeated by design.
+		// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get; assertion shape repeated by design.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 		t.Fatalf("update: %v", err)
 	}
 
@@ -1566,7 +1566,7 @@ func TestRequeueFactCarriesResumeCloseout(t *testing.T) {
 // without re-parsing reason text; an empty class is omitted entirely
 // (omitempty) and read back as RequeueClassUnknown.
 //
-// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask
+// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // fetch; the assertion shape this suite repeats by design.
 func TestRequeueFactCarriesClass(t *testing.T) {
 	if !active.Caps.RequeueClass {
@@ -1591,7 +1591,7 @@ func TestRequeueFactCarriesClass(t *testing.T) {
 		queue.RequeueClassPreflight,
 		"",
 	); err != nil {
-		// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask fetch; assertion shape repeated by design.
+		// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask fetch; assertion shape repeated by design.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -1626,7 +1626,7 @@ func TestRequeueFactCarriesClass(t *testing.T) {
 // answers "which provider is limited?" from the journal alone; an empty
 // provider is omitted entirely (omitempty) and reads back as "".
 //
-// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask
+// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // fetch; the assertion shape this suite repeats by design.
 func TestRequeueFactCarriesProvider(t *testing.T) {
 	ctx, s := freshStore(t)
@@ -1645,7 +1645,7 @@ func TestRequeueFactCarriesProvider(t *testing.T) {
 		queue.RequeueClassRateLimit,
 		"zai",
 	); err != nil {
-		// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask fetch; assertion shape repeated by design.
+		// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask fetch; assertion shape repeated by design.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 		t.Fatalf("Requeue: %v", err)
 	}
 
@@ -3199,7 +3199,7 @@ func TestEnqueueFactDetailCarriesIdentity(t *testing.T) {
 // RescueDead re-emits task.enqueued (NOT task.requeued) with the rescue
 // marker, so a replay treats rescue as a budget reset, not an attempt burn.
 //
-// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask
+// art-dupl:accept conformance idiom: action, Fatalf, then FactsForTask; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // fetch; the assertion shape this suite repeats by design.
 func TestRescueDeadEmitsRescueEnqueue(t *testing.T) {
 	ctx, s := freshStore(t)
@@ -3360,7 +3360,7 @@ func assertAnsweredFact(t *testing.T, ctx context.Context, s Store, id task.ID) 
 // TestRecordAnswerUnblocksParkedTask answers a parked question and asserts
 // the task re-enters pending with the answered fact recorded.
 //
-// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get; the
+// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get; the; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // assertion shape this suite repeats by design.
 func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 	ctx, s := freshStore(t)
@@ -3376,7 +3376,7 @@ func TestRecordAnswerUnblocksParkedTask(t *testing.T) {
 
 	err = s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "Stay on v2.", PapID: "pap-42"})
 	if err != nil {
-		// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get; assertion shape repeated by design.
+		// art-dupl:accept conformance idiom: mutate, Fatalf, re-read via Get; assertion shape repeated by design.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 		t.Fatalf("RecordAnswer: %v", err)
 	}
 
@@ -3446,7 +3446,7 @@ func TestRecordAnswerReplayIsNoop(t *testing.T) {
 // TestRecordAnswerSecondQuestionAppends joins a second question's answer
 // onto the same answered array after the re-claim parks the task again.
 //
-// art-dupl:accept conformance scenario prolog: freshStore + parkOnQuestion +
+// art-dupl:accept conformance scenario prolog: freshStore + parkOnQuestion +; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // RecordAnswer is the parked-question setup, repeated per scenario.
 func TestRecordAnswerSecondQuestionAppends(t *testing.T) {
 	ctx, s := freshStore(t)
@@ -3568,7 +3568,7 @@ func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 // TestRecordAnswerRawPayloadFactOnly pins fact-only routing for raw
 // (non-object) payloads.
 //
-// art-dupl:accept conformance scenario prolog: freshStore + parkOnQuestion +
+// art-dupl:accept conformance scenario prolog: freshStore + parkOnQuestion +; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // RecordAnswer is the parked-question setup, repeated per scenario.
 func TestRecordAnswerRawPayloadFactOnly(t *testing.T) {
 	ctx, s := freshStore(t)

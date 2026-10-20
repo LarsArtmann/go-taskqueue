@@ -498,7 +498,7 @@ func requireClean(p AgentPayload) bool {
 
 // assertCleanTree fails unless the repo has no uncommitted changes.
 //
-// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr
+// art-dupl:accept exec wiring: one buffer aliased to both Stdout and Stderr; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 // is the os/exec idiom; a seam would outlive the three lines it saves.
 func assertCleanTree(ctx context.Context, repo string) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", repo, "status", "--porcelain")
