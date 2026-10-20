@@ -27,6 +27,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   same as the count cap); `UsageToday` settle is FAIL-OPEN (a usage read
   failure never blocks claims). Rides beside `--daily-budget`, not instead
   of it.
+- **Windowed session-volume band + sessions lamp** (2026-10-20): `tq stats
+  --since DUR` prints a windowed band (`sessions(Nh) N opened / M closed`)
+  beside the all-time totals, and the webui nowband carries an amber
+  `card-sessions-lamp` tone when sessions are open (minified `app.css`
+  rebuilt; webui smoke asserts the lamp + `1 open`; print pin in
+  `cmd/tq/stats_session_test.go`).
 
 ### Changed
 - **2026-09-14 webui overhaul coverage entry**: the 22-workstream `tq serve`
@@ -50,6 +56,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ADR-0003 document the ruling (2026-10-05, surfaced during G1).
 
 ### Fixed
+- **Status done-guard reachable on watermark-rewind replays** (2026-10-20):
+  the review window's recency cutoff filtered out a replayed trigger
+  completion (its `UpdatedAt` predates its own report's `CreatedAt`),
+  emptying the window before the dedup probe — replays silently minted
+  nothing and never counted known (deterministic
+  `TestSweepDoneGuardIsKnownNotRefusal` red); the trigger task is now
+  exempt from the cutoff (behavior-identical in normal operation;
+  pinned at Every=1, Every>1 tracked separately).
 - **Plain `cd cmd/tq && go build/vet/test` works again without the devmod
   shim** (2026-10-17): the replace-free committed go.mod pins released
   internal-module tags that lag HEAD symbols, so the obvious in-module

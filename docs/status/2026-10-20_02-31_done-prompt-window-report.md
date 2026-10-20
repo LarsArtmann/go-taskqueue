@@ -201,3 +201,27 @@ at HEAD is claimed/enqueued/completed/failed/requeued/cancelled/
 dead-lettered only. None recorded in this window; every claim-order
 shift observed was ADR-0015 aging + stored-priority mechanics, not a
 reprioritization event. No marker/AI/importance moves to account for.
+
+## Appendix — docs-health pass notes (02:31)
+
+- CHANGELOG [Unreleased]: minted the deferred sessions-lamp/`stats
+  --since` Added entry + the status done-guard Fixed entry (this pass;
+  closes the b2 partial).
+- TODO_LIST: 7 rows appended (4 tasks + 3 BLOCKED rulings); all five
+  closeout reports' own appends were already present — dedup held.
+- Report indexed in docs/status/README.md (top 2026-10-20 cluster);
+  `check-status-index.sh` ok, `check-todo-list.sh` ok.
+- Archive sweep SKIPPED this pass: 324 live index rows (bloat warning
+  firing since the threshold-100 convention), but a full ANNOTATE sweep
+  over the 2026-09/2026-10 corpus is a dedicated multi-hour pass, not a
+  window tail; no file in this window's blast radius was fully
+  resolved-and-unreferenced. The bloat is itself the strongest signal
+  for the digest/archive cadence row already in TODO_LIST's ecosystem.
+- Advisory noted in passing: TODO_LIST row "dlqfix sweeper
+  mint-refusal checkpoint hardening" carries a 2026-10-18 DONE
+  annotation but is unchecked — one of its two cited pin tests
+  (`TestSweeperMintRefusalHoldsCheckpoint`) verifies in
+  internal/dlqfix/sweep_test.go:995, the other
+  (`TestCursorRedeliversRejectedFactsOnRetrySweep`) was NOT found by
+  grep, so the tick was withheld pending verification.
+
