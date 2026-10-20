@@ -16,6 +16,7 @@ redesign SHIPPED v0.3.4; follow-ups tracked in the doc.
   # TRANSIENT_MAX_POLLS=0: NO retry (check-transient-retry pins);
   # nix/check-ci/daemon-attribution unwrapped.
 ./scripts/root-gate.sh # root verify gate; ONE retry on known-flaky signatures
+./scripts/lint-baseline.sh --check --clean-cache # opt-in stale-cache clean before a warm --check (regen ALWAYS cleans)
 nix build # nix run .#test; .#webui-css
 ./scripts/fuzz/nightly.sh
 ```

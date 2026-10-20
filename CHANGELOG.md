@@ -33,8 +33,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `card-sessions-lamp` tone when sessions are open (minified `app.css`
   rebuilt; webui smoke asserts the lamp + `1 open`; print pin in
   `cmd/tq/stats_session_test.go`).
+- **`/api/v1/healthz` projection section** (2026-10-20): when the read
+  model is mounted, the token-gated health endpoint reports a `projection`
+  section — cursor vs journal-head lag, durable-checkpoint state, and
+  per-engine health (`readmodel.Model.ProjectionHealth`, metaengine
+  `HealthSnapshot` overlaid on the engine roster); store-backed servers
+  keep the bare shape (pinned by `TestHealthzCarriesProjectionSection`).
 
 ### Changed
+- **Readmodel stats reads fold onto metaengine Delta counter
+  collections** (2026-10-20): `Model.Stats`/`StatusCounts`/`ProjectCounts`
+  read the `status_counts` + `project_status_counts` counters folding the
+  same fact stream as the tasks collection (wire-typed `OnRecordTyped`
+  folds); transitions carry from-status/project filled by an apply-time
+  prev-read so lease reclaims, dead rescues, and dismissals stay exact;
+  the GROUP-BY-pushdown read path is deleted; projections folded before
+  the counters existed replay once via a counter-version guard
+  (`797f3938` + `db241bc0`; parity lifecycle unchanged and green).
 - **2026-09-14 webui overhaul coverage entry**: the 22-workstream `tq serve`
   overhaul (swap-guard with focus/details grace, per-fragment state re-apply
   via `data-state-key`, server-side per-stream change detection, GET-filter
