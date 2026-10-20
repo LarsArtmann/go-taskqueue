@@ -434,8 +434,19 @@ func (s *Server) statusCounts(ctx context.Context) (map[task.Status]int, error) 
 	return readmodel.StatusCounts(ctx, s.model, s.store)
 }
 
+// handleHealth answers GET /api/v1/healthz. When a fold is mounted
+// (UseReadModel) the body carries the projection section — cursor lag
+// against the journal head, durable checkpoint state, engine health —
+// the live half of `tq doctor`'s projection section (ADR-0019 S3
+// observability). A store-backed server answers bare ok.
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	body := map[string]any{"status": "ok"}
+
+	if s.model != nil {
+		body["projection"] = s.model.ProjectionHealth(r.Context())
+	}
+
+	writeJSON(w, http.StatusOK, body)
 }
 
 // ListenAndServe starts the API on addr (e.g. "127.0.0.1:8091") until ctx

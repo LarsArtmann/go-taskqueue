@@ -1000,3 +1000,99 @@ func TestReportErrorContract(t *testing.T) {
 		t.Fatalf("invalid report journaled a fact: %d", len(facts))
 	}
 }
+
+// TestHealthzCarriesProjectionSection pins the /health projection section
+// (ADR-0019 S3 observability): with a mounted fold the body reports the
+// cursor, journal head, lag, durable checkpoint state, and engine health;
+// a store-backed server answers bare ok with no projection key.
+func TestHealthzCarriesProjectionSection(t *testing.T) {
+	t.Run("store-backed", func(t *testing.T) {
+		srv, _ := newTestAPI(t)
+
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
+		req.Header.Set("Authorization", "Bearer secret-token")
+
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("healthz = %d, want 200", rec.Code)
+		}
+
+		var body map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+
+		if _, ok := body["projection"]; ok {
+			t.Errorf("store-backed healthz carries a projection section: %v", body)
+		}
+	})
+
+	t.Run("mounted fold", func(t *testing.T) {
+		srv, store := newTestAPI(t)
+
+		if err := srv.UseReadModel(
+			context.Background(),
+			config.SQLite(filepath.Join(t.TempDir(), "projection.db")),
+		); err != nil {
+			t.Fatalf("use read model: %v", err)
+		}
+
+		t.Cleanup(func() { _ = srv.model.Close() })
+
+		enqueueTask(t, store, "billing")
+
+		if err := srv.model.CatchUp(context.Background()); err != nil {
+			t.Fatalf("catch up: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/healthz", nil)
+		req.Header.Set("Authorization", "Bearer secret-token")
+
+		rec := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rec, req)
+
+		var body struct {
+			Status     string `json:"status"`
+			Projection struct {
+				Cursor       int64  `json:"cursor"`
+				Head         int64  `json:"head"`
+				Lag          int64  `json:"lag"`
+				Checkpointed bool   `json:"checkpointed"`
+				Engines      []any  `json:"engines"`
+			} `json:"projection"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode body: %v", err)
+		}
+
+		if body.Status != "ok" {
+			t.Errorf("status = %q, want ok", body.Status)
+		}
+
+		head, err := store.HeadSeq(context.Background())
+		if err != nil {
+			t.Fatalf("head seq: %v", err)
+		}
+
+		if body.Projection.Cursor != head || body.Projection.Head != head {
+			t.Errorf("cursor/head = %d/%d, want %d (fold caught up)",
+				body.Projection.Cursor, body.Projection.Head, head)
+		}
+
+		if body.Projection.Lag != 0 {
+			t.Errorf("lag = %d, want 0", body.Projection.Lag)
+		}
+
+		// UseReadModel opens the model WithDurableCursor, so the
+		// checkpoint exists once a batch was applied.
+		if !body.Projection.Checkpointed {
+			t.Error("checkpointed = false, want the durable checkpoint")
+		}
+
+		if len(body.Projection.Engines) == 0 {
+			t.Error("engines empty, want the projection engine snapshot")
+		}
+	})
+}
