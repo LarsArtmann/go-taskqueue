@@ -49,7 +49,7 @@ EOF
 		echo "package main"
 		echo
 		for facade in "${FACADES[@]}"; do
-			echo "import \"_$facade\""
+			echo "import _ \"$facade\""
 		done
 		echo
 		echo "func main() {}"
@@ -94,7 +94,7 @@ if $self_test; then
 			echo "FAIL: $facade missing from the get list at $latest" >&2
 			exit 1
 		}
-		grep -qx "import \"_$facade\"" "$tmp/main.go" || {
+		grep -qx "import _ \"$facade\"" "$tmp/main.go" || {
 			echo "FAIL: main.go does not import $facade" >&2
 			exit 1
 		}
