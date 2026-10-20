@@ -11,17 +11,6 @@ import (
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
-// statuses is the closed status vocabulary the per-project rollup walks:
-// one pushed-down GROUP BY per status assembles the project×status matrix
-// without loading a single row.
-var statuses = []string{ //nolint:gochecknoglobals // closed vocabulary mirror of the task.Status enum
-	statusPending,
-	statusRunning,
-	statusCompleted,
-	statusDead,
-	statusCancelled,
-}
-
 // Stats reads the status counts and the per-project-per-status counts
 // from the Delta counter collections (upstream metaengine COOKBOOK §
 // Status Count Dashboard) — O(1) counter reads, zero rows loaded. The
@@ -159,25 +148,4 @@ func (m *Model) ProjectCounts(ctx context.Context) (map[string]map[string]int, e
 	_, counts, err := m.Stats(ctx, TaskFilter{})
 
 	return counts, err
-}
-
-// groupedInts runs one GROUP BY COUNT pushdown and converts the engine's
-// float64 values to the int counters the stats surfaces render.
-func groupedInts(
-	ctx context.Context,
-	reader *metaengine.TypedReader[TaskRow],
-	groupBy string,
-	opts []metaengine.ScanOption,
-) (map[string]int, error) {
-	groups, err := reader.GroupedCount(ctx, groupBy, opts...)
-	if err != nil {
-		return nil, err //nolint:wrapcheck // caller adds the count name
-	}
-
-	counts := make(map[string]int, len(groups))
-	for k, n := range groups {
-		counts[k] = int(n)
-	}
-
-	return counts, nil
 }
