@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Module scaffolder emits the Dependabot entry** (2026-10-20):
+  `scripts/new-module.sh` now appends the new module's
+  `.github/dependabot.yml` block at creation (refusing a duplicate
+  directory or a missing config) so gomod coverage parity is produced at
+  the source instead of relying on clerical cross-checks; a scratch-repo
+  smoke pins the emission and refusals, wired into ci-local's cheap
+  gates.
 - **Projection-home single-writer fold lock** (2026-10-20): every
   folding readmodel Open elects via a non-blocking flock on
   `<projection-home>.fold-lock`; a lost election mounts the model

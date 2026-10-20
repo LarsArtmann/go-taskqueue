@@ -23,12 +23,17 @@ pass() { echo "ok: $*"; }
 # The scaffolder cds to its own repo root, so the fixture gets a copy of
 # the script under scripts/ — the same relative layout as the real repo.
 new_repo() {
-	local r="$WORK/$1"
+local r="$WORK/$1"
 	mkdir -p "$r/scripts" "$r/.github"
 	cp "$TARGET" "$r/scripts/"
+	# the scaffolder reads the root go directive from the repo-root go.mod
+	printf 'module github.com/larsartmann/go-taskqueue\n\ngo 1.27.1\n' >"$r/go.mod"
 	git init -q "$r"
 	git -C "$r" config user.name smoke
 	git -C "$r" config user.email smoke@example.invalid
+	# host git config may force tag signing (editor launch — the heal
+	# self-test disables it for the same reason)
+	git -C "$r" config tag.gpgSign false
 	echo "$r"
 }
 
