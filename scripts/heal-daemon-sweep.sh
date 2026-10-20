@@ -22,7 +22,13 @@
 #     exits non-zero (recovery: read the printed fork records, or
 #     `git reset --soft refs/original/heal-daemon-sweep`).
 #   - prints old→new fork-record lines (sanctioned by check-dead-sha-refs)
-#     for pasting into the window's status report.
+#     for pasting into the window's status report;
+#   - post-heal citation check: sweeps the dead-sha gate's living-docs scope
+#     (docs/status, TODO_LIST.md, AGENTS.md) for lines still citing a
+#     REWRITTEN sha and prints each stale site with its paste-ready
+#     fork-record arrow, so the dangling-cite residue is cured in the
+#     healing window instead of a later one (2026-10-06 02-02 §e5: the
+#     99458a91 class waited for a second window).
 #
 #   - a commit footered with a DIFFERENT Task-Queue-ID inside the range is
 #     refused BY DESIGN (2026-10-13 01-54 §d2): even when that commit sits
@@ -81,6 +87,17 @@ footer_well_formed() {
 
 has_footer() {
 	printf '%s\n' "$1" | grep -q '^Task-Queue-ID: '
+}
+
+# token_arrow_escaped <tok> <text>: rc=0 iff the token IS a member of an
+# old→new fork-record pair on that line — the same escape semantics as
+# check-dead-sha-refs.sh, so a site the gate whitewashes is not reported
+# (and one it would count as cured is not double-flagged here).
+token_arrow_escaped() {
+	local tok=$1 text=$2
+	if grep -qE "(^|[^0-9a-f])${tok}(→|<-)[0-9a-f]{7,40}" <<<"$text"; then return 0; fi
+	if grep -qE "[0-9a-f]{7,40}(→|<-)${tok}([^0-9a-f]|$)" <<<"$text"; then return 0; fi
+	return 1
 }
 
 # resolve_base: default base ref, first existing of origin/master, @{upstream},
@@ -292,6 +309,44 @@ print_fork_records() {
 	done <<<"$olds" 3<<<"$news"
 }
 
+# check_citations base olds: post-heal residue sweep. A rewritten sha
+# dangles the moment the heal lands, and any doc line still citing it turns
+# check-dead-sha-refs red until the site carries the fork-record arrow.
+# Lines whose token is already a fork-record pair member (same per-token
+# semantics as the gate) are cured; preserved commits (old==new, still
+# reachable) are not residue. Informational only — the heal itself stays
+# rc=0; the printed arrow per site is the cure.
+check_citations() {
+	local base=$1 olds=$2
+	local top old new f hit line text tok hits=0
+	top=$(git rev-parse --show-toplevel)
+	local docs=()
+	for f in "$top"/docs/status/*.md "$top"/docs/status/tasks/*.md "$top"/TODO_LIST.md "$top"/AGENTS.md; do
+		[ -f "$f" ] && docs+=("$f")
+	done
+	[ "${#docs[@]}" -gt 0 ] || return 0
+	while IFS= read -r old && IFS= read -r new <&3; do
+		[ "$old" != "$new" ] || continue
+		for f in "${docs[@]}"; do
+			while IFS= read -r hit; do
+				line=${hit%%:*}
+				text=${hit#*:}
+				for tok in $(grep -oE '[0-9a-f]{7,40}' <<<"$text" | sort -u); do
+					[[ "$old" == "$tok"* ]] || continue
+					token_arrow_escaped "$tok" "$text" && continue
+					if [ "$hits" = 0 ]; then
+						echo "citation check: docs still cite rewritten sha(s) — paste the fork-record arrow onto each site:"
+					fi
+					hits=$((hits + 1))
+					echo "  ${f#"$top"/}:$line cites $tok — fork record: $tok→$new"
+				done
+			done < <(grep -nE "${old:0:7}" "$f" 2>/dev/null)
+		done
+	done <<<"$olds" 3<<<"$(git rev-list --reverse "$base..HEAD")"
+	[ "$hits" -gt 0 ] && echo "citation check: $hits stale site(s) — check-dead-sha-refs stays red until each carries the arrow"
+	return 0
+}
+
 main() {
 	local base_arg="" footer="" retitle="" base id
 	while [ $# -gt 0 ]; do
@@ -344,6 +399,7 @@ main() {
 
 	if verify_heal "$base" "$id" "$subj_old" "$stat_old"; then
 		print_fork_records "$base" "$shas_old"
+		check_citations "$base" "$shas_old"
 		git update-ref -d "$BACKUP_REF"
 		echo "HEAL OK — backup ref dropped"
 		return 0
@@ -404,6 +460,17 @@ self_test() {
 	git -C "$repo" commit -qm "chore: sweep two"
 	old2=$(git -C "$repo" rev-parse HEAD)
 
+	# Post-heal citation-check fixture (02-02 §e5): a committed docs file
+	# citing the pre-rewrite shas — line 1 bare (stale site to flag), line
+	# 2 a fork-record arrow pair (already cured, must stay unflagged).
+	mkdir -p "$repo/docs/status"
+	cat >"$repo/docs/status/cite.md" <<EOF
+the sweep landed in ${old1} (heal pending)
+fork playbook: ${old1}→${old2}
+EOF
+	git -C "$repo" add docs/status/cite.md
+	git -C "$repo" commit -qm "docs: cite the sweeps"
+
 	# Happy path: heal both sweeps. "$self" (NOT "$0"): the fixture subshell
 	# cds away, so a relative $0 resolves into the temp repo and dies with
 	# "No such file or directory" — the 2026-10-04 00-52 red (row 456).
@@ -432,6 +499,20 @@ self_test() {
 	else
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: shas did not move" >&2
+	fi
+
+	# Post-heal citation check (02-02 §e5): the bare cite is flagged with
+	# its paste-ready fork-record arrow; the arrowed line is cured and
+	# stays unflagged; the summary counts exactly the stale sites.
+	if grep -qF "docs/status/cite.md:1 cites ${old1}" "$tmp/out1" &&
+		grep -qF "fork record: ${old1}→${new1}" "$tmp/out1" &&
+		grep -qF "citation check: 1 stale site(s)" "$tmp/out1" &&
+		[ "$(grep -cF 'cite.md:' "$tmp/out1")" = 1 ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: post-heal citation check wrong" >&2
+		cat "$tmp/out1" >&2
 	fi
 
 	# Fork-record honesty pin (rows 69/455): the left side must be the TRUE
@@ -571,6 +652,14 @@ self_test() {
 	else
 		fail=$((fail + 1))
 		echo "SELF-TEST FAIL: session-scope heal fork record wrong" >&2
+		cat "$tmp/out_slug" >&2
+	fi
+
+	# Silence when nothing cites the rewritten shas: the slug heal rewrites
+	# a commit no doc cites, so no citation-check output may appear.
+	if grep -q 'citation check' "$tmp/out_slug"; then
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: citation check fired with no stale sites" >&2
 		cat "$tmp/out_slug" >&2
 	fi
 

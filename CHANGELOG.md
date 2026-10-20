@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Heal tool closes the dangling-cite loop** (2026-10-20): a successful
+  `scripts/heal-daemon-sweep.sh` heal now sweeps the dead-sha gate's
+  living-docs scope for lines still citing a rewritten sha and prints
+  each stale site with its paste-ready fork-record arrow (arrow-pair
+  members are recognized as already cured), so the residue is fixed in
+  the healing window instead of a later one; pinned in the self-test.
 - **Module scaffolder emits the Dependabot entry** (2026-10-20):
   `scripts/new-module.sh` now appends the new module's
   `.github/dependabot.yml` block at creation (refusing a duplicate
