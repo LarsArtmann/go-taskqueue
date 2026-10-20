@@ -69,8 +69,11 @@ var ProjectionHomeCallerPragmas = projectionHomeCallerPragmas()
 var ErrNoSource = errors.New("readmodel: nil journal source")
 
 // PathFor derives the projection database path beside a queue database:
-// one shared projection file per queue db (the sqliteengine opens it WAL
-// + busy_timeout, so serve/api/stats processes can share it).
+// one shared projection file per queue db. Sharing is REAL multi-process:
+// the sqliteengine opens the file WAL + busy_timeout, and the fold-lock
+// protocol (FoldLockPath) elects exactly ONE folder per home — a second
+// folding Open mounts read-only (store-backed reads, no fold, no
+// checkpoint) instead of double-folding the non-idempotent counters.
 func PathFor(dbPath string) string {
 	return dbPath + ".readmodel.db"
 }
@@ -102,6 +105,17 @@ type Model struct {
 	// — the safe shape for tests and short-lived models over a store
 	// whose watermark other models may own.
 	durable bool
+	// lock is the held fold lease for the projection home — the
+	// single-writer election this model won (nil on a read-only mount;
+	// see readOnly).
+	lock *FoldLock
+	// readOnly reports the model mounted WITHOUT the fold role: the
+	// fold-lock election was lost (another folder owns the home) or the
+	// caller forced WithReadOnly. Reads are served from the projection
+	// store as-is — no fold, no checkpoint — so the lock holder stays
+	// the one writer and the non-idempotent counter folds never
+	// double-count.
+	readOnly bool
 	watcher *metaengine.Watcher[TaskRow]
 }
 
@@ -138,6 +152,21 @@ func WithDurableCursor() Option {
 	return func(m *Model) { m.durable = true }
 }
 
+// WithReadOnly mounts the model WITHOUT the fold role: store-backed reads
+// only — no fold-lock acquisition, no fold, no checkpoint. The explicit
+// reader's option (tq doctor's projection check): unlike a lost fold-lock
+// election it never contends with a running folder and never logs.
+// Overrides WithFoldLock (a read-only mount never holds the lease).
+func WithReadOnly() Option {
+	return func(m *Model) { m.readOnly = true }
+}
+
+// WithFoldLock hands over a caller-acquired fold lease: the composition
+// runtime must elect BEFORE its projection-home converge and engine open
+// (the lease has to cover the home-mutating steps, not just the fold),
+// so it acquires through AcquireFoldLock and passes the lease here. The
+// model owns the lease from adoption on — Close releases it.
+
 // WithEngine adopts a caller-built engine instead of constructing one:
 // the composition root opens the projection-home engine ONCE and hands
 // it over (the single tq-owned constructor call per serve run). From
@@ -146,6 +175,10 @@ func WithDurableCursor() Option {
 // Close tears the connection down with the model.
 func WithEngine(eng metaengine.Engine) Option {
 	return func(m *Model) { m.eng = eng }
+}
+
+func WithFoldLock(lock *FoldLock) Option {
+	return func(m *Model) { m.lock = lock }
 }
 
 // Open creates the Model over its own sqlite database file (the projection
