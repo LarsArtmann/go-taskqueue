@@ -1,0 +1,27 @@
+# receipts for task 000001a156a33bbf182143ae24a800000000 (item 3: 14-02 open-items cross-check), 2026-10-20
+
+## mutation-verify of internal/readmodel/detailkeys_test.go (14-09 f1)
+
+scratch mutation: internal/queue/queue.go:418 json:"old_priority" -> json:"old_priority_renamed"
+
+--- FAIL: TestRepriDetailMirrorsQueueEvidence (0.00s)
+    detailkeys_test.go:41: repriDetail = {OldPriority:0 NewPriority:7 Source:ai Reason:rescored}, want {OldPriority:3 NewPriority:7 Source:ai Reason:rescored} (a queue-side tag renamed or drifted)
+FAIL
+FAIL	github.com/larsartmann/go-taskqueue/internal/readmodel	0.003s
+
+reverted byte-identical (git diff empty). With the mutation reverted:
+readmodel module tests: ok  github.com/larsartmann/go-taskqueue/internal/readmodel 0.219s (GOWORK=off, GOCACHE=/tmp/go-build-cache)
+
+## art-dupl config pin parity (item 2, 16-02 f10)
+
+art-dupl -c scripts/art-dupl.json internal/task internal/queue -> Detected 27 clone groups, 3 shown (15 non-actionable, 9 filtered suppressed) [art-dupl 0.9.0-93432fd]
+art-dupl --sort total-tokens -t 3 --type-aware internal/task internal/queue -> Detected 27 clone groups, 3 shown (15 non-actionable, 9 filtered suppressed) [art-dupl 0.9.0-93432fd]
+
+scripts/check-mirror-clones.sh (now reading -c scripts/art-dupl.json): mirror-clones: 0 cross-backend clone groups, rc=0
+
+## templ directive premise check (item 1, 16-02 f8)
+
+scratch dir /tmp/adtest, templ pair + directive inside HTML comment:
+  without directive: Found total 1 clone groups.
+  with <!-- // art-dupl:accept ... -->: Detected 1 clone groups, 0 shown (1 filtered suppressed).
+art-dupl 0.9.0-93432fd both runs.
