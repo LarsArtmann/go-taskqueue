@@ -81,6 +81,14 @@ publish_steps() {
 		"$verify_dir/bin/tq" version >/dev/null
 	)
 
+	step "tagged-facade consumer path (go get @tag + tidy + build — the canonical proof)"
+	# The literal `go install <facade>@<tag>` is impossible-by-design
+	# (facade go.mods carry relative dev replaces — toolchain refusal
+	# everywhere, 00-23 §b1), so the consumer path IS the facade proof:
+	# root + all seven ADR-0016 facades resolved from the proxy at
+	# $VERSION and compiled.
+	./scripts/check-consumer-tag.sh "$VERSION"
+
 	step "GitHub Release (pre-release: v0.x policy)"
 	command -v gh >/dev/null || die "gh CLI missing — create the release manually from /tmp/tq-release-notes.md"
 	gh release create "$VERSION" --title "$VERSION" --notes-file /tmp/tq-release-notes.md --prerelease

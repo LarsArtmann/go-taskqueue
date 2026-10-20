@@ -64,6 +64,12 @@ alone only resolves metadata and cannot catch a broken sub-module require;
 ADR-0017: this installs the cmd/tq MODULE, whose replace-free go.mod is
 exactly what makes the install work — the root go.mod keeps its dev-time
 replaces);
+then proves the tagged-facade consumer path
+(`scripts/check-consumer-tag.sh $VERSION`: a scratch module `go get`s the
+root + all seven ADR-0016 facades at the release tag, tidies, and builds an
+import of each — the literal facade install is impossible-by-design, facade
+go.mods carry relative dev replaces, so the consumer path IS the facade
+proof, 02-02 §f11 / 00-23 §b1);
 creates the GitHub Release (`--prerelease`, notes from the CHANGELOG
 section). Remaining manual step: confirm CI is green on `refs/tags/vX.Y.Z`.
 
