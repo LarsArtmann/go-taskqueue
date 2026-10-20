@@ -12,6 +12,12 @@
 # Then: cd <dir> && go mod tidy, add code, and re-run the module gates
 # (the disk-derived enumerations pick the module up automatically).
 # Refuses to overwrite an existing go.mod.
+#
+# Also appends the module's .github/dependabot.yml entry at creation —
+# parity at the source, pairing with the coverage guard: the config
+# drifted within one week of hand-creation (three missing modules, one
+# phantom; fixed 2026-10-06), so clerical parity is not trusted. Refuses
+# when an entry for the directory already exists or the config is gone.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -31,6 +37,16 @@ esac
 
 [ -f "$dir/go.mod" ] && {
 	echo "FAIL: $dir/go.mod already exists" >&2
+	exit 1
+}
+
+dep_file=.github/dependabot.yml
+[ -f "$dep_file" ] || {
+	echo "FAIL: $dep_file missing — cannot keep dependabot parity; restore it first" >&2
+	exit 1
+}
+grep -qF "directory: /$dir" "$dep_file" && {
+	echo "FAIL: $dep_file already covers /$dir — no duplicate entry" >&2
 	exit 1
 }
 
@@ -73,4 +89,21 @@ mkdir -p "$dir"
 	fi
 } >"$dir/go.mod"
 
-echo "scaffolded $dir/go.mod — now: cd $dir && go mod tidy, then run the module gates"
+# Dependabot entry, byte-identical in shape to the hand-maintained ones
+# (GitHub's parser rejects YAML anchors, so each module carries its own
+# block — keep this literal in lockstep with the file's existing rows).
+[ "$(tail -c1 "$dep_file" | wc -l)" = 1 ] || printf '\n' >>"$dep_file"
+{
+	echo "  - package-ecosystem: gomod"
+	echo "    directory: /$dir"
+	echo "    schedule:"
+	echo "      interval: weekly"
+	echo "    open-pull-requests-limit: 5"
+	echo "    groups:"
+	echo "      minor-and-patch:"
+	echo "        update-types:"
+	echo "          - minor"
+	echo "          - patch"
+} >>"$dep_file"
+
+echo "scaffolded $dir/go.mod (+ $dep_file entry) — now: cd $dir && go mod tidy, then run the module gates"

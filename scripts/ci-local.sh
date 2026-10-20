@@ -224,6 +224,9 @@ step "out-of-tree consumer install (proxy @latest; HARD gate in CI consumer job)
 step "release proxy-wait loop offline test (both die branches)"
 ./scripts/smoke/proxy-wait.sh
 
+step "new-module scaffold smoke (go.mod + dependabot parity at the source)"
+./scripts/smoke/new-module.sh
+
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
 
