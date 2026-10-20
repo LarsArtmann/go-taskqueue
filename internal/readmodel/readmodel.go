@@ -71,5 +71,16 @@ type TaskFilter struct {
 	Project *string
 }
 
+// TaskPage bounds and continues a TasksPage read: Limit is the page size
+// (<= 0 takes DefaultTaskPageSize), Cursor the opaque continuation from
+// the previous page's next-cursor ("" = first page). The cursor is the
+// HTTP-safe base64 encoding metaengine's Cursor.Encode mints — pass it
+// back exactly as received; a malformed cursor fails the read instead of
+// silently restarting pagination.
+type TaskPage struct {
+	Limit  int
+	Cursor string
+}
+
 // StringPtr is a small helper for building a TaskFilter inline.
 func StringPtr(s string) *string { return new(s) }

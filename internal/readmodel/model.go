@@ -39,6 +39,10 @@ const (
 	// open. One key per queue db — the projection file is PathFor-derived,
 	// so one store has exactly one durable projection.
 	CursorConsumer = "readmodel"
+	// DefaultTaskPageSize is the TasksPage size when the caller passes
+	// no limit: the row-rich fragment page, sized to render in one pass
+	// while the cursor keeps deeper pages one read away.
+	DefaultTaskPageSize = 200
 )
 
 // ProjectionHomeCallerPragmas is the caller-pragma union the
@@ -527,16 +531,17 @@ func (m *Model) transitionContext(ctx context.Context, id string) (FromStatus, F
 }
 
 // Tasks reads the ledger under the filter, newest creation first — the
-// planned-table pushdown scan. Filters ride the documented TypedReader
-// surface (conditional WithFilter options): the query-input dispatch
-// (Store.ExecuteCtx) cannot express optional filters — a nil *string input
-// field binds as a typed-nil interface and lands in SQL as `= NULL`
-// (metaengine v4.14.0, extractValueByName), so every read here goes
-// through the reader.
+// planned-table pushdown scan. UNBOUNDED on purpose: the export path that
+// genuinely wants every row. Row-rich views page through TasksPage
+// instead. Filters ride the documented TypedReader surface (conditional
+// WithFilter options): the query-input dispatch (Store.ExecuteCtx) cannot
+// express optional filters — a nil *string input field binds as a
+// typed-nil interface and lands in SQL as `= NULL` (metaengine v4.14.0,
+// extractValueByName), so every read here goes through the reader.
 func (m *Model) Tasks(ctx context.Context, filter TaskFilter) ([]TaskRow, error) {
 	opts := []metaengine.ScanOption{
 		metaengine.WithSort("created_at", true),
-		metaengine.WithLimit(0), // unbounded: the caller paginates
+		metaengine.WithLimit(0), // unbounded: the export path
 	}
 
 	if filter.Status != nil {
@@ -553,6 +558,62 @@ func (m *Model) Tasks(ctx context.Context, filter TaskFilter) ([]TaskRow, error)
 	}
 
 	return rows, nil
+}
+
+// TasksPage reads one page of the ledger under the filter, newest
+// creation first, through the TypedReader keyset cursor round-trip
+// (metaengine ScanPage + WithCursor, the upstream COOKBOOK §Cursor
+// Pagination shape): each read returns the rows plus the HTTP-safe
+// encoded continuation cursor (empty = last page). The sqlite engine's
+// compound sort-key cursor keeps the created_at ties (unix-milli
+// timestamps collide constantly) drop- and duplicate-free across pages.
+// Row-rich views — the board/table fragments — read through this; Tasks
+// stays the unbounded export path.
+func (m *Model) TasksPage(ctx context.Context, filter TaskFilter, page TaskPage) ([]TaskRow, string, error) {
+	limit := page.Limit
+	if limit <= 0 {
+		limit = DefaultTaskPageSize
+	}
+
+	opts := []metaengine.ScanOption{
+		metaengine.WithSort("created_at", true),
+		metaengine.WithLimit(limit),
+	}
+
+	if filter.Status != nil {
+		opts = append(opts, metaengine.WithFilter("status", metaengine.FilterEq, *filter.Status))
+	}
+
+	if filter.Project != nil {
+		opts = append(opts, metaengine.WithFilter("project", metaengine.FilterEq, *filter.Project))
+	}
+
+	// Parse the encoded cursor HERE instead of passing the string to
+	// WithCursorString: that option swallows malformed cursors and
+	// silently restarts pagination from the first page — a read must
+	// fail loudly instead of handing back a lying page.
+	if page.Cursor != "" {
+		cursor, err := metaengine.ParseCursor(page.Cursor)
+		if err != nil {
+			return nil, "", fmt.Errorf("readmodel: task page cursor: %w", err)
+		}
+
+		opts = append(opts, metaengine.WithCursor(cursor))
+	}
+
+	rows, next, err := metaengine.NewReader[TaskRow](m.store, tasksCollection).ScanPage(ctx, opts...)
+	if err != nil {
+		return nil, "", fmt.Errorf("readmodel: task page scan: %w", err)
+	}
+
+	encoded := ""
+	if next != nil {
+		if encoded, err = next.Encode(); err != nil {
+			return nil, "", fmt.Errorf("readmodel: encode task page cursor: %w", err)
+		}
+	}
+
+	return rows, encoded, nil
 }
 
 // Watch subscribes to live ledger changes: every fold update arrives as

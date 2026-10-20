@@ -2,8 +2,10 @@ package composition
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	sqliteengine "github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4"
 	"github.com/larsartmann/go-taskqueue/internal/config"
@@ -23,37 +25,80 @@ type ProjectionRuntime struct {
 	dlq *readmodel.DeadLetters
 }
 
+// projectionFoldLockWait bounds the runtime's fold-lock wait at startup:
+// long enough to ride out a transient holder (a stats/doctor catchup is
+// sub-second, a delete-file replay a few more), short enough that a
+// genuinely owned home demotes serve to a reader without hanging it.
+const projectionFoldLockWait = 5 * time.Second
+
 // NewProjectionRuntime composes the projection runtime for one
 // deployment's projection home (derived beside cfg.DBPath) over the
-// queue journal (src): open the ONE tq-owned engine for the projection
-// home (the deployment's resolved pragma union — the single-opener
-// seam, the composition root is the only tq constructor call site),
-// open the model over it with a durable cursor, best-effort the DLQ
-// sidecar beside it, and build the managed host wired with the
-// sidecar. Starting stays the caller's job (Host.Start) so the
-// runactor actor keeps its own lifecycle; on a build error nothing is
-// left open.
+// queue journal (src): elect the single folder through the projection
+// home's fold lock (a bounded wait rides out transient holders; a lost
+// election mounts the runtime READ-ONLY — model without host), then for
+// the folder: open the ONE tq-owned engine for the projection home (the
+// deployment's resolved pragma union — the single-opener seam, the
+// composition root is the only tq constructor call site), open the model
+// over it with a durable cursor, best-effort the DLQ sidecar beside it,
+// and build the managed host wired with the sidecar. Starting stays the
+// caller's job (Host.Start) so the runactor actor keeps its own
+// lifecycle; on a build error nothing is left open.
 func NewProjectionRuntime(ctx context.Context, src queue.Store, cfg config.Deployment) (*ProjectionRuntime, error) {
 	modelPath := readmodel.PathFor(cfg.DBPath)
 
-	if err := readmodel.ConvergeProjectionHome(ctx, modelPath); err != nil {
-		return nil, fmt.Errorf("composition: converge projection home: %w", err)
+	lock, err := readmodel.AcquireFoldLock(modelPath, projectionFoldLockWait)
+	if err != nil && !errors.Is(err, readmodel.ErrFoldLocked) {
+		return nil, fmt.Errorf("composition: acquire fold lock: %w", err)
+	}
+
+	folder := err == nil
+
+	if folder {
+		if err := readmodel.ConvergeProjectionHome(ctx, modelPath); err != nil {
+			_ = lock.Release()
+
+			return nil, fmt.Errorf("composition: converge projection home: %w", err)
+		}
+	} else {
+		slog.Warn(
+			"composition: projection fold lock held by another folder — mounting the runtime read-only (no fold, no host)",
+			"home", modelPath,
+			"lock", readmodel.FoldLockPath(modelPath),
+		)
 	}
 
 	eng, err := sqliteengine.NewSQLiteEngineFromDSN(modelPath, cfg.ProjectionPragmas()...)
 	if err != nil {
+		_ = lock.Release()
+
 		return nil, fmt.Errorf("composition: open projection-home engine: %w", err)
 	}
 
-	m, err := readmodel.Open(ctx, modelPath, src,
-		readmodel.WithDurableCursor(), readmodel.WithEngine(eng))
+	opts := []readmodel.Option{readmodel.WithDurableCursor(), readmodel.WithEngine(eng)}
+	if folder {
+		opts = append(opts, readmodel.WithFoldLock(lock))
+	} else {
+		opts = append(opts, readmodel.WithReadOnly())
+	}
+
+	m, err := readmodel.Open(ctx, modelPath, src, opts...)
 	if err != nil {
 		_ = eng.Close()
+		_ = lock.Release()
 
 		return nil, fmt.Errorf("composition: open read model: %w", err)
 	}
 
 	runtime := &ProjectionRuntime{Model: m}
+
+	if !folder {
+		// Read-only mount: the lock holder folds into the same home and
+		// this runtime serves its reads — no host (a read-only model
+		// cannot fold, so a pump here would only re-checkpoint the
+		// shared watermark) and no DLQ sidecar (poison routing belongs
+		// to the folder).
+		return runtime, nil
+	}
 
 	cleanup := func() { _ = m.Close() }
 	defer func() {
