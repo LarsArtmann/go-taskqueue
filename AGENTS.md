@@ -187,6 +187,9 @@ docs/DOMAIN_LANGUAGE.md.
   ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh <id>`;
   battery rc TO A FILE (no PIPESTATUS); dated DONE re-verified note;
   `-v` + PASS COUNT for conform `-run`.
+- **Gate receipts**: a report's "N ok / M fail" count is
+  `grep -c '^ok:'` over a CAPTURED gate-output file — never counted in
+  context, never taken from a summary line (17-vs-16 class).
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches); indexed on creation (`check-status-index.sh`; daemon
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE

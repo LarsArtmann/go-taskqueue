@@ -73,7 +73,13 @@ import (
 // single-writer election (the `.fold-lock` flock every folding readmodel
 // Open must win; read-only loser mount; never-unlinked sidecar) is
 // net-new load-bearing store invariant.
-const agentsDocMaxBytes = 20_900
+// 2026-10-20 conscious reset 20,900 → 21,100: the canonical gate-receipt
+// rule (a report's "N ok / M fail" is grep -c '^ok:' over a captured
+// gate-output file, never a context or summary-line count) is net-new
+// load-bearing convention. This reset also re-syncs the
+// scripts/check-agents-size.sh twin, which had lagged at its 2026-10-12
+// 20,000 budget and sat 839 B red at HEAD.
+const agentsDocMaxBytes = 21_100
 
 // TestAgentsDocSizeGuard keeps AGENTS.md from silently growing past its
 // byte budget (plan M89 residue); the failure names the top sections so a
