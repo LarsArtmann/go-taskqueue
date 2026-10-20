@@ -723,6 +723,50 @@ func TestUseReadModelArmsManagedHost(t *testing.T) {
 	}
 }
 
+// TestUseReadModelYieldsToLockHolder pins the api surface's read-only
+// mount: when another process owns the projection home's fold lock
+// (serve runs), UseReadModel mounts a pure reader — no pump host, no DLQ
+// sidecar — while GET /api/v1/stats keeps answering from the projection
+// the lock holder converges.
+func TestUseReadModelYieldsToLockHolder(t *testing.T) {
+	srv, _ := newTestAPI(t)
+
+	d := config.SQLite(filepath.Join(t.TempDir(), "queue.db"))
+
+	lock, err := readmodel.AcquireFoldLock(readmodel.PathFor(d.DBPath), 0)
+	if err != nil {
+		t.Fatalf("hold the fold lock: %v", err)
+	}
+
+	t.Cleanup(func() { _ = lock.Release() })
+
+	if err := srv.UseReadModel(context.Background(), d); err != nil {
+		t.Fatalf("use read model: %v", err)
+	}
+
+	if srv.host != nil {
+		t.Fatal("read-only mount armed a pump host — a reader cannot fold")
+	}
+
+	if srv.dlq != nil {
+		t.Fatal("read-only mount opened a DLQ sidecar — poison routing belongs to the folder")
+	}
+
+	if srv.model == nil || !srv.model.ReadOnly() {
+		t.Fatal("UseReadModel did not mount the model read-only under the held lock")
+	}
+
+	stats := authorizedStats(t, srv.Handler())
+	if stats == nil {
+		t.Fatal("stats endpoint did not answer under the read-only mount")
+	}
+
+	// The sidecar must not exist: the reader never opened one.
+	if _, err := os.Stat(readmodel.DLQPathFor(readmodel.PathFor(d.DBPath))); !os.IsNotExist(err) {
+		t.Fatalf("dlq sidecar exists under the read-only mount: %v", err)
+	}
+}
+
 // apiPoison refuses every event with the fold's corruption
 // classification (non-retryable): a deterministic poison fact for the
 // api surface's DLQ wire pin.
