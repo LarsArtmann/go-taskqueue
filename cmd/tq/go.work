@@ -9,7 +9,7 @@
 //
 // Keep this file in sync with the root go.mod replace set — the devmod
 // shim (scripts/lib/cmd-tq-devmod.sh cmdtq_devwork) derives the same set.
-go 1.27.1
+go 1.27.2
 
 use (
 	.

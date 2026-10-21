@@ -26,8 +26,8 @@
     # makes Nix 2.34's flake loader treat outputs as a thunk ("expected a
     # function but got a thunk").
     let
-      goToolchainVersion = "1.27.1";
-      goToolchainHash = "sha256-TkCKuuEm2Ra2FkYnGT8sVPDjyhMS1pO4bbRfhiqyOLE=";
+      goToolchainVersion = "1.27.2";
+      goToolchainHash = "sha256-A0ldorpkiU1A9cSZLklFT6eLUGkGBP+Stq//UIG3bmI=";
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ inputs.go-nix-helpers.flakeModules.go-standard ];
@@ -46,7 +46,7 @@
         # from THIS attr (single source; check-version-agreement.sh verifies
         # the set against CHANGELOG).
         version = "0.3.4";
-        vendorHash = "sha256-rYQJIQB+4xKX/sh6DVjcSbmzx9ZsnDz0ad5Eznk3vhU=";
+        vendorHash = "sha256-2zqvcUaJ/zIH/isbAqVGsqny9vv4UIiJXFt3LjimL8Y=";
         # go.mod floor 1.27.1 > nixpkgs go_1_26 (1.26.7); build the
         # toolchain from the go.dev source tarball until nixpkgs ships
         # >= 1.27.1 (drop-day doctrine — delete this block then).
