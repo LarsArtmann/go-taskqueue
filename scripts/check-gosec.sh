@@ -345,25 +345,27 @@ if [ -z "$modules" ]; then
 	echo "FAIL: module enumeration returned 0 module targets (silent skip one level up — the gate would narrow to the root scan only; fix $enum_cmd)"
 	exit 1
 fi
-# Canary members: the 0-target guard cannot see a MISSING member, so pin
-# the five core sub-modules. A rename or removal of any of them must
-# consciously update this list instead of silently narrowing the gate to
-# the surviving modules (which would still scan and exit 0).
-canary_modules=(
-	internal/task
-	internal/journal
-	internal/queue
-	internal/executor
-	internal/worker
-)
+# Canary members: single-sourced from the enumerator's --canaries export
+# (scripts/for-each-module.sh) — the list lives in exactly ONE place; a
+# rename or removal must consciously update it THERE, or the parity gap
+# surfaces here as a hard failure instead of silently narrowing the gate
+# to the surviving modules (which would still scan and exit 0).
+canary_modules="$(./scripts/for-each-module.sh --canaries)" || {
+	echo "FAIL: canary list derivation exited non-zero (./scripts/for-each-module.sh --canaries)"
+	exit 1
+}
+if [ -z "$canary_modules" ]; then
+	echo "FAIL: canary list derivation returned 0 canaries — an empty canary set makes the short-enumeration guard a no-op (fix scripts/for-each-module.sh)"
+	exit 1
+fi
 missing_canaries=""
-for canary in "${canary_modules[@]}"; do
+for canary in $canary_modules; do
 	if ! grep -qxF -- "$canary" <<<"$modules"; then
 		missing_canaries+=" $canary"
 	fi
 done
 if [ -n "$missing_canaries" ]; then
-	echo "FAIL: module enumeration is missing canary module(s):$missing_canaries — a short enumeration silently narrows the gate to the survivors (renamed or removed sub-module? update the canary list in $self_abs consciously; enumerator: $enum_cmd)"
+	echo "FAIL: module enumeration is missing canary module(s):$missing_canaries — a short enumeration silently narrows the gate to the survivors (renamed or removed sub-module? update the canary list in scripts/for-each-module.sh consciously; enumerator: $enum_cmd)"
 	exit 1
 fi
 echo "== (root) ./..."

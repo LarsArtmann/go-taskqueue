@@ -10,20 +10,29 @@
 # never triggers errexit), so a broken or empty enumeration must fail here
 # instead of exiting 0 — consumers that capture the list under errexit
 # inherit both guards for free.
-#
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
 # Canary members (parity with check-gosec.sh): the 0-target guard cannot
 # see a MISSING member, so pin the five core sub-modules. A rename or
 # removal of any of them must consciously update this list — every
 # per-module CI consumer (ci-local.sh, ci.yml, check-gosec.sh) inherits
 # the assertion from here.
-set -euo pipefail
-cd "$(dirname "$0")/.."
+canaries="internal/task internal/journal internal/queue internal/executor internal/worker"
+
+# --canaries: single-source export of the pinned canary list. Consumers
+# (check-gosec.sh) derive their copy from HERE instead of keeping a
+# second literal that can drift — this is the ONE place the list lives.
+if [ "${1:-}" = "--canaries" ]; then
+	printf '%s\n' $canaries
+	exit 0
+fi
+
 mods="$(find internal task journal queue executor worker -name go.mod | sed 's|/go.mod$||' | sort)"
 if [ -z "$mods" ]; then
 	echo "FAIL: module enumeration returned 0 module targets (silent skip: every per-module gate would narrow to zero iterations; check repo layout / CWD)" >&2
 	exit 1
 fi
-canaries="internal/task internal/journal internal/queue internal/executor internal/worker"
 missing=""
 for canary in $canaries; do
 	if ! grep -qxF -- "$canary" <<<"$mods"; then
