@@ -34,6 +34,8 @@ FACADES=("$MODULE/task" "$MODULE/journal" "$MODULE/queue"
 # --self-test pins the exact shipped generation offline.
 write_consumer_spec() {
 	local dir="$1" ver="$2"
+	# pins: in-the-clear-consumer-branch — scratch go.mod pins the exact
+	# tagged version of root + every facade (no replace, no workspace)
 	cat >"$dir/go.mod" <<EOF
 module tq-consumer-tag
 

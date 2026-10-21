@@ -23,6 +23,8 @@ trap 'rm -rf "$verify_dir"' EXIT
 	cd "$verify_dir"
 	export GOWORK=off
 	export GOTOOLCHAIN=auto
+	# pins: clean-room-branch — a fresh consumer built from nothing against
+	# the tagged release (no vendor, no replace, no go.work)
 	cat >main.go <<EOF
 package main
 

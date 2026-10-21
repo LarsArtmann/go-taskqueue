@@ -108,18 +108,23 @@ if [ "${1:-}" = "--self-test" ]; then
 	other=$(git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree 'HEAD^{tree}' -p HEAD -m dangling2)
 	new=$(git -C "$tmp" rev-parse HEAD)
 
+	# pins: baselined-doc-branch — fork-playbook line counts as baseline hit 1, rc=0
 	cat >"$tmp/AGENTS.md" <<EOF
 fork playbook: history rewrote ${old}→${new}
 EOF
+	# pins: baselined-verbose-branch — backlog citation is baseline hit 2; printed only under TQ_DEAD_SHA_VERBOSE
 	cat >"$tmp/TODO_LIST.md" <<EOF
 legacy citation survives in the backlog: ${old}
 EOF
+	# pins: new-dead-sha-branch — non-baselined citation must rc=1 with exact file:line (also the --emit-baseline token source)
 	cat >"$tmp/docs/status/report.md" <<EOF
 cites ${old} for context (rewrite casualty)
 EOF
+	# pins: line-level-arrow-branch — dead token sharing a line with an unrelated arrow must still rc=1 (no whitewash)
 	cat >"$tmp/docs/status/mixed.md" <<EOF
 unrelated arrow on the line: ${old} plus a playbook ${other}→${new}
 EOF
+	# pins: arrow-pair-branch — proper old→new fork-record pair is exempt, rc=0
 	cat >"$tmp/docs/status/paired.md" <<EOF
 proper pair: ${old}→${new}
 EOF
