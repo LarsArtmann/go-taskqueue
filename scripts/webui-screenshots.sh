@@ -22,6 +22,8 @@ fi
 
 if [ -z "$BROWSER" ]; then
 	echo "error: no chromium-family browser found (set CHROME_BIN); screenshots need a real renderer" >&2
+	echo "  fix (reproducible recipe, 2026-09-16 instrument-shot spike §a8): nix build nixpkgs#chromium -o /tmp/chromium-shot && CHROME_BIN=/tmp/chromium-shot/bin/chromium $0" >&2
+	echo "  ruling (2026-10-21 batch): this harness deliberately lives OUTSIDE scripts/smoke/ — smoke scripts are CI-safe, this one needs a browser; chromedp assertions stay the webui-health TODO row's scope" >&2
 	exit 1
 fi
 
