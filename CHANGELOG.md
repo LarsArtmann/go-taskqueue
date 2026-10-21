@@ -50,6 +50,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   verdict — the CV df4c314 class: eleven paid re-dispatches for a row
   closed at dispatch one). `--force-redispatch` bypasses with the rest
   of the mint gate.
+- **Accepted-dupe-group ledger + dupe growth gate** (2026-10-20):
+  `docs/dupe-type-accepted-ledger.md` records all 10 accepted duplicate
+  groups with per-row rationale and file:line anchors, and
+  `scripts/dupe-baseline.sh` (regen / `--check`, seeded with the 9
+  actionable GroupKeys from a fresh `branching-flow dupe` run) fails
+  ci-local on any NEW actionable group — growth-gate semantics mirroring
+  lint-baseline (shrink is advisory only, availability-guarded skip when
+  the binary is absent).
 - **Cost-denominated daily budget cap** (2026-10-11, ADR-0023): the agent
   pool's claim-time budget gate can now cap on real derived spend instead
   of run count — `--daily-cost-cap USD` (budget `Guard.DailyCostCapUSD`)
@@ -72,6 +80,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   keep the bare shape (pinned by `TestHealthzCarriesProjectionSection`).
 
 ### Changed
+- **lint-baseline cache staleness fixed at the source** (2026-10-20):
+  `scripts/lint-baseline.sh` regen mode now ALWAYS runs
+  `golangci-lint cache clean` (a stale cache can never seed a new
+  baseline again), and `--check` gains an opt-in `--clean-cache` flag
+  for the same guarantee on warm verification runs — both following two
+  cited stale-cache false-OK incidents.
 - **Readmodel stats reads fold onto metaengine Delta counter
   collections** (2026-10-20): `Model.Stats`/`StatusCounts`/`ProjectCounts`
   read the `status_counts` + `project_status_counts` counters folding the
@@ -102,6 +116,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ADR-0003 document the ruling (2026-10-05, surfaced during G1).
 
 ### Fixed
+- **AnswerPoller bound drains oldest-first** (2026-10-20): the
+  MaxAnswersPerPoll take-max applied newest-first while the cursor
+  skipped everything older, so a bound-truncated poll silently dropped
+  the remainder of a mass-answer session (the old pin encoded a contract
+  no time-cursor poller can satisfy and sat red for four days); pages
+  now apply oldest-first so everything applied sits at-or-below the
+  returned cursor and the remainder stays strictly ahead of it —
+  lossless drain, no duplicates (`internal/bridge/papdashboard/answers.go`).
 - **Status done-guard reachable on watermark-rewind replays** (2026-10-20):
   the review window's recency cutoff filtered out a replayed trigger
   completion (its `UpdatedAt` predates its own report's `CreatedAt`),
