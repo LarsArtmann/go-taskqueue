@@ -232,6 +232,7 @@ must_not_mention "non-signature case" 'FLAKE-RETRY'
 # must all appear in verify.sh's own output.
 shim_bin="$tmp/shim-bin"
 mkdir -p "$shim_bin"
+# pins: retry-once-branch — first red run then stamp-file green; rc=0 + retry notice + FLAKE-RETRY line in verify.sh output
 cat >"$shim_bin/go" <<'EOF'
 #!/usr/bin/env bash
 stamp="${GO_SHIM_STAMP:-}"
@@ -265,6 +266,7 @@ red_bin="$tmp/red-bin"
 mkdir -p "$red_bin"
 red_count="$tmp/go-invocations"
 : >"$red_count"
+# pins: hard-red-branch — persistently failing go must rc=1 with NO retry lines (red is not flake)
 cat >"$red_bin/go" <<EOF
 #!/usr/bin/env bash
 printf '%s\n' 'FAIL: undefined: atomic.Lane' >&2
@@ -298,6 +300,7 @@ test_bin="$tmp/test-bin"
 mkdir -p "$test_bin"
 test_count="$tmp/go-test-invocations"
 : >"$test_count"
+# pins: flaky-test-branch — go test FAIL retried once per the KNOWN_FLAKY signature, rc=0 on second pass
 cat >"$test_bin/go" <<EOF
 #!/usr/bin/env bash
 if [ "\$1" = "test" ]; then

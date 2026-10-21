@@ -3,7 +3,8 @@
 # strike on the mis-aimed-negative-fixture class): every fixture heredoc
 # in a scripts/check-*.sh gate must carry a grep-able `pins:` attribution
 # naming WHICH branch the fixture pins — on the `cat >` line, inside the
-# heredoc block, or on the line immediately above it. Without the
+# heredoc block, or in the comment lines immediately above it (up to two,
+# contiguous). Without the
 # attribution a negative fixture can drift aim (edit the fixture, keep
 # the rc!=0 assertion) and the gate stays green while pinning nothing.
 #
@@ -13,14 +14,13 @@
 #
 # Contract: `cat > ... <<TAG` blocks (all quote shapes, <<- included)
 # inside scripts/check-*.sh must contain `pins:` in the block, on the
-# cat line, or the preceding line. This script's own file is exempt
+# cat line, or in the contiguous comment lines immediately above. This script's own file is exempt
 # (its --self-test fixtures carry the marker, proving the rule bites).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 self="$(basename "$0")"
 
 violations=0
-blocks=0
 
 check_file() {
 	local file=$1
@@ -54,6 +54,7 @@ check_file() {
 							found = 0
 							if (line ~ /pins:/) found = 1
 							if (i > 1 && lines[i - 1] ~ /pins:/) found = 1
+							if (i > 2 && lines[i - 2] ~ /pins:/ && lines[i - 1] ~ /^[[:space:]]*#/) found = 1
 						}
 					}
 				} else {
@@ -107,6 +108,8 @@ cat >"$tmp/f2" <<EOF
 inline pins: stub-branch
 EOF
 # pins: above-line attribution — pinned-branch
+# pins: two-above attribution — multi-line-branch
+# (comment block directly above the fixture write)
 cat >"$tmp/f3" <<'F3'
 data
 F3
@@ -117,11 +120,10 @@ cat >"$tmp/g1" <<'EOF'
 echo no attribution here
 EOF
 SCRIPT
-	grc=0
-	out="$(check_file "$good")" || grc=$?
+	out="$(check_file "$good")"
 	gv="$(printf '%s\n' "$out" | tail -1 | cut -d' ' -f1)"
 	[ "$gv" = 0 ] || { echo "FAIL: self-test good fixture reported $gv violations (expected 0)"; exit 1; }
-	echo "ok: self-test good fixture passes (3 attribution shapes)"
+	echo "ok: self-test good fixture passes (4 attribution shapes)"
 	out="$(check_file "$bad")"
 	bv="$(printf '%s\n' "$out" | tail -1 | cut -d' ' -f1)"
 	if [ "$bv" != 1 ]; then
@@ -133,7 +135,7 @@ SCRIPT
 		exit 1
 	fi
 	echo "ok: self-test bad fixture trips exactly one UNATTRIBUTED FIXTURE"
-	echo "fixture-attribution self-test ok (block/inline/above-line attribution pinned, missing-marker negative pinned)"
+	echo "fixture-attribution self-test ok (block/inline/above-line/two-line-above attribution pinned, missing-marker negative pinned)"
 	exit 0
 fi
 

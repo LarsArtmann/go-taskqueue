@@ -50,6 +50,7 @@ trap 'rm -rf "$tmp"' EXIT
 git init -q "$tmp/repo"
 mkdir -p "$tmp/repo/scripts" "$tmp/repo/docs/status"
 cp "$script" "$tmp/repo/scripts/session-start.sh"
+# pins: red-master-branch — session-start must report red AND still rc=0
 cat >"$tmp/repo/scripts/check-ci.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "mock: master CI is RED"
@@ -95,6 +96,7 @@ echo "ok: tq probe guarded by command -v"
 # tq — no host queue binary or TQ_DB can be contacted).
 fixid="00000000feedface0000000000000042"
 report="$tmp/repo/docs/status/2026-09-30_10-00_task-$fixid.md"
+# pins: args-branch-unknown-id-branch — fixture report/verdict/DONE-row greps and tolerated unknown id (tq absent)
 cat >"$report" <<EOF
 # Task $fixid — args-branch fixture
 

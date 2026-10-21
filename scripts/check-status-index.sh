@@ -47,6 +47,7 @@ count_live_rows() {
 if [ "${1:-}" = "--self-test" ]; then
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
+	# pins: counter-branch — live/archived/backtick/digest/malformed row shapes must each count exactly
 	cat >"$tmp/index.md" <<'EOF'
 | DATE | REPORT | NOTES |
 |---|---|---|

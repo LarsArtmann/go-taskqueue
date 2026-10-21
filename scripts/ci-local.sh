@@ -230,6 +230,10 @@ step "new-module scaffold smoke (go.mod + dependabot parity at the source)"
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
 
+step "fixture-attribution meta-gate (every check-* fixture heredoc names its pinned branch)"
+./scripts/check-fixture-attribution.sh --self-test
+./scripts/check-fixture-attribution.sh
+
 step "flag-count guard (per-command registration pin; growth is conscious)"
 ./scripts/check-flag-count.sh
 

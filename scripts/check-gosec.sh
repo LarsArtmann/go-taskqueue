@@ -53,6 +53,8 @@ GOSEC_EXCLUDES="-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,
 # are hardcoded, and both stay correct under any pin).
 stub_write() {
 	local path="$1" version="$2" files="$3" issues="$4"
+	# pins: gosec-stub branches — stamp (pin-ok), stale stamp (mismatch),
+	# dev stamp (WARN), Files and Issues counters selected by args below
 	cat >"$path" <<EOF
 #!/bin/sh
 if [ "\$1" = "-version" ]; then
@@ -121,11 +123,13 @@ self_test() {
 	emptyenum="$tmp/enum-empty"
 	failenum="$tmp/enum-fail"
 	shortenum="$tmp/enum-short"
+	# pins: empty-enumeration-branch — 0 module targets must hard-fail before any scan
 	cat >"$emptyenum" <<'EOF'
 #!/bin/sh
 exit 0
 EOF
 	chmod +x "$emptyenum"
+	# pins: broken-enumeration-branch — non-zero enumerator exit must hard-fail before any scan
 	cat >"$failenum" <<'EOF'
 #!/bin/sh
 echo "find: internal: No such file or directory" >&2
@@ -135,6 +139,7 @@ EOF
 	# Non-zero-but-short: a renamed sub-module dropping out of the
 	# enumeration leaves survivors behind — the shape both the 0-target
 	# guard and the per-scan Files>0 guard are blind to.
+	# pins: short-enumeration-branch — survivors-only list must trip the canary guard (see --canaries single source)
 	cat >"$shortenum" <<'EOF'
 #!/bin/sh
 printf '%s\n' internal/task internal/journal
