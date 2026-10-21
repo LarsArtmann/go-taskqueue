@@ -17,10 +17,9 @@
 # cat line, or in the contiguous comment lines immediately above. This script's own file is exempt
 # (its --self-test fixtures carry the marker, proving the rule bites).
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 self="$(basename "$0")"
 
-violations=0
 
 check_file() {
 	local file=$1
