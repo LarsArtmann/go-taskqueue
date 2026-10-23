@@ -12,6 +12,9 @@
 // batched items, priority markers, drift audit, prune-stale); Non-goals:
 // running the tasks (the agent executor does that) and writing the
 // backlog (agents mark their items done).
+//
+// Cross-package map (lifecycle × concern):
+// docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
 package harvest
 
 import (

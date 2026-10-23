@@ -8,7 +8,11 @@ a bug.
 Cross-links: [ADR-0001](../docs/adr/0001-facts-first-sqlite-leases.md)
 (facts-first core), [ADR-0002](../docs/adr/0002-agent-pool-autonomy-pacing-drain.md)
 (agent-pool policies), [ADR-0003](../docs/adr/0003-web-ui-architecture.md)
-(live web UI: serve, tailer, hub, fragment, projection).
+(live web UI: serve, tailer, hub, fragment, projection),
+[architecture-understanding/2026-10-23_lifecycle-concern-grid.md](architecture-understanding/2026-10-23_lifecycle-concern-grid.md)
+(which mechanism owns which concern per lifecycle stage, with citations),
+[platform-divergence-ledger.md](platform-divergence-ledger.md) (every
+designed tq-vs-go-cqrs-lite divergence, cited and revisit-dated).
 
 ## Queue core
 

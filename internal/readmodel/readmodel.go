@@ -12,6 +12,9 @@
 // source of truth (the journal is truth; the projection rebuilds from
 // it) and any write path that is not journal-first feeding.
 //
+// Cross-package map (lifecycle × concern):
+// docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
+//
 // The Model opens its OWN sqlite database beside the queue DB (path
 // decision: separate file — the projection is disposable and rebuildable
 // from the journal, and a second writer connection on the queue file would

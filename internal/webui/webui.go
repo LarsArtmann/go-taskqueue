@@ -9,6 +9,9 @@
 // mutation (the worst failure is a stale dashboard, never journal
 // corruption) and persistence — it renders projections, it owns none.
 //
+// Cross-package map (lifecycle × concern):
+// docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
+//
 //nolint:godoclint // templ-generated _templ.go files also carry package-adjacent comments; counted at package scope
 package webui
 

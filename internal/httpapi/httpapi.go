@@ -10,6 +10,9 @@
 // facts, per-status counts, health); Non-goals: per-task reads — derived
 // outcomes (agent results, review/status verdicts, session usage) remain
 // dashboard surfaces (`tq serve` detail pages, `tq show`).
+//
+// Cross-package map (lifecycle × concern):
+// docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
 package httpapi
 
 import (

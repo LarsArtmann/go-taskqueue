@@ -9,6 +9,9 @@
 // (heartbeat, backoff), and outcome recording against the store's single
 // serialized writer; Non-goals: what a task DOES (the executor registry
 // owns that) and where facts live (journal/store own that).
+//
+// Cross-package map (lifecycle × concern):
+// docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
 package worker
 
 import (

@@ -10,6 +10,9 @@
 // prepareRepo, payloadTimeout); Non-goals: claiming/scheduling (the
 // worker owns the loop) and storage (outcomes become facts via the
 // store).
+//
+// Cross-package map (lifecycle × concern):
+// docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
 package executor
 
 import (

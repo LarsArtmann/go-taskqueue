@@ -13,6 +13,9 @@
 // deciders, system.Lookup/metaengine queries); Non-goals: domain logic
 // (the domain is EMPTY by design) and any second source of truth.
 //
+// Cross-package map (lifecycle × concern):
+// docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
+//
 // What the System owns here (the map's sanctioned shape):
 //
 //   - the projection-home engine (deployment decision, one DeploymentConfig

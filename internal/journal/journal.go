@@ -9,6 +9,9 @@
 // engine's store contract owns reads via the companion seam) and any
 // update or delete — facts are immutable.
 //
+// Cross-package map (lifecycle × concern):
+// docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
+//
 // S2 (ADR-0019): the fact vocabulary RIDES the upstream engine's
 // go-cqrs-lite queue/v4/facts vocabulary — FactType and Fact are TYPE
 // ALIASES of facts.FactType/facts.Fact (the lifecycle spellings are

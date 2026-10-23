@@ -14,6 +14,9 @@
 // semantics — filters, claim exclusivity (lease TTL + expiry reclaim),
 // same-transaction facts; Non-goals: storage mechanics (drivers own the
 // SQL) and execution (worker/executor own that).
+//
+// Cross-package map (lifecycle × concern):
+// docs/architecture-understanding/2026-10-23_lifecycle-concern-grid.md
 package queue
 
 import (
