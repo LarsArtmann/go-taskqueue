@@ -1026,3 +1026,8 @@ not here.
 ## Review-fix 2026-10-23 (source: docs/status/tasks/2026-10-23_18-40_task-000001a1699ba37fc704570b24d800000000.md §e1; reviewer caught TODO row 777 unchecked although 65f09d79 landed — middle row of a 3-row batch skipped, no self-check existed)
 
 - [ ] Codify the closeout TICK-AUDIT step in AGENTS.md Conventions: before the final commit of any batch/fix dispatch, grep TODO_LIST.md for each verbatim batch anchor and assert every finished row reads `- [x]` (a landed work commit with an unchecked row costs a full review round-trip + a paid fix dispatch — 000001a1699ba37fc704570b24d800000000)
+
+## Review-fix 2026-10-23 second finding (source: docs/status/tasks/2026-10-23_18-44_task-000001a1699ba381073d1c5dc52a00000000.md §e; reviewer caught the README index row's aggregate "rows 776-778 ticked" claim being false at its own commit — stale aggregate claims have no gate or citation rule)
+
+- [ ] Mechanical tick-claim gate (advisory ci-local WARN first; hard-gate flip separate, not bundled): parse aggregate tick-count claims ("rows N-M ticked/`[x]`", distinct from row 358's index-vs-report-body phrase drift) from docs/status README index rows + closeout reports and verify against TODO_LIST at the cited commit via `git show <sha>:TODO_LIST.md` (HEAD-only fallback when no SHA cited) — this finding class passed every gate until a paid reviewer caught it (18-44 closeout §e2)
+- [ ] Convention one-liner (AGENTS.md docs/status Conventions, size-guard aware): aggregate tick-claims in index rows and closeout reports cite the tick commit whenever the ticks are not in the report's own commit — a bare "rows N-M ticked" is unverifiable at the commit that makes it (18-44 closeout §e1)
