@@ -112,17 +112,24 @@ self_test() {
 	trap 'rm -rf "$tmp"' EXIT
 	ok="$tmp/gosec-ok-stub"
 	stale="$tmp/gosec-stale-stub"
+	# Binding pin (03-56 §f16): the stale-version literal in the must_mention
+	# below MUST come from this same variable the stub is written with — a
+	# hand-copied literal there would survive a stub-version edit silently.
+	stale_ver=v2.28.1
 	dev="$tmp/gosec-dev-stub"
 	files0="$tmp/gosec-files0-stub"
 	findings="$tmp/gosec-findings-stub"
 	stub_write "$ok" "$GOSEC_VERSION" 5 0
-	stub_write "$stale" v2.28.1 5 0
+	stub_write "$stale" "$stale_ver" 5 0
 	stub_write "$dev" dev 5 0
 	stub_write "$files0" "$GOSEC_VERSION" 0 0
 	stub_write "$findings" "$GOSEC_VERSION" 3 2
 	emptyenum="$tmp/enum-empty"
 	failenum="$tmp/enum-fail"
 	shortenum="$tmp/enum-short"
+	partenum="$tmp/enum-partial"
+	whitespaceenum="$tmp/enum-whitespace"
+	fulenum="$tmp/enum-full"
 	# pins: empty-enumeration-branch — 0 module targets must hard-fail before any scan
 	cat >"$emptyenum" <<'EOF'
 #!/bin/sh
@@ -146,7 +153,43 @@ printf '%s\n' internal/task internal/journal
 exit 0
 EOF
 	chmod +x "$shortenum"
-
+	# pins: partial-enumeration-branch — a real-looking list followed by a
+	# non-zero exit must hard-fail on the exit status, not scan the partial
+	# lines (03-56 §f15; process-substitution would drop the exit status).
+	cat >"$partenum" <<'EOF'
+#!/bin/sh
+printf '%s\n' internal/task internal/journal
+exit 1
+EOF
+	chmod +x "$partenum"
+	# pins: whitespace-enumeration-branch — space-padded blank lines survive
+	# command substitution (trailing newlines would be stripped) and pass the
+	# -z guard, so the guard needs its own branch (03-56 §f14).
+	cat >"$whitespaceenum" <<'EOF'
+#!/bin/sh
+printf ' \n \n '
+exit 0
+EOF
+	chmod +x "$whitespaceenum"
+	# pins: Files:0 exact-count — delegates to the REAL enumerator so the
+	# canary guard passes, making the failed-scan count exactly 1 root + N
+	# module targets (04-46 §f13; pins the arithmetic, not just the shape).
+	repo_root="$(cd "$(dirname "$self_abs")/.." && pwd)"
+	cat >"$fulenum" <<EOF
+#!/bin/sh
+exec '$repo_root/scripts/for-each-module.sh'
+EOF
+	chmod +x "$fulenum"
+	nmods="$("$repo_root/scripts/for-each-module.sh" 2>/dev/null)" || nmods=""
+	exact_count_ready=0
+	if [ -n "$nmods" ]; then
+		nmods="$(printf '%s\n' "$nmods" | grep -c '[^[:space:]]')"
+		exact_count_ready=1
+	fi
+	# The enumerator is resolved from THIS script's own location; the rc=127
+	# negative-control extract (a relocated copy) has no sibling enumerator,
+	# so an unavailable enumerator must degrade to skipping the case — never
+	# abort before the control's rc=127 shape is reached.
 	gate_run "stamped pin ok: full gate passes on a $GOSEC_VERSION stub" 0 "$ok"
 	must_mention "ok: $ok is $GOSEC_VERSION" "stamped ok states the pin"
 	must_mention "ok: Files=" "Files>0 Issues=0 summary parses green"
@@ -155,7 +198,7 @@ EOF
 	must_not_mention "FAIL:" "stamped ok emits no FAIL"
 
 	gate_run "stamped mismatch: stale stub exits 1" 1 "$stale"
-	must_mention "reports 'Version: v2.28.1', not the pinned $GOSEC_VERSION" "mismatch names the detected version"
+	must_mention "reports 'Version: $stale_ver', not the pinned $GOSEC_VERSION" "mismatch names the detected version (literal bound to the stub's version variable)"
 	must_mention "go install github.com/securego/gosec/v2/cmd/gosec@$GOSEC_VERSION" "mismatch carries the install fix line"
 	must_mention "nothing was scanned" "mismatch fails fast before the first scan"
 	must_not_mention "== (root)" "mismatch runs zero scans"
@@ -168,6 +211,14 @@ EOF
 	gate_run "Files:0 parse: silent-skip summary hard-fails the gate" 1 "$files0"
 	must_mention "scanned 0 files" "Files:0 reports the silent-skip failure"
 	must_mention "0 scans ok," "Files:0 run's summary counts every scan as failed"
+	# Exact-count pin via the full TQ_GOSEC_ENUM stub (04-46 §f13): the
+	# failed count must equal 1 root scan + the real module-target count.
+	if [ "$exact_count_ready" -eq 1 ]; then
+		gate_run "Files:0 exact count: full enumeration, every scan fails" 1 "$files0" "$fulenum"
+		must_mention "0 scans ok, $((1 + nmods)) failed" "Files:0 summary pins exact failed-count arithmetic (1 root + $nmods modules)"
+	else
+		echo "note: Files:0 exact-count case skipped (module enumerator unavailable next to this script)"
+	fi
 
 	gate_run "Issues parse: findings hard-fail the gate" 1 "$findings"
 	must_mention "2 findings" "Issues>0 reports the new-class failure (pluralized)"
@@ -179,6 +230,14 @@ EOF
 	gate_run "broken enumeration: non-zero exit hard-fail" 1 "$ok" "$failenum"
 	must_mention "enumeration exited non-zero" "broken enumeration reports the enumerator failure"
 	must_not_mention "== (root)" "broken enumeration fails before any scan"
+
+	gate_run "partial enumeration: lines then non-zero exit hard-fail" 1 "$ok" "$partenum"
+	must_mention "enumeration exited non-zero" "partial enumeration reports the enumerator failure despite emitting targets"
+	must_not_mention "== (root)" "partial enumeration fails before any scan"
+
+	gate_run "whitespace enumeration: blank-line-only targets hard-fail" 1 "$ok" "$whitespaceenum"
+	must_mention "only whitespace" "whitespace enumeration reports its own failure, not the empty-list one"
+	must_not_mention "== (root)" "whitespace enumeration fails before any scan"
 
 	gate_run "short enumeration: missing canary member hard-fail" 1 "$ok" "$shortenum"
 	must_mention "missing canary module(s): internal/queue internal/executor internal/worker" "short enumeration names every missing canary"
@@ -231,7 +290,7 @@ EOF
 	# the mode — the guard var stops the child from re-running this
 	# assertion (it would recurse forever), one re-entry level total.
 	if [ -z "${TQ_GOSEC_SELFTEST_REENTRY:-}" ]; then
-		if (cd / && TQ_GOSEC_SELFTEST_REENTRY=1 "$self_abs" --self-test >/dev/null 2>&1); then
+		if (cd "$tmp" && TQ_GOSEC_SELFTEST_REENTRY=1 "$self_abs" --self-test >/dev/null 2>&1); then
 			echo "ok: --self-test re-runs from a foreign CWD"
 		else
 			echo "FAIL: --self-test invoked from a foreign CWD"
@@ -247,7 +306,9 @@ EOF
 	# raw "$0" (the pre-fix shape) is invoked CWD-relative from the
 	# extract's scripts/ dir; the top-level cd then strands the recursive
 	# child, and the first gate_run reports got rc=127. The extract lives
-	# under $tmp and dies with the EXIT trap.
+	# under $tmp and dies with the EXIT trap. The rc context is tightened to
+# EXACTLY 127 (04-46 §f30): any non-zero would also match, but only 127
+# proves the command-not-found shape the self_abs fix targets.
 	if [ -z "${TQ_GOSEC_SELFTEST_REENTRY:-}" ]; then
 		ctl_dir="$tmp/negctl/scripts"
 		mkdir -p "$ctl_dir"
@@ -255,16 +316,16 @@ EOF
 		chmod +x "$ctl_dir/check-gosec.sh"
 		ctl_rc=0
 		ctl_out="$(cd "$ctl_dir" && TQ_GOSEC_SELFTEST_REENTRY=1 bash ./check-gosec.sh --self-test 2>&1)" || ctl_rc=$?
-		if [ "$ctl_rc" -ne 0 ] && grep -qF 'rc=127' <<<"$ctl_out"; then
+		if [ "$ctl_rc" -ne 0 ] && grep -qF '(want rc=0, got rc=127)' <<<"$ctl_out"; then
 			echo "ok: negative control trips rc=127 on the reverted self_abs extract (assertion is live)"
 		else
-			echo "FAIL: negative control did not trip rc=127 (rc=$ctl_rc) — the foreign-CWD assertion may be dead"
+			echo "FAIL: negative control did not trip the rc=127 gate_run shape (rc=$ctl_rc) — the foreign-CWD assertion may be dead"
 			printf '%s\n' "$ctl_out"
 			exit 1
 		fi
 	fi
 
-	echo "gosec self-test ok (three version branches, Files:0 and Issues>0 parses, empty, broken, and short module enumeration pinned via stub gates, ci.yml derivation-drift byte-match, .golangci.yml gosec-excludes parity, foreign-CWD re-entry, daemon-proof rc=127 negative control)"
+	echo "gosec self-test ok (three version branches, Files:0 parse + exact-count arithmetic, Issues>0 parse, empty, whitespace, partial, broken, and short module enumeration pinned via stub gates, ci.yml derivation-drift byte-match, .golangci.yml gosec-excludes parity, hermetic foreign-CWD re-entry, rc=127-exact negative control)"
 }
 
 if [ "${1:-}" = "--self-test" ]; then
@@ -348,6 +409,10 @@ modules="$("$enum_cmd")" || {
 }
 if [ -z "$modules" ]; then
 	echo "FAIL: module enumeration returned 0 module targets (silent skip one level up — the gate would narrow to the root scan only; fix $enum_cmd)"
+	exit 1
+fi
+if [ -z "$(printf '%s' "$modules" | tr -d '[:space:]')" ]; then
+	echo "FAIL: module enumeration returned only whitespace (blank-line targets pass the empty check — fix $enum_cmd)"
 	exit 1
 fi
 # Canary members: single-sourced from the enumerator's --canaries export
