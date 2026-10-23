@@ -4,8 +4,10 @@
 // notifications; each connected browser receives server-rendered HTML
 // fragments over SSE and swaps them into the page by container id.
 //
-// The package cannot mutate the queue: the worst failure is a stale
-// dashboard, never journal corruption.
+// Viewpoint — Consumer: a human operator in a browser; Concern: live
+// task state rendered as coalesced SSE fragment swaps; Non-goals: queue
+// mutation (the worst failure is a stale dashboard, never journal
+// corruption) and persistence — it renders projections, it owns none.
 //
 //nolint:godoclint // templ-generated _templ.go files also carry package-adjacent comments; counted at package scope
 package webui

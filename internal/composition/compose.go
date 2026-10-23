@@ -6,6 +6,13 @@
 // stays unused (no second source of truth; the split-brain gate of the
 // archived composition map §3).
 //
+// Viewpoint — Consumer: `tq serve` and future surfaces that need the
+// platform runtime assembled; Concern: the S4 composition root — ONE
+// system.New over the projection-home engine, close ordering for the
+// surfaces that adopt it, and the sanctioned growth seams (timers,
+// deciders, system.Lookup/metaengine queries); Non-goals: domain logic
+// (the domain is EMPTY by design) and any second source of truth.
+//
 // What the System owns here (the map's sanctioned shape):
 //
 //   - the projection-home engine (deployment decision, one DeploymentConfig

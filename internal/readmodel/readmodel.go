@@ -4,6 +4,14 @@
 // as the live-fragment mechanism that replaces the hand journal-tailer →
 // hub fan-out (ADR-0003 Phase D read path) once the S3 flip lands.
 //
+// Viewpoint — Consumer: the live dashboard and any tq reader that wants
+// the task ledger + status counts without folding the journal itself;
+// Concern: the S3 projection — planned metaengine collections folded
+// from journal facts into a disposable side DB (<db>.readmodel.db)
+// under the single-writer fold-lock election; Non-goals: being a second
+// source of truth (the journal is truth; the projection rebuilds from
+// it) and any write path that is not journal-first feeding.
+//
 // The Model opens its OWN sqlite database beside the queue DB (path
 // decision: separate file — the projection is disposable and rebuildable
 // from the journal, and a second writer connection on the queue file would

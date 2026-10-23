@@ -1,4 +1,14 @@
-// Package worker implements the claim→heartbeat→execute→complete loop.
+// Package worker implements the claim→heartbeat→execute→complete loop:
+// lease a task (lease TTL + expiry reclaim for exclusivity), heartbeat it
+// while an executor runs, record the outcome, and requeue failures up the
+// requeue ladder; idle polling backs off (cap IdlePollMax, reset on
+// claim/wake).
+//
+// Viewpoint — Consumer: the pool runtime and the sweepers that depend on
+// claimed work actually finishing; Concern: exclusive claims, liveness
+// (heartbeat, backoff), and outcome recording against the store's single
+// serialized writer; Non-goals: what a task DOES (the executor registry
+// owns that) and where facts live (journal/store own that).
 package worker
 
 import (

@@ -5,11 +5,11 @@
 // on every bind (no loopback exemption: API servers are meant to be
 // exposed to other machines).
 //
-// The surface is queue-metadata plus the error-report command by design:
-// enqueue, error.observed facts, per-status counts, and health — no
-// per-task reads, so derived outcomes (agent results, review/status
-// verdicts, session usage) remain dashboard surfaces (`tq serve` detail
-// pages, `tq show`).
+// Viewpoint — Consumer: non-Go producers and remote dashboards; Concern:
+// queue-metadata plus the error-report command (enqueue, error.observed
+// facts, per-status counts, health); Non-goals: per-task reads — derived
+// outcomes (agent results, review/status verdicts, session usage) remain
+// dashboard surfaces (`tq serve` detail pages, `tq show`).
 package httpapi
 
 import (
