@@ -199,6 +199,14 @@ docs/DOMAIN_LANGUAGE.md.
 - **Gate receipts**: a report's "N ok / M fail" count is
   `grep -c '^ok:'` over a CAPTURED gate-output file — never counted in
   context, never taken from a summary line (17-vs-16 class).
+- **Fleet convention — countable gate summaries are PINNED, not advisory**
+  (2026-10-24, TODO 01-12 §e7/§g2): every countable sibling gate
+  (check-script-syntax, check-go-mods, check-dead-exports,
+  check-guard-wiring — gosec already had it) carries `--self-test`
+  pinning its end-of-run summary format + a negative-path counter
+  battery over its if/else branches via an env hook (TQ_SYNTAX_FILES,
+  TQ_GOMODS_EXTRA_MODS, TQ_DEAD_FILES_CMD, TQ_GUARD_FILES); wired into
+  ci-local ahead of the real gate. New countable gates: same contract.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches); indexed on creation (`check-status-index.sh`; daemon
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE

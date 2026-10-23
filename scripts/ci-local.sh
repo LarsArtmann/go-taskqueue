@@ -183,6 +183,12 @@ with_transient_retry "embed example (facade paths)" bash -c 'cd examples/embed &
 step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
 ./scripts/check-go-mods.sh
 
+# Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
+# summaries are PINNED, not advisory — the self-test fails here, not at the
+# next silent counter rot.
+step "check-go-mods self-test (go-mods summary + negative counter battery)"
+./scripts/check-go-mods.sh --self-test
+
 # Dep-bump drift (b886a677 class): vendor/ and per-module tidies must
 # match the committed graph — the 2026-10-07 03:12 bump without vendor/tidy
 # cost a multi-hour red window. Self-test first (drift-detection pin), then
@@ -198,6 +204,12 @@ step "facade parity (ADR-0016: facades mirror internal exports)"
 
 step "dead-export audit (advisory report)"
 ./scripts/check-dead-exports.sh
+
+# Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
+# summaries are PINNED, not advisory — the self-test fails here, not at the
+# next silent counter rot.
+step "check-dead-exports self-test (dead-exports summary + negative counter battery)"
+./scripts/check-dead-exports.sh --self-test
 
 step "mirror-clone gate (advisory until the companion extraction lands; MIRROR_CLONES_STRICT=1 gates)"
 ./scripts/check-mirror-clones.sh
@@ -229,6 +241,12 @@ step "new-module scaffold smoke (go.mod + dependabot parity at the source)"
 
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
+
+# Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
+# summaries are PINNED, not advisory — the self-test fails here, not at the
+# next silent counter rot.
+step "check-script-syntax self-test (syntax summary + negative counter battery)"
+./scripts/check-script-syntax.sh --self-test
 
 step "fixture-attribution meta-gate (every check-* fixture heredoc names its pinned branch)"
 ./scripts/check-fixture-attribution.sh --self-test
@@ -545,6 +563,12 @@ step "security-invariant self-test (both drift mutations caught)"
 # lesson generalized into a gate.
 step "guard-wiring check (no orphaned check-*/smoke scripts)"
 ./scripts/check-guard-wiring.sh
+
+# Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
+# summaries are PINNED, not advisory — the self-test fails here, not at the
+# next silent counter rot.
+step "check-guard-wiring self-test (guard-wiring summary + negative counter battery)"
+./scripts/check-guard-wiring.sh --self-test
 
 # Module-loop capture audit: every `for m in $mods` loop in this file and
 # ci.yml must be fed by the for-each-module.sh enumeration — a revert to
