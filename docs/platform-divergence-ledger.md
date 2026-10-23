@@ -1,0 +1,47 @@
+# Platform Divergence Ledger — tq vs go-cqrs-lite
+
+- **Date:** 2026-10-23 (consolidated; living table — update rows in place,
+  never fork a second ledger)
+- **Status:** LIVE. One row per designed divergence between tq and its
+  platform (ADR-0019: go-cqrs-lite IS the platform). Each row cites its
+  decision memo and names the condition that re-opens it. A divergence that
+  is designed, cited, and revisit-dated is COMPLIANCE, not drift (NAF v4.1
+  subset rule: divergence is fine when explicit).
+- **Pins in force at consolidation:** system/v4 v4.15.1, metaengine/v4
+  v4.19.0, sqliteengine/v4 v4.5.3 (vendor/modules.txt). The memos below were
+  written against system/v4 v4.11.0 + sqliteengine/v4 v4.5.2 — re-verify
+  against vendor source before acting on any vendor-internal claim; the
+  asks' substance is unchanged by patch bumps.
+
+## Ledger
+
+| # | Divergence | Status | Decision cite | Revisit when |
+| --- | --- | --- | --- | --- |
+| 1 | Projection home opened through TWO constructors (system-declared engine + readmodel self-open) with converging-but-duplicated pragma literals | RESOLVED by inversion (2026-10-10, f6492a00): ONE tq-owned opener — `composition.NewProjectionRuntime` builds the engine and hands it via `readmodel.WithEngine` (internal/readmodel/model.go:180); ONE pragma source (`ProjectionHomeCallerPragmas`); the duplicate literals died | [single_opener.md](../internal/composition/single_opener.md) (B2, LANDED) | Upstream Ask 1 lands → collapse into a root-exported engine (gate tightens to the original literal wording) |
+| 2 | The system-declared connection still opens its own decorative `*sql.DB` beside the tq-owned one; its pragma union rides upstream prepend defaults (WAL + busy_timeout 5000 + MaxOpenConns(1)), NOT the shared literal source | ACCEPTED residue — upstream-blocked (no instance-injection seam); pragma-union equality between the two connections is prose-only today | single_opener.md "Net effect"; [upstream-seam.md](2026-10-09_upstream-seam.md) Ask 1 | TODO row "Pin the projection-home pragma-union equality in a test" lands (pin), then upstream Ask 1 (remove) |
+| 3 | system/v4 cannot accept a pre-built engine (`EngineConfig` is data-only; no `(*System).Engine(name)` accessor) | ASK DRAFTED — filing owner-gated (TODO_LIST "File the go-cqrs-lite system-seam ask") | upstream-seam.md Ask 1 | Owner go for upstream filing; upstream v5 |
+| 4 | tq's projections fold a FOREIGN journal (the queue fact journal) — empty-DomainConfig deployments are second-class upstream (`sot.implicit_memory` advisory); tq injects its own row-source | ASK DRAFTED (same filing gate as #3) | upstream-seam.md Ask 2 | Upstream ships a stable foreign-journal seam |
+| 5 | Engine pool policy is hard-pinned `MaxOpenConns(1)` upstream — tq treats it as an invariant it cannot introspect, only assume | ASK DRAFTED (hygiene; same filing gate) | upstream-seam.md Ask 3 | Upstream adds a pool-policy knob or introspection accessor |
+| 6 | `tq api` does NOT adopt `composition.NewProjectionRuntime` — sanctioned per-surface exception: self-open + only the two host seams it needs (managed host + best-effort DLQ sidecar, resolved 2026-10-11); no composition import, no double-close | DECIDED — decision stands after the host adoption | [readmodel-open-seams.md](2026-10-10_readmodel-open-seams.md) (Decision + "Residual resolved") | Any surface needs the FULL runtime bundle → re-evaluate, preferring the cmd/tq adapter pattern over surface imports |
+| 7 | `tq stats --read-model` and `tq doctor`'s projection check still self-open via `readmodel.Open` WITHOUT `WithEngine` (cmd/tq/main.go:2039, cmd/tq/doctor.go:956) — each process opens exactly once, so no live double-open; they bypass the deployment-driven engine build | OPEN — queued TODO row ("Route the remaining non-composed readmodel opens through the single-opener seam") | readmodel-open-seams.md §Rationale 2; single_opener.md | Uniform seam or documented per-surface exception lands |
+| 8 | `internal/journal/cqrs` is PROPRIETARY, read-only: tq's own `event.SeekableJournal` adapter — never extended downstream, never mirrored SQL | STANDING POLICY (ADR-0014/0019) | upstream-seam.md §Context; AGENTS.md "Relation to other projects" | Never — unless Ask 2's stable seam makes the adapter retireable |
+| 9 | Sweeper ticking STAYS on runactor; the platform's timer engine is a growth seam, deliberately unused | RULED (§4a) — sanctioned adoption-scope decision | internal/composition/compose.go:22 doc (the §4a ruling) | A genuinely timer-shaped feature lands |
+
+## Gap-fill pass (2026-10-23, bounded)
+
+Surfaces checked against the platform feature list: projection engine
+opening (#1/#2), pragma source (#2), projection host adoption (#6),
+journal folding (#4/#8), timers (#9), watermark cursors + DLQ sidecar
+(platform-independent, tq-side by design), restart budget (ADOPTED
+as-is via the readmodel host — not a divergence). Findings: row 9 was
+the one ruled-but-unledgered divergence; everything else was already
+memo'd (rows 1–8) or plain adoption. No new divergence found this pass.
+
+## Rules for this ledger
+
+1. New divergence ⇒ memo first (docs/memos/, dated), ledger row same day,
+   with status + revisit-when. No row without a cite.
+2. Rows resolve in place (status → RESOLVED/DECIDED + cite); they are never
+   deleted — the history IS the compliance story.
+3. Upstream asks (#3–#5) move only when their TODO_LIST filing row moves;
+   the ledger mirrors, never owns, the owner gate.
