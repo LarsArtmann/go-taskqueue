@@ -2,6 +2,13 @@
 // that ever happened to tasks. All derived views (queue, DLQ, stats) are
 // projections over these facts.
 //
+// Viewpoint — Consumer: every projection and tailer (queue views, DLQ,
+// readmodel fold, webui, the sweepers' watermark cursors); Concern: the
+// append-only fact vocabulary and the same-transaction guarantee (facts
+// land with the state they describe); Non-goals: read/query policy (the
+// engine's store contract owns reads via the companion seam) and any
+// update or delete — facts are immutable.
+//
 // S2 (ADR-0019): the fact vocabulary RIDES the upstream engine's
 // go-cqrs-lite queue/v4/facts vocabulary — FactType and Fact are TYPE
 // ALIASES of facts.FactType/facts.Fact (the lifecycle spellings are

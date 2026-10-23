@@ -6,6 +6,12 @@
 // most one in-flight task per repo. Agents (see executor.AgentExecutor) do
 // the item and mark it done in the same file, which closes the loop: done
 // items are never re-enqueued, edited items become new work.
+//
+// Viewpoint — Consumer: the pool orchestrator pacing one in-flight task
+// per repo; Concern: faithful backlog→task conversion (dedup keys,
+// batched items, priority markers, drift audit, prune-stale); Non-goals:
+// running the tasks (the agent executor does that) and writing the
+// backlog (agents mark their items done).
 package harvest
 
 import (

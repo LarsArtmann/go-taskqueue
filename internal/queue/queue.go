@@ -8,6 +8,12 @@
 // Every mutating operation also appends a fact to the journal in the same
 // transaction, so the journal is always a complete, consistent history of
 // the queue.
+//
+// Viewpoint — Consumer: tq's drivers implement this contract; worker,
+// webui, and httpapi program against the facade; Concern: the Store
+// semantics — filters, claim exclusivity (lease TTL + expiry reclaim),
+// same-transaction facts; Non-goals: storage mechanics (drivers own the
+// SQL) and execution (worker/executor own that).
 package queue
 
 import (

@@ -1,5 +1,15 @@
-// Package executor defines the pluggable execution layer: how a claimed task
-// actually runs.
+// Package executor defines the pluggable execution layer: how a claimed
+// task actually runs — sh commands, HTTP calls, and agent turns behind a
+// registry keyed by task type (ErrUnknownType for unregistered types).
+//
+// Viewpoint — Consumer: the worker loop, which looks up an executor per
+// claimed task and records whatever outcome it reports; Concern: taking
+// one task's payload to a recorded outcome — payload decoding, timeouts,
+// rate-limit detection (429s requeue without burn), output-tail secret
+// redaction, and the shared seams (decodePayload, recordRunOutcome,
+// prepareRepo, payloadTimeout); Non-goals: claiming/scheduling (the
+// worker owns the loop) and storage (outcomes become facts via the
+// store).
 package executor
 
 import (
