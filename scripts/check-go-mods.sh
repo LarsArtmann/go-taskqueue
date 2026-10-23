@@ -36,7 +36,9 @@ module fixmod
 
 go 1.20
 
-require github.com/larsartmann/go-taskqueue/internal/task v0.0.0
+require (
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.4-rc1
+)
 
 replace github.com/larsartmann/go-taskqueue/internal/task => /nonexistent/abs/path
 EOF
@@ -48,7 +50,7 @@ EOF
 		exit 1
 	fi
 	must_mention "absolute replace paths are not portable" "$out" "portable-replace failure branch fires on the fixture"
-	must_mention "internal requires must be real tagged versions" "$out" "pinned-require failure branch fires on the fixture"
+	must_mention "internal requires must be real tagged versions" "$out" "pinned-require failure branch fires on the fixture (prerelease pseudo-pin)"
 	must_mention "a module may only RAISE the go directive" "$out" "go-directive downgrade branch fires on the fixture"
 	local pos_out pos_rc=0
 	pos_out="$("$self_abs" 2>&1)" || pos_rc=$?

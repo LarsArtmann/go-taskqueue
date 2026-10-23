@@ -6,12 +6,70 @@
 # master twice in 2026-09-11 behind an orphaned guard).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Recursive --self-test re-invokes THIS script; capture the absolute self
+# path BEFORE any cd (the gosec self_abs pattern; 02-38 §b).
+self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
+must_mention() {
+	if grep -qF -- "$1" <<<"$2"; then
+		echo "ok: $3"
+	else
+		echo "FAIL: $3 (output is missing '$1')"
+		printf '%s\n' "$2"
+		exit 1
+	fi
+}
+
+# --self-test pins the end-of-run summary line (fleet convention: countable
+# gate summaries are PINNED, not advisory — 01-12 §e7/§g2) and runs a
+# negative-path counter battery over the orphan branch via the
+# TQ_GUARD_FILES hook (scan-list override).
+self_test() {
+	# tmp is deliberately global: the EXIT trap reads it after self_test
+	# returned, and set -u would kill the trap on a function-local name.
+	tmp="$(mktemp -d)"
+	trap 'rm -rf "$tmp"' EXIT
+	local orphan="$tmp/fake-orphan.sh"
+	: >"$orphan"
+	local out rc=0
+	out="$(TQ_GUARD_FILES="$orphan" "$self_abs" 2>&1)" || rc=$?
+	if [ "$rc" -ne 1 ]; then
+		echo "FAIL: negative battery (want rc=1, got rc=$rc)"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	must_mention "ORPHANED GUARD: $orphan" "$out" "orphan branch fires on the unwired fixture"
+	must_mention "guard-wiring summary: 1 scripts wired, 1 orphaned" "$out" "summary pins exact counters (ritual wired + fixture orphaned)"
+	local pos_out pos_rc=0 pos_wired
+	pos_out="$("$self_abs" 2>&1)" || pos_rc=$?
+	pos_wired=$(printf '%s\n' scripts/check-*.sh scripts/smoke/*.sh | wc -l)
+	pos_wired=$((pos_wired + 1)) # + the convention-invoked session-start ritual
+	if [ "$pos_rc" -ne 0 ]; then
+		echo "FAIL: positive run is red (rc=$pos_rc) — fix the orphaned scripts before the pin can hold"
+		printf '%s\n' "$pos_out"
+		exit 1
+	fi
+	must_mention "guard-wiring summary: $pos_wired scripts wired, 0 orphaned" "$pos_out" "summary pins exact positive counters"
+	echo "guard-wiring self-test ok (summary format pin + negative counter battery)"
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+	self_test
+	exit 0
+fi
 
 refs=(scripts/ci-local.sh .github/workflows/ci.yml flake.nix)
 rc=0
 wired_ok=0
 wired_failed=0
-for f in scripts/check-*.sh scripts/smoke/*.sh; do
+if [ -n "${TQ_GUARD_FILES:-}" ]; then
+	# word splitting intended: the hook carries a whitespace-separated list
+	# shellcheck disable=SC2086
+	set -- $TQ_GUARD_FILES
+else
+	set -- scripts/check-*.sh scripts/smoke/*.sh
+fi
+for f in "$@"; do
 	wired=0
 	for r in "${refs[@]}"; do
 		if grep -qF "$f" "$r"; then
