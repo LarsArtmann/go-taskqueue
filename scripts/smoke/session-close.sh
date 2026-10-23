@@ -52,6 +52,7 @@ grep -q "session $SID opened" "$TMP/begin.out" || {
 
 echo "== session ping (PreToolUse hook: registry-only, no DB)"
 REG="$TMP/registry.jsonl"
+FACTS_BEFORE_PING="$("$TQ" facts | grep -c 'session.opened' || true)"
 "$TQ" session ping --id "$SID" --cwd "$REPO" --registry "$REG"
 "$TQ" session ping --id "$SID" --cwd "$REPO" --registry "$REG"
 [ "$(grep -c "{\"id\":\"$SID\"" "$REG")" -eq 2 ] || {
@@ -62,7 +63,7 @@ grep -q "\"cwd\":\"$REPO\"" "$REG" || {
 	echo "FAIL: ping leg did not record the working directory"
 	exit 1
 }
-[ ! -e "$TQ_DB" ] || {
+[ "$("$TQ" facts | grep -c 'session.opened' || true)" -eq "$FACTS_BEFORE_PING" ] || {
 	echo "FAIL: ping touched the journal DB (registry-only contract)"
 	exit 1
 }
@@ -211,15 +212,15 @@ done
 echo "== payload contract: yolo set, model omitted, require_clean mirrored"
 for t in review status; do
 	TJSON="$(TQ_DB="$WRAP_DB" "$TQ" tasks --type "$t" --json)"
-	grep -q '"yolo":true' <<<"$TJSON" || {
+	grep -Eq '"yolo": *true' <<<"$TJSON" || {
 		echo "FAIL: minted $t payload is not Yolo"
 		exit 1
 	}
-	grep -q '"model":' <<<"$TJSON" && {
+	grep -Eq '"model":' <<<"$TJSON" && {
 		echo "FAIL: minted $t payload carries a model (repo .crushrc owns model+effort)"
 		exit 1
 	}
-	grep -q '"require_clean":true' <<<"$TJSON" || {
+	grep -Eq '"require_clean": *true' <<<"$TJSON" || {
 		echo "FAIL: minted $t payload does not mirror RequireClean=true (default close)"
 		exit 1
 	}
@@ -248,7 +249,7 @@ WRAPDIRTY_CODE=0
 }
 for t in review status; do
 	TJSON="$(TQ_DB="$WRAPDIRTY_DB" "$TQ" tasks --type "$t" --json)"
-	grep -q '"require_clean":false' <<<"$TJSON" || {
+	grep -Eq '"require_clean": *false' <<<"$TJSON" || {
 		echo "FAIL: --allow-dirty did not mirror RequireClean=false into the minted $t payload"
 		exit 1
 	}
@@ -258,7 +259,7 @@ echo "== tq crush, zero-attributed-commits wrapper case: id present, footer abse
 NOATTR_SID="noattr00001"
 NOATTR_DB="$TMP/noattr.db"
 cat >"$TMP/noattr-stub" <<EOF
-#!/bin/shn
+#!/bin/sh
 echo "session_id: $NOATTR_SID"
 exit 3
 EOF
