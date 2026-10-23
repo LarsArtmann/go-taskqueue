@@ -13,6 +13,75 @@
 # shellcheck disable=SC2016
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Recursive --self-test re-invokes THIS script; capture the absolute self
+# path BEFORE any cd (the gosec self_abs pattern; 02-38 §b).
+self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
+must_mention() {
+	if grep -qF -- "$1" <<<"$2"; then
+		echo "ok: $3"
+	else
+		echo "FAIL: $3 (output is missing '$1')"
+		printf '%s\n' "$2"
+		exit 1
+	fi
+}
+
+# --self-test pins the end-of-run summary line (fleet convention: countable
+# gate summaries are PINNED, not advisory — 01-12 §e7/§g2) and runs a
+# negative-path counter battery over the dead/strict branches via the
+# TQ_DEAD_FILES_CMD hook (declaration-source override): a planted fixture
+# symbol with zero importers must (a) count dead=1, (b) exit 0 non-strict
+# WITH the advisory line printed AFTER the summary, and (c) exit 1 under
+# --strict with the summary still printed BEFORE the exit (01-12 §f13
+# ordering pin).
+self_test() {
+	# tmp is deliberately global: the EXIT trap reads it after self_test
+	# returned, and set -u would kill the trap on a function-local name.
+	tmp="$(mktemp -d)"
+	trap 'rm -rf "$tmp"' EXIT
+	printf 'package fix\n\n// DeadVar is exported with zero importers.\nvar DeadVar = 1\n' >"$tmp/fix.go"
+	local hook="printf '%s\\n' '$tmp/fix.go'"
+	local out rc=0
+	out="$(TQ_DEAD_FILES_CMD="$hook" "$self_abs" 2>&1)" || rc=$?
+	if [ "$rc" -ne 0 ]; then
+		echo "FAIL: non-strict dead>0 must stay advisory rc=0 (got rc=$rc) — the strict-exit if/else leaks its status under set -e"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	must_mention "dead-exports summary: 0 symbols ok, 1 dead, 0 structurally alive, 0 annotated keep (advisory)" "$out" "summary pins exact counters on the planted dead symbol"
+	must_mention "advisory — audit before pruning" "$out" "non-strict dead>0 branch prints the advisory"
+	if [ "$(grep -n 'dead-exports summary:' <<<"$out" | head -1 | cut -d: -f1)" -lt "$(grep -n 'advisory — audit' <<<"$out" | head -1 | cut -d: -f1)" ]; then
+		echo "ok: summary precedes the advisory tail (ordering pin)"
+	else
+		echo "FAIL: advisory tail printed before the summary"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	local s_out s_rc=0
+	s_out="$(TQ_DEAD_FILES_CMD="$hook" "$self_abs" --strict 2>&1)" || s_rc=$?
+	if [ "$s_rc" -ne 1 ]; then
+		echo "FAIL: strict dead>0 must exit 1 (got rc=$s_rc)"
+		printf '%s\n' "$s_out"
+		exit 1
+	fi
+	must_mention "dead-exports summary: 0 symbols ok, 1 dead, 0 structurally alive, 0 annotated keep (advisory)" "$s_out" "strict path still prints the summary before exiting"
+	local pos_out pos_rc=0
+	pos_out="$("$self_abs" 2>&1)" || pos_rc=$?
+	if grep -Eq '^dead-exports summary: [0-9]+ symbols ok, [0-9]+ dead, [0-9]+ structurally alive, [0-9]+ annotated keep \(advisory\)$' <<<"$pos_out"; then
+		echo "ok: real-run summary matches the pinned format (rc=$pos_rc)"
+	else
+		echo "FAIL: real-run summary missing or malformed"
+		printf '%s\n' "$pos_out"
+		exit 1
+	fi
+	echo "dead-exports self-test ok (summary format pin + negative counter battery)"
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+	self_test
+	exit 0
+fi
 
 strict=0
 [ "${1:-}" = "--strict" ] && strict=1
@@ -52,7 +121,11 @@ annotated=(
 	"internal/webui/health.go	HealthDashboardPath"
 	"internal/webui/health.go	HealthSSEPath"
 )
-git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go' |
+# TQ_DEAD_FILES_CMD: self-test hook replacing the declaration-source
+# pipeline (must be a shell PIPELINE string, eval'd; default lists the
+# repo's internal Go sources minus tests and generated templ output).
+files_cmd="${TQ_DEAD_FILES_CMD:-git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go'}"
+eval "$files_cmd" |
 	xargs awk -v d="$funcsig_rx" -v b="$blocksig_rx" '
 		/^(var|const) \(/ { inblock = 1; next }
 		inblock && /^\)/ { inblock = 0; next }
@@ -65,7 +138,7 @@ git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go' |
 		}
 	' >"$declfile"
 
-git ls-files 'internal/*.go' | grep -v '_test.go' | grep -v '_templ.go' |
+eval "$files_cmd" |
 	xargs awk '
 		infunc {
 			sig = sig $0 " "
@@ -137,6 +210,8 @@ if [ "$dead" -eq 0 ]; then
 	echo "dead-exports: clean — every exported internal symbol has at least one importer"
 else
 	echo "dead-exports: $dead symbol(s) with zero importers"
-	[ "$strict" -eq 1 ] && exit 1
+	if [ "$strict" -eq 1 ]; then
+		exit 1
+	fi
 	echo "advisory — audit before pruning: internal/ layout is deliberate until the API stabilizes"
 fi
