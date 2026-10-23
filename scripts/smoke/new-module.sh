@@ -23,7 +23,7 @@ pass() { echo "ok: $*"; }
 # The scaffolder cds to its own repo root, so the fixture gets a copy of
 # the script under scripts/ — the same relative layout as the real repo.
 new_repo() {
-local r="$WORK/$1"
+	local r="$WORK/$1"
 	mkdir -p "$r/scripts" "$r/.github"
 	cp "$TARGET" "$r/scripts/"
 	# the scaffolder reads the root go directive from the repo-root go.mod

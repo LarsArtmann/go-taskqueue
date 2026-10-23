@@ -27,10 +27,16 @@ for arg in "$@"; do
 	case "$arg" in
 	--check | --regen) mode="$arg" ;;
 	--clean-cache) clean_cache=1 ;;
-	*) echo "usage: $0 [--check|--regen] [--clean-cache]" >&2; exit 2 ;;
+	*)
+		echo "usage: $0 [--check|--regen] [--clean-cache]" >&2
+		exit 2
+		;;
 	esac
 done
-[[ -n "$mode" ]] || { echo "usage: $0 [--check|--regen] [--clean-cache]" >&2; exit 2; }
+[[ -n "$mode" ]] || {
+	echo "usage: $0 [--check|--regen] [--clean-cache]" >&2
+	exit 2
+}
 
 if [[ "$mode" == "--regen" || "$clean_cache" == 1 ]]; then
 	# Stale caches served phantom counts twice in 2026-09: regen must never

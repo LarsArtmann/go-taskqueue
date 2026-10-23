@@ -63,7 +63,10 @@ version=""
 for arg in "$@"; do
 	case $arg in
 	--self-test) self_test=true ;;
-	-*) echo "FAIL: unknown flag: $arg" >&2; exit 1 ;;
+	-*)
+		echo "FAIL: unknown flag: $arg" >&2
+		exit 1
+		;;
 	*) version="$arg" ;;
 	esac
 done

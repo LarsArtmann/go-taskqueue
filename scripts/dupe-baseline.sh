@@ -23,7 +23,10 @@ mode=""
 for arg in "$@"; do
 	case "$arg" in
 	--check) mode="--check" ;;
-	*) echo "usage: $0 [--check]" >&2; exit 2 ;;
+	*)
+		echo "usage: $0 [--check]" >&2
+		exit 2
+		;;
 	esac
 done
 

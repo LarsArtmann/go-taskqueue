@@ -20,7 +20,6 @@ set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 self="$(basename "$0")"
 
-
 check_file() {
 	local file=$1
 	# awk state machine: collect heredoc spans, report unattributed ones.
@@ -121,7 +120,10 @@ EOF
 SCRIPT
 	out="$(check_file "$good")"
 	gv="$(printf '%s\n' "$out" | tail -1 | cut -d' ' -f1)"
-	[ "$gv" = 0 ] || { echo "FAIL: self-test good fixture reported $gv violations (expected 0)"; exit 1; }
+	[ "$gv" = 0 ] || {
+		echo "FAIL: self-test good fixture reported $gv violations (expected 0)"
+		exit 1
+	}
 	echo "ok: self-test good fixture passes (4 attribution shapes)"
 	out="$(check_file "$bad")"
 	bv="$(printf '%s\n' "$out" | tail -1 | cut -d' ' -f1)"
