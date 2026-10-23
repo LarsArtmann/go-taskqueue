@@ -1022,3 +1022,7 @@ not here.
 ## Done-prompt tenth dispatch (2026-10-23; source: docs/status/2026-10-23_18-35_done-prompt-window-report-tenth-dispatch.md d5/e2; deduped against rows 678, 661-664, 1006, 220, 603, ninth-section rows — quiet ci-local, counter-key upstream, transition tests, CI pins, dispatch-chain archive NOT re-listed)
 
 - [ ] De-glue the FIVE double-checkbox lines in TODO_LIST.md (lines carrying two `- [ ]` items glued without a newline, e.g. the SECURITY-matrix row ending "...(22-37 report §f1/§b1)- [ ] Pin..." — every glued second item is invisible to one-item-per-line harvest and to check-todo-list): split each into its own line, then add a check-todo-list leg that FAILS on an embedded `- [ ]` inside a single line so the class dies mechanically (source: tenth-dispatch report §d5/§e2; found 2026-10-23 via grep -c "^- \[ \].*\- \[ \]" = 5)
+
+## Review-fix 2026-10-23 (source: docs/status/tasks/2026-10-23_18-40_task-000001a1699ba37fc704570b24d800000000.md §e1; reviewer caught TODO row 777 unchecked although 65f09d79 landed — middle row of a 3-row batch skipped, no self-check existed)
+
+- [ ] Codify the closeout TICK-AUDIT step in AGENTS.md Conventions: before the final commit of any batch/fix dispatch, grep TODO_LIST.md for each verbatim batch anchor and assert every finished row reads `- [x]` (a landed work commit with an unchecked row costs a full review round-trip + a paid fix dispatch — 000001a1699ba37fc704570b24d800000000)
