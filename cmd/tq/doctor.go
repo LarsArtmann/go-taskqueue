@@ -576,20 +576,21 @@ func doctorStaleItems(ctx context.Context, store queue.Store, projectsDir string
 		}
 	}
 
-	detail := fmt.Sprintf(
+	var detail strings.Builder
+	detail.WriteString(fmt.Sprintf(
 		"%d pending task(s) whose TODO_LIST item is already ticked or gone — the pool would execute done work; `tq harvest --prune-stale` withdraws them",
 		len(res.Cancelled),
-	)
+	))
 
 	if len(res.Running) > 0 || len(res.Dead) > 0 {
-		detail += fmt.Sprintf(" (%d running, %d dead stale-item tasks)", len(res.Running), len(res.Dead))
+		detail.WriteString(fmt.Sprintf(" (%d running, %d dead stale-item tasks)", len(res.Running), len(res.Dead)))
 	}
 
 	for _, failure := range res.ScanFailures {
-		detail += "; scan " + failure.Repo + ": " + failure.Reason
+		detail.WriteString("; scan " + failure.Repo + ": " + failure.Reason)
 	}
 
-	return []checkResult{{Name: name, Status: checkWarn, Detail: detail, Items: items}}
+	return []checkResult{{Name: name, Status: checkWarn, Detail: detail.String(), Items: items}}
 }
 
 // doctorWorktreeOrphans is the pre-reaper visibility check (the 00-46 f7

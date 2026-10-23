@@ -50,7 +50,7 @@ type DLQFixPayload struct {
 	// Failure is the structured forensics from the dead task's LAST
 	// task.failed fact (stage, exit code, output tail). Zero when the
 	// journal predates failure evidence.
-	Failure FailureEvidence `json:"failure,omitempty"`
+	Failure FailureEvidence `json:"failure"`
 	// LastError is the dead task record's error text.
 	LastError string `json:"last_error,omitempty"`
 	// Attempts is how many attempts the dead task burned.
