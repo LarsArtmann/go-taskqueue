@@ -78,6 +78,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   per-engine health (`readmodel.Model.ProjectionHealth`, metaengine
   `HealthSnapshot` overlaid on the engine roster); store-backed servers
   keep the bare shape (pinned by `TestHealthzCarriesProjectionSection`).
+- **Fixture-attribution meta-gate for check-script fixtures** (2026-10-21):
+  `scripts/check-fixture-attribution.sh` requires every fixture heredoc in a
+  `scripts/check-*.sh` gate to carry a grep-able `pins: <branch>` attribution
+  naming WHICH branch the fixture pins (on the `cat >` line, inside the block,
+  or in the contiguous comment lines above); all 17 existing fixture heredocs
+  across 9 check scripts annotated; ships its own `--self-test` (four good
+  shapes + exactly-one-violation bad), wired into ci-local directly after
+  check-script-syntax. Enforces existence of the attribution, not its accuracy
+  — the v2 canary-token contract is a separate follow-up row.
+- **Gosec canary list single-sourced** (2026-10-21): `scripts/for-each-module.sh
+  --canaries` is the one home of the five-core-sub-module pin;
+  `scripts/check-gosec.sh` derives its short-enumeration guard from the
+  enumerator instead of keeping a second literal (the drift class is now
+  structurally impossible), with an empty-derivation hard-fail so a silently
+  empty canary set can never neuter the guard.
+- **Go floor raised to 1.27.2 across the graph** (2026-10-20/21): root go.mod
+  and the cmd/tq workspace floor moved to 1.27.2 (directive moves up, never
+  down), the flake `goToolchainVersion` tarball pin moved in lockstep (paired
+  hash) with a vendorHash refresh, after the initial wave landed without the
+  cmd/tq + flake halves and broke workspace builds (masked as "undefined
+  symbols") and `nix build` eval. CI setup-go pins still read 1.27.1 and ride
+  the default `GOTOOLCHAIN=auto` bridge until bumped.
 
 ### Changed
 - **lint-baseline cache staleness fixed at the source** (2026-10-20):
