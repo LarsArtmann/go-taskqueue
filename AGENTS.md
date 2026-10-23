@@ -269,7 +269,8 @@ docs/DOMAIN_LANGUAGE.md.
   vendor` first; dep bumps also per-module tidy
   (`check-gomod-vendor-sync.sh` gates both).
 - **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go
-  PINNED to 1.27.1 = go.mod floor; NEVER lower a `go` directive
+  PINNED to 1.27.1 BELOW the 1.27.2 go.mod floor (GOTOOLCHAIN=auto
+  bridges; bump the pins — TODO row); NEVER lower a `go` directive
   (`check-go-mods.sh`).
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
@@ -299,12 +300,12 @@ docs/DOMAIN_LANGUAGE.md.
 - **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` reads as a
   thunk — eval dies "expected a function but got a thunk at
   flake.nix:<line>"; keep the `let` INSIDE the lambda.
-- **formatterWithGo drop-day pairing** (flake.nix): go.mod floor 1.27.1
+- **formatterWithGo drop-day pairing** (flake.nix): go.mod floor 1.27.2
   > nixpkgs go_1_26, so `goTarball*` builds the toolchain from the
   go.dev tarball and `formatterWithGo` wraps templ fmt/goimports with
   that toolchain (sandbox blocks the download; treefmt-nix hardcodes
   nixpkgs go). ALL FOUR blocks drop together when nixpkgs ships
-  go ≥ 1.27.1 — hashes stay paired (`goTarballHash`).
+  go ≥ 1.27.2 — hashes stay paired (`goTarballHash`).
 - **templ-components sibling pins**: zero pseudo-versions
   (`v…00001010100000-…`) in a dep's root go.mod pass local builds but
   kill consumer graph loads (Nix FOD) — `grep -r 00010101` the dep repo
