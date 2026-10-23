@@ -10,11 +10,70 @@
 # banner.
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
+# Recursive --self-test re-invokes THIS script; capture the absolute self
+# path BEFORE any cd (the gosec self_abs pattern; 02-38 §b).
+self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
+must_mention() {
+	if grep -qF -- "$1" <<<"$2"; then
+		echo "ok: $3"
+	else
+		echo "FAIL: $3 (output is missing '$1')"
+		printf '%s\n' "$2"
+		exit 1
+	fi
+}
+
+# --self-test pins the end-of-run summary line (fleet convention: countable
+# gate summaries are PINNED, not advisory — 01-12 §e7/§g2) and runs a
+# negative-path counter battery over the if/else branches via a /tmp
+# fixture and the TQ_SYNTAX_FILES hook (files list override).
+self_test() {
+	# tmp is deliberately global: the EXIT trap reads it after self_test
+	# returned, and set -u would kill the trap on a function-local name.
+	tmp="$(mktemp -d)"
+	trap 'rm -rf "$tmp"' EXIT
+	printf '#!/bin/sh\necho hi\n' >"$tmp/good.sh"
+	printf '#!/bin/sh\nif then\nfi\n' >"$tmp/badsyn.sh"
+	printf '#!/bin/sh\necho $foo\n' >"$tmp/badlint.sh"
+	local files out rc=0
+	files="$(printf '%s\n' "$tmp/good.sh" "$tmp/badsyn.sh" "$tmp/badlint.sh")"
+	out="$(TQ_SYNTAX_FILES="$files" "$self_abs" 2>&1)" || rc=$?
+	if [ "$rc" -ne 1 ]; then
+		echo "FAIL: negative battery (want rc=1, got rc=$rc)"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	must_mention 'syntax summary: 2 checks ok, 2 failed' "$out" "summary pins exact counters (bash -n: 2 ok 1 fail; shellcheck: 1 fail)"
+	must_mention 'badsyn.sh' "$out" "bash -n failure branch reports the broken fixture"
+	must_mention 'badlint.sh' "$out" "shellcheck findings branch reports the lint fixture"
+	local pos_out pos_rc=0
+	pos_out="$("$self_abs" 2>&1)" || pos_rc=$?
+	if grep -Eq '^syntax summary: [0-9]+ checks ok, [0-9]+ failed$' <<<"$pos_out"; then
+		echo "ok: real-run summary matches the pinned format (rc=$pos_rc)"
+	else
+		echo "FAIL: real-run summary missing or malformed"
+		printf '%s\n' "$pos_out"
+		exit 1
+	fi
+	echo "script-syntax self-test ok (summary format pin + negative counter battery)"
+}
+
+if [ "${1:-}" = "--self-test" ]; then
+	self_test
+	exit 0
+fi
 
 files=()
-while IFS= read -r f; do
-	files+=("$f")
-done < <(git ls-files '*.sh')
+if [ -n "${TQ_SYNTAX_FILES:-}" ]; then
+	while IFS= read -r f; do
+		[ -n "$f" ] && files+=("$f")
+	done <<<"$TQ_SYNTAX_FILES"
+else
+	while IFS= read -r f; do
+		files+=("$f")
+	done < <(git ls-files '*.sh')
+fi
 
 if [ "${#files[@]}" -eq 0 ]; then
 	echo "no tracked shell scripts"
