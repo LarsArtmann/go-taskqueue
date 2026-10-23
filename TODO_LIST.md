@@ -1044,3 +1044,4 @@ not here.
 
 - [ ] Raise every sub-module's go directive to root's 1.27.2 — check-go-mods.sh is RED at master (19 modules still declare 1.27.1; never lower a directive; bump the CI setup-go pins in the same pass)
 - [ ] Restore check-guard-wiring green: wire or delete the two orphaned scripts (check-consumer-tag.sh — also carries the fleet's only shellcheck finding, SC2046 at scripts/check-consumer-tag.sh:132 — and scripts/smoke/worktree.sh)
+- [ ] Tighten check-go-mods.sh's pinned-require filter to REFUSE v0.0.0 internal pseudo-pins (the vX.Y.Z regex accepts zeros today; AGENTS.md documents the sibling-pin class that passes local builds but kills consumer graph loads) and add a v0.0.0 fixture case to the gate's new --self-test battery (source: docs/status/tasks/2026-10-24_01-50_task-000001a16b054830b1ac83bff0c700000000.md §e5/§f3)
