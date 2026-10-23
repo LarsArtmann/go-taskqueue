@@ -143,6 +143,14 @@ TODO harvest appended (§f).
    streak it was meant to end ("shell/docs-only delta ⇒ scoped gates
    by prose ruling") is unretired. Row 678 stays the owner of the
    work; no duplicate row minted.
+   ~~no footer commit~~ CORRECTED 2026-10-23 (tenth dispatch): a
+   footer-precise `git log --format=%B --grep` finds THREE footer
+   commits for this task id — 8b1efebd (AnswerPoller oldest-first
+   drain fix; rows 323+504 ticked), ed38bfb4 (vendor-drift row
+   closed), cb5ce139 (consumer-tag refinement + RELEASE.md step).
+   The "no archived matrix log" + "row 678 unchecked" halves STAND.
+   Receipts: docs/status/2026-10-23_18-35_done-prompt-window-report-
+   tenth-dispatch.md a)7.
 2. Row 661 — upstream go-cqrs-lite counter-key parent-row repro +
    filing: untouched (already rowed).
 3. Row 662 — transition-helper unit tests (transitionDelta/
