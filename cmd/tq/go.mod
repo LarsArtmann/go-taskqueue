@@ -3,23 +3,23 @@ module github.com/larsartmann/go-taskqueue/cmd/tq
 go 1.27.2
 
 require (
-	github.com/larsartmann/go-codec v0.3.1
-	github.com/larsartmann/go-cqrs-lite/event/v4 v4.13.1
+	github.com/larsartmann/go-codec v0.3.2
+	github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.1
 	github.com/larsartmann/go-cqrs-lite/id/v4 v4.7.2
-	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.5.3
-	github.com/larsartmann/go-cqrs-lite/system/v4 v4.12.0
+	github.com/larsartmann/go-cqrs-lite/projectionhost/v4 v4.7.1
+	github.com/larsartmann/go-cqrs-lite/system/v4 v4.15.1
 	github.com/larsartmann/go-taskqueue v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/composition v0.4.0
 	github.com/larsartmann/go-taskqueue/internal/config v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
-	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.0
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/worker v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/worker v0.3.4
 	modernc.org/sqlite v1.60.1
 )
 
@@ -47,19 +47,19 @@ require (
 	github.com/knadh/koanf/parsers/yaml v1.1.1 // indirect
 	github.com/knadh/koanf/providers/env v1.1.0 // indirect
 	github.com/knadh/koanf/providers/file v1.2.1 // indirect
-	github.com/knadh/koanf/v2 v2.3.8 // indirect
+	github.com/knadh/koanf/v2 v2.4.0 // indirect
 	github.com/larsartmann/go-branded-id v0.7.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/claiming/v4 v4.0.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/command/v4 v4.13.1 // indirect
+	github.com/larsartmann/go-cqrs-lite/command/v4 v4.14.1 // indirect
 	github.com/larsartmann/go-cqrs-lite/commandlifecycle/projections/v4 v4.2.3 // indirect
-	github.com/larsartmann/go-cqrs-lite/commandlifecycle/v4 v4.2.3 // indirect
-	github.com/larsartmann/go-cqrs-lite/decider/v4 v4.7.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.2.4 // indirect
+	github.com/larsartmann/go-cqrs-lite/commandlifecycle/v4 v4.3.1 // indirect
+	github.com/larsartmann/go-cqrs-lite/decider/v4 v4.8.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/dedup/v4 v4.3.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/dispatcher/v4 v4.5.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/metadata/v4 v4.7.3 // indirect
-	github.com/larsartmann/go-cqrs-lite/metaengine/projectionadapter/v4 v4.5.3 // indirect
-	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.17.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/projectionadapter/v4 v4.6.1 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/sqliteengine/v4 v4.5.3 // indirect
+	github.com/larsartmann/go-cqrs-lite/metaengine/v4 v4.19.0 // indirect
 	github.com/larsartmann/go-cqrs-lite/otel/v4 v4.5.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/projection/v4 v4.4.2 // indirect
 	github.com/larsartmann/go-cqrs-lite/query/v4 v4.10.1 // indirect
@@ -67,25 +67,26 @@ require (
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/record/v4 v4.6.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/schema/v4 v4.6.0 // indirect
-	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.6.2 // indirect
-	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.6.5 // indirect
+	github.com/larsartmann/go-cqrs-lite/schema/v4 v4.7.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/snapshot/v4 v4.7.0 // indirect
+	github.com/larsartmann/go-cqrs-lite/watermill/v4 v4.7.0 // indirect
 	github.com/larsartmann/go-datastar v0.6.2 // indirect
 	github.com/larsartmann/go-datastar/static v0.6.1 // indirect
-	github.com/larsartmann/go-error-family v0.11.0 // indirect
+	github.com/larsartmann/go-error-family v0.12.0 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
-	github.com/larsartmann/go-health v0.5.1 // indirect
-	github.com/larsartmann/go-health-dashboard v0.10.2 // indirect
+	github.com/larsartmann/go-health v0.7.0 // indirect
+	github.com/larsartmann/go-health-dashboard v0.11.0 // indirect
 	github.com/larsartmann/go-retry v0.8.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
+	github.com/larsartmann/go-sse/ssetest v0.5.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.3 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.4 // indirect
-	github.com/larsartmann/templ-components v1.21.0 // indirect
-	github.com/larsartmann/templ-components/datastar v1.21.0 // indirect
-	github.com/larsartmann/templ-components/htmx v1.21.0 // indirect
-	github.com/larsartmann/templ-components/icons v1.21.0 // indirect
-	github.com/larsartmann/templ-components/utils v1.21.0 // indirect
+	github.com/larsartmann/templ-components v1.23.0 // indirect
+	github.com/larsartmann/templ-components/datastar v1.23.0 // indirect
+	github.com/larsartmann/templ-components/htmx v1.23.0 // indirect
+	github.com/larsartmann/templ-components/icons v1.23.0 // indirect
+	github.com/larsartmann/templ-components/utils v1.23.0 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/maypok86/otter/v2 v2.3.0 // indirect
@@ -113,7 +114,7 @@ require (
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
-	modernc.org/libc v1.77.1 // indirect
+	modernc.org/libc v1.79.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
