@@ -11,12 +11,30 @@ cd "$(dirname "$0")/../.."
 # namespace (unshare -n) where available, so "zero network access" holds
 # even if a fake regresses into real curl/go-list. Skip with a loud line
 # where unshare is unavailable (fakes still keep the smoke offline).
+# netns_is_empty: true only when this process is inside an empty network
+# namespace, i.e. /proc/self/net/dev lists ONLY the loopback interface.
+# Guards the TQ_SMOKE_NETNS=1 re-exec marker: an operator-exported env var
+# must never let the smoke run in a real (non-empty) net while still
+# making the structural offline claim.
+netns_is_empty() {
+	[ -r /proc/self/net/dev ] || return 1
+	local devs
+	devs="$(awk 'NR > 2 { sub(/:.*/, ""); gsub(/^[ \t]+|[ \t]+$/, ""); if ($0 != "") print }' /proc/self/net/dev)"
+	[ "$devs" = "lo" ]
+}
+
 if [ "${TQ_SMOKE_NETNS:-}" != "1" ]; then
 	if command -v unshare >/dev/null 2>&1 && unshare -n true 2>/dev/null; then
 		echo "== re-exec under unshare -n (structural offline) =="
 		exec env TQ_SMOKE_NETNS=1 unshare -n "$0" "$@"
 	fi
 	echo "SKIP: unshare -n unavailable (or no permission) — offline claim is NOT structural; proceeding with faked seams only"
+else
+	if ! netns_is_empty; then
+		echo "FAIL: TQ_SMOKE_NETNS=1 set but /proc/self/net/dev is not loopback-only — structural offline claim does NOT hold; refusing to run" >&2
+		exit 1
+	fi
+	echo "== netns marker verified: loopback-only /proc/self/net/dev =="
 fi
 
 # shellcheck source=scripts/lib/proxy-wait.sh
