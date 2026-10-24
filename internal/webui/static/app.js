@@ -505,4 +505,15 @@
       overlay.style.display = "none";
     }
   });
+
+  /* Node unit-harness hook (internal/webui/jstest); undefined in browsers. */
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = {
+      applyFragment: applyFragment,
+      swapIn: swapIn,
+      fragmentBusy: fragmentBusy,
+      flushPendingSwap: flushPendingSwap,
+      flushGraceMs: FLUSH_GRACE_MS,
+    };
+  }
 })();
