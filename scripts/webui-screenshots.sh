@@ -43,6 +43,25 @@ if ! curl -sf http://127.0.0.1:8097/ >/dev/null 2>&1; then
 	echo "WARN: tq serve never came up on 127.0.0.1:8097 after the poll window — continuing; screenshots will fail with the underlying curl/browser error"
 fi
 
+# A dead-server or error-page capture is a near-uniform small PNG; a real
+# dashboard render at 1440px wide is orders of magnitude larger (task
+# 000001a137f7cb2c §f1: the run used to print "wrote" and exit 0 on garbage).
+MIN_PNG_BYTES="${MIN_PNG_BYTES:-20000}"
+
+check_png() {
+	local name="$1" path="$2"
+	if [ ! -s "$path" ]; then
+		echo "FAIL: $name capture missing or empty: $path (server down or renderer failed?)" >&2
+		return 1
+	fi
+	local size
+	size=$(wc -c <"$path")
+	if [ "$size" -lt "$MIN_PNG_BYTES" ]; then
+		echo "FAIL: $name capture is trivially small (${size} bytes < ${MIN_PNG_BYTES}) — likely a dead-server blank/error capture, not the dashboard" >&2
+		return 1
+	fi
+}
+
 shoot() {
 	local name="$1" scheme="$2"
 	"$BROWSER" --headless --disable-gpu --no-sandbox \
@@ -50,6 +69,7 @@ shoot() {
 		--force-prefers-color-scheme="$scheme" \
 		"http://127.0.0.1:8097/" >/dev/null 2>&1
 	echo "wrote $OUT/$name.png"
+	check_png "$name" "$OUT/$name.png"
 }
 
 shoot dashboard-light light
@@ -72,5 +92,6 @@ fi
 	--window-size=1440,1200 --screenshot="$OUT/task-detail.png" \
 	"http://127.0.0.1:8097/task/$DETAIL_ID" \
 	>/dev/null 2>&1 || echo "wrote $OUT/task-detail.png (best effort)"
+check_png "task-detail" "$OUT/task-detail.png"
 
 echo "screenshots complete"
