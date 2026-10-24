@@ -180,14 +180,15 @@ with_transient_retry "cmd/tq gate" ./scripts/test-cmd-tq.sh
 step "embed example builds on facade paths (adopter on-ramp rot guard)"
 with_transient_retry "embed example (facade paths)" bash -c 'cd examples/embed && GOWORK=off go build ./... && GOWORK=off go vet ./...' || exit 1
 
-step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
-./scripts/check-go-mods.sh
-
 # Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
 # summaries are PINNED, not advisory — the self-test fails here, not at the
-# next silent counter rot.
+# next silent counter rot. Self-test FIRST, then the real gate (dep-bump
+# pattern) — a rotted pin never lets an unpinned gate pass first.
 step "check-go-mods self-test (go-mods summary + negative counter battery)"
 ./scripts/check-go-mods.sh --self-test
+
+step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
+./scripts/check-go-mods.sh
 
 # Dep-bump drift (b886a677 class): vendor/ and per-module tidies must
 # match the committed graph — the 2026-10-07 03:12 bump without vendor/tidy
@@ -202,14 +203,14 @@ step "dep-bump drift (go mod vendor + per-module tidy vs committed tree)"
 step "facade parity (ADR-0016: facades mirror internal exports)"
 ./scripts/check-facade-parity.sh
 
-step "dead-export audit (advisory report)"
-./scripts/check-dead-exports.sh
-
 # Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
 # summaries are PINNED, not advisory — the self-test fails here, not at the
-# next silent counter rot.
+# next silent counter rot. Self-test FIRST (dep-bump pattern).
 step "check-dead-exports self-test (dead-exports summary + negative counter battery)"
 ./scripts/check-dead-exports.sh --self-test
+
+step "dead-export audit (advisory report)"
+./scripts/check-dead-exports.sh
 
 step "mirror-clone gate (advisory until the companion extraction lands; MIRROR_CLONES_STRICT=1 gates)"
 ./scripts/check-mirror-clones.sh
@@ -239,14 +240,14 @@ step "release proxy-wait loop offline test (both die branches)"
 step "new-module scaffold smoke (go.mod + dependabot parity at the source)"
 ./scripts/smoke/new-module.sh
 
-step "script syntax gate (bash -n + shellcheck, zero findings)"
-./scripts/check-script-syntax.sh
-
 # Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
 # summaries are PINNED, not advisory — the self-test fails here, not at the
-# next silent counter rot.
+# next silent counter rot. Self-test FIRST (dep-bump pattern).
 step "check-script-syntax self-test (syntax summary + negative counter battery)"
 ./scripts/check-script-syntax.sh --self-test
+
+step "script syntax gate (bash -n + shellcheck, zero findings)"
+./scripts/check-script-syntax.sh
 
 step "webui JS unit harness (app.js swap-guard + state re-apply; docs/webui-live-contract.md)"
 ./scripts/check-webui-js.sh
@@ -566,14 +567,14 @@ step "security-invariant self-test (both drift mutations caught)"
 # Orphaned-guard audit (15-39 report c7/f5, e1): every check-*/smoke script
 # must be wired (this file, ci.yml, or flake.nix) — the check-webui-css
 # lesson generalized into a gate.
-step "guard-wiring check (no orphaned check-*/smoke scripts)"
-./scripts/check-guard-wiring.sh
-
 # Fleet convention (2026-10-24, TODO 01-12 §e7/§g2): countable gate
 # summaries are PINNED, not advisory — the self-test fails here, not at the
-# next silent counter rot.
+# next silent counter rot. Self-test FIRST (dep-bump pattern).
 step "check-guard-wiring self-test (guard-wiring summary + negative counter battery)"
 ./scripts/check-guard-wiring.sh --self-test
+
+step "guard-wiring check (no orphaned check-*/smoke scripts)"
+./scripts/check-guard-wiring.sh
 
 # Module-loop capture audit: every `for m in $mods` loop in this file and
 # ci.yml must be fed by the for-each-module.sh enumeration — a revert to
