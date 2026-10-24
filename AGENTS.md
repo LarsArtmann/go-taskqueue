@@ -212,6 +212,13 @@ docs/DOMAIN_LANGUAGE.md.
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE
   index-row write point (top chronological cluster); CHANGELOG
   append-only.
+- **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE
+  changes only — repo-internal tooling and non-operator-facing rows go
+  in the `### Internal` subsection at the bottom of the release section
+  (kept for the record, excluded from operator release notes), never in
+  Added/Changed/Fixed; external/API behavior changes additionally get an
+  explicit `(BEHAVIOR CHANGE for …)` flag; guarded mechanically by the
+  O14 CHANGELOG check in `scripts/check-release-docs.sh`.
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
   composing a `<ts>_<slug>` filename — a guessed `<ts>` lies about its
   own timestamp.
