@@ -176,5 +176,3 @@ if [ "$CONCLUSION" != "success" ]; then
 	esac
 	exit 1
 fi
-
-echo "check-ci: ok — latest CI run on $BRANCH ($SHA) is green"
