@@ -248,6 +248,11 @@ step "script syntax gate (bash -n + shellcheck, zero findings)"
 step "check-script-syntax self-test (syntax summary + negative counter battery)"
 ./scripts/check-script-syntax.sh --self-test
 
+step "webui JS unit harness (app.js swap-guard + state re-apply; docs/webui-live-contract.md)"
+./scripts/check-webui-js.sh
+step "check-webui-js self-test (summary pin + negative-path battery)"
+./scripts/check-webui-js.sh --self-test
+
 step "fixture-attribution meta-gate (every check-* fixture heredoc names its pinned branch)"
 ./scripts/check-fixture-attribution.sh --self-test
 ./scripts/check-fixture-attribution.sh

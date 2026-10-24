@@ -28,7 +28,7 @@ class El {
     this.scrollTop = 0;
     this.scrollHeight = 1000;
     this.clientHeight = 500;
-    this.value = "";
+    this._value = undefined;
     this.isContentEditable = false;
     this.style = {};
   }
@@ -36,6 +36,8 @@ class El {
   set id(v) { this.attributes.set("id", v); }
   get name() { return this.attributes.get("name") || ""; }
   get type() { return this.attributes.get("type") || ""; }
+  get value() { return this._value !== undefined ? this._value : this.getAttribute("value") || ""; }
+  set value(v) { this._value = v; }
   get open() { return this.attributes.get("open") !== undefined; }
   set open(v) { if (v) this.attributes.set("open", ""); else this.attributes.delete("open"); }
   get textContent() {
@@ -170,7 +172,9 @@ globalThis.EventSource = class {
   close() {}
 };
 const realSetInterval = globalThis.setInterval;
+const realSetTimeout = globalThis.setTimeout;
 globalThis.setInterval = () => 0;
+globalThis.setTimeout = () => 0;
 
 const realDateNow = Date.now;
 let fakeNow = realDateNow();
@@ -247,8 +251,8 @@ test("details[open] makes fragment busy: latest payload queued, swapped after gr
   apply({ id: "frag-t2", html: '<details data-state-key="cell-1"><summary>r</summary><p>v2</p></details>' });
   fakeNow += 1000;
   app.flushPendingSwap();
-  eq(el.textContent.includes("v2"), false, "still inside grace window (age 2s < 2.5s)");
-  fakeNow += 600;
+  eq(el.textContent.includes("v2"), false, "still inside grace window (v2 age 1s < 2.5s)");
+  fakeNow += 1600;
   app.flushPendingSwap();
   eq(el.textContent.includes("v2"), true, "grace elapsed: LATEST payload lands");
   eq(el.querySelector('details[data-state-key="cell-1"]').open, true, "open state re-applied through the forced swap");
@@ -258,12 +262,13 @@ test("focused input makes fragment busy until grace flush", () => {
   const el = fragEl('<input name="q" value="a">', "frag-t3");
   el.querySelector("input").focus();
   fakeNow += 5000;
-  apply({ id: "frag-t3", html: '<input name="q" value="b">' });
-  eq(el.querySelector("input").value, "a", "swap deferred while focused");
+  apply({ id: "frag-t3", html: '<input name="q" value="b"><i id="swapped-in"></i>' });
+  eq(el.querySelector("#swapped-in"), null, "swap deferred while focused");
   doc.activeElement = null;
   fakeNow += 3000;
   app.flushPendingSwap();
-  eq(el.querySelector("input").value, "b", "swapped after grace once focus left");
+  if (!el.querySelector("#swapped-in")) throw new Error("swap did not land after grace");
+  eq(el.querySelector("input").value, "a", "operator-typed value survives the deferred swap (re-apply)");
 });
 
 test("listener-drop invariant: swapped-in data-error cell still expands via document delegation", () => {
@@ -282,8 +287,7 @@ test("listener-drop invariant: swapped-in data-error cell still expands via docu
 
 test("data-state-key re-applies details open state even when the summary text drifts", () => {
   const el = fragEl('<details data-state-key="cancel-task-1" open><summary>Cancel (3)</summary></details>', "frag-t5");
-  apply({
-    id: "frag-t5",
+  app.swapIn(el, {
     html: '<details data-state-key="cancel-task-1"><summary>Cancel (7)</summary></details>',
   });
   eq(el.querySelector("details").open, true, "matched by stable key, not summary text");
@@ -300,7 +304,7 @@ test("focus-after-swap: focus restored onto the fresh subtree", () => {
   const el = fragEl('<input name="q" value="">', "frag-t7");
   el.querySelector("input").focus();
   doc.focusLog.length = 0;
-  apply({ id: "frag-t7", html: '<input name="q" value="">' });
+  app.swapIn(el, { html: '<input name="q" value="">' });
   const ae = doc.activeElement;
   if (!ae) throw new Error("focus lost after swap");
   eq(ae.name, "q", "focus restored to matching control");
@@ -321,7 +325,7 @@ test("scroll containers keep scrollTop; bottom-pinned panes stay pinned", () => 
 
 test("expanded error cells re-applied by data-short through the swap", () => {
   const el = fragEl('<span data-error="boom" data-short="err" data-expanded="1">boom</span>', "frag-t9");
-  apply({ id: "frag-t9", html: '<span data-error="boom" data-short="err" data-expanded="0">err</span>' });
+  app.swapIn(el, { html: '<span data-error="boom" data-short="err" data-expanded="0">err</span>' });
   const cell = el.querySelector("[data-error]");
   eq(cell.getAttribute("data-expanded"), "1");
   eq(cell.textContent, "boom");
@@ -332,11 +336,9 @@ test("gateway: TQ_WEBUIJS_FAIL=1 forces a failing test (gate self-test hook)", (
   if (process.env.TQ_WEBUIJS_FAIL === "1") throw new Error("intentional failure for gate self-test");
 });
 
-if (failed > 0 || process.env.TQ_WEBUIJS_FAIL === "1") {
-  if (process.env.TQ_WEBUIJS_FAIL !== "1") process.exitCode = 1;
-  else process.exitCode = 1;
-}
+if (failed > 0) process.exitCode = 1;
 globalThis.setInterval = realSetInterval;
+globalThis.setTimeout = realSetTimeout;
 globalThis.Date.now = realDateNow;
 console.log(`webui-js summary: ${ok} tests ok, ${failed} failed`);
-if (process.env.TQ_WEBUIJS_FAIL === "1") process.exit(1);
+if (process.exitCode) process.exit(process.exitCode);
