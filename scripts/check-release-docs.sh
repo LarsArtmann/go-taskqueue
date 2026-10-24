@@ -116,6 +116,25 @@ grep -qF -- 'tq show <id> --commits' "$doc" || miss "RELEASE.md multi-commits se
 grep -qF -- 'tag-ancestry' cmd/tq/doctor.go || miss "doctor tag-ancestry check gone"
 grep -qF -- 'tq doctor' "$doc" || miss "RELEASE.md lost the doctor tag-ancestry mention"
 
+# O14 CHANGELOG guard (TODO row 863): the [Unreleased] OPERATOR sections
+# (Added/Changed/Fixed, everything before ### Internal) must not carry
+# internal-only rows — the known repo-internal signatures belong in the
+# ### Internal subsection (AGENTS.md Conventions, O14 policy). Cheap grep
+# by design — an alarm, not a parser; O14_CHANGELOG_DOC points the guard
+# at a copy (self-test).
+changelog="${O14_CHANGELOG_DOC:-CHANGELOG.md}"
+unreleased_op="$(awk '
+	/^## \[Unreleased\]/{inun=1; next}
+	inun && /^## /{exit}
+	inun && /^### Internal/{exit}
+	inun {print}
+' "$changelog")"
+for sig in 'check-release-docs' 'heal-daemon-sweep' 'readmodel probe'; do
+	if grep -qF -- "$sig" <<<"$unreleased_op"; then
+		miss "CHANGELOG [Unreleased] operator sections carry an internal-only row matching \"$sig\" — move it to ### Internal (O14)"
+	fi
+done
+
 if [ "$drift" -ne 0 ]; then
 	echo "release-docs drift: fix the doc or the script — whichever moved" >&2
 	exit 1
