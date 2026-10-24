@@ -7,12 +7,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- **Heal tool closes the dangling-cite loop** (2026-10-20): a successful
-  `scripts/heal-daemon-sweep.sh` heal now sweeps the dead-sha gate's
-  living-docs scope for lines still citing a rewritten sha and prints
-  each stale site with its paste-ready fork-record arrow (arrow-pair
-  members are recognized as already cured), so the residue is fixed in
-  the healing window instead of a later one; pinned in the self-test.
 - **Module scaffolder emits the Dependabot entry** (2026-10-20):
   `scripts/new-module.sh` now appends the new module's
   `.github/dependabot.yml` block at creation (refusing a duplicate
@@ -321,6 +315,14 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   shipped 2026-10-01) — the structural vendor-gofmt red class that killed
   ~103 tasks is gone at the gate source; the tracking TODO row was deleted
   2026-10-12 (docs-health sweep 6).
+- **Heal tool closes the dangling-cite loop** (2026-10-20): a successful
+  `scripts/heal-daemon-sweep.sh` heal now sweeps the dead-sha gate's
+  living-docs scope for lines still citing a rewritten sha and prints
+  each stale site with its paste-ready fork-record arrow (arrow-pair
+  members are recognized as already cured), so the residue is fixed in
+  the healing window instead of a later one; pinned in the self-test.
+  (Moved from `[Unreleased]` Added 2026-10-24 per the O14 guard —
+  repo-internal tooling row, operator sections stay operator-visible.)
 
 ## [v0.3.4] - 2026-10-11
 

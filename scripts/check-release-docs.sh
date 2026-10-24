@@ -63,11 +63,28 @@ if [ "${1:-}" = "--self-test" ]; then
 	summary='release-docs drift: fix the doc or the script — whichever moved'
 	miss_lines=$(printf '%s\n' "$selftest_out" | grep '^release-docs drift: ' | grep -vxF -- "$summary" || true)
 	if [ "$miss_lines" = "$expected" ]; then
-		echo "release-docs self-test ok: mutated doc copy trips the expected doc-side drift miss"
+		echo "release-docs self-test stage 1 ok: mutated doc copy trips the expected doc-side drift miss"
+	else
+		echo "release-docs self-test FAIL: mutated run went red for the wrong reason (expected exactly: $expected)" >&2
+		printf '%s\n' "$selftest_out" >&2
+		exit 1
+	fi
+
+	# O14-guard stage (TODO row 863): the CHANGELOG guard only ever running
+	# green would rot the same way — plant an internal-only row in a mutated
+	# CHANGELOG copy's Changed section and require the exact O14 miss. The
+	# copy keeps line structure (the guard's awk is line-anchored).
+	sed 's|^### Changed$|&\n- check-release-docs planted internal pin (planted-by-self-test)|' CHANGELOG.md >"$tmp/CHANGELOG.md"
+	planted_rc=0
+	planted_out="$(O14_CHANGELOG_DOC="$tmp/CHANGELOG.md" bash scripts/check-release-docs.sh 2>&1)" || planted_rc=$?
+	planted_expected='release-docs drift: CHANGELOG [Unreleased] operator sections carry an internal-only row matching "check-release-docs" — move it to ### Internal (O14)'
+	planted_lines=$(printf '%s\n' "$planted_out" | grep '^release-docs drift: ' | grep -vxF -- "$summary" || true)
+	if [ "$planted_rc" -ne 0 ] && [ "$planted_lines" = "$planted_expected" ]; then
+		echo "release-docs self-test ok: mutated doc copy trips the expected doc-side drift miss; planted internal-only row trips the O14 guard"
 		exit 0
 	fi
-	echo "release-docs self-test FAIL: mutated run went red for the wrong reason (expected exactly: $expected)" >&2
-	printf '%s\n' "$selftest_out" >&2
+	echo "release-docs self-test FAIL: planted internal-only row did not trip the O14 guard exactly (expected: $planted_expected)" >&2
+	printf '%s\n' "$planted_out" >&2
 	exit 1
 fi
 
