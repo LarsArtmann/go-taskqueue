@@ -449,6 +449,15 @@ func (e *AgentExecutor) WorktreeInUse(id string) bool {
 	return parked
 }
 
+// ParkCloseoutForTest arms a closeoutPending entry without running an
+// agent turn: TEST-ONLY injection for consumers (cmd/tq's
+// worktreeInFlight) that must pin how a parked executor entry interacts
+// with store status — the exact cancelled+parked regression shape the
+// worktree reaper had before terminal status won.
+func (e *AgentExecutor) ParkCloseoutForTest(id, repoDir, session string) {
+	e.armCloseoutResume(id, repoDir, session)
+}
+
 // repoDir resolves a payload repo name: absolute paths pass through,
 // relative names resolve against ProjectsDir.
 func (e *AgentExecutor) repoDir(repo string) (string, error) {

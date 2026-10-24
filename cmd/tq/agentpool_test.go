@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/larsartmann/go-taskqueue/internal/executor"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
 	"github.com/larsartmann/go-taskqueue/internal/readmodel"
@@ -501,6 +502,62 @@ func TestWorktreeInFlightTerminalStatusWins(t *testing.T) {
 
 	if probe("00000000000000000000000000000000") {
 		t.Fatalf("unknown task id reported in-flight")
+	}
+}
+
+// TestWorktreeInFlightCancelledParkedWithExecutor pins the exact
+// regression shape the store-status-side test above could not: an agent
+// executor that ACTUALLY holds a parked closeoutPending entry for a
+// CANCELLED task must still report the worktree not in-flight (terminal
+// status wins over the executor OR branch). The entry is armed via the
+// executor's test-only injection (ParkCloseoutForTest) — the same map
+// runAgent's rate-limited close-out path fills — and a PENDING control
+// proves the parked entry itself is what drives the OR branch.
+func TestWorktreeInFlightCancelledParkedWithExecutor(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	s, err := sqlite.Open(filepath.Join(t.TempDir(), "q.db"))
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+
+	defer func() { _ = s.Close() }()
+
+	agentExec := executor.NewAgentExecutor(t.TempDir())
+	probe := worktreeInFlight(ctx, s, agentExec)
+
+	cancelled, err := s.Enqueue(ctx, task.New{Type: "agent"})
+	if err != nil {
+		t.Fatalf("enqueue cancelled: %v", err)
+	}
+
+	if err := s.Cancel(ctx, cancelled.ID, "test: cancelled while parked"); err != nil {
+		t.Fatalf("cancel: %v", err)
+	}
+
+	agentExec.ParkCloseoutForTest(cancelled.ID.String(), "/tmp/repo", "sess-1")
+
+	if agentExec.WorktreeInUse(cancelled.ID.String()) != true {
+		t.Fatalf("precondition: parked entry not visible on executor")
+	}
+
+	if probe(cancelled.ID.String()) {
+		t.Fatalf(
+			"CANCELLED task with parked closeoutPending reported in-flight — exactly the pin class (stale entry would hold the worktree until restart)",
+		)
+	}
+
+	pending, err := s.Enqueue(ctx, task.New{Type: "agent"})
+	if err != nil {
+		t.Fatalf("enqueue pending: %v", err)
+	}
+
+	agentExec.ParkCloseoutForTest(pending.ID.String(), "/tmp/repo", "sess-2")
+
+	if !probe(pending.ID.String()) {
+		t.Fatalf("PENDING task with parked closeoutPending reported not in-flight — parked entry must keep the worktree alive while the task can re-claim")
 	}
 }
 
