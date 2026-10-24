@@ -235,7 +235,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - `Store.Park` (tq park store surface): operator parks suppress claims on PENDING tasks until an instant without burning attempts — same-transaction NotBefore move + `task.parked` fact; a past until is the release.
 - `Store.ClaimDueTypes`: claim-time executor-type filter — a pool whose registry lacks a type never claims it (bare workers can no longer dead-letter agent tasks).
-- `Store.ClaimCounts` GROUP BY pushdown and `Filter.DedupKey` exact-match list filter.
+- `Filter.DedupKey` exact-match list filter.
 - The agent pool's claim-time done gate (`--done-preflight`) now defaults
   ON (BEHAVIOR CHANGE for pool operators: tasks minted before their work
   landed complete at claim time with zero agent spend instead of burning a
@@ -323,6 +323,9 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   the healing window instead of a later one; pinned in the self-test.
   (Moved from `[Unreleased]` Added 2026-10-24 per the O14 guard —
   repo-internal tooling row, operator sections stay operator-visible.)
+- `Store.ClaimCounts` GROUP BY pushdown — perf-only query change, no
+  operator surface (split from the mixed `[Unreleased]` Changed row
+  2026-10-24 so the operator half, `Filter.DedupKey`, stands alone).
 
 ## [v0.3.4] - 2026-10-11
 
