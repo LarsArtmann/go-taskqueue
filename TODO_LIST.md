@@ -865,6 +865,12 @@ not here.
 - [ ] Give cmd/tq's worktreeInFlight test an executor-side injection point (exported test-only registration on AgentExecutor or a fake-binary Execute) so the exact cancelled+parked closeoutPending regression shape is pinned, not just the store-status side (closeout 2026-10-13 04-11 §e2)
 - [ ] Audit other consumers that OR executor state over store state (WorktreeInUse pattern) for the terminal-status-wins gap worktreeInFlight had — new callers re-introduce the cancelled-task pin class (closeout 2026-10-13 04-11 §e1/§f2)
 
+## Review-finding fix follow-ups (2026-10-24 03-00; source: docs/status/tasks/2026-10-24_03-00_task-000001a16b500b6086abfa401b3c00000000.md)
+
+- [ ] Resolve the go-directive downgrade break: check-go-mods reports 19 failures at HEAD (every sub-module go.mod declares go 1.27.1, root declares go 1.27.2 — "may only RAISE"), introduced via daemon sweep a9bdcea1 2026-10-23 — raise sub-modules back to 1.27.2 or revert the touching hunk after blame (closeout §b/§f1)
+- [ ] Wire or delete scripts/check-consumer-tag.sh + scripts/smoke/worktree.sh (check-guard-wiring: 2 orphaned guards) and fix check-consumer-tag.sh's shellcheck SC2046 warning (check-script-syntax: 1 failed) — both files arrived unattributed in daemon sweep a9bdcea1 (closeout §b/§f2)
+- [ ] Pin the fleet convention's ORDERING property mechanically: a check asserting each countable gate's --self-test invocation precedes its real-gate invocation in ci-local.sh — the dce6c12b inverted wiring (self-tests after gates) shipped despite AGENTS.md saying "ahead" and only a paid reviewer caught it (closeout §e3/§f3; owner call on placement: check-guard-wiring vs per-gate self-test, §g3)
+
 ## O14 follow-ups (2026-10-24 02-31; source: docs/status/tasks/2026-10-24_02-31_task-000001a16b4256e498488170ef0600000000.md; rows 862/863/864 ticked this pass)
 
 - [ ] Release-cut second-reviewer pass: re-judge the 4 BEHAVIOR CHANGE flags (CSP, owner-session park, done-preflight, GitLogScanner) + every `### Internal` move (6 from the O14 audit + the heal dangling-cite row) + the 2 un-judged 2026-10-20 Added rows (module-scaffolder Dependabot emission, accepted-dupe ledger) before `[Unreleased]` ships (02-31 closeout §f4, verified unrowed at HEAD 2026-10-24)
