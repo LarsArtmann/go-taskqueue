@@ -468,6 +468,31 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, body)
 }
 
+// CloseReadModel releases the read-model surfaces UseReadModel armed,
+// in the production close order (pump host, then DLQ sidecar, then the
+// model itself). ListenAndServe owns this for the serve window; a caller
+// that never serves (tests, embedded stats-only mounts) must call it or
+// the projection home and sidecar handles leak (an open handle blocks
+// t.TempDir cleanup on windows with an unlinkat refusal).
+func (s *Server) CloseReadModel() {
+	if s.host != nil {
+		_ = s.host.Stop()
+		_ = s.host.Close()
+	}
+
+	if s.dlq != nil {
+		if err := s.dlq.Close(); err != nil {
+			s.log.Error("httpapi: close dlq sidecar", "err", err)
+		}
+	}
+
+	if s.model != nil {
+		if err := s.model.Close(); err != nil {
+			s.log.Error("httpapi: close read model", "err", err)
+		}
+	}
+}
+
 // ListenAndServe starts the API on addr (e.g. "127.0.0.1:8091") until ctx
 // is cancelled. It owns the read model's lifetime when UseReadModel ran:
 // the managed projection host tails the journal (platform restart budget
@@ -489,24 +514,7 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 		_ = srv.Shutdown(shutdownCtx)
 	}()
 
-	defer func() {
-		if s.host != nil {
-			_ = s.host.Stop()
-			_ = s.host.Close()
-		}
-
-		if s.dlq != nil {
-			if err := s.dlq.Close(); err != nil {
-				s.log.Error("httpapi: close dlq sidecar", "err", err)
-			}
-		}
-
-		if s.model != nil {
-			if err := s.model.Close(); err != nil {
-				s.log.Error("httpapi: close read model", "err", err)
-			}
-		}
-	}()
+	defer s.CloseReadModel()
 
 	if s.host != nil {
 		if err := s.host.Start(ctx); err != nil {

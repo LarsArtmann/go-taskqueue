@@ -569,9 +569,10 @@ func TestStatsReadModelSeam(t *testing.T) {
 		t.Fatal("UseReadModel did not install the read model")
 	}
 
-	// No ListenAndServe here, so nothing else owns the projection: close
-	// it or TempDir cleanup fails on windows (open-file unlink).
-	t.Cleanup(func() { _ = srv.model.Close() })
+	// No ListenAndServe here, so nothing else owns the projection: the
+	// full close order (host → dlq → model) must run or the leaked DLQ
+	// sidecar handle fails TempDir cleanup on windows (open-file unlink).
+	t.Cleanup(srv.CloseReadModel)
 
 	enqueueTask(t, store, "billing")
 
@@ -743,6 +744,8 @@ func TestUseReadModelYieldsToLockHolder(t *testing.T) {
 	if err := srv.UseReadModel(context.Background(), d); err != nil {
 		t.Fatalf("use read model: %v", err)
 	}
+
+	t.Cleanup(srv.CloseReadModel)
 
 	if srv.host != nil {
 		t.Fatal("read-only mount armed a pump host — a reader cannot fold")
@@ -961,6 +964,8 @@ func TestUseReadModelReplaysDeletedProjectionHome(t *testing.T) {
 		t.Fatalf("use read model: %v", err)
 	}
 
+	t.Cleanup(srv.CloseReadModel)
+
 	stats := authorizedStats(t, srv.Handler())
 	if stats["pending"] != 1 || stats["total"] != 1 {
 		t.Fatalf("stats after replay = %v, want the deleted home's rows re-folded", stats)
@@ -1083,7 +1088,7 @@ func TestHealthzCarriesProjectionSection(t *testing.T) {
 			t.Fatalf("use read model: %v", err)
 		}
 
-		t.Cleanup(func() { _ = srv.model.Close() })
+		t.Cleanup(srv.CloseReadModel)
 
 		enqueueTask(t, store, "billing")
 
