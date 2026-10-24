@@ -1,6 +1,6 @@
 module github.com/larsartmann/go-taskqueue/internal/queue/companion
 
-go 1.27.1
+go 1.27.3
 
 require (
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3

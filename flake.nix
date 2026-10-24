@@ -26,8 +26,8 @@
     # makes Nix 2.34's flake loader treat outputs as a thunk ("expected a
     # function but got a thunk").
     let
-      goToolchainVersion = "1.27.2";
-      goToolchainHash = "sha256-A0ldorpkiU1A9cSZLklFT6eLUGkGBP+Stq//UIG3bmI=";
+      goToolchainVersion = "1.27.3";
+      goToolchainHash = "sha256-bndJA1zzYPBrJXXRYup535/ajvZxiJ5cN1+OUHd/Jrs=";
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ inputs.go-nix-helpers.flakeModules.go-standard ];

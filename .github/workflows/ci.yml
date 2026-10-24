@@ -38,7 +38,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.3
       - name: Vet
         run: go vet ./...
       - name: Build
@@ -240,7 +240,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.3
       - name: Test
         run: go test ./... -count=1 -timeout 300s
       - name: Module isolation gates (per sub-module)
@@ -282,7 +282,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.3
       - name: Postgres store conformance
         run: cd internal/queue/postgres && GOWORK=off go test . -run TestPostgres -count=1 -v
       - name: ADR-0019 S1 postgres spike suite (queue/postgres/v4-backed store)
@@ -309,7 +309,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.3
       - name: Facade adopter on-ramp build (examples/embed)
         run: cd examples/embed && GOWORK=off go build ./...
       - name: Out-of-tree consumer install (proxy @latest, all 7 facades)
@@ -352,7 +352,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.3
       - name: Govulncheck (root + every sub-module)
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
@@ -392,7 +392,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.3
       - name: Gosec (root + every sub-module)
         run: |
           GOSEC_VERSION="$(sed -n 's/^GOSEC_VERSION=//p' scripts/check-gosec.sh)"
@@ -436,7 +436,7 @@ jobs:
           path: go-cqrs-lite
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.3
       - name: Build cqrs-lint and lint the journal adapter
         run: |
           ( cd go-cqrs-lite/cmd/cqrs-lint && go build -o "${GITHUB_WORKSPACE}/cqrs-lint-bin" . )
