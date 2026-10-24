@@ -283,9 +283,9 @@ docs/DOMAIN_LANGUAGE.md.
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod
   vendor` first; dep bumps also per-module tidy
   (`check-gomod-vendor-sync.sh` gates both).
-- **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go
-  PINNED to 1.27.1 BELOW the 1.27.2 go.mod floor (GOTOOLCHAIN=auto
-  bridges; bump the pins — TODO row); NEVER lower a `go` directive
+- **GOEXPERIMENT/GOTOOLCHAIN**: ci-local exports jsonv2; CI setup-go +
+  go.mod floors + flake tarball PINNED IN LOCKSTEP (1.27.3, toolchain
+  sweep 2026-10-24); NEVER lower a `go` directive
   (`check-go-mods.sh`).
 - **Host GOCACHE/GOROOT hazards**: gates run `GOCACHE=/tmp/go-build-cache`
   (host symlink → /nix/store ENOSPCs); "package X is not in std" +
