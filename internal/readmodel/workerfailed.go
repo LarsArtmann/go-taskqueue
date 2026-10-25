@@ -78,7 +78,7 @@ func writeWorkerFailedMarkerAt(path string, marker WorkerFailedMarker) error {
 		return fmt.Errorf("readmodel: write worker-death marker: %w", err)
 	}
 
-	if err := os.Rename(tmp, path); err != nil {
+	if err := renameWithTransientRetry(tmp, path); err != nil {
 		_ = os.Remove(tmp)
 
 		return fmt.Errorf("readmodel: publish worker-death marker: %w", err)
