@@ -41,7 +41,6 @@ git -C "$REPO" config user.name "tq smoke"
 printf 'test -f .tq-verify\n' >"$REPO/.tq-verify"
 git -C "$REPO" add -A
 git -C "$REPO" commit -qm "seed"
-BASE_HEAD="$(git -C "$REPO" rev-parse HEAD)"
 
 echo "== stub agent: work turns commit inside THEIR checkout; review approves"
 STUB="$TMP/stub-agent"
@@ -86,13 +85,13 @@ run_pool() {
 		}
 }
 
-# Run 1 carries NO --review: the review sweeper auto-merges approved
-# branches within the same pool run that mints the reviews, so a --review
-# run would move the main checkout's HEAD before the untouched assertion
-# below (that in-run merge is designed behavior; this smoke pins the
-# mid-state first, then approves in run 2).
-echo "== pool run 1: both work tasks complete in linked checkouts"
-run_pool 1
+# ONE run carries the whole arc: the review sweeper auto-merges approved
+# branches within the same pool run that mints the reviews (designed
+# behavior — a later --review run never sees earlier completions because
+# the sweeper's watermark already consumed them), so the historical
+# work-run-then-review-run shape is unobservable.
+echo "== pool run: work completes in linked checkouts, reviews approve → auto-merge + reap"
+run_pool 1 --review
 grep -q "review: enqueued" "$TMP/pool1.log" || {
 	cat "$TMP/pool1.log"
 	echo "FAIL: sweeper never minted a review"
@@ -110,36 +109,23 @@ grep -q "review: enqueued" "$TMP/pool1.log" || {
 	exit 1
 }
 
-echo "== main checkout untouched: same HEAD, clean status, no work.txt"
-[ "$(git -C "$REPO" rev-parse HEAD)" = "$BASE_HEAD" ] || {
-	echo "FAIL: main checkout HEAD moved"
+echo "== deliveries merged through tq/* branches; main checkout clean"
+[ "$(grep -c 'review: merged' "$TMP/pool1.log")" -ge 2 ] || {
+	cat "$TMP/pool1.log"
+	echo "FAIL: approve verdicts never merged both worktree branches"
+	exit 1
+}
+[ "$(git -C "$REPO" rev-list --merges --count HEAD)" -ge 2 ] || {
+	echo "FAIL: want >=2 merge commits carrying the deliveries"
+	exit 1
+}
+[ -f "$REPO/work-taskone.txt" ] && [ -f "$REPO/work-tasktwo.txt" ] || {
+	echo "FAIL: merged work files missing from the main checkout"
 	exit 1
 }
 [ -z "$(git -C "$REPO" status --porcelain)" ] || {
 	git -C "$REPO" status --porcelain
 	echo "FAIL: main checkout is dirty"
-	exit 1
-}
-[ ! -e "$REPO/work.txt" ] || {
-	echo "FAIL: work.txt leaked into the main checkout"
-	exit 1
-}
-[ -z "$(ls "$REPO"/work-*.txt 2>/dev/null)" ] || {
-	ls "$REPO"/work-*.txt
-	echo "FAIL: a work-* file leaked into the main checkout"
-	exit 1
-}
-
-echo "== pool run 2: reviews approve → auto-merge + reap"
-run_pool 2 --review
-grep -q "review: enqueued" "$TMP/pool2.log" || {
-	cat "$TMP/pool2.log"
-	echo "FAIL: sweeper never minted a review"
-	exit 1
-}
-[ "$(grep -c 'review: merged' "$TMP/pool2.log")" -ge 2 ] || {
-	cat "$TMP/pool2.log"
-	echo "FAIL: approve verdicts never merged both worktree branches"
 	exit 1
 }
 
@@ -155,4 +141,4 @@ echo "== no orphan tq/* branches or worktrees left"
 	exit 1
 }
 
-echo "worktree smoke ok: 2 tasks ran in linked checkouts, main checkout untouched, reviews approved, branches merged and reaped"
+echo "worktree smoke ok: 2 tasks ran in linked checkouts (worktree_dir + tq/ branch facts), review-approved branches auto-merged through tq/* merges and reaped clean"
