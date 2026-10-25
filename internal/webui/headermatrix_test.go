@@ -24,7 +24,7 @@ import (
 // matrixHeaders is one surface's allowed response headers: name → value
 // check (nil = presence only). A response header outside the set, or a set
 // member missing from the response, fails.
-type matrixHeaders map[string]func(t *testing.T, got string)
+type matrixHeaders map[string]func(t testing.TB, got string)
 
 // surface is a matrix row plus the names that may legitimately be absent
 // from that surface's responses (conditionally present, e.g. Retry-After
@@ -56,7 +56,7 @@ var transportHeaders = map[string]bool{
 	"x-accel-buffering": true,
 }
 
-func (s surface) check(t *testing.T, header http.Header, where string) {
+func (s surface) check(t testing.TB, header http.Header, where string) {
 	t.Helper()
 
 	for name, vals := range header {
@@ -85,8 +85,8 @@ func (s surface) check(t *testing.T, header http.Header, where string) {
 	}
 }
 
-func eq(want string) func(*testing.T, string) {
-	return func(t *testing.T, got string) {
+func eq(want string) func(testing.TB, string) {
+	return func(t testing.TB, got string) {
 		t.Helper()
 
 		if got != want {
@@ -95,8 +95,8 @@ func eq(want string) func(*testing.T, string) {
 	}
 }
 
-func contains(sub string) func(*testing.T, string) {
-	return func(t *testing.T, got string) {
+func contains(sub string) func(testing.TB, string) {
+	return func(t testing.TB, got string) {
 		t.Helper()
 
 		if !strings.Contains(got, sub) {
@@ -105,8 +105,8 @@ func contains(sub string) func(*testing.T, string) {
 	}
 }
 
-func notContains(sub string) func(*testing.T, string) {
-	return func(t *testing.T, got string) {
+func notContains(sub string) func(testing.TB, string) {
+	return func(t testing.TB, got string) {
 		t.Helper()
 
 		if strings.Contains(got, sub) {
@@ -124,7 +124,7 @@ func mergeRow(base, additions matrixHeaders) matrixHeaders {
 	return row
 }
 
-func positiveSeconds(t *testing.T, got string) {
+func positiveSeconds(t testing.TB, got string) {
 	t.Helper()
 
 	if n, err := strconv.Atoi(got); err != nil || n < 1 {
@@ -136,7 +136,7 @@ func positiveSeconds(t *testing.T, got string) {
 // strict set, no robots header (task pages carry a robots meta instead),
 // no Cache-Control (HTML and SSE unset).
 var serveDashboardRow = matrixHeaders{
-	"content-security-policy": func(t *testing.T, got string) {
+	"content-security-policy": func(t testing.TB, got string) {
 		t.Helper()
 
 		contains("default-src 'none'")(t, got)
@@ -199,7 +199,7 @@ var matrixRows = []matrixHeaders{
 // health override (library CSP with 'unsafe-eval', re-hardened) and the
 // X-Robots-Tag noindex smoke (18-12:82).
 var serveHealthRow = matrixHeaders{
-	"content-security-policy": func(t *testing.T, got string) {
+	"content-security-policy": func(t testing.TB, got string) {
 		t.Helper()
 
 		contains("unsafe-eval")(t, got)
