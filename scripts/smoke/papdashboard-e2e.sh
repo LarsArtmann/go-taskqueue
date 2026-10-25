@@ -130,6 +130,7 @@ wait_for() { # wait_for <grep-pattern> [log-file]
 		[ -f "$log" ] && grep -q "$1" "$log" && return 0
 		sleep 1
 	done
+	echo "WARN: wait_for window exhausted without '$1' in $log — caller decides FAIL or absorb" >&2
 	return 1
 }
 

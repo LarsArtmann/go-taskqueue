@@ -95,6 +95,7 @@ for i in 1 2 3 4; do
 	timeout 120 "$TMP/tq" agent-pool --projects-dir "$TMP" --repos repo \
 		--batch-items 1 --once --max-per-tick 1 --poll 50ms --task-timeout 30s \
 		>"$TMP/pool-$i.log" 2>&1 || {
+		echo "FAIL: pool drain $i exited nonzero"
 		cat "$TMP/pool-$i.log"
 		exit 1
 	}

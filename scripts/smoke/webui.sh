@@ -72,6 +72,8 @@ for _ in $(seq 1 50); do
 
 	sleep 0.1
 done
+grep -q "dashboard on" "$TMP/serve.log" 2>/dev/null ||
+	echo "WARN: tq serve never logged 'dashboard on' on 127.0.0.1:$PORT after the poll window — continuing; the asserts below surface the real error" >&2
 
 echo "== assert /api/stats"
 "$TMP/tq" >/dev/null 2>&1 || true

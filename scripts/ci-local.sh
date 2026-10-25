@@ -271,6 +271,15 @@ step "check-script-syntax self-test (syntax summary + negative counter battery)"
 step "script syntax gate (bash -n + shellcheck, zero findings)"
 ./scripts/check-script-syntax.sh
 
+# Poll-loudness gate (2026-10-25, TODO: 5d7e2dc0 silent-retry class): every
+# poll/absorption loop in scripts/ must carry a FAIL/WARN/die near its
+# exhaust path. Self-test first (fleet convention), then the real gate.
+step "check-poll-loudness self-test (summary pin + negative counter battery)"
+./scripts/check-poll-loudness.sh --self-test
+
+step "poll-loudness gate (every poll loop has a loud exhaust path)"
+./scripts/check-poll-loudness.sh
+
 step "webui JS unit harness (app.js swap-guard + state re-apply; docs/webui-live-contract.md)"
 ./scripts/check-webui-js.sh
 step "check-webui-js self-test (summary pin + negative-path battery)"
