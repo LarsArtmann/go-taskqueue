@@ -405,6 +405,16 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   review auto-merge, watermark-driven completion consumption, plumbing
   merges, reap residue) after the first live run proved the old shape
   rotted.
+- **Gate-trust batch 2** (2026-10-25): `check-toolchain-pins.sh` grew a
+  go.work surface (tracked dev-workspace `go` directives must equal the
+  shared floor — the 1.27.2 cmd/tq miss class; 4-branch self-test);
+  ci.yml gained a countable-gate self-test parity step ahead of the
+  toolchain-pins real gate and ci-local's webui-js ordering inversion
+  (real-before-self-test) was fixed; `tq doctor` gained the paid-noops
+  check (completed paid tasks whose completion fact attributes ZERO
+  output — the review-fix twins class) and `tq doctor --gates`, the
+  countable-gate fleet board (row 1119); consolidated red inventory at
+  `docs/planning/2026-10-25_19-04_fleet-red-evidence.md`.
 - **Close-contract verdict-at-exit rail** (2026-10-25): the a)-g)
   closeout skeleton's final exit step is codified in AGENTS.md — record
   `tq verdict` BEFORE session end; a committed report without a recorded

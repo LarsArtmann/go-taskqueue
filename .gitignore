@@ -105,3 +105,10 @@ cmd/tq/dev.sum
 # ADR-0019 replay tool binary (go build in its module dir drops it; the
 # auto-commit daemon swept one into master, 2026-09-24)
 internal/queue/sqlitev4/replay/replay
+
+# Readmodel projection sidecars dropped beside an in-checkout db (every
+# readmodel Open: the home db, WAL/SHM, the .fold-lock flock winner and the
+# .legacy-schema-*.bak snapshots — tasks.db is ignored via *.db, the family
+# around it was not, and each `tq stats` in a checkout dirtied git status)
+*.readmodel.db*
+*.fold-lock
