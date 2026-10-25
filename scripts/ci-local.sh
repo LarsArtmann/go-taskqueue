@@ -144,6 +144,13 @@ step "AGENTS.md size budget (agentsDocMaxBytes twin)"
 step "heal-daemon-sweep self-test (refusal rail pin)"
 ./scripts/heal-daemon-sweep.sh --self-test
 
+# Footer-record reachability (dispatch 000001a15bcff9bb §e2): every SHA
+# cited by a dispatch attribution record stays an ancestor of HEAD — the
+# b1706caf reset-away stranded three records reflog-only before this
+# existed.
+step "footer-record reachability (protected-records roster)"
+./scripts/check-footer-record-reachability.sh
+
 # Daemon doc gate (02-02 §g3): if a footer-less daemon sweep touched a
 # doc-gated surface since origin/master, the cheap doc gates run NOW —
 # a mid-window sweep is caught before the expensive steps pay for a red
