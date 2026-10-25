@@ -60,9 +60,11 @@ case "$prompt" in
 		;;
 	*)
 		# Prove the run happens in a LINKED checkout: commit there. The
-		# main checkout must never see this file.
-		printf 'work: %s\n' "$prompt" >work.txt
-		git add work.txt
+		# main checkout must never see this file. The name is prompt-unique
+		# so two same-repo tasks never add/add-conflict on the auto-merge.
+		wf="work-$(printf '%s' "$prompt" | tr -cd 'a-z0-9' | head -c 24).txt"
+		printf 'work: %s\n' "$prompt" >"$wf"
+		git add "$wf"
 		git commit -qm "work: $prompt"
 		;;
 esac
@@ -75,13 +77,20 @@ echo "== enqueue two same-repo agent tasks"
 "$TMP/tq" enqueue --type agent --project smoke --payload "{\"repo\":\"$REPO\",\"prompt\":\"task two\"}" >/dev/null
 
 run_pool() {
-	timeout 120 "$TMP/tq" agent-pool --repos "$REPO" --worktrees --review --once --poll 50ms --task-timeout 30s >"$TMP/pool$1.log" 2>&1 ||
+	local n="$1"
+	shift
+	timeout 120 "$TMP/tq" agent-pool --repos "$REPO" --worktrees "$@" --once --poll 50ms --task-timeout 30s >"$TMP/pool$n.log" 2>&1 ||
 		{
-			cat "$TMP/pool$1.log"
+			cat "$TMP/pool$n.log"
 			exit 1
 		}
 }
 
+# Run 1 carries NO --review: the review sweeper auto-merges approved
+# branches within the same pool run that mints the reviews, so a --review
+# run would move the main checkout's HEAD before the untouched assertion
+# below (that in-run merge is designed behavior; this smoke pins the
+# mid-state first, then approves in run 2).
 echo "== pool run 1: both work tasks complete in linked checkouts"
 run_pool 1
 grep -q "review: enqueued" "$TMP/pool1.log" || {
@@ -115,12 +124,22 @@ echo "== main checkout untouched: same HEAD, clean status, no work.txt"
 	echo "FAIL: work.txt leaked into the main checkout"
 	exit 1
 }
+[ -z "$(ls "$REPO"/work-*.txt 2>/dev/null)" ] || {
+	ls "$REPO"/work-*.txt
+	echo "FAIL: a work-* file leaked into the main checkout"
+	exit 1
+}
 
 echo "== pool run 2: reviews approve → auto-merge + reap"
-run_pool 2
-grep -q "review: merged" "$TMP/pool2.log" || {
+run_pool 2 --review
+grep -q "review: enqueued" "$TMP/pool2.log" || {
 	cat "$TMP/pool2.log"
-	echo "FAIL: approve verdict never merged a worktree branch"
+	echo "FAIL: sweeper never minted a review"
+	exit 1
+}
+[ "$(grep -c 'review: merged' "$TMP/pool2.log")" -ge 2 ] || {
+	cat "$TMP/pool2.log"
+	echo "FAIL: approve verdicts never merged both worktree branches"
 	exit 1
 }
 
