@@ -1,8 +1,10 @@
 package webui
 
 import (
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -178,6 +180,78 @@ func TestServeHeaderMatrix(t *testing.T) {
 			with401[k] = v
 		}
 		with401.check(t, resp.Header, "GET / (401)")
+	})
+
+	t.Run("write-route CSRF lockout 429 carries Retry-After and the full set", func(t *testing.T) {
+		t.Parallel()
+
+		s := New(newTestStore(t), Config{AllowWrites: true})
+		server := httptest.NewServer(s.Handler())
+		t.Cleanup(server.Close)
+
+		// A page GET issues the CSRF cookie; the lockout limiter counts
+		// 403 CSRF failures and locks the write routes on the third.
+		first, err := http.Get(server.URL + "/")
+		if err != nil {
+			t.Fatalf("GET /: %v", err)
+		}
+		first.Body.Close()
+
+		var csrf string
+		for _, c := range first.Cookies() {
+			if c.Name == tqCSRFCookie {
+				csrf = c.Value
+			}
+		}
+		if csrf == "" {
+			t.Fatal("no CSRF cookie issued on page GET")
+		}
+
+		post := func() *http.Response {
+			t.Helper()
+
+			req, err := http.NewRequest(http.MethodPost, server.URL+"/task/x/cancel", strings.NewReader("csrf=bad"))
+			if err != nil {
+				t.Fatalf("new request: %v", err)
+			}
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.AddCookie(&http.Cookie{Name: tqCSRFCookie, Value: csrf})
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("POST /task/x/cancel: %v", err)
+			}
+
+			return resp
+		}
+
+		for i := range 3 {
+			resp := post()
+			resp.Body.Close()
+
+			if resp.StatusCode != http.StatusForbidden {
+				t.Fatalf("bad CSRF %d = %d, want 403", i+1, resp.StatusCode)
+			}
+		}
+
+		resp := post()
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusTooManyRequests {
+			t.Fatalf("status = %d, want 429 after CSRF lockout", resp.StatusCode)
+		}
+
+		with429 := matrixHeaders{
+			"retry-after": func(t *testing.T, got string) {
+				t.Helper()
+
+				if n, err := strconv.Atoi(got); err != nil || n < 1 {
+					t.Errorf("Retry-After = %q, want a positive second count", got)
+				}
+			},
+		}
+		maps.Copy(with429, serveDashboardRow)
+		with429.check(t, resp.Header, "POST /task/x/cancel (429)")
 	})
 
 	t.Run("health page overrides CSP and adds noindex", func(t *testing.T) {
