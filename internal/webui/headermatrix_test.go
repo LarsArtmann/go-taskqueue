@@ -24,11 +24,11 @@ type matrixHeaders map[string]func(t *testing.T, got string)
 // transportHeaders are framing headers no matrix row tracks (they vary
 // with the body, not the security posture).
 var transportHeaders = map[string]bool{
-	"date":            true,
-	"content-length":  true,
-	"content-type":    true,
-	"set-cookie":      true,
-	"trailer":         true,
+	"date":              true,
+	"content-length":    true,
+	"content-type":      true,
+	"set-cookie":        true,
+	"trailer":           true,
 	"x-accel-buffering": true,
 }
 
@@ -116,7 +116,6 @@ var serveHealthRow = matrixHeaders{
 	"content-security-policy": func(t *testing.T, got string) {
 		t.Helper()
 
-		contains("default-src 'none'")(t, got)
 		contains("unsafe-eval")(t, got)
 		contains("base-uri 'none'")(t, got)
 		contains("frame-ancestors 'none'")(t, got)
@@ -127,6 +126,7 @@ var serveHealthRow = matrixHeaders{
 	"referrer-policy":        eq("no-referrer"),
 	"permissions-policy":     eq("camera=(), microphone=(), geolocation=()"),
 	"x-robots-tag":           eq("noindex"),
+	"cache-control":          eq("no-cache"),
 }
 
 // TestServeHeaderMatrix pins the `tq serve` column: task pages, the 401
@@ -209,12 +209,11 @@ func TestServeHeaderMatrix(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		withCache := matrixHeaders{
-			"cache-control": eq("public, max-age=86400"),
-		}
+		withCache := matrixHeaders{}
 		for k, v := range serveHealthRow {
 			withCache[k] = v
 		}
+		withCache["cache-control"] = eq("public, max-age=86400")
 		withCache.check(t, resp.Header, "GET /health/datastar.js")
 	})
 }

@@ -224,11 +224,11 @@ func (s *Server) healthBindings() []struct {
 	}{
 		{"GET", HealthDashboardPath, withHealthHeaders(s.dash.Handler()).ServeHTTP},
 		{"GET", HealthSSEPath, withHealthHeaders(s.dash.SSEHandler()).ServeHTTP},
-		{"GET", HealthSDKPath, serveDatastarSDK},
-		{"GET", HealthFaviconPath, s.dash.FaviconHandler()},
-		{"GET", HealthLivenessPath, s.prober.LivenessHandler()},
-		{"GET", HealthReadinessPath, s.prober.ReadinessHandler()},
-		{"GET", HealthStartupPath, s.prober.StartupHandler()},
+		{"GET", HealthSDKPath, withHealthHeaders(http.HandlerFunc(serveDatastarSDK)).ServeHTTP},
+		{"GET", HealthFaviconPath, withHealthHeaders(s.dash.FaviconHandler()).ServeHTTP},
+		{"GET", HealthLivenessPath, withHealthHeaders(s.prober.LivenessHandler()).ServeHTTP},
+		{"GET", HealthReadinessPath, withHealthHeaders(s.prober.ReadinessHandler()).ServeHTTP},
+		{"GET", HealthStartupPath, withHealthHeaders(s.prober.StartupHandler()).ServeHTTP},
 	}
 }
 

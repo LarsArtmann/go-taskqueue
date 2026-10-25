@@ -474,7 +474,7 @@ not here.
 
 ## Security-batch window follow-ups (2026-09-29 22-37; source: docs/status/archived/2026-09-29_22-37_task-000001a0eed25c041f1b181c395800000000.md §f — 03-05 §f carried items + this window's passes; deduped: row 272 owns the Permissions-Policy smoke gap, rows 414/453 own hook detection/census)
 
-- [ ] Pin the SECURITY.md "Response headers, per surface" matrix: a test (or gate) asserting the `tq serve`/`tq api` response-header sets match the matrix rows — the matrix is documentation-only today, a header added to code without a row (or vice versa) fails nothing (22-37 report §f1/§b1); include the X-Robots-Tag/noindex smoke assertion (18-12:82)
+- [x] Pin the SECURITY.md "Response headers, per surface" matrix: a test (or gate) asserting the `tq serve`/`tq api` response-header sets match the matrix rows — the matrix is documentation-only today, a header added to code without a row (or vice versa) fails nothing (22-37 report §f1/§b1); include the X-Robots-Tag/noindex smoke assertion (18-12:82)
 - [ ] Add a `lowercase scheme` row to webui `TestTokenAuthMiddlewareMatrix` — webui accepted case-insensitive Bearer since birth but never pinned it; it is now the shared internal/httpauth contract (22-37 report §f2)
 - [ ] SSE header e2e: assert CSP + nosniff on the `/api/events` stream and the reconnect/resume path over real HTTP, resume + headers together (03-05 §f16/§f20; 22-37 report §f3)
 - [ ] Refactor `TestSecurityHeadersOnEveryResponse` to a header→want table so future headers are one-line additions (03-05 §f6; 22-37 report §f4)
