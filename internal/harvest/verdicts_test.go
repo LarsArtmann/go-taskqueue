@@ -17,12 +17,20 @@ import (
 func writeVerdictMarker(t *testing.T, repo, id string) {
 	t.Helper()
 
+	writeVerdictMarkerState(t, repo, id, "already_done")
+}
+
+// writeVerdictMarkerState records a .tq/verdicts/<id> marker carrying an
+// explicit verdict state (the record_verdicts_marker shape).
+func writeVerdictMarkerState(t *testing.T, repo, id, verdict string) {
+	t.Helper()
+
 	dir := filepath.Join(repo, ".tq", "verdicts")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	body := "verdict: already_done\nrecorded_at: " +
+	body := "verdict: " + verdict + "\nrecorded_at: " +
 		time.Now().UTC().Format(time.RFC3339) + "\n"
 	if err := os.WriteFile(filepath.Join(dir, id), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
@@ -199,5 +207,51 @@ func TestRedispatchCheckMarkersOpenWorkAllowed(t *testing.T) {
 		candidateWith(key, "open work", "do the thing", "", ""),
 	); err != nil {
 		t.Fatalf("open work without markers must not be refused, got %v", err)
+	}
+}
+
+// TestRedispatchCheckBlockedNeedsRootVerdictMarker pins the second
+// terminal verdict state: a prior dispatch whose close-out proved the
+// work un-doable without a root-capable shell (the 2026-10-21 PMA
+// activation re-dispatch class) must machine-block re-minting, not just
+// already_done.
+func TestRedispatchCheckBlockedNeedsRootVerdictMarker(t *testing.T) {
+	fixture := newDonePreflightFixture(t, "- [ ] open work\n")
+
+	cited := strings.Repeat("2", 36)
+	writeVerdictMarkerState(t, fixture.repo, cited, "blocked_needs_root")
+
+	err := fixture.h.RedispatchCheck(
+		context.Background(),
+		candidateWith("", "", "re-verify task "+cited, "", ""),
+	)
+
+	refusal, ok := errors.AsType[*RedispatchRefusalError](err)
+	if !ok {
+		t.Fatalf("expected a redispatch refusal, got %v", err)
+	}
+
+	if !strings.Contains(refusal.Reason, "verdict marker reads blocked_needs_root") {
+		t.Fatalf("reason should name the blocked verdict, got %q", refusal.Reason)
+	}
+}
+
+// TestRedispatchCheckNonTerminalVerdictMarkerDoesNotBlock pins the
+// vocabulary boundary: only the terminal states machine-block — a marker
+// carrying a non-terminal state (or any unknown word) must pass the gate,
+// because refusal needs positive proof of terminal state.
+func TestRedispatchCheckNonTerminalVerdictMarkerDoesNotBlock(t *testing.T) {
+	fixture := newDonePreflightFixture(t, "- [ ] open work\n")
+
+	cited := strings.Repeat("3", 36)
+	writeVerdictMarkerState(t, fixture.repo, cited, "requeued")
+
+	err := fixture.h.RedispatchCheck(
+		context.Background(),
+		candidateWith("", "", "re-verify task "+cited, "", ""),
+	)
+
+	if err != nil {
+		t.Fatalf("non-terminal verdict marker must not block, got %v", err)
 	}
 }

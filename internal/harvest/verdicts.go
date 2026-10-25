@@ -25,7 +25,18 @@ const defaultClaimLiveWindow = 6 * time.Hour
 const (
 	doneReasonVerdict = "verdict marker reads already_done (task "
 	doneReasonClaim   = "live claim marker held by another session (task "
+	doneReasonBlocked = "verdict marker reads blocked_needs_root (task "
 )
+
+// terminalVerdicts maps the .tq/verdicts/<id> states that machine-block
+// re-minting to their refusal reasons: already_done (the work is
+// verifiably in history) and blocked_needs_root (the work is verifiably
+// un-doable without a root-capable shell — re-dispatching it just burns
+// a session). Non-terminal states never block.
+var terminalVerdicts = map[string]string{
+	"already_done":       doneReasonVerdict,
+	"blocked_needs_root": doneReasonBlocked,
+}
 
 // claimWindow resolves the configured claim-marker liveness window: the
 // cooldown a live claim machine-blocks re-dispatch for (Config, fam.12.3).
@@ -95,8 +106,8 @@ func (h *Harvester) markerBlocked(ctx context.Context, dir string, payload harve
 // markerRefusal judges ONE prior task id against both markers; the claim
 // window decides liveness of .tq/claimed/<id>.
 func markerRefusal(dir, id string, window time.Duration) (bool, string) {
-	if verdictAlreadyDone(dir, id) {
-		return true, doneReasonVerdict + shortSHA(id) + ")"
+	if reason := verdictBlock(dir, id); reason != "" {
+		return true, reason + shortSHA(id) + ")"
 	}
 
 	if claimLive(dir, id, window) {
@@ -106,13 +117,22 @@ func markerRefusal(dir, id string, window time.Duration) (bool, string) {
 	return false, ""
 }
 
-// verdictAlreadyDone reports whether .tq/verdicts/<id> exists and reads
-// already_done — the terminal verdict tq-preflight records on every
-// blocked re-emit.
-func verdictAlreadyDone(dir, id string) bool {
+// verdictBlock reads .tq/verdicts/<id> and returns the refusal reason for
+// a terminal-verdict marker, or "" when the marker is absent or carries a
+// non-terminal state.
+func verdictBlock(dir, id string) string {
 	raw, err := os.ReadFile(filepath.Join(dir, ".tq", "verdicts", id))
+	if err != nil {
+		return ""
+	}
 
-	return err == nil && strings.Contains(string(raw), "verdict: already_done")
+	for state, reason := range terminalVerdicts {
+		if strings.Contains(string(raw), "verdict: "+state) {
+			return reason
+		}
+	}
+
+	return ""
 }
 
 // claimLive reports whether .tq/claimed/<id> exists with an mtime inside
