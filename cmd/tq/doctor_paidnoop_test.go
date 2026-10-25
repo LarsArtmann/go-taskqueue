@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/larsartmann/go-taskqueue/internal/executor"
-	"github.com/larsartmann/go-taskqueue/internal/task"
 	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/task"
 )
 
 // completePaid enqueues one task of typ, claims it, and completes it with
