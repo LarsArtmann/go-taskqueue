@@ -96,6 +96,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the default `GOTOOLCHAIN=auto` bridge until bumped.
 
 ### Changed
+- **Go floor raised to 1.27.3 across the graph** (2026-10-24) (BEHAVIOR CHANGE for
+  consumers building with toolchains older than 1.27.3: the module graph now
+  requires go >= 1.27.3): all 24 module `go` directives, the 8 setup-go pins
+  (ci.yml + fuzz.yml), and the flake `goTarball*` pin moved in one lockstep
+  sweep to clear the GO-2026-6809 stdlib advisory govulncheck flagged at the
+  net/http call sites; `check-toolchain-pins.sh` now gates the four sources so
+  the next bump is one edit + one red gate (`d44a8a5a`).
 - **lint-baseline cache staleness fixed at the source** (2026-10-20):
   `scripts/lint-baseline.sh` regen mode now ALWAYS runs
   `golangci-lint cache clean` (a stale cache can never seed a new
@@ -132,6 +139,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ADR-0003 document the ruling (2026-10-05, surfaced during G1).
 
 ### Fixed
+- **Windows: converging a divergent projection home no longer dies on the
+  rename sharing violation** (2026-10-25): `snapshotProjectionHome` renames
+  the legacy home through `renameWithTransientRetry` (go-retry, 3 attempts) —
+  the sqlite probe connection closed microseconds earlier is not yet released
+  by the OS on windows, the delayed-release sibling of the ETXTBSY doctrine
+  (`fa867e99`).
+- **`tq serve` releases the projection runtime on pre-run failure paths**
+  (2026-10-25): a `cfg.Validate`/composition failure after the runtime was
+  built returned without closing it, holding the projection-home flock until
+  process exit so a second concurrent `tq serve` mounted read-only; the
+  runtime now closes on every early return (`ee0cb980`).
+- **Readmodel/sqlite test surfaces no longer leak open handles** (2026-10-24):
+  `UseReadModel` arms three surfaces (projection host, DLQ sidecar, model) but
+  only `ListenAndServe`'s defer closed them — tests that never served leaked
+  all three, failing windows `t.TempDir` cleanup on `unlinkat`. The production
+  close order is extracted into the new `Server.CloseReadModel` (additive
+  exported method, no behavior change for existing callers) and non-serving
+  tests mount it via `t.Cleanup` (`03c1f7a6`).
 - **AnswerPoller bound drains oldest-first** (2026-10-20): the
   MaxAnswersPerPoll take-max applied newest-first while the cursor
   skipped everything older, so a bound-truncated poll silently dropped
@@ -326,6 +351,48 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
 - `Store.ClaimCounts` GROUP BY pushdown — perf-only query change, no
   operator surface (split from the mixed `[Unreleased]` Changed row
   2026-10-24 so the operator half, `Filter.DedupKey`, stands alone).
+- **Countable-gate self-test fleet convention** (2026-10-24): all four
+  countable gates gained `--self-test` (summary pin + negative-path battery
+  via env hooks); convention PINNED in AGENTS.md and wired into ci-local
+  self-test-first (`46eb4dc8`, reorder `1c7ce882`); check-gosec's self-test
+  gained six micro-polish pins (`9660f35b`).
+- **Webui swap-guard verification debt closed** (2026-10-24): zero-dep Node
+  harness (`internal/webui/jstest/app_test.mjs`, 13 tests over the swap
+  invariants), `scripts/check-webui-js.sh` gate with self-test, and the
+  living contract doc `docs/webui-live-contract.md` (`1dc53ed0`).
+- **O14 CHANGELOG guard** (2026-10-24): `scripts/check-release-docs.sh` fails
+  internal-only signatures in the `[Unreleased]` operator sections (self-test
+  pins the exact miss); the AGENTS.md O14 policy bullet landed for real after
+  the dispatch premise (88e78e00) proved daemon-folded 11 days prior
+  (`027aafc1`, `ad3e5363`, `c3977468`).
+- **worktreeInFlight executor-side test pin + OR-over-store audit**
+  (2026-10-24): `AgentExecutor.ParkCloseoutForTest` + the cancelled+parked
+  regression test; audit memo `docs/memos/2026-10-24_executor-store-or-audit.md`
+  — the reaper probe was the only OR-over-store liveness decision
+  (`20fc83ab`, `762e7a41`).
+- **webui-screenshots capture guard + self-test** (2026-10-24/25):
+  `check_png` fails the run on trivially-small captures; `--self-test` pins
+  the FAIL lines verbatim; fixed the `kill "${PID:-0}"` process-group trap on
+  early exit (`558a3d47`, `e0532f80`).
+- **check-ci hermetic red-branch pins** (2026-10-24): scratch-repo self-test
+  pins same-tree/ancestor/diverged selection and the @tsv parse — which
+  caught a live null-conclusion field-shift bug, now fixed via an
+  `"unknown"` jq sentinel (`e94ed705`).
+- **check-toolchain-pins.sh + ci-local GOTOOLCHAIN single-source**
+  (2026-10-25): gate proves go.mod floors == setup-go pins == flake >= floor
+  (self-test via env hooks); `ci-local` derives `GOTOOLCHAIN` from
+  `--print-floor` (`7742973b`, `d34b3770`).
+- **proxy-wait netns marker hardening** (2026-10-23): `TQ_SMOKE_NETNS=1` is
+  honored only inside an actually-empty network namespace; a marker on a
+  non-empty netns now refuses loudly (`f4d1da08`).
+- **Session-close smoke coverage micros + smoke index** (2026-10-24):
+  ping/`--allow-dirty`/payload-contract legs, `--db` flag-placement audit,
+  and the `scripts/smoke/COVERAGE.md` leg→assertion index (`bc5a347b`,
+  `1dd616de`).
+- **Zero-deployment freeze-class sweep** (2026-10-24): the `config.*("")`
+  sweep found both hits on the annotated readmodel self-open seam, already
+  env-honoring and test-pinned; classification recorded, no code change
+  (`3f5e8dd1`).
 
 ## [v0.3.4] - 2026-10-11
 
