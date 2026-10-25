@@ -228,8 +228,13 @@ func TestSecretHitsAndRedactionCompileIdenticalTable(t *testing.T) {
 			t.Errorf("pattern %d: audit half (SecretHits) missed its own sample, hits=%d: %q", i, hits, sample)
 		}
 
-		if got := RedactSecrets(sample); strings.Contains(got, sample) {
+		redacted := RedactSecrets(sample)
+		if strings.Contains(redacted, sample) {
 			t.Errorf("pattern %d: redaction half (RedactSecrets) left its own sample intact: %q", i, sample)
+		}
+
+		if count := strings.Count(redacted, RedactMarker); count != 1 {
+			t.Errorf("pattern %d: redaction emitted %d markers for its sample, want exactly 1: %q", i, count, redacted)
 		}
 	}
 }
