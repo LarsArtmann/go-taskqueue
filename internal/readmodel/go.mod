@@ -37,6 +37,7 @@ require (
 	github.com/larsartmann/go-cqrs-lite/queue/sqlite/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.3 // indirect
 	github.com/larsartmann/go-flightrecorder v0.2.1 // indirect
+	github.com/larsartmann/go-retry v0.8.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.4 // indirect

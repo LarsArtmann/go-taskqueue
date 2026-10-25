@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/larsartmann/go-retry"
 )
 
 // tasksPlannedTable is the metaengine planned-table name for the tasks
@@ -153,14 +155,40 @@ func taskRowColumns() []string {
 // snapshotProjectionHome renames the projection file (plus its WAL/SHM
 // sidecars when present) to a dated .bak beside it — reversible by
 // moving it back, unlike a delete.
+//
+// Each rename retries briefly on a non-not-exist error: on Windows a
+// sqlite handle closed microseconds earlier can still register as
+// "being used by another process" for a short window (test-windows red
+// 2026-10-24, TestConvergeProjectionHome) — the same delayed-release
+// transient class the executor absorbs for kernel ETXTBSY. Three
+// attempts over ~150ms bounds the wait; a genuinely stuck handle still
+// fails the snapshot.
 func snapshotProjectionHome(path string) (string, error) {
 	snapshot := path + fmt.Sprintf(".legacy-schema-%s.bak", time.Now().UTC().Format("20060102-150405"))
 
 	for _, suffix := range []string{"", "-wal", "-shm"} {
-		if err := os.Rename(path+suffix, snapshot+suffix); err != nil && !os.IsNotExist(err) {
+		if err := renameWithTransientRetry(path+suffix, snapshot+suffix); err != nil && !os.IsNotExist(err) {
 			return "", fmt.Errorf("readmodel: snapshot legacy projection home: %w", err)
 		}
 	}
 
 	return snapshot, nil
+}
+
+// renameWithTransientRetry renames src to dst with a short bounded
+// transient retry (50ms, then 100ms) — see snapshotProjectionHome.
+func renameWithTransientRetry(src, dst string) error {
+	return retry.Do(context.Background(), retry.Config{ //nolint:exhaustruct // optional hooks unset
+		MaxAttempts:  3,
+		InitialDelay: 50 * time.Millisecond,
+		MaxDelay:     100 * time.Millisecond,
+		Multiplier:   2.0,
+	}, func(_ context.Context, _ int) error {
+		err := os.Rename(src, dst)
+		if os.IsNotExist(err) {
+			return nil
+		}
+
+		return err
+	})
 }
