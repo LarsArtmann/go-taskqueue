@@ -3,13 +3,16 @@
 # Parses aggregate tick-count claims — "rows N-M ticked", "row N ticked",
 # "rows N-M `[x]`" — from the docs/status README index rows + closeout
 # reports and verifies every claimed row reads `- [x]` in TODO_LIST.md at
-# the claim's own day tree (`git rev-list --before "<date> 23:59:59"` over
-# the report's filename date or the README index-row date cell); an
-# explicitly cited tick commit overrides, and an undated file falls back to
-# HEAD. The 2026-10-21 index row claimed "rows 776-778 ticked" while row
+# the claim's own authorship tree: a filename-dated report verifies at its
+# ADD commit (`git log --diff-filter=A` — the exact row numbering its
+# author saw; same-day mints/prunes would skew an end-of-day snapshot), a
+# README index row at its date cell's end-of-day tree, an explicitly cited
+# tick commit overrides, and an undated file falls back to HEAD. The
+# 2026-10-21 index row claimed "rows 776-778 ticked" while row
 # 777 sat unchecked — the class passed every gate until a paid reviewer
-# caught it; day-tree verification catches it at its own commit instead of
-# re-litigating renumbered rows forever. A commit is bound to a claim ONLY
+# caught it; authorship-tree verification catches it at its own commit
+# instead of re-litigating renumbered rows forever. A commit is bound to a
+# claim ONLY
 # when it rides the tick verb itself (`ticked (sha)`, `ticked
 # in|by|at|via sha` within the claim window), so the report's own commit or
 # an UNCHECKED citation never hijacks the check (annotate-in-place
@@ -106,9 +109,17 @@ scan_line() {
 }
 
 scan_file() {
-	local f="$1" lineno=0 line fallback
+	local f="$1" lineno=0 line fallback add
 	if [[ "$f" =~ (^|/)([0-9]{4}-[0-9]{2}-[0-9]{2})_ ]]; then
-		fallback="day:${BASH_REMATCH[2]}"
+		# The report's own ADD commit is the tree its row numbers were true
+		# against (same-day mints/prunes would skew an end-of-day snapshot);
+		# unresolvable (fixture/untracked) falls back to the filename day.
+		add="$(git log --diff-filter=A --format=%h -- "$f" 2>/dev/null | tail -1 || true)"
+		if [ -n "$add" ]; then
+			fallback="$add"
+		else
+			fallback="day:${BASH_REMATCH[2]}"
+		fi
 	else
 		fallback="HEAD"
 	fi
