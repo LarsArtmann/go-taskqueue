@@ -67,14 +67,18 @@ for marker in \
 	fi
 done
 
-# Pin 3: the lib keeps the retry semantics' surface strings and the list.
+# Pin 3: the lib keeps the retry semantics' surface strings. The literal
+# KNOWN_FLAKY names (TestExactlyOnceUnderConcurrency/TestSelfManagingLoop)
+# were DROPPED here (2026-10-13 02-08 follow-up 5 audit): pin 6's AGENTS.md→lib
+# extraction subsumes them — every '<Test> is load-flaky' bullet must appear
+# in the lib's KNOWN_FLAKY array, and a bullet reworded away trips the
+# empty-extraction self-test below — so the literal greps only duplicated
+# coverage while needing manual edits on every legitimate test rename.
 for marker in \
 	'run_with_flake_retry()' \
 	'known-flaky signature in the failure output; retrying ONCE' \
 	'FLAKE-RETRY' \
-	'still red after the flake retry' \
-	'TestExactlyOnceUnderConcurrency' \
-	'TestSelfManagingLoop'; do
+	'still red after the flake retry'; do
 	if ! grep -qF -- "$marker" "$lib"; then
 		echo "FAIL: $lib lost marker '$marker'"
 		fail=1
@@ -87,7 +91,10 @@ done
 # Known Issues list owns which signatures get the ONE retry).
 while IFS= read -r known_flake; do
 	[ -n "$known_flake" ] || continue
-	if ! grep -qF -- "$known_flake" "$lib"; then
+	# The name must sit INSIDE the KNOWN_FLAKY array — not merely anywhere in
+	# the lib (a stale comment mention must not satisfy the pin, so dropping
+	# the array entry stays a red gate).
+	if ! sed -n '/^KNOWN_FLAKY=(/,/^)/p' "$lib" | grep -qF -- "$known_flake"; then
 		echo "FAIL: AGENTS.md Known Issues flake '$known_flake' is missing from $lib KNOWN_FLAKY"
 		fail=1
 	fi
