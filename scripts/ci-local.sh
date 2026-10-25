@@ -162,6 +162,32 @@ DAEMON_DOC_GATE_SELF_TEST=1 ./scripts/check-daemon-sweep-docs.sh
 step "daemon-sweep doc gate (footer-less doc-gated sweeps)"
 ./scripts/check-daemon-sweep-docs.sh
 
+# Fleet countable-gate batch (self-test ALWAYS ahead of its real gate —
+# check-gate-ordering.sh enforces the ordering property mechanically).
+step "fleet gate-ordering guard self-test (ORDERING property pin)"
+./scripts/check-gate-ordering.sh --self-test
+
+step "fleet gate-ordering guard (self-test ahead of real gate)"
+./scripts/check-gate-ordering.sh
+
+step "smoke-coverage freshness gate self-test (name-coverage pin)"
+./scripts/check-smoke-coverage.sh --self-test
+
+step "smoke-coverage freshness gate (leg-to-assertion index)"
+./scripts/check-smoke-coverage.sh
+
+step "worktree-consumer allowlist self-test (audit pin)"
+./scripts/check-worktree-consumers.sh --self-test
+
+step "worktree-consumer allowlist (OR-over-store audit)"
+./scripts/check-worktree-consumers.sh
+
+step "tracked-ignored path guard self-test (fold-lock class pin)"
+./scripts/check-tracked-ignored.sh --self-test
+
+step "tracked-ignored path guard (daemon-sweep class)"
+./scripts/check-tracked-ignored.sh
+
 # --- CI test job (exact ci.yml order; lint advisory exactly like CI) -------
 
 step "vet"

@@ -10,13 +10,50 @@ TMP="$(mktemp -d)"
 # PID guards, never kill 0: an unset PID defaulting to 0 makes kill signal
 # the WHOLE process group on early exit (same class as the webui-screenshots
 # trap fix 33ee8725) — each kill fires only for a PID the run actually set.
+SMOKE_FAILED=""
+# Row 1127: a failure's evidence is the logs, and cleanup() used to
+# rm -rf them before anyone could read them (the fold-lock SIGSEGV autopsy
+# needed hand-replication for exactly this reason). fail_smoke dumps the
+# four serve/worker logs, marks the run failed, and exits; cleanup keeps
+# $TMP (and says where) whenever the run failed or WEBUI_SMOKE_KEEP=1.
+fail_smoke() {
+	SMOKE_FAILED=1
+	echo "FAIL: $*" >&2
+	for log in serve worker auth-serve refuse writes-serve; do
+		[ -f "$TMP/$log.log" ] && {
+			echo "--- $TMP/$log.log (tail) ---" >&2
+			tail -n 25 "$TMP/$log.log" >&2 || true
+		}
+	done
+	exit 1
+}
 cleanup() {
 	for pid in "${WORKER_PID:-}" "${SERVE_PID:-}" "${AUTH_SERVE_PID:-}" "${WRITES_SERVE_PID:-}"; do
 		[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
 	done
+	if [ -n "$SMOKE_FAILED" ] || [ "${WEBUI_SMOKE_KEEP:-}" = "1" ]; then
+		echo "TMP kept for autopsy: $TMP" >&2
+		return
+	fi
 	rm -rf "$TMP"
 }
 trap cleanup EXIT
+
+# Row 1128: a dashboard wait that never fires must FAIL with the log tail
+# (hard) — silent fall-through made the auth phase die in an obscure
+# python connection-refused. The main serve wait stays a WARN: its asserts
+# surface the real error by design.
+wait_dashboard() {
+	local log=$1 label=$2 hard=$3
+	for _ in $(seq 1 50); do
+		grep -q "dashboard on" "$log" 2>/dev/null && return 0
+		sleep 0.1
+	done
+	if [ "$hard" = "hard" ]; then
+		fail_smoke "$label never logged 'dashboard on'"
+	fi
+	echo "WARN: $label never logged 'dashboard on' after the poll window — continuing; the asserts below surface the real error" >&2
+}
 
 # Ask the kernel for a free ephemeral port. WEBUI_SMOKE_PORT still pins an
 # explicit port; without it a fixed port collides on busy machines.
@@ -54,8 +91,7 @@ enqueue_retry() {
 		echo "WARN: transient enqueue failure (attempt $attempt/5) — retrying" >&2
 		sleep 2
 	done
-	echo "FAIL: enqueue kept failing after 5 attempts: $*" >&2
-	return 1
+	fail_smoke "enqueue kept failing after 5 attempts: $*"
 }
 enqueue_retry --type sh --project smoke --payload 'echo one'
 enqueue_retry --type sh --project smoke --payload 'sleep 1 && echo two'
@@ -74,21 +110,13 @@ WORKER_PID=$!
 "$TMP/tq" serve --addr "127.0.0.1:$PORT" --poll 100ms >"$TMP/serve.log" 2>&1 &
 SERVE_PID=$!
 
-for _ in $(seq 1 50); do
-	if grep -q "dashboard on" "$TMP/serve.log" 2>/dev/null; then
-		break
-	fi
-
-	sleep 0.1
-done
-grep -q "dashboard on" "$TMP/serve.log" 2>/dev/null ||
-	echo "WARN: tq serve never logged 'dashboard on' on 127.0.0.1:$PORT after the poll window — continuing; the asserts below surface the real error" >&2
+wait_dashboard "$TMP/serve.log" "tq serve on 127.0.0.1:$PORT" warn
 
 echo "== assert /api/stats"
 "$TMP/tq" >/dev/null 2>&1 || true
 sleep 2
 
-python3 - "$PORT" <<'PYEOF'
+python3 - "$PORT" <<'PYEOF' || fail_smoke "stats asserts" 
 import json, sys, time, urllib.request
 
 port = sys.argv[1]
@@ -207,14 +235,10 @@ PYEOF
 echo "== auth smoke: non-loopback bind refuses without a token"
 REFUSE_PORT="$(free_port)"
 if "$TMP/tq" serve --addr "0.0.0.0:$REFUSE_PORT" >"$TMP/refuse.log" 2>&1; then
-	echo "FAIL: serve accepted 0.0.0.0 bind without --auth-token"
-	cat "$TMP/refuse.log"
-	exit 1
+	fail_smoke "serve accepted 0.0.0.0 bind without --auth-token"
 fi
 grep -q "refusing to serve on non-loopback" "$TMP/refuse.log" || {
-	echo "FAIL: refusal message missing from log:"
-	cat "$TMP/refuse.log"
-	exit 1
+	fail_smoke "refusal message missing from refuse.log"
 }
 echo "refusal OK"
 
@@ -223,15 +247,9 @@ AUTH_PORT="$(free_port)"
 "$TMP/tq" serve --addr "127.0.0.1:$AUTH_PORT" --auth-token smoke-secret --poll 100ms >"$TMP/auth-serve.log" 2>&1 &
 AUTH_SERVE_PID=$!
 
-for _ in $(seq 1 50); do
-	if grep -q "dashboard on" "$TMP/auth-serve.log" 2>/dev/null; then
-		break
-	fi
+wait_dashboard "$TMP/auth-serve.log" "token-authenticated tq serve" hard
 
-	sleep 0.1
-done
-
-python3 - "$AUTH_PORT" <<'PYEOF'
+python3 - "$AUTH_PORT" <<'PYEOF' || fail_smoke "auth asserts" 
 import sys, urllib.error, urllib.request
 
 base = f"http://127.0.0.1:{sys.argv[1]}"
@@ -265,7 +283,7 @@ PYEOF
 
 echo "== writes smoke: CSRF brute force locks the write routes"
 # On the read-only serve above, the write routes must not exist at all.
-python3 - "$PORT" <<'PYEOF'
+python3 - "$PORT" <<'PYEOF' || fail_smoke "sse asserts" 
 import sys, urllib.error, urllib.request
 import urllib.parse
 
@@ -288,15 +306,9 @@ WRITES_PORT="$(free_port)"
 "$TMP/tq" serve --addr "127.0.0.1:$WRITES_PORT" --allow-writes --poll 100ms >"$TMP/writes-serve.log" 2>&1 &
 WRITES_SERVE_PID=$!
 
-for _ in $(seq 1 50); do
-	if grep -q "dashboard on" "$TMP/writes-serve.log" 2>/dev/null; then
-		break
-	fi
+wait_dashboard "$TMP/writes-serve.log" "writes-enabled tq serve" hard
 
-	sleep 0.1
-done
-
-python3 - "$WRITES_PORT" <<'PYEOF'
+python3 - "$WRITES_PORT" <<'PYEOF' || fail_smoke "writes asserts" 
 import sys, urllib.error, urllib.request
 import urllib.parse
 

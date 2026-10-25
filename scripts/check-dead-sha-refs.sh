@@ -214,7 +214,10 @@ fi
 
 cd "$(dirname "$0")/.." || exit 1
 
-baseline="scripts/dead-sha-baseline.txt"
+# TQ_DEAD_SHA_BASELINE overrides the curated baseline path (row 825 keeps
+# the curated file untouched; the hook serves fixture self-tests and a
+# LOCAL receipt run against a scratch baseline — never a default change).
+baseline="${TQ_DEAD_SHA_BASELINE:-scripts/dead-sha-baseline.txt}"
 
 # Explicit file arguments (repo-root-relative) scope the gate to exactly
 # those files — the verify-battery's own-file leg (TODO row 370) passes the
