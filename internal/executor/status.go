@@ -306,6 +306,8 @@ tq verdict '{"report": "docs/status/<the-file-you-wrote>.md", "next_items": <num
 
 (tq validates the JSON and writes $TQ_RESULT_FILE — the queue reads that file after you exit; if tq is not on PATH, write the same one-line JSON to $TQ_RESULT_FILE yourself)
 
+This verdict recording is the close contract's non-negotiable FINAL exit step: a committed report without a recorded verdict is a half-closeout (the queue re-claims the task and burns a paid re-dispatch).
+
 The report path must be relative to the repository root; the file must exist when you finish.
 `)
 

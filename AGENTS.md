@@ -211,17 +211,17 @@ docs/DOMAIN_LANGUAGE.md.
   re-dispatches); indexed on creation (`check-status-index.sh`; daemon
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE
   index-row write point (top chronological cluster); CHANGELOG
-  append-only.
+  append-only; close exit: record `tq verdict` before session end
+  (committed report without verdict = half-closeout).
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch/fix
   dispatch, grep TODO_LIST.md for each verbatim batch anchor; every
-  finished row must read `- [x]` (landed work + unchecked row costs a
-  review round-trip + a paid fix dispatch —
+  finished row must read `- [x]` (landed work + unchecked row = review
+  round-trip + paid fix dispatch —
   000001a1699ba37fc704570b24d800000000).
-- **Tick-claims cite the tick commit**: "rows N-M ticked/`[x]`" claims in
-  index rows + closeout reports cite the tick commit whenever the ticks
-  are not in the report's own commit (bare claims verify against the
-  authorship tree only); advisory WARN gate
-  `scripts/check-tick-claims.sh`.
+- **Tick-claims cite the tick commit**: "rows N-M ticked/`[x]`" claims
+  in index rows + closeout reports cite the tick commit when the ticks
+  are not in the report's own commit (bare = authorship-tree);
+  WARN gate `scripts/check-tick-claims.sh`.
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE
   changes only — repo-internal tooling and non-operator-facing rows go
   in the `### Internal` subsection at the bottom of the release section

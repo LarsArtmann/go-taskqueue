@@ -423,11 +423,18 @@ fi
 # Branching-flow dupe accepted-baseline gate (2026-10-05 review f12): fails on
 # a duplicate-type group nobody has adjudicated; the accepted groups live in
 # docs/dupe-type-accepted-ledger.md + .dupe-baseline.txt. Shrink is advisory.
+# Runner inventory (derived 2026-10-25 from the repo, TODO row 1019): this
+# gate is DEV-HOST-ONLY — ci.yml runs 8 jobs on GitHub-hosted
+# ubuntu-latest/windows-latest runners, installs golangci-lint but NOT
+# branching-flow, and has no nix (unlike actionlint's nix fallback below);
+# flake.nix doesn't package branching-flow either. The bare-PATH probe
+# therefore never hits on CI: the dupe baseline is silently skipped on
+# every CI run and enforced only where the dev host carries the binary.
 step "dupe baseline gate (new actionable groups fail, shrink advisory)"
 if command -v branching-flow >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
 	./scripts/dupe-baseline.sh --check
 else
-	echo "branching-flow or jq unavailable — dupe baseline gate skipped"
+	echo "branching-flow or jq unavailable — dupe baseline gate skipped (dev-host-only: CI runners carry neither branching-flow nor nix)"
 fi
 
 step "actionlint (GitHub Actions workflows)"
