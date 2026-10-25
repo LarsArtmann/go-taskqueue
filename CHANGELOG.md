@@ -398,7 +398,7 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   tick-claims) carry `pins:` attributions and the 2 orphaned guards are
   wired — `check-consumer-tag.sh` counts as release-flow-wired
   (`scripts/release.sh` joined check-guard-wiring's surface list) and
-  `smoke/worktree.sh` joined ci-local's live smokes; the four standing
+  `scripts/smoke/worktree.sh` joined ci-local's live smokes; the four standing
   reds from TODO row 1109 are green (syntax 102/0, guard-wiring 68 wired /
   0 orphaned, fixture-attribution 25/25).
 - **Close-contract verdict-at-exit rail** (2026-10-25): the a)-g)
