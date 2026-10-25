@@ -94,6 +94,16 @@ Scope: continue the SUPERB Pareto plan (`docs/planning/2026-10-25_15-40_SUPERB-P
    nix job (this session proved nix had the css cause at 50267; whether
    3714773's nix also failed on css was NOT re-verified — its full nix log
    was not re-pulled). Correction pointer appended to the 16-57 report.
+5. **The 08-32 closeout's css "footgun" warning DISPROVEN — with a local
+   receipt.** `docs/status/tasks/2026-10-25_08-32_task-…ea700000000.md`
+   claimed the rebuild emits a "2-line empty sheet (NOT a stale commit —
+   regen-committing would strip styles)". Decisive local test: checking out
+   the OLD expanded css and running `scripts/check-webui-css.sh` FAILS it
+   (rc=1), and the failing diff's `+` side shows the rebuild is a FULL
+   minified sheet — every layer, utility, and tc-* class present, nothing
+   stripped (receipt: `/tmp/tq-gates/css-guard-on-expanded.log`). The
+   regenerated file committed as `633a80c6` is style-bearing; correction
+   appendix appended to the 08-32 report (daemon-folded `ca45c587`).
 5. **Fleet gate board (T10/F17/row 1118):** unbuilt — today re-demonstrated
    the need (both nix reds were hand-discovered, again).
 
@@ -207,7 +217,7 @@ Scope: continue the SUPERB Pareto plan (`docs/planning/2026-10-25_15-40_SUPERB-P
 23. B10: long tail + v0.4 re-row.
 24. Harvest this report's §f into TODO_LIST/ROADMAP (docs-health HARVEST).
 25. Annotate the 16-57 report §a3 with the corrected nix-job attribution
-    (appendix pointer to this report; started, verify landed).
+    (appendix pointer to this report).
 
 **Webui:**
 26. F21: webui smoke keeps TMP + dumps log on failure.
@@ -265,8 +275,12 @@ Scope: continue the SUPERB Pareto plan (`docs/planning/2026-10-25_15-40_SUPERB-P
 
 ---
 Gate receipts this session: `nix build .#checks.x86_64-linux.treefmt` rc=0;
-`scripts/check-webui-css.sh` rc=0 (post-`633a80c6`); harvest module
+`scripts/check-webui-css.sh` rc=0 on the committed minified css (post-
+`633a80c6`) AND rc=1 on the pre-commit expanded css
+(`/tmp/tq-gates/css-guard-on-expanded.log` — proves 50267's failure class
+and that the cure is complete, not style-stripping); harvest module
 `TestRedispatch…` rc=0; GH jobs: 40205050267 nix=css-drift, 40207620242
-nix=treefmt, all 7 other jobs success on both (`/tmp/tq-gates/ci-40205050267-failed-jobs.log`).
+nix=treefmt, all 7 other jobs success on both
+(`/tmp/tq-gates/ci-40205050267-failed-jobs.log`).
 Verdict channel: no queue task attached; `TQ_RESULT_FILE` unset this
 session — no `tq verdict` recorded (nothing to attribute queue-side).

@@ -247,3 +247,16 @@ Commits (mine or carrying my work; daemon-authored where noted):
 95126cb1 (go.sum sync) · 6f9b4ebc (daemon: ci.yml + size-guard fix batch) ·
 1c0b549f (daemon: gate greening batch) · bfafa961 (row ticks) ·
 smoke re-pin commit (daemon-folded; content = scripts/smoke/worktree.sh rewrite).
+
+---
+
+CORRECTION (2026-10-25 17:30, appendix — original text above unchanged): this
+report's §a3 premise "Run 40203714773: nix + test jobs BOTH failed on
+TestAgentsDocSizeGuard" was UNDER-DIAGNOSED for the nix job. Later triage of
+the FOLLOW-UP runs proved the nix job had an independent second failure class:
+the byte-canonical app.css pin (committed stylesheet UNMINIFIED vs the
+script's minified rebuild) — cured by `633a80c6` — plus a treefmt red
+(one file, `nix fmt`-cured) on the other agent's run 40207620242. Whether
+40203714773's nix also failed on css was not re-verified. Full triage:
+docs/status/2026-10-25_17-30_nix-job-cures-css-repin-tick-claim-audit.md §a7
+and §d1.
