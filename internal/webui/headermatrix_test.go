@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -492,6 +493,89 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		}
 		locked.surface().check(t, rec.Header(), "GET /api/v1/healthz (429)")
 	})
+}
+
+// failingTB records Errorf calls instead of failing the real test, so the
+// negative-path self-check can assert that surface.check actually reports
+// broken headers.
+type failingTB struct {
+	testing.TB
+	failures []string
+}
+
+func (f *failingTB) Errorf(format string, args ...any) {
+	f.failures = append(f.failures, fmt.Sprintf(format, args...))
+}
+
+func (f *failingTB) Helper() {}
+
+// TestMatrixCheckNegativePath proves the matrix pin cannot rot vacuous: a
+// fixture handler emitting a deliberately broken header set (value drifted
+// from the matrix, strict member missing, or an unlisted header present)
+// must produce failures; a fully conforming set must produce none.
+func TestMatrixCheckNegativePath(t *testing.T) {
+	t.Parallel()
+
+	row := serveDashboardRow.surface()
+
+	fixtures := []struct {
+		name   string
+		header http.Header
+	}{
+		{
+			name:   "clean fixture passes",
+			header: http.Header{"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`}, "X-Content-Type-Options": []string{"nosniff"}, "X-Frame-Options": []string{"DENY"}, "Referrer-Policy": []string{"no-referrer"}, "Permissions-Policy": []string{"camera=(), microphone=(), geolocation=()"}},
+		},
+		{
+			name:   "broken CSP value fails",
+			header: http.Header{"Content-Security-Policy": []string{`default-src 'self'`}, "X-Content-Type-Options": []string{"nosniff"}, "X-Frame-Options": []string{"DENY"}, "Referrer-Policy": []string{"no-referrer"}, "Permissions-Policy": []string{"camera=(), microphone=(), geolocation=()"}},
+		},
+		{
+			name:   "missing strict member fails",
+			header: http.Header{"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`}, "X-Content-Type-Options": []string{"nosniff"}, "Referrer-Policy": []string{"no-referrer"}, "Permissions-Policy": []string{"camera=(), microphone=(), geolocation=()"}},
+		},
+		{
+			name:   "unlisted header fails",
+			header: http.Header{"Content-Security-Policy": []string{`default-src 'none'; frame-ancestors 'none'; form-action 'self'`}, "X-Content-Type-Options": []string{"nosniff"}, "X-Frame-Options": []string{"DENY"}, "Referrer-Policy": []string{"no-referrer"}, "Permissions-Policy": []string{"camera=(), microphone=(), geolocation=()"}, "X-Powered-By": []string{"broken"}},
+		},
+	}
+
+	for _, fixture := range fixtures {
+		t.Run(fixture.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				for name, vals := range fixture.header {
+					for _, v := range vals {
+						w.Header().Add(name, v)
+					}
+				}
+			})
+			server := httptest.NewServer(handler)
+			t.Cleanup(server.Close)
+
+			resp, err := http.Get(server.URL)
+			if err != nil {
+				t.Fatalf("GET fixture: %v", err)
+			}
+			resp.Body.Close()
+
+			tb := &failingTB{TB: t}
+			row.check(tb, resp.Header, "fixture")
+
+			if fixture.name == "clean fixture passes" {
+				if len(tb.failures) != 0 {
+					t.Errorf("clean fixture reported %d failures, want 0: %v", len(tb.failures), tb.failures)
+				}
+
+				return
+			}
+
+			if len(tb.failures) == 0 {
+				t.Error("deliberately broken fixture header passed the matrix check — the pin is vacuous")
+			}
+		})
+	}
 }
 
 func newAPIHeaderMatrixServer(t *testing.T) *httpapi.Server {
