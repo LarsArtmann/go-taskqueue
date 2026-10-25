@@ -26,6 +26,7 @@ cd "$(dirname "$0")/.." || exit 1
 self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 declare -A LIST_CACHE=()
+declare -A SPAN_BASE=()
 
 # list_at KEY: KEY is "HEAD", "day:YYYY-MM-DD" (that day's end-of-day
 # tree), or a raw commit-ish. TQ_TICK_LIST_CMD overrides the fetch for the
@@ -57,9 +58,9 @@ warns=0
 skips=0
 
 verify_claim() {
-	local file="$1" lineno="$2" span="$3" a="$4" b="$5" key="$6"
+	local file="$1" lineno="$2" span="$3" rows="$4" key="$5"
 	local at="$key" list n row
-	if [ "$b" -lt "$a" ] || [ $((b - a)) -gt 50 ]; then
+	if [ "$(wc -w <<<"$rows")" -gt 50 ]; then
 		skips=$((skips + 1))
 		echo "TICK-CLAIM SKIP: $file:$lineno \"$span\" — degenerate range"
 		return
@@ -69,7 +70,7 @@ verify_claim() {
 		echo "TICK-CLAIM SKIP: $file:$lineno \"$span\" — TODO_LIST unreadable at $at"
 		return
 	}
-	for ((n = a; n <= b; n++)); do
+	for n in $rows; do
 		row="$(sed -n "${n}p" <<<"$list")"
 		if [[ "$row" == "- [x]"* || "$row" == "- [X]"* ]]; then
 			continue
@@ -84,10 +85,10 @@ verify_claim() {
 }
 
 scan_line() {
-	local file="$1" lineno="$2" line="$3" fallback="$4"
+	local file="$1" lineno="$2" line="$3" fallback="$4" readme="$5"
 	local apos="'"
 	local claim_re="rows? [0-9]+([/-][0-9]+)?([[:space:]]+[A-Za-z${apos}]+){0,2}[[:space:]]+(ticked|\`?\[x\]\`?)"
-	local off span low window key
+	local off span low window key sep rows sc cachekey n
 	while IFS=: read -r off span; do
 		[ -n "$span" ] || continue
 		low="${span,,}"
@@ -95,21 +96,46 @@ scan_line() {
 		*not* | *never* | *unticked*) continue ;;
 		esac
 		[[ "$span" =~ ^rows?[[:space:]]([0-9]+)([/-]([0-9]+))? ]] || continue
-		local a="${BASH_REMATCH[1]}" b="${BASH_REMATCH[3]:-}"
-		[ -n "$b" ] || b="$a"
-		key="$fallback"
+		local a="${BASH_REMATCH[1]}" b="${BASH_REMATCH[3]:-}" sep="${BASH_REMATCH[2]:-}"
+		# "rows 32-34" spans the range; "rows 32/34" names two endpoints —
+		# the slash list must not sweep the rows in between.
+		rows="$a"
+		if [ -n "$b" ]; then
+			if [[ "$sep" == /* ]]; then
+				rows="$a $b"
+			else
+				for ((n = a + 1; n <= b; n++)); do rows="$rows $n"; done
+			fi
+		fi
+		key=""
 		window="${line:off+${#span}:140}"
 		if [[ "$window" =~ \(([0-9a-f]{8,40})\) ]]; then
 			key="${BASH_REMATCH[1]}"
 		elif [[ "$window" =~ [[:space:]](in|by|at|via)[[:space:]]+([0-9a-f]{8,40}) ]]; then
 			key="${BASH_REMATCH[2]}"
+		elif [ "$readme" = 1 ]; then
+			# README.md has no file-level authorship commit; the pickaxe
+			# commit that last changed this exact claim span is the closest
+			# authorship-time numbering context (falls back to the date cell).
+			cachekey="$file|$span"
+			if [[ -n "${SPAN_BASE[$cachekey]:-}" ]]; then
+				key="${SPAN_BASE[$cachekey]}"
+			else
+				sc="$(git log -1 --format=%h -S"$span" -- "$file" 2>/dev/null || true)"
+				if [ -n "$sc" ]; then
+					key="$sc"
+					SPAN_BASE[$cachekey]="$sc"
+				fi
+			fi
 		fi
-		verify_claim "$file" "$lineno" "$span" "$a" "$b" "$key"
+		[ -n "$key" ] || key="$fallback"
+		verify_claim "$file" "$lineno" "$span" "$rows" "$key"
 	done < <(grep -obE "$claim_re" <<<"$line" || true)
 }
 
 scan_file() {
-	local f="$1" lineno=0 line fallback add
+	local f="$1" lineno=0 line fallback add readme=0
+	[[ "$(basename "$f")" == "README.md" ]] && readme=1
 	if [[ "$f" =~ (^|/)([0-9]{4}-[0-9]{2}-[0-9]{2})_ ]]; then
 		# The report's own ADD commit is the tree its row numbers were true
 		# against (same-day mints/prunes would skew an end-of-day snapshot);
@@ -131,7 +157,7 @@ scan_file() {
 		if [[ "$line" =~ ^\|[[:space:]]*([0-9]{4}-[0-9]{2}-[0-9]{2}) ]]; then
 			rowfallback="day:${BASH_REMATCH[1]}"
 		fi
-		scan_line "$f" "$lineno" "$line" "$rowfallback"
+		scan_line "$f" "$lineno" "$line" "$rowfallback" "$readme"
 	done <"$f"
 }
 
@@ -151,7 +177,7 @@ bbbbbbbbbbbbbbbb) printf '%s\n' '- [x] alpha landed' '- [ ] beta open' ;;
 esac
 EOF
 	chmod +x "$tmp/listcmd.sh"
-	printf 'report says row 1 ticked and rows 1-3 [x]\n' >"$tmp/f1.md"
+	printf 'report says row 1 ticked, rows 1/3 [x], and rows 1-3 [x]\n' >"$tmp/f1.md"
 	printf 'sha-cited rows 1-2 ticked in aaaaaaaaaaaaaaaa plus row 2 ticked in bbbbbbbbbbbbbbbb\n' >"$tmp/f2.md"
 	printf 'negatives: rows 1-2 unticked, row 3 not ticked, row 4 was UNCHECKED\n' >"$tmp/f3.md"
 	printf 'broken row 1 ticked in deadbeef00\n' >"$tmp/f4.md"
@@ -159,8 +185,8 @@ EOF
 	local files out out2
 	files="$(printf '%s\n' "$tmp/f1.md" "$tmp/f2.md" "$tmp/f3.md" "$tmp/f4.md" "$tmp/2026-01-01_00-00_selftest.md")"
 	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
-	if ! grep -qF 'tick-claims summary: 2 ok, 3 warned, 1 skipped' <<<"$out"; then
-		echo "FAIL: negative battery counters off (want 2 ok, 3 warned, 1 skipped)"
+	if ! grep -qF 'tick-claims summary: 3 ok, 3 warned, 1 skipped' <<<"$out"; then
+		echo "FAIL: negative battery counters off (want 3 ok, 3 warned, 1 skipped)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
@@ -171,6 +197,11 @@ EOF
 	fi
 	if grep -q 'rows 1-2 ticked in aaaaaaaaaaaaaaaa' <<<"$out"; then
 		echo "FAIL: sha-cited true range was flagged"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if grep -q 'rows 1/3' <<<"$out"; then
+		echo "FAIL: slash list swept between endpoints (rows 1/3 must check 1 and 3 only)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
