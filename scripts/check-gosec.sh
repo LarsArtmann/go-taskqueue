@@ -307,8 +307,8 @@ EOF
 	# extract's scripts/ dir; the top-level cd then strands the recursive
 	# child, and the first gate_run reports got rc=127. The extract lives
 	# under $tmp and dies with the EXIT trap. The rc context is tightened to
-# EXACTLY 127 (04-46 §f30): any non-zero would also match, but only 127
-# proves the command-not-found shape the self_abs fix targets.
+	# EXACTLY 127 (04-46 §f30): any non-zero would also match, but only 127
+	# proves the command-not-found shape the self_abs fix targets.
 	if [ -z "${TQ_GOSEC_SELFTEST_REENTRY:-}" ]; then
 		ctl_dir="$tmp/negctl/scripts"
 		mkdir -p "$ctl_dir"

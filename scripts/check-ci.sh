@@ -105,15 +105,15 @@ if [ "${CHECK_CI_SELF_TEST:-}" = "1" ]; then
 	# "unknown" sentinel — a LEADING EMPTY field would shift under `read`
 	# (IFS strips leading tabs), so "" must never reach the tsv.
 	IFS=$'\t' read -r T_CONCLUSION T_RUN_ID T_SHA T_TITLE <<<"$(printf 'failure\t4242\tdeadbeefdeadbeef\tfix: the thing (retry)')"
-	[ "$T_CONCLUSION" = "failure" ] && [ "$T_RUN_ID" = "4242" ] \
-		&& [ "$T_SHA" = "deadbeefdeadbeef" ] \
-		&& [ "$T_TITLE" = "fix: the thing (retry)" ] || {
+	[ "$T_CONCLUSION" = "failure" ] && [ "$T_RUN_ID" = "4242" ] &&
+		[ "$T_SHA" = "deadbeefdeadbeef" ] &&
+		[ "$T_TITLE" = "fix: the thing (retry)" ] || {
 		echo "check-ci self-test: @tsv parse must split conclusion/id/sha/title intact"
 		exit 1
 	}
 	IFS=$'\t' read -r T_CONCLUSION T_RUN_ID T_SHA T_TITLE <<<"$(printf 'unknown\t4243\tcafebabe\tnull-conclusion run')"
-	[ "$T_CONCLUSION" = "unknown" ] && [ "$(classify_conclusion unknown)" = "red" ] \
-		&& [ "$T_SHA" = "cafebabe" ] || {
+	[ "$T_CONCLUSION" = "unknown" ] && [ "$(classify_conclusion unknown)" = "red" ] &&
+		[ "$T_SHA" = "cafebabe" ] || {
 		echo "check-ci self-test: null conclusion must arrive as non-empty 'unknown' and classify red"
 		exit 1
 	}
