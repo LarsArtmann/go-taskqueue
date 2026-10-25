@@ -282,6 +282,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
 
+- **Mechanical archive bar** (2026-10-26): `scripts/check-archive-eligibility.sh`
+  — a status-report candidate may only move to `docs/status/archived/`
+  when every numbered / checkbox item is struck or marked; `--self-test`
+  pins the countable summary + negative/positive/empty battery
+  (`TQ_ARCHIVE_FILES`); wired into ci-local next to check-status-index.
+
 - **ci.yml parity sweep wiring** (2026-10-15): `golangci-lint config
   verify` joins CI as a HARD step (kills the silent-disabled-linter
   class), `scripts/smoke/reviews.sh` hard (hermetic), `scripts/smoke/journal-drift.sh`
