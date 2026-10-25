@@ -631,6 +631,9 @@ step "status-index self-test (live-row counter pin)"
 step "status-index check"
 ./scripts/check-status-index.sh
 
+step "archive-eligibility self-test (mechanical archive-bar pin; TODO row 281)"
+./scripts/check-archive-eligibility.sh --self-test
+
 # Advisory phrase-drift guard (row-110 batch, TODO row 313): index-row quoted
 # spans must exist in the cited report body (03-37 drift class). WARN-only;
 # hard-gate flip is a separate follow-up row.
