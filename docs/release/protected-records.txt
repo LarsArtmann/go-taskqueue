@@ -1,0 +1,9 @@
+# Protected footer/attribution records — SHAs cited by dispatch attribution
+# records or task reports. The reachability pin
+# (scripts/check-footer-record-reachability.sh) asserts each stays an
+# ancestor of HEAD. Add a SHA here in the same change that cites it.
+9cf3ecbe # 2026-10-20 marker-gate landing half (read repo-side coordination markers at harvest mint time; cited by CV rows/records)
+b1706caf # 2026-10-20 marker-gate landing half (verdict-marker vocabulary; the original reset-away victim; cited by CV rows 113/115-era records)
+9ff63bd3 # the real marker-gate code landing on master after the reset-away (cited by CV annotations)
+332f1bc1 # 2026-10-25 tq version rev carrier (cited by CV attribution record 71cc7a4f6)
+0af26ba9 # 2026-10-25 blocked_needs_root verdict carrier (cited by CV attribution record d41e54e6e)

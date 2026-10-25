@@ -58,7 +58,10 @@ if [ "${1:-}" = "--self-test" ]; then
 	exit 0
 fi
 
-refs=(scripts/ci-local.sh .github/workflows/ci.yml flake.nix)
+# release.sh counts as a wiring surface: check-consumer-tag.sh is the
+# release-flow gate (release.sh --push runs it at the tag; needs network +
+# the module proxy — never a per-push ci-local step).
+refs=(scripts/ci-local.sh .github/workflows/ci.yml flake.nix scripts/release.sh)
 rc=0
 wired_ok=0
 wired_failed=0

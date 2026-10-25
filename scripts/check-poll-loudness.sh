@@ -105,7 +105,7 @@ self_test() {
 	tmp="$(mktemp -d)"
 	# NO EXIT trap here: command-substitution subshells inherit it and would
 	# delete the fixtures after the first invocation.
-	# good: loudness right after done
+	# pins: good-branch — sleep+probe loop that lands stays loud right after done
 	cat >"$tmp/good.sh" <<'EOF'
 for _ in $(seq 1 5); do
 	probe && break
@@ -113,7 +113,7 @@ for _ in $(seq 1 5); do
 done
 [ -n "$x" ] || { echo "FAIL: never came up"; exit 1; }
 EOF
-	# bad: silent window exhaust
+	# pins: bad-branch — silent window exhaust (no FAIL line) must be flagged
 	cat >"$tmp/bad.sh" <<'EOF'
 for _ in $(seq 1 5); do
 	probe && break
@@ -121,7 +121,7 @@ for _ in $(seq 1 5); do
 done
 echo "moving on"
 EOF
-	# non-poll loop: no sleep, no seq — exempt
+	# pins: exempt-branch — loop with neither sleep nor seq is not a poll loop
 	cat >"$tmp/nonpoll.sh" <<'EOF'
 for f in a b c; do
 	echo "$f"

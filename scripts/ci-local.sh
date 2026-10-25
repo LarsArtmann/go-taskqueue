@@ -471,6 +471,9 @@ step "status-loop live smoke"
 step "dogfood-once live smoke (stub agent; TQ_DOGFOOD=1 adds the real-agent proof)"
 ./scripts/smoke/dogfood-once.sh
 
+step "worktree-per-agent live smoke (scratch repo; --worktrees merge/reap proof)"
+./scripts/smoke/worktree.sh
+
 step "bootstrap --install smoke"
 ./scripts/smoke/bootstrap-install.sh
 

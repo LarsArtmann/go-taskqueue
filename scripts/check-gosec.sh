@@ -153,30 +153,27 @@ printf '%s\n' internal/task internal/journal
 exit 0
 EOF
 	chmod +x "$shortenum"
-	# pins: partial-enumeration-branch — a real-looking list followed by a
-	# non-zero exit must hard-fail on the exit status, not scan the partial
-	# lines (03-56 §f15; process-substitution would drop the exit status).
+	# (03-56 §f15; process-substitution would drop the exit status.)
+	# pins: partial-enumeration-branch — real-looking list + non-zero exit must hard-fail on the exit status, not scan the partial lines
 	cat >"$partenum" <<'EOF'
 #!/bin/sh
 printf '%s\n' internal/task internal/journal
 exit 1
 EOF
 	chmod +x "$partenum"
-	# pins: whitespace-enumeration-branch — space-padded blank lines survive
-	# command substitution (trailing newlines would be stripped) and pass the
-	# -z guard, so the guard needs its own branch (03-56 §f14).
+	# (03-56 §f14: trailing newlines would be stripped.)
+	# pins: whitespace-enumeration-branch — space-padded blank lines survive command substitution and pass the -z guard, so the guard needs its own branch
 	cat >"$whitespaceenum" <<'EOF'
 #!/bin/sh
 printf ' \n \n '
 exit 0
 EOF
 	chmod +x "$whitespaceenum"
-	# pins: Files:0 exact-count — delegates to the REAL enumerator so the
-	# canary guard passes, making the failed-scan count exactly 1 root + N
-	# module targets (04-46 §f13; pins the arithmetic, not just the shape).
+	# (04-46 §f13: pins the arithmetic, not just the shape.)
 	repo_root="$(cd "$(dirname "$self_abs")/.." && pwd)"
 	cat >"$fulenum" <<EOF
 #!/bin/sh
+# pins: Files:0 exact-count — delegates to the REAL enumerator so the canary guard passes, making the failed-scan count exactly 1 root + N module targets
 exec '$repo_root/scripts/for-each-module.sh'
 EOF
 	chmod +x "$fulenum"

@@ -31,6 +31,7 @@ self_test() {
 	trap 'rm -rf "$tmp"' EXIT
 	local fx="$tmp/fixmod"
 	mkdir -p "$fx"
+	# pins: negative-battery — scratch module with absolute replace to a nonexistent path + unpinned internal require + downgraded go directive must exit rc=1
 	cat >"$fx/go.mod" <<EOF
 module fixmod
 

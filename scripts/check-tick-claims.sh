@@ -169,6 +169,7 @@ self_test() {
 	# returned, and set -u would kill the trap on a function-local name.
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
+	# pins: list-resolution-branches — HEAD/day/sha tree commands return the row states each authorship-tree resolver path consumes
 	cat >"$tmp/listcmd.sh" <<'EOF'
 #!/bin/sh
 case "$1" in
