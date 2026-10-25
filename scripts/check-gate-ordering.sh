@@ -41,6 +41,7 @@ if [ "${1:-}" = "--self-test" ]; then
 		okc=$((okc + 1))
 	}
 
+	# pins: ordered gates pass (arg + env-prefixed forms)
 	cat >"$tmp/fake-ci-local.sh" <<'EOF'
 step "x self-test"
 ./scripts/check-x.sh --self-test
@@ -53,6 +54,7 @@ step "y real"
 EOF
 	check "ordered gates pass (arg + env-prefixed forms)" 0 "gate-ordering summary: 2 gate(s) ordered, 0 violations"
 
+	# pins: inverted wiring fails naming the gate
 	cat >"$tmp/fake-ci-local.sh" <<'EOF'
 step "x real first (the dce6c12b inversion)"
 ./scripts/check-x.sh
@@ -61,6 +63,7 @@ step "x self-test after"
 EOF
 	check "inverted wiring fails naming the gate" 1 "INVERTED-ORDER: check-x.sh"
 
+	# pins: real-only gate is not a violation
 	cat >"$tmp/fake-ci-local.sh" <<'EOF'
 step "z real only (no self-test yet)"
 ./scripts/check-z.sh
