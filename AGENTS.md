@@ -50,6 +50,11 @@ internals, never sibling facades; parity via
 `scripts/check-facade-parity.sh` BEFORE staging; postgres
 `OpenWithPool` pools CALLER-OWNED. No go.work at root — replace-only
 (exception: tracked `cmd/tq/go.work` dev workspace, ADR-0017).
+When a module's `go` directive bumps, bump `cmd/tq/go.work`'s `go` line
+(`go work edit -go=<ver>` inside cmd/tq) in the same change: the
+workspace is load-bearing for cmd/tq builds (local unpublished sibling
+APIs), and a stale line fails EVERY cmd/tq go command with
+"go.work lists go <old>".
 Release flow: docs/release/.
 
 Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh +
