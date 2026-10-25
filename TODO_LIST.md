@@ -14,6 +14,15 @@ Items carry their evidence: a code path and/or the status report that filed
 them (`docs/status/<date>_<slug>.md`). Completed items live in CHANGELOG.md,
 not here.
 
+## 16-42 closeout appends (2026-10-25; source: docs/status/tasks/2026-10-25_16-42_task-000001a173b7428adb624902cd4e00000000.md §e/§f; deduped vs rows 196-202)
+
+- [ ] Add a shared negative-fixture helper (scripts/lib) for check-* gate self-tests: builds a temp tree from a fixture file list, runs the gate, asserts expected FAIL messages — generalizes the ad-hoc mktemp negative batteries (16-42 report §e5; this session's first negative run failed on a missing .tq-verify instead of exercising the pin)
+- [ ] Define the KNOWN_FLAKY sed range ONCE in scripts/check-verify.sh (a local variable) and reuse it in all three extraction sites (pin 6 AGENTS.md→lib, lib→AGENTS.md, empty-list check) — the `/^KNOWN_FLAKY=(/,/^)/p` range is currently copy-pasted (16-42 report §e3)
+- [ ] Add a comment-mask negative case to check-verify.sh's self-test: lib with the array entry dropped but the test name still present in a comment must FAIL (the strengthened array-region check is only negative-tested via full entry removal today) (16-42 report §f8)
+- [ ] Audit whether check-verify.sh pin 3's remaining surface-string markers (FLAKE-RETRY, "still red after the flake retry", "retrying ONCE") are each covered by a behavior case — if so they are redundant like the literal test names were (16-42 report §f9; same §f5 audit lens)
+- [ ] Add a mechanical duplicate-row check to the TODO_LIST gate: FAIL when two unchecked rows cite the same §-anchor (row 200 vs 909 both cited 02-08 §f5 and survived harvest dedup) (16-42 report §f11)
+- [ ] Grep the repo for consumers keying on check-verify.sh output marker lines ("lost marker", literal test-name greps) after the pin-3 drop — confirm no sibling gate parses the removed lines (16-42 report §f12)
+
 ## 02-28 retro close-out harvest (2026-10-13 archive sweep; source: docs/status/archived/2026-09-15_02-28_task-000001a0a27176572e0bcf9c305950d445a5.md §b2/§e)
 
 - [x] Journal fast-refuse parks — DONE: `FastRefused` RateLimitError requeues under the new `rate-limit-gate` class; pool-health + journal audit count it, worker test pins the fact class (bb4320fa)
@@ -197,7 +206,7 @@ not here.
 - [ ] Run the full gate (./scripts/ci-local.sh or scripts/root-gate.sh) once before the next push — the 02-08 pin bundle session only exercised scripts/check-verify.sh (02-08 report §b)
 - [ ] Index the 01-54 closeout (docs/status/tasks/2026-10-13_01-54_task-000001a1328418c06257187cb89200000000.md) into docs/status/README.md — it was never indexed (02-08 report §e)
 - [ ] Add a --self-test mode to check-verify.sh that injects the three red-path shapes (dropped KNOWN_FLAKY entry, undocumented entry, signature-shaped genuine red) into a temp copy so the spot-checks become permanent regression coverage (02-08 report §e)
-- [x] Audit pin 3's literal-name markers for redundancy against pin 6's bidirectional extraction — decide keep/drop with a rationale comment (02-08 report §f5) — DONE 2026-10-25: duplicate of row 909, landed in the same session (literal greps dropped, pin 6 array-region binding strengthened; commit 78bf888b)
+- [x] Audit pin 3's literal-name markers for redundancy against pin 6's bidirectional extraction — decide keep/drop with a rationale comment (02-08 report §f5) — DONE 2026-10-25: duplicate of row 909, landed in the same session (literal greps dropped, pin 6 array-region binding strengthened; commit 78bf888b→b84132c6)
 - [ ] Extract the duplicated shim boilerplate (heal-shim and genuine-red go/gofmt pairs) into one parameterized helper inside check-verify.sh (02-08 report §f6)
 - [ ] Add shellcheck -S warning for scripts/lib/verify-retry.sh + scripts/check-verify.sh to the guard suite (new code uses process substitution + heredocs; only execution-tested) (02-08 report §f7)
 - [ ] Add a --list debug mode to check-verify.sh printing the extracted KNOWN_FLAKY names in both directions (02-08 report §f8)
