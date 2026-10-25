@@ -25,6 +25,14 @@ extra_mods="${TQ_TOOLCHAIN_EXTRA_MODS:-}"
 workflows_dir="${TQ_TOOLCHAIN_WORKFLOWS_DIR:-.github/workflows}"
 flake_file="${TQ_TOOLCHAIN_FLAKE:-flake.nix}"
 
+# floor_of <go.mod path> — print the module's `go <version>` directive
+# version, or nothing when unparsable. ONE copy of the parse regex (row
+# 1102): --print-floor and the main gate share it so a future regex edit
+# cannot fix one copy only.
+floor_of() {
+	sed -n 's/^go \([0-9][0-9.]*\)$/\1/p' "$1" | head -1
+}
+
 # --print-floor: emit ONLY the shared go.mod floor — the SAME source the
 # checks below validate the setup-go pins against — so callers can pin
 # GOTOOLCHAIN from one place (ci-local exports GOTOOLCHAIN=go<floor> so
@@ -32,7 +40,7 @@ flake_file="${TQ_TOOLCHAIN_FLAKE:-flake.nix}"
 if [[ "${1:-}" == "--print-floor" ]]; then
 	floors_out=""
 	while IFS= read -r mod; do
-		f="$(sed -n 's/^go \([0-9][0-9.]*\)$/\1/p' "$mod" | head -1)"
+		f="$(floor_of "$mod")"
 		if [ -z "$f" ]; then
 			echo "check-toolchain-pins: $mod: no parsable 'go <version>' directive" >&2
 			exit 1
@@ -41,7 +49,7 @@ if [[ "${1:-}" == "--print-floor" ]]; then
 	done < <(git ls-files '*go.mod' | sort)
 	if [ -n "$extra_mods" ]; then
 		while IFS= read -r mod; do
-			f="$(sed -n 's/^go \([0-9][0-9.]*\)$/\1/p' "$mod" | head -1)"
+			f="$(floor_of "$mod")"
 			if [ -z "$f" ]; then
 				echo "check-toolchain-pins: $mod: no parsable 'go <version>' directive" >&2
 				exit 1
@@ -99,7 +107,7 @@ fi
 declare -A floors
 floor_list=""
 for mod in "${mods[@]}"; do
-	f="$(sed -n 's/^go \([0-9][0-9.]*\)$/\1/p' "$mod" | head -1)"
+	f="$(floor_of "$mod")"
 	if [ -z "$f" ]; then
 		fail "$mod: no parsable 'go <version>' directive"
 		continue
@@ -240,6 +248,23 @@ if [[ "${1:-}" == "--self-test" ]]; then
 			exit 1
 		}
 
+		# --print-floor battery (row 1101): the MAX floor wins over fixtures,
+		# and an unparsable fixture exits 1 with the stderr diagnostic.
+		printf 'module highmod\n\ngo 9.9.9\n' >"$tmp/highmod.mod"
+		out="$(TQ_TOOLCHAIN_EXTRA_MODS="$tmp/highmod.mod" "$self_abs" --print-floor 2>&1)" && rc=0 || rc=$?
+		[ "$rc" -eq 0 ] && [ "$out" = "9.9.9" ] || {
+			echo "FAIL: self-test print-floor max branch (want '9.9.9', got rc=$rc out=$out)"
+			exit 1
+		}
+		echo "ok: --print-floor prints the MAX floor over extra fixtures"
+		printf 'not-a-go-directive\n' >"$tmp/garbage.mod"
+		out="$(TQ_TOOLCHAIN_EXTRA_MODS="$tmp/garbage.mod" "$self_abs" --print-floor 2>&1)" && rc=0 || rc=$?
+		[ "$rc" -eq 1 ] && grep -q "no parsable 'go <version>' directive" <<<"$out" || {
+			echo "FAIL: self-test print-floor unparsable branch (want rc=1 + diagnostic, got rc=$rc out=$out)"
+			exit 1
+		}
+		echo "ok: --print-floor exits 1 with a diagnostic on an unparsable fixture"
+
 		# Positive: the unpinned real run passes and its summary line matches
 		# the pinned format.
 		out="$("$self_abs" 2>&1)" && rc=0 || rc=$?
@@ -253,7 +278,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
 			printf '%s\n' "$out"
 			exit 1
 		}
-		echo "ok: self-test battery (4 negative branches + pinned real-run summary)"
+		echo "ok: self-test battery (4 negative branches + --print-floor pair + pinned real-run summary)"
 	}
 	self_test
 fi
