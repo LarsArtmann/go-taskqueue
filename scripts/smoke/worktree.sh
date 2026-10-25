@@ -149,8 +149,11 @@ echo "== no orphan tq/* branches or worktrees left"
 	echo "FAIL: orphan tq/* branches remain"
 	exit 1
 }
-[ ! -d "$TMP/.tq-worktrees" ] || [ -z "$(ls -A "$TMP/.tq-worktrees" 2>/dev/null)" ] || {
-	ls -A "$TMP/.tq-worktrees"
+# The reap removes the linked checkouts (git worktree remove leaves the
+# empty per-repo parent behind — residue, not an orphan); only task-id
+# checkout dirs count.
+[ -z "$(find "$TMP/.tq-worktrees" -mindepth 2 -type d 2>/dev/null)" ] || {
+	find "$TMP/.tq-worktrees" -mindepth 2 -type d
 	echo "FAIL: orphan worktree checkouts remain"
 	exit 1
 }
