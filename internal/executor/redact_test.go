@@ -276,6 +276,22 @@ func TestSecretHitsCountsInjectedTokensIndependentOfContext(t *testing.T) {
 	}
 }
 
+// TestSecretHitsCountsSameLineAdjacentSecrets pins same-line adjacency
+// (03-55 §f25): the span-merge contract merges only OVERLAPPING pattern
+// spans; two distinct, non-overlapping secrets sharing ONE line must stay
+// two locations (cross-line merging is already pinned by the identical-
+// table suite, same-line adjacency was not). Zero-separator contact is
+// unpinnable by design — greedy token charsets ([A-Za-z0-9_-]{16,}) absorb
+// the boundary into one match.
+func TestSecretHitsCountsSameLineAdjacentSecrets(t *testing.T) {
+	t.Parallel()
+
+	sameLine := fakeAnthropic + " next to " + fakeGitHub
+	if got := SecretHits(sameLine); got != 2 {
+		t.Errorf("SecretHits = %d, want 2 (two distinct secrets on one line): %s", got, sameLine)
+	}
+}
+
 // TestRedactSecretsMasksAuthHeaderToExactlyOneMarker is the output-side
 // mirror of the span-merge count fix (02-37 §f11): the overlapping
 // bearer × authorization-header patterns must mask one
