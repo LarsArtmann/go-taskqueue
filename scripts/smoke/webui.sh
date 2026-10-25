@@ -7,7 +7,16 @@ cd "$(dirname "$0")/../.."
 REPO_ROOT="$(pwd)"
 
 TMP="$(mktemp -d)"
-trap 'kill "${WORKER_PID:-0}" "${SERVE_PID:-0}" "${AUTH_SERVE_PID:-0}" "${WRITES_SERVE_PID:-0}" 2>/dev/null || true; rm -rf "$TMP"' EXIT
+# PID guards, never kill 0: an unset PID defaulting to 0 makes kill signal
+# the WHOLE process group on early exit (same class as the webui-screenshots
+# trap fix 33ee8725) — each kill fires only for a PID the run actually set.
+cleanup() {
+	for pid in "${WORKER_PID:-}" "${SERVE_PID:-}" "${AUTH_SERVE_PID:-}" "${WRITES_SERVE_PID:-}"; do
+		[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+	done
+	rm -rf "$TMP"
+}
+trap cleanup EXIT
 
 # Ask the kernel for a free ephemeral port. WEBUI_SMOKE_PORT still pins an
 # explicit port; without it a fixed port collides on busy machines.
