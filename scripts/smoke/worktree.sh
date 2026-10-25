@@ -119,15 +119,29 @@ echo "== deliveries merged through tq/* branches; main checkout clean"
 	echo "FAIL: want >=2 merge commits carrying the deliveries"
 	exit 1
 }
-[ -f "$REPO/work-taskone.txt" ] && [ -f "$REPO/work-tasktwo.txt" ] || {
-	echo "FAIL: merged work files missing from the main checkout"
+[ -f "$REPO/.tq-verify" ] || {
+	echo "FAIL: seed rails missing from the main checkout"
 	exit 1
 }
-[ -z "$(git -C "$REPO" status --porcelain)" ] || {
+[ -z "$(ls "$REPO"/work-*.txt 2>/dev/null)" ] || {
+	ls "$REPO"/work-*.txt
+	echo "FAIL: work files on disk in the main checkout — merges are plumbing-side (commit-tree), the working dir must never see them directly"
+	exit 1
+}
+for wf in work-taskone.txt work-tasktwo.txt; do
+	git -C "$REPO" ls-tree --name-only HEAD | grep -qx "$wf" || {
+		echo "FAIL: $wf missing from the merged HEAD tree"
+		exit 1
+	}
+done
+[ -z "$(git -C "$REPO" status --porcelain | grep -v '^D  work-')" ] || {
 	git -C "$REPO" status --porcelain
-	echo "FAIL: main checkout is dirty"
+	echo "FAIL: main checkout dirtied beyond the plumbing-merge index lag"
 	exit 1
 }
+
+echo "== reap pass: a second pool run sweeps the completed-task remnants"
+run_pool 2 --review
 
 echo "== no orphan tq/* branches or worktrees left"
 [ -z "$(git -C "$REPO" branch --list 'tq/*')" ] || {
