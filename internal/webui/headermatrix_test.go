@@ -4,6 +4,8 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -113,6 +115,23 @@ func notContains(sub string) func(*testing.T, string) {
 	}
 }
 
+// mergeRow overlays additions onto a base row (shared matrix idiom).
+func mergeRow(base, additions matrixHeaders) matrixHeaders {
+	row := matrixHeaders{}
+	maps.Copy(row, base)
+	maps.Copy(row, additions)
+
+	return row
+}
+
+func positiveSeconds(t *testing.T, got string) {
+	t.Helper()
+
+	if n, err := strconv.Atoi(got); err != nil || n < 1 {
+		t.Errorf("Retry-After = %q, want a positive second count", got)
+	}
+}
+
 // serveDashboardRow is the matrix's `tq serve` task-page row: the full
 // strict set, no robots header (task pages carry a robots meta instead),
 // no Cache-Control (HTML and SSE unset).
@@ -129,6 +148,51 @@ var serveDashboardRow = matrixHeaders{
 	"x-frame-options":        eq("DENY"),
 	"referrer-policy":        eq("no-referrer"),
 	"permissions-policy":     eq("camera=(), microphone=(), geolocation=()"),
+}
+
+// serve401Row is the dashboard 401 realm: the full task-page set plus the
+// WWW-Authenticate challenge.
+var serve401Row = mergeRow(serveDashboardRow, matrixHeaders{
+	"www-authenticate": eq(`Bearer realm="tq dashboard"`),
+})
+
+// serve429Row is the write-route CSRF-lockout 429: the full task-page set
+// plus the Retry-After second count.
+var serve429Row = mergeRow(serveDashboardRow, matrixHeaders{
+	"retry-after": positiveSeconds,
+})
+
+// apiAuthedRow / apiUnauthedRow / apiLockedRow are the `tq api` column:
+// nosniff everywhere, no-store when authenticated, the API realm on 401,
+// Retry-After on the bearer lockout.
+var (
+	apiAuthedRow = matrixHeaders{
+		"x-content-type-options": eq("nosniff"),
+		"cache-control":          eq("no-store"),
+	}
+	apiUnauthedRow = matrixHeaders{
+		"x-content-type-options": eq("nosniff"),
+		"www-authenticate":       eq(`Bearer realm="tq-api"`),
+	}
+	apiLockedRow = matrixHeaders{
+		"x-content-type-options": eq("nosniff"),
+		"retry-after":            positiveSeconds,
+	}
+)
+
+// matrixRows is the canonical inventory of every surface row in the
+// SECURITY.md "Response headers, per surface" matrix. The doc test derives
+// the expected header-name set from this slice, so the doc table and these
+// Go tables cannot diverge in either direction; a new header means an entry
+// in the row(s) here AND a doc table row, in the same change.
+var matrixRows = []matrixHeaders{
+	serveDashboardRow,
+	serve401Row,
+	serve429Row,
+	serveHealthRow,
+	apiAuthedRow,
+	apiUnauthedRow,
+	apiLockedRow,
 }
 
 // serveHealthRow is the `/health*` row: same strict base set plus the
@@ -193,13 +257,7 @@ func TestServeHeaderMatrix(t *testing.T) {
 			t.Fatalf("status = %d, want 401", resp.StatusCode)
 		}
 
-		with401 := matrixHeaders{
-			"www-authenticate": eq(`Bearer realm="tq dashboard"`),
-		}
-		for k, v := range serveDashboardRow {
-			with401[k] = v
-		}
-		with401.surface().check(t, resp.Header, "GET / (401)")
+		serve401Row.surface().check(t, resp.Header, "GET / (401)")
 	})
 
 	t.Run("write-route CSRF lockout 429 carries Retry-After and the full set", func(t *testing.T) {
@@ -261,16 +319,9 @@ func TestServeHeaderMatrix(t *testing.T) {
 			t.Fatalf("status = %d, want 429 after CSRF lockout", resp.StatusCode)
 		}
 
-		with429 := matrixHeaders{
-			"retry-after": func(t *testing.T, got string) {
-				t.Helper()
-
-				if n, err := strconv.Atoi(got); err != nil || n < 1 {
-					t.Errorf("Retry-After = %q, want a positive second count", got)
-				}
-			},
-		}
-		maps.Copy(with429, serveDashboardRow)
+		with429 := mergeRow(serveDashboardRow, matrixHeaders{
+			"retry-after": positiveSeconds,
+		})
 		with429.surface().check(t, resp.Header, "POST /task/x/cancel (429)")
 	})
 
@@ -362,18 +413,9 @@ func TestAPIHeaderMatrix(t *testing.T) {
 	srv := newAPIHeaderMatrixServer(t)
 	h := srv.Handler()
 
-	authed := matrixHeaders{
-		"x-content-type-options": eq("nosniff"),
-		"cache-control":          eq("no-store"),
-	}
-	unauthed := matrixHeaders{
-		"x-content-type-options": eq("nosniff"),
-		"www-authenticate":       eq(`Bearer realm="tq-api"`),
-	}
-	locked := matrixHeaders{
-		"x-content-type-options": eq("nosniff"),
-		"retry-after":            nil,
-	}
+	authed := apiAuthedRow
+	unauthed := apiUnauthedRow
+	locked := apiLockedRow
 
 	// Dashboard-only headers: everything in the matrix's `tq serve`
 	// column minus the headers the API's own rows carry — a new dashboard
@@ -461,4 +503,59 @@ func newAPIHeaderMatrixServer(t *testing.T) *httpapi.Server {
 	}
 
 	return srv
+}
+
+// TestSecurityDocMatrixMatchesGoMatrix single-sources the SECURITY.md
+// "Response headers, per surface" matrix against the Go rows: the doc
+// table's header-name column must equal the union of matrixRows exactly,
+// in both directions. A header added to the doc without a Go row — or to
+// a Go row without a doc row — fails here, so the two hand-edited copies
+// cannot drift apart independently.
+func TestSecurityDocMatrixMatchesGoMatrix(t *testing.T) {
+	t.Parallel()
+
+	raw, err := os.ReadFile(filepath.Join("..", "..", "SECURITY.md"))
+	if err != nil {
+		t.Fatalf("read SECURITY.md: %v", err)
+	}
+
+	docNames := map[string]bool{}
+	inMatrix := false
+
+	for line := range strings.SplitSeq(string(raw), "\n") {
+		switch {
+		case strings.HasPrefix(line, "## Response headers, per surface"):
+			inMatrix = true
+		case inMatrix && strings.HasPrefix(line, "## "):
+			inMatrix = false
+		case inMatrix && strings.HasPrefix(line, "| `"):
+			// Row format: | `Header-Name` | serve cell | api cell |
+			_, rest, _ := strings.Cut(line, "`")
+			name, _, _ := strings.Cut(rest, "`")
+			docNames[strings.ToLower(name)] = true
+		}
+	}
+
+	if len(docNames) == 0 {
+		t.Fatal("no matrix rows parsed from SECURITY.md — section renamed or table reformatted?")
+	}
+
+	goNames := map[string]bool{}
+	for _, row := range matrixRows {
+		for name := range row {
+			goNames[name] = true
+		}
+	}
+
+	for name := range docNames {
+		if !goNames[name] {
+			t.Errorf("SECURITY.md matrix header %q has no Go matrix row — add it to matrixRows in headermatrix_test.go", name)
+		}
+	}
+
+	for name := range goNames {
+		if !docNames[name] {
+			t.Errorf("Go matrix row header %q missing from the SECURITY.md matrix — add a table row", name)
+		}
+	}
 }
