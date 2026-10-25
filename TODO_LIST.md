@@ -197,7 +197,7 @@ not here.
 - [ ] Run the full gate (./scripts/ci-local.sh or scripts/root-gate.sh) once before the next push — the 02-08 pin bundle session only exercised scripts/check-verify.sh (02-08 report §b)
 - [ ] Index the 01-54 closeout (docs/status/tasks/2026-10-13_01-54_task-000001a1328418c06257187cb89200000000.md) into docs/status/README.md — it was never indexed (02-08 report §e)
 - [ ] Add a --self-test mode to check-verify.sh that injects the three red-path shapes (dropped KNOWN_FLAKY entry, undocumented entry, signature-shaped genuine red) into a temp copy so the spot-checks become permanent regression coverage (02-08 report §e)
-- [ ] Audit pin 3's literal-name markers for redundancy against pin 6's bidirectional extraction — decide keep/drop with a rationale comment (02-08 report §f5)
+- [x] Audit pin 3's literal-name markers for redundancy against pin 6's bidirectional extraction — decide keep/drop with a rationale comment (02-08 report §f5) — DONE 2026-10-25: duplicate of row 909, landed in the same session (literal greps dropped, pin 6 array-region binding strengthened; commit 78bf888b)
 - [ ] Extract the duplicated shim boilerplate (heal-shim and genuine-red go/gofmt pairs) into one parameterized helper inside check-verify.sh (02-08 report §f6)
 - [ ] Add shellcheck -S warning for scripts/lib/verify-retry.sh + scripts/check-verify.sh to the guard suite (new code uses process substitution + heredocs; only execution-tested) (02-08 report §f7)
 - [ ] Add a --list debug mode to check-verify.sh printing the extracted KNOWN_FLAKY names in both directions (02-08 report §f8)
