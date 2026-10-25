@@ -72,7 +72,6 @@ check_floors() {
 }
 
 if [ "${1:-}" = "--self-test" ]; then
-	selftest_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 	# shellcheck source=/dev/null
 	tmp="$(mktemp -d "${TMPDIR:-/tmp}/check-go-floor-selftest.XXXXXX")"
 	trap 'rm -rf "${tmp:-}"' EXIT
