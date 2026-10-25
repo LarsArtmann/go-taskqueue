@@ -444,6 +444,7 @@ func TestPruneStaleNeverTouchesDlqfixAutopsies(t *testing.T) {
 	}
 
 	deadID := task.NewID()
+
 	autopsy, err := q.Enqueue(ctx, task.New{
 		Project:  "gone",
 		Type:     executor.TaskTypeDLQFix,

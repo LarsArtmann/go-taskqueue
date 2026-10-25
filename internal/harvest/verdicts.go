@@ -72,6 +72,7 @@ func (h *Harvester) markerBlocked(ctx context.Context, dir string, payload harve
 	}
 
 	repoName := filepath.Base(dir)
+
 	tasks, err := h.q.List(ctx, queue.Filter{Project: &repoName, Type: &h.cfg.Type})
 	if err != nil {
 		return false, "" // queue read failure: not a refusal signal

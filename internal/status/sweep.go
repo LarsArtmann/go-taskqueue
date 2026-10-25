@@ -290,7 +290,12 @@ func (s *Sweeper) lastReportTime(ctx context.Context, t task.Task, stats *SweepS
 
 // buildWindow assembles the report's Completed entries: completed agent
 // tasks finished after the last report, sorted by completion time.
-func (s *Sweeper) buildWindow(ctx context.Context, t task.Task, agentPayload executor.AgentPayload, lastReport time.Time) ([]executor.StatusCompletion, error) {
+func (s *Sweeper) buildWindow(
+	ctx context.Context,
+	t task.Task,
+	agentPayload executor.AgentPayload,
+	lastReport time.Time,
+) ([]executor.StatusCompletion, error) {
 	agentTasks, err := s.store.List(ctx, queue.Filter{Project: &t.Project, Type: ptr(executor.TaskTypeAgent)})
 	if err != nil {
 		return nil, s.refuse(t.ID.String(), "list project agent tasks", err)
@@ -335,7 +340,11 @@ func (s *Sweeper) buildWindow(ctx context.Context, t task.Task, agentPayload exe
 
 // completion builds one window entry with its mechanical outcome (commit +
 // files) pulled from the task's completion fact.
-func (s *Sweeper) completion(ctx context.Context, agentTask task.Task, agentPayload executor.AgentPayload) executor.StatusCompletion {
+func (s *Sweeper) completion(
+	ctx context.Context,
+	agentTask task.Task,
+	agentPayload executor.AgentPayload,
+) executor.StatusCompletion {
 	completion := executor.StatusCompletion{
 		TaskID: agentTask.ID.String(),
 		// Nanosecond precision: entries completed within the same
@@ -364,7 +373,13 @@ func (s *Sweeper) completion(ctx context.Context, agentTask task.Task, agentPayl
 // enqueueReport mints the status task for a full window. A store failure
 // under the mint refuses (checkpoint held); the done-guard (a dedup key
 // whose report already completed) counts known.
-func (s *Sweeper) enqueueReport(ctx context.Context, t task.Task, agentPayload executor.AgentPayload, window []executor.StatusCompletion, stats *SweepStats) error {
+func (s *Sweeper) enqueueReport(
+	ctx context.Context,
+	t task.Task,
+	agentPayload executor.AgentPayload,
+	window []executor.StatusCompletion,
+	stats *SweepStats,
+) error {
 	payload := executor.StatusPayload{
 		Repo:      agentPayload.Repo,
 		Project:   t.Project,

@@ -82,6 +82,7 @@ func TestRedispatchCheckVerdictMarkerByItemKeyJoin(t *testing.T) {
 	ctx := context.Background()
 
 	key := ItemKey("preflight", "open work")
+
 	prior, err := q.Enqueue(ctx, task.New{
 		Project:  "preflight",
 		Type:     "agent",
@@ -121,6 +122,7 @@ func TestRedispatchCheckLiveClaimMarkerBlocks(t *testing.T) {
 	ctx := context.Background()
 
 	key := ItemKey("preflight", "open work")
+
 	prior, err := q.Enqueue(ctx, task.New{
 		Project:  "preflight",
 		Type:     "agent",
@@ -142,6 +144,7 @@ func TestRedispatchCheckLiveClaimMarkerBlocks(t *testing.T) {
 		context.Background(),
 		candidateWith(key, itemText, "do the thing", "", ""),
 	)
+
 	refusal, ok := errors.AsType[*RedispatchRefusalError](err)
 	if !ok {
 		t.Fatalf("expected a redispatch refusal for the fresh claim, got %v", err)
@@ -154,6 +157,7 @@ func TestRedispatchCheckLiveClaimMarkerBlocks(t *testing.T) {
 	// Age the marker past the cooldown: the block ends (the claim script's
 	// sweep would have released it; the gate must not outlive the claim).
 	marker := filepath.Join(repo, ".tq", "claimed", id)
+
 	stale := time.Now().Add(-2 * cooldown)
 	if err := os.Chtimes(marker, stale, stale); err != nil {
 		t.Fatal(err)
@@ -179,9 +183,11 @@ func TestRedispatchCheckMarkersOpenWorkAllowed(t *testing.T) {
 
 	otherKey := ItemKey("preflight", "other work")
 	if _, err := q.Enqueue(ctx, task.New{
-		Project:  "preflight",
-		Type:     "agent",
-		Payload:  []byte(`{"repo":"preflight","prompt":"work","dedup":` + jsonString(otherKey) + `,"item":"other work"}`),
+		Project: "preflight",
+		Type:    "agent",
+		Payload: []byte(
+			`{"repo":"preflight","prompt":"work","dedup":` + jsonString(otherKey) + `,"item":"other work"}`,
+		),
 		DedupKey: otherKey,
 	}); err != nil {
 		t.Fatal(err)

@@ -26,6 +26,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"time"
 
@@ -248,12 +249,10 @@ func (p *AnswerPoller) applyPage(
 ) (time.Time, int, error) {
 	applied := 0
 
-	for i := len(questions) - 1; i >= 0; i-- {
+	for _, question := range slices.Backward(questions) {
 		if applied >= remaining {
 			break
 		}
-
-		question := questions[i]
 
 		if !question.IsAnswered || question.Answer == "" {
 			continue

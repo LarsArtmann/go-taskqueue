@@ -557,7 +557,9 @@ func TestWorktreeInFlightCancelledParkedWithExecutor(t *testing.T) {
 	agentExec.ParkCloseoutForTest(pending.ID.String(), "/tmp/repo", "sess-2")
 
 	if !probe(pending.ID.String()) {
-		t.Fatalf("PENDING task with parked closeoutPending reported not in-flight — parked entry must keep the worktree alive while the task can re-claim")
+		t.Fatalf(
+			"PENDING task with parked closeoutPending reported not in-flight — parked entry must keep the worktree alive while the task can re-claim",
+		)
 	}
 }
 
