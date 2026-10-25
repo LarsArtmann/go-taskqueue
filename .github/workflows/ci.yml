@@ -73,6 +73,10 @@ jobs:
       - name: go.mod health (replaces, pins, toolchain alignment, mod verify)
         # Parity with scripts/ci-local.sh — the shared script owns the rules.
         run: ./scripts/check-go-mods.sh
+      - name: Toolchain pin alignment (go.mod floors == setup-go pins == flake)
+        # Parity with scripts/ci-local.sh — makes the next toolchain bump
+        # one edit + one red gate instead of four hand-synced sources.
+        run: ./scripts/check-toolchain-pins.sh
       - name: Dep-bump drift (vendor + per-module tidy vs committed tree)
         # Parity with scripts/ci-local.sh — catches the bump-without-vendor
         # class (2026-10-07 03:12) at CI time instead of the next consumer.

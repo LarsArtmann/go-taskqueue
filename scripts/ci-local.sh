@@ -190,6 +190,16 @@ step "check-go-mods self-test (go-mods summary + negative counter battery)"
 step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
 ./scripts/check-go-mods.sh
 
+# Toolchain pin alignment (2026-10-25 TODO: the 1.27.3 sweep needed four
+# hand-synced sources — go.mod floors, setup-go pins in ci.yml+fuzz.yml,
+# flake goTarballVersion). Self-test first (fleet convention), then the
+# real gate.
+step "check-toolchain-pins self-test (summary pin + negative battery)"
+./scripts/check-toolchain-pins.sh --self-test
+
+step "toolchain pin alignment (go.mod floors == setup-go pins == flake)"
+./scripts/check-toolchain-pins.sh
+
 # Dep-bump drift (b886a677 class): vendor/ and per-module tidies must
 # match the committed graph — the 2026-10-07 03:12 bump without vendor/tidy
 # cost a multi-hour red window. Self-test first (drift-detection pin), then
