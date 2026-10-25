@@ -400,7 +400,11 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   (`scripts/release.sh` joined check-guard-wiring's surface list) and
   `scripts/smoke/worktree.sh` joined ci-local's live smokes; the four standing
   reds from TODO row 1109 are green (syntax 102/0, guard-wiring 68 wired /
-  0 orphaned, fixture-attribution 25/25).
+  0 orphaned, fixture-attribution 25/25); the worktree smoke re-pin
+  REWROTE `scripts/smoke/worktree.sh` to the evolved contract (in-run
+  review auto-merge, watermark-driven completion consumption, plumbing
+  merges, reap residue) after the first live run proved the old shape
+  rotted.
 - **Close-contract verdict-at-exit rail** (2026-10-25): the a)-g)
   closeout skeleton's final exit step is codified in AGENTS.md — record
   `tq verdict` BEFORE session end; a committed report without a recorded
