@@ -119,3 +119,47 @@ func TestNewProjectionRuntimeYieldsToLockHolder(t *testing.T) {
 		t.Fatalf("close folder runtime: %v", err)
 	}
 }
+
+// TestProjectionRuntimeCloseIdempotent pins the second-Close no-op the
+// serve wiring leans on (the pump's deferred Close runs after cmdServe's
+// early-return defer): Close twice must nil Host/Model/dlq and return nil
+// without panicking (2026-10-25 row 1103).
+func TestProjectionRuntimeCloseIdempotent(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "q.db")
+
+	store, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+
+	t.Cleanup(func() { _ = store.Close() })
+
+	rt, err := NewProjectionRuntime(ctx, store, config.SQLite(dbPath))
+	if err != nil {
+		t.Fatalf("new runtime: %v", err)
+	}
+
+	if rt.Host == nil {
+		t.Skip("fixture lost the fold-lock election — idempotency below still holds, but the folder shape is pinned by TestNewProjectionRuntime")
+	}
+
+	if err := rt.Close(); err != nil {
+		t.Fatalf("first close: %v", err)
+	}
+
+	if rt.Host != nil || rt.Model != nil || rt.dlq != nil {
+		t.Fatalf("fields not nil'd after first close: host=%v model=%v dlq=%v", rt.Host, rt.Model, rt.dlq)
+	}
+
+	if err := rt.Close(); err != nil {
+		t.Fatalf("second close: %v", err)
+	}
+
+	if rt.Host != nil || rt.Model != nil || rt.dlq != nil {
+		t.Fatalf("fields resurrected by second close: host=%v model=%v dlq=%v", rt.Host, rt.Model, rt.dlq)
+	}
+}
