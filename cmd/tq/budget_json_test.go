@@ -26,6 +26,7 @@ func TestBudgetUsageViewGoldenJSON(t *testing.T) {
 	}
 
 	got := string(blob)
+
 	want := `{"runs":7,"cost_usd":1.25,"prompt_tokens":1200,"completion_tokens":340,"messages":21}`
 	if got != want {
 		t.Fatalf("budgetUsageView wire shape drifted:\n got  %s\n want %s", got, want)
@@ -46,6 +47,7 @@ func TestBudgetViewSessionUsageEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal bare: %v", err)
 	}
+
 	if got, want := string(blob), `{"spent_today":4}`; got != want {
 		t.Fatalf("bare budgetView = %s, want %s (session_usage must be omitempty)", got, want)
 	}
@@ -58,6 +60,7 @@ func TestBudgetViewSessionUsageEnvelope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal full: %v", err)
 	}
+
 	want := `{"spent_today":4,"cap":100,"session_usage":{"runs":2,"cost_usd":0.5,"prompt_tokens":10,"completion_tokens":20,"messages":3}}`
 	if got := string(blob); got != want {
 		t.Fatalf("full budgetView wire shape drifted:\n got  %s\n want %s", got, want)

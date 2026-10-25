@@ -207,6 +207,7 @@ func cmdTasks(args []string) error {
 	}
 
 	var providers map[string]string
+
 	if *parked {
 		facts, err := store.LastFacts(ctx, factTailLimit)
 		if err != nil {

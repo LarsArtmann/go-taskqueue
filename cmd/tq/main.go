@@ -1983,6 +1983,7 @@ func printSessionVolume(opened, closed int64, windowedOpened, windowedClosed int
 	if opened > 0 {
 		fmt.Printf("sessions     %6d opened / %d closed\n", opened, closed)
 	}
+
 	if window > 0 && (windowedOpened > 0 || windowedClosed > 0) {
 		fmt.Printf("sessions(%s) %d opened / %d closed\n", window, windowedOpened, windowedClosed)
 	}
@@ -2004,6 +2005,7 @@ func cmdStats(args []string) error {
 	)
 
 	db := dbFlag(fs)
+
 	since := fs.Duration(
 		"since",
 		0,
@@ -3887,6 +3889,7 @@ func cmdServe(args []string) error {
 		}
 
 		cfg.ReadModelPath = readmodel.PathFor(dbPath)
+
 		cfg.Pump = &projectionPump{rt: rt}
 		defer func() {
 			// Audit (CI-red triage batch): the runtime owns the

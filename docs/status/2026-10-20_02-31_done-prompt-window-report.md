@@ -152,19 +152,21 @@ and the concurrent floor-bump churn (root go.mod → 1.27.2).
    runnable env script would stop the recurring rediscovery burn.
 
 ## f) NEXT THINGS (deduped against open TODO_LIST rows — the five
+
 closeout reports already minted their cap-10 batches; items below are
 what THIS window-level pass adds beyond those; the two questions of §g
 ride TODO_LIST as BLOCKED rows)
 
 Already rowed by the closeouts (do not re-mint): floor pairing (935),
 dupe-baseline --self-test + provenance + full ci-local + nolint ruling
-+ growth attribution, Every>1 done-guard + neutrality pin + rewind
-smoke + mirror-clones header scope line, day-suffix durations, stats
---json band fields, heal `--pick`, baseline regen, AGENTS --clean-cache
-line, webui-css loud fallback, gosec N==1 stub, nowband windowing,
-smoke band assert, changelog-audit generalization, 23rd workstream,
-read-level changelog audit, v0.3.1 cross-ref. Genuinely new from this
-pass:
+
+- growth attribution, Every>1 done-guard + neutrality pin + rewind
+  smoke + mirror-clones header scope line, day-suffix durations, stats
+  --json band fields, heal `--pick`, baseline regen, AGENTS --clean-cache
+  line, webui-css loud fallback, gosec N==1 stub, nowband windowing,
+  smoke band assert, changelog-audit generalization, 23rd workstream,
+  read-level changelog audit, v0.3.1 cross-ref. Genuinely new from this
+  pass:
 
 1. CHANGELOG entry for the sessions-lamp + `tq stats --since` batch —
    DONE BY THIS REPORT (CHANGELOG [Unreleased]); listed for the audit
@@ -224,4 +226,3 @@ reprioritization event. No marker/AI/importance moves to account for.
   internal/dlqfix/sweep_test.go:995, the other
   (`TestCursorRedeliversRejectedFactsOnRetrySweep`) was NOT found by
   grep, so the tick was withheld pending verification.
-

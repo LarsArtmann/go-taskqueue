@@ -47,7 +47,7 @@ through five; this file is layer six.
    methods on *Sweeper (decodeAgentPayload :212, lastReportTime :266,
    buildWindow :293, enqueueReport :364) with `a786a876` + `3125a000`
    the last two commits to touch the file; cmd/tq/stats_session_test.go
-   + cmd/tq/budget_json_test.go present.
+   - cmd/tq/budget_json_test.go present.
 3. **Living docs current at HEAD**: CHANGELOG [Unreleased] carries the
    sessions-lamp Added entry, the 22-workstream webui-overhaul coverage
    entry, the done-guard Fixed entry, the fold-lock and TasksPage
@@ -171,6 +171,7 @@ ci-local pass with the dupe gate in situ → dupe-baseline `--self-test`
 tick-sweep + consolidation (526 unchecked, 151 checked at pass end).
 
 ## g) QUESTIONS (owner-only; all riding existing open/BLOCKED rows —
+
 zero new this pass)
 
 1. Floor pairing: does the 1.27.2 root bump stand (then raise

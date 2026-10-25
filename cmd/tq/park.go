@@ -63,6 +63,7 @@ func cmdPark(args []string) error {
 	}
 
 	resume := time.Now()
+
 	if !*release {
 		ttl, err := time.ParseDuration(*until)
 		if err != nil || ttl <= 0 {

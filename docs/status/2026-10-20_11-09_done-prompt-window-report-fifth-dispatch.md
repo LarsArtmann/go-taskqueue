@@ -150,6 +150,7 @@ pin, Every>1 done-guard (630/631), the 10-55 session's fresh rows
 (stats read-only surfacing; injectable fold-lock wait), rows 661/662.
 
 ## g) QUESTIONS (owner-only; all riding existing BLOCKED/open rows —
+
 zero new BLOCKED rows this pass, dedup held)
 
 1. Every>1 done-guard semantics at rewind replays — riding row 630.

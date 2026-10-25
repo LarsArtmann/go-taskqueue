@@ -85,7 +85,7 @@ type Report struct {
 	// Breadcrumbs are the last user actions/requests before the error.
 	Breadcrumbs []string `json:"breadcrumbs,omitempty"`
 	// OccurredAt is the observation time (zero = recording time).
-	OccurredAt time.Time `json:"occurredAt,omitempty"`
+	OccurredAt time.Time `json:"occurredAt"`
 }
 
 // Validate checks the required fields with actionable errors.
@@ -195,7 +195,7 @@ func Fingerprint(r Report) string {
 // TopFrame extracts the first stack line (the crashing frame), stripped
 // of common prefixes ("at ", goroutine markers). Empty stack yields "".
 func TopFrame(stack string) string {
-	for _, line := range strings.Split(stack, "\n") {
+	for line := range strings.SplitSeq(stack, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

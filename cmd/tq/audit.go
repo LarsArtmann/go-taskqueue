@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -55,7 +56,7 @@ func cmdAudit(args []string) error {
 	}
 
 	if *taskID != "" && !*journalFlag {
-		return fmt.Errorf("tq audit: --task-id only applies to the --journal audit (drop it, or add --journal)")
+		return errors.New("tq audit: --task-id only applies to the --journal audit (drop it, or add --journal)")
 	}
 
 	if *projectsDir == "" && *repos == "" {

@@ -17,8 +17,8 @@ art-dupl 0.9.0-93432fd. The regex matches the marker anywhere in a line,
 not only in Go-comment position — so this works today:
 
 ```templ
-	<span>{ label }{ fmt.Sprintf("%d", n) }</span>
-	<!-- // art-dupl:accept templ markup conditional-span twin -->
+<span>{ label }{ fmt.Sprintf("%d", n) }</span>
+<!-- // art-dupl:accept templ markup conditional-span twin -->
 ```
 
 Control run without the directive line: `1 clone group` shown. With it:

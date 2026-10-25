@@ -194,27 +194,27 @@ report answers them from THIS session's run only — no new research.
 23. Consider pinning the ledger's "pins in force" header to
     vendor/modules.txt via a tiny grep guard, or accept documented rot
     (the memos rotted in two weeks).
-24.Daemon-sweep census (row 104): this window adds two docs-only
+    24.Daemon-sweep census (row 104): this window adds two docs-only
     footer-less sweeps healed in-window — no action, but the census row
     exists for exactly this data.
-25. Row 32 (commit-task.sh silent success) — felt again this window: I
+24. Row 32 (commit-task.sh silent success) — felt again this window: I
     hand-rolled heredoc commits partly because the helper is subject-
     only; the body-argument row (100) + echo row (32) both stand.
-26. AGENTS.md: one line noting "don't run root -race and module gates
+25. AGENTS.md: one line noting "don't run root -race and module gates
     concurrently on the 4-core host" (observed failure, §d2).
-27. Grid: decide whether "GAP cell" becomes DOMAIN_LANGUAGE vocabulary
+26. Grid: decide whether "GAP cell" becomes DOMAIN_LANGUAGE vocabulary
     or stays grid-local (tiny; owner taste).
-28. When rows 16/17 land, `tq doctor` could surface their outputs —
+27. When rows 16/17 land, `tq doctor` could surface their outputs —
     design note at execution time, not now.
-29. Ledger rows 3–5: flip statuses when the upstream-seam filing row
+28. Ledger rows 3–5: flip statuses when the upstream-seam filing row
     (owner-gated) moves — reminder wiring exists in the ledger rules.
-30. features/README/CHANGELOG: confirmed correctly untouched this
+29. features/README/CHANGELOG: confirmed correctly untouched this
     window (O14 + file-purposes table) — no action, recorded so a future
     docs-health pass doesn't "fix" it.
-31. Next grid maintenance: new lifecycle stage or concern ⇒ row/column
+30. Next grid maintenance: new lifecycle stage or concern ⇒ row/column
     with citations or explicit GAP + same-day harvest (rule is live in
     the grid header).
-32. Post-push: verify CI green on the pushed HEAD (row 197 pattern —
+31. Post-push: verify CI green on the pushed HEAD (row 197 pattern —
     the last full-gate-before-push note).
 
 ## g) QUESTIONS (owner-only; I cannot decide these)

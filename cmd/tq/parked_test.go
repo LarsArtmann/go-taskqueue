@@ -77,6 +77,7 @@ func TestParkedByClassJoinsFacts(t *testing.T) {
 // glance; a task whose evidence carries no provider renders untagged.
 func TestParkedProviderJoinsOntoRows(t *testing.T) {
 	ctx := context.Background()
+
 	store := journalAuditStore(t)
 	defer store.Close()
 

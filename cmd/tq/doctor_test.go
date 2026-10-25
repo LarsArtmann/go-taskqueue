@@ -596,6 +596,7 @@ func TestDoctorProjectionWorkerDeath(t *testing.T) {
 	}
 
 	results = doctorProjectionWorkerDeath(dbPath)
+
 	r := resultByName(results, "projection-worker")
 	if r.Status != checkWarn {
 		t.Fatalf("standing marker = %s (%s), want warn", r.Status, r.Detail)
@@ -648,6 +649,7 @@ func TestDoctorStaleItems(t *testing.T) {
 	}
 
 	key := harvest.ItemKey("demo", "Ship the widget")
+
 	payload, err := json.Marshal(map[string]string{"dedup": key})
 	if err != nil {
 		t.Fatalf("marshal payload: %v", err)
@@ -658,6 +660,7 @@ func TestDoctorStaleItems(t *testing.T) {
 	}
 
 	results := doctorStaleItems(ctx, s, root)
+
 	r := resultByName(results, "stale-items")
 	if r.Status != checkWarn {
 		t.Fatalf("ticked zombie = %s (%s), want warn", r.Status, r.Detail)
@@ -1419,6 +1422,7 @@ func TestDoctorWorktreeOrphans(t *testing.T) {
 	}
 
 	root := t.TempDir()
+
 	dead := filepath.Join(root, ".tq-worktrees", "demo", "dead")
 	if err := os.MkdirAll(dead, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)

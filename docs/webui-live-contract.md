@@ -38,13 +38,13 @@ operator's interaction state survives.
 
 `swapIn` captures, then restores across the `innerHTML` replacement:
 
-| State | Matched by | Restore |
-| --- | --- | --- |
-| `<details>` open state | `data-state-key`, else summary text (fallback) | re-open matching details |
-| Expanded error cells | `data-short` attribute | text → `data-error`, `data-expanded="1"`, `aria-expanded="true"` |
-| Typed control values | `data-state-key` / `name` / `id` | value re-applied (hidden/submit/button skipped) |
-| Keyboard focus | same key as controls | `focus()` onto the fresh subtree |
-| `.journal-scroll` panes | DOM order | `scrollTop` kept; bottom-pinned pane (within 24 px) re-pinned to the new `scrollHeight` |
+| State                   | Matched by                                     | Restore                                                                                 |
+| ----------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `<details>` open state  | `data-state-key`, else summary text (fallback) | re-open matching details                                                                |
+| Expanded error cells    | `data-short` attribute                         | text → `data-error`, `data-expanded="1"`, `aria-expanded="true"`                        |
+| Typed control values    | `data-state-key` / `name` / `id`               | value re-applied (hidden/submit/button skipped)                                         |
+| Keyboard focus          | same key as controls                           | `focus()` onto the fresh subtree                                                        |
+| `.journal-scroll` panes | DOM order                                      | `scrollTop` kept; bottom-pinned pane (within 24 px) re-pinned to the new `scrollHeight` |
 
 **`data-state-key` is load-bearing**: the fallback (summary text) breaks
 the moment a count in the summary changes. Every swappable `<details>`

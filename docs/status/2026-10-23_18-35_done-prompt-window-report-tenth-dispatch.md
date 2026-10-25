@@ -177,6 +177,7 @@ all dispositioned:
    one artifact — it is the cheapest standing gap.
 
 ## f) NEXT THINGS (dedup-checked against the live backlog; new rows
+
 appended this pass are marked ★)
 
 1. ★ De-glue the five double-checkbox TODO_LIST lines (and add the
@@ -235,7 +236,7 @@ priority moves for this window).
   eight task IDs resolved to commits; the f55c1c triple
   (8b1efebd/ed38bfb4/cb5ce139) is this pass's delta over the ninth.
 - Closeout reports read in full: docs/status/tasks/2026-10-20_{02-27,
-  02-56,04-21,10-55}_task-*.md, 2026-10-21_03-37_task-*.md.
+  02-56,04-21,10-55}_task-_.md, 2026-10-21_03-37_task-_.md.
 - CHANGELOG [Unreleased] covers the window's user-visible surfaces
   (fold lock, TasksPage, healthz section, dependabot emitter, heal
   dangling-cite, dupe ledger + gate, AnswerPoller fix) — no gaps

@@ -76,6 +76,7 @@ func TestParkBehindOwnerSessions(t *testing.T) {
 	}
 
 	parkFacts := 0
+
 	for _, f := range facts {
 		if f.Type == "task.parked" {
 			parkFacts++
@@ -101,6 +102,7 @@ func TestParkBehindOwnerSessions(t *testing.T) {
 	}
 
 	parkFacts2 := 0
+
 	for _, f := range facts2 {
 		if f.Type == "task.parked" {
 			parkFacts2++

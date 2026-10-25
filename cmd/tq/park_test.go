@@ -35,10 +35,12 @@ func TestParkVerbSuppressesClaimsAndReleaseReArms(t *testing.T) {
 	ctx := context.Background()
 
 	seed := parkVerbStore(t, path)
+
 	tk, err := seed.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: []byte(`"true"`)})
 	if err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
+
 	_ = seed.Close()
 
 	if err := cmdPark([]string{tk.ID.String(), "--until", "1h", "--reason", "owner hold", "--db", path}); err != nil {
@@ -57,6 +59,7 @@ func TestParkVerbSuppressesClaimsAndReleaseReArms(t *testing.T) {
 	}
 
 	parked := 0
+
 	for _, fact := range facts {
 		if fact.Type != journal.Parked {
 			continue
@@ -104,6 +107,7 @@ func TestParkVerbRefusals(t *testing.T) {
 	ctx := context.Background()
 
 	seed := parkVerbStore(t, path)
+
 	sacrificial, err := seed.Enqueue(ctx, task.New{Project: "p", Type: "sh", Payload: []byte(`"true"`)})
 	if err != nil {
 		t.Fatalf("enqueue sacrificial: %v", err)
@@ -122,6 +126,7 @@ func TestParkVerbRefusals(t *testing.T) {
 	if err != nil {
 		t.Fatalf("enqueue pending: %v", err)
 	}
+
 	_ = seed.Close()
 
 	cases := []struct {
@@ -161,6 +166,7 @@ func TestParkVerbRefusals(t *testing.T) {
 	}
 
 	still := parkVerbStore(t, path)
+
 	fresh, err := still.Get(ctx, tk.ID)
 	if err != nil {
 		t.Fatalf("get: %v", err)

@@ -256,6 +256,7 @@ func autopsyYield(tasks []task.Task) AutopsyYield {
 	}
 
 	var yield AutopsyYield
+
 	for _, t := range tasks {
 		if !strings.HasPrefix(t.DedupKey, dlqfix.DedupPrefix) {
 			continue
@@ -430,6 +431,7 @@ func journalDriftScoped(ctx context.Context, store queue.Store, idOrPrefix strin
 	}
 
 	matched := make([]task.Task, 0, 1)
+
 	for _, t := range tasks {
 		if t.ID.String() == idOrPrefix || strings.HasPrefix(t.ID.String(), idOrPrefix) {
 			matched = append(matched, t)
@@ -535,6 +537,7 @@ func cmdJournalAudit(ctx context.Context, store queue.Store, asJSON bool, taskID
 			report.FactsReplayed,
 		)
 	}
+
 	fmt.Printf("coverage: status %d/%d, attempts %d/%d, priority %d/%d, dedup key %d/%d\n",
 		report.Coverage.Status, report.TasksCompared,
 		report.Coverage.Attempts, report.TasksCompared,

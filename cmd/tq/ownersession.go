@@ -94,12 +94,14 @@ func parkBehindOwnerSessions(
 	}
 
 	now := time.Now()
+
 	live := liveOwnerRepos(entries, projectsDir, now)
 	if len(live) == 0 {
 		return
 	}
 
 	pending := task.Pending
+
 	tasks, err := store.List(ctx, queue.Filter{Status: &pending})
 	if err != nil {
 		if log != nil {

@@ -45,14 +45,14 @@ captured output:
    `docs/platform-divergence-ledger.md` — nine designed tq-vs-platform
    divergences consolidated from the three memos (single_opener LANDED,
    readmodel-open-seams DECIDED, upstream-seam DRAFTED), each with status
-   + memo cite + revisit-when, current vendor pins recorded
-   (system/v4 v4.15.1, metaengine/v4 v4.19.0, sqliteengine/v4 v4.5.3 —
-   patch-bumped past the memos' writing pins, noted in the header).
-   Bounded gap-fill found exactly ONE ruled-but-unledgered divergence
-   (timers stay on runactor, compose.go:22 §4a ruling); spot-verified
-   rows against code (WithEngine at model.go:180; stats/doctor self-opens
-   at cmd/tq/main.go:2039 + doctor.go:956 — current lines; the memo-era
-   1907/809 cites had drifted).
+   - memo cite + revisit-when, current vendor pins recorded
+     (system/v4 v4.15.1, metaengine/v4 v4.19.0, sqliteengine/v4 v4.5.3 —
+     patch-bumped past the memos' writing pins, noted in the header).
+     Bounded gap-fill found exactly ONE ruled-but-unledgered divergence
+     (timers stay on runactor, compose.go:22 §4a ruling); spot-verified
+     rows against code (WithEngine at model.go:180; stats/doctor self-opens
+     at cmd/tq/main.go:2039 + doctor.go:956 — current lines; the memo-era
+     1907/809 cites had drifted).
 5. **Cross-links** (283bedaf): DOMAIN_LANGUAGE.md ↔ grid ↔ ledger ↔ all
    nine package docs (one pointer line each). check-doc-refs.sh rc=0.
 

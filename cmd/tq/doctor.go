@@ -257,6 +257,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 	results = append(results, doctorWatermarkLiveness(ctx, store)...)
 
 	results = append(results, doctorProjection(ctx, store, opts.Deployment.DBPath)...)
+
 	results = append(results, doctorProjectionWorkerDeath(opts.Deployment.DBPath)...)
 	if opts.DLQ {
 		results = append(results, doctorProjectionDLQ(ctx, opts.Deployment)...)
@@ -578,13 +579,14 @@ func doctorStaleItems(ctx context.Context, store queue.Store, projectsDir string
 	}
 
 	var detail strings.Builder
-	detail.WriteString(fmt.Sprintf(
+	fmt.Fprintf(
+		&detail,
 		"%d pending task(s) whose TODO_LIST item is already ticked or gone — the pool would execute done work; `tq harvest --prune-stale` withdraws them",
 		len(res.Cancelled),
-	))
+	)
 
 	if len(res.Running) > 0 || len(res.Dead) > 0 {
-		detail.WriteString(fmt.Sprintf(" (%d running, %d dead stale-item tasks)", len(res.Running), len(res.Dead)))
+		fmt.Fprintf(&detail, " (%d running, %d dead stale-item tasks)", len(res.Running), len(res.Dead))
 	}
 
 	for _, failure := range res.ScanFailures {

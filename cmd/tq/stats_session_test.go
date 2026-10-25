@@ -9,6 +9,7 @@ func TestPrintSessionVolumeWindowBand(t *testing.T) {
 	out := captureStdout(t, func() {
 		printSessionVolume(10, 8, 3, 2, 168*time.Hour)
 	})
+
 	want := "sessions         10 opened / 8 closed\nsessions(168h0m0s) 3 opened / 2 closed\n"
 	if out != want {
 		t.Fatalf("printSessionVolume output = %q, want %q", out, want)

@@ -60,21 +60,21 @@ TODO harvest appended (§f).
    standing ([Unreleased]).
 5. **Projection-home single-writer fold lock + cursor pagination
    SHIPPED** (task 000001a1581c8dd0…, closeout 10-55; commits 5ebffbc1
-   + b09afb5c, closeout hygiene df96128c + 2692cf0d). Non-blocking
-   flock on `<home>.fold-lock` elects one folder per projection home;
-   a lost election mounts read-only (no fold, no checkpoint); doctor
-   reads via `WithReadOnly`; the composition runtime hands its
-   pre-elected lease. Pinned by TestFoldLockElectsSingleFolderOver-
-   OneHome (counters exact after release+resume) + three companion
-   pins, all green under -race. `Model.TasksPage` rides the keyset
-   cursor round-trip (malformed cursor FAILS the read; default page
-   200; unix-milli ties drop/duplicate-free), pinned by
-   TestTasksPageCursorRoundTrip. Root vendor/ drift from the earlier
-   footer-less session caught and healed by check-gomod-vendor-sync.
-   Full battery rc=0: readmodel+composition+httpapi -race, 20-module
-   loop, root build+vet, cmd/tq windows cross-compile. AGENTS.md fold-
-   lock invariant clause + DOMAIN_LANGUAGE "Fold lock" row landed
-   (verified present).
+   - b09afb5c, closeout hygiene df96128c + 2692cf0d). Non-blocking
+     flock on `<home>.fold-lock` elects one folder per projection home;
+     a lost election mounts read-only (no fold, no checkpoint); doctor
+     reads via `WithReadOnly`; the composition runtime hands its
+     pre-elected lease. Pinned by TestFoldLockElectsSingleFolderOver-
+     OneHome (counters exact after release+resume) + three companion
+     pins, all green under -race. `Model.TasksPage` rides the keyset
+     cursor round-trip (malformed cursor FAILS the read; default page
+     200; unix-milli ties drop/duplicate-free), pinned by
+     TestTasksPageCursorRoundTrip. Root vendor/ drift from the earlier
+     footer-less session caught and healed by check-gomod-vendor-sync.
+     Full battery rc=0: readmodel+composition+httpapi -race, 20-module
+     loop, root build+vet, cmd/tq windows cross-compile. AGENTS.md fold-
+     lock invariant clause + DOMAIN_LANGUAGE "Fold lock" row landed
+     (verified present).
 6. **Canonical gate-receipt rule in AGENTS.md Conventions** (task
    000001a1589024e8…; commits cce6e190 + acae4052, traced via the
    sixth-dispatch report §a5 — this task shipped no closeout report of

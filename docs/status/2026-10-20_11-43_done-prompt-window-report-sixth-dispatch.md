@@ -162,6 +162,7 @@ ci-local pass with the dupe gate in situ → dupe-baseline `--self-test`
 tick-sweep + consolidation (528 unchecked, 149 checked).
 
 ## g) QUESTIONS (owner-only; all riding existing open/BLOCKED rows —
+
 zero new this pass)
 
 1. Floor pairing: does the 1.27.2 root bump stand (then raise

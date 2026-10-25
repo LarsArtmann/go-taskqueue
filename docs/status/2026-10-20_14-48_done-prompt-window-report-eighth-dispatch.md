@@ -47,7 +47,7 @@ own diffs:
    This is plausibly the unblocking of the long-red battery leg.
 3. **`58e78faf`** (feat, 13:53): consumer-path proof for tagged facades
    in `release.sh --push` (check-consumer-tag.sh tightened).
-Plus daemon chores (`8d6e3e35`, `73c012c7`).
+   Plus daemon chores (`8d6e3e35`, `73c012c7`).
 
 CHANGELOG had NO entry for the AnswerPoller fix — a user-visible bug fix
 (paid answer-loss class) — minted this pass under [Unreleased] Fixed.

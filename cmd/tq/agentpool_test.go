@@ -379,6 +379,7 @@ func TestWorkerDeathDetectorLifecycle(t *testing.T) {
 	}
 
 	d.observe() // healthy: no marker
+
 	if len(got) != 0 {
 		t.Fatalf("healthy observe notified %v, want none", got)
 	}
@@ -575,8 +576,10 @@ func TestFrozenSweepersDetectorLifecycle(t *testing.T) {
 
 	defer func() { _ = s.Close() }()
 
-	const frozenConsumer = "review-sweeper"
-	const neverRan = "status-sweeper"
+	const (
+		frozenConsumer = "review-sweeper"
+		neverRan       = "status-sweeper"
+	)
 
 	var got []string
 
@@ -904,6 +907,7 @@ func TestAgentPoolDonePreflightDefaultOn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse bare: %v", err)
 	}
+
 	if !opts.donePreflight {
 		t.Fatal("done-preflight default flipped back off — the phantom re-dispatch class returns")
 	}
@@ -912,6 +916,7 @@ func TestAgentPoolDonePreflightDefaultOn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse disabled: %v", err)
 	}
+
 	if opts.donePreflight {
 		t.Fatal("--done-preflight=false must still disable the gate")
 	}
