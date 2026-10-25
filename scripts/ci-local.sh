@@ -259,9 +259,10 @@ step "rename-hygiene scan (advisory; quoted literals shadowing removed identifie
 # Frozen-date fixture gate (04-03 §f3/§g3 sweep): smoke + testdata must
 # compute calendar dates at run time — a frozen literal rots silently
 # (the ratelimit-e2e 4-day fallback degradation).
+step "frozen-date fixture gate self-test (run-time dates pin)"
+./scripts/check-frozen-dates.sh --self-test
 step "frozen-date fixture gate (smoke + testdata compute dates at run time)"
 ./scripts/check-frozen-dates.sh
-./scripts/check-frozen-dates.sh --self-test
 
 step "module-proxy + pkg.go.dev publishability audit (advisory; network-tolerant SKIP)"
 ./scripts/check-pkg-proxy.sh
@@ -567,11 +568,11 @@ step "doc-reference check"
 # Dead-SHA citation gate (task 000001a0bcc86662ffff2bfdefc2ec7ee49f):
 # a real-but-unreachable commit SHA cited in the living docs fails the gate
 # unless baselined (scripts/dead-sha-baseline.txt) or recorded as old→new.
-step "dead-sha citation check"
-./scripts/check-dead-sha-refs.sh
-
 step "dead-sha citation self-test (gate semantics pin)"
 ./scripts/check-dead-sha-refs.sh --self-test
+
+step "dead-sha citation check"
+./scripts/check-dead-sha-refs.sh
 
 # Daemon-commit attribution gate (task 000001a109757cf3d260a0de4e2700000000,
 # 00-55 report f2): a footer-less auto-commit sweep that touched files
@@ -581,28 +582,28 @@ step "dead-sha citation self-test (gate semantics pin)"
 # deliberately; never blanket-ignore. History-deterministic, so deliberately
 # NOT wrapped in with_transient_retry: a landed sweep does not heal on a 45s
 # poll.
-step "daemon-sweep attribution gate (new unattributed shipping sweeps fail)"
-./scripts/check-daemon-attribution.sh
-
 step "daemon-sweep attribution self-test (gate semantics pin)"
 ./scripts/check-daemon-attribution.sh --self-test
 
+step "daemon-sweep attribution gate (new unattributed shipping sweeps fail)"
+./scripts/check-daemon-attribution.sh
+
 # Round-13 T16: RELEASE.md's cited modes/gates/mechanisms pinned to
 # scripts/release.sh reality (06-55 f3/e1 drift class).
-step "release-doc drift check"
-./scripts/check-release-docs.sh
-
 # Pin the drift smoke's alarm the same way (2026-10-08 §e2): a mutated doc
 # copy must trip it, so a reshaped needle or lost `drift=1` fails here
 # instead of rotting the smoke into always-green.
 step "release-doc drift self-test (mutated-copy alarm pin)"
 ./scripts/check-release-docs.sh --self-test
 
-step "status-index check"
-./scripts/check-status-index.sh
+step "release-doc drift check"
+./scripts/check-release-docs.sh
 
 step "status-index self-test (live-row counter pin)"
 ./scripts/check-status-index.sh --self-test
+
+step "status-index check"
+./scripts/check-status-index.sh
 
 # Advisory phrase-drift guard (row-110 batch, TODO row 313): index-row quoted
 # spans must exist in the cited report body (03-37 drift class). WARN-only;
@@ -624,11 +625,11 @@ step "tick-claim check (advisory WARN; tick-claims cite the tick commit)"
 # must hold in BOTH SECURITY.md prose and executor.MergeFindings code — a
 # rename or wording drift degrades the promise to stale prose (turnstone
 # gate-placement rule; 2026-10-09 task).
-step "security-invariant drift check (learned-checks-narrow, prose + code)"
-./scripts/check-security-invariants.sh
-
 step "security-invariant self-test (both drift mutations caught)"
 ./scripts/check-security-invariants.sh --self-test
+
+step "security-invariant drift check (learned-checks-narrow, prose + code)"
+./scripts/check-security-invariants.sh
 
 # Orphaned-guard audit (15-39 report c7/f5, e1): every check-*/smoke script
 # must be wired (this file, ci.yml, or flake.nix) — the check-webui-css
@@ -649,11 +650,12 @@ step "guard-wiring check (no orphaned check-*/smoke scripts)"
 step "module-loop capture check (for-each-module feed)"
 ./scripts/check-module-loop-capture.sh
 
-step "asset-archive ghost check"
-./scripts/check-ghost-archives.sh
 # Negative-test fixtures: every failure class fires through the gate and
 # INCOMPLETE/STALE survive precedence (00-10 report §f1).
+step "asset-archive ghost check self-test (failure-class pin)"
 ./scripts/check-ghost-archives.sh --self-test
+step "asset-archive ghost check"
+./scripts/check-ghost-archives.sh
 
 step "TODO_LIST honesty self-test (advisory/structural exit semantics pin)"
 ./scripts/check-todo-list.sh --self-test
