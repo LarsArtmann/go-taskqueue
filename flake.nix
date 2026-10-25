@@ -28,6 +28,10 @@
     let
       goToolchainVersion = "1.27.3";
       goToolchainHash = "sha256-bndJA1zzYPBrJXXRYup535/ajvZxiJ5cN1+OUHd/Jrs=";
+      # Commit rev threaded into tq binaries via ldflags (`tq version` prints
+      # it): the nix build filters .git out of the source, so the binary
+      # cannot discover the rev itself. `self` rides the outputs argset.
+      flakeShortRev = inputs.self.dirtyShortRev or (inputs.self.shortRev or "unknown");
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [ inputs.go-nix-helpers.flakeModules.go-standard ];
@@ -120,7 +124,12 @@
           '';
           # `tq version` reports the release, not "dev" (round-5 M25/F133).
           # Derived from the version attr above — never a second literal.
-          buildFlagsArray = [ "-ldflags=-X main.version=${version}" ];
+          # vcsRev threads the flake's commit rev into the binary: the nix
+          # build filters .git out of the source, so without this the
+          # deployed binary prints no rev at all (store-path archaeology).
+          buildFlagsArray = [
+            "-ldflags=-X main.version=${version} -X main.vcsRev=${flakeShortRev}"
+          ];
         };
 
         shellExtraEnv = {
