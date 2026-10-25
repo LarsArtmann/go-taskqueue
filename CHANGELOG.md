@@ -393,6 +393,14 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   sweep found both hits on the annotated readmodel self-open seam, already
   env-honoring and test-pinned; classification recorded, no code change
   (`3f5e8dd1`).
+- **Standing tooling-gate reds cleared** (2026-10-25): the 8 unattributed
+  `--self-test` fixture heredocs (gosec ×3, poll-loudness ×3, go-mods,
+  tick-claims) carry `pins:` attributions and the 2 orphaned guards are
+  wired — `check-consumer-tag.sh` counts as release-flow-wired
+  (`scripts/release.sh` joined check-guard-wiring's surface list) and
+  `smoke/worktree.sh` joined ci-local's live smokes; the four standing
+  reds from TODO row 1109 are green (syntax 102/0, guard-wiring 68 wired /
+  0 orphaned, fixture-attribution 25/25).
 - **Close-contract verdict-at-exit rail** (2026-10-25): the a)-g)
   closeout skeleton's final exit step is codified in AGENTS.md — record
   `tq verdict` BEFORE session end; a committed report without a recorded
