@@ -245,6 +245,7 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 
 	results = append(results, doctorSQLiteChecks(ctx, opts.Deployment.DBPath)...)
 	results = append(results, doctorQueueMix(ctx, store)...)
+	results = append(results, doctorPaidNoops(ctx, store)...)
 	results = append(results, doctorRepoCoverage(ctx, store, opts.ProjectsDir)...)
 	results = append(results, doctorStaleItems(ctx, store, opts.ProjectsDir)...)
 
@@ -390,6 +391,128 @@ func doctorDLQRepair(ctx context.Context, store queue.Store) checkResult {
 		Status: checkOK,
 		Detail: fmt.Sprintf("repair loop alive (%d autopsy task(s) minted)", autopsies),
 	}
+}
+
+// paidTaskTypes is the paid-turn set whose completions must attribute
+// output (usage is derived for ALL paid turns). depbump stays out: its
+// turns are deterministic and carry no typed result detail.
+var paidTaskTypes = []string{
+	executor.TaskTypeAgent,
+	executor.TaskTypeReview,
+	executor.TaskTypeStatus,
+	executor.TaskTypePrioritize,
+	executor.TaskTypeDLQFix,
+}
+
+// doctorPaidNoopScan bounds the completed-task scan per paid type (doctor
+// is an operator command; the twin class is recent completions, not
+// archaeology).
+const doctorPaidNoopScan = 500
+
+// doctorPaidNoops surfaces completed paid tasks whose completion fact
+// attributes ZERO output: no commits/files/preflight-done (agent), no
+// verdict (review/dlqfix), no report (status), no verdicts (prioritize).
+// The twins class (rows 1025/1116): six paid claims of done once committed
+// nothing — no footer, no report, no verdict — and every gate was blind to
+// a completed task that produced nothing. A missing or undecodable
+// completion detail on a paid type IS the finding (legacy empty-detail
+// completions).
+func doctorPaidNoops(ctx context.Context, store queue.Store) []checkResult {
+	const name = "paid-noops"
+
+	var noops []string
+	for _, typ := range paidTaskTypes {
+		completed := task.Completed
+		typRef := typ
+
+		tasks, err := store.List(ctx, queue.Filter{Status: &completed, Type: &typRef, Limit: doctorPaidNoopScan})
+		if err != nil {
+			return []checkResult{{Name: name, Status: checkFail, Detail: "list " + typ + ": " + err.Error()}}
+		}
+
+		for _, t := range tasks {
+			if reason, ok := paidTaskNoop(ctx, store, t); ok {
+				noops = append(noops, fmt.Sprintf("%s (%s): %s", t.ID, t.Type, reason))
+			}
+		}
+	}
+
+	if len(noops) == 0 {
+		return []checkResult{{Name: name, Status: checkOK, Detail: "no completed paid tasks with zero attributable output"}}
+	}
+
+	return []checkResult{{
+		Name:   name,
+		Status: checkWarn,
+		Detail: fmt.Sprintf("%d completed paid task(s) attribute ZERO output — paid turns that produced nothing (tq show <id> for the trail)", len(noops)),
+		Items:  noops,
+	}}
+}
+
+// paidTaskNoop reports whether one completed paid task's completion fact
+// attributes no output, with the reason string.
+func paidTaskNoop(ctx context.Context, store queue.Store, t task.Task) (string, bool) {
+	trail, err := store.FactsForTask(ctx, t.ID.String(), 0)
+	if err != nil {
+		return "fact trail unreadable: " + err.Error(), true
+	}
+
+	var completion journal.Fact
+	found := false
+	for _, f := range trail {
+		if f.Type == journal.Completed && len(f.Detail) > 0 {
+			completion = f
+			found = true
+		}
+	}
+	if !found {
+		return "no completion detail", true
+	}
+
+	switch t.Type {
+	case executor.TaskTypeAgent:
+		var res executor.AgentResult
+		if json.Unmarshal(completion.Detail, &res) != nil {
+			return "undecodable agent detail", true
+		}
+		if len(res.Commits) == 0 && len(res.FilesChanged) == 0 && res.CommitSHA == "" && res.PreflightDone == "" {
+			return "no commits, no files, no preflight-done", true
+		}
+	case executor.TaskTypeReview:
+		var res executor.ReviewResult
+		if json.Unmarshal(completion.Detail, &res) != nil {
+			return "undecodable review detail", true
+		}
+		if res.Verdict == "" {
+			return "no verdict", true
+		}
+	case executor.TaskTypeStatus:
+		var res executor.StatusResult
+		if json.Unmarshal(completion.Detail, &res) != nil {
+			return "undecodable status detail", true
+		}
+		if res.Report == "" && res.NextItems == 0 {
+			return "no report", true
+		}
+	case executor.TaskTypePrioritize:
+		var res executor.PrioritizeResult
+		if json.Unmarshal(completion.Detail, &res) != nil {
+			return "undecodable prioritize detail", true
+		}
+		if len(res.Verdicts) == 0 {
+			return "no verdicts", true
+		}
+	case executor.TaskTypeDLQFix:
+		var res executor.DLQFixResult
+		if json.Unmarshal(completion.Detail, &res) != nil {
+			return "undecodable dlqfix detail", true
+		}
+		if res.Verdict == "" {
+			return "no verdict", true
+		}
+	}
+
+	return "", false
 }
 
 // doctorParked surfaces rate-limit-parked tasks (pending, not_before in the

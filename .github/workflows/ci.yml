@@ -74,6 +74,16 @@ jobs:
       - name: go.mod health (replaces, pins, toolchain alignment, mod verify)
         # Parity with scripts/ci-local.sh — the shared script owns the rules.
         run: ./scripts/check-go-mods.sh
+      - name: Countable-gate self-tests (summary pins + negative batteries)
+        # Fleet convention (2026-10-24 TODO §e7/§g2): a countable gate's
+        # end-of-run summary format is PINNED by its --self-test. ci-local
+        # runs each self-test ahead of its real gate; this parity step pins
+        # the same contracts in CI (webui-js and poll-loudness real gates
+        # stay ci-local-only; toolchain-pins real gate runs next).
+        run: |
+          ./scripts/check-webui-js.sh --self-test
+          ./scripts/check-toolchain-pins.sh --self-test
+          ./scripts/check-poll-loudness.sh --self-test
       - name: Toolchain pin alignment (go.mod floors == setup-go pins == flake)
         # Parity with scripts/ci-local.sh — makes the next toolchain bump
         # one edit + one red gate instead of four hand-synced sources.

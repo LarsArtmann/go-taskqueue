@@ -296,10 +296,10 @@ step "check-poll-loudness self-test (summary pin + negative counter battery)"
 step "poll-loudness gate (every poll loop has a loud exhaust path)"
 ./scripts/check-poll-loudness.sh
 
-step "webui JS unit harness (app.js swap-guard + state re-apply; docs/webui-live-contract.md)"
-./scripts/check-webui-js.sh
 step "check-webui-js self-test (summary pin + negative-path battery)"
 ./scripts/check-webui-js.sh --self-test
+step "webui JS unit harness (app.js swap-guard + state re-apply; docs/webui-live-contract.md)"
+./scripts/check-webui-js.sh
 
 step "fixture-attribution meta-gate (every check-* fixture heredoc names its pinned branch)"
 ./scripts/check-fixture-attribution.sh --self-test
