@@ -70,4 +70,18 @@ trap 'rm -f "$ENTRY"' EXIT
 
 : "${TAILWINDCSS:=tailwindcss}"
 "$TAILWINDCSS" --input "$ENTRY" --output "$OUT" --minify
-echo "CSS compiled: $OUT"
+
+# Row 1125: a 2-line near-empty rebuild (zero @source matches — the cold
+# module-cache / vendored-fallback class) must NEVER pass silently: the
+# committed sheet is ~140 KB minified, so anything under the floor means
+# the sources did not resolve and committing the output strips the
+# stylesheet. Refuse before the caller can reach a commit step.
+floor_bytes="${CSS_MIN_BYTES:-20000}"
+out_bytes="$(wc -c <"$OUT")"
+if [ "$out_bytes" -lt "$floor_bytes" ]; then
+	echo "FAIL: rebuild produced ${out_bytes}B (< ${floor_bytes}B floor) — @source resolution failed (cold module cache or vendored fallback without templates/; row 1125). NOT writing the stripped sheet." >&2
+	mv "$OUT" "$OUT.stripped" 2>/dev/null || true
+	echo "implausible output kept for diagnosis at $OUT.stripped" >&2
+	exit 1
+fi
+echo "CSS compiled: $OUT ($out_bytes B)"
