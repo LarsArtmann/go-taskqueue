@@ -3536,6 +3536,93 @@ func wantAnsweredFact(t *testing.T, trail []journal.Fact) {
 	t.Fatal("no task.question-answered fact in the trail")
 }
 
+// TestRecordAnswerOnTerminalTaskNeverUnblocks pins audit verdict #2
+// mechanically (2026-10-25 row 1092): an answer recorded for a CANCELLED
+// or DEAD task writes the idempotent question-answered fact (journal
+// truth) but NEVER unblocks or resumes the task — the unblock path is
+// pending-status-only, and resurrecting a terminal task would violate
+// claim exclusivity.
+func TestRecordAnswerOnTerminalTaskNeverUnblocks(t *testing.T) {
+	mkCancelled := func(t *testing.T, ctx context.Context, s Store) task.Task {
+		tk := parkOnQuestion(t, s, `{"prompt":"x"}`, time.Hour)
+		if err := s.Cancel(ctx, tk.ID, "owner voided"); err != nil {
+			t.Fatalf("cancel: %v", err)
+		}
+		return tk
+	}
+	mkDead := func(t *testing.T, ctx context.Context, s Store) task.Task {
+		tk := mustEnqueue(t, ctx, s, task.New{Type: "agent", Payload: jsontext.Value(`{"prompt":"x"}`), MaxAttempts: 1})
+		if err := s.AppendFact(ctx, journal.Fact{
+			TaskID: tk.ID.String(),
+			Type:   journal.QuestionAsked,
+			Detail: companion.MustJSON(queue.QuestionAskedDetail{
+				Ref:      "q-1",
+				Type:     queue.QuestionTypeConfirmation,
+				Question: "Proceed?",
+			}),
+		}); err != nil {
+			t.Fatalf("append asked fact: %v", err)
+		}
+		_, claim_w1 := claimDue(t, ctx, s, "w1")
+		if err := s.Fail(ctx, tk.ID, claim_w1, "boom", 0, nil); err != nil {
+			t.Fatalf("fail to dead: %v", err)
+		}
+		return tk
+	}
+
+	for _, tt := range []struct {
+		name    string
+		factory func(t *testing.T, ctx context.Context, s Store) task.Task
+		want    task.Status
+	}{
+		{"cancelled task fact-only", mkCancelled, task.Cancelled},
+		{"dead task fact-only", mkDead, task.Dead},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, s := freshStore(t)
+			tk := tt.factory(t, ctx, s)
+
+			if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "too late"}); err != nil {
+				t.Fatalf("RecordAnswer: %v", err)
+			}
+
+			got, _ := s.Get(ctx, tk.ID)
+			if got.Status != tt.want {
+				t.Fatalf("status = %s, want %s (terminal tasks must never be unblocked)", got.Status, tt.want)
+			}
+
+			if strings.Contains(string(got.Payload), "answered") {
+				t.Errorf("terminal task payload mutated: %s", got.Payload)
+			}
+
+			trail, _ := s.FactsForTask(ctx, tk.ID.String(), 0)
+			wantAnsweredFact(t, trail)
+
+			// Same-ref replay stays idempotent: no second answered fact,
+			// no error, still terminal.
+			if err := s.RecordAnswer(ctx, tk.ID, queue.AnswerRecord{Ref: "q-1", Answer: "too late"}); err != nil {
+				t.Fatalf("RecordAnswer replay: %v", err)
+			}
+
+			trail, _ = s.FactsForTask(ctx, tk.ID.String(), 0)
+			answered := 0
+			for _, f := range trail {
+				if f.Type == journal.QuestionAnswered {
+					answered++
+				}
+			}
+			if answered != 1 {
+				t.Fatalf("answered facts = %d, want 1 (idempotent per ref)", answered)
+			}
+
+			got, _ = s.Get(ctx, tk.ID)
+			if got.Status != tt.want {
+				t.Fatalf("replay moved status to %s, want %s", got.Status, tt.want)
+			}
+		})
+	}
+}
+
 func TestRecordAnswerOnRunningTaskFactOnly(t *testing.T) {
 	ctx, s := freshStore(t)
 
