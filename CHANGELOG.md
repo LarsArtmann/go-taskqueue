@@ -415,6 +415,20 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   output — the review-fix twins class) and `tq doctor --gates`, the
   countable-gate fleet board (row 1119); consolidated red inventory at
   `docs/planning/2026-10-25_19-04_fleet-red-evidence.md`.
+- **Gate-trust batch 3** (2026-10-25): ci-local's early death class cured
+  — `check-todo-list.sh` advisories (owner-gated phrasing, DONE-annotation
+  rows) no longer exit 1 (only structural checkbox damage does; row 1098),
+  and four new countable gates landed self-test-first: gate-ordering (the
+  ORDERING property pinned; seven live self-test-after-gate inversions
+  rewired), smoke-coverage freshness, worktree-consumer allowlist, and the
+  tracked-but-ignored path guard (the committed fold-lock class). The
+  webui smoke now keeps its TMP and dumps log tails on any assert failure
+  and the auth/writes dashboard waits fail loudly (rows 1127/1128); the
+  css rebuild refuses a <20KB stripped sheet and the drift gate only
+  advises committing a plausible rebuild (row 1125); heal-daemon-sweep
+  auto-narrows a single different-id footer span and prints the exact
+  `--from` on mixed spans (rows 55/56); commit-task.sh echoes the landed
+  hash+subject; cmd/tq gate-board tests green (injected-list seam fixed).
 - **Close-contract verdict-at-exit rail** (2026-10-25): the a)-g)
   closeout skeleton's final exit step is codified in AGENTS.md — record
   `tq verdict` BEFORE session end; a committed report without a recorded

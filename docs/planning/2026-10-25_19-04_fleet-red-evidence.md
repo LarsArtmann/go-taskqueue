@@ -62,3 +62,29 @@ is cited alongside. Owner-gated remainders are marked.
 2. css drift policy: heal-on-drift vs detect-only (report 17-30 §g Q2).
 3. check-todo-list advisory-vs-structural exit semantics (F7).
 4. Dangling-cite heal format + 769-SHA baseline (F8/F9).
+
+## 2026-10-25 late-window append: gate-trust batch 3 outcomes
+
+- check-todo-list rc=1 root cause found and cured: the daemon-sweep doc
+  gate propagated the todo-list gate's advisory exit (row 1098 semantics
+  shipped: advisories WARN, only structural violations exit 1; --self-test
+  10 ok / 0 fail). This was killing ci-local BEFORE the expensive steps —
+  not the dead-sha red.
+- Four new countable gates shipped and wired self-test-first:
+  check-gate-ordering (found + cured SEVEN live dce6c12b-class
+  self-test-after-gate inversions), check-smoke-coverage (26/26 indexed),
+  check-worktree-consumers (allowlist 2/0), check-tracked-ignored
+  (0 tracked-ignored paths at HEAD).
+- cmd/tq doctor tests: GREEN through the devmod shim (the plain-module vet
+  red is the unpublished readmodel tag only). runGateBoard's injected-list
+  parameter was dead code pointing at the package var — fixed; full
+  test-cmd-tq.sh rc=0 (20.1s). Rows 1116 (amended) + 1119 closed.
+- Two environmental ci-local killers cured: root vendor/ out of sync
+  (sibling go.mod edit without `go mod vendor`) and
+  scripts/smoke/new-module.sh committed 100644 on 2026-10-23 15:54 (every
+  ci-local since dies at the scaffold smoke; ci.yml does not run it —
+  local-only red). Receipt runs: 2032 died at todo-list advisory chain,
+  2048 at vendor sync, 2058 at the exec bit, final run green-path.
+- css row 1125: root cause = cold module cache resolves templ-components
+  to the vendored copy (no templates/); cures at both ends
+  (CSS_MIN_BYTES floor + commit-advice gate).
