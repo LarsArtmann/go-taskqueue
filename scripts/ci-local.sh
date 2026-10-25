@@ -585,6 +585,15 @@ step "index-row phrase drift (advisory WARN; annotate-never-rewrite)"
 ./scripts/check-index-phrase-drift.sh --self-test
 ./scripts/check-index-phrase-drift.sh
 
+# Advisory tick-claim guard (TODO rows 1057/1058, 18-44 closeout §e2):
+# aggregate tick claims ("rows N-M ticked") verified against TODO_LIST at
+# the claim's own authorship tree (ADD commit / pickaxe span commit);
+# explicit tick-commit citations override. WARN-only; hard-gate flip is a
+# separate follow-up row.
+step "tick-claim check (advisory WARN; tick-claims cite the tick commit)"
+./scripts/check-tick-claims.sh --self-test
+./scripts/check-tick-claims.sh
+
 # Security-invariant drift gate: the "learned checks may only narrow" promise
 # must hold in BOTH SECURITY.md prose and executor.MergeFindings code — a
 # rename or wording drift degrades the promise to stale prose (turnstone

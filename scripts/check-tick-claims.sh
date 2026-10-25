@@ -19,7 +19,10 @@
 # corrections stay WARN-free when they cite the tick commit). archived/
 # reports are frozen annotate-never-rewrite history: not scanned. Mismatch
 # = WARN pointing at the cite-the-tick-commit convention; hard-gate flip is
-# a separate follow-up row, not bundled here.
+# a separate follow-up row, not bundled here. Live-tree baseline at ship
+# time (2026-10-25): 318 ok / 10 WARN — historical claim-ahead residue,
+# incl. the originally reviewer-caught 68a20cdb "row 777 `[x]`" falsehood
+# the gate now catches mechanically; a baseline REGRESSION is the signal.
 set -uo pipefail
 export LC_ALL=C
 cd "$(dirname "$0")/.." || exit 1
