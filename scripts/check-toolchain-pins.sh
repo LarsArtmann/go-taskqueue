@@ -8,6 +8,8 @@
 #      floor dies in every go step — the 2026-09-20/21 master red);
 #   3. the flake's goToolchainVersion is >= the floor (the tarball-built
 #     toolchain may run ahead, never behind).
+#   4. every tracked go.work `go` directive equals the floor (the
+#     2026-10-24 sweep missed cmd/tq/go.work at 1.27.2; gopls died on it).
 # Called from scripts/ci-local.sh AND .github/workflows/ci.yml — keep
 # both call sites in sync.
 set -euo pipefail
@@ -17,7 +19,8 @@ self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 # Env hooks (self-test injection, the check-go-mods TQ_GOMODS_EXTRA_MODS
 # pattern): TQ_TOOLCHAIN_EXTRA_MODS (colon-separated extra go.mod files),
 # TQ_TOOLCHAIN_WORKFLOWS_DIR (replaces .github/workflows), and
-# TQ_TOOLCHAIN_FLAKE (replaces flake.nix).
+# TQ_TOOLCHAIN_FLAKE (replaces flake.nix), and
+# TQ_TOOLCHAIN_EXTRA_GOWORKS (colon-separated extra go.work files).
 extra_mods="${TQ_TOOLCHAIN_EXTRA_MODS:-}"
 workflows_dir="${TQ_TOOLCHAIN_WORKFLOWS_DIR:-.github/workflows}"
 flake_file="${TQ_TOOLCHAIN_FLAKE:-flake.nix}"
@@ -138,6 +141,28 @@ else
 	fail "flake goToolchainVersion $flake_version < go.mod floor $floor — the nix toolchain must never run behind the modules"
 fi
 
+mapfile -t goworks < <(git ls-files '*go.work' | sort)
+if [ -n "${TQ_TOOLCHAIN_EXTRA_GOWORKS:-}" ]; then
+	while IFS= read -r w; do
+		goworks+=("$w")
+	done < <(tr ':' '\n' <<<"${TQ_TOOLCHAIN_EXTRA_GOWORKS}")
+fi
+gw_total=0
+for gw in "${goworks[@]}"; do
+	gw_total=$((gw_total + 1))
+	g="$(sed -n 's/^go \([0-9][0-9.]*\)$/\1/p' "$gw" | head -1)"
+	if [ -z "$g" ]; then
+		fail "$gw: no parsable 'go <version>' directive"
+	elif [ "$g" = "$floor" ]; then
+		pass "go.work go $g == go.mod floor ($gw)"
+	else
+		fail "go.work go $g != go.mod floor $floor ($gw) — the tracked dev workspace must carry the shared floor (gopls package loads die below it)"
+	fi
+done
+if [ "$gw_total" -eq 0 ]; then
+	pass "no tracked go.work files (dev-workspace surface absent)"
+fi
+
 echo "toolchain-pins summary: $ok_count checks ok, $fail_count failed"
 [ "$fail_count" -eq 0 ]
 
@@ -200,6 +225,21 @@ if [[ "${1:-}" == "--self-test" ]]; then
 			exit 1
 		}
 
+		# Branch 4: go.work below the floor (the 2026-10-25 cmd/tq miss
+		# class) via the extra-goworks hook.
+		printf 'go 1.19\n\nuse .\n' >"$tmp/bad-go.work"
+		out="$(TQ_TOOLCHAIN_EXTRA_GOWORKS="$tmp/bad-go.work" "$self_abs" 2>&1)" && rc=0 || rc=$?
+		[ "$rc" -eq 1 ] || {
+			echo "FAIL: self-test go.work-floor branch (want rc=1, got rc=$rc)"
+			printf '%s\n' "$out"
+			exit 1
+		}
+		grep -q 'go.work go 1.19 != go.mod floor' <<<"$out" || {
+			echo "FAIL: self-test go.work-floor message missing"
+			printf '%s\n' "$out"
+			exit 1
+		}
+
 		# Positive: the unpinned real run passes and its summary line matches
 		# the pinned format.
 		out="$("$self_abs" 2>&1)" && rc=0 || rc=$?
@@ -213,7 +253,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
 			printf '%s\n' "$out"
 			exit 1
 		}
-		echo "ok: self-test battery (3 negative branches + pinned real-run summary)"
+		echo "ok: self-test battery (4 negative branches + pinned real-run summary)"
 	}
 	self_test
 fi
