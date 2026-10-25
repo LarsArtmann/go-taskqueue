@@ -3789,6 +3789,18 @@ func (p *projectionPump) Model() *readmodel.Model { return p.rt.Model }
 func (p *projectionPump) Run(ctx context.Context, notify func(cursor int64)) error {
 	defer func() { _ = p.rt.Close() }()
 
+	if p.rt.Host == nil {
+		// Read-only mount (the fold lock went to another folder): no host
+		// to start and no fold to watch — the model never applies facts,
+		// so WatchSeq would never fire. Hold the pump open so the demoted
+		// server keeps serving the mounted model's reads until shutdown
+		// (nil here was a SIGSEGV: second `tq serve` against a live
+		// deployment, smoke auth phase 2026-10-25).
+		<-ctx.Done()
+
+		return ctx.Err()
+	}
+
 	if err := p.rt.Host.Start(ctx); err != nil {
 		return fmt.Errorf("start projection host: %w", err)
 	}
