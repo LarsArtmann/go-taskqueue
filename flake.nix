@@ -127,8 +127,15 @@
           # vcsRev threads the flake's commit rev into the binary: the nix
           # build filters .git out of the source, so without this the
           # deployed binary prints no rev at all (store-path archaeology).
-          buildFlagsArray = [
-            "-ldflags=-X main.version=${version} -X main.vcsRev=${flakeShortRev}"
+          # The module's real attr is `ldflags` (go-standard; a dead
+          # `buildFlagsArray` is silently dropped — the 2026-10-25 rev-print
+          # regression class). Setting `ldflags` REPLACES the builder
+          # defaults, so -s/-w and the version injection ride along here.
+          ldflags = [
+            "-s"
+            "-w"
+            "-X main.version=${version}"
+            "-X main.vcsRev=${flakeShortRev}"
           ];
         };
 
