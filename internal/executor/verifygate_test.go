@@ -62,8 +62,8 @@ func TestVerifyGateDeadIsNotATaskFailure(t *testing.T) {
 		t.Fatal("want a gate classification, got nil")
 	}
 
-	var gateErr *VerifyGateError
-	if !errors.As(err, &gateErr) {
+	gateErr, ok := errors.AsType[*VerifyGateError](err)
+	if !ok {
 		t.Fatalf("want *VerifyGateError, got %v", err)
 	}
 
@@ -120,8 +120,8 @@ func TestVerifyGateSlowOnDeadline(t *testing.T) {
 		t.Fatal("want gate-slow, got nil")
 	}
 
-	var gateErr *VerifyGateError
-	if !errors.As(err, &gateErr) {
+	gateErr, ok := errors.AsType[*VerifyGateError](err)
+	if !ok {
 		t.Fatalf("want *VerifyGateError, got %v", err)
 	}
 
@@ -230,8 +230,8 @@ func TestVendorGofmtSignatureClassifiesEnvironmental(t *testing.T) {
 		t.Fatal("want a verify failure, got nil")
 	}
 
-	var gateErr *VerifyGateError
-	if !errors.As(err, &gateErr) {
+	gateErr, ok := errors.AsType[*VerifyGateError](err)
+	if !ok {
 		t.Fatalf("want *VerifyGateError, got %v", err)
 	}
 

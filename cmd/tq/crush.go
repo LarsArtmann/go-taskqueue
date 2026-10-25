@@ -89,8 +89,8 @@ func crushRun(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, er
 	code := 0
 
 	if err := child.Wait(); err != nil {
-		var exitErr *exec.ExitError
-		if !errors.As(err, &exitErr) {
+		exitErr, ok := errors.AsType[*exec.ExitError](err)
+		if !ok {
 			return 0, fmt.Errorf("tq crush: wait: %w", err)
 		}
 
