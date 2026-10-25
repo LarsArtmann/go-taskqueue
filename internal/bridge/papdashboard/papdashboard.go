@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/larsartmann/go-taskqueue/internal/bridge/httpx"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -898,9 +899,9 @@ func (b *Bridge) NotifyWorkerExhausted(
 		"severity": b.cfg.Severity,
 		"title":    "agent-pool projection worker exhausted",
 		"body": fmt.Sprintf(
-			"The %q fold worker exhausted its restart budget %s ago and stopped consuming while reading at-head: the dashboard is frozen and nobody restarted the host. Restart the serve/api process.",
+			"The %q fold worker exhausted its restart budget and stopped consuming %s while reading at-head: the dashboard is frozen and nobody restarted the host. Restart the serve/api process.",
 			projection,
-			time.Since(failedAt).Round(time.Minute),
+			humanize.Time(failedAt),
 		),
 		"sourceApp": b.cfg.SourceApp,
 		"metadata": map[string]string{

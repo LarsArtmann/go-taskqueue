@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/larsartmann/go-taskqueue/internal/config"
 	"github.com/larsartmann/go-taskqueue/internal/dlqfix"
 	"github.com/larsartmann/go-taskqueue/internal/executor"
@@ -1022,9 +1023,9 @@ func doctorProjectionWorkerDeath(dbPath string) []checkResult {
 		Name:   name,
 		Status: checkWarn,
 		Detail: fmt.Sprintf(
-			"projection %q's worker exhausted its restart budget and stopped consuming %s ago — the fold is frozen at its cursor while reading at-head; restart the serve/api host (the marker clears on the next host start)",
+			"projection %q's worker exhausted its restart budget and stopped consuming %s — the fold is frozen at its cursor while reading at-head; restart the serve/api host (the marker clears on the next host start)",
 			marker.Projection,
-			time.Since(marker.FailedAt).Round(time.Minute),
+			humanize.Time(marker.FailedAt),
 		),
 	}}
 }

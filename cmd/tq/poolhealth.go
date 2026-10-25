@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/larsartmann/go-taskqueue/internal/harvest"
 	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
@@ -331,5 +332,5 @@ func ageOrNever(t *time.Time) string {
 		return "never"
 	}
 
-	return time.Since(*t).Round(time.Second).String() + " ago"
+	return humanize.Time(*t)
 }
