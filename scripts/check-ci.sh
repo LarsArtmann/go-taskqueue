@@ -76,9 +76,16 @@ if [ "${CHECK_CI_SELF_TEST:-}" = "1" ]; then
 	}
 
 	# Red-branch relation: which of the three FAIL explanations applies.
-	# Pinned hermetically in a scratch repo (no network, no gh).
+	# Pinned hermetically in a scratch repo (no network, no gh). The
+	# battery needs a git binary — bare nix checkPhase contexts may lack
+	# one, so the contract degrades to an explicit WARN+skip instead of a
+	# cryptic command-not-found failure (row 1121).
+	if ! command -v git >/dev/null 2>&1; then
+		echo "WARN: git not on PATH — skipping the scratch-repo red-branch battery (bare nix checkPhase context; row 1121)"
+		rel_scratch=""
+	else
 	rel_scratch="$(mktemp -d)"
-	trap 'rm -rf "$rel_scratch"' EXIT
+	trap '[ -n "$rel_scratch" ] && rm -rf "$rel_scratch"' EXIT
 	git -C "$rel_scratch" init -q
 	git -C "$rel_scratch" -c user.email=t@t -c user.name=t commit -q --allow-empty -m base
 	BASE_SHA="$(git -C "$rel_scratch" rev-parse HEAD)"
@@ -99,6 +106,7 @@ if [ "${CHECK_CI_SELF_TEST:-}" = "1" ]; then
 		echo "check-ci self-test: sibling commit must classify diverged, not predates"
 		exit 1
 	}
+		fi
 
 	# @tsv parse: the ONE gh call's --jq shape must survive the read split
 	# (displayTitle contains spaces). A null conclusion is emitted as the

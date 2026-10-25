@@ -42,7 +42,9 @@ if [ "${1:-}" = "--self-test" ]; then
 		exit 1
 	}
 	echo one >f.txt
-	"$self_dir/commit-task.sh" 0000000000000000abcd subject-only f.txt
+	stamp=$("$self_dir/commit-task.sh" 0000000000000000abcd subject-only f.txt)
+	printf '%s\n' "$stamp" | grep -qE '^committed: [0-9a-f]{7,} subject-only$' \
+		|| fail "success line missing or malformed: '$stamp'"
 	last=$(git log -1 --format=%B | grep -v '^$' | tail -n 1)
 	[ "$last" = "Task-Queue-ID: 0000000000000000abcd" ] || fail "subject-only footer is not the last line: '$last'"
 	echo two >>f.txt
@@ -125,3 +127,7 @@ if ! commit_out=$(git commit -m "$subject" "${body_args[@]}" -m "Task-Queue-ID: 
 	printf '%s\n' "$commit_out" >&2
 	exit 1
 fi
+
+# Row 41: a silent success forces every window into a follow-up `git log`
+# to confirm the footer commit landed — echo the hash + subject instead.
+echo "committed: $(git log -1 --oneline)"

@@ -538,7 +538,7 @@ func TestWorktreeInFlightCancelledParkedWithExecutor(t *testing.T) {
 		t.Fatalf("cancel: %v", err)
 	}
 
-	agentExec.ParkCloseoutForTest(cancelled.ID.String(), "/tmp/repo", "sess-1")
+	agentExec.ParkCloseoutForTest(cancelled.ID.String(), filepath.Join(t.TempDir(), "repo"), "sess-1")
 
 	if agentExec.WorktreeInUse(cancelled.ID.String()) != true {
 		t.Fatalf("precondition: parked entry not visible on executor")
@@ -555,7 +555,7 @@ func TestWorktreeInFlightCancelledParkedWithExecutor(t *testing.T) {
 		t.Fatalf("enqueue pending: %v", err)
 	}
 
-	agentExec.ParkCloseoutForTest(pending.ID.String(), "/tmp/repo", "sess-2")
+	agentExec.ParkCloseoutForTest(pending.ID.String(), filepath.Join(t.TempDir(), "repo"), "sess-2")
 
 	if !probe(pending.ID.String()) {
 		t.Fatalf(
