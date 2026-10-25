@@ -111,6 +111,48 @@ var secretPatternSamples = []string{
 	fakeAssign,
 }
 
+// secretPatternNamePins is the order-alignment guard (03-55 §e3/§f3):
+// entry i pins secretPatterns[i] — and therefore secretPatternSamples[i] —
+// to a distinctive substring of the regex source that must sit at that
+// index. The fixture is index-aligned BY CONVENTION only; a secretPatterns
+// reorder would silently re-align samples onto wrong patterns while every
+// length check and even the census "8×9" pair can still pass. Indexes 8/9
+// are pinned to the bearer and authorization-header patterns. Extend this
+// table in the same change as secretPatterns + secretPatternSamples.
+var secretPatternNamePins = []string{
+	"sk-ant-",             // 0: anthropic
+	"proj|svcacct",        // 1: openai project/service-account
+	`sk-[A-Za-z0-9]{20,}`, // 2: openai classic
+	"gh[pousr]_",          // 3: github
+	"github_pat_",         // 4: github fine-grained
+	"AKIA",                // 5: aws
+	"AIza",                // 6: google
+	"xox[baprs]",          // 7: slack
+	`\bbearer`,            // 8: bearer header (census pair 8×9)
+	`\bauthorization`,     // 9: authorization header (census pair 8×9)
+	"api[_-]?key",         // 10: secret-shaped assignment
+}
+
+// TestSecretPatternSamplesNamePinned fails loudly on a secretPatterns
+// reorder: every entry must still carry the distinctive substring its
+// fixture index was pinned to, so samples re-align visibly (update pins
+// and samples together) instead of silently.
+func TestSecretPatternSamplesNamePinned(t *testing.T) {
+	t.Parallel()
+
+	if len(secretPatternNamePins) != len(secretPatterns) {
+		t.Fatalf("name pins cover %d of %d secretPatterns — extend together with the table and secretPatternSamples",
+			len(secretPatternNamePins), len(secretPatterns))
+	}
+
+	for i, pin := range secretPatternNamePins {
+		src := secretPatterns[i].String()
+		if !strings.Contains(src, pin) {
+			t.Errorf("secretPatterns[%d] = %q lacks its alignment pin %q — secretPatterns was reordered; re-align secretPatternSamples and these pins in the same change", i, src, pin)
+		}
+	}
+}
+
 // TestSecretPatternsOverlapCensus pins the span-merge contract from the
 // other side (02-37 §b4/§f1): on each pattern's canonical sample, exactly
 // ONE unordered pair of patterns overlaps — bearer × authorization-header
