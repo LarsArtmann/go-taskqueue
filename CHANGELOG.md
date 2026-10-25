@@ -96,6 +96,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the default `GOTOOLCHAIN=auto` bridge until bumped.
 
 ### Changed
+- **All `/health*` responses now carry the health security-header set** (2026-10-26)
+  (BEHAVIOR CHANGE for clients parsing `/health*` response headers: the SDK
+  bundle, favicon, and JSON probes gain the health CSP override and
+  `X-Robots-Tag: noindex` — previously only `/health` and `/health/sse` had
+  them): the new SECURITY.md matrix-pinning tests caught the other five
+  routes missing the documented posture, so every `/health*` binding now
+  runs through the health header wrapper; the matrix's cache cell was also
+  corrected (health HTML/SSE carry the library's `no-cache`, not unset).
 - **Go floor raised to 1.27.3 across the graph** (2026-10-24) (BEHAVIOR CHANGE for
   consumers building with toolchains older than 1.27.3: the module graph now
   requires go >= 1.27.3): all 24 module `go` directives, the 8 setup-go pins

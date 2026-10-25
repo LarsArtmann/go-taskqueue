@@ -475,6 +475,12 @@ not here.
 ## Security-batch window follow-ups (2026-09-29 22-37; source: docs/status/archived/2026-09-29_22-37_task-000001a0eed25c041f1b181c395800000000.md §f — 03-05 §f carried items + this window's passes; deduped: row 272 owns the Permissions-Policy smoke gap, rows 414/453 own hook detection/census)
 
 - [x] Pin the SECURITY.md "Response headers, per surface" matrix: a test (or gate) asserting the `tq serve`/`tq api` response-header sets match the matrix rows — the matrix is documentation-only today, a header added to code without a row (or vice versa) fails nothing (22-37 report §f1/§b1); include the X-Robots-Tag/noindex smoke assertion (18-12:82)
+- [ ] Pin the `tq serve` write-route CSRF-lockout 429 in TestServeHeaderMatrix: drive 3 bad CSRF tokens to the 429 and assert Retry-After + the full header set — the last matrix row asserted only by code citation (2026-10-26 closeout §b2)
+- [ ] Add per-route matrix subtests for /health/favicon.svg, /healthz, /readyz, /startupz — today covered only by the shared withHealthHeaders binding change, not asserted individually (2026-10-26 closeout §e5)
+- [ ] Derive the API absence list in TestAPIHeaderMatrix from the matrix header inventory (all names minus the API's own rows) instead of the hand-written apiHeaders slice, so a new dashboard header auto-joins the API absence check (2026-10-26 closeout §e4)
+- [ ] Replace the name-based conditional-header skip (cache-control/www-authenticate/retry-after) in matrixHeaders.check with a per-surface conditionally-present model so missing-member checks are strict (2026-10-26 closeout §e3)
+- [ ] Single-source the SECURITY.md response-header matrix: generate the doc table or the Go matrixHeaders tables from one canonical definition so doc and test cannot diverge independently (2026-10-26 closeout §e2)
+- [ ] Add a negative-path self-check for the matrix pinning test (deliberately broken header in a fixture handler must FAIL the suite) so the pin cannot rot vacuous (2026-10-26 closeout §f9)
 - [ ] Add a `lowercase scheme` row to webui `TestTokenAuthMiddlewareMatrix` — webui accepted case-insensitive Bearer since birth but never pinned it; it is now the shared internal/httpauth contract (22-37 report §f2)
 - [ ] SSE header e2e: assert CSP + nosniff on the `/api/events` stream and the reconnect/resume path over real HTTP, resume + headers together (03-05 §f16/§f20; 22-37 report §f3)
 - [ ] Refactor `TestSecurityHeadersOnEveryResponse` to a header→want table so future headers are one-line additions (03-05 §f6; 22-37 report §f4)
