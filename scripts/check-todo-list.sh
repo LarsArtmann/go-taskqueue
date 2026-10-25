@@ -57,6 +57,8 @@ self_test() {
 	assert "unblocked owner-gated row warns without failing (row 1098 semantics)" 0 "UNBLOCKED-OWNER-GATED" "- [ ] Owner must run sudo deploy on the host"
 	assert "damaged checkbox still fails (structural)" 1 "DAMAGED-CHECKBOX" "--- [x] broken bullet row"
 	assert "double checkbox still fails (structural)" 1 "DOUBLE-CHECKBOX" "- [ ] [x] double box row"
+	assert "glued two-item row fails (structural, row 1138)" 1 "GLUED-CHECKBOX" "- [ ] First row- [ ] Second row"
+	assert "backticked prose checkbox mention stays quiet" 0 "TODO_LIST gate ok" "- [ ] Keep the \`- [ ]\` checkbox format, one item per line"
 	assert "summary line pinned format" 0 "todo-list summary: 0 advisory warn(s), 0 structural violation class(es) — advisory warnings do not fail the gate" "- [ ] Another plain row"
 
 	rm -rf "$dir" 2>/dev/null || true
@@ -138,6 +140,19 @@ if [ -n "$annotated" ]; then
 	printf '%s\n' "$annotated"
 	echo "  -> tick with the citation (work genuinely done) or strip the annotation (row genuinely open)"
 	while IFS= read -r _; do warns=$((warns + 1)); done <<<"$annotated"
+fi
+
+# Glued-row shape must fail the gate (row 1138): a `- [ ]` NOT at line
+# start (the efbc8710 class — a second row glued onto the previous line
+# was invisible to the harvester AND to the checkbox greps above, so the
+# css-drift row shipped silently) is a hard structural violation,
+# independent of the advisory-vs-structural ruling. A backtick before the
+# bracket is the sanctioned prose mention of the format and stays quiet.
+glued="$(grep -nE '[^`]- \[[xX ]\]' "$todo" || true)"
+if [ -n "$glued" ]; then
+	echo "GLUED-CHECKBOX: checkbox NOT at line start (a second row is glued onto the previous line; split it into its own '- [ ] ' line):"
+	printf '%s\n' "$glued"
+	fail=1
 fi
 
 echo "todo-list summary: $warns advisory warn(s), $fail structural violation class(es) — advisory warnings do not fail the gate"
