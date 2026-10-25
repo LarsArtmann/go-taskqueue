@@ -24,6 +24,25 @@ import (
 // member missing from the response, fails.
 type matrixHeaders map[string]func(t *testing.T, got string)
 
+// surface is a matrix row plus the names that may legitimately be absent
+// from that surface's responses (conditionally present, e.g. Retry-After
+// only on the lockout 429). Every other member's presence is strict: a
+// missing member fails, so the per-surface list must name each exception
+// deliberately instead of a global header-name skip.
+type surface struct {
+	row         matrixHeaders
+	conditional map[string]bool
+}
+
+func (m matrixHeaders) surface(conditional ...string) surface {
+	s := surface{row: m, conditional: map[string]bool{}}
+	for _, name := range conditional {
+		s.conditional[strings.ToLower(name)] = true
+	}
+
+	return s
+}
+
 // transportHeaders are framing headers no matrix row tracks (they vary
 // with the body, not the security posture).
 var transportHeaders = map[string]bool{
@@ -35,7 +54,7 @@ var transportHeaders = map[string]bool{
 	"x-accel-buffering": true,
 }
 
-func (m matrixHeaders) check(t *testing.T, header http.Header, where string) {
+func (s surface) check(t *testing.T, header http.Header, where string) {
 	t.Helper()
 
 	for name, vals := range header {
@@ -45,7 +64,7 @@ func (m matrixHeaders) check(t *testing.T, header http.Header, where string) {
 			continue
 		}
 
-		check, ok := m[lower]
+		check, ok := s.row[lower]
 		if !ok {
 			t.Errorf("%s: response header %q is not in the SECURITY.md matrix for this surface", where, name)
 
@@ -57,8 +76,8 @@ func (m matrixHeaders) check(t *testing.T, header http.Header, where string) {
 		}
 	}
 
-	for name := range m {
-		if header.Get(name) == "" && name != "cache-control" && name != "www-authenticate" && name != "retry-after" {
+	for name := range s.row {
+		if header.Get(name) == "" && !s.conditional[name] {
 			t.Errorf("%s: SECURITY.md matrix header %q missing from response", where, name)
 		}
 	}
@@ -150,7 +169,7 @@ func TestServeHeaderMatrix(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		serveDashboardRow.check(t, resp.Header, "GET /")
+		serveDashboardRow.surface().check(t, resp.Header, "GET /")
 
 		if got := resp.Header.Get("X-Robots-Tag"); got != "" {
 			t.Errorf("task page X-Robots-Tag = %q, want unset (robots meta instead)", got)
@@ -180,7 +199,7 @@ func TestServeHeaderMatrix(t *testing.T) {
 		for k, v := range serveDashboardRow {
 			with401[k] = v
 		}
-		with401.check(t, resp.Header, "GET / (401)")
+		with401.surface().check(t, resp.Header, "GET / (401)")
 	})
 
 	t.Run("write-route CSRF lockout 429 carries Retry-After and the full set", func(t *testing.T) {
@@ -252,7 +271,7 @@ func TestServeHeaderMatrix(t *testing.T) {
 			},
 		}
 		maps.Copy(with429, serveDashboardRow)
-		with429.check(t, resp.Header, "POST /task/x/cancel (429)")
+		with429.surface().check(t, resp.Header, "POST /task/x/cancel (429)")
 	})
 
 	t.Run("health page overrides CSP and adds noindex", func(t *testing.T) {
@@ -268,7 +287,7 @@ func TestServeHeaderMatrix(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		serveHealthRow.check(t, resp.Header, "GET /health")
+		serveHealthRow.surface().check(t, resp.Header, "GET /health")
 	})
 
 	t.Run("remaining /health* routes match the health row", func(t *testing.T) {
@@ -294,13 +313,17 @@ func TestServeHeaderMatrix(t *testing.T) {
 				t.Errorf("GET %s: status = %d, want 200", path, resp.StatusCode)
 			}
 
-			row := serveHealthRow
+			// The bare probes (healthz/readyz/startupz) carry no
+			// Cache-Control — only /health HTML and the SDK assets do;
+			// the favicon row below pins its own cacheable value.
+			row := serveHealthRow.surface("cache-control")
 			if path == "/health/favicon.svg" {
 				// The favicon is a static asset like the SDK bundle: the
 				// matrix pins it cacheable, not no-cache.
-				row = matrixHeaders{}
-				maps.Copy(row, serveHealthRow)
-				row["cache-control"] = eq("public, max-age=86400")
+				favicon := matrixHeaders{}
+				maps.Copy(favicon, serveHealthRow)
+				favicon["cache-control"] = eq("public, max-age=86400")
+				row = favicon.surface()
 			}
 
 			row.check(t, resp.Header, "GET "+path)
@@ -325,7 +348,7 @@ func TestServeHeaderMatrix(t *testing.T) {
 			withCache[k] = v
 		}
 		withCache["cache-control"] = eq("public, max-age=86400")
-		withCache.check(t, resp.Header, "GET /health/datastar.js")
+		withCache.surface().check(t, resp.Header, "GET /health/datastar.js")
 	})
 }
 
@@ -382,7 +405,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("status = %d, want 200", rec.Code)
 		}
-		authed.check(t, rec.Header(), "GET /api/v1/stats")
+		authed.surface().check(t, rec.Header(), "GET /api/v1/stats")
 	})
 
 	t.Run("401 carries the API realm and no dashboard headers", func(t *testing.T) {
@@ -394,7 +417,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("status = %d, want 401", rec.Code)
 		}
-		unauthed.check(t, rec.Header(), "GET /api/v1/healthz (401)")
+		unauthed.surface().check(t, rec.Header(), "GET /api/v1/healthz (401)")
 
 		for _, name := range apiHeaders {
 			if got := rec.Header().Get(name); got != "" {
@@ -425,7 +448,7 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		if rec.Code != http.StatusTooManyRequests {
 			t.Fatalf("status = %d, want 429 after lockout", rec.Code)
 		}
-		locked.check(t, rec.Header(), "GET /api/v1/healthz (429)")
+		locked.surface().check(t, rec.Header(), "GET /api/v1/healthz (429)")
 	})
 }
 
