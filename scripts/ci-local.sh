@@ -209,6 +209,15 @@ step "check-go-mods self-test (go-mods summary + negative counter battery)"
 step "go.mod hygiene (replaces, pins, toolchain alignment, mod verify)"
 ./scripts/check-go-mods.sh
 
+# go-floor gate (CV row: mirror of CV's go-floor-gate.sh, inverted): a
+# tracked go.work floor BELOW the max module floor is the stale-workspace
+# masking class that cost the 70338631 deploy blocker. Self-test first
+# (fleet convention), then the real gate.
+step "go-floor gate self-test (stale go.work discrimination)"
+./scripts/check-go-floor.sh --self-test
+step "go-floor gate (go.work >= max module floor)"
+./scripts/check-go-floor.sh
+
 # Toolchain pin alignment (2026-10-25 TODO: the 1.27.3 sweep needed four
 # hand-synced sources — go.mod floors, setup-go pins in ci.yml+fuzz.yml,
 # flake goTarballVersion). Self-test first (fleet convention), then the
