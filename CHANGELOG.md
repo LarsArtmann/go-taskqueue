@@ -393,6 +393,26 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   sweep found both hits on the annotated readmodel self-open seam, already
   env-honoring and test-pinned; classification recorded, no code change
   (`3f5e8dd1`).
+- **Close-contract verdict-at-exit rail** (2026-10-25): the a)-g)
+  closeout skeleton's final exit step is codified in AGENTS.md — record
+  `tq verdict` BEFORE session end; a committed report without a recorded
+  verdict is a half-closeout (the 09-05 third-redispatch incident: two
+  committed reports, zero recorded verdicts, two burned paid claims). The
+  done-prompt work-prompt template carried the rail as its Finish step 2
+  since `25eb96b8` and now states the half-closeout consequence +
+  re-claim warning explicitly.
+- **Tick-claim guard + status-doc conventions** (2026-10-25):
+  `scripts/check-tick-claims.sh` (advisory ci-local WARN, self-tested)
+  verifies aggregate "rows N-M ticked" claims against TODO_LIST at the
+  claim's authorship tree (report ADD commit / README pickaxe span
+  commit; cited tick commits override), catching the 68a20cdb
+  "row 777 `[x]`" reviewer finding mechanically; AGENTS.md gains the
+  Closeout TICK-AUDIT and tick-claims-cite-the-tick-commit conventions.
+- **Dupe-gate runner-inventory note** (2026-10-25): the ci-local
+  dupe-baseline step records the derived inventory — all ci.yml jobs run
+  GitHub-hosted runners that carry neither branching-flow nor nix (only
+  golangci-lint is CI-installed), so the dupe gate is dev-host-only and
+  silently skipped on every CI run.
 
 ## [v0.3.4] - 2026-10-11
 
