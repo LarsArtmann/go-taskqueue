@@ -655,6 +655,9 @@ step "asset-archive ghost check"
 # INCOMPLETE/STALE survive precedence (00-10 report §f1).
 ./scripts/check-ghost-archives.sh --self-test
 
+step "TODO_LIST honesty self-test (advisory/structural exit semantics pin)"
+./scripts/check-todo-list.sh --self-test
+
 step "TODO_LIST honesty check"
 ./scripts/check-todo-list.sh
 
