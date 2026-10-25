@@ -3876,6 +3876,15 @@ func cmdServe(args []string) error {
 
 		cfg.ReadModelPath = readmodel.PathFor(dbPath)
 		cfg.Pump = &projectionPump{rt: rt}
+		defer func() {
+			// Audit (CI-red triage batch): the runtime owns the
+			// projection-home flock — release it if anything between
+			// construction and g.Run() fails instead of riding on
+			// process exit to drop the lock. ProjectionRuntime.Close
+			// nils its fields, so the serving path's second Close in
+			// projectionPump.Run is a no-op.
+			_ = rt.Close()
+		}()
 	}
 
 	if err := cfg.Validate(); err != nil {
