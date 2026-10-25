@@ -250,7 +250,6 @@ func TestRedispatchCheckNonTerminalVerdictMarkerDoesNotBlock(t *testing.T) {
 		context.Background(),
 		candidateWith("", "", "re-verify task "+cited, "", ""),
 	)
-
 	if err != nil {
 		t.Fatalf("non-terminal verdict marker must not block, got %v", err)
 	}
