@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -113,5 +115,42 @@ func TestDoctorPaidNoopsIgnoresUnpaidTypes(t *testing.T) {
 	results := doctorPaidNoops(context.Background(), s)
 	if len(results) != 1 || results[0].Status != checkOK {
 		t.Fatalf("unpaid zero-output completion must not surface: %+v", results)
+	}
+}
+
+func TestRunGateBoardReportsRedAndGreen(t *testing.T) {
+	dir := t.TempDir()
+
+	pass := filepath.Join(dir, "check-pass.sh")
+	if err := os.WriteFile(pass, []byte("#!/usr/bin/env bash\necho 'pass summary: 3 checks ok, 0 failed'\n"), 0o755); err != nil {
+		t.Fatalf("write pass: %v", err)
+	}
+	fail := filepath.Join(dir, "check-fail.sh")
+	if err := os.WriteFile(fail, []byte("#!/usr/bin/env bash\necho 'FAIL: something broke' >&2\necho 'fail summary: 2 ok, 1 failed'\nexit 1\n"), 0o755); err != nil {
+		t.Fatalf("write fail: %v", err)
+	}
+
+	r := runGateBoard(context.Background(), dir, []string{"check-pass.sh", "check-fail.sh"})
+	if r.Name != "gate-board" {
+		t.Fatalf("want gate-board name, got %q", r.Name)
+	}
+	if r.Status != checkWarn {
+		t.Fatalf("want warn (one red), got %s (%s)", r.Status, r.Detail)
+	}
+	if len(r.Items) != 2 {
+		t.Fatalf("want 2 rows, got %+v", r.Items)
+	}
+	if !strings.Contains(r.Items[0], "GREEN") || !strings.Contains(r.Items[0], "pass summary") {
+		t.Fatalf("passing gate row wrong: %q", r.Items[0])
+	}
+	if !strings.Contains(r.Items[1], "RED") || !strings.Contains(r.Items[1], "fail summary") {
+		t.Fatalf("failing gate row wrong: %q", r.Items[1])
+	}
+}
+
+func TestRunGateBoardWarnsOutsideCheckout(t *testing.T) {
+	r := runGateBoard(context.Background(), filepath.Join(t.TempDir(), "absent"), []string{"check-x.sh"})
+	if r.Status != checkWarn || !strings.Contains(r.Detail, "not found") {
+		t.Fatalf("missing scripts dir must WARN, got %s (%s)", r.Status, r.Detail)
 	}
 }

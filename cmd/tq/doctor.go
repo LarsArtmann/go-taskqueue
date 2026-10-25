@@ -285,6 +285,10 @@ func runDoctor(ctx context.Context, opts doctorOptions) ([]checkResult, error) {
 		results = append(results, doctorMarkOrphans(ctx, store)...)
 	}
 
+	if opts.Gates {
+		results = append(results, doctorGateBoard(ctx, opts.ScriptsDir))
+	}
+
 	return results, nil
 }
 
@@ -522,6 +526,105 @@ func paidTaskNoop(ctx context.Context, store queue.Store, t task.Task) (string, 
 	}
 
 	return "", false
+}
+
+// doctorGateScripts is the countable-gate board: every entry carries a
+// pinned --self-test summary (fleet convention 2026-10-24), so its rc is
+// falsifiable and its tail names the count. Ordered by the ci-local wiring
+// so the board reads in the same order the full gate runs them.
+var doctorGateScripts = []string{
+	"check-script-syntax.sh",
+	"check-go-mods.sh",
+	"check-dead-exports.sh",
+	"check-guard-wiring.sh",
+	"check-webui-css.sh",
+	"check-toolchain-pins.sh",
+	"check-poll-loudness.sh",
+	"check-fixture-attribution.sh",
+	"check-webui-js.sh",
+	"check-tick-claims.sh",
+}
+
+// doctorGateTimeout bounds ONE gate run: a hung gate must not hang the
+// doctor (the full ci-local owns the exhaustive run; this is the board).
+const doctorGateTimeout = 2 * time.Minute
+
+// doctorGateBoard runs each countable gate once and reports rc + the last
+// output line as one board row — the standing red/green surface at HEAD
+// (row 1119) that stopped sessions from re-discovering gate reds by hand.
+// Opt-in via --gates; scriptsDir empty means ./scripts relative to cwd, and
+// a missing directory degrades to a WARN, not a FAIL (the doctor may run
+// against a production db from any cwd).
+func doctorGateBoard(ctx context.Context, scriptsDir string) checkResult {
+	return runGateBoard(ctx, scriptsDir, doctorGateScripts)
+}
+
+// runGateBoard is the testable core: it runs each named gate script once
+// and reports rc + the last output line as one board row.
+func runGateBoard(ctx context.Context, scriptsDir string, scripts []string) checkResult {
+	const name = "gate-board"
+
+	if scriptsDir == "" {
+		scriptsDir = "scripts"
+	}
+
+	if st, err := os.Stat(scriptsDir); err != nil || !st.IsDir() {
+		return checkResult{
+			Name:   name,
+			Status: checkWarn,
+			Detail: scriptsDir + " not found from this cwd — run tq doctor --gates from the repo checkout for the fleet gate board",
+		}
+	}
+
+	var items []string
+	red := 0
+
+	for _, script := range doctorGateScripts {
+		gateCtx, cancel := context.WithTimeout(ctx, doctorGateTimeout)
+		out, err := exec.CommandContext(gateCtx, "bash", filepath.Join(scriptsDir, script)).CombinedOutput()
+		cancel()
+
+		tail := gateBoardTail(string(out))
+		switch {
+		case errors.Is(gateCtx.Err(), context.DeadlineExceeded):
+			red++
+			items = append(items, script+": RED — timed out after "+doctorGateTimeout.String())
+		case err != nil:
+			red++
+			items = append(items, script+": RED ("+tail+")")
+		default:
+			items = append(items, script+": GREEN — "+tail)
+		}
+	}
+
+	status := checkOK
+	detail := fmt.Sprintf("%d/%d countable gates green at HEAD (full run: scripts/ci-local.sh)", len(items)-red, len(items))
+	if red > 0 {
+		status = checkWarn
+		detail = fmt.Sprintf("%d/%d countable gates RED at HEAD (full run: scripts/ci-local.sh)", red, len(items))
+	}
+
+	return checkResult{Name: name, Status: status, Detail: detail, Items: items}
+}
+
+// gateBoardTail returns the last non-empty output line, trimmed to the
+// board width — the gate's own pinned summary is the evidence.
+func gateBoardTail(out string) string {
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	tail := ""
+	for i := len(lines) - 1; i >= 0; i-- {
+		if s := strings.TrimSpace(lines[i]); s != "" {
+			tail = s
+			break
+		}
+	}
+
+	const maxBoardTail = 160
+	if len(tail) > maxBoardTail {
+		tail = tail[:maxBoardTail]
+	}
+
+	return tail
 }
 
 // doctorParked surfaces rate-limit-parked tasks (pending, not_before in the
@@ -2075,6 +2178,11 @@ func cmdDoctor(args []string) error {
 		false,
 		"inspect the projection fold's poison-fact sidecar (count + the 3 most recent failures)",
 	)
+	gates := fs.Bool(
+		"gates",
+		false,
+		"run the countable-gate fleet board (each pinned gate script once; rc + summary tail per row) — adds up to a few minutes",
+	)
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -2090,6 +2198,7 @@ func cmdDoctor(args []string) error {
 		Hygiene:     *hygiene,
 		ServiceUnit: *serviceUnit,
 		DLQ:         *dlq,
+		Gates:       *gates,
 	}
 
 	results, err := runDoctor(context.Background(), opts)
