@@ -4,6 +4,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -351,10 +352,25 @@ func TestAPIHeaderMatrix(t *testing.T) {
 		"retry-after":            nil,
 	}
 
-	apiHeaders := []string{
-		"content-security-policy", "x-frame-options", "referrer-policy",
-		"permissions-policy", "x-robots-tag",
+	// Dashboard-only headers: everything in the matrix's `tq serve`
+	// column minus the headers the API's own rows carry — a new dashboard
+	// header joins this absence check automatically.
+	serveColumn := matrixHeaders{}
+	maps.Copy(serveColumn, serveDashboardRow)
+	maps.Copy(serveColumn, serveHealthRow)
+
+	apiRows := matrixHeaders{}
+	maps.Copy(apiRows, authed)
+	maps.Copy(apiRows, unauthed)
+	maps.Copy(apiRows, locked)
+
+	apiHeaders := []string{}
+	for name := range serveColumn {
+		if _, owned := apiRows[name]; !owned {
+			apiHeaders = append(apiHeaders, name)
+		}
 	}
+	slices.Sort(apiHeaders)
 
 	t.Run("authenticated response", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/stats", nil)
