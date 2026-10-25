@@ -15,13 +15,25 @@ cd "$(dirname "$0")/.."
 # sub-module loops which inherit the environment.
 export GOEXPERIMENT=jsonv2
 
-# go.mod declares a 1.27.1 floor while this host's shell pins
-# GOTOOLCHAIN=local on a 1.26.7 binary — without the auto pin every go
-# step dies with "go.mod requires go >= 1.27.1" outside the flake devShell
-# (same failure class as the GOEXPERIMENT export above, hit 2026-09-22).
-# Runners run GOTOOLCHAIN=local on a pinned 1.27.1 setup, so this export
-# is a no-op there and a lifeline in agent sessions.
-export GOTOOLCHAIN=auto
+# go.mod declares a toolchain floor while this host's shell may pin
+# GOTOOLCHAIN=local on an older binary — without a pin every go step dies
+# with "go.mod requires go >= <floor>" outside the flake devShell (same
+# failure class as the GOEXPERIMENT export above, hit 2026-09-22). The
+# pin comes from ONE source: check-toolchain-pins --print-floor reads the
+# shared go.mod floor — the exact value the gate proves equals the
+# setup-go pins CI runs — so local govulncheck and every other step see
+# the same advisories the pinned CI runner sees (2026-10-25: a bare auto
+# left local govulncheck on the host toolchain and hid the post-fix
+# truth until a manual GOTOOLCHAIN=go1.27.3). Falls back to auto if the
+# floor cannot be read rather than blocking the gate on a broken tree.
+ci_local_floor="$(./scripts/check-toolchain-pins.sh --print-floor 2>/dev/null || true)"
+if [ -n "$ci_local_floor" ]; then
+	export GOTOOLCHAIN="go$ci_local_floor"
+	echo "GOTOOLCHAIN pinned to go$ci_local_floor (go.mod floor == setup-go pin, one source)"
+else
+	echo "check-toolchain-pins --print-floor returned nothing; falling back to GOTOOLCHAIN=auto" >&2
+	export GOTOOLCHAIN=auto
+fi
 
 # Pool-session env scrub (TODO row 333): agent-session shells inherit the
 # pool runAgent environment. A gate child that reads $TQ_QUESTION_FILE

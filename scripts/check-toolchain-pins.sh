@@ -22,6 +22,34 @@ extra_mods="${TQ_TOOLCHAIN_EXTRA_MODS:-}"
 workflows_dir="${TQ_TOOLCHAIN_WORKFLOWS_DIR:-.github/workflows}"
 flake_file="${TQ_TOOLCHAIN_FLAKE:-flake.nix}"
 
+# --print-floor: emit ONLY the shared go.mod floor — the SAME source the
+# checks below validate the setup-go pins against — so callers can pin
+# GOTOOLCHAIN from one place (ci-local exports GOTOOLCHAIN=go<floor> so
+# local govulncheck sees the advisories the pinned CI runner sees).
+if [[ "${1:-}" == "--print-floor" ]]; then
+	floors_out=""
+	while IFS= read -r mod; do
+		f="$(sed -n 's/^go \([0-9][0-9.]*\)$/\1/p' "$mod" | head -1)"
+		if [ -z "$f" ]; then
+			echo "check-toolchain-pins: $mod: no parsable 'go <version>' directive" >&2
+			exit 1
+		fi
+		floors_out+="$f"$'\n'
+	done < <(git ls-files '*go.mod' | sort)
+	if [ -n "$extra_mods" ]; then
+		while IFS= read -r mod; do
+			f="$(sed -n 's/^go \([0-9][0-9.]*\)$/\1/p' "$mod" | head -1)"
+			if [ -z "$f" ]; then
+				echo "check-toolchain-pins: $mod: no parsable 'go <version>' directive" >&2
+				exit 1
+			fi
+			floors_out+="$f"$'\n'
+		done < <(tr ':' '\n' <<<"$extra_mods")
+	fi
+	sort -Vu <<<"$floors_out" | tail -1
+	exit 0
+fi
+
 ok_count=0
 fail_count=0
 
