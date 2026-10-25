@@ -255,3 +255,21 @@ func TestRedispatchCheckNonTerminalVerdictMarkerDoesNotBlock(t *testing.T) {
 		t.Fatalf("non-terminal verdict marker must not block, got %v", err)
 	}
 }
+
+// TestDefaultClaimLiveWindowMatchesTQClaim pins the cross-repo parity
+// claim by its two literals: defaultClaimLiveWindow mirrors tq-claim.sh's
+// TQ_STALE_AFTER default (21600s = 6h, CV scripts/tq-claim.sh:81) BY
+// COMMENT ONLY — the repos are separate modules, so each side pins its
+// own literal and this test names the counterpart it must stay in sync
+// with (CV row: "Unit-pin the RedispatchCooldown 6h = TQ_STALE_AFTER
+// default-parity claim"). If the script's default moves, BOTH this
+// constant and the CV-side self-test leg must move in the same wave.
+func TestDefaultClaimLiveWindowMatchesTQClaim(t *testing.T) {
+	if defaultClaimLiveWindow != 6*time.Hour {
+		t.Fatalf("defaultClaimLiveWindow = %v, want 6h — mirror of tq-claim.sh TQ_STALE_AFTER default 21600s; move BOTH in one wave", defaultClaimLiveWindow)
+	}
+
+	if defaultClaimLiveWindow != 21600*time.Second {
+		t.Fatalf("defaultClaimLiveWindow = %v, want exactly 21600s (the script literal)", defaultClaimLiveWindow)
+	}
+}
