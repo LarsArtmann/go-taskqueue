@@ -135,8 +135,9 @@ func NewProjectionRuntime(ctx context.Context, src queue.Store, cfg config.Deplo
 }
 
 // Close releases the runtime in reverse construction order: host stop and
-// close, then the DLQ sidecar, then the model. Safe to call once; the
-// serve wiring defers it exactly where its stacked defers used to live.
+// close, then the DLQ sidecar, then the model. Idempotent: each field is
+// nil'd after release, so a second Close is a no-op (the serve wiring
+// relies on this — the pump's deferred Close runs after cmdServe's).
 func (r *ProjectionRuntime) Close() error {
 	var errs []error
 
