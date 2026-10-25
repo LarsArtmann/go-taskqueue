@@ -3,17 +3,20 @@
 # Parses aggregate tick-count claims — "rows N-M ticked", "row N ticked",
 # "rows N-M `[x]`" — from the docs/status README index rows + closeout
 # reports and verifies every claimed row reads `- [x]` in TODO_LIST.md at
-# the cited tick commit (`git show <sha>:TODO_LIST.md`); HEAD-only fallback
-# when no tick commit is cited. The 2026-10-21 index row claimed "rows
-# 776-778 ticked" while row 777 sat unchecked — the class passed every gate
-# until a paid reviewer caught it. A commit is bound to a claim ONLY when
-# it rides the tick verb itself (`ticked (sha)`, `ticked in|by|at|via sha`
-# within the claim window), so the report's own commit or an UNCHECKED
-# citation never hijacks the check (annotate-in-place corrections stay
-# WARN-free when they cite the tick commit). archived/ reports are frozen
-# annotate-never-rewrite history: not scanned. Mismatch = WARN pointing at
-# the cite-the-tick-commit convention; hard-gate flip is a separate
-# follow-up row, not bundled here.
+# the claim's own day tree (`git rev-list --before "<date> 23:59:59"` over
+# the report's filename date or the README index-row date cell); an
+# explicitly cited tick commit overrides, and an undated file falls back to
+# HEAD. The 2026-10-21 index row claimed "rows 776-778 ticked" while row
+# 777 sat unchecked — the class passed every gate until a paid reviewer
+# caught it; day-tree verification catches it at its own commit instead of
+# re-litigating renumbered rows forever. A commit is bound to a claim ONLY
+# when it rides the tick verb itself (`ticked (sha)`, `ticked
+# in|by|at|via sha` within the claim window), so the report's own commit or
+# an UNCHECKED citation never hijacks the check (annotate-in-place
+# corrections stay WARN-free when they cite the tick commit). archived/
+# reports are frozen annotate-never-rewrite history: not scanned. Mismatch
+# = WARN pointing at the cite-the-tick-commit convention; hard-gate flip is
+# a separate follow-up row, not bundled here.
 set -uo pipefail
 export LC_ALL=C
 cd "$(dirname "$0")/.." || exit 1
@@ -21,19 +24,28 @@ self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
 declare -A LIST_CACHE=()
 
+# list_at KEY: KEY is "HEAD", "day:YYYY-MM-DD" (that day's end-of-day
+# tree), or a raw commit-ish. TQ_TICK_LIST_CMD overrides the fetch for the
+# self-test negative battery (same KEY contract).
 list_at() {
-	local sha="$1"
-	if [[ -n "${LIST_CACHE[$sha]:-}" ]]; then
-		printf '%s' "${LIST_CACHE[$sha]}"
+	local key="$1"
+	if [[ -n "${LIST_CACHE[$key]:-}" ]]; then
+		printf '%s' "${LIST_CACHE[$key]}"
 		return 0
 	fi
-	local content
+	local content rev
 	if [ -n "${TQ_TICK_LIST_CMD:-}" ]; then
-		content="$("$TQ_TICK_LIST_CMD" "$sha")" || return 1
+		content="$("$TQ_TICK_LIST_CMD" "$key")" || return 1
+	elif [[ "$key" == "HEAD" ]]; then
+		content="$(git show "HEAD:TODO_LIST.md")" || return 1
+	elif [[ "$key" == day:* ]]; then
+		rev="$(git rev-list -1 --before="${key#day:} 23:59:59" HEAD)" || return 1
+		[ -n "$rev" ] || return 1
+		content="$(git show "$rev:TODO_LIST.md")" || return 1
 	else
-		content="$(git show "$sha:TODO_LIST.md")" || return 1
+		content="$(git show "$key:TODO_LIST.md")" || return 1
 	fi
-	LIST_CACHE[$sha]=$content
+	LIST_CACHE[$key]=$content
 	printf '%s' "$content"
 }
 
@@ -42,8 +54,8 @@ warns=0
 skips=0
 
 verify_claim() {
-	local file="$1" lineno="$2" span="$3" a="$4" b="$5" sha="$6"
-	local at="${sha:-HEAD}" list n row
+	local file="$1" lineno="$2" span="$3" a="$4" b="$5" key="$6"
+	local at="$key" list n row
 	if [ "$b" -lt "$a" ] || [ $((b - a)) -gt 50 ]; then
 		skips=$((skips + 1))
 		echo "TICK-CLAIM SKIP: $file:$lineno \"$span\" — degenerate range"
@@ -69,10 +81,10 @@ verify_claim() {
 }
 
 scan_line() {
-	local file="$1" lineno="$2" line="$3"
+	local file="$1" lineno="$2" line="$3" fallback="$4"
 	local apos="'"
 	local claim_re="rows? [0-9]+([/-][0-9]+)?([[:space:]]+[A-Za-z${apos}]+){0,2}[[:space:]]+(ticked|\`?\[x\]\`?)"
-	local off span low window sha match
+	local off span low window key
 	while IFS=: read -r off span; do
 		[ -n "$span" ] || continue
 		low="${span,,}"
@@ -82,24 +94,33 @@ scan_line() {
 		[[ "$span" =~ ^rows?[[:space:]]([0-9]+)([/-]([0-9]+))? ]] || continue
 		local a="${BASH_REMATCH[1]}" b="${BASH_REMATCH[3]:-}"
 		[ -n "$b" ] || b="$a"
-		sha=""
+		key="$fallback"
 		window="${line:off+${#span}:140}"
 		if [[ "$window" =~ \(([0-9a-f]{8,40})\) ]]; then
-			sha="${BASH_REMATCH[1]}"
+			key="${BASH_REMATCH[1]}"
 		elif [[ "$window" =~ [[:space:]](in|by|at|via)[[:space:]]+([0-9a-f]{8,40}) ]]; then
-			sha="${BASH_REMATCH[2]}"
+			key="${BASH_REMATCH[2]}"
 		fi
-		verify_claim "$file" "$lineno" "$span" "$a" "$b" "$sha"
-		# shellcheck disable=SC2034  # match is read by IFS
-		match=1
+		verify_claim "$file" "$lineno" "$span" "$a" "$b" "$key"
 	done < <(grep -obE "$claim_re" <<<"$line" || true)
 }
 
 scan_file() {
-	local f="$1" lineno=0 line
+	local f="$1" lineno=0 line fallback
+	if [[ "$f" =~ (^|/)([0-9]{4}-[0-9]{2}-[0-9]{2})_ ]]; then
+		fallback="day:${BASH_REMATCH[2]}"
+	else
+		fallback="HEAD"
+	fi
 	while IFS= read -r line || [ -n "$line" ]; do
 		lineno=$((lineno + 1))
-		scan_line "$f" "$lineno" "$line"
+		# README index rows carry their own date cell — a fresher fallback
+		# than any file-level date, since README.md is continuously edited.
+		local rowfallback="$fallback"
+		if [[ "$line" =~ ^\|[[:space:]]*([0-9]{4}-[0-9]{2}-[0-9]{2}) ]]; then
+			rowfallback="day:${BASH_REMATCH[1]}"
+		fi
+		scan_line "$f" "$lineno" "$line" "$rowfallback"
 	done <"$f"
 }
 
@@ -112,6 +133,7 @@ self_test() {
 #!/bin/sh
 case "$1" in
 HEAD) printf '%s\n' '- [x] alpha landed' '- [ ] beta open' '- [x] gamma landed' ;;
+day:2026-01-01) printf '%s\n' '- [x] alpha landed' '- [ ] beta pending' ;;
 aaaaaaaaaaaaaaaa) printf '%s\n' '- [x] alpha landed' '- [x] beta landed' ;;
 bbbbbbbbbbbbbbbb) printf '%s\n' '- [x] alpha landed' '- [ ] beta open' ;;
 *) exit 1 ;;
@@ -122,16 +144,17 @@ EOF
 	printf 'sha-cited rows 1-2 ticked in aaaaaaaaaaaaaaaa plus row 2 ticked in bbbbbbbbbbbbbbbb\n' >"$tmp/f2.md"
 	printf 'negatives: rows 1-2 unticked, row 3 not ticked, row 4 was UNCHECKED\n' >"$tmp/f3.md"
 	printf 'broken row 1 ticked in deadbeef00\n' >"$tmp/f4.md"
+	printf 'dated claim: row 2 ticked\n' >"$tmp/2026-01-01_00-00_selftest.md"
 	local files out out2
-	files="$(printf '%s\n' "$tmp/f1.md" "$tmp/f2.md" "$tmp/f3.md" "$tmp/f4.md")"
+	files="$(printf '%s\n' "$tmp/f1.md" "$tmp/f2.md" "$tmp/f3.md" "$tmp/f4.md" "$tmp/2026-01-01_00-00_selftest.md")"
 	out="$(TQ_TICK_LIST_CMD="$tmp/listcmd.sh" TQ_TICK_CLAIM_FILES="$files" "$self_abs" 2>&1)"
-	if ! grep -qF 'tick-claims summary: 2 ok, 2 warned, 1 skipped' <<<"$out"; then
-		echo "FAIL: negative battery counters off (want 2 ok, 2 warned, 1 skipped)"
+	if ! grep -qF 'tick-claims summary: 2 ok, 3 warned, 1 skipped' <<<"$out"; then
+		echo "FAIL: negative battery counters off (want 2 ok, 3 warned, 1 skipped)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
-	if [ "$(grep -c 'TICK-CLAIM WARN' <<<"$out")" -ne 2 ]; then
-		echo "FAIL: expected exactly 2 WARNs (bad-HEAD range + wrong-cited-sha)"
+	if [ "$(grep -c 'TICK-CLAIM WARN' <<<"$out")" -ne 3 ]; then
+		echo "FAIL: expected exactly 3 WARNs (bad-HEAD range + wrong-cited-sha + stale-day)"
 		printf '%s\n' "$out"
 		exit 1
 	fi
@@ -147,6 +170,11 @@ EOF
 	fi
 	if ! grep -q 'at bbbbbbbbbbbbbbbb' <<<"$out"; then
 		echo "FAIL: WARN does not name the cited (wrong) tick commit"
+		printf '%s\n' "$out"
+		exit 1
+	fi
+	if ! grep -q 'at day:2026-01-01' <<<"$out"; then
+		echo "FAIL: day-tree fallback key not exercised"
 		printf '%s\n' "$out"
 		exit 1
 	fi
