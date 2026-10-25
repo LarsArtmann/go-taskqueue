@@ -40,8 +40,8 @@ self_test() {
 	fi
 	must_mention "ORPHANED GUARD: $orphan" "$out" "orphan branch fires on the unwired fixture"
 	must_mention "guard-wiring summary: 1 scripts wired, 1 orphaned" "$out" "summary pins exact counters (ritual wired + fixture orphaned)"
-	local pos_out pos_rc=0 pos_wired pos_orphaned
-	pos_out="$("$self_abs" 2>&1)" || pos_rc=$?
+	local pos_out pos_wired pos_orphaned
+	pos_out="$("$self_abs" 2>&1)" || true
 	pos_wired=$(printf '%s\n' scripts/check-*.sh scripts/smoke/*.sh | wc -l)
 	pos_wired=$((pos_wired + 1)) # + the convention-invoked session-start ritual
 	pos_orphaned=$(grep -c '^ORPHANED GUARD:' <<<"$pos_out" || true)

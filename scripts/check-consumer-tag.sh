@@ -129,7 +129,8 @@ trap 'rm -rf "$verify_dir"' EXIT
 	export GOTOOLCHAIN=auto
 	export GOEXPERIMENT=jsonv2
 	write_consumer_spec . "$version"
-	go get $(cat get.list) >/dev/null
+	mapfile -t get_specs < get.list
+	go get "${get_specs[@]}" >/dev/null
 	go mod tidy >/dev/null
 	go build -o /dev/null .
 )
