@@ -154,15 +154,41 @@ check_rails() {
 	# A commit footered with a DIFFERENT id is never rewritten (footer
 	# rewrites are a manual, reviewed operation); a fully footered range is
 	# a no-op.
-	local c msg unfootered=0
+	local c msg unfootered=0 mode=${3:-}
+	local -a blockers=()
 	while IFS= read -r c; do
 		msg=$(git log -1 --format='%B' "$c")
 		if has_footer "$msg"; then
 			footer_well_formed "$msg" "$id" && continue
-			die "refusing: commit $c carries a different Task-Queue-ID footer"
+			blockers+=("$c")
+			continue
 		fi
 		unfootered=$((unfootered + 1))
 	done < <(git rev-list "$base..HEAD")
+	if [ "${#blockers[@]}" -gt 0 ]; then
+		# Row 55 span terminator: ONE different-id footer below an
+		# otherwise-exactly-mine span (my footer at HEAD + my sweep + a
+		# foreign footer below — the 2026-10-12 01-41 shape) is the span
+		# boundary, not a refusal: with a DEFAULT base the heal narrows to
+		# the exactly-mine span above it. An explicit --from is a conscious
+		# choice and never auto-narrows; >1 blocker is a genuinely mixed
+		# span and refuses with the exact invocation that would be accepted
+		# (row 56: never make the caller eyeball git log).
+		if [ "${#blockers[@]}" -eq 1 ] && [ -z "$mode" ]; then
+			echo "narrow ${blockers[0]}"
+			return 0
+		fi
+		local oldest="${blockers[${#blockers[@]} - 1]}"
+		{
+			echo "refusing: ${#blockers[@]} commit(s) in $base..HEAD inside the heal range:"
+			for c in "${blockers[@]}"; do
+				echo "  $(git log -1 --oneline "$c") carries a different Task-Queue-ID footer"
+			done
+			echo "Heal only your span (auto-detected oldest blocker):"
+			echo "  $0 $id --from $oldest"
+		} >&2
+		return 1
+	fi
 	[ "$unfootered" -gt 0 ] || echo "noop"
 }
 
@@ -383,7 +409,13 @@ main() {
 
 	git update-ref -d "$BACKUP_REF" 2>/dev/null
 	local rail
-	rail=$(check_rails "$base" "$id") || exit 1
+	rail=$(check_rails "$base" "$id" "${base_arg:+explicit}") || exit 1
+	if [[ "$rail" == narrow\ * ]]; then
+		local narrowed="${rail#narrow }"
+		echo "span-terminator: one different-id footer at $(git log -1 --oneline "$narrowed") bounds the exactly-mine span — healing only $narrowed..HEAD (row 55)"
+		base="$narrowed"
+		rail=$(check_rails "$base" "$id" explicit) || exit 1
+	fi
 	if [ "$rail" = "noop" ]; then
 		echo "nothing to heal: every commit in $base..HEAD already carries the footer"
 		return 0
@@ -714,6 +746,71 @@ EOF
 		echo "SELF-TEST FAIL: --retitle subjects wrong" >&2
 		cat "$tmp/err_retitle" >&2
 	fi
+
+	# Row 55 span-terminator: a fresh repo with [foreign footer] -> [my
+	# footer-less sweep] -> [my target footer at HEAD]; the BARE form must
+	# auto-narrow to the exactly-mine sweep instead of refusing on the
+	# foreign footer below it (the 2026-10-12 01-41 shape).
+	local repo2="$tmp/repo2"
+	git init -q "$repo2"
+	git -C "$repo2" config user.email t@t
+	git -C "$repo2" config user.name t
+	echo a >"$repo2/a.txt"
+	git -C "$repo2" add a.txt
+	git -C "$repo2" commit -qm "base"
+	git -C "$repo2" update-ref refs/remotes/origin/master HEAD
+	echo f >"$repo2/f.txt"
+	git -C "$repo2" add f.txt
+	git -C "$repo2" commit -qm $'chore: foreign sweep\n\nTask-Queue-ID: feedfacefeedfacefeedfeedfeedface'
+	local foreign_sha
+	foreign_sha=$(git -C "$repo2" rev-parse HEAD)
+	echo m >"$repo2/m.txt"
+	git -C "$repo2" add m.txt
+	git -C "$repo2" commit -qm "chore: sweep mine"
+	echo w >"$repo2/w.txt"
+	git -C "$repo2" add w.txt
+	git -C "$repo2" commit -qm $'fix: real work\n\nTask-Queue-ID: deadbeef00000000000000000000000000000002'
+	(cd "$repo2" && "$self" deadbeef00000000000000000000000000000002) >"$tmp/out_term" 2>"$tmp/err_term" &&
+		ok=$((ok + 1)) || {
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: bare-form span-terminator exited non-zero" >&2
+		cat "$tmp/err_term" >&2
+	}
+	if grep -qF "span-terminator" "$tmp/out_term" &&
+		[ "$(git -C "$repo2" rev-parse HEAD~2)" = "$foreign_sha" ] &&
+		footer_well_formed "$(git -C "$repo2" log -1 --format='%B' HEAD~1)" "deadbeef00000000000000000000000000000002" &&
+		[ "$(git -C "$repo2" log -1 --format='%B' HEAD)" = "$(printf 'fix: real work\n\nTask-Queue-ID: deadbeef00000000000000000000000000000002')" ]; then
+		ok=$((ok + 1))
+	else
+		fail=$((fail + 1))
+		echo "SELF-TEST FAIL: span-terminator heal wrong (foreign commit must stay put; sweep footered; HEAD preserved)" >&2
+		cat "$tmp/out_term" >&2
+	fi
+
+	# Row 56 refusal UX: TWO different-id footers in the range must refuse
+	# AND print the exact --from invocation (the oldest blocker) so the
+	# caller never has to eyeball git log.
+	local repo3="$tmp/repo3"
+	git init -q "$repo3"
+	git -C "$repo3" config user.email t@t
+	git -C "$repo3" config user.name t
+	echo a >"$repo3/a.txt"
+	git -C "$repo3" add a.txt
+	git -C "$repo3" commit -qm "base"
+	git -C "$repo3" update-ref refs/remotes/origin/master HEAD
+	echo f1 >"$repo3/f1.txt"
+	git -C "$repo3" add f1.txt
+	git -C "$repo3" commit -qm $'chore: foreign one\n\nTask-Queue-ID: aaaa000000000000000000000000000001'
+	local blocker1
+	blocker1=$(git -C "$repo3" rev-parse HEAD)
+	echo f2 >"$repo3/f2.txt"
+	git -C "$repo3" add f2.txt
+	git -C "$repo3" commit -qm $'chore: foreign two\n\nTask-Queue-ID: bbbb000000000000000000000000000002'
+	echo m >"$repo3/m.txt"
+	git -C "$repo3" add m.txt
+	git -C "$repo3" commit -qm "chore: sweep mine"
+	(cd "$repo3" && "$self" deadbeef00000000000000000000000000000003) >"$tmp/out_multi" 2>"$tmp/err_multi"
+	expect_refusal "mixed span (two foreign footers)" $? "--from $blocker1" "$tmp/err_multi"
 
 	if [ "$fail" = "0" ]; then
 		echo "SELF-TEST OK ($ok checks)"
