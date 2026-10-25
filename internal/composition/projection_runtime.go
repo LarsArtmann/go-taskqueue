@@ -62,8 +62,10 @@ func NewProjectionRuntime(ctx context.Context, src queue.Store, cfg config.Deplo
 	} else {
 		slog.Warn(
 			"composition: projection fold lock held by another folder — mounting the runtime read-only (no fold, no host)",
-			"home", modelPath,
-			"lock", readmodel.FoldLockPath(modelPath),
+			"home",
+			modelPath,
+			"lock",
+			readmodel.FoldLockPath(modelPath),
 		)
 	}
 

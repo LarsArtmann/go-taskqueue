@@ -29,6 +29,7 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 	t.Cleanup(func() { _ = store.Close() })
 
 	const total = 9
+
 	ids := make([]string, 0, total)
 
 	ties := 0
@@ -51,6 +52,7 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 		}
 
 		lastCreated = created
+
 		ids = append(ids, string(tk.ID))
 	}
 
@@ -87,6 +89,7 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 
 		t.Logf("page %d: %d rows, has-next=%v", pages+1, len(rows), next != "")
 		pages++
+
 		paged = append(paged, rows...)
 
 		if next == "" {
@@ -134,7 +137,11 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 
 	// A malformed cursor fails the read (WithCursorString's silent
 	// restart-to-page-one is never allowed to lie through this seam).
-	if _, _, err := m.TasksPage(ctx, readmodel.TaskFilter{}, readmodel.TaskPage{Limit: 4, Cursor: "!!!not-a-cursor"}); err == nil {
+	if _, _, err := m.TasksPage(
+		ctx,
+		readmodel.TaskFilter{},
+		readmodel.TaskPage{Limit: 4, Cursor: "!!!not-a-cursor"},
+	); err == nil {
 		t.Fatal("malformed cursor accepted — pagination silently restarted")
 	}
 
@@ -151,6 +158,7 @@ func TestTasksPageCursorRoundTrip(t *testing.T) {
 
 	// The filter composes with pagination: one project-scoped page.
 	pagedProject := "web"
+
 	prows, _, err := m.TasksPage(
 		ctx,
 		readmodel.TaskFilter{Project: &pagedProject},
