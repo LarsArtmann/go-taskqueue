@@ -579,7 +579,7 @@ func runGateBoard(ctx context.Context, scriptsDir string, scripts []string) chec
 	var items []string
 	red := 0
 
-	for _, script := range doctorGateScripts {
+	for _, script := range scripts {
 		gateCtx, cancel := context.WithTimeout(ctx, doctorGateTimeout)
 		out, err := exec.CommandContext(gateCtx, "bash", filepath.Join(scriptsDir, script)).CombinedOutput()
 		cancel()
