@@ -25,7 +25,18 @@ func openProbe(t *testing.T, path string) *sql.DB {
 func createPlannedTable(t *testing.T, path string, cols []string) {
 	t.Helper()
 
-	db := openProbe(t, path)
+	// Self-contained fixture: the create-side handle must be CLOSED by
+	// the time the helper returns — ConvergeProjectionHome renames the
+	// file, and on Windows a rename over a live sql.DB pool connection
+	// fails "being used by another process" no matter how long the
+	// snapshot retry waits (test-windows red 2026-10-25, run
+	// 40167619168: retry.exhausted against the still-open fixture pool).
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("open planned-table fixture: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
 	decl := "id TEXT PRIMARY KEY"
 
 	var declSb28 strings.Builder
