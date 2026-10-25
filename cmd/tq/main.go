@@ -3750,6 +3750,12 @@ const priorityFromImportance = "importance"
 
 var version = "dev"
 
+// vcsRev is the commit rev injected at nix-build time (-ldflags
+// "-X main.vcsRev=..."): the nix build filters .git out of the source, so
+// debug.ReadBuildInfo carries no vcs.revision there and the deployed
+// binary would otherwise print no rev at all.
+var vcsRev = ""
+
 func cmdVersion(args []string) error {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
@@ -3758,19 +3764,22 @@ func cmdVersion(args []string) error {
 		return nil
 	}
 
-	rev := "(unknown)"
+	rev := vcsRev
 
-	for _, s := range info.Settings {
-		if s.Key == "vcs.revision" && s.Value != "" {
-			rev = s.Value
-			if len(rev) > 12 {
-				rev = rev[:12]
+	if rev == "" {
+		for _, s := range info.Settings {
+			if s.Key == "vcs.revision" && s.Value != "" {
+				rev = s.Value
 			}
 		}
 	}
 
+	if len(rev) > 12 {
+		rev = rev[:12]
+	}
+
 	vcs := ""
-	if rev != "(unknown)" {
+	if rev != "" {
 		vcs = " (" + rev + ")"
 	}
 

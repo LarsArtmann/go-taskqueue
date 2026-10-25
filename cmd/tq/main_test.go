@@ -414,3 +414,49 @@ func TestResultDetailDecodesTypedResults(t *testing.T) {
 		t.Fatalf("trail-less result = %+v, want nil", got)
 	}
 }
+
+func TestCmdVersionPrintsLdflagsRev(t *testing.T) {
+	tests := []struct {
+		name   string
+		rev    string
+		wantIn string
+		notIn  string
+		prefix string
+	}{
+		{
+			name:   "nix-injected rev replaces the BuildInfo fallback",
+			rev:    "9ff63bd3f1e8deadbeef",
+			prefix: "tq dev (9ff63bd3f1e8), go",
+		},
+		{
+			name:   "empty rev prints no suffix (dev build without VCS info)",
+			rev:    "",
+			notIn:  "()",
+			prefix: "tq dev, go",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			old := vcsRev
+
+			vcsRev = tt.rev
+
+			defer func() { vcsRev = old }()
+
+			got := captureStdout(t, func() {
+				if err := cmdVersion(nil); err != nil {
+					t.Errorf("cmdVersion: %v", err)
+				}
+			})
+
+			if !strings.HasPrefix(got, tt.prefix) {
+				t.Errorf("version line = %q, want prefix %q", got, tt.prefix)
+			}
+
+			if tt.notIn != "" && strings.Contains(got, tt.notIn) {
+				t.Errorf("version line = %q, want no %q", got, tt.notIn)
+			}
+		})
+	}
+}
