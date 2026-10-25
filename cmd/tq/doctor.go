@@ -92,6 +92,15 @@ type doctorOptions struct {
 	// touches the journal directory (sqlite WAL files) — the doctor stays
 	// read-only on the tree it diagnoses unless asked.
 	DLQ bool
+	// Gates, when set (--gates), runs the countable-gate fleet board: each
+	// self-test-pinned gate script executes once and its rc + summary tail
+	// land as board rows — the standing red/green surface at HEAD (row
+	// 1119) so sessions stop re-discovering gate reds by hand. Opt-in:
+	// the board adds tens of seconds to an otherwise instant command.
+	Gates bool
+	// ScriptsDir overrides the gate-script directory (tests point it at a
+	// fixture dir; empty = ./scripts relative to the invoking cwd).
+	ScriptsDir string
 }
 
 // doctorHeartbeatWindow is how long ago a task.heartbeat fact still counts
