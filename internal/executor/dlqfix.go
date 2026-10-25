@@ -254,6 +254,11 @@ func dlqFixPrompt(p DLQFixPayload) string {
 
 Task-Queue-ID: {{TASK_ID}}
 
+   The footer must be the FINAL line of the message: if your tooling appends
+   an attribution block (e.g. "Generated with Crush" / "Assisted-by"), put
+   the footer AFTER that block — a footer stranded above attribution is
+   invisible to git trailers and the pre-commit hook rejects the commit.
+
 4. If the root cause is OUTSIDE this repository (provider outage, operator
    error, missing external resource or credentials, a change that belongs in
    another repo): change NOTHING. Rule the task unfixable instead.

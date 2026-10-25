@@ -975,7 +975,7 @@ const DefaultCloseoutPrompt = `What did you forget? What could you have done bet
 FULL COMPREHENSIVE & DETAILED STATUS UPDATE!
 INCLUDE WORK: a) FULLY DONE; b) PARTIALLY DONE; c) NOT STARTED; d) TOTALLY FUCKED UP! e) WHAT WE SHOULD IMPROVE! f) Up to 50 things we should get done next! g) Ask up to 3 questions that you can NOT figure out yourself!
 
-Run "date" (CLI) to get the current date-time, then write the full report at docs/status/tasks/<YYYY-MM-DD_HH-MM>_task-{{TASK_ID}}.md. Commit it with the same Task-Queue-ID footer as your work commit. Never push.
+Run "date" (CLI) to get the current date-time, then write the full report at docs/status/tasks/<YYYY-MM-DD_HH-MM>_task-{{TASK_ID}}.md. Commit it with the same Task-Queue-ID footer as your work commit. The footer must be the FINAL line of the message: if your tooling appends an attribution block (e.g. "Generated with Crush" / "Assisted-by"), put the footer AFTER that block — a footer stranded above attribution is invisible to git trailers and the pre-commit hook rejects the commit. Never push.
 
 TODO_LIST.md appends from THIS closeout are HARD CAP 10 new unchecked items (the status prompt's cap): pick the highest-value follow-ups from (e)/(f)/(g); the full (f) list stays in the report only. Dedup-check existing unchecked items first — a reworded duplicate mints a fresh paid dispatch.
 

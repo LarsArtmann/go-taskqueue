@@ -80,6 +80,10 @@ Outcome: the item landed, verified, committed.
 
    Task-Queue-ID: {{TASK_ID}}
 
+   The footer must be the FINAL line of the message: if your tooling appends
+   an attribution block (e.g. "Generated with Crush" / "Assisted-by"), put
+   the footer AFTER that block — a footer stranded above attribution is
+   invisible to git trailers and the pre-commit hook rejects the commit.
    Never push. Never edit .crushrc, crush.json, or .tq-verify.
 5. Follow-ups you discover go to the backlog: append NEW unchecked TODO_LIST
    items (one per line, agent-executable) — no item describing THIS task's work.
@@ -119,6 +123,10 @@ Outcome: every item landed, verified, committed — one commit per item.
 
    Task-Queue-ID: {{TASK_ID}}
 
+   The footer must be the FINAL line of the message: if your tooling appends
+   an attribution block (e.g. "Generated with Crush" / "Assisted-by"), put
+   the footer AFTER that block — a footer stranded above attribution is
+   invisible to git trailers and the pre-commit hook rejects the commit.
    Never push. Never edit .crushrc, crush.json, or .tq-verify.
 5. Follow-ups you discover go to the backlog: append NEW unchecked TODO_LIST
    items (one per line, agent-executable) — no item describing THIS batch's work.

@@ -295,7 +295,11 @@ Do not modify code, configuration, tests, or any other tracked file. If you noti
 
 1. Commit your changes with a clear message ending in the exact footer line
    Task-Queue-ID: {{TASK_ID}}
-   (you have explicit permission to commit for this task). Never push.
+   (you have explicit permission to commit for this task). The footer must be
+   the FINAL line of the message: if your tooling appends an attribution block
+   (e.g. "Generated with Crush" / "Assisted-by"), put the footer AFTER that
+   block — a footer stranded above attribution is invisible to git trailers
+   and the pre-commit hook rejects the commit. Never push.
 2. Record your result by running EXACTLY:
 
 tq verdict '{"report": "docs/status/<the-file-you-wrote>.md", "next_items": <number of items appended>}
