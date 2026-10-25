@@ -270,6 +270,42 @@ func TestServeHeaderMatrix(t *testing.T) {
 		serveHealthRow.check(t, resp.Header, "GET /health")
 	})
 
+	t.Run("remaining /health* routes match the health row", func(t *testing.T) {
+		t.Parallel()
+
+		s := New(newTestStore(t), Config{})
+		server := httptest.NewServer(s.Handler())
+		t.Cleanup(server.Close)
+
+		for _, path := range []string{
+			"/health/favicon.svg",
+			"/healthz",
+			"/readyz",
+			"/startupz",
+		} {
+			resp, err := http.Get(server.URL + path)
+			if err != nil {
+				t.Fatalf("GET %s: %v", path, err)
+			}
+			resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				t.Errorf("GET %s: status = %d, want 200", path, resp.StatusCode)
+			}
+
+			row := serveHealthRow
+			if path == "/health/favicon.svg" {
+				// The favicon is a static asset like the SDK bundle: the
+				// matrix pins it cacheable, not no-cache.
+				row = matrixHeaders{}
+				maps.Copy(row, serveHealthRow)
+				row["cache-control"] = eq("public, max-age=86400")
+			}
+
+			row.check(t, resp.Header, "GET "+path)
+		}
+	})
+
 	t.Run("health SDK bundle is the only cacheable response", func(t *testing.T) {
 		t.Parallel()
 
