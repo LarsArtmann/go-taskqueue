@@ -140,8 +140,9 @@ Task-Queue-ID: 000001a175f4de403dc14ed9579100000000'
 	exit 0
 fi
 
-# Hook mode: pre-push stdin (no args = not a hook invocation).
-if [ "${1:-}" = "" ]; then
+# Hook mode: pre-push pipes the ref lines on stdin; a terminal stdin is an
+# interactive misuse (use --self-test).
+if [ -t 0 ]; then
 	echo "usage: check-push-timing.sh (pre-push stdin) | --self-test" >&2
 	exit 2
 fi
