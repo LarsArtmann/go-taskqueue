@@ -348,15 +348,23 @@ func TestSecretHitsMergesOverlappingPatternSpans(t *testing.T) {
 // secrets-in-logs pass must leave NOTHING for SecretHits to find —
 // `tq audit --journal` scans stored facts with SecretHits, so a sample
 // that survives RedactSecrets would re-appear as SECRET EVIDENCE in
-// redacted output. Every canonical sample must go fully silent.
+// redacted output. Every canonical sample must go fully silent; the table
+// inputs cover the canonical samples PLUS the marker itself and the
+// empty string (05-16 §f5): the audit must never re-trigger on the
+// replacement marker it emits, nor on empty output.
 func TestPostRedactionSilence(t *testing.T) {
 	t.Parallel()
 
+	inputs := map[string]string{"": "", "redact-marker": RedactMarker}
 	for i, sample := range secretPatternSamples {
+		inputs[fmt.Sprintf("pattern-%d", i)] = sample
+	}
+
+	for name, sample := range inputs {
 		redacted := RedactSecrets(sample)
 
 		if hits := SecretHits(redacted); hits != 0 {
-			t.Errorf("pattern %d: redacted sample still shows %d secret location(s): %q", i, hits, redacted)
+			t.Errorf("%s: redacted input still shows %d secret location(s): %q", name, hits, redacted)
 		}
 	}
 }
