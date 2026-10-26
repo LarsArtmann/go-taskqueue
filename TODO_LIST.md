@@ -16,6 +16,9 @@ not here.
 
 ## 16-42 closeout appends (2026-10-25; source: docs/status/tasks/2026-10-25_16-42_task-000001a173b7428adb624902cd4e00000000.md §e/§f; deduped vs rows 196-202)
 
+- [ ] journal-drift.sh: negative-path self-test for the fakeAuditProbe extraction — env hook (e.g. TQ_PROBE_FILE) forcing the empty-grep FAIL branch, per the countable-gate self-test convention (2026-10-26 02-34 closeout §e1/§f1)
+- [ ] AGENTS.md secrets-redaction bullet: name the shared fakeAuditProbe const so future agents extend the ONE fixture instead of minting a fresh literal (2026-10-26 02-34 closeout §e3/§f2)
+- [ ] journal-drift.sh phase-5 seeding: switch strftime('%s','now') to millisecond timestamps to honor the store invariant the smoke audits (2026-10-26 02-34 closeout §e5/§f3)
 - [ ] Add a shared negative-fixture helper (scripts/lib) for check-* gate self-tests: builds a temp tree from a fixture file list, runs the gate, asserts expected FAIL messages — generalizes the ad-hoc mktemp negative batteries (16-42 report §e5; this session's first negative run failed on a missing .tq-verify instead of exercising the pin)
 - [ ] Define the KNOWN_FLAKY sed range ONCE in scripts/check-verify.sh (a local variable) and reuse it in all three extraction sites (pin 6 AGENTS.md→lib, lib→AGENTS.md, empty-list check) — the `/^KNOWN_FLAKY=(/,/^)/p` range is currently copy-pasted (16-42 report §e3)
 - [ ] Add a comment-mask negative case to check-verify.sh's self-test: lib with the array entry dropped but the test name still present in a comment must FAIL (the strengthened array-region check is only negative-tested via full entry removal today) (16-42 report §f8)
