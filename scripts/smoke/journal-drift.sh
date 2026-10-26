@@ -74,18 +74,23 @@ echo "$OUT" | grep -q "SECRET EVIDENCE" && fail "audit reports SECRET EVIDENCE o
 echo "ok: zero SECRET EVIDENCE"
 
 echo "== phase 5: positive-path SECRET EVIDENCE (locations row label) =="
-# Seed a clearly-fake token shape (matches the redaction patterns, never
-# a real credential) into a task.failed fact's error field, then the
-# audit MUST surface it as a SECRET EVIDENCE row with `locations=1` —
-# the end-to-end pin of the renamed `hits=`→`locations=` CLI surface.
-python3 - "$DB" <<'PY' || fail "python secret seeding"
+# Seed the shared SMOKETEST fake shape (single definition:
+# fakeAuditProbe in internal/executor/redact_test.go, grep-extracted so
+# the smoke and the unit table cannot drift) into a task.failed fact's
+# error field, then the audit MUST surface it as a SECRET EVIDENCE row
+# with `locations=1` — the end-to-end pin of the renamed
+# `hits=`→`locations=` CLI surface.
+PROBE="$(sed -n 's/^const fakeAuditProbe = "\(.*\)"$/\1/p' "$REPO_ROOT/internal/executor/redact_test.go")"
+[ -n "$PROBE" ] || fail "fakeAuditProbe missing from internal/executor/redact_test.go — the shared SECRET EVIDENCE fixture moved; update this extraction"
+python3 - "$DB" "$PROBE" <<'PY' || fail "python secret seeding"
 import sqlite3, sys
 db = sqlite3.connect(sys.argv[1])
+probe = sys.argv[2]
 row = db.execute("SELECT id FROM tasks LIMIT 1").fetchone()
 assert row, "no tasks seeded"
 db.execute(
     "INSERT INTO facts (time, task_id, type, error) VALUES (strftime('%s','now'), ?, 'task.failed', ?)",
-    (row[0], "boom: sk-ant-SMOKETEST-0000000000000000"),
+    (row[0], "boom: " + probe),
 )
 db.commit()
 PY

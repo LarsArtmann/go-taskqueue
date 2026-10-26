@@ -27,6 +27,27 @@ const (
 	fakeAssign    = "api_key = a1b2c3d4e5f6g7h8i9j0"
 )
 
+// fakeAuditProbe is the SINGLE definition of the SMOKETEST fake secret
+// shape consumed by BOTH this package's tests and the journal-drift.sh
+// phase-5 audit smoke (which greps it out of this file at runtime) — one
+// fixture, so the smoke and the unit tests cannot drift. Must stay on a
+// single `fakeAuditProbe = "…"` line for the grep contract.
+const fakeAuditProbe = "sk-ant-SMOKETEST-0000000000000000"
+
+// TestAuditProbeSharedFixture pins the shared SMOKETEST probe against the
+// pattern table: the audit must count it and redaction must mask it, so
+// journal-drift.sh's seeded-secret phase can never outlive the patterns.
+func TestAuditProbeSharedFixture(t *testing.T) {
+	t.Parallel()
+
+	if hits := SecretHits(fakeAuditProbe); hits != 1 {
+		t.Errorf("SecretHits(fakeAuditProbe) = %d, want 1 — the journal-drift.sh phase-5 fixture drifted from the pattern table", hits)
+	}
+	if redacted := RedactSecrets(fakeAuditProbe); strings.Contains(redacted, fakeAuditProbe) {
+		t.Errorf("RedactSecrets left the shared audit probe intact: %q", redacted)
+	}
+}
+
 func TestRedactSecretsMasksProviderTokens(t *testing.T) {
 	t.Parallel()
 
