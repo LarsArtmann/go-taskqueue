@@ -43,7 +43,7 @@ check_commit() {
 
 # run_hook <now> on pre-push stdin lines "<local-ref> <local-sha> <remote-ref> <remote-sha>".
 run_hook() {
-	local now="$1" refused=0 total=0 line lsha
+	local now="$1" refused=0 total=0
 	refused_summary="push-timing summary: 0 commits checked, 0 refused"
 	while read -r _ lsha _ _; do
 		case "$lsha" in
