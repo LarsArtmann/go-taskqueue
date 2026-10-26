@@ -41,8 +41,13 @@ ci-local):
   before the first digest row lands, 02-24 e3). Proposed format:
   `| digest 2026-09 | 44 reports archived (scopes: executor 12, gates 9, webui 7) | — |`
   (month in the DATE cell, archived row count + top scopes in the Scope
-  cell). Whether digest rows or a sweep become the standing ritual is an
-  open owner question; both paths keep the index scannable.
+  cell). **Standing ritual (ratified 2026-10-26, closing the owner
+  question):** the monthly digest row IS the ritual — each month, a
+  sweep lands a `digest 20…` row recording what it archived (an
+  empty-accrual row when nothing moved); per-item ANNOTATE triage at
+  HEAD stays the per-sweep quality bar under the archive-sweep
+  conventions below, but the digest row is what keeps the count honest
+  between sweeps.
 
 **Archive-sweep conventions** (written down 2026-09-21, ratifying the
 09-14 passes' practice — closes the 17-15 §f3 ask): a report may move to
