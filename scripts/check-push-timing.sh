@@ -68,36 +68,42 @@ if [ "${1:-}" = "--self-test" ]; then
 	git init -q "$tmp"
 	git -C "$tmp" config user.email gate@tq.local
 	git -C "$tmp" config user.name gate
+	base=1767225600
+	now=$((base + 700))
+	printf seed >"$tmp/f"
+	git -C "$tmp" add -A
+	git -C "$tmp" commit -qm 'seed (non-daemon)'
+	# Backdated footer-less daemon commit (old → allowed) and a fresh one (refused).
 	printf x >"$tmp/f"
 	git -C "$tmp" add -A
-	# Backdated footer-less daemon commit (old → allowed) and a fresh one (refused).
 	GIT_AUTHOR_DATE='2026-01-01T00:00:00 +0000' GIT_COMMITTER_DATE='2026-01-01T00:00:00 +0000' \
 		git -C "$tmp" commit -qm 'chore: auto-commit 1 changed file(s) (heuristic)'
 	old_sha="$(git -C "$tmp" rev-parse HEAD)"
 	printf y >"$tmp/f"
 	git -C "$tmp" add -A
-	GIT_AUTHOR_DATE='@0 +0000' GIT_COMMITTER_DATE='@0 +0000' \
+	GIT_AUTHOR_DATE="@$((base + 400)) +0000" GIT_COMMITTER_DATE="@$((base + 400)) +0000" \
 		git -C "$tmp" commit -qm 'chore: auto-commit 2 changed file(s) (heuristic)'
 	fresh_sha="$(git -C "$tmp" rev-parse HEAD)"
 	# Attributed fresh daemon commit (allowed — a healed sweep pushes fine).
 	printf z >"$tmp/f"
 	git -C "$tmp" add -A
-	GIT_AUTHOR_DATE='@0 +0000' GIT_COMMITTER_DATE='@0 +0000' \
+	GIT_AUTHOR_DATE="@$((base + 400)) +0000" GIT_COMMITTER_DATE="@$((base + 400)) +0000" \
 		git -C "$tmp" commit -qm 'chore: auto-commit 1 changed file(s) (heuristic)
 
 Task-Queue-ID: 000001a175f4de403dc14ed9579100000000'
 	healed_sha="$(git -C "$tmp" rev-parse HEAD)"
-	non_daemon_sha="$(git -C "$tmp" rev-parse HEAD~2)"
-	# A non-daemon commit (allowed regardless of age) for the fixture battery.
-	printf ' fixture battery' >/dev/null
+	non_daemon_sha="$(git -C "$tmp" rev-parse HEAD~3)"
 
 	cd "$tmp"
-	now=1000000000
 	rc=0
 	check_commit "$old_sha" "$now" || rc=1
 	[ "$rc" -eq 0 ] || echo "FAIL: backdated daemon commit should be allowed"
 	check_commit "$healed_sha" "$now" || rc=1
 	[ "$rc" -eq 0 ] || echo "FAIL: attributed (healed) daemon commit should be allowed"
+	check_commit "$non_daemon_sha" "$now" || {
+		echo "FAIL: non-daemon commit should be allowed regardless of age"
+		rc=1
+	}
 	if check_commit "$fresh_sha" "$now" 2>/dev/null; then
 		echo "FAIL: fresh footer-less daemon commit should be refused"
 		rc=1
