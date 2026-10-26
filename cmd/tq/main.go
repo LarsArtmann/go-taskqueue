@@ -3100,22 +3100,7 @@ func cmdDLQ(args []string) error {
 		filtered := make([]task.Task, 0, len(tasks))
 
 		for _, dead := range tasks {
-			var evidence executor.FailureEvidence
-
-			trail, err := store.FactsForTask(context.Background(), dead.ID.String(), 0)
-			if err == nil {
-				for _, fact := range slices.Backward(trail) {
-					if fact.Type != journal.Failed {
-						continue
-					}
-
-					_ = json.Unmarshal(fact.Detail, &evidence)
-
-					break
-				}
-			}
-
-			if evidenceStageMatches(evidence, dead.LastError, *evidenceStage) {
+			if evidenceStageMatches(failureEvidenceFor(context.Background(), store, dead.ID), dead.LastError, *evidenceStage) {
 				filtered = append(filtered, dead)
 			}
 		}

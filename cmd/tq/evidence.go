@@ -25,13 +25,14 @@ type failureEvidenceView struct {
 	Tail        string `json:"tail,omitempty"`
 }
 
-// buildFailureEvidenceView decodes the task's last task.failed fact into
-// the show view; a task with no failing fact (or a legacy empty detail)
-// shows no failure section.
-func buildFailureEvidenceView(ctx context.Context, store *sqlite.Store, id task.ID) *failureEvidenceView {
+// failureEvidenceFor pulls the FailureEvidence off the task's LAST
+// task.failed fact (the why lives there, not on the terminal fact) —
+// the ONE decode in cmd/tq; best-effort, an absent or unparsable detail
+// leaves the evidence zero.
+func failureEvidenceFor(ctx context.Context, store *sqlite.Store, id task.ID) executor.FailureEvidence {
 	trail, err := store.FactsForTask(ctx, id.String(), 0)
 	if err != nil {
-		return nil
+		return executor.FailureEvidence{}
 	}
 
 	for _, fact := range slices.Backward(trail) {
@@ -42,19 +43,32 @@ func buildFailureEvidenceView(ctx context.Context, store *sqlite.Store, id task.
 		var evidence executor.FailureEvidence
 
 		if json.Unmarshal(fact.Detail, &evidence) == nil {
-			return &failureEvidenceView{
-				Stage:       evidence.Stage,
-				VerifyStage: evidence.VerifyStage,
-				Class:       evidence.Class,
-				ExitCode:    evidence.ExitCode,
-				Tail:        evidence.Tail,
-			}
+			return evidence
 		}
 
 		break
 	}
 
-	return nil
+	return executor.FailureEvidence{}
+}
+
+// buildFailureEvidenceView decodes the task's last task.failed fact into
+// the show view; a task with no failing fact (or a legacy empty detail)
+// shows no failure section.
+func buildFailureEvidenceView(ctx context.Context, store *sqlite.Store, id task.ID) *failureEvidenceView {
+	evidence := failureEvidenceFor(ctx, store, id)
+
+	if evidence == (executor.FailureEvidence{}) {
+		return nil
+	}
+
+	return &failureEvidenceView{
+		Stage:       evidence.Stage,
+		VerifyStage: evidence.VerifyStage,
+		Class:       evidence.Class,
+		ExitCode:    evidence.ExitCode,
+		Tail:        evidence.Tail,
+	}
 }
 
 // evidenceStageMatches reports whether a dead task's failure evidence
