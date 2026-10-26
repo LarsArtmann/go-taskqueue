@@ -131,6 +131,12 @@ step "commit-msg hook self-test (Task-Queue-ID trailer placement pin)"
 step "session-start probe self-test (red-master tolerance pin)"
 ./scripts/check-session-start-probe.sh
 
+# Pin the push-timing pre-push guard the same way (row 949): the installer
+# heredoc is the shipped bytes; the fresh-footer-less-daemon refusal and
+# summary format fail here, not at the next real push.
+step "push-timing guard self-test (pre-push refusal pin)"
+./scripts/check-push-timing.sh --self-test
+
 # AGENTS.md byte budget at gate time (row 425): mirrors the cmd/tq
 # TestAgentsDocSizeGuard budget and prints the top sections to prune, so a
 # red trip is a 2-minute targeted fix instead of a test failure two windows
