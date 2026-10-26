@@ -14,6 +14,9 @@
 #      into a task.failed fact's error field → the audit prints a SECRET
 #      EVIDENCE row labelled `locations=N` (pins the renamed row label
 #      end-to-end)
+#   5. positive-path SECRET EVIDENCE `--json`: the seeded token shows up
+#      machine-readably as a non-empty `secret_evidence` array with
+#      `count == 1` on the entry
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -90,5 +93,17 @@ OUT="$("$TQ" audit --journal --db "$DB")" || fail "audit --journal (secret posit
 echo "$OUT" | grep -q "SECRET EVIDENCE" || fail "seeded secret not reported: $OUT"
 echo "$OUT" | grep -Eq 'task\.failed .*locations=1' || fail "SECRET EVIDENCE row lacks 'locations=1': $OUT"
 echo "ok: SECRET EVIDENCE locations=1 row printed"
+
+echo "== phase 6: positive-path SECRET EVIDENCE --json (secret_evidence count) =="
+JSON="$($TQ audit --journal --db "$DB" --json)" || fail "audit --journal --json (secret positive) exited non-zero"
+python3 -c '
+import json, sys
+report = json.loads(sys.argv[1])
+ev = report.get("secret_evidence")
+assert ev, "secret_evidence missing or empty: %r" % (report.get("secret_evidence"),)
+assert len(ev) == 1, "expected exactly 1 secret_evidence entry, got %d" % len(ev)
+assert ev[0].get("count") == 1, "secret_evidence[0].count = %r, want 1" % (ev[0].get("count"),)
+' "$JSON" || fail "json secret_evidence assertion"
+echo "ok: json secret_evidence non-empty with count=1"
 
 echo "PASS: journal-drift audit smoke"
