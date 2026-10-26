@@ -349,12 +349,16 @@ func TestServeHeaderMatrix(t *testing.T) {
 		server := httptest.NewServer(s.Handler())
 		t.Cleanup(server.Close)
 
-		for _, path := range []string{
-			"/health/favicon.svg",
-			"/healthz",
-			"/readyz",
-			"/startupz",
-		} {
+		for _, binding := range s.healthBindings() {
+			path := binding.pattern
+			if path == HealthDashboardPath || path == HealthSDKPath {
+				continue // pinned by their own subtests above/below
+			}
+			if path == HealthSSEPath {
+				// The SSE stream 503s without a live hub; its headers are
+				// pinned by the SSE subtest, not the plain-GET matrix.
+				continue
+			}
 			resp, err := http.Get(server.URL + path)
 			if err != nil {
 				t.Fatalf("GET %s: %v", path, err)
