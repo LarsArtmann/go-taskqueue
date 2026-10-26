@@ -75,7 +75,10 @@ cat >"$commit_msg" <<'EOF'
 # queue's `%(trailers)` commit-derivation channel (executor.GitLogScanner)
 # — reads only the last paragraph, so a footer above an attribution block
 # (Crush/Co-Authored-By) never attributes and invites re-dispatch (git
-# >= 2.15, the same floor as the queue's trailer scanning).
+# >= 2.15, the same floor as the queue's trailer scanning). And the footer
+# must be the LAST non-empty (non-comment) line: a footer followed by
+# another trailer still parses but breaks the footer-as-final-line
+# contract (2026-10-14 05-16 report §d1/§e1/§f4; TODO row 937).
 msg="$1"
 
 count=$(grep -ciE '^Task-Queue-ID:' "$msg" || true)
@@ -91,6 +94,16 @@ if [ "$count" -eq 1 ]; then
 	if ! echo "$value" | grep -qE '^[a-f0-9]{16,}$'; then
 		echo "FAIL: Task-Queue-ID trailer value '$value' is not a queue task ID (hex, 16+ chars)" >&2
 		echo "  Copy the ID VERBATIM from the task prompt (never merge or pick between IDs)." >&2
+		exit 1
+	fi
+
+	last=$(grep -vE '^#' "$msg" | grep -v '^[[:space:]]*$' | tail -1)
+	if ! echo "$last" | grep -qiE '^Task-Queue-ID:'; then
+		echo "FAIL: the Task-Queue-ID footer is not the LAST non-empty line of the message" >&2
+		echo "  Last line: $last" >&2
+		echo "  Move the footer to dead last, AFTER any Generated-with/Assisted-by" >&2
+		echo "  block — a footer stranded above attribution is invisible to git trailers" >&2
+		grep -inE '^Task-Queue-ID:' "$msg" >&2
 		exit 1
 	fi
 

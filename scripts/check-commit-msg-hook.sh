@@ -31,6 +31,7 @@ for marker in \
 	'Task-Queue-ID trailer guard' \
 	'exactly one allowed' \
 	'not in the FINAL trailer block' \
+	'LAST non-empty line' \
 	'git interpret-trailers --parse' \
 	'hex, 16+ chars'; do
 	if ! grep -qF -- "$marker" <<<"$extracted"; then
@@ -73,6 +74,8 @@ printf 'fix: subject\n\nTask-Queue-ID: %s\nTask-Queue-ID: %s\n' "$id" "$id" >"$t
 printf 'fix: subject\n\nTask-Queue-ID: not-a-task-id\n' >"$tmp/malformed.txt"
 printf 'fix: subject\n\nTask-Queue-ID: %s\n\n# Please enter the commit message\n# comment lines\n' "$id" >"$tmp/comment-tail.txt"
 printf 'fix: subject\n\nTask-Queue-ID: %s\n\nsome trailing prose\n' "$id" >"$tmp/trailing-prose.txt"
+printf 'fix: subject\n\nTask-Queue-ID: %s\nSigned-off-by: Someone <s@x>\n' "$id" >"$tmp/footer-mid-block.txt"
+printf 'fix: subject\n\nTask-Queue-ID: %s\n\nSigned-off-by: Someone <s@x>\n' "$id" >"$tmp/footer-above-trailer.txt"
 
 rc=0
 run_case "footer as final line after attribution (sanctioned)" 0 "$tmp/sanctioned.txt" || rc=1
@@ -83,9 +86,11 @@ run_case "two footers" 1 "$tmp/two-footers.txt" || rc=1
 run_case "malformed footer value" 1 "$tmp/malformed.txt" || rc=1
 run_case "footer with editor comment tail stays accepted" 0 "$tmp/comment-tail.txt" || rc=1
 run_case "trailing prose after footer" 1 "$tmp/trailing-prose.txt" || rc=1
+run_case "footer mid-trailer-block (row 937: last non-empty line must BE the footer)" 1 "$tmp/footer-mid-block.txt" || rc=1
+run_case "footer above a separate trailer block" 1 "$tmp/footer-above-trailer.txt" || rc=1
 
 if [ "$rc" -ne 0 ]; then
 	echo "commit-msg hook pin FAILED"
 	exit 1
 fi
-echo "commit-msg hook pin ok (extraction guarded, 8 cases: placement, count, format, comment-tail, trailing-prose)"
+echo "commit-msg hook pin ok (extraction guarded, 10 cases: placement, last-line, count, format, comment-tail, trailing-prose)"
