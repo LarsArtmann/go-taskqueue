@@ -429,6 +429,18 @@ func TestCmdVersionPrintsLdflagsRev(t *testing.T) {
 			prefix: "tq dev (9ff63bd3f1e8), go",
 		},
 		{
+			name:   "dirty suffix survives the display cap whole",
+			rev:    "939d98b1-dirty",
+			prefix: "tq dev (939d98b1-dirty), go",
+			notIn:  "-dirt,",
+		},
+		{
+			name:   "long hash with dirty suffix caps the hash, keeps the suffix",
+			rev:    "9ff63bd3f1e8deadbeef-dirty",
+			prefix: "tq dev (9ff63bd3f1e8-dirty), go",
+			notIn:  "deadbeef",
+		},
+		{
 			name:   "empty rev prints no suffix (dev build without VCS info)",
 			rev:    "",
 			notIn:  "()",

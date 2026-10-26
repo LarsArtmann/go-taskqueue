@@ -3795,9 +3795,19 @@ func cmdVersion(args []string) error {
 		}
 	}
 
+	// The dirty suffix must survive the display cap WHOLE: an unconditional
+	// 12-char cut turned "939d98b1-dirty" into "939d98b-dirt" (a suffix that
+	// no longer says what it means) and dropped the suffix entirely on long
+	// hashes. Cap the hash part, then append the suffix untouched.
+	revSuffix := ""
+	if i := strings.Index(rev, "-"); i >= 0 {
+		revSuffix = rev[i:]
+		rev = rev[:i]
+	}
 	if len(rev) > 12 {
 		rev = rev[:12]
 	}
+	rev += revSuffix
 
 	vcs := ""
 	if rev != "" {
