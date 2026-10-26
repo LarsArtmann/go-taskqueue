@@ -433,3 +433,44 @@ func TestParkedBudgetBadgeRenders(t *testing.T) {
 		t.Errorf("the badge is state, not history — a moved-on task must not show it:\n%s", moved)
 	}
 }
+
+// TestDetailFactsSurfacesFailureEvidence pins the failure-evidence render
+// on the detail page (TODO row 499, gap 05-23:54): a task.failed fact's
+// FailureEvidence surfaces as a queryable "evidence=stage/verify_stage
+// class=… exit=…" suffix on the trail line; legacy facts render nothing.
+func TestDetailFactsSurfacesFailureEvidence(t *testing.T) {
+	now := time.Now()
+	lines := detailFacts(now, []journalFactView{
+		{
+			Seq:    2,
+			Type:   journal.Failed,
+			Owner:  "w1",
+			Detail: jsontext.Value(`{"stage":"verify","verify_stage":"e2e-timeout","class":"environment","exit_code":2,"tail":"panic: test timed out"}`),
+		},
+		{
+			Seq:    3,
+			Type:   journal.Failed,
+			Owner:  "w1",
+			Detail: jsontext.Value(`{}`),
+		},
+		{
+			Seq:    4,
+			Type:   journal.Failed,
+			Owner:  "w1",
+			Detail: jsontext.Value(`{"stage":"agent","exit_code":1}`),
+		},
+	})
+
+	want := "evidence=verify/e2e-timeout class=environment exit=2"
+	if !strings.Contains(lines[0].Text, want) {
+		t.Fatalf("failed line = %q, want the evidence stage %q", lines[0].Text, want)
+	}
+
+	if strings.Contains(lines[1].Text, "evidence=") {
+		t.Fatalf("legacy failed line = %q, want no evidence suffix", lines[1].Text)
+	}
+
+	if !strings.Contains(lines[2].Text, "evidence=agent exit=1") {
+		t.Fatalf("agent failed line = %q, want stage+exit evidence", lines[2].Text)
+	}
+}

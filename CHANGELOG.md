@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Verify-evidence stage surfaced as queryable data** (2026-10-26):
+  `tq dlq --evidence-stage <class>` filters the dead-letter list by the
+  failure evidence's stage class (evidence stage, verify-gate stage such
+  as `gofmt`/`test`/`e2e-timeout`, retry-taxonomy class, or the
+  `gate-env`/`gate-dead`/`gate-slow` aliases), `tq show` renders the last
+  `task.failed` fact's structured evidence as a `failure` JSON section,
+  and the web UI detail page appends an `evidence=` line to failed-fact
+  trail entries — so gate-env/e2e-timeout/gate-dead deaths are queryable
+  data instead of log forensics.
 - **Module scaffolder emits the Dependabot entry** (2026-10-20):
   `scripts/new-module.sh` now appends the new module's
   `.github/dependabot.yml` block at creation (refusing a duplicate

@@ -1,0 +1,248 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/larsartmann/go-taskqueue/internal/executor"
+	"github.com/larsartmann/go-taskqueue/internal/queue/sqlite"
+	"github.com/larsartmann/go-taskqueue/internal/task"
+)
+
+// TestEvidenceStageMatches pins the --evidence-stage matcher: structured
+// fields (stage, verify_stage, class) match case-insensitively; the
+// verify-gate aliases (gate-env / gate-dead / gate-slow) match through the
+// recorded error text, which is the only place those classes live.
+func TestEvidenceStageMatches(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		evidence  executor.FailureEvidence
+		lastError string
+		want      string
+		match     bool
+	}{
+		{
+			name:     "verify_stage exact",
+			evidence: executor.FailureEvidence{Stage: "verify", VerifyStage: executor.VerifyStageE2ETimeout},
+			want:     "e2e-timeout",
+			match:    true,
+		},
+		{
+			name:     "stage case-insensitive",
+			evidence: executor.FailureEvidence{Stage: "verify"},
+			want:     "Verify",
+			match:    true,
+		},
+		{
+			name:     "class",
+			evidence: executor.FailureEvidence{Class: "environment"},
+			want:     "environment",
+			match:    true,
+		},
+		{
+			name:      "gate-env via env code",
+			lastError: "agent verify gate environmental signature [vendor-gofmt] (\"gofmt\"): boom",
+			want:      "gate-env",
+			match:     true,
+		},
+		{
+			name:      "gate-dead via error text",
+			lastError: "agent verify gate dead (\"gofmt\"): failure is pre-existing",
+			want:      "gate-dead",
+			match:     true,
+		},
+		{
+			name:      "gate-slow via error text",
+			lastError: "agent verify gate slow (\"test\"): deadline before a verdict",
+			want:      "gate-slow",
+			match:     true,
+		},
+		{
+			name:     "no match",
+			evidence: executor.FailureEvidence{Stage: "agent"},
+			want:     "e2e-timeout",
+			match:    false,
+		},
+		{
+			name: "empty want never matches",
+			want: "  ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := evidenceStageMatches(tt.evidence, tt.lastError, tt.want); got != tt.match {
+				t.Fatalf("evidenceStageMatches(%+v, %q, %q) = %v, want %v", tt.evidence, tt.lastError, tt.want, got, tt.match)
+			}
+		})
+	}
+}
+
+// TestCmdDLQEvidenceStageFilter runs the filter end-to-end against a
+// scratch store: only dead tasks whose failure evidence names the class
+// survive, matched through either the structured verify_stage stamp or the
+// gate-dead error text.
+func TestCmdDLQEvidenceStageFilter(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "dlq-filter.db")
+
+	store, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+
+	ctx := context.Background()
+
+	seedDead := func(failReason string, evidence any) task.ID {
+		t.Helper()
+
+		raw, err := json.Marshal(evidence)
+		if err != nil {
+			t.Fatalf("marshal evidence: %v", err)
+		}
+
+		enq, err := store.Enqueue(ctx, task.New{
+			Type:        executor.TaskTypeAgent,
+			Project:     "demo",
+			Payload:     []byte(`{"repo":"demo","prompt":"p"}`),
+			MaxAttempts: 1,
+		})
+		if err != nil {
+			t.Fatalf("enqueue: %v", err)
+		}
+
+		_, claim, err := store.ClaimDue(ctx, "filter-test", time.Minute)
+		if err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := store.Fail(ctx, enq.ID, claim, failReason, 0, raw); err != nil {
+			t.Fatalf("fail: %v", err)
+		}
+
+		return enq.ID
+	}
+
+	timeoutID := seedDead("verify failed", executor.FailureEvidence{
+		Stage:       "verify",
+		VerifyStage: executor.VerifyStageE2ETimeout,
+		Tail:        "panic: test timed out after 10m0s",
+	})
+	gateDeadID := seedDead(`agent verify gate dead ("gofmt"): failure is pre-existing`, executor.FailureEvidence{Stage: "verify"})
+	plainID := seedDead("boom", nil)
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	var out string
+
+	out = captureStdout(t, func() {
+		if err := cmdDLQ([]string{"--db", dbPath, "--evidence-stage", "e2e-timeout"}); err != nil {
+			t.Errorf("cmdDLQ: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, timeoutID.String()) || strings.Contains(out, gateDeadID.String()) || strings.Contains(out, plainID.String()) {
+		t.Fatalf("--evidence-stage e2e-timeout picked wrong tasks:\n%s", out)
+	}
+
+	out = captureStdout(t, func() {
+		if err := cmdDLQ([]string{"--db", dbPath, "--evidence-stage", "gate-dead"}); err != nil {
+			t.Errorf("cmdDLQ: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, gateDeadID.String()) || strings.Contains(out, timeoutID.String()) || strings.Contains(out, plainID.String()) {
+		t.Fatalf("--evidence-stage gate-dead picked wrong tasks:\n%s", out)
+	}
+}
+
+// TestShowJSONCarriesFailureEvidence pins the tq show failure section:
+// a dead task's last task.failed fact surfaces as structured evidence
+// (stage, verify_stage, exit code, tail) on the show wire.
+func TestShowJSONCarriesFailureEvidence(t *testing.T) {
+	t.Parallel()
+
+	dbPath := filepath.Join(t.TempDir(), "show-evidence.db")
+
+	store, err := sqlite.Open(dbPath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+
+	ctx := context.Background()
+
+	enq, err := store.Enqueue(ctx, task.New{
+		Type:        executor.TaskTypeAgent,
+		Project:     "demo",
+		Payload:     []byte(`{"repo":"demo","prompt":"p"}`),
+		MaxAttempts: 1,
+	})
+	if err != nil {
+		t.Fatalf("enqueue: %v", err)
+	}
+
+	_, claim, err := store.ClaimDue(ctx, "show-evidence", time.Minute)
+	if err != nil {
+		t.Fatalf("claim: %v", err)
+	}
+
+	evidence, err := json.Marshal(executor.FailureEvidence{
+		Stage:       "verify",
+		ExitCode:    2,
+		VerifyStage: executor.VerifyStageTest,
+		Tail:        "--- FAIL: TestShipTheThing\nFAIL",
+		Class:       "environment",
+	})
+	if err != nil {
+		t.Fatalf("marshal evidence: %v", err)
+	}
+
+	if err := store.Fail(ctx, enq.ID, claim, "verify failed", 0, evidence); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	out := captureStdout(t, func() {
+		if err := cmdShow([]string{"--db", dbPath, enq.ID.String()}); err != nil {
+			t.Errorf("cmdShow: %v", err)
+		}
+	})
+
+	var doc struct {
+		Failure *struct {
+			Stage       string `json:"stage"`
+			VerifyStage string `json:"verify_stage"`
+			Class       string `json:"class"`
+			ExitCode    int    `json:"exit_code"`
+			Tail        string `json:"tail"`
+		} `json:"failure"`
+	}
+
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Fatalf("decode show output: %v\n%s", err, out)
+	}
+
+	if doc.Failure == nil {
+		t.Fatalf("show output carries no failure section:\n%s", out)
+	}
+
+	if doc.Failure.Stage != "verify" || doc.Failure.VerifyStage != "test" ||
+		doc.Failure.Class != "environment" || doc.Failure.ExitCode != 2 ||
+		!strings.Contains(doc.Failure.Tail, "FAIL: TestShipTheThing") {
+		t.Fatalf("failure section = %+v", doc.Failure)
+	}
+}

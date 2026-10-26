@@ -447,6 +447,10 @@ func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLin
 			text += fmt.Sprintf(" (attempt %d)", fact.Attempt)
 		}
 
+		if stage := failureEvidenceStage(fact); stage != "" {
+			text += " evidence=" + stage
+		}
+
 		lines = append(lines, display.ScrollbackLine{
 			Timestamp: factTimestamp(now, fact.Time),
 			Tag:       string(fact.Type),
@@ -456,6 +460,39 @@ func detailFacts(now time.Time, facts []journalFactView) []display.ScrollbackLin
 	}
 
 	return lines
+}
+
+// failureEvidenceStage renders a task.failed fact's FailureEvidence as the
+// queryable stage line ("verify/e2e-timeout class=environment exit=2") so a
+// death's class is visible on the detail page without log forensics (TODO
+// row 499, gap 05-23:54). Legacy facts with empty or unparsable details
+// render nothing.
+func failureEvidenceStage(fact journalFactView) string {
+	if fact.Type != journal.Failed {
+		return ""
+	}
+
+	var evidence executor.FailureEvidence
+
+	if json.Unmarshal(fact.Detail, &evidence) != nil {
+		return ""
+	}
+
+	stage := evidence.Stage
+
+	if evidence.VerifyStage != "" {
+		stage += "/" + evidence.VerifyStage
+	}
+
+	if evidence.Class != "" {
+		stage += " class=" + evidence.Class
+	}
+
+	if evidence.ExitCode != 0 {
+		stage += fmt.Sprintf(" exit=%d", evidence.ExitCode)
+	}
+
+	return stage
 }
 
 // factLineText merges a fact's Error and its Detail reason into ONE honest

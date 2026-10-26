@@ -2485,22 +2485,26 @@ func cmdShow(args []string) error {
 	enc.SetIndent("", "  ")
 
 	var commitView any
+	var failureView *failureEvidenceView
 
 	if *commits {
 		commitView = commitsForTask(t)
 	}
 
+	failureView = buildFailureEvidenceView(ctx, store, t.ID)
+
 	return enc.Encode(struct {
-		Task      task.Task          `json:"task"`
-		Facts     []journal.Fact     `json:"facts,omitempty"`
-		Result    any                `json:"result,omitempty"`
-		Commits   any                `json:"commits,omitempty"`
-		Window    []statusWindowView `json:"window,omitempty"`
-		Questions []questionView     `json:"questions,omitempty"`
-		Priority  priorityProvenance `json:"priority"`
-		Liveness  livenessView       `json:"liveness"`
+		Task      task.Task            `json:"task"`
+		Facts     []journal.Fact       `json:"facts,omitempty"`
+		Result    any                  `json:"result,omitempty"`
+		Commits   any                  `json:"commits,omitempty"`
+		Failure   *failureEvidenceView `json:"failure,omitempty"`
+		Window    []statusWindowView   `json:"window,omitempty"`
+		Questions []questionView       `json:"questions,omitempty"`
+		Priority  priorityProvenance   `json:"priority"`
+		Liveness  livenessView         `json:"liveness"`
 	}{
-		t, trail, resultDetail(t, trail), commitView, statusWindowFor(t),
+		t, trail, resultDetail(t, trail), commitView, failureView, statusWindowFor(t),
 		buildQuestionView(trail), buildPriorityProvenance(ctx, store, t, trail), buildLivenessView(t),
 	})
 }
@@ -3042,6 +3046,11 @@ func cmdDLQ(args []string) error {
 	)
 	// art-dupl:accept subcommand prolog: flag registrations tail + dbFlag + Parse is the uniform command opening.; ruling: docs/status/2026-10-05_16-02_art-dupl-t3-tail-zero-dedup-sweep.md a)3
 	reason := fs.String("reason", "", "why the task is dismissed; stored in the cancelled fact detail")
+	evidenceStage := fs.String(
+		"evidence-stage",
+		"",
+		"list only dead tasks whose failure evidence names this stage class: the evidence stage (agent, verify, command), the verify-gate stage (gofmt, test, e2e-timeout, run), the retry-taxonomy class, or the gate aliases (gate-env, gate-dead, gate-slow)",
+	)
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
@@ -3085,6 +3094,33 @@ func cmdDLQ(args []string) error {
 	tasks, err := listDead(context.Background(), store)
 	if err != nil {
 		return err
+	}
+
+	if *evidenceStage != "" {
+		filtered := make([]task.Task, 0, len(tasks))
+
+		for _, dead := range tasks {
+			var evidence executor.FailureEvidence
+
+			trail, err := store.FactsForTask(context.Background(), dead.ID.String(), 0)
+			if err == nil {
+				for _, fact := range slices.Backward(trail) {
+					if fact.Type != journal.Failed {
+						continue
+					}
+
+					_ = json.Unmarshal(fact.Detail, &evidence)
+
+					break
+				}
+			}
+
+			if evidenceStageMatches(evidence, dead.LastError, *evidenceStage) {
+				filtered = append(filtered, dead)
+			}
+		}
+
+		tasks = filtered
 	}
 
 	printDLQ(tasks)

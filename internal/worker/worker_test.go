@@ -1718,6 +1718,16 @@ func TestStampedFailureEvidence(t *testing.T) {
 			wantKeys: map[string]any{"class": "provider-window"},
 		},
 		{
+			name:     "verify_stage survives the class stamp (TODO row 499, gap 05-23:56)",
+			evidence: `{"stage":"verify","verify_stage":"e2e-timeout","exit_code":2}`,
+			wantKeys: map[string]any{
+				"stage":        "verify",
+				"verify_stage": "e2e-timeout",
+				"exit_code":    float64(2),
+				"class":        "provider-window",
+			},
+		},
+		{
 			name:     "unparsable evidence degrades to class-only",
 			evidence: `{not json`,
 			wantKeys: map[string]any{"class": "provider-window"},
