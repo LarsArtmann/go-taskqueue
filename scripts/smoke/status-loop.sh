@@ -95,12 +95,32 @@ grep -q 'freshly minted status-loop item' "$REPO/TODO_LIST.md"
 
 echo "== assert counts: 2 agent + 1 status completed, plus the pool harvest's"
 echo "== own re-arm run of the appended item (agent-pool harvests every tick)"
-STATS="$("$TMP/tq" stats)"
-echo "$STATS"
-echo "$STATS" | grep -Eq '^completed\s+4$' || {
-	echo "FAIL: want 4 completed"
+# wait_completed N: the re-arm harvest's 4th task completes on its own tick,
+# which can lag the pool's --once exit under a concurrent tq build storm
+# (observed 3-vs-4 race, 2026-10-15 00-44 report d3) - poll instead of a
+# single immediate read (KNOWN_FLAKY-class pin, cf. scripts/lib/verify-retry.sh).
+wait_completed() {
+	local want="$1" attempt=1 stats
+	while :; do
+		stats="$($TMP/tq stats)"
+		if echo "$stats" | grep -Eq "^completed\s+$want$"; then
+			echo "$stats"
+			return 0
+		fi
+		if [ "$attempt" -ge 15 ]; then
+			echo "$stats"
+			return 1
+		fi
+		attempt=$((attempt + 1))
+		sleep 1
+	done
+}
+
+STATS="$(wait_completed 4)" || {
+	echo "FAIL: want 4 completed (polled 15s)"
 	exit 1
 }
+echo "$STATS"
 
 echo "== assert the sweeper checkpoint is at head (doctor liveness)"
 "$TMP/tq" doctor | tee "$TMP/doctor.out"
@@ -116,12 +136,11 @@ grep -q 'freshly minted status-loop item' "$TMP/harvest.json" || {
 	echo "FAIL: harvest did not account for the appended item"
 	exit 1
 }
-STATS="$("$TMP/tq" stats)"
-echo "$STATS"
-echo "$STATS" | grep -Eq '^completed\s+4$' || {
+STATS="$(wait_completed 4)" || {
 	echo "FAIL: completed count changed"
 	exit 1
 }
+echo "$STATS"
 if echo "$STATS" | grep -Eq '^pending\s+[1-9]'; then
 	echo "FAIL: dedup failed - item enqueued twice"
 	exit 1
