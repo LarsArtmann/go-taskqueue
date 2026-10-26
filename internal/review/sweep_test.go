@@ -356,6 +356,10 @@ func TestFixPromptAnchorsAndDanglingDisposition(t *testing.T) {
 		"git cat-file -e findingsha2",
 		"re-anchor via the verbatim anchor text",
 		"ONE Task-Queue-ID footer per commit",
+		// TODO row 938: the fix prompt is a dispatch template agents copy —
+		// it must teach footer-AFTER-attribution, not footer-before.
+		"the FINAL line of the message",
+		"put the footer AFTER that block",
 	} {
 		if !strings.Contains(prompt, want) {
 			t.Errorf("fix prompt missing %q:\n%s", want, prompt)

@@ -636,6 +636,41 @@ func TestAgentPromptsDropSelfReport(t *testing.T) {
 	}
 }
 
+// TestAgentPromptsFooterLastContract pins the footer-placement contract
+// (TODO row 938; 2026-10-14 05-16 report §d1/§f5): every dispatch prompt
+// must teach footer-AFTER-attribution — the harness template appends the
+// Crush/Assisted-by block and a footer stranded above it is invisible to
+// git trailers (the re-minted 05-47 defect class). Phrase matching is
+// whitespace-collapsed so line wrapping inside the templates cannot
+// false-fail the pin.
+func TestAgentPromptsFooterLastContract(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name   string
+		prompt string
+	}{
+		{"work item", DefaultPromptTemplate},
+		{"work batch", DefaultBatchPromptTemplate},
+		{"catch-up", DefaultCatchupPrompt},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			collapsed := strings.Join(strings.Fields(tc.prompt), " ")
+			for _, want := range []string{
+				"the FINAL line of the message",
+				"put the footer AFTER that block",
+				"invisible to git trailers",
+			} {
+				if !strings.Contains(collapsed, want) {
+					t.Errorf("prompt lost the footer-placement phrase %q — template-copied commits will re-mint the footer-above-attribution defect", want)
+				}
+			}
+		})
+	}
+}
+
 // TestAgentPromptsGuardrails pins the self-modifying-autonomy guardrail from
 // the dogfood plan's accepted-risk list: prompts must forbid touching
 // .crushrc/.tq-verify (they define the agent's own autonomy and verify gate),
