@@ -127,4 +127,19 @@ exit 0
 EOF
 chmod +x "$commit_msg"
 
-echo "installed $pre_commit (status-index + TODO + app.css gates) and $commit_msg (Task-Queue-ID trailer guard)"
+# Pre-push push-timing guard (TODO row 949): refuse pushing footer-less
+# `chore:` daemon commits younger than TQ_PUSH_MIN_AGE (default 600s) —
+# an in-flight task can still heal them (scripts/heal-daemon-sweep.sh);
+# pushing mid-fold unattributes the sweep's substance permanently
+# (c7e95833 class, 2026-10-15 00-44 report d1/g1). The bytes are pinned
+# by `scripts/check-push-timing.sh --self-test` in ci-local.
+pre_push=".git/hooks/pre-push"
+
+cat >"$pre_push" <<'EOF'
+#!/usr/bin/env bash
+# Installed by scripts/install-pre-commit.sh — push-timing guard.
+./scripts/check-push-timing.sh
+EOF
+chmod +x "$pre_push"
+
+echo "installed $pre_commit (status-index + TODO + app.css gates), $commit_msg (Task-Queue-ID trailer guard), and $pre_push (push-timing guard)"
