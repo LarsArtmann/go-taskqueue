@@ -204,3 +204,9 @@ remedy). Within what is verifiable: no priority changes need explaining for ADR-
   verified non-empty as the FINAL action.
 - TODO_LIST deltas this pass: 1 evidence-backed tick (row 1009), +1 BLOCKED append;
   band-drift query receipt in §h.
+- Daemon-sweep heal (the race hit THIS dispatch too): the auto-commit daemon folded
+  the report file + row-1009 tick into footer-less 14d54f08 between edit and commit;
+  healed via `heal-daemon-sweep.sh --from 14d54f08^ --retitle …` (HEAL OK, backup ref
+  dropped). Fork-records: `14d54f08→77f680d7` (sweep, footered + retitled),
+  `43b9a22a→c907c4dd` (index-row + append commit, preserved verbatim). Nothing cited
+  the pre-heal SHAs; post-heal citation check clean.
