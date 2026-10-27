@@ -314,6 +314,19 @@ Repo-internal tooling and non-operator-facing changes (O14 audit
   when every numbered / checkbox item is struck or marked; `--self-test`
   pins the countable summary + negative/positive/empty battery
   (`TQ_ARCHIVE_FILES`); wired into ci-local next to check-status-index.
+- **SECURITY.md response-header matrix pinned to shipping code** (2026-10-26):
+  `internal/webui/headermatrix_test.go` asserts the exact per-surface
+  header sets (serve + api, conditionally-present model, negative-path
+  self-check) against the doc table two ways, so a header or doc-cell
+  drift fails a test instead of an audit; caught and fixed five
+  `/health*` bindings missing the documented wrapper (see Changed).
+- **Footer-last commit-msg guard + push-timing pre-push guard** (2026-10-26):
+  the commit-msg hook asserts the `Task-Queue-ID` trailer is the last
+  non-empty line (footers stranded above attribution blocks were
+  invisible to git trailers); dispatch templates pin the same contract;
+  `scripts/check-push-timing.sh` refuses fresh footer-less daemon
+  chores at push (`--self-test` pinned; O14 operator-visibility ruling
+  still pending per row 1200).
 
 - **ci.yml parity sweep wiring** (2026-10-15): `golangci-lint config
   verify` joins CI as a HARD step (kills the silent-disabled-linter
