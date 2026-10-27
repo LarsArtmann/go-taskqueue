@@ -14,13 +14,13 @@ require (
 	github.com/larsartmann/go-taskqueue/internal/config v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/executor v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/journal v0.4.0
-	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/queue v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/journal/cqrs v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/queue v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/queue/postgres v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlite v0.3.4
 	github.com/larsartmann/go-taskqueue/internal/readmodel v0.4.0
-	github.com/larsartmann/go-taskqueue/internal/task v0.3.3
-	github.com/larsartmann/go-taskqueue/internal/worker v0.3.3
+	github.com/larsartmann/go-taskqueue/internal/task v0.3.4
+	github.com/larsartmann/go-taskqueue/internal/worker v0.3.4
 	modernc.org/sqlite v1.60.1
 )
 
@@ -79,7 +79,7 @@ require (
 	github.com/larsartmann/go-retry v0.8.0 // indirect
 	github.com/larsartmann/go-sse v0.6.2 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/companion v0.4.0 // indirect
-	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.3 // indirect
+	github.com/larsartmann/go-taskqueue/internal/queue/postgresv4 v0.3.4 // indirect
 	github.com/larsartmann/go-taskqueue/internal/queue/sqlitev4 v0.3.4 // indirect
 	github.com/larsartmann/templ-components v1.21.0 // indirect
 	github.com/larsartmann/templ-components/datastar v1.21.0 // indirect

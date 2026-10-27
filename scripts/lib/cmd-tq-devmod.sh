@@ -9,7 +9,7 @@
 #
 # cmdtq_devmod: generates cmd/tq/dev.mod + dev.sum from the committed files.
 cmdtq_devmod() {
-	local root dir
+	local root dir mod rver tqver drift tidylog
 	root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 	dir="$root/cmd/tq"
 	# Preflight (M17.2): the committed go.mod losing its module declaration
@@ -20,6 +20,35 @@ cmdtq_devmod() {
 		echo "  expected the line: module github.com/larsartmann/go-taskqueue/cmd/tq" >&2
 		echo "  restore it (git restore cmd/tq/go.mod) and retry" >&2
 
+		return 1
+	fi
+	# Preflight (2026-10-27): stale cmd/tq requires over the local replace
+	# set used to surface only as a 70-line inconsistent-vendoring dump from
+	# the downstream build, never naming the cause. Name each drifted module
+	# + both versions HERE, before the tidy can mask it.
+	drift=""
+	while read -r mod rver; do
+		case $mod in github.com/larsartmann/go-taskqueue/internal/*) ;; *) continue ;; esac
+		tqver="$(awk -v m="$mod" '
+			/^require \(/ { inb = 1; next }
+			/^\)/ { inb = 0; next }
+			inb && $1 == m && NF >= 2 { print $2; exit }
+			!inb && $1 == "require" && $2 == m && NF >= 3 { print $3; exit }
+		' "$dir/go.mod")"
+		# Absent from cmd/tq is fine — tidy adds new internal deps there.
+		if [ -n "$tqver" ] && [ "$tqver" != "$rver" ]; then
+			drift="${drift}  $mod: cmd/tq $tqver vs root $rver"$'\n'
+		fi
+	done < <(awk '
+		/^require \(/ { inb = 1; next }
+		/^\)/ { inb = 0; next }
+		inb && NF >= 2 { print $1, $2; next }
+		!inb && $1 == "require" && NF >= 3 { print $2, $3 }
+	' "$root/go.mod")
+	if [ -n "$drift" ]; then
+		echo "build-tq: cmd/tq/go.mod requires stale versions for internal module(s):" >&2
+		printf '%s' "$drift" >&2
+		echo "  bump cmd/tq/go.mod to the root versions (go get the listed modules in cmd/tq) and retry" >&2
 		return 1
 	fi
 	# The tidy below must not inherit a pinned GOTOOLCHAIN=local on a binary
@@ -40,10 +69,22 @@ cmdtq_devmod() {
 	# the requirements and hashes the local build needs, and the committed
 	# files stay proxy-clean. Needs every module in the local cache (the
 	# root build fetches them).
-	(
+	if ! (
 		cd "$dir" || exit 1
-		GOWORK=off GOFLAGS='' go mod tidy -modfile=dev.mod >/dev/null 2>&1 || true
-	)
+		tidylog="$(mktemp "${TMPDIR:-/tmp}/cmdtq-tidy.XXXXXX")"
+		# The tidy failure is no longer swallowed (2026-10-27): a failing tidy
+		# previously died later at build with an inconsistent-vendoring dump
+		# that never named the cause. Surface the tidy log verbatim.
+		if ! GOWORK=off GOFLAGS='' go mod tidy -modfile=dev.mod >"$tidylog" 2>&1; then
+			echo "build-tq: go mod tidy -modfile=dev.mod FAILED (dev.mod is derived from cmd/tq/go.mod + the local replace set — a graph/require mismatch usually means the drift preflight above missed a case):" >&2
+			cat "$tidylog" >&2
+			rm -f "$tidylog"
+			exit 1
+		fi
+		rm -f "$tidylog"
+	); then
+		return 1
+	fi
 	CMD_TQ_DIR="$dir"
 }
 
