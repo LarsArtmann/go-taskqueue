@@ -9,14 +9,13 @@ changes: read, judge, build on, never revert. (Size guard: TestAgentsDocSizeGuar
 **MAJOR OPEN PROBLEMS**: [dispatch prompting + batch granularity](docs/problems/major-prompting-and-batching.md) —
 redesign SHIPPED v0.3.4; follow-ups tracked in the doc.
 
-**READER ROUTE — read only your lanes** (this file is dense by design):
+**READER ROUTE — read only your lanes** (dense by design):
 dispatched executors → §Payload contracts + §Conventions (claims,
 battery, gate receipts); review/dlqfix/status agents → §Conventions +
-§Operational contracts; gate/verify runners → §Commands + §Known Issues
-(flaky tests, GOCACHE, vendor); store/queue code → §Store invariants;
-platform/docs work → §Relation to other projects. Everyone: scan
-§Known Issues before attributing failures. Package-level reader maps
-live in each package's doc comment.
+§Operational contracts; gate/verify runners → §Commands + §Known Issues;
+store/queue code → §Store invariants; platform/docs work → §Relation to
+other projects. Everyone: scan §Known Issues before attributing
+failures. Package-level reader maps live in each package's doc comment.
 
 ## Commands
 
@@ -45,15 +44,14 @@ for m in $(find internal task journal queue executor worker -name go.mod -printf
 **Public facades (ADR-0016):** `task/ journal/ queue/ queue/sqlite/
 queue/postgres/ executor/ worker/` re-export internals via type aliases
 — the only external import surface; in-repo code imports `internal/…`.
-Facades: require (real tag) + relative replace; tests import
-internals, never sibling facades; parity via
-`scripts/check-facade-parity.sh` BEFORE staging; postgres
-`OpenWithPool` pools CALLER-OWNED. No go.work at root — replace-only
-(exception: tracked `cmd/tq/go.work` dev workspace, ADR-0017).
-When a module's `go` directive bumps, bump `cmd/tq/go.work`'s `go` line
-(`go work edit -go=<ver>` in cmd/tq) in the same change — a stale line
-fails every cmd/tq go command ("go.work lists go <old>").
-Release flow: docs/release/.
+Facades: require (real tag) + relative replace; tests import internals,
+never sibling facades; parity via `scripts/check-facade-parity.sh`
+BEFORE staging; postgres `OpenWithPool` pools CALLER-OWNED. No go.work
+at root — replace-only (exception: tracked `cmd/tq/go.work` dev
+workspace, ADR-0017). When a module's `go` directive bumps, bump
+`cmd/tq/go.work`'s `go` line (`go work edit -go=<ver>`) in the same
+change — a stale line fails every cmd/tq go command. Release flow:
+docs/release/.
 
 Smokes (CI-safe): `scripts/smoke/`. Guards: check-*.sh +
 release-gates + lint-baseline. `scripts/new-module.sh <dir> [deps…]`
@@ -66,40 +64,40 @@ journal; queue views, retry state, DLQ are projections. Claim
 exclusivity = lease TTL + expiry reclaim. Vocabulary:
 docs/DOMAIN_LANGUAGE.md.
 
-| Package                                 | Purpose                                                                                                                         |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `internal/task`                         | Task record, Status, sentinels                                                                                                  |
-| `internal/journal`                      | Fact types + append-only Journal                                                                                                |
-| `internal/journal/cqrs`                 | Read-only go-cqrs-lite adapter (ADR-0014)                                                                                       |
-| `internal/queue`                        | Store contract, Filter, Queue facade, Waker                                                                                     |
-| `internal/queue/{sqlite,postgres}`      | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform`                                                  |
-| `internal/queue/{sqlitev4,postgresv4}`  | tq Store over the go-cqrs-lite queue engines                                                                                    |
-| `internal/queue/companion`              | Shared tq surfaces: reads, watermarks, scores, exclusivity, token finalize (`WithToken`)                                        |
-| `internal/{readmodel,composition}`      | S3 projection `<db>.readmodel.db` (`--read-model` ON) + S4 root: `system.New`, `ProjectionRuntime` (model+DLQ+host, `tq serve`) |
-| `internal/worker`                       | Claim → heartbeat → execute loop; requeue ladder                                                                                |
-| `internal/bridge`                       | papdashboard + cqa bridges → fix tasks                                                                                          |
-| `internal/executor`                     | sh/HTTP/agent/review/status executors + registry                                                                                |
-| `internal/harvest`                      | TODO_LIST.md → tasks; drift audit; prune-stale                                                                                  |
-| `internal/budget`                       | Daily-cap + session-usage projections per tick                                                                                  |
-| `internal/{dlqfix,review,status}`       | DLQ autopsies (`--dlq-fix`, auto-dismiss); review sweeper (`--review-autofix`); done-prompt sweeper (`--status-every`)          |
-| `internal/prioritize`                   | AI batch scorer (`--prioritize`), priority_scores cache                                                                         |
-| `internal/depsweep`                     | Dependency-upgrade sweeper `--dep-sweep`                                                                                        |
-| `internal/watermark`                    | Durable journal cursor shared by the sweepers                                                                                   |
-| `internal/consumer`                     | Journal dispatcher, per-subscriber cursors (ADR-0009)                                                                           |
-| `internal/runactor`                     | run.Group actors, LIFO shutdown, InterruptOn                                                                                    |
-| `internal/webui`                        | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003)                                                                          |
-| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout, shared bearer + 3-strikes                                            |
-| `internal/incident`                     | Error reports → fix tasks (ADR-0021)                                                                                            |
+| Package | Purpose |
+| --- | --- |
+| `internal/task` | Task record, Status, sentinels |
+| `internal/journal` | Fact types + append-only Journal |
+| `internal/journal/cqrs` | Read-only go-cqrs-lite adapter (ADR-0014) |
+| `internal/queue` | Store contract, Filter, Queue facade, Waker |
+| `internal/queue/{sqlite,postgres}` | Thin drivers over the v4 adapters; conform: `internal/queue/companion/conform` |
+| `internal/queue/{sqlitev4,postgresv4}` | tq Store over the go-cqrs-lite queue engines |
+| `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity, token finalize (`WithToken`) |
+| `internal/{readmodel,composition}` | S3 projection `<db>.readmodel.db` (`--read-model` ON) + S4 root: `system.New`, `ProjectionRuntime` (model+DLQ+host, `tq serve`) |
+| `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
+| `internal/bridge` | papdashboard + cqa bridges → fix tasks |
+| `internal/executor` | sh/HTTP/agent/review/status executors + registry |
+| `internal/harvest` | TODO_LIST.md → tasks; drift audit; prune-stale |
+| `internal/budget` | Daily-cap + session-usage projections per tick |
+| `internal/{dlqfix,review,status}` | DLQ autopsies (`--dlq-fix`, auto-dismiss); review sweeper (`--review-autofix`); done-prompt sweeper (`--status-every`) |
+| `internal/prioritize` | AI batch scorer (`--prioritize`), priority_scores cache |
+| `internal/depsweep` | Dependency-upgrade sweeper `--dep-sweep` |
+| `internal/watermark` | Durable journal cursor shared by the sweepers |
+| `internal/consumer` | Journal dispatcher, per-subscriber cursors (ADR-0009) |
+| `internal/runactor` | run.Group actors, LIFO shutdown, InterruptOn |
+| `internal/webui` | Live dashboard (`tq serve`): tailer→hub→SSE (ADR-0003) |
+| `internal/httpapi`+`httpauth`/`lockout` | Machine API (`tq api`): token-mandatory, nosniff, lockout, shared bearer + 3-strikes |
+| `internal/incident` | Error reports → fix tasks (ADR-0021) |
 
 ### Store invariants
 
 - **Single serialized writer**: `sqlitev4.Open` = ONE shared `*sql.DB`
-  (MaxOpenConns(1), WAL, busy_timeout) ridden by engine
-  (`usqlite.OpenDB`) AND companion — never a second write pool. Never
-  drop the `RowsAffected()` re-checks. The projection home has its own
-  single-writer election: the `.fold-lock` flock every folding readmodel
-  Open must win — a loser mounts read-only (no fold, no checkpoint),
-  and the stale zero-byte sidecar is steady state (never unlinked).
+  (MaxOpenConns(1), WAL, busy_timeout) ridden by engine (`usqlite.OpenDB`)
+  AND companion — never a second write pool; never drop the
+  `RowsAffected()` re-checks. The projection home elects separately:
+  the `.fold-lock` flock every folding readmodel Open must win — a
+  loser mounts read-only (no fold, no checkpoint); the stale zero-byte
+  sidecar is steady state (never unlinked).
 - **One deployment description (ADR-0022)**: `config.Deployment` is the
   only store-opening input — flags resolve via `config.FromFlags` (ONE
   TQ_SQLITE_SYNC reader), openers take the struct, pragma literals live
@@ -162,10 +160,10 @@ docs/DOMAIN_LANGUAGE.md.
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
   EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample
-  in `redact_test.go` (gosec note if tripped). One shared table
+  in `redact_test.go` (gosec note if tripped); ONE shared table
   (`TestSecretHitsAndRedactionCompileIdenticalTable`), windows-gated
-  (00-55 §f9). Counts are distinct secret LOCATIONS (span-merge
-  `4ba81d8`); pre-`4ba81d8` counts were raw pattern matches.
+  (00-55 §f9). Counts = distinct secret LOCATIONS (span-merge `4ba81d8`;
+  before it, raw pattern matches).
 - **Enqueued-fact snapshots are THIN** (`{project,type}`;
   `Caps.EnqueuedSnapshot=false` pinned in conform suites).
 
@@ -182,10 +180,10 @@ docs/DOMAIN_LANGUAGE.md.
   Probes enter `--priority ≥90`.
 - **Failure-evidence surface**: `tq dlq --evidence-stage <class>` filters
   the DLQ by the failed fact's Stage/VerifyStage/Class plus the
-  gate-env/gate-dead/gate-slow error-text aliases; `tq show` renders a
-  `failure` JSON section; webui detail trail lines carry an `evidence=`
-  suffix. Matcher: `cmd/tq/evidence.go`; the alias list is a third copy
-  of the death-class knowledge — a fourth must not appear.
+  gate-env/gate-dead/gate-slow aliases; `tq show` renders a `failure`
+  JSON section; webui detail trail lines carry an `evidence=` suffix.
+  Matcher: `cmd/tq/evidence.go` — the alias list is a THIRD copy of the
+  death-class knowledge; a fourth must not appear.
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   pools sweep once at start.
 - **Claim-time budget gate**: paid turns block once the daily
@@ -213,9 +211,8 @@ docs/DOMAIN_LANGUAGE.md.
   (2026-10-24, TODO 01-12 §e7/§g2): every countable sibling gate
   (check-script-syntax, check-go-mods, check-dead-exports,
   check-guard-wiring; gosec already had it) carries `--self-test` pinning
-  its summary format + a negative-path counter battery via an env hook
-  (TQ_SYNTAX_FILES, TQ_GOMODS_EXTRA_MODS, TQ_DEAD_FILES_CMD,
-  TQ_GUARD_FILES); wired into ci-local. New countable gates: same contract.
+  its summary format + a negative-path counter battery via an env hook;
+  wired into ci-local. New countable gates: same contract.
 - docs/status reports follow the a)-g) skeleton; indexed on creation
   (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
   daemon-folded reports); ONE index-row write point (top chronological
@@ -232,7 +229,7 @@ docs/DOMAIN_LANGUAGE.md.
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE
   changes only — repo-internal tooling and non-operator rows go in the
   `### Internal` subsection at the bottom of the release section, never
-  Added/Changed/Fixed; external/API behavior changes also get an explicit
+  Added/Changed/Fixed; external/API behavior changes get an explicit
   `(BEHAVIOR CHANGE for …)` flag; guarded by the O14 check in
   `scripts/check-release-docs.sh`.
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
@@ -240,11 +237,11 @@ docs/DOMAIN_LANGUAGE.md.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
   (daemon sweeps <60 s, footer-less, take STAGED files too); fold only
   while local-only + contiguous + exactly-mine (`scripts/commit-task.sh
-  <id> <subject> <file>…`). "Anything" is literal during MULTI-STEP git
-  surgery: modified-unstaged AND untracked files are daemon-food — a
-  mid-sequence sweep makes the span
-  non-contiguous and the heal refuses; between steps the tree must be
-  CLEAN, not merely "nothing left to stage" (2026-10-13 01-54 §e).
+  <id> <subject> <file>…`). During MULTI-STEP git surgery modified-
+  unstaged AND untracked files are daemon-food — a mid-sequence sweep
+  makes the span non-contiguous and the heal refuses; between steps the
+  tree must be CLEAN, not merely "nothing left to stage" (2026-10-13
+  01-54 §e).
 - Tab-bearing insertions go through python-heredoc replace — free-text
   edit glues tabs into comments as literal `\t`.
 - Pure-Go deps only (`CGO_ENABLED=0`); Go 1.26+ idioms deliberate
@@ -254,12 +251,11 @@ docs/DOMAIN_LANGUAGE.md.
 - **Executor shared seams — never hand-roll**: `decodePayload[T]`,
   `recordRunOutcome`, `executor.Excerpt`, `prepareRepo`, `payloadTimeout`;
   mirror clones gated STRICT by `check-mirror-clones.sh` (shared surface
-  `internal/queue/companion`). Art-dupl residuals are accepted ONLY where
-  named here: the `fragments.templ` conditional-span pair (Go comments
+  `internal/queue/companion`); art-dupl residuals accepted ONLY where
+  named here (the `fragments.templ` conditional-span pair — Go comments
   cannot live inside templ markup); don't add new ones.
   `art-dupl:accept` suppresses only within a few lines ABOVE the clone's
-  first line (doc position for func-top clones; inline comment adjacent
-  for deeper ones).
+  first line (func-top doc position; inline comment for deeper ones).
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
   lacks host tools).
 - Generated `*_templ.go` + minified `app.css` COMMITTED; after template
@@ -283,9 +279,12 @@ docs/DOMAIN_LANGUAGE.md.
   Footer-less daemon `chore:` sweeps heal via
   `scripts/heal-daemon-sweep.sh [--from <ref>] [--retitle <subject>] <Task-Queue-ID>`
   (unpushed only; backup on failure; `--self-test` pins rails). REFUSES
-  non-contiguous spans — fallback: verify exactly-mine via
-  `git show --stat`, then `git commit --amend` the unpushed HEAD
-  (2026-10-11 closeout §d4).
+  non-contiguous spans. A refusal naming the span's PARENT (a foreign
+  footer BELOW an otherwise-exactly-mine span) is the span-terminator
+  shape: run the script's printed `--from <oldest-blocker>` invocation —
+  proven to heal cleanly (2026-10-20 02-27 window); residue fallback:
+  verify exactly-mine via `git show --stat`, then `git commit --amend`
+  the unpushed HEAD (2026-10-11 §d4; 02-03 §f11).
 - **`TestExactlyOnceUnderConcurrency` is load-flaky (worker);
   `TestSelfManagingLoop` is load-flaky (harvest)**: build storms drop them
   at clean parents — re-run before attributing; both ride `KNOWN_FLAKY` in
@@ -297,8 +296,8 @@ docs/DOMAIN_LANGUAGE.md.
   %.0s` yields empty; chained `&` backgrounds the wrong span. POSIX ERE:
   `\t` inside a grep bracket class is a literal `t` (not tab) — use
   `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d` (2026-10-27: a
-  `[^ \t]` class silently skipped the cqrs `event` module — its name
-  contains a literal `t` — and the fixture "passed" wrong).
+  `[^ \t]` class silently skipped the cqrs `event` module and the
+  fixture "passed" wrong).
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod
   vendor` first; dep bumps also per-module tidy
   (`check-gomod-vendor-sync.sh` gates both).
@@ -334,11 +333,11 @@ docs/DOMAIN_LANGUAGE.md.
 - **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` reads as a
   thunk ("expected a function but got a thunk"); keep the `let` INSIDE
   the lambda.
-- **formatterWithGo drop-day pairing** (flake.nix): go.mod floor
-  > nixpkgs go, so `goTarball*` builds the toolchain from the go.dev
-  > tarball and `formatterWithGo` wraps templ fmt/goimports with it
-  > (sandbox blocks the download). ALL FOUR blocks drop together when
-  > nixpkgs ships go ≥ 1.27.3 — hashes stay paired (`goTarballHash`).
+- **formatterWithGo drop-day** (flake.nix): `goTarball*` builds the
+  toolchain from the go.dev tarball (floor > nixpkgs go; sandbox blocks
+  the download) and `formatterWithGo` wraps templ fmt/goimports with it;
+  ALL FOUR blocks drop together when nixpkgs ships go ≥ 1.27.3 — hashes
+  stay paired (`goTarballHash`).
 - **templ-components sibling pins**: zero pseudo-versions
   (`v…00001010100000-…`) in a dep's root go.mod pass local builds but
   kill consumer graph loads (Nix FOD) — `grep -r 00010101` the dep
