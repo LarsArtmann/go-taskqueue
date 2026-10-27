@@ -400,9 +400,7 @@ func TestServeHeaderMatrix(t *testing.T) {
 		defer resp.Body.Close()
 
 		withCache := matrixHeaders{}
-		for k, v := range serveHealthRow {
-			withCache[k] = v
-		}
+		maps.Copy(withCache, serveHealthRow)
 		withCache["cache-control"] = eq("public, max-age=86400")
 		withCache.surface().check(t, resp.Header, "GET /health/datastar.js")
 	})

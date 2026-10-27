@@ -613,8 +613,8 @@ func runGateBoard(ctx context.Context, scriptsDir string, scripts []string) chec
 func gateBoardTail(out string) string {
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
 	tail := ""
-	for i := len(lines) - 1; i >= 0; i-- {
-		if s := strings.TrimSpace(lines[i]); s != "" {
+	for _, line := range slices.Backward(lines) {
+		if s := strings.TrimSpace(line); s != "" {
 			tail = s
 			break
 		}
