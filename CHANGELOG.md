@@ -323,6 +323,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
 
+- **Batch-aware done-preflight footer signal** (2026-10-28): for a
+  MULTI-member batch, the claim-time footer signal completes only when
+  every member key is ticked-or-gone — a footed commit over a
+  partially-landed batch now falls through and the agent re-runs over
+  the open members (the 2026-10-14 04:17 reclaim of task
+  000001a1382a1765 completed 1/3 members zero-cost on the footer alone).
+  Pinned by TestDonePreflightBatchFooterRequiresAllMembersLanded
+  (harvest) + TestDonePreflightAfterLeaseReclaimCompletesWithoutRerun
+  (worker). Single-key tasks unchanged.
+
 - **statsPayload wire goldens** (2026-10-27): `TestStatsPayloadGoldenJSON`
   + `TestStatsPayloadBareShape` (cmd/tq/stats_json_test.go) pin the
   `tq stats --json` surfaces the budget goldens don't cover — by_status,

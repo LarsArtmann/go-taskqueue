@@ -2109,7 +2109,7 @@ func TestDonePreflightAfterLeaseReclaimCompletesWithoutRerun(t *testing.T) {
 		t.Fatalf("executor ran %d times, want 1 (the reclaim must not re-run the lost attempt)", ran.Load())
 	}
 
-	facts, _ := store.FactsForTask(ctx, enq.ID.String(), 0)
+	facts, ferr := store.FactsForTask(context.Background(), enq.ID.String(), 0)
 
 	var released journal.Fact
 
@@ -2120,7 +2120,11 @@ func TestDonePreflightAfterLeaseReclaimCompletesWithoutRerun(t *testing.T) {
 	}
 
 	if released.Type != journal.Released {
-		t.Fatal("no lease-expiry release fact: the re-claim did not ride the reclaim path")
+		var types []string
+		for _, f := range facts {
+			types = append(types, string(f.Type))
+		}
+		t.Fatalf("no release fact: err=%v facts=%v attempts=%d status=%s ran=%d", ferr, types, got.Attempts, got.Status, ran.Load())
 	}
 
 	var detail journal.ReleasedDetail
