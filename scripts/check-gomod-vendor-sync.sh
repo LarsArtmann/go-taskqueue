@@ -63,6 +63,54 @@ vendor_tree_hash() {
 	find vendor -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum | cut -d' ' -f1
 }
 
+# cmd/tq is replace-free (ADR-0017): it consumes the internal modules'
+# PUBLISHED versions, and MVS raises every shared go-cqrs-lite dep to the
+# max required anywhere in the resolved graph. If cmd/tq's own pin lags
+# that max, the go.sum entries cmd/tq committed don't cover the raised
+# versions — every build-tq.sh call dies with "missing go.sum entry /
+# inconsistent vendoring" while the tidy probe above stays green (the
+# 2026-10-15 parity-sweep class: root required cqrs v4.14.0-era modules
+# while cmd/tq pinned v4.13.1). The check: cmd/tq's cqrs pins must be
+# >= the max cqrs requirement across all root sub-module go.mods.
+# Override args (fixture go.mod paths) are for the self-test only.
+cmdtq_cqrs_parity() {
+	local cmdtq_gomod="${1:-cmd/tq/go.mod}"
+	shift
+	local roots=("$@")
+	if [ "${#roots[@]}" -eq 0 ]; then
+		mapfile -t roots < <(scripts/for-each-module.sh)
+		roots+=("internal/journal/cqrs")
+	fi
+
+	local tmp
+	tmp="$(mktemp)"
+	trap "rm -f '$tmp'" RETURN
+	{
+		local m
+		for m in ${roots[@]+"${roots[@]}"}; do
+			[ -f "$m/go.mod" ] || continue
+			grep -E '^[[:space:]]*github\.com/larsartmann/go-cqrs-lite/[^[:space:]]+ v[0-9]' "$m/go.mod" || true
+		done
+	} | awk '{if ($1 == "require") print $2, $3; else print $1, $2}' | sort -u | sort -k2 -r -V | awk '!seen[$1]++ {print $1, $2}' >"$tmp"
+
+	local rc=0 path have want
+	while read -r path have; do
+		want="$(awk -v p="$path" '$1 == p {print $2}' "$tmp" | head -1)"
+		[ -n "$want" ] || continue
+		if [ "$(printf '%s\n%s\n' "$want" "$have" | sort -V | head -1)" != "$want" ]; then
+			echo "FAIL: cmd/tq pins $path $have, LAGGING the root sub-module graph's max $want" >&2
+			echo "  cmd/tq is replace-free: the published-graph build resolves the max and" >&2
+			echo "  dies with inconsistent vendoring / missing go.sum entries. Heal:" >&2
+			echo "    (cd cmd/tq && GOWORK=off go get $path@$want && go mod tidy)" >&2
+			rc=1
+		fi
+	done < <(grep -E '^[[:space:]]*(require[[:space:]]+)?github\.com/larsartmann/go-cqrs-lite/[^[:space:]]+ v[0-9]' "$cmdtq_gomod" | awk '{if ($1 == "require") print $2, $3; else print $1, $2}')
+	if [ "$rc" -eq 0 ]; then
+		echo "ok: cmd/tq cqrs pins in parity with the root sub-module graph"
+	fi
+	return "$rc"
+}
+
 self_test() {
 	local tmp rc h1 h2 blind
 	tmp="$(mktemp -d)"
@@ -153,7 +201,28 @@ self_test() {
 		;;
 	esac
 
-	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor + absent-start)"
+	# Case 7: cmd/tq cqrs parity — a lagging cmd/tq pin must FAIL, an
+	# at-parity pin must pass (2026-10-15 parity-sweep §e2 class).
+	mkdir -p "$tmp/repo/internal/dep" "$tmp/repo/cmd"
+	printf 'module example.com/root\n\ngo 1.27\n\nrequire (\n\tgithub.com/larsartmann/go-cqrs-lite/event/v4 v4.15.1\n\tgithub.com/larsartmann/go-cqrs-lite/id/v4 v4.7.2\n)\n' >"$tmp/repo/internal/dep/go.mod"
+	printf 'module example.com/cmdtq\n\ngo 1.27\n\nrequire github.com/larsartmann/go-cqrs-lite/event/v4 v4.13.1\n' >"$tmp/repo/cmd/tq-go.mod"
+	if cmdtq_cqrs_parity "$tmp/repo/cmd/tq-go.mod" "$tmp/repo/internal/dep" >/dev/null 2>&1; then
+		echo "SELF-TEST FAIL: lagging cmd/tq cqrs pin NOT detected" >&2
+		return 1
+	fi
+	printf 'module example.com/cmdtq\n\ngo 1.27\n\nrequire github.com/larsartmann/go-cqrs-lite/event/v4 v4.15.1\n' >"$tmp/repo/cmd/tq-go.mod"
+	if ! cmdtq_cqrs_parity "$tmp/repo/cmd/tq-go.mod" "$tmp/repo/internal/dep" >/dev/null 2>&1; then
+		echo "SELF-TEST FAIL: at-parity cmd/tq cqrs pin reported as lagging" >&2
+		return 1
+	fi
+	# A path the root graph never requires must be ignored (no false fail).
+	printf 'module example.com/cmdtq\n\ngo 1.27\n\nrequire github.com/larsartmann/go-cqrs-lite/queue/v4 v4.0.1\n' >"$tmp/repo/cmd/tq-go.mod"
+	if ! cmdtq_cqrs_parity "$tmp/repo/cmd/tq-go.mod" "$tmp/repo/internal/dep" >/dev/null 2>&1; then
+		echo "SELF-TEST FAIL: cmd/tq-only cqrs path falsely flagged" >&2
+		return 1
+	fi
+
+	echo "self-test ok: sync/drift detection pinned (tracked scopes + ignored-vendor hash anchor + absent-start + cqrs parity)"
 	return 0
 }
 
@@ -216,6 +285,8 @@ for m in $mods; do
 	(cd "$m" && GOWORK=off go mod tidy)
 	detect_drift "$m tidy" "$m/go.mod" "$m/go.sum" || fail=1
 done
+
+cmdtq_cqrs_parity || fail=1
 
 if [ "$fail" -eq 0 ]; then
 	echo "vendor-sync summary: root vendor + all module tidies in sync"
