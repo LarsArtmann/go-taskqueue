@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/larsartmann/go-taskqueue/internal/journal"
 	"github.com/larsartmann/go-taskqueue/internal/queue"
 	"github.com/larsartmann/go-taskqueue/internal/task"
 )
@@ -118,21 +119,25 @@ func cmdTasks(args []string) error {
 	}
 
 	// Class parks join CLI-side (the class is requeue-evidence, not a
-	// pushdown column): list the filter's matches uncapped, narrow to the
-	// class's open parks, and let the limit apply afterwards.
+	// pushdown column) and the provider join rides the same facts: ONE
+	// LastFacts fetch serves both joins (2026-10-15 01-15 §b4).
 	classTotal := -1
 	tasks := []task.Task{}
+
+	needFacts := *parkedClass != "" || *parked
+	var facts []journal.Fact
+	if needFacts {
+		var err error
+		if facts, err = store.LastFacts(ctx, factTailLimit); err != nil {
+			return err
+		}
+	}
 
 	if *parkedClass != "" {
 		uncapped := filter
 		uncapped.Limit = 0
 
 		candidates, err := store.List(ctx, uncapped)
-		if err != nil {
-			return err
-		}
-
-		facts, err := store.LastFacts(ctx, factTailLimit)
 		if err != nil {
 			return err
 		}
@@ -189,11 +194,6 @@ func cmdTasks(args []string) error {
 	var providers map[string]string
 
 	if *parked {
-		facts, err := store.LastFacts(ctx, factTailLimit)
-		if err != nil {
-			return err
-		}
-
 		providers = latestRequeueProvider(facts)
 	}
 
