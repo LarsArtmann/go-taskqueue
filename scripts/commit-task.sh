@@ -43,8 +43,8 @@ if [ "${1:-}" = "--self-test" ]; then
 	}
 	echo one >f.txt
 	stamp=$("$self_dir/commit-task.sh" 0000000000000000abcd subject-only f.txt)
-	printf '%s\n' "$stamp" | grep -qE '^committed: [0-9a-f]{7,} subject-only$' \
-		|| fail "success line missing or malformed: '$stamp'"
+	printf '%s\n' "$stamp" | grep -qE '^committed: [0-9a-f]{7,} subject-only$' ||
+		fail "success line missing or malformed: '$stamp'"
 	last=$(git log -1 --format=%B | grep -v '^$' | tail -n 1)
 	[ "$last" = "Task-Queue-ID: 0000000000000000abcd" ] || fail "subject-only footer is not the last line: '$last'"
 	echo two >>f.txt

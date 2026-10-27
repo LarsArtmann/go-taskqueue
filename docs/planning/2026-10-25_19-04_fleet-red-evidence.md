@@ -25,11 +25,11 @@ is cited alongside. Owner-gated remainders are marked.
 
 ## The "four standing tooling-gate reds" (row 1123's batch)
 
-| Gate | State at HEAD | Evidence |
-| --- | --- | --- |
-| check-script-syntax | GREEN — 102 ok / 0 failed | row 871 receipt (`/tmp/tq-gates/syntax2.log`) |
-| check-guard-wiring | GREEN — 68 wired / 0 orphaned | row 871 receipt (`/tmp/tq-gates/guardwiring2.log`) |
-| check-fixture-attribution | GREEN — 25/25 | row 1110 tick, receipt `/tmp/tq-gates/fixattr2.log` |
+| Gate                           | State at HEAD                                 | Evidence                                                   |
+| ------------------------------ | --------------------------------------------- | ---------------------------------------------------------- |
+| check-script-syntax            | GREEN — 102 ok / 0 failed                     | row 871 receipt (`/tmp/tq-gates/syntax2.log`)              |
+| check-guard-wiring             | GREEN — 68 wired / 0 orphaned                 | row 871 receipt (`/tmp/tq-gates/guardwiring2.log`)         |
+| check-fixture-attribution      | GREEN — 25/25                                 | row 1110 tick, receipt `/tmp/tq-gates/fixattr2.log`        |
 | check-todo-list exit semantics | RED-by-design (rc=1 on foreign advisory rows) | OWNER-GATED: structural-violation set ruling (F7/row 1138) |
 
 ## CI-red triage classes (2026-10-13 section, rows 892-893)

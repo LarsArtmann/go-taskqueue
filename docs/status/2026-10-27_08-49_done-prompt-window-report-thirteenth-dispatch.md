@@ -19,14 +19,14 @@ All 18 spot-checked window commits are reachable at HEAD (`git cat-file -t` pass
 6. **Glued TODO row split** (efbc8710) + glued-checkbox structural check landed.
 7. **check-verify.sh pin-3 dropped as redundant** (b84132c6) — pin 6 strictly stronger.
 8. **Status-loop poller + push-timing guard** (9ff212d6, 9539f606, e496b1c8) with --self-test.
-9-12. **SECURITY.md header-matrix pin batch** — matrix asserted in Go (517fd666), CSRF-lockout 429 row driven for real (2e1f80ff), conditional-header model + two-way doc pin + negative path (e7b4a3ed, cc658bbf, 3a2d3477), /health* routes derived from healthBindings() (fd7d6530). Real posture fix: all 7 /health* bindings through withHealthHeaders.
-13. **Verify evidence stage queryable** (13230bbd, 672c01be): `tq dlq --evidence-stage`, `tq show` failure section, webui evidence= line. CHANGELOG Added row verified present in [Unreleased].
-14-15. **SecretHits silence pins** (3a6b0573 + 22-34 batch) and **shared SECRET EVIDENCE fixture** (7bfe4041) — redact_test.go and journal-drift.sh phase 5 consume one const.
-16. **Mechanical archive-eligibility gate** (9dc1571e) with --self-test 9/9, ci-local-wired.
-17. **Status-index prune + ratified digest ritual** (5281772d, 5a8b945f).
-18. **Footer-last contract enforced** (a471e1af hook + 4810608c templates).
-19. **Worktree smoke redesigned merge-tolerant, green** (49e4159e).
-20. **Windows CI confirmed green** — run 40175514907 on master 4c88ec84 (readmodel rename retry ab0722d4 + CloseReadModel 03c1f7a6 riding); TODO row 926 ticked with the run citation.
+   9-12. **SECURITY.md header-matrix pin batch** — matrix asserted in Go (517fd666), CSRF-lockout 429 row driven for real (2e1f80ff), conditional-header model + two-way doc pin + negative path (e7b4a3ed, cc658bbf, 3a2d3477), /health* routes derived from healthBindings() (fd7d6530). Real posture fix: all 7 /health* bindings through withHealthHeaders.
+9. **Verify evidence stage queryable** (13230bbd, 672c01be): `tq dlq --evidence-stage`, `tq show` failure section, webui evidence= line. CHANGELOG Added row verified present in [Unreleased].
+   14-15. **SecretHits silence pins** (3a6b0573 + 22-34 batch) and **shared SECRET EVIDENCE fixture** (7bfe4041) — redact_test.go and journal-drift.sh phase 5 consume one const.
+10. **Mechanical archive-eligibility gate** (9dc1571e) with --self-test 9/9, ci-local-wired.
+11. **Status-index prune + ratified digest ritual** (5281772d, 5a8b945f).
+12. **Footer-last contract enforced** (a471e1af hook + 4810608c templates).
+13. **Worktree smoke redesigned merge-tolerant, green** (49e4159e).
+14. **Windows CI confirmed green** — run 40175514907 on master 4c88ec84 (readmodel rename retry ab0722d4 + CloseReadModel 03c1f7a6 riding); TODO row 926 ticked with the run citation.
 
 Since the twelfth: the parked-surface provider batch (4eecffd0/390226e6, 1547e8c5/a732f257, 416ff2a0 one-fetch perf, fdb258b9 postgres conform recipe) landed 3/3 with rows ticked (00552b0c) and its closeout indexed (b3ad16fc) — outside this window, no action needed here.
 

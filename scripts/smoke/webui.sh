@@ -116,7 +116,7 @@ echo "== assert /api/stats"
 "$TMP/tq" >/dev/null 2>&1 || true
 sleep 2
 
-python3 - "$PORT" <<'PYEOF' || fail_smoke "stats asserts" 
+python3 - "$PORT" <<'PYEOF' || fail_smoke "stats asserts"
 import json, sys, time, urllib.request
 
 port = sys.argv[1]
@@ -249,7 +249,7 @@ AUTH_SERVE_PID=$!
 
 wait_dashboard "$TMP/auth-serve.log" "token-authenticated tq serve" hard
 
-python3 - "$AUTH_PORT" <<'PYEOF' || fail_smoke "auth asserts" 
+python3 - "$AUTH_PORT" <<'PYEOF' || fail_smoke "auth asserts"
 import sys, urllib.error, urllib.request
 
 base = f"http://127.0.0.1:{sys.argv[1]}"
@@ -283,7 +283,7 @@ PYEOF
 
 echo "== writes smoke: CSRF brute force locks the write routes"
 # On the read-only serve above, the write routes must not exist at all.
-python3 - "$PORT" <<'PYEOF' || fail_smoke "sse asserts" 
+python3 - "$PORT" <<'PYEOF' || fail_smoke "sse asserts"
 import sys, urllib.error, urllib.request
 import urllib.parse
 
@@ -308,7 +308,7 @@ WRITES_SERVE_PID=$!
 
 wait_dashboard "$TMP/writes-serve.log" "writes-enabled tq serve" hard
 
-python3 - "$WRITES_PORT" <<'PYEOF' || fail_smoke "writes asserts" 
+python3 - "$WRITES_PORT" <<'PYEOF' || fail_smoke "writes asserts"
 import sys, urllib.error, urllib.request
 import urllib.parse
 

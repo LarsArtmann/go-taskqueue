@@ -84,29 +84,29 @@ if [ "${CHECK_CI_SELF_TEST:-}" = "1" ]; then
 		echo "WARN: git not on PATH — skipping the scratch-repo red-branch battery (bare nix checkPhase context; row 1121)"
 		rel_scratch=""
 	else
-	rel_scratch="$(mktemp -d)"
-	trap '[ -n "$rel_scratch" ] && rm -rf "$rel_scratch"' EXIT
-	git -C "$rel_scratch" init -q
-	git -C "$rel_scratch" -c user.email=t@t -c user.name=t commit -q --allow-empty -m base
-	BASE_SHA="$(git -C "$rel_scratch" rev-parse HEAD)"
-	git -C "$rel_scratch" -c user.email=t@t -c user.name=t commit -q --allow-empty -m ahead
-	AHEAD_SHA="$(git -C "$rel_scratch" rev-parse HEAD)"
-	git -C "$rel_scratch" switch -q --detach "$BASE_SHA"
-	git -C "$rel_scratch" -c user.email=t@t -c user.name=t commit -q --allow-empty -m diverged
-	DIVERGED_SHA="$(git -C "$rel_scratch" rev-parse HEAD)"
-	[ "$(red_branch_relation "$BASE_SHA" "$AHEAD_SHA" "$rel_scratch")" = "predates" ] || {
-		echo "check-ci self-test: ancestor run sha must classify predates"
-		exit 1
-	}
-	[ "$(red_branch_relation "$AHEAD_SHA" "$AHEAD_SHA" "$rel_scratch")" = "same-tree" ] || {
-		echo "check-ci self-test: run sha equal to local HEAD must classify same-tree"
-		exit 1
-	}
-	[ "$(red_branch_relation "$DIVERGED_SHA" "$AHEAD_SHA" "$rel_scratch")" = "diverged" ] || {
-		echo "check-ci self-test: sibling commit must classify diverged, not predates"
-		exit 1
-	}
-		fi
+		rel_scratch="$(mktemp -d)"
+		trap '[ -n "$rel_scratch" ] && rm -rf "$rel_scratch"' EXIT
+		git -C "$rel_scratch" init -q
+		git -C "$rel_scratch" -c user.email=t@t -c user.name=t commit -q --allow-empty -m base
+		BASE_SHA="$(git -C "$rel_scratch" rev-parse HEAD)"
+		git -C "$rel_scratch" -c user.email=t@t -c user.name=t commit -q --allow-empty -m ahead
+		AHEAD_SHA="$(git -C "$rel_scratch" rev-parse HEAD)"
+		git -C "$rel_scratch" switch -q --detach "$BASE_SHA"
+		git -C "$rel_scratch" -c user.email=t@t -c user.name=t commit -q --allow-empty -m diverged
+		DIVERGED_SHA="$(git -C "$rel_scratch" rev-parse HEAD)"
+		[ "$(red_branch_relation "$BASE_SHA" "$AHEAD_SHA" "$rel_scratch")" = "predates" ] || {
+			echo "check-ci self-test: ancestor run sha must classify predates"
+			exit 1
+		}
+		[ "$(red_branch_relation "$AHEAD_SHA" "$AHEAD_SHA" "$rel_scratch")" = "same-tree" ] || {
+			echo "check-ci self-test: run sha equal to local HEAD must classify same-tree"
+			exit 1
+		}
+		[ "$(red_branch_relation "$DIVERGED_SHA" "$AHEAD_SHA" "$rel_scratch")" = "diverged" ] || {
+			echo "check-ci self-test: sibling commit must classify diverged, not predates"
+			exit 1
+		}
+	fi
 
 	# @tsv parse: the ONE gh call's --jq shape must survive the read split
 	# (displayTitle contains spaces). A null conclusion is emitted as the

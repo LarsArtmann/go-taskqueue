@@ -36,7 +36,7 @@ while IFS= read -r line; do
 	if ! git merge-base --is-ancestor "$sha" HEAD 2>/dev/null; then
 		orphans="$orphans $sha"
 	fi
-done < "$roster"
+done <"$roster"
 
 rc=0
 if [ -n "$missing" ]; then

@@ -104,7 +104,7 @@ Scope: continue the SUPERB Pareto plan (`docs/planning/2026-10-25_15-40_SUPERB-P
    stripped (receipt: `/tmp/tq-gates/css-guard-on-expanded.log`). The
    regenerated file committed as `633a80c6` is style-bearing; correction
    appendix appended to the 08-32 report (daemon-folded `ca45c587`).
-5. **Fleet gate board (T10/F17/row 1118):** unbuilt — today re-demonstrated
+6. **Fleet gate board (T10/F17/row 1118):** unbuilt — today re-demonstrated
    the need (both nix reds were hand-discovered, again).
 
 ## c) NOT STARTED
@@ -178,6 +178,7 @@ Scope: continue the SUPERB Pareto plan (`docs/planning/2026-10-25_15-40_SUPERB-P
 ## f) FIFTY things to get done next (impact-ordered, owner-gated marked 🔒)
 
 **Fleet-green closure (now):**
+
 1. Push local master (9 commits, head `633a80c6`) and confirm the next CI
    run is GREEN end-to-end — both nix causes are cured but unproven in CI.
 2. Re-pull run 40203714773's nix log; confirm/deny css drift failed it too;
@@ -193,31 +194,31 @@ Scope: continue the SUPERB Pareto plan (`docs/planning/2026-10-25_15-40_SUPERB-P
 7. Row 1137: structural glued-row violation pin (pairs with F7).
 8. 🔒 F8: dangling-cite ruling memo (baseline vs heal, cost per option).
 9. F9: heal wave 1 — 100 oldest dead SHAs via subject match + fork-record
-   arrows (after F8).
+arrows (after F8).
 10. Widen check-tick-claims `claim_re` word window ({0,2} → more) with a
-    self-test of the 09-29 row-143 shape (filed row today).
+self-test of the 09-29 row-143 shape (filed row today).
 11. F13/F14: review-fix zero-output guard (completion-without-output
-    detector) + wire into ci-local.
+detector) + wire into ci-local.
 12. F16: extend ci.yml with the 3 countable-gate self-tests.
 13. F17/T10/row 1118: fleet gate board (`tq doctor` section first).
 14. 🔒 css drift policy: heal-on-drift (auto-regen commit) vs detect-only.
 15. T15: pin self-test-BEFORE-gate ordering in ci-local (dce6c12b class).
 16. Row 948: golang-lint version single-pin (GOSEC_VERSION pattern).
 17. Consider check-tick-claims hard-gate flip (advisory → rc=1) after the
-    regex widening — 🔒 owner call.
+regex widening — 🔒 owner call.
 
 **Docs health:**
 18. F18/T11: ANNOTATE+ARCHIVE wave A (2026-10-20 done-prompt cluster,
-    ≈200 index rows).
+≈200 index rows).
 19. Row 1050: heal five glued TODO lines.
 20. B1–B4: docs-health floors (FEATURES/ROADMAP/CHANGELOG/AGENTS freshness).
 21. B5–B8: windows & process items (dispatch-env TQ_DB export, closeout
-    policy, tick-claim citation extension per §e5).
+policy, tick-claim citation extension per §e5).
 22. B9: fleet/deploy + owner-gated leftovers.
 23. B10: long tail + v0.4 re-row.
 24. Harvest this report's §f into TODO_LIST/ROADMAP (docs-health HARVEST).
 25. Annotate the 16-57 report §a3 with the corrected nix-job attribution
-    (appendix pointer to this report).
+(appendix pointer to this report).
 
 **Webui:**
 26. F21: webui smoke keeps TMP + dumps log on failure.
@@ -226,7 +227,7 @@ Scope: continue the SUPERB Pareto plan (`docs/planning/2026-10-25_15-40_SUPERB-P
 29. F20: demoted-serve staleness contract (SSE + /api/stats).
 30. 🔒 Row 440: dlqfix autopsy webui surface (needs the surface ruling).
 31. css artifact: add "generated — regenerate via scripts/build-webui-css.sh,
-    never hand-edit" header note where templaters will see it.
+never hand-edit" header note where templaters will see it.
 
 **Tooling hygiene:**
 32. T16: heal UX improvements.
@@ -240,20 +241,20 @@ Scope: continue the SUPERB Pareto plan (`docs/planning/2026-10-25_15-40_SUPERB-P
 40. T26: release hardening.
 41. T27: freeze + window residue.
 42. AGENTS.md Known Issues: css-minify class entry + `nix fmt` cure for
-    treefmt/gofmt divergence + `TICK-CLAIM WARN:` literal for greps.
+treefmt/gofmt divergence + `TICK-CLAIM WARN:` literal for greps.
 43. treefmt↔gofmt toolchain alignment (one formatter of record).
 44. Re-run the four standing gates at HEAD for a fresh 4/4-green snapshot
-    receipt post-css/treefmt.
+receipt post-css/treefmt.
 45. Templ-generate idempotency check at HEAD (no other drifted generated
-    artifacts — app.css was one; prove it was the only one).
+artifacts — app.css was one; prove it was the only one).
 46. `.tq-worktrees` empty per-repo parents: delete empty dirs in the reaper
-    (residue from the L4 finding; small code change).
+(residue from the L4 finding; small code change).
 47. v0.3.5 candidate scan once CI green (O14: css fix is internal-only →
-    `### Internal`, not operator notes).
+`### Internal`, not operator notes).
 48. Confirm CI's workflow_dispatch (F2) works with a scratch dispatch once
-    green (dry-run never executed).
+green (dry-run never executed).
 49. Check-test the 09-29 archived claim's sibling window (the same report
-    cluster) for more 3+word-distance false claims once the regex widens.
+cluster) for more 3+word-distance false claims once the regex widens.
 50. 🔒 Owner rulings from §g below — unblocks 6, 8, 9, 14, 30, 17.
 
 ## g) Three questions I can NOT figure out myself
@@ -274,6 +275,7 @@ Scope: continue the SUPERB Pareto plan (`docs/planning/2026-10-25_15-40_SUPERB-P
    routing for ~100 items.
 
 ---
+
 Gate receipts this session: `nix build .#checks.x86_64-linux.treefmt` rc=0;
 `scripts/check-webui-css.sh` rc=0 on the committed minified css (post-
 `633a80c6`) AND rc=1 on the pre-commit expanded css

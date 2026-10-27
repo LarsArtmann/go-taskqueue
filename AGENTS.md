@@ -336,9 +336,9 @@ docs/DOMAIN_LANGUAGE.md.
   the lambda.
 - **formatterWithGo drop-day pairing** (flake.nix): go.mod floor
   > nixpkgs go, so `goTarball*` builds the toolchain from the go.dev
-  tarball and `formatterWithGo` wraps templ fmt/goimports with it
-  (sandbox blocks the download). ALL FOUR blocks drop together when
-  nixpkgs ships go ≥ 1.27.3 — hashes stay paired (`goTarballHash`).
+  > tarball and `formatterWithGo` wraps templ fmt/goimports with it
+  > (sandbox blocks the download). ALL FOUR blocks drop together when
+  > nixpkgs ships go ≥ 1.27.3 — hashes stay paired (`goTarballHash`).
 - **templ-components sibling pins**: zero pseudo-versions
   (`v…00001010100000-…`) in a dep's root go.mod pass local builds but
   kill consumer graph loads (Nix FOD) — `grep -r 00010101` the dep

@@ -133,7 +133,10 @@ Task-Queue-ID: 000001a175f4de403dc14ed9579100000000'
 	# Non-daemon subjects bypass the age check entirely.
 	subject_override_check="$(git log -1 --format=%s "$non_daemon_sha")"
 	case "$subject_override_check" in
-	"chore: auto-commit"*) echo "FAIL: fixture hygiene"; rc=1 ;;
+	"chore: auto-commit"*)
+		echo "FAIL: fixture hygiene"
+		rc=1
+		;;
 	esac
 	[ "$rc" -eq 0 ] || exit 1
 	echo "push-timing self-test ok (summary format pin + 3-way fixture battery: backdated allowed, fresh refused, healed allowed)"

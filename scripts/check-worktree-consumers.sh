@@ -34,12 +34,14 @@ if [ "${1:-}" = "--self-test" ]; then
 		rc=0
 		out="$(TQ_WORKTREE_FILES="$files" "$self_abs" 2>&1)" || rc=$?
 		if [ "$rc" -ne "$want_rc" ]; then
-			echo "FAIL: $desc (want rc=$want_rc, got rc=$rc)"; printf '%s\n' "$out" | sed 's/^/    /'
+			echo "FAIL: $desc (want rc=$want_rc, got rc=$rc)"
+			printf '%s\n' "$out" | sed 's/^/    /'
 			failc=$((failc + 1))
 			return
 		fi
 		if [ -n "$needle" ] && ! grep -qF -- "$needle" <<<"$out"; then
-			echo "FAIL: $desc (missing: $needle)"; printf '%s\n' "$out" | sed 's/^/    /'
+			echo "FAIL: $desc (missing: $needle)"
+			printf '%s\n' "$out" | sed 's/^/    /'
 			failc=$((failc + 1))
 			return
 		fi

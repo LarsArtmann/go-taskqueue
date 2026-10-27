@@ -167,6 +167,7 @@ T2 go.work completion, and today's-outcome folds into the fleet rows.
 ## f) FIFTY things to get done next (impact-ordered, owner-gated marked 🔒)
 
 **Verify-then-close (now):**
+
 1. When the readmodel rollout lands: run the cmd/tq battery (vet +
    TestDoctorPaidNoops + gate-board tests + `test-cmd-tq.sh`) — GREEN
    or amend row 1116's tick.
@@ -178,20 +179,20 @@ T2 go.work completion, and today's-outcome folds into the fleet rows.
 
 **Doctor/gate follow-ups (mine):**
 6. Gate board: add the remaining cheap countable gates
-   (dead-sha-refs, doc-refs, status-index, release-docs) to
-   `doctorGateScripts` after a cost check.
+(dead-sha-refs, doc-refs, status-index, release-docs) to
+`doctorGateScripts` after a cost check.
 7. `tq doctor --gates --json` render check (Items ride the JSON path).
 8. Parallelize gate-board runs if the board proves slow.
 9. Committed-generated-artifact guard: FAIL when `git ls-files` matches
-   an ignored-family pattern (the fold-lock class, §e4).
+an ignored-family pattern (the fold-lock class, §e4).
 10. Pin `--print-floor` inside check-toolchain-pins `--self-test`
-    (171842151c row).
+(171842151c row).
 11. Dedupe the floor-parse loop in check-toolchain-pins.sh (two copies
-    of the sed regex today).
+of the sed regex today).
 12. Widen check-tick-claims `claim_re` word window + 09-29-shape
-    self-test (my filed row).
+self-test (my filed row).
 13. AGENTS.md Known Issues: the check-ignore-tracked-file gotcha + the
-    standing `nix fmt <file>` cure (16-57 §e7 follow-up).
+standing `nix fmt <file>` cure (16-57 §e7 follow-up).
 14. gopls restart ritual for the stale go.work diagnostics.
 
 **Plan fine tasks (unblocked ones):**
@@ -210,12 +211,12 @@ T2 go.work completion, and today's-outcome folds into the fleet rows.
 27. F31: commit-task.sh success echo (hash + subject).
 28. F32: root-battery-before-tick conventions note.
 29. F33–F36: DLQPathFor cluster (unexported derivation, call sites,
-    doctor legacy surfacing, guard script).
+doctor legacy surfacing, guard script).
 30. Row 1050: five glued TODO lines.
 31. Closeout convention: cheap doc gates BEFORE every commit.
 32. Fix-ticket protocol row (grep cross-refs before editing).
 33. Readmodel sidecar pin: an open in a checkout drops NO tracked-path
-    artifacts (temp-repo test).
+artifacts (temp-repo test).
 34. Gate board in `tq serve` health surface (row 1119's webui option).
 35. T12 remainder: ProjectionRuntime robustness pair.
 36. 🔒 F7: check-todo-list advisory-vs-structural exit semantics.
