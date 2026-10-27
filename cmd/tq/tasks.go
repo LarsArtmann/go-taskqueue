@@ -186,9 +186,46 @@ func cmdTasks(args []string) error {
 		}
 	}
 
+	var providers map[string]string
+
+	if *parked {
+		facts, err := store.LastFacts(ctx, factTailLimit)
+		if err != nil {
+			return err
+		}
+
+		providers = latestRequeueProvider(facts)
+	}
+
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
+
+		// Parked rows carry the requeue-evidence provider (omitempty when
+		// the facts carry none) so JSON consumers get the one-glance
+		// "which provider" answer without journal reads; non-parked JSON
+		// stays the plain task array (2026-10-15 01-15 §b2).
+		if providers != nil {
+			rows := make([]parkedTaskRow, len(tasks))
+			for i, t := range tasks {
+				rows[i] = parkedTaskRow{Task: t, Provider: providers[t.ID.String()]}
+			}
+
+			if *jsonEnvelope {
+				total, err := uncappedTotal()
+				if err != nil {
+					return err
+				}
+
+				return enc.Encode(struct {
+					Tasks     []parkedTaskRow `json:"tasks"`
+					Total     int             `json:"total"`
+					Truncated bool            `json:"truncated"`
+				}{rows, total, total > len(rows)})
+			}
+
+			return enc.Encode(rows)
+		}
 
 		if *jsonEnvelope {
 			total, err := uncappedTotal()
@@ -206,20 +243,16 @@ func cmdTasks(args []string) error {
 		return enc.Encode(tasks)
 	}
 
-	var providers map[string]string
-
-	if *parked {
-		facts, err := store.LastFacts(ctx, factTailLimit)
-		if err != nil {
-			return err
-		}
-
-		providers = latestRequeueProvider(facts)
-	}
-
 	printTaskListTo(os.Stdout, tasks, *limit, uncappedTotal, providers)
 
 	return nil
+}
+
+// parkedTaskRow joins a task with its requeue-evidence provider for the
+// parked JSON surface; the embedded task keeps the wire shape additive.
+type parkedTaskRow struct {
+	task.Task
+	Provider string `json:"provider,omitempty"`
 }
 
 // printTaskList renders the list view: full IDs (they are the handle into
