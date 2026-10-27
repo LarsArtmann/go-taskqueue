@@ -126,3 +126,11 @@ Reproduce the fleet sweep: `find . -name go.mod -not -path "*/vendor/*" | sort |
 1. **`generic_return` end state:** keep the deliberate non-fix forever, or adopt per-function/go-error-family error types as a dedicated migration project? This decides f1/f12/f27/f44 and whether AGENTS.md's bullet is final or placeholder.
 2. **Gate or advisory:** should the composed erraudit command become a hard `ci-local` gate (then f3/f4/f9 need the fleet `--self-test` contract), or stay a manual/advisory check?
 3. **Where does erraudit live?** Repo/issue-tracker for the binary (61a744c) so the three tool bugs (f5–f7) can be filed, and whether it's version-pinned somewhere I should keep in sync.
+
+## Owner rulings received (2026-10-27 19:35 CET, after this report was written)
+
+1. **Q1 `generic_return`: ADOPT** — per-function/go-error-family error types as a dedicated migration project. The §a7 "DELIBERATE NON-FIX" wording and the same stance in AGENTS.md were corrected at ruling time (memory must not survive an overrule); the green gate command keeps `--disable generic_return` only until the migration lands.
+2. **Q2 Gate: HARD** — `scripts/check-erraudit.sh` (fleet `--self-test` contract) wired into `ci-local.sh`.
+3. **Q3 erraudit repo: `github.com/larsartmann/erraudit`** (local checkout `/home/lars/projects/erraudit`) — the three §c1 tool bugs are fileable.
+
+Follow-through harvested as a 3-row dated cluster in `TODO_LIST.md` (gate script; migration project with per-module batch plan; upstream bug filing). §c items 1–3 are thereby ruled/unblocked, not forgotten.

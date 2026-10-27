@@ -327,11 +327,12 @@ docs/DOMAIN_LANGUAGE.md.
   `//nolint:legacyerrors // <reason>` on the call line (default lint honors
   it; `--max` implies `--no-suppress`, hence the disable; never run
   `nolint-audit --fix` — it deletes honored tokens). `generic_return`
-  (`--enforce-generic-return`, ~200 fleet-wide under `--max`) is a
-  DELIBERATE NON-FIX: returning `error` is the idiom (sentinels + `%w`
-  wrap; the check ships off-by-default for exactly that reason) —
-  per-function error types are a go-error-family migration decision, not
-  lint debt.
+  (~197 sites / 24 modules under `--max`): OWNER-RULED ADOPT 2026-10-27 —
+  per-function error types are a dedicated migration project, NOT lint
+  debt to suppress away; the gate keeps `--disable generic_return` only
+  until the migration lands, then the disable drops. Gate wiring ruled:
+  `scripts/check-erraudit.sh` + ci-local, HARD gate. Tool bugs (hint/flag
+  rejections, rc shape) file at github.com/larsartmann/erraudit.
 - **VendorHash drift**: after go.mod changes run
   `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to
   flake.nix.
