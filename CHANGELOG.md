@@ -309,6 +309,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
 
+- **cmd/tq version-parity + one tool-pin source** (2026-10-27):
+  `check-gomod-vendor-sync` now gates cmd/tq's go-cqrs-lite pins against
+  the root sub-module graph's max (caught + healed seven lagging pins and
+  a stale cmd/tq go.sum on landing); gosec + golangci-lint versions
+  derive from ONE file (`scripts/lib/tool-pins.sh`) consumed by
+  check-gosec.sh, ci.yml (all four install/derivation lines), and a new
+  ci-local pin-format hard gate with an advisory host-drift WARN.
 - **Mechanical archive bar** (2026-10-26): `scripts/check-archive-eligibility.sh`
   — a status-report candidate may only move to `docs/status/archived/`
   when every numbered / checkbox item is struck or marked; `--self-test`

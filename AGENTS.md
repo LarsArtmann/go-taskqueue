@@ -294,7 +294,11 @@ docs/DOMAIN_LANGUAGE.md.
   smokes MUST export `TQ_DB=<scratch>`.
 - **Session shell hazards**: no usable `PIPESTATUS`; bare `unset VAR`
   leaks to children (`env -u VAR`); multi-file `tail` fails; `printf
-  %.0s` yields empty; chained `&` backgrounds the wrong span.
+  %.0s` yields empty; chained `&` backgrounds the wrong span. POSIX ERE:
+  `\t` inside a grep bracket class is a literal `t` (not tab) — use
+  `[[:space:]]`/`[[:alnum:]]` classes, never `\t`/`\d` (2026-10-27: a
+  `[^ \t]` class silently skipped the cqrs `event` module — its name
+  contains a literal `t` — and the fixture "passed" wrong).
 - **Root builds auto-use `vendor/`** — internal/ changes need `go mod
   vendor` first; dep bumps also per-module tidy
   (`check-gomod-vendor-sync.sh` gates both).
