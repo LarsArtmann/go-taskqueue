@@ -523,9 +523,10 @@ func assertCleanTree(ctx context.Context, repo string) error {
 
 	if s := strings.TrimSpace(out.String()); s != "" {
 		return fmt.Errorf(
-			"agent: repo %s has uncommitted changes; refusing to run agent (commit/stash first, or set require_clean=false): %s",
+			"agent: repo %s has uncommitted changes; refusing to run agent (commit/stash first, or set require_clean=false): %s%w",
 			repo,
 			tailBytes(out.Bytes(), 512),
+			ErrDirtyTree,
 		)
 	}
 

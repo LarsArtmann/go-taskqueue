@@ -63,6 +63,15 @@ func TestAgentExecutorRefusesDirtyTree(t *testing.T) {
 		t.Fatalf("want dirty-tree refusal, got %v", err)
 	}
 
+	pre, ok := errors.AsType[*PreflightError](err)
+	if !ok {
+		t.Fatalf("err = %T, want *PreflightError", err)
+	}
+
+	if !pre.DirtyTree() {
+		t.Errorf("DirtyTree() = false for a dirty-tree refusal: %v", err)
+	}
+
 	if _, err := os.Stat(filepath.Join(repo, "ran.txt")); err == nil {
 		t.Fatal("agent ran despite dirty tree")
 	}

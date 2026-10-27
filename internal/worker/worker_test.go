@@ -1466,6 +1466,59 @@ func TestStaysOnLadder(t *testing.T) {
 	}
 }
 
+// TestDirtyTreePreflightNeverBurnsAttempt pins the co-tenancy carve-out
+// (task 000001a13d99f1: foreign dirt burned attempt 1 via the breaker):
+// dirty-tree preflight refusals park on the escalating ladder forever —
+// the attempts counter stays at 0 and no EnvStreakCode fact is written,
+// no matter how long the streak runs, because the dirt usually belongs to
+// ANOTHER session's in-flight files. The breaker stays armed for the
+// non-dirty preflight classes (pinned by TestEnvRequeueStreakBurnsAttempt
+// via the gate class).
+func TestDirtyTreePreflightNeverBurnsAttempt(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+	reg.RegisterFunc("dirty", func(context.Context, task.Task) error {
+		return &executor.PreflightError{
+			Cause: fmt.Errorf("agent: repo /r has uncommitted changes; refusing to run agent: %w", executor.ErrDirtyTree),
+		}
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "dirty", MaxAttempts: 3})
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		PreflightBackoff: 5 * time.Millisecond,
+		Backoff:          func(int) time.Duration { return 5 * time.Millisecond },
+		Executors:        reg,
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	// Long enough for many ladder cycles at the 5ms base — the breaker
+	// (EnvRequeueBurn=3) would have burned attempt 1 within the first
+	// three refusals.
+	time.Sleep(500 * time.Millisecond)
+
+	got, err := store.Get(context.Background(), enq.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+
+	if got.Attempts != 0 || strings.Contains(got.LastError, EnvStreakCode) {
+		t.Fatalf("dirty-tree streak burned an attempt: attempts=%d lastError=%q, want parked with no burn",
+			got.Attempts, got.LastError)
+	}
+
+	if got.Status != task.Pending {
+		t.Fatalf("status = %s, want pending (parked on the ladder)", got.Status)
+	}
+
+	cancel()
+}
+
 // TestEnvRequeueStreakBurnsAttempt pins the circuit breaker end to end
 // (R3 option (a), docs/planning/2026-10-01_11-19_env-requeue-circuit-breaker.md):
 // the third consecutive gate refusal burns the attempt (attempts=1,

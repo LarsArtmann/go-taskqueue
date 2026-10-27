@@ -70,6 +70,19 @@ func Permanent(cause error) error {
 // the environment is fixed.
 type PreflightError struct{ Cause error }
 
+// ErrDirtyTree rides a dirty-tree refusal's cause chain (assertCleanTree
+// wraps it) so the worker can classify the refusal WITHOUT string
+// matching: under concurrent-agent co-tenancy the dirt usually belongs to
+// ANOTHER session's in-flight files, so the breaker must not spend the
+// task's attempts on it — dirty-tree preflights park on the escalating
+// ladder instead of burning via the env-streak breaker.
+var ErrDirtyTree = errors.New("dirty tree")
+
+// DirtyTree reports whether the refusal was the dirty-working-tree guard
+// (as opposed to missing autonomy or a dead toolchain, which a commit
+// cannot heal and which stay inside the env-streak breaker's reach).
+func (e *PreflightError) DirtyTree() bool { return errors.Is(e.Cause, ErrDirtyTree) }
+
 func (e *PreflightError) Error() string { return "preflight: " + e.Cause.Error() }
 func (e *PreflightError) Unwrap() error { return e.Cause }
 

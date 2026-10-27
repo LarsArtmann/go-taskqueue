@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Dirty-tree preflights park instead of burning via the env-streak
+  breaker** (2026-10-27): a dirty-working-tree preflight refusal no longer
+  counts toward the 3-streak environmental-requeue breaker — after 3
+  consecutive dirty-tree refusals the task now parks on the escalating
+  ladder (capped 15 min) with NO attempt burn, instead of losing an
+  attempt via a `task.failed [env-streak]` fact (BEHAVIOR CHANGE for
+  `tq tasks --parked` readers and env-streak journal consumers: dirty-tree
+  streaks no longer produce burns; gate/toolchain environmental refusals
+  still burn as before). Root cause: under concurrent-agent co-tenancy the
+  uncommitted changes usually belong to ANOTHER session's in-flight files,
+  which the breaker cannot distinguish from the task's own repo state —
+  task 000001a13d99f1 lost attempt 1 to foreign dirt. The dirty-tree class
+  is now a typed marker (`executor.ErrDirtyTree`,
+  `PreflightError.DirtyTree()`), not a string match.
 - **Provider surfaced on parked JSON rows** (2026-10-27): `tq tasks
   --parked --json` rows now carry a `provider` field (from the latest
   requeue evidence, omitted when absent), so JSON consumers get the

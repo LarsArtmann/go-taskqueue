@@ -100,6 +100,11 @@ const (
 // consecutive environmental-death streak escalating into attempt burn.
 const EnvStreakCode = internalexecutor.EnvStreakCode
 
+// ErrDirtyTree rides a dirty-tree preflight refusal's cause chain so the
+// worker can park the task instead of burning it via the env-streak
+// breaker (foreign concurrent-agent dirt must not spend attempts).
+var ErrDirtyTree = internalexecutor.ErrDirtyTree
+
 // IsEnvironmentalDeath reports whether a terminal failure is an
 // environmental death (rate limits, provider windows, breaker burns,
 // red-at-base, gate-slow deadline-before-verdict) — unfixable from

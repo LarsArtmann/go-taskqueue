@@ -762,7 +762,15 @@ func (p *Pool) execute(ctx context.Context, t task.Task, claim queue.Claim) {
 		// refusals escalate (base * 2^n capped, ±20% jitter) so a
 		// sustained-dirty repo does not bounce at the base backoff.
 		delay, streak := p.preflightDelay(t.ID)
-		if p.burnEnvStreak(terminalCtx, t, claim, streak, pre, sink) {
+		// Dirty-tree refusals PARK, never burn: under concurrent-agent
+		// co-tenancy the uncommitted changes usually belong to ANOTHER
+		// session's in-flight files (task 000001a13d99f1 lost attempt 1 to
+		// the breaker at 05:34 while facts 12427-12435 were foreign dirt),
+		// so the streak cannot distinguish the co-tenancy it would punish
+		// from its own repo. The escalating ladder (capped at
+		// preflightMaxBackoff) already bounds the churn; the breaker stays
+		// armed for the non-dirty preflight classes a commit cannot heal.
+		if !pre.DirtyTree() && p.burnEnvStreak(terminalCtx, t, claim, streak, pre, sink) {
 			return
 		}
 
