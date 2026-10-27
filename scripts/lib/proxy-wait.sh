@@ -12,6 +12,9 @@
 # module, version).
 readonly TQ_PROXY_DIE_LAG='every .info poke succeeded but @v/list never listed %s — proxy lag, not an outage; wait and re-check https://proxy.golang.org/%s/@v/%s.info before retrying anything (never re-tag)'
 readonly TQ_PROXY_DIE_DEAD='all .info pokes failed — network is dead (or the proxy is unreachable); fix connectivity and re-run (never re-tag); the tag is pushed and safe'
+# Success line: same single-source contract for the recovery path's prose
+# (%s = version) — the smoke asserts this exact line instead of a substring.
+readonly TQ_PROXY_SERVES_FMT='proxy serves %s'
 
 tq_proxy_poke() {
 	PROXY_POKE_HTTP_CODE=0
@@ -46,7 +49,7 @@ wait_for_proxy_version() {
 			echo "WARN: .info poke failed (HTTP ${code} — 0 = DNS/TLS/transport; network down, or the proxy is unreachable)"
 		fi
 		if tq_proxy_lists "$module" "$version"; then
-			echo "proxy serves $version"
+			printf "$TQ_PROXY_SERVES_FMT\n" "$version"
 			return 0
 		fi
 		echo "proxy does not list $version yet (attempt $attempt/$attempts) — propagation takes minutes"

@@ -49,6 +49,8 @@ export SMOKE_MODULE='example.com/module'
 export SMOKE_VERSION='vX.Y.Z'
 die_lag="$(printf "$TQ_PROXY_DIE_LAG" "$SMOKE_VERSION" "$SMOKE_MODULE" "$SMOKE_VERSION")"
 die_dead="$TQ_PROXY_DIE_DEAD"
+# Success-path prose comes from the lib too (same constant the loop prints).
+serves_line="$(printf "$TQ_PROXY_SERVES_FMT" "$SMOKE_VERSION")"
 
 fails=0
 
@@ -100,7 +102,7 @@ expect_die() { # <name> <msg-substring> <poke-prog> <list-prog>
 expect_ok() { # <name> <poke-prog> <list-prog>
 	local out rc
 	out="$(drive "$2" "$3")" && rc=0 || rc=$?
-	if [ "$rc" = 0 ] && ! grep -q '^DIE:' <<<"$out" && grep -q "proxy serves" <<<"$out"; then
+	if [ "$rc" = 0 ] && ! grep -q '^DIE:' <<<"$out" && grep -qF "$serves_line" <<<"$out"; then
 		echo "ok   $1"
 	else
 		echo "FAIL $1 (rc=$rc)"
