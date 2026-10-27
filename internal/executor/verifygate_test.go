@@ -263,8 +263,8 @@ func TestVendorGofmtSignatureNeverMasksIntroducedWork(t *testing.T) {
 		t.Fatal("want a verify failure, got nil")
 	}
 
-	var gateErr *VerifyGateError
-	if errors.As(err, &gateErr) && gateErr.Class == VerifyGateEnvironmental {
+	gateErr, ok := errors.AsType[*VerifyGateError](err)
+	if ok && gateErr.Class == VerifyGateEnvironmental {
 		t.Fatalf("introduced formatting must not classify environmental, got %v", err)
 	}
 }
@@ -309,8 +309,8 @@ func TestDefaultVerifyScopedGofmtStage(t *testing.T) {
 		t.Fatal("an untracked non-ignored unformatted file must fail the minted gate")
 	}
 
-	var gateErr *VerifyGateError
-	if errors.As(err, &gateErr) && gateErr.Class == VerifyGateEnvironmental {
+	gateErr, ok := errors.AsType[*VerifyGateError](err)
+	if ok && gateErr.Class == VerifyGateEnvironmental {
 		t.Fatalf("a formatting defect outside gitignore must stay a real death, got %v", err)
 	}
 }

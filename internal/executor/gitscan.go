@@ -150,8 +150,8 @@ func (s GitLogScanner) CommitsByTrailer(ctx context.Context, repo, key, value st
 
 	out, err := cmd.Output()
 	if err != nil {
-		var exit *exec.ExitError
-		if errors.As(err, &exit) && strings.Contains(string(exit.Stderr), "does not have any commits yet") {
+		exit, ok := errors.AsType[*exec.ExitError](err)
+		if ok && strings.Contains(string(exit.Stderr), "does not have any commits yet") {
 			return nil, nil
 		}
 
