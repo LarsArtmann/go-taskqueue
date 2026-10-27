@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   requeue evidence, omitted when absent), so JSON consumers get the
   one-glance "which provider is limited?" answer without journal reads;
   non-parked JSON output is unchanged.
+- **Doctor parked check names the exhausted provider** (2026-10-27):
+  `tq doctor`'s parked check now reads "parked by zai — WAITING, not
+  broken" (providers sorted and joined when several) instead of the
+  generic "parked by a provider rate limit", extending the parked-surface
+  provider tag to the doctor surface.
 - **Verify-evidence stage surfaced as queryable data** (2026-10-26):
   `tq dlq --evidence-stage <class>` filters the dead-letter list by the
   failure evidence's stage class (evidence stage, verify-gate stage such
