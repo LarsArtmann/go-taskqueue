@@ -151,7 +151,7 @@ func TestPermanentContract(t *testing.T) {
 		t.Fatal("PermanentError must unwrap to its cause")
 	}
 
-	if again := Permanent(error(got)); !errors.Is(again, error(got)) {
+	if again := Permanent(error(got)); !errors.Is(again, error(got)) { //nolint:legacyerrors // value identity match: pins double-wrap no-op, no fields to extract
 		t.Fatal("double Permanent wrap must be a no-op")
 	}
 
