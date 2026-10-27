@@ -154,7 +154,9 @@ docs/DOMAIN_LANGUAGE.md.
   still suppress (escape: edit the item).
 - **Rate limits (429)**: `executor.DetectRateLimit`; requeue WITHOUT
   burn (jittered wait, fallback 15min cap 6h); per-repo gates
-  fast-refuse siblings; closeout 429 arms `closeoutPending` resume.
+  fast-refuse siblings; closeout 429 arms `closeoutPending` resume;
+  the provider RIDES the requeue evidence (`RequeueEvidence.provider`,
+  rendered on `tq tasks --parked`).
   **Env-requeue breaker**: env requeues carry `requeue_class`; 3
   consecutive burn an attempt + escalate (`env-streak`) — never uncap.
 - **Secrets redaction** (default ON): every output tail passes
@@ -212,11 +214,10 @@ docs/DOMAIN_LANGUAGE.md.
 - **Fleet convention — countable gate summaries are PINNED, not advisory**
   (2026-10-24, TODO 01-12 §e7/§g2): every countable sibling gate
   (check-script-syntax, check-go-mods, check-dead-exports,
-  check-guard-wiring — gosec already had it) carries `--self-test`
-  pinning its end-of-run summary format + a negative-path counter
-  battery over its if/else branches via an env hook (TQ_SYNTAX_FILES,
-  TQ_GOMODS_EXTRA_MODS, TQ_DEAD_FILES_CMD, TQ_GUARD_FILES); wired into
-  ci-local ahead of the real gate. New countable gates: same contract.
+  check-guard-wiring; gosec already had it) carries `--self-test` pinning
+  its summary format + a negative-path counter battery via an env hook
+  (TQ_SYNTAX_FILES, TQ_GOMODS_EXTRA_MODS, TQ_DEAD_FILES_CMD,
+  TQ_GUARD_FILES); wired into ci-local. New countable gates: same contract.
 - docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
   re-dispatches); indexed on creation (`check-status-index.sh`; daemon
   bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE
@@ -233,12 +234,11 @@ docs/DOMAIN_LANGUAGE.md.
   are not in the report's own commit (bare = authorship-tree);
   WARN gate `scripts/check-tick-claims.sh`.
 - **O14 CHANGELOG policy**: `[Unreleased]` carries OPERATOR-VISIBLE
-  changes only — repo-internal tooling and non-operator-facing rows go
-  in the `### Internal` subsection at the bottom of the release section
-  (kept for the record, excluded from operator release notes), never in
-  Added/Changed/Fixed; external/API behavior changes additionally get an
-  explicit `(BEHAVIOR CHANGE for …)` flag; guarded mechanically by the
-  O14 CHANGELOG check in `scripts/check-release-docs.sh`.
+  changes only — repo-internal tooling and non-operator rows go in the
+  `### Internal` subsection at the bottom of the release section, never
+  Added/Changed/Fixed; external/API behavior changes also get an explicit
+  `(BEHAVIOR CHANGE for …)` flag; guarded by the O14 check in
+  `scripts/check-release-docs.sh`.
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
   composing a `<ts>_<slug>` filename — a guessed `<ts>` lies about its
   own timestamp.
@@ -335,12 +335,11 @@ docs/DOMAIN_LANGUAGE.md.
 - **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` reads as a
   thunk — eval dies "expected a function but got a thunk at
   flake.nix:<line>"; keep the `let` INSIDE the lambda.
-- **formatterWithGo drop-day pairing** (flake.nix): go.mod floor 1.27.3
-  > nixpkgs go_1_26, so `goTarball*` builds the toolchain from the
-  > go.dev tarball and `formatterWithGo` wraps templ fmt/goimports with
-  > that toolchain (sandbox blocks the download; treefmt-nix hardcodes
-  > nixpkgs go). ALL FOUR blocks drop together when nixpkgs ships
-  > go ≥ 1.27.3 — hashes stay paired (`goTarballHash`).
+- **formatterWithGo drop-day pairing** (flake.nix): go.mod floor
+  > nixpkgs go, so `goTarball*` builds the toolchain from the go.dev
+  tarball and `formatterWithGo` wraps templ fmt/goimports with it
+  (sandbox blocks the download). ALL FOUR blocks drop together when
+  nixpkgs ships go ≥ 1.27.3 — hashes stay paired (`goTarballHash`).
 - **templ-components sibling pins**: zero pseudo-versions
   (`v…00001010100000-…`) in a dep's root go.mod pass local builds but
   kill consumer graph loads (Nix FOD) — `grep -r 00010101` the dep repo
