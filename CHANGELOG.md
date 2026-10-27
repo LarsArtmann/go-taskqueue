@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Provider surfaced on parked JSON rows** (2026-10-27): `tq tasks
+  --parked --json` rows now carry a `provider` field (from the latest
+  requeue evidence, omitted when absent), so JSON consumers get the
+  one-glance "which provider is limited?" answer without journal reads;
+  non-parked JSON output is unchanged.
 - **Verify-evidence stage surfaced as queryable data** (2026-10-26):
   `tq dlq --evidence-stage <class>` filters the dead-letter list by the
   failure evidence's stage class (evidence stage, verify-gate stage such
