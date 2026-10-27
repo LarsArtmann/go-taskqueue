@@ -47,9 +47,9 @@ func danglingSHAs(ctx context.Context, repo, text string) []string {
 func isDangling(ctx context.Context, repo, cand string) bool {
 	err := exec.CommandContext(ctx, "git", "-C", repo, "merge-base", "--is-ancestor", cand, "HEAD").Run()
 
-	var exitErr *exec.ExitError
+	exitErr, ok := errors.AsType[*exec.ExitError](err)
 
-	return err != nil && errors.As(err, &exitErr) && exitErr.ExitCode() == 1
+	return ok && exitErr.ExitCode() == 1
 }
 
 // citationBlock renders the enqueue-time warning appended to a task prompt
