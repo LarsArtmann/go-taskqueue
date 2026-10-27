@@ -323,6 +323,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
 
+- **statsPayload wire goldens** (2026-10-27): `TestStatsPayloadGoldenJSON`
+  + `TestStatsPayloadBareShape` (cmd/tq/stats_json_test.go) pin the
+  `tq stats --json` surfaces the budget goldens don't cover — by_status,
+  by_project, consumer_lag, and the claim_anomalies envelope — as
+  exact-JSON strings, closing the last unpinned silent-wire-break class
+  on the stats surface.
+
 - **cmd/tq version-parity + one tool-pin source** (2026-10-27):
   `check-gomod-vendor-sync` now gates cmd/tq's go-cqrs-lite pins against
   the root sub-module graph's max (caught + healed seven lagging pins and

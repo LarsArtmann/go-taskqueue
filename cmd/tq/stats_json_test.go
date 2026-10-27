@@ -58,8 +58,8 @@ func TestStatsPayloadBareShape(t *testing.T) {
 		t.Fatalf("marshal bare: %v", err)
 	}
 
-	want := `{"by_status":{},"budget":{"spent_today":0},"journal_head":0}`
+	want := `{"by_status":null,"budget":{"spent_today":0},"journal_head":0}`
 	if got := string(blob); got != want {
-		t.Fatalf("bare statsPayload = %s, want %s (every optional surface must stay keyless)", got, want)
+		t.Fatalf("bare statsPayload = %s, want %s (every optional surface must stay keyless; nil by_status renders null, production always populates it)", got, want)
 	}
 }
