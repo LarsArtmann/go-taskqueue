@@ -175,19 +175,17 @@ docs/DOMAIN_LANGUAGE.md.
   for legacy DBs → indexes AFTER the column exists.
 - **Watermarks**: checkpoint AFTER the batch's last accepted fact;
   failed checkpoint gates forwarding; `tq watermarks show/set`; replay
-  idempotent (seq-derived keys).
+  idempotent (seq-derived).
 - **Priority (ADR-0015)**: claim order = STORED priority + aging (3d/pt,
   cap 10); stored value never mutates. Markers `— P[1-4]` stripped
   before the dedup hash. ONE ladder everywhere (marker > AI > keyword).
-  Probes enter `--priority ≥90` (fresh low-priority work starves behind
-  aging).
+  Probes enter `--priority ≥90`.
 - **Failure-evidence surface**: `tq dlq --evidence-stage <class>` filters
   the DLQ by the failed fact's Stage/VerifyStage/Class plus the
   gate-env/gate-dead/gate-slow error-text aliases; `tq show` renders a
   `failure` JSON section; webui detail trail lines carry an `evidence=`
   suffix. Matcher: `cmd/tq/evidence.go`; the alias list is a third copy
-  of the death-class knowledge (with the stamps and
-  `IsEnvironmentalDeath`) — a fourth must not appear.
+  of the death-class knowledge — a fourth must not appear.
 - **prune-stale**: cancels PENDING tasks whose item is `[x]` or gone;
   pools sweep once at start.
 - **Claim-time budget gate**: paid turns block once the daily
@@ -205,12 +203,12 @@ docs/DOMAIN_LANGUAGE.md.
   build+vet, check-dead-sha-refs, date-named report) + one fresh delta;
   expensive gates inherit a same-HEAD report; nested-module claims
   need in-module `GOWORK=off` tests; root-parsed-file closeouts cite
-  ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh <id>`;
+  ROOT build+vet+test -race rc. Re-dispatch: `scripts/redispatch-brief.sh`;
   battery rc TO A FILE (no PIPESTATUS); dated DONE re-verified note;
   `-v` + PASS COUNT for conform `-run`.
 - **Gate receipts**: a report's "N ok / M fail" count is
   `grep -c '^ok:'` over a CAPTURED gate-output file — never counted in
-  context, never taken from a summary line (17-vs-16 class).
+  context or taken from a summary line (17-vs-16 class).
 - **Fleet convention — countable gate summaries are PINNED, not advisory**
   (2026-10-24, TODO 01-12 §e7/§g2): every countable sibling gate
   (check-script-syntax, check-go-mods, check-dead-exports,
@@ -218,17 +216,15 @@ docs/DOMAIN_LANGUAGE.md.
   its summary format + a negative-path counter battery via an env hook
   (TQ_SYNTAX_FILES, TQ_GOMODS_EXTRA_MODS, TQ_DEAD_FILES_CMD,
   TQ_GUARD_FILES); wired into ci-local. New countable gates: same contract.
-- docs/status reports follow the a)-g) skeleton (incl. DONE-on-arrival
-  re-dispatches); indexed on creation (`check-status-index.sh`; daemon
-  bypasses hooks — AMEND MANEUVER for daemon-folded reports); ONE
-  index-row write point (top chronological cluster); CHANGELOG
-  append-only; close exit: record `tq verdict` before session end
-  (committed report without verdict = half-closeout).
+- docs/status reports follow the a)-g) skeleton; indexed on creation
+  (`check-status-index.sh`; daemon bypasses hooks — AMEND MANEUVER for
+  daemon-folded reports); ONE index-row write point (top chronological
+  cluster); CHANGELOG append-only; close exit: record `tq verdict`
+  before session end (report without verdict = half-closeout).
 - **Closeout TICK-AUDIT**: before the FINAL commit of any batch/fix
   dispatch, grep TODO_LIST.md for each verbatim batch anchor; every
-  finished row must read `- [x]` (landed work + unchecked row = review
-  round-trip + paid fix dispatch —
-  000001a1699ba37fc704570b24d800000000).
+  finished row must read `- [x]` (landed + unchecked = paid round-trip
+  — 000001a1699ba37fc704570b24d800000000).
 - **Tick-claims cite the tick commit**: "rows N-M ticked/`[x]`" claims
   in index rows + closeout reports cite the tick commit when the ticks
   are not in the report's own commit (bare = authorship-tree);
@@ -240,8 +236,7 @@ docs/DOMAIN_LANGUAGE.md.
   `(BEHAVIOR CHANGE for …)` flag; guarded by the O14 check in
   `scripts/check-release-docs.sh`.
 - **Clock-first filenames**: run `date +%Y-%m-%d_%H-%M` BEFORE
-  composing a `<ts>_<slug>` filename — a guessed `<ts>` lies about its
-  own timestamp.
+  composing a `<ts>_<slug>` filename — a guessed `<ts>` lies.
 - **Edit→commit→battery ordering**: stage+commit BEFORE running anything
   (daemon sweeps <60 s, footer-less, take STAGED files too); fold only
   while local-only + contiguous + exactly-mine (`scripts/commit-task.sh
@@ -333,8 +328,8 @@ docs/DOMAIN_LANGUAGE.md.
 - **Kernel ETXTBSY**: fresh-binary execve intermittently fails — route
   exec sites through `execWithTransientRetry`.
 - **Nix 2.34 flake gotcha**: `outputs = let … in <lambda>` reads as a
-  thunk — eval dies "expected a function but got a thunk at
-  flake.nix:<line>"; keep the `let` INSIDE the lambda.
+  thunk ("expected a function but got a thunk"); keep the `let` INSIDE
+  the lambda.
 - **formatterWithGo drop-day pairing** (flake.nix): go.mod floor
   > nixpkgs go, so `goTarball*` builds the toolchain from the go.dev
   tarball and `formatterWithGo` wraps templ fmt/goimports with it
@@ -342,7 +337,7 @@ docs/DOMAIN_LANGUAGE.md.
   nixpkgs ships go ≥ 1.27.3 — hashes stay paired (`goTarballHash`).
 - **templ-components sibling pins**: zero pseudo-versions
   (`v…00001010100000-…`) in a dep's root go.mod pass local builds but
-  kill consumer graph loads (Nix FOD) — `grep -r 00010101` the dep repo
+  kill consumer graph loads (Nix FOD) — `grep -r 00010101` the dep
   before blaming the flake/vendorHash.
 - **gofmt gates are SCOPED to non-gitignored files**
   (`executor.ScopedGofmtStage`, doctor `gofmt:<repo>`):
