@@ -11,9 +11,11 @@
 #
 # Escapes:
 #   - fork-record arrow form: a token is escaped only when it IS a member
-#     of a `<sha>→<sha>` pair (either arrow direction) on its own line
-#     (per-token matching: an unrelated arrow on the same line no longer
-#     whitewashes other dead tokens on that line — 2026-10-05 tightening).
+#     of a `<sha>→<sha>` pair (either arrow direction); a line may carry
+#     SEVERAL comma-separated pairs (the heal tooling's paste format) —
+#     per-token matching keeps a non-member dead token on such a line RED
+#     (an unrelated arrow on the same line no longer whitewashes other
+#     dead tokens on that line — 2026-10-05 tightening).
 #   - baseline file scripts/dead-sha-baseline.txt (one sha per line, `#`
 #     comments): the legacy citations from the 2026-09-10/2026-09-19
 #     rewrites and later heal masses. Shrink is advisory-only; a NEW dead
@@ -106,6 +108,7 @@ if [ "${1:-}" = "--self-test" ]; then
 	git -C "$tmp" -c user.email=t@t -c user.name=t commit --allow-empty -q -m base
 	old=$(git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree 'HEAD^{tree}' -p HEAD -m dangling)
 	other=$(git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree 'HEAD^{tree}' -p HEAD -m dangling2)
+	third=$(git -C "$tmp" -c user.email=t@t -c user.name=t commit-tree 'HEAD^{tree}' -p HEAD -m dangling3)
 	new=$(git -C "$tmp" rev-parse HEAD)
 
 	# pins: baselined-doc-branch — fork-playbook line counts as baseline hit 1, rc=0
@@ -127,6 +130,13 @@ EOF
 	# pins: arrow-pair-branch — proper old→new fork-record pair is exempt, rc=0
 	cat >"$tmp/docs/status/paired.md" <<EOF
 proper pair: ${old}→${new}
+EOF
+	# pins: multipair-branch — comma-separated multi-pair fork-record lines
+	# (the heal tooling's paste format) exempt every MEMBER token, rc=0;
+	# a NON-member dead token sharing such a line still fails (per-token).
+	second_new=$(git -C "$tmp" rev-parse HEAD)
+	cat >"$tmp/docs/status/multipair.md" <<EOF
+heal chain: \`${old}→${new}\`, \`${other}→${second_new}\`. HEAL OK, zero data loss.
 EOF
 	printf '%s\n' "# baseline" "$old" >"$tmp/base.txt"
 
@@ -175,6 +185,23 @@ EOF
 		exit 1
 	fi
 
+	# 4b. Comma-separated multi-pair fork-record lines: every MEMBER token
+	# passes (rc=0); a NON-member dead token on the same line still fails.
+	files=(docs/status/multipair.md)
+	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
+	[ "$rc" = 0 ] || {
+		echo "dead-sha self-test FAIL: comma-separated multi-pair fork-record line flagged: $out"
+		exit 1
+	}
+	cat >>"$tmp/docs/status/multipair.md" <<EOF
+stray member on the record line: ${third} not in any pair
+EOF
+	out=$(cd "$tmp" && run_gate) && rc=0 || rc=$?
+	if [ "$rc" != 1 ] || ! grep -q "DEAD SHA: docs/status/multipair.md:2 cites '${third}'" <<<"$out"; then
+		echo "dead-sha self-test FAIL: multi-pair line whitewashed a non-member dead token: rc=$rc out: $out"
+		exit 1
+	fi
+
 	# 5. --emit-baseline: sorted dead tokens (pair members excluded), then
 	# feeding the emit output into the baseline makes the gate green.
 	files=(docs/status/report.md docs/status/mixed.md docs/status/paired.md)
@@ -208,7 +235,7 @@ EOF
 		exit 1
 	}
 
-	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, emit-baseline sorted+pair-excluded, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
+	echo "dead-sha self-test ok (clean rc=0, exact file:line on rc=1, per-token arrow escape, comma-separated multi-pair fork-record lines, emit-baseline sorted+pair-excluded, baselined silent unless TQ_DEAD_SHA_VERBOSE=1)"
 	exit 0
 fi
 
