@@ -41,8 +41,13 @@ fi
 source scripts/lib/proxy-wait.sh
 
 # Expected die messages come from the lib's constants (single source of
-# truth) — no substring greps.
-die_lag="$(printf "$TQ_PROXY_DIE_LAG" vX.Y.Z example.com/module vX.Y.Z)"
+# truth) — no substring greps. The driven module/version pair lives in one
+# pair of exported vars shared by the die_lag derivation and drive()'s
+# wait_for_proxy_version call, so the expected printf can never drift from
+# the driven task.
+export SMOKE_MODULE='example.com/module'
+export SMOKE_VERSION='vX.Y.Z'
+die_lag="$(printf "$TQ_PROXY_DIE_LAG" "$SMOKE_VERSION" "$SMOKE_MODULE" "$SMOKE_VERSION")"
 die_dead="$TQ_PROXY_DIE_DEAD"
 
 fails=0
@@ -75,7 +80,7 @@ drive() { # <poke-prog> <list-prog>
 			exit 42
 		}
 		assert_seams_faked
-		wait_for_proxy_version example.com/module vX.Y.Z 3 0
+		wait_for_proxy_version "$SMOKE_MODULE" "$SMOKE_VERSION" 3 0
 		assert_seams_faked
 	' 2>&1
 }
