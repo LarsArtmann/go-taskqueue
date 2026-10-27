@@ -84,6 +84,10 @@ cmdtq_cqrs_parity() {
 
 	local tmp
 	tmp="$(mktemp)"
+	# Expand $tmp NOW: a lazy RETURN trap would evaluate in the caller's
+	# scope (bash restores caller variables before running the trap),
+	# deleting the caller's fixture dir instead of this temp file.
+	# shellcheck disable=SC2064
 	trap "rm -f '$tmp'" RETURN
 	{
 		local m

@@ -362,6 +362,28 @@ fi
 # disables linter settings (07-39 report f3) — config verify catches that
 # before the advisory runs pretend the policy applied.
 step "lint config verify (schema-invalid keys are silent)"
+# Pin hygiene: scripts/lib/tool-pins.sh is the ONE version pin source for
+# tool versions shared with ci.yml (the GOSEC_VERSION pattern). A
+# malformed pin line would make CI's grep+cut derivation install a
+# broken ref, so the format is a hard gate here; an installed
+# golangci-lint that disagrees with the pin is advisory (hosts ship it
+# from nixpkgs, CI installs the pin — drift is signal, not a local
+# failure).
+pins="$(mktemp)"
+if ! grep -E '^[A-Z_]+=[A-Za-z0-9._-]+$' scripts/lib/tool-pins.sh >"$pins" || ! grep -q '^GOLANGCI_LINT_VERSION=' "$pins"; then
+	echo "FAIL: scripts/lib/tool-pins.sh malformed — every line must be NAME=value ([A-Za-z0-9._-]); ci.yml derives its installs from it"
+	rm -f "$pins"
+	exit 1
+fi
+lint_pin="$(grep '^GOLANGCI_LINT_VERSION=' "$pins" | cut -d= -f2)"
+rm -f "$pins"
+lint_bin_for_pin="$(command -v golangci-lint || true)"
+if [ -n "$lint_bin_for_pin" ]; then
+	lint_installed="$("$lint_bin_for_pin" --version 2>/dev/null | grep -oE 'version [0-9]+\.[0-9]+\.[0-9]+' | awk '{print "v" $2}')"
+	if [ -n "$lint_installed" ] && [ "$lint_installed" != "$lint_pin" ]; then
+		echo "WARN: golangci-lint $lint_installed on PATH != pinned $lint_pin (scripts/lib/tool-pins.sh) — analyzer drift can gate-kill; bump the pin or the host package"
+	fi
+fi
 if command -v golangci-lint >/dev/null 2>&1; then
 	golangci-lint config verify
 else

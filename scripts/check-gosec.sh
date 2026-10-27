@@ -28,8 +28,18 @@ set -euo pipefail
 self_abs="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$0")/.."
 
-GOSEC_VERSION=v2.29.0
-GOSEC_EXCLUDES="-exclude=G104,G115,G118,G124,G202,G204,G301,G302,G304,G306,G404,G702,G703,G710"
+# GOSEC_VERSION/EXCLUDES live in scripts/lib/tool-pins.sh — the ONE pin
+# source for tool versions shared with ci.yml (2026-10-15 parity-sweep
+# §e5 pattern). Resolved from this script's own path so foreign-CWD
+# re-entry works; the self-test's negative-control extract has no repo
+# tree beside it, so an absent pin file is tolerated there (the real
+# gate path asserts the file via ci-local's lint-pin step and the
+# ci.yml derivation-drift check below).
+# The top-level cd above lands at the repo root (or the negative
+# control's extract root, whose scripts/lib mirror is copied by the
+# self-test), so a plain root-relative source covers both.
+# shellcheck source=scripts/lib/tool-pins.sh
+source scripts/lib/tool-pins.sh
 
 # --self-test pins the gate's decision branches with canned stub binaries
 # (02-52 gosec-gate report f3; the 2026-09-19 verify run's /tmp stubs are
@@ -243,7 +253,8 @@ EOF
 
 	# ci.yml derivation drift: run the workflow's EXACT sed lines (lifted
 	# from ci.yml itself, so any edit there is what gets tested) against
-	# this script and byte-compare with the pinned constants above.
+	# scripts/lib/tool-pins.sh (the ONE pin source) and byte-compare with
+	# the constants sourced above.
 	pin_version="$GOSEC_VERSION"
 	pin_excludes="$GOSEC_EXCLUDES"
 	ci_yml=".github/workflows/ci.yml"
@@ -308,7 +319,8 @@ EOF
 	# proves the command-not-found shape the self_abs fix targets.
 	if [ -z "${TQ_GOSEC_SELFTEST_REENTRY:-}" ]; then
 		ctl_dir="$tmp/negctl/scripts"
-		mkdir -p "$ctl_dir"
+		mkdir -p "$ctl_dir/lib"
+		cp scripts/lib/tool-pins.sh "$ctl_dir/lib/tool-pins.sh"
 		sed 's|^self_abs=.*|self_abs="$0"|' "$self_abs" >"$ctl_dir/check-gosec.sh"
 		chmod +x "$ctl_dir/check-gosec.sh"
 		ctl_rc=0

@@ -114,7 +114,10 @@ jobs:
         continue-on-error: true
         run: |
           echo "::remove-matcher owner=go::"
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+          # Version derived from the ONE pin source (scripts/lib/tool-pins.sh,
+          # the GOSEC_VERSION pattern — 2026-10-15 parity-sweep §e5): bump there.
+          golangci_version="$(sed -n 's/^GOLANGCI_LINT_VERSION=//p' scripts/lib/tool-pins.sh)"
+          go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${golangci_version}"
           lint_bin="$(go env GOPATH)/bin/golangci-lint"
           # ./... from the root never descends into nested sub-modules
           # (ADR-0011) — mirror ci-local.sh's disk-derived loop so every
@@ -172,7 +175,7 @@ jobs:
         # `config verify` catches it. Hard gate locally; hard gate here.
         # The binary may already exist from the advisory lint step above.
         run: |
-          [ -x "$(go env GOPATH)/bin/golangci-lint" ] || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+          [ -x "$(go env GOPATH)/bin/golangci-lint" ] || { golangci_version="$(sed -n 's/^GOLANGCI_LINT_VERSION=//p' scripts/lib/tool-pins.sh)"; go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${golangci_version}"; }
           "$(go env GOPATH)/bin/golangci-lint" config verify
       - name: Lint annotations (new findings on changed lines)
         # golangci-lint v2 has no github-actions output format and its text
@@ -413,8 +416,8 @@ jobs:
           go-version: 1.27.3
       - name: Gosec (root + every sub-module)
         run: |
-          GOSEC_VERSION="$(sed -n 's/^GOSEC_VERSION=//p' scripts/check-gosec.sh)"
-          GOSEC_EXCLUDES="$(sed -n 's/^GOSEC_EXCLUDES="\(.*\)"$/\1/p' scripts/check-gosec.sh)"
+          GOSEC_VERSION="$(sed -n 's/^GOSEC_VERSION=//p' scripts/lib/tool-pins.sh)"
+          GOSEC_EXCLUDES="$(sed -n 's/^GOSEC_EXCLUDES=//p' scripts/lib/tool-pins.sh)"
           if [ -z "$GOSEC_VERSION" ] || [ -z "$GOSEC_EXCLUDES" ]; then
             echo "FAIL: could not derive GOSEC_VERSION/GOSEC_EXCLUDES from scripts/check-gosec.sh"
             exit 1
