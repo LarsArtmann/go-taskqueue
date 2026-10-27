@@ -319,6 +319,19 @@ docs/DOMAIN_LANGUAGE.md.
   (SECURITY.md); no new write endpoints without it.
 - **templ + cmd/tq LSP diagnostics are false positives** — trust the CLI
   gates, never "fix" them.
+- **erraudit** gates as `erraudit lint ./... --max --disable generic_return
+  --disable legacy_is` run from EACH module root (`lint` REJECTS
+  `--modules`/`--violations-only`; the root hint naming `--modules=all` is
+  wrong for `lint`). `legacy_as` = migrate to `errors.AsType` (zero since
+  2026-10-27); `legacy_is` sentinel sites KEEP `errors.Is` +
+  `//nolint:legacyerrors // <reason>` on the call line (default lint honors
+  it; `--max` implies `--no-suppress`, hence the disable; never run
+  `nolint-audit --fix` — it deletes honored tokens). `generic_return`
+  (`--enforce-generic-return`, ~200 fleet-wide under `--max`) is a
+  DELIBERATE NON-FIX: returning `error` is the idiom (sentinels + `%w`
+  wrap; the check ships off-by-default for exactly that reason) —
+  per-function error types are a go-error-family migration decision, not
+  lint debt.
 - **VendorHash drift**: after go.mod changes run
   `nix build .#checks.x86_64-linux.vendor-hash`, copy `got:` to
   flake.nix.
