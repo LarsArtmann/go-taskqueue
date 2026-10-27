@@ -390,3 +390,67 @@ func TestDonePreflightCatchesLandingAfterMint(t *testing.T) {
 		})
 	}
 }
+
+// batchTaskWith builds a batch task whose payload carries the member keys
+// the gate judges staleness by.
+func batchTaskWith(id task.ID, keys ...string) task.Task {
+	quoted := make([]string, 0, len(keys))
+	for _, k := range keys {
+		quoted = append(quoted, jsonString(k))
+	}
+
+	payload := `{"repo":"preflight","prompt":"do the thing","itemKeys":[` +
+		strings.Join(quoted, ",") + `]}`
+
+	return task.Task{ID: id, Type: "agent", Payload: []byte(payload)}
+}
+
+// TestDonePreflightBatchFooterRequiresAllMembersLanded pins the
+// 000001a1382a1765 reclaim class: a footer commit over a MULTI-member
+// batch with open members is NOT a done verdict — the reclaiming claim
+// falls through and the agent re-runs over the unlanded keys instead of
+// completing the task zero-cost with 1/3 items landed.
+func TestDonePreflightBatchFooterRequiresAllMembersLanded(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		todo string
+		want bool
+	}{
+		{
+			name: "partial members open (the reclaim incident)",
+			todo: "- [x] batch alpha\n- [ ] batch beta\n- [ ] batch gamma\n",
+			want: false,
+		},
+		{
+			name: "every member ticked",
+			todo: "- [x] batch alpha\n- [x] batch beta\n- [x] batch gamma\n",
+			want: true,
+		},
+		{
+			name: "every member gone",
+			todo: "- [ ] unrelated open item\n",
+			want: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newDonePreflightFixture(t, tc.todo)
+			id := task.NewID()
+			gitCommit(t, f.repo, "work: land member alpha\n\nTask-Queue-ID: "+id.String())
+
+			keys := []string{
+				ItemKey("preflight", "batch alpha"),
+				ItemKey("preflight", "batch beta"),
+				ItemKey("preflight", "batch gamma"),
+			}
+
+			done, reason := f.h.DonePreflight(context.Background(), batchTaskWith(id, keys...))
+			if done != tc.want {
+				t.Fatalf("done = %v (%q), want %v", done, reason, tc.want)
+			}
+
+			if tc.want && !strings.Contains(reason, "Task-Queue-ID footer") {
+				t.Errorf("reason = %q, want the footer signal named", reason)
+			}
+		})
+	}
+}

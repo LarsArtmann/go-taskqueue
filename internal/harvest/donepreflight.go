@@ -39,7 +39,14 @@ const (
 // Signals, strongest first, first hit wins (the reason names the signal):
 //
 //  1. Footer commits: at least one commit on any ref carries this task's
-//     Task-Queue-ID footer (works for harvested AND fix tasks).
+//     Task-Queue-ID footer (works for harvested AND fix tasks). For a
+//     MULTI-member batch the footer proves only the members whose work
+//     landed in that commit — the signal completes only when every member
+//     key is also ticked-or-gone (the 2026-10-14 04:17 reclaim of task
+//     000001a1382a1765 completed 1/3 members zero-cost on the footer
+//     alone; a partial footer now falls through to the remaining
+//     signals, and a not-done verdict re-runs the agent over the open
+//     members).
 //  2. Fix-ticket disposition: payload.RejectedSHA exists AND a commit cites
 //     it (superseding fix), or the SHA is gone AND the anchor text has zero
 //     hits in the working tree (finding cured by the rebase).
@@ -65,9 +72,13 @@ func (h *Harvester) DonePreflight(ctx context.Context, t task.Task) (bool, strin
 		return false, ""
 	}
 
-	if done, reason := footerCommitExists(ctx, dir, t); done {
+	if done, reason := footerCommitExists(ctx, dir, t); done && !h.batchHasOpenMembers(dir, t, payload) {
 		return true, reason
 	}
+	// A footer over a partially-landed batch falls through: the later
+	// signals (fix-cure, all-stale, closeout report) may still complete
+	// it, but the default is a re-run over the open members — never a
+	// zero-cost completion of work that has not happened.
 
 	if done, reason := fixTicketCured(ctx, dir, payload); done {
 		return true, reason
@@ -139,6 +150,21 @@ func footerCommitExists(ctx context.Context, dir string, t task.Task) (bool, str
 	}
 
 	return true, doneReasonFooter
+}
+
+// batchHasOpenMembers reports whether the task is a MULTI-member batch
+// whose member keys are not all ticked-or-gone. Single-key tasks (and
+// payloads without judgeable keys) always answer false: for them the
+// footer commit IS the full-work proof. A batch's all-stale verdict is
+// the same landed-proof the prune-stale rules and signal 3 apply.
+func (h *Harvester) batchHasOpenMembers(dir string, t task.Task, payload harvestPayload) bool {
+	if len(itemKeysFor(t, payload)) <= 1 {
+		return false
+	}
+
+	stale, _ := h.itemStale(dir, t, payload)
+
+	return !stale
 }
 
 // fixTicketCured is signal 2: the rejected-SHA disposition for review-fix

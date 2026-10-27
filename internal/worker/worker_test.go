@@ -2059,3 +2059,80 @@ func TestBareWorkerNeverClaimsUnregisteredTypes(t *testing.T) {
 		}
 	}
 }
+
+// TestDonePreflightAfterLeaseReclaimCompletesWithoutRerun pins the
+// lease-expiry reclaim path end to end (the 000001a1382a1765 shape:
+// facts 11948-11950 RELEASED on expiry 2026-10-14 04:17, the reclaiming
+// claim completed zero-cost 84 ms later): the reclaim records the lost
+// attempt's effect as unknown, and the re-claim's done verdict completes
+// WITHOUT a second executor run — the reclaiming worker rides the
+// claim-time gate, not the dead attempt's outcome.
+func TestDonePreflightAfterLeaseReclaimCompletesWithoutRerun(t *testing.T) {
+	store := testStore(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reg := executor.NewRegistry()
+
+	var ran atomic.Int32
+
+	reg.RegisterFunc("agent", func(_ context.Context, _ task.Task) error {
+		ran.Add(1)
+		// Outlive the 80 ms lease so the claim that follows reclaims.
+		time.Sleep(150 * time.Millisecond)
+
+		return &executor.LeaseLostError{Cause: errors.New("lease expired mid-run")}
+	})
+
+	enq, _ := store.Enqueue(ctx, task.New{Type: "agent", MaxAttempts: 3})
+
+	var evals atomic.Int32
+
+	pool := New(store, Config{
+		Concurrency: 1, PollInterval: 5 * time.Millisecond, TaskTimeout: 2 * time.Second,
+		// Heartbeat slower than lease: the lease expires mid-run.
+		Lease: 80 * time.Millisecond, Heartbeat: 500 * time.Millisecond,
+		Executors: reg,
+		DonePreflight: func(context.Context, task.Task) (bool, string) {
+			// First claim (the doomed attempt): not done. The reclaiming
+			// claim: done — completed without re-running the executor.
+			return evals.Add(1) >= 2, "done preflight: commit(s) already carry this task's Task-Queue-ID footer"
+		},
+	}, quietLog())
+	go func() { _ = pool.Start(ctx) }()
+
+	got := waitFor(t, ctx, store, enq.ID, task.Completed)
+	cancel()
+
+	if ran.Load() != 1 {
+		t.Fatalf("executor ran %d times, want 1 (the reclaim must not re-run the lost attempt)", ran.Load())
+	}
+
+	facts, _ := store.FactsForTask(ctx, enq.ID.String(), 0)
+
+	var released journal.Fact
+
+	for _, f := range facts {
+		if f.Type == journal.Released {
+			released = f
+		}
+	}
+
+	if released.Type != journal.Released {
+		t.Fatal("no lease-expiry release fact: the re-claim did not ride the reclaim path")
+	}
+
+	var detail journal.ReleasedDetail
+	if err := json.Unmarshal(released.Detail, &detail); err != nil {
+		t.Fatalf("released detail: %v (%s)", err, released.Detail)
+	}
+
+	if detail.Effect != journal.EffectUnknown {
+		t.Fatalf("reclaim effect = %q, want %q (crashes are not finishes)", detail.Effect, journal.EffectUnknown)
+	}
+
+	if got.Status != task.Completed {
+		t.Fatalf("status = %s, want completed", got.Status)
+	}
+}
