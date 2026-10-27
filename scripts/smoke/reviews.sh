@@ -39,6 +39,7 @@ git -C "$REPO" commit -qm "seed"
 
 echo "== stub agent binary (reviewer keyed off the review prompt + item text)"
 STUB="$TMP/stub-agent"
+# pins: review-turn-keyed-off-prompt-and-item — reviewer branch on review prompts
 cat >"$STUB" <<'EOF'
 #!/bin/sh
 prompt=""

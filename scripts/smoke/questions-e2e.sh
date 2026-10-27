@@ -47,6 +47,7 @@ fi
 INGEST_LOG="$TMP/ingest.log"
 if [ -z "$PAP_URL" ]; then
 	echo "== start stub dashboard (answers every question.asked with 'yes')"
+	# pins: stub-dashboard-answers — stub answers every question.asked 'yes'
 	cat >"$TMP/stub.py" <<'PYEOF'
 import json
 import sys
@@ -127,6 +128,7 @@ DONE_FLAG="$TMP/done.flag"
 # The prompt the executor hands the agent carries its {{TASK_ID}} already
 # substituted, so the stub can ask for the RIGHT task without any
 # enqueue-time knowledge of the id.
+# pins: stub-agent-prompt-substitution — stub asks for the RIGHT task id
 cat >"$TMP/stub-agent" <<STUB
 #!/bin/sh
 prompt="\$*"

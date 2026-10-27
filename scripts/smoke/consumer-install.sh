@@ -19,6 +19,7 @@ trap 'rm -rf "$verify_dir"' EXIT
 	cd "$verify_dir"
 	export GOWORK=off
 	export GOTOOLCHAIN=auto
+	# pins: verify-dir-imports-facades — main.go blank-imports executor+journal
 	cat >main.go <<EOF
 package main
 

@@ -61,6 +61,7 @@ git -C "$REPO" commit -qm "seed"
 
 echo "== stub agent: leaks fake tokens on both outcomes"
 STUB="$TMP/stub-agent"
+# pins: secret-leak-both-outcomes — stub leaks fake tokens on work AND review turns
 cat >"$STUB" <<EOF
 #!/bin/sh
 prompt=""

@@ -135,6 +135,7 @@ EOF
 	# (the heal tooling's paste format) exempt every MEMBER token, rc=0;
 	# a NON-member dead token sharing such a line still fails (per-token).
 	second_new=$(git -C "$tmp" rev-parse HEAD)
+	# pins: multipair-member-exempt — every pair MEMBER token on a heal line is exempt
 	cat >"$tmp/docs/status/multipair.md" <<EOF
 heal chain: \`${old}→${new}\`, \`${other}→${second_new}\`. HEAL OK, zero data loss.
 EOF
@@ -193,6 +194,7 @@ EOF
 		echo "dead-sha self-test FAIL: comma-separated multi-pair fork-record line flagged: $out"
 		exit 1
 	}
+	# pins: stray-member-fails — member token outside any pair still DEAD SHA
 	cat >>"$tmp/docs/status/multipair.md" <<EOF
 stray member on the record line: ${third} not in any pair
 EOF

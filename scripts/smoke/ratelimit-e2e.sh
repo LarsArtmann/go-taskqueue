@@ -55,6 +55,7 @@ echo "== stub agent: prints the incident's 429 wall (reset +5s), counts invocati
 STUB="$TMP/stub-agent"
 INVOCATIONS="$TMP/invocations"
 : >"$INVOCATIONS"
+# pins: stub-agent-429-wall — stub prints the incident's 429 (reset +5s), counts runs
 cat >"$STUB" <<EOF
 #!/bin/sh
 echo run >>"$INVOCATIONS"

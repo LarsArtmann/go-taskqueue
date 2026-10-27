@@ -41,6 +41,7 @@ echo "== stub agent binary (status runs keyed off the done prompt)"
 REPORT_PATH="docs/status/$(date +%Y-%m-%d_%H-%M)_smoke.md"
 export REPORT_PATH
 STUB="$TMP/stub-agent"
+# pins: stub-agent-loop-turns — prompt-keyed work/review turn dispatch
 cat >"$STUB" <<'EOF'
 #!/bin/sh
 prompt=""

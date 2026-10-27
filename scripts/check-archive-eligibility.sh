@@ -77,6 +77,7 @@ self_test() {
 	tmp="$(mktemp -d)"
 	trap 'rm -rf "$tmp"' EXIT
 	# fixture A: fully resolved (struck numbered items, marked checkboxes)
+	# pins: resolved-archive-pass — struck+checked items never block, rc=0
 	cat >"$tmp/resolved.md" <<'EOF'
 ## e1 findings
 1. ~~landed the gate skeleton~~
@@ -85,6 +86,7 @@ self_test() {
 plain prose is not an item and never blocks
 EOF
 	# fixture B: unresolved shapes that MUST each be caught
+	# pins: unresolved-shapes-fail — open numbered/checkbox/indented items each fail
 	cat >"$tmp/unresolved.md" <<'EOF'
 ## f7 findings
 1. open numbered item

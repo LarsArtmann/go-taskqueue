@@ -62,6 +62,7 @@ for tag in internal/task/v0.2.0 internal/queue/sqlite/v0.2.0; do
 	git -C "$fixture" -c user.email=t@t -c user.name=t tag -a "$tag" -m fixture
 done
 
+# pins: canonical-root-gomod — tagged root go.mod must pass
 cat >"$fixture/go.mod" <<'EOF'
 module github.com/larsartmann/go-taskqueue
 
@@ -99,6 +100,7 @@ sed 's|internal/queue/sqlite v0.2.0|internal/queue/sqlite v0.0.0-00010101000000-
 	expect_fail pseudo.go.mod "fixture: pseudo-version require (replace leak)"
 )
 
+# pins: reject-cross-tree-replace — stranger replace pointing at ../go-taskqueue must fail
 cat >"$fixture/stranger.go.mod" <<'EOF'
 module example.com/other
 
@@ -113,7 +115,8 @@ EOF
 # resolves through the proxy exactly like the root's, and whose replace
 # points UP into the tree (../internal/…) — repo-contained, must pass.
 mkdir -p "$fixture/task"
-cat >"$fixture/task/go.mod" <<'EOF'
+# pins: accept-facade-module — facade go.mod with UP replace must pass
+	cat >"$fixture/task/go.mod" <<'EOF'
 module github.com/larsartmann/go-taskqueue/task
 
 go 1.26.7
@@ -148,7 +151,8 @@ sed 's|=> ../internal/task|=> ../../outside/task|' "$fixture/task/go.mod" >"$fix
 # the widened require-tag check must accept it and reject a poisoned pin.
 git -C "$fixture" -c user.email=t@t -c user.name=t tag -a v0.2.0 -m fixture
 mkdir -p "$fixture/cmd/tq"
-cat >"$fixture/cmd/tq/go.mod" <<'GOMOD'
+# pins: accept-cmd-tq-module — replace-free cmd/tq go.mod with tagged requires must pass
+	cat >"$fixture/cmd/tq/go.mod" <<'GOMOD'
 module github.com/larsartmann/go-taskqueue/cmd/tq
 
 go 1.26.7

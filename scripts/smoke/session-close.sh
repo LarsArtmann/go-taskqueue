@@ -124,7 +124,8 @@ FACTS="$("$TQ" facts)"
 }
 
 echo "== tq crush, live no-id path: child code preserved, nothing closed, no DB touched"
-cat >"$TMP/no-id-stub" <<'EOF'
+# pins: no-session-marker-no-close — exit-7 child with no marker, nothing closes
+	cat >"$TMP/no-id-stub" <<'EOF'
 #!/bin/sh
 echo "plain child output, no session marker anywhere"
 exit 7
@@ -154,6 +155,7 @@ grep -q "no session id" "$TMP/noid.err" || {
 echo "== tq crush, committed path: stub child commits with a footer, prints its session id; wrapper scans it, closes, mints review + status, passes the exit through"
 WWRAP_SID="wrapsession0001"
 WRAP_DB="$TMP/wrap.db"
+# pins: committed-footer-close — footer-committing child: close + review/status minted
 cat >"$TMP/wrap-stub" <<EOF
 #!/bin/sh
 printf 'wrapper work\n' >"$REPO/wrap.txt"
@@ -229,7 +231,8 @@ done
 echo "== tq crush --allow-dirty: minted payloads tolerate an uncommitted tree (require_clean=false)"
 WRAPDIRTY_SID="wrapdirty0001"
 WRAPDIRTY_DB="$TMP/wrapdirty.db"
-cat >"$TMP/wrapdirty-stub" <<EOF
+# pins: allow-dirty-tolerated — minted payloads tolerate uncommitted tree
+	cat >"$TMP/wrapdirty-stub" <<EOF
 #!/bin/sh
 printf 'dirty wrapper work\n' >"$REPO/wrapdirty.txt"
 git -C "$REPO" add -A
@@ -258,7 +261,8 @@ done
 echo "== tq crush, zero-attributed-commits wrapper case: id present, footer absent — fact only, nothing minted"
 NOATTR_SID="noattr00001"
 NOATTR_DB="$TMP/noattr.db"
-cat >"$TMP/noattr-stub" <<EOF
+# pins: id-without-footer-fact-only — session id but no footer: fact only, no mint
+	cat >"$TMP/noattr-stub" <<EOF
 #!/bin/sh
 echo "session_id: $NOATTR_SID"
 exit 3

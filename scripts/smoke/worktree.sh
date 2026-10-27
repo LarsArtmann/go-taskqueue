@@ -44,6 +44,7 @@ git -C "$REPO" commit -qm "seed"
 
 echo "== stub agent: work turns commit inside THEIR checkout; review approves"
 STUB="$TMP/stub-agent"
+# pins: worktree-work-commit — work turns commit inside THEIR checkout
 cat >"$STUB" <<'EOF'
 #!/bin/sh
 prompt=""

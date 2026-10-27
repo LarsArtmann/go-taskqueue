@@ -41,6 +41,7 @@ git -C "$REPO" commit -qm "seed"
 
 echo "== stub agent (work turn vs review turn)"
 STUB="$TMP/stub-agent"
+# pins: stub-agent-turn-split — prompt-keyed work/review turn dispatch
 cat >"$STUB" <<'EOF'
 #!/bin/sh
 prompt=""

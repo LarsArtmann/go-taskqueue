@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Fixture-attribution meta-gate (TODO row: 2026-09-20 01-36 §e1/f2, third
 # strike on the mis-aimed-negative-fixture class): every fixture heredoc
-# in a scripts/check-*.sh gate must carry a grep-able `pins:` attribution
+# in a scripts/check-*.sh gate or a scripts/smoke/*.sh smoke must carry a
+# grep-able `pins:` attribution
 # naming WHICH branch the fixture pins — on the `cat >` line, inside the
 # heredoc block, or in the comment lines immediately above it (up to two,
 # contiguous). Without the
@@ -13,9 +14,10 @@
 # mechanically findable next to the fixture it describes.
 #
 # Contract: `cat > ... <<TAG` blocks (all quote shapes, <<- included)
-# inside scripts/check-*.sh must contain `pins:` in the block, on the
+# inside scripts/check-*.sh and scripts/smoke/*.sh must contain `pins:` in the block, on the
 # cat line, or in the contiguous comment lines immediately above. This script's own file is exempt
 # (its --self-test fixtures carry the marker, proving the rule bites).
+# (smoke coverage: 2026-10-21 batch — smoke fixtures mis-aim just as false-greenably)
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 self="$(basename "$0")"
@@ -78,7 +80,7 @@ check_file() {
 
 total_blocks=0
 total_viol=0
-for f in scripts/check-*.sh; do
+for f in scripts/check-*.sh scripts/smoke/*.sh; do
 	[ "$(basename "$f")" = "$self" ] && continue
 	out="$(check_file "$f")"
 	v="$(printf '%s\n' "$out" | tail -1 | cut -d' ' -f1)"
@@ -141,8 +143,8 @@ SCRIPT
 fi
 
 if [ "$total_viol" -gt 0 ]; then
-	echo "FAIL: $total_viol unattributed fixture heredoc(s) across scripts/check-*.sh ($total_blocks blocks scanned)"
+	echo "FAIL: $total_viol unattributed fixture heredoc(s) across scripts/check-*.sh + scripts/smoke/*.sh ($total_blocks blocks scanned)"
 	echo "  fix: add a grep-able \`pins: <branch>\` attribution naming which branch the fixture pins"
 	exit 1
 fi
-echo "fixture-attribution ok: $total_blocks fixture heredoc(s) across scripts/check-*.sh all carry pins: attribution"
+echo "fixture-attribution ok: $total_blocks fixture heredoc(s) across scripts/check-*.sh + scripts/smoke/*.sh all carry pins: attribution"

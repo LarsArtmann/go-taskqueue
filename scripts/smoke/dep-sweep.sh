@@ -71,6 +71,7 @@ git -C "$CONSUMER" add -A
 git -C "$CONSUMER" commit -qm "consumer v0.1.0"
 
 echo "== stub planner: fixed release-overview plan (lib release + consumer bump)"
+# pins: planner-json-plan-shape — static plan JSON (lib release + consumer bump)
 cat >"$TMP/plan.json" <<EOF
 {"modules":[
   {"key":"lib","label":"lib","dir":"$LIB","hasUnreleasedWork":true,"currentVersion":"v0.1.0","nextVersion":"v0.1.1","suggestedBump":"patch","staleBuild":true,"dependencies":[],"outdatedConsumers":[{"key":"consumer","dir":"$CONSUMER","currentVersion":"v0.1.0","targetVersion":"v0.1.1","dependencyKey":"example.com/smoke/depsweep/lib","isMajorBump":false}]},
@@ -78,6 +79,7 @@ cat >"$TMP/plan.json" <<EOF
 ]}
 EOF
 STUB="$TMP/planner"
+# pins: stub-planner-emits-plan — stub cats the plan file, planner never runs
 cat >"$STUB" <<EOF
 #!/bin/sh
 # release-overview --dir <dir> --format json: the plan is static.

@@ -53,6 +53,7 @@ fi
 INGEST_LOG="$TMP/ingest.log"
 if [ -z "$PAP_URL" ]; then
 	echo "== start stub dashboard (records ingest POSTs)"
+	# pins: stub-dashboard-ingest — stub HTTP server logs dead-letter POSTs
 	cat >"$TMP/stub.py" <<'PYEOF'
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer

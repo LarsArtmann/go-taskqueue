@@ -30,6 +30,7 @@ mkdir -p "$HOME" "$WORK/stubbin"
 # Stubs: log every invocation, always succeed. If the REAL systemctl ever
 # ran, this smoke would fail its log assertions before touching the host.
 for tool in systemctl loginctl; do
+	# pins: stub-systemd-succeeds — stubs log + exit 0, host systemd never runs
 	cat >"$WORK/stubbin/$tool" <<EOF
 #!/bin/sh
 printf '%s %s\n' '$tool' "\$*" >> '$WORK/syscalls.log'
