@@ -9,6 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 source scripts/lib/release-gates.sh
+source scripts/lib/expect-branch.sh
 
 fails=0
 expect_pass() {
@@ -21,13 +22,14 @@ expect_pass() {
 	fi
 }
 
+# expect_fail: fixture-attribution v2 accuracy layer — rc!=0 alone
+# false-greens when the fixture no-ops or aims at the wrong branch, so each
+# negative case must ALSO print its branch canary (a distinctive substring
+# of that branch's FAIL line) before the harness accepts it. Subshell
+# failures propagate via rc so `fails` counts outside the subshell too.
 expect_fail() {
-	if gate_gomod "$1" >/dev/null 2>&1; then
-		echo "FAIL $2 (gate accepted a poisoned go.mod)"
-		fails=$((fails + 1))
-	else
-		echo "ok   $2"
-	fi
+	local token=$1 label=$2 gomod=$3
+	expect_branch_fail "$token" "$label" gate_gomod "$gomod"
 }
 
 # The real tree must pass against the real tags.
@@ -78,27 +80,23 @@ replace github.com/larsartmann/go-taskqueue/internal/task => ./internal/task
 replace github.com/larsartmann/go-taskqueue/internal/queue/sqlite => ./internal/queue/sqlite
 EOF
 (
-	cd "$fixture"
-	expect_pass go.mod "fixture: nested sibling replaces + tagged requires"
-)
+	cd "$fixture" && expect_pass go.mod "fixture: nested sibling replaces + tagged requires"
+) || fails=$((fails + 1))
 
 sed 's|=> ./internal/task|=> /home/someone/internal/task|' "$fixture/go.mod" >"$fixture/abs.go.mod"
 (
-	cd "$fixture"
-	expect_fail abs.go.mod "fixture: absolute replace path is poison"
-)
+	cd "$fixture" && expect_fail "non-repo-relative replace directives" "fixture: absolute replace path is poison" abs.go.mod
+) || fails=$((fails + 1))
 
 sed 's|internal/task v0.2.0|internal/task v9.9.9|' "$fixture/go.mod" >"$fixture/untagged.go.mod"
 (
-	cd "$fixture"
-	expect_fail untagged.go.mod "fixture: require without a cut sub-tag"
-)
+	cd "$fixture" && expect_fail "does not exist" "fixture: require without a cut sub-tag" untagged.go.mod
+) || fails=$((fails + 1))
 
 sed 's|internal/queue/sqlite v0.2.0|internal/queue/sqlite v0.0.0-00010101000000-000000000000|' "$fixture/go.mod" >"$fixture/pseudo.go.mod"
 (
-	cd "$fixture"
-	expect_fail pseudo.go.mod "fixture: pseudo-version require (replace leak)"
-)
+	cd "$fixture" && expect_fail "pseudo-version" "fixture: pseudo-version require (replace leak)" pseudo.go.mod
+) || fails=$((fails + 1))
 
 # pins: reject-cross-tree-replace — stranger replace pointing at ../go-taskqueue must fail
 cat >"$fixture/stranger.go.mod" <<'EOF'
@@ -107,9 +105,8 @@ module example.com/other
 replace github.com/larsartmann/go-taskqueue/internal/task => ../go-taskqueue/internal/task
 EOF
 (
-	cd "$fixture"
-	expect_fail stranger.go.mod "fixture: parent-relative replace is poison"
-)
+	cd "$fixture" && expect_fail "non-repo-relative replace directives" "fixture: parent-relative replace is poison" stranger.go.mod
+) || fails=$((fails + 1))
 
 # Facade shape (ADR-0016): a top-level module (task/) whose internal require
 # resolves through the proxy exactly like the root's, and whose replace
@@ -126,25 +123,22 @@ require github.com/larsartmann/go-taskqueue/internal/task v0.2.0
 replace github.com/larsartmann/go-taskqueue/internal/task => ../internal/task
 EOF
 (
-	cd "$fixture"
-	expect_pass task/go.mod "fixture: facade go.mod (../internal replace + tagged require)"
-)
+	cd "$fixture" && expect_pass task/go.mod "fixture: facade go.mod (../internal replace + tagged require)"
+) || fails=$((fails + 1))
 
 # Facade poison: an untagged internal pin would publish a facade that
 # cannot resolve on the proxy (the T0 flaw class).
 sed 's|internal/task v0.2.0|internal/task v9.9.9|' "$fixture/task/go.mod" >"$fixture/task/untagged.go.mod"
 (
-	cd "$fixture"
-	expect_fail task/untagged.go.mod "fixture: facade go.mod with untagged internal pin"
-)
+	cd "$fixture" && expect_fail "does not exist" "fixture: facade go.mod with untagged internal pin" task/untagged.go.mod
+) || fails=$((fails + 1))
 
 # Facade poison: a replace climbing above the repo root is the stranger
 # shape even from a facade dir.
 sed 's|=> ../internal/task|=> ../../outside/task|' "$fixture/task/go.mod" >"$fixture/task/escape.go.mod"
 (
-	cd "$fixture"
-	expect_fail task/escape.go.mod "fixture: facade go.mod replace escaping the repo root"
-)
+	cd "$fixture" && expect_fail "non-repo-relative replace directives" "fixture: facade go.mod replace escaping the repo root" task/escape.go.mod
+) || fails=$((fails + 1))
 
 # CLI module shape (ADR-0017): cmd/tq is its own REPLACE-FREE module whose
 # requires pin the root module AND internal sub-modules at tagged versions —
@@ -163,14 +157,12 @@ require (
 )
 GOMOD
 (
-	cd "$fixture"
-	expect_pass cmd/tq/go.mod "fixture: CLI module go.mod (replace-free, root + internal tagged requires)"
-)
+	cd "$fixture" && expect_pass cmd/tq/go.mod "fixture: CLI module go.mod (replace-free, root + internal tagged requires)"
+) || fails=$((fails + 1))
 sed 's|go-taskqueue v0.2.0|go-taskqueue v9.9.9|' "$fixture/cmd/tq/go.mod" >"$fixture/cmd/tq/untagged.go.mod"
 (
-	cd "$fixture"
-	expect_fail cmd/tq/untagged.go.mod "fixture: CLI module with untagged root-module pin"
-)
+	cd "$fixture" && expect_fail "does not exist" "fixture: CLI module with untagged root-module pin" cmd/tq/untagged.go.mod
+) || fails=$((fails + 1))
 
 if [ "$fails" -gt 0 ]; then
 	echo "$fails release-gate case(s) failed"
