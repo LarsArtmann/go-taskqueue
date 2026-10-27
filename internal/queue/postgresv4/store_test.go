@@ -60,6 +60,16 @@ func testDSN(t *testing.T) string {
 // against the postgresv4 spike backend (per-test schema under
 // TQ_TEST_POSTGRES; the suite skips itself when the variable is unset —
 // CI's env-gated postgres job runs it).
+//
+// Postgres-proven 2026-10-27: the full suite (incl.
+// TestRequeueFactCarriesProvider) passes on a real engine. Local
+// recipe (peer-auth-free scratch cluster):
+//
+//	initdb -D /tmp/tqpg -U tq --auth=trust -E UTF8
+//	pg_ctl -D /tmp/tqpg -o "-p 55432 -k /tmp/tqpg -c listen_addresses=''" start
+//	createdb -h /tmp/tqpg -p 55432 -U tq tqtest
+//	TQ_TEST_POSTGRES='postgres://tq@/tqtest?host=/tmp/tqpg&port=55432' \
+//	  (cd internal/queue/postgresv4 && GOWORK=off go test ./... -count=1)
 func TestStoreConformance(t *testing.T) {
 	conform.StoreSuite(t, conform.Suite{
 		FreshDSN: testDSN,
