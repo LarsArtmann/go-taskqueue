@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -650,6 +651,36 @@ func doctorParked(ctx context.Context, store queue.Store) checkResult {
 	)
 
 	if tasks, err := store.List(ctx, queue.Filter{Parked: &parked}); err == nil {
+		// Name the exhausted provider(s) when the requeue evidence carries
+		// one — "parked by zai" answers "which provider?" on the doctor
+		// surface too (2026-10-15 01-15 §f4).
+		if facts, ferr := store.LastFacts(ctx, factTailLimit); ferr == nil {
+			providers := latestRequeueProvider(facts)
+
+			seen := map[string]bool{}
+
+			for _, tk := range tasks {
+				if p := providers[tk.ID.String()]; p != "" {
+					seen[p] = true
+				}
+			}
+
+			if len(seen) > 0 {
+				names := make([]string, 0, len(seen))
+				for p := range seen {
+					names = append(names, p)
+				}
+
+				slices.Sort(names)
+
+				detail = fmt.Sprintf(
+					"%d task(s) parked by %s — WAITING, not broken; see `tq tasks --parked`",
+					n,
+					strings.Join(names, ", "),
+				)
+			}
+		}
+
 		earliest := time.Time{}
 
 		for _, tk := range tasks {

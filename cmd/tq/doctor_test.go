@@ -1437,3 +1437,54 @@ func TestDoctorWorktreeOrphans(t *testing.T) {
 		t.Fatalf("items = %v, want the tq/dead branch named", r.Items)
 	}
 }
+
+// TestDoctorParkedNamesExhaustedProvider pins the parked-surface provider
+// tag on the doctor surface (2026-10-15 01-15 §f4): when the parked set's
+// requeue evidence carries a provider, the parked check names it —
+// "parked by zai — WAITING, not broken".
+func TestDoctorParkedNamesExhaustedProvider(t *testing.T) {
+	path := doctorTestStore(t)
+
+	s, err := sqlite.Open(path)
+	if err != nil {
+		t.Fatalf("OpenSQLite: %v", err)
+	}
+	defer func() { _ = s.Close() }()
+
+	ctx := context.Background()
+
+	park := func(provider string) {
+		t.Helper()
+
+		tk, err := s.Enqueue(ctx, task.New{Type: "agent"})
+		if err != nil {
+			t.Fatalf("enqueue: %v", err)
+		}
+
+		_, claim, err := s.ClaimDue(ctx, "w1", time.Minute)
+		if err != nil {
+			t.Fatalf("claim: %v", err)
+		}
+
+		if err := s.Requeue(ctx, tk.ID, claim, "rate limited", time.Hour, false, "rate-limit", provider); err != nil {
+			t.Fatalf("requeue: %v", err)
+		}
+	}
+
+	park("zai")
+
+	r := doctorParked(ctx, s)
+	if r.Status != checkWarn {
+		t.Errorf("parked = %s, want warn", r.Status)
+	}
+
+	if want := "parked by zai — WAITING, not broken"; !strings.Contains(r.Detail, want) {
+		t.Fatalf("detail = %q, want it to contain %q", r.Detail, want)
+	}
+
+	park("openai")
+
+	if r := doctorParked(ctx, s); !strings.Contains(r.Detail, "parked by openai, zai — WAITING") {
+		t.Fatalf("detail = %q, want both providers sorted", r.Detail)
+	}
+}
