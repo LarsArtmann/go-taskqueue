@@ -252,8 +252,13 @@ docs/DOMAIN_LANGUAGE.md.
   `recordRunOutcome`, `executor.Excerpt`, `prepareRepo`, `payloadTimeout`;
   mirror clones gated STRICT by `check-mirror-clones.sh` (shared surface
   `internal/queue/companion`); art-dupl residuals accepted ONLY where
-  named here (the `fragments.templ` conditional-span pair — Go comments
-  cannot live inside templ markup); don't add new ones.
+  named here; don't add new ones. Templ markup cannot carry Go-comment
+  accepts — the HTML-comment directive form suppresses but SHIPS IN PAGE
+  OUTPUT (upstream ask LarsArtmann/art-dupl#9, still open 2026-10-28);
+  the old `fragments.templ` conditional-span residual dissolved from the
+  canonical report (2026-10-28 HEAD run: zero fragments.templ groups;
+  sole templ twin left is the layout.templ mobile/desktop branch pair,
+  intentional — no directive needed or wanted).
   `art-dupl:accept` suppresses only within a few lines ABOVE the clone's
   first line (func-top doc position; inline comment for deeper ones).
 - POSIX-only suites carry `//go:build unix`; tests hermetic (nix checkPhase
