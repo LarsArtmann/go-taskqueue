@@ -359,6 +359,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Repo-internal tooling and non-operator-facing changes (O14 audit
 2026-10-13: kept for the record, excluded from operator release notes).
 
+- **Canary-accuracy layer for negative fixtures, adopted fleet-wide**
+  (2026-10-28): `scripts/lib/expect-branch.sh` (`expect_branch_fail`
+  requires rc!=0 AND a branch-canary grep before accepting, countable
+  FAILS tally, `--self-test` pinning both negatives) closes the
+  false-green class where a no-op or mis-aimed fixture still "passes" a
+  bare rc!=0 assertion; the fixture-attribution meta-gate now also scans
+  `scripts/smoke/*.sh` heredocs (53/53 attributed) and the sweep
+  converted 8 `check-*` gates + the archive-evidence smoke
+  (`check-flag-count` gains a `FLAG_COUNT_BASELINE` seam so its drift
+  self-test re-runs the REAL gate) (c2b3d439, f8e3a10a, 0ae5ff83).
 - **Proxy-wait smoke reports an unreadable netns dev file distinctly**
   (2026-10-28): `netns_is_empty` in scripts/smoke/proxy-wait.sh is
   tri-state (loopback-only / non-empty / UNREADABLE) — a hermetic

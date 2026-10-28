@@ -80,6 +80,7 @@ docs/DOMAIN_LANGUAGE.md.
 | `internal/harvest` | TODO_LIST.md → tasks; drift audit; prune-stale |
 | `internal/budget` | Daily-cap + session-usage projections per tick |
 | `internal/{dlqfix,review,status}` | DLQ autopsies (`--dlq-fix`, auto-dismiss); review sweeper (`--review-autofix`); done-prompt sweeper (`--status-every`) |
+| `internal/dlqbackoff` | Poisoned-repo DLQ-backoff fold shared by `pool-health`, `tq dlq`, webui |
 | `internal/prioritize` | AI batch scorer (`--prioritize`), priority_scores cache |
 | `internal/depsweep` | Dependency-upgrade sweeper `--dep-sweep` |
 | `internal/watermark` | Durable journal cursor shared by the sweepers |
@@ -157,6 +158,8 @@ docs/DOMAIN_LANGUAGE.md.
   rendered on `tq tasks --parked`).
   **Env-requeue breaker**: env requeues carry `requeue_class`; 3
   consecutive burn an attempt + escalate (`env-streak`) — never uncap.
+  Dirty-tree preflight refusals are EXEMPT (typed `ErrDirtyTree`): they
+  park on the escalating ladder, NO attempt burn (a0a343eb).
 - **Secrets redaction** (default ON): every output tail passes
   `internal/executor/redact.go`; `tq audit --journal` reports SECRET
   EVIDENCE rows. Growth: ONE `secretPatterns` entry + fake-shape sample
