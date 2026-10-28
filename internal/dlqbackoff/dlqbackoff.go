@@ -41,9 +41,19 @@ func Deadlines(facts []journal.Fact, projectByID map[task.ID]string, now time.Ti
 		return nil
 	}
 
-	deadAt := make(map[task.ID]time.Time)
-	dismissed := make(map[task.ID]bool)
-	everCompleted := make(map[string]bool)
+	deadAt, dismissed, everCompleted := scanOutcomes(facts, projectByID)
+	lastLiveDead := latestStandingDead(deadAt, dismissed, projectByID)
+
+	return stillActive(lastLiveDead, everCompleted, now, window)
+}
+
+// scanOutcomes splits the journal into the three inputs the fold reads:
+// each task's latest dead-letter time, the dismissed tasks, and the
+// repos with any completion ever.
+func scanOutcomes(facts []journal.Fact, projectByID map[task.ID]string) (deadAt map[task.ID]time.Time, dismissed map[task.ID]bool, everCompleted map[string]bool) {
+	deadAt = make(map[task.ID]time.Time)
+	dismissed = make(map[task.ID]bool)
+	everCompleted = make(map[string]bool)
 
 	for _, fact := range facts {
 		id := task.ID(fact.TaskID)
@@ -60,9 +70,16 @@ func Deadlines(facts []journal.Fact, projectByID map[task.ID]string, now time.Ti
 		}
 	}
 
-	// Latest still-standing dead letter per repo.
+	return deadAt, dismissed, everCompleted
+}
+
+// latestStandingDead reduces the dead letters to the latest
+// still-standing one per repo; dismissed dead letters are out of the
+// derivation and repoless tasks are skipped.
+func latestStandingDead(deadAt map[task.ID]time.Time, dismissed map[task.ID]bool, projectByID map[task.ID]string) map[string]time.Time {
 	lastLiveDead := make(map[string]time.Time)
-	for id, at := range deadAt {
+
+	for id, when := range deadAt {
 		if dismissed[id] {
 			continue
 		}
@@ -72,12 +89,20 @@ func Deadlines(facts []journal.Fact, projectByID map[task.ID]string, now time.Ti
 			continue
 		}
 
-		if best, ok := lastLiveDead[project]; !ok || at.After(best) {
-			lastLiveDead[project] = at
+		if best, ok := lastLiveDead[project]; !ok || when.After(best) {
+			lastLiveDead[project] = when
 		}
 	}
 
+	return lastLiveDead
+}
+
+// stillActive extends each repo's latest dead letter by the window and
+// keeps only the deadlines still in the future at now; any completion
+// ever heals the repo first.
+func stillActive(lastLiveDead map[string]time.Time, everCompleted map[string]bool, now time.Time, window time.Duration) map[string]time.Time {
 	deadlines := make(map[string]time.Time, len(lastLiveDead))
+
 	for repo, lastDead := range lastLiveDead {
 		if everCompleted[repo] {
 			continue
@@ -95,7 +120,12 @@ func Deadlines(facts []journal.Fact, projectByID map[task.ID]string, now time.Ti
 // callers that hold a store and need only the deadline map (the webui
 // snapshot loader, `tq dlq` rows): drains the journal, joins the task
 // identities, folds. Nil without any journal I/O when window is 0.
-func DeadlinesForStore(ctx context.Context, store queue.Store, now time.Time, window time.Duration) (map[string]time.Time, error) {
+func DeadlinesForStore( //nolint:nilnil // the off switch is a valid (nil, nil) state, not an invalid value
+	ctx context.Context,
+	store queue.Store,
+	now time.Time,
+	window time.Duration,
+) (map[string]time.Time, error) {
 	if window <= 0 {
 		return nil, nil
 	}

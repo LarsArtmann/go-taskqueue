@@ -83,6 +83,8 @@ func TestDeadlinesBoundaryInstant(t *testing.T) {
 		{"1ns before the boundary the backoff is active", until.Add(-time.Nanosecond), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			deadlines := Deadlines(facts, projects, tc.now, window)
 
 			got, ok := deadlines["poisoned"]
@@ -160,15 +162,11 @@ func TestDeadlinesLatestStandingDeadWins(t *testing.T) {
 
 	deadlines := Deadlines(facts, projects, now, window)
 
-	if got := deadlines["repo"]; !got.Equal(base.Add(5*time.Minute).Add(window)) {
+	if got := deadlines["repo"]; !got.Equal(base.Add(5 * time.Minute).Add(window)) {
 		t.Fatalf("deadline = %v, want the LATER dead letter's %v", got, base.Add(5*time.Minute).Add(window))
 	}
 
-	dismissed := append(
-		[]journal.Fact{},
-		facts...,
-	)
-	dismissed = append(dismissed, journal.Fact{TaskID: "t-late", Type: journal.Cancelled, Time: base.Add(6 * time.Minute)})
+	laterDismissed := append(facts, journal.Fact{TaskID: "t-late", Type: journal.Cancelled, Time: base.Add(6 * time.Minute)})
 
 	deadlines = Deadlines(dismissed, projects, now, window)
 
