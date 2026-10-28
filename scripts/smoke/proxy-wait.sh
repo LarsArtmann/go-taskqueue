@@ -7,6 +7,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
+fails=0
+
 # Structural offline claim: re-exec the whole smoke inside an empty network
 # namespace (unshare -n) where available, so "zero network access" holds
 # even if a fake regresses into real curl/go-list. Skip with a loud line
@@ -23,19 +25,75 @@ netns_is_empty() {
 	[ "$devs" = "lo" ]
 }
 
+netns_refusal_msg='FAIL: TQ_SMOKE_NETNS=1 set but /proc/self/net/dev is not loopback-only — structural offline claim does NOT hold; refusing to run'
+
+# netns_marker_gate is the whole marker block, factored so the refusal
+# self-test below drives it verbatim: the re-exec'd inner run and the
+# nested self-test children all execute THIS function, never a copy.
+netns_marker_gate() {
+	if [ "${TQ_SMOKE_NETNS:-}" != "1" ]; then
+		if command -v unshare >/dev/null 2>&1 && unshare -n true 2>/dev/null; then
+			echo "== re-exec under unshare -n (structural offline) =="
+			exec env TQ_SMOKE_NETNS=1 unshare -n "$0" "$@"
+		fi
+		echo "SKIP: unshare -n unavailable (or no permission) — offline claim is NOT structural; proceeding with faked seams only"
+	else
+		if ! netns_is_empty; then
+			echo "$netns_refusal_msg" >&2
+			exit 1
+		fi
+		echo "== netns marker verified: loopback-only /proc/self/net/dev =="
+	fi
+}
+
+expect_netns_refusal() { # <name> <child-script>
+	local out rc
+	out="$(TQ_SMOKE_NETNS=1 bash -c "$2" netns-self-test 2>&1)" && rc=0 || rc=$?
+	if [ "$rc" = 1 ] && grep -qF "$netns_refusal_msg" <<<"$out"; then
+		echo "ok   $1"
+	else
+		echo "FAIL $1 (rc=$rc, wanted exit 1 + refusal)"
+		echo "$out"
+		fails=$((fails + 1))
+	fi
+}
+
+# host_netns_raw_empty is the self-test's independent oracle: a deliberate
+# copy of the /proc/self/net/dev read. If it and netns_is_empty ever
+# disagree, the real-detector leg below fails — that disagreement IS the
+# regression the self-test exists to catch (the guard must not trust the
+# function under test to decide whether the function is testable).
+host_netns_raw_empty() {
+	[ -r /proc/self/net/dev ] || return 1
+	local devs
+	devs="$(awk 'NR > 2 { sub(/:.*/, ""); gsub(/^[ \t]+|[ \t]+$/, ""); if ($0 != "") print }' /proc/self/net/dev)"
+	[ "$devs" = "lo" ]
+}
+
 if [ "${TQ_SMOKE_NETNS:-}" != "1" ]; then
-	if command -v unshare >/dev/null 2>&1 && unshare -n true 2>/dev/null; then
-		echo "== re-exec under unshare -n (structural offline) =="
-		exec env TQ_SMOKE_NETNS=1 unshare -n "$0" "$@"
+	# Refusal self-test (host entry only: inside the netns the gate
+	# legitimately passes). Both cases drive the REAL gate function via
+	# export -f, so a refactor of netns_is_empty or the gate cannot
+	# silently regress the refusal (the SKIP path otherwise hides the
+	# whole marker block):
+	#   - wiring: detector overridden to non-empty — the gate must refuse.
+	#   - detector: the real netns_is_empty against this (non-empty) host
+	#     netns must refuse — skipped loudly where the RAW oracle says the
+	#     host netns is already loopback-only (the truth is
+	#     indistinguishable there).
+	export -f netns_is_empty netns_marker_gate
+	export netns_refusal_msg
+	expect_netns_refusal "netns refusal self-test: gate wiring" \
+		'netns_is_empty() { return 1; }; netns_marker_gate'
+	if host_netns_raw_empty; then
+		echo "SKIP netns refusal self-test: host netns already loopback-only — real-detector refusal not exercisable here"
+	else
+		expect_netns_refusal "netns refusal self-test: real detector vs host netns" \
+			'netns_marker_gate'
 	fi
-	echo "SKIP: unshare -n unavailable (or no permission) — offline claim is NOT structural; proceeding with faked seams only"
-else
-	if ! netns_is_empty; then
-		echo "FAIL: TQ_SMOKE_NETNS=1 set but /proc/self/net/dev is not loopback-only — structural offline claim does NOT hold; refusing to run" >&2
-		exit 1
-	fi
-	echo "== netns marker verified: loopback-only /proc/self/net/dev =="
 fi
+
+netns_marker_gate
 
 # shellcheck source=scripts/lib/proxy-wait.sh
 source scripts/lib/proxy-wait.sh
@@ -51,8 +109,6 @@ die_lag="$(printf "$TQ_PROXY_DIE_LAG" "$SMOKE_VERSION" "$SMOKE_MODULE" "$SMOKE_V
 die_dead="$TQ_PROXY_DIE_DEAD"
 # Success-path prose comes from the lib too (same constant the loop prints).
 serves_line="$(printf "$TQ_PROXY_SERVES_FMT" "$SMOKE_VERSION")"
-
-fails=0
 
 # drive <poke-prog> <list-prog> — runs the loop in a subshell with faked
 # seams (3 attempts, no sleep); die is overridden to print "DIE: ..." and
