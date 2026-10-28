@@ -31,8 +31,8 @@ nix build # nix run .#test; .#webui-css
 
 - **Multi-module repo (ADR-0011)**: `internal/{task,journal,queue,
   executor,worker}` + `queue/{sqlite,postgres}` + `internal/journal/
-  cqrs` sub-modules; `internal/{readmodel,composition}` own modules (S4
-  root; cmd/tq pins the release floor); root = app layer. `cmd/tq`
+  cqrs` sub-modules; `internal/{readmodel,composition,retryx}` own
+  modules (S4 root; cmd/tq pins the release floor); root = app layer. `cmd/tq`
   replace-free (ADR-0017), built via `scripts/build-tq.sh` (devmod
   shim). `./...` skips nested modules; per-module gate:
 
@@ -74,6 +74,7 @@ docs/DOMAIN_LANGUAGE.md.
 | `internal/queue/{sqlitev4,postgresv4}` | tq Store over the go-cqrs-lite queue engines |
 | `internal/queue/companion` | Shared tq surfaces: reads, watermarks, scores, exclusivity, token finalize (`WithToken`) |
 | `internal/{readmodel,composition}` | S3 projection `<db>.readmodel.db` (`--read-model` ON) + S4 root: `system.New`, `ProjectionRuntime` (model+DLQ+host, `tq serve`) |
+| `internal/retryx` | Shared transient-retry file ops for the Windows sharing-violation class; `RenameTransient` ridden by readmodel snapshots + executor depbump |
 | `internal/worker` | Claim → heartbeat → execute loop; requeue ladder |
 | `internal/bridge` | papdashboard + cqa bridges → fix tasks |
 | `internal/executor` | sh/HTTP/agent/review/status executors + registry |
