@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Dashboard renders poisoned-repo DLQ backoff** (2026-10-28): `tq
+  serve --dlq-backoff <dur>` folds the same shared dlqbackoff derivation
+  as `tq pool-health`/`tq dlq` into every dashboard snapshot — repos
+  currently backing off appear as a nowband chip (`backoff N`) and a red
+  panel above the dead-letter queue carrying the per-repo deadline, an
+  in-estimate, and the shared poisoned advice; the flag default is seeded
+  from the pool config file's `dlq-backoff` like the other surfaces
+  (precedence flag > config > off; 0 = off: no journal read, nothing
+  rendered) (BEHAVIOR CHANGE for `tq serve` operators: where the pool
+  config exists, the backoff surface is now ON without an explicit flag).
 - **`tq pool-health` surfaces poisoned-repo DLQ backoff** (2026-10-28):
   `tq pool-health --dlq-backoff <dur>` folds dead-letter facts per repo
   into the harvest pool's poisoned verdict — a repo whose latest
