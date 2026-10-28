@@ -688,6 +688,17 @@ step "security-invariant self-test (both drift mutations caught)"
 step "security-invariant drift check (learned-checks-narrow, prose + code)"
 ./scripts/check-security-invariants.sh
 
+# Report-body secret gate (closeout x security grid cell, GAP 2026-10-23):
+# agent-authored closeout/status prose gets the same provider-token sweep
+# the executor applies to tails/evidence/sidecars — hard FAIL; pattern
+# classes pinned to redact.go's secretPatterns table, documented SMOKETEST
+# fake allowlisted by extraction.
+step "report-body secret gate self-test (summary pin + clean/dirty/fake battery)"
+./scripts/check-report-secrets.sh --self-test
+
+step "report-body secret gate (docs/status prose vs secretPatterns)"
+./scripts/check-report-secrets.sh
+
 # Orphaned-guard audit (15-39 report c7/f5, e1): every check-*/smoke script
 # must be wired (this file, ci.yml, or flake.nix) — the check-webui-css
 # lesson generalized into a gate.
