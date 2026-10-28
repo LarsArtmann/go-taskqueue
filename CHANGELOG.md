@@ -142,6 +142,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the default `GOTOOLCHAIN=auto` bridge until bumped.
 
 ### Changed
+- **`tq dlq` cross-links poisoned-repo DLQ backoff** (2026-10-28): with the
+  backoff window resolvable (`--dlq-backoff`, seeded from the pool config
+  file exactly like `tq pool-health`; 0 = off), listing the DLQ appends
+  `poisoned: repo in DLQ backoff until <ts>` under rows whose repo is
+  currently backing off — the same journal fold `tq pool-health` reports,
+  surfaced DLQ-side (BEHAVIOR CHANGE for scripts parsing `tq dlq` output:
+  poisoned repos gain an extra line per affected row when the window is
+  on).
 - **`tq pool-health` summary line counts repos in DLQ backoff** (2026-10-28):
   the trailing summary now reads `N repos, M in DLQ backoff, W warn, F
   facts folded, window since <ts>` with `M` always present (0 included

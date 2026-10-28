@@ -116,16 +116,11 @@ func isHarvestEnqueue(meta poolTaskMeta) bool {
 // Pacing verdict (surveyRepo) made queryable without journal digging.
 // Mirrors: any Completed fact heals (the harvester checks the repo's
 // completed tasks, ever), and dismissing the dead-lettered task heals
-// (DismissDead emits the Cancelled fact for that task).
+// (DismissDead emits the Cancelled fact for that task). The derivation
+// itself lives in dlqBackoffDeadlines, shared with `tq dlq` rows so
+// both surfaces read the same journal truth.
 func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, now time.Time, dlqBackoff time.Duration) PoolHealthReport {
 	repos := make(map[string]*RepoHealth)
-
-	// Backoff derivation state: dead-letter times per task, tasks whose
-	// dead letter was dismissed (Cancelled fact on the same task), and
-	// repos with any completion ever.
-	deadAt := make(map[task.ID]time.Time)
-	dismissed := make(map[task.ID]bool)
-	everCompleted := make(map[string]bool)
 
 	repoFor := func(id task.ID) *RepoHealth {
 		m, ok := meta[id]
@@ -170,20 +165,12 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 			}
 		case journal.Completed:
 			r.SkipStreak = 0
-			everCompleted[r.Repo] = true
 
 			if inWindow {
 				r.Completed++
 			}
 		case journal.Failed, journal.DeadLettered, journal.Cancelled:
 			r.SkipStreak = 0
-
-			switch fact.Type {
-			case journal.DeadLettered:
-				deadAt[id] = fact.Time
-			case journal.Cancelled:
-				dismissed[id] = true
-			}
 
 			if inWindow {
 				switch fact.Type {
@@ -220,25 +207,10 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 		}
 	}
 
-	// Latest still-standing dead letter per repo: dismissal (a Cancelled
-	// fact on the dead-lettered task) takes a dead letter out of the
-	// backoff derivation, mirroring the harvester's table view where a
-	// dismissed task is no longer Dead.
-	lastLiveDead := make(map[string]time.Time)
-	for id, at := range deadAt {
-		if dismissed[id] {
-			continue
-		}
-
-		project := meta[id].project
-		if project == "" {
-			continue
-		}
-
-		if best, ok := lastLiveDead[project]; !ok || at.After(best) {
-			lastLiveDead[project] = at
-		}
-	}
+	// Latest still-standing dead letter per repo, extended by the
+	// backoff window and filtered to what is still active — the shared
+	// derivation `tq dlq` rows reuse.
+	deadlines := dlqBackoffDeadlines(facts, meta, now, dlqBackoff)
 
 	report := PoolHealthReport{
 		Since:       since.Format(time.RFC3339),
@@ -262,17 +234,12 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 				"starved: %d enqueued in window with no completed/failed/dead outcome", r.Enqueued))
 		}
 
-		if dlqBackoff > 0 && !everCompleted[r.Repo] {
-			if lastDead, ok := lastLiveDead[r.Repo]; ok {
-				until := lastDead.Add(dlqBackoff)
-				if until.After(now) {
-					r.DLQBackoffUntil = &until
-					r.Verdict = poolVerdictWarn
-					r.Warnings = append(r.Warnings, fmt.Sprintf(
-						"poisoned: recent dead-letter, DLQ backoff until %s (fix the repo or rescue dead tasks)",
-						until.Format(time.RFC3339)))
-				}
-			}
+		if until, ok := deadlines[r.Repo]; ok {
+			r.DLQBackoffUntil = &until
+			r.Verdict = poolVerdictWarn
+			r.Warnings = append(r.Warnings, fmt.Sprintf(
+				"poisoned: recent dead-letter, DLQ backoff until %s (fix the repo or rescue dead tasks)",
+				until.Format(time.RFC3339)))
 		}
 
 		if r.Verdict == "" {
@@ -287,6 +254,97 @@ func poolHealthFrom(facts []journal.Fact, meta map[task.ID]poolTaskMeta, since, 
 	})
 
 	return report
+}
+
+// dlqBackoffDeadlines folds the journal into each repo's poisoned-repo
+// backoff deadline: the latest still-standing dead letter extended by
+// dlqBackoff, kept only while still in the future at now. Dismissal (a
+// Cancelled fact on the dead-lettered task) takes a dead letter out of
+// the derivation and any completion ever heals the repo — the same
+// mirrors the harvester's table view applies. Shared by `tq pool-health`
+// and `tq dlq` rows so both surfaces read the same journal truth; nil
+// when dlqBackoff is 0. The expiry boundary is the strict After here —
+// pinned by TestPoolHealthDLQBackoffBoundaryInstant.
+func dlqBackoffDeadlines(facts []journal.Fact, meta map[task.ID]poolTaskMeta, now time.Time, dlqBackoff time.Duration) map[string]time.Time {
+	if dlqBackoff <= 0 {
+		return nil
+	}
+
+	deadAt := make(map[task.ID]time.Time)
+	dismissed := make(map[task.ID]bool)
+	everCompleted := make(map[string]bool)
+
+	for _, fact := range facts {
+		id := task.ID(fact.TaskID)
+
+		switch fact.Type {
+		case journal.Completed:
+			if project := meta[id].project; project != "" {
+				everCompleted[project] = true
+			}
+		case journal.DeadLettered:
+			deadAt[id] = fact.Time
+		case journal.Cancelled:
+			dismissed[id] = true
+		}
+	}
+
+	// Latest still-standing dead letter per repo.
+	lastLiveDead := make(map[string]time.Time)
+	for id, at := range deadAt {
+		if dismissed[id] {
+			continue
+		}
+
+		project := meta[id].project
+		if project == "" {
+			continue
+		}
+
+		if best, ok := lastLiveDead[project]; !ok || at.After(best) {
+			lastLiveDead[project] = at
+		}
+	}
+
+	deadlines := make(map[string]time.Time, len(lastLiveDead))
+	for repo, lastDead := range lastLiveDead {
+		if everCompleted[repo] {
+			continue
+		}
+
+		if until := lastDead.Add(dlqBackoff); until.After(now) {
+			deadlines[repo] = until
+		}
+	}
+
+	return deadlines
+}
+
+// dlqBackoffDeadlinesForStore is the store-backed seam under
+// dlqBackoffDeadlines for commands that need only the deadline map
+// (`tq dlq` rows): drains the journal, joins the task identities, folds.
+// Nil without any journal I/O when dlqBackoff is 0.
+func dlqBackoffDeadlinesForStore(ctx context.Context, store queue.Store, now time.Time, dlqBackoff time.Duration) (map[string]time.Time, error) {
+	if dlqBackoff <= 0 {
+		return nil, nil
+	}
+
+	facts, err := drainAllFacts(ctx, store)
+	if err != nil {
+		return nil, err
+	}
+
+	tasks, err := store.List(ctx, queue.Filter{})
+	if err != nil {
+		return nil, fmt.Errorf("list tasks: %w", err)
+	}
+
+	meta := make(map[task.ID]poolTaskMeta, len(tasks))
+	for _, t := range tasks {
+		meta[t.ID] = poolTaskMeta{project: t.Project, dedup: t.DedupKey}
+	}
+
+	return dlqBackoffDeadlines(facts, meta, now, dlqBackoff), nil
 }
 
 // poolHealth drains the journal, joins the task identities, and folds.

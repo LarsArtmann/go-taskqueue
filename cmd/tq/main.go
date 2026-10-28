@@ -3051,9 +3051,17 @@ func cmdDLQ(args []string) error {
 		"",
 		"list only dead tasks whose failure evidence names this stage class: the evidence stage (agent, verify, command), the verify-gate stage (gofmt, test, e2e-timeout, run), the retry-taxonomy class, or the gate aliases (gate-env, gate-dead, gate-slow)",
 	)
+	dlqBackoff := fs.Duration("dlq-backoff", 0,
+		"cross-link rows whose repo is in poisoned-repo DLQ backoff, mirroring `tq pool-health`; defaults to the pool config file's dlq-backoff (see --config), else 0 = off")
+	configPath := fs.String("config", os.Getenv("TQ_POOL_CONFIG"),
+		"pool config file whose dlq-backoff seeds the --dlq-backoff default (other keys are ignored; $TQ_POOL_CONFIG; falls back to the bootstrap default ~/.config/tq/pool.conf when it exists)")
 
 	db := dbFlag(fs)
 	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	if err := applyPoolHealthConfigDefault(*configPath, fs, dlqBackoff); err != nil {
 		return err
 	}
 
@@ -3108,7 +3116,12 @@ func cmdDLQ(args []string) error {
 		tasks = filtered
 	}
 
-	printDLQ(tasks)
+	deadlines, err := dlqBackoffDeadlinesForStore(context.Background(), store, time.Now(), *dlqBackoff)
+	if err != nil {
+		return err
+	}
+
+	printDLQ(tasks, deadlines)
 
 	return nil
 }
@@ -3147,7 +3160,7 @@ func listDead(ctx context.Context, s *sqlite.Store) ([]task.Task, error) {
 	return s.List(ctx, queue.Filter{Status: &st})
 }
 
-func printDLQ(tasks []task.Task) {
+func printDLQ(tasks []task.Task, dlqBackoff map[string]time.Time) {
 	if len(tasks) == 0 {
 		fmt.Println("(empty)")
 
@@ -3157,6 +3170,11 @@ func printDLQ(tasks []task.Task) {
 	for _, t := range tasks {
 		fmt.Printf("%s  %-24s attempts=%d/%d  %s\n",
 			t.ID, t.Project+"/"+t.Type, t.Attempts, t.MaxAttempts, truncate(t.LastError, 80))
+
+		if until, ok := dlqBackoff[t.Project]; ok {
+			fmt.Printf("       ↳ poisoned: repo in DLQ backoff until %s (fix the repo or rescue dead tasks)\n",
+				until.Format(time.RFC3339))
+		}
 	}
 }
 
